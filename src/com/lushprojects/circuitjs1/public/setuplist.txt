@@ -4,7 +4,7 @@ ohms.txt Ohm's Law
 resistors.txt Resistors
 cap.txt Capacitor
 induct.txt Inductor
->lrc.txt LRC Circuit
+lrc.txt LRC Circuit
 voltdivide.txt Voltage Divider
 pot.txt Potentiometer
 potdivide.txt Potentiometer Divider
@@ -437,3 +437,5 @@ ujtosc.txt Unijunction Oscillator
 latchingrelay.txt Latching Relay
 -
 blank.txt Blank Circuit
+>1debug.txt For Debug
+
