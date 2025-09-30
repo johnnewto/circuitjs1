@@ -5,4 +5,8 @@
     <inherits name='com.google.gwt.user.theme.clean.Clean'/>
     <entry-point class="com.lushprojects.circuitjs1.client.circuitjs1" />
     <stylesheet src='style.css' />
+    <!-- Specify the paths for translatable code                    -->
+    <source path='client'/>
+    <!-- allow Super Dev Mode -->
+    <add-linker name="xsiframe"/>
 </module>
