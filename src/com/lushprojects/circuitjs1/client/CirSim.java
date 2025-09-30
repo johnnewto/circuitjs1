@@ -1105,6 +1105,7 @@ MouseOutHandler, MouseWheelHandler {
     public void composeMainMenu(MenuBar mainMenuBar, int num) {
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Wire"), "WireElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Resistor"), "ResistorElm"));
+    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Multipler"), "MultiplyElm"));
 
     	MenuBar passMenuBar = new MenuBar(true);
     	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Capacitor"), "CapacitorElm"));
@@ -5921,6 +5922,8 @@ MouseOutHandler, MouseWheelHandler {
     	case 214: return new CCVSElm(x1, y1, x2, y2, f, st);
     	case 215: return new CCCSElm(x1, y1, x2, y2, f, st);
     	case 216: return new OhmMeterElm(x1, y1, x2, y2, f, st);
+    	
+    	case 250: return new MultiplyElm(x1, y1, x2, y2, f, st);
 	case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
     	case 368: return new TestPointElm(x1, y1, x2, y2, f, st);
     	case 370: return new AmmeterElm(x1, y1, x2, y2, f, st);
@@ -6232,6 +6235,8 @@ MouseOutHandler, MouseWheelHandler {
 		return (CircuitElm) new DPDTSwitchElm(x1, y1);
     	if (n=="CrossSwitchElm")
 		return (CircuitElm) new CrossSwitchElm(x1, y1);
+    	if (n=="MultiplyElm")
+    	    		return (CircuitElm) new MultiplyElm(x1, y1);
     	
     	// handle CustomCompositeElm:modelname
     	if (n.startsWith("CustomCompositeElm:")) {
