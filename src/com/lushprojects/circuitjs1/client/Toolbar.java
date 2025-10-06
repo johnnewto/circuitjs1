@@ -42,6 +42,7 @@ public class Toolbar extends HorizontalPanel {
 	add(createIconButton("paste", "Paste", new MyCommand("edit", "paste")));
 	add(createIconButton("clone", "Duplicate", new MyCommand("edit", "duplicate")));
 	add(createIconButton("search", "Find Component...", new MyCommand("edit", "search")));
+	add(createIconButton("target", "Center Circuit", new MyCommand("edit", "centrecircuit")));
 
 	add(createIconButton("zoom-11", "Zoom 100%", new MyCommand("zoom", "zoom100")));
 	add(createIconButton("zoom-in", "Zoom In", new MyCommand("zoom", "zoomin")));

@@ -62,7 +62,6 @@ class VCCSElm extends ChipElm {
 	    pins[inputCount+1] = new Pin(1, SIDE_E, "C-");
 	    lastVolts = new double[inputCount];
 	    exprState = new ExprState(inputCount);
-	    allocNodes();
 	}
 	String getChipName() { return "VCCS~"; } // ~ is for localization 
 	boolean nonLinear() { return true; }

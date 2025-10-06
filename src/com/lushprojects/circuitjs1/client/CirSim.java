@@ -558,6 +558,7 @@ MouseOutHandler, MouseWheelHandler {
 	m.addSeparator();
 	m.addItem(menuItemWithShortcut("search", "Find Component...", "/", new MyCommand("edit", "search")));
 	m.addItem(iconMenuItem("target", weAreInUS(false) ? "Center Circuit" : "Centre Circuit", new MyCommand("edit", "centrecircuit")));
+	// m.addItem(menuItemWithShortcut("target", "Center Circuit", "c", new MyCommand("edit", "centrecircuit")));
 	m.addItem(menuItemWithShortcut("zoom-11", "Zoom 100%", "0", new MyCommand("zoom", "zoom100")));
 	m.addItem(menuItemWithShortcut("zoom-in", "Zoom In", "+", new MyCommand("zoom", "zoomin")));
 	m.addItem(menuItemWithShortcut("zoom-out", "Zoom Out", "-", new MyCommand("zoom", "zoomout")));
@@ -1106,6 +1107,10 @@ MouseOutHandler, MouseWheelHandler {
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Wire"), "WireElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Resistor"), "ResistorElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Multipler"), "MultiplyElm"));
+		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Adder"), "AdderElm"));
+		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add NamedVCVS"), "NamedVCVSElm"));
+		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Table"), "TableElm"));
+
 
     	MenuBar passMenuBar = new MenuBar(true);
     	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Capacitor"), "CapacitorElm"));
@@ -5924,10 +5929,14 @@ MouseOutHandler, MouseWheelHandler {
     	case 216: return new OhmMeterElm(x1, y1, x2, y2, f, st);
     	
     	case 250: return new MultiplyElm(x1, y1, x2, y2, f, st);
-	case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
+   		case 251: return new AdderElm(x1, y1, x2, y2, f, st);
+  		case 252: return new NamedVCVSElm(x1, y1, x2, y2, f, st);
+  		case 253: return new TableElm(x1, y1, x2, y2, f, st);
+
+		case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
     	case 368: return new TestPointElm(x1, y1, x2, y2, f, st);
     	case 370: return new AmmeterElm(x1, y1, x2, y2, f, st);
-	case 374: return new LDRElm(x1, y1, x2, y2, f, st);
+		case 374: return new LDRElm(x1, y1, x2, y2, f, st);
     	case 400: return new DarlingtonElm(x1, y1, x2, y2, f, st);
     	case 401: return new ComparatorElm(x1, y1, x2, y2, f, st);
     	case 402: return new OTAElm(x1, y1, x2, y2, f, st);
@@ -6237,8 +6246,15 @@ MouseOutHandler, MouseWheelHandler {
 		return (CircuitElm) new CrossSwitchElm(x1, y1);
     	if (n=="MultiplyElm")
     	    		return (CircuitElm) new MultiplyElm(x1, y1);
-    	
-    	// handle CustomCompositeElm:modelname
+    	if (n=="AdderElm")
+    	    		return (CircuitElm) new AdderElm(x1, y1);    	
+    	if (n=="NamedVCVSElm")
+    	    		return (CircuitElm) new NamedVCVSElm(x1, y1);   
+    	if (n=="TableElm")
+    	    		return (CircuitElm) new TableElm(x1, y1);   
+					
+					
+		// handle CustomCompositeElm:modelname
     	if (n.startsWith("CustomCompositeElm:")) {
     	    int ix = n.indexOf(':')+1;
     	    String name = n.substring(ix);

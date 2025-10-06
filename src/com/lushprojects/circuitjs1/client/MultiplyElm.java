@@ -22,11 +22,11 @@ package com.lushprojects.circuitjs1.client;
 import com.google.gwt.canvas.client.Canvas;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
-class MultiplyElm extends VCCSElm {
-	public MultiplyElm(int xa, int ya, int xb, int yb, int f,
-		      StringTokenizer st) {
-	    super(xa, ya, xb, yb, f, st);
+	class MultiplyElm extends VCCSElm {
+		public MultiplyElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
+		super(xa, ya, xb, yb, f, st);
 	}
+
 	public MultiplyElm(int xx, int yy) {
 	    super(xx, yy);
 	    exprString = "a";
@@ -35,6 +35,9 @@ class MultiplyElm extends VCCSElm {
 			exprString += "*"+(char)('a'+i);
 	 	parseExpr();
 	    setupPins();
+		// setSize(sim.smallGridCheckItem.getState() ? 1 : 2);
+
+
 	}
 	
 	void setupPins() {
@@ -43,8 +46,12 @@ class MultiplyElm extends VCCSElm {
             sizeY = inputCount > 2 ? inputCount : 2;
             pins = new Pin[inputCount+2];
 	    int i;
-	    for (i = 0; i != inputCount; i++)
-			pins[i] = new Pin(i, SIDE_W, Character.toString((char)('A'+i)));
+	    for (i = 0; i != inputCount; i++) {
+			// pins[i] = new Pin(i, SIDE_W, Character.toString((char)('A'+i)));
+			pins[i] = new Pin(i, SIDE_W, ""); 
+			// Posts closer together: use smaller spacing
+        	// pins[i].y = (i * sizeY) / (inputCount - 1 < 1 ? 1 : inputCount - 1);
+		}
 	    pins[inputCount] = new Pin(0, SIDE_E, exprString);
 	    pins[inputCount].output = true;
         // pins[inputCount+1] = new Pin(1, SIDE_E, "V-"); no V- pin
