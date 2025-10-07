@@ -1,633 +1,452 @@
-/*    
-    Copyright (C) Paul Falstad and Iain Sharp
+/*    package com.lushprojects.circuitjs1.client;
 
+import java.util.StringTokenizer;  Copyright (C) Paul Falstad and Iain Sharp
+    
     This file is part of CircuitJS1.
-
-    CircuitJS1 is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 2 of the License, or
-    (at your option) any later version.
-
-    CircuitJS1 is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 package com.lushprojects.circuitjs1.client;
 
-// Interface to capture LabeledNodeElm behavior for table rows
-interface LabeledNodeInterface {
-    Point getConnectedPostForNode(String nodeName, Point defaultPoint);
-    void setNodeForLabel(String nodeName, int nodeNumber);
-    boolean isWireEquivalent();
-}
 
-class TableElm extends ChipElm implements LabeledNodeInterface {
-    // Node names for each row
-    String[] nodeNames;
-    int rowCount = 4; // Default number of rows
+/**
+ * Simplified Table Element - Displays voltage values from labeled nodes
+ * Extends CircuitElm for lightweight text-based label display
+ */
+public class TableElm extends CircuitElm {
+    private int rows = 3;
+    private int cols = 2; 
+    private int cellSize = 60;
+    private int cellSpacing = 4;
+    private String[][] labelNames;  // Store label names as text
+    private String[] columnHeaders;
+    private boolean showColumnSums = true; // Show sum row at bottom
     
-    // Flags for display options
-    static final int FLAG_SHOW_VOLTAGE = 1;
+    // Computed values are now stored in LabeledNodeElm.labelList - no JavaScript needed
     
-    // Helper method to check voltage display option
-    boolean showVoltage() { 
-        return (flags & FLAG_SHOW_VOLTAGE) != 0; 
-    }
-    
-    // Format voltage for compact display in table
-    String getCompactVoltageText(double voltage) {
-        if (Math.abs(voltage) < 1e-3) {
-            return "0V";
-        } else if (Math.abs(voltage) >= 1000) {
-            return Math.round(voltage / 100.0) / 10.0 + "kV";
-        } else if (Math.abs(voltage) >= 100) {
-            return Math.round(voltage) + "V";
-        } else if (Math.abs(voltage) >= 10) {
-            return Math.round(voltage * 10.0) / 10.0 + "V";
-        } else {
-            return Math.round(voltage * 100.0) / 100.0 + "V";
-        }
-    }
-    
-    // Constructor for UI creation
+    // Constructor for new table
     public TableElm(int xx, int yy) {
         super(xx, yy);
-        rowCount = 4;
-        initializeNodeNames();
-        setupPins();
+        initTable();
     }
     
-    // Constructor for loading from file
+    // File loading constructor  
     public TableElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
-        super(xa, ya, xb, yb, f, st);
-        
-        if (st.hasMoreTokens()) {
-            rowCount = Integer.parseInt(st.nextToken());
-        } else {
-            rowCount = 4;
-        }
-        
-        nodeNames = new String[rowCount];
-        for (int i = 0; i < rowCount; i++) {
-            nodeNames[i] = st.hasMoreTokens() ? 
-                CustomLogicModel.unescape(st.nextToken()) : "node" + i;
-        }
-        
-        setupPins();
+        super(xa, ya, xb, yb, f);
+        parseTableData(st);
+        initTable();
     }
     
-    void initializeNodeNames() {
-        nodeNames = new String[rowCount];
-        for (int i = 0; i < rowCount; i++) {
-            nodeNames[i] = "node" + i;
-        }
-    }
-    
-    // Implement LabeledNodeInterface methods
-    public Point getConnectedPostForNode(String nodeName, Point defaultPoint) {
-        // Ensure LabeledNodeElm system is initialized
-        if (LabeledNodeElm.labelList == null) {
-            LabeledNodeElm.resetNodeList();
-        }
-        
-        LabeledNodeElm.LabelEntry le = LabeledNodeElm.labelList.get(nodeName);
-        if (le != null) {
-            return le.point;
-        }
-        
-        // First occurrence - we need to create a temporary LabeledNodeElm to create the entry
-        // This is a workaround since LabelEntry is a non-static inner class
-        createLabelEntryForNode(nodeName, defaultPoint);
-        return null; // First occurrence returns null per LabeledNodeElm convention
-    }
-    
-    // Helper method to create LabelEntry using a temporary LabeledNodeElm
-    private void createLabelEntryForNode(String nodeName, Point point) {
-        console("DEBUG: Creating LabelEntry for node '" + nodeName + "' at point " + point.x + "," + point.y);
-        
-        // Create a temporary LabeledNodeElm to access its inner class
-        LabeledNodeElm tempNode = new LabeledNodeElm(point.x, point.y);
-        tempNode.text = nodeName;
-        
-        // Manually create the entry by calling its getConnectedPost method
-        // This will create and register the LabelEntry in the static labelList
-        tempNode.point1 = point;
-        Point result = tempNode.getConnectedPost();
-        
-        console("DEBUG: LabelEntry created for '" + nodeName + "', getConnectedPost returned: " + 
-                (result == null ? "null (first occurrence)" : "existing point"));
-    }
-    
-    public void setNodeForLabel(String nodeName, int nodeNumber) {
-        LabeledNodeElm.LabelEntry le = LabeledNodeElm.labelList.get(nodeName);
-        if (le != null) {
-            console("DEBUG: Setting node number " + nodeNumber + " for label '" + nodeName + "'");
-            le.node = nodeNumber;
-        } else {
-            console("DEBUG: WARNING - No LabelEntry found for '" + nodeName + "' when setting node " + nodeNumber);
-        }
-    }
-    
-    public boolean isWireEquivalent() {
-        return true; // Table acts like multiple labeled wires
-    }
-    
-    void setupPins() {
-        pins = new Pin[rowCount];
-        for (int i = 0; i < rowCount; i++) {
-            pins[i] = new Pin(i, SIDE_E, getNodeName(i));
-            pins[i].output = false; // These are connection points, not outputs
-        }
-        // Ensure volts array is properly sized
-        if (volts == null || volts.length != rowCount) {
-            volts = new double[rowCount];
-        }
-        allocNodes();
-    }
-    
-    String getNodeName(int index) {
-        if (index < 0 || index >= nodeNames.length) {
-            return "node" + index;
-        }
-        return nodeNames[index];
-    }
-    
-    int getRowCount() {
-        return rowCount;
-    }
-    
-    void setRowCount(int count) {
-        if (count < 1) count = 1;
-        if (count > 20) count = 20; // Reasonable maximum
-        
-        String[] oldNames = nodeNames;
-        rowCount = count;
-        nodeNames = new String[rowCount];
-        
-        // Copy existing names
-        for (int i = 0; i < rowCount; i++) {
-            if (i < oldNames.length) {
-                nodeNames[i] = oldNames[i];
-            } else {
-                nodeNames[i] = "node" + i;
+    private void initTable() {
+        // Initialize label names array
+        if (labelNames == null) {
+            labelNames = new String[rows][cols];
+            // Set default label names
+            for (int row = 0; row < rows; row++) {
+                for (int col = 0; col < cols; col++) {
+                    labelNames[row][col] = "node" + (row * cols + col + 1);
+                }
             }
         }
         
-        // Resize volts array
-        volts = new double[rowCount];
-        
-        allocNodes();
-        setupPins();
-        setPoints();
-        
-        // Initialize nodes with LabeledNodeElm system
-        initializeNodeConnectivity();
+        // Initialize column headers if not set
+        if (columnHeaders == null) {
+            columnHeaders = new String[cols];
+            for (int i = 0; i < cols; i++) {
+                columnHeaders[i] = "Col" + (i + 1);
+            }
+        }
     }
     
-    // Initialize all table nodes with the LabeledNodeElm system
-    void initializeNodeConnectivity() {
-        console("DEBUG: Initializing node connectivity for TableElm with " + rowCount + " rows");
+    private double getVoltageForLabel(String labelName) {
+        if (labelName == null || labelName.isEmpty()) {
+            return 0.0;
+        }
         
-        if (pins == null) {
-            console("DEBUG: WARNING - pins array is null, skipping initialization");
+        // First check if this is a computed value (like a column sum)
+        Double computedValue = LabeledNodeElm.getComputedValue(labelName);
+        if (computedValue != null) {
+            return computedValue.doubleValue();
+        }
+        
+        // Use LabeledNodeElm's static labelList to get voltage
+        Integer nodeNum = LabeledNodeElm.getByName(labelName);
+        if (nodeNum == null) {
+            return 0.0; // Label not found
+        }
+        
+        // Node 0 is ground
+        if (nodeNum == 0) {
+            return 0.0;
+        }
+        
+        // Get voltage from simulation
+        if (sim != null && sim.nodeVoltages != null && 
+            nodeNum > 0 && nodeNum <= sim.nodeVoltages.length) {
+            return sim.nodeVoltages[nodeNum - 1]; // nodeVoltages is 0-indexed, excludes ground
+        }
+        
+        return 0.0;
+    }
+    
+    private void registerSumAsLabeledNode(String labelName, double voltage) {
+        if (labelName == null || labelName.isEmpty()) {
             return;
         }
         
-        // Ensure LabeledNodeElm system is ready
-        if (LabeledNodeElm.labelList == null) {
-            console("DEBUG: LabeledNodeElm.labelList was null, calling resetNodeList()");
-            LabeledNodeElm.resetNodeList();
-        }
-        
-        // Pre-register all node names to avoid issues during wire closure
-        for (int i = 0; i < getPostCount(); i++) {
-            if (pins[i] != null && pins[i].post != null) {
-                console("DEBUG: Registering node " + i + " '" + nodeNames[i] + "' at post " + 
-                       pins[i].post.x + "," + pins[i].post.y);
-                getConnectedPostForNode(nodeNames[i], pins[i].post);
-            } else {
-                console("DEBUG: WARNING - Pin " + i + " or its post is null");
-            }
-        }
-        
-        // Log final status
-        debugLogConnectionStatus();
+        // Store the computed voltage value in LabeledNodeElm
+        LabeledNodeElm.setComputedValue(labelName, voltage);
     }
     
-    int getDumpType() { 
-        return 253; // Unused number in 200-300 range
-    }
-    
-    int getPostCount() { 
-        return rowCount; 
-    }
-
-    int getVoltageSourceCount() {
-        return 0;
-    }
-    
-    boolean isDigitalChip() { 
-        return false; // This handles analog node connections
-    }
-    
-    String dump() {
-        String result = super.dump();
-        result += " " + rowCount;
-        for (String name : nodeNames) {
-            result += " " + CustomLogicModel.escape(name);
-        }
-        return result;
+    // Static method to get computed values by other elements
+    public static Double getComputedValue(String labelName) {
+        return LabeledNodeElm.getComputedValue(labelName);
     }
     
     void setPoints() {
-        // Calculate table size based on row count
-        sizeX = 3; // Fixed width for single column
-        sizeY = Math.max(rowCount, 2); // Height based on rows
-        
-        // Call parent setPoints for basic geometry
         super.setPoints();
         
-        // Override pin positions to be on right side only
-        repositionPinsToRightSide();
+        // Calculate table dimensions
+        int tableWidth = cols * cellSize + (cols + 1) * cellSpacing;
+        int extraRows = showColumnSums ? 1 : 0; // Add extra row for sums
+        int tableHeight = (rows + extraRows) * cellSize + (rows + extraRows + 1) * cellSpacing + 20; // Extra space for headers
         
-        // Initialize node connectivity after positions are set
-        initializeNodeConnectivity();
+        // Set bounding box
+        setBbox(point1.x, point1.y, point1.x + tableWidth, point1.y + tableHeight);
+    }
+
+    int getPostCount() { 
+        return 0; // No electrical connections
     }
     
-    // Override to update voltages from circuit simulation
-    void startIteration() {
-        // Update volts[] array with actual node voltages from simulation
-        for (int i = 0; i < getPostCount(); i++) {
-            if (nodes != null && i < nodes.length && nodes[i] != 0) {
-                volts[i] = sim.nodeVoltages[nodes[i]];
-            } else {
-                volts[i] = 0;
-            }
-        }
-    }
-    
-    void stepFinished() {
-        // Update volts[] array after simulation step
-        for (int i = 0; i < getPostCount(); i++) {
-            if (nodes != null && i < nodes.length && nodes[i] != 0) {
-                volts[i] = sim.nodeVoltages[nodes[i]];
-            } else {
-                volts[i] = 0;
-            }
-        }
-    }
-    
-    void repositionPinsToRightSide() {
-        if (pins == null || rectPointsY == null) return;
+    void draw(Graphics g) {
+        int extraRows = showColumnSums ? 1 : 0;
         
-        // Move all pins to right edge, evenly spaced vertically
-        int rowHeight = (rectPointsY[2] - rectPointsY[0]) / rowCount;
-        for (int i = 0; i < getPostCount(); i++) {
-            Pin p = pins[i];
-            int pinY = rectPointsY[0] + (int)((i + 0.5) * rowHeight);
-            
-            // Post is ON the right edge or slightly outside
-            p.post = new Point(rectPointsX[2], pinY);
-            p.stub = new Point(rectPointsX[2] - cspc/2, pinY);
-            p.textloc = new Point(rectPointsX[0] + 5, pinY);
+        // Clear previous computed values to ensure fresh calculations
+        if (showColumnSums) {
+            LabeledNodeElm.clearComputedValues();
         }
-    }
-    
-    void drawChip(Graphics g) {
-        if (rectPointsX == null || rectPointsY == null) return;
         
         // Draw table background
-        g.setColor(sim.getBackgroundColor());
-        g.fillRect(rectPointsX[0], rectPointsY[0], 
-                   rectPointsX[2] - rectPointsX[0], 
-                   rectPointsY[2] - rectPointsY[0]);
+        g.setColor(needsHighlight() ? selectColor : Color.white);
+        g.fillRect(point1.x, point1.y, 
+                   cols * cellSize + (cols + 1) * cellSpacing,
+                   (rows + extraRows) * cellSize + (rows + extraRows + 1) * cellSpacing + 20);
         
         // Draw table border
-        g.setColor(needsHighlight() ? selectColor : lightGrayColor);
-        drawThickPolygon(g, rectPointsX, rectPointsY, 4);
+        g.setColor(Color.black);
+        g.drawRect(point1.x, point1.y,
+                   cols * cellSize + (cols + 1) * cellSpacing,
+                   (rows + extraRows) * cellSize + (rows + extraRows + 1) * cellSpacing + 20);
         
-        // Draw row separators
-        int rowHeight = (rectPointsY[2] - rectPointsY[0]) / rowCount;
-        g.setColor(lightGrayColor);
-        for (int i = 1; i < rowCount; i++) {
-            int y = rectPointsY[0] + i * rowHeight;
-            g.drawLine(rectPointsX[0], y, rectPointsX[2], y);
+        // Draw column headers
+        drawColumnHeaders(g);
+        
+        // Draw table cells with voltages
+        drawTableCells(g);
+        
+        // Draw sum row if enabled
+        if (showColumnSums) {
+            drawSumRow(g);
         }
         
-        // Draw node names and posts
-        Font f = new Font("normal", 0, 10*csize);
-        g.setFont(f);
+        // Draw grid lines
+        drawGridLines(g);
+    }
+
+    private void drawColumnHeaders(Graphics g) {
+        g.setColor(Color.black);
+        int headerY = point1.y + 15;
         
-        for (int i = 0; i < getPostCount(); i++) {
-            Pin p = pins[i];
+        for (int col = 0; col < cols; col++) {
+            int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
+            String header = (columnHeaders != null && col < columnHeaders.length) ? 
+                           columnHeaders[col] : "Col" + (col + 1);
+            drawCenteredText(g, header, cellX + cellSize/2, headerY, true);
+
+        }
+    }
+
+    private void drawTableCells(Graphics g) {
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
+                int cellY = point1.y + 20 + cellSpacing + row * (cellSize + cellSpacing);
+                
+                // Get label name and voltage
+                String labelName = labelNames[row][col];
+                double voltage = getVoltageForLabel(labelName);
+                
+                // Draw cell background based on voltage (optional)
+                setVoltageColor(g, voltage);
+                g.fillRect(cellX, cellY, cellSize, cellSize);
+                
+                // Draw cell border
+                g.setColor(Color.black);
+                g.drawRect(cellX, cellY, cellSize, cellSize);
+                
+                // Draw label name (top half)
+                g.setColor(Color.black);
+                drawCenteredText(g, labelName, cellX + cellSize/2, cellY + cellSize/3, true);
+                
+                // Draw voltage value (bottom half)
+                String voltageText = getVoltageText(voltage);
+                drawCenteredText(g, voltageText, cellX + cellSize/2, cellY + 2*cellSize/3, true);
+            }
+        }
+    }
+
+    private void drawSumRow(Graphics g) {
+        int sumRowY = point1.y + 20 + cellSpacing + rows * (cellSize + cellSpacing);
+        
+        for (int col = 0; col < cols; col++) {
+            int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
             
-            // Draw post connection on RIGHT side (may overlap table edge)
-            setVoltageColor(g, volts[i]);
-            Point a = p.post;
-            Point b = p.stub;
-            drawThickLine(g, a, b);
-            
-            // Draw current dots
-            p.curcount = updateDotCount(p.current, p.curcount);
-            drawDots(g, b, a, p.curcount);
-            
-            // Draw node name label (LEFT side of table) with debug info
-            g.setColor(whiteColor);
-            int labelX = rectPointsX[0] + 5; // Small margin from left edge
-            int labelY = rectPointsY[0] + (int)((i + 0.5) * rowHeight);
-            
-            // Main node name
-            String displayText = nodeNames[i];
-            
-            // Add voltage if show voltage flag is set
-            if (showVoltage()) {
-                String voltageText = getCompactVoltageText(volts[i]);
-                displayText += " " + voltageText;
+            // Calculate sum for this column
+            double columnSum = 0.0;
+            for (int row = 0; row < rows; row++) {
+                String labelName = labelNames[row][col];
+                columnSum += getVoltageForLabel(labelName);
             }
             
-            g.drawString(displayText, labelX, labelY + 4);
+            // Register this sum as a labeled node using column header as the label name
+            String sumLabelName = columnHeaders[col];
+            registerSumAsLabeledNode(sumLabelName, columnSum);
             
-            // Debug: Show connection status with colored indicator
-            drawConnectionDebugIndicator(g, i, labelX + 60, labelY);
-        }
-        
-        drawPosts(g);
-    }
-    
-    // Override to participate in wire closure calculation
-    // TableElm needs special handling since it has multiple posts with different names
-    Point getConnectedPost() {
-        // Standard ChipElm expects single post connectivity
-        // TableElm handles connectivity per row during wire closure
-        return null;
-    }
-    
-    // Custom method to handle multiple named posts during wire closure
-    Point getConnectedPostForRow(int rowIndex) {
-        if (rowIndex >= nodeNames.length || pins == null) return null;
-        
-        String nodeName = nodeNames[rowIndex];
-        Point rowPost = pins[rowIndex].post;
-        
-        return getConnectedPostForNode(nodeName, rowPost);
-    }
-    
-    // Integration with wire closure calculation
-    // Each table row participates in wire closure like a LabeledNodeElm
-    void participateInWireClosure() {
-        // This should be called during CirSim.calcWireClosure()
-        // Register each table row's node name and post
-        for (int i = 0; i < getPostCount(); i++) {
-            getConnectedPostForRow(i);
+            // Draw sum cell background (slightly different color)
+            g.setColor(Color.lightGray);
+            g.fillRect(cellX, sumRowY, cellSize, cellSize);
+            
+            // Draw cell border
+            g.setColor(Color.black);
+            g.drawRect(cellX, sumRowY, cellSize, cellSize);
+            
+            // Draw column header text as label (top half)
+            g.setColor(Color.black);
+            drawCenteredText(g, sumLabelName, cellX + cellSize/2, sumRowY + cellSize/3, true);
+            
+            // Draw sum value (bottom half)
+            String sumText = getVoltageText(columnSum);
+            drawCenteredText(g, sumText, cellX + cellSize/2, sumRowY + 2*cellSize/3, true);
         }
     }
-    
-    void setNode(int p, int n) {
-        super.setNode(p, n);
+
+    private void drawGridLines(Graphics g) {
+        g.setColor(Color.gray);
+        int extraRows = showColumnSums ? 1 : 0;
         
-        // Update voltage immediately if simulation data is available
-        if (p < getPostCount() && sim != null && sim.nodeVoltages != null && n != 0 && n < sim.nodeVoltages.length) {
-            volts[p] = sim.nodeVoltages[n];
+        // Vertical lines
+        for (int col = 0; col <= cols; col++) {
+            int x = point1.x + cellSpacing + col * (cellSize + cellSpacing);
+            g.drawLine(x, point1.y + 20, x, point1.y + 20 + cellSpacing + (rows + extraRows) * (cellSize + cellSpacing));
         }
         
-        // Update LabeledNodeElm system with our node assignments
-        if (p < nodeNames.length) {
-            String nodeName = nodeNames[p];
-            console("DEBUG: Setting node " + n + " for post " + p + " ('" + nodeName + "') voltage=" + volts[p] + "V");
-            setNodeForLabel(nodeName, n);
+        // Horizontal lines
+        for (int row = 0; row <= rows + extraRows; row++) {
+            int y = point1.y + 20 + cellSpacing + row * (cellSize + cellSpacing);
+            g.drawLine(point1.x, y, point1.x + cellSpacing + cols * (cellSize + cellSpacing), y);
+        }
+        
+        // Draw separator line before sum row if showing sums
+        if (showColumnSums) {
+            g.setColor(Color.black);
+            int separatorY = point1.y + 20 + cellSpacing + rows * (cellSize + cellSpacing);
+            g.drawLine(point1.x, separatorY, point1.x + cellSpacing + cols * (cellSize + cellSpacing), separatorY);
         }
     }
     
-    public EditInfo getChipEditInfo(int n) {
-        if (n < nodeNames.length) {
-            return new EditInfo("Row " + (n+1) + " Name", nodeNames[n]);
+    // No electrical connections - pure display element
+    boolean isWireEquivalent() { return false; }
+    boolean isRemovableWire() { return false; }
+    
+    public String dump() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(super.dump()).append(" ").append(rows).append(" ").append(cols);
+        sb.append(" ").append(showColumnSums ? "1" : "0");
+        
+        // Serialize label names
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                sb.append(" ").append(CustomLogicModel.escape(labelNames[row][col]));
+            }
         }
-        if (n == nodeNames.length) {
-            return new EditInfo("Row Count", rowCount, 1, 20);
+        
+        // Serialize column headers
+        for (int col = 0; col < cols; col++) {
+            sb.append(" ").append(CustomLogicModel.escape(columnHeaders[col]));
         }
-        if (n == nodeNames.length + 1) {
+        
+        return sb.toString();
+    }
+
+    private void parseTableData(StringTokenizer st) {
+        try {
+            if (st.hasMoreTokens()) rows = Integer.parseInt(st.nextToken());
+            if (st.hasMoreTokens()) cols = Integer.parseInt(st.nextToken());
+            if (st.hasMoreTokens()) showColumnSums = "1".equals(st.nextToken());
+            
+            // Parse label names
+            labelNames = new String[rows][cols];
+            for (int row = 0; row < rows; row++) {
+                for (int col = 0; col < cols; col++) {
+                    if (st.hasMoreTokens()) {
+                        labelNames[row][col] = CustomLogicModel.unescape(st.nextToken());
+                    } else {
+                        labelNames[row][col] = "node" + (row * cols + col + 1);
+                    }
+                }
+            }
+            
+            // Parse column headers
+            columnHeaders = new String[cols];
+            for (int col = 0; col < cols; col++) {
+                if (st.hasMoreTokens()) {
+                    columnHeaders[col] = CustomLogicModel.unescape(st.nextToken());
+                } else {
+                    columnHeaders[col] = "Col" + (col + 1);
+                }
+            }
+        } catch (Exception e) {
+            CirSim.console("TableElm: error parsing table data, using defaults");
+            initTable(); // Reset to defaults
+        }
+    }
+
+    int getDumpType() { 
+        return 253; // Choose unused dump type
+    }
+    
+    public EditInfo getEditInfo(int n) {
+        if (n == 0) return new EditInfo("Rows", rows, 1, 20);
+        if (n == 1) return new EditInfo("Columns", cols, 1, 10);
+        if (n == 2) return new EditInfo("Cell Size", cellSize, 20, 100);
+        if (n == 3) return new EditInfo("Cell Spacing", cellSpacing, 2, 20);
+        if (n == 4) {
             EditInfo ei = new EditInfo("", 0, -1, -1);
-            ei.checkbox = new Checkbox("Show Voltage", (flags & FLAG_SHOW_VOLTAGE) != 0);
+            ei.checkbox = new Checkbox("Show Column Sums", showColumnSums);
             return ei;
         }
-        return null;
-    }
-    
-    public void setChipEditValue(int n, EditInfo ei) {
-        if (n < nodeNames.length) {
-            String oldName = nodeNames[n];
-            nodeNames[n] = ei.textf.getText();
-            console("DEBUG: Node name changed from '" + oldName + "' to '" + nodeNames[n] + "'");
-            setupPins(); // Refresh pin labels
-            setPoints(); // Recalculate layout
-        }
-        if (n == nodeNames.length) {
-            console("DEBUG: Row count changed from " + rowCount + " to " + (int)ei.value);
-            setRowCount((int)ei.value);
-        }
-        if (n == nodeNames.length + 1) {
-            flags = ei.changeFlag(flags, FLAG_SHOW_VOLTAGE);
-            console("DEBUG: Show voltage flag changed to " + ((flags & FLAG_SHOW_VOLTAGE) != 0));
+        
+        // Edit individual cell labels
+        int cellIndex = n - 5;
+        if (cellIndex >= 0 && cellIndex < rows * cols) {
+            int row = cellIndex / cols;
+            int col = cellIndex % cols;
+            EditInfo ei = new EditInfo("Cell [" + row + "," + col + "] Label", 0, -1, -1);
+            ei.text = labelNames[row][col];
+            return ei;
         }
         
-        // Log updated status
-        debugLogConnectionStatus();
+        // Edit column headers
+        int headerIndex = cellIndex - rows * cols;
+        if (headerIndex >= 0 && headerIndex < cols) {
+            EditInfo ei = new EditInfo("Column " + headerIndex + " Header", 0, -1, -1);
+            ei.text = columnHeaders[headerIndex];
+            return ei;
+        }
+        
+        return null;
+    }
+
+    public void setEditValue(int n, EditInfo ei) {
+        if (n == 0 && ei.value != rows) {
+            rows = (int)ei.value;
+            resizeTable();
+        } else if (n == 1 && ei.value != cols) {
+            cols = (int)ei.value;
+            resizeTable();
+        } else if (n == 2) {
+            cellSize = (int)ei.value;
+            setPoints();
+        } else if (n == 3) {
+            cellSpacing = (int)ei.value;
+            setPoints();
+        } else if (n == 4) {
+            showColumnSums = ei.checkbox.getState();
+            setPoints();
+        } else {
+            // Edit cell labels or column headers
+            int cellIndex = n - 5;
+            if (cellIndex >= 0 && cellIndex < rows * cols) {
+                int row = cellIndex / cols;
+                int col = cellIndex % cols;
+                labelNames[row][col] = ei.textf.getText();
+            } else {
+                int headerIndex = cellIndex - rows * cols;
+                if (headerIndex >= 0 && headerIndex < cols) {
+                    columnHeaders[headerIndex] = ei.textf.getText();
+                }
+            }
+        }
+    }
+
+    private void resizeTable() {
+        String[][] oldLabels = labelNames;
+        String[] oldHeaders = columnHeaders;
+        
+        initTable(); // Create new arrays with default values
+        
+        // Copy over existing labels where possible
+        if (oldLabels != null) {
+            for (int row = 0; row < Math.min(rows, oldLabels.length); row++) {
+                for (int col = 0; col < Math.min(cols, oldLabels[row].length); col++) {
+                    labelNames[row][col] = oldLabels[row][col];
+                }
+            }
+        }
+        
+        // Copy over existing headers where possible
+        if (oldHeaders != null) {
+            for (int col = 0; col < Math.min(cols, oldHeaders.length); col++) {
+                columnHeaders[col] = oldHeaders[col];
+            }
+        }
+        
+        setPoints();
     }
     
     void getInfo(String arr[]) {
-        // Provide basic info plus debug details in the lower window
-        arr[0] = "table (debug mode)";
-        arr[1] = "rows: " + rowCount + (showVoltage() ? " [voltage shown]" : "");
+        arr[0] = "Voltage Table (" + rows + "x" + cols + ")";
+        arr[1] = "Displays voltages from labeled nodes";
         
-        // Debug info for first few rows
-        for (int i = 0; i < Math.min(nodeNames.length, 3); i++) {
-            String connectionStatus = getNodeConnectionDebugInfo(i);
-            arr[i+2] = nodeNames[i] + ": " + getVoltageText(volts[i]) + " " + connectionStatus;
-        }
-        
-        if (nodeNames.length > 3) {
-            arr[5] = "...";
-        }
-        
-        // Add debug summary
-        if (nodeNames.length <= 3) {
-            arr[nodeNames.length + 2] = "Debug: " + getConnectedNodesCount() + "/" + rowCount + " nodes connected";
-        }
-    }
-    
-    // Debug helper to show connection status for a node
-    String getNodeConnectionDebugInfo(int rowIndex) {
-        if (rowIndex >= nodeNames.length) return "[invalid]";
-        
-        String nodeName = nodeNames[rowIndex];
-        
-        // Check if this node exists in LabeledNodeElm system
-        if (LabeledNodeElm.labelList == null) {
-            return "[no labelList]";
-        }
-        
-        LabeledNodeElm.LabelEntry le = LabeledNodeElm.labelList.get(nodeName);
-        if (le == null) {
-            return "[not in labelList]";
-        }
-        
-        // Check if node number is assigned
-        boolean hasNodeNumber = (le.node != 0);
-        boolean hasPoint = (le.point != null);
-        
-        return "[" + (hasNodeNumber ? "node:" + le.node : "no-node") + 
-               "," + (hasPoint ? "connected" : "no-point") + "]";
-    }
-    
-    // Count how many nodes are properly connected
-    int getConnectedNodesCount() {
-        int connected = 0;
-        if (LabeledNodeElm.labelList == null) return 0;
-        
-        for (int i = 0; i < nodeNames.length; i++) {
-            LabeledNodeElm.LabelEntry le = LabeledNodeElm.labelList.get(nodeNames[i]);
-            if (le != null && le.node != 0) {
-                connected++;
-            }
-        }
-        return connected;
-    }
-    
-    // Override connection methods to handle table-specific connectivity
-    boolean getConnection(int n1, int n2) {
-        // Each row is an independent connection point - no internal connections
-        return false;
-    }
-    
-    boolean hasGroundConnection(int n) {
-        // Let the simulator handle ground connections through normal circuit analysis
-        return false;
-    }
-    
-    // Table supports named node lookups like LabeledNodeElm
-    boolean supportsLabeledNodes() {
-        return true;
-    }
-    
-    // Debug visual indicator for connection status
-    void drawConnectionDebugIndicator(Graphics g, int rowIndex, int x, int y) {
-        if (rowIndex >= nodeNames.length) return;
-        
-        String nodeName = nodeNames[rowIndex];
-        boolean isConnected = false;
-        boolean hasNodeNumber = false;
-        
-        // Check connection status
-        if (LabeledNodeElm.labelList != null) {
-            LabeledNodeElm.LabelEntry le = LabeledNodeElm.labelList.get(nodeName);
-            if (le != null) {
-                isConnected = (le.point != null);
-                hasNodeNumber = (le.node != 0);
+        int idx = 2;
+        // Show some sample values
+        for (int row = 0; row < Math.min(3, rows) && idx < arr.length - 1; row++) {
+            for (int col = 0; col < Math.min(2, cols) && idx < arr.length - 1; col++) {
+                String label = labelNames[row][col];
+                double voltage = getVoltageForLabel(label);
+                arr[idx++] = label + ": " + getVoltageText(voltage);
             }
         }
         
-        // Draw colored indicator
-        int indicatorSize = 4;
-        if (hasNodeNumber && isConnected) {
-            g.setColor(Color.green); // Fully connected
-        } else if (isConnected) {
-            g.setColor(Color.yellow); // Connected but no node number yet
-        } else {
-            g.setColor(Color.red); // Not connected
+        if (rows * cols > 6) {
+            arr[idx++] = "... (showing first few cells)";
         }
-        
-        g.fillOval(x, y, indicatorSize, indicatorSize);
-        
-        // Optional: add text debug info
-        g.setColor(lightGrayColor);
-        Font smallFont = new Font("normal", 0, 6*csize);
-        g.setFont(smallFont);
-        if (hasNodeNumber) {
-            LabeledNodeElm.LabelEntry le = LabeledNodeElm.labelList.get(nodeName);
-            g.drawString("n" + le.node, x + 6, y + 4);
+    }
+    
+    public void setCellLabel(int row, int col, String label) {
+        if (row >= 0 && row < rows && col >= 0 && col < cols) {
+            labelNames[row][col] = label;
         }
     }
 
-    // Debug console output
-    public static native void console(String text)
-    /*-{
-        console.log(text);
-    }-*/;
-    
-    // Debug method to log connection status
-    void debugLogConnectionStatus() {
-        console("=== TableElm Debug Info ===");
-        console("Row count: " + rowCount);
-        console("LabelList initialized: " + (LabeledNodeElm.labelList != null));
-        
-        if (LabeledNodeElm.labelList != null) {
-            for (int i = 0; i < nodeNames.length; i++) {
-                LabeledNodeElm.LabelEntry le = LabeledNodeElm.labelList.get(nodeNames[i]);
-                String status = nodeNames[i] + ": ";
-                if (le == null) {
-                    status += "NOT_IN_LIST";
-                } else {
-                    status += "node=" + le.node + ", point=" + (le.point != null ? "set" : "null");
-                }
-                console("  " + status);
-            }
+    public String getCellLabel(int row, int col) {
+        if (row >= 0 && row < rows && col >= 0 && col < cols) {
+            return labelNames[row][col];
         }
-        console("Connected nodes: " + getConnectedNodesCount() + "/" + rowCount);
+        return "";
     }
 
-    double getCurrentIntoNode(int n) {
-        if (n >= getPostCount()) return 0;
-        // Return current flowing into this node from connected elements
-        return -pins[n].current;
-    }
-    
-    void reset() {
-        super.reset();
-        // No additional reset needed for table element
-    }
-    
-    int getShortcut() { 
-        return 0; // No keyboard shortcut
-    }
-    
-    // Debug method to test if nodes with same names have same voltage (wire behavior)
-    void debugTestWireBehavior() {
-        console("=== Testing Wire Behavior ===");
-        
-        if (LabeledNodeElm.labelList == null) {
-            console("No labelList - cannot test");
-            return;
-        }
-        
-        // Check each node name and see if all instances have same voltage
-        for (int i = 0; i < nodeNames.length; i++) {
-            String nodeName = nodeNames[i];
-            LabeledNodeElm.LabelEntry le = LabeledNodeElm.labelList.get(nodeName);
-            
-            if (le != null && le.node != 0) {
-                double tableVoltage = volts[i];
-                console("Node '" + nodeName + "': TableElm voltage = " + 
-                       getCompactVoltageText(tableVoltage) + ", node# = " + le.node);
-                
-                // Check if current is flowing (indicates wire behavior)
-                double current = getCurrentIntoNode(i);
-                String currentStr = (Math.abs(current) < 1e-9) ? "0A" : 
-                    (Math.round(current * 1000.0) / 1000.0) + "A";
-                console("  Current into node: " + currentStr);
-            } else {
-                console("Node '" + nodeName + "': NOT CONNECTED or no node number assigned");
-            }
+    public void setColumnHeader(int col, String header) {
+        if (col >= 0 && col < cols) {
+            columnHeaders[col] = header;
         }
     }
 
-    // *Debug  set voltage of x'th node, called by simulator logic
-    void setNodeVoltage(int n, double c) {
-        volts[n] = c;
-        calculateCurrent();
+    public String getColumnHeader(int col) {
+        if (col >= 0 && col < cols) {
+            return columnHeaders[col];
+        }
+        return "";
     }
+
 }

@@ -60,4 +60,5 @@ Temporary Items
 
 # other
 .gradle/
+.dont_use_gradle/
 build/

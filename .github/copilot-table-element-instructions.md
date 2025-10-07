@@ -1,429 +1,436 @@
-# Table Circuit Element Creation Instructions
+# Simplified Table Element Implementation Instructions
 
 ## Overview
 
-This document provides specific instructions for creating a **Table Circuit Element** - a single-column table displaying named nodes with functionality similar to `LabeledNodeElm.java`. The element should extend `ChipElm.java` for layout structure but modify the post positioning to place connections on the right-hand side of the table.
+Create a simplified Table Element that extends `CircuitElm` and displays voltages for labeled nodes by referencing text label names. This element reads voltage values using `LabeledNodeElm.labelList.get(labelName)` instead of creating actual circuit connections.
 
-## Reference Documentation
+## Refactored Implementation Plan: Simplified Table Element
 
-Before starting, review the main project instructions in `.github/copilot-instructions.md`, particularly:
-- Adding New Circuit Elements section
-- Circuit Simulation Theory
-- Program Loop Architecture
-- GWT-Specific Considerations
+### Key Design Changes:
+- **Extend `CircuitElm`** instead of `CompositeElm` for simplicity
+- **Text-only labels**: Store array of label names as strings
+- **Voltage lookup**: Use `LabeledNodeElm.labelList.get(labelName)` to get voltages
+- **No electrical connections**: Pure display element with no posts
+- **Lightweight**: No sub-elements or complex composite structure
 
-## Table Element Specifications
-
-### Visual Design
-- **Shape**: Single-column rectangular table
-- **Rows**: Variable number of rows (configurable, default 4-8)
-- **Labels**: Text labels in each row (left side)
-- **Posts**: Connection points on the right-hand side of each row
-- **Styling**: Similar to ChipElm but optimized for table layout
-
-### Functional Requirements
-- Each row represents a named node (like LabeledNodeElm)
-- Node names should be editable via EditInfo interface
-- Support for connecting multiple elements with same node name
-- Maintain node voltage consistency across same-named nodes
-- Support save/load functionality with node names
-
-## Implementation Guide
-
-### 1. Class Structure (Recommended Approach)
-
+### 1. Class Structure Design
 ```java
-class TableElm extends ChipElm {
-    // Inherit from ChipElm for layout infrastructure
-    // Contains array of virtual LabeledNodeElm instances for each row
-    // Each row acts as a full LabeledNodeElm with its own connectivity
-}
-```
-
-**Alternative Approach**: Consider creating a composite element that manages multiple LabeledNodeElm instances internally, leveraging the existing node connectivity system rather than reimplementing it.
-
-### Key Design Insight
-Instead of reimplementing LabeledNodeElm's node mapping functionality, we should:
-1. **Leverage existing LabeledNodeElm.labelList** - Use the static HashMap that already manages node connections
-2. **Reuse LabeledNodeElm connectivity** - Each table row should behave exactly like a LabeledNodeElm
-3. **Extend ChipElm for layout** - Use ChipElm's pin management and drawing infrastructure
-
-### 2. Key Modifications from ChipElm
-
-#### Post Positioning Override
-In `drawChip(Graphics g)` method:
-- **Standard ChipElm**: Posts distributed around rectangle perimeter
-- **Table Element**: All posts on RIGHT side of rectangle
-- Posts and stubs may overlap with table edge for compact design
-
-#### Table-Specific Layout
-```java
-void setupPins() {
-    // Create pins array with all pins on SIDE_E (right side)
-    // Position pins vertically spaced for table rows
-    pins = new Pin[getRowCount()];
-    for (int i = 0; i < getRowCount(); i++) {
-        pins[i] = new Pin(i, SIDE_E, getNodeName(i));
-        pins[i].output = false; // These are connection points, not outputs
+public class TableElm extends CircuitElm {
+    private int rows = 3;
+    private int cols = 2; 
+    private int cellSize = 60;
+    private int cellSpacing = 4;
+    private String[][] labelNames;  // Store label names as text
+    private String[] columnHeaders;
+    
+    // Constructor for new table
+    public TableElm(int xx, int yy) {
+        super(xx, yy);
+        initTable();
+    }
+    
+    // File loading constructor  
+    public TableElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
+        super(xa, ya, xb, yb, f);
+        parseTableData(st);
+        initTable();
     }
 }
 ```
 
-### 3. Node Name Management (Revised Approach)
-
-#### Leverage LabeledNodeElm Infrastructure
+### 2. Table Initialization
 ```java
-// Store node names array
-String[] nodeNames;
-
-// Instead of creating our own mapping, use LabeledNodeElm's static labelList
-// Each table row interfaces with LabeledNodeElm.labelList HashMap
-
-// For each node name, we simulate a LabeledNodeElm connection:
-Point getConnectedPostForRow(int rowIndex) {
-    String nodeName = nodeNames[rowIndex];
-    LabeledNodeElm.LabelEntry le = LabeledNodeElm.labelList.get(nodeName);
-    
-    if (le != null) {
-        return le.point;
+private void initTable() {
+    // Initialize label names array
+    if (labelNames == null) {
+        labelNames = new String[rows][cols];
+        // Set default label names
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                labelNames[row][col] = "node" + (row * cols + col + 1);
+            }
+        }
     }
     
-    // Register this table row's post as a new labeled node
-    le = new LabeledNodeElm.LabelEntry();
-    le.point = pins[rowIndex].post;
-    LabeledNodeElm.labelList.put(nodeName, le);
-    return null;
-}
-```
-
-#### Benefits of This Approach
-- **Consistency**: Same node names in TableElm and LabeledNodeElm connect automatically
-- **Compatibility**: Works with existing circuits using LabeledNodeElm
-- **Maintainability**: No duplicate node management code
-- **Reliability**: Leverages tested LabeledNodeElm connectivity logic
-
-#### Node Name Interface
-```java
-public EditInfo getChipEditInfo(int n) {
-    if (n < nodeNames.length) {
-        return new EditInfo("Row " + (n+1) + " Name", nodeNames[n]);
-    }
-    if (n == nodeNames.length) {
-        return new EditInfo("Row Count", getRowCount(), 1, 20);
-    }
-    return null;
-}
-
-public EditInfo void setChipEditValue(int n, EditInfo ei) {
-    if (n < nodeNames.length) {
-        nodeNames[n] = ei.textf.getText();
-        setupPins(); // Refresh pin labels
-        setPoints(); // Recalculate layout
-    }
-    if (n == nodeNames.length) {
-        setRowCount(ei.value);
+    // Initialize column headers if not set
+    if (columnHeaders == null) {
+        columnHeaders = new String[cols];
+        for (int i = 0; i < cols; i++) {
+            columnHeaders[i] = "Col" + (i + 1);
+        }
     }
 }
 ```
 
-### 4. Drawing Override
-
-#### Custom drawChip Implementation
+### 3. Voltage Lookup Method
 ```java
-void drawChip(Graphics g) {
-    // Call parent for basic setup but override post drawing
-    
-    // Draw table background
-    g.setColor(sim.getBackgroundColor());
-    g.fillRect(rectPointsX[0], rectPointsY[0], 
-               rectPointsX[2] - rectPointsX[0], 
-               rectPointsY[2] - rectPointsY[0]);
-    
-    // Draw table border
-    g.setColor(needsHighlight() ? selectColor : lightGrayColor);
-    drawThickPolygon(g, rectPointsX, rectPointsY, 4);
-    
-    // Draw row separators
-    int rowHeight = (rectPointsY[2] - rectPointsY[0]) / getRowCount();
-    for (int i = 1; i < getRowCount(); i++) {
-        int y = rectPointsY[0] + i * rowHeight;
-        g.drawLine(rectPointsX[0], y, rectPointsX[1], y);
+private double getVoltageForLabel(String labelName) {
+    if (labelName == null || labelName.isEmpty()) {
+        return 0.0;
     }
     
-    // Draw node names and posts
-    for (int i = 0; i < getPostCount(); i++) {
-        Pin p = pins[i];
-        
-        // Draw post connection on RIGHT side (may overlap table edge)
-        setVoltageColor(g, volts[i]);
-        Point a = p.post;
-        Point b = p.stub;
-        drawThickLine(g, a, b);
-        
-        // Draw current dots
-        p.curcount = updateDotCount(p.current, p.curcount);
-        drawDots(g, b, a, p.curcount);
-        
-        // Draw node name label (LEFT side of table)
-        g.setColor(whiteColor);
-        int labelX = rectPointsX[0] + 5; // Small margin from left edge
-        int labelY = rectPointsY[0] + (i + 0.5) * rowHeight;
-        g.drawString(nodeNames[i], labelX, labelY);
+    // Use LabeledNodeElm's static labelList to get voltage
+    Integer nodeNum = LabeledNodeElm.getByName(labelName);
+    if (nodeNum == null) {
+        return 0.0; // Label not found
     }
+    
+    // Node 0 is ground
+    if (nodeNum == 0) {
+        return 0.0;
+    }
+    
+    // Get voltage from simulation
+    if (sim != null && sim.nodeVoltages != null && 
+        nodeNum > 0 && nodeNum <= sim.nodeVoltages.length) {
+        return sim.nodeVoltages[nodeNum - 1]; // nodeVoltages is 0-indexed, excludes ground
+    }
+    
+    return 0.0;
 }
 ```
 
-### 5. Sizing and Geometry
-
-#### Table Dimensions
+### 4. Layout and Positioning
 ```java
 void setPoints() {
-    // Calculate table size based on row count and content
-    sizeX = 3; // Fixed width for single column
-    sizeY = Math.max(getRowCount(), 2); // Height based on rows
-    
-    // Call parent setPoints for basic geometry
     super.setPoints();
     
-    // Override pin positions to be on right side only
-    repositionPinsToRightSide();
+    // Calculate table dimensions
+    int tableWidth = cols * cellSize + (cols + 1) * cellSpacing;
+    int tableHeight = rows * cellSize + (rows + 1) * cellSpacing + 20; // Extra space for headers
+    
+    // Set bounding box
+    setBbox(point1.x, point1.y, point1.x + tableWidth, point1.y + tableHeight);
 }
 
-void repositionPinsToRightSide() {
-    // Move all pins to right edge, evenly spaced vertically
-    int rowHeight = (rectPointsY[2] - rectPointsY[0]) / getRowCount();
-    for (int i = 0; i < getPostCount(); i++) {
-        Pin p = pins[i];
-        int pinY = rectPointsY[0] + (i + 0.5) * rowHeight;
-        
-        // Post is ON the right edge or slightly outside
-        p.post = new Point(rectPointsX[2], pinY);
-        p.stub = new Point(rectPointsX[2] - cspc/2, pinY);
-        p.textloc = new Point(rectPointsX[0] + 5, pinY);
+int getPostCount() { 
+    return 0; // No electrical connections
+}
+```
+
+### 5. Drawing Implementation
+```java
+void draw(Graphics g) {
+    // Draw table background
+    g.setColor(needsHighlight() ? selectColor : Color.WHITE);
+    g.fillRect(point1.x, point1.y, 
+               cols * cellSize + (cols + 1) * cellSpacing,
+               rows * cellSize + (rows + 1) * cellSpacing + 20);
+    
+    // Draw table border
+    g.setColor(Color.BLACK);
+    g.drawRect(point1.x, point1.y,
+               cols * cellSize + (cols + 1) * cellSpacing,
+               rows * cellSize + (rows + 1) * cellSpacing + 20);
+    
+    // Draw column headers
+    drawColumnHeaders(g);
+    
+    // Draw table cells with voltages
+    drawTableCells(g);
+    
+    // Draw grid lines
+    drawGridLines(g);
+}
+
+private void drawColumnHeaders(Graphics g) {
+    g.setColor(Color.BLACK);
+    int headerY = point1.y + 15;
+    
+    for (int col = 0; col < cols; col++) {
+        int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
+        String header = (columnHeaders != null && col < columnHeaders.length) ? 
+                       columnHeaders[col] : "Col" + (col + 1);
+        drawCenteredText(g, header, cellX + cellSize/2, headerY);
+    }
+}
+
+private void drawTableCells(Graphics g) {
+    for (int row = 0; row < rows; row++) {
+        for (int col = 0; col < cols; col++) {
+            int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
+            int cellY = point1.y + 20 + cellSpacing + row * (cellSize + cellSpacing);
+            
+            // Get label name and voltage
+            String labelName = labelNames[row][col];
+            double voltage = getVoltageForLabel(labelName);
+            
+            // Draw cell background based on voltage (optional)
+            setVoltageColor(g, voltage);
+            g.fillRect(cellX, cellY, cellSize, cellSize);
+            
+            // Draw cell border
+            g.setColor(Color.BLACK);
+            g.drawRect(cellX, cellY, cellSize, cellSize);
+            
+            // Draw label name (top half)
+            g.setColor(Color.BLACK);
+            drawCenteredText(g, labelName, cellX + cellSize/2, cellY + cellSize/3);
+            
+            // Draw voltage value (bottom half)
+            String voltageText = getVoltageText(voltage);
+            drawCenteredText(g, voltageText, cellX + cellSize/2, cellY + 2*cellSize/3);
+        }
+    }
+}
+
+private void drawGridLines(Graphics g) {
+    g.setColor(Color.GRAY);
+    
+    // Vertical lines
+    for (int col = 0; col <= cols; col++) {
+        int x = point1.x + cellSpacing + col * (cellSize + cellSpacing);
+        g.drawLine(x, point1.y + 20, x, point1.y + 20 + cellSpacing + rows * (cellSize + cellSpacing));
+    }
+    
+    // Horizontal lines
+    for (int row = 0; row <= rows; row++) {
+        int y = point1.y + 20 + cellSpacing + row * (cellSize + cellSpacing);
+        g.drawLine(point1.x, y, point1.x + cellSpacing + cols * (cellSize + cellSpacing), y);
     }
 }
 ```
 
-### 6. Node Connectivity (Core Functionality - Revised)
-
-#### Interface with LabeledNodeElm System
+### 6. No Connection Logic Needed
 ```java
-// Override calcWireClosure participation (called by CirSim during analysis)
-Point getConnectedPost() {
-    // This method should be called for each row individually during wire closure
-    // We need to modify this to work with multiple posts
-    return null; // TableElm doesn't use single-post connectivity
+// No electrical connections - pure display element
+boolean isWireEquivalent() { return false; }
+boolean isRemovableWire() { return false; }
+### 7. Serialization Support
+```java
+public String dump() {
+    StringBuilder sb = new StringBuilder();
+    sb.append(super.dump()).append(" ").append(rows).append(" ").append(cols);
+    
+    // Serialize label names
+    for (int row = 0; row < rows; row++) {
+        for (int col = 0; col < cols; col++) {
+            sb.append(" ").append(CustomLogicModel.escape(labelNames[row][col]));
+        }
+    }
+    
+    // Serialize column headers
+    for (int col = 0; col < cols; col++) {
+        sb.append(" ").append(CustomLogicModel.escape(columnHeaders[col]));
+    }
+    
+    return sb.toString();
 }
 
-// Implement multi-post connectivity by integrating with LabeledNodeElm.labelList
-void handleNodeConnectivity() {
-    for (int i = 0; i < getPostCount(); i++) {
-        String nodeName = nodeNames[i];
-        LabeledNodeElm.LabelEntry le = LabeledNodeElm.labelList.get(nodeName);
+private void parseTableData(StringTokenizer st) {
+    try {
+        if (st.hasMoreTokens()) rows = Integer.parseInt(st.nextToken());
+        if (st.hasMoreTokens()) cols = Integer.parseInt(st.nextToken());
         
-        if (le != null) {
-            // Existing labeled node - we should connect to it
-            // This logic should be handled during wire closure calculation
+        // Parse label names
+        labelNames = new String[rows][cols];
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                if (st.hasMoreTokens()) {
+                    labelNames[row][col] = CustomLogicModel.unescape(st.nextToken());
+                } else {
+                    labelNames[row][col] = "node" + (row * cols + col + 1);
+                }
+            }
+        }
+        
+        // Parse column headers
+        columnHeaders = new String[cols];
+        for (int col = 0; col < cols; col++) {
+            if (st.hasMoreTokens()) {
+                columnHeaders[col] = CustomLogicModel.unescape(st.nextToken());
+            } else {
+                columnHeaders[col] = "Col" + (col + 1);
+            }
+        }
+    } catch (Exception e) {
+        CirSim.console("TableElm: error parsing table data, using defaults");
+        initTable(); // Reset to defaults
+    }
+}
+
+int getDumpType() { 
+    return 408; // Choose unused dump type
+}
+```
+
+### 8. User Interface Integration
+```java
+public EditInfo getEditInfo(int n) {
+    if (n == 0) return new EditInfo("Rows", rows, 1, 20);
+    if (n == 1) return new EditInfo("Columns", cols, 1, 10);
+    if (n == 2) return new EditInfo("Cell Size", cellSize, 20, 100);
+    if (n == 3) return new EditInfo("Cell Spacing", cellSpacing, 2, 20);
+    
+    // Edit individual cell labels
+    int cellIndex = n - 4;
+    if (cellIndex >= 0 && cellIndex < rows * cols) {
+        int row = cellIndex / cols;
+        int col = cellIndex % cols;
+        EditInfo ei = new EditInfo("Cell [" + row + "," + col + "] Label", 0, -1, -1);
+        ei.text = labelNames[row][col];
+        return ei;
+    }
+    
+    // Edit column headers
+    int headerIndex = cellIndex - rows * cols;
+    if (headerIndex >= 0 && headerIndex < cols) {
+        EditInfo ei = new EditInfo("Column " + headerIndex + " Header", 0, -1, -1);
+        ei.text = columnHeaders[headerIndex];
+        return ei;
+    }
+    
+    return null;
+}
+
+public void setEditValue(int n, EditInfo ei) {
+    if (n == 0 && ei.value != rows) {
+        rows = (int)ei.value;
+        resizeTable();
+    } else if (n == 1 && ei.value != cols) {
+        cols = (int)ei.value;
+        resizeTable();
+    } else if (n == 2) {
+        cellSize = (int)ei.value;
+        setPoints();
+    } else if (n == 3) {
+        cellSpacing = (int)ei.value;
+        setPoints();
+    } else {
+        // Edit cell labels or column headers
+        int cellIndex = n - 4;
+        if (cellIndex >= 0 && cellIndex < rows * cols) {
+            int row = cellIndex / cols;
+            int col = cellIndex % cols;
+            labelNames[row][col] = ei.textf.getText();
         } else {
-            // First occurrence - register this post
-            le = new LabeledNodeElm.LabelEntry();
-            le.point = pins[i].post;
-            LabeledNodeElm.labelList.put(nodeName, le);
+            int headerIndex = cellIndex - rows * cols;
+            if (headerIndex >= 0 && headerIndex < cols) {
+                columnHeaders[headerIndex] = ei.textf.getText();
+            }
         }
     }
 }
 
-void setNode(int p, int n) {
-    super.setNode(p, n);
+private void resizeTable() {
+    String[][] oldLabels = labelNames;
+    String[] oldHeaders = columnHeaders;
     
-    // Update the LabeledNodeElm system with our node assignments
-    if (p < nodeNames.length) {
-        String nodeName = nodeNames[p];
-        LabeledNodeElm.LabelEntry le = LabeledNodeElm.labelList.get(nodeName);
-        if (le != null) {
-            le.node = n;
+    initTable(); // Create new arrays with default values
+    
+    // Copy over existing labels where possible
+    if (oldLabels != null) {
+        for (int row = 0; row < Math.min(rows, oldLabels.length); row++) {
+            for (int col = 0; col < Math.min(cols, oldLabels[row].length); col++) {
+                labelNames[row][col] = oldLabels[row][col];
+            }
         }
     }
-}
-
-// Support LabeledNodeElm.getByName() functionality
-// This allows other code to find node numbers by name, including table nodes
-boolean isWireEquivalent() { 
-    return true; // Table acts like multiple labeled wires
-}
-```
-
-### 7. Required CircuitElm Overrides
-
-```java
-int getDumpType() { return 253; } // Choose unused number 200-300 range
-
-int getPostCount() { return getRowCount(); }
-
-boolean isDigitalChip() { return false; } // This is analog node connections
-
-String dump() {
-    String result = super.dump();
-    result += " " + getRowCount();
-    for (String name : nodeNames) {
-        result += " " + CustomLogicModel.escape(name);
-    }
-    return result;
-}
-
-// Constructor for loading from file
-public TableElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
-    super(xa, ya, xb, yb, f, st);
     
-    int rowCount = Integer.parseInt(st.nextToken());
-    nodeNames = new String[rowCount];
-    
-    for (int i = 0; i < rowCount; i++) {
-        nodeNames[i] = st.hasMoreTokens() ? 
-            CustomLogicModel.unescape(st.nextToken()) : "node" + i;
+    // Copy over existing headers where possible
+    if (oldHeaders != null) {
+        for (int col = 0; col < Math.min(cols, oldHeaders.length); col++) {
+            columnHeaders[col] = oldHeaders[col];
+        }
     }
     
-    setupPins();
+    setPoints();
 }
 ```
 
-### 8. Integration Steps
-
-#### Add to CirSim.java
+### 9. Information Display
 ```java
-// In createCe() method:
-case 253: return new TableElm(xa, ya, xb, yb, f, st);
-
-// In constructElement() method:
-if (n.compareTo("TableElm") == 0) return new TableElm(xa, ya, xb, yb, f, st);
-
-// In composeMainMenu() method:
-// Add under appropriate menu section:
-m.add(getMenuItem("Add Table", "add table"));
-```
-
-#### Menu Handler
-```java
-// In menuPerformed() method:
-if (ac.compareTo("add table") == 0) {
-    mouseModeStr = "Add Table";
-    setMouseMode(MODE_ADD_ELM);
-    addingClass = TableElm.class;
-    return;
-}
-```
-
-### 9. Testing Checklist
-
-1. **Basic Functionality**
-   - Element appears in menu and can be placed
-   - Table draws correctly with configurable rows
-   - Posts appear on right side of table
-
-2. **Node Connectivity**
-   - Same-named nodes in different table elements connect properly
-   - Voltage consistency across same-named nodes
-   - Current flow visualization works correctly
-
-3. **User Interface**
-   - Node names can be edited via right-click
-   - Row count can be modified
-   - Changes update display immediately
-
-4. **Save/Load**
-   - Circuits with table elements save correctly
-   - Loading preserves all node names and connections
-   - Export/import maintains functionality
-
-5. **Integration**
-   - Works in subcircuits
-   - Compatible with white background mode
-   - No conflicts with existing elements
-
-## Alternative Implementation Approaches
-
-### Option A: Composite LabeledNodeElm Approach
-```java
-class TableElm extends ChipElm {
-    LabeledNodeElm[] nodeElements; // Array of actual LabeledNodeElm instances
+void getInfo(String arr[]) {
+    arr[0] = "Voltage Table (" + rows + "x" + cols + ")";
+    arr[1] = "Displays voltages from labeled nodes";
     
-    // Each row creates and manages a LabeledNodeElm internally
-    // Benefits: Full LabeledNodeElm functionality per row
-    // Drawbacks: More complex object management
-}
-```
-
-### Option B: LabeledNodeElm Integration (Recommended)
-```java
-class TableElm extends ChipElm {
-    String[] nodeNames;
+    int idx = 2;
+    // Show some sample values
+    for (int row = 0; row < Math.min(3, rows) && idx < arr.length - 1; row++) {
+        for (int col = 0; col < Math.min(2, cols) && idx < arr.length - 1; col++) {
+            String label = labelNames[row][col];
+            double voltage = getVoltageForLabel(label);
+            arr[idx++] = label + ": " + getVoltageText(voltage);
+        }
+    }
     
-    // Directly interface with LabeledNodeElm.labelList
-    // Implement calcWireClosure() integration
-    // Each table row participates in wire closure like a LabeledNodeElm
-    
-    // Benefits: Lightweight, leverages existing system
-    // This is the approach detailed in the main instructions above
+    if (rows * cols > 6) {
+        arr[idx++] = "... (showing first few cells)";
+    }
 }
 ```
 
-### Option C: Multiple Inheritance Simulation
+### 10. Table-Specific Helper Methods
 ```java
-class TableElm extends ChipElm implements LabeledNodeInterface {
-    // Create interface that captures LabeledNodeElm behavior
-    // Implement the interface methods for each table row
-    // Benefits: Clean separation of concerns
+public void setCellLabel(int row, int col, String label) {
+    if (row >= 0 && row < rows && col >= 0 && col < cols) {
+        labelNames[row][col] = label;
+    }
+}
+
+public String getCellLabel(int row, int col) {
+    if (row >= 0 && row < rows && col >= 0 && col < cols) {
+        return labelNames[row][col];
+    }
+    return "";
+}
+
+public void setColumnHeader(int col, String header) {
+    if (col >= 0 && col < cols) {
+        columnHeaders[col] = header;
+    }
+}
+
+public String getColumnHeader(int col) {
+    if (col >= 0 && col < cols) {
+        return columnHeaders[col];
+    }
+    return "";
+}
+
+private void drawCenteredText(Graphics g, String text, int x, int y) {
+    FontMetrics fm = g.getFontMetrics();
+    int textWidth = fm.stringWidth(text);
+    int textHeight = fm.getHeight();
+    g.drawString(text, x - textWidth/2, y + textHeight/4);
 }
 ```
 
-## Advanced Features (Optional)
+## Key Advantages of Simplified Design
 
-### Multi-Column Support
-- Extend to support multiple columns of nodes
-- Add column headers with different node categories
-- Support different connection behaviors per column
+### 1. **Simplicity**
+- Extends `CircuitElm` instead of complex `CompositeElm`
+- No sub-elements to manage
+- Direct voltage lookup using existing `LabeledNodeElm.labelList`
 
-### LabeledNodeElm Compatibility Enhancements
-- Support LabeledNodeElm's internal node flag per row
-- Implement per-row edit interfaces matching LabeledNodeElm
-- Add scope text functionality for debugging
+### 2. **Performance**
+- Lightweight rendering
+- No electrical simulation overhead
+- Pure display element
 
-### Visual Enhancements
-- Color coding for different node types (matching LabeledNodeElm colors)
-- Icons or symbols in table cells
-- Resizable table dimensions
-- Show connection status (connected/unconnected) per row
+### 3. **Flexibility** 
+- Easy to edit label names in UI
+- Configurable table dimensions
+- Customizable column headers
+- Visual voltage indication via colors
 
-### Advanced Connectivity Features
-- Bus connections (multiple bits with naming patterns)
-- Hierarchical node naming (dot notation: "cpu.data.bit0")
-- Node grouping and organization
-- Import/export node lists from CSV or other formats
+### 4. **Integration**
+- Leverages existing `LabeledNodeElm` infrastructure
+- Uses standard CircuitJS1 patterns
+- Compatible with save/load system
 
-## Common Pitfalls
+### 5. **Maintainability**
+- Simple codebase
+- Clear separation of concerns
+- Easy to extend with new features
 
-1. **Post Overlap**: Ensure posts don't interfere with table drawing
-2. **Node Mapping Integration**: 
-   - **DON'T** create separate node mapping system
-   - **DO** integrate with LabeledNodeElm.labelList for consistency
-   - Handle node name changes by updating the shared labelList
-3. **Wire Closure Integration**: 
-   - Ensure TableElm participates properly in CirSim.calcWireClosure()
-   - Each table row should behave like a LabeledNodeElm during wire analysis
-4. **Matrix Integration**: Table elements should not add extra matrix complexity
-5. **LabeledNodeElm Compatibility**:
-   - Ensure same node names connect between TableElm and LabeledNodeElm
-   - Test mixed circuits with both element types
-   - Maintain compatibility with LabeledNodeElm.getByName() functionality
-6. **Performance**: Efficient redrawing for large tables
-7. **GWT Compatibility**: Use only GWT-compatible Java features
-8. **Static State Management**: 
-   - Coordinate with LabeledNodeElm.resetNodeList() calls
-   - Ensure proper cleanup when circuits are cleared
+## Suggested Class Extension
 
-## Reference Code Locations
+**Recommended**: Extend `CircuitElm` as shown above.
 
-- **ChipElm.java**: Base class for layout and pin management
-- **LabeledNodeElm.java**: Node naming and connectivity patterns
-- **CirSim.java**: Element registration and menu integration
-- **CircuitElm.java**: Base circuit element functionality
+**Alternative Options**:
+- `TextElm` - If you want text-editing capabilities
+- `OutputElm` - If you want scope/probing features  
+- `CircuitElm` - Best choice for custom display elements
+
+The `CircuitElm` base class provides the essential framework for positioning, selection, serialization, and UI integration while keeping the implementation straightforward.

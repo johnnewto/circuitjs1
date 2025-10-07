@@ -81,15 +81,15 @@ class DiodeElm extends CircuitElm {
     public void updateModels() {
 	setup();
     }
-    
+
     int getDumpType() { return 'd'; }
-    String dump() {
-	flags |= FLAG_MODEL;
-/*	if (modelName == null) {
-	    sim.console("model name is null??");
-	    modelName = "default";
-	}*/
-	return super.dump() + " " + CustomLogicModel.escape(modelName);
+		String dump() {
+		flags |= FLAG_MODEL;
+		if (modelName == null) {
+			CirSim.console("model name is null??");
+			modelName = "default";
+		}
+		return super.dump() + " " + CustomLogicModel.escape(modelName);
     }
     
     String dumpModel() {

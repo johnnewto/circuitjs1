@@ -1110,6 +1110,7 @@ MouseOutHandler, MouseWheelHandler {
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Adder"), "AdderElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add NamedVCVS"), "NamedVCVSElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Table"), "TableElm"));
+		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add LabelDisplay"), "LabeledNodeDisplayElm"));
 
 
     	MenuBar passMenuBar = new MenuBar(true);
@@ -1813,7 +1814,9 @@ MouseOutHandler, MouseWheelHandler {
 	    if (savedFlag)
 		info[i++] = "(saved)";
 
-	    int ybase = circuitArea.height-h;
+	    // int ybase = circuitArea.height-h;
+		int ybase = circuitArea.y+10;
+
 	    for (i = 0; info[i] != null; i++)
 		g.drawString(info[i], x, ybase+15*(i+1));
 	}
@@ -3206,12 +3209,35 @@ MouseOutHandler, MouseWheelHandler {
 	int j, k;
 	for (j = 0; j != nv.length; j++) {
 	    double res = nv[j];
+	    
+	    // Check if any labeled node connected to this circuit node has a computed value
+	    // that should override the simulated voltage
+	    Double computedOverride = getComputedVoltageForNode(j+1);
+	    if (computedOverride != null) {
+	        res = computedOverride;
+	    }
+	    
 	    CircuitNode cn = getCircuitNode(j+1);
 	    for (k = 0; k != cn.links.size(); k++) {
 		CircuitNodeLink cnl = cn.links.elementAt(k);
 		cnl.elm.setNodeVoltage(cnl.num, res);
 	    }
 	}
+    }
+    
+    // Check if any labeled node connected to this circuit node has a computed value
+    Double getComputedVoltageForNode(int nodeNum) {
+        // Look through all labeled nodes to see if any are connected to this circuit node
+        // and have computed values
+        if (LabeledNodeElm.labelList == null) return null;
+        
+        for (String labelName : LabeledNodeElm.labelList.keySet()) {
+            LabeledNodeElm.LabelEntry entry = LabeledNodeElm.labelList.get(labelName);
+            if (entry != null && entry.node == nodeNum && entry.computedValue != null) {
+                return entry.computedValue;
+            }
+        }
+        return null;
     }
     
     // we removed wires from the matrix to speed things up.  in order to display wire currents,
@@ -5932,6 +5958,7 @@ MouseOutHandler, MouseWheelHandler {
    		case 251: return new AdderElm(x1, y1, x2, y2, f, st);
   		case 252: return new NamedVCVSElm(x1, y1, x2, y2, f, st);
   		case 253: return new TableElm(x1, y1, x2, y2, f, st);
+		case 254: return new LabeledNodeDisplayElm(x1, y1, x2, y2, f, st);
 
 		case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
     	case 368: return new TestPointElm(x1, y1, x2, y2, f, st);
@@ -6252,7 +6279,8 @@ MouseOutHandler, MouseWheelHandler {
     	    		return (CircuitElm) new NamedVCVSElm(x1, y1);   
     	if (n=="TableElm")
     	    		return (CircuitElm) new TableElm(x1, y1);   
-					
+		if (n.equals("LabeledNodeDisplayElm")) 
+					return (CircuitElm) new LabeledNodeDisplayElm(x1, y1);			
 					
 		// handle CustomCompositeElm:modelname
     	if (n.startsWith("CustomCompositeElm:")) {

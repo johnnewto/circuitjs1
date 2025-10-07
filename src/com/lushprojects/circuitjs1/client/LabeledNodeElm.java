@@ -25,10 +25,13 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 class LabeledNodeElm extends CircuitElm {
     final int FLAG_ESCAPE = 4;
     final int FLAG_INTERNAL = 1;
+    final int FLAG_SHOW_ALL_NODES = 8;
+    final int FLAG_SHOW_ALL_CIRCUIT_NODES = 16;
     
     public LabeledNodeElm(int xx, int yy) {
 	super(xx, yy);
 	text = "label";
+	flags |= FLAG_SHOW_ALL_NODES | FLAG_SHOW_ALL_CIRCUIT_NODES;
     }
     public LabeledNodeElm(int xa, int ya, int xb, int yb, int f,
 	    StringTokenizer st) {
@@ -50,13 +53,26 @@ class LabeledNodeElm extends CircuitElm {
 
     String text;
     
-    class LabelEntry {
+    static class LabelEntry {
 	Point point;
 	int node;
+	Double computedValue;  // Store computed values from TableElm or other sources
+	
+	LabelEntry() {
+	    this.computedValue = null;
+	}
+	
+	LabelEntry(Point point, int node) {
+	    this.point = point;
+	    this.node = node;
+	    this.computedValue = null;
+	}
     }
     
     static HashMap<String,LabelEntry> labelList;
     boolean isInternal() { return (flags & FLAG_INTERNAL) != 0; }
+    boolean showLabelNodes() { return (flags & FLAG_SHOW_ALL_NODES) != 0; }
+    boolean showAllCircuitNodes() { return (flags & FLAG_SHOW_ALL_CIRCUIT_NODES) != 0; }
 
     public static native void console(String text)
     /*-{
@@ -64,36 +80,36 @@ class LabeledNodeElm extends CircuitElm {
 	}-*/;
 
     static void resetNodeList() {
-	labelList = new HashMap<String,LabelEntry>();
+		labelList = new HashMap<String,LabelEntry>();
     }
     final int circleSize = 17;
     void setPoints() {
-	super.setPoints();
-	lead1 = interpPoint(point1, point2, 1-circleSize/dn);
+		super.setPoints();
+		lead1 = interpPoint(point1, point2, 1-circleSize/dn);
     }
     
     // get post we're connected to
     Point getConnectedPost() {
-	LabelEntry le = labelList.get(text);
-	if (le != null)
-	    return le.point;
-	
-	// this is the first time calcWireClosure() encountered this label.  so save point1 and
-	// return null for now, but return point1 the next time we see this label so that all nodes
-	// with the same label are connected
-	le = new LabelEntry();
-	le.point = point1;
-	labelList.put(text, le);
-	return null;
+		LabelEntry le = labelList.get(text);
+		if (le != null)
+			return le.point;
+		
+		// this is the first time calcWireClosure() encountered this label.  so save point1 and
+		// return null for now, but return point1 the next time we see this label so that all nodes
+		// with the same label are connected
+		le = new LabelEntry();
+		le.point = point1;
+		labelList.put(text, le);
+		return null;
     }
     
     void setNode(int p, int n) {
-	super.setNode(p, n);
-	
-	// save node number so we can return it in getByName()
-	LabelEntry le = labelList.get(text);
-	if (le != null) // should never happen
-	    le.node = n;
+		super.setNode(p, n);
+		
+		// save node number so we can return it in getByName()
+		LabelEntry le = labelList.get(text);
+		if (le != null) // should never happen
+			le.node = n;
     }
     
     int getDumpType() { return 207; }
@@ -104,34 +120,163 @@ class LabeledNodeElm extends CircuitElm {
     boolean isRemovableWire() { return true; }
     
     static Integer getByName(String n) {
-	if (labelList == null)
-	    return null;
-	LabelEntry le = labelList.get(n);
-	if (le == null)
-	    return null;
-	return le.node;
+		if (labelList == null)
+			return null;
+		LabelEntry le = labelList.get(n);
+		if (le == null)
+			return null;
+		return le.node;
+    }
+    
+    // Set computed value for a label name (used by TableElm and other elements)
+    static void setComputedValue(String labelName, double value) {
+        if (labelName == null || labelName.isEmpty()) return;
+        if (labelList == null) {
+            labelList = new HashMap<String,LabelEntry>();
+        }
+        
+        LabelEntry le = labelList.get(labelName);
+        if (le == null) {
+            // Create new entry for computed value only
+            le = new LabelEntry();
+            le.node = -1; // Special value indicating this is computed-only
+            labelList.put(labelName, le);
+        }
+        le.computedValue = value;
+    }
+    
+    // Clear all computed values (used by TableElm when recalculating)
+    static void clearComputedValues() {
+        if (labelList == null) return;
+        for (LabelEntry entry : labelList.values()) {
+            entry.computedValue = null;
+        }
+    }
+    
+    // Check if a label name has a computed value
+    static boolean isComputedValue(String labelName) {
+		if (labelName == null || labelList == null) return false;
+		LabelEntry le = labelList.get(labelName);
+		return le != null && le.computedValue != null;
+    }
+    
+    // Get computed value if it exists
+    static Double getComputedValue(String labelName) {
+		if (labelName == null || labelList == null) return null;
+		LabelEntry le = labelList.get(labelName);
+		return (le != null) ? le.computedValue : null;
+    }
+    
+    static String getNameByNode(int nodeNumber) {
+		if (labelList == null)
+			return null;
+		for (String labelName : labelList.keySet()) {
+			LabelEntry entry = labelList.get(labelName);
+			if (entry != null && entry.node == nodeNumber) {
+				return labelName;
+			}
+		}
+		return null;
     }
     
     void draw(Graphics g) {
-	setVoltageColor(g, volts[0]);
-	drawThickLine(g, point1, lead1);
-	g.setColor(needsHighlight() ? selectColor : whiteColor);
-	setPowerColor(g, false);
-	interpPoint(point1, point2, ps2, 1+11./dn);
-	setBbox(point1, ps2, circleSize);
-	drawLabeledNode(g, text, point1, lead1);
+		setVoltageColor(g, volts[0]);
+		drawThickLine(g, point1, lead1);
+		g.setColor(needsHighlight() ? selectColor : whiteColor);
+		setPowerColor(g, false);
+		interpPoint(point1, point2, ps2, 1+11./dn);
+		setBbox(point1, ps2, circleSize);
+		drawLabeledNode(g, text, point1, lead1);
 
-	curcount = updateDotCount(current, curcount);
-	drawDots(g, point1, lead1, curcount);
-	drawPosts(g);
+		curcount = updateDotCount(current, curcount);
+		drawDots(g, point1, lead1, curcount);
+		drawPosts(g);
     }
     double getCurrentIntoNode(int n) { return -current; }
     void setCurrent(int x, double c) { current = c; }
-    double getVoltageDiff() { return volts[0]; }
+    double getVoltageDiff() { 
+        // Check if this label has a computed value first
+        Double computedValue = getComputedValue(text);
+        if (computedValue != null) {
+            return computedValue.doubleValue();
+        }
+        return volts[0]; 
+    }
+	
     void getInfo(String arr[]) {
-	arr[0] = Locale.LS(text) + " (" + Locale.LS("Labeled Node") + ")";
-	arr[1] = "I = " + getCurrentText(getCurrent());
-	arr[2] = "V = " + getVoltageText(volts[0]);
+		arr[0] = Locale.LS(text) + " (" + Locale.LS("Labeled Node") + ")";
+		arr[1] = "I = " + getCurrentText(getCurrent());
+		
+		// Check if this label has a computed value and display it as the main voltage
+		Double computedValue = getComputedValue(text);
+		if (computedValue != null) {
+		    arr[2] = "V = " + getVoltageText(computedValue) + " (computed)";
+		} else {
+		    arr[2] = "V = " + getVoltageText(volts[0]);
+		}
+		
+		// Add node number information for debugging
+		LabelEntry le = labelList.get(text);
+		if (le != null)
+			arr[3] = "Node: " + le.node;
+		else
+			arr[3] = "Node: not assigned";
+		int idx = 4;
+		// Show all labeled nodes if flag is set
+		if (showLabelNodes() && labelList != null && !labelList.isEmpty()) {
+
+			arr[idx++] = "All Labeled Nodes:";
+			for (String labelName : labelList.keySet()) {
+				LabelEntry entry = labelList.get(labelName);
+				String nodeInfo = entry != null ? 
+					"Node " + entry.node : "not assigned";
+				
+				// Check if this label also has a computed value
+				Double labelComputedValue = getComputedValue(labelName);
+				if (labelComputedValue != null) {
+					nodeInfo += " (Computed: " + getVoltageText(labelComputedValue) + ")";
+				}
+				
+				arr[idx++] = "  " + labelName + ": " + nodeInfo;
+				if (idx >= 30) break; // Prevent array overflow
+			}
+		}
+		
+		// Show computed values from TableElm if any exist
+		if (showLabelNodes() && idx < 25) { // Leave some space
+			// We can't easily iterate through computed values since they're in JavaScript
+			// But we can show a note about computed values
+			try {
+				// Check if any computed value exists by testing the current label
+				Double testValue = getComputedValue(text);
+				if (testValue != null) {
+					arr[idx++] = "Computed Values Available:";
+					arr[idx++] = "  " + text + ": " + getVoltageText(testValue) + " (from TableElm)";
+				}
+			} catch (Exception e) {
+				// No computed values available
+			}
+		}
+		
+		// Show all circuit nodes if flag is set
+		// if (showAllCircuitNodes() && sim != null && sim.nodeVoltages != null) {
+		// 	int idx = (showLabelNodes() && labelList != null && !labelList.isEmpty()) ? 
+		// 			4 + Math.min(labelList.size() + 1, arr.length - 4) : 4;
+		if (showAllCircuitNodes()) {
+			arr[idx++] = "All Circuit Nodes:";
+			// Node 0 is ground
+			String groundLabel = getNameByNode(0);
+			String groundLabelText = groundLabel != null ? " (" + groundLabel + ")" : "";
+			arr[idx++] = "  Node 0: 0.00V (Ground)" + groundLabelText;
+			// Show other nodes with their voltages
+			for (int nodeNum = 1; nodeNum <= sim.nodeVoltages.length && idx < 30; nodeNum++) {
+				double voltage = sim.nodeVoltages[nodeNum - 1]; // nodeVoltages is 0-indexed but excludes ground
+				String labelName = getNameByNode(nodeNum);
+				String nodeLabel = labelName != null ? " (" + labelName + ")" : "";
+				arr[idx++] = "  Node " + nodeNum + ": " + getVoltageText(voltage) + nodeLabel;
+			}
+			
+		}
     }
 
     public EditInfo getEditInfo(int n) {
@@ -145,6 +290,16 @@ class LabeledNodeElm extends CircuitElm {
             ei.checkbox = new Checkbox("Internal Node", isInternal());
             return ei;
         }
+        if (n == 2) {
+            EditInfo ei = new EditInfo("", 0, -1, -1);
+            ei.checkbox = new Checkbox("Show All Labeled Nodes", showLabelNodes());
+            return ei;
+        }
+        if (n == 3) {
+            EditInfo ei = new EditInfo("", 0, -1, -1);
+            ei.checkbox = new Checkbox("Show All Circuit Nodes", showAllCircuitNodes());
+            return ei;
+        }
 	return null;
     }
     public void setEditValue(int n, EditInfo ei) {
@@ -152,10 +307,16 @@ class LabeledNodeElm extends CircuitElm {
 	    text = ei.textf.getText();
 	if (n == 1)
 	    flags = ei.changeFlag(flags, FLAG_INTERNAL);
+	if (n == 2)
+	    flags = ei.changeFlag(flags, FLAG_SHOW_ALL_NODES);
+	if (n == 3)
+	    flags = ei.changeFlag(flags, FLAG_SHOW_ALL_CIRCUIT_NODES);
     }
     @Override String getScopeText(int v) {
 	return text;
     }
     
     String getName() { return text; }
+    
+    // Computed values now propagate to wires through CirSim.setNodeVoltages() override
 }

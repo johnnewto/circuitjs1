@@ -262,8 +262,8 @@ public abstract class CircuitElm implements Editable {
     
     // set voltage of x'th node, called by simulator logic
     void setNodeVoltage(int n, double c) {
-	volts[n] = c;
-	calculateCurrent();
+		volts[n] = c;
+		calculateCurrent();
     }
     
     // calculate current in response to node voltages changing
@@ -1097,6 +1097,12 @@ public abstract class CircuitElm implements Editable {
     
     // is this a wire we can remove?
     boolean isRemovableWire() { return false; }
+    
+    // called during wire closure calculation to handle special processing needs
+    // override this in subclasses that need special wire closure handling
+    void processWireClosure() {
+	// default implementation does nothing
+    }
     
     boolean isIdealCapacitor() { return false; }
 
