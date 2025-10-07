@@ -150,7 +150,12 @@ If using a separate repository, you may need to configure:
 
 **Common Issues:**
 
-- **"Buildfile: build.xml does not exist!"**: The CircuitJS compilation step failed
+- **"ls: cannot access 'build.xml': No such file or directory"**: The build.xml file is missing from checkout
+  - **Solution**: The workflow now includes fallback to `build.xml.backup`
+  - **Cause**: Git checkout issues or `.gitignore` problems
+  - **Manual fix**: Ensure `build.xml` is committed: `git add build.xml && git commit`
+
+- **"Buildfile: build.xml does not exist!"**: The CircuitJS compilation step failed  
   - **Solution**: Ensure `ant` is installed in the workflow (already included)
   - **Cause**: Missing Apache Ant build tool or wrong working directory
   

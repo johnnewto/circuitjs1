@@ -20,9 +20,23 @@ for file in "${files_to_check[@]}"; do
         echo "✅ Found: $file"
     else
         echo "❌ Missing: $file"
-        MISSING_FILES=true
+        if [ "$file" = "build.xml" ] && [ -f "build.xml.backup" ]; then
+            echo "   ℹ️  build.xml.backup exists - GitHub Actions will use it as fallback"
+        else
+            MISSING_FILES=true
+        fi
     fi
 done
+
+# Special check for build.xml tracking
+if [ -f "build.xml" ]; then
+    if git ls-files --error-unmatch build.xml >/dev/null 2>&1; then
+        echo "✅ build.xml is tracked by git"
+    else
+        echo "⚠️  build.xml exists but is not tracked by git"
+        echo "   Run: git add build.xml && git commit -m 'Add build.xml'"
+    fi
+fi
 
 # Check if files are executable
 echo ""
