@@ -150,20 +150,42 @@ If using a separate repository, you may need to configure:
 
 **Common Issues:**
 
+- **"Buildfile: build.xml does not exist!"**: The CircuitJS compilation step failed
+  - **Solution**: Ensure `ant` is installed in the workflow (already included)
+  - **Cause**: Missing Apache Ant build tool or wrong working directory
+  
 - **Deprecated action versions**: If you see errors about deprecated actions (v3), run:
   ```bash
   docs-template/validate-actions.sh  # Check for deprecated versions
   ```
+  
 - **Build fails**: Check Java version (needs Java 11+) and GWT compilation
+  - **Local test**: Run `./dev.sh compile` in the main repo directory
+  - **Requirements**: Java 11+, Apache Ant, GWT dependencies
+  
 - **CircuitJS not loading**: Ensure production compilation runs before doc build
 - **Pages not updating**: Check GitHub Pages settings and workflow permissions
 - **404 on deployment**: Verify the `_site` folder contains all necessary files
 
 **Debugging steps:**
 1. Check GitHub Actions logs in the "Actions" tab
-2. Verify file structure in the deployment artifact
-3. Test local build with `./build.sh` first
-4. Run `validate-actions.sh` to check for deprecated action versions
+2. Look for "Current directory:" and "Repository contents:" in logs
+3. Verify that `dev.sh` and `build.xml` are found
+4. Test local build with `./dev.sh compile` first
+5. Run `validate-actions.sh` to check for deprecated action versions
+
+**Local testing:**
+```bash
+# Check all deployment requirements
+docs-template/check-deployment-requirements.sh
+
+# Test CircuitJS compilation
+./dev.sh compile
+
+# Test documentation build  
+cd docs-template
+./build.sh
+```
 
 #### 8. Custom Domain (Optional)
 To use a custom domain:
