@@ -72,13 +72,19 @@ jobs:
           fi
         fi
         
-    - name: Compile CircuitJS1 for Production  
+    - name: Setup GWT and Generate Build Configuration
       run: |
         echo "Making dev.sh executable..."
         chmod +x dev.sh
-        echo "Final verification before compilation:"
-        ls -la dev.sh build.xml
-        echo "Running CircuitJS compilation..."
+        echo "Running GWT setup (downloads GWT and generates correct build.xml)..."
+        ./dev.sh setup
+        echo "Verifying GWT setup completed:"
+        ls -la ../gwt-* || echo "GWT directory not found in expected location"
+        ls -la build.xml*
+        
+    - name: Compile CircuitJS1 for Production  
+      run: |
+        echo "Running CircuitJS compilation with generated build.xml..."
         ./dev.sh compile
       
     - name: Setup Pages
@@ -128,17 +134,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ant
       
-      - name: Compile CircuitJS1
+      - name: Setup and Compile CircuitJS1
         run: |
-          echo "Current directory:"
-          pwd
-          echo "Verifying build.xml exists:"
-          if [ ! -f "build.xml" ] && [ -f "build.xml.backup" ]; then
-            echo "build.xml missing, copying from backup"
-            cp build.xml.backup build.xml
-          fi
-          ls -la dev.sh build.xml
+          echo "Setting up GWT and generating build configuration..."
           chmod +x dev.sh
+          ./dev.sh setup
+          echo "Running compilation..."
           ./dev.sh compile
       
       - name: Test Build Documentation
