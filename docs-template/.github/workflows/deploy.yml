@@ -51,9 +51,14 @@ jobs:
       
     - name: Compile CircuitJS1 for Production
       run: |
+        echo "Current directory:"
+        pwd
+        echo "Files in current directory:"
+        ls -la
+        echo "Looking for dev.sh and build.xml..."
+        ls -la dev.sh build.xml || echo "Files not found in current directory"
         chmod +x dev.sh
         ./dev.sh compile
-      working-directory: .
       
     - name: Setup Pages
       uses: actions/configure-pages@v5
@@ -99,6 +104,10 @@ jobs:
       
       - name: Compile CircuitJS1
         run: |
+          echo "Current directory:"
+          pwd
+          echo "Files in current directory:"
+          ls -la
           chmod +x dev.sh
           ./dev.sh compile
       
