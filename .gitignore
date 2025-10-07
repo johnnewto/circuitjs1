@@ -8,7 +8,7 @@ war/WEB-INF/
 # GWT command line tools
 codeserver.log
 webserver.log
-build.xml
+# build.xml
 circuitjs1.tar.gz
 
 # Editor configurations
