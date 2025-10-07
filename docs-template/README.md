@@ -30,12 +30,42 @@ The site will be available at http://localhost:4200
 
 ### Building
 
+**Important**: The CircuitJS application must be compiled for production first.
+
 ```bash
-# Render the complete site
-quarto render
+# Complete build (compiles CircuitJS + docs)
+./build.sh
+
+# Quick docs-only build (when only changing documentation)
+./build-docs-only.sh
+
+# Or build step by step:
+cd ../                    # Go to main CircuitJS repo
+./dev.sh compile         # Compile CircuitJS for production
+cd docs-template         # Return to docs
+quarto render           # Render documentation
+./copy-circuit-files.sh # Copy compiled CircuitJS files
 
 # Output will be in _site/ directory
 ```
+
+### Development Setup
+
+The documentation site needs access to the CircuitJS1 application files from the main repository's `war` directory. This is handled automatically by the build scripts:
+
+- `copy-circuit-files.sh` - Copies CircuitJS files to the `_site` directory
+- `build.sh` - Complete build script (render + copy files)
+
+### Local Testing
+
+```bash
+# After building, serve the site locally
+cd _site
+python3 -m http.server 8080
+# Then open http://localhost:8080
+```
+
+**Note**: The CircuitJS application will only work properly when compiled for production. If you see errors about "Super Dev Mode server at port 9876", run `./build.sh` to ensure the production build is used.
 
 ## Deployment
 
