@@ -62,3 +62,4 @@ Temporary Items
 .gradle/
 .dont_use_gradle/
 build/
+bin/
