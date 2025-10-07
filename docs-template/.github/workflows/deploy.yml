@@ -47,17 +47,19 @@ jobs:
     - name: Install Build Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y python3
+        sudo apt-get install -y python3 ant
       
     - name: Compile CircuitJS1 for Production
       run: |
         echo "Current directory:"
         pwd
-        echo "Files in current directory:"
+        echo "Repository contents:"
         ls -la
-        echo "Looking for dev.sh and build.xml..."
-        ls -la dev.sh build.xml || echo "Files not found in current directory"
+        echo "Checking for required files:"
+        ls -la dev.sh build.xml
+        echo "Making dev.sh executable..."
         chmod +x dev.sh
+        echo "Running CircuitJS compilation..."
         ./dev.sh compile
       
     - name: Setup Pages
@@ -101,6 +103,11 @@ jobs:
       
       - name: Setup Quarto
         uses: quarto-dev/quarto-actions/setup@v2
+      
+      - name: Install Ant
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ant
       
       - name: Compile CircuitJS1
         run: |
