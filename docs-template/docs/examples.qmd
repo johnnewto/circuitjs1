@@ -1,0 +1,320 @@
+---
+title: "Circuit Examples"
+subtitle: "Sample circuits to get you started"
+---
+
+## Basic Circuits
+
+### Simple RC Circuit
+
+A basic resistor-capacitor circuit demonstrating charging and discharging behavior.
+
+```
+Components:
+- 10V DC voltage source
+- 1kΩ resistor  
+- 100µF capacitor
+- Switch to control charging
+```
+
+**Learning Objectives:**
+- Understand RC time constants
+- Observe exponential charging/discharging
+- Practice using the oscilloscope
+
+### LED with Current Limiting
+
+Standard LED circuit with proper current limiting resistor.
+
+```
+Components:
+- 5V DC source
+- 330Ω current limiting resistor
+- Red LED (Vf ≈ 2V)
+```
+
+**Key Concepts:**
+- LED forward voltage
+- Current limiting calculations
+- Power dissipation
+
+## Analog Circuits
+
+### Op-Amp Inverting Amplifier
+
+Classic inverting operational amplifier configuration.
+
+```
+Gain = -Rf/Rin
+Components:
+- LM741 Op-Amp
+- 1kΩ input resistor (Rin)
+- 10kΩ feedback resistor (Rf)
+- ±15V dual supply
+```
+
+**Analysis Points:**
+- Virtual short concept
+- Gain calculation
+- Phase inversion
+- Input/output impedance
+
+### Active Low-Pass Filter
+
+Second-order Sallen-Key low-pass filter using op-amp.
+
+```
+Components:
+- LM741 Op-Amp
+- Two resistors (equal values)
+- Two capacitors (equal values)
+- Single supply with virtual ground
+```
+
+**Frequency Response:**
+- -40dB/decade roll-off
+- Unity gain configuration
+- Adjustable cutoff frequency
+
+### Voltage Divider with Loading
+
+Demonstrates the effect of load resistance on voltage dividers.
+
+```
+Components:
+- 12V source
+- 1kΩ and 2kΩ divider resistors
+- Variable load resistor
+- Voltmeter across load
+```
+
+**Observations:**
+- Unloaded vs. loaded voltage
+- Loading effects
+- Thevenin equivalent circuits
+
+## Digital Circuits
+
+### Basic Logic Gates
+
+Truth table verification for fundamental logic operations.
+
+```
+Gates to Test:
+- AND, OR, NOT
+- NAND, NOR (universal gates)
+- XOR, XNOR
+```
+
+**Exercise:**
+- Build each gate
+- Apply all input combinations
+- Verify truth tables
+- Understand gate delays
+
+### D Flip-Flop
+
+Data storage element with clock control.
+
+```
+Components:
+- D Flip-Flop
+- Clock source (square wave)
+- Logic switches for D input
+- LEDs for Q and Q̄ outputs
+```
+
+**Timing Analysis:**
+- Setup and hold times
+- Clock edge triggering
+- Data synchronization
+
+### 4-Bit Binary Counter
+
+Asynchronous counter using JK flip-flops.
+
+```
+Components:
+- 4× JK Flip-Flops
+- Clock source
+- LEDs for each bit output
+- Reset switch
+```
+
+**Count Sequence:**
+- 0000 → 0001 → 0010 → ... → 1111
+- Observe carry propagation
+- Reset functionality
+
+### Simple State Machine
+
+Traffic light controller using logic gates and flip-flops.
+
+```
+States:
+- Green (30 seconds)
+- Yellow (5 seconds)  
+- Red (30 seconds)
+```
+
+## Power Electronics
+
+### Half-Wave Rectifier
+
+AC to DC conversion using a single diode.
+
+```
+Components:
+- AC voltage source (120V, 60Hz)
+- 1N4007 rectifier diode
+- 1kΩ load resistor
+- Optional: filter capacitor
+```
+
+**Waveform Analysis:**
+- Input sine wave
+- Rectified output
+- Peak inverse voltage
+- Ripple factor
+
+### Full-Wave Bridge Rectifier
+
+Improved AC to DC conversion with four diodes.
+
+```
+Components:
+- AC source (24V, 60Hz)
+- 4× 1N4007 diodes in bridge
+- 100Ω load resistor
+- 1000µF filter capacitor
+```
+
+**Performance Metrics:**
+- Efficiency improvement
+- Reduced ripple
+- Transformer utilization
+
+### Buck Converter (Switching Regulator)
+
+Step-down DC-DC converter using PWM switching.
+
+```
+Components:
+- 12V DC input
+- MOSFET switch
+- Freewheeling diode
+- Filter inductor and capacitor
+- PWM control circuit
+```
+
+**Key Parameters:**
+- Duty cycle control
+- Output voltage regulation  
+- Switching frequency effects
+- Efficiency analysis
+
+## RF and Communications
+
+### LC Oscillator
+
+Inductor-capacitor tank circuit with amplification.
+
+```
+Components:
+- Tank circuit (L and C)
+- BJT amplifier
+- Bias network
+- AC coupling capacitors
+```
+
+**Oscillation Conditions:**
+- Resonant frequency: f = 1/(2π√LC)
+- Barkhausen criteria
+- Amplitude and frequency stability
+
+### AM Modulator
+
+Amplitude modulation of a carrier signal.
+
+```  
+Components:
+- RF carrier oscillator
+- Audio signal source
+- Multiplier/mixer circuit
+- Output coupling
+```
+
+**Modulation Analysis:**
+- Carrier frequency
+- Modulation depth
+- Sideband generation
+- Spectrum analysis
+
+## Test and Measurement
+
+### Function Generator
+
+Multi-waveform signal source using op-amps and comparators.
+
+```
+Waveforms:
+- Sine wave
+- Square wave
+- Triangle wave
+- Adjustable frequency and amplitude
+```
+
+### Phase-Locked Loop (PLL)
+
+Frequency synthesis and synchronization circuit.
+
+```
+Components:
+- Phase detector
+- Loop filter
+- Voltage-controlled oscillator (VCO)
+- Frequency divider
+```
+
+**Applications:**
+- Frequency multiplication
+- Clock recovery
+- FM demodulation
+
+## Loading Example Circuits
+
+Many of these examples are available as pre-built circuits:
+
+1. **In CircuitJS1**: Use File → Load Example
+2. **From Text Files**: Import `.txt` circuit files
+3. **From URLs**: Paste circuit URLs directly
+
+## Creating Your Own Examples
+
+To save and share your circuits:
+
+1. **Design Your Circuit**: Build and test thoroughly
+2. **Add Documentation**: Use text labels for explanation
+3. **Export**: Save as `.txt` or generate URL
+4. **Share**: Post on forums, GitHub, or educational sites
+
+## Exercise Suggestions
+
+### Beginner Level
+- Build a simple flasher circuit using RC timing
+- Create a voltage divider and measure outputs
+- Construct basic logic gates and verify operation
+
+### Intermediate Level  
+- Design a multi-stage amplifier with frequency response analysis
+- Build a digital clock using counters and decoders
+- Create a simple power supply with regulation
+
+### Advanced Level
+- Design a switching power supply with feedback control
+- Build a complete AM radio receiver
+- Create a microprocessor-based control system
+
+---
+
+*These examples provide starting points for learning circuit analysis and design. Experiment with component values and configurations to deepen your understanding.*

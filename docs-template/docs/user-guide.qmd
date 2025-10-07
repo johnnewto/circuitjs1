@@ -1,0 +1,253 @@
+---
+title: "User Guide"
+subtitle: "Complete guide to using CircuitJS1"
+---
+
+## Getting Started
+
+CircuitJS1 is a browser-based electronic circuit simulator that allows you to design, build, and analyze circuits in real-time. This guide covers everything you need to know to get started.
+
+## Interface Overview
+
+### Main Areas
+
+- **Circuit Canvas**: The main area where you build and view your circuit
+- **Component Menu**: Right-click to access all available components
+- **Properties Panel**: Right-click components to edit their properties
+- **Scope Display**: Built-in oscilloscope for viewing signals
+- **Control Buttons**: Play/pause, reset, and other simulation controls
+
+### Navigation
+
+- **Zoom**: Use mouse wheel or Ctrl + mouse wheel
+- **Pan**: Hold Shift and drag, or use middle mouse button
+- **Select**: Click on components or drag to select multiple
+- **Connect**: Click and drag between component terminals
+
+## Building Circuits
+
+### Adding Components
+
+1. **Right-click** on empty space to open the component menu
+2. **Navigate** through categories (Passive, Active, Logic, etc.)
+3. **Click** on the component you want to add
+4. **Position** the component by moving your mouse
+5. **Click** to place the component
+
+### Connecting Components
+
+1. **Click** on a component terminal (the small dots)
+2. **Drag** to another component terminal
+3. **Release** to create the connection
+4. **Double-click** on wires to add junction dots
+
+### Editing Components
+
+1. **Right-click** on any component
+2. **Select "Edit"** from the context menu
+3. **Modify** parameters in the dialog box
+4. **Click "OK"** to apply changes
+
+## Component Categories
+
+### Passive Components
+
+#### Resistors
+- **Fixed Resistor**: Standard resistance value
+- **Variable Resistor**: Adjustable resistance (potentiometer)
+- **Photoresistor**: Light-dependent resistor
+
+**Key Properties:**
+- Resistance value (Ohms)
+- Power rating (Watts)
+
+#### Capacitors
+- **Fixed Capacitor**: Standard capacitance value
+- **Variable Capacitor**: Adjustable capacitance
+- **Polarized Capacitor**: Electrolytic capacitors with polarity
+
+**Key Properties:**
+- Capacitance value (Farads)
+- Initial voltage
+- ESR (Equivalent Series Resistance)
+
+#### Inductors
+- **Fixed Inductor**: Standard inductance value
+- **Variable Inductor**: Adjustable inductance
+
+**Key Properties:**
+- Inductance value (Henries)
+- Series resistance
+- Initial current
+
+### Active Components
+
+#### Diodes
+- **Standard Diode**: Basic PN junction diode
+- **Zener Diode**: Voltage regulation
+- **LED**: Light-emitting diode
+- **Schottky Diode**: Fast switching, low forward voltage
+
+#### Transistors
+- **NPN/PNP Bipolar**: Standard bipolar junction transistors
+- **N-Channel/P-Channel MOSFET**: Field-effect transistors
+- **JFET**: Junction field-effect transistors
+
+#### Operational Amplifiers
+- **Ideal Op-Amp**: Perfect characteristics
+- **Real Op-Amp**: Includes limitations like finite gain, bandwidth
+
+### Sources
+
+#### Voltage Sources
+- **DC Voltage**: Constant voltage
+- **AC Voltage**: Sinusoidal voltage source
+- **Square Wave**: Digital/PWM signals
+- **Triangle Wave**: Linear ramp signals
+
+#### Current Sources
+- **DC Current**: Constant current
+- **AC Current**: Sinusoidal current source
+
+### Logic Components
+
+#### Basic Gates
+- **AND, OR, NOT**: Fundamental logic operations
+- **NAND, NOR**: Universal gates
+- **XOR, XNOR**: Exclusive operations
+
+#### Flip-Flops and Latches
+- **D Flip-Flop**: Data storage with clock
+- **JK Flip-Flop**: Universal flip-flop
+- **SR Latch**: Set-reset memory
+
+## Measurement and Analysis
+
+### Built-in Oscilloscope
+
+The scope displays voltage and current waveforms in real-time:
+
+1. **Right-click** on any wire or component terminal
+2. **Select "View in Scope"** to add the signal
+3. **Adjust** time base and voltage scale using controls
+4. **Remove** signals by right-clicking scope traces
+
+### Meters and Probes
+
+- **Voltmeter**: Measures voltage across components
+- **Ammeter**: Measures current through branches
+- **Probe**: Shows voltage values as text labels
+
+### Analysis Features
+
+- **DC Operating Point**: Steady-state analysis
+- **AC Analysis**: Frequency response (when available)
+- **Transient Analysis**: Time-domain simulation
+
+## Simulation Controls
+
+### Time Controls
+
+- **Play/Pause (Space)**: Start/stop the simulation
+- **Reset (R)**: Return circuit to initial conditions
+- **Speed Control**: Adjust simulation speed
+
+### Solver Settings
+
+Access advanced settings through the Options menu:
+
+- **Time Step**: Simulation accuracy vs. speed
+- **Solver Method**: Numerical integration method
+- **Convergence**: Iteration limits for nonlinear circuits
+
+## File Operations
+
+### Saving Circuits
+
+1. **File Menu > Export**: Save circuit to file
+2. **Choose Format**: 
+   - `.circuitjs` - Native format
+   - `.txt` - Text representation
+   - URL - Shareable link
+
+### Loading Circuits
+
+1. **File Menu > Import**: Load saved circuit
+2. **Drag and Drop**: Drop files onto the canvas
+3. **URL**: Paste circuit URL in address bar
+
+### Sharing Circuits
+
+- **Generate URL**: Create shareable web link
+- **Export Image**: Save circuit diagram as PNG
+- **Print**: Send to printer or PDF
+
+## Tips and Best Practices
+
+### Circuit Design
+
+1. **Start Simple**: Build and test basic blocks first
+2. **Use Ground**: Connect reference points to ground
+3. **Label Nodes**: Add text labels for clarity
+4. **Group Related Components**: Organize logically
+
+### Debugging
+
+1. **Check Connections**: Ensure all nodes are properly connected
+2. **Verify Values**: Double-check component parameters
+3. **Use Scope**: Monitor key signals during simulation
+4. **Start with DC**: Verify DC operating points first
+
+### Performance
+
+1. **Minimize Scope Traces**: Only monitor necessary signals
+2. **Adjust Time Step**: Balance accuracy with speed
+3. **Simplify When Possible**: Use ideal components for initial analysis
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| **Ctrl+N** | New circuit |
+| **Ctrl+O** | Open/Import |
+| **Ctrl+S** | Save/Export |
+| **Ctrl+Z/Y** | Undo/Redo |
+| **Space** | Play/Pause |
+| **R** | Reset simulation |
+| **Delete** | Remove selected |
+| **Ctrl+A** | Select all |
+| **Ctrl+C/V** | Copy/Paste |
+
+## Troubleshooting
+
+### Common Issues
+
+**Circuit Won't Simulate**
+- Check for disconnected nodes
+- Ensure there's a ground connection
+- Verify component values are reasonable
+
+**Simulation Runs Slowly**
+- Reduce scope traces
+- Increase time step size
+- Simplify the circuit
+
+**Oscilloscope Shows Nothing**
+- Check signal connections
+- Adjust voltage/time scales
+- Verify simulation is running
+
+**Components Behave Unexpectedly**
+- Review component parameters
+- Check for proper connections
+- Consider real-world limitations
+
+### Getting Help
+
+- Check the [Examples](examples.qmd) for similar circuits
+- Review [Tutorials](tutorials.qmd) for guided learning
+- Visit the [GitHub Issues](https://github.com/johnnewto/circuitjs1/issues) for bug reports
+
+---
+
+*This guide covers the essential features of CircuitJS1. For advanced topics and development information, see the [Building Guide](building.qmd) and [Contributing Guidelines](contributing.qmd).*

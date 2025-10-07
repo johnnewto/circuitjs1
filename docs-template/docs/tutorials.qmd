@@ -1,0 +1,341 @@
+---
+title: "Tutorials"
+subtitle: "Step-by-step learning guides"
+---
+
+## Getting Started Tutorials
+
+### Tutorial 1: Your First Circuit
+
+Learn the basics by building a simple LED circuit.
+
+#### What You'll Learn
+- How to add components
+- Making connections
+- Running simulations
+- Using basic measurement tools
+
+#### Step-by-Step Instructions
+
+1. **Start with a New Circuit**
+   - Open CircuitJS1
+   - You should see a blank canvas
+
+2. **Add a Voltage Source**
+   - Right-click on empty space
+   - Navigate to: **Inputs and Sources > Voltage Source (DC)**
+   - Click to place the voltage source
+   - Right-click the voltage source and select **Edit**
+   - Set voltage to **5V**
+
+3. **Add a Resistor**
+   - Right-click on empty space
+   - Navigate to: **Passive Components > Resistor**
+   - Place the resistor near the voltage source
+   - Edit the resistor value to **330Ω**
+
+4. **Add an LED**
+   - Right-click on empty space
+   - Navigate to: **Active Components > LED**
+   - Place the LED in your circuit
+
+5. **Make Connections**
+   - Click on the positive terminal of the voltage source
+   - Drag to one end of the resistor
+   - Connect the other end of the resistor to the LED anode (positive)
+   - Connect the LED cathode (negative) back to the voltage source negative terminal
+
+6. **Run the Simulation**
+   - Press **Space** or click the play button
+   - The LED should light up!
+
+#### What's Happening?
+- The resistor limits current through the LED
+- Without it, the LED would be damaged by excessive current
+- Current flows from positive to negative through the complete circuit
+
+---
+
+### Tutorial 2: RC Timing Circuit
+
+Build a circuit that demonstrates capacitor charging and discharging.
+
+#### Components Needed
+- 12V DC voltage source
+- 1kΩ resistor
+- 100µF capacitor
+- Switch
+- Voltmeter or scope probe
+
+#### Circuit Construction
+
+1. **Build the Basic RC Circuit**
+   - Place voltage source, resistor, and capacitor in series
+   - Add a switch in series to control the circuit
+
+2. **Add Measurement**
+   - Right-click on the capacitor
+   - Select **View in Scope** to monitor voltage
+   - Or add a voltmeter across the capacitor
+
+3. **Observe Charging**
+   - Close the switch
+   - Watch the capacitor voltage rise exponentially
+   - Note the time constant τ = RC = 1kΩ × 100µF = 0.1 seconds
+
+4. **Observe Discharging**
+   - Add a second switch to discharge the capacitor through a resistor
+   - Watch the exponential decay
+
+#### Key Learning Points
+- **Time Constant**: τ = RC determines charging/discharging speed
+- **63% Rule**: Capacitor reaches 63% of final voltage in one time constant
+- **Exponential Behavior**: Charging follows 1 - e^(-t/τ), discharging follows e^(-t/τ)
+
+---
+
+### Tutorial 3: Op-Amp Basics
+
+Learn operational amplifier fundamentals with a non-inverting amplifier.
+
+#### Theory Review
+- Op-amps have very high gain (ideally infinite)
+- **Golden Rules**: 
+  1. No current flows into the inputs
+  2. The op-amp tries to make both inputs equal
+
+#### Building the Circuit
+
+1. **Add the Op-Amp**
+   - Use **Active Components > Op-Amp (ideal)**
+   - This gives us perfect characteristics for learning
+
+2. **Create the Feedback Network**
+   - Connect a 10kΩ resistor from output to inverting input (-)
+   - Connect a 1kΩ resistor from inverting input to ground
+
+3. **Add Input Signal**
+   - Connect an AC voltage source (1V, 1kHz) to the non-inverting input (+)
+
+4. **Power Supply**
+   - Connect ±15V supplies to the op-amp power pins
+
+5. **Measure Output**
+   - Use scope to monitor both input and output
+
+#### Expected Results
+- **Gain**: (R1 + R2) / R2 = (10k + 1k) / 1k = 11
+- **Output**: 11V peak-to-peak sine wave
+- **Phase**: Input and output are in phase (non-inverting)
+
+---
+
+## Intermediate Tutorials
+
+### Tutorial 4: Digital Logic
+
+Build and test basic logic gates and combinations.
+
+#### Part A: Individual Gates
+
+1. **Test AND Gate**
+   - Add 2-input AND gate
+   - Connect logic switches to inputs
+   - Connect LED to output
+   - Test all four input combinations
+
+2. **Truth Table Verification**
+   ```
+   A | B | Output
+   0 | 0 |   0
+   0 | 1 |   0
+   1 | 0 |   0
+   1 | 1 |   1
+   ```
+
+#### Part B: Combinational Logic
+
+Build a simple combinational circuit: (A AND B) OR (C AND D)
+
+1. **Use Multiple Gates**
+   - 2× AND gates
+   - 1× OR gate
+   - 4× input switches
+   - 1× output LED
+
+2. **Test Systematically**
+   - Create a truth table
+   - Test each combination
+   - Verify expected behavior
+
+---
+
+### Tutorial 5: Oscillators
+
+Create circuits that generate their own timing signals.
+
+#### Relaxation Oscillator
+
+Using an op-amp comparator with RC timing:
+
+1. **Basic Configuration**
+   - Op-amp as comparator
+   - RC timing network
+   - Positive feedback for hysteresis
+
+2. **Component Values**
+   - Timing: R = 10kΩ, C = 1µF
+   - Feedback: R1 = 10kΩ, R2 = 10kΩ
+   - Frequency ≈ 1/(2.2 × RC) ≈ 45 Hz
+
+#### Multivibrator Using Logic Gates
+
+1. **Ring Oscillator**
+   - Chain of NOT gates (odd number)
+   - RC delay networks
+   - Observe frequency vs. number of stages
+
+---
+
+## Advanced Tutorials
+
+### Tutorial 6: Active Filters
+
+Design and build active filter circuits.
+
+#### Low-Pass Filter
+
+1. **Sallen-Key Topology**
+   - Op-amp buffer configuration
+   - Two RC stages
+   - Unity gain version
+
+2. **Design Process**
+   - Choose cutoff frequency (fc = 1000 Hz)
+   - Calculate component values
+   - R = 1.6kΩ, C = 100nF
+
+3. **Frequency Response**
+   - Sweep input frequency from 10 Hz to 100 kHz
+   - Plot magnitude response
+   - Verify -3dB point at cutoff frequency
+   - Observe -40dB/decade roll-off above cutoff
+
+#### High-Pass Filter
+
+1. **Swap R and C positions** from low-pass design
+2. **Same cutoff frequency** calculation
+3. **Opposite response**: passes high frequencies, rejects low
+
+---
+
+### Tutorial 7: Power Supply Design
+
+Build a complete linear power supply.
+
+#### Transformer and Rectification
+
+1. **Step-Down Transformer**
+   - 120V AC input
+   - 24V AC output
+   - Center-tapped for full-wave rectification
+
+2. **Bridge Rectifier**
+   - 4× 1N4007 diodes
+   - Convert AC to pulsating DC
+
+3. **Filter Capacitor**
+   - Large electrolytic capacitor (1000µF)
+   - Smooth the pulsating DC
+
+#### Voltage Regulation
+
+1. **Three-Terminal Regulator**
+   - LM7812 for +12V output
+   - Input and output capacitors
+   - Heat sink considerations
+
+2. **Load Testing**
+   - Variable load resistor
+   - Monitor regulation under different loads
+   - Measure ripple and regulation
+
+---
+
+## Troubleshooting Tutorials
+
+### Common Circuit Problems
+
+#### Problem: Circuit Doesn't Work
+
+**Systematic Debugging Approach:**
+
+1. **Check Power**
+   - Verify voltage sources are connected
+   - Measure actual voltages with scope/meter
+
+2. **Verify Connections**
+   - Look for broken or missing connections
+   - Check for short circuits
+
+3. **Component Values**
+   - Double-check all component values
+   - Ensure realistic values (not too large/small)
+
+4. **Grounding**
+   - Ensure proper ground connections
+   - One common reference point
+
+#### Problem: Oscilloscope Shows Nothing
+
+1. **Signal Present?**
+   - Check if circuit is actually running
+   - Verify signal source is active
+
+2. **Scope Settings**
+   - Appropriate time base
+   - Correct voltage scale
+   - Signal within scope range
+
+3. **Probe Connections**
+   - Verify probe points
+   - Check for high-impedance nodes
+
+---
+
+## Practice Exercises
+
+### Exercise 1: Design Challenges
+
+1. **LED Flasher**: Create a circuit that blinks an LED at 1 Hz
+2. **Voltage Divider**: Design a circuit that outputs exactly 3.3V from 5V
+3. **Logic Function**: Implement F = A'B + AB' (XOR function) using only NAND gates
+
+### Exercise 2: Analysis Practice
+
+Given existing circuits:
+1. Calculate expected voltages and currents
+2. Verify with simulation
+3. Explain any discrepancies
+
+### Exercise 3: Optimization
+
+Take a working circuit and:
+1. Reduce component count
+2. Improve efficiency
+3. Add protection features
+
+---
+
+## Next Steps
+
+After completing these tutorials:
+
+1. **Explore Examples**: Check out the [Circuit Examples](examples.qmd)
+2. **Read the User Guide**: Detailed reference in [User Guide](user-guide.qmd)
+3. **Contribute**: Learn about [Contributing](contributing.qmd) to the project
+4. **Build from Source**: See [Building Guide](building.qmd) for development
+
+---
+
+*These tutorials progress from basic concepts to advanced circuit design. Take your time with each section and experiment with variations to deepen your understanding.*

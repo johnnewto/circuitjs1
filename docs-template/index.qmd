@@ -1,0 +1,72 @@
+---
+title: "CircuitJS1 - Electronic Circuit Simulator"
+subtitle: "A powerful browser-based circuit simulation tool"
+---
+
+## Welcome to CircuitJS1
+
+CircuitJS1 is an electronic circuit simulator that runs in web browsers. It was originally written by Paul Falstad as a Java Applet and adapted by Iain Sharp to run in modern browsers using Google Web Toolkit (GWT).
+
+::: {.callout-tip}
+## Quick Start
+Ready to start simulating circuits? [Launch the CircuitJS1 App](app.qmd) or browse our [examples](docs/examples.qmd).
+:::
+
+## Features
+
+- **Real-time simulation** of analog and digital circuits
+- **Interactive components** - drag, connect, and modify circuit elements
+- **Oscilloscope display** with multiple channels
+- **Extensive component library** including:
+  - Passive components (resistors, capacitors, inductors)
+  - Active components (transistors, op-amps, logic gates)
+  - Voltage and current sources
+  - Measurement tools
+- **Save and load circuits** in multiple formats
+- **Educational examples** covering basic to advanced topics
+
+## Getting Started
+
+::::: {.grid}
+
+::: {.g-col-4}
+### 📱 Use the App
+Launch the circuit simulator directly in your browser.
+
+[Start Simulating →](app.qmd)
+:::
+
+::: {.g-col-4}
+### 📚 Learn
+Step-by-step tutorials and examples to get you started.
+
+[View Tutorials →](docs/tutorials.qmd)
+:::
+
+::: {.g-col-4}
+### 🔧 Develop
+Information for developers wanting to contribute or build locally.
+
+[Development Guide →](docs/building.qmd)
+:::
+
+:::::
+
+## Recent Updates
+
+- Enhanced component library with new elements
+- Improved user interface and mobile support
+- Better performance and stability
+- Extended file import/export capabilities
+
+## Community & Support
+
+CircuitJS1 is open source and benefits from community contributions. Whether you're reporting bugs, suggesting features, or contributing code, we welcome your involvement.
+
+- [GitHub Repository](https://github.com/johnnewto/circuitjs1)
+- [Issue Tracker](https://github.com/johnnewto/circuitjs1/issues)
+- [Contributing Guidelines](docs/contributing.qmd)
+
+---
+
+*CircuitJS1 is free software released under the GPL license. It's used by educators, students, and professionals worldwide for circuit design and analysis.*

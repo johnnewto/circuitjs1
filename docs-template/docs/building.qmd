@@ -1,0 +1,171 @@
+---
+title: "Building CircuitJS1"
+subtitle: "Development setup and build instructions"
+---
+
+## Prerequisites
+
+CircuitJS1 is a Java application compiled to JavaScript using Google Web Toolkit (GWT). You'll need:
+
+- **Java 8 JDK** or later
+- **Apache Ant** for building
+- **GWT SDK** (automatically downloaded by dev scripts)
+
+## Quick Setup with Dev Container
+
+The easiest way to get started is using the provided development container:
+
+### Using GitHub Codespaces or Gitpod
+
+1. Fork the [circuitjs1 repository](https://github.com/johnnewto/circuitjs1)
+2. Open in your preferred cloud development environment
+3. The container will automatically set up Java, GWT, and other dependencies
+
+### Using Local Dev Container
+
+```bash
+# Clone the repository
+git clone https://github.com/johnnewto/circuitjs1.git
+cd circuitjs1
+
+# Run the setup script
+./dev.sh setup
+
+# Start development servers
+./dev.sh start
+```
+
+This will start:
+- Web server on http://localhost:8000
+- GWT code server on http://localhost:9876
+
+## Manual Setup
+
+### Install Dependencies
+
+On Ubuntu/Debian:
+```bash
+sudo apt-get update
+sudo apt-get install openjdk-8-jdk-headless ant
+```
+
+On macOS:
+```bash
+brew install openjdk@8 ant
+```
+
+### Build with Gradle
+
+```bash
+# Compile GWT application
+gradle compileGwt --console verbose --info
+
+# Create deployment directory
+gradle makeSite --console verbose --info
+```
+
+The compiled application will be in the `site/` directory.
+
+### Build with Ant (Legacy)
+
+```bash
+# Compile the application
+ant build
+
+# The output will be in the war/ directory
+```
+
+## Development Workflow
+
+### Eclipse Setup
+
+1. Install **Eclipse for Java Developers**
+2. Add the **GWT Plugin for Eclipse**
+3. Import the project
+4. Use **Debug As > GWT Development Mode** for live development
+
+### VS Code Setup
+
+The repository includes VS Code configuration for development containers:
+
+1. Install the **Remote-Containers** extension
+2. Open the repository in VS Code
+3. Click "Reopen in Container" when prompted
+4. Use the integrated terminal to run build commands
+
+## File Structure
+
+The build system works with these key directories:
+
+```
+src/com/lushprojects/circuitjs1/client/  # Java source code
+war/                                     # Web application files
+  circuitjs.html                        # Main application page
+  circuitjs1/                           # Generated GWT output
+build/                                  # Gradle build outputs
+site/                                   # Final deployment files
+```
+
+## Deployment
+
+### Local Testing
+
+After building, you can test locally:
+
+```bash
+cd site  # or war/ for ant builds
+python3 -m http.server 8080
+```
+
+Then open http://localhost:8080/circuitjs.html
+
+### Production Deployment
+
+1. Build the application using Gradle or Ant
+2. Copy all files from `site/` (or `war/`) to your web server
+3. **Exclude** the `WEB-INF/` directory from deployment
+4. Customize `circuitjs.html` header for analytics, favicon, etc.
+5. Optionally customize `iframe.html` for branding
+
+### Required Files
+
+For deployment, you need:
+- `circuitjs.html` - Main application
+- `circuitjs1/` directory - GWT compiled output
+- Supporting files (CSS, images, etc.)
+
+## Troubleshooting
+
+### Common Issues
+
+**Build fails with Java version errors:**
+- Ensure you're using Java 8 or later
+- Set `JAVA_HOME` environment variable
+
+**GWT compilation out of memory:**
+- Increase heap size: `export ANT_OPTS="-Xmx2g"`
+
+**Development mode doesn't reload:**
+- Clear browser cache
+- Restart the GWT code server
+- Check that port 9876 is accessible
+
+**Permission denied on dev.sh:**
+```bash
+chmod +x dev.sh
+```
+
+### Getting Help
+
+- Check the [Contributing Guide](contributing.qmd) for more details
+- Browse existing [GitHub Issues](https://github.com/johnnewto/circuitjs1/issues)
+- Review the original [README](https://github.com/johnnewto/circuitjs1/blob/master/README.md)
+
+## Next Steps
+
+Once you have a working build:
+
+1. Try modifying a simple Java file in `src/`
+2. Rebuild and test your changes
+3. Explore the [Contributing Guidelines](contributing.qmd)
+4. Consider adding new circuit elements or features

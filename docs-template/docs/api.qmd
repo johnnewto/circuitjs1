@@ -1,0 +1,336 @@
+---
+title: "API Reference"
+subtitle: "Developer reference for CircuitJS1 internals"
+---
+
+## Core Classes
+
+### CirSim - Main Simulator
+
+The central controller class that manages the entire simulation.
+
+#### Key Methods
+
+```java
+public class CirSim {
+    // Circuit analysis and simulation
+    void analyzeCircuit()           // Setup circuit for analysis
+    void stampCircuit()             // Build admittance matrix
+    void runCircuit()               // Execute simulation timestep
+    
+    // Matrix operations
+    void stampResistor(int n1, int n2, double r)
+    void stampVoltageSource(int n1, int n2, int vs, double v)
+    void stampCurrentSource(int n1, int n2, double i)
+    
+    // UI and display
+    void updateScreen()             // Refresh display
+    void drawCircuit()              // Render all elements
+    
+    // File operations
+    String dumpCircuit()            // Serialize circuit
+    void loadCircuit(String dump)   // Deserialize circuit
+}
+```
+
+### CircuitElm - Base Element Class
+
+Abstract base class for all circuit elements.
+
+#### Required Overrides
+
+```java
+public abstract class CircuitElm {
+    // Identification
+    abstract int getDumpType();     // Unique element type ID
+    abstract int getPostCount();    // Number of connection points
+    
+    // Simulation
+    abstract void stamp();          // Add to matrix (linear)
+    void doStep() {}                // Update each timestep (nonlinear)
+    boolean nonLinear() { return false; }
+    
+    // Visualization
+    abstract void draw();           // Render element
+    abstract void setPoints();      // Calculate geometry
+    abstract Point getPost(int n);  // Get connection point
+    
+    // User interface
+    void getInfo(String arr[]) {}   // Mouse-over information
+    EditInfo getEditInfo(int n) { return null; }
+    void setEditInfo(int n, EditInfo ei) {}
+    
+    // Serialization
+    String dump() { return super.dump(); }
+}
+```
+
+#### Element Lifecycle
+
+1. **Construction** - Element created by user or file load
+2. **setPoints()** - Calculate geometry and connection points
+3. **stamp()** - Add linear components to matrix (once per analysis)
+4. **doStep()** - Update nonlinear components (each timestep)
+5. **draw()** - Render visual representation
+
+## Simulation Engine
+
+### Modified Nodal Analysis (MNA)
+
+CircuitJS1 uses MNA to solve circuits as matrix equations: **Ax = b**
+
+- **A**: Admittance matrix (conductances, voltage sources)
+- **x**: Solution vector (node voltages, currents)
+- **b**: Right-hand side (current sources, voltage source values)
+
+#### Matrix Building
+
+```java
+// Linear elements stamp once during analysis
+void stamp() {
+    sim.stampResistor(nodes[0], nodes[1], 1.0/resistance);
+}
+
+// Nonlinear elements update each iteration
+void doStep() {
+    double current = calculateCurrent();
+    sim.stampCurrentSource(nodes[0], nodes[1], current);
+}
+```
+
+### Node Numbering
+
+- **Node 0**: Always ground (0V reference)
+- **Positive integers**: Circuit nodes
+- **Negative integers**: Internal nodes (for complex elements)
+
+### Stamping Functions
+
+#### Resistor Stamping
+```java
+void stampResistor(int n1, int n2, double conductance) {
+    // Add conductance to diagonal terms
+    // Subtract from off-diagonal terms
+}
+```
+
+#### Voltage Source Stamping  
+```java
+void stampVoltageSource(int n1, int n2, int vs, double voltage) {
+    // Add row/column for voltage source current
+    // Enforce voltage constraint
+}
+```
+
+#### Current Source Stamping
+```java
+void stampCurrentSource(int n1, int n2, double current) {
+    // Add current to right-hand side vector
+}
+```
+
+## Component Implementation Patterns
+
+### Passive Components
+
+Simple linear elements that stamp once:
+
+```java
+public class ResistorElm extends CircuitElm {
+    double resistance = 1000; // 1kΩ default
+    
+    public void stamp() {
+        sim.stampResistor(nodes[0], nodes[1], resistance);
+    }
+    
+    public void getInfo(String arr[]) {
+        arr[0] = "resistor";
+        arr[1] = "R = " + getUnitText(resistance, sim.ohmString);
+        arr[2] = "I = " + getCurrentText(getCurrent());
+        arr[3] = "P = " + getUnitText(getPower(), "W");
+    }
+}
+```
+
+### Active Components
+
+Nonlinear elements that update each timestep:
+
+```java
+public class DiodeElm extends CircuitElm {
+    double fwdrop = 0.7;    // Forward voltage drop
+    double zvoltage = 0;    // Zener voltage (0 = regular diode)
+    
+    public boolean nonLinear() { return true; }
+    
+    public void doStep() {
+        double voltage = volts[0] - volts[1];
+        double current;
+        
+        if (voltage > fwdrop) {
+            // Forward biased - exponential model
+            current = leakage * (Math.exp(voltage/vt) - 1);
+        } else if (zvoltage > 0 && voltage < -zvoltage) {
+            // Zener breakdown
+            current = -leakage * Math.exp((-voltage-zvoltage)/vt);
+        } else {
+            // Reverse biased - small leakage
+            current = leakage;
+        }
+        
+        sim.stampCurrentSource(nodes[0], nodes[1], current);
+    }
+}
+```
+
+### Digital Components
+
+Logic elements with discrete states:
+
+```java
+public class AndGateElm extends GateElm {
+    public boolean calcFunction() {
+        boolean result = true;
+        for (int i = 0; i < getPostCount()-1; i++) {
+            if (!getInput(i)) {
+                result = false;
+                break;
+            }
+        }
+        return result;
+    }
+}
+```
+
+## Drawing and UI
+
+### Coordinate System
+
+- Circuit canvas uses pixel coordinates
+- Origin (0,0) at top-left
+- Positive X to the right, positive Y downward
+
+### Drawing Methods
+
+```java
+public void draw() {
+    setBbox();                      // Set bounding box for selection
+    draw2Leads();                   // Draw connection lines
+    
+    // Draw component symbol
+    g.setColor(needsHighlight() ? selectColor : whiteColor);
+    drawThickLine(point1, point2);
+    
+    // Draw component-specific graphics
+    drawResistorSymbol(point1, point2);
+    
+    drawPosts();                    // Draw connection dots
+    
+    // Add current animation if enabled
+    if (sim.dragElm != this) {
+        drawDots();
+    }
+}
+```
+
+### User Interface Elements
+
+#### Edit Dialogs
+
+```java
+public EditInfo getEditInfo(int n) {
+    switch (n) {
+        case 0: 
+            return new EditInfo("Resistance (ohms)", resistance, 0, 0);
+        case 1:
+            return new EditInfo("Power Rating (W)", powerRating, 0, 0);
+    }
+    return null;
+}
+
+public void setEditInfo(int n, EditInfo ei) {
+    switch (n) {
+        case 0: resistance = ei.value; break;
+        case 1: powerRating = ei.value; break;
+    }
+}
+```
+
+## File Format
+
+### Circuit Serialization
+
+Circuits are saved as text with space-separated values:
+
+```
+$ 1 0.000005 10.20027730826997 50 5 50
+r 144 144 144 208 0 1000
+w 144 144 208 144 0
+L 208 144 256 144 0 0 false 5 0
+```
+
+#### Format Details
+
+- **$**: Circuit metadata (version, timestep, etc.)
+- **Element lines**: `type x1 y1 x2 y2 flags [parameters...]`
+- **w**: Wire connections
+- **r**: Resistor with resistance value
+- **L**: Inductor with inductance and initial current
+
+### Element Dump Format
+
+```java
+public String dump() {
+    return super.dump() + " " + resistance + " " + powerRating;
+}
+
+// Constructor for loading
+public ResistorElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
+    super(xa, ya, xb, yb, f);
+    resistance = Double.parseDouble(st.nextToken());
+    if (st.hasMoreTokens()) {
+        powerRating = Double.parseDouble(st.nextToken());
+    }
+}
+```
+
+## Performance Optimization
+
+### Matrix Efficiency
+
+- **Sparse matrices**: Only store non-zero elements
+- **LU decomposition**: Factorize matrix once for linear circuits
+- **Row elimination**: Remove trivial equations
+
+### Drawing Optimization
+
+- **Dirty rectangles**: Only redraw changed areas
+- **Level of detail**: Simplify complex elements when zoomed out
+- **Canvas optimization**: Minimize graphics operations
+
+## Extension Points
+
+### Adding New Elements
+
+1. **Choose base class**: `CircuitElm`, `ChipElm`, `CompositeElm`
+2. **Implement required methods**: See CircuitElm reference above
+3. **Add to factory**: Update `constructElement()` method
+4. **Add to menu**: Update UI component lists
+
+### Custom Analysis
+
+```java
+// Add custom analysis methods to CirSim
+public void customAnalysis() {
+    // Access circuit matrix and solution
+    double[][] matrix = circuitMatrix;
+    double[] solution = circuitRightSide;
+    
+    // Perform custom calculations
+    // Update display or export results
+}
+```
+
+---
+
+*This API reference covers the core interfaces for extending CircuitJS1. For implementation examples, see the existing element classes in the source code.*

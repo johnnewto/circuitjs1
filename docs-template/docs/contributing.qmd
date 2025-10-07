@@ -1,0 +1,303 @@
+---
+title: "Contributing to CircuitJS1"
+subtitle: "How to contribute to the project"
+---
+
+## Welcome Contributors!
+
+CircuitJS1 is an open-source project that welcomes contributions from the community. Whether you're fixing bugs, adding features, improving documentation, or helping with translations, your contributions are valuable.
+
+## Ways to Contribute
+
+### 🐛 Bug Reports
+- Report issues you encounter
+- Provide clear reproduction steps
+- Include circuit files when relevant
+
+### 💡 Feature Requests
+- Suggest new circuit components
+- Propose UI improvements
+- Request new analysis features
+
+### 🔧 Code Contributions
+- Fix existing bugs
+- Implement new features
+- Improve performance
+- Add test coverage
+
+### 📚 Documentation
+- Improve user guides
+- Add circuit examples
+- Write tutorials
+- Fix typos and errors
+
+### 🌍 Translations
+- Help translate the interface
+- Update existing translations
+- Add support for new languages
+
+## Getting Started
+
+### 1. Set Up Development Environment
+
+Follow the [Building Guide](building.qmd) to set up your development environment:
+
+```bash
+# Fork and clone the repository
+git clone https://github.com/your-username/circuitjs1.git
+cd circuitjs1
+
+# Set up development environment
+./dev.sh setup
+
+# Start development servers
+./dev.sh start
+```
+
+### 2. Understand the Codebase
+
+Key areas to familiarize yourself with:
+
+- **`src/com/lushprojects/circuitjs1/client/`** - Main Java source code
+- **Circuit Elements** - Individual component implementations (`*Elm.java` files)
+- **CirSim.java** - Main simulator class
+- **UI Components** - User interface elements
+
+### 3. Choose Your First Contribution
+
+Good first contributions:
+- Fix typos in documentation
+- Add circuit examples
+- Implement simple circuit components
+- Improve error messages
+- Add keyboard shortcuts
+
+## Development Workflow
+
+### Creating a Pull Request
+
+1. **Create a Branch**
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **Make Your Changes**
+   - Follow the coding style
+   - Add appropriate comments
+   - Test your changes thoroughly
+
+3. **Commit Your Changes**
+   ```bash
+   git add .
+   git commit -m "Add descriptive commit message"
+   ```
+
+4. **Push and Create PR**
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+   Then create a pull request on GitHub
+
+### Code Review Process
+
+- All changes go through code review
+- Be responsive to feedback
+- Update your PR based on suggestions
+- Maintainers will merge when ready
+
+## Coding Standards
+
+### Java Code Style
+
+- Use **camelCase** for variables and methods
+- Use **PascalCase** for class names
+- Circuit elements should end with `Elm` (e.g., `ResistorElm`)
+- Add JavaDoc comments for public methods
+- Keep methods reasonably short and focused
+
+### GWT Compatibility
+
+- Only use GWT-compatible Java libraries
+- No server-side Java code (client-side only)
+- Be mindful of JavaScript size and performance
+- Test in multiple browsers
+
+### Example Code Style
+
+```java
+/**
+ * Resistor circuit element implementation
+ */
+public class ResistorElm extends CircuitElm {
+    private double resistance;
+    
+    public ResistorElm(int xx, int yy, int xx2, int yy2, int f) {
+        super(xx, yy, xx2, yy2, f);
+        resistance = 1000; // Default 1kΩ
+    }
+    
+    @Override
+    public void stamp() {
+        sim.stampResistor(nodes[0], nodes[1], resistance);
+    }
+    
+    // ... more methods
+}
+```
+
+## Adding New Circuit Elements
+
+### Step-by-Step Process
+
+1. **Choose Element Type**
+   - Extend appropriate base class (`CircuitElm`, `ChipElm`, etc.)
+   - Pick unused dump type number
+
+2. **Implement Required Methods**
+   ```java
+   int getDumpType()        // Unique identifier
+   void stamp()             // Linear circuit analysis
+   void doStep()            // Nonlinear updates (if needed)
+   void draw()              // Visual representation
+   void getInfo(String[])   // Mouse-over information
+   ```
+
+3. **Add to UI**
+   - Update component menu
+   - Add to element creation logic
+   - Include in help documentation
+
+4. **Test Thoroughly**
+   - Verify electrical behavior
+   - Test save/load functionality
+   - Check different scenarios
+
+### Example: Simple Resistor
+
+See the existing `ResistorElm.java` for a complete example of a basic passive component.
+
+## Testing
+
+### Manual Testing
+
+- Build and run the application locally
+- Test your changes in multiple browsers
+- Verify functionality with various circuit configurations
+- Check that existing features still work
+
+### Circuit Examples
+
+Create test circuits that demonstrate your new features:
+
+```
+# Save test circuits in tests/ directory
+# Include in examples documentation
+# Provide clear descriptions of expected behavior
+```
+
+## Documentation Updates
+
+### User-Facing Changes
+
+- Update user guide for new features
+- Add examples demonstrating usage
+- Update keyboard shortcut lists
+- Add troubleshooting information
+
+### Developer Documentation
+
+- Update API documentation
+- Add inline code comments
+- Update build instructions if needed
+- Document any new dependencies
+
+## Internationalization
+
+### Adding Strings
+
+1. Use `Locale.LS()` function for user-visible text
+2. Run `lang/getstrings.py` to extract new strings
+3. Add translations to locale files
+4. Test with different languages
+
+### Translation Process
+
+1. English strings are the source
+2. Translators update `locale_*.txt` files
+3. Missing translations are tracked in `missing_*.txt`
+4. Use `lang/makemissing.sh` to generate missing translation files
+
+## Performance Considerations
+
+### Circuit Simulation
+
+- Minimize matrix operations in hot paths
+- Use efficient data structures
+- Avoid unnecessary object creation
+- Profile performance impact of changes
+
+### UI Responsiveness
+
+- Keep draw operations fast
+- Minimize DOM manipulation
+- Use appropriate update frequencies
+- Test on slower devices
+
+## Release Process
+
+### Version Management
+
+- Semantic versioning (major.minor.patch)
+- Tag releases in git
+- Update version numbers in code
+- Maintain changelog
+
+### Deployment
+
+- Test thoroughly before release
+- Update documentation
+- Announce new features
+- Monitor for issues post-release
+
+## Community Guidelines
+
+### Communication
+
+- Be respectful and constructive
+- Help newcomers learn the codebase
+- Share knowledge and best practices
+- Ask questions when unsure
+
+### Issue Tracking
+
+- Use clear, descriptive titles
+- Provide reproduction steps for bugs
+- Label issues appropriately
+- Follow up on your reports
+
+## Recognition
+
+Contributors are recognized in:
+- README.md acknowledgments
+- Release notes
+- Code comments for major contributions
+- Community discussions
+
+## Getting Help
+
+### Resources
+
+- [GitHub Discussions](https://github.com/johnnewto/circuitjs1/discussions) - Community help
+- [Issues](https://github.com/johnnewto/circuitjs1/issues) - Bug reports and feature requests
+- [Pull Requests](https://github.com/johnnewto/circuitjs1/pulls) - Code contributions
+- [Building Guide](building.qmd) - Development setup
+
+### Contact
+
+- GitHub issues for bugs and features
+- Discussions for general questions
+- Email maintainers for security issues
+
+---
+
+*Thank you for your interest in contributing to CircuitJS1! Every contribution, no matter how small, helps make the project better for everyone.*

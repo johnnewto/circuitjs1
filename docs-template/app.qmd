@@ -1,0 +1,58 @@
+---
+title: "CircuitJS1 App"
+subtitle: "Electronic Circuit Simulator"
+page-layout: custom
+---
+
+::: {.callout-note}
+## Circuit Simulator
+
+This is the full CircuitJS1 application. Use it to design, simulate, and analyze electronic circuits in real-time.
+
+**Quick Tips:**
+- Right-click on empty space to add components
+- Drag components to move them
+- Click and drag to connect components
+- Right-click components to edit properties
+- Use the scope to view signals
+:::
+
+<div style="width: 100%; height: 80vh; border: 1px solid #ddd;">
+<iframe src="../circuitjs.html" 
+        width="100%" 
+        height="100%" 
+        frameborder="0"
+        title="CircuitJS1 Electronic Circuit Simulator">
+</iframe>
+</div>
+
+## Help & Documentation
+
+- [User Guide](docs/user-guide.qmd) - Comprehensive usage instructions
+- [Tutorials](docs/tutorials.qmd) - Step-by-step learning materials  
+- [Examples](docs/examples.qmd) - Sample circuits to get you started
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| Ctrl+N | New circuit |
+| Ctrl+O | Open circuit file |
+| Ctrl+S | Save circuit |
+| Space | Pause/Resume simulation |
+| R | Reset simulation |
+| Ctrl+Z | Undo |
+| Ctrl+Y | Redo |
+
+## Troubleshooting
+
+If the simulator doesn't load properly:
+
+1. Ensure JavaScript is enabled in your browser
+2. Try refreshing the page
+3. Check your browser's developer console for errors
+4. Make sure you're using a modern browser (Chrome, Firefox, Safari, Edge)
+
+---
+
+*Having issues? Check our [documentation](docs/user-guide.qmd) or [report a bug](https://github.com/johnnewto/circuitjs1/issues).*

@@ -1,0 +1,60 @@
+project:
+  type: website
+  output-dir: "_site"
+
+website:
+  title: "CircuitJS1"
+  site-url: "https://your-domain.github.io/circuitjs1-docs"
+  description: "Electronic Circuit Simulator"
+  
+  navbar:
+    title: "CircuitJS1"
+    logo: "assets/logo.png"
+    left:
+      - text: "Home"
+        href: index.qmd
+      - text: "App"
+        href: app.qmd
+      - text: "Documentation"
+        menu:
+          - text: "User Guide"
+            href: docs/user-guide.qmd
+          - text: "Tutorials"
+            href: docs/tutorials.qmd
+          - text: "Examples"
+            href: docs/examples.qmd
+      - text: "Development"
+        menu:
+          - text: "Contributing"
+            href: docs/contributing.qmd
+          - text: "Building"
+            href: docs/building.qmd
+          - text: "API Reference"
+            href: docs/api.qmd
+
+  sidebar:
+    - title: "Documentation"
+      contents:
+        - docs/user-guide.qmd
+        - docs/tutorials.qmd
+        - docs/examples.qmd
+        - docs/building.qmd
+        - docs/contributing.qmd
+
+  page-footer:
+    left: |
+      Originally by Paul Falstad, adapted by Iain Sharp.
+      Documentation site built with [Quarto](https://quarto.org).
+    right: |
+      [GitHub Repository](https://github.com/johnnewto/circuitjs1)
+
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+    toc: true
+    code-fold: false
+    code-tools: true
+
+execute:
+  freeze: auto
