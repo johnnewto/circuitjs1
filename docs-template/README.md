@@ -155,6 +155,11 @@ If using a separate repository, you may need to configure:
   - **Cause**: Git checkout issues or `.gitignore` problems
   - **Manual fix**: Ensure `build.xml` is committed: `git add build.xml && git commit`
 
+- **"Could not find file gwt-servlet.jar to copy"**: GWT (Google Web Toolkit) not set up
+  - **Solution**: The workflow now runs `./dev.sh setup` to download GWT automatically
+  - **Cause**: Hardcoded GWT paths in build.xml, missing GWT installation
+  - **Manual fix**: Run `./dev.sh setup` locally before `./dev.sh compile`
+
 - **"Buildfile: build.xml does not exist!"**: The CircuitJS compilation step failed  
   - **Solution**: Ensure `ant` is installed in the workflow (already included)
   - **Cause**: Missing Apache Ant build tool or wrong working directory
@@ -184,8 +189,9 @@ If using a separate repository, you may need to configure:
 # Check all deployment requirements
 docs-template/check-deployment-requirements.sh
 
-# Test CircuitJS compilation
-./dev.sh compile
+# Set up GWT and test CircuitJS compilation
+./dev.sh setup    # Downloads GWT, generates correct build.xml
+./dev.sh compile  # Compiles with proper GWT paths
 
 # Test documentation build  
 cd docs-template

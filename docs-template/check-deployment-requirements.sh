@@ -94,11 +94,33 @@ else
     echo "⚠️  Ant not found locally (GitHub Actions will install)"
 fi
 
-# Test compilation
+# Test GWT setup and compilation
 echo ""
+echo "Checking GWT setup..."
+if [ -d "../gwt-2.8.2" ]; then
+    echo "✅ GWT found in expected location"
+elif [ -d "../gwt-"* ]; then
+    echo "✅ GWT found: $(ls -d ../gwt-* | head -1)"
+else
+    echo "⚠️  GWT not found. GitHub Actions will download it automatically."
+    echo "   To test locally, run: ./dev.sh setup"
+fi
+
+echo ""  
 echo "Testing local compilation..."
 if [ -x "dev.sh" ]; then
-    echo "Testing ./dev.sh compile..."
+    echo "Note: Compilation test may download GWT if not present..."
+    if [ ! -d "../gwt-"* ]; then
+        echo "Running setup first to download GWT..."
+        if ./dev.sh setup > /tmp/setup-test.log 2>&1; then
+            echo "✅ GWT setup completed"
+        else
+            echo "⚠️  GWT setup had issues. Check log:"
+            tail -10 /tmp/setup-test.log
+        fi
+    fi
+    
+    echo "Testing compilation..."
     if ./dev.sh compile > /tmp/compile-test.log 2>&1; then
         echo "✅ Local compilation successful"
     else
