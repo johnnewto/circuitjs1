@@ -69,13 +69,112 @@ python3 -m http.server 8080
 
 ## Deployment
 
-The site is automatically deployed to GitHub Pages via GitHub Actions when changes are pushed to the `main` branch.
+### GitHub Pages Setup
 
-The deployment workflow:
-1. Builds the latest CircuitJS1 application from source
-2. Copies the application files to the documentation site
-3. Renders the Quarto site
-4. Deploys to GitHub Pages
+To deploy this documentation site to GitHub Pages:
+
+#### 1. Quick Setup (Recommended)
+```bash
+# Run the automated setup script from the main repo root
+cd /path/to/circuitjs1  # Main repository root
+docs-template/setup-deployment.sh
+
+# Follow the instructions to enable GitHub Pages
+```
+
+#### 2. Manual Repository Setup
+```bash
+# Option A: Separate docs repository
+git clone https://github.com/yourusername/circuitjs1-docs.git
+
+# Option B: Use docs-template folder in main CircuitJS1 repo
+# (This is the current setup)
+```
+
+#### 3. GitHub Pages Configuration
+1. Go to your repository **Settings** → **Pages**
+2. Under **Source**, select **"GitHub Actions"**
+3. This enables custom GitHub Actions workflows for deployment
+
+#### 4. GitHub Actions Workflow
+The workflow file is created at `.github/workflows/deploy-docs.yml` in the main repository root.
+
+**Key features:**
+- **Automatic builds**: Triggers on pushes to `main`/`master` branch
+- **PR validation**: Tests builds on pull requests without deploying
+- **CircuitJS compilation**: Automatically compiles CircuitJS1 for production
+- **Site validation**: Checks that all required files are generated
+
+**Workflow steps:**
+1. Checkout repository with full history
+2. Setup Java 11 and Quarto
+3. Compile CircuitJS1 using `./dev.sh compile`
+4. Build documentation using `./build-docs-only.sh`
+5. Deploy to GitHub Pages
+
+**Triggers:**
+- Push to main/master branch with changes in:
+  - `docs-template/**` (documentation changes)
+  - `src/**` (CircuitJS source changes)
+  - `war/**` (CircuitJS build output changes)
+- Pull requests for validation (doesn't deploy)
+
+#### 5. Repository Structure for DeploymentFor **main CircuitJS1 repo** (current setup):
+```
+circuitjs1/
+├── docs-template/           # Documentation source
+│   ├── .github/workflows/  # Deployment workflows  
+│   ├── _quarto.yml
+│   ├── index.qmd
+│   └── app.qmd
+├── war/                    # CircuitJS compiled files
+└── dev.sh                  # Build script
+```
+
+For **separate docs repo**:
+```
+circuitjs1-docs/
+├── .github/workflows/      # Deployment workflows
+├── circuitjs1/            # Git submodule to main repo
+├── _quarto.yml
+├── index.qmd
+└── app.qmd
+```
+
+#### 6. Environment Variables (if needed)
+If using a separate repository, you may need to configure:
+- Repository secrets for accessing the main CircuitJS1 repo
+- Submodule configuration for automated builds
+
+#### 7. Troubleshooting Deployment
+
+**Common Issues:**
+
+- **Build fails**: Check Java version (needs Java 11+) and GWT compilation
+- **CircuitJS not loading**: Ensure production compilation runs before doc build
+- **Pages not updating**: Check GitHub Pages settings and workflow permissions
+- **404 on deployment**: Verify the `_site` folder contains all necessary files
+
+**Debugging steps:**
+1. Check GitHub Actions logs in the "Actions" tab
+2. Verify file structure in the deployment artifact
+3. Test local build with `./build.sh` first
+
+#### 8. Custom Domain (Optional)
+To use a custom domain:
+1. Add a `CNAME` file to `docs-template/` with your domain
+2. Configure DNS A records to point to GitHub Pages IPs
+3. Enable "Enforce HTTPS" in repository settings
+
+**Final Result:**
+- Documentation site: `https://username.github.io/repository-name`
+- Interactive CircuitJS1 app at: `https://username.github.io/repository-name/app.html`
+
+The complete deployment workflow:
+1. Compiles CircuitJS1 application from source (`./dev.sh compile`)
+2. Renders the Quarto documentation site
+3. Copies CircuitJS files to the documentation site
+4. Deploys everything to GitHub Pages
 
 ## Project Structure
 
