@@ -150,6 +150,10 @@ If using a separate repository, you may need to configure:
 
 **Common Issues:**
 
+- **Deprecated action versions**: If you see errors about deprecated actions (v3), run:
+  ```bash
+  docs-template/validate-actions.sh  # Check for deprecated versions
+  ```
 - **Build fails**: Check Java version (needs Java 11+) and GWT compilation
 - **CircuitJS not loading**: Ensure production compilation runs before doc build
 - **Pages not updating**: Check GitHub Pages settings and workflow permissions
@@ -159,6 +163,7 @@ If using a separate repository, you may need to configure:
 1. Check GitHub Actions logs in the "Actions" tab
 2. Verify file structure in the deployment artifact
 3. Test local build with `./build.sh` first
+4. Run `validate-actions.sh` to check for deprecated action versions
 
 #### 8. Custom Domain (Optional)
 To use a custom domain:
