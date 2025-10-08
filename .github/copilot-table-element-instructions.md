@@ -4,6 +4,13 @@
 
 Create a simplified Table Element that extends `CircuitElm` and displays voltages for labeled nodes by referencing text label names. This element reads voltage values using `LabeledNodeElm.labelList.get(labelName)` instead of creating actual circuit connections.
 
+**Updated Implementation Features:**
+- **Computed Values Support**: Can store and retrieve calculated values (like column sums) via `LabeledNodeElm.getComputedValue()` / `setComputedValue()` 
+- **Column Sums**: Optional bottom row showing calculated sums for each column
+- **Enhanced UI**: Checkbox control for toggling column sum display
+- **Robust Serialization**: Includes all new features in save/load format
+- **Visual Enhancements**: Improved grid lines, color coding, and layout
+
 ## Refactored Implementation Plan: Simplified Table Element
 
 ### Key Design Changes:
@@ -15,6 +22,14 @@ Create a simplified Table Element that extends `CircuitElm` and displays voltage
 
 ### 1. Class Structure Design
 ```java
+package com.lushprojects.circuitjs1.client;
+
+import java.util.StringTokenizer;
+
+/**
+ * Simplified Table Element - Displays voltage values from labeled nodes
+ * Extends CircuitElm for lightweight text-based label display
+ */
 public class TableElm extends CircuitElm {
     private int rows = 3;
     private int cols = 2; 
@@ -22,6 +37,9 @@ public class TableElm extends CircuitElm {
     private int cellSpacing = 4;
     private String[][] labelNames;  // Store label names as text
     private String[] columnHeaders;
+    private boolean showColumnSums = true; // Show sum row at bottom
+    
+    // Computed values are now stored in LabeledNodeElm.labelList - no JavaScript needed
     
     // Constructor for new table
     public TableElm(int xx, int yy) {
@@ -69,6 +87,12 @@ private double getVoltageForLabel(String labelName) {
         return 0.0;
     }
     
+    // First check if this is a computed value (like a column sum)
+    Double computedValue = LabeledNodeElm.getComputedValue(labelName);
+    if (computedValue != null) {
+        return computedValue.doubleValue();
+    }
+    
     // Use LabeledNodeElm's static labelList to get voltage
     Integer nodeNum = LabeledNodeElm.getByName(labelName);
     if (nodeNum == null) {
@@ -88,6 +112,20 @@ private double getVoltageForLabel(String labelName) {
     
     return 0.0;
 }
+
+private void registerSumAsLabeledNode(String labelName, double voltage) {
+    if (labelName == null || labelName.isEmpty()) {
+        return;
+    }
+    
+    // Store the computed voltage value in LabeledNodeElm
+    LabeledNodeElm.setComputedValue(labelName, voltage);
+}
+
+// Static method to get computed values by other elements
+public static Double getComputedValue(String labelName) {
+    return LabeledNodeElm.getComputedValue(labelName);
+}
 ```
 
 ### 4. Layout and Positioning
@@ -97,7 +135,8 @@ void setPoints() {
     
     // Calculate table dimensions
     int tableWidth = cols * cellSize + (cols + 1) * cellSpacing;
-    int tableHeight = rows * cellSize + (rows + 1) * cellSpacing + 20; // Extra space for headers
+    int extraRows = showColumnSums ? 1 : 0; // Add extra row for sums
+    int tableHeight = (rows + extraRows) * cellSize + (rows + extraRows + 1) * cellSpacing + 20; // Extra space for headers
     
     // Set bounding box
     setBbox(point1.x, point1.y, point1.x + tableWidth, point1.y + tableHeight);
@@ -111,17 +150,24 @@ int getPostCount() {
 ### 5. Drawing Implementation
 ```java
 void draw(Graphics g) {
+    int extraRows = showColumnSums ? 1 : 0;
+    
+    // Clear previous computed values to ensure fresh calculations
+    if (showColumnSums) {
+        LabeledNodeElm.clearComputedValues();
+    }
+    
     // Draw table background
-    g.setColor(needsHighlight() ? selectColor : Color.WHITE);
+    g.setColor(needsHighlight() ? selectColor : Color.white);
     g.fillRect(point1.x, point1.y, 
                cols * cellSize + (cols + 1) * cellSpacing,
-               rows * cellSize + (rows + 1) * cellSpacing + 20);
+               (rows + extraRows) * cellSize + (rows + extraRows + 1) * cellSpacing + 20);
     
     // Draw table border
-    g.setColor(Color.BLACK);
+    g.setColor(Color.black);
     g.drawRect(point1.x, point1.y,
                cols * cellSize + (cols + 1) * cellSpacing,
-               rows * cellSize + (rows + 1) * cellSpacing + 20);
+               (rows + extraRows) * cellSize + (rows + extraRows + 1) * cellSpacing + 20);
     
     // Draw column headers
     drawColumnHeaders(g);
@@ -129,19 +175,24 @@ void draw(Graphics g) {
     // Draw table cells with voltages
     drawTableCells(g);
     
+    // Draw sum row if enabled
+    if (showColumnSums) {
+        drawSumRow(g);
+    }
+    
     // Draw grid lines
     drawGridLines(g);
 }
 
 private void drawColumnHeaders(Graphics g) {
-    g.setColor(Color.BLACK);
+    g.setColor(Color.black);
     int headerY = point1.y + 15;
     
     for (int col = 0; col < cols; col++) {
         int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
         String header = (columnHeaders != null && col < columnHeaders.length) ? 
                        columnHeaders[col] : "Col" + (col + 1);
-        drawCenteredText(g, header, cellX + cellSize/2, headerY);
+        drawCenteredText(g, header, cellX + cellSize/2, headerY, true);
     }
 }
 
@@ -159,34 +210,75 @@ private void drawTableCells(Graphics g) {
             setVoltageColor(g, voltage);
             g.fillRect(cellX, cellY, cellSize, cellSize);
             
-            // Draw cell border
-            g.setColor(Color.BLACK);
-            g.drawRect(cellX, cellY, cellSize, cellSize);
-            
-            // Draw label name (top half)
-            g.setColor(Color.BLACK);
-            drawCenteredText(g, labelName, cellX + cellSize/2, cellY + cellSize/3);
-            
-            // Draw voltage value (bottom half)
-            String voltageText = getVoltageText(voltage);
-            drawCenteredText(g, voltageText, cellX + cellSize/2, cellY + 2*cellSize/3);
+                // Draw cell border
+                g.setColor(Color.black);
+                g.drawRect(cellX, cellY, cellSize, cellSize);
+                
+                // Draw label name (top half)
+                g.setColor(Color.black);
+                drawCenteredText(g, labelName, cellX + cellSize/2, cellY + cellSize/3, true);
+                
+                // Draw voltage value (bottom half)
+                String voltageText = getVoltageText(voltage);
+                drawCenteredText(g, voltageText, cellX + cellSize/2, cellY + 2*cellSize/3, true);
+            }
         }
+    }
+
+private void drawSumRow(Graphics g) {
+    int sumRowY = point1.y + 20 + cellSpacing + rows * (cellSize + cellSpacing);
+    
+    for (int col = 0; col < cols; col++) {
+        int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
+        
+        // Calculate sum for this column
+        double columnSum = 0.0;
+        for (int row = 0; row < rows; row++) {
+            String labelName = labelNames[row][col];
+            columnSum += getVoltageForLabel(labelName);
+        }
+        
+        // Register this sum as a labeled node using column header as the label name
+        String sumLabelName = columnHeaders[col];
+        registerSumAsLabeledNode(sumLabelName, columnSum);
+        
+        // Draw sum cell background (slightly different color)
+        g.setColor(Color.lightGray);
+        g.fillRect(cellX, sumRowY, cellSize, cellSize);
+        
+        // Draw cell border
+        g.setColor(Color.black);
+        g.drawRect(cellX, sumRowY, cellSize, cellSize);
+        
+        // Draw column header text as label (top half)
+        g.setColor(Color.black);
+        drawCenteredText(g, sumLabelName, cellX + cellSize/2, sumRowY + cellSize/3, true);
+        
+        // Draw sum value (bottom half)
+        String sumText = getVoltageText(columnSum);
+        drawCenteredText(g, sumText, cellX + cellSize/2, sumRowY + 2*cellSize/3, true);
     }
 }
 
 private void drawGridLines(Graphics g) {
-    g.setColor(Color.GRAY);
-    
-    // Vertical lines
+    g.setColor(Color.gray);
+    int extraRows = showColumnSums ? 1 : 0;    // Vertical lines
     for (int col = 0; col <= cols; col++) {
         int x = point1.x + cellSpacing + col * (cellSize + cellSpacing);
-        g.drawLine(x, point1.y + 20, x, point1.y + 20 + cellSpacing + rows * (cellSize + cellSpacing));
+        g.drawLine(x, point1.y + 20, x, point1.y + 20 + cellSpacing + (rows + extraRows) * (cellSize + cellSpacing));
     }
     
     // Horizontal lines
-    for (int row = 0; row <= rows; row++) {
+    for (int row = 0; row <= rows + extraRows; row++) {
         int y = point1.y + 20 + cellSpacing + row * (cellSize + cellSpacing);
         g.drawLine(point1.x, y, point1.x + cellSpacing + cols * (cellSize + cellSpacing), y);
+    }
+    
+    // Draw separator line before sum row if showing sums
+    if (showColumnSums) {
+        g.setColor(Color.black);
+        int separatorY = point1.y + 20 + cellSpacing + rows * (cellSize + cellSpacing);
+        g.drawLine(point1.x, separatorY, point1.x + cellSpacing + cols * (cellSize + cellSpacing), separatorY);
     }
 }
 ```
@@ -201,6 +293,7 @@ boolean isRemovableWire() { return false; }
 public String dump() {
     StringBuilder sb = new StringBuilder();
     sb.append(super.dump()).append(" ").append(rows).append(" ").append(cols);
+    sb.append(" ").append(showColumnSums ? "1" : "0");
     
     // Serialize label names
     for (int row = 0; row < rows; row++) {
@@ -221,6 +314,7 @@ private void parseTableData(StringTokenizer st) {
     try {
         if (st.hasMoreTokens()) rows = Integer.parseInt(st.nextToken());
         if (st.hasMoreTokens()) cols = Integer.parseInt(st.nextToken());
+        if (st.hasMoreTokens()) showColumnSums = "1".equals(st.nextToken());
         
         // Parse label names
         labelNames = new String[rows][cols];
@@ -250,7 +344,7 @@ private void parseTableData(StringTokenizer st) {
 }
 
 int getDumpType() { 
-    return 408; // Choose unused dump type
+    return 253; // Choose unused dump type
 }
 ```
 
@@ -261,9 +355,14 @@ public EditInfo getEditInfo(int n) {
     if (n == 1) return new EditInfo("Columns", cols, 1, 10);
     if (n == 2) return new EditInfo("Cell Size", cellSize, 20, 100);
     if (n == 3) return new EditInfo("Cell Spacing", cellSpacing, 2, 20);
+    if (n == 4) {
+        EditInfo ei = new EditInfo("", 0, -1, -1);
+        ei.checkbox = new Checkbox("Show Column Sums", showColumnSums);
+        return ei;
+    }
     
     // Edit individual cell labels
-    int cellIndex = n - 4;
+    int cellIndex = n - 5;
     if (cellIndex >= 0 && cellIndex < rows * cols) {
         int row = cellIndex / cols;
         int col = cellIndex % cols;
@@ -296,9 +395,12 @@ public void setEditValue(int n, EditInfo ei) {
     } else if (n == 3) {
         cellSpacing = (int)ei.value;
         setPoints();
+    } else if (n == 4) {
+        showColumnSums = ei.checkbox.getState();
+        setPoints();
     } else {
         // Edit cell labels or column headers
-        int cellIndex = n - 4;
+        int cellIndex = n - 5;
         if (cellIndex >= 0 && cellIndex < rows * cols) {
             int row = cellIndex / cols;
             int col = cellIndex % cols;
@@ -388,11 +490,21 @@ public String getColumnHeader(int col) {
     return "";
 }
 
-private void drawCenteredText(Graphics g, String text, int x, int y) {
-    FontMetrics fm = g.getFontMetrics();
-    int textWidth = fm.stringWidth(text);
-    int textHeight = fm.getHeight();
-    g.drawString(text, x - textWidth/2, y + textHeight/4);
+// Helper methods inherited from CircuitElm or available via simulation
+// Note: drawCenteredText signature updated to include boolean parameter
+private void drawCenteredText(Graphics g, String text, int x, int y, boolean realtime) {
+    // This method is inherited from CircuitElm base class
+    // The boolean parameter is used for font rendering optimizations
+}
+
+private void setVoltageColor(Graphics g, double voltage) {
+    // This method is inherited from CircuitElm base class
+    // Sets background color based on voltage value for visual indication
+}
+
+private String getVoltageText(double voltage) {
+    // This method is inherited from CircuitElm base class  
+    // Formats voltage values for display (handles units, precision, etc.)
 }
 ```
 
@@ -413,16 +525,49 @@ private void drawCenteredText(Graphics g, String text, int x, int y) {
 - Configurable table dimensions
 - Customizable column headers
 - Visual voltage indication via colors
+- Optional column sum calculations
+- **NEW**: Computed value support for storing calculated results
 
 ### 4. **Integration**
 - Leverages existing `LabeledNodeElm` infrastructure
 - Uses standard CircuitJS1 patterns
 - Compatible with save/load system
+- **NEW**: Column sums automatically registered as labeled nodes for use by other elements
 
 ### 5. **Maintainability**
 - Simple codebase
 - Clear separation of concerns
 - Easy to extend with new features
+
+## New Features in Current Implementation
+
+### **Column Sum Calculations**
+- Optional bottom row showing sum of each column
+- Controlled by `showColumnSums` boolean flag
+- Sum values are automatically registered as computed values using column headers as label names
+- Other circuit elements can reference these computed sums via `TableElm.getComputedValue(labelName)`
+
+### **Computed Values Integration**  
+- Supports both real node voltages and computed/calculated values
+- Uses `LabeledNodeElm.getComputedValue()` and `LabeledNodeElm.setComputedValue()` methods
+- Computed values cleared on each redraw to ensure fresh calculations
+- Enables complex calculations and referencing between table elements
+
+### **Enhanced Drawing**
+- Improved grid lines with separator before sum row
+- Visual distinction for sum cells (light gray background)
+- Updated `drawCenteredText()` with boolean parameter for rendering optimization
+- Color-coded voltage visualization via inherited `setVoltageColor()` method
+
+### **Robust Serialization**
+- Includes `showColumnSums` flag in circuit file format
+- Proper escaping/unescaping of label names and headers via `CustomLogicModel`
+- Error handling with fallback to defaults on parse failure
+
+### **User Interface Enhancements**  
+- Checkbox for toggling column sums in edit dialog
+- Proper indexing adjustment for cell/header editing after adding checkbox
+- Dynamic table resizing preserves existing labels where possible
 
 ## Suggested Class Extension
 
@@ -434,3 +579,34 @@ private void drawCenteredText(Graphics g, String text, int x, int y) {
 - `CircuitElm` - Best choice for custom display elements
 
 The `CircuitElm` base class provides the essential framework for positioning, selection, serialization, and UI integration while keeping the implementation straightforward.
+
+## Computed Values API Usage
+
+### **Storing Computed Values**
+```java
+// Store a computed value (like a column sum) with LabeledNodeElm
+LabeledNodeElm.setComputedValue("columnA_sum", 15.7);
+
+// Register via TableElm helper method  
+registerSumAsLabeledNode("columnA_sum", columnSum);
+```
+
+### **Retrieving Computed Values**
+```java  
+// From within TableElm
+Double value = LabeledNodeElm.getComputedValue("columnA_sum");
+
+// From other circuit elements
+Double value = TableElm.getComputedValue("columnA_sum");
+
+// In voltage lookup (automatically checks computed values first)
+double voltage = getVoltageForLabel("columnA_sum"); // Checks computed values before node voltages
+```
+
+### **Clearing Computed Values**
+```java
+// Called at start of each redraw to ensure fresh calculations
+LabeledNodeElm.clearComputedValues();
+```
+
+This system allows TableElm instances to perform calculations (like column sums) and make those results available to other circuit elements as if they were labeled node voltages, enabling complex multi-element calculations and dependencies.

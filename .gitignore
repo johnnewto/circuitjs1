@@ -14,6 +14,11 @@ circuitjs1.tar.gz
 # Editor configurations
 .vscode
 
+# Eclipse IDE files
+.classpath
+.project
+.settings/
+
 # Windows image file caches
 Thumbs.db
 ehthumbs.db

@@ -145,7 +145,7 @@ class LabeledNodeElm extends CircuitElm {
         le.computedValue = value;
     }
     
-    // Clear all computed values (used by TableElm when recalculating)
+    // Clear all computed values (package-private - only callable from CirSim)
     static void clearComputedValues() {
         if (labelList == null) return;
         for (LabelEntry entry : labelList.values()) {

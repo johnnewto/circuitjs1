@@ -3,9 +3,10 @@
 ## Introduction
 
 CircuitJS1 is an electronic circuit simulator that runs in the browser. It was originally written by Paul Falstad as a Java Applet. It was adapted by Iain Sharp to run in the browser using GWT.
-
+Here we have been extending the project with new components and features to support Economics modeling
 For a hosted version of the application see:
 
+* This Page: [https://johnnewto.github.io/circuitjs1/app.html/](https://johnnewto.github.io/circuitjs1/app.html)
 * Paul's Page: [http://www.falstad.com/circuit/](http://www.falstad.com/circuit/)
 * Iain's Page: [http://lushprojects.com/circuitjs/](http://lushprojects.com/circuitjs/)
 

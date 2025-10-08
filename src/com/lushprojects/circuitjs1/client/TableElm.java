@@ -1,6 +1,5 @@
-/*    package com.lushprojects.circuitjs1.client;
-
-import java.util.StringTokenizer;  Copyright (C) Paul Falstad and Iain Sharp
+/*    
+    Copyright (C) Paul Falstad and Iain Sharp
     
     This file is part of CircuitJS1.
 */
@@ -13,13 +12,13 @@ package com.lushprojects.circuitjs1.client;
  * Extends CircuitElm for lightweight text-based label display
  */
 public class TableElm extends CircuitElm {
-    private int rows = 3;
-    private int cols = 2; 
-    private int cellSize = 60;
-    private int cellSpacing = 4;
-    private String[][] labelNames;  // Store label names as text
-    private String[] columnHeaders;
-    private boolean showColumnSums = true; // Show sum row at bottom
+    protected int rows = 3;
+    protected int cols = 2; 
+    protected int cellSize = 60;
+    protected int cellSpacing = 4;
+    protected String[][] labelNames;  // Store label names as text
+    protected String[] columnHeaders;
+    protected boolean showColumnSums = true; // Show sum row at bottom
     
     // Computed values are now stored in LabeledNodeElm.labelList - no JavaScript needed
     
@@ -57,7 +56,7 @@ public class TableElm extends CircuitElm {
         }
     }
     
-    private double getVoltageForLabel(String labelName) {
+    protected double getVoltageForLabel(String labelName) {
         if (labelName == null || labelName.isEmpty()) {
             return 0.0;
         }
@@ -88,7 +87,7 @@ public class TableElm extends CircuitElm {
         return 0.0;
     }
     
-    private void registerSumAsLabeledNode(String labelName, double voltage) {
+    protected void registerComputedValueAsLabeledNode(String labelName, double voltage) {
         if (labelName == null || labelName.isEmpty()) {
             return;
         }
@@ -120,11 +119,6 @@ public class TableElm extends CircuitElm {
     
     void draw(Graphics g) {
         int extraRows = showColumnSums ? 1 : 0;
-        
-        // Clear previous computed values to ensure fresh calculations
-        if (showColumnSums) {
-            LabeledNodeElm.clearComputedValues();
-        }
         
         // Draw table background
         g.setColor(needsHighlight() ? selectColor : Color.white);
@@ -195,22 +189,16 @@ public class TableElm extends CircuitElm {
         }
     }
 
-    private void drawSumRow(Graphics g) {
+    protected void drawSumRow(Graphics g) {
         int sumRowY = point1.y + 20 + cellSpacing + rows * (cellSize + cellSpacing);
         
         for (int col = 0; col < cols; col++) {
             int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
             
-            // Calculate sum for this column
-            double columnSum = 0.0;
-            for (int row = 0; row < rows; row++) {
-                String labelName = labelNames[row][col];
-                columnSum += getVoltageForLabel(labelName);
-            }
-            
-            // Register this sum as a labeled node using column header as the label name
+            // Get the already-calculated sum from computed values (calculated in stepFinished())
             String sumLabelName = columnHeaders[col];
-            registerSumAsLabeledNode(sumLabelName, columnSum);
+            Double computedSum = LabeledNodeElm.getComputedValue(sumLabelName);
+            double columnSum = (computedSum != null) ? computedSum.doubleValue() : 0.0;
             
             // Draw sum cell background (slightly different color)
             g.setColor(Color.lightGray);
@@ -254,6 +242,27 @@ public class TableElm extends CircuitElm {
         }
     }
     
+    // Calculate computed values during simulation step (not during drawing)
+    public void stepFinished() {
+        super.stepFinished();
+        
+        if (showColumnSums) {
+            // Calculate and register column sums
+            for (int col = 0; col < cols; col++) {
+                // Calculate sum for this column
+                double columnSum = 0.0;
+                for (int row = 0; row < rows; row++) {
+                    String labelName = labelNames[row][col];
+                    columnSum += getVoltageForLabel(labelName);
+                }
+                
+                // Register this sum as a labeled node using column header as the label name
+                String name = columnHeaders[col];
+                registerComputedValueAsLabeledNode(name, columnSum);
+            }
+        }
+    }
+    
     // No electrical connections - pure display element
     boolean isWireEquivalent() { return false; }
     boolean isRemovableWire() { return false; }
@@ -278,7 +287,7 @@ public class TableElm extends CircuitElm {
         return sb.toString();
     }
 
-    private void parseTableData(StringTokenizer st) {
+    protected void parseTableData(StringTokenizer st) {
         try {
             if (st.hasMoreTokens()) rows = Integer.parseInt(st.nextToken());
             if (st.hasMoreTokens()) cols = Integer.parseInt(st.nextToken());
@@ -379,7 +388,7 @@ public class TableElm extends CircuitElm {
         }
     }
 
-    private void resizeTable() {
+    protected void resizeTable() {
         String[][] oldLabels = labelNames;
         String[] oldHeaders = columnHeaders;
         
