@@ -1108,10 +1108,9 @@ MouseOutHandler, MouseWheelHandler {
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Resistor"), "ResistorElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Multipler"), "MultiplyElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Adder"), "AdderElm"));
-		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add NamedVCVS"), "NamedVCVSElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Table"), "TableElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Godly Table"), "GodlyTableElm"));
-		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add LabelDisplay"), "LabeledNodeDisplayElm"));
+		// mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Spare"), "Spare"));
 
 
     	MenuBar passMenuBar = new MenuBar(true);
@@ -5961,9 +5960,9 @@ MouseOutHandler, MouseWheelHandler {
     	
     	case 250: return new MultiplyElm(x1, y1, x2, y2, f, st);
    		case 251: return new AdderElm(x1, y1, x2, y2, f, st);
-  		case 252: return new NamedVCVSElm(x1, y1, x2, y2, f, st);
+  		// case 252: return new Spare(x1, y1, x2, y2, f, st);
   		case 253: return new TableElm(x1, y1, x2, y2, f, st);
-		case 254: return new LabeledNodeDisplayElm(x1, y1, x2, y2, f, st);
+		//case 254: return new spare(x1, y1, x2, y2, f, st);
 		case 255: return new GodlyTableElm(x1, y1, x2, y2, f, st);
 
 		case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
@@ -6281,14 +6280,14 @@ MouseOutHandler, MouseWheelHandler {
     	    		return (CircuitElm) new MultiplyElm(x1, y1);
     	if (n=="AdderElm")
     	    		return (CircuitElm) new AdderElm(x1, y1);    	
-    	if (n=="NamedVCVSElm")
-    	    		return (CircuitElm) new NamedVCVSElm(x1, y1);   
+    	// if (n=="Spare")
+    	//     		return (CircuitElm) new Spare(x1, y1);   
     	if (n=="TableElm")
     	    		return (CircuitElm) new TableElm(x1, y1);   
     	if (n=="GodlyTableElm")
     	    		return (CircuitElm) new GodlyTableElm(x1, y1);
-		if (n.equals("LabeledNodeDisplayElm")) 
-					return (CircuitElm) new LabeledNodeDisplayElm(x1, y1);			
+		// if (n.equals("Spare")) 
+		// 			return (CircuitElm) new Spare(x1, y1);			
 					
 		// handle CustomCompositeElm:modelname
     	if (n.startsWith("CustomCompositeElm:")) {

@@ -6,6 +6,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.google.gwt.user.client.ui.Button;
 
 /**
  * Simplified Table Element - Displays voltage values from labeled nodes
@@ -51,6 +52,21 @@ public class TableElm extends CircuitElm {
         if (columnHeaders == null) {
             columnHeaders = new String[cols];
             for (int i = 0; i < cols; i++) {
+                columnHeaders[i] = "Col" + (i + 1);
+            }
+        }
+        
+        // Ensure no null or empty values exist
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                if (labelNames[row][col] == null || labelNames[row][col].trim().isEmpty()) {
+                    labelNames[row][col] = "node" + (row * cols + col + 1);
+                }
+            }
+        }
+        
+        for (int i = 0; i < cols; i++) {
+            if (columnHeaders[i] == null || columnHeaders[i].trim().isEmpty()) {
                 columnHeaders[i] = "Col" + (i + 1);
             }
         }
@@ -263,6 +279,39 @@ public class TableElm extends CircuitElm {
         }
     }
     
+    private double[] lastColumnSums;
+
+    public void doStep() {
+        super.doStep();
+        
+        if (showColumnSums) {
+            if (lastColumnSums == null) {
+                lastColumnSums = new double[cols];
+            }
+            
+            for (int col = 0; col < cols; col++) {
+                double columnSum = 0.0;
+                for (int row = 0; row < rows; row++) {
+                    String labelName = labelNames[row][col];
+                    columnSum += getVoltageForLabel(labelName);
+                }
+                
+                // Check for convergence
+                if (Math.abs(columnSum - lastColumnSums[col]) > 1e-6) {
+                    sim.converged = false;
+                }
+                
+                lastColumnSums[col] = columnSum;
+                String name = columnHeaders[col];
+                registerComputedValueAsLabeledNode(name, columnSum);
+            }
+        }
+    }
+
+    boolean nonLinear() { 
+        return showColumnSums; // Make element nonlinear if computing sums
+    }
+    
     // No electrical connections - pure display element
     boolean isWireEquivalent() { return false; }
     boolean isRemovableWire() { return false; }
@@ -325,31 +374,16 @@ public class TableElm extends CircuitElm {
     }
     
     public EditInfo getEditInfo(int n) {
-        if (n == 0) return new EditInfo("Rows", rows, 1, 20);
-        if (n == 1) return new EditInfo("Columns", cols, 1, 10);
-        if (n == 2) return new EditInfo("Cell Size", cellSize, 20, 100);
-        if (n == 3) return new EditInfo("Cell Spacing", cellSpacing, 2, 20);
-        if (n == 4) {
+        if (n == 0) return new EditInfo("Cell Size", cellSize, 20, 100);
+        if (n == 1) return new EditInfo("Cell Spacing", cellSpacing, 2, 20);
+        if (n == 2) {
             EditInfo ei = new EditInfo("", 0, -1, -1);
             ei.checkbox = new Checkbox("Show Column Sums", showColumnSums);
             return ei;
         }
-        
-        // Edit individual cell labels
-        int cellIndex = n - 5;
-        if (cellIndex >= 0 && cellIndex < rows * cols) {
-            int row = cellIndex / cols;
-            int col = cellIndex % cols;
-            EditInfo ei = new EditInfo("Cell [" + row + "," + col + "] Label", 0, -1, -1);
-            ei.text = labelNames[row][col];
-            return ei;
-        }
-        
-        // Edit column headers
-        int headerIndex = cellIndex - rows * cols;
-        if (headerIndex >= 0 && headerIndex < cols) {
-            EditInfo ei = new EditInfo("Column " + headerIndex + " Header", 0, -1, -1);
-            ei.text = columnHeaders[headerIndex];
+        if (n == 3) {
+            EditInfo ei = new EditInfo("", 0, -1, -1);
+            ei.button = new Button("Edit Table Data...");
             return ei;
         }
         
@@ -357,42 +391,33 @@ public class TableElm extends CircuitElm {
     }
 
     public void setEditValue(int n, EditInfo ei) {
-        if (n == 0 && ei.value != rows) {
-            rows = (int)ei.value;
-            resizeTable();
-        } else if (n == 1 && ei.value != cols) {
-            cols = (int)ei.value;
-            resizeTable();
-        } else if (n == 2) {
+        if (n == 0) {
             cellSize = (int)ei.value;
             setPoints();
-        } else if (n == 3) {
+        } else if (n == 1) {
             cellSpacing = (int)ei.value;
             setPoints();
-        } else if (n == 4) {
+        } else if (n == 2) {
             showColumnSums = ei.checkbox.getState();
             setPoints();
-        } else {
-            // Edit cell labels or column headers
-            int cellIndex = n - 5;
-            if (cellIndex >= 0 && cellIndex < rows * cols) {
-                int row = cellIndex / cols;
-                int col = cellIndex % cols;
-                labelNames[row][col] = ei.textf.getText();
-            } else {
-                int headerIndex = cellIndex - rows * cols;
-                if (headerIndex >= 0 && headerIndex < cols) {
-                    columnHeaders[headerIndex] = ei.textf.getText();
-                }
-            }
+        } else if (n == 3) {
+            // Open table editing dialog
+            openTableEditDialog();
         }
     }
 
-    protected void resizeTable() {
+    // Resize table method for use by TableEditDialog
+    public void resizeTable(int newRows, int newCols) {
         String[][] oldLabels = labelNames;
         String[] oldHeaders = columnHeaders;
         
-        initTable(); // Create new arrays with default values
+        // Update dimensions
+        rows = newRows;
+        cols = newCols;
+        
+        // Create new arrays
+        labelNames = new String[rows][cols];
+        columnHeaders = new String[cols];
         
         // Copy over existing labels where possible
         if (oldLabels != null) {
@@ -403,14 +428,43 @@ public class TableElm extends CircuitElm {
             }
         }
         
-        // Copy over existing headers where possible
+        // Copy over existing headers where possible  
         if (oldHeaders != null) {
             for (int col = 0; col < Math.min(cols, oldHeaders.length); col++) {
                 columnHeaders[col] = oldHeaders[col];
             }
         }
         
+        // Fill in missing labels with simple defaults
+        fillMissingLabels();
+        
         setPoints();
+    }
+    
+    private void fillMissingLabels() {
+        // Fill missing cell labels with simple defaults
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                if (labelNames[row][col] == null || labelNames[row][col].isEmpty()) {
+                    labelNames[row][col] = "node" + (row * cols + col + 1);
+                }
+            }
+        }
+        
+        // Fill missing column headers with simple defaults
+        for (int col = 0; col < cols; col++) {
+            if (columnHeaders[col] == null || columnHeaders[col].isEmpty()) {
+                columnHeaders[col] = "Col" + (col + 1);
+            }
+        }
+    }
+    
+    protected void openTableEditDialog() {
+        // Open the enhanced table editing dialog
+        if (sim != null) {
+            TableEditDialog dialog = new TableEditDialog(this, sim);
+            dialog.show();
+        }
     }
     
     void getInfo(String arr[]) {
@@ -456,6 +510,16 @@ public class TableElm extends CircuitElm {
             return columnHeaders[col];
         }
         return "";
+    }
+    
+    // Getter methods for TableEditDialog
+    public int getRows() { return rows; }
+    public int getCols() { return cols; }
+    public boolean getShowColumnSums() { return showColumnSums; }
+    
+    public void setShowColumnSums(boolean show) {
+        showColumnSums = show;
+        setPoints();
     }
 
 }

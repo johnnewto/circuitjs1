@@ -2,15 +2,17 @@
 
 ## Overview
 
-Create a `GodlyTableElm` that extends `TableElm` to add integration capabilities. The last row (sum row) will perform integration using the equation **"lastoutput+timestep*100*columnSum"** for each column. This creates an integrator where each column's sum is integrated over time, similar to how `VCVSElm` uses expressions with `lastoutput` and `timestep` variables.
+This document describes the `GodlyTableElm` implementation that extends `TableElm` to add integration capabilities. The integration row performs integration using the equation **"lastoutput + timestep * integrationGain * columnSum"** for each column. This creates an integrator where each column's sum is integrated over time, similar to how `VCVSElm` uses expressions with `lastoutput` and `timestep` variables.
 
 **Key Features:**
 - Extends `TableElm` to inherit all table display and column sum functionality
-- Integration equation: `lastoutput + timestep * 100 * columnSum`
+- Integration equation: `lastoutput + timestep * integrationGain * columnSum`
 - Uses CircuitJS1's expression evaluation system (`Expr` and `ExprState`) 
-- Integration results stored as computed values accessible by other elements
+- Integration results stored as computed values accessible by other elements using column header name
 - Configurable integration gain (default 100)
 - Reset functionality to clear integration state
+- Yellow background for integration cells to distinguish from regular sum cells
+- Uses dump type 255 for serialization
 
 ## Implementation Plan
 
@@ -41,7 +43,11 @@ public class GodlyTableElm extends TableElm {
     
     // File loading constructor  
     public GodlyTableElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
-        super(xa, ya, xb, yb, f);
+        // Call the TableElm constructor that accepts StringTokenizer
+        super(xa, ya, xb, yb, f, st);
+        // TableElm constructor will handle parsing its own data
+        
+        // Then parse GodlyTable-specific data
         parseGodlyTableData(st);
         initIntegration();
     }
@@ -84,63 +90,54 @@ private void parseIntegrationExpr() {
 }
 ```
 
-### 3. Override Table Resizing to Handle Integration Arrays
+### 3. Integration Calculation Method
 
 ```java
-@Override
-private void resizeTable() {
-    // Call parent resize
-    super.resizeTable();
-    
-    // Resize integration arrays
-    ExprState[] oldStates = integrationStates;
-    double[] oldOutputs = lastIntegrationOutputs;
-    
-    integrationStates = new ExprState[cols];
-    lastIntegrationOutputs = new double[cols];
-    
-    // Copy existing states where possible
-    for (int col = 0; col < cols; col++) {
-        if (oldStates != null && col < oldStates.length) {
-            integrationStates[col] = oldStates[col];
-            lastIntegrationOutputs[col] = oldOutputs[col];
-        } else {
-            integrationStates[col] = new ExprState(1);
-            lastIntegrationOutputs[col] = 0.0;
-        }
+private double performIntegration(int col, double columnSum) {
+    if (integrationExpr == null || col >= integrationStates.length) {
+        return 0.0; // No integration if expression failed to parse
     }
     
-    // Re-parse integration expression in case gain changed
-    parseIntegrationExpr();
+    try {
+        ExprState state = integrationStates[col];
+        
+        // Set up expression state
+        state.values[0] = columnSum; // 'a' = columnSum
+        state.lastOutput = lastIntegrationOutputs[col];
+        state.t = sim.t;
+        
+        // Evaluate integration expression: lastoutput + timestep * gain * columnSum
+        double result = integrationExpr.eval(state);
+        
+        // Store result for next iteration
+        lastIntegrationOutputs[col] = result;
+        
+        // Update the expression state for next time
+        state.updateLastValues(result);
+        
+        return result;
+        
+    } catch (Exception e) {
+        CirSim.console("GodlyTableElm: Error in integration calculation: " + e.getMessage());
+        return lastIntegrationOutputs[col]; // Return last known value on error
+    }
 }
 ```
 
-### 4. Enhanced Sum Row with Integration
+### 4. Enhanced Sum Row with Integration Display
 
 ```java
 @Override
-private void drawSumRow(Graphics g) {
+protected void drawSumRow(Graphics g) {
     int sumRowY = point1.y + 20 + cellSpacing + rows * (cellSize + cellSpacing);
     
     for (int col = 0; col < cols; col++) {
         int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
         
-        // Calculate sum for this column (same as parent)
-        double columnSum = 0.0;
-        for (int row = 0; row < rows; row++) {
-            String labelName = labelNames[row][col];
-            columnSum += getVoltageForLabel(labelName);
-        }
-        
-        // Perform integration: lastoutput + timestep * gain * columnSum
-        double integratedValue = performIntegration(col, columnSum);
-        
-        // Register both sum and integrated value as computed values
-        String sumLabelName = columnHeaders[col];
-        String integrationLabelName = columnHeaders[col] + "_integrated";
-        
-        registerSumAsLabeledNode(sumLabelName, columnSum);
-        LabeledNodeElm.setComputedValue(integrationLabelName, integratedValue);
+        // Get the already-calculated integrated value (calculated in stepFinished())
+        String integrationLabelName = columnHeaders[col];
+        Double computedIntegration = LabeledNodeElm.getComputedValue(integrationLabelName);
+        double integratedValue = (computedIntegration != null) ? computedIntegration.doubleValue() : 0.0;
         
         // Draw integration cell background (different color for integration)
         g.setColor(Color.yellow); // Distinct color for integration cells
@@ -191,9 +188,36 @@ private double performIntegration(int col, double columnSum) {
 }
 ```
 
-### 5. Enhanced Serialization
+### 5. Simulation Step Integration and Serialization
 
 ```java
+@Override  
+public void stepFinished() {
+    // Perform integration calculations using the computed column sums
+    if (showColumnSums) {
+        for (int col = 0; col < cols; col++) {
+             // Calculate sum for this column
+            double columnSum = 0.0;
+            for (int row = 0; row < rows; row++) {
+                String labelName = labelNames[row][col];
+                columnSum += getVoltageForLabel(labelName);
+            }
+            
+            // Perform integration on this column sum
+            double integratedValue = performIntegration(col, columnSum);
+            
+            // Register the integrated value using column header as label name
+            String integrationLabelName = columnHeaders[col];
+            registerComputedValueAsLabeledNode(integrationLabelName, integratedValue);
+            
+            // Update integration states for next timestep
+            if (integrationStates[col] != null) {
+                integrationStates[col].updateLastValues(integratedValue);
+            }
+        }
+    }
+}
+
 @Override
 public String dump() {
     StringBuilder sb = new StringBuilder();
@@ -209,34 +233,30 @@ public String dump() {
 }
 
 private void parseGodlyTableData(StringTokenizer st) {
-    // First parse parent TableElm data (this will consume most tokens)
-    super.parseTableData(st);
-    
-    try {
-        // Parse integration-specific data
-        if (st.hasMoreTokens()) {
-            integrationGain = Double.parseDouble(st.nextToken());
+        // Parse integration-specific data if available
+        try {
+            // Parse integration gain if present
+            if (st.hasMoreTokens()) {
+                integrationGain = Double.parseDouble(st.nextToken());
+            }
+            
+            // Parse last integration outputs if present
+            if (lastIntegrationOutputs == null) {
+                lastIntegrationOutputs = new double[cols];
+            }
+            
+            for (int col = 0; col < cols && st.hasMoreTokens(); col++) {
+                lastIntegrationOutputs[col] = Double.parseDouble(st.nextToken());
+            }
+            
+        } catch (Exception e) {
+            CirSim.console("GodlyTableElm: error parsing integration data, using defaults");
+            integrationGain = 100.0;
+            // lastIntegrationOutputs will be initialized to zeros by initIntegration()
         }
-        
-        // Parse last integration outputs
-        if (lastIntegrationOutputs == null) {
-            lastIntegrationOutputs = new double[cols];
-        }
-        
-        for (int col = 0; col < cols && st.hasMoreTokens(); col++) {
-            lastIntegrationOutputs[col] = Double.parseDouble(st.nextToken());
-        }
-        
-    } catch (Exception e) {
-        CirSim.console("GodlyTableElm: error parsing integration data, using defaults");
-        integrationGain = 100.0;
-        // lastIntegrationOutputs will be initialized to zeros by initIntegration()
-    }
-}
-
-@Override
+    }@Override
 int getDumpType() { 
-    return 254; // Choose unused dump type (different from TableElm's 253)
+    return 255; // Choose unused dump type (different from TableElm's 253)
 }
 ```
 
@@ -328,7 +348,7 @@ void getInfo(String arr[]) {
 }
 ```
 
-### 8. Reset and Simulation Control
+### 8. Reset Control
 
 ```java
 @Override
@@ -337,29 +357,56 @@ public void reset() {
     resetIntegration();
 }
 
-@Override  
-public void stepFinished() {
-    // Update integration states after each simulation step
-    // This is called by the simulator after each timestep
+private void resetIntegration() {
     for (int col = 0; col < cols; col++) {
+        lastIntegrationOutputs[col] = 0.0;
         if (integrationStates[col] != null) {
-            integrationStates[col].updateLastValues(lastIntegrationOutputs[col]);
+            integrationStates[col].reset();
         }
     }
 }
 ```
 
-### 9. Static Helper Methods
+### 9. Information Display and Static Helper Methods
 
 ```java
-// Static method to get integration results by other elements
-public static Double getIntegratedValue(String columnHeader) {
-    return LabeledNodeElm.getComputedValue(columnHeader + "_integrated");
+@Override
+void getInfo(String arr[]) {
+    arr[0] = "Godly Table (" + rows + "x" + cols + ") with Integration";
+    arr[1] = "Integration gain: " + integrationGain;
+    arr[2] = "Equation: lastoutput + timestep * " + integrationGain + " * columnSum";
+    
+    int idx = 3;
+    // Show some sample values including integration results
+    for (int row = 0; row < Math.min(2, rows) && idx < arr.length - 2; row++) {
+        for (int col = 0; col < Math.min(2, cols) && idx < arr.length - 2; col++) {
+            String label = labelNames[row][col];
+            double voltage = getVoltageForLabel(label);
+            arr[idx++] = label + ": " + getVoltageText(voltage);
+        }
+    }
+    
+    // Show integration results for first few columns
+    for (int col = 0; col < Math.min(2, cols) && idx < arr.length - 1; col++) {
+        String integrationLabel = columnHeaders[col] + "Σ";
+        Double integratedValue = LabeledNodeElm.getComputedValue(integrationLabel);
+        if (integratedValue != null) {
+            arr[idx++] = integrationLabel + ": " + getVoltageText(integratedValue.doubleValue());
+        }
+    }
+    
+    if (rows * cols > 4) {
+        arr[idx++] = "... (showing first few cells)";
+    }
 }
 
-// Static method to reset specific column integration
+// Static method to get integration results by other elements
+public static Double getIntegratedValue(String columnHeader) {
+    return LabeledNodeElm.getComputedValue(columnHeader);
+}
+
 public static void resetColumnIntegration(String columnHeader) {
-    LabeledNodeElm.setComputedValue(columnHeader + "_integrated", 0.0);
+    LabeledNodeElm.setComputedValue(columnHeader, 0.0);
 }
 ```
 
@@ -380,9 +427,9 @@ public static void resetColumnIntegration(String columnHeader) {
 - Error handling for expression parsing and evaluation
 
 ### **Computed Values Extension**
-- Column sums stored as `columnHeader` (inherited from TableElm)
-- Integration results stored as `columnHeader_integrated`
-- Both accessible by other circuit elements via `LabeledNodeElm.getComputedValue()`
+- Integration results stored directly using column header name (e.g., "Col1", "Col2")  
+- Accessible by other circuit elements via `LabeledNodeElm.getComputedValue(columnHeader)`
+- TableElm base class column sums are replaced by integrated values
 
 ### **User Interface**
 - Integration gain parameter (editable)
@@ -391,9 +438,10 @@ public static void resetColumnIntegration(String columnHeader) {
 - Info display shows equation and current values
 
 ### **Persistence**
-- Integration gain saved/loaded
+- Integration gain saved/loaded in circuit files
 - Integration states (last outputs) preserved in circuit files
-- Backward compatibility with TableElm format
+- Uses dump type 255 for serialization (different from TableElm's 253)
+- Backward compatibility maintained through proper constructor handling
 
 ## Usage Examples
 
@@ -407,9 +455,9 @@ Result accumulates over time...
 
 ### **Referencing Integration Results**
 ```java
-// Other elements can access integration results
+// Other elements can access integration results directly by column header
 Double integratedA = GodlyTableElm.getIntegratedValue("Col1");
-Double integratedB = LabeledNodeElm.getComputedValue("Col2_integrated");
+Double integratedB = LabeledNodeElm.getComputedValue("Col2");
 ```
 
 ### **Reset Integration**
@@ -417,4 +465,19 @@ Double integratedB = LabeledNodeElm.getComputedValue("Col2_integrated");
 - Or call `resetIntegration()` method programmatically
 - Clears all `lastoutput` values to 0
 
-This implementation creates a powerful table element that can perform real-time integration of column data, making it useful for accumulating values over time in circuit simulations, such as charge accumulation, energy calculations, or other time-dependent quantities.
+## Implementation Notes
+
+### **Key Differences from Original Instructions**
+1. **Integration Labels**: Uses column header directly (e.g., "Col1") instead of "Col1_integrated"
+2. **File Loading**: TableElm constructor handles its own data parsing, then GodlyTableElm parses additional data
+3. **Display**: Shows "columnHeaderΣ" in info display to distinguish integration results
+4. **Dump Type**: Uses 255 instead of 254 for serialization
+5. **Inheritance**: Properly leverages TableElm's protected methods and fields
+
+### **Circuit Integration**
+- Added to CirSim constructor system with dump type 255
+- Added to main menu as "Add Godly Table" 
+- Integrates with existing LabeledNodeElm computed values system
+- Compatible with all existing CircuitJS1 persistence and UI systems
+
+This implementation creates a powerful table element that can perform real-time integration of column data, making it useful for accumulating values over time in circuit simulations, such as charge accumulation, energy calculations, or other time-dependent quantities. The integration results are directly accessible by other circuit elements using the column header names.

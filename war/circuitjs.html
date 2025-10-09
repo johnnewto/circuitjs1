@@ -146,6 +146,55 @@
 	margin-right: 15px;
 }
 
+/* Table Editor Dialog Styles */
+.tableEditGrid {
+	border-collapse: collapse;
+	font-family: monospace;
+}
+
+.tableEditGrid td {
+	border: 1px solid #ccc;
+	padding: 0;
+}
+
+.tableHeaderInput {
+	background-color: #f0f0f0;
+	font-weight: bold;
+	border: none;
+	width: 80px;
+	padding: 4px;
+	text-align: center;
+}
+
+.tableCellInput {
+	border: none;
+	width: 100px;
+	padding: 4px;
+}
+
+.tableCellInput:focus, .tableHeaderInput:focus {
+	background-color: #e6f3ff;
+	outline: 2px solid #0066cc;
+}
+
+.tableRowHeader {
+	background-color: #f0f0f0;
+	font-weight: bold;
+	text-align: center;
+	padding: 4px 8px;
+	min-width: 30px;
+}
+
+.tableCellInput.modified {
+	background-color: #fffacd;
+	border-left: 3px solid #ffa500;
+}
+
+.tableHeaderInput.modified {
+	background-color: #f0f8ff;
+	border-left: 3px solid #4169e1;
+}
+
 </style>
 
 <link rel="stylesheet" href="font/fontello.css">
