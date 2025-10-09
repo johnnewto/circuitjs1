@@ -19,7 +19,7 @@ public class TableElm extends CircuitElm {
     protected int cellSpacing = 4;
     protected String[][] labelNames;  // Store label names as text
     protected String[] columnHeaders;
-    protected boolean showColumnSums = true; // Show sum row at bottom
+    protected boolean showComputedRow = true; // Show computed row at bottom
     
     // Computed values are now stored in LabeledNodeElm.labelList - no JavaScript needed
     
@@ -72,6 +72,37 @@ public class TableElm extends CircuitElm {
         }
     }
     
+    // protected double getVoltageForLabel(String labelName) {
+    //     if (labelName == null || labelName.isEmpty()) {
+    //         return 0.0;
+    //     }
+        
+    //     // First check if this is a computed value (like a column sum)
+    //     Double computedValue = LabeledNodeElm.getComputedValue(labelName);
+    //     if (computedValue != null) {
+    //         return computedValue.doubleValue();
+    //     }
+        
+    //     // Use LabeledNodeElm's static labelList to get voltage
+    //     Integer nodeNum = LabeledNodeElm.getByName(labelName);
+    //     if (nodeNum == null) {
+    //         return 0.0; // Label not found
+    //     }
+        
+    //     // Node 0 is ground
+    //     if (nodeNum == 0) {
+    //         return 0.0;
+    //     }
+        
+    //     // Get voltage from simulation
+    //     if (sim != null && sim.nodeVoltages != null && 
+    //         nodeNum > 0 && nodeNum <= sim.nodeVoltages.length) {
+    //         return sim.nodeVoltages[nodeNum - 1]; // nodeVoltages is 0-indexed, excludes ground
+    //     }
+        
+    //     return 0.0;
+    // }
+    
     protected double getVoltageForLabel(String labelName) {
         if (labelName == null || labelName.isEmpty()) {
             return 0.0;
@@ -83,26 +114,13 @@ public class TableElm extends CircuitElm {
             return computedValue.doubleValue();
         }
         
-        // Use LabeledNodeElm's static labelList to get voltage
-        Integer nodeNum = LabeledNodeElm.getByName(labelName);
-        if (nodeNum == null) {
-            return 0.0; // Label not found
-        }
-        
-        // Node 0 is ground
-        if (nodeNum == 0) {
-            return 0.0;
-        }
-        
-        // Get voltage from simulation
-        if (sim != null && sim.nodeVoltages != null && 
-            nodeNum > 0 && nodeNum <= sim.nodeVoltages.length) {
-            return sim.nodeVoltages[nodeNum - 1]; // nodeVoltages is 0-indexed, excludes ground
+        // Use the official CirSim method instead of custom logic
+        if (sim != null) {
+            return sim.getLabeledNodeVoltage(labelName);
         }
         
         return 0.0;
-    }
-    
+    }   
     protected void registerComputedValueAsLabeledNode(String labelName, double voltage) {
         if (labelName == null || labelName.isEmpty()) {
             return;
@@ -122,7 +140,7 @@ public class TableElm extends CircuitElm {
         
         // Calculate table dimensions
         int tableWidth = cols * cellSize + (cols + 1) * cellSpacing;
-        int extraRows = showColumnSums ? 1 : 0; // Add extra row for sums
+        int extraRows = showComputedRow ? 1 : 0; // Add extra row for computed values
         int tableHeight = (rows + extraRows) * cellSize + (rows + extraRows + 1) * cellSpacing + 20; // Extra space for headers
         
         // Set bounding box
@@ -134,7 +152,7 @@ public class TableElm extends CircuitElm {
     }
     
     void draw(Graphics g) {
-        int extraRows = showColumnSums ? 1 : 0;
+        int extraRows = showComputedRow ? 1 : 0;
         
         // Draw table background
         g.setColor(needsHighlight() ? selectColor : Color.white);
@@ -154,8 +172,8 @@ public class TableElm extends CircuitElm {
         // Draw table cells with voltages
         drawTableCells(g);
         
-        // Draw sum row if enabled
-        if (showColumnSums) {
+        // Draw computed row if enabled
+        if (showComputedRow) {
             drawSumRow(g);
         }
         
@@ -211,7 +229,7 @@ public class TableElm extends CircuitElm {
         for (int col = 0; col < cols; col++) {
             int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
             
-            // Get the already-calculated sum from computed values (calculated in stepFinished())
+            // Get the already-calculated sum from computed values (calculated in doStep())
             String sumLabelName = columnHeaders[col];
             Double computedSum = LabeledNodeElm.getComputedValue(sumLabelName);
             double columnSum = (computedSum != null) ? computedSum.doubleValue() : 0.0;
@@ -236,7 +254,7 @@ public class TableElm extends CircuitElm {
 
     private void drawGridLines(Graphics g) {
         g.setColor(Color.gray);
-        int extraRows = showColumnSums ? 1 : 0;
+        int extraRows = showComputedRow ? 1 : 0;
         
         // Vertical lines
         for (int col = 0; col <= cols; col++) {
@@ -250,8 +268,8 @@ public class TableElm extends CircuitElm {
             g.drawLine(point1.x, y, point1.x + cellSpacing + cols * (cellSize + cellSpacing), y);
         }
         
-        // Draw separator line before sum row if showing sums
-        if (showColumnSums) {
+        // Draw separator line before computed row if showing it
+        if (showComputedRow) {
             g.setColor(Color.black);
             int separatorY = point1.y + 20 + cellSpacing + rows * (cellSize + cellSpacing);
             g.drawLine(point1.x, separatorY, point1.x + cellSpacing + cols * (cellSize + cellSpacing), separatorY);
@@ -259,32 +277,32 @@ public class TableElm extends CircuitElm {
     }
     
     // Calculate computed values during simulation step (not during drawing)
-    public void stepFinished() {
-        super.stepFinished();
+    // public void stepFinished() {
+    //     super.stepFinished();
         
-        if (showColumnSums) {
-            // Calculate and register column sums
-            for (int col = 0; col < cols; col++) {
-                // Calculate sum for this column
-                double columnSum = 0.0;
-                for (int row = 0; row < rows; row++) {
-                    String labelName = labelNames[row][col];
-                    columnSum += getVoltageForLabel(labelName);
-                }
+    //     if (showColumnSums) {
+    //         // Calculate and register column sums
+    //         for (int col = 0; col < cols; col++) {
+    //             // Calculate sum for this column
+    //             double columnSum = 0.0;
+    //             for (int row = 0; row < rows; row++) {
+    //                 String labelName = labelNames[row][col];
+    //                 columnSum += getVoltageForLabel(labelName);
+    //             }
                 
-                // Register this sum as a labeled node using column header as the label name
-                String name = columnHeaders[col];
-                registerComputedValueAsLabeledNode(name, columnSum);
-            }
-        }
-    }
+    //             // Register this sum as a labeled node using column header as the label name
+    //             String name = columnHeaders[col];
+    //             registerComputedValueAsLabeledNode(name, columnSum);
+    //         }
+    //     }
+    // }
     
     private double[] lastColumnSums;
-
+    // Calculate computed values during simulation step (not during drawing)
     public void doStep() {
         super.doStep();
         
-        if (showColumnSums) {
+        if (showComputedRow) {
             if (lastColumnSums == null) {
                 lastColumnSums = new double[cols];
             }
@@ -309,7 +327,7 @@ public class TableElm extends CircuitElm {
     }
 
     boolean nonLinear() { 
-        return showColumnSums; // Make element nonlinear if computing sums
+        return showComputedRow; // Make element nonlinear if computing values
     }
     
     // No electrical connections - pure display element
@@ -319,7 +337,7 @@ public class TableElm extends CircuitElm {
     public String dump() {
         StringBuilder sb = new StringBuilder();
         sb.append(super.dump()).append(" ").append(rows).append(" ").append(cols);
-        sb.append(" ").append(showColumnSums ? "1" : "0");
+        sb.append(" ").append(showComputedRow ? "1" : "0");
         
         // Serialize label names
         for (int row = 0; row < rows; row++) {
@@ -340,7 +358,7 @@ public class TableElm extends CircuitElm {
         try {
             if (st.hasMoreTokens()) rows = Integer.parseInt(st.nextToken());
             if (st.hasMoreTokens()) cols = Integer.parseInt(st.nextToken());
-            if (st.hasMoreTokens()) showColumnSums = "1".equals(st.nextToken());
+            if (st.hasMoreTokens()) showComputedRow = "1".equals(st.nextToken());
             
             // Parse label names
             labelNames = new String[rows][cols];
@@ -378,7 +396,7 @@ public class TableElm extends CircuitElm {
         if (n == 1) return new EditInfo("Cell Spacing", cellSpacing, 2, 20);
         if (n == 2) {
             EditInfo ei = new EditInfo("", 0, -1, -1);
-            ei.checkbox = new Checkbox("Show Column Sums", showColumnSums);
+            ei.checkbox = new Checkbox("Show Computed Row", showComputedRow);
             return ei;
         }
         if (n == 3) {
@@ -398,7 +416,7 @@ public class TableElm extends CircuitElm {
             cellSpacing = (int)ei.value;
             setPoints();
         } else if (n == 2) {
-            showColumnSums = ei.checkbox.getState();
+            showComputedRow = ei.checkbox.getState();
             setPoints();
         } else if (n == 3) {
             // Open table editing dialog
@@ -515,10 +533,10 @@ public class TableElm extends CircuitElm {
     // Getter methods for TableEditDialog
     public int getRows() { return rows; }
     public int getCols() { return cols; }
-    public boolean getShowColumnSums() { return showColumnSums; }
+    public boolean getShowComputedRow() { return showComputedRow; }
     
-    public void setShowColumnSums(boolean show) {
-        showColumnSums = show;
+    public void setShowComputedRow(boolean show) {
+        showComputedRow = show;
         setPoints();
     }
 

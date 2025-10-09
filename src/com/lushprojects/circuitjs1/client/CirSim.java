@@ -1109,7 +1109,7 @@ MouseOutHandler, MouseWheelHandler {
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Multipler"), "MultiplyElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Adder"), "AdderElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Table"), "TableElm"));
-		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Godly Table"), "GodlyTableElm"));
+		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add ImprovedTableElm"), "ImprovedTableElm"));		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Godly Table"), "GodlyTableElm"));
 		// mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Spare"), "Spare"));
 
 
@@ -1157,6 +1157,7 @@ MouseOutHandler, MouseWheelHandler {
     	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Audio Input"), "AudioInputElm"));
     	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Data Input"), "DataInputElm"));
     	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add External Voltage (JavaScript)"), "ExtVoltageElm"));
+    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Table Voltage Source"), "TableVoltageElm"));
 
     	mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Inputs and Sources")), inputMenuBar);
     	
@@ -3151,7 +3152,7 @@ MouseOutHandler, MouseWheelHandler {
 	    }
 	    
 	    // Clear computed values once before calling stepFinished() on all elements
-	    LabeledNodeElm.clearComputedValues();
+	    // LabeledNodeElm.clearComputedValues();
 	    
 	    for (i = 0; i != elmArr.length; i++)
 		elmArr[i].stepFinished();
@@ -5962,8 +5963,9 @@ MouseOutHandler, MouseWheelHandler {
    		case 251: return new AdderElm(x1, y1, x2, y2, f, st);
   		// case 252: return new Spare(x1, y1, x2, y2, f, st);
   		case 253: return new TableElm(x1, y1, x2, y2, f, st);
-		//case 254: return new spare(x1, y1, x2, y2, f, st);
+		case 254: return new ImprovedTableElm(x1, y1, x2, y2, f, st);
 		case 255: return new GodlyTableElm(x1, y1, x2, y2, f, st);
+		case 256: return new TableVoltageElm(x1, y1, x2, y2, f, st);
 
 		case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
     	case 368: return new TestPointElm(x1, y1, x2, y2, f, st);
@@ -6286,8 +6288,10 @@ MouseOutHandler, MouseWheelHandler {
     	    		return (CircuitElm) new TableElm(x1, y1);   
     	if (n=="GodlyTableElm")
     	    		return (CircuitElm) new GodlyTableElm(x1, y1);
-		// if (n.equals("Spare")) 
-		// 			return (CircuitElm) new Spare(x1, y1);			
+		if (n.equals("ImprovedTableElm")) 
+					return (CircuitElm) new ImprovedTableElm(x1, y1);			
+		if (n.equals("TableVoltageElm")) 
+					return (CircuitElm) new TableVoltageElm(x1, y1);			
 					
 		// handle CustomCompositeElm:modelname
     	if (n.startsWith("CustomCompositeElm:")) {

@@ -27,10 +27,12 @@ package com.lushprojects.circuitjs1.client;
  * Uses equation: lastoutput + timestep * integrationGain * columnSum
  */
 public class GodlyTableElm extends TableElm {
-    private double integrationGain = 100.0;      // Multiplier for integration (default 100)
+    private double integrationGain = 1.0;      // Multiplier for integration (default 1)
     private Expr integrationExpr;                // Compiled integration expression
     private ExprState[] integrationStates;       // Integration state for each column
     private double[] lastIntegrationOutputs;     // Previous integration outputs for each column
+    private double[] lastComputedRowValues;      // Track last column sums for convergence checking
+    private boolean showComputedRow = true;      // Show computed row at bottom (replaces showColumnSums)
     
     // Constructor for new table
     public GodlyTableElm(int xx, int yy) {
@@ -53,6 +55,7 @@ public class GodlyTableElm extends TableElm {
         // Initialize integration arrays based on current number of columns
         integrationStates = new ExprState[cols];
         lastIntegrationOutputs = new double[cols];
+        
         
         for (int col = 0; col < cols; col++) {
             integrationStates[col] = new ExprState(1); // 1 input (columnSum as 'a')
@@ -241,12 +244,14 @@ public class GodlyTableElm extends TableElm {
     }
 
     @Override  
-    public void stepFinished() {
-        // First call parent to calculate and register column sums
-        // super.stepFinished();
-        
-        // Then perform integration calculations using the computed column sums
-        if (showColumnSums) {
+    // Calculate computed values during simulation step (not during drawing)
+    public void doStep() {
+        super.doStep();
+        if (showComputedRow) {
+            if (lastComputedRowValues == null) {
+                lastComputedRowValues = new double[cols];
+            }
+            
             for (int col = 0; col < cols; col++) {
                  // Calculate sum for this column
                 double columnSum = 0.0;
@@ -254,6 +259,13 @@ public class GodlyTableElm extends TableElm {
                     String labelName = labelNames[row][col];
                     columnSum += getVoltageForLabel(labelName);
                 }
+                
+                // Check for convergence
+                if (Math.abs(columnSum - lastComputedRowValues[col]) > 1e-6) {
+                    sim.converged = false;
+                }
+                
+                lastComputedRowValues[col] = columnSum;
                 
                 // Perform integration on this column sum
                 double integratedValue = performIntegration(col, columnSum);
