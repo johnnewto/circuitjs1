@@ -27,6 +27,7 @@ import com.google.gwt.user.client.ui.Grid;
 import com.google.gwt.user.client.ui.TextBox;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
+
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.KeyUpHandler;
@@ -59,12 +60,13 @@ public class TableEditDialog extends Dialog {
     private Label statusLabel;
     
     // Data storage
-    private String[][] cellLabels;
+    private String[][] cellEquations;  // Store equation text for each cell (now the only mode)
     private String[] columnHeaders;
     private int rows, cols;
     
     // Cell editing management
     private List<List<TextBox>> cellTextBoxes;
+    private List<List<Label>> statusLabels;        // Status/error labels for each cell
     private List<TextBox> headerTextBoxes;
     
     // Track changes
@@ -87,15 +89,15 @@ public class TableEditDialog extends Dialog {
     }
     
     private void copyTableData() {
-        cellLabels = new String[rows][cols];
+        cellEquations = new String[rows][cols];
         columnHeaders = new String[cols];
         
-        // Copy cell labels
+        // Copy cell equations (now the only data type)
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
-                cellLabels[row][col] = tableElement.getCellLabel(row, col);
-                if (cellLabels[row][col] == null) {
-                    cellLabels[row][col] = "node" + (row * cols + col + 1);
+                cellEquations[row][col] = tableElement.getCellEquation(row, col);
+                if (cellEquations[row][col] == null) {
+                    cellEquations[row][col] = "node" + (row * cols + col + 1);
                 }
             }
         }
@@ -118,6 +120,13 @@ public class TableEditDialog extends Dialog {
         statusLabel = new Label("Table Editor - Navigation: Tab/Enter/Ctrl+Arrows | Shortcuts: Ctrl+S (Apply)");
         statusLabel.addStyleName("topSpace");
         mainPanel.add(statusLabel);
+        
+        // Equation help text
+        Label equationHelp = new Label("All cells are equations - Use node names directly (e.g. 'vcc', 'gnd') or variables a-i for labeled nodes | Examples: 'a+b', 'vcc*0.5', 'sin(t)', 'max(a,b,c)', 'vcc>2.5?5:0'");
+        equationHelp.addStyleName("topSpace");
+        equationHelp.getElement().getStyle().setProperty("fontSize", "11px");
+        equationHelp.getElement().getStyle().setProperty("color", "#666");
+        mainPanel.add(equationHelp);
         
         // Table editing controls
         HorizontalPanel controlPanel = new HorizontalPanel();
@@ -207,14 +216,15 @@ public class TableEditDialog extends Dialog {
     }
     
     private void createGrid() {
-        // Create grid with extra row for headers
-        editGrid = new Grid(rows + 1, cols + 1);
+        // Create grid with extra row for headers - each cell now has 2 rows (input, status)
+        editGrid = new Grid((rows * 2) + 1, cols + 1);
         editGrid.addStyleName("tableEditGrid");
         editGrid.setCellSpacing(1);
         editGrid.setCellPadding(2);
         
-        // Initialize TextBox collections
+        // Initialize collections
         cellTextBoxes = new ArrayList<List<TextBox>>();
+        statusLabels = new ArrayList<List<Label>>();
         headerTextBoxes = new ArrayList<TextBox>();
         
         // Add row headers (row numbers)
@@ -222,7 +232,10 @@ public class TableEditDialog extends Dialog {
         for (int row = 0; row < rows; row++) {
             Label rowLabel = new Label("" + (row + 1));
             rowLabel.addStyleName("tableRowHeader");
-            editGrid.setWidget(row + 1, 0, rowLabel);
+            editGrid.setWidget((row * 2) + 1, 0, rowLabel);
+            
+            // Empty cell for status row
+            editGrid.setText((row * 2) + 2, 0, "");
         }
     }
     
@@ -239,12 +252,21 @@ public class TableEditDialog extends Dialog {
         // Add cell editors
         for (int row = 0; row < rows; row++) {
             List<TextBox> rowTextBoxes = new ArrayList<TextBox>();
+            List<Label> rowStatusLabels = new ArrayList<Label>();
+            
             cellTextBoxes.add(rowTextBoxes);
+            statusLabels.add(rowStatusLabels);
             
             for (int col = 0; col < cols; col++) {
+                // Create input box
                 TextBox cellBox = createCellTextBox(row, col);
                 rowTextBoxes.add(cellBox);
-                editGrid.setWidget(row + 1, col + 1, cellBox);
+                editGrid.setWidget((row * 2) + 1, col + 1, cellBox);
+                
+                // Create status label
+                Label statusLabel = createStatusLabel(row, col);
+                rowStatusLabels.add(statusLabel);
+                editGrid.setWidget((row * 2) + 2, col + 1, statusLabel);
             }
         }
         
@@ -286,10 +308,108 @@ public class TableEditDialog extends Dialog {
         return textBox;
     }
     
+    private Label createStatusLabel(final int row, final int col) {
+        Label label = new Label();
+        label.addStyleName("cellStatusLabel");
+        label.getElement().getStyle().setProperty("fontSize", "10px");
+        updateStatusLabel(label, row, col);
+        return label;
+    }
+    
+    private void updateStatusLabel(Label label, int row, int col) {
+        // All cells are now equation mode
+        String equation = cellEquations[row][col];
+        if (equation == null || equation.trim().isEmpty()) {
+            label.setText("Enter equation or node name");
+            label.getElement().getStyle().setProperty("color", "#999");
+        } else {
+            // Validate equation
+            String error = validateEquation(equation);
+            if (error != null) {
+                label.setText("Error: " + error);
+                label.getElement().getStyle().setProperty("color", "#cc0000");
+            } else {
+                // Show current value
+                double value = tableElement.getCellVoltage(row, col);
+                label.setText("= " + formatVoltage(value));
+                label.getElement().getStyle().setProperty("color", "#007700");
+            }
+        }
+    }
+    
+    private void updateCellInputBox(int row, int col) {
+        TextBox textBox = cellTextBoxes.get(row).get(col);
+        
+        // Always equation mode now
+        textBox.setText(cellEquations[row][col]);
+        textBox.setTitle("Enter equation or node name (examples: 'vcc', 'a+b', 'sin(t)')");
+        textBox.addStyleName("equationInput");
+        textBox.removeStyleName("labelInput");
+    }
+    
+    private void validateCell(int row, int col) {
+        TextBox textBox = cellTextBoxes.get(row).get(col);
+        validateCell(textBox, row, col);
+    }
+    
+    private String validateEquation(String equation) {
+        if (equation == null || equation.trim().isEmpty()) {
+            return null; // Empty equations are allowed
+        }
+        
+        try {
+            // Try to parse the equation using CircuitJS1's expression parser
+            ExprParser parser = new ExprParser(equation);
+            Expr expr = parser.parseExpression();
+            String parseError = parser.gotError();
+            
+            if (parseError != null) {
+                return parseError;
+            }
+            
+            // Try to evaluate with dummy values to catch runtime errors
+            ExprState state = new ExprState(9);
+            for (int i = 0; i < state.values.length; i++) {
+                state.values[i] = 1.0; // Dummy voltage values
+            }
+            state.t = 0.0;
+            
+            expr.eval(state);
+            return null; // No error
+            
+        } catch (Exception e) {
+            return e.getMessage();
+        }
+    }
+    
+    private String formatVoltage(double voltage) {
+        if (Math.abs(voltage) < 1e-10) {
+            return "0V";
+        } else if (Math.abs(voltage) >= 1.0) {
+            // Format to 3 decimal places
+            double rounded = Math.round(voltage * 1000.0) / 1000.0;
+            return rounded + "V";
+        } else if (Math.abs(voltage) >= 0.001) {
+            // Format to 1 decimal place in millivolts
+            double millivolts = voltage * 1000;
+            double rounded = Math.round(millivolts * 10.0) / 10.0;
+            return rounded + "mV";
+        } else {
+            // Format to 1 decimal place in microvolts
+            double microvolts = voltage * 1000000;
+            double rounded = Math.round(microvolts * 10.0) / 10.0;
+            return rounded + "μV";
+        }
+    }
+    
     private TextBox createCellTextBox(final int row, final int col) {
         TextBox textBox = new TextBox();
-        textBox.setText(cellLabels[row][col]);
+        
+        // Set initial content (always equation now)
+        textBox.setText(cellEquations[row][col]);
+        textBox.setTitle("Enter equation or node name (examples: 'vcc', 'a+b', 'sin(t)')");
         textBox.addStyleName("tableCellInput");
+        textBox.addStyleName("equationInput");
         
         textBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
@@ -319,9 +439,16 @@ public class TableEditDialog extends Dialog {
                     }
                 }
                 
-                cellLabels[row][col] = textBox.getText();
+                // Store text in equation array
+                String text = textBox.getText();
+                cellEquations[row][col] = text;
+                
                 textBox.addStyleName("modified");
                 markChanged();
+                
+                // Update status label with validation
+                Label statusLabel = statusLabels.get(row).get(col);
+                updateStatusLabel(statusLabel, row, col);
                 
                 // Handle standard navigation
                 if (keyCode == KeyCodes.KEY_ENTER) {
@@ -388,41 +515,34 @@ public class TableEditDialog extends Dialog {
     
     private void validateCell(TextBox textBox, int row, int col) {
         String text = textBox.getText().trim();
-        String originalText = text;
         
-        // Basic validation - no empty cells
-        if (text.isEmpty()) {
-            if (row >= 0) {
-                text = "node" + (row * cols + col + 1);
-            } else {
+        if (row < 0) {
+            // Header validation
+            if (text.isEmpty()) {
                 text = "Col" + (col + 1);
             }
-        }
-        
-        // Remove invalid characters (keep alphanumeric, underscore, hyphen)
-        text = text.replaceAll("[^a-zA-Z0-9_\\-]", "");
-        
-        // Ensure it starts with a letter or underscore
-        if (!text.matches("^[a-zA-Z_].*")) {
-            if (row >= 0) {
-                text = "node" + text;
-            } else {
+            // Remove invalid characters (keep alphanumeric, underscore, hyphen)
+            text = text.replaceAll("[^a-zA-Z0-9_\\-]", "");
+            // Ensure it starts with a letter or underscore
+            if (!text.matches("^[a-zA-Z_].*")) {
                 text = "col" + text;
             }
-        }
-        
-        // Allow duplicate labels - no validation needed
-        
-        // Update textbox if changed
-        if (!text.equals(originalText)) {
-            textBox.setText(text);
-        }
-        
-        // Store the validated value
-        if (row >= 0) {
-            cellLabels[row][col] = text;
-        } else {
+            
+            // Update textbox if changed
+            if (!text.equals(textBox.getText())) {
+                textBox.setText(text);
+            }
             columnHeaders[col] = text;
+            
+        } else {
+            // Cell equation validation - store as-is, validation happens in updateStatusLabel
+            cellEquations[row][col] = text;
+        }
+        
+        // Update status label for cells (not headers)
+        if (row >= 0) {
+            Label statusLabel = statusLabels.get(row).get(col);
+            updateStatusLabel(statusLabel, row, col);
         }
     }
     
@@ -431,18 +551,20 @@ public class TableEditDialog extends Dialog {
     private void addRow() {
         rows++;
         
-        // Expand cellLabels array
-        String[][] newCellLabels = new String[rows][cols];
+        // Expand arrays
+        String[][] newCellEquations = new String[rows][cols];
+        
+        // Copy existing data
         for (int r = 0; r < rows - 1; r++) {
-            System.arraycopy(cellLabels[r], 0, newCellLabels[r], 0, cols);
+            System.arraycopy(cellEquations[r], 0, newCellEquations[r], 0, cols);
         }
         
-        // Initialize new row with simple naming
+        // Initialize new row
         for (int c = 0; c < cols; c++) {
-            newCellLabels[rows - 1][c] = "node" + ((rows - 1) * cols + c + 1);
+            newCellEquations[rows - 1][c] = "node" + ((rows - 1) * cols + c + 1);
         }
         
-        cellLabels = newCellLabels;
+        cellEquations = newCellEquations;
         markChanged();
         populateGrid();
     }
@@ -455,13 +577,15 @@ public class TableEditDialog extends Dialog {
         
         rows--;
         
-        // Shrink cellLabels array
-        String[][] newCellLabels = new String[rows][cols];
+        // Shrink arrays
+        String[][] newCellEquations = new String[rows][cols];
+        
+        // Copy existing data
         for (int r = 0; r < rows; r++) {
-            System.arraycopy(cellLabels[r], 0, newCellLabels[r], 0, cols);
+            System.arraycopy(cellEquations[r], 0, newCellEquations[r], 0, cols);
         }
         
-        cellLabels = newCellLabels;
+        cellEquations = newCellEquations;
         markChanged();
         populateGrid();
     }
@@ -470,18 +594,21 @@ public class TableEditDialog extends Dialog {
         cols++;
         
         // Expand arrays
-        String[][] newCellLabels = new String[rows][cols];
+        String[][] newCellEquations = new String[rows][cols];
         String[] newColumnHeaders = new String[cols];
         
+        // Copy and expand existing data
         for (int r = 0; r < rows; r++) {
-            System.arraycopy(cellLabels[r], 0, newCellLabels[r], 0, cols - 1);
-            newCellLabels[r][cols - 1] = "node" + (r * cols + (cols - 1) + 1);
+            System.arraycopy(cellEquations[r], 0, newCellEquations[r], 0, cols - 1);
+            
+            // Initialize new column
+            newCellEquations[r][cols - 1] = "node" + (r * cols + (cols - 1) + 1);
         }
         
         System.arraycopy(columnHeaders, 0, newColumnHeaders, 0, cols - 1);
         newColumnHeaders[cols - 1] = "Col" + cols;
         
-        cellLabels = newCellLabels;
+        cellEquations = newCellEquations;
         columnHeaders = newColumnHeaders;
         markChanged();
         populateGrid();
@@ -496,16 +623,17 @@ public class TableEditDialog extends Dialog {
         cols--;
         
         // Shrink arrays
-        String[][] newCellLabels = new String[rows][cols];
+        String[][] newCellEquations = new String[rows][cols];
         String[] newColumnHeaders = new String[cols];
         
+        // Copy existing data
         for (int r = 0; r < rows; r++) {
-            System.arraycopy(cellLabels[r], 0, newCellLabels[r], 0, cols);
+            System.arraycopy(cellEquations[r], 0, newCellEquations[r], 0, cols);
         }
         
         System.arraycopy(columnHeaders, 0, newColumnHeaders, 0, cols);
         
-        cellLabels = newCellLabels;
+        cellEquations = newCellEquations;
         columnHeaders = newColumnHeaders;
         markChanged();
         populateGrid();
@@ -531,12 +659,14 @@ public class TableEditDialog extends Dialog {
         // Apply data changes with new size
         tableElement.resizeTable(rows, cols);
         
+        // Apply cell equations
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
-                tableElement.setCellLabel(row, col, cellLabels[row][col]);
+                tableElement.setCellEquation(row, col, cellEquations[row][col]);
             }
         }
         
+        // Apply column headers
         for (int col = 0; col < cols; col++) {
             tableElement.setColumnHeader(col, columnHeaders[col]);
         }
@@ -567,6 +697,14 @@ public class TableEditDialog extends Dialog {
         for (List<TextBox> rowBoxes : cellTextBoxes) {
             for (TextBox cellBox : rowBoxes) {
                 cellBox.removeStyleName("modified");
+            }
+        }
+        
+        // Update all status labels to show current values
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                Label statusLabel = statusLabels.get(row).get(col);
+                updateStatusLabel(statusLabel, row, col);
             }
         }
     }

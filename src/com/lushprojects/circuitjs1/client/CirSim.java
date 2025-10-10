@@ -219,11 +219,12 @@ MouseOutHandler, MouseWheelHandler {
     int timeStepCount;
 
     double minFrameRate = 20;
-    boolean adjustTimeStep;
-    boolean developerMode;
-    static final int HINT_LC = 1;
-    static final int HINT_RC = 2;
-    static final int HINT_3DB_C = 3;
+	boolean adjustTimeStep;
+	// Set developer mode on by default
+	boolean developerMode = true;
+	static final int HINT_LC = 1;
+	static final int HINT_RC = 2;
+	static final int HINT_3DB_C = 3;
     static final int HINT_TWINT = 4;
     static final int HINT_3DB_L = 5;
     Vector<CircuitElm> elmList;
@@ -371,12 +372,13 @@ MouseOutHandler, MouseWheelHandler {
 
 //    Circuit applet;
 
-    CirSim() {
-//	super("Circuit Simulator v1.6d");
-//	applet = a;
-//	useFrame = false;
+
+public CirSim() {
+	//	super("Circuit Simulator v1.6d");
+	//	applet = a;
+	//	useFrame = false;
 	theSim = this;
-    }
+}
 
     String startCircuit = null;
     String startLabel = null;

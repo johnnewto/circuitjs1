@@ -20,7 +20,6 @@
 package com.lushprojects.circuitjs1.client;
 
 
-
 /**
  * GodlyTableElm - Table with Integration Capabilities
  * Extends TableElm to add integration of column sums over time
@@ -55,7 +54,6 @@ public class GodlyTableElm extends TableElm {
         // Initialize integration arrays based on current number of columns
         integrationStates = new ExprState[cols];
         lastIntegrationOutputs = new double[cols];
-        
         
         for (int col = 0; col < cols; col++) {
             integrationStates[col] = new ExprState(1); // 1 input (columnSum as 'a')
@@ -145,7 +143,7 @@ public class GodlyTableElm extends TableElm {
         for (int col = 0; col < cols; col++) {
             int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
             
-            // Get the already-calculated integrated value (calculated in stepFinished())
+            // Get the already-calculated integrated value (calculated in doStep())
             String integrationLabelName = columnHeaders[col];
             Double computedIntegration = LabeledNodeElm.getComputedValue(integrationLabelName);
             double integratedValue = (computedIntegration != null) ? computedIntegration.doubleValue() : 0.0;
@@ -253,11 +251,11 @@ public class GodlyTableElm extends TableElm {
             }
             
             for (int col = 0; col < cols; col++) {
-                 // Calculate sum for this column
+                 // Calculate sum for this column using equation evaluation
                 double columnSum = 0.0;
                 for (int row = 0; row < rows; row++) {
-                    String labelName = labelNames[row][col];
-                    columnSum += getVoltageForLabel(labelName);
+                    // Use getVoltageForCell which works with equations
+                    columnSum += getVoltageForCell(row, col);
                 }
                 
                 // Check for convergence
@@ -292,18 +290,18 @@ public class GodlyTableElm extends TableElm {
         // Show some sample values including integration results
         for (int row = 0; row < Math.min(2, rows) && idx < arr.length - 2; row++) {
             for (int col = 0; col < Math.min(2, cols) && idx < arr.length - 2; col++) {
-                String label = labelNames[row][col];
-                double voltage = getVoltageForLabel(label);
-                arr[idx++] = label + ": " + getVoltageText(voltage);
+                String equation = getCellEquation(row, col);
+                double voltage = getVoltageForCell(row, col);
+                arr[idx++] = "=" + equation + ": " + getVoltageText(voltage);
             }
         }
         
         // Show integration results for first few columns
         for (int col = 0; col < Math.min(2, cols) && idx < arr.length - 1; col++) {
-            String integrationLabel = columnHeaders[col] + "Σ";
+            String integrationLabel = columnHeaders[col];
             Double integratedValue = LabeledNodeElm.getComputedValue(integrationLabel);
             if (integratedValue != null) {
-                arr[idx++] = integrationLabel + ": " + getVoltageText(integratedValue.doubleValue());
+                arr[idx++] = integrationLabel + "∫: " + getVoltageText(integratedValue.doubleValue());
             }
         }
         

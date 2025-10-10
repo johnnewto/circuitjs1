@@ -239,49 +239,82 @@ class ExprParser {
     String err;
 
     void getToken() {
-	while (pos < tlen && text.charAt(pos) == ' ')
-	    pos++;
-	if (pos == tlen) {
-	    token = "";
-	    return;
-	}
-	int i = pos;
-	int c = text.charAt(i);
-	if ((c >= '0' && c <= '9') || c == '.') {
-	    for (i = pos; i != tlen; i++) {
-		if (text.charAt(i) == 'e' || text.charAt(i) == 'E') {
-		    i++;
-		    if (i < tlen && (text.charAt(i) == '+' || text.charAt(i) == '-'))
-			i++;
+		while (pos < tlen && text.charAt(pos) == ' ')
+			pos++;
+		if (pos == tlen) {
+			token = "";
+			return;
 		}
-		if (!((text.charAt(i) >= '0' && text.charAt(i) <= '9') ||
-		      text.charAt(i) == '.'))
-		    break;
-	    }
-	} else if (c >= 'a' && c <= 'z') {
-	    for (i = pos; i != tlen; i++) {
-		if (!(text.charAt(i) >= 'a' && text.charAt(i) <= 'z'))
-		    break;
-	    }
-	} else {
-	    i++;
-	    if (i < tlen) {
-		// ||, &&, <<, >>, ==
-		if (text.charAt(i) == c && (c == '|' || c == '&' || c == '<' || c == '>' || c == '='))
-		    i++;
-		// <=, >=
-		else if ((c == '<' || c == '>' || c == '!') && text.charAt(i) == '=')
-		    i++;
-	    }
-	}
-	token = text.substring(pos, i);
-	pos = i;
+		int i = pos;
+		int c = text.charAt(i);
+		if ((c >= '0' && c <= '9') || c == '.') {
+			for (i = pos; i != tlen; i++) {
+			if (text.charAt(i) == 'e' || text.charAt(i) == 'E') {
+				i++;
+				if (i < tlen && (text.charAt(i) == '+' || text.charAt(i) == '-'))
+				i++;
+			}
+			if (!((text.charAt(i) >= '0' && text.charAt(i) <= '9') ||
+				text.charAt(i) == '.'))
+				break;
+			}
+		} else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
+			// Support identifiers with letters, numbers, and underscores
+			// Must start with letter or underscore
+			for (i = pos; i != tlen; i++) {
+				char ch = text.charAt(i);
+				if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || 
+					  (ch >= '0' && ch <= '9') || ch == '_'))
+					break;
+			}
+		} else {
+			i++;
+			if (i < tlen) {
+			// ||, &&, <<, >>, ==
+			if (text.charAt(i) == c && (c == '|' || c == '&' || c == '<' || c == '>' || c == '='))
+				i++;
+			// <=, >=
+			else if ((c == '<' || c == '>' || c == '!') && text.charAt(i) == '=')
+				i++;
+			}
+		}
+		token = text.substring(pos, i);
+		pos = i;
     }
 
     boolean skip(String s) {
 	if (token.compareTo(s) != 0)
 	    return false;
 	getToken();
+	return true;
+    }
+    
+    // Case-insensitive version for function names
+    boolean skipIgnoreCase(String s) {
+	if (!token.equalsIgnoreCase(s))
+	    return false;
+	getToken();
+	return true;
+    }
+    
+    // Check if a token looks like a valid identifier (GWT-compatible)
+    boolean isValidIdentifier(String token) {
+	if (token == null || token.length() == 0)
+	    return false;
+	
+	// First character must be letter or underscore
+	char first = token.charAt(0);
+	if (!((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_'))
+	    return false;
+	
+	// Remaining characters must be letters, numbers, or underscores
+	for (int i = 1; i < token.length(); i++) {
+	    char c = token.charAt(i);
+	    if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
+		  (c >= '0' && c <= '9') || c == '_'))
+		return false;
+	}
+	
 	return true;
     }
 
@@ -432,104 +465,163 @@ class ExprParser {
 	    skipOrError(")");
 	    return e;
 	}
-	if (skip("t"))
+	// Handle case-insensitive 't' for time
+	if (token.equalsIgnoreCase("t")) {
+	    getToken();
 	    return new Expr(Expr.E_T);
+	}
+	// Handle single-letter variables a-i (case insensitive)
 	if (token.length() == 1) {
-	    char c = token.charAt(0);
+	    char c = Character.toLowerCase(token.charAt(0));
 	    if (c >= 'a' && c <= 'i') {
 		getToken();
 		return new Expr(Expr.E_A + (c-'a'));
 	    }
 	}
-	if (token.startsWith("last") && token.length() == 5) {
-	    char c = token.charAt(4);
+	
+	// Check if token is a labeled node name (case-insensitive comparison)
+	if (LabeledNodeElm.labelList != null && !LabeledNodeElm.labelList.isEmpty()) {
+	    String[] availableNodes = getSortedLabeledNodes();
+	    for (int i = 0; i < Math.min(availableNodes.length, 9); i++) {
+		String availNode = availableNodes[i];
+		if (availNode.equalsIgnoreCase(token)) {
+		    getToken();
+		    return new Expr(Expr.E_A + i);  // Map to variables a-i
+		}
+	    }
+	}
+	// Handle last variables (lasta, lastb, etc.) - case insensitive
+	if (token.toLowerCase().startsWith("last") && token.length() == 5) {
+	    char c = Character.toLowerCase(token.charAt(4));
 	    if (c >= 'a' && c <= 'i') {
 		getToken();
 		return new Expr(Expr.E_LASTA + (c-'a'));
 	    }
 	}
-	if (token.endsWith("dt") && token.startsWith("d") && token.length() == 4) {
-	    char c = token.charAt(1);
+	// Handle derivatives (dadt, dbdt, etc.) - case insensitive
+	if (token.toLowerCase().endsWith("dt") && token.toLowerCase().startsWith("d") && token.length() == 4) {
+	    char c = Character.toLowerCase(token.charAt(1));
 	    if (c >= 'a' && c <= 'i') {
 		getToken();
 		return new Expr(Expr.E_DADT + (c-'a'));
 	    }
 	}
-	if (skip("lastoutput"))
+	if (token.equalsIgnoreCase("lastoutput")) {
+	    getToken();
 	    return new Expr(Expr.E_LASTOUTPUT);
-	if (skip("timestep"))
+	}
+	if (token.equalsIgnoreCase("timestep")) {
+	    getToken();
 	    return new Expr(Expr.E_TIMESTEP);
-	if (skip("pi"))
+	}
+	if (token.equalsIgnoreCase("pi")) {
+	    getToken();
 	    return new Expr(Expr.E_VAL, 3.14159265358979323846);
-//	if (skip("e"))
+	}
+//	if (skipIgnoreCase("e"))
 //	    return new Expr(Expr.E_VAL, 2.7182818284590452354);
-	if (skip("sin"))
+	if (skipIgnoreCase("sin"))
 	    return parseFunc(Expr.E_SIN);
-	if (skip("cos"))
+	if (skipIgnoreCase("cos"))
 	    return parseFunc(Expr.E_COS);
-	if (skip("asin"))
+	if (skipIgnoreCase("asin"))
 	    return parseFunc(Expr.E_ASIN);
-	if (skip("acos"))
+	if (skipIgnoreCase("acos"))
 	    return parseFunc(Expr.E_ACOS);
-	if (skip("atan"))
+	if (skipIgnoreCase("atan"))
 	    return parseFunc(Expr.E_ATAN);
-	if (skip("sinh"))
+	if (skipIgnoreCase("sinh"))
 	    return parseFunc(Expr.E_SINH);
-	if (skip("cosh"))
+	if (skipIgnoreCase("cosh"))
 	    return parseFunc(Expr.E_COSH);
-	if (skip("tanh"))
+	if (skipIgnoreCase("tanh"))
 	    return parseFunc(Expr.E_TANH);
-	if (skip("abs"))
+	if (skipIgnoreCase("abs"))
 	    return parseFunc(Expr.E_ABS);
-	if (skip("exp"))
+	if (skipIgnoreCase("exp"))
 	    return parseFunc(Expr.E_EXP);
-	if (skip("log"))
+	if (skipIgnoreCase("log"))
 	    return parseFunc(Expr.E_LOG);
-	if (skip("sqrt"))
+	if (skipIgnoreCase("sqrt"))
 	    return parseFunc(Expr.E_SQRT);
-	if (skip("tan"))
+	if (skipIgnoreCase("tan"))
 	    return parseFunc(Expr.E_TAN);
-	if (skip("tri"))
+	if (skipIgnoreCase("tri"))
 	    return parseFunc(Expr.E_TRIANGLE);
-	if (skip("saw"))
+	if (skipIgnoreCase("saw"))
 	    return parseFunc(Expr.E_SAWTOOTH);
-	if (skip("floor"))
+	if (skipIgnoreCase("floor"))
 	    return parseFunc(Expr.E_FLOOR);
-	if (skip("ceil"))
+	if (skipIgnoreCase("ceil"))
 	    return parseFunc(Expr.E_CEIL);
-	if (skip("min"))
+	if (skipIgnoreCase("min"))
 	    return parseFuncMulti(Expr.E_MIN, 2, 1000);
-	if (skip("max"))
+	if (skipIgnoreCase("max"))
 	    return parseFuncMulti(Expr.E_MAX, 2, 1000);
-	if (skip("pwl"))
+	if (skipIgnoreCase("pwl"))
 	    return parseFuncMulti(Expr.E_PWL, 2, 1000);
-	if (skip("mod"))
+	if (skipIgnoreCase("mod"))
 	    return parseFuncMulti(Expr.E_MOD, 2, 2);
-	if (skip("step"))
+	if (skipIgnoreCase("step"))
 	    return parseFuncMulti(Expr.E_STEP, 1, 2);
-	if (skip("select"))
+	if (skipIgnoreCase("select"))
 	    return parseFuncMulti(Expr.E_SELECT, 3, 3);
-	if (skip("clamp"))
+	if (skipIgnoreCase("clamp"))
 	    return parseFuncMulti(Expr.E_CLAMP, 3, 3);
-	if (skip("pwr"))
+	if (skipIgnoreCase("pwr"))
 	    return parseFuncMulti(Expr.E_PWR, 2, 2);
-	if (skip("pwrs"))
+	if (skipIgnoreCase("pwrs"))
 	    return parseFuncMulti(Expr.E_PWRS, 2, 2);
 	try {
 	    Expr e = new Expr(Expr.E_VAL, Double.valueOf(token).doubleValue());
 	    getToken();
 	    return e;
 	} catch (Exception e) {
-	    if (token.length() == 0)
+	    if (token.length() == 0) {
 		setError("unexpected end of input");
-	    else
-		setError("unrecognized token: " + token);
+	    } else {
+		// Check if this looks like a node name that might not be available yet
+		if (isValidIdentifier(token)) {
+		    setError("unknown variable or node: " + token + " (labeled nodes may not be available yet)");
+		} else {
+		    setError("unrecognized token: " + token);
+		}
+	    }
+	    getToken(); // Skip the problematic token
 	    return new Expr(Expr.E_VAL, 0);
 	}
     }
 
+    // Helper method to get labeled nodes in consistent sorted order
+    private String[] getSortedLabeledNodes() {
+	if (LabeledNodeElm.labelList == null || LabeledNodeElm.labelList.isEmpty()) {
+	    return new String[0];
+	}
+	
+	// Convert keySet to sorted array (same logic as in TableElm for consistency)
+	java.util.Set<String> keySet = LabeledNodeElm.labelList.keySet();
+	String[] availableNodes = new String[keySet.size()];
+	int idx = 0;
+	for (String key : keySet) {
+	    availableNodes[idx++] = key;
+	}
+	
+	// Sort using simple bubble sort for GWT compatibility
+	for (int i = 0; i < availableNodes.length - 1; i++) {
+	    for (int j = i + 1; j < availableNodes.length; j++) {
+		if (availableNodes[i].compareTo(availableNodes[j]) > 0) {
+		    String temp = availableNodes[i];
+		    availableNodes[i] = availableNodes[j];
+		    availableNodes[j] = temp;
+		}
+	    }
+	}
+	
+	return availableNodes;
+    }
+
     ExprParser(String s) {
-	text = s.toLowerCase();
+	text = s; // Keep original case - we'll handle case insensitivity in comparisons
 	tlen = text.length();
 	pos = 0;
 	err = null;

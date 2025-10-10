@@ -9,19 +9,26 @@ package com.lushprojects.circuitjs1.client;
 import com.google.gwt.user.client.ui.Button;
 
 /**
- * Simplified Table Element - Displays voltage values from labeled nodes
- * Extends CircuitElm for lightweight text-based label display
+ * Simplified Table Element - Displays voltage values from equations
+ * Extends CircuitElm for lightweight equation-based display
  */
 public class TableElm extends CircuitElm {
     protected int rows = 3;
     protected int cols = 2; 
     protected int cellSize = 60;
     protected int cellSpacing = 4;
-    protected String[][] labelNames;  // Store label names as text
     protected String[] columnHeaders;
     protected boolean showComputedRow = true; // Show computed row at bottom
     
-    // Computed values are now stored in LabeledNodeElm.labelList - no JavaScript needed
+    // All cells now use equations
+    // Variables available: a-i map to labeled nodes OR use labeled node names directly
+    // Example equations: "a+b", "node1+node2", "sin(t)", "max(a,b,c)", "vcc>2.5?5:0"
+    String[][] cellEquations;     // Equation strings for each cell
+    Expr[][] compiledExpressions; // Compiled expressions for evaluation
+    ExprState[][] expressionStates; // Expression evaluation state for each cell
+    
+    // Track labeled nodes to detect changes that require recompilation
+    String[] lastKnownNodes;  // Last known labeled node list (sorted)
     
     // Constructor for new table
     public TableElm(int xx, int yy) {
@@ -37,13 +44,28 @@ public class TableElm extends CircuitElm {
     }
     
     private void initTable() {
-        // Initialize label names array
-        if (labelNames == null) {
-            labelNames = new String[rows][cols];
-            // Set default label names
+        // Initialize equation arrays
+        if (cellEquations == null) {
+            cellEquations = new String[rows][cols];
             for (int row = 0; row < rows; row++) {
                 for (int col = 0; col < cols; col++) {
-                    labelNames[row][col] = "node" + (row * cols + col + 1);
+                    // Default equation is just the node name (like "node1", "vcc", etc.)
+                    cellEquations[row][col] = "node" + (row * cols + col + 1);
+                }
+            }
+            CirSim.console("TableElm: Initialized cellEquations array");
+        }
+        
+        if (compiledExpressions == null) {
+            compiledExpressions = new Expr[rows][cols];
+            CirSim.console("TableElm: Initialized compiledExpressions array");
+        }
+        
+        if (expressionStates == null) {
+            expressionStates = new ExprState[rows][cols];
+            for (int row = 0; row < rows; row++) {
+                for (int col = 0; col < cols; col++) {
+                    expressionStates[row][col] = new ExprState(9); // Support variables a-i
                 }
             }
         }
@@ -59,8 +81,8 @@ public class TableElm extends CircuitElm {
         // Ensure no null or empty values exist
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
-                if (labelNames[row][col] == null || labelNames[row][col].trim().isEmpty()) {
-                    labelNames[row][col] = "node" + (row * cols + col + 1);
+                if (cellEquations[row][col] == null || cellEquations[row][col].trim().isEmpty()) {
+                    cellEquations[row][col] = "node" + (row * cols + col + 1);
                 }
             }
         }
@@ -70,56 +92,207 @@ public class TableElm extends CircuitElm {
                 columnHeaders[i] = "Col" + (i + 1);
             }
         }
+        
+        // Compile all equations
+        recompileAllEquations();
     }
     
-    // protected double getVoltageForLabel(String labelName) {
-    //     if (labelName == null || labelName.isEmpty()) {
-    //         return 0.0;
-    //     }
-        
-    //     // First check if this is a computed value (like a column sum)
-    //     Double computedValue = LabeledNodeElm.getComputedValue(labelName);
-    //     if (computedValue != null) {
-    //         return computedValue.doubleValue();
-    //     }
-        
-    //     // Use LabeledNodeElm's static labelList to get voltage
-    //     Integer nodeNum = LabeledNodeElm.getByName(labelName);
-    //     if (nodeNum == null) {
-    //         return 0.0; // Label not found
-    //     }
-        
-    //     // Node 0 is ground
-    //     if (nodeNum == 0) {
-    //         return 0.0;
-    //     }
-        
-    //     // Get voltage from simulation
-    //     if (sim != null && sim.nodeVoltages != null && 
-    //         nodeNum > 0 && nodeNum <= sim.nodeVoltages.length) {
-    //         return sim.nodeVoltages[nodeNum - 1]; // nodeVoltages is 0-indexed, excludes ground
-    //     }
-        
-    //     return 0.0;
-    // }
-    
-    protected double getVoltageForLabel(String labelName) {
-        if (labelName == null || labelName.isEmpty()) {
+    // Enhanced version that evaluates equations for cell values
+    protected double getVoltageForCell(int row, int col) {
+        if (row < 0 || row >= rows || col < 0 || col >= cols) {
             return 0.0;
         }
         
-        // First check if this is a computed value (like a column sum)
-        Double computedValue = LabeledNodeElm.getComputedValue(labelName);
-        if (computedValue != null) {
-            return computedValue.doubleValue();
+        // All cells now use equations
+        if (compiledExpressions[row][col] != null) {
+            return evaluateEquation(row, col);
         }
         
-        // Use the official CirSim method instead of custom logic
-        if (sim != null) {
-            return sim.getLabeledNodeVoltage(labelName);
+        // If no compiled expression, try to evaluate as simple node name
+        String equation = cellEquations[row][col];
+        if (equation != null && !equation.trim().isEmpty()) {
+            // Try direct node lookup first
+            if (sim != null) {
+                double voltage = sim.getLabeledNodeVoltage(equation);
+                if (voltage != 0.0 || LabeledNodeElm.getByName(equation) != null) {
+                    return voltage;
+                }
+            }
+            
+            // Check computed values
+            Double computedValue = LabeledNodeElm.getComputedValue(equation);
+            if (computedValue != null) {
+                return computedValue.doubleValue();
+            }
         }
         
         return 0.0;
+    }
+    
+private double evaluateEquation(int row, int col) {
+    try {
+        // Handle deferred compilation (null expression with valid equation text)
+        if (compiledExpressions[row][col] == null && 
+            cellEquations[row][col] != null && !cellEquations[row][col].trim().isEmpty()) {
+            
+            CirSim.console("TableElm: Attempting deferred compilation [" + row + "][" + col + "]");
+            compileEquation(row, col, cellEquations[row][col]);
+            
+            // If still null after compilation attempt, return 0
+            if (compiledExpressions[row][col] == null) {
+                return 0.0;
+            }
+        }
+        
+        // If expression is null (no equation or compilation failed), return 0
+        if (compiledExpressions[row][col] == null) {
+            return 0.0;
+        }
+        
+        // Evaluate the compiled expression
+        ExprState state = expressionStates[row][col];
+        updateExpressionState(state);
+        return compiledExpressions[row][col].eval(state);
+        
+    } catch (Exception e) {
+        CirSim.console("TableElm: Error evaluating equation [" + row + "][" + col + "]: " + e.getMessage());
+        return 0.0;
+    }
+}
+    
+    // Check if labeled nodes have changed and recompile equations if needed
+    private void checkAndRecompileEquations() {
+        // Get current labeled nodes
+        String[] currentNodes = getSortedLabeledNodesArray();
+        
+        // Check if nodes have changed
+        boolean nodesChanged = false;
+        if (lastKnownNodes == null || lastKnownNodes.length != currentNodes.length) {
+            nodesChanged = true;
+        } else {
+            for (int i = 0; i < currentNodes.length; i++) {
+                if (!currentNodes[i].equals(lastKnownNodes[i])) {
+                    nodesChanged = true;
+                    break;
+                }
+            }
+        }
+        
+        // If nodes changed, recompile all equations
+        if (nodesChanged) {
+            CirSim.console("TableElm: Labeled nodes changed, recompiling equations...");
+            lastKnownNodes = currentNodes;
+            recompileAllEquations();
+        }
+    }
+    
+    // Helper method to get current labeled nodes as array (uses cached method from LabeledNodeElm)
+    private String[] getSortedLabeledNodesArray() {
+        return LabeledNodeElm.getSortedLabeledNodeNames();
+    }
+        
+    // Recompile all equations when labeled nodes change
+    private void recompileAllEquations() {
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                if (cellEquations[row][col] != null && !cellEquations[row][col].trim().isEmpty()) {
+                    compileEquation(row, col, cellEquations[row][col]);
+                }
+            }
+        }
+    }
+    
+    private void updateExpressionState(ExprState state) {
+        // Check if labeled nodes have changed and recompile if needed
+        checkAndRecompileEquations();
+        
+        // Update state with current simulation time
+        state.t = sim != null ? sim.t : 0.0;
+        
+        // Dynamically map actual labeled nodes to variables a-i
+        if (sim != null && LabeledNodeElm.labelList != null && !LabeledNodeElm.labelList.isEmpty()) {
+            String[] availableNodes = LabeledNodeElm.getSortedLabeledNodeNames(); // Use cached method
+            
+            // Map first 9 labeled nodes to variables a-i
+            for (int i = 0; i < Math.min(availableNodes.length, state.values.length); i++) {
+                state.values[i] = sim.getLabeledNodeVoltage(availableNodes[i]);
+            }
+            
+            // Clear remaining variables if we have fewer than 9 nodes
+            for (int i = availableNodes.length; i < state.values.length; i++) {
+                state.values[i] = 0.0;
+            }
+        } else {
+            // No labeled nodes available - clear all variables
+            for (int i = 0; i < state.values.length; i++) {
+                state.values[i] = 0.0;
+            }
+        }
+    }
+    
+    private void compileEquation(int row, int col, String equation) {
+        if (equation == null || equation.trim().isEmpty()) {
+            compiledExpressions[row][col] = null;
+            return;
+        }
+        
+        try {
+            ExprParser parser = new ExprParser(equation);
+            compiledExpressions[row][col] = parser.parseExpression();
+            String err = parser.gotError();
+            if (err != null) {
+                // Provide helpful error message with available variables
+                String availableVars = getAvailableVariablesString();
+                CirSim.console("TableElm: Parse error in equation [" + row + "][" + col + "]: " + equation + ": " + err);
+                CirSim.console("TableElm: " + availableVars);
+                compiledExpressions[row][col] = null;
+                return;
+            }
+        } catch (Exception e) {
+            String availableVars = getAvailableVariablesString();
+            CirSim.console("TableElm: Exception parsing equation [" + row + "][" + col + "]: " + e.getMessage());
+            CirSim.console("TableElm: " + availableVars);
+            compiledExpressions[row][col] = null;
+        }
+    }
+    
+    // Helper method to show which variables are available for equations
+    private String getAvailableVariablesString() {
+        StringBuilder sb = new StringBuilder();
+        String[] availableNodes = LabeledNodeElm.getSortedLabeledNodeNames(); // Use cached method
+        
+        sb.append("Available: t (time)");
+        for (int i = 0; i < Math.min(availableNodes.length, 9); i++) {
+            char varName = (char)('a' + i);
+            sb.append(", ").append(varName).append("/").append(availableNodes[i]);
+        }
+        if (availableNodes.length > 9) {
+            sb.append(" (only first 9 nodes supported)");
+        }
+        if (availableNodes.length == 0) {
+            sb.append(", no labeled nodes in circuit");
+        }
+        
+        return sb.toString();
+    }
+    
+    // Public methods for managing equations
+    public void setCellEquation(int row, int col, String equation) {
+        if (row >= 0 && row < rows && col >= 0 && col < cols) {
+            cellEquations[row][col] = equation != null ? equation : "";
+            compileEquation(row, col, cellEquations[row][col]);
+        }
+    }
+    
+    public String getCellEquation(int row, int col) {
+        if (row >= 0 && row < rows && col >= 0 && col < cols) {
+            return cellEquations[row][col];
+        }
+        return "";
+    }
+    
+    public void setCellMode(int row, int col, boolean equationMode) {
+        // Remove - no longer needed since all cells are equation mode
     }   
     protected void registerComputedValueAsLabeledNode(String labelName, double voltage) {
         if (labelName == null || labelName.isEmpty()) {
@@ -200,21 +373,24 @@ public class TableElm extends CircuitElm {
                 int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
                 int cellY = point1.y + 20 + cellSpacing + row * (cellSize + cellSpacing);
                 
-                // Get label name and voltage
-                String labelName = labelNames[row][col];
-                double voltage = getVoltageForLabel(labelName);
+                // Get voltage using equation evaluation
+                double voltage = getVoltageForCell(row, col);
                 
-                // Draw cell background based on voltage (optional)
-                setVoltageColor(g, voltage);
+                // Draw cell background - light blue for all equation cells
+                g.setColor(needsHighlight() ? selectColor : new Color(240, 248, 255));
                 g.fillRect(cellX, cellY, cellSize, cellSize);
                 
                 // Draw cell border
                 g.setColor(Color.black);
                 g.drawRect(cellX, cellY, cellSize, cellSize);
                 
-                // Draw label name (top half)
+                // Draw equation (top half)
                 g.setColor(Color.black);
-                drawCenteredText(g, labelName, cellX + cellSize/2, cellY + cellSize/3, true);
+                String displayText = cellEquations[row][col];
+                if (displayText.length() > 8) {
+                    displayText = displayText.substring(0, 6) + ".."; // Truncate long equations
+                }
+                drawCenteredText(g, displayText, cellX + cellSize/2, cellY + cellSize/3, true);
                 
                 // Draw voltage value (bottom half)
                 String voltageText = getVoltageText(voltage);
@@ -276,27 +452,6 @@ public class TableElm extends CircuitElm {
         }
     }
     
-    // Calculate computed values during simulation step (not during drawing)
-    // public void stepFinished() {
-    //     super.stepFinished();
-        
-    //     if (showColumnSums) {
-    //         // Calculate and register column sums
-    //         for (int col = 0; col < cols; col++) {
-    //             // Calculate sum for this column
-    //             double columnSum = 0.0;
-    //             for (int row = 0; row < rows; row++) {
-    //                 String labelName = labelNames[row][col];
-    //                 columnSum += getVoltageForLabel(labelName);
-    //             }
-                
-    //             // Register this sum as a labeled node using column header as the label name
-    //             String name = columnHeaders[col];
-    //             registerComputedValueAsLabeledNode(name, columnSum);
-    //         }
-    //     }
-    // }
-    
     private double[] lastColumnSums;
     // Calculate computed values during simulation step (not during drawing)
     public void doStep() {
@@ -310,8 +465,8 @@ public class TableElm extends CircuitElm {
             for (int col = 0; col < cols; col++) {
                 double columnSum = 0.0;
                 for (int row = 0; row < rows; row++) {
-                    String labelName = labelNames[row][col];
-                    columnSum += getVoltageForLabel(labelName);
+                    // Use getVoltageForCell to support equations
+                    columnSum += getVoltageForCell(row, col);
                 }
                 
                 // Check for convergence
@@ -327,7 +482,8 @@ public class TableElm extends CircuitElm {
     }
 
     boolean nonLinear() { 
-        return showComputedRow; // Make element nonlinear if computing values
+        // Always nonlinear since we use equations (which may be nonlinear)
+        return true;
     }
     
     // No electrical connections - pure display element
@@ -339,16 +495,17 @@ public class TableElm extends CircuitElm {
         sb.append(super.dump()).append(" ").append(rows).append(" ").append(cols);
         sb.append(" ").append(showComputedRow ? "1" : "0");
         
-        // Serialize label names
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < cols; col++) {
-                sb.append(" ").append(CustomLogicModel.escape(labelNames[row][col]));
-            }
-        }
-        
         // Serialize column headers
         for (int col = 0; col < cols; col++) {
             sb.append(" ").append(CustomLogicModel.escape(columnHeaders[col]));
+        }
+        
+        // Serialize equation data only
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                String equation = (cellEquations[row][col] != null) ? cellEquations[row][col] : "";
+                sb.append(" ").append(CustomLogicModel.escape(equation));
+            }
         }
         
         return sb.toString();
@@ -360,20 +517,11 @@ public class TableElm extends CircuitElm {
             if (st.hasMoreTokens()) cols = Integer.parseInt(st.nextToken());
             if (st.hasMoreTokens()) showComputedRow = "1".equals(st.nextToken());
             
-            // Parse label names
-            labelNames = new String[rows][cols];
-            for (int row = 0; row < rows; row++) {
-                for (int col = 0; col < cols; col++) {
-                    if (st.hasMoreTokens()) {
-                        labelNames[row][col] = CustomLogicModel.unescape(st.nextToken());
-                    } else {
-                        labelNames[row][col] = "node" + (row * cols + col + 1);
-                    }
-                }
-            }
+            // Initialize arrays
+            columnHeaders = new String[cols];
+            cellEquations = new String[rows][cols];
             
             // Parse column headers
-            columnHeaders = new String[cols];
             for (int col = 0; col < cols; col++) {
                 if (st.hasMoreTokens()) {
                     columnHeaders[col] = CustomLogicModel.unescape(st.nextToken());
@@ -381,9 +529,37 @@ public class TableElm extends CircuitElm {
                     columnHeaders[col] = "Col" + (col + 1);
                 }
             }
+            
+            // Parse equation data
+            for (int row = 0; row < rows; row++) {
+                for (int col = 0; col < cols; col++) {
+                    if (st.hasMoreTokens()) {
+                        cellEquations[row][col] = CustomLogicModel.unescape(st.nextToken());
+                    } else {
+                        cellEquations[row][col] = "node" + (row * cols + col + 1);
+                    }
+                }
+            }
+            
+            CirSim.console("TableElm: Successfully parsed table data with equations");
+            
         } catch (Exception e) {
-            CirSim.console("TableElm: error parsing table data, using defaults");
-            initTable(); // Reset to defaults
+            CirSim.console("TableElm: Error parsing table data: " + e.getMessage());
+            // Initialize with defaults on error
+            if (columnHeaders == null) {
+                columnHeaders = new String[cols];
+                for (int col = 0; col < cols; col++) {
+                    columnHeaders[col] = "Col" + (col + 1);
+                }
+            }
+            if (cellEquations == null) {
+                cellEquations = new String[rows][cols];
+                for (int row = 0; row < rows; row++) {
+                    for (int col = 0; col < cols; col++) {
+                        cellEquations[row][col] = "node" + (row * cols + col + 1);
+                    }
+                }
+            }
         }
     }
 
@@ -426,22 +602,35 @@ public class TableElm extends CircuitElm {
 
     // Resize table method for use by TableEditDialog
     public void resizeTable(int newRows, int newCols) {
-        String[][] oldLabels = labelNames;
         String[] oldHeaders = columnHeaders;
+        String[][] oldEquations = cellEquations;
         
         // Update dimensions
         rows = newRows;
         cols = newCols;
         
         // Create new arrays
-        labelNames = new String[rows][cols];
         columnHeaders = new String[cols];
+        cellEquations = new String[rows][cols];
+        compiledExpressions = new Expr[rows][cols];
+        expressionStates = new ExprState[rows][cols];
         
-        // Copy over existing labels where possible
-        if (oldLabels != null) {
-            for (int row = 0; row < Math.min(rows, oldLabels.length); row++) {
-                for (int col = 0; col < Math.min(cols, oldLabels[row].length); col++) {
-                    labelNames[row][col] = oldLabels[row][col];
+        // Initialize expression states
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                expressionStates[row][col] = new ExprState(9);
+            }
+        }
+        
+        // Copy over existing data where possible
+        if (oldEquations != null) {
+            for (int row = 0; row < Math.min(rows, oldEquations.length); row++) {
+                for (int col = 0; col < Math.min(cols, oldEquations[row].length); col++) {
+                    cellEquations[row][col] = oldEquations[row][col];
+                    // Recompile equations for copied cells
+                    if (cellEquations[row][col] != null && !cellEquations[row][col].isEmpty()) {
+                        compileEquation(row, col, cellEquations[row][col]);
+                    }
                 }
             }
         }
@@ -460,11 +649,11 @@ public class TableElm extends CircuitElm {
     }
     
     private void fillMissingLabels() {
-        // Fill missing cell labels with simple defaults
+        // Fill missing cell equations with simple node names
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
-                if (labelNames[row][col] == null || labelNames[row][col].isEmpty()) {
-                    labelNames[row][col] = "node" + (row * cols + col + 1);
+                if (cellEquations[row][col] == null || cellEquations[row][col].isEmpty()) {
+                    cellEquations[row][col] = "node" + (row * cols + col + 1);
                 }
             }
         }
@@ -486,16 +675,18 @@ public class TableElm extends CircuitElm {
     }
     
     void getInfo(String arr[]) {
-        arr[0] = "Voltage Table (" + rows + "x" + cols + ")";
-        arr[1] = "Displays voltages from labeled nodes";
+        arr[0] = "Equation Table (" + rows + "x" + cols + ")";
+        arr[1] = "All cells use equations (node names or expressions)";
         
         int idx = 2;
+        
         // Show some sample values
         for (int row = 0; row < Math.min(3, rows) && idx < arr.length - 1; row++) {
             for (int col = 0; col < Math.min(2, cols) && idx < arr.length - 1; col++) {
-                String label = labelNames[row][col];
-                double voltage = getVoltageForLabel(label);
-                arr[idx++] = label + ": " + getVoltageText(voltage);
+                double voltage = getVoltageForCell(row, col);
+                String equation = cellEquations[row][col];
+                if (equation.length() > 15) equation = equation.substring(0, 12) + "...";
+                arr[idx++] = "=" + equation + ": " + getVoltageText(voltage);
             }
         }
         
@@ -505,14 +696,12 @@ public class TableElm extends CircuitElm {
     }
     
     public void setCellLabel(int row, int col, String label) {
-        if (row >= 0 && row < rows && col >= 0 && col < cols) {
-            labelNames[row][col] = label;
-        }
+        // Remove - no longer applicable since labels are now equations
     }
 
     public String getCellLabel(int row, int col) {
         if (row >= 0 && row < rows && col >= 0 && col < cols) {
-            return labelNames[row][col];
+            return cellEquations[row][col];
         }
         return "";
     }
@@ -539,5 +728,64 @@ public class TableElm extends CircuitElm {
         showComputedRow = show;
         setPoints();
     }
+    
+    // Additional methods for equation support in TableEditDialog
+    public void toggleCellMode(int row, int col) {
+        // Remove - no longer needed since all cells are equation mode
+    }
+    
+    public String getCellDisplayText(int row, int col) {
+        if (row >= 0 && row < rows && col >= 0 && col < cols) {
+            return cellEquations[row][col];
+        }
+        return "";
+    }
+    
+    public void setCellDisplayText(int row, int col, String text) {
+        if (row >= 0 && row < rows && col >= 0 && col < cols) {
+            setCellEquation(row, col, text);
+        }
+    }
+    
+    public double getCellVoltage(int row, int col) {
+        return getVoltageForCell(row, col);
+    }
 
+    // Add a method to be called when the circuit is fully loaded
+    public void circuitLoaded() {
+        // Recompile all equations now that the circuit and labeled nodes should be available
+        CirSim.console("TableElm: Circuit loaded, recompiling all equations...");
+        recompileAllEquations();
+    }
+    
+    @Override
+    public void reset() {
+        super.reset();
+        // Clear cached node list so equations get recompiled on next evaluation
+        lastKnownNodes = null;
+    }
+    
+    // // Override doStep to ensure equations are compiled before first evaluation
+    // @Override
+    // public void doStep() {
+    //     // Check if we have any uncompiled equations that need compilation now
+    //     boolean hasUncompiledEquations = false;
+    //     for (int row = 0; row < rows && !hasUncompiledEquations; row++) {
+    //         for (int col = 0; col < cols && !hasUncompiledEquations; col++) {
+    //             if (cellEquations[row][col] != null && !cellEquations[row][col].trim().isEmpty() &&
+    //                 compiledExpressions[row][col] == null) {
+    //                 hasUncompiledEquations = true;
+    //             }
+    //         }
+    //     }
+        
+    //     // If we have uncompiled equations and labeled nodes are now available, recompile
+    //     if (hasUncompiledEquations && LabeledNodeElm.labelList != null && !LabeledNodeElm.labelList.isEmpty()) {
+    //         CirSim.console("TableElm: Found uncompiled equations with available nodes, recompiling...");
+    //         recompileAllEquations();
+    //     }
+        
+    //     super.doStep();
+    // }
 }
+

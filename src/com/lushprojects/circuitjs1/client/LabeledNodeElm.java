@@ -70,6 +70,14 @@ class LabeledNodeElm extends CircuitElm {
     }
     
     static HashMap<String,LabelEntry> labelList;
+    
+    // Cache for sorted node names to avoid repeated sorting
+    private static String[] cachedSortedNodes;
+    private static int lastKnownSize = -1;
+    
+    // Cache for reverse lookup: node number -> label name
+    private static HashMap<Integer, String> nodeToLabelCache;
+    
     boolean isInternal() { return (flags & FLAG_INTERNAL) != 0; }
     boolean showLabelNodes() { return (flags & FLAG_SHOW_ALL_NODES) != 0; }
     boolean showAllCircuitNodes() { return (flags & FLAG_SHOW_ALL_CIRCUIT_NODES) != 0; }
@@ -81,6 +89,47 @@ class LabeledNodeElm extends CircuitElm {
 
     static void resetNodeList() {
 		labelList = new HashMap<String,LabelEntry>();
+		invalidateCache();
+    }
+    
+    // Get sorted array of labeled node names (cached for performance)
+    public static String[] getSortedLabeledNodeNames() {
+        if (labelList == null || labelList.isEmpty()) {
+            cachedSortedNodes = new String[0];
+            lastKnownSize = 0;
+            return cachedSortedNodes;
+        }
+        
+        // Check if we need to invalidate cache (size changed)
+        if (cachedSortedNodes == null || lastKnownSize != labelList.size()) {
+            // Convert keySet to array and sort
+            java.util.Set<String> keySet = labelList.keySet();
+            cachedSortedNodes = keySet.toArray(new String[keySet.size()]);
+            java.util.Arrays.sort(cachedSortedNodes);
+            lastKnownSize = labelList.size();
+        }
+        
+        return cachedSortedNodes;
+    }
+    
+    // Call this whenever labelList is modified to invalidate cache
+    private static void invalidateCache() {
+        cachedSortedNodes = null;
+        lastKnownSize = -1;
+        nodeToLabelCache = null; // Invalidate reverse lookup cache too
+    }
+    
+    // Build reverse lookup cache if needed
+    private static void ensureNodeToLabelCache() {
+        if (nodeToLabelCache == null && labelList != null && !labelList.isEmpty()) {
+            nodeToLabelCache = new HashMap<Integer, String>();
+            for (String labelName : labelList.keySet()) {
+                LabelEntry entry = labelList.get(labelName);
+                if (entry != null && entry.node >= 0) { // Only cache actual nodes (not computed-only entries)
+                    nodeToLabelCache.put(entry.node, labelName);
+                }
+            }
+        }
     }
     final int circleSize = 17;
     void setPoints() {
@@ -100,6 +149,7 @@ class LabeledNodeElm extends CircuitElm {
 		le = new LabelEntry();
 		le.point = point1;
 		labelList.put(text, le);
+		invalidateCache(); // Cache is now invalid due to new entry
 		return null;
     }
     
@@ -108,8 +158,11 @@ class LabeledNodeElm extends CircuitElm {
 		
 		// save node number so we can return it in getByName()
 		LabelEntry le = labelList.get(text);
-		if (le != null) // should never happen
+		if (le != null) { // should never happen
 			le.node = n;
+			// Invalidate reverse lookup cache since node assignments changed
+			nodeToLabelCache = null;
+		}
     }
     
     int getDumpType() { return 207; }
@@ -141,6 +194,7 @@ class LabeledNodeElm extends CircuitElm {
             le = new LabelEntry();
             le.node = -1; // Special value indicating this is computed-only
             labelList.put(labelName, le);
+            invalidateCache(); // Cache is now invalid due to new entry
         }
         le.computedValue = value;
     }
@@ -170,6 +224,14 @@ class LabeledNodeElm extends CircuitElm {
     static String getNameByNode(int nodeNumber) {
 		if (labelList == null)
 			return null;
+		
+		// Use cached reverse lookup for better performance
+		ensureNodeToLabelCache();
+		if (nodeToLabelCache != null) {
+			return nodeToLabelCache.get(nodeNumber);
+		}
+		
+		// Fallback to linear search if cache building failed
 		for (String labelName : labelList.keySet()) {
 			LabelEntry entry = labelList.get(labelName);
 			if (entry != null && entry.node == nodeNumber) {
