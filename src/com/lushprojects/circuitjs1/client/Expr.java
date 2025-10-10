@@ -44,6 +44,10 @@ class Expr {
     Expr(int v) {
 	type = v;
     }
+    Expr(int v, String name) {
+	type = v;
+	nodeName = name;
+    }
     double eval(ExprState es) {
 	Expr left = null;
 	Expr right = null;
@@ -136,6 +140,18 @@ class Expr {
 	    return es.lastOutput;
 	case E_TIMESTEP:
 	    return CirSim.theSim.timeStep;
+	case E_NODE_REF:
+	    // Direct node reference - get voltage from labeled node or computed value
+	    if (CirSim.theSim != null && nodeName != null) {
+		// First check for computed values (from TableElm)
+		Double computedValue = LabeledNodeElm.getComputedValue(nodeName);
+		if (computedValue != null) {
+		    return computedValue.doubleValue();
+		}
+		// Then check for actual labeled node voltage
+		return CirSim.theSim.getLabeledNodeVoltage(nodeName);
+	    }
+	    return 0.0;
 	default:
 	    if (type >= E_LASTA)
 		return es.lastValues[type-E_LASTA];
@@ -178,6 +194,7 @@ class Expr {
     
     Vector<Expr> children;
     double value;
+    String nodeName; // For E_NODE_REF expressions
     int type;
     static final int E_ADD = 1;
     static final int E_SUB = 2;
@@ -229,6 +246,7 @@ class Expr {
     static final int E_A = 50;
     static final int E_DADT = E_A+10; // must be E_A+10
     static final int E_LASTA = E_DADT+10; // should be at end and equal to E_DADT+10
+    static final int E_NODE_REF = E_LASTA+10; // Direct node reference by name
 };
 
 class ExprParser {
@@ -482,11 +500,10 @@ class ExprParser {
 	// Check if token is a labeled node name (case-insensitive comparison)
 	if (LabeledNodeElm.labelList != null && !LabeledNodeElm.labelList.isEmpty()) {
 	    String[] availableNodes = getSortedLabeledNodes();
-	    for (int i = 0; i < Math.min(availableNodes.length, 9); i++) {
-		String availNode = availableNodes[i];
+	    for (String availNode : availableNodes) {
 		if (availNode.equalsIgnoreCase(token)) {
 		    getToken();
-		    return new Expr(Expr.E_A + i);  // Map to variables a-i
+		    return new Expr(Expr.E_NODE_REF, availNode);  // Direct node reference
 		}
 	    }
 	}
@@ -594,30 +611,7 @@ class ExprParser {
 
     // Helper method to get labeled nodes in consistent sorted order
     private String[] getSortedLabeledNodes() {
-	if (LabeledNodeElm.labelList == null || LabeledNodeElm.labelList.isEmpty()) {
-	    return new String[0];
-	}
-	
-	// Convert keySet to sorted array (same logic as in TableElm for consistency)
-	java.util.Set<String> keySet = LabeledNodeElm.labelList.keySet();
-	String[] availableNodes = new String[keySet.size()];
-	int idx = 0;
-	for (String key : keySet) {
-	    availableNodes[idx++] = key;
-	}
-	
-	// Sort using simple bubble sort for GWT compatibility
-	for (int i = 0; i < availableNodes.length - 1; i++) {
-	    for (int j = i + 1; j < availableNodes.length; j++) {
-		if (availableNodes[i].compareTo(availableNodes[j]) > 0) {
-		    String temp = availableNodes[i];
-		    availableNodes[i] = availableNodes[j];
-		    availableNodes[j] = temp;
-		}
-	    }
-	}
-	
-	return availableNodes;
+	return LabeledNodeElm.getSortedLabeledNodeNames();
     }
 
     ExprParser(String s) {

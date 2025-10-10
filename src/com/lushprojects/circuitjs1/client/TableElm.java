@@ -160,31 +160,31 @@ private double evaluateEquation(int row, int col) {
     }
 }
     
-    // Check if labeled nodes have changed and recompile equations if needed
-    private void checkAndRecompileEquations() {
-        // Get current labeled nodes
-        String[] currentNodes = getSortedLabeledNodesArray();
+    // // Check if labeled nodes have changed and recompile equations if needed
+    // private void checkAndRecompileEquations() {
+    //     // Get current labeled nodes
+    //     String[] currentNodes = getSortedLabeledNodesArray();
         
-        // Check if nodes have changed
-        boolean nodesChanged = false;
-        if (lastKnownNodes == null || lastKnownNodes.length != currentNodes.length) {
-            nodesChanged = true;
-        } else {
-            for (int i = 0; i < currentNodes.length; i++) {
-                if (!currentNodes[i].equals(lastKnownNodes[i])) {
-                    nodesChanged = true;
-                    break;
-                }
-            }
-        }
+    //     // Check if nodes have changed
+    //     boolean nodesChanged = false;
+    //     if (lastKnownNodes == null || lastKnownNodes.length != currentNodes.length) {
+    //         nodesChanged = true;
+    //     } else {
+    //         for (int i = 0; i < currentNodes.length; i++) {
+    //             if (!currentNodes[i].equals(lastKnownNodes[i])) {
+    //                 nodesChanged = true;
+    //                 break;
+    //             }
+    //         }
+    //     }
         
-        // If nodes changed, recompile all equations
-        if (nodesChanged) {
-            CirSim.console("TableElm: Labeled nodes changed, recompiling equations...");
-            lastKnownNodes = currentNodes;
-            recompileAllEquations();
-        }
-    }
+    //     // If nodes changed, recompile all equations
+    //     if (nodesChanged) {
+    //         CirSim.console("TableElm: Labeled nodes changed, recompiling equations...");
+    //         lastKnownNodes = currentNodes;
+    //         recompileAllEquations();
+    //     }
+    // }
     
     // Helper method to get current labeled nodes as array (uses cached method from LabeledNodeElm)
     private String[] getSortedLabeledNodesArray() {
@@ -203,31 +203,16 @@ private double evaluateEquation(int row, int col) {
     }
     
     private void updateExpressionState(ExprState state) {
-        // Check if labeled nodes have changed and recompile if needed
-        checkAndRecompileEquations();
-        
         // Update state with current simulation time
         state.t = sim != null ? sim.t : 0.0;
         
-        // Dynamically map actual labeled nodes to variables a-i
-        if (sim != null && LabeledNodeElm.labelList != null && !LabeledNodeElm.labelList.isEmpty()) {
-            String[] availableNodes = LabeledNodeElm.getSortedLabeledNodeNames(); // Use cached method
-            
-            // Map first 9 labeled nodes to variables a-i
-            for (int i = 0; i < Math.min(availableNodes.length, state.values.length); i++) {
-                state.values[i] = sim.getLabeledNodeVoltage(availableNodes[i]);
-            }
-            
-            // Clear remaining variables if we have fewer than 9 nodes
-            for (int i = availableNodes.length; i < state.values.length; i++) {
-                state.values[i] = 0.0;
-            }
-        } else {
-            // No labeled nodes available - clear all variables
-            for (int i = 0; i < state.values.length; i++) {
-                state.values[i] = 0.0;
-            }
+        // Clear all variables - direct node resolution handles everything
+        for (int i = 0; i < state.values.length; i++) {
+            state.values[i] = 0.0;
         }
+        
+        // All node references are now resolved directly in Expr.eval() 
+        // via E_NODE_REF expressions - no variable mapping needed
     }
     
     private void compileEquation(int row, int col, String equation) {
@@ -257,25 +242,25 @@ private double evaluateEquation(int row, int col) {
     }
     
     // Helper method to show which variables are available for equations
+    // Update helper method documentation
     private String getAvailableVariablesString() {
         StringBuilder sb = new StringBuilder();
-        String[] availableNodes = LabeledNodeElm.getSortedLabeledNodeNames(); // Use cached method
+        String[] availableNodes = LabeledNodeElm.getSortedLabeledNodeNames();
         
         sb.append("Available: t (time)");
-        for (int i = 0; i < Math.min(availableNodes.length, 9); i++) {
-            char varName = (char)('a' + i);
-            sb.append(", ").append(varName).append("/").append(availableNodes[i]);
+        
+        // Show direct node names (only method now)
+        for (String nodeName : availableNodes) {
+            sb.append(", ").append(nodeName);
         }
-        if (availableNodes.length > 9) {
-            sb.append(" (only first 9 nodes supported)");
-        }
+        
         if (availableNodes.length == 0) {
             sb.append(", no labeled nodes in circuit");
         }
         
         return sb.toString();
     }
-    
+        
     // Public methods for managing equations
     public void setCellEquation(int row, int col, String equation) {
         if (row >= 0 && row < rows && col >= 0 && col < cols) {
