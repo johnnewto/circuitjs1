@@ -478,135 +478,138 @@ class ExprParser {
     }
 
     Expr parseTerm() {
-	if (skip("(")) {
-	    Expr e = parse();
-	    skipOrError(")");
-	    return e;
-	}
-	// Handle case-insensitive 't' for time
-	if (token.equalsIgnoreCase("t")) {
-	    getToken();
-	    return new Expr(Expr.E_T);
-	}
-	// Handle single-letter variables a-i (case insensitive)
-	if (token.length() == 1) {
-	    char c = Character.toLowerCase(token.charAt(0));
-	    if (c >= 'a' && c <= 'i') {
-		getToken();
-		return new Expr(Expr.E_A + (c-'a'));
-	    }
-	}
-	
-	// Check if token is a labeled node name (case-insensitive comparison)
-	if (LabeledNodeElm.labelList != null && !LabeledNodeElm.labelList.isEmpty()) {
-	    String[] availableNodes = getSortedLabeledNodes();
-	    for (String availNode : availableNodes) {
-		if (availNode.equalsIgnoreCase(token)) {
-		    getToken();
-		    return new Expr(Expr.E_NODE_REF, availNode);  // Direct node reference
+		if (skip("(")) {
+			Expr e = parse();
+			skipOrError(")");
+			return e;
 		}
-	    }
-	}
-	// Handle last variables (lasta, lastb, etc.) - case insensitive
-	if (token.toLowerCase().startsWith("last") && token.length() == 5) {
-	    char c = Character.toLowerCase(token.charAt(4));
-	    if (c >= 'a' && c <= 'i') {
-		getToken();
-		return new Expr(Expr.E_LASTA + (c-'a'));
-	    }
-	}
-	// Handle derivatives (dadt, dbdt, etc.) - case insensitive
-	if (token.toLowerCase().endsWith("dt") && token.toLowerCase().startsWith("d") && token.length() == 4) {
-	    char c = Character.toLowerCase(token.charAt(1));
-	    if (c >= 'a' && c <= 'i') {
-		getToken();
-		return new Expr(Expr.E_DADT + (c-'a'));
-	    }
-	}
-	if (token.equalsIgnoreCase("lastoutput")) {
-	    getToken();
-	    return new Expr(Expr.E_LASTOUTPUT);
-	}
-	if (token.equalsIgnoreCase("timestep")) {
-	    getToken();
-	    return new Expr(Expr.E_TIMESTEP);
-	}
-	if (token.equalsIgnoreCase("pi")) {
-	    getToken();
-	    return new Expr(Expr.E_VAL, 3.14159265358979323846);
-	}
-//	if (skipIgnoreCase("e"))
-//	    return new Expr(Expr.E_VAL, 2.7182818284590452354);
-	if (skipIgnoreCase("sin"))
-	    return parseFunc(Expr.E_SIN);
-	if (skipIgnoreCase("cos"))
-	    return parseFunc(Expr.E_COS);
-	if (skipIgnoreCase("asin"))
-	    return parseFunc(Expr.E_ASIN);
-	if (skipIgnoreCase("acos"))
-	    return parseFunc(Expr.E_ACOS);
-	if (skipIgnoreCase("atan"))
-	    return parseFunc(Expr.E_ATAN);
-	if (skipIgnoreCase("sinh"))
-	    return parseFunc(Expr.E_SINH);
-	if (skipIgnoreCase("cosh"))
-	    return parseFunc(Expr.E_COSH);
-	if (skipIgnoreCase("tanh"))
-	    return parseFunc(Expr.E_TANH);
-	if (skipIgnoreCase("abs"))
-	    return parseFunc(Expr.E_ABS);
-	if (skipIgnoreCase("exp"))
-	    return parseFunc(Expr.E_EXP);
-	if (skipIgnoreCase("log"))
-	    return parseFunc(Expr.E_LOG);
-	if (skipIgnoreCase("sqrt"))
-	    return parseFunc(Expr.E_SQRT);
-	if (skipIgnoreCase("tan"))
-	    return parseFunc(Expr.E_TAN);
-	if (skipIgnoreCase("tri"))
-	    return parseFunc(Expr.E_TRIANGLE);
-	if (skipIgnoreCase("saw"))
-	    return parseFunc(Expr.E_SAWTOOTH);
-	if (skipIgnoreCase("floor"))
-	    return parseFunc(Expr.E_FLOOR);
-	if (skipIgnoreCase("ceil"))
-	    return parseFunc(Expr.E_CEIL);
-	if (skipIgnoreCase("min"))
-	    return parseFuncMulti(Expr.E_MIN, 2, 1000);
-	if (skipIgnoreCase("max"))
-	    return parseFuncMulti(Expr.E_MAX, 2, 1000);
-	if (skipIgnoreCase("pwl"))
-	    return parseFuncMulti(Expr.E_PWL, 2, 1000);
-	if (skipIgnoreCase("mod"))
-	    return parseFuncMulti(Expr.E_MOD, 2, 2);
-	if (skipIgnoreCase("step"))
-	    return parseFuncMulti(Expr.E_STEP, 1, 2);
-	if (skipIgnoreCase("select"))
-	    return parseFuncMulti(Expr.E_SELECT, 3, 3);
-	if (skipIgnoreCase("clamp"))
-	    return parseFuncMulti(Expr.E_CLAMP, 3, 3);
-	if (skipIgnoreCase("pwr"))
-	    return parseFuncMulti(Expr.E_PWR, 2, 2);
-	if (skipIgnoreCase("pwrs"))
-	    return parseFuncMulti(Expr.E_PWRS, 2, 2);
-	try {
-	    Expr e = new Expr(Expr.E_VAL, Double.valueOf(token).doubleValue());
-	    getToken();
-	    return e;
-	} catch (Exception e) {
-	    if (token.length() == 0) {
-		setError("unexpected end of input");
-	    } else {
-		// Check if this looks like a node name that might not be available yet
+		// Handle case-insensitive 't' for time
+		if (token.equalsIgnoreCase("t")) {
+			getToken();
+			return new Expr(Expr.E_T);
+		}
+		// Handle single-letter variables a-i (case insensitive)
+		if (token.length() == 1) {
+			char c = Character.toLowerCase(token.charAt(0));
+			if (c >= 'a' && c <= 'i') {
+			getToken();
+			return new Expr(Expr.E_A + (c-'a'));
+			}
+		}
+		
+		// // Check if token is a labeled node name (case-insensitive comparison)
+		// if (LabeledNodeElm.labelList != null && !LabeledNodeElm.labelList.isEmpty()) {
+		// 	String[] availableNodes = getSortedLabeledNodes();
+		// 	for (String availNode : availableNodes) {
+		// 		if (availNode.equalsIgnoreCase(token)) {
+		// 			getToken();
+		// 			return new Expr(Expr.E_NODE_REF, availNode);  // Direct node reference
+		// 		}
+		// 	}
+		// }
+		// Handle last variables (lasta, lastb, etc.) - case insensitive
+		if (token.toLowerCase().startsWith("last") && token.length() == 5) {
+			char c = Character.toLowerCase(token.charAt(4));
+			if (c >= 'a' && c <= 'i') {
+			getToken();
+			return new Expr(Expr.E_LASTA + (c-'a'));
+			}
+		}
+		// Handle derivatives (dadt, dbdt, etc.) - case insensitive
+		if (token.toLowerCase().endsWith("dt") && token.toLowerCase().startsWith("d") && token.length() == 4) {
+			char c = Character.toLowerCase(token.charAt(1));
+			if (c >= 'a' && c <= 'i') {
+			getToken();
+			return new Expr(Expr.E_DADT + (c-'a'));
+			}
+		}
+		if (token.equalsIgnoreCase("lastoutput")) {
+			getToken();
+			return new Expr(Expr.E_LASTOUTPUT);
+		}
+		if (token.equalsIgnoreCase("timestep")) {
+			getToken();
+			return new Expr(Expr.E_TIMESTEP);
+		}
+		if (token.equalsIgnoreCase("pi")) {
+			getToken();
+			return new Expr(Expr.E_VAL, 3.14159265358979323846);
+		}
+
+		// Handle known functions first (sin, cos, etc.)
+				//	if (skipIgnoreCase("e"))
+				//	    return new Expr(Expr.E_VAL, 2.7182818284590452354);
+		if (skipIgnoreCase("sin"))
+			return parseFunc(Expr.E_SIN);
+		if (skipIgnoreCase("cos"))
+			return parseFunc(Expr.E_COS);
+		if (skipIgnoreCase("asin"))
+			return parseFunc(Expr.E_ASIN);
+		if (skipIgnoreCase("acos"))
+			return parseFunc(Expr.E_ACOS);
+		if (skipIgnoreCase("atan"))
+			return parseFunc(Expr.E_ATAN);
+		if (skipIgnoreCase("sinh"))
+			return parseFunc(Expr.E_SINH);
+		if (skipIgnoreCase("cosh"))
+			return parseFunc(Expr.E_COSH);
+		if (skipIgnoreCase("tanh"))
+			return parseFunc(Expr.E_TANH);
+		if (skipIgnoreCase("abs"))
+			return parseFunc(Expr.E_ABS);
+		if (skipIgnoreCase("exp"))
+			return parseFunc(Expr.E_EXP);
+		if (skipIgnoreCase("log"))
+			return parseFunc(Expr.E_LOG);
+		if (skipIgnoreCase("sqrt"))
+			return parseFunc(Expr.E_SQRT);
+		if (skipIgnoreCase("tan"))
+			return parseFunc(Expr.E_TAN);
+		if (skipIgnoreCase("tri"))
+			return parseFunc(Expr.E_TRIANGLE);
+		if (skipIgnoreCase("saw"))
+			return parseFunc(Expr.E_SAWTOOTH);
+		if (skipIgnoreCase("floor"))
+			return parseFunc(Expr.E_FLOOR);
+		if (skipIgnoreCase("ceil"))
+			return parseFunc(Expr.E_CEIL);
+		if (skipIgnoreCase("min"))
+			return parseFuncMulti(Expr.E_MIN, 2, 1000);
+		if (skipIgnoreCase("max"))
+			return parseFuncMulti(Expr.E_MAX, 2, 1000);
+		if (skipIgnoreCase("pwl"))
+			return parseFuncMulti(Expr.E_PWL, 2, 1000);
+		if (skipIgnoreCase("mod"))
+			return parseFuncMulti(Expr.E_MOD, 2, 2);
+		if (skipIgnoreCase("step"))
+			return parseFuncMulti(Expr.E_STEP, 1, 2);
+		if (skipIgnoreCase("select"))
+			return parseFuncMulti(Expr.E_SELECT, 3, 3);
+		if (skipIgnoreCase("clamp"))
+			return parseFuncMulti(Expr.E_CLAMP, 3, 3);
+		if (skipIgnoreCase("pwr"))
+			return parseFuncMulti(Expr.E_PWR, 2, 2);
+		if (skipIgnoreCase("pwrs"))
+			return parseFuncMulti(Expr.E_PWRS, 2, 2);
+
+		// Then check for valid identifiers (potential node names)
 		if (isValidIdentifier(token)) {
-		    setError("unknown variable or node: " + token + " (labeled nodes may not be available yet)");
-		} else {
-		    setError("unrecognized token: " + token);
+			String nodeRef = token;
+			getToken();
+			return new Expr(Expr.E_NODE_REF, nodeRef);
+}	
+		// Finally try numeric parsing	
+		try {
+			Expr e = new Expr(Expr.E_VAL, Double.valueOf(token).doubleValue());
+			getToken();
+			return e;
+		} catch (Exception e) {
+			if (token.length() == 0)
+			setError("unexpected end of input");
+			else
+			setError("unrecognized token: " + token);
+			return new Expr(Expr.E_VAL, 0);
 		}
-	    }
-	    getToken(); // Skip the problematic token
-	    return new Expr(Expr.E_VAL, 0);
-	}
     }
 
     // Helper method to get labeled nodes in consistent sorted order

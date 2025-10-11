@@ -19,6 +19,8 @@ public class TableElm extends CircuitElm {
     protected int cellSpacing = 4;
     protected String[] columnHeaders;
     protected boolean showComputedRow = true; // Show computed row at bottom
+    protected boolean hasInitialConditions = false; // Show initial conditions row at top
+    protected double[] initialConditionsValues; // Values for initial conditions row
     
     // All cells now use equations
     // Variables available: a-i map to labeled nodes OR use labeled node names directly
@@ -27,8 +29,7 @@ public class TableElm extends CircuitElm {
     Expr[][] compiledExpressions; // Compiled expressions for evaluation
     ExprState[][] expressionStates; // Expression evaluation state for each cell
     
-    // Track labeled nodes to detect changes that require recompilation
-    String[] lastKnownNodes;  // Last known labeled node list (sorted)
+    // Note: No need to track labeled nodes anymore with direct resolution
     
     // Constructor for new table
     public TableElm(int xx, int yy) {
@@ -65,7 +66,7 @@ public class TableElm extends CircuitElm {
             expressionStates = new ExprState[rows][cols];
             for (int row = 0; row < rows; row++) {
                 for (int col = 0; col < cols; col++) {
-                    expressionStates[row][col] = new ExprState(9); // Support variables a-i
+                    expressionStates[row][col] = new ExprState(1); // Only need time variable
                 }
             }
         }
@@ -75,6 +76,15 @@ public class TableElm extends CircuitElm {
             columnHeaders = new String[cols];
             for (int i = 0; i < cols; i++) {
                 columnHeaders[i] = "Col" + (i + 1);
+            }
+        }
+        
+        // Initialize initial conditions values if not set
+        if (initialConditionsValues == null) {
+            initialConditionsValues = new double[cols];
+            // Initialize with zero values
+            for (int i = 0; i < cols; i++) {
+                initialConditionsValues[i] = 0.0;
             }
         }
         
@@ -97,9 +107,13 @@ public class TableElm extends CircuitElm {
         recompileAllEquations();
     }
     
+    private boolean isValidCell(int row, int col) {
+        return row >= 0 && row < rows && col >= 0 && col < cols;
+    }
+    
     // Enhanced version that evaluates equations for cell values
     protected double getVoltageForCell(int row, int col) {
-        if (row < 0 || row >= rows || col < 0 || col >= cols) {
+        if (!isValidCell(row, col)) {
             return 0.0;
         }
         
@@ -111,9 +125,15 @@ public class TableElm extends CircuitElm {
         // If no compiled expression, try to evaluate as simple node name
         String equation = cellEquations[row][col];
         if (equation != null && !equation.trim().isEmpty()) {
+            // for debug if equation == "Lend'"
+
+
             // Try direct node lookup first
             if (sim != null) {
                 double voltage = sim.getLabeledNodeVoltage(equation);
+                if (equation.equals("Lend")) {
+                    int debug = 1;
+                }
                 if (voltage != 0.0 || LabeledNodeElm.getByName(equation) != null) {
                     return voltage;
                 }
@@ -186,10 +206,7 @@ private double evaluateEquation(int row, int col) {
     //     }
     // }
     
-    // Helper method to get current labeled nodes as array (uses cached method from LabeledNodeElm)
-    private String[] getSortedLabeledNodesArray() {
-        return LabeledNodeElm.getSortedLabeledNodeNames();
-    }
+
         
     // Recompile all equations when labeled nodes change
     private void recompileAllEquations() {
@@ -203,16 +220,10 @@ private double evaluateEquation(int row, int col) {
     }
     
     private void updateExpressionState(ExprState state) {
-        // Update state with current simulation time
+        // Only update time - direct node resolution handles everything else
         state.t = sim != null ? sim.t : 0.0;
         
-        // Clear all variables - direct node resolution handles everything
-        for (int i = 0; i < state.values.length; i++) {
-            state.values[i] = 0.0;
-        }
-        
-        // All node references are now resolved directly in Expr.eval() 
-        // via E_NODE_REF expressions - no variable mapping needed
+        // All node references are resolved directly in Expr.eval() via E_NODE_REF
     }
     
     private void compileEquation(int row, int col, String equation) {
@@ -263,22 +274,20 @@ private double evaluateEquation(int row, int col) {
         
     // Public methods for managing equations
     public void setCellEquation(int row, int col, String equation) {
-        if (row >= 0 && row < rows && col >= 0 && col < cols) {
+        if (isValidCell(row, col)) {
             cellEquations[row][col] = equation != null ? equation : "";
             compileEquation(row, col, cellEquations[row][col]);
         }
     }
     
     public String getCellEquation(int row, int col) {
-        if (row >= 0 && row < rows && col >= 0 && col < cols) {
+        if (isValidCell(row, col)) {
             return cellEquations[row][col];
         }
         return "";
     }
     
-    public void setCellMode(int row, int col, boolean equationMode) {
-        // Remove - no longer needed since all cells are equation mode
-    }   
+   
     protected void registerComputedValueAsLabeledNode(String labelName, double voltage) {
         if (labelName == null || labelName.isEmpty()) {
             return;
@@ -298,7 +307,9 @@ private double evaluateEquation(int row, int col) {
         
         // Calculate table dimensions
         int tableWidth = cols * cellSize + (cols + 1) * cellSpacing;
-        int extraRows = showComputedRow ? 1 : 0; // Add extra row for computed values
+        int extraRows = 0;
+        if (hasInitialConditions) extraRows++;  // Add extra row for initial conditions
+        if (showComputedRow) extraRows++;      // Add extra row for computed values
         int tableHeight = (rows + extraRows) * cellSize + (rows + extraRows + 1) * cellSpacing + 20; // Extra space for headers
         
         // Set bounding box
@@ -310,7 +321,9 @@ private double evaluateEquation(int row, int col) {
     }
     
     void draw(Graphics g) {
-        int extraRows = showComputedRow ? 1 : 0;
+        int extraRows = 0;
+        if (hasInitialConditions) extraRows++;  // Add extra row for initial conditions
+        if (showComputedRow) extraRows++;      // Add extra row for computed values
         
         // Draw table background
         g.setColor(needsHighlight() ? selectColor : Color.white);
@@ -326,6 +339,11 @@ private double evaluateEquation(int row, int col) {
         
         // Draw column headers
         drawColumnHeaders(g);
+        
+        // Draw initial conditions row if enabled
+        if (hasInitialConditions) {
+            drawInitialConditionsRow(g);
+        }
         
         // Draw table cells with voltages
         drawTableCells(g);
@@ -352,11 +370,41 @@ private double evaluateEquation(int row, int col) {
         }
     }
 
+    private void drawInitialConditionsRow(Graphics g) {
+        int initialRowY = point1.y + 20 + cellSpacing; // First row after headers
+        
+        for (int col = 0; col < cols; col++) {
+            int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
+            
+            // Get initial conditions value for this column
+            double initialValue = (initialConditionsValues != null && col < initialConditionsValues.length) ? 
+                                 initialConditionsValues[col] : 0.0;
+            
+            // Draw initial conditions cell background (light green to distinguish from equations)
+            g.setColor(needsHighlight() ? selectColor : new Color(240, 255, 240));
+            g.fillRect(cellX, initialRowY, cellSize, cellSize);
+            
+            // Draw cell border
+            g.setColor(Color.black);
+            g.drawRect(cellX, initialRowY, cellSize, cellSize);
+            
+            // Draw "Initial" label (top half)
+            g.setColor(Color.black);
+            drawCenteredText(g, "Initial", cellX + cellSize/2, initialRowY + cellSize/3, true);
+            
+            // Draw initial conditions voltage value (bottom half)
+            String voltageText = getVoltageText(initialValue);
+            drawCenteredText(g, voltageText, cellX + cellSize/2, initialRowY + 2*cellSize/3, true);
+        }
+    }
+
     private void drawTableCells(Graphics g) {
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
                 int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
-                int cellY = point1.y + 20 + cellSpacing + row * (cellSize + cellSpacing);
+                // Adjust Y position to account for initial conditions row
+                int rowOffset = hasInitialConditions ? 1 : 0;
+                int cellY = point1.y + 20 + cellSpacing + (row + rowOffset) * (cellSize + cellSpacing);
                 
                 // Get voltage using equation evaluation
                 double voltage = getVoltageForCell(row, col);
@@ -385,7 +433,9 @@ private double evaluateEquation(int row, int col) {
     }
 
     protected void drawSumRow(Graphics g) {
-        int sumRowY = point1.y + 20 + cellSpacing + rows * (cellSize + cellSpacing);
+        // Adjust Y position to account for initial conditions row
+        int rowOffset = hasInitialConditions ? 1 : 0;
+        int sumRowY = point1.y + 20 + cellSpacing + (rows + rowOffset) * (cellSize + cellSpacing);
         
         for (int col = 0; col < cols; col++) {
             int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
@@ -415,7 +465,9 @@ private double evaluateEquation(int row, int col) {
 
     private void drawGridLines(Graphics g) {
         g.setColor(Color.gray);
-        int extraRows = showComputedRow ? 1 : 0;
+        int extraRows = 0;
+        if (hasInitialConditions) extraRows++;  // Add extra row for initial conditions
+        if (showComputedRow) extraRows++;      // Add extra row for computed values
         
         // Vertical lines
         for (int col = 0; col <= cols; col++) {
@@ -429,15 +481,26 @@ private double evaluateEquation(int row, int col) {
             g.drawLine(point1.x, y, point1.x + cellSpacing + cols * (cellSize + cellSpacing), y);
         }
         
+        // Draw separator line after initial conditions row if showing it
+        if (hasInitialConditions) {
+            g.setColor(Color.black);
+            int separatorY = point1.y + 20 + cellSpacing + 1 * (cellSize + cellSpacing);
+            g.drawLine(point1.x, separatorY, point1.x + cellSpacing + cols * (cellSize + cellSpacing), separatorY);
+        }
+        
         // Draw separator line before computed row if showing it
         if (showComputedRow) {
             g.setColor(Color.black);
-            int separatorY = point1.y + 20 + cellSpacing + rows * (cellSize + cellSpacing);
+            int rowOffset = hasInitialConditions ? 1 : 0;
+            int separatorY = point1.y + 20 + cellSpacing + (rows + rowOffset) * (cellSize + cellSpacing);
             g.drawLine(point1.x, separatorY, point1.x + cellSpacing + cols * (cellSize + cellSpacing), separatorY);
         }
     }
     
     private double[] lastColumnSums;
+    private double[] initialConditionsApplied; // Track initial conditions already applied
+    private boolean isFirstStep = true; // Track if this is the first simulation step
+    
     // Calculate computed values during simulation step (not during drawing)
     public void doStep() {
         super.doStep();
@@ -447,8 +510,29 @@ private double evaluateEquation(int row, int col) {
                 lastColumnSums = new double[cols];
             }
             
+            // Initialize initial conditions tracking array if needed
+            if (initialConditionsApplied == null) {
+                initialConditionsApplied = new double[cols];
+                for (int i = 0; i < cols; i++) {
+                    initialConditionsApplied[i] = 0.0;
+                }
+            }
+            
             for (int col = 0; col < cols; col++) {
                 double columnSum = 0.0;
+                
+                // Apply initial conditions only on the first step or when reset
+                if (hasInitialConditions && initialConditionsValues != null && 
+                    col < initialConditionsValues.length && isFirstStep) {
+                    initialConditionsApplied[col] = initialConditionsValues[col];
+                }
+                
+                // Always include the applied initial conditions (but don't re-add them)
+                if (hasInitialConditions && initialConditionsApplied != null && col < initialConditionsApplied.length) {
+                    columnSum += initialConditionsApplied[col];
+                }
+                
+                // Add values from all equation rows
                 for (int row = 0; row < rows; row++) {
                     // Use getVoltageForCell to support equations
                     columnSum += getVoltageForCell(row, col);
@@ -463,6 +547,9 @@ private double evaluateEquation(int row, int col) {
                 String name = columnHeaders[col];
                 registerComputedValueAsLabeledNode(name, columnSum);
             }
+            
+            // Mark that we've completed the first step
+            isFirstStep = false;
         }
     }
 
@@ -479,10 +566,18 @@ private double evaluateEquation(int row, int col) {
         StringBuilder sb = new StringBuilder();
         sb.append(super.dump()).append(" ").append(rows).append(" ").append(cols);
         sb.append(" ").append(showComputedRow ? "1" : "0");
+        sb.append(" ").append(hasInitialConditions ? "1" : "0");
         
         // Serialize column headers
         for (int col = 0; col < cols; col++) {
             sb.append(" ").append(CustomLogicModel.escape(columnHeaders[col]));
+        }
+        
+        // Serialize initial conditions values if enabled
+        if (hasInitialConditions && initialConditionsValues != null) {
+            for (int col = 0; col < cols; col++) {
+                sb.append(" ").append(initialConditionsValues[col]);
+            }
         }
         
         // Serialize equation data only
@@ -501,10 +596,12 @@ private double evaluateEquation(int row, int col) {
             if (st.hasMoreTokens()) rows = Integer.parseInt(st.nextToken());
             if (st.hasMoreTokens()) cols = Integer.parseInt(st.nextToken());
             if (st.hasMoreTokens()) showComputedRow = "1".equals(st.nextToken());
+            if (st.hasMoreTokens()) hasInitialConditions = "1".equals(st.nextToken());
             
             // Initialize arrays
             columnHeaders = new String[cols];
             cellEquations = new String[rows][cols];
+            initialConditionsValues = new double[cols];
             
             // Parse column headers
             for (int col = 0; col < cols; col++) {
@@ -512,6 +609,22 @@ private double evaluateEquation(int row, int col) {
                     columnHeaders[col] = CustomLogicModel.unescape(st.nextToken());
                 } else {
                     columnHeaders[col] = "Col" + (col + 1);
+                }
+            }
+            
+            // Parse initial conditions values if enabled
+            if (hasInitialConditions) {
+                for (int col = 0; col < cols; col++) {
+                    if (st.hasMoreTokens()) {
+                        initialConditionsValues[col] = Double.parseDouble(st.nextToken());
+                    } else {
+                        initialConditionsValues[col] = 0.0;
+                    }
+                }
+            } else {
+                // Initialize with zeros even if not enabled
+                for (int col = 0; col < cols; col++) {
+                    initialConditionsValues[col] = 0.0;
                 }
             }
             
@@ -526,7 +639,7 @@ private double evaluateEquation(int row, int col) {
                 }
             }
             
-            CirSim.console("TableElm: Successfully parsed table data with equations");
+            CirSim.console("TableElm: Successfully parsed table data with equations and initial conditions");
             
         } catch (Exception e) {
             CirSim.console("TableElm: Error parsing table data: " + e.getMessage());
@@ -543,6 +656,12 @@ private double evaluateEquation(int row, int col) {
                     for (int col = 0; col < cols; col++) {
                         cellEquations[row][col] = "node" + (row * cols + col + 1);
                     }
+                }
+            }
+            if (initialConditionsValues == null) {
+                initialConditionsValues = new double[cols];
+                for (int col = 0; col < cols; col++) {
+                    initialConditionsValues[col] = 0.0;
                 }
             }
         }
@@ -562,6 +681,11 @@ private double evaluateEquation(int row, int col) {
         }
         if (n == 3) {
             EditInfo ei = new EditInfo("", 0, -1, -1);
+            ei.checkbox = new Checkbox("Show Initial Conditions", hasInitialConditions);
+            return ei;
+        }
+        if (n == 4) {
+            EditInfo ei = new EditInfo("", 0, -1, -1);
             ei.button = new Button("Edit Table Data...");
             return ei;
         }
@@ -580,6 +704,9 @@ private double evaluateEquation(int row, int col) {
             showComputedRow = ei.checkbox.getState();
             setPoints();
         } else if (n == 3) {
+            hasInitialConditions = ei.checkbox.getState();
+            setPoints();
+        } else if (n == 4) {
             // Open table editing dialog
             openTableEditDialog();
         }
@@ -589,6 +716,7 @@ private double evaluateEquation(int row, int col) {
     public void resizeTable(int newRows, int newCols) {
         String[] oldHeaders = columnHeaders;
         String[][] oldEquations = cellEquations;
+        double[] oldInitialConditions = initialConditionsValues;
         
         // Update dimensions
         rows = newRows;
@@ -599,11 +727,12 @@ private double evaluateEquation(int row, int col) {
         cellEquations = new String[rows][cols];
         compiledExpressions = new Expr[rows][cols];
         expressionStates = new ExprState[rows][cols];
+        initialConditionsValues = new double[cols];
         
         // Initialize expression states
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
-                expressionStates[row][col] = new ExprState(9);
+                expressionStates[row][col] = new ExprState(1); // Only need time variable
             }
         }
         
@@ -626,6 +755,27 @@ private double evaluateEquation(int row, int col) {
                 columnHeaders[col] = oldHeaders[col];
             }
         }
+        
+        // Copy over existing initial conditions where possible
+        if (oldInitialConditions != null) {
+            for (int col = 0; col < Math.min(cols, oldInitialConditions.length); col++) {
+                initialConditionsValues[col] = oldInitialConditions[col];
+            }
+        }
+        
+        // Initialize remaining initial conditions values with zeros
+        for (int col = 0; col < cols; col++) {
+            if (oldInitialConditions == null || col >= oldInitialConditions.length) {
+                initialConditionsValues[col] = 0.0;
+            }
+        }
+        
+        // Reset initial conditions tracking for new table size
+        initialConditionsApplied = new double[cols];
+        for (int col = 0; col < cols; col++) {
+            initialConditionsApplied[col] = 0.0;
+        }
+        isFirstStep = true; // Reset to first step when table is resized
         
         // Fill in missing labels with simple defaults
         fillMissingLabels();
@@ -680,12 +830,10 @@ private double evaluateEquation(int row, int col) {
         }
     }
     
-    public void setCellLabel(int row, int col, String label) {
-        // Remove - no longer applicable since labels are now equations
-    }
+
 
     public String getCellLabel(int row, int col) {
-        if (row >= 0 && row < rows && col >= 0 && col < cols) {
+        if (isValidCell(row, col)) {
             return cellEquations[row][col];
         }
         return "";
@@ -708,26 +856,43 @@ private double evaluateEquation(int row, int col) {
     public int getRows() { return rows; }
     public int getCols() { return cols; }
     public boolean getShowComputedRow() { return showComputedRow; }
+    public boolean getHasInitialConditions() { return hasInitialConditions; }
     
     public void setShowComputedRow(boolean show) {
         showComputedRow = show;
         setPoints();
     }
     
-    // Additional methods for equation support in TableEditDialog
-    public void toggleCellMode(int row, int col) {
-        // Remove - no longer needed since all cells are equation mode
+    public void setHasInitialConditions(boolean has) {
+        hasInitialConditions = has;
+        setPoints();
     }
     
+    public double getInitialConditionValue(int col) {
+        if (col >= 0 && col < cols && initialConditionsValues != null && col < initialConditionsValues.length) {
+            return initialConditionsValues[col];
+        }
+        return 0.0;
+    }
+    
+    public void setInitialConditionValue(int col, double value) {
+        if (col >= 0 && col < cols && initialConditionsValues != null && col < initialConditionsValues.length) {
+            initialConditionsValues[col] = value;
+        }
+    }
+    
+    // Additional methods for equation support in TableEditDialog
+
+    
     public String getCellDisplayText(int row, int col) {
-        if (row >= 0 && row < rows && col >= 0 && col < cols) {
+        if (isValidCell(row, col)) {
             return cellEquations[row][col];
         }
         return "";
     }
     
     public void setCellDisplayText(int row, int col, String text) {
-        if (row >= 0 && row < rows && col >= 0 && col < cols) {
+        if (isValidCell(row, col)) {
             setCellEquation(row, col, text);
         }
     }
@@ -746,8 +911,14 @@ private double evaluateEquation(int row, int col) {
     @Override
     public void reset() {
         super.reset();
-        // Clear cached node list so equations get recompiled on next evaluation
-        lastKnownNodes = null;
+        // Reset initial conditions application for new simulation run
+        isFirstStep = true;
+        if (initialConditionsApplied != null) {
+            for (int i = 0; i < initialConditionsApplied.length; i++) {
+                initialConditionsApplied[i] = 0.0;
+            }
+        }
+        // Equations will be recompiled as needed with direct node resolution
     }
     
     // // Override doStep to ensure equations are compiled before first evaluation

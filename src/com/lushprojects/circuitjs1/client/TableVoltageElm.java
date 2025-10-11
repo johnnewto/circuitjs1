@@ -112,7 +112,7 @@ class TableVoltageElm extends RailElm {
     }
     
     void getInfo(String arr[]) {
-        arr[0] = "table voltage rail";
+        arr[0] = computedValueName + " (table voltage rail)";
         arr[1] = "I = " + getCurrentText(getCurrent());
         arr[2] = "V = " + getVoltageText(getVoltageDiff());
         arr[3] = "Reference: " + computedValueName;

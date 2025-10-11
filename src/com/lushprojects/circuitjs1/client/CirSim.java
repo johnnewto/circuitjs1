@@ -3285,6 +3285,23 @@ public CirSim() {
     	    setSimRunning(true);
     	t = timeStepAccum = 0;
     	timeStepCount = 0;
+    	
+    	// Clear computed values before resetting elements to prevent stale values
+    	LabeledNodeElm.clearComputedValues();
+		    	
+    	// Clear node voltages to ensure clean start
+    	if (nodeVoltages != null) {
+    	    for (i = 0; i < nodeVoltages.length; i++) {
+    	        nodeVoltages[i] = 0.0;
+    	    }
+    	}
+    	if (lastNodeVoltages != null) {
+    	    for (i = 0; i < lastNodeVoltages.length; i++) {
+    	        lastNodeVoltages[i] = 0.0;
+    	    }
+    	}
+ 
+    	
     	for (i = 0; i != elmList.size(); i++)
 		getElm(i).reset();
 	for (i = 0; i != scopeCount; i++)

@@ -27,6 +27,7 @@ import com.google.gwt.user.client.ui.Grid;
 import com.google.gwt.user.client.ui.TextBox;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
+import com.google.gwt.user.client.ui.CheckBox;
 
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
@@ -58,16 +59,20 @@ public class TableEditDialog extends Dialog {
     private Button okButton, cancelButton, applyButton;
     private Button addRowButton, removeRowButton, addColButton, removeColButton;
     private Label statusLabel;
+    private CheckBox initialConditionsCheckBox;
     
     // Data storage
     private String[][] cellEquations;  // Store equation text for each cell (now the only mode)
     private String[] columnHeaders;
     private int rows, cols;
+    private boolean hasInitialConditions;
+    private double[] initialConditionsValues;
     
     // Cell editing management
     private List<List<TextBox>> cellTextBoxes;
     private List<List<Label>> statusLabels;        // Status/error labels for each cell
     private List<TextBox> headerTextBoxes;
+    private List<TextBox> initialConditionsTextBoxes;  // Text boxes for initial conditions
     
     // Track changes
     private boolean hasChanges = false;
@@ -91,6 +96,13 @@ public class TableEditDialog extends Dialog {
     private void copyTableData() {
         cellEquations = new String[rows][cols];
         columnHeaders = new String[cols];
+        
+        // Copy initial conditions data
+        hasInitialConditions = tableElement.getHasInitialConditions();
+        initialConditionsValues = new double[cols];
+        for (int col = 0; col < cols; col++) {
+            initialConditionsValues[col] = tableElement.getInitialConditionValue(col);
+        }
         
         // Copy cell equations (now the only data type)
         for (int row = 0; row < rows; row++) {
@@ -127,6 +139,17 @@ public class TableEditDialog extends Dialog {
         equationHelp.getElement().getStyle().setProperty("fontSize", "11px");
         equationHelp.getElement().getStyle().setProperty("color", "#666");
         mainPanel.add(equationHelp);
+        
+        // Initial conditions checkbox
+        initialConditionsCheckBox = new CheckBox("Show Initial Conditions Row");
+        initialConditionsCheckBox.setValue(hasInitialConditions);
+        initialConditionsCheckBox.addValueChangeHandler(event -> {
+            hasInitialConditions = event.getValue();
+            markChanged();
+            populateGrid(); // Regenerate grid to show/hide initial conditions row
+        });
+        initialConditionsCheckBox.addStyleName("topSpace");
+        mainPanel.add(initialConditionsCheckBox);
         
         // Table editing controls
         HorizontalPanel controlPanel = new HorizontalPanel();
@@ -216,8 +239,11 @@ public class TableEditDialog extends Dialog {
     }
     
     private void createGrid() {
-        // Create grid with extra row for headers - each cell now has 2 rows (input, status)
-        editGrid = new Grid((rows * 2) + 1, cols + 1);
+        // Calculate grid rows: header + (optional initial conditions * 2) + (equation rows * 2)
+        int extraRows = hasInitialConditions ? 2 : 0; // Initial conditions input + status rows
+        int totalGridRows = 1 + extraRows + (rows * 2); // 1 for headers + initial conditions + equation rows
+        
+        editGrid = new Grid(totalGridRows, cols + 1);
         editGrid.addStyleName("tableEditGrid");
         editGrid.setCellSpacing(1);
         editGrid.setCellPadding(2);
@@ -226,16 +252,32 @@ public class TableEditDialog extends Dialog {
         cellTextBoxes = new ArrayList<List<TextBox>>();
         statusLabels = new ArrayList<List<Label>>();
         headerTextBoxes = new ArrayList<TextBox>();
+        initialConditionsTextBoxes = new ArrayList<TextBox>();
         
         // Add row headers (row numbers)
         editGrid.setText(0, 0, "");  // Top-left corner
+        
+        int gridRow = 1; // Start after header row
+        
+        // Add initial conditions row header if enabled
+        if (hasInitialConditions) {
+            Label initialLabel = new Label("Initial");
+            initialLabel.addStyleName("tableRowHeader");
+            initialLabel.getElement().getStyle().setProperty("color", "#007700");
+            editGrid.setWidget(gridRow, 0, initialLabel);
+            gridRow++; // Status row
+            editGrid.setText(gridRow, 0, "");
+            gridRow++; // Move to next row
+        }
+        
+        // Add regular row headers (equation rows)
         for (int row = 0; row < rows; row++) {
             Label rowLabel = new Label("" + (row + 1));
             rowLabel.addStyleName("tableRowHeader");
-            editGrid.setWidget((row * 2) + 1, 0, rowLabel);
-            
-            // Empty cell for status row
-            editGrid.setText((row * 2) + 2, 0, "");
+            editGrid.setWidget(gridRow, 0, rowLabel);
+            gridRow++; // Status row
+            editGrid.setText(gridRow, 0, "");
+            gridRow++; // Move to next row
         }
     }
     
@@ -249,7 +291,29 @@ public class TableEditDialog extends Dialog {
             editGrid.setWidget(0, col + 1, headerBox);
         }
         
-        // Add cell editors
+        int gridRow = 1; // Start after header row
+        
+        // Add initial conditions row if enabled
+        if (hasInitialConditions) {
+            for (int col = 0; col < cols; col++) {
+                TextBox initialBox = createInitialConditionsTextBox(col);
+                initialConditionsTextBoxes.add(initialBox);
+                editGrid.setWidget(gridRow, col + 1, initialBox);
+            }
+            gridRow++; // Status row for initial conditions
+            
+            // Add status labels for initial conditions
+            for (int col = 0; col < cols; col++) {
+                Label statusLabel = new Label("Initial condition value");
+                statusLabel.addStyleName("cellStatusLabel");
+                statusLabel.getElement().getStyle().setProperty("fontSize", "10px");
+                statusLabel.getElement().getStyle().setProperty("color", "#007700");
+                editGrid.setWidget(gridRow, col + 1, statusLabel);
+            }
+            gridRow++; // Move to equation rows
+        }
+        
+        // Add cell editors for equations
         for (int row = 0; row < rows; row++) {
             List<TextBox> rowTextBoxes = new ArrayList<TextBox>();
             List<Label> rowStatusLabels = new ArrayList<Label>();
@@ -261,13 +325,15 @@ public class TableEditDialog extends Dialog {
                 // Create input box
                 TextBox cellBox = createCellTextBox(row, col);
                 rowTextBoxes.add(cellBox);
-                editGrid.setWidget((row * 2) + 1, col + 1, cellBox);
+                editGrid.setWidget(gridRow, col + 1, cellBox);
                 
                 // Create status label
                 Label statusLabel = createStatusLabel(row, col);
                 rowStatusLabels.add(statusLabel);
-                editGrid.setWidget((row * 2) + 2, col + 1, statusLabel);
+                editGrid.setWidget(gridRow + 1, col + 1, statusLabel);
             }
+            
+            gridRow += 2; // Move by 2 (input row + status row)
         }
         
         scrollPanel.setWidget(editGrid);
@@ -295,7 +361,11 @@ public class TableEditDialog extends Dialog {
                 
                 // Handle navigation
                 if (keyCode == KeyCodes.KEY_ENTER) {
-                    navigateToCell(0, col);
+                    if (hasInitialConditions) {
+                        navigateToInitialConditions(col);
+                    } else {
+                        navigateToCell(0, col);
+                    }
                 } else if (keyCode == KeyCodes.KEY_TAB && !event.isShiftKeyDown()) {
                     navigateToNextHeader(col);
                 } else if (keyCode == KeyCodes.KEY_TAB && event.isShiftKeyDown()) {
@@ -305,6 +375,50 @@ public class TableEditDialog extends Dialog {
         });
         
         setupTextBoxHandlers(textBox, -1, col);
+        return textBox;
+    }
+
+    private TextBox createInitialConditionsTextBox(final int col) {
+        TextBox textBox = new TextBox();
+        textBox.setText(String.valueOf(initialConditionsValues[col]));
+        textBox.addStyleName("tableCellInput");
+        textBox.addStyleName("initialConditionsInput");
+        textBox.setTitle("Enter initial condition value for this column");
+        
+        textBox.addKeyUpHandler(new KeyUpHandler() {
+            public void onKeyUp(KeyUpEvent event) {
+                int keyCode = event.getNativeKeyCode();
+                
+                // Handle Ctrl+S for apply
+                if (event.isControlKeyDown() && keyCode == 83) { // Ctrl+S
+                    applyChanges();
+                    return;
+                }
+                
+                // Try to parse the value
+                try {
+                    double value = Double.parseDouble(textBox.getText().trim());
+                    initialConditionsValues[col] = value;
+                    textBox.removeStyleName("error");
+                } catch (NumberFormatException e) {
+                    textBox.addStyleName("error");
+                }
+                
+                textBox.addStyleName("modified");
+                markChanged();
+                
+                // Handle navigation
+                if (keyCode == KeyCodes.KEY_ENTER) {
+                    navigateToCell(0, col);
+                } else if (keyCode == KeyCodes.KEY_TAB && !event.isShiftKeyDown()) {
+                    navigateToNextInitialConditions(col);
+                } else if (keyCode == KeyCodes.KEY_TAB && event.isShiftKeyDown()) {
+                    navigateToPrevInitialConditions(col);
+                }
+            }
+        });
+        
+        setupTextBoxHandlers(textBox, -2, col); // Use -2 to indicate initial conditions
         return textBox;
     }
     
@@ -337,20 +451,7 @@ public class TableEditDialog extends Dialog {
         }
     }
     
-    private void updateCellInputBox(int row, int col) {
-        TextBox textBox = cellTextBoxes.get(row).get(col);
-        
-        // Always equation mode now
-        textBox.setText(cellEquations[row][col]);
-        textBox.setTitle("Enter equation or node name (examples: 'vcc', 'a+b', 'sin(t)')");
-        textBox.addStyleName("equationInput");
-        textBox.removeStyleName("labelInput");
-    }
-    
-    private void validateCell(int row, int col) {
-        TextBox textBox = cellTextBoxes.get(row).get(col);
-        validateCell(textBox, row, col);
-    }
+
     
     private String validateEquation(String equation) {
         if (equation == null || equation.trim().isEmpty()) {
@@ -513,6 +614,26 @@ public class TableEditDialog extends Dialog {
         headerTextBoxes.get(prevCol).setFocus(true);
     }
     
+    private void navigateToInitialConditions(int col) {
+        if (hasInitialConditions && col >= 0 && col < initialConditionsTextBoxes.size()) {
+            initialConditionsTextBoxes.get(col).setFocus(true);
+        }
+    }
+    
+    private void navigateToNextInitialConditions(int currentCol) {
+        int nextCol = (currentCol + 1) % cols;
+        if (hasInitialConditions && nextCol < initialConditionsTextBoxes.size()) {
+            initialConditionsTextBoxes.get(nextCol).setFocus(true);
+        }
+    }
+    
+    private void navigateToPrevInitialConditions(int currentCol) {
+        int prevCol = (currentCol - 1 + cols) % cols;
+        if (hasInitialConditions && prevCol < initialConditionsTextBoxes.size()) {
+            initialConditionsTextBoxes.get(prevCol).setFocus(true);
+        }
+    }
+    
     private void validateCell(TextBox textBox, int row, int col) {
         String text = textBox.getText().trim();
         
@@ -596,6 +717,7 @@ public class TableEditDialog extends Dialog {
         // Expand arrays
         String[][] newCellEquations = new String[rows][cols];
         String[] newColumnHeaders = new String[cols];
+        double[] newInitialConditionsValues = new double[cols];
         
         // Copy and expand existing data
         for (int r = 0; r < rows; r++) {
@@ -608,8 +730,12 @@ public class TableEditDialog extends Dialog {
         System.arraycopy(columnHeaders, 0, newColumnHeaders, 0, cols - 1);
         newColumnHeaders[cols - 1] = "Col" + cols;
         
+        System.arraycopy(initialConditionsValues, 0, newInitialConditionsValues, 0, cols - 1);
+        newInitialConditionsValues[cols - 1] = 0.0; // Default initial condition value
+        
         cellEquations = newCellEquations;
         columnHeaders = newColumnHeaders;
+        initialConditionsValues = newInitialConditionsValues;
         markChanged();
         populateGrid();
     }
@@ -625,6 +751,7 @@ public class TableEditDialog extends Dialog {
         // Shrink arrays
         String[][] newCellEquations = new String[rows][cols];
         String[] newColumnHeaders = new String[cols];
+        double[] newInitialConditionsValues = new double[cols];
         
         // Copy existing data
         for (int r = 0; r < rows; r++) {
@@ -632,9 +759,11 @@ public class TableEditDialog extends Dialog {
         }
         
         System.arraycopy(columnHeaders, 0, newColumnHeaders, 0, cols);
+        System.arraycopy(initialConditionsValues, 0, newInitialConditionsValues, 0, cols);
         
         cellEquations = newCellEquations;
         columnHeaders = newColumnHeaders;
+        initialConditionsValues = newInitialConditionsValues;
         markChanged();
         populateGrid();
     }
@@ -658,6 +787,12 @@ public class TableEditDialog extends Dialog {
         
         // Apply data changes with new size
         tableElement.resizeTable(rows, cols);
+        
+        // Apply initial conditions settings
+        tableElement.setHasInitialConditions(hasInitialConditions);
+        for (int col = 0; col < cols; col++) {
+            tableElement.setInitialConditionValue(col, initialConditionsValues[col]);
+        }
         
         // Apply cell equations
         for (int row = 0; row < rows; row++) {
@@ -691,6 +826,14 @@ public class TableEditDialog extends Dialog {
         // Clear header modification styling
         for (TextBox headerBox : headerTextBoxes) {
             headerBox.removeStyleName("modified");
+        }
+        
+        // Clear initial conditions modification styling
+        if (initialConditionsTextBoxes != null) {
+            for (TextBox initialBox : initialConditionsTextBoxes) {
+                initialBox.removeStyleName("modified");
+                initialBox.removeStyleName("error");
+            }
         }
         
         // Clear cell modification styling

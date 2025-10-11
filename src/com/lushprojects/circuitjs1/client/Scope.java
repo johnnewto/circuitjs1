@@ -847,26 +847,31 @@ class Scope {
     	}
     	g.context.restore();
     	drawSettingsWheel(g);
-    	if ( !sim.dialogIsShowing() && rect.contains(sim.mouseCursorX, sim.mouseCursorY) && plots.size()>=2) {
-    	    double gridPx=calc2dGridPx(rect.width, rect.height);
-    	    String info[] = new String [2];
-    	    ScopePlot px = plots.get(0);
-    	    ScopePlot py = plots.get(1);
-    	    double xValue;
-    	    double yValue;
-    	    if (isManualScale()) {
-    		xValue = px.manScale*((double)(sim.mouseCursorX-rect.x-rect.width/2)/gridPx-manDivisions*px.manVPosition/(double)(V_POSITION_STEPS));
-    		yValue = py.manScale*((double)(-sim.mouseCursorY+rect.y+rect.height/2)/gridPx-manDivisions*py.manVPosition/(double)(V_POSITION_STEPS));
-    	    } else {
-    		xValue = ((double)(sim.mouseCursorX-rect.x)/(0.499*(double)(rect.width))-1.0)*scaleX;
-    		yValue = -((double)(sim.mouseCursorY-rect.y)/(0.499*(double)(rect.height))-1.0)*scaleY;
-    	    }
- 	    info[0]=px.getUnitText(xValue);
-    	    info[1]=py.getUnitText(yValue);
-    	    
-    	    drawCursorInfo(g, info, 2, sim.mouseCursorX, true);
-    	    
-    	}
+		if ( !sim.dialogIsShowing() && rect.contains(sim.mouseCursorX, sim.mouseCursorY) && plots.size()>=2) {
+			double gridPx=calc2dGridPx(rect.width, rect.height);
+			String info[] = new String [3];  // Increased from 2 to 3
+			ScopePlot px = plots.get(0);
+			ScopePlot py = plots.get(1);
+			double xValue;
+			double yValue;
+			if (isManualScale()) {
+				xValue = px.manScale*((double)(sim.mouseCursorX-rect.x-rect.width/2)/gridPx-manDivisions*px.manVPosition/(double)(V_POSITION_STEPS));
+				yValue = py.manScale*((double)(-sim.mouseCursorY+rect.y+rect.height/2)/gridPx-manDivisions*py.manVPosition/(double)(V_POSITION_STEPS));
+				} else {
+				xValue = ((double)(sim.mouseCursorX-rect.x)/(0.499*(double)(rect.width))-1.0)*scaleX;
+				yValue = -((double)(sim.mouseCursorY-rect.y)/(0.499*(double)(rect.height))-1.0)*scaleY;
+			}
+			// Add plot name as first element
+			String plotName = getScopeLabelOrText();
+			if (plotName == null || plotName.isEmpty()) {
+				plotName = "2D Plot";
+			}
+			info[0] = plotName;
+			info[1] = px.getUnitText(xValue);
+			info[2] = py.getUnitText(yValue);
+			
+			drawCursorInfo(g, info, 3, sim.mouseCursorX, true);  // Changed from 2 to 3
+		}
     }
 	
   
@@ -1281,51 +1286,58 @@ class Scope {
     }
     
     void drawCursor(Graphics g) {
-	if (sim.dialogIsShowing())
-	    return;
-	if (cursorScope == null)
-	    return;
-	String info[] = new String[4];
-	int cursorX = -1;
-	int ct = 0;
-	if (cursorTime >= 0) {
-	    cursorX = -(int) ((sim.t-cursorTime)/(sim.maxTimeStep*speed) - rect.x - rect.width);
-	    if (cursorX >= rect.x) {
-		int ipa = plots.get(0).startIndex(rect.width);
-		int ip = (cursorX-rect.x+ipa) & (scopePointCount-1);
-		int maxy = (rect.height-1)/2;
-		int y = maxy;
-		if (visiblePlots.size() > 0) {
-		    ScopePlot plot = visiblePlots.get(selectedPlot >= 0 ? selectedPlot : 0);
-		    info[ct++] = plot.getUnitText(plot.maxValues[ip]);
-		    int maxvy = (int) (plot.gridMult*(plot.maxValues[ip]+plot.plotOffset));
-		    g.setColor(plot.color);
-		    g.fillOval(cursorX-2, rect.y+y-maxvy-2, 5, 5);
-		}
-	    }
-	}
-	
-	// show FFT even if there's no plots (in which case cursorTime/cursorX will be invalid)
+    if (sim.dialogIsShowing())
+        return;
+    if (cursorScope == null)
+        return;
+    String info[] = new String[5];  // Increased from 4 to 5
+    int cursorX = -1;
+    int ct = 0;
+    
+    // Add plot name as first element
+    String plotName = getScopeLabelOrText();
+    if (plotName != null && !plotName.isEmpty()) {
+        info[ct++] = plotName;
+    }
+    
+    if (cursorTime >= 0) {
+        cursorX = -(int) ((sim.t-cursorTime)/(sim.maxTimeStep*speed) - rect.x - rect.width);
+        if (cursorX >= rect.x) {
+        int ipa = plots.get(0).startIndex(rect.width);
+        int ip = (cursorX-rect.x+ipa) & (scopePointCount-1);
+        int maxy = (rect.height-1)/2;
+        int y = maxy;
+        if (visiblePlots.size() > 0) {
+            ScopePlot plot = visiblePlots.get(selectedPlot >= 0 ? selectedPlot : 0);
+            info[ct++] = plot.getUnitText(plot.maxValues[ip]);
+            int maxvy = (int) (plot.gridMult*(plot.maxValues[ip]+plot.plotOffset));
+            g.setColor(plot.color);
+            g.fillOval(cursorX-2, rect.y+y-maxvy-2, 5, 5);
+        }
+        }
+    }
+    
+    // show FFT even if there's no plots (in which case cursorTime/cursorX will be invalid)
         if (showFFT && cursorScope == this) {
             double maxFrequency = 1 / (sim.maxTimeStep * speed * 2);
             if (cursorX < 0)
-        	cursorX = sim.mouseCursorX;
+            cursorX = sim.mouseCursorX;
             info[ct++] = CircuitElm.getUnitText(maxFrequency*(sim.mouseCursorX-rect.x)/rect.width, "Hz");
         } else if (cursorX < rect.x)
             return;
         
-	if (visiblePlots.size() > 0)
-	    info[ct++] = CircuitElm.getTimeText(cursorTime);
-	
-	if (cursorScope != this) {
-	    // don't show cursor info if not enough room, or stacked with selected one
-	    // (position == -1 for embedded scopes)
-	    if (rect.height < 40 || (position >= 0 && cursorScope.position == position)) {
-		drawCursorInfo(g, null, 0, cursorX, false);
-		return;
-	    }
-	}
-	drawCursorInfo(g, info, ct, cursorX, false);
+    if (visiblePlots.size() > 0)
+        info[ct++] = CircuitElm.getTimeText(cursorTime);
+    
+    if (cursorScope != this) {
+        // don't show cursor info if not enough room, or stacked with selected one
+        // (position == -1 for embedded scopes)
+        if (rect.height < 40 || (position >= 0 && cursorScope.position == position)) {
+        drawCursorInfo(g, null, 0, cursorX, false);
+        return;
+        }
+    }
+    drawCursorInfo(g, info, ct, cursorX, false);
     }
     
     void drawCursorInfo(Graphics g, String[] info, int ct, int x, Boolean drawY) {
