@@ -24,7 +24,7 @@ O 352 224 352 128 3 1
 w 368 432 480 432 2
 g 592 256 592 304 0 0
 R 80 80 144 80 0 0 40 10 0 0 0.5
-253 -144 224 -80 304 0 3 3 1 1 Borrow_sum Debt Bor_equ 10 0 20 -Interest -Interest -Interest Lend Lend node6 Spend Spend Spend
+253 -144 224 -80 304 0 3 3 false Borrow_sum Debt Borr_equ 10 0 10 -Interest \0 -Interest Lend Lend \0 Spend \0 Spend
 256 176 432 128 432 0 0 40 0 0 0 0.5 Borrow_sum
 r 272 432 368 432 0 1000
 w 368 432 368 224 2
@@ -33,4 +33,7 @@ w 928 224 976 224 2
 w -144 592 -32 592 2
 212 176 432 240 432 0 0 (t\q\q0\s?\sBorrow_sum\s:\slastoutput)\s\p\stimestep*Borrow_sum
 g 272 464 272 496 0 0
-o 22 1 3 x103002 51.748162509847006 0.0001 0 13 20 0 20 3 19 0 19 3 11 0 11 3 5 0 5 3 11 0 11 3 11 0 11 3
+255 624 336 656 384 0 3 2 true Godley1 col2 10 0 -Interest \0 Lend \0 Spend \0
+w 368 640 480 640 2
+256 368 640 320 640 0 0 40 0 0 0 0.5 Godley1
+o 22 1 3 x103002 1987.580085942312 0.0001 0 13 20 0 20 3 19 0 19 3 11 0 11 3 5 0 5 3 11 0 11 3 11 0 11 3

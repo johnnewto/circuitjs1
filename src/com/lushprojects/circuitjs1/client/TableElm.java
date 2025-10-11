@@ -18,9 +18,8 @@ public class TableElm extends CircuitElm {
     protected int cellSize = 60;
     protected int cellSpacing = 4;
     protected String[] columnHeaders;
-    protected boolean showComputedRow = true; // Show computed row at bottom
-    protected boolean hasInitialConditions = false; // Show initial conditions row at top
-    protected double[] initialConditionsValues; // Values for initial conditions row
+    protected double[] initialValues; // Values for initial conditions row
+    protected boolean showInitialValues = false; // Control visibility of initial conditions row
     
     // All cells now use equations
     // Variables available: a-i map to labeled nodes OR use labeled node names directly
@@ -51,7 +50,7 @@ public class TableElm extends CircuitElm {
             for (int row = 0; row < rows; row++) {
                 for (int col = 0; col < cols; col++) {
                     // Default equation is just the node name (like "node1", "vcc", etc.)
-                    cellEquations[row][col] = "node" + (row * cols + col + 1);
+                    cellEquations[row][col] = "";
                 }
             }
             CirSim.console("TableElm: Initialized cellEquations array");
@@ -80,11 +79,11 @@ public class TableElm extends CircuitElm {
         }
         
         // Initialize initial conditions values if not set
-        if (initialConditionsValues == null) {
-            initialConditionsValues = new double[cols];
+        if (initialValues == null) {
+            initialValues = new double[cols];
             // Initialize with zero values
             for (int i = 0; i < cols; i++) {
-                initialConditionsValues[i] = 0.0;
+                initialValues[i] = 0.0;
             }
         }
         
@@ -92,7 +91,7 @@ public class TableElm extends CircuitElm {
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
                 if (cellEquations[row][col] == null || cellEquations[row][col].trim().isEmpty()) {
-                    cellEquations[row][col] = "node" + (row * cols + col + 1);
+                    cellEquations[row][col] = "";
                 }
             }
         }
@@ -131,9 +130,6 @@ public class TableElm extends CircuitElm {
             // Try direct node lookup first
             if (sim != null) {
                 double voltage = sim.getLabeledNodeVoltage(equation);
-                if (equation.equals("Lend")) {
-                    int debug = 1;
-                }
                 if (voltage != 0.0 || LabeledNodeElm.getByName(equation) != null) {
                     return voltage;
                 }
@@ -302,14 +298,19 @@ private double evaluateEquation(int row, int col) {
         return LabeledNodeElm.getComputedValue(labelName);
     }
     
+    // Use the standard CircuitJS1 voltage coloring system
+    protected Color getCellVoltageColor(double voltage) {
+        // Use the same voltage coloring as other circuit elements
+        // This properly handles zero voltage with gray and uses the global voltage range setting
+        return getVoltageColor(null, voltage);
+    }
+    
     void setPoints() {
         super.setPoints();
         
         // Calculate table dimensions
         int tableWidth = cols * cellSize + (cols + 1) * cellSpacing;
-        int extraRows = 0;
-        if (hasInitialConditions) extraRows++;  // Add extra row for initial conditions
-        if (showComputedRow) extraRows++;      // Add extra row for computed values
+        int extraRows = (showInitialValues ? 1 : 0) + 1; // Initial conditions (if shown) + computed row
         int tableHeight = (rows + extraRows) * cellSize + (rows + extraRows + 1) * cellSpacing + 20; // Extra space for headers
         
         // Set bounding box
@@ -321,9 +322,7 @@ private double evaluateEquation(int row, int col) {
     }
     
     void draw(Graphics g) {
-        int extraRows = 0;
-        if (hasInitialConditions) extraRows++;  // Add extra row for initial conditions
-        if (showComputedRow) extraRows++;      // Add extra row for computed values
+        int extraRows = (showInitialValues ? 1 : 0) + 1; // Initial conditions (if shown) + computed row
         
         // Draw table background
         g.setColor(needsHighlight() ? selectColor : Color.white);
@@ -341,17 +340,15 @@ private double evaluateEquation(int row, int col) {
         drawColumnHeaders(g);
         
         // Draw initial conditions row if enabled
-        if (hasInitialConditions) {
+        if (showInitialValues) {
             drawInitialConditionsRow(g);
         }
         
         // Draw table cells with voltages
         drawTableCells(g);
         
-        // Draw computed row if enabled
-        if (showComputedRow) {
-            drawSumRow(g);
-        }
+        // Always draw computed row
+        drawSumRow(g);
         
         // Draw grid lines
         drawGridLines(g);
@@ -377,11 +374,11 @@ private double evaluateEquation(int row, int col) {
             int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
             
             // Get initial conditions value for this column
-            double initialValue = (initialConditionsValues != null && col < initialConditionsValues.length) ? 
-                                 initialConditionsValues[col] : 0.0;
+            double initialValue = (initialValues != null && col < initialValues.length) ? 
+                                 initialValues[col] : 0.0;
             
-            // Draw initial conditions cell background (light green to distinguish from equations)
-            g.setColor(needsHighlight() ? selectColor : new Color(240, 255, 240));
+            // Draw initial conditions cell background - color based on initial value voltage
+            g.setColor(needsHighlight() ? selectColor : getCellVoltageColor(initialValue));
             g.fillRect(cellX, initialRowY, cellSize, cellSize);
             
             // Draw cell border
@@ -402,15 +399,15 @@ private double evaluateEquation(int row, int col) {
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
                 int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
-                // Adjust Y position to account for initial conditions row
-                int rowOffset = hasInitialConditions ? 1 : 0;
+                // Adjust Y position to account for initial conditions row (if shown)
+                int rowOffset = showInitialValues ? 1 : 0; // Initial conditions row offset
                 int cellY = point1.y + 20 + cellSpacing + (row + rowOffset) * (cellSize + cellSpacing);
                 
                 // Get voltage using equation evaluation
                 double voltage = getVoltageForCell(row, col);
                 
-                // Draw cell background - light blue for all equation cells
-                g.setColor(needsHighlight() ? selectColor : new Color(240, 248, 255));
+                // Draw cell background - color based on voltage using CircuitJS1 standard colors
+                g.setColor(needsHighlight() ? selectColor : getCellVoltageColor(voltage));
                 g.fillRect(cellX, cellY, cellSize, cellSize);
                 
                 // Draw cell border
@@ -433,8 +430,8 @@ private double evaluateEquation(int row, int col) {
     }
 
     protected void drawSumRow(Graphics g) {
-        // Adjust Y position to account for initial conditions row
-        int rowOffset = hasInitialConditions ? 1 : 0;
+        // Adjust Y position to account for initial conditions row (if shown)
+        int rowOffset = showInitialValues ? 1 : 0; // Initial conditions row offset
         int sumRowY = point1.y + 20 + cellSpacing + (rows + rowOffset) * (cellSize + cellSpacing);
         
         for (int col = 0; col < cols; col++) {
@@ -443,10 +440,10 @@ private double evaluateEquation(int row, int col) {
             // Get the already-calculated sum from computed values (calculated in doStep())
             String sumLabelName = columnHeaders[col];
             Double computedSum = LabeledNodeElm.getComputedValue(sumLabelName);
-            double columnSum = (computedSum != null) ? computedSum.doubleValue() : 0.0;
+            double computedValue = (computedSum != null) ? computedSum.doubleValue() : 0.0;
             
-            // Draw sum cell background (slightly different color)
-            g.setColor(Color.lightGray);
+            // Draw sum cell background - color based on computed sum voltage
+            g.setColor(needsHighlight() ? selectColor : getCellVoltageColor(computedValue));
             g.fillRect(cellX, sumRowY, cellSize, cellSize);
             
             // Draw cell border
@@ -458,16 +455,14 @@ private double evaluateEquation(int row, int col) {
             drawCenteredText(g, sumLabelName, cellX + cellSize/2, sumRowY + cellSize/3, true);
             
             // Draw sum value (bottom half)
-            String sumText = getVoltageText(columnSum);
+            String sumText = getVoltageText(computedValue);
             drawCenteredText(g, sumText, cellX + cellSize/2, sumRowY + 2*cellSize/3, true);
         }
     }
 
     private void drawGridLines(Graphics g) {
         g.setColor(Color.gray);
-        int extraRows = 0;
-        if (hasInitialConditions) extraRows++;  // Add extra row for initial conditions
-        if (showComputedRow) extraRows++;      // Add extra row for computed values
+        int extraRows = (showInitialValues ? 1 : 0) + 1; // Initial conditions (if shown) + computed row
         
         // Vertical lines
         for (int col = 0; col <= cols; col++) {
@@ -481,76 +476,53 @@ private double evaluateEquation(int row, int col) {
             g.drawLine(point1.x, y, point1.x + cellSpacing + cols * (cellSize + cellSpacing), y);
         }
         
-        // Draw separator line after initial conditions row if showing it
-        if (hasInitialConditions) {
+        // Draw separator line after initial conditions row (if shown)
+        if (showInitialValues) {
             g.setColor(Color.black);
             int separatorY = point1.y + 20 + cellSpacing + 1 * (cellSize + cellSpacing);
             g.drawLine(point1.x, separatorY, point1.x + cellSpacing + cols * (cellSize + cellSpacing), separatorY);
         }
         
-        // Draw separator line before computed row if showing it
-        if (showComputedRow) {
-            g.setColor(Color.black);
-            int rowOffset = hasInitialConditions ? 1 : 0;
-            int separatorY = point1.y + 20 + cellSpacing + (rows + rowOffset) * (cellSize + cellSpacing);
-            g.drawLine(point1.x, separatorY, point1.x + cellSpacing + cols * (cellSize + cellSpacing), separatorY);
-        }
+        // Draw separator line before computed row
+        g.setColor(Color.black);
+        int rowOffset = showInitialValues ? 1 : 0; // Initial conditions row offset
+        int separatorY = point1.y + 20 + cellSpacing + (rows + rowOffset) * (cellSize + cellSpacing);
+        g.drawLine(point1.x, separatorY, point1.x + cellSpacing + cols * (cellSize + cellSpacing), separatorY);
     }
     
     private double[] lastColumnSums;
-    private double[] initialConditionsApplied; // Track initial conditions already applied
-    private boolean isFirstStep = true; // Track if this is the first simulation step
-    
+   
     // Calculate computed values during simulation step (not during drawing)
     public void doStep() {
         super.doStep();
         
-        if (showComputedRow) {
-            if (lastColumnSums == null) {
-                lastColumnSums = new double[cols];
-            }
-            
-            // Initialize initial conditions tracking array if needed
-            if (initialConditionsApplied == null) {
-                initialConditionsApplied = new double[cols];
-                for (int i = 0; i < cols; i++) {
-                    initialConditionsApplied[i] = 0.0;
-                }
-            }
-            
-            for (int col = 0; col < cols; col++) {
-                double columnSum = 0.0;
-                
-                // Apply initial conditions only on the first step or when reset
-                if (hasInitialConditions && initialConditionsValues != null && 
-                    col < initialConditionsValues.length && isFirstStep) {
-                    initialConditionsApplied[col] = initialConditionsValues[col];
-                }
-                
-                // Always include the applied initial conditions (but don't re-add them)
-                if (hasInitialConditions && initialConditionsApplied != null && col < initialConditionsApplied.length) {
-                    columnSum += initialConditionsApplied[col];
-                }
-                
-                // Add values from all equation rows
-                for (int row = 0; row < rows; row++) {
-                    // Use getVoltageForCell to support equations
-                    columnSum += getVoltageForCell(row, col);
-                }
-                
-                // Check for convergence
-                if (Math.abs(columnSum - lastColumnSums[col]) > 1e-6) {
-                    sim.converged = false;
-                }
-                
-                lastColumnSums[col] = columnSum;
-                String name = columnHeaders[col];
-                registerComputedValueAsLabeledNode(name, columnSum);
-            }
-            
-            // Mark that we've completed the first step
-            isFirstStep = false;
+        // Always compute column sums
+        if (lastColumnSums == null) {
+            lastColumnSums = new double[cols];
         }
+        
+
+        
+        for (int col = 0; col < cols; col++) {
+            double columnSum = 0.0;
+            
+            // Add values from all equation rows except for the initial value row
+            for (int row = 1; row < rows; row++) {
+                // Use getVoltageForCell to support equations
+                columnSum += getVoltageForCell(row, col);
+            }
+            
+            // Check for convergence
+            Double diff = Math.abs(columnSum - lastColumnSums[col]);
+            if (diff > 1e-6) {
+                sim.converged = false;
+            }
+            
+            lastColumnSums[col] = columnSum;
+            String name = columnHeaders[col];
+            registerComputedValueAsLabeledNode(name, columnSum);
+        }
+
     }
 
     boolean nonLinear() { 
@@ -564,19 +536,17 @@ private double evaluateEquation(int row, int col) {
     
     public String dump() {
         StringBuilder sb = new StringBuilder();
-        sb.append(super.dump()).append(" ").append(rows).append(" ").append(cols);
-        sb.append(" ").append(showComputedRow ? "1" : "0");
-        sb.append(" ").append(hasInitialConditions ? "1" : "0");
+        sb.append(super.dump()).append(" ").append(rows).append(" ").append(cols).append(" ").append(showInitialValues);
         
         // Serialize column headers
         for (int col = 0; col < cols; col++) {
             sb.append(" ").append(CustomLogicModel.escape(columnHeaders[col]));
         }
         
-        // Serialize initial conditions values if enabled
-        if (hasInitialConditions && initialConditionsValues != null) {
+        // Always serialize initial conditions values
+        if (initialValues != null) {
             for (int col = 0; col < cols; col++) {
-                sb.append(" ").append(initialConditionsValues[col]);
+                sb.append(" ").append(initialValues[col]);
             }
         }
         
@@ -595,13 +565,34 @@ private double evaluateEquation(int row, int col) {
         try {
             if (st.hasMoreTokens()) rows = Integer.parseInt(st.nextToken());
             if (st.hasMoreTokens()) cols = Integer.parseInt(st.nextToken());
-            if (st.hasMoreTokens()) showComputedRow = "1".equals(st.nextToken());
-            if (st.hasMoreTokens()) hasInitialConditions = "1".equals(st.nextToken());
             
             // Initialize arrays
             columnHeaders = new String[cols];
             cellEquations = new String[rows][cols];
-            initialConditionsValues = new double[cols];
+            initialValues = new double[cols];
+            
+            // Auto-detect format based on total tokens expected
+            // Count remaining tokens to determine format
+            int remainingTokens = st.countTokens();
+            int expectedNewFormatWithFlag = 1 + cols + cols + (rows * cols); // showInitialValues + headers + initial conditions + equations
+            int expectedOldFormatWithFlags = 2 + cols + cols + (rows * cols); // 2 old boolean flags + headers + initial conditions + equations
+            // Note: expectedOldFormat = cols + cols + (rows * cols) for very old format (no flags)
+            
+            // Detect format and parse accordingly
+            if (remainingTokens == expectedNewFormatWithFlag) {
+                // New format with showInitialValues flag
+                if (st.hasMoreTokens()) {
+                    showInitialValues = Boolean.parseBoolean(st.nextToken());
+                }
+            } else if (remainingTokens == expectedOldFormatWithFlags) {
+                // Old format with 2 boolean flags - skip them for backwards compatibility
+                if (st.hasMoreTokens()) st.nextToken(); // Skip old showComputedRow flag
+                if (st.hasMoreTokens()) st.nextToken(); // Skip old hasInitialConditions flag
+                showInitialValues = false; // Default for old TableElm
+            } else {
+                // Very old format or new format without flag
+                showInitialValues = false; // Default for TableElm
+            }
             
             // Parse column headers
             for (int col = 0; col < cols; col++) {
@@ -612,29 +603,42 @@ private double evaluateEquation(int row, int col) {
                 }
             }
             
-            // Parse initial conditions values if enabled
-            if (hasInitialConditions) {
-                for (int col = 0; col < cols; col++) {
-                    if (st.hasMoreTokens()) {
-                        initialConditionsValues[col] = Double.parseDouble(st.nextToken());
-                    } else {
-                        initialConditionsValues[col] = 0.0;
+            // Parse initial conditions values
+            // Store tokens we can't parse as numbers for equation parsing later
+            java.util.ArrayList<String> unparsedTokens = new java.util.ArrayList<String>();
+            
+            for (int col = 0; col < cols; col++) {
+                if (st.hasMoreTokens()) {
+                    String token = st.nextToken();
+                    try {
+                        initialValues[col] = Double.parseDouble(token);
+                    } catch (NumberFormatException e) {
+                        // This token is not a number, probably an equation
+                        initialValues[col] = 0.0;
+                        unparsedTokens.add(token);
+                        // All remaining tokens for this section should also be treated as equations
+                        break;
                     }
-                }
-            } else {
-                // Initialize with zeros even if not enabled
-                for (int col = 0; col < cols; col++) {
-                    initialConditionsValues[col] = 0.0;
+                } else {
+                    initialValues[col] = 0.0;
                 }
             }
             
             // Parse equation data
+            // First use any unparsed tokens from initial conditions parsing
+            int unparsedIndex = 0;
             for (int row = 0; row < rows; row++) {
                 for (int col = 0; col < cols; col++) {
-                    if (st.hasMoreTokens()) {
+                    if (unparsedIndex < unparsedTokens.size()) {
+                        // Use unparsed token
+                        cellEquations[row][col] = CustomLogicModel.unescape(unparsedTokens.get(unparsedIndex));
+                        unparsedIndex++;
+                    } else if (st.hasMoreTokens()) {
+                        // Use token from stream
                         cellEquations[row][col] = CustomLogicModel.unescape(st.nextToken());
                     } else {
-                        cellEquations[row][col] = "node" + (row * cols + col + 1);
+                        // Default equation
+                        cellEquations[row][col] = "";
                     }
                 }
             }
@@ -654,14 +658,14 @@ private double evaluateEquation(int row, int col) {
                 cellEquations = new String[rows][cols];
                 for (int row = 0; row < rows; row++) {
                     for (int col = 0; col < cols; col++) {
-                        cellEquations[row][col] = "node" + (row * cols + col + 1);
+                        cellEquations[row][col] = "";
                     }
                 }
             }
-            if (initialConditionsValues == null) {
-                initialConditionsValues = new double[cols];
+            if (initialValues == null) {
+                initialValues = new double[cols];
                 for (int col = 0; col < cols; col++) {
-                    initialConditionsValues[col] = 0.0;
+                    initialValues[col] = 0.0;
                 }
             }
         }
@@ -675,16 +679,11 @@ private double evaluateEquation(int row, int col) {
         if (n == 0) return new EditInfo("Cell Size", cellSize, 20, 100);
         if (n == 1) return new EditInfo("Cell Spacing", cellSpacing, 2, 20);
         if (n == 2) {
-            EditInfo ei = new EditInfo("", 0, -1, -1);
-            ei.checkbox = new Checkbox("Show Computed Row", showComputedRow);
+            EditInfo ei = new EditInfo("Show Initial Values", 0, -1, -1);
+            ei.checkbox = new Checkbox("", showInitialValues);
             return ei;
         }
         if (n == 3) {
-            EditInfo ei = new EditInfo("", 0, -1, -1);
-            ei.checkbox = new Checkbox("Show Initial Conditions", hasInitialConditions);
-            return ei;
-        }
-        if (n == 4) {
             EditInfo ei = new EditInfo("", 0, -1, -1);
             ei.button = new Button("Edit Table Data...");
             return ei;
@@ -701,12 +700,9 @@ private double evaluateEquation(int row, int col) {
             cellSpacing = (int)ei.value;
             setPoints();
         } else if (n == 2) {
-            showComputedRow = ei.checkbox.getState();
+            showInitialValues = ei.checkbox.getValue();
             setPoints();
         } else if (n == 3) {
-            hasInitialConditions = ei.checkbox.getState();
-            setPoints();
-        } else if (n == 4) {
             // Open table editing dialog
             openTableEditDialog();
         }
@@ -716,7 +712,7 @@ private double evaluateEquation(int row, int col) {
     public void resizeTable(int newRows, int newCols) {
         String[] oldHeaders = columnHeaders;
         String[][] oldEquations = cellEquations;
-        double[] oldInitialConditions = initialConditionsValues;
+        double[] oldInitialConditions = initialValues;
         
         // Update dimensions
         rows = newRows;
@@ -727,7 +723,7 @@ private double evaluateEquation(int row, int col) {
         cellEquations = new String[rows][cols];
         compiledExpressions = new Expr[rows][cols];
         expressionStates = new ExprState[rows][cols];
-        initialConditionsValues = new double[cols];
+        initialValues = new double[cols];
         
         // Initialize expression states
         for (int row = 0; row < rows; row++) {
@@ -759,46 +755,18 @@ private double evaluateEquation(int row, int col) {
         // Copy over existing initial conditions where possible
         if (oldInitialConditions != null) {
             for (int col = 0; col < Math.min(cols, oldInitialConditions.length); col++) {
-                initialConditionsValues[col] = oldInitialConditions[col];
+                initialValues[col] = oldInitialConditions[col];
             }
         }
         
         // Initialize remaining initial conditions values with zeros
         for (int col = 0; col < cols; col++) {
             if (oldInitialConditions == null || col >= oldInitialConditions.length) {
-                initialConditionsValues[col] = 0.0;
+                initialValues[col] = 0.0;
             }
         }
-        
-        // Reset initial conditions tracking for new table size
-        initialConditionsApplied = new double[cols];
-        for (int col = 0; col < cols; col++) {
-            initialConditionsApplied[col] = 0.0;
-        }
-        isFirstStep = true; // Reset to first step when table is resized
-        
-        // Fill in missing labels with simple defaults
-        fillMissingLabels();
-        
+
         setPoints();
-    }
-    
-    private void fillMissingLabels() {
-        // Fill missing cell equations with simple node names
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < cols; col++) {
-                if (cellEquations[row][col] == null || cellEquations[row][col].isEmpty()) {
-                    cellEquations[row][col] = "node" + (row * cols + col + 1);
-                }
-            }
-        }
-        
-        // Fill missing column headers with simple defaults
-        for (int col = 0; col < cols; col++) {
-            if (columnHeaders[col] == null || columnHeaders[col].isEmpty()) {
-                columnHeaders[col] = "Col" + (col + 1);
-            }
-        }
     }
     
     protected void openTableEditDialog() {
@@ -831,7 +799,6 @@ private double evaluateEquation(int row, int col) {
     }
     
 
-
     public String getCellLabel(int row, int col) {
         if (isValidCell(row, col)) {
             return cellEquations[row][col];
@@ -855,29 +822,17 @@ private double evaluateEquation(int row, int col) {
     // Getter methods for TableEditDialog
     public int getRows() { return rows; }
     public int getCols() { return cols; }
-    public boolean getShowComputedRow() { return showComputedRow; }
-    public boolean getHasInitialConditions() { return hasInitialConditions; }
     
-    public void setShowComputedRow(boolean show) {
-        showComputedRow = show;
-        setPoints();
-    }
-    
-    public void setHasInitialConditions(boolean has) {
-        hasInitialConditions = has;
-        setPoints();
-    }
-    
-    public double getInitialConditionValue(int col) {
-        if (col >= 0 && col < cols && initialConditionsValues != null && col < initialConditionsValues.length) {
-            return initialConditionsValues[col];
+    public double getInitialValue(int col) {
+        if (col >= 0 && col < cols && initialValues != null && col < initialValues.length) {
+            return initialValues[col];
         }
         return 0.0;
     }
     
     public void setInitialConditionValue(int col, double value) {
-        if (col >= 0 && col < cols && initialConditionsValues != null && col < initialConditionsValues.length) {
-            initialConditionsValues[col] = value;
+        if (col >= 0 && col < cols && initialValues != null && col < initialValues.length) {
+            initialValues[col] = value;
         }
     }
     
@@ -908,40 +863,7 @@ private double evaluateEquation(int row, int col) {
         recompileAllEquations();
     }
     
-    @Override
-    public void reset() {
-        super.reset();
-        // Reset initial conditions application for new simulation run
-        isFirstStep = true;
-        if (initialConditionsApplied != null) {
-            for (int i = 0; i < initialConditionsApplied.length; i++) {
-                initialConditionsApplied[i] = 0.0;
-            }
-        }
-        // Equations will be recompiled as needed with direct node resolution
-    }
-    
-    // // Override doStep to ensure equations are compiled before first evaluation
-    // @Override
-    // public void doStep() {
-    //     // Check if we have any uncompiled equations that need compilation now
-    //     boolean hasUncompiledEquations = false;
-    //     for (int row = 0; row < rows && !hasUncompiledEquations; row++) {
-    //         for (int col = 0; col < cols && !hasUncompiledEquations; col++) {
-    //             if (cellEquations[row][col] != null && !cellEquations[row][col].trim().isEmpty() &&
-    //                 compiledExpressions[row][col] == null) {
-    //                 hasUncompiledEquations = true;
-    //             }
-    //         }
-    //     }
-        
-    //     // If we have uncompiled equations and labeled nodes are now available, recompile
-    //     if (hasUncompiledEquations && LabeledNodeElm.labelList != null && !LabeledNodeElm.labelList.isEmpty()) {
-    //         CirSim.console("TableElm: Found uncompiled equations with available nodes, recompiling...");
-    //         recompileAllEquations();
-    //     }
-        
-    //     super.doStep();
-    // }
+
 }
+
 

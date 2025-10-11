@@ -27,7 +27,6 @@ import com.google.gwt.user.client.ui.Grid;
 import com.google.gwt.user.client.ui.TextBox;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
-import com.google.gwt.user.client.ui.CheckBox;
 
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
@@ -59,7 +58,6 @@ public class TableEditDialog extends Dialog {
     private Button okButton, cancelButton, applyButton;
     private Button addRowButton, removeRowButton, addColButton, removeColButton;
     private Label statusLabel;
-    private CheckBox initialConditionsCheckBox;
     
     // Data storage
     private String[][] cellEquations;  // Store equation text for each cell (now the only mode)
@@ -97,11 +95,11 @@ public class TableEditDialog extends Dialog {
         cellEquations = new String[rows][cols];
         columnHeaders = new String[cols];
         
-        // Copy initial conditions data
-        hasInitialConditions = tableElement.getHasInitialConditions();
+        // Initial conditions are now always enabled
+        hasInitialConditions = true;
         initialConditionsValues = new double[cols];
         for (int col = 0; col < cols; col++) {
-            initialConditionsValues[col] = tableElement.getInitialConditionValue(col);
+            initialConditionsValues[col] = tableElement.getInitialValue(col);
         }
         
         // Copy cell equations (now the only data type)
@@ -140,16 +138,7 @@ public class TableEditDialog extends Dialog {
         equationHelp.getElement().getStyle().setProperty("color", "#666");
         mainPanel.add(equationHelp);
         
-        // Initial conditions checkbox
-        initialConditionsCheckBox = new CheckBox("Show Initial Conditions Row");
-        initialConditionsCheckBox.setValue(hasInitialConditions);
-        initialConditionsCheckBox.addValueChangeHandler(event -> {
-            hasInitialConditions = event.getValue();
-            markChanged();
-            populateGrid(); // Regenerate grid to show/hide initial conditions row
-        });
-        initialConditionsCheckBox.addStyleName("topSpace");
-        mainPanel.add(initialConditionsCheckBox);
+        // Initial conditions are now always shown - no checkbox needed
         
         // Table editing controls
         HorizontalPanel controlPanel = new HorizontalPanel();
@@ -788,8 +777,7 @@ public class TableEditDialog extends Dialog {
         // Apply data changes with new size
         tableElement.resizeTable(rows, cols);
         
-        // Apply initial conditions settings
-        tableElement.setHasInitialConditions(hasInitialConditions);
+        // Apply initial conditions values (always enabled now)
         for (int col = 0; col < cols; col++) {
             tableElement.setInitialConditionValue(col, initialConditionsValues[col]);
         }

@@ -26,16 +26,14 @@ package com.lushprojects.circuitjs1.client;
  * Uses equation: lastoutput + timestep * integrationGain * columnSum
  */
 public class GodlyTableElm extends TableElm {
-    private double integrationGain = 1.0;      // Multiplier for integration (default 1)
     private Expr integrationExpr;                // Compiled integration expression
     private ExprState[] integrationStates;       // Integration state for each column
-    private double[] lastIntegrationOutputs;     // Previous integration outputs for each column
     private double[] lastComputedRowValues;      // Track last column sums for convergence checking
-    private boolean showComputedRow = true;      // Show computed row at bottom (replaces showColumnSums)
     
     // Constructor for new table
     public GodlyTableElm(int xx, int yy) {
         super(xx, yy);
+        showInitialValues = true; // GodlyTable shows initial values by default
         initIntegration();
     }
     
@@ -45,19 +43,19 @@ public class GodlyTableElm extends TableElm {
         super(xa, ya, xb, yb, f, st);
         // TableElm constructor will handle parsing its own data
         
-        // Then parse GodlyTable-specific data
-        parseGodlyTableData(st);
+
         initIntegration();
     }
     
     private void initIntegration() {
         // Initialize integration arrays based on current number of columns
         integrationStates = new ExprState[cols];
-        lastIntegrationOutputs = new double[cols];
         
         for (int col = 0; col < cols; col++) {
             integrationStates[col] = new ExprState(1); // 1 input (columnSum as 'a')
-            lastIntegrationOutputs[col] = 0.0;
+            // Initialize with the initial condition for this column
+            double initialValue = getInitialValue(col);
+            integrationStates[col].lastOutput = initialValue;
         }
         
         // Parse the integration expression
@@ -65,40 +63,43 @@ public class GodlyTableElm extends TableElm {
     }
     
     private double performIntegration(int col, double columnSum) {
-        if (integrationExpr == null || col >= integrationStates.length) {
-            return 0.0; // No integration if expression failed to parse
-        }
         
         try {
             ExprState state = integrationStates[col];
             
+            // On first step, initialize with the initial condition
+            if (sim.t == 0.0) {
+                state.lastOutput = integrationStates[col].lastOutput;
+            }
+            
             // Set up expression state
-            state.values[0] = columnSum; // 'a' = columnSum
-            state.lastOutput = lastIntegrationOutputs[col];
+            state.values[0] = columnSum ; // 'a' = columnSum
             state.t = sim.t;
             
-            // Evaluate integration expression: lastoutput + timestep * gain * columnSum
+            // Evaluate integration expression: lastoutput + timestep * a
+            // where 'a' is already scaled by integrationGain
             double result = integrationExpr.eval(state);
-            
-            // Store result for next iteration
-            lastIntegrationOutputs[col] = result;
-            
+                        
             // Update the expression state for next time
             state.updateLastValues(result);
+            state.lastOutput = result;
+            integrationStates[col].lastOutput = result;
+
             
             return result;
             
         } catch (Exception e) {
             CirSim.console("GodlyTableElm: Error in integration calculation: " + e.getMessage());
-            return lastIntegrationOutputs[col]; // Return last known value on error
+            return integrationStates[col].lastOutput; // Return last known value on error
         }
     }
     
     private void parseIntegrationExpr() {
         try {
-            // Create expression: lastoutput + timestep * integrationGain * a
-            // Where 'a' will be the column sum
-            String exprStr = "lastoutput+timestep*" + integrationGain + "*a";
+            // Create expression: lastoutput + timestep * a
+            // Where 'a' will be (columnSum * integrationGain) - gain is pre-applied
+            // This implements numerical integration: y[n+1] = y[n] + dt * f(t,y)
+            String exprStr = "lastoutput + timestep*a";
             ExprParser parser = new ExprParser(exprStr);
             integrationExpr = parser.parseExpression();
             String err = parser.gotError();
@@ -112,71 +113,10 @@ public class GodlyTableElm extends TableElm {
         }
     }
     
-    private void parseGodlyTableData(StringTokenizer st) {
-        // Parse integration-specific data if available
-        try {
-            // Parse integration gain if present
-            if (st.hasMoreTokens()) {
-                integrationGain = Double.parseDouble(st.nextToken());
-            }
-            
-            // Parse last integration outputs if present
-            if (lastIntegrationOutputs == null) {
-                lastIntegrationOutputs = new double[cols];
-            }
-            
-            for (int col = 0; col < cols && st.hasMoreTokens(); col++) {
-                lastIntegrationOutputs[col] = Double.parseDouble(st.nextToken());
-            }
-            
-        } catch (Exception e) {
-            CirSim.console("GodlyTableElm: error parsing integration data, using defaults");
-            integrationGain = 100.0;
-            // lastIntegrationOutputs will be initialized to zeros by initIntegration()
-        }
-    }
-    
-    @Override
-    protected void drawSumRow(Graphics g) {
-        int sumRowY = point1.y + 20 + cellSpacing + rows * (cellSize + cellSpacing);
-        
-        for (int col = 0; col < cols; col++) {
-            int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
-            
-            // Get the already-calculated integrated value (calculated in doStep())
-            String integrationLabelName = columnHeaders[col];
-            Double computedIntegration = LabeledNodeElm.getComputedValue(integrationLabelName);
-            double integratedValue = (computedIntegration != null) ? computedIntegration.doubleValue() : 0.0;
-            
-            // Draw integration cell background (different color for integration)
-            g.setColor(Color.yellow); // Distinct color for integration cells
-            g.fillRect(cellX, sumRowY, cellSize, cellSize);
-            
-            // Draw cell border
-            g.setColor(Color.black);
-            g.drawRect(cellX, sumRowY, cellSize, cellSize);
-            
-            // Draw integration label name (top half) 
-            g.setColor(Color.black);
-            drawCenteredText(g, integrationLabelName, cellX + cellSize/2, sumRowY + cellSize/3, true);
-            
-            // Draw integrated value (bottom half)
-            String integrationText = getVoltageText(integratedValue);
-            drawCenteredText(g, integrationText, cellX + cellSize/2, sumRowY + 2*cellSize/3, true);
-        }
-    }
-    
     @Override
     public String dump() {
         StringBuilder sb = new StringBuilder();
         sb.append(super.dump()); // Get TableElm serialization
-        sb.append(" ").append(integrationGain); // Add integration gain
-        
-        // Add integration states (last outputs)
-        for (int col = 0; col < cols; col++) {
-            sb.append(" ").append(lastIntegrationOutputs[col]);
-        }
-        
         return sb.toString();
     }
     
@@ -185,52 +125,13 @@ public class GodlyTableElm extends TableElm {
         return 255; // Choose unused dump type (different from TableElm's 253)
     }
     
-    @Override
-    public EditInfo getEditInfo(int n) {
-        // First handle integration-specific edits
-        if (n == 0) {
-            return new EditInfo("Integration Gain", integrationGain, 0.1, 1000.0);
-        }
-        if (n == 1) {
-            EditInfo ei = new EditInfo("", 0, -1, -1);
-            ei.checkbox = new Checkbox("Reset Integration", false);
-            return ei;
-        }
-        
-        // Delegate to parent for other edits, but offset index
-        return super.getEditInfo(n - 2);
-    }
-
-    @Override 
-    public void setEditValue(int n, EditInfo ei) {
-        if (n == 0) {
-            // Integration gain changed
-            integrationGain = ei.value;
-            parseIntegrationExpr(); // Reparse expression with new gain
-            return;
-        }
-        if (n == 1) {
-            // Reset integration checkbox
-            if (ei.checkbox.getState()) {
-                resetIntegration();
-            }
-            return;
-        }
-        
-        // Delegate to parent for other edits
-        super.setEditValue(n - 2, ei);
-        
-        // If table structure changed, reinitialize integration
-        if (n - 2 <= 1) { // If rows or cols changed
-            initIntegration();
-        }
-    }
-
     private void resetIntegration() {
         for (int col = 0; col < cols; col++) {
-            lastIntegrationOutputs[col] = 0.0;
+            // Reset integration to the initial condition for this column
+            double initialValue = getInitialValue(col);
             if (integrationStates[col] != null) {
                 integrationStates[col].reset();
+                integrationStates[col].lastOutput = initialValue;
             }
         }
     }
@@ -238,6 +139,7 @@ public class GodlyTableElm extends TableElm {
     @Override
     public void reset() {
         super.reset();
+        // Reset integration to initial conditions when circuit is reset
         resetIntegration();
     }
 
@@ -245,37 +147,48 @@ public class GodlyTableElm extends TableElm {
     // Calculate computed values during simulation step (not during drawing)
     public void doStep() {
         super.doStep();
-        if (showComputedRow) {
-            if (lastComputedRowValues == null) {
-                lastComputedRowValues = new double[cols];
+        
+        // Always compute column sums for convergence checking
+        if (lastComputedRowValues == null) {
+            lastComputedRowValues = new double[cols];
+        }
+        
+        for (int col = 0; col < cols; col++) {
+            // Calculate sum for this column using equation evaluation from all rows except for the first
+            double columnSum = 0.0;
+            for (int row = 1; row < rows; row++) {
+                // Use getVoltageForCell which works with equations
+                columnSum += getVoltageForCell(row, col);
             }
             
-            for (int col = 0; col < cols; col++) {
-                 // Calculate sum for this column using equation evaluation
-                double columnSum = 0.0;
-                for (int row = 0; row < rows; row++) {
-                    // Use getVoltageForCell which works with equations
-                    columnSum += getVoltageForCell(row, col);
-                }
-                
-                // Check for convergence
-                if (Math.abs(columnSum - lastComputedRowValues[col]) > 1e-6) {
-                    sim.converged = false;
-                }
-                
-                lastComputedRowValues[col] = columnSum;
-                
-                // Perform integration on this column sum
-                double integratedValue = performIntegration(col, columnSum);
-                
-                // Register the integrated value with a distinct name (e.g., "Col1_Int")
-                String integrationLabelName = columnHeaders[col];
-                registerComputedValueAsLabeledNode(integrationLabelName, integratedValue);
-                
-                // Update integration states for next timestep
-                if (integrationStates[col] != null) {
-                    integrationStates[col].updateLastValues(integratedValue);
-                }
+            // Check for convergence
+            if (Math.abs(columnSum - lastComputedRowValues[col]) > 1e-6) {
+                sim.converged = false;
+            }
+            
+            lastComputedRowValues[col] = columnSum;
+        }
+    }
+    
+    @Override
+    public void stepFinished() {
+        super.stepFinished();
+        
+        // Perform integration only once per completed timestep (not during convergence iterations)
+        for (int col = 0; col < cols; col++) {
+            // Use the converged column sum from doStep()
+            double columnSum = lastComputedRowValues != null ? lastComputedRowValues[col] : 0.0;
+            
+            // Perform integration on this column sum with proper initial condition
+            double integratedValue = performIntegration(col, columnSum);
+            
+            // Register the integrated value with a distinct name (e.g., "Col1_Int")
+            String integrationLabelName = columnHeaders[col];
+            registerComputedValueAsLabeledNode(integrationLabelName, integratedValue);
+            
+            // Update integration states for next timestep
+            if (integrationStates[col] != null) {
+                integrationStates[col].updateLastValues(integratedValue);
             }
         }
     }
@@ -283,8 +196,7 @@ public class GodlyTableElm extends TableElm {
     @Override
     void getInfo(String arr[]) {
         arr[0] = "Godly Table (" + rows + "x" + cols + ") with Integration";
-        arr[1] = "Integration gain: " + integrationGain;
-        arr[2] = "Equation: lastoutput + timestep * " + integrationGain + " * columnSum";
+        arr[1] = "Equation: y[n+1] = y[n] + dt * gain * columnSum";
         
         int idx = 3;
         // Show some sample values including integration results
