@@ -78,6 +78,9 @@ class LabeledNodeElm extends CircuitElm {
     // Cache for reverse lookup: node number -> label name
     private static HashMap<Integer, String> nodeToLabelCache;
     
+    // Static tracking for computed values this simulation step
+    private static java.util.Set<String> computedThisStep = new java.util.HashSet<String>();
+    
     boolean isInternal() { return (flags & FLAG_INTERNAL) != 0; }
     boolean showLabelNodes() { return (flags & FLAG_SHOW_ALL_NODES) != 0; }
     boolean showAllCircuitNodes() { return (flags & FLAG_SHOW_ALL_CIRCUIT_NODES) != 0; }
@@ -219,6 +222,21 @@ class LabeledNodeElm extends CircuitElm {
 		if (labelName == null || labelList == null) return null;
 		LabelEntry le = labelList.get(labelName);
 		return (le != null) ? le.computedValue : null;
+    }
+    
+    // Reset computed flags at start of each simulation step
+    public static void resetComputedFlags() {
+        computedThisStep.clear();
+    }
+    
+    // Check if a value has been computed this step
+    public static boolean isComputedThisStep(String labelName) {
+        return computedThisStep.contains(labelName);
+    }
+    
+    // Mark a value as computed this step
+    public static void markComputedThisStep(String labelName) {
+        computedThisStep.add(labelName);
     }
     
     static String getNameByNode(int nodeNumber) {

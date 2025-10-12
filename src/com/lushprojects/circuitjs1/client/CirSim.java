@@ -1775,9 +1775,15 @@ public CirSim() {
 		    info[0] = Locale.LS(info[0]);
 		    if (info[1] != null)
 			info[1] = Locale.LS(info[1]);
-		} else
-		    info[0] = "V = " +
-			CircuitElm.getUnitText(mouseElm.getPostVoltage(mousePost), "V");
+		} else {
+		    info[0] = "V = " + CircuitElm.getUnitText(mouseElm.getPostVoltage(mousePost), "V");
+		    // Add node name if available
+		    String nodeName = LabeledNodeElm.getNameByNode(mouseElm.nodes[mousePost]);
+		    if (nodeName != null)
+			info[1] = "Node: " + nodeName;
+		}
+
+            
 //		/* //shownodes
 //		for (i = 0; i != mouseElm.getPostCount(); i++)
 //		    info[0] += " " + mouseElm.nodes[i];
@@ -3078,6 +3084,10 @@ public CirSim() {
 			for (j = 0; j != circuitMatrixSize; j++)
 			    circuitMatrix[i][j] = origMatrix[i][j];
 		}
+		
+		// Reset computed value flags for this simulation step
+		LabeledNodeElm.resetComputedFlags();
+		
 		for (i = 0; i != elmArr.length; i++)
 		    elmArr[i].doStep();
 		if (stopMessage != null)

@@ -180,8 +180,6 @@ public class GodlyTableElm extends TableElm {
 
             lastComputedRowValues[col] = columnSum;
 
-            // Register column sum as labeled node (for equations that reference it)
-            registerComputedValueAsLabeledNode(name, columnSum);
             if (col < pins.length && pins[col].output) {
                 sim.updateVoltageSource(0, nodes[col], pins[col].voltSource, integratedValues[col]);
             }
@@ -205,11 +203,6 @@ public class GodlyTableElm extends TableElm {
             String integrationLabelName = columnHeaders[col];
             registerComputedValueAsLabeledNode(integrationLabelName, integratedValues[col]);
 
-            // Update output pin voltage source with integrated value
-            // This ensures the pins output the integrated values, not the column sums
-            if (col < pins.length && pins[col].output) {
-                sim.updateVoltageSource(0, nodes[col], pins[col].voltSource, integratedValues[col]);
-            }
 
             // Update integration states for next timestep
             if (integrationStates[col] != null) {

@@ -107,7 +107,7 @@ public class TableEditDialog extends Dialog {
             for (int col = 0; col < cols; col++) {
                 cellEquations[row][col] = tableElement.getCellEquation(row, col);
                 if (cellEquations[row][col] == null) {
-                    cellEquations[row][col] = "node" + (row * cols + col + 1);
+                    cellEquations[row][col] = "";
                 }
             }
         }
@@ -671,7 +671,7 @@ public class TableEditDialog extends Dialog {
         
         // Initialize new row
         for (int c = 0; c < cols; c++) {
-            newCellEquations[rows - 1][c] = "node" + ((rows - 1) * cols + c + 1);
+            newCellEquations[rows - 1][c] = "";
         }
         
         cellEquations = newCellEquations;
@@ -713,7 +713,7 @@ public class TableEditDialog extends Dialog {
             System.arraycopy(cellEquations[r], 0, newCellEquations[r], 0, cols - 1);
             
             // Initialize new column
-            newCellEquations[r][cols - 1] = "node" + (r * cols + (cols - 1) + 1);
+            newCellEquations[r][cols - 1] = "";
         }
         
         System.arraycopy(columnHeaders, 0, newColumnHeaders, 0, cols - 1);
@@ -844,4 +844,6 @@ public class TableEditDialog extends Dialog {
     public void closeDialog() {
         super.closeDialog();
     }
+
+
 }

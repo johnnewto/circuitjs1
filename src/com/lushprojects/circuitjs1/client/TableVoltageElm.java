@@ -166,4 +166,6 @@ class TableVoltageElm extends RailElm {
             computedValueName = name.trim();
         }
     }
+    @Override
+    int getShortcut() { return 0; }
 }

@@ -59,12 +59,12 @@ public class TableElm extends ChipElm {
                     cellEquations[row][col] = "";
                 }
             }
-            CirSim.console("TableElm: Initialized cellEquations array");
+//            CirSim.console("TableElm: Initialized cellEquations array");
         }
         
         if (compiledExpressions == null) {
             compiledExpressions = new Expr[rows][cols];
-            CirSim.console("TableElm: Initialized compiledExpressions array");
+//            CirSim.console("TableElm: Initialized compiledExpressions array");
         }
         
         if (expressionStates == null) {
@@ -129,89 +129,10 @@ public class TableElm extends ChipElm {
             ExprState state = expressionStates[row][col];
             updateExpressionState(state);
             return compiledExpressions[row][col].eval(state);
-//            return evaluateEquation(row, col);
+
         }
         return 0.0;
-//        // If no compiled expression, try to evaluate as simple node name
-//        String equation = cellEquations[row][col];
-//        if (equation != null && !equation.trim().isEmpty()) {
-//            // for debug if equation == "Lend'"
-//
-//
-//            // Try direct node lookup first
-//            if (sim != null) {
-//                double voltage = sim.getLabeledNodeVoltage(equation);
-//                if (voltage != 0.0 || LabeledNodeElm.getByName(equation) != null) {
-//                    return voltage;
-//                }
-//            }
-//
-//            // Check computed values
-//            Double computedValue = LabeledNodeElm.getComputedValue(equation);
-//            if (computedValue != null) {
-//                return computedValue.doubleValue();
-//            }
-//        }
-//
-//        return 0.0;
     }
-    
-private double evaluateEquation(int row, int col) {
-    try {
-        // Handle deferred compilation (null expression with valid equation text)
-        if (compiledExpressions[row][col] == null && 
-            cellEquations[row][col] != null && !cellEquations[row][col].trim().isEmpty()) {
-            
-            CirSim.console("TableElm: Attempting deferred compilation [" + row + "][" + col + "]");
-            compileEquation(row, col, cellEquations[row][col]);
-            
-            // If still null after compilation attempt, return 0
-            if (compiledExpressions[row][col] == null) {
-                return 0.0;
-            }
-        }
-        
-        // If expression is null (no equation or compilation failed), return 0
-        if (compiledExpressions[row][col] == null) {
-            return 0.0;
-        }
-        
-        // Evaluate the compiled expression
-        ExprState state = expressionStates[row][col];
-        updateExpressionState(state);
-        return compiledExpressions[row][col].eval(state);
-        
-    } catch (Exception e) {
-        CirSim.console("TableElm: Error evaluating equation [" + row + "][" + col + "]: " + e.getMessage());
-        return 0.0;
-    }
-}
-    
-    // // Check if labeled nodes have changed and recompile equations if needed
-    // private void checkAndRecompileEquations() {
-    //     // Get current labeled nodes
-    //     String[] currentNodes = getSortedLabeledNodesArray();
-        
-    //     // Check if nodes have changed
-    //     boolean nodesChanged = false;
-    //     if (lastKnownNodes == null || lastKnownNodes.length != currentNodes.length) {
-    //         nodesChanged = true;
-    //     } else {
-    //         for (int i = 0; i < currentNodes.length; i++) {
-    //             if (!currentNodes[i].equals(lastKnownNodes[i])) {
-    //                 nodesChanged = true;
-    //                 break;
-    //             }
-    //         }
-    //     }
-        
-    //     // If nodes changed, recompile all equations
-    //     if (nodesChanged) {
-    //         CirSim.console("TableElm: Labeled nodes changed, recompiling equations...");
-    //         lastKnownNodes = currentNodes;
-    //         recompileAllEquations();
-    //     }
-    // }
     
 
         
@@ -599,7 +520,7 @@ private double evaluateEquation(int row, int col) {
                 p.value = volts[i] > getThreshold();
         }
 
-        // Always compute column sums
+        // Always compute column sums for matrix stamping
         if (lastColumnSums == null) {
             lastColumnSums = new double[cols];
         }
@@ -607,12 +528,20 @@ private double evaluateEquation(int row, int col) {
         for (int col = 0; col < cols; col++) {
             double columnSum = 0.0;
             String name = columnHeaders[col];
-
-            // Add values from all equation rows except for the initial value row
-            for (int row = 0; row < rows; row++) {
-                // Use getVoltageForCell to support equations
-                double v = getVoltageForCell(row, col);
-                columnSum += v;
+            
+            // Check to see if column computed value is already calculated by another element
+            Double existingValue = LabeledNodeElm.getComputedValue(name);
+            boolean alreadyComputed = LabeledNodeElm.isComputedThisStep(name);
+            
+            if (alreadyComputed && existingValue != null) {
+                // Use the already computed value
+                columnSum = existingValue.doubleValue();
+            } else {
+                // Compute the value ourselves
+                for (int row = 0; row < rows; row++) {
+                    double v = getVoltageForCell(row, col);
+                    columnSum += v;
+                }
             }
 
             // Check for convergence
@@ -623,21 +552,29 @@ private double evaluateEquation(int row, int col) {
 
             lastColumnSums[col] = columnSum;
 
-            registerComputedValueAsLabeledNode(name, columnSum);
-
-            // Update output pin voltage sources after convergence is complete
-//            for (col = 0; col < cols; col++) {
-//                columnSum = lastColumnSums != null ? lastColumnSums[col] : 0.0;
-
             // Update output pin voltage source with converged column sum
             if (col < pins.length && pins[col].output) {
                 sim.updateVoltageSource(0, nodes[col], pins[col].voltSource, columnSum);
             }
-//            }
         }
     }
 
-    boolean nonLinear() { 
+    @Override
+    public void stepFinished() {
+        // Register computed values for other elements to use - do this after convergence
+        for (int col = 0; col < cols; col++) {
+            String name = columnHeaders[col];
+            
+            // Only register if we computed it ourselves (not if we used a pre-computed value)
+            boolean alreadyComputed = LabeledNodeElm.isComputedThisStep(name);
+            if (!alreadyComputed && lastColumnSums != null) {
+                registerComputedValueAsLabeledNode(name, lastColumnSums[col]);
+                LabeledNodeElm.markComputedThisStep(name);
+            }
+        }
+    }
+    
+    boolean nonLinear() {
         // Always nonlinear since we use equations (which may be nonlinear)
         return true;
     }

@@ -258,7 +258,9 @@ public abstract class CircuitElm implements Editable {
     void startIteration() {}
     
     // get voltage of x'th node
-    double getPostVoltage(int x) { return volts[x]; }
+    double getPostVoltage(int x) {
+        return volts[x];
+    }
     
     // set voltage of x'th node, called by simulator logic
     void setNodeVoltage(int n, double c) {
