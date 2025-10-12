@@ -10,13 +10,13 @@ import com.google.gwt.user.client.ui.Button;
 
 /**
  * Simplified Table Element - Displays voltage values from equations
- * Extends CircuitElm for lightweight equation-based display
+ * Extends ChipElm to provide output pins at each column
  */
-public class TableElm extends CircuitElm {
+public class TableElm extends ChipElm {
     protected int rows = 3;
-    protected int cols = 2; 
-    protected int cellSize = 60;
-    protected int cellSpacing = 4;
+    protected int cols = 2;
+    protected int cellSize = 64;  // Default to 4*cspc (cspc=16 when size=2, so 4*16=64)
+    protected int cellSpacing = 8;  // Default to 1*cspc (8 or 16 depending on chip size)
     protected String[] columnHeaders;
     protected double[] initialValues; // Values for initial conditions row
     protected boolean showInitialValues = false; // Control visibility of initial conditions row
@@ -33,14 +33,20 @@ public class TableElm extends CircuitElm {
     // Constructor for new table
     public TableElm(int xx, int yy) {
         super(xx, yy);
+        noDiagonal = true;
         initTable();
+        setupPins();
+        setSize(sim.smallGridCheckItem.getState() ? 1 : 2);
     }
-    
-    // File loading constructor  
+
+    // File loading constructor
     public TableElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
-        super(xa, ya, xb, yb, f);
+        super(xa, ya, xb, yb, f, st);
+        noDiagonal = true;
         parseTableData(st);
         initTable();
+        setupPins();
+        setSize((f & FLAG_SMALL) != 0 ? 1 : 2);
     }
     
     private void initTable() {
@@ -117,32 +123,37 @@ public class TableElm extends CircuitElm {
         }
         
         // All cells now use equations
+        String equations = cellEquations[row][col];
         if (compiledExpressions[row][col] != null) {
-            return evaluateEquation(row, col);
+            // Evaluate the compiled expression
+            ExprState state = expressionStates[row][col];
+            updateExpressionState(state);
+            return compiledExpressions[row][col].eval(state);
+//            return evaluateEquation(row, col);
         }
-        
-        // If no compiled expression, try to evaluate as simple node name
-        String equation = cellEquations[row][col];
-        if (equation != null && !equation.trim().isEmpty()) {
-            // for debug if equation == "Lend'"
-
-
-            // Try direct node lookup first
-            if (sim != null) {
-                double voltage = sim.getLabeledNodeVoltage(equation);
-                if (voltage != 0.0 || LabeledNodeElm.getByName(equation) != null) {
-                    return voltage;
-                }
-            }
-            
-            // Check computed values
-            Double computedValue = LabeledNodeElm.getComputedValue(equation);
-            if (computedValue != null) {
-                return computedValue.doubleValue();
-            }
-        }
-        
         return 0.0;
+//        // If no compiled expression, try to evaluate as simple node name
+//        String equation = cellEquations[row][col];
+//        if (equation != null && !equation.trim().isEmpty()) {
+//            // for debug if equation == "Lend'"
+//
+//
+//            // Try direct node lookup first
+//            if (sim != null) {
+//                double voltage = sim.getLabeledNodeVoltage(equation);
+//                if (voltage != 0.0 || LabeledNodeElm.getByName(equation) != null) {
+//                    return voltage;
+//                }
+//            }
+//
+//            // Check computed values
+//            Double computedValue = LabeledNodeElm.getComputedValue(equation);
+//            if (computedValue != null) {
+//                return computedValue.doubleValue();
+//            }
+//        }
+//
+//        return 0.0;
     }
     
 private double evaluateEquation(int row, int col) {
@@ -305,62 +316,138 @@ private double evaluateEquation(int row, int col) {
         return getVoltageColor(null, voltage);
     }
     
+    @Override
+    void setupPins() {
+        // Set chip size based on table dimensions
+        // Calculate size to match table cell layout better
+        int tableWidth = cols * cellSize + (cols + 1) * cellSpacing;
+        int extraRows = (showInitialValues ? 1 : 0) + 1;
+        int tableHeight = (rows + extraRows) * cellSize + (rows + extraRows + 1) * cellSpacing + 20;
+
+        // Convert table dimensions to chip grid units (cspc2 = 16 pixels typically)
+        // Add extra size so pins appear at the bottom of the table
+        sizeX = Math.max(cols, (tableWidth / cspc2) + 1);
+        sizeY = Math.max(rows + extraRows, (tableHeight / cspc2) + 1);
+
+        // Create output pins on bottom edge, positioned to align with table columns
+        pins = new Pin[cols];
+        for (int i = 0; i < cols; i++) {
+            String label = (columnHeaders != null && i < columnHeaders.length) ?
+                          columnHeaders[i] : "Col" + (i + 1);
+
+            // Calculate pin position to align with center of each column
+            // Each column center is at: cellSpacing + col*(cellSize+cellSpacing) + cellSize/2
+            // Subtract cspc (chip padding) to account for ChipElm's coordinate offset
+            int columnCenterPixel = cellSpacing / 2 + i * (cellSize + cellSpacing) + cellSize / 2  - cspc;
+            // Convert to chip grid units
+            int pinPos = columnCenterPixel / cspc2;
+
+            pins[i] = new Pin(pinPos, SIDE_S, label);
+            pins[i].output = true;
+        }
+    }
+
+    @Override
+    int getVoltageSourceCount() {
+        return cols; // One voltage source per output pin
+    }
+
+    @Override
+    int getPostCount() {
+        return cols; // One post per column
+    }
+
+    @Override
     void setPoints() {
         super.setPoints();
-        
-        // Calculate table dimensions
+
+        // Calculate table dimensions based on chip position
+        int x0 = x + cspc2;
+        int y0 = y;
+        int xr = x0 - cspc;
+        int yr = y0 - cspc;
+
         int tableWidth = cols * cellSize + (cols + 1) * cellSpacing;
         int extraRows = (showInitialValues ? 1 : 0) + 1; // Initial conditions (if shown) + computed row
         int tableHeight = (rows + extraRows) * cellSize + (rows + extraRows + 1) * cellSpacing + 20; // Extra space for headers
-        
-        // Set bounding box
-        setBbox(point1.x, point1.y, point1.x + tableWidth, point1.y + tableHeight);
-    }
 
-    int getPostCount() { 
-        return 0; // No electrical connections
+        // Set bounding box to include both chip body and table
+        setBbox(xr, yr, xr + tableWidth, yr + tableHeight);
     }
     
+    // Helper method to get table origin coordinates
+    private int getTableX() {
+        int x0 = x + cspc2;
+        return x0 - cspc;
+    }
+
+    private int getTableY() {
+        int y0 = y;
+        return y0 - cspc;
+    }
+
+    @Override
     void draw(Graphics g) {
         int extraRows = (showInitialValues ? 1 : 0) + 1; // Initial conditions (if shown) + computed row
-        
+        int tableX = getTableX();
+        int tableY = getTableY();
+
         // Draw table background
         g.setColor(needsHighlight() ? selectColor : Color.white);
-        g.fillRect(point1.x, point1.y, 
+        g.fillRect(tableX, tableY,
                    cols * cellSize + (cols + 1) * cellSpacing,
                    (rows + extraRows) * cellSize + (rows + extraRows + 1) * cellSpacing + 20);
-        
+
         // Draw table border
         g.setColor(Color.black);
-        g.drawRect(point1.x, point1.y,
+        g.drawRect(tableX, tableY,
                    cols * cellSize + (cols + 1) * cellSpacing,
                    (rows + extraRows) * cellSize + (rows + extraRows + 1) * cellSpacing + 20);
-        
+
         // Draw column headers
         drawColumnHeaders(g);
-        
+
         // Draw initial conditions row if enabled
         if (showInitialValues) {
             drawInitialConditionsRow(g);
         }
-        
+
         // Draw table cells with voltages
         drawTableCells(g);
-        
+
         // Always draw computed row
         drawSumRow(g);
-        
+
         // Draw grid lines
         drawGridLines(g);
+
+        // Draw chip pins and posts at the bottom
+        drawPins(g);
+    }
+
+    private void drawPins(Graphics g) {
+        // Draw pins on the bottom edge
+        for (int i = 0; i < getPostCount(); i++) {
+            Pin p = pins[i];
+            setVoltageColor(g, volts[i]);
+            Point a = p.post;
+            Point b = p.stub;
+            drawThickLine(g, a, b);
+            p.curcount = updateDotCount(p.current, p.curcount);
+            drawDots(g, b, a, p.curcount);
+        }
+        drawPosts(g);
     }
 
     private void drawColumnHeaders(Graphics g) {
         g.setColor(Color.black);
-        int headerY = point1.y + 15;
-        
+        int tableX = getTableX();
+        int tableY = getTableY();
+        int headerY = tableY + 15;
+
         for (int col = 0; col < cols; col++) {
-            int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
-            String header = (columnHeaders != null && col < columnHeaders.length) ? 
+            int cellX = tableX + cellSpacing + col * (cellSize + cellSpacing);
+            String header = (columnHeaders != null && col < columnHeaders.length) ?
                            columnHeaders[col] : "Col" + (col + 1);
             drawCenteredText(g, header, cellX + cellSize/2, headerY, true);
 
@@ -368,10 +455,12 @@ private double evaluateEquation(int row, int col) {
     }
 
     private void drawInitialConditionsRow(Graphics g) {
-        int initialRowY = point1.y + 20 + cellSpacing; // First row after headers
-        
+        int tableX = getTableX();
+        int tableY = getTableY();
+        int initialRowY = tableY + 20 + cellSpacing; // First row after headers
+
         for (int col = 0; col < cols; col++) {
-            int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
+            int cellX = tableX + cellSpacing + col * (cellSize + cellSpacing);
             
             // Get initial conditions value for this column
             double initialValue = (initialValues != null && col < initialValues.length) ? 
@@ -396,12 +485,15 @@ private double evaluateEquation(int row, int col) {
     }
 
     private void drawTableCells(Graphics g) {
+        int tableX = getTableX();
+        int tableY = getTableY();
+
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
-                int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
+                int cellX = tableX + cellSpacing + col * (cellSize + cellSpacing);
                 // Adjust Y position to account for initial conditions row (if shown)
                 int rowOffset = showInitialValues ? 1 : 0; // Initial conditions row offset
-                int cellY = point1.y + 20 + cellSpacing + (row + rowOffset) * (cellSize + cellSpacing);
+                int cellY = tableY + 20 + cellSpacing + (row + rowOffset) * (cellSize + cellSpacing);
                 
                 // Get voltage using equation evaluation
                 double voltage = getVoltageForCell(row, col);
@@ -430,12 +522,15 @@ private double evaluateEquation(int row, int col) {
     }
 
     protected void drawSumRow(Graphics g) {
+        int tableX = getTableX();
+        int tableY = getTableY();
+
         // Adjust Y position to account for initial conditions row (if shown)
         int rowOffset = showInitialValues ? 1 : 0; // Initial conditions row offset
-        int sumRowY = point1.y + 20 + cellSpacing + (rows + rowOffset) * (cellSize + cellSpacing);
-        
+        int sumRowY = tableY + 20 + cellSpacing + (rows + rowOffset) * (cellSize + cellSpacing);
+
         for (int col = 0; col < cols; col++) {
-            int cellX = point1.x + cellSpacing + col * (cellSize + cellSpacing);
+            int cellX = tableX + cellSpacing + col * (cellSize + cellSpacing);
             
             // Get the already-calculated sum from computed values (calculated in doStep())
             String sumLabelName = columnHeaders[col];
@@ -462,67 +557,84 @@ private double evaluateEquation(int row, int col) {
 
     private void drawGridLines(Graphics g) {
         g.setColor(Color.gray);
+        int tableX = getTableX();
+        int tableY = getTableY();
         int extraRows = (showInitialValues ? 1 : 0) + 1; // Initial conditions (if shown) + computed row
-        
+
         // Vertical lines
         for (int col = 0; col <= cols; col++) {
-            int x = point1.x + cellSpacing + col * (cellSize + cellSpacing);
-            g.drawLine(x, point1.y + 20, x, point1.y + 20 + cellSpacing + (rows + extraRows) * (cellSize + cellSpacing));
+            int x = tableX + cellSpacing + col * (cellSize + cellSpacing);
+            g.drawLine(x, tableY + 20, x, tableY + 20 + cellSpacing + (rows + extraRows) * (cellSize + cellSpacing));
         }
-        
+
         // Horizontal lines
         for (int row = 0; row <= rows + extraRows; row++) {
-            int y = point1.y + 20 + cellSpacing + row * (cellSize + cellSpacing);
-            g.drawLine(point1.x, y, point1.x + cellSpacing + cols * (cellSize + cellSpacing), y);
+            int y = tableY + 20 + cellSpacing + row * (cellSize + cellSpacing);
+            g.drawLine(tableX, y, tableX + cellSpacing + cols * (cellSize + cellSpacing), y);
         }
-        
+
         // Draw separator line after initial conditions row (if shown)
         if (showInitialValues) {
             g.setColor(Color.black);
-            int separatorY = point1.y + 20 + cellSpacing + 1 * (cellSize + cellSpacing);
-            g.drawLine(point1.x, separatorY, point1.x + cellSpacing + cols * (cellSize + cellSpacing), separatorY);
+            int separatorY = tableY + 20 + cellSpacing + 1 * (cellSize + cellSpacing);
+            g.drawLine(tableX, separatorY, tableX + cellSpacing + cols * (cellSize + cellSpacing), separatorY);
         }
-        
+
         // Draw separator line before computed row
         g.setColor(Color.black);
         int rowOffset = showInitialValues ? 1 : 0; // Initial conditions row offset
-        int separatorY = point1.y + 20 + cellSpacing + (rows + rowOffset) * (cellSize + cellSpacing);
-        g.drawLine(point1.x, separatorY, point1.x + cellSpacing + cols * (cellSize + cellSpacing), separatorY);
+        int separatorY = tableY + 20 + cellSpacing + (rows + rowOffset) * (cellSize + cellSpacing);
+        g.drawLine(tableX, separatorY, tableX + cellSpacing + cols * (cellSize + cellSpacing), separatorY);
     }
     
     private double[] lastColumnSums;
    
     // Calculate computed values during simulation step (not during drawing)
+    @Override
     public void doStep() {
-        super.doStep();
-        
+        // Update input pin values from circuit
+        for (int i = 0; i < getPostCount(); i++) {
+            Pin p = pins[i];
+            if (!p.output)
+                p.value = volts[i] > getThreshold();
+        }
+
         // Always compute column sums
         if (lastColumnSums == null) {
             lastColumnSums = new double[cols];
         }
-        
 
-        
         for (int col = 0; col < cols; col++) {
             double columnSum = 0.0;
-            
+            String name = columnHeaders[col];
+
             // Add values from all equation rows except for the initial value row
-            for (int row = 1; row < rows; row++) {
+            for (int row = 0; row < rows; row++) {
                 // Use getVoltageForCell to support equations
-                columnSum += getVoltageForCell(row, col);
+                double v = getVoltageForCell(row, col);
+                columnSum += v;
             }
-            
+
             // Check for convergence
             Double diff = Math.abs(columnSum - lastColumnSums[col]);
             if (diff > 1e-6) {
                 sim.converged = false;
             }
-            
-            lastColumnSums[col] = columnSum;
-            String name = columnHeaders[col];
-            registerComputedValueAsLabeledNode(name, columnSum);
-        }
 
+            lastColumnSums[col] = columnSum;
+
+            registerComputedValueAsLabeledNode(name, columnSum);
+
+            // Update output pin voltage sources after convergence is complete
+//            for (col = 0; col < cols; col++) {
+//                columnSum = lastColumnSums != null ? lastColumnSums[col] : 0.0;
+
+            // Update output pin voltage source with converged column sum
+            if (col < pins.length && pins[col].output) {
+                sim.updateVoltageSource(0, nodes[col], pins[col].voltSource, columnSum);
+            }
+//            }
+        }
     }
 
     boolean nonLinear() { 
@@ -530,10 +642,30 @@ private double evaluateEquation(int row, int col) {
         return true;
     }
     
-    // No electrical connections - pure display element
+    // Has electrical connections via output pins
+    @Override
     boolean isWireEquivalent() { return false; }
+
+    @Override
     boolean isRemovableWire() { return false; }
-    
+
+    @Override
+    boolean isDigitalChip() { return false; } // Analog chip with voltage outputs
+
+    @Override
+    String getChipName() { return "Table"; }
+
+    @Override
+    void stamp() {
+        // Stamp voltage sources for all output pins
+        for (int i = 0; i < getPostCount(); i++) {
+            Pin p = pins[i];
+            if (p.output) {
+                sim.stampVoltageSource(0, nodes[i], p.voltSource);
+            }
+        }
+    }
+
     public String dump() {
         StringBuilder sb = new StringBuilder();
         sb.append(super.dump()).append(" ").append(rows).append(" ").append(cols).append(" ").append(showInitialValues);
@@ -676,8 +808,9 @@ private double evaluateEquation(int row, int col) {
     }
     
     public EditInfo getEditInfo(int n) {
-        if (n == 0) return new EditInfo("Cell Size", cellSize, 20, 100);
-        if (n == 1) return new EditInfo("Cell Spacing", cellSpacing, 2, 20);
+        // Cell Size and Cell Spacing should be in steps of cspc for proper alignment
+        if (n == 0) return new EditInfo("Cell Size (multiples of " + cspc + ")", cellSize, cspc, 200);
+        if (n == 1) return new EditInfo("Cell Spacing (multiples of " + cspc + ")", cellSpacing, cspc, 64);
         if (n == 2) {
             EditInfo ei = new EditInfo("Show Initial Values", 0, -1, -1);
             ei.checkbox = new Checkbox("", showInitialValues);
@@ -688,19 +821,24 @@ private double evaluateEquation(int row, int col) {
             ei.button = new Button("Edit Table Data...");
             return ei;
         }
-        
+
         return null;
     }
 
     public void setEditValue(int n, EditInfo ei) {
         if (n == 0) {
-            cellSize = (int)ei.value;
+            // Round to nearest multiple of cspc
+            cellSize = Math.max(cspc, ((int)ei.value / cspc) * cspc);
+            setupPins(); // Recalculate pin positions
             setPoints();
         } else if (n == 1) {
-            cellSpacing = (int)ei.value;
+            // Round to nearest multiple of cspc
+            cellSpacing = Math.max(cspc, ((int)ei.value / cspc) * cspc);
+            setupPins(); // Recalculate pin positions
             setPoints();
         } else if (n == 2) {
             showInitialValues = ei.checkbox.getValue();
+            setupPins(); // Recalculate chip size and pin positions
             setPoints();
         } else if (n == 3) {
             // Open table editing dialog
@@ -713,25 +851,25 @@ private double evaluateEquation(int row, int col) {
         String[] oldHeaders = columnHeaders;
         String[][] oldEquations = cellEquations;
         double[] oldInitialConditions = initialValues;
-        
+
         // Update dimensions
         rows = newRows;
         cols = newCols;
-        
+
         // Create new arrays
         columnHeaders = new String[cols];
         cellEquations = new String[rows][cols];
         compiledExpressions = new Expr[rows][cols];
         expressionStates = new ExprState[rows][cols];
         initialValues = new double[cols];
-        
+
         // Initialize expression states
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
                 expressionStates[row][col] = new ExprState(1); // Only need time variable
             }
         }
-        
+
         // Copy over existing data where possible
         if (oldEquations != null) {
             for (int row = 0; row < Math.min(rows, oldEquations.length); row++) {
@@ -744,21 +882,21 @@ private double evaluateEquation(int row, int col) {
                 }
             }
         }
-        
-        // Copy over existing headers where possible  
+
+        // Copy over existing headers where possible
         if (oldHeaders != null) {
             for (int col = 0; col < Math.min(cols, oldHeaders.length); col++) {
                 columnHeaders[col] = oldHeaders[col];
             }
         }
-        
+
         // Copy over existing initial conditions where possible
         if (oldInitialConditions != null) {
             for (int col = 0; col < Math.min(cols, oldInitialConditions.length); col++) {
                 initialValues[col] = oldInitialConditions[col];
             }
         }
-        
+
         // Initialize remaining initial conditions values with zeros
         for (int col = 0; col < cols; col++) {
             if (oldInitialConditions == null || col >= oldInitialConditions.length) {
@@ -766,6 +904,9 @@ private double evaluateEquation(int row, int col) {
             }
         }
 
+        // Recreate pins with new column count
+        setupPins();
+        allocNodes();
         setPoints();
     }
     
@@ -777,24 +918,22 @@ private double evaluateEquation(int row, int col) {
         }
     }
     
+    @Override
     void getInfo(String arr[]) {
         arr[0] = "Equation Table (" + rows + "x" + cols + ")";
         arr[1] = "All cells use equations (node names or expressions)";
-        
+
         int idx = 2;
-        
-        // Show some sample values
-        for (int row = 0; row < Math.min(3, rows) && idx < arr.length - 1; row++) {
-            for (int col = 0; col < Math.min(2, cols) && idx < arr.length - 1; col++) {
-                double voltage = getVoltageForCell(row, col);
-                String equation = cellEquations[row][col];
-                if (equation.length() > 15) equation = equation.substring(0, 12) + "...";
-                arr[idx++] = "=" + equation + ": " + getVoltageText(voltage);
-            }
+
+        // Show output pin values
+        for (int col = 0; col < Math.min(cols, 3) && idx < arr.length - 1; col++) {
+            String header = columnHeaders[col];
+            double output = lastColumnSums != null ? lastColumnSums[col] : 0.0;
+            arr[idx++] = header + " = " + getVoltageText(output);
         }
-        
-        if (rows * cols > 6) {
-            arr[idx++] = "... (showing first few cells)";
+
+        if (cols > 3 && idx < arr.length - 1) {
+            arr[idx++] = "... (" + cols + " outputs total)";
         }
     }
     

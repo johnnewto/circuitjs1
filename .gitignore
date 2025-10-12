@@ -13,6 +13,7 @@ circuitjs1.tar.gz
 
 # Editor configurations
 .vscode
+.idea/
 
 # Eclipse IDE files
 .classpath

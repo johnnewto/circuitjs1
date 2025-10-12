@@ -29,7 +29,7 @@ public class GodlyTableElm extends TableElm {
     private Expr integrationExpr;                // Compiled integration expression
     private ExprState[] integrationStates;       // Integration state for each column
     private double[] lastComputedRowValues;      // Track last column sums for convergence checking
-    
+    private double[] integratedValues;           // Integration value for each column
     // Constructor for new table
     public GodlyTableElm(int xx, int yy) {
         super(xx, yy);
@@ -56,6 +56,7 @@ public class GodlyTableElm extends TableElm {
             // Initialize with the initial condition for this column
             double initialValue = getInitialValue(col);
             integrationStates[col].lastOutput = initialValue;
+
         }
         
         // Parse the integration expression
@@ -143,52 +144,76 @@ public class GodlyTableElm extends TableElm {
         resetIntegration();
     }
 
-    @Override  
+    @Override
     // Calculate computed values during simulation step (not during drawing)
     public void doStep() {
-        super.doStep();
-        
+        // Update input pin values from circuit (from TableElm's doStep)
+        for (int i = 0; i < getPostCount(); i++) {
+            Pin p = pins[i];
+            if (!p.output)
+                p.value = volts[i] > getThreshold();
+        }
+
         // Always compute column sums for convergence checking
         if (lastComputedRowValues == null) {
             lastComputedRowValues = new double[cols];
         }
-        
+        if (integratedValues == null) {
+            integratedValues = new double[cols];
+        }
+
         for (int col = 0; col < cols; col++) {
+
+            String name = columnHeaders[col];
             // Calculate sum for this column using equation evaluation from all rows except for the first
             double columnSum = 0.0;
-            for (int row = 1; row < rows; row++) {
+            for (int row = 0; row < rows; row++) {
                 // Use getVoltageForCell which works with equations
-                columnSum += getVoltageForCell(row, col);
+                double v = getVoltageForCell(row, col);
+                columnSum += v;
             }
-            
+
             // Check for convergence
             if (Math.abs(columnSum - lastComputedRowValues[col]) > 1e-6) {
                 sim.converged = false;
             }
-            
+
             lastComputedRowValues[col] = columnSum;
+
+            // Register column sum as labeled node (for equations that reference it)
+            registerComputedValueAsLabeledNode(name, columnSum);
+            if (col < pins.length && pins[col].output) {
+                sim.updateVoltageSource(0, nodes[col], pins[col].voltSource, integratedValues[col]);
+            }
         }
     }
     
     @Override
     public void stepFinished() {
-        super.stepFinished();
-        
+        // Don't call super.stepFinished() because we want to output integrated values,
+        // not column sums like TableElm does
+
         // Perform integration only once per completed timestep (not during convergence iterations)
         for (int col = 0; col < cols; col++) {
             // Use the converged column sum from doStep()
             double columnSum = lastComputedRowValues != null ? lastComputedRowValues[col] : 0.0;
-            
+
             // Perform integration on this column sum with proper initial condition
-            double integratedValue = performIntegration(col, columnSum);
-            
+            integratedValues[col] = performIntegration(col, columnSum);
+
             // Register the integrated value with a distinct name (e.g., "Col1_Int")
             String integrationLabelName = columnHeaders[col];
-            registerComputedValueAsLabeledNode(integrationLabelName, integratedValue);
-            
+            registerComputedValueAsLabeledNode(integrationLabelName, integratedValues[col]);
+
+            // Update output pin voltage source with integrated value
+            // This ensures the pins output the integrated values, not the column sums
+            if (col < pins.length && pins[col].output) {
+                sim.updateVoltageSource(0, nodes[col], pins[col].voltSource, integratedValues[col]);
+            }
+
             // Update integration states for next timestep
             if (integrationStates[col] != null) {
-                integrationStates[col].updateLastValues(integratedValue);
+                integrationStates[col].updateLastValues(integratedValues[col]);
             }
         }
     }
@@ -196,29 +221,21 @@ public class GodlyTableElm extends TableElm {
     @Override
     void getInfo(String arr[]) {
         arr[0] = "Godly Table (" + rows + "x" + cols + ") with Integration";
-        arr[1] = "Equation: y[n+1] = y[n] + dt * gain * columnSum";
-        
-        int idx = 3;
-        // Show some sample values including integration results
-        for (int row = 0; row < Math.min(2, rows) && idx < arr.length - 2; row++) {
-            for (int col = 0; col < Math.min(2, cols) && idx < arr.length - 2; col++) {
-                String equation = getCellEquation(row, col);
-                double voltage = getVoltageForCell(row, col);
-                arr[idx++] = "=" + equation + ": " + getVoltageText(voltage);
-            }
-        }
-        
-        // Show integration results for first few columns
-        for (int col = 0; col < Math.min(2, cols) && idx < arr.length - 1; col++) {
-            String integrationLabel = columnHeaders[col];
-            Double integratedValue = LabeledNodeElm.getComputedValue(integrationLabel);
+        arr[1] = "Equation: y[n+1] = y[n] + dt * columnSum";
+
+        int idx = 2;
+
+        // Show output pin values (integrated results)
+        for (int col = 0; col < Math.min(cols, 3) && idx < arr.length - 1; col++) {
+            String header = columnHeaders[col];
+            Double integratedValue = LabeledNodeElm.getComputedValue(header);
             if (integratedValue != null) {
-                arr[idx++] = integrationLabel + "∫: " + getVoltageText(integratedValue.doubleValue());
+                arr[idx++] = header + "∫ = " + getVoltageText(integratedValue.doubleValue());
             }
         }
-        
-        if (rows * cols > 4) {
-            arr[idx++] = "... (showing first few cells)";
+
+        if (cols > 3 && idx < arr.length - 1) {
+            arr[idx++] = "... (" + cols + " integrated outputs total)";
         }
     }
     
