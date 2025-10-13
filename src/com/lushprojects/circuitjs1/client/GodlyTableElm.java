@@ -144,6 +144,10 @@ public class GodlyTableElm extends TableElm {
         resetIntegration();
     }
 
+
+    // ToDo:  prob should follow the doStep approach used in VCVS but seems to work well enough as a first pass
+    // see : VCVS_doStep_Explanation.md
+
     @Override
     // Calculate computed values during simulation step (not during drawing)
     public void doStep() {
@@ -186,7 +190,8 @@ public class GodlyTableElm extends TableElm {
         }
     }
     
-    @Override
+
+     @Override
     public void stepFinished() {
         // Don't call super.stepFinished() because we want to output integrated values,
         // not column sums like TableElm does
