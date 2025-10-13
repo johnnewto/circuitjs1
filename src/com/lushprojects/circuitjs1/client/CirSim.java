@@ -1713,6 +1713,7 @@ public CirSim() {
             g.drawString("Steprate: " + CircuitElm.showFormat.format(steprate), 10, height += increment);
             g.drawString("Steprate/iter: " + CircuitElm.showFormat.format(steprate / getIterCount()), 10, height += increment);
             g.drawString("iterc: " + CircuitElm.showFormat.format(getIterCount()), 10, height += increment);
+			g.drawString("subiter: " + subIterations, 10, height += increment);
             g.drawString("Frames: " + frames, 10, height += increment);
             
             height += (increment * 2);
@@ -3026,174 +3027,210 @@ public CirSim() {
     
     boolean converged;
     int subIterations;
-    
+    int processInterval = 100; // process every 100 timesteps
+	int nextProcessTime = 0;
+
     void runCircuit(boolean didAnalyze) {
-	if (circuitMatrix == null || elmList.size() == 0) {
-	    circuitMatrix = null;
-	    return;
-	}
-	int iter;
-	//int maxIter = getIterCount();
-	boolean debugprint = dumpMatrix;
-	dumpMatrix = false;
-	long steprate = (long) (160*getIterCount());
-	long tm = System.currentTimeMillis();
-	long lit = lastIterTime;
-	if (lit == 0) {
-	    lastIterTime = tm;
-	    return;
-	}
-	
-	// Check if we don't need to run simulation (for very slow simulation speeds).
-	// If the circuit changed, do at least one iteration to make sure everything is consistent.
-	if (1000 >= steprate*(tm-lastIterTime) && !didAnalyze)
-	    return;
-	
-	boolean delayWireProcessing = canDelayWireProcessing();
-	
-	int timeStepCountAtFrameStart = timeStepCount;
-	
-	// keep track of iterations completed without convergence issues
-	int goodIterations = 100;
-	
-	int frameTimeLimit = (int) (1000/minFrameRate);
-	
-	for (iter = 1; ; iter++) {
-	    if (goodIterations >= 3 && timeStep < maxTimeStep) {
-		// things are going well, double the time step
-		timeStep = Math.min(timeStep*2, maxTimeStep);
-		console("timestep up = " + timeStep + " at " + t);
-		stampCircuit();
-		goodIterations = 0;
-	    }
-	    
-	    int i, j, subiter;
-	    for (i = 0; i != elmArr.length; i++)
-		elmArr[i].startIteration();
-	    steps++;
-	    int subiterCount = (adjustTimeStep && timeStep/2 > minTimeStep) ? 100 : 5000;
-	    for (subiter = 0; subiter != subiterCount; subiter++) {
-		converged = true;
-		subIterations = subiter;
-//		if (t % .030 < .002 && timeStep > 1e-6)  // force nonconvergence for debugging
-//		    converged = false;
-		for (i = 0; i != circuitMatrixSize; i++)
-		    circuitRightSide[i] = origRightSide[i];
-		if (circuitNonLinear) {
-		    for (i = 0; i != circuitMatrixSize; i++)
-			for (j = 0; j != circuitMatrixSize; j++)
-			    circuitMatrix[i][j] = origMatrix[i][j];
-		}
-		
-		// Reset computed value flags for this simulation step
-		LabeledNodeElm.resetComputedFlags();
-		
-		for (i = 0; i != elmArr.length; i++)
-		    elmArr[i].doStep();
-		if (stopMessage != null)
-		    return;
-		boolean printit = debugprint;
-		debugprint = false;
-		if (circuitMatrixSize < 8) {
-		    // we only need this for debugging purposes, so skip it for large matrices 
-		    for (j = 0; j != circuitMatrixSize; j++) {
-			for (i = 0; i != circuitMatrixSize; i++) {
-			    double x = circuitMatrix[i][j];
-			    if (Double.isNaN(x) || Double.isInfinite(x)) {
-				stop("nan/infinite matrix!", null);
-				console("circuitMatrix " + i + " " + j + " is " + x);
-				return;
-			    }
+        if (circuitMatrix == null || elmList.size() == 0) {
+            circuitMatrix = null;
+            return;
+        }
+        //int maxIter = getIterCount();
+        boolean debugprint = dumpMatrix;
+        dumpMatrix = false;
+        long steprate = (long) (160*getIterCount());
+        long tm = System.currentTimeMillis();
+        long lit = lastIterTime;
+        if (lit == 0) {
+            lastIterTime = tm;
+            return;
+        }
+
+        // Check if we don't need to run simulation (for very slow simulation speeds).
+        // If the circuit changed, do at least one iteration to make sure everything is consistent.
+        if (1000 >= steprate*(tm-lastIterTime) && !didAnalyze)
+            return;
+
+        boolean delayWireProcessing = canDelayWireProcessing();
+
+        int timeStepCountAtFrameStart = timeStepCount;
+
+
+        // keep track of iterations completed without convergence issues
+        int goodIterations = 100;
+
+        int frameTimeLimit = (int) (1000/minFrameRate);
+
+
+
+		if (timeStepCount >= nextProcessTime) {
+			// Do your periodic processing here
+			//doPeriodicProcessing();
+			console("nextProcessTime " + nextProcessTime);
+			// Reset non-convergence flags for all elements every processInterval so that the user will see it.
+			for (int i = 0; i != elmArr.length; i++) {
+				elmArr[i].nonConverged = false;
 			}
-		    }
+			// Schedule next processing time
+			nextProcessTime = timeStepCount + processInterval;
 		}
-		if (printit) {
-		    for (j = 0; j != circuitMatrixSize; j++) {
-			String x = "";
-			for (i = 0; i != circuitMatrixSize; i++)
-			    x += circuitMatrix[j][i] + ",";
-			x += "\n";
-			console(x);
-		    }
-		    console("done");
-		}
-		if (circuitNonLinear) {
-		    // stop if converged (elements check for convergence in doStep())
-		    if (converged && subiter > 0)
-			break;
-		    if (!lu_factor(circuitMatrix, circuitMatrixSize,
-				  circuitPermute)) {
-			stop("Singular matrix!", null);
-			return;
-		    }
-		}
-		lu_solve(circuitMatrix, circuitMatrixSize, circuitPermute,
-			 circuitRightSide);
-		applySolvedRightSide(circuitRightSide);
-		if (!circuitNonLinear)
-		    break;
-	    }
-	    if (subiter == subiterCount) {
-		// convergence failed
-		goodIterations = 0;
-		if (adjustTimeStep) {
-		    timeStep /= 2;
-		    console("timestep down to " + timeStep + " at " + t);
-		}
-		if (timeStep < minTimeStep || !adjustTimeStep) {
-		    console("convergence failed after " + subiter + " iterations");
-		    stop("Convergence failed!", null);
-		    break;
-		}
-		// we reduced the timestep.  reset circuit state to the way it was at start of iteration
-		setNodeVoltages(lastNodeVoltages);
-		stampCircuit();
-		continue;
-	    }
-	    if (subiter > 5 || timeStep < maxTimeStep)
-		console("converged after " + subiter + " iterations, timeStep = " + timeStep);
-	    if (subiter < 3)
-		goodIterations++;
-	    else
-		goodIterations = 0;
-	    t += timeStep;
-	    timeStepAccum += timeStep;
-	    if (timeStepAccum >= maxTimeStep) {
-		timeStepAccum -= maxTimeStep;
-		timeStepCount++;
-	    }
-	    
-	    // Clear computed values once before calling stepFinished() on all elements
-	    // LabeledNodeElm.clearComputedValues();
-	    
-	    for (i = 0; i != elmArr.length; i++)
-		elmArr[i].stepFinished();
-	    if (!delayWireProcessing)
-		calcWireCurrents();
-	    for (i = 0; i != scopeCount; i++)
-	    	scopes[i].timeStep();
-	    for (i=0; i != scopeElmArr.length; i++)
-		scopeElmArr[i].stepScope();
-	    callTimeStepHook();
-	    // save last node voltages so we can restart the next iteration if necessary
-	    for (i = 0; i != lastNodeVoltages.length; i++)
-		lastNodeVoltages[i] = nodeVoltages[i];
-//	    console("set lastrightside at " + t + " " + lastNodeVoltages);
-		
-	    tm = System.currentTimeMillis();
-	    lit = tm;
-	    // Check whether enough time has elapsed to perform an *additional* iteration after
-	    // those we have already completed.  But limit total computation time to 50ms (20fps) by default
-	    if ((timeStepCount-timeStepCountAtFrameStart)*1000 >= steprate*(tm-lastIterTime) || (tm-lastFrameTime > frameTimeLimit))
-		break;
-	    if (!simRunning)
-		break;
-	} // for (iter = 1; ; iter++)
-	lastIterTime = lit;
-	if (delayWireProcessing)
-	    calcWireCurrents();
-//	System.out.println((System.currentTimeMillis()-lastFrameTime)/(double) iter);
-    }
+
+        for (int iter = 1; ; iter++) {
+
+            if (goodIterations >= 3 && timeStep < maxTimeStep) {
+                // things are going well, double the time step
+                timeStep = Math.min(timeStep*2, maxTimeStep);
+                console("timestep up = " + timeStep + " at " + t);
+                stampCircuit();
+                goodIterations = 0;
+            }
+
+            int i, j, subiter;
+            for (i = 0; i != elmArr.length; i++)
+                elmArr[i].startIteration();
+
+
+            int subiterCount = (adjustTimeStep && timeStep/2 > minTimeStep) ? 100 : 5000;
+            for (subiter = 0; subiter != subiterCount; subiter++) {
+                converged = true;
+                subIterations = subiter;
+
+
+
+        //		if (t % .030 < .002 && timeStep > 1e-6)  // force nonconvergence for debugging
+        //		    converged = false;
+                for (i = 0; i != circuitMatrixSize; i++)
+                    circuitRightSide[i] = origRightSide[i];
+                if (circuitNonLinear) {
+                    for (i = 0; i != circuitMatrixSize; i++)
+                       for (j = 0; j != circuitMatrixSize; j++)
+                           circuitMatrix[i][j] = origMatrix[i][j];
+                }
+
+                // Reset computed value flags for this simulation step
+                LabeledNodeElm.resetComputedFlags();
+
+                for (i = 0; i != elmArr.length; i++) {
+                    boolean preConverged = converged;
+                    elmArr[i].doStep();
+
+                    // Mark element as non-converged if it caused convergence failure
+                    if (preConverged && !converged) {
+
+
+                        // Quick debug: identify element that just failed convergence
+                        if (subiter > 20) {
+                            elmArr[i].nonConverged = true;
+                            String text = "CirSim: Element causing convergence failure: " +
+                                    elmArr[i].getClass().getSimpleName() + " at (" +
+                                    elmArr[i].x + "," + elmArr[i].y + ")";
+                            console(text);
+                        }
+                    }
+                }
+                if (stopMessage != null)
+                    return;
+                boolean printit = debugprint;
+                debugprint = false;
+                if (circuitMatrixSize < 8) {
+                    // we only need this for debugging purposes, so skip it for large matrices
+                    for (j = 0; j != circuitMatrixSize; j++) {
+                        for (i = 0; i != circuitMatrixSize; i++) {
+                            double x = circuitMatrix[i][j];
+                            if (Double.isNaN(x) || Double.isInfinite(x)) {
+                                stop("nan/infinite matrix!", null);
+                                console("circuitMatrix " + i + " " + j + " is " + x);
+                                return;
+                            }
+                        }
+                    }
+                }
+                if (printit) {
+                    for (j = 0; j != circuitMatrixSize; j++) {
+                    String x = "";
+                    for (i = 0; i != circuitMatrixSize; i++)
+                        x += circuitMatrix[j][i] + ",";
+                    x += "\n";
+                    console(x);
+                    }
+                    console("done");
+                }
+                if (circuitNonLinear) {
+                    // stop if converged (elements check for convergence in doStep())
+                    if (converged && subiter > 0)
+                    break;
+                    if (!lu_factor(circuitMatrix, circuitMatrixSize, circuitPermute)) {
+                        stop("Singular matrix!", null);
+                        return;
+                    }
+                }
+                lu_solve(circuitMatrix, circuitMatrixSize, circuitPermute,
+                     circuitRightSide);
+                applySolvedRightSide(circuitRightSide);
+                if (!circuitNonLinear)
+                    break;
+            }
+            if (subiter == subiterCount) {
+                // convergence failed
+                goodIterations = 0;
+                if (adjustTimeStep) {
+                    timeStep /= 2;
+                    console("timestep down to " + timeStep + " at " + t);
+                }
+                if (timeStep < minTimeStep || !adjustTimeStep) {
+                    console("convergence failed after " + subiter + " iterations");
+                    stop("Convergence failed!", null);
+                    break;
+                }
+                // we reduced the timestep.  reset circuit state to the way it was at start of iteration
+                setNodeVoltages(lastNodeVoltages);
+                stampCircuit();
+                continue;
+            }
+            if (subiter > 5 || timeStep < maxTimeStep)
+                console("converged after " + subiter + " iterations, timeStep = " + timeStep);
+            if (subiter < 3)
+                goodIterations++;
+            else
+                goodIterations = 0;
+                t += timeStep;
+                timeStepAccum += timeStep;
+                if (timeStepAccum >= maxTimeStep) {
+                timeStepAccum -= maxTimeStep;
+                timeStepCount++;
+            }
+
+            // Clear computed values once before calling stepFinished() on all elements
+            // LabeledNodeElm.clearComputedValues();
+
+            for (i = 0; i != elmArr.length; i++)
+                elmArr[i].stepFinished();
+            if (!delayWireProcessing)
+                calcWireCurrents();
+            for (i = 0; i != scopeCount; i++)
+                scopes[i].timeStep();
+            for (i=0; i != scopeElmArr.length; i++)
+                scopeElmArr[i].stepScope();
+            callTimeStepHook();
+            // save last node voltages so we can restart the next iteration if necessary
+            for (i = 0; i != lastNodeVoltages.length; i++)
+                lastNodeVoltages[i] = nodeVoltages[i];
+    //	    console("set lastrightside at " + t + " " + lastNodeVoltages);
+
+            tm = System.currentTimeMillis();
+            lit = tm;
+            // Check whether enough time has elapsed to perform an *additional* iteration after
+            // those we have already completed.  But limit total computation time to 50ms (20fps) by default
+            if ((timeStepCount-timeStepCountAtFrameStart)*1000 >= steprate*(tm-lastIterTime) || (tm-lastFrameTime > frameTimeLimit))
+                break;
+            if (!simRunning)
+                break;
+        } // for (iter = 1; ; iter++)
+        lastIterTime = lit;
+        if (delayWireProcessing)
+            calcWireCurrents();
+        //	System.out.println((System.currentTimeMillis()-lastFrameTime)/(double) iter);
+    }   // runCircuit()
 
     // set node voltages given right side found by solving matrix
     void applySolvedRightSide(double rs[]) {

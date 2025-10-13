@@ -70,14 +70,28 @@ class RailElm extends VoltageElm {
 	    g.setColor(needsHighlight() ? selectColor : whiteColor);
 	    setPowerColor(g, false);
 	    double v = getVoltage();
-	    String s;
+	    String voltageStr;
 	    if (Math.abs(v) < 1)
-	    	s = showFormat.format(v)+" V";
+	    	voltageStr = showFormat.format(v)+" V";
 	    else
-	    	s = getShortUnitText(v, "V");
+	    	voltageStr = getShortUnitText(v, "V");
 	    if (getVoltage() > 0)
-		s = "+" + s;
-	    drawLabeledNode(g, s, point1, lead1);
+		voltageStr = "+" + voltageStr;
+	    
+	    // Display name and voltage in two rows if name is not default
+	    if (name != null && !name.equals("") && !name.equals("V")) {
+			// Create offset points for two-line display
+			Point p1 = new Point(point1.x, point1.y + g.currentFontSize - 2);
+			Point p2 = new Point(lead1.x, lead1.y + g.currentFontSize - 2);
+			// Draw name on first line (above)
+			drawLabeledNode(g, name, point1, lead1);
+			// Draw voltage on second line (below)
+			drawLabeledNode(g, voltageStr, p1, p2);
+
+	    } else {
+			// Just draw voltage if no custom name
+			drawLabeledNode(g, voltageStr, point1, lead1);
+	    }
 	} else {
 	    drawWaveform(g, point2);
 	}

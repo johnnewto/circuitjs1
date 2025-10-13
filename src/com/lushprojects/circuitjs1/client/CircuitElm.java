@@ -90,6 +90,9 @@ public abstract class CircuitElm implements Editable {
     // if subclasses set this to true, element will be horizontal or vertical only 
     boolean noDiagonal;
     
+    // tracks if this element failed convergence in the current iteration
+    boolean nonConverged;
+    
     public boolean selected;
     
     boolean hasWireInfo; // used in calcWireInfo()
@@ -1026,39 +1029,47 @@ public abstract class CircuitElm implements Editable {
     	    c = colorScaleCount-1;
     	return (colorScale[c]);
     }
-    
+    // int nonConvergedBlinkCount = 0;
     void setVoltageColor(Graphics g, double volts) {
-    	g.setColor(getVoltageColor(g, volts));
+    	if (nonConverged) {
+            // nonConvergedBlinkCount ++;
+			// if((nonConvergedBlinkCount/20) % 2 == 0)
+    		g.setColor(Color.blue);
+    	} else {
+    		g.setColor(getVoltageColor(g, volts));
+    	}
     }
     
     // yellow argument is unused, can't remember why it was there
     void setPowerColor(Graphics g, boolean yellow) {
 
-	/*if (conductanceCheckItem.getState()) {
-	  setConductanceColor(g, current/getVoltageDiff());
-	  return;
-	  }*/
-	if (!sim.powerCheckItem.getState() )
-	    return;
-	setPowerColor(g, getPower());
+		/*if (conductanceCheckItem.getState()) {
+		setConductanceColor(g, current/getVoltageDiff());
+		return;
+		}*/
+		if (!sim.powerCheckItem.getState() )
+			return;
+		setPowerColor(g, getPower());
     }
     
     void setPowerColor(Graphics g, double w0) {
-	if (!sim.powerCheckItem.getState() )
-	    return;
-    	if (needsHighlight()) {
-	    	g.setColor(selectColor);
-	    	return;
-    	}
-	w0 *= powerMult;
-	//System.out.println(w);
-	int i = (int) ((colorScaleCount/2)+(colorScaleCount/2)*-w0);
-	if (i<0)
-	    i=0;
-	if (i>=colorScaleCount)
-	    i=colorScaleCount-1;
-	 g.setColor(colorScale[i]);
+
+		if (!sim.powerCheckItem.getState() )
+			return;
+			if (needsHighlight()) {
+				g.setColor(selectColor);
+				return;
+			}
+		w0 *= powerMult;
+		//System.out.println(w);
+		int i = (int) ((colorScaleCount/2)+(colorScaleCount/2)*-w0);
+		if (i<0)
+			i=0;
+		if (i>=colorScaleCount)
+			i=colorScaleCount-1;
+		g.setColor(colorScale[i]);
     }
+
     void setConductanceColor(Graphics g, double w0) {
 	w0 *= powerMult;
 	//System.out.println(w);

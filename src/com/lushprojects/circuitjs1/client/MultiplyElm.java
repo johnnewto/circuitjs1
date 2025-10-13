@@ -72,7 +72,8 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 		// converged yet?
 		double convergeLimit = getConvergeLimit();
 		for (i = 0; i != inputCount; i++) {
-			if (Math.abs(volts[i]-lastVolts[i]) > convergeLimit)
+            double diff = Math.abs(volts[i]-lastVolts[i]);
+			if (diff > convergeLimit)
 				sim.converged = false;
 			// if (Double.isNaN(volts[i]))
 			//    volts[i] = 0;

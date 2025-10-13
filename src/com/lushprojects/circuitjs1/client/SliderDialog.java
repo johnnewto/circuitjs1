@@ -89,6 +89,8 @@ class SliderDialog extends Dialog  {
 	void buildDialog() {
 		int i;
 		int idx;
+		String labletext = null;
+
 		for (i = 0; ; i++) {
 			einfos[i] = elm.getEditInfo(i);
 			if (einfos[i] == null)
@@ -96,19 +98,26 @@ class SliderDialog extends Dialog  {
 			EditInfo ei = einfos[i];
 			if (!ei.canCreateAdjustable())
 			    continue;
+			// Skip name fields as they're for labeling, not adjusting behavior
+			if (ei.name != null && (ei.name.equals("Name") || ei.name.equals("name"))) {
+				labletext = ei.text;
+			    continue;
+			}
+
 			Adjustable adj = findAdjustable(i);
 			String name = Locale.LS(ei.name);
+			
 			idx = vp.getWidgetIndex(hp);
 
 			// remove HTML
 			name = name.replaceAll("<[^>]*>", "");
 			ei.checkbox = new Checkbox(name, adj != null);
 			vp.insert(ei.checkbox, idx++);
-                        ei.checkbox.addValueChangeHandler( new ValueChangeHandler<Boolean>() {
-                            public void onValueChange(ValueChangeEvent<Boolean> e){
-                                    itemStateChanged(e);
-                            }
-                        });
+			ei.checkbox.addValueChangeHandler( new ValueChangeHandler<Boolean>() {
+				public void onValueChange(ValueChangeEvent<Boolean> e){
+						itemStateChanged(e);
+				}
+			});
 
 			if (adj != null) {
 			    if (!adj.sliderBeingShared()) {
@@ -140,13 +149,22 @@ class SliderDialog extends Dialog  {
 			    vp.insert(ei.minBox, idx++);
 			    vp.insert(new Label(Locale.LS("Max Value")), idx++);
 			    ei.maxBox = new TextBox();
+
 			    vp.insert(ei.maxBox, idx++);
 			    if (adj.sharedSlider == null) {
-				// select label if this is a new slider
-				vp.insert(new Label(Locale.LS("Label")), idx++);
-				ei.labelBox = new TextBox();
-				ei.labelBox.setText(adj.sliderText);
-				vp.insert(ei.labelBox, idx++);
+					// select label if this is a new slider
+					// add the element name if it exists
+					vp.insert(new Label(Locale.LS("Label")), idx++);
+					ei.labelBox = new TextBox();
+					
+					// Populate with element name if it exists, otherwise use default slider text
+
+//					String labelText = adj.sliderText;
+					if (labletext == null || labletext.equals("")) {
+                        labletext = adj.sliderText;
+					}
+                    ei.labelBox.setText(labletext);
+					vp.insert(ei.labelBox, idx++);
 			    }
 			    ei.minBox.setText(EditDialog.unitString(ei, adj.minValue));
 			    ei.maxBox.setText(EditDialog.unitString(ei, adj.maxValue));

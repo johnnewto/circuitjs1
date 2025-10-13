@@ -36,6 +36,7 @@ class VoltageElm extends CircuitElm {
     static final int WF_VAR = 7;
     double frequency, maxVoltage, freqTimeZero, bias,
 	phaseShift, dutyCycle, noiseValue;
+    String name;
     
     static final double defaultPulseDuty = 1/(2*Math.PI);
     
@@ -45,6 +46,7 @@ class VoltageElm extends CircuitElm {
 	maxVoltage = 5;
 	frequency = 40;
 	dutyCycle = .5;
+	name = "V";
 	reset();
     }
     public VoltageElm(int xa, int ya, int xb, int yb, int f,
@@ -54,6 +56,7 @@ class VoltageElm extends CircuitElm {
 	frequency = 40;
 	waveform = WF_DC;
 	dutyCycle = .5;
+	name = "V"; // default name
 	try {
 	    waveform = new Integer(st.nextToken()).intValue();
 	    frequency = new Double(st.nextToken()).doubleValue();
@@ -61,6 +64,10 @@ class VoltageElm extends CircuitElm {
 	    bias = new Double(st.nextToken()).doubleValue();
 	    phaseShift = new Double(st.nextToken()).doubleValue();
 	    dutyCycle = new Double(st.nextToken()).doubleValue();
+	    // Load name if available (for backward compatibility)
+	    if (st.hasMoreTokens()) {
+		name = CustomLogicModel.unescape(st.nextToken());
+	    }
 	} catch (Exception e) {
 	}
 	if ((flags & FLAG_COS) != 0) {
@@ -86,7 +93,7 @@ class VoltageElm extends CircuitElm {
 	
 	return super.dump() + " " + waveform + " " + frequency + " " +
 	    maxVoltage + " " + bias + " " + phaseShift + " " +
-	    dutyCycle;
+	    dutyCycle + " " + CustomLogicModel.escape(name);
 	// VarRailElm adds text at the end
     }
 
@@ -182,6 +189,24 @@ class VoltageElm extends CircuitElm {
 		drawDots(g, point2, lead2, -curcount);
 	    }
 	}
+	
+	// Draw the name next to the voltage source symbol (not for RailElm which handles its own display)
+	if (name != null && !name.equals("") && !(this instanceof RailElm)) {
+	    g.setColor(needsHighlight() ? selectColor : whiteColor);
+	    setPowerColor(g, false);
+	    g.setFont(unitsFont);
+	    // if (waveform == WF_DC) {
+		// // For DC sources, draw name near the negative terminal
+		// drawLabeledNode(g, name, point1, lead1);
+	    // } else {
+		// For AC/other sources, draw name offset from the circle center
+		Point namePoint = interpPoint(point1, point2, .5);
+		namePoint.x += (dx == 0) ? (circleSize + 8) * dsign : 0;
+		namePoint.y += (dy == 0) ? 0 : (circleSize + 8) * dsign;
+		drawValues(g, name, circleSize + 8);
+	    // }
+	}
+	
 	drawPosts(g);
     }
 	
@@ -269,16 +294,19 @@ class VoltageElm extends CircuitElm {
     double getPower() { return -getVoltageDiff()*current; }
     double getVoltageDiff() { return volts[1] - volts[0]; }
     void getInfo(String arr[]) {
+	String baseType;
 	switch (waveform) {
 	case WF_DC: case WF_VAR:
-	    arr[0] = "voltage source"; break;
-	case WF_AC:       arr[0] = "A/C source"; break;
-	case WF_SQUARE:   arr[0] = "square wave gen"; break;
-	case WF_PULSE:    arr[0] = "pulse gen"; break;
-	case WF_SAWTOOTH: arr[0] = "sawtooth gen"; break;
-	case WF_TRIANGLE: arr[0] = "triangle gen"; break;
-	case WF_NOISE:    arr[0] = "noise gen"; break;
+	    baseType = "voltage source"; break;
+	case WF_AC:       baseType = "A/C source"; break;
+	case WF_SQUARE:   baseType = "square wave gen"; break;
+	case WF_PULSE:    baseType = "pulse gen"; break;
+	case WF_SAWTOOTH: baseType = "sawtooth gen"; break;
+	case WF_TRIANGLE: baseType = "triangle gen"; break;
+	case WF_NOISE:    baseType = "noise gen"; break;
+	default:          baseType = "voltage source"; break;
 	}
+	arr[0] = baseType + " (" + name + ")";
 	arr[1] = "I = " + getCurrentText(getCurrent());
 	arr[2] = ((this instanceof RailElm) ? "V = " : "Vd = ") +
 	    getVoltageText(getVoltageDiff());
@@ -299,10 +327,15 @@ class VoltageElm extends CircuitElm {
 	arr[i++] = "P = " + getUnitText(getPower(), "W");
     }
     public EditInfo getEditInfo(int n) {
-	if (n == 0)
+	if (n == 0) {
+	    EditInfo ei = new EditInfo("Name", 0, -1, -1);
+	    ei.text = name;
+	    return ei;
+	}
+	if (n == 1)
 	    return new EditInfo(waveform == WF_DC ? "Voltage" :
 				"Max Voltage", maxVoltage, -20, 20);
-	if (n == 1) {
+	if (n == 2) {
 	    EditInfo ei =  new EditInfo("Waveform", waveform, -1, -1);
 	    ei.choice = new Choice();
 	    ei.choice.add("D/C");
@@ -315,26 +348,28 @@ class VoltageElm extends CircuitElm {
 	    ei.choice.select(waveform);
 	    return ei;
 	}
-	if (n == 2)
+	if (n == 3)
 	    return new EditInfo("DC Offset (V)", bias, -20, 20);
 	if (waveform == WF_DC || waveform == WF_NOISE)
 	    return null;
-	if (n == 3)
-	    return new EditInfo("Frequency (Hz)", frequency, 4, 500);
 	if (n == 4)
+	    return new EditInfo("Frequency (Hz)", frequency, 4, 500);
+	if (n == 5)
 	    return new EditInfo("Phase Offset (degrees)", phaseShift*180/pi,
 				-180, 180).setDimensionless();
-	if (n == 5 && (waveform == WF_PULSE || waveform == WF_SQUARE))
+	if (n == 6 && (waveform == WF_PULSE || waveform == WF_SQUARE))
 	    return new EditInfo("Duty Cycle", dutyCycle*100, 0, 100).
 		setDimensionless();
 	return null;
     }
     public void setEditValue(int n, EditInfo ei) {
 	if (n == 0)
+	    name = ei.textf.getText();
+	if (n == 1)
 	    maxVoltage = ei.value;
-	if (n == 2)
+	if (n == 3)
 	    bias = ei.value;
-	if (n == 3) {
+	if (n == 4) {
 	    // adjust time zero to maintain continuity ind the waveform
 	    // even though the frequency has changed.
 	    double oldfreq = frequency;
@@ -346,10 +381,9 @@ class VoltageElm extends CircuitElm {
 		else
 		    frequency = maxfreq;
 	    }
-	    double adj = frequency-oldfreq;
 	    freqTimeZero = (frequency == 0) ? 0 : sim.t-oldfreq*(sim.t-freqTimeZero)/frequency;
 	}
-	if (n == 1) {
+	if (n == 2) {
 	    int ow = waveform;
 	    waveform = ei.choice.getSelectedIndex();
 	    if (waveform == WF_DC && ow != WF_DC) {
@@ -366,9 +400,9 @@ class VoltageElm extends CircuitElm {
 	    
 	    setPoints();
 	}
-	if (n == 4)
-	    phaseShift = ei.value*pi/180;
 	if (n == 5)
+	    phaseShift = ei.value*pi/180;
+	if (n == 6)
 	    dutyCycle = ei.value*.01;
     }
 }
