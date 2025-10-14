@@ -226,7 +226,7 @@ public class GodlyTableElm extends TableElm {
         // Show output pin values (integrated results)
         for (int col = 0; col < Math.min(cols, 3) && idx < arr.length - 1; col++) {
             String header = columnHeaders[col];
-            Double integratedValue = LabeledNodeElm.getComputedValue(header);
+            Double integratedValue = ComputedValues.getComputedValue(header);
             if (integratedValue != null) {
                 arr[idx++] = header + "∫ = " + getVoltageText(integratedValue.doubleValue());
             }
@@ -239,10 +239,10 @@ public class GodlyTableElm extends TableElm {
     
     // Static helper methods
     public static Double getIntegratedValue(String columnHeader) {
-        return LabeledNodeElm.getComputedValue(columnHeader);
+        return ComputedValues.getComputedValue(columnHeader);
     }
 
     public static void resetColumnIntegration(String columnHeader) {
-        LabeledNodeElm.setComputedValue(columnHeader, 0.0);
+        ComputedValues.setComputedValue(columnHeader, 0.0);
     }
 }

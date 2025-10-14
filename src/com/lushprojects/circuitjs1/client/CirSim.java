@@ -3027,8 +3027,8 @@ public CirSim() {
     
     boolean converged;
     int subIterations;
-    int processInterval = 100; // process every 100 timesteps
-	int nextProcessTime = 0;
+    int periodicInterval = 100; // process every 100 timesteps
+	int nextPeriodicTime = 0;
 
     void runCircuit(boolean didAnalyze) {
         if (circuitMatrix == null || elmList.size() == 0) {
@@ -3063,16 +3063,16 @@ public CirSim() {
 
 
 
-		if (timeStepCount >= nextProcessTime) {
+		if (timeStepCount >= nextPeriodicTime) {
 			// Do your periodic processing here
 			//doPeriodicProcessing();
-			console("nextProcessTime " + nextProcessTime);
-			// Reset non-convergence flags for all elements every processInterval so that the user will see it.
+			// console("nextPeriodicTime " + nextPeriodicTime);
+			// Reset non-convergence flags for all elements at a low rate every processInterval = 100  so that the user will see it.
 			for (int i = 0; i != elmArr.length; i++) {
 				elmArr[i].nonConverged = false;
 			}
 			// Schedule next processing time
-			nextProcessTime = timeStepCount + processInterval;
+			nextPeriodicTime = timeStepCount + periodicInterval;
 		}
 
         for (int iter = 1; ; iter++) {
@@ -3089,7 +3089,8 @@ public CirSim() {
             for (i = 0; i != elmArr.length; i++)
                 elmArr[i].startIteration();
 
-
+			steps++;
+			
             int subiterCount = (adjustTimeStep && timeStep/2 > minTimeStep) ? 100 : 5000;
             for (subiter = 0; subiter != subiterCount; subiter++) {
                 converged = true;
@@ -3108,7 +3109,7 @@ public CirSim() {
                 }
 
                 // Reset computed value flags for this simulation step
-                LabeledNodeElm.resetComputedFlags();
+                ComputedValues.resetComputedFlags();
 
                 for (i = 0; i != elmArr.length; i++) {
                     boolean preConverged = converged;
@@ -3264,34 +3265,12 @@ public CirSim() {
 	for (j = 0; j != nv.length; j++) {
 	    double res = nv[j];
 	    
-	    // Check if any labeled node connected to this circuit node has a computed value
-	    // that should override the simulated voltage
-	    Double computedOverride = getComputedVoltageForNode(j+1);
-	    if (computedOverride != null) {
-	        res = computedOverride;
-	    }
-	    
 	    CircuitNode cn = getCircuitNode(j+1);
 	    for (k = 0; k != cn.links.size(); k++) {
 		CircuitNodeLink cnl = cn.links.elementAt(k);
 		cnl.elm.setNodeVoltage(cnl.num, res);
 	    }
 	}
-    }
-    
-    // Check if any labeled node connected to this circuit node has a computed value
-    Double getComputedVoltageForNode(int nodeNum) {
-        // Look through all labeled nodes to see if any are connected to this circuit node
-        // and have computed values
-        if (LabeledNodeElm.labelList == null) return null;
-        
-        for (String labelName : LabeledNodeElm.labelList.keySet()) {
-            LabeledNodeElm.LabelEntry entry = LabeledNodeElm.labelList.get(labelName);
-            if (entry != null && entry.node == nodeNum && entry.computedValue != null) {
-                return entry.computedValue;
-            }
-        }
-        return null;
     }
     
     // we removed wires from the matrix to speed things up.  in order to display wire currents,
@@ -3334,7 +3313,7 @@ public CirSim() {
     	timeStepCount = 0;
     	
     	// Clear computed values before resetting elements to prevent stale values
-    	LabeledNodeElm.clearComputedValues();
+    	ComputedValues.clearComputedValues();
 		    	
     	// Clear node voltages to ensure clean start
     	if (nodeVoltages != null) {

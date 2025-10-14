@@ -72,47 +72,50 @@ The inner loop handles the fact that multiple circuit elements can be connected 
 This distribution mechanism is crucial because circuit elements need to know the voltages at their terminals to calculate currents, update their internal state, and render themselves correctly. For example, a resistor needs both terminal voltages to determine current flow direction and magnitude, while a diode needs the voltage difference to determine if it's conducting. The method essentially bridges the gap between the global circuit analysis (which works with abstract node numbers) and the local element behavior (which works with specific terminal voltages).
 
 
-## How Computed Value Propagation Works:
+## How Computed Values Work:
 1. Data Flow
 
 ```
-TableElm Column Sum → LabeledNodeElm.setComputedValue() → labelList[labelName].computedValue → 
-CirSim.setNodeVoltages() → getComputedVoltageForNode() → Override wire voltages
+TableElm Column Sum → ComputedValues.setComputedValue() → Central storage →
+TableVoltageElm.getComputedValue() → Voltage source behavior
 ```
+
 2. Key Components
-In LabeledNodeElm:
+**ComputedValues Class:**
+- `ComputedValues.setComputedValue(name, value)` - Store computed values by name
+- `ComputedValues.getComputedValue(name)` - Retrieve computed values by name
+- `ComputedValues.resetComputedFlags()` - Reset tracking flags each simulation step
+- `ComputedValues.clearComputedValues()` - Clear all stored values
 
-LabelEntry.computedValue stores computed values in the existing labelList
-setComputedValue() method stores computed values by label name
-In CirSim.setNodeVoltages():
+**In TableElm:**
+- Column sums call `ComputedValues.setComputedValue(columnHeader, sum)`
+- Values stored in separate ComputedValues system, not in LabeledNodeElm
 
-Before: res = nv[j] (simulated voltage)
-After: Checks getComputedVoltageForNode(j+1) for computed override
-If computed value exists: res = computedOverride
-Result: All connected wires get the computed voltage
-In TableElm:
+**In CirSim.setNodeVoltages():**
+- **Current behavior:** `res = nv[j]` (uses only simulated voltages)
+- **No override:** Circuit simulation voltages are never overridden
+- **Result:** All wires show actual simulated circuit voltages
 
-Column sums call LabeledNodeElm.setComputedValue(columnHeader, sum)
-Values stored centrally in labelList instead of JavaScript
 3. What This Achieves
-✅ Wire Voltage Override - Wires connected to labeled nodes with computed values show the computed voltage instead of simulated voltage
-✅ Real-time Updates - Happens every simulation timestep via setNodeVoltages()
-✅ Seamless Integration - Works with existing voltage display, multimeters, scopes, etc.
-✅ Multiple Sources - Any element can set computed values, not just TableElm
-✅ Priority System - Computed values override simulated values when present
+✅ **Separation of Concerns** - Computed values separate from circuit simulation
+✅ **Accurate Circuit Display** - LabeledNodeElm shows real simulated voltages
+✅ **Computed Value Access** - Elements like TableVoltageElm can access computed values when needed
+✅ **Clean Architecture** - No interference between computed values and circuit analysis
+✅ **Explicit Usage** - Only elements that explicitly request computed values use them
 
 4. Usage Example
-Create a TableElm with column headers like "VCC", "VOUT"
-Add LabeledNodeElm elements with matching names ("VCC", "VOUT")
-Connect wires to the labeled nodes
-TableElm calculates column sums and stores as computed values
-All connected wires automatically display the computed sum voltages instead of circuit simulation voltages
+- Create a TableElm with column headers like "Col1", "Col2" 
+- TableElm stores computed values: `ComputedValues.setComputedValue("Col1", sum)`
+- Create a TableVoltageElm with `computedValueName = "Col1"`
+- TableVoltageElm uses computed value as its voltage source
+- LabeledNodeElm elements show their actual circuit simulation voltages
+
 5. Benefits
-No complex voltage source stamping required
-Works with existing infrastructure (wire current calculation, displays, etc.)
-Clean separation between computed and simulated values
-Easy debugging - computed values visible in labelList
-The computed values from your TableElm column sums will now automatically propagate to any wires connected to LabeledNodeElm elements with matching names!
+✅ **Circuit Accuracy** - No unexpected voltage overrides
+✅ **Clear Data Flow** - Explicit computed value usage
+✅ **Maintainable Code** - Computed values isolated in separate class
+✅ **Flexible Integration** - Any element can produce/consume computed values
+✅ **Debugging** - Clear distinction between simulated and computed values
 
 
 
@@ -168,7 +171,7 @@ Create Element: Select "Add Godly Table" from Draw menu
 Configure Integration: Edit "Integration Gain" parameter (default 100)
 View Results: Integration values appear in yellow sum row as Col1_integrated, Col2_integrated, etc.
 Reset: Use "Reset Integration" checkbox to clear accumulated values
-Reference Values: Other elements can access via LabeledNodeElm.getComputedValue("Col1_integrated")
+Reference Values: Other elements can access via ComputedValues.getComputedValue("Col1_integrated")
 
 📊 Integration Formula
 

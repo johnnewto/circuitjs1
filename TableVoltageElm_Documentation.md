@@ -38,7 +38,7 @@ The `TableVoltageElm` is a specialized voltage rail that gets its voltage value 
 ## How It Works
 
 1. **Voltage Calculation**: During each simulation step, the element:
-   - Looks up the computed value by name using `LabeledNodeElm.getComputedValue()`
+   - Looks up the computed value by name using `ComputedValues.getComputedValue()`
    - Adds the DC bias to get the final voltage
    - Updates the voltage source in the circuit matrix
 
@@ -94,10 +94,10 @@ This creates a TableVoltageElm from (416,144) to (416,112) referencing "Col1" wi
 - Registers sums as computed values using column headers as names
 - TableVoltageElm references these computed values by name
 
-### With LabeledNodeElm
-- Uses `LabeledNodeElm.getComputedValue()` and `setComputedValue()`
-- Extends the labeled node system for computed values
-- Allows other elements to also generate computed values
+### With ComputedValues System
+- Uses `ComputedValues.getComputedValue()` to retrieve computed values
+- TableElm stores computed values using `ComputedValues.setComputedValue()`
+- Separate ComputedValues class manages all computed values independently from labeled nodes
 
 ## Implementation Details
 

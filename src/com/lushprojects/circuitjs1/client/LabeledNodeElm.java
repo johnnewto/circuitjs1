@@ -56,16 +56,13 @@ class LabeledNodeElm extends CircuitElm {
     static class LabelEntry {
 	Point point;
 	int node;
-	Double computedValue;  // Store computed values from TableElm or other sources
 	
 	LabelEntry() {
-	    this.computedValue = null;
 	}
 	
 	LabelEntry(Point point, int node) {
 	    this.point = point;
 	    this.node = node;
-	    this.computedValue = null;
 	}
     }
     
@@ -77,9 +74,6 @@ class LabeledNodeElm extends CircuitElm {
     
     // Cache for reverse lookup: node number -> label name
     private static HashMap<Integer, String> nodeToLabelCache;
-    
-    // Static tracking for computed values this simulation step
-    private static java.util.Set<String> computedThisStep = new java.util.HashSet<String>();
     
     boolean isInternal() { return (flags & FLAG_INTERNAL) != 0; }
     boolean showLabelNodes() { return (flags & FLAG_SHOW_ALL_NODES) != 0; }
@@ -128,7 +122,7 @@ class LabeledNodeElm extends CircuitElm {
             nodeToLabelCache = new HashMap<Integer, String>();
             for (String labelName : labelList.keySet()) {
                 LabelEntry entry = labelList.get(labelName);
-                if (entry != null && entry.node >= 0) { // Only cache actual nodes (not computed-only entries)
+                if (entry != null && entry.node >= 0) { // Only cache actual nodes (node >= 0)
                     nodeToLabelCache.put(entry.node, labelName);
                 }
             }
@@ -184,60 +178,6 @@ class LabeledNodeElm extends CircuitElm {
 		return le.node;
     }
     
-    // Set computed value for a label name (used by TableElm and other elements)
-    static void setComputedValue(String labelName, double value) {
-        if (labelName == null || labelName.isEmpty()) return;
-        if (labelList == null) {
-            labelList = new HashMap<String,LabelEntry>();
-        }
-        
-        LabelEntry le = labelList.get(labelName);
-        if (le == null) {
-            // Create new entry for computed value only
-            le = new LabelEntry();
-            le.node = -1; // Special value indicating this is computed-only
-            labelList.put(labelName, le);
-            invalidateCache(); // Cache is now invalid due to new entry
-        }
-        le.computedValue = value;
-    }
-    
-    // Clear all computed values (package-private - only callable from CirSim)
-    static void clearComputedValues() {
-        if (labelList == null) return;
-        for (LabelEntry entry : labelList.values()) {
-            entry.computedValue = null;
-        }
-    }
-    
-    // Check if a label name has a computed value
-    static boolean isComputedValue(String labelName) {
-		if (labelName == null || labelList == null) return false;
-		LabelEntry le = labelList.get(labelName);
-		return le != null && le.computedValue != null;
-    }
-    
-    // Get computed value if it exists
-    static Double getComputedValue(String labelName) {
-		if (labelName == null || labelList == null) return null;
-		LabelEntry le = labelList.get(labelName);
-		return (le != null) ? le.computedValue : null;
-    }
-    
-    // Reset computed flags at start of each simulation step
-    public static void resetComputedFlags() {
-        computedThisStep.clear();
-    }
-    
-    // Check if a value has been computed this step
-    public static boolean isComputedThisStep(String labelName) {
-        return computedThisStep.contains(labelName);
-    }
-    
-    // Mark a value as computed this step
-    public static void markComputedThisStep(String labelName) {
-        computedThisStep.add(labelName);
-    }
     
     static String getNameByNode(int nodeNumber) {
 		if (labelList == null)
@@ -275,11 +215,6 @@ class LabeledNodeElm extends CircuitElm {
     double getCurrentIntoNode(int n) { return -current; }
     void setCurrent(int x, double c) { current = c; }
     double getVoltageDiff() { 
-        // Check if this label has a computed value first
-        Double computedValue = getComputedValue(text);
-        if (computedValue != null) {
-            return computedValue.doubleValue();
-        }
         return volts[0]; 
     }
 	
@@ -287,13 +222,7 @@ class LabeledNodeElm extends CircuitElm {
 		arr[0] = Locale.LS(text) + " (" + Locale.LS("Labeled Node") + ")";
 		arr[1] = "I = " + getCurrentText(getCurrent());
 		
-		// Check if this label has a computed value and display it as the main voltage
-		Double computedValue = getComputedValue(text);
-		if (computedValue != null) {
-		    arr[2] = "V = " + getVoltageText(computedValue) + " (computed)";
-		} else {
-		    arr[2] = "V = " + getVoltageText(volts[0]);
-		}
+		arr[2] = "V = " + getVoltageText(volts[0]);
 		
 		// Add node number information for debugging
 		LabelEntry le = labelList.get(text);
@@ -311,32 +240,14 @@ class LabeledNodeElm extends CircuitElm {
 				String nodeInfo = entry != null ? 
 					"Node " + entry.node : "not assigned";
 				
-				// Check if this label also has a computed value
-				Double labelComputedValue = getComputedValue(labelName);
-				if (labelComputedValue != null) {
-					nodeInfo += " (Computed: " + getVoltageText(labelComputedValue) + ")";
-				}
+
 				
 				arr[idx++] = "  " + labelName + ": " + nodeInfo;
 				if (idx >= 30) break; // Prevent array overflow
 			}
 		}
 		
-		// Show computed values from TableElm if any exist
-		if (showLabelNodes() && idx < 25) { // Leave some space
-			// We can't easily iterate through computed values since they're in JavaScript
-			// But we can show a note about computed values
-			try {
-				// Check if any computed value exists by testing the current label
-				Double testValue = getComputedValue(text);
-				if (testValue != null) {
-					arr[idx++] = "Computed Values Available:";
-					arr[idx++] = "  " + text + ": " + getVoltageText(testValue) + " (from TableElm)";
-				}
-			} catch (Exception e) {
-				// No computed values available
-			}
-		}
+
 		
 		// Show all circuit nodes if flag is set
 		// if (showAllCircuitNodes() && sim != null && sim.nodeVoltages != null) {
@@ -397,6 +308,4 @@ class LabeledNodeElm extends CircuitElm {
     }
     
     String getName() { return text; }
-    
-    // Computed values now propagate to wires through CirSim.setNodeVoltages() override
 }

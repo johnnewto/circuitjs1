@@ -5,7 +5,7 @@
 Create a simplified Table Element that extends `CircuitElm` and displays voltages for labeled nodes by referencing text label names. This element reads voltage values using `LabeledNodeElm.labelList.get(labelName)` instead of creating actual circuit connections.
 
 **Updated Implementation Features:**
-- **Computed Values Support**: Can store and retrieve calculated values (like column sums) via `LabeledNodeElm.getComputedValue()` / `setComputedValue()` 
+- **Computed Values Support**: Can store and retrieve calculated values (like column sums) via `ComputedValues.getComputedValue()` / `setComputedValue()` 
 - **Column Sums**: Optional bottom row showing calculated sums for each column
 - **Enhanced UI**: Checkbox control for toggling column sum display
 - **Robust Serialization**: Includes all new features in save/load format
@@ -88,7 +88,7 @@ private double getVoltageForLabel(String labelName) {
     }
     
     // First check if this is a computed value (like a column sum)
-    Double computedValue = LabeledNodeElm.getComputedValue(labelName);
+    Double computedValue = ComputedValues.getComputedValue(labelName);
     if (computedValue != null) {
         return computedValue.doubleValue();
     }
@@ -118,13 +118,13 @@ private void registerSumAsLabeledNode(String labelName, double voltage) {
         return;
     }
     
-    // Store the computed voltage value in LabeledNodeElm
-    LabeledNodeElm.setComputedValue(labelName, voltage);
+    // Store the computed voltage value in ComputedValues
+    ComputedValues.setComputedValue(labelName, voltage);
 }
 
 // Static method to get computed values by other elements
 public static Double getComputedValue(String labelName) {
-    return LabeledNodeElm.getComputedValue(labelName);
+    return ComputedValues.getComputedValue(labelName);
 }
 ```
 
@@ -549,8 +549,8 @@ private String getVoltageText(double voltage) {
 
 ### **Computed Values Integration**  
 - Supports both real node voltages and computed/calculated values
-- Uses `LabeledNodeElm.getComputedValue()` and `LabeledNodeElm.setComputedValue()` methods
-- Computed values cleared on each redraw to ensure fresh calculations
+- Uses `ComputedValues.getComputedValue()` and `ComputedValues.setComputedValue()` methods
+- Computed values managed by separate ComputedValues class for better separation of concerns
 - Enables complex calculations and referencing between table elements
 
 ### **Enhanced Drawing**
@@ -584,8 +584,8 @@ The `CircuitElm` base class provides the essential framework for positioning, se
 
 ### **Storing Computed Values**
 ```java
-// Store a computed value (like a column sum) with LabeledNodeElm
-LabeledNodeElm.setComputedValue("columnA_sum", 15.7);
+// Store a computed value (like a column sum) with ComputedValues
+ComputedValues.setComputedValue("columnA_sum", 15.7);
 
 // Register via TableElm helper method  
 registerSumAsLabeledNode("columnA_sum", columnSum);
@@ -594,7 +594,7 @@ registerSumAsLabeledNode("columnA_sum", columnSum);
 ### **Retrieving Computed Values**
 ```java  
 // From within TableElm
-Double value = LabeledNodeElm.getComputedValue("columnA_sum");
+Double value = ComputedValues.getComputedValue("columnA_sum");
 
 // From other circuit elements
 Double value = TableElm.getComputedValue("columnA_sum");

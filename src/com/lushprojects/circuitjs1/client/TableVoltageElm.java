@@ -70,7 +70,7 @@ class TableVoltageElm extends RailElm {
     // Override getVoltage to use computed value instead of maxVoltage
     double getVoltage() {
         // Always return computed value voltage plus bias
-        Double computedVoltage = LabeledNodeElm.getComputedValue(computedValueName);
+        Double computedVoltage = ComputedValues.getComputedValue(computedValueName);
         if (computedVoltage != null) {
             Double val = computedVoltage.doubleValue() + bias;
             // CirSim.console("TableVoltageElm:" + computedValueName + " = " + computedVoltage);
@@ -117,7 +117,7 @@ class TableVoltageElm extends RailElm {
         arr[2] = "V = " + getVoltageText(getVoltageDiff());
         arr[3] = "Reference: " + computedValueName;
         
-        Double computedVoltage = LabeledNodeElm.getComputedValue(computedValueName);
+        Double computedVoltage = ComputedValues.getComputedValue(computedValueName);
         if (computedVoltage != null) {
             arr[4] = "Computed: " + getVoltageText(computedVoltage.doubleValue());
         } else {

@@ -144,7 +144,7 @@ class Expr {
 	    // Direct node reference - get voltage from labeled node or computed value
 	    if (CirSim.theSim != null && nodeName != null) {
 		// First check for computed values (from TableElm)
-		Double computedValue = LabeledNodeElm.getComputedValue(nodeName);
+		Double computedValue = ComputedValues.getComputedValue(nodeName);
 		if (computedValue != null) {
 		    return computedValue.doubleValue();
 		}

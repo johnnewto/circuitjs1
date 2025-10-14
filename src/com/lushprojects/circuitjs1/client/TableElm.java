@@ -221,13 +221,13 @@ public class TableElm extends ChipElm {
             return;
         }
         
-        // Store the computed voltage value in LabeledNodeElm
-        LabeledNodeElm.setComputedValue(labelName, voltage);
+        // Store the computed voltage value in ComputedValues
+        ComputedValues.setComputedValue(labelName, voltage);
     }
     
     // Static method to get computed values by other elements
     public static Double getComputedValue(String labelName) {
-        return LabeledNodeElm.getComputedValue(labelName);
+        return ComputedValues.getComputedValue(labelName);
     }
     
     // Use the standard CircuitJS1 voltage coloring system
@@ -455,7 +455,7 @@ public class TableElm extends ChipElm {
             
             // Get the already-calculated sum from computed values (calculated in doStep())
             String sumLabelName = columnHeaders[col];
-            Double computedSum = LabeledNodeElm.getComputedValue(sumLabelName);
+            Double computedSum = ComputedValues.getComputedValue(sumLabelName);
             double computedValue = (computedSum != null) ? computedSum.doubleValue() : 0.0;
             
             // Draw sum cell background - color based on computed sum voltage
@@ -530,8 +530,8 @@ public class TableElm extends ChipElm {
             String name = columnHeaders[col];
             
             // Check to see if column computed value is already calculated by another element
-            Double existingValue = LabeledNodeElm.getComputedValue(name);
-            boolean alreadyComputed = LabeledNodeElm.isComputedThisStep(name);
+            Double existingValue = ComputedValues.getComputedValue(name);
+            boolean alreadyComputed = ComputedValues.isComputedThisStep(name);
             
             if (alreadyComputed && existingValue != null) {
                 // Use the already computed value
@@ -566,10 +566,10 @@ public class TableElm extends ChipElm {
             String name = columnHeaders[col];
             
             // Only register if we computed it ourselves (not if we used a pre-computed value)
-            boolean alreadyComputed = LabeledNodeElm.isComputedThisStep(name);
+            boolean alreadyComputed = ComputedValues.isComputedThisStep(name);
             if (!alreadyComputed && lastColumnSums != null) {
                 registerComputedValueAsLabeledNode(name, lastColumnSums[col]);
-                LabeledNodeElm.markComputedThisStep(name);
+                ComputedValues.markComputedThisStep(name);
             }
         }
     }

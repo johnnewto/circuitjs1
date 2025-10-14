@@ -136,7 +136,7 @@ protected void drawSumRow(Graphics g) {
         
         // Get the already-calculated integrated value (calculated in stepFinished())
         String integrationLabelName = columnHeaders[col];
-        Double computedIntegration = LabeledNodeElm.getComputedValue(integrationLabelName);
+        Double computedIntegration = ComputedValues.getComputedValue(integrationLabelName);
         double integratedValue = (computedIntegration != null) ? computedIntegration.doubleValue() : 0.0;
         
         // Draw integration cell background (different color for integration)
@@ -336,7 +336,7 @@ void getInfo(String arr[]) {
     // Show integration results for first few columns
     for (int col = 0; col < Math.min(2, cols) && idx < arr.length - 1; col++) {
         String integrationLabel = columnHeaders[col] + "_integrated";
-        Double integratedValue = LabeledNodeElm.getComputedValue(integrationLabel);
+        Double integratedValue = ComputedValues.getComputedValue(integrationLabel);
         if (integratedValue != null) {
             arr[idx++] = integrationLabel + ": " + getVoltageText(integratedValue.doubleValue());
         }
@@ -389,7 +389,7 @@ void getInfo(String arr[]) {
     // Show integration results for first few columns
     for (int col = 0; col < Math.min(2, cols) && idx < arr.length - 1; col++) {
         String integrationLabel = columnHeaders[col] + "Σ";
-        Double integratedValue = LabeledNodeElm.getComputedValue(integrationLabel);
+        Double integratedValue = ComputedValues.getComputedValue(integrationLabel);
         if (integratedValue != null) {
             arr[idx++] = integrationLabel + ": " + getVoltageText(integratedValue.doubleValue());
         }
@@ -402,11 +402,11 @@ void getInfo(String arr[]) {
 
 // Static method to get integration results by other elements
 public static Double getIntegratedValue(String columnHeader) {
-    return LabeledNodeElm.getComputedValue(columnHeader);
+    return ComputedValues.getComputedValue(columnHeader);
 }
 
 public static void resetColumnIntegration(String columnHeader) {
-    LabeledNodeElm.setComputedValue(columnHeader, 0.0);
+    ComputedValues.setComputedValue(columnHeader, 0.0);
 }
 ```
 
@@ -428,7 +428,7 @@ public static void resetColumnIntegration(String columnHeader) {
 
 ### **Computed Values Extension**
 - Integration results stored directly using column header name (e.g., "Col1", "Col2")  
-- Accessible by other circuit elements via `LabeledNodeElm.getComputedValue(columnHeader)`
+- Accessible by other circuit elements via `ComputedValues.getComputedValue(columnHeader)`
 - TableElm base class column sums are replaced by integrated values
 
 ### **User Interface**
@@ -457,7 +457,7 @@ Result accumulates over time...
 ```java
 // Other elements can access integration results directly by column header
 Double integratedA = GodlyTableElm.getIntegratedValue("Col1");
-Double integratedB = LabeledNodeElm.getComputedValue("Col2");
+Double integratedB = ComputedValues.getComputedValue("Col2");
 ```
 
 ### **Reset Integration**
