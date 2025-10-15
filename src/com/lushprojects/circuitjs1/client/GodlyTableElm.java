@@ -167,8 +167,6 @@ public class GodlyTableElm extends TableElm {
         }
 
         for (int col = 0; col < cols; col++) {
-
-            String name = columnHeaders[col];
             // Calculate sum for this column using equation evaluation from all rows except for the first
             double columnSum = 0.0;
             for (int row = 0; row < rows; row++) {
@@ -205,7 +203,7 @@ public class GodlyTableElm extends TableElm {
             integratedValues[col] = performIntegration(col, columnSum);
 
             // Register the integrated value with a distinct name (e.g., "Col1_Int")
-            String integrationLabelName = columnHeaders[col];
+            String integrationLabelName = outputNames[col];
             registerComputedValueAsLabeledNode(integrationLabelName, integratedValues[col]);
 
 
@@ -225,7 +223,7 @@ public class GodlyTableElm extends TableElm {
 
         // Show output pin values (integrated results)
         for (int col = 0; col < Math.min(cols, 3) && idx < arr.length - 1; col++) {
-            String header = columnHeaders[col];
+            String header = outputNames[col];
             Double integratedValue = ComputedValues.getComputedValue(header);
             if (integratedValue != null) {
                 arr[idx++] = header + "∫ = " + getVoltageText(integratedValue.doubleValue());

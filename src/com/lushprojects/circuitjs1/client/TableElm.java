@@ -17,9 +17,11 @@ public class TableElm extends ChipElm {
     protected int cols = 2;
     protected int cellSize = 64;  // Default to 4*cspc (cspc=16 when size=2, so 4*16=64)
     protected int cellSpacing = 8;  // Default to 1*cspc (8 or 16 depending on chip size)
-    protected String[] columnHeaders;
     protected double[] initialValues; // Values for initial conditions row
     protected boolean showInitialValues = false; // Control visibility of initial conditions row
+    protected String[] outputNames; // Names for connecting outputs to labeled nodes (also used as column headers)
+    protected String tableUnits = "$"; // Units to display in table cells ($ or V)
+    protected int decimalPlaces = 2; // Number of decimal places to show
     
     // All cells now use equations
     // Variables available: a-i map to labeled nodes OR use labeled node names directly
@@ -76,11 +78,11 @@ public class TableElm extends ChipElm {
             }
         }
         
-        // Initialize column headers if not set
-        if (columnHeaders == null) {
-            columnHeaders = new String[cols];
+        // Initialize output names if not set
+        if (outputNames == null) {
+            outputNames = new String[cols];
             for (int i = 0; i < cols; i++) {
-                columnHeaders[i] = "Col" + (i + 1);
+                outputNames[i] = "Col" + (i + 1);
             }
         }
         
@@ -103,8 +105,8 @@ public class TableElm extends ChipElm {
         }
         
         for (int i = 0; i < cols; i++) {
-            if (columnHeaders[i] == null || columnHeaders[i].trim().isEmpty()) {
-                columnHeaders[i] = "Col" + (i + 1);
+            if (outputNames[i] == null || outputNames[i].trim().isEmpty()) {
+                outputNames[i] = "Col" + (i + 1);
             }
         }
         
@@ -123,7 +125,6 @@ public class TableElm extends ChipElm {
         }
         
         // All cells now use equations
-        String equations = cellEquations[row][col];
         if (compiledExpressions[row][col] != null) {
             // Evaluate the compiled expression
             ExprState state = expressionStates[row][col];
@@ -199,6 +200,25 @@ public class TableElm extends ChipElm {
         
         return sb.toString();
     }
+
+    // Helper method to find a LabeledNodeElm with matching text
+    private LabeledNodeElm findLabeledNode(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            return null;
+        }
+        
+        String trimmedName = name.trim();
+        for (int i = 0; i < sim.elmList.size(); i++) {
+            Object o = sim.elmList.elementAt(i);
+            if (o instanceof LabeledNodeElm) {
+                LabeledNodeElm lne = (LabeledNodeElm) o;
+                if (trimmedName.equals(lne.text)) {
+                    return lne;
+                }
+            }
+        }
+        return null;
+    }
         
     // Public methods for managing equations
     public void setCellEquation(int row, int col, String equation) {
@@ -230,6 +250,35 @@ public class TableElm extends ChipElm {
         return ComputedValues.getComputedValue(labelName);
     }
     
+    // Custom method to format values with table units and decimal places
+    protected String getTableFormattedText(double value) {
+        // Format the number to the specified decimal places using GWT-compatible approach
+        double multiplier = Math.pow(10, decimalPlaces);
+        double rounded = Math.round(value * multiplier) / multiplier;
+        String formattedValue = Double.toString(rounded);
+        
+        // Ensure we have the right number of decimal places
+        if (formattedValue.indexOf('.') == -1) {
+            formattedValue += ".";
+        }
+        
+        int dotIndex = formattedValue.indexOf('.');
+        int currentDecimals = formattedValue.length() - dotIndex - 1;
+        
+        // Pad with zeros if needed
+        while (currentDecimals < decimalPlaces) {
+            formattedValue += "0";
+            currentDecimals++;
+        }
+        
+        // Truncate if too many decimals
+        if (currentDecimals > decimalPlaces) {
+            formattedValue = formattedValue.substring(0, dotIndex + decimalPlaces + 1);
+        }
+        
+        return formattedValue + tableUnits;
+    }
+    
     // Use the standard CircuitJS1 voltage coloring system
     protected Color getCellVoltageColor(double voltage) {
         // Use the same voltage coloring as other circuit elements
@@ -253,8 +302,8 @@ public class TableElm extends ChipElm {
         // Create output pins on bottom edge, positioned to align with table columns
         pins = new Pin[cols];
         for (int i = 0; i < cols; i++) {
-            String label = (columnHeaders != null && i < columnHeaders.length) ?
-                          columnHeaders[i] : "Col" + (i + 1);
+            String label = (outputNames != null && i < outputNames.length) ?
+                          outputNames[i] : "Col" + (i + 1);
 
             // Calculate pin position to align with center of each column
             // Each column center is at: cellSpacing + col*(cellSize+cellSpacing) + cellSize/2
@@ -368,8 +417,8 @@ public class TableElm extends ChipElm {
 
         for (int col = 0; col < cols; col++) {
             int cellX = tableX + cellSpacing + col * (cellSize + cellSpacing);
-            String header = (columnHeaders != null && col < columnHeaders.length) ?
-                           columnHeaders[col] : "Col" + (col + 1);
+            String header = (outputNames != null && col < outputNames.length) ?
+                           outputNames[col] : "Col" + (col + 1);
             drawCenteredText(g, header, cellX + cellSize/2, headerY, true);
 
         }
@@ -400,7 +449,7 @@ public class TableElm extends ChipElm {
             drawCenteredText(g, "Initial", cellX + cellSize/2, initialRowY + cellSize/3, true);
             
             // Draw initial conditions voltage value (bottom half)
-            String voltageText = getVoltageText(initialValue);
+            String voltageText = getTableFormattedText(initialValue);
             drawCenteredText(g, voltageText, cellX + cellSize/2, initialRowY + 2*cellSize/3, true);
         }
     }
@@ -436,7 +485,7 @@ public class TableElm extends ChipElm {
                 drawCenteredText(g, displayText, cellX + cellSize/2, cellY + cellSize/3, true);
                 
                 // Draw voltage value (bottom half)
-                String voltageText = getVoltageText(voltage);
+                String voltageText = getTableFormattedText(voltage);
                 drawCenteredText(g, voltageText, cellX + cellSize/2, cellY + 2*cellSize/3, true);
             }
         }
@@ -454,7 +503,7 @@ public class TableElm extends ChipElm {
             int cellX = tableX + cellSpacing + col * (cellSize + cellSpacing);
             
             // Get the already-calculated sum from computed values (calculated in doStep())
-            String sumLabelName = columnHeaders[col];
+            String sumLabelName = outputNames[col];
             Double computedSum = ComputedValues.getComputedValue(sumLabelName);
             double computedValue = (computedSum != null) ? computedSum.doubleValue() : 0.0;
             
@@ -471,7 +520,7 @@ public class TableElm extends ChipElm {
             drawCenteredText(g, sumLabelName, cellX + cellSize/2, sumRowY + cellSize/3, true);
             
             // Draw sum value (bottom half)
-            String sumText = getVoltageText(computedValue);
+            String sumText = getTableFormattedText(computedValue);
             drawCenteredText(g, sumText, cellX + cellSize/2, sumRowY + 2*cellSize/3, true);
         }
     }
@@ -527,7 +576,7 @@ public class TableElm extends ChipElm {
 
         for (int col = 0; col < cols; col++) {
             double columnSum = 0.0;
-            String name = columnHeaders[col];
+            String name = outputNames[col];
             
             // Check to see if column computed value is already calculated by another element
             Double existingValue = ComputedValues.getComputedValue(name);
@@ -556,6 +605,8 @@ public class TableElm extends ChipElm {
             if (col < pins.length && pins[col].output) {
                 sim.updateVoltageSource(0, nodes[col], pins[col].voltSource, columnSum);
             }
+            
+
         }
     }
 
@@ -563,7 +614,7 @@ public class TableElm extends ChipElm {
     public void stepFinished() {
         // Register computed values for other elements to use - do this after convergence
         for (int col = 0; col < cols; col++) {
-            String name = columnHeaders[col];
+            String name = outputNames[col];
             
             // Only register if we computed it ourselves (not if we used a pre-computed value)
             boolean alreadyComputed = ComputedValues.isComputedThisStep(name);
@@ -601,15 +652,46 @@ public class TableElm extends ChipElm {
                 sim.stampVoltageSource(0, nodes[i], p.voltSource);
             }
         }
+        
+        // Connect to labeled nodes if output names are specified
+        if (outputNames != null) {
+            for (int col = 0; col < cols && col < outputNames.length; col++) {
+                String outputName = outputNames[col];
+                if (outputName != null && !outputName.trim().isEmpty()) {
+                    LabeledNodeElm labeledNode = findLabeledNode(outputName);
+                    if (labeledNode != null) {
+                        // Stamp low-value resistor between output node and labeled node
+                        double resistance = 1e-6; // 1μΩ - very low resistance
+                        int outputNode = nodes[col]; // Output node from table
+                        int labeledNodeNum = labeledNode.getNode(0); // Get labeled node number
+                        
+                        // Validate node numbers before stamping
+                        if (outputNode >= 0 && labeledNodeNum >= 0 && sim.nodeList != null && 
+                            outputNode < sim.nodeList.size() && labeledNodeNum < sim.nodeList.size()) {
+                            //CirSim.console("TableElm: Stamping resistor between nodes " + outputNode + " and " + labeledNodeNum + " (resistance=" + resistance + ")");
+                            sim.stampResistor(outputNode, labeledNodeNum, resistance);
+                            //CirSim.console("TableElm: Successfully stamped resistor for output '" + outputName + "'");
+                        } else {
+                            int nodeListSize = (sim.nodeList != null) ? sim.nodeList.size() : -1;
+                            //CirSim.console("TableElm: ERROR - Invalid node numbers: outputNode=" + outputNode + ", labeledNodeNum=" + labeledNodeNum + ", nodeList.size=" + nodeListSize);
+                        }
+                    } else {
+//                        CirSim.console("TableElm: No labeled node found for output name '" + outputName + "'");
+                        ;
+                    }
+                }
+            }
+        }
     }
 
     public String dump() {
         StringBuilder sb = new StringBuilder();
         sb.append(super.dump()).append(" ").append(rows).append(" ").append(cols).append(" ").append(showInitialValues);
+        sb.append(" ").append(CustomLogicModel.escape(tableUnits)).append(" ").append(decimalPlaces);
         
-        // Serialize column headers
+        // Serialize output names (used as column headers)
         for (int col = 0; col < cols; col++) {
-            sb.append(" ").append(CustomLogicModel.escape(columnHeaders[col]));
+            sb.append(" ").append(CustomLogicModel.escape(outputNames[col]));
         }
         
         // Always serialize initial conditions values
@@ -636,20 +718,37 @@ public class TableElm extends ChipElm {
             if (st.hasMoreTokens()) cols = Integer.parseInt(st.nextToken());
             
             // Initialize arrays
-            columnHeaders = new String[cols];
+            outputNames = new String[cols];
             cellEquations = new String[rows][cols];
             initialValues = new double[cols];
             
             // Auto-detect format based on total tokens expected
             // Count remaining tokens to determine format
             int remainingTokens = st.countTokens();
-            int expectedNewFormatWithFlag = 1 + cols + cols + (rows * cols); // showInitialValues + headers + initial conditions + equations
+            int expectedNewestFormat = 1 + 2 + cols + cols + (rows * cols); // showInitialValues + tableUnits + decimalPlaces + output names + initial conditions + equations
+            int expectedNewFormatWithFlag = 1 + cols + cols + (rows * cols); // showInitialValues + output names (headers) + initial conditions + equations
             int expectedOldFormatWithFlags = 2 + cols + cols + (rows * cols); // 2 old boolean flags + headers + initial conditions + equations
             // Note: expectedOldFormat = cols + cols + (rows * cols) for very old format (no flags)
             
+            // Initialize defaults
+            showInitialValues = false;
+            tableUnits = "$"; // Default to $ for new tables
+            decimalPlaces = 2; // Default to 2 decimal places
+            
             // Detect format and parse accordingly
-            if (remainingTokens == expectedNewFormatWithFlag) {
-                // New format with showInitialValues flag
+            if (remainingTokens == expectedNewestFormat) {
+                // Newest format with all fields
+                if (st.hasMoreTokens()) {
+                    showInitialValues = Boolean.parseBoolean(st.nextToken());
+                }
+                if (st.hasMoreTokens()) {
+                    tableUnits = CustomLogicModel.unescape(st.nextToken());
+                }
+                if (st.hasMoreTokens()) {
+                    decimalPlaces = Integer.parseInt(st.nextToken());
+                }
+            } else if (remainingTokens == expectedNewFormatWithFlag) {
+                // New format with showInitialValues flag only (backwards compatibility)
                 if (st.hasMoreTokens()) {
                     showInitialValues = Boolean.parseBoolean(st.nextToken());
                 }
@@ -663,12 +762,12 @@ public class TableElm extends ChipElm {
                 showInitialValues = false; // Default for TableElm
             }
             
-            // Parse column headers
+            // Parse output names (used as column headers)
             for (int col = 0; col < cols; col++) {
                 if (st.hasMoreTokens()) {
-                    columnHeaders[col] = CustomLogicModel.unescape(st.nextToken());
+                    outputNames[col] = CustomLogicModel.unescape(st.nextToken());
                 } else {
-                    columnHeaders[col] = "Col" + (col + 1);
+                    outputNames[col] = "Col" + (col + 1);
                 }
             }
             
@@ -692,6 +791,8 @@ public class TableElm extends ChipElm {
                     initialValues[col] = 0.0;
                 }
             }
+
+            // Output names are already set from column headers parsing above
             
             // Parse equation data
             // First use any unparsed tokens from initial conditions parsing
@@ -717,10 +818,10 @@ public class TableElm extends ChipElm {
         } catch (Exception e) {
             CirSim.console("TableElm: Error parsing table data: " + e.getMessage());
             // Initialize with defaults on error
-            if (columnHeaders == null) {
-                columnHeaders = new String[cols];
+            if (outputNames == null) {
+                outputNames = new String[cols];
                 for (int col = 0; col < cols; col++) {
-                    columnHeaders[col] = "Col" + (col + 1);
+                    outputNames[col] = "Col" + (col + 1);
                 }
             }
             if (cellEquations == null) {
@@ -758,7 +859,7 @@ public class TableElm extends ChipElm {
             ei.button = new Button("Edit Table Data...");
             return ei;
         }
-
+        
         return null;
     }
 
@@ -785,7 +886,7 @@ public class TableElm extends ChipElm {
 
     // Resize table method for use by TableEditDialog
     public void resizeTable(int newRows, int newCols) {
-        String[] oldHeaders = columnHeaders;
+        String[] oldOutputNames = outputNames;
         String[][] oldEquations = cellEquations;
         double[] oldInitialConditions = initialValues;
 
@@ -794,7 +895,7 @@ public class TableElm extends ChipElm {
         cols = newCols;
 
         // Create new arrays
-        columnHeaders = new String[cols];
+        outputNames = new String[cols];
         cellEquations = new String[rows][cols];
         compiledExpressions = new Expr[rows][cols];
         expressionStates = new ExprState[rows][cols];
@@ -820,12 +921,7 @@ public class TableElm extends ChipElm {
             }
         }
 
-        // Copy over existing headers where possible
-        if (oldHeaders != null) {
-            for (int col = 0; col < Math.min(cols, oldHeaders.length); col++) {
-                columnHeaders[col] = oldHeaders[col];
-            }
-        }
+        // Copy over existing output names where possible (already handled below)
 
         // Copy over existing initial conditions where possible
         if (oldInitialConditions != null) {
@@ -838,6 +934,20 @@ public class TableElm extends ChipElm {
         for (int col = 0; col < cols; col++) {
             if (oldInitialConditions == null || col >= oldInitialConditions.length) {
                 initialValues[col] = 0.0;
+            }
+        }
+
+        // Copy over existing output names where possible
+        if (oldOutputNames != null) {
+            for (int col = 0; col < Math.min(cols, oldOutputNames.length); col++) {
+                outputNames[col] = oldOutputNames[col];
+            }
+        }
+
+        // Initialize remaining output names with empty strings
+        for (int col = 0; col < cols; col++) {
+            if (oldOutputNames == null || col >= oldOutputNames.length) {
+                outputNames[col] = "";
             }
         }
 
@@ -864,9 +974,9 @@ public class TableElm extends ChipElm {
 
         // Show output pin values
         for (int col = 0; col < Math.min(cols, 3) && idx < arr.length - 1; col++) {
-            String header = columnHeaders[col];
+            String header = outputNames[col];
             double output = lastColumnSums != null ? lastColumnSums[col] : 0.0;
-            arr[idx++] = header + " = " + getVoltageText(output);
+            arr[idx++] = header + " = " + getTableFormattedText(output);
         }
 
         if (cols > 3 && idx < arr.length - 1) {
@@ -884,13 +994,13 @@ public class TableElm extends ChipElm {
 
     public void setColumnHeader(int col, String header) {
         if (col >= 0 && col < cols) {
-            columnHeaders[col] = header;
+            outputNames[col] = header;
         }
     }
 
     public String getColumnHeader(int col) {
         if (col >= 0 && col < cols) {
-            return columnHeaders[col];
+            return outputNames[col];
         }
         return "";
     }
