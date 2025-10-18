@@ -18,7 +18,7 @@ public class TableElm extends ChipElm {
     protected int cols = 3;
     protected int cellWidthInGrids = 6;  // Width of each cell in grid units (cspc)
     protected int cellHeight = 16; // Height of each cell in pixels (for drawing)
-    protected int cellSpacing = 2;  // Spacing between cells in pixels (for drawing)
+    protected int cellSpacing = 0;  // Spacing between cells in pixels (for drawing), zero for best appearance
     protected double[] initialValues; // Values for initial conditions row
     protected boolean showInitialValues = false; // Control visibility of initial conditions row
     protected String[] outputNames; // Names for connecting outputs to labeled nodes (also used as column headers)
@@ -87,7 +87,7 @@ public class TableElm extends ChipElm {
         if (outputNames == null) {
             outputNames = new String[cols];
             for (int i = 0; i < cols; i++) {
-                outputNames[i] = "Col" + (i + 1);
+                outputNames[i] = "Stock_" + (i + 1);
             }
         }
         
@@ -95,7 +95,7 @@ public class TableElm extends ChipElm {
         if (rowDescriptions == null) {
             rowDescriptions = new String[rows];
             for (int i = 0; i < rows; i++) {
-                rowDescriptions[i] = "Row" + (i + 1);
+                rowDescriptions[i] = "Description_" + (i + 1);
             }
         }
         
@@ -138,7 +138,7 @@ public class TableElm extends ChipElm {
         
         for (int i = 0; i < cols; i++) {
             if (outputNames[i] == null || outputNames[i].trim().isEmpty()) {
-                outputNames[i] = "Col" + (i + 1);
+                outputNames[i] = "Stock" + (i + 1);
             }
         }
         
@@ -369,7 +369,7 @@ public class TableElm extends ChipElm {
         pins = new Pin[cols];
         for (int i = 0; i < cols; i++) {
             String label = (outputNames != null && i < outputNames.length) ?
-                          outputNames[i] : "Col" + (i + 1);
+                          outputNames[i] : "Stock" + (i + 1);
 
             // Calculate pin X position
             // Column center in pixels (relative to table origin x):
@@ -457,23 +457,29 @@ public class TableElm extends ChipElm {
 
     @Override
     void draw(Graphics g) {
-        int extraRows = (showInitialValues ? 1 : 0) + 1 + 1; // Initial + computed + column type row
         int tableX = getTableX();
         int tableY = getTableY();
         int cellWidthPixels = getCellWidthPixels();
+        int rowDescColWidth = cellWidthPixels;
+        
+        // Calculate the actual table height by accumulating all components
+        int titleHeight = 10 + 5; // Title offset + space after
+        int typeRowHeight = cellHeight + cellSpacing;
+        int headerRowHeight = cellHeight + cellSpacing;
+        int initialRowHeight = showInitialValues ? (cellHeight + cellSpacing) : 0;
+        int dataRowsHeight = rows * (cellHeight + cellSpacing);
+        int computedRowHeight = cellHeight + cellSpacing;
+        
+        int tableWidth = rowDescColWidth + cellSpacing + cols * cellWidthPixels + (cols + 1) * cellSpacing;
+        int tableHeight = titleHeight + typeRowHeight + headerRowHeight + initialRowHeight + dataRowsHeight + computedRowHeight;
 
         // Draw table background
         g.setColor(needsHighlight() ? selectColor : Color.white);
-        int rowDescColWidth = cellWidthPixels;
-        g.fillRect(tableX, tableY,
-                   rowDescColWidth + cellSpacing + cols * cellWidthPixels + (cols + 1) * cellSpacing,
-                   (rows + extraRows) * cellHeight + (rows + extraRows + 1) * cellSpacing + 20);
+        g.fillRect(tableX, tableY, tableWidth, tableHeight);
 
         // Draw table border
         g.setColor(Color.black);
-        g.drawRect(tableX, tableY,
-                   rowDescColWidth + cellSpacing + cols * cellWidthPixels + (cols + 1) * cellSpacing,
-                   (rows + extraRows) * cellHeight + (rows + extraRows + 1) * cellSpacing + 20);
+        g.drawRect(tableX, tableY, tableWidth, tableHeight);
 
         // Draw components in order with consistent positioning
         int currentY = 10; // Start position after table border
@@ -530,33 +536,21 @@ public class TableElm extends ChipElm {
         int cellWidthPixels = getCellWidthPixels();
         int rowDescColWidth = cellWidthPixels;
 
-        // Draw row description column header cell
+        // Draw row description column header cell text
         int rowDescHeaderX = tableX + cellSpacing;
-        g.setColor(Color.lightGray);
-        g.fillRect(rowDescHeaderX, headerY, rowDescColWidth, cellHeight);
-        g.setColor(Color.black);
-        g.drawRect(rowDescHeaderX, headerY, rowDescColWidth, cellHeight);
-        drawCenteredText(g, "Description", rowDescHeaderX + rowDescColWidth/2, headerY + cellHeight/2, true);
+        drawCenteredText(g, "Flows↓/Stocks→", rowDescHeaderX + rowDescColWidth/2, headerY + cellHeight/2, true);
 
-        // Draw data column header cells
+        // Draw data column header cells text
         for (int col = 0; col < cols; col++) {
             int cellX = tableX + rowDescColWidth + cellSpacing * 2 + col * (cellWidthPixels + cellSpacing);
             
-            // Draw cell background
-            g.setColor(Color.lightGray);
-            g.fillRect(cellX, headerY, cellWidthPixels, cellHeight);
-            
-            // Draw cell border
-            g.setColor(Color.black);
-            g.drawRect(cellX, headerY, cellWidthPixels, cellHeight);
-            
             String header = (outputNames != null && col < outputNames.length) ?
-                           outputNames[col] : "Col" + (col + 1);
+                           outputNames[col] : "Stock" + (col + 1);
             drawCenteredText(g, header, cellX + cellWidthPixels/2, headerY + cellHeight/2, true);
         }
         
         // Draw grid lines for this row
-        g.setColor(Color.gray);
+        g.setColor(Color.black);
         int tableWidth = rowDescColWidth + cellSpacing * 2 + cols * (cellWidthPixels + cellSpacing);
         
         // Horizontal lines (top and bottom of row)
@@ -587,24 +581,13 @@ public class TableElm extends ChipElm {
         int rowDescColWidth = cellWidthPixels;
         int typeRowY = tableY + offsetY;
         
-        // Draw row description column cell (empty/label)
-        g.setColor(Color.lightGray);
-        g.fillRect(tableX + cellSpacing, typeRowY, rowDescColWidth, cellHeight);
+        // Draw row description column cell text
         g.setColor(Color.black);
-        g.drawRect(tableX + cellSpacing, typeRowY, rowDescColWidth, cellHeight);
         drawCenteredText(g, "Type", tableX + cellSpacing + rowDescColWidth/2, typeRowY + cellHeight/2, true);
         
-        // Draw column type cells
+        // Draw column type cells text
         for (int col = 0; col < cols; col++) {
             int cellX = tableX + rowDescColWidth + cellSpacing * 2 + col * (cellWidthPixels + cellSpacing);
-            
-            // Draw cell background with light color
-            g.setColor(Color.lightGray);
-            g.fillRect(cellX, typeRowY, cellWidthPixels, cellHeight);
-            
-            // Draw cell border
-            g.setColor(Color.black);
-            g.drawRect(cellX, typeRowY, cellWidthPixels, cellHeight);
             
             // Draw column type text
             String typeName = getColumnTypeName(col);
@@ -612,7 +595,7 @@ public class TableElm extends ChipElm {
         }
         
         // Draw grid lines for this row
-        g.setColor(Color.gray);
+        g.setColor(Color.black);
         int tableWidth = rowDescColWidth + cellSpacing * 2 + cols * (cellWidthPixels + cellSpacing);
         
         // Horizontal lines (top and bottom of row)
@@ -644,10 +627,7 @@ public class TableElm extends ChipElm {
         int initialRowY = tableY + offsetY;
         
         // Draw row description cell for initial conditions
-        g.setColor(Color.lightGray);
-        g.fillRect(tableX + cellSpacing, initialRowY, rowDescColWidth, cellHeight);
         g.setColor(Color.black);
-        g.drawRect(tableX + cellSpacing, initialRowY, rowDescColWidth, cellHeight);
         drawCenteredText(g, "Initial", tableX + cellSpacing + rowDescColWidth/2, initialRowY + cellHeight/2, true);
 
         for (int col = 0; col < cols; col++) {
@@ -661,10 +641,6 @@ public class TableElm extends ChipElm {
             g.setColor(needsHighlight() ? selectColor : getCellVoltageColor(initialValue));
             g.fillRect(cellX, initialRowY, cellWidthPixels, cellHeight);
             
-            // Draw cell border
-            g.setColor(Color.black);
-            g.drawRect(cellX, initialRowY, cellWidthPixels, cellHeight);
-            
             // Draw value
             g.setColor(Color.black);
             String voltageText = getTableFormattedText(initialValue);
@@ -672,7 +648,7 @@ public class TableElm extends ChipElm {
         }
         
         // Draw grid lines for this row
-        g.setColor(Color.gray);
+        g.setColor(Color.black);
         int tableWidth = rowDescColWidth + cellSpacing * 2 + cols * (cellWidthPixels + cellSpacing);
         
         // Horizontal lines (top and bottom of row)
@@ -708,12 +684,8 @@ public class TableElm extends ChipElm {
         for (int row = 0; row < rows; row++) {
             int cellY = tableY + baseY + row * (cellHeight + cellSpacing);
             
-            // Draw row description cell
-            g.setColor(Color.lightGray);
-            g.fillRect(tableX + cellSpacing, cellY, rowDescColWidth, cellHeight);
+            // Draw row description text
             g.setColor(Color.black);
-            g.drawRect(tableX + cellSpacing, cellY, rowDescColWidth, cellHeight);
-            
             String rowDesc = (rowDescriptions != null && row < rowDescriptions.length) ?
                             rowDescriptions[row] : "Row" + (row + 1);
             drawCenteredText(g, rowDesc, tableX + cellSpacing + rowDescColWidth/2, cellY + cellHeight/2, true);
@@ -729,10 +701,6 @@ public class TableElm extends ChipElm {
                 g.setColor(needsHighlight() ? selectColor : getCellVoltageColor(voltage));
                 g.fillRect(cellX, cellY, cellWidthPixels, cellHeight);
                 
-                // Draw cell border
-                g.setColor(Color.black);
-                g.drawRect(cellX, cellY, cellWidthPixels, cellHeight);
-                
                 // Display equation and voltage in cell
                 g.setColor(Color.black);
                 String displayText = cellEquations[row][col];
@@ -745,7 +713,7 @@ public class TableElm extends ChipElm {
             }
             
             // Draw grid lines for this row
-            g.setColor(Color.gray);
+            g.setColor(Color.black);
             int tableWidth = rowDescColWidth + cellSpacing * 2 + cols * (cellWidthPixels + cellSpacing);
             
             // Horizontal lines (top and bottom of row)
@@ -775,11 +743,8 @@ public class TableElm extends ChipElm {
         // Use the passed offsetY directly - no need to recalculate
         int sumRowY = tableY + offsetY;
 
-        // Draw row description cell for computed row
-        g.setColor(Color.lightGray);
-        g.fillRect(tableX + cellSpacing, sumRowY, rowDescColWidth, cellHeight);
+        // Draw row description text for computed row
         g.setColor(Color.black);
-        g.drawRect(tableX + cellSpacing, sumRowY, rowDescColWidth, cellHeight);
         drawCenteredText(g, "Computed", tableX + cellSpacing + rowDescColWidth/2, sumRowY + cellHeight/2, true);
 
         for (int col = 0; col < cols; col++) {
@@ -794,10 +759,6 @@ public class TableElm extends ChipElm {
             g.setColor(needsHighlight() ? selectColor : getCellVoltageColor(computedValue));
             g.fillRect(cellX, sumRowY, cellWidthPixels, cellHeight);
             
-            // Draw cell border
-            g.setColor(Color.black);
-            g.drawRect(cellX, sumRowY, cellWidthPixels, cellHeight);
-            
             // Draw column name and value
             g.setColor(Color.black);
             String sumText = getTableFormattedText(computedValue);
@@ -806,7 +767,7 @@ public class TableElm extends ChipElm {
         }
         
         // Draw grid lines for computed row
-        g.setColor(Color.gray);
+        g.setColor(Color.black);
         int tableWidth = rowDescColWidth + cellSpacing * 2 + cols * (cellWidthPixels + cellSpacing);
         
         // Horizontal lines (top and bottom of row)
@@ -1033,7 +994,7 @@ public class TableElm extends ChipElm {
                 if (st.hasMoreTokens()) {
                     outputNames[col] = CustomLogicModel.unescape(st.nextToken());
                 } else {
-                    outputNames[col] = "Col" + (col + 1);
+                    outputNames[col] = "Stock" + (col + 1);
                 }
             }
             
@@ -1139,7 +1100,7 @@ public class TableElm extends ChipElm {
         if (outputNames == null) {
             outputNames = new String[cols];
             for (int col = 0; col < cols; col++) {
-                outputNames[col] = "Col" + (col + 1);
+                outputNames[col] = "Stock" + (col + 1);
             }
         }
         if (rowDescriptions == null) {
@@ -1191,8 +1152,8 @@ public class TableElm extends ChipElm {
     public EditInfo getEditInfo(int n) {
         if (n == 0) return new EditInfo("Table Title", tableTitle);
         if (n == 1) return new EditInfo("Cell Width (grids)", cellWidthInGrids, 1, 20);
-        if (n == 2) return new EditInfo("Cell Height", cellHeight, 16, 100);
-        if (n == 3) return new EditInfo("Cell Spacing", cellSpacing, 1, 20);
+        if (n == 2) return new EditInfo("Cell Height", cellHeight, 16, 48);
+        if (n == 3) return new EditInfo("Cell Spacing", cellSpacing, 0, 5);
         if (n == 4) {
             EditInfo ei = new EditInfo("Show Initial Values", 0, -1, -1);
             ei.checkbox = new Checkbox("", showInitialValues);
@@ -1215,7 +1176,7 @@ public class TableElm extends ChipElm {
         } else if (n == 2) {
             cellHeight = Math.max(16, (int)ei.value);
         } else if (n == 3) {
-            cellSpacing = Math.max(1, (int)ei.value);
+            cellSpacing = Math.max(0, (int)ei.value);
 
         } else if (n == 4) {
             showInitialValues = ei.checkbox.getValue();

@@ -245,25 +245,25 @@ public class TableEditDialog extends Dialog {
         // Set default stock values and types according to specification
         // Initial configuration: 1 Asset, 1 Liability, 1 Equity, 1 Computed (A-L-E)
         if (dataCols >= 1) {
-            stockValues[0] = "H0";
+            stockValues[0] = "Stock0";
             columnTypes[0] = ColumnType.ASSET;
         }
         if (dataCols >= 2) {
-            stockValues[1] = "H1";
+            stockValues[1] = "Stock1";
             columnTypes[1] = ColumnType.LIABILITY;
         }
         if (dataCols >= 3) {
-            stockValues[2] = "H2";
+            stockValues[2] = "Stock2";
             columnTypes[2] = ColumnType.EQUITY;
         }
         if (dataCols >= 4) {
-            stockValues[3] = "H3";
+            stockValues[3] = "Stock3";
             columnTypes[3] = ColumnType.A_L_E;
         }
         
         // Additional columns get default H names and are Assets by default
         for (int col = 4; col < dataCols; col++) {
-            stockValues[col] = "H" + col;
+            stockValues[col] = "Stock" + col;
             columnTypes[col] = ColumnType.ASSET;
         }
         
@@ -766,10 +766,15 @@ public class TableEditDialog extends Dialog {
     private void moveRow(int fromIndex, int toIndex) {
         if (fromIndex == toIndex || toIndex < 0 || toIndex >= dataRows) return;
         
-        // Swap row data
+        // Swap row data (cell equations)
         String[] tempRow = cellData[fromIndex];
         cellData[fromIndex] = cellData[toIndex];
         cellData[toIndex] = tempRow;
+        
+        // Swap row descriptions in TableElm to keep them synchronized
+        String tempDesc = tableElement.getRowDescription(fromIndex);
+        tableElement.setRowDescription(fromIndex, tableElement.getRowDescription(toIndex));
+        tableElement.setRowDescription(toIndex, tempDesc);
         
         String direction = (fromIndex < toIndex) ? "down" : "up";
         setStatus("Row " + (fromIndex + 1) + " moved " + direction + " to position " + (toIndex + 1));
