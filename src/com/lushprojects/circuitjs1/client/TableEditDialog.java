@@ -32,161 +32,297 @@ import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.KeyUpHandler;
 import com.google.gwt.event.dom.client.KeyUpEvent;
-import com.google.gwt.event.dom.client.KeyCodes;
 import com.google.gwt.event.dom.client.FocusHandler;
 import com.google.gwt.event.dom.client.FocusEvent;
-import com.google.gwt.event.dom.client.BlurHandler;
-import com.google.gwt.event.dom.client.BlurEvent;
 import com.lushprojects.circuitjs1.client.util.Locale;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * TableEditDialog - Enhanced spreadsheet-like editor for TableElm
- * Provides a dedicated dialog with Grid layout for editing table cell labels and column headers
+ * TableEditDialog - Dynamic table editor implementing markdown specification
+ * Provides structured editing with contextual buttons for row/column manipulation
  */
 public class TableEditDialog extends Dialog {
     
-    private TableElm tableElement;
-    private CirSim sim;
+    private final TableElm tableElement;
+    private final CirSim sim;
     
-    // UI Components
-    private VerticalPanel mainPanel;
     private ScrollPanel scrollPanel;
     private Grid editGrid;
-    private HorizontalPanel buttonPanel;
-    private Button okButton, cancelButton, applyButton;
-    private Button addRowButton, removeRowButton, addColButton, removeColButton;
+    private Button applyButton;
     private Label statusLabel;
     
-    // Data storage
-    private String[][] cellEquations;  // Store equation text for each cell (now the only mode)
-    private String[] columnHeaders;
-    private int rows, cols;
-    private boolean hasInitialConditions;
-    private double[] initialConditionsValues;
+    // Fixed structure according to markdown specification
+    private static final String FLOWS_LABEL = "Flows↓/Stock Vars →";
+    private static final String INITIAL_CONDITIONS_LABEL = "InitialConditions";
     
-    // Cell editing management
-    private List<List<TextBox>> cellTextBoxes;
-    private List<List<Label>> statusLabels;        // Status/error labels for each cell
-    private List<TextBox> headerTextBoxes;
-    private List<TextBox> initialConditionsTextBoxes;  // Text boxes for initial conditions
+    // Unicode symbols for contextual buttons - easily configurable
+    private static final String SYMBOL_ADD = "⧾";           // Add column/row button
+    private static final String SYMBOL_DELETE = "⧿";       // Delete column/row button  
+    private static final String SYMBOL_LEFT = "⇐";         // Move left button
+    private static final String SYMBOL_RIGHT = "⇒";        // Move right button
+    private static final String SYMBOL_UP = "⇑";           // Move up button
+    private static final String SYMBOL_DOWN = "⇓";         // Move down button
+    
+    // Column type enumeration for financial accounting
+    public enum ColumnType {
+        ASSET,
+        LIABILITY,
+        EQUITY,
+        A_L_E  // For A-L-E column
+    }
+    
+    /**
+     * Container for column data during move operations
+     */
+    private static class ColumnData {
+        String[] cellData;
+        String stockValue;  // Stock value is used as column header
+        double initialValue;
+        ColumnType type;
+        
+        ColumnData(int rows) {
+            cellData = new String[rows];
+        }
+    }
+    
+    /**
+     * State machine for column movement operations
+     * Simplified: columns can only move within their own type group
+     */
+    private static class ColumnMoveStateMachine {
+        
+        /**
+         * Represents the region a column currently occupies
+         */
+        enum Region {
+            ASSET_REGION,      // Left side - Asset columns
+            LIABILITY_REGION,  // Center - Liability columns
+            EQUITY_REGION,     // Right side - Equity column only
+            COMPUTED_REGION    // Rightmost - A-L-E column only
+        }
+        
+        /**
+         * Represents a column movement transition
+         */
+        static class MoveTransition {
+            Region fromRegion;
+            Region toRegion;
+            ColumnType originalType;
+            ColumnType newType;
+            boolean isValid;
+            String statusMessage;
+            
+            MoveTransition(Region from, Region to, ColumnType original) {
+                this.fromRegion = from;
+                this.toRegion = to;
+                this.originalType = original;
+                this.newType = original; // Type never changes in simplified version
+                this.isValid = true;
+            }
+        }
+        
+        private final TableEditDialog dialog;
+        
+        ColumnMoveStateMachine(TableEditDialog dialog) {
+            this.dialog = dialog;
+        }
+        
+        /**
+         * Determine which region a column index belongs to
+         */
+        Region getRegion(int colIndex) {
+            if (colIndex < 0 || colIndex >= dialog.dataCols) {
+                return null;
+            }
+            
+            ColumnType type = dialog.columnTypes[colIndex];
+            
+            // Computed column is always rightmost
+            if (type == ColumnType.A_L_E) {
+                return Region.COMPUTED_REGION;
+            }
+            
+            // Equity column is always right of liabilities
+            if (type == ColumnType.EQUITY) {
+                return Region.EQUITY_REGION;
+            }
+            
+            // Find Asset-Liability boundary
+            int boundary = dialog.findAssetLiabilityBoundary();
+            
+            if (colIndex < boundary) {
+                return Region.ASSET_REGION;
+            } else {
+                return Region.LIABILITY_REGION;
+            }
+        }
+        
+        /**
+         * Calculate the movement transition - simplified to only allow same-region moves
+         */
+        MoveTransition calculateTransition(int fromIndex, int toIndex) {
+            Region fromRegion = getRegion(fromIndex);
+            Region toRegion = getRegion(toIndex);
+            ColumnType originalType = dialog.columnTypes[fromIndex];
+            
+            MoveTransition transition = new MoveTransition(fromRegion, toRegion, originalType);
+            
+            // Check if trying to move to different region
+            if (fromRegion != toRegion) {
+                transition.isValid = false;
+                transition.statusMessage = "Cannot move " + originalType.name() + " column to " + toRegion.name().replace("_", " ") + 
+                                          ". Columns can only move within their own type group.";
+                return transition;
+            }
+            
+            // Moving within same region - allowed
+            transition.statusMessage = originalType.name() + " column moved within " + fromRegion.name().replace("_", " ");
+            return transition;
+        }
+    }
+    
+    // Data storage for dynamic content
+    private String[][] cellData;  // Editable cell content
+    private String[] stockValues; // Stock variable names (H0, H1, H2, etc.) - also used as column headers
+    private double[] initialValues; // Initial condition values
+    private int dataRows, dataCols; // Number of data rows/columns (excluding fixed structure)
+    private ColumnType[] columnTypes; // Type for each column (Asset/Liability/Equity/Computed)
+    
+    // Grid structure indices
+    private static final int HEADER_ROW = 0;
+    private static final int BUTTON_ROW = 1;
+    private static final int STOCK_VALUES_ROW = 2;  // New editable row for output stock values
+    // private static final int FLOWS_ROW = 2; // New editable row for output stock values
+    private static final int INITIAL_ROW = 3;
+    private static final int DATA_START_ROW = 4;
+    
+    private static final int BUTTON_COL = 0;
+    private static final int LABEL_COL = 1;  // New column for labels
+    private static final int DATA_START_COL = 2;
+    
+    // Button management
+    private Map<String, Button> contextualButtons;
     
     // Track changes
-    private boolean hasChanges = false;
-    
-    public TableEditDialog(TableElm tableElm, CirSim cirSim) {
+    private boolean hasChanges = false;    public TableEditDialog(TableElm tableElm, CirSim cirSim) {
         super();
         this.tableElement = tableElm;
         this.sim = cirSim;
         
-        // Copy current table data
-        this.rows = tableElm.rows;
-        this.cols = tableElm.cols;
+        // Initialize with data from TableElm or defaults for new table
+        this.dataRows = Math.max(1, tableElm.getRows()); // At least 1 data row
+        this.dataCols = Math.max(4, tableElm.getCols()); // At least Assets, Liabilities, Equity, A-L-E columns
+        
+        // Initialize contextual buttons map
+        contextualButtons = new HashMap<String, Button>();
+        
         copyTableData();
         
-        setText(Locale.LS("Edit Table Data"));
+        // Use table title from TableElm, or default to "Edit Table Data"
+        String dialogTitle = tableElm.getTableTitle();
+        if (dialogTitle == null || dialogTitle.trim().isEmpty()) {
+            dialogTitle = "Table";
+        }
+        setText(Locale.LS("Edit " + dialogTitle));
+        
         setupUI();
         populateGrid();
         center();
     }
     
+    
     private void copyTableData() {
-        cellEquations = new String[rows][cols];
-        columnHeaders = new String[cols];
+        // Initialize data arrays
+        cellData = new String[dataRows][dataCols];
         
-        // Initial conditions are now always enabled
-        hasInitialConditions = true;
-        initialConditionsValues = new double[cols];
-        for (int col = 0; col < cols; col++) {
-            initialConditionsValues[col] = tableElement.getInitialValue(col);
+        // Initialize stock values (used as column headers) with defaults from specification
+        // Data columns start after "Flow Description" column
+        stockValues = new String[dataCols];
+        initialValues = new double[dataCols];
+        columnTypes = new ColumnType[dataCols];
+        
+        // Set default stock values and types according to specification
+        // Initial configuration: 1 Asset, 1 Liability, 1 Equity, 1 Computed (A-L-E)
+        if (dataCols >= 1) {
+            stockValues[0] = "H0";
+            columnTypes[0] = ColumnType.ASSET;
+        }
+        if (dataCols >= 2) {
+            stockValues[1] = "H1";
+            columnTypes[1] = ColumnType.LIABILITY;
+        }
+        if (dataCols >= 3) {
+            stockValues[2] = "H2";
+            columnTypes[2] = ColumnType.EQUITY;
+        }
+        if (dataCols >= 4) {
+            stockValues[3] = "H3";
+            columnTypes[3] = ColumnType.A_L_E;
         }
         
-        // Copy cell equations (now the only data type)
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < cols; col++) {
-                cellEquations[row][col] = tableElement.getCellEquation(row, col);
-                if (cellEquations[row][col] == null) {
-                    cellEquations[row][col] = "";
+        // Additional columns get default H names and are Assets by default
+        for (int col = 4; col < dataCols; col++) {
+            stockValues[col] = "H" + col;
+            columnTypes[col] = ColumnType.ASSET;
+        }
+        
+        // Copy existing data from TableElm if available
+        if (tableElement != null) {
+            int existingRows = tableElement.getRows();
+            int existingCols = tableElement.getCols();
+            
+            // Copy cell equations
+            for (int row = 0; row < Math.min(dataRows, existingRows); row++) {
+                for (int col = 0; col < Math.min(dataCols, existingCols); col++) {
+                    cellData[row][col] = tableElement.getCellEquation(row, col);
+                    if (cellData[row][col] == null) {
+                        cellData[row][col] = "";
+                    }
+                }
+            }
+            
+            // Copy stock values (column headers) and types if they exist
+            for (int col = 0; col < Math.min(dataCols, existingCols); col++) {
+                String existingHeader = tableElement.getColumnHeader(col);
+                if (existingHeader != null && !existingHeader.trim().isEmpty()) {
+                    stockValues[col] = existingHeader;
+                }
+                
+                initialValues[col] = tableElement.getInitialValue(col);
+                
+                // Copy column type if available
+                ColumnType existingType = tableElement.getColumnType(col);
+                if (existingType != null) {
+                    columnTypes[col] = existingType;
                 }
             }
         }
         
-        // Copy column headers
-        for (int col = 0; col < cols; col++) {
-            columnHeaders[col] = tableElement.getColumnHeader(col);
-            if (columnHeaders[col] == null) {
-                columnHeaders[col] = "Col" + (col + 1);
+        // Ensure all cells have non-null values
+        for (int row = 0; row < dataRows; row++) {
+            for (int col = 0; col < dataCols; col++) {
+                if (cellData[row][col] == null) {
+                    cellData[row][col] = "";
+                }
             }
         }
     }
     
     private void setupUI() {
-        mainPanel = new VerticalPanel();
+        // UI Components
+        VerticalPanel mainPanel = new VerticalPanel();
         mainPanel.setWidth("100%");
         setWidget(mainPanel);
         
-        // Status label
-        statusLabel = new Label("Table Editor - Navigation: Tab/Enter/Ctrl+Arrows | Shortcuts: Ctrl+S (Apply)");
-        statusLabel.addStyleName("topSpace");
-        mainPanel.add(statusLabel);
-        
-        // Equation help text
-        Label equationHelp = new Label("All cells are equations - Use node names directly (e.g. 'vcc', 'gnd') or variables a-i for labeled nodes | Examples: 'a+b', 'vcc*0.5', 'sin(t)', 'max(a,b,c)', 'vcc>2.5?5:0'");
-        equationHelp.addStyleName("topSpace");
-        equationHelp.getElement().getStyle().setProperty("fontSize", "11px");
-        equationHelp.getElement().getStyle().setProperty("color", "#666");
-        mainPanel.add(equationHelp);
-        
-        // Initial conditions are now always shown - no checkbox needed
-        
-        // Table editing controls
-        HorizontalPanel controlPanel = new HorizontalPanel();
-        controlPanel.addStyleName("topSpace");
-        controlPanel.setSpacing(5);
-        
-        addRowButton = new Button(Locale.LS("Add Row"));
-        addRowButton.addClickHandler(new ClickHandler() {
-            public void onClick(ClickEvent event) {
-                addRow();
-            }
-        });
-        controlPanel.add(addRowButton);
-        
-        removeRowButton = new Button(Locale.LS("Remove Row"));
-        removeRowButton.addClickHandler(new ClickHandler() {
-            public void onClick(ClickEvent event) {
-                removeRow();
-            }
-        });
-        controlPanel.add(removeRowButton);
-        
-        addColButton = new Button(Locale.LS("Add Column"));
-        addColButton.addClickHandler(new ClickHandler() {
-            public void onClick(ClickEvent event) {
-                addColumn();
-            }
-        });
-        controlPanel.add(addColButton);
-        
-        removeColButton = new Button(Locale.LS("Remove Column"));
-        removeColButton.addClickHandler(new ClickHandler() {
-            public void onClick(ClickEvent event) {
-                removeColumn();
-            }
-        });
-        controlPanel.add(removeColButton);
-        
-        mainPanel.add(controlPanel);
-        
-        // Scrollable table area
+        // Scrollable table area (main content)
         scrollPanel = new ScrollPanel();
-        scrollPanel.setSize("600px", "400px");
+        scrollPanel.setSize("800px", "500px");
         scrollPanel.addStyleName("topSpace");
         mainPanel.add(scrollPanel);
         
         // Bottom buttons
-        buttonPanel = new HorizontalPanel();
+        HorizontalPanel buttonPanel = new HorizontalPanel();
         buttonPanel.setWidth("100%");
         buttonPanel.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_LEFT);
         buttonPanel.addStyleName("topSpace");
@@ -199,8 +335,8 @@ public class TableEditDialog extends Dialog {
             }
         });
         buttonPanel.add(applyButton);
-        
-        okButton = new Button(Locale.LS("OK"));
+
+        Button okButton = new Button(Locale.LS("OK"));
         okButton.addClickHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
                 applyChanges();
@@ -210,7 +346,7 @@ public class TableEditDialog extends Dialog {
         buttonPanel.add(okButton);
         
         buttonPanel.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_RIGHT);
-        cancelButton = new Button(Locale.LS("Cancel"));
+        Button cancelButton = new Button(Locale.LS("Cancel"));
         cancelButton.addClickHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
                 if (hasChanges) {
@@ -225,541 +361,653 @@ public class TableEditDialog extends Dialog {
         buttonPanel.add(cancelButton);
         
         mainPanel.add(buttonPanel);
+        
+        // Status label at bottom
+        statusLabel = new Label("Dynamic Table Editor - Use contextual buttons to modify structure");
+        statusLabel.addStyleName("topSpace");
+        mainPanel.add(statusLabel);
     }
     
     private void createGrid() {
-        // Calculate grid rows: header + (optional initial conditions * 2) + (equation rows * 2)
-        int extraRows = hasInitialConditions ? 2 : 0; // Initial conditions input + status rows
-        int totalGridRows = 1 + extraRows + (rows * 2); // 1 for headers + initial conditions + equation rows
+        // Calculate grid dimensions according to updated specification
+        // Rows: Header + Button controls + Stock values + Flows label + Initial conditions + data rows
+        int totalGridRows = DATA_START_ROW + dataRows;
+        // Cols: Buttons column + Label column + data columns  
+        int totalGridCols = 2 + dataCols; // Button col + Label col + data columns
         
-        editGrid = new Grid(totalGridRows, cols + 1);
+        editGrid = new Grid(totalGridRows, totalGridCols);
         editGrid.addStyleName("tableEditGrid");
         editGrid.setCellSpacing(1);
         editGrid.setCellPadding(2);
         
-        // Initialize collections
-        cellTextBoxes = new ArrayList<List<TextBox>>();
-        statusLabels = new ArrayList<List<Label>>();
-        headerTextBoxes = new ArrayList<TextBox>();
-        initialConditionsTextBoxes = new ArrayList<TextBox>();
+        // Clear contextual buttons for refresh
+        contextualButtons.clear();
         
-        // Add row headers (row numbers)
-        editGrid.setText(0, 0, "");  // Top-left corner
-        
-        int gridRow = 1; // Start after header row
-        
-        // Add initial conditions row header if enabled
-        if (hasInitialConditions) {
-            Label initialLabel = new Label("Initial");
-            initialLabel.addStyleName("tableRowHeader");
-            initialLabel.getElement().getStyle().setProperty("color", "#007700");
-            editGrid.setWidget(gridRow, 0, initialLabel);
-            gridRow++; // Status row
-            editGrid.setText(gridRow, 0, "");
-            gridRow++; // Move to next row
-        }
-        
-        // Add regular row headers (equation rows)
-        for (int row = 0; row < rows; row++) {
-            Label rowLabel = new Label("" + (row + 1));
-            rowLabel.addStyleName("tableRowHeader");
-            editGrid.setWidget(gridRow, 0, rowLabel);
-            gridRow++; // Status row
-            editGrid.setText(gridRow, 0, "");
-            gridRow++; // Move to next row
-        }
+        populateFixedStructure();
+        populateDataCells();
+        populateContextualButtons();
     }
     
     private void populateGrid() {
         createGrid();
-        
-        // Add column headers
-        for (int col = 0; col < cols; col++) {
-            TextBox headerBox = createHeaderTextBox(col);
-            headerTextBoxes.add(headerBox);
-            editGrid.setWidget(0, col + 1, headerBox);
-        }
-        
-        int gridRow = 1; // Start after header row
-        
-        // Add initial conditions row if enabled
-        if (hasInitialConditions) {
-            for (int col = 0; col < cols; col++) {
-                TextBox initialBox = createInitialConditionsTextBox(col);
-                initialConditionsTextBoxes.add(initialBox);
-                editGrid.setWidget(gridRow, col + 1, initialBox);
-            }
-            gridRow++; // Status row for initial conditions
-            
-            // Add status labels for initial conditions
-            for (int col = 0; col < cols; col++) {
-                Label statusLabel = new Label("Initial condition value");
-                statusLabel.addStyleName("cellStatusLabel");
-                statusLabel.getElement().getStyle().setProperty("fontSize", "10px");
-                statusLabel.getElement().getStyle().setProperty("color", "#007700");
-                editGrid.setWidget(gridRow, col + 1, statusLabel);
-            }
-            gridRow++; // Move to equation rows
-        }
-        
-        // Add cell editors for equations
-        for (int row = 0; row < rows; row++) {
-            List<TextBox> rowTextBoxes = new ArrayList<TextBox>();
-            List<Label> rowStatusLabels = new ArrayList<Label>();
-            
-            cellTextBoxes.add(rowTextBoxes);
-            statusLabels.add(rowStatusLabels);
-            
-            for (int col = 0; col < cols; col++) {
-                // Create input box
-                TextBox cellBox = createCellTextBox(row, col);
-                rowTextBoxes.add(cellBox);
-                editGrid.setWidget(gridRow, col + 1, cellBox);
-                
-                // Create status label
-                Label statusLabel = createStatusLabel(row, col);
-                rowStatusLabels.add(statusLabel);
-                editGrid.setWidget(gridRow + 1, col + 1, statusLabel);
-            }
-            
-            gridRow += 2; // Move by 2 (input row + status row)
-        }
-        
         scrollPanel.setWidget(editGrid);
         updateButtonStates();
     }
     
-    private TextBox createHeaderTextBox(final int col) {
-        TextBox textBox = new TextBox();
-        textBox.setText(columnHeaders[col]);
-        textBox.addStyleName("tableHeaderInput");
+    private void populateFixedStructure() {
+        // Row 0: Headers - first two columns empty, then data headers with type indicators
+        editGrid.setText(HEADER_ROW, BUTTON_COL, "");
+        editGrid.setText(HEADER_ROW, LABEL_COL, "");
         
-        textBox.addKeyUpHandler(new KeyUpHandler() {
-            public void onKeyUp(KeyUpEvent event) {
-                int keyCode = event.getNativeKeyCode();
-                
-                // Handle Ctrl+S for apply
-                if (event.isControlKeyDown() && keyCode == 83) { // Ctrl+S
-                    applyChanges();
-                    return;
-                }
-                
-                columnHeaders[col] = textBox.getText();
-                textBox.addStyleName("modified");
-                markChanged();
-                
-                // Handle navigation
-                if (keyCode == KeyCodes.KEY_ENTER) {
-                    if (hasInitialConditions) {
-                        navigateToInitialConditions(col);
-                    } else {
-                        navigateToCell(0, col);
+        // Add data column headers with type indicators
+        for (int col = 0; col < dataCols; col++) {
+            ColumnType colType = columnTypes[col];
+            
+            // Add type indicator emoji/symbol
+            String typeIndicator = "";
+            switch (colType) {
+                case ASSET: typeIndicator = "💰"; break;
+                case LIABILITY: typeIndicator = "📄"; break;
+                case EQUITY: typeIndicator = "🏦"; break;
+                case A_L_E: typeIndicator = "🧮"; break;
+            }
+            
+            editGrid.setText(HEADER_ROW, DATA_START_COL + col, typeIndicator + " [" + colType.name() + "]");
+        }
+        
+        // Row 1: Control buttons (populated in populateContextualButtons)
+        editGrid.setText(BUTTON_ROW, BUTTON_COL, "");
+        editGrid.setText(BUTTON_ROW, LABEL_COL, "");
+        
+        // Row 2: Stock Values - editable row for output stock values
+        editGrid.setText(STOCK_VALUES_ROW, BUTTON_COL, "");
+        editGrid.setText(STOCK_VALUES_ROW, LABEL_COL, FLOWS_LABEL);
+        
+        // Add editable stock value inputs
+        for (int col = 0; col < dataCols; col++) {
+            TextBox stockBox = createStockValueTextBox(col);
+            editGrid.setWidget(STOCK_VALUES_ROW, DATA_START_COL + col, stockBox);
+        }
+        
+        
+        // Row 3: Initial conditions
+        editGrid.setText(INITIAL_ROW, BUTTON_COL, "");
+        editGrid.setText(INITIAL_ROW, LABEL_COL, INITIAL_CONDITIONS_LABEL);
+        
+        // Add initial condition value inputs
+        for (int col = 0; col < dataCols; col++) {
+            TextBox initialBox = createInitialValueTextBox(col);
+            editGrid.setWidget(INITIAL_ROW, DATA_START_COL + col, initialBox);
+        }
+    }
+    
+    private void populateDataCells() {
+        // Add data row content
+        for (int row = 0; row < dataRows; row++) {
+            int gridRow = DATA_START_ROW + row;
+            
+            // Button column (populated in populateContextualButtons)
+            editGrid.setText(gridRow, BUTTON_COL, "");
+            
+            // Label column - editable text for flow descriptions
+            TextBox flowDescBox = createFlowDescriptionTextBox(row);
+            editGrid.setWidget(gridRow, LABEL_COL, flowDescBox);
+            
+            // Data columns
+            for (int col = 0; col < dataCols; col++) {
+                TextBox cellBox = createCellTextBox(row, col);
+                editGrid.setWidget(gridRow, DATA_START_COL + col, cellBox);
+            }
+        }
+    }
+    
+    private void populateContextualButtons() {
+        // Add contextual control buttons per markdown specification
+        
+        // Column control buttons in button row (row 1)
+        for (int col = 0; col < dataCols; col++) {
+            HorizontalPanel buttonPanel = new HorizontalPanel();
+            buttonPanel.setSpacing(2);
+            
+            final int finalCol = col;
+            ColumnType colType = columnTypes[col];
+            
+            // Add column button - only if not Equity or Computed
+            if (canAddColumnAfter(col)) {
+                Button addColBtn = createButton(SYMBOL_ADD, "Add " + colType.name() + " column after " + stockValues[col]);
+                addColBtn.addClickHandler(new ClickHandler() {
+                    public void onClick(ClickEvent event) {
+                        insertColumnAfter(finalCol);
                     }
-                } else if (keyCode == KeyCodes.KEY_TAB && !event.isShiftKeyDown()) {
-                    navigateToNextHeader(col);
-                } else if (keyCode == KeyCodes.KEY_TAB && event.isShiftKeyDown()) {
-                    navigateToPrevHeader(col);
-                }
-            }
-        });
-        
-        setupTextBoxHandlers(textBox, -1, col);
-        return textBox;
-    }
-
-    private TextBox createInitialConditionsTextBox(final int col) {
-        TextBox textBox = new TextBox();
-        textBox.setText(String.valueOf(initialConditionsValues[col]));
-        textBox.addStyleName("tableCellInput");
-        textBox.addStyleName("initialConditionsInput");
-        textBox.setTitle("Enter initial condition value for this column");
-        
-        textBox.addKeyUpHandler(new KeyUpHandler() {
-            public void onKeyUp(KeyUpEvent event) {
-                int keyCode = event.getNativeKeyCode();
-                
-                // Handle Ctrl+S for apply
-                if (event.isControlKeyDown() && keyCode == 83) { // Ctrl+S
-                    applyChanges();
-                    return;
-                }
-                
-                // Try to parse the value
-                try {
-                    double value = Double.parseDouble(textBox.getText().trim());
-                    initialConditionsValues[col] = value;
-                    textBox.removeStyleName("error");
-                } catch (NumberFormatException e) {
-                    textBox.addStyleName("error");
-                }
-                
-                textBox.addStyleName("modified");
-                markChanged();
-                
-                // Handle navigation
-                if (keyCode == KeyCodes.KEY_ENTER) {
-                    navigateToCell(0, col);
-                } else if (keyCode == KeyCodes.KEY_TAB && !event.isShiftKeyDown()) {
-                    navigateToNextInitialConditions(col);
-                } else if (keyCode == KeyCodes.KEY_TAB && event.isShiftKeyDown()) {
-                    navigateToPrevInitialConditions(col);
-                }
-            }
-        });
-        
-        setupTextBoxHandlers(textBox, -2, col); // Use -2 to indicate initial conditions
-        return textBox;
-    }
-    
-    private Label createStatusLabel(final int row, final int col) {
-        Label label = new Label();
-        label.addStyleName("cellStatusLabel");
-        label.getElement().getStyle().setProperty("fontSize", "10px");
-        updateStatusLabel(label, row, col);
-        return label;
-    }
-    
-    private void updateStatusLabel(Label label, int row, int col) {
-        // All cells are now equation mode
-        String equation = cellEquations[row][col];
-        if (equation == null || equation.trim().isEmpty()) {
-            label.setText("Enter equation or node name");
-            label.getElement().getStyle().setProperty("color", "#999");
-        } else {
-            // Validate equation
-            String error = validateEquation(equation);
-            if (error != null) {
-                label.setText("Error: " + error);
-                label.getElement().getStyle().setProperty("color", "#cc0000");
-            } else {
-                // Show current value
-                double value = tableElement.getCellVoltage(row, col);
-                label.setText("= " + formatVoltage(value));
-                label.getElement().getStyle().setProperty("color", "#007700");
-            }
-        }
-    }
-    
-
-    
-    private String validateEquation(String equation) {
-        if (equation == null || equation.trim().isEmpty()) {
-            return null; // Empty equations are allowed
-        }
-        
-        try {
-            // Try to parse the equation using CircuitJS1's expression parser
-            ExprParser parser = new ExprParser(equation);
-            Expr expr = parser.parseExpression();
-            String parseError = parser.gotError();
-            
-            if (parseError != null) {
-                return parseError;
+                });
+                buttonPanel.add(addColBtn);
             }
             
-            // Try to evaluate with dummy values to catch runtime errors
-            ExprState state = new ExprState(9);
-            for (int i = 0; i < state.values.length; i++) {
-                state.values[i] = 1.0; // Dummy voltage values
+            // Delete column button - only if allowed
+            if (canDeleteColumn(col)) {
+                Button delColBtn = createButton(SYMBOL_DELETE, "Delete column " + stockValues[col]);
+                delColBtn.addClickHandler(new ClickHandler() {
+                    public void onClick(ClickEvent event) {
+                        deleteColumn(finalCol);
+                    }
+                });
+                buttonPanel.add(delColBtn);
             }
-            state.t = 0.0;
             
-            expr.eval(state);
-            return null; // No error
-            
-        } catch (Exception e) {
-            return e.getMessage();
-        }
-    }
-    
-    private String formatVoltage(double voltage) {
-        if (Math.abs(voltage) < 1e-10) {
-            return "0V";
-        } else if (Math.abs(voltage) >= 1.0) {
-            // Format to 3 decimal places
-            double rounded = Math.round(voltage * 1000.0) / 1000.0;
-            return rounded + "V";
-        } else if (Math.abs(voltage) >= 0.001) {
-            // Format to 1 decimal place in millivolts
-            double millivolts = voltage * 1000;
-            double rounded = Math.round(millivolts * 10.0) / 10.0;
-            return rounded + "mV";
-        } else {
-            // Format to 1 decimal place in microvolts
-            double microvolts = voltage * 1000000;
-            double rounded = Math.round(microvolts * 10.0) / 10.0;
-            return rounded + "μV";
-        }
-    }
-    
-    private TextBox createCellTextBox(final int row, final int col) {
-        TextBox textBox = new TextBox();
-        
-        // Set initial content (always equation now)
-        textBox.setText(cellEquations[row][col]);
-        textBox.setTitle("Enter equation or node name (examples: 'vcc', 'a+b', 'sin(t)')");
-        textBox.addStyleName("tableCellInput");
-        textBox.addStyleName("equationInput");
-        
-        textBox.addKeyUpHandler(new KeyUpHandler() {
-            public void onKeyUp(KeyUpEvent event) {
-                int keyCode = event.getNativeKeyCode();
+            // Movement buttons - smart display based on column count in type group
+            if (canMoveColumn(col)) {
+                int typeCount = countColumnsByType(colType);
                 
-                // Handle Ctrl+S for apply
-                if (event.isControlKeyDown() && keyCode == 83) { // Ctrl+S
-                    applyChanges();
-                    return;
-                }
-                
-                // Handle arrow key navigation (when not editing text)
-                if (event.isControlKeyDown()) {
-                    switch (keyCode) {
-                        case KeyCodes.KEY_UP:
-                            navigateToCell(row - 1, col);
-                            return;
-                        case KeyCodes.KEY_DOWN:
-                            navigateToCell(row + 1, col);
-                            return;
-                        case KeyCodes.KEY_LEFT:
-                            navigateToCell(row, col - 1);
-                            return;
-                        case KeyCodes.KEY_RIGHT:
-                            navigateToCell(row, col + 1);
-                            return;
+                // Only show movement arrows if there are 2+ columns of this type
+                if (typeCount >= 2) {
+                    // Check if we can move left within same type
+                    if (canMoveLeftWithinType(col)) {
+                        Button moveLeftBtn = createButton(SYMBOL_LEFT, "Move column left");
+                        moveLeftBtn.addClickHandler(new ClickHandler() {
+                            public void onClick(ClickEvent event) {
+                                moveColumn(finalCol, finalCol - 1);
+                            }
+                        });
+                        buttonPanel.add(moveLeftBtn);
+                    }
+                    
+                    // Check if we can move right within same type
+                    if (canMoveRightWithinType(col)) {
+                        Button moveRightBtn = createButton(SYMBOL_RIGHT, "Move column right");
+                        moveRightBtn.addClickHandler(new ClickHandler() {
+                            public void onClick(ClickEvent event) {
+                                moveColumn(finalCol, finalCol + 1);
+                            }
+                        });
+                        buttonPanel.add(moveRightBtn);
                     }
                 }
-                
-                // Store text in equation array
-                String text = textBox.getText();
-                cellEquations[row][col] = text;
-                
+                // If only 1 column of this type, no movement buttons (just + button from above)
+            }
+            
+            editGrid.setWidget(BUTTON_ROW, DATA_START_COL + col, buttonPanel);
+        }
+        
+        // Row control buttons in button column
+        for (int row = 0; row < dataRows; row++) {
+            HorizontalPanel buttonPanel = new HorizontalPanel();
+            buttonPanel.setSpacing(2);
+            
+            // Add row button
+            Button addRowBtn = createButton(SYMBOL_ADD, "Add row after row " + (row + 1));
+            final int finalRow = row;
+            addRowBtn.addClickHandler(new ClickHandler() {
+                public void onClick(ClickEvent event) {
+                    insertRowAfter(finalRow);
+                }
+            });
+            buttonPanel.add(addRowBtn);
+            
+            // Delete row button
+            if (dataRows > 1) { // Don't allow deleting the last row
+                Button delRowBtn = createButton(SYMBOL_DELETE, "Delete row " + (row + 1));
+                delRowBtn.addClickHandler(new ClickHandler() {
+                    public void onClick(ClickEvent event) {
+                        deleteRow(finalRow);
+                    }
+                });
+                buttonPanel.add(delRowBtn);
+            }
+            
+            // Movement buttons
+            if (row > 0) {
+                Button moveUpBtn = createButton(SYMBOL_UP, "Move row up");
+                moveUpBtn.addClickHandler(new ClickHandler() {
+                    public void onClick(ClickEvent event) {
+                        moveRow(finalRow, finalRow - 1);
+                    }
+                });
+                buttonPanel.add(moveUpBtn);
+            }
+            
+            if (row < dataRows - 1) {
+                Button moveDownBtn = createButton(SYMBOL_DOWN, "Move row down");
+                moveDownBtn.addClickHandler(new ClickHandler() {
+                    public void onClick(ClickEvent event) {
+                        moveRow(finalRow, finalRow + 1);
+                    }
+                });
+                buttonPanel.add(moveDownBtn);
+            }
+            
+            editGrid.setWidget(DATA_START_ROW + row, BUTTON_COL, buttonPanel);
+        }
+    }
+    
+    private TextBox createFlowDescriptionTextBox(final int row) {
+        final TextBox textBox = new TextBox();
+        // Initialize with row description from TableElm
+        String rowDesc = tableElement.getRowDescription(row);
+        textBox.setText(rowDesc != null ? rowDesc : "");
+        textBox.addStyleName("tableFlowInput");
+        
+        textBox.addKeyUpHandler(new KeyUpHandler() {
+            public void onKeyUp(KeyUpEvent event) {
+                // Store flow description in TableElm's rowDescriptions
+                tableElement.setRowDescription(row, textBox.getText());
                 textBox.addStyleName("modified");
                 markChanged();
-                
-                // Update status label with validation
-                Label statusLabel = statusLabels.get(row).get(col);
-                updateStatusLabel(statusLabel, row, col);
-                
-                // Handle standard navigation
-                if (keyCode == KeyCodes.KEY_ENTER) {
-                    navigateToCell(row + 1, col);
-                } else if (keyCode == KeyCodes.KEY_TAB && !event.isShiftKeyDown()) {
-                    navigateToCell(row, col + 1);
-                } else if (keyCode == KeyCodes.KEY_TAB && event.isShiftKeyDown()) {
-                    navigateToCell(row, col - 1);
-                }
             }
         });
         
-        setupTextBoxHandlers(textBox, row, col);
         return textBox;
     }
     
-    private void setupTextBoxHandlers(TextBox textBox, final int row, final int col) {
+    private Button createButton(String symbol, String tooltip) {
+        Button button = new Button(symbol);
+        button.addStyleName("contextualButton");
+        button.setTitle(tooltip);
+        return button;
+    }
+    
+    private TextBox createStockValueTextBox(final int col) {
+        final TextBox textBox = new TextBox();
+        textBox.setText(stockValues[col]); // Initialize with H0, H1, H2, etc.
+        textBox.addStyleName("tableStockInput");
+        
+        textBox.addKeyUpHandler(new KeyUpHandler() {
+            public void onKeyUp(KeyUpEvent event) {
+                // Store stock value name
+                stockValues[col] = textBox.getText();
+                textBox.addStyleName("modified");
+                markChanged();
+            }
+        });
+        
         textBox.addFocusHandler(new FocusHandler() {
             public void onFocus(FocusEvent event) {
                 textBox.selectAll();
             }
         });
         
-        textBox.addBlurHandler(new BlurHandler() {
-            public void onBlur(BlurEvent event) {
-                // Validate content if needed
-                validateCell(textBox, row, col);
+        return textBox;
+    }
+    
+    private TextBox createInitialValueTextBox(final int col) {
+        final TextBox textBox = new TextBox();
+        textBox.setText(Double.toString(initialValues[col]));
+        textBox.addStyleName("tableInitialInput");
+        
+        textBox.addKeyUpHandler(new KeyUpHandler() {
+            public void onKeyUp(KeyUpEvent event) {
+                try {
+                    double value = Double.parseDouble(textBox.getText());
+                    initialValues[col] = value;
+                    textBox.removeStyleName("error");
+                } catch (NumberFormatException e) {
+                    textBox.addStyleName("error");
+                    // Don't update the value if it's not valid
+                }
+                textBox.addStyleName("modified");
+                markChanged();
             }
         });
+        
+        textBox.addFocusHandler(new FocusHandler() {
+            public void onFocus(FocusEvent event) {
+                textBox.selectAll();
+            }
+        });
+        
+        return textBox;
     }
     
-    private void navigateToCell(int targetRow, int targetCol) {
-        // Navigate within bounds
-        if (targetRow >= rows) targetRow = 0;
-        if (targetRow < 0) targetRow = rows - 1;
-        if (targetCol >= cols) {
-            targetCol = 0;
-            targetRow++;
-            if (targetRow >= rows) targetRow = 0;
-        }
-        if (targetCol < 0) {
-            targetCol = cols - 1;
-            targetRow--;
-            if (targetRow < 0) targetRow = rows - 1;
+    private TextBox createCellTextBox(final int row, final int col) {
+        final TextBox textBox = new TextBox();
+        textBox.setText(cellData[row][col]);
+        textBox.addStyleName("tableCellInput");
+        
+        textBox.addKeyUpHandler(new KeyUpHandler() {
+            public void onKeyUp(KeyUpEvent event) {
+                cellData[row][col] = textBox.getText();
+                textBox.addStyleName("modified");
+                markChanged();
+            }
+        });
+        
+        textBox.addFocusHandler(new FocusHandler() {
+            public void onFocus(FocusEvent event) {
+                textBox.selectAll();
+            }
+        });
+        
+        return textBox;
+    }
+    
+    // Helper methods for smart button display
+    
+    /**
+     * Check if we can move a column left within its type group
+     */
+    private boolean canMoveLeftWithinType(int col) {
+        if (col <= 0) return false;
+        if (!canMoveColumn(col)) return false;
+        
+        ColumnType currentType = columnTypes[col];
+        ColumnType leftType = columnTypes[col - 1];
+        
+        // Can only move left if the column to the left is the same type
+        return currentType == leftType;
+    }
+    
+    /**
+     * Check if we can move a column right within its type group
+     */
+    private boolean canMoveRightWithinType(int col) {
+        if (col >= dataCols - 1) return false;
+        if (!canMoveColumn(col)) return false;
+        
+        ColumnType currentType = columnTypes[col];
+        ColumnType rightType = columnTypes[col + 1];
+        
+        // Can only move right if the column to the right is the same type
+        return currentType == rightType;
+    }
+    
+    // Row and column manipulation methods
+    private void insertRowAfter(int rowIndex) {
+        dataRows++;
+        
+        // Expand cell data array
+        String[][] newCellData = new String[dataRows][dataCols];
+        
+        // Copy existing data
+        for (int r = 0; r <= rowIndex; r++) {
+            System.arraycopy(cellData[r], 0, newCellData[r], 0, dataCols);
         }
         
-        // Focus the target cell
-        if (targetRow >= 0 && targetRow < rows && 
-            targetCol >= 0 && targetCol < cols) {
-            TextBox targetBox = cellTextBoxes.get(targetRow).get(targetCol);
-            targetBox.setFocus(true);
-        }
-    }
-    
-    private void navigateToNextHeader(int currentCol) {
-        int nextCol = (currentCol + 1) % cols;
-        headerTextBoxes.get(nextCol).setFocus(true);
-    }
-    
-    private void navigateToPrevHeader(int currentCol) {
-        int prevCol = (currentCol - 1 + cols) % cols;
-        headerTextBoxes.get(prevCol).setFocus(true);
-    }
-    
-    private void navigateToInitialConditions(int col) {
-        if (hasInitialConditions && col >= 0 && col < initialConditionsTextBoxes.size()) {
-            initialConditionsTextBoxes.get(col).setFocus(true);
-        }
-    }
-    
-    private void navigateToNextInitialConditions(int currentCol) {
-        int nextCol = (currentCol + 1) % cols;
-        if (hasInitialConditions && nextCol < initialConditionsTextBoxes.size()) {
-            initialConditionsTextBoxes.get(nextCol).setFocus(true);
-        }
-    }
-    
-    private void navigateToPrevInitialConditions(int currentCol) {
-        int prevCol = (currentCol - 1 + cols) % cols;
-        if (hasInitialConditions && prevCol < initialConditionsTextBoxes.size()) {
-            initialConditionsTextBoxes.get(prevCol).setFocus(true);
-        }
-    }
-    
-    private void validateCell(TextBox textBox, int row, int col) {
-        String text = textBox.getText().trim();
-        
-        if (row < 0) {
-            // Header validation
-            if (text.isEmpty()) {
-                text = "Col" + (col + 1);
-            }
-            // Remove invalid characters (keep alphanumeric, underscore, hyphen)
-            text = text.replaceAll("[^a-zA-Z0-9_\\-]", "");
-            // Ensure it starts with a letter or underscore
-            if (!text.matches("^[a-zA-Z_].*")) {
-                text = "col" + text;
-            }
-            
-            // Update textbox if changed
-            if (!text.equals(textBox.getText())) {
-                textBox.setText(text);
-            }
-            columnHeaders[col] = text;
-            
-        } else {
-            // Cell equation validation - store as-is, validation happens in updateStatusLabel
-            cellEquations[row][col] = text;
+        // Initialize new row
+        for (int c = 0; c < dataCols; c++) {
+            newCellData[rowIndex + 1][c] = "";
         }
         
-        // Update status label for cells (not headers)
-        if (row >= 0) {
-            Label statusLabel = statusLabels.get(row).get(col);
-            updateStatusLabel(statusLabel, row, col);
+        // Copy remaining rows
+        for (int r = rowIndex + 1; r < dataRows - 1; r++) {
+            System.arraycopy(cellData[r], 0, newCellData[r + 1], 0, dataCols);
         }
+        
+        cellData = newCellData;
+        setStatus("Row added after row " + (rowIndex + 1) + ". Total rows: " + dataRows);
+        markChanged();
+        populateGrid();
+    }
+    
+    private void deleteRow(int rowIndex) {
+        if (dataRows <= 1) {
+            setStatus("Cannot delete the last row - at least one row is required");
+            return;
+        }
+        
+        dataRows--;
+        
+        // Shrink cell data array
+        String[][] newCellData = new String[dataRows][dataCols];
+        
+        // Copy data excluding deleted row
+        int newRow = 0;
+        for (int r = 0; r < dataRows + 1; r++) {
+            if (r != rowIndex) {
+                System.arraycopy(cellData[r], 0, newCellData[newRow], 0, dataCols);
+                newRow++;
+            }
+        }
+        
+        cellData = newCellData;
+        setStatus("Row " + (rowIndex + 1) + " deleted. Total rows: " + dataRows);
+        markChanged();
+        populateGrid();
+    }
+    
+    private void moveRow(int fromIndex, int toIndex) {
+        if (fromIndex == toIndex || toIndex < 0 || toIndex >= dataRows) return;
+        
+        // Swap row data
+        String[] tempRow = cellData[fromIndex];
+        cellData[fromIndex] = cellData[toIndex];
+        cellData[toIndex] = tempRow;
+        
+        String direction = (fromIndex < toIndex) ? "down" : "up";
+        setStatus("Row " + (fromIndex + 1) + " moved " + direction + " to position " + (toIndex + 1));
+        markChanged();
+        populateGrid();
+    }
+    
+    private void insertColumnAfter(int colIndex) {
+        dataCols++;
+        
+        // Expand arrays
+        String[][] newCellData = new String[dataRows][dataCols];
+        String[] newStockValues = new String[dataCols];
+        double[] newInitialValues = new double[dataCols];
+        ColumnType[] newColumnTypes = new ColumnType[dataCols];
+        
+        // Copy existing data
+        for (int r = 0; r < dataRows; r++) {
+            for (int c = 0; c <= colIndex; c++) {
+                newCellData[r][c] = cellData[r][c];
+            }
+            newCellData[r][colIndex + 1] = ""; // New column
+            for (int c = colIndex + 1; c < dataCols - 1; c++) {
+                newCellData[r][c + 1] = cellData[r][c];
+            }
+        }
+        
+        // Determine the type for the new column based on the column after which it's inserted
+        ColumnType newColumnType = columnTypes[colIndex]; // Same type as the column before it
+        
+        // Copy stock values, initial values, and types
+        for (int c = 0; c <= colIndex; c++) {
+            newStockValues[c] = stockValues[c];
+            newInitialValues[c] = initialValues[c];
+            newColumnTypes[c] = columnTypes[c];
+        }
+        newStockValues[colIndex + 1] = "H" + (colIndex + 1); // Assign next H number
+        newInitialValues[colIndex + 1] = 0.0;
+        newColumnTypes[colIndex + 1] = newColumnType;
+        for (int c = colIndex + 1; c < dataCols - 1; c++) {
+            newStockValues[c + 1] = stockValues[c];
+            newInitialValues[c + 1] = initialValues[c];
+            newColumnTypes[c + 1] = columnTypes[c];
+        }
+        
+        cellData = newCellData;
+        stockValues = newStockValues;
+        initialValues = newInitialValues;
+        columnTypes = newColumnTypes;
+        
+        setStatus("New " + newColumnType.name() + " column added after " + stockValues[colIndex] + ". Total columns: " + dataCols);
+        markChanged();
+        populateGrid();
+    }
+    
+    private void deleteColumn(int colIndex) {
+        if (dataCols <= 1) {
+            setStatus("Cannot delete the last column - at least one column is required");
+            return;
+        }
+        
+        // Prevent deleting Equity column
+        if (columnTypes[colIndex] == ColumnType.EQUITY) {
+            setStatus("Cannot delete Equity column - it is required");
+            return;
+        }
+        
+        // Prevent deleting Computed column
+        if (columnTypes[colIndex] == ColumnType.A_L_E) {
+            setStatus("Cannot delete Computed (A-L-E) column - it is required");
+            return;
+        }
+        
+        // Prevent deleting if it's the last Asset or last Liability
+        if (columnTypes[colIndex] == ColumnType.ASSET && countColumnsByType(ColumnType.ASSET) <= 1) {
+            setStatus("Cannot delete the last ASSET column - at least one is required");
+            return;
+        }
+        
+        if (columnTypes[colIndex] == ColumnType.LIABILITY && countColumnsByType(ColumnType.LIABILITY) <= 1) {
+            setStatus("Cannot delete the last LIABILITY column - at least one is required");
+            return;
+        }
+        
+        String deletedColumnName = stockValues[colIndex];
+        ColumnType deletedType = columnTypes[colIndex];
+        
+        dataCols--;
+        
+        // Shrink arrays
+        String[][] newCellData = new String[dataRows][dataCols];
+        String[] newStockValues = new String[dataCols];
+        double[] newInitialValues = new double[dataCols];
+        ColumnType[] newColumnTypes = new ColumnType[dataCols];
+        
+        // Copy data excluding deleted column
+        for (int r = 0; r < dataRows; r++) {
+            int newCol = 0;
+            for (int c = 0; c < dataCols + 1; c++) {
+                if (c != colIndex) {
+                    newCellData[r][newCol] = cellData[r][c];
+                    newCol++;
+                }
+            }
+        }
+        
+        // Copy stock values, initial values, and types excluding deleted column
+        int newCol = 0;
+        for (int c = 0; c < dataCols + 1; c++) {
+            if (c != colIndex) {
+                newStockValues[newCol] = stockValues[c];
+                newInitialValues[newCol] = initialValues[c];
+                newColumnTypes[newCol] = columnTypes[c];
+                newCol++;
+            }
+        }
+        
+        cellData = newCellData;
+        stockValues = newStockValues;
+        initialValues = newInitialValues;
+        columnTypes = newColumnTypes;
+        
+        setStatus(deletedType.name() + " column '" + deletedColumnName + "' deleted. Total columns: " + dataCols);
+        markChanged();
+        populateGrid();
+    }
+    
+    /**
+     * Move a column from one position to another within the same type group
+     * Simplified: no type conversions or auto-creation
+     */
+    private void moveColumn(int fromIndex, int toIndex) {
+        // Validate basic constraints
+        if (!isValidMove(fromIndex, toIndex)) {
+            return;
+        }
+        
+        // Create state machine
+        ColumnMoveStateMachine stateMachine = new ColumnMoveStateMachine(this);
+        
+        // Calculate transition to validate same-region move
+        ColumnMoveStateMachine.MoveTransition transition = stateMachine.calculateTransition(fromIndex, toIndex);
+        
+        // Check if move is valid (same region only)
+        if (!transition.isValid) {
+            setStatus(transition.statusMessage);
+            return;
+        }
+        
+        // Simple swap approach: backup destination, copy source to dest, copy backup to source
+        ColumnData destBackup = extractColumn(toIndex);
+        ColumnData sourceData = extractColumn(fromIndex);
+        
+        // Copy source to destination
+        overwriteColumnAt(toIndex, sourceData.cellData, sourceData.stockValue, 
+                         sourceData.initialValue, sourceData.type);
+        
+        // Copy backup to source
+        overwriteColumnAt(fromIndex, destBackup.cellData, destBackup.stockValue,
+                         destBackup.initialValue, destBackup.type);
+        
+        // Update UI
+        setStatus(transition.statusMessage);
+        markChanged();
+        populateGrid();
+    }
+    
+    /**
+     * Validates if a column move is allowed
+     */
+    private boolean isValidMove(int fromIndex, int toIndex) {
+        if (fromIndex == toIndex || toIndex < 0 || toIndex >= dataCols) {
+            return false;
+        }
+        
+        ColumnType type = columnTypes[fromIndex];
+        if (type == ColumnType.EQUITY || type == ColumnType.A_L_E) {
+            setStatus("Cannot move " + type.name() + " column - it must remain fixed");
+            return false;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Extracts all data for a column
+     */
+    private ColumnData extractColumn(int index) {
+        ColumnData data = new ColumnData(dataRows);
+        for (int r = 0; r < dataRows; r++) {
+            data.cellData[r] = cellData[r][index];
+        }
+        data.stockValue = stockValues[index];
+        data.initialValue = initialValues[index];
+        data.type = columnTypes[index];
+        return data;
+    }
+    
+    /**
+     * Overwrite a column at the specified index with new data
+     */
+    private void overwriteColumnAt(int colIndex, String[] colData, String stockValue, 
+                                   double initial, ColumnType type) {
+        // Overwrite cell data
+        for (int r = 0; r < dataRows; r++) {
+            cellData[r][colIndex] = colData[r];
+        }
+        
+        // Overwrite metadata
+        stockValues[colIndex] = stockValue;
+        initialValues[colIndex] = initial;
+        columnTypes[colIndex] = type;
+    }
+    
+    /**
+     * Set status message (helper method)
+     */
+    private void setStatus(String message) {
+        statusLabel.setText(message);
+    }
+    
+    /**
+     * Find the index that separates Asset columns from Liability columns
+     * Returns the index of the first Liability column
+     */
+    private int findAssetLiabilityBoundary() {
+        for (int i = 0; i < dataCols; i++) {
+            if (columnTypes[i] == ColumnType.LIABILITY) {
+                return i;
+            }
+        }
+        // If no Liability found, boundary is after all columns
+        return dataCols;
     }
     
 
     
-    private void addRow() {
-        rows++;
-        
-        // Expand arrays
-        String[][] newCellEquations = new String[rows][cols];
-        
-        // Copy existing data
-        for (int r = 0; r < rows - 1; r++) {
-            System.arraycopy(cellEquations[r], 0, newCellEquations[r], 0, cols);
-        }
-        
-        // Initialize new row
-        for (int c = 0; c < cols; c++) {
-            newCellEquations[rows - 1][c] = "";
-        }
-        
-        cellEquations = newCellEquations;
-        markChanged();
-        populateGrid();
-    }
-    
-    private void removeRow() {
-        if (rows <= 1) {
-            statusLabel.setText("Cannot remove row - table must have at least one row");
-            return;
-        }
-        
-        rows--;
-        
-        // Shrink arrays
-        String[][] newCellEquations = new String[rows][cols];
-        
-        // Copy existing data
-        for (int r = 0; r < rows; r++) {
-            System.arraycopy(cellEquations[r], 0, newCellEquations[r], 0, cols);
-        }
-        
-        cellEquations = newCellEquations;
-        markChanged();
-        populateGrid();
-    }
-    
-    private void addColumn() {
-        cols++;
-        
-        // Expand arrays
-        String[][] newCellEquations = new String[rows][cols];
-        String[] newColumnHeaders = new String[cols];
-        double[] newInitialConditionsValues = new double[cols];
-        
-        // Copy and expand existing data
-        for (int r = 0; r < rows; r++) {
-            System.arraycopy(cellEquations[r], 0, newCellEquations[r], 0, cols - 1);
-            
-            // Initialize new column
-            newCellEquations[r][cols - 1] = "";
-        }
-        
-        System.arraycopy(columnHeaders, 0, newColumnHeaders, 0, cols - 1);
-        newColumnHeaders[cols - 1] = "Col" + cols;
-        
-        System.arraycopy(initialConditionsValues, 0, newInitialConditionsValues, 0, cols - 1);
-        newInitialConditionsValues[cols - 1] = 0.0; // Default initial condition value
-        
-        cellEquations = newCellEquations;
-        columnHeaders = newColumnHeaders;
-        initialConditionsValues = newInitialConditionsValues;
-        markChanged();
-        populateGrid();
-    }
-    
-    private void removeColumn() {
-        if (cols <= 1) {
-            statusLabel.setText("Cannot remove column - table must have at least one column");
-            return;
-        }
-        
-        cols--;
-        
-        // Shrink arrays
-        String[][] newCellEquations = new String[rows][cols];
-        String[] newColumnHeaders = new String[cols];
-        double[] newInitialConditionsValues = new double[cols];
-        
-        // Copy existing data
-        for (int r = 0; r < rows; r++) {
-            System.arraycopy(cellEquations[r], 0, newCellEquations[r], 0, cols);
-        }
-        
-        System.arraycopy(columnHeaders, 0, newColumnHeaders, 0, cols);
-        System.arraycopy(initialConditionsValues, 0, newInitialConditionsValues, 0, cols);
-        
-        cellEquations = newCellEquations;
-        columnHeaders = newColumnHeaders;
-        initialConditionsValues = newInitialConditionsValues;
-        markChanged();
-        populateGrid();
-    }
-    
     private void updateButtonStates() {
-        removeRowButton.setEnabled(rows > 1);
-        removeColButton.setEnabled(cols > 1);
         applyButton.setEnabled(hasChanges);
     }
     
@@ -775,34 +1023,30 @@ public class TableEditDialog extends Dialog {
         if (!hasChanges) return;
         
         // Apply data changes with new size
-        tableElement.resizeTable(rows, cols);
-        
-        // Apply initial conditions values (always enabled now)
-        for (int col = 0; col < cols; col++) {
-            tableElement.setInitialConditionValue(col, initialConditionsValues[col]);
-        }
-        
-        // Apply cell equations
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < cols; col++) {
-                tableElement.setCellEquation(row, col, cellEquations[row][col]);
+        if (tableElement != null) {
+            tableElement.resizeTable(dataRows, dataCols);
+            
+            // Apply cell equations
+            for (int row = 0; row < dataRows; row++) {
+                for (int col = 0; col < dataCols; col++) {
+                    tableElement.setCellEquation(row, col, cellData[row][col]);
+                }
             }
+            
+            // Apply stock values (column headers), initial values, and types
+            for (int col = 0; col < dataCols; col++) {
+                tableElement.setColumnHeader(col, stockValues[col]);
+                tableElement.setInitialConditionValue(col, initialValues[col]);
+                tableElement.setColumnType(col, columnTypes[col]);
+            }
+            
+            // Update table display
+            tableElement.setPoints();
         }
-        
-        // Apply column headers
-        for (int col = 0; col < cols; col++) {
-            tableElement.setColumnHeader(col, columnHeaders[col]);
-        }
-        
-        // Update table display
-        tableElement.setPoints();
         
         hasChanges = false;
         updateButtonStates();
         statusLabel.setText("Changes applied successfully");
-        
-        // Clear modified styling
-        clearModifiedStyling();
         
         // Refresh the simulation display
         if (sim != null) {
@@ -810,40 +1054,75 @@ public class TableEditDialog extends Dialog {
         }
     }
     
-    private void clearModifiedStyling() {
-        // Clear header modification styling
-        for (TextBox headerBox : headerTextBoxes) {
-            headerBox.removeStyleName("modified");
-        }
-        
-        // Clear initial conditions modification styling
-        if (initialConditionsTextBoxes != null) {
-            for (TextBox initialBox : initialConditionsTextBoxes) {
-                initialBox.removeStyleName("modified");
-                initialBox.removeStyleName("error");
+    /**
+     * Count columns of a specific type
+     */
+    private int countColumnsByType(ColumnType type) {
+        int count = 0;
+        for (ColumnType colType : columnTypes) {
+            if (colType == type) {
+                count++;
             }
         }
-        
-        // Clear cell modification styling
-        for (List<TextBox> rowBoxes : cellTextBoxes) {
-            for (TextBox cellBox : rowBoxes) {
-                cellBox.removeStyleName("modified");
-            }
+        return count;
+    }
+    
+    // Public accessor methods for column types - can be used by TableElm
+    public ColumnType getColumnType(int col) {
+        if (col >= 0 && col < dataCols && columnTypes != null) {
+            return columnTypes[col];
         }
-        
-        // Update all status labels to show current values
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < cols; col++) {
-                Label statusLabel = statusLabels.get(row).get(col);
-                updateStatusLabel(statusLabel, row, col);
-            }
+        return ColumnType.ASSET; // Default
+    }
+    
+    public void setColumnType(int col, ColumnType type) {
+        if (col >= 0 && col < dataCols && columnTypes != null) {
+            columnTypes[col] = type;
         }
     }
+    
+    public String getColumnTypeName(int col) {
+        ColumnType type = getColumnType(col);
+        switch (type) {
+            case ASSET: return "Asset";
+            case LIABILITY: return "Liability";
+            case EQUITY: return "Equity";
+            case A_L_E: return "A-L-E";
+            default: return "Unknown";
+        }
+    }
+    
+    // Check if a column can be moved, deleted, or if more can be added
+    public boolean canMoveColumn(int col) {
+        if (col < 0 || col >= dataCols || columnTypes == null) return false;
+        return columnTypes[col] != ColumnType.EQUITY && columnTypes[col] != ColumnType.A_L_E;
+    }
+    
+    public boolean canDeleteColumn(int col) {
+        if (col < 0 || col >= dataCols || columnTypes == null) return false;
+        
+        ColumnType type = columnTypes[col];
+        
+        // Cannot delete Equity or Computed columns
+        if (type == ColumnType.EQUITY || type == ColumnType.A_L_E) return false;
+        
+        // Cannot delete if it's the last Asset or Liability
+        if (type == ColumnType.ASSET && countColumnsByType(ColumnType.ASSET) <= 1) return false;
+        if (type == ColumnType.LIABILITY && countColumnsByType(ColumnType.LIABILITY) <= 1) return false;
+        
+        return true;
+    }
+    
+    public boolean canAddColumnAfter(int col) {
+        if (col < 0 || col >= dataCols || columnTypes == null) return false;
+        
+        // Cannot add after Equity or Computed columns
+        return columnTypes[col] != ColumnType.EQUITY && columnTypes[col] != ColumnType.A_L_E;
+    }
+
     
     @Override
     public void closeDialog() {
         super.closeDialog();
     }
-
-
 }

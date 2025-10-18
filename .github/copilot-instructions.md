@@ -27,6 +27,8 @@ websocket/                                # WebSocket server components
 ```
 
 ## Development Guidelines
+- **do not include** 
+1. import java.util.StringTokenizer;  // causes
 
 ### Code Style & Conventions
 
@@ -41,6 +43,7 @@ websocket/                                # WebSocket server components
 - **CircuitElm**: Base class for all circuit elements
 - **[Component]Elm**: Individual circuit element implementations (ResistorElm, etc.)
 - **Locale utilities**: For internationalization support
+
 
 ### Build & Development
 

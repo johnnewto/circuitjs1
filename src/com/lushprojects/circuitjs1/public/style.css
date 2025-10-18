@@ -125,3 +125,269 @@
 		width: 100% !important;
 	}
 }
+
+.error {
+	background-color: #ffe0e0;
+	border: 2px solid #ff6666 !important;
+	color: #cc0000;
+	box-shadow: 0 0 3px rgba(255, 102, 102, 0.5);
+}
+
+/* ===== Table Editor Styles ===== */
+
+/* Main table container */
+.tableEditGrid {
+	border-collapse: collapse;
+	border: 2px solid #666;
+	font-family: 'Courier New', Consolas, monospace;
+	font-size: 12px;
+	line-height: 1.1;
+	background-color: #fff;
+}
+
+/* Input field base styles - compact sizing */
+.tableEditGrid input[type="text"] {
+	padding: 2px 5px;
+	margin: 0;
+	box-sizing: border-box;
+	font-family: inherit;
+	font-size: 11px;
+	line-height: 1.1;
+	height: 20px;
+}
+
+/* Column headers - Asset/Liability/Equity indicators */
+.tableHeaderInput {
+	background: linear-gradient(to bottom, #f8f8f8 0%, #e8e8e8 100%);
+	border: 1px solid #999;
+	font-weight: bold;
+	text-align: center;
+	width: 150px;
+	padding: 2px 6px;
+	color: #333;
+	text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+}
+
+.tableHeaderInput:focus {
+	background: #fff;
+	border-color: #4a90e2;
+	outline: none;
+	box-shadow: 0 0 3px rgba(74, 144, 226, 0.5);
+}
+
+/* Flow description inputs (leftmost column) */
+.tableFlowInput {
+	background-color: #fafafa;
+	border: 1px solid #ccc;
+	width: 150px;
+	padding: 2px 6px;
+	font-weight: 500;
+	color: #444;
+}
+
+.tableFlowInput:focus {
+	background-color: #fff;
+	border-color: #4a90e2;
+	outline: none;
+}
+
+/* Stock variable inputs (second row) */
+.tableStockInput {
+	background-color: #f5f8fa;
+	border: 1px solid #ccc;
+	width: 150px;
+	padding: 2px 5px;
+	text-align: center;
+	color: #333;
+}
+
+.tableStockInput:focus {
+	background-color: #fff;
+	border-color: #4a90e2;
+	outline: none;
+}
+
+/* Initial conditions row - subtle green tint */
+.tableInitialInput {
+	background-color: #f0fff4;
+	border: 1px solid #a8d5a8;
+	width: 150px;
+	padding: 2px 5px;
+	text-align: center;
+	color: #2d5a2d;
+	font-weight: 500;
+}
+
+.tableInitialInput:focus {
+	background-color: #e6fff0;
+	border-color: #4caf50;
+	outline: none;
+}
+
+/* Data cell inputs - main table content */
+.tableCellInput {
+	border: 1px solid #ddd;
+	width: 150px;
+	padding: 2px 5px;
+	text-align: left;
+	font-family: 'Courier New', Consolas, monospace;
+	background-color: #fff;
+	color: #333;
+}
+
+.tableCellInput:focus {
+	border-color: #4a90e2;
+	background-color: #fafcfe;
+	outline: none;
+	box-shadow: inset 0 0 3px rgba(74, 144, 226, 0.3);
+}
+
+/* Modified state - yellow highlight */
+.modified {
+	background-color: #fffacd !important;
+	border-color: #ffd700 !important;
+	box-shadow: 0 0 2px rgba(255, 215, 0, 0.6);
+}
+
+/* Error state - red highlight with strong visual feedback */
+.error {
+	background-color: #ffe5e5 !important;
+	border: 2px solid #ff4444 !important;
+	color: #cc0000 !important;
+	box-shadow: 0 0 4px rgba(255, 68, 68, 0.5);
+	font-weight: bold;
+}
+
+.tableInitialInput.error {
+	background-color: #ffe5e5 !important;
+	border: 2px solid #ff4444 !important;
+	color: #cc0000 !important;
+}
+
+/* Row headers (Flow, Initial Conditions, etc.) */
+.tableRowHeader {
+	font-weight: bold;
+	text-align: right;
+	padding: 4px 8px;
+	background: linear-gradient(to right, #f0f0f0 0%, #e0e0e0 100%);
+	border: 1px solid #999;
+	color: #444;
+	white-space: nowrap;
+	font-size: 11px;
+}
+
+/* Contextual buttons (⧾ ⧿ ← → ↑ ↓) */
+.contextualButton {
+	padding: 2px 6px;
+	margin: 0 1px;
+	font-size: 14px;
+	line-height: 1;
+	min-width: 20px;
+	height: 22px;
+	border: 1px solid #aaa;
+	border-radius: 3px;
+	background: linear-gradient(to bottom, #fff 0%, #e8e8e8 100%);
+	cursor: pointer;
+	color: #333;
+	font-weight: bold;
+	transition: all 0.15s ease;
+}
+
+.contextualButton:hover {
+	background: linear-gradient(to bottom, #fff 0%, #d0d0d0 100%);
+	border-color: #888;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.contextualButton:active {
+	background: linear-gradient(to bottom, #d0d0d0 0%, #e8e8e8 100%);
+	box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+	transform: translateY(1px);
+}
+
+/* Status label - compact info display */
+.cellStatusLabel {
+	font-size: 10px;
+	color: #666;
+	font-style: italic;
+	padding: 2px 0;
+	line-height: 1.2;
+}
+
+/* Spacing utility */
+.topSpace {
+	margin-top: 8px;
+}
+
+/* Equation input field */
+.equationInput {
+	width: 100%;
+	padding: 6px 8px;
+	font-family: 'Courier New', Consolas, monospace;
+	font-size: 12px;
+	border: 1px solid #ccc;
+	border-radius: 3px;
+	background-color: #fafafa;
+}
+
+.equationInput:focus {
+	border-color: #4a90e2;
+	background-color: #fff;
+	outline: none;
+	box-shadow: 0 0 4px rgba(74, 144, 226, 0.4);
+}
+
+/* Column type indicators - emoji visual cues */
+.columnTypeAsset .tableHeaderInput::before {
+	content: "💰 ";
+}
+
+.columnTypeLiability .tableHeaderInput::before {
+	content: "📄 ";
+}
+
+.columnTypeEquity .tableHeaderInput::before {
+	content: "🏦 ";
+}
+
+.columnTypeComputed .tableHeaderInput::before {
+	content: "🧮 ";
+}
+
+/* Computed column - read-only styling */
+.columnTypeComputed input {
+	background-color: #f0f0f0 !important;
+	color: #666 !important;
+	cursor: not-allowed;
+	font-style: italic;
+}
+
+/* Responsive adjustments for smaller screens */
+@media only screen and (max-width: 800px) {
+	.tableEditGrid {
+		font-size: 11px;
+	}
+	
+	.tableEditGrid input[type="text"] {
+		font-size: 10px;
+		padding: 2px 4px;
+	}
+	
+	.tableHeaderInput,
+	.tableCellInput,
+	.tableStockInput,
+	.tableInitialInput {
+		width: 70px;
+	}
+	
+	.tableFlowInput {
+		width: 90px;
+	}
+	
+	.contextualButton {
+		padding: 1px 4px;
+		font-size: 12px;
+		min-width: 18px;
+		height: 20px;
+	}
+}

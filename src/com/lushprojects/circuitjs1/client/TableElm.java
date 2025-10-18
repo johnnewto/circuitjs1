@@ -7,6 +7,7 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.user.client.ui.Button;
+import com.lushprojects.circuitjs1.client.TableEditDialog.ColumnType;
 
 /**
  * Simplified Table Element - Displays voltage values from equations
@@ -14,14 +15,18 @@ import com.google.gwt.user.client.ui.Button;
  */
 public class TableElm extends ChipElm {
     protected int rows = 3;
-    protected int cols = 2;
-    protected int cellSize = 64;  // Default to 4*cspc (cspc=16 when size=2, so 4*16=64)
-    protected int cellSpacing = 8;  // Default to 1*cspc (8 or 16 depending on chip size)
+    protected int cols = 3;
+    protected int cellWidthInGrids = 6;  // Width of each cell in grid units (cspc)
+    protected int cellHeight = 16; // Height of each cell in pixels (for drawing)
+    protected int cellSpacing = 2;  // Spacing between cells in pixels (for drawing)
     protected double[] initialValues; // Values for initial conditions row
     protected boolean showInitialValues = false; // Control visibility of initial conditions row
     protected String[] outputNames; // Names for connecting outputs to labeled nodes (also used as column headers)
-    protected String tableUnits = "$"; // Units to display in table cells ($ or V)
+    protected String[] rowDescriptions; // Descriptions/labels for each row (left column in spreadsheet view)
+    protected String tableTitle = "New Title"; // Title for the table (displayed in edit dialog and component)
+    protected String tableUnits = ""; // Units to display in table cells ("" , $ or V)
     protected int decimalPlaces = 2; // Number of decimal places to show
+    protected ColumnType[] columnTypes; // Type for each column (Asset/Liability/Equity/Computed)
     
     // All cells now use equations
     // Variables available: a-i map to labeled nodes OR use labeled node names directly
@@ -86,12 +91,39 @@ public class TableElm extends ChipElm {
             }
         }
         
+        // Initialize row descriptions if not set
+        if (rowDescriptions == null) {
+            rowDescriptions = new String[rows];
+            for (int i = 0; i < rows; i++) {
+                rowDescriptions[i] = "Row" + (i + 1);
+            }
+        }
+        
         // Initialize initial conditions values if not set
         if (initialValues == null) {
             initialValues = new double[cols];
             // Initialize with zero values
             for (int i = 0; i < cols; i++) {
                 initialValues[i] = 0.0;
+            }
+        }
+        
+        // Initialize column types if not set
+        if (columnTypes == null) {
+            columnTypes = new ColumnType[cols];
+            // Default: first column Asset, second Liability, third Equity, rest Assets
+            for (int i = 0; i < cols; i++) {
+                if (i == 0) {
+                    columnTypes[i] = ColumnType.ASSET;
+                } else if (i == 1) {
+                    columnTypes[i] = ColumnType.LIABILITY;
+                } else if (i == 2) {
+                    columnTypes[i] = ColumnType.EQUITY;
+                } else if (i == 3) {
+                    columnTypes[i] = ColumnType.A_L_E;
+                } else {
+                    columnTypes[i] = ColumnType.ASSET;
+                }
             }
         }
         
@@ -286,33 +318,74 @@ public class TableElm extends ChipElm {
         return getVoltageColor(null, voltage);
     }
     
+    // Helper class to return grid-aligned cell width info
+    protected static class GridAlignedCellInfo {
+        int originalWidth;
+        int alignedWidth;
+        int columnPitch;
+        int oddMultiple;
+        
+        GridAlignedCellInfo(int originalWidth, int alignedWidth, int columnPitch, int oddMultiple) {
+            this.originalWidth = originalWidth;
+            this.alignedWidth = alignedWidth;
+            this.columnPitch = columnPitch;
+            this.oddMultiple = oddMultiple;
+        }
+        
+        String getStatusMessage() {
+            if (alignedWidth == originalWidth) {
+                return "Cell width aligned to grid";
+            } else {
+                return "Rounding " + originalWidth + " to " + alignedWidth + 
+                       " (column pitch=" + columnPitch + "=" + oddMultiple + "×cspc)";
+            }
+        }
+    }
+    
+    // Helper method to get cell width in pixels
+    protected int getCellWidthPixels() {
+        return cellWidthInGrids * cspc;  // Convert grid units to pixels
+    }
+    
+    // Calculate grid-aligned cell width for pin positioning (REMOVED - no longer needed)
+    // Cell width is already in grid units, so column pitch in grid units is just cellWidthInGrids
+    
     @Override
     void setupPins() {
-        // Set chip size based on table dimensions
-        // Calculate size to match table cell layout better
-        int tableWidth = cols * cellSize + (cols + 1) * cellSpacing;
-        int extraRows = (showInitialValues ? 1 : 0) + 1;
-        int tableHeight = (rows + extraRows) * cellSize + (rows + extraRows + 1) * cellSpacing + 20;
+        // Cell width is in cspc units (single grid spacing)
+        // But chip sizeX and sizeY must be in cspc2 units (double grid spacing)
+        int rowDescColWidth = cellWidthInGrids;  // In cspc units
+        int extraRows = (showInitialValues ? 1 : 0) + 1 + 1;
+        
+        // Calculate table dimensions in pixels
+        int tableWidthPixels = (rowDescColWidth + cols * cellWidthInGrids) * cspc + 2 * cspc;  // Add margins
+        int tableHeightPixels = (rows + extraRows) * cellHeight + (rows + extraRows + 1) * cellSpacing + 20;
+        
+        // Set chip size in cspc2 units (cspc2 = 2*cspc)
+        sizeX = (tableWidthPixels + cspc2 - 1) / cspc2; // Round up
+        sizeY = (tableHeightPixels + cspc2 - 1) / cspc2; // Round up
 
-        // Convert table dimensions to chip grid units (cspc2 = 16 pixels typically)
-        // Add extra size so pins appear at the bottom of the table
-        sizeX = Math.max(cols, (tableWidth / cspc2) + 1);
-        sizeY = Math.max(rows + extraRows, (tableHeight / cspc2) + 1);
-
-        // Create output pins on bottom edge, positioned to align with table columns
+        // Create output pins on bottom edge
         pins = new Pin[cols];
         for (int i = 0; i < cols; i++) {
             String label = (outputNames != null && i < outputNames.length) ?
                           outputNames[i] : "Col" + (i + 1);
 
-            // Calculate pin position to align with center of each column
-            // Each column center is at: cellSpacing + col*(cellSize+cellSpacing) + cellSize/2
-            // Subtract cspc (chip padding) to account for ChipElm's coordinate offset
-            int columnCenterPixel = cellSpacing / 2 + i * (cellSize + cellSpacing) + cellSize / 2  - cspc;
-            // Convert to chip grid units
-            int pinPos = columnCenterPixel / cspc2;
+            // Calculate pin X position
+            // Column center in pixels (relative to table origin x):
 
-            pins[i] = new Pin(pinPos, SIDE_S, label);
+            int cellWidthPixels = cellWidthInGrids * cspc;
+            int rowDescColWidthPixels = cellWidthInGrids * cspc;
+            int columnCenterX = rowDescColWidthPixels + cellSpacing * 2 + i * (cellWidthPixels + cellSpacing) + cellWidthPixels / 2;
+            
+            // Pin position is relative to x0 = x + cspc2, measured in cspc2 units
+            // Column center is at: x + columnCenterX
+            // Relative to x0: (x + columnCenterX) - (x + cspc2) = columnCenterX - cspc2
+            // In cspc2 units: (columnCenterX - cspc2) / cspc2
+            int pinX = (columnCenterX - cspc2) / cspc2;
+            
+            // Pin at bottom of chip (SIDE_S)
+            pins[i] = new Pin(pinX, SIDE_S, label);
             pins[i].output = true;
         }
     }
@@ -331,70 +404,433 @@ public class TableElm extends ChipElm {
     void setPoints() {
         super.setPoints();
 
-        // Calculate table dimensions based on chip position
-        int x0 = x + cspc2;
-        int y0 = y;
-        int xr = x0 - cspc;
-        int yr = y0 - cspc;
+        // Calculate table dimensions in pixels for bounding box
+        int cellWidthPixels = getCellWidthPixels();
+        int rowDescColWidth = cellWidthPixels;
+        int tableWidth = rowDescColWidth + cellSpacing + cols * cellWidthPixels + (cols + 1) * cellSpacing;
+        int extraRows = (showInitialValues ? 1 : 0) + 1 + 1;
+        int tableHeight = (rows + extraRows) * cellHeight + (rows + extraRows + 1) * cellSpacing + 20;
 
-        int tableWidth = cols * cellSize + (cols + 1) * cellSpacing;
-        int extraRows = (showInitialValues ? 1 : 0) + 1; // Initial conditions (if shown) + computed row
-        int tableHeight = (rows + extraRows) * cellSize + (rows + extraRows + 1) * cellSpacing + 20; // Extra space for headers
+        // Align table origin with chip origin
+        // The table should start at the chip's top-left corner
+        int tableX = x;
+        int tableY = y;
 
-        // Set bounding box to include both chip body and table
-        setBbox(xr, yr, xr + tableWidth, yr + tableHeight);
+        // Set bounding box to exactly match the table size
+        setBbox(tableX, tableY, tableX + tableWidth, tableY + tableHeight);
+        
+        // Override pin Y positions for precise placement at bottom of table
+        // After super.setPoints() sets up pins using chip coordinate system,
+        // we adjust only the Y positions to align with the actual table bottom
+        // Keep the X positions from super.setPoints() as they're already correct
+        int tableBottomY = tableY + tableHeight; // Bottom of table in pixels
+        
+        for (int i = 0; i < pins.length; i++) {
+            Pin p = pins[i];
+            
+            // Keep the X positions from super.setPoints(), only override Y
+            int pinXPixel = p.post.x;
+            
+            // Set pin positions with correct Y alignment
+            // Post Y must be rounded to cspc for wire connection snapping
+
+            int postY = tableBottomY + 3 * cellHeight / 2;  // allow for the Computed row
+            postY = ((postY + cspc/2) / cspc) * cspc;  // Round to nearest cspc
+            
+            // Stub is where the pin meets the chip
+            p.post = new Point(pinXPixel, postY);
+            p.stub = new Point(pinXPixel, tableBottomY + cspc/2);
+            p.textloc = new Point(pinXPixel, tableBottomY);
+        }
     }
-    
+
     // Helper method to get table origin coordinates
     private int getTableX() {
-        int x0 = x + cspc2;
-        return x0 - cspc;
+        // Table starts at chip origin
+        return x;
     }
 
     private int getTableY() {
-        int y0 = y;
-        return y0 - cspc;
+        // Table starts at chip origin  
+        return y;
     }
 
     @Override
     void draw(Graphics g) {
-        int extraRows = (showInitialValues ? 1 : 0) + 1; // Initial conditions (if shown) + computed row
+        int extraRows = (showInitialValues ? 1 : 0) + 1 + 1; // Initial + computed + column type row
         int tableX = getTableX();
         int tableY = getTableY();
+        int cellWidthPixels = getCellWidthPixels();
 
         // Draw table background
         g.setColor(needsHighlight() ? selectColor : Color.white);
+        int rowDescColWidth = cellWidthPixels;
         g.fillRect(tableX, tableY,
-                   cols * cellSize + (cols + 1) * cellSpacing,
-                   (rows + extraRows) * cellSize + (rows + extraRows + 1) * cellSpacing + 20);
+                   rowDescColWidth + cellSpacing + cols * cellWidthPixels + (cols + 1) * cellSpacing,
+                   (rows + extraRows) * cellHeight + (rows + extraRows + 1) * cellSpacing + 20);
 
         // Draw table border
         g.setColor(Color.black);
         g.drawRect(tableX, tableY,
-                   cols * cellSize + (cols + 1) * cellSpacing,
-                   (rows + extraRows) * cellSize + (rows + extraRows + 1) * cellSpacing + 20);
+                   rowDescColWidth + cellSpacing + cols * cellWidthPixels + (cols + 1) * cellSpacing,
+                   (rows + extraRows) * cellHeight + (rows + extraRows + 1) * cellSpacing + 20);
 
-        // Draw column headers
-        drawColumnHeaders(g);
-
-        // Draw initial conditions row if enabled
+        // Draw components in order with consistent positioning
+        int currentY = 10; // Start position after table border
+        
+        // 1. Draw title
+        drawTitle(g, currentY);
+        currentY += 5; // Space after title
+        
+        // 2. Draw column type row
+        drawColumnTypeRow(g, currentY);
+        currentY += cellHeight + cellSpacing; // Move down by row height
+        
+        // 3. Draw column headers
+        drawColumnHeaders(g, currentY);
+        currentY += cellHeight + cellSpacing; // Move down by row height
+        
+        // 4. Draw initial conditions row if enabled
         if (showInitialValues) {
-            drawInitialConditionsRow(g);
+            drawInitialConditionsRow(g, currentY);
+            currentY += cellHeight + cellSpacing;
         }
 
-        // Draw table cells with voltages
-        drawTableCells(g);
+        // 5. Draw table cells with voltages (includes row descriptions)
+        drawTableCells(g, currentY);
+        currentY += rows * (cellHeight + cellSpacing);
 
-        // Always draw computed row
-        drawSumRow(g);
+        // 6. Draw computed row
+        drawSumRow(g, currentY);
+        currentY += cellHeight + cellSpacing;
 
-        // Draw grid lines
-        drawGridLines(g);
-
-        // Draw chip pins and posts at the bottom
+        // 7. Draw chip pins and posts at the bottom
         drawPins(g);
     }
+    
+    private void drawTitle(Graphics g, int offsetY) {
+        int tableX = getTableX();
+        int tableY = getTableY();
+        int cellWidthPixels = getCellWidthPixels();
+        
+        // Draw title centered at top of table
+        g.setColor(Color.black);
+        int rowDescColWidth = cellWidthPixels;
+        int tableWidth = rowDescColWidth + cellSpacing + cols * cellWidthPixels + (cols + 1) * cellSpacing;
+        int titleY = tableY + offsetY;
+        drawCenteredText(g, tableTitle, tableX + tableWidth / 2, titleY, true);
+    }
 
+
+    private void drawColumnHeaders(Graphics g, int offsetY) {
+        g.setColor(Color.black);
+        int tableX = getTableX();
+        int tableY = getTableY();
+        int headerY = tableY + offsetY;
+        int cellWidthPixels = getCellWidthPixels();
+        int rowDescColWidth = cellWidthPixels;
+
+        // Draw row description column header cell
+        int rowDescHeaderX = tableX + cellSpacing;
+        g.setColor(Color.lightGray);
+        g.fillRect(rowDescHeaderX, headerY, rowDescColWidth, cellHeight);
+        g.setColor(Color.black);
+        g.drawRect(rowDescHeaderX, headerY, rowDescColWidth, cellHeight);
+        drawCenteredText(g, "Description", rowDescHeaderX + rowDescColWidth/2, headerY + cellHeight/2, true);
+
+        // Draw data column header cells
+        for (int col = 0; col < cols; col++) {
+            int cellX = tableX + rowDescColWidth + cellSpacing * 2 + col * (cellWidthPixels + cellSpacing);
+            
+            // Draw cell background
+            g.setColor(Color.lightGray);
+            g.fillRect(cellX, headerY, cellWidthPixels, cellHeight);
+            
+            // Draw cell border
+            g.setColor(Color.black);
+            g.drawRect(cellX, headerY, cellWidthPixels, cellHeight);
+            
+            String header = (outputNames != null && col < outputNames.length) ?
+                           outputNames[col] : "Col" + (col + 1);
+            drawCenteredText(g, header, cellX + cellWidthPixels/2, headerY + cellHeight/2, true);
+        }
+        
+        // Draw grid lines for this row
+        g.setColor(Color.gray);
+        int tableWidth = rowDescColWidth + cellSpacing * 2 + cols * (cellWidthPixels + cellSpacing);
+        
+        // Horizontal lines (top and bottom of row)
+        g.drawLine(tableX, headerY, tableX + tableWidth, headerY);
+        g.drawLine(tableX, headerY + cellHeight, tableX + tableWidth, headerY + cellHeight);
+        
+        // Vertical lines
+        // Left edge
+        g.drawLine(tableX, headerY, tableX, headerY + cellHeight);
+        // After description column
+        int x = tableX + cellSpacing + rowDescColWidth;
+        g.drawLine(x, headerY, x, headerY + cellHeight);
+        // Between and after data columns
+        for (int col = 0; col <= cols; col++) {
+            x = tableX + rowDescColWidth + cellSpacing * 2 + col * (cellWidthPixels + cellSpacing);
+            g.drawLine(x, headerY, x, headerY + cellHeight);
+        }
+        
+        // Draw separator line after column headers
+        g.setColor(Color.black);
+        g.drawLine(tableX, headerY + cellHeight, tableX + tableWidth, headerY + cellHeight);
+    }
+    
+    private void drawColumnTypeRow(Graphics g, int offsetY) {
+        int tableX = getTableX();
+        int tableY = getTableY();
+        int cellWidthPixels = getCellWidthPixels();
+        int rowDescColWidth = cellWidthPixels;
+        int typeRowY = tableY + offsetY;
+        
+        // Draw row description column cell (empty/label)
+        g.setColor(Color.lightGray);
+        g.fillRect(tableX + cellSpacing, typeRowY, rowDescColWidth, cellHeight);
+        g.setColor(Color.black);
+        g.drawRect(tableX + cellSpacing, typeRowY, rowDescColWidth, cellHeight);
+        drawCenteredText(g, "Type", tableX + cellSpacing + rowDescColWidth/2, typeRowY + cellHeight/2, true);
+        
+        // Draw column type cells
+        for (int col = 0; col < cols; col++) {
+            int cellX = tableX + rowDescColWidth + cellSpacing * 2 + col * (cellWidthPixels + cellSpacing);
+            
+            // Draw cell background with light color
+            g.setColor(Color.lightGray);
+            g.fillRect(cellX, typeRowY, cellWidthPixels, cellHeight);
+            
+            // Draw cell border
+            g.setColor(Color.black);
+            g.drawRect(cellX, typeRowY, cellWidthPixels, cellHeight);
+            
+            // Draw column type text
+            String typeName = getColumnTypeName(col);
+            drawCenteredText(g, typeName, cellX + cellWidthPixels/2, typeRowY + cellHeight/2, true);
+        }
+        
+        // Draw grid lines for this row
+        g.setColor(Color.gray);
+        int tableWidth = rowDescColWidth + cellSpacing * 2 + cols * (cellWidthPixels + cellSpacing);
+        
+        // Horizontal lines (top and bottom of row)
+        g.drawLine(tableX, typeRowY, tableX + tableWidth, typeRowY);
+        g.drawLine(tableX, typeRowY + cellHeight, tableX + tableWidth, typeRowY + cellHeight);
+        
+        // Vertical lines
+        // Left edge
+        g.drawLine(tableX, typeRowY, tableX, typeRowY + cellHeight);
+        // After description column
+        int x = tableX + cellSpacing + rowDescColWidth;
+        g.drawLine(x, typeRowY, x, typeRowY + cellHeight);
+        // Between and after data columns
+        for (int col = 0; col <= cols; col++) {
+            x = tableX + rowDescColWidth + cellSpacing * 2 + col * (cellWidthPixels + cellSpacing);
+            g.drawLine(x, typeRowY, x, typeRowY + cellHeight);
+        }
+        
+        // Draw separator line after column type row
+        g.setColor(Color.black);
+        g.drawLine(tableX, typeRowY + cellHeight, tableX + tableWidth, typeRowY + cellHeight);
+    }
+
+    private void drawInitialConditionsRow(Graphics g, int offsetY) {
+        int tableX = getTableX();
+        int tableY = getTableY();
+        int cellWidthPixels = getCellWidthPixels();
+        int rowDescColWidth = cellWidthPixels;
+        int initialRowY = tableY + offsetY;
+        
+        // Draw row description cell for initial conditions
+        g.setColor(Color.lightGray);
+        g.fillRect(tableX + cellSpacing, initialRowY, rowDescColWidth, cellHeight);
+        g.setColor(Color.black);
+        g.drawRect(tableX + cellSpacing, initialRowY, rowDescColWidth, cellHeight);
+        drawCenteredText(g, "Initial", tableX + cellSpacing + rowDescColWidth/2, initialRowY + cellHeight/2, true);
+
+        for (int col = 0; col < cols; col++) {
+            int cellX = tableX + rowDescColWidth + cellSpacing * 2 + col * (cellWidthPixels + cellSpacing);
+            
+            // Get initial conditions value for this column
+            double initialValue = (initialValues != null && col < initialValues.length) ? 
+                                 initialValues[col] : 0.0;
+            
+            // Draw initial conditions cell background - color based on initial value voltage
+            g.setColor(needsHighlight() ? selectColor : getCellVoltageColor(initialValue));
+            g.fillRect(cellX, initialRowY, cellWidthPixels, cellHeight);
+            
+            // Draw cell border
+            g.setColor(Color.black);
+            g.drawRect(cellX, initialRowY, cellWidthPixels, cellHeight);
+            
+            // Draw value
+            g.setColor(Color.black);
+            String voltageText = getTableFormattedText(initialValue);
+            drawCenteredText(g, voltageText, cellX + cellWidthPixels/2, initialRowY + cellHeight/2, true);
+        }
+        
+        // Draw grid lines for this row
+        g.setColor(Color.gray);
+        int tableWidth = rowDescColWidth + cellSpacing * 2 + cols * (cellWidthPixels + cellSpacing);
+        
+        // Horizontal lines (top and bottom of row)
+        g.drawLine(tableX, initialRowY, tableX + tableWidth, initialRowY);
+        g.drawLine(tableX, initialRowY + cellHeight, tableX + tableWidth, initialRowY + cellHeight);
+        
+        // Vertical lines
+        // Left edge
+        g.drawLine(tableX, initialRowY, tableX, initialRowY + cellHeight);
+        // After description column
+        int x = tableX + cellSpacing + rowDescColWidth;
+        g.drawLine(x, initialRowY, x, initialRowY + cellHeight);
+        // Between and after data columns
+        for (int col = 0; col <= cols; col++) {
+            x = tableX + rowDescColWidth + cellSpacing * 2 + col * (cellWidthPixels + cellSpacing);
+            g.drawLine(x, initialRowY, x, initialRowY + cellHeight);
+        }
+        
+        // Draw separator line after initial conditions row
+        g.setColor(Color.black);
+        g.drawLine(tableX, initialRowY + cellHeight, tableX + tableWidth, initialRowY + cellHeight);
+    }
+
+    private void drawTableCells(Graphics g, int offsetY) {
+        int tableX = getTableX();
+        int tableY = getTableY();
+        int cellWidthPixels = getCellWidthPixels();
+        int rowDescColWidth = cellWidthPixels;
+
+        // Use the passed offsetY directly - no need to recalculate
+        int baseY = offsetY;
+
+        for (int row = 0; row < rows; row++) {
+            int cellY = tableY + baseY + row * (cellHeight + cellSpacing);
+            
+            // Draw row description cell
+            g.setColor(Color.lightGray);
+            g.fillRect(tableX + cellSpacing, cellY, rowDescColWidth, cellHeight);
+            g.setColor(Color.black);
+            g.drawRect(tableX + cellSpacing, cellY, rowDescColWidth, cellHeight);
+            
+            String rowDesc = (rowDescriptions != null && row < rowDescriptions.length) ?
+                            rowDescriptions[row] : "Row" + (row + 1);
+            drawCenteredText(g, rowDesc, tableX + cellSpacing + rowDescColWidth/2, cellY + cellHeight/2, true);
+            
+            // Draw data cells for this row
+            for (int col = 0; col < cols; col++) {
+                int cellX = tableX + rowDescColWidth + cellSpacing * 2 + col * (cellWidthPixels + cellSpacing);
+                
+                // Get voltage using equation evaluation
+                double voltage = getVoltageForCell(row, col);
+                
+                // Draw cell background - color based on voltage using CircuitJS1 standard colors
+                g.setColor(needsHighlight() ? selectColor : getCellVoltageColor(voltage));
+                g.fillRect(cellX, cellY, cellWidthPixels, cellHeight);
+                
+                // Draw cell border
+                g.setColor(Color.black);
+                g.drawRect(cellX, cellY, cellWidthPixels, cellHeight);
+                
+                // Display equation and voltage in cell
+                g.setColor(Color.black);
+                String displayText = cellEquations[row][col];
+                if (displayText.length() > 8) {
+                    displayText = displayText.substring(0, 6) + ".."; // Truncate long equations
+                }
+                String voltageText = getTableFormattedText(voltage);
+                String combinedText = displayText + ": " + voltageText;
+                drawCenteredText(g, combinedText, cellX + cellWidthPixels/2, cellY + cellHeight/2, true);
+            }
+            
+            // Draw grid lines for this row
+            g.setColor(Color.gray);
+            int tableWidth = rowDescColWidth + cellSpacing * 2 + cols * (cellWidthPixels + cellSpacing);
+            
+            // Horizontal lines (top and bottom of row)
+            g.drawLine(tableX, cellY, tableX + tableWidth, cellY);
+            g.drawLine(tableX, cellY + cellHeight, tableX + tableWidth, cellY + cellHeight);
+            
+            // Vertical lines
+            // Left edge
+            g.drawLine(tableX, cellY, tableX, cellY + cellHeight);
+            // After description column
+            int x = tableX + cellSpacing + rowDescColWidth;
+            g.drawLine(x, cellY, x, cellY + cellHeight);
+            // Between and after data columns
+            for (int col = 0; col <= cols; col++) {
+                x = tableX + rowDescColWidth + cellSpacing * 2 + col * (cellWidthPixels + cellSpacing);
+                g.drawLine(x, cellY, x, cellY + cellHeight);
+            }
+        }
+    }
+
+    protected void drawSumRow(Graphics g, int offsetY) {
+        int tableX = getTableX();
+        int tableY = getTableY();
+        int cellWidthPixels = getCellWidthPixels();
+        int rowDescColWidth = cellWidthPixels;
+
+        // Use the passed offsetY directly - no need to recalculate
+        int sumRowY = tableY + offsetY;
+
+        // Draw row description cell for computed row
+        g.setColor(Color.lightGray);
+        g.fillRect(tableX + cellSpacing, sumRowY, rowDescColWidth, cellHeight);
+        g.setColor(Color.black);
+        g.drawRect(tableX + cellSpacing, sumRowY, rowDescColWidth, cellHeight);
+        drawCenteredText(g, "Computed", tableX + cellSpacing + rowDescColWidth/2, sumRowY + cellHeight/2, true);
+
+        for (int col = 0; col < cols; col++) {
+            int cellX = tableX + rowDescColWidth + cellSpacing * 2 + col * (cellWidthPixels + cellSpacing);
+            
+            // Get the already-calculated sum from computed values (calculated in doStep())
+            String sumLabelName = outputNames[col];
+            Double computedSum = ComputedValues.getComputedValue(sumLabelName);
+            double computedValue = (computedSum != null) ? computedSum.doubleValue() : 0.0;
+            
+            // Draw sum cell background - color based on computed sum voltage
+            g.setColor(needsHighlight() ? selectColor : getCellVoltageColor(computedValue));
+            g.fillRect(cellX, sumRowY, cellWidthPixels, cellHeight);
+            
+            // Draw cell border
+            g.setColor(Color.black);
+            g.drawRect(cellX, sumRowY, cellWidthPixels, cellHeight);
+            
+            // Draw column name and value
+            g.setColor(Color.black);
+            String sumText = getTableFormattedText(computedValue);
+            String combinedText = sumLabelName + ": " + sumText;
+            drawCenteredText(g, combinedText, cellX + cellWidthPixels/2, sumRowY + cellHeight/2, true);
+        }
+        
+        // Draw grid lines for computed row
+        g.setColor(Color.gray);
+        int tableWidth = rowDescColWidth + cellSpacing * 2 + cols * (cellWidthPixels + cellSpacing);
+        
+        // Horizontal lines (top and bottom of row)
+        g.drawLine(tableX, sumRowY, tableX + tableWidth, sumRowY);
+        g.drawLine(tableX, sumRowY + cellHeight, tableX + tableWidth, sumRowY + cellHeight);
+        
+        // Vertical lines
+        // Left edge
+        g.drawLine(tableX, sumRowY, tableX, sumRowY + cellHeight);
+        // After description column
+        int x = tableX + cellSpacing + rowDescColWidth;
+        g.drawLine(x, sumRowY, x, sumRowY + cellHeight);
+        // Between and after data columns
+        for (int col = 0; col <= cols; col++) {
+            x = tableX + rowDescColWidth + cellSpacing * 2 + col * (cellWidthPixels + cellSpacing);
+            g.drawLine(x, sumRowY, x, sumRowY + cellHeight);
+        }
+        
+        // Draw separator line before computed row (emphasize it's special)
+        g.setColor(Color.black);
+        g.drawLine(tableX, sumRowY, tableX + tableWidth, sumRowY);
+    }
+
+    
     private void drawPins(Graphics g) {
         // Draw pins on the bottom edge
         for (int i = 0; i < getPostCount(); i++) {
@@ -408,155 +844,6 @@ public class TableElm extends ChipElm {
         }
         drawPosts(g);
     }
-
-    private void drawColumnHeaders(Graphics g) {
-        g.setColor(Color.black);
-        int tableX = getTableX();
-        int tableY = getTableY();
-        int headerY = tableY + 15;
-
-        for (int col = 0; col < cols; col++) {
-            int cellX = tableX + cellSpacing + col * (cellSize + cellSpacing);
-            String header = (outputNames != null && col < outputNames.length) ?
-                           outputNames[col] : "Col" + (col + 1);
-            drawCenteredText(g, header, cellX + cellSize/2, headerY, true);
-
-        }
-    }
-
-    private void drawInitialConditionsRow(Graphics g) {
-        int tableX = getTableX();
-        int tableY = getTableY();
-        int initialRowY = tableY + 20 + cellSpacing; // First row after headers
-
-        for (int col = 0; col < cols; col++) {
-            int cellX = tableX + cellSpacing + col * (cellSize + cellSpacing);
-            
-            // Get initial conditions value for this column
-            double initialValue = (initialValues != null && col < initialValues.length) ? 
-                                 initialValues[col] : 0.0;
-            
-            // Draw initial conditions cell background - color based on initial value voltage
-            g.setColor(needsHighlight() ? selectColor : getCellVoltageColor(initialValue));
-            g.fillRect(cellX, initialRowY, cellSize, cellSize);
-            
-            // Draw cell border
-            g.setColor(Color.black);
-            g.drawRect(cellX, initialRowY, cellSize, cellSize);
-            
-            // Draw "Initial" label (top half)
-            g.setColor(Color.black);
-            drawCenteredText(g, "Initial", cellX + cellSize/2, initialRowY + cellSize/3, true);
-            
-            // Draw initial conditions voltage value (bottom half)
-            String voltageText = getTableFormattedText(initialValue);
-            drawCenteredText(g, voltageText, cellX + cellSize/2, initialRowY + 2*cellSize/3, true);
-        }
-    }
-
-    private void drawTableCells(Graphics g) {
-        int tableX = getTableX();
-        int tableY = getTableY();
-
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < cols; col++) {
-                int cellX = tableX + cellSpacing + col * (cellSize + cellSpacing);
-                // Adjust Y position to account for initial conditions row (if shown)
-                int rowOffset = showInitialValues ? 1 : 0; // Initial conditions row offset
-                int cellY = tableY + 20 + cellSpacing + (row + rowOffset) * (cellSize + cellSpacing);
-                
-                // Get voltage using equation evaluation
-                double voltage = getVoltageForCell(row, col);
-                
-                // Draw cell background - color based on voltage using CircuitJS1 standard colors
-                g.setColor(needsHighlight() ? selectColor : getCellVoltageColor(voltage));
-                g.fillRect(cellX, cellY, cellSize, cellSize);
-                
-                // Draw cell border
-                g.setColor(Color.black);
-                g.drawRect(cellX, cellY, cellSize, cellSize);
-                
-                // Draw equation (top half)
-                g.setColor(Color.black);
-                String displayText = cellEquations[row][col];
-                if (displayText.length() > 8) {
-                    displayText = displayText.substring(0, 6) + ".."; // Truncate long equations
-                }
-                drawCenteredText(g, displayText, cellX + cellSize/2, cellY + cellSize/3, true);
-                
-                // Draw voltage value (bottom half)
-                String voltageText = getTableFormattedText(voltage);
-                drawCenteredText(g, voltageText, cellX + cellSize/2, cellY + 2*cellSize/3, true);
-            }
-        }
-    }
-
-    protected void drawSumRow(Graphics g) {
-        int tableX = getTableX();
-        int tableY = getTableY();
-
-        // Adjust Y position to account for initial conditions row (if shown)
-        int rowOffset = showInitialValues ? 1 : 0; // Initial conditions row offset
-        int sumRowY = tableY + 20 + cellSpacing + (rows + rowOffset) * (cellSize + cellSpacing);
-
-        for (int col = 0; col < cols; col++) {
-            int cellX = tableX + cellSpacing + col * (cellSize + cellSpacing);
-            
-            // Get the already-calculated sum from computed values (calculated in doStep())
-            String sumLabelName = outputNames[col];
-            Double computedSum = ComputedValues.getComputedValue(sumLabelName);
-            double computedValue = (computedSum != null) ? computedSum.doubleValue() : 0.0;
-            
-            // Draw sum cell background - color based on computed sum voltage
-            g.setColor(needsHighlight() ? selectColor : getCellVoltageColor(computedValue));
-            g.fillRect(cellX, sumRowY, cellSize, cellSize);
-            
-            // Draw cell border
-            g.setColor(Color.black);
-            g.drawRect(cellX, sumRowY, cellSize, cellSize);
-            
-            // Draw column header text as label (top half)
-            g.setColor(Color.black);
-            drawCenteredText(g, sumLabelName, cellX + cellSize/2, sumRowY + cellSize/3, true);
-            
-            // Draw sum value (bottom half)
-            String sumText = getTableFormattedText(computedValue);
-            drawCenteredText(g, sumText, cellX + cellSize/2, sumRowY + 2*cellSize/3, true);
-        }
-    }
-
-    private void drawGridLines(Graphics g) {
-        g.setColor(Color.gray);
-        int tableX = getTableX();
-        int tableY = getTableY();
-        int extraRows = (showInitialValues ? 1 : 0) + 1; // Initial conditions (if shown) + computed row
-
-        // Vertical lines
-        for (int col = 0; col <= cols; col++) {
-            int x = tableX + cellSpacing + col * (cellSize + cellSpacing);
-            g.drawLine(x, tableY + 20, x, tableY + 20 + cellSpacing + (rows + extraRows) * (cellSize + cellSpacing));
-        }
-
-        // Horizontal lines
-        for (int row = 0; row <= rows + extraRows; row++) {
-            int y = tableY + 20 + cellSpacing + row * (cellSize + cellSpacing);
-            g.drawLine(tableX, y, tableX + cellSpacing + cols * (cellSize + cellSpacing), y);
-        }
-
-        // Draw separator line after initial conditions row (if shown)
-        if (showInitialValues) {
-            g.setColor(Color.black);
-            int separatorY = tableY + 20 + cellSpacing + 1 * (cellSize + cellSpacing);
-            g.drawLine(tableX, separatorY, tableX + cellSpacing + cols * (cellSize + cellSpacing), separatorY);
-        }
-
-        // Draw separator line before computed row
-        g.setColor(Color.black);
-        int rowOffset = showInitialValues ? 1 : 0; // Initial conditions row offset
-        int separatorY = tableY + 20 + cellSpacing + (rows + rowOffset) * (cellSize + cellSpacing);
-        g.drawLine(tableX, separatorY, tableX + cellSpacing + cols * (cellSize + cellSpacing), separatorY);
-    }
-    
     private double[] lastColumnSums;
    
     // Calculate computed values during simulation step (not during drawing)
@@ -671,10 +958,8 @@ public class TableElm extends ChipElm {
                             //CirSim.console("TableElm: Stamping resistor between nodes " + outputNode + " and " + labeledNodeNum + " (resistance=" + resistance + ")");
                             sim.stampResistor(outputNode, labeledNodeNum, resistance);
                             //CirSim.console("TableElm: Successfully stamped resistor for output '" + outputName + "'");
-                        } else {
-                            int nodeListSize = (sim.nodeList != null) ? sim.nodeList.size() : -1;
-                            //CirSim.console("TableElm: ERROR - Invalid node numbers: outputNode=" + outputNode + ", labeledNodeNum=" + labeledNodeNum + ", nodeList.size=" + nodeListSize);
                         }
+                        // Error handling removed - invalid nodes are silently ignored
                     } else {
 //                        CirSim.console("TableElm: No labeled node found for output name '" + outputName + "'");
                         ;
@@ -688,16 +973,29 @@ public class TableElm extends ChipElm {
         StringBuilder sb = new StringBuilder();
         sb.append(super.dump()).append(" ").append(rows).append(" ").append(cols).append(" ").append(showInitialValues);
         sb.append(" ").append(CustomLogicModel.escape(tableUnits)).append(" ").append(decimalPlaces);
+        sb.append(" ").append(CustomLogicModel.escape(tableTitle));
         
         // Serialize output names (used as column headers)
         for (int col = 0; col < cols; col++) {
             sb.append(" ").append(CustomLogicModel.escape(outputNames[col]));
         }
         
+        // Serialize row descriptions
+        for (int row = 0; row < rows; row++) {
+            sb.append(" ").append(CustomLogicModel.escape(rowDescriptions[row]));
+        }
+        
         // Always serialize initial conditions values
         if (initialValues != null) {
             for (int col = 0; col < cols; col++) {
                 sb.append(" ").append(initialValues[col]);
+            }
+        }
+        
+        // Serialize column types
+        if (columnTypes != null) {
+            for (int col = 0; col < cols; col++) {
+                sb.append(" ").append(columnTypes[col].name());
             }
         }
         
@@ -714,6 +1012,7 @@ public class TableElm extends ChipElm {
 
     protected void parseTableData(StringTokenizer st) {
         try {
+            // Parse basic dimensions
             if (st.hasMoreTokens()) rows = Integer.parseInt(st.nextToken());
             if (st.hasMoreTokens()) cols = Integer.parseInt(st.nextToken());
             
@@ -721,48 +1020,15 @@ public class TableElm extends ChipElm {
             outputNames = new String[cols];
             cellEquations = new String[rows][cols];
             initialValues = new double[cols];
+            rowDescriptions = new String[rows];
             
-            // Auto-detect format based on total tokens expected
-            // Count remaining tokens to determine format
-            int remainingTokens = st.countTokens();
-            int expectedNewestFormat = 1 + 2 + cols + cols + (rows * cols); // showInitialValues + tableUnits + decimalPlaces + output names + initial conditions + equations
-            int expectedNewFormatWithFlag = 1 + cols + cols + (rows * cols); // showInitialValues + output names (headers) + initial conditions + equations
-            int expectedOldFormatWithFlags = 2 + cols + cols + (rows * cols); // 2 old boolean flags + headers + initial conditions + equations
-            // Note: expectedOldFormat = cols + cols + (rows * cols) for very old format (no flags)
+            // Parse table properties 
+            showInitialValues = st.hasMoreTokens() ? Boolean.parseBoolean(st.nextToken()) : false;
+            tableUnits = st.hasMoreTokens() ? CustomLogicModel.unescape(st.nextToken()) : "";
+            decimalPlaces = st.hasMoreTokens() ? Integer.parseInt(st.nextToken()) : 2;
+            tableTitle = st.hasMoreTokens() ? CustomLogicModel.unescape(st.nextToken()) : "Table";
             
-            // Initialize defaults
-            showInitialValues = false;
-            tableUnits = "$"; // Default to $ for new tables
-            decimalPlaces = 2; // Default to 2 decimal places
-            
-            // Detect format and parse accordingly
-            if (remainingTokens == expectedNewestFormat) {
-                // Newest format with all fields
-                if (st.hasMoreTokens()) {
-                    showInitialValues = Boolean.parseBoolean(st.nextToken());
-                }
-                if (st.hasMoreTokens()) {
-                    tableUnits = CustomLogicModel.unescape(st.nextToken());
-                }
-                if (st.hasMoreTokens()) {
-                    decimalPlaces = Integer.parseInt(st.nextToken());
-                }
-            } else if (remainingTokens == expectedNewFormatWithFlag) {
-                // New format with showInitialValues flag only (backwards compatibility)
-                if (st.hasMoreTokens()) {
-                    showInitialValues = Boolean.parseBoolean(st.nextToken());
-                }
-            } else if (remainingTokens == expectedOldFormatWithFlags) {
-                // Old format with 2 boolean flags - skip them for backwards compatibility
-                if (st.hasMoreTokens()) st.nextToken(); // Skip old showComputedRow flag
-                if (st.hasMoreTokens()) st.nextToken(); // Skip old hasInitialConditions flag
-                showInitialValues = false; // Default for old TableElm
-            } else {
-                // Very old format or new format without flag
-                showInitialValues = false; // Default for TableElm
-            }
-            
-            // Parse output names (used as column headers)
+            // Parse column headers
             for (int col = 0; col < cols; col++) {
                 if (st.hasMoreTokens()) {
                     outputNames[col] = CustomLogicModel.unescape(st.nextToken());
@@ -771,74 +1037,151 @@ public class TableElm extends ChipElm {
                 }
             }
             
-            // Parse initial conditions values
-            // Store tokens we can't parse as numbers for equation parsing later
-            java.util.ArrayList<String> unparsedTokens = new java.util.ArrayList<String>();
-            
-            for (int col = 0; col < cols; col++) {
+            // Parse row descriptions (if available - for backwards compatibility)
+            for (int row = 0; row < rows; row++) {
                 if (st.hasMoreTokens()) {
                     String token = st.nextToken();
+                    // Try to determine if this is a row description or initial value
                     try {
-                        initialValues[col] = Double.parseDouble(token);
-                    } catch (NumberFormatException e) {
-                        // This token is not a number, probably an equation
-                        initialValues[col] = 0.0;
-                        unparsedTokens.add(token);
-                        // All remaining tokens for this section should also be treated as equations
+                        // If it parses as a double, it's probably an initial value
+                        Double.parseDouble(token);
+                        // It's a number, so no row descriptions in this file
+                        // Use default row descriptions
+                        for (int r = 0; r < rows; r++) {
+                            rowDescriptions[r] = "Row" + (r + 1);
+                        }
+                        // Don't consume this token - it's for initial values
                         break;
+                    } catch (NumberFormatException e) {
+                        // It's a string, so it's a row description
+                        rowDescriptions[row] = CustomLogicModel.unescape(token);
+                    }
+                } else {
+                    rowDescriptions[row] = "Row" + (row + 1);
+                }
+            }
+            
+            // Parse initial values
+            for (int col = 0; col < cols; col++) {
+                if (st.hasMoreTokens()) {
+                    try {
+                        initialValues[col] = Double.parseDouble(st.nextToken());
+                    } catch (NumberFormatException e) {
+                        initialValues[col] = 0.0;
                     }
                 } else {
                     initialValues[col] = 0.0;
                 }
             }
-
-            // Output names are already set from column headers parsing above
             
-            // Parse equation data
-            // First use any unparsed tokens from initial conditions parsing
-            int unparsedIndex = 0;
+            // Parse column types (if available in saved data)
+            columnTypes = new ColumnType[cols];
+            boolean hasColumnTypes = false;
+            for (int col = 0; col < cols; col++) {
+                if (st.hasMoreTokens()) {
+                    String typeToken = st.nextToken();
+                    // Check if this looks like a column type or an equation
+                    try {
+                        columnTypes[col] = ColumnType.valueOf(typeToken);
+                        hasColumnTypes = true;
+                    } catch (IllegalArgumentException e) {
+                        // Not a valid column type, must be start of equations
+                        // Push back by saving for equation parsing
+                        if (cellEquations == null) {
+                            cellEquations = new String[rows][cols];
+                        }
+                        cellEquations[0][col] = CustomLogicModel.unescape(typeToken);
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+            
+            // If no column types were found, initialize with defaults
+            if (!hasColumnTypes) {
+                for (int col = 0; col < cols; col++) {
+                    if (col == 0) {
+                        columnTypes[col] = ColumnType.ASSET;
+                    } else if (col == 1) {
+                        columnTypes[col] = ColumnType.LIABILITY;
+                    } else if (col == 2) {
+                        columnTypes[col] = ColumnType.EQUITY;
+                    } else if (col == 3) {
+                        columnTypes[col] = ColumnType.A_L_E;
+                    } else {
+                        columnTypes[col] = ColumnType.ASSET;
+                    }
+                }
+            }
+            
+            // Parse cell equations
             for (int row = 0; row < rows; row++) {
                 for (int col = 0; col < cols; col++) {
-                    if (unparsedIndex < unparsedTokens.size()) {
-                        // Use unparsed token
-                        cellEquations[row][col] = CustomLogicModel.unescape(unparsedTokens.get(unparsedIndex));
-                        unparsedIndex++;
-                    } else if (st.hasMoreTokens()) {
-                        // Use token from stream
+                    if (st.hasMoreTokens()) {
                         cellEquations[row][col] = CustomLogicModel.unescape(st.nextToken());
                     } else {
-                        // Default equation
                         cellEquations[row][col] = "";
                     }
                 }
             }
             
-            CirSim.console("TableElm: Successfully parsed table data with equations and initial conditions");
+            CirSim.console("TableElm: Successfully parsed simplified table data");
             
         } catch (Exception e) {
             CirSim.console("TableElm: Error parsing table data: " + e.getMessage());
             // Initialize with defaults on error
-            if (outputNames == null) {
-                outputNames = new String[cols];
-                for (int col = 0; col < cols; col++) {
-                    outputNames[col] = "Col" + (col + 1);
-                }
+            initializeDefaults();
+        }
+    }
+    
+    private void initializeDefaults() {
+        if (outputNames == null) {
+            outputNames = new String[cols];
+            for (int col = 0; col < cols; col++) {
+                outputNames[col] = "Col" + (col + 1);
             }
-            if (cellEquations == null) {
-                cellEquations = new String[rows][cols];
-                for (int row = 0; row < rows; row++) {
-                    for (int col = 0; col < cols; col++) {
-                        cellEquations[row][col] = "";
-                    }
-                }
+        }
+        if (rowDescriptions == null) {
+            rowDescriptions = new String[rows];
+            for (int row = 0; row < rows; row++) {
+                rowDescriptions[row] = "Row" + (row + 1);
             }
-            if (initialValues == null) {
-                initialValues = new double[cols];
-                for (int col = 0; col < cols; col++) {
-                    initialValues[col] = 0.0;
+        }
+        if (columnTypes == null) {
+            columnTypes = new ColumnType[cols];
+            for (int col = 0; col < cols; col++) {
+                if (col == 0) {
+                    columnTypes[col] = ColumnType.ASSET;
+                } else if (col == 1) {
+                    columnTypes[col] = ColumnType.LIABILITY;
+                } else if (col == 2) {
+                    columnTypes[col] = ColumnType.EQUITY;
+                } else if (col == 3) {
+                    columnTypes[col] = ColumnType.A_L_E;
+                } else {
+                    columnTypes[col] = ColumnType.ASSET;
                 }
             }
         }
+        if (cellEquations == null) {
+            cellEquations = new String[rows][cols];
+            for (int row = 0; row < rows; row++) {
+                for (int col = 0; col < cols; col++) {
+                    cellEquations[row][col] = "";
+                }
+            }
+        }
+        if (initialValues == null) {
+            initialValues = new double[cols];
+            for (int col = 0; col < cols; col++) {
+                initialValues[col] = 0.0;
+            }
+        }
+        showInitialValues = false;
+        tableUnits = "";
+        decimalPlaces = 2;
+        tableTitle = "Table";
     }
 
     int getDumpType() { 
@@ -846,15 +1189,16 @@ public class TableElm extends ChipElm {
     }
     
     public EditInfo getEditInfo(int n) {
-        // Cell Size and Cell Spacing should be in steps of cspc for proper alignment
-        if (n == 0) return new EditInfo("Cell Size (multiples of " + cspc + ")", cellSize, cspc, 200);
-        if (n == 1) return new EditInfo("Cell Spacing (multiples of " + cspc + ")", cellSpacing, cspc, 64);
-        if (n == 2) {
+        if (n == 0) return new EditInfo("Table Title", tableTitle);
+        if (n == 1) return new EditInfo("Cell Width (grids)", cellWidthInGrids, 1, 20);
+        if (n == 2) return new EditInfo("Cell Height", cellHeight, 16, 100);
+        if (n == 3) return new EditInfo("Cell Spacing", cellSpacing, 1, 20);
+        if (n == 4) {
             EditInfo ei = new EditInfo("Show Initial Values", 0, -1, -1);
             ei.checkbox = new Checkbox("", showInitialValues);
             return ei;
         }
-        if (n == 3) {
+        if (n == 5) {
             EditInfo ei = new EditInfo("", 0, -1, -1);
             ei.button = new Button("Edit Table Data...");
             return ei;
@@ -865,23 +1209,24 @@ public class TableElm extends ChipElm {
 
     public void setEditValue(int n, EditInfo ei) {
         if (n == 0) {
-            // Round to nearest multiple of cspc
-            cellSize = Math.max(cspc, ((int)ei.value / cspc) * cspc);
-            setupPins(); // Recalculate pin positions
-            setPoints();
+            tableTitle = ei.textf.getText();
         } else if (n == 1) {
-            // Round to nearest multiple of cspc
-            cellSpacing = Math.max(cspc, ((int)ei.value / cspc) * cspc);
-            setupPins(); // Recalculate pin positions
-            setPoints();
+            cellWidthInGrids = Math.max(1, (int)ei.value);
         } else if (n == 2) {
-            showInitialValues = ei.checkbox.getValue();
-            setupPins(); // Recalculate chip size and pin positions
-            setPoints();
+            cellHeight = Math.max(16, (int)ei.value);
         } else if (n == 3) {
+            cellSpacing = Math.max(1, (int)ei.value);
+
+        } else if (n == 4) {
+            showInitialValues = ei.checkbox.getValue();
+
+        } else if (n == 5) {
             // Open table editing dialog
             openTableEditDialog();
         }
+        setupPins(); // Recalculate chip size and pin positions
+        setPoints();
+        sim.analyzeFlag = true; // Trigger circuit re-analysis for pin position changes
     }
 
     // Resize table method for use by TableEditDialog
@@ -889,6 +1234,8 @@ public class TableElm extends ChipElm {
         String[] oldOutputNames = outputNames;
         String[][] oldEquations = cellEquations;
         double[] oldInitialConditions = initialValues;
+        ColumnType[] oldColumnTypes = columnTypes;
+        String[] oldRowDescriptions = rowDescriptions;
 
         // Update dimensions
         rows = newRows;
@@ -900,6 +1247,8 @@ public class TableElm extends ChipElm {
         compiledExpressions = new Expr[rows][cols];
         expressionStates = new ExprState[rows][cols];
         initialValues = new double[cols];
+        columnTypes = new ColumnType[cols];
+        rowDescriptions = new String[rows];
 
         // Initialize expression states
         for (int row = 0; row < rows; row++) {
@@ -948,6 +1297,35 @@ public class TableElm extends ChipElm {
         for (int col = 0; col < cols; col++) {
             if (oldOutputNames == null || col >= oldOutputNames.length) {
                 outputNames[col] = "";
+            }
+        }
+        
+        // Copy over existing column types where possible
+        if (oldColumnTypes != null) {
+            for (int col = 0; col < Math.min(cols, oldColumnTypes.length); col++) {
+                columnTypes[col] = oldColumnTypes[col];
+            }
+        }
+        
+        // Initialize remaining column types with default values
+        for (int col = 0; col < cols; col++) {
+            if (oldColumnTypes == null || col >= oldColumnTypes.length) {
+                // Default: Assets for new columns
+                columnTypes[col] = ColumnType.ASSET;
+            }
+        }
+        
+        // Copy over existing row descriptions where possible
+        if (oldRowDescriptions != null) {
+            for (int row = 0; row < Math.min(rows, oldRowDescriptions.length); row++) {
+                rowDescriptions[row] = oldRowDescriptions[row];
+            }
+        }
+        
+        // Initialize remaining row descriptions with default values
+        for (int row = 0; row < rows; row++) {
+            if (oldRowDescriptions == null || row >= oldRowDescriptions.length) {
+                rowDescriptions[row] = "Row" + (row + 1);
             }
         }
 
@@ -1049,7 +1427,66 @@ public class TableElm extends ChipElm {
         recompileAllEquations();
     }
     
-
+    // Column type accessor methods for TableEditDialog
+    public ColumnType getColumnType(int col) {
+        if (col >= 0 && col < cols && columnTypes != null && col < columnTypes.length) {
+            return columnTypes[col];
+        }
+        return ColumnType.ASSET; // Default
+    }
+    
+    public void setColumnType(int col, ColumnType type) {
+        if (col >= 0 && col < cols) {
+            if (columnTypes == null || columnTypes.length != cols) {
+                // Initialize if needed
+                columnTypes = new ColumnType[cols];
+                for (int i = 0; i < cols; i++) {
+                    columnTypes[i] = ColumnType.ASSET;
+                }
+            }
+            columnTypes[col] = type;
+        }
+    }
+    
+    public String getColumnTypeName(int col) {
+        ColumnType type = getColumnType(col);
+        switch (type) {
+            case ASSET: return "Asset";
+            case LIABILITY: return "Liability";
+            case EQUITY: return "Equity";
+            case A_L_E: return "A-L-E";
+            default: return "Unknown";
+        }
+    }
+    
+    // Table title accessor methods
+    public String getTableTitle() {
+        return tableTitle;
+    }
+    
+    public void setTableTitle(String title) {
+        this.tableTitle = (title != null) ? title : "Table";
+    }
+    
+    // Row description accessor methods
+    public String getRowDescription(int row) {
+        if (row >= 0 && row < rows && rowDescriptions != null && row < rowDescriptions.length) {
+            return rowDescriptions[row];
+        }
+        return "Row" + (row + 1);
+    }
+    
+    public void setRowDescription(int row, String description) {
+        if (row >= 0 && row < rows) {
+            if (rowDescriptions == null || rowDescriptions.length != rows) {
+                rowDescriptions = new String[rows];
+                for (int i = 0; i < rows; i++) {
+                    rowDescriptions[i] = "Row" + (i + 1);
+                }
+            }
+            rowDescriptions[row] = description;
+        }
+    }
 }
 
 
