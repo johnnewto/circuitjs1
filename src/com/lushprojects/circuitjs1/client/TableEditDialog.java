@@ -1088,13 +1088,7 @@ public class TableEditDialog extends Dialog {
     
     public String getColumnTypeName(int col) {
         ColumnType type = getColumnType(col);
-        switch (type) {
-            case ASSET: return "Asset";
-            case LIABILITY: return "Liability";
-            case EQUITY: return "Equity";
-            case A_L_E: return "A-L-E";
-            default: return "Unknown";
-        }
+        return TableRenderer.getColumnTypeName(type);
     }
     
     // Check if a column can be moved, deleted, or if more can be added
