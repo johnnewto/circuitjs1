@@ -69,3 +69,4 @@ Temporary Items
 .dont_use_gradle/
 build/
 bin/
+old_docs/

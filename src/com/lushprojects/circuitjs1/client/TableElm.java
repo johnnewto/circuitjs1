@@ -14,7 +14,7 @@ import com.lushprojects.circuitjs1.client.TableEditDialog.ColumnType;
  * Extends ChipElm to provide output pins at each column
  */
 public class TableElm extends ChipElm {
-    protected int rows = 3;
+    protected int rows = 0;  // Start with zero rows for new tables
     protected int cols = 3;
     protected int cellWidthInGrids = 6;  // Width of each cell in grid units (cspc)
     protected int cellHeight = 16; // Height of each cell in pixels (for drawing)
@@ -23,7 +23,7 @@ public class TableElm extends ChipElm {
     protected boolean showInitialValues = false; // Control visibility of initial conditions row
     protected String[] outputNames; // Names for connecting outputs to labeled nodes (also used as column headers)
     protected String[] rowDescriptions; // Descriptions/labels for each row (left column in spreadsheet view)
-    protected String tableTitle = "New Title"; // Title for the table (displayed in edit dialog and component)
+    protected String tableTitle = "Table"; // Title for the table (displayed in edit dialog and component)
     protected String tableUnits = ""; // Units to display in table cells ("" , $ or V)
     protected int decimalPlaces = 2; // Number of decimal places to show
     protected ColumnType[] columnTypes; // Type for each column (Asset/Liability/Equity/Computed)
@@ -37,20 +37,37 @@ public class TableElm extends ChipElm {
     
     // Note: No need to track labeled nodes anymore with direct resolution
     
-    // Constructor for new table
+    // Constructor for new table FROM MENU - receives auto-increment flag
     public TableElm(int xx, int yy) {
+        this(xx, yy, true); // Always auto-increment for menu-created tables
+    }
+
+    // Internal constructor with control over auto-increment
+    private TableElm(int xx, int yy, boolean autoIncrement) {
         super(xx, yy);
         noDiagonal = true;
+        
+        if (autoIncrement) {
+            tableTitle = "Table " + nextTableNumber;
+            nextTableNumber++;
+        } else {
+            tableTitle = "Table"; // Default for programmatic creation
+        }
+        
         initTable();
         setupPins();
         setSize(sim.smallGridCheckItem.getState() ? 1 : 2);
     }
 
-    // File loading constructor
+    // File loading constructor - NEVER auto-increments
     public TableElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
         super(xa, ya, xb, yb, f, st);
         noDiagonal = true;
         parseTableData(st);
+        
+        // Update counter based on loaded table title
+        updateTableCounter(tableTitle);
+        
         initTable();
         setupPins();
         setSize((f & FLAG_SMALL) != 0 ? 1 : 2);
@@ -95,7 +112,7 @@ public class TableElm extends ChipElm {
         if (rowDescriptions == null) {
             rowDescriptions = new String[rows];
             for (int i = 0; i < rows; i++) {
-                rowDescriptions[i] = "Description_" + (i + 1);
+                rowDescriptions[i] = "Flow_" + (i + 1);
             }
         }
         
@@ -637,18 +654,18 @@ public class TableElm extends ChipElm {
             double initialValue = (initialValues != null && col < initialValues.length) ? 
                                  initialValues[col] : 0.0;
             
-            // Draw initial conditions cell background - color based on initial value voltage
-            g.setColor(needsHighlight() ? selectColor : getCellVoltageColor(initialValue));
+            // Draw initial conditions cell background - always white
+            g.setColor(Color.white);
             g.fillRect(cellX, initialRowY, cellWidthPixels, cellHeight);
             
-            // Draw value
-            g.setColor(Color.black);
+            // Draw value with text color based on voltage
+            g.setColor(getCellVoltageColor(initialValue));
             String voltageText = getTableFormattedText(initialValue);
             drawCenteredText(g, voltageText, cellX + cellWidthPixels/2, initialRowY + cellHeight/2, true);
         }
         
         // Draw grid lines for this row
-        g.setColor(Color.black);
+        g.setColor(needsHighlight() ? selectColor : Color.black);
         int tableWidth = rowDescColWidth + cellSpacing * 2 + cols * (cellWidthPixels + cellSpacing);
         
         // Horizontal lines (top and bottom of row)
@@ -668,7 +685,7 @@ public class TableElm extends ChipElm {
         }
         
         // Draw separator line after initial conditions row
-        g.setColor(Color.black);
+        g.setColor(needsHighlight() ? selectColor : Color.black);
         g.drawLine(tableX, initialRowY + cellHeight, tableX + tableWidth, initialRowY + cellHeight);
     }
 
@@ -697,23 +714,28 @@ public class TableElm extends ChipElm {
                 // Get voltage using equation evaluation
                 double voltage = getVoltageForCell(row, col);
                 
-                // Draw cell background - color based on voltage using CircuitJS1 standard colors
-                g.setColor(needsHighlight() ? selectColor : getCellVoltageColor(voltage));
+                // Draw cell background - always white
+                g.setColor(Color.white);
                 g.fillRect(cellX, cellY, cellWidthPixels, cellHeight);
                 
-                // Display equation and voltage in cell
-                g.setColor(Color.black);
-                String displayText = cellEquations[row][col];
-                if (displayText.length() > 8) {
-                    displayText = displayText.substring(0, 6) + ".."; // Truncate long equations
+                // Display equation and voltage in cell (only if equation is not empty)
+                // Set text color based on voltage using CircuitJS1 standard colors
+                String equation = cellEquations[row][col];
+                if (equation != null && !equation.trim().isEmpty()) {
+                    g.setColor(getCellVoltageColor(voltage));
+                    String displayText = equation;
+                    if (displayText.length() > 8) {
+                        displayText = displayText.substring(0, 6) + ".."; // Truncate long equations
+                    }
+                    String voltageText = getTableFormattedText(voltage);
+                    String combinedText = displayText + " = " + voltageText;
+                    drawCenteredText(g, combinedText, cellX + cellWidthPixels/2, cellY + cellHeight/2, true);
                 }
-                String voltageText = getTableFormattedText(voltage);
-                String combinedText = displayText + ": " + voltageText;
-                drawCenteredText(g, combinedText, cellX + cellWidthPixels/2, cellY + cellHeight/2, true);
+                // Don't display anything for empty cells
             }
             
             // Draw grid lines for this row
-            g.setColor(Color.black);
+            g.setColor(needsHighlight() ? selectColor : Color.black);
             int tableWidth = rowDescColWidth + cellSpacing * 2 + cols * (cellWidthPixels + cellSpacing);
             
             // Horizontal lines (top and bottom of row)
@@ -755,19 +777,19 @@ public class TableElm extends ChipElm {
             Double computedSum = ComputedValues.getComputedValue(sumLabelName);
             double computedValue = (computedSum != null) ? computedSum.doubleValue() : 0.0;
             
-            // Draw sum cell background - color based on computed sum voltage
-            g.setColor(needsHighlight() ? selectColor : getCellVoltageColor(computedValue));
+            // Draw sum cell background - always white
+            g.setColor(Color.white);
             g.fillRect(cellX, sumRowY, cellWidthPixels, cellHeight);
             
-            // Draw column name and value
-            g.setColor(Color.black);
+            // Draw column name and value with text color based on voltage
+            g.setColor(getCellVoltageColor(computedValue));
             String sumText = getTableFormattedText(computedValue);
             String combinedText = sumLabelName + ": " + sumText;
             drawCenteredText(g, combinedText, cellX + cellWidthPixels/2, sumRowY + cellHeight/2, true);
         }
         
         // Draw grid lines for computed row
-        g.setColor(Color.black);
+        g.setColor(needsHighlight() ? selectColor : Color.black);
         int tableWidth = rowDescColWidth + cellSpacing * 2 + cols * (cellWidthPixels + cellSpacing);
         
         // Horizontal lines (top and bottom of row)
@@ -787,7 +809,7 @@ public class TableElm extends ChipElm {
         }
         
         // Draw separator line before computed row (emphasize it's special)
-        g.setColor(Color.black);
+        g.setColor(needsHighlight() ? selectColor : Color.black);
         g.drawLine(tableX, sumRowY, tableX + tableWidth, sumRowY);
     }
 
@@ -867,7 +889,7 @@ public class TableElm extends ChipElm {
             // Only register if we computed it ourselves (not if we used a pre-computed value)
             boolean alreadyComputed = ComputedValues.isComputedThisStep(name);
             if (!alreadyComputed && lastColumnSums != null) {
-                registerComputedValueAsLabeledNode(name, lastColumnSums[col]);
+                registerComputedValueAsLabeledNode(name, lastColumnSums[col]);    
                 ComputedValues.markComputedThisStep(name);
             }
         }
@@ -1211,21 +1233,29 @@ public class TableElm extends ChipElm {
         columnTypes = new ColumnType[cols];
         rowDescriptions = new String[rows];
 
-        // Initialize expression states
+        // Initialize ALL cells with empty strings (null equivalent)
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < cols; col++) {
+                cellEquations[row][col] = "";
+                compiledExpressions[row][col] = null;
                 expressionStates[row][col] = new ExprState(1); // Only need time variable
             }
         }
 
         // Copy over existing data where possible
         if (oldEquations != null) {
-            for (int row = 0; row < Math.min(rows, oldEquations.length); row++) {
-                for (int col = 0; col < Math.min(cols, oldEquations[row].length); col++) {
-                    cellEquations[row][col] = oldEquations[row][col];
-                    // Recompile equations for copied cells
-                    if (cellEquations[row][col] != null && !cellEquations[row][col].isEmpty()) {
-                        compileEquation(row, col, cellEquations[row][col]);
+            int copyRows = Math.min(rows, oldEquations.length);
+            for (int row = 0; row < copyRows; row++) {
+                if (oldEquations[row] != null) {
+                    int copyCols = Math.min(cols, oldEquations[row].length);
+                    for (int col = 0; col < copyCols; col++) {
+                        if (oldEquations[row][col] != null) {
+                            cellEquations[row][col] = oldEquations[row][col];
+                            // Recompile equations for copied cells
+                            if (!cellEquations[row][col].isEmpty()) {
+                                compileEquation(row, col, cellEquations[row][col]);
+                            }
+                        }
                     }
                 }
             }
@@ -1254,10 +1284,11 @@ public class TableElm extends ChipElm {
             }
         }
 
-        // Initialize remaining output names with empty strings
+        // Initialize remaining output names
         for (int col = 0; col < cols; col++) {
-            if (oldOutputNames == null || col >= oldOutputNames.length) {
-                outputNames[col] = "";
+            if (oldOutputNames == null || col >= oldOutputNames.length || 
+                outputNames[col] == null || outputNames[col].isEmpty()) {
+                outputNames[col] = "Stock_" + (col + 1);
             }
         }
         
@@ -1271,8 +1302,17 @@ public class TableElm extends ChipElm {
         // Initialize remaining column types with default values
         for (int col = 0; col < cols; col++) {
             if (oldColumnTypes == null || col >= oldColumnTypes.length) {
-                // Default: Assets for new columns
-                columnTypes[col] = ColumnType.ASSET;
+                if (col == 0) {
+                    columnTypes[col] = ColumnType.ASSET;
+                } else if (col == 1) {
+                    columnTypes[col] = ColumnType.LIABILITY;
+                } else if (col == 2) {
+                    columnTypes[col] = ColumnType.EQUITY;
+                } else if (col == 3) {
+                    columnTypes[col] = ColumnType.A_L_E;
+                } else {
+                    columnTypes[col] = ColumnType.ASSET;
+                }
             }
         }
         
@@ -1285,8 +1325,9 @@ public class TableElm extends ChipElm {
         
         // Initialize remaining row descriptions with default values
         for (int row = 0; row < rows; row++) {
-            if (oldRowDescriptions == null || row >= oldRowDescriptions.length) {
-                rowDescriptions[row] = "Row" + (row + 1);
+            if (oldRowDescriptions == null || row >= oldRowDescriptions.length ||
+                rowDescriptions[row] == null || rowDescriptions[row].isEmpty()) {
+                rowDescriptions[row] = "Flow_" + (row + 1);
             }
         }
 
@@ -1446,6 +1487,30 @@ public class TableElm extends ChipElm {
                 }
             }
             rowDescriptions[row] = description;
+        }
+    }
+    
+    // Add static counter for table numbering
+    private static int nextTableNumber = 1;
+
+    // Add method to reset counter when loading circuits
+    public static void resetTableCounter() {
+        nextTableNumber = 1;
+    }
+
+    // Add method to update counter based on existing tables
+    public static void updateTableCounter(String title) {
+        // Extract number from title like "Table 5"
+        if (title != null && title.startsWith("Table ")) {
+            try {
+                String numStr = title.substring(6).trim();
+                int num = Integer.parseInt(numStr);
+                if (num >= nextTableNumber) {
+                    nextTableNumber = num + 1;
+                }
+            } catch (NumberFormatException e) {
+                // Not a numbered table, ignore
+            }
         }
     }
 }
