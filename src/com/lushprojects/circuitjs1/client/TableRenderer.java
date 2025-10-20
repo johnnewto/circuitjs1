@@ -6,6 +6,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import java.util.Set;
 import com.lushprojects.circuitjs1.client.TableEditDialog.ColumnType;
 
 /**
@@ -150,6 +151,9 @@ public class TableRenderer {
         int cellWidthPixels = table.getCellWidthPixels();
         int rowDescColWidth = cellWidthPixels;
 
+        // Get shared stocks for highlighting
+        Set<String> sharedStocks = StockFlowRegistry.getSharedStocks();
+
         // Draw row description column header cell text
         int rowDescHeaderX = tableX + table.cellSpacing;
         table.drawCenteredText(g, "Flows↓/Stocks→", rowDescHeaderX + rowDescColWidth/2, headerY + table.cellHeight/2, true);
@@ -160,6 +164,15 @@ public class TableRenderer {
             
             String header = (table.outputNames != null && col < table.outputNames.length) ?
                            table.outputNames[col] : "Stock" + (col + 1);
+            
+            // Highlight shared stocks with yellow background
+            if (sharedStocks.contains(header)) {
+                g.setColor(new Color(255, 255, 200)); // Light yellow
+                g.fillRect(cellX, headerY, cellWidthPixels, table.cellHeight);
+            }
+            
+            // Draw header text
+            g.setColor(Color.black);
             table.drawCenteredText(g, header, cellX + cellWidthPixels/2, headerY + table.cellHeight/2, true);
         }
         

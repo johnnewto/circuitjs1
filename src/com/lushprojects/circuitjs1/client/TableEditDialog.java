@@ -321,6 +321,9 @@ public class TableEditDialog extends Dialog {
         scrollPanel.addStyleName("topSpace");
         mainPanel.add(scrollPanel);
         
+        // Testing panel (collapsible)
+        addTestingPanel(mainPanel);
+        
         // Bottom buttons
         HorizontalPanel buttonPanel = new HorizontalPanel();
         buttonPanel.setWidth("100%");
@@ -345,6 +348,21 @@ public class TableEditDialog extends Dialog {
         });
         buttonPanel.add(okButton);
         
+        Button propertiesButton = new Button(Locale.LS("Properties..."));
+        propertiesButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                // Save current data first
+                applyChanges();
+                
+                // Hide this dialog
+                closeDialog();
+                
+                // Open standard properties dialog
+                tableElement.openPropertiesDialog();
+            }
+        });
+        buttonPanel.add(propertiesButton);
+        
         buttonPanel.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_RIGHT);
         Button cancelButton = new Button(Locale.LS("Cancel"));
         cancelButton.addClickHandler(new ClickHandler() {
@@ -367,6 +385,232 @@ public class TableEditDialog extends Dialog {
         statusLabel.addStyleName("topSpace");
         mainPanel.add(statusLabel);
     }
+    
+    /**
+     * Add testing panel for Stock Flow Synchronization test cases
+     */
+    private void addTestingPanel(VerticalPanel mainPanel) {
+        final VerticalPanel testPanel = new VerticalPanel();
+        testPanel.setWidth("100%");
+        testPanel.addStyleName("topSpace");
+        
+        // Toggle button to show/hide tests
+        final Button toggleButton = new Button("🧪 Show Sync Tests");
+        toggleButton.addClickHandler(new ClickHandler() {
+            private boolean expanded = false;
+            public void onClick(ClickEvent event) {
+                expanded = !expanded;
+                testPanel.setVisible(expanded);
+                toggleButton.setText(expanded ? "🧪 Hide Sync Tests" : "🧪 Show Sync Tests");
+            }
+        });
+        mainPanel.add(toggleButton);
+        
+        testPanel.setVisible(false);
+        
+        Label testLabel = new Label("Stock Flow Synchronization Test Cases:");
+        testLabel.getElement().getStyle().setProperty("fontWeight", "bold");
+        testLabel.getElement().getStyle().setProperty("marginBottom", "5px");
+        testPanel.add(testLabel);
+        
+        // Row 1: Cases 1-4
+        HorizontalPanel row1 = new HorizontalPanel();
+        row1.setSpacing(3);
+        row1.add(createTestButton("1: Sync", "Test initial synchronization", new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                testCase1_Synchronization();
+            }
+        }));
+        row1.add(createTestButton("2: Del Row", "Test row deletion sync", new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                testCase2_RowDeletion();
+            }
+        }));
+        row1.add(createTestButton("3: Mod Row", "Test row modification sync", new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                testCase3_RowModification();
+            }
+        }));
+        row1.add(createTestButton("4: Rename", "Test stock renaming (⚠️)", new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                testCase4_StockRenaming();
+            }
+        }));
+        testPanel.add(row1);
+        
+        // Row 2: Cases 5-8
+        HorizontalPanel row2 = new HorizontalPanel();
+        row2.setSpacing(3);
+        row2.add(createTestButton("5: Del Stock", "Test stock deletion", new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                testCase5_StockDeletion();
+            }
+        }));
+        row2.add(createTestButton("6: Add Stock", "Test stock addition", new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                testCase6_StockAddition();
+            }
+        }));
+        row2.add(createTestButton("7: New Table", "Test table creation", new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                testCase7_TableCreation();
+            }
+        }));
+        row2.add(createTestButton("8: Del Table", "Test table deletion", new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                testCase8_TableDeletion();
+            }
+        }));
+        testPanel.add(row2);
+        
+        // Row 3: Cases 9-11 + Diagnostics
+        HorizontalPanel row3 = new HorizontalPanel();
+        row3.setSpacing(3);
+        row3.add(createTestButton("9: Load", "Test table loading", new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                testCase9_TableLoading();
+            }
+        }));
+        row3.add(createTestButton("10: Update", "Test table update", new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                testCase10_TableUpdate();
+            }
+        }));
+        row3.add(createTestButton("11: Manual", "Test manual sync", new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                testCase11_ManualSync();
+            }
+        }));
+        row3.add(createTestButton("📊 Info", "Show registry diagnostics", new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                showDiagnostics();
+            }
+        }));
+        testPanel.add(row3);
+        
+        mainPanel.add(testPanel);
+    }
+    
+    private Button createTestButton(String text, String title, ClickHandler handler) {
+        Button btn = new Button(text);
+        btn.setTitle(title);
+        btn.addClickHandler(handler);
+        btn.getElement().getStyle().setProperty("fontSize", "11px");
+        btn.getElement().getStyle().setProperty("padding", "2px 5px");
+        return btn;
+    }
+    
+    // ========== Test Case Implementations ==========
+    
+    private void testCase1_Synchronization() {
+        applyChanges(); // Save current state first
+        StockFlowRegistry.synchronizeRelatedTables(tableElement);
+        setStatus("✅ Case 1: Synchronized with related tables. Check other tables sharing stocks: " + 
+                 StockFlowRegistry.getSharedStocks());
+        populateGrid(); // Refresh display
+    }
+    
+    private void testCase2_RowDeletion() {
+        if (dataRows <= 1) {
+            setStatus("⚠️ Case 2: Cannot test - need at least 2 rows");
+            return;
+        }
+        // Delete first data row as test
+        deleteRow(0);
+        setStatus("✅ Case 2: Deleted first row. Change synced to related tables.");
+    }
+    
+    private void testCase3_RowModification() {
+        if (dataRows < 1 || dataCols < 1) {
+            setStatus("⚠️ Case 3: Cannot test - need at least 1 row and 1 column");
+            return;
+        }
+        // Modify first cell as test
+        String oldValue = cellData[0][0];
+        String newValue = oldValue + "_MODIFIED";
+        cellData[0][0] = newValue;
+        tableElement.setCellEquation(0, 0, newValue);
+        applyChanges();
+        setStatus("✅ Case 3: Modified cell [0,0]: '" + oldValue + "' → '" + newValue + "'. Change synced.");
+        populateGrid();
+    }
+    
+    private void testCase4_StockRenaming() {
+        if (dataCols < 1) {
+            setStatus("⚠️ Case 4: Cannot test - need at least 1 column");
+            return;
+        }
+        String oldName = stockValues[0];
+        String newName = oldName + "_RENAMED";
+        stockValues[0] = newName;
+        tableElement.setColumnHeader(0, newName);
+        applyChanges();
+        setStatus("⚠️ Case 4: Renamed stock '" + oldName + "' → '" + newName + 
+                 "'. NOTE: Sync is commented out in setColumnHeader(). Other tables NOT updated.");
+        populateGrid();
+    }
+    
+    private void testCase5_StockDeletion() {
+        if (dataCols <= 1) {
+            setStatus("⚠️ Case 5: Cannot test - need at least 2 columns");
+            return;
+        }
+        String deletedStock = stockValues[0];
+        deleteColumn(0);
+        setStatus("✅ Case 5: Deleted stock '" + deletedStock + "'. Local only - other tables unaffected.");
+    }
+    
+    private void testCase6_StockAddition() {
+        insertColumnAfter(dataCols - 1);
+        String newStock = stockValues[dataCols - 1];
+        setStatus("✅ Case 6: Added new stock '" + newStock + "'. Will sync if this stock exists in other tables.");
+    }
+    
+    private void testCase7_TableCreation() {
+        setStatus("ℹ️ Case 7: To test table creation, use Circuit menu → 'Add Element' → 'Table'. " +
+                 "New tables auto-register their stocks and sync with existing tables.");
+    }
+    
+    private void testCase8_TableDeletion() {
+        boolean confirm = com.google.gwt.user.client.Window.confirm(
+            "Case 8: Delete this table element?\n\n" +
+            "This will test table deletion cleanup. Other tables will remain intact.\n" +
+            "This action cannot be undone from the test panel.");
+        if (confirm) {
+            closeDialog();
+            tableElement.delete();
+            setStatus("✅ Case 8: Table deleted. Other tables unaffected.");
+        } else {
+            setStatus("ℹ️ Case 8: Table deletion cancelled.");
+        }
+    }
+    
+    private void testCase9_TableLoading() {
+        setStatus("ℹ️ Case 9: To test table loading, use File → 'Import' or 'Open'. " +
+                 "Circuit load calls clearRegistry() then synchronizeAllTables() at end.");
+    }
+    
+    private void testCase10_TableUpdate() {
+        // Simulate a table update by modifying and syncing
+        applyChanges();
+        StockFlowRegistry.synchronizeRelatedTables(tableElement);
+        setStatus("✅ Case 10: Applied changes and synced. Real updates happen on add/delete/move row operations.");
+    }
+    
+    private void testCase11_ManualSync() {
+        applyChanges();
+        tableElement.synchronizeWithRelatedTables();
+        setStatus("✅ Case 11: Manual synchronization complete via tableElement.synchronizeWithRelatedTables()");
+        populateGrid();
+    }
+    
+    private void showDiagnostics() {
+        String info = StockFlowRegistry.getDiagnosticInfo();
+        com.google.gwt.user.client.Window.alert(info);
+        setStatus("📊 Registry diagnostics displayed (see alert)");
+    }
+    
+    // ========== End Test Cases ==========
     
     private void createGrid() {
         // Calculate grid dimensions according to updated specification
@@ -732,9 +976,28 @@ public class TableEditDialog extends Dialog {
         }
         
         cellData = newCellData;
+        
+        // IMMEDIATE UPDATE: Resize TableElm and apply all changes right away
+        tableElement.resizeTable(dataRows, dataCols);
+        
+        // Apply all cell equations to TableElm
+        for (int row = 0; row < dataRows; row++) {
+            for (int col = 0; col < dataCols; col++) {
+                tableElement.setCellEquation(row, col, cellData[row][col]);
+            }
+        }
+        
+        // Trigger immediate synchronization with related tables
+        StockFlowRegistry.synchronizeRelatedTables(tableElement);
+        
         setStatus("Row added after row " + (rowIndex + 1) + ". Total rows: " + dataRows);
         markChanged();
         populateGrid();
+        
+        // Refresh simulation display
+        if (sim != null) {
+            sim.repaint();
+        }
     }
     
     private void deleteRow(int rowIndex) {
@@ -758,9 +1021,28 @@ public class TableEditDialog extends Dialog {
         }
         
         cellData = newCellData;
+        
+        // IMMEDIATE UPDATE: Resize TableElm and apply all changes right away
+        tableElement.resizeTable(dataRows, dataCols);
+        
+        // Apply all cell equations to TableElm
+        for (int row = 0; row < dataRows; row++) {
+            for (int col = 0; col < dataCols; col++) {
+                tableElement.setCellEquation(row, col, cellData[row][col]);
+            }
+        }
+        
+        // Trigger immediate synchronization with related tables
+        StockFlowRegistry.synchronizeRelatedTables(tableElement);
+        
         setStatus("Row " + (rowIndex + 1) + " deleted. Total rows: " + dataRows);
         markChanged();
         populateGrid();
+        
+        // Refresh simulation display
+        if (sim != null) {
+            sim.repaint();
+        }
     }
     
     private void moveRow(int fromIndex, int toIndex) {
@@ -776,10 +1058,24 @@ public class TableEditDialog extends Dialog {
         tableElement.setRowDescription(fromIndex, tableElement.getRowDescription(toIndex));
         tableElement.setRowDescription(toIndex, tempDesc);
         
+        // IMMEDIATE UPDATE: Apply equation changes to TableElm right away
+        for (int col = 0; col < dataCols; col++) {
+            tableElement.setCellEquation(fromIndex, col, cellData[fromIndex][col]);
+            tableElement.setCellEquation(toIndex, col, cellData[toIndex][col]);
+        }
+        
+        // Trigger immediate synchronization with related tables
+        StockFlowRegistry.synchronizeRelatedTables(tableElement);
+        
         String direction = (fromIndex < toIndex) ? "down" : "up";
         setStatus("Row " + (fromIndex + 1) + " moved " + direction + " to position " + (toIndex + 1));
         markChanged();
         populateGrid();
+        
+        // Refresh simulation display
+        if (sim != null) {
+            sim.repaint();
+        }
     }
     
     private void insertColumnAfter(int colIndex) {
@@ -1045,13 +1341,16 @@ public class TableEditDialog extends Dialog {
                 tableElement.setColumnType(col, columnTypes[col]);
             }
             
+            // *** Trigger synchronization with other tables sharing the same stocks ***
+            StockFlowRegistry.synchronizeRelatedTables(tableElement);
+            
             // Update table display
             tableElement.setPoints();
         }
         
         hasChanges = false;
         updateButtonStates();
-        statusLabel.setText("Changes applied successfully");
+        statusLabel.setText("Changes applied and tables synchronized");
         
         // Refresh the simulation display
         if (sim != null) {

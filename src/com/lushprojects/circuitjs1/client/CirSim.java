@@ -3821,6 +3821,14 @@ public CirSim() {
     void doEdit(Editable eable) {
     	clearSelection();
     	pushUndo();
+    	
+    	// Check if element has any editable properties
+    	// If getEditInfo(0) returns null, don't show dialog
+    	EditInfo firstInfo = eable.getEditInfo(0);
+    	if (firstInfo == null) {
+    		return; // No properties to edit
+    	}
+    	
     	if (editDialog != null) {
     //		requestFocus();
     		editDialog.setVisible(false);
@@ -4091,6 +4099,9 @@ public CirSim() {
 	int i;
 	int len = b.length;
 	if ((flags & RC_RETAIN) == 0) {
+	    // Clear stock-flow synchronization registry when loading new circuit
+	    StockFlowRegistry.clearRegistry();
+	    
 	    clearMouseElm();
 	    for (i = 0; i != elmList.size(); i++) {
 		CircuitElm ce = getElm(i);
@@ -4229,6 +4240,9 @@ public CirSim() {
 		centreCircuit();
 	if ((flags & RC_SUBCIRCUITS) != 0)
 	    updateModels();
+	
+	// Synchronize all table elements that share stocks
+	StockFlowRegistry.synchronizeAllTables();
 	
 	AudioInputElm.clearCache();  // to save memory
 	DataInputElm.clearCache();  // to save memory

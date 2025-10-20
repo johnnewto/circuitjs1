@@ -6,7 +6,6 @@
 
 package com.lushprojects.circuitjs1.client;
 
-import com.google.gwt.user.client.ui.Button;
 import com.lushprojects.circuitjs1.client.TableEditDialog.ColumnType;
 
 /**
@@ -40,6 +39,9 @@ public class TableElm extends ChipElm {
     private TableEquationManager equationManager;
     private TableDataManager dataManager;
     private TableGeometryManager geometryManager;
+    
+    // Flag to bypass table dialog intercept when showing properties
+    private boolean showingProperties = false;
     
     // Note: No need to track labeled nodes anymore with direct resolution
     
@@ -95,6 +97,74 @@ public class TableElm extends ChipElm {
     private void initTable() {
         dataManager.initTable();
         equationManager.recompileAllEquations();
+        
+        // Register all stocks with the synchronization registry
+        registerAllStocks();
+    }
+    
+    /**
+     * Register all stocks (column headers) with StockFlowRegistry
+     * Package-private for use during initialization
+     */
+    private void registerAllStocks() {
+        if (outputNames != null) {
+            for (int col = 0; col < cols && col < outputNames.length; col++) {
+                String stockName = outputNames[col];
+                if (stockName != null && !stockName.trim().isEmpty()) {
+                    StockFlowRegistry.registerStock(stockName, this);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Find column index by stock name
+     * Package-private for use by StockFlowRegistry
+     */
+    int findColumnByStockName(String stockName) {
+        if (outputNames == null) return -1;
+        for (int i = 0; i < outputNames.length; i++) {
+            if (stockName.equals(outputNames[i])) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    
+    /**
+     * Update row data during synchronization
+     * Package-private for use by StockFlowRegistry
+     * 
+     * @param newRowCount New number of rows
+     * @param newRowDescriptions New row descriptions
+     * @param newCellEquations New cell equations
+     */
+    void updateRowData(int newRowCount, String[] newRowDescriptions, 
+                      String[][] newCellEquations) {
+        rows = newRowCount;
+        rowDescriptions = newRowDescriptions;
+        cellEquations = newCellEquations;
+        
+        // CRITICAL: Resize arrays BEFORE recompiling equations
+        // compiledExpressions and expressionStates must match the new row count
+        compiledExpressions = new Expr[rows][cols];
+        expressionStates = new ExprState[rows][cols];
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                expressionStates[row][col] = new ExprState(1); // Only need time variable
+            }
+        }
+        
+        // Now recompile equations with properly sized arrays
+        equationManager.recompileAllEquations();
+    }
+    
+    /**
+     * Trigger synchronization with other tables sharing the same stocks
+     * Simple wrapper - all logic is in StockFlowRegistry
+     */
+    public void synchronizeWithRelatedTables() {
+        StockFlowRegistry.synchronizeRelatedTables(this);
     }
     
     private boolean isValidCell(int row, int col) {
@@ -350,47 +420,70 @@ public class TableElm extends ChipElm {
         return 253; // Choose unused dump type
     }
     
+    @Override
     public EditInfo getEditInfo(int n) {
-        if (n == 0) return new EditInfo("Table Title", tableTitle);
-        if (n == 1) return new EditInfo("Cell Width (grids)", cellWidthInGrids, 1, 20);
-        if (n == 2) return new EditInfo("Cell Height", cellHeight, 16, 48);
-        if (n == 3) return new EditInfo("Cell Spacing", cellSpacing, 0, 5);
-        if (n == 4) {
-            EditInfo ei = new EditInfo("Show Initial Values", 0, -1, -1);
-            ei.checkbox = new Checkbox("", showInitialValues);
-            return ei;
+        // If showing properties dialog, don't intercept - show standard properties
+        if (showingProperties) {
+            if (n == 0) return new EditInfo("Table Title", tableTitle);
+            if (n == 1) return new EditInfo("Cell Width (grids)", cellWidthInGrids, 1, 20);
+            if (n == 2) return new EditInfo("Cell Height", cellHeight, 16, 48);
+            if (n == 3) return new EditInfo("Cell Spacing", cellSpacing, 0, 5);
+            if (n == 4) {
+                EditInfo ei = new EditInfo("Show Initial Values", 0, -1, -1);
+                ei.checkbox = new Checkbox("", showInitialValues);
+                return ei;
+            }
+            return null;
         }
-        if (n == 5) {
-            EditInfo ei = new EditInfo("", 0, -1, -1);
-            ei.button = new Button("Edit Table Data...");
-            return ei;
+        
+        // On first call (n=0) in normal mode, immediately open the table edit dialog
+        if (n == 0) {
+            openTableEditDialog();
+            return null; // Return null to prevent standard dialog from showing
         }
         
         return null;
     }
 
+    @Override
     public void setEditValue(int n, EditInfo ei) {
-        if (n == 0) {
-            tableTitle = ei.textf.getText();
-        } else if (n == 1) {
-            cellWidthInGrids = Math.max(1, (int)ei.value);
-        } else if (n == 2) {
-            cellHeight = Math.max(16, (int)ei.value);
-        } else if (n == 3) {
-            cellSpacing = Math.max(0, (int)ei.value);
-
-        } else if (n == 4) {
-            showInitialValues = ei.checkbox.getValue();
-
-        } else if (n == 5) {
-            // Open table editing dialog
-            openTableEditDialog();
-        }
-        setupPins(); // Recalculate chip size and pin positions
-        setPoints();
-        sim.analyzeFlag = true; // Trigger circuit re-analysis for pin position changes
+        // When showing properties, indices start at 0
+        // if (showingProperties) {
+            if (n == 0) {
+                tableTitle = ei.textf.getText();
+            } else if (n == 1) {
+                cellWidthInGrids = Math.max(1, (int)ei.value);
+            } else if (n == 2) {
+                cellHeight = Math.max(16, (int)ei.value);
+            } else if (n == 3) {
+                cellSpacing = Math.max(0, (int)ei.value);
+            } else if (n == 4) {
+                showInitialValues = ei.checkbox.getValue();
+            }
+            
+            setupPins();
+            setPoints();
+            sim.analyzeFlag = true;
+        // }
+        // Otherwise ignore (should not be called in normal double-click mode)
     }
 
+    // Add method for TableEditDialog to call standard properties
+    public void openPropertiesDialog() {
+        // Set flag to bypass table dialog intercept
+        showingProperties = true;
+        
+        // Use CirSim's standard method to open element properties dialog
+        if (sim != null) {
+            sim.doEdit(this);
+        }
+        
+        // Reset flag after dialog is shown
+        // Note: This happens immediately, before user interacts with dialog
+        // The flag just controls what getEditInfo returns
+        showingProperties = false;
+    }
+    
     // Resize table method for use by TableEditDialog
     public void resizeTable(int newRows, int newCols) {
         // Delegate data resizing to TableDataManager
@@ -434,7 +527,23 @@ public class TableElm extends ChipElm {
 
     public void setColumnHeader(int col, String header) {
         if (col >= 0 && col < cols) {
+            String oldHeader = outputNames[col];
+            
+            // Unregister old stock name
+            if (oldHeader != null && !oldHeader.trim().isEmpty()) {
+                StockFlowRegistry.unregisterStock(oldHeader, this);
+            }
+            
+            // Set new header
             outputNames[col] = header;
+            
+            // Register new stock name
+            if (header != null && !header.trim().isEmpty()) {
+                StockFlowRegistry.registerStock(header, this);
+            }
+            
+            // // Trigger synchronization for both old and new stock
+            // StockFlowRegistry.synchronizeRelatedTables(this);
         }
     }
 
@@ -464,9 +573,6 @@ public class TableElm extends ChipElm {
     
     // Additional methods for equation support in TableEditDialog
 
-    
-
-    
     // Column type accessor methods for TableEditDialog
     public ColumnType getColumnType(int col) {
         if (col >= 0 && col < cols && columnTypes != null && col < columnTypes.length) {
@@ -544,6 +650,13 @@ public class TableElm extends ChipElm {
                 // Not a numbered table, ignore
             }
         }
+    }
+    
+    @Override
+    public void delete() {
+        // Unregister all stocks from synchronization registry
+        StockFlowRegistry.unregisterAllStocks(this);
+        super.delete();
     }
 }
 
