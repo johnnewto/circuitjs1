@@ -205,7 +205,11 @@ public class TableEditDialog extends Dialog {
     private Map<String, Button> contextualButtons;
     
     // Track changes
-    private boolean hasChanges = false;    public TableEditDialog(TableElm tableElm, CirSim cirSim) {
+    private boolean hasChanges = false;
+    
+    // Debug window tracking for auto-update
+    private com.google.gwt.user.client.ui.DialogBox debugDialog = null;
+    private com.google.gwt.user.client.ui.TextArea debugTextArea = null;    public TableEditDialog(TableElm tableElm, CirSim cirSim) {
         super();
         this.tableElement = tableElm;
         this.sim = cirSim;
@@ -363,6 +367,16 @@ public class TableEditDialog extends Dialog {
         });
         buttonPanel.add(propertiesButton);
         
+        // Debug button to show markdown representation
+        Button debugButton = new Button(Locale.LS("📋 Debug"));
+        debugButton.setTitle("Show markdown representation of tables");
+        debugButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                showMarkdownDebug();
+            }
+        });
+        buttonPanel.add(debugButton);
+        
         buttonPanel.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_RIGHT);
         Button cancelButton = new Button(Locale.LS("Cancel"));
         cancelButton.addClickHandler(new ClickHandler() {
@@ -395,9 +409,9 @@ public class TableEditDialog extends Dialog {
         testPanel.addStyleName("topSpace");
         
         // Toggle button to show/hide tests
-        final Button toggleButton = new Button("🧪 Show Sync Tests");
+        final Button toggleButton = new Button("🧪 Hide Sync Tests");
         toggleButton.addClickHandler(new ClickHandler() {
-            private boolean expanded = false;
+            private boolean expanded = true;
             public void onClick(ClickEvent event) {
                 expanded = !expanded;
                 testPanel.setVisible(expanded);
@@ -406,87 +420,77 @@ public class TableEditDialog extends Dialog {
         });
         mainPanel.add(toggleButton);
         
-        testPanel.setVisible(false);
+        testPanel.setVisible(true);
         
         Label testLabel = new Label("Stock Flow Synchronization Test Cases:");
         testLabel.getElement().getStyle().setProperty("fontWeight", "bold");
         testLabel.getElement().getStyle().setProperty("marginBottom", "5px");
         testPanel.add(testLabel);
         
-        // Row 1: Cases 1-4
-        HorizontalPanel row1 = new HorizontalPanel();
-        row1.setSpacing(3);
-        row1.add(createTestButton("1: Sync", "Test initial synchronization", new ClickHandler() {
+        // Single row with all test buttons
+        HorizontalPanel buttonRow = new HorizontalPanel();
+        buttonRow.setSpacing(3);
+        buttonRow.add(createTestButton("1: Sync", "Test initial synchronization", new ClickHandler() {
             public void onClick(ClickEvent event) {
                 testCase1_Synchronization();
             }
         }));
-        row1.add(createTestButton("2: Del Row", "Test row deletion sync", new ClickHandler() {
+        buttonRow.add(createTestButton("2: Del Row", "Test row deletion sync", new ClickHandler() {
             public void onClick(ClickEvent event) {
                 testCase2_RowDeletion();
             }
         }));
-        row1.add(createTestButton("3: Mod Row", "Test row modification sync", new ClickHandler() {
+        buttonRow.add(createTestButton("3: Mod Row", "Test row modification sync", new ClickHandler() {
             public void onClick(ClickEvent event) {
                 testCase3_RowModification();
             }
         }));
-        row1.add(createTestButton("4: Rename", "Test stock renaming (⚠️)", new ClickHandler() {
+        buttonRow.add(createTestButton("4: Rename", "Test stock renaming (⚠️)", new ClickHandler() {
             public void onClick(ClickEvent event) {
                 testCase4_StockRenaming();
             }
         }));
-        testPanel.add(row1);
-        
-        // Row 2: Cases 5-8
-        HorizontalPanel row2 = new HorizontalPanel();
-        row2.setSpacing(3);
-        row2.add(createTestButton("5: Del Stock", "Test stock deletion", new ClickHandler() {
+        buttonRow.add(createTestButton("5: Del Stock", "Test stock deletion", new ClickHandler() {
             public void onClick(ClickEvent event) {
                 testCase5_StockDeletion();
             }
         }));
-        row2.add(createTestButton("6: Add Stock", "Test stock addition", new ClickHandler() {
+        buttonRow.add(createTestButton("6: Add Stock", "Test stock addition", new ClickHandler() {
             public void onClick(ClickEvent event) {
                 testCase6_StockAddition();
             }
         }));
-        row2.add(createTestButton("7: New Table", "Test table creation", new ClickHandler() {
+        buttonRow.add(createTestButton("7: New Table", "Test table creation", new ClickHandler() {
             public void onClick(ClickEvent event) {
                 testCase7_TableCreation();
             }
         }));
-        row2.add(createTestButton("8: Del Table", "Test table deletion", new ClickHandler() {
+        buttonRow.add(createTestButton("8: Del Table", "Test table deletion", new ClickHandler() {
             public void onClick(ClickEvent event) {
                 testCase8_TableDeletion();
             }
         }));
-        testPanel.add(row2);
-        
-        // Row 3: Cases 9-11 + Diagnostics
-        HorizontalPanel row3 = new HorizontalPanel();
-        row3.setSpacing(3);
-        row3.add(createTestButton("9: Load", "Test table loading", new ClickHandler() {
+        buttonRow.add(createTestButton("9: Load", "Test table loading", new ClickHandler() {
             public void onClick(ClickEvent event) {
                 testCase9_TableLoading();
             }
         }));
-        row3.add(createTestButton("10: Update", "Test table update", new ClickHandler() {
+        buttonRow.add(createTestButton("10: Update", "Test table update", new ClickHandler() {
             public void onClick(ClickEvent event) {
                 testCase10_TableUpdate();
             }
         }));
-        row3.add(createTestButton("11: Manual", "Test manual sync", new ClickHandler() {
+        buttonRow.add(createTestButton("11: Manual", "Test manual sync", new ClickHandler() {
             public void onClick(ClickEvent event) {
                 testCase11_ManualSync();
             }
         }));
-        row3.add(createTestButton("📊 Info", "Show registry diagnostics", new ClickHandler() {
+        buttonRow.add(createTestButton("📊 Info", "Show registry diagnostics", new ClickHandler() {
             public void onClick(ClickEvent event) {
                 showDiagnostics();
             }
         }));
-        testPanel.add(row3);
+        testPanel.add(buttonRow);
         
         mainPanel.add(testPanel);
     }
@@ -610,6 +614,253 @@ public class TableEditDialog extends Dialog {
         setStatus("📊 Registry diagnostics displayed (see alert)");
     }
     
+    /**
+     * Show markdown representation of all tables sharing stocks with current table
+     */
+    private void showMarkdownDebug() {
+        String content = generateMarkdownDebugContent();
+        
+        // If debug dialog already exists, just update the content
+        if (debugDialog != null && debugTextArea != null) {
+            debugTextArea.setText(content);
+            if (!debugDialog.isShowing()) {
+                debugDialog.show();
+            }
+        } else {
+            // Create new dialog
+            showTextDialog("Markdown Debug View", content);
+        }
+    }
+    
+    /**
+     * Generate markdown debug content
+     */
+    private String generateMarkdownDebugContent() {
+        StringBuilder md = new StringBuilder();
+        md.append("# Stock Flow Tables - Markdown Debug View\n\n");
+        
+        // Get all tables that share stocks with this table
+        java.util.Set<TableElm> relatedTables = new java.util.HashSet<TableElm>();
+        relatedTables.add(tableElement); // Include current table
+        
+        // Find all tables sharing stocks
+        for (int col = 0; col < tableElement.getCols(); col++) {
+            String stockName = tableElement.getColumnHeader(col);
+            if (stockName != null && !stockName.trim().isEmpty()) {
+                java.util.List<TableElm> tables = StockFlowRegistry.getTablesForStock(stockName);
+                relatedTables.addAll(tables);
+            }
+        }
+        
+        md.append("## Tables Sharing Stocks: ").append(relatedTables.size()).append("\n\n");
+        
+        // Generate markdown for each table
+        for (TableElm table : relatedTables) {
+            md.append("### ").append(table.getTableTitle()).append("\n\n");
+            
+            // Calculate column widths for alignment
+            int[] colWidths = calculateColumnWidths(table);
+            
+            // Table header
+            md.append("| ").append(padRight("Flows↓/Stock Vars →", colWidths[0])).append(" ");
+            for (int col = 0; col < table.getCols(); col++) {
+                md.append("| ").append(padRight(table.getColumnHeader(col), colWidths[col + 1])).append(" ");
+            }
+            md.append("|\n");
+            
+            // Separator
+            md.append("|");
+            for (int col = 0; col <= table.getCols(); col++) {
+                md.append(repeat("-", colWidths[col] + 2)).append("|");
+            }
+            md.append("\n");
+            
+            // Rows
+            for (int row = 0; row < table.getRows(); row++) {
+                md.append("| ").append(padRight(table.getRowDescription(row), colWidths[0])).append(" ");
+                for (int col = 0; col < table.getCols(); col++) {
+                    String equation = table.getCellEquation(row, col);
+                    String cellContent;
+                    if (equation == null || equation.trim().isEmpty()) {
+                        cellContent = "";
+                    } else {
+                        cellContent = "`" + equation + "`";
+                    }
+                    md.append("| ").append(padRight(cellContent, colWidths[col + 1])).append(" ");
+                }
+                md.append("|\n");
+            }
+            md.append("\n");
+            
+            // Add non-zero flow/stock pairs for this table
+            md.append("#### Non-Zero Flow/Stock Pairs\n\n");
+            boolean foundNonZero = false;
+            for (int row = 0; row < table.getRows(); row++) {
+                String flowDesc = table.getRowDescription(row);
+                if (flowDesc == null || flowDesc.trim().isEmpty()) {
+                    flowDesc = "Flow" + row;
+                }
+                
+                for (int col = 0; col < table.getCols(); col++) {
+                    String equation = table.getCellEquation(row, col);
+                    if (equation != null && !equation.trim().isEmpty() && !equation.trim().equals("0")) {
+                        String stockName = table.getColumnHeader(col);
+                        md.append("- **").append(flowDesc).append("** → **").append(stockName)
+                          .append("**: `").append(equation).append("`\n");
+                        foundNonZero = true;
+                    }
+                }
+            }
+            if (!foundNonZero) {
+                md.append("- *(No non-zero equations)*\n");
+            }
+            md.append("\n");
+        }
+        
+        // Add registry information
+        md.append("---\n\n");
+        md.append("## Stock Registry Information\n\n");
+        md.append("```\n");
+        md.append(StockFlowRegistry.getDiagnosticInfo());
+        md.append("```\n");
+        
+        return md.toString();
+    }
+    
+    /**
+     * Calculate the maximum width needed for each column in the table
+     * Returns an array where index 0 is the row header column, and subsequent indices are data columns
+     */
+    private int[] calculateColumnWidths(TableElm table) {
+        int[] widths = new int[table.getCols() + 1];
+        
+        // Initialize with header widths
+        widths[0] = "Flows↓/Stock Vars →".length();
+        for (int col = 0; col < table.getCols(); col++) {
+            String header = table.getColumnHeader(col);
+            widths[col + 1] = (header != null) ? header.length() : 0;
+        }
+        
+        // Check all row data
+        for (int row = 0; row < table.getRows(); row++) {
+            // Row description
+            String rowDesc = table.getRowDescription(row);
+            if (rowDesc != null && rowDesc.length() > widths[0]) {
+                widths[0] = rowDesc.length();
+            }
+            
+            // Cell equations (include backticks in width calculation)
+            for (int col = 0; col < table.getCols(); col++) {
+                String equation = table.getCellEquation(row, col);
+                if (equation != null && !equation.trim().isEmpty()) {
+                    int cellWidth = equation.length() + 2; // +2 for backticks
+                    if (cellWidth > widths[col + 1]) {
+                        widths[col + 1] = cellWidth;
+                    }
+                }
+            }
+        }
+        
+        return widths;
+    }
+    
+    /**
+     * Pad a string to the right with spaces to reach the specified width
+     */
+    private String padRight(String str, int width) {
+        if (str == null) str = "";
+        if (str.length() >= width) return str;
+        
+        StringBuilder sb = new StringBuilder(str);
+        while (sb.length() < width) {
+            sb.append(' ');
+        }
+        return sb.toString();
+    }
+    
+    /**
+     * Repeat a character n times
+     */
+    private String repeat(String str, int count) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < count; i++) {
+            sb.append(str);
+        }
+        return sb.toString();
+    }
+    
+    /**
+     * Update debug window if it's open
+     */
+    private void updateDebugWindow() {
+        if (debugDialog != null && debugTextArea != null && debugDialog.isShowing()) {
+            debugTextArea.setText(generateMarkdownDebugContent());
+        }
+    }
+    
+    /**
+     * Show a text dialog with copy-able content
+     */
+    private void showTextDialog(String title, String content) {
+        debugDialog = new com.google.gwt.user.client.ui.DialogBox();
+        debugDialog.setText(title);
+        debugDialog.setModal(false);  // Non-modal so it doesn't block interaction
+        debugDialog.setGlassEnabled(false);  // No glass pane background
+        
+        com.google.gwt.user.client.ui.VerticalPanel panel = new com.google.gwt.user.client.ui.VerticalPanel();
+        panel.setWidth("800px");
+        
+        // Text area with markdown content
+        debugTextArea = new com.google.gwt.user.client.ui.TextArea();
+        debugTextArea.setText(content);
+        debugTextArea.setWidth("780px");
+        debugTextArea.setHeight("500px");
+        debugTextArea.getElement().getStyle().setProperty("fontFamily", "monospace");
+        debugTextArea.getElement().getStyle().setProperty("fontSize", "12px");
+        panel.add(debugTextArea);
+        
+        // Buttons
+        com.google.gwt.user.client.ui.HorizontalPanel buttonPanel = new com.google.gwt.user.client.ui.HorizontalPanel();
+        buttonPanel.setSpacing(5);
+        buttonPanel.getElement().getStyle().setProperty("marginTop", "10px");
+        
+        Button selectAllButton = new Button("Select All");
+        selectAllButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                debugTextArea.selectAll();
+                debugTextArea.setFocus(true);
+            }
+        });
+        buttonPanel.add(selectAllButton);
+        
+        Button refreshButton = new Button("🔄 Refresh");
+        refreshButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                updateDebugWindow();
+            }
+        });
+        buttonPanel.add(refreshButton);
+        
+        Button closeButton = new Button("Close");
+        closeButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                debugDialog.hide();
+                debugDialog = null;
+                debugTextArea = null;
+            }
+        });
+        buttonPanel.add(closeButton);
+        
+        panel.add(buttonPanel);
+        debugDialog.setWidget(panel);
+        debugDialog.show();
+        // Position in top-right corner instead of centering
+        debugDialog.setPopupPosition(
+            com.google.gwt.user.client.Window.getClientWidth() - 820,  // 800px width + 20px margin
+            20  // 20px from top
+        );
+    }
+    
     // ========== End Test Cases ==========
     
     private void createGrid() {
@@ -636,6 +887,7 @@ public class TableEditDialog extends Dialog {
         createGrid();
         scrollPanel.setWidget(editGrid);
         updateButtonStates();
+        updateDebugWindow();  // Auto-update debug window when grid changes
     }
     
     private void populateFixedStructure() {
@@ -987,8 +1239,8 @@ public class TableEditDialog extends Dialog {
             }
         }
         
-        // Trigger immediate synchronization with related tables
-        StockFlowRegistry.synchronizeRelatedTables(tableElement);
+        // NOTE: Synchronization deferred until Apply/OK to avoid syncing incomplete edits
+        // StockFlowRegistry.synchronizeRelatedTables(tableElement);
         
         setStatus("Row added after row " + (rowIndex + 1) + ". Total rows: " + dataRows);
         markChanged();
@@ -1032,8 +1284,8 @@ public class TableEditDialog extends Dialog {
             }
         }
         
-        // Trigger immediate synchronization with related tables
-        StockFlowRegistry.synchronizeRelatedTables(tableElement);
+        // NOTE: Synchronization deferred until Apply/OK to avoid syncing incomplete edits
+        // StockFlowRegistry.synchronizeRelatedTables(tableElement);
         
         setStatus("Row " + (rowIndex + 1) + " deleted. Total rows: " + dataRows);
         markChanged();
@@ -1064,8 +1316,8 @@ public class TableEditDialog extends Dialog {
             tableElement.setCellEquation(toIndex, col, cellData[toIndex][col]);
         }
         
-        // Trigger immediate synchronization with related tables
-        StockFlowRegistry.synchronizeRelatedTables(tableElement);
+        // NOTE: Synchronization deferred until Apply/OK to avoid syncing incomplete edits
+        // StockFlowRegistry.synchronizeRelatedTables(tableElement);
         
         String direction = (fromIndex < toIndex) ? "down" : "up";
         setStatus("Row " + (fromIndex + 1) + " moved " + direction + " to position " + (toIndex + 1));
@@ -1351,6 +1603,9 @@ public class TableEditDialog extends Dialog {
         hasChanges = false;
         updateButtonStates();
         statusLabel.setText("Changes applied and tables synchronized");
+        
+        // Update debug window after applying changes
+        updateDebugWindow();
         
         // Refresh the simulation display
         if (sim != null) {

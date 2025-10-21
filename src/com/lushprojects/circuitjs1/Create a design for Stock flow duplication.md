@@ -162,6 +162,6 @@ This only has to be performed during TableEditing or loading a new table. A proc
 
 Can the solution use a simple approach of merging rows from all tables sharing the same stock name, This would ensure that all contributions to a stock are considered regardless of which table was processed first.
 
-I dont want the complexity of central registry for stocks, just a simple merging mechanism during table updates.
+Prefer a simple merging mechanism during table updates.
 
 ### Proposed Solution:
