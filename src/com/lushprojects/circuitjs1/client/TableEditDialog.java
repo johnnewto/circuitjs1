@@ -1257,7 +1257,20 @@ public class TableEditDialog extends Dialog {
             setStatus("Cannot delete the last row - at least one row is required");
             return;
         }
-        
+        // Capture flow description and any non-zero flow/stock pairs in this row
+        String flowDescToDelete = tableElement.getRowDescription(rowIndex);
+        if (flowDescToDelete != null) flowDescToDelete = flowDescToDelete.trim();
+        java.util.Set<String> nonZeroStocks = new java.util.HashSet<String>();
+        for (int c = 0; c < dataCols; c++) {
+            String eq = cellData[rowIndex][c];
+            if (eq != null && !eq.trim().isEmpty() && !eq.trim().equals("0")) {
+                String stockName = stockValues[c];
+                if (stockName != null && !stockName.trim().isEmpty()) {
+                    nonZeroStocks.add(stockName);
+                }
+            }
+        }
+
         dataRows--;
         
         // Shrink cell data array
@@ -1286,11 +1299,16 @@ public class TableEditDialog extends Dialog {
         
         // NOTE: Synchronization deferred until Apply/OK to avoid syncing incomplete edits
         // StockFlowRegistry.synchronizeRelatedTables(tableElement);
-        
         setStatus("Row " + (rowIndex + 1) + " deleted. Total rows: " + dataRows);
         markChanged();
         populateGrid();
-        
+        // Cascade delete: remove same flow rows in other tables for any non-zero flow/stock pairs
+        if (flowDescToDelete != null && !flowDescToDelete.isEmpty() && !nonZeroStocks.isEmpty()) {
+            int deleted = StockFlowRegistry.deleteMatchingFlowRows(tableElement, flowDescToDelete, nonZeroStocks);
+            if (deleted > 0) {
+                setStatus(statusLabel.getText() + " | Removed " + deleted + " matching row(s) from other tables");
+            }
+        }
         // Refresh simulation display
         if (sim != null) {
             sim.repaint();
@@ -1545,6 +1563,69 @@ public class TableEditDialog extends Dialog {
     }
     
     /**
+     * Show a preview of changes that will be propagated to other tables
+     */
+    private void showPropagationPreview() {
+        // Find all tables that share stocks with this table
+        java.util.Set<TableElm> affectedTables = new java.util.HashSet<TableElm>();
+        java.util.Set<String> sharedStocks = new java.util.HashSet<String>();
+        
+        for (int col = 0; col < dataCols; col++) {
+            String stockName = stockValues[col];
+            if (stockName != null && !stockName.trim().isEmpty()) {
+                java.util.List<TableElm> tablesForStock = StockFlowRegistry.getTablesForStock(stockName);
+                if (tablesForStock != null && tablesForStock.size() > 1) {
+                    // More than one table (including this one) shares this stock
+                    for (TableElm table : tablesForStock) {
+                        if (table != tableElement) {
+                            affectedTables.add(table);
+                            sharedStocks.add(stockName);
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (affectedTables.isEmpty()) {
+            // No other tables to synchronize with
+            return;
+        }
+        
+        // Build preview message
+        StringBuilder preview = new StringBuilder();
+        preview.append("SYNCHRONIZATION PREVIEW\n");
+        preview.append("=======================\n\n");
+        preview.append("Shared stocks: ").append(sharedStocks).append("\n\n");
+        preview.append("The following tables will be updated:\n\n");
+        
+        for (TableElm table : affectedTables) {
+            preview.append("📊 ").append(table.getTableTitle()).append("\n");
+            
+            // Find which columns in the target table will be affected
+            java.util.List<String> affectedColumns = new java.util.ArrayList<String>();
+            for (int col = 0; col < table.getCols(); col++) {
+                String header = table.getColumnHeader(col);
+                if (sharedStocks.contains(header)) {
+                    affectedColumns.add(header);
+                }
+            }
+            
+            preview.append("   Affected columns: ").append(affectedColumns).append("\n");
+            preview.append("   Rows will be synchronized: ").append(dataRows).append(" rows\n\n");
+        }
+        
+        preview.append("Changes to propagate:\n");
+        preview.append("- Row count: ").append(dataRows).append("\n");
+        preview.append("- Flow equations for shared stocks\n");
+        preview.append("- Row descriptions (flow names)\n\n");
+        
+        preview.append("Click OK to continue with synchronization.");
+        
+        // Show the preview in an alert dialog
+        com.google.gwt.user.client.Window.alert(preview.toString());
+    }
+    
+    /**
      * Find the index that separates Asset columns from Liability columns
      * Returns the index of the first Liability column
      */
@@ -1594,6 +1675,9 @@ public class TableEditDialog extends Dialog {
             }
             
             // *** Trigger synchronization with other tables sharing the same stocks ***
+            // Show changes that will be propagated
+            // showPropagationPreview();
+            
             StockFlowRegistry.synchronizeRelatedTables(tableElement);
             
             // Update table display

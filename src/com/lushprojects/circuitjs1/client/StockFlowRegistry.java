@@ -283,54 +283,145 @@ public class StockFlowRegistry extends Animal{
     /**
      * Synchronize a single table with merged rows for its stocks
      * 
+     * Strategy: For each non-zero element in priority table:
+     * 1. Find matching flow (row description) in target table
+     * 2. Find matching stock (column header) in target table
+     * 3. If both exist, populate the equation
+     * 4. If flow doesn't exist, create it at the end
+     * 
      * @param table The table to synchronize
-     * @param priorityTable Optional table whose row order should be preserved
+     * @param priorityTable The table with equations to propagate (trigger table)
      * @return true if table was modified, false if already in sync
      */
     public static boolean synchronizeTable(TableElm table, TableElm priorityTable) {
         // Prevent recursive synchronization
         if (currentlySynchronizing.contains(table)) {
-            /*-{ log.log(msg("synchronizeTable",  "Skipping recursive sync for " + table.getTableTitle())); }-*/;
+            return false;
+        }
+        
+        // Skip if this is the priority table itself
+        if (table == priorityTable) {
             return false;
         }
         
         try {
             currentlySynchronizing.add(table);
-            
-            boolean modified = false;
-            int sharedStockCount = 0;
-            
-            // For each column in this table
-            for (int col = 0; col < table.getCols(); col++) {
-                String stockName = table.getColumnHeader(col);
-                
-                // Only synchronize if this stock is shared
-                if (isSharedStock(stockName)) {
-                    sharedStockCount++;
-                    // Use priority table's row order if this table is the priority table
-                    TableElm orderSource = (table == priorityTable) ? priorityTable : null;
-                    LinkedHashSet<String> mergedRows = getMergedRowDescriptions(stockName, orderSource);
-                    
-                    int oldRows = table.getRows();
-                    if (synchronizeTableColumn(table, col, mergedRows)) {
-                        modified = true;
-                        log("synchronizeTable: ", table.getTableTitle() + " updated for stock '" + stockName +
-                                      "' (" + oldRows + " → " + table.getRows() + " rows)");
-                    }
-                }
-            }
-            
-            if (sharedStockCount == 0) {
-                log("synchronizeTable: ",  table.getTableTitle() + " has no shared stocks, skipping");
-            } else if (!modified) {
-                // logger.info("synchronizeTable: " +  table.getTableTitle() + " already in sync");
-                /*-{ log.log(msg("synchronizeTable",  table.getTableTitle() + " already in sync")); }-*/;
-            }
-            
-            return modified;
-            
+            return synchronizeNonZeroElements(table, priorityTable);
         } finally {
             currentlySynchronizing.remove(table);
+        }
+    }
+    
+    /**
+     * Synchronize non-zero elements from priority table to target table
+     * Only propagates equations where both flow and stock exist (or creates flow if needed)
+     */
+    private static boolean synchronizeNonZeroElements(TableElm targetTable, TableElm sourceTable) {
+        boolean modified = false;
+        
+        // Build map of existing flow descriptions in target table
+        Map<String, Integer> targetFlowRows = new HashMap<String, Integer>();
+        for (int row = 0; row < targetTable.getRows(); row++) {
+            String flowDesc = targetTable.getRowDescription(row);
+            if (flowDesc != null && !flowDesc.trim().isEmpty()) {
+                targetFlowRows.put(flowDesc.trim(), row);
+            }
+        }
+        
+        // Collect flows that need to be added (flow → list of (stock, equation) pairs)
+        Map<String, List<StockEquation>> flowsToAdd = new HashMap<String, List<StockEquation>>();
+        
+        // Process each non-zero element from source table
+        for (int sourceRow = 0; sourceRow < sourceTable.getRows(); sourceRow++) {
+            String flowDesc = sourceTable.getRowDescription(sourceRow);
+            if (flowDesc == null || flowDesc.trim().isEmpty()) {
+                continue; // Skip rows without descriptions
+            }
+            flowDesc = flowDesc.trim();
+            
+            for (int sourceCol = 0; sourceCol < sourceTable.getCols(); sourceCol++) {
+                String equation = sourceTable.getCellEquation(sourceRow, sourceCol);
+                
+                // Skip zero or empty equations
+                if (equation == null || equation.trim().isEmpty() || equation.trim().equals("0")) {
+                    continue;
+                }
+                
+                String stockName = sourceTable.getColumnHeader(sourceCol);
+                if (stockName == null || stockName.trim().isEmpty()) {
+                    continue;
+                }
+                
+                // Check if target table has this stock
+                int targetCol = targetTable.findColumnByStockName(stockName);
+                if (targetCol < 0) {
+                    continue; // Target table doesn't have this stock, skip
+                }
+                
+                // Check if target table has this flow
+                if (targetFlowRows.containsKey(flowDesc)) {
+                    // Flow exists - update the equation regardless of existing value to ensure full sync
+                    int targetRow = targetFlowRows.get(flowDesc);
+                    String existingEquation = targetTable.getCellEquation(targetRow, targetCol);
+                    
+                    // Always update to ensure synchronization (source table is authoritative)
+                    if (!equation.equals(existingEquation)) {
+                        targetTable.setCellEquation(targetRow, targetCol, equation);
+                        modified = true;
+                        log("synchronizeNonZeroElements", "Updated [" + targetRow + "," + targetCol + "] " + 
+                            flowDesc + " → " + stockName + ": `" + equation + "` (was: `" + 
+                            (existingEquation != null ? existingEquation : "empty") + "`)");
+                    }
+                } else {
+                    // Flow doesn't exist - queue it for addition at the end
+                    if (!flowsToAdd.containsKey(flowDesc)) {
+                        flowsToAdd.put(flowDesc, new ArrayList<StockEquation>());
+                    }
+                    flowsToAdd.get(flowDesc).add(new StockEquation(stockName, targetCol, equation));
+                }
+            }
+        }
+        
+        // Add new flows at the end
+        if (!flowsToAdd.isEmpty()) {
+            modified = true;
+            int originalRows = targetTable.getRows();
+            int newRowCount = originalRows + flowsToAdd.size();
+            
+            // Resize table
+            targetTable.resizeTable(newRowCount, targetTable.getCols());
+            
+            // Add each new flow
+            int newRow = originalRows;
+            for (Map.Entry<String, List<StockEquation>> entry : flowsToAdd.entrySet()) {
+                String flowDesc = entry.getKey();
+                targetTable.setRowDescription(newRow, flowDesc);
+                
+                // Set equations for this flow
+                for (StockEquation se : entry.getValue()) {
+                    targetTable.setCellEquation(newRow, se.columnIndex, se.equation);
+                    log("synchronizeNonZeroElements", "Created row " + newRow + ": " + 
+                        flowDesc + " → " + se.stockName + ": `" + se.equation + "`");
+                }
+                newRow++;
+            }
+        }
+        
+        return modified;
+    }
+    
+    /**
+     * Helper class to hold stock equation data
+     */
+    private static class StockEquation {
+        String stockName;
+        int columnIndex;
+        String equation;
+        
+        StockEquation(String stockName, int columnIndex, String equation) {
+            this.stockName = stockName;
+            this.columnIndex = columnIndex;
+            this.equation = equation;
         }
     }
     
@@ -461,6 +552,35 @@ public class StockFlowRegistry extends Animal{
 
         Set<TableElm> affectedTables = new HashSet<TableElm>();
         Set<String> sharedStocks = new HashSet<String>();
+
+        // Print all the non-zero flow/stock pairs to sync to console
+        SRTlog("=== Non-Zero Flow/Stock Pairs from Trigger Table ===");
+        SRTlog("Table: " + triggerTable.getTableTitle());
+        int nonZeroCount = 0;
+        for (int row = 0; row < triggerTable.getRows(); row++) {
+            String flowDesc = triggerTable.getRowDescription(row);
+            if (flowDesc == null || flowDesc.trim().isEmpty()) {
+                flowDesc = "Flow" + row;
+            }
+            
+            for (int col = 0; col < triggerTable.getCols(); col++) {
+                String equation = triggerTable.getCellEquation(row, col);
+                if (equation != null && !equation.trim().isEmpty() && !equation.trim().equals("0")) {
+                    String stockName = triggerTable.getColumnHeader(col);
+                    SRTlog("  [" + row + "," + col + "] " + flowDesc + " → " + stockName + ": `" + equation + "`");
+                    nonZeroCount++;
+                }
+            }
+        }
+        if (nonZeroCount == 0) {
+            SRTlog("  (No non-zero equations in trigger table)");
+        } else {
+            SRTlog("Total non-zero pairs: " + nonZeroCount);
+        }
+        SRTlog("===================================================");
+
+         
+        // First, find all affected tables
         
         // Find all tables that share any stock with trigger table
         for (int col = 0; col < triggerTable.getCols(); col++) {
@@ -486,10 +606,44 @@ public class StockFlowRegistry extends Animal{
         // Synchronize each affected table, using trigger table as priority for row order
         int tablesUpdated = 0;
         SRTlog("Number of affected tables: " + affectedTables.size());
+        
         for (TableElm table : affectedTables) {
+            // Log which equations will be applied to this table
+            if (table != triggerTable) {
+                SRTlog("--- Applying to Table: " + table.getTableTitle() + " ---");
+                
+                // Check which stocks are shared and will receive equations
+                for (int col = 0; col < table.getCols(); col++) {
+                    String stockName = table.getColumnHeader(col);
+                    if (sharedStocks.contains(stockName)) {
+                        SRTlog("  Stock '" + stockName + "' (column " + col + ") will receive equations");
+                        
+                        // Show which flow/stock pairs from trigger table will be applied
+                        for (int row = 0; row < triggerTable.getRows(); row++) {
+                            String flowDesc = triggerTable.getRowDescription(row);
+                            if (flowDesc == null || flowDesc.trim().isEmpty()) {
+                                flowDesc = "Flow" + row;
+                            }
+                            
+                            // Find the column in trigger table for this stock
+                            int triggerCol = triggerTable.findColumnByStockName(stockName);
+                            if (triggerCol >= 0) {
+                                String equation = triggerTable.getCellEquation(row, triggerCol);
+                                if (equation != null && !equation.trim().isEmpty() && !equation.trim().equals("0")) {
+                                    SRTlog("    ✓ " + flowDesc + ": `" + equation + "`");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
             boolean wasModified = synchronizeTable(table, triggerTable);
             if (wasModified) {
                 tablesUpdated++;
+                if (table != triggerTable) {
+                    SRTlog("  ✅ Table '" + table.getTableTitle() + "' updated");
+                }
             }
         }
         
@@ -536,5 +690,89 @@ public class StockFlowRegistry extends Animal{
         }
         
         return sb.toString();
+    }
+
+    /**
+     * Delete rows in other tables that match the given flow description and have non-zero
+     * equations for any of the specified stocks. Returns the number of rows deleted.
+     *
+     * @param sourceTable The table where the deletion originated (do not delete in this table)
+     * @param flowDescription The flow description to match (exact match)
+     * @param stocks Set of stock names for which a non-zero equation must exist to trigger deletion
+     */
+    public static int deleteMatchingFlowRows(TableElm sourceTable, String flowDescription, java.util.Set<String> stocks) {
+        if (flowDescription == null || flowDescription.trim().isEmpty() || stocks == null || stocks.isEmpty()) return 0;
+        
+        int deletedCount = 0;
+        Set<TableElm> touchedTables = new HashSet<TableElm>();
+
+        // For each stock, find tables that contain it
+        for (String stock : stocks) {
+            List<TableElm> tables = getTablesForStock(stock);
+            for (TableElm table : tables) {
+                // Skip the source table
+                if (table == sourceTable) continue;
+
+                // If we've already processed this table for this deletion, skip
+                if (touchedTables.contains(table)) continue;
+                touchedTables.add(table);
+
+                // Find the row index with matching flow description
+                int matchingRow = -1;
+                for (int r = 0; r < table.getRows(); r++) {
+                    String desc = table.getRowDescription(r);
+                    if (desc != null && desc.trim().equals(flowDescription.trim())) {
+                        matchingRow = r;
+                        break;
+                    }
+                }
+
+                if (matchingRow >= 0) {
+                    // Verify that at least one of the stocks has a non-zero equation in this row
+                    boolean hasNonZero = false;
+                    for (String s : stocks) {
+                        int colIndex = table.findColumnByStockName(s);
+                        if (colIndex >= 0) {
+                            String eq = table.getCellEquation(matchingRow, colIndex);
+                            if (eq != null && !eq.trim().isEmpty() && !eq.trim().equals("0")) {
+                                hasNonZero = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (hasNonZero) {
+                        // Delete the row from this table by rebuilding rows excluding the matchingRow
+                        int oldRows = table.getRows();
+                        int cols = table.getCols();
+                        int newRowCount = Math.max(0, oldRows - 1);
+
+                        String[] newRowDescriptions = new String[newRowCount];
+                        String[][] newCellEquations = new String[newRowCount][cols];
+
+                        int ni = 0;
+                        for (int rr = 0; rr < oldRows; rr++) {
+                            if (rr == matchingRow) continue;
+                            newRowDescriptions[ni] = table.getRowDescription(rr);
+                            for (int cc = 0; cc < cols; cc++) {
+                                newCellEquations[ni][cc] = table.getCellEquation(rr, cc);
+                            }
+                            ni++;
+                        }
+
+                        // Apply new data to table (recompiles expressions)
+                        table.updateRowData(newRowCount, newRowDescriptions, newCellEquations);
+                        deletedCount++;
+                        SRTlog("Deleted row '" + flowDescription + "' from table: " + table.getTableTitle());
+                    }
+                }
+            }
+        }
+
+        if (deletedCount > 0) {
+            SRTlog("Total deleted matching rows: " + deletedCount);
+        }
+
+        return deletedCount;
     }
 }
