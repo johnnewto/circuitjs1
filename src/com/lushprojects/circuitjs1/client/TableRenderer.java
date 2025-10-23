@@ -237,7 +237,6 @@ public class TableRenderer {
             g.fillRect(cellX, initialRowY, cellWidthPixels, table.cellHeight);
             
             // Draw value with text color based on voltage
-//            g.setColor(table.getCellVoltageColor(initialValue));
             g.setColor(table.getVoltageColor(g, initialValue));
             String voltageText = formatTableValue(initialValue, table.decimalPlaces, table.tableUnits);
             table.drawCenteredText(g, voltageText, cellX + cellWidthPixels/2, initialRowY + table.cellHeight/2, true);
@@ -279,23 +278,29 @@ public class TableRenderer {
                 // Display equation and voltage in cell (only if equation is not empty)
                 String equation = table.cellEquations[row][col];
                 if (equation != null && !equation.trim().isEmpty()) {
-//                    g.setColor(table.getCellVoltageColor(voltage));
                     g.setColor(table.getVoltageColor(g, voltage));
-                    String displayText = equation;
-                    if (displayText.length() > 8) {
-                        displayText = displayText.substring(0, 6) + ".."; // Truncate long equations
-                    }
+                    String displayText = truncateEquation(equation);
                     String voltageText = formatTableValue(voltage, table.decimalPlaces, table.tableUnits);
                     String combinedText = displayText + " = " + voltageText;
                     table.drawCenteredText(g, combinedText, cellX + cellWidthPixels/2, cellY + table.cellHeight/2, true);
                 }
-                // Don't display anything for empty cells
             }
             
             // Draw grid lines for this row
             int rowY = tableY + baseY + row * (table.cellHeight + table.cellSpacing);
             drawRowGridLines(g, rowY - tableY, tableX, rowDescColWidth, cellWidthPixels);
         }
+    }
+    
+    /**
+     * Truncate long equations for display
+     */
+    private String truncateEquation(String equation) {
+        int maxLength = 8;
+        if (equation.length() > maxLength) {
+            return equation.substring(0, maxLength - 2) + "..";
+        }
+        return equation;
     }
 
     private void drawSumRow(Graphics g, int offsetY) {
@@ -324,7 +329,6 @@ public class TableRenderer {
             g.fillRect(cellX, sumRowY, cellWidthPixels, table.cellHeight);
             
             // Draw column name and value with text color based on voltage
-//            g.setColor(table.getCellVoltageColor(computedValue));
             g.setColor(table.getVoltageColor(g, computedValue));
             String sumText = formatTableValue(computedValue, table.decimalPlaces, table.tableUnits);
             String combinedText = sumLabelName + ": " + sumText;
@@ -336,7 +340,7 @@ public class TableRenderer {
     }
 
     /**
-     * Helper method to draw grid lines for a row
+     * Draw grid lines for a single row
      */
     private void drawRowGridLines(Graphics g, int offsetY, int tableX, int rowDescColWidth, int cellWidthPixels) {
         int tableY = table.getTableY();

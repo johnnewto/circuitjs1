@@ -34,16 +34,14 @@ public class TableElm extends ChipElm {
     Expr[][] compiledExpressions; // Compiled expressions for evaluation
     ExprState[][] expressionStates; // Expression evaluation state for each cell
     
-    // Helper classes for separation of concerns
-    private TableRenderer renderer;
-    private TableEquationManager equationManager;
-    private TableDataManager dataManager;
-    private TableGeometryManager geometryManager;
+    // Helper class managers for separation of concerns
+    private final TableRenderer renderer;
+    private final TableEquationManager equationManager;
+    private final TableDataManager dataManager;
+    private final TableGeometryManager geometryManager;
     
     // Flag to bypass table dialog intercept when showing properties
     private boolean showingProperties = false;
-    
-    // Note: No need to track labeled nodes anymore with direct resolution
     
     // Constructor for new table FROM MENU - receives auto-increment flag
     public TableElm(int xx, int yy) {
@@ -171,21 +169,17 @@ public class TableElm extends ChipElm {
         return row >= 0 && row < rows && col >= 0 && col < cols;
     }
     
-    // Enhanced version that evaluates equations for cell values
     protected double getVoltageForCell(int row, int col) {
         return equationManager.getVoltageForCell(row, col);
-    }
-    
-    // Recompile all equations when labeled nodes change
-    private void recompileAllEquations() {
-        equationManager.recompileAllEquations();
     }
     
     void compileEquation(int row, int col, String equation) {
         equationManager.compileEquation(row, col, equation);
     }
 
-    // Helper method to find a LabeledNodeElm with matching text
+    /**
+     * Find a LabeledNodeElm with matching text
+     */
     private LabeledNodeElm findLabeledNode(String name) {
         if (name == null || name.trim().isEmpty()) {
             return null;
@@ -229,26 +223,22 @@ public class TableElm extends ChipElm {
         ComputedValues.setComputedValue(labelName, voltage, this);
     }
     
-    // Static method to get computed values by other elements
     public static Double getComputedValue(String labelName) {
         return ComputedValues.getComputedValue(labelName);
     }
-
-    // Helper method to get cell width in pixels
-    int getCellWidthPixels() {
-        return cellWidthInGrids * cspc;  // Convert grid units to pixels
-    }
     
-    // Calculate grid-aligned cell width for pin positioning (REMOVED - no longer needed)
-    // Cell width is already in grid units, so column pitch in grid units is just cellWidthInGrids
+    /**
+     * Get cell width in pixels - delegates to GeometryManager
+     */
+    int getCellWidthPixels() {
+        return geometryManager != null ? geometryManager.getCellWidthPixels() : cellWidthInGrids * cspc;
+    }
     
     @Override
     void setupPins() {
         if (geometryManager != null) {
             geometryManager.setupPins();
         }
-        
-        // Register this table as a potential master for each output name
         registerAsMasterForOutputNames();
     }
     
@@ -477,40 +467,31 @@ public class TableElm extends ChipElm {
 
     @Override
     public void setEditValue(int n, EditInfo ei) {
-        // When showing properties, indices start at 0
-        // if (showingProperties) {
-            if (n == 0) {
-                tableTitle = ei.textf.getText();
-            } else if (n == 1) {
-                cellWidthInGrids = Math.max(1, (int)ei.value);
-            } else if (n == 2) {
-                cellHeight = Math.max(16, (int)ei.value);
-            } else if (n == 3) {
-                cellSpacing = Math.max(0, (int)ei.value);
-            } else if (n == 4) {
-                showInitialValues = ei.checkbox.getValue();
-            }
-            
-            setupPins();
-            setPoints();
-            sim.analyzeFlag = true;
-        // }
-        // Otherwise ignore (should not be called in normal double-click mode)
+        if (n == 0) {
+            tableTitle = ei.textf.getText();
+        } else if (n == 1) {
+            cellWidthInGrids = Math.max(1, (int)ei.value);
+        } else if (n == 2) {
+            cellHeight = Math.max(16, (int)ei.value);
+        } else if (n == 3) {
+            cellSpacing = Math.max(0, (int)ei.value);
+        } else if (n == 4) {
+            showInitialValues = ei.checkbox.getValue();
+        }
+        
+        setupPins();
+        setPoints();
+        sim.analyzeFlag = true;
     }
 
-    // Add method for TableEditDialog to call standard properties
+    /**
+     * Open standard properties dialog (called from TableEditDialog)
+     */
     public void openPropertiesDialog() {
-        // Set flag to bypass table dialog intercept
         showingProperties = true;
-        
-        // Use CirSim's standard method to open element properties dialog
         if (sim != null) {
             sim.doEdit(this);
         }
-        
-        // Reset flag after dialog is shown
-        // Note: This happens immediately, before user interacts with dialog
-        // The flag just controls what getEditInfo returns
         showingProperties = false;
     }
     
@@ -539,41 +520,39 @@ public class TableElm extends ChipElm {
         arr[1] = "All cells use equations (node names or expressions)";
 
         int idx = 2;
+        int maxOutputsToShow = 3;
 
         // Show output pin values
-        for (int col = 0; col < Math.min(cols, 3) && idx < arr.length - 1; col++) {
+        for (int col = 0; col < Math.min(cols, maxOutputsToShow) && idx < arr.length - 1; col++) {
             String header = outputNames[col];
             double output = lastColumnSums != null ? lastColumnSums[col] : 0.0;
             arr[idx++] = header + " = " + TableRenderer.formatTableValue(output, decimalPlaces, tableUnits);
         }
 
-        if (cols > 3 && idx < arr.length - 1) {
+        if (cols > maxOutputsToShow && idx < arr.length - 1) {
             arr[idx++] = "... (" + cols + " outputs total)";
         }
     }
     
-    // getCellLabel() removed - it was a duplicate of getCellEquation()
-    // Use getCellEquation() instead
-
+    /**
+     * Set column header and update stock registry
+     */
     public void setColumnHeader(int col, String header) {
-        if (col >= 0 && col < cols) {
-            String oldHeader = outputNames[col];
-            
-            // Unregister old stock name
-            if (oldHeader != null && !oldHeader.trim().isEmpty()) {
-                StockFlowRegistry.unregisterStock(oldHeader, this);
-            }
-            
-            // Set new header
-            outputNames[col] = header;
-            
-            // Register new stock name
-            if (header != null && !header.trim().isEmpty()) {
-                StockFlowRegistry.registerStock(header, this);
-            }
-            
-            // // Trigger synchronization for both old and new stock
-            // StockFlowRegistry.synchronizeRelatedTables(this);
+        if (col < 0 || col >= cols) return;
+        
+        String oldHeader = outputNames[col];
+        
+        // Unregister old stock name
+        if (oldHeader != null && !oldHeader.trim().isEmpty()) {
+            StockFlowRegistry.unregisterStock(oldHeader, this);
+        }
+        
+        // Set new header
+        outputNames[col] = header;
+        
+        // Register new stock name
+        if (header != null && !header.trim().isEmpty()) {
+            StockFlowRegistry.registerStock(header, this);
         }
     }
 

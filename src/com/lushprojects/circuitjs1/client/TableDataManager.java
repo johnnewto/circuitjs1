@@ -20,6 +20,29 @@ public class TableDataManager {
     }
     
     /**
+     * Initialize column types with default values
+     */
+    private void initializeColumnTypes() {
+        table.columnTypes = new ColumnType[table.cols];
+        for (int col = 0; col < table.cols; col++) {
+            table.columnTypes[col] = getDefaultColumnType(col);
+        }
+    }
+    
+    /**
+     * Get default column type based on column index
+     */
+    private ColumnType getDefaultColumnType(int col) {
+        switch (col) {
+            case 0: return ColumnType.ASSET;
+            case 1: return ColumnType.LIABILITY;
+            case 2: return ColumnType.EQUITY;
+            case 3: return ColumnType.A_L_E;
+            default: return ColumnType.ASSET;
+        }
+    }
+    
+    /**
      * Initialize all table data structures
      */
     public void initTable() {
@@ -72,23 +95,10 @@ public class TableDataManager {
         
         // Initialize column types if not set
         if (table.columnTypes == null) {
-            table.columnTypes = new ColumnType[table.cols];
-            for (int i = 0; i < table.cols; i++) {
-                if (i == 0) {
-                    table.columnTypes[i] = ColumnType.ASSET;
-                } else if (i == 1) {
-                    table.columnTypes[i] = ColumnType.LIABILITY;
-                } else if (i == 2) {
-                    table.columnTypes[i] = ColumnType.EQUITY;
-                } else if (i == 3) {
-                    table.columnTypes[i] = ColumnType.A_L_E;
-                } else {
-                    table.columnTypes[i] = ColumnType.ASSET;
-                }
-            }
+            initializeColumnTypes();
         }
         
-        // Ensure no null or empty values exist
+        // Ensure no null or empty values exist in cell equations
         for (int row = 0; row < table.rows; row++) {
             for (int col = 0; col < table.cols; col++) {
                 if (table.cellEquations[row][col] == null || table.cellEquations[row][col].trim().isEmpty()) {
@@ -97,9 +107,10 @@ public class TableDataManager {
             }
         }
         
-        for (int i = 0; i < table.cols; i++) {
-            if (table.outputNames[i] == null || table.outputNames[i].trim().isEmpty()) {
-                table.outputNames[i] = "Stock" + (i + 1);
+        // Ensure no null or empty values exist in output names
+        for (int col = 0; col < table.cols; col++) {
+            if (table.outputNames[col] == null || table.outputNames[col].trim().isEmpty()) {
+                table.outputNames[col] = "Stock" + (col + 1);
             }
         }
     }
@@ -108,52 +119,54 @@ public class TableDataManager {
      * Initialize with default values (error fallback)
      */
     public void initializeDefaults() {
-        if (table.outputNames == null) {
-            table.outputNames = new String[table.cols];
-            for (int col = 0; col < table.cols; col++) {
-                table.outputNames[col] = "Stock" + (col + 1);
-            }
-        }
-        if (table.rowDescriptions == null) {
-            table.rowDescriptions = new String[table.rows];
-            for (int row = 0; row < table.rows; row++) {
-                table.rowDescriptions[row] = "Row" + (row + 1);
-            }
-        }
-        if (table.columnTypes == null) {
-            table.columnTypes = new ColumnType[table.cols];
-            for (int col = 0; col < table.cols; col++) {
-                if (col == 0) {
-                    table.columnTypes[col] = ColumnType.ASSET;
-                } else if (col == 1) {
-                    table.columnTypes[col] = ColumnType.LIABILITY;
-                } else if (col == 2) {
-                    table.columnTypes[col] = ColumnType.EQUITY;
-                } else if (col == 3) {
-                    table.columnTypes[col] = ColumnType.A_L_E;
-                } else {
-                    table.columnTypes[col] = ColumnType.ASSET;
-                }
-            }
-        }
-        if (table.cellEquations == null) {
-            table.cellEquations = new String[table.rows][table.cols];
-            for (int row = 0; row < table.rows; row++) {
-                for (int col = 0; col < table.cols; col++) {
-                    table.cellEquations[row][col] = "";
-                }
-            }
-        }
-        if (table.initialValues == null) {
-            table.initialValues = new double[table.cols];
-            for (int col = 0; col < table.cols; col++) {
-                table.initialValues[col] = 0.0;
-            }
-        }
+        initializeOutputNames();
+        initializeRowDescriptions();
+        initializeColumnTypes();
+        initializeCellEquations();
+        initializeInitialValues();
+        
         table.showInitialValues = false;
         table.tableUnits = "";
         table.decimalPlaces = 2;
         table.tableTitle = "Table";
+    }
+    
+    private void initializeOutputNames() {
+        if (table.outputNames == null) {
+            table.outputNames = new String[table.cols];
+        }
+        for (int col = 0; col < table.cols; col++) {
+            table.outputNames[col] = "Stock" + (col + 1);
+        }
+    }
+    
+    private void initializeRowDescriptions() {
+        if (table.rowDescriptions == null) {
+            table.rowDescriptions = new String[table.rows];
+        }
+        for (int row = 0; row < table.rows; row++) {
+            table.rowDescriptions[row] = "Row" + (row + 1);
+        }
+    }
+    
+    private void initializeCellEquations() {
+        if (table.cellEquations == null) {
+            table.cellEquations = new String[table.rows][table.cols];
+        }
+        for (int row = 0; row < table.rows; row++) {
+            for (int col = 0; col < table.cols; col++) {
+                table.cellEquations[row][col] = "";
+            }
+        }
+    }
+    
+    private void initializeInitialValues() {
+        if (table.initialValues == null) {
+            table.initialValues = new double[table.cols];
+        }
+        for (int col = 0; col < table.cols; col++) {
+            table.initialValues[col] = 0.0;
+        }
     }
     
     /**
@@ -205,137 +218,146 @@ public class TableDataManager {
      */
     public void parseTableData(StringTokenizer st) {
         try {
-            // Parse basic dimensions
-            if (st.hasMoreTokens()) table.rows = Integer.parseInt(st.nextToken());
-            if (st.hasMoreTokens()) table.cols = Integer.parseInt(st.nextToken());
+            parseDimensions(st);
+            initializeArrays();
+            parseProperties(st);
+            parseColumnHeaders(st);
+            parseRowDescriptions(st);
+            parseInitialValues(st);
+            parseColumnTypes(st);
+            parseCellEquations(st);
             
-            // Initialize arrays
-            table.outputNames = new String[table.cols];
-            table.cellEquations = new String[table.rows][table.cols];
-            table.initialValues = new double[table.cols];
-            table.rowDescriptions = new String[table.rows];
-            
-            // Parse table properties 
-            table.showInitialValues = st.hasMoreTokens() ? Boolean.parseBoolean(st.nextToken()) : false;
-            table.tableUnits = st.hasMoreTokens() ? CustomLogicModel.unescape(st.nextToken()) : "";
-            table.decimalPlaces = st.hasMoreTokens() ? Integer.parseInt(st.nextToken()) : 2;
-            table.tableTitle = st.hasMoreTokens() ? CustomLogicModel.unescape(st.nextToken()) : "Table";
-            
-            // Parse column headers
-            for (int col = 0; col < table.cols; col++) {
-                if (st.hasMoreTokens()) {
-                    table.outputNames[col] = CustomLogicModel.unescape(st.nextToken());
-                } else {
-                    table.outputNames[col] = "Stock" + (col + 1);
-                }
-            }
-            
-            // Parse row descriptions (if available - for backwards compatibility)
-            for (int row = 0; row < table.rows; row++) {
-                if (st.hasMoreTokens()) {
-                    String token = st.nextToken();
-                    // Try to determine if this is a row description or initial value
-                    try {
-                        // If it parses as a double, it's probably an initial value
-                        Double.parseDouble(token);
-                        // It's a number, so no row descriptions in this file
-                        // Use default row descriptions
-                        for (int r = 0; r < table.rows; r++) {
-                            table.rowDescriptions[r] = "Row" + (r + 1);
-                        }
-                        // Don't consume this token - it's for initial values
-                        break;
-                    } catch (NumberFormatException e) {
-                        // It's a string, so it's a row description
-                        table.rowDescriptions[row] = CustomLogicModel.unescape(token);
-                    }
-                } else {
-                    table.rowDescriptions[row] = "Row" + (row + 1);
-                }
-            }
-            
-            // Parse initial values
-            for (int col = 0; col < table.cols; col++) {
-                if (st.hasMoreTokens()) {
-                    try {
-                        table.initialValues[col] = Double.parseDouble(st.nextToken());
-                    } catch (NumberFormatException e) {
-                        table.initialValues[col] = 0.0;
-                    }
-                } else {
-                    table.initialValues[col] = 0.0;
-                }
-            }
-            
-            // Parse column types (if available in saved data)
-            table.columnTypes = new ColumnType[table.cols];
-            boolean hasColumnTypes = false;
-            for (int col = 0; col < table.cols; col++) {
-                if (st.hasMoreTokens()) {
-                    String typeToken = st.nextToken();
-                    // Check if this looks like a column type or an equation
-                    try {
-                        table.columnTypes[col] = ColumnType.valueOf(typeToken);
-                        hasColumnTypes = true;
-                    } catch (IllegalArgumentException e) {
-                        // Not a valid column type, must be start of equations
-                        // Push back by saving for equation parsing
-                        if (table.cellEquations == null) {
-                            table.cellEquations = new String[table.rows][table.cols];
-                        }
-                        table.cellEquations[0][col] = CustomLogicModel.unescape(typeToken);
-                        break;
-                    }
-                } else {
-                    break;
-                }
-            }
-            
-            // If no column types were found, initialize with defaults
-            if (!hasColumnTypes) {
-                for (int col = 0; col < table.cols; col++) {
-                    if (col == 0) {
-                        table.columnTypes[col] = ColumnType.ASSET;
-                    } else if (col == 1) {
-                        table.columnTypes[col] = ColumnType.LIABILITY;
-                    } else if (col == 2) {
-                        table.columnTypes[col] = ColumnType.EQUITY;
-                    } else if (col == 3) {
-                        table.columnTypes[col] = ColumnType.A_L_E;
-                    } else {
-                        table.columnTypes[col] = ColumnType.ASSET;
-                    }
-                }
-            }
-            
-            // Parse cell equations
-            for (int row = 0; row < table.rows; row++) {
-                for (int col = 0; col < table.cols; col++) {
-                    if (st.hasMoreTokens()) {
-                        table.cellEquations[row][col] = CustomLogicModel.unescape(st.nextToken());
-                    } else {
-                        table.cellEquations[row][col] = "";
-                    }
-                }
-            }
-            
-            CirSim.console("TableElm: Successfully parsed simplified table data");
-            
+            CirSim.console("TableElm: Successfully parsed table data");
         } catch (Exception e) {
             CirSim.console("TableElm: Error parsing table data: " + e.getMessage());
-            // Initialize with defaults on error
             initializeDefaults();
+        }
+    }
+    
+    private void parseDimensions(StringTokenizer st) {
+        if (st.hasMoreTokens()) table.rows = Integer.parseInt(st.nextToken());
+        if (st.hasMoreTokens()) table.cols = Integer.parseInt(st.nextToken());
+    }
+    
+    private void initializeArrays() {
+        table.outputNames = new String[table.cols];
+        table.cellEquations = new String[table.rows][table.cols];
+        table.initialValues = new double[table.cols];
+        table.rowDescriptions = new String[table.rows];
+    }
+    
+    private void parseProperties(StringTokenizer st) {
+        table.showInitialValues = st.hasMoreTokens() ? Boolean.parseBoolean(st.nextToken()) : false;
+        table.tableUnits = st.hasMoreTokens() ? CustomLogicModel.unescape(st.nextToken()) : "";
+        table.decimalPlaces = st.hasMoreTokens() ? Integer.parseInt(st.nextToken()) : 2;
+        table.tableTitle = st.hasMoreTokens() ? CustomLogicModel.unescape(st.nextToken()) : "Table";
+    }
+    
+    private void parseColumnHeaders(StringTokenizer st) {
+        for (int col = 0; col < table.cols; col++) {
+            if (st.hasMoreTokens()) {
+                table.outputNames[col] = CustomLogicModel.unescape(st.nextToken());
+            } else {
+                table.outputNames[col] = "Stock" + (col + 1);
+            }
+        }
+    }
+    
+    private void parseRowDescriptions(StringTokenizer st) {
+        for (int row = 0; row < table.rows; row++) {
+            if (st.hasMoreTokens()) {
+                String token = st.nextToken();
+                // Check if token is a row description or initial value (backward compatibility)
+                if (isNumeric(token)) {
+                    // It's numeric, so no row descriptions in file - use defaults
+                    setDefaultRowDescriptions();
+                    break;
+                } else {
+                    table.rowDescriptions[row] = CustomLogicModel.unescape(token);
+                }
+            } else {
+                table.rowDescriptions[row] = "Row" + (row + 1);
+            }
+        }
+    }
+    
+    private void setDefaultRowDescriptions() {
+        for (int row = 0; row < table.rows; row++) {
+            table.rowDescriptions[row] = "Row" + (row + 1);
+        }
+    }
+    
+    private boolean isNumeric(String str) {
+        try {
+            Double.parseDouble(str);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+    
+    private void parseInitialValues(StringTokenizer st) {
+        for (int col = 0; col < table.cols; col++) {
+            if (st.hasMoreTokens()) {
+                try {
+                    table.initialValues[col] = Double.parseDouble(st.nextToken());
+                } catch (NumberFormatException e) {
+                    table.initialValues[col] = 0.0;
+                }
+            } else {
+                table.initialValues[col] = 0.0;
+            }
+        }
+    }
+    
+    private void parseColumnTypes(StringTokenizer st) {
+        table.columnTypes = new ColumnType[table.cols];
+        boolean hasColumnTypes = false;
+        
+        for (int col = 0; col < table.cols; col++) {
+            if (st.hasMoreTokens()) {
+                String typeToken = st.nextToken();
+                try {
+                    table.columnTypes[col] = ColumnType.valueOf(typeToken);
+                    hasColumnTypes = true;
+                } catch (IllegalArgumentException e) {
+                    // Not a valid column type - must be start of equations
+                    if (table.cellEquations == null) {
+                        table.cellEquations = new String[table.rows][table.cols];
+                    }
+                    table.cellEquations[0][col] = CustomLogicModel.unescape(typeToken);
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+        
+        if (!hasColumnTypes) {
+            initializeColumnTypes();
+        }
+    }
+    
+    private void parseCellEquations(StringTokenizer st) {
+        for (int row = 0; row < table.rows; row++) {
+            for (int col = 0; col < table.cols; col++) {
+                if (st.hasMoreTokens()) {
+                    table.cellEquations[row][col] = CustomLogicModel.unescape(st.nextToken());
+                } else {
+                    table.cellEquations[row][col] = "";
+                }
+            }
         }
     }
     
     /**
      * Resize table and preserve existing data where possible
-     * This method handles all data structure resizing and copying
      */
     public void resizeTable(int newRows, int newCols) {
+        // Save old data
         String[] oldOutputNames = table.outputNames;
         String[][] oldEquations = table.cellEquations;
-        double[] oldInitialConditions = table.initialValues;
+        double[] oldInitialValues = table.initialValues;
         ColumnType[] oldColumnTypes = table.columnTypes;
         String[] oldRowDescriptions = table.rowDescriptions;
 
@@ -344,6 +366,14 @@ public class TableDataManager {
         table.cols = newCols;
 
         // Create new arrays
+        createNewArrays();
+        
+        // Copy existing data
+        copyExistingData(oldOutputNames, oldEquations, oldInitialValues, 
+                        oldColumnTypes, oldRowDescriptions);
+    }
+    
+    private void createNewArrays() {
         table.outputNames = new String[table.cols];
         table.cellEquations = new String[table.rows][table.cols];
         table.compiledExpressions = new Expr[table.rows][table.cols];
@@ -352,55 +382,68 @@ public class TableDataManager {
         table.columnTypes = new ColumnType[table.cols];
         table.rowDescriptions = new String[table.rows];
 
-        // Initialize ALL cells with empty strings (null equivalent)
+        // Initialize all cells with empty strings
         for (int row = 0; row < table.rows; row++) {
             for (int col = 0; col < table.cols; col++) {
                 table.cellEquations[row][col] = "";
                 table.compiledExpressions[row][col] = null;
-                table.expressionStates[row][col] = new ExprState(1); // Only need time variable
+                table.expressionStates[row][col] = new ExprState(1);
             }
         }
-
-        // Copy over existing data where possible
-        if (oldEquations != null) {
-            int copyRows = Math.min(table.rows, oldEquations.length);
-            for (int row = 0; row < copyRows; row++) {
-                if (oldEquations[row] != null) {
-                    int copyCols = Math.min(table.cols, oldEquations[row].length);
-                    for (int col = 0; col < copyCols; col++) {
-                        if (oldEquations[row][col] != null) {
-                            table.cellEquations[row][col] = oldEquations[row][col];
-                            // Recompile equations for copied cells
-                            if (!table.cellEquations[row][col].isEmpty()) {
-                                table.compileEquation(row, col, table.cellEquations[row][col]);
-                            }
+    }
+    
+    private void copyExistingData(String[] oldOutputNames, String[][] oldEquations,
+                                 double[] oldInitialValues, ColumnType[] oldColumnTypes,
+                                 String[] oldRowDescriptions) {
+        copyEquations(oldEquations);
+        copyInitialValues(oldInitialValues);
+        copyOutputNames(oldOutputNames);
+        copyColumnTypes(oldColumnTypes);
+        copyRowDescriptions(oldRowDescriptions);
+    }
+    
+    private void copyEquations(String[][] oldEquations) {
+        if (oldEquations == null) return;
+        
+        int copyRows = Math.min(table.rows, oldEquations.length);
+        for (int row = 0; row < copyRows; row++) {
+            if (oldEquations[row] != null) {
+                int copyCols = Math.min(table.cols, oldEquations[row].length);
+                for (int col = 0; col < copyCols; col++) {
+                    if (oldEquations[row][col] != null) {
+                        table.cellEquations[row][col] = oldEquations[row][col];
+                        // Recompile equations for copied cells
+                        if (!table.cellEquations[row][col].isEmpty()) {
+                            table.compileEquation(row, col, table.cellEquations[row][col]);
                         }
                     }
                 }
             }
         }
-
-        // Copy over existing initial conditions where possible
-        if (oldInitialConditions != null) {
-            for (int col = 0; col < Math.min(table.cols, oldInitialConditions.length); col++) {
-                table.initialValues[col] = oldInitialConditions[col];
+    }
+    
+    private void copyInitialValues(double[] oldInitialValues) {
+        if (oldInitialValues != null) {
+            int copyCols = Math.min(table.cols, oldInitialValues.length);
+            for (int col = 0; col < copyCols; col++) {
+                table.initialValues[col] = oldInitialValues[col];
             }
         }
-
-        // Initialize remaining initial conditions values with zeros
+        // Initialize remaining values with zeros
         for (int col = 0; col < table.cols; col++) {
-            if (oldInitialConditions == null || col >= oldInitialConditions.length) {
+            if (oldInitialValues == null || col >= oldInitialValues.length) {
                 table.initialValues[col] = 0.0;
             }
         }
-
-        // Copy over existing output names where possible
+    }
+    
+    private void copyOutputNames(String[] oldOutputNames) {
         if (oldOutputNames != null) {
-            for (int col = 0; col < Math.min(table.cols, oldOutputNames.length); col++) {
+            int copyCols = Math.min(table.cols, oldOutputNames.length);
+            for (int col = 0; col < copyCols; col++) {
                 table.outputNames[col] = oldOutputNames[col];
             }
         }
-
         // Initialize remaining output names
         for (int col = 0; col < table.cols; col++) {
             if (oldOutputNames == null || col >= oldOutputNames.length || 
@@ -408,39 +451,31 @@ public class TableDataManager {
                 table.outputNames[col] = "Stock_" + (col + 1);
             }
         }
-        
-        // Copy over existing column types where possible
+    }
+    
+    private void copyColumnTypes(ColumnType[] oldColumnTypes) {
         if (oldColumnTypes != null) {
-            for (int col = 0; col < Math.min(table.cols, oldColumnTypes.length); col++) {
+            int copyCols = Math.min(table.cols, oldColumnTypes.length);
+            for (int col = 0; col < copyCols; col++) {
                 table.columnTypes[col] = oldColumnTypes[col];
             }
         }
-        
-        // Initialize remaining column types with default values
+        // Initialize remaining column types
         for (int col = 0; col < table.cols; col++) {
             if (oldColumnTypes == null || col >= oldColumnTypes.length) {
-                if (col == 0) {
-                    table.columnTypes[col] = ColumnType.ASSET;
-                } else if (col == 1) {
-                    table.columnTypes[col] = ColumnType.LIABILITY;
-                } else if (col == 2) {
-                    table.columnTypes[col] = ColumnType.EQUITY;
-                } else if (col == 3) {
-                    table.columnTypes[col] = ColumnType.A_L_E;
-                } else {
-                    table.columnTypes[col] = ColumnType.ASSET;
-                }
+                table.columnTypes[col] = getDefaultColumnType(col);
             }
         }
-        
-        // Copy over existing row descriptions where possible
+    }
+    
+    private void copyRowDescriptions(String[] oldRowDescriptions) {
         if (oldRowDescriptions != null) {
-            for (int row = 0; row < Math.min(table.rows, oldRowDescriptions.length); row++) {
+            int copyRows = Math.min(table.rows, oldRowDescriptions.length);
+            for (int row = 0; row < copyRows; row++) {
                 table.rowDescriptions[row] = oldRowDescriptions[row];
             }
         }
-        
-        // Initialize remaining row descriptions with default values
+        // Initialize remaining row descriptions
         for (int row = 0; row < table.rows; row++) {
             if (oldRowDescriptions == null || row >= oldRowDescriptions.length ||
                 table.rowDescriptions[row] == null || table.rowDescriptions[row].isEmpty()) {

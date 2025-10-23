@@ -8,7 +8,7 @@ package com.lushprojects.circuitjs1.client;
 
 /**
  * TableGeometryManager - Handles pin positioning and table geometry calculations
- * Separates geometry logic from circuit simulation logic
+ * Manages the conversion between grid units and pixels, and calculates pin positions
  */
 public class TableGeometryManager {
     private final TableElm table;
@@ -19,88 +19,136 @@ public class TableGeometryManager {
     
     /**
      * Setup output pins on bottom edge of table
+     * Pins are positioned to align with column centers
      */
     public void setupPins() {
-        // Cell width is in cspc units (single grid spacing)
-        // But chip sizeX and sizeY must be in cspc2 units (double grid spacing)
+        calculateChipSize();
+        createOutputPins();
+    }
+    
+    /**
+     * Calculate chip size in cspc2 units (double grid spacing)
+     */
+    private void calculateChipSize() {
         int rowDescColWidth = table.cellWidthInGrids;  // In cspc units
-        int extraRows = (table.showInitialValues ? 1 : 0) + 1 + 1;
+        int extraRows = getExtraRowCount();
         
         // Calculate table dimensions in pixels
-        int tableWidthPixels = (rowDescColWidth + table.cols * table.cellWidthInGrids) * table.cspc + 2 * table.cspc;  // Add margins
-        int tableHeightPixels = (table.rows + extraRows) * table.cellHeight + (table.rows + extraRows + 1) * table.cellSpacing + 20;
+        int tableWidthPixels = (rowDescColWidth + table.cols * table.cellWidthInGrids) * table.cspc + 2 * table.cspc;
+        int tableHeightPixels = (table.rows + extraRows) * table.cellHeight + 
+                               (table.rows + extraRows + 1) * table.cellSpacing + 20;
         
-        // Set chip size in cspc2 units (cspc2 = 2*cspc)
-        table.sizeX = (tableWidthPixels + table.cspc2 - 1) / table.cspc2; // Round up
-        table.sizeY = (tableHeightPixels + table.cspc2 - 1) / table.cspc2; // Round up
-
-        // Create output pins on bottom edge
+        // Set chip size in cspc2 units (rounded up)
+        table.sizeX = (tableWidthPixels + table.cspc2 - 1) / table.cspc2;
+        table.sizeY = (tableHeightPixels + table.cspc2 - 1) / table.cspc2;
+    }
+    
+    /**
+     * Get number of extra rows (title, type, header, optional initial, computed)
+     */
+    private int getExtraRowCount() {
+        return (table.showInitialValues ? 1 : 0) + 3; // type + header + computed
+    }
+    
+    /**
+     * Create output pins positioned at column centers on bottom edge
+     */
+    private void createOutputPins() {
         table.pins = new ChipElm.Pin[table.cols];
+        
         for (int i = 0; i < table.cols; i++) {
-            String label = (table.outputNames != null && i < table.outputNames.length) ?
-                          table.outputNames[i] : "Stock" + (i + 1);
-
-            // Calculate pin X position
-            // Column center in pixels (relative to table origin x):
-
-            int cellWidthPixels = table.cellWidthInGrids * table.cspc;
-            int rowDescColWidthPixels = table.cellWidthInGrids * table.cspc;
-            int columnCenterX = rowDescColWidthPixels + table.cellSpacing * 2 + i * (cellWidthPixels + table.cellSpacing) + cellWidthPixels / 2;
+            String label = getOutputLabel(i);
+            int pinX = calculatePinX(i);
             
-            // Pin position is relative to x0 = x + cspc2, measured in cspc2 units
-            // Column center is at: x + columnCenterX
-            // Relative to x0: (x + columnCenterX) - (x + cspc2) = columnCenterX - cspc2
-            // In cspc2 units: (columnCenterX - cspc2) / cspc2
-            int pinX = (columnCenterX - table.cspc2) / table.cspc2;
-            
-            // Pin at bottom of chip (SIDE_S)
             table.pins[i] = table.new Pin(pinX, ChipElm.SIDE_S, label);
             table.pins[i].output = true;
         }
     }
     
     /**
-     * Set pin positions and bounding box
+     * Get output label for column
+     */
+    private String getOutputLabel(int col) {
+        return (table.outputNames != null && col < table.outputNames.length) ?
+               table.outputNames[col] : "Stock" + (col + 1);
+    }
+    
+    /**
+     * Calculate pin X position in cspc2 units relative to chip origin
+     */
+    private int calculatePinX(int col) {
+        int cellWidthPixels = getCellWidthPixels();
+        int rowDescColWidthPixels = table.cellWidthInGrids * table.cspc;
+        
+        // Column center in pixels relative to table origin
+        int columnCenterX = rowDescColWidthPixels + table.cellSpacing * 2 + 
+                           col * (cellWidthPixels + table.cellSpacing) + cellWidthPixels / 2;
+        
+        // Convert to cspc2 units relative to x0 (chip origin + cspc2)
+        return (columnCenterX - table.cspc2) / table.cspc2;
+    }
+    
+    /**
+     * Set pin positions and bounding box after chip positioning
      */
     public void setPoints() {
-        // Calculate table dimensions in pixels for bounding box
-        int cellWidthPixels = table.getCellWidthPixels();
+        calculateBoundingBox();
+        adjustPinPositions();
+    }
+    
+    /**
+     * Calculate and set the bounding box for the table
+     */
+    private void calculateBoundingBox() {
+        int cellWidthPixels = getCellWidthPixels();
         int rowDescColWidth = cellWidthPixels;
-        int tableWidth = rowDescColWidth + table.cellSpacing + table.cols * cellWidthPixels + (table.cols + 1) * table.cellSpacing;
-        int extraRows = (table.showInitialValues ? 1 : 0) + 1 + 1;
-        int tableHeight = (table.rows + extraRows) * table.cellHeight + (table.rows + extraRows + 1) * table.cellSpacing + 20;
+        int tableWidth = rowDescColWidth + table.cellSpacing + 
+                        table.cols * cellWidthPixels + (table.cols + 1) * table.cellSpacing;
+        
+        int extraRows = getExtraRowCount();
+        int tableHeight = (table.rows + extraRows) * table.cellHeight + 
+                         (table.rows + extraRows + 1) * table.cellSpacing + 20;
 
-        // Align table origin with chip origin
-        // The table should start at the chip's top-left corner
+        // Table origin aligns with chip origin
         int tableX = table.x;
         int tableY = table.y;
 
-        // Set bounding box to exactly match the table size
+        // Set bounding box to match table size
         table.setBbox(tableX, tableY, tableX + tableWidth, tableY + tableHeight);
+    }
+    
+    /**
+     * Adjust pin Y positions to align with table bottom
+     * X positions are already correct from super.setPoints()
+     */
+    private void adjustPinPositions() {
+        int extraRows = getExtraRowCount();
+        int tableHeight = (table.rows + extraRows) * table.cellHeight + 
+                         (table.rows + extraRows + 1) * table.cellSpacing + 20;
         
-        // Override pin Y positions for precise placement at bottom of table
-        // After super.setPoints() sets up pins using chip coordinate system,
-        // we adjust only the Y positions to align with the actual table bottom
-        // Keep the X positions from super.setPoints() as they're already correct
-        int tableBottomY = tableY + tableHeight; // Bottom of table in pixels
+        int tableY = table.y;
+        int tableBottomY = tableY + tableHeight;
         
         for (int i = 0; i < table.pins.length; i++) {
             ChipElm.Pin p = table.pins[i];
-            
-            // Keep the X positions from super.setPoints(), only override Y
             int pinXPixel = p.post.x;
             
-            // Set pin positions with correct Y alignment
-            // Post Y must be rounded to cspc for wire connection snapping
-
-            int postY = tableBottomY + 3 * table.cellHeight / 2;  // allow for the Computed row
-            postY = ((postY + table.cspc/2) / table.cspc) * table.cspc;  // Round to nearest cspc
+            // Position post below table with spacing for computed row
+            int postY = tableBottomY + 3 * table.cellHeight / 2;
+            postY = roundToNearestGrid(postY, table.cspc);
             
-            // Stub is where the pin meets the chip
+            // Stub is where pin meets the chip
             p.post = new Point(pinXPixel, postY);
-            p.stub = new Point(pinXPixel, tableBottomY + table.cspc/2);
+            p.stub = new Point(pinXPixel, tableBottomY + table.cspc / 2);
             p.textloc = new Point(pinXPixel, tableBottomY);
         }
+    }
+    
+    /**
+     * Round value to nearest grid spacing
+     */
+    private int roundToNearestGrid(int value, int gridSpacing) {
+        return ((value + gridSpacing / 2) / gridSpacing) * gridSpacing;
     }
     
     /**

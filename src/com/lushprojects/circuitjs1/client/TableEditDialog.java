@@ -39,30 +39,47 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * TableEditDialog - Dynamic table editor implementing markdown specification
- * Provides structured editing with contextual buttons for row/column manipulation
+ * TableEditDialog - Dynamic table editor for Stock-Flow tables
+ * 
+ * This dialog provides a structured interface for editing financial accounting tables
+ * with three types of columns: Assets, Liabilities, and Equity, plus a computed A-L-E column.
+ * 
+ * Key Features:
+ * - Visual row/column manipulation with contextual buttons
+ * - Automatic synchronization with related tables sharing the same stock variables
+ * - Real-time validation and change tracking
+ * - Markdown debug view for inspecting table structure
  */
 public class TableEditDialog extends Dialog {
     
-    private final TableElm tableElement;
-    private final CirSim sim;
+    //=== CONSTANTS AND CONFIGURATION ===============================================
+    // =============================================================================
     
-    private ScrollPanel scrollPanel;
-    private Grid editGrid;
-    private Button applyButton;
-    private Label statusLabel;
-    
-    // Fixed structure according to markdown specification
+    // Fixed structure labels according to specification
     private static final String FLOWS_LABEL = "Flows↓/Stock Vars →";
     private static final String INITIAL_CONDITIONS_LABEL = "InitialConditions";
     
-    // Unicode symbols for contextual buttons - easily configurable
+    // Unicode symbols for contextual buttons
     private static final String SYMBOL_ADD = "⧾";           // Add column/row button
     private static final String SYMBOL_DELETE = "⧿";       // Delete column/row button  
     private static final String SYMBOL_LEFT = "⇐";         // Move left button
     private static final String SYMBOL_RIGHT = "⇒";        // Move right button
     private static final String SYMBOL_UP = "⇑";           // Move up button
     private static final String SYMBOL_DOWN = "⇓";         // Move down button
+    
+    // Grid structure indices
+    private static final int HEADER_ROW = 0;
+    private static final int BUTTON_ROW = 1;
+    private static final int STOCK_VALUES_ROW = 2;
+    private static final int INITIAL_ROW = 3;
+    private static final int DATA_START_ROW = 4;
+    
+    private static final int BUTTON_COL = 0;
+    private static final int LABEL_COL = 1;
+    private static final int DATA_START_COL = 2;
+    
+    //=== ENUMS AND NESTED CLASSES ================================================
+    //=============================================================================
     
     // Column type enumeration for financial accounting
     public enum ColumnType {
@@ -103,22 +120,15 @@ public class TableEditDialog extends Dialog {
         }
         
         /**
-         * Represents a column movement transition
+         * Represents a column movement transition result
          */
         static class MoveTransition {
-            Region fromRegion;
-            Region toRegion;
-            ColumnType originalType;
-            ColumnType newType;
             boolean isValid;
             String statusMessage;
             
-            MoveTransition(Region from, Region to, ColumnType original) {
-                this.fromRegion = from;
-                this.toRegion = to;
-                this.originalType = original;
-                this.newType = original; // Type never changes in simplified version
-                this.isValid = true;
+            MoveTransition(boolean valid, String message) {
+                this.isValid = valid;
+                this.statusMessage = message;
             }
         }
         
@@ -166,40 +176,38 @@ public class TableEditDialog extends Dialog {
             Region toRegion = getRegion(toIndex);
             ColumnType originalType = dialog.columnTypes[fromIndex];
             
-            MoveTransition transition = new MoveTransition(fromRegion, toRegion, originalType);
-            
             // Check if trying to move to different region
             if (fromRegion != toRegion) {
-                transition.isValid = false;
-                transition.statusMessage = "Cannot move " + originalType.name() + " column to " + toRegion.name().replace("_", " ") + 
-                                          ". Columns can only move within their own type group.";
-                return transition;
+                String message = "Cannot move " + originalType.name() + " column to " + toRegion.name().replace("_", " ") + 
+                                ". Columns can only move within their own type group.";
+                return new MoveTransition(false, message);
             }
             
             // Moving within same region - allowed
-            transition.statusMessage = originalType.name() + " column moved within " + fromRegion.name().replace("_", " ");
-            return transition;
+            String message = originalType.name() + " column moved within " + fromRegion.name().replace("_", " ");
+            return new MoveTransition(true, message);
         }
     }
     
+    //=== INSTANCE VARIABLES ======================================================
+    //=============================================================================
+    
+    // Core references
+    private final TableElm tableElement;
+    private final CirSim sim;
+    
+    // UI Components
+    private ScrollPanel scrollPanel;
+    private Grid editGrid;
+    private Button applyButton;
+    private Label statusLabel;
+    
     // Data storage for dynamic content
     private String[][] cellData;  // Editable cell content
-    private String[] stockValues; // Stock variable names (H0, H1, H2, etc.) - also used as column headers
+    private String[] stockValues; // Stock variable names - also used as column headers
     private double[] initialValues; // Initial condition values
     private int dataRows, dataCols; // Number of data rows/columns (excluding fixed structure)
     private ColumnType[] columnTypes; // Type for each column (Asset/Liability/Equity/Computed)
-    
-    // Grid structure indices
-    private static final int HEADER_ROW = 0;
-    private static final int BUTTON_ROW = 1;
-    private static final int STOCK_VALUES_ROW = 2;  // New editable row for output stock values
-    // private static final int FLOWS_ROW = 2; // New editable row for output stock values
-    private static final int INITIAL_ROW = 3;
-    private static final int DATA_START_ROW = 4;
-    
-    private static final int BUTTON_COL = 0;
-    private static final int LABEL_COL = 1;  // New column for labels
-    private static final int DATA_START_COL = 2;
     
     // Button management
     private Map<String, Button> contextualButtons;
@@ -209,7 +217,12 @@ public class TableEditDialog extends Dialog {
     
     // Debug window tracking for auto-update
     private com.google.gwt.user.client.ui.DialogBox debugDialog = null;
-    private com.google.gwt.user.client.ui.TextArea debugTextArea = null;    public TableEditDialog(TableElm tableElm, CirSim cirSim) {
+    private com.google.gwt.user.client.ui.TextArea debugTextArea = null;
+    
+    //=== CONSTRUCTOR ===============================================================
+    // =============================================================================
+    
+    public TableEditDialog(TableElm tableElm, CirSim cirSim) {
         super();
         this.tableElement = tableElm;
         this.sim = cirSim;
@@ -235,7 +248,12 @@ public class TableEditDialog extends Dialog {
         center();
     }
     
+    //=== INITIALIZATION METHODS ====================================================
+    // =============================================================================
     
+    /**
+     * Copy data from TableElm into local arrays for editing
+     */
     private void copyTableData() {
         // Initialize data arrays
         cellData = new String[dataRows][dataCols];
@@ -313,6 +331,9 @@ public class TableEditDialog extends Dialog {
         }
     }
     
+    /**
+     * Setup the main UI components
+     */
     private void setupUI() {
         // UI Components
         VerticalPanel mainPanel = new VerticalPanel();
@@ -504,7 +525,8 @@ public class TableEditDialog extends Dialog {
         return btn;
     }
     
-    // ========== Test Case Implementations ==========
+    //=== TEST CASE IMPLEMENTATIONS =================================================
+    // =============================================================================
     
     private void testCase1_Synchronization() {
         applyChanges(); // Save current state first
@@ -613,6 +635,9 @@ public class TableEditDialog extends Dialog {
         com.google.gwt.user.client.Window.alert(info);
         setStatus("📊 Registry diagnostics displayed (see alert)");
     }
+    
+    //=== MARKDOWN DEBUG VIEW =======================================================
+    // =============================================================================
     
     /**
      * Show markdown representation of all tables sharing stocks with current table
@@ -861,8 +886,12 @@ public class TableEditDialog extends Dialog {
         );
     }
     
-    // ========== End Test Cases ==========
+    //=== GRID CREATION AND POPULATION ==============================================
+    // =============================================================================
     
+    /**
+     * Create the edit grid with proper dimensions
+     */
     private void createGrid() {
         // Calculate grid dimensions according to updated specification
         // Rows: Header + Button controls + Stock values + Flows label + Initial conditions + data rows
@@ -883,6 +912,9 @@ public class TableEditDialog extends Dialog {
         populateContextualButtons();
     }
     
+    /**
+     * Refresh the grid display
+     */
     private void populateGrid() {
         createGrid();
         scrollPanel.setWidget(editGrid);
@@ -890,6 +922,9 @@ public class TableEditDialog extends Dialog {
         updateDebugWindow();  // Auto-update debug window when grid changes
     }
     
+    /**
+     * Populate fixed structure rows (headers, buttons, stock values, initial values)
+     */
     private void populateFixedStructure() {
         // Row 0: Headers - first two columns empty, then data headers with type indicators
         editGrid.setText(HEADER_ROW, BUTTON_COL, "");
@@ -937,6 +972,9 @@ public class TableEditDialog extends Dialog {
         }
     }
     
+    /**
+     * Populate data cells with editable textboxes
+     */
     private void populateDataCells() {
         // Add data row content
         for (int row = 0; row < dataRows; row++) {
@@ -957,6 +995,9 @@ public class TableEditDialog extends Dialog {
         }
     }
     
+    /**
+     * Add contextual control buttons for row/column manipulation
+     */
     private void populateContextualButtons() {
         // Add contextual control buttons per markdown specification
         
@@ -1075,6 +1116,12 @@ public class TableEditDialog extends Dialog {
         }
     }
     
+    //=== TEXTBOX CREATION METHODS ==================================================
+    // =============================================================================
+    
+    /**
+     * Create textbox for editing flow descriptions
+     */
     private TextBox createFlowDescriptionTextBox(final int row) {
         final TextBox textBox = new TextBox();
         // Initialize with row description from TableElm
@@ -1101,6 +1148,9 @@ public class TableEditDialog extends Dialog {
         return button;
     }
     
+    /**
+     * Create textbox for editing stock values (column headers)
+     */
     private TextBox createStockValueTextBox(final int col) {
         final TextBox textBox = new TextBox();
         textBox.setText(stockValues[col]); // Initialize with H0, H1, H2, etc.
@@ -1124,6 +1174,9 @@ public class TableEditDialog extends Dialog {
         return textBox;
     }
     
+    /**
+     * Create textbox for editing initial condition values
+     */
     private TextBox createInitialValueTextBox(final int col) {
         final TextBox textBox = new TextBox();
         textBox.setText(Double.toString(initialValues[col]));
@@ -1153,6 +1206,9 @@ public class TableEditDialog extends Dialog {
         return textBox;
     }
     
+    /**
+     * Create textbox for editing cell equations
+     */
     private TextBox createCellTextBox(final int row, final int col) {
         final TextBox textBox = new TextBox();
         textBox.setText(cellData[row][col]);
@@ -1175,7 +1231,8 @@ public class TableEditDialog extends Dialog {
         return textBox;
     }
     
-    // Helper methods for smart button display
+    //=== COLUMN MOVEMENT HELPERS ===================================================
+    // =============================================================================
     
     /**
      * Check if we can move a column left within its type group
@@ -1205,7 +1262,12 @@ public class TableEditDialog extends Dialog {
         return currentType == rightType;
     }
     
-    // Row and column manipulation methods
+    //=== ROW AND COLUMN MANIPULATION METHODS =======================================
+    // =============================================================================
+    
+    /**
+     * Insert a new row after the specified index
+     */
     private void insertRowAfter(int rowIndex) {
         dataRows++;
         
@@ -1252,6 +1314,7 @@ public class TableEditDialog extends Dialog {
         }
     }
     
+    // Delete a row at the specified index
     private void deleteRow(int rowIndex) {
         if (dataRows <= 1) {
             setStatus("Cannot delete the last row - at least one row is required");
@@ -1315,6 +1378,9 @@ public class TableEditDialog extends Dialog {
         }
     }
     
+    /**
+     * Move a row from one index to another (swap)
+     */
     private void moveRow(int fromIndex, int toIndex) {
         if (fromIndex == toIndex || toIndex < 0 || toIndex >= dataRows) return;
         
@@ -1348,6 +1414,9 @@ public class TableEditDialog extends Dialog {
         }
     }
     
+    /**
+     * Insert a new column after the specified index
+     */
     private void insertColumnAfter(int colIndex) {
         dataCols++;
         
@@ -1396,6 +1465,9 @@ public class TableEditDialog extends Dialog {
         populateGrid();
     }
     
+    /**
+     * Delete a column at the specified index
+     */
     private void deleteColumn(int colIndex) {
         if (dataCols <= 1) {
             setStatus("Cannot delete the last column - at least one column is required");
@@ -1467,6 +1539,9 @@ public class TableEditDialog extends Dialog {
         markChanged();
         populateGrid();
     }
+    
+    //=== COLUMN MOVEMENT LOGIC =====================================================
+    // =============================================================================
     
     /**
      * Move a column from one position to another within the same type group
@@ -1562,68 +1637,8 @@ public class TableEditDialog extends Dialog {
         statusLabel.setText(message);
     }
     
-    /**
-     * Show a preview of changes that will be propagated to other tables
-     */
-    private void showPropagationPreview() {
-        // Find all tables that share stocks with this table
-        java.util.Set<TableElm> affectedTables = new java.util.HashSet<TableElm>();
-        java.util.Set<String> sharedStocks = new java.util.HashSet<String>();
-        
-        for (int col = 0; col < dataCols; col++) {
-            String stockName = stockValues[col];
-            if (stockName != null && !stockName.trim().isEmpty()) {
-                java.util.List<TableElm> tablesForStock = StockFlowRegistry.getTablesForStock(stockName);
-                if (tablesForStock != null && tablesForStock.size() > 1) {
-                    // More than one table (including this one) shares this stock
-                    for (TableElm table : tablesForStock) {
-                        if (table != tableElement) {
-                            affectedTables.add(table);
-                            sharedStocks.add(stockName);
-                        }
-                    }
-                }
-            }
-        }
-        
-        if (affectedTables.isEmpty()) {
-            // No other tables to synchronize with
-            return;
-        }
-        
-        // Build preview message
-        StringBuilder preview = new StringBuilder();
-        preview.append("SYNCHRONIZATION PREVIEW\n");
-        preview.append("=======================\n\n");
-        preview.append("Shared stocks: ").append(sharedStocks).append("\n\n");
-        preview.append("The following tables will be updated:\n\n");
-        
-        for (TableElm table : affectedTables) {
-            preview.append("📊 ").append(table.getTableTitle()).append("\n");
-            
-            // Find which columns in the target table will be affected
-            java.util.List<String> affectedColumns = new java.util.ArrayList<String>();
-            for (int col = 0; col < table.getCols(); col++) {
-                String header = table.getColumnHeader(col);
-                if (sharedStocks.contains(header)) {
-                    affectedColumns.add(header);
-                }
-            }
-            
-            preview.append("   Affected columns: ").append(affectedColumns).append("\n");
-            preview.append("   Rows will be synchronized: ").append(dataRows).append(" rows\n\n");
-        }
-        
-        preview.append("Changes to propagate:\n");
-        preview.append("- Row count: ").append(dataRows).append("\n");
-        preview.append("- Flow equations for shared stocks\n");
-        preview.append("- Row descriptions (flow names)\n\n");
-        
-        preview.append("Click OK to continue with synchronization.");
-        
-        // Show the preview in an alert dialog
-        com.google.gwt.user.client.Window.alert(preview.toString());
-    }
+    //=== CHANGE MANAGEMENT =========================================================
+    // =============================================================================
     
     /**
      * Find the index that separates Asset columns from Liability columns
@@ -1639,12 +1654,16 @@ public class TableEditDialog extends Dialog {
         return dataCols;
     }
     
-
-    
+    /**
+     * Enable/disable buttons based on change state
+     */
     private void updateButtonStates() {
         applyButton.setEnabled(hasChanges);
     }
     
+    /**
+     * Mark that the dialog has unsaved changes
+     */
     private void markChanged() {
         if (!hasChanges) {
             hasChanges = true;
@@ -1653,6 +1672,9 @@ public class TableEditDialog extends Dialog {
         }
     }
     
+    /**
+     * Apply all pending changes to the TableElm and synchronize with related tables
+     */
     private void applyChanges() {
         if (!hasChanges) return;
         
@@ -1674,10 +1696,7 @@ public class TableEditDialog extends Dialog {
                 tableElement.setColumnType(col, columnTypes[col]);
             }
             
-            // *** Trigger synchronization with other tables sharing the same stocks ***
-            // Show changes that will be propagated
-            // showPropagationPreview();
-            
+            // Trigger synchronization with other tables sharing the same stocks
             StockFlowRegistry.synchronizeRelatedTables(tableElement);
             
             // Update table display
@@ -1697,6 +1716,9 @@ public class TableEditDialog extends Dialog {
         }
     }
     
+    //=== PUBLIC ACCESSOR AND PERMISSION METHODS ====================================
+    // =============================================================================
+    
     /**
      * Count columns of a specific type
      */
@@ -1710,7 +1732,7 @@ public class TableEditDialog extends Dialog {
         return count;
     }
     
-    // Public accessor methods for column types - can be used by TableElm
+    // Public accessor methods for column types - used by TableElm
     public ColumnType getColumnType(int col) {
         if (col >= 0 && col < dataCols && columnTypes != null) {
             return columnTypes[col];
@@ -1724,12 +1746,7 @@ public class TableEditDialog extends Dialog {
         }
     }
     
-    public String getColumnTypeName(int col) {
-        ColumnType type = getColumnType(col);
-        return TableRenderer.getColumnTypeName(type);
-    }
-    
-    // Check if a column can be moved, deleted, or if more can be added
+    // Column operation permission checks
     public boolean canMoveColumn(int col) {
         if (col < 0 || col >= dataCols || columnTypes == null) return false;
         return columnTypes[col] != ColumnType.EQUITY && columnTypes[col] != ColumnType.A_L_E;
