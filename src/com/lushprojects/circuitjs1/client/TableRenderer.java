@@ -171,9 +171,18 @@ public class TableRenderer {
                 g.fillRect(cellX, headerY, cellWidthPixels, table.cellHeight);
             }
             
+            // Check if this table is the master for this output name and add star prefix
+            String displayHeader = header;
+            if (header != null && !header.isEmpty()) {
+                boolean isMaster = ComputedValues.isMasterTable(header, table);
+                if (isMaster) {
+                    displayHeader = "★" + header;
+                }
+            }
+            
             // Draw header text
             g.setColor(Color.black);
-            table.drawCenteredText(g, header, cellX + cellWidthPixels/2, headerY + table.cellHeight/2, true);
+            table.drawCenteredText(g, displayHeader, cellX + cellWidthPixels/2, headerY + table.cellHeight/2, true);
         }
         
         // Draw grid lines for this row

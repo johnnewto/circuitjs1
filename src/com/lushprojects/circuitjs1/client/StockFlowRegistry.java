@@ -21,7 +21,6 @@ package com.lushprojects.circuitjs1.client;
 
 import java.util.*;
 
-import com.google.gwt.core.client.GWT;
 import java.util.logging.Logger;
 
 class Animal {
@@ -186,12 +185,18 @@ public class StockFlowRegistry extends Animal{
             int colIndex = priorityTable.findColumnByStockName(stockName);
             if (colIndex >= 0) {
                 MRDlog( "Priority table: " + priorityTable.getTableTitle() + " (establishes row order)");
-                for (int row = 0; row < priorityTable.getRows(); row++) {
-                    String desc = priorityTable.getRowDescription(row);
-                    if (desc != null && !desc.trim().isEmpty()) {
-                        mergedRows.add(desc.trim());
-                        MRDlog( "  [Priority] Row " + row + ": '" + desc.trim() + "'");
+                // Null safety check for priorityTable before calling getRows()
+                try {
+                    int priorityRows = priorityTable.getRows();
+                    for (int row = 0; row < priorityRows; row++) {
+                        String desc = priorityTable.getRowDescription(row);
+                        if (desc != null && !desc.trim().isEmpty()) {
+                            mergedRows.add(desc.trim());
+                            MRDlog( "  [Priority] Row " + row + ": '" + desc.trim() + "'");
+                        }
                     }
+                } catch (Exception e) {
+                    MRDlog( "Error accessing priority table rows: " + e.getMessage());
                 }
             }
         }
@@ -201,25 +206,38 @@ public class StockFlowRegistry extends Animal{
             // Skip priority table since we already processed it
             if (table == priorityTable) continue;
             
+            // Null safety check for table
+            if (table == null) {
+                MRDlog( "Skipping null table in tables list");
+                continue;
+            }
+            
             int colIndex = table.findColumnByStockName(stockName);
             if (colIndex >= 0) {
                 MRDlog( "Processing table: " + table.getTableTitle());
                 int rowsAdded = 0;
-                for (int row = 0; row < table.getRows(); row++) {
-                    String desc = table.getRowDescription(row);
-                    if (desc != null && !desc.trim().isEmpty()) {
-                        String trimmedDesc = desc.trim();
-                        boolean isNew = !mergedRows.contains(trimmedDesc);
-                        mergedRows.add(trimmedDesc);
-                        if (isNew) {
-                            MRDlog( "  [NEW] Row " + row + ": '" + trimmedDesc + "'");
-                            rowsAdded++;
-                        } else {
-                            MRDlog( "  [EXISTS] Row " + row + ": '" + trimmedDesc + "' (skipped)");
+                
+                // Null safety check before calling getRows()
+                try {
+                    int tableRows = table.getRows();
+                    for (int row = 0; row < tableRows; row++) {
+                        String desc = table.getRowDescription(row);
+                        if (desc != null && !desc.trim().isEmpty()) {
+                            String trimmedDesc = desc.trim();
+                            boolean isNew = !mergedRows.contains(trimmedDesc);
+                            mergedRows.add(trimmedDesc);
+                            if (isNew) {
+                                MRDlog( "  [NEW] Row " + row + ": '" + trimmedDesc + "'");
+                                rowsAdded++;
+                            } else {
+                                MRDlog( "  [EXISTS] Row " + row + ": '" + trimmedDesc + "' (skipped)");
+                            }
                         }
                     }
+                    MRDlog( "  Added " + rowsAdded + " new row(s) from " + table.getTableTitle());
+                } catch (Exception e) {
+                    MRDlog( "Error accessing table rows for " + table.getTableTitle() + ": " + e.getMessage());
                 }
-                MRDlog( "  Added " + rowsAdded + " new row(s) from " + table.getTableTitle());
             }
         }
         
@@ -255,23 +273,32 @@ public class StockFlowRegistry extends Animal{
         List<TableElm> tables = getTablesForStock(stockName);
         
         for (TableElm table : tables) {
+            // Null safety check for table
+            if (table == null) continue;
+            
             // Find column index for this stock in the table
             int stockColIndex = table.findColumnByStockName(stockName);
             if (stockColIndex >= 0) {
                 // Collect equations from the same column position across all tables
-                for (int row = 0; row < table.getRows(); row++) {
-                    String desc = table.getRowDescription(row);
-                    if (desc != null && !desc.trim().isEmpty()) {
-                        String trimmedDesc = desc.trim();
-                        
-                        // Only set equation if we don't have one yet (first non-empty wins)
-                        if (!equationMap.containsKey(trimmedDesc)) {
-                            String equation = table.getCellEquation(row, col);
-                            if (equation != null && !equation.trim().isEmpty()) {
-                                equationMap.put(trimmedDesc, equation);
+                try {
+                    int tableRows = table.getRows();
+                    for (int row = 0; row < tableRows; row++) {
+                        String desc = table.getRowDescription(row);
+                        if (desc != null && !desc.trim().isEmpty()) {
+                            String trimmedDesc = desc.trim();
+                            
+                            // Only set equation if we don't have one yet (first non-empty wins)
+                            if (!equationMap.containsKey(trimmedDesc)) {
+                                String equation = table.getCellEquation(row, col);
+                                if (equation != null && !equation.trim().isEmpty()) {
+                                    equationMap.put(trimmedDesc, equation);
+                                }
                             }
                         }
                     }
+                } catch (Exception e) {
+                    MRDlog( "Error accessing table rows in getMergedRowEquations for " + 
+                           (table != null ? table.getTableTitle() : "unknown table") + ": " + e.getMessage());
                 }
             }
         }
@@ -317,23 +344,37 @@ public class StockFlowRegistry extends Animal{
      * Only propagates equations where both flow and stock exist (or creates flow if needed)
      */
     private static boolean synchronizeNonZeroElements(TableElm targetTable, TableElm sourceTable) {
+        // Null safety checks
+        if (targetTable == null || sourceTable == null) {
+            MRDlog( "Cannot synchronize with null table(s)");
+            return false;
+        }
+        
         boolean modified = false;
         
         // Build map of existing flow descriptions in target table
         Map<String, Integer> targetFlowRows = new HashMap<String, Integer>();
-        for (int row = 0; row < targetTable.getRows(); row++) {
-            String flowDesc = targetTable.getRowDescription(row);
-            if (flowDesc != null && !flowDesc.trim().isEmpty()) {
-                targetFlowRows.put(flowDesc.trim(), row);
+        try {
+            int targetRows = targetTable.getRows();
+            for (int row = 0; row < targetRows; row++) {
+                String flowDesc = targetTable.getRowDescription(row);
+                if (flowDesc != null && !flowDesc.trim().isEmpty()) {
+                    targetFlowRows.put(flowDesc.trim(), row);
+                }
             }
+        } catch (Exception e) {
+            MRDlog( "Error accessing target table rows: " + e.getMessage());
+            return false;
         }
         
         // Collect flows that need to be added (flow → list of (stock, equation) pairs)
         Map<String, List<StockEquation>> flowsToAdd = new HashMap<String, List<StockEquation>>();
         
         // Process each non-zero element from source table
-        for (int sourceRow = 0; sourceRow < sourceTable.getRows(); sourceRow++) {
-            String flowDesc = sourceTable.getRowDescription(sourceRow);
+        try {
+            int sourceRows = sourceTable.getRows();
+            for (int sourceRow = 0; sourceRow < sourceRows; sourceRow++) {
+                String flowDesc = sourceTable.getRowDescription(sourceRow);
             if (flowDesc == null || flowDesc.trim().isEmpty()) {
                 continue; // Skip rows without descriptions
             }
@@ -380,6 +421,10 @@ public class StockFlowRegistry extends Animal{
                     flowsToAdd.get(flowDesc).add(new StockEquation(stockName, targetCol, equation));
                 }
             }
+            }
+        } catch (Exception e) {
+            MRDlog( "Error processing source table rows: " + e.getMessage());
+            return false;
         }
         
         // Add new flows at the end
@@ -442,10 +487,20 @@ public class StockFlowRegistry extends Animal{
      */
     private static boolean synchronizeTableColumn(TableElm table, int col, 
                                                    LinkedHashSet<String> mergedRowDescriptions) {
+        // Null safety check
+        if (table == null) {
+            return false;
+        }
         
         log("synchronizeTableColumn",  "Synchronizing column " + col + " of table " + table.getTableTitle());
                                                     
-        int currentRowCount = table.getRows();
+        int currentRowCount;
+        try {
+            currentRowCount = table.getRows();
+        } catch (Exception e) {
+            MRDlog( "Error accessing table rows in synchronizeTableColumn: " + e.getMessage());
+            return false;
+        }
         int newRowCount = mergedRowDescriptions.size();
         
         // Quick check: if row descriptions already match, skip
@@ -519,7 +574,13 @@ public class StockFlowRegistry extends Animal{
      */
     private static boolean checkRowsAlreadyMatch(TableElm table, 
                                                   LinkedHashSet<String> mergedRows) {
-        if (table.getRows() != mergedRows.size()) {
+        if (table == null) return false;
+        
+        try {
+            if (table.getRows() != mergedRows.size()) {
+                return false;
+            }
+        } catch (Exception e) {
             return false;
         }
         
@@ -547,6 +608,11 @@ public class StockFlowRegistry extends Animal{
      * @param triggerTable The table that triggered synchronization
      */
     public static void synchronizeRelatedTables(TableElm triggerTable) {
+        if (triggerTable == null) {
+            SRTlog("Cannot synchronize: trigger table is null");
+            return;
+        }
+        
         SRTlog("Starting synchronization");
    
 
@@ -557,7 +623,10 @@ public class StockFlowRegistry extends Animal{
         SRTlog("=== Non-Zero Flow/Stock Pairs from Trigger Table ===");
         SRTlog("Table: " + triggerTable.getTableTitle());
         int nonZeroCount = 0;
-        for (int row = 0; row < triggerTable.getRows(); row++) {
+        
+        try {
+            int triggerRows = triggerTable.getRows();
+            for (int row = 0; row < triggerRows; row++) {
             String flowDesc = triggerTable.getRowDescription(row);
             if (flowDesc == null || flowDesc.trim().isEmpty()) {
                 flowDesc = "Flow" + row;
@@ -572,6 +641,11 @@ public class StockFlowRegistry extends Animal{
                 }
             }
         }
+        } catch (Exception e) {
+            SRTlog("Error accessing trigger table rows: " + e.getMessage());
+            return;
+        }
+        
         if (nonZeroCount == 0) {
             SRTlog("  (No non-zero equations in trigger table)");
         } else {
@@ -619,7 +693,9 @@ public class StockFlowRegistry extends Animal{
                         SRTlog("  Stock '" + stockName + "' (column " + col + ") will receive equations");
                         
                         // Show which flow/stock pairs from trigger table will be applied
-                        for (int row = 0; row < triggerTable.getRows(); row++) {
+                        try {
+                            int triggerRows = triggerTable.getRows();
+                            for (int row = 0; row < triggerRows; row++) {
                             String flowDesc = triggerTable.getRowDescription(row);
                             if (flowDesc == null || flowDesc.trim().isEmpty()) {
                                 flowDesc = "Flow" + row;
@@ -633,6 +709,9 @@ public class StockFlowRegistry extends Animal{
                                     SRTlog("    ✓ " + flowDesc + ": `" + equation + "`");
                                 }
                             }
+                        }
+                        } catch (Exception e) {
+                            SRTlog("Error accessing trigger table rows during logging: " + e.getMessage());
                         }
                     }
                 }
@@ -665,7 +744,7 @@ public class StockFlowRegistry extends Animal{
         
         // Synchronize each table
         for (TableElm table : allTables) {
-            synchronizeTable(table);
+            synchronizeTable(table);       // Todo-JN this calls a null table sync ???   return synchronizeTable(table, null);
         }
     }
     
@@ -712,6 +791,9 @@ public class StockFlowRegistry extends Animal{
             for (TableElm table : tables) {
                 // Skip the source table
                 if (table == sourceTable) continue;
+                
+                // Null safety check
+                if (table == null) continue;
 
                 // If we've already processed this table for this deletion, skip
                 if (touchedTables.contains(table)) continue;
@@ -719,12 +801,18 @@ public class StockFlowRegistry extends Animal{
 
                 // Find the row index with matching flow description
                 int matchingRow = -1;
-                for (int r = 0; r < table.getRows(); r++) {
-                    String desc = table.getRowDescription(r);
-                    if (desc != null && desc.trim().equals(flowDescription.trim())) {
-                        matchingRow = r;
-                        break;
+                try {
+                    int tableRows = table.getRows();
+                    for (int r = 0; r < tableRows; r++) {
+                        String desc = table.getRowDescription(r);
+                        if (desc != null && desc.trim().equals(flowDescription.trim())) {
+                            matchingRow = r;
+                            break;
+                        }
                     }
+                } catch (Exception e) {
+                    SRTlog("Error accessing table rows: " + e.getMessage());
+                    continue;
                 }
 
                 if (matchingRow >= 0) {
@@ -743,7 +831,8 @@ public class StockFlowRegistry extends Animal{
 
                     if (hasNonZero) {
                         // Delete the row from this table by rebuilding rows excluding the matchingRow
-                        int oldRows = table.getRows();
+                        try {
+                            int oldRows = table.getRows();
                         int cols = table.getCols();
                         int newRowCount = Math.max(0, oldRows - 1);
 
@@ -764,6 +853,9 @@ public class StockFlowRegistry extends Animal{
                         table.updateRowData(newRowCount, newRowDescriptions, newCellEquations);
                         deletedCount++;
                         SRTlog("Deleted row '" + flowDescription + "' from table: " + table.getTableTitle());
+                        } catch (Exception e) {
+                            SRTlog("Error deleting row from table: " + e.getMessage());
+                        }
                     }
                 }
             }

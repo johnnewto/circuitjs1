@@ -225,8 +225,8 @@ public class TableElm extends ChipElm {
             return;
         }
         
-        // Store the computed voltage value in ComputedValues
-        ComputedValues.setComputedValue(labelName, voltage);
+        // Store the computed voltage value in ComputedValues with this table as the computer
+        ComputedValues.setComputedValue(labelName, voltage, this);
     }
     
     // Static method to get computed values by other elements
@@ -246,6 +246,25 @@ public class TableElm extends ChipElm {
     void setupPins() {
         if (geometryManager != null) {
             geometryManager.setupPins();
+        }
+        
+        // Register this table as a potential master for each output name
+        registerAsMasterForOutputNames();
+    }
+    
+    /**
+     * Register this table as a potential master computer for its output names
+     * Called during circuit initialization to establish which table computes each value
+     */
+    private void registerAsMasterForOutputNames() {
+        if (outputNames != null) {
+            for (int col = 0; col < cols && col < outputNames.length; col++) {
+                String name = outputNames[col];
+                if (name != null && !name.trim().isEmpty()) {
+                    // Try to register as master - the first table to register becomes master
+                    ComputedValues.registerMasterTable(name.trim(), this);
+                }
+            }
         }
     }
 
@@ -306,15 +325,24 @@ public class TableElm extends ChipElm {
             double columnSum = 0.0;
             String name = outputNames[col];
             
+            // Check if this table is the master computer for this output name
+            boolean isMasterForThisName = ComputedValues.isMasterTable(name, this);
+            
             // Check to see if column computed value is already calculated by another element
             Double existingValue = ComputedValues.getComputedValue(name);
             boolean alreadyComputed = ComputedValues.isComputedThisStep(name);
             
-            if (alreadyComputed && existingValue != null) {
-                // Use the already computed value
+            if (alreadyComputed && existingValue != null && !isMasterForThisName) {
+                // Use the already computed value from the master table
                 columnSum = existingValue.doubleValue();
+            } else if (isMasterForThisName) {
+                // We are the master - compute the value ourselves
+                for (int row = 0; row < rows; row++) {
+                    double v = getVoltageForCell(row, col);
+                    columnSum += v;
+                }
             } else {
-                // Compute the value ourselves
+                // No master registered yet or no computed value - compute it ourselves
                 for (int row = 0; row < rows; row++) {
                     double v = getVoltageForCell(row, col);
                     columnSum += v;
@@ -342,9 +370,11 @@ public class TableElm extends ChipElm {
         for (int col = 0; col < cols; col++) {
             String name = outputNames[col];
             
-            // Only register if we computed it ourselves (not if we used a pre-computed value)
-            boolean alreadyComputed = ComputedValues.isComputedThisStep(name);
-            if (!alreadyComputed && lastColumnSums != null) {
+            // Check if this table is the master computer for this output name
+            boolean isMasterForThisName = ComputedValues.isMasterTable(name, this);
+            
+            // Only register if we are the master and computed it ourselves
+            if (isMasterForThisName && lastColumnSums != null) {
                 registerComputedValueAsLabeledNode(name, lastColumnSums[col]);    
                 ComputedValues.markComputedThisStep(name);
             }

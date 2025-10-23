@@ -3314,6 +3314,9 @@ public CirSim() {
     	
     	// Clear computed values before resetting elements to prevent stale values
     	ComputedValues.clearComputedValues();
+    	
+    	// Clear master table registrations to ensure clean state
+    	ComputedValues.clearMasterTables();
 		    	
     	// Clear node voltages to ensure clean start
     	if (nodeVoltages != null) {
@@ -4102,6 +4105,9 @@ public CirSim() {
 	    // Clear stock-flow synchronization registry when loading new circuit
 	    StockFlowRegistry.clearRegistry();
 	    
+	    // Clear master table registrations for computed values
+	    ComputedValues.clearMasterTables();
+	    
 	    clearMouseElm();
 	    for (i = 0; i != elmList.size(); i++) {
 		CircuitElm ce = getElm(i);
@@ -4242,7 +4248,7 @@ public CirSim() {
 	    updateModels();
 	
 	// Synchronize all table elements that share stocks
-	StockFlowRegistry.synchronizeAllTables();
+	StockFlowRegistry.synchronizeAllTables();   // Todo-JN   prob needs to be removed, place elsewhere
 	
 	AudioInputElm.clearCache();  // to save memory
 	DataInputElm.clearCache();  // to save memory

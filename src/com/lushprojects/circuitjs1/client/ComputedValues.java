@@ -33,6 +33,7 @@ import java.util.Set;
  * Key features:
  * - Store computed values by name (String key -> Double value)
  * - Track which values have been computed in the current simulation step
+ * - Track which table element is the "master" computer for each value
  * - Clear all values or reset tracking flags as needed
  * - Thread-safe access to computed values
  */
@@ -44,6 +45,9 @@ public class ComputedValues {
     // Track which values have been computed this simulation step
     private static Set<String> computedThisStep;
     
+    // Track which table element computes each value (name -> TableElm reference)
+    private static HashMap<String, Object> computedByTable;
+    
     // Initialize storage if needed
     private static void ensureInitialized() {
         if (computedValues == null) {
@@ -52,20 +56,38 @@ public class ComputedValues {
         if (computedThisStep == null) {
             computedThisStep = new HashSet<String>();
         }
+        if (computedByTable == null) {
+            computedByTable = new HashMap<String, Object>();
+        }
     }
     
     /**
-     * Set a computed value for a given name
+     * Set a computed value for a given name with the computing table element
+     * Used by elements like TableElm to store calculated values
+     * 
+     * @param name The name/key for the computed value
+     * @param value The computed value to store
+     * @param computingTable The table element that computed this value (can be null)
+     */
+    public static void setComputedValue(String name, double value, Object computingTable) {
+        if (name == null || name.isEmpty()) return;
+        
+        ensureInitialized();
+        computedValues.put(name, value);
+        if (computingTable != null) {
+            computedByTable.put(name, computingTable);
+        }
+    }
+    
+    /**
+     * Set a computed value for a given name (backward compatibility)
      * Used by elements like TableElm to store calculated values
      * 
      * @param name The name/key for the computed value
      * @param value The computed value to store
      */
     public static void setComputedValue(String name, double value) {
-        if (name == null || name.isEmpty()) return;
-        
-        ensureInitialized();
-        computedValues.put(name, value);
+        setComputedValue(name, value, null);
     }
     
     /**
@@ -92,12 +114,39 @@ public class ComputedValues {
     }
     
     /**
+     * Get the table element that computed a specific value
+     * 
+     * @param name The name/key of the computed value
+     * @return The table element that computed this value, or null if not found/set
+     */
+    public static Object getComputingTable(String name) {
+        if (name == null || computedByTable == null) return null;
+        return computedByTable.get(name);
+    }
+    
+    /**
+     * Check if a specific table element is the master computer for a given value name
+     * 
+     * @param name The name/key of the computed value
+     * @param table The table element to check
+     * @return true if this table is the master computer for this value
+     */
+    public static boolean isMasterTable(String name, Object table) {
+        if (name == null || table == null) return false;
+        Object masterTable = getComputingTable(name);
+        return table.equals(masterTable);
+    }
+    
+    /**
      * Clear all computed values
      * Called by CirSim when resetting the circuit state
      */
     public static void clearComputedValues() {
         if (computedValues != null) {
             computedValues.clear();
+        }
+        if (computedByTable != null) {
+            computedByTable.clear();
         }
     }
     
@@ -154,5 +203,62 @@ public class ComputedValues {
      */
     public static int getComputedValueCount() {
         return (computedValues != null) ? computedValues.size() : 0;
+    }
+    
+    /**
+     * Register a table element as wanting to compute a specific value
+     * This is used during circuit initialization to determine which table
+     * should be the "master" computer for each output name when multiple
+     * tables have the same output name.
+     * 
+     * The first table to register for a name becomes the master.
+     * 
+     * @param name The output name this table wants to compute
+     * @param table The table element
+     * @return true if this table became the master, false if another table is already master
+     */
+    public static boolean registerMasterTable(String name, Object table) {
+        if (name == null || name.isEmpty() || table == null) return false;
+        
+        ensureInitialized();
+        
+        // If no table is registered for this name yet, this table becomes the master
+        if (!computedByTable.containsKey(name)) {
+            computedByTable.put(name, table);
+            return true;
+        }
+        
+        // Another table is already the master
+        return false;
+    }
+    
+    /**
+     * Clear the master table registrations
+     * Called when the circuit is reset or rebuilt
+     */
+    public static void clearMasterTables() {
+        if (computedByTable != null) {
+            computedByTable.clear();
+        }
+    }
+    
+    /**
+     * Debug method to get information about master table assignments
+     * 
+     * @return Array of strings describing master table assignments
+     */
+    public static String[] getMasterTableInfo() {
+        if (computedByTable == null || computedByTable.isEmpty()) {
+            return new String[] { "No master tables registered" };
+        }
+        
+        String[] info = new String[computedByTable.size()];
+        int i = 0;
+        for (String name : computedByTable.keySet()) {
+            Object table = computedByTable.get(name);
+            String tableInfo = (table != null) ? table.getClass().getSimpleName() + "@" + table.hashCode() : "null";
+            info[i++] = name + " -> " + tableInfo;
+        }
+        return info;
     }
 }
