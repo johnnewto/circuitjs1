@@ -264,6 +264,16 @@
 	color: #cc0000 !important;
 }
 
+/* Computed column (A_L_E) - read-only, visually distinct */
+.computed-column {
+	background-color: #f0f0f0 !important;
+	color: #666 !important;
+	border-color: #999 !important;
+	cursor: not-allowed;
+	font-style: italic;
+	opacity: 0.85;
+}
+
 /* Row headers (Flow, Initial Conditions, etc.) */
 .tableRowHeader {
 	font-weight: bold;

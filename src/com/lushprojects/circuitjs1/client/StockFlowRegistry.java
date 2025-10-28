@@ -343,6 +343,11 @@ public class StockFlowRegistry {
             flowDesc = flowDesc.trim();
             
             for (int sourceCol = 0; sourceCol < sourceTable.getCols(); sourceCol++) {
+                // Skip A_L_E columns (computed columns should not be synchronized)
+                if (sourceTable.getColumnType(sourceCol) == TableEditDialog.ColumnType.A_L_E) {
+                    continue;
+                }
+                
                 String equation = sourceTable.getCellEquation(sourceRow, sourceCol);
                 
                 // Skip zero or empty equations
@@ -352,13 +357,18 @@ public class StockFlowRegistry {
                 
                 String stockName = sourceTable.getColumnHeader(sourceCol);
                 if (stockName == null || stockName.trim().isEmpty()) {
-                    continue;
+                    continue; // Skip columns with blank headers (e.g., A_L_E columns)
                 }
                 
                 // Check if target table has this stock
                 int targetCol = targetTable.findColumnByStockName(stockName);
                 if (targetCol < 0) {
                     continue; // Target table doesn't have this stock, skip
+                }
+                
+                // Skip if target column is A_L_E (computed column)
+                if (targetTable.getColumnType(targetCol) == TableEditDialog.ColumnType.A_L_E) {
+                    continue;
                 }
                 
                 // Check if target table has this flow

@@ -14,7 +14,7 @@ import com.lushprojects.circuitjs1.client.TableEditDialog.ColumnType;
  */
 public class TableElm extends ChipElm {
     protected int rows = 0;  // Start with zero rows for new tables
-    protected int cols = 3;
+    protected int cols = 4;  // Default: Asset, Liability, Equity, A_L_E columns
     protected int cellWidthInGrids = 6;  // Width of each cell in grid units (cspc)
     protected int cellHeight = 16; // Height of each cell in pixels (for drawing)
     protected int cellSpacing = 0;  // Spacing between cells in pixels (for drawing), zero for best appearance
@@ -94,10 +94,121 @@ public class TableElm extends ChipElm {
     
     private void initTable() {
         dataManager.initTable();
+        
+        // Calculate A_L_E equations after data is initialized
+        updateALEEquations();
+        
         equationManager.recompileAllEquations();
         
         // Register all stocks with the synchronization registry
         registerAllStocks();
+    }
+    
+    /**
+     * Update all A_L_E column equations based on current Asset, Liability, and Equity values
+     * This should be called whenever cell equations change or table structure changes
+     */
+    public void updateALEEquations() {
+        if (columnTypes == null || cellEquations == null) return;
+        
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                if (columnTypes[col] == ColumnType.A_L_E) {
+                    cellEquations[row][col] = calculateALEEquation(row);
+                }
+            }
+        }
+        
+        // Also update A_L_E initial values
+        updateALEInitialValues();
+    }
+    
+    /**
+     * Update A_L_E column initial values based on Asset, Liability, and Equity initial values
+     */
+    private void updateALEInitialValues() {
+        if (columnTypes == null || initialValues == null) return;
+        
+        for (int col = 0; col < cols; col++) {
+            if (columnTypes[col] == ColumnType.A_L_E) {
+                initialValues[col] = calculateALEInitialValue();
+            }
+        }
+    }
+    
+    /**
+     * Calculate A_L_E initial value: sum(Assets) - sum(Liabilities) - Equity
+     */
+    private double calculateALEInitialValue() {
+        double assets = 0.0;
+        double liabilities = 0.0;
+        double equity = 0.0;
+        
+        for (int col = 0; col < cols; col++) {
+            if (columnTypes[col] == ColumnType.ASSET) {
+                assets += initialValues[col];
+            } else if (columnTypes[col] == ColumnType.LIABILITY) {
+                liabilities += initialValues[col];
+            } else if (columnTypes[col] == ColumnType.EQUITY) {
+                equity += initialValues[col];
+            }
+        }
+        
+        return assets - liabilities - equity;
+    }
+    
+    /**
+     * Calculate A_L_E equation for a specific row
+     * Formula: sum(Assets) - sum(Liabilities) - Equity
+     */
+    private String calculateALEEquation(int row) {
+        StringBuilder eq = new StringBuilder();
+        boolean first = true;
+        
+        // Add assets (positive)
+        for (int col = 0; col < cols; col++) {
+            if (columnTypes[col] == ColumnType.ASSET) {
+                String cell = cellEquations[row][col];
+                if (cell != null && !cell.trim().isEmpty()) {
+                    if (!first) eq.append(" + ");
+                    eq.append(wrapIfComplex(cell));
+                    first = false;
+                }
+            }
+        }
+        
+        // Subtract liabilities
+        for (int col = 0; col < cols; col++) {
+            if (columnTypes[col] == ColumnType.LIABILITY) {
+                String cell = cellEquations[row][col];
+                if (cell != null && !cell.trim().isEmpty()) {
+                    eq.append(" - ").append(wrapIfComplex(cell));
+                }
+            }
+        }
+        
+        // Subtract equity
+        for (int col = 0; col < cols; col++) {
+            if (columnTypes[col] == ColumnType.EQUITY) {
+                String cell = cellEquations[row][col];
+                if (cell != null && !cell.trim().isEmpty()) {
+                    eq.append(" - ").append(wrapIfComplex(cell));
+                }
+            }
+        }
+        
+        return eq.length() > 0 ? eq.toString() : "0";
+    }
+    
+    /**
+     * Wrap expression in parentheses if it contains operators
+     */
+    private String wrapIfComplex(String expr) {
+        if (expr.contains("+") || expr.contains("-") || 
+            expr.contains("*") || expr.contains("/")) {
+            return "(" + expr + ")";
+        }
+        return expr;
     }
     
     /**
@@ -203,6 +314,17 @@ public class TableElm extends ChipElm {
         if (isValidCell(row, col)) {
             cellEquations[row][col] = equation != null ? equation : "";
             compileEquation(row, col, cellEquations[row][col]);
+            
+            // If this is not an A_L_E column, recalculate A_L_E equations
+            if (columnTypes != null && col < columnTypes.length && columnTypes[col] != ColumnType.A_L_E) {
+                updateALEEquations();
+                // Recompile A_L_E equations after update
+                for (int c = 0; c < cols; c++) {
+                    if (columnTypes[c] == ColumnType.A_L_E) {
+                        compileEquation(row, c, cellEquations[row][c]);
+                    }
+                }
+            }
         }
     }
     
@@ -500,6 +622,9 @@ public class TableElm extends ChipElm {
         // Delegate data resizing to TableDataManager
         dataManager.resizeTable(newRows, newCols);
         
+        // Recalculate A_L_E equations after resize
+        updateALEEquations();
+        
         // Recreate pins with new column count
         setupPins();
         allocNodes();
@@ -577,6 +702,11 @@ public class TableElm extends ChipElm {
     public void setInitialConditionValue(int col, double value) {
         if (col >= 0 && col < cols && initialValues != null && col < initialValues.length) {
             initialValues[col] = value;
+            
+            // If this is not an A_L_E column, recalculate A_L_E initial values
+            if (columnTypes != null && col < columnTypes.length && columnTypes[col] != ColumnType.A_L_E) {
+                updateALEInitialValues();
+            }
         }
     }
     
