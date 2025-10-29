@@ -32,9 +32,9 @@ public class TableRenderer {
             case ASSET: return "Asset";
             case LIABILITY: return "Liability";
             case EQUITY: return "Equity";
-            case A_L_E: return "A-L-E";
             default: return "Unknown";
         }
+        // Note: A_L_E is detected positionally (last column when cols >= 4), not by type
     }
     
     /**
@@ -204,9 +204,15 @@ public class TableRenderer {
         for (int col = 0; col < table.cols; col++) {
             int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
             
-            // Draw column type text
-            ColumnType type = table.getColumnType(col);
-            String typeName = getColumnTypeName(type);
+            // Check if this is an A-L-E computed column
+            boolean isALEColumn = (col == table.cols - 1 && table.cols >= 4);
+            
+            // Draw column type text (blank for A-L-E columns)
+            String typeName = "";
+            if (!isALEColumn) {
+                ColumnType type = table.getColumnType(col);
+                typeName = getColumnTypeName(type);
+            }
             table.drawCenteredText(g, typeName, cellX + cellWidthPixels/2, typeRowY + table.cellHeight/2, true);
         }
         
@@ -275,9 +281,18 @@ public class TableRenderer {
                 g.setColor(Color.white);
                 g.fillRect(cellX, cellY, cellWidthPixels, table.cellHeight);
                 
-                // Display equation and voltage in cell (only if equation is not empty)
+                // Check if this is an A-L-E column (computed, no equation)
+                boolean isALEColumn = (col == table.cols - 1 && table.cols >= 4);
+                
+                // Display equation and voltage in cell (or just voltage for A-L-E)
                 String equation = table.cellEquations[row][col];
-                if (equation != null && !equation.trim().isEmpty()) {
+                if (isALEColumn) {
+                    // A-L-E column: display only the computed value (no equation)
+                    g.setColor(table.getVoltageColor(g, voltage));
+                    String voltageText = formatTableValue(voltage, table.decimalPlaces, table.tableUnits);
+                    table.drawCenteredText(g, voltageText, cellX + cellWidthPixels/2, cellY + table.cellHeight/2, true);
+                } else if (equation != null && !equation.trim().isEmpty()) {
+                    // Regular cell: display equation = value
                     g.setColor(table.getVoltageColor(g, voltage));
                     String displayText = truncateEquation(equation);
                     String voltageText = formatTableValue(voltage, table.decimalPlaces, table.tableUnits);

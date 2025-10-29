@@ -91,8 +91,16 @@ import java.util.Map;
     public enum ColumnType {
         ASSET,
         LIABILITY,
-        EQUITY,
-        A_L_E  // For A-L-E column
+        EQUITY
+        // Note: Last column (when cols >= 4) is implicitly A_L_E computed column
+    }
+    
+    /**
+     * Check if a column is the A_L_E computed column
+     * The last column is A_L_E when there are 4 or more columns
+     */
+    private boolean isALEColumn(int col) {
+        return col == dataCols - 1 && dataCols >= 4;
     }
     
     /**
@@ -154,8 +162,8 @@ import java.util.Map;
             
             ColumnType type = dialog.columnTypes[colIndex];
             
-            // Computed column is always rightmost
-            if (type == ColumnType.A_L_E) {
+            // Computed column (A_L_E) is always last column when cols >= 4
+            if (dialog.isALEColumn(colIndex)) {
                 return Region.COMPUTED_REGION;
             }
             
@@ -181,6 +189,11 @@ import java.util.Map;
             Region fromRegion = getRegion(fromIndex);
             Region toRegion = getRegion(toIndex);
             ColumnType originalType = dialog.columnTypes[fromIndex];
+            
+            // Defensive: should not happen for valid moves, but prevent null access
+            if (originalType == null) {
+                return new MoveTransition(false, "Cannot move column - invalid type");
+            }
             
             // Check if trying to move to different region
             if (fromRegion != toRegion) {
@@ -258,52 +271,21 @@ import java.util.Map;
     // =============================================================================
     
     /**
-     * Calculate A-L-E equation for a specific row
-     * Uses same logic as TableElm.calculateALEEquation() but works with dialog's temporary cellData
+     * Calculate A-L-E equation string for display in a specific row
+     * NOTE: This is for DISPLAY ONLY in the dialog. The actual A_L_E calculation
+     * happens in TableElm.doStep() using direct arithmetic, not expression parsing.
+     * 
      * Returns equation string: sum of asset cells - sum of liability cells - equity cell
+     * Example: "(asset1+asset2) - (liability1) - (equity1)"
      */
     private String calculateALECellEquation(int row) {
-        StringBuilder eq = new StringBuilder();
-        boolean first = true;
-        
-        // Add asset terms (positive)
-        for (int col = 0; col < dataCols; col++) {
-            if (columnTypes[col] == ColumnType.ASSET) {
-                String cell = cellData[row][col];
-                if (cell != null && !cell.trim().isEmpty()) {
-                    if (!first) eq.append(" + ");
-                    eq.append(wrapIfComplex(cell));
-                    first = false;
-                }
-            }
-        }
-        
-        // Subtract liability terms
-        for (int col = 0; col < dataCols; col++) {
-            if (columnTypes[col] == ColumnType.LIABILITY) {
-                String cell = cellData[row][col];
-                if (cell != null && !cell.trim().isEmpty()) {
-                    eq.append(" - ").append(wrapIfComplex(cell));
-                }
-            }
-        }
-        
-        // Subtract equity term
-        for (int col = 0; col < dataCols; col++) {
-            if (columnTypes[col] == ColumnType.EQUITY) {
-                String cell = cellData[row][col];
-                if (cell != null && !cell.trim().isEmpty()) {
-                    eq.append(" - ").append(wrapIfComplex(cell));
-                }
-            }
-        }
-        
-        return eq.length() > 0 ? eq.toString() : "0";
+        // Use the static helper method with the current tableElement
+        return calculateALECellEquation(tableElement, row);
     }
     
     /**
      * Wrap expression in parentheses if it contains operators
-     * Same logic as TableElm.wrapIfComplex()
+     * Used for display purposes when building A_L_E equation strings
      */
     private String wrapIfComplex(String expr) {
         if (expr.contains("+") || expr.contains("-") || 
@@ -314,8 +296,54 @@ import java.util.Map;
     }
     
     /**
-     * Calculate A-L-E initial value
-     * Uses same logic as TableElm.calculateALEInitialValue() but works with dialog's temporary initialValues
+     * Calculate A-L-E equation for a specific table and row (for markdown display)
+     * Static helper method that works with any TableElm instance
+     */
+    private String calculateALECellEquation(TableElm table, int row) {
+        StringBuilder eq = new StringBuilder();
+        boolean first = true;
+        
+        // Skip the last column (A-L-E itself)
+        int numCols = table.getCols() - 1;
+        
+        // Add asset terms (positive)
+        for (int col = 0; col < numCols; col++) {
+            if (table.getColumnType(col) == ColumnType.ASSET) {
+                String cell = table.getCellEquation(row, col);
+                if (cell != null && !cell.trim().isEmpty()) {
+                    if (!first) eq.append(" + ");
+                    eq.append(wrapIfComplex(cell));
+                    first = false;
+                }
+            }
+        }
+        
+        // Subtract liability terms
+        for (int col = 0; col < numCols; col++) {
+            if (table.getColumnType(col) == ColumnType.LIABILITY) {
+                String cell = table.getCellEquation(row, col);
+                if (cell != null && !cell.trim().isEmpty()) {
+                    eq.append(" - ").append(wrapIfComplex(cell));
+                }
+            }
+        }
+        
+        // Subtract equity term
+        for (int col = 0; col < numCols; col++) {
+            if (table.getColumnType(col) == ColumnType.EQUITY) {
+                String cell = table.getCellEquation(row, col);
+                if (cell != null && !cell.trim().isEmpty()) {
+                    eq.append(" - ").append(wrapIfComplex(cell));
+                }
+            }
+        }
+        
+        return eq.length() > 0 ? eq.toString() : "0";
+    }
+    
+    /**
+     * Calculate A-L-E initial value for display
+     * NOTE: This is for DISPLAY ONLY. The actual A_L_E calculation happens in TableElm.
      * Returns: sum(Assets) - sum(Liabilities) - Equity
      */
     private double calculateALEInitialValue() {
@@ -372,8 +400,8 @@ import java.util.Map;
         
         // For tables with 4+ columns, the LAST column is always A_L_E
         if (dataCols >= 4) {
-            stockValues[dataCols - 1] = "";  // A_L_E column has blank label
-            columnTypes[dataCols - 1] = ColumnType.A_L_E;
+            stockValues[dataCols - 1] = "A-L-E";  // A_L_E column label
+            // Note: Column type can remain ASSET, we detect A_L_E positionally
         }
         
         // Copy existing data from TableElm if available
@@ -384,15 +412,18 @@ import java.util.Map;
             // FIRST: Copy column types from TableElm to override defaults
             for (int col = 0; col < Math.min(dataCols, existingCols); col++) {
                 ColumnType existingType = tableElement.getColumnType(col);
+                // Only override if we got a valid type (not null)
+                // This prevents issues with A_L_E columns which don't have enum type
                 if (existingType != null) {
                     columnTypes[col] = existingType;
                 }
+                // If null, keep the default type we set earlier (ASSET, LIABILITY, or EQUITY)
             }
             
-            // THEN: Copy cell equations (now we know the correct types to skip A_L_E)
+            // THEN: Copy cell equations (skip A_L_E column - computed only)
             for (int row = 0; row < Math.min(dataRows, existingRows); row++) {
                 for (int col = 0; col < Math.min(dataCols, existingCols); col++) {
-                    if (columnTypes[col] != ColumnType.A_L_E) {
+                    if (!isALEColumn(col)) {
                         cellData[row][col] = tableElement.getCellEquation(row, col);
                         if (cellData[row][col] == null) {
                             cellData[row][col] = "";
@@ -404,14 +435,14 @@ import java.util.Map;
             // Copy stock values (column headers) and initial values
             for (int col = 0; col < Math.min(dataCols, existingCols); col++) {
                 // Only copy stock value if not A_L_E column
-                if (columnTypes[col] != ColumnType.A_L_E) {
+                if (!isALEColumn(col)) {
                     String existingHeader = tableElement.getColumnHeader(col);
                     if (existingHeader != null && !existingHeader.trim().isEmpty()) {
                         stockValues[col] = existingHeader;
                     }
                     initialValues[col] = tableElement.getInitialValue(col);
                 } else {
-                    stockValues[col] = ""; // Always blank for A_L_E
+                    stockValues[col] = "A-L-E"; // Label for A_L_E column
                     // Initial value will be computed
                 }
             }
@@ -420,17 +451,17 @@ import java.util.Map;
         // Ensure all cells have non-null values (except A_L_E which will be computed)
         for (int row = 0; row < dataRows; row++) {
             for (int col = 0; col < dataCols; col++) {
-                if (columnTypes[col] != ColumnType.A_L_E && cellData[row][col] == null) {
+                if (!isALEColumn(col) && cellData[row][col] == null) {
                     cellData[row][col] = "";
                 }
             }
         }
         
-        // Compute A_L_E cell equations
+        // A_L_E cells remain empty/blank in the dialog (computed values shown in circuit, not in editor)
         for (int row = 0; row < dataRows; row++) {
             for (int col = 0; col < dataCols; col++) {
-                if (columnTypes[col] == ColumnType.A_L_E) {
-                    cellData[row][col] = calculateALECellEquation(row);
+                if (isALEColumn(col)) {
+                    cellData[row][col] = ""; // Keep blank - no equation
                 }
             }
         }
@@ -773,20 +804,43 @@ import java.util.Map;
         java.util.Set<TableElm> relatedTables = new java.util.HashSet<TableElm>();
         relatedTables.add(tableElement); // Include current table
         
+        // DEBUG: Log current table identity
+        md.append("**Current table:** ").append(tableElement.getTableTitle())
+          .append(" (Object ID: ").append(System.identityHashCode(tableElement)).append(")\n\n");
+        
         // Find all tables sharing stocks
+        md.append("**Stock lookup results:**\n");
         for (int col = 0; col < tableElement.getCols(); col++) {
             String stockName = tableElement.getColumnHeader(col);
+            md.append("- Column ").append(col).append(": '").append(stockName).append("'");
+            
+            // Skip A-L-E computed columns - they are not real stocks
+            if (col == tableElement.getCols() - 1 && tableElement.getCols() >= 4) {
+                md.append(" → (A-L-E computed column, skipped)\n");
+                continue;
+            }
+            
             if (stockName != null && !stockName.trim().isEmpty()) {
                 java.util.List<TableElm> tables = StockFlowRegistry.getTablesForStock(stockName);
+                md.append(" → ").append(tables.size()).append(" table(s): ");
+                for (TableElm t : tables) {
+                    md.append("[").append(t.getTableTitle()).append(" #")
+                      .append(System.identityHashCode(t)).append("] ");
+                }
                 relatedTables.addAll(tables);
+            } else {
+                md.append(" → (empty/null, skipped)");
             }
+            md.append("\n");
         }
+        md.append("\n");
         
         md.append("## Tables Sharing Stocks: ").append(relatedTables.size()).append("\n\n");
         
         // Generate markdown for each table
         for (TableElm table : relatedTables) {
-            md.append("### ").append(table.getTableTitle()).append("\n\n");
+            md.append("### ").append(table.getTableTitle())
+              .append(" (Object ID: #").append(System.identityHashCode(table)).append(")\n\n");
             
             // Calculate column widths for alignment
             int[] colWidths = calculateColumnWidths(table);
@@ -809,13 +863,29 @@ import java.util.Map;
             for (int row = 0; row < table.getRows(); row++) {
                 md.append("| ").append(padRight(table.getRowDescription(row), colWidths[0])).append(" ");
                 for (int col = 0; col < table.getCols(); col++) {
-                    String equation = table.getCellEquation(row, col);
                     String cellContent;
-                    if (equation == null || equation.trim().isEmpty()) {
-                        cellContent = "";
+                    
+                    // Check if this is an A-L-E column
+                    boolean isALEColumn = (col == table.getCols() - 1 && table.getCols() >= 4);
+                    
+                    if (isALEColumn) {
+                        // Generate A-L-E equation for this row
+                        String aleEquation = calculateALECellEquation(table, row);
+                        if (aleEquation != null && !aleEquation.isEmpty()) {
+                            cellContent = "`" + aleEquation + "`";
+                        } else {
+                            cellContent = "";
+                        }
                     } else {
-                        cellContent = "`" + equation + "`";
+                        // Regular cell - use stored equation
+                        String equation = table.getCellEquation(row, col);
+                        if (equation == null || equation.trim().isEmpty()) {
+                            cellContent = "";
+                        } else {
+                            cellContent = "`" + equation + "`";
+                        }
                     }
+                    
                     md.append("| ").append(padRight(cellContent, colWidths[col + 1])).append(" ");
                 }
                 md.append("|\n");
@@ -832,7 +902,18 @@ import java.util.Map;
                 }
                 
                 for (int col = 0; col < table.getCols(); col++) {
-                    String equation = table.getCellEquation(row, col);
+                    // Check if this is an A-L-E column
+                    boolean isALEColumn = (col == table.getCols() - 1 && table.getCols() >= 4);
+                    
+                    String equation;
+                    if (isALEColumn) {
+                        // Generate A-L-E equation for this row
+                        equation = calculateALECellEquation(table, row);
+                    } else {
+                        // Regular cell - use stored equation
+                        equation = table.getCellEquation(row, col);
+                    }
+                    
                     if (equation != null && !equation.trim().isEmpty() && !equation.trim().equals("0")) {
                         String stockName = table.getColumnHeader(col);
                         md.append("- **").append(flowDesc).append("** → **").append(stockName)
@@ -1041,14 +1122,21 @@ import java.util.Map;
             
             // Add type indicator emoji/symbol
             String typeIndicator = "";
-            switch (colType) {
-                case ASSET: typeIndicator = "💰"; break;
-                case LIABILITY: typeIndicator = "📄"; break;
-                case EQUITY: typeIndicator = "🏦"; break;
-                case A_L_E: typeIndicator = "🧮"; break;
+            if (isALEColumn(col)) {
+                typeIndicator = "🧮";
+                editGrid.setText(HEADER_ROW, DATA_START_COL + col, typeIndicator + " [A_L_E]");
+            } else if (colType != null) {
+                switch (colType) {
+                    case ASSET: typeIndicator = "💹"; break;
+                    case LIABILITY: typeIndicator = "📄"; break;
+                    case EQUITY: typeIndicator = "🏦"; break;
+                }
+                editGrid.setText(HEADER_ROW, DATA_START_COL + col, typeIndicator + " [" + colType.name() + "]");
+            } else {
+                // Fallback for null column type (shouldn't happen, but be defensive)
+                typeIndicator = "💹";
+                editGrid.setText(HEADER_ROW, DATA_START_COL + col, typeIndicator + " [ASSET]");
             }
-            
-            editGrid.setText(HEADER_ROW, DATA_START_COL + col, typeIndicator + " [" + colType.name() + "]");
         }
         
         // Row 1: Control buttons (populated in populateContextualButtons)
@@ -1061,9 +1149,9 @@ import java.util.Map;
         
         // Add editable stock value inputs
         for (int col = 0; col < dataCols; col++) {
-            if (columnTypes[col] == ColumnType.A_L_E) {
+            if (isALEColumn(col)) {
                 // A_L_E column gets a disabled label instead of textbox
-                Label aleLabel = new Label(""); // Blank label for A-L-E
+                Label aleLabel = new Label("A-L-E"); // Label for A-L-E column
                 aleLabel.addStyleName("tableStockInput");
                 aleLabel.addStyleName("computed-column");
                 aleLabel.setTitle("Assets - Liabilities - Equity (computed)");
@@ -1081,7 +1169,7 @@ import java.util.Map;
         
         // Add initial condition value inputs
         for (int col = 0; col < dataCols; col++) {
-            if (columnTypes[col] == ColumnType.A_L_E) {
+            if (isALEColumn(col)) {
                 // A_L_E column gets computed initial value (read-only)
                 double computedInitial = calculateALEInitialValue();
                 Label aleInitialLabel = new Label(Double.toString(computedInitial));
@@ -1113,10 +1201,10 @@ import java.util.Map;
             
             // Data columns
             for (int col = 0; col < dataCols; col++) {
-                if (columnTypes[col] == ColumnType.A_L_E) {
-                    // A_L_E cells are computed and read-only
-                    String computedEquation = calculateALECellEquation(row);
-                    Label aleLabel = new Label(computedEquation);
+                if (isALEColumn(col)) {
+                    // A_L_E cells are computed and read-only - show calculated equation
+                    String aleEquation = calculateALECellEquation(row);
+                    Label aleLabel = new Label(aleEquation);
                     aleLabel.addStyleName("tableCellInput");
                     aleLabel.addStyleName("computed-column");
                     aleLabel.setTitle("Computed: Assets - Liabilities - Equity");
@@ -1145,7 +1233,8 @@ import java.util.Map;
             
             // Add column button - only if not Equity or Computed
             if (canAddColumnAfter(col)) {
-                Button addColBtn = createButton(SYMBOL_ADD, "Add " + colType.name() + " column after " + stockValues[col]);
+                String colTypeName = (colType != null) ? colType.name() : "ASSET";
+                Button addColBtn = createButton(SYMBOL_ADD, "Add " + colTypeName + " column after " + stockValues[col]);
                 addColBtn.addClickHandler(new ClickHandler() {
                     public void onClick(ClickEvent event) {
                         insertColumnAfter(finalCol);
@@ -1377,15 +1466,14 @@ import java.util.Map;
     private void updateALEColumns() {
         for (int row = 0; row < dataRows; row++) {
             for (int col = 0; col < dataCols; col++) {
-                if (columnTypes[col] == ColumnType.A_L_E) {
-                    // Recalculate equation
-                    String newEquation = calculateALECellEquation(row);
-                    cellData[row][col] = newEquation;
+                if (isALEColumn(col)) {
+                    // Calculate updated A-L-E equation based on current cellData
+                    String aleEquation = calculateALEEquationFromCellData(row);
                     
-                    // Update the label widget in the grid
+                    // Update the label widget in the grid with the new equation
                     com.google.gwt.user.client.ui.Widget widget = editGrid.getWidget(DATA_START_ROW + row, DATA_START_COL + col);
                     if (widget instanceof Label) {
-                        ((Label) widget).setText(newEquation);
+                        ((Label) widget).setText(aleEquation);
                     }
                 }
             }
@@ -1393,7 +1481,7 @@ import java.util.Map;
         
         // Also update initial value
         for (int col = 0; col < dataCols; col++) {
-            if (columnTypes[col] == ColumnType.A_L_E) {
+            if (isALEColumn(col)) {
                 double newInitialValue = calculateALEInitialValue();
                 com.google.gwt.user.client.ui.Widget widget = editGrid.getWidget(INITIAL_ROW, DATA_START_COL + col);
                 if (widget instanceof Label) {
@@ -1401,6 +1489,49 @@ import java.util.Map;
                 }
             }
         }
+    }
+    
+    /**
+     * Calculate A-L-E equation from current cellData (used during editing)
+     * This reads from the cellData array which is updated as the user types
+     */
+    private String calculateALEEquationFromCellData(int row) {
+        StringBuilder eq = new StringBuilder();
+        boolean first = true;
+        
+        // Add asset terms (positive)
+        for (int col = 0; col < dataCols; col++) {
+            if (columnTypes[col] == ColumnType.ASSET) {
+                String cell = cellData[row][col];
+                if (cell != null && !cell.trim().isEmpty()) {
+                    if (!first) eq.append(" + ");
+                    eq.append(wrapIfComplex(cell));
+                    first = false;
+                }
+            }
+        }
+        
+        // Subtract liability terms
+        for (int col = 0; col < dataCols; col++) {
+            if (columnTypes[col] == ColumnType.LIABILITY) {
+                String cell = cellData[row][col];
+                if (cell != null && !cell.trim().isEmpty()) {
+                    eq.append(" - ").append(wrapIfComplex(cell));
+                }
+            }
+        }
+        
+        // Subtract equity term
+        for (int col = 0; col < dataCols; col++) {
+            if (columnTypes[col] == ColumnType.EQUITY) {
+                String cell = cellData[row][col];
+                if (cell != null && !cell.trim().isEmpty()) {
+                    eq.append(" - ").append(wrapIfComplex(cell));
+                }
+            }
+        }
+        
+        return eq.length() > 0 ? eq.toString() : "0";
     }
     
     //=== COLUMN MOVEMENT HELPERS ===================================================
@@ -1632,7 +1763,8 @@ import java.util.Map;
         initialValues = newInitialValues;
         columnTypes = newColumnTypes;
         
-        setStatus("New " + newColumnType.name() + " column added after " + stockValues[colIndex] + ". Total columns: " + dataCols);
+        String colTypeName = (newColumnType != null) ? newColumnType.name() : "ASSET";
+        setStatus("New " + colTypeName + " column added after " + stockValues[colIndex] + ". Total columns: " + dataCols);
         markChanged();
         populateGrid();
     }
@@ -1652,8 +1784,8 @@ import java.util.Map;
             return;
         }
         
-        // Prevent deleting Computed column
-        if (columnTypes[colIndex] == ColumnType.A_L_E) {
+        // Prevent deleting Computed column (A_L_E)
+        if (isALEColumn(colIndex)) {
             setStatus("Cannot delete Computed (A-L-E) column - it is required");
             return;
         }
@@ -1707,7 +1839,8 @@ import java.util.Map;
         initialValues = newInitialValues;
         columnTypes = newColumnTypes;
         
-        setStatus(deletedType.name() + " column '" + deletedColumnName + "' deleted. Total columns: " + dataCols);
+        String deletedTypeName = (deletedType != null) ? deletedType.name() : "ASSET";
+        setStatus(deletedTypeName + " column '" + deletedColumnName + "' deleted. Total columns: " + dataCols);
         markChanged();
         populateGrid();
     }
@@ -1764,8 +1897,9 @@ import java.util.Map;
         }
         
         ColumnType type = columnTypes[fromIndex];
-        if (type == ColumnType.EQUITY || type == ColumnType.A_L_E) {
-            setStatus("Cannot move " + type.name() + " column - it must remain fixed");
+        if (type == ColumnType.EQUITY || isALEColumn(fromIndex)) {
+            String columnName = isALEColumn(fromIndex) ? "A_L_E" : ((type != null) ? type.name() : "column");
+            setStatus("Cannot move " + columnName + " column - it must remain fixed");
             return false;
         }
         
@@ -1921,7 +2055,7 @@ import java.util.Map;
     // Column operation permission checks
     public boolean canMoveColumn(int col) {
         if (col < 0 || col >= dataCols || columnTypes == null) return false;
-        return columnTypes[col] != ColumnType.EQUITY && columnTypes[col] != ColumnType.A_L_E;
+        return columnTypes[col] != ColumnType.EQUITY && !isALEColumn(col);
     }
     
     public boolean canDeleteColumn(int col) {
@@ -1929,8 +2063,8 @@ import java.util.Map;
         
         ColumnType type = columnTypes[col];
         
-        // Cannot delete Equity or Computed columns
-        if (type == ColumnType.EQUITY || type == ColumnType.A_L_E) return false;
+        // Cannot delete Equity or Computed (A_L_E) columns
+        if (type == ColumnType.EQUITY || isALEColumn(col)) return false;
         
         // Cannot delete if it's the last Asset or Liability
         if (type == ColumnType.ASSET && countColumnsByType(ColumnType.ASSET) <= 1) return false;
@@ -1942,8 +2076,8 @@ import java.util.Map;
     public boolean canAddColumnAfter(int col) {
         if (col < 0 || col >= dataCols || columnTypes == null) return false;
         
-        // Cannot add after Equity or Computed columns
-        return columnTypes[col] != ColumnType.EQUITY && columnTypes[col] != ColumnType.A_L_E;
+        // Cannot add after Equity or Computed (A_L_E) columns
+        return columnTypes[col] != ColumnType.EQUITY && !isALEColumn(col);
     }
 
     

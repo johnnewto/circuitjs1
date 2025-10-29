@@ -211,6 +211,8 @@ gwt {
         disableCastChecking = true      // default: false
         strict = true                   // default: false
         //style = "PRETTY"              // default: OBFUSCATED  / [OBFUSCATED,PRETTY,DETAILED]
+                                         // OBFUSCATED = smaller/faster for production
+                                         // PRETTY = readable but still no Java line numbers
     }
     dev {
         noserver = true

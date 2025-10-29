@@ -7,6 +7,15 @@
     <set-property name="gwt.logging.enabled" value="TRUE" />
     <set-property name="gwt.logging.logLevel" value="INFO" />
 
+    <!-- Speed up compilation during development by limiting to one browser -->
+    <!-- Comment out these lines for production builds -->
+    <set-property name="user.agent" value="safari"/>    
+    <set-property name="locale" value="default"/>
+    
+    <!-- Enable readable output with line numbers for debugging -->
+    <set-property name="compiler.stackMode" value="emulated"/>
+    <set-configuration-property name="compiler.emulatedStack.recordLineNumbers" value="true"/>
+
     <entry-point class="com.lushprojects.circuitjs1.client.circuitjs1" />
     <stylesheet src='style.css' />
     <!-- Specify the paths for translatable code                    -->

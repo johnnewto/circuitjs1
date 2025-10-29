@@ -40,6 +40,9 @@ public class TableElm extends ChipElm {
     private final TableDataManager dataManager;
     private final TableGeometryManager geometryManager;
     
+    // Storage for computed A-L-E cell values (if A-L-E column exists)
+    private double[] computedALEValues;
+    
     // Flag to bypass table dialog intercept when showing properties
     private boolean showingProperties = false;
     
@@ -106,31 +109,24 @@ public class TableElm extends ChipElm {
     
     /**
      * Update all A_L_E column equations based on current Asset, Liability, and Equity values
-     * This should be called whenever cell equations change or table structure changes
+     * NOTE: A_L_E columns don't use equation strings anymore - they are calculated directly in doStep()
+     * This method is kept for compatibility but does nothing since A_L_E is computed at runtime
      */
     public void updateALEEquations() {
-        if (columnTypes == null || cellEquations == null) return;
-        
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < cols; col++) {
-                if (columnTypes[col] == ColumnType.A_L_E) {
-                    cellEquations[row][col] = calculateALEEquation(row);
-                }
-            }
-        }
-        
-        // Also update A_L_E initial values
+        // No-op: A_L_E is now calculated directly in doStep(), not via equations
+        // Just update initial values
         updateALEInitialValues();
     }
     
     /**
      * Update A_L_E column initial values based on Asset, Liability, and Equity initial values
+     * Uses direct arithmetic calculation, no expressions
      */
     private void updateALEInitialValues() {
         if (columnTypes == null || initialValues == null) return;
         
         for (int col = 0; col < cols; col++) {
-            if (columnTypes[col] == ColumnType.A_L_E) {
+            if (isALEColumn(col)) {
                 initialValues[col] = calculateALEInitialValue();
             }
         }
@@ -138,19 +134,27 @@ public class TableElm extends ChipElm {
     
     /**
      * Calculate A_L_E initial value: sum(Assets) - sum(Liabilities) - Equity
+     * Direct arithmetic calculation on initial values
      */
     private double calculateALEInitialValue() {
         double assets = 0.0;
         double liabilities = 0.0;
         double equity = 0.0;
         
-        for (int col = 0; col < cols; col++) {
-            if (columnTypes[col] == ColumnType.ASSET) {
-                assets += initialValues[col];
-            } else if (columnTypes[col] == ColumnType.LIABILITY) {
-                liabilities += initialValues[col];
-            } else if (columnTypes[col] == ColumnType.EQUITY) {
-                equity += initialValues[col];
+        // Only process columns BEFORE the last column (exclude A_L_E itself)
+        for (int col = 0; col < cols - 1; col++) {
+            if (columnTypes != null && col < columnTypes.length && columnTypes[col] != null) {
+                switch (columnTypes[col]) {
+                    case ASSET:
+                        assets += initialValues[col];
+                        break;
+                    case LIABILITY:
+                        liabilities += initialValues[col];
+                        break;
+                    case EQUITY:
+                        equity += initialValues[col];
+                        break;
+                }
             }
         }
         
@@ -158,66 +162,81 @@ public class TableElm extends ChipElm {
     }
     
     /**
-     * Calculate A_L_E equation for a specific row
-     * Formula: sum(Assets) - sum(Liabilities) - Equity
+     * Check if a column is the A_L_E computed column
+     * The last column is A_L_E when there are 4 or more columns
      */
-    private String calculateALEEquation(int row) {
-        StringBuilder eq = new StringBuilder();
-        boolean first = true;
-        
-        // Add assets (positive)
-        for (int col = 0; col < cols; col++) {
-            if (columnTypes[col] == ColumnType.ASSET) {
-                String cell = cellEquations[row][col];
-                if (cell != null && !cell.trim().isEmpty()) {
-                    if (!first) eq.append(" + ");
-                    eq.append(wrapIfComplex(cell));
-                    first = false;
-                }
-            }
-        }
-        
-        // Subtract liabilities
-        for (int col = 0; col < cols; col++) {
-            if (columnTypes[col] == ColumnType.LIABILITY) {
-                String cell = cellEquations[row][col];
-                if (cell != null && !cell.trim().isEmpty()) {
-                    eq.append(" - ").append(wrapIfComplex(cell));
-                }
-            }
-        }
-        
-        // Subtract equity
-        for (int col = 0; col < cols; col++) {
-            if (columnTypes[col] == ColumnType.EQUITY) {
-                String cell = cellEquations[row][col];
-                if (cell != null && !cell.trim().isEmpty()) {
-                    eq.append(" - ").append(wrapIfComplex(cell));
-                }
-            }
-        }
-        
-        return eq.length() > 0 ? eq.toString() : "0";
+    private boolean isALEColumn(int col) {
+        return col == cols - 1 && cols >= 4;
     }
     
     /**
-     * Wrap expression in parentheses if it contains operators
+     * Calculate A_L_E column sum directly: Assets - Liabilities - Equity
+     * This method sums the already-evaluated cell values from each column,
+     * then applies the accounting equation formula.
+     * No expression compilation needed - pure arithmetic on voltages.
+     * 
+     * Also stores individual cell values in computedALEValues for rendering.
+     * Must be called AFTER all regular columns have been computed in doStep().
+     * 
+     * @return The total A_L_E value (sum of all A_L_E cells in the column)
      */
-    private String wrapIfComplex(String expr) {
-        if (expr.contains("+") || expr.contains("-") || 
-            expr.contains("*") || expr.contains("/")) {
-            return "(" + expr + ")";
+    private double calculateALEColumnSum() {
+        // Initialize storage for A-L-E cell values
+        if (computedALEValues == null || computedALEValues.length != rows) {
+            computedALEValues = new double[rows];
         }
-        return expr;
+        
+        double totalALE = 0.0;
+        
+        // Calculate A-L-E for each row
+        for (int row = 0; row < rows; row++) {
+            double assets = 0.0;
+            double liabilities = 0.0;
+            double equity = 0.0;
+            
+            // Only process columns BEFORE the last column (exclude A_L_E itself)
+            for (int col = 0; col < cols - 1; col++) {
+                // Call equationManager directly to avoid circular dependency
+                double cellValue = equationManager.getVoltageForCell(row, col);
+                
+                // Add to appropriate bucket based on column type
+                if (columnTypes != null && col < columnTypes.length && columnTypes[col] != null) {
+                    switch (columnTypes[col]) {
+                        case ASSET:
+                            assets += cellValue;
+                            break;
+                        case LIABILITY:
+                            liabilities += cellValue;
+                            break;
+                        case EQUITY:
+                            equity += cellValue;
+                            break;
+                    }
+                }
+            }
+            
+            // Calculate A-L-E for this row: Assets - Liabilities - Equity
+            double rowALE = assets - liabilities - equity;
+            computedALEValues[row] = rowALE;
+            totalALE += rowALE;
+        }
+        
+        return totalALE;
     }
     
     /**
      * Register all stocks (column headers) with StockFlowRegistry
      * Package-private for use during initialization
+     * NOTE: A-L-E computed columns are NOT registered as they are not real stocks
      */
     private void registerAllStocks() {
         if (outputNames != null) {
             for (int col = 0; col < cols && col < outputNames.length; col++) {
+                // Skip A-L-E computed columns - they are not real stocks
+                if (isALEColumn(col)) {
+                    continue;
+                }
+                
                 String stockName = outputNames[col];
                 if (stockName != null && !stockName.trim().isEmpty()) {
                     StockFlowRegistry.registerStock(stockName, this);
@@ -281,6 +300,15 @@ public class TableElm extends ChipElm {
     }
     
     protected double getVoltageForCell(int row, int col) {
+        // Special handling for A-L-E columns - return computed value
+        if (isALEColumn(col)) {
+            if (computedALEValues != null && row >= 0 && row < computedALEValues.length) {
+                return computedALEValues[row];
+            }
+            return 0.0;
+        }
+        
+        // Normal columns use equation manager
         return equationManager.getVoltageForCell(row, col);
     }
     
@@ -315,15 +343,10 @@ public class TableElm extends ChipElm {
             cellEquations[row][col] = equation != null ? equation : "";
             compileEquation(row, col, cellEquations[row][col]);
             
-            // If this is not an A_L_E column, recalculate A_L_E equations
-            if (columnTypes != null && col < columnTypes.length && columnTypes[col] != ColumnType.A_L_E) {
+            // If this is not an A_L_E column, recalculate A_L_E initial values
+            if (columnTypes != null && col < columnTypes.length && !isALEColumn(col)) {
                 updateALEEquations();
-                // Recompile A_L_E equations after update
-                for (int c = 0; c < cols; c++) {
-                    if (columnTypes[c] == ColumnType.A_L_E) {
-                        compileEquation(row, c, cellEquations[row][c]);
-                    }
-                }
+                // Note: A_L_E cells are computed in doStep(), no equations to compile
             }
         }
     }
@@ -433,8 +456,16 @@ public class TableElm extends ChipElm {
             lastColumnSums = new double[cols];
         }
 
+        // FIRST PASS: Compute all NON-A-L-E columns
         for (int col = 0; col < cols; col++) {
+            // Skip A-L-E column in first pass
+            if (isALEColumn(col)) {
+                continue;
+            }
+            
             double columnSum = 0.0;
+            
+            // NORMAL COLUMNS: Sum cell values from equations
             String name = outputNames[col];
             
             // Check if this table is the master computer for this output name
@@ -450,13 +481,13 @@ public class TableElm extends ChipElm {
             } else if (isMasterForThisName) {
                 // We are the master - compute the value ourselves
                 for (int row = 0; row < rows; row++) {
-                    double v = getVoltageForCell(row, col);
+                    double v = equationManager.getVoltageForCell(row, col);
                     columnSum += v;
                 }
             } else {
                 // No master registered yet or no computed value - compute it ourselves
                 for (int row = 0; row < rows; row++) {
-                    double v = getVoltageForCell(row, col);
+                    double v = equationManager.getVoltageForCell(row, col);
                     columnSum += v;
                 }
             }
@@ -472,6 +503,27 @@ public class TableElm extends ChipElm {
             // Update output pin voltage source with converged column sum
             if (col < pins.length && pins[col].output) {
                 sim.updateVoltageSource(0, nodes[col], pins[col].voltSource, columnSum);
+            }
+        }
+        
+        // SECOND PASS: Now compute A-L-E column (depends on other columns being computed)
+        for (int col = 0; col < cols; col++) {
+            if (isALEColumn(col)) {
+                // Calculate A-L-E sum and store individual cell values
+                double columnSum = calculateALEColumnSum();
+                
+                // Check for convergence
+                Double diff = Math.abs(columnSum - lastColumnSums[col]);
+                if (diff > 1e-6) {
+                    sim.converged = false;
+                }
+
+                lastColumnSums[col] = columnSum;
+
+                // Update output pin voltage source with converged column sum
+                if (col < pins.length && pins[col].output) {
+                    sim.updateVoltageSource(0, nodes[col], pins[col].voltSource, columnSum);
+                }
             }
         }
     }
@@ -634,8 +686,13 @@ public class TableElm extends ChipElm {
     protected void openTableEditDialog() {
         // Open the enhanced table editing dialog
         if (sim != null) {
-            TableEditDialog dialog = new TableEditDialog(this, sim);
-            dialog.show();
+            try {
+                TableEditDialog dialog = new TableEditDialog(this, sim);
+                dialog.show();
+            } catch (Exception e) {
+                CirSim.console("Error opening table edit dialog: " + e.getMessage());
+                e.printStackTrace();
+            }
         }
     }
     
@@ -661,24 +718,28 @@ public class TableElm extends ChipElm {
     
     /**
      * Set column header and update stock registry
+     * NOTE: A-L-E computed columns are NOT registered as they are not real stocks
      */
     public void setColumnHeader(int col, String header) {
         if (col < 0 || col >= cols) return;
         
         String oldHeader = outputNames[col];
         
-        // Unregister old stock name
-        if (oldHeader != null && !oldHeader.trim().isEmpty()) {
-            StockFlowRegistry.unregisterStock(oldHeader, this);
+        // Don't register/unregister A-L-E computed columns
+        if (!isALEColumn(col)) {
+            // Unregister old stock name
+            if (oldHeader != null && !oldHeader.trim().isEmpty()) {
+                StockFlowRegistry.unregisterStock(oldHeader, this);
+            }
+            
+            // Register new stock name
+            if (header != null && !header.trim().isEmpty()) {
+                StockFlowRegistry.registerStock(header, this);
+            }
         }
         
         // Set new header
         outputNames[col] = header;
-        
-        // Register new stock name
-        if (header != null && !header.trim().isEmpty()) {
-            StockFlowRegistry.registerStock(header, this);
-        }
     }
 
     public String getColumnHeader(int col) {
@@ -704,7 +765,7 @@ public class TableElm extends ChipElm {
             initialValues[col] = value;
             
             // If this is not an A_L_E column, recalculate A_L_E initial values
-            if (columnTypes != null && col < columnTypes.length && columnTypes[col] != ColumnType.A_L_E) {
+            if (columnTypes != null && col < columnTypes.length && !isALEColumn(col)) {
                 updateALEInitialValues();
             }
         }

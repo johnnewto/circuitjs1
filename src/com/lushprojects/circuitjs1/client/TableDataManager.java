@@ -20,6 +20,14 @@ public class TableDataManager {
     }
     
     /**
+     * Check if a column is the A_L_E computed column
+     * The last column is A_L_E when there are 4 or more columns
+     */
+    private boolean isALEColumn(int col) {
+        return col == table.cols - 1 && table.cols >= 4;
+    }
+    
+    /**
      * Initialize column types with default values
      */
     private void initializeColumnTypes() {
@@ -31,19 +39,17 @@ public class TableDataManager {
     
     /**
      * Get default column type based on column index
-     * The last column is always A_L_E if there are at least 4 columns
+     * Note: The last column (when cols >= 4) is implicitly A_L_E (computed), but stored as ASSET type
      */
     private ColumnType getDefaultColumnType(int col) {
-        // For tables with 4+ columns, the last column is always A_L_E
-        if (table.cols >= 4 && col == table.cols - 1) {
-            return ColumnType.A_L_E;
-        }
+        // Note: We don't return A_L_E type anymore - last column detection is positional
+        // Last column for tables with 4+ cols will have blank name and be computed at runtime
         
         switch (col) {
             case 0: return ColumnType.ASSET;
             case 1: return ColumnType.LIABILITY;
             case 2: return ColumnType.EQUITY;
-            default: return ColumnType.ASSET;
+            default: return ColumnType.ASSET;  // All additional columns are ASSET by default
         }
     }
     
@@ -83,9 +89,10 @@ public class TableDataManager {
         if (table.outputNames == null) {
             table.outputNames = new String[table.cols];
             for (int i = 0; i < table.cols; i++) {
-                // A_L_E columns should have blank name
-                if (table.columnTypes != null && table.columnTypes[i] == ColumnType.A_L_E) {
-                    table.outputNames[i] = "";
+                // A_L_E columns (last column when cols >= 4) should be labeled "A-L-E"
+                // Note: They still won't be registered as stocks (handled in registerAllStocks)
+                if (isALEColumn(i)) {
+                    table.outputNames[i] = "A-L-E";
                 } else {
                     table.outputNames[i] = "Stock_" + (i + 1);
                 }
@@ -117,15 +124,16 @@ public class TableDataManager {
             }
         }
         
-        // Ensure no null or empty values exist in output names (except A_L_E which should be blank)
+        // Ensure no null or empty values exist in output names
         for (int col = 0; col < table.cols; col++) {
-            // Skip A_L_E columns - they should remain blank
-            if (table.columnTypes != null && table.columnTypes[col] == ColumnType.A_L_E) {
-                if (table.outputNames[col] == null) {
-                    table.outputNames[col] = "";
+            // A_L_E columns (last column when cols >= 4) should be labeled "A-L-E"
+            if (isALEColumn(col)) {
+                if (table.outputNames[col] == null || table.outputNames[col].trim().isEmpty()) {
+                    table.outputNames[col] = "A-L-E";
                 }
                 continue;
             }
+            // Other columns get default Stock names if empty
             if (table.outputNames[col] == null || table.outputNames[col].trim().isEmpty()) {
                 table.outputNames[col] = "Stock" + (col + 1);
             }
@@ -274,15 +282,15 @@ public class TableDataManager {
         for (int col = 0; col < table.cols; col++) {
             if (st.hasMoreTokens()) {
                 String headerValue = CustomLogicModel.unescape(st.nextToken());
-                // For A_L_E columns, ensure blank header (even if file had a value)
-                if (table.columnTypes != null && table.columnTypes[col] == ColumnType.A_L_E) {
+                // For A_L_E columns (last column when cols >= 4), ensure blank header (even if file had a value)
+                if (isALEColumn(col)) {
                     table.outputNames[col] = "";
                 } else {
                     table.outputNames[col] = headerValue;
                 }
             } else {
                 // Default name for missing headers (except A_L_E which should be blank)
-                if (table.columnTypes != null && table.columnTypes[col] == ColumnType.A_L_E) {
+                if (isALEColumn(col)) {
                     table.outputNames[col] = "";
                 } else {
                     table.outputNames[col] = "Stock" + (col + 1);
@@ -346,15 +354,23 @@ public class TableDataManager {
             if (st.hasMoreTokens()) {
                 String typeToken = st.nextToken();
                 try {
+                    // Try to parse as ColumnType enum
                     table.columnTypes[col] = ColumnType.valueOf(typeToken);
                     hasColumnTypes = true;
                 } catch (IllegalArgumentException e) {
-                    // Not a valid column type - must be start of equations
-                    if (table.cellEquations == null) {
-                        table.cellEquations = new String[table.rows][table.cols];
+                    // Not a valid column type (could be "A_L_E" from old format, or start of equations)
+                    if (typeToken.equals("A_L_E")) {
+                        // Old A_L_E column type - use ASSET as placeholder (will be detected positionally)
+                        table.columnTypes[col] = ColumnType.ASSET;
+                        hasColumnTypes = true;
+                    } else {
+                        // Must be start of equations
+                        if (table.cellEquations == null) {
+                            table.cellEquations = new String[table.rows][table.cols];
+                        }
+                        table.cellEquations[0][col] = CustomLogicModel.unescape(typeToken);
+                        break;
                     }
-                    table.cellEquations[0][col] = CustomLogicModel.unescape(typeToken);
-                    break;
                 }
             } else {
                 break;
@@ -363,6 +379,13 @@ public class TableDataManager {
         
         if (!hasColumnTypes) {
             initializeColumnTypes();
+        } else {
+            // Ensure no null values remain in array
+            for (int col = 0; col < table.cols; col++) {
+                if (table.columnTypes[col] == null) {
+                    table.columnTypes[col] = getDefaultColumnType(col);
+                }
+            }
         }
     }
     
@@ -482,16 +505,20 @@ public class TableDataManager {
     }
     
     private void copyColumnTypes(ColumnType[] oldColumnTypes) {
-        // For each column, preserve old type if it exists, unless it's an A_L_E column
-        // that's no longer in the last position
+        // For each column, preserve old type if it exists
+        // Clear equations from old last column if table size changed
+        int oldCols = (oldColumnTypes != null) ? oldColumnTypes.length : 0;
+        boolean oldHadALE = oldCols >= 4;
+        int oldALECol = oldHadALE ? oldCols - 1 : -1;
+        
         for (int col = 0; col < table.cols; col++) {
             ColumnType newDefaultType = getDefaultColumnType(col);
             ColumnType oldType = (oldColumnTypes != null && col < oldColumnTypes.length) 
                                  ? oldColumnTypes[col] : null;
             
             if (oldType != null) {
-                // If this column was A_L_E but the last column has moved, update it
-                if (oldType == ColumnType.A_L_E && newDefaultType != ColumnType.A_L_E) {
+                // If this column was the old A_L_E position but is no longer A_L_E, clear equations
+                if (col == oldALECol && !isALEColumn(col)) {
                     // Old A_L_E column is no longer the last - make it ASSET and clear equations
                     table.columnTypes[col] = ColumnType.ASSET;
                     for (int row = 0; row < table.rows; row++) {

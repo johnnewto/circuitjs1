@@ -36,6 +36,11 @@ public class StockFlowRegistry {
     
     // ========== LOGGING UTILITIES ==========
     
+    /**
+     * Simple logging - just logs the message with method name prefix
+     * For line numbers, manually include them in the message string
+     * Example: log("methodName", "Starting sync"); 
+     */
     public static native void log(String methodName, String message)
     /*-{
         console.log(methodName + " - " + message);
@@ -43,12 +48,12 @@ public class StockFlowRegistry {
     
     public static native void MRDlog(String message)
     /*-{
-        console.log("StockFlowRegistry: getMergedRowDescriptions - " + message);
+        console.log("getMergedRowDescriptions - " + message);
     }-*/;
     
     public static native void SRTlog(String message)
     /*-{
-        console.log("StockFlowRegistry: synchronizeRelatedTables - " + message);
+        console.log("synchronizeRelatedTables - " + message);
     }-*/;
     
     // ========== REGISTRY DATA STRUCTURES ==========
@@ -344,7 +349,8 @@ public class StockFlowRegistry {
             
             for (int sourceCol = 0; sourceCol < sourceTable.getCols(); sourceCol++) {
                 // Skip A_L_E columns (computed columns should not be synchronized)
-                if (sourceTable.getColumnType(sourceCol) == TableEditDialog.ColumnType.A_L_E) {
+                // Last column is A_L_E when there are 4+ columns
+                if (sourceCol == sourceTable.getCols() - 1 && sourceTable.getCols() >= 4) {
                     continue;
                 }
                 
@@ -367,7 +373,8 @@ public class StockFlowRegistry {
                 }
                 
                 // Skip if target column is A_L_E (computed column)
-                if (targetTable.getColumnType(targetCol) == TableEditDialog.ColumnType.A_L_E) {
+                // Last column is A_L_E when there are 4+ columns
+                if (targetCol == targetTable.getCols() - 1 && targetTable.getCols() >= 4) {
                     continue;
                 }
                 
@@ -638,6 +645,12 @@ public class StockFlowRegistry {
                 sb.append(" [SHARED]");
             }
             sb.append("\n");
+            
+            // Show table details with object IDs
+            for (TableElm table : entry.getValue()) {
+                sb.append("    - ").append(table.getTableTitle())
+                  .append(" (Object ID: #").append(System.identityHashCode(table)).append(")\n");
+            }
         }
         
         return sb.toString();
