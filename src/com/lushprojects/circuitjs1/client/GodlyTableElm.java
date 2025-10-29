@@ -85,7 +85,21 @@ public class GodlyTableElm extends TableElm {
     private double performIntegration(int col, double columnSum) {
         
         try {
+            // Bounds check
+            if (col < 0 || col >= integrationStates.length) {
+                CirSim.console("GodlyTableElm: Integration column index out of bounds: " + col);
+                return 0.0;
+            }
+            
             ExprState state = integrationStates[col];
+            
+            // Null check
+            if (state == null) {
+                CirSim.console("GodlyTableElm: Integration state is null for column " + col);
+                integrationStates[col] = new ExprState(1);
+                state = integrationStates[col];
+                state.lastOutput = getInitialValue(col);
+            }
             
             // On first step, initialize with the initial condition
             if (sim.t == 0.0) {
@@ -110,7 +124,11 @@ public class GodlyTableElm extends TableElm {
             
         } catch (Exception e) {
             CirSim.console("GodlyTableElm: Error in integration calculation: " + e.getMessage());
-            return integrationStates[col].lastOutput; // Return last known value on error
+            // Safe fallback
+            if (col >= 0 && col < integrationStates.length && integrationStates[col] != null) {
+                return integrationStates[col].lastOutput;
+            }
+            return 0.0; // Ultimate fallback
         }
     }
     
@@ -163,7 +181,52 @@ public class GodlyTableElm extends TableElm {
         // Reset integration to initial conditions when circuit is reset
         resetIntegration();
     }
-
+    
+    @Override
+    void setupPins() {
+        super.setupPins();
+        // Reinitialize integration arrays when pins/columns change
+        ensureArraysSized();
+    }
+    
+    // Ensure all arrays are properly sized for current column count
+    private void ensureArraysSized() {
+        // Check if integrationStates needs to be resized
+        if (integrationStates == null || integrationStates.length != cols) {
+            ExprState[] oldStates = integrationStates;
+            integrationStates = new ExprState[cols];
+            
+            // Copy existing states and create new ones for new columns
+            for (int col = 0; col < cols; col++) {
+                if (oldStates != null && col < oldStates.length && oldStates[col] != null) {
+                    // Keep existing state
+                    integrationStates[col] = oldStates[col];
+                } else {
+                    // Create new state for new column
+                    integrationStates[col] = new ExprState(1); // 1 input (columnSum as 'a')
+                    double initialValue = getInitialValue(col);
+                    integrationStates[col].lastOutput = initialValue;
+                }
+            }
+        }
+        
+        // Resize other arrays
+        if (lastComputedRowValues == null || lastComputedRowValues.length != cols) {
+            double[] oldValues = lastComputedRowValues;
+            lastComputedRowValues = new double[cols];
+            if (oldValues != null) {
+                System.arraycopy(oldValues, 0, lastComputedRowValues, 0, Math.min(oldValues.length, cols));
+            }
+        }
+        
+        if (integratedValues == null || integratedValues.length != cols) {
+            double[] oldValues = integratedValues;
+            integratedValues = new double[cols];
+            if (oldValues != null) {
+                System.arraycopy(oldValues, 0, integratedValues, 0, Math.min(oldValues.length, cols));
+            }
+        }
+    }
 
     // ToDo:  prob should follow the doStep approach used in VCVS but seems to work well enough as a first pass
     // see : VCVS_doStep_Explanation.md
@@ -178,13 +241,8 @@ public class GodlyTableElm extends TableElm {
                 p.value = volts[i] > getThreshold();
         }
 
-        // Always compute column sums for convergence checking
-        if (lastComputedRowValues == null) {
-            lastComputedRowValues = new double[cols];
-        }
-        if (integratedValues == null) {
-            integratedValues = new double[cols];
-        }
+        // Ensure arrays are properly sized (handles dynamic column changes)
+        ensureArraysSized();
 
         for (int col = 0; col < cols; col++) {
             // Calculate sum for this column using equation evaluation from all rows except for the first

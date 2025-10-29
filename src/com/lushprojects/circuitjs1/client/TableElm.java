@@ -439,6 +439,12 @@ public class TableElm extends ChipElm {
         }
     }
 
+    @Override
+    void drawPosts(Graphics g) {
+        // Override to hide posts - electrical connections remain functional
+        // but visual elements (connection dots) are not drawn
+    }
+
     private double[] lastColumnSums;
    
     // Calculate computed values during simulation step (not during drawing)

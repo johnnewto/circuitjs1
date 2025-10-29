@@ -2720,48 +2720,51 @@ public CirSim() {
     // have the same node number at both ends.
     void makePostDrawList() {
         HashMap<Point,Integer> postCountMap = new HashMap<Point,Integer>();
-	int i, j;
-	for (i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
-	    int posts = ce.getPostCount();
-	    for (j = 0; j != posts; j++) {
-		Point pt = ce.getPost(j);
-		Integer g = postCountMap.get(pt);
-		postCountMap.put(pt, g == null ? 1 : g+1);
-	    }
-	}
-
-	postDrawList = new Vector<Point>();
-	badConnectionList = new Vector<Point>();
-	for (Map.Entry<Point, Integer> entry : postCountMap.entrySet()) {
-	    if (entry.getValue() != 2)
-		postDrawList.add(entry.getKey());
-	    
-	    // look for bad connections, posts not connected to other elements which intersect
-	    // other elements' bounding boxes
-	    if (entry.getValue() == 1) {
-		boolean bad = false;
-		Point cn = entry.getKey();
-		for (j = 0; j != elmList.size() && !bad; j++) {
-		    CircuitElm ce = getElm(j);
-		    if ( ce instanceof GraphicElm )
+		int i, j;
+		for (i = 0; i != elmList.size(); i++) {
+			CircuitElm ce = getElm(i);
+			// Skip TableElm posts - they are hidden but remain electrically functional
+			if (ce instanceof TableElm)
 			continue;
-		    // does this post intersect elm's bounding box?
-		    if (!ce.boundingBox.contains(cn.x, cn.y))
-			continue;
-		    int k;
-		    // does this post belong to the elm?
-		    int pc = ce.getPostCount();
-		    for (k = 0; k != pc; k++)
-			if (ce.getPost(k).equals(cn))
-			    break;
-		    if (k == pc)
-			bad = true;
+			int posts = ce.getPostCount();
+			for (j = 0; j != posts; j++) {
+			Point pt = ce.getPost(j);
+			Integer g = postCountMap.get(pt);
+			postCountMap.put(pt, g == null ? 1 : g+1);
+			}
 		}
-		if (bad)
-		    badConnectionList.add(cn);
-	    }
-	}
+
+		postDrawList = new Vector<Point>();
+		badConnectionList = new Vector<Point>();
+		for (Map.Entry<Point, Integer> entry : postCountMap.entrySet()) {
+			if (entry.getValue() != 2)
+			postDrawList.add(entry.getKey());
+			
+			// look for bad connections, posts not connected to other elements which intersect
+			// other elements' bounding boxes
+			if (entry.getValue() == 1) {
+			boolean bad = false;
+			Point cn = entry.getKey();
+			for (j = 0; j != elmList.size() && !bad; j++) {
+				CircuitElm ce = getElm(j);
+				if ( ce instanceof GraphicElm || ce instanceof TableElm)
+				continue;
+				// does this post intersect elm's bounding box?
+				if (!ce.boundingBox.contains(cn.x, cn.y))
+				continue;
+				int k;
+				// does this post belong to the elm?
+				int pc = ce.getPostCount();
+				for (k = 0; k != pc; k++)
+				if (ce.getPost(k).equals(cn))
+					break;
+				if (k == pc)
+				bad = true;
+			}
+			if (bad)
+				badConnectionList.add(cn);
+			}
+		}
     }
 
     class FindPathInfo {

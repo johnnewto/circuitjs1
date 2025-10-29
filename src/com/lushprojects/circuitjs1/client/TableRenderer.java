@@ -382,16 +382,12 @@ public class TableRenderer {
     }
     
     private void drawPins(Graphics g) {
-        // Draw pins on the bottom edge
+        // HIDDEN: Pins and posts are not drawn visually, but electrical connections remain functional
+        // Update current counts for proper circuit simulation even though not displayed
         for (int i = 0; i < table.getPostCount(); i++) {
             ChipElm.Pin p = table.pins[i];
-            table.setVoltageColor(g, table.volts[i]);
-            Point a = p.post;
-            Point b = p.stub;
-            CircuitElm.drawThickLine(g, a, b);
             p.curcount = table.updateDotCount(p.current, p.curcount);
-            table.drawDots(g, b, a, p.curcount);
         }
-        table.drawPosts(g);
+        // Don't draw pin lines, current dots, or posts - keep visual elements hidden
     }
 }

@@ -1,23 +1,34 @@
-$ 1 0.000005 10.20027730826997 50 5 43 5e-11
-r 176 80 384 80 0 10
-s 384 80 448 80 0 1 false
-w 176 80 176 352 0
-c 384 352 176 352 4 0.000015 -0.00014872469004412607 -10 0
-l 384 80 384 352 0 1 0.0000014533521114548708 0
-v 448 352 448 80 0 0 40 5 0 0 0.5 V
-r 384 352 448 352 0 100
-253 -336 144 -304 144 0 2 4 false \0 2 Table\s7 Savers Borrowers others A-L-E wages interest 0 0 0 0 ASSET LIABILITY EQUITY ASSET \0 Vl Vl \0 Vr \0 \0 \0
-207 176 80 176 32 28 Vl
-207 384 80 384 32 28 Vr
-w -208 272 -208 304 0
-r -208 304 -288 304 0 1000
-g -288 304 -288 288 0 0
-g 448 352 448 384 0 0
-253 -336 0 -288 0 0 1 4 false \0 2 Table\s8 Savers Stock_2 Stock_3 A-L-E interest 0 0 0 0 ASSET LIABILITY EQUITY ASSET Vr \0 \0 \0
-o 4 64 0 4099 0.0048828125 0.00009765625 0 2 4 3
-o 3 64 0 4099 0.0048828125 0.00009765625 1 2 3 3
-o 0 64 0 4099 0.000152587890625 0.00009765625 2 2 0 3
-38 3 F1 0 0.000001 0.000101 -1 Capacitance
-38 4 F1 0 0.01 1.01 -1 Inductance
-38 0 F1 0 1 101 -1 Resistance
-h 1 4 3
+$ 1 0.005 10.20027730826997 50 5 50 5e-11
+255 -336 -432 -272 -432 0 3 4 true \0 2 Borrowers Borrowers Debt Stock3 A-L-E Pay\sInterest Lending Bank\sSpending 10 0 0 10 ASSET LIABILITY EQUITY ASSET -Interest \0 \0 \0 Lend Lend \0 \0 0.5*Spend_banks \0 \0 \0 0.001
+255 -336 -288 -304 -288 0 1 4 true \0 2 Savers Savers Stock2 Savers_equ A-L-E Bank\sSpending 80 0 80 0 ASSET LIABILITY EQUITY ASSET 0.5*Spend_banks \0 0.5*Spend_banks \0 0.001
+255 -528 -576 -464 -576 0 3 6 true \0 2 Table\s5 Reserves Debt Savers Borrowers Banks A-L-E Lending Pay\sInterest Bank\sSpending 100 0 80 10 10 0 ASSET ASSET LIABILITY LIABILITY EQUITY ASSET \0 Lend \0 Lend \0 \0 \0 \0 \0 -Interest Interest \0 \0 \0 0.5*Spend_banks 0.5*Spend_banks -Spend_banks \0 0.001
+207 -848 -272 -912 -272 28 Savers
+207 -848 -240 -912 -240 28 Borrowers
+207 -848 -208 -912 -208 28 Banks
+251 -848 -272 -784 -272 0 3 a\pb\pc
+250 -704 -272 -672 -272 0 2 a*b
+w -752 -272 -704 -272 0
+207 -704 -272 -704 -320 28 Money
+R -704 -240 -704 -192 0 0 40 2 0 0 0.5 Velocity
+250 -560 -272 -528 -272 0 2 a*b
+R -560 -240 -560 -192 0 0 40 0.02 0 0 0.5 Lend_frac
+w -608 -272 -560 -272 0
+207 -608 -272 -608 -320 28 GDP
+207 -464 -272 -416 -272 28 Lend
+207 -496 -96 -448 -96 28 Fee
+207 -640 -96 -640 -144 28 Interest
+w -640 -96 -592 -96 0
+R -592 -64 -592 -16 0 0 40 0.5 0 0 0.5 Fee_rate
+250 -592 -96 -560 -96 0 2 a*b
+R -736 -64 -736 -16 0 0 40 0.05 0 0 0.5 Interest_rate
+207 -736 -96 -736 -144 28 Debt
+w -784 -96 -736 -96 0
+250 -736 -96 -704 -96 0 2 a*b
+250 -352 -80 -320 -80 0 2 a*b
+207 -352 -80 -384 -80 28 Banks
+R -352 -48 -352 0 0 0 40 0.1 0 0 0.5 Spend_rate
+207 -256 -80 -192 -80 28 Spend_banks
+x -894 -514 -772 -511 4 24 BOMD.mky
+o 14 64 0 12290 683.2047007413454 0.0001 0 2 14 3
+o 3 64 0 12291 122.65114088443913 0.0001 1 2 3 3
+o 4 64 0 4099 160 0.00009765625 2 4 4 3 5 0 5 3
