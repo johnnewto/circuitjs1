@@ -688,6 +688,7 @@ public class TableElm extends ChipElm {
         if (sim != null) {
             try {
                 TableEditDialog dialog = new TableEditDialog(this, sim);
+                CirSim.dialogShowing = dialog;
                 dialog.show();
             } catch (Exception e) {
                 CirSim.console("Error opening table edit dialog: " + e.getMessage());

@@ -1653,8 +1653,25 @@ import java.util.Map;
         
         cellData = newCellData;
         
-        // IMMEDIATE UPDATE: Resize TableElm and apply all changes right away
+        // IMMEDIATE UPDATE: Rebuild row descriptions excluding deleted row
+        // This must be done BEFORE resizeTable() to ensure proper copying
+        String[] newRowDescriptions = new String[dataRows];
+        int newRowDesc = 0;
+        for (int r = 0; r < dataRows + 1; r++) {
+            if (r != rowIndex) {
+                String desc = tableElement.getRowDescription(r);
+                newRowDescriptions[newRowDesc] = desc != null ? desc : "";
+                newRowDesc++;
+            }
+        }
+        
+        // Now resize table and apply changes
         tableElement.resizeTable(dataRows, dataCols);
+        
+        // Apply row descriptions to resized table
+        for (int row = 0; row < dataRows; row++) {
+            tableElement.setRowDescription(row, newRowDescriptions[row]);
+        }
         
         // Apply all cell equations to TableElm
         for (int row = 0; row < dataRows; row++) {
