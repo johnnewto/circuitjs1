@@ -78,6 +78,9 @@ class RailElm extends VoltageElm {
 	    if (getVoltage() > 0)
 		voltageStr = "+" + voltageStr;
 	    
+	    // Set consistent font before drawing label
+	    g.setFont(unitsFont);
+	    
 	    // Display name and voltage in two rows if name is not default
 	    if (name != null && !name.equals("") && !name.equals("V")) {
 			// Create offset points for two-line display
@@ -100,6 +103,8 @@ class RailElm extends VoltageElm {
     void drawRailText(Graphics g, String s) {
 	g.setColor(needsHighlight() ? selectColor : whiteColor);
 	setPowerColor(g, false);
+	// Set consistent font before drawing label
+	g.setFont(unitsFont);
 	drawLabeledNode(g, s, point1, lead1);
     }
     

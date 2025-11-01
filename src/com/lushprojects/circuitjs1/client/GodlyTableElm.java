@@ -314,55 +314,55 @@ public class GodlyTableElm extends TableElm {
         return current;
     }
     
-    @Override
-    void getInfo(String arr[]) {
-        arr[0] = "Godly Table (" + rows + "x" + cols + ") with Integration";
-        arr[1] = "Equation: y[n+1] = y[n] + dt * columnSum";
-        arr[2] = "Current scale: " + getUnitText(currentScale, "A/V");
+    // @Override
+    // void getInfo(String arr[]) {
+    //     arr[0] = "Godly Table (" + rows + "x" + cols + ") with Integration";
+    //     arr[1] = "Equation: y[n+1] = y[n] + dt * columnSum";
+    //     arr[2] = "Current scale: " + getUnitText(currentScale, "A/V");
 
-        int idx = 3;
+    //     int idx = 3;
 
-        // Show output pin values (integrated results) and currents
-        for (int col = 0; col < Math.min(cols, 2) && idx < arr.length - 1; col++) {
-            String header = outputNames[col];
+    //     // Show output pin values (integrated results) and currents
+    //     for (int col = 0; col < Math.min(cols, 2) && idx < arr.length - 1; col++) {
+    //         String header = outputNames[col];
             
-            // Show integrated value
-            Double integratedValue = ComputedValues.getComputedValue(header);
-            if (integratedValue != null) {
-                arr[idx++] = header + "∫ = " + getVoltageText(integratedValue.doubleValue());
-            }
+    //         // Show integrated value
+    //         Double integratedValue = ComputedValues.getComputedValue(header);
+    //         if (integratedValue != null) {
+    //             arr[idx++] = header + "∫ = " + getVoltageText(integratedValue.doubleValue());
+    //         }
             
-            // Show current (flow)
-            if (idx < arr.length - 1) {
-                double current = getCurrentIntoNode(col);
-                String currentDir = current >= 0 ? "→" : "←";
-                arr[idx++] = header + " I " + currentDir + " = " + getUnitText(Math.abs(current), "A");
-            }
-        }
+    //         // Show current (flow)
+    //         if (idx < arr.length - 1) {
+    //             double current = getCurrentIntoNode(col);
+    //             String currentDir = current >= 0 ? "→" : "←";
+    //             arr[idx++] = header + " I " + currentDir + " = " + getUnitText(Math.abs(current), "A");
+    //         }
+    //     }
 
-        if (cols > 2 && idx < arr.length - 1) {
-            arr[idx++] = "... (" + cols + " integrated outputs total)";
-        }
-    }
+    //     if (cols > 2 && idx < arr.length - 1) {
+    //         arr[idx++] = "... (" + cols + " integrated outputs total)";
+    //     }
+    // }
     
-    @Override
-    public EditInfo getEditInfo(int n) {
-        if (n == 0) {
-            return new EditInfo("Current Scale (A/V)", currentScale, 0, 1);
-        }
-        // Continue with parent's edit info (shifted by 1)
-        return super.getEditInfo(n - 1);
-    }
+    // @Override
+    // public EditInfo getEditInfo(int n) {
+    //     if (n == 0) {
+    //         return new EditInfo("Current Scale (A/V)", currentScale, 0, 1);
+    //     }
+    //     // Continue with parent's edit info (shifted by 1)
+    //     return super.getEditInfo(n - 1);
+    // }
     
-    @Override
-    public void setEditValue(int n, EditInfo ei) {
-        if (n == 0) {
-            currentScale = ei.value;
-        } else {
-            // Pass to parent (shifted by 1)
-            super.setEditValue(n - 1, ei);
-        }
-    }
+    // @Override
+    // public void setEditValue(int n, EditInfo ei) {
+    //     if (n == 0) {
+    //         currentScale = ei.value;
+    //     } else {
+    //         // Pass to parent (shifted by 1)
+    //         super.setEditValue(n - 1, ei);
+    //     }
+    // }
     
     // Static helper methods
     public static Double getIntegratedValue(String columnHeader) {

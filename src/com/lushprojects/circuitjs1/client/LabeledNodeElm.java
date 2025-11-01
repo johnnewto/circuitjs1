@@ -27,6 +27,7 @@ class LabeledNodeElm extends CircuitElm {
     final int FLAG_INTERNAL = 1;
     final int FLAG_SHOW_ALL_NODES = 8;
     final int FLAG_SHOW_ALL_CIRCUIT_NODES = 16;
+    final int FLAG_SHOW_VOLTAGE = 32;
     
     public LabeledNodeElm(int xx, int yy) {
 	super(xx, yy);
@@ -78,6 +79,7 @@ class LabeledNodeElm extends CircuitElm {
     boolean isInternal() { return (flags & FLAG_INTERNAL) != 0; }
     boolean showLabelNodes() { return (flags & FLAG_SHOW_ALL_NODES) != 0; }
     boolean showAllCircuitNodes() { return (flags & FLAG_SHOW_ALL_CIRCUIT_NODES) != 0; }
+    boolean showVoltage() { return (flags & FLAG_SHOW_VOLTAGE) != 0; }
 
     public static native void console(String text)
     /*-{
@@ -204,9 +206,18 @@ class LabeledNodeElm extends CircuitElm {
 		drawThickLine(g, point1, lead1);
 		g.setColor(needsHighlight() ? selectColor : whiteColor);
 		setPowerColor(g, false);
+
+		// Set consistent font before drawing label
+    	g.setFont(unitsFont);
 		interpPoint(point1, point2, ps2, 1+11./dn);
 		setBbox(point1, ps2, circleSize);
-		drawLabeledNode(g, text, point1, lead1);
+		
+		// Display label with optional voltage
+		String displayText = text;
+		if (showVoltage()) {
+		    displayText = text + " = " + getVoltageText(volts[0]);
+		}
+		drawLabeledNode(g, displayText, point1, lead1);
 
 		curcount = updateDotCount(current, curcount);
 		drawDots(g, point1, lead1, curcount);
@@ -283,10 +294,15 @@ class LabeledNodeElm extends CircuitElm {
         }
         if (n == 2) {
             EditInfo ei = new EditInfo("", 0, -1, -1);
-            ei.checkbox = new Checkbox("Show All Labeled Nodes", showLabelNodes());
+            ei.checkbox = new Checkbox("Show Voltage", showVoltage());
             return ei;
         }
         if (n == 3) {
+            EditInfo ei = new EditInfo("", 0, -1, -1);
+            ei.checkbox = new Checkbox("Show All Labeled Nodes", showLabelNodes());
+            return ei;
+        }
+        if (n == 4) {
             EditInfo ei = new EditInfo("", 0, -1, -1);
             ei.checkbox = new Checkbox("Show All Circuit Nodes", showAllCircuitNodes());
             return ei;
@@ -299,8 +315,10 @@ class LabeledNodeElm extends CircuitElm {
 	if (n == 1)
 	    flags = ei.changeFlag(flags, FLAG_INTERNAL);
 	if (n == 2)
-	    flags = ei.changeFlag(flags, FLAG_SHOW_ALL_NODES);
+	    flags = ei.changeFlag(flags, FLAG_SHOW_VOLTAGE);
 	if (n == 3)
+	    flags = ei.changeFlag(flags, FLAG_SHOW_ALL_NODES);
+	if (n == 4)
 	    flags = ei.changeFlag(flags, FLAG_SHOW_ALL_CIRCUIT_NODES);
     }
     @Override String getScopeText(int v) {

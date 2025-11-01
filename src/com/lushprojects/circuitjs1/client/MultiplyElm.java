@@ -34,8 +34,10 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 		for (i = 1; i != inputCount; i++)
 			exprString += "*"+(char)('a'+i);
 	 	parseExpr();
-	    setupPins();
-		// setSize(sim.smallGridCheckItem.getState() ? 1 : 2);
+		// Override the size set by ChipElm to be small by default
+		flags |= FLAG_SMALL; // Set flag to persist small size
+		setSize(1); // Set to small size
+		setPoints(); // Recalculate points with new size
 
 
 	}
@@ -170,6 +172,11 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 		if (n == 0)
 			return new EditInfo("# of Inputs", inputCount, 1, 8).
 				setDimensionless();
+		if (n == 1) {
+			EditInfo ei = new EditInfo("", 0, -1, -1);
+			ei.checkbox = new Checkbox("Small Size", (flags & FLAG_SMALL) != 0);
+			return ei;
+		}
 		return null;
 	}
 	public void setChipEditValue(int n, EditInfo ei) {
@@ -186,6 +193,13 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 			int i;
 			for (i = 1; i != inputCount; i++)
 				exprString += "*"+(char)('a'+i);
+			setupPins();
+			allocNodes();
+			setPoints();
+		}
+		if (n == 1) {
+			flags = ei.changeFlag(flags, FLAG_SMALL);
+			setSize((flags & FLAG_SMALL) != 0 ? 1 : 2);
 			setupPins();
 			allocNodes();
 			setPoints();
