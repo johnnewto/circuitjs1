@@ -51,7 +51,8 @@ public class TableGeometryManager {
     }
     
     /**
-     * Create output pins positioned at column centers on bottom edge
+     * Create output pins for table columns
+     * Only master columns (excluding A-L-E) are marked as outputs with voltage sources
      */
     private void createOutputPins() {
         table.pins = new ChipElm.Pin[table.cols];
@@ -61,7 +62,14 @@ public class TableGeometryManager {
             int pinX = calculatePinX(i);
             
             table.pins[i] = table.new Pin(pinX, ChipElm.SIDE_S, label);
-            table.pins[i].output = true;
+            
+            // Only mark as output if this column is a master (not A-L-E, not non-master)
+            boolean isALE = (i == table.cols - 1 && table.cols >= 4);
+            boolean isMaster = table.outputNames != null && i < table.outputNames.length &&
+                              table.outputNames[i] != null && !table.outputNames[i].trim().isEmpty() &&
+                              ComputedValues.isMasterTable(table.outputNames[i].trim(), table);
+            
+            table.pins[i].output = !isALE && isMaster;
         }
     }
     

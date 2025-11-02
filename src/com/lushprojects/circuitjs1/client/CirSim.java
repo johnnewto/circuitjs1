@@ -2610,7 +2610,7 @@ public CirSim() {
 	    /*System.out.println("row " + i + " " + re.lsChanges + " " + re.rsChanges + " " +
 			       re.dropRow);*/
 	    
-	    //if (qp != -100) continue;   // uncomment this line to disable matrix simplification for debugging purposes
+	    // if (qp != -100) continue;   // uncomment this line to disable matrix simplification for debugging purposes
 	    
 	    if (re.lsChanges || re.dropRow || re.rsChanges)
 		continue;

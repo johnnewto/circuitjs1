@@ -44,6 +44,7 @@ public class TableMarkdownDebugDialog {
     private DialogBox dialog;
     private TextArea textArea;
     private TableElm sourceTable;
+    private CirSim sim;
     
     /**
      * Create and show the markdown debug dialog
@@ -51,6 +52,7 @@ public class TableMarkdownDebugDialog {
      */
     public TableMarkdownDebugDialog(TableElm sourceTable) {
         this.sourceTable = sourceTable;
+        this.sim = CirSim.theSim;
         createDialog();
     }
     
@@ -156,6 +158,17 @@ public class TableMarkdownDebugDialog {
     private String generateMarkdownContent() {
         StringBuilder md = new StringBuilder();
         md.append("# Stock Flow Tables - Markdown Debug View\n\n");
+        
+        // Add circuit matrix information
+        md.append("**Circuit Matrix Info:**\n");
+        if (sim != null) {
+            md.append("- Matrix size: ").append(sim.circuitMatrixSize).append(" × ").append(sim.circuitMatrixSize).append("\n");
+            md.append("- Nodes: ").append(sim.nodeList != null ? sim.nodeList.size() : 0).append(" (including ground)\n");
+            md.append("- Voltage sources: ").append(sim.voltageSourceCount).append("\n");
+        } else {
+            md.append("- *(Simulator not available)*\n");
+        }
+        md.append("\n");
         
         // Get all tables that share stocks with this table
         java.util.Set<TableElm> relatedTables = new java.util.HashSet<TableElm>();
@@ -281,6 +294,66 @@ public class TableMarkdownDebugDialog {
             }
             if (!foundNonZero) {
                 md.append("- *(No non-zero equations)*\n");
+            }
+            md.append("\n");
+        }
+        
+        // Add master stock/column information
+        md.append("---\n\n");
+        md.append("## Master Stock Columns\n\n");
+        md.append("This shows which table is the **master** (electrical driver) for each stock column:\n\n");
+        
+        // Collect all unique stock names from related tables
+        java.util.Set<String> allStocks = new java.util.HashSet<String>();
+        for (TableElm table : relatedTables) {
+            for (int col = 0; col < table.getCols(); col++) {
+                String stockName = table.getColumnHeader(col);
+                // Skip A-L-E computed columns - they are not real stocks
+                boolean isALEColumn = (col == table.getCols() - 1 && table.getCols() >= 4);
+                if (!isALEColumn && stockName != null && !stockName.trim().isEmpty()) {
+                    allStocks.add(stockName);
+                }
+            }
+        }
+        
+        // List each stock and its master
+        if (allStocks.isEmpty()) {
+            md.append("- *(No stocks found)*\n\n");
+        } else {
+            for (String stockName : allStocks) {
+                md.append("- **").append(stockName).append("**: ");
+                
+                // Find master table for this stock
+                TableElm masterTable = null;
+                for (TableElm table : relatedTables) {
+                    if (ComputedValues.isMasterTable(stockName, table)) {
+                        masterTable = table;
+                        break;
+                    }
+                }
+                
+                if (masterTable != null) {
+                    md.append("✓ **").append(masterTable.getTableTitle())
+                      .append("** (Object ID: #").append(System.identityHashCode(masterTable))
+                      .append(") - *computes and drives voltage*");
+                } else {
+                    md.append("⚠ **NO MASTER** - *no table registered as master for this stock*");
+                }
+                
+                // List all tables that reference this stock
+                java.util.List<TableElm> referencingTables = StockFlowRegistry.getTablesForStock(stockName);
+                if (referencingTables.size() > 1) {
+                    md.append("\n  - Also referenced by: ");
+                    boolean first = true;
+                    for (TableElm table : referencingTables) {
+                        if (table != masterTable) {
+                            if (!first) md.append(", ");
+                            md.append(table.getTableTitle());
+                            first = false;
+                        }
+                    }
+                }
+                md.append("\n");
             }
             md.append("\n");
         }

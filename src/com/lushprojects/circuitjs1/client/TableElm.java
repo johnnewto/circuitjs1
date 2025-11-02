@@ -46,6 +46,10 @@ public class TableElm extends ChipElm {
     // Flag to bypass table dialog intercept when showing properties
     private boolean showingProperties = false;
     
+    // Performance optimization: cache master column status and A-L-E column index
+    private boolean[] isMasterColumn;  // Cached master status for each column
+    private int aleColumnIndex = -1;   // Cached A-L-E column index (-1 if none)
+    
     // Constructor for new table FROM MENU - receives auto-increment flag
     public TableElm(int xx, int yy) {
         this(xx, yy, true); // Always auto-increment for menu-created tables
@@ -164,9 +168,48 @@ public class TableElm extends ChipElm {
     /**
      * Check if a column is the A_L_E computed column
      * The last column is A_L_E when there are 4 or more columns
+     * Optimized to use cached value
      */
     private boolean isALEColumn(int col) {
-        return col == cols - 1 && cols >= 4;
+        return col == aleColumnIndex;
+    }
+    
+    /**
+     * Check if this table is the master for a given column
+     * Uses cached value for performance in hot paths
+     * Protected to allow subclasses (GodlyTableElm) to use it
+     * 
+     * @param col Column index to check
+     * @return true if this table is the master for the column, false otherwise
+     */
+    protected boolean isMasterForColumn(int col) {
+        return (isMasterColumn != null && col >= 0 && col < isMasterColumn.length) 
+               ? isMasterColumn[col] : false;
+    }
+    
+    /**
+     * Update cached performance optimization data
+     * Call this whenever columns change (setupPins, after registration)
+     */
+    private void updatePerformanceCache() {
+        // Update A-L-E column index
+        aleColumnIndex = (cols >= 4) ? (cols - 1) : -1;
+        
+        // Update master column cache
+        if (isMasterColumn == null || isMasterColumn.length != cols) {
+            isMasterColumn = new boolean[cols];
+        }
+        
+        if (outputNames != null) {
+            for (int col = 0; col < cols && col < outputNames.length; col++) {
+                String name = outputNames[col];
+                if (name != null && !name.trim().isEmpty()) {
+                    isMasterColumn[col] = ComputedValues.isMasterTable(name.trim(), this);
+                } else {
+                    isMasterColumn[col] = false;
+                }
+            }
+        }
     }
     
     /**
@@ -381,19 +424,31 @@ public class TableElm extends ChipElm {
     
     @Override
     void setupPins() {
+        // CRITICAL: Register as master BEFORE setting up pins
+        // so that geometryManager can check master status correctly
+        registerAsMasterForOutputNames();
+        
         if (geometryManager != null) {
             geometryManager.setupPins();
         }
-        registerAsMasterForOutputNames();
+        
+        // Update performance cache after registration
+        updatePerformanceCache();
     }
     
     /**
      * Register this table as a potential master computer for its output names
      * Called during circuit initialization to establish which table computes each value
+     * NOTE: A-L-E computed columns are NOT registered as they are not real stocks
      */
     private void registerAsMasterForOutputNames() {
         if (outputNames != null) {
             for (int col = 0; col < cols && col < outputNames.length; col++) {
+                // Skip A-L-E computed columns - they are not real stocks
+                if (isALEColumn(col)) {
+                    continue;
+                }
+                
                 String name = outputNames[col];
                 if (name != null && !name.trim().isEmpty()) {
                     // Try to register as master - the first table to register becomes master
@@ -405,12 +460,31 @@ public class TableElm extends ChipElm {
 
     @Override
     int getVoltageSourceCount() {
-        return cols; // One voltage source per output pin
+        // Only count voltage sources for columns where this table is the master
+        // AND skip A-L-E columns (they are purely computed, not electrical outputs)
+        // Master columns get voltage sources even if empty (they output 0V)
+        int count = 0;
+        if (outputNames != null) {
+            for (int col = 0; col < cols && col < outputNames.length; col++) {
+                // Skip A-L-E columns - they have no voltage source
+                if (isALEColumn(col)) {
+                    continue;
+                }
+                
+                String name = outputNames[col];
+                if (name != null && !name.trim().isEmpty()) {
+                    if (ComputedValues.isMasterTable(name.trim(), this)) {
+                        count++;
+                    }
+                }
+            }
+        }
+        return count;
     }
 
     @Override
     int getPostCount() {
-        return cols; // One post per column
+        return cols; // One post per column (for visual/logical connections)
     }
 
     @Override
@@ -454,7 +528,8 @@ public class TableElm extends ChipElm {
     @Override
     public void doStep() {
         // Update input pin values from circuit
-        for (int i = 0; i < getPostCount(); i++) {
+        int postCount = getPostCount();
+        for (int i = 0; i < postCount; i++) {
             Pin p = pins[i];
             if (!p.output)
                 p.value = volts[i] > getThreshold();
@@ -467,27 +542,24 @@ public class TableElm extends ChipElm {
 
         // FIRST PASS: Compute all NON-A-L-E columns
         for (int col = 0; col < cols; col++) {
-            // Skip A-L-E column in first pass
-            if (isALEColumn(col)) {
+            // Skip A-L-E column in first pass (use cached check)
+            if (col == aleColumnIndex) {
                 continue;
             }
             
             double columnSum = 0.0;
             
-            // NORMAL COLUMNS: Sum cell values from equations
-            String name = outputNames[col];
-            
-            // Check if this table is the master computer for this output name
-            boolean isMasterForThisName = ComputedValues.isMasterTable(name, this);
+            // Use cached master status
+            boolean isMasterForThisName = isMasterForColumn(col);
             
             if (isMasterForThisName) {
                 // We are the master - compute the value ourselves
                 for (int row = 0; row < rows; row++) {
-                    double v = equationManager.getVoltageForCell(row, col);
-                    columnSum += v;
+                    columnSum += equationManager.getVoltageForCell(row, col);
                 }
             } else {
                 // We are not the master - use the already computed value from the master table
+                String name = outputNames[col];
                 Double existingValue = ComputedValues.getComputedValue(name);
                 if (existingValue != null) {
                     columnSum = existingValue.doubleValue();
@@ -495,16 +567,16 @@ public class TableElm extends ChipElm {
                 // If no value exists yet, columnSum remains 0.0 (will converge in next iteration)
             }
 
-            // Check for convergence
-            Double diff = Math.abs(columnSum - lastColumnSums[col]);
+            // Check for convergence (avoid boxing by using primitive)
+            double diff = Math.abs(columnSum - lastColumnSums[col]);
             if (diff > 1e-6) {
                 sim.converged = false;
             }
 
             lastColumnSums[col] = columnSum;
 
-            // Update output pin voltage source with converged column sum
-            if (col < pins.length && pins[col].output) {
+            // Update output pin voltage source ONLY if we are the master for this column
+            if (isMasterForThisName && pins[col].output) {
                 sim.updateVoltageSource(0, nodes[col], pins[col].voltSource, columnSum);
             }
         }
@@ -513,35 +585,40 @@ public class TableElm extends ChipElm {
     @Override
     public void stepFinished() {
         // SECOND PASS: Now compute A-L-E column (depends on other columns being computed)
-        for (int col = 0; col < cols; col++) {
-            if (isALEColumn(col)) {
-                // Calculate A-L-E sum and store individual cell values
-                double columnSum = calculateALEColumnSum();
-                
-                // Check for convergence
-                Double diff = Math.abs(columnSum - lastColumnSums[col]);
-                if (diff > 1e-6) {
-                    sim.converged = false;
-                }
+        if (aleColumnIndex >= 0) {
+            // Calculate A-L-E sum and store individual cell values
+            double columnSum = calculateALEColumnSum();
+            
+            // Check for convergence (avoid boxing)
+            double diff = Math.abs(columnSum - lastColumnSums[aleColumnIndex]);
+            if (diff > 1e-6) {
+                sim.converged = false;
+            }
 
-                lastColumnSums[col] = columnSum;
+            lastColumnSums[aleColumnIndex] = columnSum;
 
-                // Update output pin voltage source with converged column sum
-                if (col < pins.length && pins[col].output) {
-                    sim.updateVoltageSource(0, nodes[col], pins[col].voltSource, columnSum);
-                }
+            // Update output pin voltage source ONLY if we are the master for this column
+            // Use cached master status
+            boolean isMasterForThisName = isMasterForColumn(aleColumnIndex);
+            if (isMasterForThisName && pins[aleColumnIndex].output) {
+                sim.updateVoltageSource(0, nodes[aleColumnIndex], pins[aleColumnIndex].voltSource, columnSum);
             }
         }
         
         // Register computed values for other elements to use - do this after convergence
+        // Skip A-L-E columns - they are not registered as stocks
         for (int col = 0; col < cols; col++) {
-            String name = outputNames[col];
+            // Skip A-L-E columns using cached check
+            if (col == aleColumnIndex) {
+                continue;
+            }
             
-            // Check if this table is the master computer for this output name
-            boolean isMasterForThisName = ComputedValues.isMasterTable(name, this);
+            // Use cached master status
+            boolean isMasterForThisName = isMasterForColumn(col);
             
             // Only register if we are the master and computed it ourselves
             if (isMasterForThisName && lastColumnSums != null) {
+                String name = outputNames[col];
                 registerComputedValueAsLabeledNode(name, lastColumnSums[col]);    
                 ComputedValues.markComputedThisStep(name);
             }
@@ -568,21 +645,42 @@ public class TableElm extends ChipElm {
 
     @Override
     void stamp() {
-        // Stamp voltage sources for all output pins
-        for (int i = 0; i < getPostCount(); i++) {
-            Pin p = pins[i];
+        // Stamp voltage sources ONLY for columns where this table is the master
+        // AND skip A-L-E columns (they are purely computed, not electrical outputs)
+        int postCount = getPostCount();
+        for (int col = 0; col < postCount; col++) {
+            // Skip A-L-E columns using cached check
+            if (col == aleColumnIndex) {
+                continue;
+            }
+            
+            Pin p = pins[col];
             if (p.output) {
-                sim.stampVoltageSource(0, nodes[i], p.voltSource);
+                // Use cached master status
+                boolean isMaster = isMasterForColumn(col);
+                if (isMaster) {
+                    sim.stampVoltageSource(0, nodes[col], p.voltSource);
+                }
             }
         }
         
         // Connect to labeled nodes if output names are specified
+        // Skip A-L-E columns - they should not drive labeled nodes
         if (outputNames != null) {
             for (int col = 0; col < cols && col < outputNames.length; col++) {
+                // Skip A-L-E columns using cached check
+                if (col == aleColumnIndex) {
+                    continue;
+                }
+                
                 String outputName = outputNames[col];
                 if (outputName != null && !outputName.trim().isEmpty()) {
+                    // Use cached master status
+                    boolean isMaster = isMasterForColumn(col);
                     LabeledNodeElm labeledNode = findLabeledNode(outputName);
-                    if (labeledNode != null) {
+                    
+                    if (labeledNode != null && isMaster) {
+                        // Only stamp resistor connection if we are the master for this column
                         // Stamp low-value resistor between output node and labeled node
                         double resistance = 1e-6; // 1μΩ - very low resistance
                         int outputNode = nodes[col]; // Output node from table
@@ -591,14 +689,16 @@ public class TableElm extends ChipElm {
                         // Validate node numbers before stamping
                         if (outputNode >= 0 && labeledNodeNum >= 0 && sim.nodeList != null && 
                             outputNode < sim.nodeList.size() && labeledNodeNum < sim.nodeList.size()) {
-                            //CirSim.console("TableElm: Stamping resistor between nodes " + outputNode + " and " + labeledNodeNum + " (resistance=" + resistance + ")");
                             sim.stampResistor(outputNode, labeledNodeNum, resistance);
-                            //CirSim.console("TableElm: Successfully stamped resistor for output '" + outputName + "'");
                         }
-                        // Error handling removed - invalid nodes are silently ignored
-                    } else {
-//                        CirSim.console("TableElm: No labeled node found for output name '" + outputName + "'");
-                        ;
+                    } else if (isMaster && labeledNode == null) {
+                        // Master column but no labeled node - connect to ground to avoid singular matrix
+                        // This prevents isolated voltage source nodes
+                        int outputNode = nodes[col];
+                        if (outputNode >= 0 && sim.nodeList != null && outputNode < sim.nodeList.size()) {
+                            // Stamp high-value resistor to ground (1MΩ) to prevent floating node
+                            sim.stampResistor(outputNode, 0, 1e6);
+                        }
                     }
                 }
             }
@@ -854,6 +954,16 @@ public class TableElm extends ChipElm {
                 // Not a numbered table, ignore
             }
         }
+    }
+    
+    @Override
+    public void reset() {
+        // Re-register as master for stock columns when circuit is reset
+        // This ensures voltage sources are properly stamped after reset
+        registerAsMasterForOutputNames();
+        // Update performance cache after re-registration
+        updatePerformanceCache();
+        super.reset();
     }
     
     @Override

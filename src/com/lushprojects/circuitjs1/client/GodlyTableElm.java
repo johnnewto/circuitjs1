@@ -36,7 +36,6 @@ package com.lushprojects.circuitjs1.client;
 public class GodlyTableElm extends TableElm {
     private Expr integrationExpr;                // Compiled integration expression
     private ExprState[] integrationStates;       // Integration state for each column
-    private double[] lastComputedRowValues;      // Track last column sums for convergence checking
     private double[] integratedValues;           // Integration value for each column
     private double currentScale = 0.001;         // Scale factor for current calculation (default 1mA per volt)
     
@@ -83,53 +82,29 @@ public class GodlyTableElm extends TableElm {
     }
     
     private double performIntegration(int col, double columnSum) {
-        
-        try {
-            // Bounds check
-            if (col < 0 || col >= integrationStates.length) {
-                CirSim.console("GodlyTableElm: Integration column index out of bounds: " + col);
-                return 0.0;
-            }
-            
-            ExprState state = integrationStates[col];
-            
-            // Null check
-            if (state == null) {
-                CirSim.console("GodlyTableElm: Integration state is null for column " + col);
-                integrationStates[col] = new ExprState(1);
-                state = integrationStates[col];
-                state.lastOutput = getInitialValue(col);
-            }
-            
-            // On first step, initialize with the initial condition
-            if (sim.t == 0.0) {
-                state.lastOutput = integrationStates[col].lastOutput;
-            }
-            
-            // Set up expression state
-            state.values[0] = columnSum ; // 'a' = columnSum
-            state.t = sim.t;
-            
-            // Evaluate integration expression: lastoutput + timestep * a
-            // where 'a' is already scaled by integrationGain
-            double result = integrationExpr.eval(state);
-                        
-            // Update the expression state for next time
-            state.updateLastValues(result);
-            state.lastOutput = result;
-            integrationStates[col].lastOutput = result;
-
-            
-            return result;
-            
-        } catch (Exception e) {
-            CirSim.console("GodlyTableElm: Error in integration calculation: " + e.getMessage());
-            // Safe fallback
-            if (col >= 0 && col < integrationStates.length && integrationStates[col] != null) {
-                return integrationStates[col].lastOutput;
-            }
-            return 0.0; // Ultimate fallback
+        // Bounds check (should never fail if arrays are properly sized)
+        if (col < 0 || col >= integrationStates.length) {
+            return 0.0;
         }
+        
+        ExprState state = integrationStates[col];
+        
+        // On first step, use the initial condition
+        if (sim.t == 0.0) {
+            double initialValue = getInitialValue(col);
+            state.lastOutput = initialValue;
+            return initialValue;
+        }
+        
+        // Set up expression state
+        state.values[0] = columnSum; // 'a' = columnSum
+        state.t = sim.t;
+        
+        // Evaluate integration expression: lastoutput + timestep * a
+        double result = integrationExpr.eval(state);
+        
+        // Return result (state.lastOutput will be updated in stepFinished)
+        return result;
     }
     
     private void parseIntegrationExpr() {
@@ -187,6 +162,7 @@ public class GodlyTableElm extends TableElm {
         super.setupPins();
         // Reinitialize integration arrays when pins/columns change
         ensureArraysSized();
+        // Master column cache is updated by parent's setupPins()
     }
     
     // Ensure all arrays are properly sized for current column count
@@ -210,15 +186,7 @@ public class GodlyTableElm extends TableElm {
             }
         }
         
-        // Resize other arrays
-        if (lastComputedRowValues == null || lastComputedRowValues.length != cols) {
-            double[] oldValues = lastComputedRowValues;
-            lastComputedRowValues = new double[cols];
-            if (oldValues != null) {
-                System.arraycopy(oldValues, 0, lastComputedRowValues, 0, Math.min(oldValues.length, cols));
-            }
-        }
-        
+        // Resize integratedValues array
         if (integratedValues == null || integratedValues.length != cols) {
             double[] oldValues = integratedValues;
             integratedValues = new double[cols];
@@ -226,29 +194,22 @@ public class GodlyTableElm extends TableElm {
                 System.arraycopy(oldValues, 0, integratedValues, 0, Math.min(oldValues.length, cols));
             }
         }
+        
+        // Note: Master column cache is managed by parent TableElm
     }
 
     @Override
     public void doStep() {
-        // Ensure arrays are properly sized (handles dynamic column changes)
-        // ensureArraysSized();
-        
         // Use the optimized doStep from TableElm to compute column sums
         // This includes master table optimization and A-L-E column handling
         super.doStep();
         
-        // Copy the converged column sums from parent for use in integration
-        // TableElm stores results in lastColumnSums, we need them in lastComputedRowValues
-        if (lastColumnSums != null) {
-            for (int col = 0; col < cols && col < lastColumnSums.length; col++) {
-                lastComputedRowValues[col] = lastColumnSums[col];
-            }
-        }
-        
-        // Override the voltage source values to use integrated values instead of column sums
-        // TableElm sets voltage sources to column sums, but we want integrated values
+        // Override voltage sources to use integrated values instead of column sums
+        // Only update voltage sources for master columns (excluding A-L-E)
+        // The pins[col].output flag is already correctly set by parent to true only for masters
         for (int col = 0; col < cols; col++) {
-            if (col < pins.length && pins[col].output && integratedValues != null) {
+            // Check if pin has output (already filtered for masters and non-A-L-E by parent)
+            if (pins[col].output && integratedValues != null) {
                 sim.updateVoltageSource(0, nodes[col], pins[col].voltSource, integratedValues[col]);
             }
         }
@@ -261,21 +222,36 @@ public class GodlyTableElm extends TableElm {
         // not column sums like TableElm does
 
         // Perform integration only once per completed timestep (not during convergence iterations)
+        // Only integrate and register values for master columns (excluding A-L-E)
         for (int col = 0; col < cols; col++) {
-            // Use the converged column sum from doStep()
-            double columnSum = lastComputedRowValues != null ? lastComputedRowValues[col] : 0.0;
+            // Skip A-L-E column (last column when cols >= 4) - it doesn't get integrated
+            boolean isALEColumn = (col == cols - 1 && cols >= 4);
+            if (isALEColumn) {
+                continue;
+            }
+            
+            // Use parent's optimized master check
+            boolean isMasterForThisName = isMasterForColumn(col);
+            
+            // Only perform integration and registration if we are the master for this column
+            if (!isMasterForThisName) {
+                continue;
+            }
+            
+            // Use the converged column sum directly from parent's lastColumnSums
+            double columnSum = (lastColumnSums != null && col < lastColumnSums.length) ? lastColumnSums[col] : 0.0;
 
             // Perform integration on this column sum with proper initial condition
             integratedValues[col] = performIntegration(col, columnSum);
 
-            // Register the integrated value with a distinct name (e.g., "Col1_Int")
-            String integrationLabelName = outputNames[col];
-            registerComputedValueAsLabeledNode(integrationLabelName, integratedValues[col]);
-
+            // Register the integrated value (not column sum like parent does)
+            String name = outputNames[col];
+            registerComputedValueAsLabeledNode(name, integratedValues[col]);
+            ComputedValues.markComputedThisStep(name);
 
             // Update integration states for next timestep
             if (integrationStates[col] != null) {
-                integrationStates[col].updateLastValues(integratedValues[col]);
+                integrationStates[col].lastOutput = integratedValues[col];
             }
         }
     }
@@ -283,7 +259,7 @@ public class GodlyTableElm extends TableElm {
     @Override
     double getCurrentIntoNode(int n) {
         // n is the pin/post number (0 to cols-1)
-        if (n < 0 || n >= cols) {
+        if (n < 0 || n >= cols || lastColumnSums == null || n >= lastColumnSums.length) {
             return 0.0;
         }
         
@@ -293,13 +269,11 @@ public class GodlyTableElm extends TableElm {
         // - Positive column sum (inflow) -> positive current into the node
         // - Negative column sum (outflow) -> negative current (current out of node)
         
-        double columnSum = lastComputedRowValues != null ? lastComputedRowValues[n] : 0.0;
+        double columnSum = lastColumnSums[n];
         
         // Scale the column sum to get current
         // Default: 1V column sum = 1mA current, make negative to show increase in stock as current flow into node
-        double current = -columnSum * currentScale;
-        
-        return current;
+        return -columnSum * currentScale;
     }
 
     @Override
