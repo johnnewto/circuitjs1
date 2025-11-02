@@ -1,0 +1,441 @@
+/*    
+    Copyright (C) Paul Falstad and Iain Sharp
+    
+    This file is part of CircuitJS1.
+
+    CircuitJS1 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    CircuitJS1 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+package com.lushprojects.circuitjs1.client;
+
+import com.google.gwt.user.client.ui.Button;
+import com.google.gwt.user.client.ui.HorizontalPanel;
+import com.google.gwt.user.client.ui.TextArea;
+import com.google.gwt.user.client.ui.VerticalPanel;
+import com.google.gwt.user.client.ui.DialogBox;
+import com.google.gwt.event.dom.client.ClickHandler;
+import com.google.gwt.event.dom.client.ClickEvent;
+
+/**
+ * TableMarkdownDebugDialog - Resizable dialog for viewing markdown representation of Stock-Flow tables
+ * 
+ * This dialog shows a formatted markdown view of all tables that share stock variables,
+ * making it easy to debug synchronization issues and inspect table contents.
+ * 
+ * Features:
+ * - Resizable text area for viewing large markdown output
+ * - Non-modal so it can be kept open while editing tables
+ * - Auto-refresh capability to update content on demand
+ * - Positioned in top-right corner by default
+ */
+public class TableMarkdownDebugDialog {
+    
+    private DialogBox dialog;
+    private TextArea textArea;
+    private TableElm sourceTable;
+    
+    /**
+     * Create and show the markdown debug dialog
+     * @param sourceTable The table to generate markdown for (and its related tables)
+     */
+    public TableMarkdownDebugDialog(TableElm sourceTable) {
+        this.sourceTable = sourceTable;
+        createDialog();
+    }
+    
+    /**
+     * Create the dialog UI
+     */
+    private void createDialog() {
+        dialog = new DialogBox();
+        dialog.setText("Markdown Debug View");
+        dialog.setModal(false);  // Non-modal so it doesn't block interaction
+        dialog.setGlassEnabled(false);  // No glass pane background
+        
+        VerticalPanel panel = new VerticalPanel();
+        panel.setWidth("800px");
+        
+        // Text area with markdown content
+        textArea = new TextArea();
+        textArea.setText(generateMarkdownContent());
+        textArea.setWidth("780px");
+        textArea.setHeight("500px");
+        textArea.getElement().getStyle().setProperty("fontFamily", "monospace");
+        textArea.getElement().getStyle().setProperty("fontSize", "12px");
+        
+        // Make text area resizable
+        makeResizable(textArea.getElement());
+        
+        panel.add(textArea);
+        
+        // Buttons
+        HorizontalPanel buttonPanel = new HorizontalPanel();
+        buttonPanel.setSpacing(5);
+        buttonPanel.getElement().getStyle().setProperty("marginTop", "10px");
+        
+        Button selectAllButton = new Button("Select All");
+        selectAllButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                textArea.selectAll();
+                textArea.setFocus(true);
+            }
+        });
+        buttonPanel.add(selectAllButton);
+        
+        Button refreshButton = new Button("🔄 Refresh");
+        refreshButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                refresh();
+            }
+        });
+        buttonPanel.add(refreshButton);
+        
+        Button closeButton = new Button("Close");
+        closeButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                hide();
+            }
+        });
+        buttonPanel.add(closeButton);
+        
+        panel.add(buttonPanel);
+        dialog.setWidget(panel);
+        
+        // Initialize resizable styles
+        addResizableStyles();
+    }
+    
+    /**
+     * Show the dialog
+     */
+    public void show() {
+        dialog.show();
+        
+        // Position in top-right corner instead of centering
+        dialog.setPopupPosition(
+            com.google.gwt.user.client.Window.getClientWidth() - 820,  // 800px width + 20px margin
+            20  // 20px from top
+        );
+    }
+    
+    /**
+     * Hide the dialog
+     */
+    public void hide() {
+        dialog.hide();
+    }
+    
+    /**
+     * Check if dialog is currently showing
+     */
+    public boolean isShowing() {
+        return dialog.isShowing();
+    }
+    
+    /**
+     * Refresh the markdown content
+     */
+    public void refresh() {
+        textArea.setText(generateMarkdownContent());
+    }
+    
+    /**
+     * Generate markdown debug content
+     */
+    private String generateMarkdownContent() {
+        StringBuilder md = new StringBuilder();
+        md.append("# Stock Flow Tables - Markdown Debug View\n\n");
+        
+        // Get all tables that share stocks with this table
+        java.util.Set<TableElm> relatedTables = new java.util.HashSet<TableElm>();
+        relatedTables.add(sourceTable); // Include current table
+        
+        // DEBUG: Log current table identity
+        md.append("**Current table:** ").append(sourceTable.getTableTitle())
+          .append(" (Object ID: ").append(System.identityHashCode(sourceTable)).append(")\n\n");
+        
+        // Find all tables sharing stocks
+        md.append("**Stock lookup results:**\n");
+        for (int col = 0; col < sourceTable.getCols(); col++) {
+            String stockName = sourceTable.getColumnHeader(col);
+            md.append("- Column ").append(col).append(": '").append(stockName).append("'");
+            
+            // Skip A-L-E computed columns - they are not real stocks
+            if (col == sourceTable.getCols() - 1 && sourceTable.getCols() >= 4) {
+                md.append(" → (A-L-E computed column, skipped)\n");
+                continue;
+            }
+            
+            if (stockName != null && !stockName.trim().isEmpty()) {
+                java.util.List<TableElm> tables = StockFlowRegistry.getTablesForStock(stockName);
+                md.append(" → ").append(tables.size()).append(" table(s): ");
+                for (TableElm t : tables) {
+                    md.append("[").append(t.getTableTitle()).append(" #")
+                      .append(System.identityHashCode(t)).append("] ");
+                }
+                relatedTables.addAll(tables);
+            } else {
+                md.append(" → (empty/null, skipped)");
+            }
+            md.append("\n");
+        }
+        md.append("\n");
+        
+        md.append("## Tables Sharing Stocks: ").append(relatedTables.size()).append("\n\n");
+        
+        // Generate markdown for each table
+        for (TableElm table : relatedTables) {
+            md.append("### ").append(table.getTableTitle())
+              .append(" (Object ID: #").append(System.identityHashCode(table)).append(")\n\n");
+            
+            // Calculate column widths for alignment
+            int[] colWidths = calculateColumnWidths(table);
+            
+            // Table header
+            md.append("| ").append(padRight("Flows↓/Stock Vars →", colWidths[0])).append(" ");
+            for (int col = 0; col < table.getCols(); col++) {
+                md.append("| ").append(padRight(table.getColumnHeader(col), colWidths[col + 1])).append(" ");
+            }
+            md.append("|\n");
+            
+            // Separator
+            md.append("|");
+            for (int col = 0; col <= table.getCols(); col++) {
+                md.append(repeat("-", colWidths[col] + 2)).append("|");
+            }
+            md.append("\n");
+            
+            // Rows
+            for (int row = 0; row < table.getRows(); row++) {
+                md.append("| ").append(padRight(table.getRowDescription(row), colWidths[0])).append(" ");
+                for (int col = 0; col < table.getCols(); col++) {
+                    String cellContent;
+                    
+                    // Check if this is an A-L-E column
+                    boolean isALEColumn = (col == table.getCols() - 1 && table.getCols() >= 4);
+                    
+                    if (isALEColumn) {
+                        // Generate A-L-E equation for this row
+                        String aleEquation = calculateALECellEquation(table, row);
+                        if (aleEquation != null && !aleEquation.isEmpty()) {
+                            cellContent = "`" + aleEquation + "`";
+                        } else {
+                            cellContent = "";
+                        }
+                    } else {
+                        // Regular cell - use stored equation
+                        String equation = table.getCellEquation(row, col);
+                        if (equation == null || equation.trim().isEmpty()) {
+                            cellContent = "";
+                        } else {
+                            cellContent = "`" + equation + "`";
+                        }
+                    }
+                    
+                    md.append("| ").append(padRight(cellContent, colWidths[col + 1])).append(" ");
+                }
+                md.append("|\n");
+            }
+            md.append("\n");
+            
+            // Add non-zero flow/stock pairs for this table
+            md.append("#### Non-Zero Flow/Stock Pairs\n\n");
+            boolean foundNonZero = false;
+            for (int row = 0; row < table.getRows(); row++) {
+                String flowDesc = table.getRowDescription(row);
+                if (flowDesc == null || flowDesc.trim().isEmpty()) {
+                    flowDesc = "Flow" + row;
+                }
+                
+                for (int col = 0; col < table.getCols(); col++) {
+                    // Check if this is an A-L-E column
+                    boolean isALEColumn = (col == table.getCols() - 1 && table.getCols() >= 4);
+                    
+                    String equation;
+                    if (isALEColumn) {
+                        // Generate A-L-E equation for this row
+                        equation = calculateALECellEquation(table, row);
+                    } else {
+                        // Regular cell - use stored equation
+                        equation = table.getCellEquation(row, col);
+                    }
+                    
+                    if (equation != null && !equation.trim().isEmpty() && !equation.trim().equals("0")) {
+                        String stockName = table.getColumnHeader(col);
+                        md.append("- **").append(flowDesc).append("** → **").append(stockName)
+                          .append("**: `").append(equation).append("`\n");
+                        foundNonZero = true;
+                    }
+                }
+            }
+            if (!foundNonZero) {
+                md.append("- *(No non-zero equations)*\n");
+            }
+            md.append("\n");
+        }
+        
+        // Add registry information
+        md.append("---\n\n");
+        md.append("## Stock Registry Information\n\n");
+        md.append("```\n");
+        md.append(StockFlowRegistry.getDiagnosticInfo());
+        md.append("```\n");
+        
+        return md.toString();
+    }
+    
+    /**
+     * Calculate A-L-E equation for a specific table and row
+     * Returns: sum(Assets) - sum(Liabilities) - Equity
+     */
+    private String calculateALECellEquation(TableElm table, int row) {
+        StringBuilder eq = new StringBuilder();
+        boolean first = true;
+        
+        // Skip the last column (A-L-E itself)
+        int numCols = table.getCols() - 1;
+        
+        // Add asset terms (positive)
+        for (int col = 0; col < numCols; col++) {
+            if (table.getColumnType(col) == TableEditDialog.ColumnType.ASSET) {
+                String cell = table.getCellEquation(row, col);
+                if (cell != null && !cell.trim().isEmpty()) {
+                    if (!first) eq.append(" + ");
+                    eq.append(wrapIfComplex(cell));
+                    first = false;
+                }
+            }
+        }
+        
+        // Subtract liability terms
+        for (int col = 0; col < numCols; col++) {
+            if (table.getColumnType(col) == TableEditDialog.ColumnType.LIABILITY) {
+                String cell = table.getCellEquation(row, col);
+                if (cell != null && !cell.trim().isEmpty()) {
+                    eq.append(" - ").append(wrapIfComplex(cell));
+                }
+            }
+        }
+        
+        // Subtract equity term
+        for (int col = 0; col < numCols; col++) {
+            if (table.getColumnType(col) == TableEditDialog.ColumnType.EQUITY) {
+                String cell = table.getCellEquation(row, col);
+                if (cell != null && !cell.trim().isEmpty()) {
+                    eq.append(" - ").append(wrapIfComplex(cell));
+                }
+            }
+        }
+        
+        return eq.length() > 0 ? eq.toString() : "0";
+    }
+    
+    /**
+     * Wrap expression in parentheses if it contains operators
+     */
+    private String wrapIfComplex(String expr) {
+        if (expr.contains("+") || expr.contains("-") || 
+            expr.contains("*") || expr.contains("/")) {
+            return "(" + expr + ")";
+        }
+        return expr;
+    }
+    
+    /**
+     * Calculate the maximum width needed for each column in the table
+     */
+    private int[] calculateColumnWidths(TableElm table) {
+        int[] widths = new int[table.getCols() + 1];
+        
+        // Initialize with header widths
+        widths[0] = "Flows↓/Stock Vars →".length();
+        for (int col = 0; col < table.getCols(); col++) {
+            String header = table.getColumnHeader(col);
+            widths[col + 1] = (header != null) ? header.length() : 0;
+        }
+        
+        // Check all row data
+        for (int row = 0; row < table.getRows(); row++) {
+            // Row description
+            String rowDesc = table.getRowDescription(row);
+            if (rowDesc != null && rowDesc.length() > widths[0]) {
+                widths[0] = rowDesc.length();
+            }
+            
+            // Cell equations (include backticks in width calculation)
+            for (int col = 0; col < table.getCols(); col++) {
+                String equation = table.getCellEquation(row, col);
+                if (equation != null && !equation.trim().isEmpty()) {
+                    int cellWidth = equation.length() + 2; // +2 for backticks
+                    if (cellWidth > widths[col + 1]) {
+                        widths[col + 1] = cellWidth;
+                    }
+                }
+            }
+        }
+        
+        return widths;
+    }
+    
+    /**
+     * Pad a string to the right with spaces
+     */
+    private String padRight(String str, int width) {
+        if (str == null) str = "";
+        if (str.length() >= width) return str;
+        
+        StringBuilder sb = new StringBuilder(str);
+        while (sb.length() < width) {
+            sb.append(' ');
+        }
+        return sb.toString();
+    }
+    
+    /**
+     * Repeat a character n times
+     */
+    private String repeat(String str, int count) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < count; i++) {
+            sb.append(str);
+        }
+        return sb.toString();
+    }
+    
+    /**
+     * Add CSS for resizable panels
+     */
+    private native void addResizableStyles() /*-{
+        // Add resize handle CSS only once
+        if (!$doc.getElementById('resizable-panel-style')) {
+            var style = $doc.createElement('style');
+            style.id = 'resizable-panel-style';
+            style.textContent = 
+                '.resizable-panel {' +
+                '  resize: both !important;' +
+                '  overflow: auto !important;' +
+                '  min-width: 300px !important;' +
+                '  min-height: 200px !important;' +
+                '}';
+            $doc.head.appendChild(style);
+        }
+    }-*/;
+    
+    /**
+     * Make a panel resizable
+     */
+    private native void makeResizable(com.google.gwt.dom.client.Element element) /*-{
+        element.classList.add('resizable-panel');
+    }-*/;
+}

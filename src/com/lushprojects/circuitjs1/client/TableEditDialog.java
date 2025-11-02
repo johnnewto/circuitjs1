@@ -234,9 +234,8 @@ import java.util.Map;
     // Track changes
     private boolean hasChanges = false;
     
-    // Debug window tracking for auto-update
-    private com.google.gwt.user.client.ui.DialogBox debugDialog = null;
-    private com.google.gwt.user.client.ui.TextArea debugTextArea = null;
+    // Debug dialog for markdown view
+    private TableMarkdownDebugDialog debugDialog = null;
     
     //=== CONSTRUCTOR ===============================================================
     // =============================================================================
@@ -264,8 +263,40 @@ import java.util.Map;
         
         setupUI();
         populateGrid();
-        center();
+        
+        // Position dialog on the left side of the window
+        show();
+        setPopupPosition(20, 20);  // 20px from left edge, 20px from top
     }
+    
+    //=== NATIVE JAVASCRIPT METHODS FOR RESIZING ====================================
+    // =============================================================================
+    
+    /**
+     * Add CSS for resizable panels (inner content only, not dialog windows)
+     */
+    private native void addResizableStyles() /*-{
+        // Add resize handle CSS only once
+        if (!$doc.getElementById('resizable-panel-style')) {
+            var style = $doc.createElement('style');
+            style.id = 'resizable-panel-style';
+            style.textContent = 
+                '.resizable-panel {' +
+                '  resize: both !important;' +
+                '  overflow: auto !important;' +
+                '  min-width: 300px !important;' +
+                '  min-height: 200px !important;' +
+                '}';
+            $doc.head.appendChild(style);
+        }
+    }-*/;
+    
+    /**
+     * Make a panel resizable (inner content areas only)
+     */
+    private native void makeResizable(com.google.gwt.dom.client.Element element) /*-{
+        element.classList.add('resizable-panel');
+    }-*/;
     
     //=== INITIALIZATION METHODS ====================================================
     // =============================================================================
@@ -471,6 +502,9 @@ import java.util.Map;
      * Setup the main UI components
      */
     private void setupUI() {
+        // Initialize resizable styles
+        addResizableStyles();
+        
         // UI Components
         VerticalPanel mainPanel = new VerticalPanel();
         mainPanel.setWidth("100%");
@@ -482,10 +516,26 @@ import java.util.Map;
         scrollPanel.addStyleName("topSpace");
         mainPanel.add(scrollPanel);
         
+        // Make scroll panel resizable
+        makeResizable(scrollPanel.getElement());
+        
         // Testing panel (collapsible)
         addTestingPanel(mainPanel);
         
         // Bottom buttons
+        HorizontalPanel buttonPanel = createBottomButtons();
+        mainPanel.add(buttonPanel);
+        
+        // Status label at bottom
+        statusLabel = new Label("Dynamic Table Editor - Use contextual buttons to modify structure");
+        statusLabel.addStyleName("topSpace");
+        mainPanel.add(statusLabel);
+    }
+    
+    /**
+     * Create the bottom button panel with action buttons
+     */
+    private HorizontalPanel createBottomButtons() {
         HorizontalPanel buttonPanel = new HorizontalPanel();
         buttonPanel.setWidth("100%");
         buttonPanel.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_LEFT);
@@ -525,7 +575,7 @@ import java.util.Map;
         buttonPanel.add(propertiesButton);
         
         // Debug button to show markdown representation
-        Button debugButton = new Button(Locale.LS("📋 Debug"));
+        Button debugButton = new Button(Locale.LS("Debug"));
         debugButton.setTitle("Show markdown representation of tables");
         debugButton.addClickHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
@@ -534,27 +584,22 @@ import java.util.Map;
         });
         buttonPanel.add(debugButton);
         
-        buttonPanel.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_RIGHT);
-        Button cancelButton = new Button(Locale.LS("Cancel"));
-        cancelButton.addClickHandler(new ClickHandler() {
+        // Add spacer to push Close to the right
+        Label spacer = new Label();
+        spacer.setWidth("100%");
+        buttonPanel.add(spacer);
+        buttonPanel.setCellWidth(spacer, "100%");
+        
+        Button closeButton = new Button(Locale.LS("Close"));
+        closeButton.addClickHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
-                if (hasChanges) {
-                    if (!com.google.gwt.user.client.Window.confirm(
-                            Locale.LS("You have unsaved changes. Are you sure you want to cancel?"))) {
-                        return;
-                    }
-                }
+
                 closeDialog();
             }
         });
-        buttonPanel.add(cancelButton);
+        buttonPanel.add(closeButton);
         
-        mainPanel.add(buttonPanel);
-        
-        // Status label at bottom
-        statusLabel = new Label("Dynamic Table Editor - Use contextual buttons to modify structure");
-        statusLabel.addStyleName("topSpace");
-        mainPanel.add(statusLabel);
+        return buttonPanel;
     }
     
     /**
@@ -779,297 +824,17 @@ import java.util.Map;
      * Show markdown representation of all tables sharing stocks with current table
      */
     private void showMarkdownDebug() {
-        String content = generateMarkdownDebugContent();
-        
-        // If debug dialog already exists, just update the content
-        if (debugDialog != null && debugTextArea != null) {
-            debugTextArea.setText(content);
+        // If debug dialog already exists, just refresh and show it
+        if (debugDialog != null) {
+            debugDialog.refresh();
             if (!debugDialog.isShowing()) {
                 debugDialog.show();
             }
         } else {
             // Create new dialog
-            showTextDialog("Markdown Debug View", content);
+            debugDialog = new TableMarkdownDebugDialog(tableElement);
+            debugDialog.show();
         }
-    }
-    
-    /**
-     * Generate markdown debug content
-     */
-    private String generateMarkdownDebugContent() {
-        StringBuilder md = new StringBuilder();
-        md.append("# Stock Flow Tables - Markdown Debug View\n\n");
-        
-        // Get all tables that share stocks with this table
-        java.util.Set<TableElm> relatedTables = new java.util.HashSet<TableElm>();
-        relatedTables.add(tableElement); // Include current table
-        
-        // DEBUG: Log current table identity
-        md.append("**Current table:** ").append(tableElement.getTableTitle())
-          .append(" (Object ID: ").append(System.identityHashCode(tableElement)).append(")\n\n");
-        
-        // Find all tables sharing stocks
-        md.append("**Stock lookup results:**\n");
-        for (int col = 0; col < tableElement.getCols(); col++) {
-            String stockName = tableElement.getColumnHeader(col);
-            md.append("- Column ").append(col).append(": '").append(stockName).append("'");
-            
-            // Skip A-L-E computed columns - they are not real stocks
-            if (col == tableElement.getCols() - 1 && tableElement.getCols() >= 4) {
-                md.append(" → (A-L-E computed column, skipped)\n");
-                continue;
-            }
-            
-            if (stockName != null && !stockName.trim().isEmpty()) {
-                java.util.List<TableElm> tables = StockFlowRegistry.getTablesForStock(stockName);
-                md.append(" → ").append(tables.size()).append(" table(s): ");
-                for (TableElm t : tables) {
-                    md.append("[").append(t.getTableTitle()).append(" #")
-                      .append(System.identityHashCode(t)).append("] ");
-                }
-                relatedTables.addAll(tables);
-            } else {
-                md.append(" → (empty/null, skipped)");
-            }
-            md.append("\n");
-        }
-        md.append("\n");
-        
-        md.append("## Tables Sharing Stocks: ").append(relatedTables.size()).append("\n\n");
-        
-        // Generate markdown for each table
-        for (TableElm table : relatedTables) {
-            md.append("### ").append(table.getTableTitle())
-              .append(" (Object ID: #").append(System.identityHashCode(table)).append(")\n\n");
-            
-            // Calculate column widths for alignment
-            int[] colWidths = calculateColumnWidths(table);
-            
-            // Table header
-            md.append("| ").append(padRight("Flows↓/Stock Vars →", colWidths[0])).append(" ");
-            for (int col = 0; col < table.getCols(); col++) {
-                md.append("| ").append(padRight(table.getColumnHeader(col), colWidths[col + 1])).append(" ");
-            }
-            md.append("|\n");
-            
-            // Separator
-            md.append("|");
-            for (int col = 0; col <= table.getCols(); col++) {
-                md.append(repeat("-", colWidths[col] + 2)).append("|");
-            }
-            md.append("\n");
-            
-            // Rows
-            for (int row = 0; row < table.getRows(); row++) {
-                md.append("| ").append(padRight(table.getRowDescription(row), colWidths[0])).append(" ");
-                for (int col = 0; col < table.getCols(); col++) {
-                    String cellContent;
-                    
-                    // Check if this is an A-L-E column
-                    boolean isALEColumn = (col == table.getCols() - 1 && table.getCols() >= 4);
-                    
-                    if (isALEColumn) {
-                        // Generate A-L-E equation for this row
-                        String aleEquation = calculateALECellEquation(table, row);
-                        if (aleEquation != null && !aleEquation.isEmpty()) {
-                            cellContent = "`" + aleEquation + "`";
-                        } else {
-                            cellContent = "";
-                        }
-                    } else {
-                        // Regular cell - use stored equation
-                        String equation = table.getCellEquation(row, col);
-                        if (equation == null || equation.trim().isEmpty()) {
-                            cellContent = "";
-                        } else {
-                            cellContent = "`" + equation + "`";
-                        }
-                    }
-                    
-                    md.append("| ").append(padRight(cellContent, colWidths[col + 1])).append(" ");
-                }
-                md.append("|\n");
-            }
-            md.append("\n");
-            
-            // Add non-zero flow/stock pairs for this table
-            md.append("#### Non-Zero Flow/Stock Pairs\n\n");
-            boolean foundNonZero = false;
-            for (int row = 0; row < table.getRows(); row++) {
-                String flowDesc = table.getRowDescription(row);
-                if (flowDesc == null || flowDesc.trim().isEmpty()) {
-                    flowDesc = "Flow" + row;
-                }
-                
-                for (int col = 0; col < table.getCols(); col++) {
-                    // Check if this is an A-L-E column
-                    boolean isALEColumn = (col == table.getCols() - 1 && table.getCols() >= 4);
-                    
-                    String equation;
-                    if (isALEColumn) {
-                        // Generate A-L-E equation for this row
-                        equation = calculateALECellEquation(table, row);
-                    } else {
-                        // Regular cell - use stored equation
-                        equation = table.getCellEquation(row, col);
-                    }
-                    
-                    if (equation != null && !equation.trim().isEmpty() && !equation.trim().equals("0")) {
-                        String stockName = table.getColumnHeader(col);
-                        md.append("- **").append(flowDesc).append("** → **").append(stockName)
-                          .append("**: `").append(equation).append("`\n");
-                        foundNonZero = true;
-                    }
-                }
-            }
-            if (!foundNonZero) {
-                md.append("- *(No non-zero equations)*\n");
-            }
-            md.append("\n");
-        }
-        
-        // Add registry information
-        md.append("---\n\n");
-        md.append("## Stock Registry Information\n\n");
-        md.append("```\n");
-        md.append(StockFlowRegistry.getDiagnosticInfo());
-        md.append("```\n");
-        
-        return md.toString();
-    }
-    
-    /**
-     * Calculate the maximum width needed for each column in the table
-     * Returns an array where index 0 is the row header column, and subsequent indices are data columns
-     */
-    private int[] calculateColumnWidths(TableElm table) {
-        int[] widths = new int[table.getCols() + 1];
-        
-        // Initialize with header widths
-        widths[0] = "Flows↓/Stock Vars →".length();
-        for (int col = 0; col < table.getCols(); col++) {
-            String header = table.getColumnHeader(col);
-            widths[col + 1] = (header != null) ? header.length() : 0;
-        }
-        
-        // Check all row data
-        for (int row = 0; row < table.getRows(); row++) {
-            // Row description
-            String rowDesc = table.getRowDescription(row);
-            if (rowDesc != null && rowDesc.length() > widths[0]) {
-                widths[0] = rowDesc.length();
-            }
-            
-            // Cell equations (include backticks in width calculation)
-            for (int col = 0; col < table.getCols(); col++) {
-                String equation = table.getCellEquation(row, col);
-                if (equation != null && !equation.trim().isEmpty()) {
-                    int cellWidth = equation.length() + 2; // +2 for backticks
-                    if (cellWidth > widths[col + 1]) {
-                        widths[col + 1] = cellWidth;
-                    }
-                }
-            }
-        }
-        
-        return widths;
-    }
-    
-    /**
-     * Pad a string to the right with spaces to reach the specified width
-     */
-    private String padRight(String str, int width) {
-        if (str == null) str = "";
-        if (str.length() >= width) return str;
-        
-        StringBuilder sb = new StringBuilder(str);
-        while (sb.length() < width) {
-            sb.append(' ');
-        }
-        return sb.toString();
-    }
-    
-    /**
-     * Repeat a character n times
-     */
-    private String repeat(String str, int count) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < count; i++) {
-            sb.append(str);
-        }
-        return sb.toString();
-    }
-    
-    /**
-     * Update debug window if it's open
-     */
-    private void updateDebugWindow() {
-        if (debugDialog != null && debugTextArea != null && debugDialog.isShowing()) {
-            debugTextArea.setText(generateMarkdownDebugContent());
-        }
-    }
-    
-    /**
-     * Show a text dialog with copy-able content
-     */
-    private void showTextDialog(String title, String content) {
-        debugDialog = new com.google.gwt.user.client.ui.DialogBox();
-        debugDialog.setText(title);
-        debugDialog.setModal(false);  // Non-modal so it doesn't block interaction
-        debugDialog.setGlassEnabled(false);  // No glass pane background
-        
-        com.google.gwt.user.client.ui.VerticalPanel panel = new com.google.gwt.user.client.ui.VerticalPanel();
-        panel.setWidth("800px");
-        
-        // Text area with markdown content
-        debugTextArea = new com.google.gwt.user.client.ui.TextArea();
-        debugTextArea.setText(content);
-        debugTextArea.setWidth("780px");
-        debugTextArea.setHeight("500px");
-        debugTextArea.getElement().getStyle().setProperty("fontFamily", "monospace");
-        debugTextArea.getElement().getStyle().setProperty("fontSize", "12px");
-        panel.add(debugTextArea);
-        
-        // Buttons
-        com.google.gwt.user.client.ui.HorizontalPanel buttonPanel = new com.google.gwt.user.client.ui.HorizontalPanel();
-        buttonPanel.setSpacing(5);
-        buttonPanel.getElement().getStyle().setProperty("marginTop", "10px");
-        
-        Button selectAllButton = new Button("Select All");
-        selectAllButton.addClickHandler(new ClickHandler() {
-            public void onClick(ClickEvent event) {
-                debugTextArea.selectAll();
-                debugTextArea.setFocus(true);
-            }
-        });
-        buttonPanel.add(selectAllButton);
-        
-        Button refreshButton = new Button("🔄 Refresh");
-        refreshButton.addClickHandler(new ClickHandler() {
-            public void onClick(ClickEvent event) {
-                updateDebugWindow();
-            }
-        });
-        buttonPanel.add(refreshButton);
-        
-        Button closeButton = new Button("Close");
-        closeButton.addClickHandler(new ClickHandler() {
-            public void onClick(ClickEvent event) {
-                debugDialog.hide();
-                debugDialog = null;
-                debugTextArea = null;
-            }
-        });
-        buttonPanel.add(closeButton);
-        
-        panel.add(buttonPanel);
-        debugDialog.setWidget(panel);
-        debugDialog.show();
-        // Position in top-right corner instead of centering
-        debugDialog.setPopupPosition(
-            com.google.gwt.user.client.Window.getClientWidth() - 820,  // 800px width + 20px margin
-            20  // 20px from top
-        );
     }
     
     //=== GRID CREATION AND POPULATION ==============================================
@@ -1105,7 +870,11 @@ import java.util.Map;
         createGrid();
         scrollPanel.setWidget(editGrid);
         updateButtonStates();
-        updateDebugWindow();  // Auto-update debug window when grid changes
+        
+        // Auto-update debug window when grid changes
+        if (debugDialog != null && debugDialog.isShowing()) {
+            debugDialog.refresh();
+        }
     }
     
     /**
@@ -2031,7 +1800,9 @@ import java.util.Map;
         statusLabel.setText("Changes applied and tables synchronized");
         
         // Update debug window after applying changes
-        updateDebugWindow();
+        if (debugDialog != null && debugDialog.isShowing()) {
+            debugDialog.refresh();
+        }
         
         // Refresh the simulation display
         if (sim != null) {

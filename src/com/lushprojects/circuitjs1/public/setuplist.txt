@@ -1,4 +1,15 @@
 ### setuplist.txt first line must be a comment
++Economics
+mky_BOMD.txt BOMD Model
+-
++Debug
+1debug.txt Debug 1
+1debugcopy.txt Debug 2
+1debugcopy2.txt Debug 3
+1debugcopy3.txt Debug 4
+1debugcopy4.txt Debug 5
+1debugcopy5.txt Debug 6
+-
 +Basics
 ohms.txt Ohm's Law
 resistors.txt Resistors

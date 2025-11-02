@@ -228,39 +228,27 @@ public class GodlyTableElm extends TableElm {
         }
     }
 
-    // ToDo:  prob should follow the doStep approach used in VCVS but seems to work well enough as a first pass
-    // see : VCVS_doStep_Explanation.md
-
     @Override
-    // Calculate computed values during simulation step (not during drawing)
     public void doStep() {
-        // Update input pin values from circuit (from TableElm's doStep)
-        for (int i = 0; i < getPostCount(); i++) {
-            Pin p = pins[i];
-            if (!p.output)
-                p.value = volts[i] > getThreshold();
-        }
-
         // Ensure arrays are properly sized (handles dynamic column changes)
-        ensureArraysSized();
-
+        // ensureArraysSized();
+        
+        // Use the optimized doStep from TableElm to compute column sums
+        // This includes master table optimization and A-L-E column handling
+        super.doStep();
+        
+        // Copy the converged column sums from parent for use in integration
+        // TableElm stores results in lastColumnSums, we need them in lastComputedRowValues
+        if (lastColumnSums != null) {
+            for (int col = 0; col < cols && col < lastColumnSums.length; col++) {
+                lastComputedRowValues[col] = lastColumnSums[col];
+            }
+        }
+        
+        // Override the voltage source values to use integrated values instead of column sums
+        // TableElm sets voltage sources to column sums, but we want integrated values
         for (int col = 0; col < cols; col++) {
-            // Calculate sum for this column using equation evaluation from all rows except for the first
-            double columnSum = 0.0;
-            for (int row = 0; row < rows; row++) {
-                // Use getVoltageForCell which works with equations
-                double v = getVoltageForCell(row, col);
-                columnSum += v;
-            }
-
-            // Check for convergence
-            if (Math.abs(columnSum - lastComputedRowValues[col]) > 1e-6) {
-                sim.converged = false;
-            }
-
-            lastComputedRowValues[col] = columnSum;
-
-            if (col < pins.length && pins[col].output) {
+            if (col < pins.length && pins[col].output && integratedValues != null) {
                 sim.updateVoltageSource(0, nodes[col], pins[col].voltSource, integratedValues[col]);
             }
         }
@@ -313,37 +301,37 @@ public class GodlyTableElm extends TableElm {
         
         return current;
     }
-    
-    // @Override
-    // void getInfo(String arr[]) {
-    //     arr[0] = "Godly Table (" + rows + "x" + cols + ") with Integration";
-    //     arr[1] = "Equation: y[n+1] = y[n] + dt * columnSum";
-    //     arr[2] = "Current scale: " + getUnitText(currentScale, "A/V");
 
-    //     int idx = 3;
+    @Override
+    void getInfo(String arr[]) {
+        arr[0] = "Godly Table (" + rows + "x" + cols + ") with Integration";
+        arr[1] = "Equation: y[n+1] = y[n] + dt * columnSum";
+        arr[2] = "Current scale: " + getUnitText(currentScale, "A/V");
 
-    //     // Show output pin values (integrated results) and currents
-    //     for (int col = 0; col < Math.min(cols, 2) && idx < arr.length - 1; col++) {
-    //         String header = outputNames[col];
+        int idx = 3;
+
+        // Show output pin values (integrated results) and currents
+        for (int col = 0; col < Math.min(cols, 2) && idx < arr.length - 1; col++) {
+            String header = outputNames[col];
             
-    //         // Show integrated value
-    //         Double integratedValue = ComputedValues.getComputedValue(header);
-    //         if (integratedValue != null) {
-    //             arr[idx++] = header + "∫ = " + getVoltageText(integratedValue.doubleValue());
-    //         }
+            // Show integrated value
+            Double integratedValue = ComputedValues.getComputedValue(header);
+            if (integratedValue != null) {
+                arr[idx++] = header + "∫ = " + getVoltageText(integratedValue.doubleValue());
+            }
             
-    //         // Show current (flow)
-    //         if (idx < arr.length - 1) {
-    //             double current = getCurrentIntoNode(col);
-    //             String currentDir = current >= 0 ? "→" : "←";
-    //             arr[idx++] = header + " I " + currentDir + " = " + getUnitText(Math.abs(current), "A");
-    //         }
-    //     }
+            // Show current (flow)
+            if (idx < arr.length - 1) {
+                double current = getCurrentIntoNode(col);
+                String currentDir = current >= 0 ? "→" : "←";
+                arr[idx++] = header + " I " + currentDir + " = " + getUnitText(Math.abs(current), "A");
+            }
+        }
 
-    //     if (cols > 2 && idx < arr.length - 1) {
-    //         arr[idx++] = "... (" + cols + " integrated outputs total)";
-    //     }
-    // }
+        if (cols > 2 && idx < arr.length - 1) {
+            arr[idx++] = "... (" + cols + " integrated outputs total)";
+        }
+    }
     
     // @Override
     // public EditInfo getEditInfo(int n) {

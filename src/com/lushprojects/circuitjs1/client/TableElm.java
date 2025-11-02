@@ -445,9 +445,12 @@ public class TableElm extends ChipElm {
         // but visual elements (connection dots) are not drawn
     }
 
-    private double[] lastColumnSums;
+    protected double[] lastColumnSums;
    
     // Calculate computed values during simulation step (not during drawing)
+    //     Master table optimization (avoids redundant computation)
+    //      A-L-E column handling
+    //      Convergence checking
     @Override
     public void doStep() {
         // Update input pin values from circuit
@@ -477,25 +480,19 @@ public class TableElm extends ChipElm {
             // Check if this table is the master computer for this output name
             boolean isMasterForThisName = ComputedValues.isMasterTable(name, this);
             
-            // Check to see if column computed value is already calculated by another element
-            Double existingValue = ComputedValues.getComputedValue(name);
-            boolean alreadyComputed = ComputedValues.isComputedThisStep(name);
-            
-            if (alreadyComputed && existingValue != null && !isMasterForThisName) {
-                // Use the already computed value from the master table
-                columnSum = existingValue.doubleValue();
-            } else if (isMasterForThisName) {
+            if (isMasterForThisName) {
                 // We are the master - compute the value ourselves
                 for (int row = 0; row < rows; row++) {
                     double v = equationManager.getVoltageForCell(row, col);
                     columnSum += v;
                 }
             } else {
-                // No master registered yet or no computed value - compute it ourselves
-                for (int row = 0; row < rows; row++) {
-                    double v = equationManager.getVoltageForCell(row, col);
-                    columnSum += v;
+                // We are not the master - use the already computed value from the master table
+                Double existingValue = ComputedValues.getComputedValue(name);
+                if (existingValue != null) {
+                    columnSum = existingValue.doubleValue();
                 }
+                // If no value exists yet, columnSum remains 0.0 (will converge in next iteration)
             }
 
             // Check for convergence
@@ -511,7 +508,10 @@ public class TableElm extends ChipElm {
                 sim.updateVoltageSource(0, nodes[col], pins[col].voltSource, columnSum);
             }
         }
-        
+    }
+
+    @Override
+    public void stepFinished() {
         // SECOND PASS: Now compute A-L-E column (depends on other columns being computed)
         for (int col = 0; col < cols; col++) {
             if (isALEColumn(col)) {
@@ -532,10 +532,7 @@ public class TableElm extends ChipElm {
                 }
             }
         }
-    }
-
-    @Override
-    public void stepFinished() {
+        
         // Register computed values for other elements to use - do this after convergence
         for (int col = 0; col < cols; col++) {
             String name = outputNames[col];
@@ -705,7 +702,7 @@ public class TableElm extends ChipElm {
     
     @Override
     void getInfo(String arr[]) {
-        arr[0] = "Equation Table (" + rows + "x" + cols + ")";
+        arr[0] = "TableElm (" + rows + "x" + cols + ")";
         arr[1] = "All cells use equations (node names or expressions)";
 
         int idx = 2;
