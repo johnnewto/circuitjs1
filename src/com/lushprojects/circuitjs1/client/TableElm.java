@@ -541,12 +541,10 @@ public class TableElm extends ChipElm {
         }
 
         // FIRST PASS: Compute all NON-A-L-E columns
-        for (int col = 0; col < cols; col++) {
-            // Skip A-L-E column in first pass (use cached check)
-            if (col == aleColumnIndex) {
-                continue;
-            }
-            
+        // Performance: Skip A-L-E column by limiting loop (it's always the last column)
+        int colLimit = (cols >= 4) ? (cols - 1) : cols; // Exclude A-L-E column if it exists
+        
+        for (int col = 0; col < colLimit; col++) {
             double columnSum = 0.0;
             
             // Use cached master status
@@ -573,46 +571,59 @@ public class TableElm extends ChipElm {
                 sim.converged = false;
             }
 
-            lastColumnSums[col] = columnSum;
-
-            // Update output pin voltage source ONLY if we are the master for this column
+            // Like VCVSElm: stamp matrix for nonlinear iteration
             if (isMasterForThisName && pins[col].output) {
-                sim.updateVoltageSource(0, nodes[col], pins[col].voltSource, columnSum);
+                int vn = pins[col].voltSource + sim.nodeList.size();
+                // Check output voltage convergence like VCVSElm does
+                double outputVoltage = volts[col];
+                if (Math.abs(outputVoltage - columnSum) > Math.abs(columnSum) * 0.01 && sim.subIterations < 100) {
+                    sim.converged = false;
+                }
+                // Stamp the right side with the computed value
+                sim.stampRightSide(vn, columnSum);
             }
+
+            lastColumnSums[col] = columnSum;
         }
     }
 
     @Override
     public void stepFinished() {
-        // SECOND PASS: Now compute A-L-E column (depends on other columns being computed)
-        if (aleColumnIndex >= 0) {
-            // Calculate A-L-E sum and store individual cell values
-            double columnSum = calculateALEColumnSum();
+        // // SECOND PASS: Now compute A-L-E column (depends on other columns being computed)
+        // if (aleColumnIndex >= 0) {
+        //     // Calculate A-L-E sum and store individual cell values
+        //     double columnSum = calculateALEColumnSum();
             
-            // Check for convergence (avoid boxing)
-            double diff = Math.abs(columnSum - lastColumnSums[aleColumnIndex]);
-            if (diff > 1e-6) {
-                sim.converged = false;
-            }
+        //     // Check for convergence (avoid boxing)
+        //     double diff = Math.abs(columnSum - lastColumnSums[aleColumnIndex]);
+        //     if (diff > 1e-6) {
+        //         sim.converged = false;
+        //     }
 
-            lastColumnSums[aleColumnIndex] = columnSum;
+        //     lastColumnSums[aleColumnIndex] = columnSum;
 
-            // Update output pin voltage source ONLY if we are the master for this column
-            // Use cached master status
-            boolean isMasterForThisName = isMasterForColumn(aleColumnIndex);
-            if (isMasterForThisName && pins[aleColumnIndex].output) {
-                sim.updateVoltageSource(0, nodes[aleColumnIndex], pins[aleColumnIndex].voltSource, columnSum);
-            }
-        }
+        //     // Update output pin voltage source ONLY if we are the master for this column
+        //     // Use cached master status
+        //     boolean isMasterForThisName = isMasterForColumn(aleColumnIndex);
+        //     if (isMasterForThisName && pins[aleColumnIndex].output) {
+        //         // Like VCVSElm: stamp matrix for nonlinear iteration
+        //         int vn = pins[aleColumnIndex].voltSource + sim.nodeList.size();
+        //         // Check output voltage convergence
+        //         double outputVoltage = volts[aleColumnIndex];
+        //         if (Math.abs(outputVoltage - columnSum) > Math.abs(columnSum) * 0.01 && sim.subIterations < 100) {
+        //             sim.converged = false;
+        //         }
+        //         // Stamp the right side with the computed value
+        //         sim.stampRightSide(vn, columnSum);
+        //     }
+//        }
         
         // Register computed values for other elements to use - do this after convergence
         // Skip A-L-E columns - they are not registered as stocks
-        for (int col = 0; col < cols; col++) {
-            // Skip A-L-E columns using cached check
-            if (col == aleColumnIndex) {
-                continue;
-            }
-            
+        // Performance: Skip A-L-E column by limiting loop (it's always the last column)
+        int colLimit = (cols >= 4) ? (cols - 1) : cols; // Exclude A-L-E column if it exists
+        
+        for (int col = 0; col < colLimit; col++) {
             // Use cached master status
             boolean isMasterForThisName = isMasterForColumn(col);
             
@@ -659,6 +670,9 @@ public class TableElm extends ChipElm {
                 // Use cached master status
                 boolean isMaster = isMasterForColumn(col);
                 if (isMaster) {
+                    // Like VCVSElm: stamp nonlinear for the voltage source row
+                    int vn = p.voltSource + sim.nodeList.size();
+                    sim.stampNonLinear(vn);
                     sim.stampVoltageSource(0, nodes[col], p.voltSource);
                 }
             }

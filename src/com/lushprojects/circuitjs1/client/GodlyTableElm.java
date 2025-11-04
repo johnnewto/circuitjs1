@@ -200,17 +200,66 @@ public class GodlyTableElm extends TableElm {
 
     @Override
     public void doStep() {
-        // Use the optimized doStep from TableElm to compute column sums
-        // This includes master table optimization and A-L-E column handling
-        super.doStep();
+        // Update input pin values from circuit
+        int postCount = getPostCount();
+        for (int i = 0; i < postCount; i++) {
+            Pin p = pins[i];
+            if (!p.output)
+                p.value = volts[i] > getThreshold();
+        }
+
+        // Initialize arrays if needed
+        if (lastColumnSums == null) {
+            lastColumnSums = new double[cols];
+        }
+        if (integratedValues == null) {
+            integratedValues = new double[cols];
+        }
+
+        // Like VCVSElm: compute outputs and stamp during each iteration
+        // Performance optimizations:
+        // 1. Skip A-L-E column by limiting loop (it's always the last column)
+        // 2. Use cached master check to reduce redundant lookups
+        // 3. Avoid boxing by using primitives throughout
+        int colLimit = (cols >= 4) ? (cols - 1) : cols; // Exclude A-L-E column if it exists
         
-        // Override voltage sources to use integrated values instead of column sums
-        // Only update voltage sources for master columns (excluding A-L-E)
-        // The pins[col].output flag is already correctly set by parent to true only for masters
-        for (int col = 0; col < cols; col++) {
-            // Check if pin has output (already filtered for masters and non-A-L-E by parent)
-            if (pins[col].output && integratedValues != null) {
-                sim.updateVoltageSource(0, nodes[col], pins[col].voltSource, integratedValues[col]);
+        for (int col = 0; col < colLimit; col++) {
+            // Use parent's optimized master check (cached)
+            boolean isMasterForThisName = isMasterForColumn(col);
+            
+            // Only compute if we are the master for this column
+            if (!isMasterForThisName) {
+                continue;
+            }
+            
+            // Compute column sum (like parent does)
+            double columnSum = 0.0;
+            for (int row = 0; row < rows; row++) {
+                columnSum += getVoltageForCell(row, col);
+            }
+            
+            // Check for convergence on column sum (avoid boxing by using primitive)
+            double diff = Math.abs(columnSum - lastColumnSums[col]);
+            if (diff > 1e-6) {
+                sim.converged = false;
+            }
+            lastColumnSums[col] = columnSum;
+            
+            // Perform integration on the column sum (like VCVSElm evaluates expression)
+            double integratedValue = performIntegration(col, columnSum);
+            integratedValues[col] = integratedValue;
+            
+            // Like VCVSElm: stamp matrix for nonlinear iteration
+            // Combined check: only stamp if both master AND output (already verified master above)
+            if (pins[col].output) {
+                int vn = pins[col].voltSource + sim.nodeList.size();
+                // Check output voltage convergence
+                double outputVoltage = volts[col];
+                if (Math.abs(outputVoltage - integratedValue) > Math.abs(integratedValue) * 0.01 && sim.subIterations < 100) {
+                    sim.converged = false;
+                }
+                // Stamp the right side with the integrated value
+                sim.stampRightSide(vn, integratedValue);
             }
         }
     }
@@ -218,40 +267,25 @@ public class GodlyTableElm extends TableElm {
 
     @Override
     public void stepFinished() {
-        // Don't call super.stepFinished() because we want to output integrated values,
-        // not column sums like TableElm does
-
-        // Perform integration only once per completed timestep (not during convergence iterations)
-        // Only integrate and register values for master columns (excluding A-L-E)
-        for (int col = 0; col < cols; col++) {
-            // Skip A-L-E column (last column when cols >= 4) - it doesn't get integrated
-            boolean isALEColumn = (col == cols - 1 && cols >= 4);
-            if (isALEColumn) {
-                continue;
-            }
-            
-            // Use parent's optimized master check
+        // Like VCVSElm: update state after timestep converges
+        // Register computed values for other elements to use
+        // Performance: Skip A-L-E column by limiting loop (it's always the last column)
+        int colLimit = (cols >= 4) ? (cols - 1) : cols; // Exclude A-L-E column if it exists
+        
+        for (int col = 0; col < colLimit; col++) {
+            // Use parent's optimized master check (cached)
             boolean isMasterForThisName = isMasterForColumn(col);
             
-            // Only perform integration and registration if we are the master for this column
-            if (!isMasterForThisName) {
-                continue;
-            }
-            
-            // Use the converged column sum directly from parent's lastColumnSums
-            double columnSum = (lastColumnSums != null && col < lastColumnSums.length) ? lastColumnSums[col] : 0.0;
-
-            // Perform integration on this column sum with proper initial condition
-            integratedValues[col] = performIntegration(col, columnSum);
-
-            // Register the integrated value (not column sum like parent does)
-            String name = outputNames[col];
-            registerComputedValueAsLabeledNode(name, integratedValues[col]);
-            ComputedValues.markComputedThisStep(name);
-
-            // Update integration states for next timestep
-            if (integrationStates[col] != null) {
-                integrationStates[col].lastOutput = integratedValues[col];
+            // Only register if we are the master for this column
+            if (isMasterForThisName && integratedValues != null) {
+                String name = outputNames[col];
+                registerComputedValueAsLabeledNode(name, integratedValues[col]);
+                ComputedValues.markComputedThisStep(name);
+                
+                // Update integration state for next timestep (like VCVSElm.stepFinished)
+                if (integrationStates[col] != null) {
+                    integrationStates[col].lastOutput = integratedValues[col];
+                }
             }
         }
     }
