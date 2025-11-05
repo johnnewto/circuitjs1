@@ -1,8 +1,8 @@
-$ 83 0.005 11.086722712598126 44 5 50 0.000049999999999999996
+$ 67 0.1 0.14549914146182014 53 5 50 0.000049999999999999996
 255 -1424 -632 -1360 -632 0 5 4 6 16 0 true 2 Borrowers \0 Borrowers Debt Bor_equity A-L-E Pay\sInterest Lending Bank\sSpending Govt\sTaxes Govt\sSpends 10 0 0 0 ASSET LIABILITY EQUITY ASSET -Interest \0 -Interest \0 Lend Lend \0 \0 0.5*Spend_banks \0 0.5*Spend_banks \0 -0.5*Tax \0 -0.5*Tax \0 0.5*Spend_Govt \0 0.5*Spend_Govt \0 0.001
 255 -912 -632 -880 -632 0 3 4 6 16 0 true 2 Savers \0 Savers Stock2 Savers_equ A-L-E Bank\sSpending Govt\sTaxes Govt\sSpends 80 0 80 0 ASSET LIABILITY EQUITY ASSET 0.5*Spend_banks \0 0.5*Spend_banks \0 -0.5*Tax \0 -0.5*Tax \0 0.5*Spend_Govt \0 0.5*Spend_Govt \0 0.001
 255 -1288 -840 -1224 -840 0 7 7 6 16 0 true 2 Banks \0 Reserves Debt Gov_Bonds Savers Borrowers Banks A-L-E Lending Pay\sInterest Bank\sSpending Govt\sTaxes Govt\sSpends Govt\sSells\sBonds Interest\son\sBonds 100 0 0 80 10 10 0 ASSET ASSET ASSET LIABILITY LIABILITY EQUITY ASSET \0 Lend \0 \0 Lend \0 \0 \0 \0 \0 \0 -Interest Interest \0 \0 \0 \0 0.5*Spend_banks 0.5*Spend_banks -Spend_banks \0 -Tax \0 \0 -0.5*Tax -0.5*Tax \0 \0 Spend_Govt \0 \0 0.5*Spend_Govt 0.5*Spend_Govt \0 \0 -Bonds \0 Bonds \0 \0 \0 \0 Int_Bonds \0 \0 \0 \0 Int_Bonds \0 0.001
-255 -856 -1000 -808 -1000 0 4 4 6 16 0 true 2 Treasury \0 Government Gov_Bonds Treasuray_Equ A-L-E Govt\sSells\sBonds Interest\son\sBonds Govt\sSpends Govt\sTaxes 0 0 0 0 ASSET LIABILITY EQUITY ASSET Bonds Bonds \0 \0 -Int_Bonds \0 -Int_Bonds \0 -Spend_Govt \0 -Spend_Govt \0 Tax \0 Tax \0 0.001
+255 -848 -992 -800 -992 0 4 4 6 16 0 true 2 Treasury \0 Government Gov_Bonds Treasuray_Equ A-L-E Govt\sSells\sBonds Interest\son\sBonds Govt\sSpends Govt\sTaxes 0 0 0 0 ASSET LIABILITY EQUITY ASSET Bonds Bonds \0 \0 -Int_Bonds \0 -Int_Bonds \0 -Spend_Govt \0 -Spend_Govt \0 Tax \0 Tax \0 0.001
 255 -1448 -992 -1500 -992 0 4 5 6 16 0 true 2 The_Fed \0 Stock1 Reserves Government Fed_Equ A-L-E Govt\sSells\sBonds Interest\son\sBonds Govt\sSpends Govt\sTaxes 0 100 0 -100 0 ASSET LIABILITY LIABILITY EQUITY ASSET \0 -Bonds Bonds \0 \0 \0 Int_Bonds -Int_Bonds \0 \0 \0 Spend_Govt -Spend_Govt \0 \0 \0 -Tax Tax \0 \0 0.001
 207 -1376 -352 -1440 -352 60 Savers
 207 -1376 -336 -1440 -336 60 Borrowers
@@ -54,12 +54,22 @@ w -848 -392 -720 -392 0
 207 -472 -112 -424 -112 60 Gov_Debt
 207 -896 -80 -848 -80 60 Fee
 207 -672 -272 -624 -272 60 Bonds
-408 -288 -264 -208 -264 0 10 0 0
+408 -296 -264 -216 -264 0 30 0 0
 212 -360 -264 -328 -264 1 0 t
 g -312 -248 -312 -192 0 0
 207 -520 -96 -584 -96 60 GDP
 257 -520 -112 -488 -112 1 2 a*(1/(b!\q0?b:1e-9))
+207 -208 -648 -304 -680 4 Vr
+g 88 -376 88 -344 0 0
+r 0 -376 88 -376 0 100
+v 88 -376 88 -648 0 0 40 5 0 0 0.5 V
+l 0 -648 0 -376 0 100 0.0017889272797743249 0
+c 0 -376 -208 -376 4 0.0015 -1.1947524907957645 -10 0
+w -208 -648 -208 -376 0
+s 0 -648 88 -648 0 1 false
+r -208 -648 0 -648 0 10
 o 13 64 3 12290 0.0001 0.0001 0 1
-o 5 64 0 12290 24530.920524477504 0.0001 1 2 5 3
-o 15 64 0 12290 155775.79473364266 0.0001 2 2 15 3
-o 52 64 0 4098 0.625 0.00009765625 3 2 52 3
+o 5 2 0 12290 408.5367844600165 0.0001 1 2 5 3
+o 15 2 0 12290 2319.1232223238385 0.0001 2 2 15 3
+o 52 4 0 12290 0.3146300891120037 0.0001 3 2 52 3
+o 60 2 0 4099 20 0.00009765625 4 2 60 3
