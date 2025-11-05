@@ -70,6 +70,23 @@ public class TableRenderer {
     }
     
     /**
+     * Get voltage color for text display - bypasses highlight coloring
+     * so text stays readable even when table is highlighted
+     */
+    private Color getTextVoltageColor(double volts) {
+        if (!CirSim.theSim.voltsCheckItem.getState()) {
+            return CircuitElm.whiteColor;
+        }
+        int c = (int) ((volts + CircuitElm.voltageRange) * (CircuitElm.colorScaleCount - 1) /
+                       (CircuitElm.voltageRange * 2));
+        if (c < 0)
+            c = 0;
+        if (c >= CircuitElm.colorScaleCount)
+            c = CircuitElm.colorScaleCount - 1;
+        return CircuitElm.colorScale[c];
+    }
+    
+    /**
      * Main draw method - orchestrates all drawing operations
      */
     public void draw(Graphics g) {
@@ -243,7 +260,7 @@ public class TableRenderer {
             g.fillRect(cellX, initialRowY, cellWidthPixels, table.cellHeight);
             
             // Draw value with text color based on voltage
-            g.setColor(table.getVoltageColor(g, initialValue));
+            g.setColor(getTextVoltageColor(initialValue));
             String voltageText = formatTableValue(initialValue, table.decimalPlaces, table.tableUnits);
             table.drawCenteredText(g, voltageText, cellX + cellWidthPixels/2, initialRowY + table.cellHeight/2, true);
         }
@@ -288,12 +305,17 @@ public class TableRenderer {
                 String equation = table.cellEquations[row][col];
                 if (isALEColumn) {
                     // A-L-E column: display only the computed value (no equation)
-                    g.setColor(table.getVoltageColor(g, voltage));
+                    // Color red if non-zero (indicates accounting error), otherwise use voltage color
+                    if (Math.abs(voltage) > 1e-6) {
+                        g.setColor(Color.red);
+                    } else {
+                        g.setColor(getTextVoltageColor(voltage));
+                    }
                     String voltageText = formatTableValue(voltage, table.decimalPlaces, table.tableUnits);
                     table.drawCenteredText(g, voltageText, cellX + cellWidthPixels/2, cellY + table.cellHeight/2, true);
                 } else if (equation != null && !equation.trim().isEmpty()) {
                     // Regular cell: display equation = value
-                    g.setColor(table.getVoltageColor(g, voltage));
+                    g.setColor(getTextVoltageColor(voltage));
                     String displayText = truncateEquation(equation);
                     String voltageText = formatTableValue(voltage, table.decimalPlaces, table.tableUnits);
                     String combinedText = displayText + " = " + voltageText;
@@ -343,8 +365,16 @@ public class TableRenderer {
             g.setColor(Color.white);
             g.fillRect(cellX, sumRowY, cellWidthPixels, table.cellHeight);
             
+            // Check if this is an A-L-E column
+            boolean isALEColumn = (col == table.cols - 1 && table.cols >= 4);
+            
             // Draw column name and value with text color based on voltage
-            g.setColor(table.getVoltageColor(g, computedValue));
+            // For A-L-E columns, use red if non-zero (indicates accounting error)
+            if (isALEColumn && Math.abs(computedValue) > 1e-6) {
+                g.setColor(Color.red);
+            } else {
+                g.setColor(getTextVoltageColor(computedValue));
+            }
             String sumText = formatTableValue(computedValue, table.decimalPlaces, table.tableUnits);
             String combinedText = sumLabelName + ": " + sumText;
             table.drawCenteredText(g, combinedText, cellX + cellWidthPixels/2, sumRowY + table.cellHeight/2, true);

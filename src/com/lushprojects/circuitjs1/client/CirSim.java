@@ -1109,7 +1109,9 @@ public CirSim() {
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Wire"), "WireElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Resistor"), "ResistorElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Multipler"), "MultiplyElm"));
+    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Divider"), "DividerElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Adder"), "AdderElm"));
+		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Subtracter"), "SubtracterElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Table"), "TableElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add ImprovedTableElm"), "ImprovedTableElm"));		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Godly Table"), "GodlyTableElm"));
 		// mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Spare"), "Spare"));
@@ -1588,6 +1590,12 @@ public CirSim() {
             frames = 0;
             steps = 0;
             secTime = sysTime;
+            
+            // Call everySecond() for display-only computations (like A-L-E columns)
+            // This happens once per second, not per frame or simulation step
+            for (int i = 0; i != elmList.size(); i++) {
+                getElm(i).everySecond();
+            }
         }
 
         CircuitElm.powerMult = Math.exp(powerBar.getValue() / 4.762 - 7);
@@ -6029,11 +6037,12 @@ public CirSim() {
     	
     	case 250: return new MultiplyElm(x1, y1, x2, y2, f, st);
    		case 251: return new AdderElm(x1, y1, x2, y2, f, st);
-  		// case 252: return new Spare(x1, y1, x2, y2, f, st);
+  		case 252: return new SubtracterElm(x1, y1, x2, y2, f, st);
   		case 253: return new TableElm(x1, y1, x2, y2, f, st);
 		case 254: return new ImprovedTableElm(x1, y1, x2, y2, f, st);
 		case 255: return new GodlyTableElm(x1, y1, x2, y2, f, st);
 		case 256: return new TableVoltageElm(x1, y1, x2, y2, f, st);
+		case 257: return new DividerElm(x1, y1, x2, y2, f, st);
 
 		case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
     	case 368: return new TestPointElm(x1, y1, x2, y2, f, st);
@@ -6348,8 +6357,12 @@ public CirSim() {
 		return (CircuitElm) new CrossSwitchElm(x1, y1);
     	if (n=="MultiplyElm")
     	    		return (CircuitElm) new MultiplyElm(x1, y1);
+    	if (n=="DividerElm")
+    	    		return (CircuitElm) new DividerElm(x1, y1);
     	if (n=="AdderElm")
     	    		return (CircuitElm) new AdderElm(x1, y1);    	
+    	if (n=="SubtracterElm")
+    	    		return (CircuitElm) new SubtracterElm(x1, y1);
     	// if (n=="Spare")
     	//     		return (CircuitElm) new Spare(x1, y1);   
     	if (n=="TableElm")

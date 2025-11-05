@@ -78,17 +78,41 @@ public class TableEquationManager {
     /**
      * Get voltage value for a cell by evaluating its equation
      */
-    public double getVoltageForCell(int row, int col) {
+    public double 
+    getVoltageForCell(int row, int col) {
         if (!isValidCell(row, col)) {
             return 0.0;
         }
         
+        // Check if this is an A-L-E computed column
+        // A-L-E is always the last column when there are 4+ columns
+        boolean isALEColumn = (col == table.cols - 1 && table.cols >= 4);
+        if (isALEColumn) {
+            // Return the precomputed A-L-E value for this row
+            return table.getComputedALEValue(row);
+        }
+        
         // All cells now use equations
-        if (table.compiledExpressions[row][col] != null) {
-            // Evaluate the compiled expression
+        Expr e = table.compiledExpressions[row][col];
+        if (e != null) {
+            // Fast-path: if the compiled expression is a direct node reference,
+            // return the value without invoking the general evaluator.
+            // This avoids overhead of recursion for the very common case of
+            // a cell that simply references a labeled node.
+            if (e.type == Expr.E_NODE_REF && e.nodeName != null) {
+                // First check for computed values (from TableElm or other sources)
+                Double computedValue = ComputedValues.getComputedValue(e.nodeName);
+                if (computedValue != null) {
+                    return computedValue.doubleValue();
+                }
+                // Fall back to the labeled node voltage from the simulator
+                return sim != null ? sim.getLabeledNodeVoltage(e.nodeName) : 0.0;
+            }
+
+            // Otherwise evaluate the compiled expression normally
             ExprState state = table.expressionStates[row][col];
             updateExpressionState(state);
-            return table.compiledExpressions[row][col].eval(state);
+            return e.eval(state);
         }
         return 0.0;
     }

@@ -1,14 +1,14 @@
 ### setuplist.txt first line must be a comment
 +Economics
-mky_BOMD.txt BOMD Model
+mky_BOMD.txt BOMD 
+mky_BOMDwithGovt.txt BOMD with Government 
 -
 +Debug
 1debug.txt Debug 1
-1debugcopy.txt Debug 2
-1debugcopy2.txt Debug 3
-1debugcopy3.txt Debug 4
-1debugcopy4.txt Debug 5
-1debugcopy5.txt Debug 6
+1dbg_LRC+Table.txt Dbg LRC+Table
+1dbg_GodleyTest.txt Godley Test
+1debugcopy3.txt Debug 3
+1debugcopy5.txt Debug 5
 -
 +Basics
 ohms.txt Ohm's Law

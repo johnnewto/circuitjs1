@@ -175,6 +175,17 @@ public class TableElm extends ChipElm {
     }
     
     /**
+     * Get the computed A-L-E value for a specific row
+     * Package-private for use by TableEquationManager
+     */
+    double getComputedALEValue(int row) {
+        if (computedALEValues != null && row >= 0 && row < computedALEValues.length) {
+            return computedALEValues[row];
+        }
+        return 0.0;
+    }
+    
+    /**
      * Check if this table is the master for a given column
      * Uses cached value for performance in hot paths
      * Protected to allow subclasses (GodlyTableElm) to use it
@@ -231,6 +242,18 @@ public class TableElm extends ChipElm {
         
         double totalALE = 0.0;
         
+        // Debug: log column types once
+        if (rows > 0) {
+            StringBuilder colTypeDebug = new StringBuilder("ALE[" + tableTitle + "] Column types: ");
+            for (int col = 0; col < cols - 1; col++) {
+                String colName = (outputNames != null && col < outputNames.length) ? outputNames[col] : "col" + col;
+                String colType = (columnTypes != null && col < columnTypes.length && columnTypes[col] != null) 
+                    ? columnTypes[col].toString() : "null";
+                colTypeDebug.append(colName).append("=").append(colType).append(" ");
+            }
+            CirSim.console(colTypeDebug.toString());
+        }
+        
         // Calculate A-L-E for each row
         for (int row = 0; row < rows; row++) {
             double assets = 0.0;
@@ -262,6 +285,11 @@ public class TableElm extends ChipElm {
             double rowALE = assets - liabilities - equity;
             computedALEValues[row] = rowALE;
             totalALE += rowALE;
+            
+            // Debug logging for troubleshooting
+            if (row == 0 || Math.abs(rowALE) > 0.001) {  // Log first row and non-zero values
+                CirSim.console("ALE[" + tableTitle + "][row" + row + "]: A=" + assets + " L=" + liabilities + " E=" + equity + " => " + rowALE);
+            }
         }
         
         return totalALE;
@@ -586,38 +614,21 @@ public class TableElm extends ChipElm {
             lastColumnSums[col] = columnSum;
         }
     }
+    
+    @Override
+    public void everySecond() {
+        // Compute A-L-E column once per second
+        // A-L-E is purely a display value - not part of electrical simulation
+        if (aleColumnIndex >= 0) {
+            double aleSum = calculateALEColumnSum();
+            if (lastColumnSums != null && aleColumnIndex < lastColumnSums.length) {
+                lastColumnSums[aleColumnIndex] = aleSum;
+            }
+        }
+    }
 
     @Override
     public void stepFinished() {
-        // // SECOND PASS: Now compute A-L-E column (depends on other columns being computed)
-        // if (aleColumnIndex >= 0) {
-        //     // Calculate A-L-E sum and store individual cell values
-        //     double columnSum = calculateALEColumnSum();
-            
-        //     // Check for convergence (avoid boxing)
-        //     double diff = Math.abs(columnSum - lastColumnSums[aleColumnIndex]);
-        //     if (diff > 1e-6) {
-        //         sim.converged = false;
-        //     }
-
-        //     lastColumnSums[aleColumnIndex] = columnSum;
-
-        //     // Update output pin voltage source ONLY if we are the master for this column
-        //     // Use cached master status
-        //     boolean isMasterForThisName = isMasterForColumn(aleColumnIndex);
-        //     if (isMasterForThisName && pins[aleColumnIndex].output) {
-        //         // Like VCVSElm: stamp matrix for nonlinear iteration
-        //         int vn = pins[aleColumnIndex].voltSource + sim.nodeList.size();
-        //         // Check output voltage convergence
-        //         double outputVoltage = volts[aleColumnIndex];
-        //         if (Math.abs(outputVoltage - columnSum) > Math.abs(columnSum) * 0.01 && sim.subIterations < 100) {
-        //             sim.converged = false;
-        //         }
-        //         // Stamp the right side with the computed value
-        //         sim.stampRightSide(vn, columnSum);
-        //     }
-//        }
-        
         // Register computed values for other elements to use - do this after convergence
         // Skip A-L-E columns - they are not registered as stocks
         // Performance: Skip A-L-E column by limiting loop (it's always the last column)

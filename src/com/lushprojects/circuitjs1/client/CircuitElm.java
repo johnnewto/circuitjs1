@@ -253,6 +253,11 @@ public abstract class CircuitElm implements Editable {
     // stamp matrix values for non-linear elements
     void doStep() {}
     
+    // called once per second for display-only computations
+    // Use this for non-critical updates like computed display values (e.g., A-L-E columns)
+    // NOT called during simulation steps - only during rendering cycle
+    void everySecond() {}
+    
     void delete() {
 	if (mouseElmRef==this)
 	    mouseElmRef=null;

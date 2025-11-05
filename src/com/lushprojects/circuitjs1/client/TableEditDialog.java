@@ -332,7 +332,7 @@ import java.util.Map;
      */
     private String calculateALECellEquation(TableElm table, int row) {
         StringBuilder eq = new StringBuilder();
-        boolean first = true;
+        boolean hasAssets = false;
         
         // Skip the last column (A-L-E itself)
         int numCols = table.getCols() - 1;
@@ -342,11 +342,16 @@ import java.util.Map;
             if (table.getColumnType(col) == ColumnType.ASSET) {
                 String cell = table.getCellEquation(row, col);
                 if (cell != null && !cell.trim().isEmpty()) {
-                    if (!first) eq.append(" + ");
+                    if (hasAssets) eq.append(" + ");
                     eq.append(wrapIfComplex(cell));
-                    first = false;
+                    hasAssets = true;
                 }
             }
+        }
+        
+        // If no assets were found, start with "0"
+        if (!hasAssets) {
+            eq.append("0");
         }
         
         // Subtract liability terms
@@ -369,7 +374,7 @@ import java.util.Map;
             }
         }
         
-        return eq.length() > 0 ? eq.toString() : "0";
+        return eq.toString();
     }
     
     /**

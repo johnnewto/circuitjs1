@@ -197,37 +197,49 @@ public class TableDataManager {
     /**
      * Serialize table data to string for saving
      */
+    /**
+     * Simplified dump format (not backward compatible)
+     * Format: rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces
+     *         tableTitle tableUnits
+     *         [col headers] [row descriptions] [initial values] [column types] [equations]
+     */
     public String dump() {
         StringBuilder sb = new StringBuilder();
-        sb.append(" ").append(table.rows).append(" ").append(table.cols).append(" ").append(table.showInitialValues);
-        sb.append(" ").append(CustomLogicModel.escape(table.tableUnits)).append(" ").append(table.decimalPlaces);
-        sb.append(" ").append(CustomLogicModel.escape(table.tableTitle));
         
-        // Serialize output names (used as column headers)
+        // Basic dimensions and display settings (all integers/booleans)
+        sb.append(" ").append(table.rows);
+        sb.append(" ").append(table.cols);
+        sb.append(" ").append(table.cellWidthInGrids);
+        sb.append(" ").append(table.cellHeight);
+        sb.append(" ").append(table.cellSpacing);
+        sb.append(" ").append(table.showInitialValues);
+        sb.append(" ").append(table.decimalPlaces);
+        
+        // Text fields (escaped)
+        sb.append(" ").append(CustomLogicModel.escape(table.tableTitle));
+        sb.append(" ").append(CustomLogicModel.escape(table.tableUnits));
+        
+        // Column headers (cols count)
         for (int col = 0; col < table.cols; col++) {
             sb.append(" ").append(CustomLogicModel.escape(table.outputNames[col]));
         }
         
-        // Serialize row descriptions
+        // Row descriptions (rows count)
         for (int row = 0; row < table.rows; row++) {
             sb.append(" ").append(CustomLogicModel.escape(table.rowDescriptions[row]));
         }
         
-        // Always serialize initial conditions values
-        if (table.initialValues != null) {
-            for (int col = 0; col < table.cols; col++) {
-                sb.append(" ").append(table.initialValues[col]);
-            }
+        // Initial values (cols count)
+        for (int col = 0; col < table.cols; col++) {
+            sb.append(" ").append(table.initialValues[col]);
         }
         
-        // Serialize column types
-        if (table.columnTypes != null) {
-            for (int col = 0; col < table.cols; col++) {
-                sb.append(" ").append(table.columnTypes[col].name());
-            }
+        // Column types (cols count)
+        for (int col = 0; col < table.cols; col++) {
+            sb.append(" ").append(table.columnTypes[col].name());
         }
         
-        // Serialize equation data only
+        // Cell equations (rows * cols count)
         for (int row = 0; row < table.rows; row++) {
             for (int col = 0; col < table.cols; col++) {
                 String equation = (table.cellEquations[row][col] != null) ? table.cellEquations[row][col] : "";
@@ -239,29 +251,102 @@ public class TableDataManager {
     }
     
     /**
-     * Parse table data from saved string
+     * Simplified parsing (not backward compatible)
+     * Format matches dump(): rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces
+     *                       tableTitle tableUnits
+     *                       [col headers] [row descriptions] [initial values] [column types] [equations]
      */
     public void parseTableData(StringTokenizer st) {
         try {
-            parseDimensions(st);
+            // Parse dimensions and display settings (all simple types in order)
+            table.rows = readInt(st, 0);
+            table.cols = readInt(st, 4);
+            table.cellWidthInGrids = readInt(st, 6);
+            table.cellHeight = readInt(st, 16);
+            table.cellSpacing = readInt(st, 0);
+            table.showInitialValues = readBoolean(st, false);
+            table.decimalPlaces = readInt(st, 2);
+            
+            // Parse text fields
+            table.tableTitle = readString(st, "Table");
+            table.tableUnits = readString(st, "");
+            
+            // Initialize arrays now that we know dimensions
             initializeArrays();
-            parseProperties(st);
-            parseColumnHeaders(st);
-            parseRowDescriptions(st);
-            parseInitialValues(st);
-            parseColumnTypes(st);
-            parseCellEquations(st);
+            
+            // Parse column headers (cols count)
+            for (int col = 0; col < table.cols; col++) {
+                String header = readString(st, "Stock" + (col + 1));
+                // A_L_E columns (last column when cols >= 4) should have blank header
+                table.outputNames[col] = isALEColumn(col) ? "" : header;
+            }
+            
+            // Parse row descriptions (rows count)
+            for (int row = 0; row < table.rows; row++) {
+                table.rowDescriptions[row] = readString(st, "Row" + (row + 1));
+            }
+            
+            // Parse initial values (cols count)
+            for (int col = 0; col < table.cols; col++) {
+                table.initialValues[col] = readDouble(st, 0.0);
+            }
+            
+            // Parse column types (cols count)
+            for (int col = 0; col < table.cols; col++) {
+                table.columnTypes[col] = readColumnType(st, getDefaultColumnType(col));
+            }
+            
+            // Parse cell equations (rows * cols count)
+            for (int row = 0; row < table.rows; row++) {
+                for (int col = 0; col < table.cols; col++) {
+                    table.cellEquations[row][col] = readString(st, "");
+                }
+            }
             
             CirSim.console("TableElm: Successfully parsed table data");
         } catch (Exception e) {
             CirSim.console("TableElm: Error parsing table data: " + e.getMessage());
+            e.printStackTrace();
             initializeDefaults();
         }
     }
     
-    private void parseDimensions(StringTokenizer st) {
-        if (st.hasMoreTokens()) table.rows = Integer.parseInt(st.nextToken());
-        if (st.hasMoreTokens()) table.cols = Integer.parseInt(st.nextToken());
+    // Simple helper methods for reading tokens
+    private int readInt(StringTokenizer st, int defaultValue) {
+        if (!st.hasMoreTokens()) return defaultValue;
+        try {
+            return Integer.parseInt(st.nextToken());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+    
+    private double readDouble(StringTokenizer st, double defaultValue) {
+        if (!st.hasMoreTokens()) return defaultValue;
+        try {
+            return Double.parseDouble(st.nextToken());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+    
+    private boolean readBoolean(StringTokenizer st, boolean defaultValue) {
+        if (!st.hasMoreTokens()) return defaultValue;
+        return Boolean.parseBoolean(st.nextToken());
+    }
+    
+    private String readString(StringTokenizer st, String defaultValue) {
+        if (!st.hasMoreTokens()) return defaultValue;
+        return CustomLogicModel.unescape(st.nextToken());
+    }
+    
+    private ColumnType readColumnType(StringTokenizer st, ColumnType defaultValue) {
+        if (!st.hasMoreTokens()) return defaultValue;
+        try {
+            return ColumnType.valueOf(st.nextToken());
+        } catch (IllegalArgumentException e) {
+            return defaultValue;
+        }
     }
     
     private void initializeArrays() {
@@ -269,136 +354,7 @@ public class TableDataManager {
         table.cellEquations = new String[table.rows][table.cols];
         table.initialValues = new double[table.cols];
         table.rowDescriptions = new String[table.rows];
-    }
-    
-    private void parseProperties(StringTokenizer st) {
-        table.showInitialValues = st.hasMoreTokens() ? Boolean.parseBoolean(st.nextToken()) : false;
-        table.tableUnits = st.hasMoreTokens() ? CustomLogicModel.unescape(st.nextToken()) : "";
-        table.decimalPlaces = st.hasMoreTokens() ? Integer.parseInt(st.nextToken()) : 2;
-        table.tableTitle = st.hasMoreTokens() ? CustomLogicModel.unescape(st.nextToken()) : "Table";
-    }
-    
-    private void parseColumnHeaders(StringTokenizer st) {
-        for (int col = 0; col < table.cols; col++) {
-            if (st.hasMoreTokens()) {
-                String headerValue = CustomLogicModel.unescape(st.nextToken());
-                // For A_L_E columns (last column when cols >= 4), ensure blank header (even if file had a value)
-                if (isALEColumn(col)) {
-                    table.outputNames[col] = "";
-                } else {
-                    table.outputNames[col] = headerValue;
-                }
-            } else {
-                // Default name for missing headers (except A_L_E which should be blank)
-                if (isALEColumn(col)) {
-                    table.outputNames[col] = "";
-                } else {
-                    table.outputNames[col] = "Stock" + (col + 1);
-                }
-            }
-        }
-    }
-    
-    private void parseRowDescriptions(StringTokenizer st) {
-        for (int row = 0; row < table.rows; row++) {
-            if (st.hasMoreTokens()) {
-                String token = st.nextToken();
-                // Check if token is a row description or initial value (backward compatibility)
-                if (isNumeric(token)) {
-                    // It's numeric, so no row descriptions in file - use defaults
-                    setDefaultRowDescriptions();
-                    break;
-                } else {
-                    table.rowDescriptions[row] = CustomLogicModel.unescape(token);
-                }
-            } else {
-                table.rowDescriptions[row] = "Row" + (row + 1);
-            }
-        }
-    }
-    
-    private void setDefaultRowDescriptions() {
-        for (int row = 0; row < table.rows; row++) {
-            table.rowDescriptions[row] = "Row" + (row + 1);
-        }
-    }
-    
-    private boolean isNumeric(String str) {
-        try {
-            Double.parseDouble(str);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
-    
-    private void parseInitialValues(StringTokenizer st) {
-        for (int col = 0; col < table.cols; col++) {
-            if (st.hasMoreTokens()) {
-                try {
-                    table.initialValues[col] = Double.parseDouble(st.nextToken());
-                } catch (NumberFormatException e) {
-                    table.initialValues[col] = 0.0;
-                }
-            } else {
-                table.initialValues[col] = 0.0;
-            }
-        }
-    }
-    
-    private void parseColumnTypes(StringTokenizer st) {
         table.columnTypes = new ColumnType[table.cols];
-        boolean hasColumnTypes = false;
-        
-        for (int col = 0; col < table.cols; col++) {
-            if (st.hasMoreTokens()) {
-                String typeToken = st.nextToken();
-                try {
-                    // Try to parse as ColumnType enum
-                    table.columnTypes[col] = ColumnType.valueOf(typeToken);
-                    hasColumnTypes = true;
-                } catch (IllegalArgumentException e) {
-                    // Not a valid column type (could be "A_L_E" from old format, or start of equations)
-                    if (typeToken.equals("A_L_E")) {
-                        // Old A_L_E column type - use ASSET as placeholder (will be detected positionally)
-                        table.columnTypes[col] = ColumnType.ASSET;
-                        hasColumnTypes = true;
-                    } else {
-                        // Must be start of equations
-                        if (table.cellEquations == null) {
-                            table.cellEquations = new String[table.rows][table.cols];
-                        }
-                        table.cellEquations[0][col] = CustomLogicModel.unescape(typeToken);
-                        break;
-                    }
-                }
-            } else {
-                break;
-            }
-        }
-        
-        if (!hasColumnTypes) {
-            initializeColumnTypes();
-        } else {
-            // Ensure no null values remain in array
-            for (int col = 0; col < table.cols; col++) {
-                if (table.columnTypes[col] == null) {
-                    table.columnTypes[col] = getDefaultColumnType(col);
-                }
-            }
-        }
-    }
-    
-    private void parseCellEquations(StringTokenizer st) {
-        for (int row = 0; row < table.rows; row++) {
-            for (int col = 0; col < table.cols; col++) {
-                if (st.hasMoreTokens()) {
-                    table.cellEquations[row][col] = CustomLogicModel.unescape(st.nextToken());
-                } else {
-                    table.cellEquations[row][col] = "";
-                }
-            }
-        }
     }
     
     /**
