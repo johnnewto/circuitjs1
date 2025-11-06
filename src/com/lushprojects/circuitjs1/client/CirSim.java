@@ -1590,11 +1590,12 @@ public CirSim() {
             frames = 0;
             steps = 0;
             secTime = sysTime;
-            
-            // Call everySecond() for display-only computations (like A-L-E columns)
-            // This happens once per second, not per frame or simulation step
+		}
+        if (sysTime - secTime >= 500) {            
+            // Call every500msec() for display-only computations (like A-L-E columns and table text)
+            // This happens twice per second, not per frame or simulation step
             for (int i = 0; i != elmList.size(); i++) {
-                getElm(i).everySecond();
+                getElm(i).every500msec();
             }
         }
 
@@ -4938,8 +4939,14 @@ public CirSim() {
     public void onDoubleClick(DoubleClickEvent e){
     	e.preventDefault();
  //   	if (!didSwitch && mouseElm != null)
-    	if (mouseElm != null && !(mouseElm instanceof SwitchElm) && !noEditCheckItem.getState())
-    		doEdit(mouseElm);
+    	if (mouseElm != null && !(mouseElm instanceof SwitchElm) && !noEditCheckItem.getState()) {
+    		// Special handling for TableElm - open TableEditDialog instead of standard properties
+    		if (mouseElm instanceof TableElm) {
+    			((TableElm)mouseElm).openTableEditDialog();
+    		} else {
+    			doEdit(mouseElm);
+    		}
+    	}
     }
     
 //    public void mouseEntered(MouseEvent e) {

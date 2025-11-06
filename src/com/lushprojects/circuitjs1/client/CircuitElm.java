@@ -256,7 +256,7 @@ public abstract class CircuitElm implements Editable {
     // called once per second for display-only computations
     // Use this for non-critical updates like computed display values (e.g., A-L-E columns)
     // NOT called during simulation steps - only during rendering cycle
-    void everySecond() {}
+    void every500msec() {}
     
     void delete() {
 	if (mouseElmRef==this)

@@ -43,12 +43,12 @@ public class TableElm extends ChipElm {
     // Storage for computed A-L-E cell values (if A-L-E column exists)
     private double[] computedALEValues;
     
-    // Flag to bypass table dialog intercept when showing properties
-    private boolean showingProperties = false;
-    
     // Performance optimization: cache master column status and A-L-E column index
     private boolean[] isMasterColumn;  // Cached master status for each column
     private int aleColumnIndex = -1;   // Cached A-L-E column index (-1 if none)
+    
+    // Performance: Only redraw text twice per second (every 500ms)
+    // Note: This is now handled via time-based caching in TableRenderer
     
     // Constructor for new table FROM MENU - receives auto-increment flag
     public TableElm(int xx, int yy) {
@@ -242,17 +242,17 @@ public class TableElm extends ChipElm {
         
         double totalALE = 0.0;
         
-        // Debug: log column types once
-        if (rows > 0) {
-            StringBuilder colTypeDebug = new StringBuilder("ALE[" + tableTitle + "] Column types: ");
-            for (int col = 0; col < cols - 1; col++) {
-                String colName = (outputNames != null && col < outputNames.length) ? outputNames[col] : "col" + col;
-                String colType = (columnTypes != null && col < columnTypes.length && columnTypes[col] != null) 
-                    ? columnTypes[col].toString() : "null";
-                colTypeDebug.append(colName).append("=").append(colType).append(" ");
-            }
-            CirSim.console(colTypeDebug.toString());
-        }
+        // // Debug: log column types once
+        // if (rows > 0) {
+        //     StringBuilder colTypeDebug = new StringBuilder("ALE[" + tableTitle + "] Column types: ");
+        //     for (int col = 0; col < cols - 1; col++) {
+        //         String colName = (outputNames != null && col < outputNames.length) ? outputNames[col] : "col" + col;
+        //         String colType = (columnTypes != null && col < columnTypes.length && columnTypes[col] != null) 
+        //             ? columnTypes[col].toString() : "null";
+        //         colTypeDebug.append(colName).append("=").append(colType).append(" ");
+        //     }
+        //     CirSim.console(colTypeDebug.toString());
+        // }
         
         // Calculate A-L-E for each row
         for (int row = 0; row < rows; row++) {
@@ -286,10 +286,10 @@ public class TableElm extends ChipElm {
             computedALEValues[row] = rowALE;
             totalALE += rowALE;
             
-            // Debug logging for troubleshooting
-            if (row == 0 || Math.abs(rowALE) > 0.001) {  // Log first row and non-zero values
-                CirSim.console("ALE[" + tableTitle + "][row" + row + "]: A=" + assets + " L=" + liabilities + " E=" + equity + " => " + rowALE);
-            }
+            // // Debug logging for troubleshooting
+            // if (row == 0 || Math.abs(rowALE) > 0.001) {  // Log first row and non-zero values
+            //     CirSim.console("ALE[" + tableTitle + "][row" + row + "]: A=" + assets + " L=" + liabilities + " E=" + equity + " => " + rowALE);
+            // }
         }
         
         return totalALE;
@@ -616,8 +616,8 @@ public class TableElm extends ChipElm {
     }
     
     @Override
-    public void everySecond() {
-        // Compute A-L-E column once per second
+    public void every500msec() {
+        // Compute A-L-E column twice per second
         // A-L-E is purely a display value - not part of electrical simulation
         if (aleColumnIndex >= 0) {
             double aleSum = calculateALEColumnSum();
@@ -625,6 +625,8 @@ public class TableElm extends ChipElm {
                 lastColumnSums[aleColumnIndex] = aleSum;
             }
         }
+        
+        // Note: Text caching is now handled automatically via time-based mechanism in TableRenderer
     }
 
     @Override
@@ -744,26 +746,17 @@ public class TableElm extends ChipElm {
     
     @Override
     public EditInfo getEditInfo(int n) {
-        // If showing properties dialog, don't intercept - show standard properties
-        if (showingProperties) {
-            if (n == 0) return new EditInfo("Table Title", tableTitle);
-            if (n == 1) return new EditInfo("Cell Width (grids)", cellWidthInGrids, 1, 20);
-            if (n == 2) return new EditInfo("Cell Height", cellHeight, 16, 48);
-            if (n == 3) return new EditInfo("Cell Spacing", cellSpacing, 0, 5);
-            if (n == 4) {
-                EditInfo ei = new EditInfo("Show Initial Values", 0, -1, -1);
-                ei.checkbox = new Checkbox("", showInitialValues);
-                return ei;
-            }
-            return null;
+        // Always show standard properties on right-click
+        // TableEditDialog is opened only via double-click (handled separately)
+        if (n == 0) return new EditInfo("Table Title", tableTitle);
+        if (n == 1) return new EditInfo("Cell Width (grids)", cellWidthInGrids, 1, 20);
+        if (n == 2) return new EditInfo("Cell Height", cellHeight, 16, 48);
+        if (n == 3) return new EditInfo("Cell Spacing", cellSpacing, 0, 5);
+        if (n == 4) {
+            EditInfo ei = new EditInfo("Show Initial Values", 0, -1, -1);
+            ei.checkbox = new Checkbox("", showInitialValues);
+            return ei;
         }
-        
-        // On first call (n=0) in normal mode, immediately open the table edit dialog
-        if (n == 0) {
-            openTableEditDialog();
-            return null; // Return null to prevent standard dialog from showing
-        }
-        
         return null;
     }
 
@@ -784,17 +777,6 @@ public class TableElm extends ChipElm {
         setupPins();
         setPoints();
         sim.analyzeFlag = true;
-    }
-
-    /**
-     * Open standard properties dialog (called from TableEditDialog)
-     */
-    public void openPropertiesDialog() {
-        showingProperties = true;
-        if (sim != null) {
-            sim.doEdit(this);
-        }
-        showingProperties = false;
     }
     
     // Resize table method for use by TableEditDialog

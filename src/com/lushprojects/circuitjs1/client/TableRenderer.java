@@ -16,6 +16,12 @@ import com.lushprojects.circuitjs1.client.TableEditDialog.ColumnType;
 public class TableRenderer {
     private final TableElm table;
     
+    // Cache for cell values to avoid recalculating every frame
+    private double[][] cachedCellValues;
+    private double[] cachedSumValues;
+    private long lastUpdateTime = 0;  // Timestamp of last cache update
+    private static final long UPDATE_INTERVAL_MS = 500; // Update twice per second
+    
     public TableRenderer(TableElm table) {
         this.table = table;
     }
@@ -106,7 +112,14 @@ public class TableRenderer {
         int tableWidth = rowDescColWidth + table.cellSpacing + table.cols * cellWidthPixels + (table.cols + 1) * table.cellSpacing;
         int tableHeight = titleHeight + typeRowHeight + headerRowHeight + initialRowHeight + dataRowsHeight + computedRowHeight;
 
-        // Draw table background
+        // Update cached values if enough time has passed (500ms = twice per second)
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastUpdateTime >= UPDATE_INTERVAL_MS || cachedCellValues == null) {
+            updateCachedValues();
+            lastUpdateTime = currentTime;
+        }
+
+        // Always draw table background and border (every frame to prevent flashing)
         g.setColor(table.needsHighlight() ? CircuitElm.selectColor : Color.white);
         g.fillRect(tableX, tableY, tableWidth, tableHeight);
 
@@ -136,6 +149,7 @@ public class TableRenderer {
         }
 
         // 5. Draw table cells with voltages (includes row descriptions)
+        // Use cached values for drawing
         drawTableCells(g, currentY);
         currentY += table.rows * (table.cellHeight + table.cellSpacing);
 
@@ -145,6 +159,35 @@ public class TableRenderer {
 
         // 7. Draw chip pins and posts at the bottom
         drawPins(g);
+    }
+    
+    /**
+     * Update cached cell and sum values from the table
+     * Called automatically when UPDATE_INTERVAL_MS has elapsed (500ms = twice per second)
+     */
+    private void updateCachedValues() {
+        // Initialize cache arrays if needed
+        if (cachedCellValues == null || cachedCellValues.length != table.rows || 
+            (cachedCellValues.length > 0 && cachedCellValues[0].length != table.cols)) {
+            cachedCellValues = new double[table.rows][table.cols];
+        }
+        if (cachedSumValues == null || cachedSumValues.length != table.cols) {
+            cachedSumValues = new double[table.cols];
+        }
+        
+        // Update cell values
+        for (int row = 0; row < table.rows; row++) {
+            for (int col = 0; col < table.cols; col++) {
+                cachedCellValues[row][col] = table.getVoltageForCell(row, col);
+            }
+        }
+        
+        // Update sum values
+        if (table.lastColumnSums != null) {
+            for (int col = 0; col < table.cols && col < table.lastColumnSums.length; col++) {
+                cachedSumValues[col] = table.lastColumnSums[col];
+            }
+        }
     }
     
     private void drawTitle(Graphics g, int offsetY) {
@@ -291,8 +334,9 @@ public class TableRenderer {
             for (int col = 0; col < table.cols; col++) {
                 int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
                 
-                // Get voltage using equation evaluation
-                double voltage = table.getVoltageForCell(row, col);
+                // Get voltage from cache (updated twice per second)
+                double voltage = (cachedCellValues != null && row < cachedCellValues.length && col < cachedCellValues[row].length) 
+                    ? cachedCellValues[row][col] : 0.0;
                 
                 // Draw cell background - always white
                 g.setColor(Color.white);
@@ -356,10 +400,12 @@ public class TableRenderer {
         for (int col = 0; col < table.cols; col++) {
             int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
             
-            // Get the already-calculated sum from computed values (calculated in doStep())
+            // Get the computed value from cache (updated twice per second)
+            double computedValue = (cachedSumValues != null && col < cachedSumValues.length) 
+                ? cachedSumValues[col] : 0.0;
+            
+            // Get column name for label
             String sumLabelName = table.outputNames[col];
-            Double computedSum = ComputedValues.getComputedValue(sumLabelName);
-            double computedValue = (computedSum != null) ? computedSum.doubleValue() : 0.0;
             
             // Draw sum cell background - always white
             g.setColor(Color.white);

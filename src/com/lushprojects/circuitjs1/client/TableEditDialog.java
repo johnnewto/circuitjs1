@@ -573,8 +573,8 @@ import java.util.Map;
                 // Hide this dialog
                 closeDialog();
                 
-                // Open standard properties dialog
-                tableElement.openPropertiesDialog();
+                // Open standard properties dialog directly
+                sim.doEdit(tableElement);
             }
         });
         buttonPanel.add(propertiesButton);
