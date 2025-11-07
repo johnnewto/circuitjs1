@@ -6,61 +6,53 @@
 
 package com.lushprojects.circuitjs1.client;
 
-class SubtracterElm extends MultiplyElm {
+// Linear subtracter element - subtracts input voltages from first input
+// Vout = V1 - V2 - V3 - ... using VCVS (linear element, no iteration needed)
+class SubtracterElm extends AdderElm {
     public SubtracterElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
         super(xa, ya, xb, yb, f, st);
     }
     
     public SubtracterElm(int xx, int yy) {
         super(xx, yy);
-        exprString = "a";
-        for (int i = 1; i != inputCount; i++)
-            exprString += "-" + (char)('a' + i);
-        parseExpr();
-        // Override the size set by parent to be small by default
-        flags |= FLAG_SMALL; // Set flag to persist small size
-        setSize(1); // Set to small size
-        setPoints(); // Recalculate points with new size
     }
 
     int getDumpType() { return 252; }
-
-    void draw(Graphics g) {
-        drawChip(g);
-        String label = "-"; // Subtracter symbol
-        // Calculate midpoint using rectPointsX and rectPointsY arrays
-        int mid_x = (rectPointsX[0] + rectPointsX[1] + rectPointsX[2] + rectPointsX[3]) / 4;
-        int mid_y = (rectPointsY[0] + rectPointsY[1] + rectPointsY[2] + rectPointsY[3]) / 4;
-
-        boolean selected = needsHighlight();
-        Font f = new Font("SansSerif", selected ? Font.BOLD : 0, 30);
+    
+    String getChipName() { return "Σ-"; }
+    
+    void stamp() {
+        // This is a voltage-controlled voltage source (VCVS)
+        // Vout = V1 - V2 - V3 - ... = V1 + (-1)×V2 + (-1)×V3 + ...
+        // Create voltage source at output
+        sim.stampVoltageSource(nodes[inputCount], 0, pins[inputCount].voltSource);
+        
+        // Add control from first input with coefficient +1.0
+        sim.stampVCVS(nodes[0], 0, 1.0, pins[inputCount].voltSource);
+        
+        // Subtract all other inputs with coefficient -1.0
+        for (int i = 1; i < inputCount; i++) {
+            sim.stampVCVS(nodes[i], 0, -1.0, pins[inputCount].voltSource);
+        }
+    }
+    
+    void drawLabel(Graphics g, int x, int y) {
+        g.save();
+        Font f = new Font("SansSerif", 0, 30);
         g.setFont(f);
-        g.setColor(selected ? selectColor : whiteColor);
-
-        drawCenteredText(g, label, mid_x, mid_y, true);
-
-        // Restore original font
+        g.context.setTextBaseline("middle");
+        g.context.setTextAlign("center");
+        g.setColor(needsHighlight() ? selectColor : whiteColor);
+        g.drawString("−", x, y);  // Use proper minus sign character
         g.restore();
     }
-
-    public void setChipEditValue(int n, EditInfo ei) {
-        if (n == 0) {
-            if (ei.value < 0 || ei.value > 4)
-                return;
-            inputCount = (int) ei.value;
-            exprString = "a";
-            for (int i = 1; i != inputCount; i++)
-                exprString += "-" + (char)('a' + i);
-            setupPins();
-            allocNodes();
-            setPoints();
+    
+    void getInfo(String arr[]) {
+        arr[0] = "subtracter";
+        arr[1] = "Vout = " + getVoltageText(volts[0]);
+        for (int i = 1; i < inputCount; i++) {
+            arr[1] += " - " + getVoltageText(volts[i]);
         }
-        if (n == 1) {
-            flags = ei.changeFlag(flags, FLAG_SMALL);
-            setSize((flags & FLAG_SMALL) != 0 ? 1 : 2);
-            setupPins();
-            allocNodes();
-            setPoints();
-        }
+        arr[2] = "Vout = " + getVoltageText(volts[inputCount]);
     }
 }

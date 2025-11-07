@@ -199,7 +199,7 @@ public class TableDataManager {
      */
     /**
      * Simplified dump format (not backward compatible)
-     * Format: rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces
+     * Format: rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces showCellValues
      *         tableTitle tableUnits
      *         [col headers] [row descriptions] [initial values] [column types] [equations]
      */
@@ -214,6 +214,7 @@ public class TableDataManager {
         sb.append(" ").append(table.cellSpacing);
         sb.append(" ").append(table.showInitialValues);
         sb.append(" ").append(table.decimalPlaces);
+        sb.append(" ").append(table.showCellValues);
         
         // Text fields (escaped)
         sb.append(" ").append(CustomLogicModel.escape(table.tableTitle));
@@ -251,10 +252,13 @@ public class TableDataManager {
     }
     
     /**
-     * Simplified parsing (not backward compatible)
-     * Format matches dump(): rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces
-     *                       tableTitle tableUnits
-     *                       [col headers] [row descriptions] [initial values] [column types] [equations]
+     * Simplified parsing with backward compatibility
+     * New format: rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces showCellValues
+     *             tableTitle tableUnits
+     *             [col headers] [row descriptions] [initial values] [column types] [equations]
+     * Old format: rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces
+     *             tableTitle tableUnits
+     *             [col headers] [row descriptions] [initial values] [column types] [equations]
      */
     public void parseTableData(StringTokenizer st) {
         try {
@@ -267,8 +271,20 @@ public class TableDataManager {
             table.showInitialValues = readBoolean(st, false);
             table.decimalPlaces = readInt(st, 2);
             
-            // Parse text fields
-            table.tableTitle = readString(st, "Table");
+            // Peek ahead to detect file format version
+            // If next token is a boolean, it's the new format with showCellValues
+            // If next token is a string, it's the old format without showCellValues (it's the table title)
+            String nextToken = st.hasMoreTokens() ? st.nextToken() : "Table";
+            if (nextToken.equals("true") || nextToken.equals("false")) {
+                // New format: read showCellValues and then table title
+                table.showCellValues = Boolean.parseBoolean(nextToken);
+                table.tableTitle = readString(st, "Table");
+            } else {
+                // Old format: the token we just read IS the table title
+                table.showCellValues = false; // Default for old files
+                table.tableTitle = CustomLogicModel.unescape(nextToken);
+            }
+            
             table.tableUnits = readString(st, "");
             
             // Initialize arrays now that we know dimensions

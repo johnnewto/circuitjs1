@@ -6,54 +6,113 @@
 
 package com.lushprojects.circuitjs1.client;
 
-// import com.google.gwt.canvas.client.Canvas;
-// import com.lushprojects.circuitjs1.client.util.Locale;
-
-class AdderElm extends MultiplyElm {
+// Linear adder element - adds multiple input voltages
+// Vout = V1 + V2 + V3 + ... using VCVS (linear element, no iteration needed)
+class AdderElm extends ChipElm {
+    int inputCount;
+    
     public AdderElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
         super(xa, ya, xb, yb, f, st);
+        inputCount = Integer.parseInt(st.nextToken());
+        setupPins();
     }
+    
     public AdderElm(int xx, int yy) {
         super(xx, yy);
-        exprString = "a";
-        for (int i = 1; i != inputCount; i++)
-            exprString += "+" + (char)('a' + i);
-        parseExpr();
-        // Override the size set by parent to be small by default
-        flags |= FLAG_SMALL; // Set flag to persist small size
-        setSize(1); // Set to small size
-        setPoints(); // Recalculate points with new size
+        inputCount = 2;
+        setupPins();
+        // Set to small size by default
+        flags |= FLAG_SMALL;
+        setSize(1);
+        setPoints();
     }
-
-
-    int getDumpType() { return 251; }
-
-    void draw(Graphics g) {
-        drawChip(g);
-        String label = "+"; // Adder symbol instead of X
-        // Calculate midpoint using rectPointsX and rectPointsY arrays
-        int mid_x = (rectPointsX[0] + rectPointsX[1] + rectPointsX[2] + rectPointsX[3]) / 4;
-        int mid_y = (rectPointsY[0] + rectPointsY[1] + rectPointsY[2] + rectPointsY[3]) / 4;
-
-        boolean selected = needsHighlight();
-        Font f = new Font("SansSerif", selected ? Font.BOLD : 0, 30);
+    
+    String dump() {
+        return super.dump() + " " + inputCount;
+    }
+    
+    void setupPins() {
+        sizeX = 2;
+        sizeY = inputCount > 2 ? inputCount : 2;
+        pins = new Pin[inputCount + 1];
+        int i;
+        for (i = 0; i != inputCount; i++) {
+            pins[i] = new Pin(i, SIDE_W, "");
+        }
+        pins[inputCount] = new Pin(0, SIDE_E, "");
+        pins[inputCount].output = true;
+        allocNodes();
+    }
+    
+    String getChipName() { return "Σ"; }
+    
+    boolean nonLinear() { return false; }
+    
+    @Override boolean isDigitalChip() { return false; }
+    
+    void stamp() {
+        // This is a voltage-controlled voltage source (VCVS)
+        // Vout = V1 + V2 + V3 + ...
+        // Create voltage source at output
+        sim.stampVoltageSource(nodes[inputCount], 0, pins[inputCount].voltSource);
+        
+        // Add control from each input with coefficient 1.0
+        for (int i = 0; i < inputCount; i++) {
+            sim.stampVCVS(nodes[i], 0, 1.0, pins[inputCount].voltSource);
+        }
+    }
+    
+    void drawLabel(Graphics g, int x, int y) {
+        g.save();
+        Font f = new Font("SansSerif", 0, 30);
         g.setFont(f);
-        g.setColor(selected ? selectColor : whiteColor);
-
-        drawCenteredText(g, label, mid_x, mid_y, true);
-
-        // Restore original font
+        g.context.setTextBaseline("middle");
+        g.context.setTextAlign("center");
+        g.setColor(needsHighlight() ? selectColor : whiteColor);
+        g.drawString("+", x, y);
         g.restore();
     }
 
+    int getDumpType() { return 251; }
+    
+    int getPostCount() { return inputCount + 1; }
+    
+    int getVoltageSourceCount() { return 1; }
+    
+    boolean hasCurrentOutput() { return false; }
+    
+    void setCurrent(int vn, double c) {
+        if (pins[inputCount].voltSource == vn) {
+            pins[inputCount].current = c;
+        }
+    }
+    
+    void getInfo(String arr[]) {
+        arr[0] = "adder";
+        arr[1] = "Vout = ";
+        for (int i = 0; i < inputCount; i++) {
+            if (i > 0) arr[1] += " + ";
+            arr[1] += getVoltageText(volts[i]);
+        }
+        arr[2] = "Vout = " + getVoltageText(volts[inputCount]);
+    }
+    
+    public EditInfo getChipEditInfo(int n) {
+        if (n == 0)
+            return new EditInfo("Number of Inputs", inputCount, 2, 8);
+        if (n == 1) {
+            EditInfo ei = new EditInfo("", 0, -1, -1);
+            ei.checkbox = new Checkbox("Small Size", (flags & FLAG_SMALL) != 0);
+            return ei;
+        }
+        return null;
+    }
+    
     public void setChipEditValue(int n, EditInfo ei) {
         if (n == 0) {
-            if (ei.value < 0 || ei.value > 4)
+            if (ei.value < 2 || ei.value > 8)
                 return;
             inputCount = (int) ei.value;
-            exprString = "a";
-            for (int i = 1; i != inputCount; i++)
-                exprString += "+" + (char)('a' + i);
             setupPins();
             allocNodes();
             setPoints();

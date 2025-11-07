@@ -25,6 +25,7 @@ public class TableElm extends ChipElm {
     protected String tableTitle = "Table"; // Title for the table (displayed in edit dialog and component)
     protected String tableUnits = ""; // Units to display in table cells ("" , $ or V)
     protected int decimalPlaces = 2; // Number of decimal places to show
+    protected boolean showCellValues = false; // Show "equation = value" (true) or just "equation" (false)
     protected ColumnType[] columnTypes; // Type for each column (Asset/Liability/Equity/Computed)
     
     // All cells now use equations
@@ -738,6 +739,11 @@ public class TableElm extends ChipElm {
             ei.checkbox = new Checkbox("", showInitialValues);
             return ei;
         }
+        if (n == 5) {
+            EditInfo ei = new EditInfo("Show Cell Values", 0, -1, -1);
+            ei.checkbox = new Checkbox("", showCellValues);
+            return ei;
+        }
         return null;
     }
 
@@ -753,6 +759,8 @@ public class TableElm extends ChipElm {
             cellSpacing = Math.max(0, (int)ei.value);
         } else if (n == 4) {
             showInitialValues = ei.checkbox.getValue();
+        } else if (n == 5) {
+            showCellValues = ei.checkbox.getValue();
         }
         
         setupPins();

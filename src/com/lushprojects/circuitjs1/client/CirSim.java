@@ -1099,6 +1099,7 @@ public CirSim() {
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Multipler"), "MultiplyElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Multiply by Constant"), "MultiplyConstElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Divider"), "DividerElm"));
+    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Percent/Ratio Meter"), "PercentElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Adder"), "AdderElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Subtracter"), "SubtracterElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Table"), "TableElm"));
@@ -5982,6 +5983,7 @@ public CirSim() {
     	case 'm': return new MemristorElm(x1, y1, x2, y2, f, st);
     	case 'n': return new NoiseElm(x1, y1, x2, y2, f, st);
     	case 'p': return new ProbeElm(x1, y1, x2, y2, f, st);
+    	case 'P': return new PercentElm(x1, y1, x2, y2, f, st);
     	case 'r': return new ResistorElm(x1, y1, x2, y2, f, st);
     	case 's': return new SwitchElm(x1, y1, x2, y2, f, st);
     	case 't': return new TransistorElm(x1, y1, x2, y2, f, st);
@@ -6135,6 +6137,8 @@ public CirSim() {
     		return (CircuitElm) new CurrentElm(x1, y1);
     	if (n=="ProbeElm")
     		return (CircuitElm) new ProbeElm(x1, y1);
+    	if (n=="PercentElm")
+    		return (CircuitElm) new PercentElm(x1, y1);
     	if (n=="DiodeElm")
     		return (CircuitElm) new DiodeElm(x1, y1);
     	if (n=="ZenerElm")

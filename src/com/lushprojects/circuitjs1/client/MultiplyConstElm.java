@@ -48,10 +48,10 @@ class MultiplyConstElm extends ChipElm {
     
     void setupPins() {
         sizeX = 2;
-        sizeY = 2;
+        sizeY = 1;  // Half height since we only have 1 input
         pins = new Pin[2];
-        pins[0] = new Pin(0, SIDE_W, "In");
-        pins[1] = new Pin(0, SIDE_E, "Out");
+        pins[0] = new Pin(0, SIDE_W, "");
+        pins[1] = new Pin(0, SIDE_E, "");
         pins[1].output = true;
         allocNodes();
     }
@@ -74,6 +74,17 @@ class MultiplyConstElm extends ChipElm {
         sim.stampVoltageSource(nodes[1], 0, pins[1].voltSource);
         // stampVCVS makes it controlled by the input voltage with gain coefficient
         sim.stampVCVS(nodes[0], 0, effectiveGain, pins[1].voltSource);
+    }
+    
+    void drawLabel(Graphics g, int x, int y) {
+        g.save();
+        Font f = new Font("SansSerif", 0, 20);  // 2x larger font
+        g.setFont(f);
+        g.context.setTextBaseline("middle");
+        g.context.setTextAlign("center");
+        g.setColor(needsHighlight() ? selectColor : whiteColor);
+        g.drawString("×", x, y);
+        g.restore();
     }
     
     void draw(Graphics g) {
