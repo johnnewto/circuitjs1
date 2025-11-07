@@ -46,6 +46,16 @@ public class GodlyTableElm extends TableElm {
         initIntegration();
     }
     
+    // Get convergence limit (same as VCVSElm/VCCSElm)
+    // More lenient over time to help convergence
+    double getConvergeLimit() {
+        if (sim.subIterations < 10)
+            return .001;
+        if (sim.subIterations < 200)
+            return .01;
+        return .1;
+    }
+    
     // File loading constructor  
     public GodlyTableElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
         // Call the TableElm constructor that accepts StringTokenizer
@@ -155,6 +165,20 @@ public class GodlyTableElm extends TableElm {
         super.reset();
         // Reset integration to initial conditions when circuit is reset
         resetIntegration();
+        
+        // Register initial values with ComputedValues at t=0
+        // This ensures labeled nodes show initial values before simulation starts
+        // Skip A-L-E column by limiting loop (it's always the last column)
+        int colLimit = (cols >= 4) ? (cols - 1) : cols;
+        
+        for (int col = 0; col < colLimit; col++) {
+            // Only register if we are the master for this column
+            if (isMasterForColumn(col)) {
+                String name = outputNames[col];
+                double initialValue = getInitialValue(col);
+                registerComputedValueAsLabeledNode(name, initialValue);
+            }
+        }
     }
     
     @Override
@@ -162,7 +186,7 @@ public class GodlyTableElm extends TableElm {
         super.setupPins();
         // Reinitialize integration arrays when pins/columns change
         ensureArraysSized();
-        // Master column cache is updated by parent's setupPins()
+        // Note: Master column status is checked dynamically via isMasterForColumn()
     }
     
     // Ensure all arrays are properly sized for current column count
@@ -195,11 +219,14 @@ public class GodlyTableElm extends TableElm {
             }
         }
         
-        // Note: Master column cache is managed by parent TableElm
+        // Note: Master column status is determined per-column via isMasterForColumn()
     }
 
     @Override
     public void doStep() {
+        // Track if this element caused convergence failure
+        boolean wasConverged = sim.converged;
+        
         // Update input pin values from circuit
         int postCount = getPostCount();
         for (int i = 0; i < postCount; i++) {
@@ -219,15 +246,18 @@ public class GodlyTableElm extends TableElm {
         // Like VCVSElm: compute outputs and stamp during each iteration
         // Performance optimizations:
         // 1. Skip A-L-E column by limiting loop (it's always the last column)
-        // 2. Use cached master check to reduce redundant lookups
+        // 2. Check master status per-column using isMasterForColumn()
         // 3. Avoid boxing by using primitives throughout
         int colLimit = (cols >= 4) ? (cols - 1) : cols; // Exclude A-L-E column if it exists
         
+        // Get convergence limit for input checking (like VCVSElm)
+        double convergeLimit = getConvergeLimit();
+        
         for (int col = 0; col < colLimit; col++) {
-            // Use parent's optimized master check (cached)
+            // Check if this column is mastered by this table (may vary per column)
             boolean isMasterForThisName = isMasterForColumn(col);
             
-            // Only compute if we are the master for this column
+            // Only compute if we are the master for this specific column
             if (!isMasterForThisName) {
                 continue;
             }
@@ -238,10 +268,18 @@ public class GodlyTableElm extends TableElm {
                 columnSum += getVoltageForCell(row, col);
             }
             
-            // Check for convergence on column sum (avoid boxing by using primitive)
-            double diff = Math.abs(columnSum - lastColumnSums[col]);
-            if (diff > 1e-6) {
+            // Like VCVSElm: check input convergence using dynamic threshold
+            // Check if column sum (our "input") has converged
+            if (Math.abs(columnSum - lastColumnSums[col]) > convergeLimit) {
                 sim.converged = false;
+                // Debug: log convergence failure details
+                if (sim.subIterations > 20) {
+                    CirSim.console("GodlyTable[" + outputNames[col] + "] col " + col + 
+                                 " sum convergence failed: diff=" + Math.abs(columnSum - lastColumnSums[col]) + 
+                                 " limit=" + convergeLimit +
+                                 " (new=" + columnSum + ", old=" + lastColumnSums[col] + 
+                                 ") at t=" + sim.t + " subiter=" + sim.subIterations);
+                }
             }
             lastColumnSums[col] = columnSum;
             
@@ -250,17 +288,35 @@ public class GodlyTableElm extends TableElm {
             integratedValues[col] = integratedValue;
             
             // Like VCVSElm: stamp matrix for nonlinear iteration
-            // Combined check: only stamp if both master AND output (already verified master above)
+            // Combined check: only stamp if both master for this column AND output pin exists
             if (pins[col].output) {
                 int vn = pins[col].voltSource + sim.nodeList.size();
-                // Check output voltage convergence
+                // Check output voltage convergence (like VCVSElm, but with minimum threshold)
                 double outputVoltage = volts[col];
-                if (Math.abs(outputVoltage - integratedValue) > Math.abs(integratedValue) * 0.01 && sim.subIterations < 100) {
+                double voltageDiff = Math.abs(outputVoltage - integratedValue);
+                // Use relative threshold (1%) but with minimum absolute threshold (1e-6)
+                // to avoid false convergence failures when values are near zero
+                double threshold = Math.max(Math.abs(integratedValue) * 0.01, 1e-6);
+                if (voltageDiff > threshold && sim.subIterations < 100) {
                     sim.converged = false;
+                    // Debug: log voltage convergence failure details
+                    if (sim.subIterations > 20) {
+                        CirSim.console("GodlyTable[" + outputNames[col] + "] col " + col + 
+                                     " voltage convergence failed: diff=" + voltageDiff + 
+                                     " threshold=" + threshold +
+                                     " (output=" + outputVoltage + ", integrated=" + integratedValue + 
+                                     ") at t=" + sim.t + " subiter=" + sim.subIterations);
+                    }
                 }
                 // Stamp the right side with the integrated value
                 sim.stampRightSide(vn, integratedValue);
             }
+        }
+        
+        // Debug: overall convergence status for this element
+        if (wasConverged && !sim.converged && sim.subIterations > 20) {
+            CirSim.console("GodlyTable (" + rows + "x" + cols + ") at (" + x + "," + y + 
+                         ") caused convergence failure at subiter=" + sim.subIterations);
         }
     }
     
@@ -273,11 +329,11 @@ public class GodlyTableElm extends TableElm {
         int colLimit = (cols >= 4) ? (cols - 1) : cols; // Exclude A-L-E column if it exists
         
         for (int col = 0; col < colLimit; col++) {
-            // Use parent's optimized master check (cached)
-            boolean isMasterForThisName = isMasterForColumn(col);
+            // Check if this column is mastered by this table (may vary per column)
+            boolean isMasterForThisColumn = isMasterForColumn(col);
             
-            // Only register if we are the master for this column
-            if (isMasterForThisName && integratedValues != null) {
+            // Only register if we are the master for this specific column
+            if (isMasterForThisColumn && integratedValues != null) {
                 String name = outputNames[col];
                 registerComputedValueAsLabeledNode(name, integratedValues[col]);
                 ComputedValues.markComputedThisStep(name);
@@ -288,6 +344,25 @@ public class GodlyTableElm extends TableElm {
                 }
             }
         }
+    }
+    
+    /**
+     * Override to return integrated values (stocks) instead of column sums (flows)
+     * for display in the "Computed" row.
+     * At t=0, returns the initial value.
+     */
+    @Override
+    public double getComputedValueForDisplay(int col) {
+        // At t=0 or before first step, return initial value
+        if (sim.t == 0.0 || integratedValues == null) {
+            return getInitialValue(col);
+        }
+        
+        // Return integrated value (stock) for display
+        if (col >= 0 && col < cols && integratedValues != null && col < integratedValues.length) {
+            return integratedValues[col];
+        }
+        return 0.0;
     }
     
     @Override
@@ -367,5 +442,52 @@ public class GodlyTableElm extends TableElm {
 
     public static void resetColumnIntegration(String columnHeader) {
         ComputedValues.setComputedValue(columnHeader, 0.0);
+    }
+    
+    /**
+     * Debug method to print detailed state information
+     * Call this when investigating convergence issues
+     */
+    public void debugPrintState() {
+        CirSim.console("=== GodlyTable Debug State ===");
+        CirSim.console("Position: (" + x + "," + y + ")");
+        CirSim.console("Size: " + rows + "x" + cols);
+        CirSim.console("Time: t=" + sim.t + ", timeStep=" + sim.timeStep);
+        CirSim.console("Integration Expression: " + (integrationExpr != null ? "valid" : "NULL"));
+        
+        int colLimit = (cols >= 4) ? (cols - 1) : cols;
+        for (int col = 0; col < colLimit; col++) {
+            CirSim.console("--- Column " + col + ": " + outputNames[col] + " ---");
+            CirSim.console("  Master for this column: " + isMasterForColumn(col));
+            
+            if (pins != null && col < pins.length) {
+                Pin p = pins[col];
+                CirSim.console("  Pin output: " + p.output);
+                CirSim.console("  Pin voltage: " + volts[col]);
+                if (p.output && p.voltSource >= 0) {
+                    CirSim.console("  Voltage source index: " + p.voltSource);
+                }
+            }
+            
+            if (lastColumnSums != null && col < lastColumnSums.length) {
+                CirSim.console("  Last column sum: " + lastColumnSums[col]);
+            }
+            
+            if (integratedValues != null && col < integratedValues.length) {
+                CirSim.console("  Integrated value: " + integratedValues[col]);
+            }
+            
+            if (integrationStates != null && col < integrationStates.length && integrationStates[col] != null) {
+                CirSim.console("  Integration lastOutput: " + integrationStates[col].lastOutput);
+            }
+            
+            // Show cell values for this column
+            CirSim.console("  Cell voltages:");
+            for (int row = 0; row < rows; row++) {
+                double cellVoltage = getVoltageForCell(row, col);
+                CirSim.console("    [" + row + "," + col + "]: " + cellVoltage);
+            }
+        }
+        CirSim.console("=== End Debug State ===");
     }
 }

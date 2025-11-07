@@ -120,11 +120,19 @@ public class TableRenderer {
         }
 
         // Always draw table background and border (every frame to prevent flashing)
-        g.setColor(table.needsHighlight() ? CircuitElm.selectColor : Color.white);
+        // If the table failed to converge, show blue outline/background when highlighted
+        Color bgColor;
+        if (table.needsHighlight()) {
+            bgColor = table.nonConverged ? Color.blue : CircuitElm.selectColor;
+        } else {
+            bgColor = Color.white;
+        }
+        g.setColor(bgColor);
         g.fillRect(tableX, tableY, tableWidth, tableHeight);
 
-        // Draw table border
-        g.setColor(Color.black);
+    // Draw table border
+    // Use blue border if non-converged to make the condition visually distinct
+    g.setColor(table.nonConverged ? Color.blue : Color.black);
         g.drawRect(tableX, tableY, tableWidth, tableHeight);
 
         // Draw components in order with consistent positioning
@@ -164,6 +172,13 @@ public class TableRenderer {
     /**
      * Update cached cell and sum values from the table
      * Called automatically when UPDATE_INTERVAL_MS has elapsed (500ms = twice per second)
+     * 
+     * SYNCHRONIZED DISPLAY ARCHITECTURE:
+     * - Cell values: Each table evaluates its own equations (allows different formulas)
+     * - Column sums: Non-master columns display the master's computed sum
+     * 
+     * This allows tables to have independent cell-level calculations while
+     * showing synchronized stock totals in the "Computed" row.
      */
     private void updateCachedValues() {
         // Initialize cache arrays if needed
@@ -175,19 +190,45 @@ public class TableRenderer {
             cachedSumValues = new double[table.cols];
         }
         
-        // Update cell values
+        // Update cell values - all tables evaluate their own equations
+        // This allows different tables to have different formulas even when sharing stock names
         for (int row = 0; row < table.rows; row++) {
             for (int col = 0; col < table.cols; col++) {
                 cachedCellValues[row][col] = table.getVoltageForCell(row, col);
             }
         }
         
-        // Update sum values
-        if (table.lastColumnSums != null) {
-            for (int col = 0; col < table.cols && col < table.lastColumnSums.length; col++) {
-                cachedSumValues[col] = table.lastColumnSums[col];
+        // Update sum values - non-master columns show master's computed sum
+        for (int col = 0; col < table.cols; col++) {
+            boolean isMasterForThisColumn = table.isMasterForColumn(col);
+            
+            if (isMasterForThisColumn) {
+                // Master column: use our own computed value for display
+                // This allows subclasses like GodlyTableElm to override what gets displayed
+                cachedSumValues[col] = table.getComputedValueForDisplay(col);
+            } else {
+                // Non-master column: fetch master's computed sum from ComputedValues
+                String stockName = (table.outputNames != null && col < table.outputNames.length) 
+                    ? table.outputNames[col] : null;
+                
+                if (stockName != null && !stockName.trim().isEmpty()) {
+                    Double masterSum = ComputedValues.getComputedValue(stockName.trim());
+                    cachedSumValues[col] = (masterSum != null) ? masterSum : 0.0;
+                } else {
+                    cachedSumValues[col] = 0.0;
+                }
             }
         }
+    }
+    
+    /**
+     * Reset the renderer cache
+     * Called when the circuit is reset (Reset button pressed)
+     */
+    public void resetCache() {
+        cachedCellValues = null;
+        cachedSumValues = null;
+        lastUpdateTime = 0;
     }
     
     private void drawTitle(Graphics g, int offsetY) {

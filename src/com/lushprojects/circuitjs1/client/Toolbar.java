@@ -35,6 +35,34 @@ public class Toolbar extends HorizontalPanel {
         style.setDisplay(Style.Display.FLEX);
 	setVerticalAlignment(ALIGN_MIDDLE);
 
+        // Add Reset, Run/Stop, and Step buttons on the LEFT side (first)
+        CirSim sim = CirSim.theSim;
+        sim.resetButton = new Button(Locale.LS("Reset"));
+        sim.resetButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                sim.resetAction();
+            }
+        });
+        sim.resetButton.setStylePrimaryName("topButton");
+        add(sim.resetButton);
+        
+        sim.runStopButton = new Button(Locale.LSHTML("<Strong>RUN</Strong>&nbsp;/&nbsp;Stop"));
+        sim.runStopButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                sim.setSimRunning(!sim.simIsRunning());
+            }
+        });
+        add(sim.runStopButton);
+        
+        sim.stepButton = new Button(Locale.LS("Step"));
+        sim.stepButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                sim.stepCircuit();
+            }
+        });
+        sim.stepButton.setStylePrimaryName("topButton");
+        add(sim.stepButton);
+
 	add(createIconButton("ccw", "Undo", new MyCommand("edit", "undo")));
 	add(createIconButton("cw",  "Redo", new MyCommand("edit", "redo")));
 	add(createIconButton("scissors", "Cut", new MyCommand("edit", "cut")));
@@ -78,7 +106,7 @@ public class Toolbar extends HorizontalPanel {
 
         // Spacer to push the mode label to the right
         HorizontalPanel spacer = new HorizontalPanel();
-        //spacer.style.setFlexGrow(1); // Fill remaining space
+        spacer.getElement().getStyle().setProperty("flexGrow", "1");
         add(spacer);
 
         // Create and add the mode label on the right

@@ -235,7 +235,9 @@ public abstract class CircuitElm implements Editable {
 	for (i = 0; i != getPostCount()+getInternalNodeCount(); i++)
 	    volts[i] = 0;
 	curcount = 0;
+	nonConverged = false;
     }
+	
     void draw(Graphics g) {}
     
     // set current for voltage source vn to c.  vn will be the same value as in a previous call to setVoltageSource(n, vn) 
@@ -1132,10 +1134,18 @@ public abstract class CircuitElm implements Editable {
 	return ((x1 == y1 && x2 == y2) || (x1 == y2 && x2 == y1));
     }
     boolean needsHighlight() { 
-	return mouseElmRef==this || selected || sim.plotYElm == this ||
+	return mouseElmRef==this || selected || sim.plotYElm == this || nonConverged ||
 		// Test if the current mouseElm is a ScopeElm and, if so, does it belong to this elm
 		(mouseElmRef instanceof ScopeElm && ((ScopeElm) mouseElmRef).elmScope.getElm()==this); 
     }
+    
+    // Get the color to use for highlighting (blue for non-convergence, selectColor for selection)
+    Color getHighlightColor() {
+	if (nonConverged)
+	    return Color.blue;
+	return selectColor;
+    }
+    
     boolean isSelected() { return selected; }
     boolean canShowValueInScope(int v) { return false; }
     void setSelected(boolean x) { selected = x; }

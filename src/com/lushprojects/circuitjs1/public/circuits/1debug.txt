@@ -1,4 +1,4 @@
-$ 67 0.1 0.14549914146182014 57 5 50 0.000049999999999999996
+$ 67 0.02 0.05817778142098084 42 5 50 0.000049999999999999996
 255 -1424 -632 -1360 -632 0 5 4 6 16 0 true 2 Borrowers \0 Borrowers Debt Bor_equity A-L-E Pay\sInterest Lending Bank\sSpending Govt\sTaxes Govt\sSpends 10 0 0 0 ASSET LIABILITY EQUITY ASSET -Interest \0 -Interest \0 Lend Lend \0 \0 0.5*Spend_banks \0 0.5*Spend_banks \0 -0.5*Tax \0 -0.5*Tax \0 0.5*Spend_Govt \0 0.5*Spend_Govt \0 0.001
 255 -912 -632 -880 -632 0 3 4 6 16 0 true 2 Savers \0 Savers Stock2 Savers_equ A-L-E Bank\sSpending Govt\sTaxes Govt\sSpends 80 0 80 0 ASSET LIABILITY EQUITY ASSET 0.5*Spend_banks \0 0.5*Spend_banks \0 -0.5*Tax \0 -0.5*Tax \0 0.5*Spend_Govt \0 0.5*Spend_Govt \0 0.001
 255 -1288 -840 -1224 -840 0 7 7 6 16 0 true 2 Banks \0 Reserves Debt Gov_Bonds Savers Borrowers Banks A-L-E Lending Pay\sInterest Bank\sSpending Govt\sTaxes Govt\sSpends Govt\sSells\sBonds Interest\son\sBonds 100 0 0 80 10 10 0 ASSET ASSET ASSET LIABILITY LIABILITY EQUITY ASSET \0 Lend \0 \0 Lend \0 \0 \0 \0 \0 \0 -Interest Interest \0 \0 \0 \0 0.5*Spend_banks 0.5*Spend_banks -Spend_banks \0 -Tax \0 \0 -0.5*Tax -0.5*Tax \0 \0 Spend_Govt \0 \0 0.5*Spend_Govt 0.5*Spend_Govt \0 \0 -Bonds \0 Bonds \0 \0 \0 \0 Int_Bonds \0 \0 \0 \0 Int_Bonds \0 0.001
@@ -36,9 +36,9 @@ x -973 -1008 -708 -1005 4 24 BOMD\sWith\sGovernment
 R -912 -272 -944 -272 0 0 40 0.31 0 0 0.5 Spend_frac
 250 -912 -288 -880 -288 1 2 a*b
 250 -912 -208 -880 -208 1 2 a*b
-R -912 -192 -952 -192 0 0 40 0.3 0 0 0.5 Tax_frac
+R -912 -192 -952 -192 0 0 40 0.1 0 0 0.5 Tax_frac
 207 -912 -208 -960 -208 28 GDP
-207 -864 -208 -864 -248 60 Tax
+207 -864 -208 -864 -240 60 Tax
 252 -808 -256 -768 -256 1 2 a-b
 w -864 -288 -808 -256 0
 w -864 -208 -808 -240 0
@@ -63,13 +63,19 @@ g -312 -248 -312 -192 0 0
 g 88 -376 88 -344 0 0
 r 0 -376 88 -376 0 100
 v 88 -376 88 -648 0 0 40 5 0 0 0.5 V
-l 0 -648 0 -376 0 100 0.00021472757907042405 0
-c 0 -376 -208 -376 4 0.0015 4.020869800446576 -10 0
+l 0 -648 0 -376 0 100 0.000004341589987128569 0
+c 0 -376 -208 -376 4 0.0015 -0.034793500121163265 -10 0
 w -208 -648 -208 -376 0
 s 0 -648 88 -648 0 1 false
 r -208 -648 0 -648 0 10
+207 160 -208 112 -208 28 GDP
+207 -928 -144 -976 -144 28 GDP
+207 168 -208 168 -248 60 Tax
+207 216 -208 216 -248 60 Tax
+207 -808 -136 -808 -176 60 Tax2
+258 -928 -144 -920 -144 1 0.1 Tax_frac
 o 13 64 3 12290 0.0001 0.0001 0 1
-o 5 2 0 12290 123.24821351052861 0.0001 1 2 5 3
-o 15 2 0 12290 493.955627453796 0.0001 2 2 15 3
-o 52 4 0 12290 0.1774640808826303 0.0001 3 2 52 3
-o 60 2 0 4099 20 0.00009765625 4 2 60 3
+o 5 2 0 12290 64559295.12678169 0.0001 1 2 5 3
+o 15 2 0 12290 294053072.6096027 0.0001 2 2 15 3
+o 52 4 0 12290 0.4794564548339366 0.0001 3 2 52 3
+o 60 2 0 4099 2.5 0.00009765625 4 2 60 3

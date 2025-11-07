@@ -109,6 +109,7 @@ MouseOutHandler, MouseWheelHandler {
     Random random;
     Button resetButton;
     Button runStopButton;
+    Button stepButton;
     Button dumpMatrixButton;
     MenuItem aboutItem;
     MenuItem importFromLocalFileItem, importFromTextItem, exportAsUrlItem, exportAsLocalFileItem, exportAsTextItem,
@@ -714,20 +715,7 @@ public CirSim() {
 	setToolbar(); // calls setCanvasSize()
 	layoutPanel.add(cv);
 	verticalPanel.add(buttonPanel);
-	buttonPanel.add(resetButton = new Button(Locale.LS("Reset")));
-	resetButton.addClickHandler(new ClickHandler() {
-	    public void onClick(ClickEvent event) {
-		resetAction();
-	    }
-	});
-	resetButton.setStylePrimaryName("topButton");
-	buttonPanel.add(runStopButton = new Button(Locale.LSHTML("<Strong>RUN</Strong>&nbsp;/&nbsp;Stop")));
-	runStopButton.addClickHandler(new ClickHandler() {
-	    public void onClick(ClickEvent event) {
-		setSimRunning(!simIsRunning());
-	    }
-	});
-
+	// Buttons moved to toolbar - see Toolbar.java
 	
 /*
 	dumpMatrixButton = new Button("Dump Matrix");
@@ -1109,6 +1097,7 @@ public CirSim() {
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Wire"), "WireElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Resistor"), "ResistorElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Multipler"), "MultiplyElm"));
+    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Multiply by Constant"), "MultiplyConstElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Divider"), "DividerElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Adder"), "AdderElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Subtracter"), "SubtracterElm"));
@@ -1480,6 +1469,24 @@ public CirSim() {
     		timer.cancel();
 		repaint();
     	}
+    }
+    
+    /**
+     * Step the circuit forward by one simulation iteration
+     * This runs the circuit once even if paused, useful for debugging
+     * or for seeing initial conditions after reset
+     */
+    public void stepCircuit() {
+        // Temporarily enable simulation to run one iteration
+        boolean wasRunning = simRunning;
+        
+        // If stopped, run one update cycle
+        if (!wasRunning) {
+            simRunning = true;
+            updateCircuit();
+            simRunning = false;
+            repaint();
+        }
     }
     
     public boolean simIsRunning() {
@@ -6050,6 +6057,7 @@ public CirSim() {
 		case 255: return new GodlyTableElm(x1, y1, x2, y2, f, st);
 		case 256: return new TableVoltageElm(x1, y1, x2, y2, f, st);
 		case 257: return new DividerElm(x1, y1, x2, y2, f, st);
+		case 258: return new MultiplyConstElm(x1, y1, x2, y2, f, st);
 
 		case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
     	case 368: return new TestPointElm(x1, y1, x2, y2, f, st);
@@ -6364,6 +6372,8 @@ public CirSim() {
 		return (CircuitElm) new CrossSwitchElm(x1, y1);
     	if (n=="MultiplyElm")
     	    		return (CircuitElm) new MultiplyElm(x1, y1);
+    	if (n=="MultiplyConstElm")
+    	    		return (CircuitElm) new MultiplyConstElm(x1, y1);
     	if (n=="DividerElm")
     	    		return (CircuitElm) new DividerElm(x1, y1);
     	if (n=="AdderElm")

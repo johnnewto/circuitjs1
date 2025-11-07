@@ -294,6 +294,7 @@ abstract class ChipElm extends CircuitElm {
 		volts[i] = 0;
 	    }
 	    lastClock = false;
+	    super.reset();
 	}
 	
 	String dump() {
