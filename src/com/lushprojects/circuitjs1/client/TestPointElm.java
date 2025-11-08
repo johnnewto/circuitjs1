@@ -130,6 +130,26 @@ class TestPointElm extends CircuitElm {
         g.drawString(str2, x+(wmax-w2)/2, y+spacing);
         adjustBbox(x, y-h/2, x+wmax, y+spacing+h/2);
         g.restore();
+    }
+    
+    void drawValue(Graphics g, String str, Point pt1, Point pt2) {
+        int w = (int)g.context.measureText(str).getWidth();
+        int h = (int)g.currentFontSize;
+        g.save();
+        g.context.setTextBaseline("middle");
+        int x = pt2.x, y = pt2.y;
+        if (pt1.y != pt2.y) {
+            x -= w/2;
+            y += sign(pt2.y-pt1.y)*h;
+        } else {
+            if (pt2.x > pt1.x)
+                x += 4;
+            else
+                x -= 4+w;
+        }
+        g.drawString(str, x, y);
+        adjustBbox(x, y-h/2, x+w, y+h/2);
+        g.restore();
     }    
     
 
@@ -146,39 +166,41 @@ class TestPointElm extends CircuitElm {
         setBbox(point1, lead1, 0);
         
         //draw selected value
+        String value = "";
         switch (meter) {
             case TP_VOL:
-                s = getUnitText(volts[0],"V");
+                value = getUnitText(volts[0],"V");
                 break;
             case TP_RMS:
-                s = getUnitText(rmsV,"V(rms)");
+                value = getUnitText(rmsV,"V(rms)");
                 break;
             case TP_MAX:
-                s = getUnitText(lastMaxV,"Vpk");
+                value = getUnitText(lastMaxV,"Vpk");
                 break;
             case TP_MIN:
-                s = getUnitText(lastMinV,"Vmin");
+                value = getUnitText(lastMinV,"Vmin");
                 break;
             case TP_P2P:
-                s = getUnitText(lastMaxV-lastMinV,"Vp2p");
+                value = getUnitText(lastMaxV-lastMinV,"Vp2p");
                 break;
             case TP_BIN:
-                s= binaryLevel + "";
+                value = binaryLevel + "";
                 break;
             case TP_FRQ:
-                s = getUnitText(frequency, "Hz");
+                value = getUnitText(frequency, "Hz");
                 break;
             case TP_PER:
-//                s = "percent:"+period + " " + sim.timeStep + " " + sim.simTime + " " + sim.getIterCount();
+//                value = "percent:"+period + " " + sim.timeStep + " " + sim.simTime + " " + sim.getIterCount();
                 break;
             case TP_PWI:
-                s = getUnitText(pulseWidth, "S");
+                value = getUnitText(pulseWidth, "S");
                 break;
             case TP_DUT:
-                s = showFormat.format(dutyCycle);
+                value = showFormat.format(dutyCycle);
                 break;
         }
-        drawText(g, label, s, point1, lead1);
+        s = label + " = " + value;
+        drawValue(g, s, point1, lead1);
         
         setVoltageColor(g, volts[0]);
         if (selected)
@@ -311,7 +333,7 @@ class TestPointElm extends CircuitElm {
     double getVoltageDiff() { return volts[0]; }
     
     void getInfo(String arr[]) {
-        arr[0] = "Test Point";
+        arr[0] = label;
         switch (meter) {
             case TP_VOL:
                 arr[1] = "V = " + getUnitText(volts[0], "V");

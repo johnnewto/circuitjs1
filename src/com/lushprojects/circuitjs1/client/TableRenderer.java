@@ -422,10 +422,18 @@ public class TableRenderer {
     }
     
     /**
-     * Truncate long equations for display
+     * Truncate long equations for display based on cell width
+     * Assumes average character width of 7 pixels at default font size
      */
     private String truncateEquation(String equation) {
-        int maxLength = 8;
+        // Get cell width in pixels
+        int cellWidthPixels = table.getCellWidthPixels();
+        
+        // Average character width is approximately 7 pixels for the default font
+        // Reserve some padding (10 pixels on each side = 20 total)
+        int availableWidth = cellWidthPixels - 0;
+        int maxLength = Math.max(3, availableWidth / 7);
+        
         if (equation.length() > maxLength) {
             return equation.substring(0, maxLength - 2) + "..";
         }

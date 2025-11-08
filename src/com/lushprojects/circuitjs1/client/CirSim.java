@@ -1099,6 +1099,7 @@ public CirSim() {
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Multipler"), "MultiplyElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Multiply by Constant"), "MultiplyConstElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Divider"), "DividerElm"));
+    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Differentiator"), "DifferentiatorElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Percent/Ratio Meter"), "PercentElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Adder"), "AdderElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Subtracter"), "SubtracterElm"));
@@ -6060,6 +6061,7 @@ public CirSim() {
 		case 256: return new TableVoltageElm(x1, y1, x2, y2, f, st);
 		case 257: return new DividerElm(x1, y1, x2, y2, f, st);
 		case 258: return new MultiplyConstElm(x1, y1, x2, y2, f, st);
+		case 259: return new DifferentiatorElm(x1, y1, x2, y2, f, st);
 
 		case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
     	case 368: return new TestPointElm(x1, y1, x2, y2, f, st);
@@ -6380,6 +6382,8 @@ public CirSim() {
     	    		return (CircuitElm) new MultiplyConstElm(x1, y1);
     	if (n=="DividerElm")
     	    		return (CircuitElm) new DividerElm(x1, y1);
+    	if (n=="DifferentiatorElm")
+    	    		return (CircuitElm) new DifferentiatorElm(x1, y1);
     	if (n=="AdderElm")
     	    		return (CircuitElm) new AdderElm(x1, y1);    	
     	if (n=="SubtracterElm")
