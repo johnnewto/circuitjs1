@@ -21,6 +21,7 @@ package com.lushprojects.circuitjs1.client;
 
 // Multiply input by a constant - this is a linear element (VCVS with fixed gain)
 class MultiplyConstElm extends ChipElm {
+    static final int FLAG_SHOWPERCENT = 2;  // If set, show as percentage; otherwise show as multiplier
     double gain;
     String elmName;
     
@@ -103,9 +104,17 @@ class MultiplyConstElm extends ChipElm {
         // Show the name and gain value at the bottom
         String label;
         if (elmName != null && elmName.length() > 0) {
-            label = elmName + " (×" + getUnitText(gain, "") + ")";
+            if (showAsPercent()) {
+                label = elmName + " (×" + getUnitText(gain * 100, "%") + ")";
+            } else {
+                label = elmName + " (×" + getUnitText(gain, "") + ")";
+            }
         } else {
-            label = "×" + getUnitText(gain, "");
+            if (showAsPercent()) {
+                label = "×" + getUnitText(gain * 100, "%");
+            } else {
+                label = "×" + getUnitText(gain, "");
+            }
         }
         drawCenteredText(g, label, bottom_x, bottom_y, true);
         
@@ -119,6 +128,10 @@ class MultiplyConstElm extends ChipElm {
     int getDumpType() { return 258; }
     
     boolean hasCurrentOutput() { return false; }
+    
+    boolean showAsPercent() {
+        return (flags & FLAG_SHOWPERCENT) != 0;
+    }
     
     void setCurrent(int vn, double c) {
         if (pins[1].voltSource == vn) {
@@ -134,7 +147,11 @@ class MultiplyConstElm extends ChipElm {
             arr[1] = "Vin = " + getVoltageText(volts[0]);
         arr[2] = "Vin = " + getVoltageText(volts[0]);
         arr[3] = "Vout = " + getVoltageText(volts[1]);
-        arr[4] = "gain = " + gain;
+        if (showAsPercent()) {
+            arr[4] = "gain = " + getUnitText(gain * 100, "%");
+        } else {
+            arr[4] = "gain = " + gain;
+        }
         if (Math.abs(gain) < 1e-9)
             arr[5] = "warning: gain clamped to 1e-9";
     }
@@ -148,6 +165,11 @@ class MultiplyConstElm extends ChipElm {
         if (n == 1)
             return new EditInfo("Gain (Multiplier)", gain, -100, 100);
         if (n == 2) {
+            EditInfo ei = new EditInfo("", 0, -1, -1);
+            ei.checkbox = new Checkbox("Show as Percentage", showAsPercent());
+            return ei;
+        }
+        if (n == 3) {
             EditInfo ei = new EditInfo("", 0, -1, -1);
             ei.checkbox = new Checkbox("Small Size", (flags & FLAG_SMALL) != 0);
             return ei;
@@ -163,6 +185,9 @@ class MultiplyConstElm extends ChipElm {
             gain = ei.value;
         }
         if (n == 2) {
+            flags = ei.changeFlag(flags, FLAG_SHOWPERCENT);
+        }
+        if (n == 3) {
             flags = ei.changeFlag(flags, FLAG_SMALL);
             setSize((flags & FLAG_SMALL) != 0 ? 1 : 2);
             setupPins();
