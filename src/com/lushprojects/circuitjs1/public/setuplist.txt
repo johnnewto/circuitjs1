@@ -1,7 +1,8 @@
 ### setuplist.txt first line must be a comment
 +Economics
-mky_BOMD.txt BOMD 
-mky_BOMDwithGovt.txt BOMD with Government 
+econ_BOMD.txt BOMD 
+econ_BOMDwithGovt.txt BOMD with Government 
+econ_BOMDSimple.txt Simple BOMD 
 -
 +Debug
 1debug.txt Debug 1

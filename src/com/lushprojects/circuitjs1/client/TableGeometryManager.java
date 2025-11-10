@@ -106,16 +106,26 @@ public class TableGeometryManager {
     
     /**
      * Calculate and set the bounding box for the table
+     * Must match the dimensions used in TableRenderer.draw()
      */
     private void calculateBoundingBox() {
         int cellWidthPixels = getCellWidthPixels();
         int rowDescColWidth = cellWidthPixels;
+        
+        // Calculate table width (matches TableRenderer)
         int tableWidth = rowDescColWidth + table.cellSpacing + 
                         table.cols * cellWidthPixels + (table.cols + 1) * table.cellSpacing;
         
-        int extraRows = getExtraRowCount();
-        int tableHeight = (table.rows + extraRows) * table.cellHeight + 
-                         (table.rows + extraRows + 1) * table.cellSpacing + 20;
+        // Calculate table height (matches TableRenderer.draw() calculations)
+        int titleHeight = 10 + 5; // Title offset + space after
+        int typeRowHeight = table.cellHeight + table.cellSpacing;
+        int headerRowHeight = table.cellHeight + table.cellSpacing;
+        int initialRowHeight = table.showInitialValues ? (table.cellHeight + table.cellSpacing) : 0;
+        int dataRowsHeight = table.rows * (table.cellHeight + table.cellSpacing);
+        int computedRowHeight = table.cellHeight + table.cellSpacing;
+        
+        int tableHeight = titleHeight + typeRowHeight + headerRowHeight + 
+                         initialRowHeight + dataRowsHeight + computedRowHeight;
 
         // Table origin aligns with chip origin
         int tableX = table.x;

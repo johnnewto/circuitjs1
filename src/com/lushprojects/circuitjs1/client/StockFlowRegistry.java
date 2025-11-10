@@ -148,6 +148,126 @@ public class StockFlowRegistry {
     }
     
     /**
+     * Check if a name is registered as a stock (in any table)
+     */
+    public static boolean isStock(String name) {
+        return stockToTables.containsKey(name);
+    }
+    
+    /**
+     * Get all registered stock variable names
+     */
+    public static Set<String> getAllStockNames() {
+        return new HashSet<String>(stockToTables.keySet());
+    }
+    
+    /**
+     * Extract all variable names (identifiers) from all table cell equations
+     * Returns variables that appear in any cell equation across all tables
+     */
+    public static Set<String> getAllCellEquationVariables() {
+        Set<String> variables = new HashSet<String>();
+        
+        // Get all tables from circuit via CirSim
+        CirSim sim = CirSim.theSim;
+        if (sim == null || sim.elmList == null) {
+            return variables;
+        }
+        
+        // Iterate through all circuit elements to find TableElm instances
+        for (int i = 0; i < sim.elmList.size(); i++) {
+            CircuitElm elm = sim.elmList.elementAt(i);
+            if (elm instanceof TableElm) {
+                TableElm table = (TableElm) elm;
+                
+                // Get dimensions
+                int rows = table.getRows();
+                int cols = table.getCols();
+                
+                // Extract variables from each cell equation
+                for (int row = 0; row < rows; row++) {
+                    for (int col = 0; col < cols; col++) {
+                        String equation = table.getCellEquation(row, col);
+                        if (equation != null && !equation.trim().isEmpty()) {
+                            extractVariablesFromEquation(equation, variables);
+                        }
+                    }
+                }
+            }
+        }
+        
+        return variables;
+    }
+    
+    /**
+     * Extract variable names from a single equation string
+     * Adds found variables to the provided set
+     */
+    private static void extractVariablesFromEquation(String equation, Set<String> variables) {
+        if (equation == null || equation.trim().isEmpty()) {
+            return;
+        }
+        
+        // Simple tokenizer - split by operators and parentheses
+        String[] tokens = equation.split("[+\\-*/()\\s,<>=!&|]+");
+        
+        for (String token : tokens) {
+            token = token.trim();
+            if (token.isEmpty()) {
+                continue;
+            }
+            
+            // Check if it's a valid identifier (not a number or keyword)
+            if (isValidIdentifier(token) && !isKeyword(token)) {
+                variables.add(token);
+            }
+        }
+    }
+    
+    /**
+     * Check if a token is a valid identifier
+     */
+    private static boolean isValidIdentifier(String token) {
+        if (token == null || token.length() == 0) {
+            return false;
+        }
+        
+        // First character must be letter or underscore
+        char first = token.charAt(0);
+        if (!((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_')) {
+            return false;
+        }
+        
+        // Remaining characters must be letters, numbers, or underscores
+        for (int i = 1; i < token.length(); i++) {
+            char c = token.charAt(i);
+            if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
+                  (c >= '0' && c <= '9') || c == '_')) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Check if a token is a reserved keyword/function
+     */
+    private static boolean isKeyword(String token) {
+        String lower = token.toLowerCase();
+        return lower.equals("sin") || lower.equals("cos") || lower.equals("tan") ||
+               lower.equals("abs") || lower.equals("exp") || lower.equals("log") ||
+               lower.equals("sqrt") || lower.equals("min") || lower.equals("max") ||
+               lower.equals("pow") || lower.equals("floor") || lower.equals("ceil") ||
+               lower.equals("round") || lower.equals("random") || lower.equals("if") ||
+               lower.equals("pwl") || lower.equals("mod") || lower.equals("step") ||
+               lower.equals("select") || lower.equals("clamp") || lower.equals("pwr") ||
+               lower.equals("pwrs") || lower.equals("pi") || lower.equals("e") ||
+               lower.equals("t") || lower.equals("dt") || lower.equals("true") ||
+               lower.equals("false") || lower.startsWith("last");
+    }
+    
+    /**
      * Invalidate merged rows cache for a stock
      */
     private static void invalidateCache(String stockName) {

@@ -27,6 +27,7 @@ package com.lushprojects.circuitjs1.client;
 import java.util.Vector;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -221,8 +222,8 @@ MouseOutHandler, MouseWheelHandler {
 
     double minFrameRate = 20;
 	boolean adjustTimeStep;
-	// Set developer mode on by default
-	boolean developerMode = true;
+	// Set developer mode off by default
+	boolean developerMode = false;
 	static final int HINT_LC = 1;
 	static final int HINT_RC = 2;
 	static final int HINT_3DB_C = 3;
@@ -1102,12 +1103,10 @@ public CirSim() {
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Differentiator"), "DifferentiatorElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Percent/Ratio Meter"), "PercentElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Adder"), "AdderElm"));
-		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Subtracter"), "SubtracterElm"));
-		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Table"), "TableElm"));
-		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add ImprovedTableElm"), "ImprovedTableElm"));		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Godly Table"), "GodlyTableElm"));
-		// mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Spare"), "Spare"));
-
-
+	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Subtracter"), "SubtracterElm"));
+	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Table"), "TableElm"));
+	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Godly Table"), "GodlyTableElm"));
+	// mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Spare"), "Spare"));
     	MenuBar passMenuBar = new MenuBar(true);
     	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Capacitor"), "CapacitorElm"));
     	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Capacitor (polarized)"), "PolarCapacitorElm"));
@@ -1550,8 +1549,8 @@ public CirSim() {
         if (printableCheckItem.getState()) {
             CircuitElm.whiteColor = Color.black;
             CircuitElm.lightGrayColor = Color.black;
-            g.setColor(Color.white);
-            cv.getElement().getStyle().setBackgroundColor("#fff");
+            g.setColor(new Color(245, 245, 245));
+            cv.getElement().getStyle().setBackgroundColor("#f5f5f5");
         } else {
             CircuitElm.whiteColor = Color.white;
             CircuitElm.lightGrayColor = Color.lightGray;
@@ -1724,10 +1723,13 @@ public CirSim() {
 
         perfmon.stopContext(); // updateCircuit
         
+        // Always show framerate
+        g.setColor(CircuitElm.whiteColor);
+        int height = 15;
+        int increment = 15;
+        g.drawString("Framerate: " + CircuitElm.showFormat.format(framerate), 10, height);
+        
         if (developerMode) {
-            int height = 15;
-            int increment = 15;
-            g.drawString("Framerate: " + CircuitElm.showFormat.format(framerate), 10, height);
             g.drawString("Steprate: " + CircuitElm.showFormat.format(steprate), 10, height += increment);
             g.drawString("Steprate/iter: " + CircuitElm.showFormat.format(steprate / getIterCount()), 10, height += increment);
             g.drawString("iterc: " + CircuitElm.showFormat.format(getIterCount()), 10, height += increment);
@@ -3950,9 +3952,19 @@ public CirSim() {
 	TransistorModel.clearDumpedFlags();
 	
 	String dump = dumpOptions();
+	
+	// Create sorted copy of element list, grouped by dump type
+	Vector<CircuitElm> sortedElms = new Vector<CircuitElm>(elmList);
+	Collections.sort(sortedElms, new Comparator<CircuitElm>() {
+	    public int compare(CircuitElm e1, CircuitElm e2) {
+		int dt1 = e1.getDumpType();
+		int dt2 = e2.getDumpType();
+		return Integer.compare(dt1, dt2);
+	    }
+	});
 		
-	for (i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
+	for (i = 0; i != sortedElms.size(); i++) {
+	    CircuitElm ce = sortedElms.get(i);
 	    String m = ce.dumpModel();
 	    if (m != null && !m.isEmpty())
 		dump += m + "\n";
@@ -6052,17 +6064,15 @@ public CirSim() {
     	case 215: return new CCCSElm(x1, y1, x2, y2, f, st);
     	case 216: return new OhmMeterElm(x1, y1, x2, y2, f, st);
     	
-    	case 250: return new MultiplyElm(x1, y1, x2, y2, f, st);
+   		case 250: return new MultiplyElm(x1, y1, x2, y2, f, st);
    		case 251: return new AdderElm(x1, y1, x2, y2, f, st);
   		case 252: return new SubtracterElm(x1, y1, x2, y2, f, st);
   		case 253: return new TableElm(x1, y1, x2, y2, f, st);
-		case 254: return new ImprovedTableElm(x1, y1, x2, y2, f, st);
 		case 255: return new GodlyTableElm(x1, y1, x2, y2, f, st);
 		case 256: return new TableVoltageElm(x1, y1, x2, y2, f, st);
 		case 257: return new DividerElm(x1, y1, x2, y2, f, st);
 		case 258: return new MultiplyConstElm(x1, y1, x2, y2, f, st);
-		case 259: return new DifferentiatorElm(x1, y1, x2, y2, f, st);
-
+		case 259: return new DifferentiatorElm(x1, y1, x2, y2, f, st);		
 		case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
     	case 368: return new TestPointElm(x1, y1, x2, y2, f, st);
     	case 370: return new AmmeterElm(x1, y1, x2, y2, f, st);
@@ -6392,14 +6402,10 @@ public CirSim() {
     	//     		return (CircuitElm) new Spare(x1, y1);   
     	if (n=="TableElm")
     	    		return (CircuitElm) new TableElm(x1, y1);   
-    	if (n=="GodlyTableElm")
-    	    		return (CircuitElm) new GodlyTableElm(x1, y1);
-		if (n.equals("ImprovedTableElm")) 
-					return (CircuitElm) new ImprovedTableElm(x1, y1);			
-		if (n.equals("TableVoltageElm")) 
-					return (CircuitElm) new TableVoltageElm(x1, y1);			
-					
-		// handle CustomCompositeElm:modelname
+   	if (n=="GodlyTableElm")
+   	    		return (CircuitElm) new GodlyTableElm(x1, y1);
+	if (n.equals("TableVoltageElm")) 
+				return (CircuitElm) new TableVoltageElm(x1, y1);		// handle CustomCompositeElm:modelname
     	if (n.startsWith("CustomCompositeElm:")) {
     	    int ix = n.indexOf(':')+1;
     	    String name = n.substring(ix);

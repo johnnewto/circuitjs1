@@ -22,20 +22,27 @@ package com.lushprojects.circuitjs1.client;
 import java.util.Vector;
 
 import com.lushprojects.circuitjs1.client.util.Locale;
+import com.google.gwt.event.dom.client.KeyUpHandler;
+import com.google.gwt.event.dom.client.KeyUpEvent;
 
 class TextElm extends GraphicElm {
     String text;
     Vector<String> lines;
     int size;
+    String colorRGBA; // RGBA format: red, green, blue, alpha (8 hex digits)
+    boolean isBeingEdited; // Flag to disable highlight during editing
 //    final int FLAG_CENTER = 1;
     final int FLAG_BAR = 2;
     final int FLAG_ESCAPE = 4;
+    final int FLAG_OPPOSITE_BG = 8; // Use opposite background color
     public TextElm(int xx, int yy) {
 	super(xx, yy);
 	text = "hello";
 	lines = new Vector<String>();
 	lines.add(text);
 	size = 24;
+	colorRGBA = "808080FF"; // Default: opaque gray
+	isBeingEdited = false;
     }
     public TextElm(int xa, int ya, int xb, int yb, int f,
 		   StringTokenizer st) {
@@ -50,6 +57,12 @@ class TextElm extends GraphicElm {
 	} else {
 	    // new-style dump
 	    text = CustomLogicModel.unescape(text); 
+	}
+	// Load color if present (backward compatible)
+	if (st.hasMoreTokens()) {
+	    colorRGBA = st.nextToken();
+	} else {
+	    colorRGBA = "808080FF"; // Default: opaque gray
 	}
 	split();
     }
@@ -74,7 +87,7 @@ class TextElm extends GraphicElm {
     }
     String dump() {
 	flags |= FLAG_ESCAPE;
-	return super.dump() + " " + size + " " + CustomLogicModel.escape(text);
+	return super.dump() + " " + size + " " + CustomLogicModel.escape(text) + " " + colorRGBA;
 	//return super.dump() + " " + size + " " + text;
     }
     int getDumpType() { return 'x'; }
@@ -89,7 +102,20 @@ class TextElm extends GraphicElm {
 	//g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
 	//	RenderingHints.VALUE_ANTIALIAS_ON);
 	g.save();
-	g.setColor(needsHighlight() ? selectColor : lightGrayColor);
+	
+	// Draw opposite background if flag is set
+	if ((flags & FLAG_OPPOSITE_BG) != 0) {
+	    drawOppositeBackground(g);
+	}
+	
+	// Apply color with alpha blending
+	// Disable highlight when being edited so user can see color changes immediately
+	if (needsHighlight() && !isBeingEdited) {
+	    g.setColor(selectColor);
+	} else {
+	    applyColorWithAlpha(g);
+	}
+	
 	Font f = new Font("SansSerif", 0, size);
 	g.setFont(f);
 //	FontMetrics fm = g.getFontMetrics();
@@ -120,6 +146,83 @@ class TextElm extends GraphicElm {
 	y2 = boundingBox.y + boundingBox.height;
 	g.restore();
     }
+    
+    /**
+     * Draw opposite background color behind text
+     * White background on black canvas, black background on white canvas
+     */
+    void drawOppositeBackground(Graphics g) {
+	// Calculate text bounding box first
+	g.save();
+	Font f = new Font("SansSerif", 0, size);
+	g.setFont(f);
+	
+	int maxw = 0;
+	for (int i = 0; i != lines.size(); i++) {
+	    int w = (int)g.context.measureText((String) (lines.elementAt(i))).getWidth();
+	    if (w > maxw)
+		maxw = w;
+	}
+	
+	int totalHeight = lines.size() * (g.currentFontSize + 3);
+	int padding = 4;
+	
+	// Determine background color based on canvas mode
+	boolean isWhiteBackground = sim.printableCheckItem.getState();
+	String bgColor = isWhiteBackground ? "rgba(0, 0, 0, 0.3)" : "rgba(255, 255, 255, 0.3)";
+	
+	// Draw semi-transparent background rectangle
+	g.context.setFillStyle(bgColor);
+	g.context.fillRect(x - padding, y - g.currentFontSize - padding, 
+	                   maxw + 2 * padding, totalHeight + 2 * padding);
+	
+	g.restore();
+    }
+    
+    /**
+     * Parse RGBA color string and apply to graphics context with alpha blending
+     * Supports formats: "RRGGBBAA" or "RR GG BB AA"
+     */
+    void applyColorWithAlpha(Graphics g) {
+	try {
+	    // Remove spaces from input
+	    String colorHex = colorRGBA.replaceAll("\\s+", "");
+	    
+	    // Ensure we have exactly 8 hex digits
+	    if (colorHex.length() != 8) {
+		// Fallback to gray if invalid
+		g.setColor(lightGrayColor);
+		return;
+	    }
+	    
+	    // Parse RGBA components
+	    int red = Integer.parseInt(colorHex.substring(0, 2), 16);
+	    int green = Integer.parseInt(colorHex.substring(2, 4), 16);
+	    int blue = Integer.parseInt(colorHex.substring(4, 6), 16);
+	    int alpha = Integer.parseInt(colorHex.substring(6, 8), 16);
+	    
+	    // Apply color with alpha using rgba() format
+	    double alphaValue = alpha / 255.0;
+	    String rgbaColor = "rgba(" + red + "," + green + "," + blue + "," + alphaValue + ")";
+	    g.setColor(rgbaColor);
+	} catch (Exception e) {
+	    // Fallback to default if parsing fails
+	    g.setColor(lightGrayColor);
+	}
+    }
+    
+    /**
+     * Format RGBA string for display (adds spaces between components)
+     */
+    String formatColorForDisplay() {
+	String hex = colorRGBA.replaceAll("\\s+", "");
+	if (hex.length() == 8) {
+	    return hex.substring(0, 2) + " " + hex.substring(2, 4) + " " + 
+	           hex.substring(4, 6) + " " + hex.substring(6, 8);
+	}
+	return hex;
+    }
+    
     public EditInfo getEditInfo(int n) {
 	if (n == 0) {
 	    EditInfo ei = new EditInfo("Text", 0, -1, -1);
@@ -132,6 +235,32 @@ class TextElm extends GraphicElm {
 	    EditInfo ei = new EditInfo("", 0, -1, -1);
 	    ei.checkbox =
 		new Checkbox("Draw Bar On Top", (flags & FLAG_BAR) != 0);
+	    return ei;
+	}
+	if (n == 3) {
+	    EditInfo ei = new EditInfo("Color (RGBA hex: RR GG BB AA or RRGGBBAA)", 0, -1, -1);
+	    ei.text = formatColorForDisplay();
+	    // Add handler for immediate color updates as user types
+	    ei.keyUpHandler = new KeyUpHandler() {
+		public void onKeyUp(KeyUpEvent event) {
+		    String input = ei.textf.getText().trim();
+		    String newColor = normalizeColorInput(input);
+		    if (!newColor.equals(colorRGBA)) {
+			colorRGBA = newColor;
+			isBeingEdited = true;
+			// Request redraw to show color immediately
+			if (sim != null) {
+			    sim.needAnalyze();
+			}
+		    }
+		}
+	    };
+	    return ei;
+	}
+	if (n == 4) {
+	    EditInfo ei = new EditInfo("", 0, -1, -1);
+	    ei.checkbox =
+		new Checkbox("Opposite Background", (flags & FLAG_OPPOSITE_BG) != 0);
 	    return ei;
 	}
 	return null;
@@ -149,7 +278,54 @@ class TextElm extends GraphicElm {
 	    else
 		flags &= ~FLAG_BAR;
 	}
+	if (n == 3) {
+	    String input = ei.textf.getText().trim();
+	    // Validate and normalize the color input
+	    String newColor = normalizeColorInput(input);
+	    if (!newColor.equals(colorRGBA)) {
+		colorRGBA = newColor;
+		// Mark as being edited to disable highlight and show color immediately
+		isBeingEdited = true;
+		// Reset the flag after a brief moment (will be handled by next draw cycle)
+		// The flag will be cleared when user clicks elsewhere
+	    }
+	}
+	if (n == 4) {
+	    if (ei.checkbox.getState())
+		flags |= FLAG_OPPOSITE_BG;
+	    else
+		flags &= ~FLAG_OPPOSITE_BG;
+	}
     }
+    
+    // Override needsHighlight to handle editing state
+    @Override
+    public boolean needsHighlight() {
+	boolean highlight = super.needsHighlight();
+	// Clear editing flag if no longer highlighted (user clicked elsewhere)
+	if (!highlight && isBeingEdited) {
+	    isBeingEdited = false;
+	}
+	return highlight;
+    }
+    
+    /**
+     * Normalize color input to RRGGBBAA format (no spaces)
+     * Accepts "RRGGBBAA" or "RR GG BB AA" formats
+     */
+    String normalizeColorInput(String input) {
+	// Remove all spaces
+	String normalized = input.replaceAll("\\s+", "");
+	
+	// Validate hex format and length
+	if (normalized.matches("[0-9A-Fa-f]{8}")) {
+	    return normalized.toUpperCase();
+	}
+	
+	// If invalid, return current color unchanged
+	return colorRGBA;
+    }
+    
 //    boolean isCenteredText() { return (flags & FLAG_CENTER) != 0; }
     void getInfo(String arr[]) {
 	arr[0] = text;

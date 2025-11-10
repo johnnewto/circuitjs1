@@ -25,6 +25,8 @@ import com.google.gwt.user.client.ui.HorizontalPanel;
 import com.google.gwt.user.client.ui.ScrollPanel;
 import com.google.gwt.user.client.ui.Grid;
 import com.google.gwt.user.client.ui.TextBox;
+import com.google.gwt.user.client.ui.SuggestBox;
+import com.google.gwt.user.client.ui.MultiWordSuggestOracle;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
 
@@ -220,6 +222,7 @@ import java.util.Map;
     private Grid editGrid;
     private Button applyButton;
     private Label statusLabel;
+    private TextBox tableTitleBox;
     
     // Data storage for dynamic content
     private String[][] cellData;  // Editable cell content
@@ -515,9 +518,28 @@ import java.util.Map;
         mainPanel.setWidth("100%");
         setWidget(mainPanel);
         
+        // Table title editor at the top
+        HorizontalPanel titlePanel = new HorizontalPanel();
+        // titlePanel.setSpacing(1);
+        titlePanel.addStyleName("topSpace");
+        Label titleLabel = new Label("Table Title:");
+        titleLabel.setWidth("80px");
+        titlePanel.add(titleLabel);
+        
+        tableTitleBox = new TextBox();
+        tableTitleBox.setText(tableElement.getTableTitle());
+        tableTitleBox.setWidth("300px");
+        tableTitleBox.addKeyUpHandler(new KeyUpHandler() {
+            public void onKeyUp(KeyUpEvent event) {
+                markChanged();
+            }
+        });
+        titlePanel.add(tableTitleBox);
+        mainPanel.add(titlePanel);
+        
         // Scrollable table area (main content)
         scrollPanel = new ScrollPanel();
-        scrollPanel.setSize("800px", "500px");
+        scrollPanel.setSize("800px", "250px");
         scrollPanel.addStyleName("topSpace");
         mainPanel.add(scrollPanel);
         
@@ -616,9 +638,9 @@ import java.util.Map;
         testPanel.addStyleName("topSpace");
         
         // Toggle button to show/hide tests
-        final Button toggleButton = new Button("🧪 Hide Sync Tests");
+        final Button toggleButton = new Button("🧪 Show Sync Tests");
         toggleButton.addClickHandler(new ClickHandler() {
-            private boolean expanded = true;
+            private boolean expanded = false;
             public void onClick(ClickEvent event) {
                 expanded = !expanded;
                 testPanel.setVisible(expanded);
@@ -627,7 +649,7 @@ import java.util.Map;
         });
         mainPanel.add(toggleButton);
         
-        testPanel.setVisible(true);
+        testPanel.setVisible(false);
         
         Label testLabel = new Label("Stock Flow Synchronization Test Cases:");
         testLabel.getElement().getStyle().setProperty("fontWeight", "bold");
@@ -984,7 +1006,7 @@ import java.util.Map;
                     aleLabel.setTitle("Computed: Assets - Liabilities - Equity");
                     editGrid.setWidget(gridRow, DATA_START_COL + col, aleLabel);
                 } else {
-                    TextBox cellBox = createCellTextBox(row, col);
+                    SuggestBox cellBox = createCellTextBox(row, col);
                     editGrid.setWidget(gridRow, DATA_START_COL + col, cellBox);
                 }
             }
@@ -1117,6 +1139,47 @@ import java.util.Map;
     // =============================================================================
     
     /**
+     * Create autocomplete oracle with all available variables
+     */
+    private MultiWordSuggestOracle createVariableOracle() {
+        MultiWordSuggestOracle oracle = new MultiWordSuggestOracle();
+        
+        // Add labeled node names
+        if (LabeledNodeElm.labelList != null && !LabeledNodeElm.labelList.isEmpty()) {
+            for (String labelName : LabeledNodeElm.labelList.keySet()) {
+                oracle.add(labelName);
+            }
+        }
+        
+        // Add stock variables (column headers from this and other tables)
+        java.util.Set<String> stockNames = StockFlowRegistry.getAllStockNames();
+        if (stockNames != null && !stockNames.isEmpty()) {
+            for (String stockName : stockNames) {
+                oracle.add(stockName);
+            }
+        }
+        
+        // Add variables used in cell equations
+        java.util.Set<String> cellVariables = StockFlowRegistry.getAllCellEquationVariables();
+        if (cellVariables != null && !cellVariables.isEmpty()) {
+            for (String varName : cellVariables) {
+                oracle.add(varName);
+            }
+        }
+        
+        // Add current table's stock values
+        if (stockValues != null) {
+            for (String stock : stockValues) {
+                if (stock != null && !stock.trim().isEmpty()) {
+                    oracle.add(stock);
+                }
+            }
+        }
+        
+        return oracle;
+    }
+    
+    /**
      * Create textbox for editing flow descriptions
      */
     private TextBox createFlowDescriptionTextBox(final int row) {
@@ -1207,17 +1270,22 @@ import java.util.Map;
     }
     
     /**
-     * Create textbox for editing cell equations
+     * Create textbox for editing cell equations with autocomplete
      */
-    private TextBox createCellTextBox(final int row, final int col) {
-        final TextBox textBox = new TextBox();
-        textBox.setText(cellData[row][col]);
-        textBox.addStyleName("tableCellInput");
+    private SuggestBox createCellTextBox(final int row, final int col) {
+        // Create autocomplete oracle with all available variables
+        MultiWordSuggestOracle oracle = createVariableOracle();
         
-        textBox.addKeyUpHandler(new KeyUpHandler() {
+        final SuggestBox suggestBox = new SuggestBox(oracle);
+        suggestBox.setText(cellData[row][col]);
+        suggestBox.addStyleName("tableCellInput");
+        suggestBox.setWidth("100%");
+        
+        // Add key up handler to track changes
+        suggestBox.getValueBox().addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
-                cellData[row][col] = textBox.getText();
-                textBox.addStyleName("modified");
+                cellData[row][col] = suggestBox.getText();
+                suggestBox.addStyleName("modified");
                 markChanged();
                 
                 // Recalculate A_L_E columns when any cell changes
@@ -1225,13 +1293,14 @@ import java.util.Map;
             }
         });
         
-        textBox.addFocusHandler(new FocusHandler() {
+        // Select all on focus
+        suggestBox.getValueBox().addFocusHandler(new FocusHandler() {
             public void onFocus(FocusEvent event) {
-                textBox.selectAll();
+                suggestBox.getValueBox().selectAll();
             }
         });
         
-        return textBox;
+        return suggestBox;
     }
     
     /**
@@ -1368,8 +1437,32 @@ import java.util.Map;
         
         cellData = newCellData;
         
-        // IMMEDIATE UPDATE: Resize TableElm and apply all changes right away
+        // IMMEDIATE UPDATE: Rebuild row descriptions with new row inserted
+        // This must be done BEFORE resizeTable() to ensure proper copying
+        String[] newRowDescriptions = new String[dataRows];
+        
+        // Copy row descriptions up to the insertion point
+        for (int r = 0; r <= rowIndex; r++) {
+            String desc = tableElement.getRowDescription(r);
+            newRowDescriptions[r] = desc != null ? desc : "";
+        }
+        
+        // Initialize new row description
+        newRowDescriptions[rowIndex + 1] = "";
+        
+        // Copy remaining row descriptions
+        for (int r = rowIndex + 1; r < dataRows - 1; r++) {
+            String desc = tableElement.getRowDescription(r);
+            newRowDescriptions[r + 1] = desc != null ? desc : "";
+        }
+        
+        // Now resize table and apply changes
         tableElement.resizeTable(dataRows, dataCols);
+        
+        // Apply row descriptions to resized table
+        for (int row = 0; row < dataRows; row++) {
+            tableElement.setRowDescription(row, newRowDescriptions[row]);
+        }
         
         // Apply all cell equations to TableElm
         for (int row = 0; row < dataRows; row++) {
@@ -1777,6 +1870,12 @@ import java.util.Map;
         
         // Apply data changes with new size
         if (tableElement != null) {
+            // Apply table title
+            String newTitle = tableTitleBox.getText().trim();
+            if (!newTitle.isEmpty()) {
+                tableElement.setTableTitle(newTitle);
+            }
+            
             tableElement.resizeTable(dataRows, dataCols);
             
             // Apply cell equations

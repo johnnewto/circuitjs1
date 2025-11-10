@@ -1,49 +1,66 @@
-$ 1 0.05 0.34903429574618416 50 5 50 5e-11
-255 112 144 208 144 0 3 4 6 16 0 true 2 true Banks \0 Loans Deposits Banks_e A-L-E Banks\sLoans Interest\spayments Bank\sSpending 100 90 10 0 ASSET LIABILITY EQUITY ASSET Credit Credit \0 \0 \0 -Interest Interest \0 \0 Spend_banks Spend_banks \0 0.001
-255 624 144 720 144 0 3 4 6 16 0 true 2 false Non-Bank\sPrivate\sSector \0 Deposits Loans Private_e A-L-E Banks\sLoans Interest\spayments Bank\sSpending 90 100 -10 0 ASSET LIABILITY EQUITY ASSET Credit Credit \0 \0 -Interest \0 -Interest \0 Spend_banks \0 Spend_banks \0 0.001
-207 144 384 96 384 60 Loans
-258 144 384 176 384 3 0.05 Interest_rate
-207 192 384 240 384 60 Interest
-207 560 384 608 384 60 Spend_Banks
-258 512 384 544 384 3 1 freq_Banks
-207 512 384 464 384 60 Banks_e
-207 976 400 976 368 60 Money
-258 1008 400 1040 400 1 2 Velocity
-207 928 400 880 400 60 Deposits
-207 432 672 512 672 60 Deposits
-207 928 416 880 416 60 Banks_e
-207 432 656 512 656 60 Loans
-251 928 400 960 400 1 2
-250 208 576 224 576 1 2 a*b
-w 976 400 1008 400 0
-207 1056 400 1088 400 60 GDP
-207 96 592 48 592 60 GDP
-207 256 576 304 576 60 Credit
-w 96 576 208 576 0
-w 208 592 96 592 0
-207 576 544 528 544 60 GDP
-257 640 560 656 560 1 2 a*(1/(b!\q0?b:1e-9))
-w 576 576 640 576 0
-w 688 560 704 560 0
-259 576 544 608 544 1 1 dadt
-w 640 560 624 544 0
-w 576 544 576 576 0
-x 480 351 642 354 4 24 Bank\sSpending
-x 809 354 881 357 4 24 Money
-x 71 355 264 358 4 24 Interest\sPayments
-x 1080 381 1271 384 4 16 GDP\sfrom\sMoney\sTurnover
-x 506 505 640 508 4 24 Growth\sRate
-x 43 495 329 498 4 24 Credit\sas\sa\sfraction\sof\sGDP
-w 96 560 96 544 0
-207 432 688 512 688 60 Banks_e
-258 96 544 128 544 1 100 \0
-w 96 576 96 560 0
-368 144 544 192 544 1 0 Credit%GDP
-368 752 560 800 560 1 0 Growth_rate
-258 704 560 736 560 1 100 \0
-R 96 544 48 544 0 1 0.1 0.2 0 0 0.5 Credit_Ratio
-x 148 94 1001 97 4 20 Model\sshows\sa\ssimple\seconomic\smodel,\sin\swhich\sbank\slending\screates\sboth\sLoans\sand\sDeposits.
-x 140 115 1084 118 4 20 Borrowers\sthen\spay\sinterest,\sand\sthe\sbanks\spurchase\sgoods\sand\sservices\sfrom\sthe\snon-bank\sprivate\ssector.
-o 22 4 0 12290 1120.6149727869388 0.0001 0 2 22 3 GDP
-o 13 4 0 12290 3032.663224543772 0.0001 1 6 13 3 11 0 11 3 36 0 36 3
-o 40 1 0 4098 160 25.6 2 4 40 3 39 0 39 3
+$ 67 0.05 0.08824969025845955 54 5 50 0.000049999999999999996
+255 -1360 -1168 -1296 -1168 0 10 6 6 16 0 true 2 false Banks \0 Reserves Households Firms Government Banks A-L-E Pay\sWages Buy\sGoods Borrow\sMoney Pay\sInterest Pay\sBank\sFee Bank\sSpend Govt\sTaxes Govt\sSpends Govt\sSells\sBonds Interest\son\sBonds 100 40 50 0 10 0 ASSET LIABILITY LIABILITY LIABILITY EQUITY ASSET \0 Wages -Wages \0 \0 \0 \0 -Consume Consume \0 \0 \0 \0 -Credit Credit \0 \0 \0 \0 Int_Firms -Int_Firms \0 \0 \0 \0 -Fee \0 \0 Fee \0 \0 \0 Spend_Banks \0 -Spend_Banks \0 \0 -Tax \0 Tax \0 \0 \0 \0 Spend_Govt -Spend_Govt \0 \0 \0 -Bonds \0 Bonds \0 \0 \0 Int_Bonds \0 -Int_Bonds \0 \0 0.001
+w -384 -1272 -368 -1272 0
+207 -384 -1272 -376 -1328 60 GDP
+207 -304 -1272 -256 -1272 60 Lend
+207 16 -1200 64 -1200 60 Fee
+207 -80 -1200 -80 -1240 60 Int_Firms
+w -80 -1200 -32 -1200 0
+207 -128 -1200 -176 -1200 4 Debt_Firms
+x -581 -1414 -201 -1411 4 24 Loanable\sFunds\sWith\sGovernment 808080FF
+207 -384 -736 -384 -792 60 Spend_Govt
+207 -496 -768 -544 -768 60 GDP
+207 -464 -696 -464 -728 60 Tax
+252 -384 -736 -344 -736 1 2
+w -448 -768 -384 -736 0
+w -464 -696 -384 -720 0
+251 -296 -752 -288 -752 1 2
+w -336 -736 -296 -736 0
+207 -472 -872 -520 -872 36 Debt_Govt
+207 -424 -872 -424 -904 60 Int_Bonds
+207 -296 -736 -296 -688 60 Deficit
+w -296 -752 -296 -872 0
+w -424 -872 -296 -872 0
+207 -136 -648 -88 -648 60 Firms
+207 -248 -752 -200 -752 60 Bonds
+207 -512 -696 -560 -696 28 GDP
+207 -144 -904 -144 -944 60 Tax
+258 -512 -696 -504 -696 3 0.3 Tax_frac
+258 -496 -768 -488 -768 3 0.31 Spend_frac
+258 -352 -1272 -344 -1272 3 0.6 Wage_Share
+258 -432 -1272 -424 -1272 1 2 Velocity
+w -368 -1272 -352 -1272 0
+258 -32 -1200 -24 -1200 1 0.5 Fee_rate
+258 -128 -1200 -120 -1200 1 0.05 Interest_Rate
+258 -472 -872 -464 -872 1 0.05 Interest_Rate
+207 -344 -584 -408 -584 60 GDP
+207 -344 -632 -408 -632 60 Debt_Govt
+P -344 -632 -344 -584 11 0 Debt_Govt_%_GDP
+255 -1360 -736 -1296 -736 1 8 6 12 16 0 true 2 false Households \0 Households Debt_Firms Debt_Govt Stock4 HH_Equity A-L-E Pay\sWages Buy\sGoods Borrow\sMoney Pay\sInterest Pay\sBank\sFee Govt\sTaxes Govt\sSells\sBonds Interest\son\sBonds 0 0 0 0 0 0 ASSET ASSET ASSET LIABILITY EQUITY ASSET Wages \0 \0 \0 Wages \0 -Consume \0 \0 \0 -Consume \0 -Credit Credit \0 \0 \0 \0 Int_Firms \0 \0 \0 Int_Firms \0 -Fee \0 \0 \0 -Fee \0 -Tax \0 \0 \0 -Tax \0 -Bonds \0 Bonds \0 \0 \0 Int_Bonds \0 \0 \0 Int_Bonds \0 0.001
+255 -1360 -920 -1336 -920 1 6 4 12 16 0 true 2 false Firms \0 Firms Debt_Firms Firms_Equity A-L-E Pay\sWages Buy\sGoods Borrow\sMoney Pay\sInterest Bank\sSpend Govt\sSpends 50 0 50 0 ASSET LIABILITY EQUITY ASSET -Wages \0 -Wages \0 Consume \0 Consume \0 Credit Credit \0 \0 -Int_Firms \0 -Interest \0 Spend_Banks \0 Spend_banks \0 Spend_Govt \0 Spend_Govt \0 0.001
+255 -1360 -1424 -1288 -1424 1 1 4 12 16 0 true 2 false Central\sBank \0 Stock1 Reserves CB_Equity A-L-E Flow_1 0 100 -100 0 ASSET LIABILITY EQUITY ASSET \0 \0 \0 \0 0.001
+x -598 -952 -353 -949 12 24 Government\sFinances FF8080FF
+207 -432 -1272 -496 -1272 36 Firms
+x -512 -1353 -327 -1350 4 24 GDP\sand\sWages 808080FF
+x -115 -1319 -27 -1316 4 24 Lending 808080FF
+207 -56 -1288 -120 -1288 36 Firms
+258 -56 -1288 -48 -1288 3 0.044000000000000004 Credit_Frac
+207 -8 -1288 48 -1288 36 Credit
+x -517 -1196 -244 -1193 4 24 Household\sConsumption 808080FF
+207 -424 -1160 -368 -1160 36 Consume
+258 -472 -1160 -464 -1160 1 12.5 Time_HH
+207 -472 -1160 -536 -1160 36 Households
+207 -136 -672 -88 -672 52 Households
+207 -136 -624 -88 -624 60 Banks
+207 56 -672 104 -672 60 Fee
+P -56 -1152 -56 -1104 11 0 Debt_Firms_%_GDP
+207 -56 -1152 -120 -1152 60 Debt_Firms
+207 -56 -1104 -120 -1104 60 GDP
+207 -472 -1056 -536 -1056 36 Banks
+258 -472 -1056 -464 -1056 1 1 Time_Banks
+207 -424 -1056 -368 -1056 36 Spend_Banks
+x -517 -1092 -348 -1089 4 24 Bank\sSpending 808080FF
+255 -1360 -1320 -1248 -1320 1 4 4 12 16 0 true 2 false Treasury \0 Government Debt_Govt T_equity A-L-E Govt\sTaxes Govt\sSpends Govt\sSells\sBonds Interest\son\sBonds 0 0 0 0 ASSET LIABILITY EQUITY ASSET Tax \0 Tax \0 -Spend_Govt \0 -Spend_Govt \0 Bonds Bonds Bonds \0 -Int_Bonds \0 -Int_Bonds \0 0.001
+o 2 2 3 12290 227.092311837288 0.0001 0 4 36 3 54 0 54 3
+o 51 2 0 12291 101.40141647221826 0.0001 1 6 51 3 22 0 22 3 52 0 52 3
+38 45 F1 1 0 0.1 -1 Credit_Frac

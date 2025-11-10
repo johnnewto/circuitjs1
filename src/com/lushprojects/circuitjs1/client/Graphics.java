@@ -184,6 +184,14 @@ public class Graphics {
 	       	   context.setLineDash([a, b]);
 	   }-*/;
 	   
+	   void setLetterSpacing(String spacing) {
+	       setLetterSpacingNative(context, spacing);
+	   }
+	   
+	   native static void setLetterSpacingNative(Context2d context, String spacing) /*-{
+	       context.letterSpacing = spacing;
+	   }-*/;
+	   
 	   
 	   public static void viewFullScreen() {
 	       requestFullScreen();

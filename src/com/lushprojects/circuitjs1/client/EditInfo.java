@@ -23,6 +23,8 @@ import com.google.gwt.user.client.ui.Widget;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.TextArea;
+import com.google.gwt.user.client.ui.SuggestBox;
+import com.google.gwt.event.dom.client.KeyUpHandler;
 
 class EditInfo {
     
@@ -73,11 +75,13 @@ class EditInfo {
 	Button button;
 	EditDialogLoadFile loadFile = null; //if non-null, the button will open a file dialog
 	TextArea textArea;
+	SuggestBox suggestBox;  // Autocomplete text box
 	Widget widget;
 	boolean newDialog;
 	boolean dimensionless;
 	boolean noSliders;
 	double minVal, maxVal;
+	KeyUpHandler keyUpHandler; // Optional handler for immediate text changes
 	
 	// for slider dialog
 	TextBox minBox, maxBox, labelBox;

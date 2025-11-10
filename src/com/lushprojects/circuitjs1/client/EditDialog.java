@@ -151,6 +151,9 @@ class EditDialog extends Dialog {
 			} else if (ei.textArea != null) {
 			    vp.add(ei.textArea);
 			    closeOnEnter = false;
+			} else if (ei.suggestBox != null) {
+			    vp.add(ei.suggestBox);
+			    ei.suggestBox.setWidth("200px");
 			} else if (ei.widget != null) {
 			    vp.add(ei.widget);
 			} else {
@@ -161,6 +164,10 @@ class EditDialog extends Dialog {
 			    }
 			    if (ei.text == null) {
 				ei.textf.setText(unitString(ei));
+			    }
+			    // Attach KeyUpHandler if provided for immediate updates
+			    if (ei.keyUpHandler != null) {
+				ei.textf.addKeyUpHandler(ei.keyUpHandler);
 			    }
 			}
 			if (vp.getWidgetCount() > 15) {
@@ -260,6 +267,10 @@ class EditDialog extends Dialog {
 					double d = parseUnits(ei);
 					ei.value = d;
 				} catch (Exception ex) { /* ignored */ }
+			}
+			if (ei.suggestBox != null) {
+			    // Get text from SuggestBox for text-based fields
+			    ei.text = ei.suggestBox.getText();
 			}
 			if (ei.button != null)
 			    continue;

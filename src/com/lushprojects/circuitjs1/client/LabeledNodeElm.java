@@ -21,6 +21,8 @@ package com.lushprojects.circuitjs1.client;
 
 import java.util.HashMap;
 import com.lushprojects.circuitjs1.client.util.Locale;
+import com.google.gwt.user.client.ui.SuggestBox;
+import com.google.gwt.user.client.ui.MultiWordSuggestOracle;
 
 class LabeledNodeElm extends CircuitElm {
     final int FLAG_ESCAPE = 4;
@@ -32,7 +34,6 @@ class LabeledNodeElm extends CircuitElm {
     public LabeledNodeElm(int xx, int yy) {
 	super(xx, yy);
 	text = "label";
-	flags |= FLAG_SHOW_ALL_NODES | FLAG_SHOW_ALL_CIRCUIT_NODES;
     }
     public LabeledNodeElm(int xa, int ya, int xb, int yb, int f,
 	    StringTokenizer st) {
@@ -212,10 +213,17 @@ class LabeledNodeElm extends CircuitElm {
 		interpPoint(point1, point2, ps2, 1+11./dn);
 		setBbox(point1, ps2, circleSize);
 		
-		// Display label with optional voltage
+		// Display label with optional voltage and stock indicator
 		String displayText = text;
+		
+		// Add star prefix if this label is a stock
+		if (StockFlowRegistry.isStock(text)) {
+		    displayText = "★" + text;
+		}
+		
 		if (showVoltage()) {
-		    displayText = text + " = " + getVoltageText(volts[0]);
+		    String voltageText = " = " + getVoltageText(volts[0]);
+		    displayText = displayText + voltageText;
 		}
 		drawLabeledNode(g, displayText, point1, lead1);
 
@@ -230,7 +238,13 @@ class LabeledNodeElm extends CircuitElm {
     }
 	
     void getInfo(String arr[]) {
-		arr[0] = Locale.LS(text) + " (" + Locale.LS("Labeled Node") + ")";
+		// Add stock indicator prefix if applicable
+		String displayName = text;
+		if (StockFlowRegistry.isStock(text)) {
+		    displayName = "★" + text;
+		}
+		
+		arr[0] = Locale.LS(displayName) + " (" + Locale.LS("Labeled Node") + ")";
 		arr[1] = "I = " + getCurrentText(getCurrent());
 		
 		arr[2] = "V = " + getVoltageText(volts[0]);
@@ -241,7 +255,16 @@ class LabeledNodeElm extends CircuitElm {
 			arr[3] = "Node: " + le.node;
 		else
 			arr[3] = "Node: not assigned";
+		
+		// Show stock status if this is a stock
 		int idx = 4;
+		if (StockFlowRegistry.isStock(text)) {
+		    arr[idx++] = "Stock: Yes (registered in table)";
+		    if (StockFlowRegistry.isSharedStock(text)) {
+		        arr[idx++] = "Shared: Yes (used by multiple tables)";
+		    }
+		}
+		
 		// Show all labeled nodes if flag is set
 		if (showLabelNodes() && labelList != null && !labelList.isEmpty()) {
 
@@ -285,6 +308,37 @@ class LabeledNodeElm extends CircuitElm {
 	if (n == 0) {
 	    EditInfo ei = new EditInfo("Text", 0, -1, -1);
 	    ei.text = text;
+	    
+	    // Create autocomplete SuggestBox with existing labeled nodes, stock variables, and cell equation variables
+	    MultiWordSuggestOracle oracle = new MultiWordSuggestOracle();
+	    
+	    // Add existing labeled node names
+	    if (labelList != null && !labelList.isEmpty()) {
+		for (String labelName : labelList.keySet()) {
+		    oracle.add(labelName);
+		}
+	    }
+	    
+	    // Add stock variables from TableElm cell equations
+	    java.util.Set<String> stockNames = StockFlowRegistry.getAllStockNames();
+	    if (stockNames != null && !stockNames.isEmpty()) {
+		for (String stockName : stockNames) {
+		    oracle.add(stockName);
+		}
+	    }
+	    
+	    // Add variables used in cell equations
+	    java.util.Set<String> cellVariables = StockFlowRegistry.getAllCellEquationVariables();
+	    if (cellVariables != null && !cellVariables.isEmpty()) {
+		for (String varName : cellVariables) {
+		    oracle.add(varName);
+		}
+	    }
+	    
+	    ei.suggestBox = new SuggestBox(oracle);
+	    ei.suggestBox.setText(text);
+	    ei.suggestBox.setWidth("200px");
+	    
 	    return ei;
 	}
         if (n == 1) {
@@ -310,8 +364,15 @@ class LabeledNodeElm extends CircuitElm {
 	return null;
     }
     public void setEditValue(int n, EditInfo ei) {
-	if (n == 0)
-	    text = ei.textf.getText();
+	if (n == 0) {
+	    // Get text from either SuggestBox or regular textf
+	    if (ei.suggestBox != null)
+		text = ei.suggestBox.getText();
+	    else if (ei.textf != null)
+		text = ei.textf.getText();
+	    else if (ei.text != null)
+		text = ei.text;
+	}
 	if (n == 1)
 	    flags = ei.changeFlag(flags, FLAG_INTERNAL);
 	if (n == 2)
