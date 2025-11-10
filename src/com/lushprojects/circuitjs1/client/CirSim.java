@@ -1558,7 +1558,6 @@ public CirSim() {
             cv.getElement().getStyle().setBackgroundColor("#000");
         }
 
-        // Clear the frame
         g.fillRect(0, 0, canvasWidth, canvasHeight);
 
         // Run circuit
@@ -1625,12 +1624,17 @@ public CirSim() {
         cvcontext.setTransform(transform[0] * scale, 0, 0, transform[3] * scale, transform[4] * scale, transform[5] * scale);
 
         // Draw each element
+        // Optimization: Set power mode color once before loop instead of for each element
         perfmon.startContext("elm.draw()");
-        for (int i = 0; i != elmList.size(); i++) {
-            if (powerCheckItem.getState())
-                g.setColor(Color.gray);
-            
-            getElm(i).draw(g);
+        if (powerCheckItem.getState()) {
+            g.setColor(Color.gray);
+            for (int i = 0; i != elmList.size(); i++) {
+                getElm(i).draw(g);
+            }
+        } else {
+            for (int i = 0; i != elmList.size(); i++) {
+                getElm(i).draw(g);
+            }
         }
         perfmon.stopContext();
 
@@ -1728,12 +1732,13 @@ public CirSim() {
         int height = 15;
         int increment = 15;
         g.drawString("Framerate: " + CircuitElm.showFormat.format(framerate), 10, height);
+		g.drawString("subiter: " + subIterations, 10, height += increment);
         
         if (developerMode) {
             g.drawString("Steprate: " + CircuitElm.showFormat.format(steprate), 10, height += increment);
             g.drawString("Steprate/iter: " + CircuitElm.showFormat.format(steprate / getIterCount()), 10, height += increment);
             g.drawString("iterc: " + CircuitElm.showFormat.format(getIterCount()), 10, height += increment);
-			g.drawString("subiter: " + subIterations, 10, height += increment);
+			
             g.drawString("Frames: " + frames, 10, height += increment);
             
             height += (increment * 2);
@@ -1835,17 +1840,26 @@ public CirSim() {
 	  //  x=cv.getCoordinateSpaceWidth()*2/3;
 	    
 	    // count lines of data
-	    for (i = 0; info[i] != null; i++)
+	    int lineCount = 0;
+	    for (lineCount = 0; info[lineCount] != null; lineCount++)
 		;
 	    int badnodes = badConnectionList.size();
 	    if (badnodes > 0)
-		info[i++] = badnodes + ((badnodes == 1) ?
+		info[lineCount++] = badnodes + ((badnodes == 1) ?
 					Locale.LS(" bad connection") : Locale.LS(" bad connections"));
 	    if (savedFlag)
-		info[i++] = "(saved)";
+		info[lineCount++] = "(saved)";
 
-	    // int ybase = circuitArea.height-h;
-		int ybase = circuitArea.y+10;
+	    // Calculate required height for all lines (15 pixels per line plus initial offset)
+	    int requiredHeight = 15 * (lineCount + 1);
+	    int availableHeight = canvasHeight - (circuitArea.height - h);
+	    
+	    // Adjust ybase upward if not enough space
+	    int ybase = circuitArea.height - h;
+	    if (requiredHeight > availableHeight) {
+		ybase = canvasHeight - requiredHeight;
+	    }
+		// int ybase = circuitArea.y+10;
 
 	    for (i = 0; info[i] != null; i++)
 		g.drawString(info[i], x, ybase+15*(i+1));
@@ -3028,10 +3042,11 @@ public CirSim() {
 
     double getIterCount() {
     	// IES - remove interaction
-	if (speedBar.getValue() == 0)
+	int val = speedBar.getValue();
+	if (val == 0)
 	   return 0;
 
-	 return .1*Math.exp((speedBar.getValue()-61)/24.);
+	 return .1*Math.exp((val-61)/24.);
 
     }
 
@@ -3058,6 +3073,7 @@ public CirSim() {
             circuitMatrix = null;
             return;
         }
+        
         //int maxIter = getIterCount();
         boolean debugprint = dumpMatrix;
         dumpMatrix = false;

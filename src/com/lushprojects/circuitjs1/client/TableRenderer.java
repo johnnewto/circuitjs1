@@ -108,14 +108,15 @@ public class TableRenderer {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
-        int rowDescColWidth = cellWidthPixels;
+        int rowDescColWidth = table.collapsedMode ? 0 : cellWidthPixels; // Hide row description column in collapsed mode
         
         // Calculate the actual table height by accumulating all components
-        int titleHeight = 10 + 5; // Title offset + space after
-        int typeRowHeight = table.cellHeight + table.cellSpacing;
+        // In collapsed mode: skip type row, initial values, and data rows
+        int titleHeight = 10 + 10; // Title offset + space after (increased for better spacing)
+        int typeRowHeight = table.collapsedMode ? 0 : (table.cellHeight + table.cellSpacing);
         int headerRowHeight = table.cellHeight + table.cellSpacing;
-        int initialRowHeight = table.showInitialValues ? (table.cellHeight + table.cellSpacing) : 0;
-        int dataRowsHeight = table.rows * (table.cellHeight + table.cellSpacing);
+        int initialRowHeight = (table.showInitialValues && !table.collapsedMode) ? (table.cellHeight + table.cellSpacing) : 0;
+        int dataRowsHeight = table.collapsedMode ? 0 : (table.rows * (table.cellHeight + table.cellSpacing));
         int computedRowHeight = table.cellHeight + table.cellSpacing;
         
         int tableWidth = rowDescColWidth + table.cellSpacing + table.cols * cellWidthPixels + (table.cols + 1) * table.cellSpacing;
@@ -146,26 +147,30 @@ public class TableRenderer {
         
         // 1. Draw title
         drawTitle(g, currentY);
-        currentY += 5; // Space after title
+        currentY += 10; // Space after title (increased for better spacing)
         
-        // 2. Draw column type row
-        drawColumnTypeRow(g, currentY);
-        currentY += table.cellHeight + table.cellSpacing; // Move down by row height
+        // 2. Draw column type row (skip in collapsed mode)
+        if (!table.collapsedMode) {
+            drawColumnTypeRow(g, currentY);
+            currentY += table.cellHeight + table.cellSpacing; // Move down by row height
+        }
         
         // 3. Draw column headers
         drawColumnHeaders(g, currentY);
         currentY += table.cellHeight + table.cellSpacing; // Move down by row height
         
-        // 4. Draw initial conditions row if enabled
-        if (table.showInitialValues) {
+        // 4. Draw initial conditions row if enabled (skip in collapsed mode)
+        if (table.showInitialValues && !table.collapsedMode) {
             drawInitialConditionsRow(g, currentY);
             currentY += table.cellHeight + table.cellSpacing;
         }
 
-        // 5. Draw table cells with voltages (includes row descriptions)
-        // Use cached values for drawing
-        drawTableCells(g, currentY);
-        currentY += table.rows * (table.cellHeight + table.cellSpacing);
+        // 5. Draw table cells with voltages (skip in collapsed mode)
+        if (!table.collapsedMode) {
+            // Use cached values for drawing
+            drawTableCells(g, currentY);
+            currentY += table.rows * (table.cellHeight + table.cellSpacing);
+        }
 
         // 6. Draw computed row
         drawSumRow(g, currentY);
@@ -206,22 +211,30 @@ public class TableRenderer {
         
         // Update sum values - non-master columns show master's computed sum
         for (int col = 0; col < table.cols; col++) {
-            boolean isMasterForThisColumn = table.isMasterForColumn(col);
+            // Check if this is an A-L-E column (last column when cols >= 4)
+            boolean isALEColumn = (col == table.cols - 1 && table.cols >= 4);
             
-            if (isMasterForThisColumn) {
-                // Master column: use our own computed value for display
-                // This allows subclasses like GodlyTableElm to override what gets displayed
+            if (isALEColumn) {
+                // A-L-E column: use directly from lastColumnSums (calculated in every500msec)
                 cachedSumValues[col] = table.getComputedValueForDisplay(col);
             } else {
-                // Non-master column: fetch master's computed sum from ComputedValues
-                String stockName = (table.outputNames != null && col < table.outputNames.length) 
-                    ? table.outputNames[col] : null;
+                boolean isMasterForThisColumn = table.isMasterForColumn(col);
                 
-                if (stockName != null && !stockName.trim().isEmpty()) {
-                    Double masterSum = ComputedValues.getComputedValue(stockName.trim());
-                    cachedSumValues[col] = (masterSum != null) ? masterSum : 0.0;
+                if (isMasterForThisColumn) {
+                    // Master column: use our own computed value for display
+                    // This allows subclasses like GodlyTableElm to override what gets displayed
+                    cachedSumValues[col] = table.getComputedValueForDisplay(col);
                 } else {
-                    cachedSumValues[col] = 0.0;
+                    // Non-master column: fetch master's computed sum from ComputedValues
+                    String stockName = (table.outputNames != null && col < table.outputNames.length) 
+                        ? table.outputNames[col] : null;
+                    
+                    if (stockName != null && !stockName.trim().isEmpty()) {
+                        Double masterSum = ComputedValues.getComputedValue(stockName.trim());
+                        cachedSumValues[col] = (masterSum != null) ? masterSum : 0.0;
+                    } else {
+                        cachedSumValues[col] = 0.0;
+                    }
                 }
             }
         }
@@ -242,16 +255,16 @@ public class TableRenderer {
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
         
-        int rowDescColWidth = cellWidthPixels;
+        int rowDescColWidth = table.collapsedMode ? 0 : cellWidthPixels; // Hide in collapsed mode
         int tableWidth = rowDescColWidth + table.cellSpacing + table.cols * cellWidthPixels + (table.cols + 1) * table.cellSpacing;
         int titleY = tableY + offsetY;
         
         // Draw light blue background for title area if hovering
-        // The title area spans from the top of the table to just before the Type row (15 pixels total)
+        // The title area spans from the top of the table to just before the Type row (20 pixels total)
         if (table.needsHighlight()) {
             g.setColor(CircuitElm.selectColor); // Light blue
             // Draw background rectangle covering the full title area
-            g.fillRect(tableX, tableY, tableWidth, 15);
+            g.fillRect(tableX, tableY, tableWidth, 20);
         }
         
         // Draw title centered at top of table with enhanced font
@@ -259,6 +272,12 @@ public class TableRenderer {
         g.setLetterSpacing(LETTER_SPACING);
         g.setColor(CircuitElm.whiteColor);
         table.drawCenteredText(g, table.tableTitle, tableX + tableWidth / 2, titleY, true);
+        
+        // Draw collapse state indicator on the right side
+        // ▼ (U+25BC) for expanded, ▶ (U+25B6) for collapsed
+        String collapseIndicator = table.collapsedMode ? "▲" : "▼";
+        int indicatorX = tableX + tableWidth - 15; // Position near right edge
+        table.drawCenteredText(g, collapseIndicator, indicatorX, titleY, true);
     }
 
     private void drawColumnHeaders(Graphics g, int offsetY) {
@@ -269,11 +288,13 @@ public class TableRenderer {
         int tableY = table.getTableY();
         int headerY = tableY + offsetY;
         int cellWidthPixels = table.getCellWidthPixels();
-        int rowDescColWidth = cellWidthPixels;
+        int rowDescColWidth = table.collapsedMode ? 0 : cellWidthPixels; // Hide in collapsed mode
 
-        // Draw row description column header cell text
-        int rowDescHeaderX = tableX + table.cellSpacing;
-        table.drawCenteredText(g, "Flows↓/Stocks→", rowDescHeaderX + rowDescColWidth/2, headerY + table.cellHeight/2, true);
+        // Draw row description column header cell text (skip in collapsed mode)
+        if (!table.collapsedMode) {
+            int rowDescHeaderX = tableX + table.cellSpacing;
+            table.drawCenteredText(g, "Flows↓/Stocks→", rowDescHeaderX + rowDescColWidth/2, headerY + table.cellHeight/2, true);
+        }
 
         // Draw data column header cells text
         for (int col = 0; col < table.cols; col++) {
@@ -488,16 +509,18 @@ public class TableRenderer {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
-        int rowDescColWidth = cellWidthPixels;
+        int rowDescColWidth = table.collapsedMode ? 0 : cellWidthPixels; // Hide in collapsed mode
 
         // Use the passed offsetY directly - no need to recalculate
         int sumRowY = tableY + offsetY;
 
-        // // Draw row description text for computed row with header font
-        // g.setFont(HEADER_FONT);
-        // g.setLetterSpacing(LETTER_SPACING);
-        // g.setColor(CircuitElm.whiteColor);
-        // table.drawCenteredText(g, "Computed", tableX + table.cellSpacing + rowDescColWidth/2, sumRowY + table.cellHeight/2, true);
+        // // Draw row description text for computed row with header font (skip in collapsed mode)
+        // if (!table.collapsedMode) {
+        //     g.setFont(HEADER_FONT);
+        //     g.setLetterSpacing(LETTER_SPACING);
+        //     g.setColor(CircuitElm.whiteColor);
+        //     table.drawCenteredText(g, "Computed", tableX + table.cellSpacing + rowDescColWidth/2, sumRowY + table.cellHeight/2, true);
+        // }
 
         // Use cell font for values
         g.setFont(CELL_FONT);

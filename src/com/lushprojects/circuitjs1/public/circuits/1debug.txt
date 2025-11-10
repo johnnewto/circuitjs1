@@ -1,66 +1,70 @@
 $ 67 0.05 0.08824969025845955 54 5 50 0.000049999999999999996
-255 -1360 -1168 -1296 -1168 0 10 6 6 16 0 true 2 false Banks \0 Reserves Households Firms Government Banks A-L-E Pay\sWages Buy\sGoods Borrow\sMoney Pay\sInterest Pay\sBank\sFee Bank\sSpend Govt\sTaxes Govt\sSpends Govt\sSells\sBonds Interest\son\sBonds 100 40 50 0 10 0 ASSET LIABILITY LIABILITY LIABILITY EQUITY ASSET \0 Wages -Wages \0 \0 \0 \0 -Consume Consume \0 \0 \0 \0 -Credit Credit \0 \0 \0 \0 Int_Firms -Int_Firms \0 \0 \0 \0 -Fee \0 \0 Fee \0 \0 \0 Spend_Banks \0 -Spend_Banks \0 \0 -Tax \0 Tax \0 \0 \0 \0 Spend_Govt -Spend_Govt \0 \0 \0 -Bonds \0 Bonds \0 \0 \0 Int_Bonds \0 -Int_Bonds \0 \0 0.001
+P -344 -632 -344 -584 11 0 Debt_Govt_%_GDP
+P 8 -1192 8 -1144 11 0 Debt_Firms_%_GDP
 w -384 -1272 -368 -1272 0
-207 -384 -1272 -376 -1328 60 GDP
-207 -304 -1272 -256 -1272 60 Lend
-207 16 -1200 64 -1200 60 Fee
-207 -80 -1200 -80 -1240 60 Int_Firms
-w -80 -1200 -32 -1200 0
-207 -128 -1200 -176 -1200 4 Debt_Firms
-x -581 -1414 -201 -1411 4 24 Loanable\sFunds\sWith\sGovernment 808080FF
-207 -384 -736 -384 -792 60 Spend_Govt
-207 -496 -768 -544 -768 60 GDP
-207 -464 -696 -464 -728 60 Tax
-252 -384 -736 -344 -736 1 2
+w -16 -1240 32 -1240 0
 w -448 -768 -384 -736 0
 w -464 -696 -384 -720 0
-251 -296 -752 -288 -752 1 2
 w -336 -736 -296 -736 0
-207 -472 -872 -520 -872 36 Debt_Govt
-207 -424 -872 -424 -904 60 Int_Bonds
-207 -296 -736 -296 -688 60 Deficit
 w -296 -752 -296 -872 0
 w -424 -872 -296 -872 0
-207 -136 -648 -88 -648 60 Firms
-207 -248 -752 -200 -752 60 Bonds
-207 -512 -696 -560 -696 28 GDP
-207 -144 -904 -144 -944 60 Tax
+w -368 -1272 -352 -1272 0
+x -732 -1444 28 -1441 4 50 The\sCreation\sof\sEndless\sDeposits FFFF80FF
+x -598 -952 -353 -949 12 24 Government\sFinances FF8080FF
+x -520 -1347 -335 -1344 4 24 GDP\sand\sWages FF8080FF
+x -51 -1359 37 -1356 4 24 Lending FF8080FF
+x -571 -1200 -298 -1197 4 24 Household\sConsumption FF8080FF
+x -517 -1092 -348 -1089 4 24 Bank\sSpending FF8080FF
+207 -384 -1272 -376 -1328 36 GDP
+207 -304 -1272 -256 -1272 36 Lend
+207 80 -1240 128 -1240 36 Fee
+207 -16 -1240 -16 -1280 36 Int_Firms
+207 -64 -1240 -112 -1240 4 Debt_Firms
+207 -384 -736 -384 -792 36 Spend_Govt
+207 -496 -768 -544 -768 36 GDP
+207 -464 -696 -464 -728 36 Tax
+207 -472 -872 -520 -872 36 Debt_Govt
+207 -424 -872 -424 -904 36 Int_Bonds
+207 -296 -736 -296 -688 36 Deficit
+207 -160 -568 -112 -568 36 Firms
+207 -248 -752 -200 -752 36 Bonds
+207 -512 -696 -560 -696 36 GDP
+207 -160 -680 -112 -680 36 Tax
+207 -344 -584 -408 -584 36 GDP
+207 -344 -632 -408 -632 36 Debt_Govt
+207 -432 -1272 -496 -1272 36 Firms
+207 8 -1328 -56 -1328 36 Firms
+207 56 -1328 112 -1328 36 Credit
+207 -424 -1160 -368 -1160 36 Consume
+207 -472 -1160 -536 -1160 36 Households
+207 -160 -592 -112 -592 36 Households
+207 -160 -544 -112 -544 36 Banks
+207 -160 -624 -112 -624 36 Fee
+207 8 -1192 -56 -1192 36 Debt_Firms
+207 8 -1144 -56 -1144 36 GDP
+207 -472 -1056 -536 -1056 36 Banks
+207 -424 -1056 -368 -1056 36 Spend_Banks
+207 -160 -656 -112 -656 36 Bonds
+251 -296 -752 -288 -752 1 2
+252 -384 -736 -344 -736 1 2
+253 -1608 -1168 -1576 -1168 1 2 4 6 16 0 false 2 false false Table\s5 \0 Stock_1 Stock_2 Stock_3 A-L-E Row1 Flow_2 122 0 0 0 ASSET LIABILITY EQUITY ASSET 122 \0 \0 \0 \0 \0 \0 \0
+255 -1360 -1168 -1296 -1168 0 10 6 6 16 0 true 2 false false Banks \0 Reserves Households Firms Government Banks A-L-E Pay\sWages Buy\sGoods Borrow\sMoney Pay\sInterest Pay\sBank\sFee Bank\sSpend Govt\sTaxes Govt\sSpends Govt\sSells\sBonds Interest\son\sBonds 100 40 50 0 10 0 ASSET LIABILITY LIABILITY LIABILITY EQUITY ASSET \0 Wages -Wages \0 \0 \0 \0 -Consume Consume \0 \0 \0 \0 -Credit Credit \0 \0 \0 \0 Int_Firms -Int_Firms \0 \0 \0 \0 -Fee \0 \0 Fee \0 \0 \0 Spend_Banks \0 -Spend_Banks \0 \0 -Tax \0 Tax \0 \0 \0 \0 Spend_Govt -Spend_Govt \0 \0 \0 -Bonds \0 Bonds \0 \0 \0 Int_Bonds \0 -Int_Bonds \0 \0 0.001
+255 -1360 -736 -1296 -736 1 8 6 12 16 0 true 2 false false Households \0 Households Debt_Firms Debt_Govt Stock4 HH_Equity A-L-E Pay\sWages Buy\sGoods Borrow\sMoney Pay\sInterest Pay\sBank\sFee Govt\sTaxes Govt\sSells\sBonds Interest\son\sBonds 0 0 0 0 0 0 ASSET ASSET ASSET LIABILITY EQUITY ASSET Wages \0 \0 \0 Wages \0 -Consume \0 \0 \0 -Consume \0 -Credit Credit \0 \0 \0 \0 Int_Firms \0 \0 \0 Int_Firms \0 -Fee \0 \0 \0 -Fee \0 -Tax \0 \0 \0 -Tax \0 -Bonds \0 Bonds \0 \0 \0 Int_Bonds \0 \0 \0 Int_Bonds \0 0.001
+255 -1360 -920 -1336 -920 1 6 4 12 16 0 true 2 false false Firms \0 Firms Debt_Firms Firms_Equity A-L-E Pay\sWages Buy\sGoods Borrow\sMoney Pay\sInterest Bank\sSpend Govt\sSpends 50 0 50 0 ASSET LIABILITY EQUITY ASSET -Wages \0 -Wages \0 Consume \0 Consume \0 Credit Credit \0 \0 -Int_Firms \0 -Interest \0 Spend_Banks \0 Spend_banks \0 Spend_Govt \0 Spend_Govt \0 0.001
+255 -1360 -1424 -1288 -1424 1 1 4 12 16 0 true 2 false false Central\sBank \0 Stock1 Reserves CB_Equity A-L-E Flow_1 0 100 -100 0 ASSET LIABILITY EQUITY ASSET 22 \0 \0 \0 0.001
+255 -1360 -1320 -1248 -1320 1 4 4 12 16 0 true 2 false false Treasury \0 Government Debt_Govt T_equity A-L-E Govt\sTaxes Govt\sSpends Govt\sSells\sBonds Interest\son\sBonds 0 0 0 0 ASSET LIABILITY EQUITY ASSET Tax \0 Tax \0 -Spend_Govt \0 -Spend_Govt \0 Bonds Bonds Bonds \0 -Int_Bonds \0 -Int_Bonds \0 0.001
 258 -512 -696 -504 -696 3 0.3 Tax_frac
 258 -496 -768 -488 -768 3 0.31 Spend_frac
 258 -352 -1272 -344 -1272 3 0.6 Wage_Share
 258 -432 -1272 -424 -1272 1 2 Velocity
-w -368 -1272 -352 -1272 0
-258 -32 -1200 -24 -1200 1 0.5 Fee_rate
-258 -128 -1200 -120 -1200 1 0.05 Interest_Rate
+258 32 -1240 40 -1240 1 0.5 Fee_rate
+258 -64 -1240 -56 -1240 1 0.05 Interest_Rate
 258 -472 -872 -464 -872 1 0.05 Interest_Rate
-207 -344 -584 -408 -584 60 GDP
-207 -344 -632 -408 -632 60 Debt_Govt
-P -344 -632 -344 -584 11 0 Debt_Govt_%_GDP
-255 -1360 -736 -1296 -736 1 8 6 12 16 0 true 2 false Households \0 Households Debt_Firms Debt_Govt Stock4 HH_Equity A-L-E Pay\sWages Buy\sGoods Borrow\sMoney Pay\sInterest Pay\sBank\sFee Govt\sTaxes Govt\sSells\sBonds Interest\son\sBonds 0 0 0 0 0 0 ASSET ASSET ASSET LIABILITY EQUITY ASSET Wages \0 \0 \0 Wages \0 -Consume \0 \0 \0 -Consume \0 -Credit Credit \0 \0 \0 \0 Int_Firms \0 \0 \0 Int_Firms \0 -Fee \0 \0 \0 -Fee \0 -Tax \0 \0 \0 -Tax \0 -Bonds \0 Bonds \0 \0 \0 Int_Bonds \0 \0 \0 Int_Bonds \0 0.001
-255 -1360 -920 -1336 -920 1 6 4 12 16 0 true 2 false Firms \0 Firms Debt_Firms Firms_Equity A-L-E Pay\sWages Buy\sGoods Borrow\sMoney Pay\sInterest Bank\sSpend Govt\sSpends 50 0 50 0 ASSET LIABILITY EQUITY ASSET -Wages \0 -Wages \0 Consume \0 Consume \0 Credit Credit \0 \0 -Int_Firms \0 -Interest \0 Spend_Banks \0 Spend_banks \0 Spend_Govt \0 Spend_Govt \0 0.001
-255 -1360 -1424 -1288 -1424 1 1 4 12 16 0 true 2 false Central\sBank \0 Stock1 Reserves CB_Equity A-L-E Flow_1 0 100 -100 0 ASSET LIABILITY EQUITY ASSET \0 \0 \0 \0 0.001
-x -598 -952 -353 -949 12 24 Government\sFinances FF8080FF
-207 -432 -1272 -496 -1272 36 Firms
-x -512 -1353 -327 -1350 4 24 GDP\sand\sWages 808080FF
-x -115 -1319 -27 -1316 4 24 Lending 808080FF
-207 -56 -1288 -120 -1288 36 Firms
-258 -56 -1288 -48 -1288 3 0.044000000000000004 Credit_Frac
-207 -8 -1288 48 -1288 36 Credit
-x -517 -1196 -244 -1193 4 24 Household\sConsumption 808080FF
-207 -424 -1160 -368 -1160 36 Consume
+258 8 -1328 16 -1328 3 0.044000000000000004 Credit_Frac
 258 -472 -1160 -464 -1160 1 12.5 Time_HH
-207 -472 -1160 -536 -1160 36 Households
-207 -136 -672 -88 -672 52 Households
-207 -136 -624 -88 -624 60 Banks
-207 56 -672 104 -672 60 Fee
-P -56 -1152 -56 -1104 11 0 Debt_Firms_%_GDP
-207 -56 -1152 -120 -1152 60 Debt_Firms
-207 -56 -1104 -120 -1104 60 GDP
-207 -472 -1056 -536 -1056 36 Banks
 258 -472 -1056 -464 -1056 1 1 Time_Banks
-207 -424 -1056 -368 -1056 36 Spend_Banks
-x -517 -1092 -348 -1089 4 24 Bank\sSpending 808080FF
-255 -1360 -1320 -1248 -1320 1 4 4 12 16 0 true 2 false Treasury \0 Government Debt_Govt T_equity A-L-E Govt\sTaxes Govt\sSpends Govt\sSells\sBonds Interest\son\sBonds 0 0 0 0 ASSET LIABILITY EQUITY ASSET Tax \0 Tax \0 -Spend_Govt \0 -Spend_Govt \0 Bonds Bonds Bonds \0 -Int_Bonds \0 -Int_Bonds \0 0.001
-o 2 2 3 12290 227.092311837288 0.0001 0 4 36 3 54 0 54 3
-o 51 2 0 12291 101.40141647221826 0.0001 1 6 51 3 22 0 22 3 52 0 52 3
+o 0 2 0 4102 335544320 0.1 0 4 0 3 1 0 1 3
+o 38 2 0 4102 160 0.1 1 6 38 3 27 0 27 3 39 0 39 3
+o 18 2 0 4102 40 0.1 2 4 18 3 35 0 35 3
+o 36 2 0 4102 80 0.1 3 2 36 3
 38 45 F1 1 0 0.1 -1 Credit_Frac

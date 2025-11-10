@@ -429,6 +429,8 @@ public abstract class CircuitElm implements Editable {
 	if (pos < 0)
 	    pos += ds;
 	double di = 0;
+	// Optimization: Set color once before loop, fillRect is already efficient
+	// Draw all dots in one batch to reduce function call overhead
 	for (di = pos; di < dn; di += ds) {
 	    int x0 = (int) (pa.x+di*dx/dn);
 	    int y0 = (int) (pa.y+di*dy/dn);

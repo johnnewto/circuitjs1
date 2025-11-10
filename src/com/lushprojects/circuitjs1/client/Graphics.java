@@ -20,6 +20,9 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.canvas.dom.client.Context2d;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 public class Graphics {
 	
@@ -28,6 +31,19 @@ public class Graphics {
 	Color lastColor;
 	int savedFontSize;
 	static boolean isFullScreen=false;
+	
+	// Batch drawing optimization
+	private boolean batchMode = false;
+	private int batchedOperations = 0;
+	
+	// Text rendering cache
+	private static class TextCacheEntry {
+	    double width;
+	    long timestamp;
+	}
+	private static HashMap<String, TextCacheEntry> textWidthCache = new HashMap<String, TextCacheEntry>();
+	private static final int TEXT_CACHE_SIZE = 500;
+	private static final long TEXT_CACHE_LIFETIME_MS = 5000; // 5 seconds
 	
 	  public Graphics(Context2d context) {
 		    this.context = context;
@@ -86,32 +102,110 @@ public class Graphics {
 		  context.fill();
 	  }
 	  
-	  public void drawString(String s, int x, int y){
-		  context.fillText(s, x, y);
+	  public void drawString(String str, int x, int y) {
+	      context.fillText(str, x, y);
 	  }
 	  
 	  public double measureWidth(String s) {
-	      return context.measureText(s).getWidth();
+		  // Check cache first
+		  TextCacheEntry entry = textWidthCache.get(s);
+		  long currentTime = System.currentTimeMillis();
+		  
+		  if (entry != null && currentTime - entry.timestamp < TEXT_CACHE_LIFETIME_MS) {
+			  return entry.width;
+		  }
+		  
+		  // Not in cache or expired, measure it
+		  double width = context.measureText(s).getWidth();
+		  
+		  // Add to cache
+		  if (textWidthCache.size() >= TEXT_CACHE_SIZE) {
+			  // Cache full, clear old entries
+			  clearOldTextCacheEntries(currentTime);
+		  }
+		  
+		  entry = new TextCacheEntry();
+		  entry.width = width;
+		  entry.timestamp = currentTime;
+		  textWidthCache.put(s, entry);
+		  
+		  return width;
+	  }
+	  
+	  // Clear text cache entries older than the cache lifetime
+	  private void clearOldTextCacheEntries(long currentTime) {
+		  Iterator<Map.Entry<String, TextCacheEntry>> iterator = textWidthCache.entrySet().iterator();
+		  while (iterator.hasNext()) {
+			  Map.Entry<String, TextCacheEntry> entry = iterator.next();
+			  if (currentTime - entry.getValue().timestamp >= TEXT_CACHE_LIFETIME_MS) {
+				  iterator.remove();
+			  }
+		  }
+		  
+		  // If still too big after removing old entries, clear half the cache
+		  if (textWidthCache.size() >= TEXT_CACHE_SIZE) {
+			  int toRemove = TEXT_CACHE_SIZE / 2;
+			  iterator = textWidthCache.entrySet().iterator();
+			  while (iterator.hasNext() && toRemove > 0) {
+				  iterator.next();
+				  iterator.remove();
+				  toRemove--;
+			  }
+		  }
+	  }
+	  
+	  // Clear the entire text width cache (call when font changes or for debugging)
+	  public static void clearTextCache() {
+		  textWidthCache.clear();
 	  }
 	  
 	  public void setLineWidth(double width){
 		  context.setLineWidth(width);
 	  }
 	  
-	  public void drawLine(int x1, int y1, int x2, int y2) {
-		  context.beginPath();
-		  context.moveTo(x1, y1);
-		  context.lineTo(x2, y2);
-		  context.stroke();
-	//	  context.closePath();
+	  /**
+	   * Start batched drawing mode for performance optimization.
+	   * Reduces context.beginPath()/stroke() calls by batching multiple operations.
+	   * Must call endBatch() when done.
+	   */
+	  public void startBatch() {
+		  if (!batchMode) {
+			  batchMode = true;
+			  batchedOperations = 0;
+			  context.beginPath();
+		  }
 	  }
+	  
+	  /**
+	   * End batched drawing mode and flush all batched operations.
+	   */
+	  public void endBatch() {
+		  if (batchMode) {
+			  if (batchedOperations > 0) {
+				  context.stroke();
+			  }
+			  batchMode = false;
+			  batchedOperations = 0;
+		  }
+	  }
+	  
+		public void drawLine(int x1, int y1, int x2, int y2) {
+			if (batchMode) {
+				// In batch mode, add disconnected line segments to the current path
+				context.moveTo(x1, y1);  // Always moveTo for disconnected lines
+				context.lineTo(x2, y2);
+				batchedOperations++;
+			} else {
+				// Normal mode - individual draw calls
+				context.beginPath();
+				context.moveTo(x1, y1);
+				context.lineTo(x2, y2);
+				context.stroke();
+			}
+		}
 
 	  public void drawLine(Point x1, Point x2) {
-		  context.beginPath();
-		  context.moveTo(x1.x, x1.y);
-		  context.lineTo(x2.x, x2.y);
-		  context.stroke();
-	//	  context.closePath();
+		  drawLine(x1.x, x1.y, x2.x, x2.y);
 	  }
 
 	  public void drawPolyline(int[] xpoints, int[] ypoints, int n) {
@@ -145,6 +239,8 @@ public class Graphics {
 		  if (f!=null){
 			  context.setFont(f.fontname);
 			  currentFontSize=f.size;
+			  // Clear cache when font changes since widths will be different
+			  clearTextCache();
 		  }
 	  }
 

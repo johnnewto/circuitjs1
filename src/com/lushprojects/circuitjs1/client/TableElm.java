@@ -26,6 +26,7 @@ public class TableElm extends ChipElm {
     protected String tableUnits = ""; // Units to display in table cells ("" , $ or V)
     protected int decimalPlaces = 2; // Number of decimal places to show
     protected boolean showCellValues = false; // Show "equation = value" (true) or just "equation" (false)
+    protected boolean collapsedMode = false; // Collapsed mode: show only title, headers, and computed row
     protected ColumnType[] columnTypes; // Type for each column (Asset/Liability/Equity/Computed)
     
     // All cells now use equations
@@ -214,37 +215,22 @@ public class TableElm extends ChipElm {
     }
     
     /**
-     * Calculate A_L_E column sum directly: Assets - Liabilities - Equity
-     * This method sums the already-evaluated cell values from each column,
-     * then applies the accounting equation formula.
-     * No expression compilation needed - pure arithmetic on voltages.
+     * Calculate A_L_E values:
+     * 1. For each row: Assets - Liabilities - Equity (stored in computedALEValues)
+     * 2. For computed row: Total Assets - Total Liabilities - Total Equity
      * 
-     * Also stores individual cell values in computedALEValues for rendering.
-     * Must be called AFTER all regular columns have been computed in doStep().
+     * This method calculates both the per-row A-L-E values (for display in cells)
+     * and the total A-L-E value (for display in the computed row).
      * 
-     * @return The total A_L_E value (sum of all A_L_E cells in the column)
+     * @return The total A_L_E value for the computed row
      */
     private double calculateALEColumnSum() {
-        // Initialize storage for A-L-E cell values
+        // Initialize storage for A-L-E cell values (per-row)
         if (computedALEValues == null || computedALEValues.length != rows) {
             computedALEValues = new double[rows];
         }
         
-        double totalALE = 0.0;
-        
-        // // Debug: log column types once
-        // if (rows > 0) {
-        //     StringBuilder colTypeDebug = new StringBuilder("ALE[" + tableTitle + "] Column types: ");
-        //     for (int col = 0; col < cols - 1; col++) {
-        //         String colName = (outputNames != null && col < outputNames.length) ? outputNames[col] : "col" + col;
-        //         String colType = (columnTypes != null && col < columnTypes.length && columnTypes[col] != null) 
-        //             ? columnTypes[col].toString() : "null";
-        //         colTypeDebug.append(colName).append("=").append(colType).append(" ");
-        //     }
-        //     CirSim.console(colTypeDebug.toString());
-        // }
-        
-        // Calculate A-L-E for each row
+        // Calculate A-L-E for each row (for cell display)
         for (int row = 0; row < rows; row++) {
             double assets = 0.0;
             double liabilities = 0.0;
@@ -274,15 +260,39 @@ public class TableElm extends ChipElm {
             // Calculate A-L-E for this row: Assets - Liabilities - Equity
             double rowALE = assets - liabilities - equity;
             computedALEValues[row] = rowALE;
-            totalALE += rowALE;
-            
-            // // Debug logging for troubleshooting
-            // if (row == 0 || Math.abs(rowALE) > 0.001) {  // Log first row and non-zero values
-            //     CirSim.console("ALE[" + tableTitle + "][row" + row + "]: A=" + assets + " L=" + liabilities + " E=" + equity + " => " + rowALE);
-            // }
         }
         
-        return totalALE;
+        // Calculate A-L-E for the computed row (based on column totals)
+        double totalAssets = 0.0;
+        double totalLiabilities = 0.0;
+        double totalEquity = 0.0;
+        
+        // Only process columns BEFORE the last column (exclude A_L_E itself)
+        for (int col = 0; col < cols - 1; col++) {
+            // Get the computed value for this column (from the computed row)
+            double columnTotal = getComputedValueForDisplay(col);
+            
+            // Add to appropriate bucket based on column type
+            if (columnTypes != null && col < columnTypes.length && columnTypes[col] != null) {
+                switch (columnTypes[col]) {
+                    case ASSET:
+                        totalAssets += columnTotal;
+                        break;
+                    case LIABILITY:
+                        totalLiabilities += columnTotal;
+                        break;
+                    case EQUITY:
+                        totalEquity += columnTotal;
+                        break;
+                }
+            }
+        }
+        
+        // Calculate A-L-E for computed row: Total Assets - Total Liabilities - Total Equity
+        double computedRowALE = totalAssets - totalLiabilities - totalEquity;
+        
+        // Return the computed row A-L-E (this is what gets displayed in the computed row)
+        return computedRowALE;
     }
     
     /**
@@ -744,6 +754,11 @@ public class TableElm extends ChipElm {
             ei.checkbox = new Checkbox("", showCellValues);
             return ei;
         }
+        if (n == 6) {
+            EditInfo ei = new EditInfo("Collapsed Mode", 0, -1, -1);
+            ei.checkbox = new Checkbox("", collapsedMode);
+            return ei;
+        }
         return null;
     }
 
@@ -761,6 +776,8 @@ public class TableElm extends ChipElm {
             showInitialValues = ei.checkbox.getValue();
         } else if (n == 5) {
             showCellValues = ei.checkbox.getValue();
+        } else if (n == 6) {
+            collapsedMode = ei.checkbox.getValue();
         }
         
         setupPins();

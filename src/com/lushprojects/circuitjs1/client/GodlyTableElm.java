@@ -350,9 +350,18 @@ public class GodlyTableElm extends TableElm {
      * Override to return integrated values (stocks) instead of column sums (flows)
      * for display in the "Computed" row.
      * At t=0, returns the initial value.
+     * NOTE: A-L-E columns are NOT integrated - they use the base class implementation
      */
     @Override
     public double getComputedValueForDisplay(int col) {
+        // Check if this is an A-L-E column (last column when cols >= 4)
+        boolean isALEColumn = (col == cols - 1 && cols >= 4);
+        
+        if (isALEColumn) {
+            // A-L-E column: use base class implementation (returns lastColumnSums)
+            return super.getComputedValueForDisplay(col);
+        }
+        
         // At t=0 or before first step, return initial value
         if (sim.t == 0.0 || integratedValues == null) {
             return getInitialValue(col);

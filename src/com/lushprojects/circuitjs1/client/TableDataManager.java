@@ -215,6 +215,7 @@ public class TableDataManager {
         sb.append(" ").append(table.showInitialValues);
         sb.append(" ").append(table.decimalPlaces);
         sb.append(" ").append(table.showCellValues);
+        sb.append(" ").append(table.collapsedMode);
         
         // Text fields (escaped)
         sb.append(" ").append(CustomLogicModel.escape(table.tableTitle));
@@ -253,7 +254,7 @@ public class TableDataManager {
     
     /**
      * Simplified parsing with backward compatibility
-     * New format: rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces showCellValues
+     * New format: rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces showCellValues collapsedMode
      *             tableTitle tableUnits
      *             [col headers] [row descriptions] [initial values] [column types] [equations]
      * Old format: rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces
@@ -276,12 +277,24 @@ public class TableDataManager {
             // If next token is a string, it's the old format without showCellValues (it's the table title)
             String nextToken = st.hasMoreTokens() ? st.nextToken() : "Table";
             if (nextToken.equals("true") || nextToken.equals("false")) {
-                // New format: read showCellValues and then table title
+                // New format: read showCellValues and check for collapsedMode
                 table.showCellValues = Boolean.parseBoolean(nextToken);
-                table.tableTitle = readString(st, "Table");
+                
+                // Peek again to check for collapsedMode (even newer format)
+                String nextToken2 = st.hasMoreTokens() ? st.nextToken() : "Table";
+                if (nextToken2.equals("true") || nextToken2.equals("false")) {
+                    // Newest format: has collapsedMode
+                    table.collapsedMode = Boolean.parseBoolean(nextToken2);
+                    table.tableTitle = readString(st, "Table");
+                } else {
+                    // New format without collapsedMode
+                    table.collapsedMode = false; // Default for files without collapsedMode
+                    table.tableTitle = CustomLogicModel.unescape(nextToken2);
+                }
             } else {
                 // Old format: the token we just read IS the table title
                 table.showCellValues = false; // Default for old files
+                table.collapsedMode = false; // Default for old files
                 table.tableTitle = CustomLogicModel.unescape(nextToken);
             }
             

@@ -367,20 +367,22 @@ class Scope {
     	scaleX = 5;
     	scaleY = .1;
     	speed = 64;
-    	showMax = true;
+    	showMax = false;
     	showV = showI = false;
     	showScale = showFreq = manualScale = showMin = showElmInfo = false;
     	showFFT = false;
     	plot2d = false;
     	if (!loadDefaults()) {
-    	    // set showV and showI appropriately depending on what plots are present
+    	    // set showV appropriately depending on what plots are present
+    	    // Don't automatically show current - user must enable it manually
     	    int i;
     	    for (i = 0; i != plots.size(); i++) {
     		ScopePlot plot = plots.get(i);
     		if (plot.units == UNITS_V)
     		    showV = true;
-    		if (plot.units == UNITS_A)
-    		    showI = true;
+    		// Don't default to showing current
+    		// if (plot.units == UNITS_A)
+    		//    showI = true;
     	    }
     	}
     }
@@ -468,8 +470,9 @@ class Scope {
 	    plots.add(new ScopePlot(ce, u, val, getManScaleFromMaxScale(u, false)));
 	    if (u == UNITS_V)
 		showV = true;
-	    if (u == UNITS_A)
-		showI = true;
+	    // Don't default to showing current
+	    // if (u == UNITS_A)
+	    //	showI = true;
 	}
 	calcVisiblePlots();
 	resetGraph();
@@ -1205,6 +1208,10 @@ class Scope {
             g.drawString("0", 0, y0-2);
         }
         
+        // Optimize: Use batched drawing for scope waveform
+        // This reduces thousands of context.beginPath()/stroke() calls to just 2
+        g.startBatch();
+        
         int ox = -1, oy = -1;
         for (i = 0; i != rect.width; i++) {
             int ip = (i+ipa) & (scopePointCount-1);
@@ -1231,8 +1238,11 @@ class Scope {
         	g.drawLine(x+i, maxy-minvy, x+i, maxy-maxvy);
             }
         } // for (i=0...)
+        
         if (ox != -1)
             g.drawLine(ox, maxy-oy, x+i-1, maxy-oy); // Horizontal
+        
+        g.endBatch();
         
     }
 
@@ -1701,9 +1711,33 @@ class Scope {
     	    drawAverage(g);
     	if (showDutyCycle)
     	    drawDutyCycle(g);
-    	String t = getScopeLabelOrText(true);
-    	if (t != null &&  t!= "") 
-    	    drawInfoText(g, t);
+    	
+    	// Draw plot names in their respective colors
+    	if (visiblePlots.size() >= 1) {
+    	    // Show each plot name with its own color and current value
+    	    for (int i = 0; i < visiblePlots.size(); i++) {
+    		ScopePlot p = visiblePlots.get(i);
+    		if (p.elm != null) {
+    		    String plotText = p.elm.getScopeText(p.value);
+    		    if (plotText != null && !plotText.isEmpty()) {
+    			if (rect.y + rect.height <= textY+5)
+    			    break;
+    			g.setColor(p.color);
+    			// Add current value to the plot name
+    			String valueText = p.getUnitText(p.lastValue);
+    			g.drawString(Locale.LS(plotText) + ": " + valueText, 0, textY);
+    			textY += 15;
+    		    }
+    		}
+    	    }
+    	    g.setColor(CircuitElm.whiteColor);
+    	} else {
+    	    // Fallback for no plots - use getScopeLabelOrText
+    	    String t = getScopeLabelOrText(true);
+    	    if (t != null &&  t!= "") 
+    		drawInfoText(g, t);
+    	}
+    	
     	if (showFreq)
     	    drawFrequency(g);
     	if (showElmInfo)

@@ -82,7 +82,9 @@ public class Adjustable implements Command {
     }
 
     void createSlider(CirSim sim, double value) {
-        sim.addWidgetToVerticalPanel(label = new Label(Locale.LS(sliderText)));
+        EditInfo ei = elm.getEditInfo(editItem);
+        String valueStr = ei != null ? EditDialog.unitString(ei, value) : String.valueOf(value);
+        sim.addWidgetToVerticalPanel(label = new Label(Locale.LS(sliderText) + ": " + valueStr));
         label.addStyleName("topSpace");
         int intValue = (int) ((value-minValue)*100/(maxValue-minValue));
         sim.addWidgetToVerticalPanel(slider = new Scrollbar(Scrollbar.HORIZONTAL, intValue, 1, 0, 101, this, elm));
@@ -97,6 +99,15 @@ public class Adjustable implements Command {
         settingValue = true; // don't recursively set value again in execute()
         slider.setValue(intValue);
         settingValue = false;
+        
+        // Update label to show current value
+        if (label != null) {
+            EditInfo ei = elm.getEditInfo(editItem);
+            if (ei != null) {
+                String valueStr = EditDialog.unitString(ei, value);
+                label.setText(Locale.LS(sliderText) + ": " + valueStr);
+            }
+        }
     }
     
     public void execute() {
@@ -116,6 +127,13 @@ public class Adjustable implements Command {
 	EditInfo ei = elm.getEditInfo(editItem);
 	ei.value = getSliderValue();
 	elm.setEditValue(editItem, ei);
+	
+	// Update label to show current value
+	if (label != null) {
+	    String valueStr = EditDialog.unitString(ei, ei.value);
+	    label.setText(Locale.LS(sliderText) + ": " + valueStr);
+	}
+	
 	elm.sim.repaint();
     }
     

@@ -45,9 +45,16 @@ public class TableGeometryManager {
     
     /**
      * Get number of extra rows (title, type, header, optional initial, computed)
+     * Adjusted for collapsed mode
      */
     private int getExtraRowCount() {
-        return (table.showInitialValues ? 1 : 0) + 3; // type + header + computed
+        if (table.collapsedMode) {
+            // Collapsed mode: only title, header, and computed rows
+            return 2; // header + computed (title is separate)
+        } else {
+            // Normal mode: type + header + optional initial + computed
+            return (table.showInitialValues ? 1 : 0) + 3; // type + header + computed
+        }
     }
     
     /**
@@ -110,18 +117,19 @@ public class TableGeometryManager {
      */
     private void calculateBoundingBox() {
         int cellWidthPixels = getCellWidthPixels();
-        int rowDescColWidth = cellWidthPixels;
+        int rowDescColWidth = table.collapsedMode ? 0 : cellWidthPixels; // Hide in collapsed mode
         
         // Calculate table width (matches TableRenderer)
         int tableWidth = rowDescColWidth + table.cellSpacing + 
                         table.cols * cellWidthPixels + (table.cols + 1) * table.cellSpacing;
         
         // Calculate table height (matches TableRenderer.draw() calculations)
-        int titleHeight = 10 + 5; // Title offset + space after
-        int typeRowHeight = table.cellHeight + table.cellSpacing;
+        // In collapsed mode: skip type row, initial values, and data rows
+        int titleHeight = 10 + 10; // Title offset + space after (increased for better spacing)
+        int typeRowHeight = table.collapsedMode ? 0 : (table.cellHeight + table.cellSpacing);
         int headerRowHeight = table.cellHeight + table.cellSpacing;
-        int initialRowHeight = table.showInitialValues ? (table.cellHeight + table.cellSpacing) : 0;
-        int dataRowsHeight = table.rows * (table.cellHeight + table.cellSpacing);
+        int initialRowHeight = (table.showInitialValues && !table.collapsedMode) ? (table.cellHeight + table.cellSpacing) : 0;
+        int dataRowsHeight = table.collapsedMode ? 0 : (table.rows * (table.cellHeight + table.cellSpacing));
         int computedRowHeight = table.cellHeight + table.cellSpacing;
         
         int tableHeight = titleHeight + typeRowHeight + headerRowHeight + 
@@ -140,9 +148,16 @@ public class TableGeometryManager {
      * X positions are already correct from super.setPoints()
      */
     private void adjustPinPositions() {
-        int extraRows = getExtraRowCount();
-        int tableHeight = (table.rows + extraRows) * table.cellHeight + 
-                         (table.rows + extraRows + 1) * table.cellSpacing + 20;
+        // Calculate table height to match the exact dimensions from calculateBoundingBox()
+        int titleHeight = 10 + 10; // Title offset + space after (increased for better spacing)
+        int typeRowHeight = table.collapsedMode ? 0 : (table.cellHeight + table.cellSpacing);
+        int headerRowHeight = table.cellHeight + table.cellSpacing;
+        int initialRowHeight = (table.showInitialValues && !table.collapsedMode) ? (table.cellHeight + table.cellSpacing) : 0;
+        int dataRowsHeight = table.collapsedMode ? 0 : (table.rows * (table.cellHeight + table.cellSpacing));
+        int computedRowHeight = table.cellHeight + table.cellSpacing;
+        
+        int tableHeight = titleHeight + typeRowHeight + headerRowHeight + 
+                         initialRowHeight + dataRowsHeight + computedRowHeight;
         
         int tableY = table.y;
         int tableBottomY = tableY + tableHeight;

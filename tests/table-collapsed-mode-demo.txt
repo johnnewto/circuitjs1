@@ -1,0 +1,30 @@
+$ 1 0.000005 10.20027730826997 50 5 50 5e-11
+R 80 224 80 288 0 0 40 5 0 0 0.5
+R 176 224 176 288 0 0 40 5 0 0 0.5
+R 272 224 272 288 0 0 40 5 0 0 0.5
+g 80 288 80 304 0 0
+g 176 288 176 304 0 0
+g 272 288 272 304 0 0
+w 80 176 80 224 0
+w 176 176 176 224 0
+w 272 176 272 224 0
+370 80 144 80 176 0 0 cash
+370 176 144 176 176 0 0 inventory
+370 272 144 272 176 0 0 equipment
+v 80 96 80 144 0 1 40 5 0 0 0.5
+v 176 96 176 144 0 1 40 3 0 0 0.5
+v 272 96 272 144 0 1 40 2 0 0 0.5
+g 80 96 80 80 0 0
+g 176 96 176 80 0 0
+g 272 96 272 80 0 0
+# 
+# Table in normal (expanded) mode
+# Shows all rows including data rows
+x 360 96 453 96 4 14 Table\sExpanded
+253 384 144 384 224 0 3 4 6 16 0 false 2 false false Table\sExpanded  Stock1 Stock2 Stock3 A_L_E Row1 Row2 Row3 0.0 0.0 0.0 0.0 ASSET ASSET ASSET COMPUTED cash inventory equipment  cash/2 inventory/2 equipment/2  cash/4 inventory/4 equipment/4 
+#
+# Table in collapsed mode
+# Shows only title, headers, and computed row
+x 360 312 448 312 4 14 Table\sCollapsed
+253 384 352 384 432 0 3 4 6 16 0 false 2 false true Table\sCollapsed  Stock1 Stock2 Stock3 A_L_E Row1 Row2 Row3 0.0 0.0 0.0 0.0 ASSET ASSET ASSET COMPUTED cash inventory equipment  cash/2 inventory/2 equipment/2  cash/4 inventory/4 equipment/4 
+o 12 64 0 4099 5 0.0001 0 2 12 3 13 3 14 3
