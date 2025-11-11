@@ -102,6 +102,7 @@ import com.google.gwt.user.client.Window.Navigator;
 import com.google.gwt.event.logical.shared.ResizeEvent;
 import com.google.gwt.event.logical.shared.ResizeHandler;
 import com.google.gwt.user.client.DOM;
+import com.google.gwt.i18n.client.NumberFormat;
 
 public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandler,
 ClickHandler, DoubleClickHandler, ContextMenuHandler, NativePreviewHandler,
@@ -1795,18 +1796,28 @@ public CirSim() {
 	} else if (!hideInfoBox) {
 	    // in JS it doesn't matter how big this is, there's no out-of-bounds exception
 	    String info[] = new String[10];
+	    
+	    // Always show time as first element with fixed 2 decimal places
+	    info[0] = "t = " + formatTimeFixed(t);
+		// info[0] = "t = " + NumberFormat.getFormat("0.00").format(t);
+	    double timerate = 160*getIterCount()*timeStep;
+	    if (timerate >= .1)
+	        info[0] += " (" + CircuitElm.showFormat.format(timerate) + "x)";
+	    
 	    if (mouseElm != null) {
 		if (mousePost == -1) {
-		    mouseElm.getInfo(info);
-		    info[0] = Locale.LS(info[0]);
-		    if (info[1] != null)
-			info[1] = Locale.LS(info[1]);
+		    // Shift element info down by one
+		    String[] elmInfo = new String[10];
+		    mouseElm.getInfo(elmInfo);
+		    for (int idx = 0; idx < elmInfo.length && elmInfo[idx] != null; idx++) {
+		        info[idx + 1] = Locale.LS(elmInfo[idx]);
+		    }
 		} else {
-		    info[0] = "V = " + CircuitElm.getUnitText(mouseElm.getPostVoltage(mousePost), "V");
+		    info[1] = "V = " + CircuitElm.getUnitText(mouseElm.getPostVoltage(mousePost), "V");
 		    // Add node name if available
 		    String nodeName = LabeledNodeElm.getNameByNode(mouseElm.nodes[mousePost]);
 		    if (nodeName != null)
-			info[1] = "Node: " + nodeName;
+			info[2] = "Node: " + nodeName;
 		}
 
             
@@ -1818,11 +1829,8 @@ public CirSim() {
 //		*/
 		
 	    } else {
-	    	info[0] = "t = " + CircuitElm.getTimeText(t);
-	    	double timerate = 160*getIterCount()*timeStep;
-	    	if (timerate >= .1)
-	    	    info[0] += " (" + CircuitElm.showFormat.format(timerate) + "x)";
-	    	info[1] = Locale.LS("time step = ") + CircuitElm.getTimeText(timeStep);
+	    	// When no element is selected, also show timestep info
+	    	info[1] = Locale.LS("time step = ") + CircuitElm.getUnitText(timeStep, "s");
 	    }
 	    if (hintType != -1) {
 		for (i = 0; info[i] != null; i++)
@@ -3961,44 +3969,34 @@ public CirSim() {
     }
     
     String dumpCircuit() {
-	int i;
-	CustomLogicModel.clearDumpedFlags();
-	CustomCompositeModel.clearDumpedFlags();
-	DiodeModel.clearDumpedFlags();
-	TransistorModel.clearDumpedFlags();
-	
-	String dump = dumpOptions();
-	
-	// Create sorted copy of element list, grouped by dump type
-	Vector<CircuitElm> sortedElms = new Vector<CircuitElm>(elmList);
-	Collections.sort(sortedElms, new Comparator<CircuitElm>() {
-	    public int compare(CircuitElm e1, CircuitElm e2) {
-		int dt1 = e1.getDumpType();
-		int dt2 = e2.getDumpType();
-		return Integer.compare(dt1, dt2);
-	    }
-	});
+		int i;
+		CustomLogicModel.clearDumpedFlags();
+		CustomCompositeModel.clearDumpedFlags();
+		DiodeModel.clearDumpedFlags();
+		TransistorModel.clearDumpedFlags();
 		
-	for (i = 0; i != sortedElms.size(); i++) {
-	    CircuitElm ce = sortedElms.get(i);
-	    String m = ce.dumpModel();
-	    if (m != null && !m.isEmpty())
-		dump += m + "\n";
-	    dump += ce.dump() + "\n";
-	}
-	for (i = 0; i != scopeCount; i++) {
-	    String d = scopes[i].dump();
-	    if (d != null)
-		dump += d + "\n";
-	}
-	for (i = 0; i != adjustables.size(); i++) {
-	    Adjustable adj = adjustables.get(i);
-	    dump += "38 " + adj.dump() + "\n";
-	}
-	if (hintType != -1)
-	    dump += "h " + hintType + " " + hintItem1 + " " +
-		hintItem2 + "\n";
-	return dump;
+		String dump = dumpOptions();
+			
+		for (i = 0; i != elmList.size(); i++) {
+			CircuitElm ce = getElm(i);
+			String m = ce.dumpModel();
+			if (m != null && !m.isEmpty())
+			dump += m + "\n";
+			dump += ce.dump() + "\n";
+		}
+		for (i = 0; i != scopeCount; i++) {
+			String d = scopes[i].dump();
+			if (d != null)
+			dump += d + "\n";
+		}
+		for (i = 0; i != adjustables.size(); i++) {
+			Adjustable adj = adjustables.get(i);
+			dump += "38 " + adj.dump() + "\n";
+		}
+		if (hintType != -1)
+			dump += "h " + hintType + " " + hintItem1 + " " +
+			hintItem2 + "\n";
+		return dump;
     }
 
     void getSetupList(final boolean openDefault) {
@@ -4370,6 +4368,17 @@ public CirSim() {
 		    heldSwitchElm = se;
 		if (!(se instanceof LogicInputElm))
 		    needAnalyze();
+		return true;
+	}
+
+	boolean doTableCollapseToggle(int x, int y) {
+		if (mouseElm == null || !(mouseElm instanceof TableElm))
+			return false;
+		TableElm te = (TableElm) mouseElm;
+		if (!te.isCollapseArrowClicked(x, y))
+		    return false;
+		te.toggleCollapsedMode();
+		repaint();
 		return true;
 	}
 
@@ -4979,7 +4988,13 @@ public CirSim() {
     	if (mouseElm != null && !(mouseElm instanceof SwitchElm) && !noEditCheckItem.getState()) {
     		// Special handling for TableElm - open TableEditDialog instead of standard properties
     		if (mouseElm instanceof TableElm) {
-    			((TableElm)mouseElm).openTableEditDialog();
+    			// Don't open dialog if double-click is on the collapse arrow
+    			TableElm te = (TableElm) mouseElm;
+    			int gx = inverseTransformX(e.getX());
+    			int gy = inverseTransformY(e.getY());
+    			if (!te.isCollapseArrowClicked(gx, gy)) {
+    				te.openTableEditDialog();
+    			}
     		} else {
     			doEdit(mouseElm);
     		}
@@ -5072,6 +5087,12 @@ public CirSim() {
 	    // do this BEFORE we change the mouse mode to MODE_DRAG_POST!  Or else logic inputs
 	    // will add dots to the whole circuit when we click on them!
             didSwitch = true;
+	    return;
+	}
+	
+	// Check for TableElm collapse arrow click
+	if (doTableCollapseToggle(gx, gy)) {
+	    didSwitch = true;
 	    return;
 	}
 	
@@ -5246,6 +5267,27 @@ public CirSim() {
     }
     
     void enableItems() {
+    }
+    
+    // Format time with fixed 2 decimal places and appropriate SI prefix
+    String formatTimeFixed(double t) {
+	NumberFormat fixedFmt = NumberFormat.getFormat("0.00");
+	double va = Math.abs(t);
+	if (va < 1e-14)
+	    return "0.00 s";
+	if (va < 1e-9)
+	    return fixedFmt.format(t*1e12) + " ps";
+	if (va < 1e-6)
+	    return fixedFmt.format(t*1e9) + " ns";
+	if (va < 1e-3)
+	    return fixedFmt.format(t*1e6) + " μs";
+	if (va < 1)
+	    return fixedFmt.format(t*1e3) + " ms";
+	if (va < 1e3)
+	    return fixedFmt.format(t) + " s";
+	if (va < 1e6)
+	    return fixedFmt.format(t*1e-3) + " ks";
+	return NumberFormat.getFormat("#.##E000").format(t) + " s";
     }
     
     void setGrid() {

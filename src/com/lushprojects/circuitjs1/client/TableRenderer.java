@@ -259,25 +259,39 @@ public class TableRenderer {
         int tableWidth = rowDescColWidth + table.cellSpacing + table.cols * cellWidthPixels + (table.cols + 1) * table.cellSpacing;
         int titleY = tableY + offsetY;
         
-        // Draw light blue background for title area if hovering
+        // Draw light blue background for title area if hovering, but exclude the arrow area
         // The title area spans from the top of the table to just before the Type row (20 pixels total)
         if (table.needsHighlight()) {
+            Rectangle arrowRect = table.getCollapseArrowRect();
             g.setColor(CircuitElm.selectColor); // Light blue
-            // Draw background rectangle covering the full title area
-            g.fillRect(tableX, tableY, tableWidth, 20);
+            // Draw background rectangle covering the title area, but skip the arrow area on the left
+            g.fillRect(arrowRect.x + arrowRect.width, tableY, tableWidth - arrowRect.width, 20);
         }
+        
+        // Draw collapse state indicator on the LEFT side first
+        // ▼ (U+25BC) for expanded, ▲ (U+25B6) for collapsed
+        String collapseIndicator = table.collapsedMode ? "▲" : "▼";
+        int indicatorX = tableX + 15; // Position near left edge
+        
+        // Highlight the arrow if hovering over it
+        boolean isArrowHovered = table.isArrowHovered();
+        if (isArrowHovered) {
+            // Draw a subtle background for the arrow to indicate it's clickable
+            Rectangle arrowRect = table.getCollapseArrowRect();
+            g.setColor("#4a4a4a"); // Slightly lighter gray
+            g.fillRect(arrowRect.x, arrowRect.y, arrowRect.width, arrowRect.height);
+            g.setColor(CircuitElm.selectColor); // Make arrow blue when hovering
+        } else {
+            g.setColor(CircuitElm.whiteColor);
+        }
+        
+        table.drawCenteredText(g, collapseIndicator, indicatorX, titleY, true);
         
         // Draw title centered at top of table with enhanced font
         g.setFont(TITLE_FONT);
         g.setLetterSpacing(LETTER_SPACING);
         g.setColor(CircuitElm.whiteColor);
         table.drawCenteredText(g, table.tableTitle, tableX + tableWidth / 2, titleY, true);
-        
-        // Draw collapse state indicator on the right side
-        // ▼ (U+25BC) for expanded, ▶ (U+25B6) for collapsed
-        String collapseIndicator = table.collapsedMode ? "▲" : "▼";
-        int indicatorX = tableX + tableWidth - 15; // Position near right edge
-        table.drawCenteredText(g, collapseIndicator, indicatorX, titleY, true);
     }
 
     private void drawColumnHeaders(Graphics g, int offsetY) {
@@ -471,7 +485,7 @@ public class TableRenderer {
                     if (table.showCellValues) {
                         // Show "equation = value"
                         String voltageText = CircuitElm.getUnitText(voltage, table.tableUnits);
-                        String combinedText = displayText + " = " + voltageText;
+                        String combinedText = displayText + ": " + voltageText;
                         table.drawCenteredText(g, combinedText, cellX + cellWidthPixels/2, cellY + table.cellHeight/2, true);
                     } else {
                         // Show just "equation"

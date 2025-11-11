@@ -534,6 +534,65 @@ public class TableElm extends ChipElm {
         return y;
     }
 
+    /**
+     * Get the rectangle for the collapse arrow button
+     * @return Rectangle representing the clickable area of the collapse arrow
+     */
+    Rectangle getCollapseArrowRect() {
+        int tableX = getTableX();
+        int tableY = getTableY();
+        
+        // Arrow is positioned on the left side of the title
+        // Title area is 20 pixels high
+        // Make the clickable area larger for better usability (30x20 pixels)
+        int arrowX = tableX; // Start at left edge
+        int arrowY = tableY;
+        int arrowWidth = 30;
+        int arrowHeight = 20;
+        
+        return new Rectangle(arrowX, arrowY, arrowWidth, arrowHeight);
+    }
+
+    /**
+     * Check if a point is inside the collapse arrow button
+     * @param gx grid x coordinate
+     * @param gy grid y coordinate
+     * @return true if the point is inside the arrow button
+     */
+    boolean isCollapseArrowClicked(int gx, int gy) {
+        Rectangle arrowRect = getCollapseArrowRect();
+        return arrowRect.contains(gx, gy);
+    }
+
+    /**
+     * Check if the mouse is hovering over the collapse arrow
+     * @return true if the mouse is hovering over the arrow
+     */
+    boolean isArrowHovered() {
+        if (sim == null) {
+            return false;
+        }
+        int gx = sim.inverseTransformX(sim.mouseCursorX);
+        int gy = sim.inverseTransformY(sim.mouseCursorY);
+        return isCollapseArrowClicked(gx, gy);
+    }
+
+    /**
+     * Toggle collapsed mode when arrow is clicked
+     */
+    void mouseUp() {
+        // This will be called by CirSim when the mouse is released on the element
+        // The actual click detection happens in the doSwitch-like method
+    }
+
+    /**
+     * Toggle collapsed mode
+     */
+    void toggleCollapsedMode() {
+        collapsedMode = !collapsedMode;
+        setSize((flags & FLAG_SMALL) != 0 ? 1 : 2); // Recalculate size based on current size setting
+    }
+
     @Override
     void draw(Graphics g) {
         if (renderer != null) {

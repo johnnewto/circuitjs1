@@ -139,13 +139,18 @@ public class Scrollbar extends  Composite implements
 		g.stroke();
 		double p=HMARGIN+SCROLLHEIGHT+BARMARGIN+((CirSim.VERTICALPANELWIDTH-2*(HMARGIN+SCROLLHEIGHT+BARMARGIN))*((double)(val-min)))/(max-min);
 		if (enabled) {
-			if (attachedElm!=null && attachedElm.needsHighlight())
+			boolean highlighted = attachedElm!=null && attachedElm.needsHighlight();
+			if (highlighted)
 				g.setStrokeStyle(CircuitElm.selectColor.getHexValue());
 			else
 				g.setStrokeStyle("red");
 			g.beginPath();
 			g.moveTo(HMARGIN+SCROLLHEIGHT+BARMARGIN, SCROLLHEIGHT/2);
-			g.lineTo(p, SCROLLHEIGHT/2);
+			// If highlighted, draw the entire bar, otherwise just draw up to current position
+			if (highlighted)
+				g.lineTo(CirSim.VERTICALPANELWIDTH-HMARGIN-SCROLLHEIGHT-BARMARGIN, SCROLLHEIGHT/2);
+			else
+				g.lineTo(p, SCROLLHEIGHT/2);
 			g.stroke();
 			g.setStrokeStyle("#000000");
 //			g.beginPath();
