@@ -420,17 +420,17 @@ public class StockFlowRegistry {
         
         try {
             currentlySynchronizing.add(table);
-            return synchronizeNonZeroElements(table, priorityTable);
+            return synchronizeElements(table, priorityTable);
         } finally {
             currentlySynchronizing.remove(table);
         }
     }
     
     /**
-     * Synchronize non-zero elements from priority table to target table
-     * Only propagates equations where both flow and stock exist (or creates flow if needed)
+     * Synchronize elements from priority table to target table
+     * Propagates ALL equations (including deletions/empty values) where both flow and stock exist (or creates flow if needed)
      */
-    private static boolean synchronizeNonZeroElements(TableElm targetTable, TableElm sourceTable) {
+    private static boolean synchronizeElements(TableElm targetTable, TableElm sourceTable) {
         // Null safety checks
         if (targetTable == null || sourceTable == null) {
             MRDlog( "Cannot synchronize with null table(s)");
@@ -476,10 +476,10 @@ public class StockFlowRegistry {
                 
                 String equation = sourceTable.getCellEquation(sourceRow, sourceCol);
                 
-                // Skip zero or empty equations
-                if (equation == null || equation.trim().isEmpty() || equation.trim().equals("0")) {
-                    continue;
-                }
+                // Process ALL equations (including empty/zero) to handle deletions
+                // Normalize empty/null to empty string for consistent comparison
+                String normalizedEquation = (equation == null || equation.trim().isEmpty() || equation.trim().equals("0")) 
+                    ? "" : equation.trim();
                 
                 String stockName = sourceTable.getColumnHeader(sourceCol);
                 if (stockName == null || stockName.trim().isEmpty()) {
@@ -500,24 +500,27 @@ public class StockFlowRegistry {
                 
                 // Check if target table has this flow
                 if (targetFlowRows.containsKey(flowDesc)) {
-                    // Flow exists - update the equation regardless of existing value to ensure full sync
+                    // Flow exists - always sync the equation (including deletions/empty values)
                     int targetRow = targetFlowRows.get(flowDesc);
                     String existingEquation = targetTable.getCellEquation(targetRow, targetCol);
+                    String normalizedExisting = (existingEquation == null || existingEquation.trim().isEmpty() || existingEquation.trim().equals("0"))
+                        ? "" : existingEquation.trim();
                     
-                    // Always update to ensure synchronization (source table is authoritative)
-                    if (!equation.equals(existingEquation)) {
-                        targetTable.setCellEquation(targetRow, targetCol, equation);
+                    // Update if different (including clearing to empty)
+                    if (!normalizedEquation.equals(normalizedExisting)) {
+                        targetTable.setCellEquation(targetRow, targetCol, normalizedEquation);
                         modified = true;
-                        log("synchronizeNonZeroElements", "Updated [" + targetRow + "," + targetCol + "] " + 
-                            flowDesc + " → " + stockName + ": `" + equation + "` (was: `" + 
-                            (existingEquation != null ? existingEquation : "empty") + "`)");
+                        log("synchronizeElements", "Updated [" + targetRow + "," + targetCol + "] " + 
+                            flowDesc + " → " + stockName + ": `" + normalizedEquation + "` (was: `" + 
+                            normalizedExisting + "`)");
                     }
-                } else {
-                    // Flow doesn't exist - queue it for addition at the end
+                } else if (!normalizedEquation.isEmpty()) {
+                    // Flow doesn't exist AND equation is non-empty - queue it for addition
+                    // (Don't create new rows for empty equations)
                     if (!flowsToAdd.containsKey(flowDesc)) {
                         flowsToAdd.put(flowDesc, new ArrayList<StockEquation>());
                     }
-                    flowsToAdd.get(flowDesc).add(new StockEquation(stockName, targetCol, equation));
+                    flowsToAdd.get(flowDesc).add(new StockEquation(stockName, targetCol, normalizedEquation));
                 }
             }
             }
@@ -544,11 +547,52 @@ public class StockFlowRegistry {
                 // Set equations for this flow
                 for (StockEquation se : entry.getValue()) {
                     targetTable.setCellEquation(newRow, se.columnIndex, se.equation);
-                    log("synchronizeNonZeroElements", "Created row " + newRow + ": " + 
+                    log("synchronizeElements", "Created row " + newRow + ": " + 
                         flowDesc + " → " + se.stockName + ": `" + se.equation + "`");
                 }
                 newRow++;
             }
+        }
+        
+        // Synchronize initial values for shared stocks
+        // Copy initial values from source to target for columns that share the same stock name
+        try {
+            for (int sourceCol = 0; sourceCol < sourceTable.getCols(); sourceCol++) {
+                // Skip A_L_E columns
+                if (sourceCol == sourceTable.getCols() - 1 && sourceTable.getCols() >= 4) {
+                    continue;
+                }
+                
+                String stockName = sourceTable.getColumnHeader(sourceCol);
+                if (stockName == null || stockName.trim().isEmpty()) {
+                    continue;
+                }
+                
+                // Find this stock in the target table
+                int targetCol = targetTable.findColumnByStockName(stockName);
+                if (targetCol < 0) {
+                    continue; // Target table doesn't have this stock
+                }
+                
+                // Skip if target column is A_L_E
+                if (targetCol == targetTable.getCols() - 1 && targetTable.getCols() >= 4) {
+                    continue;
+                }
+                
+                // Copy initial value from source to target
+                double sourceInitialValue = sourceTable.getInitialValue(sourceCol);
+                double targetInitialValue = targetTable.getInitialValue(targetCol);
+                
+                // Only update if values differ
+                if (Math.abs(sourceInitialValue - targetInitialValue) > 1e-10) {
+                    targetTable.setInitialConditionValue(targetCol, sourceInitialValue);
+                    modified = true;
+                    log("synchronizeElements", "Synced initial value for stock '" + stockName + 
+                        "': " + sourceInitialValue + " (was: " + targetInitialValue + ")");
+                }
+            }
+        } catch (Exception e) {
+            MRDlog("Error synchronizing initial values: " + e.getMessage());
         }
         
         return modified;

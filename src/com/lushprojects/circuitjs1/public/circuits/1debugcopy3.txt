@@ -1,56 +1,71 @@
-$ 17 0.01 0.010109782498721881 37 5 43 5e-11
-207 80 80 16 128 28 Spend
-r -240 272 -240 160 0 1000
-R -240 160 -176 160 0 0 40 -60 0 0 0.5
-g -240 272 -240 320 0 0
-R -320 368 -384 368 0 2 40 5 0 0 0.5
-207 560 432 608 432 28 Borrowers
-R 208 144 272 144 0 0 40 0.05 0 0 0.5
-207 208 144 128 160 28 Interest
-207 -320 368 -384 416 28 r1c2
-250 688 224 704 224 0 2 a*b
-251 496 224 544 224 0 2 a\pb
-207 -288 624 -368 624 28 Debt
-g 496 256 496 304 0 0
-R 688 256 688 320 0 0 40 2 0 0 0.5
-R 832 256 832 320 0 0 40 0.07 0 0 0.5
-250 832 224 848 224 0 2 a*b
-w 784 224 832 224 2
-w 592 224 688 224 2
-207 592 224 592 160 28 Money
-207 784 224 784 160 28 GDP
-207 976 224 1024 96 28 Lend
-O 336 176 336 80 3 1
-w 448 432 560 432 2
-g 592 256 592 304 0 0
-R 80 80 144 80 0 0 40 10 0 0 0.5
-253 -144 224 -80 304 0 3 4 false Borrow_sum Debt Borr_equ Debt 10 0 10 0 -Interest \0 -Interest \0 Lend Lend \0 \0 Spend \0 Spend \0
-256 368 368 320 368 0 0 40 0 0 0 0.5 Borrow_sum
-r 352 432 448 432 0 1000
-w 448 432 448 224 2
-w 448 224 496 224 2
-w 928 224 976 224 2
-w -288 624 -176 624 2
-212 256 432 320 432 0 0 (t\q\q0\s?\s10\s:\slastoutput)\s\p\stimestep*Borrow_sum
-g 352 464 352 496 0 0
-255 1024 256 1056 304 0 3 2 true Godley1 col0 10 0 -Interest Spend Lend \0 Spend \0
-w 800 480 912 480 2
-256 800 480 752 480 0 0 40 0 0 0 0.5 Godley1
-207 -48 592 -48 640 28 tes
-w -48 544 -48 592 0
-207 448 608 448 656 28 tes
-w 448 608 576 608 2
-r 576 608 672 608 0 1000
-w 672 608 800 608 3
-g 800 608 800 640 0 0
-207 1056 672 960 672 4 G1
-207 640 576 544 576 4 G1
-g 864 576 864 608 0 0
-w 736 576 864 576 3
-r 640 576 736 576 0 1000
-212 -16 688 48 688 0 1 (t\q\q0\s?\s10\s:\slastoutput)\s\p\stimestep*a
-w -112 544 -112 688 0
-w -112 688 -16 688 0
-w 80 688 192 688 2
-g 80 720 80 752 0 0
-o 22 1 3 x103002 24.600892240259977 0.0001 0 13 20 0 20 3 19 0 19 3 11 0 11 3 5 0 5 3 11 0 11 3 11 0 11 3
+$ 67 0.05 0.08824969025845955 54 5 50 0.000049999999999999996
+P -344 -632 -344 -584 11 0 Debt_Govt_%_GDP
+P 8 -1192 8 -1144 11 0 Debt_Firms_%_GDP
+w -384 -1272 -368 -1272 0
+w -16 -1240 32 -1240 0
+w -448 -768 -384 -736 0
+w -464 -696 -384 -720 0
+w -336 -736 -296 -736 0
+w -296 -752 -296 -872 0
+w -424 -872 -296 -872 0
+w -368 -1272 -352 -1272 0
+x -732 -1444 28 -1441 4 50 The\sCreation\sof\sEndless\sDeposits FFFF80FF
+x -598 -952 -353 -949 12 24 Government\sFinances FF8080FF
+x -520 -1347 -335 -1344 4 24 GDP\sand\sWages FF8080FF
+x -51 -1359 37 -1356 4 24 Lending FF8080FF
+x -571 -1200 -298 -1197 4 24 Household\sConsumption FF8080FF
+x -517 -1092 -348 -1089 4 24 Bank\sSpending FF8080FF
+207 -384 -1272 -376 -1328 36 GDP
+207 -304 -1272 -256 -1272 36 Lend
+207 80 -1240 128 -1240 36 Fee
+207 -16 -1240 -16 -1280 36 Int_Firms
+207 -64 -1240 -112 -1240 4 Debt_Firms
+207 -384 -736 -384 -792 36 Spend_Govt
+207 -496 -768 -544 -768 36 GDP
+207 -464 -696 -464 -728 36 Tax
+207 -472 -872 -520 -872 36 Debt_Govt
+207 -424 -872 -424 -904 36 Int_Bonds
+207 -296 -736 -296 -688 36 Deficit
+207 -160 -568 -112 -568 36 Firms
+207 -248 -752 -200 -752 36 Bonds
+207 -512 -696 -560 -696 36 GDP
+207 -160 -680 -112 -680 36 Tax
+207 -344 -584 -408 -584 36 GDP
+207 -344 -632 -408 -632 36 Debt_Govt
+207 -432 -1272 -496 -1272 36 Firms
+207 8 -1328 -56 -1328 36 Firms
+207 56 -1328 112 -1328 36 Credit
+207 -424 -1160 -368 -1160 36 Consume
+207 -472 -1160 -536 -1160 36 Households
+207 -160 -592 -112 -592 36 Households
+207 -160 -544 -112 -544 36 Banks
+207 -160 -624 -112 -624 36 Fee
+207 8 -1192 -56 -1192 36 Debt_Firms
+207 8 -1144 -56 -1144 36 GDP
+207 -472 -1056 -536 -1056 36 Banks
+207 -424 -1056 -368 -1056 36 Spend_banks
+207 -160 -656 -112 -656 36 Bonds
+251 -296 -752 -288 -752 1 2
+252 -384 -736 -344 -736 1 2
+253 -1608 -1168 -1576 -1168 1 2 4 6 16 0 false 2 false false Table\s5 \0 Stock_1 Stock_2 Stock_3 A-L-E Row1 Flow_2 122 0 0 0 ASSET LIABILITY EQUITY ASSET 122 \0 \0 \0 \0 \0 \0 \0
+255 -1360 -1168 -1296 -1168 0 10 6 6 16 0 true 2 false false Banks \0 Reserves Households Firms Government Banks A-L-E Pay\sWages Buy\sGoods Borrow\sMoney Pay\sInterest Pay\sBank\sFee Bank\sSpend Govt\sTaxes Govt\sSpends Govt\sSells\sBonds Interest\son\sBonds 100 40 50 0 10 0 ASSET LIABILITY LIABILITY LIABILITY EQUITY ASSET \0 Wages -Wages \0 \0 \0 \0 -Consume Consume \0 \0 \0 \0 -Credit Credit \0 \0 \0 \0 Int_Firms -Int_Firms \0 \0 \0 \0 -Fee \0 \0 Fee \0 \0 \0 Spend_Banks\s \0 -Spend_Banks \0 \0 -Tax \0 Tax \0 \0 \0 \0 Spend_Govt -Spend_Govt \0 \0 \0 -Bonds \0 Bonds \0 \0 \0 Int_Bonds \0 -Int_Bonds \0 \0 0.001
+255 -1360 -736 -1296 -736 1 8 6 12 16 0 true 2 false false Households \0 Households Debt_Firms Debt_Govt Stock4 HH_Equity A-L-E Pay\sWages Buy\sGoods Borrow\sMoney Pay\sInterest Pay\sBank\sFee Govt\sTaxes Govt\sSells\sBonds Interest\son\sBonds 40 0 0 0 40 0 ASSET ASSET ASSET LIABILITY EQUITY ASSET Wages \0 \0 \0 Wages \0 -Consume \0 \0 \0 -Consume \0 -Credit Credit \0 \0 \0 \0 Int_Firms \0 \0 \0 Int_Firms \0 -Fee \0 \0 \0 -Fee \0 -Tax \0 \0 \0 -Tax \0 -Bonds \0 Bonds \0 \0 \0 Int_Bonds \0 \0 \0 Int_Bonds \0 0.001
+255 -1360 -920 -1336 -920 1 6 4 12 16 0 true 2 false false Firms \0 Firms Debt_Firms Firms_Equity A-L-E Pay\sWages Buy\sGoods Borrow\sMoney Pay\sInterest Bank\sSpend Govt\sSpends 50 0 50 0 ASSET LIABILITY EQUITY ASSET -Wages \0 -Wages \0 Consume \0 Consume \0 Credit Credit \0 \0 -Int_Firms \0 -Int_Firms\s \0 Spend_Banks\s \0 Spend_Banks\s \0 Spend_Govt \0 Spend_Govt \0 0.001
+255 -1360 -1424 -1288 -1424 1 1 4 12 16 0 true 2 false false Central\sBank \0 Stock1 Reserves CB_Equity A-L-E Flow_1 0 100 -100 0 ASSET LIABILITY EQUITY ASSET \0 \0 \0 \0 0.001
+255 -1360 -1320 -1248 -1320 1 4 4 12 16 0 true 2 false false Treasury \0 Government Debt_Govt T_equity A-L-E Govt\sTaxes Govt\sSpends Govt\sSells\sBonds Interest\son\sBonds 0 0 0 0 ASSET LIABILITY EQUITY ASSET Tax \0 Tax \0 -Spend_Govt \0 -Spend_Govt \0 Bonds Bonds \0 \0 -Int_Bonds \0 -Int_Bonds \0 0.001
+258 -512 -696 -504 -696 3 0.3 Tax_frac
+258 -496 -768 -488 -768 3 0.31 Spend_frac
+258 -352 -1272 -344 -1272 3 0.6 Wage_Share
+258 -432 -1272 -424 -1272 1 2 Velocity
+258 32 -1240 40 -1240 1 0.5 Fee_rate
+258 -64 -1240 -56 -1240 1 0.05 Interest_Rate
+258 -472 -872 -464 -872 1 0.05 Interest_Rate
+258 8 -1328 16 -1328 3 0.029000000000000005 Credit_Frac
+258 -472 -1160 -464 -1160 1 12.5 Time_HH
+258 -472 -1056 -464 -1056 1 1 Time_Banks
+o 0 2 0 4102 160 0.1 0 4 0 3 1 0 1 3
+o 38 2 0 4102 320 0.1 1 6 38 3 27 0 27 3 39 0 39 3
+o 18 2 0 4102 10 0.1 2 4 18 3 35 0 35 3
+o 36 2 0 4102 320 0.1 3 2 36 3
+38 61 F1 1 0 0.1 -1 Credit_Frac
+38 63 F1 1 0 6 -1 Time_Banks

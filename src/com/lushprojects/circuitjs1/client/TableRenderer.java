@@ -32,6 +32,32 @@ public class TableRenderer {
     }
     
     /**
+     * Get cached A-L-E cell value for display
+     * Returns 0.0 if cache not initialized or out of bounds
+     * Package-private for TableElm access
+     */
+    double getCachedALECellValue(int row, int aleColumnIndex) {
+        if (cachedCellValues != null && 
+            row >= 0 && row < cachedCellValues.length &&
+            aleColumnIndex >= 0 && aleColumnIndex < cachedCellValues[row].length) {
+            return cachedCellValues[row][aleColumnIndex];
+        }
+        return 0.0;
+    }
+    
+    /**
+     * Get cached sum value (computed row) for a column
+     * Returns 0.0 if cache not initialized or out of bounds
+     * Package-private for TableElm access
+     */
+    double getCachedSumValue(int col) {
+        if (cachedSumValues != null && col >= 0 && col < cachedSumValues.length) {
+            return cachedSumValues[col];
+        }
+        return 0.0;
+    }
+    
+    /**
      * Static utility method to convert ColumnType enum to display string
      * Used by both TableRenderer and TableEditDialog
      */
@@ -187,6 +213,7 @@ public class TableRenderer {
      * SYNCHRONIZED DISPLAY ARCHITECTURE:
      * - Cell values: Each table evaluates its own equations (allows different formulas)
      * - Column sums: Non-master columns display the master's computed sum
+     * - ALE values: Calculated inline during drawing (not cached)
      * 
      * This allows tables to have independent cell-level calculations while
      * showing synchronized stock totals in the "Computed" row.
@@ -201,43 +228,111 @@ public class TableRenderer {
             cachedSumValues = new double[table.cols];
         }
         
-        // Update cell values - all tables evaluate their own equations
-        // This allows different tables to have different formulas even when sharing stock names
+        // Update cell values for regular (non-ALE) columns only
+        // ALE values are calculated inline during drawing
+        int regularColCount = getRegularColumnCount();
         for (int row = 0; row < table.rows; row++) {
-            for (int col = 0; col < table.cols; col++) {
+            for (int col = 0; col < regularColCount; col++) {
                 cachedCellValues[row][col] = table.getVoltageForCell(row, col);
             }
         }
         
-        // Update sum values - non-master columns show master's computed sum
-        for (int col = 0; col < table.cols; col++) {
-            // Check if this is an A-L-E column (last column when cols >= 4)
-            boolean isALEColumn = (col == table.cols - 1 && table.cols >= 4);
+        // Update column sum values (computed row)
+        // IMPORTANT: Process regular columns FIRST, then ALE column
+        // This ensures ALE can use the already-calculated regular column sums
+        
+        // Step 1: Calculate all regular (non-ALE) column sums
+        for (int col = 0; col < regularColCount; col++) {
+            cachedSumValues[col] = getRegularColumnSum(col);
+        }
+        
+        // Step 2: Calculate ALE column sum using the already-calculated regular column sums
+        if (hasALEColumn()) {
+            int aleCol = table.cols - 1;
+            double totalAssets = 0.0, totalLiabilities = 0.0, totalEquity = 0.0;
             
-            if (isALEColumn) {
-                // A-L-E column: use directly from lastColumnSums (calculated in every500msec)
-                cachedSumValues[col] = table.getComputedValueForDisplay(col);
-            } else {
-                boolean isMasterForThisColumn = table.isMasterForColumn(col);
-                
-                if (isMasterForThisColumn) {
-                    // Master column: use our own computed value for display
-                    // This allows subclasses like GodlyTableElm to override what gets displayed
-                    cachedSumValues[col] = table.getComputedValueForDisplay(col);
-                } else {
-                    // Non-master column: fetch master's computed sum from ComputedValues
-                    String stockName = (table.outputNames != null && col < table.outputNames.length) 
-                        ? table.outputNames[col] : null;
-                    
-                    if (stockName != null && !stockName.trim().isEmpty()) {
-                        Double masterSum = ComputedValues.getComputedValue(stockName.trim());
-                        cachedSumValues[col] = (masterSum != null) ? masterSum : 0.0;
-                    } else {
-                        cachedSumValues[col] = 0.0;
-                    }
-                }
+            // Use the CACHED sum values that were just calculated
+            for (int c = 0; c < regularColCount; c++) {
+                double columnTotal = cachedSumValues[c]; // Use cached value, not getComputedValueForDisplay
+                ColumnType type = getColumnType(c);
+                if (type == ColumnType.ASSET) totalAssets += columnTotal;
+                else if (type == ColumnType.LIABILITY) totalLiabilities += columnTotal;
+                else if (type == ColumnType.EQUITY) totalEquity += columnTotal;
+            }
+            cachedSumValues[aleCol] = totalAssets - totalLiabilities - totalEquity;
+        }
+    }
+    
+    /**
+     * Get cached cell value, handling bounds checking
+     * @param row Row index
+     * @param col Column index
+     * @return Cached cell value or 0.0 if out of bounds
+     */
+    private double getCachedCellValue(int row, int col) {
+        if (cachedCellValues != null && row >= 0 && row < cachedCellValues.length &&
+            col >= 0 && col < cachedCellValues[row].length) {
+            return cachedCellValues[row][col];
+        }
+        return 0.0;
+    }
+    
+    /**
+     * Get sum for a regular (non-ALE) column
+     * Master tables use their own computed values, non-master tables fetch from ComputedValues
+     */
+    private double getRegularColumnSum(int col) {
+        if (table.isMasterForColumn(col)) {
+            // Master column: use our own computed value
+            return table.getComputedValueForDisplay(col);
+        } else {
+            // Non-master column: fetch master's computed sum
+            String stockName = getColumnStockName(col);
+            if (stockName != null) {
+                Double masterSum = ComputedValues.getComputedValue(stockName);
+                return (masterSum != null) ? masterSum : 0.0;
+            }
+            return 0.0;
+        }
+    }
+    
+    // Helper methods for ALE column detection and column info
+    
+    /**
+     * Check if the table has an ALE column (last column when cols >= 4)
+     */
+    private boolean hasALEColumn() {
+        return table.cols >= 4;
+    }
+    
+    /**
+     * Get the number of regular (non-ALE) columns
+     */
+    private int getRegularColumnCount() {
+        return hasALEColumn() ? (table.cols - 1) : table.cols;
+    }
+    
+    /**
+     * Get the stock name for a column (null if none)
+     */
+    private String getColumnStockName(int col) {
+        if (table.outputNames != null && col < table.outputNames.length) {
+            String name = table.outputNames[col];
+            if (name != null && !name.trim().isEmpty()) {
+                return name.trim();
             }
         }
+        return null;
+    }
+    
+    /**
+     * Get the column type, handling null cases
+     */
+    private ColumnType getColumnType(int col) {
+        if (table.columnTypes != null && col < table.columnTypes.length && table.columnTypes[col] != null) {
+            return table.columnTypes[col];
+        }
+        return ColumnType.ASSET; // Default
     }
     
     /**
@@ -413,15 +508,38 @@ public class TableRenderer {
 
         // Use cell font for values
         g.setFont(CELL_FONT);
+        
+        // Accumulate values for ALE calculation
+        double assets = 0.0, liabilities = 0.0, equity = 0.0;
+        
         for (int col = 0; col < table.cols; col++) {
             int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
             
-            // Get initial conditions value for this column
-            double initialValue = (table.initialValues != null && col < table.initialValues.length) ? 
-                                 table.initialValues[col] : 0.0;
+            // Get initial value - calculate ALE inline for last column when cols >= 4
+            double initialValue;
+            boolean isALECol = hasALEColumn() && col == table.cols - 1;
+            
+            if (isALECol) {
+                // ALE column: sum(Assets) - sum(Liabilities) - sum(Equity)
+                initialValue = assets - liabilities - equity;
+            } else {
+                initialValue = (table.initialValues != null && col < table.initialValues.length) 
+                    ? table.initialValues[col] : 0.0;
+                
+                // Accumulate values by type for ALE calculation
+                ColumnType type = getColumnType(col);
+                if (type == ColumnType.ASSET) assets += initialValue;
+                else if (type == ColumnType.LIABILITY) liabilities += initialValue;
+                else if (type == ColumnType.EQUITY) equity += initialValue;
+            }
             
             // Draw value with text color based on voltage (no background fill needed - canvas already colored)
-            g.setColor(getTextVoltageColor(initialValue));
+            // For A-L-E columns, use blue if non-zero (indicates accounting discrepancy)
+            if (isALECol && Math.abs(initialValue) > 1e-6) {
+                g.setColor(Color.blue);
+            } else {
+                g.setColor(getTextVoltageColor(initialValue));
+            }
             String voltageText = CircuitElm.getUnitText(initialValue, table.tableUnits);
             table.drawCenteredText(g, voltageText, cellX + cellWidthPixels/2, initialRowY + table.cellHeight/2, true);
         }
@@ -456,22 +574,29 @@ public class TableRenderer {
             for (int col = 0; col < table.cols; col++) {
                 int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
                 
-                // Get voltage from cache (updated twice per second)
-                double voltage = (cachedCellValues != null && row < cachedCellValues.length && col < cachedCellValues[row].length) 
-                    ? cachedCellValues[row][col] : 0.0;
-                
+                // Get voltage - calculate ALE inline for last column when cols >= 4
+                double voltage;
+                double assets = 0.0, liabilities = 0.0, equity = 0.0;
+
+                voltage = getCachedCellValue(row, col);
+                ColumnType type = getColumnType(col);
+                if (type == ColumnType.ASSET) assets += voltage;
+                else if (type == ColumnType.LIABILITY) liabilities += voltage;
+                else if (type == ColumnType.EQUITY) equity += voltage;
+
                 // No background fill needed - canvas is already filled with background color by CirSim
                 
                 // Check if this is an A-L-E column (computed, no equation)
-                boolean isALEColumn = (col == table.cols - 1 && table.cols >= 4);
+                boolean isALECol = hasALEColumn() && col == table.cols - 1;
                 
                 // Display equation and voltage in cell (or just voltage for A-L-E)
                 String equation = table.cellEquations[row][col];
-                if (isALEColumn) {
+                if (isALECol) {
+                    voltage = assets - liabilities - equity;
                     // A-L-E column: ALWAYS display only the computed value (no equation)
-                    // Color red if non-zero (indicates accounting error), otherwise use voltage color
+                    // Color blue if non-zero (indicates accounting discrepancy), otherwise use voltage color
                     if (Math.abs(voltage) > 1e-6) {
-                        g.setColor(Color.red);
+                        g.setColor(Color.blue);
                     } else {
                         g.setColor(getTextVoltageColor(voltage));
                     }
@@ -538,22 +663,39 @@ public class TableRenderer {
 
         // Use cell font for values
         g.setFont(CELL_FONT);
+        
+        // Accumulate values for ALE calculation (using cached values)
+        double assets = 0.0, liabilities = 0.0, equity = 0.0;
+        
         for (int col = 0; col < table.cols; col++) {
             int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
             
             // Get the computed value from cache (updated twice per second)
-            double computedValue = (cachedSumValues != null && col < cachedSumValues.length) 
-                ? cachedSumValues[col] : 0.0;
-            
-            // No background fill needed - canvas is already filled with background color by CirSim
+            double computedValue;
             
             // Check if this is an A-L-E column
             boolean isALEColumn = (col == table.cols - 1 && table.cols >= 4);
             
+            if (isALEColumn) {
+                // ALE column: sum(Assets) - sum(Liabilities) - sum(Equity)
+                computedValue = assets - liabilities - equity;
+            } else {
+                computedValue = (cachedSumValues != null && col < cachedSumValues.length) 
+                    ? cachedSumValues[col] : 0.0;
+                
+                // Accumulate values by type for ALE calculation
+                ColumnType type = getColumnType(col);
+                if (type == ColumnType.ASSET) assets += computedValue;
+                else if (type == ColumnType.LIABILITY) liabilities += computedValue;
+                else if (type == ColumnType.EQUITY) equity += computedValue;
+            }
+            
+            // No background fill needed - canvas is already filled with background color by CirSim
+            
             // Draw value with text color based on voltage
-            // For A-L-E columns, use red if non-zero (indicates accounting error)
+            // For A-L-E columns, use blue if non-zero (indicates accounting discrepancy)
             if (isALEColumn && Math.abs(computedValue) > 1e-6) {
-                g.setColor(Color.red);
+                g.setColor(Color.blue);
             } else {
                 g.setColor(getTextVoltageColor(computedValue));
             }

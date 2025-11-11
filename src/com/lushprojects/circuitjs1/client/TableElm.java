@@ -42,15 +42,6 @@ public class TableElm extends ChipElm {
     private final TableDataManager dataManager;
     private final TableGeometryManager geometryManager;
     
-    // Storage for computed A-L-E cell values (if A-L-E column exists)
-    private double[] computedALEValues;
-    
-    // Cached A-L-E column index for performance
-    private int aleColumnIndex = -1;   // Cached A-L-E column index (-1 if none)
-    
-    // Performance: Only redraw text twice per second (every 500ms)
-    // Note: This is now handled via time-based caching in TableRenderer
-    
     // Constructor for new table FROM MENU - receives auto-increment flag
     public TableElm(int xx, int yy) {
         this(xx, yy, true); // Always auto-increment for menu-created tables
@@ -102,10 +93,6 @@ public class TableElm extends ChipElm {
     
     private void initTable() {
         dataManager.initTable();
-        
-        // Calculate A_L_E equations after data is initialized
-        updateALEEquations();
-        
         equationManager.recompileAllEquations();
         
         // Register all stocks with the synchronization registry
@@ -113,77 +100,12 @@ public class TableElm extends ChipElm {
     }
     
     /**
-     * Update all A_L_E column equations based on current Asset, Liability, and Equity values
-     * NOTE: A_L_E columns don't use equation strings anymore - they are calculated directly in doStep()
-     * This method is kept for compatibility but does nothing since A_L_E is computed at runtime
-     */
-    public void updateALEEquations() {
-        // No-op: A_L_E is now calculated directly in doStep(), not via equations
-        // Just update initial values
-        updateALEInitialValues();
-    }
-    
-    /**
-     * Update A_L_E column initial values based on Asset, Liability, and Equity initial values
-     * Uses direct arithmetic calculation, no expressions
-     */
-    private void updateALEInitialValues() {
-        if (columnTypes == null || initialValues == null) return;
-        
-        for (int col = 0; col < cols; col++) {
-            if (isALEColumn(col)) {
-                initialValues[col] = calculateALEInitialValue();
-            }
-        }
-    }
-    
-    /**
-     * Calculate A_L_E initial value: sum(Assets) - sum(Liabilities) - Equity
-     * Direct arithmetic calculation on initial values
-     */
-    private double calculateALEInitialValue() {
-        double assets = 0.0;
-        double liabilities = 0.0;
-        double equity = 0.0;
-        
-        // Only process columns BEFORE the last column (exclude A_L_E itself)
-        for (int col = 0; col < cols - 1; col++) {
-            if (columnTypes != null && col < columnTypes.length && columnTypes[col] != null) {
-                switch (columnTypes[col]) {
-                    case ASSET:
-                        assets += initialValues[col];
-                        break;
-                    case LIABILITY:
-                        liabilities += initialValues[col];
-                        break;
-                    case EQUITY:
-                        equity += initialValues[col];
-                        break;
-                }
-            }
-        }
-        
-        return assets - liabilities - equity;
-    }
-    
-    /**
      * Check if a column is the A_L_E computed column
      * The last column is A_L_E when there are 4 or more columns
-     * Optimized to use cached value
+     * A_L_E columns are display-only (calculated in TableRenderer), not electrical outputs
      */
     private boolean isALEColumn(int col) {
-        return col == aleColumnIndex;
-    }
-    
-    /**
-     * Get the computed A-L-E value for a specific row
-     * Package-private for use by TableEquationManager
-     */
-    double getComputedALEValue(int row) {
-        if (computedALEValues != null && row >= 0 && row < computedALEValues.length) {
-            return computedALEValues[row];
-        }
-        return 0.0;
+        return cols >= 4 && col == (cols - 1);
     }
     
     /**
@@ -203,96 +125,6 @@ public class TableElm extends ChipElm {
             return false;
         }
         return ComputedValues.isMasterTable(name.trim(), this);
-    }
-    
-    /**
-     * Update A-L-E column index cache
-     * Call this whenever column count changes
-     */
-    private void updateALEColumnIndex() {
-        // Update A-L-E column index
-        aleColumnIndex = (cols >= 4) ? (cols - 1) : -1;
-    }
-    
-    /**
-     * Calculate A_L_E values:
-     * 1. For each row: Assets - Liabilities - Equity (stored in computedALEValues)
-     * 2. For computed row: Total Assets - Total Liabilities - Total Equity
-     * 
-     * This method calculates both the per-row A-L-E values (for display in cells)
-     * and the total A-L-E value (for display in the computed row).
-     * 
-     * @return The total A_L_E value for the computed row
-     */
-    private double calculateALEColumnSum() {
-        // Initialize storage for A-L-E cell values (per-row)
-        if (computedALEValues == null || computedALEValues.length != rows) {
-            computedALEValues = new double[rows];
-        }
-        
-        // Calculate A-L-E for each row (for cell display)
-        for (int row = 0; row < rows; row++) {
-            double assets = 0.0;
-            double liabilities = 0.0;
-            double equity = 0.0;
-            
-            // Only process columns BEFORE the last column (exclude A_L_E itself)
-            for (int col = 0; col < cols - 1; col++) {
-                // Call equationManager directly to avoid circular dependency
-                double cellValue = equationManager.getVoltageForCell(row, col);
-                
-                // Add to appropriate bucket based on column type
-                if (columnTypes != null && col < columnTypes.length && columnTypes[col] != null) {
-                    switch (columnTypes[col]) {
-                        case ASSET:
-                            assets += cellValue;
-                            break;
-                        case LIABILITY:
-                            liabilities += cellValue;
-                            break;
-                        case EQUITY:
-                            equity += cellValue;
-                            break;
-                    }
-                }
-            }
-            
-            // Calculate A-L-E for this row: Assets - Liabilities - Equity
-            double rowALE = assets - liabilities - equity;
-            computedALEValues[row] = rowALE;
-        }
-        
-        // Calculate A-L-E for the computed row (based on column totals)
-        double totalAssets = 0.0;
-        double totalLiabilities = 0.0;
-        double totalEquity = 0.0;
-        
-        // Only process columns BEFORE the last column (exclude A_L_E itself)
-        for (int col = 0; col < cols - 1; col++) {
-            // Get the computed value for this column (from the computed row)
-            double columnTotal = getComputedValueForDisplay(col);
-            
-            // Add to appropriate bucket based on column type
-            if (columnTypes != null && col < columnTypes.length && columnTypes[col] != null) {
-                switch (columnTypes[col]) {
-                    case ASSET:
-                        totalAssets += columnTotal;
-                        break;
-                    case LIABILITY:
-                        totalLiabilities += columnTotal;
-                        break;
-                    case EQUITY:
-                        totalEquity += columnTotal;
-                        break;
-                }
-            }
-        }
-        
-        // Calculate A-L-E for computed row: Total Assets - Total Liabilities - Total Equity
-        double computedRowALE = totalAssets - totalLiabilities - totalEquity;
-        
-        // Return the computed row A-L-E (this is what gets displayed in the computed row)
-        return computedRowALE;
     }
     
     /**
@@ -371,15 +203,8 @@ public class TableElm extends ChipElm {
     }
     
     protected double getVoltageForCell(int row, int col) {
-        // Special handling for A-L-E columns - return computed value
-        if (isALEColumn(col)) {
-            if (computedALEValues != null && row >= 0 && row < computedALEValues.length) {
-                return computedALEValues[row];
-            }
-            return 0.0;
-        }
-        
-        // Normal columns use equation manager
+        // Note: For A-L-E columns, the renderer calculates values directly
+        // and never calls this method. This method only handles regular columns.
         return equationManager.getVoltageForCell(row, col);
     }
     
@@ -413,12 +238,7 @@ public class TableElm extends ChipElm {
         if (isValidCell(row, col)) {
             cellEquations[row][col] = equation != null ? equation : "";
             compileEquation(row, col, cellEquations[row][col]);
-            
-            // If this is not an A_L_E column, recalculate A_L_E initial values
-            if (columnTypes != null && col < columnTypes.length && !isALEColumn(col)) {
-                updateALEEquations();
-                // Note: A_L_E cells are computed in doStep(), no equations to compile
-            }
+            // Note: A_L_E cells are computed dynamically in TableRenderer, not via equations
         }
     }
     
@@ -459,9 +279,6 @@ public class TableElm extends ChipElm {
         if (geometryManager != null) {
             geometryManager.setupPins();
         }
-        
-        // Update A-L-E column index after setup
-        updateALEColumnIndex();
     }
     
     /**
@@ -610,8 +427,8 @@ public class TableElm extends ChipElm {
    
     // Calculate computed values during simulation step (not during drawing)
     //     Master table optimization (avoids redundant computation)
-    //      A-L-E column handling
-    //      Convergence checking
+    //     Convergence checking
+    // Note: A-L-E values are calculated in TableRenderer.updateCachedValues() for display
     @Override
     public void doStep() {
         // Update input pin values from circuit
@@ -627,7 +444,7 @@ public class TableElm extends ChipElm {
             lastColumnSums = new double[cols];
         }
 
-        // FIRST PASS: Compute all NON-A-L-E columns
+        // Compute all NON-A-L-E columns
         // Performance: Skip A-L-E column by limiting loop (it's always the last column)
         int colLimit = (cols >= 4) ? (cols - 1) : cols; // Exclude A-L-E column if it exists
         
@@ -666,20 +483,6 @@ public class TableElm extends ChipElm {
         }
     }
     
-    @Override
-    public void every500msec() {
-        // Compute A-L-E column twice per second
-        // A-L-E is purely a display value - not part of electrical simulation
-        if (aleColumnIndex >= 0) {
-            double aleSum = calculateALEColumnSum();
-            if (lastColumnSums != null && aleColumnIndex < lastColumnSums.length) {
-                lastColumnSums[aleColumnIndex] = aleSum;
-            }
-        }
-        
-        // Note: Text caching is now handled automatically via time-based mechanism in TableRenderer
-    }
-
     @Override
     public void stepFinished() {
         // Register computed values for other elements to use - do this after convergence
@@ -724,8 +527,8 @@ public class TableElm extends ChipElm {
         // AND skip A-L-E columns (they are purely computed, not electrical outputs)
         int postCount = getPostCount();
         for (int col = 0; col < postCount; col++) {
-            // Skip A-L-E columns using cached check
-            if (col == aleColumnIndex) {
+            // Skip A-L-E columns (display-only, calculated in TableRenderer)
+            if (isALEColumn(col)) {
                 continue;
             }
             
@@ -746,8 +549,8 @@ public class TableElm extends ChipElm {
         // Skip A-L-E columns - they should not drive labeled nodes
         if (outputNames != null) {
             for (int col = 0; col < cols && col < outputNames.length; col++) {
-                // Skip A-L-E columns using cached check
-                if (col == aleColumnIndex) {
+                // Skip A-L-E columns (display-only, calculated in TableRenderer)
+                if (isALEColumn(col)) {
                     continue;
                 }
                 
@@ -849,9 +652,6 @@ public class TableElm extends ChipElm {
         // Delegate data resizing to TableDataManager
         dataManager.resizeTable(newRows, newCols);
         
-        // Recalculate A_L_E equations after resize
-        updateALEEquations();
-        
         // Recreate pins with new column count
         setupPins();
         allocNodes();
@@ -884,7 +684,8 @@ public class TableElm extends ChipElm {
         for (int col = 0; col < Math.min(cols, maxOutputsToShow) && idx < arr.length - 1; col++) {
             String header = outputNames[col];
             double output = lastColumnSums != null ? lastColumnSums[col] : 0.0;
-            arr[idx++] = header + " = " + TableRenderer.formatTableValue(output, decimalPlaces, tableUnits);
+            // Use CircuitElm's getUnitText for proper SI unit formatting
+            arr[idx++] = header + " = " + getUnitText(output, tableUnits);
         }
 
         if (cols > maxOutputsToShow && idx < arr.length - 1) {
@@ -932,7 +733,40 @@ public class TableElm extends ChipElm {
     public int getCols() { return cols; }
     
     public double getInitialValue(int col) {
-        if (col >= 0 && col < cols && initialValues != null && col < initialValues.length) {
+        if (col < 0 || col >= cols) {
+            return 0.0;
+        }
+        
+        // For A-L-E columns, compute dynamically from other columns' initial values
+        if (isALEColumn(col)) {
+            double assets = 0.0;
+            double liabilities = 0.0;
+            double equity = 0.0;
+            
+            // Sum up all non-ALE columns
+            for (int c = 0; c < cols - 1; c++) {
+                double value = (initialValues != null && c < initialValues.length) ? initialValues[c] : 0.0;
+                
+                if (columnTypes != null && c < columnTypes.length && columnTypes[c] != null) {
+                    switch (columnTypes[c]) {
+                        case ASSET:
+                            assets += value;
+                            break;
+                        case LIABILITY:
+                            liabilities += value;
+                            break;
+                        case EQUITY:
+                            equity += value;
+                            break;
+                    }
+                }
+            }
+            
+            return assets - liabilities - equity;
+        }
+        
+        // For non-ALE columns, return stored value
+        if (initialValues != null && col < initialValues.length) {
             return initialValues[col];
         }
         return 0.0;
@@ -941,9 +775,20 @@ public class TableElm extends ChipElm {
     /**
      * Get the computed value for a column to display in the "Computed" row.
      * Base implementation returns the column sum (flow).
+     * For A-L-E columns, returns the cached value from renderer (calculated from column totals).
      * Subclasses like GodlyTableElm can override to return integrated values (stocks).
      */
     public double getComputedValueForDisplay(int col) {
+        // For A-L-E columns, get from renderer cache
+        // At t=0, return the initial value
+        if (isALEColumn(col)) {
+            if (sim.t == 0.0) {
+                return getInitialValue(col);
+            }
+            return renderer.getCachedSumValue(col);
+        }
+        
+        // For other columns, return from lastColumnSums (computed in doStep)
         if (col >= 0 && col < cols && lastColumnSums != null && col < lastColumnSums.length) {
             return lastColumnSums[col];
         }
@@ -953,11 +798,7 @@ public class TableElm extends ChipElm {
     public void setInitialConditionValue(int col, double value) {
         if (col >= 0 && col < cols && initialValues != null && col < initialValues.length) {
             initialValues[col] = value;
-            
-            // If this is not an A_L_E column, recalculate A_L_E initial values
-            if (columnTypes != null && col < columnTypes.length && !isALEColumn(col)) {
-                updateALEInitialValues();
-            }
+            // Note: A_L_E initial values are calculated in TableRenderer, not stored
         }
     }
     

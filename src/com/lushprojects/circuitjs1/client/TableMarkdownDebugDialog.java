@@ -229,6 +229,18 @@ public class TableMarkdownDebugDialog {
             }
             md.append("\n");
             
+            // Initial values row (if enabled) - shown first, right after header
+            if (table.showInitialValues) {
+                md.append("| ").append(padRight("Initial", colWidths[0])).append(" ");
+                for (int col = 0; col < table.getCols(); col++) {
+                    double initValue = table.getInitialValue(col);
+                    // Use CircuitElm.getUnitText for consistent formatting with table display
+                    String valueStr = CircuitElm.getUnitText(initValue, table.tableUnits);
+                    md.append("| ").append(padRight(valueStr, colWidths[col + 1])).append(" ");
+                }
+                md.append("|\n");
+            }
+            
             // Rows
             for (int row = 0; row < table.getRows(); row++) {
                 md.append("| ").append(padRight(table.getRowDescription(row), colWidths[0])).append(" ");

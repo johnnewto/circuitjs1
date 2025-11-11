@@ -84,13 +84,9 @@ public class TableEquationManager {
             return 0.0;
         }
         
-        // Check if this is an A-L-E computed column
-        // A-L-E is always the last column when there are 4+ columns
-        boolean isALEColumn = (col == table.cols - 1 && table.cols >= 4);
-        if (isALEColumn) {
-            // Return the precomputed A-L-E value for this row
-            return table.getComputedALEValue(row);
-        }
+        // For A-L-E columns, getVoltageForCell handles fetching from renderer cache
+        // For normal columns, it evaluates equations
+        // This keeps the equation manager simple and delegates A-L-E logic to TableElm
         
         // All cells now use equations
         Expr e = table.compiledExpressions[row][col];
