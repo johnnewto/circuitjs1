@@ -49,11 +49,34 @@ public class GodlyTableElm extends TableElm {
     // Get convergence limit (same as VCVSElm/VCCSElm)
     // More lenient over time to help convergence
     double getConvergeLimit() {
+        // Base relative tolerance (0.1% to 1% depending on iteration count)
+        double relativeTolerance;
         if (sim.subIterations < 10)
-            return .001;
-        if (sim.subIterations < 200)
-            return .01;
-        return .1;
+            relativeTolerance = 0.001;  // 0.1% for early iterations
+        else if (sim.subIterations < 100)
+            relativeTolerance = 0.01;   // 1% for mid iterations
+        else
+            relativeTolerance = 0.1;    // 10% for late iterations (help convergence)
+        
+        // Find maximum absolute value across all integrated values and column sums
+        // This makes the threshold scale with the magnitude of values
+        double maxMagnitude = 1.0;  // Minimum threshold (prevent division by zero)
+        
+        if (integratedValues != null) {
+            for (int i = 0; i < integratedValues.length; i++) {
+                maxMagnitude = Math.max(maxMagnitude, Math.abs(integratedValues[i]));
+            }
+        }
+        
+        if (lastColumnSums != null) {
+            for (int i = 0; i < lastColumnSums.length; i++) {
+                maxMagnitude = Math.max(maxMagnitude, Math.abs(lastColumnSums[i]));
+            }
+        }
+        
+        // Return relative limit scaled by magnitude
+        // For large values (e.g., 1000V), this gives reasonable thresholds (1V at 0.1%)
+        return maxMagnitude * relativeTolerance;
     }
     
     // File loading constructor  

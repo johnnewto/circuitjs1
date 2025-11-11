@@ -36,6 +36,7 @@ public class ScopePopupMenu {
     private MenuItem propertiesItem;
     private MenuItem dockItem;
     private MenuItem undockItem;
+    private CheckboxMenuItem drawFromZeroItem;
     
     ScopePopupMenu() {
 	 m = new MenuBar(true);
@@ -48,11 +49,15 @@ public class ScopePopupMenu {
 	 m.addItem(combineItem = new CheckboxAlignedMenuItem(Locale.LS("Combine"), new MyCommand("scopepop", "combine")));
 	 m.addItem(removePlotItem = new CheckboxAlignedMenuItem(Locale.LS("Remove Plot"),new MyCommand("scopepop", "removeplot")));
 	 m.addItem(resetItem = new CheckboxAlignedMenuItem(Locale.LS("Reset"), new MyCommand("scopepop", "reset")));
+	 m.addSeparator();
+	 m.addItem(drawFromZeroItem = new CheckboxMenuItem(Locale.LS("Draw From Zero"), new MyCommand("scopepop", "drawfromzero")));
+	 m.addSeparator();
 	 m.addItem(propertiesItem = new CheckboxAlignedMenuItem(Locale.LS("Properties..."), new MyCommand("scopepop", "properties")));
     }
     
     void doScopePopupChecks( boolean floating, boolean canstack, boolean cancombine, boolean canunstack, Scope s) {
 	maxScaleItem.setState(s.maxScale);
+	drawFromZeroItem.setState(s.drawFromZero);
 	stackItem.setVisible(!floating);
 	stackItem.setEnabled(canstack);
 	unstackItem.setVisible(!floating);

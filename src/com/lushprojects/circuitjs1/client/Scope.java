@@ -40,6 +40,10 @@ class ScopePlot {
     double lastValue;
     String color;
     CircuitElm elm;
+    
+    // History buffers for drawFromZero mode (not circular, grows linearly)
+    double historyMinValues[], historyMaxValues[];
+    
    // Has a manual scale in "/div" format been put in by the user (as opposed to being
    // inferred from a "MaxValue" format or from an automatically calculated scale)?
    // Manual scales should be kept to sane values anyway, but this shows if this is a user
@@ -194,6 +198,8 @@ class Scope {
     final int FLAG_PERPLOT_MAN_SCALE = 1<<19; // new-new style dump with manual included in each plot
     final int FLAG_MAN_SCALE = 16;
     final int FLAG_DIVISIONS = 1<<21; // dump manDivisions
+    final int FLAG_DRAW_FROM_ZERO = 1<<22; // draw from t=0 on left, growing right
+    final int FLAG_AUTO_SCALE_TIME = 1<<23; // auto-adjust time scale when reaching edge
     // other flags go here too, see getFlags()
     
     static final int VAL_POWER = 7;
@@ -231,6 +237,12 @@ class Scope {
 
     boolean logSpectrum;
     boolean showFFT, showNegative, showRMS, showAverage, showDutyCycle, showElmInfo;
+    boolean drawFromZero; // draw from t=0 on left, growing right
+    boolean autoScaleTime; // auto-adjust time scale when reaching edge
+    double startTime; // simulation time when scope was reset (for drawFromZero mode)
+    int historySize; // current number of samples in history buffers
+    int historyCapacity; // maximum capacity of history buffers before downsampling
+    double historySampleInterval; // time interval between history samples (increases with downsampling)
     Vector<ScopePlot> plots, visiblePlots;
     int draw_ox, draw_oy;
     CirSim sim;
@@ -320,6 +332,30 @@ class Scope {
     	    plots.get(i).reset(scopePointCount, speed, full);
 	calcVisiblePlots();
     	scopeTimeStep = sim.maxTimeStep;
+    	
+    	// Record start time and initialize history for drawFromZero mode
+    	if (drawFromZero) {
+    	    startTime = 0.0;  // Always start from t=0
+    	    historySize = 0;
+    	    historyCapacity = scopePointCount * 4; // Start with 4x the display size
+    	    historySampleInterval = sim.maxTimeStep * speed;
+    	    
+    	    // Initialize history buffers for each plot
+    	    for (i = 0; i != plots.size(); i++) {
+    		ScopePlot p = plots.get(i);
+    		p.historyMinValues = new double[historyCapacity];
+    		p.historyMaxValues = new double[historyCapacity];
+    	    }
+    	} else {
+    	    // Clear history buffers when not in drawFromZero mode
+    	    historySize = 0;
+    	    for (i = 0; i != plots.size(); i++) {
+    		ScopePlot p = plots.get(i);
+    		p.historyMinValues = null;
+    		p.historyMaxValues = null;
+    	    }
+    	}
+    	
     	allocImage();
     }
     
@@ -369,7 +405,8 @@ class Scope {
     	speed = 64;
     	showMax = false;
     	showV = showI = false;
-    	showScale = showFreq = manualScale = showMin = showElmInfo = false;
+    	showScale = true;  // Show scale by default
+    	showFreq = manualScale = showMin = showElmInfo = false;
     	showFFT = false;
     	plot2d = false;
     	if (!loadDefaults()) {
@@ -615,6 +652,68 @@ class Scope {
     	    }
     	    drawTo(x, y);
     	}
+    	
+    	// Capture data to history for drawFromZero mode
+    	if (drawFromZero && !plot2d) {
+    	    captureToHistory();
+    	}
+    }
+    
+    // Capture current scope data to history buffers for drawFromZero mode
+    void captureToHistory() {
+	// Only capture at the defined sample interval
+	if (historySize > 0) {
+	    double lastSampleTime = startTime + (historySize - 1) * historySampleInterval;
+	    if (sim.t < lastSampleTime + historySampleInterval * 0.9)
+		return; // Too soon for next sample
+	}
+	
+	// Check if we need to downsample
+	if (historySize >= historyCapacity) {
+	    downsampleHistory();
+	}
+	
+	// Capture current values from each plot's circular buffer
+	for (int i = 0; i < plots.size(); i++) {
+	    ScopePlot p = plots.get(i);
+	    if (p.historyMinValues != null && p.historyMaxValues != null) {
+		// Get the most recent value from the circular buffer
+		int idx = p.ptr & (scopePointCount - 1);
+		p.historyMinValues[historySize] = p.minValues[idx];
+		p.historyMaxValues[historySize] = p.maxValues[idx];
+	    }
+	}
+	
+	historySize++;
+    }
+    
+    // Downsample history by factor of 2 to make room for more data
+    void downsampleHistory() {
+	int newSize = historySize / 2;
+	historySampleInterval *= 2; // Double the time between samples
+	
+	CirSim.console("Downsampling scope history: " + historySize + " -> " + newSize + 
+	            " samples, interval: " + historySampleInterval + "x");
+	
+	for (int i = 0; i < plots.size(); i++) {
+	    ScopePlot p = plots.get(i);
+	    if (p.historyMinValues == null || p.historyMaxValues == null)
+		continue;
+	    
+	    // Downsample by taking min/max of pairs
+	    for (int j = 0; j < newSize; j++) {
+		int src1 = j * 2;
+		int src2 = j * 2 + 1;
+		
+		// Keep the minimum of mins and maximum of maxs to preserve peaks
+		p.historyMinValues[j] = Math.min(p.historyMinValues[src1], 
+		                                  src2 < historySize ? p.historyMinValues[src2] : p.historyMinValues[src1]);
+		p.historyMaxValues[j] = Math.max(p.historyMaxValues[src1],
+		                                  src2 < historySize ? p.historyMaxValues[src2] : p.historyMaxValues[src1]);
+	    }
+	}
+	
+	historySize = newSize;
     }
 
     double calc2dGridPx(int width, int height) {
@@ -690,6 +789,26 @@ class Scope {
 	// having the scale moving around a lot when a circuit starts up.
 	maxScale = !maxScale;
 	showNegative = false;
+    }
+    
+    void toggleDrawFromZero() {
+	drawFromZero = !drawFromZero;
+	if (drawFromZero) {
+	    // Always start from t=0 by resetting simulation
+	    sim.resetAction();
+	    startTime = 0.0;
+	    // Enable auto scale time when draw from zero is enabled
+	    autoScaleTime = true;
+	} else {
+	    // Disable auto scale time when draw from zero is disabled
+	    autoScaleTime = false;
+	}
+	resetGraph();
+    }
+    
+    void toggleAutoScaleTime() {
+	autoScaleTime = !autoScaleTime;
+	sim.needAnalyze();
     }
 
     void drawFFTVerticalGridLines(Graphics g) {
@@ -1078,6 +1197,26 @@ class Scope {
 	return ((double)(manDivisions)/2+0.05)*plot.manScale;
     }
     
+    /**
+     * Convert simulation time to circular buffer index for drawFromZero mode
+     * @param time Absolute simulation time
+     * @param plot The plot being drawn
+     * @return Index in minValues/maxValues arrays
+     */
+    int getBufferIndexForTime(double time, ScopePlot plot) {
+	// Calculate how many timesteps from start
+	double timePerStep = sim.maxTimeStep * speed;
+	int stepsFromStart = (int)((time - startTime) / timePerStep);
+	
+	// Map to circular buffer, accounting for wraparound
+	int totalSteps = (int)((sim.t - startTime) / timePerStep);
+	int offset = totalSteps - stepsFromStart;
+	
+	// Get current pointer position and subtract offset
+	int currentPos = plot.ptr;
+	return (currentPos - offset) & (scopePointCount - 1);
+    }
+    
     void drawPlot(Graphics g, ScopePlot plot, boolean allPlotsSameUnits, boolean selected, boolean allSelected) {
 	if (plot.elm == null)
 	    return;
@@ -1173,26 +1312,81 @@ class Scope {
     		g.drawLine(0,yl,rect.width-1,yl);
     	    }
     	    
-    	    // vertical gridlines
-    	    double tstart = sim.t-sim.maxTimeStep*speed*rect.width;
-    	    double tx = sim.t-(sim.t % gridStepX);
-
-    	    for (int ll = 0; ; ll++) {
-    		double tl = tx-gridStepX*ll;
-    		int gx = (int) ((tl-tstart)/ts);
-    		if (gx < 0)
-    		    break;
-    		if (gx >= rect.width)
-    		    continue;
-    		if (tl < 0)
-    		    continue;
-    		col = minorDiv;
-    		// first = 0;
-    		if (((tl+gridStepX/4) % (gridStepX*10)) < gridStepX) {
-    		    col = majorDiv;
+    	    // vertical gridlines (time axis)
+    	    if (drawFromZero && !plot2d) {
+    		// Draw from zero mode: gridlines start at t=0 on left
+    		double elapsedTime = sim.t - startTime;
+    		double displayTimeSpan;
+    		
+    		if (autoScaleTime && elapsedTime > 0) {
+    		    // Auto-scale: time span covers entire simulation from start
+    		    displayTimeSpan = elapsedTime;
+    		} else {
+    		    // Fixed scale: time span is fixed based on speed
+    		    displayTimeSpan = ts * rect.width;
     		}
-    		g.setColor(col);
-    		g.drawLine(gx,0,gx,rect.height-1);
+    		
+    		// Adjust gridStepX if gridlines are too close together
+    		// Calculate pixel spacing with current gridStepX
+    		double pixelSpacing = rect.width * gridStepX / displayTimeSpan;
+    		int scalePtr = 0;
+    		while (pixelSpacing < 20 && displayTimeSpan > 0) {
+    		    // Gridlines too close - increase spacing using standard scale pattern
+    		    gridStepX *= multa[scalePtr % 3];
+    		    pixelSpacing = rect.width * gridStepX / displayTimeSpan;
+    		    scalePtr++;
+    		}
+    		
+    		// Align gridlines to nice intervals starting from t=0
+    		double gridStart = startTime - (startTime % gridStepX);
+    		
+    		for (int ll = 0; ; ll++) {
+    		    double tl = gridStart + gridStepX * ll;
+    		    if (tl < startTime)
+    			continue;
+    		    
+    		    // Calculate pixel position based on time since start
+    		    double timeFromStart = tl - startTime;
+    		    int gx = (int) (rect.width * timeFromStart / displayTimeSpan);
+    		    
+    		    if (gx < 0)
+    			continue;
+    		    if (gx >= rect.width)
+    			break;
+    		    
+    		    col = minorDiv;
+    		    if (((tl + gridStepX/4) % (gridStepX*10)) < gridStepX) {
+    			col = majorDiv;
+    		    }
+    		    g.setColor(col);
+    		    g.drawLine(gx, 0, gx, rect.height-1);
+    		}
+    		
+    		// Draw t=0 line in highlighted color
+    		g.setColor(majorDiv);
+    		g.drawLine(0, 0, 0, rect.height-1);
+    	    } else {
+    		// Normal scrolling mode: gridlines scroll with time
+    		double tstart = sim.t-sim.maxTimeStep*speed*rect.width;
+    		double tx = sim.t-(sim.t % gridStepX);
+
+    		for (int ll = 0; ; ll++) {
+    		    double tl = tx-gridStepX*ll;
+    		    int gx = (int) ((tl-tstart)/ts);
+    		    if (gx < 0)
+    			break;
+    		    if (gx >= rect.width)
+    			continue;
+    		    if (tl < 0)
+    			continue;
+    		    col = minorDiv;
+    		    // first = 0;
+    		    if (((tl+gridStepX/4) % (gridStepX*10)) < gridStepX) {
+    			col = majorDiv;
+    		    }
+    		    g.setColor(col);
+    		    g.drawLine(gx,0,gx,rect.height-1);
+    		}
     	    }
     	}
     	
@@ -1213,31 +1407,206 @@ class Scope {
         g.startBatch();
         
         int ox = -1, oy = -1;
-        for (i = 0; i != rect.width; i++) {
-            int ip = (i+ipa) & (scopePointCount-1);
-            int minvy = (int) (plot.gridMult*(minV[ip]+plot.plotOffset));
-            int maxvy = (int) (plot.gridMult*(maxV[ip]+plot.plotOffset));
-            if (minvy <= maxy) {
-        	if (minvy < minRangeLo || maxvy > minRangeHi) {
-        	    // we got a value outside min range, so we don't need to rescale later
-        	    reduceRange[plot.units] = false;
-        	    minRangeLo = -1000;
-        	    minRangeHi = 1000; // avoid triggering this test again
-        	}
-        	if (ox != -1) {
-        	    if (minvy == oy && maxvy == oy)
-        		continue;
-        	    g.drawLine(ox, maxy-oy, x+i, maxy-oy);
-        	    ox = oy = -1;
-        	}
-        	if (minvy == maxvy) {
-        	    ox = x+i;
-        	    oy = minvy;
-        	    continue;
-        	}
-        	g.drawLine(x+i, maxy-minvy, x+i, maxy-maxvy);
+        int prevMinY = -1, prevMaxY = -1;  // Track previous point for connecting lines
+        
+        if (drawFromZero && !plot2d) {
+            // Draw from zero mode: use history buffers instead of circular buffer
+            if (plot.historyMinValues == null || historySize == 0) {
+        	// No history data yet
+        	g.endBatch();
+        	return;
             }
-        } // for (i=0...)
+            
+            double[] histMinV = plot.historyMinValues;
+            double[] histMaxV = plot.historyMaxValues;
+            
+            if (autoScaleTime) {
+                // Auto-scale: map entire history to window width
+                for (i = 0; i < rect.width; i++) {
+                    // Map pixel to history index
+                    int histIdx = (i * historySize) / rect.width;
+                    if (histIdx >= historySize)
+                        histIdx = historySize - 1;
+                    
+                    int minvy = (int) (plot.gridMult*(histMinV[histIdx]+plot.plotOffset));
+                    int maxvy = (int) (plot.gridMult*(histMaxV[histIdx]+plot.plotOffset));
+                    
+                    if (minvy <= maxy) {
+                        if (minvy < minRangeLo || maxvy > minRangeHi) {
+                            reduceRange[plot.units] = false;
+                            minRangeLo = -1000;
+                            minRangeHi = 1000;
+                        }
+                        
+                        // Draw vertical segment for this pixel (captures min/max range)
+                        if (minvy != maxvy) {
+                            g.drawLine(x+i, maxy-minvy, x+i, maxy-maxvy);
+                        }
+                        
+                        // Connect to previous point with diagonal line
+                        if (prevMaxY != -1) {
+                            // Draw from previous max to current min (or vice versa for continuity)
+                            g.drawLine(x+i-1, maxy-prevMaxY, x+i, maxy-minvy);
+                        }
+                        
+                        prevMinY = minvy;
+                        prevMaxY = maxvy;
+                        
+                        if (ox != -1) {
+                            if (minvy == oy && maxvy == oy)
+                                continue;
+                            g.drawLine(ox, maxy-oy, x+i, maxy-oy);
+                            ox = oy = -1;
+                        }
+                        if (minvy == maxvy) {
+                            ox = x+i;
+                            oy = minvy;
+                            continue;
+                        }
+                    }
+                }
+            } else {
+                // Fixed scale: show most recent data that fits
+                double elapsedTime = sim.t - startTime;
+                double timePerPixel = sim.maxTimeStep * speed;
+                int pixelsNeeded = (int)(elapsedTime / timePerPixel);
+                int pixelsUsed = Math.min(pixelsNeeded, rect.width);
+                
+                if (pixelsUsed < rect.width) {
+                    // Not enough data to fill screen yet, start from beginning
+                    for (i = 0; i < pixelsUsed; i++) {
+                        double time = i * timePerPixel;
+                        int histIdx = (int)(time / historySampleInterval);
+                        if (histIdx >= historySize)
+                            histIdx = historySize - 1;
+                        
+                        int minvy = (int) (plot.gridMult*(histMinV[histIdx]+plot.plotOffset));
+                        int maxvy = (int) (plot.gridMult*(histMaxV[histIdx]+plot.plotOffset));
+                        
+                        if (minvy <= maxy) {
+                            if (minvy < minRangeLo || maxvy > minRangeHi) {
+                                reduceRange[plot.units] = false;
+                                minRangeLo = -1000;
+                                minRangeHi = 1000;
+                            }
+                            
+                            // Draw vertical segment for this pixel
+                            if (minvy != maxvy) {
+                                g.drawLine(x+i, maxy-minvy, x+i, maxy-maxvy);
+                            }
+                            
+                            // Connect to previous point
+                            if (prevMaxY != -1) {
+                                g.drawLine(x+i-1, maxy-prevMaxY, x+i, maxy-minvy);
+                            }
+                            
+                            prevMinY = minvy;
+                            prevMaxY = maxvy;
+                            
+                            if (ox != -1) {
+                                if (minvy == oy && maxvy == oy)
+                                    continue;
+                                g.drawLine(ox, maxy-oy, x+i, maxy-oy);
+                                ox = oy = -1;
+                            }
+                            if (minvy == maxvy) {
+                                ox = x+i;
+                                oy = minvy;
+                                continue;
+                            }
+                        }
+                    }
+                } else {
+                    // Screen is full, show most recent window
+                    double windowTimeSpan = rect.width * timePerPixel;
+                    double startTime = elapsedTime - windowTimeSpan;
+                    int startPixel = 0;
+                    
+                    for (i = startPixel; i < rect.width; i++) {
+                        double time = startTime + i * timePerPixel;
+                        int histIdx = (int)(time / historySampleInterval);
+                        if (histIdx < 0) histIdx = 0;
+                        if (histIdx >= historySize) histIdx = historySize - 1;
+                        
+                        int minvy = (int) (plot.gridMult*(histMinV[histIdx]+plot.plotOffset));
+                        int maxvy = (int) (plot.gridMult*(histMaxV[histIdx]+plot.plotOffset));
+                        
+                        if (minvy <= maxy) {
+                            if (minvy < minRangeLo || maxvy > minRangeHi) {
+                                reduceRange[plot.units] = false;
+                                minRangeLo = -1000;
+                                minRangeHi = 1000;
+                            }
+                            
+                            // Draw vertical segment for this pixel
+                            if (minvy != maxvy) {
+                                g.drawLine(x+i, maxy-minvy, x+i, maxy-maxvy);
+                            }
+                            
+                            // Connect to previous point
+                            if (prevMaxY != -1) {
+                                g.drawLine(x+i-1, maxy-prevMaxY, x+i, maxy-minvy);
+                            }
+                            
+                            prevMinY = minvy;
+                            prevMaxY = maxvy;
+                            
+                            if (ox != -1) {
+                                if (minvy == oy && maxvy == oy)
+                                    continue;
+                                g.drawLine(ox, maxy-oy, x+i, maxy-oy);
+                                ox = oy = -1;
+                            }
+                            if (minvy == maxvy) {
+                                ox = x+i;
+                                oy = minvy;
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // Original right-to-left scrolling behavior
+            for (i = 0; i != rect.width; i++) {
+                int ip = (i+ipa) & (scopePointCount-1);
+                int minvy = (int) (plot.gridMult*(minV[ip]+plot.plotOffset));
+                int maxvy = (int) (plot.gridMult*(maxV[ip]+plot.plotOffset));
+                if (minvy <= maxy) {
+            	if (minvy < minRangeLo || maxvy > minRangeHi) {
+            	    // we got a value outside min range, so we don't need to rescale later
+            	    reduceRange[plot.units] = false;
+            	    minRangeLo = -1000;
+            	    minRangeHi = 1000; // avoid triggering this test again
+            	}
+            	
+            	// Draw vertical segment for this pixel
+            	if (minvy != maxvy) {
+            	    g.drawLine(x+i, maxy-minvy, x+i, maxy-maxvy);
+            	}
+            	
+            	// Connect to previous point
+            	if (prevMaxY != -1) {
+            	    g.drawLine(x+i-1, maxy-prevMaxY, x+i, maxy-minvy);
+            	}
+            	
+            	prevMinY = minvy;
+            	prevMaxY = maxvy;
+            	
+            	if (ox != -1) {
+            	    if (minvy == oy && maxvy == oy)
+            		continue;
+            	    g.drawLine(ox, maxy-oy, x+i, maxy-oy);
+            	    ox = oy = -1;
+            	}
+            	if (minvy == maxvy) {
+            	    ox = x+i;
+            	    oy = minvy;
+            	    continue;
+            	}
+                }
+            } // for (i=0...)
+        }
         
         if (ox != -1)
             g.drawLine(ox, maxy-oy, x+i-1, maxy-oy); // Horizontal
@@ -1256,8 +1625,24 @@ class Scope {
 	    return;
 	if (plot2d || visiblePlots.size() == 0)
 	    cursorTime = -1;
-	else
-	    cursorTime = sim.t-sim.maxTimeStep*speed*(rect.x+rect.width-mouseX);
+	else {
+	    if (drawFromZero) {
+		// Time is proportional to x position from left
+		double elapsedTime = sim.t - startTime;
+		double relativeX = (mouseX - rect.x) / (double)rect.width;
+		
+		if (autoScaleTime && elapsedTime > 0) {
+		    // Mouse position maps directly to elapsed time
+		    cursorTime = startTime + (relativeX * elapsedTime);
+		} else {
+		    // Mouse position maps to actual time with fixed scale
+		    cursorTime = startTime + (relativeX * rect.width * sim.maxTimeStep * speed);
+		}
+	    } else {
+		// Original right-to-left scrolling calculation
+		cursorTime = sim.t-sim.maxTimeStep*speed*(rect.x+rect.width-mouseX);
+	    }
+	}
     	checkForSelection(mouseX, mouseY);
     	cursorScope = this;
     }
@@ -1311,16 +1696,50 @@ class Scope {
     }
     
     if (cursorTime >= 0) {
-        cursorX = -(int) ((sim.t-cursorTime)/(sim.maxTimeStep*speed) - rect.x - rect.width);
+        // Calculate cursor X position from cursorTime
+        if (drawFromZero && !plot2d) {
+            // Draw from zero mode: calculate position based on time from start
+            double elapsedTime = sim.t - startTime;
+            double displayTimeSpan;
+            
+            if (autoScaleTime && elapsedTime > 0) {
+                displayTimeSpan = elapsedTime;
+            } else {
+                displayTimeSpan = sim.maxTimeStep * speed * rect.width;
+            }
+            
+            double timeFromStart = cursorTime - startTime;
+            cursorX = rect.x + (int)(rect.width * timeFromStart / displayTimeSpan);
+        } else {
+            // Normal scrolling mode
+            cursorX = -(int) ((sim.t-cursorTime)/(sim.maxTimeStep*speed) - rect.x - rect.width);
+        }
+        
         if (cursorX >= rect.x) {
-        int ipa = plots.get(0).startIndex(rect.width);
-        int ip = (cursorX-rect.x+ipa) & (scopePointCount-1);
         int maxy = (rect.height-1)/2;
         int y = maxy;
         if (visiblePlots.size() > 0) {
             ScopePlot plot = visiblePlots.get(selectedPlot >= 0 ? selectedPlot : 0);
-            info[ct++] = plot.getUnitText(plot.maxValues[ip]);
-            int maxvy = (int) (plot.gridMult*(plot.maxValues[ip]+plot.plotOffset));
+            double value;
+            
+            if (drawFromZero && !plot2d && plot.historyMaxValues != null) {
+                // Get value from history buffer
+                double timeFromStart = cursorTime - startTime;
+                int historyIndex = (int)(timeFromStart / historySampleInterval);
+                if (historyIndex >= 0 && historyIndex < historySize) {
+                    value = plot.historyMaxValues[historyIndex];
+                } else {
+                    value = 0;
+                }
+            } else {
+                // Get value from circular buffer
+                int ipa = plots.get(0).startIndex(rect.width);
+                int ip = (cursorX-rect.x+ipa) & (scopePointCount-1);
+                value = plot.maxValues[ip];
+            }
+            
+            info[ct++] = plot.getUnitText(value);
+            int maxvy = (int) (plot.gridMult*(value+plot.plotOffset));
             g.setColor(plot.color);
             g.fillOval(cursorX-2, rect.y+y-maxvy-2, 5, 5);
         }
@@ -1337,7 +1756,7 @@ class Scope {
             return;
         
     if (visiblePlots.size() > 0)
-        info[ct++] = CircuitElm.getTimeText(cursorTime);
+        info[ct++] = sim.formatTimeFixed(cursorTime);
     
     if (cursorScope != this) {
         // don't show cursor info if not enough room, or stacked with selected one
@@ -1864,6 +2283,11 @@ class Scope {
 
 	if (isManualScale())
 	    flags |= FLAG_DIVISIONS;
+	
+	// Add new flags for drawFromZero feature
+	flags |= (drawFromZero ? FLAG_DRAW_FROM_ZERO : 0);
+	flags |= (autoScaleTime ? FLAG_AUTO_SCALE_TIME : 0);
+	
 	return flags;
     }
     
@@ -2030,6 +2454,10 @@ class Scope {
     	logSpectrum = (flags & 65536) != 0;
     	showAverage = (flags & (1<<17)) != 0;
     	showElmInfo = (flags & (1<<20)) != 0;
+    	
+    	// Load new drawFromZero flags
+    	drawFromZero = (flags & FLAG_DRAW_FROM_ZERO) != 0;
+    	autoScaleTime = (flags & FLAG_AUTO_SCALE_TIME) != 0;
     }
     
     void saveAsDefault() {
@@ -2133,6 +2561,17 @@ class Scope {
     	}
     	if (mi == "showresistance")
     		setValue(VAL_R);
+    	if (mi == "drawfromzero") {
+    		drawFromZero = state;
+    		if (state) {
+    		    startTime = sim.t;
+    		}
+    		resetGraph();
+    	}
+    	if (mi == "autoscaletime") {
+    		autoScaleTime = state;
+    		sim.needAnalyze();
+    	}
     }
 
 //    void select() {

@@ -186,8 +186,13 @@ public class TableGeometryManager {
     
     /**
      * Get cell width in pixels
+     * Uses a constant base grid size (16 pixels) to ensure consistent sizing
+     * regardless of the table's small/normal chip size setting
      */
     public int getCellWidthPixels() {
-        return table.cellWidthInGrids * table.cspc;
+        // Use constant 16-pixel grid (normal grid size) for cell width calculations
+        // This ensures cellWidthInGrids has consistent meaning across all tables
+        final int BASE_GRID_SIZE = 16;
+        return table.cellWidthInGrids * BASE_GRID_SIZE;
     }
 }

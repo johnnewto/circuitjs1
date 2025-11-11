@@ -3686,6 +3686,8 @@ public CirSim() {
     			s.resetGraph(true);
     		if (item=="properties")
 			s.properties();
+    		if (item=="drawfromzero")
+    			s.toggleDrawFromZero();
     		deleteUnusedScopeElms();
     	}
     	if (menu=="circuits" && item.indexOf("setup ") ==0) {

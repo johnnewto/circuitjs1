@@ -265,9 +265,16 @@ public class TableElm extends ChipElm {
     
     /**
      * Get cell width in pixels - delegates to GeometryManager
+     * Uses a constant base grid size (16 pixels) to ensure consistent sizing
+     * regardless of the table's small/normal chip size setting
      */
     int getCellWidthPixels() {
-        return geometryManager != null ? geometryManager.getCellWidthPixels() : cellWidthInGrids * cspc;
+        if (geometryManager != null) {
+            return geometryManager.getCellWidthPixels();
+        }
+        // Fallback: use constant 16-pixel grid (normal grid size)
+        final int BASE_GRID_SIZE = 16;
+        return cellWidthInGrids * BASE_GRID_SIZE;
     }
     
     @Override
