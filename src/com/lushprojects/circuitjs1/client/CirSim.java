@@ -1769,7 +1769,7 @@ public CirSim() {
 	}
 	if (stopMessage != null && circuitArea.height > canvasHeight-30)
 	    h = 30;
-	g.setColor(printableCheckItem.getState() ? "#eee" : "#111");
+	g.setColor(printableCheckItem.getState() ? "#eee" : "#202020");  // Dark gray - same as undocked scopes
 	g.fillRect(leftX, circuitArea.height-h, circuitArea.width, canvasHeight-circuitArea.height+h);
 	g.setFont(CircuitElm.unitsFont);
 	int ct = scopeCount;

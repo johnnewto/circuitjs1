@@ -339,25 +339,52 @@ class Scope {
     	
     	// Record start time and initialize history for drawFromZero mode
     	if (drawFromZero) {
-    	    startTime = 0.0;  // Always start from t=0
+    	    startTime = 0.0;  // Always start from t=0 for draw-from-zero mode
     	    
     	    if (clearHistory) {
     	        historySize = 0;
     	        historyCapacity = scopePointCount * 4; // Start with 4x the display size
     	        historySampleInterval = sim.maxTimeStep * speed;
     	        
+    	        CirSim.console("resetGraph: drawFromZero=true, clearHistory=true, sim.t=" + sim.t + 
+    	            ", plots.size()=" + plots.size() + ", historyCapacity=" + historyCapacity);
+    	        
     	        // Initialize history buffers for each plot
     	        for (i = 0; i != plots.size(); i++) {
     	            ScopePlot p = plots.get(i);
     	            p.historyMinValues = new double[historyCapacity];
     	            p.historyMaxValues = new double[historyCapacity];
+    	            CirSim.console("  Plot " + i + ": historyMinValues=" + (p.historyMinValues != null ? "allocated[" + p.historyMinValues.length + "]" : "NULL"));
     	        }
     	    } else {
     	        // Preserve history, just update sample interval
     	        historySampleInterval = sim.maxTimeStep * speed;
-    	        CirSim.console("Scope zoom: preserving " + historySize + " history samples, new interval: " + historySampleInterval);
+    	        
+    	        // Check if buffers need to be allocated (e.g., after loading from file)
+    	        boolean needsAllocation = false;
+    	        for (i = 0; i != plots.size(); i++) {
+    	            ScopePlot p = plots.get(i);
+    	            if (p.historyMinValues == null || p.historyMaxValues == null) {
+    	                needsAllocation = true;
+    	                break;
+    	            }
+    	        }
+    	        
+    	        if (needsAllocation) {
+    	            historySize = 0;
+    	            historyCapacity = scopePointCount * 4;
+    	            CirSim.console("resetGraph: allocating history buffers (clearHistory=false), historyCapacity=" + historyCapacity);
+    	            for (i = 0; i != plots.size(); i++) {
+    	                ScopePlot p = plots.get(i);
+    	                p.historyMinValues = new double[historyCapacity];
+    	                p.historyMaxValues = new double[historyCapacity];
+    	            }
+    	        } else {
+    	            CirSim.console("Scope zoom: preserving " + historySize + " history samples, new interval: " + historySampleInterval);
+    	        }
     	    }
     	} else {
+    	    //CirSim.console("resetGraph: drawFromZero=false, clearing history buffers");
     	    // Clear history buffers when not in drawFromZero mode
     	    historySize = 0;
     	    for (i = 0; i != plots.size(); i++) {
@@ -468,7 +495,7 @@ class Scope {
 	int w = this.rect.width;
 	this.rect = r;
 	if (this.rect.width != w)
-	    resetGraph();
+	    resetGraph(false, !drawFromZero);  // Preserve history when drawFromZero is enabled
     }
     
     int getWidth() { return rect.width; }
@@ -684,6 +711,24 @@ class Scope {
 	    downsampleHistory();
 	}
 	
+	// Check if history buffers are allocated
+	boolean allBuffersAllocated = true;
+	for (int i = 0; i < plots.size(); i++) {
+	    ScopePlot p = plots.get(i);
+	    if (p.historyMinValues == null || p.historyMaxValues == null) {
+		allBuffersAllocated = false;
+		CirSim.console("captureToHistory: Plot " + i + " missing history buffers! historyMinValues=" + 
+		    (p.historyMinValues == null ? "NULL" : "allocated") + ", historyMaxValues=" + 
+		    (p.historyMaxValues == null ? "NULL" : "allocated"));
+	    }
+	}
+	
+	if (!allBuffersAllocated) {
+	    CirSim.console("captureToHistory: Not all history buffers allocated, skipping capture. drawFromZero=" + 
+		drawFromZero + ", plots.size()=" + plots.size());
+	    return;
+	}
+	
 	// Capture current values from each plot's circular buffer
 	for (int i = 0; i < plots.size(); i++) {
 	    ScopePlot p = plots.get(i);
@@ -757,7 +802,7 @@ class Scope {
     		if (sim.printableCheckItem.getState()) {
     			imageContext.setFillStyle("#eee");
     		} else {
-    			imageContext.setFillStyle("#111");
+    			imageContext.setFillStyle("#202020");  // Dark gray - same as undocked scopes
     		}
     		imageContext.fillRect(0, 0, rect.width-1, rect.height-1);
     	}
@@ -941,7 +986,7 @@ class Scope {
     		if (sim.printableCheckItem.getState()) {
     			imageContext.setFillStyle("#ffffff");
     		} else {
-    			imageContext.setFillStyle("#000000");
+    			imageContext.setFillStyle("#202020");  // Dark gray - same as undocked scopes
     		}
     		imageContext.fillRect(0,0,rect.width,rect.height);
     		imageContext.setGlobalAlpha(1.0);
@@ -1424,6 +1469,8 @@ class Scope {
             // Draw from zero mode: use history buffers instead of circular buffer
             if (plot.historyMinValues == null || historySize == 0) {
         	// No history data yet
+        	CirSim.console("drawPlot: drawFromZero mode but no history data - historyMinValues=" + 
+        	    (plot.historyMinValues == null ? "NULL" : "allocated") + ", historySize=" + historySize);
         	g.endBatch();
         	return;
             }
@@ -2455,6 +2502,12 @@ class Scope {
     	    text = CustomLogicModel.unescape(text);
     	plot2d = plot2dFlag;
     	setFlags(flags);
+    	
+    	// Check if drawFromZero was loaded and history buffers need initialization
+    	CirSim.console("undump: drawFromZero=" + drawFromZero + ", autoScaleTime=" + autoScaleTime + 
+    	    ", plots.size()=" + plots.size() + ", rect.width=" + rect.width);
+    	// Note: Don't call resetGraph here - it will be called by setRect() later with proper dimensions
+    	// If we call it here, the rect is still default size and historyCapacity will be too small
     }
     
     void setFlags(int flags) {

@@ -130,6 +130,27 @@ class ScopeElm extends CircuitElm {
 	    double scaleX = (double)(i2 - i1) / savedWidth;
 	    double scaleY = (double)(j2 - j1) / savedHeight;
 	    
+	    // Draw shadow box around the scope in export as well
+	    int shadowOffset = (int)(4 * Math.min(scaleX, scaleY));
+	    g.context.save();
+	    g.context.setShadowBlur(8 * Math.min(scaleX, scaleY));
+	    g.context.setShadowOffsetX(shadowOffset);
+	    g.context.setShadowOffsetY(shadowOffset);
+	    
+	    // Use lighter shadow for dark background, darker shadow for light background
+	    if (sim.printableCheckItem.getState()) {
+		g.context.setShadowColor("rgba(0, 0, 0, 0.4)");  // Dark shadow for white background
+		g.setColor(new Color(238, 238, 238));  // Light gray (#eee) - same as docked scopes
+	    } else {
+		g.context.setShadowColor("rgba(255, 255, 255, 0.3)");  // Light gray shadow for black background
+		g.setColor(new Color(32, 32, 32));  // Dark gray instead of pure black
+	    }
+	    
+	    // Draw a background rectangle for the shadow (scaled size)
+	    g.fillRect(i1, j1, i2 - i1, j2 - j1);
+	    
+	    g.context.restore();
+	    
 	    // Apply transform: translate to scope origin, scale, then translate back
 	    g.context.save();
 	    g.context.translate(i1, j1);
@@ -147,6 +168,28 @@ class ScopeElm extends CircuitElm {
 	} else {
 	    // Normal rendering - update rect based on current element position
 	    setScopeRect();
+	    
+	    // Draw shadow box around the scope to separate it from background
+	    int shadowOffset = 4;
+	    g.context.save();
+	    g.context.setShadowBlur(8);
+	    g.context.setShadowOffsetX(shadowOffset);
+	    g.context.setShadowOffsetY(shadowOffset);
+	    
+	    // Use lighter shadow for dark background, darker shadow for light background
+	    if (sim.printableCheckItem.getState()) {
+		g.context.setShadowColor("rgba(0, 0, 0, 0.4)");  // Dark shadow for white background
+		g.setColor(new Color(238, 238, 238));  // Light gray (#eee) - same as docked scopes
+	    } else {
+		g.context.setShadowColor("rgba(255, 255, 255, 0.3)");  // Light gray shadow for black background
+		g.setColor(new Color(32, 32, 32));  // Dark gray instead of pure black
+	    }
+	    
+	    // Draw a background rectangle for the shadow
+	    g.fillRect(elmScope.rect.x, elmScope.rect.y, elmScope.rect.width, elmScope.rect.height);
+	    
+	    g.context.restore();
+	    
 	    elmScope.position = -1;
 	    elmScope.draw(g);
 	}
