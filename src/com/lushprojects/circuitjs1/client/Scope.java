@@ -29,13 +29,30 @@ import com.google.gwt.canvas.client.Canvas;
 import com.google.gwt.canvas.dom.client.Context2d;
 
 // plot of single value on a scope
+/**
+ * Represents a single plot within a scope, tracking values over time.
+ * Each plot can display voltage, current, power, or resistance for a circuit element.
+ */
 class ScopePlot {
+    // Plot flags
+    static final int FLAG_AC = 1;
+    
+    // Default values
+    private static final double DEFAULT_MAN_SCALE = 1.0;
+    private static final double DEFAULT_AC_ALPHA = 0.9999;
+    private static final double AC_ALPHA_TIME_CONSTANT = 1.15;
+    
+    // Data storage
     double minValues[], maxValues[];
     int scopePointCount;
-    int ptr; // ptr is pointer to the current sample
-    int value; // Value - the property being shown - e.g. VAL_CURRENT
-    // scopePlotSpeed is in sim timestep units per pixel
-    int scopePlotSpeed, units;
+    int ptr; // Pointer to the current sample in circular buffer
+    
+    // Plot configuration
+    int value; // The property being shown (e.g., VAL_CURRENT, VAL_VOLTAGE)
+    int scopePlotSpeed; // In sim timestep units per pixel
+    int units; // Display units (UNITS_V, UNITS_A, UNITS_W, UNITS_OHMS)
+    
+    // State tracking
     double lastUpdateTime;
     double lastValue;
     String color;
@@ -44,42 +61,65 @@ class ScopePlot {
     // History buffers for drawFromZero mode (not circular, grows linearly)
     double historyMinValues[], historyMaxValues[];
     
-   // Has a manual scale in "/div" format been put in by the user (as opposed to being
-   // inferred from a "MaxValue" format or from an automatically calculated scale)?
-   // Manual scales should be kept to sane values anyway, but this shows if this is a user
-   // intention we should respect, or if we should try and populate reasonable values from
-   // the data we have
+    // Manual scale settings
+    // Has a manual scale in "/div" format been set by the user?
+    // If false, scale is inferred from "MaxValue" format or auto-calculated
     boolean manScaleSet = false; 
-    double manScale = 1.0; // Units per division
+    double manScale = DEFAULT_MAN_SCALE; // Units per division
     int manVPosition = 0; // 0 is center of screen. +V_POSITION_STEPS/2 is top of screen
+    
+    // Display parameters
     double gridMult;
     double plotOffset;
+    
+    // AC coupling filter
     boolean acCoupled = false;
-    double acAlpha = 0.9999; // Filter coefficient for AC coupling
+    double acAlpha = DEFAULT_AC_ALPHA; // Filter coefficient for AC coupling (y[i] = alpha * (y[i-1] + x[i] - x[i-1]))
     double acLastOut = 0; // Store y[i-1] term for AC coupling filter
     
-    final static int FLAG_AC=1;
-    
+    /**
+     * Creates a new ScopePlot for the given element and units.
+     * @param e The circuit element to monitor
+     * @param u The units for display (UNITS_V, UNITS_A, etc.)
+     */
     ScopePlot(CircuitElm e, int u) {
 	elm = e;
 	units = u;
     }
     
+    /**
+     * Creates a new ScopePlot with manual scale settings.
+     * @param e The circuit element to monitor
+     * @param u The units for display
+     * @param v The value type to display (VAL_VOLTAGE, VAL_CURRENT, etc.)
+     * @param manS Manual scale value (units per division)
+     */
     ScopePlot(CircuitElm e, int u, int v, double manS) {
 	elm = e;
 	units = u;
 	value = v;
 	manScale = manS;
-	// ohms can only be positive, so move the v position to the bottom.
-	// power can be negative for caps and inductors, but still move to the bottom (for backward compatibility)
+	// Ohms can only be positive, so move the v position to the bottom.
+	// Power can be negative for caps and inductors, but still move to the bottom (for backward compatibility)
 	if (units == Scope.UNITS_OHMS || units == Scope.UNITS_W)
-	    manVPosition = -Scope.V_POSITION_STEPS/2;
+	    manVPosition = -Scope.V_POSITION_STEPS / 2;
     }
 
+    /**
+     * Returns the starting index in the circular buffer for displaying the given width.
+     * @param w Width in pixels to display
+     * @return Starting index in circular buffer
+     */
     int startIndex(int w) {
 	return ptr + scopePointCount - w; 
     }
     
+    /**
+     * Resets the plot buffers and speed settings.
+     * @param spc New scope point count (buffer size)
+     * @param sp New speed (timestep units per pixel)
+     * @param full If true, discard all old data; if false, preserve what fits
+     */
     void reset(int spc, int sp, boolean full) {
 	int oldSpc = scopePointCount;
 	scopePointCount = spc;
@@ -88,7 +128,7 @@ class ScopePlot {
 	scopePlotSpeed = sp;
 	// Adjust the time constant of the AC coupled filter in proportion to the number of samples
 	// we are seeing on the scope (if my maths is right). The constant is empirically determined
-	acAlpha = 1.0-1.0/(1.15*scopePlotSpeed*scopePointCount);
+	acAlpha = 1.0 - 1.0 / (AC_ALPHA_TIME_CONSTANT * scopePlotSpeed * scopePointCount);
 	double oldMin[] = minValues;
 	double oldMax[] = maxValues;
     	minValues = new double[scopePointCount];
@@ -107,24 +147,35 @@ class ScopePlot {
     	ptr = 0;
     }
 
+    /**
+     * Records a timestep sample for this plot.
+     * Updates min/max values and applies AC coupling if enabled.
+     */
     void timeStep() {
 	if (elm == null)
 		return;
+	
 	double v = elm.getScopeValue(value);
-	 // AC coupling filter. 1st order IIR high pass
-	 // y[i] = alpha x (y[i-1]+x[i]-x[i-1])
-	 // We calculate for all iterations (even DC coupled) to prime the data in case they switch to AC later
-	double newAcOut=acAlpha*(acLastOut+v-lastValue);
+	
+	// AC coupling filter: 1st order IIR high pass filter
+	// Formula: y[i] = alpha × (y[i-1] + x[i] - x[i-1])
+	// We calculate for all iterations (even DC coupled) to prime the data in case they switch to AC later
+	double newAcOut = acAlpha * (acLastOut + v - lastValue);
 	lastValue = v;
 	acLastOut = newAcOut;
+	
 	if (isAcCoupled())
 	    v = newAcOut;
+	
+	// Update min/max for current sample point
 	if (v < minValues[ptr])
 		minValues[ptr] = v;
 	if (v > maxValues[ptr])
 		maxValues[ptr] = v;
-	if (CirSim.theSim.t-lastUpdateTime >= CirSim.theSim.maxTimeStep * scopePlotSpeed) {
-	    ptr = (ptr+1) & (scopePointCount-1);
+	
+	// Advance to next sample point if enough time has elapsed
+	if (CirSim.theSim.t - lastUpdateTime >= CirSim.theSim.maxTimeStep * scopePlotSpeed) {
+	    ptr = (ptr + 1) & (scopePointCount - 1);
 	    minValues[ptr] = maxValues[ptr] = v;
 	    lastUpdateTime += CirSim.theSim.maxTimeStep * scopePlotSpeed;
 	}
@@ -144,16 +195,22 @@ class ScopePlot {
 	return null;
     }
 
+    // Color palette for multiple plots
     static final String colors[] = {
 	    "#FF0000", "#FF8000", "#FF00FF", "#7F00FF",
 	    "#0000FF", "#0080FF", "#FFFF00", "#00FFFF", 
     };
     
+    /**
+     * Assigns a color to this plot based on its type and count.
+     * @param count Plot count (0 for default color based on units, >0 for cycling through palette)
+     */
     void assignColor(int count) {
 	if (count > 0) {
-	    color = colors[(count-1) % 8];
+	    color = colors[(count - 1) % colors.length];
 	    return;
 	}
+	// Default colors based on units
 	switch (units) {
 	case Scope.UNITS_V:
 	    color = CircuitElm.positiveColor.getHexValue();
@@ -167,6 +224,11 @@ class ScopePlot {
 	}
     }
     
+    /**
+     * Enables or disables AC coupling for this plot.
+     * AC coupling only works for voltage plots.
+     * @param b true to enable AC coupling
+     */
     void setAcCoupled(boolean b) {
 	if (canAcCouple()) {
 	    acCoupled = b;
@@ -175,100 +237,153 @@ class ScopePlot {
 	    acCoupled = false;
     }
     
+    /**
+     * Checks if AC coupling is allowed for this plot.
+     * @return true if this plot displays voltage
+     */
     boolean canAcCouple() {
-	return units == Scope.UNITS_V; // AC coupling is permitted if the plot is displaying volts
+	return units == Scope.UNITS_V;
     }
     
+    /**
+     * Checks if AC coupling is currently enabled.
+     * @return true if AC coupled
+     */
     boolean isAcCoupled() {
 	return acCoupled;
     }
     
+    /**
+     * Returns serialization flags for this plot.
+     * @return Bit flags representing plot state
+     */
     int getPlotFlags() {
 	return (acCoupled ? FLAG_AC : 0);
     }
 }
 
+/**
+ * Scope class - displays time-series waveforms and XY plots of circuit values.
+ * Supports multiple modes: standard scrolling view, draw-from-zero mode, 2D plots, FFT analysis.
+ */
 class Scope {
+    // ====================
+    // FLAG CONSTANTS
+    // ====================
+    // Dump format flags (for serialization)
     final int FLAG_YELM = 32;
-    
-    // bunch of other flags go here, see getFlags()
-    final int FLAG_IVALUE = 2048; // Flag to indicate if IVALUE is included in dump
-    final int FLAG_PLOTS = 4096; // new-style dump with multiple plots
-    final int FLAG_PERPLOTFLAGS = 1<<18; // new-new style dump with plot flags
-    final int FLAG_PERPLOT_MAN_SCALE = 1<<19; // new-new style dump with manual included in each plot
+    final int FLAG_IVALUE = 2048;
+    final int FLAG_PLOTS = 4096; // New-style dump with multiple plots
+    final int FLAG_PERPLOTFLAGS = 1<<18; // Per-plot flags in dump
+    final int FLAG_PERPLOT_MAN_SCALE = 1<<19; // Manual scale included in each plot
     final int FLAG_MAN_SCALE = 16;
-    final int FLAG_DIVISIONS = 1<<21; // dump manDivisions
-    final int FLAG_DRAW_FROM_ZERO = 1<<22; // draw from t=0 on left, growing right
-    final int FLAG_AUTO_SCALE_TIME = 1<<23; // auto-adjust time scale when reaching edge
-    // other flags go here too, see getFlags()
+    final int FLAG_DIVISIONS = 1<<21; // Dump manDivisions
+    final int FLAG_DRAW_FROM_ZERO = 1<<22; // Draw from t=0 on left, growing right
+    final int FLAG_AUTO_SCALE_TIME = 1<<23; // Auto-adjust time scale when reaching edge
     
-    static final int VAL_POWER = 7;
-    static final int VAL_POWER_OLD = 1;
+    // ====================
+    // VALUE TYPE CONSTANTS
+    // ====================
     static final int VAL_VOLTAGE = 0;
+    static final int VAL_POWER_OLD = 1; // Legacy power value (conflicts with VAL_IB)
+    static final int VAL_R = 2; // Resistance
     static final int VAL_CURRENT = 3;
+    static final int VAL_POWER = 7;
+    // Transistor-specific values
     static final int VAL_IB = 1;
     static final int VAL_IC = 2;
     static final int VAL_IE = 3;
     static final int VAL_VBE = 4;
     static final int VAL_VBC = 5;
     static final int VAL_VCE = 6;
-    static final int VAL_R = 2;
-    static final int UNITS_V = 0;
-    static final int UNITS_A = 1;
-    static final int UNITS_W = 2;
-    static final int UNITS_OHMS = 3;
+    
+    // ====================
+    // UNIT CONSTANTS
+    // ====================
+    static final int UNITS_V = 0; // Volts
+    static final int UNITS_A = 1; // Amperes
+    static final int UNITS_W = 2; // Watts
+    static final int UNITS_OHMS = 3; // Ohms
     static final int UNITS_COUNT = 4;
-    static final double multa[] = {2.0, 2.5, 2.0};
-    static final int V_POSITION_STEPS=200;
-    static final double MIN_MAN_SCALE = 1e-9;
-    int scopePointCount = 128;
+    
+    // ====================
+    // DISPLAY CONSTANTS
+    // ====================
+    static final double multa[] = {2.0, 2.5, 2.0}; // Grid scaling multipliers
+    static final int V_POSITION_STEPS = 200; // Vertical position adjustment range
+    static final double MIN_MAN_SCALE = 1e-9; // Minimum manual scale value
+    static final int SETTINGS_WHEEL_SIZE = 36; // Size of settings wheel in pixels
+    static final int SETTINGS_WHEEL_MARGIN = 100; // Minimum size needed to show settings wheel
+    static final int SHADOW_OFFSET = 4; // Shadow offset in pixels
+    static final int SHADOW_BLUR = 8; // Shadow blur radius
+    static final int MIN_PIXEL_SPACING = 20; // Minimum spacing between gridlines in pixels
+    
+    // ====================
+    // INSTANCE VARIABLES - Data
+    // ====================
+    int scopePointCount = 128; // Size of circular buffer (power of 2)
     FFT fft;
-    int position;
-    // speed is sim timestep units per pixel
-    int speed;
-    int stackCount; // number of scopes in this column
-    String text;
+    int position; // Position in scope stack
+    int speed; // Sim timestep units per pixel
+    int stackCount; // Number of scopes in this column
+    String text; // Custom label text
     Rectangle rect;
+    
+    // ====================
+    // INSTANCE VARIABLES - Display Settings
+    // ====================
     private boolean manualScale;
     boolean showI, showV, showScale, showMax, showMin, showFreq;
-    boolean plot2d;
-    boolean plotXY;
-    boolean maxScale;
-
-    boolean logSpectrum;
+    boolean plot2d; // 2D plot mode
+    boolean plotXY; // XY plot mode
+    boolean maxScale; // Auto-scale to maximum value
+    boolean logSpectrum; // Logarithmic FFT display
     boolean showFFT, showNegative, showRMS, showAverage, showDutyCycle, showElmInfo;
-    boolean drawFromZero; // draw from t=0 on left, growing right
-    boolean autoScaleTime; // auto-adjust time scale when reaching edge
-    double startTime; // simulation time when scope was reset (for drawFromZero mode)
-    int historySize; // current number of samples in history buffers
-    int historyCapacity; // maximum capacity of history buffers before downsampling
-    double historySampleInterval; // time interval between history samples (increases with downsampling)
+    
+    // Draw-from-zero mode variables
+    boolean drawFromZero; // Draw from t=0 on left, growing right
+    boolean autoScaleTime; // Auto-adjust time scale when reaching edge
+    double startTime; // Simulation time when scope was reset (for drawFromZero mode)
+    int historySize; // Current number of samples in history buffers
+    int historyCapacity; // Maximum capacity of history buffers before downsampling
+    double historySampleInterval; // Time interval between history samples (increases with downsampling)
+    
+    // ====================
+    // INSTANCE VARIABLES - Working Data
+    // ====================
     Vector<ScopePlot> plots, visiblePlots;
-    int draw_ox, draw_oy;
+    int draw_ox, draw_oy; // 2D plot drawing coordinates
     CirSim sim;
-    Canvas imageCanvas;
+    Canvas imageCanvas; // Canvas for 2D plots
     Context2d imageContext;
-    int alphaCounter =0;
-    // scopeTimeStep to check if sim timestep has changed from previous value when redrawing
-    double scopeTimeStep;
-    double scale[]; // Max value to scale the display to show - indexed for each value of UNITS - e.g. UNITS_V, UNITS_A etc.
+    int alphaCounter = 0; // Counter for 2D plot fade effect
+    double scopeTimeStep; // Check if sim timestep has changed
+    double scale[]; // Max value to scale the display - indexed by UNITS_*
     boolean reduceRange[];
-    double scaleX, scaleY;  // for X-Y plots
-    double wheelDeltaY;
-    int selectedPlot;
+    double scaleX, scaleY;  // For X-Y plots
+    double wheelDeltaY; // Mouse wheel accumulator
+    int selectedPlot; // Currently selected plot index
     ScopePropertiesDialog properties;
-    String curColor, voltColor;
-    double gridStepX, gridStepY;
-    double maxValue, minValue;
+    String curColor, voltColor; // Legacy color variables
+    double gridStepX, gridStepY; // Grid spacing
+    double displayGridStepX; // Grid spacing for display text (saved from first plot)
+    double maxValue, minValue; // Calculated from visible data
     int manDivisions; // Number of vertical divisions when in manual mode
     static int lastManDivisions;
-    boolean drawGridLines;
-    boolean somethingSelected;
+    boolean drawGridLines; // Flag to draw gridlines once per frame
+    boolean somethingSelected; // Is one of our plots selected?
     
+    // ====================
+    // STATIC VARIABLES - Cursor Tracking
+    // ====================
     static double cursorTime;
     static int cursorUnits;
     static Scope cursorScope;
     
+    /**
+     * Creates a new Scope instance.
+     * @param s The simulator instance
+     */
     Scope(CirSim s) {
     	sim = s;
     	scale = new double[UNITS_COUNT];
@@ -276,18 +391,27 @@ class Scope {
 	manDivisions = lastManDivisions;
     	
     	rect = new Rectangle(0, 0, 1, 1);
-   	imageCanvas=Canvas.createIfSupported();
-   	imageContext=imageCanvas.getContext2d();
+   	imageCanvas = Canvas.createIfSupported();
+   	imageContext = imageCanvas.getContext2d();
 	allocImage();
     	initialize();
     }
     
+    /**
+     * Show or hide current plots.
+     * @param b true to show current plots
+     */
     void showCurrent(boolean b) {
 	showI = b;
 	if (b && !showingVoltageAndMaybeCurrent())
 	    setValue(0);
 	calcVisiblePlots();
     }
+    
+    /**
+     * Show or hide voltage plots.
+     * @param b true to show voltage plots
+     */
     void showVoltage(boolean b) {
 	showV = b;
 	if (b && !showingVoltageAndMaybeCurrent())
@@ -295,35 +419,59 @@ class Scope {
 	calcVisiblePlots();
     }
 
-    void showMax    (boolean b) { showMax = b; }
-    void showScale    (boolean b) { showScale = b; }
-    void showMin    (boolean b) { showMin = b; }
-    void showFreq   (boolean b) { showFreq = b; }
+    void showMax(boolean b) { showMax = b; }
+    void showScale(boolean b) { showScale = b; }
+    void showMin(boolean b) { showMin = b; }
+    void showFreq(boolean b) { showFreq = b; }
+    
+    /**
+     * Show or hide FFT display.
+     * @param b true to show FFT
+     */
     void showFFT(boolean b) {
       showFFT = b;
       if (!showFFT)
     	  fft = null;
     }
     
+    /**
+     * Sets manual scale mode.
+     * @param value true to enable manual scale
+     * @param roundup true to round up the scale to a sensible value
+     */
     void setManualScale(boolean value, boolean roundup) { 
-	if (value!=manualScale)
+	if (value != manualScale)
 	    clear2dView();
 	manualScale = value; 
 	for (ScopePlot p : plots) {
 	    if (!p.manScaleSet) {
-		p.manScale=getManScaleFromMaxScale(p.units, roundup);
-		p.manVPosition=0;
+		p.manScale = getManScaleFromMaxScale(p.units, roundup);
+		p.manVPosition = 0;
 		p.manScaleSet = true;
 	    }
 	}
     }
     
-    void resetGraph() { resetGraph(false); }
+    /**
+     * Resets the scope graph, using default settings.
+     */
+    void resetGraph() { 
+	resetGraph(false); 
+    }
     
+    /**
+     * Resets the scope graph.
+     * @param full true to discard all old data
+     */
     void resetGraph(boolean full) {
     	resetGraph(full, true);  // Default: clear history
     }
     
+    /**
+     * Resets the scope graph with control over history preservation.
+     * @param full true to discard all old data from circular buffers
+     * @param clearHistory true to clear history buffers (for drawFromZero mode)
+     */
     void resetGraph(boolean full, boolean clearHistory) {
     	scopePointCount = 1;
     	while (scopePointCount <= rect.width)
@@ -432,23 +580,37 @@ class Scope {
 	manDivisions = lastManDivisions = d;
     }
 
-    boolean active() { return plots.size() > 0 && plots.get(0).elm != null; }
+    /**
+     * Checks if this scope is active (has plots with valid elements).
+     * @return true if scope has at least one plot with a valid element
+     */
+    boolean active() { 
+	return plots.size() > 0 && plots.get(0).elm != null; 
+    }
     
+    /**
+     * Initializes the scope with default settings.
+     * Sets up default scales, speeds, and display options.
+     */
     void initialize() {
     	resetGraph();
+    	// Set default scales for each unit type
     	scale[UNITS_W] = scale[UNITS_OHMS] = scale[UNITS_V] = 5;
     	scale[UNITS_A] = .1;
     	scaleX = 5;
     	scaleY = .1;
     	speed = 64;
+    	
+    	// Set default display flags
     	showMax = false;
     	showV = showI = false;
     	showScale = true;  // Show scale by default
     	showFreq = manualScale = showMin = showElmInfo = false;
     	showFFT = false;
     	plot2d = false;
+    	
     	if (!loadDefaults()) {
-    	    // set showV appropriately depending on what plots are present
+    	    // Set showV appropriately depending on what plots are present
     	    // Don't automatically show current - user must enable it manually
     	    int i;
     	    for (i = 0; i != plots.size(); i++) {
@@ -462,30 +624,38 @@ class Scope {
     	}
     }
     
+    /**
+     * Calculates which plots should be visible based on current display settings.
+     * In normal mode, filters by showV/showI flags and assigns colors.
+     * In 2D mode, shows only the first two plots.
+     */
     void calcVisiblePlots() {
 	visiblePlots = new Vector<ScopePlot>();
 	int i;
-	int vc = 0, ac = 0, oc = 0;
+	int voltCount = 0, currentCount = 0, otherCount = 0;
+	
 	if (!plot2d) {
-        	for (i = 0; i != plots.size(); i++) {
-        	    ScopePlot plot = plots.get(i);
-        	    if (plot.units == UNITS_V) {
-        		if (showV) {
-        		    visiblePlots.add(plot);
-        		    plot.assignColor(vc++);
-        		}
-        	    } else if (plot.units == UNITS_A) {
-        		if (showI) {
-        		    visiblePlots.add(plot);
-        		    plot.assignColor(ac++);
-        		}
-        	    } else {
-        		visiblePlots.add(plot);
-        		plot.assignColor(oc++);
-        	    }
-        	}
-	} else { // In 2D mode the visible plots are the first two plots
-	    for(i =0; (i<2) && (i<plots.size()); i++) {
+	    // Normal mode: filter by voltage/current/other and assign colors
+	    for (i = 0; i != plots.size(); i++) {
+		ScopePlot plot = plots.get(i);
+		if (plot.units == UNITS_V) {
+		    if (showV) {
+			visiblePlots.add(plot);
+			plot.assignColor(voltCount++);
+		    }
+		} else if (plot.units == UNITS_A) {
+		    if (showI) {
+			visiblePlots.add(plot);
+			plot.assignColor(currentCount++);
+		    }
+		} else {
+		    visiblePlots.add(plot);
+		    plot.assignColor(otherCount++);
+		}
+	    }
+	} else { 
+	    // 2D mode: show first two plots only
+	    for (i = 0; (i < 2) && (i < plots.size()); i++) {
 		visiblePlots.add(plots.get(i));
 	    }
 	}
@@ -697,7 +867,11 @@ class Scope {
     	}
     }
     
-    // Capture current scope data to history buffers for drawFromZero mode
+    /**
+     * Captures current scope data to history buffers for drawFromZero mode.
+     * Only captures at the defined sample interval to avoid excessive memory use.
+     * Automatically downsamples if history capacity is reached.
+     */
     void captureToHistory() {
 	// Only capture at the defined sample interval
 	if (historySize > 0) {
@@ -711,21 +885,10 @@ class Scope {
 	    downsampleHistory();
 	}
 	
-	// Check if history buffers are allocated
-	boolean allBuffersAllocated = true;
-	for (int i = 0; i < plots.size(); i++) {
-	    ScopePlot p = plots.get(i);
-	    if (p.historyMinValues == null || p.historyMaxValues == null) {
-		allBuffersAllocated = false;
-		CirSim.console("captureToHistory: Plot " + i + " missing history buffers! historyMinValues=" + 
-		    (p.historyMinValues == null ? "NULL" : "allocated") + ", historyMaxValues=" + 
-		    (p.historyMaxValues == null ? "NULL" : "allocated"));
-	    }
-	}
-	
-	if (!allBuffersAllocated) {
-	    CirSim.console("captureToHistory: Not all history buffers allocated, skipping capture. drawFromZero=" + 
-		drawFromZero + ", plots.size()=" + plots.size());
+	// Verify all history buffers are allocated
+	if (!areHistoryBuffersAllocated()) {
+	    CirSim.console("captureToHistory: Not all history buffers allocated, skipping capture. " +
+		"drawFromZero=" + drawFromZero + ", plots.size()=" + plots.size());
 	    return;
 	}
 	
@@ -743,7 +906,27 @@ class Scope {
 	historySize++;
     }
     
-    // Downsample history by factor of 2 to make room for more data
+    /**
+     * Checks if all plots have their history buffers allocated.
+     * @return true if all buffers are allocated, false otherwise
+     */
+    private boolean areHistoryBuffersAllocated() {
+	for (int i = 0; i < plots.size(); i++) {
+	    ScopePlot p = plots.get(i);
+	    if (p.historyMinValues == null || p.historyMaxValues == null) {
+		CirSim.console("captureToHistory: Plot " + i + " missing history buffers! " +
+		    "historyMinValues=" + (p.historyMinValues == null ? "NULL" : "allocated") + 
+		    ", historyMaxValues=" + (p.historyMaxValues == null ? "NULL" : "allocated"));
+		return false;
+	    }
+	}
+	return true;
+    }
+    
+    /**
+     * Downsamples history by a factor of 2 to make room for more data.
+     * Preserves peaks by keeping minimum of mins and maximum of maxs.
+     */
     void downsampleHistory() {
 	int newSize = historySize / 2;
 	historySampleInterval *= 2; // Double the time between samples
@@ -772,39 +955,50 @@ class Scope {
 	historySize = newSize;
     }
 
+    /**
+     * Calculates 2D grid pixel spacing based on window dimensions.
+     * @param width Window width in pixels
+     * @param height Window height in pixels
+     * @return Grid spacing in pixels
+     */
     double calc2dGridPx(int width, int height) {
-	int m = width<height?width:height;
-	return ((double)(m)/2)/((double)(manDivisions)/2+0.05);
-	
+	int minDimension = Math.min(width, height);
+	return ((double) minDimension / 2) / ((double) manDivisions / 2 + 0.05);
     }
     
     
+    /**
+     * Draws a line from the last 2D plot position to a new position.
+     * @param x2 New X coordinate
+     * @param y2 New Y coordinate
+     */
     void drawTo(int x2, int y2) {
     	if (draw_ox == -1) {
     		draw_ox = x2;
     		draw_oy = y2;
+    		return;
     	}
-		if (sim.printableCheckItem.getState()) {
-			imageContext.setStrokeStyle("#000000");
-		} else {
-			imageContext.setStrokeStyle("#ffffff");
-		}
-		imageContext.beginPath();
-		imageContext.moveTo(draw_ox, draw_oy);
-		imageContext.lineTo(x2,y2);
-		imageContext.stroke();
+    	
+    	// Set stroke color based on print mode
+	imageContext.setStrokeStyle(sim.printableCheckItem.getState() ? "#000000" : "#ffffff");
+	imageContext.beginPath();
+	imageContext.moveTo(draw_ox, draw_oy);
+	imageContext.lineTo(x2, y2);
+	imageContext.stroke();
+	
     	draw_ox = x2;
     	draw_oy = y2;
     }
 	
+    /**
+     * Clears the 2D view canvas.
+     */
     void clear2dView() {
-    	if (imageContext!=null) {
-    		if (sim.printableCheckItem.getState()) {
-    			imageContext.setFillStyle("#eee");
-    		} else {
-    			imageContext.setFillStyle("#202020");  // Dark gray - same as undocked scopes
-    		}
-    		imageContext.fillRect(0, 0, rect.width-1, rect.height-1);
+    	if (imageContext != null) {
+    		// Set background color based on print mode
+    		String bgColor = sim.printableCheckItem.getState() ? "#eee" : "#202020";
+    		imageContext.setFillStyle(bgColor);
+    		imageContext.fillRect(0, 0, rect.width - 1, rect.height - 1);
     	}
     	draw_ox = draw_oy = -1;
     }
@@ -945,29 +1139,46 @@ class Scope {
       }
     }
     
+    /**
+     * Draws the settings wheel icon in the bottom-left corner of the scope.
+     * @param g Graphics context
+     */
     void drawSettingsWheel(Graphics g) {
-	final int outR = 8;
-	final int inR= 5;
-	final int inR45 = 4;
-	final int outR45 = 6;
-	if (showSettingsWheel()) {
-	    g.context.save();
-	    if (cursorInSettingsWheel())
-		g.setColor(CircuitElm.selectColor);
-	    else
-		g.setColor(Color.dark_gray);
-	    g.context.translate(rect.x+18, rect.y+rect.height-18);
-	    CircuitElm.drawThickCircle(g,0, 0, inR);
-	    CircuitElm.drawThickLine(g, -outR, 0, -inR, 0);
-	    CircuitElm.drawThickLine(g, outR, 0, inR, 0);
-	    CircuitElm.drawThickLine(g, 0, -outR, 0, -inR);
-	    CircuitElm.drawThickLine(g, 0, outR, 0, inR);
-	    CircuitElm.drawThickLine(g, -outR45, -outR45,-inR45,-inR45);
-	    CircuitElm.drawThickLine(g, outR45, -outR45,inR45,-inR45);
-	    CircuitElm.drawThickLine(g, -outR45, outR45,-inR45,inR45);
-	    CircuitElm.drawThickLine(g, outR45, outR45,inR45,inR45);
+	if (!showSettingsWheel())
+	    return;
+	
+	// Settings wheel dimensions
+	final int OUTER_RADIUS = 8;
+	final int INNER_RADIUS = 5;
+	final int INNER_RADIUS_45 = 4;
+	final int OUTER_RADIUS_45 = 6;
+	
+	g.context.save();
+	
+	// Set color based on cursor position
+	g.setColor(cursorInSettingsWheel() ? CircuitElm.selectColor : Color.dark_gray);
+	
+	// Position at bottom-left corner
+	g.context.translate(rect.x + 18, rect.y + rect.height - 18);
+	
+	// Draw center circle
+	CircuitElm.drawThickCircle(g, 0, 0, INNER_RADIUS);
+	
+	// Draw horizontal spokes
+	CircuitElm.drawThickLine(g, -OUTER_RADIUS, 0, -INNER_RADIUS, 0);
+	CircuitElm.drawThickLine(g, OUTER_RADIUS, 0, INNER_RADIUS, 0);
+	
+	// Draw vertical spokes
+	CircuitElm.drawThickLine(g, 0, -OUTER_RADIUS, 0, -INNER_RADIUS);
+	CircuitElm.drawThickLine(g, 0, OUTER_RADIUS, 0, INNER_RADIUS);
+	
+	// Draw diagonal spokes
+	CircuitElm.drawThickLine(g, -OUTER_RADIUS_45, -OUTER_RADIUS_45, -INNER_RADIUS_45, -INNER_RADIUS_45);
+	CircuitElm.drawThickLine(g, OUTER_RADIUS_45, -OUTER_RADIUS_45, INNER_RADIUS_45, -INNER_RADIUS_45);
+	CircuitElm.drawThickLine(g, -OUTER_RADIUS_45, OUTER_RADIUS_45, -INNER_RADIUS_45, INNER_RADIUS_45);
+	CircuitElm.drawThickLine(g, OUTER_RADIUS_45, OUTER_RADIUS_45, INNER_RADIUS_45, INNER_RADIUS_45);
+	
 	g.context.restore();
-	}
     }
 
     void draw2d(Graphics g) {
@@ -1054,15 +1265,23 @@ class Scope {
 	
   
     
+    /**
+     * Determines if settings wheel should be shown based on scope size.
+     * @return true if scope is large enough to display settings wheel
+     */
     boolean showSettingsWheel() {
-	return rect.height > 100 && rect.width > 100;
+	return rect.height > SETTINGS_WHEEL_MARGIN && rect.width > SETTINGS_WHEEL_MARGIN;
     }
     
+    /**
+     * Checks if cursor is over the settings wheel icon.
+     * @return true if cursor is within settings wheel bounds
+     */
     boolean cursorInSettingsWheel() {
 	return showSettingsWheel() &&
 		sim.mouseCursorX >= rect.x &&
-		sim.mouseCursorX <= rect.x + 36 &&
-		sim.mouseCursorY >= rect.y + rect.height - 36 && 
+		sim.mouseCursorX <= rect.x + SETTINGS_WHEEL_SIZE &&
+		sim.mouseCursorY >= rect.y + rect.height - SETTINGS_WHEEL_SIZE && 
 		sim.mouseCursorY <= rect.y + rect.height;
     }
     
@@ -1152,22 +1371,45 @@ class Scope {
     	if ((allPlotsSameUnits || showMax || showMin) && visiblePlots.size() > 0)
     	    calcMaxAndMin(visiblePlots.firstElement().units);
     	
+    	// Track if this is the first plot drawn to save gridStepX for display
+    	boolean firstPlotDrawn = false;
+    	
     	// draw volt plots on top (last), then current plots underneath, then everything else
     	for (i = 0; i != visiblePlots.size(); i++) {
-    	    if (visiblePlots.get(i).units > UNITS_A && i != selectedPlot)
+    	    if (visiblePlots.get(i).units > UNITS_A && i != selectedPlot) {
     		drawPlot(g, visiblePlots.get(i), allPlotsSameUnits, false, sel);
+    		if (!firstPlotDrawn) {
+    		    displayGridStepX = gridStepX;
+    		    firstPlotDrawn = true;
+    		}
+    	    }
     	}
     	for (i = 0; i != visiblePlots.size(); i++) {
-    	    if (visiblePlots.get(i).units == UNITS_A && i != selectedPlot)
+    	    if (visiblePlots.get(i).units == UNITS_A && i != selectedPlot) {
     		drawPlot(g, visiblePlots.get(i), allPlotsSameUnits, false, sel);
+    		if (!firstPlotDrawn) {
+    		    displayGridStepX = gridStepX;
+    		    firstPlotDrawn = true;
+    		}
+    	    }
     	}
     	for (i = 0; i != visiblePlots.size(); i++) {
-    	    if (visiblePlots.get(i).units == UNITS_V && i != selectedPlot)
+    	    if (visiblePlots.get(i).units == UNITS_V && i != selectedPlot) {
     		drawPlot(g, visiblePlots.get(i), allPlotsSameUnits, false, sel);
+    		if (!firstPlotDrawn) {
+    		    displayGridStepX = gridStepX;
+    		    firstPlotDrawn = true;
+    		}
+    	    }
     	}
     	// draw selection on top.  only works if selection chosen from scope
-    	if (selectedPlot >= 0 && selectedPlot < visiblePlots.size())
+    	if (selectedPlot >= 0 && selectedPlot < visiblePlots.size()) {
     	    drawPlot(g, visiblePlots.get(selectedPlot), allPlotsSameUnits, true, sel);
+    	    if (!firstPlotDrawn) {
+    		displayGridStepX = gridStepX;
+    		firstPlotDrawn = true;
+    	    }
+    	}
     	
         drawInfoTexts(g);
     	
@@ -1212,8 +1454,8 @@ class Scope {
     
     // adjust scale of a plot
     void calcPlotScale(ScopePlot plot) {
-	if (manualScale)
-	    return;
+		if (manualScale)
+			return;
     	int i;
     	int ipa = plot.startIndex(rect.width);
     	double maxV[] = plot.maxValues;
@@ -1223,9 +1465,9 @@ class Scope {
     	for (i = 0; i != rect.width; i++) {
     	    int ip = (i+ipa) & (scopePointCount-1);
     	    if (maxV[ip] > max)
-    		max = maxV[ip];
+    			max = maxV[ip];
     	    if (minV[ip] < -max)
-    		max = -minV[ip];
+    			max = -minV[ip];
     	}
     	// scale fixed at maximum?
     	if (maxScale)
@@ -1233,24 +1475,32 @@ class Scope {
     	else
     	    // adjust in powers of two
     	    while (max > gridMax)
-    		gridMax *= 2;
+    			gridMax *= 2;
     	scale[plot.units] = gridMax;
     }
     
+    /**
+     * Calculates the grid step for the X (time) axis.
+     * @return Grid step in simulation time units
+     */
     double calcGridStepX() {
-	int multptr=0;
+	int multptr = 0;
     	double gsx = 1e-15;
-
-    	double ts = sim.maxTimeStep*speed;
-    	while (gsx < ts*20) {
-    	    gsx *=multa[(multptr++)%3];
+    	double ts = sim.maxTimeStep * speed;
+    	
+    	while (gsx < ts * MIN_PIXEL_SPACING) {
+    	    gsx *= multa[(multptr++) % 3];
     	}
     	return gsx;
     }
 
-
+    /**
+     * Gets the maximum grid value from manual scale settings.
+     * @param plot The plot to calculate for
+     * @return Maximum display value
+     */
     double getGridMaxFromManScale(ScopePlot plot) {
-	return ((double)(manDivisions)/2+0.05)*plot.manScale;
+	return ((double)(manDivisions) / 2 + 0.05) * plot.manScale;
     }
     
     /**
@@ -1463,7 +1713,7 @@ class Scope {
         g.startBatch();
         
         int ox = -1, oy = -1;
-        int prevMinY = -1, prevMaxY = -1;  // Track previous point for connecting lines
+        int prevMaxY = -1;  // Track previous max Y point for connecting lines
         
         if (drawFromZero && !plot2d) {
             // Draw from zero mode: use history buffers instead of circular buffer
@@ -1489,38 +1739,43 @@ class Scope {
                     int minvy = (int) (plot.gridMult*(histMinV[histIdx]+plot.plotOffset));
                     int maxvy = (int) (plot.gridMult*(histMaxV[histIdx]+plot.plotOffset));
                     
-                    if (minvy <= maxy) {
-                        if (minvy < minRangeLo || maxvy > minRangeHi) {
-                            reduceRange[plot.units] = false;
-                            minRangeLo = -1000;
-                            minRangeHi = 1000;
-                        }
-                        
-                        // Draw vertical segment for this pixel (captures min/max range)
-                        if (minvy != maxvy) {
-                            g.drawLine(x+i, maxy-minvy, x+i, maxy-maxvy);
-                        }
-                        
-                        // Connect to previous point with diagonal line
-                        if (prevMaxY != -1) {
-                            // Draw from previous max to current min (or vice versa for continuity)
-                            g.drawLine(x+i-1, maxy-prevMaxY, x+i, maxy-minvy);
-                        }
-                        
-                        prevMinY = minvy;
-                        prevMaxY = maxvy;
-                        
-                        if (ox != -1) {
-                            if (minvy == oy && maxvy == oy)
-                                continue;
-                            g.drawLine(ox, maxy-oy, x+i, maxy-oy);
-                            ox = oy = -1;
-                        }
-                        if (minvy == maxvy) {
-                            ox = x+i;
-                            oy = minvy;
+                    if (minvy < minRangeLo || maxvy > minRangeHi) {
+                        reduceRange[plot.units] = false;
+                        minRangeLo = -1000;
+                        minRangeHi = 1000;
+                    }
+                    
+                    // Clamp Y coordinates to valid drawing range to prevent overlapping axis
+                    int y1 = maxy - minvy;
+                    int y2 = maxy - maxvy;
+                    y1 = Math.max(0, Math.min(rect.height - 1, y1));
+                    y2 = Math.max(0, Math.min(rect.height - 1, y2));
+                    
+                    // Draw vertical segment for this pixel (captures min/max range)
+                    if (y1 != y2) {
+                        g.drawLine(x+i, y1, x+i, y2);
+                    }
+                    
+                    // Connect to previous point with diagonal line
+                    if (prevMaxY != -1) {
+                        // Draw from previous max to current min (for continuity)
+                        int prevY = Math.max(0, Math.min(rect.height - 1, maxy - prevMaxY));
+                        g.drawLine(x+i-1, prevY, x+i, y1);
+                    }
+                    
+                    prevMaxY = maxvy;
+                    
+                    if (ox != -1) {
+                        if (minvy == oy && maxvy == oy)
                             continue;
-                        }
+                        int oyY = Math.max(0, Math.min(rect.height - 1, maxy - oy));
+                        g.drawLine(ox, oyY, x+i, oyY);
+                        ox = oy = -1;
+                    }
+                    if (minvy == maxvy) {
+                        ox = x+i;
+                        oy = minvy;
+                        continue;
                     }
                 }
             } else {
@@ -1541,37 +1796,42 @@ class Scope {
                         int minvy = (int) (plot.gridMult*(histMinV[histIdx]+plot.plotOffset));
                         int maxvy = (int) (plot.gridMult*(histMaxV[histIdx]+plot.plotOffset));
                         
-                        if (minvy <= maxy) {
-                            if (minvy < minRangeLo || maxvy > minRangeHi) {
-                                reduceRange[plot.units] = false;
-                                minRangeLo = -1000;
-                                minRangeHi = 1000;
-                            }
-                            
-                            // Draw vertical segment for this pixel
-                            if (minvy != maxvy) {
-                                g.drawLine(x+i, maxy-minvy, x+i, maxy-maxvy);
-                            }
-                            
-                            // Connect to previous point
-                            if (prevMaxY != -1) {
-                                g.drawLine(x+i-1, maxy-prevMaxY, x+i, maxy-minvy);
-                            }
-                            
-                            prevMinY = minvy;
-                            prevMaxY = maxvy;
-                            
-                            if (ox != -1) {
-                                if (minvy == oy && maxvy == oy)
-                                    continue;
-                                g.drawLine(ox, maxy-oy, x+i, maxy-oy);
-                                ox = oy = -1;
-                            }
-                            if (minvy == maxvy) {
-                                ox = x+i;
-                                oy = minvy;
+                        if (minvy < minRangeLo || maxvy > minRangeHi) {
+                            reduceRange[plot.units] = false;
+                            minRangeLo = -1000;
+                            minRangeHi = 1000;
+                        }
+                        
+                        // Clamp Y coordinates to valid drawing range to prevent overlapping axis
+                        int y1 = maxy - minvy;
+                        int y2 = maxy - maxvy;
+                        y1 = Math.max(0, Math.min(rect.height - 1, y1));
+                        y2 = Math.max(0, Math.min(rect.height - 1, y2));
+                        
+                        // Draw vertical segment for this pixel
+                        if (y1 != y2) {
+                            g.drawLine(x+i, y1, x+i, y2);
+                        }
+                        
+                        // Connect to previous point
+                        if (prevMaxY != -1) {
+                            int prevY = Math.max(0, Math.min(rect.height - 1, maxy - prevMaxY));
+                            g.drawLine(x+i-1, prevY, x+i, y1);
+                        }
+                        
+                        prevMaxY = maxvy;
+                        
+                        if (ox != -1) {
+                            if (minvy == oy && maxvy == oy)
                                 continue;
-                            }
+                            int oyY = Math.max(0, Math.min(rect.height - 1, maxy - oy));
+                            g.drawLine(ox, oyY, x+i, oyY);
+                            ox = oy = -1;
+                        }
+                        if (minvy == maxvy) {
+                            ox = x+i;
+                            oy = minvy;
+                            continue;
                         }
                     }
                 } else {
@@ -1589,37 +1849,42 @@ class Scope {
                         int minvy = (int) (plot.gridMult*(histMinV[histIdx]+plot.plotOffset));
                         int maxvy = (int) (plot.gridMult*(histMaxV[histIdx]+plot.plotOffset));
                         
-                        if (minvy <= maxy) {
-                            if (minvy < minRangeLo || maxvy > minRangeHi) {
-                                reduceRange[plot.units] = false;
-                                minRangeLo = -1000;
-                                minRangeHi = 1000;
-                            }
-                            
-                            // Draw vertical segment for this pixel
-                            if (minvy != maxvy) {
-                                g.drawLine(x+i, maxy-minvy, x+i, maxy-maxvy);
-                            }
-                            
-                            // Connect to previous point
-                            if (prevMaxY != -1) {
-                                g.drawLine(x+i-1, maxy-prevMaxY, x+i, maxy-minvy);
-                            }
-                            
-                            prevMinY = minvy;
-                            prevMaxY = maxvy;
-                            
-                            if (ox != -1) {
-                                if (minvy == oy && maxvy == oy)
-                                    continue;
-                                g.drawLine(ox, maxy-oy, x+i, maxy-oy);
-                                ox = oy = -1;
-                            }
-                            if (minvy == maxvy) {
-                                ox = x+i;
-                                oy = minvy;
+                        if (minvy < minRangeLo || maxvy > minRangeHi) {
+                            reduceRange[plot.units] = false;
+                            minRangeLo = -1000;
+                            minRangeHi = 1000;
+                        }
+                        
+                        // Clamp Y coordinates to valid drawing range to prevent overlapping axis
+                        int y1 = maxy - minvy;
+                        int y2 = maxy - maxvy;
+                        y1 = Math.max(0, Math.min(rect.height - 1, y1));
+                        y2 = Math.max(0, Math.min(rect.height - 1, y2));
+                        
+                        // Draw vertical segment for this pixel
+                        if (y1 != y2) {
+                            g.drawLine(x+i, y1, x+i, y2);
+                        }
+                        
+                        // Connect to previous point
+                        if (prevMaxY != -1) {
+                            int prevY = Math.max(0, Math.min(rect.height - 1, maxy - prevMaxY));
+                            g.drawLine(x+i-1, prevY, x+i, y1);
+                        }
+                        
+                        prevMaxY = maxvy;
+                        
+                        if (ox != -1) {
+                            if (minvy == oy && maxvy == oy)
                                 continue;
-                            }
+                            int oyY = Math.max(0, Math.min(rect.height - 1, maxy - oy));
+                            g.drawLine(ox, oyY, x+i, oyY);
+                            ox = oy = -1;
+                        }
+                        if (minvy == maxvy) {
+                            ox = x+i;
+                            oy = minvy;
+                            continue;
                         }
                     }
                 }
@@ -1630,44 +1895,52 @@ class Scope {
                 int ip = (i+ipa) & (scopePointCount-1);
                 int minvy = (int) (plot.gridMult*(minV[ip]+plot.plotOffset));
                 int maxvy = (int) (plot.gridMult*(maxV[ip]+plot.plotOffset));
-                if (minvy <= maxy) {
-            	if (minvy < minRangeLo || maxvy > minRangeHi) {
-            	    // we got a value outside min range, so we don't need to rescale later
-            	    reduceRange[plot.units] = false;
-            	    minRangeLo = -1000;
-            	    minRangeHi = 1000; // avoid triggering this test again
-            	}
-            	
-            	// Draw vertical segment for this pixel
-            	if (minvy != maxvy) {
-            	    g.drawLine(x+i, maxy-minvy, x+i, maxy-maxvy);
-            	}
-            	
-            	// Connect to previous point
-            	if (prevMaxY != -1) {
-            	    g.drawLine(x+i-1, maxy-prevMaxY, x+i, maxy-minvy);
-            	}
-            	
-            	prevMinY = minvy;
-            	prevMaxY = maxvy;
-            	
-            	if (ox != -1) {
-            	    if (minvy == oy && maxvy == oy)
-            		continue;
-            	    g.drawLine(ox, maxy-oy, x+i, maxy-oy);
-            	    ox = oy = -1;
-            	}
-            	if (minvy == maxvy) {
-            	    ox = x+i;
-            	    oy = minvy;
-            	    continue;
-            	}
+                
+                if (minvy < minRangeLo || maxvy > minRangeHi) {
+                    // we got a value outside min range, so we don't need to rescale later
+                    reduceRange[plot.units] = false;
+                    minRangeLo = -1000;
+                    minRangeHi = 1000; // avoid triggering this test again
+                }
+                
+                // Clamp Y coordinates to valid drawing range to prevent overlapping axis
+                int y1 = maxy - minvy;
+                int y2 = maxy - maxvy;
+                y1 = Math.max(0, Math.min(rect.height - 1, y1));
+                y2 = Math.max(0, Math.min(rect.height - 1, y2));
+                
+                // Draw vertical segment for this pixel
+                if (y1 != y2) {
+                    g.drawLine(x+i, y1, x+i, y2);
+                }
+                
+                // Connect to previous point
+                if (prevMaxY != -1) {
+                    int prevY = Math.max(0, Math.min(rect.height - 1, maxy - prevMaxY));
+                    g.drawLine(x+i-1, prevY, x+i, y1);
+                }
+                
+                prevMaxY = maxvy;
+                
+                if (ox != -1) {
+                    if (minvy == oy && maxvy == oy)
+                        continue;
+                    int oyY = Math.max(0, Math.min(rect.height - 1, maxy - oy));
+                    g.drawLine(ox, oyY, x+i, oyY);
+                    ox = oy = -1;
+                }
+                if (minvy == maxvy) {
+                    ox = x+i;
+                    oy = minvy;
+                    continue;
                 }
             } // for (i=0...)
         }
         
-        if (ox != -1)
-            g.drawLine(ox, maxy-oy, x+i-1, maxy-oy); // Horizontal
+        if (ox != -1) {
+            int oyY = Math.max(0, Math.min(rect.height - 1, maxy - oy));
+            g.drawLine(ox, oyY, x+i-1, oyY); // Horizontal
+        }
         
         g.endBatch();
         
@@ -1934,13 +2207,13 @@ class Scope {
     	    if (!isManualScale()) {
         	    if ( gridStepY!=0 && (!(showV && showI))) {
         		String vScaleText=" V=" + plot.getUnitText(gridStepY)+"/div";
-        	    	drawInfoText(g, "H="+CircuitElm.getUnitText(gridStepX, "s")+"/div" + vScaleText);
+        	    	drawInfoText(g, "H="+CircuitElm.getUnitText(displayGridStepX, "s")+"/div" + vScaleText);
         	    }
     	    }  else {
     		if (rect.y + rect.height <= textY+5)
     		    return;
     		double x = 0;
-    		String hs = "H="+CircuitElm.getUnitText(gridStepX, "s")+"/div";
+    		String hs = "H="+CircuitElm.getUnitText(displayGridStepX, "s")+"/div";
     		g.drawString(hs, 0, textY);
     		x+=g.measureWidth(hs);
 		final double bulletWidth = 17;

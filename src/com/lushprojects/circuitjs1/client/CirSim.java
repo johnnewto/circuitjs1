@@ -279,6 +279,9 @@ MouseOutHandler, MouseWheelHandler {
     CellPanel buttonPanel;
     private boolean mouseDragging;
     double scopeHeightFraction = 0.2;
+    boolean scopePanelMinimized = false;
+    double normalScopeHeightFraction = 0.2;
+    static final int SCOPE_MIN_MAX_BUTTON_SIZE = 24;
 
     Vector<CheckboxMenuItem> mainMenuItems = new Vector<CheckboxMenuItem>();
     Vector<String> mainMenuItemNames = new Vector<String>();
@@ -1789,6 +1792,19 @@ public CirSim() {
 		g.setLineWidth(4.0);
 		g.drawLine(0, circuitArea.height-2, circuitArea.width, circuitArea.height-2);
 		g.setLineWidth(1.0);
+	}
+	// Highlight the actual splitter line when hovering over minimize/maximize button
+	if (scopeCount > 0 && mouseIsOverScopeMinMaxButton(mouseCursorX, mouseCursorY)) {
+	    // Draw line but stop before the button area (with some padding)
+	    int lineEndX = circuitArea.width - SCOPE_MIN_MAX_BUTTON_SIZE - 20;
+	    g.setColor(CircuitElm.selectColor);
+	    g.setLineWidth(3.0);
+	    g.drawLine(0, circuitArea.height-2, lineEndX, circuitArea.height-2);
+	    g.setLineWidth(1.0);
+	}
+	// Draw minimize/maximize button on the splitter line
+	if (scopeCount > 0) {
+	    drawScopeMinMaxButton(g);
 	}
 	g.setColor(CircuitElm.whiteColor);
 
@@ -4715,6 +4731,80 @@ public CirSim() {
     	mouseWasOverSplitter=isOverSplitter;
     	return isOverSplitter;
     }
+    
+    /**
+     * Draws the minimize/maximize button at the 0.1 fraction line (fixed position).
+     */
+    void drawScopeMinMaxButton(Graphics g) {
+	// Position button at the 0.1 (10%) fraction line, not at current splitter position
+	int minHeightY = (int)(canvasHeight * (1.0 - 0.1)); // Y position for 0.1 fraction
+	int buttonX = circuitArea.width - SCOPE_MIN_MAX_BUTTON_SIZE - 10;
+	int buttonY = minHeightY - SCOPE_MIN_MAX_BUTTON_SIZE / 2;
+	
+	// Set color based on cursor position
+	boolean hover = mouseIsOverScopeMinMaxButton(mouseCursorX, mouseCursorY);
+	g.setColor(hover ? CircuitElm.selectColor : Color.gray);
+	
+	// Draw button background (rounded rectangle)
+	g.context.save();
+	g.context.setLineWidth(1.5);
+	g.context.strokeRect(buttonX, buttonY, SCOPE_MIN_MAX_BUTTON_SIZE, SCOPE_MIN_MAX_BUTTON_SIZE);
+	
+	// Draw arrow (up for minimize, down for maximize)
+	int centerX = buttonX + SCOPE_MIN_MAX_BUTTON_SIZE / 2;
+	int centerY = buttonY + SCOPE_MIN_MAX_BUTTON_SIZE / 2;
+	int arrowSize = 6;
+	
+	g.context.beginPath();
+	if (!scopePanelMinimized) {
+	    // Draw upward arrow (minimize)
+	    g.context.moveTo(centerX, centerY - arrowSize/2);
+	    g.context.lineTo(centerX - arrowSize, centerY + arrowSize/2);
+	    g.context.moveTo(centerX, centerY - arrowSize/2);
+	    g.context.lineTo(centerX + arrowSize, centerY + arrowSize/2);
+	} else {
+	    // Draw downward arrow (maximize)
+	    g.context.moveTo(centerX, centerY + arrowSize/2);
+	    g.context.lineTo(centerX - arrowSize, centerY - arrowSize/2);
+	    g.context.moveTo(centerX, centerY + arrowSize/2);
+	    g.context.lineTo(centerX + arrowSize, centerY - arrowSize/2);
+	}
+	g.context.stroke();
+	g.context.restore();
+    }
+    
+    /**
+     * Checks if mouse is over the scope minimize/maximize button.
+     * Button is positioned at the 0.1 fraction line for consistency.
+     */
+    boolean mouseIsOverScopeMinMaxButton(int x, int y) {
+	if (scopeCount == 0)
+	    return false;
+	// Position button at the 0.1 (10%) fraction line, not at current splitter position
+	int minHeightY = (int)(canvasHeight * (1.0 - 0.1)); // Y position for 0.1 fraction
+	int buttonX = circuitArea.width - SCOPE_MIN_MAX_BUTTON_SIZE - 10;
+	int buttonY = minHeightY - SCOPE_MIN_MAX_BUTTON_SIZE / 2;
+	return x >= buttonX && x <= buttonX + SCOPE_MIN_MAX_BUTTON_SIZE &&
+	       y >= buttonY && y <= buttonY + SCOPE_MIN_MAX_BUTTON_SIZE;
+    }
+    
+    /**
+     * Toggles the scope panel between minimized and normal height.
+     * Uses the same minimum height (0.1) as the splitter dragging constraint.
+     */
+    void toggleScopePanelSize() {
+	scopePanelMinimized = !scopePanelMinimized;
+	if (scopePanelMinimized) {
+	    // Store current height and minimize to same minimum as splitter allows
+	    normalScopeHeightFraction = scopeHeightFraction;
+	    scopeHeightFraction = 0.1; // Minimize to 10% (same as splitter minimum)
+	} else {
+	    // Restore normal height
+	    scopeHeightFraction = normalScopeHeightFraction;
+	}
+	setCircuitArea();
+	repaint();
+    }
 
     public void onMouseMove(MouseMoveEvent e) {
     	e.preventDefault();
@@ -5044,6 +5134,13 @@ public CirSim() {
     	
     	mouseDragging=true;
     	didSwitch = false;
+	
+	// Check if clicked on scope minimize/maximize button
+	if (mouseIsOverScopeMinMaxButton(e.getX(), e.getY())) {
+	    toggleScopePanelSize();
+	    mouseDragging = false;
+	    return;
+	}
 	
     	if (mouseWasOverSplitter) {
     		tempMouseMode = MODE_DRAG_SPLITTER;
