@@ -256,6 +256,7 @@ MouseOutHandler, MouseWheelHandler {
     boolean showResistanceInVoltageSources;
     boolean hideInfoBox;
     int scopeColCount[];
+    boolean isExporting; // flag to indicate we're exporting an image
     static EditDialog editDialog, customLogicEditDialog, diodeModelEditDialog;
     static ScrollValuePopup scrollValuePopup;
     static Dialog dialogShowing;
@@ -6627,6 +6628,65 @@ public CirSim() {
 		return cv;
 	}
 	
+	// Get all scopes rendered to a single canvas
+	public Canvas getScopesAsCanvas() {
+		if (scopeCount == 0)
+			return null;
+		
+		// Calculate bounding box for all scopes
+		int minX = Integer.MAX_VALUE;
+		int minY = Integer.MAX_VALUE;
+		int maxX = 0;
+		int maxY = 0;
+		int margin = 10;
+		
+		// Find the extents of all scopes
+		for (int i = 0; i < scopeCount; i++) {
+			Scope s = scopes[i];
+			if (s.rect.x < minX) minX = s.rect.x;
+			if (s.rect.y < minY) minY = s.rect.y;
+			int right = s.rect.x + s.rect.width;
+			int bottom = s.rect.y + s.rect.height;
+			if (right > maxX) maxX = right;
+			if (bottom > maxY) maxY = bottom;
+		}
+		
+		// Calculate canvas size (only the scope area, not the full canvas)
+		int canvasWidth = maxX - minX + margin * 2;
+		int canvasHeight = maxY - minY + margin * 2;
+		
+		// Create canvas
+		Canvas cv = Canvas.createIfSupported();
+		cv.setCoordinateSpaceWidth(canvasWidth);
+		cv.setCoordinateSpaceHeight(canvasHeight);
+		
+		Context2d context = cv.getContext2d();
+		Graphics g = new Graphics(context);
+		
+		// Set background color based on printable setting
+		if (printableCheckItem.getState()) {
+			CircuitElm.whiteColor = Color.black;
+			CircuitElm.lightGrayColor = Color.black;
+			g.setColor(Color.white);
+		} else {
+			CircuitElm.whiteColor = Color.white;
+			CircuitElm.lightGrayColor = Color.lightGray;
+			g.setColor(Color.black);
+		}
+		g.fillRect(0, 0, canvasWidth, canvasHeight);
+		
+		// Translate the context so scopes are drawn at the correct position
+		// (offset by -minX, -minY to move them to origin, then add margin)
+		context.translate(margin - minX, margin - minY);
+		
+		// Draw each scope
+		for (int i = 0; i < scopeCount; i++) {
+			scopes[i].draw(g);
+		}
+		
+		return cv;
+	}
+	
 	// create SVG context using canvas2svg
 	native static Context2d createSVGContext(int w, int h) /*-{
 	    return new C2S(w, h);
@@ -6656,6 +6716,9 @@ public CirSim() {
 	        
 	        double scale = 1;
 	        
+		// Set flag to indicate we're exporting
+		isExporting = true;
+		
 		// turn on white background, turn off current display
 		boolean p = printableCheckItem.getState();
 		boolean c = dotsCheckItem.getState();
@@ -6701,6 +6764,7 @@ public CirSim() {
 		printableCheckItem.setState(p);
 		dotsCheckItem.setState(c);
 		transform = oldTransform;
+		isExporting = false;
 	}
 	
 	boolean isSelection() {

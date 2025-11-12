@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client;
 
 import java.util.Date;
+import com.google.gwt.canvas.client.Canvas;
 import com.google.gwt.user.client.ui.Anchor;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.VerticalPanel;
@@ -45,11 +46,13 @@ public class ExportAsImageDialog extends Dialog {
 		vp=new VerticalPanel();
 		setWidget(vp);
 		setText(Locale.LS("Export as Image"));
-		vp.add(new Label(Locale.LS("Click on the link below to save your image")));
+		vp.add(new Label(Locale.LS("Click on the links below to save your images")));
 		Date date = new Date();
 		DateTimeFormat dtf = DateTimeFormat.getFormat("yyyyMMdd-HHmm");
 		String dataURL;
 		String ext = ".png";
+		
+		// Export circuit
 		if (type == CirSim.CAC_IMAGE) {
 		    dataURL = CirSim.theSim.getCircuitAsCanvas(type).toDataUrl();
 		} else {
@@ -57,10 +60,21 @@ public class ExportAsImageDialog extends Dialog {
 		    dataURL = "data:text/plain;base64," + b64encode(data);
 		    ext = ".svg";
 		}
-		a=new Anchor("image" + ext, dataURL);
+		a=new Anchor("Circuit " + ext, dataURL);
 		String fname = "circuit-"+ dtf.format(date) + ext;
 		a.getElement().setAttribute("Download", fname);
 		vp.add(a);
+		
+		// Export scopes if any exist
+		Canvas scopesCanvas = CirSim.theSim.getScopesAsCanvas();
+		if (scopesCanvas != null) {
+			String scopesDataURL = scopesCanvas.toDataUrl();
+			Anchor scopesAnchor = new Anchor("Scopes " + ext, scopesDataURL);
+			String scopesFname = "scopes-" + dtf.format(date) + ext;
+			scopesAnchor.getElement().setAttribute("Download", scopesFname);
+			vp.add(scopesAnchor);
+		}
+		
 		vp.add(okButton = new Button(Locale.LS("OK")));
 		okButton.addClickHandler(new ClickHandler() {
 			public void onClick(ClickEvent event) {

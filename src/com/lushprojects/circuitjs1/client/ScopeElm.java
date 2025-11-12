@@ -104,9 +104,53 @@ class ScopeElm extends CircuitElm {
 	g.context.translate(-sim.transform[4], -sim.transform[5]);
 	//g.context.scale(CirSim.devicePixelRatio(), CirSim.devicePixelRatio());
 
-	setScopeRect();
-	elmScope.position = -1;
-	elmScope.draw(g);
+	// During export, we need to preserve the scope's plot data while rendering at export size
+	// During normal rendering, we can just update the rect based on element position
+	if (sim.isExporting) {
+	    // Calculate where the scope should be drawn and its size
+	    // based on current transform (this positions and scales it correctly in the export)
+	    int i1 = sim.transformX(min(x,x2));
+	    int i2 = sim.transformX(max(x,x2));
+	    int j1 = sim.transformY(min(y,y2));
+	    int j2 = sim.transformY(max(y,y2));
+	    
+	    // Save the original rectangle to restore after drawing
+	    int savedX = elmScope.rect.x;
+	    int savedY = elmScope.rect.y;
+	    int savedWidth = elmScope.rect.width;
+	    int savedHeight = elmScope.rect.height;
+	    
+	    // Keep the rect at its original size for proper calculations
+	    // but we'll transform the graphics context to scale everything up
+	    elmScope.rect.x = i1;
+	    elmScope.rect.y = j1;
+	    // Keep original width and height so calculations work correctly
+	    
+	    // Calculate the scale factor
+	    double scaleX = (double)(i2 - i1) / savedWidth;
+	    double scaleY = (double)(j2 - j1) / savedHeight;
+	    
+	    // Apply transform: translate to scope origin, scale, then translate back
+	    g.context.save();
+	    g.context.translate(i1, j1);
+	    g.context.scale(scaleX, scaleY);
+	    g.context.translate(-i1, -j1);
+	    
+	    elmScope.position = -1;
+	    elmScope.draw(g);
+	    
+	    g.context.restore(); // Restore transform
+	    
+	    // Restore the original rectangle after drawing
+	    elmScope.rect.x = savedX;
+	    elmScope.rect.y = savedY;
+	} else {
+	    // Normal rendering - update rect based on current element position
+	    setScopeRect();
+	    elmScope.position = -1;
+	    elmScope.draw(g);
+	}
+	
 	g.context.restore();
 	setBbox(point1, point2, 0);
 	drawPosts(g);

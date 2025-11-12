@@ -321,6 +321,10 @@ class Scope {
     void resetGraph() { resetGraph(false); }
     
     void resetGraph(boolean full) {
+    	resetGraph(full, true);  // Default: clear history
+    }
+    
+    void resetGraph(boolean full, boolean clearHistory) {
     	scopePointCount = 1;
     	while (scopePointCount <= rect.width)
     		scopePointCount *= 2;
@@ -336,15 +340,22 @@ class Scope {
     	// Record start time and initialize history for drawFromZero mode
     	if (drawFromZero) {
     	    startTime = 0.0;  // Always start from t=0
-    	    historySize = 0;
-    	    historyCapacity = scopePointCount * 4; // Start with 4x the display size
-    	    historySampleInterval = sim.maxTimeStep * speed;
     	    
-    	    // Initialize history buffers for each plot
-    	    for (i = 0; i != plots.size(); i++) {
-    		ScopePlot p = plots.get(i);
-    		p.historyMinValues = new double[historyCapacity];
-    		p.historyMaxValues = new double[historyCapacity];
+    	    if (clearHistory) {
+    	        historySize = 0;
+    	        historyCapacity = scopePointCount * 4; // Start with 4x the display size
+    	        historySampleInterval = sim.maxTimeStep * speed;
+    	        
+    	        // Initialize history buffers for each plot
+    	        for (i = 0; i != plots.size(); i++) {
+    	            ScopePlot p = plots.get(i);
+    	            p.historyMinValues = new double[historyCapacity];
+    	            p.historyMaxValues = new double[historyCapacity];
+    	        }
+    	    } else {
+    	        // Preserve history, just update sample interval
+    	        historySampleInterval = sim.maxTimeStep * speed;
+    	        CirSim.console("Scope zoom: preserving " + historySize + " history samples, new interval: " + historySampleInterval);
     	    }
     	} else {
     	    // Clear history buffers when not in drawFromZero mode
@@ -2220,16 +2231,24 @@ class Scope {
     }
     
     void speedUp() {
+	// Don't change speed in Draw From Zero mode (auto-scale manages time scale)
+	if (drawFromZero)
+	    return;
 	if (speed > 1) {
 	    speed /= 2;
-	    resetGraph();
+	    // Preserve history when in drawFromZero mode
+	    resetGraph(false, !drawFromZero);
 	}
     }
 
     void slowDown() {
+	// Don't change speed in Draw From Zero mode (auto-scale manages time scale)
+	if (drawFromZero)
+	    return;
 	if (speed < 1024)
 	    speed *= 2;
-    	resetGraph();
+	// Preserve history when in drawFromZero mode
+    	resetGraph(false, !drawFromZero);
     }
     
     void setPlotPosition(int plot, int v) {
