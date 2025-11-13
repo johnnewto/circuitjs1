@@ -84,7 +84,7 @@ class EditInfo {
 	KeyUpHandler keyUpHandler; // Optional handler for immediate text changes
 	
 	// for slider dialog
-	TextBox minBox, maxBox, labelBox;
+	TextBox minBox, maxBox, labelBox, stepsBox;
 	
 	boolean canCreateAdjustable() {
 	    return choice == null && checkbox == null && button == null && textArea == null &&

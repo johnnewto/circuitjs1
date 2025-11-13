@@ -158,6 +158,8 @@ class EditDialog extends Dialog {
 			    vp.add(ei.widget);
 			} else {
 			    vp.add(ei.textf = new TextBox());
+			    // Prevent keyboard events from deleting circuit elements while typing
+			    preventKeyboardPropagation(ei.textf);
 			    if (ei.text != null) {
 				ei.textf.setText(ei.text);
 				ei.textf.setVisibleLength(50);

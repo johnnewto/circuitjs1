@@ -126,7 +126,7 @@ The oscilloscope trace shows the dynamic behavior of the system:
 - **GDP (green)**: Shows oscillating growth with periodic fluctuations
 - **Government Debt (green)**: Accumulates over time at approximately 33.657 $
 - **Private Debt (red)**: Shows cyclical behavior at 13.978 $
-- **LRC trace**: Displays the loan-to-reserve ratio dynamics
+- **LRC trace**: Displays an LRC circuit to show the electronic variables still work
 
 This demonstrates how:
 1. Government deficits accumulate as debt
@@ -143,7 +143,7 @@ This demonstrates how:
 - Hands-on experience with sectoral balances
 
 **For Electronics Students:**
-- Application of circuit concepts to social systems
+- Application of circuit concepts to social systems, 🤣
 - Understanding feedback loops and stability
 - Learning system dynamics through familiar tools
 - Cross-disciplinary thinking

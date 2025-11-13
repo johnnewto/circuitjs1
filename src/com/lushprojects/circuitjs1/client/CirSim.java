@@ -1168,6 +1168,7 @@ public CirSim() {
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Table"), "TableElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Godly Table"), "GodlyTableElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Stop Time"), "StopTimeElm"));
+	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Action Time"), "ActionTimeElm"));
 	// mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Spare"), "Spare"));
     	MenuBar passMenuBar = new MenuBar(true);
     	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Capacitor"), "CapacitorElm"));
@@ -6344,6 +6345,7 @@ public CirSim() {
     	case 429: return new DPDTSwitchElm(x1, y1, x2, y2, f, st);
     	case 430: return new CrossSwitchElm(x1, y1, x2, y2, f, st);
     	case 431: return new StopTimeElm(x1, y1, x2, y2, f, st);
+    	case 432: return new ActionTimeElm(x1, y1, x2, y2, f, st);
         }
     	return null;
     }
@@ -6586,6 +6588,8 @@ public CirSim() {
 		return (CircuitElm) new StopTriggerElm(x1, y1);
     	if (n=="StopTimeElm")
 		return (CircuitElm) new StopTimeElm(x1, y1);
+    	if (n=="ActionTimeElm")
+		return (CircuitElm) new ActionTimeElm(x1, y1);
     	if (n=="OpAmpRealElm")
 		return (CircuitElm) new OpAmpRealElm(x1, y1);
     	if (n=="CustomCompositeElm")

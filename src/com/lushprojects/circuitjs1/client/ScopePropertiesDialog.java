@@ -56,17 +56,18 @@ RadioButton acButton, dcButton;
 CheckBox scaleBox, voltageBox, currentBox, powerBox, peakBox, negPeakBox, freqBox, spectrumBox, manualScaleBox;
 CheckBox rmsBox, dutyBox, viBox, xyBox, resistanceBox, ibBox, icBox, ieBox, vbeBox, vbcBox, vceBox, vceIcBox, logSpectrumBox, averageBox;
 CheckBox elmInfoBox;
-TextBox labelTextBox, titleTextBox, manualScaleTextBox, divisionsTextBox;
+TextBox labelTextBox, titleTextBox, manualScaleTextBox, divisionsTextBox, maxScaleTextBox;
 Button applyButton, scaleUpButton, scaleDownButton;
 Scrollbar speedBar,positionBar;
 Scope scope;
 Grid grid, vScaleGrid, hScaleGrid;
 int nx, ny;
-Label scopeSpeedLabel, manualScaleLabel,vScaleList, manualScaleId, positionLabel, divisionsLabel;
+Label scopeSpeedLabel, manualScaleLabel,vScaleList, manualScaleId, positionLabel, divisionsLabel, maxScaleLabel;
 expandingLabel vScaleLabel, hScaleLabel;
 Vector <Button> chanButtons = new Vector <Button>();
 int plotSelection = 0;
 labelledGridManager gridLabels;
+boolean maxScaleTextBoxHasFocus = false;
 	
     class PlotClickHandler implements ClickHandler {
 	int num;
@@ -245,7 +246,28 @@ labelledGridManager gridLabels;
 		Button okButton, applyButton2;
 		fp=new FlowPanel();
 		setWidget(fp);
+		
+		// Prevent keyboard events on the dialog from propagating to circuit editor
+		fp.addDomHandler(new com.google.gwt.event.dom.client.KeyDownHandler() {
+		    public void onKeyDown(com.google.gwt.event.dom.client.KeyDownEvent event) {
+			event.stopPropagation();
+		    }
+		}, com.google.gwt.event.dom.client.KeyDownEvent.getType());
+		fp.addDomHandler(new com.google.gwt.event.dom.client.KeyPressHandler() {
+		    public void onKeyPress(com.google.gwt.event.dom.client.KeyPressEvent event) {
+			event.stopPropagation();
+		    }
+		}, com.google.gwt.event.dom.client.KeyPressEvent.getType());
+		fp.addDomHandler(new com.google.gwt.event.dom.client.KeyUpHandler() {
+		    public void onKeyUp(com.google.gwt.event.dom.client.KeyUpEvent event) {
+			event.stopPropagation();
+		    }
+		}, com.google.gwt.event.dom.client.KeyUpEvent.getType());
+		
 		setText(Locale.LS("Scope Properties"));
+		
+		// Register this dialog so keyboard shortcuts are disabled
+		CirSim.dialogShowing = this;
 
 // *************** VERTICAL SCALE ***********************************************************
 		Grid vSLG = new Grid(1,1); // Stupid grid to force labels to align without diving deep in to table CSS
@@ -288,7 +310,7 @@ labelledGridManager gridLabels;
 		channelSettingsp.add(channelButtonsp);
 		fp.add(channelSettingsp);
 		
-		vScaleGrid = new Grid(4,5);
+		vScaleGrid = new Grid(5,5);
 		dcButton= new RadioButton("acdc", Locale.LS("DC Coupled"));
 		dcButton.addValueChangeHandler(new ValueChangeHandler<Boolean>() {
 		    public void onValueChange(ValueChangeEvent<Boolean> e) {
@@ -336,6 +358,7 @@ labelledGridManager gridLabels;
 		manualScaleTextBox = new TextBox(); 
 		manualScaleTextBox.addValueChangeHandler(new manualScaleTextHandler());
 		manualScaleTextBox.addStyleName("scalebox");
+		preventKeyboardPropagation(manualScaleTextBox);
 		scaleBoxGrid.setWidget(0, 1, manualScaleTextBox);
 		scaleUpButton=new Button("&#9650;");
 		scaleUpButton.addClickHandler(new upClickHandler());
@@ -347,6 +370,7 @@ labelledGridManager gridLabels;
 		divisionsLabel = new Label(Locale.LS("# of Divisions"));
 		divisionsTextBox = new TextBox();
 		divisionsTextBox.addValueChangeHandler(new manualScaleTextHandler());
+		preventKeyboardPropagation(divisionsTextBox);
 		vScaleGrid.setWidget(3,0, divisionsLabel);
 		vScaleGrid.setWidget(3,1, divisionsTextBox);
 		applyButton.addClickHandler(new ClickHandler() {
@@ -357,6 +381,31 @@ labelledGridManager gridLabels;
 		Button applyButtonDiv;
 		vScaleGrid.setWidget(3,4, applyButtonDiv = new Button(Locale.LS("Apply")));
 		applyButtonDiv.addClickHandler(new ClickHandler() { public void onClick(ClickEvent event) { apply(); } });
+
+		// Add Max Scale Limit row (only shown in auto mode)
+		maxScaleLabel = new Label(Locale.LS("Max Scale Limit"));
+		vScaleGrid.setWidget(4, 0, maxScaleLabel);
+		maxScaleTextBox = new TextBox();
+		maxScaleTextBox.addValueChangeHandler(new manualScaleTextHandler());
+		maxScaleTextBox.addFocusHandler(new com.google.gwt.event.dom.client.FocusHandler() {
+		    public void onFocus(com.google.gwt.event.dom.client.FocusEvent event) {
+			maxScaleTextBoxHasFocus = true;
+		    }
+		});
+		maxScaleTextBox.addBlurHandler(new com.google.gwt.event.dom.client.BlurHandler() {
+		    public void onBlur(com.google.gwt.event.dom.client.BlurEvent event) {
+			maxScaleTextBoxHasFocus = false;
+		    }
+		});
+		// Prevent keyboard events from propagating to circuit editor
+		preventKeyboardPropagation(maxScaleTextBox);
+		vScaleGrid.setWidget(4, 1, maxScaleTextBox);
+		Label maxScaleLimitHint = new Label(Locale.LS("(blank to disable)"));
+		maxScaleLimitHint.addStyleName("hint-text");
+		vScaleGrid.setWidget(4, 2, maxScaleLimitHint);
+		Button applyMaxButton = new Button(Locale.LS("Apply"));
+		applyMaxButton.addClickHandler(new ClickHandler() { public void onClick(ClickEvent event) { apply(); } });
+		vScaleGrid.setWidget(4, 4, applyMaxButton);
 
 		vScaleGrid.getCellFormatter().setVerticalAlignment(1, 1, HasVerticalAlignment.ALIGN_MIDDLE);
 		fp.add(vScaleGrid);
@@ -449,6 +498,7 @@ labelledGridManager gridLabels;
 
 		gridLabels.addLabel(Locale.LS("Title"), displayAll);
 		titleTextBox = new TextBox();
+		preventKeyboardPropagation(titleTextBox);
 		addItemToGrid(grid, titleTextBox);
 		String titleText = scope.getTitle();
 		if (titleText != null)
@@ -462,6 +512,7 @@ labelledGridManager gridLabels;
 
 		gridLabels.addLabel(Locale.LS("Custom Label"), displayAll);
 		labelTextBox = new TextBox();
+		preventKeyboardPropagation(labelTextBox);
 		addItemToGrid(grid, labelTextBox);
 		String labelText = scope.getText();
 		if (labelText != null)
@@ -623,6 +674,7 @@ labelledGridManager gridLabels;
         	    vScaleGrid.getRowFormatter().setVisible(1, scope.isManualScale() && plotSelection<scope.visiblePlots.size() );
         	    vScaleGrid.getRowFormatter().setVisible(2, (!scope.isManualScale()) || plotSelection<scope.visiblePlots.size());
         	    vScaleGrid.getRowFormatter().setVisible(3, scope.isManualScale());
+        	    vScaleGrid.getRowFormatter().setVisible(4, !scope.isManualScale()); // Max scale limit row (auto mode only)
 	    }
 	    scaleUpButton.setVisible(scope.isManualScale());
 	    scaleDownButton.setVisible(scope.isManualScale());
@@ -660,6 +712,17 @@ labelledGridManager gridLabels;
 		manualScaleTextBox.setText(EditDialog.unitString(null, scope.getScaleValue()));
 		manualScaleTextBox.setEnabled(false);
 		positionLabel.setText("");
+		
+		// Update max scale limit field only if it doesn't have focus (to avoid overwriting user edits)
+		if (!maxScaleTextBoxHasFocus) {
+		    Double limit = scope.getMaxScaleLimit();
+		    if (limit != null) {
+			maxScaleTextBox.setText(EditDialog.unitString(null, limit));
+		    } else {
+			maxScaleTextBox.setText("");
+		    }
+		}
+		maxScaleTextBox.setEnabled(true);
 	    }
 	    setScopeSpeedLabel();
 	}
@@ -667,7 +730,8 @@ labelledGridManager gridLabels;
 	void refreshDraw() {
 	    // Redraw for every step of the simulation (the simulation may run in the background of this
 	    // dialog and the scope may automatically rescale
-	    if (! scope.isManualScale() )
+	    // Only update if dialog is showing and not in manual scale mode
+	    if (!scope.isManualScale() && isShowing())
 		updateManualScaleUi();
 	}
 	
@@ -717,6 +781,22 @@ labelledGridManager gridLabels;
 		int n = getDivisionsValue();
 		if (n > 0)
 		    scope.setManDivisions(n);
+	    } else {
+		// Handle max scale limit in auto mode
+		String maxScaleText = maxScaleTextBox.getText().trim();
+		if (maxScaleText.isEmpty()) {
+		    // Blank = disable limit
+		    scope.setMaxScaleLimit(null);
+		} else {
+		    try {
+			double limit = EditDialog.parseUnits(maxScaleText);
+			if (limit > 0) {
+			    scope.setMaxScaleLimit(limit);
+			}
+		    } catch (Exception e) {
+			// Invalid input, ignore
+		    }
+		}
 	    }
 	}
 

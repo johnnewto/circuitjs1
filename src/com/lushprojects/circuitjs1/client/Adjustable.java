@@ -12,6 +12,7 @@ public class Adjustable implements Command {
     double minValue, maxValue;
     int flags;
     String sliderText;
+    int numSteps; // Number of discrete steps (0 = continuous)
     
     // null if this Adjustable has its own slider, non-null if it's sharing another one.
     Adjustable sharedSlider;
@@ -31,6 +32,7 @@ public class Adjustable implements Command {
 	flags = 0;
 	elm = ce;
 	editItem = item;
+	numSteps = 0; // Default to continuous
         EditInfo ei = ce.getEditInfo(editItem);
         if (ei != null && ei.maxVal > 0) {
             minValue = ei.minVal;
@@ -43,6 +45,7 @@ public class Adjustable implements Command {
 	int e = Integer.parseInt(st.nextToken());
 	if (e == -1)
 	    return;
+	numSteps = 0; // Default for backward compatibility
 	try {
 	    String ei = st.nextToken();
 
@@ -60,6 +63,14 @@ public class Adjustable implements Command {
 		sharedSlider = ano == -1 ? null : sim.adjustables.get(ano);
 	    }
 	    sliderText = CustomLogicModel.unescape(st.nextToken());
+	    // Try to read numSteps if available (for backward compatibility)
+	    if (st.hasMoreTokens()) {
+		try {
+		    numSteps = Integer.parseInt(st.nextToken());
+		} catch (Exception ex2) {
+		    numSteps = 0;
+		}
+	    }
 	} catch (Exception ex) {}
 	try {
 	    elm = sim.getElm(e);
@@ -157,7 +168,16 @@ public class Adjustable implements Command {
     
     double getSliderValue() {
 	double val = sharedSlider == null ? slider.getValue() : sharedSlider.slider.getValue();
-	return minValue + (maxValue-minValue)*val/100;
+	double rawValue = minValue + (maxValue-minValue)*val/100;
+	
+	// If numSteps > 0, snap to discrete steps
+	if (numSteps > 0) {
+	    double stepSize = (maxValue - minValue) / numSteps;
+	    int step = (int) Math.round((rawValue - minValue) / stepSize);
+	    return minValue + step * stepSize;
+	}
+	
+	return rawValue;
     }
     
     void deleteSlider(CirSim sim) {
@@ -188,7 +208,7 @@ public class Adjustable implements Command {
 	    ano = CirSim.theSim.adjustables.indexOf(sharedSlider);
 	
 	return elm.sim.locateElm(elm) + " F1 " + editItem + " " + minValue + " " + maxValue + " " + ano + " " +
-			CustomLogicModel.escape(sliderText);
+			CustomLogicModel.escape(sliderText) + " " + numSteps;
     }
     
     // reorder adjustables so that items with sliders come first in the list, followed by items that reference them.

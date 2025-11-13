@@ -52,21 +52,21 @@ public class SearchDialog extends Dialog {
 		super();
 		sim = asim;
 		Button cancelButton;
-		vp=new VerticalPanel();
-		setWidget(vp);
-		textBox = new TextBox();
-		textBox.setMaxLength(15);
-		vp.add(textBox);
-		textBox.addKeyUpHandler(
-			new KeyUpHandler() {
-		    public void onKeyUp(KeyUpEvent ev) {
-			search();
-		    }
-		});
+	vp=new VerticalPanel();
+	setWidget(vp);
+	textBox = new TextBox();
+	textBox.setMaxLength(15);
+	vp.add(textBox);
+	// Prevent keyboard events from propagating to circuit editor
+	preventKeyboardPropagation(textBox);
+	textBox.addKeyUpHandler(
+		new KeyUpHandler() {
+	    public void onKeyUp(KeyUpEvent ev) {
+		search();
+	    }
+	});
 
-		setText(Locale.LS("Find Component"));
-		
-		listBox = new ListBox();
+	setText(Locale.LS("Find Component"));		listBox = new ListBox();
 		listBox.setWidth("100%");
 		listBox.addDoubleClickHandler(new DoubleClickHandler() {
 		    public void onDoubleClick(DoubleClickEvent ev) {

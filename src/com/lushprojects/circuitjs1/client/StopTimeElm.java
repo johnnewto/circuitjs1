@@ -24,19 +24,27 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 class StopTimeElm extends CircuitElm {
     double stopTime;
     boolean stopped;
+    boolean enabled;
     
     public StopTimeElm(int xx, int yy) {
         super(xx, yy);
         stopTime = 1.0; // Default 1 second
+        enabled = true; // Enabled by default
     }
     
     public StopTimeElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
         super(xa, ya, xb, yb, f);
         stopTime = Double.parseDouble(st.nextToken());
+        enabled = true; // Default to enabled for backward compatibility
+        try {
+            enabled = Boolean.parseBoolean(st.nextToken());
+        } catch (Exception e) {
+            // If no enabled flag in saved file, default to true
+        }
     }
     
     String dump() { 
-        return super.dump() + " " + stopTime; 
+        return super.dump() + " " + stopTime + " " + enabled; 
     }
     
     void reset() {
@@ -76,8 +84,8 @@ class StopTimeElm extends CircuitElm {
             poly.addPoint(px, py);
         }
         
-        // Fill with red
-        g.setColor(Color.red);
+        // Fill with red if enabled, gray if disabled
+        g.setColor(enabled ? Color.red : Color.gray);
         g.fillPolygon(poly);
         
         // Draw border using drawPolygon from CircuitElm
@@ -97,9 +105,18 @@ class StopTimeElm extends CircuitElm {
         f = new Font("SansSerif", selected ? Font.BOLD : 0, 14);
         g.setFont(f);
         g.setColor(selected ? selectColor : whiteColor);
-        String timeText = "t=" + getUnitText(stopTime, "s");
+        String timeText = "stop = " + getUnitText(stopTime, "s");
         textWidth = (int)g.context.measureText(timeText).getWidth();
-        g.drawString(timeText, cx - textWidth/2, cy - size - 5);
+        int textY = cy - size - 5;
+        g.drawString(timeText, cx - textWidth/2, textY);
+        
+        // If disabled, draw a line through the text
+        if (!enabled) {
+            g.setColor(selected ? selectColor : whiteColor);
+            g.setLineWidth(2.0);
+            int lineY = textY - 5; // Slightly above center of text
+            g.drawLine(cx - textWidth/2 - 2, lineY, cx + textWidth/2 + 2, lineY);
+        }
         
         // Set bounding box
         setBbox(cx - size - 5, cy - size - 20, cx + size + 5, cy + size + 5);
@@ -109,7 +126,7 @@ class StopTimeElm extends CircuitElm {
     
     void stepFinished() {
         stopped = false;
-        if (sim.t >= stopTime) {
+        if (enabled && sim.t >= stopTime) {
             stopped = true;
             sim.setSimRunning(false);
         }
@@ -117,12 +134,17 @@ class StopTimeElm extends CircuitElm {
     
     void getInfo(String arr[]) {
         arr[0] = "stop time";
-        arr[1] = "current time = " + getUnitText(sim.t, "s");
-        arr[2] = "stop time = " + getUnitText(stopTime, "s");
-        if (sim.t >= stopTime) {
-            arr[3] = "stopped";
+        arr[1] = "enabled = " + (enabled ? "yes" : "no");
+        arr[2] = "current time = " + getUnitText(sim.t, "s");
+        arr[3] = "stop time = " + getUnitText(stopTime, "s");
+        if (enabled) {
+            if (sim.t >= stopTime) {
+                arr[4] = "stopped";
+            } else {
+                arr[4] = "stopping in " + getUnitText(stopTime - sim.t, "s");
+            }
         } else {
-            arr[3] = "stopping in " + getUnitText(stopTime - sim.t, "s");
+            arr[4] = "disabled";
         }
     }
     
@@ -131,12 +153,19 @@ class StopTimeElm extends CircuitElm {
             EditInfo ei = new EditInfo("Stop Time (s)", stopTime);
             return ei;
         }
+        if (n == 1) {
+            EditInfo ei = new EditInfo("", 0, -1, -1);
+            ei.checkbox = new Checkbox("Enabled", enabled);
+            return ei;
+        }
         return null;
     }
     
     public void setEditValue(int n, EditInfo ei) {
         if (n == 0)
             stopTime = ei.value;
+        if (n == 1)
+            enabled = ei.checkbox.getState();
     }
     
     // Override to prevent trying to find voltages (no posts)

@@ -62,22 +62,22 @@ public class ShortcutsDialog extends Dialog {
 		int i;
 		for (i = 0; i != asim.mainMenuItems.size(); i++) {
 		    CheckboxMenuItem item = sim.mainMenuItems.get(i);
-		    if (item.getShortcut().length() > 1)
-			break;
-		    table.setText(i, 0, item.getName());
-		    TextBox text = new TextBox();
-		    text.setText(item.getShortcut());
-		    text.setMaxLength(1);
-		    text.addChangeHandler(new ChangeHandler() {
-			public void onChange(ChangeEvent ev) {
-			    checkForDuplicates();
-			}
-		    });
-		    table.setWidget(i, 1, text);
-		    textBoxes.add(text);
+	    if (item.getShortcut().length() > 1)
+		break;
+	    table.setText(i, 0, item.getName());
+	    TextBox text = new TextBox();
+	    text.setText(item.getShortcut());
+	    text.setMaxLength(1);
+	    // Prevent keyboard events from propagating to circuit editor
+	    preventKeyboardPropagation(text);
+	    text.addChangeHandler(new ChangeHandler() {
+		public void onChange(ChangeEvent ev) {
+		    checkForDuplicates();
 		}
-
-		HorizontalPanel hp = new HorizontalPanel();
+	    });
+	    table.setWidget(i, 1, text);
+	    textBoxes.add(text);
+	}		HorizontalPanel hp = new HorizontalPanel();
 		hp.setWidth("100%");
 		hp.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_LEFT);
 		hp.setStyleName("topSpace");

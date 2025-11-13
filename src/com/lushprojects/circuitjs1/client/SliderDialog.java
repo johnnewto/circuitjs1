@@ -165,6 +165,12 @@ class SliderDialog extends Dialog  {
 					}
                     ei.labelBox.setText(labletext);
 					vp.insert(ei.labelBox, idx++);
+					
+					// Add number of steps field
+					vp.insert(new Label(Locale.LS("Number of Steps (0=continuous)")), idx++);
+					ei.stepsBox = new TextBox();
+					ei.stepsBox.setText(String.valueOf(adj.numSteps));
+					vp.insert(ei.stepsBox, idx++);
 			    }
 			    // Calculate default min/max values for display
 			    double displayMinValue = adj.minValue;
@@ -229,6 +235,16 @@ class SliderDialog extends Dialog  {
 			adj.minValue = d;
 			d = EditDialog.parseUnits(ei.maxBox.getText());
 			adj.maxValue = d;
+			// Parse number of steps
+			if (ei.stepsBox != null) {
+			    try {
+				adj.numSteps = Integer.parseInt(ei.stepsBox.getText());
+				if (adj.numSteps < 0)
+				    adj.numSteps = 0;
+			    } catch (Exception e) {
+				adj.numSteps = 0;
+			    }
+			}
 			adj.setSliderValue(ei.value);
 		    } catch (Exception e) { CirSim.console(e.toString()); }
 		}

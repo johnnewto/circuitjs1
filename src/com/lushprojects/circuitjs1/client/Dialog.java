@@ -21,6 +21,8 @@ package com.lushprojects.circuitjs1.client;
 
 
 import com.google.gwt.user.client.ui.DialogBox;
+import com.google.gwt.user.client.ui.TextBox;
+import com.google.gwt.user.client.ui.ValueBoxBase;
 
 class Dialog extends DialogBox  {
 
@@ -28,6 +30,53 @@ class Dialog extends DialogBox  {
 
 	Dialog() {
 		closeOnEnter = true;
+	}
+	
+	/**
+	 * Prevents keyboard events from propagating to the circuit editor.
+	 * This stops delete/backspace keys from deleting circuit elements
+	 * while the user is typing in a text field.
+	 * @param textBox The TextBox to protect
+	 */
+	protected static void preventKeyboardPropagation(TextBox textBox) {
+	    textBox.addKeyDownHandler(new com.google.gwt.event.dom.client.KeyDownHandler() {
+		public void onKeyDown(com.google.gwt.event.dom.client.KeyDownEvent event) {
+		    event.stopPropagation();
+		}
+	    });
+	    textBox.addKeyPressHandler(new com.google.gwt.event.dom.client.KeyPressHandler() {
+		public void onKeyPress(com.google.gwt.event.dom.client.KeyPressEvent event) {
+		    event.stopPropagation();
+		}
+	    });
+	    textBox.addKeyUpHandler(new com.google.gwt.event.dom.client.KeyUpHandler() {
+		public void onKeyUp(com.google.gwt.event.dom.client.KeyUpEvent event) {
+		    event.stopPropagation();
+		}
+	    });
+	}
+	
+	/**
+	 * Prevents keyboard events from propagating to the circuit editor.
+	 * This overload works with ValueBoxBase (used by SuggestBox).
+	 * @param valueBox The ValueBoxBase to protect
+	 */
+	protected static void preventKeyboardPropagation(ValueBoxBase<?> valueBox) {
+	    valueBox.addKeyDownHandler(new com.google.gwt.event.dom.client.KeyDownHandler() {
+		public void onKeyDown(com.google.gwt.event.dom.client.KeyDownEvent event) {
+		    event.stopPropagation();
+		}
+	    });
+	    valueBox.addKeyPressHandler(new com.google.gwt.event.dom.client.KeyPressHandler() {
+		public void onKeyPress(com.google.gwt.event.dom.client.KeyPressEvent event) {
+		    event.stopPropagation();
+		}
+	    });
+	    valueBox.addKeyUpHandler(new com.google.gwt.event.dom.client.KeyUpHandler() {
+		public void onKeyUp(com.google.gwt.event.dom.client.KeyUpEvent event) {
+		    event.stopPropagation();
+		}
+	    });
 	}
 
 	public void closeDialog()

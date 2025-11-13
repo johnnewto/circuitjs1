@@ -42,7 +42,7 @@ import java.util.Map;
 
 
 
-//  todo JN  backspace in cell edit deletes table, ALE still labeled sometimes
+//  FIXED: Keyboard events now prevented from propagating to circuit editor
 // there might be  issues with col3 being ALE
 
 
@@ -1189,6 +1189,9 @@ import java.util.Map;
         textBox.setText(rowDesc != null ? rowDesc : "");
         textBox.addStyleName("tableFlowInput");
         
+        // Prevent keyboard events from deleting table element while typing
+        preventKeyboardPropagation(textBox);
+        
         textBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
                 // Store flow description in TableElm's rowDescriptions
@@ -1216,6 +1219,9 @@ import java.util.Map;
         textBox.setText(stockValues[col]); // Initialize with H0, H1, H2, etc.
         textBox.addStyleName("tableStockInput");
         
+        // Prevent keyboard events from deleting table element while typing
+        preventKeyboardPropagation(textBox);
+        
         textBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
                 // Store stock value name
@@ -1241,6 +1247,9 @@ import java.util.Map;
         final TextBox textBox = new TextBox();
         textBox.setText(Double.toString(initialValues[col]));
         textBox.addStyleName("tableInitialInput");
+        
+        // Prevent keyboard events from deleting table element while typing
+        preventKeyboardPropagation(textBox);
         
         textBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
@@ -1280,6 +1289,9 @@ import java.util.Map;
         suggestBox.setText(cellData[row][col]);
         suggestBox.addStyleName("tableCellInput");
         suggestBox.setWidth("100%");
+        
+        // Prevent keyboard events from deleting table element while typing
+        preventKeyboardPropagation(suggestBox.getValueBox());
         
         // Add key up handler to track changes
         suggestBox.getValueBox().addKeyUpHandler(new KeyUpHandler() {

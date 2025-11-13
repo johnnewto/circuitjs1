@@ -280,6 +280,7 @@ class Scope {
     final int FLAG_DIVISIONS = 1<<21; // Dump manDivisions
     final int FLAG_DRAW_FROM_ZERO = 1<<22; // Draw from t=0 on left, growing right
     final int FLAG_AUTO_SCALE_TIME = 1<<23; // Auto-adjust time scale when reaching edge
+    final int FLAG_MAX_SCALE_LIMITS = 1<<24; // Max scale limits present
     
     // ====================
     // VALUE TYPE CONSTANTS
@@ -340,6 +341,9 @@ class Scope {
     boolean maxScale; // Auto-scale to maximum value
     boolean logSpectrum; // Logarithmic FFT display
     boolean showFFT, showNegative, showRMS, showAverage, showDutyCycle, showElmInfo;
+    
+    // Maximum scale limits (null = no limit)
+    Double maxScaleLimit[] = new Double[UNITS_COUNT];
     
     // Draw-from-zero mode variables
     boolean drawFromZero; // Draw from t=0 on left, growing right
@@ -579,6 +583,30 @@ class Scope {
     
     void setManDivisions(int d) {
 	manDivisions = lastManDivisions = d;
+    }
+    
+    /**
+     * Sets the maximum scale limit for current unit type (prevents auto-scale from exceeding this value).
+     * @param limit The maximum limit, or null to disable
+     */
+    void setMaxScaleLimit(Double limit) {
+	if (visiblePlots.size() == 0)
+	    return;
+	int units = visiblePlots.get(0).units;
+	maxScaleLimit[units] = limit;
+	if (limit != null && scale[units] > limit)
+	    scale[units] = limit;
+    }
+    
+    /**
+     * Gets the maximum scale limit for current unit type.
+     * @return The maximum limit, or null if not set
+     */
+    Double getMaxScaleLimit() {
+	if (visiblePlots.size() == 0)
+	    return null;
+	int units = visiblePlots.get(0).units;
+	return maxScaleLimit[units];
     }
 
     /**
@@ -1487,6 +1515,11 @@ class Scope {
     	    // adjust in powers of two
     	    while (max > gridMax)
     			gridMax *= 2;
+    	
+    	// Apply maximum scale limit if set
+    	if (maxScaleLimit[plot.units] != null && gridMax > maxScaleLimit[plot.units])
+    	    gridMax = maxScaleLimit[plot.units];
+    	
     	scale[plot.units] = gridMax;
     }
     
@@ -2672,6 +2705,17 @@ class Scope {
 	flags |= (drawFromZero ? FLAG_DRAW_FROM_ZERO : 0);
 	flags |= (autoScaleTime ? FLAG_AUTO_SCALE_TIME : 0);
 	
+	// Add flag for max scale limits
+	boolean hasMaxLimits = false;
+	for (int i = 0; i < UNITS_COUNT; i++) {
+	    if (maxScaleLimit[i] != null) {
+		hasMaxLimits = true;
+		break;
+	    }
+	}
+	if (hasMaxLimits)
+	    flags |= FLAG_MAX_SCALE_LIMITS;
+	
 	return flags;
     }
     
@@ -2694,6 +2738,15 @@ class Scope {
     			plots.size();
 	if ((flags & FLAG_DIVISIONS) != 0)
 	    x += " " + manDivisions;
+	
+	// Dump max scale limits if any are set
+	if ((flags & FLAG_MAX_SCALE_LIMITS) != 0) {
+	    for (int i = 0; i < UNITS_COUNT; i++) {
+		if (maxScaleLimit[i] != null)
+		    x += " L" + i + ":" + maxScaleLimit[i];
+	    }
+	}
+	
     	int i;
     	for (i = 0; i < plots.size(); i++) {
     	    ScopePlot p = plots.get(i);
@@ -2743,6 +2796,8 @@ class Scope {
     	text = null;
     	boolean plot2dFlag = (flags & 64) != 0;
     	boolean hasPlotFlags = (flags & FLAG_PERPLOTFLAGS) != 0;
+    	boolean hasMaxLimits = (flags & FLAG_MAX_SCALE_LIMITS) != 0;
+    	
     	if ((flags & FLAG_PLOTS) != 0) {
     	    // new-style dump
     	    try {
@@ -2751,6 +2806,33 @@ class Scope {
 		manDivisions = 8;
 		if ((flags & FLAG_DIVISIONS) != 0)
 		    manDivisions = lastManDivisions = Integer.parseInt(st.nextToken());
+		
+		// Parse max scale limits if present
+		if (hasMaxLimits) {
+		    while (st.hasMoreTokens()) {
+			String token = st.nextToken();
+			if (token.startsWith("L") && token.contains(":")) {
+			    // Parse limit token: L<unit>:<value>
+			    try {
+				int colonPos = token.indexOf(':');
+				int unit = Integer.parseInt(token.substring(1, colonPos));
+				double limit = Double.parseDouble(token.substring(colonPos + 1));
+				maxScaleLimit[unit] = limit;
+			    } catch (Exception ex) {
+				// Ignore malformed limit tokens
+			    }
+			} else {
+			    // Not a limit token, we need to parse it as the first plot data
+			    // Put the token back by creating a new StringTokenizer
+			    String remaining = token;
+			    while (st.hasMoreTokens())
+				remaining += " " + st.nextToken();
+			    st = new StringTokenizer(remaining, " ");
+			    break;
+			}
+		    }
+		}
+		
     		int i;
     		int u = ce.getScopeUnits(value);
 		if (u > UNITS_A)
