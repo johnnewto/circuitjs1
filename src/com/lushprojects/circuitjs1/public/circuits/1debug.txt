@@ -1,5 +1,6 @@
 $ 67 0.05 0.625470095193633 54 5 50 0.000049999999999999996
-255 -1424 -632 -1360 -632 0 5 4 6 16 0 true 2 false false Borrowers \0 Borrowers Debt Bor_equity A-L-E Pay\sInterest Lending Bank\sSpending Govt\sTaxes Govt\sSpends 10 0 0 0 ASSET LIABILITY EQUITY ASSET -Interest \0 -Interest \0 Lend Lend \0 \0 0.5*Spend_banks \0 0.5*Spend_banks \0 -0.5*Tax \0 -0.5*Tax \0 0.5*Spend_Govt \0 0.5*Spend_Govt \0 0.001
+% voltageUnit $
+255 -1424 -632 -1360 -632 0 5 4 6 16 0 true 2 false false Borrowers \0 Borrowers Debt Bor_equity A-L-E Pay\sInterest Lending Bank\sSpending Govt\sTaxes Govt\sSpends 10 0 10 0 ASSET LIABILITY EQUITY ASSET -Interest \0 -Interest \0 Lend Lend \0 \0 0.5*Spend_banks \0 0.5*Spend_banks \0 -0.5*Tax \0 -0.5*Tax \0 0.5*Spend_Govt \0 0.5*Spend_Govt \0 0.001
 255 -912 -632 -880 -632 0 3 4 6 16 0 true 2 false false Savers \0 Savers Stock2 Savers_equ A-L-E Bank\sSpending Govt\sTaxes Govt\sSpends 80 0 80 0 ASSET LIABILITY EQUITY ASSET 0.5*Spend_banks \0 0.5*Spend_banks \0 -0.5*Tax \0 -0.5*Tax \0 0.5*Spend_Govt \0 0.5*Spend_Govt \0 0.001
 255 -1288 -840 -1224 -840 0 7 7 6 16 0 true 2 false false Banks \0 Reserves Debt Gov_Bonds Savers Borrowers Banks A-L-E Lending Pay\sInterest Bank\sSpending Govt\sTaxes Govt\sSpends Govt\sSells\sBonds Interest\son\sBonds 100 0 0 80 10 10 0 ASSET ASSET ASSET LIABILITY LIABILITY EQUITY ASSET \0 Lend \0 \0 Lend \0 \0 \0 \0 \0 \0 -Interest Interest \0 \0 \0 \0 0.5*Spend_banks 0.5*Spend_banks -Spend_banks \0 -Tax \0 \0 -0.5*Tax -0.5*Tax \0 \0 Spend_Govt \0 \0 0.5*Spend_Govt 0.5*Spend_Govt \0 \0 -Bonds \0 Bonds \0 \0 \0 \0 Int_Bonds \0 \0 \0 \0 Int_Bonds \0 0.001
 255 -848 -992 -800 -992 0 4 4 6 16 0 true 2 false false Treasury \0 Government Gov_Bonds Treasuray_Equ A-L-E Govt\sSells\sBonds Interest\son\sBonds Govt\sSpends Govt\sTaxes 0 0 0 0 ASSET LIABILITY EQUITY ASSET Bonds Bonds \0 \0 -Int_Bonds \0 -Int_Bonds \0 -Spend_Govt \0 -Spend_Govt \0 Tax \0 Tax \0 0.001
@@ -10,11 +11,11 @@ $ 67 0.05 0.625470095193633 54 5 50 0.000049999999999999996
 w -1328 -352 -1280 -352 0
 207 -1328 -352 -1344 -416 36 Money
 w -1232 -352 -1216 -352 0
-207 -1232 -352 -1200 -440 36 GDP
-207 -1152 -352 -1104 -352 36 Lend
-207 -1256 -184 -1208 -184 36 Fee
+207 -1216 -352 -1184 -440 36 GDP
+207 -1104 -352 -1056 -352 36 Lend
+207 -1208 -184 -1160 -184 36 Fee
 207 -1352 -184 -1368 -240 36 Interest
-w -1352 -184 -1304 -184 0
+w -1352 -184 -1256 -184 0
 207 -1400 -184 -1448 -184 4 Debt
 207 -1392 -72 -1424 -72 36 Banks
 207 -1344 -72 -1280 -72 36 Spend_banks
@@ -35,36 +36,40 @@ w -720 -272 -720 -392 0
 w -848 -392 -720 -392 0
 207 -896 -80 -848 -80 36 Fee
 207 -672 -272 -624 -272 36 Bonds
-408 -296 -264 -216 -264 0 30 0 0
-212 -360 -264 -328 -264 1 0 t
-g -312 -248 -312 -192 0 0
 207 -208 -648 -304 -680 4 Vr
 g 88 -376 88 -344 0 0
 r 0 -376 88 -376 0 100
 v 88 -376 88 -648 0 0 40 5 0 0 0.5 V
-l 0 -648 0 -376 0 100 0.000002027236860808909 0
-c 0 -376 -208 -376 4 0.0015 -0.0006945325096058266 -10 0
+l 0 -648 0 -376 0 100 -0.03456052266330454 0
+c 0 -376 -208 -376 4 0.01 -1.9267556916262472 -10 0
 w -208 -648 -208 -376 0
 s 0 -648 88 -648 0 1 false
-r -208 -648 0 -648 0 10
+r -208 -648 0 -648 0 5
 207 -936 -216 -984 -216 4 GDP
 207 -784 -136 -784 -176 60 Tax2
 258 -936 -216 -928 -216 3 0.3 Tax_frac
 258 -920 -288 -912 -288 3 0.31 Spend_frac
-258 -1200 -352 -1192 -352 1 0.01 Lend_frac
+258 -1152 -352 -1144 -352 1 0.01 Lend_frac
 258 -1280 -352 -1272 -352 1 2 Velocity
-w -1216 -352 -1200 -352 0
-258 -1304 -184 -1296 -184 1 0.5 Fee_rate
+w -1216 -352 -1152 -352 0
+258 -1256 -184 -1248 -184 1 0.5 Fee_rate
 258 -1400 -184 -1392 -184 1 0.05 Interest_Rate
 258 -1392 -72 -1384 -72 1 0.1 Spend_rate
-258 -896 -392 -888 -392 1 0.05 Interest_Rate
-207 -128 -152 -192 -152 36 GDP
-207 -128 -200 -192 -200 36 Gov_Bonds
-P -128 -200 -128 -152 11 0 Govt_Debt
-P -216 -96 -216 -48 11 0 Private_Debt
-207 -216 -96 -280 -96 36 Debt
-207 -216 -48 -280 -48 36 GDP
-403 0 -288 280 -64 0 61_4_0_xc01206_40_0.1_-1_2_61_3
-o 11 2 0 xc03206 166491840.80195254 0.0001 0 2 11 3
-o 11 2 0 xc03206 166491840.80195254 0.0001 1 2 11 3
-o 61 2 0 xc01206 73.99130626453447 0.0001 2 4 61 3 62 0 62 3
+258 -896 -392 -888 -392 3 0.05 Interest_Rate
+207 -120 -200 -184 -200 36 GDP
+207 -120 -248 -184 -248 36 Gov_Bonds
+P -120 -248 -120 -200 11 0 Govt_Debt
+P -120 -160 -120 -112 11 0 Private_Debt
+207 -120 -160 -184 -160 36 Debt
+207 -120 -112 -184 -112 36 GDP
+403 0 -288 432 -64 0 58_4_0_xc01206_40_0.1_-1_4_58_3_59_0_59_3_T:Debt
+431 -392 -200 -360 -152 0 50
+259 -208 -728 -152 -728 1 1 dadt
+w -208 -648 -208 -728 0
+207 -160 -728 -80 -728 4 dVr\s/\sdt
+o 11 2 0 xc03206 1607.636554705619 0.0001 0 2 11 3 T:GDP
+o 11 2 3 12806 9.993761696818398 0.0001 1 5 36 0 36 3 66 0 66 3 T:LRC
+o 58 2 0 xc01206 36.995653132267236 0.0001 2 4 58 3 59 0 59 3 T:Debt
+38 55 F1 1 0 0.2 -1 Interest_Rate
+38 47 F1 1 0 0.5 -1 Tax_frac
+38 48 F1 1 0 0.5 -1 Spend_frac

@@ -50,6 +50,130 @@ CircuitJS1 is a browser-based electronic circuit simulator that allows you to de
 
 ## Component Categories
 
+### Mathematical & Economics Components
+
+CircuitJS1 includes specialized components for mathematical operations and economic modeling (system dynamics). These are particularly useful for simulation modeling, control systems, and stock-flow analysis.
+
+#### Arithmetic Operations
+
+**Adder**
+- Adds multiple input voltages: Vout = V1 + V2 + V3 + ...
+- Configurable number of inputs (default: 2)
+- Linear element using VCVS (no iteration needed)
+- Symbol: **+** (summation symbol)
+
+**Multiply by Constant**
+- Multiplies input voltage by a fixed gain: Vout = K × Vin
+- Configurable gain constant
+- Can show multiplier or percentage
+- Linear element (VCVS with fixed gain)
+- Symbol: **×**
+
+**Multiplier** (not in Draw menu currently)
+- Multiplies multiple input voltages: Vout = V1 × V2 × V3 × ...
+- Nonlinear operation requiring iteration
+- Useful for power calculations and modulation
+
+**Divider**
+- Divides voltages: Vout = V1 / V2 / V3 / ...
+- Includes division-by-zero protection (epsilon = 1e-9)
+- Implemented as multiplication by reciprocal
+- Symbol: **÷**
+
+**Differentiator**
+- Computes rate of change: Vout = dVin/dt
+- Calculates time derivative of input voltage
+- Essential for dynamic system modeling
+- Uses numerical differentiation
+- Symbol: **d/dt**
+
+#### Display & Measurement
+
+**Percent/Ratio Meter**
+- Display-only element (doesn't affect circuit)
+- Computes ratio: V1/V2
+- Two display modes:
+  - **Ratio mode**: Shows raw division result
+  - **Percentage mode**: Shows ratio × 100 with % symbol
+- Configurable scaling (Auto, m, 1, K, M)
+- Division-by-zero protection
+
+**Key Properties:**
+- First terminal: numerator (V1)
+- Second terminal: denominator (V2)
+- Fixed decimal precision option
+- Ideal for efficiency calculations and feedback monitoring
+
+#### Data Management
+
+**Table Element**
+- Spreadsheet-like component for equation-based calculations
+- Multiple columns with configurable types (Asset/Liability/Equity/Computed)
+- Each cell contains equations using labeled node names or variables (a-i)
+- Output pins provide voltage outputs for each column
+- Supports time-based functions: sin(t), cos(t), t
+- Column synchronization with shared stocks
+- Visual highlighting of shared columns (yellow)
+
+**Key Features:**
+- Configurable rows and columns
+- Initial values row (optional)
+- Row descriptions/labels
+- Cell equations with full expression support
+- Decimal places control
+- Collapsed mode for compact display
+- Table title and units
+
+**Godly Table Element**
+- Extended table with integration capabilities
+- Integrates column sums over time
+- Integration equation: output = lastOutput + timeStep × gain × columnSum
+- Outputs current proportional to column sums
+- Ideal for stock-flow modeling
+- Shows initial values by default
+
+**Use Cases:**
+- System dynamics modeling
+- Stock and flow calculations
+- Economic simulations
+- Accounting equations (Assets = Liabilities + Equity)
+- Time-series data generation
+
+#### Simulation Control
+
+**Stop Time Element**
+- Automatically pauses simulation at specified time
+- Visual stop sign indicator (octagon)
+- Configurable stop time in seconds
+- No electrical connections (control element only)
+- Resets when simulation is reset
+- Useful for automated testing and time-limited simulations
+
+**Key Properties:**
+- Stop time (default: 1.0 seconds)
+- Visual feedback when stopped (highlighted red octagon)
+- "STOP" text display with time value
+
+#### Example Applications
+
+**Economic Modeling**
+Use Tables and Godly Tables to model stock-flow systems:
+- **Stocks**: Bank accounts, inventory levels, population
+- **Flows**: Transactions, production rates, birth/death rates
+- **Auxiliaries**: Computed values, ratios, indicators
+
+**Control Systems**
+Combine mathematical elements for control algorithms:
+- **Adder**: Summing junctions for error signals
+- **Multiply by Constant**: Gain stages (P, I, D coefficients)
+- **Differentiator**: Derivative control action
+
+**Signal Processing**
+Build signal processing chains:
+- **Multiplier**: Amplitude modulation, mixing
+- **Divider**: Automatic gain control
+- **Percent Meter**: Distortion measurement
+
 ### Passive Components
 
 #### Resistors

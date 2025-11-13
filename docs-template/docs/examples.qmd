@@ -3,6 +3,171 @@ title: "Circuit Examples"
 subtitle: "Sample circuits to get you started"
 ---
 
+## Economics & System Dynamics Models
+
+CircuitJS1 includes specialized components for economic modeling using stock-flow analysis. These models demonstrate the application of system dynamics to monetary economics and accounting.
+
+### BOMD (Bank Originated Money and Debt) Model
+
+A comprehensive model of bank lending and money creation in a simplified economy.
+
+**File:** `econ_BOMD.txt`
+**[Load BOMD Model](https://johnnewto.github.io/circuitjs1/circuitjs.html?ctz=CQAgzCAMB0mQrCAjNMAmALEtkdIJxLwBs8aaIGGI8ckN98ApgLRJIBQa8iLYYxECwzohaAOwVho+hGqCkg+gBcATgFcmICgDMAhgBsAzlv3GtAIQD2q1VYDuTVUZAAdetdsOnLgCJMAI2UQTwB9JgBHdQBLZQBPEABBFgAZFgBREAAFPTjXIwBJADtlJyYjYJSmIoATaKKAcxC9IoBrfIBlAAdqusbkekGoJI6O9IAVEBSCxIsC6fGATRB0gEUAVQKlkbHJlmLS1XLg9zd6U6raqd6z25h4ACpu3tCAltaXU6-B2EhObl4-EELDQAA5QUIwJBqCDwcMkJQQAolCA1JptCAzCZMYZsR09AA3Hy3fFE5wgDrKKwAY1aFFJPnCUSSqQyzTanR6tXqTVBQz5w0SowmUxmcwWyzWm22Qt2UGgj2etVe70+P0VXJqKraavlcH+PCEZAhLHg4mBGGIMLNKIggmRwzRWl0uNMrvZH1uACVyk4iX5AsEGeTPHZHCHVSy0plLn0mjk8oUSmUKh7Ob0eQN+fQkDmhrKRQXJtNZvMtssS+LyysNtWi7dYw2bt9bi39smjqmDimTuc+-KNS83jqB09NdrPSwlVrh57TjB9VxIOIhHz6CDJKurWJN8R6MGjEuVyw12ISFuYdx7R4bGGfEfV3AxBh16DtyCX0iPKquLQhOJoR3KRiE3DcKARCg9AeAIOHsf8yCA-9ALAqAHxYADL1AjDIRwL8QAAWSsIomDiDgvSQy9z3Q5CcAhIZPwoIZ7hAAA1JgDBpWJSO4dc9xNCQpBtRCIJAKCYPIlg+LPYEpJBSA6OGT8F0Y4ZmNjUIdFUPRqVgoRSGBAS9PkxDIDQ-TEMk4y+GICE9xAABxXwsjQkh10M01sEQuzYxc-ApHwYF4CoIQArwgAxJgmDMuEWFCyT3yQc08O7TtlF0ySYriq111C0yJOyx89M-PgVPoJSFVUgcQAiphQi00pf144qsqs0KRLEsj-wEQr0O6krKvKhBKuYlLjjqvQGpwY9xD6uKZuBJBgrBEB-CCdLxFBGE5tmpRGq64E5uQtqMQ6njIQQk913QV8cxO6C0LAC6BT4TbCrsiwfwkx7gJhb6hEUAafgRJiKuncbJuXSFkOezAbrwsHZ0PAAPVd8GtRb-xso12ERTAQgAeXw3xoAAW1aBI+UpyAwrC38EUutysL84TwDQ0E8esk1wRNARbP3Ql7ysZA7WoHNyHwWREtgAggqtDA0GIIhuD1fVhnAiAwA4IWRfhcWEVBeBoGIR6zQwU3sE20Xfj+ZAMQ1rXEW3MW0EIGhQQVUEwCQL2FfBOB4AgBdVYoahqAgRBGFZoA)**
+
+```
+Components:
+- Banks Table (with Reserves, Debt to Savers/Borrowers, Equity)
+- Borrowers Table (Borrowers Debt and Equity)
+- Savers Table (Savings and Equity)
+- Mathematical elements (Multipliers, Adders)
+- Percent/Ratio meters for analysis
+```
+
+**Key Features:**
+- Three-sector economy: Banks, Borrowers, Savers
+- Lending dynamics with interest payments
+- Bank spending and money velocity
+- Accounting equation: Assets = Liabilities + Equity
+- Stock-flow consistency
+
+**Learning Objectives:**
+- Understand endogenous money creation
+- Track money flows between sectors
+- Observe stock-flow accounting principles
+- Analyze interest rate effects on debt dynamics
+
+**Key Parameters:**
+- Interest Rate: 5% (configurable)
+- Lending Fraction: 2% of GDP (configurable)
+- Velocity: 0.5 (money circulation speed)
+- Bank Spend Rate: 10% (how fast banks spend reserves)
+- Fee Rate: 0.5 (transaction fees)
+
+### BOMD Simple Model
+
+A simplified version focusing on core banking operations.
+
+**File:** `econ_BOMDSimple.txt`
+
+```
+Components:
+- Banks Table (Loans, Deposits, Equity)
+- Non-Bank Private Sector Table (Deposits, Loans, Equity)
+- Differentiator for GDP calculation
+- Divider for velocity computation
+```
+
+**Simplified Focus:**
+- Two-sector model: Banks and Private Sector
+- Direct lending relationship
+- GDP derived from money velocity (M×V)
+- Credit creation through bank loans
+
+**Key Concepts:**
+- Bank credit creates deposits
+- Loans create deposits (not vice versa)
+- GDP = Money Supply × Velocity
+- Balance sheet symmetry between sectors
+
+**Use Cases:**
+- Teaching basic banking operations
+- Understanding credit money creation
+- Observing GDP-debt relationships
+- Analyzing velocity effects
+
+### BOMD with Government
+
+Extended model including government sector and central bank operations.
+
+**File:** `econ_BOMDwithGovt.txt`
+
+**[Load BOMDwithGovt Model](https://johnnewto.github.io/circuitjs1/circuitjs.html?ctz=CQAgbA7CAMB00FYawMwQJwrJAHOgLGDigIwQRggL5VXTLSPT7qtvsdgBQATAkgFoS+HjQFgUPEEKz1xkmLRqUSlegBcATgFcApiCkAzAIYAbAM76TF-QCEA9ps32A7rs3mQAHXoOnr908AEV0AI3UQPwB9XQBHbQBLdQBPEABBAQAZAQBREAAFY2SvcwBJADt1d11zCMzdcoATBPKAc0jjcoBrEoBlAAcG5raQAHF7ADd1EoAVYwAPGrHJ6fMBoc8Sem3FNN7enJmQTNK021KTmYBNEByARQBVUuv0-cPpCqrNGoifD8rqrVvPR6k1jkNgZC4AgAFTrJpRUKdLqeP7QuGDBFI7qouToubzSECfELKGwWHwxpRcZTMkUzFUmm-bbwaAkXj8aToEhSeS8nA4OQSKT0FAgZQgVSKLR6AwgayWeVmRW9YwTQKQ1XqjwgXrqewAYy6Ui1gRi8XSWVyHW6fQZLXaTNmCyWTrWDM8gsUXvoewORxOZwuzxu9yeLz973RlMRyNxyHpQ1jOKJJMJf2J5JhBLpGKTTNzMYLaNZ7L4gh5AukOHwch5omrtcUUCgKjUIBl+iMyqsPZtKMhACUau51cEwhEaVEHE1PKadX5nG4F3HLdk8qDhu1CsUygDvkDbMi7UMHcsps7Fp43ZTrys+rpTBYSjPGp5PoDVvZyi-v2-JYwij0F6WwAbsbxHJGkEQccpznJcNyBvBIa3I8KFQZCm6Qn8WF-Hh9D4USH4HhExE-NhBGUQmeZYqu0YMsmA4CDG2IDhmOaEZmsI5lx2akoRRYrBR1GCbS9H5kJnGvvG0nCYRnzTn+8aEX8CmySWjBlpyAg1jgXLoPygECKwIrimZbbSjoXZKjYNmKjM3zGOY2iaKkfw0u45QALYNJOkyKbOIAOboTkuUUUQ5BaGTrueqy9I+z7mLJZG1CU36-oFN4erFl5LDsOwYUhwYvGG6EwbJ6lUQIalKURlQBf+Gaicy0jNZCHH0B1DBshyFb4PgenGQZ0gkAgRkmYoNBIBZGhWXKCq9rZMwABa6FEABiuiNJq+pGiQIDDpYmhjuenk+ZUICbVSkXaGu1o3gl5gZf+KVfj+SW1VlGw5eYBJ5QBOxCIBvowUVCGwUG4OlRGMEZhVtUqfQNWBdV9WVcJbXMQxxZUexpJdRpPU8NAUAyBQ0goAgvLCE2AiU1IWC6mqgS8CTI1oJQdOM0I-VyCgjOM4uAQeKzpMkBzFPEyNvOS6KlBHjiXAuOzPCDfTI2q3zVMwKLKtq9rMj9dI+BSozACy366MkSsawodMGzyUr2yKutCDwdvq27DYCLWemM6MQT5K7JCjbynsh8wFPa4zm7B3wnMkDWGvQINic0Izm26MH4dJzIRDSKIcsgK9NsyA7ufi5HQhJ9Awe1nWFf9anSc0CE4TZ8NAgQNTIhiN3ICC3G2dG131Oa9I-eMyxQ+EsZEBikDKfSGA6Cp4wSA0A2tgAPJm0EJQAOpJMtJQeZo3m+SAgrX9A63rRy+1k5z4dYPrUj7SgrvXwXCCc9-dM8nAPQZqrsDJyFVoNdA+cBAQIHpQAOQdiakwFINHgTsUEFwGnAoKCwOSGVQb-Ce0D46SgMKXHA-cYFVh0kvGBhDa7Kx0tQtBf9aGFx1nwR+3dwGUIgIAmB-d9o8FLhQcBhDR5iLUF-KBFNO4EDECgYa-t-LSS-lgumnddLGwbIzZGb5XbcJ-pzQxMCl6MxCIYBIBokgiKlgI3kJjFEu0YVojRDi7FOI4WzHSMiaGNkGl6DOugs5IOXpQnglCwDewiQzeWSkuC+wLr4ngYAxAsILqkxQKB8q8H4bIDJCjVYFNIRoLg7QAG8lEGrfhJBhrbFdsTQaqS1ZVyIPQGgAA1TQZSr5q3JtQlARt6maEUHTfpfT2xbFrhMXpFNxnLywTsJsSB8rkhAB0rgphRnNNGRLegUzupMHwPPBAEdMApLAL-eeOsDS7PJqYiZZk4CaRWaWMgpBCCq3wPwCACAIBiFAgwgutCdkPLmVIzwQosHUJ2fsuyWcRlgvEIshZel9m11CcZbm6TjK53STQBBBiK7cwgBXcmYBOoLGEXwSB2KnYGVQabZAYoCRREMJoYwBoOSQLsbA4y-DYFijgKQXUDF2Wcu5cnLW1Nalh21vtZ5+1Nxso5VymlGsvTOw1pQ9WQj1mPkNEka2jDHbPwdsTaVHCECp2yQCiuPBfFpxKWszOUQOVVElTzIyTqZCdydQq+ASBXpREHMYD16rfXuPZrnQRyB9oxndSE611ZfGeKYWrYaAbEDF33D8ENYaQneMrCNB2fro7wMDnHVB3rO4WuwVOVR+QNXArrEUoQ8qFWxSiG3dQXB7C0FMvWAgdAwCwAoRS2stScA8AtTQZ5mlFCUCQGKdslAxRQHoFAT+-aQ5yn2TO4d8ccCwBSSbURMSIkbtZGyUh78P59oHugPd4othCvgKSnkrymDQHQBQX+fA5QMyfdu8Aer2mvvFCyb9v7LlROXXKMA96gA)**
+
+```
+Components:
+- Banks Table (7 columns: Reserves, Debt, Gov Bonds, etc.)
+- Borrowers Table (with tax and government spending flows)
+- Savers Table (with tax and government spending flows)
+- Treasury Table (Government bonds and equity)
+- The Fed Table (Central bank reserves and operations)
+```
+
+**Extended Features:**
+- Five-sector economy: Banks, Borrowers, Savers, Treasury, Federal Reserve
+- Government spending and taxation
+- Bond issuance and interest payments
+- Central bank reserve management
+- Complete sectoral accounting
+
+**Government Operations:**
+- Tax collection from all sectors
+- Government spending (distribution configurable)
+- Bond sales to finance deficits
+- Interest payments on bonds
+- Central bank monetary operations
+
+**Advanced Concepts:**
+- Fiscal policy effects on private sector
+- Government deficit = Private sector surplus
+- Bond market operations
+- Reserve management by central bank
+- Sectoral financial balances
+
+**Policy Experiments:**
+- Adjust tax rates and observe sector balances
+- Change government spending levels
+- Modify bond interest rates
+- Analyze deficit spending effects
+
+### How to Load These Models
+
+1. **From Circuit Files:**
+   - Download from: `src/com/lushprojects/circuitjs1/public/circuits/econ_*.txt`
+   - Use File → Import in CircuitJS1
+
+2. **From Web Interface:**
+   - Navigate to the circuits directory
+   - Click on the desired `.txt` file
+   - Circuit loads automatically
+
+3. **Experiment & Modify:**
+   - Adjust interest rates and lending fractions
+   - Change spending and tax rates
+   - Add scope traces to monitor key variables
+   - Export modified circuits for sharing
+
+### Understanding the Economics Elements
+
+These models use specialized CircuitJS1 components:
+
+- **Table Elements**: Represent balance sheets with Assets, Liabilities, Equity
+- **Godly Tables**: Include integration for stock accumulation over time
+- **Multipliers/Dividers**: Calculate derived variables (interest, fees, ratios)
+- **Adders/Subtractors**: Compute net flows between accounts
+- **Percent Meters**: Display ratios and rates
+- **Stop Time**: Halt simulation at specific time points
+
+### Educational Applications
+
+**Undergraduate Economics:**
+- Money and banking fundamentals
+- Stock-flow consistent modeling
+- Sectoral accounting principles
+
+**Graduate/Research:**
+- Modern Monetary Theory (MMT) concepts
+- Post-Keynesian economics
+- Endogenous money dynamics
+- Fiscal-monetary policy interactions
+
+**Policy Analysis:**
+- Government deficit effects
+- Interest rate impacts
+- Credit cycle dynamics
+- Debt sustainability
+
+---
+
 ## Basic Circuits
 
 ### Simple RC Circuit

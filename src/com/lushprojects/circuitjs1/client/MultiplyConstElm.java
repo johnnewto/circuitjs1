@@ -97,7 +97,7 @@ class MultiplyConstElm extends ChipElm {
                                 Math.max(rectPointsY[2], rectPointsY[3])) + 8;
         
         boolean selected = needsHighlight();
-        Font f = new Font("SansSerif", selected ? Font.BOLD : 0, 10);
+        Font f = new Font("SansSerif", selected ? Font.BOLD : 0, 12);
         g.setFont(f);
         g.setColor(selected ? selectColor : whiteColor);
         
@@ -194,5 +194,18 @@ class MultiplyConstElm extends ChipElm {
             allocNodes();
             setPoints();
         }
+    }
+    
+    // Override to provide custom slider text formatting
+    public String getSliderUnitText(int n, EditInfo ei, double value) {
+        // For the gain parameter (n==1), format based on percentage flag
+        if (n == 1) {
+            if (showAsPercent()) {
+                return getUnitText(value * 100, "%");
+            } else {
+                return String.valueOf(value);
+            }
+        }
+        return null; // Use default formatting for other parameters
     }
 }

@@ -26,8 +26,8 @@ public class Adjustable implements Command {
     boolean settingValue;
     
     Adjustable(CircuitElm ce, int item) {
-	minValue = 1;
-	maxValue = 1000;
+	minValue = 0;
+	maxValue = 1;
 	flags = 0;
 	elm = ce;
 	editItem = item;
@@ -83,7 +83,7 @@ public class Adjustable implements Command {
 
     void createSlider(CirSim sim, double value) {
         EditInfo ei = elm.getEditInfo(editItem);
-        String valueStr = ei != null ? EditDialog.unitString(ei, value) : String.valueOf(value);
+        String valueStr = getFormattedValue(ei, value);
         sim.addWidgetToVerticalPanel(label = new Label(Locale.LS(sliderText) + ": " + valueStr));
         label.addStyleName("topSpace");
         int intValue = (int) ((value-minValue)*100/(maxValue-minValue));
@@ -104,7 +104,7 @@ public class Adjustable implements Command {
         if (label != null) {
             EditInfo ei = elm.getEditInfo(editItem);
             if (ei != null) {
-                String valueStr = EditDialog.unitString(ei, value);
+                String valueStr = getFormattedValue(ei, value);
                 label.setText(Locale.LS(sliderText) + ": " + valueStr);
             }
         }
@@ -130,11 +130,29 @@ public class Adjustable implements Command {
 	
 	// Update label to show current value
 	if (label != null) {
-	    String valueStr = EditDialog.unitString(ei, ei.value);
+	    String valueStr = getFormattedValue(ei, ei.value);
 	    label.setText(Locale.LS(sliderText) + ": " + valueStr);
 	}
 	
 	elm.sim.repaint();
+    }
+    
+    // Helper method to get formatted value, checking for custom formatting from element
+    String getFormattedValue(EditInfo ei, double value) {
+        if (ei == null)
+            return String.valueOf(value);
+        
+        // Check if element has custom slider text formatting
+        try {
+            String customText = elm.getSliderUnitText(editItem, ei, value);
+            if (customText != null)
+                return customText;
+        } catch (Exception e) {
+            // Element doesn't have getSliderUnitText method or it returned null
+        }
+        
+        // Use default formatting
+        return EditDialog.unitString(ei, value);
     }
     
     double getSliderValue() {

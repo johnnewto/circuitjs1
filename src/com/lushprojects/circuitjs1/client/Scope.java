@@ -327,6 +327,7 @@ class Scope {
     int speed; // Sim timestep units per pixel
     int stackCount; // Number of scopes in this column
     String text; // Custom label text
+    String title; // Custom title text (displayed at top center)
     Rectangle rect;
     
     // ====================
@@ -482,7 +483,7 @@ class Scope {
     	int i;
     	for (i = 0; i != plots.size(); i++)
     	    plots.get(i).reset(scopePointCount, speed, full);
-	calcVisiblePlots();
+		calcVisiblePlots();
     	scopeTimeStep = sim.maxTimeStep;
     	
     	// Record start time and initialize history for drawFromZero mode
@@ -494,15 +495,15 @@ class Scope {
     	        historyCapacity = scopePointCount * 4; // Start with 4x the display size
     	        historySampleInterval = sim.maxTimeStep * speed;
     	        
-    	        CirSim.console("resetGraph: drawFromZero=true, clearHistory=true, sim.t=" + sim.t + 
-    	            ", plots.size()=" + plots.size() + ", historyCapacity=" + historyCapacity);
+    	        // CirSim.console("resetGraph: drawFromZero=true, clearHistory=true, sim.t=" + sim.t + 
+    	        //     ", plots.size()=" + plots.size() + ", historyCapacity=" + historyCapacity);
     	        
     	        // Initialize history buffers for each plot
     	        for (i = 0; i != plots.size(); i++) {
     	            ScopePlot p = plots.get(i);
     	            p.historyMinValues = new double[historyCapacity];
     	            p.historyMaxValues = new double[historyCapacity];
-    	            CirSim.console("  Plot " + i + ": historyMinValues=" + (p.historyMinValues != null ? "allocated[" + p.historyMinValues.length + "]" : "NULL"));
+    	            // CirSim.console("  Plot " + i + ": historyMinValues=" + (p.historyMinValues != null ? "allocated[" + p.historyMinValues.length + "]" : "NULL"));
     	        }
     	    } else {
     	        // Preserve history, just update sample interval
@@ -521,14 +522,14 @@ class Scope {
     	        if (needsAllocation) {
     	            historySize = 0;
     	            historyCapacity = scopePointCount * 4;
-    	            CirSim.console("resetGraph: allocating history buffers (clearHistory=false), historyCapacity=" + historyCapacity);
+    	            // CirSim.console("resetGraph: allocating history buffers (clearHistory=false), historyCapacity=" + historyCapacity);
     	            for (i = 0; i != plots.size(); i++) {
     	                ScopePlot p = plots.get(i);
     	                p.historyMinValues = new double[historyCapacity];
     	                p.historyMaxValues = new double[historyCapacity];
     	            }
     	        } else {
-    	            CirSim.console("Scope zoom: preserving " + historySize + " history samples, new interval: " + historySampleInterval);
+    	            // CirSim.console("Scope zoom: preserving " + historySize + " history samples, new interval: " + historySampleInterval);
     	        }
     	    }
     	} else {
@@ -753,6 +754,14 @@ class Scope {
 	return text;
     }
     
+    void setTitle(String s) {
+	title = s;
+    }
+    
+    String getTitle() {
+	return title;
+    }
+    
     boolean showingValue(int v) {
 	int i;
 	for (i = 0; i != plots.size(); i++) {
@@ -914,9 +923,9 @@ class Scope {
 	for (int i = 0; i < plots.size(); i++) {
 	    ScopePlot p = plots.get(i);
 	    if (p.historyMinValues == null || p.historyMaxValues == null) {
-		CirSim.console("captureToHistory: Plot " + i + " missing history buffers! " +
-		    "historyMinValues=" + (p.historyMinValues == null ? "NULL" : "allocated") + 
-		    ", historyMaxValues=" + (p.historyMaxValues == null ? "NULL" : "allocated"));
+		// CirSim.console("captureToHistory: Plot " + i + " missing history buffers! " +
+		//     "historyMinValues=" + (p.historyMinValues == null ? "NULL" : "allocated") + 
+		//     ", historyMaxValues=" + (p.historyMaxValues == null ? "NULL" : "allocated"));
 		return false;
 	    }
 	}
@@ -931,8 +940,8 @@ class Scope {
 	int newSize = historySize / 2;
 	historySampleInterval *= 2; // Double the time between samples
 	
-	CirSim.console("Downsampling scope history: " + historySize + " -> " + newSize + 
-	            " samples, interval: " + historySampleInterval + "x");
+	// CirSim.console("Downsampling scope history: " + historySize + " -> " + newSize + 
+	//             " samples, interval: " + historySampleInterval + "x");
 	
 	for (int i = 0; i < plots.size(); i++) {
 	    ScopePlot p = plots.get(i);
@@ -1234,6 +1243,7 @@ class Scope {
     	    String sy=py.getUnitText(py.manScale);
     	    drawInfoText(g,"X="+sx+"/div, Y="+sy+"/div");
     	}
+    	drawTitle(g);
     	g.context.restore();
     	drawSettingsWheel(g);
 		if ( !sim.dialogIsShowing() && rect.contains(sim.mouseCursorX, sim.mouseCursorY) && plots.size()>=2) {
@@ -1412,6 +1422,7 @@ class Scope {
     	}
     	
         drawInfoTexts(g);
+    	drawTitle(g);
     	
     	g.restore();
     	
@@ -1719,8 +1730,8 @@ class Scope {
             // Draw from zero mode: use history buffers instead of circular buffer
             if (plot.historyMinValues == null || historySize == 0) {
         	// No history data yet
-        	CirSim.console("drawPlot: drawFromZero mode but no history data - historyMinValues=" + 
-        	    (plot.historyMinValues == null ? "NULL" : "allocated") + ", historySize=" + historySize);
+        	// CirSim.console("drawPlot: drawFromZero mode but no history data - historyMinValues=" + 
+        	//     (plot.historyMinValues == null ? "NULL" : "allocated") + ", historySize=" + historySize);
         	g.endBatch();
         	return;
             }
@@ -2435,6 +2446,29 @@ class Scope {
 	textY += 15;
     }
     
+    /**
+     * Draws the scope title at the top right of the display.
+     * @param g Graphics context
+     */
+    void drawTitle(Graphics g) {
+	if (title == null || title.isEmpty())
+	    return;
+	
+	g.context.save();
+	g.setColor(CircuitElm.whiteColor);
+	
+	// Measure the text width
+	g.context.setFont("bold 14px sans-serif");
+	double textWidth = g.context.measureText(title).getWidth();
+	
+	// Draw at top right with 20px margin
+	int x = (int)(rect.width - textWidth - 20);
+	int y = 15; // Top margin
+	
+	g.context.fillText(title, x, y);
+	g.context.restore();
+    }
+    
     void drawInfoTexts(Graphics g) {
     	g.setColor(CircuitElm.whiteColor);
     	textY = 10;
@@ -2536,6 +2570,17 @@ class Scope {
     	    return t;
     }
     
+    /**
+     * Gets the scope name for display in menus.
+     * Prioritizes title over label text.
+     * @return Display name (title if available, otherwise label text, or empty string)
+     */
+    String getScopeMenuName() {
+	if (title != null && !title.isEmpty())
+	    return title;
+	return getScopeLabelOrText();
+    }
+    
     void setSpeed(int sp) {
 	if (sp < 1)
 	    sp = 1;
@@ -2547,7 +2592,7 @@ class Scope {
     
     void properties() {
 	properties = new ScopePropertiesDialog(sim, this);
-	CirSim.dialogShowing = properties;
+	// CirSim.dialogShowing = properties;
     }
     
     void speedUp() {
@@ -2666,6 +2711,8 @@ class Scope {
     	}
     	if (text != null)
     	    	x += " " + CustomLogicModel.escape(text);
+    	if (title != null)
+    	    	x += " T:" + CustomLogicModel.escape(title);
     	return x;
     }
     
@@ -2735,10 +2782,20 @@ class Scope {
     		    }
     		}
     		while (st.hasMoreTokens()) {
-    		    if (text == null)
-    			text = st.nextToken();
-    		    else
-    			text += " " + st.nextToken();
+    		    String token = st.nextToken();
+    		    if (token.startsWith("T:")) {
+    			// This is the title
+    			if (title == null)
+    			    title = token.substring(2); // Remove "T:" prefix
+    			else
+    			    title += " " + token;
+    		    } else {
+    			// This is the text (label)
+    			if (text == null)
+    			    text = token;
+    			else
+    			    text += " " + token;
+    		    }
     		}
     	    } catch (Exception ee) {
     	    }
@@ -2762,10 +2819,20 @@ class Scope {
     		    ivalue = new Integer(st.nextToken()).intValue();
     		}
     		while (st.hasMoreTokens()) {
-    		    if (text == null)
-    			text = st.nextToken();
-    		    else
-    			text += " " + st.nextToken();
+    		    String token = st.nextToken();
+    		    if (token.startsWith("T:")) {
+    			// This is the title
+    			if (title == null)
+    			    title = token.substring(2); // Remove "T:" prefix
+    			else
+    			    title += " " + token;
+    		    } else {
+    			// This is the text (label)
+    			if (text == null)
+    			    text = token;
+    			else
+    			    text += " " + token;
+    		    }
     		}
     	    } catch (Exception ee) {
     	    }
@@ -2773,12 +2840,15 @@ class Scope {
     	}
     	if (text != null)
     	    text = CustomLogicModel.unescape(text);
+    	if (title != null)
+    	    title = CustomLogicModel.unescape(title);
     	plot2d = plot2dFlag;
     	setFlags(flags);
     	
-    	// Check if drawFromZero was loaded and history buffers need initialization
-    	CirSim.console("undump: drawFromZero=" + drawFromZero + ", autoScaleTime=" + autoScaleTime + 
-    	    ", plots.size()=" + plots.size() + ", rect.width=" + rect.width);
+    	// // Check if drawFromZero was loaded and history buffers need initialization
+    	// CirSim.console("undump: drawFromZero=" + drawFromZero + ", autoScaleTime=" + autoScaleTime + 
+    	//     ", plots.size()=" + plots.size() + ", rect.width=" + rect.width);
+
     	// Note: Don't call resetGraph here - it will be called by setRect() later with proper dimensions
     	// If we call it here, the rect is still default size and historyCapacity will be too small
     }

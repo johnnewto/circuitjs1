@@ -35,34 +35,7 @@ public class Toolbar extends HorizontalPanel {
         style.setDisplay(Style.Display.FLEX);
 	setVerticalAlignment(ALIGN_MIDDLE);
 
-        // Add Reset, Run/Stop, and Step buttons on the LEFT side (first)
-        CirSim sim = CirSim.theSim;
-        sim.resetButton = new Button(Locale.LS("Reset"));
-        sim.resetButton.addClickHandler(new ClickHandler() {
-            public void onClick(ClickEvent event) {
-                sim.resetAction();
-            }
-        });
-        sim.resetButton.setStylePrimaryName("topButton");
-        add(sim.resetButton);
-        
-        sim.runStopButton = new Button(Locale.LSHTML("<Strong>RUN</Strong>&nbsp;/&nbsp;Stop"));
-        sim.runStopButton.addClickHandler(new ClickHandler() {
-            public void onClick(ClickEvent event) {
-                sim.setSimRunning(!sim.simIsRunning());
-            }
-        });
-        add(sim.runStopButton);
-        
-        sim.stepButton = new Button(Locale.LS("Step"));
-        sim.stepButton.addClickHandler(new ClickHandler() {
-            public void onClick(ClickEvent event) {
-                sim.stepCircuit();
-            }
-        });
-        sim.stepButton.setStylePrimaryName("topButton");
-        add(sim.stepButton);
-
+        // Add toolbar buttons
 	add(createIconButton("ccw", "Undo", new MyCommand("edit", "undo")));
 	add(createIconButton("cw",  "Redo", new MyCommand("edit", "redo")));
 	add(createIconButton("scissors", "Cut", new MyCommand("edit", "cut")));
@@ -75,6 +48,7 @@ public class Toolbar extends HorizontalPanel {
 	add(createIconButton("zoom-11", "Zoom 100%", new MyCommand("zoom", "zoom100")));
 	add(createIconButton("zoom-in", "Zoom In", new MyCommand("zoom", "zoomin")));
 	add(createIconButton("zoom-out", "Zoom Out", new MyCommand("zoom", "zoomout")));
+	add(createIconButton("resize-full-alt", "Toggle Full Screen", new MyCommand("view", "fullscreen")));
 
 	add(createIconButton(wireIcon, "WireElm"));
 	add(resistorButton = createIconButton(resistorIcon, "ResistorElm"));

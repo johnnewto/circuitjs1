@@ -56,7 +56,7 @@ RadioButton acButton, dcButton;
 CheckBox scaleBox, voltageBox, currentBox, powerBox, peakBox, negPeakBox, freqBox, spectrumBox, manualScaleBox;
 CheckBox rmsBox, dutyBox, viBox, xyBox, resistanceBox, ibBox, icBox, ieBox, vbeBox, vbcBox, vceBox, vceIcBox, logSpectrumBox, averageBox;
 CheckBox elmInfoBox;
-TextBox labelTextBox, manualScaleTextBox, divisionsTextBox;
+TextBox labelTextBox, titleTextBox, manualScaleTextBox, divisionsTextBox;
 Button applyButton, scaleUpButton, scaleDownButton;
 Scrollbar speedBar,positionBar;
 Scope scope;
@@ -383,18 +383,18 @@ labelledGridManager gridLabels;
 		
 		// *************** PLOTS ***********************************************************
 		
-		CircuitElm elm = scope.getSingleElm();
-		boolean transistor = elm != null && elm instanceof TransistorElm;
-		if (!transistor) {
-		    grid = new Grid(11, 3);
-		    gridLabels = new labelledGridManager(grid);
-		    gridLabels.addLabel(Locale.LS("Plots"), displayAll);
-		    addItemToGrid(grid, voltageBox = new ScopeCheckBox(Locale.LS("Show Voltage"), "showvoltage"));
-		    voltageBox.addValueChangeHandler(this); 
-		    addItemToGrid(grid, currentBox = new ScopeCheckBox(Locale.LS("Show Current"), "showcurrent"));
-		    currentBox.addValueChangeHandler(this);
-		} else {
-		    grid = new Grid(13,3);
+	CircuitElm elm = scope.getSingleElm();
+	boolean transistor = elm != null && elm instanceof TransistorElm;
+	if (!transistor) {
+	    grid = new Grid(14, 3); // Increased from 11 to 14 to accommodate title and label fields
+	    gridLabels = new labelledGridManager(grid);
+	    gridLabels.addLabel(Locale.LS("Plots"), displayAll);
+	    addItemToGrid(grid, voltageBox = new ScopeCheckBox(Locale.LS("Show Voltage"), "showvoltage"));
+	    voltageBox.addValueChangeHandler(this); 
+	    addItemToGrid(grid, currentBox = new ScopeCheckBox(Locale.LS("Show Current"), "showcurrent"));
+	    currentBox.addValueChangeHandler(this);
+	} else {
+	    grid = new Grid(16, 3); // Increased from 13 to 16 to accommodate title and label fields
 		    gridLabels = new labelledGridManager(grid);
 		    gridLabels.addLabel(Locale.LS("Plots"), displayAll);
 		    addItemToGrid(grid, ibBox = new ScopeCheckBox(Locale.LS("Show Ib"), "showib"));
@@ -447,14 +447,28 @@ labelledGridManager gridLabels;
 		elmInfoBox.addValueChangeHandler(this); 
 		fp.add(grid);
 
+		gridLabels.addLabel(Locale.LS("Title"), displayAll);
+		titleTextBox = new TextBox();
+		addItemToGrid(grid, titleTextBox);
+		String titleText = scope.getTitle();
+		if (titleText != null)
+		    titleTextBox.setText(titleText);
+		addItemToGrid(grid, applyButton2= new Button(Locale.LS("Apply")));
+		applyButton2.addClickHandler(new ClickHandler() {
+			public void onClick(ClickEvent event) {
+				apply();
+			}
+		});
+
 		gridLabels.addLabel(Locale.LS("Custom Label"), displayAll);
 		labelTextBox = new TextBox();
 		addItemToGrid(grid, labelTextBox);
 		String labelText = scope.getText();
 		if (labelText != null)
 		    labelTextBox.setText(labelText);
-		addItemToGrid(grid, applyButton2= new Button(Locale.LS("Apply")));
-		applyButton2.addClickHandler(new ClickHandler() {
+		Button applyButton3;
+		addItemToGrid(grid, applyButton3= new Button(Locale.LS("Apply")));
+		applyButton3.addClickHandler(new ClickHandler() {
 			public void onClick(ClickEvent event) {
 				apply();
 			}
@@ -690,6 +704,11 @@ labelledGridManager gridLabels;
 	    if (label.length() == 0)
 		label = null;
 	    scope.setText(label);
+	    
+	    String title = titleTextBox.getText();
+	    if (title.length() == 0)
+		title = null;
+	    scope.setTitle(title);
 	    
 	    if (scope.isManualScale()) {
 		double d=getManualScaleValue();

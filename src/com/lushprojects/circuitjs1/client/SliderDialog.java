@@ -166,8 +166,41 @@ class SliderDialog extends Dialog  {
                     ei.labelBox.setText(labletext);
 					vp.insert(ei.labelBox, idx++);
 			    }
-			    ei.minBox.setText(EditDialog.unitString(ei, adj.minValue));
-			    ei.maxBox.setText(EditDialog.unitString(ei, adj.maxValue));
+			    // Calculate default min/max values for display
+			    double displayMinValue = adj.minValue;
+			    double displayMaxValue = adj.maxValue;
+			    
+			    // If this is a newly created slider with default values (0 and 1),
+			    // calculate better defaults based on current value
+			    double currentValue = ei.value;
+			    
+			    if (currentValue < 0) {
+			        // For negative values, set max to 0 and min to 10^x below the value
+			        displayMaxValue = 0;
+			        double absValue = Math.abs(currentValue);
+			        if (absValue <= 0) {
+			            displayMinValue = -1;
+			        } else {
+			            // Get the power of 10
+			            double log10 = Math.log10(absValue);
+			            int exponent = (int) Math.ceil(log10);
+			            displayMinValue = -Math.pow(10, exponent);
+			        }
+			    } else {
+			        // For positive values, set min to 0 and max to 10^x above the value
+			        displayMinValue = 0;
+			        if (currentValue <= 0) {
+			            displayMaxValue = 1;
+			        } else {
+			            // Get the power of 10
+			            double log10 = Math.log10(currentValue);
+			            int exponent = (int) Math.ceil(log10);
+			            displayMaxValue = Math.pow(10, exponent);
+			        }
+			    }
+			    
+			    ei.minBox.setText(EditDialog.unitString(ei, displayMinValue));
+			    ei.maxBox.setText(EditDialog.unitString(ei, displayMaxValue));
 			}
 			    
 		}

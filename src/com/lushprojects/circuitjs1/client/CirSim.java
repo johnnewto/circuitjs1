@@ -133,6 +133,7 @@ MouseOutHandler, MouseWheelHandler {
     CheckboxMenuItem noEditCheckItem;
     CheckboxMenuItem mouseWheelEditCheckItem;
     CheckboxMenuItem toolbarCheckItem;
+    String voltageUnitSymbol = "V"; // Custom voltage unit symbol
     private Label powerLabel;
     private Label titleLabel;
     private Scrollbar speedBar;
@@ -675,6 +676,7 @@ public CirSim() {
 
 	m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Shortcuts..."), new MyCommand("options", "shortcuts")));
 	m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Subcircuits..."), new MyCommand("options", "subcircuits")));
+	m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Voltage Unit Symbol..."), new MyCommand("options", "voltageunit")));
 	m.addItem(optionsItem = new CheckboxAlignedMenuItem(Locale.LS("Other Options..."), new MyCommand("options","other")));
 	if (isElectron())
 	    m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Toggle Dev Tools"), new MyCommand("options","devtools")));
@@ -721,7 +723,42 @@ public CirSim() {
 	setToolbar(); // calls setCanvasSize()
 	layoutPanel.add(cv);
 	verticalPanel.add(buttonPanel);
-	// Buttons moved to toolbar - see Toolbar.java
+	// Buttons moved to side panel below
+	
+	// Add Reset, Run/Stop, and Step buttons to side panel
+	// Create horizontal panel for Run/Stop and Reset on same line
+	HorizontalPanel runResetPanel = new HorizontalPanel();
+	runResetPanel.setWidth("80%");
+	runResetPanel.setStyleName("topSpace");
+	runResetPanel.setSpacing(2); // Add spacing between buttons
+	
+	runStopButton = new Button(Locale.LSHTML("<Strong>RUN</Strong>&nbsp;/&nbsp;Stop"));
+	runStopButton.addClickHandler(new ClickHandler() {
+	    public void onClick(ClickEvent event) {
+		setSimRunning(!simIsRunning());
+	    }
+	});
+	runResetPanel.add(runStopButton);
+	
+	resetButton = new Button(Locale.LS("Reset"));
+	resetButton.addClickHandler(new ClickHandler() {
+	    public void onClick(ClickEvent event) {
+		resetAction();
+	    }
+	});
+	resetButton.setStylePrimaryName("topButton");
+	runResetPanel.add(resetButton);
+	
+	verticalPanel.add(runResetPanel);
+	
+	stepButton = new Button(Locale.LS("Step"));
+	stepButton.addClickHandler(new ClickHandler() {
+	    public void onClick(ClickEvent event) {
+		stepCircuit();
+	    }
+	});
+	stepButton.setStylePrimaryName("topButton");
+	verticalPanel.add(stepButton);
 	
 /*
 	dumpMatrixButton = new Button("Dump Matrix");
@@ -899,6 +936,11 @@ public CirSim() {
         	selectColor = stor.getItem("selectColor");
             if (currentColor == null)
         	currentColor = stor.getItem("currentColor");
+            
+            // Load custom voltage unit symbol
+            String customUnit = stor.getItem("voltageUnitSymbol");
+            if (customUnit != null && !customUnit.isEmpty())
+                voltageUnitSymbol = customUnit;
         }
         
 	if (positiveColor != null)
@@ -960,6 +1002,20 @@ public CirSim() {
         if (stor == null)
             return;
         stor.setItem(key,  val ? "true" : "false");
+    }
+    
+    void showVoltageUnitDialog() {
+        String newSymbol = Window.prompt("Enter voltage unit symbol (e.g., V, $, €, or leave blank for no unit):", voltageUnitSymbol);
+        if (newSymbol != null) {
+            newSymbol = newSymbol.trim();
+            if (newSymbol.isEmpty())
+                newSymbol = "V"; // Default back to V if empty
+            voltageUnitSymbol = newSymbol;
+            Storage stor = Storage.getLocalStorageIfSupported();
+            if (stor != null)
+                stor.setItem("voltageUnitSymbol", voltageUnitSymbol);
+            repaint();
+        }
     }
     
     // save shortcuts to local storage
@@ -1111,6 +1167,7 @@ public CirSim() {
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Subtracter"), "SubtracterElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Table"), "TableElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Godly Table"), "GodlyTableElm"));
+	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Stop Time"), "StopTimeElm"));
 	// mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Spare"), "Spare"));
     	MenuBar passMenuBar = new MenuBar(true);
     	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Capacitor"), "CapacitorElm"));
@@ -1317,7 +1374,7 @@ public CirSim() {
 	for( int i = 0; i < scopeCount; i++) {
 	    String s, l;
 	    s = Locale.LS("Scope")+" "+ Integer.toString(i+1);
-	    l=scopes[i].getScopeLabelOrText();
+	    l=scopes[i].getScopeMenuName();
 	    if (l!="")
 		s+=" ("+SafeHtmlUtils.htmlEscape(l)+")";
 	    selectScopeMenuItems.add(new MenuItem(s ,new MyCommand("elm", "addToScope"+Integer.toString(i))));
@@ -1326,7 +1383,7 @@ public CirSim() {
 	for (int j = 0; j < c; j++) {
 	    String s,l;
 	    s = Locale.LS("Undocked Scope")+" "+ Integer.toString(j+1);
-	    l = getNthScopeElm(j).elmScope.getScopeLabelOrText();
+	    l = getNthScopeElm(j).elmScope.getScopeMenuName();
 	    if (l!="")
 		s += " ("+SafeHtmlUtils.htmlEscape(l)+")";
 	    selectScopeMenuItems.add(new MenuItem(s, new MyCommand("elm", "addToScope"+Integer.toString(scopeCount+j))));
@@ -3525,6 +3582,9 @@ public CirSim() {
     	    	dialogShowing = new SubcircuitDialog(this);
     	    	dialogShowing.show();
     	}
+    	if (menu=="options" && item=="voltageunit") {
+    	    	showVoltageUnitDialog();
+    	}
     	if (item=="search") {
     	    	dialogShowing = new SearchDialog(this);
     	    	dialogShowing.show();
@@ -3984,6 +4044,12 @@ public CirSim() {
 	    maxTimeStep + " " + getIterCount() + " " +
 	    currentBar.getValue() + " " + CircuitElm.voltageRange + " " +
 	    powerBar.getValue() + " " + minTimeStep + "\n";
+	
+	// Add voltage unit symbol if it's not the default "V"
+	if (!voltageUnitSymbol.equals("V")) {
+	    dump += "% voltageUnit " + CustomLogicModel.escape(voltageUnitSymbol) + "\n";
+	}
+	
 	return dump;
     }
     
@@ -4196,6 +4262,7 @@ public CirSim() {
 	    CircuitElm.voltageRange = 5;
 	    scopeCount = 0;
 	    lastIterTime = 0;
+	    voltageUnitSymbol = "V"; // Reset to default voltage unit
 	}
 	boolean subs = (flags & RC_SUBCIRCUITS) != 0;
 	//cv.repaint();
@@ -4237,7 +4304,17 @@ public CirSim() {
 			CustomLogicModel.undumpModel(st);
 			break;
 		    }
-		    if (tint == '%' || tint == '?' || tint == 'B') {
+		    if (tint == '%') {
+			// Parse custom settings
+			if (st.hasMoreTokens()) {
+			    String settingType = st.nextToken();
+			    if (settingType.equals("voltageUnit") && st.hasMoreTokens()) {
+				voltageUnitSymbol = CustomLogicModel.unescape(st.nextToken());
+			    }
+			}
+			break;
+		    }
+		    if (tint == '?' || tint == 'B') {
 			// ignore afilter-specific stuff
 			break;
 		    }
@@ -6266,6 +6343,7 @@ public CirSim() {
     	case 428: return new MotorProtectionSwitchElm(x1, y1, x2, y2, f, st);
     	case 429: return new DPDTSwitchElm(x1, y1, x2, y2, f, st);
     	case 430: return new CrossSwitchElm(x1, y1, x2, y2, f, st);
+    	case 431: return new StopTimeElm(x1, y1, x2, y2, f, st);
         }
     	return null;
     }
@@ -6506,6 +6584,8 @@ public CirSim() {
 		return (CircuitElm) new OptocouplerElm(x1, y1);
     	if (n=="StopTriggerElm")
 		return (CircuitElm) new StopTriggerElm(x1, y1);
+    	if (n=="StopTimeElm")
+		return (CircuitElm) new StopTimeElm(x1, y1);
     	if (n=="OpAmpRealElm")
 		return (CircuitElm) new OpAmpRealElm(x1, y1);
     	if (n=="CustomCompositeElm")

@@ -933,6 +933,10 @@ public abstract class CircuitElm implements Editable {
     }
     
     private static String getUnitText(double v, String u, boolean sf) {
+	// Check if this is a voltage unit and use custom symbol if set
+	if (u.equals("V") && sim != null && sim.voltageUnitSymbol != null && !sim.voltageUnitSymbol.equals("V"))
+	    u = sim.voltageUnitSymbol;
+	
 	String sp = sf ? "" : " ";
 	double va = Math.abs(v);
 	if (va < 1e-14)
@@ -1099,6 +1103,10 @@ public abstract class CircuitElm implements Editable {
     }
     public EditInfo getEditInfo(int n) { return null; }
     public void setEditValue(int n, EditInfo ei) {}
+    
+    // Override this method to provide custom slider text formatting
+    // Return null to use default formatting
+    public String getSliderUnitText(int n, EditInfo ei, double value) { return null; }
     
     // get number of nodes that can be retrieved by getConnectionNode()
     int getConnectionNodeCount() { return getPostCount(); }

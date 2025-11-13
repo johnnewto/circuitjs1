@@ -14,16 +14,25 @@ Ready to start simulating circuits? [Launch the CircuitJS1 App](app.qmd) or brow
 
 ## Features
 
-- **Real-time simulation** of analog and digital circuits
+- **Real-time simulation** of Economics, analog, digital circuits
+- **Economics & System Dynamics** modeling capabilities:
+  - Stock-Flow Consistent (SFC) modeling inspired by [Steve Keen's Minsky program](docs/sfc-modeling.qmd)
+  - Stock-flow analysis with integrated balance sheets
+  - Table elements for accounting equations (Assets = Liabilities + Equity)
+  - Pre-built BOMD (Bank of Money and Debt) models
+  - Support for monetary economics and sectoral balances
+  - [Learn more about SFC modeling →](docs/sfc-modeling.qmd)
 - **Interactive components** - drag, connect, and modify circuit elements
 - **Oscilloscope display** with multiple channels
 - **Extensive component library** including:
   - Passive components (resistors, capacitors, inductors)
   - Active components (transistors, op-amps, logic gates)
   - Voltage and current sources
-  - Measurement tools
+  - Mathematical & economics components (adders, multipliers, dividers, differentiators)
+  - Data management tools (Tables with equation support, stock-flow modeling)
+  - Measurement tools (voltmeters, ammeters, percent/ratio meters)
 - **Save and load circuits** in multiple formats
-- **Educational examples** covering basic to advanced topics
+- **Educational examples** covering basic electronics to economic modeling
 
 ## Getting Started
 
@@ -54,7 +63,9 @@ Information for developers wanting to contribute or build locally.
 
 ## Recent Updates
 
-- Enhanced component library with new elements
+- **Economics & System Dynamics Tools**: New mathematical components including Tables, Godly Tables, multipliers, dividers, adders, differentiators, and percent meters for economic modeling
+- **Stock-Flow Analysis**: Pre-built BOMD models demonstrating bank lending, money creation, and sectoral accounting
+- Enhanced component library with specialized measurement tools
 - Improved user interface and mobile support
 - Better performance and stability
 - Extended file import/export capabilities

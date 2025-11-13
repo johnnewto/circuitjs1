@@ -1,0 +1,251 @@
+---
+title: "Stock-Flow Consistent Modeling"
+subtitle: "Economic Modeling with CircuitJS1"
+---
+
+## Introduction to SFC Modeling
+
+Stock-Flow Consistent (SFC) modeling is a rigorous approach to macroeconomic modeling that ensures all stocks and flows in an economy are properly accounted for. Every financial asset has a corresponding liability, and all income and expenditure flows are tracked across sectors.
+
+### Key Principles
+
+**Stock-Flow Consistency:**
+- Every financial asset is matched by a corresponding liability
+- All income flows have corresponding expenditure flows
+- Sectoral balances must sum to zero
+- The accounting identity: Assets = Liabilities + Equity holds at all times
+
+**Sectoral Accounting:**
+- Government deficit = Private sector surplus (simplified two-sector)
+- Complete tracking of all inter-sectoral flows
+- No "black holes" where money disappears
+- Conservation principles similar to electrical circuits
+
+## Steve Keen and Modern Monetary Theory
+
+### Professor Steve Keen
+
+[Professor Steve Keen](https://www.profstevekeen.com/) is an Australian economist known for his work on:
+
+- **Debt Dynamics**: Pioneering research on the role of private debt in economic instability
+- **Financial Instability**: Building on Hyman Minsky's financial instability hypothesis
+- **System Dynamics**: Applying engineering approaches to economic modeling
+- **Post-Keynesian Economics**: Developing models that incorporate realistic banking systems
+
+**Key Contributions:**
+- Predicted the 2008 Global Financial Crisis based on private debt analysis
+- Developed endogenous money models showing how banks create money
+- Critiqued mainstream economic models for ignoring private debt
+- Created accessible tools for teaching complex economic dynamics
+
+### The Minsky Program
+
+**[Minsky](https://minsky.sourceforge.io/)** is a free, open-source system dynamics software developed by Professor Steve Keen specifically for economic modeling. Named after economist Hyman Minsky, it provides:
+
+**Features:**
+- Visual system dynamics modeling with stock-flow diagrams
+- Built-in support for Godley Tables (sectoral balance sheets)
+- Integration capabilities for stocks (accumulation over time)
+- Equation-based modeling with full mathematical capabilities
+- Double-entry bookkeeping enforcement
+
+**Purpose:**
+- Teaching monetary economics and banking
+- Researching debt dynamics and financial instability
+- Modeling complex economic systems with realistic banking
+- Making sophisticated economic analysis accessible to students
+
+**Website:** [https://minsky.sourceforge.io/](https://minsky.sourceforge.io/)
+
+## CircuitJS1 and Economic Modeling
+
+### Inspiration from Minsky
+
+The economics components in CircuitJS1 draw inspiration from Steve Keen's Minsky program, adapting system dynamics concepts to a circuit simulation environment:
+
+**Godley Tables → Table Elements:**
+- CircuitJS1's Table and Godly Table elements implement sectoral balance sheet accounting
+- Support for Assets, Liabilities, and Equity columns
+- Automatic enforcement of accounting identities
+- Integration capabilities for stock accumulation
+
+**Stock-Flow Diagrams → Circuit Diagrams:**
+- Stocks represented as accumulated values in Godly Tables
+- Flows represented as voltage levels and equations
+- Mathematical operations using circuit-like components
+- Visual representation of economic relationships
+
+### Key Differences
+
+While inspired by Minsky, CircuitJS1 takes a different approach:
+
+| Aspect | Minsky | CircuitJS1 |
+|--------|--------|------------|
+| **Primary Focus** | Economics | Electronics + Economics |
+| **Visual Metaphor** | Stock-flow diagrams | Circuit diagrams |
+| **Stock Accumulation** | Native stock elements | Godly Tables with integration |
+| **Flow Representation** | Wires with flow arrows | Voltage-based signals |
+| **Target Audience** | Economists, researchers | Electronics students, educators, economists |
+| **License** | GPL | GPL |
+
+## Economic Models in CircuitJS1
+
+### BOMD Models
+
+The Bank of Money and Debt (BOMD) models available in CircuitJS1 demonstrate SFC principles:
+
+**[BOMD Simple](examples.qmd#bomd-simple-model):**
+- Two-sector model: Banks and Private Sector
+- Demonstrates credit money creation
+- Shows balance sheet symmetry
+
+**[BOMD with Government](examples.qmd#bomd-with-government):**
+- Five-sector model including Treasury and Federal Reserve
+- Complete fiscal and monetary operations
+- Government deficit accounting
+- Bond market operations
+
+### Example: BOMD with Government in Action
+
+Below is a screenshot of the BOMD with Government model running in CircuitJS1, showing the complete five-sector economy with real-time balance sheets and debt dynamics:
+
+![BOMD with Government - Full Circuit View](../assets/circuit-20251113-1923.png)
+
+**What you see:**
+- **Top row**: Treasury and The Fed (Federal Reserve) balance sheets
+- **Middle row**: Banks balance sheet with reserves, debt, and government bonds
+- **Bottom row**: Borrowers and Savers balance sheets
+- **Circuit elements**: Mathematical operations showing money flows, lending, interest, and government operations
+- **Right side**: Oscilloscope displaying GDP and debt trajectories over time
+
+The oscilloscope trace shows the dynamic behavior of the system:
+
+![BOMD Scope Output - GDP and Debt Over Time](../assets/scopes-20251113-1923.png)
+
+**Key observations from the scope:**
+- **GDP (green)**: Shows oscillating growth with periodic fluctuations
+- **Government Debt (green)**: Accumulates over time at approximately 33.657 $
+- **Private Debt (red)**: Shows cyclical behavior at 13.978 $
+- **LRC trace**: Displays the loan-to-reserve ratio dynamics
+
+This demonstrates how:
+1. Government deficits accumulate as debt
+2. Private sector debt oscillates with economic cycles
+3. GDP responds to both fiscal and monetary flows
+4. All sectoral balances remain consistent (every credit has a corresponding debit)
+
+### Educational Applications
+
+**For Economics Students:**
+- Visual understanding of double-entry bookkeeping
+- Real-time observation of debt dynamics
+- Interactive exploration of monetary policy
+- Hands-on experience with sectoral balances
+
+**For Electronics Students:**
+- Application of circuit concepts to social systems
+- Understanding feedback loops and stability
+- Learning system dynamics through familiar tools
+- Cross-disciplinary thinking
+
+## Credit and Acknowledgments
+
+### Steve Keen's Contributions
+
+CircuitJS1's economic modeling capabilities would not exist without the groundbreaking work of:
+
+**Professor Steve Keen** - For developing accessible tools and frameworks for understanding:
+- Endogenous money creation
+- The critical role of private debt
+- Financial instability dynamics  
+- Stock-flow consistent modeling approaches
+
+### The Minsky Program
+
+**Minsky Software** - For pioneering the integration of:
+- Godley Tables for sectoral accounting
+- System dynamics with economic modeling
+- Visual modeling tools for complex systems
+- Open-source economics education
+
+### Intellectual Heritage
+
+The SFC modeling approach builds on the work of:
+
+- **Wynne Godley** - Cambridge economist who developed sectoral balance analysis
+- **Hyman Minsky** - Financial instability hypothesis and endogenous money
+- **Post-Keynesian economists** - Realistic modeling of money and banking
+
+## Further Learning
+
+### Recommended Resources
+
+**Steve Keen's Work:**
+- [Debunking Economics](https://www.profstevekeen.com/books/) - Critique of mainstream economics
+- [Can We Avoid Another Financial Crisis?](https://www.profstevekeen.com/books/) - Accessible introduction to debt dynamics
+- [YouTube Channel](https://www.youtube.com/@ProfSteveKeen) - Lectures and tutorials on economic modeling
+
+**Minsky Software:**
+- [Minsky Documentation](https://minsky.sourceforge.io/) - Official user guide
+- [Tutorial Videos](https://minsky.sourceforge.io/) - Getting started with economic modeling
+- [Source Code](https://sourceforge.net/projects/minsky/) - For developers
+
+**Academic Papers:**
+- Godley, W. & Lavoie, M. (2007) *Monetary Economics: An Integrated Approach*
+- Keen, S. (1995) "Finance and Economic Breakdown: Modeling Minsky's Financial Instability Hypothesis"
+- Keen, S. (2011) *Debunking Economics: The Naked Emperor Dethroned?*
+
+### Online Communities
+
+- **Patreon**: [Support Steve Keen's Research](https://www.patreon.com/ProfSteveKeen)
+- **Minsky User Forums**: Discussion and support for economic modeling
+- **Post-Keynesian Economics Community**: Academic discussions and resources
+
+## Using CircuitJS1 for SFC Modeling
+
+### Getting Started
+
+1. **Review the Examples**: Start with the [BOMD models](examples.qmd#economics--system-dynamics-models)
+2. **Understand Table Elements**: Read the [User Guide](user-guide.qmd#mathematical--economics-components)
+3. **Experiment**: Modify parameters and observe sectoral balance changes
+4. **Build Your Own**: Create custom models for specific economic scenarios
+
+### Best Practices
+
+**Maintain Consistency:**
+- Always ensure Assets = Liabilities + Equity
+- Check that sectoral balances sum to zero
+- Verify all flows have sources and destinations
+
+**Start Simple:**
+- Begin with two-sector models
+- Add complexity gradually
+- Test each addition thoroughly
+
+**Use Scopes:**
+- Monitor key stocks (debt, deposits, reserves)
+- Track important ratios (debt-to-GDP)
+- Observe system stability
+
+## Contributing
+
+We welcome contributions to improve CircuitJS1's economic modeling capabilities:
+
+- **New Models**: Share your SFC models with the community
+- **Documentation**: Help explain complex concepts
+- **Bug Reports**: Report issues with Table elements or calculations
+- **Feature Requests**: Suggest improvements for economic modeling
+
+See our [Contributing Guide](contributing.qmd) for details.
+
+---
+
+## Acknowledgment
+
+*CircuitJS1's economic modeling tools are inspired by and built upon the pioneering work of Professor Steve Keen and the Minsky program. We gratefully acknowledge their contributions to making complex economic concepts accessible and understandable. This implementation is an independent adaptation and is not officially affiliated with Professor Keen or the Minsky project.*
+
+*For serious economic research and advanced SFC modeling, we recommend using the [Minsky program](https://minsky.sourceforge.io/) directly.*
+
+---
+
+**Explore Economic Models:** [View Examples](examples.qmd) | [User Guide](user-guide.qmd) | [Launch App](../app.qmd)

@@ -23,6 +23,8 @@ website:
             href: docs/tutorials.qmd
           - text: "Examples"
             href: docs/examples.qmd
+          - text: "SFC Modeling"
+            href: docs/sfc-modeling.qmd
       - text: "Development"
         menu:
           - text: "Contributing"
@@ -38,6 +40,7 @@ website:
         - docs/user-guide.qmd
         - docs/tutorials.qmd
         - docs/examples.qmd
+        - docs/sfc-modeling.qmd
         - docs/building.qmd
         - docs/contributing.qmd
 
