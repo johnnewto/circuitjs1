@@ -570,13 +570,14 @@ public class TableRenderer {
             
             // Use cell font for cell values
             g.setFont(CELL_FONT);
+            double assets = 0.0, liabilities = 0.0, equity = 0.0;
             // Draw data cells for this row
             for (int col = 0; col < table.cols; col++) {
                 int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
                 
                 // Get voltage - calculate ALE inline for last column when cols >= 4
                 double voltage;
-                double assets = 0.0, liabilities = 0.0, equity = 0.0;
+
 
                 voltage = getCachedCellValue(row, col);
                 ColumnType type = getColumnType(col);
