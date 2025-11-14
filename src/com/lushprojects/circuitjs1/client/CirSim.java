@@ -1232,6 +1232,7 @@ public CirSim() {
     	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Ohmmeter"), "OhmMeterElm"));
     	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Ammeter"), "AmmeterElm"));
     	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Wattmeter"), "WattmeterElm"));
+    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Pie Chart"), "PieChartElm"));
     	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Test Point"), "TestPointElm"));
     	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Decimal Display"), "DecimalDisplayElm"));
     	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add LED Array"), "LEDArrayElm"));
@@ -3459,6 +3460,7 @@ public CirSim() {
 		getElm(i).reset();
 	for (i = 0; i != scopeCount; i++)
 		scopes[i].resetGraph(true);
+	
     	repaint();
     }
     
@@ -6307,6 +6309,7 @@ public CirSim() {
     	case 214: return new CCVSElm(x1, y1, x2, y2, f, st);
     	case 215: return new CCCSElm(x1, y1, x2, y2, f, st);
     	case 216: return new OhmMeterElm(x1, y1, x2, y2, f, st);
+    	case 217: return new PieChartElm(x1, y1, x2, y2, f, st);
     	
    		case 250: return new MultiplyElm(x1, y1, x2, y2, f, st);
    		case 251: return new AdderElm(x1, y1, x2, y2, f, st);
@@ -6582,6 +6585,8 @@ public CirSim() {
 		return (CircuitElm) new CCCSElm(x1, y1);
     	if (n=="OhmMeterElm")
 		return (CircuitElm) new OhmMeterElm(x1, y1);
+    	if (n=="PieChartElm")
+		return (CircuitElm) new PieChartElm(x1, y1);
     	if (n=="ScopeElm")
     	    	return (CircuitElm) new ScopeElm(x1,y1);
     	if (n=="FuseElm")

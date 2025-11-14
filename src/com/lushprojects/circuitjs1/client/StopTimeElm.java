@@ -25,30 +25,36 @@ class StopTimeElm extends CircuitElm {
     double stopTime;
     boolean stopped;
     boolean enabled;
+    boolean openPlotlyOnStop;
     
     public StopTimeElm(int xx, int yy) {
         super(xx, yy);
         stopTime = 1.0; // Default 1 second
         enabled = true; // Enabled by default
+        openPlotlyOnStop = false; // Default off
     }
     
     public StopTimeElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
         super(xa, ya, xb, yb, f);
         stopTime = Double.parseDouble(st.nextToken());
         enabled = true; // Default to enabled for backward compatibility
+        openPlotlyOnStop = false;
         try {
             enabled = Boolean.parseBoolean(st.nextToken());
+            openPlotlyOnStop = Boolean.parseBoolean(st.nextToken());
         } catch (Exception e) {
-            // If no enabled flag in saved file, default to true
+            // If no flags in saved file, use defaults
         }
     }
     
     String dump() { 
-        return super.dump() + " " + stopTime + " " + enabled; 
+        return super.dump() + " " + stopTime + " " + enabled + " " + openPlotlyOnStop; 
     }
     
     void reset() {
         stopped = false;
+        // Close any open Plotly windows
+        closePlotlyWindows();
     }
     
     int getDumpType() { 
@@ -84,8 +90,23 @@ class StopTimeElm extends CircuitElm {
             poly.addPoint(px, py);
         }
         
-        // Fill with red if enabled, gray if disabled
-        g.setColor(enabled ? Color.red : Color.gray);
+        // Determine color and text based on state
+        Color fillColor;
+        String signText;
+        if (!enabled) {
+            fillColor = Color.gray;
+            signText = "STOP";
+        } else if (stopped) {
+            fillColor = Color.red;
+            signText = "STOP";
+        } else {
+            // Ready to run - show green with GO
+            fillColor = Color.green;
+            signText = "GO";
+        }
+        
+        // Fill the octagon
+        g.setColor(fillColor);
         g.fillPolygon(poly);
         
         // Draw border using drawPolygon from CircuitElm
@@ -93,15 +114,14 @@ class StopTimeElm extends CircuitElm {
         g.setLineWidth(2.0);
         drawPolygon(g, poly);
         
-        // Draw "STOP" text in white
-        Font f = new Font("SansSerif", Font.BOLD, 12);
+        // Draw text in white
+        Font f = new Font("SansSerif", Font.BOLD, 16);
         g.setFont(f);
         g.setColor(Color.white);
-        String stopText = "STOP";
-        int textWidth = (int)g.context.measureText(stopText).getWidth();
-        g.drawString(stopText, cx - textWidth/2, cy + 4);
+        int textWidth = (int)g.context.measureText(signText).getWidth();
+        g.drawString(signText, cx - textWidth/2, cy + 4);
         
-        // Draw time above the stop sign
+        // Draw time above the sign
         f = new Font("SansSerif", selected ? Font.BOLD : 0, 14);
         g.setFont(f);
         g.setColor(selected ? selectColor : whiteColor);
@@ -129,22 +149,28 @@ class StopTimeElm extends CircuitElm {
         if (enabled && sim.t >= stopTime) {
             stopped = true;
             sim.setSimRunning(false);
+            
+            // Open Plotly viewer if option is enabled
+            if (openPlotlyOnStop) {
+                openPlotlyViewer();
+            }
         }
     }
     
     void getInfo(String arr[]) {
         arr[0] = "stop time";
         arr[1] = "enabled = " + (enabled ? "yes" : "no");
-        arr[2] = "current time = " + getUnitText(sim.t, "s");
-        arr[3] = "stop time = " + getUnitText(stopTime, "s");
+        arr[2] = "open Plotly = " + (openPlotlyOnStop ? "yes" : "no");
+        arr[3] = "current time = " + getUnitText(sim.t, "s");
+        arr[4] = "stop time = " + getUnitText(stopTime, "s");
         if (enabled) {
             if (sim.t >= stopTime) {
-                arr[4] = "stopped";
+                arr[5] = "stopped";
             } else {
-                arr[4] = "stopping in " + getUnitText(stopTime - sim.t, "s");
+                arr[5] = "stopping in " + getUnitText(stopTime - sim.t, "s");
             }
         } else {
-            arr[4] = "disabled";
+            arr[5] = "disabled";
         }
     }
     
@@ -158,6 +184,11 @@ class StopTimeElm extends CircuitElm {
             ei.checkbox = new Checkbox("Enabled", enabled);
             return ei;
         }
+        if (n == 2) {
+            EditInfo ei = new EditInfo("", 0, -1, -1);
+            ei.checkbox = new Checkbox("Open Plotly Viewer on Stop", openPlotlyOnStop);
+            return ei;
+        }
         return null;
     }
     
@@ -166,7 +197,26 @@ class StopTimeElm extends CircuitElm {
             stopTime = ei.value;
         if (n == 1)
             enabled = ei.checkbox.getState();
+        if (n == 2)
+            openPlotlyOnStop = ei.checkbox.getState();
     }
+    
+    void openPlotlyViewer() {
+        // Open all scopes in Plotly viewer immediately (without showing dialog)
+        new ScopeViewerDialog(sim, null, true);
+    }
+    
+    native void closePlotlyWindows() /*-{
+        // Close all windows opened by this app (stored in global variable)
+        if ($wnd.plotlyWindows) {
+            for (var i = 0; i < $wnd.plotlyWindows.length; i++) {
+                if ($wnd.plotlyWindows[i] && !$wnd.plotlyWindows[i].closed) {
+                    $wnd.plotlyWindows[i].close();
+                }
+            }
+            $wnd.plotlyWindows = [];
+        }
+    }-*/;
     
     // Override to prevent trying to find voltages (no posts)
     void setNodeVoltage(int n, double c) {

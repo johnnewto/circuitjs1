@@ -35,15 +35,27 @@ public class ScopeViewerDialog extends DialogBox {
     
     CirSim sim;
     Scope singleScope;  // If viewing just one scope
+    boolean isAutomatic;  // Track if this is an automatic open (for better error messages)
     
     public ScopeViewerDialog(CirSim s) {
         this(s, null);
     }
     
     public ScopeViewerDialog(CirSim s, Scope scope) {
+        this(s, scope, false);
+    }
+    
+    public ScopeViewerDialog(CirSim s, Scope scope, boolean openImmediately) {
         super();
         sim = s;
         singleScope = scope;
+        isAutomatic = openImmediately;
+        
+        if (openImmediately) {
+            // Open viewer directly without showing dialog
+            openViewer();
+            return;
+        }
         
         String title = (scope != null) ? 
             Locale.LS("Open Scope Viewer") : 
@@ -123,7 +135,12 @@ public class ScopeViewerDialog extends DialogBox {
         String html = generatePlotlyHTML(allDataJson.toString());
         
         // Open in new window
-        openWindowWithHTML(html);
+        if (!openWindowWithHTML(html)) {
+            // Popup was blocked
+            if (isAutomatic) {
+                CirSim.console("Plotly viewer popup was blocked. Please allow popups for this site, then manually open viewer from Scopes menu.");
+            }
+        }
     }
     
     /**
@@ -531,14 +548,31 @@ public class ScopeViewerDialog extends DialogBox {
     /**
      * Opens a new window with the given HTML content.
      * Uses native JavaScript to open window and write content.
+     * Tracks opened windows in a global array for cleanup.
+     * @return true if window opened successfully, false if blocked
      */
-    native void openWindowWithHTML(String html) /*-{
+    native boolean openWindowWithHTML(String html) /*-{
+        // Initialize array to track Plotly windows if it doesn't exist
+        if (!$wnd.plotlyWindows) {
+            $wnd.plotlyWindows = [];
+        }
+        
         var newWindow = $wnd.open('', '_blank', 'width=1400,height=900');
         if (newWindow) {
             newWindow.document.write(html);
             newWindow.document.close();
+            
+            // Track this window
+            $wnd.plotlyWindows.push(newWindow);
+            
+            // Clean up closed windows from the array
+            $wnd.plotlyWindows = $wnd.plotlyWindows.filter(function(w) {
+                return w && !w.closed;
+            });
+            return true;
         } else {
             alert('Please allow pop-ups for this site to view the scope data.');
+            return false;
         }
     }-*/;
 }
