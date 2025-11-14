@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CircuitJS1 Scope Data - Plotly Viewer</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            display: inline-block;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .hamburger {
+            cursor: pointer;
+            padding: 10px;
+            background: #007bff;
+            color: white;
+            border-radius: 4px;
+            font-size: 20px;
+            line-height: 1;
+            user-select: none;
+        }
+        .hamburger:hover {
+            background: #0056b3;
+        }
+        .help-popup {
+            display: none;
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            padding: 20px;
+            max-width: 450px;
+            z-index: 1000;
+        }
+        .help-popup.show {
+            display: block;
+        }
+        .help-popup h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        .help-popup .close-btn {
+            float: right;
+            cursor: pointer;
+            font-size: 24px;
+            color: #999;
+            line-height: 1;
+        }
+        .help-popup .close-btn:hover {
+            color: #333;
+        }
+        .help-popup button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+        }
+        .help-popup input[type=number] {
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .help-popup label {
+            color: #333;
+            font-size: 14px;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button.secondary {
+            background: #6c757d;
+            color: white;
+        }
+        button.secondary:hover {
+            background: #545b62;
+        }
+        #fileInput {
+            margin-right: 10px;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        #plot {
+            width: 100%;
+            height: 600px;
+            margin-top: 20px;
+        }
+        .info {
+            background: #e7f3ff;
+            padding: 10px;
+            border-left: 4px solid #007bff;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CircuitJS1 Scope Data Viewer (Plotly.js)</h1>
+            <div class="hamburger" onclick="toggleHelp()">☰</div>
+        </div>
+        
+        <div id="help-popup" class="help-popup">
+            <span class="close-btn" onclick="toggleHelp()">&times;</span>
+            <h3>Interactive Scope Data Visualization</h3>
+            <p><strong>Mouse Controls:</strong></p>
+            <ul>
+                <li><strong>Zoom:</strong> Click and drag on the graph</li>
+                <li><strong>Pan:</strong> Shift + drag</li>
+                <li><strong>Reset:</strong> Double-click</li>
+                <li><strong>Hover:</strong> See exact values</li>
+            </ul>
+            <p><strong>Legend:</strong> Click items to show/hide traces</p>
+            <p><strong>Range Slider:</strong> Use the slider below each graph to quickly navigate through the entire time series</p>
+            <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+            <div style="margin-top: 15px;">
+                <label for="graphWidth" style="display: block; margin-bottom: 5px;"><strong>Graph Width:</strong></label>
+                <input type="number" id="graphWidth" value="100" min="50" max="100" style="width: 60px; margin-right: 5px;">%
+                <label for="graphHeight" style="display: block; margin-top: 10px; margin-bottom: 5px;"><strong>Graph Height:</strong></label>
+                <input type="number" id="graphHeight" value="600" min="300" max="1200" step="50" style="width: 80px; margin-right: 5px;">px
+                <button class="secondary" onclick="resizeGraph()" style="margin-top: 10px;">Apply Size</button>
+            </div>
+            <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+            <div style="margin-top: 15px;">
+                <label style="display: block; margin-bottom: 5px;"><strong>Y-Axis Range (leave blank for auto):</strong></label>
+                <label for="yMin" style="display: inline-block; margin-right: 5px;">Min:</label>
+                <input type="number" id="yMin" placeholder="auto" step="any" style="width: 80px; margin-right: 10px;">
+                <label for="yMax" style="display: inline-block; margin-right: 5px;">Max:</label>
+                <input type="number" id="yMax" placeholder="auto" step="any" style="width: 80px;">
+                <button class="secondary" onclick="setYAxisRange()" style="margin-top: 10px;">Apply Y-Axis</button>
+                <button class="secondary" onclick="resetYAxisRange()" style="margin-top: 5px;">Reset to Auto</button>
+                <div style="margin-top: 10px;">
+                    <label style="display: inline-block;"><input type="checkbox" id="autoScaleEnabled" checked style="margin-right: 5px;">Auto-Scale to Visible Range</label>
+                </div>
+            </div>
+            <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+            <div style="margin-top: 15px;">
+                <button class="secondary" onclick="toggleRangeSlider(); toggleHelp();">Toggle Range Slider</button>
+            </div>
+        </div>
+        
+        <div class="info">
+            <strong>Instructions:</strong>
+            <ol>
+                <li>In CircuitJS1, right-click on a scope and select "Export Data..."</li>
+                <li>Choose JSON format and export the file</li>
+                <li>Load the exported JSON file below, or paste the JSON data directly</li>
+            </ol>
+        </div>
+
+        <div class="controls">
+            <input type="file" id="fileInput" accept=".json">
+            <button onclick="loadFromFile()">Load JSON File</button>
+            <button onclick="plotFromTextarea()">Plot from Textarea</button>
+            <button onclick="loadSampleData()">Load Sample Data</button>
+        </div>
+
+        <div>
+            <label for="jsonData">Or paste JSON data here:</label>
+            <textarea id="jsonData" placeholder="Paste CircuitJS1 scope JSON data here..."></textarea>
+        </div>
+
+        <div id="plot"></div>
+        
+        <div id="info"></div>
+    </div>
+
+    <script>
+        let rangeSliderVisible = true;
+        
+        function toggleHelp() {
+            const popup = document.getElementById('help-popup');
+            popup.classList.toggle('show');
+        }
+        
+        function resizeGraph() {
+            const width = document.getElementById('graphWidth').value;
+            const height = document.getElementById('graphHeight').value;
+            
+            const plotDiv = document.getElementById('plot');
+            if (plotDiv) {
+                plotDiv.style.width = width + '%';
+                plotDiv.style.height = height + 'px';
+                Plotly.Plots.resize(plotDiv);
+            }
+            
+            toggleHelp();
+        }
+        
+        function setYAxisRange() {
+            const yMin = document.getElementById('yMin').value;
+            const yMax = document.getElementById('yMax').value;
+            
+            const update = { 'yaxis.autorange': false };
+            
+            if (yMin !== '' && yMax !== '') {
+                update['yaxis.range'] = [parseFloat(yMin), parseFloat(yMax)];
+            } else if (yMin !== '') {
+                update['yaxis.range[0]'] = parseFloat(yMin);
+            } else if (yMax !== '') {
+                update['yaxis.range[1]'] = parseFloat(yMax);
+            }
+            
+            const plotDiv = document.getElementById('plot');
+            if (plotDiv && plotDiv.data) {
+                Plotly.relayout(plotDiv, update);
+            }
+            
+            toggleHelp();
+        }
+        
+        function resetYAxisRange() {
+            document.getElementById('yMin').value = '';
+            document.getElementById('yMax').value = '';
+            
+            const plotDiv = document.getElementById('plot');
+            if (plotDiv && plotDiv.data) {
+                Plotly.relayout(plotDiv, { 'yaxis.autorange': true });
+            }
+            
+            toggleHelp();
+        }
+        
+        function autoScaleToVisible() {
+            const plotDiv = document.getElementById('plot');
+            if (!plotDiv || !plotDiv.data || !plotDiv.layout) return;
+            
+            // Get current X-axis range (visible range in range slider)
+            const xaxis = plotDiv.layout.xaxis;
+            let xMin, xMax;
+            
+            if (xaxis.range) {
+                xMin = xaxis.range[0];
+                xMax = xaxis.range[1];
+            } else {
+                // Find min/max from data if no range set
+                xMin = Infinity;
+                xMax = -Infinity;
+                plotDiv.data.forEach(trace => {
+                    if (trace.x) {
+                        xMin = Math.min(xMin, ...trace.x);
+                        xMax = Math.max(xMax, ...trace.x);
+                    }
+                });
+            }
+            
+            // Find Y min/max for data points within visible X range
+            let yMin = Infinity;
+            let yMax = -Infinity;
+            
+            plotDiv.data.forEach(trace => {
+                if (trace.x && trace.y) {
+                    for (let i = 0; i < trace.x.length; i++) {
+                        if (trace.x[i] >= xMin && trace.x[i] <= xMax) {
+                            yMin = Math.min(yMin, trace.y[i]);
+                            yMax = Math.max(yMax, trace.y[i]);
+                        }
+                    }
+                }
+            });
+            
+            // Add 5% padding to Y range
+            if (isFinite(yMin) && isFinite(yMax)) {
+                const yPadding = (yMax - yMin) * 0.05;
+                yMin -= yPadding;
+                yMax += yPadding;
+                
+                Plotly.relayout(plotDiv, {
+                    'yaxis.autorange': false,
+                    'yaxis.range': [yMin, yMax]
+                });
+                
+                // Update input fields with calculated values
+                document.getElementById('yMin').value = yMin.toFixed(3);
+                document.getElementById('yMax').value = yMax.toFixed(3);
+            }
+        }
+        
+        function loadFromFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('Please select a file first');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const jsonData = e.target.result;
+                document.getElementById('jsonData').value = jsonData;
+                plotData(jsonData);
+            };
+            reader.readAsText(file);
+        }
+
+        function plotFromTextarea() {
+            const jsonData = document.getElementById('jsonData').value;
+            if (!jsonData.trim()) {
+                alert('Please paste JSON data first');
+                return;
+            }
+            plotData(jsonData);
+        }
+
+        function plotData(jsonString) {
+            try {
+                const data = JSON.parse(jsonString);
+                
+                // Display metadata
+                const infoDiv = document.getElementById('info');
+                let infoHtml = '<h3>Data Information</h3>';
+                infoHtml += '<p><strong>Source:</strong> ' + (data.source || 'Unknown') + '</p>';
+                infoHtml += '<p><strong>Export Type:</strong> ' + (data.exportType || 'Unknown') + '</p>';
+                
+                if (data.exportType === 'history') {
+                    infoHtml += '<p><strong>Start Time:</strong> ' + data.startTime + ' s</p>';
+                    infoHtml += '<p><strong>History Size:</strong> ' + data.historySize + ' samples</p>';
+                    infoHtml += '<p><strong>Sample Interval:</strong> ' + data.sampleInterval + ' s</p>';
+                } else if (data.exportType === 'circularBuffer') {
+                    infoHtml += '<p><strong>Simulation Time:</strong> ' + data.simulationTime + ' s</p>';
+                    infoHtml += '<p><strong>Time Step:</strong> ' + data.timeStep + ' s</p>';
+                }
+                
+                infoDiv.innerHTML = infoHtml;
+                
+                // Create Plotly traces
+                const traces = [];
+                
+                data.plots.forEach((plot, index) => {
+                    // Min values trace
+                    traces.push({
+                        x: plot.time,
+                        y: plot.minValues,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: plot.name + ' (min)',
+                        line: {
+                            color: plot.color,
+                            width: 1,
+                            dash: 'dot'
+                        },
+                        showlegend: plot.minValues.some((v, i) => v !== plot.maxValues[i])
+                    });
+                    
+                    // Max values trace
+                    traces.push({
+                        x: plot.time,
+                        y: plot.maxValues,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: plot.name + ' (max)',
+                        line: {
+                            color: plot.color,
+                            width: 2
+                        }
+                    });
+                });
+                
+                // Layout configuration
+                const layout = {
+                    title: 'CircuitJS1 Scope Data',
+                    xaxis: {
+                        title: 'Time (s)',
+                        gridcolor: '#ddd',
+                        rangeslider: { visible: true },
+                        type: 'linear'
+                    },
+                    yaxis: {
+                        title: 'Value',
+                        gridcolor: '#ddd'
+                    },
+                    hovermode: 'closest',
+                    showlegend: true,
+                    legend: {
+                        x: 1.05,
+                        y: 1
+                    }
+                };
+                
+                // Plot configuration
+                const config = {
+                    responsive: true,
+                    displayModeBar: true,
+                    displaylogo: false,
+                    modeBarButtonsToAdd: ['hoverclosest', 'hovercompare'],
+                    toImageButtonOptions: {
+                        format: 'png',
+                        filename: 'circuitjs_scope_data',
+                        height: 800,
+                        width: 1200,
+                        scale: 2
+                    }
+                };
+                
+                Plotly.newPlot('plot', traces, layout, config);
+                
+                // Add event listener for auto-scaling on range changes
+                document.getElementById('plot').on('plotly_relayout', function(eventData) {
+                    if (document.getElementById('autoScaleEnabled').checked) {
+                        // Check if X-axis range changed (from zoom or range slider)
+                        if (eventData['xaxis.range[0]'] !== undefined || eventData['xaxis.range'] !== undefined) {
+                            autoScaleToVisible();
+                        }
+                    }
+                });
+                
+            } catch (error) {
+                alert('Error parsing JSON: ' + error.message);
+                console.error(error);
+            }
+        }
+
+        function toggleRangeSlider() {
+            rangeSliderVisible = !rangeSliderVisible;
+            Plotly.relayout('plot', {
+                'xaxis.rangeslider.visible': rangeSliderVisible
+            });
+        }
+
+        function loadSampleData() {
+            // Sample data for demonstration
+            const sampleData = {
+                "source": "CircuitJS1 Scope",
+                "exportType": "circularBuffer",
+                "simulationTime": 0.01,
+                "timeStep": 0.0001,
+                "plots": [
+                    {
+                        "name": "Voltage",
+                        "units": "V",
+                        "color": "#00FF00",
+                        "time": [0, 0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01],
+                        "minValues": [0, 0.95, 1.85, 2.65, 3.25, 3.65, 3.85, 3.85, 3.65, 3.25, 2.65],
+                        "maxValues": [0, 1.05, 1.95, 2.75, 3.35, 3.75, 3.95, 3.95, 3.75, 3.35, 2.75]
+                    },
+                    {
+                        "name": "Current",
+                        "units": "A",
+                        "color": "#FFFF00",
+                        "time": [0, 0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01],
+                        "minValues": [0, 0.045, 0.085, 0.115, 0.135, 0.145, 0.145, 0.135, 0.115, 0.085, 0.045],
+                        "maxValues": [0, 0.055, 0.095, 0.125, 0.145, 0.155, 0.155, 0.145, 0.125, 0.095, 0.055]
+                    }
+                ]
+            };
+            
+            document.getElementById('jsonData').value = JSON.stringify(sampleData, null, 2);
+            plotData(JSON.stringify(sampleData));
+        }
+    </script>
+</body>
+</html>

@@ -67,6 +67,17 @@ python3 -m http.server 8080
 
 **Note**: The CircuitJS application will only work properly when compiled for production. If you see errors about "Super Dev Mode server at port 9876", run `./build.sh` to ensure the production build is used.
 
+
+
+###  Local Testing with Quarto Preview
+
+```bash
+cd docs-template        # Return to docs
+quarto render           # Render documentation
+# Preview the site locally
+quarto preview
+```
+
 ## Deployment
 
 ### GitHub Pages Setup

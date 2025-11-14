@@ -37,6 +37,8 @@ public class ScopePopupMenu {
     private MenuItem dockItem;
     private MenuItem undockItem;
     private CheckboxMenuItem drawFromZeroItem;
+    private MenuItem exportDataItem;
+    private MenuItem viewPlotlyItem;
     
     ScopePopupMenu() {
 	 m = new MenuBar(true);
@@ -52,6 +54,8 @@ public class ScopePopupMenu {
 	 m.addSeparator();
 	 m.addItem(drawFromZeroItem = new CheckboxMenuItem(Locale.LS("Draw From Zero"), new MyCommand("scopepop", "drawfromzero")));
 	 m.addSeparator();
+	 m.addItem(exportDataItem = new CheckboxAlignedMenuItem(Locale.LS("Export Data..."), new MyCommand("scopepop", "exportdata")));
+	 m.addItem(viewPlotlyItem = new CheckboxAlignedMenuItem(Locale.LS("View in Plotly..."), new MyCommand("scopepop", "viewplotly")));
 	 m.addItem(propertiesItem = new CheckboxAlignedMenuItem(Locale.LS("Properties..."), new MyCommand("scopepop", "properties")));
     }
     

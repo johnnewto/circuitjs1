@@ -23,6 +23,8 @@ website:
             href: docs/tutorials.qmd
           - text: "Examples"
             href: docs/examples.qmd
+          - text: "Plotly Viewer"
+            href: docs/plotly-viewer.qmd
           - text: "SFC Modeling"
             href: docs/sfc-modeling.qmd
       - text: "Development"
@@ -40,6 +42,7 @@ website:
         - docs/user-guide.qmd
         - docs/tutorials.qmd
         - docs/examples.qmd
+        - docs/plotly-viewer.qmd
         - docs/sfc-modeling.qmd
         - docs/building.qmd
         - docs/contributing.qmd

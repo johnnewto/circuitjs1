@@ -19,7 +19,7 @@ Ready to start simulating circuits? [Launch the CircuitJS1 App](app.qmd) or brow
   - Stock-Flow Consistent (SFC) modeling inspired by [Steve Keen's Minsky program](docs/sfc-modeling.qmd)
   - Stock-flow analysis with integrated balance sheets
   - Table elements for accounting equations (Assets = Liabilities + Equity)
-  - Pre-built BOMD (Bank of Money and Debt) models
+  - Pre-built BOMD (Bank Originated Money and Debt) models
   - Support for monetary economics and sectoral balances
   - [Learn more about SFC modeling →](docs/sfc-modeling.qmd)
 - **Interactive components** - drag, connect, and modify circuit elements

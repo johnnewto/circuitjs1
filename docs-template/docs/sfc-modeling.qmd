@@ -85,14 +85,14 @@ While inspired by Minsky, CircuitJS1 takes a different approach:
 | **Visual Metaphor** | Stock-flow diagrams | Circuit diagrams |
 | **Stock Accumulation** | Native stock elements | Godly Tables with integration |
 | **Flow Representation** | Wires with flow arrows | Voltage-based signals |
-| **Target Audience** | Economists, researchers | Electronics students, educators, economists |
+| **Target Audience** | Economists, researchers, educators | Electronics students, educators, economists |
 | **License** | GPL | GPL |
 
 ## Economic Models in CircuitJS1
 
 ### BOMD Models
 
-The Bank of Money and Debt (BOMD) models available in CircuitJS1 demonstrate SFC principles:
+The Bank Originated Money and Debt (BOMD) models available in CircuitJS1 demonstrate SFC principles:
 
 **[BOMD Simple](examples.qmd#bomd-simple-model):**
 - Two-sector model: Banks and Private Sector

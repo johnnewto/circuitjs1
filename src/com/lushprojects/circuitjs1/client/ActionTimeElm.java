@@ -76,8 +76,8 @@ class ActionTimeElm extends CircuitElm {
     
     void reset() {
         actionTriggered = false;
-        // Set slider to "before" value on reset
-        if (sliderName != null && sliderName.length() > 0) {
+        // Set slider to "before" value on reset only if enabled
+        if (enabled && sliderName != null && sliderName.length() > 0) {
             setSliderValue(sliderName, sliderValueBefore);
         }
     }

@@ -587,6 +587,8 @@ public CirSim() {
 	m.addItem(unstackAllItem = iconMenuItem("columns", "Unstack All", new MyCommand("scopes", "unstackAll")));
 	m.addItem(combineAllItem = iconMenuItem("object-group", "Combine All", new MyCommand("scopes", "combineAll")));
 	m.addItem(separateAllItem = iconMenuItem("object-ungroup", "Separate All", new MyCommand("scopes", "separateAll")));
+	m.addSeparator();
+	m.addItem(iconMenuItem("line-chart", "View All Scopes in Plotly...", new MyCommand("scopes", "viewAllPlotly")));
 	menuBar.addItem(Locale.LS("Scopes"), m);
 
 	optionsMenuBar = m = new MenuBar(true );
@@ -3653,6 +3655,8 @@ public CirSim() {
 		combineAll();
     	if (item=="separateAll")
 		separateAll();
+    	if (item=="viewAllPlotly")
+		new ScopeViewerDialog(this);
     	if (item=="zoomin")
     	    zoomCircuit(20, true);
     	if (item=="zoomout")
@@ -3764,6 +3768,10 @@ public CirSim() {
     			s.resetGraph(true);
     		if (item=="properties")
 			s.properties();
+    		if (item=="exportdata")
+			new ExportScopeDataDialog(s);
+    		if (item=="viewplotly")
+			new ScopeViewerDialog(this, s);
     		if (item=="drawfromzero")
     			s.toggleDrawFromZero();
     		deleteUnusedScopeElms();

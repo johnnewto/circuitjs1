@@ -1,0 +1,350 @@
+---
+title: "Interactive Plotly Viewer"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: false
+---
+
+## Overview
+
+The **Interactive Plotly Viewer** provides instant, interactive visualization of oscilloscope data using Plotly.js in a new browser window. This feature allows you to explore your circuit simulation results with powerful zooming, panning, and data export capabilities.
+
+::: {.callout-note}
+## Key Benefits
+- ✅ **One-Click Viewing** - Open all scopes or individual scopes instantly
+- ✅ **Interactive Graphs** - Zoom, pan, hover for values, export as PNG
+- ✅ **Range Slider** - Navigate through entire time series with ease
+- ✅ **No File Downloads** - Data embedded directly in the viewer
+- ✅ **Multiple Scopes** - View all scopes at once, each in its own panel
+- ✅ **Download Options** - Export all data as JSON or CSV from the viewer
+:::
+
+## Quick Start
+
+### View All Scopes
+
+**From the Menu:**
+
+1. Click **Scopes** menu in the top menu bar
+2. Select **"View All Scopes in Plotly..."**
+3. Click **"Open Viewer"** in the dialog
+4. A new browser window opens with all scope graphs
+
+![View all scopes from menu](../assets/plotly-menu.png){width=60%}
+
+### View Single Scope
+
+**From Right-Click Context Menu:**
+
+1. **Right-click** on any scope in your circuit
+2. Select **"View in Plotly..."** from the context menu
+3. Click **"Open Viewer"** in the dialog
+4. A new browser window opens showing just that scope
+
+![Single scope context menu](../assets/plotly-context.png){width=50%}
+
+## Interactive Features
+
+### Range Slider Navigation
+
+The range slider appears below each graph, providing a minimap-style overview of your entire time series:
+
+- **Drag handles** to select a specific time range
+- **Zoom into regions** without losing context
+- **Navigate long simulations** efficiently
+- **Toggle visibility** with the "Toggle Range Sliders" button
+
+::: {.callout-tip}
+## Working with Long Time Series
+The range slider is especially useful for simulations with thousands of data points. Use it to quickly navigate to specific time periods while maintaining an overview of the entire waveform.
+:::
+
+### Zooming and Panning
+
+**Zoom:**
+- Click and drag to zoom into a region
+- Double-click to reset zoom
+- Use the range slider for coarse navigation
+
+**Pan:**
+- Shift + drag to pan across the graph
+- Use scrollbar if available
+- Drag the range slider window
+
+### Data Inspection
+
+**Hover Information:**
+- Hover over any trace to see exact values
+- Tooltip shows time and value
+- Compare multiple traces simultaneously
+
+**Legend Controls:**
+- Click legend items to show/hide individual traces
+- Double-click to isolate one trace
+- Useful for analyzing specific signals
+
+### Export Options
+
+**Image Export:**
+- Click the camera icon in the Plotly toolbar
+- Export current view as high-quality PNG
+- Configurable resolution and filename
+- Perfect for documentation and presentations
+
+**Data Download:**
+- **Download All Data (JSON)** - Structured format for processing
+- **Download All Data (CSV)** - Spreadsheet-compatible format
+- Both buttons available in the viewer interface
+
+## Viewer Layout
+
+Each scope appears in its own panel with:
+
+```
+┌─────────────────────────────────────────┐
+│ Scope Name/Title                        │
+├─────────────────────────────────────────┤
+│ Metadata: Export type, samples, timing │
+├─────────────────────────────────────────┤
+│                                         │
+│     Interactive Plot with Legend       │
+│                                         │
+├─────────────────────────────────────────┤
+│     Range Slider (timeline overview)   │
+└─────────────────────────────────────────┘
+```
+
+### Color Preservation
+
+The viewer maintains the same colors used in CircuitJS1:
+
+- Plot colors match CircuitJS1 scope displays
+- Min/max traces shown (if different)
+- Dotted lines for min values
+- Solid lines for max values
+- Easy visual correlation
+
+## Data Sources
+
+### Automatic Mode Selection
+
+The viewer automatically selects the best data source:
+
+::: {.panel-tabset}
+
+## Draw From Zero Mode
+
+**When enabled with history available:**
+- Exports full history from t=0
+- Can include thousands of points
+- Shows complete simulation timeline
+- Ideal for detailed analysis
+
+## Circular Buffer Mode
+
+**Standard mode:**
+- Exports visible circular buffer data
+- Typically 128 sample points
+- Shows recent simulation window
+- Fast and responsive
+
+:::
+
+### Data Included
+
+For each scope, the viewer includes:
+
+- Scope name (from title or custom label)
+- All visible plots
+- Time arrays (calculated from simulation time)
+- Min and max value arrays
+- Units (V, A, Ω, W)
+- Plot colors
+- Metadata (sample count, timing information)
+
+## Technical Details
+
+### Browser Requirements
+
+Works in all modern browsers:
+
+| Browser | Status | Notes |
+|---------|--------|-------|
+| Chrome/Edge | ✅ Recommended | Best performance |
+| Firefox | ✅ Supported | Full compatibility |
+| Safari | ✅ Supported | macOS/iOS |
+| Opera | ✅ Supported | Full compatibility |
+
+**Requirements:**
+- JavaScript enabled
+- Pop-ups allowed (for new window)
+- Internet connection (for Plotly.js CDN)
+
+### Performance
+
+The viewer is optimized for efficiency:
+
+- Handles **thousands of data points** smoothly
+- Smooth zooming and panning
+- Responsive interface
+- Lightweight (data only, not full CircuitJS1)
+- Efficient rendering with Plotly.js
+
+### Generated HTML
+
+The viewer generates a complete, self-contained HTML page:
+
+- Embedded Plotly.js library (v2.27.0 from CDN)
+- All scope data embedded as JSON
+- Responsive CSS styling
+- Download buttons with data URI generation
+- JavaScript plotting code
+- Range slider controls
+
+## Use Cases
+
+### 1. Quick Analysis
+
+Perfect for rapid waveform inspection:
+
+- Check waveform shapes quickly
+- Verify signal timing
+- Compare multiple signals
+- Identify obvious issues
+
+### 2. Detailed Investigation
+
+Deep dive into simulation results:
+
+- Zoom into specific regions
+- Measure exact values at specific times
+- Identify subtle anomalies
+- Analyze transient behavior
+
+### 3. Presentation & Documentation
+
+Share and present results:
+
+- Export high-quality images
+- Share interactive viewers with colleagues
+- Document circuit behavior
+- Include in reports and papers
+
+### 4. Data Collection
+
+Extract data for further analysis:
+
+- Download all scope data at once
+- CSV format for Excel/spreadsheets
+- JSON format for Python/MATLAB processing
+- Batch analysis of multiple scopes
+
+## Comparison of Viewing Methods
+
+| Feature | Interactive Viewer | Export Dialog | plotly-example.html |
+|---------|-------------------|---------------|---------------------|
+| **Speed** | ⚡ Instant | 📁 Manual file saving | 📂 Manual file loading |
+| **Data Source** | All or single scope | Single scope only | Manual selection |
+| **Interaction** | ✅ Built-in | ❌ None | ✅ Built-in |
+| **Downloads** | Optional | Primary purpose | Optional |
+| **Setup** | None needed | None needed | Open HTML file |
+| **Offline** | Requires CDN | ✅ Yes | Requires CDN |
+| **Best For** | Quick analysis | Data archival | External workflows |
+
+## Troubleshooting
+
+### Pop-up Blocked
+
+::: {.callout-warning}
+## Problem
+New window doesn't open after clicking "Open Viewer"
+
+**Solution:**  
+Allow pop-ups for CircuitJS1 in your browser settings. Look for the blocked pop-up icon in your address bar.
+:::
+
+### Plotly Not Loading
+
+::: {.callout-warning}
+## Problem
+Viewer opens but graphs don't appear
+
+**Solution:**  
+Check your internet connection. Plotly.js loads from a CDN (Content Delivery Network). If offline, the graphs won't render.
+:::
+
+### No Data Shown
+
+::: {.callout-warning}
+## Problem
+Viewer opens but shows empty or blank graphs
+
+**Solution:**  
+- Ensure scopes have visible plots enabled
+- Check that simulation has run for some time
+- Verify scope isn't displaying empty channels
+- Try running the simulation longer to collect data
+:::
+
+### Download Buttons Not Working
+
+::: {.callout-warning}
+## Problem
+Can't download JSON or CSV files
+
+**Solution:**  
+- Check browser download settings
+- Ensure downloads aren't blocked for CircuitJS1
+- Check available disk space
+- Try a different browser
+:::
+
+## Advanced Tips
+
+### Analyzing Multiple Signals
+
+When viewing all scopes:
+
+1. Use the legend to selectively show/hide traces
+2. Compare timing between different scopes
+3. Correlate cause and effect across circuits
+4. Export images of multi-scope views
+
+### Working with Large Datasets
+
+For simulations with extensive history:
+
+1. Enable **"Draw From Zero"** mode on scopes
+2. Run simulation to collect data
+3. Use the range slider for navigation
+4. Zoom into regions of interest
+5. Export specific views as needed
+
+### Presentation-Ready Exports
+
+To create publication-quality images:
+
+1. Adjust zoom to show region of interest
+2. Use legend to hide unnecessary traces
+3. Click camera icon in Plotly toolbar
+4. Select desired resolution
+5. Save with descriptive filename
+
+## Related Features
+
+- **[Export Data Dialog](user-guide.qmd#export-scope-data)** - Manual CSV/JSON export
+- **[Oscilloscopes](user-guide.qmd#oscilloscopes)** - Using scopes in CircuitJS1
+- **[Draw From Zero Mode](user-guide.qmd#draw-from-zero)** - Enabling history buffers
+
+## Technical Implementation
+
+For developers interested in the implementation:
+
+- **ScopeViewerDialog.java** - Dialog and HTML generation logic
+- **Scope.java** - Export methods for JSON/CSV data
+- **CirSim.java** - Menu integration
+- **ScopePopupMenu.java** - Context menu items
+
+See the [Contributing Guide](contributing.qmd) for more details on the codebase.
