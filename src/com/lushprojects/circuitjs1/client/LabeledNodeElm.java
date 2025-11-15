@@ -168,6 +168,24 @@ class LabeledNodeElm extends CircuitElm {
     int getDumpType() { return 207; }
     int getPostCount() { return 1; }
     
+    void drag(int xx, int yy) {
+	// Check if a specific handle was grabbed
+	if (lastHandleGrabbed == 0) {
+	    // Dragging the first point (x, y) - the connection point
+	    x = xx;
+	    y = yy;
+	} else {
+	    // Dragging the second point (x2, y2) - the label end, or initial creation
+	    x2 = xx;
+	    y2 = yy;
+	}
+	setPoints();
+    }
+    
+    int getNumHandles() {
+	return 2;
+    }
+    
     // this is basically a wire, since it just connects two or more nodes together
     boolean isWireEquivalent() { return true; }
     boolean isRemovableWire() { return true; }

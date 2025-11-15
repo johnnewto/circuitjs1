@@ -43,8 +43,20 @@ class LineElm extends GraphicElm {
     int getDumpType() { return 423; }
 
     void drag(int xx, int yy) {
-	x2 = xx;
-	y2 = yy;
+	// Check if a specific handle was grabbed
+	if (lastHandleGrabbed == 0) {
+	    // Dragging the first point (x, y)
+	    x = xx;
+	    y = yy;
+	} else {
+	    // Dragging the second point (x2, y2) or initial creation
+	    x2 = xx;
+	    y2 = yy;
+	}
+    }
+    
+    int getNumHandles() {
+	return 2;
     }
 
     boolean creationFailed() {

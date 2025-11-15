@@ -60,13 +60,6 @@ class DifferentiatorElm extends VCCSElm {
             }
         }
         
-        // converged yet?
-        double convergeLimit = getConvergeLimit();
-        for (i = 0; i != inputCount; i++) {
-            double diff = Math.abs(volts[i]-lastVolts[i]);
-            if (diff > convergeLimit)
-                sim.converged = false;
-        }
         int vn = pins[inputCount].voltSource + sim.nodeList.size();
         if (expr != null) {
             // calculate output
@@ -75,9 +68,13 @@ class DifferentiatorElm extends VCCSElm {
 
             exprState.t = sim.t;
             double v0 = expr.eval(exprState);
-            double vMinus = 0; // V- is always ground
-            if (Math.abs(volts[inputCount]-vMinus-v0) > Math.abs(v0)*.01 && sim.subIterations < 100)
+            
+            // Check output voltage convergence (relaxed threshold for derivative calculation)
+            // Derivatives are inherently sensitive, so use 1%
+            if (Math.abs(volts[inputCount] - v0) > Math.abs(v0) * 0.01 && sim.subIterations < 100) {
                 sim.converged = false;
+            }
+            
             double rs = v0;
             
             // calculate and stamp output derivatives

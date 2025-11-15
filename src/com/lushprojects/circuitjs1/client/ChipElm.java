@@ -119,7 +119,7 @@ abstract class ChipElm extends CircuitElm {
 		while (true) {
 		    int sw=(int)g.context.measureText(p.text).getWidth();
 		    // scale font down if it's too big
-		    if (sw > availSpace) {
+		    if (sw > availSpace && fsz > 1) {
 			fsz -= 1;
 			Font f2 = new Font("normal", 0, fsz);
 			g.setFont(f2);

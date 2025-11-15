@@ -46,15 +46,12 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 		// V- is internal, always node 0 (ground)
 	    sizeX = 2;
             sizeY = inputCount > 2 ? inputCount : 2;
-            pins = new Pin[inputCount+2];
+            pins = new Pin[inputCount+1];
 	    int i;
 	    for (i = 0; i != inputCount; i++) {
-			// pins[i] = new Pin(i, SIDE_W, Character.toString((char)('A'+i)));
 			pins[i] = new Pin(i, SIDE_W, ""); 
-			// Posts closer together: use smaller spacing
-        	// pins[i].y = (i * sizeY) / (inputCount - 1 < 1 ? 1 : inputCount - 1);
 		}
-	    pins[inputCount] = new Pin(0, SIDE_E, exprString);
+	    pins[inputCount] = new Pin(0, SIDE_E, "");
 	    pins[inputCount].output = true;
         // pins[inputCount+1] = new Pin(1, SIDE_E, "V-"); no V- pin
 	    lastVolts = new double[inputCount];
@@ -186,13 +183,14 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 		// 	return;
 		// }
 		if (n == 0) {
-			if (ei.value < 0 || ei.value > 4)
+			if (ei.value < 1 || ei.value > 8)
 				return;
 			inputCount = (int) ei.value;
 			exprString = "a";
 			int i;
 			for (i = 1; i != inputCount; i++)
 				exprString += "*"+(char)('a'+i);
+			parseExpr();
 			setupPins();
 			allocNodes();
 			setPoints();
