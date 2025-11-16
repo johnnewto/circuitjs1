@@ -10,6 +10,7 @@ econ_KeenMinskyGodley01.txt Keen Minsky Godley 01
 1dbg_LRC+Table.txt Dbg LRC+Table
 1dbg_GodleyTest.txt Godley Test
 1dbg_percent_meter_test.txt Percent Meter Test
+1deb_ODE.txt ODE Test
 1debugcopy3.txt Debug 3
 1debugcopy5.txt Debug 5
 -
