@@ -343,41 +343,7 @@ class ODEElm extends ChipElm {
             EditInfo ei = new EditInfo("Name", 0, -1, -1);
             ei.text = elementName;
             ei.disallowSliders();
-            
-            // Build completion list for element names
-            java.util.List<String> completions = new java.util.ArrayList<String>();
-            
-            // Add stock variables (useful for naming ODEs after what they track)
-            java.util.Set<String> stockNames = StockFlowRegistry.getAllStockNames();
-            if (stockNames != null && !stockNames.isEmpty()) {
-                for (String stockName : stockNames) {
-                    completions.add(stockName);
-                }
-            }
-            
-            // Add other ODE element names in the circuit
-            if (sim != null && sim.elmList != null) {
-                for (int i = 0; i < sim.elmList.size(); i++) {
-                    CircuitElm ce = sim.getElm(i);
-                    if (ce instanceof ODEElm && ce != this) {
-                        ODEElm ode = (ODEElm) ce;
-                        if (ode.elementName != null && !ode.elementName.isEmpty()) {
-                            completions.add(ode.elementName);
-                        }
-                    }
-                }
-            }
-            
-            // Add labeled node names
-            String[] labeledNodes = LabeledNodeElm.getSortedLabeledNodeNames();
-            if (labeledNodes != null && labeledNodes.length > 0) {
-                for (String nodeName : labeledNodes) {
-                    completions.add(nodeName);
-                }
-            }
-            
-            // Attach completion list for tab completion
-            ei.completionList = completions;
+
             
             return ei;
         }
@@ -397,13 +363,6 @@ class ODEElm extends ChipElm {
                 }
             }
             
-            // Add labeled node names
-            String[] labeledNodes = LabeledNodeElm.getSortedLabeledNodeNames();
-            if (labeledNodes != null && labeledNodes.length > 0) {
-                for (String nodeName : labeledNodes) {
-                    completions.add(nodeName);
-                }
-            }
             
             // Add variables used in cell equations
             java.util.Set<String> cellVariables = StockFlowRegistry.getAllCellEquationVariables();
@@ -413,18 +372,18 @@ class ODEElm extends ChipElm {
                 }
             }
             
-            // Add other ODE element names in the circuit
-            if (sim != null && sim.elmList != null) {
-                for (int i = 0; i < sim.elmList.size(); i++) {
-                    CircuitElm ce = sim.getElm(i);
-                    if (ce instanceof ODEElm && ce != this) {
-                        ODEElm ode = (ODEElm) ce;
-                        if (ode.elementName != null && !ode.elementName.isEmpty()) {
-                            completions.add(ode.elementName);
-                        }
-                    }
-                }
-            }
+            // // Add other ODE element names in the circuit
+            // if (sim != null && sim.elmList != null) {
+            //     for (int i = 0; i < sim.elmList.size(); i++) {
+            //         CircuitElm ce = sim.getElm(i);
+            //         if (ce instanceof ODEElm && ce != this) {
+            //             ODEElm ode = (ODEElm) ce;
+            //             if (ode.elementName != null && !ode.elementName.isEmpty()) {
+            //                 completions.add(ode.elementName);
+            //             }
+            //         }
+            //     }
+            // }
             
             // Add parameter names for this ODE element
             for (int i = 0; i < numParameters; i++) {
