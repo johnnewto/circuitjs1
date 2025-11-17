@@ -356,8 +356,12 @@ class ODEElm extends ChipElm {
             return ei;
         }
         if (n == 3) {
-            EditInfo ei = new EditInfo("Number of Parameters (1-8)", numParameters, 1, MAX_PARAMETERS);
-            ei.disallowSliders();
+            EditInfo ei = new EditInfo("Number of Parameters", "");
+            ei.choice = new Choice();
+            for (int i = 1; i <= MAX_PARAMETERS; i++) {
+                ei.choice.add(String.valueOf(i));
+            }
+            ei.choice.select(numParameters - 1);
             return ei;
         }
         
@@ -391,8 +395,8 @@ class ODEElm extends ChipElm {
             integratedValue = initialValue;
         }
         if (n == 3) {
-            int newNumParams = (int) ei.value;
-            if (newNumParams >= 1 && newNumParams <= MAX_PARAMETERS) {
+            int newNumParams = ei.choice.getSelectedIndex() + 1;
+            if (newNumParams != numParameters) {
                 numParameters = newNumParams;
                 ei.newDialog = true;  // Refresh dialog to show new parameter fields
             }

@@ -275,6 +275,7 @@ MouseOutHandler, MouseWheelHandler {
 
     DockLayoutPanel layoutPanel;
     MenuBar menuBar;
+    MenuBar drawMenuBar;
     MenuBar fileMenuBar;
     VerticalPanel verticalPanel;
     CellPanel buttonPanel;
@@ -286,6 +287,10 @@ MouseOutHandler, MouseWheelHandler {
 
     Vector<CheckboxMenuItem> mainMenuItems = new Vector<CheckboxMenuItem>();
     Vector<String> mainMenuItemNames = new Vector<String>();
+    
+    // Menu definition loaded from menulist.txt
+    String menuDefinition = null;
+    boolean menuDefinitionLoaded = false;
 
     LoadFile loadFileInput;
     Frame iFrame;
@@ -577,7 +582,7 @@ public CirSim() {
 	m.addItem(flipXYItem = iconMenuItem("flip-x-y", "Flip XY", new MyCommand("edit", "flipxy")));
 	menuBar.addItem(Locale.LS("Edit"),m);
 
-	MenuBar drawMenuBar = new MenuBar(true);
+	drawMenuBar = new MenuBar(true);
 	drawMenuBar.setAutoOpen(true);
 
 	menuBar.addItem(Locale.LS("Draw"), drawMenuBar);
@@ -923,6 +928,58 @@ public CirSim() {
 	setupJSInterface();
 	
 	setSimRunning(running);
+	
+	// Load menu definition
+	loadMenuDefinition();
+    }
+    
+    // Load menu definition from menulist.txt
+    void loadMenuDefinition() {
+	String url = GWT.getModuleBaseURL() + "menulist.txt";
+	RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, url);
+	try {
+	    requestBuilder.sendRequest(null, new RequestCallback() {
+		public void onError(Request request, Throwable exception) {
+		    console("Warning: Can't load menu definition, using hardcoded menu");
+		    GWT.log("Menu definition file error", exception);
+		    menuDefinitionLoaded = false;
+		}
+
+		public void onResponseReceived(Request request, Response response) {
+		    if (response.getStatusCode() == Response.SC_OK) {
+			menuDefinition = response.getText();
+			menuDefinitionLoaded = true;
+			console("Menu definition loaded successfully");
+			// Rebuild menus now that definition is loaded
+			rebuildMenusFromDefinition();
+		    } else {
+			console("Warning: Can't load menu definition, using hardcoded menu");
+			GWT.log("Bad menu definition response: " + response.getStatusText());
+			menuDefinitionLoaded = false;
+		    }
+		}
+	    });
+	} catch (RequestException e) {
+	    console("Warning: Can't load menu definition, using hardcoded menu");
+	    GWT.log("Failed loading menu definition", e);
+	    menuDefinitionLoaded = false;
+	}
+    }
+    
+    // Rebuild menus after menu definition is loaded
+    void rebuildMenusFromDefinition() {
+	// Clear existing menu items
+	mainMenuBar.clearItems();
+	drawMenuBar.clearItems();
+	
+	// Rebuild both menus with new definition
+	composeMainMenu(mainMenuBar, 0);
+	composeMainMenu(drawMenuBar, 1);
+	
+	// Recompose subcircuit menus if needed
+	composeSubcircuitMenu();
+	
+	console("Menus rebuilt from definition");
     }
 
     void setColors(String positiveColor, String negativeColor, String neutralColor, String selectColor, String currentColor) {
@@ -1158,6 +1215,98 @@ public CirSim() {
     
     // this is called twice, once for the Draw menu, once for the right mouse popup menu
     public void composeMainMenu(MenuBar mainMenuBar, int num) {
+	// Try to load from menu definition file first
+	if (menuDefinitionLoaded && menuDefinition != null) {
+	    composeMainMenuFromFile(mainMenuBar, num);
+	} else {
+	    // Fallback to hardcoded menu
+	    composeMainMenuHardcoded(mainMenuBar, num);
+	}
+    }
+    
+    // Load menu from menulist.txt file
+    void composeMainMenuFromFile(MenuBar mainMenuBar, int num) {
+	String[] lines = menuDefinition.split("\n");
+	MenuBar currentMenuBar = mainMenuBar;
+	MenuBar[] menuStack = new MenuBar[10];
+	int stackPtr = 0;
+	menuStack[stackPtr++] = mainMenuBar;
+	
+	for (String line : lines) {
+	    line = line.trim();
+	    
+	    // Skip empty lines and comments
+	    if (line.isEmpty() || line.startsWith("#"))
+		continue;
+	    
+	    // Handle submenu start
+	    if (line.startsWith("+")) {
+		String menuTitle = line.substring(1).trim();
+		MenuBar subMenu = new MenuBar(true);
+		
+		// Special handling for Subcircuits menu
+		if (menuTitle.equals("Subcircuits")) {
+		    if (subcircuitMenuBar == null)
+			subcircuitMenuBar = new MenuBar[2];
+		    subcircuitMenuBar[num] = subMenu;
+		}
+		
+		currentMenuBar.addItem(SafeHtmlUtils.fromTrustedString(
+		    CheckboxMenuItem.checkBoxHtml + Locale.LS("&nbsp;</div>" + menuTitle)), subMenu);
+		currentMenuBar = subMenu;
+		menuStack[stackPtr++] = subMenu;
+		continue;
+	    }
+	    
+	    // Handle submenu end
+	    if (line.startsWith("-")) {
+		stackPtr--;
+		currentMenuBar = menuStack[stackPtr - 1];
+		continue;
+	    }
+	    
+	    // Parse menu item: ClassName|Display Name|Display Shortcut|Keyboard Shortcut
+	    String[] parts = line.split("\\|", -1);  // -1 to include empty trailing fields
+	    if (parts.length < 2)
+		continue;
+	    
+	    String className = parts[0].trim();
+	    String displayName = parts[1].trim();
+	    String displayShortcut = parts.length > 2 ? parts[2].trim() : "";
+	    String keyboardShortcut = parts.length > 3 ? parts[3].trim() : "";
+	    
+	    CheckboxMenuItem mi = getClassCheckItem(Locale.LS(displayName), className);
+	    currentMenuBar.addItem(mi);
+	    
+	    // Handle display shortcuts (shown in menu)
+	    if (displayShortcut != null && !displayShortcut.isEmpty()) {
+		// Process platform-specific shortcuts
+		if (displayShortcut.contains("(A-M-drag)") && isMac) {
+		    displayShortcut = displayShortcut.replace("(A-M-drag)", "(A-Cmd-drag)");
+		}
+		if (displayShortcut.contains("(Ctrl-drag)") && ctrlMetaKey != null) {
+		    displayShortcut = displayShortcut.replace("Ctrl", ctrlMetaKey);
+		}
+		mi.setShortcut(Locale.LS(displayShortcut));
+	    }
+	    
+	    // Handle keyboard shortcuts (actual key bindings)
+	    if (keyboardShortcut != null && !keyboardShortcut.isEmpty() && keyboardShortcut.length() == 1) {
+		char shortcutKey = keyboardShortcut.charAt(0);
+		if (shortcuts[shortcutKey] != null && !shortcuts[shortcutKey].equals(className)) {
+		    console("Warning: Keyboard shortcut '" + shortcutKey + "' already assigned to " + shortcuts[shortcutKey] + ", overriding with " + className);
+		}
+		shortcuts[shortcutKey] = className;
+		// Update the menu item to show the keyboard shortcut if no display shortcut was provided
+		if ((displayShortcut == null || displayShortcut.isEmpty()) && mi.getShortcut().isEmpty()) {
+		    mi.setShortcut(String.valueOf(shortcutKey));
+		}
+	    }
+	}
+    }
+    
+    // Original hardcoded menu (fallback)
+    void composeMainMenuHardcoded(MenuBar mainMenuBar, int num) {
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Wire"), "WireElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Resistor"), "ResistorElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Multipler"), "MultiplyElm"));
@@ -5376,6 +5525,11 @@ public CirSim() {
     			circuitChanged = true;
     			writeRecoveryToStorage();
     			unsavedChanges = true;
+    			// Auto-deselect after placing element
+    			if (mouseMode == MODE_ADD_ELM) {
+    			    setMouseMode(MODE_SELECT);
+    			    tempMouseMode = MODE_SELECT;
+    			}
     		}
     		dragElm = null;
     	}
