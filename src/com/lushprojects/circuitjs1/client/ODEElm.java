@@ -6,11 +6,6 @@
 
 package com.lushprojects.circuitjs1.client;
 
-import com.google.gwt.user.client.ui.Label;
-import com.lushprojects.circuitjs1.client.util.Locale;
-import com.google.gwt.event.dom.client.MouseWheelEvent;
-import com.google.gwt.event.dom.client.MouseWheelHandler;
-
 /**
  * ODEElm - Simple ODE Calculator with Integration
  * 
@@ -32,9 +27,10 @@ import com.google.gwt.event.dom.client.MouseWheelHandler;
  * - Equation: "rate" with labeled node "rate" = 5 -> integrates 5/sec
  * - Equation: "price - cost" -> integrates profit over time
  * - Equation: "-decay * stock" -> exponential decay
- * - Equation: "Predator_Births-(Predator*a)" with slider 'a' -> adjustable death rate
+ * - Equation: "Predator_Births-(Predator*a)" with parameter 'a' -> adjustable death rate
  */
-class ODEElm extends ChipElm implements MouseWheelHandler {
+class ODEElm extends ChipElm {
+    private String elementName = "ODE";     // User-defined name for this element
     private String equationString = "1";    // User's equation string
     private Expr compiledExpr;              // Compiled expression
     private ExprState exprState;            // Expression evaluation state
@@ -42,16 +38,14 @@ class ODEElm extends ChipElm implements MouseWheelHandler {
     private double initialValue = 0.0;      // Initial condition
     private double lastEquationValue = 0.0; // Last evaluated equation value (for convergence)
     
-    // Slider support (variable 'a' in equation)
-    Scrollbar slider;
-    Label label;
-    String sliderText;
-    double sliderValue = 0.5;  // Default slider value
-    double sliderMin = 0.0;    // Minimum slider value
-    double sliderMax = 1.0;    // Maximum slider value
-    boolean showPercentage = false; // Show slider value as percentage
+    // Parameters a-h that can be referenced in equations (right-click to adjust)
+    private static final int MAX_PARAMETERS = 8;
+    private int numParameters = 1;          // Number of active parameters (1-8)
+    private double[] parameters = new double[MAX_PARAMETERS];  // Parameter values
+    private boolean[] showPercentage = new boolean[MAX_PARAMETERS]; // Show each parameter as percentage
+    private static final String[] PARAM_NAMES = {"a", "b", "c", "d", "e", "f", "g", "h"};
     
-    static final int FLAG_SHOW_PERCENTAGE = 1;
+    static final int FLAG_SHOW_PERCENTAGE_BASE = 2;  // Flags for percentage display (bits 1-8, shifted to avoid FLAG_SMALL at bit 0)
     
     // Constructor for menu creation
     public ODEElm(int xx, int yy) {
@@ -59,20 +53,34 @@ class ODEElm extends ChipElm implements MouseWheelHandler {
         noDiagonal = true;
         equationString = "1";
         initialValue = 0.0;
-        sliderText = "Slider Value";
-        sliderValue = 0.5;
-        sliderMin = 0.0;
-        sliderMax = 1.0;
+        numParameters = 1;
+        // Initialize default parameter values
+        for (int i = 0; i < MAX_PARAMETERS; i++) {
+            parameters[i] = 0.5;
+            showPercentage[i] = false;
+        }
         setupPins();
         parseEquation();
         initIntegration();
-        createSlider();
     }
     
     // Constructor for file loading
     public ODEElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
         super(xa, ya, xb, yb, f, st);
         noDiagonal = true;
+        
+        // Initialize arrays
+        for (int i = 0; i < MAX_PARAMETERS; i++) {
+            parameters[i] = 0.5;
+            showPercentage[i] = false;
+        }
+        
+        // Parse element name (must be escaped)
+        if (st.hasMoreTokens()) {
+            elementName = CustomLogicModel.unescape(st.nextToken());
+        } else {
+            elementName = "ODE";
+        }
         
         // Parse equation string (must be escaped)
         if (st.hasMoreTokens()) {
@@ -90,45 +98,41 @@ class ODEElm extends ChipElm implements MouseWheelHandler {
             }
         }
         
-        // Parse slider parameters
+        // Parse number of parameters
         if (st.hasMoreTokens()) {
             try {
-                sliderValue = Double.parseDouble(st.nextToken());
+                numParameters = Integer.parseInt(st.nextToken());
+                if (numParameters < 1) numParameters = 1;
+                if (numParameters > MAX_PARAMETERS) numParameters = MAX_PARAMETERS;
             } catch (Exception e) {
-                sliderValue = 0.5;
+                numParameters = 1;
             }
-        }
-        if (st.hasMoreTokens()) {
-            try {
-                sliderMin = Double.parseDouble(st.nextToken());
-            } catch (Exception e) {
-                sliderMin = 0.0;
-            }
-        }
-        if (st.hasMoreTokens()) {
-            try {
-                sliderMax = Double.parseDouble(st.nextToken());
-            } catch (Exception e) {
-                sliderMax = 1.0;
-            }
-        }
-        if (st.hasMoreTokens()) {
-            sliderText = CustomLogicModel.unescape(st.nextToken());
-        } else {
-            sliderText = "Slider Value";
         }
         
-        showPercentage = (f & FLAG_SHOW_PERCENTAGE) != 0;
+        // Parse parameter values
+        for (int i = 0; i < numParameters; i++) {
+            if (st.hasMoreTokens()) {
+                try {
+                    parameters[i] = Double.parseDouble(st.nextToken());
+                } catch (Exception e) {
+                    parameters[i] = 0.5;
+                }
+            }
+        }
+        
+        // Parse percentage flags from flags field
+        for (int i = 0; i < MAX_PARAMETERS; i++) {
+            showPercentage[i] = (f & (FLAG_SHOW_PERCENTAGE_BASE << i)) != 0;
+        }
         
         setupPins();
         parseEquation();
         initIntegration();
-        createSlider();
     }
     
     void setupPins() {
         sizeX = 3;  // Wider
-        sizeY = 1;  // Shorter
+        sizeY = 2;  // Shorter
         pins = new Pin[1]; // Single output pin
         pins[0] = new Pin(0, SIDE_E, "");
         pins[0].output = true;
@@ -146,36 +150,9 @@ class ODEElm extends ChipElm implements MouseWheelHandler {
     boolean hasCurrentOutput() { return false; }
     
     private void initIntegration() {
-        exprState = new ExprState(1); // 1 input variable 'a' for slider
+        exprState = new ExprState(MAX_PARAMETERS); // Support up to 8 variables (a-h)
         exprState.lastOutput = initialValue;
         integratedValue = initialValue;
-    }
-    
-    void createSlider() {
-        // Format the initial value text
-        String valueStr;
-        if (showPercentage) {
-            double percentValue = sliderValue * 100;
-            int intPart = (int) percentValue;
-            int decimalPart = (int) ((percentValue - intPart) * 10);
-            valueStr = intPart + "." + decimalPart + "%";
-        } else {
-            valueStr = getShortUnitText(sliderValue, "");
-        }
-        
-        sim.addWidgetToVerticalPanel(label = new Label(Locale.LS(sliderText) + ": " + valueStr));
-        label.addStyleName("topSpace");
-        int value = (int) ((sliderValue - sliderMin) * 100 / (sliderMax - sliderMin));
-        sim.addWidgetToVerticalPanel(slider = new Scrollbar(Scrollbar.HORIZONTAL, value, 1, 0, 101, 
-                null, this));
-    }
-    
-    void delete() {
-        if (label != null)
-            sim.removeWidgetFromVerticalPanel(label);
-        if (slider != null)
-            sim.removeWidgetFromVerticalPanel(slider);
-        super.delete();
     }
     
     private void parseEquation() {
@@ -223,33 +200,15 @@ class ODEElm extends ChipElm implements MouseWheelHandler {
             integratedValue = initialValue;
         }
         
-        // Update slider value from UI
-        if (slider != null) {
-            double oldSliderValue = sliderValue;
-            sliderValue = slider.getValue() * (sliderMax - sliderMin) / 100.0 + sliderMin;
-            
-            // Update label if value changed
-            if (label != null && Math.abs(oldSliderValue - sliderValue) > 1e-10) {
-                String valueStr;
-                if (showPercentage) {
-                    double percentValue = sliderValue * 100;
-                    int intPart = (int) percentValue;
-                    int decimalPart = (int) ((percentValue - intPart) * 10);
-                    valueStr = intPart + "." + decimalPart + "%";
-                } else {
-                    valueStr = getShortUnitText(sliderValue, "");
-                }
-                label.setText(Locale.LS(sliderText) + ": " + valueStr);
-            }
-        }
-        
         int vn = pins[0].voltSource + sim.nodeList.size();
         
         if (compiledExpr != null) {
-            // Set slider value as variable 'a' in expression
-            exprState.values[0] = sliderValue;
+            // Set all parameter values in expression (a, b, c, d, e, f, g, h)
+            for (int i = 0; i < MAX_PARAMETERS; i++) {
+                exprState.values[i] = parameters[i];
+            }
             
-            // Evaluate equation to get derivative f(t, labeled_nodes, a)
+            // Evaluate equation to get derivative f(t, labeled_nodes, a, b, c...)
             exprState.t = sim.t;
             double equationValue = compiledExpr.eval(exprState);
             
@@ -304,13 +263,28 @@ class ODEElm extends ChipElm implements MouseWheelHandler {
     @Override
     public String dump() {
         StringBuilder sb = new StringBuilder();
+        
+        // Update flags before dumping
+        // Preserve FLAG_SMALL (bit 0) from ChipElm, clear percentage bits (1-8)
+        int newFlags = flags & ~0x1FE; // Clear bits 1-8 (percentage flags), keep bit 0 (FLAG_SMALL)
+        for (int i = 0; i < MAX_PARAMETERS; i++) {
+            if (showPercentage[i]) {
+                newFlags |= (FLAG_SHOW_PERCENTAGE_BASE << i);
+            }
+        }
+        flags = newFlags;
+        
         sb.append(super.dump());
+        sb.append(" ").append(CustomLogicModel.escape(elementName));
         sb.append(" ").append(CustomLogicModel.escape(equationString));
         sb.append(" ").append(initialValue);
-        sb.append(" ").append(sliderValue);
-        sb.append(" ").append(sliderMin);
-        sb.append(" ").append(sliderMax);
-        sb.append(" ").append(CustomLogicModel.escape(sliderText));
+        sb.append(" ").append(numParameters);
+        
+        // Dump all parameter values
+        for (int i = 0; i < numParameters; i++) {
+            sb.append(" ").append(parameters[i]);
+        }
+        
         return sb.toString();
     }
     
@@ -338,13 +312,21 @@ class ODEElm extends ChipElm implements MouseWheelHandler {
         drawCenteredText(g, initStr, mid_x + 8, mid_y + 6, true);
         g.restore();
         
-        // Draw full equation below the box (not truncated)
-        // Replace 'a' with actual slider value in display
+        // Draw full equation below the box with all parameters substituted
         String displayEquation = equationString;
-        if (slider != null) {
-            sliderValue = slider.getValue() * (sliderMax - sliderMin) / 100.0 + sliderMin;
-            String valueStr = getShortUnitText(sliderValue, "");
-            displayEquation = displayEquation.replaceAll("\\ba\\b", valueStr);
+        for (int i = 0; i < numParameters; i++) {
+            String paramValueStr;
+            if (showPercentage[i]) {
+                double percentValue = parameters[i] * 100;
+                // Manual formatting for percentage (GWT doesn't support String.format)
+                int intPart = (int) percentValue;
+                int decimalPart = (int) ((percentValue - intPart) * 10);
+                paramValueStr = intPart + "." + decimalPart + "%";
+            } else {
+                paramValueStr = getShortUnitText(parameters[i], "");
+            }
+            // Replace parameter name (a, b, c, etc.) with its value
+            displayEquation = displayEquation.replaceAll("\\b" + PARAM_NAMES[i] + "\\b", paramValueStr);
         }
         
         int bottom_y = Math.max(rectPointsY[0], Math.max(rectPointsY[1], 
@@ -354,66 +336,53 @@ class ODEElm extends ChipElm implements MouseWheelHandler {
         g.setColor(selected ? selectColor : whiteColor);
         drawCenteredText(g, "d/dt=" + displayEquation, mid_x, bottom_y + 12, true);
         g.restore();
-        
-        // Draw slider value text below equation
-        String sliderValueText;
-        if (showPercentage) {
-            double percentValue = sliderValue * 100;
-            // Manual formatting for percentage (GWT doesn't support String.format)
-            int intPart = (int) percentValue;
-            int decimalPart = (int) ((percentValue - intPart) * 10);
-            sliderValueText = sliderText + " = " + intPart + "." + decimalPart + "%";
-        } else {
-            sliderValueText = sliderText + " = " + getShortUnitText(sliderValue, "");
-        }
-        g.setFont(smallFont);
-        g.setColor(selected ? selectColor : whiteColor);
-        drawCenteredText(g, sliderValueText, mid_x, bottom_y + 24, true);
-        g.restore();
     }
     
     public EditInfo getEditInfo(int n) {
         if (n == 0) {
+            EditInfo ei = new EditInfo("Name", 0, -1, -1);
+            ei.text = elementName;
+            ei.disallowSliders();
+            return ei;
+        }
+        if (n == 1) {
             EditInfo ei = new EditInfo("Equation (d/dt)", 0, -1, -1);
             ei.text = equationString;
             ei.disallowSliders();
             return ei;
         }
-        if (n == 1) {
+        if (n == 2) {
             EditInfo ei = new EditInfo("Initial Value y(0)", initialValue);
             return ei;
         }
-        if (n == 2) {
-            EditInfo ei = new EditInfo("Slider Initial Value", sliderValue, sliderMin, sliderMax);
-            return ei;
-        }
         if (n == 3) {
-            EditInfo ei = new EditInfo("Slider Min", sliderMin);
+            EditInfo ei = new EditInfo("Number of Parameters (1-8)", numParameters, 1, MAX_PARAMETERS);
+            ei.disallowSliders();
             return ei;
         }
-        if (n == 4) {
-            EditInfo ei = new EditInfo("Slider Max", sliderMax);
+        
+        // Parameter fields with inline checkboxes: 4, 5, 6, 7, 8, 9, 10, 11
+        int paramIndex = n - 4;
+        
+        if (paramIndex >= 0 && paramIndex < numParameters) {
+            EditInfo ei = new EditInfo(elementName + "_'" + PARAM_NAMES[paramIndex] + "'", parameters[paramIndex]);
+            // Add inline checkbox for percentage display
+            ei.checkboxInline = new Checkbox("Show as Percentage", showPercentage[paramIndex]);
             return ei;
         }
-        if (n == 5) {
-            EditInfo ei = new EditInfo("Slider Text (value a = equation)", 0, -1, -1);
-            ei.text = sliderText;
-            return ei;
-        }
-        if (n == 6) {
-            EditInfo ei = new EditInfo("", 0, -1, -1);
-            ei.checkbox = new Checkbox("Show as Percentage", showPercentage);
-            return ei;
-        }
+        
         return null;
     }
     
     public void setEditValue(int n, EditInfo ei) {
         if (n == 0) {
+            elementName = ei.textf.getText();
+        }
+        if (n == 1) {
             equationString = ei.textf.getText();
             parseEquation();
         }
-        if (n == 1) {
+        if (n == 2) {
             initialValue = ei.value;
             // Reset integration to new initial value
             if (exprState != null) {
@@ -421,41 +390,23 @@ class ODEElm extends ChipElm implements MouseWheelHandler {
             }
             integratedValue = initialValue;
         }
-        if (n == 2) {
-            sliderValue = ei.value;
-            // Update the slider position
-            if (slider != null) {
-                int pos = (int) ((sliderValue - sliderMin) * 100 / (sliderMax - sliderMin));
-                slider.setValue(pos);
-            }
-        }
         if (n == 3) {
-            sliderMin = ei.value;
-            // Update slider position if needed
-            if (slider != null) {
-                int pos = (int) ((sliderValue - sliderMin) * 100 / (sliderMax - sliderMin));
-                slider.setValue(pos);
+            int newNumParams = (int) ei.value;
+            if (newNumParams >= 1 && newNumParams <= MAX_PARAMETERS) {
+                numParameters = newNumParams;
+                ei.newDialog = true;  // Refresh dialog to show new parameter fields
             }
         }
-        if (n == 4) {
-            sliderMax = ei.value;
-            // Update slider position if needed
-            if (slider != null) {
-                int pos = (int) ((sliderValue - sliderMin) * 100 / (sliderMax - sliderMin));
-                slider.setValue(pos);
+        
+        // Parameter fields: 4, 5, 6, 7, 8, 9, 10, 11 (one per parameter)
+        int paramIndex = n - 4;
+        
+        if (paramIndex >= 0 && paramIndex < MAX_PARAMETERS) {
+            parameters[paramIndex] = ei.value;
+            // Update percentage checkbox state if inline checkbox exists
+            if (ei.checkboxInline != null) {
+                showPercentage[paramIndex] = ei.checkboxInline.getState();
             }
-        }
-        if (n == 5) {
-            sliderText = ei.textf.getText();
-            if (label != null) {
-                label.setText(Locale.LS(sliderText));
-                sim.setiFrameHeight();
-            }
-        }
-        if (n == 6) {
-            showPercentage = ei.checkbox.getState();
-            // Update flags
-            flags = showPercentage ? (flags | FLAG_SHOW_PERCENTAGE) : (flags & ~FLAG_SHOW_PERCENTAGE);
         }
     }
     
@@ -464,29 +415,33 @@ class ODEElm extends ChipElm implements MouseWheelHandler {
         arr[0] = "ODE Integrator";
         arr[1] = "Equation: d/dt = " + equationString;
         arr[2] = "Initial Value: " + getVoltageText(initialValue);
-        arr[3] = "Slider 'a': " + getVoltageText(sliderValue);
-        arr[4] = "Current Output: " + getVoltageText(integratedValue);
-        arr[5] = "Time: " + getUnitText(sim.t, "s");
+        
+        // Show all active parameters
+        int idx = 3;
+        for (int i = 0; i < numParameters && idx < arr.length; i++) {
+            arr[idx++] = "Parameter '" + PARAM_NAMES[i] + "': " + getVoltageText(parameters[i]);
+        }
+        
+        if (idx < arr.length)
+            arr[idx++] = "Current Output: " + getVoltageText(integratedValue);
+        if (idx < arr.length)
+            arr[idx] = "Time: " + getUnitText(sim.t, "s");
     }
     
-    void setMouseElm(boolean v) {
-        super.setMouseElm(v);
-        if (slider != null)
-            slider.draw();
-    }
-    
-    public void onMouseWheel(MouseWheelEvent e) {
-        if (slider != null)
-            slider.onMouseWheel(e);
-    }
-    
-    // Custom slider text formatting for Adjustable class
+    // Custom formatting for parameter sliders
     public String getSliderUnitText(int n, EditInfo ei, double value) {
-        // Only format the slider value field (n == 2)
-        if (n != 2)
+        // Fields 0-3 are name, equation, initial value, and number of parameters
+        if (n <= 3)
             return null;
         
-        if (showPercentage) {
+        // Parameter fields: 4, 5, 6, 7, 8, 9, 10, 11 (one per parameter)
+        int paramIndex = n - 4;
+        
+        // Only format parameter value fields
+        if (paramIndex >= numParameters)
+            return null;
+        
+        if (showPercentage[paramIndex]) {
             double percentValue = value * 100;
             // Manual formatting for percentage (GWT doesn't support String.format)
             int intPart = (int) percentValue;

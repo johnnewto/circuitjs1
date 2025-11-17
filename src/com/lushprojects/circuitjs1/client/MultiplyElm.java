@@ -68,15 +68,14 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 
 	void doStep() {
 		int i;
-		// converged yet?
-		double convergeLimit = getConvergeLimit();
-		for (i = 0; i != inputCount; i++) {
-            double diff = Math.abs(volts[i]-lastVolts[i]);
-			if (diff > convergeLimit)
-				sim.converged = false;
-			// if (Double.isNaN(volts[i]))
-			//    volts[i] = 0;
-		}
+		// input converged yet?
+		// double convergeLimit = getConvergeLimit();
+		// for (i = 0; i != inputCount; i++) {
+            // double diff = Math.abs(volts[i]-lastVolts[i]);
+			// if (diff > convergeLimit)
+			// 	sim.converged = false;
+			// ;
+		// }
 		int vn = pins[inputCount].voltSource + sim.nodeList.size();
 		if (expr != null) {
 			// calculate output

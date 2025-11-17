@@ -72,6 +72,7 @@ class EditInfo {
 	TextBox textf;
 	Choice choice;
 	Checkbox checkbox;
+	Checkbox checkboxInline;  // Optional checkbox displayed to the right of a value field
 	Button button;
 	EditDialogLoadFile loadFile = null; //if non-null, the button will open a file dialog
 	TextArea textArea;

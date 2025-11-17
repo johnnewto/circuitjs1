@@ -157,7 +157,8 @@ class EditDialog extends Dialog {
 			} else if (ei.widget != null) {
 			    vp.add(ei.widget);
 			} else {
-			    vp.add(ei.textf = new TextBox());
+			    // Create text box for value input
+			    ei.textf = new TextBox();
 			    // Prevent keyboard events from deleting circuit elements while typing
 			    preventKeyboardPropagation(ei.textf);
 			    if (ei.text != null) {
@@ -170,6 +171,25 @@ class EditDialog extends Dialog {
 			    // Attach KeyUpHandler if provided for immediate updates
 			    if (ei.keyUpHandler != null) {
 				ei.textf.addKeyUpHandler(ei.keyUpHandler);
+			    }
+			    
+			    // If there's an inline checkbox, create horizontal panel with textbox and checkbox
+			    if (ei.checkboxInline != null) {
+				HorizontalPanel hPanel = new HorizontalPanel();
+				hPanel.add(ei.textf);
+				hPanel.add(ei.checkboxInline);
+				hPanel.getElement().getStyle().setProperty("alignItems", "center");
+				ei.checkboxInline.getElement().getStyle().setPaddingLeft(10, Unit.PX);
+				vp.add(hPanel);
+				// Add change handler for inline checkbox
+				ei.checkboxInline.addValueChangeHandler(new ValueChangeHandler<Boolean>() {
+				    public void onValueChange(ValueChangeEvent<Boolean> e) {
+					itemStateChanged(e);
+				    }
+				});
+			    } else {
+				// Just add the textbox alone
+				vp.add(ei.textf);
 			    }
 			}
 			if (vp.getWidgetCount() > 15) {
