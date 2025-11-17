@@ -343,12 +343,117 @@ class ODEElm extends ChipElm {
             EditInfo ei = new EditInfo("Name", 0, -1, -1);
             ei.text = elementName;
             ei.disallowSliders();
+            
+            // Build completion list for element names
+            java.util.List<String> completions = new java.util.ArrayList<String>();
+            
+            // Add stock variables (useful for naming ODEs after what they track)
+            java.util.Set<String> stockNames = StockFlowRegistry.getAllStockNames();
+            if (stockNames != null && !stockNames.isEmpty()) {
+                for (String stockName : stockNames) {
+                    completions.add(stockName);
+                }
+            }
+            
+            // Add other ODE element names in the circuit
+            if (sim != null && sim.elmList != null) {
+                for (int i = 0; i < sim.elmList.size(); i++) {
+                    CircuitElm ce = sim.getElm(i);
+                    if (ce instanceof ODEElm && ce != this) {
+                        ODEElm ode = (ODEElm) ce;
+                        if (ode.elementName != null && !ode.elementName.isEmpty()) {
+                            completions.add(ode.elementName);
+                        }
+                    }
+                }
+            }
+            
+            // Add labeled node names
+            String[] labeledNodes = LabeledNodeElm.getSortedLabeledNodeNames();
+            if (labeledNodes != null && labeledNodes.length > 0) {
+                for (String nodeName : labeledNodes) {
+                    completions.add(nodeName);
+                }
+            }
+            
+            // Attach completion list for tab completion
+            ei.completionList = completions;
+            
             return ei;
         }
         if (n == 1) {
             EditInfo ei = new EditInfo("Equation (d/dt)", 0, -1, -1);
             ei.text = equationString;
             ei.disallowSliders();
+            
+            // Build completion list for bash-style autocompletion
+            java.util.List<String> completions = new java.util.ArrayList<String>();
+            
+            // Add stock variables from TableElm cell equations
+            java.util.Set<String> stockNames = StockFlowRegistry.getAllStockNames();
+            if (stockNames != null && !stockNames.isEmpty()) {
+                for (String stockName : stockNames) {
+                    completions.add(stockName);
+                }
+            }
+            
+            // Add labeled node names
+            String[] labeledNodes = LabeledNodeElm.getSortedLabeledNodeNames();
+            if (labeledNodes != null && labeledNodes.length > 0) {
+                for (String nodeName : labeledNodes) {
+                    completions.add(nodeName);
+                }
+            }
+            
+            // Add variables used in cell equations
+            java.util.Set<String> cellVariables = StockFlowRegistry.getAllCellEquationVariables();
+            if (cellVariables != null && !cellVariables.isEmpty()) {
+                for (String varName : cellVariables) {
+                    completions.add(varName);
+                }
+            }
+            
+            // Add other ODE element names in the circuit
+            if (sim != null && sim.elmList != null) {
+                for (int i = 0; i < sim.elmList.size(); i++) {
+                    CircuitElm ce = sim.getElm(i);
+                    if (ce instanceof ODEElm && ce != this) {
+                        ODEElm ode = (ODEElm) ce;
+                        if (ode.elementName != null && !ode.elementName.isEmpty()) {
+                            completions.add(ode.elementName);
+                        }
+                    }
+                }
+            }
+            
+            // Add parameter names for this ODE element
+            for (int i = 0; i < numParameters; i++) {
+                completions.add(PARAM_NAMES[i]);
+            }
+            
+            // Add mathematical functions
+            completions.add("sin");
+            completions.add("cos");
+            completions.add("tan");
+            completions.add("exp");
+            completions.add("log");
+            completions.add("sqrt");
+            completions.add("abs");
+            completions.add("min");
+            completions.add("max");
+            completions.add("pow");
+            completions.add("atan2");
+            completions.add("floor");
+            completions.add("ceil");
+            
+            // Add common constants
+            completions.add("pi");
+            completions.add("e");
+            completions.add("t");  // time variable
+            
+            // Attach completion list for tab completion
+            ei.completionList = completions;
+            
             return ei;
         }
         if (n == 2) {

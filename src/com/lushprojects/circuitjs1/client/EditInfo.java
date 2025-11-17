@@ -83,6 +83,7 @@ class EditInfo {
 	boolean noSliders;
 	double minVal, maxVal;
 	KeyUpHandler keyUpHandler; // Optional handler for immediate text changes
+	java.util.List<String> completionList;  // List of completion items for bash-style autocomplete
 	
 	// for slider dialog
 	TextBox minBox, maxBox, labelBox, stepsBox;
