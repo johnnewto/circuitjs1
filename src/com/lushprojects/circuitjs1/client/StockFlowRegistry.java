@@ -208,19 +208,97 @@ public class StockFlowRegistry {
             return;
         }
         
-        // Simple tokenizer - split by operators and parentheses
-        String[] tokens = equation.split("[+\\-*/()\\s,<>=!&|]+");
-        
-        for (String token : tokens) {
-            token = token.trim();
-            if (token.isEmpty()) {
+        // Use a more careful tokenizer that preserves Greek symbols (backslash + letters)
+        int i = 0;
+        while (i < equation.length()) {
+            char c = equation.charAt(i);
+            
+            // Skip whitespace and operators
+            if (c == ' ' || c == '\t' || c == '\n' || c == '\r' ||
+                c == '+' || c == '-' || c == '*' || c == '/' || c == '(' || c == ')' ||
+                c == ',' || c == '<' || c == '>' || c == '=' || c == '!' || c == '&' || c == '|') {
+                i++;
                 continue;
             }
             
-            // Check if it's a valid identifier (not a number or keyword)
-            if (isValidIdentifier(token) && !isKeyword(token)) {
-                variables.add(token);
+            // Check for Greek symbol (backslash followed by letters, then optionally subscripts/superscripts)
+            if (c == '\\' && i + 1 < equation.length()) {
+                char next = equation.charAt(i + 1);
+                if ((next >= 'a' && next <= 'z') || (next >= 'A' && next <= 'Z')) {
+                    // Extract the full Greek symbol name including subscripts/superscripts
+                    int start = i;
+                    i++; // skip backslash
+                    // First, collect the Greek letter name (letters only)
+                    while (i < equation.length()) {
+                        char ch = equation.charAt(i);
+                        if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) {
+                            i++;
+                        } else {
+                            break;
+                        }
+                    }
+                    // Now continue collecting subscripts, superscripts, brackets, numbers
+                    // Include backslashes for nested Greek symbols inside braces/brackets
+                    while (i < equation.length()) {
+                        char ch = equation.charAt(i);
+                        if ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'z') || 
+                            (ch >= 'A' && ch <= 'Z') || ch == '_' || ch == '^' || 
+                            ch == '{' || ch == '}' || ch == '[' || ch == ']' || ch == '\\') {
+                            i++;
+                        } else {
+                            break;
+                        }
+                    }
+                    String token = equation.substring(start, i);
+                    if (!isKeyword(token)) {
+                        variables.add(token);
+                    }
+                    continue;
+                }
             }
+            
+            // Check for regular identifier (letter or underscore, then letters/numbers/underscores/brackets/carets)
+            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
+                int start = i;
+                while (i < equation.length()) {
+                    char ch = equation.charAt(i);
+                    if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+                        (ch >= '0' && ch <= '9') || ch == '_' || ch == '^' || 
+                        ch == '{' || ch == '}' || ch == '[' || ch == ']') {
+                        i++;
+                    } else {
+                        break;
+                    }
+                }
+                String token = equation.substring(start, i);
+                if (!isKeyword(token)) {
+                    variables.add(token);
+                }
+                continue;
+            }
+            
+            // Skip numbers (and handle scientific notation)
+            if (c >= '0' && c <= '9') {
+                while (i < equation.length()) {
+                    char ch = equation.charAt(i);
+                    if ((ch >= '0' && ch <= '9') || ch == '.' || ch == 'e' || ch == 'E') {
+                        i++;
+                        // Handle sign after 'e' in scientific notation (e.g., 1e-3, 2E+5)
+                        if ((ch == 'e' || ch == 'E') && i < equation.length()) {
+                            char nextCh = equation.charAt(i);
+                            if (nextCh == '+' || nextCh == '-') {
+                                i++; // skip the sign
+                            }
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                continue;
+            }
+            
+            // Skip any other character
+            i++;
         }
     }
     
@@ -232,17 +310,47 @@ public class StockFlowRegistry {
             return false;
         }
         
-        // First character must be letter or underscore
+        // Check for Greek symbols (start with backslash followed by letters, then optionally subscripts/superscripts)
+        // e.g., \alpha, \beta_{workers}^B, \gamma^{2}, \alpha^{\beta}, etc.
+        if (token.charAt(0) == '\\' && token.length() > 1) {
+            // Must have at least one letter after the backslash
+            char second = token.charAt(1);
+            if (!((second >= 'a' && second <= 'z') || (second >= 'A' && second <= 'Z'))) {
+                return false;
+            }
+            // After the Greek name (letters), we can have numbers, underscores, brackets, carets, backslashes (for nested Greek)
+            boolean inGreekName = true;
+            for (int i = 2; i < token.length(); i++) {
+                char c = token.charAt(i);
+                if (inGreekName && ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) {
+                    // Still in the Greek letter name part
+                    continue;
+                } else if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || 
+                           (c >= 'A' && c <= 'Z') || c == '_' || c == '^' || 
+                           c == '{' || c == '}' || c == '[' || c == ']' || c == '\\') {
+                    // Subscripts/superscripts after the Greek name (including nested Greek symbols)
+                    inGreekName = false;
+                    continue;
+                } else {
+                    // Invalid character
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        // Standard identifier: first character must be letter or underscore
         char first = token.charAt(0);
         if (!((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_')) {
             return false;
         }
         
-        // Remaining characters must be letters, numbers, or underscores
+        // Remaining characters must be letters, numbers, underscores, brackets, or carets
         for (int i = 1; i < token.length(); i++) {
             char c = token.charAt(i);
             if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
-                  (c >= '0' && c <= '9') || c == '_')) {
+                  (c >= '0' && c <= '9') || c == '_' || c == '^' || 
+                  c == '{' || c == '}' || c == '[' || c == ']')) {
                 return false;
             }
         }

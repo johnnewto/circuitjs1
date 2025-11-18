@@ -2785,6 +2785,10 @@ public CirSim() {
 	needsStamp = true;
 	
 	callAnalyzeHook();
+	
+	// Refresh Variable Browser dialog if it's open
+	VariableBrowserDialog.refreshIfOpen();
+	
 	return true;
     }
 
@@ -3746,6 +3750,9 @@ public CirSim() {
     	    	dialogShowing = new SearchDialog(this);
     	    	dialogShowing.show();
     	}
+    	if (item=="variablebrowser") {
+    	    	VariableBrowserDialog.openDialog(this);
+    	}
     	if (menu=="options" && item=="other")
     		doEdit(new EditOptions(this));
     	if (item=="devtools")
@@ -4287,6 +4294,12 @@ public CirSim() {
     	currentMenuBar.setAutoOpen(true);
     	menuBar.addItem(Locale.LS("Circuits"), currentMenuBar);
     	stack[stackptr++] = currentMenuBar;
+    	
+    	// Add Variable Browser menu after Circuits
+    	MenuBar varBrowserMenu = new MenuBar(true);
+    	varBrowserMenu.setAutoOpen(true);
+    	varBrowserMenu.addItem(menuItemWithShortcut("list-ul", "Variable Browser...", "\\", new MyCommand("edit", "variablebrowser")));
+    	menuBar.addItem(Locale.LS("Variables"), varBrowserMenu);
     	int p;
     	for (p = 0; p < len; ) {
     		int l;
