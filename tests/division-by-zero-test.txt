@@ -1,0 +1,37 @@
+$ 1 0.000005 10.20027730826997 50 5 50 5e-11
+# Test circuit for division by zero protection in EquationElm
+# This circuit tests the new EquationElm with division operations
+
+# Create a constant voltage source (5V)
+207 176 192 176 128 0 numerator
+w 176 192 176 256 0
+g 176 256 176 288 0 0
+
+# Create another constant at 0V (ground) for division by zero test
+207 320 192 320 128 0 zero
+w 320 192 320 256 0
+g 320 256 320 288 0 0
+
+# Equation element dividing numerator by zero (should output 0, not NaN/Infinity)
+262 176 32 272 32 0 SafeDiv numerator/zero 1 0.5
+w 176 80 176 32 0
+w 176 128 176 80 0
+370 176 80 176 32 1 0 0
+
+# Show the result on a scope
+w 272 32 368 32 0
+403 368 32 464 32 0 15 0_1_0_1_0.01_-0.01_0_Voltage_false
+g 368 112 368 144 0 0
+r 464 32 464 112 0 1000
+w 464 112 368 112 0
+
+# Another test with modulo by zero
+262 176 -80 272 -80 0 SafeMod numerator%zero 1 0.5
+w 176 -32 176 -80 0
+370 176 -32 176 -80 1 0 0
+
+w 272 -80 368 -80 0
+403 368 -80 464 -80 0 15 0_1_0_1_0.01_-0.01_0_Voltage_false
+g 368 0 368 32 0 0
+r 464 -80 464 0 0 1000
+w 464 0 368 0 0

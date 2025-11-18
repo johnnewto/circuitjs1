@@ -7,35 +7,33 @@
 package com.lushprojects.circuitjs1.client;
 
 /**
- * ODEElm - Simple ODE Calculator with Integration
+ * EquationElm - Simple Equation Calculator (No Integration)
  * 
- * This element calculates ordinary differential equations (ODEs) by:
- * 1. Evaluating a user-defined equation that can reference labeled nodes
- * 2. Integrating the result over time using numerical integration
+ * This element evaluates a user-defined equation without integration:
+ * 1. Evaluates a user-defined equation that can reference labeled nodes
+ * 2. Outputs the result directly (no integration over time)
  * 
  * Features:
- * - Single output pin providing the integrated value
+ * - Single output pin providing the equation value
  * - No input pins - equation references labeled nodes (like TableElm)
  * - User-editable equation string (e.g., "node1 + node2", "sin(t)", etc.)
- * - Initial value parameter for integration
  * - Compact visual representation
  * 
- * Integration equation: y[n+1] = y[n] + dt * f(t, labeled_nodes)
+ * Output equation: y = f(t, labeled_nodes)
  * Where f(t, labeled_nodes) is the user's equation
  * 
  * Example uses:
- * - Equation: "rate" with labeled node "rate" = 5 -> integrates 5/sec
- * - Equation: "price - cost" -> integrates profit over time
- * - Equation: "-decay * stock" -> exponential decay
- * - Equation: "Predator_Births-(Predator*a)" with parameter 'a' -> adjustable death rate
+ * - Equation: "rate" with labeled node "rate" = 5 -> outputs 5
+ * - Equation: "price - cost" -> outputs profit
+ * - Equation: "sin(t)" -> outputs sine wave
+ * - Equation: "Predator*a" with parameter 'a' -> adjustable multiplier
  */
-class ODEElm extends ChipElm {
-    private String elementName = "ODE";     // User-defined name for this element
-    private String equationString = "1";    // User's equation string
+class EquationElm extends ChipElm {
+    private String elementName = "Eqn";     // User-defined name for this element
+    private String equationString = "0";    // User's equation string
     private Expr compiledExpr;              // Compiled expression
     private ExprState exprState;            // Expression evaluation state
-    private double integratedValue;         // Current integration value
-    private double initialValue = 0.0;      // Initial condition
+    private double currentValue = 0.0;      // Current equation value
     private double lastEquationValue = 0.0; // Last evaluated equation value (for convergence)
     
     // Parameters a-h that can be referenced in equations (right-click to adjust)
@@ -48,11 +46,10 @@ class ODEElm extends ChipElm {
     static final int FLAG_SHOW_PERCENTAGE_BASE = 2;  // Flags for percentage display (bits 1-8, shifted to avoid FLAG_SMALL at bit 0)
     
     // Constructor for menu creation
-    public ODEElm(int xx, int yy) {
+    public EquationElm(int xx, int yy) {
         super(xx, yy);
         noDiagonal = true;
-        equationString = "1";
-        initialValue = 0.0;
+        equationString = "0";
         numParameters = 1;
         // Initialize default parameter values
         for (int i = 0; i < MAX_PARAMETERS; i++) {
@@ -61,11 +58,11 @@ class ODEElm extends ChipElm {
         }
         setupPins();
         parseEquation();
-        initIntegration();
+        initState();
     }
     
     // Constructor for file loading
-    public ODEElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
+    public EquationElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
         super(xa, ya, xb, yb, f, st);
         noDiagonal = true;
         
@@ -79,23 +76,14 @@ class ODEElm extends ChipElm {
         if (st.hasMoreTokens()) {
             elementName = CustomLogicModel.unescape(st.nextToken());
         } else {
-            elementName = "ODE";
+            elementName = "Eqn";
         }
         
         // Parse equation string (must be escaped)
         if (st.hasMoreTokens()) {
             equationString = CustomLogicModel.unescape(st.nextToken());
         } else {
-            equationString = "1";
-        }
-        
-        // Parse initial value
-        if (st.hasMoreTokens()) {
-            try {
-                initialValue = Double.parseDouble(st.nextToken());
-            } catch (Exception e) {
-                initialValue = 0.0;
-            }
+            equationString = "0";
         }
         
         // Parse number of parameters
@@ -127,7 +115,7 @@ class ODEElm extends ChipElm {
         
         setupPins();
         parseEquation();
-        initIntegration();
+        initState();
     }
     
     void setupPins() {
@@ -139,9 +127,9 @@ class ODEElm extends ChipElm {
         allocNodes();
     }
     
-    String getChipName() { return "ODE"; }
+    String getChipName() { return "Eqn"; }
     
-    int getDumpType() { return 261; } // Unique dump type
+    int getDumpType() { return 262; } // Unique dump type
     
     int getPostCount() { return 1; } // Single output post
     
@@ -149,10 +137,9 @@ class ODEElm extends ChipElm {
     
     boolean hasCurrentOutput() { return false; }
     
-    private void initIntegration() {
+    private void initState() {
         exprState = new ExprState(MAX_PARAMETERS); // Support up to 8 variables (a-h)
-        exprState.lastOutput = initialValue;
-        integratedValue = initialValue;
+        currentValue = 0.0;
     }
     
     private void parseEquation() {
@@ -161,16 +148,16 @@ class ODEElm extends ChipElm {
             compiledExpr = parser.parseExpression();
             String err = parser.gotError();
             if (err != null) {
-                CirSim.console("ODEElm: Parse error in equation '" + equationString + "': " + err);
+                CirSim.console("EquationElm: Parse error in equation '" + equationString + "': " + err);
                 compiledExpr = null;
             }
         } catch (Exception e) {
-            CirSim.console("ODEElm: Error parsing equation '" + equationString + "': " + e.getMessage());
+            CirSim.console("EquationElm: Error parsing equation '" + equationString + "': " + e.getMessage());
             compiledExpr = null;
         }
     }
     
-    // Get convergence limit (similar to GodlyTableElm)
+    // Get convergence limit
     double getConvergeLimit() {
         double relativeTolerance;
         if (sim.subIterations < 10)
@@ -181,7 +168,7 @@ class ODEElm extends ChipElm {
             relativeTolerance = 0.1;    // 10% for late iterations
         
         // Scale by magnitude
-        double maxMagnitude = Math.max(1.0, Math.abs(integratedValue));
+        double maxMagnitude = Math.max(1.0, Math.abs(currentValue));
         maxMagnitude = Math.max(maxMagnitude, Math.abs(lastEquationValue));
         
         return maxMagnitude * relativeTolerance;
@@ -194,12 +181,6 @@ class ODEElm extends ChipElm {
     }
     
     void doStep() {
-        // On first timestep, set initial value
-        if (sim.timeStepCount == 0) {
-            exprState.lastOutput = initialValue;
-            integratedValue = initialValue;
-        }
-        
         int vn = pins[0].voltSource + sim.nodeList.size();
         
         if (compiledExpr != null) {
@@ -208,7 +189,7 @@ class ODEElm extends ChipElm {
                 exprState.values[i] = parameters[i];
             }
             
-            // Evaluate equation to get derivative f(t, labeled_nodes, a, b, c...)
+            // Evaluate equation to get output value
             exprState.t = sim.t;
             double equationValue = compiledExpr.eval(exprState);
             
@@ -219,38 +200,30 @@ class ODEElm extends ChipElm {
             }
             lastEquationValue = equationValue;
             
-            // Perform integration: y[n+1] = y[n] + dt * f(t)
-            integratedValue = exprState.lastOutput + sim.timeStep * equationValue;
+            // Output the equation value directly (no integration)
+            currentValue = equationValue;
             
             // Check output voltage convergence
             double outputVoltage = volts[0];
-            double voltageDiff = Math.abs(outputVoltage - integratedValue);
-            double threshold = Math.max(Math.abs(integratedValue) * 0.01, 1e-6);
+            double voltageDiff = Math.abs(outputVoltage - currentValue);
+            double threshold = Math.max(Math.abs(currentValue) * 0.01, 1e-6);
             if (voltageDiff > threshold && sim.subIterations < 100) {
                 sim.converged = false;
             }
             
-            // Stamp the right side with the integrated value
-            sim.stampRightSide(vn, integratedValue);
-        }
-    }
-    
-    void stepFinished() {
-        // Update integration state for next timestep
-        if (exprState != null) {
-            exprState.lastOutput = integratedValue;
+            // Stamp the right side with the equation value
+            sim.stampRightSide(vn, currentValue);
         }
     }
     
     @Override
     public void reset() {
         super.reset();
-        // Reset integration to initial condition
+        // Reset to zero
         if (exprState != null) {
             exprState.reset();
-            exprState.lastOutput = initialValue;
         }
-        integratedValue = initialValue;
+        currentValue = 0.0;
         lastEquationValue = 0.0;
     }
     
@@ -277,7 +250,6 @@ class ODEElm extends ChipElm {
         sb.append(super.dump());
         sb.append(" ").append(CustomLogicModel.escape(elementName));
         sb.append(" ").append(CustomLogicModel.escape(equationString));
-        sb.append(" ").append(initialValue);
         sb.append(" ").append(numParameters);
         
         // Dump all parameter values
@@ -291,25 +263,17 @@ class ODEElm extends ChipElm {
     void draw(Graphics g) {
         drawChip(g);
         
-        // Draw integral symbol with initial value as subscript in box
+        // Draw "f(x)" symbol in box
         int mid_x = (rectPointsX[0] + rectPointsX[1] + rectPointsX[2] + rectPointsX[3]) / 4;
         int mid_y = (rectPointsY[0] + rectPointsY[1] + rectPointsY[2] + rectPointsY[3]) / 4;
         
         boolean selected = needsHighlight();
         
-        // Draw integral symbol
+        // Draw function symbol
         Font mainFont = new Font("SansSerif", selected ? Font.BOLD : 0, 18);
         g.setFont(mainFont);
         g.setColor(selected ? selectColor : whiteColor);
-        drawCenteredText(g, "∫", mid_x - 8, mid_y, true);
-        g.restore();
-        
-        // Draw initial value as subscript (smaller, lower, to the right)
-        Font subscriptFont = new Font("SansSerif", 0, 10);
-        g.setFont(subscriptFont);
-        g.setColor(selected ? selectColor : whiteColor);
-        String initStr = getShortUnitText(initialValue, "");
-        drawCenteredText(g, initStr, mid_x + 8, mid_y + 6, true);
+        drawCenteredText(g, "f(x)", mid_x, mid_y, true);
         g.restore();
         
         // Draw full equation below the box with all parameters substituted
@@ -334,7 +298,7 @@ class ODEElm extends ChipElm {
         Font smallFont = new Font("SansSerif", 0, 12);
         g.setFont(smallFont);
         g.setColor(selected ? selectColor : whiteColor);
-        drawCenteredText(g, "d/dt=" + displayEquation, mid_x, bottom_y + 12, true);
+        drawCenteredText(g, "y=" + displayEquation, mid_x, bottom_y + 12, true);
         g.restore();
     }
     
@@ -343,12 +307,10 @@ class ODEElm extends ChipElm {
             EditInfo ei = new EditInfo("Name", 0, -1, -1);
             ei.text = elementName;
             ei.disallowSliders();
-
-            
             return ei;
         }
         if (n == 1) {
-            EditInfo ei = new EditInfo("Equation (d/dt)", 0, -1, -1);
+            EditInfo ei = new EditInfo("Equation (y)", 0, -1, -1);
             ei.text = equationString;
             ei.disallowSliders();
             
@@ -385,22 +347,7 @@ class ODEElm extends ChipElm {
                 }
             }
             
-            // // Add other ODE element names in the circuit
-            // if (sim != null && sim.elmList != null) {
-            //     for (int i = 0; i < sim.elmList.size(); i++) {
-            //         CircuitElm ce = sim.getElm(i);
-            //         if (ce instanceof ODEElm && ce != this) {
-            //             ODEElm ode = (ODEElm) ce;
-            //             if (ode.elementName != null && !ode.elementName.isEmpty()) {
-            //                 if (!completions.contains(ode.elementName)) {
-            //                     completions.add(ode.elementName);
-            //                 }
-            //             }
-            //         }
-            //     }
-            // }
-            
-            // Add parameter names for this ODE element
+            // Add parameter names for this Equation element
             for (int i = 0; i < numParameters; i++) {
                 if (!completions.contains(PARAM_NAMES[i])) {
                     completions.add(PARAM_NAMES[i]);
@@ -433,10 +380,6 @@ class ODEElm extends ChipElm {
             return ei;
         }
         if (n == 2) {
-            EditInfo ei = new EditInfo("Initial Value y(0)", initialValue);
-            return ei;
-        }
-        if (n == 3) {
             EditInfo ei = new EditInfo("Number of Parameters", "");
             ei.choice = new Choice();
             for (int i = 1; i <= MAX_PARAMETERS; i++) {
@@ -446,8 +389,8 @@ class ODEElm extends ChipElm {
             return ei;
         }
         
-        // Parameter fields with inline checkboxes: 4, 5, 6, 7, 8, 9, 10, 11
-        int paramIndex = n - 4;
+        // Parameter fields with inline checkboxes: 3, 4, 5, 6, 7, 8, 9, 10
+        int paramIndex = n - 3;
         
         if (paramIndex >= 0 && paramIndex < numParameters) {
             EditInfo ei = new EditInfo(elementName + "_'" + PARAM_NAMES[paramIndex] + "'", parameters[paramIndex]);
@@ -468,14 +411,6 @@ class ODEElm extends ChipElm {
             parseEquation();
         }
         if (n == 2) {
-            initialValue = ei.value;
-            // Reset integration to new initial value
-            if (exprState != null) {
-                exprState.lastOutput = initialValue;
-            }
-            integratedValue = initialValue;
-        }
-        if (n == 3) {
             int newNumParams = ei.choice.getSelectedIndex() + 1;
             if (newNumParams != numParameters) {
                 numParameters = newNumParams;
@@ -483,8 +418,8 @@ class ODEElm extends ChipElm {
             }
         }
         
-        // Parameter fields: 4, 5, 6, 7, 8, 9, 10, 11 (one per parameter)
-        int paramIndex = n - 4;
+        // Parameter fields: 3, 4, 5, 6, 7, 8, 9, 10 (one per parameter)
+        int paramIndex = n - 3;
         
         if (paramIndex >= 0 && paramIndex < MAX_PARAMETERS) {
             parameters[paramIndex] = ei.value;
@@ -497,30 +432,29 @@ class ODEElm extends ChipElm {
     
     @Override
     void getInfo(String arr[]) {
-        arr[0] = "ODE Integrator";
-        arr[1] = "Equation: d/dt = " + equationString;
-        arr[2] = "Initial Value: " + getVoltageText(initialValue);
+        arr[0] = "Equation";
+        arr[1] = "Equation: y = " + equationString;
         
         // Show all active parameters
-        int idx = 3;
+        int idx = 2;
         for (int i = 0; i < numParameters && idx < arr.length; i++) {
             arr[idx++] = "Parameter '" + PARAM_NAMES[i] + "': " + getVoltageText(parameters[i]);
         }
         
         if (idx < arr.length)
-            arr[idx++] = "Current Output: " + getVoltageText(integratedValue);
+            arr[idx++] = "Current Output: " + getVoltageText(currentValue);
         if (idx < arr.length)
             arr[idx] = "Time: " + getUnitText(sim.t, "s");
     }
     
     // Custom formatting for parameter sliders
     public String getSliderUnitText(int n, EditInfo ei, double value) {
-        // Fields 0-3 are name, equation, initial value, and number of parameters
-        if (n <= 3)
+        // Fields 0-2 are name, equation, and number of parameters
+        if (n <= 2)
             return null;
         
-        // Parameter fields: 4, 5, 6, 7, 8, 9, 10, 11 (one per parameter)
-        int paramIndex = n - 4;
+        // Parameter fields: 3, 4, 5, 6, 7, 8, 9, 10 (one per parameter)
+        int paramIndex = n - 3;
         
         // Only format parameter value fields
         if (paramIndex >= numParameters)

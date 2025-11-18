@@ -15,6 +15,7 @@ DividerElm|Add Divider
 DifferentiatorElm|Add Differentiator
 IntegratorElm|Add Integrator
 ODEElm|Add ODE
+EquationElm|Add Equation
 PercentElm|Add Percent/Ratio Meter
 AdderElm|Add Adder
 SubtracterElm|Add Subtracter

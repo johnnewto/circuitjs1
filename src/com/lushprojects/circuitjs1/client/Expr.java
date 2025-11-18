@@ -60,7 +60,13 @@ class Expr {
 	case E_ADD: return left.eval(es)+right.eval(es);
 	case E_SUB: return left.eval(es)-right.eval(es);
 	case E_MUL: return left.eval(es)*right.eval(es);
-	case E_DIV: return left.eval(es)/right.eval(es);
+	case E_DIV: {
+	    double divisor = right.eval(es);
+	    // Protect against division by zero
+	    if (Math.abs(divisor) < 1e-12)
+		return 0.0;
+	    return left.eval(es) / divisor;
+	}
 	case E_POW: return Math.pow(left.eval(es), right.eval(es));
 	case E_OR:  return (left.eval(es) != 0 || right.eval(es) != 0) ? 1 : 0;
 	case E_AND: return (left.eval(es) != 0 && right.eval(es) != 0) ? 1 : 0;
@@ -124,8 +130,13 @@ class Expr {
 	    double x = posmod(left.eval(es), Math.PI*2)/Math.PI;
 	    return x-1;
 	}
-	case E_MOD:
-	    return left.eval(es) % right.eval(es);
+	case E_MOD: {
+	    double divisor = right.eval(es);
+	    // Protect against modulo by zero
+	    if (Math.abs(divisor) < 1e-12)
+		return 0.0;
+	    return left.eval(es) % divisor;
+	}
 	case E_PWL:
 	    return pwl(es, children);
 	case E_PWR:
