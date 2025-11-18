@@ -21,6 +21,7 @@ package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.user.client.ui.TextBox;
 import com.google.gwt.user.client.ui.Label;
+import com.lushprojects.circuitjs1.client.util.Locale;
 
 /**
  * AutocompleteHelper - Shared bash-style Tab completion functionality
@@ -287,9 +288,10 @@ public class AutocompleteHelper {
     
     /**
      * Check if character is valid in identifier
+     * Now supports Greek symbols like \beta, \omega and LaTeX scripts like Z_1, x^2
      */
     private static boolean isIdentifierChar(char c) {
-        return Character.isLetterOrDigit(c) || c == '_';
+        return Character.isLetterOrDigit(c) || c == '_' || c == '\\' || c == '^' || c == '{' || c == '}';
     }
     
     /**
@@ -396,6 +398,7 @@ public class AutocompleteHelper {
     
     /**
      * Extract identifiers from equation text
+     * Now supports Greek symbols like \beta, \omega and LaTeX scripts like Z_1, x^2
      */
     private static java.util.List<String> extractIdentifiers(String text) {
         java.util.List<String> identifiers = new java.util.ArrayList<String>();
@@ -403,7 +406,7 @@ public class AutocompleteHelper {
         
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
-            if (Character.isLetter(c) || c == '_') {
+            if (Character.isLetter(c) || c == '_' || c == '\\' || c == '^' || c == '{' || c == '}') {
                 currentId.append(c);
             } else if (Character.isDigit(c) && currentId.length() > 0) {
                 currentId.append(c);
@@ -424,6 +427,7 @@ public class AutocompleteHelper {
     
     /**
      * Check if a symbol is known (case-sensitive for user symbols, case-insensitive for built-ins)
+     * Now recognizes Greek symbols like \beta, \omega
      */
     private static boolean isKnownSymbol(String symbol, java.util.List<String> completionList) {
         // Check user-defined symbols (case-sensitive)
@@ -431,6 +435,11 @@ public class AutocompleteHelper {
             if (item.equals(symbol)) {
                 return true;
             }
+        }
+        
+        // Check if it's a Greek symbol escape sequence
+        if (isGreekSymbol(symbol)) {
+            return true;
         }
         
         // Check built-in functions (case-insensitive)
@@ -445,5 +454,18 @@ public class AutocompleteHelper {
         }
         
         return false;
+    }
+    
+    /**
+     * Check if a string is a valid Greek symbol escape sequence
+     */
+    private static boolean isGreekSymbol(String symbol) {
+        if (!symbol.startsWith("\\") || symbol.length() < 2) {
+            return false;
+        }
+        
+        // Test if converting the symbol changes it (i.e., it's a valid Greek symbol)
+        String converted = Locale.convertGreekSymbols(symbol);
+        return !converted.equals(symbol);
     }
 }

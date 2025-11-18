@@ -287,13 +287,14 @@ class ExprParser {
 				text.charAt(i) == '.'))
 				break;
 			}
-		} else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
-			// Support identifiers with letters, numbers, and underscores
-			// Must start with letter or underscore
+		} else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '\\') {
+			// Support identifiers with letters, numbers, underscores, Greek symbols (\beta), 
+			// and LaTeX formatting (Z_1, x^2, Z_{banks})
+			// Must start with letter, underscore, or backslash
 			for (i = pos; i != tlen; i++) {
 				char ch = text.charAt(i);
 				if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || 
-					  (ch >= '0' && ch <= '9') || ch == '_'))
+					  (ch >= '0' && ch <= '9') || ch == '_' || ch == '\\' || ch == '^' || ch == '{' || ch == '}'))
 					break;
 			}
 		} else {
@@ -327,20 +328,21 @@ class ExprParser {
     }
     
     // Check if a token looks like a valid identifier (GWT-compatible)
+    // Now supports Greek symbols like \beta, \omega and LaTeX scripts like Z_1, x^2
     boolean isValidIdentifier(String token) {
 	if (token == null || token.length() == 0)
 	    return false;
 	
-	// First character must be letter or underscore
+	// First character must be letter, underscore, or backslash (for Greek symbols)
 	char first = token.charAt(0);
-	if (!((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_'))
+	if (!((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_' || first == '\\'))
 	    return false;
 	
-	// Remaining characters must be letters, numbers, or underscores
+	// Remaining characters must be letters, numbers, underscores, backslashes, or script markers
 	for (int i = 1; i < token.length(); i++) {
 	    char c = token.charAt(i);
 	    if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
-		  (c >= '0' && c <= '9') || c == '_'))
+		  (c >= '0' && c <= '9') || c == '_' || c == '\\' || c == '^' || c == '{' || c == '}'))
 		return false;
 	}
 	

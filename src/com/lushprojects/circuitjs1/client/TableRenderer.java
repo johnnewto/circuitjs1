@@ -421,6 +421,9 @@ public class TableRenderer {
                 }
             }
             
+            // Truncate header if needed to fit in cell (with 10px padding on each side)
+            displayHeader = truncateText(displayHeader, g, cellWidthPixels - 20);
+            
             // Draw header text
             g.setColor(CircuitElm.whiteColor);
             table.drawCenteredText(g, displayHeader, cellX + cellWidthPixels/2, headerY + table.cellHeight/2, true);
@@ -566,6 +569,10 @@ public class TableRenderer {
             g.setColor(CircuitElm.whiteColor);
             String rowDesc = (table.rowDescriptions != null && row < table.rowDescriptions.length) ?
                             table.rowDescriptions[row] : "Row" + (row + 1);
+            
+            // Truncate row description if needed to fit in cell (with 10px padding on each side)
+            rowDesc = truncateText(rowDesc, g, rowDescColWidth - 20);
+            
             table.drawCenteredText(g, rowDesc, tableX + table.cellSpacing + rowDescColWidth/2, cellY + table.cellHeight/2, true);
             
             // Use cell font for cell values
@@ -606,7 +613,7 @@ public class TableRenderer {
                 } else if (equation != null && !equation.trim().isEmpty()) {
                     // Regular cell: display equation = value OR just equation based on showCellValues setting
                     g.setColor(getTextVoltageColor(voltage));
-                    String displayText = truncateEquation(equation);
+                    String displayText = truncateEquation(equation, g);
                     
                     if (table.showCellValues) {
                         // Show "equation = value"
@@ -627,25 +634,58 @@ public class TableRenderer {
     }
     
     /**
-     * Truncate long equations for display based on cell width
-     * Assumes average character width of 7 pixels at default font size
+     * Truncate text to fit within a specified width using actual text measurement.
+     * This properly handles Greek symbols, subscripts, and superscripts with accurate width.
+     * 
+     * @param text The text to truncate
+     * @param g Graphics context for measuring text
+     * @param maxWidth Maximum width in pixels
+     * @return Truncated text with ".." appended if truncation occurred
      */
-    private String truncateEquation(String equation) {
-        // Get cell width in pixels
-        int cellWidthPixels = table.getCellWidthPixels();
-        
-        // Average character width is approximately 7 pixels for the default font
-        // Reserve some padding (10 pixels on each side = 20 total)
-        int availableWidth = cellWidthPixels - 0;
-        int maxLength = Math.max(3, availableWidth / 7);
-        
-        if (equation.length() > maxLength) {
-            return equation.substring(0, maxLength - 2) + "..";
+    private String truncateText(String text, Graphics g, int maxWidth) {
+        if (text == null || text.isEmpty()) {
+            return text;
         }
-        return equation;
+        
+        // Measure actual width of the full text
+        double fullWidth = g.measureWidth(text);
+        
+        // If it fits, return as-is
+        if (fullWidth <= maxWidth) {
+            return text;
+        }
+        
+        // Binary search to find the optimal truncation point
+        int left = 1;
+        int right = text.length();
+        String bestFit = text.substring(0, Math.min(3, text.length())) + "..";
+        
+        while (left <= right) {
+            int mid = (left + right) / 2;
+            String candidate = text.substring(0, mid) + "..";
+            double candidateWidth = g.measureWidth(candidate);
+            
+            if (candidateWidth <= maxWidth) {
+                bestFit = candidate;
+                left = mid + 1;  // Try to fit more
+            } else {
+                right = mid - 1;  // Too wide, try shorter
+            }
+        }
+        
+        return bestFit;
     }
-
-    private void drawSumRow(Graphics g, int offsetY) {
+    
+    /**
+     * Truncate long equations for display based on cell width using actual text measurement.
+     * This properly handles Greek symbols, subscripts, and superscripts with accurate width.
+     */
+    private String truncateEquation(String equation, Graphics g) {
+        // Get cell width in pixels with padding (10 pixels on each side)
+        int cellWidthPixels = table.getCellWidthPixels();
+        int availableWidth = cellWidthPixels - 20;
+        return truncateText(equation, g, availableWidth);
+    }    private void drawSumRow(Graphics g, int offsetY) {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();

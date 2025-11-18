@@ -6,6 +6,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.util.Locale;
+
 /**
  * EquationElm - Simple Equation Calculator (No Integration)
  * 
@@ -278,6 +280,10 @@ class EquationElm extends ChipElm {
         
         // Draw full equation below the box with all parameters substituted
         String displayEquation = equationString;
+        
+        // Convert Greek symbols BEFORE substituting parameter values
+        displayEquation = Locale.convertGreekSymbols(displayEquation);
+        
         for (int i = 0; i < numParameters; i++) {
             String paramValueStr;
             if (showPercentage[i]) {
