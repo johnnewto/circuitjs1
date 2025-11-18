@@ -359,16 +359,29 @@ class ODEElm extends ChipElm {
             java.util.Set<String> stockNames = StockFlowRegistry.getAllStockNames();
             if (stockNames != null && !stockNames.isEmpty()) {
                 for (String stockName : stockNames) {
-                    completions.add(stockName);
+                    if (!completions.contains(stockName)) {
+                        completions.add(stockName);
+                    }
                 }
             }
             
+            // Add labeled node names
+            String[] labeledNodes = LabeledNodeElm.getSortedLabeledNodeNames();
+            if (labeledNodes != null && labeledNodes.length > 0) {
+                for (String nodeName : labeledNodes) {
+                    if (!completions.contains(nodeName)) {
+                        completions.add(nodeName);
+                    }
+                }
+            }
             
             // Add variables used in cell equations
             java.util.Set<String> cellVariables = StockFlowRegistry.getAllCellEquationVariables();
             if (cellVariables != null && !cellVariables.isEmpty()) {
                 for (String varName : cellVariables) {
-                    completions.add(varName);
+                    if (!completions.contains(varName)) {
+                        completions.add(varName);
+                    }
                 }
             }
             
@@ -379,7 +392,9 @@ class ODEElm extends ChipElm {
             //         if (ce instanceof ODEElm && ce != this) {
             //             ODEElm ode = (ODEElm) ce;
             //             if (ode.elementName != null && !ode.elementName.isEmpty()) {
-            //                 completions.add(ode.elementName);
+            //                 if (!completions.contains(ode.elementName)) {
+            //                     completions.add(ode.elementName);
+            //                 }
             //             }
             //         }
             //     }
@@ -387,28 +402,30 @@ class ODEElm extends ChipElm {
             
             // Add parameter names for this ODE element
             for (int i = 0; i < numParameters; i++) {
-                completions.add(PARAM_NAMES[i]);
+                if (!completions.contains(PARAM_NAMES[i])) {
+                    completions.add(PARAM_NAMES[i]);
+                }
             }
             
             // Add mathematical functions
-            completions.add("sin");
-            completions.add("cos");
-            completions.add("tan");
-            completions.add("exp");
-            completions.add("log");
-            completions.add("sqrt");
-            completions.add("abs");
-            completions.add("min");
-            completions.add("max");
-            completions.add("pow");
-            completions.add("atan2");
-            completions.add("floor");
-            completions.add("ceil");
+            if (!completions.contains("sin")) completions.add("sin");
+            if (!completions.contains("cos")) completions.add("cos");
+            if (!completions.contains("tan")) completions.add("tan");
+            if (!completions.contains("exp")) completions.add("exp");
+            if (!completions.contains("log")) completions.add("log");
+            if (!completions.contains("sqrt")) completions.add("sqrt");
+            if (!completions.contains("abs")) completions.add("abs");
+            if (!completions.contains("min")) completions.add("min");
+            if (!completions.contains("max")) completions.add("max");
+            if (!completions.contains("pow")) completions.add("pow");
+            if (!completions.contains("atan2")) completions.add("atan2");
+            if (!completions.contains("floor")) completions.add("floor");
+            if (!completions.contains("ceil")) completions.add("ceil");
             
             // Add common constants
-            completions.add("pi");
-            completions.add("e");
-            completions.add("t");  // time variable
+            if (!completions.contains("pi")) completions.add("pi");
+            if (!completions.contains("e")) completions.add("e");
+            if (!completions.contains("t")) completions.add("t");  // time variable
             
             // Attach completion list for tab completion
             ei.completionList = completions;

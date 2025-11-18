@@ -386,38 +386,38 @@ class EditDialog extends Dialog {
 			mainPanel.remove(0);
 	}
 	
+	// ============================================================================
+	// AUTOCOMPLETE FUNCTIONALITY
+	// Provides bash-style tab completion with real-time match display
+	// ============================================================================
+	
 	/**
-	 * Adds bash-style tab completion to a TextBox.
-	 * Creates a vertical panel with a hint label above the textbox.
-	 * Returns the panel that should be added to the dialog instead of the textbox alone.
+	 * Creates an autocomplete-enabled text input.
+	 * 
+	 * Returns a VerticalPanel containing:
+	 * - A hint label (shows matching completions as user types)
+	 * - The TextBox
+	 * 
+	 * @param textBox The text input to enhance with autocomplete
+	 * @param completionList List of available completion strings
+	 * @return VerticalPanel to add to the dialog (instead of textBox alone)
 	 */
 	private VerticalPanel addAutocompleteHandler(final TextBox textBox, final java.util.List<String> completionList) {
-	    // Create a vertical panel to hold hint label and textbox
-	    VerticalPanel autocompletePanel = new VerticalPanel();
-	    autocompletePanel.setWidth("100%");
+	    // Setup container panel
+	    VerticalPanel container = new VerticalPanel();
+	    container.setWidth("100%");
 	    
-	    // Create hint label (initially hidden)
-	    final Label hintLabel = new Label();
-	    hintLabel.setStyleName("autocomplete-hint");
-	    hintLabel.setVisible(false);
-	    hintLabel.getElement().getStyle().setProperty("fontSize", "11px");
-	    hintLabel.getElement().getStyle().setProperty("color", "#666");
-	    hintLabel.getElement().getStyle().setProperty("fontFamily", "monospace");
-	    hintLabel.getElement().getStyle().setProperty("whiteSpace", "pre-wrap");
-	    hintLabel.getElement().getStyle().setProperty("marginBottom", "2px");
-	    hintLabel.getElement().getStyle().setProperty("padding", "2px 4px");
-	    hintLabel.getElement().getStyle().setProperty("backgroundColor", "#f0f0f0");
-	    hintLabel.getElement().getStyle().setProperty("border", "1px solid #ccc");
-	    hintLabel.getElement().getStyle().setProperty("borderRadius", "3px");
+	    // Create hint label (initially hidden, appears when typing)
+	    final Label hintLabel = createHintLabel();
 	    
-	    // Add hint label and textbox to the panel
-	    autocompletePanel.add(hintLabel);
-	    autocompletePanel.add(textBox);
+	    // Assemble: hint label above textbox
+	    container.add(hintLabel);
+	    container.add(textBox);
 	    
-	    // Store reference for updates
+	    // Store reference for state management
 	    autocompleteHintLabel = hintLabel;
 	    
-	    // Add key down handler for Tab completion
+	    // Handle Tab key: cycle through completions
 	    textBox.addKeyDownHandler(new KeyDownHandler() {
 		public void onKeyDown(KeyDownEvent event) {
 		    if (event.getNativeKeyCode() == KeyCodes.KEY_TAB) {
@@ -428,84 +428,238 @@ class EditDialog extends Dialog {
 		}
 	    });
 	    
-	    // Add key press handler to show matches as user types
+	    // Handle typing: show matches in real-time and validate symbols
 	    textBox.addKeyPressHandler(new KeyPressHandler() {
 		public void onKeyPress(KeyPressEvent event) {
-		    // Schedule showing matches after the character is added to the textbox
-		    com.google.gwt.core.client.Scheduler.get().scheduleDeferred(new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
-			public void execute() {
-			    showMatchesForCurrentWord(textBox, completionList, hintLabel);
+		    // Wait for character to be added to textbox, then update display
+		    com.google.gwt.core.client.Scheduler.get().scheduleDeferred(
+			new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
+			    public void execute() {
+				updateMatchDisplay(textBox, completionList, hintLabel);
+			    }
 			}
-		    });
+		    );
 		}
 	    });
 	    
-	    return autocompletePanel;
+	    // Validate immediately on dialog open - show only undefined symbols
+	    com.google.gwt.core.client.Scheduler.get().scheduleDeferred(
+		new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
+		    public void execute() {
+			validateOnOpen(textBox, completionList, hintLabel);
+		    }
+		}
+	    );
+	    
+	    return container;
 	}
 	
 	/**
-	 * Handles tab completion similar to bash:
-	 * - First tab: complete to longest common prefix or show first match
-	 * - Subsequent tabs: cycle through matching completions
-	 * - Shows available matches in label above input when multiple options exist
+	 * Creates and styles the hint label that displays available matches.
+	 */
+	private Label createHintLabel() {
+	    Label label = new Label();
+	    label.setStyleName("autocomplete-hint");
+	    label.setVisible(false);
+	    
+	    // Style: small monospace text in a subtle bordered box
+	    label.getElement().getStyle().setProperty("fontSize", "11px");
+	    label.getElement().getStyle().setProperty("color", "#666");
+	    label.getElement().getStyle().setProperty("fontFamily", "monospace");
+	    label.getElement().getStyle().setProperty("whiteSpace", "pre-wrap");
+	    label.getElement().getStyle().setProperty("marginBottom", "2px");
+	    label.getElement().getStyle().setProperty("padding", "2px 4px");
+	    label.getElement().getStyle().setProperty("backgroundColor", "#f0f0f0");
+	    label.getElement().getStyle().setProperty("border", "1px solid #ccc");
+	    label.getElement().getStyle().setProperty("borderRadius", "3px");
+	    
+	    return label;
+	}
+	
+	/**
+	 * Handles Tab key completion (bash-style behavior).
+	 * 
+	 * First Tab:
+	 * - Single match: complete it immediately
+	 * - Multiple matches: complete to longest common prefix, show all matches
+	 * 
+	 * Subsequent Tabs: cycle through all matching options
 	 */
 	private void handleTabCompletion(TextBox textBox, java.util.List<String> completionList, Label hintLabel) {
-	    String text = textBox.getText();
-	    int cursorPos = textBox.getCursorPos();
+	    // Extract the word being completed
+	    String prefix = getCurrentWord(textBox);
 	    
-	    // Find the word being completed (before cursor)
-	    String beforeCursor = text.substring(0, cursorPos);
-	    int wordStart = findWordStart(beforeCursor);
-	    String prefix = beforeCursor.substring(wordStart);
+	    // Check if this is a new completion request or continuing previous one
+	    boolean isNewRequest = !prefix.equals(lastAutocompletePrefix);
 	    
-	    // Check if this is a new completion or continuation
-	    boolean newCompletion = !prefix.equals(lastAutocompletePrefix);
-	    
-	    if (newCompletion) {
-		// Find all matches for this prefix
-		autocompleteMatches = findMatches(prefix, completionList);
-		autocompleteIndex = 0;
-		lastAutocompletePrefix = prefix;
-		
-		if (autocompleteMatches.isEmpty()) {
-		    hintLabel.setVisible(false);
-		    return; // No matches
-		}
-		
-		if (autocompleteMatches.size() == 1) {
-		    // Only one match, complete it
-		    replaceWord(textBox, wordStart, cursorPos, autocompleteMatches.get(0));
-		    hintLabel.setVisible(false);
-		    return;
-		}
-		
-		// Multiple matches: show them and complete to longest common prefix
-		showMatchesInLabel(autocompleteMatches, hintLabel);
-		
-		String commonPrefix = findLongestCommonPrefix(autocompleteMatches);
-		if (commonPrefix.length() > prefix.length()) {
-		    replaceWord(textBox, wordStart, cursorPos, commonPrefix);
-		    lastAutocompletePrefix = commonPrefix;
-		    return;
-		}
-	    }
-	    
-	    // Cycle through matches
-	    if (autocompleteMatches != null && !autocompleteMatches.isEmpty()) {
-		String completion = autocompleteMatches.get(autocompleteIndex);
-		replaceWord(textBox, wordStart, cursorPos, completion);
-		
-		// Update hint to show current selection
-		showMatchesInLabel(autocompleteMatches, hintLabel);
-		
-		// Move to next match
-		autocompleteIndex = (autocompleteIndex + 1) % autocompleteMatches.size();
+	    if (isNewRequest) {
+		startNewCompletion(textBox, prefix, completionList, hintLabel);
+	    } else {
+		cycleToNextMatch(textBox, hintLabel);
 	    }
 	}
 	
 	/**
-	 * Finds the start of the current word (identifier).
-	 * Words can contain letters, numbers, underscores.
+	 * Starts a new completion request for the given prefix.
+	 */
+	private void startNewCompletion(TextBox textBox, String prefix, 
+					java.util.List<String> completionList, Label hintLabel) {
+	    // Find all matching completions
+	    autocompleteMatches = findMatches(prefix, completionList);
+	    autocompleteIndex = 0;
+	    lastAutocompletePrefix = prefix;
+	    
+	    // No matches found
+	    if (autocompleteMatches.isEmpty()) {
+		hintLabel.setVisible(false);
+		return;
+	    }
+	    
+	    // Exactly one match: complete it immediately
+	    if (autocompleteMatches.size() == 1) {
+		completeCurrentWord(textBox, autocompleteMatches.get(0));
+		hintLabel.setVisible(false);
+		return;
+	    }
+	    
+	    // Multiple matches: complete with first match immediately
+	    completeCurrentWord(textBox, autocompleteMatches.get(0));
+	    
+	    // Update lastAutocompletePrefix to the completed word so subsequent tabs continue cycling
+	    lastAutocompletePrefix = autocompleteMatches.get(0);
+	    
+	    // Update display with first match highlighted
+	    displayMatches(autocompleteMatches, hintLabel, 0);
+	}
+	
+	/**
+	 * Cycles to the next match in the completion list.
+	 */
+	private void cycleToNextMatch(TextBox textBox, Label hintLabel) {
+	    if (autocompleteMatches == null || autocompleteMatches.isEmpty()) {
+		return;
+	    }
+	    
+	    // Replace with current match
+	    String completion = autocompleteMatches.get(autocompleteIndex);
+	    completeCurrentWord(textBox, completion);
+	    
+	    // Update lastAutocompletePrefix to the completed word so next tab continues cycling
+	    lastAutocompletePrefix = completion;
+	    
+	    // Update display with current match highlighted
+	    displayMatches(autocompleteMatches, hintLabel, autocompleteIndex);
+	    
+	    // Advance to next match (wrap around)
+	    autocompleteIndex = (autocompleteIndex + 1) % autocompleteMatches.size();
+	}
+	
+	/**
+	 * Validates the expression when dialog first opens.
+	 * Shows only undefined symbols, not completion matches.
+	 */
+	private void validateOnOpen(TextBox textBox, java.util.List<String> completionList, Label hintLabel) {
+	    String text = textBox.getText().trim();
+	    
+	    // Check for undefined symbols in the full expression
+	    java.util.List<String> undefinedSymbols = new java.util.ArrayList<String>();
+	    if (!text.isEmpty()) {
+		java.util.Set<String> identifiers = extractIdentifiers(text);
+		
+		for (String identifier : identifiers) {
+		    if (!isKnownSymbol(identifier, completionList)) {
+			undefinedSymbols.add(identifier);
+		    }
+		}
+	    }
+	    
+	    // Show only undefined symbols (no completion matches on open)
+	    if (!undefinedSymbols.isEmpty()) {
+		displayUndefinedSymbols(undefinedSymbols, hintLabel);
+	    } else {
+		hintLabel.setVisible(false);
+	    }
+	}
+	
+	/**
+	 * Updates the match display as the user types (called on every keystroke).
+
+	 * Shows matches automatically without needing to press Tab.
+	 * Shows both undefined symbols (in red) and available matches.
+	 */
+	private void updateMatchDisplay(TextBox textBox, java.util.List<String> completionList, Label hintLabel) {
+	    String text = textBox.getText().trim();
+	    
+	    // Check for undefined symbols in the full expression
+	    java.util.List<String> undefinedSymbols = new java.util.ArrayList<String>();
+	    if (!text.isEmpty()) {
+		java.util.Set<String> identifiers = extractIdentifiers(text);
+		
+		for (String identifier : identifiers) {
+		    if (!isKnownSymbol(identifier, completionList)) {
+			undefinedSymbols.add(identifier);
+		    }
+		}
+	    }
+	    
+	    // Get completion matches for current word
+	    String prefix = getCurrentWord(textBox);
+	    java.util.List<String> matches = new java.util.ArrayList<String>();
+	    
+	    if (prefix.length() >= 1) {
+		matches = findMatches(prefix, completionList);
+		
+		// Remove exact match or complete word from matches display
+		if (matches.size() == 1 && matches.get(0).equalsIgnoreCase(prefix)) {
+		    matches.clear();
+		}
+	    }
+	    
+	    // Display both undefined symbols and matches
+	    if (!undefinedSymbols.isEmpty() || !matches.isEmpty()) {
+		displayValidationAndMatches(undefinedSymbols, matches, hintLabel);
+	    } else {
+		hintLabel.setVisible(false);
+	    }
+	}
+	
+	// ============================================================================
+	// HELPER METHODS: Text extraction and manipulation
+	// ============================================================================
+	
+	/**
+	 * Gets the word currently being typed (before cursor).
+	 * A word consists of letters, digits, and underscores.
+	 */
+	private String getCurrentWord(TextBox textBox) {
+	    String text = textBox.getText();
+	    int cursorPos = textBox.getCursorPos();
+	    String beforeCursor = text.substring(0, cursorPos);
+	    int wordStart = findWordStart(beforeCursor);
+	    return beforeCursor.substring(wordStart);
+	}
+	
+	/**
+	 * Replaces the current word with the given completion.
+	 */
+	private void completeCurrentWord(TextBox textBox, String completion) {
+	    String text = textBox.getText();
+	    int cursorPos = textBox.getCursorPos();
+	    String beforeCursor = text.substring(0, cursorPos);
+	    int wordStart = findWordStart(beforeCursor);
+	    
+	    // Build new text: before + completion + after
+	    String before = text.substring(0, wordStart);
+	    String after = text.substring(cursorPos);
+	    textBox.setText(before + completion + after);
+	    
+	    // Move cursor to end of completed word
+	    textBox.setCursorPos(wordStart + completion.length());
+	}
+	
+	/**
+	 * Finds the start position of the current word.
+	 * Words consist of letters, digits, and underscores.
 	 */
 	private int findWordStart(String text) {
 	    int pos = text.length() - 1;
@@ -519,8 +673,12 @@ class EditDialog extends Dialog {
 	    return pos + 1;
 	}
 	
+	// ============================================================================
+	// HELPER METHODS: Matching and filtering
+	// ============================================================================
+	
 	/**
-	 * Finds all completion entries that start with the given prefix.
+	 * Finds all completions that start with the given prefix (case-insensitive).
 	 */
 	private java.util.List<String> findMatches(String prefix, java.util.List<String> completionList) {
 	    java.util.List<String> matches = new java.util.ArrayList<String>();
@@ -536,7 +694,8 @@ class EditDialog extends Dialog {
 	}
 	
 	/**
-	 * Finds the longest common prefix among all matches.
+	 * Finds the longest prefix common to all matches (case-insensitive comparison).
+	 * Used to auto-complete as far as possible when multiple matches exist.
 	 */
 	private String findLongestCommonPrefix(java.util.List<String> matches) {
 	    if (matches.isEmpty()) {
@@ -546,6 +705,7 @@ class EditDialog extends Dialog {
 	    String first = matches.get(0);
 	    int prefixLen = first.length();
 	    
+	    // Compare first match with all others to find common prefix length
 	    for (int i = 1; i < matches.size(); i++) {
 		String current = matches.get(i);
 		prefixLen = Math.min(prefixLen, current.length());
@@ -562,27 +722,24 @@ class EditDialog extends Dialog {
 	    return first.substring(0, prefixLen);
 	}
 	
+	// ============================================================================
+	// HELPER METHODS: Display
+	// ============================================================================
+	
 	/**
-	 * Replaces the current word with the completion.
+	 * Displays available matches in the hint label.
+	 * Shows up to 20 matches inline, separated by spaces.
 	 */
-	private void replaceWord(TextBox textBox, int wordStart, int cursorPos, String completion) {
-	    String text = textBox.getText();
-	    String before = text.substring(0, wordStart);
-	    String after = text.substring(cursorPos);
-	    
-	    String newText = before + completion + after;
-	    textBox.setText(newText);
-	    
-	    // Position cursor after the completed word
-	    int newCursorPos = wordStart + completion.length();
-	    textBox.setCursorPos(newCursorPos);
+	private void displayMatches(java.util.List<String> matches, Label hintLabel) {
+	    displayMatches(matches, hintLabel, -1);
 	}
 	
 	/**
-	 * Shows available matches in the label above the input field.
-	 * Formats matches in columns for readability.
+	 * Displays available matches in the hint label with highlighting.
+	 * Shows up to 20 matches inline, separated by spaces.
+	 * @param highlightIndex Index of match to highlight with brackets, or -1 for no highlighting
 	 */
-	private void showMatchesInLabel(java.util.List<String> matches, Label hintLabel) {
+	private void displayMatches(java.util.List<String> matches, Label hintLabel, int highlightIndex) {
 	    if (matches == null || matches.isEmpty() || hintLabel == null) {
 		if (hintLabel != null) {
 		    hintLabel.setVisible(false);
@@ -590,19 +747,23 @@ class EditDialog extends Dialog {
 		return;
 	    }
 	    
-	    // Build a formatted string showing all matches
+	    // Format: "Matches (3): stock1  [stock2]  stock3"
 	    StringBuilder sb = new StringBuilder();
 	    sb.append("Matches (").append(matches.size()).append("): ");
 	    
-	    // Show matches inline, separated by spaces
-	    for (int i = 0; i < matches.size() && i < 20; i++) {  // Limit to 20 matches
+	    int maxDisplay = 20;  // Limit to prevent overflow
+	    for (int i = 0; i < matches.size() && i < maxDisplay; i++) {
 		if (i > 0) {
 		    sb.append("  ");
 		}
-		sb.append(matches.get(i));
+		if (i == highlightIndex) {
+		    sb.append("[").append(matches.get(i)).append("]");
+		} else {
+		    sb.append(matches.get(i));
+		}
 	    }
 	    
-	    if (matches.size() > 20) {
+	    if (matches.size() > maxDisplay) {
 		sb.append("  ...");
 	    }
 	    
@@ -611,100 +772,177 @@ class EditDialog extends Dialog {
 	}
 	
 	/**
-	 * Shows matching completions for the current word being typed.
-	 * This is called automatically as the user types (not just on Tab).
+	 * Displays both validation errors (undefined symbols) and available matches.
+	 * Shows undefined symbols in red, followed by matches in gray.
 	 */
-	private void showMatchesForCurrentWord(TextBox textBox, java.util.List<String> completionList, Label hintLabel) {
-	    String text = textBox.getText();
-	    int cursorPos = textBox.getCursorPos();
+	private void displayValidationAndMatches(java.util.List<String> undefinedSymbols, 
+						 java.util.List<String> matches, Label hintLabel) {
+	    if (hintLabel == null) {
+		return;
+	    }
 	    
-	    // Find the word being typed (before cursor)
-	    String beforeCursor = text.substring(0, cursorPos);
-	    int wordStart = findWordStart(beforeCursor);
-	    String prefix = beforeCursor.substring(wordStart);
-	    
-	    // If prefix is empty or too short, hide the hint
-	    if (prefix.length() < 1) {
+	    // If nothing to show, hide the label
+	    if ((undefinedSymbols == null || undefinedSymbols.isEmpty()) && 
+		(matches == null || matches.isEmpty())) {
 		hintLabel.setVisible(false);
 		return;
 	    }
 	    
-	    // Find all matches for this prefix
-	    java.util.List<String> matches = findMatches(prefix, completionList);
-	    
-	    if (matches.isEmpty()) {
-		hintLabel.setVisible(false);
-	    } else if (matches.size() == 1 && matches.get(0).equalsIgnoreCase(prefix)) {
-		// User has typed the complete match, hide hint
-		hintLabel.setVisible(false);
-	    } else {
-		// Show available matches
-		showMatchesInLabel(matches, hintLabel);
-	    }
-	}
-	
-	/**
-	 * Shows available matches to the browser console (like bash does).
-	 * Formats matches in columns for readability.
-	 * DEPRECATED: Now using label display instead.
-	 */
-	private void showMatches(java.util.List<String> matches) {
-	    if (matches == null || matches.isEmpty()) {
-		return;
-	    }
-	    
-	    // Build a formatted string showing all matches
+	    // Build HTML with colored sections
 	    StringBuilder sb = new StringBuilder();
-	    sb.append("Available completions (").append(matches.size()).append("):\n");
 	    
-	    // Format in columns (4 per line)
-	    int columns = 4;
-	    int maxWidth = 0;
-	    
-	    // Find longest match for column width
-	    for (String match : matches) {
-		maxWidth = Math.max(maxWidth, match.length());
-	    }
-	    maxWidth += 2; // Add padding
-	    
-	    // Build columnar output
-	    for (int i = 0; i < matches.size(); i++) {
-		String match = matches.get(i);
-		sb.append(match);
-		
-		// Add padding to align columns
-		for (int j = match.length(); j < maxWidth; j++) {
-		    sb.append(" ");
+	    // Add undefined symbols in red (if any)
+	    if (undefinedSymbols != null && !undefinedSymbols.isEmpty()) {
+		sb.append("<span style='color: #cc0000; font-weight: bold;'>Undefined: ");
+		for (int i = 0; i < undefinedSymbols.size(); i++) {
+		    if (i > 0) {
+			sb.append(", ");
+		    }
+		    sb.append(undefinedSymbols.get(i));
 		}
-		
-		// New line after every 'columns' items or at the end
-		if ((i + 1) % columns == 0 || i == matches.size() - 1) {
-		    sb.append("\n");
-		}
+		sb.append("</span>");
 	    }
 	    
-	    // Output to console
-	    console(sb.toString());
+	    // Add separator if we have both undefined and matches
+	    if (!undefinedSymbols.isEmpty() && !matches.isEmpty()) {
+		sb.append("<br>");
+	    }
+	    
+	    // Add matches in gray (if any)
+	    if (matches != null && !matches.isEmpty()) {
+		sb.append("<span style='color: #666;'>Matches (").append(matches.size()).append("): ");
+		
+		int maxDisplay = 20;
+		for (int i = 0; i < matches.size() && i < maxDisplay; i++) {
+		    if (i > 0) {
+			sb.append("  ");
+		    }
+		    sb.append(matches.get(i));
+		}
+		
+		if (matches.size() > maxDisplay) {
+		    sb.append("  ...");
+		}
+		sb.append("</span>");
+	    }
+	    
+	    // Use HTML to allow colored text
+	    hintLabel.getElement().setInnerHTML(sb.toString());
+	    hintLabel.setVisible(true);
 	}
 	
 	/**
-	 * Native console.log for debugging and showing completion matches.
+	 * Displays undefined symbols in red text in the hint label.
+	 * DEPRECATED: Use displayValidationAndMatches instead.
+	 */
+	private void displayUndefinedSymbols(java.util.List<String> undefinedSymbols, Label hintLabel) {
+	    if (undefinedSymbols == null || undefinedSymbols.isEmpty() || hintLabel == null) {
+		if (hintLabel != null) {
+		    hintLabel.setVisible(false);
+		}
+		return;
+	    }
+	    
+	    // Build HTML with red colored text
+	    StringBuilder sb = new StringBuilder();
+	    sb.append("<span style='color: #cc0000; font-weight: bold;'>Undefined: ");
+	    for (int i = 0; i < undefinedSymbols.size(); i++) {
+		if (i > 0) {
+		    sb.append(", ");
+		}
+		sb.append(undefinedSymbols.get(i));
+	    }
+	    sb.append("</span>");
+	    
+	    // Use HTML to allow colored text
+	    hintLabel.getElement().setInnerHTML(sb.toString());
+	    hintLabel.setVisible(true);
+	}
+	
+	/**
+	 * Extracts all identifiers (variable names) from an expression.
+	 * Identifiers are sequences of letters, digits, and underscores.
+	 */
+	private java.util.Set<String> extractIdentifiers(String expression) {
+	    java.util.Set<String> identifiers = new java.util.HashSet<String>();
+	    
+	    StringBuilder currentWord = new StringBuilder();
+	    for (int i = 0; i < expression.length(); i++) {
+		char c = expression.charAt(i);
+		
+		if (Character.isLetterOrDigit(c) || c == '_') {
+		    currentWord.append(c);
+		} else {
+		    // End of word
+		    if (currentWord.length() > 0) {
+			String word = currentWord.toString();
+			// Only add if it starts with a letter (not a number)
+			if (Character.isLetter(word.charAt(0))) {
+			    identifiers.add(word);
+			}
+			currentWord.setLength(0);
+		    }
+		}
+	    }
+	    
+	    // Don't forget the last word
+	    if (currentWord.length() > 0) {
+		String word = currentWord.toString();
+		if (Character.isLetter(word.charAt(0))) {
+		    identifiers.add(word);
+		}
+	    }
+	    
+	    return identifiers;
+	}
+	
+	/**
+	 * Checks if a symbol is known (exists in completion list or is a built-in).
+	 * Uses case-sensitive matching for user-defined symbols.
+	 */
+	private boolean isKnownSymbol(String symbol, java.util.List<String> completionList) {
+	    // Check if it's in the completion list (CASE-SENSITIVE)
+	    for (String item : completionList) {
+		if (item.equals(symbol)) {
+		    return true;
+		}
+	    }
+	    
+	    // Known built-in functions and constants are case-insensitive
+	    // (These might not be in the completion list)
+	    String lowerSymbol = symbol.toLowerCase();
+	    java.util.Set<String> builtins = new java.util.HashSet<String>();
+	    builtins.add("sin");
+	    builtins.add("cos");
+	    builtins.add("tan");
+	    builtins.add("exp");
+	    builtins.add("log");
+	    builtins.add("ln");
+	    builtins.add("sqrt");
+	    builtins.add("abs");
+	    builtins.add("min");
+	    builtins.add("max");
+	    builtins.add("pow");
+	    builtins.add("atan2");
+	    builtins.add("floor");
+	    builtins.add("ceil");
+	    builtins.add("round");
+	    builtins.add("pi");
+	    builtins.add("e");
+	    builtins.add("t");
+	    
+	    return builtins.contains(lowerSymbol);
+	}
+	
+	// End of autocomplete functionality
+	// ============================================================================
+	
+	/**
+	 * Native console.log for debugging.
 	 */
 	private native void console(String text) /*-{
 	    console.log(text);
 	}-*/;
-	
-	/**
-	 * Resets the autocomplete state when user types something other than tab.
-	 */
-	private void resetAutocompleteState(Label hintLabel) {
-	    lastAutocompletePrefix = null;
-	    autocompleteIndex = 0;
-	    autocompleteMatches = null;
-	    if (hintLabel != null) {
-		hintLabel.setVisible(false);
-	    }
-	}
 	
 	public void closeDialog()
 	{

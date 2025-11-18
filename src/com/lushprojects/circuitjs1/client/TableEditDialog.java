@@ -25,8 +25,6 @@ import com.google.gwt.user.client.ui.HorizontalPanel;
 import com.google.gwt.user.client.ui.ScrollPanel;
 import com.google.gwt.user.client.ui.Grid;
 import com.google.gwt.user.client.ui.TextBox;
-import com.google.gwt.user.client.ui.SuggestBox;
-import com.google.gwt.user.client.ui.MultiWordSuggestOracle;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
 
@@ -34,8 +32,13 @@ import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.KeyUpHandler;
 import com.google.gwt.event.dom.client.KeyUpEvent;
+import com.google.gwt.event.dom.client.KeyDownHandler;
+import com.google.gwt.event.dom.client.KeyDownEvent;
+import com.google.gwt.event.dom.client.KeyPressHandler;
+import com.google.gwt.event.dom.client.KeyPressEvent;
 import com.google.gwt.event.dom.client.FocusHandler;
 import com.google.gwt.event.dom.client.FocusEvent;
+import com.google.gwt.event.dom.client.KeyCodes;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import java.util.HashMap;
 import java.util.Map;
@@ -239,6 +242,34 @@ import java.util.Map;
     
     // Debug dialog for markdown view
     private TableMarkdownDebugDialog debugDialog = null;
+    
+    // Autocomplete state tracking (per-textbox)
+    private java.util.Map<TextBox, AutocompleteState> autocompleteStates = new java.util.HashMap<TextBox, AutocompleteState>();
+    
+    /**
+     * State for bash-style autocomplete
+     */
+    private static class AutocompleteState {
+        java.util.List<String> currentMatches;
+        int currentMatchIndex;
+        int completionStartPos;
+        String originalWord;
+        
+        AutocompleteState() {
+            reset();
+        }
+        
+        void reset() {
+            currentMatches = null;
+            currentMatchIndex = -1;
+            completionStartPos = -1;
+            originalWord = null;
+        }
+        
+        boolean isActive() {
+            return currentMatches != null && !currentMatches.isEmpty();
+        }
+    }
     
     //=== CONSTRUCTOR ===============================================================
     // =============================================================================
@@ -1006,8 +1037,8 @@ import java.util.Map;
                     aleLabel.setTitle("Computed: Assets - Liabilities - Equity");
                     editGrid.setWidget(gridRow, DATA_START_COL + col, aleLabel);
                 } else {
-                    SuggestBox cellBox = createCellTextBox(row, col);
-                    editGrid.setWidget(gridRow, DATA_START_COL + col, cellBox);
+                    VerticalPanel cellPanel = createCellTextBox(row, col);
+                    editGrid.setWidget(gridRow, DATA_START_COL + col, cellPanel);
                 }
             }
         }
@@ -1139,47 +1170,6 @@ import java.util.Map;
     // =============================================================================
     
     /**
-     * Create autocomplete oracle with all available variables
-     */
-    private MultiWordSuggestOracle createVariableOracle() {
-        MultiWordSuggestOracle oracle = new MultiWordSuggestOracle();
-        
-        // Add labeled node names
-        if (LabeledNodeElm.labelList != null && !LabeledNodeElm.labelList.isEmpty()) {
-            for (String labelName : LabeledNodeElm.labelList.keySet()) {
-                oracle.add(labelName);
-            }
-        }
-        
-        // Add stock variables (column headers from this and other tables)
-        java.util.Set<String> stockNames = StockFlowRegistry.getAllStockNames();
-        if (stockNames != null && !stockNames.isEmpty()) {
-            for (String stockName : stockNames) {
-                oracle.add(stockName);
-            }
-        }
-        
-        // Add variables used in cell equations
-        java.util.Set<String> cellVariables = StockFlowRegistry.getAllCellEquationVariables();
-        if (cellVariables != null && !cellVariables.isEmpty()) {
-            for (String varName : cellVariables) {
-                oracle.add(varName);
-            }
-        }
-        
-        // Add current table's stock values
-        if (stockValues != null) {
-            for (String stock : stockValues) {
-                if (stock != null && !stock.trim().isEmpty()) {
-                    oracle.add(stock);
-                }
-            }
-        }
-        
-        return oracle;
-    }
-    
-    /**
      * Create textbox for editing flow descriptions
      */
     private TextBox createFlowDescriptionTextBox(final int row) {
@@ -1279,25 +1269,67 @@ import java.util.Map;
     }
     
     /**
-     * Create textbox for editing cell equations with autocomplete
+     * Create textbox for editing cell equations with autocomplete (bash-style Tab completion)
+     * Returns a VerticalPanel containing hint label + textbox
      */
-    private SuggestBox createCellTextBox(final int row, final int col) {
-        // Create autocomplete oracle with all available variables
-        MultiWordSuggestOracle oracle = createVariableOracle();
+    private VerticalPanel createCellTextBox(final int row, final int col) {
+        // Create the completion list from all available variables
+        final java.util.List<String> completionList = createCompletionList();
         
-        final SuggestBox suggestBox = new SuggestBox(oracle);
-        suggestBox.setText(cellData[row][col]);
-        suggestBox.addStyleName("tableCellInput");
-        suggestBox.setWidth("100%");
+        // Create the textbox
+        final TextBox textBox = new TextBox();
+        textBox.setText(cellData[row][col]);
+        textBox.addStyleName("tableCellInput");
+        textBox.setWidth("100%");
         
         // Prevent keyboard events from deleting table element while typing
-        preventKeyboardPropagation(suggestBox.getValueBox());
+        preventKeyboardPropagation(textBox);
+        
+        // Setup autocomplete panel with hint label
+        VerticalPanel container = new VerticalPanel();
+        container.setWidth("100%");
+        
+        // Create hint label (initially hidden, appears when typing)
+        final Label hintLabel = createHintLabel();
+        
+        // Assemble: hint label above textbox
+        container.add(hintLabel);
+        container.add(textBox);
+        
+        // Initialize autocomplete state for this textbox
+        AutocompleteState state = new AutocompleteState();
+        autocompleteStates.put(textBox, state);
+        
+        // Handle Tab key: cycle through completions
+        textBox.addKeyDownHandler(new KeyDownHandler() {
+            public void onKeyDown(KeyDownEvent event) {
+                if (event.getNativeKeyCode() == KeyCodes.KEY_TAB) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleTabCompletion(textBox, completionList, hintLabel);
+                }
+            }
+        });
+        
+        // Handle typing: show matches in real-time and validate symbols
+        textBox.addKeyPressHandler(new KeyPressHandler() {
+            public void onKeyPress(KeyPressEvent event) {
+                // Wait for character to be added to textbox, then update display
+                com.google.gwt.core.client.Scheduler.get().scheduleDeferred(
+                    new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
+                        public void execute() {
+                            updateMatchDisplay(textBox, completionList, hintLabel);
+                        }
+                    }
+                );
+            }
+        });
         
         // Add key up handler to track changes
-        suggestBox.getValueBox().addKeyUpHandler(new KeyUpHandler() {
+        textBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
-                cellData[row][col] = suggestBox.getText();
-                suggestBox.addStyleName("modified");
+                cellData[row][col] = textBox.getText();
+                textBox.addStyleName("modified");
                 markChanged();
                 
                 // Recalculate A_L_E columns when any cell changes
@@ -1306,13 +1338,515 @@ import java.util.Map;
         });
         
         // Select all on focus
-        suggestBox.getValueBox().addFocusHandler(new FocusHandler() {
+        textBox.addFocusHandler(new FocusHandler() {
             public void onFocus(FocusEvent event) {
-                suggestBox.getValueBox().selectAll();
+                textBox.selectAll();
             }
         });
         
-        return suggestBox;
+        // Validate immediately on creation - show only undefined symbols
+        com.google.gwt.core.client.Scheduler.get().scheduleDeferred(
+            new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
+                public void execute() {
+                    validateOnOpen(textBox, completionList, hintLabel);
+                }
+            }
+        );
+        
+        return container;
+    }
+    
+    //=== AUTOCOMPLETE HELPER METHODS ==============================================
+    //=============================================================================
+    
+    /**
+     * Create completion list from all available variables
+     */
+    private java.util.List<String> createCompletionList() {
+        java.util.List<String> list = new java.util.ArrayList<String>();
+        
+        // Add labeled node names
+        if (LabeledNodeElm.labelList != null && !LabeledNodeElm.labelList.isEmpty()) {
+            for (String labelName : LabeledNodeElm.labelList.keySet()) {
+                list.add(labelName);
+            }
+        }
+        
+        // Add stock variables (column headers from this and other tables)
+        java.util.Set<String> stockNames = StockFlowRegistry.getAllStockNames();
+        if (stockNames != null && !stockNames.isEmpty()) {
+            for (String stockName : stockNames) {
+                if (!list.contains(stockName)) {
+                    list.add(stockName);
+                }
+            }
+        }
+        
+        // Add variables used in cell equations
+        java.util.Set<String> cellVariables = StockFlowRegistry.getAllCellEquationVariables();
+        if (cellVariables != null && !cellVariables.isEmpty()) {
+            for (String varName : cellVariables) {
+                if (!list.contains(varName)) {
+                    list.add(varName);
+                }
+            }
+        }
+        
+        // Add current table's stock values (excluding A-L-E computed column)
+        if (stockValues != null) {
+            for (int col = 0; col < stockValues.length; col++) {
+                // Skip A-L-E column - it's computed, not a real stock
+                if (isALEColumn(col)) {
+                    continue;
+                }
+                String stock = stockValues[col];
+                if (stock != null && !stock.trim().isEmpty() && !list.contains(stock)) {
+                    list.add(stock);
+                }
+            }
+        }
+        
+        // Add math functions and constants
+        String[] builtIns = {"sin", "cos", "tan", "asin", "acos", "atan", "atan2",
+                            "exp", "log", "log10", "sqrt", "abs", "floor", "ceil",
+                            "min", "max", "pi", "e", "t"};
+        for (String fn : builtIns) {
+            if (!list.contains(fn)) {
+                list.add(fn);
+            }
+        }
+        
+        return list;
+    }
+    
+    /**
+     * Creates and styles the hint label that displays available matches
+     */
+    private Label createHintLabel() {
+        Label label = new Label();
+        label.setStyleName("autocomplete-hint");
+        label.setVisible(false);
+        
+        // Style: small monospace text in a subtle bordered box
+        label.getElement().getStyle().setProperty("fontSize", "11px");
+        label.getElement().getStyle().setProperty("color", "#666");
+        label.getElement().getStyle().setProperty("fontFamily", "monospace");
+        label.getElement().getStyle().setProperty("whiteSpace", "pre-wrap");
+        label.getElement().getStyle().setProperty("marginBottom", "2px");
+        label.getElement().getStyle().setProperty("padding", "2px 4px");
+        label.getElement().getStyle().setProperty("backgroundColor", "#f0f0f0");
+        label.getElement().getStyle().setProperty("border", "1px solid #ccc");
+        label.getElement().getStyle().setProperty("borderRadius", "3px");
+        
+        return label;
+    }
+    
+    /**
+     * Handles Tab key completion (bash-style behavior)
+     */
+    private void handleTabCompletion(TextBox textBox, java.util.List<String> completionList, Label hintLabel) {
+        AutocompleteState state = autocompleteStates.get(textBox);
+        if (state == null) {
+            state = new AutocompleteState();
+            autocompleteStates.put(textBox, state);
+        }
+        
+        if (!state.isActive()) {
+            // First Tab press - start new completion
+            startNewCompletion(textBox, completionList, hintLabel, state);
+        } else {
+            // Subsequent Tab presses - cycle through matches
+            cycleToNextMatch(textBox, hintLabel, state);
+        }
+    }
+    
+    /**
+     * Start new completion on first Tab press
+     */
+    private void startNewCompletion(TextBox textBox, java.util.List<String> completionList, 
+                                    Label hintLabel, AutocompleteState state) {
+        String currentWord = getCurrentWord(textBox);
+        if (currentWord.isEmpty()) {
+            state.reset();
+            hintLabel.setVisible(false);
+            return;
+        }
+        
+        // Find all matches
+        java.util.List<String> matches = findMatches(currentWord, completionList);
+        
+        if (matches.isEmpty()) {
+            state.reset();
+            hintLabel.setVisible(false);
+            return;
+        }
+        
+        if (matches.size() == 1) {
+            // Single match - complete immediately
+            completeCurrentWord(textBox, matches.get(0));
+            state.reset();
+            hintLabel.setVisible(false);
+        } else {
+            // Multiple matches - complete with first match immediately
+            completeCurrentWord(textBox, matches.get(0));
+            
+            // Setup state for cycling
+            state.currentMatches = matches;
+            state.currentMatchIndex = 0; // Start at first match (already inserted)
+            state.completionStartPos = findWordStart(textBox);
+            state.originalWord = currentWord;
+            
+            // Show matches with first one highlighted
+            displayMatches(matches, hintLabel, 0);
+        }
+    }
+    
+    /**
+     * Cycle to next match on subsequent Tab presses
+     */
+    private void cycleToNextMatch(TextBox textBox, Label hintLabel, AutocompleteState state) {
+        if (!state.isActive()) return;
+        
+        state.currentMatchIndex = (state.currentMatchIndex + 1) % state.currentMatches.size();
+        String nextMatch = state.currentMatches.get(state.currentMatchIndex);
+        
+        // Replace from completion start position
+        String text = textBox.getText();
+        
+        // Find word boundaries
+        int wordStart = state.completionStartPos;
+        int wordEnd = wordStart;
+        while (wordEnd < text.length() && isIdentifierChar(text.charAt(wordEnd))) {
+            wordEnd++;
+        }
+        
+        // Replace word
+        String newText = text.substring(0, wordStart) + nextMatch + text.substring(wordEnd);
+        textBox.setText(newText);
+        textBox.setCursorPos(wordStart + nextMatch.length());
+        
+        // Update hint to highlight current match
+        displayMatches(state.currentMatches, hintLabel, state.currentMatchIndex);
+    }
+    
+    /**
+     * Validate on open - show only undefined symbols (no matches)
+     */
+    private void validateOnOpen(TextBox textBox, java.util.List<String> completionList, Label hintLabel) {
+        String text = textBox.getText();
+        if (text.trim().isEmpty()) {
+            hintLabel.setVisible(false);
+            return;
+        }
+        
+        // Extract identifiers from equation
+        java.util.List<String> identifiers = extractIdentifiers(text);
+        
+        // Find undefined symbols
+        java.util.List<String> undefinedSymbols = new java.util.ArrayList<String>();
+        for (String id : identifiers) {
+            if (!isKnownSymbol(id, completionList)) {
+                if (!undefinedSymbols.contains(id)) {
+                    undefinedSymbols.add(id);
+                }
+            }
+        }
+        
+        // Display only undefined symbols
+        displayUndefinedSymbols(undefinedSymbols, hintLabel);
+    }
+    
+    /**
+     * Update match display while typing - show both undefined symbols AND matches
+     */
+    private void updateMatchDisplay(TextBox textBox, java.util.List<String> completionList, Label hintLabel) {
+        AutocompleteState state = autocompleteStates.get(textBox);
+        if (state == null) {
+            state = new AutocompleteState();
+            autocompleteStates.put(textBox, state);
+        }
+        
+        // Reset tab completion state when user types
+        state.reset();
+        
+        String text = textBox.getText();
+        if (text.trim().isEmpty()) {
+            hintLabel.setVisible(false);
+            return;
+        }
+        
+        // Extract identifiers from equation
+        java.util.List<String> identifiers = extractIdentifiers(text);
+        
+        // Find undefined symbols
+        java.util.List<String> undefinedSymbols = new java.util.ArrayList<String>();
+        for (String id : identifiers) {
+            if (!isKnownSymbol(id, completionList)) {
+                if (!undefinedSymbols.contains(id)) {
+                    undefinedSymbols.add(id);
+                }
+            }
+        }
+        
+        // Get current word for matching
+        String currentWord = getCurrentWord(textBox);
+        java.util.List<String> matches = new java.util.ArrayList<String>();
+        if (!currentWord.isEmpty()) {
+            matches = findMatches(currentWord, completionList);
+        }
+        
+        // Display both undefined symbols and matches
+        displayValidationAndMatches(undefinedSymbols, matches, hintLabel);
+    }
+    
+    /**
+     * Get the word at current cursor position
+     */
+    private String getCurrentWord(TextBox textBox) {
+        String text = textBox.getText();
+        int pos = textBox.getCursorPos();
+        
+        if (text.isEmpty() || pos < 0) return "";
+        
+        // Find word start
+        int start = findWordStart(textBox);
+        
+        // Find word end
+        int end = pos;
+        while (end < text.length() && isIdentifierChar(text.charAt(end))) {
+            end++;
+        }
+        
+        if (start >= end) return "";
+        return text.substring(start, end);
+    }
+    
+    /**
+     * Replace current word with completion
+     */
+    private void completeCurrentWord(TextBox textBox, String completion) {
+        String text = textBox.getText();
+        int pos = textBox.getCursorPos();
+        
+        // Find word boundaries
+        int wordStart = findWordStart(textBox);
+        int wordEnd = pos;
+        while (wordEnd < text.length() && isIdentifierChar(text.charAt(wordEnd))) {
+            wordEnd++;
+        }
+        
+        // Replace word
+        String newText = text.substring(0, wordStart) + completion + text.substring(wordEnd);
+        textBox.setText(newText);
+        textBox.setCursorPos(wordStart + completion.length());
+    }
+    
+    /**
+     * Find start of word at cursor
+     */
+    private int findWordStart(TextBox textBox) {
+        String text = textBox.getText();
+        int pos = textBox.getCursorPos();
+        
+        if (pos <= 0) return 0;
+        
+        int start = pos - 1;
+        while (start >= 0 && isIdentifierChar(text.charAt(start))) {
+            start--;
+        }
+        return start + 1;
+    }
+    
+    /**
+     * Check if character is valid in identifier
+     */
+    private boolean isIdentifierChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '_';
+    }
+    
+    /**
+     * Find all completions matching prefix (case-insensitive)
+     */
+    private java.util.List<String> findMatches(String prefix, java.util.List<String> completionList) {
+        java.util.List<String> matches = new java.util.ArrayList<String>();
+        String lowerPrefix = prefix.toLowerCase();
+        
+        for (String item : completionList) {
+            if (item.toLowerCase().startsWith(lowerPrefix)) {
+                matches.add(item);
+            }
+        }
+        
+        java.util.Collections.sort(matches);
+        return matches;
+    }
+    
+    /**
+     * Find longest common prefix of all matches
+     */
+    private String findLongestCommonPrefix(java.util.List<String> matches) {
+        if (matches.isEmpty()) return "";
+        if (matches.size() == 1) return matches.get(0);
+        
+        String first = matches.get(0);
+        int prefixLen = first.length();
+        
+        for (int i = 1; i < matches.size(); i++) {
+            String current = matches.get(i);
+            prefixLen = Math.min(prefixLen, current.length());
+            
+            for (int j = 0; j < prefixLen; j++) {
+                if (first.charAt(j) != current.charAt(j)) {
+                    prefixLen = j;
+                    break;
+                }
+            }
+        }
+        
+        return first.substring(0, prefixLen);
+    }
+    
+    /**
+     * Display matches in hint label
+     */
+    private void displayMatches(java.util.List<String> matches, Label hintLabel) {
+        displayMatches(matches, hintLabel, -1);
+    }
+    
+    /**
+     * Display matches in hint label with highlighting
+     */
+    private void displayMatches(java.util.List<String> matches, Label hintLabel, int highlightIndex) {
+        if (matches.isEmpty()) {
+            hintLabel.setVisible(false);
+            return;
+        }
+        
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < matches.size(); i++) {
+            if (i > 0) sb.append("  ");
+            if (i == highlightIndex) {
+                sb.append("[").append(matches.get(i)).append("]");
+            } else {
+                sb.append(matches.get(i));
+            }
+        }
+        
+        hintLabel.setText(sb.toString());
+        hintLabel.setVisible(true);
+    }
+    
+    /**
+     * Display both validation errors and matches
+     */
+    private void displayValidationAndMatches(java.util.List<String> undefinedSymbols, 
+                                            java.util.List<String> matches, Label hintLabel) {
+        if (undefinedSymbols.isEmpty() && matches.isEmpty()) {
+            hintLabel.setVisible(false);
+            return;
+        }
+        
+        StringBuilder html = new StringBuilder();
+        
+        // Show undefined symbols in red
+        if (!undefinedSymbols.isEmpty()) {
+            html.append("<span style='color:#cc0000'>Undefined: ");
+            for (int i = 0; i < undefinedSymbols.size(); i++) {
+                if (i > 0) html.append(", ");
+                html.append(undefinedSymbols.get(i));
+            }
+            html.append("</span>");
+        }
+        
+        // Show matches in gray
+        if (!matches.isEmpty()) {
+            if (html.length() > 0) {
+                html.append("<span style='color:#666'> | Matches: </span>");
+            }
+            html.append("<span style='color:#666'>");
+            for (int i = 0; i < matches.size(); i++) {
+                if (i > 0) html.append("  ");
+                html.append(matches.get(i));
+            }
+            html.append("</span>");
+        }
+        
+        hintLabel.getElement().setInnerHTML(html.toString());
+        hintLabel.setVisible(true);
+    }
+    
+    /**
+     * Display only undefined symbols (for validation on open)
+     */
+    private void displayUndefinedSymbols(java.util.List<String> undefinedSymbols, Label hintLabel) {
+        if (undefinedSymbols.isEmpty()) {
+            hintLabel.setVisible(false);
+            return;
+        }
+        
+        StringBuilder html = new StringBuilder();
+        html.append("<span style='color:#cc0000'>Undefined: ");
+        for (int i = 0; i < undefinedSymbols.size(); i++) {
+            if (i > 0) html.append(", ");
+            html.append(undefinedSymbols.get(i));
+        }
+        html.append("</span>");
+        
+        hintLabel.getElement().setInnerHTML(html.toString());
+        hintLabel.setVisible(true);
+    }
+    
+    /**
+     * Extract identifiers from equation text
+     */
+    private java.util.List<String> extractIdentifiers(String text) {
+        java.util.List<String> identifiers = new java.util.ArrayList<String>();
+        StringBuilder currentId = new StringBuilder();
+        
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (Character.isLetter(c) || c == '_') {
+                currentId.append(c);
+            } else if (Character.isDigit(c) && currentId.length() > 0) {
+                currentId.append(c);
+            } else {
+                if (currentId.length() > 0) {
+                    identifiers.add(currentId.toString());
+                    currentId = new StringBuilder();
+                }
+            }
+        }
+        
+        if (currentId.length() > 0) {
+            identifiers.add(currentId.toString());
+        }
+        
+        return identifiers;
+    }
+    
+    /**
+     * Check if a symbol is known (case-sensitive for user symbols, case-insensitive for built-ins)
+     */
+    private boolean isKnownSymbol(String symbol, java.util.List<String> completionList) {
+        // Check user-defined symbols (case-sensitive)
+        for (String item : completionList) {
+            if (item.equals(symbol)) {
+                return true;
+            }
+        }
+        
+        // Check built-in functions (case-insensitive)
+        String lowerSymbol = symbol.toLowerCase();
+        String[] builtIns = {"sin", "cos", "tan", "asin", "acos", "atan", "atan2",
+                            "exp", "log", "log10", "sqrt", "abs", "floor", "ceil",
+                            "min", "max", "pi", "e", "t"};
+        for (String fn : builtIns) {
+            if (fn.equals(lowerSymbol)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
     
     /**

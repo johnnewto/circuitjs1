@@ -2,12 +2,12 @@
 
 ## Overview
 
-The EditDialog now supports bash-style autocompletion for text fields with **automatic match display**. This feature allows users to see available completions as they type, and complete them with Tab, making it easy to enter variable names, node names, stock names, and other identifiers.
+The EditDialog now supports bash-style autocompletion for text fields with **automatic match display** and **real-time symbol validation**. This feature allows users to see available completions as they type, complete them with Tab, and immediately identify undefined variables through visual feedback with red text.
 
 ## Implementation
 
 The autocompletion feature was implemented in:
-- `EditDialog.java` - Main implementation with automatic match display and tab completion
+- `EditDialog.java` - Main implementation with automatic match display, tab completion, and symbol validation
 - `EditInfo.java` - Added `completionList` field to store completion options
 
 ## How It Works
@@ -15,28 +15,36 @@ The autocompletion feature was implemented in:
 ### User Experience
 
 1. **Type a partial word**: As you type (e.g., `sto`), matching completions automatically appear in a hint label above the input field
-2. **Continue typing or use Tab**:
+2. **Visual validation**: The hint label displays both validation and completion information:
+   - **Red text**: `Undefined: symbol1, symbol2` for undefined variables
+   - **Gray text**: `Matches (N): option1 option2 option3` for available completions
+   - **Both together**: Undefined symbols shown first (red), then matches below (gray)
+3. **Continue typing or use Tab**:
    - **Continue typing**: Matches update in real-time as you type
    - **Press Tab once**: 
      - If one match: Completes the full word immediately
      - If multiple matches: Completes to longest common prefix
    - **Press Tab again**: Cycles through all matching options
-3. **Hint visibility**: 
-   - Shows automatically when there are relevant matches
-   - Hides when typing non-matching characters
-   - Hides when you've completed the full word
+4. **Hint priority**: 
+   - Shows undefined symbols in red (if any)
+   - Shows available completions in gray below undefined symbols
+   - Both can appear simultaneously for better context
+   - Hides when expression is valid and word is complete
 
 ### Features
 
+- **Case-sensitive symbol validation**: Variable names must match exactly (e.g., `stock1` ≠ `Stock1`)
+- **Case-insensitive built-ins**: Math functions and constants work in any case (sin, SIN, Sin all valid)
+- **Real-time symbol validation**: Shows undefined variables in red text in the hint label
 - **Real-time match display**: Matches appear automatically as you type (no Tab needed to see options)
-- **Case-insensitive matching**: Matches variables regardless of case
+- **Case-insensitive matching**: Tab completion matches variables regardless of case
 - **Word boundary detection**: Only completes valid identifiers (letters, numbers, underscores)
 - **Cycle through matches**: Multiple tabs cycle through all possibilities
 - **Longest common prefix**: First tab completes to common prefix (like bash)
 - **Cursor positioning**: Cursor moves to end of completed word
-- **Visual feedback**: Shows available matches in a styled hint label above the input field
-- **Smart visibility**: Hint only appears when there are relevant matches (1 character minimum)
-- **No UI clutter**: Hint disappears when you've typed the complete word
+- **Visual feedback**: Shows validation errors or available matches in a styled hint label above the input field
+- **Smart visibility**: Hint only appears when there are relevant matches or errors
+- **No UI clutter**: Hint disappears when expression is valid and complete
 
 ## Usage Example
 
