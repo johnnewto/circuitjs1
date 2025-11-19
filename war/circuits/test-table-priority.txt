@@ -1,0 +1,13 @@
+$ 1 0.000005 10.20027730826997 50 5 50 5e-11
+253 304 128 368 128 0 4 6 16 0 false 2 false false 10 Table$s1 $ Stock0 Stock1 Stock2 A-L-E Row0 100 100 100 ASSET LIABILITY EQUITY ASSET 10 20 30 $ $ $ $
+253 304 240 368 240 0 4 6 16 0 false 2 false false 5 Table$s2 $ Stock0 Stock1 Stock2 A-L-E Row0 50 30 40 ASSET LIABILITY EQUITY ASSET 5 15 25 $ $ $ $
+R 128 128 64 128 0 0 40 5 0 0 0.5
+w 128 128 224 128 0
+w 224 128 224 224 0
+L 224 224 224 272 0 Stock0 1 0
+w 128 240 224 240 0
+w 224 240 224 272 0
+R 128 240 64 240 0 0 40 5 0 0 0.5
+x 50 318 326 321 4 14 Priority$sTest:$sTable1$s(priority=10)$sshould$sbe$smaster
+x 50 342 327 345 4 14 Priority$sTest:$sTable2$s(priority=5)$sshould$sbe$sslave
+o 2 64 0 4099 5 0.00009765625 0 2 2 3

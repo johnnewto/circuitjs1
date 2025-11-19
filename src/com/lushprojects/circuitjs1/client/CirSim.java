@@ -1321,6 +1321,9 @@ public CirSim() {
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Subtracter"), "SubtracterElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Table"), "TableElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Godly Table"), "GodlyTableElm"));
+	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Master Stocks Table"), "StockMasterElm"));
+	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Flows Table"), "FlowsMasterElm"));
+	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Current Transactions Matrix"), "CurrentTransactionsMatrixElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Stop Time"), "StopTimeElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Action Time"), "ActionTimeElm"));
 	// mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Spare"), "Spare"));
@@ -6485,6 +6488,7 @@ public CirSim() {
    		case 251: return new AdderElm(x1, y1, x2, y2, f, st);
   		case 252: return new SubtracterElm(x1, y1, x2, y2, f, st);
   		case 253: return new TableElm(x1, y1, x2, y2, f, st);
+		case 254: return new CurrentTransactionsMatrixElm(x1, y1, x2, y2, f, st);
 		case 255: return new GodlyTableElm(x1, y1, x2, y2, f, st);
 		case 256: return new TableVoltageElm(x1, y1, x2, y2, f, st);
 		case 257: return new DividerElm(x1, y1, x2, y2, f, st);
@@ -6492,6 +6496,8 @@ public CirSim() {
 		case 259: return new DifferentiatorElm(x1, y1, x2, y2, f, st);
 		case 260: return new IntegratorElm(x1, y1, x2, y2, f, st);
 		case 261: return new ODEElm(x1, y1, x2, y2, f, st);
+		case 450: return new StockMasterElm(x1, y1, x2, y2, f, st);
+		case 451: return new FlowsMasterElm(x1, y1, x2, y2, f, st);
 		case 262: return new EquationElm(x1, y1, x2, y2, f, st);
 		case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
     	case 368: return new TestPointElm(x1, y1, x2, y2, f, st);
@@ -6838,6 +6844,12 @@ public CirSim() {
     	    		return (CircuitElm) new TableElm(x1, y1);   
    	if (n=="GodlyTableElm")
    	    		return (CircuitElm) new GodlyTableElm(x1, y1);
+	if (n=="StockMasterElm")
+			return (CircuitElm) new StockMasterElm(x1, y1);
+	if (n=="FlowsMasterElm")
+			return (CircuitElm) new FlowsMasterElm(x1, y1);
+	if (n=="CurrentTransactionsMatrixElm")
+			return (CircuitElm) new CurrentTransactionsMatrixElm(x1, y1);
 	if (n.equals("TableVoltageElm")) 
 				return (CircuitElm) new TableVoltageElm(x1, y1);		// handle CustomCompositeElm:modelname
     	if (n.startsWith("CustomCompositeElm:")) {

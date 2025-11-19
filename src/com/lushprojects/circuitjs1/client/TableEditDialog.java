@@ -226,6 +226,7 @@ import java.util.Map;
     private Button applyButton;
     private Label statusLabel;
     private TextBox tableTitleBox;
+    private Choice priorityChoice;
     
     // Data storage for dynamic content
     private String[][] cellData;  // Editable cell content
@@ -542,6 +543,30 @@ import java.util.Map;
             }
         });
         titlePanel.add(tableTitleBox);
+        
+        // Add priority dropdown
+        Label priorityLabel = new Label("Priority:");
+        priorityLabel.setWidth("60px");
+        priorityLabel.getElement().getStyle().setProperty("marginLeft", "20px");
+        titlePanel.add(priorityLabel);
+        
+        priorityChoice = new Choice();
+        for (int i = 1; i <= 9; i++) {
+            priorityChoice.add(String.valueOf(i));
+        }
+        int currentPriority = tableElement.getPriority();
+        // Clamp to 1-9 range
+        if (currentPriority < 1) currentPriority = 1;
+        if (currentPriority > 9) currentPriority = 9;
+        priorityChoice.select(currentPriority - 1); // 0-indexed
+        priorityChoice.setTitle("Priority for master table selection (higher = evaluated first)");
+        priorityChoice.addChangeHandler(new com.google.gwt.event.dom.client.ChangeHandler() {
+            public void onChange(com.google.gwt.event.dom.client.ChangeEvent event) {
+                markChanged();
+            }
+        });
+        titlePanel.add(priorityChoice);
+        
         mainPanel.add(titlePanel);
         
         // Scrollable table area (main content)
@@ -1968,6 +1993,17 @@ import java.util.Map;
                 tableElement.setTableTitle(newTitle);
             }
             
+            // Apply priority from dropdown
+            int oldPriority = tableElement.getPriority();
+            int newPriority = priorityChoice.getSelectedIndex() + 1; // Convert from 0-indexed to 1-9
+            tableElement.setPriority(newPriority);
+            // If priority changed, clear master tables and computed values to force re-registration
+            // and avoid stale computed values causing convergence issues.
+            if (oldPriority != newPriority) {
+                ComputedValues.clearMasterTables();
+                ComputedValues.clearComputedValues();
+            }
+            
             tableElement.resizeTable(dataRows, dataCols);
             
             // Apply cell equations
@@ -1989,6 +2025,9 @@ import java.util.Map;
             
             // Update table display
             tableElement.setPoints();
+            
+            // Force full circuit analysis (important when priority changes)
+            sim.needAnalyze();
         }
         
         hasChanges = false;

@@ -199,7 +199,7 @@ public class TableDataManager {
      */
     /**
      * Simplified dump format (not backward compatible)
-     * Format: rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces showCellValues
+     * Format: rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces showCellValues collapsedMode priority
      *         tableTitle tableUnits
      *         [col headers] [row descriptions] [initial values] [column types] [equations]
      */
@@ -216,6 +216,7 @@ public class TableDataManager {
         sb.append(" ").append(table.decimalPlaces);
         sb.append(" ").append(table.showCellValues);
         sb.append(" ").append(table.collapsedMode);
+        sb.append(" ").append(table.priority);
         
         // Text fields (escaped)
         sb.append(" ").append(CustomLogicModel.escape(table.tableTitle));
@@ -254,7 +255,7 @@ public class TableDataManager {
     
     /**
      * Simplified parsing with backward compatibility
-     * New format: rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces showCellValues collapsedMode
+     * New format: rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces showCellValues collapsedMode priority
      *             tableTitle tableUnits
      *             [col headers] [row descriptions] [initial values] [column types] [equations]
      * Old format: rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces
@@ -283,18 +284,31 @@ public class TableDataManager {
                 // Peek again to check for collapsedMode (even newer format)
                 String nextToken2 = st.hasMoreTokens() ? st.nextToken() : "Table";
                 if (nextToken2.equals("true") || nextToken2.equals("false")) {
-                    // Newest format: has collapsedMode
+                    // Newest format: has collapsedMode, check for priority
                     table.collapsedMode = Boolean.parseBoolean(nextToken2);
-                    table.tableTitle = readString(st, "Table");
+                    
+                    // Peek again to check for priority (newest format)
+                    String nextToken3 = st.hasMoreTokens() ? st.nextToken() : "5";
+                    try {
+                        // Try to parse as integer (priority)
+                        table.priority = Integer.parseInt(nextToken3);
+                        table.tableTitle = readString(st, "Table");
+                    } catch (NumberFormatException e) {
+                        // Not a number - it's the table title (format without priority)
+                        table.priority = 5; // Default priority
+                        table.tableTitle = CustomLogicModel.unescape(nextToken3);
+                    }
                 } else {
                     // New format without collapsedMode
                     table.collapsedMode = false; // Default for files without collapsedMode
+                    table.priority = 5; // Default priority
                     table.tableTitle = CustomLogicModel.unescape(nextToken2);
                 }
             } else {
                 // Old format: the token we just read IS the table title
                 table.showCellValues = false; // Default for old files
                 table.collapsedMode = false; // Default for old files
+                table.priority = 5; // Default priority
                 table.tableTitle = CustomLogicModel.unescape(nextToken);
             }
             

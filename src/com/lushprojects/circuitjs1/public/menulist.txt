@@ -19,8 +19,11 @@ EquationElm|Add Equation
 PercentElm|Add Percent/Ratio Meter
 AdderElm|Add Adder
 SubtracterElm|Add Subtracter
-TableElm|Add Table
+# TableElm|Add Table
 GodlyTableElm|Add Godly Table||g
+FlowsMasterElm|Add Flow Master
+StockMasterElm|Add Stock Master
+CurrentTransactionsMatrixElm |Add Current Transactions Matrix
 StopTimeElm|Add Stop Time
 ActionTimeElm|Add Action Time
 PieChartElm|Add Pie Chart

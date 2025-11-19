@@ -48,6 +48,9 @@ public class ComputedValues {
     // Track which table element computes each value (name -> TableElm reference)
     private static HashMap<String, Object> computedByTable;
     
+    // Track the priority of the master table for each value (name -> priority)
+    private static HashMap<String, Integer> masterTablePriorities;
+    
     // Initialize storage if needed
     private static void ensureInitialized() {
         if (computedValues == null) {
@@ -58,6 +61,9 @@ public class ComputedValues {
         }
         if (computedByTable == null) {
             computedByTable = new HashMap<String, Object>();
+        }
+        if (masterTablePriorities == null) {
+            masterTablePriorities = new HashMap<String, Integer>();
         }
     }
     
@@ -211,13 +217,15 @@ public class ComputedValues {
      * should be the "master" computer for each output name when multiple
      * tables have the same output name.
      * 
-     * The first table to register for a name becomes the master.
+     * The table with the highest priority becomes the master.
+     * If priorities are equal, the first table to register becomes the master.
      * 
      * @param name The output name this table wants to compute
      * @param table The table element
-     * @return true if this table became the master, false if another table is already master
+     * @param priority The priority of this table (higher = higher priority)
+     * @return true if this table became the master, false if another table is already master with higher/equal priority
      */
-    public static boolean registerMasterTable(String name, Object table) {
+    public static boolean registerMasterTable(String name, Object table, int priority) {
         if (name == null || name.isEmpty() || table == null) return false;
         
         ensureInitialized();
@@ -225,11 +233,33 @@ public class ComputedValues {
         // If no table is registered for this name yet, this table becomes the master
         if (!computedByTable.containsKey(name)) {
             computedByTable.put(name, table);
+            masterTablePriorities.put(name, priority);
             return true;
         }
         
-        // Another table is already the master
+        // Check if this table has higher priority than the current master
+        Integer currentPriority = masterTablePriorities.get(name);
+        if (currentPriority == null || priority > currentPriority) {
+            // This table has higher priority - replace the current master
+            computedByTable.put(name, table);
+            masterTablePriorities.put(name, priority);
+            return true;
+        }
+        
+        // Another table is already the master with equal or higher priority
         return false;
+    }
+    
+    /**
+     * Register a table element as wanting to compute a specific value (backward compatibility)
+     * Uses default priority of 5
+     * 
+     * @param name The output name this table wants to compute
+     * @param table The table element
+     * @return true if this table became the master, false if another table is already master
+     */
+    public static boolean registerMasterTable(String name, Object table) {
+        return registerMasterTable(name, table, 5); // Default priority
     }
     
     /**
@@ -239,6 +269,9 @@ public class ComputedValues {
     public static void clearMasterTables() {
         if (computedByTable != null) {
             computedByTable.clear();
+        }
+        if (masterTablePriorities != null) {
+            masterTablePriorities.clear();
         }
     }
     
@@ -260,5 +293,49 @@ public class ComputedValues {
             info[i++] = name + " -> " + tableInfo;
         }
         return info;
+    }
+    
+    /**
+     * Get all master stock names (all keys in computedByTable)
+     * Used by CurrentTransactionsMatrixElm to auto-populate columns
+     * 
+     * @return Array of master stock names, or empty array if none
+     */
+    public static String[] getAllMasterStockNames() {
+        if (computedByTable == null || computedByTable.isEmpty()) {
+            return new String[0];
+        }
+        Set<String> keySet = computedByTable.keySet();
+        return keySet.toArray(new String[keySet.size()]);
+    }
+    
+    /**
+     * Get all master stock names excluding tables with specified title
+     * Used by CurrentTransactionsMatrixElm to exclude itself from the list
+     * 
+     * @param excludeTitle Title of tables to exclude (e.g., "Current Transactions Matrix")
+     * @return Array of master stock names from non-excluded tables
+     */
+    public static String[] getMasterStockNamesExcluding(String excludeTitle) {
+        if (computedByTable == null || computedByTable.isEmpty()) {
+            return new String[0];
+        }
+        
+        // Filter out stocks from tables with the excluded title
+        java.util.ArrayList<String> filtered = new java.util.ArrayList<String>();
+        for (String name : computedByTable.keySet()) {
+            Object table = computedByTable.get(name);
+            if (table instanceof TableElm) {
+                TableElm tableElm = (TableElm) table;
+                if (excludeTitle == null || !excludeTitle.equals(tableElm.tableTitle)) {
+                    filtered.add(name);
+                }
+            } else {
+                // Not a TableElm, include it
+                filtered.add(name);
+            }
+        }
+        
+        return filtered.toArray(new String[filtered.size()]);
     }
 }

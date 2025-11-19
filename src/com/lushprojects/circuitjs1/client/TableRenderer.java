@@ -13,13 +13,13 @@ import com.lushprojects.circuitjs1.client.TableEditDialog.ColumnType;
  * Separates rendering logic from circuit simulation logic
  */
 public class TableRenderer {
-    private final TableElm table;
+    protected final TableElm table;  // Protected to allow subclass access
     
     // Cache for cell values to avoid recalculating every frame
-    private double[][] cachedCellValues;
-    private double[] cachedSumValues;
-    private long lastUpdateTime = 0;  // Timestamp of last cache update
-    private static final long UPDATE_INTERVAL_MS = 500; // Update twice per second
+    protected double[][] cachedCellValues;
+    protected double[] cachedSumValues;
+    protected long lastUpdateTime = 0;  // Timestamp of last cache update
+    protected static final long UPDATE_INTERVAL_MS = 500; // Update twice per second
     
     // Fonts for different parts of the table - all bold for better readability
     private static final Font TITLE_FONT = new Font("SansSerif", Font.BOLD, 13);
@@ -218,7 +218,7 @@ public class TableRenderer {
      * This allows tables to have independent cell-level calculations while
      * showing synchronized stock totals in the "Computed" row.
      */
-    private void updateCachedValues() {
+    protected void updateCachedValues() {
         // Initialize cache arrays if needed
         if (cachedCellValues == null || cachedCellValues.length != table.rows || 
             (cachedCellValues.length > 0 && cachedCellValues[0].length != table.cols)) {
@@ -345,7 +345,7 @@ public class TableRenderer {
         lastUpdateTime = 0;
     }
     
-    private void drawTitle(Graphics g, int offsetY) {
+    protected void drawTitle(Graphics g, int offsetY) {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
@@ -387,9 +387,16 @@ public class TableRenderer {
         g.setLetterSpacing(LETTER_SPACING);
         g.setColor(CircuitElm.whiteColor);
         table.drawCenteredText(g, table.tableTitle, tableX + tableWidth / 2, titleY, true);
+        
+        // Draw priority on the RIGHT side of the title row
+        String priorityText = "P:" + table.priority;
+        int priorityX = tableX + tableWidth - 30; // Position near right edge
+        g.setFont(HEADER_FONT); // Smaller font for priority
+        g.setColor(CircuitElm.whiteColor);
+        table.drawCenteredText(g, priorityText, priorityX, titleY, true);
     }
 
-    private void drawColumnHeaders(Graphics g, int offsetY) {
+    protected void drawColumnHeaders(Graphics g, int offsetY) {
         g.setFont(HEADER_FONT);
         g.setLetterSpacing(LETTER_SPACING);
         g.setColor(CircuitElm.whiteColor);
@@ -433,7 +440,7 @@ public class TableRenderer {
         drawRowGridLines(g, offsetY, tableX, rowDescColWidth, cellWidthPixels, false);
     }
     
-    private void drawColumnTypeRow(Graphics g, int offsetY) {
+    protected void drawColumnTypeRow(Graphics g, int offsetY) {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
@@ -496,7 +503,7 @@ public class TableRenderer {
         drawTypeRowGridLines(g, offsetY, tableX, rowDescColWidth, cellWidthPixels);
     }
 
-    private void drawInitialConditionsRow(Graphics g, int offsetY) {
+    protected void drawInitialConditionsRow(Graphics g, int offsetY) {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
@@ -551,7 +558,7 @@ public class TableRenderer {
         drawRowGridLines(g, offsetY, tableX, rowDescColWidth, cellWidthPixels, false);
     }
 
-    private void drawTableCells(Graphics g, int offsetY) {
+    protected void drawTableCells(Graphics g, int offsetY) {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
@@ -685,7 +692,7 @@ public class TableRenderer {
         int cellWidthPixels = table.getCellWidthPixels();
         int availableWidth = cellWidthPixels - 20;
         return truncateText(equation, g, availableWidth);
-    }    private void drawSumRow(Graphics g, int offsetY) {
+    }    protected void drawSumRow(Graphics g, int offsetY) {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
@@ -859,7 +866,7 @@ public class TableRenderer {
         }
     }
     
-    private void drawPins(Graphics g) {
+    protected void drawPins(Graphics g) {
         // HIDDEN: Pins and posts are not drawn visually, but electrical connections remain functional
         // Update current counts for proper circuit simulation even though not displayed
         for (int i = 0; i < table.getPostCount(); i++) {

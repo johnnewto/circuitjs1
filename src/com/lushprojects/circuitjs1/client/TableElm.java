@@ -28,6 +28,7 @@ public class TableElm extends ChipElm {
     protected boolean showCellValues = false; // Show "equation = value" (true) or just "equation" (false)
     protected boolean collapsedMode = false; // Collapsed mode: show only title, headers, and computed row
     protected ColumnType[] columnTypes; // Type for each column (Asset/Liability/Equity/Computed)
+    protected int priority = 5; // Priority for master table selection (higher = evaluated first, becomes master)
     
     // All cells now use equations
     // Variables available: a-i map to labeled nodes OR use labeled node names directly
@@ -291,6 +292,7 @@ public class TableElm extends ChipElm {
     /**
      * Register this table as a potential master for its column outputs
      * Called during circuit initialization to establish which table is master for each stock/column
+     * Tables with higher priority are evaluated first and become masters for shared stocks
      * NOTE: A-L-E computed columns are NOT registered as they are not real stocks
      */
     private void registerAsMasterForOutputNames() {
@@ -303,8 +305,9 @@ public class TableElm extends ChipElm {
                 
                 String name = outputNames[col];
                 if (name != null && !name.trim().isEmpty()) {
-                    // Try to register as master for this column - the first table to register becomes master
-                    ComputedValues.registerMasterTable(name.trim(), this);
+                    // Try to register as master for this column with priority
+                    // Higher priority tables become masters for shared stocks
+                    ComputedValues.registerMasterTable(name.trim(), this, priority);
                 }
             }
         }
@@ -548,6 +551,13 @@ public class TableElm extends ChipElm {
                     int vn = p.voltSource + sim.nodeList.size();
                     sim.stampNonLinear(vn);
                     sim.stampVoltageSource(0, nodes[col], p.voltSource);
+                } else {
+                    // Non-master column: connect output node to ground to prevent unconnected nodes
+                    // Use high-value resistor (10MΩ) so it doesn't affect circuit behavior
+                    int outputNode = nodes[col];
+                    if (outputNode >= 0 && sim.nodeList != null && outputNode < sim.nodeList.size()) {
+                        sim.stampResistor(outputNode, 0, 1e7); // 10MΩ to ground
+                    }
                 }
             }
         }
@@ -610,20 +620,31 @@ public class TableElm extends ChipElm {
         // Always show standard properties on right-click
         // TableEditDialog is opened only via double-click (handled separately)
         if (n == 0) return new EditInfo("Table Title", tableTitle);
-        if (n == 1) return new EditInfo("Cell Width (grids)", cellWidthInGrids, 1, 20);
-        if (n == 2) return new EditInfo("Cell Height", cellHeight, 16, 48);
-        if (n == 3) return new EditInfo("Cell Spacing", cellSpacing, 0, 5);
-        if (n == 4) {
+        if (n == 1) {
+            EditInfo ei = new EditInfo("Priority (1-9, higher=master)", "");
+            ei.choice = new Choice();
+            for (int i = 1; i <= 9; i++) {
+                ei.choice.add(String.valueOf(i));
+            }
+            // Clamp priority to 1-9 range
+            int clampedPriority = Math.max(1, Math.min(9, priority));
+            ei.choice.select(clampedPriority - 1);
+            return ei;
+        }
+        if (n == 2) return new EditInfo("Cell Width (grids)", cellWidthInGrids, 1, 20);
+        if (n == 3) return new EditInfo("Cell Height", cellHeight, 16, 48);
+        if (n == 4) return new EditInfo("Cell Spacing", cellSpacing, 0, 5);
+        if (n == 5) {
             EditInfo ei = new EditInfo("Show Initial Values", 0, -1, -1);
             ei.checkbox = new Checkbox("", showInitialValues);
             return ei;
         }
-        if (n == 5) {
+        if (n == 6) {
             EditInfo ei = new EditInfo("Show Cell Values", 0, -1, -1);
             ei.checkbox = new Checkbox("", showCellValues);
             return ei;
         }
-        if (n == 6) {
+        if (n == 7) {
             EditInfo ei = new EditInfo("Collapsed Mode", 0, -1, -1);
             ei.checkbox = new Checkbox("", collapsedMode);
             return ei;
@@ -636,16 +657,27 @@ public class TableElm extends ChipElm {
         if (n == 0) {
             tableTitle = ei.textf.getText();
         } else if (n == 1) {
-            cellWidthInGrids = Math.max(1, (int)ei.value);
+            int oldPriority = priority;
+            priority = ei.choice.getSelectedIndex() + 1; // Convert from 0-indexed to 1-9
+            // If priority changed, clear master tables and computed values to force re-registration
+            // and avoid stale computed values causing convergence issues.
+            if (oldPriority != priority) {
+                ComputedValues.clearMasterTables();
+                ComputedValues.clearComputedValues();
+                // Force full circuit analysis to rebuild with new priorities
+                sim.needAnalyze();
+            }
         } else if (n == 2) {
-            cellHeight = Math.max(16, (int)ei.value);
+            cellWidthInGrids = Math.max(1, (int)ei.value);
         } else if (n == 3) {
-            cellSpacing = Math.max(0, (int)ei.value);
+            cellHeight = Math.max(16, (int)ei.value);
         } else if (n == 4) {
-            showInitialValues = ei.checkbox.getValue();
+            cellSpacing = Math.max(0, (int)ei.value);
         } else if (n == 5) {
-            showCellValues = ei.checkbox.getValue();
+            showInitialValues = ei.checkbox.getValue();
         } else if (n == 6) {
+            showCellValues = ei.checkbox.getValue();
+        } else if (n == 7) {
             collapsedMode = ei.checkbox.getValue();
         }
         
@@ -844,6 +876,15 @@ public class TableElm extends ChipElm {
     
     public void setTableTitle(String title) {
         this.tableTitle = (title != null) ? title : "Table";
+    }
+    
+    // Priority accessor methods
+    public int getPriority() {
+        return priority;
+    }
+    
+    public void setPriority(int priority) {
+        this.priority = priority;
     }
     
     // Row description accessor methods
