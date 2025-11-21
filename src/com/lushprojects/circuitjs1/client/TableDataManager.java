@@ -224,12 +224,14 @@ public class TableDataManager {
         
         // Column headers (cols count)
         for (int col = 0; col < table.cols; col++) {
-            sb.append(" ").append(CustomLogicModel.escape(table.outputNames[col]));
+            String colName = (table.outputNames[col] != null) ? table.outputNames[col] : "";
+            sb.append(" ").append(CustomLogicModel.escape(colName));
         }
         
         // Row descriptions (rows count)
         for (int row = 0; row < table.rows; row++) {
-            sb.append(" ").append(CustomLogicModel.escape(table.rowDescriptions[row]));
+            String rowDesc = (table.rowDescriptions[row] != null) ? table.rowDescriptions[row] : "";
+            sb.append(" ").append(CustomLogicModel.escape(rowDesc));
         }
         
         // Initial values (cols count)

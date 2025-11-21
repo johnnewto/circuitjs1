@@ -230,23 +230,39 @@ public class ComputedValues {
         
         ensureInitialized();
         
+        // Get table name for logging
+        String tableName = "unknown";
+        if (table instanceof TableElm) {
+            tableName = ((TableElm)table).getTableTitle();
+        }
+        
         // If no table is registered for this name yet, this table becomes the master
         if (!computedByTable.containsKey(name)) {
             computedByTable.put(name, table);
             masterTablePriorities.put(name, priority);
+            CirSim.console("[PRIORITY] Stock '" + name + "': Table '" + tableName + "' is FIRST to register (priority=" + priority + ")");
             return true;
+        }
+        
+        // Get current master info
+        Object currentMaster = computedByTable.get(name);
+        String currentMasterName = "unknown";
+        if (currentMaster instanceof TableElm) {
+            currentMasterName = ((TableElm)currentMaster).getTableTitle();
         }
         
         // Check if this table has higher priority than the current master
         Integer currentPriority = masterTablePriorities.get(name);
         if (currentPriority == null || priority > currentPriority) {
             // This table has higher priority - replace the current master
+            CirSim.console("[PRIORITY] Stock '" + name + "': Table '" + tableName + "' (priority=" + priority + ") REPLACES '" + currentMasterName + "' (priority=" + currentPriority + ")");
             computedByTable.put(name, table);
             masterTablePriorities.put(name, priority);
             return true;
         }
         
         // Another table is already the master with equal or higher priority
+        CirSim.console("[PRIORITY] Stock '" + name + "': Table '" + tableName + "' (priority=" + priority + ") loses to '" + currentMasterName + "' (priority=" + currentPriority + ")");
         return false;
     }
     
@@ -267,12 +283,38 @@ public class ComputedValues {
      * Called when the circuit is reset or rebuilt
      */
     public static void clearMasterTables() {
+        CirSim.console("[PRIORITY] clearMasterTables() called - all master registrations cleared");
         if (computedByTable != null) {
             computedByTable.clear();
         }
         if (masterTablePriorities != null) {
             masterTablePriorities.clear();
         }
+    }
+    
+    /**
+     * Debug method to dump complete state of master tables and priorities
+     */
+    public static void debugDumpMasterTables() {
+        CirSim.console("=== Master Table Debug Dump ===");
+        if (computedByTable == null || computedByTable.isEmpty()) {
+            CirSim.console("No master tables registered");
+            return;
+        }
+        
+        CirSim.console("Total stocks: " + computedByTable.size());
+        for (String stockName : computedByTable.keySet()) {
+            Object table = computedByTable.get(stockName);
+            Integer priority = masterTablePriorities.get(stockName);
+            
+            String tableName = "unknown";
+            if (table instanceof TableElm) {
+                tableName = ((TableElm)table).getTableTitle();
+            }
+            
+            CirSim.console("  Stock '" + stockName + "': Table '" + tableName + "' (priority=" + priority + ")");
+        }
+        CirSim.console("=== End Master Table Dump ===");
     }
     
     /**

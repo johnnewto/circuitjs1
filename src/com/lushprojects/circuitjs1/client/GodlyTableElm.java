@@ -276,12 +276,18 @@ public class GodlyTableElm extends TableElm {
         // Get convergence limit for input checking (like VCVSElm)
         double convergeLimit = getConvergeLimit();
         
+        // Debug logging only on first iteration of each timestep
+        boolean shouldLog = (sim.subIterations == 0 && sim.t > 0 && sim.t < 0.01);
+        
         for (int col = 0; col < colLimit; col++) {
             // Check if this column is mastered by this table (may vary per column)
             boolean isMasterForThisName = isMasterForColumn(col);
             
             // Only compute if we are the master for this specific column
             if (!isMasterForThisName) {
+                if (shouldLog) {
+                    CirSim.console("[GODLY_STAMP] GodlyTable '" + tableTitle + "' col " + col + " '" + outputNames[col] + "': SKIPPED (not master)");
+                }
                 continue;
             }
             
@@ -333,6 +339,10 @@ public class GodlyTableElm extends TableElm {
                 }
                 // Stamp the right side with the integrated value
                 sim.stampRightSide(vn, integratedValue);
+                
+                if (shouldLog) {
+                    CirSim.console("[GODLY_STAMP] GodlyTable '" + tableTitle + "' col " + col + " '" + outputNames[col] + "': vsrc=" + pins[col].voltSource + " vn=" + vn + " sum=" + columnSum + " integrated=" + integratedValue);
+                }
             }
         }
         

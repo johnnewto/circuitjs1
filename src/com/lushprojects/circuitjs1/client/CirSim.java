@@ -2505,6 +2505,59 @@ public CirSim() {
 	}
     }
 
+    // Register table masters in priority order (highest priority first)
+    // This ensures higher priority tables register first and become masters,
+    // preventing replacements that would cause duplicate voltage sources.
+    void registerTableMastersInPriorityOrder() {
+	// Collect all tables
+	java.util.ArrayList<TableElm> tables = new java.util.ArrayList<TableElm>();
+	for (int i = 0; i != elmList.size(); i++) {
+	    CircuitElm ce = getElm(i);
+	    if (ce instanceof TableElm) {
+		TableElm te = (TableElm)ce;
+		tables.add(te);
+		console("[PRIORITY_ORDER] Found table '" + te.getTableTitle() + "' with priority=" + te.getPriority());
+	    }
+	}
+	
+	console("[PRIORITY_ORDER] Collected " + tables.size() + " tables, now sorting...");
+	
+	// Sort by priority (highest first)
+	// Using simple bubble sort since table count is typically small (<10)
+	for (int i = 0; i < tables.size(); i++) {
+	    for (int j = i + 1; j < tables.size(); j++) {
+		if (tables.get(j).getPriority() > tables.get(i).getPriority()) {
+		    // Swap
+		    TableElm temp = tables.get(i);
+		    tables.set(i, tables.get(j));
+		    tables.set(j, temp);
+		}
+	    }
+	}
+	
+	console("[PRIORITY_ORDER] After sorting:");
+	for (int i = 0; i < tables.size(); i++) {
+	    TableElm table = tables.get(i);
+	    console("[PRIORITY_ORDER]   " + i + ": '" + table.getTableTitle() + "' (priority=" + table.getPriority() + ")");
+	}
+	
+	// Register in priority order
+	for (int i = 0; i < tables.size(); i++) {
+	    TableElm table = tables.get(i);
+	    console("[PRIORITY_ORDER] Processing table '" + table.getTableTitle() + "' (priority=" + table.getPriority() + ")");
+	    table.registerAsMasterOnly();
+	}
+	
+	// Update pin output flags to match new master status
+	console("[PRIORITY_ORDER] Updating pin output flags to match new master assignments...");
+	for (int i = 0; i < tables.size(); i++) {
+	    TableElm table = tables.get(i);
+	    table.updatePinOutputFlags();
+	}
+	
+	console("[PRIORITY_ORDER] Table master registration completed");
+    }
+    
     // make list of nodes
     void makeNodeList() {
 	int i, j;
@@ -2738,6 +2791,17 @@ public CirSim() {
 
 	calculateWireClosure();
 	setGroundNode(subcircuit);
+
+	// CRITICAL: Register table masters in PRIORITY ORDER (highest priority first)
+	// This prevents replacements - higher priority tables register first and win.
+	// Without this, tables register in circuit order, causing lower priority tables
+	// to temporarily become masters, create output pins, then get replaced by
+	// higher priority tables, leaving duplicate voltage sources.
+	console("[PRIORITY_ORDER] Clearing any existing master registrations...");
+	ComputedValues.clearMasterTables();
+	console("[PRIORITY_ORDER] Registering table masters in priority order...");
+	registerTableMastersInPriorityOrder();
+	console("[PRIORITY_ORDER] Table master registration completed");
 
 	// allocate nodes and voltage sources
 	makeNodeList();

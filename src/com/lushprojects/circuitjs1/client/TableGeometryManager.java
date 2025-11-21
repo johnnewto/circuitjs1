@@ -22,8 +22,10 @@ public class TableGeometryManager {
      * Pins are positioned to align with column centers
      */
     public void setupPins() {
+        CirSim.console("[GEOM_PINS] Table '" + table.tableTitle + "': setupPins() called");
         calculateChipSize();
         createOutputPins();
+        CirSim.console("[GEOM_PINS] Table '" + table.tableTitle + "': setupPins() completed");
     }
     
     /**
@@ -62,8 +64,10 @@ public class TableGeometryManager {
      * Only master columns (excluding A-L-E) are marked as outputs with voltage sources
      */
     private void createOutputPins() {
+        CirSim.console("[GEOM_PINS]   Creating " + table.cols + " pins...");
         table.pins = new ChipElm.Pin[table.cols];
         
+        int outputPinCount = 0;
         for (int i = 0; i < table.cols; i++) {
             String label = getOutputLabel(i);
             int pinX = calculatePinX(i);
@@ -77,7 +81,17 @@ public class TableGeometryManager {
                               ComputedValues.isMasterTable(table.outputNames[i].trim(), table);
             
             table.pins[i].output = !isALE && isMaster;
+            
+            if (isALE) {
+                CirSim.console("[GEOM_PINS]     Pin " + i + " '" + label + "': A-L-E column (not output)");
+            } else if (isMaster) {
+                outputPinCount++;
+                CirSim.console("[GEOM_PINS]     Pin " + i + " '" + label + "': OUTPUT (master)");
+            } else {
+                CirSim.console("[GEOM_PINS]     Pin " + i + " '" + label + "': not output (not master)");
+            }
         }
+        CirSim.console("[GEOM_PINS]   Total output pins: " + outputPinCount + "/" + table.cols);
     }
     
     /**
