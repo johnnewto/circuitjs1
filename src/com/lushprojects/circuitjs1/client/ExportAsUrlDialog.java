@@ -36,6 +36,7 @@ import com.google.gwt.http.client.RequestCallback;
 import com.google.gwt.http.client.RequestException;
 import com.google.gwt.http.client.Response;
 import com.google.gwt.http.client.Request;
+import com.google.gwt.user.client.ui.Anchor;
 
 public class ExportAsUrlDialog extends Dialog {
 	
@@ -98,12 +99,12 @@ public class ExportAsUrlDialog extends Dialog {
 		String start[] = Location.getHref().split("\\?");
 		if (CirSim.theSim.isElectron())
 		    start[0] = "https://www.falstad.com/circuit/circuitjs.html";
-		String query="?ctz=" + compress(dump);
+		String query="?ctz=" + compress(dump) + "&editable=false";
 		dump = start[0] + query;
 		requrl = URL.encodeQueryString(query);
 		Button okButton, copyButton;
 	
-		Label la1, la2;
+		Label la1;
 		vp=new VerticalPanel();
 		setWidget(vp);
 		setText(Locale.LS("Export as URL"));
@@ -116,6 +117,11 @@ public class ExportAsUrlDialog extends Dialog {
 		textArea.setWidth("400px");
 		textArea.setHeight("300px");
 		textArea.setText(dump);
+		
+		// Add clickable link
+		Anchor link = new Anchor(Locale.LS("Open this circuit in new tab"), dump, "_blank");
+		link.setStyleName("topSpace");
+		vp.add(link);
 //		tb.setMaxLength(s.length());
 //		tb.setVisibleLength(s.length());
 //		vp.add(la2 = new Label(CirSim.LS("To save this URL select it all (eg click in text and type control-A) and copy to your clipboard (eg control-C) before pasting to a suitable place."), true));

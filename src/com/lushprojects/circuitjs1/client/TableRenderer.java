@@ -19,7 +19,7 @@ public class TableRenderer {
     protected double[][] cachedCellValues;
     protected double[] cachedSumValues;
     protected long lastUpdateTime = 0;  // Timestamp of last cache update
-    protected static final long UPDATE_INTERVAL_MS = 500; // Update twice per second
+    protected static final long UPDATE_INTERVAL_MS = 200; // Update 5 times per second
     
     // Fonts for different parts of the table - all bold for better readability
     private static final Font TITLE_FONT = new Font("SansSerif", Font.BOLD, 13);

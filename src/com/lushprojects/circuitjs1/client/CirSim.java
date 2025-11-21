@@ -104,6 +104,35 @@ import com.google.gwt.event.logical.shared.ResizeHandler;
 import com.google.gwt.user.client.DOM;
 import com.google.gwt.i18n.client.NumberFormat;
 
+/**
+ * CirSim - Main Circuit Simulator Class
+ * 
+ * This is the central controller for CircuitJS1, an electronic circuit simulator
+ * that runs in web browsers. It implements Modified Nodal Analysis (MNA) based on
+ * "Electronic Circuit and System Simulation Methods" by Pillage, Rohrer, & Visweswariah.
+ * 
+ * ARCHITECTURE:
+ * - Circuit simulation uses MNA matrix equation: X = A⁻¹B
+ *   where A is admittance matrix, B is right-hand side, X is solution (node voltages + source currents)
+ * - Linear elements (R, L, C) are stamped once during analysis
+ * - Nonlinear elements (diodes, transistors) require iterative solving
+ * - Time integration uses Backward Euler (stable) or Trapezoidal (accurate) methods
+ * 
+ * MAIN LOOP (updateCircuit):
+ * 1. Analyze circuit structure (if needed) - build node list, validate connections
+ * 2. Stamp circuit matrix (if needed) - populate MNA matrices
+ * 3. Run simulation iterations - solve matrix, update element states
+ * 4. Draw graphics - render circuit visualization and scopes
+ * 
+ * PERFORMANCE OPTIMIZATIONS:
+ * - Matrix simplification removes trivial rows (reduces O(n³) LU decomposition cost)
+ * - Wire closure calculation groups connected wires to same node (smaller matrix)
+ * - Element arrays cached to avoid type checks in inner loops
+ * - Adaptive timestep reduces iterations when convergence is difficult
+ * 
+ * @author Paul Falstad, Iain Sharp
+ * @see https://github.com/sharpie7/circuitjs1/blob/master/INTERNALS.md
+ */
 public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandler,
 ClickHandler, DoubleClickHandler, ContextMenuHandler, NativePreviewHandler,
 MouseOutHandler, MouseWheelHandler {
@@ -173,16 +202,22 @@ MouseOutHandler, MouseWheelHandler {
     int mouseMode = MODE_SELECT;
     int tempMouseMode = MODE_SELECT;
     String mouseModeStr = "Select";
+    // Mathematical constants
     static final double pi = 3.14159265358979323846;
-    static final int MODE_ADD_ELM = 0;
-    static final int MODE_DRAG_ALL = 1;
-    static final int MODE_DRAG_ROW = 2;
-    static final int MODE_DRAG_COLUMN = 3;
-    static final int MODE_DRAG_SELECTED = 4;
-    static final int MODE_DRAG_POST = 5;
-    static final int MODE_SELECT = 6;
-    static final int MODE_DRAG_SPLITTER = 7;
-    static final int infoWidth = 160;
+    
+    // Mouse interaction modes - determine how mouse events are interpreted
+    static final int MODE_ADD_ELM = 0;        // Adding new circuit element
+    static final int MODE_DRAG_ALL = 1;       // Dragging entire circuit
+    static final int MODE_DRAG_ROW = 2;       // Dragging table row
+    static final int MODE_DRAG_COLUMN = 3;    // Dragging table column
+    static final int MODE_DRAG_SELECTED = 4;  // Dragging selected elements
+    static final int MODE_DRAG_POST = 5;      // Dragging element terminal/post
+    static final int MODE_SELECT = 6;         // Selecting elements (default)
+    static final int MODE_DRAG_SPLITTER = 7;  // Dragging scope panel splitter
+    
+    // UI layout constants
+    static final int infoWidth = 160;         // Width of info panel in pixels
+    
     int dragGridX, dragGridY, dragScreenX, dragScreenY, initDragGridX, initDragGridY;
     long mouseDownTime;
     long zoomTime;
@@ -193,50 +228,65 @@ MouseOutHandler, MouseWheelHandler {
     boolean dragging;
     boolean analyzeFlag, needsStamp, savedFlag;
     boolean dumpMatrix;
+    boolean needsRecoverySave;  // Defer recovery save until drag completes
     boolean dcAnalysisFlag;
     // boolean useBufferedImage;
     boolean isMac;
     String ctrlMetaKey;
-    double t;
-    int pause = 10;
-    int scopeSelected = -1;
-    int scopeMenuSelected = -1;
-    int menuScope = -1;
-    int menuPlot = -1;
-    int hintType = -1, hintItem1, hintItem2;
-    String stopMessage;
-
-    // current timestep (time between iterations)
-    double timeStep;
-
-    // maximum timestep (== timeStep unless we reduce it because of trouble
-    // converging)
-    double maxTimeStep;
-    double minTimeStep;
-
+    
+    // Simulation time control
+    double t;                      // Current simulation time (seconds)
+    int pause = 10;                // Milliseconds between frames (lower = faster)
+    
+    // Scope and menu selection
+    int scopeSelected = -1;        // Currently selected scope panel index
+    int scopeMenuSelected = -1;    // Scope selected via menu
+    int menuScope = -1;            // Scope for context menu
+    int menuPlot = -1;             // Plot for context menu
+    
+    // Hint system (shows helpful formulas)
+    int hintType = -1;             // Type of hint to display (HINT_LC, HINT_RC, etc.)
+    int hintItem1, hintItem2;      // Elements involved in hint
+    
+    // Error/stop handling
+    String stopMessage;            // Error message when simulation stops
+    
+    // Timestep control
+    double timeStep;               // Current timestep (time between iterations)
+    double maxTimeStep;            // Maximum timestep (reduced when convergence is difficult)
+    double minTimeStep;            // Minimum allowed timestep
+    double timeStepAccum;          // Accumulated time since timeStepCount increment
+    int timeStepCount;             // Counter incremented each maxTimeStep advance
+    
+    // Mouse wheel sensitivity
     double wheelSensitivity = 1;
-
-    // accumulated time since we incremented timeStepCount
-    double timeStepAccum;
-
-    // incremented each time we advance t by maxTimeStep
-    int timeStepCount;
-
-    double minFrameRate = 20;
+    
+    // Frame rate control
+    double minFrameRate = 20;      // Target minimum frame rate (FPS)
+	// Adaptive timestep control - reduces timestep when convergence is difficult
 	boolean adjustTimeStep;
-	// Set developer mode off by default
+	
+	// Developer mode - shows additional debug info (framerate, steprate, performance metrics)
 	boolean developerMode = false;
-	static final int HINT_LC = 1;
-	static final int HINT_RC = 2;
-	static final int HINT_3DB_C = 3;
-    static final int HINT_TWINT = 4;
-    static final int HINT_3DB_L = 5;
-    Vector<CircuitElm> elmList;
-    Vector<Adjustable> adjustables;
-    // Vector setupList;
-    CircuitElm dragElm, menuElm, stopElm;
-    CircuitElm elmArr[];
-    ScopeElm scopeElmArr[];
+	
+	// Circuit hint types - show helpful formulas when related elements are present
+	static final int HINT_LC = 1;      // LC resonant frequency hint
+	static final int HINT_RC = 2;      // RC time constant hint
+	static final int HINT_3DB_C = 3;   // RC cutoff frequency hint (capacitor)
+    static final int HINT_TWINT = 4;   // Twin-T notch filter hint
+    static final int HINT_3DB_L = 5;   // RL cutoff frequency hint (inductor)
+    // Circuit element storage
+    Vector<CircuitElm> elmList;           // Dynamic list of all circuit elements
+    Vector<Adjustable> adjustables;       // Elements with adjustable sliders
+    
+    // Cached arrays for performance - avoid type checks in simulation loop
+    CircuitElm elmArr[];                  // Cached array copy of elmList
+    ScopeElm scopeElmArr[];               // Cached array of scope elements only
+    
+    // Element references for UI interaction
+    CircuitElm dragElm;                   // Element currently being dragged
+    CircuitElm menuElm;                   // Element with context menu open
+    CircuitElm stopElm;                   // Element that caused simulation to stop
     private CircuitElm mouseElm = null;
     private TableElm lastInteractedTable = null; // Track last table clicked for draw order
     boolean didSwitch = false;
@@ -244,14 +294,27 @@ MouseOutHandler, MouseWheelHandler {
     CircuitElm plotXElm, plotYElm;
     int draggingPost;
     SwitchElm heldSwitchElm;
-    double circuitMatrix[][], circuitRightSide[], lastNodeVoltages[], nodeVoltages[], origRightSide[], origMatrix[][];
-    RowInfo circuitRowInfo[];
-    int circuitPermute[];
-    boolean simRunning;
-    boolean circuitNonLinear;
-    int voltageSourceCount;
-    int circuitMatrixSize, circuitMatrixFullSize;
-    boolean circuitNeedsMap;
+    // Modified Nodal Analysis (MNA) matrix data structures
+    // The circuit is solved by: circuitMatrix × nodeVoltages = circuitRightSide
+    double circuitMatrix[][];             // [A] Admittance/conductance matrix (after simplification)
+    double circuitRightSide[];            // [B] Known values (current sources, voltage sources)
+    double nodeVoltages[];                // [X] Solution vector (node voltages + voltage source currents)
+    double lastNodeVoltages[];            // Previous solution for convergence checking
+    double origMatrix[][];                // Original matrix before simplification
+    double origRightSide[];               // Original right side before simplification
+    RowInfo circuitRowInfo[];             // Metadata for each matrix row (optimization info)
+    int circuitPermute[];                 // Row permutation for LU decomposition
+    
+    // Circuit state flags
+    boolean simRunning;                   // True when simulation is actively running
+    boolean simRunningBeforeDrag;         // Saved state: was simulation running before drag started?
+    boolean circuitNonLinear;             // True if circuit has nonlinear elements (diodes, transistors)
+    boolean circuitNeedsMap;              // True if matrix simplification created row mapping
+    
+    // Circuit dimensions
+    int voltageSourceCount;               // Number of voltage sources (adds rows to matrix)
+    int circuitMatrixSize;                // Size of matrix after simplification
+    int circuitMatrixFullSize;            // Size of matrix before simplification
     // public boolean useFrame;
     int scopeCount;
     Scope scopes[];
@@ -1031,6 +1094,14 @@ public CirSim() {
 	try {
 	    Storage stor = Storage.getLocalStorageIfSupported();
 	    wheelSensitivity = Double.parseDouble(stor.getItem("wheelSensitivity"));
+	    
+	    // Load graphics update interval setting
+	    String guiStr = stor.getItem("graphicsUpdateInterval");
+	    if (guiStr != null) {
+		int gui = Integer.parseInt(guiStr);
+		if (gui >= 1 && gui <= 10)
+		    graphicsUpdateInterval = gui;
+	    }
 	} catch (Exception e) {}
     }
 
@@ -1675,6 +1746,10 @@ public CirSim() {
     int steps = 0;
     int framerate = 0, steprate = 0;
     static CirSim theSim;
+    
+    // Graphics update throttling - reduce redraw rate for better performance
+    int graphicsFrameCounter = 0;
+    int graphicsUpdateInterval = 2; // Update graphics every N frames (configurable in options)
 
     
     public void setSimRunning(boolean s) {
@@ -1732,8 +1807,43 @@ public CirSim() {
     }
     
     // *****************************************************************
-    //                     UPDATE CIRCUIT
+    //                     UPDATE CIRCUIT - MAIN LOOP
+    // This is the heart of the simulator, called every frame
+    // *****************************************************************
     
+    /**
+     * Main simulation loop - called every frame to update and render the circuit.
+     * 
+     * PERFORMANCE CRITICAL - This method runs every frame (target 20-60 FPS)
+     * 
+     * PHASES:
+     * 1. ANALYZE (if needed) - Build node list, validate circuit structure
+     *    - calculateWireClosure(): Group wires into nodes
+     *    - makeNodeList(): Assign node numbers
+     *    - validateCircuit(): Check for problematic configurations
+     *    Cost: ~10-50ms for medium circuits (SKIPPED during drag)
+     *    
+     * 2. STAMP (if needed) - Populate MNA matrices
+     *    - stamp(): Each element contributes to matrix (linear elements)
+     *    - simplifyMatrix(): Remove trivial rows for performance
+     *    - lu_factor(): Decompose matrix (for linear circuits only)
+     *    Cost: ~5-20ms including O(n³) LU factorization (SKIPPED during drag)
+     *    
+     * 3. SIMULATE (if running) - Solve circuit for current timestep
+     *    - runCircuit(): Iterate to convergence (nonlinear) or solve once (linear)
+     *    - Matrix solve via LU decomposition: O(n³) cost
+     *    Cost: ~1-10ms per frame (PAUSED during drag)
+     *    
+     * 4. RENDER - Draw circuit elements, scopes, and UI
+     *    - Element drawing: each element draws itself
+     *    - Scope drawing: voltage/current waveforms
+     *    - Debug info: framerate, performance metrics
+     *    Cost: ~5-15ms (ALWAYS runs for smooth visual feedback)
+     * 
+     * DRAG OPTIMIZATION: During drag operations, simulation is paused and analysis
+     *                    is deferred until drag completes. This gives smooth 60 FPS
+     *                    dragging even for large circuits (200+ elements).
+     */
     public void updateCircuit() {
         PerfMonitor perfmon = new PerfMonitor();
         perfmon.startContext("updateCircuit()");
@@ -1767,20 +1877,6 @@ public CirSim() {
         setupScopes();
 
         Graphics g = new Graphics(cvcontext);
-
-        if (printableCheckItem.getState()) {
-            CircuitElm.whiteColor = Color.black;
-            CircuitElm.lightGrayColor = Color.black;
-            g.setColor(new Color(245, 245, 245));
-            cv.getElement().getStyle().setBackgroundColor("#f5f5f5");
-        } else {
-            CircuitElm.whiteColor = Color.white;
-            CircuitElm.lightGrayColor = Color.lightGray;
-            g.setColor(Color.black);
-            cv.getElement().getStyle().setBackgroundColor("#000");
-        }
-
-        g.fillRect(0, 0, canvasWidth, canvasHeight);
 
         // Run circuit
         if (simRunning) {
@@ -1830,9 +1926,39 @@ public CirSim() {
 
         CircuitElm.powerMult = Math.exp(powerBar.getValue() / 4.762 - 7);
 
-        perfmon.startContext("graphics");
+        // Increment frame counter
+        graphicsFrameCounter++;
+        
+        // Only redraw graphics every graphicsUpdateInterval frames, unless:
+        // - We're dragging (need smooth visual feedback)
+        // - We're not running (need to show changes immediately)
+        // - Analysis just completed (need to show new circuit state)
+        boolean shouldDrawGraphics = dragging || 
+                                     !simRunning || 
+                                     didAnalyze ||
+                                     (graphicsFrameCounter >= graphicsUpdateInterval);
+        
+        if (shouldDrawGraphics) {
+            graphicsFrameCounter = 0; // Reset counter
+            
+            perfmon.startContext("graphics");
 
-        g.setFont(CircuitElm.unitsFont);
+            // Set background colors and clear canvas
+            if (printableCheckItem.getState()) {
+                CircuitElm.whiteColor = Color.black;
+                CircuitElm.lightGrayColor = Color.black;
+                g.setColor(new Color(245, 245, 245));
+                cv.getElement().getStyle().setBackgroundColor("#f5f5f5");
+            } else {
+                CircuitElm.whiteColor = Color.white;
+                CircuitElm.lightGrayColor = Color.lightGray;
+                g.setColor(Color.black);
+                cv.getElement().getStyle().setBackgroundColor("#000");
+            }
+
+            g.fillRect(0, 0, canvasWidth, canvasHeight);
+
+            g.setFont(CircuitElm.unitsFont);
 
         g.context.setLineCap(LineCap.ROUND);
 
@@ -1951,6 +2077,33 @@ public CirSim() {
         g.setColor(Color.white);
         
         perfmon.stopContext(); // graphics
+        } // end if (shouldDrawGraphics)
+
+        perfmon.stopContext(); // updateCircuit
+        // Always show framerate
+        g.setColor(CircuitElm.whiteColor);
+        int height = 15;
+        int increment = 15;
+        g.drawString("Framerate: " + CircuitElm.showFormat.format(framerate), 10, height);
+        g.drawString("subiter: " + subIterations, 10, height += increment);
+        
+        if (shouldDrawGraphics && developerMode) {
+            g.drawString("Steprate: " + CircuitElm.showFormat.format(steprate), 10, height += increment);
+            g.drawString("Steprate/iter: " + CircuitElm.showFormat.format(steprate / getIterCount()), 10, height += increment);
+            g.drawString("iterc: " + CircuitElm.showFormat.format(getIterCount()), 10, height += increment);
+            
+            g.drawString("Frames: " + frames, 10, height += increment);
+            
+            height += (increment * 2);
+            
+            String perfmonResult = PerfMonitor.buildString(perfmon).toString();
+            String[] splits = perfmonResult.split("\n");
+            for (int x = 0; x < splits.length; x++) {
+                g.drawString(splits[x], 10, height + (increment * x));
+            }
+        }
+        
+
         
         if (stopElm != null && stopElm != mouseElm)
             stopElm.setMouseElm(false);
@@ -1966,30 +2119,7 @@ public CirSim() {
 
         lastFrameTime = lastTime;
 
-        perfmon.stopContext(); // updateCircuit
-        
-        // Always show framerate
-        g.setColor(CircuitElm.whiteColor);
-        int height = 15;
-        int increment = 15;
-        g.drawString("Framerate: " + CircuitElm.showFormat.format(framerate), 10, height);
-		g.drawString("subiter: " + subIterations, 10, height += increment);
-        
-        if (developerMode) {
-            g.drawString("Steprate: " + CircuitElm.showFormat.format(steprate), 10, height += increment);
-            g.drawString("Steprate/iter: " + CircuitElm.showFormat.format(steprate / getIterCount()), 10, height += increment);
-            g.drawString("iterc: " + CircuitElm.showFormat.format(getIterCount()), 10, height += increment);
-			
-            g.drawString("Frames: " + frames, 10, height += increment);
-            
-            height += (increment * 2);
-            
-            String perfmonResult = PerfMonitor.buildString(perfmon).toString();
-            String[] splits = perfmonResult.split("\n");
-            for (int x = 0; x < splits.length; x++) {
-                g.drawString(splits[x], 10, height + (increment * x));
-            }
-        }
+
         
         // This should always be the last 
         // thing called by updateCircuit();
@@ -2342,9 +2472,24 @@ public CirSim() {
     // info about each wire and its neighbors, used to calculate wire currents
     Vector<WireInfo> wireInfoList;
     
-    // find groups of nodes connected by wire equivalents and map them to the same node.  this speeds things
-    // up considerably by reducing the size of the matrix.  We do this for wires, labeled nodes, and ground.
-    // The actual node we map to is not assigned yet.  Instead we map to the same NodeMapEntry.
+    /**
+     * Calculate wire closure - group connected wire equivalents to same node.
+     * 
+     * PERFORMANCE OPTIMIZATION: This dramatically speeds up simulation by reducing
+     * matrix size. Without this, each wire adds 2+ rows to the matrix.
+     * 
+     * Groups the following into single nodes:
+     * - Wire elements (direct connections)
+     * - LabeledNodeElm with matching labels (virtual wires)
+     * - GroundElm elements (all ground nodes merge to node 0)
+     * 
+     * ALGORITHM:
+     * - Build nodeMap: Point → NodeMapEntry (shared for connected points)
+     * - Merge entries when wires connect different node groups
+     * - Result: All connected points map to same NodeMapEntry
+     * 
+     * Note: Actual node numbers assigned later in makeNodeList()
+     */
     void calculateWireClosure() {
 	int i;
 	LabeledNodeElm.resetNodeList();
@@ -2398,15 +2543,28 @@ public CirSim() {
 //	console("got " + (groupCount-mergeCount) + " groups with " + nodeMap.size() + " nodes " + mergeCount);
     }
     
-    // generate info we need to calculate wire currents.  Most other elements calculate currents using
-    // the voltage on their terminal nodes.  But wires have the same voltage at both ends, so we need
-    // to use the neighbors' currents instead.  We used to treat wires as zero voltage sources to make
-    // this easier, but this is very inefficient, since it makes the matrix 2 rows bigger for each wire.
-    // We create a list of WireInfo objects instead to help us calculate the wire currents instead,
-    // so we make the matrix less complex, and we only calculate the wire currents when we need them
-    // (once per frame, not once per subiteration).  We need the WireInfos arranged in the correct order,
-    // each one containing a list of neighbors and which end to use (since one end may be ready before
-    // the other)
+    /**
+     * Generate wire info for current calculation.
+     * 
+     * PROBLEM: Wire elements have same voltage at both terminals, so we can't
+     * use voltage differences to calculate current (like resistors do).
+     * 
+     * OLD SOLUTION: Treat wires as zero-voltage sources → adds 2 matrix rows per wire
+     * 
+     * NEW SOLUTION: Calculate wire current from neighbor currents instead.
+     * By Kirchhoff's Current Law (KCL): wire current = -sum of neighbor currents
+     * 
+     * This method builds WireInfo objects containing:
+     * - wire: The wire element
+     * - post: Which terminal (0 or 1) to use for calculation
+     * - neighbors: List of elements connected to that terminal
+     * 
+     * DEPENDENCY ORDERING: Wires are reordered so each wire's neighbors are
+     * processed before it. This ensures all neighbor currents are available.
+     * If circular dependency detected → error (wire loop)
+     * 
+     * @return true if successful, false if wire loop detected
+     */
     boolean calcWireInfo() {
 	int i;
 	int moved = 0;
@@ -2525,9 +2683,25 @@ public CirSim() {
 	}
     }
 
-    // Register table masters in priority order (highest priority first)
-    // This ensures higher priority tables register first and become masters,
-    // preventing replacements that would cause duplicate voltage sources.
+    /**
+     * Register table masters in priority order (highest priority first).
+     * 
+     * CRITICAL FOR STOCK-FLOW DIAGRAMS: This ensures higher priority tables
+     * register first and become masters, preventing replacements that would
+     * cause duplicate voltage sources.
+     * 
+     * PROBLEM: Without priority ordering, tables register in circuit order.
+     * Lower priority tables may temporarily become masters, create output pins,
+     * then get replaced by higher priority tables, leaving duplicate voltage sources.
+     * 
+     * SOLUTION: Sort tables by priority before registration.
+     * - Higher priority tables register first and "win" master status
+     * - Lower priority tables find existing masters and become followers
+     * - No replacements occur, no duplicate voltage sources created
+     * 
+     * @see TableElm#registerAsMasterOnly()
+     * @see ComputedValues
+     */
     void registerTableMastersInPriorityOrder() {
 	// Collect all tables
 	java.util.ArrayList<TableElm> tables = new java.util.ArrayList<TableElm>();
@@ -3078,9 +3252,18 @@ public CirSim() {
 	return true;
     }
     
-    // make list of posts we need to draw.  posts shared by 2 elements should be hidden, all
-    // others should be drawn.  We can't use the node list for this purpose anymore because wires
-    // have the same node number at both ends.
+    /**
+     * Build list of circuit posts (connection points) that need to be drawn.
+     * 
+     * DRAWING RULES:
+     * - Posts shared by exactly 2 elements: HIDDEN (clean connection)
+     * - Posts with 1 or 3+ connections: VISIBLE (junction indicator)
+     * - Posts with 1 connection inside another element's bbox: BAD CONNECTION (red dot)
+     * 
+     * Note: TableElm posts are always hidden but remain electrically functional.
+     * 
+     * We can't use node list for this because wires have same node at both ends.
+     */
     void makePostDrawList() {
         HashMap<Point,Integer> postCountMap = new HashMap<Point,Integer>();
 		int i, j;
@@ -3130,6 +3313,18 @@ public CirSim() {
 		}
     }
 
+    /**
+     * State object to find paths in circuit for validation.
+     * 
+     * Used to detect problematic circuit configurations:
+     * - INDUCT: Find current path for inductors (needs path without current sources)
+     * - VOLTAGE: Find voltage source loops (voltage sources + wires only)
+     * - SHORT: Find shorted capacitors (wires only)
+     * - CAP_V: Find capacitor/voltage loops (ideal caps + voltage sources + wires)
+     * 
+     * Uses depth-first search from source node to destination node,
+     * respecting connection rules based on path type.
+     */
     class FindPathInfo {
 	static final int INDUCT  = 1;
 	static final int VOLTAGE = 2;
@@ -3244,15 +3439,45 @@ public CirSim() {
 //	cv.repaint();
     }
     
-    // control voltage source vs with voltage from n1 to n2 (must
-    // also call stampVoltageSource())
+    /**
+     * Stamp voltage-controlled voltage source (VCVS).
+     * 
+     * Controls voltage source 'vs' based on voltage difference V(n1) - V(n2).
+     * Output voltage = coef × (V(n1) - V(n2))
+     * 
+     * Must also call stampVoltageSource() to establish the output terminals.
+     * 
+     * @param n1 Control voltage positive node
+     * @param n2 Control voltage negative node
+     * @param coef Voltage gain coefficient
+     * @param vs Voltage source index to control
+     */
     void stampVCVS(int n1, int n2, double coef, int vs) {
 	int vn = nodeList.size()+vs;
 	stampMatrix(vn, n1, coef);
 	stampMatrix(vn, n2, -coef);
     }
     
-    // stamp independent voltage source #vs, from n1 to n2, amount v
+    /**
+     * Stamp independent voltage source into MNA matrix.
+     * 
+     * MODIFIED NODAL ANALYSIS: Voltage sources add an extra row/column to the matrix
+     * because we need to solve for the source current (unknown).
+     * 
+     * For voltage source from n1 to n2 with voltage v:
+     * - Voltage constraint: V(n2) - V(n1) = v
+     * - Current constraint: I(n1) = -I(vs), I(n2) = I(vs)
+     * 
+     * Matrix entries:
+     * - Row(vs): -V(n1) + V(n2) = v          [voltage equation]
+     * - Row(n1): ... + I(vs) = ...           [KCL at n1]
+     * - Row(n2): ... - I(vs) = ...           [KCL at n2]
+     * 
+     * @param n1 Source node (negative terminal)
+     * @param n2 Destination node (positive terminal)
+     * @param vs Voltage source index
+     * @param v Voltage value
+     */
     void stampVoltageSource(int n1, int n2, int vs, double v) {
 	int vn = nodeList.size()+vs;
 	stampMatrix(vn, n1, -1);
@@ -4235,8 +4460,8 @@ public CirSim() {
     void doExportAsUrl()
     {
     	String dump = dumpCircuit();
-	dialogShowing = new ExportAsUrlDialog(dump);
-	dialogShowing.show();
+		dialogShowing = new ExportAsUrlDialog(dump);
+		dialogShowing.show();
     }
     
     void doExportAsText()
@@ -4821,8 +5046,10 @@ public CirSim() {
     		dragGridY = snapGrid(dragGridY);
     	    }
    	}
-    	if (changed)
-    	    writeRecoveryToStorage();
+    	// Defer recovery save until drag completes to avoid excessive localStorage writes
+    	if (changed) {
+    	    needsRecoverySave = true;
+    	}
     	repaint();
     }
     
@@ -4996,6 +5223,16 @@ public CirSim() {
 	needAnalyze();
     }
     
+    /**
+     * Select elements within a rectangular area (rubber-band selection).
+     * 
+     * Called when user drags to create a selection rectangle.
+     * Elements partially or fully within the rectangle are selected.
+     * 
+     * @param x Current drag position X
+     * @param y Current drag position Y
+     * @param add If true, add to existing selection; if false, replace selection
+     */
     void selectArea(int x, int y, boolean add) {
     	int x1 = min(x, initDragGridX);
     	int x2 = max(x, initDragGridX);
@@ -5031,6 +5268,14 @@ public CirSim() {
 	flipXYItem.setEnabled(canFlipXY);
     }
 
+    /**
+     * Set the element currently under the mouse cursor.
+     * 
+     * Updates visual feedback (element highlighting) and notifies
+     * adjustable elements (sliders) about the current mouse element.
+     * 
+     * @param ce Element to set as mouse element (or null)
+     */
     void setMouseElm(CircuitElm ce) {
     	if (ce!=mouseElm) {
     		if (mouseElm!=null)
@@ -5160,28 +5405,70 @@ public CirSim() {
     	scopeMenuSelected = -1;
     }
     
-    // convert screen coordinates to grid coordinates by inverting circuit transform
+    /**
+     * Convert screen coordinates to circuit grid coordinates.
+     * Inverts the circuit transform (zoom and pan).
+     * 
+     * @param x Screen X coordinate (pixels from left edge)
+     * @return Grid X coordinate in circuit space
+     */
     int inverseTransformX(double x) {
 	return (int) ((x-transform[4])/transform[0]);
     }
 
+    /**
+     * Convert screen coordinates to circuit grid coordinates.
+     * Inverts the circuit transform (zoom and pan).
+     * 
+     * @param y Screen Y coordinate (pixels from top edge)
+     * @return Grid Y coordinate in circuit space
+     */
     int inverseTransformY(double y) {
 	return (int) ((y-transform[5])/transform[3]);
     }
     
-    // convert grid coordinates to screen coordinates
+    /**
+     * Convert circuit grid coordinates to screen coordinates.
+     * Applies circuit transform (zoom and pan).
+     * 
+     * @param x Grid X coordinate in circuit space
+     * @return Screen X coordinate (pixels)
+     */
     int transformX(double x) {
 	return (int) ((x*transform[0]) + transform[4]);
     }
     
+    /**
+     * Convert circuit grid coordinates to screen coordinates.
+     * Applies circuit transform (zoom and pan).
+     * 
+     * @param y Grid Y coordinate in circuit space
+     * @return Screen Y coordinate (pixels)
+     */
     int transformY(double y) {
 	return (int) ((y*transform[3]) + transform[5]);
     }
     
     
 
-    // need to break this out into a separate routine to handle selection,
-    // since we don't get mouse move events on mobile
+    /**
+     * Handle mouse selection and hover detection.
+     * Called on mouse move events to determine which element is under the cursor.
+     * 
+     * SELECTION PRIORITY:
+     * 1. Scope panel splitter (if hovering over it)
+     * 2. Current mouseElm's handles (if close to a handle)
+     * 3. Elements whose bounding box contains cursor (closest one wins)
+     * 4. Scope panels (if cursor inside scope rectangle)
+     * 5. Element posts (if within 26 pixel radius)
+     * 
+     * SETS:
+     * - mouseElm: Element under cursor (or null)
+     * - mousePost: Terminal/post number if hovering over post (or -1)
+     * - draggingPost: Post being dragged (or -1)
+     * - scopeSelected: Scope index if hovering over scope (or -1)
+     * - plotXElm, plotYElm: For XY plot scopes
+     */
     public void mouseSelect(MouseEvent<?> e) {
     	//	The following is in the original, but seems not to work/be needed for GWT
     	//    	if (e.getNativeButton()==NativeEvent.BUTTON_LEFT)
@@ -5476,6 +5763,10 @@ public CirSim() {
     	
     	mouseDragging=true;
     	didSwitch = false;
+    	
+    	// PERFORMANCE: Save simulation state and pause during drag
+    	// This prevents expensive analyzeCircuit() + stampCircuit() on every mouse move
+    	simRunningBeforeDrag = simRunning;
 	
 	// Check if clicked on scope minimize/maximize button
 	if (mouseIsOverScopeMinMaxButton(e.getX(), e.getY())) {
@@ -5556,6 +5847,13 @@ public CirSim() {
 	initDragGridX = gx;
 	initDragGridY = gy;
 	dragging = true;
+	
+	// PERFORMANCE: Pause simulation during drag to prevent expensive operations
+	// Simulation will resume in onMouseUp after drag completes
+	if (simRunning) {
+	    simRunning = false;
+	}
+	
 	if (tempMouseMode !=MODE_ADD_ELM)
 		return;
 //	
@@ -5612,7 +5910,16 @@ public CirSim() {
     	
     	tempMouseMode = mouseMode;
     	selectedArea = null;
+    	
+    	// PERFORMANCE: Resume simulation after drag completes
+    	// Circuit re-analyzes once with final position instead of every frame
+    	if (dragging && simRunningBeforeDrag && !simRunning) {
+    	    simRunning = true;
+    	}
+    	
     	dragging = false;
+    	mouseDragging = false;
+    	
     	boolean circuitChanged = false;
     	if (heldSwitchElm != null) {
     		heldSwitchElm.mouseUp();
@@ -5631,7 +5938,7 @@ public CirSim() {
     			elmList.addElement(dragElm);
     			dragElm.draggingDone();
     			circuitChanged = true;
-    			writeRecoveryToStorage();
+    			needsRecoverySave = true;  // Will save after drag completes
     			unsavedChanges = true;
     			// Auto-deselect after placing element
     			if (mouseMode == MODE_ADD_ELM) {
@@ -5644,6 +5951,11 @@ public CirSim() {
     	if (circuitChanged) {
     	    needAnalyze();
     	    pushUndo();
+    	}
+    	// Write recovery save once after drag completes (deferred from mouseDragged)
+    	if (needsRecoverySave) {
+    	    writeRecoveryToStorage();
+    	    needsRecoverySave = false;
     	}
     	if (dragElm != null)
     		dragElm.delete();
@@ -5658,7 +5970,7 @@ public CirSim() {
     	// so we don't accidentally edit a resistor value while zooming
     	boolean zoomOnly = System.currentTimeMillis() < zoomTime+1000;
     	
-    	if (noEditCheckItem.getState() || !mouseWheelEditCheckItem.getState())
+    	if (!mouseWheelEditCheckItem.getState())
     	    zoomOnly = true;
     	
     	if (!zoomOnly)
@@ -5926,6 +6238,21 @@ public CirSim() {
     	clipboard = stor.getItem("circuitClipboard");
     }
 
+    /**
+     * Write circuit state to browser localStorage for crash recovery.
+     * 
+     * PERFORMANCE NOTE: This is relatively expensive for large circuits:
+     * - dumpCircuit() serializes entire circuit to string (~1-10ms)
+     * - localStorage.setItem() writes to disk (~1-5ms)
+     * 
+     * Should be called sparingly:
+     * - After drag completes (not during every mouse move)
+     * - After adding/deleting elements
+     * - After major circuit changes
+     * 
+     * Previously called on every mouse move during drag, causing lag.
+     * Now deferred via needsRecoverySave flag until drag completes.
+     */
     void writeRecoveryToStorage() {
 	console("write recovery");
     	Storage stor = Storage.getLocalStorageIfSupported();

@@ -68,7 +68,8 @@ class ScopeElm extends CircuitElm {
 	elmScope = new Scope(sim);
 	elmScope.undump(sst);
 	setPoints();
-	elmScope.resetGraph();
+	// Don't call resetGraph() here - setPoints() -> setScopeRect() -> setRect() already did it
+	// Calling it again would clear history buffers that were just properly initialized
     }
     
     /**
