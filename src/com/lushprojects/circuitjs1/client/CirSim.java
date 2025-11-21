@@ -238,6 +238,7 @@ MouseOutHandler, MouseWheelHandler {
     CircuitElm elmArr[];
     ScopeElm scopeElmArr[];
     private CircuitElm mouseElm = null;
+    private TableElm lastInteractedTable = null; // Track last table clicked for draw order
     boolean didSwitch = false;
     int mousePost = -1;
     CircuitElm plotXElm, plotYElm;
@@ -1847,6 +1848,18 @@ public CirSim() {
         // Draw each element
         // Optimization: Set power mode color once before loop instead of for each element
         perfmon.startContext("elm.draw()");
+        
+        // Temporarily reorder elements to draw last interacted table on top
+        int tableOriginalIndex = -1;
+        if (lastInteractedTable != null && elmList.contains(lastInteractedTable)) {
+            tableOriginalIndex = elmList.indexOf(lastInteractedTable);
+            if (tableOriginalIndex != elmList.size() - 1) {
+                // Move table to end for drawing (draws last = on top)
+                elmList.remove(tableOriginalIndex);
+                elmList.add(lastInteractedTable);
+            }
+        }
+        
         if (powerCheckItem.getState()) {
             g.setColor(Color.gray);
             for (int i = 0; i != elmList.size(); i++) {
@@ -1857,6 +1870,13 @@ public CirSim() {
                 getElm(i).draw(g);
             }
         }
+        
+        // Restore original order if we moved the table
+        if (tableOriginalIndex >= 0 && tableOriginalIndex != elmList.size() - 1) {
+            elmList.remove(lastInteractedTable);
+            elmList.insertElementAt(lastInteractedTable, tableOriginalIndex);
+        }
+        
         perfmon.stopContext();
 
         // Draw posts normally
@@ -4717,6 +4737,8 @@ public CirSim() {
 		if (!te.isCollapseArrowClicked(x, y))
 		    return false;
 		te.toggleCollapsedMode();
+		// Track this table for draw order - bring to front
+		lastInteractedTable = te;
 		repaint();
 		return true;
 	}
@@ -5514,6 +5536,11 @@ public CirSim() {
 	if (doTableCollapseToggle(gx, gy)) {
 	    didSwitch = true;
 	    return;
+	}
+	
+	// Track any click on a table element to bring it to front
+	if (mouseElm instanceof TableElm) {
+	    lastInteractedTable = (TableElm) mouseElm;
 	}
 	
 	// IES - Grab resize handles in select mode if they are far enough apart and you are on top of them
