@@ -29,71 +29,56 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     // Custom renderer for this matrix
     private CurrentTransactionsMatrixRenderer matrixRenderer;
     
-    // Constructor for new matrix FROM MENU
+    // Compact mode: filters to Asset/Equity only, hides type/header rows
+    protected boolean compactMode = false;
+    
+    /**
+     * Constructor for new matrix created from menu.
+     * Initializes with default settings and auto-populates from registry.
+     */
     public CurrentTransactionsMatrixElm(int xx, int yy) {
-        super(xx, yy); // Call parent constructor
-        
-        
-        // Override title and mode after construction
-        tableTitle = MATRIX_TITLE;
-        tableUnits = ""; // Force empty units - CTM should have no units
-        // collapsedMode = true; // Always show only computed row
-        showInitialValues = true; // Show initial values by default
-        priority = 1; // Low priority - display element, not a master
-        
-        // Auto-populate with master stocks
-        autoPopulateFromRegistry();
-        
-         
-        // Create custom renderer
-        matrixRenderer = new CurrentTransactionsMatrixRenderer(this);
-        
-        // Re-setup pins after changing structure
-        setupPins();
+        super(xx, yy);
+        initializeMatrix();
     }
 
-    // File loading constructor
+    /**
+     * Constructor for loading from file.
+     * Parses saved state but discards column data to auto-populate from current registry.
+     */
     public CurrentTransactionsMatrixElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
-        // Call TableElm's file loading constructor
-        // Our dump() includes minimal table data, so parseTableData will parse it including collapsedMode
         super(xa, ya, xb, yb, f, st);
-        
-        
-        // Override title and priority (parseTableData already set these, but we enforce them)
-        tableTitle = MATRIX_TITLE;
-        tableUnits = ""; // Force empty units - fixes old files that had "Transactions" from dump bug
-        priority = 1; // Low priority - display element, not a master
-        
-        // collapsedMode is already set by parseTableData from the dump
-        // No need to parse it again
-        
-        // Discard loaded data and auto-populate from registry instead
-        autoPopulateFromRegistry();
-        
-         
-        // Create custom renderer
-        matrixRenderer = new CurrentTransactionsMatrixRenderer(this);
-        
-        // Re-setup pins after auto-populating
-        setupPins();
+        initializeMatrix();
     }
     
     @Override
     int getDumpType() { 
-        return 254; // Use available dump type (253 is TableElm, 255 is GodlyTableElm)
+        return 254;
     }
     
+    /**
+     * Initialize matrix settings and populate from registry.
+     * Consolidated initialization logic used by both constructors.
+     */
+    private void initializeMatrix() {
+        tableTitle = MATRIX_TITLE;
+        tableUnits = "";
+        showInitialValues = true;
+        priority = 1;
+        compactMode = false;
+        
+        autoPopulateFromRegistry();
+        matrixRenderer = new CurrentTransactionsMatrixRenderer(this);
+        setupPins();
+    }
+    
+    /**
+     * Setup pins without registering as master.
+     * CTM is a display element only - it monitors but doesn't control stocks.
+     */
     @Override
     void setupPins() {
-        // DO NOT register as master - CTM is a display/monitor element only
-        // It should never become the master for any stock
-        // Call the geometry manager directly without calling parent setupPins
-        // (parent would call registerAsMasterForOutputNames which we want to skip)
-        
-        // Access geometry manager through reflection of parent's protected method
-        // Actually, just duplicate the essential geometry setup here
-        int extraRows = collapsedMode ? 3 : 5; // title, type, header [, initial, computed]
-        int rowDescColWidth = cellWidthInGrids;
+        int extraRows = compactMode ? 4 : (collapsedMode ? 3 : 5);
+        int rowDescColWidth = compactMode ? (cellWidthInGrids * 2) : cellWidthInGrids;
         
         int tableWidthPixels = (rowDescColWidth + cols * cellWidthInGrids) * cspc + 2 * cspc;
         int tableHeightPixels = (rows + extraRows) * cellHeight + 
@@ -111,29 +96,15 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     }
     
     /**
-     * Auto-populate columns from all master stocks in the registry
-     * Columns are grouped by source table
-     * When expanded, also populate rows with flows
+     * Auto-populate columns from all master stocks in the registry.
+     * In compact mode, shows one equity column per table.
+     * In normal mode, shows all stock columns plus A-L-E.
      */
     private void autoPopulateFromRegistry() {
         String[] masterStocks = ComputedValues.getAllMasterStockNames();
         
         if (masterStocks.length == 0) {
-            // No master stocks yet, create empty table with default columns
-            cols = 4; // Default size
-            rows = 0; // No data rows
-            outputNames = new String[cols];
-            columnTypes = new ColumnType[cols];
-            initialValues = new double[cols];
-            sourceTableNames = new String[cols];
-            
-            // Initialize with empty names
-            for (int i = 0; i < cols; i++) {
-                outputNames[i] = "";
-                columnTypes[i] = ColumnType.ASSET;
-                initialValues[i] = 0.0;
-                sourceTableNames[i] = "";
-            }
+            initializeEmptyTable();
         } else {
             // Group stocks by source table for better organization
             ArrayList<StockInfo> stockInfoList = new ArrayList<StockInfo>();
@@ -154,8 +125,14 @@ public class CurrentTransactionsMatrixElm extends TableElm {
             // Sort by source table name to group columns together
             sortBySourceTable(stockInfoList);
             
-            // Populate with grouped master stocks PLUS one extra column for A-L-E
-            cols = stockInfoList.size() + 1; // +1 for A-L-E column
+            // In compact mode, consolidate to one column per source table
+            if (compactMode) {
+                stockInfoList = consolidateToEquityColumns(stockInfoList);
+            }
+            
+            // Populate with grouped master stocks PLUS one extra column for A-L-E (unless compact mode)
+            cols = compactMode ? stockInfoList.size() : (stockInfoList.size() + 1); // +1 for A-L-E in normal mode
+            
             outputNames = new String[cols];
             columnTypes = new ColumnType[cols];
             initialValues = new double[cols];
@@ -173,12 +150,14 @@ public class CurrentTransactionsMatrixElm extends TableElm {
                 sourceTableNames[i] = info.sourceTableName;
             }
             
-            // Add A-L-E computed column at the end
-            int aleIndex = cols - 1;
-            outputNames[aleIndex] = "A-L-E";
-            columnTypes[aleIndex] = ColumnType.ASSET; // A-L-E doesn't have its own type
-            initialValues[aleIndex] = 0.0;
-            sourceTableNames[aleIndex] = "";
+            // Add A-L-E computed column at the end (only in normal mode)
+            if (!compactMode) {
+                int aleIndex = cols - 1;
+                outputNames[aleIndex] = "A-L-E";
+                columnTypes[aleIndex] = ColumnType.ASSET; // A-L-E doesn't have its own type
+                initialValues[aleIndex] = 0.0;
+                sourceTableNames[aleIndex] = "";
+            }
             
             // Populate flows (rows) when not in collapsed mode
             if (!collapsedMode) {
@@ -195,7 +174,26 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     }
     
     /**
-     * Helper class to store stock information
+     * Initialize empty table with default structure.
+     */
+    private void initializeEmptyTable() {
+        cols = 4;
+        rows = 0;
+        outputNames = new String[cols];
+        columnTypes = new ColumnType[cols];
+        initialValues = new double[cols];
+        sourceTableNames = new String[cols];
+        
+        for (int i = 0; i < cols; i++) {
+            outputNames[i] = "";
+            columnTypes[i] = ColumnType.ASSET;
+            initialValues[i] = 0.0;
+            sourceTableNames[i] = "";
+        }
+    }
+    
+    /**
+     * Helper class to store stock information during population.
      */
     private static class StockInfo {
         String stockName;
@@ -258,6 +256,29 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     }
     
     /**
+     * Consolidate stock list to one equity column per source table.
+     * Used in compact mode to show only equity positions.
+     */
+    private ArrayList<StockInfo> consolidateToEquityColumns(ArrayList<StockInfo> stockInfoList) {
+        ArrayList<StockInfo> consolidatedList = new ArrayList<StockInfo>();
+        String lastTableName = "";
+        
+        for (StockInfo info : stockInfoList) {
+            String tableName = (info.sourceTableName != null) ? info.sourceTableName : "";
+            
+            if (!tableName.equals(lastTableName)) {
+                StockInfo equityStock = findEquityStockForTable(stockInfoList, tableName);
+                if (equityStock != null) {
+                    consolidatedList.add(equityStock);
+                }
+                lastTableName = tableName;
+            }
+        }
+        
+        return consolidatedList;
+    }
+    
+    /**
      * Get ordering value for column type: Asset=0, Liability=1, Equity=2
      */
     private int getTypeOrder(ColumnType type) {
@@ -268,6 +289,21 @@ public class CurrentTransactionsMatrixElm extends TableElm {
             case EQUITY: return 2;
             default: return 0;
         }
+    }
+    
+    /**
+     * Find the EQUITY stock for a given table name in the stock info list
+     * Used in compact mode to select the equity column as the representative for each table
+     */
+    private StockInfo findEquityStockForTable(ArrayList<StockInfo> stockInfoList, String tableName) {
+        for (StockInfo info : stockInfoList) {
+            String infoTableName = (info.sourceTableName != null) ? info.sourceTableName : "";
+            if (infoTableName.equals(tableName) && info.columnType == ColumnType.EQUITY) {
+                return info;
+            }
+        }
+        // If no equity column found, return null (table will be skipped)
+        return null;
     }
     
     /**
@@ -409,7 +445,11 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         // Sort by source table name to group columns together
         sortBySourceTable(stockInfoList);
         
-        cols = stockInfoList.size() + 1; // +1 for A-L-E column
+        if (compactMode) {
+            stockInfoList = consolidateToEquityColumns(stockInfoList);
+        }
+        
+        cols = compactMode ? stockInfoList.size() : (stockInfoList.size() + 1); // +1 for A-L-E in normal mode
         
         // Reallocate arrays
         String[] newOutputNames = new String[cols];
@@ -426,12 +466,14 @@ public class CurrentTransactionsMatrixElm extends TableElm {
             newSourceTableNames[i] = info.sourceTableName;
         }
         
-        // Add A-L-E computed column at the end
-        int aleIndex = cols - 1;
-        newOutputNames[aleIndex] = "A-L-E";
-        newColumnTypes[aleIndex] = ColumnType.ASSET; // A-L-E doesn't have its own type
-        newInitialValues[aleIndex] = 0.0;
-        newSourceTableNames[aleIndex] = "";
+        // Add A-L-E computed column at the end (only in normal mode)
+        if (!compactMode) {
+            int aleIndex = cols - 1;
+            newOutputNames[aleIndex] = "A-L-E";
+            newColumnTypes[aleIndex] = ColumnType.ASSET; // A-L-E doesn't have its own type
+            newInitialValues[aleIndex] = 0.0;
+            newSourceTableNames[aleIndex] = "";
+        }
         
         // Update arrays
         outputNames = newOutputNames;
@@ -522,6 +564,11 @@ public class CurrentTransactionsMatrixElm extends TableElm {
             ei.checkbox = new Checkbox("", collapsedMode);
             return ei;
         }
+        if (n == 3) {
+            EditInfo ei = new EditInfo("Compact Mode (Asset/Equity only)", 0, -1, -1);
+            ei.checkbox = new Checkbox("", compactMode);
+            return ei;
+        }
         return null;
     }
     
@@ -534,6 +581,17 @@ public class CurrentTransactionsMatrixElm extends TableElm {
             boolean newCollapsedMode = ei.checkbox.getValue();
             if (newCollapsedMode != collapsedMode) {
                 toggleCollapsedMode();
+            }
+        } else if (n == 3) {
+            boolean newCompactMode = ei.checkbox.getValue();
+            if (newCompactMode != compactMode) {
+                compactMode = newCompactMode;
+                // If enabling compact mode, ensure we're not in collapsed mode
+                if (compactMode && collapsedMode) {
+                    collapsedMode = false;
+                }
+                // Re-populate to apply filter
+                autoPopulateFromRegistry();
             }
         }
         setupPins();
@@ -551,7 +609,7 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         
         // Minimal table data for parseTableData to consume
         // IMPORTANT: Must include empty units string to match TableDataManager.parseTableData() format
-        String tableData = " 0 0 6 16 0 false 2 false " + collapsedMode + " " + priority + " " + MATRIX_TITLE + " \"\"";
+        String tableData = " 0 0 6 16 0 false 2 false " + collapsedMode + " " + priority + " " + MATRIX_TITLE + " \"\"" + " " + compactMode;
         
         return circuitData + tableData;
     }
@@ -591,6 +649,36 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     }
     
     /**
+     * Check if compact mode is enabled
+     * Package-private for access by CurrentTransactionsMatrixRenderer
+     */
+    boolean isCompactMode() {
+        return compactMode;
+    }
+    
+    /**
+     * Get source table name for a specific column
+     * Package-private for access by CurrentTransactionsMatrixRenderer
+     */
+    String getSourceTableName(int col) {
+        if (sourceTableNames != null && col >= 0 && col < sourceTableNames.length) {
+            return sourceTableNames[col];
+        }
+        return null;
+    }
+    
+    /**
+     * Get output name for a specific column
+     * Package-private for access by CurrentTransactionsMatrixRenderer
+     */
+    String getOutputName(int col) {
+        if (outputNames != null && col >= 0 && col < outputNames.length) {
+            return outputNames[col];
+        }
+        return null;
+    }
+    
+    /**
      * Get initial value for a stock from its master table
      */
     private double getInitialValueFromMaster(String stockName) {
@@ -613,109 +701,97 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     }
     
     /**
-     * Populate flows (rows) from all master tables
-     * Collects all unique flow names from source tables
+     * Populate flows (rows) from all master tables.
+     * Collects unique flow names from source tables.
      */
     private void populateFlowsFromMasterTables(ArrayList<StockInfo> stockInfoList) {
-        
-        // Use ArrayList to collect all flow names
         ArrayList<String> flowNames = new ArrayList<String>();
         
-        // Iterate through each master table and collect flow names
         for (StockInfo stockInfo : stockInfoList) {
-            
             Object masterTableObj = ComputedValues.getComputingTable(stockInfo.stockName.trim());
             
             if (masterTableObj instanceof TableElm) {
                 TableElm masterTable = (TableElm) masterTableObj;
                 int masterRows = masterTable.getRows();
                 
-                // CirSim.console("[CTM]     Master table found with " + masterRows + " rows");
-                
-                // Collect all flow names from this master table
                 for (int r = 0; r < masterRows; r++) {
                     String flowName = masterTable.getRowDescription(r);
                     
-                    // CirSim.console("[CTM]       Row " + r + " flowName: '" + flowName + "'");
-                    
-                    // Only add if not already in the list (avoid duplicates)
                     if (flowName != null && !flowName.trim().isEmpty() && !flowNames.contains(flowName)) {
                         flowNames.add(flowName);
-                        // CirSim.console("[CTM]         Added to flowNames list");
-                    } else if (flowName == null) {
-                        // CirSim.console("[CTM]         WARNING: flowName is NULL");
                     }
                 }
-            } else {
-                // CirSim.console("[CTM]     WARNING: No master table found for stock: " + stockInfo.stockName);
             }
         }
         
-        // Set the number of rows
         rows = flowNames.size();
-        // CirSim.console("[CTM] Total unique flow names collected: " + rows);
-        
-        // Initialize row descriptions from collected flow names
         rowDescriptions = new String[rows];
         for (int i = 0; i < rows; i++) {
             rowDescriptions[i] = flowNames.get(i);
-            // CirSim.console("[CTM]   rowDescriptions[" + i + "] = '" + rowDescriptions[i] + "'");
         }
     }
     
     /**
-     * Populate cell equations from master tables
-     * Each cell references the corresponding flow row and stock column in the master table
+     * Populate cell equations from master tables.
+     * In compact mode: copies equity column equations.
+     * In normal mode: copies specific stock column equations.
      */
     private void populateCellEquationsFromMasters() {
-        // CirSim.console("[CTM] populateCellEquationsFromMasters: rows=" + rows + ", cols=" + cols);
-        
-        // For each cell, find the equation from the corresponding master table
         for (int row = 0; row < rows; row++) {
             String flowName = rowDescriptions[row];
-            // CirSim.console("[CTM]   Processing row " + row + ", flowName='" + flowName + "'");
             
             for (int col = 0; col < cols; col++) {
                 String stockName = outputNames[col];
-                // CirSim.console("[CTM]     Col " + col + ", stockName='" + stockName + "'");
                 
                 if (stockName == null) {
-                    // CirSim.console("[CTM]       WARNING: stockName is NULL at col=" + col);
                     cellEquations[row][col] = "";
                     continue;
                 }
                 
-                // Get the master table for this stock
                 Object masterTableObj = ComputedValues.getComputingTable(stockName.trim());
                 
                 if (masterTableObj instanceof TableElm) {
                     TableElm masterTable = (TableElm) masterTableObj;
-                    
-                    // Find the row in master table that matches this flow name
                     int masterRow = findRowByFlowName(masterTable, flowName);
                     
-                    // Find the column in master table that matches this stock name
-                    int masterCol = masterTable.findColumnByStockName(stockName.trim());
-                    
-                    // CirSim.console("[CTM]       masterTable found, masterRow=" + masterRow + ", masterCol=" + masterCol);
-                    
-                    if (masterRow >= 0 && masterCol >= 0) {
-                        // Get the equation from master table
-                        String equation = masterTable.getCellEquation(masterRow, masterCol);
-                        cellEquations[row][col] = (equation != null) ? equation : "";
-                        // CirSim.console("[CTM]       Set equation: '" + cellEquations[row][col] + "'");
+                    if (compactMode && masterRow >= 0) {
+                        cellEquations[row][col] = findEquityEquationInRow(masterTable, masterRow);
                     } else {
-                        cellEquations[row][col] = ""; // Empty if not found
-                        // CirSim.console("[CTM]       No matching cell in master table");
+                        int masterCol = masterTable.findColumnByStockName(stockName.trim());
+                        
+                        if (masterRow >= 0 && masterCol >= 0) {
+                            String equation = masterTable.getCellEquation(masterRow, masterCol);
+                            cellEquations[row][col] = (equation != null) ? equation : "";
+                        } else {
+                            cellEquations[row][col] = "";
+                        }
                     }
                 } else {
-                    cellEquations[row][col] = ""; // Empty if master table not found
-                    // CirSim.console("[CTM]       No master table found for stock: " + stockName);
+                    cellEquations[row][col] = "";
                 }
             }
         }
+    }
+    
+    /**
+     * Find the EQUITY column equation in a row
+     * Used in compact mode to get the equity equation for a table
+     */
+    private String findEquityEquationInRow(TableElm masterTable, int row) {
+        int masterCols = masterTable.getCols();
         
-        // CirSim.console("[CTM] populateCellEquationsFromMasters completed");
+        for (int col = 0; col < masterCols; col++) {
+            ColumnType colType = masterTable.getColumnType(col);
+            
+            // Only consider EQUITY columns
+            if (colType == ColumnType.EQUITY) {
+                String equation = masterTable.getCellEquation(row, col);
+                // Return the equation even if blank/zero (equity might legitimately be empty for some flows)
+                return (equation != null) ? equation : "";
+            }
+        }
+        
+        return ""; // No equity column found
     }
     
     /**
@@ -739,34 +815,20 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     
     @Override
     void toggleCollapsedMode() {
-        // CirSim.console("[CTM] toggleCollapsedMode() called, current collapsedMode=" + collapsedMode);
-        
-        // Call parent to toggle the mode
         super.toggleCollapsedMode();
         
-        // CirSim.console("[CTM] After toggle, collapsedMode=" + collapsedMode + ", cols=" + cols + ", rows=" + rows);
-        
-        // Re-populate flows when expanding
         if (!collapsedMode) {
-            // CirSim.console("[CTM] Expanding - will populate flows from master tables");
-            
             ArrayList<StockInfo> stockInfoList = buildStockInfoListFromColumns();
-            // CirSim.console("[CTM] stockInfoList.size()=" + stockInfoList.size());
             
             if (stockInfoList.size() > 0) {
                 populateFlowsAndEquations(stockInfoList);
-                // CirSim.console("[CTM] After populateFlowsAndEquations, rows=" + rows);
             }
             
-            // Validate arrays to prevent rendering errors
             validateArrays();
         } else {
-            // CirSim.console("[CTM] Collapsing - clearing rows");
             rows = 0;
             initializeEmptyArrays();
         }
-        
-        // CirSim.console("[CTM] toggleCollapsedMode() completed");
     }
     
     @Override
@@ -780,92 +842,55 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     
     @Override
     public void reset() {
-        // CirSim.console("[CTM] reset() called, collapsedMode=" + collapsedMode + ", cols=" + cols + ", rows=" + rows);
-        
-        // Refresh columns from registry on reset
         updateFromRegistry();
         
-        // CirSim.console("[CTM] After updateFromRegistry, cols=" + cols + ", rows=" + rows);
-        
-        // If expanded, ensure flows are populated and arrays are synchronized
         if (!collapsedMode) {
-            // CirSim.console("[CTM] Expanded mode detected in reset, ensuring flows are populated");
-            
             ArrayList<StockInfo> stockInfoList = buildStockInfoListFromColumns();
-            // CirSim.console("[CTM] Repopulating flows, stockInfoList.size=" + stockInfoList.size());
             
             if (stockInfoList.size() > 0) {
                 populateFlowsAndEquations(stockInfoList);
             }
         }
         
-        // Validate all arrays for consistency before rendering can occur
-        // CirSim.console("[CTM] Validating all arrays for rendering consistency");
         validateArrays();
-        
-        // Re-setup pins after potential update
         setupPins();
         allocNodes();
         setPoints();
-     
-        
-        // Call parent reset
         super.reset();
-     
     }
     
     /**
-     * Validate that all arrays are properly sized and have no null entries
-     * This prevents rendering errors from inconsistent state
+     * Validate and fix array consistency to prevent rendering errors.
      */
     private void validateArrays() {
-        // Ensure sourceTableNames array is valid
         if (sourceTableNames == null || sourceTableNames.length != cols) {
-            // CirSim.console("[CTM]   Fixing sourceTableNames: was " + 
-                // (sourceTableNames == null ? "null" : "length " + sourceTableNames.length) + 
-                // ", need length " + cols);
             sourceTableNames = new String[cols];
             for (int i = 0; i < cols; i++) {
                 sourceTableNames[i] = "";
             }
         } else {
-            // Check for null entries
             for (int i = 0; i < cols; i++) {
                 if (sourceTableNames[i] == null) {
-                    // CirSim.console("[CTM]   Fixing null sourceTableNames[" + i + "]");
                     sourceTableNames[i] = "";
                 }
             }
         }
         
-        // Ensure outputNames array is valid
-        if (outputNames == null || outputNames.length != cols) {
-            // CirSim.console("[CTM]   ERROR: outputNames array size mismatch!");
-        } else {
-            for (int i = 0; i < cols; i++) {
+        if (outputNames != null) {
+            for (int i = 0; i < cols && i < outputNames.length; i++) {
                 if (outputNames[i] == null) {
-                    // CirSim.console("[CTM]   Fixing null outputNames[" + i + "]");
                     outputNames[i] = "";
                 }
             }
         }
         
-        // Ensure columnTypes array is valid
-        if (columnTypes == null || columnTypes.length != cols) {
-            // CirSim.console("[CTM]   ERROR: columnTypes array size mismatch!");
-        } else {
-            for (int i = 0; i < cols; i++) {
+        if (columnTypes != null) {
+            for (int i = 0; i < cols && i < columnTypes.length; i++) {
                 if (columnTypes[i] == null) {
-                    // CirSim.console("[CTM]   Fixing null columnTypes[" + i + "]");
                     columnTypes[i] = ColumnType.ASSET;
                 }
             }
         }
-        
-        // CirSim.console("[CTM]   Arrays validated: sourceTableNames.length=" + 
-            // (sourceTableNames != null ? sourceTableNames.length : "null") + 
-            // ", outputNames.length=" + (outputNames != null ? outputNames.length : "null") +
-            // ", cols=" + cols);
     }
     
     @Override
@@ -873,6 +898,92 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         // Call parent stamp - column updates happen in reset(), not during stamp
         // (stamp is called after node allocation, so structural changes would cause errors)
         super.stamp();
+    }
+    
+    /**
+     * Override getComputedValueForDisplay to return the equity value from each source table.
+     * In compact mode, each column represents a whole table (showing its equity).
+     * In normal mode, each column shows the specific stock's current value.
+     * This includes the last row (computed row) as well.
+     */
+    @Override
+    public double getComputedValueForDisplay(int col) {
+        if (col < 0 || col >= cols || outputNames == null || col >= outputNames.length) {
+            return 0.0;
+        }
+        
+        String stockName = outputNames[col];
+        
+        // Handle A-L-E column (only in normal mode)
+        if (stockName != null && stockName.equals("A-L-E")) {
+            // For A-L-E in CTM, compute from other columns
+            double assets = 0.0;
+            double liabilities = 0.0;
+            double equity = 0.0;
+            
+            for (int c = 0; c < cols; c++) {
+                if (c == col) continue; // Skip A-L-E itself
+                
+                double value = getComputedValueForDisplay(c);
+                
+                if (columnTypes != null && c < columnTypes.length && columnTypes[c] != null) {
+                    switch (columnTypes[c]) {
+                        case ASSET:
+                            assets += value;
+                            break;
+                        case LIABILITY:
+                            liabilities += value;
+                            break;
+                        case EQUITY:
+                            equity += value;
+                            break;
+                    }
+                }
+            }
+            
+            double result = assets - liabilities - equity;
+            return result;
+        }
+        
+        // Get the equity value from the source table
+        if (stockName == null || stockName.trim().isEmpty()) {
+            return 0.0;
+        }
+        
+        Object masterTableObj = ComputedValues.getComputingTable(stockName.trim());
+        
+        if (masterTableObj instanceof TableElm) {
+            TableElm masterTable = (TableElm) masterTableObj;
+            
+            if (compactMode) {
+                // In compact mode, find the EQUITY column in the source table
+                // The representative stock might be Asset or Equity type, but we want the Equity value
+                int masterCols = masterTable.getCols();
+                
+                // Find the first EQUITY column in the source table
+                for (int c = 0; c < masterCols; c++) {
+                    ColumnType colType = masterTable.getColumnType(c);
+                    
+                    if (colType == ColumnType.EQUITY) {
+                        double value = masterTable.getComputedValueForDisplay(c);
+                        return value;
+                    }
+                }
+                
+                // If no EQUITY column found, return 0
+                return 0.0;
+            } else {
+                // In normal mode, return the specific column's value from source table
+                int colIndex = masterTable.findColumnByStockName(stockName.trim());
+                
+                if (colIndex >= 0) {
+                    double value = masterTable.getComputedValueForDisplay(colIndex);
+                    return value;
+                }
+            }
+        }
+        
+        return 0.0;
     }
 }
 

@@ -318,6 +318,17 @@ public class TableDataManager {
             
             table.tableUnits = readString(st, "");
             
+            // Read compactMode if available (for CurrentTransactionsMatrixElm)
+            // This is optional - old files won't have it
+            if (table instanceof CurrentTransactionsMatrixElm && st.hasMoreTokens()) {
+                String compactToken = st.nextToken();
+                if (compactToken.equals("true") || compactToken.equals("false")) {
+                    // It's compactMode
+                    ((CurrentTransactionsMatrixElm) table).compactMode = Boolean.parseBoolean(compactToken);
+                }
+                // If not a boolean, it would be column data but CTM doesn't save column data
+            }
+            
             // Initialize arrays now that we know dimensions
             initializeArrays();
             

@@ -45,13 +45,14 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
         m.tableX = table.getTableX();
         m.tableY = table.getTableY();
         m.cellWidthPixels = table.getCellWidthPixels();
-        m.rowDescColWidth = table.collapsedMode ? 0 : m.cellWidthPixels;
+        m.rowDescColWidth = matrixElm.isCompactMode() ? (m.cellWidthPixels * 2) : 
+            (table.collapsedMode ? 0 : m.cellWidthPixels);
         
         int titleHeight = 20;
         int sourceRowHeight = table.cellHeight + table.cellSpacing;
-        int typeRowHeight = table.collapsedMode ? 0 : (table.cellHeight + table.cellSpacing);
-        int headerRowHeight = table.cellHeight + table.cellSpacing;
-        int initialRowHeight = (table.showInitialValues && !table.collapsedMode) ? 
+        int typeRowHeight = (table.collapsedMode || matrixElm.isCompactMode()) ? 0 : (table.cellHeight + table.cellSpacing);
+        int headerRowHeight = matrixElm.isCompactMode() ? 0 : (table.cellHeight + table.cellSpacing);
+        int initialRowHeight = (table.showInitialValues && (!table.collapsedMode || matrixElm.isCompactMode())) ? 
             (table.cellHeight + table.cellSpacing) : 0;
         int dataRowsHeight = table.collapsedMode ? 0 : 
             (table.rows * (table.cellHeight + table.cellSpacing));
@@ -83,18 +84,30 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
         drawTitle(g, currentY);
         currentY += 10;
         
-        drawSourceTableRow(g, currentY);
-        currentY += table.cellHeight + table.cellSpacing;
+        // Skip source table row in compact mode (table names shown as headers instead)
+        if (!matrixElm.isCompactMode()) {
+            drawSourceTableRow(g, currentY);
+            currentY += table.cellHeight + table.cellSpacing;
+        }
         
-        if (!table.collapsedMode) {
+        // Skip type row in compact mode
+        if (!table.collapsedMode && !matrixElm.isCompactMode()) {
             drawColumnTypeRow(g, currentY);
             currentY += table.cellHeight + table.cellSpacing;
         }
         
-        drawColumnHeaders(g, currentY);
-        currentY += table.cellHeight + table.cellSpacing;
+        // Skip header row in compact mode
+        if (!matrixElm.isCompactMode()) {
+            drawColumnHeaders(g, currentY);
+            currentY += table.cellHeight + table.cellSpacing;
+        } else {
+            // In compact mode, show source table names as headers
+            drawTableNamesAsHeaders(g, currentY);
+            currentY += table.cellHeight + table.cellSpacing;
+        }
         
-        if (table.showInitialValues && !table.collapsedMode) {
+        // Show initial values in compact mode or when explicitly enabled in expanded mode
+        if (table.showInitialValues && (!table.collapsedMode || matrixElm.isCompactMode())) {
             drawInitialConditionsRow(g, currentY);
             currentY += table.cellHeight + table.cellSpacing;
         }
@@ -151,6 +164,67 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
         
         // Draw grid lines with double lines where source changes
         drawGridLinesWithMerging(g, offsetY, sourceNames, sourceNames, true);
+    }
+    
+    /**
+     * Draw source table names as column headers in compact mode.
+     * Shows one column per source table.
+     */
+    private void drawTableNamesAsHeaders(Graphics g, int offsetY) {
+        int tableX = table.getTableX();
+        int tableY = table.getTableY();
+        int cellWidthPixels = table.getCellWidthPixels();
+        int rowDescColWidth = cellWidthPixels * 2; // Wider in compact mode to match cell bodies
+        int rowY = tableY + offsetY;
+        
+        // CirSim.console("[CTM-Renderer] drawTableNamesAsHeaders: tableX=" + tableX + ", tableY=" + tableY + 
+        //     ", cellWidthPixels=" + cellWidthPixels + ", rowDescColWidth=" + rowDescColWidth + 
+        //     ", cols=" + table.cols + ", cellSpacing=" + table.cellSpacing);
+        
+        setupHeaderFont(g);
+        
+        // Draw empty row description
+        if (!table.collapsedMode) {
+            table.drawCenteredText(g, "", tableX + table.cellSpacing + rowDescColWidth/2, 
+                rowY + table.cellHeight/2, true);
+        }
+        
+        // Draw table names as column headers
+        for (int col = 0; col < table.cols; col++) {
+            String tableName = matrixElm.getSourceTableName(col);
+            String header = (tableName != null && !tableName.isEmpty()) ? tableName : matrixElm.getOutputName(col);
+            
+            int centerX = tableX + rowDescColWidth + table.cellSpacing * 2 + 
+                col * (cellWidthPixels + table.cellSpacing) + cellWidthPixels/2;
+            
+            g.setColor(CircuitElm.whiteColor);
+            table.drawCenteredText(g, header, centerX, rowY + table.cellHeight/2, true);
+        }
+        
+        // Draw simple grid lines (no merging in compact mode)
+        g.setColor(CircuitElm.lightGrayColor);
+        int tableWidth = rowDescColWidth + table.cellSpacing * 2 + 
+            table.cols * (cellWidthPixels + table.cellSpacing);
+        
+        // Horizontal lines
+        g.drawLine(tableX, rowY, tableX + tableWidth, rowY);
+        g.drawLine(tableX, rowY + table.cellHeight, tableX + tableWidth, rowY + table.cellHeight);
+        
+        // Left edge
+        g.drawLine(tableX, rowY, tableX, rowY + table.cellHeight);
+        
+        // After description column
+        if (!table.collapsedMode) {
+            int x = tableX + table.cellSpacing + rowDescColWidth;
+            g.drawLine(x, rowY, x, rowY + table.cellHeight);
+        }
+        
+        // Vertical lines between columns
+        for (int col = 0; col <= table.cols; col++) {
+            int x = tableX + rowDescColWidth + table.cellSpacing * 2 + 
+                col * (cellWidthPixels + table.cellSpacing);
+            g.drawLine(x, rowY, x, rowY + table.cellHeight);
+        }
     }
     
     /** Setup header font for row labels */
@@ -344,5 +418,158 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
         // Draw grid lines (single lines where source OR type changes)
         drawGridLinesWithMerging(g, offsetY, sourceNames, typeNames, false);
     }
+    
+    /**
+     * Override drawTableCells to filter cells in compact mode
+     * In compact mode, only show non-blank equations for Asset/Equity columns
+     */
+    @Override
+    protected void drawTableCells(Graphics g, int offsetY) {
+        if (!matrixElm.isCompactMode()) {
+            // Normal mode: use parent implementation
+            super.drawTableCells(g, offsetY);
+            return;
+        }
+        
+        // Compact mode: filter cells to show only non-blank Asset/Equity equations
+        int tableX = table.getTableX();
+        int tableY = table.getTableY();
+        int cellWidthPixels = table.getCellWidthPixels();
+        int rowDescColWidth = cellWidthPixels * 2; // Wider in compact mode
+        
+        CirSim.console("[CTM-Renderer] drawTableCells (compact): tableX=" + tableX + ", tableY=" + tableY + 
+            ", cellWidthPixels=" + cellWidthPixels + ", rowDescColWidth=" + rowDescColWidth + 
+            ", rows=" + table.rows + ", cols=" + table.cols);
+        
+        // Create fonts locally
+        Font headerFont = new Font("SansSerif", Font.BOLD, 11);
+        Font cellFont = new Font("SansSerif", Font.BOLD, 11);
+        String letterSpacing = "0.5px";
+        
+        int baseY = offsetY;
+        
+        for (int row = 0; row < table.rows; row++) {
+            int cellY = tableY + baseY + row * (table.cellHeight + table.cellSpacing);
+            
+            // CirSim.console("[CTM-Renderer]   row " + row + ": cellY=" + cellY + ", rowDesc='" + 
+            //     (table.rowDescriptions != null && row < table.rowDescriptions.length ? table.rowDescriptions[row] : "N/A") + "'");
+            
+            // Draw row description with header font
+            g.setFont(headerFont);
+            g.setLetterSpacing(letterSpacing);
+            g.setColor(CircuitElm.whiteColor);
+            String rowDesc = (table.rowDescriptions != null && row < table.rowDescriptions.length) ?
+                            table.rowDescriptions[row] : "Row" + (row + 1);
+            
+            table.drawCenteredText(g, rowDesc, tableX + table.cellSpacing + rowDescColWidth/2, 
+                cellY + table.cellHeight/2, true);
+            
+            // Use cell font for cell values
+            g.setFont(cellFont);
+            
+            // Draw data cells - all cells to maintain column alignment
+            for (int col = 0; col < table.cols; col++) {
+                int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + 
+                    col * (cellWidthPixels + table.cellSpacing);
+                
+                // Get equation
+                String equation = (table.cellEquations != null && row < table.cellEquations.length && 
+                    col < table.cellEquations[row].length) ? table.cellEquations[row][col] : "";
+                
+                // CirSim.console("[CTM-Renderer]     col " + col + ": cellX=" + cellX + 
+                //     ", centerX=" + (cellX + cellWidthPixels/2) + ", equation='" + 
+                //     (equation != null && !equation.isEmpty() ? equation : "BLANK") + "'");
+                
+                // Display the equation (empty string if blank) to maintain alignment
+                if (equation != null && !equation.trim().isEmpty()) {
+                    g.setColor(CircuitElm.whiteColor);
+                    table.drawCenteredText(g, equation, cellX + cellWidthPixels/2, 
+                        cellY + table.cellHeight/2, true);
+                }
+                // Empty cells are intentionally not drawn, but their space is preserved
+            }
+            
+            // Draw grid lines for this row
+            g.setColor(CircuitElm.lightGrayColor);
+            int tableWidth = rowDescColWidth + table.cellSpacing * 2 + table.cols * (cellWidthPixels + table.cellSpacing);
+            
+            // CirSim.console("[CTM-Renderer]     Grid lines: tableWidth=" + tableWidth + ", drawing " + (table.cols + 1) + " vertical lines");
+            
+            // Horizontal lines (top and bottom of row)
+            g.drawLine(tableX, cellY, tableX + tableWidth, cellY);
+            g.drawLine(tableX, cellY + table.cellHeight, tableX + tableWidth, cellY + table.cellHeight);
+            
+            // Vertical lines
+            // Left edge
+            g.drawLine(tableX, cellY, tableX, cellY + table.cellHeight);
+            // After description column
+            int x = tableX + table.cellSpacing + rowDescColWidth;
+            g.drawLine(x, cellY, x, cellY + table.cellHeight);
+            
+            // Between and after data columns
+            for (int col = 0; col <= table.cols; col++) {
+                x = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
+                // CirSim.console("[CTM-Renderer]       vertical line at col " + col + ": x=" + x);
+                g.drawLine(x, cellY, x, cellY + table.cellHeight);
+            }
+        }
+    }
+    
+    /**
+     * Override drawSumRow to handle compact mode's wider row description column
+     */
+    @Override
+    protected void drawSumRow(Graphics g, int offsetY) {
+        if (!matrixElm.isCompactMode()) {
+            // Normal mode: use parent implementation
+            super.drawSumRow(g, offsetY);
+            return;
+        }
+        
+        // Compact mode: use wider row description column
+        int tableX = table.getTableX();
+        int tableY = table.getTableY();
+        int cellWidthPixels = table.getCellWidthPixels();
+        int rowDescColWidth = cellWidthPixels * 2; // Wider in compact mode
+        
+        int sumRowY = tableY + offsetY;
+        
+        // Use cell font for values
+        Font cellFont = new Font("SansSerif", 0, 11); // 0 = Font.PLAIN
+        g.setFont(cellFont);
+        
+        for (int col = 0; col < table.cols; col++) {
+            int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
+            
+            // Get the computed value (from our overridden getComputedValueForDisplay)
+            double computedValue = table.getComputedValueForDisplay(col);
+            
+            // Draw value with appropriate color
+            Color textColor = computedValue > 0 ? Color.green : (computedValue < 0 ? Color.red : CircuitElm.whiteColor);
+            g.setColor(textColor);
+            String sumText = CircuitElm.getUnitText(computedValue, table.tableUnits);
+            table.drawCenteredText(g, sumText, cellX + cellWidthPixels/2, sumRowY + table.cellHeight/2, false);
+        }
+        
+        // Draw grid lines
+        g.setColor(CircuitElm.lightGrayColor);
+        
+        // Horizontal lines
+        g.drawLine(tableX, sumRowY, tableX + rowDescColWidth + table.cellSpacing * 2 + 
+            table.cols * (cellWidthPixels + table.cellSpacing), sumRowY);
+        g.drawLine(tableX, sumRowY + table.cellHeight, tableX + rowDescColWidth + table.cellSpacing * 2 + 
+            table.cols * (cellWidthPixels + table.cellSpacing), sumRowY + table.cellHeight);
+        
+        // Vertical lines
+        g.drawLine(tableX, sumRowY, tableX, sumRowY + table.cellHeight); // Left edge
+        g.drawLine(tableX + table.cellSpacing + rowDescColWidth, sumRowY, 
+            tableX + table.cellSpacing + rowDescColWidth, sumRowY + table.cellHeight); // After desc column
+        
+        for (int col = 0; col <= table.cols; col++) {
+            int x = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
+            g.drawLine(x, sumRowY, x, sumRowY + table.cellHeight);
+        }
+    }
 
 }
+
