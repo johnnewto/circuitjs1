@@ -2710,11 +2710,11 @@ public CirSim() {
 	    if (ce instanceof TableElm) {
 		TableElm te = (TableElm)ce;
 		tables.add(te);
-		console("[PRIORITY_ORDER] Found table '" + te.getTableTitle() + "' with priority=" + te.getPriority());
+		// console("[PRIORITY_ORDER] Found table '" + te.getTableTitle() + "' with priority=" + te.getPriority());
 	    }
 	}
 	
-	console("[PRIORITY_ORDER] Collected " + tables.size() + " tables, now sorting...");
+	// console("[PRIORITY_ORDER] Collected " + tables.size() + " tables, now sorting...");
 	
 	// Sort by priority (highest first)
 	// Using simple bubble sort since table count is typically small (<10)
@@ -2729,27 +2729,27 @@ public CirSim() {
 	    }
 	}
 	
-	console("[PRIORITY_ORDER] After sorting:");
+	// console("[PRIORITY_ORDER] After sorting:");
 	for (int i = 0; i < tables.size(); i++) {
 	    TableElm table = tables.get(i);
-	    console("[PRIORITY_ORDER]   " + i + ": '" + table.getTableTitle() + "' (priority=" + table.getPriority() + ")");
+	    // console("[PRIORITY_ORDER]   " + i + ": '" + table.getTableTitle() + "' (priority=" + table.getPriority() + ")");
 	}
 	
 	// Register in priority order
 	for (int i = 0; i < tables.size(); i++) {
 	    TableElm table = tables.get(i);
-	    console("[PRIORITY_ORDER] Processing table '" + table.getTableTitle() + "' (priority=" + table.getPriority() + ")");
+	    // console("[PRIORITY_ORDER] Processing table '" + table.getTableTitle() + "' (priority=" + table.getPriority() + ")");
 	    table.registerAsMasterOnly();
 	}
 	
 	// Update pin output flags to match new master status
-	console("[PRIORITY_ORDER] Updating pin output flags to match new master assignments...");
+	// console("[PRIORITY_ORDER] Updating pin output flags to match new master assignments...");
 	for (int i = 0; i < tables.size(); i++) {
 	    TableElm table = tables.get(i);
 	    table.updatePinOutputFlags();
 	}
 	
-	console("[PRIORITY_ORDER] Table master registration completed");
+	// console("[PRIORITY_ORDER] Table master registration completed");
     }
     
     // make list of nodes
@@ -2991,11 +2991,11 @@ public CirSim() {
 	// Without this, tables register in circuit order, causing lower priority tables
 	// to temporarily become masters, create output pins, then get replaced by
 	// higher priority tables, leaving duplicate voltage sources.
-	console("[PRIORITY_ORDER] Clearing any existing master registrations...");
+	// console("[PRIORITY_ORDER] Clearing any existing master registrations...");
 	ComputedValues.clearMasterTables();
-	console("[PRIORITY_ORDER] Registering table masters in priority order...");
+	// console("[PRIORITY_ORDER] Registering table masters in priority order...");
 	registerTableMastersInPriorityOrder();
-	console("[PRIORITY_ORDER] Table master registration completed");
+	// console("[PRIORITY_ORDER] Table master registration completed");
 
 	// allocate nodes and voltage sources
 	makeNodeList();

@@ -554,14 +554,14 @@ public class CurrentTransactionsMatrixElm extends TableElm {
      * Collects all unique flow names from source tables
      */
     private void populateFlowsFromMasterTables(ArrayList<StockInfo> stockInfoList) {
-        CirSim.console("[CTM] populateFlowsFromMasterTables: stockInfoList.size()=" + stockInfoList.size());
+        // CirSim.console("[CTM] populateFlowsFromMasterTables: stockInfoList.size()=" + stockInfoList.size());
         
         // Use ArrayList to collect all flow names
         ArrayList<String> flowNames = new ArrayList<String>();
         
         // Iterate through each master table and collect flow names
         for (StockInfo stockInfo : stockInfoList) {
-            CirSim.console("[CTM]   Processing stock: " + stockInfo.stockName);
+            // CirSim.console("[CTM]   Processing stock: " + stockInfo.stockName);
             
             Object masterTableObj = ComputedValues.getComputingTable(stockInfo.stockName.trim());
             
@@ -569,36 +569,36 @@ public class CurrentTransactionsMatrixElm extends TableElm {
                 TableElm masterTable = (TableElm) masterTableObj;
                 int masterRows = masterTable.getRows();
                 
-                CirSim.console("[CTM]     Master table found with " + masterRows + " rows");
+                // CirSim.console("[CTM]     Master table found with " + masterRows + " rows");
                 
                 // Collect all flow names from this master table
                 for (int r = 0; r < masterRows; r++) {
                     String flowName = masterTable.getRowDescription(r);
                     
-                    CirSim.console("[CTM]       Row " + r + " flowName: '" + flowName + "'");
+                    // CirSim.console("[CTM]       Row " + r + " flowName: '" + flowName + "'");
                     
                     // Only add if not already in the list (avoid duplicates)
                     if (flowName != null && !flowName.trim().isEmpty() && !flowNames.contains(flowName)) {
                         flowNames.add(flowName);
-                        CirSim.console("[CTM]         Added to flowNames list");
+                        // CirSim.console("[CTM]         Added to flowNames list");
                     } else if (flowName == null) {
-                        CirSim.console("[CTM]         WARNING: flowName is NULL");
+                        // CirSim.console("[CTM]         WARNING: flowName is NULL");
                     }
                 }
             } else {
-                CirSim.console("[CTM]     WARNING: No master table found for stock: " + stockInfo.stockName);
+                // CirSim.console("[CTM]     WARNING: No master table found for stock: " + stockInfo.stockName);
             }
         }
         
         // Set the number of rows
         rows = flowNames.size();
-        CirSim.console("[CTM] Total unique flow names collected: " + rows);
+        // CirSim.console("[CTM] Total unique flow names collected: " + rows);
         
         // Initialize row descriptions from collected flow names
         rowDescriptions = new String[rows];
         for (int i = 0; i < rows; i++) {
             rowDescriptions[i] = flowNames.get(i);
-            CirSim.console("[CTM]   rowDescriptions[" + i + "] = '" + rowDescriptions[i] + "'");
+            // CirSim.console("[CTM]   rowDescriptions[" + i + "] = '" + rowDescriptions[i] + "'");
         }
     }
     
@@ -607,19 +607,19 @@ public class CurrentTransactionsMatrixElm extends TableElm {
      * Each cell references the corresponding flow row and stock column in the master table
      */
     private void populateCellEquationsFromMasters() {
-        CirSim.console("[CTM] populateCellEquationsFromMasters: rows=" + rows + ", cols=" + cols);
+        // CirSim.console("[CTM] populateCellEquationsFromMasters: rows=" + rows + ", cols=" + cols);
         
         // For each cell, find the equation from the corresponding master table
         for (int row = 0; row < rows; row++) {
             String flowName = rowDescriptions[row];
-            CirSim.console("[CTM]   Processing row " + row + ", flowName='" + flowName + "'");
+            // CirSim.console("[CTM]   Processing row " + row + ", flowName='" + flowName + "'");
             
             for (int col = 0; col < cols; col++) {
                 String stockName = outputNames[col];
-                CirSim.console("[CTM]     Col " + col + ", stockName='" + stockName + "'");
+                // CirSim.console("[CTM]     Col " + col + ", stockName='" + stockName + "'");
                 
                 if (stockName == null) {
-                    CirSim.console("[CTM]       WARNING: stockName is NULL at col=" + col);
+                    // CirSim.console("[CTM]       WARNING: stockName is NULL at col=" + col);
                     cellEquations[row][col] = "";
                     continue;
                 }
@@ -636,25 +636,25 @@ public class CurrentTransactionsMatrixElm extends TableElm {
                     // Find the column in master table that matches this stock name
                     int masterCol = masterTable.findColumnByStockName(stockName.trim());
                     
-                    CirSim.console("[CTM]       masterTable found, masterRow=" + masterRow + ", masterCol=" + masterCol);
+                    // CirSim.console("[CTM]       masterTable found, masterRow=" + masterRow + ", masterCol=" + masterCol);
                     
                     if (masterRow >= 0 && masterCol >= 0) {
                         // Get the equation from master table
                         String equation = masterTable.getCellEquation(masterRow, masterCol);
                         cellEquations[row][col] = (equation != null) ? equation : "";
-                        CirSim.console("[CTM]       Set equation: '" + cellEquations[row][col] + "'");
+                        // CirSim.console("[CTM]       Set equation: '" + cellEquations[row][col] + "'");
                     } else {
                         cellEquations[row][col] = ""; // Empty if not found
-                        CirSim.console("[CTM]       No matching cell in master table");
+                        // CirSim.console("[CTM]       No matching cell in master table");
                     }
                 } else {
                     cellEquations[row][col] = ""; // Empty if master table not found
-                    CirSim.console("[CTM]       No master table found for stock: " + stockName);
+                    // CirSim.console("[CTM]       No master table found for stock: " + stockName);
                 }
             }
         }
         
-        CirSim.console("[CTM] populateCellEquationsFromMasters completed");
+        // CirSim.console("[CTM] populateCellEquationsFromMasters completed");
     }
     
     /**
@@ -678,34 +678,34 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     
     @Override
     void toggleCollapsedMode() {
-        CirSim.console("[CTM] toggleCollapsedMode() called, current collapsedMode=" + collapsedMode);
+        // CirSim.console("[CTM] toggleCollapsedMode() called, current collapsedMode=" + collapsedMode);
         
         // Call parent to toggle the mode
         super.toggleCollapsedMode();
         
-        CirSim.console("[CTM] After toggle, collapsedMode=" + collapsedMode + ", cols=" + cols + ", rows=" + rows);
+        // CirSim.console("[CTM] After toggle, collapsedMode=" + collapsedMode + ", cols=" + cols + ", rows=" + rows);
         
         // Re-populate flows when expanding
         if (!collapsedMode) {
-            CirSim.console("[CTM] Expanding - will populate flows from master tables");
+            // CirSim.console("[CTM] Expanding - will populate flows from master tables");
             
             ArrayList<StockInfo> stockInfoList = buildStockInfoListFromColumns();
-            CirSim.console("[CTM] stockInfoList.size()=" + stockInfoList.size());
+            // CirSim.console("[CTM] stockInfoList.size()=" + stockInfoList.size());
             
             if (stockInfoList.size() > 0) {
                 populateFlowsAndEquations(stockInfoList);
-                CirSim.console("[CTM] After populateFlowsAndEquations, rows=" + rows);
+                // CirSim.console("[CTM] After populateFlowsAndEquations, rows=" + rows);
             }
             
             // Validate arrays to prevent rendering errors
             validateArrays();
         } else {
-            CirSim.console("[CTM] Collapsing - clearing rows");
+            // CirSim.console("[CTM] Collapsing - clearing rows");
             rows = 0;
             initializeEmptyArrays();
         }
         
-        CirSim.console("[CTM] toggleCollapsedMode() completed");
+        // CirSim.console("[CTM] toggleCollapsedMode() completed");
     }
     
     @Override
@@ -719,19 +719,19 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     
     @Override
     public void reset() {
-        CirSim.console("[CTM] reset() called, collapsedMode=" + collapsedMode + ", cols=" + cols + ", rows=" + rows);
+        // CirSim.console("[CTM] reset() called, collapsedMode=" + collapsedMode + ", cols=" + cols + ", rows=" + rows);
         
         // Refresh columns from registry on reset
         updateFromRegistry();
         
-        CirSim.console("[CTM] After updateFromRegistry, cols=" + cols + ", rows=" + rows);
+        // CirSim.console("[CTM] After updateFromRegistry, cols=" + cols + ", rows=" + rows);
         
         // If expanded, ensure flows are populated and arrays are synchronized
         if (!collapsedMode) {
-            CirSim.console("[CTM] Expanded mode detected in reset, ensuring flows are populated");
+            // CirSim.console("[CTM] Expanded mode detected in reset, ensuring flows are populated");
             
             ArrayList<StockInfo> stockInfoList = buildStockInfoListFromColumns();
-            CirSim.console("[CTM] Repopulating flows, stockInfoList.size=" + stockInfoList.size());
+            // CirSim.console("[CTM] Repopulating flows, stockInfoList.size=" + stockInfoList.size());
             
             if (stockInfoList.size() > 0) {
                 populateFlowsAndEquations(stockInfoList);
@@ -739,20 +739,18 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         }
         
         // Validate all arrays for consistency before rendering can occur
-        CirSim.console("[CTM] Validating all arrays for rendering consistency");
+        // CirSim.console("[CTM] Validating all arrays for rendering consistency");
         validateArrays();
         
         // Re-setup pins after potential update
         setupPins();
         allocNodes();
         setPoints();
-        
-        CirSim.console("[CTM] Before calling super.reset()");
+     
         
         // Call parent reset
         super.reset();
-        
-        CirSim.console("[CTM] reset() completed");
+     
     }
     
     /**
@@ -762,9 +760,9 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     private void validateArrays() {
         // Ensure sourceTableNames array is valid
         if (sourceTableNames == null || sourceTableNames.length != cols) {
-            CirSim.console("[CTM]   Fixing sourceTableNames: was " + 
-                (sourceTableNames == null ? "null" : "length " + sourceTableNames.length) + 
-                ", need length " + cols);
+            // CirSim.console("[CTM]   Fixing sourceTableNames: was " + 
+                // (sourceTableNames == null ? "null" : "length " + sourceTableNames.length) + 
+                // ", need length " + cols);
             sourceTableNames = new String[cols];
             for (int i = 0; i < cols; i++) {
                 sourceTableNames[i] = "";
@@ -773,7 +771,7 @@ public class CurrentTransactionsMatrixElm extends TableElm {
             // Check for null entries
             for (int i = 0; i < cols; i++) {
                 if (sourceTableNames[i] == null) {
-                    CirSim.console("[CTM]   Fixing null sourceTableNames[" + i + "]");
+                    // CirSim.console("[CTM]   Fixing null sourceTableNames[" + i + "]");
                     sourceTableNames[i] = "";
                 }
             }
@@ -781,11 +779,11 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         
         // Ensure outputNames array is valid
         if (outputNames == null || outputNames.length != cols) {
-            CirSim.console("[CTM]   ERROR: outputNames array size mismatch!");
+            // CirSim.console("[CTM]   ERROR: outputNames array size mismatch!");
         } else {
             for (int i = 0; i < cols; i++) {
                 if (outputNames[i] == null) {
-                    CirSim.console("[CTM]   Fixing null outputNames[" + i + "]");
+                    // CirSim.console("[CTM]   Fixing null outputNames[" + i + "]");
                     outputNames[i] = "";
                 }
             }
@@ -793,20 +791,20 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         
         // Ensure columnTypes array is valid
         if (columnTypes == null || columnTypes.length != cols) {
-            CirSim.console("[CTM]   ERROR: columnTypes array size mismatch!");
+            // CirSim.console("[CTM]   ERROR: columnTypes array size mismatch!");
         } else {
             for (int i = 0; i < cols; i++) {
                 if (columnTypes[i] == null) {
-                    CirSim.console("[CTM]   Fixing null columnTypes[" + i + "]");
+                    // CirSim.console("[CTM]   Fixing null columnTypes[" + i + "]");
                     columnTypes[i] = ColumnType.ASSET;
                 }
             }
         }
         
-        CirSim.console("[CTM]   Arrays validated: sourceTableNames.length=" + 
-            (sourceTableNames != null ? sourceTableNames.length : "null") + 
-            ", outputNames.length=" + (outputNames != null ? outputNames.length : "null") +
-            ", cols=" + cols);
+        // CirSim.console("[CTM]   Arrays validated: sourceTableNames.length=" + 
+            // (sourceTableNames != null ? sourceTableNames.length : "null") + 
+            // ", outputNames.length=" + (outputNames != null ? outputNames.length : "null") +
+            // ", cols=" + cols);
     }
     
     @Override

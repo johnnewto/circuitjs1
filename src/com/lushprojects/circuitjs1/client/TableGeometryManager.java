@@ -22,10 +22,10 @@ public class TableGeometryManager {
      * Pins are positioned to align with column centers
      */
     public void setupPins() {
-        CirSim.console("[GEOM_PINS] Table '" + table.tableTitle + "': setupPins() called");
+        // CirSim.console("[GEOM_PINS] Table '" + table.tableTitle + "': setupPins() called");
         calculateChipSize();
         createOutputPins();
-        CirSim.console("[GEOM_PINS] Table '" + table.tableTitle + "': setupPins() completed");
+        // CirSim.console("[GEOM_PINS] Table '" + table.tableTitle + "': setupPins() completed");
     }
     
     /**
@@ -64,7 +64,7 @@ public class TableGeometryManager {
      * Only master columns (excluding A-L-E) are marked as outputs with voltage sources
      */
     private void createOutputPins() {
-        CirSim.console("[GEOM_PINS]   Creating " + table.cols + " pins...");
+        // CirSim.console("[GEOM_PINS]   Creating " + table.cols + " pins...");
         table.pins = new ChipElm.Pin[table.cols];
         
         int outputPinCount = 0;
@@ -83,15 +83,15 @@ public class TableGeometryManager {
             table.pins[i].output = !isALE && isMaster;
             
             if (isALE) {
-                CirSim.console("[GEOM_PINS]     Pin " + i + " '" + label + "': A-L-E column (not output)");
+                // CirSim.console("[GEOM_PINS]     Pin " + i + " '" + label + "': A-L-E column (not output)");
             } else if (isMaster) {
                 outputPinCount++;
-                CirSim.console("[GEOM_PINS]     Pin " + i + " '" + label + "': OUTPUT (master)");
+                // CirSim.console("[GEOM_PINS]     Pin " + i + " '" + label + "': OUTPUT (master)");
             } else {
-                CirSim.console("[GEOM_PINS]     Pin " + i + " '" + label + "': not output (not master)");
+                // CirSim.console("[GEOM_PINS]     Pin " + i + " '" + label + "': not output (not master)");
             }
         }
-        CirSim.console("[GEOM_PINS]   Total output pins: " + outputPinCount + "/" + table.cols);
+        // CirSim.console("[GEOM_PINS]   Total output pins: " + outputPinCount + "/" + table.cols);
     }
     
     /**

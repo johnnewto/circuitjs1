@@ -240,7 +240,7 @@ public class ComputedValues {
         if (!computedByTable.containsKey(name)) {
             computedByTable.put(name, table);
             masterTablePriorities.put(name, priority);
-            CirSim.console("[PRIORITY] Stock '" + name + "': Table '" + tableName + "' is FIRST to register (priority=" + priority + ")");
+            // CirSim.console("[PRIORITY] Stock '" + name + "': Table '" + tableName + "' is FIRST to register (priority=" + priority + ")");
             return true;
         }
         
@@ -255,14 +255,14 @@ public class ComputedValues {
         Integer currentPriority = masterTablePriorities.get(name);
         if (currentPriority == null || priority > currentPriority) {
             // This table has higher priority - replace the current master
-            CirSim.console("[PRIORITY] Stock '" + name + "': Table '" + tableName + "' (priority=" + priority + ") REPLACES '" + currentMasterName + "' (priority=" + currentPriority + ")");
+            // CirSim.console("[PRIORITY] Stock '" + name + "': Table '" + tableName + "' (priority=" + priority + ") REPLACES '" + currentMasterName + "' (priority=" + currentPriority + ")");
             computedByTable.put(name, table);
             masterTablePriorities.put(name, priority);
             return true;
         }
         
         // Another table is already the master with equal or higher priority
-        CirSim.console("[PRIORITY] Stock '" + name + "': Table '" + tableName + "' (priority=" + priority + ") loses to '" + currentMasterName + "' (priority=" + currentPriority + ")");
+        // CirSim.console("[PRIORITY] Stock '" + name + "': Table '" + tableName + "' (priority=" + priority + ") loses to '" + currentMasterName + "' (priority=" + currentPriority + ")");
         return false;
     }
     
@@ -283,7 +283,7 @@ public class ComputedValues {
      * Called when the circuit is reset or rebuilt
      */
     public static void clearMasterTables() {
-        CirSim.console("[PRIORITY] clearMasterTables() called - all master registrations cleared");
+        // CirSim.console("[PRIORITY] clearMasterTables() called - all master registrations cleared");
         if (computedByTable != null) {
             computedByTable.clear();
         }

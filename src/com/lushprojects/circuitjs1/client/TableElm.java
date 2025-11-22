@@ -280,7 +280,7 @@ public class TableElm extends ChipElm {
     
     @Override
     void setupPins() {
-        CirSim.console("[SETUP_PINS] Table '" + tableTitle + "' setupPins() called...");
+        // CirSim.console("[SETUP_PINS] Table '" + tableTitle + "' setupPins() called...");
         
         // Check if we've already registered (priority-ordered registration already happened)
         // If any column thinks we're the master, we've already registered
@@ -300,10 +300,10 @@ public class TableElm extends ChipElm {
         // Only register if not already done (for backward compatibility with circuits
         // that don't use priority-ordered registration)
         if (!alreadyRegistered) {
-            CirSim.console("[SETUP_PINS] Table '" + tableTitle + "' not yet registered, registering now...");
+            // CirSim.console("[SETUP_PINS] Table '" + tableTitle + "' not yet registered, registering now...");
             registerAsMasterForOutputNames();
         } else {
-            CirSim.console("[SETUP_PINS] Table '" + tableTitle + "' already registered via priority order");
+            // CirSim.console("[SETUP_PINS] Table '" + tableTitle + "' already registered via priority order");
         }
         
         if (geometryManager != null) {
@@ -311,17 +311,17 @@ public class TableElm extends ChipElm {
         }
         
         // Debug: Show final master status for this table after pin setup
-        CirSim.console("[SETUP_PINS] Table '" + tableTitle + "' final master status:");
+        // CirSim.console("[SETUP_PINS] Table '" + tableTitle + "' final master status:");
         for (int col = 0; col < cols; col++) {
             if (isALEColumn(col)) {
-                CirSim.console("[SETUP_PINS]   Col " + col + ": A-L-E (skipped)");
+                // CirSim.console("[SETUP_PINS]   Col " + col + ": A-L-E (skipped)");
             } else if (outputNames != null && col < outputNames.length) {
                 boolean isMaster = isMasterForColumn(col);
-                CirSim.console("[SETUP_PINS]   Col " + col + " '" + outputNames[col] + "': " + (isMaster ? "MASTER" : "not master"));
+                // CirSim.console("[SETUP_PINS]   Col " + col + " '" + outputNames[col] + "': " + (isMaster ? "MASTER" : "not master"));
             }
         }
         
-        CirSim.console("[SETUP_PINS] Table '" + tableTitle + "' setupPins() completed");
+        // CirSim.console("[SETUP_PINS] Table '" + tableTitle + "' setupPins() completed");
     }
     
     /**
@@ -341,7 +341,7 @@ public class TableElm extends ChipElm {
             return;
         }
         
-        CirSim.console("[UPDATE_PINS] Table '" + tableTitle + "' updating pin output flags...");
+        // CirSim.console("[UPDATE_PINS] Table '" + tableTitle + "' updating pin output flags...");
         int outputCount = 0;
         
         for (int col = 0; col < cols && col < pins.length; col++) {
@@ -365,11 +365,11 @@ public class TableElm extends ChipElm {
             // Log if output flag changed
             if (wasOutput != shouldBeOutput) {
                 String colName = (outputNames != null && col < outputNames.length) ? outputNames[col] : "col" + col;
-                CirSim.console("[UPDATE_PINS]   Pin " + col + " '" + colName + "': output " + wasOutput + " → " + shouldBeOutput + " (corrected)");
+                // CirSim.console("[UPDATE_PINS]   Pin " + col + " '" + colName + "': output " + wasOutput + " → " + shouldBeOutput + " (corrected)");
             }
         }
         
-        CirSim.console("[UPDATE_PINS] Table '" + tableTitle + "': " + outputCount + "/" + cols + " pins are outputs (after update)");
+        // CirSim.console("[UPDATE_PINS] Table '" + tableTitle + "': " + outputCount + "/" + cols + " pins are outputs (after update)");
     }
     
     /**
@@ -379,12 +379,12 @@ public class TableElm extends ChipElm {
      * NOTE: A-L-E computed columns are NOT registered as they are not real stocks
      */
     private void registerAsMasterForOutputNames() {
-        CirSim.console("[MASTER_REG] Table '" + tableTitle + "' registering columns (priority=" + priority + ")...");
+        // CirSim.console("[MASTER_REG] Table '" + tableTitle + "' registering columns (priority=" + priority + ")...");
         if (outputNames != null) {
             for (int col = 0; col < cols && col < outputNames.length; col++) {
                 // Skip A-L-E computed columns - they are not real stocks
                 if (isALEColumn(col)) {
-                    CirSim.console("[MASTER_REG]   Col " + col + ": SKIPPED (A-L-E column)");
+                    // CirSim.console("[MASTER_REG]   Col " + col + ": SKIPPED (A-L-E column)");
                     continue;
                 }
                 
@@ -393,7 +393,7 @@ public class TableElm extends ChipElm {
                     // Try to register as master for this column with priority
                     // Higher priority tables become masters for shared stocks
                     boolean becameMaster = ComputedValues.registerMasterTable(name.trim(), this, priority);
-                    CirSim.console("[MASTER_REG]   Col " + col + ": '" + name + "' → " + (becameMaster ? "BECAME MASTER" : "not master (lower priority)"));
+                    // CirSim.console("[MASTER_REG]   Col " + col + ": '" + name + "' → " + (becameMaster ? "BECAME MASTER" : "not master (lower priority)"));
                 }
             }
         }
@@ -436,7 +436,7 @@ public class TableElm extends ChipElm {
             }
         }
         debugMsg.append("→ " + count + " voltage sources");
-        CirSim.console(debugMsg.toString());
+        // CirSim.console(debugMsg.toString());
         return count;
     }
 
@@ -594,11 +594,12 @@ public class TableElm extends ChipElm {
                 // Stamp the right side with the computed value
                 sim.stampRightSide(vn, columnSum);
                 
-                if (shouldLog) {
-                    CirSim.console("[STAMP] Table '" + tableTitle + "' col " + col + " '" + outputNames[col] + "': vsrc=" + pins[col].voltSource + " vn=" + vn + " value=" + columnSum);
-                }
+                // if (shouldLog) {
+                //     CirSim.console("[STAMP] Table '" + tableTitle + "' col " + col + " '" + outputNames[col] + "': vsrc=" + pins[col].voltSource + " vn=" + vn + " value=" + columnSum);
+                // }
             } else if (shouldLog && !isMasterForThisName) {
-                CirSim.console("[STAMP] Table '" + tableTitle + "' col " + col + " '" + outputNames[col] + "': SKIPPED (not master)");
+                ;
+                // CirSim.console("[STAMP] Table '" + tableTitle + "' col " + col + " '" + outputNames[col] + "': SKIPPED (not master)");
             }
 
             lastColumnSums[col] = columnSum;
@@ -645,7 +646,7 @@ public class TableElm extends ChipElm {
 
     @Override
     void stamp() {
-        CirSim.console("[STAMP_LINEAR] Table '" + tableTitle + "': stamp() called - stamping voltage sources...");
+        // CirSim.console("[STAMP_LINEAR] Table '" + tableTitle + "': stamp() called - stamping voltage sources...");
         // Stamp voltage sources ONLY for columns where this table is the master
         // AND skip A-L-E columns (they are purely computed, not electrical outputs)
         int postCount = getPostCount();
@@ -653,7 +654,7 @@ public class TableElm extends ChipElm {
         for (int col = 0; col < postCount; col++) {
             // Skip A-L-E columns (display-only, calculated in TableRenderer)
             if (isALEColumn(col)) {
-                CirSim.console("[STAMP_LINEAR]   Col " + col + ": SKIPPED (A-L-E column)");
+                // CirSim.console("[STAMP_LINEAR]   Col " + col + ": SKIPPED (A-L-E column)");
                 continue;
             }
             
@@ -667,7 +668,7 @@ public class TableElm extends ChipElm {
                     sim.stampNonLinear(vn);
                     sim.stampVoltageSource(0, nodes[col], p.voltSource);
                     stampedCount++;
-                    CirSim.console("[STAMP_LINEAR]   Col " + col + " '" + outputNames[col] + "': STAMPED voltage source (vsrc=" + p.voltSource + ", node=" + nodes[col] + ", vn=" + vn + ")");
+                    // CirSim.console("[STAMP_LINEAR]   Col " + col + " '" + outputNames[col] + "': STAMPED voltage source (vsrc=" + p.voltSource + ", node=" + nodes[col] + ", vn=" + vn + ")");
                 } else {
                     // Non-master column: connect output node to ground to prevent unconnected nodes
                     // Use high-value resistor (10MΩ) so it doesn't affect circuit behavior
@@ -675,13 +676,13 @@ public class TableElm extends ChipElm {
                     if (outputNode >= 0 && sim.nodeList != null && outputNode < sim.nodeList.size()) {
                         sim.stampResistor(outputNode, 0, 1e7); // 10MΩ to ground
                     }
-                    CirSim.console("[STAMP_LINEAR]   Col " + col + " '" + outputNames[col] + "': not master, connected to ground via 10MΩ");
+                    // CirSim.console("[STAMP_LINEAR]   Col " + col + " '" + outputNames[col] + "': not master, connected to ground via 10MΩ");
                 }
             } else {
-                CirSim.console("[STAMP_LINEAR]   Col " + col + " '" + outputNames[col] + "': pin is not output");
+                // CirSim.console("[STAMP_LINEAR]   Col " + col + " '" + outputNames[col] + "': pin is not output");
             }
         }
-        CirSim.console("[STAMP_LINEAR] Table '" + tableTitle + "': stamped " + stampedCount + " voltage sources");
+        // CirSim.console("[STAMP_LINEAR] Table '" + tableTitle + "': stamped " + stampedCount + " voltage sources");
         
         // Connect to labeled nodes if output names are specified
         // Skip A-L-E columns - they should not drive labeled nodes
@@ -783,12 +784,12 @@ public class TableElm extends ChipElm {
             // If priority changed, clear master tables and computed values to force re-registration
             // and avoid stale computed values causing convergence issues.
             if (oldPriority != priority) {
-                CirSim.console("[PRIORITY] Table '" + tableTitle + "' priority changed: " + oldPriority + " → " + priority);
-                CirSim.console("[PRIORITY] Clearing master tables and computed values...");
+                // CirSim.console("[PRIORITY] Table '" + tableTitle + "' priority changed: " + oldPriority + " → " + priority);
+                // CirSim.console("[PRIORITY] Clearing master tables and computed values...");
                 ComputedValues.clearMasterTables();
                 ComputedValues.clearComputedValues();
                 // Force full circuit analysis to rebuild with new priorities
-                CirSim.console("[PRIORITY] Requesting circuit re-analysis...");
+                // CirSim.console("[PRIORITY] Requesting circuit re-analysis...");
                 sim.needAnalyze();
             }
         } else if (n == 2) {
@@ -829,7 +830,7 @@ public class TableElm extends ChipElm {
                 CirSim.dialogShowing = dialog;
                 dialog.show();
             } catch (Exception e) {
-                CirSim.console("Error opening table edit dialog: " + e.getMessage());
+                // CirSim.console("Error opening table edit dialog: " + e.getMessage());
                 e.printStackTrace();
             }
         }
