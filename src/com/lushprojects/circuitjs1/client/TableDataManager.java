@@ -94,7 +94,8 @@ public class TableDataManager {
                 if (isALEColumn(i)) {
                     table.outputNames[i] = "A-L-E";
                 } else {
-                    table.outputNames[i] = "Stock_" + (i + 1);
+                    // Start with empty names - user fills them in
+                    table.outputNames[i] = "";
                 }
             }
         }
@@ -124,18 +125,18 @@ public class TableDataManager {
             }
         }
         
-        // Ensure no null or empty values exist in output names
+        // Ensure no null values exist in output names (but allow empty strings)
         for (int col = 0; col < table.cols; col++) {
             // A_L_E columns (last column when cols >= 4) should be labeled "A-L-E"
             if (isALEColumn(col)) {
-                if (table.outputNames[col] == null || table.outputNames[col].trim().isEmpty()) {
+                if (table.outputNames[col] == null) {
                     table.outputNames[col] = "A-L-E";
                 }
                 continue;
             }
-            // Other columns get default Stock names if empty
-            if (table.outputNames[col] == null || table.outputNames[col].trim().isEmpty()) {
-                table.outputNames[col] = "Stock" + (col + 1);
+            // Other columns: convert null to empty string, but keep empty strings as-is
+            if (table.outputNames[col] == null) {
+                table.outputNames[col] = "";
             }
         }
     }
@@ -161,7 +162,8 @@ public class TableDataManager {
             table.outputNames = new String[table.cols];
         }
         for (int col = 0; col < table.cols; col++) {
-            table.outputNames[col] = "Stock" + (col + 1);
+            // Start with empty names - user must fill them in
+            table.outputNames[col] = "";
         }
     }
     
@@ -321,9 +323,14 @@ public class TableDataManager {
             
             // Parse column headers (cols count)
             for (int col = 0; col < table.cols; col++) {
-                String header = readString(st, "Stock" + (col + 1));
-                // A_L_E columns (last column when cols >= 4) should have blank header
-                table.outputNames[col] = isALEColumn(col) ? "" : header;
+                String header = readString(st, "");
+                // A_L_E columns (last column when cols >= 4) get "A-L-E" label
+                if (isALEColumn(col)) {
+                    table.outputNames[col] = "A-L-E";
+                } else {
+                    // Keep header as-is, even if empty
+                    table.outputNames[col] = header;
+                }
             }
             
             // Parse row descriptions (rows count)
@@ -496,12 +503,16 @@ public class TableDataManager {
                 table.outputNames[col] = oldOutputNames[col];
             }
         }
-        // Initialize remaining output names
+        // Initialize remaining output names (new columns only)
         for (int col = 0; col < table.cols; col++) {
-            if (oldOutputNames == null || col >= oldOutputNames.length || 
-                table.outputNames[col] == null || table.outputNames[col].isEmpty()) {
-                table.outputNames[col] = "Stock_" + (col + 1);
+            if (oldOutputNames == null || col >= oldOutputNames.length) {
+                // New columns start with empty names
+                table.outputNames[col] = "";
+            } else if (table.outputNames[col] == null) {
+                // Convert null to empty string
+                table.outputNames[col] = "";
             }
+            // Keep empty strings as-is (don't auto-fill)
         }
     }
     

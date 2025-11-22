@@ -162,7 +162,9 @@ MouseOutHandler, MouseWheelHandler {
     CheckboxMenuItem noEditCheckItem;
     CheckboxMenuItem mouseWheelEditCheckItem;
     CheckboxMenuItem toolbarCheckItem;
+    CheckboxMenuItem weightedPriorityCheckItem;
     String voltageUnitSymbol = "V"; // Custom voltage unit symbol
+    boolean useWeightedPriority = false; // Weighted priority for Asset/Equity columns
     private Label powerLabel;
     private Label titleLabel;
     private Scrollbar speedBar;
@@ -521,6 +523,7 @@ public CirSim() {
 		    getOptionFromStorage("conventionalCurrent", true));
 	    noEditing = !qp.getBooleanValue("editable", true);
 	    mouseWheelEdit = qp.getBooleanValue("mouseWheelEdit", getOptionFromStorage("mouseWheelEdit", true));
+	    useWeightedPriority = getOptionFromStorage("weightedPriority", false);
 	    positiveColor = qp.getValue("positiveColor");
 	    negativeColor = qp.getValue("negativeColor");
 	    neutralColor = qp.getValue("neutralColor");
@@ -744,6 +747,18 @@ public CirSim() {
 		}
 	}));
 	mouseWheelEditCheckItem.setState(mouseWheelEdit);
+
+	m.addItem(weightedPriorityCheckItem = new CheckboxMenuItem(Locale.LS("Weighted Priority by Type (Asset/Equity +10)"),
+		new Command() { public void execute(){
+		    useWeightedPriority = weightedPriorityCheckItem.getState();
+		    setOptionInStorage("weightedPriority", useWeightedPriority);
+		    // Clear and re-register all masters with new weighted priorities
+		    ComputedValues.clearMasterTables();
+		    ComputedValues.clearComputedValues();
+		    needAnalyze();
+		}
+	}));
+	weightedPriorityCheckItem.setState(useWeightedPriority);
 
 	m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Shortcuts..."), new MyCommand("options", "shortcuts")));
 	m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Subcircuits..."), new MyCommand("options", "subcircuits")));

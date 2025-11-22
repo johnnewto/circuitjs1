@@ -74,7 +74,7 @@ public class TableMarkdownDebugDialog {
         textArea.setWidth("780px");
         textArea.setHeight("500px");
         textArea.getElement().getStyle().setProperty("fontFamily", "monospace");
-        textArea.getElement().getStyle().setProperty("fontSize", "12px");
+        textArea.getElement().getStyle().setProperty("fontSize", "10px");
         
         // Make text area resizable
         makeResizable(textArea.getElement());
@@ -86,14 +86,16 @@ public class TableMarkdownDebugDialog {
         buttonPanel.setSpacing(5);
         buttonPanel.getElement().getStyle().setProperty("marginTop", "10px");
         
-        Button selectAllButton = new Button("Select All");
-        selectAllButton.addClickHandler(new ClickHandler() {
+        Button copyButton = new Button("Copy to Clipboard");
+        copyButton.addClickHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
-                textArea.selectAll();
                 textArea.setFocus(true);
+                textArea.selectAll();
+                copyToClipboard();
+                textArea.setSelectionRange(0, 0);
             }
         });
-        buttonPanel.add(selectAllButton);
+        buttonPanel.add(copyButton);
         
         Button refreshButton = new Button("🔄 Refresh");
         refreshButton.addClickHandler(new ClickHandler() {
@@ -153,11 +155,32 @@ public class TableMarkdownDebugDialog {
     }
     
     /**
+     * Copy content to clipboard using native browser API
+     */
+    private static native boolean copyToClipboard() /*-{
+        return $doc.execCommand('copy');
+    }-*/;
+    
+    /**
      * Generate markdown debug content
      */
     private String generateMarkdownContent() {
         StringBuilder md = new StringBuilder();
         md.append("# Stock Flow Tables - Markdown Debug View\n\n");
+        
+        // Add weighted priority status
+        md.append("**Priority System:**\n");
+        if (sim != null) {
+            boolean weighted = sim.useWeightedPriority;
+            md.append("- Weighted Priority by Type: ").append(weighted ? "**ENABLED** ✓" : "DISABLED").append("\n");
+            if (weighted) {
+                md.append("  - Asset/Equity columns get +10 priority boost\n");
+                md.append("  - Liability columns use base priority\n");
+            } else {
+                md.append("  - All columns use base priority (1-9)\n");
+            }
+        }
+        md.append("\n");
         
         // Add circuit matrix information
         md.append("**Circuit Matrix Info:**\n");
@@ -210,15 +233,48 @@ public class TableMarkdownDebugDialog {
         // Generate markdown for each table
         for (TableElm table : relatedTables) {
             md.append("### ").append(table.getTableTitle())
-              .append(" (Object ID: #").append(System.identityHashCode(table)).append(")\n\n");
+              .append(" (Priority: ").append(table.getPriority())
+              .append(", Object ID: #").append(System.identityHashCode(table)).append(")\n\n");
             
             // Calculate column widths for alignment
             int[] colWidths = calculateColumnWidths(table);
             
-            // Table header
+            // Table header with effective priority for master columns
             md.append("| ").append(padRight("Flows↓/Stock Vars →", colWidths[0])).append(" ");
             for (int col = 0; col < table.getCols(); col++) {
-                md.append("| ").append(padRight(table.getColumnHeader(col), colWidths[col + 1])).append(" ");
+                String colHeader = table.getColumnHeader(col);
+                
+                // Check if this table is master for this column
+                boolean isALEColumn = (col == table.getCols() - 1 && table.getCols() >= 4);
+                if (!isALEColumn && colHeader != null && !colHeader.trim().isEmpty()) {
+                    boolean isMaster = ComputedValues.isMasterTable(colHeader.trim(), table);
+                    if (isMaster) {
+                        // Calculate effective priority for this column
+                        int basePriority = table.getPriority();
+                        int effectivePriority = basePriority;
+                        
+                        if (sim != null && sim.useWeightedPriority) {
+                            TableEditDialog.ColumnType colType = table.getColumnType(col);
+                            if (colType == TableEditDialog.ColumnType.ASSET || 
+                                colType == TableEditDialog.ColumnType.EQUITY) {
+                                effectivePriority = basePriority + 10;
+                            }
+                        }
+                        
+                        // Add effective priority in brackets if master
+                        colHeader = colHeader + " [" + effectivePriority + "]";
+                    }
+                }
+                
+                md.append("| ").append(padRight(colHeader, colWidths[col + 1])).append(" ");
+            }
+            md.append("|\n");
+            
+            // Column types row
+            md.append("| ").append(padRight("*Type*", colWidths[0])).append(" ");
+            for (int col = 0; col < table.getCols(); col++) {
+                String colType = table.getColumnTypeName(col);
+                md.append("| ").append(padRight("*" + colType + "*", colWidths[col + 1])).append(" ");
             }
             md.append("|\n");
             
@@ -345,14 +401,38 @@ public class TableMarkdownDebugDialog {
                 }
                 
                 if (masterTable != null) {
+                    int basePriority = masterTable.getPriority();
+                    
+                    // Find the column in the master table to get its type
+                    int masterCol = -1;
+                    for (int col = 0; col < masterTable.getCols(); col++) {
+                        if (stockName.equals(masterTable.getColumnHeader(col))) {
+                            masterCol = col;
+                            break;
+                        }
+                    }
+                    
+                    // Calculate effective priority if weighted priority is enabled
+                    int effectivePriority = basePriority;
+                    String priorityNote = "";
+                    if (sim != null && sim.useWeightedPriority && masterCol >= 0) {
+                        TableEditDialog.ColumnType colType = masterTable.getColumnType(masterCol);
+                        if (colType == TableEditDialog.ColumnType.ASSET || 
+                            colType == TableEditDialog.ColumnType.EQUITY) {
+                            effectivePriority = basePriority + 10;
+                            priorityNote = " [Effective: " + effectivePriority + " due to " + colType + "]";
+                        }
+                    }
+                    
                     md.append("✓ **").append(masterTable.getTableTitle())
-                      .append("** (Object ID: #").append(System.identityHashCode(masterTable))
+                      .append("** (Priority: ").append(basePriority).append(priorityNote)
+                      .append(", Object ID: #").append(System.identityHashCode(masterTable))
                       .append(") - *computes and drives voltage*");
                 } else {
                     md.append("⚠ **NO MASTER** - *no table registered as master for this stock*");
                 }
                 
-                // List all tables that reference this stock
+                // List all tables that reference this stock (with priorities and types)
                 java.util.List<TableElm> referencingTables = StockFlowRegistry.getTablesForStock(stockName);
                 if (referencingTables.size() > 1) {
                     md.append("\n  - Also referenced by: ");
@@ -360,7 +440,31 @@ public class TableMarkdownDebugDialog {
                     for (TableElm table : referencingTables) {
                         if (table != masterTable) {
                             if (!first) md.append(", ");
-                            md.append(table.getTableTitle());
+                            
+                            int basePriority = table.getPriority();
+                            
+                            // Find the column in this table to get its type
+                            int col = -1;
+                            for (int c = 0; c < table.getCols(); c++) {
+                                if (stockName.equals(table.getColumnHeader(c))) {
+                                    col = c;
+                                    break;
+                                }
+                            }
+                            
+                            // Calculate effective priority if weighted priority is enabled
+                            String priorityStr = String.valueOf(basePriority);
+                            if (sim != null && sim.useWeightedPriority && col >= 0) {
+                                TableEditDialog.ColumnType colType = table.getColumnType(col);
+                                if (colType == TableEditDialog.ColumnType.ASSET || 
+                                    colType == TableEditDialog.ColumnType.EQUITY) {
+                                    int effectivePriority = basePriority + 10;
+                                    priorityStr = basePriority + "→" + effectivePriority + " (" + colType + ")";
+                                }
+                            }
+                            
+                            md.append(table.getTableTitle())
+                              .append(" (Priority: ").append(priorityStr).append(")");
                             first = false;
                         }
                     }
@@ -443,11 +547,15 @@ public class TableMarkdownDebugDialog {
     private int[] calculateColumnWidths(TableElm table) {
         int[] widths = new int[table.getCols() + 1];
         
-        // Initialize with header widths
+        // Initialize with header widths (minimum 8 characters for empty headers)
         widths[0] = "Flows↓/Stock Vars →".length();
         for (int col = 0; col < table.getCols(); col++) {
             String header = table.getColumnHeader(col);
-            widths[col + 1] = (header != null) ? header.length() : 0;
+            if (header == null || header.trim().isEmpty()) {
+                widths[col + 1] = 8; // Minimum width for empty columns
+            } else {
+                widths[col + 1] = header.length();
+            }
         }
         
         // Check all row data

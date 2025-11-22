@@ -33,14 +33,18 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     public CurrentTransactionsMatrixElm(int xx, int yy) {
         super(xx, yy); // Call parent constructor
         
+        
         // Override title and mode after construction
         tableTitle = MATRIX_TITLE;
-        collapsedMode = true; // Always show only computed row
+        tableUnits = ""; // Force empty units - CTM should have no units
+        // collapsedMode = true; // Always show only computed row
+        showInitialValues = true; // Show initial values by default
         priority = 1; // Low priority - display element, not a master
         
         // Auto-populate with master stocks
         autoPopulateFromRegistry();
         
+         
         // Create custom renderer
         matrixRenderer = new CurrentTransactionsMatrixRenderer(this);
         
@@ -50,16 +54,23 @@ public class CurrentTransactionsMatrixElm extends TableElm {
 
     // File loading constructor
     public CurrentTransactionsMatrixElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
-        super(xa, ya, xb, yb, f, st); // Call TableElm's file loading constructor
+        // Call TableElm's file loading constructor
+        // Our dump() includes minimal table data, so parseTableData will parse it including collapsedMode
+        super(xa, ya, xb, yb, f, st);
         
-        // Override title and mode after construction
+        
+        // Override title and priority (parseTableData already set these, but we enforce them)
         tableTitle = MATRIX_TITLE;
-        collapsedMode = true; // Always collapsed
+        tableUnits = ""; // Force empty units - fixes old files that had "Transactions" from dump bug
         priority = 1; // Low priority - display element, not a master
+        
+        // collapsedMode is already set by parseTableData from the dump
+        // No need to parse it again
         
         // Discard loaded data and auto-populate from registry instead
         autoPopulateFromRegistry();
         
+         
         // Create custom renderer
         matrixRenderer = new CurrentTransactionsMatrixRenderer(this);
         
@@ -150,12 +161,15 @@ public class CurrentTransactionsMatrixElm extends TableElm {
             initialValues = new double[cols];
             sourceTableNames = new String[cols];
             
-            // Copy stock columns
+            // Copy stock columns and populate initial values from master tables
             for (int i = 0; i < stockInfoList.size(); i++) {
                 StockInfo info = stockInfoList.get(i);
                 outputNames[i] = info.stockName;
                 columnTypes[i] = info.columnType;
-                initialValues[i] = 0.0;
+                
+                // Get initial value from master table
+                initialValues[i] = getInitialValueFromMaster(info.stockName);
+                
                 sourceTableNames[i] = info.sourceTableName;
             }
             
@@ -489,7 +503,7 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     
     @Override
     public EditInfo getEditInfo(int n) {
-        // Override to prevent editing - this table auto-updates from registry
+        // Allow toggling display options but not editing data
         if (n == 0) {
             EditInfo ei = new EditInfo("", 0, -1, -1);
             ei.text = "This table automatically shows all master stocks.";
@@ -498,21 +512,48 @@ public class CurrentTransactionsMatrixElm extends TableElm {
             ei.text += "\n\nTo modify stocks, edit the source tables.";
             return ei;
         }
+        if (n == 1) {
+            EditInfo ei = new EditInfo("Show Initial Values", 0, -1, -1);
+            ei.checkbox = new Checkbox("", showInitialValues);
+            return ei;
+        }
+        if (n == 2) {
+            EditInfo ei = new EditInfo("Collapsed Mode", 0, -1, -1);
+            ei.checkbox = new Checkbox("", collapsedMode);
+            return ei;
+        }
         return null;
     }
     
     @Override
     public void setEditValue(int n, EditInfo ei) {
-        // No-op: prevent editing
+        // Allow changing display options
+        if (n == 1) {
+            showInitialValues = ei.checkbox.getValue();
+        } else if (n == 2) {
+            boolean newCollapsedMode = ei.checkbox.getValue();
+            if (newCollapsedMode != collapsedMode) {
+                toggleCollapsedMode();
+            }
+        }
+        setupPins();
+        setPoints();
     }
     
     @Override
     public String dump() {
-        // Minimal dump: just basic CircuitElm data (bypassing TableElm.dump())
-        // No need to store column/row data since we auto-populate from registry
+        // Minimal dump: CircuitElm data + minimal TableElm data + collapsedMode
+        // TableElm format: rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces showCellValues collapsedMode priority title units
+        // We use minimal values since we auto-populate from registry
         int t = getDumpType();
-        return (t < 127 ? ((char)t)+" " : t+" ") + x + " " + y + " " +
-            x2 + " " + y2 + " " + flags;
+        String circuitData = (t < 127 ? ((char)t)+" " : t+" ") + x + " " + y + " " + x2 + " " + y2 + " " + flags;
+        
+        
+        // Minimal table data for parseTableData to consume
+        // IMPORTANT: Must include empty units string to match TableDataManager.parseTableData() format
+        String tableData = " 0 0 6 16 0 false 2 false " + collapsedMode + " " + priority + " " + MATRIX_TITLE + " \"\"";
+        
+        return circuitData + tableData;
     }
     
     @Override
@@ -550,18 +591,38 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     }
     
     /**
+     * Get initial value for a stock from its master table
+     */
+    private double getInitialValueFromMaster(String stockName) {
+        if (stockName == null || stockName.trim().isEmpty()) {
+            return 0.0;
+        }
+        
+        Object masterTableObj = ComputedValues.getComputingTable(stockName.trim());
+        
+        if (masterTableObj instanceof TableElm) {
+            TableElm masterTable = (TableElm) masterTableObj;
+            int colIndex = masterTable.findColumnByStockName(stockName.trim());
+            
+            if (colIndex >= 0) {
+                return masterTable.getInitialValue(colIndex);
+            }
+        }
+        
+        return 0.0;
+    }
+    
+    /**
      * Populate flows (rows) from all master tables
      * Collects all unique flow names from source tables
      */
     private void populateFlowsFromMasterTables(ArrayList<StockInfo> stockInfoList) {
-        // CirSim.console("[CTM] populateFlowsFromMasterTables: stockInfoList.size()=" + stockInfoList.size());
         
         // Use ArrayList to collect all flow names
         ArrayList<String> flowNames = new ArrayList<String>();
         
         // Iterate through each master table and collect flow names
         for (StockInfo stockInfo : stockInfoList) {
-            // CirSim.console("[CTM]   Processing stock: " + stockInfo.stockName);
             
             Object masterTableObj = ComputedValues.getComputingTable(stockInfo.stockName.trim());
             

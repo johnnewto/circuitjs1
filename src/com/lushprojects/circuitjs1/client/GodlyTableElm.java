@@ -285,9 +285,9 @@ public class GodlyTableElm extends TableElm {
             
             // Only compute if we are the master for this specific column
             if (!isMasterForThisName) {
-                if (shouldLog) {
-                    CirSim.console("[GODLY_STAMP] GodlyTable '" + tableTitle + "' col " + col + " '" + outputNames[col] + "': SKIPPED (not master)");
-                }
+                // if (shouldLog) {
+                //     CirSim.console("[GODLY_STAMP] GodlyTable '" + tableTitle + "' col " + col + " '" + outputNames[col] + "': SKIPPED (not master)");
+                // }
                 continue;
             }
             
@@ -340,9 +340,9 @@ public class GodlyTableElm extends TableElm {
                 // Stamp the right side with the integrated value
                 sim.stampRightSide(vn, integratedValue);
                 
-                if (shouldLog) {
-                    CirSim.console("[GODLY_STAMP] GodlyTable '" + tableTitle + "' col " + col + " '" + outputNames[col] + "': vsrc=" + pins[col].voltSource + " vn=" + vn + " sum=" + columnSum + " integrated=" + integratedValue);
-                }
+                // if (shouldLog) {
+                //     CirSim.console("[GODLY_STAMP] GodlyTable '" + tableTitle + "' col " + col + " '" + outputNames[col] + "': vsrc=" + pins[col].voltSource + " vn=" + vn + " sum=" + columnSum + " integrated=" + integratedValue);
+                // }
             }
         }
         

@@ -417,7 +417,7 @@ public class TableRenderer {
             int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
             
             String header = (table.outputNames != null && col < table.outputNames.length) ?
-                           table.outputNames[col] : "Stock" + (col + 1);
+                           table.outputNames[col] : "";
             
             // Check if this table is the master for this output name and add star prefix
             String displayHeader = header;

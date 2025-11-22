@@ -116,12 +116,14 @@ public class TableElm extends ChipElm {
      * 
      * @param col Column index to check
      * @return true if this table is the master for the column, false otherwise
+     * NOTE: Empty/blank column headers always return false (never masters)
      */
     protected boolean isMasterForColumn(int col) {
         if (col < 0 || col >= cols || outputNames == null || col >= outputNames.length) {
             return false;
         }
         String name = outputNames[col];
+        // Empty or blank columns are never masters
         if (name == null || name.trim().isEmpty()) {
             return false;
         }
@@ -132,6 +134,7 @@ public class TableElm extends ChipElm {
      * Register all stocks (column headers) with StockFlowRegistry
      * Package-private for use during initialization
      * NOTE: A-L-E computed columns are NOT registered as they are not real stocks
+     * NOTE: Empty/blank column headers are NOT registered as they are ignored
      */
     private void registerAllStocks() {
         if (outputNames != null) {
@@ -142,9 +145,12 @@ public class TableElm extends ChipElm {
                 }
                 
                 String stockName = outputNames[col];
-                if (stockName != null && !stockName.trim().isEmpty()) {
-                    StockFlowRegistry.registerStock(stockName, this);
+                // Skip empty or blank column headers
+                if (stockName == null || stockName.trim().isEmpty()) {
+                    continue;
                 }
+                
+                StockFlowRegistry.registerStock(stockName.trim(), this);
             }
         }
     }
@@ -377,6 +383,10 @@ public class TableElm extends ChipElm {
      * Called during circuit initialization to establish which table is master for each stock/column
      * Tables with higher priority are evaluated first and become masters for shared stocks
      * NOTE: A-L-E computed columns are NOT registered as they are not real stocks
+     * NOTE: Empty/blank column headers are NOT registered as they are ignored
+     * 
+     * WEIGHTED PRIORITY: When CirSim.useWeightedPriority is enabled, Asset and Equity columns
+     * receive a +10 priority boost, making them preferred masters over Liability columns.
      */
     private void registerAsMasterForOutputNames() {
         // CirSim.console("[MASTER_REG] Table '" + tableTitle + "' registering columns (priority=" + priority + ")...");
@@ -389,12 +399,28 @@ public class TableElm extends ChipElm {
                 }
                 
                 String name = outputNames[col];
-                if (name != null && !name.trim().isEmpty()) {
-                    // Try to register as master for this column with priority
-                    // Higher priority tables become masters for shared stocks
-                    boolean becameMaster = ComputedValues.registerMasterTable(name.trim(), this, priority);
-                    // CirSim.console("[MASTER_REG]   Col " + col + ": '" + name + "' → " + (becameMaster ? "BECAME MASTER" : "not master (lower priority)"));
+                // Skip empty or blank column headers
+                if (name == null || name.trim().isEmpty()) {
+                    // CirSim.console("[MASTER_REG]   Col " + col + ": SKIPPED (empty/blank column header)");
+                    continue;
                 }
+                
+                // Calculate effective priority with optional type-based weighting
+                int effectivePriority = priority;
+                
+                // Apply weighted priority boost for Asset/Equity columns if enabled
+                if (sim != null && sim.useWeightedPriority) {
+                    ColumnType colType = getColumnType(col);
+                    if (colType == ColumnType.ASSET || colType == ColumnType.EQUITY) {
+                        effectivePriority += 10; // Asset/Equity get +10 boost
+                        // CirSim.console("[MASTER_REG]   Col " + col + " '" + name + "': weighted priority " + priority + " → " + effectivePriority + " (" + colType + ")");
+                    }
+                }
+                
+                // Try to register as master for this column with effective priority
+                // Higher priority tables become masters for shared stocks
+                boolean becameMaster = ComputedValues.registerMasterTable(name.trim(), this, effectivePriority);
+                // CirSim.console("[MASTER_REG]   Col " + col + ": '" + name + "' → " + (becameMaster ? "BECAME MASTER" : "not master (lower priority)"));
             }
         }
     }
@@ -412,6 +438,7 @@ public class TableElm extends ChipElm {
     int getVoltageSourceCount() {
         // Only count voltage sources for columns where this table is the master
         // AND skip A-L-E columns (they are purely computed, not electrical outputs)
+        // AND skip empty/blank columns (they are ignored)
         // Each master column gets a voltage source (even if empty, outputs 0V)
         int count = 0;
         StringBuilder debugMsg = new StringBuilder("[VSRC_COUNT] Table '" + tableTitle + "': ");
@@ -424,14 +451,18 @@ public class TableElm extends ChipElm {
                 }
                 
                 String name = outputNames[col];
-                if (name != null && !name.trim().isEmpty()) {
-                    boolean isMaster = ComputedValues.isMasterTable(name.trim(), this);
-                    if (isMaster) {
-                        count++;
-                        debugMsg.append("[" + col + ":" + name + "=✓] ");
-                    } else {
-                        debugMsg.append("[" + col + ":" + name + "=✗] ");
-                    }
+                // Skip empty or blank columns - they have no voltage source
+                if (name == null || name.trim().isEmpty()) {
+                    debugMsg.append("[" + col + ":EMPTY] ");
+                    continue;
+                }
+                
+                boolean isMaster = ComputedValues.isMasterTable(name.trim(), this);
+                if (isMaster) {
+                    count++;
+                    debugMsg.append("[" + col + ":" + name + "=✓] ");
+                } else {
+                    debugMsg.append("[" + col + ":" + name + "=✗] ");
                 }
             }
         }
@@ -610,16 +641,22 @@ public class TableElm extends ChipElm {
     public void stepFinished() {
         // Register computed values for other elements to use - do this after convergence
         // Skip A-L-E columns - they are not registered as stocks
+        // Skip empty/blank columns - they have no output
         // Performance: Skip A-L-E column by limiting loop (it's always the last column)
         int colLimit = (cols >= 4) ? (cols - 1) : cols; // Exclude A-L-E column if it exists
         
         for (int col = 0; col < colLimit; col++) {
+            String name = outputNames[col];
+            // Skip empty or blank columns
+            if (name == null || name.trim().isEmpty()) {
+                continue;
+            }
+            
             // Check if this table is master for this specific column
             boolean isMasterForThisColumn = isMasterForColumn(col);
             
             // Only register if we are the master for this column and computed it ourselves
             if (isMasterForThisColumn && lastColumnSums != null) {
-                String name = outputNames[col];
                 registerComputedValueAsLabeledNode(name, lastColumnSums[col]);    
                 ComputedValues.markComputedThisStep(name);
             }
@@ -686,6 +723,7 @@ public class TableElm extends ChipElm {
         
         // Connect to labeled nodes if output names are specified
         // Skip A-L-E columns - they should not drive labeled nodes
+        // Skip empty/blank columns - they have no output
         if (outputNames != null) {
             for (int col = 0; col < cols && col < outputNames.length; col++) {
                 // Skip A-L-E columns (display-only, calculated in TableRenderer)
@@ -694,31 +732,34 @@ public class TableElm extends ChipElm {
                 }
                 
                 String outputName = outputNames[col];
-                if (outputName != null && !outputName.trim().isEmpty()) {
-                    // Check if this table is master for this specific column
-                    boolean isMasterForThisColumn = isMasterForColumn(col);
-                    LabeledNodeElm labeledNode = findLabeledNode(outputName);
+                // Skip empty or blank columns - they have no labeled node connection
+                if (outputName == null || outputName.trim().isEmpty()) {
+                    continue;
+                }
+                
+                // Check if this table is master for this specific column
+                boolean isMasterForThisColumn = isMasterForColumn(col);
+                LabeledNodeElm labeledNode = findLabeledNode(outputName);
+                
+                if (labeledNode != null && isMasterForThisColumn) {
+                    // Only stamp resistor connection if we are the master for this column
+                    // Stamp low-value resistor between output node and labeled node
+                    double resistance = 1e-6; // 1μΩ - very low resistance
+                    int outputNode = nodes[col]; // Output node from table
+                    int labeledNodeNum = labeledNode.getNode(0); // Get labeled node number
                     
-                    if (labeledNode != null && isMasterForThisColumn) {
-                        // Only stamp resistor connection if we are the master for this column
-                        // Stamp low-value resistor between output node and labeled node
-                        double resistance = 1e-6; // 1μΩ - very low resistance
-                        int outputNode = nodes[col]; // Output node from table
-                        int labeledNodeNum = labeledNode.getNode(0); // Get labeled node number
-                        
-                        // Validate node numbers before stamping
-                        if (outputNode >= 0 && labeledNodeNum >= 0 && sim.nodeList != null && 
-                            outputNode < sim.nodeList.size() && labeledNodeNum < sim.nodeList.size()) {
-                            sim.stampResistor(outputNode, labeledNodeNum, resistance);
-                        }
-                    } else if (isMasterForThisColumn && labeledNode == null) {
-                        // Master column but no labeled node - connect to ground to avoid singular matrix
-                        // This prevents isolated voltage source nodes
-                        int outputNode = nodes[col];
-                        if (outputNode >= 0 && sim.nodeList != null && outputNode < sim.nodeList.size()) {
-                            // Stamp high-value resistor to ground (1MΩ) to prevent floating node
-                            sim.stampResistor(outputNode, 0, 1e6);
-                        }
+                    // Validate node numbers before stamping
+                    if (outputNode >= 0 && labeledNodeNum >= 0 && sim.nodeList != null && 
+                        outputNode < sim.nodeList.size() && labeledNodeNum < sim.nodeList.size()) {
+                        sim.stampResistor(outputNode, labeledNodeNum, resistance);
+                    }
+                } else if (isMasterForThisColumn && labeledNode == null) {
+                    // Master column but no labeled node - connect to ground to avoid singular matrix
+                    // This prevents isolated voltage source nodes
+                    int outputNode = nodes[col];
+                    if (outputNode >= 0 && sim.nodeList != null && outputNode < sim.nodeList.size()) {
+                        // Stamp high-value resistor to ground (1MΩ) to prevent floating node
+                        sim.stampResistor(outputNode, 0, 1e6);
                     }
                 }
             }
@@ -860,26 +901,27 @@ public class TableElm extends ChipElm {
     /**
      * Set column header and update stock registry
      * NOTE: A-L-E computed columns are NOT registered as they are not real stocks
+     * NOTE: Empty/blank column headers are NOT registered (ignored)
      */
     public void setColumnHeader(int col, String header) {
         if (col < 0 || col >= cols) return;
         
         String oldHeader = outputNames[col];
         
-        // Don't register/unregister A-L-E computed columns
+        // Don't register/unregister A-L-E computed columns or empty headers
         if (!isALEColumn(col)) {
-            // Unregister old stock name
+            // Unregister old stock name (if not empty)
             if (oldHeader != null && !oldHeader.trim().isEmpty()) {
-                StockFlowRegistry.unregisterStock(oldHeader, this);
+                StockFlowRegistry.unregisterStock(oldHeader.trim(), this);
             }
             
-            // Register new stock name
+            // Register new stock name (if not empty)
             if (header != null && !header.trim().isEmpty()) {
-                StockFlowRegistry.registerStock(header, this);
+                StockFlowRegistry.registerStock(header.trim(), this);
             }
         }
         
-        // Set new header
+        // Set new header (keep as-is, even if empty)
         outputNames[col] = header;
         
         // Note: No need to update cache - isMasterForColumn() does direct lookup
