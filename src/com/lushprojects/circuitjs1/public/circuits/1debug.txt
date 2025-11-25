@@ -1,10 +1,10 @@
 $ 67 0.05 12.050203812241895 54 5 50 0.000049999999999999996
 % voltageUnit $
-255 -1384 -888 -1376 -888 0 8 4 6 16 0 true 2 1 false 5 Firms \0 Firms Debt Firm_{equity} A-L-E Pay\sInterest Lending Bank\sSpending Govt\sTaxes Govt\sSpends Workers\sConsume Hire\sWorkers Interest\son\sBonds 10 0 10 0 ASSET LIABILITY EQUITY ASSET -Interest \0 -Interest \0 Lend Lend \0 \0 0.5*Spend_{banks} \0 0.5*Spend_{banks} \0 -0.5*Tax \0 -0.5*Tax \0 0.5*Spend_{Govt} \0 0.5*Spend_{Govt} \0 Con_W \0 Con_W \0 -Wages \0 -Wages \0 \0 \0 \0 \0 0.001
-255 -1472 -640 -1440 -640 0 5 4 6 16 0 true 2 0 false 5 Workers \0 Workers \0 Savers_equ A-L-E Bank\sSpending Govt\sTaxes Govt\sSpends Workers\sConsume Hire\sWorkers 80 0 80 0 ASSET LIABILITY EQUITY ASSET 0.5*Spend_{banks} \0 0.5*Spend_{banks} \0 -0.5*Tax \0 -0.5*Tax \0 0.5*Spend_{Govt} \0 0.5*Spend_{Govt} \0 -Con_W \0 -Con_W \0 Wages \0 Wages \0 0.001
-255 -808 -880 -744 -880 0 9 7 6 16 0 true 2 0 false 4 Banks \0 Reserves Debt Gov_{Bonds} Workers Firms Banks A-L-E Lending Pay\sInterest Bank\sSpending Govt\sTaxes Govt\sSpends Govt\sSells\sBonds Interest\son\sBonds Workers\sConsume Hire\sWorkers 100 0 0 80 10 10 0 ASSET ASSET ASSET LIABILITY LIABILITY EQUITY ASSET \0 Lend \0 \0 Lend \0 \0 \0 \0 \0 \0 -Interest Interest \0 \0 \0 \0 0.5*Spend_{banks} 0.5*Spend_{banks} -Spend_{banks} \0 -Tax \0 \0 -0.5*Tax -0.5*Tax \0 \0 Spend_{Govt} \0 \0 0.5*Spend_{Govt} 0.5*Spend_{Govt} \0 \0 -Bonds \0 Bonds \0 \0 \0 \0 Int_{Bonds} \0 \0 \0 \0 Int_{Bonds} \0 \0 \0 \0 -Con_W Con_W \0 \0 \0 \0 \0 Wages -Wages \0 \0 0.001
-255 -592 -1040 -544 -1040 0 4 4 6 16 0 true 2 0 false 5 Treasury \0 Government Gov_{Bonds} Treasuray_{Equ} A-L-E Govt\sSells\sBonds Interest\son\sBonds Govt\sSpends Govt\sTaxes 0 0 0 0 ASSET LIABILITY EQUITY ASSET Bonds Bonds \0 \0 -Int_{Bonds} \0 -Int_{Bonds} \0 -Spend_{Govt} \0 -Spend_{Govt} \0 Tax \0 Tax \0 0.001
-255 -1488 -1104 -1540 -1104 0 6 5 6 16 0 true 2 0 false 5 The\sFed \0 \0 Reserves Government Fed_E A-L-E Govt\sSells\sBonds Interest\son\sBonds Govt\sSpends Govt\sTaxes Workers\sConsume Hire\sWorkers 0 100 0 -100 0 ASSET LIABILITY LIABILITY EQUITY ASSET \0 -Bonds Bonds \0 \0 \0 Int_{Bonds} -Int_{Bonds} \0 \0 \0 Spend_{Govt} -Spend_{Govt} \0 \0 \0 -Tax Tax \0 \0 \0 \0 \0 \0 \0 \0 \0 \0 \0 \0 0.001
+255 -1384 -888 -1376 -888 0 8 4 6 16 0 true 2 1 false 5 0 Firms \0 Firms Debt Firm_{equity} A-L-E Pay\sInterest Lending Bank\sSpending Govt\sTaxes Govt\sSpends Workers\sConsume Hire\sWorkers Interest\son\sBonds 10 0 10 0 ASSET LIABILITY EQUITY ASSET -Interest \0 -Interest \0 Lend Lend \0 \0 0.5*Spend_{banks} \0 0.5*Spend_{banks} \0 -0.5*Tax \0 -0.5*Tax \0 0.5*Spend_{Govt} \0 0.5*Spend_{Govt} \0 Con_W \0 Con_W \0 -Wages \0 -Wages \0 \0 \0 \0 \0 0.001
+255 -1472 -640 -1440 -640 0 5 4 6 16 0 true 2 0 false 5 0 Workers \0 Workers \0 Savers_equ A-L-E Bank\sSpending Govt\sTaxes Govt\sSpends Workers\sConsume Hire\sWorkers 80 0 80 0 ASSET LIABILITY EQUITY ASSET 0.5*Spend_{banks} \0 0.5*Spend_{banks} \0 -0.5*Tax \0 -0.5*Tax \0 0.5*Spend_{Govt} \0 0.5*Spend_{Govt} \0 -Con_W \0 -Con_W \0 Wages \0 Wages \0 0.001
+255 -808 -880 -744 -880 0 9 7 6 16 0 true 2 0 false 4 0 Banks \0 Reserves Debt Gov_{Bonds} Workers Firms Banks A-L-E Lending Pay\sInterest Bank\sSpending Govt\sTaxes Govt\sSpends Govt\sSells\sBonds Interest\son\sBonds Workers\sConsume Hire\sWorkers 100 0 0 80 10 10 0 ASSET ASSET ASSET LIABILITY LIABILITY EQUITY ASSET \0 Lend \0 \0 Lend \0 \0 \0 \0 \0 \0 -Interest Interest \0 \0 \0 \0 0.5*Spend_{banks} 0.5*Spend_{banks} -Spend_{banks} \0 -Tax \0 \0 -0.5*Tax -0.5*Tax \0 \0 Spend_{Govt} \0 \0 0.5*Spend_{Govt} 0.5*Spend_{Govt} \0 \0 -Bonds \0 Bonds \0 \0 \0 \0 Int_{Bonds} \0 \0 \0 \0 Int_{Bonds} \0 \0 \0 \0 -Con_W Con_W \0 \0 \0 \0 \0 Wages -Wages \0 \0 0.001
+255 -592 -1040 -544 -1040 0 4 4 6 16 0 true 2 0 false 5 0 Treasury \0 Government Gov_{Bonds} Treasuray_{Equ} A-L-E Govt\sSells\sBonds Interest\son\sBonds Govt\sSpends Govt\sTaxes 0 0 0 0 ASSET LIABILITY EQUITY ASSET Bonds Bonds \0 \0 -Int_{Bonds} \0 -Int_{Bonds} \0 -Spend_{Govt} \0 -Spend_{Govt} \0 Tax \0 Tax \0 0.001
+255 -1488 -1104 -1540 -1104 0 6 5 6 16 0 true 2 0 false 5 0 The\sFed \0 \0 Reserves Government Fed_E A-L-E Govt\sSells\sBonds Interest\son\sBonds Govt\sSpends Govt\sTaxes Workers\sConsume Hire\sWorkers 0 100 0 -100 0 ASSET LIABILITY LIABILITY EQUITY ASSET \0 -Bonds Bonds \0 \0 \0 Int_{Bonds} -Int_{Bonds} \0 \0 \0 Spend_{Govt} -Spend_{Govt} \0 \0 \0 -Tax Tax \0 \0 \0 \0 \0 \0 \0 \0 \0 \0 \0 \0 0.001
 207 -1376 -352 -1440 -352 36 Workers
 207 -1376 -336 -1440 -336 36 Firms
 207 -736 -72 -664 -72 36 Wages
@@ -36,7 +36,7 @@ w -720 -272 -720 -392 0
 w -848 -392 -720 -392 0
 207 -672 -272 -624 -272 44 Bonds
 207 -936 -216 -984 -216 4 GDP
-258 -936 -216 -928 -216 3 0.3 Tax_{frac}
+258 -936 -216 -928 -216 3 0.34 Tax_{frac}
 258 -920 -288 -912 -288 3 0.31 Spend_{frac}
 258 -1168 -352 -1160 -352 1 0.01 Lend_{frac}
 258 -1296 -352 -1288 -352 1 2 Velocity
@@ -62,7 +62,8 @@ P 248 -240 248 -192 11 0 Govt_Debt
 207 -736 -112 -672 -112 36 Con_W
 258 -784 -72 -776 -72 3 0.7000000000000001 Wage_{rate}
 207 -784 -72 -848 -72 36 GDP
-254 -16 -1152 8 -1152 1 0 0 6 16 0 false 2 false false 1 Current Transactions Matrix "" false false "" "Banks,Firm_{equity},Fed_E,Treasuray_{Equ},Savers_equ,A-L-E"
+254 -32 -1128 -8 -1128 1 0 0 6 16 0 false 2 false false 1 1 Current\sTransactions\sMatrix "" "" "Banks,Firm_{equity},Fed_E,Treasuray_{Equ},Savers_equ,A-L-E"
+254 48 -848 88 -848 1 0 0 6 16 0 false 2 false false 1 0 Current\sTransactions\sMatrix "" "" "Banks,Firm_{equity},Fed_E,Treasuray_{Equ},Savers_equ,A-L-E"
 o 47 2 0 x1c01206 100 0.0001 0 4 L0:100 47 3 48 0 48 3 T:Debt\s%\sGDP
 o 11 2 0 xc01206 198228.0286538588 0.0001 1 2 11 3 T:GDP
 38 44 F1 1 0 0.2 -1 Interest_Rate 0

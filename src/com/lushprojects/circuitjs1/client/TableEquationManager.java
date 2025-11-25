@@ -38,9 +38,7 @@ public class TableEquationManager {
      * Compile a single equation
      */
     public void compileEquation(int row, int col, String equation) {
-        if (!isValidCell(row, col)) {
-            return;
-        }
+        if (!isValidCell(row, col)) return;
         
         TableColumn column = table.columns.get(col);
         
@@ -53,21 +51,33 @@ public class TableEquationManager {
             ExprParser parser = new ExprParser(equation);
             Expr compiledExpr = parser.parseExpression();
             String err = parser.gotError();
+            
             if (err != null) {
-                // Provide helpful error message with available variables
-                String availableVars = getAvailableVariablesString();
-                CirSim.console("TableElm: Parse error in equation [" + row + "][" + col + "]: " + equation + ": " + err);
-                CirSim.console("TableElm: " + availableVars);
+                logParseError(row, col, equation, err);
                 column.setCompiledExpression(row, null);
-                return;
+            } else {
+                column.setCompiledExpression(row, compiledExpr);
             }
-            column.setCompiledExpression(row, compiledExpr);
         } catch (Exception e) {
-            String availableVars = getAvailableVariablesString();
-            CirSim.console("TableElm: Exception parsing equation [" + row + "][" + col + "]: " + e.getMessage());
-            CirSim.console("TableElm: " + availableVars);
+            logParseException(row, col, e);
             column.setCompiledExpression(row, null);
         }
+    }
+    
+    /**
+     * Log parse error with context
+     */
+    private void logParseError(int row, int col, String equation, String error) {
+        CirSim.console("TableElm: Parse error [" + row + "][" + col + "]: " + equation + ": " + error);
+        CirSim.console("TableElm: " + getAvailableVariablesString());
+    }
+    
+    /**
+     * Log parse exception with context
+     */
+    private void logParseException(int row, int col, Exception e) {
+        CirSim.console("TableElm: Exception [" + row + "][" + col + "]: " + e.getMessage());
+        CirSim.console("TableElm: " + getAvailableVariablesString());
     }
     
     /**
@@ -84,53 +94,51 @@ public class TableEquationManager {
      * Get voltage value for a cell by evaluating its equation
      */
     public double getVoltageForCell(int row, int col) {
-        if (!isValidCell(row, col)) {
-            return 0.0;
-        }
+        if (!isValidCell(row, col)) return 0.0;
         
         TableColumn column = table.columns.get(col);
-        
-        // All cells now use equations
         Expr e = column.getCompiledExpression(row);
-        if (e != null) {
-            // Fast-path: if the compiled expression is a direct node reference,
-            // return the value without invoking the general evaluator.
-            // This avoids overhead of recursion for the very common case of
-            // a cell that simply references a labeled node.
-            if (e.type == Expr.E_NODE_REF && e.nodeName != null) {
-                // First check for computed values (from TableElm or other sources)
-                Double computedValue = ComputedValues.getComputedValue(e.nodeName);
-                if (computedValue != null) {
-                    return computedValue.doubleValue();
-                }
-                // Fall back to the labeled node voltage from the simulator
-                return sim != null ? sim.getLabeledNodeVoltage(e.nodeName) : 0.0;
-            }
-
-            // Otherwise evaluate the compiled expression normally
-            ExprState state = column.getExpressionState(row);
-            updateExpressionState(state);
-            return e.eval(state);
+        
+        if (e == null) return 0.0;
+        
+        // Fast-path: direct node reference optimization
+        if (e.type == Expr.E_NODE_REF && e.nodeName != null) {
+            return evaluateNodeReference(e.nodeName);
         }
-        return 0.0;
+
+        // Full expression evaluation
+        ExprState state = column.getExpressionState(row);
+        updateExpressionState(state);
+        return e.eval(state);
     }
     
     /**
-     * Helper method to show which variables are available for equations
+     * Evaluate a direct node reference (optimized path)
      */
-    private String getAvailableVariablesString() {
-        StringBuilder sb = new StringBuilder();
-        String[] availableNodes = LabeledNodeElm.getSortedLabeledNodeNames();
-        
-        sb.append("Available: t (time)");
-        
-        // Show direct node names (only method now)
-        for (String nodeName : availableNodes) {
-            sb.append(", ").append(nodeName);
+    private double evaluateNodeReference(String nodeName) {
+        // Check computed values first
+        Double computedValue = ComputedValues.getComputedValue(nodeName);
+        if (computedValue != null) {
+            return computedValue;
         }
         
+        // Fall back to labeled node voltage
+        return sim != null ? sim.getLabeledNodeVoltage(nodeName) : 0.0;
+    }
+    
+    /**
+     * Get available variables for equations
+     */
+    private String getAvailableVariablesString() {
+        String[] availableNodes = LabeledNodeElm.getSortedLabeledNodeNames();
+        
         if (availableNodes.length == 0) {
-            sb.append(", no labeled nodes in circuit");
+            return "Available: t (time), no labeled nodes in circuit";
+        }
+        
+        StringBuilder sb = new StringBuilder("Available: t (time)");
+        for (String nodeName : availableNodes) {
+            sb.append(", ").append(nodeName);
         }
         
         return sb.toString();

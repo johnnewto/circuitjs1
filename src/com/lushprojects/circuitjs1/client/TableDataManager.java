@@ -140,6 +140,7 @@ public class TableDataManager {
         sb.append(" ").append(table.showCellValues);
         sb.append(" ").append(table.collapsedMode);
         sb.append(" ").append(table.priority);
+        sb.append(" ").append(table.initMode);
         
         // Text fields (escaped)
         sb.append(" ").append(CustomLogicModel.escape(table.tableTitle));
@@ -223,16 +224,29 @@ public class TableDataManager {
                     try {
                         // Try to parse as integer (priority)
                         table.priority = Integer.parseInt(nextToken3);
-                        table.tableTitle = readString(st, "Table");
+                        
+                        // Peek again to check for initMode (even newer format)
+                        String nextToken4 = st.hasMoreTokens() ? st.nextToken() : "0";
+                        try {
+                            // Try to parse as integer (initMode)
+                            table.initMode = Integer.parseInt(nextToken4);
+                            table.tableTitle = readString(st, "Table");
+                        } catch (NumberFormatException e2) {
+                            // Not a number - it's the table title (format without initMode)
+                            table.initMode = 0; // Default initMode
+                            table.tableTitle = CustomLogicModel.unescape(nextToken4);
+                        }
                     } catch (NumberFormatException e) {
                         // Not a number - it's the table title (format without priority)
                         table.priority = 5; // Default priority
+                        table.initMode = 0; // Default initMode
                         table.tableTitle = CustomLogicModel.unescape(nextToken3);
                     }
                 } else {
                     // New format without collapsedMode
                     table.collapsedMode = false; // Default for files without collapsedMode
                     table.priority = 5; // Default priority
+                    table.initMode = 0; // Default initMode
                     table.tableTitle = CustomLogicModel.unescape(nextToken2);
                 }
             } else {
@@ -240,6 +254,7 @@ public class TableDataManager {
                 table.showCellValues = 0; // Default for old files (Equation only)
                 table.collapsedMode = false; // Default for old files
                 table.priority = 5; // Default priority
+                table.initMode = 0; // Default initMode
                 table.tableTitle = CustomLogicModel.unescape(nextToken);
             }
             

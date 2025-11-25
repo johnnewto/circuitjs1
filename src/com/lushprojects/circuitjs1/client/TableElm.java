@@ -26,6 +26,7 @@ public class TableElm extends ChipElm {
     protected int showCellValues = 0; // Cell display mode: 0=Equation, 1=Equation:Value, 2=Value
     protected boolean collapsedMode = false; // Collapsed mode: show only title, headers, and computed row
     protected int priority = 5; // Priority for master table selection (higher = evaluated first, becomes master)
+    protected int initMode = 0; // Initialization mode: 0=default, 1=all, 2=custom (set when manually edited)
     
     // Column data - encapsulates stockNames, columnTypes, initialValues, cellEquations, etc.
     protected ArrayList<TableColumn> columns;
@@ -284,146 +285,81 @@ public class TableElm extends ChipElm {
     
     @Override
     void setupPins() {
-        // CirSim.console("[SETUP_PINS] Table '" + tableTitle + "' setupPins() called...");
-        
-        // Check if we've already registered (priority-ordered registration already happened)
-        // If any column thinks we're the master, we've already registered
-        boolean alreadyRegistered = false;
-        if (columns != null && columns.size() > 0) {
-            for (int col = 0; col < columns.size(); col++) {
-                TableColumn column = columns.get(col);
-                if (!isALEColumn(col) && !column.isEmpty()) {
-                    // Check if this table is master for this column
-                    if (ComputedValues.isMasterTable(column.getStockName().trim(), this)) {
-                        alreadyRegistered = true;
-                        break;
-                    }
-                }
-            }
-        }
-        
-        // Only register if not already done (for backward compatibility with circuits
-        // that don't use priority-ordered registration)
-        if (!alreadyRegistered) {
-            // CirSim.console("[SETUP_PINS] Table '" + tableTitle + "' not yet registered, registering now...");
+        // Register as master if not already done (for backward compatibility)
+        if (!isAlreadyRegistered()) {
             registerAsMasterForStockNames();
-        } else {
-            // CirSim.console("[SETUP_PINS] Table '" + tableTitle + "' already registered via priority order");
         }
         
         if (geometryManager != null) {
             geometryManager.setupPins();
         }
-        
-        // Debug: Show final master status for this table after pin setup
-        // CirSim.console("[SETUP_PINS] Table '" + tableTitle + "' final master status:");
-        for (int col = 0; col < getCols(); col++) {
-            if (isALEColumn(col)) {
-                // CirSim.console("[SETUP_PINS]   Col " + col + ": A-L-E (skipped)");
-            } else if (columns != null && col < columns.size()) {
-                boolean isMaster = isMasterForColumn(col);
-                // CirSim.console("[SETUP_PINS]   Col " + col + " '" + columns.get(col).getStockName() + "': " + (isMaster ? "MASTER" : "not master"));
-            }
-        }
-        
-        // CirSim.console("[SETUP_PINS] Table '" + tableTitle + "' setupPins() completed");
     }
     
     /**
-     * Update pin output flags after all tables have registered their masters
-     * CRITICAL: This must be called AFTER all tables have completed setupPins()
-     * to ensure pins reflect the FINAL master status, not intermediate status.
-     * 
-     * Problem: During setupPins(), tables register in sequence. A table may
-     * initially become master, create output pins, then be replaced by a higher
-     * priority table. This leaves the first table with incorrect output pins.
-     * 
-     * Solution: After all registrations complete, re-check master status and
-     * update pin output flags to match the final master assignments.
+     * Check if this table has already been registered during priority-ordered setup
+     */
+    private boolean isAlreadyRegistered() {
+        if (columns == null) return false;
+        
+        for (int col = 0; col < columns.size(); col++) {
+            TableColumn column = columns.get(col);
+            if (!isALEColumn(col) && !column.isEmpty()) {
+                if (ComputedValues.isMasterTable(column.getStockName().trim(), this)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Update pin output flags after all tables have registered their masters.
+     * Must be called AFTER all tables complete setupPins() to ensure pins reflect
+     * the final master status, not intermediate status during registration.
      */
     public void updatePinOutputFlags() {
-        if (pins == null) {
-            return;
-        }
-        
-        // CirSim.console("[UPDATE_PINS] Table '" + tableTitle + "' updating pin output flags...");
-        int outputCount = 0;
+        if (pins == null) return;
         
         for (int col = 0; col < getCols() && col < pins.length; col++) {
-            boolean wasOutput = pins[col].output;
-            boolean shouldBeOutput = false;
-            
-            if (isALEColumn(col)) {
-                // A-L-E columns are never outputs
-                shouldBeOutput = false;
-            } else {
-                // Re-check master status NOW (after all registrations complete)
-                shouldBeOutput = isMasterForColumn(col);
-            }
-            
-            pins[col].output = shouldBeOutput;
-            
-            if (shouldBeOutput) {
-                outputCount++;
-            }
-            
-            // Log if output flag changed
-            if (wasOutput != shouldBeOutput) {
-                String colName = (columns != null && col < columns.size()) ? columns.get(col).getStockName() : "col" + col;
-                // CirSim.console("[UPDATE_PINS]   Pin " + col + " '" + colName + "': output " + wasOutput + " → " + shouldBeOutput + " (corrected)");
-            }
+            pins[col].output = !isALEColumn(col) && isMasterForColumn(col);
         }
-        
-        // CirSim.console("[UPDATE_PINS] Table '" + tableTitle + "': " + outputCount + "/" + getCols() + " pins are outputs (after update)");
     }
     
     /**
-     * Register this table as a potential master for its column outputs
-     * Called during circuit initialization to establish which table is master for each stock/column
-     * Tables with higher priority are evaluated first and become masters for shared stocks
-     * NOTE: A-L-E computed columns are NOT registered as they are not real stocks
-     * NOTE: Empty/blank column headers are NOT registered as they are ignored
-     * 
-     * WEIGHTED PRIORITY: When CirSim.useWeightedPriority is enabled, Asset and Equity columns
-     * receive a +10 priority boost, making them preferred masters over Liability columns.
+     * Register this table as a potential master for its column outputs.
+     * Tables with higher priority become masters for shared stocks.
+     * A-L-E computed columns and empty headers are skipped.
      */
     private void registerAsMasterForStockNames() {
-        // CirSim.console("[MASTER_REG] Table '" + tableTitle + "' registering columns (priority=" + priority + ")...");
-        if (columns != null) {
-            for (int col = 0; col < columns.size(); col++) {
-                // Skip A-L-E computed columns - they are not real stocks
-                if (isALEColumn(col)) {
-                    // CirSim.console("[MASTER_REG]   Col " + col + ": SKIPPED (A-L-E column)");
-                    continue;
-                }
-                
-                TableColumn column = columns.get(col);
-                // Skip empty or blank column headers
-                if (column.isEmpty()) {
-                    // CirSim.console("[MASTER_REG]   Col " + col + ": SKIPPED (empty/blank column header)");
-                    continue;
-                }
-                
-                String name = column.getStockName();
-                
-                // Calculate effective priority with optional type-based weighting
-                int effectivePriority = priority;
-                
-                // Apply weighted priority boost for Asset/Equity columns if enabled
-                if (sim != null && sim.useWeightedPriority) {
-                    ColumnType colType = column.getType();
-                    if (colType == ColumnType.ASSET || colType == ColumnType.EQUITY) {
-                        effectivePriority += 10; // Asset/Equity get +10 boost
-                        // CirSim.console("[MASTER_REG]   Col " + col + " '" + name + "': weighted priority " + priority + " → " + effectivePriority + " (" + colType + ")");
-                    }
-                }
-                
-                // Try to register as master for this column with effective priority
-                // Higher priority tables become masters for shared stocks
-                boolean becameMaster = ComputedValues.registerMasterTable(name.trim(), this, effectivePriority);
-                // CirSim.console("[MASTER_REG]   Col " + col + ": '" + name + "' → " + (becameMaster ? "BECAME MASTER" : "not master (lower priority)"));
+        if (columns == null) return;
+        
+        for (int col = 0; col < columns.size(); col++) {
+            if (isALEColumn(col)) continue;
+            
+            TableColumn column = columns.get(col);
+            if (column.isEmpty()) continue;
+            
+            String name = column.getStockName();
+            int effectivePriority = calculateEffectivePriority(column);
+            ComputedValues.registerMasterTable(name.trim(), this, effectivePriority);
+        }
+    }
+    
+    /**
+     * Calculate effective priority with optional type-based weighting.
+     * Asset/Equity columns get +10 boost when weighted priority is enabled.
+     */
+    private int calculateEffectivePriority(TableColumn column) {
+        int effectivePriority = priority;
+        
+        if (sim != null && sim.useWeightedPriority) {
+            ColumnType colType = column.getType();
+            if (colType == ColumnType.ASSET || colType == ColumnType.EQUITY) {
+                effectivePriority += 10;
             }
         }
+        
+        return effectivePriority;
     }
     
     /**
@@ -437,38 +373,20 @@ public class TableElm extends ChipElm {
 
     @Override
     int getVoltageSourceCount() {
-        // Only count voltage sources for columns where this table is the master
-        // AND skip A-L-E columns (they are purely computed, not electrical outputs)
-        // AND skip empty/blank columns (they are ignored)
-        // Each master column gets a voltage source (even if empty, outputs 0V)
+        // Count voltage sources for master columns (skip A-L-E and empty columns)
+        if (columns == null) return 0;
+        
         int count = 0;
-        StringBuilder debugMsg = new StringBuilder("[VSRC_COUNT] Table '" + tableTitle + "': ");
-        if (columns != null) {
-            for (int col = 0; col < columns.size(); col++) {
-                // Skip A-L-E columns - they have no voltage source
-                if (isALEColumn(col)) {
-                    debugMsg.append("[" + col + ":ALE] ");
-                    continue;
-                }
-                
-                TableColumn column = columns.get(col);
-                // Skip empty or blank columns - they have no voltage source
-                if (column.isEmpty()) {
-                    debugMsg.append("[" + col + ":EMPTY] ");
-                    continue;
-                }
-                
-                boolean isMaster = ComputedValues.isMasterTable(column.getStockName().trim(), this);
-                if (isMaster) {
-                    count++;
-                    debugMsg.append("[" + col + ":" + column.getStockName() + "=✓] ");
-                } else {
-                    debugMsg.append("[" + col + ":" + column.getStockName() + "=✗] ");
-                }
+        for (int col = 0; col < columns.size(); col++) {
+            if (isALEColumn(col)) continue;
+            
+            TableColumn column = columns.get(col);
+            if (column.isEmpty()) continue;
+            
+            if (ComputedValues.isMasterTable(column.getStockName().trim(), this)) {
+                count++;
             }
         }
-        debugMsg.append("→ " + count + " voltage sources");
-        // CirSim.console(debugMsg.toString());
         return count;
     }
 
@@ -575,91 +493,68 @@ public class TableElm extends ChipElm {
     @Override
     public void doStep() {
         // Update input pin values from circuit
-        int postCount = getPostCount();
-        for (int i = 0; i < postCount; i++) {
+        for (int i = 0; i < getPostCount(); i++) {
             Pin p = pins[i];
-            if (!p.output)
+            if (!p.output) {
                 p.value = volts[i] > getThreshold();
+            }
         }
 
         // Compute all NON-A-L-E columns
-        // Debug logging only on first iteration of each timestep
-        boolean shouldLog = (sim.subIterations == 0 && sim.t > 0 && sim.t < 0.01);
+        if (columns == null) return;
         
-        if (columns != null) {
-            for (int col = 0; col < columns.size(); col++) {
-                TableColumn column = columns.get(col);
-                
-                // Skip A-L-E columns
-                if (column.isALE()) {
-                    continue;
-                }
-                
-                double columnSum = 0.0;
-                
-                // Check if we are the master for this column (direct lookup, no cache)
-                boolean isMasterForThisName = isMasterForColumn(col);
-                
-                // ALWAYS evaluate our own equations - needed for display
-                // Non-master tables evaluate equations but don't stamp voltage sources
-                for (int row = 0; row < rows; row++) {
-                    columnSum += equationManager.getVoltageForCell(row, col);
-                }
-
-                // Check for convergence (avoid boxing by using primitive)
-                double diff = Math.abs(columnSum - column.getLastSum());
-                if (diff > 1e-6) {
-                    sim.converged = false;
-                }
-
-                // Like VCVSElm: stamp matrix for nonlinear iteration
-                // ONLY stamp if we are the master for this column
-                if (isMasterForThisName && pins[col].output) {
-                    int vn = pins[col].voltSource + sim.nodeList.size();
-                    // Check output voltage convergence like VCVSElm does
-                    double outputVoltage = volts[col];
-                    if (Math.abs(outputVoltage - columnSum) > Math.abs(columnSum) * 0.01 && sim.subIterations < 100) {
-                        sim.converged = false;
-                    }
-                    // Stamp the right side with the computed value
-                    sim.stampRightSide(vn, columnSum);
-                    
-                    // if (shouldLog) {
-                    //     CirSim.console("[STAMP] Table '" + tableTitle + "' col " + col + " '" + column.getStockName() + "': vsrc=" + pins[col].voltSource + " vn=" + vn + " value=" + columnSum);
-                    // }
-                } else if (shouldLog && !isMasterForThisName) {
-                    ;
-                    // CirSim.console("[STAMP] Table '" + tableTitle + "' col " + col + " '" + column.getStockName() + "': SKIPPED (not master)");
-                }
-
-                column.setLastSum(columnSum);
+        for (int col = 0; col < columns.size(); col++) {
+            TableColumn column = columns.get(col);
+            if (column.isALE()) continue;
+            
+            // Evaluate equations for this column
+            double columnSum = 0.0;
+            for (int row = 0; row < rows; row++) {
+                columnSum += equationManager.getVoltageForCell(row, col);
             }
+
+            // Check convergence
+            if (Math.abs(columnSum - column.getLastSum()) > 1e-6) {
+                sim.converged = false;
+            }
+
+            // Stamp matrix if we are master for this column
+            boolean isMaster = isMasterForColumn(col);
+            if (isMaster && pins[col].output) {
+                stampColumnValue(col, columnSum);
+            }
+
+            column.setLastSum(columnSum);
         }
+    }
+    
+    /**
+     * Stamp a column's computed value to the circuit matrix
+     */
+    private void stampColumnValue(int col, double columnSum) {
+        int vn = pins[col].voltSource + sim.nodeList.size();
+        
+        // Check output voltage convergence
+        if (Math.abs(volts[col] - columnSum) > Math.abs(columnSum) * 0.01 && 
+            sim.subIterations < 100) {
+            sim.converged = false;
+        }
+        
+        sim.stampRightSide(vn, columnSum);
     }
     
     @Override
     public void stepFinished() {
-        // Register computed values for other elements to use - do this after convergence
-        // Skip A-L-E columns - they are not registered as stocks
-        // Skip empty/blank columns - they have no output
+        // Register computed values for master columns (skip A-L-E and empty)
+        if (columns == null) return;
         
-        if (columns != null) {
-            for (int col = 0; col < columns.size(); col++) {
-                TableColumn column = columns.get(col);
-                
-                // Skip A-L-E and empty columns
-                if (column.isALE() || column.isEmpty()) {
-                    continue;
-                }
-                
-                // Check if this table is master for this specific column
-                boolean isMasterForThisColumn = isMasterForColumn(col);
-                
-                // Only register if we are the master for this column and computed it ourselves
-                if (isMasterForThisColumn) {
-                    registerComputedValueAsLabeledNode(column.getStockName(), column.getLastSum());    
-                    ComputedValues.markComputedThisStep(column.getStockName());
-                }
+        for (int col = 0; col < columns.size(); col++) {
+            TableColumn column = columns.get(col);
+            if (column.isALE() || column.isEmpty()) continue;
+            
+            if (isMasterForColumn(col)) {
+                registerComputedValueAsLabeledNode(column.getStockName(), column.getLastSum());
+                ComputedValues.markComputedThisStep(column.getStockName());
             }
         }
     }
@@ -684,92 +579,87 @@ public class TableElm extends ChipElm {
 
     @Override
     void stamp() {
-        // CirSim.console("[STAMP_LINEAR] Table '" + tableTitle + "': stamp() called - stamping voltage sources...");
-        // Stamp voltage sources ONLY for columns where this table is the master
-        // AND skip A-L-E columns (they are purely computed, not electrical outputs)
-        int postCount = getPostCount();
-        int stampedCount = 0;
-        for (int col = 0; col < postCount && col < columns.size(); col++) {
+        // Stamp voltage sources for master columns (skip A-L-E and empty)
+        if (columns == null || pins == null) return;
+        
+        for (int col = 0; col < getPostCount() && col < columns.size(); col++) {
             TableColumn column = columns.get(col);
-            
-            // Skip A-L-E columns (display-only, calculated in TableRenderer)
-            if (column.isALE()) {
-                // CirSim.console("[STAMP_LINEAR]   Col " + col + ": SKIPPED (A-L-E column)");
-                continue;
-            }
+            if (column.isALE()) continue;
             
             Pin p = pins[col];
-            if (p.output) {
-                // Check if this table is master for this specific column
-                boolean isMasterForThisColumn = isMasterForColumn(col);
-                if (isMasterForThisColumn) {
-                    // Like VCVSElm: stamp nonlinear for the voltage source row
-                    int vn = p.voltSource + sim.nodeList.size();
-                    sim.stampNonLinear(vn);
-                    sim.stampVoltageSource(0, nodes[col], p.voltSource);
-                    stampedCount++;
-                    // CirSim.console("[STAMP_LINEAR]   Col " + col + " '" + column.getStockName() + "': STAMPED voltage source (vsrc=" + p.voltSource + ", node=" + nodes[col] + ", vn=" + vn + ")");
-                } else {
-                    // Non-master column: connect output node to ground to prevent unconnected nodes
-                    // Use high-value resistor (10MΩ) so it doesn't affect circuit behavior
-                    int outputNode = nodes[col];
-                    if (outputNode >= 0 && sim.nodeList != null && outputNode < sim.nodeList.size()) {
-                        sim.stampResistor(outputNode, 0, 1e7); // 10MΩ to ground
-                    }
-                    // CirSim.console("[STAMP_LINEAR]   Col " + col + " '" + column.getStockName() + "': not master, connected to ground via 10MΩ");
-                }
+            if (p.output && isMasterForColumn(col)) {
+                stampMasterColumn(col, p);
             } else {
-                // CirSim.console("[STAMP_LINEAR]   Col " + col + " '" + column.getStockName() + "': pin is not output");
+                stampNonMasterColumn(col);
             }
         }
-        // CirSim.console("[STAMP_LINEAR] Table '" + tableTitle + "': stamped " + stampedCount + " voltage sources");
         
-        // Connect to labeled nodes if output names are specified
-        // Skip A-L-E columns - they should not drive labeled nodes
-        // Skip empty/blank columns - they have no output
-        if (columns != null) {
-            for (int col = 0; col < columns.size(); col++) {
-                TableColumn column = columns.get(col);
-                
-                // Skip A-L-E columns (display-only, calculated in TableRenderer)
-                if (column.isALE()) {
-                    continue;
-                }
-                
-                // Skip empty or blank columns - they have no labeled node connection
-                if (column.isEmpty()) {
-                    continue;
-                }
-                
-                String outputName = column.getStockName();
-                
-                // Check if this table is master for this specific column
-                boolean isMasterForThisColumn = isMasterForColumn(col);
-                LabeledNodeElm labeledNode = findLabeledNode(outputName);
-                
-                if (labeledNode != null && isMasterForThisColumn) {
-                    // Only stamp resistor connection if we are the master for this column
-                    // Stamp low-value resistor between output node and labeled node
-                    double resistance = 1e-6; // 1μΩ - very low resistance
-                    int outputNode = nodes[col]; // Output node from table
-                    int labeledNodeNum = labeledNode.getNode(0); // Get labeled node number
-                    
-                    // Validate node numbers before stamping
-                    if (outputNode >= 0 && labeledNodeNum >= 0 && sim.nodeList != null && 
-                        outputNode < sim.nodeList.size() && labeledNodeNum < sim.nodeList.size()) {
-                        sim.stampResistor(outputNode, labeledNodeNum, resistance);
-                    }
-                } else if (isMasterForThisColumn && labeledNode == null) {
-                    // Master column but no labeled node - connect to ground to avoid singular matrix
-                    // This prevents isolated voltage source nodes
-                    int outputNode = nodes[col];
-                    if (outputNode >= 0 && sim.nodeList != null && outputNode < sim.nodeList.size()) {
-                        // Stamp high-value resistor to ground (1MΩ) to prevent floating node
-                        sim.stampResistor(outputNode, 0, 1e6);
-                    }
-                }
+        // Connect to labeled nodes
+        connectToLabeledNodes();
+    }
+    
+    /**
+     * Stamp voltage source for a master column
+     */
+    private void stampMasterColumn(int col, Pin p) {
+        int vn = p.voltSource + sim.nodeList.size();
+        sim.stampNonLinear(vn);
+        sim.stampVoltageSource(0, nodes[col], p.voltSource);
+    }
+    
+    /**
+     * Connect non-master column output to ground to prevent unconnected nodes
+     */
+    private void stampNonMasterColumn(int col) {
+        int outputNode = nodes[col];
+        if (isValidNode(outputNode)) {
+            sim.stampResistor(outputNode, 0, 1e7); // 10MΩ to ground
+        }
+    }
+    
+    /**
+     * Connect master columns to their labeled nodes if they exist
+     */
+    private void connectToLabeledNodes() {
+        if (columns == null) return;
+        
+        for (int col = 0; col < columns.size(); col++) {
+            TableColumn column = columns.get(col);
+            if (column.isALE() || column.isEmpty()) continue;
+            
+            if (isMasterForColumn(col)) {
+                connectColumnToLabeledNode(col, column);
             }
         }
+    }
+    
+    /**
+     * Connect a column to its labeled node, or to ground if no labeled node exists
+     */
+    private void connectColumnToLabeledNode(int col, TableColumn column) {
+        String outputName = column.getStockName();
+        LabeledNodeElm labeledNode = findLabeledNode(outputName);
+        int outputNode = nodes[col];
+        
+        if (!isValidNode(outputNode)) return;
+        
+        if (labeledNode != null) {
+            // Connect to labeled node via low-resistance connection
+            int labeledNodeNum = labeledNode.getNode(0);
+            if (isValidNode(labeledNodeNum)) {
+                sim.stampResistor(outputNode, labeledNodeNum, 1e-6); // 1μΩ
+            }
+        } else {
+            // No labeled node - connect to ground to prevent singular matrix
+            sim.stampResistor(outputNode, 0, 1e6); // 1MΩ to ground
+        }
+    }
+    
+    /**
+     * Check if a node number is valid for stamping
+     */
+    private boolean isValidNode(int nodeNum) {
+        return nodeNum >= 0 && sim.nodeList != null && nodeNum < sim.nodeList.size();
     }
 
     public String dump() {

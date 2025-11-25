@@ -168,11 +168,27 @@ public class TableMarkdownDebugDialog {
         StringBuilder md = new StringBuilder();
         md.append("# Stock Flow Tables - Markdown Debug View\n\n");
         
-        // Add weighted priority status
+        appendPrioritySystemInfo(md);
+        appendCircuitMatrixInfo(md);
+        appendStockLookupResults(md);
+        
+        java.util.Set<TableElm> relatedTables = findRelatedTables();
+        appendRelatedTablesInfo(md, relatedTables);
+        appendMasterStockInfo(md, relatedTables);
+        appendRegistryInfo(md);
+        
+        return md.toString();
+    }
+    
+    /**
+     * Append priority system information
+     */
+    private void appendPrioritySystemInfo(StringBuilder md) {
         md.append("**Priority System:**\n");
         if (sim != null) {
             boolean weighted = sim.useWeightedPriority;
-            md.append("- Weighted Priority by Type: ").append(weighted ? "**ENABLED** ✓" : "DISABLED").append("\n");
+            md.append("- Weighted Priority by Type: ")
+              .append(weighted ? "**ENABLED** ✓" : "DISABLED").append("\n");
             if (weighted) {
                 md.append("  - Asset/Equity columns get +10 priority boost\n");
                 md.append("  - Liability columns use base priority\n");
@@ -181,34 +197,39 @@ public class TableMarkdownDebugDialog {
             }
         }
         md.append("\n");
-        
-        // Add circuit matrix information
+    }
+    
+    /**
+     * Append circuit matrix information
+     */
+    private void appendCircuitMatrixInfo(StringBuilder md) {
         md.append("**Circuit Matrix Info:**\n");
         if (sim != null) {
-            md.append("- Matrix size: ").append(sim.circuitMatrixSize).append(" × ").append(sim.circuitMatrixSize).append("\n");
-            md.append("- Nodes: ").append(sim.nodeList != null ? sim.nodeList.size() : 0).append(" (including ground)\n");
+            md.append("- Matrix size: ").append(sim.circuitMatrixSize)
+              .append(" × ").append(sim.circuitMatrixSize).append("\n");
+            md.append("- Nodes: ")
+              .append(sim.nodeList != null ? sim.nodeList.size() : 0)
+              .append(" (including ground)\n");
             md.append("- Voltage sources: ").append(sim.voltageSourceCount).append("\n");
         } else {
             md.append("- *(Simulator not available)*\n");
         }
         md.append("\n");
-        
-        // Get all tables that share stocks with this table
-        java.util.Set<TableElm> relatedTables = new java.util.HashSet<TableElm>();
-        relatedTables.add(sourceTable); // Include current table
-        
-        // DEBUG: Log current table identity
+    }
+    /**
+     * Append stock lookup results
+     */
+    private void appendStockLookupResults(StringBuilder md) {
         md.append("**Current table:** ").append(sourceTable.getTableTitle())
-          .append(" (Object ID: ").append(System.identityHashCode(sourceTable)).append(")\n\n");
+          .append(" (Object ID: ").append(System.identityHashCode(sourceTable))
+          .append(")\n\n");
         
-        // Find all tables sharing stocks
         md.append("**Stock lookup results:**\n");
         for (int col = 0; col < sourceTable.getCols(); col++) {
             String stockName = sourceTable.getColumnHeader(col);
             md.append("- Column ").append(col).append(": '").append(stockName).append("'");
             
-            // Skip A-L-E computed columns - they are not real stocks
-            if (col == sourceTable.getCols() - 1 && sourceTable.getCols() >= 4) {
+            if (isALEColumn(col)) {
                 md.append(" → (A-L-E computed column, skipped)\n");
                 continue;
             }
@@ -220,22 +241,56 @@ public class TableMarkdownDebugDialog {
                     md.append("[").append(t.getTableTitle()).append(" #")
                       .append(System.identityHashCode(t)).append("] ");
                 }
-                relatedTables.addAll(tables);
             } else {
                 md.append(" → (empty/null, skipped)");
             }
             md.append("\n");
         }
         md.append("\n");
+    }
+    
+    /**
+     * Check if column is A-L-E
+     */
+    private boolean isALEColumn(int col) {
+        return col == sourceTable.getCols() - 1 && sourceTable.getCols() >= 4;
+    }
+    
+    /**
+     * Find all tables related to source table via shared stocks
+     */
+    private java.util.Set<TableElm> findRelatedTables() {
+        java.util.Set<TableElm> relatedTables = new java.util.HashSet<TableElm>();
+        relatedTables.add(sourceTable);
         
+        for (int col = 0; col < sourceTable.getCols(); col++) {
+            String stockName = sourceTable.getColumnHeader(col);
+            if (isALEColumn(col) || stockName == null || stockName.trim().isEmpty()) {
+                continue;
+            }
+            
+            java.util.List<TableElm> tables = StockFlowRegistry.getTablesForStock(stockName);
+            relatedTables.addAll(tables);
+        }
+        
+        return relatedTables;
+    }
+    
+    /**
+     * Append information about related tables
+     */
+    private void appendRelatedTablesInfo(StringBuilder md, java.util.Set<TableElm> relatedTables) {
         md.append("## Tables Sharing Stocks: ").append(relatedTables.size()).append("\n\n");
         
-        // Generate markdown for each table
         for (TableElm table : relatedTables) {
-            md.append("### ").append(table.getTableTitle())
-              .append(" (Priority: ").append(table.getPriority())
-              .append(", Object ID: #").append(System.identityHashCode(table)).append(")\n\n");
-            
+            appendTableInfo(md, table);
+        }
+    }
+    
+    /**
+     * Append detailed information about a single table
+     */
+    private void appendTableInfo(StringBuilder md, TableElm table) {
             // Calculate column widths for alignment
             int[] colWidths = calculateColumnWidths(table);
             
@@ -364,8 +419,12 @@ public class TableMarkdownDebugDialog {
                 md.append("- *(No non-zero equations)*\n");
             }
             md.append("\n");
-        }
-        
+    }
+    
+    /**
+     * Append master stock information showing which table is master for each stock
+     */
+    private void appendMasterStockInfo(StringBuilder md, java.util.Set<TableElm> relatedTables) {
         // Add master stock/column information
         md.append("---\n\n");
         md.append("## Master Stock Columns\n\n");
@@ -473,15 +532,18 @@ public class TableMarkdownDebugDialog {
             }
             md.append("\n");
         }
-        
+    }
+    
+    /**
+     * Append registry diagnostic information
+     */
+    private void appendRegistryInfo(StringBuilder md) {
         // Add registry information
         md.append("---\n\n");
         md.append("## Stock Registry Information\n\n");
         md.append("```\n");
         md.append(StockFlowRegistry.getDiagnosticInfo());
         md.append("```\n");
-        
-        return md.toString();
     }
     
     /**

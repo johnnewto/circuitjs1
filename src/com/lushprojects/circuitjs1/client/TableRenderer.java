@@ -133,79 +133,121 @@ public class TableRenderer {
      * Main draw method - orchestrates all drawing operations
      */
     public void draw(Graphics g) {
-        int tableX = table.getTableX();
-        int tableY = table.getTableY();
-        int cellWidthPixels = table.getCellWidthPixels();
-        int rowDescColWidth = table.collapsedMode ? 0 : cellWidthPixels; // Hide row description column in collapsed mode
+        TableDimensions dims = calculateTableDimensions();
         
-        // Calculate the actual table height by accumulating all components
-        // In collapsed mode: skip type row, initial values, and data rows
-        int titleHeight = 10 + 10; // Title offset + space after (increased for better spacing)
-        int typeRowHeight = table.collapsedMode ? 0 : (table.cellHeight + table.cellSpacing);
-        int headerRowHeight = table.cellHeight + table.cellSpacing;
-        int initialRowHeight = (table.showInitialValues && !table.collapsedMode) ? (table.cellHeight + table.cellSpacing) : 0;
-        int dataRowsHeight = table.collapsedMode ? 0 : (table.rows * (table.cellHeight + table.cellSpacing));
-        int computedRowHeight = table.cellHeight + table.cellSpacing;
-        
-        int tableWidth = rowDescColWidth + table.cellSpacing + table.getCols() * cellWidthPixels + (table.getCols() + 1) * table.cellSpacing;
-        int tableHeight = titleHeight + typeRowHeight + headerRowHeight + initialRowHeight + dataRowsHeight + computedRowHeight;
+        // Update cached values if needed
+        updateCachedValuesIfNeeded();
 
-        // Update cached values if enough time has passed (500ms = twice per second)
+        // Draw background and border
+        drawTableBackground(g, dims);
+        drawTableBorder(g, dims);
+
+        // Draw components in order
+        int currentY = drawComponentsInOrder(g, dims);
+
+        // Draw pins
+        drawPins(g);
+    }
+    
+    /**
+     * Calculate all table dimensions
+     */
+    private TableDimensions calculateTableDimensions() {
+        TableDimensions dims = new TableDimensions();
+        dims.tableX = table.getTableX();
+        dims.tableY = table.getTableY();
+        dims.cellWidthPixels = table.getCellWidthPixels();
+        dims.rowDescColWidth = table.collapsedMode ? 0 : dims.cellWidthPixels;
+        
+        // Calculate heights
+        dims.titleHeight = 20;
+        dims.typeRowHeight = table.collapsedMode ? 0 : (table.cellHeight + table.cellSpacing);
+        dims.headerRowHeight = table.cellHeight + table.cellSpacing;
+        dims.initialRowHeight = (table.showInitialValues && !table.collapsedMode) ? 
+                               (table.cellHeight + table.cellSpacing) : 0;
+        dims.dataRowsHeight = table.collapsedMode ? 0 : 
+                             (table.rows * (table.cellHeight + table.cellSpacing));
+        dims.computedRowHeight = table.cellHeight + table.cellSpacing;
+        
+        dims.tableWidth = dims.rowDescColWidth + table.cellSpacing + 
+                         table.getCols() * dims.cellWidthPixels + 
+                         (table.getCols() + 1) * table.cellSpacing;
+        dims.tableHeight = dims.titleHeight + dims.typeRowHeight + dims.headerRowHeight + 
+                          dims.initialRowHeight + dims.dataRowsHeight + dims.computedRowHeight;
+        
+        return dims;
+    }
+    
+    /**
+     * Update cached values if enough time has passed
+     */
+    private void updateCachedValuesIfNeeded() {
         long currentTime = System.currentTimeMillis();
         if (currentTime - lastUpdateTime >= UPDATE_INTERVAL_MS || cachedCellValues == null) {
             updateCachedValues();
             lastUpdateTime = currentTime;
         }
-
-        // Draw light gray background for entire table
-        // Use a very light gray that works with both black and white backgrounds
-        // RGB(230, 230, 230) for white background mode, RGB(40, 40, 40) for black background mode
+    }
+    
+    /**
+     * Draw table background
+     */
+    private void drawTableBackground(Graphics g, TableDimensions dims) {
         Color bgColor = CirSim.theSim.printableCheckItem.getState() ? 
             new Color(230, 230, 230) : new Color(40, 40, 40);
         g.setColor(bgColor);
-        g.fillRect(tableX + 1, tableY + 1, tableWidth - 2, tableHeight - 2);
-        
-        // Draw table border
-        // Use blue border if non-converged to make the condition visually distinct
+        g.fillRect(dims.tableX + 1, dims.tableY + 1, dims.tableWidth - 2, dims.tableHeight - 2);
+    }
+    
+    /**
+     * Draw table border
+     */
+    private void drawTableBorder(Graphics g, TableDimensions dims) {
         g.setColor(table.nonConverged ? Color.blue : CircuitElm.lightGrayColor);
-        g.drawRect(tableX, tableY, tableWidth, tableHeight);
-
-        // Draw components in order with consistent positioning
-        int currentY = 10; // Start position after table border
+        g.drawRect(dims.tableX, dims.tableY, dims.tableWidth, dims.tableHeight);
+    }
+    
+    /**
+     * Draw all table components in order, return final Y position
+     */
+    private int drawComponentsInOrder(Graphics g, TableDimensions dims) {
+        int currentY = 10;
         
-        // 1. Draw title
         drawTitle(g, currentY);
-        currentY += 10; // Space after title (increased for better spacing)
+        currentY += 10;
         
-        // 2. Draw column type row (skip in collapsed mode)
         if (!table.collapsedMode) {
             drawColumnTypeRow(g, currentY);
-            currentY += table.cellHeight + table.cellSpacing; // Move down by row height
+            currentY += table.cellHeight + table.cellSpacing;
         }
         
-        // 3. Draw column headers
         drawColumnHeaders(g, currentY);
-        currentY += table.cellHeight + table.cellSpacing; // Move down by row height
+        currentY += table.cellHeight + table.cellSpacing;
         
-        // 4. Draw initial conditions row if enabled (skip in collapsed mode)
         if (table.showInitialValues && !table.collapsedMode) {
             drawInitialConditionsRow(g, currentY);
             currentY += table.cellHeight + table.cellSpacing;
         }
 
-        // 5. Draw table cells with voltages (skip in collapsed mode)
         if (!table.collapsedMode) {
-            // Use cached values for drawing
             drawTableCells(g, currentY);
             currentY += table.rows * (table.cellHeight + table.cellSpacing);
         }
 
-        // 6. Draw computed row
         drawSumRow(g, currentY);
         currentY += table.cellHeight + table.cellSpacing;
-
-        // 7. Draw chip pins and posts at the bottom
-        drawPins(g);
+        
+        return currentY;
+    }
+    
+    /**
+     * Helper class for table dimensions
+     */
+    private static class TableDimensions {
+        int tableX, tableY, tableWidth, tableHeight;
+        int cellWidthPixels, rowDescColWidth;
+        int titleHeight, typeRowHeight, headerRowHeight;
+        int initialRowHeight, dataRowsHeight, computedRowHeight;
     }
     
     /**

@@ -18,25 +18,24 @@ public class TableGeometryManager {
     }
     
     /**
-     * Setup output pins on bottom edge of table
-     * Pins are positioned to align with column centers
+     * Setup output pins on bottom edge of table.
+     * Pins are positioned to align with column centers.
      */
     public void setupPins() {
-        // CirSim.console("[GEOM_PINS] Table '" + table.tableTitle + "': setupPins() called");
         calculateChipSize();
         createOutputPins();
-        // CirSim.console("[GEOM_PINS] Table '" + table.tableTitle + "': setupPins() completed");
     }
     
     /**
      * Calculate chip size in cspc2 units (double grid spacing)
      */
     private void calculateChipSize() {
-        int rowDescColWidth = table.cellWidthInGrids;  // In cspc units
+        int rowDescColWidth = table.cellWidthInGrids;
         int extraRows = getExtraRowCount();
         
         // Calculate table dimensions in pixels
-        int tableWidthPixels = (rowDescColWidth + table.getCols() * table.cellWidthInGrids) * table.cspc + 2 * table.cspc;
+        int tableWidthPixels = (rowDescColWidth + table.getCols() * table.cellWidthInGrids) * 
+                               table.cspc + 2 * table.cspc;
         int tableHeightPixels = (table.rows + extraRows) * table.cellHeight + 
                                (table.rows + extraRows + 1) * table.cellSpacing + 20;
         
@@ -46,52 +45,63 @@ public class TableGeometryManager {
     }
     
     /**
-     * Get number of extra rows (title, type, header, optional initial, computed)
-     * Adjusted for collapsed mode
+     * Get number of extra rows (title, type, header, optional initial, computed).
+     * Adjusted for collapsed mode.
      */
     private int getExtraRowCount() {
         if (table.collapsedMode) {
-            // Collapsed mode: only title, header, and computed rows
-            return 2; // header + computed (title is separate)
+            return 2; // header + computed
         } else {
-            // Normal mode: type + header + optional initial + computed
             return (table.showInitialValues ? 1 : 0) + 3; // type + header + computed
         }
     }
     
     /**
-     * Create output pins for table columns
-     * Only master columns (excluding A-L-E) are marked as outputs with voltage sources
+     * Calculate table height in pixels.
+     * Centralized calculation used by both bounding box and pin positioning.
+     */
+    private int calculateTableHeight() {
+        int titleHeight = 20;
+        int typeRowHeight = table.collapsedMode ? 0 : (table.cellHeight + table.cellSpacing);
+        int headerRowHeight = table.cellHeight + table.cellSpacing;
+        int initialRowHeight = (table.showInitialValues && !table.collapsedMode) ? 
+                              (table.cellHeight + table.cellSpacing) : 0;
+        int dataRowsHeight = table.collapsedMode ? 0 : 
+                            (table.rows * (table.cellHeight + table.cellSpacing));
+        int computedRowHeight = table.cellHeight + table.cellSpacing;
+        
+        return titleHeight + typeRowHeight + headerRowHeight + 
+               initialRowHeight + dataRowsHeight + computedRowHeight;
+    }
+    
+    /**
+     * Create output pins for table columns.
+     * Only master columns (excluding A-L-E) are marked as outputs.
      */
     private void createOutputPins() {
-        // CirSim.console("[GEOM_PINS]   Creating " + table.getCols() + " pins...");
         table.pins = new ChipElm.Pin[table.getCols()];
         
-        int outputPinCount = 0;
         for (int i = 0; i < table.getCols(); i++) {
             String label = getOutputLabel(i);
             int pinX = calculatePinX(i);
-            
             table.pins[i] = table.new Pin(pinX, ChipElm.SIDE_S, label);
-            
-            // Only mark as output if this column is a master (not A-L-E, not non-master)
-            boolean isALE = (i < table.columns.size() && table.columns.get(i).isALE());
-            String stockName = (i < table.columns.size()) ? table.columns.get(i).getStockName() : null;
-            boolean isMaster = stockName != null && !stockName.trim().isEmpty() &&
-                              ComputedValues.isMasterTable(stockName.trim(), table);
-            
-            table.pins[i].output = !isALE && isMaster;
-            
-            if (isALE) {
-                // CirSim.console("[GEOM_PINS]     Pin " + i + " '" + label + "': A-L-E column (not output)");
-            } else if (isMaster) {
-                outputPinCount++;
-                // CirSim.console("[GEOM_PINS]     Pin " + i + " '" + label + "': OUTPUT (master)");
-            } else {
-                // CirSim.console("[GEOM_PINS]     Pin " + i + " '" + label + "': not output (not master)");
-            }
+            table.pins[i].output = isPinOutput(i);
         }
-        // CirSim.console("[GEOM_PINS]   Total output pins: " + outputPinCount + "/" + table.getCols());
+    }
+    
+    /**
+     * Check if a pin should be marked as output
+     */
+    private boolean isPinOutput(int col) {
+        if (col >= table.columns.size()) return false;
+        
+        // A-L-E columns are never outputs
+        if (table.columns.get(col).isALE()) return false;
+        
+        // Check if master for this stock
+        String stockName = table.columns.get(col).getStockName();
+        return stockName != null && !stockName.trim().isEmpty() &&
+               ComputedValues.isMasterTable(stockName.trim(), table);
     }
     
     /**
@@ -126,65 +136,37 @@ public class TableGeometryManager {
     }
     
     /**
-     * Calculate and set the bounding box for the table
-     * Must match the dimensions used in TableRenderer.draw()
+     * Calculate and set the bounding box for the table.
+     * Must match dimensions used in TableRenderer.draw().
      */
     private void calculateBoundingBox() {
         int cellWidthPixels = getCellWidthPixels();
-        int rowDescColWidth = table.collapsedMode ? 0 : cellWidthPixels; // Hide in collapsed mode
+        int rowDescColWidth = table.collapsedMode ? 0 : cellWidthPixels;
         
-        // Calculate table width (matches TableRenderer)
         int tableWidth = rowDescColWidth + table.cellSpacing + 
-                        table.getCols() * cellWidthPixels + (table.getCols() + 1) * table.cellSpacing;
-        
-        // Calculate table height (matches TableRenderer.draw() calculations)
-        // In collapsed mode: skip type row, initial values, and data rows
-        int titleHeight = 10 + 10; // Title offset + space after (increased for better spacing)
-        int typeRowHeight = table.collapsedMode ? 0 : (table.cellHeight + table.cellSpacing);
-        int headerRowHeight = table.cellHeight + table.cellSpacing;
-        int initialRowHeight = (table.showInitialValues && !table.collapsedMode) ? (table.cellHeight + table.cellSpacing) : 0;
-        int dataRowsHeight = table.collapsedMode ? 0 : (table.rows * (table.cellHeight + table.cellSpacing));
-        int computedRowHeight = table.cellHeight + table.cellSpacing;
-        
-        int tableHeight = titleHeight + typeRowHeight + headerRowHeight + 
-                         initialRowHeight + dataRowsHeight + computedRowHeight;
-
-        // Table origin aligns with chip origin
-        int tableX = table.x;
-        int tableY = table.y;
+                        table.getCols() * cellWidthPixels + 
+                        (table.getCols() + 1) * table.cellSpacing;
+        int tableHeight = calculateTableHeight();
 
         // Set bounding box to match table size
-        table.setBbox(tableX, tableY, tableX + tableWidth, tableY + tableHeight);
+        table.setBbox(table.x, table.y, table.x + tableWidth, table.y + tableHeight);
     }
     
     /**
-     * Adjust pin Y positions to align with table bottom
-     * X positions are already correct from super.setPoints()
+     * Adjust pin Y positions to align with table bottom.
+     * X positions are already set from calculatePinX().
      */
     private void adjustPinPositions() {
-        // Calculate table height to match the exact dimensions from calculateBoundingBox()
-        int titleHeight = 10 + 10; // Title offset + space after (increased for better spacing)
-        int typeRowHeight = table.collapsedMode ? 0 : (table.cellHeight + table.cellSpacing);
-        int headerRowHeight = table.cellHeight + table.cellSpacing;
-        int initialRowHeight = (table.showInitialValues && !table.collapsedMode) ? (table.cellHeight + table.cellSpacing) : 0;
-        int dataRowsHeight = table.collapsedMode ? 0 : (table.rows * (table.cellHeight + table.cellSpacing));
-        int computedRowHeight = table.cellHeight + table.cellSpacing;
-        
-        int tableHeight = titleHeight + typeRowHeight + headerRowHeight + 
-                         initialRowHeight + dataRowsHeight + computedRowHeight;
-        
-        int tableY = table.y;
-        int tableBottomY = tableY + tableHeight;
+        int tableHeight = calculateTableHeight();
+        int tableBottomY = table.y + tableHeight;
         
         for (int i = 0; i < table.pins.length; i++) {
             ChipElm.Pin p = table.pins[i];
             int pinXPixel = p.post.x;
             
-            // Position post below table with spacing for computed row
-            int postY = tableBottomY + 3 * table.cellHeight / 2;
-            postY = roundToNearestGrid(postY, table.cspc);
+            // Position post below table with spacing
+            int postY = roundToNearestGrid(tableBottomY + 3 * table.cellHeight / 2, table.cspc);
             
-            // Stub is where pin meets the chip
             p.post = new Point(pinXPixel, postY);
             p.stub = new Point(pinXPixel, tableBottomY + table.cspc / 2);
             p.textloc = new Point(pinXPixel, tableBottomY);

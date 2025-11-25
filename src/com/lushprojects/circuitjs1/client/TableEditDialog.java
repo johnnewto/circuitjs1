@@ -2091,6 +2091,11 @@ import java.util.Map;
                 tableElement.setColumnType(col, columnTypes[col]);
             }
             
+            // Mark table as manually edited (custom mode) if it's a CurrentTransactionsMatrixElm
+            if (tableElement instanceof CurrentTransactionsMatrixElm) {
+                tableElement.initMode = 2; // Set to custom mode when columns are manually edited
+            }
+            
             // Trigger synchronization with other tables sharing the same stocks
             StockFlowRegistry.synchronizeRelatedTables(tableElement);
             
