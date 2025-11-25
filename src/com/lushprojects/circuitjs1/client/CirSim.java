@@ -4893,6 +4893,12 @@ public CirSim() {
 	if ((flags & RC_SUBCIRCUITS) != 0)
 	    updateModels();
 	
+	// Reset all elements to ensure proper initialization (especially for tables)
+	// This ensures CTM and other elements are fully populated before simulation starts
+	if ((flags & RC_RETAIN) == 0) {
+	    resetAction();
+	}
+	
 	// Synchronize all table elements that share stocks
 	StockFlowRegistry.synchronizeAllTables();   // Todo-JN   prob needs to be removed, place elsewhere
 	

@@ -36,7 +36,7 @@ public class TableGeometryManager {
         int extraRows = getExtraRowCount();
         
         // Calculate table dimensions in pixels
-        int tableWidthPixels = (rowDescColWidth + table.cols * table.cellWidthInGrids) * table.cspc + 2 * table.cspc;
+        int tableWidthPixels = (rowDescColWidth + table.getCols() * table.cellWidthInGrids) * table.cspc + 2 * table.cspc;
         int tableHeightPixels = (table.rows + extraRows) * table.cellHeight + 
                                (table.rows + extraRows + 1) * table.cellSpacing + 20;
         
@@ -64,21 +64,21 @@ public class TableGeometryManager {
      * Only master columns (excluding A-L-E) are marked as outputs with voltage sources
      */
     private void createOutputPins() {
-        // CirSim.console("[GEOM_PINS]   Creating " + table.cols + " pins...");
-        table.pins = new ChipElm.Pin[table.cols];
+        // CirSim.console("[GEOM_PINS]   Creating " + table.getCols() + " pins...");
+        table.pins = new ChipElm.Pin[table.getCols()];
         
         int outputPinCount = 0;
-        for (int i = 0; i < table.cols; i++) {
+        for (int i = 0; i < table.getCols(); i++) {
             String label = getOutputLabel(i);
             int pinX = calculatePinX(i);
             
             table.pins[i] = table.new Pin(pinX, ChipElm.SIDE_S, label);
             
             // Only mark as output if this column is a master (not A-L-E, not non-master)
-            boolean isALE = (i == table.cols - 1 && table.cols >= 4);
-            boolean isMaster = table.outputNames != null && i < table.outputNames.length &&
-                              table.outputNames[i] != null && !table.outputNames[i].trim().isEmpty() &&
-                              ComputedValues.isMasterTable(table.outputNames[i].trim(), table);
+            boolean isALE = (i < table.columns.size() && table.columns.get(i).isALE());
+            String stockName = (i < table.columns.size()) ? table.columns.get(i).getStockName() : null;
+            boolean isMaster = stockName != null && !stockName.trim().isEmpty() &&
+                              ComputedValues.isMasterTable(stockName.trim(), table);
             
             table.pins[i].output = !isALE && isMaster;
             
@@ -91,15 +91,15 @@ public class TableGeometryManager {
                 // CirSim.console("[GEOM_PINS]     Pin " + i + " '" + label + "': not output (not master)");
             }
         }
-        // CirSim.console("[GEOM_PINS]   Total output pins: " + outputPinCount + "/" + table.cols);
+        // CirSim.console("[GEOM_PINS]   Total output pins: " + outputPinCount + "/" + table.getCols());
     }
     
     /**
      * Get output label for column
      */
     private String getOutputLabel(int col) {
-        return (table.outputNames != null && col < table.outputNames.length) ?
-               table.outputNames[col] : "Stock" + (col + 1);
+        return (col < table.columns.size()) ?
+               table.columns.get(col).getStockName() : "Stock" + (col + 1);
     }
     
     /**
@@ -135,7 +135,7 @@ public class TableGeometryManager {
         
         // Calculate table width (matches TableRenderer)
         int tableWidth = rowDescColWidth + table.cellSpacing + 
-                        table.cols * cellWidthPixels + (table.cols + 1) * table.cellSpacing;
+                        table.getCols() * cellWidthPixels + (table.getCols() + 1) * table.cellSpacing;
         
         // Calculate table height (matches TableRenderer.draw() calculations)
         // In collapsed mode: skip type row, initial values, and data rows

@@ -37,6 +37,7 @@ public class GodlyTableElm extends TableElm {
     private Expr integrationExpr;                // Compiled integration expression
     private ExprState[] integrationStates;       // Integration state for each column
     private double[] integratedValues;           // Integration value for each column
+    private double[] lastColumnSums;             // Last column sums for convergence check
     private double currentScale = 0.001;         // Scale factor for current calculation (default 1mA per volt)
     
     // Constructor for new table
@@ -99,19 +100,14 @@ public class GodlyTableElm extends TableElm {
     }
     
     private void initIntegration() {
-        // Initialize integration arrays based on current number of columns
-        integrationStates = new ExprState[cols];
-        
-        for (int col = 0; col < cols; col++) {
-            integrationStates[col] = new ExprState(1); // 1 input (columnSum as 'a')
-            // Initialize with the initial condition for this column
-            double initialValue = getInitialValue(col);
-            integrationStates[col].lastOutput = initialValue;
-
-        }
-        
-        // Parse the integration expression
+        // Parse the integration expression (doesn't depend on column count)
         parseIntegrationExpr();
+        
+        // Only initialize arrays if we have columns
+        // Otherwise, ensureArraysSized() will be called later from setupPins()
+        if (getCols() > 0) {
+            ensureArraysSized();
+        }
     }
     
     private double performIntegration(int col, double columnSum) {
@@ -173,7 +169,7 @@ public class GodlyTableElm extends TableElm {
     }
     
     private void resetIntegration() {
-        for (int col = 0; col < cols; col++) {
+        for (int col = 0; col < getCols(); col++) {
             // Reset integration to the initial condition for this column
             double initialValue = getInitialValue(col);
             if (integrationStates[col] != null) {
@@ -192,12 +188,12 @@ public class GodlyTableElm extends TableElm {
         // Register initial values with ComputedValues at t=0
         // This ensures labeled nodes show initial values before simulation starts
         // Skip A-L-E column by limiting loop (it's always the last column)
-        int colLimit = (cols >= 4) ? (cols - 1) : cols;
+        int colLimit = (getCols() >= 4) ? (getCols() - 1) : getCols();
         
         for (int col = 0; col < colLimit; col++) {
             // Only register if we are the master for this column
             if (isMasterForColumn(col)) {
-                String name = outputNames[col];
+                String name = columns.get(col).getStockName();
                 double initialValue = getInitialValue(col);
                 registerComputedValueAsLabeledNode(name, initialValue);
             }
@@ -214,6 +210,8 @@ public class GodlyTableElm extends TableElm {
     
     // Ensure all arrays are properly sized for current column count
     private void ensureArraysSized() {
+        int cols = getCols();
+        
         // Check if integrationStates needs to be resized
         if (integrationStates == null || integrationStates.length != cols) {
             ExprState[] oldStates = integrationStates;
@@ -260,10 +258,10 @@ public class GodlyTableElm extends TableElm {
 
         // Initialize arrays if needed
         if (lastColumnSums == null) {
-            lastColumnSums = new double[cols];
+            lastColumnSums = new double[getCols()];
         }
         if (integratedValues == null) {
-            integratedValues = new double[cols];
+            integratedValues = new double[getCols()];
         }
 
         // Like VCVSElm: compute outputs and stamp during each iteration
@@ -271,7 +269,7 @@ public class GodlyTableElm extends TableElm {
         // 1. Skip A-L-E column by limiting loop (it's always the last column)
         // 2. Check master status per-column using isMasterForColumn()
         // 3. Avoid boxing by using primitives throughout
-        int colLimit = (cols >= 4) ? (cols - 1) : cols; // Exclude A-L-E column if it exists
+        int colLimit = (getCols() >= 4) ? (getCols() - 1) : getCols(); // Exclude A-L-E column if it exists
         
         // Get convergence limit for input checking (like VCVSElm)
         double convergeLimit = getConvergeLimit();
@@ -286,7 +284,7 @@ public class GodlyTableElm extends TableElm {
             // Only compute if we are the master for this specific column
             if (!isMasterForThisName) {
                 // if (shouldLog) {
-                //     CirSim.console("[GODLY_STAMP] GodlyTable '" + tableTitle + "' col " + col + " '" + outputNames[col] + "': SKIPPED (not master)");
+                //     CirSim.console("[GODLY_STAMP] GodlyTable '" + tableTitle + "' col " + col + " '" + columns.get(col).getStockName() + "': SKIPPED (not master)");
                 // }
                 continue;
             }
@@ -303,7 +301,7 @@ public class GodlyTableElm extends TableElm {
                 sim.converged = false;
                 // Debug: log convergence failure details
                 if (sim.subIterations > 20) {
-                    CirSim.console("GodlyTable[" + outputNames[col] + "] col " + col + 
+                    CirSim.console("GodlyTable[" + columns.get(col).getStockName() + "] col " + col + 
                                  " sum convergence failed: diff=" + Math.abs(columnSum - lastColumnSums[col]) + 
                                  " limit=" + convergeLimit +
                                  " (new=" + columnSum + ", old=" + lastColumnSums[col] + 
@@ -330,7 +328,7 @@ public class GodlyTableElm extends TableElm {
                     sim.converged = false;
                     // Debug: log voltage convergence failure details
                     if (sim.subIterations > 20) {
-                        CirSim.console("GodlyTable[" + outputNames[col] + "] col " + col + 
+                        CirSim.console("GodlyTable[" + columns.get(col).getStockName() + "] col " + col + 
                                      " voltage convergence failed: diff=" + voltageDiff + 
                                      " threshold=" + threshold +
                                      " (output=" + outputVoltage + ", integrated=" + integratedValue + 
@@ -341,14 +339,14 @@ public class GodlyTableElm extends TableElm {
                 sim.stampRightSide(vn, integratedValue);
                 
                 // if (shouldLog) {
-                //     CirSim.console("[GODLY_STAMP] GodlyTable '" + tableTitle + "' col " + col + " '" + outputNames[col] + "': vsrc=" + pins[col].voltSource + " vn=" + vn + " sum=" + columnSum + " integrated=" + integratedValue);
+                //     CirSim.console("[GODLY_STAMP] GodlyTable '" + tableTitle + "' col " + col + " '" + columns.get(col).getStockName() + "': vsrc=" + pins[col].voltSource + " vn=" + vn + " sum=" + columnSum + " integrated=" + integratedValue);
                 // }
             }
         }
         
         // Debug: overall convergence status for this element
         if (wasConverged && !sim.converged && sim.subIterations > 20) {
-            CirSim.console("GodlyTable (" + rows + "x" + cols + ") at (" + x + "," + y + 
+            CirSim.console("GodlyTable (" + rows + "x" + getCols() + ") at (" + x + "," + y + 
                          ") caused convergence failure at subiter=" + sim.subIterations);
         }
     }
@@ -359,7 +357,7 @@ public class GodlyTableElm extends TableElm {
         // Like VCVSElm: update state after timestep converges
         // Register computed values for other elements to use
         // Performance: Skip A-L-E column by limiting loop (it's always the last column)
-        int colLimit = (cols >= 4) ? (cols - 1) : cols; // Exclude A-L-E column if it exists
+        int colLimit = (getCols() >= 4) ? (getCols() - 1) : getCols(); // Exclude A-L-E column if it exists
         
         for (int col = 0; col < colLimit; col++) {
             // Check if this column is mastered by this table (may vary per column)
@@ -367,7 +365,7 @@ public class GodlyTableElm extends TableElm {
             
             // Only register if we are the master for this specific column
             if (isMasterForThisColumn && integratedValues != null) {
-                String name = outputNames[col];
+                String name = columns.get(col).getStockName();
                 registerComputedValueAsLabeledNode(name, integratedValues[col]);
                 ComputedValues.markComputedThisStep(name);
                 
@@ -387,8 +385,8 @@ public class GodlyTableElm extends TableElm {
      */
     @Override
     public double getComputedValueForDisplay(int col) {
-        // Check if this is an A-L-E column (last column when cols >= 4)
-        boolean isALEColumn = (col == cols - 1 && cols >= 4);
+        // Check if this is an A-L-E column (last column when getCols() >= 4)
+        boolean isALEColumn = (col == getCols() - 1 && getCols() >= 4);
         
         if (isALEColumn) {
             // A-L-E column: use base class implementation (returns lastColumnSums)
@@ -401,7 +399,7 @@ public class GodlyTableElm extends TableElm {
         }
         
         // Return integrated value (stock) for display
-        if (col >= 0 && col < cols && integratedValues != null && col < integratedValues.length) {
+        if (col >= 0 && col < getCols() && integratedValues != null && col < integratedValues.length) {
             return integratedValues[col];
         }
         return 0.0;
@@ -409,8 +407,8 @@ public class GodlyTableElm extends TableElm {
     
     @Override
     double getCurrentIntoNode(int n) {
-        // n is the pin/post number (0 to cols-1)
-        if (n < 0 || n >= cols || lastColumnSums == null || n >= lastColumnSums.length) {
+        // n is the pin/post number (0 to getCols()-1)
+        if (n < 0 || n >= getCols() || lastColumnSums == null || n >= lastColumnSums.length) {
             return 0.0;
         }
         
@@ -429,15 +427,15 @@ public class GodlyTableElm extends TableElm {
 
     @Override
     void getInfo(String arr[]) {
-        arr[0] = "Godly Table (" + rows + "x" + cols + ") with Integration";
+        arr[0] = "Godly Table (" + rows + "x" + getCols() + ") with Integration";
         arr[1] = "Equation: y[n+1] = y[n] + dt * columnSum";
         arr[2] = "Current scale: " + getUnitText(currentScale, "A/V");
 
         int idx = 3;
 
         // Show output pin values (integrated results) and currents
-        for (int col = 0; col < Math.min(cols, 2) && idx < arr.length - 1; col++) {
-            String header = outputNames[col];
+        for (int col = 0; col < Math.min(getCols(), 2) && idx < arr.length - 1; col++) {
+            String header = columns.get(col).getStockName();
             
             // Show integrated value
             Double integratedValue = ComputedValues.getComputedValue(header);
@@ -453,8 +451,8 @@ public class GodlyTableElm extends TableElm {
             }
         }
 
-        if (cols > 2 && idx < arr.length - 1) {
-            arr[idx++] = "... (" + cols + " integrated outputs total)";
+        if (getCols() > 2 && idx < arr.length - 1) {
+            arr[idx++] = "... (" + getCols() + " integrated outputs total)";
         }
     }
     
@@ -493,13 +491,13 @@ public class GodlyTableElm extends TableElm {
     public void debugPrintState() {
         CirSim.console("=== GodlyTable Debug State ===");
         CirSim.console("Position: (" + x + "," + y + ")");
-        CirSim.console("Size: " + rows + "x" + cols);
+        CirSim.console("Size: " + rows + "x" + getCols());
         CirSim.console("Time: t=" + sim.t + ", timeStep=" + sim.timeStep);
         CirSim.console("Integration Expression: " + (integrationExpr != null ? "valid" : "NULL"));
         
-        int colLimit = (cols >= 4) ? (cols - 1) : cols;
+        int colLimit = (getCols() >= 4) ? (getCols() - 1) : getCols();
         for (int col = 0; col < colLimit; col++) {
-            CirSim.console("--- Column " + col + ": " + outputNames[col] + " ---");
+            CirSim.console("--- Column " + col + ": " + columns.get(col).getStockName() + " ---");
             CirSim.console("  Master for this column: " + isMasterForColumn(col));
             
             if (pins != null && col < pins.length) {

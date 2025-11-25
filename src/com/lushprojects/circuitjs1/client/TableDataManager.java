@@ -21,21 +21,12 @@ public class TableDataManager {
     
     /**
      * Check if a column is the A_L_E computed column
-     * The last column is A_L_E when there are 4 or more columns
      */
     private boolean isALEColumn(int col) {
-        return col == table.cols - 1 && table.cols >= 4;
+        return col >= 0 && col < table.columns.size() && table.columns.get(col).isALE();
     }
     
-    /**
-     * Initialize column types with default values
-     */
-    private void initializeColumnTypes() {
-        table.columnTypes = new ColumnType[table.cols];
-        for (int col = 0; col < table.cols; col++) {
-            table.columnTypes[col] = getDefaultColumnType(col);
-        }
-    }
+
     
     /**
      * Get default column type based on column index
@@ -57,46 +48,13 @@ public class TableDataManager {
      * Initialize all table data structures
      */
     public void initTable() {
-        // Initialize equation arrays
-        if (table.cellEquations == null) {
-            table.cellEquations = new String[table.rows][table.cols];
-            for (int row = 0; row < table.rows; row++) {
-                for (int col = 0; col < table.cols; col++) {
-                    table.cellEquations[row][col] = "";
-                }
-            }
-        }
-        
-        if (table.compiledExpressions == null) {
-            table.compiledExpressions = new Expr[table.rows][table.cols];
-        }
-        
-        if (table.expressionStates == null) {
-            table.expressionStates = new ExprState[table.rows][table.cols];
-            for (int row = 0; row < table.rows; row++) {
-                for (int col = 0; col < table.cols; col++) {
-                    table.expressionStates[row][col] = new ExprState(1); // Only need time variable
-                }
-            }
-        }
-        
-        // Initialize column types FIRST (before output names need them)
-        if (table.columnTypes == null) {
-            initializeColumnTypes();
-        }
-        
-        // Initialize output names if not set
-        if (table.outputNames == null) {
-            table.outputNames = new String[table.cols];
-            for (int i = 0; i < table.cols; i++) {
-                // A_L_E columns (last column when cols >= 4) should be labeled "A-L-E"
-                // Note: They still won't be registered as stocks (handled in registerAllStocks)
-                if (isALEColumn(i)) {
-                    table.outputNames[i] = "A-L-E";
-                } else {
-                    // Start with empty names - user fills them in
-                    table.outputNames[i] = "";
-                }
+        // Initialize columns ArrayList if not set
+        if (table.columns == null) {
+            table.columns = new java.util.ArrayList<TableColumn>();
+            int cols = table.getCols(); // Get from any remaining cols field or default
+            for (int i = 0; i < cols; i++) {
+                ColumnType type = getDefaultColumnType(i);
+                table.columns.add(new TableColumn("", type, 0.0, table.rows));
             }
         }
         
@@ -108,35 +66,16 @@ public class TableDataManager {
             }
         }
         
-        // Initialize initial conditions values if not set
-        if (table.initialValues == null) {
-            table.initialValues = new double[table.cols];
-            for (int i = 0; i < table.cols; i++) {
-                table.initialValues[i] = 0.0;
+        // Ensure all columns have correct row count
+        for (int col = 0; col < table.columns.size(); col++) {
+            TableColumn column = table.columns.get(col);
+            if (column.getRowCount() != table.rows) {
+                column.resizeRows(table.rows);
             }
-        }
-        
-        // Ensure no null or empty values exist in cell equations
-        for (int row = 0; row < table.rows; row++) {
-            for (int col = 0; col < table.cols; col++) {
-                if (table.cellEquations[row][col] == null || table.cellEquations[row][col].trim().isEmpty()) {
-                    table.cellEquations[row][col] = "";
-                }
-            }
-        }
-        
-        // Ensure no null values exist in output names (but allow empty strings)
-        for (int col = 0; col < table.cols; col++) {
-            // A_L_E columns (last column when cols >= 4) should be labeled "A-L-E"
-            if (isALEColumn(col)) {
-                if (table.outputNames[col] == null) {
-                    table.outputNames[col] = "A-L-E";
-                }
-                continue;
-            }
-            // Other columns: convert null to empty string, but keep empty strings as-is
-            if (table.outputNames[col] == null) {
-                table.outputNames[col] = "";
+            
+            // Set A-L-E label if needed
+            if (column.isALE() && (column.getStockName() == null || column.getStockName().isEmpty())) {
+                column.setStockName("A-L-E");
             }
         }
     }
@@ -145,11 +84,16 @@ public class TableDataManager {
      * Initialize with default values (error fallback)
      */
     public void initializeDefaults() {
-        initializeOutputNames();
+        int cols = table.getCols();
+        
+        // Initialize columns ArrayList
+        table.columns = new java.util.ArrayList<TableColumn>();
+        for (int col = 0; col < cols; col++) {
+            ColumnType type = getDefaultColumnType(col);
+            table.columns.add(new TableColumn("", type, 0.0, table.rows));
+        }
+        
         initializeRowDescriptions();
-        initializeColumnTypes();
-        initializeCellEquations();
-        initializeInitialValues();
         
         table.showInitialValues = false;
         table.tableUnits = "";
@@ -157,15 +101,7 @@ public class TableDataManager {
         table.tableTitle = "Table";
     }
     
-    private void initializeOutputNames() {
-        if (table.outputNames == null) {
-            table.outputNames = new String[table.cols];
-        }
-        for (int col = 0; col < table.cols; col++) {
-            // Start with empty names - user must fill them in
-            table.outputNames[col] = "";
-        }
-    }
+
     
     private void initializeRowDescriptions() {
         if (table.rowDescriptions == null) {
@@ -176,25 +112,9 @@ public class TableDataManager {
         }
     }
     
-    private void initializeCellEquations() {
-        if (table.cellEquations == null) {
-            table.cellEquations = new String[table.rows][table.cols];
-        }
-        for (int row = 0; row < table.rows; row++) {
-            for (int col = 0; col < table.cols; col++) {
-                table.cellEquations[row][col] = "";
-            }
-        }
-    }
+
     
-    private void initializeInitialValues() {
-        if (table.initialValues == null) {
-            table.initialValues = new double[table.cols];
-        }
-        for (int col = 0; col < table.cols; col++) {
-            table.initialValues[col] = 0.0;
-        }
-    }
+
     
     /**
      * Serialize table data to string for saving
@@ -207,10 +127,11 @@ public class TableDataManager {
      */
     public String dump() {
         StringBuilder sb = new StringBuilder();
+        int cols = table.getCols();
         
         // Basic dimensions and display settings (all integers/booleans)
         sb.append(" ").append(table.rows);
-        sb.append(" ").append(table.cols);
+        sb.append(" ").append(cols);
         sb.append(" ").append(table.cellWidthInGrids);
         sb.append(" ").append(table.cellHeight);
         sb.append(" ").append(table.cellSpacing);
@@ -225,9 +146,9 @@ public class TableDataManager {
         sb.append(" ").append(CustomLogicModel.escape(table.tableUnits));
         
         // Column headers (cols count)
-        for (int col = 0; col < table.cols; col++) {
-            String colName = (table.outputNames[col] != null) ? table.outputNames[col] : "";
-            sb.append(" ").append(CustomLogicModel.escape(colName));
+        for (int col = 0; col < cols; col++) {
+            String colName = table.columns.get(col).getStockName();
+            sb.append(" ").append(CustomLogicModel.escape(colName != null ? colName : ""));
         }
         
         // Row descriptions (rows count)
@@ -237,20 +158,20 @@ public class TableDataManager {
         }
         
         // Initial values (cols count)
-        for (int col = 0; col < table.cols; col++) {
-            sb.append(" ").append(table.initialValues[col]);
+        for (int col = 0; col < cols; col++) {
+            sb.append(" ").append(table.columns.get(col).getInitialValue());
         }
         
         // Column types (cols count)
-        for (int col = 0; col < table.cols; col++) {
-            sb.append(" ").append(table.columnTypes[col].name());
+        for (int col = 0; col < cols; col++) {
+            sb.append(" ").append(table.columns.get(col).getType().name());
         }
         
         // Cell equations (rows * cols count)
         for (int row = 0; row < table.rows; row++) {
-            for (int col = 0; col < table.cols; col++) {
-                String equation = (table.cellEquations[row][col] != null) ? table.cellEquations[row][col] : "";
-                sb.append(" ").append(CustomLogicModel.escape(equation));
+            for (int col = 0; col < cols; col++) {
+                String equation = table.columns.get(col).getCellEquation(row);
+                sb.append(" ").append(CustomLogicModel.escape(equation != null ? equation : ""));
             }
         }
         
@@ -270,7 +191,7 @@ public class TableDataManager {
         try {
             // Parse dimensions and display settings (all simple types in order)
             table.rows = readInt(st, 0);
-            table.cols = readInt(st, 4);
+            int cols = readInt(st, 4);
             table.cellWidthInGrids = readInt(st, 6);
             table.cellHeight = readInt(st, 16);
             table.cellSpacing = readInt(st, 0);
@@ -278,12 +199,18 @@ public class TableDataManager {
             table.decimalPlaces = readInt(st, 2);
             
             // Peek ahead to detect file format version
-            // If next token is a boolean, it's the new format with showCellValues
+            // If next token is a boolean or number 0-2, it's the new format with showCellValues
             // If next token is a string, it's the old format without showCellValues (it's the table title)
             String nextToken = st.hasMoreTokens() ? st.nextToken() : "Table";
-            if (nextToken.equals("true") || nextToken.equals("false")) {
-                // New format: read showCellValues and check for collapsedMode
-                table.showCellValues = Boolean.parseBoolean(nextToken);
+            if (nextToken.equals("true") || nextToken.equals("false") || nextToken.equals("0") || nextToken.equals("1") || nextToken.equals("2")) {
+                // New format: read showCellValues (backward compatible: false=0, true=1)
+                if (nextToken.equals("false")) {
+                    table.showCellValues = 0; // Equation only
+                } else if (nextToken.equals("true")) {
+                    table.showCellValues = 1; // Equation: Value
+                } else {
+                    table.showCellValues = Integer.parseInt(nextToken); // 0, 1, or 2
+                }
                 
                 // Peek again to check for collapsedMode (even newer format)
                 String nextToken2 = st.hasMoreTokens() ? st.nextToken() : "Table";
@@ -310,7 +237,7 @@ public class TableDataManager {
                 }
             } else {
                 // Old format: the token we just read IS the table title
-                table.showCellValues = false; // Default for old files
+                table.showCellValues = 0; // Default for old files (Equation only)
                 table.collapsedMode = false; // Default for old files
                 table.priority = 5; // Default priority
                 table.tableTitle = CustomLogicModel.unescape(nextToken);
@@ -318,30 +245,18 @@ public class TableDataManager {
             
             table.tableUnits = readString(st, "");
             
-            // Read compactMode if available (for CurrentTransactionsMatrixElm)
-            // This is optional - old files won't have it
-            if (table instanceof CurrentTransactionsMatrixElm && st.hasMoreTokens()) {
-                String compactToken = st.nextToken();
-                if (compactToken.equals("true") || compactToken.equals("false")) {
-                    // It's compactMode
-                    ((CurrentTransactionsMatrixElm) table).compactMode = Boolean.parseBoolean(compactToken);
-                }
-                // If not a boolean, it would be column data but CTM doesn't save column data
-            }
+            // Parse temporary arrays for data
+            String[] stockNames = new String[cols];
+            double[] initialValues = new double[cols];
+            ColumnType[] columnTypes = new ColumnType[cols];
+            String[][] cellEquations = new String[table.rows][cols];
             
-            // Initialize arrays now that we know dimensions
-            initializeArrays();
+            // Initialize row descriptions array
+            table.rowDescriptions = new String[table.rows];
             
             // Parse column headers (cols count)
-            for (int col = 0; col < table.cols; col++) {
-                String header = readString(st, "");
-                // A_L_E columns (last column when cols >= 4) get "A-L-E" label
-                if (isALEColumn(col)) {
-                    table.outputNames[col] = "A-L-E";
-                } else {
-                    // Keep header as-is, even if empty
-                    table.outputNames[col] = header;
-                }
+            for (int col = 0; col < cols; col++) {
+                stockNames[col] = readString(st, "");
             }
             
             // Parse row descriptions (rows count)
@@ -350,19 +265,45 @@ public class TableDataManager {
             }
             
             // Parse initial values (cols count)
-            for (int col = 0; col < table.cols; col++) {
-                table.initialValues[col] = readDouble(st, 0.0);
+            for (int col = 0; col < cols; col++) {
+                initialValues[col] = readDouble(st, 0.0);
             }
             
             // Parse column types (cols count)
-            for (int col = 0; col < table.cols; col++) {
-                table.columnTypes[col] = readColumnType(st, getDefaultColumnType(col));
+            for (int col = 0; col < cols; col++) {
+                columnTypes[col] = readColumnType(st, getDefaultColumnType(col));
             }
             
             // Parse cell equations (rows * cols count)
             for (int row = 0; row < table.rows; row++) {
-                for (int col = 0; col < table.cols; col++) {
-                    table.cellEquations[row][col] = readString(st, "");
+                for (int col = 0; col < cols; col++) {
+                    cellEquations[row][col] = readString(st, "");
+                }
+            }
+            
+            // Now build columns ArrayList from parsed data
+            table.columns = new java.util.ArrayList<TableColumn>();
+            for (int col = 0; col < cols; col++) {
+                TableColumn column = new TableColumn(
+                    stockNames[col] != null ? stockNames[col] : "",
+                    columnTypes[col],
+                    initialValues[col],
+                    table.rows
+                );
+                
+                // Set cell equations for this column
+                for (int row = 0; row < table.rows; row++) {
+                    column.setCellEquation(row, cellEquations[row][col]);
+                }
+                
+                table.columns.add(column);
+            }
+            
+            // Set A-L-E labels if needed
+            for (int col = 0; col < table.columns.size(); col++) {
+                TableColumn column = table.columns.get(col);
+                if (column.isALE() && (column.getStockName() == null || column.getStockName().isEmpty())) {
+                    column.setStockName("A-L-E");
                 }
             }
             
@@ -412,168 +353,49 @@ public class TableDataManager {
         }
     }
     
-    private void initializeArrays() {
-        table.outputNames = new String[table.cols];
-        table.cellEquations = new String[table.rows][table.cols];
-        table.initialValues = new double[table.cols];
-        table.rowDescriptions = new String[table.rows];
-        table.columnTypes = new ColumnType[table.cols];
-    }
-    
     /**
      * Resize table and preserve existing data where possible
      */
     public void resizeTable(int newRows, int newCols) {
-        // Save old data
-        String[] oldOutputNames = table.outputNames;
-        String[][] oldEquations = table.cellEquations;
-        double[] oldInitialValues = table.initialValues;
-        ColumnType[] oldColumnTypes = table.columnTypes;
-        String[] oldRowDescriptions = table.rowDescriptions;
-
-        // Update dimensions
+        int oldCols = table.columns.size();
+        
+        // Update row count
         table.rows = newRows;
-        table.cols = newCols;
-
-        // Create new arrays
-        createNewArrays();
         
-        // Copy existing data
-        copyExistingData(oldOutputNames, oldEquations, oldInitialValues, 
-                        oldColumnTypes, oldRowDescriptions);
-    }
-    
-    private void createNewArrays() {
-        table.outputNames = new String[table.cols];
-        table.cellEquations = new String[table.rows][table.cols];
-        table.compiledExpressions = new Expr[table.rows][table.cols];
-        table.expressionStates = new ExprState[table.rows][table.cols];
-        table.initialValues = new double[table.cols];
-        table.columnTypes = new ColumnType[table.cols];
-        table.rowDescriptions = new String[table.rows];
-
-        // Initialize all cells with empty strings
-        for (int row = 0; row < table.rows; row++) {
-            for (int col = 0; col < table.cols; col++) {
-                table.cellEquations[row][col] = "";
-                table.compiledExpressions[row][col] = null;
-                table.expressionStates[row][col] = new ExprState(1);
-            }
+        // Resize existing columns
+        for (int col = 0; col < oldCols && col < newCols; col++) {
+            table.columns.get(col).resizeRows(newRows);
         }
-    }
-    
-    private void copyExistingData(String[] oldOutputNames, String[][] oldEquations,
-                                 double[] oldInitialValues, ColumnType[] oldColumnTypes,
-                                 String[] oldRowDescriptions) {
-        copyEquations(oldEquations);
-        copyInitialValues(oldInitialValues);
-        copyOutputNames(oldOutputNames);
-        copyColumnTypes(oldColumnTypes);
-        copyRowDescriptions(oldRowDescriptions);
-    }
-    
-    private void copyEquations(String[][] oldEquations) {
-        if (oldEquations == null) return;
         
-        int copyRows = Math.min(table.rows, oldEquations.length);
-        for (int row = 0; row < copyRows; row++) {
-            if (oldEquations[row] != null) {
-                int copyCols = Math.min(table.cols, oldEquations[row].length);
-                for (int col = 0; col < copyCols; col++) {
-                    if (oldEquations[row][col] != null) {
-                        table.cellEquations[row][col] = oldEquations[row][col];
-                        // Recompile equations for copied cells
-                        if (!table.cellEquations[row][col].isEmpty()) {
-                            table.compileEquation(row, col, table.cellEquations[row][col]);
-                        }
-                    }
-                }
-            }
+        // Add new columns if needed
+        while (table.columns.size() < newCols) {
+            int col = table.columns.size();
+            ColumnType type = getDefaultColumnType(col);
+            table.columns.add(new TableColumn("", type, 0.0, newRows));
         }
-    }
-    
-    private void copyInitialValues(double[] oldInitialValues) {
-        if (oldInitialValues != null) {
-            int copyCols = Math.min(table.cols, oldInitialValues.length);
-            for (int col = 0; col < copyCols; col++) {
-                table.initialValues[col] = oldInitialValues[col];
-            }
-        }
-        // Initialize remaining values with zeros
-        for (int col = 0; col < table.cols; col++) {
-            if (oldInitialValues == null || col >= oldInitialValues.length) {
-                table.initialValues[col] = 0.0;
-            }
-        }
-    }
-    
-    private void copyOutputNames(String[] oldOutputNames) {
-        if (oldOutputNames != null) {
-            int copyCols = Math.min(table.cols, oldOutputNames.length);
-            for (int col = 0; col < copyCols; col++) {
-                table.outputNames[col] = oldOutputNames[col];
-            }
-        }
-        // Initialize remaining output names (new columns only)
-        for (int col = 0; col < table.cols; col++) {
-            if (oldOutputNames == null || col >= oldOutputNames.length) {
-                // New columns start with empty names
-                table.outputNames[col] = "";
-            } else if (table.outputNames[col] == null) {
-                // Convert null to empty string
-                table.outputNames[col] = "";
-            }
-            // Keep empty strings as-is (don't auto-fill)
-        }
-    }
-    
-    private void copyColumnTypes(ColumnType[] oldColumnTypes) {
-        // For each column, preserve old type if it exists
-        // Clear equations from old last column if table size changed
-        int oldCols = (oldColumnTypes != null) ? oldColumnTypes.length : 0;
-        boolean oldHadALE = oldCols >= 4;
-        int oldALECol = oldHadALE ? oldCols - 1 : -1;
         
-        for (int col = 0; col < table.cols; col++) {
-            ColumnType newDefaultType = getDefaultColumnType(col);
-            ColumnType oldType = (oldColumnTypes != null && col < oldColumnTypes.length) 
-                                 ? oldColumnTypes[col] : null;
-            
-            if (oldType != null) {
-                // If this column was the old A_L_E position but is no longer A_L_E, clear equations
-                if (col == oldALECol && !isALEColumn(col)) {
-                    // Old A_L_E column is no longer the last - make it ASSET and clear equations
-                    table.columnTypes[col] = ColumnType.ASSET;
-                    for (int row = 0; row < table.rows; row++) {
-                        if (table.cellEquations != null && table.cellEquations[row] != null) {
-                            table.cellEquations[row][col] = "";
-                            table.compiledExpressions[row][col] = null;
-                        }
-                    }
-                } else {
-                    // Preserve the old type
-                    table.columnTypes[col] = oldType;
-                }
-            } else {
-                // New column - use default type
-                table.columnTypes[col] = newDefaultType;
-            }
+        // Remove extra columns if needed
+        while (table.columns.size() > newCols) {
+            table.columns.remove(table.columns.size() - 1);
         }
-    }
-    
-    private void copyRowDescriptions(String[] oldRowDescriptions) {
+        
+        // Resize row descriptions
+        String[] oldRowDescriptions = table.rowDescriptions;
+        table.rowDescriptions = new String[newRows];
         if (oldRowDescriptions != null) {
-            int copyRows = Math.min(table.rows, oldRowDescriptions.length);
+            int copyRows = Math.min(newRows, oldRowDescriptions.length);
             for (int row = 0; row < copyRows; row++) {
                 table.rowDescriptions[row] = oldRowDescriptions[row];
             }
         }
         // Initialize remaining row descriptions
-        for (int row = 0; row < table.rows; row++) {
-            if (oldRowDescriptions == null || row >= oldRowDescriptions.length ||
-                table.rowDescriptions[row] == null || table.rowDescriptions[row].isEmpty()) {
+        for (int row = 0; row < newRows; row++) {
+            if (table.rowDescriptions[row] == null || table.rowDescriptions[row].isEmpty()) {
                 table.rowDescriptions[row] = "Flow_" + (row + 1);
             }
         }
+        
+        // Recompile all equations after resize
+        table.equationManager.recompileAllEquations();
     }
 }

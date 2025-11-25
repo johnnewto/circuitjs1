@@ -79,11 +79,12 @@ import java.util.Map;
     private static final String SYMBOL_DOWN = "⇓";         // Move down button
     
     // Grid structure indices
-    private static final int HEADER_ROW = 0;
-    private static final int BUTTON_ROW = 1;
-    private static final int STOCK_VALUES_ROW = 2;
-    private static final int INITIAL_ROW = 3;
-    private static final int DATA_START_ROW = 4;
+    private static final int TABLE_NAME_ROW = 0;
+    private static final int TYPE_ROW = 1;
+    private static final int BUTTON_ROW = 2;
+    private static final int STOCK_VALUES_ROW = 3;
+    private static final int INITIAL_ROW = 4;
+    private static final int DATA_START_ROW = 5;
     
     private static final int BUTTON_COL = 0;
     private static final int LABEL_COL = 1;
@@ -116,6 +117,7 @@ import java.util.Map;
         String stockValue;  // Stock value is used as column header
         double initialValue;
         ColumnType type;
+        String columnHeaderText;  // Table name or source table name (for CTM)
         
         ColumnData(int rows) {
             cellData = new String[rows];
@@ -124,19 +126,9 @@ import java.util.Map;
     
     /**
      * State machine for column movement operations
-     * Simplified: columns can only move within their own type group
+     * Simplified: only restrict movement into the computed A-L-E column
      */
     private static class ColumnMoveStateMachine {
-        
-        /**
-         * Represents the region a column currently occupies
-         */
-        enum Region {
-            ASSET_REGION,      // Left side - Asset columns
-            LIABILITY_REGION,  // Center - Liability columns
-            EQUITY_REGION,     // Right side - Equity column only
-            COMPUTED_REGION    // Rightmost - A-L-E column only
-        }
         
         /**
          * Represents a column movement transition result
@@ -158,58 +150,23 @@ import java.util.Map;
         }
         
         /**
-         * Determine which region a column index belongs to
-         */
-        Region getRegion(int colIndex) {
-            if (colIndex < 0 || colIndex >= dialog.dataCols) {
-                return null;
-            }
-            
-            ColumnType type = dialog.columnTypes[colIndex];
-            
-            // Computed column (A_L_E) is always last column when cols >= 4
-            if (dialog.isALEColumn(colIndex)) {
-                return Region.COMPUTED_REGION;
-            }
-            
-            // Equity column is always right of liabilities
-            if (type == ColumnType.EQUITY) {
-                return Region.EQUITY_REGION;
-            }
-            
-            // Find Asset-Liability boundary
-            int boundary = dialog.findAssetLiabilityBoundary();
-            
-            if (colIndex < boundary) {
-                return Region.ASSET_REGION;
-            } else {
-                return Region.LIABILITY_REGION;
-            }
-        }
-        
-        /**
-         * Calculate the movement transition - simplified to only allow same-region moves
+         * Calculate the movement transition - only prevent moving into computed column
          */
         MoveTransition calculateTransition(int fromIndex, int toIndex) {
-            Region fromRegion = getRegion(fromIndex);
-            Region toRegion = getRegion(toIndex);
-            ColumnType originalType = dialog.columnTypes[fromIndex];
-            
-            // Defensive: should not happen for valid moves, but prevent null access
-            if (originalType == null) {
-                return new MoveTransition(false, "Cannot move column - invalid type");
+            // Check if trying to move into the computed A-L-E column
+            if (dialog.isALEColumn(toIndex)) {
+                return new MoveTransition(false, "Cannot move column into computed A-L-E column position");
             }
             
-            // Check if trying to move to different region
-            if (fromRegion != toRegion) {
-                String message = "Cannot move " + originalType.name() + " column to " + toRegion.name().replace("_", " ") + 
-                                ". Columns can only move within their own type group.";
-                return new MoveTransition(false, message);
+            // Check if trying to move the computed column itself
+            if (dialog.isALEColumn(fromIndex)) {
+                return new MoveTransition(false, "Cannot move computed A-L-E column");
             }
             
-            // Moving within same region - allowed
-            String message = originalType.name() + " column moved within " + fromRegion.name().replace("_", " ");
-            return new MoveTransition(true, message);
+            // All other moves are allowed
+            ColumnType type = dialog.columnTypes[fromIndex];
+            String typeName = (type != null) ? type.name() : "Column";
+            return new MoveTransition(true, typeName + " column moved successfully");
         }
     }
     
@@ -234,6 +191,7 @@ import java.util.Map;
     private double[] initialValues; // Initial condition values
     private int dataRows, dataCols; // Number of data rows/columns (excluding fixed structure)
     private ColumnType[] columnTypes; // Type for each column (Asset/Liability/Equity/Computed)
+    private String[] columnHeaderTexts; // Header text per column (table name or source table name for CTM)
     
     // Button management
     private Map<String, Button> contextualButtons;
@@ -423,6 +381,7 @@ import java.util.Map;
         stockValues = new String[dataCols];
         initialValues = new double[dataCols];
         columnTypes = new ColumnType[dataCols];
+        columnHeaderTexts = new String[dataCols];
         
         // Set default stock values and types according to specification
         // Initial configuration: 1 Asset, 1 Liability, 1 Equity, and last column is A_L_E (if 4+ columns)
@@ -492,6 +451,28 @@ import java.util.Map;
                     stockValues[col] = "A-L-E"; // Label for A_L_E column
                     // Initial value will be computed
                 }
+            }
+            
+            // Initialize column header texts (source table name for CTM, table title for regular tables)
+            boolean isCTM = tableElement instanceof CurrentTransactionsMatrixElm;
+            if (isCTM) {
+                CurrentTransactionsMatrixElm ctm = (CurrentTransactionsMatrixElm) tableElement;
+                for (int col = 0; col < Math.min(dataCols, existingCols); col++) {
+                    String sourceTableName = ctm.getSourceTableName(col);
+                    columnHeaderTexts[col] = (sourceTableName != null && !sourceTableName.isEmpty()) 
+                        ? sourceTableName : tableElement.getTableTitle();
+                }
+            } else {
+                String tableTitle = tableElement.getTableTitle();
+                for (int col = 0; col < dataCols; col++) {
+                    columnHeaderTexts[col] = tableTitle;
+                }
+            }
+        } else {
+            // No existing table data - initialize with defaults
+            String tableTitle = tableElement.getTableTitle();
+            for (int col = 0; col < dataCols; col++) {
+                columnHeaderTexts[col] = tableTitle;
             }
         }
         
@@ -571,7 +552,8 @@ import java.util.Map;
         
         // Scrollable table area (main content)
         scrollPanel = new ScrollPanel();
-        scrollPanel.setSize("800px", "250px");
+        // Width will be set dynamically in populateGrid()
+        scrollPanel.setHeight("250px");
         scrollPanel.addStyleName("topSpace");
         mainPanel.add(scrollPanel);
         
@@ -904,7 +886,7 @@ import java.util.Map;
      */
     private void createGrid() {
         // Calculate grid dimensions according to updated specification
-        // Rows: Header + Button controls + Stock values + Flows label + Initial conditions + data rows
+        // Rows: Table name + Column types + Button controls + Stock values + Flows label + Initial conditions + data rows
         int totalGridRows = DATA_START_ROW + dataRows;
         // Cols: Buttons column + Label column + data columns  
         int totalGridCols = 2 + dataCols; // Button col + Label col + data columns
@@ -917,6 +899,8 @@ import java.util.Map;
         // Clear contextual buttons for refresh
         contextualButtons.clear();
         
+        populateTableNameRow();
+        populateColumnTypeRow();
         populateFixedStructure();
         populateDataCells();
         populateContextualButtons();
@@ -930,6 +914,9 @@ import java.util.Map;
         scrollPanel.setWidget(editGrid);
         updateButtonStates();
         
+        // Calculate dynamic width based on table content
+        setDialogWidth();
+        
         // Auto-update debug window when grid changes
         if (debugDialog != null && debugDialog.isShowing()) {
             debugDialog.refresh();
@@ -937,41 +924,120 @@ import java.util.Map;
     }
     
     /**
-     * Populate fixed structure rows (headers, buttons, stock values, initial values)
+     * Calculate and set dialog width based on table columns, constrained by window width
      */
-    private void populateFixedStructure() {
-        // Row 0: Headers - first two columns empty, then data headers with type indicators
-        editGrid.setText(HEADER_ROW, BUTTON_COL, "");
-        editGrid.setText(HEADER_ROW, LABEL_COL, "");
+    private void setDialogWidth() {
+        // Estimate column widths:
+        // - Button column: ~60px
+        // - Label column: ~150px
+        // - Data columns: ~120px each
+        // - Padding and borders: ~30px
         
-        // Add data column headers with type indicators
+        int buttonColWidth = 60;
+        int labelColWidth = 150;
+        int dataColWidth = 120;
+        int padding = 30;
+        
+        int calculatedWidth = buttonColWidth + labelColWidth + (dataCols * dataColWidth) + padding;
+        
+        // Get window width and constrain to 90% of it
+        int windowWidth = com.google.gwt.user.client.Window.getClientWidth();
+        int maxWidth = (int)(windowWidth * 0.9);
+        
+        // Use minimum of 400px, maximum of window width
+        int finalWidth = Math.max(400, Math.min(calculatedWidth, maxWidth));
+        
+        scrollPanel.setWidth(finalWidth + "px");
+    }
+    
+    /**
+     * Populate table name header row (row 0)
+     */
+    private void populateTableNameRow() {
+        // First two columns empty
+        editGrid.setText(TABLE_NAME_ROW, BUTTON_COL, "");
+        editGrid.setText(TABLE_NAME_ROW, LABEL_COL, "");
+        
+        // Put column header text in each data column header (moves with column)
         for (int col = 0; col < dataCols; col++) {
-            ColumnType colType = columnTypes[col];
+            String columnHeaderText = columnHeaderTexts[col];
+            if (columnHeaderText == null || columnHeaderText.isEmpty()) {
+                columnHeaderText = tableElement.getTableTitle(); // Fallback
+            }
             
-            // Add type indicator emoji/symbol
-            String typeIndicator = "";
+            Label tableNameLabel = new Label(columnHeaderText);
+            tableNameLabel.addStyleName("tableNameHeader");
+            tableNameLabel.getElement().getStyle().setProperty("fontWeight", "bold");
+            tableNameLabel.getElement().getStyle().setProperty("fontSize", "12px");
+            tableNameLabel.getElement().getStyle().setProperty("padding", "4px");
+            tableNameLabel.getElement().getStyle().setProperty("textAlign", "center");
+            editGrid.setWidget(TABLE_NAME_ROW, DATA_START_COL + col, tableNameLabel);
+        }
+    }
+    
+    /**
+     * Populate column type row with editable dropdowns (row 1)
+     */
+    private void populateColumnTypeRow() {
+        editGrid.setText(TYPE_ROW, BUTTON_COL, "");
+        editGrid.setText(TYPE_ROW, LABEL_COL, "Type:");
+        
+        for (int col = 0; col < dataCols; col++) {
             if (isALEColumn(col)) {
-                typeIndicator = "🧮";
-                editGrid.setText(HEADER_ROW, DATA_START_COL + col, typeIndicator + " [A_L_E]");
-            } else if (colType != null) {
-                switch (colType) {
-                    case ASSET: typeIndicator = "💹"; break;
-                    case LIABILITY: typeIndicator = "📄"; break;
-                    case EQUITY: typeIndicator = "🏦"; break;
-                }
-                editGrid.setText(HEADER_ROW, DATA_START_COL + col, typeIndicator + " [" + colType.name() + "]");
+                // A_L_E column gets a fixed label
+                Label aleLabel = new Label("🧮 A-L-E");
+                aleLabel.addStyleName("computed-column");
+                aleLabel.setTitle("Assets - Liabilities - Equity (computed)");
+                editGrid.setWidget(TYPE_ROW, DATA_START_COL + col, aleLabel);
             } else {
-                // Fallback for null column type (shouldn't happen, but be defensive)
-                typeIndicator = "💹";
-                editGrid.setText(HEADER_ROW, DATA_START_COL + col, typeIndicator + " [ASSET]");
+                // Create dropdown for column type selection
+                final int finalCol = col;
+                final Choice typeChoice = new Choice();
+                typeChoice.add("💹 Asset");
+                typeChoice.add("📄 Liability");
+                typeChoice.add("🏦 Equity");
+                
+                // Set current selection based on column type
+                ColumnType colType = columnTypes[col];
+                if (colType == ColumnType.ASSET) {
+                    typeChoice.select(0);
+                } else if (colType == ColumnType.LIABILITY) {
+                    typeChoice.select(1);
+                } else if (colType == ColumnType.EQUITY) {
+                    typeChoice.select(2);
+                }
+                
+                typeChoice.addChangeHandler(new com.google.gwt.event.dom.client.ChangeHandler() {
+                    public void onChange(com.google.gwt.event.dom.client.ChangeEvent event) {
+                        // Update column type based on selection
+                        int selection = typeChoice.getSelectedIndex();
+                        if (selection == 0) {
+                            columnTypes[finalCol] = ColumnType.ASSET;
+                        } else if (selection == 1) {
+                            columnTypes[finalCol] = ColumnType.LIABILITY;
+                        } else if (selection == 2) {
+                            columnTypes[finalCol] = ColumnType.EQUITY;
+                        }
+                        markChanged();
+                        // Recalculate A_L_E columns when type changes
+                        updateALEColumns();
+                    }
+                });
+                
+                editGrid.setWidget(TYPE_ROW, DATA_START_COL + col, typeChoice);
             }
         }
-        
-        // Row 1: Control buttons (populated in populateContextualButtons)
+    }
+    
+    /**
+     * Populate fixed structure rows (buttons, stock values, initial values)
+     */
+    private void populateFixedStructure() {
+        // Row 2: Control buttons (populated in populateContextualButtons)
         editGrid.setText(BUTTON_ROW, BUTTON_COL, "");
         editGrid.setText(BUTTON_ROW, LABEL_COL, "");
         
-        // Row 2: Stock Values - editable row for output stock values
+        // Row 3: Stock Values - editable row for output stock values
         editGrid.setText(STOCK_VALUES_ROW, BUTTON_COL, "");
         editGrid.setText(STOCK_VALUES_ROW, LABEL_COL, FLOWS_LABEL);
         
@@ -991,7 +1057,7 @@ import java.util.Map;
         }
         
         
-        // Row 3: Initial conditions
+        // Row 4: Initial conditions
         editGrid.setText(INITIAL_ROW, BUTTON_COL, "");
         editGrid.setText(INITIAL_ROW, LABEL_COL, INITIAL_CONDITIONS_LABEL);
         
@@ -1082,35 +1148,29 @@ import java.util.Map;
                 buttonPanel.add(delColBtn);
             }
             
-            // Movement buttons - smart display based on column count in type group
+            // Movement buttons - allow free movement except into computed column
             if (canMoveColumn(col)) {
-                int typeCount = countColumnsByType(colType);
-                
-                // Only show movement arrows if there are 2+ columns of this type
-                if (typeCount >= 2) {
-                    // Check if we can move left within same type
-                    if (canMoveLeftWithinType(col)) {
-                        Button moveLeftBtn = createButton(SYMBOL_LEFT, "Move column left");
-                        moveLeftBtn.addClickHandler(new ClickHandler() {
-                            public void onClick(ClickEvent event) {
-                                moveColumn(finalCol, finalCol - 1);
-                            }
-                        });
-                        buttonPanel.add(moveLeftBtn);
-                    }
-                    
-                    // Check if we can move right within same type
-                    if (canMoveRightWithinType(col)) {
-                        Button moveRightBtn = createButton(SYMBOL_RIGHT, "Move column right");
-                        moveRightBtn.addClickHandler(new ClickHandler() {
-                            public void onClick(ClickEvent event) {
-                                moveColumn(finalCol, finalCol + 1);
-                            }
-                        });
-                        buttonPanel.add(moveRightBtn);
-                    }
+                // Check if we can move left
+                if (canMoveLeftWithinType(col)) {
+                    Button moveLeftBtn = createButton(SYMBOL_LEFT, "Move column left");
+                    moveLeftBtn.addClickHandler(new ClickHandler() {
+                        public void onClick(ClickEvent event) {
+                            moveColumn(finalCol, finalCol - 1);
+                        }
+                    });
+                    buttonPanel.add(moveLeftBtn);
                 }
-                // If only 1 column of this type, no movement buttons (just + button from above)
+                
+                // Check if we can move right
+                if (canMoveRightWithinType(col)) {
+                    Button moveRightBtn = createButton(SYMBOL_RIGHT, "Move column right");
+                    moveRightBtn.addClickHandler(new ClickHandler() {
+                        public void onClick(ClickEvent event) {
+                            moveColumn(finalCol, finalCol + 1);
+                        }
+                    });
+                    buttonPanel.add(moveRightBtn);
+                }
             }
             
             editGrid.setWidget(BUTTON_ROW, DATA_START_COL + col, buttonPanel);
@@ -1498,31 +1558,27 @@ import java.util.Map;
     // =============================================================================
     
     /**
-     * Check if we can move a column left within its type group
+     * Check if we can move a column left
      */
     private boolean canMoveLeftWithinType(int col) {
         if (col <= 0) return false;
         if (!canMoveColumn(col)) return false;
+        if (isALEColumn(col)) return false; // Can't move computed column
         
-        ColumnType currentType = columnTypes[col];
-        ColumnType leftType = columnTypes[col - 1];
-        
-        // Can only move left if the column to the left is the same type
-        return currentType == leftType;
+        // Can move left unless we're moving into computed column position
+        return !isALEColumn(col - 1);
     }
     
     /**
-     * Check if we can move a column right within its type group
+     * Check if we can move a column right
      */
     private boolean canMoveRightWithinType(int col) {
         if (col >= dataCols - 1) return false;
         if (!canMoveColumn(col)) return false;
+        if (isALEColumn(col)) return false; // Can't move computed column
         
-        ColumnType currentType = columnTypes[col];
-        ColumnType rightType = columnTypes[col + 1];
-        
-        // Can only move right if the column to the right is the same type
-        return currentType == rightType;
+        // Can move right unless we're moving into computed column position
+        return !isALEColumn(col + 1);
     }
     
     //=== ROW AND COLUMN MANIPULATION METHODS =======================================
@@ -1729,6 +1785,7 @@ import java.util.Map;
         String[] newStockValues = new String[dataCols];
         double[] newInitialValues = new double[dataCols];
         ColumnType[] newColumnTypes = new ColumnType[dataCols];
+        String[] newColumnHeaderTexts = new String[dataCols];
         
         // Copy existing data
         for (int r = 0; r < dataRows; r++) {
@@ -1744,25 +1801,29 @@ import java.util.Map;
         // Determine the type for the new column based on the column after which it's inserted
         ColumnType newColumnType = columnTypes[colIndex]; // Same type as the column before it
         
-        // Copy stock values, initial values, and types
+        // Copy stock values, initial values, types, and header texts
         for (int c = 0; c <= colIndex; c++) {
             newStockValues[c] = stockValues[c];
             newInitialValues[c] = initialValues[c];
             newColumnTypes[c] = columnTypes[c];
+            newColumnHeaderTexts[c] = columnHeaderTexts[c];
         }
         newStockValues[colIndex + 1] = "H" + (colIndex + 1); // Assign next H number
         newInitialValues[colIndex + 1] = 0.0;
         newColumnTypes[colIndex + 1] = newColumnType;
+        newColumnHeaderTexts[colIndex + 1] = columnHeaderTexts[colIndex]; // Inherit header text from previous column
         for (int c = colIndex + 1; c < dataCols - 1; c++) {
             newStockValues[c + 1] = stockValues[c];
             newInitialValues[c + 1] = initialValues[c];
             newColumnTypes[c + 1] = columnTypes[c];
+            newColumnHeaderTexts[c + 1] = columnHeaderTexts[c];
         }
         
         cellData = newCellData;
         stockValues = newStockValues;
         initialValues = newInitialValues;
         columnTypes = newColumnTypes;
+        columnHeaderTexts = newColumnHeaderTexts;
         
         String colTypeName = (newColumnType != null) ? newColumnType.name() : "ASSET";
         setStatus("New " + colTypeName + " column added after " + stockValues[colIndex] + ". Total columns: " + dataCols);
@@ -1812,6 +1873,7 @@ import java.util.Map;
         String[] newStockValues = new String[dataCols];
         double[] newInitialValues = new double[dataCols];
         ColumnType[] newColumnTypes = new ColumnType[dataCols];
+        String[] newColumnHeaderTexts = new String[dataCols];
         
         // Copy data excluding deleted column
         for (int r = 0; r < dataRows; r++) {
@@ -1824,13 +1886,14 @@ import java.util.Map;
             }
         }
         
-        // Copy stock values, initial values, and types excluding deleted column
+        // Copy stock values, initial values, types, and header texts excluding deleted column
         int newCol = 0;
         for (int c = 0; c < dataCols + 1; c++) {
             if (c != colIndex) {
                 newStockValues[newCol] = stockValues[c];
                 newInitialValues[newCol] = initialValues[c];
                 newColumnTypes[newCol] = columnTypes[c];
+                newColumnHeaderTexts[newCol] = columnHeaderTexts[c];
                 newCol++;
             }
         }
@@ -1839,6 +1902,7 @@ import java.util.Map;
         stockValues = newStockValues;
         initialValues = newInitialValues;
         columnTypes = newColumnTypes;
+        columnHeaderTexts = newColumnHeaderTexts;
         
         String deletedTypeName = (deletedType != null) ? deletedType.name() : "ASSET";
         setStatus(deletedTypeName + " column '" + deletedColumnName + "' deleted. Total columns: " + dataCols);
@@ -1877,11 +1941,11 @@ import java.util.Map;
         
         // Copy source to destination
         overwriteColumnAt(toIndex, sourceData.cellData, sourceData.stockValue, 
-                         sourceData.initialValue, sourceData.type);
+                         sourceData.initialValue, sourceData.type, sourceData.columnHeaderText);
         
         // Copy backup to source
         overwriteColumnAt(fromIndex, destBackup.cellData, destBackup.stockValue,
-                         destBackup.initialValue, destBackup.type);
+                         destBackup.initialValue, destBackup.type, destBackup.columnHeaderText);
         
         // Update UI
         setStatus(transition.statusMessage);
@@ -1897,10 +1961,15 @@ import java.util.Map;
             return false;
         }
         
-        ColumnType type = columnTypes[fromIndex];
-        if (type == ColumnType.EQUITY || isALEColumn(fromIndex)) {
-            String columnName = isALEColumn(fromIndex) ? "A_L_E" : ((type != null) ? type.name() : "column");
-            setStatus("Cannot move " + columnName + " column - it must remain fixed");
+        // Only prevent moving the computed A-L-E column
+        if (isALEColumn(fromIndex)) {
+            setStatus("Cannot move A-L-E column - it is computed");
+            return false;
+        }
+        
+        // Prevent moving into the A-L-E column position
+        if (isALEColumn(toIndex)) {
+            setStatus("Cannot move column into A-L-E position");
             return false;
         }
         
@@ -1918,6 +1987,7 @@ import java.util.Map;
         data.stockValue = stockValues[index];
         data.initialValue = initialValues[index];
         data.type = columnTypes[index];
+        data.columnHeaderText = columnHeaderTexts[index];
         return data;
     }
     
@@ -1925,7 +1995,7 @@ import java.util.Map;
      * Overwrite a column at the specified index with new data
      */
     private void overwriteColumnAt(int colIndex, String[] colData, String stockValue, 
-                                   double initial, ColumnType type) {
+                                   double initial, ColumnType type, String headerText) {
         // Overwrite cell data
         for (int r = 0; r < dataRows; r++) {
             cellData[r][colIndex] = colData[r];
@@ -1935,6 +2005,7 @@ import java.util.Map;
         stockValues[colIndex] = stockValue;
         initialValues[colIndex] = initial;
         columnTypes[colIndex] = type;
+        columnHeaderTexts[colIndex] = headerText;
     }
     
     /**
@@ -2078,7 +2149,7 @@ import java.util.Map;
     // Column operation permission checks
     public boolean canMoveColumn(int col) {
         if (col < 0 || col >= dataCols || columnTypes == null) return false;
-        return columnTypes[col] != ColumnType.EQUITY && !isALEColumn(col);
+        return !isALEColumn(col);
     }
     
     public boolean canDeleteColumn(int col) {
@@ -2086,12 +2157,14 @@ import java.util.Map;
         
         ColumnType type = columnTypes[col];
         
-        // Cannot delete Equity or Computed (A_L_E) columns
-        if (type == ColumnType.EQUITY || isALEColumn(col)) return false;
+        // Cannot delete Computed (A_L_E) column
+        if (isALEColumn(col)) return false;
         
-        // Cannot delete if it's the last Asset or Liability
+        // Cannot delete if it's the last Asset or Liability (need at least one of each)
         if (type == ColumnType.ASSET && countColumnsByType(ColumnType.ASSET) <= 1) return false;
         if (type == ColumnType.LIABILITY && countColumnsByType(ColumnType.LIABILITY) <= 1) return false;
+        
+        // Equity columns can be deleted freely (no minimum requirement)
         
         return true;
     }
@@ -2099,8 +2172,8 @@ import java.util.Map;
     public boolean canAddColumnAfter(int col) {
         if (col < 0 || col >= dataCols || columnTypes == null) return false;
         
-        // Cannot add after Equity or Computed (A_L_E) columns
-        return columnTypes[col] != ColumnType.EQUITY && !isALEColumn(col);
+        // Cannot add after Computed (A_L_E) column
+        return !isALEColumn(col);
     }
 
     

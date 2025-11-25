@@ -22,10 +22,11 @@ public class TableRenderer {
     protected static final long UPDATE_INTERVAL_MS = 200; // Update 5 times per second
     
     // Fonts for different parts of the table - all bold for better readability
+    // Protected to allow subclasses (CurrentTransactionsMatrixRenderer) to use these constants
     private static final Font TITLE_FONT = new Font("SansSerif", Font.BOLD, 13);
-    private static final Font HEADER_FONT = new Font("SansSerif", Font.BOLD, 11);
-    private static final Font CELL_FONT = new Font("SansSerif", Font.BOLD, 11);
-    private static final String LETTER_SPACING = "0.5px"; // For better readability
+    protected static final Font HEADER_FONT = new Font("SansSerif", Font.BOLD, 11);
+    protected static final Font CELL_FONT = new Font("SansSerif", Font.BOLD, 11);
+    protected static final String LETTER_SPACING = "0.5px"; // For better readability
     
     public TableRenderer(TableElm table) {
         this.table = table;
@@ -113,8 +114,9 @@ public class TableRenderer {
     /**
      * Get voltage color for text display - bypasses highlight coloring
      * so text stays readable even when table is highlighted
+     * Protected to allow subclasses (CurrentTransactionsMatrixRenderer) to reuse this logic
      */
-    private Color getTextVoltageColor(double volts) {
+    protected Color getTextVoltageColor(double volts) {
         if (!CirSim.theSim.voltsCheckItem.getState()) {
             return CircuitElm.whiteColor;
         }
@@ -145,7 +147,7 @@ public class TableRenderer {
         int dataRowsHeight = table.collapsedMode ? 0 : (table.rows * (table.cellHeight + table.cellSpacing));
         int computedRowHeight = table.cellHeight + table.cellSpacing;
         
-        int tableWidth = rowDescColWidth + table.cellSpacing + table.cols * cellWidthPixels + (table.cols + 1) * table.cellSpacing;
+        int tableWidth = rowDescColWidth + table.cellSpacing + table.getCols() * cellWidthPixels + (table.getCols() + 1) * table.cellSpacing;
         int tableHeight = titleHeight + typeRowHeight + headerRowHeight + initialRowHeight + dataRowsHeight + computedRowHeight;
 
         // Update cached values if enough time has passed (500ms = twice per second)
@@ -221,11 +223,11 @@ public class TableRenderer {
     protected void updateCachedValues() {
         // Initialize cache arrays if needed
         if (cachedCellValues == null || cachedCellValues.length != table.rows || 
-            (cachedCellValues.length > 0 && cachedCellValues[0].length != table.cols)) {
-            cachedCellValues = new double[table.rows][table.cols];
+            (cachedCellValues.length > 0 && cachedCellValues[0].length != table.getCols())) {
+            cachedCellValues = new double[table.rows][table.getCols()];
         }
-        if (cachedSumValues == null || cachedSumValues.length != table.cols) {
-            cachedSumValues = new double[table.cols];
+        if (cachedSumValues == null || cachedSumValues.length != table.getCols()) {
+            cachedSumValues = new double[table.getCols()];
         }
         
         // Update cell values for regular (non-ALE) columns only
@@ -248,7 +250,7 @@ public class TableRenderer {
         
         // Step 2: Calculate ALE column sum using the already-calculated regular column sums
         if (hasALEColumn()) {
-            int aleCol = table.cols - 1;
+            int aleCol = table.getCols() - 1;
             double totalAssets = 0.0, totalLiabilities = 0.0, totalEquity = 0.0;
             
             // Use the CACHED sum values that were just calculated
@@ -268,8 +270,9 @@ public class TableRenderer {
      * @param row Row index
      * @param col Column index
      * @return Cached cell value or 0.0 if out of bounds
+     * Protected to allow subclasses (CurrentTransactionsMatrixRenderer) to reuse this logic
      */
-    private double getCachedCellValue(int row, int col) {
+    protected double getCachedCellValue(int row, int col) {
         if (cachedCellValues != null && row >= 0 && row < cachedCellValues.length &&
             col >= 0 && col < cachedCellValues[row].length) {
             return cachedCellValues[row][col];
@@ -302,22 +305,22 @@ public class TableRenderer {
      * Check if the table has an ALE column (last column when cols >= 4)
      */
     private boolean hasALEColumn() {
-        return table.cols >= 4;
+        return table.getCols() >= 4;
     }
     
     /**
      * Get the number of regular (non-ALE) columns
      */
     private int getRegularColumnCount() {
-        return hasALEColumn() ? (table.cols - 1) : table.cols;
+        return hasALEColumn() ? (table.getCols() - 1) : table.getCols();
     }
     
     /**
      * Get the stock name for a column (null if none)
      */
     private String getColumnStockName(int col) {
-        if (table.outputNames != null && col < table.outputNames.length) {
-            String name = table.outputNames[col];
+        if (col >= 0 && col < table.columns.size()) {
+            String name = table.columns.get(col).getStockName();
             if (name != null && !name.trim().isEmpty()) {
                 return name.trim();
             }
@@ -327,10 +330,11 @@ public class TableRenderer {
     
     /**
      * Get the column type, handling null cases
+     * Protected to allow subclasses (CurrentTransactionsMatrixRenderer) to reuse this logic
      */
-    private ColumnType getColumnType(int col) {
-        if (table.columnTypes != null && col < table.columnTypes.length && table.columnTypes[col] != null) {
-            return table.columnTypes[col];
+    protected ColumnType getColumnType(int col) {
+        if (col >= 0 && col < table.columns.size()) {
+            return table.columns.get(col).getType();
         }
         return ColumnType.ASSET; // Default
     }
@@ -351,7 +355,7 @@ public class TableRenderer {
         int cellWidthPixels = table.getCellWidthPixels();
         
         int rowDescColWidth = table.collapsedMode ? 0 : cellWidthPixels; // Hide in collapsed mode
-        int tableWidth = rowDescColWidth + table.cellSpacing + table.cols * cellWidthPixels + (table.cols + 1) * table.cellSpacing;
+        int tableWidth = rowDescColWidth + table.cellSpacing + table.getCols() * cellWidthPixels + (table.getCols() + 1) * table.cellSpacing;
         int titleY = tableY + offsetY;
         
         // Draw light blue background for title area if hovering, but exclude the arrow area
@@ -413,11 +417,11 @@ public class TableRenderer {
         }
 
         // Draw data column header cells text
-        for (int col = 0; col < table.cols; col++) {
+        for (int col = 0; col < table.getCols(); col++) {
             int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
             
-            String header = (table.outputNames != null && col < table.outputNames.length) ?
-                           table.outputNames[col] : "";
+            String header = (col < table.columns.size()) ?
+                           table.columns.get(col).getStockName() : "";
             
             // Check if this table is the master for this output name and add star prefix
             String displayHeader = header;
@@ -455,9 +459,9 @@ public class TableRenderer {
         
         // Draw column type cells text - merge adjacent cells with same type
         int col = 0;
-        while (col < table.cols) {
+        while (col < table.getCols()) {
             // Check if this is an A-L-E computed column
-            boolean isALEColumn = (col == table.cols - 1 && table.cols >= 4);
+            boolean isALEColumn = (col == table.getCols() - 1 && table.getCols() >= 4);
             
             if (isALEColumn) {
                 // A-L-E column: don't merge, just draw empty
@@ -473,9 +477,9 @@ public class TableRenderer {
                 int endCol = col;
                 
                 // Count consecutive columns with same type (but stop before A-L-E column)
-                while (endCol + 1 < table.cols) {
+                while (endCol + 1 < table.getCols()) {
                     // Check if next column would be A-L-E
-                    boolean nextIsALE = (endCol + 1 == table.cols - 1 && table.cols >= 4);
+                    boolean nextIsALE = (endCol + 1 == table.getCols() - 1 && table.getCols() >= 4);
                     if (nextIsALE) break;
                     
                     ColumnType nextType = table.getColumnType(endCol + 1);
@@ -522,19 +526,19 @@ public class TableRenderer {
         // Accumulate values for ALE calculation
         double assets = 0.0, liabilities = 0.0, equity = 0.0;
         
-        for (int col = 0; col < table.cols; col++) {
+        for (int col = 0; col < table.getCols(); col++) {
             int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
             
             // Get initial value - calculate ALE inline for last column when cols >= 4
             double initialValue;
-            boolean isALECol = hasALEColumn() && col == table.cols - 1;
+            boolean isALECol = hasALEColumn() && col == table.getCols() - 1;
             
             if (isALECol) {
                 // ALE column: sum(Assets) - sum(Liabilities) - sum(Equity)
                 initialValue = assets - liabilities - equity;
             } else {
-                initialValue = (table.initialValues != null && col < table.initialValues.length) 
-                    ? table.initialValues[col] : 0.0;
+                initialValue = (col < table.columns.size()) 
+                    ? table.columns.get(col).getInitialValue() : 0.0;
                 
                 // Accumulate values by type for ALE calculation
                 ColumnType type = getColumnType(col);
@@ -586,7 +590,7 @@ public class TableRenderer {
             g.setFont(CELL_FONT);
             double assets = 0.0, liabilities = 0.0, equity = 0.0;
             // Draw data cells for this row
-            for (int col = 0; col < table.cols; col++) {
+            for (int col = 0; col < table.getCols(); col++) {
                 int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
                 
                 // Get voltage - calculate ALE inline for last column when cols >= 4
@@ -602,10 +606,10 @@ public class TableRenderer {
                 // No background fill needed - canvas is already filled with background color by CirSim
                 
                 // Check if this is an A-L-E column (computed, no equation)
-                boolean isALECol = hasALEColumn() && col == table.cols - 1;
+                boolean isALECol = hasALEColumn() && col == table.getCols() - 1;
                 
                 // Display equation and voltage in cell (or just voltage for A-L-E)
-                String equation = table.cellEquations[row][col];
+                String equation = (col < table.columns.size()) ? table.columns.get(col).getCellEquation(row) : "";
                 if (isALECol) {
                     voltage = assets - liabilities - equity;
                     // A-L-E column: ALWAYS display only the computed value (no equation)
@@ -618,19 +622,24 @@ public class TableRenderer {
                     String voltageText = CircuitElm.getUnitText(voltage, table.tableUnits);
                     table.drawCenteredText(g, voltageText, cellX + cellWidthPixels/2, cellY + table.cellHeight/2, true);
                 } else if (equation != null && !equation.trim().isEmpty()) {
-                    // Regular cell: display equation = value OR just equation based on showCellValues setting
+                    // Regular cell: display based on showCellValues mode (0=Equation, 1=Equation:Value, 2=Value)
                     g.setColor(getTextVoltageColor(voltage));
-                    String displayText = truncateEquation(equation, g);
+                    String displayText;
                     
-                    if (table.showCellValues) {
-                        // Show "equation = value"
+                    if (table.showCellValues == 2) {
+                        // Mode 2: Show just "value"
+                        displayText = CircuitElm.getUnitText(voltage, table.tableUnits);
+                    } else if (table.showCellValues == 1) {
+                        // Mode 1: Show "equation: value"
+                        String equation_truncated = truncateEquation(equation, g);
                         String voltageText = CircuitElm.getUnitText(voltage, table.tableUnits);
-                        String combinedText = displayText + ": " + voltageText;
-                        table.drawCenteredText(g, combinedText, cellX + cellWidthPixels/2, cellY + table.cellHeight/2, true);
+                        displayText = equation_truncated + ": " + voltageText;
                     } else {
-                        // Show just "equation"
-                        table.drawCenteredText(g, displayText, cellX + cellWidthPixels/2, cellY + table.cellHeight/2, true);
+                        // Mode 0 (default): Show just "equation"
+                        displayText = truncateEquation(equation, g);
                     }
+                    
+                    table.drawCenteredText(g, displayText, cellX + cellWidthPixels/2, cellY + table.cellHeight/2, true);
                 }
             }
             
@@ -715,14 +724,14 @@ public class TableRenderer {
         // Accumulate values for ALE calculation (using cached values)
         double assets = 0.0, liabilities = 0.0, equity = 0.0;
         
-        for (int col = 0; col < table.cols; col++) {
+        for (int col = 0; col < table.getCols(); col++) {
             int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
             
             // Get the computed value from cache (updated twice per second)
             double computedValue;
             
             // Check if this is an A-L-E column
-            boolean isALEColumn = (col == table.cols - 1 && table.cols >= 4);
+            boolean isALEColumn = (col == table.getCols() - 1 && table.getCols() >= 4);
             
             if (isALEColumn) {
                 // ALE column: sum(Assets) - sum(Liabilities) - sum(Equity)
@@ -763,7 +772,7 @@ public class TableRenderer {
         int rowY = tableY + offsetY;
         
         g.setColor(CircuitElm.lightGrayColor);
-        int tableWidth = rowDescColWidth + table.cellSpacing * 2 + table.cols * (cellWidthPixels + table.cellSpacing);
+        int tableWidth = rowDescColWidth + table.cellSpacing * 2 + table.getCols() * (cellWidthPixels + table.cellSpacing);
         
         // Horizontal lines (top and bottom of row)
         g.drawLine(tableX, rowY, tableX + tableWidth, rowY);
@@ -777,17 +786,17 @@ public class TableRenderer {
         g.drawLine(x, rowY, x, rowY + table.cellHeight);
         
         // Between and after data columns - merge cells with same type (no vertical lines)
-        for (int col = 0; col <= table.cols; col++) {
+        for (int col = 0; col <= table.getCols(); col++) {
             x = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
             
             // Check if we should draw a line at this position
             boolean drawDouble = false;
             boolean drawLine = false;
             
-            if (col == table.cols) {
+            if (col == table.getCols()) {
                 // Always draw line at right edge of table
                 drawLine = true;
-            } else if (col > 0 && col < table.cols) {
+            } else if (col > 0 && col < table.getCols()) {
                 // Check if column type changes between adjacent columns
                 ColumnType prevType = table.getColumnType(col - 1);
                 ColumnType currType = table.getColumnType(col);
@@ -815,14 +824,15 @@ public class TableRenderer {
     
     /**
      * Draw grid lines for a single row
+     * Protected to allow subclasses (CurrentTransactionsMatrixRenderer) to reuse this logic
      * @param isSumRow if true, draws a double line above the row
      */
-    private void drawRowGridLines(Graphics g, int offsetY, int tableX, int rowDescColWidth, int cellWidthPixels, boolean isSumRow) {
+    protected void drawRowGridLines(Graphics g, int offsetY, int tableX, int rowDescColWidth, int cellWidthPixels, boolean isSumRow) {
         int tableY = table.getTableY();
         int rowY = tableY + offsetY;
         
         g.setColor(CircuitElm.lightGrayColor);
-        int tableWidth = rowDescColWidth + table.cellSpacing * 2 + table.cols * (cellWidthPixels + table.cellSpacing);
+        int tableWidth = rowDescColWidth + table.cellSpacing * 2 + table.getCols() * (cellWidthPixels + table.cellSpacing);
         
         // Horizontal lines (top and bottom of row)
         // For sum row, draw double line at top
@@ -840,12 +850,12 @@ public class TableRenderer {
         g.drawLine(x, rowY, x, rowY + table.cellHeight);
         
         // Between and after data columns - always draw all vertical lines
-        for (int col = 0; col <= table.cols; col++) {
+        for (int col = 0; col <= table.getCols(); col++) {
             x = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
             
             // Check if we should draw a double line (when column type changes)
             boolean drawDouble = false;
-            if (col > 0 && col < table.cols) {
+            if (col > 0 && col < table.getCols()) {
                 ColumnType prevType = table.getColumnType(col - 1);
                 ColumnType currType = table.getColumnType(col);
                 

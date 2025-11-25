@@ -23,10 +23,12 @@ public class TableEquationManager {
      * Recompile all equations when labeled nodes change
      */
     public void recompileAllEquations() {
-        for (int row = 0; row < table.rows; row++) {
-            for (int col = 0; col < table.cols; col++) {
-                if (table.cellEquations[row][col] != null && !table.cellEquations[row][col].trim().isEmpty()) {
-                    compileEquation(row, col, table.cellEquations[row][col]);
+        for (int col = 0; col < table.columns.size(); col++) {
+            TableColumn column = table.columns.get(col);
+            for (int row = 0; row < table.rows; row++) {
+                String equation = column.getCellEquation(row);
+                if (equation != null && !equation.trim().isEmpty()) {
+                    compileEquation(row, col, equation);
                 }
             }
         }
@@ -40,28 +42,31 @@ public class TableEquationManager {
             return;
         }
         
+        TableColumn column = table.columns.get(col);
+        
         if (equation == null || equation.trim().isEmpty()) {
-            table.compiledExpressions[row][col] = null;
+            column.setCompiledExpression(row, null);
             return;
         }
         
         try {
             ExprParser parser = new ExprParser(equation);
-            table.compiledExpressions[row][col] = parser.parseExpression();
+            Expr compiledExpr = parser.parseExpression();
             String err = parser.gotError();
             if (err != null) {
                 // Provide helpful error message with available variables
                 String availableVars = getAvailableVariablesString();
                 CirSim.console("TableElm: Parse error in equation [" + row + "][" + col + "]: " + equation + ": " + err);
                 CirSim.console("TableElm: " + availableVars);
-                table.compiledExpressions[row][col] = null;
+                column.setCompiledExpression(row, null);
                 return;
             }
+            column.setCompiledExpression(row, compiledExpr);
         } catch (Exception e) {
             String availableVars = getAvailableVariablesString();
             CirSim.console("TableElm: Exception parsing equation [" + row + "][" + col + "]: " + e.getMessage());
             CirSim.console("TableElm: " + availableVars);
-            table.compiledExpressions[row][col] = null;
+            column.setCompiledExpression(row, null);
         }
     }
     
@@ -78,18 +83,15 @@ public class TableEquationManager {
     /**
      * Get voltage value for a cell by evaluating its equation
      */
-    public double 
-    getVoltageForCell(int row, int col) {
+    public double getVoltageForCell(int row, int col) {
         if (!isValidCell(row, col)) {
             return 0.0;
         }
         
-        // For A-L-E columns, getVoltageForCell handles fetching from renderer cache
-        // For normal columns, it evaluates equations
-        // This keeps the equation manager simple and delegates A-L-E logic to TableElm
+        TableColumn column = table.columns.get(col);
         
         // All cells now use equations
-        Expr e = table.compiledExpressions[row][col];
+        Expr e = column.getCompiledExpression(row);
         if (e != null) {
             // Fast-path: if the compiled expression is a direct node reference,
             // return the value without invoking the general evaluator.
@@ -106,7 +108,7 @@ public class TableEquationManager {
             }
 
             // Otherwise evaluate the compiled expression normally
-            ExprState state = table.expressionStates[row][col];
+            ExprState state = column.getExpressionState(row);
             updateExpressionState(state);
             return e.eval(state);
         }
@@ -138,6 +140,6 @@ public class TableEquationManager {
      * Check if cell coordinates are valid
      */
     private boolean isValidCell(int row, int col) {
-        return row >= 0 && row < table.rows && col >= 0 && col < table.cols;
+        return row >= 0 && row < table.rows && col >= 0 && col < table.columns.size();
     }
 }
