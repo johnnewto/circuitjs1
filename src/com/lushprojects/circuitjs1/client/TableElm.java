@@ -6,7 +6,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.TableEditDialog.ColumnType;
+import com.lushprojects.circuitjs1.client.TableColumn.ColumnType;
 import java.util.ArrayList;
 
 /**
@@ -27,6 +27,7 @@ public class TableElm extends ChipElm {
     protected boolean collapsedMode = false; // Collapsed mode: show only title, headers, and computed row
     protected int priority = 5; // Priority for master table selection (higher = evaluated first, becomes master)
     protected int initMode = 0; // Initialization mode: 0=default, 1=all, 2=custom (set when manually edited)
+    protected boolean showALE = true; // Control whether to show A-L-E computed column (false for CTM)
     
     // Column data - encapsulates stockNames, columnTypes, initialValues, cellEquations, etc.
     protected ArrayList<TableColumn> columns;
@@ -94,16 +95,16 @@ public class TableElm extends ChipElm {
         registerAllStocks();
     }
     
-    /**
-     * Check if a column is the A_L_E computed column
-     * A_L_E columns are display-only (calculated in TableRenderer), not electrical outputs
-     */
-    private boolean isALEColumn(int col) {
-        if (columns == null || col < 0 || col >= columns.size()) {
-            return false;
-        }
-        return columns.get(col).isALE();
-    }
+    // /**
+    //  * Check if a column is the A_L_E computed column
+    //  * A_L_E columns are display-only (calculated in TableRenderer), not electrical outputs
+    //  */
+    // private boolean isALEColumn(int col) {
+    //     if (columns == null || col < 0 || col >= columns.size()) {
+    //         return false;
+    //     }
+    //     return columns.get(col).isALE();
+    // }
     
     /**
      * Check if this table is the master for a given column
@@ -135,12 +136,12 @@ public class TableElm extends ChipElm {
     private void registerAllStocks() {
         if (columns != null) {
             for (int col = 0; col < columns.size(); col++) {
-                // Skip A-L-E computed columns - they are not real stocks
-                if (isALEColumn(col)) {
-                    continue;
-                }
                 
                 TableColumn column = columns.get(col);
+                // Skip A-L-E computed columns - they are not real stocks
+                if (column.isALE()) {
+                    continue;
+                }
                 // Skip empty or blank column headers
                 if (column.isEmpty()) {
                     continue;
@@ -303,7 +304,7 @@ public class TableElm extends ChipElm {
         
         for (int col = 0; col < columns.size(); col++) {
             TableColumn column = columns.get(col);
-            if (!isALEColumn(col) && !column.isEmpty()) {
+            if (!column.isALE() && !column.isEmpty()) {
                 if (ComputedValues.isMasterTable(column.getStockName().trim(), this)) {
                     return true;
                 }
@@ -321,7 +322,8 @@ public class TableElm extends ChipElm {
         if (pins == null) return;
         
         for (int col = 0; col < getCols() && col < pins.length; col++) {
-            pins[col].output = !isALEColumn(col) && isMasterForColumn(col);
+            TableColumn column = columns.get(col);
+            pins[col].output = !column.isALE() && isMasterForColumn(col);
         }
     }
     
@@ -334,9 +336,8 @@ public class TableElm extends ChipElm {
         if (columns == null) return;
         
         for (int col = 0; col < columns.size(); col++) {
-            if (isALEColumn(col)) continue;
-            
             TableColumn column = columns.get(col);
+            if (column.isALE()) continue;
             if (column.isEmpty()) continue;
             
             String name = column.getStockName();
@@ -378,9 +379,9 @@ public class TableElm extends ChipElm {
         
         int count = 0;
         for (int col = 0; col < columns.size(); col++) {
-            if (isALEColumn(col)) continue;
             
             TableColumn column = columns.get(col);
+            if (column.isALE()) continue;
             if (column.isEmpty()) continue;
             
             if (ComputedValues.isMasterTable(column.getStockName().trim(), this)) {
@@ -492,6 +493,9 @@ public class TableElm extends ChipElm {
     // Note: A-L-E values are calculated in TableRenderer.updateCachedValues() for display
     @Override
     public void doStep() {
+        CirSim.console("[doStep] This method should be overridden by subclasses (e.g., GodlyTableElm)");    
+    }
+    void old_doStep() {
         // Update input pin values from circuit
         for (int i = 0; i < getPostCount(); i++) {
             Pin p = pins[i];
@@ -501,16 +505,35 @@ public class TableElm extends ChipElm {
         }
 
         // Compute all NON-A-L-E columns
-        if (columns == null) return;
+        if (columns == null) {
+            CirSim.console("[doStep] Table '" + tableTitle + "': columns is NULL");
+            return;
+        }
         
+        if (rows == 0) {
+            CirSim.console("[doStep] Table '" + tableTitle + "': rows is 0");
+            return;
+        }
+        
+        boolean loggedOnce = false;
         for (int col = 0; col < columns.size(); col++) {
             TableColumn column = columns.get(col);
             if (column.isALE()) continue;
             
-            // Evaluate equations for this column
+            // Evaluate equations for this column and cache individual cell values
             double columnSum = 0.0;
             for (int row = 0; row < rows; row++) {
-                columnSum += equationManager.getVoltageForCell(row, col);
+                String equation = column.getCellEquation(row);
+                Expr compiledExpr = column.getCompiledExpression(row);
+                double cellValue = equationManager.getVoltageForCell(row, col);
+                column.setCachedCellValue(row, cellValue); // Cache the value
+                
+                // Log first cell to diagnose why values are zero
+                if (!loggedOnce && row == 0 && col == 0) {
+                    CirSim.console("[doStep] Table '" + tableTitle + "' cell[0][0]: equation='" + equation + "', compiled=" + (compiledExpr != null) + ", value=" + cellValue + ", rows=" + rows + ", cols=" + columns.size());
+                    loggedOnce = true;
+                }
+                columnSum += cellValue;
             }
 
             // Check convergence
@@ -545,6 +568,10 @@ public class TableElm extends ChipElm {
     
     @Override
     public void stepFinished() {
+	       // This method should be overridden by subclasses (e.g., GodlyTableElm)
+        CirSim.console("[stepFinished] This method should be overridden by subclasses (e.g., GodlyTableElm)");   
+    }
+    void old_stepFinished() {
         // Register computed values for master columns (skip A-L-E and empty)
         if (columns == null) return;
         
@@ -849,31 +876,11 @@ public class TableElm extends ChipElm {
         
         // For A-L-E columns, compute dynamically from other columns' initial values
         if (column.isALE()) {
-            double assets = 0.0;
-            double liabilities = 0.0;
-            double equity = 0.0;
-            
-            // Sum up all non-ALE columns
-            for (int c = 0; c < columns.size(); c++) {
-                TableColumn col_c = columns.get(c);
-                if (col_c.isALE()) continue;
-                
-                double value = col_c.getInitialValue();
-                
-                switch (col_c.getType()) {
-                    case ASSET:
-                        assets += value;
-                        break;
-                    case LIABILITY:
-                        liabilities += value;
-                        break;
-                    case EQUITY:
-                        equity += value;
-                        break;
+            return TableColumn.calculateALE(columns, new TableColumn.ValueExtractor() {
+                public double getValue(TableColumn col) {
+                    return col.getInitialValue();
                 }
-            }
-            
-            return assets - liabilities - equity;
+            });
         }
         
         // For non-ALE columns, return stored value
@@ -950,6 +957,11 @@ public class TableElm extends ChipElm {
     
     public void setPriority(int priority) {
         this.priority = priority;
+    }
+    
+    // A-L-E column visibility accessor
+    public boolean shouldShowALE() {
+        return showALE;
     }
     
     // Row description accessor methods

@@ -289,10 +289,13 @@ public class GodlyTableElm extends TableElm {
                 continue;
             }
             
-            // Compute column sum (like parent does)
+            // Compute column sum (like parent does) and cache individual cell values
             double columnSum = 0.0;
+            TableColumn column = columns.get(col);
             for (int row = 0; row < rows; row++) {
-                columnSum += getVoltageForCell(row, col);
+                double cellValue = getVoltageForCell(row, col);
+                column.setCachedCellValue(row, cellValue); // Cache the value for rendering
+                columnSum += cellValue;
             }
             
             // Like VCVSElm: check input convergence using dynamic threshold

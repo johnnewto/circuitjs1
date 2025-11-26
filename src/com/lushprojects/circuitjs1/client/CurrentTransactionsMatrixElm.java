@@ -6,7 +6,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.TableEditDialog.ColumnType;
+import com.lushprojects.circuitjs1.client.TableColumn.ColumnType;
 import java.util.ArrayList;
 
 /**
@@ -41,7 +41,9 @@ public class CurrentTransactionsMatrixElm extends TableElm {
      */
     public CurrentTransactionsMatrixElm(int xx, int yy) {
         super(xx, yy);
-         initializeMatrix();
+        CirSim.console("CTM: Constructor (new from menu)");
+        showALE = true; // CTM shows A-L-E column
+        initializeMatrix();
     }
 
     /**
@@ -50,6 +52,9 @@ public class CurrentTransactionsMatrixElm extends TableElm {
      */
     public CurrentTransactionsMatrixElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
         super(xa, ya, xb, yb, f, st);
+        showALE = true; // CTM shows A-L-E column
+        
+        CirSim.console("CTM: Constructor from file. Initial columns count: " + (columns != null ? columns.size() : "null"));
         
         // Note: initMode is now parsed by TableElm's parseTableData() method
         
@@ -57,6 +62,7 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         if (st.hasMoreTokens()) {
             try {
                 String customStockNamesStr = st.nextToken();
+                CirSim.console("  customStockNamesStr from file: '" + customStockNamesStr + "'");
                 if (customStockNamesStr != null && !customStockNamesStr.trim().isEmpty() && 
                     !customStockNamesStr.equals("\"\"")) {
                     // Remove quotes and parse comma-separated names
@@ -67,23 +73,49 @@ public class CurrentTransactionsMatrixElm extends TableElm {
                         for (int i = 0; i < names.length; i++) {
                             customStockNames[i] = names[i].trim();
                         }
+                        CirSim.console("  Loaded " + customStockNames.length + " custom stock names from file");
                    }
                 }
             } catch (Exception e) {
                 customStockNames = null;
+                CirSim.console("  Exception parsing custom stock names: " + e.getMessage());
             }
-        }
-        
-        // Parse current column names (saved for reference, but ignored unless customStockNames is set)
-        // This token exists but we skip it - we'll auto-populate from current registry state
-        if (st.hasMoreTokens()) {
-            st.nextToken(); // Skip the saved column names - we regenerate from registry
         }
         
         // Clear columns loaded by parent class - we'll regenerate based on current registry
         // Parent TableElm constructor already called parseTableData() which loaded all columns,
         // but for CTM we want to auto-populate based on equity filter or custom names
-        columns = null;
+        
+        CirSim.console("  Before filtering: customStockNames=" + (customStockNames != null ? customStockNames.length : "null") + 
+                      ", columns=" + (columns != null ? columns.size() : "null"));
+        
+        // If customStockNames was not provided in the file, extract stock names from loaded columns
+        // (excluding any A-L-E columns that shouldn't be there)
+        if (customStockNames == null && columns != null && columns.size() > 0) {
+            CirSim.console("CTM: Loading from file, filtering columns. Original count: " + columns.size());
+            ArrayList<String> stockNamesList = new ArrayList<String>();
+            for (TableColumn col : columns) {
+                String stockName = col.getStockName();
+                CirSim.console("  Checking column: '" + stockName + "'");
+                boolean isALE = isStockFromALEColumn(stockName);
+                CirSim.console("    isStockFromALEColumn: " + isALE);
+                if (!isALE && stockName != null && !stockName.trim().isEmpty()) {
+                    stockNamesList.add(stockName);
+                    CirSim.console("    -> Added to list");
+                } else {
+                    CirSim.console("    -> Filtered out");
+                }
+            }
+            if (stockNamesList.size() > 0) {
+                customStockNames = new String[stockNamesList.size()];
+                for (int i = 0; i < stockNamesList.size(); i++) {
+                    customStockNames[i] = stockNamesList.get(i);
+                }
+                CirSim.console("  Filtered columns. New count: " + customStockNames.length);
+            }
+        }
+        
+        columns = null; // Clear and reinitialize from registry
         
         // Initialize the matrix based on loaded configuration
         // If customStockNames is set, it will use those; otherwise defaults to equity stocks
@@ -109,6 +141,12 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         // Skip initialization if registry is empty (during menu creation)
         // The matrix will be initialized later when actually used
         String[] masterStocks = ComputedValues.getAllMasterStockNames();
+        CirSim.console("CTM: initializeMatrix() - masterStocks count: " + 
+                      (masterStocks != null ? masterStocks.length : "null"));
+        if (masterStocks != null && masterStocks.length > 0) {
+            CirSim.console("  Master stocks: " + String.join(", ", masterStocks));
+        }
+        
         if (masterStocks == null || masterStocks.length == 0) {
             // Set basic properties but don't populate columns yet
             tableTitle = MATRIX_TITLE;
@@ -167,15 +205,24 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     private void applyCustomStockNames() {
         if (customStockNames == null || customStockNames.length == 0) return;
         
+        CirSim.console("CTM: applyCustomStockNames() with " + customStockNames.length + " names");
         ArrayList<StockInfo> stockInfoList = new ArrayList<StockInfo>();
         
         for (String stockName : customStockNames) {
+            CirSim.console("  Applying custom stock: '" + stockName + "'");
             if (stockName != null && !stockName.trim().isEmpty()) {
+                // Filter out A-L-E columns
+                if (isStockFromALEColumn(stockName)) {
+                    CirSim.console("    -> Filtered out (A-L-E column)");
+                    continue;
+                }
+                
                 StockInfo info = new StockInfo();
                 info.stockName = stockName;
                 info.columnType = getColumnTypeFromMasterTable(stockName);
                 info.sourceTableName = getSourceTableName(stockName);
                 stockInfoList.add(info);
+                CirSim.console("    -> Added");
             }
         }
         
@@ -224,11 +271,15 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         String[] masterStocks = ComputedValues.getAllMasterStockNames();
         ArrayList<StockInfo> stockInfoList = new ArrayList<StockInfo>();
         
+        CirSim.console("CTM: buildStockInfoList() processing " + masterStocks.length + " master stocks");
         for (String stockName : masterStocks) {
+            CirSim.console("  Checking stock: '" + stockName + "'");
             if (isStockFromALEColumn(stockName)) {
+                CirSim.console("    -> Filtered out (A-L-E)");
                 continue;
             }
             if (!filter.accept(stockName)) {
+                CirSim.console("    -> Filtered out (by filter)");
                 continue;
             }
             
@@ -237,8 +288,10 @@ public class CurrentTransactionsMatrixElm extends TableElm {
             info.columnType = getColumnTypeFromMasterTable(stockName);
             info.sourceTableName = getSourceTableName(stockName);
             stockInfoList.add(info);
+            CirSim.console("    -> Added to list");
         }
         
+        CirSim.console("  Final list: " + stockInfoList.size() + " stocks");
         sortBySourceTable(stockInfoList);
         return stockInfoList;
     }
@@ -254,8 +307,10 @@ public class CurrentTransactionsMatrixElm extends TableElm {
             columns.add(new TableColumn(info.stockName, info.columnType, initialValue, rows));
         }
         
-        // Add A-L-E computed column
-        columns.add(TableColumn.createALE(rows));
+        // Add A-L-E computed column if showALE is true
+        if (showALE) {
+            columns.add(new TableColumn("A-L-E", ColumnType.COMPUTED, 0.0, rows));
+        }
         
         // Populate flows/equations when not collapsed
         if (!collapsedMode) {
@@ -366,20 +421,31 @@ public class CurrentTransactionsMatrixElm extends TableElm {
             return false;
         }
         
+        // Check if the stock name itself is "A-L-E" (case insensitive)
+        String trimmedName = stockName.trim();
+        if (trimmedName.equalsIgnoreCase("A-L-E")) {
+            CirSim.console("    isStockFromALEColumn: '" + stockName + "' matches 'A-L-E' by name");
+            return true;
+        }
+        
         // Get the master table for this stock
-        Object masterTableObj = ComputedValues.getComputingTable(stockName.trim());
+        Object masterTableObj = ComputedValues.getComputingTable(trimmedName);
         
         if (masterTableObj instanceof TableElm) {
             TableElm masterTable = (TableElm) masterTableObj;
             
             // Find the column index in the master table
-            int colIndex = masterTable.findColumnByStockName(stockName.trim());
+            int colIndex = masterTable.findColumnByStockName(trimmedName);
             
             if (colIndex >= 0) {
                 // Check if this column is an A-L-E column in the source table
                 // A-L-E column is the last column when there are 4+ columns
                 int masterCols = masterTable.getCols();
-                return masterCols >= 4 && colIndex == (masterCols - 1);
+                boolean isLastCol = masterCols >= 4 && colIndex == (masterCols - 1);
+                if (isLastCol) {
+                    CirSim.console("    isStockFromALEColumn: '" + stockName + "' is A-L-E column in master table");
+                }
+                return isLastCol;
             }
         }
         
@@ -415,47 +481,46 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     }
     
     /**
-     * Update columns from registry when loading from file
-     * Checks if the table is empty or needs updating
+     * Check if the table is empty (no columns or all columns unnamed)
      */
+    private boolean isTableEmpty() {
+        if (columns == null || columns.size() == 0) {
+            return true;
+        }
+        
+        for (TableColumn col : columns) {
+            if (col.getStockName() != null && !col.getStockName().trim().isEmpty()) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
     /**
      * Update columns from registry when loading from file or after reset.
-     * Respects customStockNames if set, otherwise uses equity-only filter.
+     * Respects initMode setting: 0=Equity only, 1=All stocks, 2=Custom names.
      */
     private void updateFromRegistry() {
-        
-        // If in custom mode (initMode==2), don't auto-update from registry
+        // Custom mode doesn't auto-update from registry
         if (initMode == 2) {
             return;
         }
         
-        // If table is empty (no columns or all columns unnamed), populate from registry
-        boolean isEmpty = true;
-        if (columns != null && columns.size() > 0) {
-            for (TableColumn col : columns) {
-                if (col.getStockName() != null && !col.getStockName().trim().isEmpty()) {
-                    isEmpty = false;
-                    break;
-                }
-            }
-        }
-        
-        if (isEmpty) {
-            // Empty table: use equity-only filter (not all stocks)
-            // This respects the default CTM behavior
-            if (customStockNames != null) {
-                applyCustomStockNames();
+        if (isTableEmpty()) {
+            // Empty table: populate based on initMode
+            if (initMode == 1) {
+                autoPopulateFromRegistry();
             } else {
+                // Default to equity-only (initMode == 0)
                 initializeWithEquityStocksOnly();
             }
         } else {
-            // Non-empty table: check registry for master stocks excluding this matrix
+            // Non-empty table: check if registry has changed
             String[] masterStocks = ComputedValues.getMasterStockNamesExcluding(MATRIX_TITLE);
             
-            // If registry has different stocks than what we have, update
             if (shouldUpdateColumns(masterStocks)) {
                 updateColumnsFromStocks(masterStocks);
-            } else {
             }
         }
     }
@@ -490,7 +555,7 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     
     /**
      * Update our columns to match the registry stocks.
-     * Respects equity-only filter if customStockNames is not set.
+     * Respects initMode: 0=equity filter, 1=no filter, 2=custom (shouldn't be called).
      */
     private void updateColumnsFromStocks(String[] stocks) {
         ArrayList<StockInfo> stockInfoList = new ArrayList<StockInfo>();
@@ -505,10 +570,14 @@ public class CurrentTransactionsMatrixElm extends TableElm {
             info.columnType = getColumnTypeFromMasterTable(stockName);
             info.sourceTableName = getSourceTableName(stockName);
             
-            // Apply equity filter if no custom stock names are set
-            if (customStockNames == null && info.columnType != ColumnType.EQUITY) {
-                continue;
+            // Apply filter based on initMode
+            if (initMode == 0) {
+                // Equity-only mode: filter non-equity stocks
+                if (info.columnType != ColumnType.EQUITY) {
+                    continue;
+                }
             }
+            // initMode == 1: no filter, include all stocks
             
             stockInfoList.add(info);
         }
@@ -688,10 +757,14 @@ public class CurrentTransactionsMatrixElm extends TableElm {
             String stockNamesInput = ei.textf.getText().trim();
             
             if (stockNamesInput.isEmpty()) {
-                // Clear custom names, revert to equity mode
+                // Clear custom names - initMode stays as is (user can change it separately)
                 customStockNames = null;
-                initMode = 0; // Reset to Equity mode
-                initializeWithEquityStocksOnly();
+                // Re-populate based on current initMode
+                if (initMode == 1) {
+                    autoPopulateFromRegistry();
+                } else {
+                    initializeWithEquityStocksOnly();
+                }
             } else {
                 // Parse comma-separated stock names
                 String[] inputNames = stockNamesInput.split(",");
@@ -735,23 +808,11 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     
     @Override
     public String dump() {
-        // CTM dump: CircuitElm data + minimal TableElm data + CTM-specific flags + current column names
+        // CTM dump: CircuitElm data + minimal TableElm data + CTM-specific flags
         // TableElm format: rows getCols() cellWidth cellHeight cellSpacing showInitialValues decimalPlaces showCellValues collapsedMode priority title units
         // We use minimal values since we auto-populate from registry
         int t = getDumpType();
         String circuitData = (t < 127 ? ((char)t)+" " : t+" ") + x + " " + y + " " + x2 + " " + y2 + " " + flags;
-        
-        // Build current column names string (always save what's currently displayed)
-        String currentColumnsStr = "";
-        if (columns != null && columns.size() > 0) {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < columns.size(); i++) {
-                if (i > 0) sb.append(",");
-                String name = columns.get(i).getStockName();
-                sb.append(name != null ? name : "");
-            }
-            currentColumnsStr = sb.toString();
-        }
         
         // Build custom stock names string (only if user explicitly set them)
         String customStockNamesStr = "";
@@ -764,8 +825,9 @@ public class CurrentTransactionsMatrixElm extends TableElm {
             customStockNamesStr = sb.toString();
         }
         
-        // Format: minimal_table_data "customStockNames" "currentColumns"
-        String tableData = " 0 0 6 16 0 false 2 false " + collapsedMode + " " + priority + " " + initMode + " " + CustomLogicModel.escape(MATRIX_TITLE) + " \"\" \"" + customStockNamesStr + "\" \"" + currentColumnsStr + "\"";
+        // Format: minimal_table_data "customStockNames"
+        // Format: rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces showCellValues collapsedMode priority initMode title units customStockNames
+        String tableData = " 0 0 6 16 0 false 2 " + showCellValues + " " + collapsedMode + " " + priority + " " + initMode + " " + CustomLogicModel.escape(MATRIX_TITLE) + " \"\" \"" + customStockNamesStr + "\"";
         
         return circuitData + tableData;
     }
@@ -808,11 +870,6 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         String stockName = columns.get(col).getStockName();
         if (stockName == null || stockName.trim().isEmpty()) {
             return "Unknown";
-        }
-        
-        // A-L-E column doesn't have a source table
-        if ("A-L-E".equals(stockName)) {
-            return "";
         }
         
         // Get the master table for this stock from registry
@@ -895,11 +952,21 @@ public class CurrentTransactionsMatrixElm extends TableElm {
      * In normal mode: copies specific stock column equations.
      */
     private void populateCellEquationsFromMasters() {
+        // CirSim.console("CTM: Populating cell equations for " + rows + " rows, " + getCols() + " columns");
+        
         for (int row = 0; row < rows; row++) {
             String flowName = rowDescriptions[row];
+            // CirSim.console("CTM: Row " + row + " flowName='" + flowName + "'");
             
             for (int col = 0; col < getCols(); col++) {
-                String stockName = columns.get(col).getStockName();
+                TableColumn column = columns.get(col);
+                String stockName = column.getStockName();
+                
+                // Skip A-L-E computed columns - they don't have equations
+                if (column.isALE()) {
+                    // CirSim.console("  Col " + col + " stock='" + stockName + "' -> Skipping A-L-E (computed)");
+                    continue;
+                }
                 
                 if (stockName == null) {
                     columns.get(col).setCellEquation(row, "");
@@ -913,10 +980,15 @@ public class CurrentTransactionsMatrixElm extends TableElm {
                     int masterRow = findRowByFlowName(masterTable, flowName);
                     int masterCol = masterTable.findColumnByStockName(stockName.trim());
                     
+                    // CirSim.console("  Col " + col + " stock='" + stockName + "' masterTable='" + masterTable.getTableTitle() + 
+                                //  "' masterRow=" + masterRow + " masterCol=" + masterCol);
+                    
                     if (masterRow >= 0 && masterCol >= 0) {
                         String equation = masterTable.getCellEquation(masterRow, masterCol);
+                        CirSim.console("    -> Setting equation: '" + equation + "'");
                         columns.get(col).setCellEquation(row, (equation != null) ? equation : "");
                     } else {
+                        // CirSim.console("    -> Setting empty (row or col not found)");
                         columns.get(col).setCellEquation(row, "");
                     }
                 } else {
@@ -928,8 +1000,9 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     
     /**
      * Find the row index in a master table that matches a flow name
+     * Package-private for access by CurrentTransactionsMatrixRenderer
      */
-    private int findRowByFlowName(TableElm masterTable, String flowName) {
+    int findRowByFlowName(TableElm masterTable, String flowName) {
         if (flowName == null || flowName.trim().isEmpty()) {
             return -1;
         }
@@ -999,10 +1072,24 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         setupPins();
         allocNodes();
         setPoints();
+        
+        // Preserve initMode across super.reset() call
+        int savedInitMode = initMode;
         super.reset();
+        if (initMode != savedInitMode) {
+            initMode = savedInitMode;
+        }
     }
-    
 
+    @Override
+    public void doStep() {
+        // CirSim.console("[doStep] This method should be overridden by subclasses (e.g., GodlyTableElm)");    
+    }
+    @Override
+    public void stepFinished() {
+	    // This method should be overridden by subclasses (e.g., GodlyTableElm)
+        // CirSim.console("[stepFinished] This method should be overridden by subclasses (e.g., GodlyTableElm)");   
+    }
     
     @Override
     void stamp() {
@@ -1038,40 +1125,8 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     private double computeValueSafely(int col) {
         String stockName = columns.get(col).getStockName();
 
-        // Handle A-L-E column
-        if ("A-L-E".equals(stockName)) {
-            return computeALEValue();
-        }
-
-        // Get value from source table
+        // CTM does not have A-L-E column, all columns are from source tables
         return getValueFromSourceTable(stockName);
-    }
-    
-    /**
-     * Compute A-L-E value from other columns
-     */
-    private double computeALEValue() {
-        double assets = 0.0;
-        double liabilities = 0.0;
-        double equity = 0.0;
-        
-        for (int c = 0; c < getCols(); c++) {
-            if (c >= columns.size()) break;
-            if ("A-L-E".equals(columns.get(c).getStockName())) continue;
-            
-            double value = getComputedValueForDisplay(c);
-            ColumnType type = columns.get(c).getType();
-            
-            if (type == ColumnType.ASSET) {
-                assets += value;
-            } else if (type == ColumnType.LIABILITY) {
-                liabilities += value;
-            } else if (type == ColumnType.EQUITY) {
-                equity += value;
-            }
-        }
-        
-        return assets - liabilities - equity;
     }
     
     /**
@@ -1087,6 +1142,39 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         int colIndex = masterTable.findColumnByStockName(stockName.trim());
         
         return (colIndex >= 0) ? masterTable.getComputedValueForDisplay(colIndex) : 0.0;
+    }
+    
+    /**
+     * Update custom stock names from current columns.
+     * Called when columns are manually edited in the table editor.
+     * Package-private for access by TableEditDialog.
+     */
+    void updateCustomStockNamesFromColumns() {
+        if (columns == null || columns.size() == 0) {
+            customStockNames = null;
+            return;
+        }
+        
+        // Extract stock names from current columns (excluding A-L-E if present)
+        ArrayList<String> names = new ArrayList<String>();
+        for (int i = 0; i < columns.size(); i++) {
+            TableColumn col = columns.get(i);
+            if (!col.isALE()) {
+                String stockName = col.getStockName();
+                if (stockName != null && !stockName.trim().isEmpty()) {
+                    names.add(stockName.trim());
+                }
+            }
+        }
+        
+        if (names.size() > 0) {
+            customStockNames = new String[names.size()];
+            for (int i = 0; i < names.size(); i++) {
+                customStockNames[i] = names.get(i);
+            }
+        } else {
+            customStockNames = null;
+        }
     }
 }
 

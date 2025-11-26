@@ -131,6 +131,21 @@ public class ComputedValues {
     }
     
     /**
+     * Get the master table element for a specific stock name
+     * This is a convenience method that casts the result to TableElm
+     * 
+     * @param stockName The stock name to look up
+     * @return The master TableElm for this stock, or null if not found
+     */
+    public static TableElm getMasterTable(String stockName) {
+        Object table = getComputingTable(stockName);
+        if (table instanceof TableElm) {
+            return (TableElm) table;
+        }
+        return null;
+    }
+    
+    /**
      * Check if a specific table element is the master computer for a given value name
      * 
      * @param name The name/key of the computed value

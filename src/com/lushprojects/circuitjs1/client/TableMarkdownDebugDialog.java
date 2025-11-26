@@ -309,9 +309,9 @@ public class TableMarkdownDebugDialog {
                         int effectivePriority = basePriority;
                         
                         if (sim != null && sim.useWeightedPriority) {
-                            TableEditDialog.ColumnType colType = table.getColumnType(col);
-                            if (colType == TableEditDialog.ColumnType.ASSET || 
-                                colType == TableEditDialog.ColumnType.EQUITY) {
+                            TableColumn.ColumnType colType = table.getColumnType(col);
+                            if (colType == TableColumn.ColumnType.ASSET || 
+                                colType == TableColumn.ColumnType.EQUITY) {
                                 effectivePriority = basePriority + 10;
                             }
                         }
@@ -475,9 +475,9 @@ public class TableMarkdownDebugDialog {
                     int effectivePriority = basePriority;
                     String priorityNote = "";
                     if (sim != null && sim.useWeightedPriority && masterCol >= 0) {
-                        TableEditDialog.ColumnType colType = masterTable.getColumnType(masterCol);
-                        if (colType == TableEditDialog.ColumnType.ASSET || 
-                            colType == TableEditDialog.ColumnType.EQUITY) {
+                        TableColumn.ColumnType colType = masterTable.getColumnType(masterCol);
+                        if (colType == TableColumn.ColumnType.ASSET || 
+                            colType == TableColumn.ColumnType.EQUITY) {
                             effectivePriority = basePriority + 10;
                             priorityNote = " [Effective: " + effectivePriority + " due to " + colType + "]";
                         }
@@ -514,9 +514,9 @@ public class TableMarkdownDebugDialog {
                             // Calculate effective priority if weighted priority is enabled
                             String priorityStr = String.valueOf(basePriority);
                             if (sim != null && sim.useWeightedPriority && col >= 0) {
-                                TableEditDialog.ColumnType colType = table.getColumnType(col);
-                                if (colType == TableEditDialog.ColumnType.ASSET || 
-                                    colType == TableEditDialog.ColumnType.EQUITY) {
+                                TableColumn.ColumnType colType = table.getColumnType(col);
+                                if (colType == TableColumn.ColumnType.ASSET || 
+                                    colType == TableColumn.ColumnType.EQUITY) {
                                     int effectivePriority = basePriority + 10;
                                     priorityStr = basePriority + "→" + effectivePriority + " (" + colType + ")";
                                 }
@@ -559,7 +559,7 @@ public class TableMarkdownDebugDialog {
         
         // Add asset terms (positive)
         for (int col = 0; col < numCols; col++) {
-            if (table.getColumnType(col) == TableEditDialog.ColumnType.ASSET) {
+            if (table.getColumnType(col) == TableColumn.ColumnType.ASSET) {
                 String cell = table.getCellEquation(row, col);
                 if (cell != null && !cell.trim().isEmpty()) {
                     if (!first) eq.append(" + ");
@@ -571,7 +571,7 @@ public class TableMarkdownDebugDialog {
         
         // Subtract liability terms
         for (int col = 0; col < numCols; col++) {
-            if (table.getColumnType(col) == TableEditDialog.ColumnType.LIABILITY) {
+            if (table.getColumnType(col) == TableColumn.ColumnType.LIABILITY) {
                 String cell = table.getCellEquation(row, col);
                 if (cell != null && !cell.trim().isEmpty()) {
                     eq.append(" - ").append(wrapIfComplex(cell));
@@ -581,7 +581,7 @@ public class TableMarkdownDebugDialog {
         
         // Subtract equity term
         for (int col = 0; col < numCols; col++) {
-            if (table.getColumnType(col) == TableEditDialog.ColumnType.EQUITY) {
+            if (table.getColumnType(col) == TableColumn.ColumnType.EQUITY) {
                 String cell = table.getCellEquation(row, col);
                 if (cell != null && !cell.trim().isEmpty()) {
                     eq.append(" - ").append(wrapIfComplex(cell));

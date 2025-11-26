@@ -4547,6 +4547,10 @@ public CirSim() {
 	    dump += "% voltageUnit " + CustomLogicModel.escape(voltageUnitSymbol) + "\n";
 	}
 	
+	// Add canvas transform (zoom and position)
+	// Save as: % transform scale translateX translateY
+	dump += "% transform " + transform[0] + " " + transform[4] + " " + transform[5] + "\n";
+	
 	return dump;
     }
     
@@ -4736,6 +4740,7 @@ public CirSim() {
     void readCircuit(byte b[], int flags) {
 	int i;
 	int len = b.length;
+	boolean transformLoaded = false; // Track if transform was loaded from file
 	if ((flags & RC_RETAIN) == 0) {
 	    // Clear stock-flow synchronization registry when loading new circuit
 	    StockFlowRegistry.clearRegistry();
@@ -4813,6 +4818,20 @@ public CirSim() {
 			    String settingType = st.nextToken();
 			    if (settingType.equals("voltageUnit") && st.hasMoreTokens()) {
 				voltageUnitSymbol = CustomLogicModel.unescape(st.nextToken());
+			    } else if (settingType.equals("transform") && st.hasMoreTokens()) {
+				// Parse canvas transform: scale translateX translateY
+				try {
+				    double scale = Double.parseDouble(st.nextToken());
+				    double translateX = Double.parseDouble(st.nextToken());
+				    double translateY = Double.parseDouble(st.nextToken());
+				    // Apply transform and mark as loaded
+				    transform[0] = transform[3] = scale;
+				    transform[4] = translateX;
+				    transform[5] = translateY;
+				    transformLoaded = true;
+				} catch (Exception e) {
+				    // Ignore parse errors
+				}
 			    }
 			}
 			break;
@@ -4888,7 +4907,8 @@ public CirSim() {
 //	if (!retain)
 	//    handleResize(); // for scopes
 	needAnalyze();
-	if ((flags & RC_NO_CENTER) == 0)
+	// Only auto-center if no transform was loaded and RC_NO_CENTER flag not set
+	if ((flags & RC_NO_CENTER) == 0 && !transformLoaded)
 		centreCircuit();
 	if ((flags & RC_SUBCIRCUITS) != 0)
 	    updateModels();

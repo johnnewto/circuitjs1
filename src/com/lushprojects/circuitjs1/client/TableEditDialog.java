@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.TableColumn.ColumnType;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.HorizontalPanel;
@@ -93,19 +94,15 @@ import java.util.Map;
     //=== ENUMS AND NESTED CLASSES ================================================
     //=============================================================================
     
-    // Column type enumeration for financial accounting
-    public enum ColumnType {
-        ASSET,
-        LIABILITY,
-        EQUITY
-        // Note: Last column (when cols >= 4) is implicitly A_L_E computed column
-    }
-    
     /**
      * Check if a column is the A_L_E computed column
      * The last column is A_L_E when there are 4 or more columns
      */
     private boolean isALEColumn(int col) {
+        // Check if this table actually shows A-L-E column
+        if (!tableElement.showALE) {
+            return false;
+        }
         return col == dataCols - 1 && dataCols >= 4;
     }
     
@@ -352,21 +349,17 @@ import java.util.Map;
      * Returns: sum(Assets) - sum(Liabilities) - Equity
      */
     private double calculateALEInitialValue() {
-        double assets = 0.0;
-        double liabilities = 0.0;
-        double equity = 0.0;
-        
+        // Convert parallel arrays to temporary list for calculation
+        java.util.List<TableColumn> tempColumns = new java.util.ArrayList<TableColumn>();
         for (int col = 0; col < dataCols; col++) {
-            if (columnTypes[col] == ColumnType.ASSET) {
-                assets += initialValues[col];
-            } else if (columnTypes[col] == ColumnType.LIABILITY) {
-                liabilities += initialValues[col];
-            } else if (columnTypes[col] == ColumnType.EQUITY) {
-                equity += initialValues[col];
-            }
+            tempColumns.add(new TableColumn("", columnTypes[col], initialValues[col], 0));
         }
         
-        return assets - liabilities - equity;
+        return TableColumn.calculateALE(tempColumns, new TableColumn.ValueExtractor() {
+            public double getValue(TableColumn col) {
+                return col.getInitialValue();
+            }
+        });
     }
     
     /**
@@ -419,7 +412,6 @@ import java.util.Map;
             for (int col = 0; col < Math.min(dataCols, existingCols); col++) {
                 ColumnType existingType = tableElement.getColumnType(col);
                 // Only override if we got a valid type (not null)
-                // This prevents issues with A_L_E columns which don't have enum type
                 if (existingType != null) {
                     columnTypes[col] = existingType;
                 }
@@ -2094,6 +2086,8 @@ import java.util.Map;
             // Mark table as manually edited (custom mode) if it's a CurrentTransactionsMatrixElm
             if (tableElement instanceof CurrentTransactionsMatrixElm) {
                 tableElement.initMode = 2; // Set to custom mode when columns are manually edited
+                CurrentTransactionsMatrixElm ctm = (CurrentTransactionsMatrixElm) tableElement;
+                ctm.updateCustomStockNamesFromColumns(); // Update custom names from edited columns
             }
             
             // Trigger synchronization with other tables sharing the same stocks

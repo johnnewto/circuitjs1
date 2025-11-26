@@ -6,7 +6,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.TableEditDialog.ColumnType;
+import com.lushprojects.circuitjs1.client.TableColumn.ColumnType;
 
 /**
  * TableDataManager - Handles table data initialization and serialization
@@ -141,6 +141,7 @@ public class TableDataManager {
         sb.append(" ").append(table.collapsedMode);
         sb.append(" ").append(table.priority);
         sb.append(" ").append(table.initMode);
+        sb.append(" ").append(table.showALE);
         
         // Text fields (escaped)
         sb.append(" ").append(CustomLogicModel.escape(table.tableTitle));
@@ -230,16 +231,29 @@ public class TableDataManager {
                         try {
                             // Try to parse as integer (initMode)
                             table.initMode = Integer.parseInt(nextToken4);
-                            table.tableTitle = readString(st, "Table");
+                            
+                            // Peek again to check for showALE (newest format with ALE control)
+                            String nextToken5 = st.hasMoreTokens() ? st.nextToken() : "true";
+                            if (nextToken5.equals("true") || nextToken5.equals("false")) {
+                                // Format with showALE
+                                table.showALE = Boolean.parseBoolean(nextToken5);
+                                table.tableTitle = readString(st, "Table");
+                            } else {
+                                // Format without showALE - it's the table title
+                                table.showALE = true; // Default showALE
+                                table.tableTitle = CustomLogicModel.unescape(nextToken5);
+                            }
                         } catch (NumberFormatException e2) {
                             // Not a number - it's the table title (format without initMode)
                             table.initMode = 0; // Default initMode
+                            table.showALE = true; // Default showALE
                             table.tableTitle = CustomLogicModel.unescape(nextToken4);
                         }
                     } catch (NumberFormatException e) {
                         // Not a number - it's the table title (format without priority)
                         table.priority = 5; // Default priority
                         table.initMode = 0; // Default initMode
+                        table.showALE = true; // Default showALE
                         table.tableTitle = CustomLogicModel.unescape(nextToken3);
                     }
                 } else {
@@ -247,6 +261,7 @@ public class TableDataManager {
                     table.collapsedMode = false; // Default for files without collapsedMode
                     table.priority = 5; // Default priority
                     table.initMode = 0; // Default initMode
+                    table.showALE = true; // Default showALE
                     table.tableTitle = CustomLogicModel.unescape(nextToken2);
                 }
             } else {
@@ -255,6 +270,7 @@ public class TableDataManager {
                 table.collapsedMode = false; // Default for old files
                 table.priority = 5; // Default priority
                 table.initMode = 0; // Default initMode
+                table.showALE = true; // Default showALE
                 table.tableTitle = CustomLogicModel.unescape(nextToken);
             }
             
@@ -307,8 +323,21 @@ public class TableDataManager {
                 );
                 
                 // Set cell equations for this column
+                int nonEmptyCount = 0;
                 for (int row = 0; row < table.rows; row++) {
-                    column.setCellEquation(row, cellEquations[row][col]);
+                    String eq = cellEquations[row][col];
+                    column.setCellEquation(row, eq);
+                    if (eq != null && !eq.trim().isEmpty()) {
+                        nonEmptyCount++;
+                    }
+                }
+                
+                // Log first column's equation data
+                if (col == 0) {
+                    CirSim.console("[PARSE] Column 0 ('" + stockNames[col] + "'): " + nonEmptyCount + " non-empty equations out of " + table.rows);
+                    if (table.rows > 0) {
+                        CirSim.console("[PARSE] First equation: '" + cellEquations[0][col] + "'");
+                    }
                 }
                 
                 table.columns.add(column);

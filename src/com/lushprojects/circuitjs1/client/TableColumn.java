@@ -6,7 +6,6 @@
 
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.TableEditDialog.ColumnType;
 import java.util.ArrayList;
 
 /**
@@ -23,6 +22,16 @@ import java.util.ArrayList;
  * - Easier to extend: add new column properties without modifying TableElm
  */
 public class TableColumn {
+    /**
+     * Column type enumeration for financial accounting
+     */
+    public enum ColumnType {
+        ASSET,
+        LIABILITY,
+        EQUITY,
+        COMPUTED  // A-L-E computed columns use this type
+    }
+    
     // Column identification and type
     private String stockName;           // Column header / stock name
     private ColumnType type;            // Asset, Liability, Equity, or Computed
@@ -34,6 +43,7 @@ public class TableColumn {
     private ArrayList<String> cellEquations;         // Equation strings
     private ArrayList<Expr> compiledExpressions;     // Compiled equation objects
     private ArrayList<ExprState> expressionStates;   // Expression evaluation states
+    private ArrayList<Double> cachedCellValues;      // Cached cell values (computed in doStep)
     
     // Computed values
     private double lastSum;             // Last computed column sum (for voltage source)
@@ -51,12 +61,14 @@ public class TableColumn {
         this.cellEquations = new ArrayList<String>();
         this.compiledExpressions = new ArrayList<Expr>();
         this.expressionStates = new ArrayList<ExprState>();
+        this.cachedCellValues = new ArrayList<Double>();
         
         // Populate with empty/default values for each row
         for (int i = 0; i < rowCount; i++) {
             cellEquations.add("");
             compiledExpressions.add(null);
             expressionStates.add(new ExprState(1)); // Only need time variable
+            cachedCellValues.add(0.0);
         }
     }
     
@@ -64,7 +76,7 @@ public class TableColumn {
      * Factory method to create an A-L-E computed column
      */
     public static TableColumn createALE(int rowCount) {
-        return new TableColumn("A-L-E", ColumnType.ASSET, 0.0, rowCount);
+        return new TableColumn("A-L-E", ColumnType.COMPUTED, 0.0, rowCount);
     }
     
     // Getters
@@ -95,6 +107,7 @@ public class TableColumn {
                 cellEquations.add("");
                 compiledExpressions.add(null);
                 expressionStates.add(new ExprState(1));
+                cachedCellValues.add(0.0);
             }
         } else if (newRowCount < currentRows) {
             // Remove rows from the end
@@ -102,6 +115,7 @@ public class TableColumn {
                 cellEquations.remove(cellEquations.size() - 1);
                 compiledExpressions.remove(compiledExpressions.size() - 1);
                 expressionStates.remove(expressionStates.size() - 1);
+                cachedCellValues.remove(cachedCellValues.size() - 1);
             }
         }
     }
@@ -148,6 +162,20 @@ public class TableColumn {
         }
     }
     
+    // Cached cell value access
+    public double getCachedCellValue(int row) {
+        if (row >= 0 && row < cachedCellValues.size()) {
+            return cachedCellValues.get(row);
+        }
+        return 0.0;
+    }
+    
+    public void setCachedCellValue(int row, double value) {
+        if (row >= 0 && row < cachedCellValues.size()) {
+            cachedCellValues.set(row, value);
+        }
+    }
+    
     /**
      * Insert a new row at the specified index
      */
@@ -156,6 +184,7 @@ public class TableColumn {
             cellEquations.add(index, "");
             compiledExpressions.add(index, null);
             expressionStates.add(index, new ExprState(1));
+            cachedCellValues.add(index, 0.0);
         }
     }
     
@@ -167,6 +196,7 @@ public class TableColumn {
             cellEquations.remove(index);
             compiledExpressions.remove(index);
             expressionStates.remove(index);
+            cachedCellValues.remove(index);
         }
     }
     
@@ -183,6 +213,7 @@ public class TableColumn {
             copy.compiledExpressions.add(this.compiledExpressions.get(i)); // Shallow copy of Expr
             ExprState originalState = this.expressionStates.get(i);
             copy.expressionStates.add(new ExprState(1)); // Create new state
+            copy.cachedCellValues.add(this.cachedCellValues.get(i));
         }
         
         copy.lastSum = this.lastSum;
@@ -193,7 +224,50 @@ public class TableColumn {
      * Check if this is an A-L-E computed column
      */
     public boolean isALE() {
-        return "A-L-E".equals(stockName);
+        return type == ColumnType.COMPUTED;
+    }
+    
+    /**
+     * Calculate A-L-E (Assets - Liabilities - Equity) from column values
+     * This is a utility method that encapsulates the core A-L-E calculation logic.
+     * 
+     * @param columns List of columns to calculate from
+     * @param valueExtractor Function to extract the value from each column (e.g., initial value, sum, etc.)
+     * @return Calculated A-L-E value: sum(Assets) - sum(Liabilities) - sum(Equity)
+     */
+    public static double calculateALE(java.util.List<TableColumn> columns, ValueExtractor valueExtractor) {
+        double assets = 0.0, liabilities = 0.0, equity = 0.0;
+        
+        for (TableColumn col : columns) {
+            if (col.isALE()) continue; // Skip A-L-E columns themselves
+            
+            double value = valueExtractor.getValue(col);
+            
+            switch (col.getType()) {
+                case ASSET:
+                    assets += value;
+                    break;
+                case LIABILITY:
+                    liabilities += value;
+                    break;
+                case EQUITY:
+                    equity += value;
+                    break;
+                case COMPUTED:
+                    // Skip computed columns
+                    break;
+            }
+        }
+        
+        return assets - liabilities - equity;
+    }
+    
+    /**
+     * Functional interface for extracting values from columns
+     * Allows flexible value extraction (initial values, sums, cached values, etc.)
+     */
+    public interface ValueExtractor {
+        double getValue(TableColumn column);
     }
     
     /**

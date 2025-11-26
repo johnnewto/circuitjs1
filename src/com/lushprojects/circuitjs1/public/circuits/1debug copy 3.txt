@@ -1,0 +1,73 @@
+$ 67 0.05 12.050203812241895 54 5 50 0.000049999999999999996
+% voltageUnit $
+% transform 0.9862975778546716 703.4960553633215 1355.392664359862
+255 -736 -1056 -728 -1056 0 8 4 6 16 0 true 2 2 false 5 0 true Firms \0 Firms Debt Firm_{equity} A-L-E Pay\sInterest Lending Bank\sSpending Govt\sTaxes Govt\sSpends Workers\sConsume Hire\sWorkers Interest\son\sBonds 10 0 10 0 ASSET LIABILITY EQUITY ASSET -Interest \0 -Interest \0 Lend Lend \0 \0 0.5*Spend_{banks} \0 0.5*Spend_{banks} \0 -0.5*Tax \0 -0.5*Tax \0 0.5*Spend_{Govt} \0 0.5*Spend_{Govt} \0 Con_W \0 Con_W \0 -Wages \0 -Wages \0 \0 \0 \0 \0 0.001
+255 -792 -808 -760 -808 0 5 4 6 16 0 true 2 2 false 5 0 true Workers \0 Workers Stock1 Workers_{equ} A-L-E Bank\sSpending Govt\sTaxes Govt\sSpends Workers\sConsume Hire\sWorkers 80 0 80 0 ASSET LIABILITY EQUITY ASSET 0.5*Spend_{banks} \0 0.5*Spend_{banks} \0 -0.5*Tax \0 -0.5*Tax \0 0.5*Spend_{Govt} \0 0.5*Spend_{Govt} \0 -Con_W \0 -Con_W \0 Wages \0 Wages \0 0.001
+255 -96 -856 -32 -856 0 9 7 6 16 0 true 2 2 false 4 0 true Banks \0 Reserves Debt Gov_{Bonds} Workers Firms Banks A-L-E Lending Pay\sInterest Bank\sSpending Govt\sTaxes Govt\sSpends Govt\sSells\sBonds Interest\son\sBonds Workers\sConsume Hire\sWorkers 100 0 0 80 10 10 0 ASSET ASSET ASSET LIABILITY LIABILITY EQUITY ASSET \0 Lend \0 \0 Lend \0 \0 \0 \0 \0 \0 -Interest Interest \0 \0 \0 \0 0.5*Spend_{banks} 0.5*Spend_{banks} -Spend_{banks} \0 -Tax \0 \0 -0.5*Tax -0.5*Tax \0 \0 Spend_{Govt} \0 \0 0.5*Spend_{Govt} 0.5*Spend_{Govt} \0 \0 -Bonds \0 Bonds \0 \0 \0 \0 Int_{Bonds} \0 \0 \0 \0 Int_{Bonds} \0 \0 \0 \0 -Con_W Con_W \0 \0 \0 \0 \0 Wages -Wages \0 \0 0.001
+255 -1592 -1224 -1544 -1224 0 4 4 6 16 0 true 2 0 true 5 0 true Treasury \0 Government Gov_{Bonds} Treasuray_{Equ} A-L-E Govt\sSells\sBonds Interest\son\sBonds Govt\sSpends Govt\sTaxes 0 0 0 0 ASSET LIABILITY EQUITY ASSET Bonds Bonds \0 \0 -Int_{Bonds} \0 -Int_{Bonds} \0 -Spend_{Govt} \0 -Spend_{Govt} \0 Tax \0 Tax \0 0.001
+255 -104 -1064 -156 -1064 0 6 5 6 16 0 true 2 0 false 5 0 true The\sFed \0 Stock0 Reserves Government Fed_E A-L-E Govt\sSells\sBonds Interest\son\sBonds Govt\sSpends Govt\sTaxes Workers\sConsume Hire\sWorkers 0 100 0 -100 0 ASSET LIABILITY LIABILITY EQUITY ASSET \0 -Bonds Bonds 1 \0 \0 Int_{Bonds} -Int_{Bonds} \0 \0 \0 Spend_{Govt} -Spend_{Govt} \0 \0 \0 -Tax Tax \0 \0 \0 \0 \0 \0 \0 \0 \0 \0 \0 \0 0.001
+207 -1376 -352 -1440 -352 36 Workers
+207 -1376 -336 -1440 -336 36 Firms
+207 -736 -72 -664 -72 36 Wages
+w -1328 -352 -1296 -352 0
+207 -1328 -352 -1344 -416 36 Money
+w -1248 -352 -1232 -352 0
+207 -1232 -352 -1216 -416 36 GDP
+207 -1120 -352 -1072 -352 36 Lend
+207 -1208 -184 -1160 -184 36 Fee
+207 -1352 -184 -1368 -240 36 Interest
+w -1352 -184 -1256 -184 0
+207 -1400 -184 -1448 -184 4 Debt
+207 -1344 -104 -1376 -104 36 Banks
+207 -1296 -104 -1232 -104 36 Spend_{banks}
+x -1254 -646 -957 -643 4 26 BOMD\sWith\sGovernment 8080FFFF
+251 -1376 -352 -1368 -352 1 3
+207 -808 -256 -808 -312 60 Spend_{Govt}
+207 -920 -288 -968 -288 36 GDP
+207 -888 -216 -888 -248 36 Tax
+252 -808 -256 -768 -256 1 2
+w -872 -288 -808 -256 0
+w -888 -216 -808 -240 0
+251 -720 -272 -712 -272 1 2
+w -760 -256 -720 -256 0
+207 -896 -392 -944 -392 36 Gov_{Bonds}
+207 -848 -392 -848 -424 36 Int_{Bonds}
+207 -720 -256 -720 -208 36 Deficit
+w -720 -272 -720 -392 0
+w -848 -392 -720 -392 0
+207 -672 -272 -624 -272 44 Bonds
+207 -936 -216 -984 -216 4 GDP
+258 -936 -216 -928 -216 3 0.34 Tax_{frac}
+258 -920 -288 -912 -288 3 0.31 Spend_{frac}
+258 -1168 -352 -1160 -352 1 0.01 Lend_{frac}
+258 -1296 -352 -1288 -352 1 2 Velocity
+w -1232 -352 -1168 -352 0
+258 -1256 -184 -1248 -184 1 0.5 Fee_{rate}
+258 -1400 -184 -1392 -184 1 0.05 Interest_{Rate}
+258 -1344 -104 -1336 -104 1 0.1 Spend_{rate}
+258 -896 -392 -888 -392 3 0.05 Interest_{Rate}
+207 -312 -192 -376 -192 36 GDP
+207 -312 -240 -376 -240 36 Gov_{Bonds}
+P -312 -240 -312 -192 11 0 Govt_{Debt}
+P -312 -152 -312 -104 11 0 Private_{Debt}
+207 -312 -152 -376 -152 36 Debt
+207 -312 -104 -376 -104 36 GDP
+403 -192 -296 240 -72 0 47_4_0_x1c01206_100_0.1_-1_4_L0:100_47_3_48_0_48_3_T:Debt\s%\sGDP
+431 -248 -504 -216 -456 0 152 true false
+432 -520 -504 -392 -440 0 99 Govt\sis\srunning\sa\sdeficit Govt\s\sraises\staxes\sand\sruns\sa\ssurplus\s(aka\spre\s2008) Tax_{frac} 0.3 0.34 true
+P 248 -240 248 -192 11 0 Govt_Debt
+217 140 -584 412 -360 0 4 Banks Workers Firms Gov_Bonds #FFFF00 #00FF00 #00FFFF #FF0000
+207 -1376 -320 -1440 -320 36 Banks
+207 -784 -112 -848 -112 36 Workers
+258 -784 -112 -776 -112 1 10 Workers_{spend}^{rate}
+207 -736 -112 -672 -112 36 Con_W
+258 -784 -72 -776 -72 3 0.7000000000000001 Wage_{rate}
+207 -784 -72 -848 -72 36 GDP
+254 -248 -1336 -208 -1336 1 0 0 6 16 0 false 2 2 false 1 0 Current\sTransactions\sMatrix "" ""
+o 47 2 0 x1c01206 100 0.0001 0 4 L0:100 47 3 48 0 48 3 T:Debt\s%\sGDP
+o 11 2 0 xc01206 396456.0573077176 0.0001 1 2 11 3 T:GDP
+38 44 F1 1 0 0.2 -1 Interest_Rate 0
+38 36 F1 1 0 1 -1 Tax_{frac} 20
+38 37 F1 1 0 1 -1 Spend_{frac} 20
+38 53 F1 0 0 300 -1 Action\sTime 0
+38 52 F1 0 0 200 -1 Stop\sTime 0
