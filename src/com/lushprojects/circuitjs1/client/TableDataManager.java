@@ -29,12 +29,16 @@ public class TableDataManager {
 
     
     /**
-     * Get default column type based on column index
-     * Note: The last column (when cols >= 4) is implicitly A_L_E (computed), but stored as ASSET type
+     * Get default column type based on position
+     * If showALE is true and this is the last column, it should be COMPUTED
      */
     private ColumnType getDefaultColumnType(int col) {
-        // Note: We don't return A_L_E type anymore - last column detection is positional
-        // Last column for tables with 4+ cols will have blank name and be computed at runtime
+        int totalCols = table.getCols();
+        
+        // If showALE is true and this is the last column (and there are 4+ columns), it's COMPUTED
+        if (table.showALE && col == totalCols - 1 && totalCols >= 4) {
+            return ColumnType.COMPUTED;
+        }
         
         switch (col) {
             case 0: return ColumnType.ASSET;
@@ -51,7 +55,11 @@ public class TableDataManager {
         // Initialize columns ArrayList if not set
         if (table.columns == null) {
             table.columns = new java.util.ArrayList<TableColumn>();
-            int cols = table.getCols(); // Get from any remaining cols field or default
+            // Default to 4 columns for new tables (Asset, Liability, Equity, A-L-E)
+            int cols = table.getCols();
+            if (cols == 0) {
+                cols = 4; // Default column count for new tables
+            }
             for (int i = 0; i < cols; i++) {
                 ColumnType type = getDefaultColumnType(i);
                 table.columns.add(new TableColumn("", type, 0.0, table.rows));
@@ -343,10 +351,22 @@ public class TableDataManager {
                 table.columns.add(column);
             }
             
-            // Set A-L-E labels if needed
+            // Fix A-L-E column types and labels
+            // Old files may have saved A-L-E columns with ASSET type instead of COMPUTED
             for (int col = 0; col < table.columns.size(); col++) {
                 TableColumn column = table.columns.get(col);
-                if (column.isALE() && (column.getStockName() == null || column.getStockName().isEmpty())) {
+                String stockName = column.getStockName();
+                
+                // Check if this is an A-L-E column by name
+                if (stockName != null && stockName.trim().equalsIgnoreCase("A-L-E")) {
+                    // Fix the column type to COMPUTED if it's not already
+                    if (column.getType() != ColumnType.COMPUTED) {
+                        column.setType(ColumnType.COMPUTED);
+                    }
+                }
+                
+                // Set A-L-E label if the column is marked as COMPUTED but has no name
+                if (column.isALE() && (stockName == null || stockName.trim().isEmpty())) {
                     column.setStockName("A-L-E");
                 }
             }

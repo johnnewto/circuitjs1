@@ -222,7 +222,7 @@ public class TableElm extends ChipElm {
     /**
      * Find a LabeledNodeElm with matching text
      */
-    private LabeledNodeElm findLabeledNode(String name) {
+    protected LabeledNodeElm findLabeledNode(String name) {
         if (name == null || name.trim().isEmpty()) {
             return null;
         }
@@ -628,7 +628,7 @@ public class TableElm extends ChipElm {
     /**
      * Stamp voltage source for a master column
      */
-    private void stampMasterColumn(int col, Pin p) {
+    protected void stampMasterColumn(int col, Pin p) {
         int vn = p.voltSource + sim.nodeList.size();
         sim.stampNonLinear(vn);
         sim.stampVoltageSource(0, nodes[col], p.voltSource);
@@ -637,7 +637,7 @@ public class TableElm extends ChipElm {
     /**
      * Connect non-master column output to ground to prevent unconnected nodes
      */
-    private void stampNonMasterColumn(int col) {
+    protected void stampNonMasterColumn(int col) {
         int outputNode = nodes[col];
         if (isValidNode(outputNode)) {
             sim.stampResistor(outputNode, 0, 1e7); // 10MΩ to ground
@@ -647,7 +647,7 @@ public class TableElm extends ChipElm {
     /**
      * Connect master columns to their labeled nodes if they exist
      */
-    private void connectToLabeledNodes() {
+    protected void connectToLabeledNodes() {
         if (columns == null) return;
         
         for (int col = 0; col < columns.size(); col++) {
@@ -663,7 +663,7 @@ public class TableElm extends ChipElm {
     /**
      * Connect a column to its labeled node, or to ground if no labeled node exists
      */
-    private void connectColumnToLabeledNode(int col, TableColumn column) {
+    protected void connectColumnToLabeledNode(int col, TableColumn column) {
         String outputName = column.getStockName();
         LabeledNodeElm labeledNode = findLabeledNode(outputName);
         int outputNode = nodes[col];
@@ -685,7 +685,7 @@ public class TableElm extends ChipElm {
     /**
      * Check if a node number is valid for stamping
      */
-    private boolean isValidNode(int nodeNum) {
+    protected boolean isValidNode(int nodeNum) {
         return nodeNum >= 0 && sim.nodeList != null && nodeNum < sim.nodeList.size();
     }
 
@@ -1030,5 +1030,3 @@ public class TableElm extends ChipElm {
         super.delete();
     }
 }
-
-

@@ -28,6 +28,8 @@ import com.google.gwt.user.client.ui.Grid;
 import com.google.gwt.user.client.ui.TextBox;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
+import com.google.gwt.user.client.ui.SuggestBox;
+import com.google.gwt.user.client.ui.MultiWordSuggestOracle;
 
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
@@ -104,6 +106,23 @@ import java.util.Map;
             return false;
         }
         return col == dataCols - 1 && dataCols >= 4;
+    }
+    
+    /**
+     * Check if a column is a master column (this table computes the stock value)
+     * Master columns are editable, non-master columns are locked (read-only)
+     * 
+     * @param col Column index to check
+     * @return true if this table is the master for this stock, false otherwise
+     */
+    private boolean isMasterColumn(int col) {
+        if (col < 0 || col >= dataCols) return false;
+        if (isALEColumn(col)) return false; // A-L-E is computed, not a master column
+        
+        String stockName = stockValues[col];
+        if (stockName == null || stockName.trim().isEmpty()) return false;
+        
+        return ComputedValues.isMasterTable(stockName.trim(), tableElement);
     }
     
     /**
@@ -208,12 +227,21 @@ import java.util.Map;
     
     public TableEditDialog(TableElm tableElm, CirSim cirSim) {
         super();
+        this.closeOnEnter = false; // Don't close dialog on Enter - just complete current edit
         this.tableElement = tableElm;
         this.sim = cirSim;
         
         // Initialize with data from TableElm or defaults for new table
         this.dataRows = Math.max(1, tableElm.getRows()); // At least 1 data row
-        this.dataCols = Math.max(4, tableElm.getCols()); // At least Assets, Liabilities, Equity, A-L-E columns
+        
+        // For CTM, use actual column count (can be less than 4)
+        // For regular tables, enforce minimum of 4 columns (A, L, E, A-L-E)
+        boolean isCTM = tableElm instanceof CurrentTransactionsMatrixElm;
+        if (isCTM) {
+            this.dataCols = Math.max(1, tableElm.getCols()); // CTM: use actual count
+        } else {
+            this.dataCols = Math.max(4, tableElm.getCols()); // Regular: at least 4 columns
+        }
         
         // Initialize contextual buttons map
         contextualButtons = new HashMap<String, Button>();
@@ -969,6 +997,7 @@ import java.util.Map;
     
     /**
      * Populate column type row with editable dropdowns (row 1)
+     * Shows lock icon for non-master columns
      */
     private void populateColumnTypeRow() {
         editGrid.setText(TYPE_ROW, BUTTON_COL, "");
@@ -977,10 +1006,37 @@ import java.util.Map;
         for (int col = 0; col < dataCols; col++) {
             if (isALEColumn(col)) {
                 // A_L_E column gets a fixed label
-                Label aleLabel = new Label("🧮 A-L-E");
+                boolean isCTM = tableElement instanceof CurrentTransactionsMatrixElm;
+                String labelText = isCTM ? "🧮 Computed" : "🧮 A-L-E";
+                String titleText = isCTM ? "Sum of all regular columns (computed)" : "Assets - Liabilities - Equity (computed)";
+                
+                Label aleLabel = new Label(labelText);
                 aleLabel.addStyleName("computed-column");
-                aleLabel.setTitle("Assets - Liabilities - Equity (computed)");
+                aleLabel.setTitle(titleText);
                 editGrid.setWidget(TYPE_ROW, DATA_START_COL + col, aleLabel);
+            } else if (!isMasterColumn(col)) {
+                // Non-master column gets a lock indicator with type
+                String stockName = stockValues[col];
+                TableElm masterTable = ComputedValues.getMasterTable(stockName != null ? stockName.trim() : "");
+                String masterTableName = (masterTable != null) ? masterTable.getTableTitle() : "unknown";
+                
+                // Get the column type and add lock symbol
+                ColumnType colType = columnTypes[col];
+                String typeLabel;
+                if (colType == ColumnType.ASSET) {
+                    typeLabel = "🔒 💹 Asset";
+                } else if (colType == ColumnType.LIABILITY) {
+                    typeLabel = "🔒 📄 Liability";
+                } else if (colType == ColumnType.EQUITY) {
+                    typeLabel = "🔒 🏦 Equity";
+                } else {
+                    typeLabel = "🔒 Locked";
+                }
+                
+                Label lockLabel = new Label(typeLabel);
+                lockLabel.addStyleName("locked-column");
+                lockLabel.setTitle("Read-only: Stock '" + stockName + "' is mastered by table '" + masterTableName + "'. Column operations (±<>) still available.");
+                editGrid.setWidget(TYPE_ROW, DATA_START_COL + col, lockLabel);
             } else {
                 // Create dropdown for column type selection
                 final int finalCol = col;
@@ -1037,13 +1093,17 @@ import java.util.Map;
         for (int col = 0; col < dataCols; col++) {
             if (isALEColumn(col)) {
                 // A_L_E column gets a disabled label instead of textbox
-                Label aleLabel = new Label("A-L-E"); // Label for A-L-E column
+                boolean isCTM = tableElement instanceof CurrentTransactionsMatrixElm;
+                String labelText = isCTM ? "SUM" : "A-L-E";
+                String titleText = isCTM ? "Sum of all regular columns (computed)" : "Assets - Liabilities - Equity (computed)";
+                
+                Label aleLabel = new Label(labelText);
                 aleLabel.addStyleName("tableStockInput");
                 aleLabel.addStyleName("computed-column");
-                aleLabel.setTitle("Assets - Liabilities - Equity (computed)");
+                aleLabel.setTitle(titleText);
                 editGrid.setWidget(STOCK_VALUES_ROW, DATA_START_COL + col, aleLabel);
             } else {
-                TextBox stockBox = createStockValueTextBox(col);
+                SuggestBox stockBox = createStockValueSuggestBox(col);
                 editGrid.setWidget(STOCK_VALUES_ROW, DATA_START_COL + col, stockBox);
             }
         }
@@ -1058,10 +1118,13 @@ import java.util.Map;
             if (isALEColumn(col)) {
                 // A_L_E column gets computed initial value (read-only)
                 double computedInitial = calculateALEInitialValue();
+                boolean isCTM = tableElement instanceof CurrentTransactionsMatrixElm;
+                String titleText = isCTM ? "Computed: Sum of all initial values" : "Computed: Assets - Liabilities - Equity";
+                
                 Label aleInitialLabel = new Label(Double.toString(computedInitial));
                 aleInitialLabel.addStyleName("tableInitialInput");
                 aleInitialLabel.addStyleName("computed-column");
-                aleInitialLabel.setTitle("Computed: Assets - Liabilities - Equity");
+                aleInitialLabel.setTitle(titleText);
                 editGrid.setWidget(INITIAL_ROW, DATA_START_COL + col, aleInitialLabel);
             } else {
                 TextBox initialBox = createInitialValueTextBox(col);
@@ -1090,10 +1153,13 @@ import java.util.Map;
                 if (isALEColumn(col)) {
                     // A_L_E cells are computed and read-only - show calculated equation
                     String aleEquation = calculateALECellEquation(row);
+                    boolean isCTM = tableElement instanceof CurrentTransactionsMatrixElm;
+                    String titleText = isCTM ? "Computed: Sum of all regular columns" : "Computed: Assets - Liabilities - Equity";
+                    
                     Label aleLabel = new Label(aleEquation);
                     aleLabel.addStyleName("tableCellInput");
                     aleLabel.addStyleName("computed-column");
-                    aleLabel.setTitle("Computed: Assets - Liabilities - Equity");
+                    aleLabel.setTitle(titleText);
                     editGrid.setWidget(gridRow, DATA_START_COL + col, aleLabel);
                 } else {
                     VerticalPanel cellPanel = createCellTextBox(row, col);
@@ -1255,32 +1321,61 @@ import java.util.Map;
     }
     
     /**
-     * Create textbox for editing stock values (column headers)
+     * Create SuggestBox for editing stock values (column headers) with autocomplete
+     * Shows all existing stock names from the registry as suggestions
      */
-    private TextBox createStockValueTextBox(final int col) {
-        final TextBox textBox = new TextBox();
-        textBox.setText(stockValues[col]); // Initialize with H0, H1, H2, etc.
-        textBox.addStyleName("tableStockInput");
+    private SuggestBox createStockValueSuggestBox(final int col) {
+        // Create oracle with all existing stock names
+        MultiWordSuggestOracle oracle = new MultiWordSuggestOracle();
+        
+        // Add all registered stock names
+        java.util.Set<String> stockNames = StockFlowRegistry.getAllStockNames();
+        if (stockNames != null && !stockNames.isEmpty()) {
+            for (String stockName : stockNames) {
+                oracle.add(stockName);
+            }
+        }
+        
+        // Add stock names from all tables (including non-registered ones)
+        if (sim != null && sim.elmList != null) {
+            for (int i = 0; i < sim.elmList.size(); i++) {
+                CircuitElm elm = sim.elmList.elementAt(i);
+                if (elm instanceof TableElm) {
+                    TableElm table = (TableElm) elm;
+                    for (int c = 0; c < table.getCols(); c++) {
+                        String header = table.getColumnHeader(c);
+                        if (header != null && !header.trim().isEmpty() && !header.equals("A-L-E")) {
+                            oracle.add(header.trim());
+                        }
+                    }
+                }
+            }
+        }
+        
+        final SuggestBox suggestBox = new SuggestBox(oracle);
+        suggestBox.setText(stockValues[col]); // Initialize with current value
+        suggestBox.addStyleName("tableStockInput");
+        suggestBox.setWidth("100%");
         
         // Prevent keyboard events from deleting table element while typing
-        preventKeyboardPropagation(textBox);
+        preventKeyboardPropagation(suggestBox.getValueBox());
         
-        textBox.addKeyUpHandler(new KeyUpHandler() {
+        suggestBox.getValueBox().addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
                 // Store stock value name
-                stockValues[col] = textBox.getText();
-                textBox.addStyleName("modified");
+                stockValues[col] = suggestBox.getText();
+                suggestBox.addStyleName("modified");
                 markChanged();
             }
         });
         
-        textBox.addFocusHandler(new FocusHandler() {
+        suggestBox.getValueBox().addFocusHandler(new FocusHandler() {
             public void onFocus(FocusEvent event) {
-                textBox.selectAll();
+                suggestBox.getValueBox().selectAll();
             }
         });
         
-        return textBox;
+        return suggestBox;
     }
     
     /**
@@ -1324,8 +1419,12 @@ import java.util.Map;
     /**
      * Create textbox for editing cell equations with autocomplete (bash-style Tab completion)
      * Returns a VerticalPanel containing hint label + textbox
+     * Non-master columns are read-only (locked) but can still be renamed and reordered
      */
     private VerticalPanel createCellTextBox(final int row, final int col) {
+        // Check if this column is a master column (editable) or non-master (locked)
+        final boolean isMaster = isMasterColumn(col);
+        
         // Create the completion list from all available variables
         final java.util.List<String> completionList = createCompletionList();
         
@@ -1334,6 +1433,13 @@ import java.util.Map;
         textBox.setText(cellData[row][col]);
         textBox.addStyleName("tableCellInput");
         textBox.setWidth("100%");
+        
+        // Lock non-master columns (read-only)
+        if (!isMaster) {
+            textBox.setReadOnly(true);
+            textBox.addStyleName("locked-column");
+            textBox.setTitle("Read-only: This stock is mastered by another table. Stock name and column operations (±<>) are still available.");
+        }
         
         // Prevent keyboard events from deleting table element while typing
         preventKeyboardPropagation(textBox);
@@ -1349,62 +1455,73 @@ import java.util.Map;
         container.add(hintLabel);
         container.add(textBox);
         
-        // Initialize autocomplete state for this textbox
-        final AutocompleteHelper.AutocompleteState state = new AutocompleteHelper.AutocompleteState();
-        autocompleteStates.put(textBox, state);
-        
-        // Handle Tab key: cycle through completions
-        textBox.addKeyDownHandler(new KeyDownHandler() {
-            public void onKeyDown(KeyDownEvent event) {
-                if (event.getNativeKeyCode() == KeyCodes.KEY_TAB) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    AutocompleteHelper.handleTabCompletion(textBox, completionList, hintLabel, state);
-                }
-            }
-        });
-        
-        // Handle typing: show matches in real-time and validate symbols
-        textBox.addKeyPressHandler(new KeyPressHandler() {
-            public void onKeyPress(KeyPressEvent event) {
-                // Wait for character to be added to textbox, then update display
-                com.google.gwt.core.client.Scheduler.get().scheduleDeferred(
-                    new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
-                        public void execute() {
-                            AutocompleteHelper.updateMatchDisplay(textBox, completionList, hintLabel, state);
-                        }
+        // Only add autocomplete and editing features for master columns
+        if (isMaster) {
+            // Initialize autocomplete state for this textbox
+            final AutocompleteHelper.AutocompleteState state = new AutocompleteHelper.AutocompleteState();
+            autocompleteStates.put(textBox, state);
+            
+            // Handle Tab key: cycle through completions
+            textBox.addKeyDownHandler(new KeyDownHandler() {
+                public void onKeyDown(KeyDownEvent event) {
+                    if (event.getNativeKeyCode() == KeyCodes.KEY_TAB) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        AutocompleteHelper.handleTabCompletion(textBox, completionList, hintLabel, state);
                     }
-                );
-            }
-        });
-        
-        // Add key up handler to track changes
-        textBox.addKeyUpHandler(new KeyUpHandler() {
-            public void onKeyUp(KeyUpEvent event) {
-                cellData[row][col] = textBox.getText();
-                textBox.addStyleName("modified");
-                markChanged();
-                
-                // Recalculate A_L_E columns when any cell changes
-                updateALEColumns();
-            }
-        });
-        
-        // Select all on focus
-        textBox.addFocusHandler(new FocusHandler() {
-            public void onFocus(FocusEvent event) {
-                textBox.selectAll();
-            }
-        });
-        
-        // Validate immediately on creation - show only undefined symbols
-        com.google.gwt.core.client.Scheduler.get().scheduleDeferred(
-            new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
-                public void execute() {
-                    AutocompleteHelper.validateOnOpen(textBox, completionList, hintLabel);
                 }
-            }
-        );
+            });
+            
+            // Handle typing: show matches in real-time and validate symbols
+            textBox.addKeyPressHandler(new KeyPressHandler() {
+                public void onKeyPress(KeyPressEvent event) {
+                    // Wait for character to be added to textbox, then update display
+                    com.google.gwt.core.client.Scheduler.get().scheduleDeferred(
+                        new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
+                            public void execute() {
+                                AutocompleteHelper.updateMatchDisplay(textBox, completionList, hintLabel, state);
+                            }
+                        }
+                    );
+                }
+            });
+            
+            // Add key up handler to track changes
+            textBox.addKeyUpHandler(new KeyUpHandler() {
+                public void onKeyUp(KeyUpEvent event) {
+                    cellData[row][col] = textBox.getText();
+                    textBox.addStyleName("modified");
+                    markChanged();
+                    
+                    // Recalculate A_L_E columns when any cell changes
+                    updateALEColumns();
+                }
+            });
+            
+            // Select all on focus
+            textBox.addFocusHandler(new FocusHandler() {
+                public void onFocus(FocusEvent event) {
+                    textBox.selectAll();
+                }
+            });
+            
+            // Validate immediately on creation - show only undefined symbols
+            com.google.gwt.core.client.Scheduler.get().scheduleDeferred(
+                new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
+                    public void execute() {
+                        AutocompleteHelper.validateOnOpen(textBox, completionList, hintLabel);
+                    }
+                }
+            );
+        } else {
+            // For locked columns, just show a simple tooltip on focus
+            textBox.addFocusHandler(new FocusHandler() {
+                public void onFocus(FocusEvent event) {
+                    // Don't select text in locked fields
+                    textBox.setCursorPos(0);
+                }
+            });
+        }
         
         return container;
     }
@@ -1832,11 +1949,11 @@ import java.util.Map;
             return;
         }
         
-        // Prevent deleting Equity column
-        if (columnTypes[colIndex] == ColumnType.EQUITY) {
-            setStatus("Cannot delete Equity column - it is required");
-            return;
-        }
+        // // Prevent deleting Equity column
+        // if (columnTypes[colIndex] == ColumnType.EQUITY) {
+        //     setStatus("Cannot delete Equity column - it is required");
+        //     return;
+        // }
         
         // Prevent deleting Computed column (A_L_E)
         if (isALEColumn(colIndex)) {
@@ -1844,16 +1961,16 @@ import java.util.Map;
             return;
         }
         
-        // Prevent deleting if it's the last Asset or last Liability
-        if (columnTypes[colIndex] == ColumnType.ASSET && countColumnsByType(ColumnType.ASSET) <= 1) {
-            setStatus("Cannot delete the last ASSET column - at least one is required");
-            return;
-        }
+        // // Prevent deleting if it's the last Asset or last Liability
+        // if (columnTypes[colIndex] == ColumnType.ASSET && countColumnsByType(ColumnType.ASSET) <= 1) {
+        //     setStatus("Cannot delete the last ASSET column - at least one is required");
+        //     return;
+        // }
         
-        if (columnTypes[colIndex] == ColumnType.LIABILITY && countColumnsByType(ColumnType.LIABILITY) <= 1) {
-            setStatus("Cannot delete the last LIABILITY column - at least one is required");
-            return;
-        }
+        // if (columnTypes[colIndex] == ColumnType.LIABILITY && countColumnsByType(ColumnType.LIABILITY) <= 1) {
+        //     setStatus("Cannot delete the last LIABILITY column - at least one is required");
+        //     return;
+        // }
         
         String deletedColumnName = stockValues[colIndex];
         ColumnType deletedType = columnTypes[colIndex];
@@ -2043,6 +2160,24 @@ import java.util.Map;
     }
     
     /**
+     * Recalculate master table assignments and refresh the grid
+     * This ensures lock status is updated after priority or stock name changes
+     */
+    private void recalculateMastersAndRefresh() {
+        // Clear existing master registrations
+        ComputedValues.clearMasterTables();
+        ComputedValues.clearComputedValues();
+        
+        // Re-register all tables in priority order
+        if (sim != null) {
+            sim.registerTableMastersInPriorityOrder();
+        }
+        
+        // Refresh the grid to update lock status
+        populateGrid();
+    }
+    
+    /**
      * Apply all pending changes to the TableElm and synchronize with related tables
      */
     private void applyChanges() {
@@ -2060,11 +2195,18 @@ import java.util.Map;
             int oldPriority = tableElement.getPriority();
             int newPriority = priorityChoice.getSelectedIndex() + 1; // Convert from 0-indexed to 1-9
             tableElement.setPriority(newPriority);
-            // If priority changed, clear master tables and computed values to force re-registration
-            // and avoid stale computed values causing convergence issues.
-            if (oldPriority != newPriority) {
-                ComputedValues.clearMasterTables();
-                ComputedValues.clearComputedValues();
+            boolean priorityChanged = (oldPriority != newPriority);
+            
+            // Track if any stock names changed (affects master calculation)
+            boolean stockNamesChanged = false;
+            for (int col = 0; col < dataCols; col++) {
+                String oldStockName = tableElement.getColumnHeader(col);
+                String newStockName = stockValues[col];
+                if (!isALEColumn(col) && oldStockName != null && newStockName != null &&
+                    !oldStockName.trim().equals(newStockName.trim())) {
+                    stockNamesChanged = true;
+                    break;
+                }
             }
             
             tableElement.resizeTable(dataRows, dataCols);
@@ -2096,13 +2238,22 @@ import java.util.Map;
             // Update table display
             tableElement.setPoints();
             
+            // If priority or stock names changed, recalculate masters immediately
+            // This updates lock status in the dialog before needAnalyze() is called
+            if (priorityChanged || stockNamesChanged) {
+                recalculateMastersAndRefresh();
+                statusLabel.setText("Changes applied - master assignments recalculated");
+            }
+            
             // Force full circuit analysis (important when priority changes)
             sim.needAnalyze();
         }
         
         hasChanges = false;
         updateButtonStates();
-        statusLabel.setText("Changes applied and tables synchronized");
+        if (statusLabel.getText().equals("Table modified - use Apply or OK to save changes")) {
+            statusLabel.setText("Changes applied and tables synchronized");
+        }
         
         // Update debug window after applying changes
         if (debugDialog != null && debugDialog.isShowing()) {
@@ -2154,17 +2305,10 @@ import java.util.Map;
     public boolean canDeleteColumn(int col) {
         if (col < 0 || col >= dataCols || columnTypes == null) return false;
         
-        ColumnType type = columnTypes[col];
-        
         // Cannot delete Computed (A_L_E) column
         if (isALEColumn(col)) return false;
         
-        // Cannot delete if it's the last Asset or Liability (need at least one of each)
-        if (type == ColumnType.ASSET && countColumnsByType(ColumnType.ASSET) <= 1) return false;
-        if (type == ColumnType.LIABILITY && countColumnsByType(ColumnType.LIABILITY) <= 1) return false;
-        
-        // Equity columns can be deleted freely (no minimum requirement)
-        
+        // All regular columns (Asset, Liability, Equity) can be deleted freely
         return true;
     }
     

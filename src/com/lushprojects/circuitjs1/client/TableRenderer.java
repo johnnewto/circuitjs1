@@ -38,12 +38,7 @@ public class TableRenderer {
      * Package-private for TableElm access
      */
     double getCachedALECellValue(int row, int aleColumnIndex) {
-        if (cachedCellValues != null && 
-            row >= 0 && row < cachedCellValues.length &&
-            aleColumnIndex >= 0 && aleColumnIndex < cachedCellValues[row].length) {
-            return cachedCellValues[row][aleColumnIndex];
-        }
-        return 0.0;
+        return getCachedCellValue(row, aleColumnIndex);
     }
     
     /**
@@ -143,7 +138,7 @@ public class TableRenderer {
         drawTableBorder(g, dims);
 
         // Draw components in order
-        int currentY = drawComponentsInOrder(g, dims);
+        drawComponentsInOrder(g, dims);
 
         // Draw pins
         drawPins(g);
@@ -280,18 +275,26 @@ public class TableRenderer {
     
     /**
      * Update cached cell and sum values from the table
-     * Called automatically when UPDATE_INTERVAL_MS has elapsed (500ms = twice per second)
+     * Called automatically when UPDATE_INTERVAL_MS has elapsed (200ms = 5 times per second)
      * 
      * SYNCHRONIZED DISPLAY ARCHITECTURE:
      * - Cell values: Each table evaluates its own equations (allows different formulas)
      * - Column sums: Non-master columns display the master's computed sum
-     * - ALE values: Calculated inline during drawing (not cached)
+     * - ALE values: Calculated during cache update for consistency
      * 
      * This allows tables to have independent cell-level calculations while
      * showing synchronized stock totals in the "Computed" row.
      */
     protected void updateCachedValues() {
-        // Initialize cache arrays if needed
+        initializeCacheArrays();
+        updateRegularCellValues();
+        updateColumnSums();
+    }
+    
+    /**
+     * Initialize cache arrays if needed or if dimensions changed
+     */
+    private void initializeCacheArrays() {
         if (cachedCellValues == null || cachedCellValues.length != table.rows || 
             (cachedCellValues.length > 0 && cachedCellValues[0].length != table.getCols())) {
             cachedCellValues = new double[table.rows][table.getCols()];
@@ -299,11 +302,17 @@ public class TableRenderer {
         if (cachedSumValues == null || cachedSumValues.length != table.getCols()) {
             cachedSumValues = new double[table.getCols()];
         }
+    }
+    
+    /**
+     * Update cell values for regular (non-ALE) columns
+     */
+    private void updateRegularCellValues() {
+        int regularColCount = getRegularColumnCount();
         
         // Update cell values for regular (non-ALE) columns only
         // For master columns: use cached values from our doStep()
         // For non-master columns: fetch cached values from the master table
-        int regularColCount = getRegularColumnCount();
         for (int row = 0; row < table.rows; row++) {
             for (int col = 0; col < regularColCount; col++) {
                 if (table.columns != null && col < table.columns.size()) {
@@ -314,10 +323,7 @@ public class TableRenderer {
                         // Master: use our own cached value from doStep()
                         cachedCellValues[row][col] = column.getCachedCellValue(row);
                         
-                        // // Log first non-zero value for debugging
-                        // if (col == 0 && row == 0 && Math.abs(cachedCellValues[row][col]) > 0.001) {
-                        //     CirSim.console("[Renderer] Master table '" + table.tableTitle + "' retrieved cached cell[0][0] = " + cachedCellValues[row][col] + " for column '" + column.getStockName() + "'");
-                        // }
+        
                     } else {
                         // Non-master: fetch cached value from the master table
                         String stockName = column.getStockName();
@@ -328,11 +334,6 @@ public class TableRenderer {
                             if (masterCol >= 0 && masterCol < masterTable.columns.size()) {
                                 TableColumn masterColumn = masterTable.columns.get(masterCol);
                                 cachedCellValues[row][col] = masterColumn.getCachedCellValue(row);
-                                
-                                // // Log first non-zero value for debugging
-                                // if (col == 0 && row == 0 && Math.abs(cachedCellValues[row][col]) > 0.001) {
-                                //     CirSim.console("[Renderer] Non-master table '" + table.tableTitle + "' retrieved cached cell[0][0] = " + cachedCellValues[row][col] + " from master '" + masterTable.tableTitle + "' for column '" + stockName + "'");
-                                // }
                             } else {
                                 cachedCellValues[row][col] = 0.0;
                             }
@@ -345,10 +346,14 @@ public class TableRenderer {
                 }
             }
         }
-        
-        // Update column sum values (computed row)
-        // IMPORTANT: Process regular columns FIRST, then ALE column
-        // This ensures ALE can use the already-calculated regular column sums
+    }
+    
+    /**
+     * Update column sums (computed row) - regular columns first, then ALE
+     * ALE calculation depends on regular column sums being calculated first
+     */
+    private void updateColumnSums() {
+        int regularColCount = getRegularColumnCount();
         
         // Step 1: Calculate all regular (non-ALE) column sums
         for (int col = 0; col < regularColCount; col++) {

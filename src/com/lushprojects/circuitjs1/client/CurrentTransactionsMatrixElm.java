@@ -35,13 +35,15 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     // Custom stock names that can be edited by user (overrides registry auto-population)
     private String[] customStockNames = null;
     
+    // Custom name for the computed column (default is "A-L-E" for regular tables, can be customized for CTM)
+    private String computedColumnName = null;
+    
     /**
      * Constructor for new matrix created from menu.
      * Initializes with default settings and auto-populates from registry.
      */
     public CurrentTransactionsMatrixElm(int xx, int yy) {
         super(xx, yy);
-        CirSim.console("CTM: Constructor (new from menu)");
         showALE = true; // CTM shows A-L-E column
         initializeMatrix();
     }
@@ -54,7 +56,6 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         super(xa, ya, xb, yb, f, st);
         showALE = true; // CTM shows A-L-E column
         
-        CirSim.console("CTM: Constructor from file. Initial columns count: " + (columns != null ? columns.size() : "null"));
         
         // Note: initMode is now parsed by TableElm's parseTableData() method
         
@@ -62,7 +63,6 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         if (st.hasMoreTokens()) {
             try {
                 String customStockNamesStr = st.nextToken();
-                CirSim.console("  customStockNamesStr from file: '" + customStockNamesStr + "'");
                 if (customStockNamesStr != null && !customStockNamesStr.trim().isEmpty() && 
                     !customStockNamesStr.equals("\"\"")) {
                     // Remove quotes and parse comma-separated names
@@ -73,12 +73,27 @@ public class CurrentTransactionsMatrixElm extends TableElm {
                         for (int i = 0; i < names.length; i++) {
                             customStockNames[i] = names[i].trim();
                         }
-                        CirSim.console("  Loaded " + customStockNames.length + " custom stock names from file");
                    }
                 }
             } catch (Exception e) {
                 customStockNames = null;
-                CirSim.console("  Exception parsing custom stock names: " + e.getMessage());
+            }
+        }
+        
+        // Parse custom computed column name if available
+        if (st.hasMoreTokens()) {
+            try {
+                String computedColNameStr = st.nextToken();
+                if (computedColNameStr != null && !computedColNameStr.trim().isEmpty() &&
+                    !computedColNameStr.equals("\"\"")) {
+                    // Remove quotes
+                    computedColNameStr = computedColNameStr.replace("\"", "").trim();
+                    if (!computedColNameStr.isEmpty()) {
+                        computedColumnName = computedColNameStr;
+                    }
+                }
+            } catch (Exception e) {
+                computedColumnName = null;
             }
         }
         
@@ -86,32 +101,34 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         // Parent TableElm constructor already called parseTableData() which loaded all columns,
         // but for CTM we want to auto-populate based on equity filter or custom names
         
-        CirSim.console("  Before filtering: customStockNames=" + (customStockNames != null ? customStockNames.length : "null") + 
-                      ", columns=" + (columns != null ? columns.size() : "null"));
         
         // If customStockNames was not provided in the file, extract stock names from loaded columns
         // (excluding any A-L-E columns that shouldn't be there)
         if (customStockNames == null && columns != null && columns.size() > 0) {
-            CirSim.console("CTM: Loading from file, filtering columns. Original count: " + columns.size());
             ArrayList<String> stockNamesList = new ArrayList<String>();
-            for (TableColumn col : columns) {
+            for (int i = 0; i < columns.size(); i++) {
+                TableColumn col = columns.get(i);
                 String stockName = col.getStockName();
-                CirSim.console("  Checking column: '" + stockName + "'");
-                boolean isALE = isStockFromALEColumn(stockName);
-                CirSim.console("    isStockFromALEColumn: " + isALE);
-                if (!isALE && stockName != null && !stockName.trim().isEmpty()) {
-                    stockNamesList.add(stockName);
-                    CirSim.console("    -> Added to list");
-                } else {
-                    CirSim.console("    -> Filtered out");
+                ColumnType colType = col.getType();
+                boolean isALE = col.isALE();
+                
+                // Filter out computed columns (A-L-E) - check the column's own type
+                if (isALE) {
+                    continue;
                 }
+                
+                // Filter out empty stock names
+                if (stockName == null || stockName.trim().isEmpty()) {
+                    continue;
+                }
+                
+                stockNamesList.add(stockName);
             }
             if (stockNamesList.size() > 0) {
                 customStockNames = new String[stockNamesList.size()];
                 for (int i = 0; i < stockNamesList.size(); i++) {
                     customStockNames[i] = stockNamesList.get(i);
                 }
-                CirSim.console("  Filtered columns. New count: " + customStockNames.length);
             }
         }
         
@@ -141,10 +158,7 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         // Skip initialization if registry is empty (during menu creation)
         // The matrix will be initialized later when actually used
         String[] masterStocks = ComputedValues.getAllMasterStockNames();
-        CirSim.console("CTM: initializeMatrix() - masterStocks count: " + 
-                      (masterStocks != null ? masterStocks.length : "null"));
         if (masterStocks != null && masterStocks.length > 0) {
-            CirSim.console("  Master stocks: " + String.join(", ", masterStocks));
         }
         
         if (masterStocks == null || masterStocks.length == 0) {
@@ -205,15 +219,13 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     private void applyCustomStockNames() {
         if (customStockNames == null || customStockNames.length == 0) return;
         
-        CirSim.console("CTM: applyCustomStockNames() with " + customStockNames.length + " names");
         ArrayList<StockInfo> stockInfoList = new ArrayList<StockInfo>();
         
-        for (String stockName : customStockNames) {
-            CirSim.console("  Applying custom stock: '" + stockName + "'");
+        for (int i = 0; i < customStockNames.length; i++) {
+            String stockName = customStockNames[i];
             if (stockName != null && !stockName.trim().isEmpty()) {
                 // Filter out A-L-E columns
                 if (isStockFromALEColumn(stockName)) {
-                    CirSim.console("    -> Filtered out (A-L-E column)");
                     continue;
                 }
                 
@@ -222,7 +234,6 @@ public class CurrentTransactionsMatrixElm extends TableElm {
                 info.columnType = getColumnTypeFromMasterTable(stockName);
                 info.sourceTableName = getSourceTableName(stockName);
                 stockInfoList.add(info);
-                CirSim.console("    -> Added");
             }
         }
         
@@ -271,15 +282,11 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         String[] masterStocks = ComputedValues.getAllMasterStockNames();
         ArrayList<StockInfo> stockInfoList = new ArrayList<StockInfo>();
         
-        CirSim.console("CTM: buildStockInfoList() processing " + masterStocks.length + " master stocks");
         for (String stockName : masterStocks) {
-            CirSim.console("  Checking stock: '" + stockName + "'");
             if (isStockFromALEColumn(stockName)) {
-                CirSim.console("    -> Filtered out (A-L-E)");
                 continue;
             }
             if (!filter.accept(stockName)) {
-                CirSim.console("    -> Filtered out (by filter)");
                 continue;
             }
             
@@ -288,10 +295,8 @@ public class CurrentTransactionsMatrixElm extends TableElm {
             info.columnType = getColumnTypeFromMasterTable(stockName);
             info.sourceTableName = getSourceTableName(stockName);
             stockInfoList.add(info);
-            CirSim.console("    -> Added to list");
         }
         
-        CirSim.console("  Final list: " + stockInfoList.size() + " stocks");
         sortBySourceTable(stockInfoList);
         return stockInfoList;
     }
@@ -302,15 +307,19 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     private void populateFromStockInfoList(ArrayList<StockInfo> stockInfoList) {
         columns = new ArrayList<TableColumn>();
         
-        for (StockInfo info : stockInfoList) {
+        for (int i = 0; i < stockInfoList.size(); i++) {
+            StockInfo info = stockInfoList.get(i);
             double initialValue = getInitialValueFromMaster(info.stockName);
             columns.add(new TableColumn(info.stockName, info.columnType, initialValue, rows));
         }
         
-        // Add A-L-E computed column if showALE is true
+        // Add computed column if showALE is true
         if (showALE) {
-            columns.add(new TableColumn("A-L-E", ColumnType.COMPUTED, 0.0, rows));
+            String colName = (computedColumnName != null && !computedColumnName.isEmpty()) 
+                           ? computedColumnName : "A-L-E";
+            columns.add(new TableColumn(colName, ColumnType.COMPUTED, 0.0, rows));
         }
+        
         
         // Populate flows/equations when not collapsed
         if (!collapsedMode) {
@@ -411,22 +420,17 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     }
     
     /**
-     * Check if a stock name comes from an A-L-E computed column
-     * A-L-E columns should not be included in the matrix
+     * Check if a stock name comes from a computed column (e.g., A-L-E)
+     * Computed columns should not be included in the matrix
      * @param stockName The name of the stock to check
-     * @return true if this is from an A-L-E column, false otherwise
+     * @return true if this is from a computed column, false otherwise
      */
     private boolean isStockFromALEColumn(String stockName) {
         if (stockName == null || stockName.trim().isEmpty()) {
             return false;
         }
         
-        // Check if the stock name itself is "A-L-E" (case insensitive)
         String trimmedName = stockName.trim();
-        if (trimmedName.equalsIgnoreCase("A-L-E")) {
-            CirSim.console("    isStockFromALEColumn: '" + stockName + "' matches 'A-L-E' by name");
-            return true;
-        }
         
         // Get the master table for this stock
         Object masterTableObj = ComputedValues.getComputingTable(trimmedName);
@@ -434,18 +438,13 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         if (masterTableObj instanceof TableElm) {
             TableElm masterTable = (TableElm) masterTableObj;
             
-            // Find the column index in the master table
+            // Find the column in the master table
             int colIndex = masterTable.findColumnByStockName(trimmedName);
             
-            if (colIndex >= 0) {
-                // Check if this column is an A-L-E column in the source table
-                // A-L-E column is the last column when there are 4+ columns
-                int masterCols = masterTable.getCols();
-                boolean isLastCol = masterCols >= 4 && colIndex == (masterCols - 1);
-                if (isLastCol) {
-                    CirSim.console("    isStockFromALEColumn: '" + stockName + "' is A-L-E column in master table");
-                }
-                return isLastCol;
+            if (colIndex >= 0 && colIndex < masterTable.columns.size()) {
+                // Check if this column is a computed type
+                TableColumn col = masterTable.columns.get(colIndex);
+                return col.getType() == ColumnType.COMPUTED;
             }
         }
         
@@ -825,9 +824,21 @@ public class CurrentTransactionsMatrixElm extends TableElm {
             customStockNamesStr = sb.toString();
         }
         
-        // Format: minimal_table_data "customStockNames"
-        // Format: rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces showCellValues collapsedMode priority initMode title units customStockNames
-        String tableData = " 0 0 6 16 0 false 2 " + showCellValues + " " + collapsedMode + " " + priority + " " + initMode + " " + CustomLogicModel.escape(MATRIX_TITLE) + " \"\" \"" + customStockNamesStr + "\"";
+        // Get computed column name from last column if it exists
+        String computedColNameStr = "";
+        if (showALE && columns != null && columns.size() > 0) {
+            TableColumn lastCol = columns.get(columns.size() - 1);
+            if (lastCol.getType() == ColumnType.COMPUTED) {
+                String colName = lastCol.getStockName();
+                if (colName != null && !colName.equals("A-L-E")) {
+                    computedColNameStr = colName;
+                }
+            }
+        }
+        
+        // Format: minimal_table_data "customStockNames" "computedColumnName"
+        // Format: rows cols cellWidth cellHeight cellSpacing showInitialValues decimalPlaces showCellValues collapsedMode priority initMode title units customStockNames computedColumnName
+        String tableData = " 0 0 6 16 0 false 2 " + showCellValues + " " + collapsedMode + " " + priority + " " + initMode + " " + CustomLogicModel.escape(MATRIX_TITLE) + " \"\" \"" + customStockNamesStr + "\" \"" + computedColNameStr + "\"";
         
         return circuitData + tableData;
     }
@@ -952,11 +963,9 @@ public class CurrentTransactionsMatrixElm extends TableElm {
      * In normal mode: copies specific stock column equations.
      */
     private void populateCellEquationsFromMasters() {
-        // CirSim.console("CTM: Populating cell equations for " + rows + " rows, " + getCols() + " columns");
         
         for (int row = 0; row < rows; row++) {
             String flowName = rowDescriptions[row];
-            // CirSim.console("CTM: Row " + row + " flowName='" + flowName + "'");
             
             for (int col = 0; col < getCols(); col++) {
                 TableColumn column = columns.get(col);
@@ -964,7 +973,6 @@ public class CurrentTransactionsMatrixElm extends TableElm {
                 
                 // Skip A-L-E computed columns - they don't have equations
                 if (column.isALE()) {
-                    // CirSim.console("  Col " + col + " stock='" + stockName + "' -> Skipping A-L-E (computed)");
                     continue;
                 }
                 
@@ -980,15 +988,10 @@ public class CurrentTransactionsMatrixElm extends TableElm {
                     int masterRow = findRowByFlowName(masterTable, flowName);
                     int masterCol = masterTable.findColumnByStockName(stockName.trim());
                     
-                    // CirSim.console("  Col " + col + " stock='" + stockName + "' masterTable='" + masterTable.getTableTitle() + 
-                                //  "' masterRow=" + masterRow + " masterCol=" + masterCol);
-                    
                     if (masterRow >= 0 && masterCol >= 0) {
                         String equation = masterTable.getCellEquation(masterRow, masterCol);
-                        CirSim.console("    -> Setting equation: '" + equation + "'");
                         columns.get(col).setCellEquation(row, (equation != null) ? equation : "");
                     } else {
-                        // CirSim.console("    -> Setting empty (row or col not found)");
                         columns.get(col).setCellEquation(row, "");
                     }
                 } else {
@@ -1083,12 +1086,10 @@ public class CurrentTransactionsMatrixElm extends TableElm {
 
     @Override
     public void doStep() {
-        // CirSim.console("[doStep] This method should be overridden by subclasses (e.g., GodlyTableElm)");    
     }
     @Override
     public void stepFinished() {
-	    // This method should be overridden by subclasses (e.g., GodlyTableElm)
-        // CirSim.console("[stepFinished] This method should be overridden by subclasses (e.g., GodlyTableElm)");   
+	    // This method intentionally left blank
     }
     
     @Override

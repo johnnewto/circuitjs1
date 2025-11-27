@@ -1,12 +1,11 @@
 $ 17 0.05 0.41233529972698213 37 5 43 5e-11
-R 336 224 208 224 0 0 40 10 0 0 0.5 V
-g 752 416 752 448 0 0
-w 752 384 816 384 2
-x 15 264 874 267 4 24 Test,\safter\s10\sseconds\sof\sintegrating\s10\svolts\sthe\sstock_1\svalue\sshould\sbe\s100 808080FF
-207 336 224 448 224 28 ten
-207 192 288 304 288 60 Stock_1
-212 656 384 672 384 0 0 t
-255 160 352 272 352 0 1 4 6 16 0 true 2 false false Table\s5 \0 Stock_1 Stock_2 Stock_3 A-L-E Flow_1 0 2 0 0 ASSET LIABILITY EQUITY ASSET ten -ten 0.1*ten \0 0.001
-408 816 384 864 384 0 10 0 0
-255 160 464 176 464 0 1 4 6 16 0 true 2 false false Table\s6 \0 Stock_1 Stock_2 Stock_3 A-L-E Flow_1 0 0 0 0 ASSET LIABILITY EQUITY ASSET ten -ten 0.1*ten \0 0.001
-o 3 2 0 4099 0.0000762939453125 0.00009765625 0 2 3 3
+% transform 1.5 173 -191.5
+R 720 336 672 336 0 0 40 10 0 0 0.5 V
+x 53 150 633 153 4 24 Test,\safter\s10\sseconds\stable6_e\svalue\sshould\sbe\s600 FF8080FF
+207 720 336 768 336 28 ten
+207 640 144 704 144 60 table6_e
+255 48 320 160 320 0 2 4 6 16 0 true 2 1 false 5 0 true Table\s5 \0 t5_a t5_i table5_e A-L-E Flow_2 Flow_1 0 2 5 0 ASSET LIABILITY EQUITY COMPUTED \0 \0 2\pten \0 ten -ten 0.1*ten \0 0.001
+255 48 448 64 448 0 3 4 6 16 0 true 2 1 false 5 0 true Table\s6 \0 Stock_1 Stock_2 table6_e A-L-E Flow_1 flow\s3 Flow_2 0 2 0 0 ASSET LIABILITY EQUITY COMPUTED ten -ten 1*ten \0 \0 \0 3*ten \0 -ten -ten 2*ten \0 0.001
+254 80 160 96 160 0 0 0 6 16 0 false 2 1 false 1 0 Current\sTransactions\sMatrix "" ""
+431 704 416 720 432 0 10 true false
+o 1 2 0 4099 0.0000762939453125 0.00009765625 0 2 1 3

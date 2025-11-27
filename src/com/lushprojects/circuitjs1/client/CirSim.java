@@ -2714,10 +2714,13 @@ public CirSim() {
      * - Lower priority tables find existing masters and become followers
      * - No replacements occur, no duplicate voltage sources created
      * 
+     * PUBLIC: Can be called from TableEditDialog to recalculate masters immediately
+     * after priority or stock name changes, ensuring UI lock status is updated.
+     * 
      * @see TableElm#registerAsMasterOnly()
      * @see ComputedValues
      */
-    void registerTableMastersInPriorityOrder() {
+    public void registerTableMastersInPriorityOrder() {
 	// Collect all tables
 	java.util.ArrayList<TableElm> tables = new java.util.ArrayList<TableElm>();
 	for (int i = 0; i != elmList.size(); i++) {

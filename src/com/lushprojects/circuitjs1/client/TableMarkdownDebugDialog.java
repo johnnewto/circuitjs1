@@ -257,6 +257,13 @@ public class TableMarkdownDebugDialog {
     }
     
     /**
+     * Check if table is a CurrentTransactionsMatrixElm
+     */
+    private boolean isCTMTable(TableElm table) {
+        return table instanceof CurrentTransactionsMatrixElm;
+    }
+    
+    /**
      * Find all tables related to source table via shared stocks
      */
     private java.util.Set<TableElm> findRelatedTables() {
@@ -301,7 +308,11 @@ public class TableMarkdownDebugDialog {
                 
                 // Check if this table is master for this column
                 boolean isALEColumn = (col == table.getCols() - 1 && table.getCols() >= 4);
-                if (!isALEColumn && colHeader != null && !colHeader.trim().isEmpty()) {
+                
+                // For CTM tables, show "SUM" instead of "A-L-E"
+                if (isALEColumn && isCTMTable(table)) {
+                    colHeader = "SUM";
+                } else if (!isALEColumn && colHeader != null && !colHeader.trim().isEmpty()) {
                     boolean isMaster = ComputedValues.isMasterTable(colHeader.trim(), table);
                     if (isMaster) {
                         // Calculate effective priority for this column
@@ -328,7 +339,16 @@ public class TableMarkdownDebugDialog {
             // Column types row
             md.append("| ").append(padRight("*Type*", colWidths[0])).append(" ");
             for (int col = 0; col < table.getCols(); col++) {
-                String colType = table.getColumnTypeName(col);
+                String colType;
+                boolean isALEColumn = (col == table.getCols() - 1 && table.getCols() >= 4);
+                
+                // For CTM tables, show "Computed" instead of "Unknown" for ALE column
+                if (isALEColumn && isCTMTable(table)) {
+                    colType = "Computed";
+                } else {
+                    colType = table.getColumnTypeName(col);
+                }
+                
                 md.append("| ").append(padRight("*" + colType + "*", colWidths[col + 1])).append(" ");
             }
             md.append("|\n");

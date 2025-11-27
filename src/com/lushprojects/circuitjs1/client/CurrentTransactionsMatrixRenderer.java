@@ -25,105 +25,123 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
      */
     @Override
     protected void updateCachedValues() {
-        CirSim.console("CTM Renderer: updateCachedValues() called for table '" + table.getTableTitle() + "'");
-        CirSim.console("  Rows: " + table.rows + ", Cols: " + table.getCols() + ", hasALE: " + hasALEColumn());
-        
+        initializeCacheArrays();
+        updateCellValuesFromMasterTables();
+        updateColumnSumsFromMasters();
+        calculateALEColumn();
+    }
+    
+    /**
+     * Initialize cache arrays with proper dimensions
+     */
+    private void initializeCacheArrays() {
         if (cachedCellValues == null || cachedCellValues.length != table.rows || 
             (table.rows > 0 && cachedCellValues[0].length != table.getCols())) {
             cachedCellValues = new double[table.rows][table.getCols()];
-            CirSim.console("  Initialized cachedCellValues array");
         }
         
         if (cachedSumValues == null || cachedSumValues.length != table.getCols()) {
             cachedSumValues = new double[table.getCols()];
-            CirSim.console("  Initialized cachedSumValues array");
         }
-        
-        // For CTM: map flow names to master table rows
+    }
+    
+    /**
+     * Update cell values by mapping flow names to master table rows
+     */
+    private void updateCellValuesFromMasterTables() {
         int regularColCount = getRegularColumnCount();
-        CirSim.console("CTM Renderer: Updating cached values for " + table.rows + " rows, " + regularColCount + " regular cols");
         
         for (int row = 0; row < table.rows; row++) {
             String flowName = table.getRowDescription(row);
-            CirSim.console("  Row " + row + " flowName='" + flowName + "'");
             
             for (int col = 0; col < regularColCount; col++) {
-                if (table.columns != null && col < table.columns.size()) {
-                    TableColumn column = table.columns.get(col);
-                    String stockName = column.getStockName();
-                    
-                    // CTM is never a master, always fetches from source tables
-                    TableElm masterTable = ComputedValues.getMasterTable(stockName);
-                    
-                    if (masterTable != null && masterTable.columns != null) {
-                        // Find the row in the master table that matches this flow name
-                        int masterRow = matrixElm.findRowByFlowName(masterTable, flowName);
-                        int masterCol = masterTable.findColumnByStockName(stockName);
-                        
-                        CirSim.console("    Col " + col + " stock='" + stockName + "' masterTable='" + 
-                                     masterTable.getTableTitle() + "' masterRow=" + masterRow + " masterCol=" + masterCol);
-                        
-                        if (masterRow >= 0 && masterCol >= 0 && masterCol < masterTable.columns.size()) {
-                            TableColumn masterColumn = masterTable.columns.get(masterCol);
-                            double value = masterColumn.getCachedCellValue(masterRow);
-                            
-                            // Debug: check if this is actually from cache
-                            CirSim.console("      -> Master column '" + masterColumn.getStockName() + "' cachedCellValue[" + masterRow + "] = " + value);
-                            CirSim.console("      -> Master column lastSum = " + masterColumn.getLastSum());
-                            
-                            cachedCellValues[row][col] = value;
-                            CirSim.console("      -> Final value stored: " + value);
-                        } else {
-                            cachedCellValues[row][col] = 0.0;
-                            CirSim.console("      -> Not found, using 0.0");
-                        }
-                    } else {
-                        cachedCellValues[row][col] = 0.0;
-                        CirSim.console("    Col " + col + " stock='" + stockName + "' -> No master table, using 0.0");
-                    }
-                } else {
-                    cachedCellValues[row][col] = 0.0;
-                }
+                cachedCellValues[row][col] = fetchCellValueFromMaster(row, col, flowName);
             }
         }
+    }
+    
+    /**
+     * Fetch a single cell value from the master table
+     * @param row Current row index
+     * @param col Current column index  
+     * @param flowName Flow name for this row
+     * @return Cell value from master table or 0.0 if not found
+     */
+    private double fetchCellValueFromMaster(int row, int col, String flowName) {
+        if (table.columns == null || col >= table.columns.size()) {
+            return 0.0;
+        }
         
-        // Update column sum values (computed row) - CTM always fetches from masters
-        CirSim.console("CTM Renderer: Calculating column sums for " + regularColCount + " regular columns");
+        TableColumn column = table.columns.get(col);
+        String stockName = column.getStockName();
+        
+        // CTM is never a master, always fetches from source tables
+        TableElm masterTable = ComputedValues.getMasterTable(stockName);
+        
+        if (masterTable == null || masterTable.columns == null) {
+            return 0.0;
+        }
+        
+        // Find the row in the master table that matches this flow name
+        int masterRow = matrixElm.findRowByFlowName(masterTable, flowName);
+        int masterCol = masterTable.findColumnByStockName(stockName);
+        
+        if (masterRow >= 0 && masterCol >= 0 && masterCol < masterTable.columns.size()) {
+            TableColumn masterColumn = masterTable.columns.get(masterCol);
+            return masterColumn.getCachedCellValue(masterRow);
+        }
+        
+        return 0.0;
+    }
+    
+    /**
+     * Update column sums from master tables (computed row)
+     */
+    private void updateColumnSumsFromMasters() {
+        int regularColCount = getRegularColumnCount();
+        
         for (int col = 0; col < regularColCount; col++) {
             cachedSumValues[col] = getRegularColumnSum(col);
-            CirSim.console("  Col " + col + " sum: " + cachedSumValues[col]);
+        }
+    }
+    
+    /**
+     * Calculate ALE column values (each row's ALE is sum of all values in that row)
+     * For CTM, ALE represents the total transaction amount across all stocks for each flow
+     */
+    private void calculateALEColumn() {
+        if (!hasALEColumn()) {
+            return;
         }
         
-        // Calculate ALE column: for CTM, each row's ALE is the sum of all values in that row
-        if (hasALEColumn()) {
-            int aleCol = table.getCols() - 1;
-            CirSim.console("CTM ALE: Calculating for " + table.rows + " rows, " + regularColCount + " regular columns");
-            
-            // For each row, calculate ALE as sum of all regular columns
-            for (int row = 0; row < table.rows; row++) {
-                double rowSum = 0.0;
-                String flowName = table.getRowDescription(row);
-                CirSim.console("  Row " + row + " ('" + flowName + "'):");
-                
-                for (int col = 0; col < regularColCount; col++) {
-                    double value = cachedCellValues[row][col];
-                    String stockName = (col < table.columns.size()) ? table.columns.get(col).getStockName() : "?";
-                    CirSim.console("    Col " + col + " (" + stockName + "): " + value);
-                    rowSum += value;
-                }
-                
-                cachedCellValues[row][aleCol] = rowSum;
-                CirSim.console("    -> Row ALE sum: " + rowSum);
-            }
-            
-            // ALE column sum is the sum of all row ALE values
-            double aleColumnSum = 0.0;
-            for (int row = 0; row < table.rows; row++) {
-                aleColumnSum += cachedCellValues[row][aleCol];
-            }
-            cachedSumValues[aleCol] = aleColumnSum;
-            CirSim.console("  -> Total ALE column sum: " + aleColumnSum);
+        int aleCol = table.getCols() - 1;
+        int regularColCount = getRegularColumnCount();
+        
+        // Calculate ALE for each row (sum of all regular columns)
+        double aleColumnSum = 0.0;
+        for (int row = 0; row < table.rows; row++) {
+            double rowSum = calculateRowSum(row, regularColCount);
+            cachedCellValues[row][aleCol] = rowSum;
+            aleColumnSum += rowSum;
         }
+        
+        cachedSumValues[aleCol] = aleColumnSum;
+    }
+    
+    /**
+     * Calculate sum of all regular columns for a given row
+     * @param row Row index
+     * @param regularColCount Number of regular columns
+     * @return Sum of all values in the row
+     */
+    private double calculateRowSum(int row, int regularColCount) {
+        double rowSum = 0.0;
+        
+        for (int col = 0; col < regularColCount; col++) {
+            rowSum += cachedCellValues[row][col];
+        }
+        
+        return rowSum;
     }
     
     /**
@@ -149,37 +167,39 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
     
     /**
      * Override A-L-E sum calculation for CTM.
-     * For CTM, the sum row A-L-E should be the sum of all regular columns in the sum row.
-     * This gives the total across all flows and all stocks.
+     * For CTM, the sum row A-L-E is the total of all transactions across all stocks.
+     * This represents the grand total of all flows across all stocks.
+     * @return Sum of all regular column sums
      */
     @Override
     protected double getALESumValue() {
-        if (!hasALEColumn()) {
+        if (!hasALEColumn() || cachedSumValues == null) {
             return 0.0;
         }
         
-        // Sum all regular columns in the sum row
         double total = 0.0;
         int regularColCount = getRegularColumnCount();
-        for (int col = 0; col < regularColCount; col++) {
-            if (cachedSumValues != null && col < cachedSumValues.length) {
-                total += cachedSumValues[col];
-            }
+        
+        for (int col = 0; col < regularColCount && col < cachedSumValues.length; col++) {
+            total += cachedSumValues[col];
         }
+        
         return total;
     }
     
     /**
      * Override A-L-E row calculation for CTM.
      * CTM uses direct value from cached cell values (already calculated as row sums).
+     * Parameters totalAssets, totalLiabilities, totalEquity are ignored for CTM.
+     * @param row Row index
+     * @return ALE value for this row (sum of all regular columns in this row)
      */
     @Override
     protected double getALERowValue(int row, double totalAssets, double totalLiabilities, double totalEquity) {
         if (!hasALEColumn()) {
             return 0.0;
         }
-        int aleCol = table.getCols() - 1;
-        return getCachedCellValue(row, aleCol);
+        return getCachedCellValue(row, table.getCols() - 1);
     }
     
     /**
@@ -224,6 +244,11 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
         for (int col = 0; col < table.getCols(); col++) {
             String stockVarName = matrixElm.getOutputName(col);
             
+            // For CTM, label the ALE column as "SUM" instead of "A-L-E"
+            if (hasALEColumn() && col == table.getCols() - 1) {
+                stockVarName = "SUM";
+            }
+            
             int centerX = tableX + rowDescColWidth + table.cellSpacing * 2 + 
                 col * (cellWidthPixels + table.cellSpacing) + cellWidthPixels/2;
             
@@ -254,9 +279,16 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
         
         // Draw table name in each column header
         for (int col = 0; col < table.getCols(); col++) {
-            String tableName = matrixElm.getSourceTableName(col);
-            if (tableName == null || tableName.isEmpty()) {
-                tableName = matrixElm.getOutputName(col);
+            String tableName = "";
+            
+            // For computed columns (A-L-E), show blank
+            if (col < table.columns.size() && table.columns.get(col).isALE()) {
+                tableName = "";
+            } else {
+                tableName = matrixElm.getSourceTableName(col);
+                if (tableName == null || tableName.isEmpty()) {
+                    tableName = matrixElm.getOutputName(col);
+                }
             }
             
             int centerX = tableX + rowDescColWidth + table.cellSpacing * 2 + 

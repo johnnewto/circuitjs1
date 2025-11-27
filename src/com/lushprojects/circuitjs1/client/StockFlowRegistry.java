@@ -710,7 +710,8 @@ public class StockFlowRegistry {
 
     /**
      * Synchronize all tables that share stocks with the given table
-     * Bidirectional sync: trigger table pushes to others AND pulls from others
+     * Unidirectional master-to-follower sync: Only master tables push changes to non-master tables.
+     * Non-master tables are locked and cannot be edited, so no pull phase is needed.
      *
      * @param triggerTable The table that triggered synchronization
      */
@@ -720,7 +721,7 @@ public class StockFlowRegistry {
             return;
         }
         
-        SRTlog("Starting bidirectional synchronization");
+        SRTlog("Starting master-to-follower synchronization");
    
 
         Set<TableElm> affectedTables = new HashSet<TableElm>();
@@ -785,74 +786,58 @@ public class StockFlowRegistry {
             return; // No sync needed if only one table
         }
         
-        // PHASE 1: Synchronize FROM trigger table TO other tables (push)
-        SRTlog("=== PHASE 1: Pushing changes from trigger table to others ===");
+        // Sync FROM master tables TO follower tables
+        // For each shared stock, find the master table and push its equations to followers
+        SRTlog("=== Syncing from master tables to followers ===");
         int tablesUpdated = 0;
         
-        for (TableElm table : affectedTables) {
-            if (table == triggerTable) continue; // Skip trigger table in push phase
+        // Build map of stock -> master table for efficient lookup
+        Map<String, TableElm> stockMasters = new HashMap<String, TableElm>();
+        for (String stockName : sharedStocks) {
+            TableElm masterTable = ComputedValues.getMasterTable(stockName);
+            if (masterTable != null) {
+                stockMasters.put(stockName, masterTable);
+                SRTlog("  Stock '" + stockName + "' is mastered by: " + masterTable.getTableTitle());
+            }
+        }
+        
+        // For each affected table, sync from its master tables
+        for (TableElm followerTable : affectedTables) {
+            // Collect all master tables that this follower needs to sync from
+            Set<TableElm> masterTables = new HashSet<TableElm>();
             
-            // Log which equations will be applied to this table
-            SRTlog("--- Applying to Table: " + table.getTableTitle() + " ---");
-            
-            // Check which stocks are shared and will receive equations
-            for (int col = 0; col < table.getCols(); col++) {
-                String stockName = table.getColumnHeader(col);
-                if (sharedStocks.contains(stockName)) {
-                    SRTlog("  Stock '" + stockName + "' (column " + col + ") will receive equations");
-                    
-                    // Show which flow/stock pairs from trigger table will be applied
-                    try {
-                        int triggerRows = triggerTable.getRows();
-                        for (int row = 0; row < triggerRows; row++) {
-                        String flowDesc = triggerTable.getRowDescription(row);
-                        if (flowDesc == null || flowDesc.trim().isEmpty()) {
-                            flowDesc = "Flow" + row;
-                        }
-                        
-                        // Find the column in trigger table for this stock
-                        int triggerCol = triggerTable.findColumnByStockName(stockName);
-                        if (triggerCol >= 0) {
-                            String equation = triggerTable.getCellEquation(row, triggerCol);
-                            if (equation != null && !equation.trim().isEmpty() && !equation.trim().equals("0")) {
-                                SRTlog("    ✓ " + flowDesc + ": `" + equation + "`");
-                            }
-                        }
-                    }
-                    } catch (Exception e) {
-                        SRTlog("Error accessing trigger table rows during logging: " + e.getMessage());
-                    }
+            for (int col = 0; col < followerTable.getCols(); col++) {
+                String stockName = followerTable.getColumnHeader(col);
+                if (stockName == null || stockName.trim().isEmpty()) continue;
+                
+                TableElm masterTable = stockMasters.get(stockName);
+                if (masterTable != null && masterTable != followerTable) {
+                    masterTables.add(masterTable);
                 }
             }
             
-            boolean wasModified = synchronizeTable(table, triggerTable);
+            // Skip if this table is master for all its stocks (nothing to sync)
+            if (masterTables.isEmpty()) {
+                SRTlog("  Table '" + followerTable.getTableTitle() + "' is master for all its stocks - no sync needed");
+                continue;
+            }
+            
+            SRTlog("--- Syncing to follower table: " + followerTable.getTableTitle() + " ---");
+            
+            // Sync from each master table
+            boolean wasModified = false;
+            for (TableElm masterTable : masterTables) {
+                SRTlog("  Syncing from master: " + masterTable.getTableTitle());
+                boolean modified = synchronizeTable(followerTable, masterTable);
+                if (modified) {
+                    wasModified = true;
+                }
+            }
+            
             if (wasModified) {
                 tablesUpdated++;
-                SRTlog("  ✅ Table '" + table.getTableTitle() + "' updated");
+                SRTlog("  ✅ Table '" + followerTable.getTableTitle() + "' updated from master table(s)");
             }
-        }
-        
-        // PHASE 2: Synchronize FROM other tables TO trigger table (pull)
-        SRTlog("=== PHASE 2: Pulling changes from other tables to trigger table ===");
-        boolean triggerModified = false;
-        
-        for (TableElm sourceTable : affectedTables) {
-            if (sourceTable == triggerTable) continue; // Skip self
-            
-            SRTlog("--- Pulling from Table: " + sourceTable.getTableTitle() + " ---");
-            
-            // Synchronize trigger table using this source table as priority
-            // This will pull in any rows/equations from sourceTable that aren't in triggerTable
-            boolean modified = synchronizeTable(triggerTable, sourceTable);
-            if (modified) {
-                triggerModified = true;
-                SRTlog("  ✅ Pulled changes from '" + sourceTable.getTableTitle() + "' into trigger table");
-            }
-        }
-        
-        if (triggerModified) {
-            tablesUpdated++;
-            SRTlog("Trigger table '" + triggerTable.getTableTitle() + "' updated from other tables");
         }
         
         if (tablesUpdated > 0) {
@@ -870,7 +855,7 @@ public class StockFlowRegistry {
      * 
      * Note: This method performs a simpler synchronization compared to
      * synchronizeRelatedTables() - it only merges row descriptions without
-     * propagating equations between tables. For full bidirectional sync with
+     * propagating equations between tables. For full master-to-follower sync with
      * equation propagation, use synchronizeRelatedTables() instead.
      */
     public static void synchronizeAllTables() {
