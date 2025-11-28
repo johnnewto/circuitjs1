@@ -176,33 +176,37 @@ class SliderDialog extends Dialog  {
 			    double displayMinValue = adj.minValue;
 			    double displayMaxValue = adj.maxValue;
 			    
-			    // If this is a newly created slider with default values (0 and 1),
-			    // calculate better defaults based on current value
-			    double currentValue = ei.value;
-			    
-			    if (currentValue < 0) {
-			        // For negative values, set max to 0 and min to 10^x below the value
-			        displayMaxValue = 0;
-			        double absValue = Math.abs(currentValue);
-			        if (absValue <= 0) {
-			            displayMinValue = -1;
-			        } else {
-			            // Get the power of 10
-			            double log10 = Math.log10(absValue);
-			            int exponent = (int) Math.ceil(log10);
-			            displayMinValue = -Math.pow(10, exponent);
-			        }
-			    } else {
-			        // For positive values, set min to 0 and max to 10^x above the value
-			        displayMinValue = 0;
-			        if (currentValue <= 0) {
-			            displayMaxValue = 1;
-			        } else {
-			            // Get the power of 10
-			            double log10 = Math.log10(currentValue);
-			            int exponent = (int) Math.ceil(log10);
-			            displayMaxValue = Math.pow(10, exponent);
-			        }
+			    // Only calculate new defaults if this is a newly created slider with default values
+			    // Check if we have the default 0 to 1 range that indicates a new slider
+			    if (adj.minValue == 0 && adj.maxValue == 1) {
+				// If this is a newly created slider with default values (0 and 1),
+				// calculate better defaults based on current value
+				double currentValue = ei.value;
+				
+				if (currentValue < 0) {
+				    // For negative values, set max to 0 and min to 10^x below the value
+				    displayMaxValue = 0;
+				    double absValue = Math.abs(currentValue);
+				    if (absValue <= 0) {
+					displayMinValue = -1;
+				    } else {
+					// Get the power of 10
+					double log10 = Math.log10(absValue);
+					int exponent = (int) Math.ceil(log10);
+					displayMinValue = -Math.pow(10, exponent);
+				    }
+				} else {
+				    // For positive values, set min to 0 and max to 10^x above the value
+				    displayMinValue = 0;
+				    if (currentValue <= 0) {
+					displayMaxValue = 1;
+				    } else {
+					// Get the power of 10
+					double log10 = Math.log10(currentValue);
+					int exponent = (int) Math.ceil(log10);
+					displayMaxValue = Math.pow(10, exponent);
+				    }
+				}
 			    }
 			    
 			    ei.minBox.setText(EditDialog.unitString(ei, displayMinValue));
@@ -231,10 +235,31 @@ class SliderDialog extends Dialog  {
 			CirSim.console("slidertext " + adj.sliderText + " " + ei.labelBox);
 			if (adj.label != null)
 			    adj.label.setText(adj.sliderText);
-			double d = EditDialog.parseUnits(ei.minBox.getText());
-			adj.minValue = d;
-			d = EditDialog.parseUnits(ei.maxBox.getText());
-			adj.maxValue = d;
+			
+			// Parse min value with validation
+			String minText = ei.minBox.getText().trim();
+			if (!minText.isEmpty()) {
+			    try {
+				double d = EditDialog.parseUnits(minText);
+				adj.minValue = d;
+			    } catch (Exception e) {
+				CirSim.console("Invalid min value: " + minText);
+				// Keep existing minValue if parsing fails
+			    }
+			}
+			
+			// Parse max value with validation
+			String maxText = ei.maxBox.getText().trim();
+			if (!maxText.isEmpty()) {
+			    try {
+				double d = EditDialog.parseUnits(maxText);
+				adj.maxValue = d;
+			    } catch (Exception e) {
+				CirSim.console("Invalid max value: " + maxText);
+				// Keep existing maxValue if parsing fails
+			    }
+			}
+			
 			// Parse number of steps
 			if (ei.stepsBox != null) {
 			    try {
@@ -245,8 +270,16 @@ class SliderDialog extends Dialog  {
 				adj.numSteps = 0;
 			    }
 			}
-			adj.setSliderValue(ei.value);
-		    } catch (Exception e) { CirSim.console(e.toString()); }
+			
+			// Only update slider value if min/max are valid
+			if (adj.minValue < adj.maxValue) {
+			    adj.setSliderValue(ei.value);
+			} else {
+			    CirSim.console("Skipping slider update: invalid min/max range");
+			}
+		    } catch (Exception e) { 
+			CirSim.console("Error in apply: " + e.toString()); 
+		    }
 		}
 	}
 

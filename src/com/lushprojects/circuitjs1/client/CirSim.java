@@ -1775,11 +1775,23 @@ public CirSim() {
     		runStopButton.setHTML(Locale.LSHTML("<strong>RUN</strong>&nbsp;/&nbsp;Stop"));
     		runStopButton.setStylePrimaryName("topButton");
     		timer.scheduleRepeating(FASTTIMER);
+    		
+    		// Clear paused state when user manually starts simulation
+    		ActionScheduler scheduler = ActionScheduler.getInstance();
+    		if (scheduler != null) {
+    		    scheduler.clearPausedState();
+    		}
     	} else {
     		simRunning = false;
     		runStopButton.setHTML(Locale.LSHTML("Run&nbsp;/&nbsp;<strong>STOP</strong>"));
     		runStopButton.setStylePrimaryName("topButton-red");
     		timer.cancel();
+    		
+    		// Cancel any pending action timer when user stops simulation
+    		ActionScheduler scheduler = ActionScheduler.getInstance();
+    		if (scheduler != null) {
+    		    scheduler.cancelResumeTimer();
+    		}
 		repaint();
     	}
     }
@@ -2095,6 +2107,7 @@ public CirSim() {
         } // end if (shouldDrawGraphics)
 
         perfmon.stopContext(); // updateCircuit
+        
         // Always show framerate
         g.setColor(CircuitElm.whiteColor);
         int height = 15;
@@ -2134,6 +2147,8 @@ public CirSim() {
 
         lastFrameTime = lastTime;
 
+        // Draw action scheduler display message if present (after all other graphics)
+        drawActionSchedulerMessage(g, cvcontext);
 
         
         // This should always be the last 
@@ -2141,6 +2156,37 @@ public CirSim() {
         callUpdateHook();
     }
 
+    void drawActionSchedulerMessage(Graphics g, Context2d context) {
+        ActionScheduler scheduler = ActionScheduler.getInstance();
+        if (scheduler != null && scheduler.hasDisplayMessage()) {
+            String message = scheduler.getDisplayMessage();
+            
+            // Save graphics state
+            g.save();
+            
+            // Set color based on background (white on black, black on white)
+            if (printableCheckItem.getState()) {
+                g.context.setFillStyle("#000000"); // Black text on white background
+            } else {
+                g.context.setFillStyle("#FFFFFF"); // White text on black background
+            }
+            
+            // Draw the message text centered at top
+            g.context.setFont("bold 24px sans-serif");
+            g.context.setTextAlign("center");
+            g.context.setTextBaseline("top");
+            
+            // Center horizontally - use canvas width / 2
+            int centerX = (context == cvcontext) ? circuitArea.width / 2 : 
+                         (int) (context.getCanvas().getWidth() / 2);
+            int topY = 15;
+            
+            g.context.fillText(message, centerX, topY);
+            
+            g.restore();
+        }
+    }
+    
     void drawBottomArea(Graphics g) {
 	int leftX = 0;
 	int h = 0;
@@ -2886,7 +2932,7 @@ public CirSim() {
 	    for (i = 0; i != nodeList.size(); i++)
 		if (!closure[i] && !getCircuitNode(i).internal) {
 		    unconnectedNodes.add(i);
-		    console("node " + i + " unconnected");
+		    // console("node " + i + " unconnected");
 //		    stampResistor(0, i, 1e8);   // do this later in connectUnconnectedNodes()
 		    closure[i] = true;
 		    changed = true;
@@ -2900,6 +2946,7 @@ public CirSim() {
     // otherwise circuits like 555 Square Wave will break
     void connectUnconnectedNodes() {
 	int i;
+	console("Number of unconnected nodes: " + unconnectedNodes.size());
 	for (i = 0; i != unconnectedNodes.size(); i++) {
 	    int n = unconnectedNodes.get(i);
 	    stampResistor(0, n, 1e8);
@@ -3067,6 +3114,8 @@ public CirSim() {
 	
 	// Refresh Variable Browser dialog if it's open
 	VariableBrowserDialog.refreshIfOpen();
+	// Refresh Action Time Dialog if it's open
+	ActionTimeDialog.refreshIfOpen();
 	
 	return true;
     }
@@ -3819,6 +3868,13 @@ public CirSim() {
                 elmArr[i].stepFinished();
             if (!delayWireProcessing)
                 calcWireCurrents();
+            
+            // Execute scheduled actions after circuit state is fully settled
+            ActionScheduler scheduler = ActionScheduler.getInstance(this);
+            if (scheduler != null) {
+                scheduler.stepFinished(t);
+            }
+            
             for (i = 0; i != scopeCount; i++)
                 scopes[i].timeStep();
             for (i=0; i != scopeElmArr.length; i++)
@@ -3946,6 +4002,10 @@ public CirSim() {
 		getElm(i).reset();
 	for (i = 0; i != scopeCount; i++)
 		scopes[i].resetGraph(true);
+	
+	// Reset action scheduler
+	ActionScheduler scheduler = ActionScheduler.getInstance(this);
+	scheduler.reset();
 	
     	repaint();
     }
@@ -4082,6 +4142,9 @@ public CirSim() {
     	}
     	if (item=="variablebrowser") {
     	    	VariableBrowserDialog.openDialog(this);
+    	}
+    	if (item=="actiontimedialog") {
+    	    	ActionTimeDialog.openDialog(this);
     	}
     	if (menu=="options" && item=="other")
     		doEdit(new EditOptions(this));
@@ -4582,6 +4645,12 @@ public CirSim() {
 			Adjustable adj = adjustables.get(i);
 			dump += "38 " + adj.dump() + "\n";
 		}
+		// Dump action scheduler
+		ActionScheduler scheduler = ActionScheduler.getInstance(this);
+		String schedulerDump = scheduler.dump();
+		if (schedulerDump != null && !schedulerDump.isEmpty()) {
+		    dump += schedulerDump;
+		}
 		if (hintType != -1)
 			dump += "h " + hintType + " " + hintItem1 + " " +
 			hintItem2 + "\n";
@@ -4633,7 +4702,8 @@ public CirSim() {
     	MenuBar varBrowserMenu = new MenuBar(true);
     	varBrowserMenu.setAutoOpen(true);
     	varBrowserMenu.addItem(menuItemWithShortcut("list-ul", "Variable Browser...", "\\", new MyCommand("edit", "variablebrowser")));
-    	menuBar.addItem(Locale.LS("Variables"), varBrowserMenu);
+    	varBrowserMenu.addItem(menuItemWithShortcut("clock-o", "Action Time Schedule...", "", new MyCommand("edit", "actiontimedialog")));
+    	menuBar.addItem(Locale.LS("Dialogs"), varBrowserMenu);
     	int p;
     	for (p = 0; p < len; ) {
     		int l;
@@ -4751,6 +4821,10 @@ public CirSim() {
 	    // Clear master table registrations for computed values
 	    ComputedValues.clearMasterTables();
 	    
+	    // Clear action scheduler
+	    ActionScheduler scheduler = ActionScheduler.getInstance(this);
+	    scheduler.clearAll();
+	    
 	    clearMouseElm();
 	    for (i = 0; i != elmList.size(); i++) {
 		CircuitElm ce = getElm(i);
@@ -4835,6 +4909,10 @@ public CirSim() {
 				} catch (Exception e) {
 				    // Ignore parse errors
 				}
+			    } else if (settingType.equals("AS") || settingType.equals("APT")) {
+				// Action Schedule entry (AS) or Action Pause Time (APT)
+				ActionScheduler scheduler = ActionScheduler.getInstance(this);
+				scheduler.load(line);
 			    }
 			}
 			break;
@@ -5436,6 +5514,20 @@ public CirSim() {
 	setCircuitArea();
 	repaint();
     }
+    
+    /**
+     * Update hover state for ActionTimeElm play/pause icons
+     */
+    void updateActionTimeElmIconHover(int gx, int gy) {
+	for (int i = 0; i != elmList.size(); i++) {
+	    CircuitElm ce = getElm(i);
+	    if (ce instanceof ActionTimeElm) {
+		ActionTimeElm ate = (ActionTimeElm) ce;
+		boolean hovered = ate.isPointInPlayPauseIcon(gx, gy);
+		ate.setPlayPauseIconHovered(hovered);
+	    }
+	}
+    }
 
     public void onMouseMove(MouseMoveEvent e) {
     	e.preventDefault();
@@ -5605,6 +5697,9 @@ public CirSim() {
     	}
     	repaint();
     	setMouseElm(newMouseElm);
+    	
+    	// Check hover state for ActionTimeElm play/pause icon
+    	updateActionTimeElmIconHover(gx, gy);
     }
 
 
@@ -5761,6 +5856,9 @@ public CirSim() {
     			if (!te.isCollapseArrowClicked(gx, gy)) {
     				te.openTableEditDialog();
     			}
+    		} else if (mouseElm instanceof ActionTimeElm) {
+    			// Special handling for ActionTimeElm - open ActionTimeDialog
+    			ActionTimeDialog.openDialog(this);
     		} else {
     			doEdit(mouseElm);
     		}
@@ -5860,6 +5958,20 @@ public CirSim() {
 
 	int gx = inverseTransformX(e.getX());
 	int gy = inverseTransformY(e.getY());
+	
+	// Check if clicked on ActionTimeElm play/pause icon
+	for (int i = 0; i != elmList.size(); i++) {
+	    CircuitElm ce = getElm(i);
+	    if (ce instanceof ActionTimeElm) {
+		ActionTimeElm ate = (ActionTimeElm) ce;
+		if (ate.isPointInPlayPauseIcon(gx, gy)) {
+		    ate.handlePlayPauseIconClick();
+		    mouseDragging = false;
+		    return;
+		}
+	    }
+	}
+	
 	if (doSwitch(gx, gy)) {
 	    // do this BEFORE we change the mouse mode to MODE_DRAG_POST!  Or else logic inputs
 	    // will add dots to the whole circuit when we click on them!
@@ -6544,6 +6656,10 @@ public CirSim() {
     		return true;
     	if (aboutBox !=null && aboutBox.isShowing())
     		return true;
+    	if (VariableBrowserDialog.isOpen())
+    		return true;
+    	if (ActionTimeDialog.isOpen())
+    		return true;
     	return false;
     }
     
@@ -6569,14 +6685,20 @@ public CirSim() {
     		    dlg = customLogicEditDialog;
     		if (dialogShowing != null)
     		    dlg = dialogShowing;
-    		if (dlg!=null && dlg.isShowing() &&
-    				(t & Event.ONKEYDOWN)!=0) {
-    			if (code==KEY_ESCAPE)
-    			    dlg.closeDialog();
-    			if (code==KEY_ENTER)
-    			    dlg.enterPressed();
+    		
+    		
+    		if (dlg!=null && dlg.isShowing()) {
+    			if ((t & Event.ONKEYDOWN)!=0) {
+    				if (code==KEY_ESCAPE) {
+    					dlg.closeDialog();
+    				}
+    				if (code==KEY_ENTER) {
+    					dlg.enterPressed();
+    				}
+    			}
+    			// Prevent all keyboard events from affecting the circuit when a dialog is open
+    			return;
     		}
-    		return;
     	}
     	
     	if ((t&Event.ONKEYPRESS)!=0) {
@@ -7606,6 +7728,10 @@ public CirSim() {
 		for (i = 0; i != postDrawList.size(); i++) {
 		    CircuitElm.drawPost(g, postDrawList.get(i));
 		}
+		
+		// Draw action scheduler display message if present
+		context.setTransform(1, 0, 0, 1, 0, 0);
+		drawActionSchedulerMessage(g, context);
 
 		// restore everything
 		printableCheckItem.setState(p);

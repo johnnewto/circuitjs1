@@ -106,6 +106,12 @@ public class Adjustable implements Command {
 	    sharedSlider.setSliderValue(value);
 	    return;
 	}
+	
+	// Validate min/max range before calculating
+	if (maxValue <= minValue || slider == null) {
+	    return; // Skip update if invalid range or slider is missing
+	}
+	
         int intValue = (int) ((value-minValue)*100/(maxValue-minValue));
         settingValue = true; // don't recursively set value again in execute()
         slider.setValue(intValue);
@@ -134,7 +140,12 @@ public class Adjustable implements Command {
     }
     
     void executeSlider() {
-	elm.sim.analyzeFlag = true;
+	// For non-linear elements, trigger full circuit analysis
+	// For linear elements, skip analysis - matrix coefficients update on next stamp
+	// if (elm.nonLinear()) {
+	    elm.sim.analyzeFlag = true;
+	// }
+	
 	EditInfo ei = elm.getEditInfo(editItem);
 	ei.value = getSliderValue();
 	elm.setEditValue(editItem, ei);

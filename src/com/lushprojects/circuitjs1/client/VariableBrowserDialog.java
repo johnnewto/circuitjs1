@@ -31,6 +31,9 @@ import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.dom.client.Style.Unit;
 import com.lushprojects.circuitjs1.client.util.Locale;
+import com.google.gwt.user.client.Event;
+import com.google.gwt.user.client.Event.NativePreviewHandler;
+import com.google.gwt.user.client.Event.NativePreviewEvent;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -92,6 +95,19 @@ public class VariableBrowserDialog extends DialogBox {
         // Make dialog non-modal
         setModal(false);
         setGlassEnabled(false);
+        
+        // Prevent keyboard events from propagating to circuit
+        Event.addNativePreviewHandler(new NativePreviewHandler() {
+            public void onPreviewNativeEvent(NativePreviewEvent event) {
+                if (isShowing()) {
+                    int type = event.getTypeInt();
+                    if ((type & Event.ONKEYDOWN) != 0 || (type & Event.ONKEYPRESS) != 0 || (type & Event.ONKEYUP) != 0) {
+                        event.cancel();
+                        event.getNativeEvent().stopPropagation();
+                    }
+                }
+            }
+        });
         
         setText(Locale.LS("Variable Browser"));
         

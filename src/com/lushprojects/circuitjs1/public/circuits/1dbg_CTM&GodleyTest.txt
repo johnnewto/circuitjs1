@@ -1,11 +1,12 @@
 $ 17 0.05 0.41233529972698213 37 5 43 5e-11
 % transform 1.5 173 -191.5
 R 720 336 672 336 0 0 40 10 0 0 0.5 V
-x 53 150 633 153 4 24 Test,\safter\s10\sseconds\stable6_e\svalue\sshould\sbe\s600 FF8080FF
+x 53 150 619 153 4 24 Test,\safter\s10\sseconds\stable6_e\svalue\sshould\sbe\s60 FF8080FF
 207 720 336 768 336 28 ten
 207 640 144 704 144 60 table6_e
 255 48 320 160 320 0 2 4 6 16 0 true 2 1 false 5 0 true Table\s5 \0 t5_a t5_i table5_e A-L-E Flow_2 Flow_1 0 2 5 0 ASSET LIABILITY EQUITY COMPUTED \0 \0 2\pten \0 ten -ten 0.1*ten \0 0.001
 255 48 448 64 448 0 3 4 6 16 0 true 2 1 false 5 0 true Table\s6 \0 Stock_1 Stock_2 table6_e A-L-E Flow_1 flow\s3 Flow_2 0 2 0 0 ASSET LIABILITY EQUITY COMPUTED ten -ten 1*ten \0 \0 \0 3*ten \0 -ten -ten 2*ten \0 0.001
-254 80 160 96 160 0 0 0 6 16 0 false 2 1 false 1 0 Current\sTransactions\sMatrix "" ""
+254 80 160 96 160 0 0 0 6 16 0 false 2 1 false 1 0 Current\sTransactions\sMatrix "" "" ""
 431 704 416 720 432 0 10 true false
+x 602 300 881 303 4 24 CTM\sSUM\sshould\sbe\s735 808080FF
 o 1 2 0 4099 0.0000762939453125 0.00009765625 0 2 1 3

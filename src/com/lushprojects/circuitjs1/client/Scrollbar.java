@@ -49,11 +49,13 @@ import com.google.gwt.event.dom.client.TouchMoveEvent;
 import com.google.gwt.event.dom.client.TouchMoveHandler;
 import com.google.gwt.event.dom.client.TouchStartEvent;
 import com.google.gwt.event.dom.client.TouchStartHandler;
+import com.google.gwt.event.dom.client.ContextMenuEvent;
+import com.google.gwt.event.dom.client.ContextMenuHandler;
 
 
 public class Scrollbar extends  Composite implements 
 	ClickHandler, MouseDownHandler, MouseMoveHandler, MouseUpHandler, MouseOutHandler, MouseOverHandler,
-	MouseWheelHandler, TouchStartHandler, TouchCancelHandler, TouchEndHandler, TouchMoveHandler {
+	MouseWheelHandler, TouchStartHandler, TouchCancelHandler, TouchEndHandler, TouchMoveHandler, ContextMenuHandler {
 	
 	static int HORIZONTAL =1;
 	static int HMARGIN=2;
@@ -92,6 +94,7 @@ public class Scrollbar extends  Composite implements
 		can.addMouseOutHandler(this);
 		can.addMouseOverHandler(this);
 		can.addMouseWheelHandler(this);
+		can.addDomHandler(this, ContextMenuEvent.getType());
 		
 		// our hack from CirSim doesn't work here so we have to handle touch events explicitly
 		can.addTouchStartHandler(this);
@@ -178,6 +181,10 @@ public class Scrollbar extends  Composite implements
 	
 	public void onMouseDown(MouseDownEvent e){
 //		GWT.log("Down");
+		// Ignore right-clicks (button 2) to allow context menu
+		if (e.getNativeButton() == NativeEvent.BUTTON_RIGHT) {
+		    return;
+		}
 		dragging=false;
 		e.preventDefault();
 		doMouseDown(e.getX(), true);
@@ -256,14 +263,20 @@ public class Scrollbar extends  Composite implements
 //		e.preventDefault();
 	    	if (dragging)
 	    	    return;
-		if (enabled && attachedElm!=null && attachedElm.isMouseElm())
+		if (enabled && attachedElm!=null && attachedElm.isMouseElm()) {
 			CircuitElm.sim.setMouseElm(null);
+			draw(); // Redraw slider to remove highlight
+			CircuitElm.sim.repaint(); // Trigger canvas repaint to clear element info
+		}
 	}
 	
 	public void onMouseOver(MouseOverEvent e){
 		
-		if (enabled && attachedElm!=null)
-			 CircuitElm.sim.setMouseElm(attachedElm);
+		if (enabled && attachedElm!=null) {
+			CircuitElm.sim.setMouseElm(attachedElm);
+			draw(); // Redraw slider to show highlight
+			CircuitElm.sim.repaint(); // Trigger canvas repaint to show element info
+		}
 	}
 	
 	public void onMouseWheel(MouseWheelEvent e) {
@@ -347,6 +360,17 @@ public class Scrollbar extends  Composite implements
 	    dragging=false;
 	    Touch t = event.getTouches().get(0);
 	    doMouseDown(t.getRelativeX(getElement()), false);
+	}
+	
+	public void onContextMenu(ContextMenuEvent e) {
+	    e.preventDefault();
+	    e.stopPropagation();
+	    
+	    // Open slider dialog if we have an attached element
+	    if (attachedElm != null) {
+		CirSim.dialogShowing = new SliderDialog(attachedElm, CirSim.theSim);
+		CirSim.dialogShowing.show();
+	    }
 	}
 	
 }

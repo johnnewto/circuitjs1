@@ -7,189 +7,189 @@
 ### Empty lines are ignored
 
 # Top-level items
-WireElm|Add Wire||w
-ResistorElm|Add Resistor||r
-MultiplyElm|Add Multipler||m
-MultiplyConstElm|Add Multiply by Constant||x
-DividerElm|Add Divider
-DifferentiatorElm|Add Differentiator
-IntegratorElm|Add Integrator
-ODEElm|Add ODE
-EquationElm|Add Equation
-PercentElm|Add Percent/Ratio Meter
-AdderElm|Add Adder
-SubtracterElm|Add Subtracter
-# TableElm|Add Table
-GodlyTableElm|Add Godly Table||g
-FlowsMasterElm|Add Flow Master
-StockMasterElm|Add Stock Master
-CurrentTransactionsMatrixElm |Add Current Transactions Matrix
-StopTimeElm|Add Stop Time
-ActionTimeElm|Add Action Time
-PieChartElm|Add Pie Chart
+WireElm|Wire||w
+ResistorElm|Resistor||r
+MultiplyElm|Multipler||m
+MultiplyConstElm|Multiply by Constant||x
+DividerElm|Divider
+DifferentiatorElm|Differentiator
+IntegratorElm|Integrator
+ODEElm|ODE
+EquationElm|Equation
+PercentElm|Percent/Ratio Meter
+AdderElm|Adder
+SubtracterElm|Subtracter
+# TableElm|Table
+GodlyTableElm|Godly Table||g
+FlowsMasterElm|Flow Master
+StockMasterElm|Stock Master
+CurrentTransactionsMatrixElm |Current Transactions Matrix
+StopTimeElm|Stop Time
+ActionTimeElm|Action Time
+PieChartElm|Pie Chart
 
 # Passive Components submenu
 +Passive Components
-CapacitorElm|Add Capacitor||c
-PolarCapacitorElm|Add Capacitor (polarized)||C
-InductorElm|Add Inductor||L
-SwitchElm|Add Switch||s
-PushSwitchElm|Add Push Switch
-Switch2Elm|Add SPDT Switch||S
-DPDTSwitchElm|Add DPDT Switch
-MBBSwitchElm|Add Make-Before-Break Switch
-PotElm|Add Potentiometer
-TransformerElm|Add Transformer||T
-TappedTransformerElm|Add Tapped Transformer
-CustomTransformerElm|Add Custom Transformer
-TransLineElm|Add Transmission Line
-RelayElm|Add Relay||R
-RelayCoilElm|Add Relay Coil
-RelayContactElm|Add Relay Contact
-LDRElm|Add Photoresistor
-ThermistorNTCElm|Add Thermistor
-MemristorElm|Add Memristor
-SparkGapElm|Add Spark Gap
-FuseElm|Add Fuse
-CrystalElm|Add Crystal
-CrossSwitchElm|Add Cross Switch
+CapacitorElm|Capacitor||c
+PolarCapacitorElm|Capacitor (polarized)||C
+InductorElm|Inductor||L
+SwitchElm|Switch||s
+PushSwitchElm|Push Switch
+Switch2Elm|SPDT Switch||S
+DPDTSwitchElm|DPDT Switch
+MBBSwitchElm|Make-Before-Break Switch
+PotElm|Potentiometer
+TransformerElm|Transformer||T
+TappedTransformerElm|Tapped Transformer
+CustomTransformerElm|Custom Transformer
+TransLineElm|Transmission Line
+RelayElm|Relay||R
+RelayCoilElm|Relay Coil
+RelayContactElm|Relay Contact
+LDRElm|Photoresistor
+ThermistorNTCElm|Thermistor
+MemristorElm|Memristor
+SparkGapElm|Spark Gap
+FuseElm|Fuse
+CrystalElm|Crystal
+CrossSwitchElm|Cross Switch
 -
 
 # Inputs and Sources submenu
 +Inputs and Sources
-GroundElm|Add Ground||g
-DCVoltageElm|Add Voltage Source (2-terminal)||v
-ACVoltageElm|Add A/C Voltage Source (2-terminal)
-RailElm|Add Voltage Source (1-terminal)||V
-ACRailElm|Add A/C Voltage Source (1-terminal)
-SquareRailElm|Add Square Wave Source (1-terminal)
-ClockElm|Add Clock
-SweepElm|Add A/C Sweep
-VarRailElm|Add Variable Voltage
-AntennaElm|Add Antenna
-AMElm|Add AM Source
-FMElm|Add FM Source
-CurrentElm|Add Current Source
-NoiseElm|Add Noise Generator
-AudioInputElm|Add Audio Input
-DataInputElm|Add Data Input
-ExtVoltageElm|Add External Voltage (JavaScript)
-TableVoltageElm|Add Table Voltage Source
+GroundElm|Ground||g
+DCVoltageElm|Voltage Source (2-terminal)||v
+ACVoltageElm|A/C Voltage Source (2-terminal)
+RailElm|Voltage Source (1-terminal)||V
+ACRailElm|A/C Voltage Source (1-terminal)
+SquareRailElm|Square Wave Source (1-terminal)
+ClockElm|Clock
+SweepElm|A/C Sweep
+VarRailElm|Variable Voltage
+AntennaElm|Antenna
+AMElm|AM Source
+FMElm|FM Source
+CurrentElm|Current Source
+NoiseElm|Noise Generator
+AudioInputElm|Audio Input
+DataInputElm|Data Input
+ExtVoltageElm|External Voltage (JavaScript)
+TableVoltageElm|Table Voltage Source
 -
 
 # Outputs and Labels submenu
 +Outputs and Labels
-OutputElm|Add Analog Output
-LEDElm|Add LED||l
-LampElm|Add Lamp
-TextElm|Add Text||t
-BoxElm|Add Box
-LineElm|Add Line
-LabeledNodeElm|Add Labeled Node
-ProbeElm|Add Voltmeter/Scope Probe
-OhmMeterElm|Add Ohmmeter
-AmmeterElm|Add Ammeter
-WattmeterElm|Add Wattmeter
-TestPointElm|Add Test Point
-DecimalDisplayElm|Add Decimal Display
-LEDArrayElm|Add LED Array
-DataRecorderElm|Add Data Export
-AudioOutputElm|Add Audio Output
-StopTriggerElm|Add Stop Trigger
-DCMotorElm|Add DC Motor
-ThreePhaseMotorElm|Add 3-Phase Motor
+OutputElm|Analog Output
+LEDElm|LED||l
+LampElm|Lamp
+TextElm|Text||t
+BoxElm|Box
+LineElm|Line
+LabeledNodeElm|Labeled Node
+ProbeElm|Voltmeter/Scope Probe
+OhmMeterElm|Ohmmeter
+AmmeterElm|Ammeter
+WattmeterElm|Wattmeter
+TestPointElm|Test Point
+DecimalDisplayElm|Decimal Display
+LEDArrayElm|LED Array
+DataRecorderElm|Data Export
+AudioOutputElm|Audio Output
+StopTriggerElm|Stop Trigger
+DCMotorElm|DC Motor
+ThreePhaseMotorElm|3-Phase Motor
 -
 
 # Active Components submenu
 +Active Components
-DiodeElm|Add Diode||d
-ZenerElm|Add Zener Diode||z
-NTransistorElm|Add Transistor (bipolar, NPN)||n
-PTransistorElm|Add Transistor (bipolar, PNP)||p
-NMosfetElm|Add MOSFET (N-Channel)||N
-PMosfetElm|Add MOSFET (P-Channel)||P
-NJfetElm|Add JFET (N-Channel)
-PJfetElm|Add JFET (P-Channel)
-SCRElm|Add SCR
-DiacElm|Add DIAC
-TriacElm|Add TRIAC
-NDarlingtonElm|Add Darlington Pair (NPN)
-PDarlingtonElm|Add Darlington Pair (PNP)
-VaractorElm|Add Varactor/Varicap
-TunnelDiodeElm|Add Tunnel Diode
-TriodeElm|Add Triode
-UnijunctionElm|Add Unijunction Transistor
+DiodeElm|Diode||d
+ZenerElm|Zener Diode||z
+NTransistorElm|Transistor (bipolar, NPN)||n
+PTransistorElm|Transistor (bipolar, PNP)||p
+NMosfetElm|MOSFET (N-Channel)||N
+PMosfetElm|MOSFET (P-Channel)||P
+NJfetElm|JFET (N-Channel)
+PJfetElm|JFET (P-Channel)
+SCRElm|SCR
+DiacElm|DIAC
+TriacElm|TRIAC
+NDarlingtonElm|Darlington Pair (NPN)
+PDarlingtonElm|Darlington Pair (PNP)
+VaractorElm|Varactor/Varicap
+TunnelDiodeElm|Tunnel Diode
+TriodeElm|Triode
+UnijunctionElm|Unijunction Transistor
 -
 
 # Active Building Blocks submenu
 +Active Building Blocks
-OpAmpElm|Add Op Amp (ideal, - on top)||a
-OpAmpSwapElm|Add Op Amp (ideal, + on top)
-OpAmpRealElm|Add Op Amp (real)
-AnalogSwitchElm|Add Analog Switch (SPST)
-AnalogSwitch2Elm|Add Analog Switch (SPDT)
-TriStateElm|Add Tristate Buffer
-SchmittElm|Add Schmitt Trigger
-InvertingSchmittElm|Add Schmitt Trigger (Inverting)
-DelayBufferElm|Add Delay Buffer
-CC2Elm|Add CCII+
-CC2NegElm|Add CCII-
-ComparatorElm|Add Comparator (Hi-Z/GND output)
-OTAElm|Add OTA (LM13700 style)
-VCVSElm|Add Voltage-Controlled Voltage Source (VCVS)
-VCCSElm|Add Voltage-Controlled Current Source (VCCS)
-CCVSElm|Add Current-Controlled Voltage Source (CCVS)
-CCCSElm|Add Current-Controlled Current Source (CCCS)
-OptocouplerElm|Add Optocoupler
-TimeDelayRelayElm|Add Time Delay Relay
-CustomCompositeElm:~LM317-v2|Add LM317
-CustomCompositeElm:~TL431|Add TL431
-MotorProtectionSwitchElm|Add Motor Protection Switch
-CustomCompositeElm|Add Subcircuit Instance
+OpAmpElm|Op Amp (ideal, - on top)||a
+OpAmpSwapElm|Op Amp (ideal, + on top)
+OpAmpRealElm|Op Amp (real)
+AnalogSwitchElm|Analog Switch (SPST)
+AnalogSwitch2Elm|Analog Switch (SPDT)
+TriStateElm|Tristate Buffer
+SchmittElm|Schmitt Trigger
+InvertingSchmittElm|Schmitt Trigger (Inverting)
+DelayBufferElm|Delay Buffer
+CC2Elm|CCII+
+CC2NegElm|CCII-
+ComparatorElm|Comparator (Hi-Z/GND output)
+OTAElm|OTA (LM13700 style)
+VCVSElm|Voltage-Controlled Voltage Source (VCVS)
+VCCSElm|Voltage-Controlled Current Source (VCCS)
+CCVSElm|Current-Controlled Voltage Source (CCVS)
+CCCSElm|Current-Controlled Current Source (CCCS)
+OptocouplerElm|Optocoupler
+TimeDelayRelayElm|Time Delay Relay
+CustomCompositeElm:~LM317-v2|LM317
+CustomCompositeElm:~TL431|TL431
+MotorProtectionSwitchElm|Motor Protection Switch
+CustomCompositeElm|Subcircuit Instance
 -
 
 # Logic Gates, Input and Output submenu
 +Logic Gates, Input and Output
-LogicInputElm|Add Logic Input||i
-LogicOutputElm|Add Logic Output||o
-InverterElm|Add Inverter||1
-NandGateElm|Add NAND Gate
-NorGateElm|Add NOR Gate||#
-AndGateElm|Add AND Gate||2
-OrGateElm|Add OR Gate||3
-XorGateElm|Add XOR Gate||4
+LogicInputElm|Logic Input||i
+LogicOutputElm|Logic Output||o
+InverterElm|Inverter||1
+NandGateElm|NAND Gate
+NorGateElm|NOR Gate||#
+AndGateElm|AND Gate||2
+OrGateElm|OR Gate||3
+XorGateElm|XOR Gate||4
 -
 
 # Digital Chips submenu
 +Digital Chips
-DFlipFlopElm|Add D Flip-Flop
-JKFlipFlopElm|Add JK Flip-Flop
-TFlipFlopElm|Add T Flip-Flop
-SevenSegElm|Add 7 Segment LED
-SevenSegDecoderElm|Add 7 Segment Decoder
-MultiplexerElm|Add Multiplexer
-DeMultiplexerElm|Add Demultiplexer
-SipoShiftElm|Add SIPO shift register
-PisoShiftElm|Add PISO shift register
-CounterElm|Add Counter
-Counter2Elm|Add Counter w/ Load
-DecadeElm|Add Ring Counter
-LatchElm|Add Latch
-SeqGenElm|Add Sequence generator
-FullAdderElm|Add Adder
-HalfAdderElm|Add Half Adder
-UserDefinedLogicElm|Add Custom Logic
-SRAMElm|Add Static RAM
+DFlipFlopElm|D Flip-Flop
+JKFlipFlopElm|JK Flip-Flop
+TFlipFlopElm|T Flip-Flop
+SevenSegElm|7 Segment LED
+SevenSegDecoderElm|7 Segment Decoder
+MultiplexerElm|Multiplexer
+DeMultiplexerElm|Demultiplexer
+SipoShiftElm|SIPO shift register
+PisoShiftElm|PISO shift register
+CounterElm|Counter
+Counter2Elm|Counter w/ Load
+DecadeElm|Ring Counter
+LatchElm|Latch
+SeqGenElm|Sequence generator
+FullAdderElm|Adder
+HalfAdderElm|Half Adder
+UserDefinedLogicElm|Custom Logic
+SRAMElm|Static RAM
 -
 
 # Analog and Hybrid Chips submenu
 +Analog and Hybrid Chips
-TimerElm|Add 555 Timer
-PhaseCompElm|Add Phase Comparator
-DACElm|Add DAC
-ADCElm|Add ADC
-VCOElm|Add VCO
-MonostableElm|Add Monostable
+TimerElm|555 Timer
+PhaseCompElm|Phase Comparator
+DACElm|DAC
+ADCElm|ADC
+VCOElm|VCO
+MonostableElm|Monostable
 -
 
 # Subcircuits submenu (placeholder, will be populated dynamically)

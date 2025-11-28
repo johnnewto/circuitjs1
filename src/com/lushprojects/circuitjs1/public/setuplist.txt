@@ -9,7 +9,7 @@ econ_KeenMinskyGodley02.txt Keen Minsky Godley 02
 +Debug
 1debug.txt Debug 1
 1dbg_LRC+Table.txt Dbg LRC+Table
-1dbg_GodleyTest.txt Godley Test
+1dbg_CTM&GodleyTest.txt CTM & Godley Test
 1dbg_percent_meter_test.txt Percent Meter Test
 1deb_ODE.txt Predator Prey ODE Test
 1deb_ODE2.txt Predator Prey ODE Test 2

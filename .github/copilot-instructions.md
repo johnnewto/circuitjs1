@@ -58,6 +58,7 @@ websocket/                                # WebSocket server components
 - **Limited Java API**: Only GWT-emulated Java libraries available
 - **JavaScript Interop**: Some components interact with browser APIs
 - **Canvas Rendering**: Uses HTML5 Canvas for circuit visualization
+- **GWT doesn't support String.format. Option ia to use `CircuitElm.showFormat.format()` for formatting numbers instead.**
 
 ### Adding New Circuit Elements
 

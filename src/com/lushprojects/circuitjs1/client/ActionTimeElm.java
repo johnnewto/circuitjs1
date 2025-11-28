@@ -20,66 +20,55 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.lushprojects.circuitjs1.client.util.Locale;
+import com.lushprojects.circuitjs1.client.ActionScheduler.ScheduledAction;
+import java.util.List;
 
+/**
+ * ActionTimeElm displays the status of scheduled actions from ActionScheduler.
+ * It's a visual indicator element that shows current actions and their states.
+ * Double-click to open the Action Time Dialog for full management.
+ */
 class ActionTimeElm extends CircuitElm {
-    double actionTime;
-    boolean actionTriggered;
-    String preText;
-    String postText;
-    String sliderName;
-    double sliderValueBefore;
-    double sliderValueAfter;
     boolean enabled;
+    private boolean playPauseIconHovered = false;
+    private Rectangle playPauseIconRect = null;
     
     public ActionTimeElm(int xx, int yy) {
         super(xx, yy);
-        actionTime = 1.0; // Default 1 second
-        preText = "Before";
-        postText = "After";
-        sliderName = "";
-        sliderValueBefore = 0.0;
-        sliderValueAfter = 0.0;
-        enabled = true;
-        actionTriggered = false;
+        enabled = true; // Enabled by default
     }
     
     public ActionTimeElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
         super(xa, ya, xb, yb, f);
-        actionTime = Double.parseDouble(st.nextToken());
-        preText = CustomLogicModel.unescape(st.nextToken());
-        postText = CustomLogicModel.unescape(st.nextToken());
-        sliderName = CustomLogicModel.unescape(st.nextToken());
-        sliderValueBefore = Double.parseDouble(st.nextToken());
-        // Try to read sliderValueAfter for backward compatibility
-        sliderValueAfter = sliderValueBefore; // Default to same as before
+        enabled = true; // Default to enabled for backward compatibility
+        // For backward compatibility, read old format but don't use it
+        // Just consume the tokens
         try {
-            sliderValueAfter = Double.parseDouble(st.nextToken());
+            st.nextToken(); // actionTime
+            st.nextToken(); // preText
+            st.nextToken(); // postText
+            st.nextToken(); // sliderName
+            st.nextToken(); // sliderValueBefore
+            st.nextToken(); // sliderValueAfter
+            st.nextToken(); // enabled (old format)
         } catch (Exception e) {
-            // Old files only have one slider value
+            // Old format or partial tokens - ignore
         }
-        enabled = true;
+        // Try to read enabled flag for this element
         try {
             enabled = Boolean.parseBoolean(st.nextToken());
         } catch (Exception e) {
-            // Default to enabled for backward compatibility
+            // No enabled flag in saved file, use default
         }
-        actionTriggered = false;
     }
     
     String dump() { 
-        return super.dump() + " " + actionTime + " " + 
-               CustomLogicModel.escape(preText) + " " + 
-               CustomLogicModel.escape(postText) + " " + 
-               CustomLogicModel.escape(sliderName) + " " + 
-               sliderValueBefore + " " + sliderValueAfter + " " + enabled; 
+        // Save enabled state
+        return super.dump() + " " + enabled; 
     }
     
     void reset() {
-        actionTriggered = false;
-        // Set slider to "before" value on reset only if enabled
-        if (enabled && sliderName != null && sliderName.length() > 0) {
-            setSliderValue(sliderName, sliderValueBefore);
-        }
+        // Nothing to reset - display element only
     }
     
     int getDumpType() { 
@@ -102,50 +91,27 @@ class ActionTimeElm extends CircuitElm {
         int cx = (x + x2) / 2;
         int cy = (y + y2) / 2;
         
-        // Determine which text to display
-        String displayText = (sim.t >= actionTime) ? postText : preText;
+        // Get actions from scheduler
+        ActionScheduler scheduler = ActionScheduler.getInstance(sim);
+        List<ScheduledAction> actions = scheduler.getAllActions();
         
-        // Calculate box dimensions based on text content
-        Font f = new Font("SansSerif", Font.BOLD, 12);
+        // Apply gray filter if disabled
+        if (!enabled) {
+            g.context.setGlobalAlpha(0.5);
+        }
+        
+        // Calculate box dimensions
+        Font f = new Font("SansSerif", Font.BOLD, 14);
         g.setFont(f);
         
-        // Split text into lines (handle both \n and literal \n in the string)
-        String[] lines = displayText.split("\\\\n|\\n");
+        int width = 200;
+        int lineHeight = 18;
+        int headerHeight = 30;
+        int actionHeight = 20;
+        int height = headerHeight + Math.max(40, actions.size() * actionHeight + 20);
         
-        // Calculate required width and height
-        int maxWidth = 80; // Minimum width
-        for (String line : lines) {
-            int lineWidth = (int)g.context.measureText(line).getWidth();
-            if (lineWidth > maxWidth)
-                maxWidth = lineWidth;
-        }
-        
-        // Add padding
-        int width = maxWidth + 20;
-        int lineHeight = 16;
-        int height = Math.max(60, 30 + lines.length * lineHeight + 20);
-        
-        // Also check action text width
-        if (sliderName != null && sliderName.length() > 0) {
-            Font smallFont = new Font("SansSerif", 0, 12);
-            g.setFont(smallFont);
-            double displayValue = (sim.t >= actionTime) ? sliderValueAfter : sliderValueBefore;
-            String actionText = sliderName + "=" + displayValue;
-            int actionWidth = (int)g.context.measureText(actionText).getWidth();
-            if (actionWidth + 20 > width)
-                width = actionWidth + 20;
-        }
-        
-        // Draw box background with color coding
-        Color bgColor;
-        if (!enabled) {
-            bgColor = Color.lightGray;
-        } else if (actionTriggered) {
-            bgColor = new Color(255, 255, 150); // Light yellow after trigger
-        } else {
-            bgColor = new Color(200, 255, 200); // Light green before trigger
-        }
-        g.setColor(bgColor);
+        // Draw box background
+        g.setColor(new Color(240, 248, 255)); // Light blue
         g.fillRect(cx - width/2, cy - height/2, width, height);
         
         // Draw border
@@ -153,50 +119,175 @@ class ActionTimeElm extends CircuitElm {
         g.setLineWidth(2.0);
         g.drawRect(cx - width/2, cy - height/2, width, height);
         
-        // Draw time label at top
-        f = new Font("SansSerif", 0, 12);
+        // Draw header
+        g.setColor(new Color(100, 149, 237)); // Cornflower blue
+        g.fillRect(cx - width/2, cy - height/2, width, headerHeight);
+        
+        // Draw play/pause icon on the LEFT side of header
+        String playPauseIcon = sim.simIsRunning() ? "⏸" : "▶";
+        int iconX = cx - width/2 + 15;
+        int iconY = cy - height/2 + 18;
+        
+        // Store icon bounds for click detection - extend bounds to fully cover the icon
+        int iconSize = 24;
+        playPauseIconRect = new Rectangle(iconX - 14, iconY - 18, iconSize+6, iconSize+4);
+        
+        // Highlight icon if hovered
+        if (playPauseIconHovered) {
+            g.setColor(new Color(70, 70, 70)); // Slightly lighter background
+            g.fillRect(playPauseIconRect.x, playPauseIconRect.y, playPauseIconRect.width, playPauseIconRect.height);
+            g.setColor(selectColor); // Blue when hovering
+        } else {
+            g.setColor(Color.white);
+        }
+        
+        f = new Font("SansSerif", Font.BOLD, 16);
         g.setFont(f);
-        g.setColor(Color.black);
-        String timeLabel = "t=" + getUnitText(actionTime, "s");
-        int textWidth = (int)g.context.measureText(timeLabel).getWidth();
-        g.drawString(timeLabel, cx - textWidth/2, cy - height/2 + 12);
+        g.drawString(playPauseIcon, iconX - 6, iconY);
         
-        // Draw warning symbol if triggered
-        if (enabled && actionTriggered) {
-            f = new Font("SansSerif", Font.BOLD, 30);
-            g.setFont(f);
-            g.setColor(Color.red);
-            String warningSymbol = "⚠";
-            g.drawString(warningSymbol, cx - width/2 + 10, cy - height/2 + 18);
-        }
-        
-        // Draw main display text (multiline)
-        f = new Font("SansSerif", Font.BOLD, 12);
+        // Draw title centered
+        f = new Font("SansSerif", Font.BOLD, 14);
         g.setFont(f);
-        g.setColor(enabled ? Color.black : Color.gray);
+        g.setColor(Color.white);
+        String title = "Action Schedule";
+        int textWidth = (int)g.context.measureText(title).getWidth();
+        g.drawString(title, cx - textWidth/2, cy - height/2 + 18);
         
-        int startY = cy - (lines.length - 1) * lineHeight / 2;
-        for (int i = 0; i < lines.length; i++) {
-            textWidth = (int)g.context.measureText(lines[i]).getWidth();
-            g.drawString(lines[i], cx - textWidth/2, startY + i * lineHeight);
+        // Draw current time
+        f = new Font("SansSerif", 0, 11);
+        g.setFont(f);
+        String timeText = "t=" + getUnitText(sim.t, "s");
+        textWidth = (int)g.context.measureText(timeText).getWidth();
+        g.drawString(timeText, cx - width/2 + 10, cy - height/2 + headerHeight + 5);
+        
+        // Draw actions
+        if (actions.isEmpty()) {
+            g.setColor(Color.gray);
+            g.setFont(new Font("SansSerif", 0, 11));
+            String msg = "No actions scheduled";
+            textWidth = (int)g.context.measureText(msg).getWidth();
+            g.drawString(msg, cx - textWidth/2, cy);
+            
+            // Draw hint to double-click
+            msg = "(Double-click to add)";
+            textWidth = (int)g.context.measureText(msg).getWidth();
+            g.drawString(msg, cx - textWidth/2, cy + 15);
+        } else {
+            int yPos = cy - height/2 + headerHeight + 15;
+            int maxDisplay = Math.min(actions.size(), 8); // Show max 8 actions
+            
+            for (int i = 0; i < maxDisplay; i++) {
+                ScheduledAction action = actions.get(i);
+                
+                // Draw background for completed actions (green)
+                if (action.state == ActionScheduler.ActionState.COMPLETED) {
+                    g.setColor(new Color(200, 230, 201)); // Darker green #c8e6c9
+                    int bgX = cx - width/2 + 5;
+                    int bgY = yPos - 12;
+                    int bgWidth = width - 10;
+                    int bgHeight = actionHeight;
+                    g.fillRect(bgX, bgY, bgWidth, bgHeight);
+                }
+                
+                g.setFont(new Font("SansSerif", 0, 10));
+                
+                // Determine status and color based on state machine
+                Color statusColor = Color.gray; // Initialize with default
+                String statusSymbol = "○";
+                Color textColor = Color.black;
+                
+                // Gray out disabled actions
+                if (!action.enabled) {
+                    statusColor = new Color(150, 150, 150); // Gray
+                    textColor = new Color(150, 150, 150);
+                }
+                
+                // Use state machine for status display
+                switch (action.state) {
+                    case READY:
+                        // Ready to execute immediately at t=0
+                        if (action.enabled) {
+                            statusColor = new Color(0, 200, 0); // Bright green
+                        }
+                        statusSymbol = "⚡";
+                        break;
+                        
+                    case PENDING:
+                        if (action.enabled) {
+                            statusColor = new Color(150, 150, 0); // Yellow
+                        }
+                        statusSymbol = "⏱";
+                        break;
+                        
+                    case WAITING:
+                        // Waiting for timer - show pause icon
+                        if (action.enabled) {
+                            statusColor = new Color(255, 165, 0); // Orange
+                        }
+                        statusSymbol = "⏸";
+                        break;
+                        
+                    case EXECUTING:
+                        // Transient state - show in progress
+                        if (action.enabled) {
+                            statusColor = new Color(0, 100, 200); // Blue
+                        }
+                        statusSymbol = "▶";
+                        break;
+                        
+                    case COMPLETED:
+                        // Completed - show checkmark
+                        if (action.enabled) {
+                            statusColor = new Color(0, 150, 0); // Green
+                        }
+                        statusSymbol = "✓";
+                        break;
+                }
+                
+                // Draw status symbol
+                g.setColor(statusColor);
+                g.setFont(new Font("SansSerif", 0, 14));
+                g.drawString(statusSymbol, cx - width/2 + 10, yPos);
+                
+                // Draw action info
+                g.setFont(new Font("SansSerif", 0, 10));
+                g.setColor(textColor);
+                String actionText = getUnitText(action.actionTime, "s") + ": ";
+                if (action.stopSimulation) {
+                    actionText += "[STOP SIMULATION]";
+                } else if (action.sliderName != null && !action.sliderName.isEmpty()) {
+                    actionText += action.sliderName + "=" + 
+                                 getFormattedSliderValue(action.sliderName, action.sliderValue);
+                } else {
+                    actionText += "(no action)";
+                }
+                
+                // Truncate if too long
+                if (actionText.length() > 30) {
+                    actionText = actionText.substring(0, 27) + "...";
+                }
+                
+                g.drawString(actionText, cx - width/2 + 30, yPos);
+                
+                yPos += actionHeight;
+            }
+            
+            // Show "and X more..." if there are more actions
+            if (actions.size() > maxDisplay) {
+                g.setColor(Color.gray);
+                g.setFont(new Font("SansSerif", 0, 10));
+                String moreText = "...and " + (actions.size() - maxDisplay) + " more";
+                textWidth = (int)g.context.measureText(moreText).getWidth();
+                g.drawString(moreText, cx - textWidth/2, yPos);
+            }
         }
         
-        // Draw action info at bottom if slider is set
-        if (sliderName != null && sliderName.length() > 0) {
-            f = new Font("SansSerif", 0, 12);
-            g.setFont(f);
-            double displayValue = (sim.t >= actionTime) ? sliderValueAfter : sliderValueBefore;
-            String actionText = sliderName + "=" + displayValue;
-            textWidth = (int)g.context.measureText(actionText).getWidth();
-            g.drawString(actionText, cx - textWidth/2, cy + height/2 - 5);
-        }
-        
-        // If disabled, draw diagonal line
-        if (!enabled) {
-            g.setColor(Color.red);
-            g.setLineWidth(2.0);
-            g.drawLine(cx - width/2, cy - height/2, cx + width/2, cy + height/2);
-        }
+        // // Draw double-click hint at bottom
+        // g.setColor(Color.gray);
+        // g.setFont(new Font("SansSerif", 0, 9));
+        // String hint = "Double-click to manage";
+        // textWidth = (int)g.context.measureText(hint).getWidth();
+        // g.drawString(hint, cx - textWidth/2, cy + height/2 - 8);
         
         // Set bounding box
         setBbox(cx - width/2 - 5, cy - height/2 - 5, cx + width/2 + 5, cy + height/2 + 5);
@@ -205,112 +296,149 @@ class ActionTimeElm extends CircuitElm {
     }
     
     void stepFinished() {
-        if (!enabled)
-            return;
-            
-        // Check if we've reached the action time and haven't triggered yet
-        if (sim.t >= actionTime && !actionTriggered) {
-            actionTriggered = true;
-            
-            // Execute the action - set slider to "after" value
-            if (sliderName != null && sliderName.length() > 0) {
-                // Find and set the slider value
-                setSliderValue(sliderName, sliderValueAfter);
-            }
-        }
-    }
-    
-    // Find a slider by name and set its value
-    void setSliderValue(String name, double value) {
-        int i;
-        for (i = 0; i != sim.adjustables.size(); i++) {
-            Adjustable adj = sim.adjustables.get(i);
-            if (adj.sliderText != null && adj.sliderText.equals(name)) {
-                // Use the Adjustable's own method to set the value
-                adj.setSliderValue(value);
-                // Also need to update the element's value
-                EditInfo ei = adj.elm.getEditInfo(adj.editItem);
-                if (ei != null) {
-                    ei.value = value;
-                    adj.elm.setEditValue(adj.editItem, ei);
-                }
-                // Trigger circuit analysis so changes propagate
-                sim.analyzeFlag = true;
-                CirSim.console("ActionTimeElm: Set " + name + " = " + value);
-                return;
-            }
-        }
-        CirSim.console("ActionTimeElm: Slider '" + name + "' not found");
+        // No action needed - scheduler handles execution
     }
     
     void getInfo(String arr[]) {
-        arr[0] = "action time";
-        arr[1] = "enabled = " + (enabled ? "yes" : "no");
+        arr[0] = "Action Schedule Display";
+        arr[1] = "element enabled = " + (enabled ? "yes" : "no");
         arr[2] = "current time = " + getUnitText(sim.t, "s");
-        arr[3] = "action time = " + getUnitText(actionTime, "s");
-        arr[4] = "action = " + sliderName + ": " + sliderValueBefore + " → " + sliderValueAfter;
-        if (enabled) {
-            if (actionTriggered) {
-                arr[5] = "action triggered";
-            } else if (sim.t < actionTime) {
-                arr[5] = "triggering in " + getUnitText(actionTime - sim.t, "s");
+        
+        ActionScheduler scheduler = ActionScheduler.getInstance(sim);
+        List<ScheduledAction> actions = scheduler.getAllActions();
+        
+        int activeCount = 0;
+        int pendingCount = 0;
+        int waitingCount = 0;
+        int completedCount = 0;
+        for (ScheduledAction action : actions) {
+            if (action.enabled) {
+                activeCount++;
+                switch (action.state) {
+                    case READY:
+                        pendingCount++;  // Count READY as pending
+                        break;
+                    case PENDING:
+                        pendingCount++;
+                        break;
+                    case WAITING:
+                        waitingCount++;
+                        break;
+                    case EXECUTING:
+                        waitingCount++;  // Count EXECUTING as waiting
+                        break;
+                    case COMPLETED:
+                        completedCount++;
+                        break;
+                }
             }
-        } else {
-            arr[5] = "disabled";
         }
+        
+        arr[3] = "total actions = " + activeCount;
+        arr[4] = "pending = " + pendingCount;
+        arr[5] = "waiting = " + waitingCount;
+        arr[6] = "completed = " + completedCount;
+        arr[7] = "Double-click to manage actions";
     }
     
     public EditInfo getEditInfo(int n) {
         if (n == 0) {
-            EditInfo ei = new EditInfo("Action Time (s)", actionTime);
+            EditInfo ei = new EditInfo("", 0, -1, -1);
+            ei.checkbox = new Checkbox("Enabled", enabled);
             return ei;
         }
         if (n == 1) {
-            EditInfo ei = new EditInfo("Text Before Time", 0, -1, -1);
-            ei.text = preText;
-            return ei;
-        }
-        if (n == 2) {
-            EditInfo ei = new EditInfo("Text After Time", 0, -1, -1);
-            ei.text = postText;
-            return ei;
-        }
-        if (n == 3) {
-            EditInfo ei = new EditInfo("Slider Name", 0, -1, -1);
-            ei.text = sliderName;
-            return ei;
-        }
-        if (n == 4) {
-            EditInfo ei = new EditInfo("Before Slider Value", sliderValueBefore);
-            return ei;
-        }
-        if (n == 5) {
-            EditInfo ei = new EditInfo("After Slider Value", sliderValueAfter);
-            return ei;
-        }
-        if (n == 6) {
             EditInfo ei = new EditInfo("", 0, -1, -1);
-            ei.checkbox = new Checkbox("Enabled", enabled);
+            ei.text = "This element displays scheduled actions";
+            ei.text += "\n\nDouble-click to open Action Time Dialog";
+            ei.text += "\nfor full action management.";
+            ei.text += "\n\nWhen disabled, the action scheduler is inactive";
+            ei.text += "\nand no actions will execute.";
             return ei;
         }
         return null;
     }
     
     public void setEditValue(int n, EditInfo ei) {
-        if (n == 0)
-            actionTime = ei.value;
-        if (n == 1)
-            preText = ei.textf.getText();
-        if (n == 2)
-            postText = ei.textf.getText();
-        if (n == 3)
-            sliderName = ei.textf.getText();
-        if (n == 4)
-            sliderValueBefore = ei.value;
-        if (n == 5)
-            sliderValueAfter = ei.value;
-        if (n == 6)
+        if (n == 0) {
             enabled = ei.checkbox.getState();
+        }
+    }
+    
+    /**
+     * Get the play/pause icon bounds for click detection
+     */
+    Rectangle getPlayPauseIconRect() {
+        return playPauseIconRect;
+    }
+    
+    /**
+     * Check if mouse is over the play/pause icon
+     */
+    boolean isPlayPauseIconHovered() {
+        return playPauseIconHovered;
+    }
+    
+    /**
+     * Set the play/pause icon hover state
+     */
+    void setPlayPauseIconHovered(boolean hovered) {
+        playPauseIconHovered = hovered;
+    }
+    
+    /**
+     * Check if a point is inside the play/pause icon
+     */
+    boolean isPointInPlayPauseIcon(int x, int y) {
+        if (playPauseIconRect == null) return false;
+        return x >= playPauseIconRect.x && x <= playPauseIconRect.x + playPauseIconRect.width &&
+               y >= playPauseIconRect.y && y <= playPauseIconRect.y + playPauseIconRect.height;
+    }
+    
+    /**
+     * Get formatted value for a slider/action, checking element for custom formatting
+     */
+    private String getFormattedSliderValue(String sliderName, double value) {
+        // Find the adjustable with this name
+        for (int i = 0; i < sim.adjustables.size(); i++) {
+            Adjustable adj = sim.adjustables.get(i);
+            if (adj.sliderText != null && adj.sliderText.equals(sliderName)) {
+                EditInfo ei = adj.elm.getEditInfo(adj.editItem);
+                if (ei != null) {
+                    // Check if element has custom slider text formatting
+                    try {
+                        String customText = adj.elm.getSliderUnitText(adj.editItem, ei, value);
+                        if (customText != null)
+                            return customText;
+                    } catch (Exception e) {
+                        // Element doesn't have custom formatting
+                    }
+                    // Use default formatting
+                    return EditDialog.unitString(ei, value);
+                }
+            }
+        }
+        // Fallback to simple format
+        return CircuitElm.showFormat.format(value);
+    }
+    
+    /**
+     * Handle click on play/pause icon
+     */
+    void handlePlayPauseIconClick() {
+        // Simply toggle simulation state, just like Run/Stop button
+        if (sim.simIsRunning()) {
+            // Currently running - stop it
+            sim.setSimRunning(false);
+        } else {
+            // Currently stopped - start it
+            sim.setSimRunning(true);
+        }
+    }
+    
+    // Handle right-click to open dialog
+    void doRightClick(int mx, int my) {
+        ActionTimeDialog.openDialog(sim);
     }
     
     // Override to prevent trying to find voltages (no posts)

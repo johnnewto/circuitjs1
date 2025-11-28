@@ -33,6 +33,20 @@ public class TableRenderer {
     }
     
     /**
+     * Format a value for display, treating values < 0.01 as 0.00
+     * @param value The value to format
+     * @param units The unit suffix (e.g., "V", "$", "")
+     * @return Formatted string
+     */
+    protected String formatDisplayValue(double value, String units) {
+        // Treat very small values as zero
+        if (Math.abs(value) < 0.01) {
+            value = 0.0;
+        }
+        return CircuitElm.getUnitText(value, units);
+    }
+    
+    /**
      * Get cached A-L-E cell value for display
      * Returns 0.0 if cache not initialized or out of bounds
      * Package-private for TableElm access
@@ -312,8 +326,10 @@ public class TableRenderer {
         
         // Update cell values for regular (non-ALE) columns only
         // For master columns: use cached values from our doStep()
-        // For non-master columns: fetch cached values from the master table
+        // For non-master columns: fetch cached values from the master table BY FLOW NAME
         for (int row = 0; row < table.rows; row++) {
+            String flowName = table.getRowDescription(row);
+            
             for (int col = 0; col < regularColCount; col++) {
                 if (table.columns != null && col < table.columns.size()) {
                     TableColumn column = table.columns.get(col);
@@ -326,26 +342,75 @@ public class TableRenderer {
         
                     } else {
                         // Non-master: fetch cached value from the master table
-                        String stockName = column.getStockName();
-                        TableElm masterTable = ComputedValues.getMasterTable(stockName);
-                        
-                        if (masterTable != null && masterTable.columns != null) {
-                            int masterCol = masterTable.findColumnByStockName(stockName);
-                            if (masterCol >= 0 && masterCol < masterTable.columns.size()) {
-                                TableColumn masterColumn = masterTable.columns.get(masterCol);
-                                cachedCellValues[row][col] = masterColumn.getCachedCellValue(row);
-                            } else {
-                                cachedCellValues[row][col] = 0.0;
-                            }
-                        } else {
-                            cachedCellValues[row][col] = 0.0;
-                        }
+                        // Map by flow name, not by row index
+                        cachedCellValues[row][col] = fetchCellValueFromMaster(row, col, flowName);
                     }
                 } else {
                     cachedCellValues[row][col] = 0.0;
                 }
             }
         }
+    }
+    
+    /**
+     * Fetch a single cell value from the master table by mapping flow names.
+     * This ensures that when multiple tables reference the same stock, 
+     * the correct row is retrieved even if flow names appear at different indices.
+     * 
+     * @param row Current row index in this table
+     * @param col Current column index in this table
+     * @param flowName Flow name for this row
+     * @return Cell value from master table or 0.0 if not found
+     */
+    private double fetchCellValueFromMaster(int row, int col, String flowName) {
+        if (table.columns == null || col >= table.columns.size()) {
+            return 0.0;
+        }
+        
+        TableColumn column = table.columns.get(col);
+        String stockName = column.getStockName();
+        
+        TableElm masterTable = ComputedValues.getMasterTable(stockName);
+        
+        if (masterTable == null || masterTable.columns == null) {
+            return 0.0;
+        }
+        
+        // Find the row in the master table that matches this flow name
+        int masterRow = findRowByFlowName(masterTable, flowName);
+        int masterCol = masterTable.findColumnByStockName(stockName);
+        
+        if (masterRow >= 0 && masterCol >= 0 && masterCol < masterTable.columns.size()) {
+            TableColumn masterColumn = masterTable.columns.get(masterCol);
+            return masterColumn.getCachedCellValue(masterRow);
+        }
+        
+        return 0.0;
+    }
+    
+    /**
+     * Find the row index in a master table that matches a flow name.
+     * This is critical for proper value synchronization when multiple tables
+     * share stock names but have flows in different orders.
+     * 
+     * @param masterTable The master table to search
+     * @param flowName The flow name to find
+     * @return Row index in master table, or -1 if not found
+     */
+    private int findRowByFlowName(TableElm masterTable, String flowName) {
+        if (flowName == null || flowName.trim().isEmpty()) {
+            return -1;
+        }
+        
+        int masterRows = masterTable.getRows();
+        for (int r = 0; r < masterRows; r++) {
+            String masterFlowName = masterTable.getRowDescription(r);
+            if (flowName.equals(masterFlowName)) {
+                return r;
+            }
+        }
+        
+        return -1; // Not found
     }
     
     /**
@@ -532,6 +597,20 @@ public class TableRenderer {
             return table.columns.get(col).getType();
         }
         return ColumnType.ASSET; // Default
+    }
+    
+    /**
+     * Determine if a computed column should be colored blue to indicate accounting discrepancy.
+     * Base implementation returns true for A-L-E columns with non-zero values.
+     * Subclasses can override to customize behavior (e.g., CTM's SUM column uses normal coloring).
+     * 
+     * @param col Column index
+     * @param value Computed value for this column
+     * @return true if column should be colored blue, false for normal voltage coloring
+     */
+    protected boolean shouldColorComputedColumnBlue(int col, double value) {
+        // Default: color blue if non-zero (indicates accounting discrepancy in A-L-E)
+        return Math.abs(value) > 1e-6;
     }
     
     /**
@@ -745,12 +824,12 @@ public class TableRenderer {
             
             // Draw value with text color based on voltage (no background fill needed - canvas already colored)
             // For A-L-E columns, use blue if non-zero (indicates accounting discrepancy)
-            if (isALECol && Math.abs(initialValue) > 1e-6) {
+            if (isALECol && shouldColorComputedColumnBlue(col, initialValue)) {
                 g.setColor(Color.blue);
             } else {
                 g.setColor(getTextVoltageColor(initialValue));
             }
-            String voltageText = CircuitElm.getUnitText(initialValue, table.tableUnits);
+            String voltageText = formatDisplayValue(initialValue, table.tableUnits);
             table.drawCenteredText(g, voltageText, cellX + cellWidthPixels/2, initialRowY + table.cellHeight/2, true);
         }
         
@@ -817,12 +896,12 @@ public class TableRenderer {
                     voltage = aleRowValue;
                     // A-L-E column: ALWAYS display only the computed value (no equation)
                     // Color blue if non-zero (indicates accounting discrepancy), otherwise use voltage color
-                    if (Math.abs(voltage) > 1e-6) {
+                    if (shouldColorComputedColumnBlue(col, voltage)) {
                         g.setColor(Color.blue);
                     } else {
                         g.setColor(getTextVoltageColor(voltage));
                     }
-                    String voltageText = CircuitElm.getUnitText(voltage, table.tableUnits);
+                    String voltageText = formatDisplayValue(voltage, table.tableUnits);
                     table.drawCenteredText(g, voltageText, cellX + cellWidthPixels/2, cellY + table.cellHeight/2, true);
                 } else if (equation != null && !equation.trim().isEmpty()) {
                     // Regular cell: display based on showCellValues mode (0=Equation, 1=Equation:Value, 2=Value)
@@ -831,11 +910,11 @@ public class TableRenderer {
                     
                     if (table.showCellValues == 2) {
                         // Mode 2: Show just "value"
-                        displayText = CircuitElm.getUnitText(voltage, table.tableUnits);
+                        displayText = formatDisplayValue(voltage, table.tableUnits);
                     } else if (table.showCellValues == 1) {
                         // Mode 1: Show "equation: value"
                         String equation_truncated = truncateEquation(equation, g);
-                        String voltageText = CircuitElm.getUnitText(voltage, table.tableUnits);
+                        String voltageText = formatDisplayValue(voltage, table.tableUnits);
                         displayText = equation_truncated + ": " + voltageText;
                     } else {
                         // Mode 0 (default): Show just "equation"
@@ -950,12 +1029,12 @@ public class TableRenderer {
             
             // Draw value with text color based on voltage
             // For A-L-E columns, use blue if non-zero (indicates accounting discrepancy)
-            if (isALEColumn && Math.abs(computedValue) > 1e-6) {
+            if (isALEColumn && shouldColorComputedColumnBlue(col, computedValue)) {
                 g.setColor(Color.blue);
             } else {
                 g.setColor(getTextVoltageColor(computedValue));
             }
-            String sumText = CircuitElm.getUnitText(computedValue, table.tableUnits);
+            String sumText = formatDisplayValue(computedValue, table.tableUnits);
             table.drawCenteredText(g, sumText, cellX + cellWidthPixels/2, sumRowY + table.cellHeight/2, true);
         }
         

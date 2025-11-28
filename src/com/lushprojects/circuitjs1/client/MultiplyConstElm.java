@@ -183,6 +183,8 @@ class MultiplyConstElm extends ChipElm {
         }
         if (n == 1) {
             gain = ei.value;
+            // Trigger re-analysis since gain affects the circuit matrix
+            sim.analyzeFlag = true;
         }
         if (n == 2) {
             flags = ei.changeFlag(flags, FLAG_SHOWPERCENT);

@@ -19,90 +19,16 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
     }
     
     /**
-     * Override to properly map CTM rows to master table rows by flow name.
-     * The base renderer assumes row indices match, but CTM collects flows from multiple tables
-     * where the same flow name might be at different row indices.
+     * Override to add ALE calculation for CTM.
+     * The base class now handles flow name mapping, so we only need to calculate ALE.
      */
     @Override
     protected void updateCachedValues() {
-        initializeCacheArrays();
-        updateCellValuesFromMasterTables();
-        updateColumnSumsFromMasters();
+        // Call base class to handle standard cell value updates with flow name mapping
+        super.updateCachedValues();
+        
+        // Calculate ALE column values (specific to CTM)
         calculateALEColumn();
-    }
-    
-    /**
-     * Initialize cache arrays with proper dimensions
-     */
-    private void initializeCacheArrays() {
-        if (cachedCellValues == null || cachedCellValues.length != table.rows || 
-            (table.rows > 0 && cachedCellValues[0].length != table.getCols())) {
-            cachedCellValues = new double[table.rows][table.getCols()];
-        }
-        
-        if (cachedSumValues == null || cachedSumValues.length != table.getCols()) {
-            cachedSumValues = new double[table.getCols()];
-        }
-    }
-    
-    /**
-     * Update cell values by mapping flow names to master table rows
-     */
-    private void updateCellValuesFromMasterTables() {
-        int regularColCount = getRegularColumnCount();
-        
-        for (int row = 0; row < table.rows; row++) {
-            String flowName = table.getRowDescription(row);
-            
-            for (int col = 0; col < regularColCount; col++) {
-                cachedCellValues[row][col] = fetchCellValueFromMaster(row, col, flowName);
-            }
-        }
-    }
-    
-    /**
-     * Fetch a single cell value from the master table
-     * @param row Current row index
-     * @param col Current column index  
-     * @param flowName Flow name for this row
-     * @return Cell value from master table or 0.0 if not found
-     */
-    private double fetchCellValueFromMaster(int row, int col, String flowName) {
-        if (table.columns == null || col >= table.columns.size()) {
-            return 0.0;
-        }
-        
-        TableColumn column = table.columns.get(col);
-        String stockName = column.getStockName();
-        
-        // CTM is never a master, always fetches from source tables
-        TableElm masterTable = ComputedValues.getMasterTable(stockName);
-        
-        if (masterTable == null || masterTable.columns == null) {
-            return 0.0;
-        }
-        
-        // Find the row in the master table that matches this flow name
-        int masterRow = matrixElm.findRowByFlowName(masterTable, flowName);
-        int masterCol = masterTable.findColumnByStockName(stockName);
-        
-        if (masterRow >= 0 && masterCol >= 0 && masterCol < masterTable.columns.size()) {
-            TableColumn masterColumn = masterTable.columns.get(masterCol);
-            return masterColumn.getCachedCellValue(masterRow);
-        }
-        
-        return 0.0;
-    }
-    
-    /**
-     * Update column sums from master tables (computed row)
-     */
-    private void updateColumnSumsFromMasters() {
-        int regularColCount = getRegularColumnCount();
-        
-        for (int col = 0; col < regularColCount; col++) {
-            cachedSumValues[col] = getRegularColumnSum(col);
-        }
     }
     
     /**
@@ -120,28 +46,15 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
         // Calculate ALE for each row (sum of all regular columns)
         double aleColumnSum = 0.0;
         for (int row = 0; row < table.rows; row++) {
-            double rowSum = calculateRowSum(row, regularColCount);
+            double rowSum = 0.0;
+            for (int col = 0; col < regularColCount; col++) {
+                rowSum += cachedCellValues[row][col];
+            }
             cachedCellValues[row][aleCol] = rowSum;
             aleColumnSum += rowSum;
         }
         
         cachedSumValues[aleCol] = aleColumnSum;
-    }
-    
-    /**
-     * Calculate sum of all regular columns for a given row
-     * @param row Row index
-     * @param regularColCount Number of regular columns
-     * @return Sum of all values in the row
-     */
-    private double calculateRowSum(int row, int regularColCount) {
-        double rowSum = 0.0;
-        
-        for (int col = 0; col < regularColCount; col++) {
-            rowSum += cachedCellValues[row][col];
-        }
-        
-        return rowSum;
     }
     
     /**
@@ -336,6 +249,20 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
         }
         
         drawRowGridLine(g, offsetY, tableX, rowDescColWidth, cellWidthPixels, false);
+    }
+    
+    /**
+     * Override to prevent blue coloring of SUM column in CTM.
+     * CTM's last column is a simple SUM, not an accounting equation (A-L-E),
+     * so it should use normal voltage-based coloring, not blue for non-zero values.
+     * 
+     * @return false for CTM - never use blue for discrepancy indication
+     */
+    @Override
+    protected boolean shouldColorComputedColumnBlue(int col, double value) {
+        // CTM uses SUM column, not A-L-E accounting equation
+        // No need for blue discrepancy warning
+        return false;
     }
 
 }
