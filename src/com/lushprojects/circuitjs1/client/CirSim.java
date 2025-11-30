@@ -2244,10 +2244,10 @@ public CirSim() {
 	int i;
 	Scope.clearCursorInfo();
 	for (i = 0; i != ct; i++)
-	    scopes[i].selectScope(mouseCursorX, mouseCursorY);
+	    scopes[i].selectScope(mouseCursorX, mouseCursorY, dragging);
 	if (scopeElmArr != null)
 	    for (i=0; i != scopeElmArr.length; i++)
-		scopeElmArr[i].selectScope(mouseCursorX, mouseCursorY);
+		scopeElmArr[i].selectScope(mouseCursorX, mouseCursorY, dragging);
 	for (i = 0; i != ct; i++)
 	    scopes[i].draw(g);
 	if (mouseWasOverSplitter) {

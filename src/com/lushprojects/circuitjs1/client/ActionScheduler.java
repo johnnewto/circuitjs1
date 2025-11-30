@@ -108,6 +108,9 @@ public class ActionScheduler {
         }
     }
     
+    private String lastActionText = null;  // Text to display for last triggered action
+    private boolean lastActionTextCleared = false;  // Flag to track if hovering over scope cleared the text
+    
     private ActionScheduler(CirSim sim) {
         this.sim = sim;
         this.actions = new ArrayList<ScheduledAction>();
@@ -132,10 +135,18 @@ public class ActionScheduler {
     }
     
     /**
+     * Set display message for manual slider adjustment
+     */
+    public void setManualSliderMessage(String sliderName, String formattedValue) {
+        displayMessage = "Manual: " + sliderName + "=" + formattedValue;
+        CirSim.console("Manual slider adjustment: " + displayMessage);
+    }
+    
+    /**
      * Check if there is an active display message
      */
     public boolean hasDisplayMessage() {
-        return displayMessage != null;
+        return displayMessage != null && !displayMessage.isEmpty();
     }
     
     /**
@@ -188,14 +199,14 @@ public class ActionScheduler {
     private void animateActions(final List<ScheduledAction> actions, double durationSeconds) {
         final int steps = 50;  // 50 animation steps
         final int stepDelayMs = (int) ((durationSeconds * 1000) / steps);
-        
+
         // Build and display message at start of animation
         StringBuilder allActionText = new StringBuilder();
         for (ScheduledAction action : actions) {
             // Build action text with formatted value
             String actionText = "";
             if (action.sliderName != null && !action.sliderName.isEmpty()) {
-                actionText = action.sliderName + "=" + getFormattedSliderValue(action.sliderName, action.sliderValue);
+                actionText = action.sliderName + " = " + getFormattedSliderValue(action.sliderName, action.sliderValue);
             }
             
             // Collect action text for display
@@ -234,15 +245,34 @@ public class ActionScheduler {
                 currentStep[0]++;
                 double progress = (double) currentStep[0] / steps;
                 
-                // Update all slider values
+                // Update all slider values and build display message
+                StringBuilder animationText = new StringBuilder();
                 for (int i = 0; i < actions.size(); i++) {
                     ScheduledAction action = actions.get(i);
                     if (action.sliderName != null && !action.sliderName.isEmpty()) {
                         // Linear interpolation
                         double currentValue = startValues[i] + (action.sliderValue - startValues[i]) * progress;
                         setSliderValue(action.sliderName, currentValue);
+                        
+                        // Build updated display message with current value
+                        if (action.postText != null && !action.postText.isEmpty()) {
+                            if (animationText.length() > 0) {
+                                animationText.append("; ");
+                            }
+                            animationText.append(action.postText);
+                            animationText.append(": ").append(action.sliderName).append(" = " )
+                                .append(getFormattedSliderValue(action.sliderName, currentValue));
+                        }
                     }
                 }
+                
+                // Update display message with current animated values
+                if (animationText.length() > 0) {
+                    displayMessage = animationText.toString();
+                }
+                
+                // Repaint to show updated slider values and display message
+                sim.repaint();
                 
                 // Check if animation is complete
                 if (currentStep[0] >= steps) {
@@ -297,6 +327,21 @@ public class ActionScheduler {
         
         // Refresh dialog to show completed state
         ActionTimeDialog.refreshIfOpen();
+    }
+    
+    /**
+     * Get the last triggered action's postText
+     * Returns null if no action has been triggered or if text was cleared by hovering
+     */
+    public String getLastActionText() {
+        return lastActionTextCleared ? null : lastActionText;
+    }
+    
+    /**
+     * Clear the last action text (called when hovering over scope)
+     */
+    public void clearLastActionText() {
+        lastActionTextCleared = true;
     }
     
     /**
@@ -536,6 +581,8 @@ public class ActionScheduler {
             action.state = (action.actionTime == 0.0) ? ActionState.READY : ActionState.PENDING;
         }
         displayMessage = null;
+        lastActionText = null;  // Clear last action text on reset
+        lastActionTextCleared = false;
         cancelResumeTimer();
         isPaused = false;
         simulationStarted = false;  // Reset on simulation reset
@@ -584,7 +631,7 @@ public class ActionScheduler {
             // Build action text with formatted value
             String actionText = "";
             if (action.sliderName != null && !action.sliderName.isEmpty()) {
-                actionText = action.sliderName + "=" + getFormattedSliderValue(action.sliderName, action.sliderValue);
+                actionText = action.sliderName + " = " + getFormattedSliderValue(action.sliderName, action.sliderValue);
             }
             
             // Collect action text for display
@@ -727,6 +774,11 @@ public class ActionScheduler {
      */
     private void transitionToCompleted(ScheduledAction action, double currentTime) {
         action.state = ActionState.COMPLETED;
+        // Store the postText for display in scope
+        if (action.postText != null && !action.postText.isEmpty()) {
+            lastActionText = action.postText;
+            lastActionTextCleared = false;  // Reset the cleared flag
+        }
         CirSim.console("Action #" + action.id + ": → COMPLETED [t=" + 
                      CircuitElm.getUnitText(currentTime, "s") + "]");
     }
@@ -744,6 +796,11 @@ public class ActionScheduler {
      */
     private void transitionReadyToCompleted(ScheduledAction action) {
         action.state = ActionState.COMPLETED;
+        // Store the postText for display in scope
+        if (action.postText != null && !action.postText.isEmpty()) {
+            lastActionText = action.postText;
+            lastActionTextCleared = false;  // Reset the cleared flag
+        }
         CirSim.console("Action #" + action.id + ": EXECUTING → COMPLETED [t=0]");
     }
     
@@ -761,6 +818,12 @@ public class ActionScheduler {
                 ei.value = value;
                 adj.elm.setEditValue(adj.editItem, ei);
                 sim.analyzeFlag = true;
+                
+                // Update the slider label to show current value
+                if (adj.label != null) {
+                    String valueStr = adj.getFormattedValue(ei, value);
+                    adj.label.setText(com.lushprojects.circuitjs1.client.util.Locale.LS(adj.sliderText) + ": " + valueStr);
+                }
             }
         } else {
             CirSim.console("Warning: Slider '" + name + "' not found");
@@ -909,6 +972,19 @@ public class ActionScheduler {
     }
     
     /**
+     * Get list of all enabled action times (for scope markers)
+     */
+    public List<Double> getActionTimes() {
+        List<Double> times = new ArrayList<Double>();
+        for (ScheduledAction action : actions) {
+            if (action.enabled) {
+                times.add(action.actionTime);
+            }
+        }
+        return times;
+    }
+    
+    /**
      * Get current value of a slider by name
      */
     public double getSliderValue(String name) {
@@ -943,7 +1019,9 @@ public class ActionScheduler {
                 return EditDialog.unitString(ei, value);
             }
         }
-        // Fallback to simple format
-        return CircuitElm.showFormat.format(value);
+        // Fallback to fixed precision format (3 decimal places)
+        com.google.gwt.i18n.client.NumberFormat fixedFormat = 
+            com.google.gwt.i18n.client.NumberFormat.getFormat("0.000");
+        return fixedFormat.format(value);
     }
 }

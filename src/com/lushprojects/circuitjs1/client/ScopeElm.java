@@ -281,7 +281,7 @@ class ScopeElm extends CircuitElm {
 	return 2; 
     }
     
-    void selectScope(int mx, int my) { 
-	elmScope.selectScope(mx, my); 
+    void selectScope(int mx, int my, boolean mouseButtonDown) { 
+	elmScope.selectScope(mx, my, mouseButtonDown); 
     }
 }

@@ -379,6 +379,19 @@ class Scope {
     boolean somethingSelected; // Is one of our plots selected?
     
     // ====================
+    // ACTION MARKER HOVER
+    // ====================
+    int hoveredActionIndex = -1; // Index of currently hovered action marker (-1 if none)
+    int lastHoveredActionIndex = -1; // Previous hovered action index for detecting changes
+    int lastDisplayedActionIndex = -1; // Last action annotation displayed (persists)
+    String lastDisplayedActionText = null; // postText of last displayed action (to compare with triggered actions)
+    boolean lastDisplayedWasHover = false; // True if last displayed came from hover (not trigger)
+    int lastLoggedActionIndex = -1; // Last action we logged (to reduce logging frequency)
+    int mouseX = -1, mouseY = -1; // Last mouse position in scope coordinates
+    boolean mouseButtonDown = false; // Track if mouse button is pressed
+    java.util.HashMap<Integer, Integer> actionVerticalPositions = new java.util.HashMap<Integer, Integer>(); // Stored Y positions for each action ID
+    
+    // ====================
     // STATIC VARIABLES - Cursor Tracking
     // ====================
     static double cursorTime;
@@ -489,6 +502,15 @@ class Scope {
     	    plots.get(i).reset(scopePointCount, speed, full);
 		calcVisiblePlots();
     	scopeTimeStep = sim.maxTimeStep;
+    	
+    	// Clear action annotation persistence on reset
+    	if (clearHistory) {
+    	    lastDisplayedActionIndex = -1;
+    	    lastDisplayedActionText = null;
+    	    lastDisplayedWasHover = false;
+    	    lastLoggedActionIndex = -1;
+    	    actionVerticalPositions.clear();  // Clear stored vertical positions
+    	}
     	
     	// Record start time and initialize history for drawFromZero mode
     	if (drawFromZero) {
@@ -1368,6 +1390,274 @@ class Scope {
 	selectedPlot = 0;
     }
     
+    /**
+     * Draw vertical marker lines at action times
+     */
+    void drawActionTimeMarkers(Graphics g, double startTime, double displayTimeSpan) {
+	ActionScheduler scheduler = ActionScheduler.getInstance();
+	if (scheduler == null)
+	    return;
+	
+	// Only draw markers if there's an enabled ActionTimeElm in the circuit
+	boolean anyEnabled = false;
+	for (int i = 0; i < sim.elmList.size(); i++) {
+	    CircuitElm ce = sim.getElm(i);
+	    if (ce instanceof ActionTimeElm && ((ActionTimeElm) ce).enabled) {
+		anyEnabled = true;
+		break;
+	    }
+	}
+	if (!anyEnabled)
+	    return;
+	
+	java.util.List<ActionScheduler.ScheduledAction> allActions = scheduler.getAllActions();
+	java.util.List<ActionScheduler.ScheduledAction> enabledActions = new java.util.ArrayList<ActionScheduler.ScheduledAction>();
+	
+	// Filter for enabled actions
+	for (ActionScheduler.ScheduledAction action : allActions) {
+	    if (action.enabled) {
+		enabledActions.add(action);
+	    }
+	}
+	
+	if (enabledActions.isEmpty())
+	    return;
+	
+	// Update hovered action based on mouse position
+	updateHoveredAction(enabledActions, startTime, displayTimeSpan);
+	
+	// Draw markers for each action time
+	g.context.save();
+	g.setColor("#FF6B6B"); // Red/coral color for action markers
+	g.context.setLineWidth(2);
+	
+	for (int i = 0; i < enabledActions.size(); i++) {
+	    ActionScheduler.ScheduledAction action = enabledActions.get(i);
+	    double timeFromStart = action.actionTime - startTime;
+	    if (timeFromStart < 0 || timeFromStart > displayTimeSpan)
+		continue;
+	    
+	    // Skip t=0 actions
+	    if (action.actionTime <= 0)
+		continue;
+	    
+	    int gx = (int) (rect.width * timeFromStart / displayTimeSpan);
+	    if (gx >= 0 && gx < rect.width) {
+		// Draw thicker line if hovered
+		if (i == hoveredActionIndex) {
+		    g.context.setLineWidth(4);
+		}
+		g.drawLine(gx, 0, gx, rect.height-1);
+		if (i == hoveredActionIndex) {
+		    g.context.setLineWidth(2);
+		}
+	    }
+	}
+	
+	g.context.restore();
+	
+	// Draw annotations for all completed actions with vertical positioning
+	drawAllActionAnnotations(g, enabledActions, startTime, displayTimeSpan);
+    }
+    
+    /**
+     * Draw annotations for all completed actions, positioned to avoid overlap
+     */
+    void drawAllActionAnnotations(Graphics g, java.util.List<ActionScheduler.ScheduledAction> enabledActions,
+				   double startTime, double displayTimeSpan) {
+	// Collect completed actions, keeping only the last action at each unique time
+	java.util.List<ActionScheduler.ScheduledAction> completedActions = new java.util.ArrayList<ActionScheduler.ScheduledAction>();
+	java.util.HashMap<Double, ActionScheduler.ScheduledAction> actionsByTime = new java.util.HashMap<Double, ActionScheduler.ScheduledAction>();
+	
+	for (ActionScheduler.ScheduledAction action : enabledActions) {
+	    if (action.state == ActionScheduler.ActionState.COMPLETED && 
+		action.postText != null && !action.postText.trim().isEmpty() &&
+		action.actionTime > 0) {
+		// Keep only the last action at each time (higher ID = more recent)
+		ActionScheduler.ScheduledAction existing = actionsByTime.get(action.actionTime);
+		if (existing == null || action.id > existing.id) {
+		    actionsByTime.put(action.actionTime, action);
+		}
+	    }
+	}
+	
+	// Convert to list
+	completedActions.addAll(actionsByTime.values());
+	
+	if (completedActions.isEmpty())
+	    return;
+	
+	// Calculate base vertical positions for each action
+	int boxHeight = 24;
+	int boxSpacing = 4;
+	
+	// Draw each completed action
+	for (int i = 0; i < completedActions.size(); i++) {
+	    ActionScheduler.ScheduledAction action = completedActions.get(i);
+	    
+	    // Calculate vertical position (stacked)
+	    int verticalSlot = i;
+	    int popupY;
+	    
+	    // Check if we have a stored position for this action
+	    Integer storedY = actionVerticalPositions.get(action.id);
+	    
+	    // If hovering AND mouse button is down, move hovered action to mouse Y position and adjust others
+	    if (hoveredActionIndex >= 0 && mouseButtonDown) {
+		int hoveredIdx = -1;
+		for (int j = 0; j < completedActions.size(); j++) {
+		    if (completedActions.get(j).id == enabledActions.get(hoveredActionIndex).id) {
+			hoveredIdx = j;
+			break;
+		    }
+		}
+		
+		if (hoveredIdx >= 0) {
+		    if (i == hoveredIdx) {
+			// Hovered action follows mouse Y and stores position
+			popupY = mouseY;
+			actionVerticalPositions.put(action.id, popupY);
+			drawActionAnnotationAtPosition(g, action, startTime, displayTimeSpan, popupY);
+			continue;
+		    } else {
+			// Other actions: use stored position if available, otherwise calculate
+			if (storedY != null) {
+			    popupY = storedY;
+			} else {
+			    // Calculate position avoiding hovered action
+			    int hoveredY = mouseY;
+			    int normalY = 30 + verticalSlot * (boxHeight + boxSpacing);
+			    
+			    // If this action's normal position would overlap with hovered, shift it
+			    if (Math.abs(normalY - hoveredY) < boxHeight + boxSpacing) {
+				if (i < hoveredIdx) {
+				    // Actions before hovered: shift up
+				    popupY = hoveredY - (hoveredIdx - i) * (boxHeight + boxSpacing);
+				} else {
+				    // Actions after hovered: shift down
+				    popupY = hoveredY + (i - hoveredIdx) * (boxHeight + boxSpacing);
+				}
+			    } else {
+				popupY = normalY;
+			    }
+			    actionVerticalPositions.put(action.id, popupY);
+			}
+			drawActionAnnotationAtPosition(g, action, startTime, displayTimeSpan, popupY);
+			continue;
+		    }
+		}
+	    }
+	    
+	    // Not hovering: use stored position if available, otherwise default position
+	    if (storedY != null) {
+		popupY = storedY;
+	    } else {
+		popupY = 30 + verticalSlot * (boxHeight + boxSpacing);
+		actionVerticalPositions.put(action.id, popupY);
+	    }
+	    drawActionAnnotationAtPosition(g, action, startTime, displayTimeSpan, popupY);
+	}
+    }
+    
+    /**
+     * Update which action marker is being hovered
+     */
+    void updateHoveredAction(java.util.List<ActionScheduler.ScheduledAction> enabledActions, 
+			      double startTime, double displayTimeSpan) {
+	hoveredActionIndex = -1;
+	
+	if (mouseX < 0 || mouseY < 0)
+	    return;
+	
+	final int HOVER_THRESHOLD = 10; // pixels
+	
+	for (int i = 0; i < enabledActions.size(); i++) {
+	    ActionScheduler.ScheduledAction action = enabledActions.get(i);
+	    double timeFromStart = action.actionTime - startTime;
+	    if (timeFromStart < 0 || timeFromStart > displayTimeSpan)
+		continue;
+	    
+	    int gx = (int) (rect.width * timeFromStart / displayTimeSpan);
+	    if (Math.abs(mouseX - gx) < HOVER_THRESHOLD) {
+		hoveredActionIndex = i;
+		break;
+	    }
+	}
+	
+	// Track last hovered index for detecting changes
+	if (hoveredActionIndex >= 0) {
+	    lastHoveredActionIndex = hoveredActionIndex;
+	}
+    }
+    
+    /**
+     * Draw annotation popup for action at specific Y position
+     */
+    void drawActionAnnotationAtPosition(Graphics g, ActionScheduler.ScheduledAction action, 
+					 double startTime, double displayTimeSpan, int popupY) {
+	double timeFromStart = action.actionTime - startTime;
+	if (timeFromStart < 0 || timeFromStart > displayTimeSpan)
+	    return;
+	
+	// Skip if postText is empty
+	if (action.postText == null || action.postText.isEmpty())
+	    return;
+	
+	int gx = (int) (rect.width * timeFromStart / displayTimeSpan);
+	
+	// Build annotation text
+	String text = action.postText;
+	
+	// Add time and slider info if available
+	if (action.sliderName != null && !action.sliderName.isEmpty()) {
+	    text += " @ t=" + CircuitElm.getUnitText(action.actionTime, "s");
+	}
+	
+	g.context.save();
+	g.context.setFont("12px sans-serif");
+	
+	// Measure text
+	double textWidth = g.context.measureText(text).getWidth();
+	int padding = 6;
+	int boxWidth = (int) textWidth + padding * 2;
+	int boxHeight = 20;
+	// Position popup horizontally centered on marker
+	int popupX = gx - boxWidth / 2;
+	
+	// Keep popup within bounds horizontally
+	if (popupX < 0) popupX = 0;
+	if (popupX + boxWidth > rect.width) popupX = rect.width - boxWidth;
+	
+	// Keep popup within bounds vertically
+	if (popupY < 0) popupY = 0;
+	if (popupY + boxHeight > rect.height) popupY = rect.height - boxHeight;
+	
+	// Draw background
+	g.context.setFillStyle("rgba(255, 107, 107, 0.3)");
+	g.context.fillRect(popupX, popupY, boxWidth, boxHeight);
+	
+	// Draw border
+	g.context.setStrokeStyle("rgba(255, 107, 107, 0.1)");
+	g.context.setLineWidth(2);
+	g.context.strokeRect(popupX, popupY, boxWidth, boxHeight);
+	
+	// Draw arrow pointing to marker
+	g.context.beginPath();
+	g.context.moveTo(gx, popupY + boxHeight);
+	g.context.lineTo(gx - 6, popupY + boxHeight);
+	g.context.lineTo(gx + 6, popupY + boxHeight);
+	g.context.closePath();
+	g.context.fill();
+	
+	// Draw text
+	g.context.setFillStyle("white");
+	g.context.setTextAlign("center");
+	g.context.setTextBaseline("middle");
+	g.context.fillText(text, popupX + boxWidth / 2, popupY + boxHeight / 2);
+	
+	g.context.restore();
+    }
+    
     void draw(Graphics g) {
 	if (plots.size() == 0)
 	    return;
@@ -1735,6 +2025,9 @@ class Scope {
     		// Draw t=0 line in highlighted color
     		g.setColor(majorDiv);
     		g.drawLine(0, 0, 0, rect.height-1);
+    		
+    		// Draw action time markers
+    		drawActionTimeMarkers(g, startTime, displayTimeSpan);
     	    } else {
     		// Normal scrolling mode: gridlines scroll with time
     		double tstart = sim.t-sim.maxTimeStep*speed*rect.width;
@@ -2013,9 +2306,20 @@ class Scope {
 	cursorTime = -1;
     }
     
-    void selectScope(int mouseX, int mouseY) {
-	if (!rect.contains(mouseX, mouseY))
+    void selectScope(int mouseX, int mouseY, boolean mouseButtonDown) {
+	if (!rect.contains(mouseX, mouseY)) {
+	    // Clear mouse position when outside scope
+	    this.mouseX = -1;
+	    this.mouseY = -1;
+	    this.mouseButtonDown = false;
 	    return;
+	}
+	
+	// Store mouse position and button state relative to scope rectangle
+	this.mouseX = mouseX - rect.x;
+	this.mouseY = mouseY - rect.y;
+	this.mouseButtonDown = mouseButtonDown;
+	
 	if (plot2d || visiblePlots.size() == 0)
 	    cursorTime = -1;
 	else {

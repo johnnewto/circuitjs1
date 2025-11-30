@@ -151,6 +151,41 @@ public class ScopeViewerDialog extends DialogBox {
         allDataJson.append("  \"scopeName\": \"").append(escapeJSON(getScopeName(scope, index))).append("\",\n");
         allDataJson.append("  \"scopeIndex\": ").append(index).append(",\n");
         
+        // Add action times if available
+        ActionScheduler scheduler = ActionScheduler.getInstance();
+        if (scheduler != null) {
+            java.util.List<ActionScheduler.ScheduledAction> allActions = scheduler.getAllActions();
+            java.util.List<ActionScheduler.ScheduledAction> enabledActions = new java.util.ArrayList<ActionScheduler.ScheduledAction>();
+            
+            // Filter for enabled actions
+            for (ActionScheduler.ScheduledAction action : allActions) {
+                if (action.enabled) {
+                    enabledActions.add(action);
+                }
+            }
+            
+            if (!enabledActions.isEmpty()) {
+                // Add action times array
+                allDataJson.append("  \"actionTimes\": [");
+                for (int i = 0; i < enabledActions.size(); i++) {
+                    if (i > 0) allDataJson.append(", ");
+                    allDataJson.append(enabledActions.get(i).actionTime);
+                }
+                allDataJson.append("],\n");
+                
+                // Add action annotations array
+                allDataJson.append("  \"actionAnnotations\": [");
+                for (int i = 0; i < enabledActions.size(); i++) {
+                    if (i > 0) allDataJson.append(", ");
+                    ActionScheduler.ScheduledAction action = enabledActions.get(i);
+                    String annotation = action.postText != null && !action.postText.isEmpty() ? 
+                        action.postText : "Action " + action.id;
+                    allDataJson.append("\"").append(escapeJSON(annotation)).append("\"");
+                }
+                allDataJson.append("],\n");
+            }
+        }
+        
         // Use history if available, otherwise circular buffer
         boolean useHistory = scope.drawFromZero && scope.historySize > 0;
         String dataJson;
@@ -456,7 +491,34 @@ public class ScopeViewerDialog extends DialogBox {
         html.append("        hovermode: 'closest',\n");
         html.append("        showlegend: true,\n");
         html.append("        legend: { x: 1.02, y: 1, xanchor: 'left' },\n");
-        html.append("        margin: { r: 150 }\n");
+        html.append("        margin: { r: 150 },\n");
+        html.append("        shapes: scopeInfo.actionTimes ? scopeInfo.actionTimes.map(t => ({\n");
+        html.append("          type: 'line',\n");
+        html.append("          x0: t,\n");
+        html.append("          x1: t,\n");
+        html.append("          y0: 0,\n");
+        html.append("          y1: 1,\n");
+        html.append("          yref: 'paper',\n");
+        html.append("          line: { color: '#FF6B6B', width: 2 }\n");
+        html.append("        })) : [],\n");
+        html.append("        annotations: scopeInfo.actionTimes ? scopeInfo.actionTimes.map((t, i) => ({\n");
+        html.append("          x: t,\n");
+        html.append("          y: 1,\n");
+        html.append("          yref: 'paper',\n");
+        html.append("          text: scopeInfo.actionAnnotations[i],\n");
+        html.append("          showarrow: true,\n");
+        html.append("          arrowhead: 2,\n");
+        html.append("          arrowsize: 1,\n");
+        html.append("          arrowwidth: 2,\n");
+        html.append("          arrowcolor: '#FF6B6B',\n");
+        html.append("          ax: 0,\n");
+        html.append("          ay: -40,\n");
+        html.append("          bgcolor: 'rgba(255, 107, 107, 0.8)',\n");
+        html.append("          bordercolor: '#FF6B6B',\n");
+        html.append("          borderwidth: 2,\n");
+        html.append("          borderpad: 4,\n");
+        html.append("          font: { color: 'white', size: 12 }\n");
+        html.append("        })) : []\n");
         html.append("      };\n");
         html.append("      \n");
         html.append("      const config = {\n");

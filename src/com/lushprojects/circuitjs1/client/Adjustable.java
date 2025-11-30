@@ -12,7 +12,7 @@ public class Adjustable implements Command {
     double minValue, maxValue;
     int flags;
     String sliderText;
-    int numSteps; // Number of discrete steps (0 = continuous)
+    double stepIncrement; // Amount to add for each step (0 = continuous)
     
     // null if this Adjustable has its own slider, non-null if it's sharing another one.
     Adjustable sharedSlider;
@@ -32,7 +32,7 @@ public class Adjustable implements Command {
 	flags = 0;
 	elm = ce;
 	editItem = item;
-	numSteps = 0; // Default to continuous
+	stepIncrement = 0; // Default to continuous
         EditInfo ei = ce.getEditInfo(editItem);
         if (ei != null && ei.maxVal > 0) {
             minValue = ei.minVal;
@@ -45,7 +45,7 @@ public class Adjustable implements Command {
 	int e = Integer.parseInt(st.nextToken());
 	if (e == -1)
 	    return;
-	numSteps = 0; // Default for backward compatibility
+	stepIncrement = 0; // Default for backward compatibility
 	try {
 	    String ei = st.nextToken();
 
@@ -63,12 +63,12 @@ public class Adjustable implements Command {
 		sharedSlider = ano == -1 ? null : sim.adjustables.get(ano);
 	    }
 	    sliderText = CustomLogicModel.unescape(st.nextToken());
-	    // Try to read numSteps if available (for backward compatibility)
+	    // Try to read stepIncrement if available (for backward compatibility)
 	    if (st.hasMoreTokens()) {
 		try {
-		    numSteps = Integer.parseInt(st.nextToken());
+		    stepIncrement = Double.parseDouble(st.nextToken());
 		} catch (Exception ex2) {
-		    numSteps = 0;
+		    stepIncrement = 0;
 		}
 	    }
 	} catch (Exception ex) {}
@@ -156,6 +156,13 @@ public class Adjustable implements Command {
 	    label.setText(Locale.LS(sliderText) + ": " + valueStr);
 	}
 	
+	// Update ActionScheduler display message when manually adjusting slider
+	ActionScheduler scheduler = ActionScheduler.getInstance();
+	if (scheduler != null && sliderText != null && !sliderText.isEmpty()) {
+	    String valueStr = getFormattedValue(ei, ei.value);
+	    scheduler.setManualSliderMessage(sliderText, valueStr);
+	}
+	
 	elm.sim.repaint();
     }
     
@@ -181,11 +188,10 @@ public class Adjustable implements Command {
 	double val = sharedSlider == null ? slider.getValue() : sharedSlider.slider.getValue();
 	double rawValue = minValue + (maxValue-minValue)*val/100;
 	
-	// If numSteps > 0, snap to discrete steps
-	if (numSteps > 0) {
-	    double stepSize = (maxValue - minValue) / numSteps;
-	    int step = (int) Math.round((rawValue - minValue) / stepSize);
-	    return minValue + step * stepSize;
+	// If stepIncrement > 0, snap to discrete steps
+	if (stepIncrement > 0) {
+	    int step = (int) Math.round((rawValue - minValue) / stepIncrement);
+	    return minValue + step * stepIncrement;
 	}
 	
 	return rawValue;
@@ -219,7 +225,7 @@ public class Adjustable implements Command {
 	    ano = CirSim.theSim.adjustables.indexOf(sharedSlider);
 	
 	return elm.sim.locateElm(elm) + " F1 " + editItem + " " + minValue + " " + maxValue + " " + ano + " " +
-			CustomLogicModel.escape(sliderText) + " " + numSteps;
+			CustomLogicModel.escape(sliderText) + " " + stepIncrement;
     }
     
     /**

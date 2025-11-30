@@ -7,7 +7,7 @@ econ_KeenMinskyGodley01.txt Keen Minsky Godley 01
 econ_KeenMinskyGodley02.txt Keen Minsky Godley 02
 -
 +Debug
-1debug.txt Debug 1
+>1debug.txt Debug 1
 1dbg_LRC+Table.txt Dbg LRC+Table
 1dbg_CTM&GodleyTest.txt CTM & Godley Test
 1dbg_percent_meter_test.txt Percent Meter Test
@@ -454,5 +454,3 @@ ujtosc.txt Unijunction Oscillator
 latchingrelay.txt Latching Relay
 -
 blank.txt Blank Circuit
->1debug.txt For Debug
-

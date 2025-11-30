@@ -166,10 +166,10 @@ class SliderDialog extends Dialog  {
                     ei.labelBox.setText(labletext);
 					vp.insert(ei.labelBox, idx++);
 					
-					// Add number of steps field
-					vp.insert(new Label(Locale.LS("Number of Steps (0=continuous)")), idx++);
+					// Add step increment field
+					vp.insert(new Label(Locale.LS("Step Increment (0=continuous)")), idx++);
 					ei.stepsBox = new TextBox();
-					ei.stepsBox.setText(String.valueOf(adj.numSteps));
+					ei.stepsBox.setText(String.valueOf(adj.stepIncrement));
 					vp.insert(ei.stepsBox, idx++);
 			    }
 			    // Calculate default min/max values for display
@@ -260,14 +260,14 @@ class SliderDialog extends Dialog  {
 			    }
 			}
 			
-			// Parse number of steps
+			// Parse step increment
 			if (ei.stepsBox != null) {
 			    try {
-				adj.numSteps = Integer.parseInt(ei.stepsBox.getText());
-				if (adj.numSteps < 0)
-				    adj.numSteps = 0;
+				adj.stepIncrement = Double.parseDouble(ei.stepsBox.getText());
+				if (adj.stepIncrement < 0)
+				    adj.stepIncrement = 0;
 			    } catch (Exception e) {
-				adj.numSteps = 0;
+				adj.stepIncrement = 0;
 			    }
 			}
 			
