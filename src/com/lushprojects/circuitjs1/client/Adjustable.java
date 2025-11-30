@@ -222,6 +222,23 @@ public class Adjustable implements Command {
 			CustomLogicModel.escape(sliderText) + " " + numSteps;
     }
     
+    /**
+     * Highlight slider background (during animation)
+     */
+    public void highlightSlider(boolean highlight) {
+	if (slider == null)
+	    return;
+	if (highlight) {
+	    slider.getElement().getStyle().setBackgroundColor("#ffe082"); // Light amber
+	    if (label != null)
+		label.getElement().getStyle().setBackgroundColor("#ffe082");
+	} else {
+	    slider.getElement().getStyle().clearBackgroundColor();
+	    if (label != null)
+		label.getElement().getStyle().clearBackgroundColor();
+	}
+    }
+    
     // reorder adjustables so that items with sliders come first in the list, followed by items that reference them.
     // this simplifies the UI code, and also makes it much easier to dump/undump the adjustables list, since we will
     // always be undumping the adjustables with sliders first, then the adjustables that reference them.

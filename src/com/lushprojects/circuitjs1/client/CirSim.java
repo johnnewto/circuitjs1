@@ -812,19 +812,28 @@ public CirSim() {
 	// Buttons moved to side panel below
 	
 	// Add Reset, Run/Stop, and Step buttons to side panel
-	// Create horizontal panel for Run/Stop and Reset on same line
-	HorizontalPanel runResetPanel = new HorizontalPanel();
-	runResetPanel.setWidth("80%");
-	runResetPanel.setStyleName("topSpace");
-	runResetPanel.setSpacing(2); // Add spacing between buttons
-	
+	// Run/Stop button on first line
 	runStopButton = new Button(Locale.LSHTML("<Strong>RUN</Strong>&nbsp;/&nbsp;Stop"));
 	runStopButton.addClickHandler(new ClickHandler() {
 	    public void onClick(ClickEvent event) {
-		setSimRunning(!simIsRunning());
+		ActionScheduler scheduler = ActionScheduler.getInstance();
+		// If paused by ActionScheduler, cancel timer and stop
+		if (scheduler != null && scheduler.isPaused() && scheduler.hasPendingTimer()) {
+		    scheduler.cancelResumeTimer();
+		    setSimRunning(false);
+		} else {
+		    // Normal toggle behavior
+		    setSimRunning(!simIsRunning());
+		}
 	    }
 	});
-	runResetPanel.add(runStopButton);
+	verticalPanel.add(runStopButton);
+	
+	// Create horizontal panel for Reset and Step on second line
+	HorizontalPanel resetStepPanel = new HorizontalPanel();
+	resetStepPanel.setWidth("80%");
+	resetStepPanel.setStyleName("topSpace");
+	resetStepPanel.setSpacing(2); // Add spacing between buttons
 	
 	resetButton = new Button(Locale.LS("Reset"));
 	resetButton.addClickHandler(new ClickHandler() {
@@ -833,18 +842,19 @@ public CirSim() {
 	    }
 	});
 	resetButton.setStylePrimaryName("topButton");
-	runResetPanel.add(resetButton);
-	
-	verticalPanel.add(runResetPanel);
+	resetStepPanel.add(resetButton);
 	
 	stepButton = new Button(Locale.LS("Step"));
 	stepButton.addClickHandler(new ClickHandler() {
 	    public void onClick(ClickEvent event) {
+		setSimRunning(false);  // Stop simulation first
 		stepCircuit();
 	    }
 	});
 	stepButton.setStylePrimaryName("topButton");
-	verticalPanel.add(stepButton);
+	resetStepPanel.add(stepButton);
+	
+	verticalPanel.add(resetStepPanel);
 	
 /*
 	dumpMatrixButton = new Button("Dump Matrix");
@@ -1772,8 +1782,6 @@ public CirSim() {
     	    	if (stopMessage != null)
     	    	    return;
     		simRunning = true;
-    		runStopButton.setHTML(Locale.LSHTML("<strong>RUN</strong>&nbsp;/&nbsp;Stop"));
-    		runStopButton.setStylePrimaryName("topButton");
     		timer.scheduleRepeating(FASTTIMER);
     		
     		// Clear paused state when user manually starts simulation
@@ -1781,10 +1789,10 @@ public CirSim() {
     		if (scheduler != null) {
     		    scheduler.clearPausedState();
     		}
+    		
+    		updateRunStopButton();
     	} else {
     		simRunning = false;
-    		runStopButton.setHTML(Locale.LSHTML("Run&nbsp;/&nbsp;<strong>STOP</strong>"));
-    		runStopButton.setStylePrimaryName("topButton-red");
     		timer.cancel();
     		
     		// Cancel any pending action timer when user stops simulation
@@ -1792,7 +1800,35 @@ public CirSim() {
     		if (scheduler != null) {
     		    scheduler.cancelResumeTimer();
     		}
+    		
+    		updateRunStopButton();
 		repaint();
+    	}
+    }
+    
+    /**
+     * Update the Run/Stop button appearance based on simulation state
+     * Three states: Red (stopped), Orange (paused by ActionScheduler), Green (running)
+     */
+    void updateRunStopButton() {
+    	ActionScheduler scheduler = ActionScheduler.getInstance();
+    	
+    	// Check paused state FIRST (before checking simRunning)
+    	if (scheduler != null && scheduler.isPaused() && scheduler.hasPendingTimer()) {
+    	    // Paused by ActionScheduler - orange button
+    	    runStopButton.setHTML(Locale.LSHTML("Run&nbsp;/&nbsp;<strong>PAUSED</strong>&nbsp;/&nbsp;Stop"));
+    	    runStopButton.setStylePrimaryName("topButton");
+    	    runStopButton.getElement().getStyle().setBackgroundColor("#ff9800");
+    	} else if (!simRunning) {
+    	    // Stopped state - red button
+    	    runStopButton.setHTML(Locale.LSHTML("<strong>RUN</strong>&nbsp;/&nbsp;Stop"));
+    	    runStopButton.setStylePrimaryName("topButton-red");
+    	    runStopButton.getElement().getStyle().clearBackgroundColor();
+    	} else {
+    	    // Running normally - green button
+    	    runStopButton.setHTML(Locale.LSHTML("Run&nbsp;/&nbsp;<strong>STOP</strong>"));
+    	    runStopButton.setStylePrimaryName("topButton");
+    	    runStopButton.getElement().getStyle().setBackgroundColor("#4caf50");
     	}
     }
     
