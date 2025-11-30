@@ -180,7 +180,6 @@ public class ActionScheduler {
         };
         
         resumeTimer.schedule(waitMs);
-        CirSim.console("ActionScheduler: Resume timer scheduled - " + waitBeforeAnimation + "s wait, then " + animationDuration + "s animation for " + actions.size() + " action(s)");
     }
     
     /**
@@ -214,7 +213,8 @@ public class ActionScheduler {
         // Set display message at start of animation
         if (allActionText.length() > 0) {
             displayMessage = allActionText.toString();
-            CirSim.console("ActionScheduler: Displaying action message: " + displayMessage);
+            CirSim.console("Animating: " + displayMessage);
+            sim.repaint();  // Force redraw to show the message immediately
         }
         
         // Get starting values for all sliders and highlight them
@@ -289,7 +289,7 @@ public class ActionScheduler {
         // Display message is already set at start of animation, so no need to update it here
         
         sim.setSimRunning(true);
-        CirSim.console("ActionScheduler: Animation complete - executed " + actions.size() + " action(s), resuming simulation");
+        CirSim.console("Resumed: " + actions.size() + " action(s) completed");
         resumeTimer = null;
         
         // Update button to show green running state
@@ -312,7 +312,6 @@ public class ActionScheduler {
      */
     public void setPauseTime(double seconds) {
         pauseTime = Math.max(0.0, seconds);
-        CirSim.console("ActionScheduler: Pause time set to " + pauseTime + "s");
     }
     
     /**
@@ -333,12 +332,11 @@ public class ActionScheduler {
             
             if (resumeTimer != null) {
                 // Trigger the timer immediately instead of just canceling it
-                CirSim.console("ActionScheduler: Clearing paused state - triggering pending action immediately");
                 resumeTimer.cancel();
                 resumeTimer.run();
                 resumeTimer = null;
+                CirSim.console("Cleared pause: triggered pending action");
             }
-            CirSim.console("ActionScheduler: Cleared paused state and triggered pending action");
             sim.updateRunStopButton();  // Update button to show green running state
         }
     }
@@ -358,13 +356,11 @@ public class ActionScheduler {
         
         if (resumeTimer != null) {
             // Trigger the timer immediately to execute pending actions
-            CirSim.console("ActionScheduler: Triggering pending actions immediately before stopping");
             resumeTimer.cancel();
             resumeTimer.run();  // Execute the actions now (starts animation)
             resumeTimer = null;
             isPaused = false;  // Clear pause state
             
-            CirSim.console("ActionScheduler: Cancelled resume timer and executed pending actions");
             sim.updateRunStopButton();  // Update button to show normal stopped state
             ActionTimeDialog.refreshIfOpen();  // Refresh dialog to show updated states
         }
@@ -378,7 +374,6 @@ public class ActionScheduler {
         if (paused) {
             sim.setSimRunning(false);
             // Note: updateRunStopButton() is called after scheduleResume() creates the timer
-            CirSim.console("ActionScheduler: Paused - simulation stopped");
         }
     }
     
@@ -387,8 +382,6 @@ public class ActionScheduler {
      * Only works when simulation is stopped
      */
     public void advanceToNextAction() {
-        CirSim.console("ActionScheduler: advanceToNextAction() called, simRunning=" + sim.simIsRunning());
-        
         // Only advance if simulation is currently stopped
         if (!sim.simIsRunning()) {
             // Find next untriggered action and advance time to it
@@ -397,12 +390,9 @@ public class ActionScheduler {
                 sim.t = nextAction.actionTime;
                 isPaused = false;
                 sim.setSimRunning(true);
-                CirSim.console("ActionScheduler: Advanced to next action at t=" + nextAction.actionTime + ", starting simulation");
-            } else {
-                CirSim.console("ActionScheduler: No more actions to advance to");
+                CirSim.console("Advanced to action #" + nextAction.id + " [t=" + 
+                             CircuitElm.getUnitText(nextAction.actionTime, "s") + "]");
             }
-        } else {
-            CirSim.console("ActionScheduler: Cannot advance while simulation is running");
         }
     }
     
@@ -557,123 +547,22 @@ public class ActionScheduler {
      * Called after each timestep is complete and circuit state is settled
      */
     public void stepFinished(double currentTime) {
-        // Display message no longer has time limit - it persists until manually cleared or new message set
-        
-        // Check if any ActionTimeElm exists and if all are disabled
-        boolean anyElementEnabled = false;
-        for (int i = 0; i != sim.elmList.size(); i++) {
-            CircuitElm ce = sim.getElm(i);
-            if (ce instanceof ActionTimeElm) {
-                ActionTimeElm ate = (ActionTimeElm) ce;
-                if (ate.enabled) {
-                    anyElementEnabled = true;
-                    break;
-                }
-            }
-        }
-        
-        // If no ActionTimeElm is enabled, skip action execution
-        if (!anyElementEnabled) {
+        // Skip if no ActionTimeElm is enabled or scheduler is paused
+        if (!isAnyActionElementEnabled() || isPaused) {
             return;
         }
         
-        // If paused, skip action execution
-        if (isPaused) {
-            return;
-        }
-        
-        // On first call after reset/load, execute READY actions (t=0) immediately
-        // Then mark simulation as started for subsequent steps
+        // On first step, execute READY actions (t=0) immediately
         if (!simulationStarted) {
-            simulationStarted = true;
-            CirSim.console("ActionScheduler: First step - simulation initialized");
-            
-            // Execute any READY actions (t=0) immediately without pause
-            List<ScheduledAction> readyActions = new ArrayList<ScheduledAction>();
-            for (ScheduledAction action : actions) {
-                if (action.enabled && action.state == ActionState.READY) {
-                    readyActions.add(action);
-                    CirSim.console("ActionScheduler: Action #" + action.id + " at t=0 executing immediately");
-                }
-            }
-            
-            if (readyActions.size() > 0) {
-                // Execute immediately without timer
-                executeActionsNow(readyActions);
-                ActionTimeDialog.refreshIfOpen();
-            }
-            
-            // Continue to check other actions on this same step
+            handleFirstStep();
         }
         
-        boolean anyStateChanged = false;
-        List<ScheduledAction> actionsToExecute = new ArrayList<ScheduledAction>();
+        // Process pending actions that have reached their execution time
+        List<ScheduledAction> actionsToExecute = collectTriggeredActions(currentTime);
         
-        for (ScheduledAction action : actions) {
-            if (!action.enabled || action.state == ActionState.COMPLETED) {
-                continue;
-            }
-            
-            // State machine transitions
-            switch (action.state) {
-                case READY:
-                    // READY actions execute on first step - already handled above
-                    // Should not reach here
-                    break;
-                    
-                case PENDING:
-                    // Check if we've reached the action time
-                    boolean timeReached = currentTime >= action.actionTime;
-                    
-                    if (timeReached) {
-                        // Check if this is a stop simulation action
-                        if (action.stopSimulation) {
-                            // PENDING → COMPLETED (stop simulation actions skip other states)
-                            transitionToCompleted(action, currentTime);
-                            anyStateChanged = true;
-                            sim.setSimRunning(false);
-                        } else {
-                            // PENDING → WAITING (normal actions wait for timer)
-                            transitionToWaiting(action, currentTime);
-                            anyStateChanged = true;
-                            actionsToExecute.add(action);
-                        }
-                    }
-                    break;
-                    
-                case WAITING:
-                    // Action is waiting for timer to fire
-                    // WAITING → ANIMATING (done by scheduleResume timer callback)
-                    break;
-                    
-                case ANIMATING:
-                    // Action is currently animating slider value
-                    // ANIMATING → EXECUTING → COMPLETED (done by animation timer)
-                    break;
-                    
-                case EXECUTING:
-                    // Transient state - should immediately move to COMPLETED
-                    // EXECUTING → COMPLETED (done in completeActions)
-                    break;
-                    
-                case COMPLETED:
-                    // Action is done, nothing to do
-                    break;
-            }
-        }
-        
-        // If we have actions to execute, pause and schedule them ALL together
-        if (actionsToExecute.size() > 0) {
-            setPaused(true);
-            double delay = pauseTime > 0 ? pauseTime : 0.001;
-            scheduleResume(delay, actionsToExecute);
-            sim.updateRunStopButton();  // Update button AFTER timer is created
-            CirSim.console("ActionScheduler: Paused - " + actionsToExecute.size() + " action(s) will execute after " + delay + "s");
-        }
-        
-        // Refresh dialog if any actions changed state
-        if (anyStateChanged) {
-            ActionTimeDialog.refreshIfOpen();
+        // Schedule execution of triggered actions
+        if (!actionsToExecute.isEmpty()) {
+            scheduleActionExecution(actionsToExecute);
         }
     }
     
@@ -716,9 +605,91 @@ public class ActionScheduler {
         // Set combined display message
         if (allActionText.length() > 0) {
             displayMessage = allActionText.toString();
+            sim.repaint();  // Force redraw to show the message immediately
         }
         
-        CirSim.console("ActionScheduler: Executed " + actions.size() + " action(s) immediately at t=0");
+        CirSim.console("Executed " + actions.size() + " action(s) at t=0");
+    }
+    
+    /**
+     * Check if any ActionTimeElm is enabled in the circuit
+     */
+    private boolean isAnyActionElementEnabled() {
+        for (int i = 0; i < sim.elmList.size(); i++) {
+            CircuitElm ce = sim.getElm(i);
+            if (ce instanceof ActionTimeElm && ((ActionTimeElm) ce).enabled) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Handle first step after reset - execute t=0 actions immediately
+     */
+    private void handleFirstStep() {
+        simulationStarted = true;
+        
+        List<ScheduledAction> readyActions = new ArrayList<ScheduledAction>();
+        for (ScheduledAction action : actions) {
+            if (action.enabled && action.state == ActionState.READY) {
+                readyActions.add(action);
+            }
+        }
+        
+        if (!readyActions.isEmpty()) {
+            executeActionsNow(readyActions);
+            ActionTimeDialog.refreshIfOpen();
+        }
+    }
+    
+    /**
+     * Collect actions that should be triggered at current time
+     * Handles both normal actions and stop simulation actions
+     */
+    private List<ScheduledAction> collectTriggeredActions(double currentTime) {
+        List<ScheduledAction> triggered = new ArrayList<ScheduledAction>();
+        boolean anyStateChanged = false;
+        
+        for (ScheduledAction action : actions) {
+            // Skip disabled or completed actions
+            if (!action.enabled || action.state != ActionState.PENDING) {
+                continue;
+            }
+            
+            // Check if action time has been reached
+            if (currentTime >= action.actionTime) {
+                if (action.stopSimulation) {
+                    // Stop simulation actions skip waiting/animation states
+                    transitionToCompleted(action, currentTime);
+                    sim.setSimRunning(false);
+                    anyStateChanged = true;
+                } else {
+                    // Normal actions transition to WAITING and get queued for execution
+                    transitionToWaiting(action, currentTime);
+                    triggered.add(action);
+                    anyStateChanged = true;
+                }
+            }
+        }
+        
+        if (anyStateChanged) {
+            ActionTimeDialog.refreshIfOpen();
+        }
+        
+        return triggered;
+    }
+    
+    /**
+     * Schedule execution of a batch of actions
+     * Pauses simulation and sets up timer with animation
+     */
+    private void scheduleActionExecution(List<ScheduledAction> actions) {
+        setPaused(true);
+        double delay = pauseTime > 0 ? pauseTime : 0.001;
+        scheduleResume(delay, actions);
+        sim.updateRunStopButton();
+        CirSim.console("Paused: " + actions.size() + " action(s) queued [delay=" + delay + "s]");
     }
     
     // ========== STATE TRANSITION METHODS ==========
@@ -728,8 +699,8 @@ public class ActionScheduler {
      */
     private void transitionToWaiting(ScheduledAction action, double currentTime) {
         action.state = ActionState.WAITING;
-        CirSim.console("ActionScheduler: Action #" + action.id + 
-                     " reached at t=" + currentTime + "s, PENDING → WAITING");
+        CirSim.console("Action #" + action.id + ": PENDING → WAITING [t=" + 
+                     CircuitElm.getUnitText(currentTime, "s") + "]");
     }
     
     /**
@@ -738,7 +709,7 @@ public class ActionScheduler {
     private void transitionToAnimating(List<ScheduledAction> actions) {
         for (ScheduledAction action : actions) {
             action.state = ActionState.ANIMATING;
-            CirSim.console("ActionScheduler: Action #" + action.id + " WAITING → ANIMATING");
+            CirSim.console("Action #" + action.id + ": WAITING → ANIMATING");
         }
         ActionTimeDialog.refreshIfOpen();
     }
@@ -748,7 +719,7 @@ public class ActionScheduler {
      */
     private void transitionToExecuting(ScheduledAction action) {
         action.state = ActionState.EXECUTING;
-        CirSim.console("ActionScheduler: Action #" + action.id + " ANIMATING → EXECUTING");
+        CirSim.console("Action #" + action.id + ": ANIMATING → EXECUTING");
     }
     
     /**
@@ -756,13 +727,8 @@ public class ActionScheduler {
      */
     private void transitionToCompleted(ScheduledAction action, double currentTime) {
         action.state = ActionState.COMPLETED;
-        if (currentTime > 0) {
-            CirSim.console("ActionScheduler: Action #" + action.id + " EXECUTING → COMPLETED");
-        } else {
-            // Special case for stop simulation actions
-            CirSim.console("ActionScheduler: Stopped simulation at t=" + 
-                         CircuitElm.getUnitText(currentTime, "s") + ", PENDING → COMPLETED");
-        }
+        CirSim.console("Action #" + action.id + ": → COMPLETED [t=" + 
+                     CircuitElm.getUnitText(currentTime, "s") + "]");
     }
     
     /**
@@ -770,7 +736,7 @@ public class ActionScheduler {
      */
     private void transitionReadyToExecuting(ScheduledAction action) {
         action.state = ActionState.EXECUTING;
-        CirSim.console("ActionScheduler: Action #" + action.id + " READY → EXECUTING");
+        CirSim.console("Action #" + action.id + ": READY → EXECUTING");
     }
     
     /**
@@ -778,7 +744,7 @@ public class ActionScheduler {
      */
     private void transitionReadyToCompleted(ScheduledAction action) {
         action.state = ActionState.COMPLETED;
-        CirSim.console("ActionScheduler: Action #" + action.id + " EXECUTING → COMPLETED");
+        CirSim.console("Action #" + action.id + ": EXECUTING → COMPLETED [t=0]");
     }
     
     // ========== END STATE TRANSITION METHODS ==========
@@ -787,36 +753,27 @@ public class ActionScheduler {
      * Find a slider by name and set its value
      */
     private void setSliderValue(String name, double value) {
-        for (int i = 0; i < sim.adjustables.size(); i++) {
-            Adjustable adj = sim.adjustables.get(i);
-            if (adj.sliderText != null && adj.sliderText.equals(name)) {
-                // Use the Adjustable's own method to set the value
-                adj.setSliderValue(value);
-                // Also need to update the element's value
-                EditInfo ei = adj.elm.getEditInfo(adj.editItem);
-                if (ei != null) {
-                    ei.value = value;
-                    adj.elm.setEditValue(adj.editItem, ei);
-                }
-                // if (adj.elm.nonLinear()) {
-                    adj.elm.sim.analyzeFlag = true;
-                // }
-                return;
+        Adjustable adj = findAdjustableByName(name);
+        if (adj != null) {
+            adj.setSliderValue(value);
+            EditInfo ei = adj.elm.getEditInfo(adj.editItem);
+            if (ei != null) {
+                ei.value = value;
+                adj.elm.setEditValue(adj.editItem, ei);
+                sim.analyzeFlag = true;
             }
+        } else {
+            CirSim.console("Warning: Slider '" + name + "' not found");
         }
-        CirSim.console("ActionScheduler: Warning - Slider '" + name + "' not found");
     }
     
     /**
      * Highlight or unhighlight a slider by name
      */
     private void highlightSlider(String name, boolean highlight) {
-        for (int i = 0; i < sim.adjustables.size(); i++) {
-            Adjustable adj = sim.adjustables.get(i);
-            if (adj.sliderText != null && adj.sliderText.equals(name)) {
-                adj.highlightSlider(highlight);
-                return;
-            }
+        Adjustable adj = findAdjustableByName(name);
+        if (adj != null) {
+            adj.highlightSlider(highlight);
         }
     }
     
@@ -828,6 +785,19 @@ public class ActionScheduler {
             Adjustable adj = sim.adjustables.get(i);
             adj.highlightSlider(false);
         }
+    }
+    
+    /**
+     * Find an adjustable by its slider name
+     */
+    private Adjustable findAdjustableByName(String name) {
+        for (int i = 0; i < sim.adjustables.size(); i++) {
+            Adjustable adj = sim.adjustables.get(i);
+            if (adj.sliderText != null && adj.sliderText.equals(name)) {
+                return adj;
+            }
+        }
+        return null;
     }
     
     /**
@@ -889,9 +859,8 @@ public class ActionScheduler {
             try {
                 String value = line.substring(6).trim();
                 pauseTime = Double.parseDouble(value);
-                CirSim.console("ActionScheduler: Loaded pause time = " + pauseTime + "s");
             } catch (Exception e) {
-                CirSim.console("ActionScheduler: Error loading pause time: " + e.getMessage());
+                CirSim.console("Error loading pause time: " + e.getMessage());
             }
             return;
         }
@@ -920,7 +889,7 @@ public class ActionScheduler {
                     value, preText, postText, enabled, stopSimulation);
                 actions.add(action);
             } catch (Exception e) {
-                CirSim.console("ActionScheduler: Error loading action: " + e.getMessage());
+                CirSim.console("Error loading action: " + e.getMessage());
             }
         }
     }
@@ -943,13 +912,11 @@ public class ActionScheduler {
      * Get current value of a slider by name
      */
     public double getSliderValue(String name) {
-        for (int i = 0; i < sim.adjustables.size(); i++) {
-            Adjustable adj = sim.adjustables.get(i);
-            if (adj.sliderText != null && adj.sliderText.equals(name)) {
-                EditInfo ei = adj.elm.getEditInfo(adj.editItem);
-                if (ei != null) {
-                    return ei.value;
-                }
+        Adjustable adj = findAdjustableByName(name);
+        if (adj != null) {
+            EditInfo ei = adj.elm.getEditInfo(adj.editItem);
+            if (ei != null) {
+                return ei.value;
             }
         }
         return 0.0;
@@ -959,23 +926,21 @@ public class ActionScheduler {
      * Get formatted value for a slider/action, checking element for custom formatting
      */
     private String getFormattedSliderValue(String sliderName, double value) {
-        // Find the adjustable with this name
-        for (int i = 0; i < sim.adjustables.size(); i++) {
-            Adjustable adj = sim.adjustables.get(i);
-            if (adj.sliderText != null && adj.sliderText.equals(sliderName)) {
-                EditInfo ei = adj.elm.getEditInfo(adj.editItem);
-                if (ei != null) {
-                    // Check if element has custom slider text formatting
-                    try {
-                        String customText = adj.elm.getSliderUnitText(adj.editItem, ei, value);
-                        if (customText != null)
-                            return customText;
-                    } catch (Exception e) {
-                        // Element doesn't have custom formatting
+        Adjustable adj = findAdjustableByName(sliderName);
+        if (adj != null) {
+            EditInfo ei = adj.elm.getEditInfo(adj.editItem);
+            if (ei != null) {
+                // Try custom formatting first
+                try {
+                    String customText = adj.elm.getSliderUnitText(adj.editItem, ei, value);
+                    if (customText != null) {
+                        return customText;
                     }
-                    // Use default formatting
-                    return EditDialog.unitString(ei, value);
+                } catch (Exception e) {
+                    // Element doesn't have custom formatting
                 }
+                // Use default formatting
+                return EditDialog.unitString(ei, value);
             }
         }
         // Fallback to simple format
