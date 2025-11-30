@@ -64,8 +64,8 @@ class RelayContactElm extends CircuitElm {
 		    StringTokenizer st) {
 	super(xa, ya, xb, yb, f);
 	label = CustomLogicModel.unescape(st.nextToken());
-	r_on = new Double(st.nextToken()).doubleValue();
-	r_off = new Double(st.nextToken()).doubleValue();
+	r_on = Double.parseDouble(st.nextToken());
+	r_off = Double.parseDouble(st.nextToken());
 	try {
 	    i_position = Integer.parseInt(st.nextToken());
 	} catch (Exception e) {}	

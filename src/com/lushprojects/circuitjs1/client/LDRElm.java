@@ -39,7 +39,7 @@ class LDRElm extends CircuitElm implements Command, MouseWheelHandler {
 	super(xa, ya, xb, yb, f);
 	minLux = 0.1; //dark
 	maxLux = 10000; // sunlight
-	position = new Double(st.nextToken()).doubleValue();
+	position = Double.parseDouble(st.nextToken());
 	lux = LuxFromSliderPos();
 	resistance = calcResistance(lux); 
 	sliderText = CustomLogicModel.unescape(st.nextToken());

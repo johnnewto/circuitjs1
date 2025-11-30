@@ -84,7 +84,7 @@ public class CustomLogicModel implements Editable {
     }
     
     void undump(StringTokenizer st) {
-	flags = new Integer(st.nextToken()).intValue();
+	flags = Integer.parseInt(st.nextToken());
 	inputs = listToArray(unescape(st.nextToken()));
 	outputs = listToArray(unescape(st.nextToken()));
 	infoText = unescape(st.nextToken());

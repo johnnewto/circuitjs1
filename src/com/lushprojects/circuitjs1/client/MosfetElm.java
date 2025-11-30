@@ -62,8 +62,8 @@ class MosfetElm extends CircuitElm {
 	    vt = getDefaultThreshold();
 	    beta = getBackwardCompatibilityBeta();
 	    try {
-		vt = new Double(st.nextToken()).doubleValue();
-		beta = new Double(st.nextToken()).doubleValue();
+		vt = Double.parseDouble(st.nextToken());
+		beta = Double.parseDouble(st.nextToken());
 	    } catch (Exception e) {}
 	    globalFlags = flags & (FLAGS_GLOBAL);
 	    allocNodes(); // make sure volts[] has the right number of elements when hasBodyTerminal() is true 

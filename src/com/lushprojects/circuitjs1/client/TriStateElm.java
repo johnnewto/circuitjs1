@@ -52,10 +52,10 @@ class TriStateElm extends CircuitElm {
 	noDiagonal = true;
 	highVoltage = 5;
 	try {
-	    r_on = new Double(st.nextToken()).doubleValue();
-	    r_off = new Double(st.nextToken()).doubleValue();
-	    r_off_ground = new Double(st.nextToken()).doubleValue();
-            highVoltage = new Double (st.nextToken()).doubleValue();
+	    r_on = Double.parseDouble(st.nextToken());
+	    r_off = Double.parseDouble(st.nextToken());
+	    r_off_ground = Double.parseDouble(st.nextToken());
+        highVoltage = Double.parseDouble(st.nextToken());
 	} catch (Exception e) {
 	}
 

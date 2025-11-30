@@ -37,10 +37,10 @@ class FuseElm extends CircuitElm {
 	public FuseElm(int xa, int ya, int xb, int yb, int f,
 		    StringTokenizer st) {
 	    super(xa, ya, xb, yb, f);
-	    resistance = new Double(st.nextToken()).doubleValue();
-	    i2t = new Double(st.nextToken()).doubleValue();
-	    heat = new Double(st.nextToken()).doubleValue();
-	    blown = new Boolean(st.nextToken()).booleanValue();
+	    resistance = Double.parseDouble(st.nextToken());
+	    i2t = Double.parseDouble(st.nextToken());
+	    heat = Double.parseDouble(st.nextToken());
+	    blown = Boolean.parseBoolean(st.nextToken());
 	}
 	String dump() {
 	    return super.dump() + " " + resistance + " " + i2t + " " + heat + " " + blown;

@@ -87,11 +87,11 @@ class RelayCoilElm extends CircuitElm {
 		    StringTokenizer st) {
 	super(xa, ya, xb, yb, f);
 	label = CustomLogicModel.unescape(st.nextToken());
-	inductance = new Double(st.nextToken()).doubleValue();
-	coilCurrent = new Double(st.nextToken()).doubleValue();
-	onCurrent = new Double(st.nextToken()).doubleValue();
-	coilR = new Double(st.nextToken()).doubleValue();
-	offCurrent = new Double(st.nextToken()).doubleValue();
+	inductance = Double.parseDouble(st.nextToken());
+	coilCurrent = Double.parseDouble(st.nextToken());
+	onCurrent = Double.parseDouble(st.nextToken());
+	coilR = Double.parseDouble(st.nextToken());
+	offCurrent = Double.parseDouble(st.nextToken());
 	switchingTime = Double.parseDouble(st.nextToken());
 	type = Integer.parseInt(st.nextToken());
 	state = Integer.parseInt(st.nextToken());

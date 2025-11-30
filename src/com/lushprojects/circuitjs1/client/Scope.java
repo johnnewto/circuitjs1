@@ -3093,21 +3093,21 @@ class Scope {
     
     void undump(StringTokenizer st) {
     	initialize();
-    	int e = new Integer(st.nextToken()).intValue();
+    	int e = Integer.parseInt(st.nextToken());
     	if (e == -1)
     		return;
     	CircuitElm ce = sim.getElm(e);
     	setElm(ce);
-    	speed = new Integer(st.nextToken()).intValue();
-    	int value = new Integer(st.nextToken()).intValue();
+    	speed = Integer.parseInt(st.nextToken());
+    	int value = Integer.parseInt(st.nextToken());
     	
     	// fix old value for VAL_POWER which doesn't work for transistors (because it's the same as VAL_IB) 
     	if (!(ce instanceof TransistorElm) && value == VAL_POWER_OLD)
     	    value = VAL_POWER;
     	
     	int flags = importDecOrHex(st.nextToken());
-    	scale[UNITS_V] = new Double(st.nextToken()).doubleValue();
-    	scale[UNITS_A] = new Double(st.nextToken()).doubleValue();
+    	scale[UNITS_V] = Double.parseDouble(st.nextToken());
+    	scale[UNITS_A] = Double.parseDouble(st.nextToken());
     	if (scale[UNITS_V] == 0)
     	    scale[UNITS_V] = .5;
     	if (scale[UNITS_A] == 0)
@@ -3209,10 +3209,10 @@ class Scope {
     	    int ivalue = 0;
 	    manDivisions = 8;
     	    try {
-    		position = new Integer(st.nextToken()).intValue();
+    		position = Integer.parseInt(st.nextToken());
     		int ye = -1;
     		if ((flags & FLAG_YELM) != 0) {
-    		    ye = new Integer(st.nextToken()).intValue();
+    		    ye = Integer.parseInt(st.nextToken());
     		    if (ye != -1)
     			yElm = sim.getElm(ye);
     		    // sinediode.txt has yElm set to something even though there's no xy plot...?
@@ -3220,7 +3220,7 @@ class Scope {
     			yElm = null;
     		}
     		if ((flags & FLAG_IVALUE) !=0) {
-    		    ivalue = new Integer(st.nextToken()).intValue();
+    		    ivalue = Integer.parseInt(st.nextToken());
     		}
     		while (st.hasMoreTokens()) {
     		    String token = st.nextToken();

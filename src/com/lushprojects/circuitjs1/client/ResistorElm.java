@@ -28,7 +28,7 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 	public ResistorElm(int xa, int ya, int xb, int yb, int f,
 		    StringTokenizer st) {
 	    super(xa, ya, xb, yb, f);
-	    resistance = new Double(st.nextToken()).doubleValue();
+	    resistance = Double.parseDouble(st.nextToken());
 	}
 	int getDumpType() { return 'r'; }
 	String dump() {

@@ -49,8 +49,8 @@ class PotElm extends CircuitElm implements Command, MouseWheelHandler {
     public PotElm(int xa, int ya, int xb, int yb, int f,
     		StringTokenizer st) {
     	super(xa, ya, xb, yb, f);
-    	maxResistance = new Double(st.nextToken()).doubleValue();
-    	position = new Double(st.nextToken()).doubleValue();
+    	maxResistance = Double.parseDouble(st.nextToken());
+    	position = Double.parseDouble(st.nextToken());
     	sliderText = st.nextToken();
     	while (st.hasMoreTokens())
     		sliderText += ' ' + st.nextToken();

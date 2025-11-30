@@ -37,13 +37,13 @@ class LampElm extends CircuitElm {
 	public LampElm(int xa, int ya, int xb, int yb, int f,
 		    StringTokenizer st) {
 	    super(xa, ya, xb, yb, f);
-	    temp = new Double(st.nextToken()).doubleValue();
+	    temp = Double.parseDouble(st.nextToken());
 	    if (Double.isNaN(temp))
 		temp = roomTemp;
-	    nom_pow = new Double(st.nextToken()).doubleValue();
-	    nom_v = new Double(st.nextToken()).doubleValue();
-	    warmTime = new Double(st.nextToken()).doubleValue();
-	    coolTime = new Double(st.nextToken()).doubleValue();
+	    nom_pow = Double.parseDouble(st.nextToken());
+	    nom_v = Double.parseDouble(st.nextToken());
+	    warmTime = Double.parseDouble(st.nextToken());
+	    coolTime = Double.parseDouble(st.nextToken());
 	    startIteration(); // set resistance
 	}
 	String dump() {

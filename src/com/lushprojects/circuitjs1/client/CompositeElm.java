@@ -80,7 +80,7 @@ public abstract class CompositeElm extends CircuitElm {
 		if (useEscape())
 		    dumpedCe = CustomLogicModel.unescape(dumpedCe);
 		StringTokenizer stCe = new StringTokenizer(dumpedCe, useEscape() ? " " : "_");
-		int flags = new Integer(stCe.nextToken()).intValue();
+		int flags = Integer.parseInt(stCe.nextToken());
 		newce = CirSim.createCe(tint, 0, 0, 0, 0, flags, stCe);
 	    }
 	    if (newce instanceof GroundElm)
@@ -89,7 +89,7 @@ public abstract class CompositeElm extends CircuitElm {
 
 	    int thisPost = 0;
 	    while (stModel.hasMoreTokens()) {
-		int nodeOfThisPost = new Integer(stModel.nextToken()).intValue();
+		int nodeOfThisPost = Integer.parseInt(stModel.nextToken());
 
 		// node = 0 means ground
 		if (nodeOfThisPost == 0) {

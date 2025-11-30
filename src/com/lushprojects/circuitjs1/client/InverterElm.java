@@ -37,8 +37,8 @@ package com.lushprojects.circuitjs1.client;
 	    slewRate = .5;
 	    highVoltage = 5;
 	    try {
-		slewRate = new Double (st.nextToken()).doubleValue();
-		highVoltage = new Double (st.nextToken()).doubleValue();
+		slewRate = Double.parseDouble(st.nextToken());
+		highVoltage = Double.parseDouble(st.nextToken());
 	    } catch (Exception e) {
 	    }
 	}

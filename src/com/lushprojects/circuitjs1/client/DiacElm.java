@@ -40,10 +40,10 @@ class DiacElm extends CircuitElm {
     public DiacElm(int xa, int ya, int xb, int yb, int f,
 		       StringTokenizer st) {
 	super(xa, ya, xb, yb, f);
-	onresistance = new Double(st.nextToken()).doubleValue();
-	offresistance = new Double(st.nextToken()).doubleValue();
-	breakdown = new Double(st.nextToken()).doubleValue();
-	holdcurrent = new Double(st.nextToken()).doubleValue();
+	onresistance = Double.parseDouble(st.nextToken());
+	offresistance = Double.parseDouble(st.nextToken());
+	breakdown = Double.parseDouble(st.nextToken());
+	holdcurrent = Double.parseDouble(st.nextToken());
 	createDiodes();
     }
     

@@ -171,7 +171,7 @@ public class TransistorModel implements Editable, Comparable<TransistorModel> {
     }
 
     void undump(StringTokenizer st) {
-	flags = new Integer(st.nextToken()).intValue();
+	flags = Integer.parseInt(st.nextToken());
 
 	satCur = Double.parseDouble(st.nextToken());
 	invRollOffF = Double.parseDouble(st.nextToken());

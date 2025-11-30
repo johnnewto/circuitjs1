@@ -46,12 +46,12 @@ package com.lushprojects.circuitjs1.client;
 	    // retain it to keep the file format the same
 	    gbw = 1e6;
 	    try {
-		maxOut = new Double(st.nextToken()).doubleValue();
-		minOut = new Double(st.nextToken()).doubleValue();
-		gbw = new Double(st.nextToken()).doubleValue();
-		volts[0] = new Double(st.nextToken()).doubleValue();
-		volts[1] = new Double(st.nextToken()).doubleValue();
-		gain = new Double(st.nextToken()).doubleValue();
+		maxOut = Double.parseDouble(st.nextToken());
+		minOut = Double.parseDouble(st.nextToken());
+		gbw = Double.parseDouble(st.nextToken());
+		volts[0] = Double.parseDouble(st.nextToken());
+		volts[1] = Double.parseDouble(st.nextToken());
+		gain = Double.parseDouble(st.nextToken());
 	    } catch (Exception e) {
 	    }
 	    noDiagonal = true;

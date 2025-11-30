@@ -44,12 +44,12 @@ package com.lushprojects.circuitjs1.client;
 	public GateElm(int xa, int ya, int xb, int yb, int f,
 			StringTokenizer st) {
 	    super(xa, ya, xb, yb, f);
-	    inputCount = new Integer(st.nextToken()).intValue();
-	    double lastOutputVoltage = new Double (st.nextToken()).doubleValue();
+	    inputCount = Integer.parseInt(st.nextToken());
+	    double lastOutputVoltage = Double.parseDouble(st.nextToken());
 	    noDiagonal = true;
 	    highVoltage = 5;
 	    try {
-		highVoltage = new Double(st.nextToken()).doubleValue();
+		highVoltage = Double.parseDouble(st.nextToken());
 	    } catch (Exception e) { }
 	    lastOutput = lastOutputVoltage > highVoltage*.5;
 	    setSize((f & FLAG_SMALL) != 0 ? 1 : 2);

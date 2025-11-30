@@ -43,7 +43,7 @@ abstract class ChipElm extends CircuitElm {
 	    super(xa, ya, xb, yb, f);
 	    if (needsBits())
 	    	if (st.hasMoreTokens())
-	    		bits = new Integer(st.nextToken()).intValue();
+	    		bits = Integer.parseInt(st.nextToken());
 	    	else
 	    		bits = defaultBitCount();
 	    highVoltage = (hasCustomVoltage()) ? Double.parseDouble(st.nextToken()) : 5;
@@ -53,9 +53,9 @@ abstract class ChipElm extends CircuitElm {
 	    int i;
 	    for (i = 0; i != getPostCount(); i++) {
 		if (pins == null)
-		    volts[i] = new Double(st.nextToken()).doubleValue();
+		    volts[i] = Double.parseDouble(st.nextToken());
 		else if (pins[i].state) {
-		    volts[i] = new Double(st.nextToken()).doubleValue();
+		    volts[i] = Double.parseDouble(st.nextToken());
 		    pins[i].value = volts[i] > getThreshold();
 		}
 	    }

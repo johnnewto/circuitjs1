@@ -38,13 +38,13 @@ class CapacitorElm extends CircuitElm {
 	public CapacitorElm(int xa, int ya, int xb, int yb, int f,
 			    StringTokenizer st) {
 	    super(xa, ya, xb, yb, f);
-	    capacitance = new Double(st.nextToken()).doubleValue();
-	    voltdiff = new Double(st.nextToken()).doubleValue();
+	    capacitance = Double.parseDouble(st.nextToken());
+	    voltdiff = Double.parseDouble(st.nextToken());
 	    initialVoltage = 1e-3;
 	    try {
-		initialVoltage = new Double(st.nextToken()).doubleValue();
+		initialVoltage = Double.parseDouble(st.nextToken());
 		if ((flags & FLAG_RESISTANCE) != 0)
-		    seriesResistance = new Double(st.nextToken()).doubleValue();
+		    seriesResistance = Double.parseDouble(st.nextToken());
 
 		// if you add more things here, check PolarCapacitorElm.  It loads more state after this
 	    } catch (Exception e) {}

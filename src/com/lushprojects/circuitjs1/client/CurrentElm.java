@@ -30,7 +30,7 @@ package com.lushprojects.circuitjs1.client;
 		   StringTokenizer st) {
 	    super(xa, ya, xb, yb, f);
 	    try {
-		currentValue = new Double(st.nextToken()).doubleValue();
+		currentValue = Double.parseDouble(st.nextToken());
 	    } catch (Exception e) {
 		currentValue = .01;
 	    }

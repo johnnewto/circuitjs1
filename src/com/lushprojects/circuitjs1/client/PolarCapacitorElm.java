@@ -10,7 +10,7 @@ public class PolarCapacitorElm extends CapacitorElm {
 	public PolarCapacitorElm(int xa, int ya, int xb, int yb, int f,
 			    StringTokenizer st) {
 	    super(xa, ya, xb, yb, f, st);
-	    maxNegativeVoltage = new Double(st.nextToken()).doubleValue();
+	    maxNegativeVoltage = Double.parseDouble(st.nextToken());
 	}
 	int getDumpType() { return 209; }
 	String dump() {

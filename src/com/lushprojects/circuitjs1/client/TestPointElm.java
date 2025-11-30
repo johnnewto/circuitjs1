@@ -60,7 +60,7 @@ class TestPointElm extends CircuitElm {
     public TestPointElm(int xa, int ya, int xb, int yb, int f,
              StringTokenizer st) {
         super(xa, ya, xb, yb, f);
-        meter = new Integer(st.nextToken()).intValue(); //get meter type from saved dump
+        meter = Integer.parseInt(st.nextToken()); //get meter type from saved dump
 	if ((flags & FLAG_LABEL) != 0)
 	    label = CustomLogicModel.unescape(st.nextToken());
 	else

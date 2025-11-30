@@ -30,7 +30,7 @@ public class DarlingtonElm extends CompositeElm {
 
     public DarlingtonElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
 	super(xa, ya, xb, yb, f, st, modelString, modelExternalNodes);
-	pnp = new Integer(st.nextToken()).intValue();
+	pnp = Integer.parseInt(st.nextToken());
 	noDiagonal = true;
     }
 

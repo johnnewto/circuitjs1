@@ -56,15 +56,15 @@ class CustomTransformerElm extends CircuitElm {
 			      StringTokenizer st) {
 	    super(xa, ya, xb, yb, f);
 	    width = 32; // max(32, abs(yb-ya));
-	    inductance = new Double(st.nextToken()).doubleValue();
-	    couplingCoef = new Double(st.nextToken()).doubleValue();
+	    inductance = Double.parseDouble(st.nextToken());
+	    couplingCoef = Double.parseDouble(st.nextToken());
 	    String str = st.nextToken();
 	    description = CustomLogicModel.unescape(str);
-	    coilCount = new Integer(st.nextToken()).intValue();
+	    coilCount = Integer.parseInt(st.nextToken());
 	    int i;
 	    coilCurrents = new double[coilCount];
 	    for (i = 0; i != coilCount; i++)
-		coilCurrents[i] = new Double(st.nextToken()).doubleValue();
+		coilCurrents[i] = Double.parseDouble(st.nextToken());
 	    noDiagonal = true;
 	    parseDescription(description);
 	}

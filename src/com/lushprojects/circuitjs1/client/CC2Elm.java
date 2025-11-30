@@ -26,7 +26,7 @@ package com.lushprojects.circuitjs1.client;
 	public CC2Elm(int xa, int ya, int xb, int yb, int f,
 		      StringTokenizer st) {
 	    super(xa, ya, xb, yb, f, st);
-	    gain = new Double(st.nextToken()).doubleValue();
+	    gain = Double.parseDouble(st.nextToken());
 	}
 	String dump() {
 	    return super.dump() + " " + gain;

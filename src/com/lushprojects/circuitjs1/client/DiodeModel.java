@@ -228,7 +228,7 @@ public class DiodeModel implements Editable, Comparable<DiodeModel> {
     }
     
     void undump(StringTokenizer st) {
-	flags = new Integer(st.nextToken()).intValue();
+	flags = Integer.parseInt(st.nextToken());
 	saturationCurrent = Double.parseDouble(st.nextToken());
 	seriesResistance = Double.parseDouble(st.nextToken());
 	emissionCoefficient = Double.parseDouble(st.nextToken());

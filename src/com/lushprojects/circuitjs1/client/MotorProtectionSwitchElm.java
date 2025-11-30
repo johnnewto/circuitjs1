@@ -45,9 +45,9 @@ class MotorProtectionSwitchElm extends CircuitElm {
 	public MotorProtectionSwitchElm(int xa, int ya, int xb, int yb, int f,
 		    StringTokenizer st) {
 	    super(xa, ya, xb, yb, f);
-	    resistance = new Double(st.nextToken()).doubleValue();
-	    i2t = new Double(st.nextToken()).doubleValue();
-	    blown = new Boolean(st.nextToken()).booleanValue();
+	    resistance = Double.parseDouble(st.nextToken());
+	    i2t = Double.parseDouble(st.nextToken());
+	    blown = Boolean.parseBoolean(st.nextToken());
 	    label = "";
 	    try {
 		label = CustomLogicModel.unescape(st.nextToken());

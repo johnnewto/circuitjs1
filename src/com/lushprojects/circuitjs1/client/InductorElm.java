@@ -33,10 +33,10 @@ package com.lushprojects.circuitjs1.client;
 		    StringTokenizer st) {
 	    super(xa, ya, xb, yb, f);
 	    ind = new Inductor(sim);
-	    inductance = new Double(st.nextToken()).doubleValue();
-	    current = new Double(st.nextToken()).doubleValue();
+	    inductance = Double.parseDouble(st.nextToken());
+	    current = Double.parseDouble(st.nextToken());
 	    try {
-		initialCurrent = new Double(st.nextToken()).doubleValue();
+		initialCurrent = Double.parseDouble(st.nextToken());
 	    } catch (Exception e) {}
 	    ind.setup(inductance, current, flags);
 	}

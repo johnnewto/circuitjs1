@@ -33,8 +33,8 @@ package com.lushprojects.circuitjs1.client;
 			     StringTokenizer st) {
 	    super(xa, ya, xb, yb, f, st);
 	    try {
-		hiV = new Double(st.nextToken()).doubleValue();
-		loV = new Double(st.nextToken()).doubleValue();
+		hiV = Double.parseDouble(st.nextToken());
+		loV = Double.parseDouble(st.nextToken());
 	    } catch (Exception e) {
 		hiV = 5;
 		loV = 0;

@@ -4961,7 +4961,7 @@ public CirSim() {
 		    
 		    // if first character is a digit then parse the type as a number
 		    if (tint >= '0' && tint <= '9')
-			tint = new Integer(type).intValue();
+			tint = Integer.parseInt(type);
 		    
 		    if (tint == 34) {
 			DiodeModel.undumpModel(st);
@@ -4981,11 +4981,11 @@ public CirSim() {
 			CustomCompositeModel.undumpModel(st);
 			break;
 		    }
-		    int x1 = new Integer(st.nextToken()).intValue();
-		    int y1 = new Integer(st.nextToken()).intValue();
-		    int x2 = new Integer(st.nextToken()).intValue();
-		    int y2 = new Integer(st.nextToken()).intValue();
-		    int f  = new Integer(st.nextToken()).intValue();
+		    int x1 = Integer.parseInt(st.nextToken());
+		    int y1 = Integer.parseInt(st.nextToken());
+		    int x2 = Integer.parseInt(st.nextToken());
+		    int y2 = Integer.parseInt(st.nextToken());
+		    int f  = Integer.parseInt(st.nextToken());
 		    
 		    CircuitElm newce = createCe(tint, x1, y1, x2, y2, f, st);
 		    if (newce==null) {
@@ -5058,13 +5058,13 @@ public CirSim() {
     }
     
     void readHint(StringTokenizer st) {
-	hintType  = new Integer(st.nextToken()).intValue();
-	hintItem1 = new Integer(st.nextToken()).intValue();
-	hintItem2 = new Integer(st.nextToken()).intValue();
+	hintType  = Integer.parseInt(st.nextToken());
+	hintItem1 = Integer.parseInt(st.nextToken());
+	hintItem2 = Integer.parseInt(st.nextToken());
     }
 
     void readOptions(StringTokenizer st, int importFlags) {
-	int flags = new Integer(st.nextToken()).intValue();
+	int flags = Integer.parseInt(st.nextToken());
 	
 	if ((importFlags & RC_RETAIN) != 0) {
             // need to set small grid if pasted circuit uses it
@@ -5080,15 +5080,15 @@ public CirSim() {
 	showValuesCheckItem.setState((flags & 16) == 0);
 	adjustTimeStep = (flags & 64) != 0;
 	maxTimeStep = timeStep = new Double (st.nextToken()).doubleValue();
-	double sp = new Double(st.nextToken()).doubleValue();
+	double sp = Double.parseDouble(st.nextToken());
 	int sp2 = (int) (Math.log(10*sp)*24+61.5);
 	//int sp2 = (int) (Math.log(sp)*24+1.5);
 	speedBar.setValue(sp2);
-	currentBar.setValue(new Integer(st.nextToken()).intValue());
+	currentBar.setValue(Integer.parseInt(st.nextToken()));
 	CircuitElm.voltageRange = new Double (st.nextToken()).doubleValue();
 
 	try {
-	    powerBar.setValue(new Integer(st.nextToken()).intValue());
+	    powerBar.setValue(Integer.parseInt(st.nextToken()));
 	    minTimeStep = Double.parseDouble(st.nextToken());
 	} catch (Exception e) {
 	}

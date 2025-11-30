@@ -36,7 +36,7 @@ package com.lushprojects.circuitjs1.client;
 			  StringTokenizer st) {
 	    super(xa, ya, xb, yb, f, st);
 	    try {
-		poleCount = new Integer(st.nextToken()).intValue();
+		poleCount = Integer.parseInt(st.nextToken());
 	    } catch (Exception e) { }
 	    noDiagonal = true;
 	}

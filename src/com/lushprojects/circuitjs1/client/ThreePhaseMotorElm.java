@@ -38,14 +38,14 @@ class ThreePhaseMotorElm extends CircuitElm {
 	super(xa, ya, xb, yb, f);
 	angle = pi/2;
 	filteredSpeed = speed = 0;
-	Rs = new Double(st.nextToken()).doubleValue();
-	Rr = new Double(st.nextToken()).doubleValue(); 
-	Ls = new Double(st.nextToken()).doubleValue();
-	Lr = new Double(st.nextToken()).doubleValue();
-	Lm = new Double(st.nextToken()).doubleValue();
-	b =  new Double(st.nextToken()).doubleValue();
+	Rs = Double.parseDouble(st.nextToken());
+	Rr = Double.parseDouble(st.nextToken()); 
+	Ls = Double.parseDouble(st.nextToken());
+	Lr = Double.parseDouble(st.nextToken());
+	Lm = Double.parseDouble(st.nextToken());
+	b =  Double.parseDouble(st.nextToken());
 	try {
-	    J = new Double(st.nextToken()).doubleValue();
+	    J = Double.parseDouble(st.nextToken());
 	} catch (Exception e) { J = 1; }
         voltSources = new int[2];
         curcounts = new double[3];

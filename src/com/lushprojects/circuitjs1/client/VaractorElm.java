@@ -10,8 +10,8 @@ class VaractorElm extends DiodeElm {
     public VaractorElm(int xa, int ya, int xb, int yb, int f,
 		       StringTokenizer st) {
 	super(xa, ya, xb, yb, f, st);
-	capvoltdiff = new Double(st.nextToken()).doubleValue();
-	baseCapacitance = new Double(st.nextToken()).doubleValue();
+	capvoltdiff = Double.parseDouble(st.nextToken());
+	baseCapacitance = Double.parseDouble(st.nextToken());
     }
     int getDumpType() { return 176; }
     void getInfo(String arr[]) {

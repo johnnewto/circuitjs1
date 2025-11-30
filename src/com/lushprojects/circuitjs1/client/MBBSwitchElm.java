@@ -41,7 +41,7 @@ package com.lushprojects.circuitjs1.client;
 	public MBBSwitchElm(int xa, int ya, int xb, int yb, int f,
 			  StringTokenizer st) {
 	    super(xa, ya, xb, yb, f, st);
-	    link = new Integer(st.nextToken()).intValue();
+	    link = Integer.parseInt(st.nextToken());
 	    setup();
 	}
 	

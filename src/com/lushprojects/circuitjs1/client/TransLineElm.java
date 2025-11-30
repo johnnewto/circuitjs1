@@ -36,9 +36,9 @@ class TransLineElm extends CircuitElm {
     public TransLineElm(int xa, int ya, int xb, int yb, int f,
 			StringTokenizer st) {
 	super(xa, ya, xb, yb, f);
-	delay = new Double(st.nextToken()).doubleValue();
-	imped = new Double(st.nextToken()).doubleValue();
-	width = new Integer(st.nextToken()).intValue();
+	delay = Double.parseDouble(st.nextToken());
+	imped = Double.parseDouble(st.nextToken());
+	width = Integer.parseInt(st.nextToken());
 	// next slot is for resistance (losses), which is not implemented
 	st.nextToken();
 	noDiagonal = true;

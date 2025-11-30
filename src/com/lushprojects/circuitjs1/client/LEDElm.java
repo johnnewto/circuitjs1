@@ -42,12 +42,12 @@ class LEDElm extends DiodeElm {
 	        CirSim.console("model name wparams = " + modelName);
 		setup();
 	    }
-	    colorR = new Double(st.nextToken()).doubleValue();
-	    colorG = new Double(st.nextToken()).doubleValue();
-	    colorB = new Double(st.nextToken()).doubleValue();
+	    colorR = Double.parseDouble(st.nextToken());
+	    colorG = Double.parseDouble(st.nextToken());
+	    colorB = Double.parseDouble(st.nextToken());
 	    maxBrightnessCurrent = .01;
 	    try {
-		maxBrightnessCurrent = new Double(st.nextToken()).doubleValue();
+		maxBrightnessCurrent = Double.parseDouble(st.nextToken());
 	    } catch (Exception e) { }
 	}
 	int getDumpType() { return 162; }
