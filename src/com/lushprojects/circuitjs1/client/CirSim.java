@@ -4945,8 +4945,8 @@ public CirSim() {
 				} catch (Exception e) {
 				    // Ignore parse errors
 				}
-			    } else if (settingType.equals("AS") || settingType.equals("APT")) {
-				// Action Schedule entry (AS) or Action Pause Time (APT)
+			    } else if (settingType.equals("AS") || settingType.equals("AST")) {
+				// Action Schedule entry (AS), Action Schedule Times, pause and animation (AST)
 				ActionScheduler scheduler = ActionScheduler.getInstance(this);
 				scheduler.load(line);
 			    }

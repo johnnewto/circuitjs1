@@ -208,12 +208,59 @@ public class ActionTimeDialog extends DialogBox {
         pausePanel.add(pauseLabel);
         pausePanel.add(pauseTimeBox);
         
+        // Add Animation Time input
+        HorizontalPanel animPanel = new HorizontalPanel();
+        animPanel.setSpacing(5);
+        animPanel.getElement().getStyle().setMarginRight(20, Unit.PX);
+        
+        Label animLabel = new Label(Locale.LS("Animation Time (s):"));
+        animLabel.getElement().getStyle().setMarginRight(5, Unit.PX);
+        
+        final TextBox animTimeBox = new TextBox();
+        animTimeBox.setWidth("60px");
+        animTimeBox.setValue(String.valueOf(scheduler.getAnimationTime()));
+        animTimeBox.setTitle("Duration for animating slider changes (minimum 0.1s)");
+        
+        animTimeBox.addChangeHandler(new ChangeHandler() {
+            public void onChange(ChangeEvent event) {
+                try {
+                    double animTime = Double.parseDouble(animTimeBox.getValue());
+                    scheduler.setAnimationTime(animTime);
+                } catch (NumberFormatException e) {
+                    animTimeBox.setValue(String.valueOf(scheduler.getAnimationTime()));
+                }
+            }
+        });
+        
+        animPanel.add(animLabel);
+        animPanel.add(animTimeBox);
+        
+        // Add Enable Element checkbox
+        HorizontalPanel enablePanel = new HorizontalPanel();
+        enablePanel.setSpacing(5);
+        enablePanel.getElement().getStyle().setMarginRight(20, Unit.PX);
+        
+        final CheckBox enableElementCheckbox = new CheckBox(Locale.LS("Enable Element"));
+        enableElementCheckbox.setValue(isAnyActionElementEnabled());
+        enableElementCheckbox.setTitle("Enable/disable ActionTimeElm elements (controls scheduler activation)");
+        
+        enableElementCheckbox.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                boolean enabled = enableElementCheckbox.getValue();
+                setAllActionElementsEnabled(enabled);
+            }
+        });
+        
+        enablePanel.add(enableElementCheckbox);
+        
         Button addButton = new Button(Locale.LS("Add Action"));
         Button refreshButton = new Button(Locale.LS("Refresh"));
         Button clearButton = new Button(Locale.LS("Clear All"));
         Button closeButton = new Button(Locale.LS("Close"));
         
         hp.add(pausePanel);
+        hp.add(animPanel);
+        hp.add(enablePanel);
         hp.add(addButton);
         hp.add(clearButton);
         hp.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_RIGHT);
@@ -654,5 +701,31 @@ public class ActionTimeDialog extends DialogBox {
         row.add(widget);
         
         return row;
+    }
+    
+    /**
+     * Check if any ActionTimeElm is enabled in the circuit
+     */
+    private boolean isAnyActionElementEnabled() {
+        for (int i = 0; i < sim.elmList.size(); i++) {
+            CircuitElm ce = sim.getElm(i);
+            if (ce instanceof ActionTimeElm && ((ActionTimeElm) ce).enabled) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Set enabled state for all ActionTimeElm elements in the circuit
+     */
+    private void setAllActionElementsEnabled(boolean enabled) {
+        for (int i = 0; i < sim.elmList.size(); i++) {
+            CircuitElm ce = sim.getElm(i);
+            if (ce instanceof ActionTimeElm) {
+                ((ActionTimeElm) ce).enabled = enabled;
+            }
+        }
+        sim.needAnalyze();
     }
 }

@@ -38,6 +38,7 @@ public class ActionScheduler {
     private String displayMessage = null;
     private boolean isPaused = false;
     private double pauseTime = 0.0;  // Seconds to pause after each action (0 = no pause)
+    private double animationTime = 2.0;  // Seconds to animate slider changes (default 2s)
     private Timer resumeTimer = null;  // Timer to auto-resume after pause
     private Timer animationTimer = null;  // Timer for animating slider changes
     private boolean simulationStarted = false;  // Track if simulation has run beyond initial state
@@ -174,8 +175,8 @@ public class ActionScheduler {
             resumeTimer.cancel();
         }
         
-        // Animation duration (2 seconds at end of pause)
-        final double animationDuration = 2.0;
+        // Animation duration from configuration
+        final double animationDuration = animationTime;
         final double waitBeforeAnimation = Math.max(0, delaySeconds - animationDuration);
         
         // Create timer to start animation phase
@@ -185,7 +186,7 @@ public class ActionScheduler {
                 // WAITING → ANIMATING
                 transitionToAnimating(actions);
                 
-                // Start slider animation over 2 seconds
+                // Start slider animation
                 animateActions(actions, animationDuration);
             }
         };
@@ -197,8 +198,8 @@ public class ActionScheduler {
      * Animate slider changes over a duration
      */
     private void animateActions(final List<ScheduledAction> actions, double durationSeconds) {
-        final int steps = 50;  // 50 animation steps
-        final int stepDelayMs = (int) ((durationSeconds * 1000) / steps);
+        final int stepDelayMs = 50;  // 50ms between animation steps
+        final int steps = (int) Math.ceil((durationSeconds * 1000) / stepDelayMs);  // Calculate steps to meet duration
 
         // Build and display message at start of animation
         StringBuilder allActionText = new StringBuilder();
@@ -357,6 +358,21 @@ public class ActionScheduler {
      */
     public void setPauseTime(double seconds) {
         pauseTime = Math.max(0.0, seconds);
+    }
+    
+    /**
+     * Get the animation time for slider changes (in seconds)
+     */
+    public double getAnimationTime() {
+        return animationTime;
+    }
+    
+    /**
+     * Set the animation time for slider changes (in seconds)
+     * @param seconds Seconds to animate slider changes (minimum 0.1s)
+     */
+    public void setAnimationTime(double seconds) {
+        animationTime = Math.max(0.1, seconds);
     }
     
     /**
@@ -893,9 +909,8 @@ public class ActionScheduler {
     public String dump() {
         StringBuilder sb = new StringBuilder();
         
-        // Save pause time configuration
-        sb.append("% ActionSchedule\n");
-        sb.append("% APT ").append(pauseTime).append("\n");
+        // Save pause time and animation time configuration
+        sb.append("% AST ").append(pauseTime).append(" ").append(animationTime).append("\n");
         
         // Save individual actions
         for (ScheduledAction action : actions) {
@@ -916,14 +931,47 @@ public class ActionScheduler {
      * Load actions from string
      */
     public void load(String line) {
-        // Check if this is a pause time config line
+        // Check if this is the new AST config line (pause time and animation time)
+        if (line.startsWith("% AST ")) {
+            // Line format: % AST pauseTime animationTime
+            try {
+                String[] values = line.substring(6).trim().split("\\s+");
+                if (values.length >= 1) {
+                    pauseTime = Double.parseDouble(values[0]);
+                }
+                if (values.length >= 2) {
+                    animationTime = Double.parseDouble(values[1]);
+                }
+            } catch (Exception e) {
+                CirSim.console("Error loading AST config: " + e.getMessage());
+            }
+            return;
+        }
+        
+        // Check if this is a pause time config line (legacy format)
         if (line.startsWith("% APT ")) {
-            // Line format: % APT pauseTime
+            // Line format: % APT pauseTime [animationTime]
+            try {
+                String[] values = line.substring(6).trim().split("\\s+");
+                pauseTime = Double.parseDouble(values[0]);
+                // Load animation time if present (backward compatibility)
+                if (values.length >= 2) {
+                    animationTime = Double.parseDouble(values[1]);
+                }
+            } catch (Exception e) {
+                CirSim.console("Error loading pause/animation time: " + e.getMessage());
+            }
+            return;
+        }
+        
+        // Check if this is an animation time config line (legacy format)
+        if (line.startsWith("% AAT ")) {
+            // Line format: % AAT animationTime
             try {
                 String value = line.substring(6).trim();
-                pauseTime = Double.parseDouble(value);
+                animationTime = Double.parseDouble(value);
             } catch (Exception e) {
-                CirSim.console("Error loading pause time: " + e.getMessage());
+                CirSim.console("Error loading animation time: " + e.getMessage());
             }
             return;
         }

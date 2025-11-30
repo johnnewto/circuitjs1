@@ -1,4 +1,4 @@
-$ 67 0.05 0.529449005047003 54 5 50 0.000049999999999999996
+$ 67 0.05 5.023272298708815 54 5 50 0.000049999999999999996
 % voltageUnit $
 % transform 1 868 1315
 255 -1352 -912 -1344 -912 0 8 4 6 16 0 true 2 1 true 5 0 true Firms \0 Firms Debt Firm_{equity} A-L-E Pay\sInterest Lending Bank\sSpending Govt\sTaxes Govt\sSpends Workers\sConsume Hire\sWorkers Interest\son\sBonds 10 0 10 0 ASSET LIABILITY EQUITY COMPUTED -Interest \0 -Interest \0 Lend Lend \0 \0 0.5*Spend_{banks} \0 0.5*Spend_{banks} \0 -0.5*Tax \0 -0.5*Tax \0 0.5*Spend_{Govt} \0 0.5*Spend_{Govt} \0 Con_W \0 Con_W \0 -Wages \0 -Wages \0 \0 \0 \0 \0 0.001
@@ -77,8 +77,7 @@ o 11 2 0 xc01206 25373187.667693928 0.0001 1 2 11 3 T:GDP
 38 37 F1 1 0.2 0.4 -1 Govt\sSpend\sRate 0.01
 38 52 F1 0 0 200 -1 Stop\sTime 1
 38 38 F1 1 0 0.05 -1 Lend\sRate 0.01
-% ActionSchedule
-% APT 5
+% AST 1 1
 % AS 4 0 Stop\sTime 120 \0 \0 true false
 % AS 5 0 Govt\sTax\sRate 0.3 \0 \s true false
 % AS 6 0 Govt\sSpend\sRate 0.3 \0 \s true false
