@@ -1772,6 +1772,12 @@ public CirSim() {
     int framerate = 0, steprate = 0;
     static CirSim theSim;
     
+    // Test dialog for mathematical elements
+    private static MathElementsTestDialog mathTestDialog = null;
+    
+    // Test dialog for table elements
+    private static TableElementsTestDialog tableTestDialog = null;
+    
     // Graphics update throttling - reduce redraw rate for better performance
     int graphicsFrameCounter = 0;
     int graphicsUpdateInterval = 2; // Update graphics every N frames (configurable in options)
@@ -4182,6 +4188,12 @@ public CirSim() {
     	if (item=="actiontimedialog") {
     	    	ActionTimeDialog.openDialog(this);
     	}
+    	if (item=="mathtestdialog") {
+    	    	openMathTestDialog();
+    	}
+    	if (item=="tabletestdialog") {
+    	    	openTableTestDialog();
+    	}
     	if (menu=="options" && item=="other")
     		doEdit(new EditOptions(this));
     	if (item=="devtools")
@@ -4427,6 +4439,26 @@ public CirSim() {
     	}
     
 	repaint();
+    }
+    
+    /**
+     * Open the Math Elements Test Dialog
+     */
+    void openMathTestDialog() {
+    	if (mathTestDialog == null) {
+    	    mathTestDialog = new MathElementsTestDialog();
+    	}
+    	mathTestDialog.show();
+    }
+    
+    /**
+     * Open the table elements test dialog
+     */
+    void openTableTestDialog() {
+    	if (tableTestDialog == null) {
+    	    tableTestDialog = new TableElementsTestDialog();
+    	}
+    	tableTestDialog.show();
     }
     
     int countScopeElms() {
@@ -4739,6 +4771,8 @@ public CirSim() {
     	varBrowserMenu.setAutoOpen(true);
     	varBrowserMenu.addItem(menuItemWithShortcut("list-ul", "Variable Browser...", "\\", new MyCommand("edit", "variablebrowser")));
     	varBrowserMenu.addItem(menuItemWithShortcut("clock-o", "Action Time Schedule...", "", new MyCommand("edit", "actiontimedialog")));
+    	varBrowserMenu.addItem(menuItemWithShortcut("check-square-o", "Math Elements Test Suite...", "", new MyCommand("edit", "mathtestdialog")));
+    	varBrowserMenu.addItem(menuItemWithShortcut("table", "Table Elements Test Suite...", "", new MyCommand("edit", "tabletestdialog")));
     	menuBar.addItem(Locale.LS("Dialogs"), varBrowserMenu);
     	int p;
     	for (p = 0; p < len; ) {

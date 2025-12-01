@@ -28,36 +28,43 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.user.client.ui.Label;
-import com.google.gwt.safehtml.shared.SafeHtml;
+import com.google.gwt.user.client.ui.CheckBox;
+import com.google.gwt.event.logical.shared.ValueChangeHandler;
+import com.google.gwt.event.logical.shared.ValueChangeEvent;
 
 public class ExportAsTextDialog extends Dialog {
 	
 	VerticalPanel vp;
 	CirSim sim;
 	TextArea textArea;
+	CheckBox javaLiteralCheckBox;
+	String originalText;
 	
 	public ExportAsTextDialog(CirSim asim, String s) {
 		super();
 		closeOnEnter = false;
 		sim = asim;
-	//	RichTextArea tb;
+		originalText = s;
 		TextArea ta;
 		Button okButton, importButton, copyButton;
-		Label  la2;
-		SafeHtml html;
 		vp=new VerticalPanel();
 		setWidget(vp);
 		setText(Locale.LS("Export as Text"));
 		vp.add(new Label(Locale.LS("Text file for this circuit is...")));
-//		vp.add(tb = new RichTextArea());
-//		html=SafeHtmlUtils.fromString(s);
-//		html=SafeHtmlUtils.fromTrustedString(html.asString().replace("\n", "<BR>"));
-//		tb.setHTML(html);
 		vp.add(ta= new TextArea());
 		ta.setWidth("400px");
 		ta.setHeight("300px");
 		ta.setText(s);
 		textArea = ta;
+		
+		// Add Java literal checkbox
+		javaLiteralCheckBox = new CheckBox(Locale.LS("Java Literal Format"));
+		javaLiteralCheckBox.addValueChangeHandler(new ValueChangeHandler<Boolean>() {
+			public void onValueChange(ValueChangeEvent<Boolean> event) {
+				updateTextFormat();
+			}
+		});
+		vp.add(javaLiteralCheckBox);
 	//	vp.add(la2 = new Label(sim.LS("To save this file select it all (eg click in text and type control-A) and copy to your clipboard (eg control-C) before pasting to an empty text file (eg on Windows Notepad) and saving as a new file."), true));
 	//	la2.setWidth("300px");
 		HorizontalPanel hp = new HorizontalPanel();
@@ -97,6 +104,41 @@ public class ExportAsTextDialog extends Dialog {
 		    }
 		});
 		this.center();
+	}
+	
+	private void updateTextFormat() {
+		if (javaLiteralCheckBox.getValue()) {
+			// Convert to Java literal format
+			String javaLiteral = convertToJavaLiteral(originalText);
+			textArea.setText(javaLiteral);
+		} else {
+			// Show original format
+			textArea.setText(originalText);
+		}
+	}
+	
+	private String convertToJavaLiteral(String text) {
+		StringBuilder sb = new StringBuilder();
+		sb.append("String circuit = \n");
+		
+		String[] lines = text.split("\n");
+		for (int i = 0; i < lines.length; i++) {
+			sb.append("    \"");
+			// Escape any special characters
+			String line = lines[i];
+			line = line.replace("\\", "\\\\");  // Escape backslashes first
+			line = line.replace("\"", "\\\"");  // Escape quotes
+			sb.append(line);
+			sb.append("\\n\"");
+			if (i < lines.length - 1) {
+				sb.append(" +");
+			} else {
+				sb.append(";");
+			}
+			sb.append("\n");
+		}
+		
+		return sb.toString();
 	}
 	
 	private static native boolean copyToClipboard() /*-{

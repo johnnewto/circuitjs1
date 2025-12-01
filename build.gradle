@@ -50,8 +50,8 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.google.gwt:gwt-user:2.8.2'
-    implementation 'com.google.gwt:gwt-dev:2.8.2'
+    implementation 'com.google.gwt:gwt-user:2.9.0'
+    implementation 'com.google.gwt:gwt-dev:2.9.0'
     //compile 'com.google.gwt:gwt-user:2.8.2'
     //compile 'com.google.gwt:gwt-dev:2.8.2'
     //compile 'com.google.gwt:gwt-servlet:2.8.2'
@@ -192,7 +192,7 @@ tasks.withType(JavaCompile) {
 // Plugin Configurations
 //=====================================================================
 gwt {
-    gwtVersion = '2.8.2'
+    gwtVersion = '2.9.0'
     minHeapSize = "512M"                // -Xms512M
     maxHeapSize = "1024M"               // -Xmx1024M
     logLevel = 'INFO'                   // -logLevel INFO  / [ERROR,WARN,INFO,TRACE,DEBUG,SPAM,ALL]
