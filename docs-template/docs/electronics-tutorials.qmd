@@ -1,6 +1,6 @@
 ---
-title: "Tutorials"
-subtitle: "Step-by-step learning guides"
+title: "Electronic Tutorials"
+subtitle: "Step-by-step electronics learning guides"
 ---
 
 ## Getting Started Tutorials

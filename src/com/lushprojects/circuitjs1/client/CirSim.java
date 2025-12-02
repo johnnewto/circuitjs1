@@ -162,7 +162,12 @@ MouseOutHandler, MouseWheelHandler {
     CheckboxMenuItem noEditCheckItem;
     CheckboxMenuItem mouseWheelEditCheckItem;
     CheckboxMenuItem toolbarCheckItem;
+    CheckboxMenuItem electronicsToolbarCheckItem;
+    CheckboxMenuItem economicsToolbarCheckItem;
     CheckboxMenuItem weightedPriorityCheckItem;
+    
+    enum ToolbarType { ELECTRONICS, ECONOMICS }
+    ToolbarType currentToolbarType = ToolbarType.ECONOMICS;
     String voltageUnitSymbol = "V"; // Custom voltage unit symbol
     boolean useWeightedPriority = false; // Weighted priority for Asset/Equity columns
     private Label powerLabel;
@@ -696,6 +701,30 @@ public CirSim() {
 		}
 	}));
 	toolbarCheckItem.setState(!hideMenu && !noEditing && !hideSidebar && startCircuit == null && startCircuitText == null && startCircuitLink == null);
+	
+	m.addItem(electronicsToolbarCheckItem = new CheckboxMenuItem(Locale.LS("Electronics Toolbar"),
+		new Command() { public void execute(){
+		    if (!electronicsToolbarCheckItem.getState()) {
+			// Don't allow unchecking - must have one selected
+			electronicsToolbarCheckItem.setState(true);
+			return;
+		    }
+		    switchToElectronicsToolbar();
+		}
+	}));
+	electronicsToolbarCheckItem.setState(currentToolbarType == ToolbarType.ELECTRONICS);
+	
+	m.addItem(economicsToolbarCheckItem = new CheckboxMenuItem(Locale.LS("Economics Toolbar"),
+		new Command() { public void execute(){
+		    if (!economicsToolbarCheckItem.getState()) {
+			// Don't allow unchecking - must have one selected
+			economicsToolbarCheckItem.setState(true);
+			return;
+		    }
+		    switchToEconomicsToolbar();
+		}
+	}));
+	economicsToolbarCheckItem.setState(currentToolbarType == ToolbarType.ECONOMICS);
 	m.addItem(crossHairCheckItem = new CheckboxMenuItem(Locale.LS("Show Cursor Cross Hairs"),
 		new Command() { public void execute(){
 		    setOptionInStorage("crossHair", crossHairCheckItem.getState());
@@ -776,7 +805,7 @@ public CirSim() {
 	DOM.appendChild(layoutPanel.getElement(), topPanelCheckbox);
 	DOM.appendChild(layoutPanel.getElement(), topPanelCheckboxLabel);	
 
-	toolbar = new Toolbar();
+	toolbar = new EconomicsToolbar();
 	toolbar.setEuroResistors(euroSetting);
 	if (!hideMenu)
 	    layoutPanel.addNorth(menuBar, MENUBARHEIGHT);
@@ -6288,6 +6317,76 @@ public CirSim() {
 
     void setToolbar() {
 	layoutPanel.setWidgetHidden(toolbar, !toolbarCheckItem.getState());
+	setCanvasSize();
+    }
+    
+    void switchToElectronicsToolbar() {
+	if (currentToolbarType == ToolbarType.ELECTRONICS) {
+	    electronicsToolbarCheckItem.setState(true);
+	    economicsToolbarCheckItem.setState(false);
+	    return;
+	}
+	
+	// Store current toolbar visibility
+	boolean toolbarVisible = toolbarCheckItem.getState();
+	
+	// Remove old toolbar
+	layoutPanel.remove(toolbar);
+	
+	// Create new toolbar
+	currentToolbarType = ToolbarType.ELECTRONICS;
+	toolbar = new ElectronicsToolbar();
+	toolbar.setEuroResistors(euroResistorCheckItem.getState());
+	
+	// Add toolbar back - insertNorth after menu bar (or at top if no menu)
+	if (!hideMenu && menuBar.getParent() == layoutPanel) {
+	    layoutPanel.insertNorth(toolbar, TOOLBARHEIGHT, menuBar);
+	} else {
+	    // Fallback: add to top
+	    layoutPanel.addNorth(toolbar, TOOLBARHEIGHT);
+	}
+	
+	// Update menu states  
+	electronicsToolbarCheckItem.setState(true);
+	economicsToolbarCheckItem.setState(false);
+	
+	// Restore toolbar visibility
+	layoutPanel.setWidgetHidden(toolbar, !toolbarVisible);
+	setCanvasSize();
+    }
+    
+    void switchToEconomicsToolbar() {
+	if (currentToolbarType == ToolbarType.ECONOMICS) {
+	    electronicsToolbarCheckItem.setState(false);
+	    economicsToolbarCheckItem.setState(true);
+	    return;
+	}
+	
+	// Store current toolbar visibility
+	boolean toolbarVisible = toolbarCheckItem.getState();
+	
+	// Remove old toolbar
+	layoutPanel.remove(toolbar);
+	
+	// Create new toolbar
+	currentToolbarType = ToolbarType.ECONOMICS;
+	toolbar = new EconomicsToolbar();
+	toolbar.setEuroResistors(euroResistorCheckItem.getState());
+	
+	// Add toolbar back - insertNorth after menu bar (or at top if no menu)
+	if (!hideMenu && menuBar.getParent() == layoutPanel) {
+	    layoutPanel.insertNorth(toolbar, TOOLBARHEIGHT, menuBar);
+	} else {
+	    // Fallback: add to top
+	    layoutPanel.addNorth(toolbar, TOOLBARHEIGHT);
+	}
+	
+	// Update menu states
+	electronicsToolbarCheckItem.setState(false);
+	economicsToolbarCheckItem.setState(true);
+	
+	// Restore toolbar visibility
+	layoutPanel.setWidgetHidden(toolbar, !toolbarVisible);
 	setCanvasSize();
     }
 

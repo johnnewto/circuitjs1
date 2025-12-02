@@ -1,0 +1,100 @@
+---
+title: "Electronics Components"
+subtitle: "Traditional electronic circuit elements"
+---
+
+## Overview
+
+This section covers the traditional electronic components available in CircuitJS1 for circuit design and simulation. These components are used for conventional electronic circuit analysis, ranging from basic passive elements to complex active devices.
+
+## Passive Components
+
+### Resistors
+- **Fixed Resistor**: Standard resistance value
+- **Variable Resistor**: Adjustable resistance (potentiometer)
+- **Photoresistor**: Light-dependent resistor
+
+**Key Properties:**
+- Resistance value (Ohms)
+- Power rating (Watts)
+
+### Capacitors
+- **Fixed Capacitor**: Standard capacitance value
+- **Variable Capacitor**: Adjustable capacitance
+- **Polarized Capacitor**: Electrolytic capacitors with polarity
+
+**Key Properties:**
+- Capacitance value (Farads)
+- Initial voltage
+- ESR (Equivalent Series Resistance)
+
+### Inductors
+- **Fixed Inductor**: Standard inductance value
+- **Variable Inductor**: Adjustable inductance
+
+**Key Properties:**
+- Inductance value (Henries)
+- Series resistance
+- Initial current
+
+## Active Components
+
+### Diodes
+- **Standard Diode**: Basic PN junction diode
+- **Zener Diode**: Voltage regulation
+- **LED**: Light-emitting diode
+- **Schottky Diode**: Fast switching, low forward voltage
+
+### Transistors
+- **NPN/PNP Bipolar**: Standard bipolar junction transistors
+- **N-Channel/P-Channel MOSFET**: Field-effect transistors
+- **JFET**: Junction field-effect transistors
+
+### Operational Amplifiers
+- **Ideal Op-Amp**: Perfect characteristics
+- **Real Op-Amp**: Includes limitations like finite gain, bandwidth
+
+## Sources
+
+### Voltage Sources
+- **DC Voltage**: Constant voltage
+- **AC Voltage**: Sinusoidal voltage source
+- **Square Wave**: Digital/PWM signals
+- **Triangle Wave**: Linear ramp signals
+
+### Current Sources
+- **DC Current**: Constant current
+- **AC Current**: Sinusoidal current source
+
+## Logic Components
+
+### Basic Gates
+- **AND, OR, NOT**: Fundamental logic operations
+- **NAND, NOR**: Universal gates
+- **XOR, XNOR**: Exclusive operations
+
+### Flip-Flops and Latches
+- **D Flip-Flop**: Data storage with clock
+- **JK Flip-Flop**: Universal flip-flop
+- **SR Latch**: Set-reset memory
+
+## Example Circuits
+
+### Basic Resistor Network
+Simple voltage divider and current limiting circuits.
+
+### RC/RL Circuits
+Time-domain response of first-order systems.
+
+### Diode Circuits
+Rectifiers, clippers, and clampers.
+
+### Amplifier Circuits
+Op-amp configurations: inverting, non-inverting, differential.
+
+### Digital Logic
+Combinational and sequential logic designs.
+
+---
+
+*For mathematical and system dynamics components, see the [User Guide](user-guide.qmd). For modeling applications, see [SFC Modeling](sfc-modeling.qmd).*

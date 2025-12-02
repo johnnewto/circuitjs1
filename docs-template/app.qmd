@@ -30,7 +30,7 @@ This is the full CircuitJS1 application. Use it to design, simulate, and analyze
 ## Help & Documentation
 
 - [User Guide](docs/user-guide.qmd) - Comprehensive usage instructions
-- [Tutorials](docs/tutorials.qmd) - Step-by-step learning materials  
+- [Electronic Tutorials](docs/electronics-tutorials.qmd) - Step-by-step learning materials  
 - [Examples](docs/examples.qmd) - Sample circuits to get you started
 
 ## Keyboard Shortcuts

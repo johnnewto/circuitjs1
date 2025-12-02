@@ -19,7 +19,6 @@ EquationElm|Equation
 PercentElm|Percent/Ratio Meter
 AdderElm|Adder
 SubtracterElm|Subtracter
-# TableElm|Table
 GodlyTableElm|Godly Table||g
 FlowsMasterElm|Flow Master
 StockMasterElm|Stock Master

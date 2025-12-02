@@ -19,14 +19,24 @@ website:
         menu:
           - text: "User Guide"
             href: docs/user-guide.qmd
-          - text: "Tutorials"
-            href: docs/tutorials.qmd
           - text: "Examples"
             href: docs/examples.qmd
           - text: "Plotly Viewer"
             href: docs/plotly-viewer.qmd
+      - text: "Economics"
+        menu:
+          - text: "Money from First Principles"
+            href: docs/money-first-principles.qmd
+          - text: "Economics Tutorials"
+            href: docs/economics-tutorials.qmd
           - text: "SFC Modeling"
             href: docs/sfc-modeling.qmd
+      - text: "Electronics"
+        menu:
+          - text: "Electronic Tutorials"
+            href: docs/electronics-tutorials.qmd
+          - text: "Electronics Components"
+            href: docs/electronics.qmd
       - text: "Development"
         menu:
           - text: "Contributing"
@@ -40,10 +50,19 @@ website:
     - title: "Documentation"
       contents:
         - docs/user-guide.qmd
-        - docs/tutorials.qmd
         - docs/examples.qmd
         - docs/plotly-viewer.qmd
+    - title: "Economics"
+      contents:
+        - docs/money-first-principles.qmd
+        - docs/economics-tutorials.qmd
         - docs/sfc-modeling.qmd
+    - title: "Electronics"
+      contents:
+        - docs/electronics-tutorials.qmd
+        - docs/electronics.qmd
+    - title: "Development"
+      contents:
         - docs/building.qmd
         - docs/contributing.qmd
 

@@ -1,15 +1,17 @@
 ---
-title: "CircuitJS1 - Electronic Circuit Simulator"
+title: "CircuitJS - Ecomonics Circuit Simulator"
 subtitle: "A powerful browser-based circuit simulation tool"
 ---
 
-## Welcome to CircuitJS1
+## Welcome to CircuitJS
 
-CircuitJS1 is an electronic circuit simulator that runs in web browsers. It was originally written by Paul Falstad as a Java Applet and adapted by Iain Sharp to run in modern browsers using Google Web Toolkit (GWT).
+CircuitJS is an ecomonics  circuit simulator that runs in web browsers. It was originally written by Paul Falstad as an electronic Java Applet and adapted by Iain Sharp to run in modern browsers using Google Web Toolkit (GWT).
+
+![CircuitJS](./assets/circuitjs.png){width=100%}
 
 ::: {.callout-tip}
 ## Quick Start
-Ready to start simulating circuits? [Launch the CircuitJS1 App](app.qmd) or browse our [examples](docs/examples.qmd).
+Ready to start simulating circuits? [Launch the CircuitJS App](app.qmd) or browse our [examples](docs/examples.qmd).
 :::
 
 ## Features
@@ -49,7 +51,7 @@ Launch the circuit simulator directly in your browser.
 ### 📚 Learn
 Step-by-step tutorials and examples to get you started.
 
-[View Tutorials →](docs/tutorials.qmd)
+[View Tutorials →](docs/electronics-tutorials.qmd)
 :::
 
 ::: {.g-col-4}
@@ -63,7 +65,20 @@ Information for developers wanting to contribute or build locally.
 
 ## Recent Updates
 
-- **Economics & System Dynamics Tools**: New mathematical components including Tables, Godly Tables, multipliers, dividers, adders, differentiators, and percent meters for economic modeling
+- **Advanced Mathematical Components**: 
+  - Arithmetic operations: Adder, Subtracter, Multiplier, Divider, Multiply by Constant
+  - Calculus elements: Integrator, Differentiator, ODE (Ordinary Differential Equation) solver
+  - Custom Equation element with support for complex expressions and functions
+- **Economics & System Dynamics Tools**: 
+  - Godly Table with integration capabilities for stock-flow modeling
+  - Current Transactions Matrix for visualizing economic flows between accounts
+- **Display & Visualization**:
+  - Pie Chart element for proportional value visualization
+  - Percent/Ratio Meter with multiple display modes
+  - Enhanced scope and measurement tools
+- **Simulation Control**:
+  - Stop Time element for automated simulation pausing
+  - Action Time element for scheduled events and parameter changes
 - **Stock-Flow Analysis**: Pre-built BOMD models demonstrating bank lending, money creation, and sectoral accounting
 - Enhanced component library with specialized measurement tools
 - Improved user interface and mobile support

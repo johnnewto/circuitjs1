@@ -62,6 +62,12 @@ CircuitJS1 includes specialized components for mathematical operations and econo
 - Linear element using VCVS (no iteration needed)
 - Symbol: **+** (summation symbol)
 
+**Subtracter**
+- Subtracts input voltages: Vout = V1 - V2 - V3 - ...
+- Configurable number of inputs (default: 2)
+- Linear element using VCVS (no iteration needed)
+- Symbol: **−** (minus symbol)
+
 **Multiply by Constant**
 - Multiplies input voltage by a fixed gain: Vout = K × Vin
 - Configurable gain constant
@@ -69,10 +75,12 @@ CircuitJS1 includes specialized components for mathematical operations and econo
 - Linear element (VCVS with fixed gain)
 - Symbol: **×**
 
-**Multiplier** (not in Draw menu currently)
+**Multiplier**
 - Multiplies multiple input voltages: Vout = V1 × V2 × V3 × ...
+- Configurable number of inputs (default: 2)
 - Nonlinear operation requiring iteration
 - Useful for power calculations and modulation
+- Symbol: **×** (multiplication symbol)
 
 **Divider**
 - Divides voltages: Vout = V1 / V2 / V3 / ...
@@ -87,6 +95,29 @@ CircuitJS1 includes specialized components for mathematical operations and econo
 - Uses numerical differentiation
 - Symbol: **d/dt**
 
+**Integrator**
+- Computes integral: Vout = ∫Vin dt
+- Integrates input voltage over time
+- Configurable initial value
+- Essential for accumulation and control systems
+- Symbol: **∫** (integral symbol)
+
+**ODE (Ordinary Differential Equation)**
+- Solves differential equations: dV/dt = expression
+- Supports complex mathematical expressions
+- Multiple integration methods (Euler, RK4)
+- Variables: input voltages, time (t), constants
+- Ideal for dynamic system modeling
+- Shows equation on component
+
+**Equation**
+- Evaluates algebraic equations: Vout = expression
+- Supports arithmetic operations (+, -, ×, ÷)
+- Functions: sin, cos, tan, exp, log, sqrt, abs
+- Variables: input voltages (v1, v2, ...), time (t)
+- Constants: pi, e
+- Shows equation on component
+
 #### Display & Measurement
 
 **Percent/Ratio Meter**
@@ -97,6 +128,15 @@ CircuitJS1 includes specialized components for mathematical operations and econo
   - **Percentage mode**: Shows ratio × 100 with % symbol
 - Configurable scaling (Auto, m, 1, K, M)
 - Division-by-zero protection
+
+**Pie Chart**
+- Visual display of proportional values
+- Multiple input values shown as pie slices
+- Automatic percentage calculation
+- Color-coded segments
+- Labels with values and percentages
+- Useful for visualizing resource distribution
+- Display-only element (doesn't affect circuit)
 
 **Key Properties:**
 - First terminal: numerator (V1)
@@ -124,7 +164,7 @@ CircuitJS1 includes specialized components for mathematical operations and econo
 - Collapsed mode for compact display
 - Table title and units
 
-**Godly Table Element**
+**Godley Table Element**
 - Extended table with integration capabilities
 - Integrates column sums over time
 - Integration equation: output = lastOutput + timeStep × gain × columnSum
@@ -132,12 +172,30 @@ CircuitJS1 includes specialized components for mathematical operations and econo
 - Ideal for stock-flow modeling
 - Shows initial values by default
 
-**Use Cases:**
-- System dynamics modeling
-- Stock and flow calculations
-- Economic simulations
-- Accounting equations (Assets = Liabilities + Equity)
-- Time-series data generation
+- Contains the following parts
+
+- *Flows on each row*
+  - Orchestrates flow elements in system dynamics models
+  - Manages flow calculations and updates
+  - Coordinates with stock elements
+  - Visual representation of flow network
+  - Central control for flow-based simulations
+
+- *Stock Column Elements *
+  - Central controller for stock-flow systems
+  - Manages stock accumulation and depletion
+  - Integrates flows over time
+  - Tracks multiple stock variables
+  - Coordinates with flow master and table elements
+  - Essential for system dynamics modeling
+
+**Current Transactions Matrix**
+- Displays transaction flows between accounts
+- Matrix visualization of stock changes
+- Row and column labels for clarity
+- Real-time updates during simulation
+- Useful for economic flow analysis
+- Shows net flows between system components
 
 #### Simulation Control
 
@@ -149,10 +207,23 @@ CircuitJS1 includes specialized components for mathematical operations and econo
 - Resets when simulation is reset
 - Useful for automated testing and time-limited simulations
 
-**Key Properties:**
+*Key Properties:*
 - Stop time (default: 1.0 seconds)
 - Visual feedback when stopped (highlighted red octagon)
 - "STOP" text display with time value
+
+**Action Time Element**
+- Triggers actions at specific simulation times
+- Schedules events during simulation
+- Multiple action points supported
+- Useful for automated testing and timed events
+- No electrical connections (control element only)
+- Can trigger parameter changes or state transitions
+
+*Key Properties:*
+- Action time points (configurable)
+- Action type and parameters
+- Visual indicator of scheduled actions
 
 #### Example Applications
 
@@ -174,76 +245,9 @@ Build signal processing chains:
 - **Divider**: Automatic gain control
 - **Percent Meter**: Distortion measurement
 
-### Passive Components
+---
 
-#### Resistors
-- **Fixed Resistor**: Standard resistance value
-- **Variable Resistor**: Adjustable resistance (potentiometer)
-- **Photoresistor**: Light-dependent resistor
-
-**Key Properties:**
-- Resistance value (Ohms)
-- Power rating (Watts)
-
-#### Capacitors
-- **Fixed Capacitor**: Standard capacitance value
-- **Variable Capacitor**: Adjustable capacitance
-- **Polarized Capacitor**: Electrolytic capacitors with polarity
-
-**Key Properties:**
-- Capacitance value (Farads)
-- Initial voltage
-- ESR (Equivalent Series Resistance)
-
-#### Inductors
-- **Fixed Inductor**: Standard inductance value
-- **Variable Inductor**: Adjustable inductance
-
-**Key Properties:**
-- Inductance value (Henries)
-- Series resistance
-- Initial current
-
-### Active Components
-
-#### Diodes
-- **Standard Diode**: Basic PN junction diode
-- **Zener Diode**: Voltage regulation
-- **LED**: Light-emitting diode
-- **Schottky Diode**: Fast switching, low forward voltage
-
-#### Transistors
-- **NPN/PNP Bipolar**: Standard bipolar junction transistors
-- **N-Channel/P-Channel MOSFET**: Field-effect transistors
-- **JFET**: Junction field-effect transistors
-
-#### Operational Amplifiers
-- **Ideal Op-Amp**: Perfect characteristics
-- **Real Op-Amp**: Includes limitations like finite gain, bandwidth
-
-### Sources
-
-#### Voltage Sources
-- **DC Voltage**: Constant voltage
-- **AC Voltage**: Sinusoidal voltage source
-- **Square Wave**: Digital/PWM signals
-- **Triangle Wave**: Linear ramp signals
-
-#### Current Sources
-- **DC Current**: Constant current
-- **AC Current**: Sinusoidal current source
-
-### Logic Components
-
-#### Basic Gates
-- **AND, OR, NOT**: Fundamental logic operations
-- **NAND, NOR**: Universal gates
-- **XOR, XNOR**: Exclusive operations
-
-#### Flip-Flops and Latches
-- **D Flip-Flop**: Data storage with clock
-- **JK Flip-Flop**: Universal flip-flop
-- **SR Latch**: Set-reset memory
+*For traditional electronics components (resistors, capacitors, transistors, logic gates, etc.), see the [Electronics Components](electronics.qmd) guide.*
 
 ## Measurement and Analysis
 
@@ -287,22 +291,20 @@ Access advanced settings through the Options menu:
 ## File Operations
 
 ### Saving Circuits
-
-1. **File Menu > Export**: Save circuit to file
-2. **Choose Format**: 
-   - `.circuitjs` - Native format
-   - `.txt` - Text representation
-   - URL - Shareable link
+ - **File Menu > Export as **: Save circuit to clipboard
+ - **File Menu > Export As Text** - Text representation to clipboard
+ - **File Menu > Export As Link** - Shareable link
 
 ### Loading Circuits
 
-1. **File Menu > Import**: Load saved circuit
-2. **Drag and Drop**: Drop files onto the canvas
-3. **URL**: Paste circuit URL in address bar
+- **File Menu > Open File**: open from local directory
+- **File Menu > Import From Dropbox**: Load from Dropbox URL
+- **File Menu > Import From Text.**: paste from clipboard
+
 
 ### Sharing Circuits
 
-- **Generate URL**: Create shareable web link
+- **File Menu > Export As Link** - Shareable link
 - **Export Image**: Save circuit diagram as PNG
 - **Print**: Send to printer or PDF
 
@@ -320,7 +322,6 @@ Access advanced settings through the Options menu:
 1. **Check Connections**: Ensure all nodes are properly connected
 2. **Verify Values**: Double-check component parameters
 3. **Use Scope**: Monitor key signals during simulation
-4. **Start with DC**: Verify DC operating points first
 
 ### Performance
 
@@ -332,12 +333,6 @@ Access advanced settings through the Options menu:
 
 | Shortcut | Action |
 |----------|--------|
-| **Ctrl+N** | New circuit |
-| **Ctrl+O** | Open/Import |
-| **Ctrl+S** | Save/Export |
-| **Ctrl+Z/Y** | Undo/Redo |
-| **Space** | Play/Pause |
-| **R** | Reset simulation |
 | **Delete** | Remove selected |
 | **Ctrl+A** | Select all |
 | **Ctrl+C/V** | Copy/Paste |
@@ -369,7 +364,7 @@ Access advanced settings through the Options menu:
 ### Getting Help
 
 - Check the [Examples](examples.qmd) for similar circuits
-- Review [Tutorials](tutorials.qmd) for guided learning
+- Review [Electronic Tutorials](electronics-tutorials.qmd) for guided learning
 - Visit the [GitHub Issues](https://github.com/johnnewto/circuitjs1/issues) for bug reports
 
 ---

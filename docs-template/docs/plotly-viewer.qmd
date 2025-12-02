@@ -34,6 +34,7 @@ The **Interactive Plotly Viewer** provides instant, interactive visualization of
 
 ![View all scopes from menu](../assets/plotly-menu.png){width=60%}
 
+
 ### View Single Scope
 
 **From Right-Click Context Menu:**
@@ -43,7 +44,7 @@ The **Interactive Plotly Viewer** provides instant, interactive visualization of
 3. Click **"Open Viewer"** in the dialog
 4. A new browser window opens showing just that scope
 
-![Single scope context menu](../assets/plotly-context.png){width=50%}
+![Single scope context menu](../assets/plotly-context.png){width=100%}
 
 ## Interactive Features
 
@@ -164,94 +165,6 @@ For each scope, the viewer includes:
 - Plot colors
 - Metadata (sample count, timing information)
 
-## Technical Details
-
-### Browser Requirements
-
-Works in all modern browsers:
-
-| Browser | Status | Notes |
-|---------|--------|-------|
-| Chrome/Edge | ✅ Recommended | Best performance |
-| Firefox | ✅ Supported | Full compatibility |
-| Safari | ✅ Supported | macOS/iOS |
-| Opera | ✅ Supported | Full compatibility |
-
-**Requirements:**
-- JavaScript enabled
-- Pop-ups allowed (for new window)
-- Internet connection (for Plotly.js CDN)
-
-### Performance
-
-The viewer is optimized for efficiency:
-
-- Handles **thousands of data points** smoothly
-- Smooth zooming and panning
-- Responsive interface
-- Lightweight (data only, not full CircuitJS1)
-- Efficient rendering with Plotly.js
-
-### Generated HTML
-
-The viewer generates a complete, self-contained HTML page:
-
-- Embedded Plotly.js library (v2.27.0 from CDN)
-- All scope data embedded as JSON
-- Responsive CSS styling
-- Download buttons with data URI generation
-- JavaScript plotting code
-- Range slider controls
-
-## Use Cases
-
-### 1. Quick Analysis
-
-Perfect for rapid waveform inspection:
-
-- Check waveform shapes quickly
-- Verify signal timing
-- Compare multiple signals
-- Identify obvious issues
-
-### 2. Detailed Investigation
-
-Deep dive into simulation results:
-
-- Zoom into specific regions
-- Measure exact values at specific times
-- Identify subtle anomalies
-- Analyze transient behavior
-
-### 3. Presentation & Documentation
-
-Share and present results:
-
-- Export high-quality images
-- Share interactive viewers with colleagues
-- Document circuit behavior
-- Include in reports and papers
-
-### 4. Data Collection
-
-Extract data for further analysis:
-
-- Download all scope data at once
-- CSV format for Excel/spreadsheets
-- JSON format for Python/MATLAB processing
-- Batch analysis of multiple scopes
-
-## Comparison of Viewing Methods
-
-| Feature | Interactive Viewer | Export Dialog | plotly-example.html |
-|---------|-------------------|---------------|---------------------|
-| **Speed** | ⚡ Instant | 📁 Manual file saving | 📂 Manual file loading |
-| **Data Source** | All or single scope | Single scope only | Manual selection |
-| **Interaction** | ✅ Built-in | ❌ None | ✅ Built-in |
-| **Downloads** | Optional | Primary purpose | Optional |
-| **Setup** | None needed | None needed | Open HTML file |
-| **Offline** | Requires CDN | ✅ Yes | Requires CDN |
-| **Best For** | Quick analysis | Data archival | External workflows |
 
 ## Troubleshooting
 
@@ -312,15 +225,6 @@ When viewing all scopes:
 3. Correlate cause and effect across circuits
 4. Export images of multi-scope views
 
-### Working with Large Datasets
-
-For simulations with extensive history:
-
-1. Enable **"Draw From Zero"** mode on scopes
-2. Run simulation to collect data
-3. Use the range slider for navigation
-4. Zoom into regions of interest
-5. Export specific views as needed
 
 ### Presentation-Ready Exports
 

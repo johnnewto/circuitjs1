@@ -1,0 +1,754 @@
+---
+title: "Economics Tutorials"
+subtitle: "Step-by-step guides for economic modeling with Stock-Flow Consistent (SFC) analysis"
+---
+
+## Introduction to Economics in CircuitJS
+
+CircuitJS has been extended with powerful tools for economic modeling, particularly Stock-Flow Consistent (SFC) analysis inspired by Steve Keen's Minsky program. These tutorials will guide you through building economic models using circuit simulation concepts.
+
+### Tutorial Overview
+
+- **Tutorials 1-3**: Getting started with basic concepts (bank accounts, double-entry bookkeeping, banking systems)
+- **Tutorial 4**: **Money from First Principles** - Compare Loanable Funds vs. Endogenous Money models to understand money creation and government deficits (based on Steve Keen's analysis for engineers)
+- **Tutorials 6-8**: Intermediate to advanced models (debt dynamics, business cycles, international trade)
+- **Tutorials 9-11**: Mathematical tools and practical applications (MMT, climate economics)
+
+### Key Concepts
+
+- **Stocks**: Accumulations (bank accounts, inventory, population)
+- **Flows**: Rates of change (transactions, production, consumption)
+- **Consistency**: All flows must come from somewhere and go somewhere
+- **Balance Sheets**: Assets = Liabilities + Equity
+
+---
+
+## Getting Started with Economic Modeling
+
+### Tutorial 1: Your First Economic Model - Simple Bank Account
+
+Learn the basics by modeling a bank account with deposits and withdrawals.
+
+#### What You'll Learn
+- How to use Table elements for accounting
+- Creating stock variables
+- Modeling flows
+- Maintaining stock-flow consistency
+
+#### Step-by-Step Instructions
+
+1. **Start with a New Circuit**
+   - Open CircuitJS
+   - Clear the canvas (File > New)
+
+2. **Add a Table Element**
+   - Right-click on empty space
+   - Navigate to: **Economics > Table** (or press 'g' for Godly Table)
+   - Place the table on canvas
+
+3. **Configure the Table**
+   - Right-click the table and select **Edit**
+   - Set title: "Bank Account"
+   - Configure 1 stock column: "Deposits"
+   - Add rows for:
+     - Initial balance: 1000
+     - Income flow: 100
+     - Spending flow: -80
+
+4. **Add a Ground Connection**
+   - Important: All economic models need a ground reference
+   - Right-click: **Inputs and Sources > Ground**
+   - Connect table outputs to ground
+
+5. **Run the Simulation**
+   - Press **Space** to start
+   - Watch the Deposits column accumulate over time
+   - Net flow = 100 - 80 = 20 per time period
+
+#### What's Happening?
+- The stock (Deposits) integrates the net flow over time
+- Starting from 1000, it increases by 20 each time period
+- This demonstrates the fundamental stock-flow relationship: dStock/dt = Flow
+
+---
+
+### Tutorial 2: Double-Entry Bookkeeping
+
+Model a complete balance sheet using Assets, Liabilities, and Equity.
+
+#### Theory Review
+- **Accounting Identity**: Assets = Liabilities + Equity (A = L + E)
+- Every transaction affects at least two accounts
+- The identity must hold at all times
+
+#### Building the Model
+
+1. **Create a Godly Table**
+   - Right-click: **Economics > Godly Table** (or press 'g')
+   - This provides automatic stock-flow integration
+
+2. **Set Up Columns**
+   - Column 1: Assets (type: Asset)
+   - Column 2: Liabilities (type: Liability)
+   - Column 3: Equity (type: Equity)
+
+3. **Add Initial Values**
+   - Assets: 1000
+   - Liabilities: 600
+   - Equity: 400
+   - Verify: 1000 = 600 + 400 ✓
+
+4. **Add Transaction Rows**
+   - Row 1: Purchase on credit
+     - Assets: +100 (inventory)
+     - Liabilities: +100 (accounts payable)
+     - Equity: 0
+   - Row 2: Sales revenue
+     - Assets: +150 (cash)
+     - Liabilities: 0
+     - Equity: +150 (profit)
+
+5. **Verify Consistency**
+   - Use **Economics > Current Transactions Matrix** to visualize flows
+   - Watch the balance sheet remain balanced during simulation
+   - Assets should always equal Liabilities + Equity
+
+#### Key Learning Points
+- Double-entry ensures consistency
+- Each transaction preserves the accounting identity
+- Stocks accumulate flows over time
+- The system is always in balance
+
+---
+
+### Tutorial 3: Banking System - Money Creation
+
+Model how banks create money through lending (BOMD - Bank Originated Money and Debt).
+
+#### Sectors in the Model
+- **Banks**: Create deposits and loans
+- **Firms**: Borrow for investment
+- **Households**: Earn wages, consume
+
+#### Part A: Simple Bank Lending
+
+1. **Set Up the Bank Balance Sheet**
+   - Assets: Loans to firms
+   - Liabilities: Deposits
+   - Equity: Bank capital
+
+2. **Model the Lending Process**
+   - When bank makes a loan:
+     - Bank Assets (Loans): +1000
+     - Bank Liabilities (Deposits): +1000
+   - Money is created simultaneously!
+
+3. **Use Flow Master and Stock Master**
+   - Right-click: **Economics > Flow Master**
+   - Right-click: **Economics > Stock Master**
+   - These coordinate the stock-flow dynamics
+
+4. **Add Interest Flows**
+   - Firms pay interest on loans
+   - Interest flows from firm deposits to bank equity
+   - Use Percent Meter to calculate interest: rate × principal
+
+#### Part B: Complete Three-Sector Model
+
+1. **Add Firm Sector**
+   - Assets: Capital equipment, cash
+   - Liabilities: Bank loans
+   - Equity: Firm net worth
+
+2. **Add Household Sector**
+   - Assets: Bank deposits
+   - Liabilities: None (or household debt)
+   - Equity: Household net worth
+
+3. **Connect the Flows**
+   - Wages: Firm equity → Household deposits
+   - Consumption: Household deposits → Firm equity
+   - Investment: Firm deposits → Firm capital
+   - Loan creation: Bank creates deposits and loans
+
+4. **Verify Sectoral Balances**
+   - Sum of all sectors' net worth = 0 (closed system)
+   - Use Current Transactions Matrix to visualize
+   - All flows must be accounted for
+
+---
+
+## Intermediate Economic Models
+
+### Tutorial 4: Money from First Principles - Loanable Funds vs. Endogenous Money
+
+Build and compare two competing models of banking to understand money creation, based on Steve Keen's analysis.
+
+#### Theory: Two Models of Banking
+
+There are two fundamentally different views of how banking works:
+
+1. **Loanable Funds**: Banks are intermediaries between savers and borrowers
+   - Deposits come first, loans follow
+   - Banks lend out existing money
+   - Government deficits "crowd out" private investment
+   - Fiscal crisis inevitable with sustained deficits
+
+2. **Endogenous Money (BOMD)**: Banks create money by creating debt
+   - Loans create deposits simultaneously
+   - Banks originate money, don't intermediate it
+   - Government deficits add to private sector wealth
+   - No inherent fiscal crisis from deficits
+
+#### Part A: Building the Loanable Funds Model
+
+**Key Principle**: In Loanable Funds, loans appear as assets of households and liabilities of firms, NOT on bank balance sheets as assets.
+
+1. **Create Three Godly Tables**
+   - **Private Banks Table**:
+     - Assets: Reserves
+     - Liabilities: Households, Firms
+     - Equity: BanksEquity
+   - **Households Table**:
+     - Assets: Households (deposits), DebtFirms (loans to firms)
+     - Liabilities: None
+     - Equity: HHEquity
+   - **Firms Table**:
+     - Assets: Firms (deposits)
+     - Liabilities: DebtFirms (borrowed from households)
+     - Equity: FirmsEquity
+
+2. **Add Basic Flows (Without Government)**
+   - **Wages**: Firms → Households
+     - Use Divider: Firms / τFirms × WageShare
+     - τFirms ≈ 0.25 (firms spend deposits quarterly)
+     - WageShare ≈ 0.6 (60% of GDP goes to wages)
+   - **Consumption**: Households → Firms
+     - Use Divider: Households / τHH
+     - τHH ≈ 0.5 (households spend deposits biannually)
+   - **Credit**: Households → Firms (intermediated)
+     - Use Multiplier: GDP × CreditShare
+     - CreditShare ≈ 0.5 (50% of GDP)
+   - **Interest on Loans**: Firms → Households
+     - Use Multiplier: DebtFirms × IntRate
+     - IntRate ≈ 0.05 (5% per year)
+   - **Bank Fees**: Households → Banks
+     - Use Multiplier: Interest × FeeFrac
+     - FeeFrac ≈ 0.1 (10% of interest as fees)
+
+3. **Run Initial Simulation**
+   - Set up scopes to monitor:
+     - GDP (total firm deposits / τFirms)
+     - Household deposits
+     - Firm debt
+   - Observe: System is sustainable without government
+
+4. **Add Government Sector**
+   - **Treasury Table**:
+     - Assets: Government (account at private banks)
+     - Liabilities: DebtGov (bonds held by households)
+     - Equity: TreasuryEquity
+   - Add flows:
+     - **Tax**: Households → Government
+       - Use Multiplier: GDP × TaxRate (e.g., 0.2 for 20%)
+     - **Government Spending**: Government → Firms
+       - Use Multiplier: GDP × SpendRate (e.g., 0.21 for 21%)
+     - **Bond Sales**: Households → Government
+       - Must equal: Deficit + Interest on existing bonds
+       - Use Adder: (SpendGov - Tax) + (DebtGov × IntRate)
+     - **Interest on Bonds**: Government → Households
+       - Use Multiplier: DebtGov × IntRate
+
+5. **Observe the Crisis**
+   - Run with 1% deficit (SpendRate = 0.21, TaxRate = 0.2)
+   - Watch over 200+ years:
+     - Government debt grows exponentially
+     - Eventually exceeds 2000% of GDP
+     - Interest payments exceed 100% of GDP
+     - System becomes unsustainable
+   - **Conclusion**: Under Loanable Funds, sustained deficits cause inevitable crisis
+
+#### Part B: Building the Endogenous Money Model
+
+**Key Principle**: In BOMD, both private and government debt are ASSETS of the banking system.
+
+1. **Restructure the Tables**
+   - **Private Banks Table**:
+     - Assets: Reserves, **DebtFirms**, **DebtGov**
+     - Liabilities: Households, Firms
+     - Equity: BanksEquity
+   - **Households Table**:
+     - Assets: Households (deposits only)
+     - Liabilities: None
+     - Equity: HHEquity
+   - **Firms Table**:
+     - Assets: Firms (deposits)
+     - Liabilities: None (debt is now bank asset!)
+     - Equity: FirmsEquity
+   - **Central Bank Table**:
+     - Assets: None
+     - Liabilities: Reserves, Government
+     - Equity: CBEquity
+   - **Treasury Table**:
+     - Assets: Government (at Central Bank)
+     - Liabilities: DebtGov (to private banks)
+     - Equity: TreasuryEquity
+
+2. **Modify the Flows**
+   - **Wages**: Firms → Households (same as before)
+   - **Consumption**: Households → Firms (same as before)
+   - **Credit**: Now creates BOTH:
+     - Bank Asset (DebtFirms) increases
+     - Firm Liability removed, Firm deposits increase
+     - Use same formula: GDP × CreditShare
+   - **Interest on Private Debt**: Firms → Banks
+     - Use Multiplier: DebtFirms × IntRate
+   - **Government Spending**: Government → Firms
+     - From Central Bank reserves
+   - **Taxation**: Households → Government
+     - To Central Bank reserves
+   - **Bond Sales**: Creates bank asset
+     - DebtGov increases (bank asset)
+     - Government account increases
+     - Formula: (SpendGov - Tax) + (DebtGov × IntRate)
+   - **Interest on Bonds**: Government → Banks
+     - Use Multiplier: DebtGov × IntRate
+   - **Remove Fees**: Not needed in this model
+
+3. **Key Differences in Implementation**
+   - In Private Banks Godly Table:
+     - Credit flow goes to DebtFirms (Asset column)
+     - Bonds flow goes to DebtGov (Asset column)
+   - In Firms Godly Table:
+     - Credit flow goes to Firms deposits (Asset column)
+     - No DebtFirms liability column
+   - Money creation formula:
+     - dMoney/dt = Credit + (SpendGov + IntGov - Tax)
+
+4. **Run with Same 1% Deficit**
+   - Set SpendRate = 0.21, TaxRate = 0.2
+   - Run simulation for 200+ years
+   - Observe:
+     - GDP grows steadily
+     - Government debt/GDP ratio **stabilizes** (around 100%)
+     - Interest payments remain manageable fraction of GDP
+     - **No crisis occurs!**
+
+5. **Analyze the Key Insight**
+   - Display sectoral balances using Pie Chart:
+     - Private sector equity
+     - Government equity (negative)
+   - Use Adder to verify:
+     - Private Sector Surplus = Government Deficit
+     - dPrivateEquity/dt = SpendGov + IntGov - Tax
+     - Government "debt" IS private sector wealth
+
+#### Part C: Comparing the Models Side-by-Side
+
+1. **Create Two Parallel Simulations**
+   - Save Loanable Funds model as "LF_Model.txt"
+   - Save Endogenous Money model as "BOMD_Model.txt"
+   - Use separate Scope elements for each
+
+2. **Key Metrics to Compare**
+   - Debt/GDP ratio over time
+   - Interest payments/GDP ratio
+   - Private sector wealth
+   - System stability
+
+3. **Add Stop Time Elements**
+   - Set stop at year 50, 100, 150, 200
+   - Compare states at each checkpoint
+   - Use Pie Charts to show distribution changes
+
+#### Part D: Real-World Implications
+
+1. **Model Policy Scenarios**
+   - **Austerity**: Reduce SpendRate in both models
+     - Loanable Funds: Slows crisis but doesn't prevent it
+     - BOMD: Reduces private sector wealth growth
+   - **Debt Jubilee**: Reset DebtGov to zero
+     - Loanable Funds: Temporary relief only
+     - BOMD: Destroys private sector assets!
+   - **Inflation**: Add price level dynamics (Tutorial 6)
+
+2. **Understanding the Bank of England Position**
+   - Quote display: "Bank lending creates deposits" (McLeay et al. 2014)
+   - Quote display: "Rather than banks receiving deposits... bank lending creates deposits"
+   - Model validates the BOMD view
+
+3. **The Accounting Identity**
+   - Use Current Transactions Matrix to verify:
+     - Sum of all financial assets = 0 (conservation law)
+     - Government deficit = Private surplus (by identity)
+     - Every liability is someone's asset
+
+#### Key Learning Points
+
+1. **Structural Differences**
+   - Loanable Funds: Loans don't appear on bank balance sheet as assets
+   - BOMD: Loans are bank assets, deposits are bank liabilities
+   - This structural difference drives completely different dynamics
+
+2. **Money Creation**
+   - Loanable Funds: Money supply fixed (just redistributed)
+   - BOMD: Money supply grows with credit and government deficits
+   - Formula: dM/dt = Credit + (SpendGov + IntGov - Tax)
+
+3. **Government Deficits**
+   - Loanable Funds: Deficits crowd out private sector
+   - BOMD: Deficits ADD to private sector wealth
+   - Identity: ΔPrivateEquity = -(ΔGovEquity)
+
+4. **Policy Implications**
+   - If Loanable Funds is correct: Cut spending urgently
+   - If BOMD is correct: Deficits support private economy
+   - Evidence strongly supports BOMD (Bank of England, Bundesbank)
+
+#### Advanced Extensions
+
+1. **Add Bank Equity Dynamics**
+   - Banks can fail if equity becomes negative
+   - Model capital adequacy ratios
+   - Use Percent Meter: BankEquity / (DebtFirms + DebtGov)
+
+2. **Multiple Interest Rates**
+   - Different rates for private vs. government debt
+   - Risk premiums based on debt ratios
+   - Use Equation element for nonlinear rate functions
+
+3. **Central Bank Policy**
+   - Quantitative easing: CB buys government bonds
+   - Reserve requirements
+   - Interest on reserves
+
+4. **International Trade**
+   - Add foreign sector (Tutorial 7)
+   - Twin deficits hypothesis
+   - Exchange rate effects
+
+#### Exercise: Test Your Understanding
+
+Build both models from scratch and verify:
+1. Under Loanable Funds, can you find ANY deficit level that's sustainable long-term?
+2. Under BOMD, what happens if government runs a surplus?
+3. What happens in each model if banks stop lending (Credit → 0)?
+4. Can you identify which model matches real-world central bank operations?
+
+---
+
+### Tutorial 6: Debt Dynamics and Stability
+
+Explore how debt levels evolve and affect economic stability.
+
+#### Minsky's Financial Instability Hypothesis
+
+1. **Model Debt Service Ratio**
+   - Use Divider: Debt Service / Income
+   - Use Percent Meter to display as percentage
+   - Critical threshold: typically 30-40%
+
+2. **Three Borrower Types**
+   - **Hedge**: Income covers debt service
+   - **Speculative**: Income covers interest only
+   - **Ponzi**: Income doesn't cover interest
+
+3. **Build Debt Accumulation**
+   - Use Integrator for debt stock
+   - New borrowing flow
+   - Debt service flow
+   - Interest rate (Multiply by Constant)
+
+4. **Observe Instability**
+   - Start with low debt ratios
+   - Watch debt compound over time
+   - System becomes unstable as ratios increase
+   - Use Stop Time element to pause at critical points
+
+---
+
+## Advanced Economic Modeling
+
+### Tutorial 7: Keen's Grasshopper Model
+
+Implement Steve Keen's simplified business cycle model.
+
+#### Model Components
+- Wages share of output
+- Employment rate
+- Private debt ratio
+
+#### Differential Equations
+
+1. **Employment Rate Equation**
+   - Use ODE element
+   - dE/dt = f(wage share, debt)
+   - Shows Phillips curve relationship
+
+2. **Wage Share Equation**
+   - Use ODE element
+   - dω/dt = g(employment rate)
+   - Models wage bargaining
+
+3. **Debt Ratio Equation**
+   - Use ODE element
+   - dD/dt = h(investment, profits)
+   - Captures Minsky dynamics
+
+4. **Connect the System**
+   - Use Multiplier elements for nonlinear terms
+   - Use Adder/Subtracter for combinations
+   - Use Differentiator if needed for rates of change
+
+#### Visualization
+
+1. **Add Multiple Scopes**
+   - Scope 1: Employment rate over time
+   - Scope 2: Wage share over time
+   - Scope 3: Debt ratio over time
+
+2. **Use Pie Chart**
+   - Show factor income distribution
+   - Wages vs. Profits vs. Interest
+
+3. **Phase Diagrams**
+   - Plot employment vs. debt ratio
+   - Observe limit cycles
+   - Shows complex dynamics
+
+---
+
+### Tutorial 8: International Trade and Exchange Rates
+
+Model open economy with two countries.
+
+#### Two-Country Setup
+
+1. **Country A Tables**
+   - Exports (flow out)
+   - Imports (flow in)
+   - Current account balance
+
+2. **Country B Tables**
+   - Mirror image of Country A
+   - A's exports = B's imports
+
+3. **Exchange Rate Mechanism**
+   - Use Equation element
+   - e = f(current account balance)
+   - Affects relative prices
+
+4. **Capital Flows**
+   - Portfolio investment
+   - Foreign direct investment
+   - Financial account balance
+
+#### Balance of Payments Identity
+- Current Account + Capital Account + Financial Account = 0
+- Use Current Transactions Matrix for each country
+- Verify global consistency
+
+---
+
+## Mathematical Tools for Economics
+
+### Tutorial 9: Using Mathematical Components
+
+Learn to use mathematical operations for economic modeling.
+
+#### Arithmetic Operations
+
+1. **Adder - Summing Income Streams**
+   - Multiple income sources
+   - Total disposable income
+   - Aggregate demand
+
+2. **Subtracter - Net Flows**
+   - Exports - Imports
+   - Revenue - Costs
+   - Surplus/Deficit
+
+3. **Multiplier - Interactions**
+   - Price × Quantity
+   - Interest Rate × Debt
+   - Tax Rate × Income
+
+4. **Divider - Ratios and Rates**
+   - Debt/GDP ratio
+   - Profit margins
+   - Productivity measures
+
+#### Calculus Operations
+
+1. **Integrator - Stock Accumulation**
+   - Capital accumulation
+   - Debt buildup
+   - Population growth
+
+2. **Differentiator - Rates of Change**
+   - Velocity of money
+   - Acceleration effects
+   - Growth rates
+
+3. **ODE Solver - Dynamic Systems**
+   - Predator-prey models (boom-bust cycles)
+   - Nonlinear dynamics
+   - Complex feedback systems
+
+#### Display Tools
+
+1. **Percent Meter - Financial Ratios**
+   - Debt service ratios
+   - Reserve ratios
+   - Capacity utilization
+
+2. **Pie Chart - Distribution**
+   - Income distribution
+   - Sectoral balances
+   - Asset allocation
+
+---
+
+## Practical Applications
+
+### Tutorial 10: Modern Monetary Theory (MMT) Models
+
+Build models demonstrating MMT principles.
+
+#### Model 1: Government as Currency Issuer
+
+1. **Vertical Money Creation**
+   - Government spending creates deposits
+   - Taxation destroys deposits
+   - No financing constraint for currency issuer
+
+2. **Build the Circuit**
+   - Government Table (currency issuer)
+   - Private Sector Table
+   - Show spending precedes taxation logically
+
+#### Model 2: Job Guarantee
+
+1. **Buffer Stock of Employment**
+   - Government employs anyone at fixed wage
+   - Countercyclical automatic stabilizer
+   - Price stability through wage anchor
+
+2. **Implementation**
+   - Use Action Time element for shocks
+   - Model private sector hiring/firing
+   - Government absorbs slack
+
+---
+
+### Tutorial 11: Climate Economics
+
+Model climate change impacts on economy.
+
+#### Carbon Budget Model
+
+1. **Physical Climate**
+   - Emissions flow
+   - Atmospheric CO2 stock (Integrator)
+   - Temperature response (ODE)
+
+2. **Economic Impacts**
+   - Damage function: Divider for GDP reduction
+   - Adaptation costs
+   - Mitigation investments
+
+3. **Policy Scenarios**
+   - Carbon tax: Use Multiply by Constant
+   - Green investment: Adjust flow parameters
+   - Use Stop Time at 2050 or 2100
+
+#### Integrated Assessment
+
+1. **Connect Climate and Economy**
+   - Temperature → Damage → GDP
+   - GDP → Emissions → Temperature
+   - Feedback loops
+
+2. **Optimization**
+   - Balance mitigation costs vs. damage costs
+   - Net present value calculations
+   - Discount rate sensitivity (Multiply by Constant)
+
+---
+
+## Troubleshooting Economic Models
+
+### Common Issues
+
+#### Problem: Accounting Identity Not Balanced
+
+**Solutions:**
+1. Check all flow signs (+ and -)
+2. Verify double-entry: every debit has a credit
+3. Use Current Transactions Matrix to visualize
+4. Check initial values sum correctly
+
+#### Problem: Stocks Growing Without Bound
+
+**Solutions:**
+1. Add negative feedback loops
+2. Check for missing outflows
+3. Verify realistic parameter values
+4. Add Stop Time element to observe dynamics
+
+#### Problem: Simulation Unstable
+
+**Solutions:**
+1. Reduce time step (Edit > Options > Time Step)
+2. Check for division by zero (use Divider's epsilon protection)
+3. Add damping terms to differential equations
+4. Verify initial conditions are reasonable
+
+---
+
+## Practice Exercises
+
+### Exercise 1: Sectoral Balance Analysis
+
+Build a three-sector model (Government, Private, Foreign) and:
+1. Verify sectoral balances sum to zero
+2. Model twin deficits (fiscal and trade)
+3. Analyze impact of policy changes
+
+### Exercise 2: Credit Cycle Model
+
+Create a model showing:
+1. Endogenous money creation through bank lending
+2. Asset price inflation from credit growth
+3. Minsky moment (debt deflation crisis)
+4. Use Pie Chart to show debt distribution
+
+### Exercise 3: Income Distribution
+
+Model:
+1. Wage vs. profit share dynamics
+2. Impact on aggregate demand (Kaleckian)
+3. Feedback to employment and growth
+4. Use Percent Meters for all ratios
+
+---
+
+## Next Steps
+
+After completing these tutorials:
+
+1. **Explore Pre-built Models**: Check out [SFC Modeling Guide](sfc-modeling.qmd) for complete examples
+2. **Read Economics Literature**: Steve Keen's work, Godley & Lavoie's textbook
+3. **Experiment**: Modify parameters, add sectors, test policies
+4. **Share Your Models**: Export circuits and share with the community
+
+### Recommended Resources
+
+- **Steve Keen's Minsky**: Original inspiration for these tools
+- **Godley & Lavoie (2012)**: "Monetary Economics: An Integrated Approach to Credit, Money, Income, Production and Wealth"
+- **Modern Monetary Theory**: Wray, Kelton, Mitchell, Mosler
+- **Post-Keynesian Economics**: Lavoie, Hein, Stockhammer
+
+---
+
+*These tutorials demonstrate how CircuitJS can be used for serious economic modeling while maintaining stock-flow consistency and accounting rigor. The circuit metaphor provides intuitive understanding of economic flows and feedback loops.*
