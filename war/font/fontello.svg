@@ -1,7 +1,7 @@
 <?xml version="1.0" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg xmlns="http://www.w3.org/2000/svg">
-<metadata>Copyright (C) 2024 by original authors @ fontello.com</metadata>
+<metadata>Copyright (C) 2025 by original authors @ fontello.com</metadata>
 <defs>
 <font id="fontello" horiz-adv-x="1000" >
 <font-face font-family="fontello" font-weight="400" font-stretch="normal" units-per-em="1000" ascent="850" descent="-150" />
@@ -53,6 +53,12 @@
 <glyph glyph-name="flip-x" unicode="&#xe816;" d="M1000 350q0-14-11-25l-142-143q-11-11-26-11t-25 11-10 25v72h-572v-72q0-14-10-25t-25-11-25 11l-143 143q-11 11-11 25t11 25l143 143q10 11 25 11t25-11 10-25v-72h572v72q0 14 10 25t25 11 26-11l142-143q11-10 11-25z" horiz-adv-x="1000" />
 
 <glyph glyph-name="flip-x-y" unicode="&#xe817;" d="M421 261q0-7-5-13l-185-185 80-81q10-10 10-25t-10-25-25-11h-250q-15 0-25 11t-11 25v250q0 15 11 25t25 11 25-11l80-80 186 185q5 6 12 6t13-6l64-63q5-6 5-13z m436 482v-250q0-15-10-25t-26-11-25 11l-80 80-185-185q-6-6-13-6t-13 6l-64 64q-5 5-5 12t5 13l186 185-81 81q-10 10-10 25t10 25 25 11h250q15 0 26-11t10-25z" horiz-adv-x="857.1" />
+
+<glyph glyph-name="lock-open" unicode="&#xe818;" d="M0-150l0 559 152 0 0 138q2 127 88 215 41 39 96 64t119 24q123-2 211-88 86-88 90-209l-178 0q-2 47-37 82-37 35-86 37-53-2-88-37-37-39-37-88l0-138 553 0 0-559-883 0z" horiz-adv-x="883" />
+
+<glyph glyph-name="clock-alt" unicode="&#xe819;" d="M406 757c224 0 407-182 407-407 0-223-183-406-407-406-225 0-406 183-406 406 0 225 181 407 406 407z m0-723c175 0 317 143 317 318s-142 316-317 316-317-141-317-316 142-318 317-318z m108 268l-115 0c-14 0-25 5-33 15l-131 143c-39 42 25 102 65 62l118-130 96 0c61 0 55-90 0-90z" horiz-adv-x="813" />
+
+<glyph glyph-name="lock" unicode="&#xe81a;" d="M179 421h285v108q0 59-42 101t-101 41-101-41-41-101v-108z m464-53v-322q0-22-16-37t-38-16h-535q-23 0-38 16t-16 37v322q0 22 16 38t38 15h17v108q0 102 74 176t176 74 177-74 73-176v-108h18q23 0 38-15t16-38z" horiz-adv-x="642.9" />
 
 <glyph glyph-name="resize-full-alt" unicode="&#xf0b2;" d="M716 548l-198-198 198-198 80 80q17 18 39 8 22-9 22-33v-250q0-14-10-25t-26-11h-250q-23 0-32 23-10 21 7 38l81 81-198 198-198-198 80-81q17-17 8-38-10-23-33-23h-250q-15 0-25 11t-11 25v250q0 24 22 33 22 10 39-8l80-80 198 198-198 198-80-80q-11-11-25-11-7 0-14 3-22 9-22 33v250q0 14 11 25t25 11h250q23 0 33-23 9-21-8-38l-80-81 198-198 198 198-81 81q-17 17-7 38 9 23 32 23h250q15 0 26-11t10-25v-250q0-24-22-33-7-3-14-3-14 0-25 11z" horiz-adv-x="857.1" />
 

@@ -280,4 +280,5 @@ public class EconomicsToolbar extends Toolbar {
     final String graphIcon = "<svg><g transform='scale(0.99)'><rect x='4' y='4' width='16' height='16' fill='none' stroke='currentColor' stroke-width='2' /><polyline points='6,16 9,12 12,14 15,8 18,10' fill='none' stroke='currentColor' stroke-width='1.5' /></g></svg>";
         
     final String labelNodeIcon = "<svg><g transform='scale(0.99)'><rect x='4' y='8' width='16' height='12' rx='2' fill='none' stroke='currentColor' stroke-width='2' /><text x='12' y='15.5' fill='currentColor' font-size='8' text-anchor='middle' dominant-baseline='middle'>L</text></g></svg>";
+    
 }

@@ -1,8 +1,147 @@
 ---
-title: "Money from First Principles"
-subtitle: "Understanding Banking Models and Government Deficits"
-author: "Based on Steve Keen's analysis for engineers"
+page-layout: custom
+toc: false
 ---
+
+<style>
+.money-container {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  height: 90vh;
+}
+
+.money-left {
+  flex: 0 0 50%;
+  position: sticky;
+  top: 0;
+  height: 90vh;
+}
+
+.money-right {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 20px;
+}
+
+/* Highlight active section trigger areas */
+.circuit-section {
+  scroll-margin-top: 100px;
+}
+
+@media (max-width: 768px) {
+  .money-container {
+    flex-direction: column;
+    height: auto;
+  }
+  
+  .money-left {
+    position: relative;
+    flex: 0 0 auto;
+    height: 50vh;
+    width: 100%;
+  }
+  
+  .money-right {
+    flex: 1;
+    padding-right: 0;
+  }
+}
+</style>
+
+<script>
+// Function to collect circuit URLs from data-circuit attributes on section elements
+function getCircuitSections() {
+  const sections = {};
+  document.querySelectorAll('.circuit-section[data-circuit]').forEach(el => {
+    sections[el.id] = el.dataset.circuit;
+  });
+  return sections;
+}
+
+// Throttle function to limit scroll event frequency
+function throttle(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+// Function to update iframe based on visible section
+function updateCircuitOnScroll() {
+  const iframe = document.querySelector('.money-left iframe');
+  if (!iframe) return;
+  
+  const circuitSections = getCircuitSections();
+  const scrollContainer = document.querySelector('.money-right');
+  if (!scrollContainer) return;
+  
+  const scrollTop = scrollContainer.scrollTop;
+  const containerTop = scrollContainer.getBoundingClientRect().top;
+  
+  // Find which section is currently most visible
+  let currentSection = null;
+  let minDistance = Infinity;
+  
+  for (const sectionId in circuitSections) {
+    const element = document.getElementById(sectionId);
+    if (!element) continue;
+    
+    const rect = element.getBoundingClientRect();
+    const distance = Math.abs(rect.top - containerTop - 100); // 100px threshold
+    
+    if (distance < minDistance && rect.top < window.innerHeight * 0.6) {
+      minDistance = distance;
+      currentSection = sectionId;
+    }
+  }
+  
+  // Update iframe if section changed
+  if (currentSection && iframe.dataset.currentSection !== currentSection) {
+    iframe.dataset.currentSection = currentSection;
+    iframe.src = circuitSections[currentSection];
+  }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  const scrollContainer = document.querySelector('.money-right');
+  if (scrollContainer) {
+    // Add scroll listener with throttling
+    scrollContainer.addEventListener('scroll', throttle(updateCircuitOnScroll, 200));
+    
+    // Initial update
+    updateCircuitOnScroll();
+  }
+});
+</script>
+
+<div class="money-container">
+  <!-- Left panel: Fixed iframe -->
+  <div class="money-left">
+   <iframe src="../circuitjs.html?startCircuit=1debug.txt&editable=true"
+         width="100%" 
+         height="100%" 
+         frameborder="0"
+         data-current-section="intro"
+         title="CircuitJS1 Electronic Circuit Simulator">
+   </iframe>
+  </div>
+  
+  <!-- Right panel: Scrolling content -->
+  <div class="money-right">
+
+<div id="intro" class="circuit-section" data-circuit="/circuitjs.html?ctz=CQAgbArCAMB00IVAjHATAtB2LBmaAHGmAJwlYgTSWXUQCmAtMsgFACkIALgE4CGAOwDOAMwD2PALYhkMGKzQQouNDLQEQBasnVzVYcDIPVeAV3ohV1EXwA2Qi1BM9zIAEKCA1kJAAdagBK9A48AG7BIAASYqYO0bYAJj4AYgCWUj4AogCOpqlcAJ7uXkI5eYUgAIKMADKMmSAACnwFvkIA6nwA5hEAwmLCppIADlypAzIIltRY2tTzVQDKi5kAKiA1AJKVbptbqwCaG9u7+0eZAIoAqpuHIJc3d70A8gCyjVermQAiftSdPR8AIi-j+YNBjH6g0kFihQiGFlBSPm8GgbAAHpY0CQQCR9GhZCQoAAWSyk1b8YR8ADGYwGbVWfAARrZgm0ABQAcTECVZrSEjJZwQAlJpCOLkskFNAKLNSbgIKosGANArVLgDMChNLZdB5RgQMrVQaNSA4QiOEt1rI2EA&editable=false">
+
+# Money from First Principles
+
+**Understanding Banking Models and Government Deficits**  
+*Based on Steve Keen's analysis for engineers*
 
 ## Introduction: First Principles vs. Reasoning by Analogy
 
@@ -73,11 +212,13 @@ $$\frac{dReserves}{dt} = 0$$
 
 $$\frac{dCB_{Equity}}{dt} = 0$$
 
-These equations can be implemented in CircuitJS using economic elements (Godly Tables, Flow Masters, Stock Masters).
+These equations can be implemented in CircuitJS using Godly Tables, consisting of Flows on the rows, Stocks on the columns.
 
 ## Two Competing Models of Banking
 
 The answer to whether deficits cause crises depends entirely on which model of banking is correct:
+
+<div id="loanable-funds" class="circuit-section" data-circuit="../circuitjs.html?ctz=CQAgzCAMB0mQrCATAdmi1SkA4As8kwBGMMATmxF1xHjklofgFMBaIogKAFIQAXAE4BDAHYBnAGYB7AQFso0PEngVsKOPABsuMihAd42aNsIZs2EvBUhsmssfOGU8dZqRFcnZYlabsDXzgQXyJNYM0ghiQqEDDQqH4BAFdmZASJIQAbMVTEBkEUkAAxAEs5MRAAHQZS8pAACWja2TEAfQBvAFEARySSvgBPAF8QAEFWABlWTpAABSEByrEAdSEAc2YKgGEpcSTZAAc+Et2QdQTzhlGAZWvOgBUQCYBJUYAhZ5f7gE0QToBFACqzx+Y1uD2Cqw2FWqkPWmyqDB2e1kqVhyLE+zRDBgcC43nC-mCuAw4VwlFYJOiURicTC+WSqWpIAy2VyCQKqXqUiSOQAFlJMgATGEMbm85gC4UVa58KQAYwA1tF6vUOj0+oMRuMpjMMfsjicRHMFksoZslsgcVaEjc7o8Xu9PiDfgDgaCtgB5ACys0B906ABFgvrUYiQ7tMWHYebRSBY+HcZB8VZgig-GmcGnIDRWGYEtFEHSOYy0gxWTkYgzCrMBCUAG5CPjMJZvUSKuMAJU2zAE9YR4py3OlxTKLRAbZEHfVvX6wzGk2mJsWK3h20jBuOpyIQSQDHOO9t4Medohjo+X1dQJdIC9vv9QfDCdYCdhb4Y6I3YeeImbAk2fCJrAyZeJAeisP4ASYMEti5tBEQgNcQj9gIYigeBkHBMoYQQdoWFaLEDBvDIAhSAA7r2aF7hhQSsEguABLBWEMYRE7tlRdDZnBpK+Dx0FEGkQgAFQAEacGRaYEFhPHqNx1LoVx0nRHmObBGAe6sd6uzMAMnCdopdEESpcGQJQ1oscyOLQIgABqzCZAqc5eJxgQUtBrAuDh-GCaJenhKZ+E4REbkBeZVmQJZCiIBMzAiEKrQSMI8rieERnucFSlQApvhpTxGWsGAGYIQA4oGszZVoUE8fARDKfBDAxXFFVkMpZA4fA1DBG1rFFMwzDZX4FLdb4eHsOmrE-n+AEpb45hdUFLGsN1kB+b4i1EmtATqQkDAsTAeQ7dZxR9a0wjNs5ATaAEw35d1AnRMJYn6XmhUwQEKCvQVkV7bAB1WYgk29gBp1Nv11Fpp9w0fThHg0FmgbMCJfAzSgeDzRDOHLRdGPo8Z6P3SAj3YwVUkQVtGlk-oPlieDJPKRtYBo5TCGTh2q1gKTo0c8p8RhQoAnWvtiEHLF8VnWDYFqaplN0etDAIdcItxa0InsZwAAeanwBAeajWQZBppoAlwzQExSKIQgiZkLZiEUSRxWISxaUK9k2KZ7tFEUzkCWTVXKSgLWZQJYDZdg9FqRmEFzQVRUMEhKFoVI+gQHhDC1UgZDhXiCj0ALaQkOAnBJynNBp1gmc59nSbJlT0QQCHSc0Kn+jlwLwE19XBM0DQEAHYgIe8DcjwCVwQA&editable=false"></div>
 
 ### 1. Loanable Funds Model
 
@@ -162,6 +303,8 @@ Running with 1% deficit (Spend = 21% GDP, Tax = 20% GDP):
 - System becomes **unsustainable**
 
 **Conclusion**: Under Loanable Funds, sustained deficits cause inevitable fiscal crisis.
+
+<div id="bomd-model" class="circuit-section" data-circuit="../circuitjs.html?startCircuit=bomd-demo.txt&editable=false"></div>
 
 ### 2. Endogenous Money Model (BOMD)
 
@@ -277,6 +420,8 @@ In the BOMD model:
 - Government "debt" IS private sector wealth
 - Government deficit ADDS to private sector equity
 - This is not a theory—it's an accounting identity
+
+<div id="implementation" class="circuit-section" data-circuit="../circuitjs.html?startCircuit=implementation.txt&editable=false"></div>
 
 ## Implementing in CircuitJS
 
@@ -481,3 +626,6 @@ Compare model outputs to actual data:
 ---
 
 *This analysis demonstrates that first-principles reasoning, grounded in double-entry bookkeeping, leads to radically different conclusions than reasoning by analogy from households to governments.*
+
+  </div> <!-- end right panel -->
+</div> <!-- end container -->

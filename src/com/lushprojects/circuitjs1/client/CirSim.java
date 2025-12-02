@@ -838,11 +838,84 @@ public CirSim() {
 	setToolbar(); // calls setCanvasSize()
 	layoutPanel.add(cv);
 	verticalPanel.add(buttonPanel);
-	// Buttons moved to side panel below
 	
-	// Add Reset, Run/Stop, and Step buttons to side panel
-	// Run/Stop button on first line
-	runStopButton = new Button(Locale.LSHTML("<Strong>RUN</Strong>&nbsp;/&nbsp;Stop"));
+	// Create floating control panel in top-left corner of canvas
+	final HorizontalPanel floatingControlPanel = new HorizontalPanel();
+	floatingControlPanel.setStyleName("floatingControlPanel");
+	floatingControlPanel.setSpacing(5);
+	
+	// Helper to constrain panel to window bounds
+	final Runnable constrainToWindow = new Runnable() {
+	    public void run() {
+		int left = floatingControlPanel.getAbsoluteLeft();
+		int top = floatingControlPanel.getAbsoluteTop();
+		int panelWidth = floatingControlPanel.getOffsetWidth();
+		int panelHeight = floatingControlPanel.getOffsetHeight();
+		int windowWidth = Window.getClientWidth();
+		int windowHeight = Window.getClientHeight();
+		
+		// Keep at least 50px visible on screen
+		int newLeft = Math.max(-panelWidth + 50, Math.min(left, windowWidth - 50));
+		int newTop = Math.max(0, Math.min(top, windowHeight - panelHeight));
+		
+		if (newLeft != left || newTop != top) {
+		    floatingControlPanel.getElement().getStyle().setProperty("left", newLeft + "px");
+		    floatingControlPanel.getElement().getStyle().setProperty("top", newTop + "px");
+		}
+	    }
+	};
+	
+	// Check panel visibility on window resize
+	Window.addResizeHandler(new ResizeHandler() {
+	    public void onResize(ResizeEvent event) {
+		constrainToWindow.run();
+	    }
+	});
+	
+	// Make panel draggable
+	final int[] dragOffset = new int[2];
+	final boolean[] isDragging = new boolean[1];
+	
+	floatingControlPanel.addDomHandler(new MouseDownHandler() {
+	    public void onMouseDown(MouseDownEvent event) {
+		isDragging[0] = true;
+		dragOffset[0] = event.getClientX() - floatingControlPanel.getAbsoluteLeft();
+		dragOffset[1] = event.getClientY() - floatingControlPanel.getAbsoluteTop();
+		event.preventDefault();
+	    }
+	}, MouseDownEvent.getType());
+	
+	RootPanel.get().addDomHandler(new MouseMoveHandler() {
+	    public void onMouseMove(MouseMoveEvent event) {
+		if (isDragging[0]) {
+		    int left = event.getClientX() - dragOffset[0];
+		    int top = event.getClientY() - dragOffset[1];
+		    
+		    // Constrain to window bounds
+		    int panelWidth = floatingControlPanel.getOffsetWidth();
+		    int panelHeight = floatingControlPanel.getOffsetHeight();
+		    int windowWidth = Window.getClientWidth();
+		    int windowHeight = Window.getClientHeight();
+		    
+		    // Keep at least 50px visible on screen
+		    left = Math.max(-panelWidth + 50, Math.min(left, windowWidth - 50));
+		    top = Math.max(0, Math.min(top, windowHeight - panelHeight));
+		    
+		    floatingControlPanel.getElement().getStyle().setProperty("left", left + "px");
+		    floatingControlPanel.getElement().getStyle().setProperty("top", top + "px");
+		    event.preventDefault();
+		}
+	    }
+	}, MouseMoveEvent.getType());
+	
+	RootPanel.get().addDomHandler(new MouseUpHandler() {
+	    public void onMouseUp(MouseUpEvent event) {
+		isDragging[0] = false;
+	    }
+	}, MouseUpEvent.getType());
+	
+	// Run/Stop button
+	runStopButton = new Button(Locale.LS("Run"));
 	runStopButton.addClickHandler(new ClickHandler() {
 	    public void onClick(ClickEvent event) {
 		ActionScheduler scheduler = ActionScheduler.getInstance();
@@ -856,23 +929,20 @@ public CirSim() {
 		}
 	    }
 	});
-	verticalPanel.add(runStopButton);
+	runStopButton.setStyleName("floatingButton");
+	floatingControlPanel.add(runStopButton);
 	
-	// Create horizontal panel for Reset and Step on second line
-	HorizontalPanel resetStepPanel = new HorizontalPanel();
-	resetStepPanel.setWidth("80%");
-	resetStepPanel.setStyleName("topSpace");
-	resetStepPanel.setSpacing(2); // Add spacing between buttons
-	
+	// Reset button
 	resetButton = new Button(Locale.LS("Reset"));
 	resetButton.addClickHandler(new ClickHandler() {
 	    public void onClick(ClickEvent event) {
 		resetAction();
 	    }
 	});
-	resetButton.setStylePrimaryName("topButton");
-	resetStepPanel.add(resetButton);
+	resetButton.setStyleName("floatingButton");
+	floatingControlPanel.add(resetButton);
 	
+	// Step button
 	stepButton = new Button(Locale.LS("Step"));
 	stepButton.addClickHandler(new ClickHandler() {
 	    public void onClick(ClickEvent event) {
@@ -880,10 +950,43 @@ public CirSim() {
 		stepCircuit();
 	    }
 	});
-	stepButton.setStylePrimaryName("topButton");
-	resetStepPanel.add(stepButton);
+	stepButton.setStyleName("floatingButton");
+	floatingControlPanel.add(stepButton);
 	
-	verticalPanel.add(resetStepPanel);
+	// Lock/Unlock button (toggles editing)
+	final Button lockButton = new Button();
+	lockButton.setHTML("<i class=\"cirjsicon-lock-open\"></i>");
+	lockButton.setTitle(Locale.LS("Toggle Edit Lock"));
+	lockButton.addClickHandler(new ClickHandler() {
+	    public void onClick(ClickEvent event) {
+		noEditCheckItem.setState(!noEditCheckItem.getState());
+		if (noEditCheckItem.getState()) {
+		    lockButton.setHTML("<i class=\"cirjsicon-lock\"></i>");
+		} else {
+		    lockButton.setHTML("<i class=\"cirjsicon-lock-open\"></i>");
+		}
+	    }
+	});
+	lockButton.setStyleName("floatingButton floatingButton-icon");
+	floatingControlPanel.add(lockButton);
+	
+	// Fullscreen button
+	Button fullscreenButton = new Button();
+	fullscreenButton.setHTML("<i class=\"cirjsicon-resize-full-alt\"></i>");
+	fullscreenButton.setTitle(Locale.LS("Toggle Full Screen"));
+	fullscreenButton.addClickHandler(new ClickHandler() {
+	    public void onClick(ClickEvent event) {
+		if (!Graphics.isFullScreen)
+		    Graphics.viewFullScreen();
+		else
+		    Graphics.exitFullScreen();
+	    }
+	});
+	fullscreenButton.setStyleName("floatingButton floatingButton-icon");
+	floatingControlPanel.add(fullscreenButton);
+	
+	// Add floating panel to root, positioned over canvas
+	RootPanel.get().add(floatingControlPanel);
 	
 /*
 	dumpMatrixButton = new Button("Dump Matrix");
@@ -1851,19 +1954,16 @@ public CirSim() {
     	// Check paused state FIRST (before checking simRunning)
     	if (scheduler != null && scheduler.isPaused() && scheduler.hasPendingTimer()) {
     	    // Paused by ActionScheduler - orange button
-    	    runStopButton.setHTML(Locale.LSHTML("Run&nbsp;/&nbsp;<strong>PAUSED</strong>&nbsp;/&nbsp;Stop"));
-    	    runStopButton.setStylePrimaryName("topButton");
-    	    runStopButton.getElement().getStyle().setBackgroundColor("#ff9800");
+    	    runStopButton.setText(Locale.LS("Paused"));
+    	    runStopButton.setStyleName("floatingButton floatingButton-runstop floatingButton-paused");
     	} else if (!simRunning) {
     	    // Stopped state - red button
-    	    runStopButton.setHTML(Locale.LSHTML("<strong>RUN</strong>&nbsp;/&nbsp;Stop"));
-    	    runStopButton.setStylePrimaryName("topButton-red");
-    	    runStopButton.getElement().getStyle().clearBackgroundColor();
+    	    runStopButton.setText(Locale.LS("Run"));
+    	    runStopButton.setStyleName("floatingButton floatingButton-runstop floatingButton-stopped");
     	} else {
     	    // Running normally - green button
-    	    runStopButton.setHTML(Locale.LSHTML("Run&nbsp;/&nbsp;<strong>STOP</strong>"));
-    	    runStopButton.setStylePrimaryName("topButton");
-    	    runStopButton.getElement().getStyle().setBackgroundColor("#4caf50");
+    	    runStopButton.setText(Locale.LS("Stop"));
+    	    runStopButton.setStyleName("floatingButton floatingButton-runstop floatingButton-running");
     	}
     }
     
@@ -4206,6 +4306,9 @@ public CirSim() {
     	}
     	if (menu=="options" && item=="voltageunit") {
     	    	showVoltageUnitDialog();
+    	}
+    	if (menu=="options" && item=="toggleEdit") {
+    	    	noEditCheckItem.setState(!noEditCheckItem.getState());
     	}
     	if (item=="search") {
     	    	dialogShowing = new SearchDialog(this);
