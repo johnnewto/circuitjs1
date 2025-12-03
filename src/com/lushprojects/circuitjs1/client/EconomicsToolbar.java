@@ -41,6 +41,7 @@ public class EconomicsToolbar extends Toolbar {
 	add(createIconButton("zoom-in", "Zoom In", new MyCommand("zoom", "zoomin")));
 	add(createIconButton("zoom-out", "Zoom Out", new MyCommand("zoom", "zoomout")));
 	add(createIconButton("resize-full-alt", "Toggle Full Screen", new MyCommand("view", "fullscreen")));
+	add(createIconButton(viewportIcon, "Zoom to Viewport", new MyCommand("edit", "zoomToViewport")));
 
 	add(createIconButton(wireIcon,  "WireElm")); 
 	add(createIconButton(groundIcon, "GroundElm"));
@@ -55,7 +56,7 @@ public class EconomicsToolbar extends Toolbar {
 	    equationIcon, "EquationElm", percentIcon, "PercentElm", adderIcon, "AdderElm", subtracterIcon, "SubtracterElm"
 	};
 	add(createButtonSet(equationInfo));
-	String displayInfo[] = { stopTimeIcon, "StopTimeElm", pieChartIcon, "PieChartElm" };
+	String displayInfo[] = { stopTimeIcon, "StopTimeElm", pieChartIcon, "PieChartElm", viewportIcon, "ViewportElm" };
 	add(createButtonSet(displayInfo));
 	add(createIconButton(labelNodeIcon, "Labeled Node", new MyCommand("main", "LabeledNodeElm")));
 	add(createIconButton(graphIcon, "View All Scopes in Plotly...", new MyCommand("scopes", "viewAllPlotly")));
@@ -276,6 +277,8 @@ public class EconomicsToolbar extends Toolbar {
     final String stopTimeIcon = "<svg><g transform='scale(1.3) translate(-3, 0)'><polygon points='12,3 17.5,5.5 20,11 17.5,16.5 12,19 6.5,16.5 4,11 6.5,5.5' fill='red' stroke='white' stroke-width='2' /><text x='12' y='11.5' fill='white' font-size='5' font-weight='bold' text-anchor='middle' dominant-baseline='middle'>STOP</text></g></svg>";
     
     final String pieChartIcon = "<svg><circle cx='12' cy='12' r='8' fill='none' stroke='currentColor' stroke-width='2' /><path d='M 12 12 L 12 4 A 8 8 0 0 1 17.7 9.2 Z' fill='orange' stroke='currentColor' stroke-width='1' /><path d='M 12 12 L 17.7 9.2 A 8 8 0 0 1 17.7 14.8 Z' fill='green' stroke='currentColor' stroke-width='1' /><path d='M 12 12 L 17.7 14.8 A 8 8 0 0 1 12 20 Z' fill='blue' stroke='currentColor' stroke-width='1' /></svg>";
+    
+    final String viewportIcon = "<svg><rect x='4' y='4' width='16' height='16' fill='none' stroke='#4080FF' stroke-width='2' stroke-dasharray='4,2' /><rect x='7' y='7' width='10' height='10' fill='none' stroke='#4080FF' stroke-width='1' /><line x1='4' y1='4' x2='20' y2='20' stroke='#4080FF' stroke-width='1' /></svg>";
     
     final String graphIcon = "<svg><g transform='scale(0.99)'><rect x='4' y='4' width='16' height='16' fill='none' stroke='currentColor' stroke-width='2' /><polyline points='6,16 9,12 12,14 15,8 18,10' fill='none' stroke='currentColor' stroke-width='1.5' /></g></svg>";
         

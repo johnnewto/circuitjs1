@@ -26,6 +26,7 @@ CurrentTransactionsMatrixElm |Current Transactions Matrix
 StopTimeElm|Stop Time
 ActionTimeElm|Action Time
 PieChartElm|Pie Chart
+ViewportElm|Viewport
 
 # Passive Components submenu
 +Passive Components

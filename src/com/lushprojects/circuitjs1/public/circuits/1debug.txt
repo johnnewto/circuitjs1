@@ -1,6 +1,5 @@
 $ 67 0.05 2.008553692318767 54 5 50 0.000049999999999999996
 % voltageUnit $
-% transform 1.0100000000000007 624.5199999999995 1333.0900000000006
 255 -1352 -912 -1344 -912 0 8 4 6 16 0 true 2 1 true 5 0 true Firms \0 Firms Debt Firm_{equity} A-L-E Pay\sInterest Lending Bank\sSpending Govt\sTaxes Govt\sSpends Workers\sConsume Hire\sWorkers Interest\son\sBonds 10 0 10 0 ASSET LIABILITY EQUITY COMPUTED -Interest \0 -Interest \0 Lend Lend \0 \0 0.5*Spend_{banks} \0 0.5*Spend_{banks} \0 -0.5*Tax \0 -0.5*Tax \0 0.5*Spend_{Govt} \0 0.5*Spend_{Govt} \0 Con_W \0 Con_W \0 -Wages \0 -Wages \0 \0 \0 \0 \0 0.001
 255 -1384 -856 -1352 -856 0 5 4 6 16 0 true 2 0 true 5 0 true Workers \0 Workers Stock2 Savers_equ A-L-E Bank\sSpending Govt\sTaxes Govt\sSpends Workers\sConsume Hire\sWorkers 80 0 80 0 ASSET LIABILITY EQUITY COMPUTED 0.5*Spend_{banks} \0 0.5*Spend_{banks} \0 -0.5*Tax \0 -0.5*Tax \0 0.5*Spend_{Govt} \0 0.5*Spend_{Govt} \0 -Con_W \0 -Con_W \0 Wages \0 Wages \0 0.001
 255 -1320 -968 -1256 -968 0 9 7 6 16 0 true 2 0 true 4 0 true Banks \0 Reserves Debt Gov_{Bonds} Workers Firms Banks A-L-E Lending Pay\sInterest Bank\sSpending Govt\sTaxes Govt\sSpends Govt\sSells\sBonds Interest\son\sBonds Workers\sConsume Hire\sWorkers 100 0 0 80 10 10 0 ASSET ASSET ASSET LIABILITY LIABILITY EQUITY COMPUTED \0 Lend \0 \0 Lend \0 \0 \0 \0 \0 \0 -Interest Interest \0 \0 \0 \0 0.5*Spend_{banks} 0.5*Spend_{banks} -Spend_{banks} \0 -Tax \0 \0 -0.5*Tax -0.5*Tax \0 \0 Spend_{Govt} \0 \0 0.5*Spend_{Govt} 0.5*Spend_{Govt} \0 \0 -Bonds \0 Bonds \0 \0 \0 \0 Int_{Bonds} \0 \0 \0 \0 Int_{Bonds} \0 \0 \0 \0 -Con_W Con_W \0 \0 \0 \0 \0 Wages -Wages \0 \0 0.001
@@ -67,8 +66,9 @@ P -312 -152 -312 -104 11 0 Private_{Debt}
 O -1128 -640 -1088 -640 1 1
 432 -296 -856 -264 -824 0 true
 254 152 -1240 184 -1240 1 0 0 6 16 0 false 2 0 false 1 2 Current\sTransactions\sMatrix "" "Fed_E,Treasuray_{Equ}" ""
+263 -505 -1292 698 -673 0 Main
 o 47 2 0 x1c01206 100 0.0001 0 4 L0:100 47 3 48 0 48 3 T:Debt\s%\sGDP
-o 11 2 0 xc01206 25373187.667693928 0.0001 1 2 11 3 T:GDP
+o 11 2 0 xc01206 12686593.833846964 0.0001 1 2 11 3 T:GDP
 38 44 F1 1 0 0.2 -1 Interest\sRate 0.01
 38 36 F1 1 0.2 0.4 -1 Govt\sTax\sRate 0.01
 38 37 F1 1 0.2 0.4 -1 Govt\sSpend\sRate 0.01

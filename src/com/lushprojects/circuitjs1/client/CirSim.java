@@ -1898,6 +1898,47 @@ public CirSim() {
     	return new Rectangle(minx, miny, maxx-minx, maxy-miny);
     }
 
+    /**
+     * Find the first ViewportElm in the circuit.
+     * Used to determine initial view when loading a circuit.
+     */
+    ViewportElm findViewportElm() {
+        for (int i = 0; i < elmList.size(); i++) {
+            CircuitElm ce = getElm(i);
+            if (ce instanceof ViewportElm)
+                return (ViewportElm) ce;
+        }
+        return null;
+    }
+    
+    /**
+     * Apply transform to show the area defined by a ViewportElm.
+     * Calculates scale and translation to fit the viewport into the current canvas.
+     */
+    void applyViewportTransform(ViewportElm viewport) {
+        setCircuitArea();
+        Rectangle bounds = viewport.getViewportBounds();
+        
+        int viewWidth = bounds.width;
+        int viewHeight = bounds.height;
+        
+        if (viewWidth <= 0 || viewHeight <= 0)
+            return;
+            
+        // Calculate scale to fit viewport into canvas
+        double scaleX = (double)circuitArea.width / viewWidth;
+        double scaleY = (double)circuitArea.height / viewHeight;
+        double scale = Math.min(scaleX, scaleY);
+        
+        // Calculate translation to center the viewport
+        double translateX = (circuitArea.width - viewWidth * scale) / 2 - bounds.x * scale;
+        double translateY = (circuitArea.height - viewHeight * scale) / 2 - bounds.y * scale;
+        
+        transform[0] = transform[3] = scale;
+        transform[4] = translateX;
+        transform[5] = translateY;
+    }
+
     long lastTime = 0, lastFrameTime, lastIterTime, secTime = 0;
     int frames = 0;
     int steps = 0;
@@ -4369,6 +4410,20 @@ public CirSim() {
     		pushUndo();
     		centreCircuit();
     	}
+    	if (item=="zoomToViewport") {
+    		// If viewport exists, zoom to it; otherwise create one
+    		ViewportElm viewport = findViewportElm();
+    		if (viewport != null) {
+    		    pushUndo();
+    		    applyViewportTransform(viewport);
+    		} else {
+    		    // No viewport exists, switch to add ViewportElm mode
+    		    setMouseMode(MODE_ADD_ELM);
+    		    mouseModeStr = "ViewportElm";
+    		    toolbar.setModeLabel("Viewport");
+    		    toolbar.highlightButton(mouseModeStr);
+    		}
+    	}
     	if (item=="flipx") {
 	    pushUndo();
 	    flipX();
@@ -4794,6 +4849,22 @@ public CirSim() {
 			allowSave(false);
 		}
     }
+    
+    /**
+     * Import circuit from compressed CTZ format (used in URL parameters).
+     * This allows loading circuits via JS API without reloading the entire app.
+     * 
+     * @param ctzData The LZString compressed circuit data (from ctz= URL parameter)
+     * @param subcircuitsOnly If true, only import subcircuits (keep existing elements)
+     */
+    public void importCircuitFromCTZ(String ctzData, boolean subcircuitsOnly) {
+        if (ctzData != null && !ctzData.isEmpty()) {
+            String circuitText = decompress(ctzData);
+            if (circuitText != null) {
+                importCircuitFromText(circuitText, subcircuitsOnly);
+            }
+        }
+    }
 
     String dumpOptions() {
 	int f = (dotsCheckItem.getState()) ? 1 : 0;
@@ -4812,10 +4883,6 @@ public CirSim() {
 	if (!voltageUnitSymbol.equals("V")) {
 	    dump += "% voltageUnit " + CustomLogicModel.escape(voltageUnitSymbol) + "\n";
 	}
-	
-	// Add canvas transform (zoom and position)
-	// Save as: % transform scale translateX translateY
-	dump += "% transform " + transform[0] + " " + transform[4] + " " + transform[5] + "\n";
 	
 	return dump;
     }
@@ -5097,8 +5164,40 @@ public CirSim() {
 			    String settingType = st.nextToken();
 			    if (settingType.equals("voltageUnit") && st.hasMoreTokens()) {
 				voltageUnitSymbol = CustomLogicModel.unescape(st.nextToken());
+			    } else if (settingType.equals("viewport") && st.hasMoreTokens()) {
+				// Parse viewport: minX minY maxX maxY (circuit coordinates)
+				// Calculate transform to fit this viewport into current canvas
+				try {
+				    int viewMinX = Integer.parseInt(st.nextToken());
+				    int viewMinY = Integer.parseInt(st.nextToken());
+				    int viewMaxX = Integer.parseInt(st.nextToken());
+				    int viewMaxY = Integer.parseInt(st.nextToken());
+				    
+				    // Calculate transform to show this viewport
+				    setCircuitArea();
+				    int viewWidth = viewMaxX - viewMinX;
+				    int viewHeight = viewMaxY - viewMinY;
+				    
+				    if (viewWidth > 0 && viewHeight > 0) {
+				        // Calculate scale to fit viewport into canvas
+				        double scaleX = (double)circuitArea.width / viewWidth;
+				        double scaleY = (double)circuitArea.height / viewHeight;
+				        double scale = Math.min(scaleX, scaleY);
+				        
+				        // Calculate translation to center the viewport
+				        double translateX = (circuitArea.width - viewWidth * scale) / 2 - viewMinX * scale;
+				        double translateY = (circuitArea.height - viewHeight * scale) / 2 - viewMinY * scale;
+				        
+				        transform[0] = transform[3] = scale;
+				        transform[4] = translateX;
+				        transform[5] = translateY;
+				        transformLoaded = true;
+				    }
+				} catch (Exception e) {
+				    // Ignore parse errors
+				}
 			    } else if (settingType.equals("transform") && st.hasMoreTokens()) {
-				// Parse canvas transform: scale translateX translateY
+				// Legacy support: Parse canvas transform: scale translateX translateY
 				try {
 				    double scale = Double.parseDouble(st.nextToken());
 				    double translateX = Double.parseDouble(st.nextToken());
@@ -5190,9 +5289,16 @@ public CirSim() {
 //	if (!retain)
 	//    handleResize(); // for scopes
 	needAnalyze();
-	// Only auto-center if no transform was loaded and RC_NO_CENTER flag not set
-	if ((flags & RC_NO_CENTER) == 0 && !transformLoaded)
-		centreCircuit();
+	
+	// Look for ViewportElm to determine initial view
+	if ((flags & RC_NO_CENTER) == 0 && !transformLoaded) {
+	    ViewportElm viewportElm = findViewportElm();
+	    if (viewportElm != null) {
+	        applyViewportTransform(viewportElm);
+	    } else {
+	        centreCircuit();
+	    }
+	}
 	if ((flags & RC_SUBCIRCUITS) != 0)
 	    updateModels();
 	
@@ -7339,6 +7445,7 @@ public CirSim() {
     	case 215: return new CCCSElm(x1, y1, x2, y2, f, st);
     	case 216: return new OhmMeterElm(x1, y1, x2, y2, f, st);
     	case 217: return new PieChartElm(x1, y1, x2, y2, f, st);
+    	case 263: return new ViewportElm(x1, y1, x2, y2, f, st);
     	
    		case 250: return new MultiplyElm(x1, y1, x2, y2, f, st);
    		case 251: return new AdderElm(x1, y1, x2, y2, f, st);
@@ -7622,6 +7729,8 @@ public CirSim() {
 		return (CircuitElm) new OhmMeterElm(x1, y1);
     	if (n=="PieChartElm")
 		return (CircuitElm) new PieChartElm(x1, y1);
+    	if (n=="ViewportElm")
+		return (CircuitElm) new ViewportElm(x1, y1);
     	if (n=="ScopeElm")
     	    	return (CircuitElm) new ScopeElm(x1,y1);
     	if (n=="FuseElm")
@@ -8221,7 +8330,8 @@ public CirSim() {
 	        getElements: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::getJSElements()(); } ),
 	        getCircuitAsSVG: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::doExportAsSVGFromAPI()(); } ),
 	        exportCircuit: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::dumpCircuit()(); } ),
-	        importCircuit: $entry(function(circuit, subcircuitsOnly) { return that.@com.lushprojects.circuitjs1.client.CirSim::importCircuitFromText(Ljava/lang/String;Z)(circuit, subcircuitsOnly); })
+	        importCircuit: $entry(function(circuit, subcircuitsOnly) { return that.@com.lushprojects.circuitjs1.client.CirSim::importCircuitFromText(Ljava/lang/String;Z)(circuit, subcircuitsOnly); }),
+	        importCircuitFromCTZ: $entry(function(ctzData, subcircuitsOnly) { return that.@com.lushprojects.circuitjs1.client.CirSim::importCircuitFromCTZ(Ljava/lang/String;Z)(ctzData, subcircuitsOnly); })
 	    };
 	    var hook = $wnd.oncircuitjsloaded;
 	    if (hook)
