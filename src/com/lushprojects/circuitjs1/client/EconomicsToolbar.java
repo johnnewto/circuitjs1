@@ -52,7 +52,7 @@ public class EconomicsToolbar extends Toolbar {
 
 	add(createButtonSet(tableInfo));
 	String equationInfo[] = { multiplyIcon, "MultiplyElm", multiplyConstIcon, "MultiplyConstElm", dividerIcon, "DividerElm",
-	    differentiatorIcon, "DifferentiatorElm", integratorIcon, "IntegratorElm", odeIcon, "ODEElm",
+	    divideConstIcon, "DivideConstElm", differentiatorIcon, "DifferentiatorElm", integratorIcon, "IntegratorElm", odeIcon, "ODEElm",
 	    equationIcon, "EquationElm", percentIcon, "PercentElm", adderIcon, "AdderElm", subtracterIcon, "SubtracterElm"
 	};
 	add(createButtonSet(equationInfo));
@@ -259,6 +259,8 @@ public class EconomicsToolbar extends Toolbar {
     final String multiplyConstIcon = "<svg><rect x='3' y='3' width='18' height='18' rx='2' fill='none' stroke='currentColor' stroke-width='2' /><text x='12' y='14.5' fill='blue' font-size='11' font-weight='bold' text-anchor='middle' dominant-baseline='middle'>×K</text></svg>";
     
     final String dividerIcon = "<svg><rect x='3' y='3' width='18' height='18' rx='2' fill='none' stroke='currentColor' stroke-width='2' /><text x='12' y='14.5' fill='blue' font-size='14' font-weight='bold' text-anchor='middle' dominant-baseline='middle'>÷</text></svg>";
+    
+    final String divideConstIcon = "<svg><rect x='3' y='3' width='18' height='18' rx='2' fill='none' stroke='currentColor' stroke-width='2' /><text x='12' y='14.5' fill='blue' font-size='11' font-weight='bold' text-anchor='middle' dominant-baseline='middle'>÷K</text></svg>";
     
     final String differentiatorIcon = "<svg><rect x='3' y='3' width='18' height='18' rx='2' fill='none' stroke='currentColor' stroke-width='2' /><text x='12' y='14.5' fill='blue' font-size='9' font-weight='bold' text-anchor='middle' dominant-baseline='middle' font-style='italic'>d/dt</text></svg>";
     

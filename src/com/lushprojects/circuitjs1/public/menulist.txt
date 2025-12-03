@@ -12,6 +12,7 @@ ResistorElm|Resistor||r
 MultiplyElm|Multipler||m
 MultiplyConstElm|Multiply by Constant||x
 DividerElm|Divider
+DivideConstElm|Divide by Constant
 DifferentiatorElm|Differentiator
 IntegratorElm|Integrator
 ODEElm|ODE

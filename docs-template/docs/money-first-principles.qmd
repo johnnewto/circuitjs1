@@ -36,7 +36,7 @@ toc: false
   <!-- Right panel: Scrolling content -->
   <div class="split-right">
 
-<div id="intro" class="circuit-section" data-name="Transaction Tables (Godley Tables)" data-circuit="/circuitjs.html?ctz=CQAgbArCAMB00IVAjHATAtB2LBmaAHGmAJwlYgTSWXUQCmAtMsgFBoRS5ojJoEgC1PgOo8w4XhOoAXAE4BXeiB7UAZgEMANgGdlUWYuUAhDQDsA1jpAAdagCV6euQDcnIABIB7BXu9aAE2sAMQBLOQBbawBRAEcFUJkATxBTSx04hOSQAEFGABlGaJAABQ0kmx0AdQ0Ac3cAYS8zHQUIgAcZUObeBBVqLGFqYdyAZVHogBUQfIBJHONZucmATRn5xeW16IBFAFVZ1ZBdg6OGgHkAWRK9yeiAEVtqGvrrF-c7J6-PxiaWtuUf1aEWUnzBw3g0DYAA8VGgSCASOI0MhEVAACwqTGTOTmHQaADGXWalUmGgARlonJUABQAcS8ASpFR0ZMpTgAlIJCDzgsF2NAKINMbgIDwsGABKKeLgJO8dAKhdARRgQBKparZSAgQD2GBcFJwJiCFhUbgSCNLhpQmZWABSMbTVFsIA&editable=false
+<div id="intro" class="circuit-section" data-name="Transaction Tables (Godley Tables)" data-circuit="/circuitjs.html?ctz=CQAgbArCAMB03SgRlgZgEwBYnurpAnEhJOuiBNBRVRAKYC0SSAUOhFBiDgBwg9VeMEOTDhuYqgBcATgFc6I4QDMAhgBsAzoqjT5igEKqAdgGtNIADpUASnW0yAbvZAAJAPZztH9QBMLAGIAljIAthYAogCOckFSAJ4gRmaa0bEJIACCDAAyDBEgAAqq8ZaaAOqqAOYuAMLuxppyoQAOUkEN3AgiVADsglSDWQDKwxEAKiA5AJKZBtMz4wCaU7PziysRAIoAqtPLINt7B7UA8gCyhTvjEQAiVlSVNRYMTy7WD58fDPWNzYq-JqhRQfUGDeDQVgADxE6AIIAIonQSARUEwInR4xkJk0qgAxu0GmVxqoAEbqexlAAUAHF3L4KaVNCTyfYAJT8aACAQBAJsaC9ECYLgYKjC8ioMB8SUgN6afmC1Ay9A8aW4EQkEAymm3QpsMCoCTgdE8Xoo1AEIbnVRBYwKjFUFV8QjkJ1asTBMLy9BgdFYR2qjViN0ouAWqyWElyAD6AG9PeEAL76v1YLU8P2a1AZ7gwWDsCNRuOuVzJgDuIkDbqVwcD0BYFZrlelObd9fY0ploq1EAl6sNcDEbzjmgAFqoZHRy1qu-3lXX7ehehKc03s+iZYD-mxe0KRdB0ZhMNKD7n0A30xv1eKter6xWb6hT+vmzB7ceqE-0RAj1rn2JChkdxlDib0BVhDccyQXoxBfGUPC8OgfH8Fh3CNdFBBVaBJAhSE8wQPCqGdWDuHITCtSUR0KIHajUOoDChTAJB0SQMBwRRFFvwo6DhB41AWGzcQAg43iQCYQtVBjeMQiTN8AFIRkmDiWCAA&editable=false
 ">
 
 # Money from First Principles
@@ -113,13 +113,34 @@ $$\frac{dReserves}{dt} = 0$$
 
 $$\frac{dCB_{Equity}}{dt} = 0$$
 
-These equations can be implemented in CircuitJS using Godly Tables, consisting of Flows on the rows, Stocks on the columns.
+These equations can be implemented in CircuitJS using Godly Tables, consisting of Flows on the rows, Stocks on the columns. The bottom row value is the integration of all the flows of that column.
+
+
+This makes it possible to develop economic models with these tables, by defining these flows in terms of each other and relevant parameters. Here we implement this in CircuitJS, using the same approach as Matlab does with Simulink: flowcharts are used to generate equations for numerical simulation.
+
+Parameters and flows:
+
+$$Wage_{share} = 0.6; \quad \tau_{Firms} = 0.25; \quad \tau_{HH} = 0.5$$
+
+$$GDP = \frac{Firms}{\tau_{Firms}}$$
+
+$$Wages = GDP \times Wage_{share}$$
+
+$$Consume = \frac{Households}{\tau_{HH}} \quad (3)$$
+
+$$Credit = GDP \times Credit_{share}$$
+
+$$Interest = Debt_{Firms} \times Int_{rate}$$
+
+This system is **sustainable** with only private sector debt.
+
+</div>
 
 ## Two Competing Models of Banking
 
 The answer to whether deficits cause crises depends entirely on which model of banking is correct:
 
-<div id="loanable-funds" class="circuit-section" data-name="Loanable Funds Model" data-circuit="../circuitjs.html?ctz=CQAgzCAMB0mQrCATAdmi1SkA4As8kwBGMMATmxF1xHjklofgFMBaIogKCXkVYDZsDAXBACi-Mf1EMkVEJIlQQAFwBOAV2bJlAMwCGAGwDO2xA3VaQAMQCWagLbGQAHQZ3HzgBJyPTgPoA3gCiAI4atioAngC+IACCrAAyrMEgAAr6US7GAOr6AObMzgDCAPYAdsYaDgAOKraVICgMDC3K8QDKncEAKiBJAJLxAEKDQ70AmiDBAIoAqoNTICUA8gCy6fO9wQAiYvlFzm4HhcWuDOVVNdonV9UOt62wkFw8fILCuBhSuJSs3zksnkikkFk02iBIAMJjMyks2i8ZQ0pgAFmVDAATY4MJEo5jorHOToqMoAYwA1nIvF4gmEItE4okUml7jV6o0KhksjlDsUcshWoKOt0+gNhmMJtM5otlmtNts9mI2Y8LsrKg8niA+TjtWddTA4G9eGIUIJTThTZAaKwMJRgYhQfCIToGDDTPJwVZ0mpbAA3fQqZg5Eb6CoU3UAJWKzDUfvOeNMSKJNnsThAofDxjp4UisQSyVS3OyeX1Kw17IaTSIoiQbQYNZFPX6XWb4tG4yW0oWXZWGy2O32Jx1pyOapOE8uFdVgwqQbUxRUasNr24kBQYiEwkwm-4Np30hAnX08bUxjXG9YW7EPEkV73N-gkkPIzKajUZQA7rHz3XL9fWCQXBhGwB9AOAhQGEzCNuDoK19x+AREJ3IgdH0AAqAAjThP1NAgb0QloEKBC94IIuRbWtMQwDrSCQHWSpmCiThIzIwCnzYut7WUCCoWeRAADVmEMck81g4RpH+HdWHgM1yJAVC5Aw7DWJEKSOLUm9IG4hgIMNPioGgRAkmYCpMX8XQ1H0MkcKkDTpMk+TIFIgR7MQxzWDAc1DwAcV2dIXKfbdEPgIgKIPBgTLMwKyAosg73gagxHiujrGYZgXMEf4UoEMCiDkw9Z3nRdbIEbBsrvPdhBS5zVKqzcJIgzyDL0ozlH4mx0v8Kyg3E35qsq7TksUNCsJY00vIaia7xo9qqGeBA5pgRAitjRdusDDK-2m4advYJLLV2ZhMJUUqUDwXbbUm1gar6q67xyojdsUkBlLusB8KvYQaJAhtRuw7bPM+oRqIur66Og89VI+iiwJhsQlCFVrUKFZaj1qUzzJ6rb12oqjwfA366M6DGzP8TCwxggAPaj4AgW0wLIMhTX4VCaCAgYyjDfRMMMYNjGsDQzOMHIGMxYSQCEKXIGsaxYNQr7goolBYvk1CwBc7AOc880r3K6jvIYY9T1-fh6fOm0LakZnmo3Bh1n0WwKk4MoFIgB8GywMgFqNQz6BRnQSHAF3wAUGhPaQb2-d9ldXgUnQIA112aA9hSvZRl449jl6aBoCBzFoYOAFIEk6fpUK4IA&editable=false"></div>
+<div id="loanable-funds" class="circuit-section" data-name="Loanable Funds Model" data-circuit="../circuitjs.html?ctz=CQAgzCAMB0mQrCATAdmi1SkA4As8kwBGMMATmxF1xHjklofgFMBaIogKCXkVYDZsDAXBACi-Mf1EMkVEJIlQQAFwBOAV2bJlAMwCGAGwDO2xA3VaQAMQCWagLbGQAHQZ3HzgBJyPTgPoA3gCiAI4atioAngC+IACCrAAyrMEgAAr6US7GAOr6AObMzgDCAPYAdsYaDgAOKraVICgMDC3K8QDKncEAKiBJAJLxAEKDQ70AmiDBAIoAqoNTICUA8gCy6fO9wQAiYvlFzm4HhcWuDOVVNdonV9UOt62wkFw8fILCuBhSuJSs3zksnkikkFk02iBIAMJjMyks2i8ZQ0pgAFmVDAATY4MJEo5jorHOToqMoAYwA1nIvF4gmEItE4okUml7jV6o0KhksjlDsUcshWoKOt0+gNhmMJtM5otlmtNts9mI2Y8LsrKg8niA+TjtWddTA4G9eGIUIJTThTZAaKwMJRgYhQfCIToGDDTPJwVZ0mpbAA3fQqZg5Eb6CoU3UAJWKzDUfvOeNMSKJNnsThAofDxjp4UisQSyVS3OyeX1Kw17IaTSIoiQbQYNZFPX6XWb4tG4yW0oWXZWGy2O32Jx1pyOapOE8uFdVgwqQbUxRUasNr24kBQYiEwkwm-4Np30hAnX08bUxjXG9YW7EPEkV73N-gkkPIzKajUZQA7rHz3XL9fWCQXBhGwB9AOAhQGEzCNuDoK19x+AREJ3IgdH0AAqAAjThP1NAgb0QloEKBC94IIuRbWtMQwDrSCQHWSpmCiThIzIwCnzYut7WUCCoWeRAADVmEMck81g4RpH+HdWHgM1yJAVC5Aw7DWJEKSOLUm9IG4hgIMNPioGgRAkmYCpMX8XQ1H0MkcKkDTpMk+TIFIgR7MQxzWDAc1DwAcV2dIXKfbdEPgIgKIPBgTLMwKyAosg73gagxHiujrGYZgXMEf4UoEMCiDkw9Z3nRdbIEbBsrvPdhBS5zVKqzcJIgzyDL0ozlH4mx0v8Kyg3E35qsq7TksUNCsJY00vIaia7xo9qqGeBA5pgRAitjRdusDDK-2m4advYJLLV2ZhMJUUqUDwXbbUm1gar6q67xyojdsUkBlLusB8KvYQaJAhtRuw7bPM+oRqIur66Og89VI+iiwJhsQlCFVrUKFZaj1qUzzJ6rb12oqjwfA366M6DGzP8TCwxggAPaj4AgW0wLIMhTX4VCaCAgYyjDfRMMMYNjGsDQzOMHIGMxYSQCEKXIGsaxYNQr7goolBYvk1CwBc7AOc880r3K6jvIYY9T1-fh6fOm0LakZnmo3Bh1n0WwKk4MoFIgB8GywMgFqNQz6BRnQSHAF3wAUGhPaQb2-d9ldXgUnQIA112aA9hSvZRl449jl6aBoCBzFoYOAFIEk6fpUK4IA&editable=false">
 
 ### 1. Loanable Funds Model
 
@@ -204,8 +225,8 @@ Running with 1% deficit (Spend = 21% GDP, Tax = 20% GDP):
 - System becomes **unsustainable**
 
 **Conclusion**: Under Loanable Funds, sustained deficits cause inevitable fiscal crisis.
-
-<div id="bomd-model" class="circuit-section" data-name="BOMD Model" data-circuit="../circuitjs.html?startCircuit=bomd-demo.txt&editable=false"></div>
+</div>
+<div id="bomd-model" class="circuit-section" data-name="BOMD Model" data-circuit="../circuitjs.html?startCircuit=bomd-demo.txt&editable=false">
 
 ### 2. Endogenous Money Model (BOMD)
 
@@ -322,9 +343,9 @@ In the BOMD model:
 - Government deficit ADDS to private sector equity
 - This is not a theory—it's an accounting identity
 
-<div id="implementation" class="circuit-section" data-name="CircuitJS Implementation" data-circuit="../circuitjs.html?startCircuit=implementation.txt&editable=false"></div>
+</div>
 
-## Implementing in CircuitJS
+<div id="implementation" class="circuit-section" data-name="CircuitJS Implementation" data-circuit="../circuitjs.html?startCircuit=implementation.txt&editable=false">
 
 ### Building the Loanable Funds Model
 
@@ -357,6 +378,8 @@ In the BOMD model:
    - Scope: IntGov / GDP ratio
    - Pie Chart: Sectoral balances
 
+</div>
+
 ### Building the BOMD Model
 
 1. **Restructure Tables**
@@ -379,6 +402,9 @@ In the BOMD model:
    - Observe debt/GDP trajectories
    - Verify stability differences
 
+
+
+## Implementing in CircuitJS
 ### Visualization Tips
 
 - **Current Transactions Matrix**: Shows all flows between sectors
