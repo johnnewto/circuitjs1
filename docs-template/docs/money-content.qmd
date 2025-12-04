@@ -20,14 +20,20 @@ format:
 #quarto-content {
   margin-top: 0 !important;
 }
+/* Hide the built-in TOC since we're sending it to parent */
+#TOC, nav#TOC, .toc, #quarto-margin-sidebar {
+  display: none !important;
+}
+/* Compact table rows */
+table {
+  font-size: 0.85em;
+}
+table th, table td {
+  padding: 0.2em 0.5em !important;
+  line-height: 1.2;
+}
 </style>
 <script src="circuitjs-utils.js"></script>
-<script>
-// Initialize scroll detection when page loads
-document.addEventListener('DOMContentLoaded', function() {
-  CircuitJSUtils.initScrollDetection();
-});
-</script>
 
 <!-- Content panel for Money from First Principles -->
 
@@ -195,43 +201,110 @@ From mainstream textbooks:
 - **NOT on bank balance sheets** as assets
 
 </div> <!-- end circuit-section -->
-<div id="loanable-funds" class="circuit-section" data-name="Loanable Funds Model" data-circuit="../circuitjs.html?ctz=CQAgzCAMB0mQrCATAdmi1SkA4As8kwBGMMATmxF1xHjklofgFMBaIogKCXkVYDZsDAXBACi-Mf1EMkVEJIlQQAFwBOAV2bJlAMwCGAGwDO2xA3VaQAMQCWagLbGQAHQZ3HzgBJyPTgPoA3gCiAI4atioAngC+IACCrAAyrMEgAAr6US7GAOr6AObMzgDCAPYAdsYaDgAOKraVICgMDC3K8QDKncEAKiBJAJLxAEKDQ70AmiDBAIoAqoNTICUA8gCy6fO9wQAiYvlFzm4HhcWuDOVVNdonV9UOt62wkFw8fILCuBhSuJSs3zksnkikkFk02iBIAMJjMyks2i8ZQ0pgAFmVDAATY4MJEo5jorHOToqMoAYwA1nIvF4gmEItE4okUml7jV6o0KhksjlDsUcshWoKOt0+gNhmMJtM5otlmtNts9mI2Y8LsrKg8niA+TjtWddTA4G9eGIUIJTThTZAaKwMJRgYhQfCIToGDDTPJwVZ0mpbAA3fQqZg5Eb6CoU3UAJWKzDUfvOeNMSKJNnsThAofDxjp4UisQSyVS3OyeX1Kw17IaTSIoiQbQYNZFPX6XWb4tG4yW0oWXZWGy2O32Jx1pyOapOE8uFdVgwqQbUxRUasNr24kBQYiEwkwm-4Np30hAnX08bUxjXG9YW7EPEkV73N-gkkPIzKajUZQA7rHz3XL9fWCQXBhGwB9AOAhQGEzCNuDoK19x+AREJ3IgdH0AAqAAjThP1NAgb0QloEKBC94IIuRbWtMQwDrSCQHWSpmCiThIzIwCnzYut7WUCCoWeRAADVmEMck81g4RpH+HdWHgM1yJAVC5Aw7DWJEKSOLUm9IG4hgIMNPioGgRAkmYCpMX8XQ1H0MkcKkDTpMk+TIFIgR7MQxzWDAc1DwAcV2dIXKfbdEPgIgKIPBgTLMwKyAosg73gagxHiujrGYZgXMEf4UoEMCiDkw9Z3nRdbIEbBsrvPdhBS5zVKqzcJIgzyDL0ozlH4mx0v8Kyg3E35qsq7TksUNCsJY00vIaia7xo9qqGeBA5pgRAitjRdusDDK-2m4advYJLLV2ZhMJUUqUDwXbbUm1gar6q67xyojdsUkBlLusB8KvYQaJAhtRuw7bPM+oRqIur66Og89VI+iiwJhsQlCFVrUKFZaj1qUzzJ6rb12oqjwfA366M6DGzP8TCwxggAPaj4AgW0wLIMhTX4VCaCAgYyjDfRMMMYNjGsDQzOMHIGMxYSQCEKXIGsaxYNQr7goolBYvk1CwBc7AOc880r3K6jvIYY9T1-fh6fOm0LakZnmo3Bh1n0WwKk4MoFIgB8GywMgFqNQz6BRnQSHAF3wAUGhPaQb2-d9ldXgUnQIA112aA9hSvZRl449jl6aBoCBzFoYOAFIEk6fpUK4IA&editable=false">
+<div id="loanable-funds" class="circuit-section" data-name="Loanable Funds Model" data-circuit="../circuitjs.html?ctz=CQAgbA7CAMB00EYawCwIEwGZMFZ0E58J0x8AOdBTEFFEHaR+6egUwFoEEAoAUhABuAewA2AFwCGAc1YBVAHYBLMSGDd0OHCHYR86bZnQsd6MgaMx6NcCARhLYgE4BXViH0snrq55duAYoqOALYAziAAOiyBIeGwsCAxYQD6AN4AogCOzsoAngC+IACC7AAy7OkgAAoSuRGhAOrSrOEAQs51oQDiQkIAJm1Cjo5CAO71ALJC8qy5IK0S8gDWofUAygAOrPJ91bX1AJLyYqyOLSoMlpcsRWtr6QAqIKUHRa0HLw8AmiDpAIqyA7fEAAYQA8hMqrIHukACLaJoycJRBHNZEsEHTULOYJuFGY+TY3GRDFnPrKEmgskUlGbbZ9NILZahQq0rY7RmLFas4xHMRpJIsynsPkCoJhHnIRg8DRaHR6bQoMhmHRgYxKswsLRaex2Bx+dyWABmEhEoTcWl83gAEkJnOaABaiAaU2321i2kQu2GsABG-NSgsKCWt1rSWRyYgKxTKFT2nURLXq8yGI3GoSmMzmNU6fNO53j9SZS3q-lYbnanR6-XCKBY9ZoDdu9yezcez1e70+P3+gOB4Mh0LhIET6Mpo+FIOpKinrHJKhRi5YosD4qFS5AK6DwrLeJYKPYu8nWJxe+PhNPlLg0vUmm0un07Egj+IKuflnsOts9itbg8IBNM03B-EAvDcKpHEUAQJBOIsuTHAAlFpTgEFoQDdc1PRdQV5ngmNykqHN6gnSt6mrF1WlTMZJmmWZC1CPMzlCFQiNCYtS3LXDmXWdldgQJg62YWwmzudsXjeD4gR+cSuyk34ATkgcoRheEUQndgJw3A8CSJNwdMvLTjFnecqTnGl9wszdjjFWJChFazV1sykN0PTiUSPQyQDpDlUmLIV2G8hlfPgyVr0QbgAA9tE0agnzIWKCHwbQwDIFg6HQOhSiERYJF9ERWFLZwdlWDN+lYEQQFSqroH8fx1DAWKyF0e8EC0Mg6HYTA6BYCYJEUeR1GgKB2HQDLtAQCB7E4SbxpmzB7EzWZBuG9BiHGtUDGgDq7BYeb0LtTDnVCZbtFWx8JqmzAttm+w9sFW8kBGtbpqmjLjAu2x3FvN8wG2iwnyVcaLCQDBYC0AA1NJQ3yb6WsfSgptIV69SQOhIcciUTqfX6geMCAMFxkA9owj0jqxlBnqMdVDFOpg9ogoQjWUY7Rmi-6qeilLTr1aBuFZ9gcC5zh2rZ96Rd5jRHzwYwOYF66RqYJB0CxsA9U4f7NHOiw9v03E+eStWEBFp81YRmBYZNqajY6tUxboag4HsRM0jWB0JDOGH+dV5GpsFlUzd5r2cZGtXve5n8sfx+G1cmmW9TutcVdN0OaZGwG9q6WEqix6XxuN3POD2vbRyTqbns1+99B16cVeD56o8ron7Ez7ONB+jrnt+lU1od+AUEIAfB6HpLjOUNIEJg1gYbb076-hwXG97rbh5XwgrIDCeTmnobZ5fR9MAJkwm5AH1-RszGjBWsaj84Daj72rc1234bBM4eWVX4+37D88n3qFj+ubEwOqTL0x1L6Kjxo+bu+g6D3XAW-DqZ1xq0F3tYFuWNP6nWVEDf22C6CnwDEGW8w1MEjWwewfAr1sFKxABIAAVAACgQAAegYb6AAhBETI0AAD8voABcCAOD4AAJQiJzlQ-2iDsF7QIWkFuz8IHjQVOwD+CoH4OSIfA62p1X6tXhoJO65YsZYAMTLSmhj7CP1shbUxui46vUMcgJAu5x6T0UewPRphLDqzMHtQKnJmQePIRgD+e1fHHx-jPVRH9vE31CZ9JA6M-IwyEETJAmoaCqzoL9essAkAsD8UgagV1LClJKf+Gm1BRqWBqZgbgaS9qZJQNk2wsANDOM+lXW63BMBmBIIkEG2g4AFPyeNUy843FbylDwPp7goD+CGewEZnTODrymVPGZfBihrCeCDbgQA&editable=false
+">
 
 #### Godley Table Structure (Loanable Funds)
 
 Complete analysis requires four tables (Banks, Households, Firms, Central Bank) with each transaction appearing four times.
+
 **Private Banks:**
-- Assets: Reserves
-- Liabilities: Households, Firms  
-- Equity: BanksEquity
+
+| Flows↓/Stocks→    | Reserves | Households | Firms | $Banks$ | A-L-E |
+|:---               |---:|---:|---:|---:|---:|
+| **Type**          | Asset | Liability | Liability | Equity | |
+| **Initial**       | 100 | 40 | 50 | 10 | 0 |
+| **Pay Wages**     |  | +Wages | -Wages |  |  |
+| **Buy Goods**     |  | -Consume | +Consume |  |  |
+| **Borrow Money**  |  | -Credit | +Credit |  |  |
+| **Pay Interest**  |  | $Int_{Firms}$ | $-Int_{Firms}$ |  |
+| **Pay Bank Fee**  |  | -Fee |  | Fee |
+| **Banks Spend**   |  |  | $Spend_{Banks}$ | $-Spend_{Banks}$ |
+| **∫ Flows**       | 100 | 20+∫ | 70+∫ | 10 | 0 |
 
 **Households:**
-- Assets: Households (deposits), **DebtFirms** (loans to firms)
-- Liabilities: None
-- Equity: HHEquity
+
+| Flows↓/Stocks→  | Households | $Debt_{Firms}$ | $HH_{Equity}$ | A-L-E |
+|:---             |---:|---:|---:|---:|
+| **Type**        | Asset | Asset | Equity | |
+| **Initial**     | 20 | 0 | 20 | 0 |
+| **Pay Wages**   | +Wages |  | +Wages |  |
+| **Buy Goods**   | -Consume |  | -Consume |  |
+| **Borrow Money**| -Credit | +Credit |  |  |
+| **Pay Interest**| +$Int_{Firms}$ |  | +$Int_{Firms}$ |  |
+| **Pay Bank Fee**| -Fee |  | -Fee |  |
+| **∫ Flows**     | 20+∫ | 0+∫ | 20+∫ | 0 |
 
 **Firms:**
-- Assets: Firms (deposits)
-- Liabilities: **DebtFirms** (borrowed from households)
-- Equity: FirmsEquity
+
+| Flows↓/Stocks→ | Firms | $Debt_{Firms}$ | $Firms_{Equity}$ | A-L-E |
+|:---|---:|---:|---:|---:|
+| **Type** | Asset | Liability | Equity | |
+| **Initial** | 70 | 0 | 70 | 0 |
+| **Pay Wages** | -Wages |  | -Wages |  |
+| **Buy Goods** | +Consume |  | +Consume |  |
+| **Borrow Money** | +Credit | +Credit |  |  |
+| **Pay Interest** | -$Int_{Firms}$ |  | -$Int_{Firms}$ |  |
+| **Banks Spend** | +$Spend_{Banks}$ |  | +$Spend_{Banks}$ |  |
+| **∫ Flows** | 70+∫ | 0+∫ | 70+∫ | 0 |
 
 #### Basic Flows (Without Government)
 
 Parameters and flows:
 
-$$Wage_{share} = 0.6; \quad \tau_{Firms} = 0.25; \quad \tau_{HH} = 0.5$$
+$$Wage_{Share} = 60\%; \quad V_{Firms} = 4; \quad V_{HH} = 12.5  \quad V_{Banks} = 1 $$
 
-$$GDP = \frac{Firms}{\tau_{Firms}}$$
+$$Int_{Rate} = 5\% \quad Fee_{Rate} = 10\% \quad Credit_{Rate} = 0\%$$
+$$GDP = {Firms} \times  {V_{Firms}}$$
 
-$$Wages = GDP \times Wage_{share}$$
+$$Wages = GDP \times Wage_{Share}$$
 
-$$Consume = \frac{Households}{\tau_{HH}} \quad (3)$$
+$$Consume = {Households} \times {V_{HH}} \quad (3)$$
 
-$$Credit = GDP \times Credit_{share}$$
+$$Credit = GDP \times Credit_{Rate}$$
 
-$$Interest = Debt_{Firms} \times Int_{rate}$$
+$$Int_{Firms} = Debt_{Firms} \times Int_{Rate}$$
 
-This system is **sustainable** with only private sector debt.
+$$Fee = Int_{Firms} \times Fee_{Rate}$$
+
+$$Int_{Firms} = Debt_{Firms} \times Int_{Rate}$$
+
+$$Spend_{Banks} = {Banks} \times  {V_{Banks}}$$
+
+Adjusting the slider for the Firms spend rate $V_{Firms}$ will change the allocation of money and GDP.
+
+
+  <button onclick="CircuitJSUtils.toggleSlider('Credit_{Rate}', 2, 1000)" class="slider-toggle-btn">
+    <span class="btn-icon">⚡</span> Toggle Credit<sub>Rate</sub> ±50%
+  </button>
+  <button onclick="CircuitJSUtils.toggleSlider('Int_{Rate}', 0.5, 1000)" class="slider-toggle-btn">
+    <span class="btn-icon">⚡</span> Toggle Int<sub>Rate</sub> ±50%
+  </button>
+
+
+<table id="loanable-funds-table" class="realtime-table">
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="rt-label">Loading...</td><td class="rt-value">—</td></tr>
+  </tbody>
+</table>
+
+<script>
+  // Start the realtime table after page loads
+  document.addEventListener('DOMContentLoaded', function() {
+    // Wait for CircuitJS to be ready, then start table updates
+          // startRealtimeTable('money-gdp-table', ['Firms', 'HouseHolds', 'Banks_{Equity}', 'GDP'], 200);
+    setTimeout(() => {
+      startRealtimeTable('loanable-funds-table', ['Firms', 'HouseHolds', 'Banks', 'GDP', 'Debt_{GDP}', 'HH_{Equity}'], 200);
+    }, 2000);
+  });
+</script>
+This system is **sustainable** with only private sector debt does not get too large. But the growth of GDP is slow, there is a slow growth in household net equity and no growth in the value of firms.
 
 #### Adding Government Sector
 
@@ -292,36 +365,64 @@ Endorsed by central banks after 2008:
 #### Godley Table Structure (BOMD)
 
 **Private Banks:**
-- Assets: Reserves, **DebtFirms**, **DebtGov**
-- Liabilities: Households, Firms
-- Equity: BanksEquity
+
+| Flows↓/Stock Vars → | Reserves | $Debt_{Firms}$ | $Debt_{Gov}$ | Households | Firms | $Banks_{Equity}$ | A-L-E |
+|:---|---:|---:|---:|---:|---:|---:|---:|
+| **Type** | Asset | Asset | Asset | Liability | Liability | Equity | |
+| **Initial Conditions** | 100 | 0 | 0 | 20 | 70 | 10 | 0 |
+| **Pay Wages** | 0 | 0 | 0 | +Wages | -Wages | 0 | 0 |
+| **Consumption** | 0 | 0 | 0 | -Consume | +Consume | 0 | 0 |
+| **Credit** | 0 | +Credit | 0 | 0 | +Credit | 0 | 0 |
+| **Interest (Firms)** | 0 | 0 | 0 | 0 | -Interest | +Interest | 0 |
+| **∫ Flows** | 100 | 0+∫ | 0+∫ | 20+∫ | 70+∫ | 10+∫ | 0 |
 
 **Households:**
-- Assets: Households (deposits **only**)
-- Liabilities: None
-- Equity: HHEquity
+
+| Flows↓/Stock Vars → | Households | $HH_{Equity}$ | A-L-E |
+|:---|---:|---:|---:|
+| **Type** | Asset | Equity | |
+| **Initial Conditions** | 20 | 20 | 0 |
+| **Pay Wages** | +Wages | +Wages | 0 |
+| **Consumption** | -Consume | -Consume | 0 |
+| **∫ Flows** | 20+∫ | 20+∫ | 0 |
 
 **Firms:**
-- Assets: Firms (deposits)
-- Liabilities: None (debt is now bank asset!)
-- Equity: FirmsEquity
+
+| Flows↓/Stock Vars → | Firms | $Firms_{Equity}$ | A-L-E |
+|:---|---:|---:|---:|
+| **Type** | Asset | Equity | |
+| **Initial Conditions** | 70 | 70 | 0 |
+| **Pay Wages** | -Wages | -Wages | 0 |
+| **Consumption** | +Consume | +Consume | 0 |
+| **Credit** | +Credit | +Credit | 0 |
+| **Interest** | -Interest | -Interest | 0 |
+| **∫ Flows** | 70+∫ | 70+∫ | 0 |
 
 **Central Bank:**
-- Assets: None
-- Liabilities: Reserves, Government
-- Equity: CBEquity
+
+| Flows↓/Stock Vars → | Reserves | Government | $CB_{Equity}$ | A-L-E |
+|:---|---:|---:|---:|---:|
+| **Type** | Liability | Liability | Equity | |
+| **Initial Conditions** | 100 | 0 | -100 | 0 |
+| **∫ Flows** | 100 | 0+∫ | -100+∫ | 0 |
 
 **Treasury:**
-- Assets: Government (at Central Bank)
-- Liabilities: DebtGov (to private banks)
-- Equity: TreasuryEquity
+
+| Flows↓/Stock Vars → | Government | $Debt_{Gov}$ | $Treasury_{Equity}$ | A-L-E |
+|:---|---:|---:|---:|---:|
+| **Type** | Asset | Liability | Equity | |
+| **Initial Conditions** | 0 | 0 | 0 | 0 |
+| **Gov Spending** | -Spend | 0 | -Spend | 0 |
+| **Tax** | +Tax | 0 | +Tax | 0 |
+| **Bonds** | +Bonds | +Bonds | 0 | 0 |
+| **∫ Flows** | 0+∫ | 0+∫ | 0+∫ | 0 |
 
 #### Key Structural Difference
 
 In BOMD, **money creation occurs on the Asset side** of bank balance sheets:
 
-- Credit creates DebtFirms (bank asset) + Firm deposits
-- Bond sales create DebtGov (bank asset) + Government account
+- Credit creates $Debt_{Firms}$ (bank asset) + Firm deposits
+- Bond sales create $Debt_{Gov}$ (bank asset) + Government account
 - In Loanable Funds, all operations are on Liabilities/Equity side (cancel out)
 
 #### Differential Equations (BOMD)

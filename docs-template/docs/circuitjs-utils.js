@@ -701,8 +701,202 @@
     initScrollDetection: setupScrollDetection,
     setupScrollDetection: setupScrollDetection,
     initSplitPanel: initSplitPanel,
-    initResizer: initResizer
+    initResizer: initResizer,
+    sendTOCToParent: sendTOCToParent,
+    initParentTOCListener: initParentTOCListener,
+    toggleMenuPanel: toggleMenuPanel,
+    openMenuPanel: openMenuPanel,
+    closeMenuPanel: closeMenuPanel,
+    toggleFullscreen: toggleFullscreen
   };
+
+  // ============================================================================
+  // SLIDE-OUT MENU & TOC COMMUNICATION
+  // ============================================================================
+
+  /**
+   * Toggle fullscreen mode for the page.
+   * Used by fullscreen button in parent page.
+   */
+  function toggleFullscreen() {
+    var btn = document.querySelector('.fullscreen-btn');
+    
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      // Enter fullscreen
+      var elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen();
+      } else if (elem.webkitRequestFullscreen) {
+        elem.webkitRequestFullscreen();
+      }
+      if (btn) btn.classList.add('is-fullscreen');
+    } else {
+      // Exit fullscreen
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+      if (btn) btn.classList.remove('is-fullscreen');
+    }
+  }
+
+  // Listen for fullscreen changes (e.g., user pressing Escape)
+  document.addEventListener('fullscreenchange', function() {
+    var btn = document.querySelector('.fullscreen-btn');
+    if (btn) {
+      if (document.fullscreenElement) {
+        btn.classList.add('is-fullscreen');
+      } else {
+        btn.classList.remove('is-fullscreen');
+      }
+    }
+  });
+
+  document.addEventListener('webkitfullscreenchange', function() {
+    var btn = document.querySelector('.fullscreen-btn');
+    if (btn) {
+      if (document.webkitFullscreenElement) {
+        btn.classList.add('is-fullscreen');
+      } else {
+        btn.classList.remove('is-fullscreen');
+      }
+    }
+  });
+
+  /**
+   * Toggle the slide-out menu panel.
+   * Used by menu button in parent page.
+   */
+  function toggleMenuPanel() {
+    var panel = document.querySelector('.menu-panel');
+    var overlay = document.querySelector('.menu-panel-overlay');
+    if (panel) panel.classList.toggle('open');
+    if (overlay) overlay.classList.toggle('open');
+  }
+
+  /**
+   * Open the slide-out menu panel.
+   * Used by hover trigger.
+   */
+  function openMenuPanel() {
+    var panel = document.querySelector('.menu-panel');
+    var overlay = document.querySelector('.menu-panel-overlay');
+    if (panel) panel.classList.add('open');
+    if (overlay) overlay.classList.add('open');
+  }
+
+  /**
+   * Close the slide-out menu panel.
+   */
+  function closeMenuPanel() {
+    var panel = document.querySelector('.menu-panel');
+    var overlay = document.querySelector('.menu-panel-overlay');
+    if (panel) panel.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
+  }
+
+  /**
+   * Send TOC data to parent frame (called from content iframe).
+   * Builds TOC from h1, h2, h3 headings and posts to parent.
+   */
+  function sendTOCToParent() {
+    if (window.parent === window) return; // Not in iframe
+
+    // Build TOC from headings
+    var headings = document.querySelectorAll('h1, h2, h3');
+    var tocData = [];
+
+    headings.forEach(function(heading, index) {
+      // Ensure heading has an ID for linking
+      if (!heading.id) {
+        heading.id = 'heading-' + index;
+      }
+      tocData.push({
+        id: heading.id,
+        text: heading.textContent,
+        level: heading.tagName.toLowerCase()
+      });
+    });
+
+    // Send to parent
+    window.parent.postMessage({
+      type: 'toc-data',
+      toc: tocData
+    }, '*');
+  }
+
+  /**
+   * Build TOC list from data received via postMessage.
+   * @param {Array} tocData - Array of {id, text, level} objects
+   */
+  function buildTOCFromData(tocData) {
+    var tocContainer = document.getElementById('toc-container');
+    if (!tocContainer) return;
+
+    if (!tocData || tocData.length === 0) {
+      tocContainer.innerHTML = '<p style="color: #999; font-size: 13px;">No sections found</p>';
+      return;
+    }
+
+    var tocList = document.createElement('ul');
+    tocList.className = 'toc-list';
+
+    tocData.forEach(function(item) {
+      var li = document.createElement('li');
+      li.className = 'toc-item toc-' + item.level;
+
+      var link = document.createElement('a');
+      link.textContent = item.text;
+      link.href = '#' + item.id;
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        // Send scroll request to content iframe
+        var contentIframe = document.querySelector('.split-right iframe');
+        if (contentIframe && contentIframe.contentWindow) {
+          contentIframe.contentWindow.postMessage({
+            type: 'scroll-to',
+            id: item.id
+          }, '*');
+        }
+        // Close the menu panel
+        toggleMenuPanel();
+      });
+
+      li.appendChild(link);
+      tocList.appendChild(li);
+    });
+
+    tocContainer.innerHTML = '';
+    tocContainer.appendChild(tocList);
+  }
+
+  /**
+   * Initialize listener for TOC data from content iframe.
+   * Call this in parent page.
+   */
+  function initParentTOCListener() {
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'toc-data') {
+        buildTOCFromData(event.data.toc);
+      }
+    });
+  }
+
+  /**
+   * Initialize listener for scroll requests from parent.
+   * Call this in content iframe.
+   */
+  function initChildScrollListener() {
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'scroll-to') {
+        var element = document.getElementById(event.data.id);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    });
+  }
 
   // Export namespace to global scope
   global.CircuitJSUtils = CircuitJSUtils;
@@ -723,21 +917,27 @@
   // Auto-initialize based on page type
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
-      // If we have a split-container, initialize split panel
+      // If we have a split-container, initialize split panel and TOC listener
       if (document.querySelector('.split-container')) {
         initSplitPanel();
+        initParentTOCListener();
       }
       // If we have circuit-sections but no split-container, set up scroll detection
-      // (embedded content case)
+      // (embedded content case - also send TOC to parent and listen for scroll)
       else if (document.querySelector('.circuit-section[data-circuit]')) {
         setupScrollDetection();
+        sendTOCToParent();
+        initChildScrollListener();
       }
     });
   } else {
     if (document.querySelector('.split-container')) {
       initSplitPanel();
+      initParentTOCListener();
     } else if (document.querySelector('.circuit-section[data-circuit]')) {
       setupScrollDetection();
+      sendTOCToParent();
+      initChildScrollListener();
     }
   }
 
