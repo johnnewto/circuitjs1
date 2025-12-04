@@ -119,6 +119,17 @@ class LabeledNodeElm extends CircuitElm {
         nodeToLabelCache = null; // Invalidate reverse lookup cache too
     }
     
+    /**
+     * Get all labeled node names in the circuit
+     * @return Set of all label names, or null if none
+     */
+    public static java.util.Set<String> getAllNodeNames() {
+        if (labelList == null || labelList.isEmpty()) {
+            return null;
+        }
+        return labelList.keySet();
+    }
+    
     // Build reverse lookup cache if needed
     private static void ensureNodeToLabelCache() {
         if (nodeToLabelCache == null && labelList != null && !labelList.isEmpty()) {

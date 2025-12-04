@@ -159,6 +159,38 @@ voltage is determined by javascript code.</li>
     <li><strong>Example:</strong> <code>CircuitJS1.setExtVoltage("extsin", 5);</code></li>
 </ul>
 
+<h3><code>getSliderValue(name)</code></h3>
+<ul>
+    <li><strong>Description:</strong> Gets the current value of an adjustable slider by its name.</li>
+    <li><strong>Parameters:</strong>
+        <ul>
+            <li><code>name</code> (String): The name/label of the slider.</li>
+        </ul>
+    </li>
+    <li><strong>Returns:</strong> The current slider value, or 0 if the slider is not found.</li>
+    <li><strong>Example:</strong> <code>var tau = CircuitJS1.getSliderValue("τ_Firms");</code></li>
+</ul>
+
+<h3><code>setSliderValue(name, value)</code></h3>
+<ul>
+    <li><strong>Description:</strong> Sets the value of an adjustable slider by its name. This updates both the slider position and the underlying circuit element parameter.</li>
+    <li><strong>Parameters:</strong>
+        <ul>
+            <li><code>name</code> (String): The name/label of the slider.</li>
+            <li><code>value</code> (double): The new value to set.</li>
+        </ul>
+    </li>
+    <li><strong>Returns:</strong> <code>true</code> if successful, <code>false</code> if the slider was not found.</li>
+    <li><strong>Example:</strong> <code>CircuitJS1.setSliderValue("τ_Firms", 0.3);</code></li>
+</ul>
+
+<h3><code>getSliderNames()</code></h3>
+<ul>
+    <li><strong>Description:</strong> Gets a list of all slider names in the current circuit.</li>
+    <li><strong>Returns:</strong> An array of slider name strings.</li>
+    <li><strong>Example:</strong> <code>var sliders = CircuitJS1.getSliderNames(); // ["τ_Firms", "τ_HH", "WageShare"]</code></li>
+</ul>
+
 <h3><code>getElements()</code></h3>
 <ul>
     <li><strong>Description:</strong> Retrieves all elements currently in the circuit.</li>

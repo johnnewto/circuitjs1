@@ -61,6 +61,7 @@ import com.google.gwt.core.client.Callback;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.core.client.JsArray;
+import com.google.gwt.core.client.JsArrayString;
 import com.google.gwt.core.client.Scheduler;
 import com.google.gwt.core.client.ScriptInjector;
 import com.google.gwt.dom.client.Style.Unit;
@@ -160,13 +161,14 @@ MouseOutHandler, MouseWheelHandler {
     CheckboxMenuItem noEditCheckItem;
     CheckboxMenuItem mouseWheelEditCheckItem;
     CheckboxMenuItem toolbarCheckItem;
-    CheckboxMenuItem electronicsToolbarCheckItem;
-    CheckboxMenuItem economicsToolbarCheckItem;
+    CheckboxMenuItem electronicsModeCheckItem;
+    CheckboxMenuItem economicsModeCheckItem;
     CheckboxMenuItem weightedPriorityCheckItem;
     
     enum ToolbarType { ELECTRONICS, ECONOMICS }
     ToolbarType currentToolbarType = ToolbarType.ECONOMICS;
-    String voltageUnitSymbol = "V"; // Custom voltage unit symbol
+    String voltageUnitSymbol = "$"; // Custom voltage unit symbol ($ for economics default)
+    String timeUnitSymbol = "yr"; // Custom time unit symbol (yr for economics default)
     boolean useWeightedPriority = false; // Weighted priority for Asset/Equity columns
     private Label powerLabel;
     private Label titleLabel;
@@ -700,29 +702,29 @@ public CirSim() {
 	}));
 	toolbarCheckItem.setState(!hideMenu && !noEditing && !hideSidebar && startCircuit == null && startCircuitText == null && startCircuitLink == null);
 	
-	m.addItem(electronicsToolbarCheckItem = new CheckboxMenuItem(Locale.LS("Electronics Toolbar"),
+	m.addItem(electronicsModeCheckItem = new CheckboxMenuItem(Locale.LS("Electronics Mode"),
 		new Command() { public void execute(){
-		    if (!electronicsToolbarCheckItem.getState()) {
+		    if (!electronicsModeCheckItem.getState()) {
 			// Don't allow unchecking - must have one selected
-			electronicsToolbarCheckItem.setState(true);
+			electronicsModeCheckItem.setState(true);
 			return;
 		    }
 		    switchToElectronicsToolbar();
 		}
 	}));
-	electronicsToolbarCheckItem.setState(currentToolbarType == ToolbarType.ELECTRONICS);
+	electronicsModeCheckItem.setState(currentToolbarType == ToolbarType.ELECTRONICS);
 	
-	m.addItem(economicsToolbarCheckItem = new CheckboxMenuItem(Locale.LS("Economics Toolbar"),
+	m.addItem(economicsModeCheckItem = new CheckboxMenuItem(Locale.LS("Economics Mode"),
 		new Command() { public void execute(){
-		    if (!economicsToolbarCheckItem.getState()) {
+		    if (!economicsModeCheckItem.getState()) {
 			// Don't allow unchecking - must have one selected
-			economicsToolbarCheckItem.setState(true);
+			economicsModeCheckItem.setState(true);
 			return;
 		    }
 		    switchToEconomicsToolbar();
 		}
 	}));
-	economicsToolbarCheckItem.setState(currentToolbarType == ToolbarType.ECONOMICS);
+	economicsModeCheckItem.setState(currentToolbarType == ToolbarType.ECONOMICS);
 	m.addItem(crossHairCheckItem = new CheckboxMenuItem(Locale.LS("Show Cursor Cross Hairs"),
 		new Command() { public void execute(){
 		    setOptionInStorage("crossHair", crossHairCheckItem.getState());
@@ -4207,6 +4209,9 @@ public CirSim() {
     	if (item=="tabletestdialog") {
     	    	openTableTestDialog();
     	}
+    	if (item=="iframeviewer") {
+    	    	openIframeViewer();
+    	}
     	if (menu=="options" && item=="other")
     		doEdit(new EditOptions(this));
     	if (item=="devtools")
@@ -4486,6 +4491,15 @@ public CirSim() {
     	    tableTestDialog = new TableElementsTestDialog();
     	}
     	tableTestDialog.show();
+    }
+    
+    /**
+     * Open the iframe viewer dialog with external documentation
+     * Uses CSS selector to show only the split-right content panel
+     */
+    void openIframeViewer() {
+    	IframeViewerDialog.openUrlWithSelector("Documentation", 
+    	    "../docs/money-content.html", "");
     }
     
     int countScopeElms() {
@@ -4810,6 +4824,7 @@ public CirSim() {
     	varBrowserMenu.setAutoOpen(true);
     	varBrowserMenu.addItem(menuItemWithShortcut("list-ul", "Variable Browser...", "\\", new MyCommand("edit", "variablebrowser")));
     	varBrowserMenu.addItem(menuItemWithShortcut("clock-o", "Action Time Schedule...", "", new MyCommand("edit", "actiontimedialog")));
+    	varBrowserMenu.addItem(menuItemWithShortcut("code", "Embedded Viewer...", "", new MyCommand("edit", "iframeviewer")));
     	varBrowserMenu.addItem(menuItemWithShortcut("check-square-o", "Math Elements Test Suite...", "", new MyCommand("edit", "mathtestdialog")));
     	varBrowserMenu.addItem(menuItemWithShortcut("table", "Table Elements Test Suite...", "", new MyCommand("edit", "tabletestdialog")));
     	menuBar.addItem(Locale.LS("Dialogs"), varBrowserMenu);
@@ -6340,22 +6355,23 @@ public CirSim() {
     // Format time with fixed 2 decimal places and appropriate SI prefix
     String formatTimeFixed(double t) {
 	NumberFormat fixedFmt = NumberFormat.getFormat("0.00");
+	String u = timeUnitSymbol;
 	double va = Math.abs(t);
 	if (va < 1e-14)
-	    return "0.00 s";
+	    return "0.00 " + u;
 	if (va < 1e-9)
-	    return fixedFmt.format(t*1e12) + " ps";
+	    return fixedFmt.format(t*1e12) + " p" + u;
 	if (va < 1e-6)
-	    return fixedFmt.format(t*1e9) + " ns";
+	    return fixedFmt.format(t*1e9) + " n" + u;
 	if (va < 1e-3)
-	    return fixedFmt.format(t*1e6) + " μs";
+	    return fixedFmt.format(t*1e6) + " μ" + u;
 	if (va < 1)
-	    return fixedFmt.format(t*1e3) + " ms";
+	    return fixedFmt.format(t*1e3) + " m" + u;
 	if (va < 1e3)
-	    return fixedFmt.format(t) + " s";
+	    return fixedFmt.format(t) + " " + u;
 	if (va < 1e6)
-	    return fixedFmt.format(t*1e-3) + " ks";
-	return NumberFormat.getFormat("#.##E000").format(t) + " s";
+	    return fixedFmt.format(t*1e-3) + " k" + u;
+	return NumberFormat.getFormat("#.##E000").format(t) + " " + u;
     }
     
     void setGrid() {
@@ -6371,10 +6387,14 @@ public CirSim() {
     
     void switchToElectronicsToolbar() {
 	if (currentToolbarType == ToolbarType.ELECTRONICS) {
-	    electronicsToolbarCheckItem.setState(true);
-	    economicsToolbarCheckItem.setState(false);
+	    electronicsModeCheckItem.setState(true);
+	    economicsModeCheckItem.setState(false);
 	    return;
 	}
+	
+	// Set voltage unit to V for electronics mode
+	voltageUnitSymbol = "V";
+	timeUnitSymbol = "s";
 	
 	// Store current toolbar visibility
 	boolean toolbarVisible = toolbarCheckItem.getState();
@@ -6396,8 +6416,8 @@ public CirSim() {
 	}
 	
 	// Update menu states  
-	electronicsToolbarCheckItem.setState(true);
-	economicsToolbarCheckItem.setState(false);
+	electronicsModeCheckItem.setState(true);
+	economicsModeCheckItem.setState(false);
 	
 	// Restore toolbar visibility
 	layoutPanel.setWidgetHidden(toolbar, !toolbarVisible);
@@ -6406,10 +6426,14 @@ public CirSim() {
     
     void switchToEconomicsToolbar() {
 	if (currentToolbarType == ToolbarType.ECONOMICS) {
-	    electronicsToolbarCheckItem.setState(false);
-	    economicsToolbarCheckItem.setState(true);
+	    electronicsModeCheckItem.setState(false);
+	    economicsModeCheckItem.setState(true);
 	    return;
 	}
+	
+	// Set voltage unit to $ for economics mode
+	voltageUnitSymbol = "$";
+	timeUnitSymbol = "yr";
 	
 	// Store current toolbar visibility
 	boolean toolbarVisible = toolbarCheckItem.getState();
@@ -6431,12 +6455,29 @@ public CirSim() {
 	}
 	
 	// Update menu states
-	electronicsToolbarCheckItem.setState(false);
-	economicsToolbarCheckItem.setState(true);
+	electronicsModeCheckItem.setState(false);
+	economicsModeCheckItem.setState(true);
 	
 	// Restore toolbar visibility
 	layoutPanel.setWidgetHidden(toolbar, !toolbarVisible);
 	setCanvasSize();
+    }
+
+    // Mode selector method - switches toolbar and sets appropriate voltage unit
+    void setMode(ToolbarType mode) {
+	if (mode == ToolbarType.ELECTRONICS) {
+	    switchToElectronicsToolbar();
+	} else {
+	    switchToEconomicsToolbar();
+	}
+    }
+    
+    void setElectronicsMode() {
+	setMode(ToolbarType.ELECTRONICS);
+    }
+    
+    void setEconomicsMode() {
+	setMode(ToolbarType.ECONOMICS);
     }
 
     void pushUndo() {
@@ -8144,6 +8185,133 @@ public CirSim() {
 	    }
 	}
 
+	// ========== SLIDER API METHODS ==========
+	
+	/**
+	 * Find an adjustable slider by its name
+	 */
+	Adjustable findAdjustableByName(String name) {
+	    for (int i = 0; i < adjustables.size(); i++) {
+	        Adjustable adj = adjustables.get(i);
+	        if (adj.sliderText != null && adj.sliderText.equals(name)) {
+	            return adj;
+	        }
+	    }
+	    return null;
+	}
+	
+	/**
+	 * Get the current value of a slider by name
+	 * @param name The slider name/label
+	 * @return The current value, or 0 if not found
+	 */
+	double getSliderValue(String name) {
+	    Adjustable adj = findAdjustableByName(name);
+	    if (adj != null) {
+	        EditInfo ei = adj.elm.getEditInfo(adj.editItem);
+	        if (ei != null) {
+	            return ei.value;
+	        }
+	    }
+	    return 0.0;
+	}
+	
+	/**
+	 * Set the value of a slider by name
+	 * @param name The slider name/label
+	 * @param value The new value to set
+	 * @return true if successful, false if slider not found
+	 */
+	boolean setSliderValue(String name, double value) {
+	    Adjustable adj = findAdjustableByName(name);
+	    if (adj != null) {
+	        adj.setSliderValue(value);
+	        EditInfo ei = adj.elm.getEditInfo(adj.editItem);
+	        if (ei != null) {
+	            ei.value = value;
+	            adj.elm.setEditValue(adj.editItem, ei);
+	            analyzeFlag = true;
+	            
+	            // Update the slider label to show current value
+	            if (adj.label != null) {
+	                String valueStr = adj.getFormattedValue(ei, value);
+	                adj.label.setText(com.lushprojects.circuitjs1.client.util.Locale.LS(adj.sliderText) + ": " + valueStr);
+	            }
+	            return true;
+	        }
+	    }
+	    return false;
+	}
+	
+	/**
+	 * Get list of all slider names in the circuit
+	 * @return Array of slider names
+	 */
+	native JsArrayString getJSArrayString() /*-{ return []; }-*/;
+	
+	JsArrayString getSliderNames() {
+	    JsArrayString names = getJSArrayString();
+	    for (int i = 0; i < adjustables.size(); i++) {
+	        Adjustable adj = adjustables.get(i);
+	        if (adj.sliderText != null) {
+	            names.push(adj.sliderText);
+	        }
+	    }
+	    return names;
+	}
+	
+	// ========== END SLIDER API METHODS ==========
+
+	// ========== LABELED NODE & COMPUTED VALUE API METHODS ==========
+	
+	/**
+	 * Get list of all labeled node names in the circuit
+	 * @return Array of labeled node names
+	 */
+	JsArrayString getLabeledNodeNames() {
+	    JsArrayString names = getJSArrayString();
+	    java.util.Set<String> nodeNames = LabeledNodeElm.getAllNodeNames();
+	    if (nodeNames != null) {
+	        for (String name : nodeNames) {
+	            names.push(name);
+	        }
+	    }
+	    return names;
+	}
+	
+	/**
+	 * Get a labeled node voltage value by name
+	 * This combines both regular labeled nodes and computed values
+	 * @param name The name of the labeled node or computed value
+	 * @return The voltage value, or 0 if not found
+	 */
+	double getLabeledNodeValue(String name) {
+	    // First try computed values (from tables, etc.)
+	    Double computed = ComputedValues.getComputedValue(name);
+	    if (computed != null) {
+	        return computed;
+	    }
+	    // Fall back to regular labeled node voltage
+	    return getLabeledNodeVoltage(name);
+	}
+	
+	/**
+	 * Get list of all computed value names in the circuit
+	 * @return Array of computed value names
+	 */
+	JsArrayString getComputedValueNames() {
+	    JsArrayString names = getJSArrayString();
+	    java.util.Set<String> valueNames = ComputedValues.getAllNames();
+	    if (valueNames != null) {
+	        for (String name : valueNames) {
+	            names.push(name);
+	        }
+	    }
+	    return names;
+	}
+	
+	// ========== END LABELED NODE & COMPUTED VALUE API METHODS ==========
+
 	native JsArray<JavaScriptObject> getJSArray() /*-{ return []; }-*/;
 	
 	JsArray<JavaScriptObject> getJSElements() {
@@ -8174,7 +8342,13 @@ public CirSim() {
 	        getCircuitAsSVG: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::doExportAsSVGFromAPI()(); } ),
 	        exportCircuit: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::dumpCircuit()(); } ),
 	        importCircuit: $entry(function(circuit, subcircuitsOnly) { return that.@com.lushprojects.circuitjs1.client.CirSim::importCircuitFromText(Ljava/lang/String;Z)(circuit, subcircuitsOnly); }),
-	        importCircuitFromCTZ: $entry(function(ctzData, subcircuitsOnly) { return that.@com.lushprojects.circuitjs1.client.CirSim::importCircuitFromCTZ(Ljava/lang/String;Z)(ctzData, subcircuitsOnly); })
+	        importCircuitFromCTZ: $entry(function(ctzData, subcircuitsOnly) { return that.@com.lushprojects.circuitjs1.client.CirSim::importCircuitFromCTZ(Ljava/lang/String;Z)(ctzData, subcircuitsOnly); }),
+	        getSliderValue: $entry(function(name) { return that.@com.lushprojects.circuitjs1.client.CirSim::getSliderValue(Ljava/lang/String;)(name); }),
+	        setSliderValue: $entry(function(name, value) { return that.@com.lushprojects.circuitjs1.client.CirSim::setSliderValue(Ljava/lang/String;D)(name, value); }),
+	        getSliderNames: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::getSliderNames()(); }),
+	        getLabeledNodeNames: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::getLabeledNodeNames()(); }),
+	        getLabeledNodeValue: $entry(function(name) { return that.@com.lushprojects.circuitjs1.client.CirSim::getLabeledNodeValue(Ljava/lang/String;)(name); }),
+	        getComputedValueNames: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::getComputedValueNames()(); })
 	    };
 	    var hook = $wnd.oncircuitjsloaded;
 	    if (hook)

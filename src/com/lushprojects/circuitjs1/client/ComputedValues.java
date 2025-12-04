@@ -218,6 +218,18 @@ public class ComputedValues {
     }
     
     /**
+     * Get all computed value names as a Set
+     * 
+     * @return Set of all computed value names, or null if none
+     */
+    public static Set<String> getAllNames() {
+        if (computedValues == null || computedValues.isEmpty()) {
+            return null;
+        }
+        return computedValues.keySet();
+    }
+    
+    /**
      * Get the number of computed values currently stored
      * 
      * @return Number of computed values

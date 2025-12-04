@@ -438,9 +438,9 @@ public class ScopeViewerDialog extends DialogBox {
         html.append("      metadata.className = 'metadata';\n");
         html.append("      let metaText = 'Export Type: ' + scopeInfo.exportType;\n");
         html.append("      if (scopeInfo.exportType === 'history') {\n");
-        html.append("        metaText += ' | Samples: ' + scopeInfo.historySize + ' | Interval: ' + scopeInfo.sampleInterval + 's';\n");
+        html.append("        metaText += ' | Samples: ' + scopeInfo.historySize + ' | Interval: ' + scopeInfo.sampleInterval + '" + sim.timeUnitSymbol + "';\n");
         html.append("      } else {\n");
-        html.append("        metaText += ' | Time: ' + scopeInfo.simulationTime + 's | Step: ' + scopeInfo.timeStep + 's';\n");
+        html.append("        metaText += ' | Time: ' + scopeInfo.simulationTime + '" + sim.timeUnitSymbol + " | Step: ' + scopeInfo.timeStep + '" + sim.timeUnitSymbol + "';\n");
         html.append("      }\n");
         html.append("      metadata.textContent = metaText;\n");
         html.append("      scopeDiv.appendChild(metadata);\n");
@@ -482,7 +482,7 @@ public class ScopeViewerDialog extends DialogBox {
         html.append("      const layout = {\n");
         html.append("        title: scopeInfo.scopeName,\n");
         html.append("        xaxis: { \n");
-        html.append("          title: 'Time (s)', \n");
+        html.append("          title: 'Time (" + sim.timeUnitSymbol + ")', \n");
         html.append("          gridcolor: '#ddd',\n");
         html.append("          rangeslider: { visible: true },\n");
         html.append("          type: 'linear'\n");
@@ -572,7 +572,7 @@ public class ScopeViewerDialog extends DialogBox {
         html.append("      let csv = '';\n");
         html.append("      scopeData.forEach((scope, scopeIdx) => {\n");
         html.append("        csv += '# ' + scope.scopeName + '\\n';\n");
-        html.append("        csv += 'Time (s)';\n");
+        html.append("        csv += 'Time (" + sim.timeUnitSymbol + ")';\n");
         html.append("        scope.plots.forEach(plot => {\n");
         html.append("          csv += ',' + plot.name + ' Min,' + plot.name + ' Max';\n");
         html.append("        });\n");

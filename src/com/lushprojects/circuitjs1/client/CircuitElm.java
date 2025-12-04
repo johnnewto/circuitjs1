@@ -936,6 +936,9 @@ public abstract class CircuitElm implements Editable {
 	// Check if this is a voltage unit and use custom symbol if set
 	if (u.equals("V") && sim != null && sim.voltageUnitSymbol != null && !sim.voltageUnitSymbol.equals("V"))
 	    u = sim.voltageUnitSymbol;
+	// Check if this is a time unit and use custom symbol if set
+	if (u.equals("s") && sim != null && sim.timeUnitSymbol != null && !sim.timeUnitSymbol.equals("s"))
+	    u = sim.timeUnitSymbol;
 	
 	String sp = sf ? "" : " ";
 	double va = Math.abs(v);

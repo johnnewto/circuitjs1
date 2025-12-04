@@ -3,562 +3,69 @@ page-layout: custom
 toc: false
 ---
 
-<link rel="stylesheet" href="split-panel.css">
-<script src="split-panel.js"></script>
+<!-- 
+  Split-panel layout for CircuitJS + documentation
+  Uses consolidated circuitjs-docs.css and circuitjs-utils.js
+-->
+<link rel="stylesheet" href="circuitjs-docs.css">
+<script src="circuitjs-utils.js"></script>
+<script src="split-panel-resizer.js"></script>
 
-<!-- <style>
-/* Custom split ratio for this page: 60/40 */
-.split-left {
-  flex: 0 0 60%;
-  position: sticky;
-  top: 0;
-  height: 100%;
-  min-width: 200px;
+<!-- Add class to html element for split-page-layout styles -->
+<script>document.documentElement.classList.add('split-page-layout');</script>
+
+<!-- Floating menu button -->
+<button class="menu-toggle-btn" onclick="toggleMenuPanel()" title="Menu">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <line x1="3" y1="6" x2="21" y2="6"/>
+    <line x1="3" y1="12" x2="21" y2="12"/>
+    <line x1="3" y1="18" x2="21" y2="18"/>
+  </svg>
+</button>
+
+<!-- Slide-out menu panel -->
+<div class="menu-panel-overlay" onclick="toggleMenuPanel()"></div>
+<div class="menu-panel">
+  <h3>CircuitJS Docs</h3>
+  <a href="user-guide.html">User Guide</a>
+  <a href="electronics-tutorials.html">Electronics Tutorials</a>
+  <a href="economics-tutorials.html">Economics Tutorials</a>
+</div>
+
+<script>
+function toggleMenuPanel() {
+  var panel = document.querySelector('.menu-panel');
+  var overlay = document.querySelector('.menu-panel-overlay');
+  panel.classList.toggle('open');
+  overlay.classList.toggle('open');
 }
-</style> -->
-
+</script>
 
 <div class="split-container">
-  <!-- Left panel: Fixed iframe -->
-  <div class="split-left">
-   <iframe src="../circuitjs.html?startCircuit=blank.txt&editable=true"
-         width="100%" 
-         height="100%" 
-         frameborder="0"
-         data-current-section="intro"
-         title="CircuitJS1 Electronic Circuit Simulator">
-   </iframe>
-  </div>
-  
-  <!-- Draggable resizer -->
-  <div class="split-resizer"></div>
-  
-  <!-- Right panel: Scrolling content -->
-  <div class="split-right">
 
-<div id="intro" class="circuit-section" data-name="Transaction Tables (Godley Tables)" data-circuit="/circuitjs.html?ctz=CQAgbArCAMB03SgRlgZgEwBYnurpAnEhJOuiBNBRVRAKYC0SSAUOhFBiDgBwg9VeMEOTDhuYqgBcATgFc6I4QDMAhgBsAzoqjT5igEKqAdgGtNIADpUASnW0yAbvZAAJAPZztH9QBMLAGIAljIAthYAogCOckFSAJ4gRmaa0bEJIACCDAAyDBEgAAqq8ZaaAOqqAOYuAMLuxppyoQAOUkEN3AgiVADsglSDWQDKwxEAKiA5AJKZBtMz4wCaU7PziysRAIoAqtPLINt7B7UA8gCyhTvjEQAiVlSVNRYMTy7WD58fDPWNzYq-JqhRQfUGDeDQVgADxE6AIIAIonQSARUEwInR4xkJk0qgAxu0GmVxqoAEbqexlAAUAHF3L4KaVNCTyfYAJT8aACAQBAJsaC9ECYLgYKjC8ioMB8SUgN6afmC1Ay9A8aW4EQkEAymm3QpsMCoCTgdE8Xoo1AEIbnVRBYwKjFUFV8QjkJ1asTBMLy9BgdFYR2qjViN0ouAWqyWElyAD6AG9PeEAL76v1YLU8P2a1AZ7gwWDsCNRuOuVzJgDuIkDbqVwcD0BYFZrlelObd9fY0ploq1EAl6sNcDEbzjmgAFqoZHRy1qu-3lXX7ehehKc03s+iZYD-mxe0KRdB0ZhMNKD7n0A30xv1eKter6xWb6hT+vmzB7ceqE-0RAj1rn2JChkdxlDib0BVhDccyQXoxBfGUPC8OgfH8Fh3CNdFBBVaBJAhSE8wQPCqGdWDuHITCtSUR0KIHajUOoDChTAJB0SQMBwRRFFvwo6DhB41AWGzcQAg43iQCYQtVBjeMQiTN8AFIRkmDiWCAA&editable=false
-">
-
-# Money from First Principles
-
-**Understanding Banking Models and Government Deficits**  
-*Based on Steve Keen's analysis for engineers*
-
-## Introduction: First Principles vs. Reasoning by Analogy
-
-> "Physics is the law, everything else is a recommendation" - Elon Musk
-
-This principle of **first-principles reasoning** means:
-
-> "You boil things down to the most fundamental truths and say, 'OK, what are we sure is true, or as sure as possible is true?' Then you reason up from there."
-
-Many economic conclusions about government finances are based on **reasoning by analogy**: applying what works for individuals or households to governments. But what if this analogy is false?
-
-Common claims:
-- "America is going bankrupt extremely quickly"
-- "If we don't fix the deficit, everything will suffer"
-- "A country is no different from an individual—if an individual overspends, they go bankrupt, and so can a country"
-
-**The First Principle of Money**: Every monetary transaction involves two parties (payer and payee), and the sum of any single transaction is **zero**.
-
-## The Accounting Foundation
-
-### Double-Entry Bookkeeping: The Law of Money
-
-Almost a millennium ago, Venetian traders developed double-entry bookkeeping:
-
-> "All the creditors must appear in the Ledger at the right-hand side, and all the debtors at the left. All entries made in the Ledger have to be double entries—that is, if you make one creditor, you must make someone debtor." - Luca Pacioli (1494)
-
-**To paraphrase Musk**: With respect to money, **double-entry bookkeeping is the law, and everything else is fraud.**
-
-### The Accounting Equation
-
-The conservation law of accounting:
-
-$$\text{Assets} - \text{Liabilities} - \text{Equity} = 0 \quad (1)$$
-
-For financial assets (claims between entities), this leads to an economic system-wide conservation law:
-
-**The sum of all financial assets and liabilities is zero.**
-
-This enables monetary macroeconomic analysis by aggregating billions of transactions.
-
-## Transaction Tables (Godley Tables)
-
-A simple transaction table for Private Banks:
-
-| Flows/Stock Vars → | Reserves | Households | Firms | Equity | BanksEquity | A-L-E |
-|:---|---:|---:|---:|---:|---:|---:|
-| **Initial Conditions** | 100 | 20 | 70 | 10 | 0 | 0 |
-| **Pay Wages** | 0 | Wages | -Wages | 0 | 0 | 0 |
-| **Consumption** | 0 | -Consume | Consume | 0 | 0 | 0 |
-
-Complete analysis requires four tables (Banks, Households, Firms, Central Bank) with each transaction appearing four times.
-
-### Generating Differential Equations
-
-The rate of change of each stock is the symbolic sum of the relevant column:
-
-$$\frac{dFirms}{dt} = Consume - Wages$$
-
-$$\frac{dHouseholds}{dt} = Wages - Consume$$
-
-$$\frac{dFirms_{Equity}}{dt} = Consume - Wages \quad (2)$$
-
-$$\frac{dHH_{Equity}}{dt} = Wages - Consume$$
-
-$$\frac{dBanks_{Equity}}{dt} = 0$$
-
-$$\frac{dReserves}{dt} = 0$$
-
-$$\frac{dCB_{Equity}}{dt} = 0$$
-
-These equations can be implemented in CircuitJS using Godly Tables, consisting of Flows on the rows, Stocks on the columns. The bottom row value is the integration of all the flows of that column.
-
-
-This makes it possible to develop economic models with these tables, by defining these flows in terms of each other and relevant parameters. Here we implement this in CircuitJS, using the same approach as Matlab does with Simulink: flowcharts are used to generate equations for numerical simulation.
-
-Parameters and flows:
-
-$$Wage_{share} = 0.6; \quad \tau_{Firms} = 0.25; \quad \tau_{HH} = 0.5$$
-
-$$GDP = \frac{Firms}{\tau_{Firms}}$$
-
-$$Wages = GDP \times Wage_{share}$$
-
-$$Consume = \frac{Households}{\tau_{HH}} \quad (3)$$
-
-$$Credit = GDP \times Credit_{share}$$
-
-$$Interest = Debt_{Firms} \times Int_{rate}$$
-
-This system is **sustainable** with only private sector debt.
-
+<!-- Left panel: Fixed iframe with CircuitJS -->
+<div class="split-left">
+<iframe src="../circuitjs.html?startCircuit=blank.txt&editable=true"
+      width="100%" 
+      height="100%" 
+      frameborder="0"
+      data-current-section="intro"
+      title="CircuitJS1 Electronic Circuit Simulator">
+</iframe>
 </div>
 
-## Two Competing Models of Banking
-
-The answer to whether deficits cause crises depends entirely on which model of banking is correct:
-
-<div id="loanable-funds" class="circuit-section" data-name="Loanable Funds Model" data-circuit="../circuitjs.html?ctz=CQAgzCAMB0mQrCATAdmi1SkA4As8kwBGMMATmxF1xHjklofgFMBaIogKCXkVYDZsDAXBACi-Mf1EMkVEJIlQQAFwBOAV2bJlAMwCGAGwDO2xA3VaQAMQCWagLbGQAHQZ3HzgBJyPTgPoA3gCiAI4atioAngC+IACCrAAyrMEgAAr6US7GAOr6AObMzgDCAPYAdsYaDgAOKraVICgMDC3K8QDKncEAKiBJAJLxAEKDQ70AmiDBAIoAqoNTICUA8gCy6fO9wQAiYvlFzm4HhcWuDOVVNdonV9UOt62wkFw8fILCuBhSuJSs3zksnkikkFk02iBIAMJjMyks2i8ZQ0pgAFmVDAATY4MJEo5jorHOToqMoAYwA1nIvF4gmEItE4okUml7jV6o0KhksjlDsUcshWoKOt0+gNhmMJtM5otlmtNts9mI2Y8LsrKg8niA+TjtWddTA4G9eGIUIJTThTZAaKwMJRgYhQfCIToGDDTPJwVZ0mpbAA3fQqZg5Eb6CoU3UAJWKzDUfvOeNMSKJNnsThAofDxjp4UisQSyVS3OyeX1Kw17IaTSIoiQbQYNZFPX6XWb4tG4yW0oWXZWGy2O32Jx1pyOapOE8uFdVgwqQbUxRUasNr24kBQYiEwkwm-4Np30hAnX08bUxjXG9YW7EPEkV73N-gkkPIzKajUZQA7rHz3XL9fWCQXBhGwB9AOAhQGEzCNuDoK19x+AREJ3IgdH0AAqAAjThP1NAgb0QloEKBC94IIuRbWtMQwDrSCQHWSpmCiThIzIwCnzYut7WUCCoWeRAADVmEMck81g4RpH+HdWHgM1yJAVC5Aw7DWJEKSOLUm9IG4hgIMNPioGgRAkmYCpMX8XQ1H0MkcKkDTpMk+TIFIgR7MQxzWDAc1DwAcV2dIXKfbdEPgIgKIPBgTLMwKyAosg73gagxHiujrGYZgXMEf4UoEMCiDkw9Z3nRdbIEbBsrvPdhBS5zVKqzcJIgzyDL0ozlH4mx0v8Kyg3E35qsq7TksUNCsJY00vIaia7xo9qqGeBA5pgRAitjRdusDDK-2m4advYJLLV2ZhMJUUqUDwXbbUm1gar6q67xyojdsUkBlLusB8KvYQaJAhtRuw7bPM+oRqIur66Og89VI+iiwJhsQlCFVrUKFZaj1qUzzJ6rb12oqjwfA366M6DGzP8TCwxggAPaj4AgW0wLIMhTX4VCaCAgYyjDfRMMMYNjGsDQzOMHIGMxYSQCEKXIGsaxYNQr7goolBYvk1CwBc7AOc880r3K6jvIYY9T1-fh6fOm0LakZnmo3Bh1n0WwKk4MoFIgB8GywMgFqNQz6BRnQSHAF3wAUGhPaQb2-d9ldXgUnQIA112aA9hSvZRl449jl6aBoCBzFoYOAFIEk6fpUK4IA&editable=false">
-
-### 1. Loanable Funds Model
-
-**Core Assumption**: Banks are intermediaries between savers and borrowers.
-
-From mainstream textbooks:
-
-> "Commercial banks are the best-known type of financial intermediary. They take deposits from savers and use these deposits to make loans to those who have investment projects they need to finance." - Mankiw (2016)
-
-**Key Characteristic**: Loans appear as:
-- **Assets of Households** (who are the real lenders)
-- **Liabilities of Firms** (borrowers)
-- **NOT on bank balance sheets** as assets
-
-#### Godley Table Structure (Loanable Funds)
-
-**Private Banks:**
-- Assets: Reserves
-- Liabilities: Households, Firms  
-- Equity: BanksEquity
-
-**Households:**
-- Assets: Households (deposits), **DebtFirms** (loans to firms)
-- Liabilities: None
-- Equity: HHEquity
-
-**Firms:**
-- Assets: Firms (deposits)
-- Liabilities: **DebtFirms** (borrowed from households)
-- Equity: FirmsEquity
-
-#### Basic Flows (Without Government)
-
-Parameters and flows:
-
-$$Wage_{share} = 0.6; \quad \tau_{Firms} = 0.25; \quad \tau_{HH} = 0.5$$
-
-$$GDP = \frac{Firms}{\tau_{Firms}}$$
-
-$$Wages = GDP \times Wage_{share}$$
-
-$$Consume = \frac{Households}{\tau_{HH}} \quad (3)$$
-
-$$Credit = GDP \times Credit_{share}$$
-
-$$Interest = Debt_{Firms} \times Int_{rate}$$
-
-This system is **sustainable** with only private sector debt.
-
-#### Adding Government Sector
-
-New flows required:
-- **Tax**: Households → Government  
-  $$Tax = GDP \times Tax_{rate}$$
-- **Government Spending**: Government → Firms  
-  $$Spend_{Gov} = GDP \times Spend_{rate}$$
-- **Bond Sales**: Households → Government  
-  $$Bonds = (Spend_{Gov} - Tax) + (Debt_{Gov} \times Int_{rate})$$
-- **Interest on Bonds**: Government → Households  
-  $$Int_{Gov} = Debt_{Gov} \times Int_{rate}$$
-
-#### Differential Equations (Loanable Funds with Government)
-
-$$\frac{dDebt_{Gov}}{dt} = Bonds$$
-
-$$\frac{dDebt_{Firms}}{dt} = Credit$$
-
-$$\frac{dFirms}{dt} = Consume + Credit + Spend_{Banks} + Spend_{Gov} - Wages - Int_{Firms}$$
-
-$$\frac{dHouseholds}{dt} = Wages + Int_{Gov} + Int_{Firms} - Consume - Credit - Fee - Tax + Bonds \quad (4)$$
-
-$$\frac{dGovernment}{dt} = Tax + Bonds - Spend_{Gov} - Int_{Gov}$$
-
-$$\frac{dBanks}{dt} = Fee - Spend_{Banks}$$
-
-#### Result: Inevitable Crisis
-
-Running with 1% deficit (Spend = 21% GDP, Tax = 20% GDP):
-
-- Government debt → 2,000% of GDP (over 200 years)
-- Interest payments → 100% of GDP
-- System becomes **unsustainable**
-
-**Conclusion**: Under Loanable Funds, sustained deficits cause inevitable fiscal crisis.
-</div>
-<div id="bomd-model" class="circuit-section" data-name="BOMD Model" data-circuit="../circuitjs.html?startCircuit=bomd-demo.txt&editable=false">
-
-### 2. Endogenous Money Model (BOMD)
-
-**BOMD** = Bank-Originated Money and Debt
-
-**Core Assumption**: Banks create money by creating debt.
-
-Endorsed by central banks after 2008:
-
-**Bank of England:**
-> "Rather than banks receiving deposits when households save and then lending them out, **bank lending creates deposits.**" - McLeay, Radia, and Thomas (2014)
-
-**Bundesbank:**
-> "A bank can grant loans without any prior inflows of customer deposits. In fact, book money is created as a result of an accounting entry: when a bank grants a loan, it posts the associated credit entry for the customer as a sight deposit..."
-
-**Key Characteristic**: Both private and government debt are **ASSETS of the banking system**.
-
-#### Godley Table Structure (BOMD)
-
-**Private Banks:**
-- Assets: Reserves, **DebtFirms**, **DebtGov**
-- Liabilities: Households, Firms
-- Equity: BanksEquity
-
-**Households:**
-- Assets: Households (deposits **only**)
-- Liabilities: None
-- Equity: HHEquity
-
-**Firms:**
-- Assets: Firms (deposits)
-- Liabilities: None (debt is now bank asset!)
-- Equity: FirmsEquity
-
-**Central Bank:**
-- Assets: None
-- Liabilities: Reserves, Government
-- Equity: CBEquity
-
-**Treasury:**
-- Assets: Government (at Central Bank)
-- Liabilities: DebtGov (to private banks)
-- Equity: TreasuryEquity
-
-#### Key Structural Difference
-
-In BOMD, **money creation occurs on the Asset side** of bank balance sheets:
-
-- Credit creates DebtFirms (bank asset) + Firm deposits
-- Bond sales create DebtGov (bank asset) + Government account
-- In Loanable Funds, all operations are on Liabilities/Equity side (cancel out)
-
-#### Differential Equations (BOMD)
-
-$$\frac{dDebt_{Gov}}{dt} = Bonds$$
-
-$$\frac{dDebt_{Firms}}{dt} = Credit$$
-
-$$\frac{dFirms}{dt} = Consume + Credit + Spend_{Gov} - Wages - Int_{Firms}$$
-
-$$\frac{dHouseholds}{dt} = Wages - Consume - Tax \quad (5)$$
-
-$$\frac{dGovernment}{dt} = Tax + Bonds - Int_{Gov} - Spend_{Gov}$$
-
-$$\frac{dReserves}{dt} = Spend_{Gov} + Int_{Gov} - Tax - Bonds$$
-
-$$\frac{dBanks}{dt} = Int_{Gov} + Int_{Firms} - Spend_{Gov}$$
-
-#### Money Creation Formula
-
-The rate of change of money supply:
-
-$$\frac{dMoney}{dt} = Credit + (Spend_{Gov} + Int_{Gov} - Tax) \quad (6)$$
-
-The bracketed term is government money creation.
-
-#### Result: Stable System
-
-Running with same 1% deficit (Spend = 21% GDP, Tax = 20% GDP):
-
-- GDP grows steadily
-- Government debt/GDP ratio **stabilizes** (~100%)
-- Interest payments remain manageable
-- **No crisis occurs!**
-
-**Conclusion**: Under BOMD, sustained deficits do not cause fiscal crisis.
-
-## The Fundamental Identity
-
-### Sectoral Balances
-
-The change in Treasury equity:
-
-$$\frac{dTreasury_{Equity}}{dt} = Tax - (Spend_{Gov} + Int_{Gov}) \quad (7)$$
-
-The change in Private sector equity (Banks + Firms + Households):
-
-$$\frac{dPrivate_{Equity}}{dt} = (Wages - Consume) + (Consume + Spend_{Gov} - Int_{Firms} - Wages) + (Int_{Firms} + Int_{Gov} - Tax)$$
-
-Terms cancel to leave:
-
-$$\frac{dPrivate_{Equity}}{dt} = Spend_{Gov} + Int_{Gov} - Tax \quad (8)$$
-
-### The Key Insight
-
-Comparing equations (7) and (8):
-
-$$\boxed{\frac{dPrivate_{Equity}}{dt} = -\frac{dTreasury_{Equity}}{dt}}$$
-
-**Government deficit = Private sector surplus (by accounting identity)**
-
-In the BOMD model:
-- Government "debt" IS private sector wealth
-- Government deficit ADDS to private sector equity
-- This is not a theory—it's an accounting identity
-
+<!-- Draggable resizer -->
+<div class="split-resizer"></div>
+
+<!-- Right panel: Scrolling content -->
+<div class="split-right">
+<iframe src="money-content.html"
+      width="100%" 
+      height="100%" 
+      frameborder="0"
+      style="overflow-y: auto; display: block;"
+      title="Money First Principles Content">
+</iframe>
 </div>
 
-<div id="implementation" class="circuit-section" data-name="CircuitJS Implementation" data-circuit="../circuitjs.html?startCircuit=implementation.txt&editable=false">
-
-### Building the Loanable Funds Model
-
-1. **Create Godly Tables** for each sector
-   - Banks: Reserves, Households, Firms as columns
-   - Households: Households, DebtFirms as assets
-   - Firms: Firms as asset, DebtFirms as liability
-   - Treasury: Government as asset, DebtGov as liability
-
-2. **Define Parameters**
-   - WageShare = 0.6
-   - τFirms = 0.25
-   - τHH = 0.5
-   - IntRate = 0.05
-   - CreditShare = 0.5
-   - TaxRate = 0.20
-   - SpendRate = 0.21 (for 1% deficit)
-
-3. **Create Flow Equations**
-   - GDP = Firms / τFirms (use Divider)
-   - Wages = GDP × WageShare (use Multiplier)
-   - Consume = Households / τHH (use Divider)
-   - Credit = GDP × CreditShare (use Multiplier)
-   - Tax = GDP × TaxRate (use Multiplier)
-   - SpendGov = GDP × SpendRate (use Multiplier)
-   - Bonds = (SpendGov - Tax) + DebtGov × IntRate (use Adder)
-
-4. **Monitor Key Metrics**
-   - Scope: DebtGov / GDP ratio
-   - Scope: IntGov / GDP ratio
-   - Pie Chart: Sectoral balances
-
 </div>
-
-### Building the BOMD Model
-
-1. **Restructure Tables**
-   - Banks: Add DebtFirms and DebtGov as **Assets**
-   - Households: Remove DebtFirms (only deposits)
-   - Firms: Remove DebtFirms liability
-   - Add Central Bank table
-   - Treasury: Government at Central Bank
-
-2. **Modify Flows**
-   - Credit now increases bank assets (DebtFirms)
-   - Bonds now increase bank assets (DebtGov)
-   - Interest flows to Banks, not Households
-   - Government account at Central Bank
-
-3. **Same Parameters** as Loanable Funds
-
-4. **Compare Results**
-   - Run both models side-by-side
-   - Observe debt/GDP trajectories
-   - Verify stability differences
-
-
-
-## Implementing in CircuitJS
-### Visualization Tips
-
-- **Current Transactions Matrix**: Shows all flows between sectors
-- **Scope Elements**: Plot debt ratios over time (50-200 years)
-- **Pie Charts**: Display sectoral equity distribution
-- **Stop Time Elements**: Pause at key checkpoints (50, 100, 150, 200 years)
-- **Percent Meters**: Show debt/GDP and interest/GDP ratios
-
-## Policy Implications
-
-### If Loanable Funds is Correct:
-- Government deficits crowd out private investment
-- Debt accumulation is unsustainable
-- Austerity is necessary to avoid crisis
-- Government must "live within its means"
-
-### If BOMD is Correct:
-- Government deficits add to private sector wealth
-- Debt/GDP ratio stabilizes naturally
-- Austerity reduces private sector equity
-- Government cannot "run out of money" (for fiat currency issuer)
-
-### The Evidence
-
-Central bank endorsements:
-- **Bank of England** (2014): "Bank lending creates deposits"
-- **Bundesbank** (2017): "A bank can grant loans without any prior inflows"
-
-Empirical observation:
-- Banks create loans and deposits simultaneously
-- Government spending precedes taxation operationally
-- Countries with sovereign currencies never "run out of money"
-
-**Conclusion**: Evidence strongly supports BOMD model.
-
-## Advanced Topics
-
-### Money Supply Growth
-
-In BOMD, money supply grows through:
-
-$$\frac{dM}{dt} = \underbrace{Credit}_{\text{Private}} + \underbrace{(Spend_{Gov} + Int_{Gov} - Tax)}_{\text{Government}}$$
-
-Both private lending and government deficits create money.
-
-### Price Level Dynamics
-
-Adding inflation requires price equation:
-
-$$\frac{dP}{dt} = P \times \left(\frac{Demand - Supply}{Supply}\right) \times \text{adjustment speed}$$
-
-Where:
-- Demand includes consumption, investment, government spending
-- Supply is productive capacity
-- Inflation occurs when demand exceeds supply
-
-### International Trade
-
-Adding foreign sector:
-
-$$\frac{dPrivate_{Equity}}{dt} = \underbrace{(Spend_{Gov} + Int_{Gov} - Tax)}_{\text{Fiscal}} + \underbrace{(Exports - Imports)}_{\text{Trade}}$$
-
-The sectoral balances identity becomes:
-
-$$\text{Government Balance} + \text{Private Balance} + \text{Foreign Balance} = 0$$
-
-### Capital Adequacy
-
-Banks require minimum equity ratios:
-
-$$\text{Capital Adequacy Ratio} = \frac{Banks_{Equity}}{Debt_{Firms} + Debt_{Gov}} \geq \text{minimum (e.g., 8\%)}$$
-
-Model bank failures when equity becomes negative.
-
-## Exercises
-
-### Exercise 1: Build Both Models
-
-Construct Loanable Funds and BOMD models in CircuitJS:
-1. Verify accounting identities hold
-2. Run with 1% deficit for 200 years
-3. Compare debt/GDP trajectories
-4. Identify which matches real-world behavior
-
-### Exercise 2: Parameter Sensitivity
-
-Test different scenarios:
-1. What deficit level is sustainable in Loanable Funds? (Answer: None!)
-2. What happens if government runs surplus in BOMD?
-3. Effect of different interest rates on debt dynamics
-4. Impact of credit growth rates on money supply
-
-### Exercise 3: Policy Experiments
-
-Model policy changes:
-1. **Austerity**: Reduce SpendRate from 21% to 20%
-   - Compare effects in both models
-   - Observe private sector equity changes
-2. **Debt Jubilee**: Reset DebtGov to zero
-   - In Loanable Funds: Temporary relief
-   - In BOMD: Destroys private assets!
-3. **Quantitative Easing**: Central Bank buys bonds from private banks
-   - Changes DebtGov holder but not magnitude
-
-### Exercise 4: Real-World Data
-
-Compare model outputs to actual data:
-1. US debt/GDP ratio (1950-2025)
-2. Interest payments as % of GDP
-3. Private sector wealth vs. government debt
-4. Test which model fits better
-
-## Key Takeaways
-
-1. **Structure Matters**: The location of debt on balance sheets (Loanable Funds vs. BOMD) completely changes system dynamics
-
-2. **Accounting Identity**: Government deficit = Private sector surplus (always true, regardless of model)
-
-3. **Money Creation**: In BOMD, both credit and government deficits create money; in Loanable Funds, money is only redistributed
-
-4. **Crisis Predictions**: 
-   - Loanable Funds → inevitable crisis with sustained deficits
-   - BOMD → stable debt/GDP ratio with sustained deficits
-
-5. **Evidence**: Central banks endorse BOMD model; real-world operations match BOMD, not Loanable Funds
-
-6. **Policy Implications**: Believing the wrong model leads to harmful policies (e.g., austerity reducing private wealth)
-
-## Further Reading
-
-### Steve Keen's Work
-- **Ravel Software**: [www.patreon.com/Ravelation](https://www.patreon.com/Ravelation) - System dynamics modeling
-- **Substack**: [profstevekeen.substack.com](https://profstevekeen.substack.com/)
-- **Free Book**: [book.stevekeenfree.com](https://book.stevekeenfree.com/)
-
-### Academic Sources
-- **McLeay, M., Radia, A., & Thomas, R. (2014)**: "Money creation in the modern economy", Bank of England Quarterly Bulletin
-- **Deutsche Bundesbank (2017)**: "The role of banks, non-banks and the central bank in the money creation process"
-- **Godley, W., & Lavoie, M. (2012)**: "Monetary Economics: An Integrated Approach to Credit, Money, Income, Production and Wealth"
-
-### Related Tutorials
-- [Economics Tutorials](economics-tutorials.qmd) - Step-by-step CircuitJS implementation
-- [SFC Modeling](sfc-modeling.qmd) - Stock-Flow Consistent methodology
-- Tutorial 4 specifically covers hands-on implementation of these models
-
----
-
-*This analysis demonstrates that first-principles reasoning, grounded in double-entry bookkeeping, leads to radically different conclusions than reasoning by analogy from households to governments.*
-
-<div class="split-footer">
-Originally by Paul Falstad, adapted by Iain Sharp.<br>
-Documentation site built with <a href="https://quarto.org">Quarto</a>. 
-<a href="https://github.com/johnnewto/circuitjs1">GitHub Repository</a>
-</div>
-
-  </div> <!-- end right panel -->
-</div> <!-- end container -->

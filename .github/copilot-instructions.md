@@ -47,8 +47,8 @@ websocket/                                # WebSocket server components
 
 ### Build & Development
 
-- **Primary Build**: Use Gradle (`gradle compileGwt`) for building
-- **Development Mode**: Can use Eclipse with GWT plugin for development
+- **Primary Build**: Use Gradle (`./gradlew compileGwt`) for building
+- **Development Mode**: use `./dev.sh start` to launch dev server
 - **Output**: Compiled JavaScript goes to `war/circuitjs1/`
 - **Local Testing**: Use development server or open `war/circuitjs.html` directly
 
