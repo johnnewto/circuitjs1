@@ -932,6 +932,9 @@ public abstract class CircuitElm implements Editable {
     	return getUnitText(v,u, true);
     }
     
+    // Number format for economics mode (2 decimal places)
+    static NumberFormat economicsFormat = NumberFormat.getFormat("#,##0.00");
+    
     private static String getUnitText(double v, String u, boolean sf) {
 	// Check if this is a voltage unit and use custom symbol if set
 	if (u.equals("V") && sim != null && sim.voltageUnitSymbol != null && !sim.voltageUnitSymbol.equals("V"))
@@ -942,6 +945,23 @@ public abstract class CircuitElm implements Editable {
 	
 	String sp = sf ? "" : " ";
 	double va = Math.abs(v);
+	
+	// Economics mode: use currency-style formatting (only k, M, G prefixes, 2 decimal places)
+	if (sim != null && sim.currentToolbarType == CirSim.ToolbarType.ECONOMICS) {
+	    if (va < 1e-14)
+		return "0.00" + sp + u;
+	    if (va < 1e3)
+		return economicsFormat.format(v) + sp + u;
+	    if (va < 1e6)
+		return economicsFormat.format(v*1e-3) + sp + "k" + u;
+	    if (va < 1e9)
+		return economicsFormat.format(v*1e-6) + sp + "M" + u;
+	    if (va < 1e12)
+		return economicsFormat.format(v*1e-9) + sp + "G" + u;
+	    return NumberFormat.getFormat("#.##E000").format(v) + sp + u;
+	}
+	
+	// Standard electronics mode: use full SI prefix range
 	if (va < 1e-14)
 	    // this used to return null, but then wires would display "null" with 0V
 	    return "0" + sp + u;

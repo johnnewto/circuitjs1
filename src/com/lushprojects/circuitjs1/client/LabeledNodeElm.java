@@ -276,7 +276,9 @@ class LabeledNodeElm extends CircuitElm {
 		arr[0] = Locale.LS(displayName) + " (" + Locale.LS("Labeled Node") + ")";
 		arr[1] = "I = " + getCurrentText(getCurrent());
 		
-		arr[2] = "V = " + getVoltageText(volts[0]);
+		// Use custom voltage unit symbol (e.g., $ for economics mode)
+		String voltUnit = (sim != null && sim.voltageUnitSymbol != null) ? sim.voltageUnitSymbol : "V";
+		arr[2] = voltUnit + " = " + getVoltageText(volts[0]);
 		
 		// Add node number information for debugging
 		LabelEntry le = labelList.get(text);

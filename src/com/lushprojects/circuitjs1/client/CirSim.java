@@ -4971,7 +4971,9 @@ public CirSim() {
 	    CircuitElm.voltageRange = 5;
 	    scopeCount = 0;
 	    lastIterTime = 0;
-	    voltageUnitSymbol = "V"; // Reset to default voltage unit
+	    // Reset to appropriate unit based on current toolbar mode
+	    voltageUnitSymbol = (currentToolbarType == ToolbarType.ECONOMICS) ? "$" : "V";
+	    timeUnitSymbol = (currentToolbarType == ToolbarType.ECONOMICS) ? "yr" : "s";
 	}
 	boolean subs = (flags & RC_SUBCIRCUITS) != 0;
 	//cv.repaint();
