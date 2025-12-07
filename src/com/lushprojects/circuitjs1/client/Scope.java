@@ -392,6 +392,11 @@ class Scope {
     java.util.HashMap<Integer, Integer> actionVerticalPositions = new java.util.HashMap<Integer, Integer>(); // Stored Y positions for each action ID
     
     // ====================
+    // ZOOM SCALE FOR UNDOCKED SCOPES
+    // ====================
+    double zoomScale = 1.0; // Zoom scale factor for text sizing (1.0 = normal)
+    
+    // ====================
     // STATIC VARIABLES - Cursor Tracking
     // ====================
     static double cursorTime;
@@ -413,6 +418,34 @@ class Scope {
    	imageContext = imageCanvas.getContext2d();
 	allocImage();
     	initialize();
+    }
+    
+    /**
+     * Set the zoom scale factor for text sizing in undocked scopes.
+     * @param scale The zoom scale factor (1.0 = normal)
+     */
+    void setZoomScale(double scale) {
+	zoomScale = scale;
+    }
+    
+    /**
+     * Get a scaled font size based on the current zoom scale.
+     * @param baseSize The base font size in pixels
+     * @return The scaled font size
+     */
+    int getScaledFontSize(int baseSize) {
+	return (int) Math.round(baseSize * zoomScale);
+    }
+    
+    /**
+     * Get a font string with scaled size.
+     * @param baseSize The base font size in pixels
+     * @param bold Whether the font should be bold
+     * @return The font string (e.g., "bold 14px sans-serif")
+     */
+    String getScaledFont(int baseSize, boolean bold) {
+	int scaledSize = getScaledFontSize(baseSize);
+	return (bold ? "bold " : "") + scaledSize + "px sans-serif";
     }
     
     /**
@@ -1614,13 +1647,13 @@ class Scope {
 	}
 	
 	g.context.save();
-	g.context.setFont("12px sans-serif");
+	g.context.setFont(getScaledFont(12, false));
 	
 	// Measure text
 	double textWidth = g.context.measureText(text).getWidth();
-	int padding = 6;
+	int padding = (int)(6 * zoomScale);
 	int boxWidth = (int) textWidth + padding * 2;
-	int boxHeight = 20;
+	int boxHeight = (int)(20 * zoomScale);
 	// Position popup horizontally centered on marker
 	int popupX = gx - boxWidth / 2;
 	
@@ -2583,6 +2616,7 @@ class Scope {
     		g.drawString(hs, 0, textY);
     		x+=g.measureWidth(hs);
 		final double bulletWidth = 17;
+		int scaledSpacing = getScaledFontSize(15);
     		for (int i=0; i<visiblePlots.size(); i++) {
     		    ScopePlot p=visiblePlots.get(i);
     		    String s=p.getUnitText(p.manScale);
@@ -2591,7 +2625,7 @@ class Scope {
     			double vScaleWidth=g.measureWidth(vScaleText);
     			if (x+bulletWidth+vScaleWidth > rect.width) {
     			    x=0;
-    			    textY += 15;
+    			    textY += scaledSpacing;
     			    if (rect.y + rect.height <= textY+5)
     	    		    	return;
     			}
@@ -2603,7 +2637,7 @@ class Scope {
     			x+=vScaleWidth;
     		    }
     		}
-    		textY += 15;
+    		textY += scaledSpacing;
     	    }
 
 	
@@ -2795,10 +2829,11 @@ class Scope {
     int textY;
     
     void drawInfoText(Graphics g, String text) {
+	int scaledSpacing = getScaledFontSize(15);
 	if (rect.y + rect.height <= textY+5)
 	    return;
 	g.drawString(text, 0, textY);
-	textY += 15;
+	textY += scaledSpacing;
     }
     
     /**
@@ -2813,12 +2848,12 @@ class Scope {
 	g.setColor(CircuitElm.whiteColor);
 	
 	// Measure the text width
-	g.context.setFont("bold 14px sans-serif");
+	g.context.setFont(getScaledFont(14, true));
 	double textWidth = g.context.measureText(title).getWidth();
 	
 	// Draw at top right with 20px margin
 	int x = (int)(rect.width - textWidth - 20);
-	int y = 15; // Top margin
+	int y = getScaledFontSize(15); // Top margin
 	
 	g.context.fillText(title, x, y);
 	g.context.restore();
@@ -2826,7 +2861,7 @@ class Scope {
     
     void drawInfoTexts(Graphics g) {
     	g.setColor(CircuitElm.whiteColor);
-    	textY = 10;
+    	textY = getScaledFontSize(10);
     	
     	if (visiblePlots.size() == 0) {
     	    if (showElmInfo)
@@ -2854,6 +2889,7 @@ class Scope {
     	// Draw plot names in their respective colors
     	if (visiblePlots.size() >= 1) {
     	    // Show each plot name with its own color and current value
+    	    int scaledSpacing = getScaledFontSize(15);
     	    for (int i = 0; i < visiblePlots.size(); i++) {
     		ScopePlot p = visiblePlots.get(i);
     		if (p.elm != null) {
@@ -2865,7 +2901,7 @@ class Scope {
     			// Add current value to the plot name
     			String valueText = p.getUnitText(p.lastValue);
     			g.drawString(Locale.LS(plotText) + ": " + valueText, 0, textY);
-    			textY += 15;
+    			textY += scaledSpacing;
     		    }
     		}
     	    }

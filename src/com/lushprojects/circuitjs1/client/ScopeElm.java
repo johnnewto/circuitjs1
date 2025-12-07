@@ -162,6 +162,10 @@ class ScopeElm extends CircuitElm {
 	// Update rect based on current element position
 	setScopeRect();
 	
+	// Set zoom scale for text sizing - use average of X and Y scale factors
+	double zoomScale = (sim.transform[0] + sim.transform[3]) / 2.0;
+	elmScope.setZoomScale(zoomScale);
+	
 	// Draw shadow box around the scope to separate it from background
 	drawShadowBox(g);
 	

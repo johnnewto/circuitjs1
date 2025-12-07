@@ -177,12 +177,12 @@ public class Graphics {
 	              
 	              // Render subscript/superscript with smaller font
 	              double savedFontSize = currentFontSize;
-	              double scriptSize = currentFontSize * 0.8; // 80% of normal size
+	              double scriptSize = currentFontSize * 0.7; // 70% of normal size
+	              
+	              // Vertical offset - calculate BEFORE changing font size
+	              double yOffset = isSubscript ? savedFontSize * 0.3 : -savedFontSize * 0.4;
+	              
 	              setFontSize(scriptSize);
-	              
-	              // Vertical offset
-	              double yOffset = isSubscript ? currentFontSize * 0.3 : -currentFontSize * 0.4;
-	              
 	              context.fillText(scriptText, currentX, y + yOffset);
 	              currentX += context.measureText(scriptText).getWidth();
 	              

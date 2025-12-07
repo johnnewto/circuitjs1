@@ -21,11 +21,11 @@ public class TableRenderer {
     protected long lastUpdateTime = 0;  // Timestamp of last cache update
     protected static final long UPDATE_INTERVAL_MS = 200; // Update 5 times per second
     
-    // Fonts for different parts of the table - all bold for better readability
+    // Fonts for different parts of the table
     // Protected to allow subclasses (CurrentTransactionsMatrixRenderer) to use these constants
     private static final Font TITLE_FONT = new Font("SansSerif", Font.BOLD, 13);
     protected static final Font HEADER_FONT = new Font("SansSerif", Font.BOLD, 11);
-    protected static final Font CELL_FONT = new Font("SansSerif", Font.BOLD, 11);
+    protected static final Font CELL_FONT = new Font("SansSerif", 0, 11);  // Non-bold like ActionTimeElm
     protected static final String LETTER_SPACING = "0.5px"; // For better readability
     
     public TableRenderer(TableElm table) {

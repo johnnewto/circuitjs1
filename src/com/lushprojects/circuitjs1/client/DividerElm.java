@@ -51,15 +51,30 @@ class DividerElm extends VCCSElm {
         sim.stampVoltageSource(0, nodes[inputCount], pins[inputCount].voltSource);
     }
     
+    // Minimum denominator value to prevent numerical instability
+    static final double MIN_DENOMINATOR = 1e-6;
+    // Maximum derivative magnitude to prevent solver instability
+    static final double MAX_DERIVATIVE = 1e6;
+    
+    double getConvergeLimit() {
+        // get maximum change in voltage per step when testing for convergence.  be more lenient over time
+        if (sim.subIterations < 10)
+            return .001;
+        if (sim.subIterations < 200)
+            return .01;
+        return .1;
+    }
+    
     void doStep() {
         int i;
         
         int vn = pins[inputCount].voltSource + sim.nodeList.size();
         if (expr != null) {
             // Check for divide by zero on denominators (inputs 1+)
+            // Use a larger threshold to prevent numerical instability before derivatives explode
             boolean divByZero = false;
             for (i = 1; i < inputCount; i++) {
-                if (Math.abs(volts[i]) < 1e-12) {
+                if (Math.abs(volts[i]) < MIN_DENOMINATOR) {
                     divByZero = true;
                     break;
                 }
@@ -71,6 +86,14 @@ class DividerElm extends VCCSElm {
                 return;
             }
             
+            // // Check input convergence (like VCCSElm does)
+            // double convergeLimit = getConvergeLimit();
+            // for (i = 0; i != inputCount; i++) {
+            //     if (Math.abs(volts[i]-lastVolts[i]) > convergeLimit) {
+            //         sim.converged = false;
+            //     }
+            // }
+            
             // Calculate output
             for (i = 0; i != inputCount; i++)
                 exprState.values[i] = volts[i];
@@ -80,8 +103,14 @@ class DividerElm extends VCCSElm {
             double vMinus = 0; // V- is always ground
             
             // Check output convergence
-            if (Math.abs(volts[inputCount]-vMinus-v0) > Math.abs(v0)*.01 && sim.subIterations < 100)
+            // Use relative tolerance for large values, absolute tolerance for values near zero
+            double outputDelta = Math.abs(volts[inputCount]-vMinus-v0);
+            double tolerance = Math.max(Math.abs(v0)*.01, 1e-9);  // At least 1e-9 absolute tolerance
+            boolean outputNotConverged = outputDelta > tolerance && sim.subIterations < 100;
+            if (outputNotConverged) {
                 sim.converged = false;
+
+            }
             double rs = v0;
             
             // Calculate and stamp output derivatives
@@ -94,8 +123,14 @@ class DividerElm extends VCCSElm {
                 exprState.values[i] = volts[i]-dv;
                 double v2 = expr.eval(exprState);
                 double dx = (v-v2)/dv;
+                double origDx = dx;
+                // Clamp derivative to prevent solver instability with small denominators
                 if (Math.abs(dx) < 1e-6)
                     dx = sign(dx, 1e-6);
+                if (Math.abs(dx) > MAX_DERIVATIVE) {
+                    dx = sign(dx, MAX_DERIVATIVE);
+
+                }
                 sim.stampMatrix(vn, nodes[i], -dx);
                 // Adjust right side
                 rs -= dx*volts[i];
@@ -141,9 +176,6 @@ class DividerElm extends VCCSElm {
         g.setColor(selected ? selectColor : whiteColor);
 
         drawCenteredText(g, label, mid_x, mid_y, true);
-
-        // Restore original font
-        g.restore();
     }
     
     public EditInfo getChipEditInfo(int n) {

@@ -1395,12 +1395,12 @@ public CirSim() {
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Multipler"), "MultiplyElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Multiply by Constant"), "MultiplyConstElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Divider"), "DividerElm"));
+    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Percent"), "PercentElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Divide by Constant"), "DivideConstElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Differentiator"), "DifferentiatorElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Integrator"), "IntegratorElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add ODE"), "ODEElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Equation"), "EquationElm"));
-    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Percent/Ratio Meter"), "PercentElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Adder"), "AdderElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Subtracter"), "SubtracterElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Table"), "TableElm"));

@@ -52,8 +52,8 @@ public class EconomicsToolbar extends Toolbar {
 
 	add(createButtonSet(tableInfo));
 	String equationInfo[] = { multiplyIcon, "MultiplyElm", multiplyConstIcon, "MultiplyConstElm", dividerIcon, "DividerElm",
-	    divideConstIcon, "DivideConstElm", differentiatorIcon, "DifferentiatorElm", integratorIcon, "IntegratorElm", odeIcon, "ODEElm",
-	    equationIcon, "EquationElm", percentIcon, "PercentElm", adderIcon, "AdderElm", subtracterIcon, "SubtracterElm"
+	    percentIcon, "PercentElm", divideConstIcon, "DivideConstElm", differentiatorIcon, "DifferentiatorElm", integratorIcon, "IntegratorElm", odeIcon, "ODEElm",
+	    equationIcon, "EquationElm", adderIcon, "AdderElm", subtracterIcon, "SubtracterElm"
 	};
 	add(createButtonSet(equationInfo));
 	String displayInfo[] = { stopTimeIcon, "StopTimeElm", pieChartIcon, "PieChartElm", viewportIcon, "ViewportElm" };

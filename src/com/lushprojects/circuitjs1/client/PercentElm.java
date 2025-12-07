@@ -1,312 +1,233 @@
 /*    
-    Copyright (C) Paul Falstad and Iain Sharp
+    Copyright (C) Paul Falstad
     
     This file is part of CircuitJS1.
-
-    CircuitJS1 is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 2 of the License, or
-    (at your option) any later version.
-
-    CircuitJS1 is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 package com.lushprojects.circuitjs1.client;
 
 /**
- * PercentElm - Display-only element that shows the ratio or percentage of two input voltages
- * Computes V1/V2 and displays as ratio or percentage
- * Does not affect the circuit (no stamping)
+ * PercentElm - Computes (a/b/c...) * 100 and outputs the percentage value
+ * Similar to DividerElm but multiplies the result by 100
  */
-class PercentElm extends CircuitElm {
-    static final int FLAG_SHOWVALUE = 1;
-    static final int FLAG_SHOWPERCENT = 2;  // If set, show as percentage; otherwise show as ratio
-    static final int FLAG_FIXED = 4;
-    static final int FLAG_ESCAPE = 8;  // Flag to indicate escaped text in dump
-    
-    int scale;
-    Point center;
-    double ratio;
-    String text;  // Name/label for this element
+class PercentElm extends VCCSElm {
+    public PercentElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
+        super(xa, ya, xb, yb, f, st);
+    }
     
     public PercentElm(int xx, int yy) {
         super(xx, yy);
-        // Default: show value and show as percentage
-        flags = FLAG_SHOWVALUE | FLAG_SHOWPERCENT;
-        scale = SCALE_AUTO;
-        text = "";  // Default empty name
+        // Implement percentage as (a/b/c...) * 100 = a * (1/b) * (1/c) * 100
+        exprString = "a";
+        for (int i = 1; i != inputCount; i++) {
+            char var = (char)('a' + i);
+            // Add epsilon to denominator before inverting to prevent 1/0
+            exprString += "*(1/(" + var + "!=0?" + var + ":1e-9))";
+        }
+        exprString += "*100";
+        parseExpr();
+        // Override the size set by parent to be small by default
+        flags |= FLAG_SMALL; // Set flag to persist small size
+        setSize(1); // Set to small size
+        setPoints(); // Recalculate points with new size
     }
     
-    public PercentElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
-        super(xa, ya, xb, yb, f);
-        scale = SCALE_AUTO;
-        text = "";
-        try {
-            scale = Integer.parseInt(st.nextToken());
-            // Try to read the name field if it exists
-            if (st.hasMoreTokens()) {
-                text = st.nextToken();
-                if ((flags & FLAG_ESCAPE) != 0) {
-                    // New-style dump with escaped text
-                    text = CustomLogicModel.unescape(text);
-                } else {
-                    // Old-style dump - concatenate remaining tokens with spaces
-                    while (st.hasMoreTokens())
-                        text += ' ' + st.nextToken();
+    void setupPins() {
+        // V- is internal, always node 0 (ground)
+        sizeX = 2;
+        sizeY = inputCount > 2 ? inputCount : 2;
+        pins = new Pin[inputCount+2];
+        int i;
+        for (i = 0; i != inputCount; i++) {
+            pins[i] = new Pin(i, SIDE_W, ""); 
+        }
+        pins[inputCount] = new Pin(0, SIDE_E, "");
+        pins[inputCount].output = true;
+        lastVolts = new double[inputCount];
+        exprState = new ExprState(inputCount);
+        allocNodes();
+    }
+
+    String getChipName() { return "Percent"; }
+    
+    void stamp() {
+        int vn = pins[inputCount].voltSource + sim.nodeList.size();
+        sim.stampNonLinear(vn);
+        sim.stampVoltageSource(0, nodes[inputCount], pins[inputCount].voltSource);
+    }
+    
+    // Minimum denominator value to prevent numerical instability
+    static final double MIN_DENOMINATOR = 1e-6;
+    // Maximum derivative magnitude to prevent solver instability
+    static final double MAX_DERIVATIVE = 1e6;
+    
+    double getConvergeLimit() {
+        // get maximum change in voltage per step when testing for convergence.  be more lenient over time
+        if (sim.subIterations < 10)
+            return .001;
+        if (sim.subIterations < 200)
+            return .01;
+        return .1;
+    }
+    
+    void doStep() {
+        int i;
+        
+        int vn = pins[inputCount].voltSource + sim.nodeList.size();
+        if (expr != null) {
+            // Check for divide by zero on denominators (inputs 1+)
+            // Use a larger threshold to prevent numerical instability before derivatives explode
+            boolean divByZero = false;
+            for (i = 1; i < inputCount; i++) {
+                if (Math.abs(volts[i]) < MIN_DENOMINATOR) {
+                    divByZero = true;
+                    break;
                 }
             }
-        } catch (Exception e) {}
-    }
-    
-    int getDumpType() { return 'P'; }  // Using 'P' instead of '%' which is filtered out
-    
-    String dump() {
-        flags |= FLAG_ESCAPE;  // Mark that we're using escaped text format
-        String dump = super.dump() + " " + scale;
-        if (text != null && !text.isEmpty()) {
-            dump += " " + CustomLogicModel.escape(text);
-        }
-        return dump;
-    }
-    
-    int getPostCount() { return 2; }
-    
-    void setPoints() {
-        super.setPoints();
-        center = interpPoint(point1, point2, .5);
-    }
-    
-    void draw(Graphics g) {
-        g.save();
-        int hs = 8;
-        setBbox(point1, point2, hs);
-        boolean selected = needsHighlight();
-        double len = (selected || sim.dragElm == this || mustShowValue()) ? 16 : dn-32;
-        calcLeads((int) len);
-        
-        // Draw leads with voltage coloring
-        setVoltageColor(g, volts[0]);
-        if (selected)
-            g.setColor(selectColor);
-        drawThickLine(g, point1, lead1);
-        
-        setVoltageColor(g, volts[1]);
-        if (selected)
-            g.setColor(selectColor);
-        drawThickLine(g, lead2, point2);
-        
-        // Draw the division symbol or label in the center
-        Font f = new Font("SansSerif", Font.BOLD, 14);
-        g.setFont(f);
-        g.setColor(selected ? selectColor : whiteColor);
-        drawCenteredText(g, "÷", center.x, center.y, true);
-        
-        // Display the name if provided
-        if (text != null && !text.isEmpty()) {
-            g.setFont(unitsFont);
-            g.setColor(whiteColor);
-            // Draw name above the element
-            drawCenteredText(g, text, center.x, center.y - 15, false);
-        }
-        
-        // Display the computed value
-        if (mustShowValue()) {
-            String s = "";
-            if (showAsPercent()) {
-                // Show as percentage
-                s = getUnitTextWithScale(ratio * 100, "%", scale, isFixed());
-            } else {
-                // Show as ratio
-                s = getUnitTextWithScale(ratio, "", scale, isFixed());
+            
+            // If divide by zero detected, output zero and converge
+            if (divByZero) {
+                sim.stampRightSide(vn, 0.0);
+                return;
             }
-            drawValues(g, s, 4);
+            
+            // // Check input convergence (like VCCSElm does)
+            // double convergeLimit = getConvergeLimit();
+            // for (i = 0; i != inputCount; i++) {
+            //     if (Math.abs(volts[i]-lastVolts[i]) > convergeLimit) {
+            //         sim.converged = false;
+            //     }
+            // }
+            
+            // Calculate output
+            for (i = 0; i != inputCount; i++)
+                exprState.values[i] = volts[i];
+
+            exprState.t = sim.t;
+            double v0 = expr.eval(exprState);
+            double vMinus = 0; // V- is always ground
+            
+            // Check output convergence
+            // Use relative tolerance for large values, absolute tolerance for values near zero
+            double outputDelta = Math.abs(volts[inputCount]-vMinus-v0);
+            double tolerance = Math.max(Math.abs(v0)*.01, 1e-9);  // At least 1e-9 absolute tolerance
+            if (outputDelta > tolerance && sim.subIterations < 100)
+                sim.converged = false;
+            double rs = v0;
+            
+            // Calculate and stamp output derivatives
+            for (i = 0; i != inputCount; i++) {
+                double dv = volts[i]-lastVolts[i];
+                if (Math.abs(dv) < 1e-6)
+                    dv = 1e-6;
+                exprState.values[i] = volts[i];
+                double v = expr.eval(exprState);
+                exprState.values[i] = volts[i]-dv;
+                double v2 = expr.eval(exprState);
+                double dx = (v-v2)/dv;
+                // Clamp derivative to prevent solver instability with small denominators
+                if (Math.abs(dx) < 1e-6)
+                    dx = sign(dx, 1e-6);
+                if (Math.abs(dx) > MAX_DERIVATIVE)
+                    dx = sign(dx, MAX_DERIVATIVE);
+                sim.stampMatrix(vn, nodes[i], -dx);
+                // Adjust right side
+                rs -= dx*volts[i];
+                exprState.values[i] = volts[i];
+            }
+            
+            sim.stampRightSide(vn, rs);
         }
-        
-        // Draw +/- labels
-        g.setColor(whiteColor);
-        g.setFont(unitsFont);
-        Point plusPoint1 = interpPoint(point1, point2, (dn/2-len/2-4)/dn, -10*dsign);
-        Point plusPoint2 = interpPoint(point1, point2, (dn/2+len/2+4)/dn, -10*dsign);
-        
-        if (y2 > y) {
-            plusPoint1.y += 4;
-            plusPoint2.y += 4;
-        }
-        if (y > y2) {
-            plusPoint1.y += 3;
-            plusPoint2.y += 3;
-        }
-        
-        int w1 = (int)g.context.measureText("+").getWidth();
-        int w2 = (int)g.context.measureText("-").getWidth();
-        g.drawString("+", plusPoint1.x-w1/2, plusPoint1.y);
-        g.drawString("-", plusPoint2.x-w2/2, plusPoint2.y);
-        
-        drawPosts(g);
-        g.restore();
-    }
-    
-    boolean mustShowValue() {
-        return (flags & FLAG_SHOWVALUE) != 0;
-    }
-    
-    boolean showAsPercent() {
-        return (flags & FLAG_SHOWPERCENT) != 0;
-    }
-    
-    boolean isFixed() {
-        return (flags & FLAG_FIXED) != 0;
+
+        for (i = 0; i != inputCount; i++)
+            lastVolts[i] = volts[i];
     }
     
     void stepFinished() {
-        // Calculate the ratio V1/V2
-        double v1 = volts[0];
-        double v2 = volts[1];
+        double vMinus = 0; // V- is always ground
+        exprState.updateLastValues(volts[inputCount]-vMinus);
+    }
+
+    int getPostCount() { return inputCount+1; } // since V- is not a post anymore
+    
+    int getVoltageSourceCount() { return 1; }
+    
+    int getDumpType() { return 'P'; }
+
+    boolean hasCurrentOutput() { return false; }
+
+    void setCurrent(int vn, double c) {
+        if (pins[inputCount].voltSource == vn) {
+            pins[inputCount].current = c;
+        }
+    }
+
+    void draw(Graphics g) {
+        drawChip(g);
+        String label = "%"; // Percent symbol
+        // Calculate midpoint using rectPointsX and rectPointsY arrays
+        int mid_x = (rectPointsX[0] + rectPointsX[1] + rectPointsX[2] + rectPointsX[3]) / 4;
+        int mid_y = (rectPointsY[0] + rectPointsY[1] + rectPointsY[2] + rectPointsY[3]) / 4;
+
+        boolean selected = needsHighlight();
+        g.setColor(selected ? selectColor : whiteColor);
         
-        // Avoid division by zero
-        if (Math.abs(v2) < 1e-12) {
-            ratio = 0;
-        } else {
-            ratio = v1 / v2;
-        }
+        // Draw % symbol using the chip's standard font size (scales with chip size)
+        int fontSize = cspc > 30 ? 25 : 14;  // Larger font for larger chip size
+        g.context.save();
+        g.context.setFont((selected ? "bold " : "") + fontSize + "px sans-serif");
+        drawCenteredText(g, label, mid_x, mid_y, true);
+        g.context.restore();
     }
     
-    void stamp() {
-        // No stamping - this is a display-only element
-        // Acts like an open circuit (infinite impedance)
-    }
-    
-    void getInfo(String arr[]) {
-        arr[0] = "ratio/percent meter";
-        arr[1] = "V1 = " + getVoltageText(volts[0]);
-        arr[2] = "V2 = " + getVoltageText(volts[1]);
-        if (showAsPercent()) {
-            arr[3] = "Ratio = " + getUnitText(ratio * 100, "%");
-        } else {
-            arr[3] = "Ratio = " + ratio;
-        }
-    }
-    
-    boolean getConnection(int n1, int n2) { 
-        // No connection between terminals (open circuit)
-        return false; 
-    }
-    
-    public EditInfo getEditInfo(int n) {
-        if (n == 0) {
-            EditInfo ei = new EditInfo("Name", 0, -1, -1);
-            ei.text = text;
-            return ei;
-        }
+    public EditInfo getChipEditInfo(int n) {
+        if (n == 0)
+            return new EditInfo("# of Inputs", inputCount, 1, 8).
+                setDimensionless();
         if (n == 1) {
             EditInfo ei = new EditInfo("", 0, -1, -1);
-            ei.checkbox = new Checkbox("Show Value", mustShowValue());
-            return ei;
-        }
-        if (n == 2) {
-            EditInfo ei = new EditInfo("", 0, -1, -1);
-            ei.checkbox = new Checkbox("Show as Percentage", showAsPercent());
-            return ei;
-        }
-        if (n == 3) {
-            EditInfo ei = new EditInfo("Scale", 0);
-            ei.choice = new Choice();
-            ei.choice.add("Auto");
-            ei.choice.add("m");
-            ei.choice.add("1");
-            ei.choice.add("K");
-            ei.choice.add("M");
-            ei.choice.select(scale);
-            return ei;
-        }
-        if (n == 4) {
-            EditInfo ei = new EditInfo("", 0, -1, -1);
-            ei.checkbox = new Checkbox("Fixed Scale", isFixed());
+            ei.checkbox = new Checkbox("Small Size", (flags & FLAG_SMALL) != 0);
             return ei;
         }
         return null;
     }
-    
-    public void setEditValue(int n, EditInfo ei) {
+
+    public void setChipEditValue(int n, EditInfo ei) {
+        CirSim.console("PercentElm.setChipEditValue n=" + n);
         if (n == 0) {
-            text = ei.textf.getText();
+            CirSim.console("  Changing input count from " + inputCount + " to " + ei.value);
+            if (ei.value < 1 || ei.value > 8) {
+                CirSim.console("  Invalid value, returning");
+                return;
+            }
+            inputCount = (int) ei.value;
+            CirSim.console("  Building expression string...");
+            exprString = "a";
+            for (int i = 1; i != inputCount; i++) {
+                char var = (char)('a' + i);
+                exprString += "*(1/(" + var + "!=0?" + var + ":1e-9))";
+            }
+            exprString += "*100";
+            CirSim.console("  Expression: " + exprString);
+            CirSim.console("  Parsing expression...");
+            parseExpr();
+            CirSim.console("  Setting up pins...");
+            setupPins();
+            CirSim.console("  Allocating nodes...");
+            allocNodes();
+            CirSim.console("  Setting points...");
+            setPoints();
+            CirSim.console("  Done changing input count");
         }
         if (n == 1) {
-            flags = ei.changeFlag(flags, FLAG_SHOWVALUE);
+            CirSim.console("  Changing size");
+            flags = ei.changeFlag(flags, FLAG_SMALL);
+            setSize((flags & FLAG_SMALL) != 0 ? 1 : 2);
+            setupPins();
+            allocNodes();
+            setPoints();
+            CirSim.console("  Done changing size");
         }
-        if (n == 2) {
-            flags = ei.changeFlag(flags, FLAG_SHOWPERCENT);
-        }
-        if (n == 3) {
-            scale = ei.choice.getSelectedIndex();
-            ei.newDialog = true;
-        }
-        if (n == 4) {
-            flags = ei.changeFlag(flags, FLAG_FIXED);
-        }
-    }
-    
-    // This element doesn't need nodes (it's display only)
-    // But we still need to call super to get node allocation
-    // The element will have high impedance (open circuit)
-    
-    double getVoltageDiff() {
-        return volts[0] - volts[1];
-    }
-    
-    // No power dissipation (open circuit)
-    double getPower() { 
-        return 0; 
-    }
-    
-    // Override scope methods to display the computed ratio instead of voltage difference
-    @Override
-    double getScopeValue(int x) {
-        // For voltage plot, return the computed ratio
-        // For current, return 0 (no current flows through this element)
-        // For power, return 0 (no power dissipation)
-        if (x == Scope.VAL_CURRENT)
-            return 0;
-        if (x == Scope.VAL_POWER)
-            return 0;
-        // Default case (VAL_VOLTAGE) - return the ratio
-        if (showAsPercent())
-            return ratio * 100;  // Show as percentage
-        else
-            return ratio;  // Show as ratio
-    }
-    
-    @Override
-    int getScopeUnits(int x) {
-        // For current/power, use default units
-        if (x == Scope.VAL_CURRENT)
-            return Scope.UNITS_A;
-        if (x == Scope.VAL_POWER)
-            return Scope.UNITS_W;
-        // For voltage (default), return V units
-        // The scope will append units based on this
-        return Scope.UNITS_V;
-    }
-    
-    @Override
-    String getScopeText(int v) {
-        // If a name is provided, use it; otherwise use default label
-        if (text != null && !text.isEmpty()) {
-            return text;
-        }
-        if (showAsPercent())
-            return "Percent Meter (%)";
-        else
-            return "Ratio Meter";
-    }
-    
-    String getName() { 
-        return text != null ? text : ""; 
+        CirSim.console("PercentElm.setChipEditValue DONE");
     }
 }
