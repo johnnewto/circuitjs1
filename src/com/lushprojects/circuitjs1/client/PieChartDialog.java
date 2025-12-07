@@ -24,7 +24,8 @@ import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.HorizontalPanel;
 import com.google.gwt.user.client.ui.Grid;
 import com.google.gwt.user.client.ui.Label;
-import com.google.gwt.user.client.ui.TextBox;
+import com.google.gwt.user.client.ui.SuggestBox;
+import com.google.gwt.user.client.ui.MultiWordSuggestOracle;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
@@ -38,7 +39,7 @@ public class PieChartDialog extends Dialog {
     
     PieChartElm pieChart;
     CirSim sim;
-    Vector<TextBox> nodeNameBoxes;
+    Vector<SuggestBox> nodeNameBoxes;
     Vector<Choice> colorChoices;
     Button addButton, removeButton;
     Grid sliceGrid;
@@ -126,7 +127,7 @@ public class PieChartDialog extends Dialog {
         if (sliceGrid != null)
             mainPanel.remove(sliceGrid);
         
-        nodeNameBoxes = new Vector<TextBox>();
+        nodeNameBoxes = new Vector<SuggestBox>();
         colorChoices = new Vector<Choice>();
         
         int sliceCount = pieChart.nodeNames.length;
@@ -144,10 +145,8 @@ public class PieChartDialog extends Dialog {
         for (int i = 0; i < sliceCount; i++) {
             sliceGrid.setText(i + 1, 0, String.valueOf(i + 1));
             
-            // Node name text box
-            TextBox nameBox = new TextBox();
-            nameBox.setText(pieChart.nodeNames[i]);
-            nameBox.setWidth("150px");
+            // Node name SuggestBox with autocomplete for labeled nodes
+            SuggestBox nameBox = createNodeSuggestBox(pieChart.nodeNames[i]);
             sliceGrid.setWidget(i + 1, 1, nameBox);
             nodeNameBoxes.add(nameBox);
             
@@ -164,6 +163,44 @@ public class PieChartDialog extends Dialog {
         }
         
         mainPanel.insert(sliceGrid, 1); // Insert after title
+    }
+    
+    /**
+     * Creates a SuggestBox with autocomplete suggestions for labeled node names.
+     * Follows the same pattern as LabeledNodeElm.getEditInfo().
+     */
+    SuggestBox createNodeSuggestBox(String initialText) {
+        MultiWordSuggestOracle oracle = new MultiWordSuggestOracle();
+        
+        // Add existing labeled node names
+        java.util.Set<String> nodeNames = LabeledNodeElm.getAllNodeNames();
+        if (nodeNames != null && !nodeNames.isEmpty()) {
+            for (String labelName : nodeNames) {
+                oracle.add(labelName);
+            }
+        }
+        
+        // Add stock variables from TableElm cell equations
+        java.util.Set<String> stockNames = StockFlowRegistry.getAllStockNames();
+        if (stockNames != null && !stockNames.isEmpty()) {
+            for (String stockName : stockNames) {
+                oracle.add(stockName);
+            }
+        }
+        
+        // Add variables used in cell equations
+        java.util.Set<String> cellVariables = StockFlowRegistry.getAllCellEquationVariables();
+        if (cellVariables != null && !cellVariables.isEmpty()) {
+            for (String varName : cellVariables) {
+                oracle.add(varName);
+            }
+        }
+        
+        SuggestBox suggestBox = new SuggestBox(oracle);
+        suggestBox.setText(initialText);
+        suggestBox.setWidth("150px");
+        
+        return suggestBox;
     }
     
     void addSlice() {

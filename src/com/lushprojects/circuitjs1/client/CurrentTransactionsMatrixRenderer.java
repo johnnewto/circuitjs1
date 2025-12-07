@@ -140,7 +140,7 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
-        int rowDescColWidth = cellWidthPixels * 2;
+        int rowDescColWidth = cellWidthPixels * 3 / 2;
         int rowY = tableY + offsetY;
         
         g.setFont(HEADER_FONT);
@@ -179,7 +179,7 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
-        int rowDescColWidth = cellWidthPixels * 2;
+        int rowDescColWidth = cellWidthPixels * 3 / 2;
         int rowY = tableY + offsetY;
         
         g.setFont(HEADER_FONT);
@@ -222,7 +222,7 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
-        int rowDescColWidth = cellWidthPixels * 2;
+        int rowDescColWidth = cellWidthPixels * 3 / 2;
         int rowY = tableY + offsetY;
         
         g.setFont(HEADER_FONT);
@@ -263,6 +263,16 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
         // CTM uses SUM column, not A-L-E accounting equation
         // No need for blue discrepancy warning
         return false;
+    }
+    
+    /**
+     * Override to make SUM column standard width in CTM.
+     * Base class makes ALE column half width, but CTM's SUM column should be full width.
+     */
+    @Override
+    protected int getColumnWidth(int col, int cellWidthPixels) {
+        // CTM uses standard width for all columns including SUM
+        return cellWidthPixels;
     }
 
 }

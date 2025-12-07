@@ -236,23 +236,21 @@ class PieChartElm extends GraphicElm {
     }
     
     /**
-     * Updates node values from labeled nodes in the circuit.
+     * Updates node values from labeled nodes and TableElm stocks in the circuit.
+     * First checks ComputedValues (for TableElm stock columns), 
+     * then falls back to LabeledNodeElm voltage via sim.getLabeledNodeVoltage().
      */
     void updateNodeValues() {
         for (int i = 0; i < nodeNames.length; i++) {
-            nodeValues[i] = 0;
+            String nodeName = nodeNames[i];
             
-            // Find the labeled node and get its voltage
-            int j;
-            for (j = 0; j != sim.elmList.size(); j++) {
-                CircuitElm ce = sim.getElm(j);
-                if (ce instanceof LabeledNodeElm) {
-                    LabeledNodeElm lne = (LabeledNodeElm) ce;
-                    if (nodeNames[i].equals(lne.text)) {
-                        nodeValues[i] = lne.volts[0];
-                        break;
-                    }
-                }
+            // First, try to get value from ComputedValues (TableElm stock columns)
+            Double computedValue = ComputedValues.getComputedValue(nodeName);
+            if (computedValue != null) {
+                nodeValues[i] = computedValue;
+            } else {
+                // Fall back to LabeledNodeElm voltage lookup (uses HashMap, not loop)
+                nodeValues[i] = sim.getLabeledNodeVoltage(nodeName);
             }
         }
     }

@@ -174,7 +174,7 @@
     }
 
     var currentValue = sim.getSliderValue(sliderName);
-    if (currentValue === 0) {
+    if (isNaN(currentValue)) {
       showToast('Slider not found: ' + sliderName, 'error');
       return;
     }
@@ -212,6 +212,68 @@
       }
     }
     requestAnimationFrame(animateUp);
+  }
+
+  // State tracking for cycleSlider
+  var sliderCycleState = {};
+
+  /**
+   * Cycle a slider through a sequence of values on each button press.
+   * Values persist until the next press. Optionally updates button text.
+   * 
+   * @param {string} sliderName - Name of the slider to cycle
+   * @param {Array} values - Array of values to cycle through (e.g., [0, 5, 0, -5])
+   * @param {number} durationMs - Animation duration in milliseconds (default 300)
+   * @param {HTMLElement} button - Optional button element to update with current value
+   */
+  function cycleSlider(sliderName, values, durationMs, button) {
+    durationMs = durationMs || 300;
+    var sim = getCircuitJS();
+    if (!sim) {
+      showToast('CircuitJS not ready', 'error');
+      return;
+    }
+
+    var currentValue = sim.getSliderValue(sliderName);
+    if (isNaN(currentValue)) {
+      showToast('Slider not found: ' + sliderName, 'error');
+      return;
+    }
+
+    // Get or initialize cycle state for this slider
+    if (sliderCycleState[sliderName] === undefined) {
+      sliderCycleState[sliderName] = 0;
+    }
+
+    // Move to next value in cycle
+    sliderCycleState[sliderName] = (sliderCycleState[sliderName] + 1) % values.length;
+    var targetValue = values[sliderCycleState[sliderName]];
+
+    // Update button text if provided
+    if (button) {
+      var valueSpan = button.querySelector('.slider-value');
+      if (valueSpan) {
+        var displayValue = (targetValue >= 0 ? '+' : '') + (targetValue * 100).toFixed(0) + '%';
+        valueSpan.textContent = displayValue;
+      }
+    }
+
+    var startValue = currentValue;
+    var startTime = performance.now();
+
+    showToast(sliderName + ' → ' + (targetValue * 100).toFixed(0) + '%', 'success');
+
+    // Animate to target
+    function animate(currentTime) {
+      var elapsed = currentTime - startTime;
+      var progress = Math.min(elapsed / durationMs, 1);
+      sim.setSliderValue(sliderName, startValue + (targetValue - startValue) * easeInOut(progress));
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    }
+    requestAnimationFrame(animate);
   }
 
   /**
@@ -694,6 +756,7 @@
     getCircuitJS: getCircuitJS,
     showToast: showToast,
     toggleSlider: toggleSlider,
+    cycleSlider: cycleSlider,
     animateSliderTo: animateSliderTo,
     initRealtimeTable: initRealtimeTable,
     startRealtimeTable: startRealtimeTable,
@@ -905,6 +968,7 @@
   global.getCircuitJS = getCircuitJS;
   global.showToast = showToast;
   global.toggleSlider = toggleSlider;
+  global.cycleSlider = cycleSlider;
   global.animateSliderTo = animateSliderTo;
   global.initRealtimeTable = initRealtimeTable;
   global.startRealtimeTable = startRealtimeTable;

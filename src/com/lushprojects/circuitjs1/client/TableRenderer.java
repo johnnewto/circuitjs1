@@ -167,8 +167,8 @@ public class TableRenderer {
         dims.tableY = table.getTableY();
         dims.cellWidthPixels = table.getCellWidthPixels();
         
-        // Always show row description column (2x width for better readability)
-        dims.rowDescColWidth = dims.cellWidthPixels * 2;
+        // Always show row description column (1.5x width for better readability)
+        dims.rowDescColWidth = dims.cellWidthPixels * 3 / 2;
         
         // Calculate heights
         dims.titleHeight = 20;
@@ -182,8 +182,7 @@ public class TableRenderer {
         dims.computedRowHeight = table.cellHeight + table.cellSpacing;
         
         dims.tableWidth = dims.rowDescColWidth + table.cellSpacing + 
-                         table.getCols() * dims.cellWidthPixels + 
-                         (table.getCols() + 1) * table.cellSpacing;
+                         getTotalDataColumnsWidth(dims.cellWidthPixels);
         dims.tableHeight = dims.titleHeight + extraRowsHeight + dims.typeRowHeight + dims.headerRowHeight + 
                           dims.initialRowHeight + dims.dataRowsHeight + dims.computedRowHeight;
         
@@ -393,6 +392,9 @@ public class TableRenderer {
      * This is critical for proper value synchronization when multiple tables
      * share stock names but have flows in different orders.
      * 
+     * Uses trimmed comparison to handle cases where flow names may have
+     * trailing/leading whitespace differences between tables.
+     * 
      * @param masterTable The master table to search
      * @param flowName The flow name to find
      * @return Row index in master table, or -1 if not found
@@ -402,10 +404,12 @@ public class TableRenderer {
             return -1;
         }
         
+        String trimmedFlowName = flowName.trim();
         int masterRows = masterTable.getRows();
         for (int r = 0; r < masterRows; r++) {
             String masterFlowName = masterTable.getRowDescription(r);
-            if (flowName.equals(masterFlowName)) {
+            // Compare trimmed names to handle whitespace differences
+            if (masterFlowName != null && trimmedFlowName.equals(masterFlowName.trim())) {
                 return r;
             }
         }
@@ -575,6 +579,48 @@ public class TableRenderer {
     }
     
     /**
+     * Get the width of a specific column in pixels.
+     * ALE columns are half the width of regular columns.
+     * @param col Column index
+     * @param cellWidthPixels Standard cell width in pixels
+     * @return Width of the column in pixels
+     */
+    protected int getColumnWidth(int col, int cellWidthPixels) {
+        boolean isALECol = hasALEColumn() && col == table.getCols() - 1;
+        return isALECol ? cellWidthPixels / 2 : cellWidthPixels;
+    }
+    
+    /**
+     * Get the X position of a specific column, accounting for variable column widths.
+     * ALE columns are half the width of regular columns.
+     * @param col Column index
+     * @param tableX Table X position
+     * @param rowDescColWidth Row description column width
+     * @param cellWidthPixels Standard cell width in pixels
+     * @return X position of the column
+     */
+    protected int getColumnX(int col, int tableX, int rowDescColWidth, int cellWidthPixels) {
+        int x = tableX + rowDescColWidth + table.cellSpacing * 2;
+        for (int c = 0; c < col; c++) {
+            x += getColumnWidth(c, cellWidthPixels) + table.cellSpacing;
+        }
+        return x;
+    }
+    
+    /**
+     * Calculate the total width of all data columns, accounting for ALE column being half width.
+     * @param cellWidthPixels Standard cell width in pixels
+     * @return Total width of all data columns including spacing
+     */
+    protected int getTotalDataColumnsWidth(int cellWidthPixels) {
+        int totalWidth = 0;
+        for (int c = 0; c < table.getCols(); c++) {
+            totalWidth += getColumnWidth(c, cellWidthPixels) + table.cellSpacing;
+        }
+        return totalWidth + table.cellSpacing; // Add extra spacing at end
+    }
+    
+    /**
      * Get the stock name for a column (null if none)
      * Protected to allow subclasses to reuse this logic
      */
@@ -628,9 +674,9 @@ public class TableRenderer {
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
         
-        // Always show row description column (2x width for better readability)
-        int rowDescColWidth = cellWidthPixels * 2;
-        int tableWidth = rowDescColWidth + table.cellSpacing + table.getCols() * cellWidthPixels + (table.getCols() + 1) * table.cellSpacing;
+        // Always show row description column (1.5x width for better readability)
+        int rowDescColWidth = cellWidthPixels * 3 / 2;
+        int tableWidth = rowDescColWidth + table.cellSpacing + getTotalDataColumnsWidth(cellWidthPixels);
         int titleY = tableY + offsetY;
         
         // Draw light blue background for title area if hovering, but exclude the arrow area
@@ -688,8 +734,8 @@ public class TableRenderer {
         int tableY = table.getTableY();
         int headerY = tableY + offsetY;
         int cellWidthPixels = table.getCellWidthPixels();
-        // Always show row description column (2x width for better readability)
-        int rowDescColWidth = cellWidthPixels * 2;
+        // Always show row description column (1.5x width for better readability)
+        int rowDescColWidth = cellWidthPixels * 3 / 2;
 
         // Draw row description column header cell text (skip in collapsed mode)
         if (!table.collapsedMode) {
@@ -699,7 +745,8 @@ public class TableRenderer {
 
         // Draw data column header cells text
         for (int col = 0; col < table.getCols(); col++) {
-            int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
+            int cellX = getColumnX(col, tableX, rowDescColWidth, cellWidthPixels);
+            int colWidth = getColumnWidth(col, cellWidthPixels);
             
             String header = (col < table.columns.size()) ?
                            table.columns.get(col).getStockName() : "";
@@ -714,11 +761,11 @@ public class TableRenderer {
             }
             
             // Truncate header if needed to fit in cell (with 10px padding on each side)
-            displayHeader = truncateText(displayHeader, g, cellWidthPixels - 20);
+            displayHeader = truncateText(displayHeader, g, colWidth - 10);
             
             // Draw header text
             g.setColor(CircuitElm.whiteColor);
-            table.drawCenteredText(g, displayHeader, cellX + cellWidthPixels/2, headerY + table.cellHeight/2, true);
+            table.drawCenteredText(g, displayHeader, cellX + colWidth/2, headerY + table.cellHeight/2, true);
         }
         
         // Draw grid lines for this row
@@ -729,7 +776,7 @@ public class TableRenderer {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
-        int rowDescColWidth = cellWidthPixels * 2;
+        int rowDescColWidth = cellWidthPixels * 3 / 2;
         int typeRowY = tableY + offsetY;
         
         // Draw row description column cell text with header font
@@ -746,8 +793,9 @@ public class TableRenderer {
             
             if (isALEColumn) {
                 // A-L-E column: don't merge, just draw empty
-                int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
-                table.drawCenteredText(g, "", cellX + cellWidthPixels/2, typeRowY + table.cellHeight/2, true);
+                int cellX = getColumnX(col, tableX, rowDescColWidth, cellWidthPixels);
+                int colWidth = getColumnWidth(col, cellWidthPixels);
+                table.drawCenteredText(g, "", cellX + colWidth/2, typeRowY + table.cellHeight/2, true);
                 col++;
             } else {
                 // Regular column: find how many consecutive columns have the same type
@@ -772,9 +820,10 @@ public class TableRenderer {
                 }
                 
                 // Calculate the center position across merged cells
-                int startCellX = tableX + rowDescColWidth + table.cellSpacing * 2 + startCol * (cellWidthPixels + table.cellSpacing);
-                int endCellX = tableX + rowDescColWidth + table.cellSpacing * 2 + endCol * (cellWidthPixels + table.cellSpacing);
-                int centerX = startCellX + (endCellX - startCellX + cellWidthPixels) / 2;
+                int startCellX = getColumnX(startCol, tableX, rowDescColWidth, cellWidthPixels);
+                int endCellX = getColumnX(endCol, tableX, rowDescColWidth, cellWidthPixels);
+                int endColWidth = getColumnWidth(endCol, cellWidthPixels);
+                int centerX = startCellX + (endCellX - startCellX + endColWidth) / 2;
                 
                 // Draw the type name centered across the merged cells
                 table.drawCenteredText(g, typeName, centerX, typeRowY + table.cellHeight/2, true);
@@ -792,7 +841,7 @@ public class TableRenderer {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
-        int rowDescColWidth = cellWidthPixels * 2;
+        int rowDescColWidth = cellWidthPixels * 3 / 2;
         int initialRowY = tableY + offsetY;
         
         // Draw row description cell for initial conditions with header font
@@ -808,7 +857,8 @@ public class TableRenderer {
         final double aleValue = getALEInitialValue();
         
         for (int col = 0; col < table.getCols(); col++) {
-            int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
+            int cellX = getColumnX(col, tableX, rowDescColWidth, cellWidthPixels);
+            int colWidth = getColumnWidth(col, cellWidthPixels);
             
             // Get initial value
             double initialValue;
@@ -830,7 +880,7 @@ public class TableRenderer {
                 g.setColor(getTextVoltageColor(initialValue));
             }
             String voltageText = formatDisplayValue(initialValue, table.tableUnits);
-            table.drawCenteredText(g, voltageText, cellX + cellWidthPixels/2, initialRowY + table.cellHeight/2, true);
+            table.drawCenteredText(g, voltageText, cellX + colWidth/2, initialRowY + table.cellHeight/2, true);
         }
         
         // Draw grid lines for this row
@@ -841,7 +891,7 @@ public class TableRenderer {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
-        int rowDescColWidth = cellWidthPixels * 2;
+        int rowDescColWidth = cellWidthPixels * 3 / 2;
 
         // Use the passed offsetY directly - no need to recalculate
         int baseY = offsetY;
@@ -880,7 +930,8 @@ public class TableRenderer {
             
             // Draw data cells for this row
             for (int col = 0; col < table.getCols(); col++) {
-                int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
+                int cellX = getColumnX(col, tableX, rowDescColWidth, cellWidthPixels);
+                int colWidth = getColumnWidth(col, cellWidthPixels);
                 
                 // Get voltage
                 double voltage = getCachedCellValue(row, col);
@@ -902,7 +953,7 @@ public class TableRenderer {
                         g.setColor(getTextVoltageColor(voltage));
                     }
                     String voltageText = formatDisplayValue(voltage, table.tableUnits);
-                    table.drawCenteredText(g, voltageText, cellX + cellWidthPixels/2, cellY + table.cellHeight/2, true);
+                    table.drawCenteredText(g, voltageText, cellX + colWidth/2, cellY + table.cellHeight/2, true);
                 } else if (equation != null && !equation.trim().isEmpty()) {
                     // Regular cell: display based on showCellValues mode (0=Equation, 1=Equation:Value, 2=Value)
                     g.setColor(getTextVoltageColor(voltage));
@@ -921,7 +972,7 @@ public class TableRenderer {
                         displayText = truncateEquation(equation, g);
                     }
                     
-                    table.drawCenteredText(g, displayText, cellX + cellWidthPixels/2, cellY + table.cellHeight/2, true);
+                    table.drawCenteredText(g, displayText, cellX + colWidth/2, cellY + table.cellHeight/2, true);
                 }
             }
             
@@ -987,8 +1038,8 @@ public class TableRenderer {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
-        // Always show row description column (2x width for better readability)
-        int rowDescColWidth = cellWidthPixels * 2;
+        // Always show row description column (1.5x width for better readability)
+        int rowDescColWidth = cellWidthPixels * 3 / 2;
 
         // Use the passed offsetY directly - no need to recalculate
         int sumRowY = tableY + offsetY;
@@ -1009,7 +1060,8 @@ public class TableRenderer {
         final double aleSumValue = getALESumValue();
         
         for (int col = 0; col < table.getCols(); col++) {
-            int cellX = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
+            int cellX = getColumnX(col, tableX, rowDescColWidth, cellWidthPixels);
+            int colWidth = getColumnWidth(col, cellWidthPixels);
             
             // Get the computed value from cache (updated twice per second)
             double computedValue;
@@ -1035,7 +1087,7 @@ public class TableRenderer {
                 g.setColor(getTextVoltageColor(computedValue));
             }
             String sumText = formatDisplayValue(computedValue, table.tableUnits);
-            table.drawCenteredText(g, sumText, cellX + cellWidthPixels/2, sumRowY + table.cellHeight/2, true);
+            table.drawCenteredText(g, sumText, cellX + colWidth/2, sumRowY + table.cellHeight/2, true);
         }
         
         // Draw grid lines for computed row (with double line above)
@@ -1050,7 +1102,7 @@ public class TableRenderer {
         int rowY = tableY + offsetY;
         
         g.setColor(CircuitElm.lightGrayColor);
-        int tableWidth = rowDescColWidth + table.cellSpacing * 2 + table.getCols() * (cellWidthPixels + table.cellSpacing);
+        int tableWidth = rowDescColWidth + table.cellSpacing + getTotalDataColumnsWidth(cellWidthPixels);
         
         // Horizontal lines (top and bottom of row)
         g.drawLine(tableX, rowY, tableX + tableWidth, rowY);
@@ -1065,7 +1117,7 @@ public class TableRenderer {
         
         // Between and after data columns - merge cells with same type (no vertical lines)
         for (int col = 0; col <= table.getCols(); col++) {
-            x = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
+            x = getColumnX(col, tableX, rowDescColWidth, cellWidthPixels);
             
             // Check if we should draw a line at this position
             boolean drawDouble = false;
@@ -1110,7 +1162,7 @@ public class TableRenderer {
         int rowY = tableY + offsetY;
         
         g.setColor(CircuitElm.lightGrayColor);
-        int tableWidth = rowDescColWidth + table.cellSpacing * 2 + table.getCols() * (cellWidthPixels + table.cellSpacing);
+        int tableWidth = rowDescColWidth + table.cellSpacing + getTotalDataColumnsWidth(cellWidthPixels);
         
         // Horizontal lines
         // Draw double line above sum row
@@ -1129,7 +1181,7 @@ public class TableRenderer {
         
         // Between and after data columns - always draw all vertical lines
         for (int col = 0; col <= table.getCols(); col++) {
-            x = tableX + rowDescColWidth + table.cellSpacing * 2 + col * (cellWidthPixels + table.cellSpacing);
+            x = getColumnX(col, tableX, rowDescColWidth, cellWidthPixels);
             
             // Check if we should draw a double line (when column type changes)
             boolean drawDouble = false;

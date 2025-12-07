@@ -8203,7 +8203,7 @@ public CirSim() {
 	/**
 	 * Get the current value of a slider by name
 	 * @param name The slider name/label
-	 * @return The current value, or 0 if not found
+	 * @return The current value, or NaN if not found
 	 */
 	double getSliderValue(String name) {
 	    Adjustable adj = findAdjustableByName(name);
@@ -8213,7 +8213,7 @@ public CirSim() {
 	            return ei.value;
 	        }
 	    }
-	    return 0.0;
+	    return Double.NaN;
 	}
 	
 	/**

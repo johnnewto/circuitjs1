@@ -1034,6 +1034,7 @@ public class ActionScheduler {
     
     /**
      * Get current value of a slider by name
+     * @return The current value, or NaN if not found
      */
     public double getSliderValue(String name) {
         Adjustable adj = findAdjustableByName(name);
@@ -1043,7 +1044,7 @@ public class ActionScheduler {
                 return ei.value;
             }
         }
-        return 0.0;
+        return Double.NaN;
     }
     
     /**
