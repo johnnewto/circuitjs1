@@ -7,11 +7,26 @@
  * - Slider buttons
  * - Real-time data tables
  * - Mobile responsive layout
+ * - Compact table formatting
  * 
  * Usage:
  * - Include in split-panel pages (money-first-principles.qmd)
  * - Include in embedded content pages (money-content.qmd)
  */
+
+/* ============================================================================
+   COMPACT TABLE FORMATTING
+   ============================================================================ */
+
+/* Compact table rows for all standard tables */
+table {
+  font-size: 0.85em;
+}
+
+table th, table td {
+  padding: 0.2em 0.5em !important;
+  line-height: 1.2;
+}
 
 /* ============================================================================
    SPLIT PANEL LAYOUT
@@ -256,15 +271,15 @@
 
 .realtime-table {
   width: 100%;
-  max-width: 400px;
+  max-width: 350px;
   border-collapse: collapse;
-  margin: 16px 0;
+  margin: 12px 0;
   font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-  font-size: 14px;
+  font-size: 12px;
   background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .realtime-table thead {
@@ -273,12 +288,12 @@
 }
 
 .realtime-table th {
-  padding: 12px 16px;
+  padding: 8px 12px;
   text-align: left;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 
 .realtime-table th:last-child {
@@ -299,7 +314,7 @@
 }
 
 .realtime-table td {
-  padding: 10px 16px;
+  padding: 6px 12px;
 }
 
 .realtime-table .rt-label {

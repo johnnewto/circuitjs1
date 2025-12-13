@@ -1,0 +1,56 @@
+---
+title: "Exercises"
+toc: true
+format:
+  html:
+    page-layout: article
+    css: ../circuitjs-docs.css
+---
+
+<script src="../circuitjs-utils.js"></script>
+
+## Exercise 1: Build Both Models
+
+Construct Loanable Funds and BOMD models in CircuitJS:
+1. Verify accounting identities hold
+2. Run with 1% deficit for 200 years
+3. Compare debt/GDP trajectories
+4. Identify which matches real-world behavior
+
+## Exercise 2: Parameter Sensitivity
+
+Test different scenarios:
+1. What deficit level is sustainable in Loanable Funds? (Answer: None!)
+2. What happens if government runs surplus in BOMD?
+3. Effect of different interest rates on debt dynamics
+4. Impact of credit growth rates on money supply
+
+## Exercise 3: Policy Experiments
+
+Model policy changes:
+1. **Austerity**: Reduce SpendRate from 21% to 20%
+   - Compare effects in both models
+   - Observe private sector equity changes
+2. **Debt Jubilee**: Reset DebtGov to zero
+   - In Loanable Funds: Temporary relief
+   - In BOMD: Destroys private assets!
+3. **Quantitative Easing**: Central Bank buys bonds from private banks
+   - Changes DebtGov holder but not magnitude
+
+## Exercise 4: Real-World Data
+
+Compare model outputs to actual data:
+1. US debt/GDP ratio (1950-2025)
+2. Interest payments as % of GDP
+3. Private sector wealth vs. government debt
+4. Test which model fits better
+
+---
+
+<div class="nav-buttons" style="display: flex; justify-content: flex-end; margin-top: 2em; padding-top: 1em; border-top: 1px solid #e0e0e0;">
+<a href="10-key-takeaways.qmd" style="text-decoration: none;">Next: Key Takeaways →</a>
+</div>
+
+<div class="split-footer">
+[Back to Series Index](index.qmd)
+</div>

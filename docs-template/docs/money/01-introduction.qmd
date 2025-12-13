@@ -1,0 +1,66 @@
+---
+title: "Introduction: First Principles vs. Reasoning by Analogy"
+toc: true
+format:
+  html:
+    page-layout: article
+    css: ../circuitjs-docs.css
+---
+
+<script src="../circuitjs-utils.js"></script>
+
+<div id="Godley-Tables" class="circuit-section" data-name="Transaction Tables (Godley Tables)" data-circuit="/circuitjs.html?ctz=CQAgbArCAMB03SgRlgZgEwBYnurpAnEhJOuiBNBRVRAKYC0SSAUOhFBiDgBwg9VeMEOTDhuYqgBcATgFc6I4QDMAhgBsAzoqjT5igEKqAdgGtNIADpUASnW0yAbvZAAJAPZztH9QBMLAGIAljIAthYAogCOckFSAJ4gRmaa0bEJIACCDAAyDBEgAAqq8ZaaAOqqAOYuAMLuxppyoQAOUkEN3AgiVADsglSDWQDKwxEAKiA5AJKZBtMz4wCaU7PziysRAIoAqtPLINt7B7UA8gCyhTvjEQAiVlSVNRYMTy7WD58fDPWNzYq-JqhRQfUGDeDQVgADxE6AIIAIonQSARUEwInR4xkJk0qgAxu0GmVxqoAEbqexlAAUAHF3L4KaVNCTyfYAJT8aACAQBAJsaC9ECYLgYKjC8ioMB8SUgN6afmC1Ay9A8aW4EQkEAymm3QpsMCoCTgdE8Xoo1AEIbnVRBYwKjFUFV8QjkJ1asTBMLygDuIlVfulyv90BYvqVYjdqB46LdIfYgbEoq1EAl6sNcDEbwA+gBvTQAC1UMjoAF9Q1qZUnwwGYPb0L0JdGK4mmzLAf82CmhSLoOjMJhpb3uCJy1H0UnxVr1SHfZPUEOxzW4wKhQItUOIP31+OxIUZO5lHF5bhBWRx02kL0Wzu3J5vO4-MeIHwsI7-ewI-6UeQAGq5z3hGW8awueMaYFQi4ouif45q4rhARAKJgA2ybkP045dt+9rIRKXZgOBqHuiAAHHiuOHunw+EQVKREeF4dA+P49oNhBXZXtKXYyucDR0PELDuNwfbCLw0BiEgUawJgYDEGO0kQKgvS9OicAIJCwjOuOXTCRBSiOlq+k6ag-HUMpQrSeiSBgOCKJQdQhrEMJnAsFGRoBDZwjwkwIAwSRJbcM5zqCm5w4DCAXkwXBfmsAApCMkw2SwQA&editable=false">
+
+# Money from First Principles
+
+**Understanding Banking Models and Government Deficits**  
+*Based on Steve Keen's analysis for engineers*
+
+> "Physics is the law, everything else is a recommendation" - Elon Musk
+
+This principle of **first-principles reasoning** means:
+
+> "You boil things down to the most fundamental truths and say, 'OK, what are we sure is true, or as sure as possible is true?' Then you reason up from there."
+
+Many economic conclusions about government finances are based on **reasoning by analogy**: applying what works for individuals or households to governments. But what if this analogy is false?
+
+Common claims:
+- "America is going bankrupt extremely quickly"
+- "If we don't fix the deficit, everything will suffer"
+- "A country is no different from an individual—if an individual overspends, they go bankrupt, and so can a country"
+
+**The First Principle of Money**: Every monetary transaction involves two parties (payer and payee), and the sum of any single transaction is **zero**.
+
+## The Accounting Foundation
+
+### Double-Entry Bookkeeping: The Law of Money
+
+Almost a millennium ago, Venetian traders developed double-entry bookkeeping:
+
+> "All the creditors must appear in the Ledger at the right-hand side, and all the debtors at the left. All entries made in the Ledger have to be double entries—that is, if you make one creditor, you must make someone debtor." - Luca Pacioli (1494)
+
+**To paraphrase Musk**: With respect to money, **double-entry bookkeeping is the law, and everything else is fraud.**
+
+### The Accounting Equation
+
+The conservation law of accounting:
+
+$$\text{Assets} - \text{Liabilities} - \text{Equity} = 0 \quad (1)$$
+
+For financial assets (claims between entities), this leads to an economic system-wide conservation law:
+
+**The sum of all financial assets and liabilities is zero.**
+
+This enables monetary macroeconomic analysis by aggregating billions of transactions.
+
+</div>
+
+---
+
+<div class="nav-buttons" style="display: flex; justify-content: flex-end; margin-top: 2em; padding-top: 1em; border-top: 1px solid #e0e0e0;">
+<a href="03-transaction-tables.qmd" style="text-decoration: none;">Next: Transaction Tables →</a>
+</div>
+
+<div class="split-footer">
+[Back to Series Index](index.qmd)
+</div>

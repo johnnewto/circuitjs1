@@ -1,0 +1,36 @@
+---
+title: "Key Takeaways"
+toc: true
+format:
+  html:
+    page-layout: article
+    css: ../circuitjs-docs.css
+---
+
+<script src="../circuitjs-utils.js"></script>
+
+## Summary
+
+1. **Structure Matters**: The location of debt on balance sheets (Loanable Funds vs. BOMD) completely changes system dynamics
+
+2. **Accounting Identity**: Government deficit = Private sector surplus (always true, regardless of model)
+
+3. **Money Creation**: In BOMD, both credit and government deficits create money; in Loanable Funds, money is only redistributed
+
+4. **Crisis Predictions**: 
+   - Loanable Funds → inevitable crisis with sustained deficits
+   - BOMD → stable debt/GDP ratio with sustained deficits
+
+5. **Evidence**: Central banks endorse BOMD model; real-world operations match BOMD, not Loanable Funds
+
+6. **Policy Implications**: Believing the wrong model leads to harmful policies (e.g., austerity reducing private wealth)
+
+---
+
+<div class="nav-buttons" style="display: flex; justify-content: flex-end; margin-top: 2em; padding-top: 1em; border-top: 1px solid #e0e0e0;">
+<a href="11-further-reading.qmd" style="text-decoration: none;">Next: Further Reading →</a>
+</div>
+
+<div class="split-footer">
+[Back to Series Index](index.qmd)
+</div>

@@ -1,0 +1,61 @@
+---
+title: "Adding Government Sector"
+toc: true
+toc-depth: 3
+format:
+  html:
+    css: ../circuitjs-docs.css
+    include-in-header:
+      - text: |
+          <script src="../circuitjs-utils.js"></script>
+---
+
+
+<div id="loanable-funds-with-govt" class="circuit-section" data-name="Loanable Funds Model with Govt" data-circuit="../circuitjs.html?ctz=CQAgbA7CAMB00FYQEZYBYDMBOZOzSwWTSwA4sMQ00QFp7bpaBTAWmWQCgBSEANwD2AGwAuAQwDmzAKoA7AJYiQwTgCYESVquikQrBNT3Ea+w0zBVwKC0xEAnAK7MQqmCABmYoQGdnSW47OAGLydgC23iAAOkwh4ZEAFsggcREA+gDeAKIAjg6KAJ4AviAAgqwAMqxZIAAKYgVR3gDqksyRAEIOjd4A4gICACadAnZ2AgDuTQCyArLMBSAdYrIA1t5NAMoADsyyg3UNTQCSsiLMdu1K-XwiW7v78rISjG50bqWbm1kAKiAAwgB5aa1aQ-LIAERAWQAitJjj8AJoA4Gg8FQ1itKSRGJ6LHtaJMf5zbwOMLOXHE2Sk8mEgGXQaKOn-BlM3E7PaDTLLNbeErsh5cjI89b8pisU4iTKpPl0iVnaWhCJikAc-aZG4iFVqoWalVwehcdSaUgICymEykVQmAw0Ji6JAWZA2ED2JwuNyeHx+Nxu5wACQEDl8CWEwzpgeDzEDQnDEOYACMpRkZSV-ZR-f7Mrl8iJimVKtVDj18RsRmNJjM5gtiyczhcrrXvCKmkFmM4uj1+kNIj8xAAPMQieRzECapodOaDLZeAmT-Z186XbxKNBMddUDefb5-be-EAVY6lDrHQ9I6FwhHIoEgsGQkClum4x+41gs5iMpTvz9Ppi4yWKvEKr-gqKZKrKr5thSf7ilBcpUjS0HwSSZJIawfb9r+egYXK87hrir54TiTAAcKU4QTBICkUR+rwNARoaHoprmqQDCsBAWCuKwrEbsg5hWM6vqBB6TBer4VgBO6tR2PIfBDswE4rOsdIAErtBcfAEpGvgxuGMpjgIml2LI5JnEsSmROUVQ1PUJZtJ03RNN24aThWUzeLM8yLLZi4NiuTYtt4cEimWOogBhQ4jrIBm3PcnJPC847NlOM5CHOKXeJKflKHxTBrq8TB8R8Xz7oex6nleB5HieZ7ImVNWVbC8LnjeaL3s+9l4p1BGUa+CGoQCKG0j1WFvqyX7jVhI2kamegzeBwG9bB7ZYXBI0Cpy3IWSqrA6ltvKLdhA50jh62UXtGR6noF1XWdehEXSD13dR5E7S9+wUXSBr0ZwmHsGAXEIOQLikLo+ikBYNDWgeAgrGICZpa2DgfVWgzMEITQTIoCROYZFwmXsSiscT0BBEEahgJQ3FgGDrFYCAGCqFAWh2iA0xiE8ajQMzyCqIJWj8xwNN6HzFgYBYnkLFzPOqGAJjaOKvNYOaCsMxY2nRmG3jS0Ysvy4LqjKyLgniyk4FqEQuty8b5q84zNsoC4Ftg86ZpGPg7v5f9hUoKosBIAAapkmZFM7RgQNA8tu-9oMi27yQ0EHYFATr-3R86isRyYGdqyAGu6dr2g82g1ss4raDQ2XufSQI7iKNrExGEQXHWorZriuoNicI37DtyLlfIM3-d2hbXGD7zIte8QRtV8kqipxnLse73hje7n-Xkt37s6MP29g53MBh97+8DwgnG75QcAWPimSbAkYiXKHPeL3Htt91obvQFvacq+n+D75-BeWdX7hwQC3N2psZQL3-iA-6ldVCx1Nr0CEtQF5Dy0KfCe7AIBi2vvZaBO92BYMHqvDgrhTbfkUNA9OxDgFEPIRYZBqD1BLxoWPOWisJ6X3gCQLAfD+ECIEfSD8ihMgqXkqHFhVts7EOtC7LhMAeGCOUUI0i4jziSO5tIowxCMCRx0QwkA8YkyAWVAvUWBidFgMsabeaKci5GGgPbdgpD6DlxoKbEKC8nEt0IblDuO9Tb5y1t45xZDHFsXCTQKBDjWBgGjhYuJM8LE0CYanCuJhS7UDBtbU2xjkyplThgHBehS4YFXrkiw+TTF8gAHqXRQdwTRPMfEizCW4tphi7FmNiRwEpWhWI6NXggpgkD2zmPgYM9gesRaDNsaBQpUjpmTMVtofeczFHJCgmIiRoT2Fgz4fs3OF0QrNMcVM508iEHu10J4iyR8+IXOFuwaApdLmO2SEnU5ahkA82cRgaxU98pMFcNU5Oyp6lMKaUYxMyY9T1O4EwkoABiMmZMGDIvoOir+sSYEC3NHiuRlgbqGS1EU02GCTB6PltDTx5ELaaHeexc+3FxQcVcAnSwToXR+hEh4Lw4l-CumEj8S4YhSR2EWLiG4+NTJKDBVdUVzBxUOEldmPIhQShWSLBFYco4ko6gSjFO4yUFzeE2LOEYZqsrLiUBuLcJU-j1QqueJqlVWp3ihKdJg3rrqCg1KSnaJLbgqgek9Si8pkw0TlO9YYtFDRH3iSrfmAN9Zi0URgZIF0gh2DEAAY0kUDUpbyKlhMMNwvRbiq3VvoDQDC0pc0FtTmAEtJg6HGEsGk3FgsKmCxKXWgcRT+nIFIFS4dhgaDxjrnmqh6hAbXPYKOvQ6CR00Dnt-Ql-MwEuyXV-HuYAe02gXe8nFWj9ALpGcupdAy8owpMZdQNR9t2zPFCQFWGyDRIDUfJGiRTr2XtYBga9mbXA0FjXyC2yRAP-sruLE+a6nY9zQFMgDQH5aDL3XoZDitgPXtXYfHuaGX16CI5SgjJH-2ENI-h09zMMlYbBiXEwyHO0oM4LULDA8sHYDHhPOeIAxAACoAAUyAAD0wmEwAEIog5GgAAfgTAALmQGwLAABKdTgncrpMrjPJjegjapLY7E+j9CsNvK4VU2FAaQ1Dtttx0hVm71wsDQipF7HOOZKpSy62-GhOiYk9J2TCnlOqdYBprTOnMDJBnozQq2gRZG0KgwXlYlmCcAEOAKAug8oHpoM3dcsBki3sgAzBmQqAUM0y7QHLbheasQsAgTNsAIDqGKZm+gGhLbfXoo7B0UBKCqEvi4SgQ36YgvppQEgbgZsYE4EBlwFggjJCg3AErxWjDCM-DsjRiifqLaZikVbeh1ubK29+vbBouCLbQFAFbjs4CuDgNnVU-qUyNpKNdhbugWMPY2899AW360ffzV9+AXBeCfD+KtzgQA&editable=false">
+
+New flows are required:
+
+- **Tax**: Households → Government  
+$$Tax = GDP \times Tax_{rate}$$
+- **Government Spending**: Government → Firms  
+$$Spend_{Gov} = GDP \times Spend_{rate}$$
+- **Bond Sales**: Households → Government  
+$$Bonds = (Spend_{Gov} - Tax) + (Debt_{Gov} \times Int_{rate})$$
+- **Interest on Bonds**: Government → Households  
+$$Int_{Gov} = Debt_{Gov} \times Int_{rate}$$
+
+### Differential Equations (Loanable Funds with Government)
+
+$$\frac{dDebt_{Gov}}{dt} = Bonds$$
+
+$$\frac{dDebt_{Firms}}{dt} = Credit$$
+
+$$\frac{dFirms}{dt} = Consume + Credit + Spend_{Banks} + Spend_{Gov} - Wages - Int_{Firms}$$
+
+$$\frac{dHouseholds}{dt} = Wages + Int_{Gov} + Int_{Firms} - Consume - Credit - Fee - Tax + Bonds \quad (4)$$
+
+$$\frac{dGovernment}{dt} = Tax + Bonds - Spend_{Gov} - Int_{Gov}$$
+
+$$\frac{dBanks}{dt} = Fee - Spend_{Banks}$$
+
+### Result: Inevitable Crisis
+
+Running with 1% deficit (Spend = 31% GDP, Tax = 30% GDP):
+
+- Government debt → 3,000% of GDP (over 100 years)
+- Interest payments → 100% of GDP
+- System becomes **unsustainable**
+
+**Conclusion**: Under Loanable Funds, sustained deficits cause inevitable fiscal crisis.
+
+</div>
+
+---
+
+<div class="nav-buttons" style="display: flex; justify-content: flex-end; margin-top: 2em; padding-top: 1em; border-top: 1px solid #e0e0e0;">
+<a href="04c-endogenous-money.qmd" style="text-decoration: none;">Next: Endogenous Money Model →</a>
+</div>
+
+<div class="split-footer">
+[Back to Series Index](index.qmd)
+</div>

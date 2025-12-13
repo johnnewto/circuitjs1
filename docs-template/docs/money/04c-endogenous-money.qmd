@@ -1,0 +1,98 @@
+---
+title: "Endogenous Money Model (BOMD)"
+toc: true
+toc-depth: 3
+format:
+  html:
+    css: ../circuitjs-docs.css
+    include-in-header:
+      - text: |
+          <script src="../circuitjs-utils.js"></script>
+---
+
+## 3. Endogenous Money Model (BOMD)
+
+<div id="bomd-model" class="circuit-section" data-name="BOMD Model" data-circuit="/circuitjs.html?ctz=CQAgbArCAMB03SgRlgZgEwBYnurpAnEhJOuiBNBRVRAKYC0SSAUOhFBiDgBwg9VeMEOTDhuYqgBcATgFc6I4QDMAhgBsAzoqjT5igEKqAdgGtNIADpUASnW0yAbvZAAJAPZztH9QBMLAGIAljIAthYAogCOckFSAJ4gRmaa0bEJIACCDAAyDBEgAAqq8ZaaAOqqAOYuAMLuxppyoQAOUkEN3AgiVADsglSDWQDKwxEAKiA5AJKZBtMz4wCaU7PziysRAIoAqtPLINt7B7UA8gCyhTvjEQAiVlSVNRYMTy7WD58fDPWNzYq-JqhRQfUGDeDQVgADxE6AIIAIonQSARUEwInR4xkJk0qgAxu0GmVxqoAEbqexlAAUAHF3L4KaVNCTyfYAJT8aACAQBAJsaC9ECYLgYKjC8ioMB8SUgN6afmC1Ay9A8aW4EQkEAymm3QpsMCoCTgdE8Xoo1AEIbnVRBYwKjFUFV8QjkJ1asTBMLygDuIlVfulyv90BYvqVYjdqB46LdIfYgbEoq1EAl6sNcDEbwA+gBvTQAC1UMjoAF9Q1qZUnwwGYPb0L0JdGK4mmzLAf82CmhSLoOjMJhpb3uCJy1H0UnxVr1SHfZPUEOxzW4wKhQItUOIP31+OxIUZO5lHF5bhBWRx02kL0Wzu3J5vO4-MeIHwsI7-ewI-6UeQAGq5z3hGW8awueMaYFQi4ouif45q4rhARAKJgA2ybkP045dt+9rIRKXZgOBqHuiAAHHiuOHunw+EQVKREeF4dA+P49oNhBXZXtKXYyucDR0PELDuNwfbCLw0BiEgUawJgYDEGO0kQKgvS9OicAIJCwjOuOXTCRBSiOlq+k6ag-HUMpQrSeiSBgOCKJQdQhrEMJnAsFGRoBDZwjwkwIAwSRJbcM5zqCm5w4DCAXkwXBfmsAApCMkw2SwQA&editable=false">
+
+**BOMD** = Bank-Originated Money and Debt
+
+**Core Assumption**: Banks create money by creating debt.
+
+Endorsed by central banks after 2008:
+
+**Bank of England:**
+> "Rather than banks receiving deposits when households save and then lending them out, **bank lending creates deposits.**" - McLeay, Radia, and Thomas (2014)
+
+**Bundesbank:**
+> "A bank can grant loans without any prior inflows of customer deposits. In fact, book money is created as a result of an accounting entry: when a bank grants a loan, it posts the associated credit entry for the customer as a sight deposit..."
+
+**Key Characteristic**: Both private and government debt are **ASSETS of the banking system**.
+
+### Godley Table Structure (BOMD)
+
+**Private Banks:**
+
+| Flows↓/Stock Vars → | Reserves | $Debt_{Firms}$ | $Debt_{Gov}$ | Households | Firms | $Banks_{Equity}$ | A-L-E |
+|:---|---:|---:|---:|---:|---:|---:|---:|
+| **Type** | Asset | Asset | Asset | Liability | Liability | Equity | |
+| **Initial Conditions** | 100 | 0 | 0 | 20 | 70 | 10 | 0 |
+| **Pay Wages** | 0 | 0 | 0 | +Wages | -Wages | 0 | 0 |
+| **Consumption** | 0 | 0 | 0 | -Consume | +Consume | 0 | 0 |
+| **Credit** | 0 | +Credit | 0 | 0 | +Credit | 0 | 0 |
+| **Interest (Firms)** | 0 | 0 | 0 | 0 | -Interest | +Interest | 0 |
+| **∫ Flows** | 100 | 0+∫ | 0+∫ | 20+∫ | 70+∫ | 10+∫ | 0 |
+
+### Key Structural Difference
+
+In BOMD, **money creation occurs on the Asset side** of bank balance sheets:
+
+- Credit creates $Debt_{Firms}$ (bank asset) + Firm deposits
+- Bond sales create $Debt_{Gov}$ (bank asset) + Government account
+- In Loanable Funds, all operations are on Liabilities/Equity side (cancel out)
+
+### Differential Equations (BOMD)
+
+$$\frac{dDebt_{Gov}}{dt} = Bonds$$
+
+$$\frac{dDebt_{Firms}}{dt} = Credit$$
+
+$$\frac{dFirms}{dt} = Consume + Credit + Spend_{Gov} - Wages - Int_{Firms}$$
+
+$$\frac{dHouseholds}{dt} = Wages - Consume - Tax \quad (5)$$
+
+$$\frac{dGovernment}{dt} = Tax + Bonds - Int_{Gov} - Spend_{Gov}$$
+
+$$\frac{dReserves}{dt} = Spend_{Gov} + Int_{Gov} - Tax - Bonds$$
+
+$$\frac{dBanks}{dt} = Int_{Gov} + Int_{Firms} - Spend_{Gov}$$
+
+### Money Creation Formula
+
+The rate of change of money supply:
+
+$$\frac{dMoney}{dt} = Credit + (Spend_{Gov} + Int_{Gov} - Tax) \quad (6)$$
+
+The bracketed term is government money creation.
+
+### Result: Stable System
+
+Running with same 1% deficit (Spend = 21% GDP, Tax = 20% GDP):
+
+- GDP grows steadily
+- Government debt/GDP ratio **stabilizes** (~100%)
+- Interest payments remain manageable
+- **No crisis occurs!**
+
+**Conclusion**: Under BOMD, sustained deficits do not cause fiscal crisis.
+
+</div>
+
+---
+
+<div class="nav-buttons" style="display: flex; justify-content: flex-end; margin-top: 2em; padding-top: 1em; border-top: 1px solid #e0e0e0;">
+<a href="05-fundamental-identity.qmd" style="text-decoration: none;">Next: The Fundamental Identity →</a>
+</div>
+
+<div class="split-footer">
+[Back to Series Index](index.qmd)
+</div>

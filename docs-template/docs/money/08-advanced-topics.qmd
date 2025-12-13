@@ -1,0 +1,57 @@
+---
+title: "Advanced Topics"
+toc: true
+format:
+  html:
+    page-layout: article
+    css: ../circuitjs-docs.css
+---
+
+<script src="../circuitjs-utils.js"></script>
+
+## Money Supply Growth
+
+In BOMD, money supply grows through:
+
+$$\frac{dM}{dt} = \underbrace{Credit}_{\text{Private}} + \underbrace{(Spend_{Gov} + Int_{Gov} - Tax)}_{\text{Government}}$$
+
+Both private lending and government deficits create money.
+
+## Price Level Dynamics
+
+Adding inflation requires price equation:
+
+$$\frac{dP}{dt} = P \times \left(\frac{Demand - Supply}{Supply}\right) \times \text{adjustment speed}$$
+
+Where:
+- Demand includes consumption, investment, government spending
+- Supply is productive capacity
+- Inflation occurs when demand exceeds supply
+
+## International Trade
+
+Adding foreign sector:
+
+$$\frac{dPrivate_{Equity}}{dt} = \underbrace{(Spend_{Gov} + Int_{Gov} - Tax)}_{\text{Fiscal}} + \underbrace{(Exports - Imports)}_{\text{Trade}}$$
+
+The sectoral balances identity becomes:
+
+$$\text{Government Balance} + \text{Private Balance} + \text{Foreign Balance} = 0$$
+
+## Capital Adequacy
+
+Banks require minimum equity ratios:
+
+$$\text{Capital Adequacy Ratio} = \frac{Banks_{Equity}}{Debt_{Firms} + Debt_{Gov}} \geq \text{minimum (e.g., 8\%)}$$
+
+Model bank failures when equity becomes negative.
+
+---
+
+<div class="nav-buttons" style="display: flex; justify-content: flex-end; margin-top: 2em; padding-top: 1em; border-top: 1px solid #e0e0e0;">
+<a href="09-exercises.qmd" style="text-decoration: none;">Next: Exercises →</a>
+</div>
+
+<div class="split-footer">
+[Back to Series Index](index.qmd)
+</div>

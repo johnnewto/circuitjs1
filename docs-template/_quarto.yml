@@ -27,6 +27,8 @@ website:
         menu:
           - text: "Money from First Principles"
             href: docs/money-first-principles.qmd
+          - text: "Money Series (Split)"
+            href: docs/money/index.qmd
           - text: "Economics Tutorials"
             href: docs/economics-tutorials.qmd
           - text: "SFC Modeling"
@@ -55,6 +57,21 @@ website:
     - title: "Economics"
       contents:
         - docs/money-first-principles.qmd
+        - section: "Money from First Principles Series"
+          contents:
+            - docs/money/index.qmd
+            - docs/money/01-introduction.qmd
+            - docs/money/03-transaction-tables.qmd
+            - docs/money/04-banking-models.qmd
+            - docs/money/04b-loanable-funds-government.qmd
+            - docs/money/04c-endogenous-money.qmd
+            - docs/money/05-fundamental-identity.qmd
+            - docs/money/06-implementation.qmd
+            - docs/money/07-policy-implications.qmd
+            - docs/money/08-advanced-topics.qmd
+            - docs/money/09-exercises.qmd
+            - docs/money/10-key-takeaways.qmd
+            - docs/money/11-further-reading.qmd
         - docs/economics-tutorials.qmd
         - docs/sfc-modeling.qmd
     - title: "Electronics"

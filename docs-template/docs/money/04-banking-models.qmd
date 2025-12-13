@@ -1,0 +1,142 @@
+---
+title: "Two Competing Models of Banking"
+toc: true
+format:
+  html:
+    page-layout: article
+    css: ../circuitjs-docs.css
+---
+
+<script src="../circuitjs-utils.js"></script>
+
+The answer to whether deficits cause crises depends entirely on which model of banking is correct:
+
+## 1. Loanable Funds Model
+
+<div id="loanable-funds" class="circuit-section" data-name="Loanable Funds Model" data-circuit="../circuitjs.html?ctz=CQAgbA7CAMB00FYawMwQJwrJAHOgLGDigIwQRgj74gLT23S0CmAtCSQFACkIAbgHsANgBcAhgHNmAVQB2ASxEhgnAEwIkrHAkqsU0GqwyqQegzFpVwIEpSYiATgFdmIE-eeukHlyABi8g4AtgDOIAA6TAHBYbCw-oGhAPoA3gCiAI5OigCeAL4gAIKsADKsaSAACmI54SEA6pLMYQBCTrUhAOICAgAmrQIODgIA7nUAsgKyzDkgLWKyANYhdQDKAA7Msr1VNXUAkrIizA7NSnQWF0yFq6tpACogJfuFLfvP9wCaIGkAitL7L4gADCAHlxpVpPc0gARUyNKRhSLwppIpjAqYhJxBVzIjGyLE4iLo069RTEkGk8nIjZbXqpeZLEIFGmbbYMhbLFlMViHESpaKhbmmPkCxLMilwehcdSabS6fA4Hk4VSGRVMJhIJCUWwWRy+dwgABmYiEIS8es8IAAEgInOaABbCfoU2325i2oQumHMABG-JSgol8Wt1tSmWyInyRVK5V2HQRzTqc0GwzGIUm01m1Q6fJOZ3jdUZizqfmYrjaHW6fTC+A1FjrFhud0ezYeTxebw+3z+AKBYIhUNhIETaIpo4prGBVKU0+YZKUyKXTFFgfFwuRq6DwtYZdxTGRu-Lk-xhP3J8x2PPUugMo0pnlpkgJiM6Bfz4slG1NjsIH1rkNE0zVcX9-yqBx5D4MRjiLTkxwAJWaE4+GaG07XNT0XSDOY4JjMoKhzOoJ0rOpqxdFpU1GCYphmQsQjzU4QiUQiQmLUtj2LFYQlpbYbAYRsLhIes20eZ5XneQFvjErtJJ+f5ZIHSFoThZEJ1YCdlwvAkrxBS8iU0w85wXSl52pA9zJALd1xFI4xRiDcLKPc89wpTSePpFJOIKVh3I5JlhRvLgAA9TA0FAn2IUxVHQdAIqYGhVSeAQFjEX0hGYUsnG2LjJl6ZghBAJUiugPw-DUMBwq0DBTAgEgkBwQwUBoJhxjEeRZDUaAoFYVREvYChTDIXQhpALAQEzGZOu61QIBfWweX0Qx5tGyg3Qw50QimqLZsGgazCWgaxqDNQEBIba5r21UeRGs7VBOnAnzAJbVB5J6HvYF6bBsVRYCQAA1VJQzye6apIF9VF1VgwHQXQIZ1KwAbXeytqhp7Bs+owwfRpgxrWj0NpR-Adp6hhWHwFBwYYMbKmGI1FE2kZQoxl6eR0d64ZgThGdYNnBoapnrv56ATpfBBmdJuhDBZr67pe7qwEhsHWbF7GVt07ScS5p9Ff5qHIY54X1HehXht1sBSZIfnwrgShE1SVYHTEU5ge5k2osh3met1YXXbRr3dDd-3Obl0HwchigeQ5o7xRRwOOahimosVNXOhhSoUbFwXDEzwaxrG0dY-D0WVaMEwxqMxRY794napfHaxtT9Ojcewxibemqy4sCuA3g6DmGB5uepr8GdA70bkAMGKp+nmfYtXXvjgHrrzrHvQsdLtWfX9OyhRR3rW7m82x7GqzkZDsnrvMLRBvMMbOMJ66iAfQan9x9D8a9Tbz8bDfr43mhjrnyElLYmJBqArxoI3FGwCoo4HemDdmcCrBbwDNuE63UYE9SQawGGsCHq3RAGIAAVAAChIAAehIb6AAhOEDI0AAD8voABcJA2DoAAJQcIzrDbBfVVBILGig1Ijcl7dR-iQN8z92BSJPrZJGu8gG6yuoNEuKijrlj3onHqP8Zrg0bHI1B64QY9W0SooOOicbIDOnuVIC9+4P3Rg9a6Ai1a+U8nBMRD54GuPYGND6D075wRMdghBq8wlnTOojLyagyDeNCk1QqjVeoWHCpxG0YZ0hZFyAUIM4ZslRgKAAYlKqVBgRT6BlKYBUkqpTOACFGmdZxVAFY0CehqWAZ0mCBLOuFfQqSrGJxxp3FJTAUkoHqWrZphAwE2FgOoaxMs1YTJQA9VQlA-CRNMHALpnTBomQXHYvuBQpRcFWW4KAmyvqsB2Ys9gll5H2JOfALgvAbiPEiZwIAA&editable=false">
+
+**Core Assumption**: Banks are intermediaries between savers and borrowers.
+
+From mainstream textbooks:
+
+> "Commercial banks are the best-known type of financial intermediary. They take deposits from savers and use these deposits to make loans to those who have investment projects they need to finance." - Mankiw (2016)
+
+**Key Characteristic**: Loans appear as:
+- **Assets of Households** (who are the real lenders)
+- **Liabilities of Firms** (borrowers)
+- **NOT on bank balance sheets** as assets
+
+### Godley Table Structure (Loanable Funds)
+
+Complete analysis requires three tables (Banks, Households, Firms) with each transaction appearing four times.
+
+**Private Banks:**
+
+| Flows↓/Stocks→    | Reserves | Households | Firms | $Banks$ | A-L-E |
+|:---               |---:|---:|---:|---:|---:|
+| **Type**          | Asset | Liability | Liability | Equity | |
+| **Initial**       | 100 | 40 | 50 | 10 | 0 |
+| **Pay Wages**     |  | +Wages | -Wages |  |  |
+| **Buy Goods**     |  | -Consume | +Consume |  |  |
+| **Borrow Money**  |  | -Credit | +Credit |  |  |
+| **Pay Interest**  |  | $Int_{Firms}$ | $-Int_{Firms}$ |  |
+| **Pay Bank Fee**  |  | -Fee |  | Fee |
+| **Banks Spend**   |  |  | $Spend_{Banks}$ | $-Spend_{Banks}$ |
+| **∫ Flows**       | 100 | 20+∫ | 70+∫ | 10 | 0 |
+
+**Households:**
+
+| Flows↓/Stocks→  | Households | $Debt_{Firms}$ | $HH_{Equity}$ | A-L-E |
+|:---             |---:|---:|---:|---:|
+| **Type**        | Asset | Asset | Equity | |
+| **Initial**     | 20 | 0 | 20 | 0 |
+| **Pay Wages**   | +Wages |  | +Wages |  |
+| **Buy Goods**   | -Consume |  | -Consume |  |
+| **Borrow Money**| -Credit | +Credit |  |  |
+| **Pay Interest**| +$Int_{Firms}$ |  | +$Int_{Firms}$ |  |
+| **Pay Bank Fee**| -Fee |  | -Fee |  |
+| **∫ Flows**     | 20+∫ | 0+∫ | 20+∫ | 0 |
+
+**Firms:**
+
+| Flows↓/Stocks→ | Firms | $Debt_{Firms}$ | $Firms_{Equity}$ | A-L-E |
+|:---|---:|---:|---:|---:|
+| **Type** | Asset | Liability | Equity | |
+| **Initial** | 70 | 0 | 70 | 0 |
+| **Pay Wages** | -Wages |  | -Wages |  |
+| **Buy Goods** | +Consume |  | +Consume |  |
+| **Borrow Money** | +Credit | +Credit |  |  |
+| **Pay Interest** | -$Int_{Firms}$ |  | -$Int_{Firms}$ |  |
+| **Banks Spend** | +$Spend_{Banks}$ |  | +$Spend_{Banks}$ |  |
+| **∫ Flows** | 70+∫ | 0+∫ | 70+∫ | 0 |
+
+### Basic Flows (Without Government)
+
+Parameters and flows:
+
+$$Wage_{Share} = 60\%; \quad V_{Firms} = 4; \quad V_{HH} = 12.5  \quad V_{Banks} = 1 $$
+
+$$Int_{Rate} = 5\% \quad Fee_{Rate} = 10\% \quad Credit_{Rate} = 0\%$$
+$$GDP = {Firms} \times  {V_{Firms}}$$
+
+$$Wages = GDP \times Wage_{Share}$$
+
+$$Consume = {Households} \times {V_{HH}} \quad (3)$$
+
+$$Credit = GDP \times Credit_{Rate}$$
+
+$$Int_{Firms} = Debt_{Firms} \times Int_{Rate}$$
+
+$$Fee = Int_{Firms} \times Fee_{Rate}$$
+
+$$Int_{Firms} = Debt_{Firms} \times Int_{Rate}$$
+
+$$Spend_{Banks} = {Banks} \times  {V_{Banks}}$$
+
+Adjusting the credit and interest rates will change $Debt_{Firms}$.
+
+<button onclick="CircuitJSUtils.cycleSlider('Credit_{Rate}', [0, -0.05, 0, 0.05], 300, this)" class="slider-toggle-btn">
+  <span class="btn-icon">⚡</span> Credit<sub>Rate</sub>: <span class="slider-value">0%</span>
+</button>
+<button onclick="CircuitJSUtils.cycleSlider('Int_{Rate}', [0.05, 0, -0.05, 0], 300, this)" class="slider-toggle-btn">
+  <span class="btn-icon">⚡</span> Int<sub>Rate</sub>: <span class="slider-value">5%</span>
+</button>
+
+
+<table id="loanable-funds-table" class="realtime-table">
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="rt-label">Loading...</td><td class="rt-value">—</td></tr>
+  </tbody>
+</table>
+
+<script>
+  // Start the realtime table after page loads
+  document.addEventListener('DOMContentLoaded', function() {
+    // Wait for CircuitJS to be ready, then start table updates
+    setTimeout(() => {
+      startRealtimeTable('loanable-funds-table', ['Firms', 'HouseHolds', 'Banks', 'GDP', 'Debt_{GDP}', 'HH_{Equity}'], 200);
+    }, 2000);
+  });
+</script>
+
+This system is **sustainable** with only private sector debt does not get too large. But the growth of GDP is slow, there is a slow growth in household net equity and no growth in the value of firms.
+
+</div>
+
+---
+
+<div class="nav-buttons" style="display: flex; justify-content: flex-end; margin-top: 2em; padding-top: 1em; border-top: 1px solid #e0e0e0;">
+<a href="04b-loanable-funds-government.qmd" style="text-decoration: none;">Next: Adding Government Sector →</a>
+</div>
+
+
+
+<div class="split-footer">
+[Back to Series Index](index.qmd)
+</div>

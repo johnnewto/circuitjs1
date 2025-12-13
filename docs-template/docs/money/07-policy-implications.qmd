@@ -1,0 +1,45 @@
+---
+title: "Policy Implications"
+toc: true
+format:
+  html:
+    page-layout: article
+    css: ../circuitjs-docs.css
+---
+
+<script src="../circuitjs-utils.js"></script>
+
+## If Loanable Funds is Correct:
+- Government deficits crowd out private investment
+- Debt accumulation is unsustainable
+- Austerity is necessary to avoid crisis
+- Government must "live within its means"
+
+## If BOMD is Correct:
+- Government deficits add to private sector wealth
+- Debt/GDP ratio stabilizes naturally
+- Austerity reduces private sector equity
+- Government cannot "run out of money" (for fiat currency issuer)
+
+## The Evidence
+
+Central bank endorsements:
+- **Bank of England** (2014): "Bank lending creates deposits"
+- **Bundesbank** (2017): "A bank can grant loans without any prior inflows"
+
+Empirical observation:
+- Banks create loans and deposits simultaneously
+- Government spending precedes taxation operationally
+- Countries with sovereign currencies never "run out of money"
+
+**Conclusion**: Evidence strongly supports BOMD model.
+
+---
+
+<div class="nav-buttons" style="display: flex; justify-content: flex-end; margin-top: 2em; padding-top: 1em; border-top: 1px solid #e0e0e0;">
+<a href="08-advanced-topics.qmd" style="text-decoration: none;">Next: Advanced Topics →</a>
+</div>
+
+<div class="split-footer">
+[Back to Series Index](index.qmd)
+</div>

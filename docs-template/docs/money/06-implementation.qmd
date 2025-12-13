@@ -1,0 +1,85 @@
+---
+title: "Implementing in CircuitJS"
+toc: true
+format:
+  html:
+    page-layout: article
+    css: ../circuitjs-docs.css
+---
+
+<script src="../circuitjs-utils.js"></script>
+
+<div id="implementation" class="circuit-section" data-name="CircuitJS Implementation" data-circuit="../circuitjs.html?startCircuit=implementation.txt&editable=false">
+
+## Building the Loanable Funds Model
+
+1. **Create Godly Tables** for each sector
+   - Banks: Reserves, Households, Firms as columns
+   - Households: Households, DebtFirms as assets
+   - Firms: Firms as asset, DebtFirms as liability
+   - Treasury: Government as asset, DebtGov as liability
+
+2. **Define Parameters**
+   - WageShare = 0.6
+   - τFirms = 0.25
+   - τHH = 0.5
+   - IntRate = 0.05
+   - CreditShare = 0.5
+   - TaxRate = 0.20
+   - SpendRate = 0.21 (for 1% deficit)
+
+3. **Create Flow Equations**
+   - GDP = Firms / τFirms (use Divider)
+   - Wages = GDP × WageShare (use Multiplier)
+   - Consume = Households / τHH (use Divider)
+   - Credit = GDP × CreditShare (use Multiplier)
+   - Tax = GDP × TaxRate (use Multiplier)
+   - SpendGov = GDP × SpendRate (use Multiplier)
+   - Bonds = (SpendGov - Tax) + DebtGov × IntRate (use Adder)
+
+4. **Monitor Key Metrics**
+   - Scope: DebtGov / GDP ratio
+   - Scope: IntGov / GDP ratio
+   - Pie Chart: Sectoral balances
+
+## Building the BOMD Model
+
+1. **Restructure Tables**
+   - Banks: Add DebtFirms and DebtGov as **Assets**
+   - Households: Remove DebtFirms (only deposits)
+   - Firms: Remove DebtFirms liability
+   - Add Central Bank table
+   - Treasury: Government at Central Bank
+
+2. **Modify Flows**
+   - Credit now increases bank assets (DebtFirms)
+   - Bonds now increase bank assets (DebtGov)
+   - Interest flows to Banks, not Households
+   - Government account at Central Bank
+
+3. **Same Parameters** as Loanable Funds
+
+4. **Compare Results**
+   - Run both models side-by-side
+   - Observe debt/GDP trajectories
+   - Verify stability differences
+
+## Visualization Tips
+
+- **Current Transactions Matrix**: Shows all flows between sectors
+- **Scope Elements**: Plot debt ratios over time (50-200 years)
+- **Pie Charts**: Display sectoral equity distribution
+- **Stop Time Elements**: Pause at key checkpoints (50, 100, 150, 200 years)
+- **Percent Meters**: Show debt/GDP and interest/GDP ratios
+
+</div>
+
+---
+
+<div class="nav-buttons" style="display: flex; justify-content: flex-end; margin-top: 2em; padding-top: 1em; border-top: 1px solid #e0e0e0;">
+<a href="07-policy-implications.qmd" style="text-decoration: none;">Next: Policy Implications →</a>
+</div>
+
+<div class="split-footer">
+[Back to Series Index](index.qmd)
+</div>

@@ -1,0 +1,57 @@
+---
+title: "Money from First Principles"
+toc: true
+---
+
+*Based on Steve Keen's analysis for engineers*
+
+This series breaks down the fundamental principles of money, banking, and government finance using first-principles reasoning and CircuitJS simulations.
+
+## Chapters
+
+1. **[Introduction: First Principles vs. Reasoning by Analogy](01-introduction.qmd)**  
+   Why reasoning by analogy fails for government finances and the accounting foundation
+
+2. **[Transaction Tables (Godley Tables)](03-transaction-tables.qmd)**  
+   Modeling economic flows with stock-flow consistent tables
+
+3. **[Two Competing Models of Banking](04-banking-models.qmd)**  
+   Part 1: Loanable Funds Model
+
+4. **[Adding Government Sector](04b-loanable-funds-government.qmd)**  
+   Part 2: Loanable Funds with Fiscal Policy
+
+5. **[Endogenous Money Model (BOMD)](04c-endogenous-money.qmd)**  
+   Part 3: Bank-Originated Money and Debt
+
+6. **[The Fundamental Identity](05-fundamental-identity.qmd)**  
+   Sectoral balances and the key insight
+
+7. **[Implementing in CircuitJS](06-implementation.qmd)**  
+   Building the models step-by-step
+
+8. **[Policy Implications](07-policy-implications.qmd)**  
+   What each model predicts for government policy
+
+9. **[Advanced Topics](08-advanced-topics.qmd)**  
+   Money supply, inflation, trade, and capital adequacy
+
+10. **[Exercises](09-exercises.qmd)**  
+    Hands-on model building and experimentation
+
+11. **[Key Takeaways](10-key-takeaways.qmd)**  
+     Summary of main insights
+
+12. **[Further Reading](11-further-reading.qmd)**  
+     Resources for deeper exploration
+
+---
+
+<div class="callout-tip">
+## Start the Series
+Ready to begin? [Start with the Introduction →](01-introduction.qmd)
+</div>
+
+---
+
+*This analysis demonstrates that first-principles reasoning, grounded in double-entry bookkeeping, leads to radically different conclusions than reasoning by analogy from households to governments.*

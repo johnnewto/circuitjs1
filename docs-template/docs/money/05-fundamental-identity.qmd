@@ -1,0 +1,47 @@
+---
+title: "The Fundamental Identity"
+toc: true
+format:
+  html:
+    page-layout: article
+    css: ../circuitjs-docs.css
+---
+
+<script src="../circuitjs-utils.js"></script>
+
+## Sectoral Balances
+
+The change in Treasury equity:
+
+$$\frac{dTreasury_{Equity}}{dt} = Tax - (Spend_{Gov} + Int_{Gov}) \quad (7)$$
+
+The change in Private sector equity (Banks + Firms + Households):
+
+$$\frac{dPrivate_{Equity}}{dt} = (Wages - Consume) + (Consume + Spend_{Gov} - Int_{Firms} - Wages) + (Int_{Firms} + Int_{Gov} - Tax)$$
+
+Terms cancel to leave:
+
+$$\frac{dPrivate_{Equity}}{dt} = Spend_{Gov} + Int_{Gov} - Tax \quad (8)$$
+
+## The Key Insight
+
+Comparing equations (7) and (8):
+
+$$\boxed{\frac{dPrivate_{Equity}}{dt} = -\frac{dTreasury_{Equity}}{dt}}$$
+
+**Government deficit = Private sector surplus (by accounting identity)**
+
+In the BOMD model:
+- Government "debt" IS private sector wealth
+- Government deficit ADDS to private sector equity
+- This is not a theory—it's an accounting identity
+
+---
+
+<div class="nav-buttons" style="display: flex; justify-content: flex-end; margin-top: 2em; padding-top: 1em; border-top: 1px solid #e0e0e0;">
+<a href="06-implementation.qmd" style="text-decoration: none;">Next: Implementing in CircuitJS →</a>
+</div>
+
+<div class="split-footer">
+[Back to Series Index](index.qmd)
+</div>

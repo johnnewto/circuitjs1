@@ -67,7 +67,7 @@ format:
 
 <!-- Right panel: Scrolling content -->
 <div class="split-right">
-<iframe src="money-content.html"
+<iframe src="money/01-introduction.html"
       width="100%" 
       height="100%" 
       frameborder="0"
