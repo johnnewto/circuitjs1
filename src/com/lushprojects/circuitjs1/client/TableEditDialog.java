@@ -39,6 +39,8 @@ import com.google.gwt.event.dom.client.KeyPressHandler;
 import com.google.gwt.event.dom.client.KeyPressEvent;
 import com.google.gwt.event.dom.client.FocusHandler;
 import com.google.gwt.event.dom.client.FocusEvent;
+import com.google.gwt.event.dom.client.BlurHandler;
+import com.google.gwt.event.dom.client.BlurEvent;
 import com.google.gwt.event.dom.client.KeyCodes;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import java.util.HashMap;
@@ -1013,28 +1015,28 @@ import java.util.Map;
                 aleLabel.setTitle(titleText);
                 editGrid.setWidget(TYPE_ROW, DATA_START_COL + col, aleLabel);
             } else if (!isMasterColumn(col)) {
-                // Non-master column gets a lock indicator with type
+                // Non-master column: show type with sync indicator (editable, syncs to master)
                 String stockName = stockValues[col];
                 TableElm masterTable = ComputedValues.getMasterTable(stockName != null ? stockName.trim() : "");
                 String masterTableName = (masterTable != null) ? masterTable.getTableTitle() : "unknown";
                 
-                // Get the column type and add lock symbol
+                // Get the column type and add sync symbol
                 ColumnType colType = columnTypes[col];
                 String typeLabel;
                 if (colType == ColumnType.ASSET) {
-                    typeLabel = "🔒 💹 Asset";
+                    typeLabel = "🔄 💹 Asset";
                 } else if (colType == ColumnType.LIABILITY) {
-                    typeLabel = "🔒 📄 Liability";
+                    typeLabel = "🔄 📄 Liability";
                 } else if (colType == ColumnType.EQUITY) {
-                    typeLabel = "🔒 🏦 Equity";
+                    typeLabel = "🔄 🏦 Equity";
                 } else {
-                    typeLabel = "🔒 Locked";
+                    typeLabel = "🔄 Synced";
                 }
                 
-                Label lockLabel = new Label(typeLabel);
-                lockLabel.addStyleName("locked-column");
-                lockLabel.setTitle("Read-only: Stock '" + stockName + "' is mastered by table '" + masterTableName + "'. Column operations (±<>) still available.");
-                editGrid.setWidget(TYPE_ROW, DATA_START_COL + col, lockLabel);
+                Label syncLabel = new Label(typeLabel);
+                syncLabel.addStyleName("synced-column");
+                syncLabel.setTitle("Synced: Stock '" + stockName + "' is mastered by table '" + masterTableName + "'. Edits update master and sync all tables.");
+                editGrid.setWidget(TYPE_ROW, DATA_START_COL + col, syncLabel);
             } else {
                 // Create dropdown for column type selection
                 final int finalCol = col;
@@ -1287,6 +1289,27 @@ import java.util.Map;
     // =============================================================================
     
     /**
+     * Check if a flow description is duplicated in another row of the same table
+     * @param name The flow description to check
+     * @param excludeRow The row index to exclude from checking (the row being edited)
+     * @return The row index where duplicate exists, or -1 if no duplicate
+     */
+    private int findDuplicateFlowDescription(String name, int excludeRow) {
+        if (name == null || name.trim().isEmpty()) {
+            return -1; // Empty names are allowed (not considered duplicates)
+        }
+        String trimmedName = name.trim();
+        for (int r = 0; r < dataRows; r++) {
+            if (r == excludeRow) continue;
+            String rowDesc = tableElement.getRowDescription(r);
+            if (rowDesc != null && rowDesc.trim().equalsIgnoreCase(trimmedName)) {
+                return r;
+            }
+        }
+        return -1;
+    }
+    
+    /**
      * Create textbox for editing flow descriptions with bash-style Tab autocomplete
      * Returns a VerticalPanel containing hint label + textbox (same pattern as cell text boxes)
      */
@@ -1301,6 +1324,13 @@ import java.util.Map;
         textBox.setText(rowDesc != null ? rowDesc : "");
         textBox.addStyleName("tableFlowInput");
         textBox.setWidth("100%");
+        
+        // Check for duplicate on initial load and highlight if needed
+        int initialDuplicate = findDuplicateFlowDescription(rowDesc, row);
+        if (initialDuplicate >= 0 && rowDesc != null) {
+            textBox.addStyleName("error-input");
+            textBox.setTitle("Duplicate: '" + rowDesc.trim() + "' already exists in row " + (initialDuplicate + 1));
+        }
         
         // Prevent keyboard events from deleting table element while typing
         preventKeyboardPropagation(textBox);
@@ -1348,8 +1378,21 @@ import java.util.Map;
         
         textBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
+                String newDesc = textBox.getText();
+                int duplicateRow = findDuplicateFlowDescription(newDesc, row);
+                
+                if (duplicateRow >= 0) {
+                    // Show warning - duplicate found
+                    textBox.addStyleName("error-input");
+                    textBox.setTitle("Duplicate: '" + newDesc.trim() + "' already exists in row " + (duplicateRow + 1));
+                    setStatus("⚠️ Duplicate flow description: '" + newDesc.trim() + "' exists in row " + (duplicateRow + 1));
+                } else {
+                    // No duplicate - clear warning
+                    textBox.removeStyleName("error-input");
+                    textBox.setTitle("");
+                }
                 // Store flow description in TableElm's rowDescriptions
-                tableElement.setRowDescription(row, textBox.getText());
+                tableElement.setRowDescription(row, newDesc);
                 textBox.addStyleName("modified");
                 markChanged();
             }
@@ -1366,6 +1409,27 @@ import java.util.Map;
     }
     
     /**
+     * Check if a stock name is duplicated in another column of the same table
+     * @param name The stock name to check
+     * @param excludeCol The column index to exclude from checking (the column being edited)
+     * @return The column index where duplicate exists, or -1 if no duplicate
+     */
+    private int findDuplicateStockName(String name, int excludeCol) {
+        if (name == null || name.trim().isEmpty()) {
+            return -1; // Empty names are allowed (not considered duplicates)
+        }
+        String trimmedName = name.trim();
+        for (int c = 0; c < dataCols; c++) {
+            if (c == excludeCol) continue;
+            if (isALEColumn(c)) continue; // Skip A-L-E column
+            if (stockValues[c] != null && stockValues[c].trim().equalsIgnoreCase(trimmedName)) {
+                return c;
+            }
+        }
+        return -1;
+    }
+    
+    /**
      * Create TextBox for editing stock values (column headers) with bash-style Tab autocomplete
      * Returns a VerticalPanel containing hint label + textbox (same pattern as cell text boxes)
      */
@@ -1378,6 +1442,13 @@ import java.util.Map;
         textBox.setText(stockValues[col]); // Initialize with current value
         textBox.addStyleName("tableStockInput");
         textBox.setWidth("100%");
+        
+        // Check for duplicate on initial load and highlight if needed
+        int initialDuplicate = findDuplicateStockName(stockValues[col], col);
+        if (initialDuplicate >= 0) {
+            textBox.addStyleName("error-input");
+            textBox.setTitle("Duplicate: '" + stockValues[col].trim() + "' already exists in column " + (initialDuplicate + 1));
+        }
         
         // Prevent keyboard events from deleting table element while typing
         preventKeyboardPropagation(textBox);
@@ -1428,13 +1499,26 @@ import java.util.Map;
             }
         });
         
-        // Add key up handler to track changes
+        // Add key up handler to track changes with duplicate validation
         textBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
-                // Store stock value name
-                stockValues[col] = textBox.getText();
-                textBox.addStyleName("modified");
-                markChanged();
+                String newName = textBox.getText();
+                int duplicateCol = findDuplicateStockName(newName, col);
+                
+                if (duplicateCol >= 0) {
+                    // Show warning - duplicate found
+                    textBox.addStyleName("error-input");
+                    textBox.setTitle("Duplicate: '" + newName.trim() + "' already exists in column " + (duplicateCol + 1));
+                    setStatus("⚠️ Duplicate stock name: '" + newName.trim() + "' exists in column " + (duplicateCol + 1));
+                } else {
+                    // No duplicate - clear warning
+                    textBox.removeStyleName("error-input");
+                    textBox.setTitle("");
+                    // Store stock value name
+                    stockValues[col] = newName;
+                    textBox.addStyleName("modified");
+                    markChanged();
+                }
             }
         });
         
@@ -1447,7 +1531,7 @@ import java.util.Map;
         
         return container;
     }
-    
+
     /**
      * Create completion list for flow descriptions (unique row names from all tables)
      */
@@ -1565,11 +1649,13 @@ import java.util.Map;
     /**
      * Create textbox for editing cell equations with autocomplete (bash-style Tab completion)
      * Returns a VerticalPanel containing hint label + textbox
-     * Non-master columns are read-only (locked) but can still be renamed and reordered
+     * Non-master columns are editable and changes propagate to the master table
      */
     private VerticalPanel createCellTextBox(final int row, final int col) {
-        // Check if this column is a master column (editable) or non-master (locked)
+        // Check if this column is a master column (editable) or non-master (synced from master)
         final boolean isMaster = isMasterColumn(col);
+        final String stockName = stockValues[col];
+        final TableElm masterTable = isMaster ? null : ComputedValues.getMasterTable(stockName != null ? stockName.trim() : "");
         
         // Create the completion list from all available variables
         final java.util.List<String> completionList = createCompletionList();
@@ -1580,11 +1666,11 @@ import java.util.Map;
         textBox.addStyleName("tableCellInput");
         textBox.setWidth("100%");
         
-        // Lock non-master columns (read-only)
-        if (!isMaster) {
-            textBox.setReadOnly(true);
-            textBox.addStyleName("locked-column");
-            textBox.setTitle("Read-only: This stock is mastered by another table. Stock name and column operations (±<>) are still available.");
+        // Style non-master columns to indicate they sync to master
+        if (!isMaster && masterTable != null) {
+            textBox.addStyleName("synced-column");
+            String masterTableName = masterTable.getTableTitle();
+            textBox.setTitle("Synced: Changes update master table '" + masterTableName + "' and all related tables");
         }
         
         // Prevent keyboard events from deleting table element while typing
@@ -1601,79 +1687,85 @@ import java.util.Map;
         container.add(hintLabel);
         container.add(textBox);
         
-        // Only add autocomplete and editing features for master columns
-        if (isMaster) {
-            // Initialize autocomplete state for this textbox
-            final AutocompleteHelper.AutocompleteState state = new AutocompleteHelper.AutocompleteState();
-            autocompleteStates.put(textBox, state);
-            
-            // Handle Tab key: cycle through completions, Enter key: accept and finish editing
-            textBox.addKeyDownHandler(new KeyDownHandler() {
-                public void onKeyDown(KeyDownEvent event) {
-                    if (event.getNativeKeyCode() == KeyCodes.KEY_TAB) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        AutocompleteHelper.handleTabCompletion(textBox, completionList, hintLabel, state);
-                    } else if (event.getNativeKeyCode() == KeyCodes.KEY_ENTER) {
-                        event.preventDefault();
-                        // Accept current selection: reset state and hide hint
-                        state.reset();
-                        hintLabel.setVisible(false);
-                        textBox.setFocus(false);
+        // Initialize autocomplete state for this textbox
+        final AutocompleteHelper.AutocompleteState state = new AutocompleteHelper.AutocompleteState();
+        autocompleteStates.put(textBox, state);
+        
+        // Handle Tab key: cycle through completions, Enter key: accept and finish editing
+        textBox.addKeyDownHandler(new KeyDownHandler() {
+            public void onKeyDown(KeyDownEvent event) {
+                if (event.getNativeKeyCode() == KeyCodes.KEY_TAB) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    AutocompleteHelper.handleTabCompletion(textBox, completionList, hintLabel, state);
+                } else if (event.getNativeKeyCode() == KeyCodes.KEY_ENTER) {
+                    event.preventDefault();
+                    // Accept current selection: reset state and hide hint
+                    state.reset();
+                    hintLabel.setVisible(false);
+                    textBox.setFocus(false);
+                    // Sync changes - if non-master, update master first
+                    if (!isMaster && masterTable != null) {
+                        updateMasterAndSync(masterTable, stockName, row, col, textBox.getText());
+                    } else {
+                        syncMasterToRelatedTables();
                     }
                 }
-            });
-            
-            // Handle typing: show matches in real-time and validate symbols
-            textBox.addKeyPressHandler(new KeyPressHandler() {
-                public void onKeyPress(KeyPressEvent event) {
-                    // Wait for character to be added to textbox, then update display
-                    com.google.gwt.core.client.Scheduler.get().scheduleDeferred(
-                        new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
-                            public void execute() {
-                                AutocompleteHelper.updateMatchDisplay(textBox, completionList, hintLabel, state);
-                            }
+            }
+        });
+        
+        // Handle typing: show matches in real-time and validate symbols
+        textBox.addKeyPressHandler(new KeyPressHandler() {
+            public void onKeyPress(KeyPressEvent event) {
+                // Wait for character to be added to textbox, then update display
+                com.google.gwt.core.client.Scheduler.get().scheduleDeferred(
+                    new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
+                        public void execute() {
+                            AutocompleteHelper.updateMatchDisplay(textBox, completionList, hintLabel, state);
                         }
-                    );
-                }
-            });
-            
-            // Add key up handler to track changes
-            textBox.addKeyUpHandler(new KeyUpHandler() {
-                public void onKeyUp(KeyUpEvent event) {
-                    cellData[row][col] = textBox.getText();
-                    textBox.addStyleName("modified");
-                    markChanged();
-                    
-                    // Recalculate A_L_E columns when any cell changes
-                    updateALEColumns();
-                }
-            });
-            
-            // Select all on focus
-            textBox.addFocusHandler(new FocusHandler() {
-                public void onFocus(FocusEvent event) {
-                    textBox.selectAll();
-                }
-            });
-            
-            // Validate immediately on creation - show only undefined symbols
-            com.google.gwt.core.client.Scheduler.get().scheduleDeferred(
-                new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
-                    public void execute() {
-                        AutocompleteHelper.validateOnOpen(textBox, completionList, hintLabel);
                     }
+                );
+            }
+        });
+        
+        // Add key up handler to track changes
+        textBox.addKeyUpHandler(new KeyUpHandler() {
+            public void onKeyUp(KeyUpEvent event) {
+                cellData[row][col] = textBox.getText();
+                textBox.addStyleName("modified");
+                markChanged();
+                
+                // Recalculate A_L_E columns when any cell changes
+                updateALEColumns();
+            }
+        });
+        
+        // Select all on focus
+        textBox.addFocusHandler(new FocusHandler() {
+            public void onFocus(FocusEvent event) {
+                textBox.selectAll();
+            }
+        });
+        
+        // Sync to related tables when focus leaves the cell
+        textBox.addBlurHandler(new BlurHandler() {
+            public void onBlur(BlurEvent event) {
+                if (!isMaster && masterTable != null) {
+                    updateMasterAndSync(masterTable, stockName, row, col, textBox.getText());
+                } else {
+                    syncMasterToRelatedTables();
                 }
-            );
-        } else {
-            // For locked columns, just show a simple tooltip on focus
-            textBox.addFocusHandler(new FocusHandler() {
-                public void onFocus(FocusEvent event) {
-                    // Don't select text in locked fields
-                    textBox.setCursorPos(0);
+            }
+        });
+        
+        // Validate immediately on creation - show only undefined symbols
+        com.google.gwt.core.client.Scheduler.get().scheduleDeferred(
+            new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
+                public void execute() {
+                    AutocompleteHelper.validateOnOpen(textBox, completionList, hintLabel);
                 }
-            });
-        }
+            }
+        );
         
         return container;
     }
@@ -2308,6 +2400,97 @@ import java.util.Map;
             hasChanges = true;
             updateButtonStates();
             statusLabel.setText("Table modified - use Apply or OK to save changes");
+        }
+    }
+    
+    /**
+     * Update the master table with changes from a non-master column and sync all tables.
+     * When editing a non-master column, this updates the master table's data first,
+     * then synchronizes all related tables (including this one).
+     * 
+     * @param masterTable The master table that owns this stock
+     * @param stockName The stock name being edited
+     * @param row The row index being edited
+     * @param col The column index in this table
+     * @param newValue The new cell value
+     */
+    private void updateMasterAndSync(TableElm masterTable, String stockName, int row, int col, String newValue) {
+        if (masterTable == null || stockName == null) {
+            return;
+        }
+        
+        // Find the column in the master table that has this stock name
+        int masterCol = -1;
+        for (int c = 0; c < masterTable.getCols(); c++) {
+            String masterStock = masterTable.getColumnHeader(c);
+            if (masterStock != null && masterStock.trim().equalsIgnoreCase(stockName.trim())) {
+                masterCol = c;
+                break;
+            }
+        }
+        
+        if (masterCol < 0) {
+            setStatus("⚠️ Could not find stock '" + stockName + "' in master table '" + masterTable.getTableTitle() + "'");
+            return;
+        }
+        
+        // Update the master table's cell
+        masterTable.setCellEquation(row, masterCol, newValue);
+        
+        // Update our local data too
+        cellData[row][col] = newValue;
+        
+        // Sync from master to all related tables
+        StockFlowRegistry.synchronizeRelatedTables(masterTable);
+        
+        setStatus("✓ Updated master table '" + masterTable.getTableTitle() + "' and synced all related tables");
+    }
+    
+    /**
+     * Sync changes from master table to all related tables sharing the same stocks.
+     * Called automatically when editing finishes (Enter key or blur).
+     * Only syncs if this table is actually the master for at least one stock.
+     */
+    private void syncMasterToRelatedTables() {
+        // First apply changes to the underlying TableElm
+        applyChangesToTableElm();
+        
+        // Then sync to related tables
+        StockFlowRegistry.synchronizeRelatedTables(tableElement);
+    }
+    
+    /**
+     * Apply current dialog data to the underlying TableElm without closing
+     */
+    private void applyChangesToTableElm() {
+        // Copy cell data to TableElm
+        for (int row = 0; row < dataRows; row++) {
+            for (int col = 0; col < dataCols; col++) {
+                if (!isALEColumn(col)) {
+                    tableElement.setCellEquation(row, col, cellData[row][col]);
+                }
+            }
+        }
+        
+        // Copy stock values (column headers)
+        for (int col = 0; col < dataCols; col++) {
+            if (!isALEColumn(col)) {
+                tableElement.setColumnHeader(col, stockValues[col]);
+            }
+        }
+        
+        // Copy initial values
+        for (int col = 0; col < dataCols; col++) {
+            if (!isALEColumn(col)) {
+                tableElement.setInitialConditionValue(col, initialValues[col]);
+            }
+        }
+        
+        // Copy column types
+        for (int col = 0; col < dataCols; col++) {
+            if (!isALEColumn(col)) {
+                tableElement.setColumnType(col, columnTypes[col]);
+            }
         }
     }
     

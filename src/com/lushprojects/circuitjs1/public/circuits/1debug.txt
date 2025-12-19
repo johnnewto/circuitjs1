@@ -1,5 +1,5 @@
 $ 1 0.000005 10.20027730826997 50 5 50 5e-11
 % voltageUnit $
-255 144 -64 176 -64 0 3 4 6 16 0 true 2 0 false 5 0 true Table\s11 \0 Workers savers savers2 A-L-E pay\swages consume tax 0 0 0 0 ASSET LIABILITY EQUITY COMPUTED wages \0 \0 \0 -consume \0 \0 \0 -tax \0 \0 \0 0.001
-255 144 80 176 80 0 4 4 6 16 0 true 2 0 false 6 0 true Table\s12 \0 Workers savers savers A-L-E Flow_1 pay\swages consume tax 0 0 0 0 ASSET LIABILITY EQUITY COMPUTED \0 \0 \0 \0 wages wages \0 \0 -consume consume \0 \0 -tax tax \0 \0 0.001
+255 32 -208 64 -208 0 4 4 6 16 0 true 2 0 false 5 0 true Table\s11 \0 Workers savers savers2 A-L-E pay\swages consume tax tax 0 0 0 0 ASSET LIABILITY EQUITY COMPUTED wages wages \0 \0 -consume consume \0 \0 -tax \0 \0 \0 -tax tax spe \0 0.001
+255 32 -32 64 -32 0 4 4 6 16 0 true 2 0 false 6 0 true Table\s12 \0 Workers savers savers2 A-L-E Flow_1 pay\swages consume tax 0 0 0 0 ASSET LIABILITY EQUITY COMPUTED \0 \0 \0 \0 wages wages \0 \0 -consume consume \0 \0 -tax tax spe \0 0.001
 % AST 1 1
