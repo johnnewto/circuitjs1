@@ -8,82 +8,121 @@ package com.lushprojects.circuitjs1.client;
 
 // Linear adder element - adds multiple input voltages
 // Vout = V1 + V2 + V3 + ... using VCVS (linear element, no iteration needed)
-class AdderElm extends ChipElm {
+class AdderElm extends CircuitElm {
     int inputCount;
-    
-    public AdderElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
-        super(xa, ya, xb, yb, f, st);
-        inputCount = Integer.parseInt(st.nextToken());
-        setupPins();
-    }
+    int opsize, opheight, opwidth;
+    final int FLAG_SMALL = 2;
+    Point inPosts[], inLeads[];
+    Polygon bodyPoly;
+    Font labelFont;
     
     public AdderElm(int xx, int yy) {
         super(xx, yy);
+        noDiagonal = true;
         inputCount = 2;
-        setupPins();
-        // Set to small size by default
-        flags |= FLAG_SMALL;
-        setSize(1);
-        setPoints();
+        setSize(sim.smallGridCheckItem.getState() ? 1 : 2);
+    }
+    
+    public AdderElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
+        super(xa, ya, xb, yb, f);
+        noDiagonal = true;
+        inputCount = Integer.parseInt(st.nextToken());
+        setSize((f & FLAG_SMALL) != 0 ? 1 : 2);
     }
     
     String dump() {
         return super.dump() + " " + inputCount;
     }
     
-    void setupPins() {
-        sizeX = 2;
-        sizeY = inputCount > 2 ? inputCount : 2;
-        pins = new Pin[inputCount + 1];
-        int i;
-        for (i = 0; i != inputCount; i++) {
-            pins[i] = new Pin(i, SIDE_W, "");
-        }
-        pins[inputCount] = new Pin(0, SIDE_E, "");
-        pins[inputCount].output = true;
-        allocNodes();
+    int getDumpType() { return 251; }
+    
+    void setSize(int s) {
+        opsize = s;
+        opheight = 8 * s;
+        opwidth = 13 * s;
+        flags = (flags & ~FLAG_SMALL) | ((s == 1) ? FLAG_SMALL : 0);
     }
     
-    String getChipName() { return "Σ"; }
+    void setPoints() {
+        super.setPoints();
+        if (dn > 150 && this == sim.dragElm)
+            setSize(2);
+        int ww = opwidth;
+        if (ww > dn/2)
+            ww = (int) (dn/2);
+        calcLeads(ww*2);
+        
+        int hs = opheight * dsign;
+        inPosts = new Point[inputCount];
+        inLeads = new Point[inputCount];
+        
+        // Calculate input positions like GateElm does
+        int i0 = -inputCount/2;
+        for (int i = 0; i != inputCount; i++, i0++) {
+            if (i0 == 0 && (inputCount & 1) == 0)
+                i0++;
+            inPosts[i] = interpPoint(point1, point2, 0, hs * i0);
+            inLeads[i] = interpPoint(lead1, lead2, 0, hs * i0);
+        }
+        
+        // Create rectangular body
+        Point[] pts = newPointArray(4);
+        interpPoint2(lead1, lead2, pts[0], pts[1], 0, hs * (inputCount/2 + 1));
+        interpPoint2(lead1, lead2, pts[3], pts[2], 1, hs * (inputCount/2 + 1));
+        bodyPoly = createPolygon(pts);
+        
+        setBbox(point1, point2, opheight * (inputCount/2 + 1));
+        labelFont = new Font("SansSerif", 0, opsize == 2 ? 14 : 10);
+    }
+    
+    void draw(Graphics g) {
+        setBbox(point1, point2, opheight * (inputCount/2 + 1));
+        
+        // Draw input leads
+        for (int i = 0; i < inputCount; i++) {
+            setVoltageColor(g, volts[i]);
+            drawThickLine(g, inPosts[i], inLeads[i]);
+        }
+        
+        // Draw output lead
+        setVoltageColor(g, volts[inputCount]);
+        drawThickLine(g, lead2, point2);
+        
+        // Draw body
+        g.setColor(needsHighlight() ? selectColor : lightGrayColor);
+        drawThickPolygon(g, bodyPoly);
+        
+        // Draw "+" label
+        g.setFont(labelFont);
+        Point center = interpPoint(lead1, lead2, 0.5);
+        drawCenteredText(g, "+", center.x, center.y, true);
+        
+        // Draw current dots
+        curcount = updateDotCount(current, curcount);
+        drawDots(g, point2, lead2, curcount);
+        drawPosts(g);
+    }
+    
+    int getPostCount() { return inputCount + 1; }
+    
+    Point getPost(int n) {
+        if (n == inputCount)
+            return point2;
+        return inPosts[n];
+    }
+    
+    int getVoltageSourceCount() { return 1; }
     
     boolean nonLinear() { return false; }
-    
-    @Override boolean isDigitalChip() { return false; }
     
     void stamp() {
         // This is a voltage-controlled voltage source (VCVS)
         // Vout = V1 + V2 + V3 + ...
-        // Create voltage source at output
-        sim.stampVoltageSource(nodes[inputCount], 0, pins[inputCount].voltSource);
+        sim.stampVoltageSource(nodes[inputCount], 0, voltSource);
         
         // Add control from each input with coefficient 1.0
         for (int i = 0; i < inputCount; i++) {
-            sim.stampVCVS(nodes[i], 0, 1.0, pins[inputCount].voltSource);
-        }
-    }
-    
-    void drawLabel(Graphics g, int x, int y) {
-        g.save();
-        Font f = new Font("SansSerif", 0, 30);
-        g.setFont(f);
-        g.context.setTextBaseline("middle");
-        g.context.setTextAlign("center");
-        g.setColor(needsHighlight() ? selectColor : whiteColor);
-        g.drawString("+", x, y);
-        g.restore();
-    }
-
-    int getDumpType() { return 251; }
-    
-    int getPostCount() { return inputCount + 1; }
-    
-    int getVoltageSourceCount() { return 1; }
-    
-    boolean hasCurrentOutput() { return false; }
-    
-    void setCurrent(int vn, double c) {
-        if (pins[inputCount].voltSource == vn) {
-            pins[inputCount].current = c;
+            sim.stampVCVS(nodes[i], 0, 1.0, voltSource);
         }
     }
     
@@ -95,33 +134,43 @@ class AdderElm extends ChipElm {
             arr[1] += getVoltageText(volts[i]);
         }
         arr[2] = "Vout = " + getVoltageText(volts[inputCount]);
+        arr[3] = "Iout = " + getCurrentText(-current);
     }
     
-    public EditInfo getChipEditInfo(int n) {
+    // No current path through inputs, but output connects to ground
+    boolean getConnection(int n1, int n2) { return false; }
+    boolean hasGroundConnection(int n1) { return n1 == inputCount; }
+    
+    double getCurrentIntoNode(int n) {
+        if (n == inputCount)
+            return -current;
+        return 0;
+    }
+    
+    public EditInfo getEditInfo(int n) {
         if (n == 0)
-            return new EditInfo("Number of Inputs", inputCount, 2, 8);
-        if (n == 1) {
-            EditInfo ei = new EditInfo("", 0, -1, -1);
-            ei.checkbox = new Checkbox("Small Size", (flags & FLAG_SMALL) != 0);
-            return ei;
-        }
+            return new EditInfo("Number of Inputs", inputCount, 2, 8).setDimensionless();
+        if (n == 1)
+            return EditInfo.createCheckbox("Small", (flags & FLAG_SMALL) != 0);
         return null;
     }
     
-    public void setChipEditValue(int n, EditInfo ei) {
+    public void setEditValue(int n, EditInfo ei) {
         if (n == 0) {
             if (ei.value < 2 || ei.value > 8)
                 return;
             inputCount = (int) ei.value;
-            setupPins();
             allocNodes();
             setPoints();
         }
         if (n == 1) {
             flags = ei.changeFlag(flags, FLAG_SMALL);
-            setSize((flags & FLAG_SMALL) != 0 ? 1 : 2);
-            setupPins();
-            allocNodes();
+            boolean small = (flags & FLAG_SMALL) != 0;
+            setSize(small ? 1 : 2);
+            if (small) {
+                sim.smallGridCheckItem.setState(true);
+                sim.setGrid();
+            }
             setPoints();
         }
     }

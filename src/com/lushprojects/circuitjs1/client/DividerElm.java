@@ -2,229 +2,305 @@
     Copyright (C) Paul Falstad
     
     This file is part of CircuitJS1.
+
+    CircuitJS1 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    CircuitJS1 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 package com.lushprojects.circuitjs1.client;
 
-class DividerElm extends VCCSElm {
-    public DividerElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
-        super(xa, ya, xb, yb, f, st);
-    }
-    
-    public DividerElm(int xx, int yy) {
-        super(xx, yy);
-        // Implement division as multiplication by reciprocal: a/b/c = a * (1/b) * (1/c)
-        exprString = "a";
-        for (int i = 1; i != inputCount; i++) {
-            char var = (char)('a' + i);
-            // Add epsilon to denominator before inverting to prevent 1/0
-            exprString += "*(1/(" + var + "!=0?" + var + ":1e-9))";
-        }
-        parseExpr();
-        // Override the size set by parent to be small by default
-        flags |= FLAG_SMALL; // Set flag to persist small size
-        setSize(1); // Set to small size
-        setPoints(); // Recalculate points with new size
-    }
-    
-    void setupPins() {
-        // V- is internal, always node 0 (ground)
-        sizeX = 2;
-        sizeY = inputCount > 2 ? inputCount : 2;
-        pins = new Pin[inputCount+2];
-        int i;
-        for (i = 0; i != inputCount; i++) {
-            pins[i] = new Pin(i, SIDE_W, ""); 
-        }
-        pins[inputCount] = new Pin(0, SIDE_E, "");
-        pins[inputCount].output = true;
-        lastVolts = new double[inputCount];
-        exprState = new ExprState(inputCount);
-        allocNodes();
-    }
-
-    String getChipName() { return "Divider"; }
-    
-    void stamp() {
-        int vn = pins[inputCount].voltSource + sim.nodeList.size();
-        sim.stampNonLinear(vn);
-        sim.stampVoltageSource(0, nodes[inputCount], pins[inputCount].voltSource);
-    }
+// Divider element - divides input voltages
+// Vout = V1 / V2 / V3 / ... (nonlinear, requires iteration)
+class DividerElm extends CircuitElm {
+    int inputCount;
+    int opsize, opheight, opwidth;
+    final int FLAG_SMALL = 2;
+    Point inPosts[], inLeads[];
+    Polygon bodyPoly;
+    Font labelFont;
+    double lastVolts[];
     
     // Minimum denominator value to prevent numerical instability
     static final double MIN_DENOMINATOR = 1e-6;
     // Maximum derivative magnitude to prevent solver instability
     static final double MAX_DERIVATIVE = 1e6;
     
-    double getConvergeLimit() {
-        // get maximum change in voltage per step when testing for convergence.  be more lenient over time
-        if (sim.subIterations < 10)
-            return .001;
-        if (sim.subIterations < 200)
-            return .01;
-        return .1;
+    public DividerElm(int xx, int yy) {
+        super(xx, yy);
+        noDiagonal = true;
+        inputCount = 2;
+        setSize(sim.smallGridCheckItem.getState() ? 1 : 2);
+        lastVolts = new double[inputCount];
     }
     
-    void doStep() {
-        int i;
+    public DividerElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
+        super(xa, ya, xb, yb, f);
+        noDiagonal = true;
+        inputCount = Integer.parseInt(st.nextToken());
+        setSize((f & FLAG_SMALL) != 0 ? 1 : 2);
+        lastVolts = new double[inputCount];
+    }
+    
+    String dump() {
+        return super.dump() + " " + inputCount;
+    }
+    
+    int getDumpType() { return 257; }
+    
+    void setSize(int s) {
+        opsize = s;
+        opheight = 8 * s;
+        opwidth = 13 * s;
+        flags = (flags & ~FLAG_SMALL) | ((s == 1) ? FLAG_SMALL : 0);
+    }
+    
+    void setPoints() {
+        super.setPoints();
+        if (dn > 150 && this == sim.dragElm)
+            setSize(2);
+        int ww = opwidth;
+        if (ww > dn/2)
+            ww = (int) (dn/2);
+        calcLeads(ww*2);
         
-        int vn = pins[inputCount].voltSource + sim.nodeList.size();
-        if (expr != null) {
-            // Check for divide by zero on denominators (inputs 1+)
-            // Use a larger threshold to prevent numerical instability before derivatives explode
-            boolean divByZero = false;
-            for (i = 1; i < inputCount; i++) {
-                if (Math.abs(volts[i]) < MIN_DENOMINATOR) {
-                    divByZero = true;
-                    break;
-                }
-            }
-            
-            // If divide by zero detected, output zero and converge
-            if (divByZero) {
-                sim.stampRightSide(vn, 0.0);
-                return;
-            }
-            
-            // // Check input convergence (like VCCSElm does)
-            // double convergeLimit = getConvergeLimit();
-            // for (i = 0; i != inputCount; i++) {
-            //     if (Math.abs(volts[i]-lastVolts[i]) > convergeLimit) {
-            //         sim.converged = false;
-            //     }
-            // }
-            
-            // Calculate output
-            for (i = 0; i != inputCount; i++)
-                exprState.values[i] = volts[i];
-
-            exprState.t = sim.t;
-            double v0 = expr.eval(exprState);
-            double vMinus = 0; // V- is always ground
-            
-            // Check output convergence
-            // Use relative tolerance for large values, absolute tolerance for values near zero
-            double outputDelta = Math.abs(volts[inputCount]-vMinus-v0);
-            double tolerance = Math.max(Math.abs(v0)*.01, 1e-9);  // At least 1e-9 absolute tolerance
-            boolean outputNotConverged = outputDelta > tolerance && sim.subIterations < 100;
-            if (outputNotConverged) {
-                sim.converged = false;
-
-            }
-            double rs = v0;
-            
-            // Calculate and stamp output derivatives
-            for (i = 0; i != inputCount; i++) {
-                double dv = volts[i]-lastVolts[i];
-                if (Math.abs(dv) < 1e-6)
-                    dv = 1e-6;
-                exprState.values[i] = volts[i];
-                double v = expr.eval(exprState);
-                exprState.values[i] = volts[i]-dv;
-                double v2 = expr.eval(exprState);
-                double dx = (v-v2)/dv;
-                double origDx = dx;
-                // Clamp derivative to prevent solver instability with small denominators
-                if (Math.abs(dx) < 1e-6)
-                    dx = sign(dx, 1e-6);
-                if (Math.abs(dx) > MAX_DERIVATIVE) {
-                    dx = sign(dx, MAX_DERIVATIVE);
-
-                }
-                sim.stampMatrix(vn, nodes[i], -dx);
-                // Adjust right side
-                rs -= dx*volts[i];
-                exprState.values[i] = volts[i];
-            }
-            
-            sim.stampRightSide(vn, rs);
+        int hs = opheight * dsign;
+        inPosts = new Point[inputCount];
+        inLeads = new Point[inputCount];
+        
+        // Calculate input positions - input 0 (numerator) at top, input 1+ (denominators) below
+        // Use negative i0 multiplier so input 0 gets positive offset (top position)
+        int i0 = -inputCount/2;
+        for (int i = 0; i != inputCount; i++, i0++) {
+            if (i0 == 0 && (inputCount & 1) == 0)
+                i0++;
+            inPosts[i] = interpPoint(point1, point2, 0, -hs * i0);
+            inLeads[i] = interpPoint(lead1, lead2, 0, -hs * i0);
         }
-
-        for (i = 0; i != inputCount; i++)
-            lastVolts[i] = volts[i];
+        
+        // Create rectangular body
+        Point[] pts = newPointArray(4);
+        interpPoint2(lead1, lead2, pts[0], pts[1], 0, hs * (inputCount/2 + 1));
+        interpPoint2(lead1, lead2, pts[3], pts[2], 1, hs * (inputCount/2 + 1));
+        bodyPoly = createPolygon(pts);
+        
+        setBbox(point1, point2, opheight * (inputCount/2 + 1));
+        labelFont = new Font("SansSerif", 0, opsize == 2 ? 14 : 10);
     }
     
-    void stepFinished() {
-        double vMinus = 0; // V- is always ground
-        exprState.updateLastValues(volts[inputCount]-vMinus);
+    void draw(Graphics g) {
+        setBbox(point1, point2, opheight * (inputCount/2 + 1));
+        
+        // Draw input leads
+        for (int i = 0; i < inputCount; i++) {
+            setVoltageColor(g, volts[i]);
+            drawThickLine(g, inPosts[i], inLeads[i]);
+        }
+        
+        // Draw output lead
+        setVoltageColor(g, volts[inputCount]);
+        drawThickLine(g, lead2, point2);
+        
+        // Draw body
+        g.setColor(needsHighlight() ? selectColor : lightGrayColor);
+        drawThickPolygon(g, bodyPoly);
+        
+        // Draw "÷" label
+        g.setFont(labelFont);
+        Point center = interpPoint(lead1, lead2, 0.5);
+        drawCenteredText(g, "\u00f7", center.x, center.y, true);
+        
+        // Draw current dots
+        curcount = updateDotCount(current, curcount);
+        drawDots(g, point2, lead2, curcount);
+        drawPosts(g);
     }
-
-    int getPostCount() { return inputCount+1; } // since V- is not a post anymore
+    
+    int getPostCount() { return inputCount + 1; }
+    
+    Point getPost(int n) {
+        if (n == inputCount)
+            return point2;
+        return inPosts[n];
+    }
     
     int getVoltageSourceCount() { return 1; }
     
-    int getDumpType() { return 257; }
-
-    boolean hasCurrentOutput() { return false; }
-
-    void setCurrent(int vn, double c) {
-        if (pins[inputCount].voltSource == vn) {
-            pins[inputCount].current = c;
+    boolean nonLinear() { return true; }
+    
+    void stamp() {
+        // Nonlinear voltage source for output - use same pattern as VCVSElm
+        int vn = sim.nodeList.size() + voltSource;
+        sim.stampNonLinear(vn);
+        sim.stampVoltageSource(0, nodes[inputCount], voltSource);
+        // Stamp small placeholder values for inputs to ensure matrix is well-conditioned at startup
+        for (int i = 0; i < inputCount; i++) {
+            sim.stampMatrix(vn, nodes[i], 1e-20);
+            // Add high-value resistor to ground for each input to prevent floating node issues
+            sim.stampResistor(0, nodes[i], 1e8);
         }
-    }
-
-    void draw(Graphics g) {
-        drawChip(g);
-        String label = "÷"; // Division symbol
-        // Calculate midpoint using rectPointsX and rectPointsY arrays
-        int mid_x = (rectPointsX[0] + rectPointsX[1] + rectPointsX[2] + rectPointsX[3]) / 4;
-        int mid_y = (rectPointsY[0] + rectPointsY[1] + rectPointsY[2] + rectPointsY[3]) / 4;
-
-        boolean selected = needsHighlight();
-        Font f = new Font("SansSerif", selected ? Font.BOLD : 0, 30);
-        g.setFont(f);
-        g.setColor(selected ? selectColor : whiteColor);
-
-        drawCenteredText(g, label, mid_x, mid_y, true);
     }
     
-    public EditInfo getChipEditInfo(int n) {
-        if (n == 0)
-            return new EditInfo("# of Inputs", inputCount, 1, 8).
-                setDimensionless();
-        if (n == 1) {
-            EditInfo ei = new EditInfo("", 0, -1, -1);
-            ei.checkbox = new Checkbox("Small Size", (flags & FLAG_SMALL) != 0);
-            return ei;
+    double sign(double a, double b) {
+        return a > 0 ? b : -b;
+    }
+    
+    void doStep() {
+        int vn = sim.nodeList.size() + voltSource;
+        
+        // Check for divide by zero on denominators (inputs 1+)
+        boolean divByZero = false;
+        for (int i = 1; i < inputCount; i++) {
+            if (Math.abs(volts[i]) < MIN_DENOMINATOR) {
+                divByZero = true;
+                break;
+            }
         }
+        
+        // If divide by zero detected, output zero and converge
+        if (divByZero) {
+            // Stamp small derivatives for inputs to ensure matrix is well-conditioned
+            for (int i = 0; i < inputCount; i++) {
+                sim.stampMatrix(vn, nodes[i], -1e-6);
+            }
+            sim.stampRightSide(vn, 0.0);
+            return;
+        }
+        
+        // Calculate output: V1 / V2 / V3 / ...
+        double v0 = volts[0];
+        for (int i = 1; i < inputCount; i++)
+            v0 /= volts[i];
+        
+        // Check convergence
+        double outputDelta = Math.abs(volts[inputCount] - v0);
+        double tolerance = Math.max(Math.abs(v0) * 0.01, 1e-9);
+        if (outputDelta > tolerance && sim.subIterations < 100)
+            sim.converged = false;
+        
+        double rs = v0;
+        
+        // Calculate and stamp output derivatives for each input
+        for (int i = 0; i < inputCount; i++) {
+            double dv = volts[i] - lastVolts[i];
+            if (Math.abs(dv) < 1e-6)
+                dv = 1e-6;
+            
+            // Calculate partial derivative dV0/dVi numerically
+            double vPlus = volts[0];
+            double vMinus = volts[0];
+            for (int j = 1; j < inputCount; j++) {
+                if (j == i) {
+                    vPlus /= volts[j];
+                    // Guard against divide by zero in vMinus calculation
+                    double denom = volts[j] - dv;
+                    if (Math.abs(denom) < MIN_DENOMINATOR)
+                        denom = sign(denom, MIN_DENOMINATOR);
+                    vMinus /= denom;
+                } else {
+                    // Guard against divide by zero for all denominators
+                    double denom = volts[j];
+                    if (Math.abs(denom) < MIN_DENOMINATOR)
+                        denom = sign(denom, MIN_DENOMINATOR);
+                    vPlus /= denom;
+                    vMinus /= denom;
+                }
+            }
+            // For input 0 (numerator)
+            if (i == 0) {
+                vPlus = volts[0];
+                vMinus = volts[0] - dv;
+                for (int j = 1; j < inputCount; j++) {
+                    // Guard against divide by zero for all denominators
+                    double denom = volts[j];
+                    if (Math.abs(denom) < MIN_DENOMINATOR)
+                        denom = sign(denom, MIN_DENOMINATOR);
+                    vPlus /= denom;
+                    vMinus /= denom;
+                }
+            }
+            
+            double dx = (vPlus - vMinus) / dv;
+            
+            // Clamp derivative to prevent solver instability
+            if (Math.abs(dx) < 1e-6)
+                dx = sign(dx, 1e-6);
+            if (Math.abs(dx) > MAX_DERIVATIVE)
+                dx = sign(dx, MAX_DERIVATIVE);
+            
+            sim.stampMatrix(vn, nodes[i], -dx);
+            rs -= dx * volts[i];
+        }
+        
+        // stampVoltageSource already stamped +1 for output node, so just stamp right side
+        sim.stampRightSide(vn, rs);
+        
+        // Save last voltages
+        for (int i = 0; i < inputCount; i++)
+            lastVolts[i] = volts[i];
+    }
+    
+    void getInfo(String arr[]) {
+        arr[0] = "divider";
+        arr[1] = "Vout = ";
+        for (int i = 0; i < inputCount; i++) {
+            if (i > 0) arr[1] += " \u00f7 ";
+            arr[1] += getVoltageText(volts[i]);
+        }
+        arr[2] = "Vout = " + getVoltageText(volts[inputCount]);
+        arr[3] = "Iout = " + getCurrentText(-current);
+    }
+    
+    // No current path through inputs, but output connects to ground
+    boolean getConnection(int n1, int n2) { return false; }
+    boolean hasGroundConnection(int n1) { return n1 == inputCount; }
+    
+    double getCurrentIntoNode(int n) {
+        if (n == inputCount)
+            return -current;
+        return 0;
+    }
+    
+    void reset() {
+        super.reset();
+        lastVolts = new double[inputCount];
+    }
+    
+    public EditInfo getEditInfo(int n) {
+        if (n == 0)
+            return new EditInfo("Number of Inputs", inputCount, 2, 8).setDimensionless();
+        if (n == 1)
+            return EditInfo.createCheckbox("Small", (flags & FLAG_SMALL) != 0);
         return null;
     }
-
-    public void setChipEditValue(int n, EditInfo ei) {
-        CirSim.console("DividerElm.setChipEditValue n=" + n);
+    
+    public void setEditValue(int n, EditInfo ei) {
         if (n == 0) {
-            CirSim.console("  Changing input count from " + inputCount + " to " + ei.value);
-            if (ei.value < 1 || ei.value > 8) {
-                CirSim.console("  Invalid value, returning");
+            if (ei.value < 2 || ei.value > 8)
                 return;
-            }
             inputCount = (int) ei.value;
-            CirSim.console("  Building expression string...");
-            exprString = "a";
-            for (int i = 1; i != inputCount; i++) {
-                char var = (char)('a' + i);
-                exprString += "*(1/(" + var + "!=0?" + var + ":1e-9))";
-            }
-            CirSim.console("  Expression: " + exprString);
-            CirSim.console("  Parsing expression...");
-            parseExpr();
-            CirSim.console("  Setting up pins...");
-            setupPins();
-            CirSim.console("  Allocating nodes...");
+            lastVolts = new double[inputCount];
             allocNodes();
-            CirSim.console("  Setting points...");
             setPoints();
-            CirSim.console("  Done changing input count");
         }
         if (n == 1) {
-            CirSim.console("  Changing size");
             flags = ei.changeFlag(flags, FLAG_SMALL);
-            setSize((flags & FLAG_SMALL) != 0 ? 1 : 2);
-            setupPins();
-            allocNodes();
+            boolean small = (flags & FLAG_SMALL) != 0;
+            setSize(small ? 1 : 2);
+            if (small) {
+                sim.smallGridCheckItem.setState(true);
+                sim.setGrid();
+            }
             setPoints();
-            CirSim.console("  Done changing size");
         }
-        CirSim.console("DividerElm.setChipEditValue DONE");
     }
 }

@@ -55,19 +55,20 @@ public class MathElementsTest {
     public void testAdderElm() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
-            "% transform 1.5 93.5 140.5\n" +
+            "% voltageUnit $\n" +
             "x 64 32 178 35 4 18 testAdderElm 808080FF\n" +
             "v 48 64 48 128 0 0 40 3 0 0 0.5 V\n" +
             "v 48 176 48 240 0 0 40 5 0 0 0.5 V\n" +
             "251 208 112 304 112 0 2\n" +
-            "w 48 64 208 64 0\n" +
-            "w 48 176 208 176 0\n" +
-            "w 208 64 208 112 0\n" +
-            "w 208 176 208 144 0\n" +
+            "w 48 64 208 64 2\n" +
+            "w 48 176 208 176 2\n" +
+            "w 208 64 208 96 0\n" +
+            "w 208 176 208 128 0\n" +
             "g 48 128 48 144 0 0\n" +
             "g 48 240 48 256 0 0\n" +
-            "207 304 112 416 112 4 out\n" +
+            "207 304 112 416 112 36 out\n" +
             "% AST 1 1\n";
+
         CircuitTestRunner runner = new CircuitTestRunner();
         runner.loadCircuitFromText(circuit);
         runner.runToSteadyState(0.01); // Run to steady state (10ms max)
@@ -86,19 +87,19 @@ public class MathElementsTest {
     public void testAdderElmThreeInputs() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
-            "% transform 1.5 458 152.5\n" +
+            "% voltageUnit $\n" +
             "x 64 32 279 35 4 18 testAdderElmThreeInputs 808080FF\n" +
-            "v 64 160 64 96 0 0 40 2 0 0 0.5 V\n" +
-            "v 64 256 64 208 0 0 40 3 0 0 0.5 V\n" +
+            "v 64 144 64 96 0 0 40 2 0 0 0.5 V\n" +
+            "v 128 224 128 176 0 0 40 3 0 0 0.5 V\n" +
             "v 64 352 64 304 0 0 40 4 0 0 0.5 V\n" +
             "251 256 176 352 176 0 3\n" +
             "w 64 96 256 96 0\n" +
-            "w 64 208 256 208 0\n" +
+            "w 128 176 256 176 0\n" +
             "w 64 304 256 304 0\n" +
-            "w 256 96 256 176 0\n" +
-            "w 256 304 256 240 0\n" +
-            "g 64 160 64 176 0 0\n" +
-            "g 64 256 64 272 0 0\n" +
+            "w 256 96 256 160 0\n" +
+            "w 256 304 256 192 0\n" +
+            "g 64 144 64 160 0 0\n" +
+            "g 128 224 128 240 0 0\n" +
             "g 64 352 64 368 0 0\n" +
             "207 352 176 464 176 36 out\n" +
             "% AST 1 1\n";
@@ -122,15 +123,15 @@ public class MathElementsTest {
     public void testSubtracterElm() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
-            "% transform 1.5 482 140.5\n" +
+            "% voltageUnit $\n" +
             "x 64 32 215 35 4 18 testSubtracterElm 808080FF\n" +
             "v 64 192 64 144 0 0 40 8 0 0 0.5 V\n" +
             "v 64 304 64 256 0 0 40 3 0 0 0.5 V\n" +
             "252 224 192 320 192 0 2\n" +
             "w 64 144 224 144 0\n" +
             "w 64 256 224 256 0\n" +
-            "w 224 144 224 192 0\n" +
-            "w 224 256 224 224 0\n" +
+            "w 224 144 224 176 0\n" +
+            "w 224 256 224 208 0\n" +
             "g 64 192 64 224 0 0\n" +
             "207 320 192 432 192 36 out\n" +
             "% AST 1 1\n";
@@ -153,23 +154,23 @@ public class MathElementsTest {
     public void testSubtracterElmThreeInputs() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
-            "% transform 1.5 458 152.5\n" +
+            "% voltageUnit $\n" +
             "x 64 32 317 35 4 18 testSubtracterElmThreeInputs 808080FF\n" +
             "v 64 160 64 96 0 0 40 10 0 0 0.5 V\n" +
-            "v 64 256 64 192 0 0 40 2 0 0 0.5 V\n" +
+            "v 144 240 144 192 0 0 40 2 0 0 0.5 V\n" +
             "v 64 352 64 288 0 0 40 3 0 0 0.5 V\n" +
-            "252 256 176 352 176 0 3\n" +
+            "252 256 192 336 192 0 3\n" +
             "w 64 96 256 96 0\n" +
-            "w 64 192 256 192 0\n" +
             "w 64 288 256 288 0\n" +
             "w 256 96 256 176 0\n" +
-            "w 256 192 256 208 0\n" +
-            "w 256 288 256 240 0\n" +
+            "w 256 192 144 192 0\n" +
+            "w 256 288 256 208 0\n" +
             "g 64 160 64 176 0 0\n" +
-            "g 64 256 64 272 0 0\n" +
+            "g 144 240 144 256 0 0\n" +
             "g 64 352 64 368 0 0\n" +
-            "207 352 176 464 176 36 out\n" +
+            "207 336 192 448 192 36 out\n" +
             "% AST 1 1\n";
+
 
         
         CircuitTestRunner runner = new CircuitTestRunner();
@@ -249,19 +250,20 @@ public class MathElementsTest {
     public void testMultiplyElm() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
-            "% transform 1.5 482 140.5\n" +
+            "% voltageUnit $\n" +
             "x 64 32 192 35 4 18 testMultiplyElm 808080FF\n" +
             "v 64 192 64 144 0 0 40 3 0 0 0.5 V\n" +
             "v 64 304 64 256 0 0 40 4 0 0 0.5 V\n" +
-            "w 64 144 224 144 0\n" +
-            "w 64 256 224 256 0\n" +
-            "w 224 144 224 192 0\n" +
+            "w 64 144 224 144 2\n" +
+            "w 64 256 224 256 2\n" +
+            "w 224 144 224 176 0\n" +
             "w 224 256 224 208 0\n" +
             "g 64 192 64 208 0 0\n" +
             "g 64 304 64 320 0 0\n" +
-            "207 272 192 384 192 36 out\n" +
-            "250 224 192 256 192 1 2 a*b\n" +
+            "207 320 192 432 192 36 out\n" +
+            "250 224 192 320 192 1 2\n" +
             "% AST 1 1\n";
+
 
         
         CircuitTestRunner runner = new CircuitTestRunner();
@@ -282,19 +284,20 @@ public class MathElementsTest {
     public void testDividerElm() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
-            "% transform 1.5 482 140.5\n" +
+            "% voltageUnit $\n" +
             "x 64 32 187 35 4 18 testDividerElm 808080FF\n" +
             "v 64 144 64 192 0 0 40 12 0 0 0.5 V\n" +
             "v 64 256 64 304 0 0 40 3 0 0 0.5 V\n" +
-            "w 64 144 224 144 2\n" +
-            "w 64 256 224 256 2\n" +
-            "w 224 144 224 192 0\n" +
-            "w 224 256 224 208 0\n" +
+            "w 64 144 240 144 2\n" +
+            "w 64 256 240 256 2\n" +
+            "w 240 144 240 176 0\n" +
+            "w 240 256 240 208 0\n" +
             "g 64 192 64 208 0 0\n" +
             "g 64 304 64 320 0 0\n" +
-            "207 272 192 384 192 36 out\n" +
-            "257 224 192 240 192 1 2 a*(1/(b!\\q0?b:1e-9))\n" +
+            "207 336 192 448 192 36 out\n" +
+            "257 240 192 336 192 1 2\n" +
             "% AST 1 1\n";
+
 
         
         CircuitTestRunner runner = new CircuitTestRunner();
@@ -308,25 +311,62 @@ public class MathElementsTest {
     }
     
     /**
+     * Test DividerElm with three inputs
+     * Circuit: 24V ÷ 2V ÷ 3V
+     * Expected: Output = 4V
+     */
+    public void testDividerElmThreeInputs() {
+        String circuit = 
+            "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
+            "% voltageUnit $\n" +
+            "x 64 32 288 35 4 18 testDividerElmThreeInputs 808080FF\n" +
+            "v 64 176 64 128 0 0 40 24 0 0 0.5 V\n" +
+            "v 112 256 112 208 0 0 40 2 0 0 0.5 V\n" +
+            "v 64 368 64 320 0 0 40 3 0 0 0.5 V\n" +
+            "w 64 128 240 128 2\n" +
+            "w 112 208 240 208 2\n" +
+            "w 64 320 240 320 2\n" +
+            "w 240 128 240 192 0\n" +
+            "w 240 320 240 224 0\n" +
+            "g 64 176 64 192 0 0\n" +
+            "g 112 256 112 272 0 0\n" +
+            "g 64 368 64 384 0 0\n" +
+            "207 336 208 448 208 36 out\n" +
+            "257 240 208 336 208 1 3\n" +
+            "% AST 1 1\n";
+
+
+        CircuitTestRunner runner = new CircuitTestRunner();
+        runner.loadCircuitFromText(circuit);
+        runner.runToSteadyState(0.01);
+        
+        double outputVoltage = runner.getNodeVoltage("out");
+        assertEquals("Divider output should be 24V ÷ 2V ÷ 3V = 4V", 4.0, outputVoltage, 4.0 * VOLTAGE_TOLERANCE);
+        
+        runner.assertConverged();
+    }
+    
+    /**
      * Test DividerElm with divide by zero protection
      * Circuit: 10V ÷ 0V (should output 0 or safe value)
      */
     public void testDividerElmZeroDenominator() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
-            "% transform 1.5 482 140.5\n" +
+            "% voltageUnit $\n" +
             "x 64 32 334 35 4 18 testDividerElmZeroDenominator 808080FF\n" +
             "v 64 144 64 192 0 0 40 10 0 0 0.5 V\n" +
             "v 64 256 64 304 0 0 40 0 0 0 0.5 V\n" +
-            "w 64 144 224 144 0\n" +
-            "w 64 256 224 256 0\n" +
-            "w 224 144 224 192 0\n" +
+            "w 64 144 224 144 2\n" +
+            "w 64 256 224 256 2\n" +
+            "w 224 144 224 176 0\n" +
             "w 224 256 224 208 0\n" +
             "g 64 192 64 208 0 0\n" +
             "g 64 304 64 320 0 0\n" +
-            "207 272 192 384 192 36 out\n" +
-            "257 224 192 240 192 1 2 a*(1/(b!\\q0?b:1e-9))\n" +
+            "207 320 192 432 192 36 out\n" +
+            "257 224 192 320 192 1 2\n" +
             "% AST 1 1\n";
+
 
         CircuitTestRunner runner = new CircuitTestRunner();
         runner.loadCircuitFromText(circuit);
@@ -347,13 +387,13 @@ public class MathElementsTest {
     public void testDifferentiatorElmConstant() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
-            "% transform 1.5 482 224.5\n" +
+            "% voltageUnit $\n" +
             "x 114 95 363 98 4 18 testDifferentiatorElmConstant 808080FF\n" +
             "v 64 240 64 144 0 0 40 5 0 0 0.5 V\n" +
-            "w 64 144 224 144 0\n" +
+            "w 64 144 224 144 2\n" +
             "g 64 240 64 272 0 0\n" +
             "207 272 144 384 144 36 out\n" +
-            "259 224 144 240 144 1 1 dadt\n" +
+            "259 224 144 272 144 1\n" +
             "% AST 1 1\n";
 
         
@@ -376,14 +416,15 @@ public class MathElementsTest {
     public void testDifferentiatorElmTriangle() {
         String circuit = 
             "$ 1 0.0001 10.20027730826997 50 5 50 5e-11\n" +
-            "% transform 1.5 482 224.5\n" +
-            "x 114 95 363 98 4 18 testDifferentiatorElmTriangle 808080FF\n" +
+            "% voltageUnit $\n" +
+            "x 114 95 355 98 4 18 testDifferentiatorElmTriangle 808080FF\n" +
             "v 64 240 64 144 0 3 1 1 0 0 0.5 V\n" +
             "w 64 144 224 144 2\n" +
             "g 64 240 64 272 0 0\n" +
             "207 320 144 432 144 36 out\n" +
-            "259 224 144 240 144 0 1 dadt\n" +
+            "259 224 144 320 144 0\n" +
             "% AST 1 1\n";
+
 
         
         CircuitTestRunner runner = new CircuitTestRunner();
@@ -406,19 +447,20 @@ public class MathElementsTest {
     public void testIntegratorElm() {
         String circuit = 
             "$ 1 0.00005 10.20027730826997 50 5 50 5e-11\n" +
-            "% transform 1.5 482 140.5\n" +
+            "% voltageUnit $\n" +
             "x 83 86 228 89 4 18 testIntegratorElm 808080FF\n" +
             "v 64 192 64 144 0 0 40 10 0 0 0.5 V\n" +
             "v 64 272 64 240 0 0 40 0 0 0 0.5 V\n" +
-            "260 224 192 320 192 1 2 0.0 0\n" +
+            "260 224 192 320 192 1 2 0\n" +
             "w 64 144 224 144 0\n" +
             "w 64 240 224 240 0\n" +
-            "w 224 144 224 192 0\n" +
+            "w 224 144 224 176 0\n" +
             "w 224 240 224 208 0\n" +
             "g 64 192 64 208 0 0\n" +
             "g 64 272 64 288 0 0\n" +
-            "207 272 192 384 192 36 out\n" +
+            "207 320 192 432 192 36 out\n" +
             "% AST 1 1\n";
+
 
         CircuitTestRunner runner = new CircuitTestRunner();
         runner.loadCircuitFromText(circuit);
@@ -447,16 +489,19 @@ public class MathElementsTest {
     public void testPercentElm() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
-            "% transform 1.5 566 140.5\n" +
+            "% voltageUnit $\n" +
             "x 85 63 214 66 4 18 testPercentElm 808080FF\n" +
             "v 64 144 64 208 0 0 40 8 0 0 0.5 V\n" +
             "v 64 256 64 304 0 0 40 4 0 0 0.5 V\n" +
-            "P 224 144 224 256 11 0 ratio_test\n" +
-            "w 64 144 224 144 0\n" +
-            "w 64 256 224 256 0\n" +
+            "w 64 144 224 144 2\n" +
+            "w 64 256 224 256 2\n" +
             "g 64 208 64 224 0 0\n" +
             "g 64 304 64 320 0 0\n" +
+            "207 320 160 385 160 36 out\n" +
+            "P 224 160 320 160 0 2\n" +
+            "w 224 176 224 256 0\n" +
             "% AST 1 1\n";
+
 
         
         CircuitTestRunner runner = new CircuitTestRunner();
@@ -466,6 +511,9 @@ public class MathElementsTest {
         // PercentElm is display-only and doesn't output voltage
         // Just verify the circuit loads and runs without errors
         // The element will calculate ratio (8V / 4V = 2.0) internally
+        double outputVoltage = runner.getNodeVoltage("out");
+       assertEquals("Percent output should be 100 * 8V / 4V = 200", 200.0, outputVoltage, 200.0 * VOLTAGE_TOLERANCE);
+
         runner.assertConverged();
         runner.assertNoErrors();
     }
@@ -478,14 +526,15 @@ public class MathElementsTest {
     public void testEquationElmWithParameter() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
-            "% transform 1.5 482 236.5\n" +
-            "x 64 32 278 35 4 18 testEquationElmConstant 808080FF\n" +
+            "% voltageUnit $\n" +
+            "x 64 32 278 35 4 18 testEquationElmParameter 808080FF\n" +
             "262 176 128 272 128 0 Eqn sin(30*pi/180)\\s\\p\\sv_{in}\\pa 1 0.5\n" +
-            "207 304 128 416 128 36 out\n" +
+            "207 272 128 384 128 36 out\n" +
             "g 80 160 80 192 0 0\n" +
             "v 80 160 80 112 0 0 40 5 0 0 0.5 V\n" +
             "207 80 112 80 48 36 v_{in}\n" +
             "% AST 1 1\n";
+
 
         
         CircuitTestRunner runner = new CircuitTestRunner();
@@ -507,15 +556,16 @@ public class MathElementsTest {
     public void testODEElmConstant() {
         String circuit = 
             "$ 1 0.0001 10.20027730826997 50 5 50 5e-11\n" +
-            "% transform 1.5 482 236.5\n" +
+            "% voltageUnit $\n" +
             "x 64 32 244 35 4 18 testODEElmConstant 808080FF\n" +
-            "261 112 128 208 128 0 ODE (a*Prey)\\p(b*Predator) 0 2 0.1 0.2\n" +
+            "261 128 128 240 128 0 ODE (a*Prey)\\p(b*Predator) 0 2 0.1 0.2\n" +
             "207 -80 160 16 160 36 Prey\n" +
             "R -80 160 -160 160 0 0 40 10 0 0 0.5 V\n" +
             "R -80 128 -160 128 0 0 40 5 0 0 0.5 V\n" +
             "207 240 128 352 128 36 out\n" +
             "207 -80 128 16 128 36 Predator\n" +
             "% AST 1 1\n";
+
 
 
         
@@ -541,21 +591,22 @@ public class MathElementsTest {
     public void testComplexMathCircuit() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
-            "% transform 1.5 90 224.5\n" +
+            "% voltageUnit $\n" +
             "x 64 32 266 35 4 18 testComplexMathCircuit 808080FF\n" +
             "v 64 160 64 96 0 0 40 5 0 0 0.5 V\n" +
             "v 64 256 64 192 0 0 40 3 0 0 0.5 V\n" +
-            "251 192 128 288 128 0 2\n" +
+            "251 192 128 272 128 0 2\n" +
             "w 64 96 192 96 2\n" +
             "w 64 192 192 192 2\n" +
-            "w 192 96 192 128 0\n" +
-            "w 192 192 192 160 0\n" +
+            "w 192 96 192 112 0\n" +
+            "w 192 192 192 144 0\n" +
             "g 64 160 64 176 0 0\n" +
             "g 64 256 64 272 0 0\n" +
             "258 352 128 448 128 0 2 mult\n" +
-            "w 288 128 352 128 2\n" +
+            "w 272 128 352 128 2\n" +
             "207 448 128 560 128 36 out\n" +
             "% AST 1 1\n";
+
 
         CircuitTestRunner runner = new CircuitTestRunner();
         runner.loadCircuitFromText(circuit);
@@ -581,6 +632,7 @@ public class MathElementsTest {
             "testMultiplyConstElmNegative",
             "testMultiplyElm",
             "testDividerElm",
+            "testDividerElmThreeInputs",
             "testDividerElmZeroDenominator",
             "testDifferentiatorElmConstant",
             "testDifferentiatorElmTriangle",
@@ -607,6 +659,7 @@ public class MathElementsTest {
             else if ("testMultiplyConstElmNegative".equals(testName)) testMultiplyConstElmNegative();
             else if ("testMultiplyElm".equals(testName)) testMultiplyElm();
             else if ("testDividerElm".equals(testName)) testDividerElm();
+            else if ("testDividerElmThreeInputs".equals(testName)) testDividerElmThreeInputs();
             else if ("testDividerElmZeroDenominator".equals(testName)) testDividerElmZeroDenominator();
             else if ("testDifferentiatorElmConstant".equals(testName)) testDifferentiatorElmConstant();
             else if ("testDifferentiatorElmTriangle".equals(testName)) testDifferentiatorElmTriangle();
@@ -653,6 +706,7 @@ public class MathElementsTest {
         runTest("testMultiplyConstElmNegative", () -> testMultiplyConstElmNegative());
         runTest("testMultiplyElm", () -> testMultiplyElm());
         runTest("testDividerElm", () -> testDividerElm());
+        runTest("testDividerElmThreeInputs", () -> testDividerElmThreeInputs());
         runTest("testDividerElmZeroDenominator", () -> testDividerElmZeroDenominator());
         runTest("testDifferentiatorElmConstant", () -> testDifferentiatorElmConstant());
         runTest("testDifferentiatorElmTriangle", () -> testDifferentiatorElmTriangle());

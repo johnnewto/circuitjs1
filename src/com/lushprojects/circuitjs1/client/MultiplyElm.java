@@ -19,188 +19,235 @@
 
 package com.lushprojects.circuitjs1.client;
 
-import com.google.gwt.canvas.client.Canvas;
-import com.lushprojects.circuitjs1.client.util.Locale;
-
-	class MultiplyElm extends VCCSElm {
-		public MultiplyElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
-		super(xa, ya, xb, yb, f, st);
-	}
-
-	public MultiplyElm(int xx, int yy) {
-	    super(xx, yy);
-	    exprString = "a";
-		int i;
-		for (i = 1; i != inputCount; i++)
-			exprString += "*"+(char)('a'+i);
-	 	parseExpr();
-		// Override the size set by ChipElm to be small by default
-		flags |= FLAG_SMALL; // Set flag to persist small size
-		setSize(1); // Set to small size
-		setPoints(); // Recalculate points with new size
-
-
-	}
-	
-	void setupPins() {
-		// V- is internal, always node 0 (ground)
-	    sizeX = 2;
-            sizeY = inputCount > 2 ? inputCount : 2;
-            pins = new Pin[inputCount+1];
-	    int i;
-	    for (i = 0; i != inputCount; i++) {
-			pins[i] = new Pin(i, SIDE_W, ""); 
-		}
-	    pins[inputCount] = new Pin(0, SIDE_E, "");
-	    pins[inputCount].output = true;
-        // pins[inputCount+1] = new Pin(1, SIDE_E, "V-"); no V- pin
-	    lastVolts = new double[inputCount];
-	    exprState = new ExprState(inputCount);
-	    allocNodes();
-	}
-	String getChipName() { return "Multipy"; } 
-	
-	void stamp() {
-            int vn = pins[inputCount].voltSource + sim.nodeList.size();
-            sim.stampNonLinear(vn);
-            sim.stampVoltageSource(0, nodes[inputCount], pins[inputCount].voltSource);
-	}
-
-	void doStep() {
-		int i;
-		// input converged yet?
-		// double convergeLimit = getConvergeLimit();
-		// for (i = 0; i != inputCount; i++) {
-            // double diff = Math.abs(volts[i]-lastVolts[i]);
-			// if (diff > convergeLimit)
-			// 	sim.converged = false;
-			// ;
-		// }
-		int vn = pins[inputCount].voltSource + sim.nodeList.size();
-		if (expr != null) {
-			// calculate output
-			for (i = 0; i != inputCount; i++)
-				exprState.values[i] = volts[i];
-
-			exprState.t = sim.t;
-			double v0 = expr.eval(exprState);
-			double vMinus = 0; // V- is always ground
-			if (Math.abs(volts[inputCount]-vMinus-v0) > Math.abs(v0)*.01 && sim.subIterations < 100)
-				sim.converged = false;
-			double rs = v0;
-			
-			// calculate and stamp output derivatives
-			for (i = 0; i != inputCount; i++) {
-				double dv = volts[i]-lastVolts[i];
-				if (Math.abs(dv) < 1e-6)
-				dv = 1e-6;
-				exprState.values[i] = volts[i];
-				double v = expr.eval(exprState);
-				exprState.values[i] = volts[i]-dv;
-				double v2 = expr.eval(exprState);
-				double dx = (v-v2)/dv;
-				if (Math.abs(dx) < 1e-6)
-				dx = sign(dx, 1e-6);
-	//        	    if (sim.subIterations > 1)
-	//        		sim.console("ccedx " + i + " " + dx + " v " + v + " v2 " + v2 + " dv " + dv + " lv " + lastVolts[i] + " " + volts[i] + " " + sim.subIterations + " " + sim.t);
-				sim.stampMatrix(vn,  nodes[i], -dx);
-				// adjust right side
-				rs -= dx*volts[i];
-				exprState.values[i] = volts[i];
-			}
-			
-			sim.stampRightSide(vn, rs);
-		}
-
-		for (i = 0; i != inputCount; i++)
-			lastVolts[i] = volts[i];
-	}
-
-	void stepFinished() {
-		double vMinus = 0; // V- is always ground
-		exprState.updateLastValues(volts[inputCount]-vMinus);
-	}
-
-	void draw(Graphics g) {
-		drawChip(g);
-		String label = "X"; // Or any dynamic text you want
-		// Calculate midpoint using rectPointsX and rectPointsY arrays
-		int mid_x = (rectPointsX[0] + rectPointsX[1] + rectPointsX[2] + rectPointsX[3]) / 4;
-		int mid_y = (rectPointsY[0] + rectPointsY[1] + rectPointsY[2] + rectPointsY[3]) / 4;
-
-		// Save current font
-		// java.awt.Font oldFont = g.getFont();
-		// Make a new font 2x larger
-		// java.awt.Font newFont = oldFont.deriveFont(oldFont.getSize2D() * 2.0f);
-		boolean selected = needsHighlight();
-	    Font f = new Font("SansSerif", selected ? Font.BOLD : 0, 20);
-	    g.setFont(f);
-	    g.setColor(selected ? selectColor : whiteColor);
-	    // String s = showVoltage() ? getUnitTextWithScale(volts[0], "V", scale, isFixed()) : Locale.LS("out");
-	
-
-		drawCenteredText(g, label, mid_x, mid_y, true);
-
-		// Restore original font
-		g.restore();
-	}
-
-	int getPostCount() { return inputCount+1; } // since V- is not a post anymore):
-	int getVoltageSourceCount() { return 1; }
-	int getDumpType() { return 250; }
-
-	boolean hasCurrentOutput() { return false; }
-
-	void setCurrent(int vn, double c) {
-		if (pins[inputCount].voltSource == vn) {
-			pins[inputCount].current = c;
-			// pins[inputCount+1].current = -c; // no V- pin V- is always ground 
-		}
-	}
-
-	public EditInfo getChipEditInfo(int n) {
-		// if (n == 0) {
-		// 	EditInfo ei = new EditInfo(EditInfo.makeLink("customfunction.html", "Output Function"), 0, -1, -1);
-		// 	ei.text = exprString;
-		// 	ei.disallowSliders();
-		// 	return ei;
-		// }
-		if (n == 0)
-			return new EditInfo("# of Inputs", inputCount, 1, 8).
-				setDimensionless();
-		if (n == 1) {
-			EditInfo ei = new EditInfo("", 0, -1, -1);
-			ei.checkbox = new Checkbox("Small Size", (flags & FLAG_SMALL) != 0);
-			return ei;
-		}
-		return null;
-	}
-	public void setChipEditValue(int n, EditInfo ei) {
-		// if (n == 0) {
-		// 	exprString = ei.textf.getText();
-		// 	parseExpr();
-		// 	return;
-		// }
-		if (n == 0) {
-			if (ei.value < 1 || ei.value > 8)
-				return;
-			inputCount = (int) ei.value;
-			exprString = "a";
-			int i;
-			for (i = 1; i != inputCount; i++)
-				exprString += "*"+(char)('a'+i);
-			parseExpr();
-			setupPins();
-			allocNodes();
-			setPoints();
-		}
-		if (n == 1) {
-			flags = ei.changeFlag(flags, FLAG_SMALL);
-			setSize((flags & FLAG_SMALL) != 0 ? 1 : 2);
-			setupPins();
-			allocNodes();
-			setPoints();
-		}
-	}
-
+// Multiplier element - multiplies input voltages
+// Vout = V1 * V2 * ... (nonlinear, requires iteration)
+class MultiplyElm extends CircuitElm {
+    int inputCount;
+    int opsize, opheight, opwidth;
+    final int FLAG_SMALL = 2;
+    Point inPosts[], inLeads[];
+    Polygon bodyPoly;
+    Font labelFont;
+    double lastVolts[];
+    
+    public MultiplyElm(int xx, int yy) {
+        super(xx, yy);
+        noDiagonal = true;
+        inputCount = 2;
+        setSize(sim.smallGridCheckItem.getState() ? 1 : 2);
+        lastVolts = new double[inputCount];
+    }
+    
+    public MultiplyElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
+        super(xa, ya, xb, yb, f);
+        noDiagonal = true;
+        inputCount = Integer.parseInt(st.nextToken());
+        setSize((f & FLAG_SMALL) != 0 ? 1 : 2);
+        lastVolts = new double[inputCount];
+    }
+    
+    String dump() {
+        return super.dump() + " " + inputCount;
+    }
+    
+    int getDumpType() { return 250; }
+    
+    void setSize(int s) {
+        opsize = s;
+        opheight = 8 * s;
+        opwidth = 13 * s;
+        flags = (flags & ~FLAG_SMALL) | ((s == 1) ? FLAG_SMALL : 0);
+    }
+    
+    void setPoints() {
+        super.setPoints();
+        if (dn > 150 && this == sim.dragElm)
+            setSize(2);
+        int ww = opwidth;
+        if (ww > dn/2)
+            ww = (int) (dn/2);
+        calcLeads(ww*2);
+        
+        int hs = opheight * dsign;
+        inPosts = new Point[inputCount];
+        inLeads = new Point[inputCount];
+        
+        // Calculate input positions like GateElm does
+        int i0 = -inputCount/2;
+        for (int i = 0; i != inputCount; i++, i0++) {
+            if (i0 == 0 && (inputCount & 1) == 0)
+                i0++;
+            inPosts[i] = interpPoint(point1, point2, 0, hs * i0);
+            inLeads[i] = interpPoint(lead1, lead2, 0, hs * i0);
+        }
+        
+        // Create rectangular body
+        Point[] pts = newPointArray(4);
+        interpPoint2(lead1, lead2, pts[0], pts[1], 0, hs * (inputCount/2 + 1));
+        interpPoint2(lead1, lead2, pts[3], pts[2], 1, hs * (inputCount/2 + 1));
+        bodyPoly = createPolygon(pts);
+        
+        setBbox(point1, point2, opheight * (inputCount/2 + 1));
+        labelFont = new Font("SansSerif", 0, opsize == 2 ? 14 : 10);
+    }
+    
+    void draw(Graphics g) {
+        setBbox(point1, point2, opheight * (inputCount/2 + 1));
+        
+        // Draw input leads
+        for (int i = 0; i < inputCount; i++) {
+            setVoltageColor(g, volts[i]);
+            drawThickLine(g, inPosts[i], inLeads[i]);
+        }
+        
+        // Draw output lead
+        setVoltageColor(g, volts[inputCount]);
+        drawThickLine(g, lead2, point2);
+        
+        // Draw body
+        g.setColor(needsHighlight() ? selectColor : lightGrayColor);
+        drawThickPolygon(g, bodyPoly);
+        
+        // Draw "×" label
+        g.setFont(labelFont);
+        Point center = interpPoint(lead1, lead2, 0.5);
+        drawCenteredText(g, "\u00d7", center.x, center.y, true);
+        
+        // Draw current dots
+        curcount = updateDotCount(current, curcount);
+        drawDots(g, point2, lead2, curcount);
+        drawPosts(g);
+    }
+    
+    int getPostCount() { return inputCount + 1; }
+    
+    Point getPost(int n) {
+        if (n == inputCount)
+            return point2;
+        return inPosts[n];
+    }
+    
+    int getVoltageSourceCount() { return 1; }
+    
+    boolean nonLinear() { return true; }
+    
+    void stamp() {
+        // Nonlinear voltage source for output - use same pattern as VCVSElm
+        int vn = sim.nodeList.size() + voltSource;
+        sim.stampNonLinear(vn);
+        sim.stampVoltageSource(0, nodes[inputCount], voltSource);
+        // Stamp small placeholder values for inputs to ensure matrix is well-conditioned at startup
+        for (int i = 0; i < inputCount; i++) {
+            sim.stampMatrix(vn, nodes[i], 1e-20);
+            // Add high-value resistor to ground for each input to prevent floating node issues
+            sim.stampResistor(0, nodes[i], 1e8);
+        }
+    }
+    
+    double sign(double a, double b) {
+        return a > 0 ? b : -b;
+    }
+    
+    void doStep() {
+        int vn = sim.nodeList.size() + voltSource;
+        
+        // Calculate output: V1 * V2 * ...
+        double v0 = 1;
+        for (int i = 0; i < inputCount; i++)
+            v0 *= volts[i];
+        
+        // Check convergence
+        if (Math.abs(volts[inputCount] - v0) > Math.abs(v0) * 0.01 && sim.subIterations < 100)
+            sim.converged = false;
+        
+        double rs = v0;
+        
+        // Calculate and stamp output derivatives for each input
+        for (int i = 0; i < inputCount; i++) {
+            double dv = volts[i] - lastVolts[i];
+            if (Math.abs(dv) < 1e-6)
+                dv = 1e-6;
+            
+            // Calculate partial derivative dV0/dVi
+            double vPlus = 1;
+            double vMinus = 1;
+            for (int j = 0; j < inputCount; j++) {
+                if (j == i) {
+                    vPlus *= volts[j];
+                    vMinus *= volts[j] - dv;
+                } else {
+                    vPlus *= volts[j];
+                    vMinus *= volts[j];
+                }
+            }
+            double dx = (vPlus - vMinus) / dv;
+            if (Math.abs(dx) < 1e-6)
+                dx = sign(dx, 1e-6);
+            
+            sim.stampMatrix(vn, nodes[i], -dx);
+            rs -= dx * volts[i];
+        }
+        
+        // stampVoltageSource already stamped +1 for output node, so just stamp right side
+        sim.stampRightSide(vn, rs);
+        
+        // Save last voltages
+        for (int i = 0; i < inputCount; i++)
+            lastVolts[i] = volts[i];
+    }
+    
+    void getInfo(String arr[]) {
+        arr[0] = "multiplier";
+        arr[1] = "Vout = ";
+        for (int i = 0; i < inputCount; i++) {
+            if (i > 0) arr[1] += " \u00d7 ";
+            arr[1] += getVoltageText(volts[i]);
+        }
+        arr[2] = "Vout = " + getVoltageText(volts[inputCount]);
+        arr[3] = "Iout = " + getCurrentText(-current);
+    }
+    
+    // No current path through inputs, but output connects to ground
+    boolean getConnection(int n1, int n2) { return false; }
+    boolean hasGroundConnection(int n1) { return n1 == inputCount; }
+    
+    double getCurrentIntoNode(int n) {
+        if (n == inputCount)
+            return -current;
+        return 0;
+    }
+    
+    void reset() {
+        super.reset();
+        lastVolts = new double[inputCount];
+    }
+    
+    public EditInfo getEditInfo(int n) {
+        if (n == 0)
+            return new EditInfo("Number of Inputs", inputCount, 2, 8).setDimensionless();
+        if (n == 1)
+            return EditInfo.createCheckbox("Small", (flags & FLAG_SMALL) != 0);
+        return null;
+    }
+    
+    public void setEditValue(int n, EditInfo ei) {
+        if (n == 0) {
+            if (ei.value < 2 || ei.value > 8)
+                return;
+            inputCount = (int) ei.value;
+            lastVolts = new double[inputCount];
+            allocNodes();
+            setPoints();
+        }
+        if (n == 1) {
+            flags = ei.changeFlag(flags, FLAG_SMALL);
+            boolean small = (flags & FLAG_SMALL) != 0;
+            setSize(small ? 1 : 2);
+            if (small) {
+                sim.smallGridCheckItem.setState(true);
+                sim.setGrid();
+            }
+            setPoints();
+        }
+    }
 }

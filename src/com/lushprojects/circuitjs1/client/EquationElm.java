@@ -30,7 +30,9 @@ import com.lushprojects.circuitjs1.client.util.Locale;
  * - Equation: "sin(t)" -> outputs sine wave
  * - Equation: "Predator*a" with parameter 'a' -> adjustable multiplier
  */
-class EquationElm extends ChipElm {
+class EquationElm extends CircuitElm {
+    final int FLAG_SMALL = 1;
+    
     private String elementName = "Eqn";     // User-defined name for this element
     private String equationString = "0";    // User's equation string
     private Expr compiledExpr;              // Compiled expression
@@ -47,6 +49,11 @@ class EquationElm extends ChipElm {
     
     static final int FLAG_SHOW_PERCENTAGE_BASE = 2;  // Flags for percentage display (bits 1-8, shifted to avoid FLAG_SMALL at bit 0)
     
+    // Geometry
+    int opsize, opheight, opwidth;
+    Polygon bodyPoly;
+    Font labelFont;
+    
     // Constructor for menu creation
     public EquationElm(int xx, int yy) {
         super(xx, yy);
@@ -58,14 +65,14 @@ class EquationElm extends ChipElm {
             parameters[i] = 0.5;
             showPercentage[i] = false;
         }
-        setupPins();
+        setSize(sim.smallGridCheckItem.getState() ? 1 : 2);
         parseEquation();
         initState();
     }
     
     // Constructor for file loading
     public EquationElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
-        super(xa, ya, xb, yb, f, st);
+        super(xa, ya, xb, yb, f);
         noDiagonal = true;
         
         // Initialize arrays
@@ -115,29 +122,60 @@ class EquationElm extends ChipElm {
             showPercentage[i] = (f & (FLAG_SHOW_PERCENTAGE_BASE << i)) != 0;
         }
         
-        setupPins();
+        setSize((f & FLAG_SMALL) != 0 ? 1 : 2);
         parseEquation();
         initState();
     }
     
-    void setupPins() {
-        sizeX = 3;  // Wider
-        sizeY = 2;  // Shorter
-        pins = new Pin[1]; // Single output pin
-        pins[0] = new Pin(0, SIDE_E, "");
-        pins[0].output = true;
-        allocNodes();
+    void setSize(int s) {
+        opsize = s;
+        opheight = 8 * s;
+        opwidth = 13 * s;
+        flags = (flags & ~FLAG_SMALL) | ((s == 1) ? FLAG_SMALL : 0);
     }
     
-    String getChipName() { return "Eqn"; }
+    void setPoints() {
+        super.setPoints();
+        if (dn > 150 && this == sim.dragElm)
+            setSize(2);
+        int ww = opwidth;
+        if (ww > dn/2)
+            ww = (int) (dn/2);
+        calcLeads(ww*2);
+        
+        int hs = opheight * dsign;
+        
+        // Create rectangular body
+        Point[] pts = newPointArray(4);
+        interpPoint2(lead1, lead2, pts[0], pts[1], 0, hs);
+        interpPoint2(lead1, lead2, pts[3], pts[2], 1, hs);
+        bodyPoly = createPolygon(pts);
+        
+        setBbox(point1, point2, opheight);
+        labelFont = new Font("SansSerif", 0, opsize == 2 ? 14 : 10);
+    }
     
     int getDumpType() { return 262; } // Unique dump type
     
     int getPostCount() { return 1; } // Single output post
     
+    Point getPost(int n) {
+        return point2;
+    }
+    
     int getVoltageSourceCount() { return 1; } // One voltage source for output
     
-    boolean hasCurrentOutput() { return false; }
+    boolean nonLinear() { return true; }
+    
+    // No current path through input, but output connects to ground
+    boolean getConnection(int n1, int n2) { return false; }
+    boolean hasGroundConnection(int n1) { return n1 == 0; }
+    
+    double getCurrentIntoNode(int n) {
+        if (n == 0)
+            return -current;
+        return 0;
+    }
     
     private void initState() {
         exprState = new ExprState(MAX_PARAMETERS); // Support up to 8 variables (a-h)
@@ -177,13 +215,13 @@ class EquationElm extends ChipElm {
     }
     
     void stamp() {
-        int vn = pins[0].voltSource + sim.nodeList.size();
+        int vn = voltSource + sim.nodeList.size();
         sim.stampNonLinear(vn);
-        sim.stampVoltageSource(0, nodes[0], pins[0].voltSource);
+        sim.stampVoltageSource(0, nodes[0], voltSource);
     }
     
     void doStep() {
-        int vn = pins[0].voltSource + sim.nodeList.size();
+        int vn = voltSource + sim.nodeList.size();
         
         if (compiledExpr != null) {
             // Set all parameter values in expression (a, b, c, d, e, f, g, h)
@@ -229,18 +267,12 @@ class EquationElm extends ChipElm {
         lastEquationValue = 0.0;
     }
     
-    void setCurrent(int vn, double c) {
-        if (pins[0].voltSource == vn) {
-            pins[0].current = c;
-        }
-    }
-    
     @Override
     public String dump() {
         StringBuilder sb = new StringBuilder();
         
         // Update flags before dumping
-        // Preserve FLAG_SMALL (bit 0) from ChipElm, clear percentage bits (1-8)
+        // Preserve FLAG_SMALL (bit 0), clear percentage bits (1-8)
         int newFlags = flags & ~0x1FE; // Clear bits 1-8 (percentage flags), keep bit 0 (FLAG_SMALL)
         for (int i = 0; i < MAX_PARAMETERS; i++) {
             if (showPercentage[i]) {
@@ -263,20 +295,28 @@ class EquationElm extends ChipElm {
     }
     
     void draw(Graphics g) {
-        drawChip(g);
+        setBbox(point1, point2, opheight);
+        
+        // Draw output lead
+        setVoltageColor(g, volts[0]);
+        drawThickLine(g, lead2, point2);
+        
+        // Draw body
+        g.setColor(needsHighlight() ? selectColor : lightGrayColor);
+        drawThickPolygon(g, bodyPoly);
         
         // Draw "f(x)" symbol in box
-        int mid_x = (rectPointsX[0] + rectPointsX[1] + rectPointsX[2] + rectPointsX[3]) / 4;
-        int mid_y = (rectPointsY[0] + rectPointsY[1] + rectPointsY[2] + rectPointsY[3]) / 4;
+        Point center = interpPoint(lead1, lead2, 0.5);
+        int mid_x = center.x;
+        int mid_y = center.y;
         
         boolean selected = needsHighlight();
         
         // Draw function symbol
-        Font mainFont = new Font("SansSerif", selected ? Font.BOLD : 0, 18);
+        Font mainFont = new Font("SansSerif", selected ? Font.BOLD : 0, opsize == 2 ? 18 : 12);
         g.setFont(mainFont);
         g.setColor(selected ? selectColor : whiteColor);
         drawCenteredText(g, "f(x)", mid_x, mid_y, true);
-        g.restore();
         
         // Draw full equation below the box with all parameters substituted
         String displayEquation = equationString;
@@ -299,13 +339,16 @@ class EquationElm extends ChipElm {
             displayEquation = displayEquation.replaceAll("\\b" + PARAM_NAMES[i] + "\\b", paramValueStr);
         }
         
-        int bottom_y = Math.max(rectPointsY[0], Math.max(rectPointsY[1], 
-                                Math.max(rectPointsY[2], rectPointsY[3])));
-        Font smallFont = new Font("SansSerif", 0, 12);
+        int labelY = mid_y + opheight + 8;
+        Font smallFont = new Font("SansSerif", 0, opsize == 2 ? 12 : 10);
         g.setFont(smallFont);
         g.setColor(selected ? selectColor : whiteColor);
-        drawCenteredText(g, "y=" + displayEquation, mid_x, bottom_y + 12, true);
-        g.restore();
+        drawCenteredText(g, "y=" + displayEquation, mid_x, labelY, true);
+        
+        // Draw current dots
+        curcount = updateDotCount(current, curcount);
+        drawDots(g, point2, lead2, curcount);
+        drawPosts(g);
     }
     
     public EditInfo getEditInfo(int n) {
@@ -405,6 +448,10 @@ class EquationElm extends ChipElm {
             return ei;
         }
         
+        // Small checkbox after all parameter fields
+        if (n == 3 + numParameters)
+            return EditInfo.createCheckbox("Small", (flags & FLAG_SMALL) != 0);
+        
         return null;
     }
     
@@ -427,12 +474,24 @@ class EquationElm extends ChipElm {
         // Parameter fields: 3, 4, 5, 6, 7, 8, 9, 10 (one per parameter)
         int paramIndex = n - 3;
         
-        if (paramIndex >= 0 && paramIndex < MAX_PARAMETERS) {
+        if (paramIndex >= 0 && paramIndex < numParameters) {
             parameters[paramIndex] = ei.value;
             // Update percentage checkbox state if inline checkbox exists
             if (ei.checkboxInline != null) {
                 showPercentage[paramIndex] = ei.checkboxInline.getState();
             }
+        }
+        
+        // Small checkbox after all parameter fields
+        if (n == 3 + numParameters) {
+            flags = ei.changeFlag(flags, FLAG_SMALL);
+            boolean small = (flags & FLAG_SMALL) != 0;
+            setSize(small ? 1 : 2);
+            if (small) {
+                sim.smallGridCheckItem.setState(true);
+                sim.setGrid();
+            }
+            setPoints();
         }
     }
     

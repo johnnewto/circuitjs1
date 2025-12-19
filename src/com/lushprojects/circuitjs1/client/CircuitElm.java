@@ -619,11 +619,20 @@ public abstract class CircuitElm implements Editable {
     
     int getHandleGrabbedClose(int xtest, int ytest, int deltaSq, int minSize) {
     	lastHandleGrabbed=-1;
-    	if ( Graphics.distanceSq(x , y , x2, y2)>=minSize) {
-    		if (Graphics.distanceSq(x, y, xtest,ytest) <= deltaSq)
-    			lastHandleGrabbed=0;
-    		else if (getNumHandles() > 1 && Graphics.distanceSq(x2, y2, xtest,ytest) <= deltaSq)
-    			lastHandleGrabbed=1;
+    	int dist0 = Graphics.distanceSq(x, y, xtest, ytest);
+    	int dist1 = getNumHandles() > 1 ? Graphics.distanceSq(x2, y2, xtest, ytest) : Integer.MAX_VALUE;
+    	
+    	// If element is large enough, use original logic with grab radius
+    	if (Graphics.distanceSq(x, y, x2, y2) >= minSize) {
+    		if (dist0 <= deltaSq)
+    			lastHandleGrabbed = 0;
+    		else if (dist1 <= deltaSq)
+    			lastHandleGrabbed = 1;
+    	} else {
+    		// For small elements, pick the closest handle if within grab radius
+    		if (dist0 <= deltaSq || dist1 <= deltaSq) {
+    			lastHandleGrabbed = (dist0 <= dist1) ? 0 : 1;
+    		}
     	}
     	return lastHandleGrabbed;
     }

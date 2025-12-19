@@ -390,6 +390,33 @@ public class TableElm extends ChipElm {
         }
         return count;
     }
+    
+    @Override
+    void setVoltageSource(int j, int vs) {
+        // Only assign voltage sources to master columns (matching getVoltageSourceCount)
+        if (columns == null || pins == null) return;
+        
+        // Store first voltage source in base field for compatibility with diagnostic code
+        if (j == 0) {
+            voltSource = vs;
+        }
+        
+        int masterCount = 0;
+        for (int col = 0; col < columns.size() && col < pins.length; col++) {
+            TableColumn column = columns.get(col);
+            if (column.isALE()) continue;
+            if (column.isEmpty()) continue;
+            
+            if (ComputedValues.isMasterTable(column.getStockName().trim(), this)) {
+                if (masterCount == j) {
+                    pins[col].voltSource = vs;
+                    return;
+                }
+                masterCount++;
+            }
+        }
+        CirSim.console("TableElm.setVoltageSource failed for j=" + j + " vs=" + vs);
+    }
 
     @Override
     int getPostCount() {
@@ -670,9 +697,22 @@ public class TableElm extends ChipElm {
      * Stamp voltage source for a master column
      */
     protected void stampMasterColumn(int col, Pin p) {
+        int outputNode = nodes[col];
+        String stockName = (columns != null && col < columns.size()) ? columns.get(col).getStockName() : "?";
         int vn = p.voltSource + sim.nodeList.size();
+        // CirSim.console("TableElm.stampMasterColumn: col=" + col + " stock='" + stockName + "' node=" + outputNode + " voltSource=" + p.voltSource + " matrixRow=" + (vn-1));
+        
+        // Can't stamp voltage source to ground node (would be ground-to-ground)
+        if (outputNode == 0) {
+            CirSim.console("  WARNING: Skipping stamp - output node is ground!");
+            return;
+        }
+        
         sim.stampNonLinear(vn);
-        sim.stampVoltageSource(0, nodes[col], p.voltSource);
+        sim.stampVoltageSource(0, outputNode, p.voltSource);
+        
+        // Add high-value resistor from output to ground to help matrix conditioning
+        sim.stampResistor(outputNode, 0, 1e8);
     }
     
     /**

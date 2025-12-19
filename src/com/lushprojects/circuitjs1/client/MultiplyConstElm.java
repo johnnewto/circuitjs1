@@ -20,88 +20,98 @@
 package com.lushprojects.circuitjs1.client;
 
 // Multiply input by a constant - this is a linear element (VCVS with fixed gain)
-class MultiplyConstElm extends ChipElm {
+class MultiplyConstElm extends CircuitElm {
     static final int FLAG_SHOWPERCENT = 2;  // If set, show as percentage; otherwise show as multiplier
+    final int FLAG_SMALL = 1;
+    
     double gain;
     String elmName;
-    
-    public MultiplyConstElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
-        super(xa, ya, xb, yb, f, st);
-        gain = Double.parseDouble(st.nextToken());
-        elmName = CustomLogicModel.unescape(st.nextToken());
-        setupPins();
-    }
+    int opsize, opheight, opwidth;
+    Point inPost, inLead;
+    Polygon bodyPoly;
+    Font labelFont;
     
     public MultiplyConstElm(int xx, int yy) {
         super(xx, yy);
+        noDiagonal = true;
         gain = 1.0;
         elmName = "";
-        setupPins();
-        // Set to small size by default
-        flags |= FLAG_SMALL;
-        setSize(1);
-        setPoints();
+        setSize(sim.smallGridCheckItem.getState() ? 1 : 2);
+    }
+    
+    public MultiplyConstElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
+        super(xa, ya, xb, yb, f);
+        noDiagonal = true;
+        gain = Double.parseDouble(st.nextToken());
+        elmName = CustomLogicModel.unescape(st.nextToken());
+        setSize((f & FLAG_SMALL) != 0 ? 1 : 2);
     }
     
     String dump() {
         return super.dump() + " " + gain + " " + CustomLogicModel.escape(elmName);
     }
     
-    void setupPins() {
-        sizeX = 2;
-        sizeY = 1;  // Half height since we only have 1 input
-        pins = new Pin[2];
-        pins[0] = new Pin(0, SIDE_W, "");
-        pins[1] = new Pin(0, SIDE_E, "");
-        pins[1].output = true;
-        allocNodes();
+    int getDumpType() { return 258; }
+    
+    void setSize(int s) {
+        opsize = s;
+        opheight = 8 * s;
+        opwidth = 13 * s;
+        flags = (flags & ~FLAG_SMALL) | ((s == 1) ? FLAG_SMALL : 0);
     }
     
-    String getChipName() { return "×K"; }
-    
-    boolean nonLinear() { return false; }
-    
-    @Override boolean isDigitalChip() { return false; }
-    
-    void stamp() {
-        // This is a voltage-controlled voltage source (VCVS)
-        // V_out = gain * V_in
-        // For very small gains (< 1e-9), clamp to avoid numerical issues
-        double effectiveGain = gain;
-        if (Math.abs(effectiveGain) < 1e-9)
-            effectiveGain = (effectiveGain >= 0) ? 1e-9 : -1e-9;
+    void setPoints() {
+        super.setPoints();
+        if (dn > 150 && this == sim.dragElm)
+            setSize(2);
+        int ww = opwidth;
+        if (ww > dn/2)
+            ww = (int) (dn/2);
+        calcLeads(ww*2);
         
-        // stampVoltageSource creates the voltage source from ground to output
-        sim.stampVoltageSource(nodes[1], 0, pins[1].voltSource);
-        // stampVCVS makes it controlled by the input voltage with gain coefficient
-        sim.stampVCVS(nodes[0], 0, effectiveGain, pins[1].voltSource);
-    }
-    
-    void drawLabel(Graphics g, int x, int y) {
-        g.save();
-        Font f = new Font("SansSerif", 0, 20);  // 2x larger font
-        g.setFont(f);
-        g.context.setTextBaseline("middle");
-        g.context.setTextAlign("center");
-        g.setColor(needsHighlight() ? selectColor : whiteColor);
-        g.drawString("×", x, y);
-        g.restore();
+        int hs = opheight * dsign;
+        
+        // Single input post on the left side
+        inPost = interpPoint(point1, point2, 0, 0);
+        inLead = interpPoint(lead1, lead2, 0, 0);
+        
+        // Create rectangular body
+        Point[] pts = newPointArray(4);
+        interpPoint2(lead1, lead2, pts[0], pts[1], 0, hs);
+        interpPoint2(lead1, lead2, pts[3], pts[2], 1, hs);
+        bodyPoly = createPolygon(pts);
+        
+        setBbox(point1, point2, opheight);
+        labelFont = new Font("SansSerif", 0, opsize == 2 ? 14 : 10);
     }
     
     void draw(Graphics g) {
-        drawChip(g);
+        setBbox(point1, point2, opheight);
         
-        // Calculate bottom center position for text
-        int bottom_x = (rectPointsX[0] + rectPointsX[1] + rectPointsX[2] + rectPointsX[3]) / 4;
-        int bottom_y = Math.max(Math.max(rectPointsY[0], rectPointsY[1]), 
-                                Math.max(rectPointsY[2], rectPointsY[3])) + 8;
+        // Draw input lead
+        setVoltageColor(g, volts[0]);
+        drawThickLine(g, inPost, inLead);
         
+        // Draw output lead
+        setVoltageColor(g, volts[1]);
+        drawThickLine(g, lead2, point2);
+        
+        // Draw body
+        g.setColor(needsHighlight() ? selectColor : lightGrayColor);
+        drawThickPolygon(g, bodyPoly);
+        
+        // Draw "×" label inside the box
+        g.setFont(labelFont);
+        Point center = interpPoint(lead1, lead2, 0.5);
+        g.setColor(needsHighlight() ? selectColor : whiteColor);
+        drawCenteredText(g, "×", center.x, center.y, true);
+        
+        // Draw the gain/name label below the box
         boolean selected = needsHighlight();
-        Font f = new Font("SansSerif", selected ? Font.BOLD : 0, 12);
+        Font f = new Font("SansSerif", selected ? Font.BOLD : 0, opsize == 2 ? 12 : 10);
         g.setFont(f);
         g.setColor(selected ? selectColor : whiteColor);
         
-        // Show the name and gain value at the bottom
         String label;
         if (elmName != null && elmName.length() > 0) {
             if (showAsPercent()) {
@@ -116,27 +126,47 @@ class MultiplyConstElm extends ChipElm {
                 label = "×" + getUnitText(gain, "");
             }
         }
-        drawCenteredText(g, label, bottom_x, bottom_y, true);
+        int labelY = center.y + opheight + 8;
+        drawCenteredText(g, label, center.x, labelY, true);
         
-        g.restore();
+        // Draw current dots
+        curcount = updateDotCount(current, curcount);
+        drawDots(g, point2, lead2, curcount);
+        drawPosts(g);
     }
     
     int getPostCount() { return 2; }
     
+    Point getPost(int n) {
+        if (n == 1)
+            return point2;
+        return inPost;
+    }
+    
     int getVoltageSourceCount() { return 1; }
     
-    int getDumpType() { return 258; }
+    boolean nonLinear() { return false; }
     
-    boolean hasCurrentOutput() { return false; }
+    void stamp() {
+        // This is a voltage-controlled voltage source (VCVS)
+        // V_out = gain * V_in
+        // For very small gains (< 1e-9), clamp to avoid numerical issues
+        double effectiveGain = gain;
+        if (Math.abs(effectiveGain) < 1e-9)
+            effectiveGain = (effectiveGain >= 0) ? 1e-9 : -1e-9;
+        
+        // stampVoltageSource creates the voltage source from ground to output
+        sim.stampVoltageSource(nodes[1], 0, voltSource);
+        // stampVCVS makes it controlled by the input voltage with gain coefficient
+        sim.stampVCVS(nodes[0], 0, effectiveGain, voltSource);
+        
+        // Add high-value resistor from input to ground to prevent floating node
+        // This is needed because VCVS measures voltage but doesn't provide DC path
+        sim.stampResistor(nodes[0], 0, 1e8);
+    }
     
     boolean showAsPercent() {
         return (flags & FLAG_SHOWPERCENT) != 0;
-    }
-    
-    void setCurrent(int vn, double c) {
-        if (pins[1].voltSource == vn) {
-            pins[1].current = c;
-        }
     }
     
     void getInfo(String arr[]) {
@@ -156,7 +186,17 @@ class MultiplyConstElm extends ChipElm {
             arr[5] = "warning: gain clamped to 1e-9";
     }
     
-    public EditInfo getChipEditInfo(int n) {
+    // No current path through input, but output connects to ground
+    boolean getConnection(int n1, int n2) { return false; }
+    boolean hasGroundConnection(int n1) { return n1 == 1; }
+    
+    double getCurrentIntoNode(int n) {
+        if (n == 1)
+            return -current;
+        return 0;
+    }
+    
+    public EditInfo getEditInfo(int n) {
         if (n == 0) {
             EditInfo ei = new EditInfo("Name", 0, -1, -1);
             ei.text = elmName;
@@ -169,15 +209,12 @@ class MultiplyConstElm extends ChipElm {
             ei.checkbox = new Checkbox("Show as Percentage", showAsPercent());
             return ei;
         }
-        if (n == 3) {
-            EditInfo ei = new EditInfo("", 0, -1, -1);
-            ei.checkbox = new Checkbox("Small Size", (flags & FLAG_SMALL) != 0);
-            return ei;
-        }
+        if (n == 3)
+            return EditInfo.createCheckbox("Small", (flags & FLAG_SMALL) != 0);
         return null;
     }
     
-    public void setChipEditValue(int n, EditInfo ei) {
+    public void setEditValue(int n, EditInfo ei) {
         if (n == 0) {
             elmName = ei.textf.getText();
         }
@@ -191,9 +228,12 @@ class MultiplyConstElm extends ChipElm {
         }
         if (n == 3) {
             flags = ei.changeFlag(flags, FLAG_SMALL);
-            setSize((flags & FLAG_SMALL) != 0 ? 1 : 2);
-            setupPins();
-            allocNodes();
+            boolean small = (flags & FLAG_SMALL) != 0;
+            setSize(small ? 1 : 2);
+            if (small) {
+                sim.smallGridCheckItem.setState(true);
+                sim.setGrid();
+            }
             setPoints();
         }
     }

@@ -3003,6 +3003,7 @@ public CirSim() {
 	console("Number of unconnected nodes: " + unconnectedNodes.size());
 	for (i = 0; i != unconnectedNodes.size(); i++) {
 	    int n = unconnectedNodes.get(i);
+	    // console("  Connecting unconnected node " + n + " to ground with 1e8 ohm resistor");
 	    stampResistor(0, n, 1e8);
 	}
     }
@@ -3231,8 +3232,9 @@ public CirSim() {
 	// if a matrix is linear, we can do the lu_factor here instead of
 	// needing to do it every frame
 	if (!circuitNonLinear) {
-	    if (!lu_factor(circuitMatrix, circuitMatrixSize, circuitPermute)) {
-		stop("Singular matrix!", null);
+	    int badRow = lu_factor(circuitMatrix, circuitMatrixSize, circuitPermute);
+	    if (badRow >= 0) {
+		stop("Singular matrix! " + getMatrixRowInfo(badRow), null);
 		return;
 	    }
 	}
@@ -3359,7 +3361,10 @@ public CirSim() {
 	    ii++;
 	}
 
-//	console("old size = " + matrixSize + " new size = " + newsize);
+	int rowsSaved = matrixSize - newsize;
+	if (rowsSaved > 0)
+	    console("Matrix simplification: " + matrixSize + " -> " + newsize + " (" + rowsSaved + " rows eliminated, " + 
+	            (100 * rowsSaved / matrixSize) + "% reduction)");
 	
 	circuitMatrix = newmatx;
 	circuitRightSide = newrs;
@@ -3670,6 +3675,10 @@ public CirSim() {
     void stampMatrix(int i, int j, double x) {
 	if (Double.isInfinite(x))
 	    debugger();
+	if (Double.isNaN(x)) {
+	    console("stampMatrix: NaN at i=" + i + " j=" + j);
+	    debugger();
+	}
 	if (i > 0 && j > 0) {
 	    if (circuitNeedsMap) {
 		i = circuitRowInfo[i-1].mapRow;
@@ -3713,6 +3722,65 @@ public CirSim() {
     void stampNonLinear(int i) {
 	if (i > 0)
 	    circuitRowInfo[i-1].lsChanges = true;
+    }
+    
+    // Get information about what element/node is associated with a matrix row
+    // Used for debugging singular matrix errors
+    // The 'row' parameter is the simplified matrix row; we need to map back to original
+    String getMatrixRowInfo(int row) {
+	int nodeCount = nodeList.size();
+	
+	// Map simplified row back to original row
+	int origRow = row;
+	if (circuitRowInfo != null) {
+	    for (int i = 0; i < circuitRowInfo.length; i++) {
+		if (circuitRowInfo[i].mapRow == row) {
+		    origRow = i;
+		    break;
+		}
+	    }
+	}
+	
+	console("getMatrixRowInfo: simplifiedRow=" + row + " origRow=" + origRow + " nodeCount=" + nodeCount);
+	
+	if (origRow < nodeCount - 1) {
+	    // This is a node row (row 0 = node 1, since node 0 is ground)
+	    int nodeNum = origRow + 1;
+	    CircuitNode cn = getCircuitNode(nodeNum);
+	    if (cn != null && cn.links.size() > 0) {
+		String info = "Row " + row + " (origRow " + origRow + ", node " + nodeNum + ") connected to:";
+		for (int i = 0; i < cn.links.size(); i++) {
+		    CircuitElm elm = cn.links.get(i).elm;
+		    int elmNode = cn.links.get(i).num;
+		    info += " " + elm.getClass().getSimpleName() + "[node " + elmNode + "]";
+		}
+		console(info);
+		return info;
+	    }
+	    String info = "Row " + row + " (origRow " + origRow + ", node " + nodeNum + ")";
+	    console(info);
+	    return info;
+	} else {
+	    // This is a voltage source row
+	    int vsNum = origRow - (nodeCount - 1);
+	    console("Looking for voltage source " + vsNum);
+	    // Find which element owns this voltage source
+	    for (int i = 0; i < elmList.size(); i++) {
+		CircuitElm elm = getElm(i);
+		int vsCount = elm.getVoltageSourceCount();
+		if (vsCount > 0) {
+		    console("  Element " + elm.getClass().getSimpleName() + " voltSource=" + elm.voltSource + " count=" + vsCount);
+		    if (elm.voltSource <= vsNum && elm.voltSource + vsCount > vsNum) {
+			String info = "Row " + row + " (origRow " + origRow + ", voltage source " + vsNum + " of " + elm.getClass().getSimpleName() + ")";
+			console(info);
+			return info;
+		    }
+		}
+	    }
+	    String info = "Row " + row + " (origRow " + origRow + ", voltage source " + vsNum + " - owner not found)";
+	    console(info);
+	    return info;
+	}
     }
 
     double getIterCount() {
@@ -3874,8 +3942,9 @@ public CirSim() {
                     // stop if converged (elements check for convergence in doStep())
                     if (converged && subiter > 0)
                     break;
-                    if (!lu_factor(circuitMatrix, circuitMatrixSize, circuitPermute)) {
-                        stop("Singular matrix!", null);
+                    int badRow = lu_factor(circuitMatrix, circuitMatrixSize, circuitPermute);
+                    if (badRow >= 0) {
+                        stop("Singular matrix! " + getMatrixRowInfo(badRow), null);
                         return;
                     }
                 }
@@ -7090,7 +7159,8 @@ public CirSim() {
     // gaussian elimination.  On entry, a[0..n-1][0..n-1] is the
     // matrix to be factored.  ipvt[] returns an integer vector of pivot
     // indices, used in the lu_solve() routine.
-    static boolean lu_factor(double a[][], int n, int ipvt[]) {
+    // Returns -1 on success, or the problematic row index on failure (singular matrix)
+    static int lu_factor(double a[][], int n, int ipvt[]) {
 	int i,j,k;
 	
 	// check for a possible singular matrix by scanning for rows that
@@ -7105,7 +7175,7 @@ public CirSim() {
 	    }
 	    // if all zeros, it's a singular matrix
 	    if (row_all_zeros)
-		return false;
+		return i;  // Return the problematic row
 	}
 	
         // use Crout's method; loop through the columns
@@ -7138,7 +7208,7 @@ public CirSim() {
 	    if (j != largestRow) {
 		if (largestRow == -1) {
 		    console("largestRow == -1");
-		    return false;
+		    return j;  // Return the problematic row
 		}
 		double x;
 		for (k = 0; k != n; k++) {
@@ -7156,9 +7226,22 @@ public CirSim() {
 	    // two inverters with outputs connected together should be flagged
 	    // as a singular matrix, but it was allowed (with weird currents)
 	    if (a[j][j] == 0.0) {
-		console("didn't avoid zero");
+		console("didn't avoid zero at row " + j);
+		// Debug: show what non-zero entries exist in this column
+		console("  Non-zero entries in column " + j + ":");
+		for (int dbg = 0; dbg < n; dbg++) {
+		    if (a[dbg][j] != 0.0) {
+			console("    row " + dbg + ": " + a[dbg][j]);
+		    }
+		}
+		console("  Non-zero entries in row " + j + ":");
+		for (int dbg = 0; dbg < n; dbg++) {
+		    if (a[j][dbg] != 0.0) {
+			console("    col " + dbg + ": " + a[j][dbg]);
+		    }
+		}
 //		a[j][j]=1e-18;
-		return false;
+		return j;  // Return the problematic row
 	    }
 
 	    if (j != n-1) {
@@ -7167,7 +7250,7 @@ public CirSim() {
 		    a[i][j] *= mult;
 	    }
 	}
-	return true;
+	return -1;  // Success
     }
 
     // Solves the set of n linear equations using a LU factorization
