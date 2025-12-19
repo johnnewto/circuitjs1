@@ -105,6 +105,14 @@ public class TableMarkdownDebugDialog {
         });
         buttonPanel.add(refreshButton);
         
+        Button documentTablesButton = new Button("📄 Document Tables");
+        documentTablesButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                textArea.setText(generateDocumentMarkdown());
+            }
+        });
+        buttonPanel.add(documentTablesButton);
+        
         Button closeButton = new Button("Close");
         closeButton.addClickHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
@@ -155,6 +163,13 @@ public class TableMarkdownDebugDialog {
     }
     
     /**
+     * Show the document-ready markdown view (for QMD files)
+     */
+    public void showDocumentView() {
+        textArea.setText(generateDocumentMarkdown());
+    }
+    
+    /**
      * Copy content to clipboard using native browser API
      */
     private static native boolean copyToClipboard() /*-{
@@ -178,6 +193,227 @@ public class TableMarkdownDebugDialog {
         appendRegistryInfo(md);
         
         return md.toString();
+    }
+    
+    /**
+     * Generate clean documentation markdown suitable for QMD files
+     * This produces publication-ready tables without debug information
+     */
+    private String generateDocumentMarkdown() {
+        StringBuilder md = new StringBuilder();
+        
+        java.util.Set<TableElm> relatedTables = findRelatedTables();
+        
+        // Sort tables by title for consistent output
+        java.util.List<TableElm> sortedTables = new java.util.ArrayList<TableElm>(relatedTables);
+        java.util.Collections.sort(sortedTables, new java.util.Comparator<TableElm>() {
+            public int compare(TableElm a, TableElm b) {
+                return a.getTableTitle().compareTo(b.getTableTitle());
+            }
+        });
+        
+        for (TableElm table : sortedTables) {
+            appendDocumentTable(md, table);
+        }
+        
+        return md.toString();
+    }
+    
+    /**
+     * Append a single table in document-ready format
+     * Format matches the example:
+     * | Flows↓/Stocks→ | Stock1 | Stock2 | ... | A-L-E |
+     * |:---|---:|---:|---:|---:|
+     * | **Type** | Asset | Liability | ... | |
+     * | **Initial** | 100 | 50 | ... | 0 |
+     * | **Flow1** | +Var | -Var | ... | |
+     */
+    private void appendDocumentTable(StringBuilder md, TableElm table) {
+        // Table title as bold header
+        md.append("**").append(table.getTableTitle()).append(":**\n\n");
+        
+        // Calculate column widths for nice alignment
+        int[] colWidths = calculateDocColumnWidths(table);
+        
+        // Header row: Flows↓/Stocks→ | Stock1 | Stock2 | ...
+        md.append("| ").append(padRight("Flows↓/Stocks→", colWidths[0])).append(" ");
+        for (int col = 0; col < table.getCols(); col++) {
+            String colHeader = table.getColumnHeader(col);
+            boolean isALEColumn = (col == table.getCols() - 1 && table.getCols() >= 4);
+            
+            // Wrap column names with $ for math mode if they contain subscripts
+            if (!isALEColumn && colHeader != null && colHeader.contains("_")) {
+                colHeader = "$" + colHeader + "$";
+            } else if (isALEColumn) {
+                colHeader = "A-L-E";
+            }
+            
+            md.append("| ").append(padRight(colHeader != null ? colHeader : "", colWidths[col + 1])).append(" ");
+        }
+        md.append("|\n");
+        
+        // Alignment row: left-align first column, right-align others
+        md.append("|:").append(repeat("-", colWidths[0] - 1)).append(" ");
+        for (int col = 0; col < table.getCols(); col++) {
+            md.append("|").append(repeat("-", colWidths[col + 1])).append(":");
+        }
+        md.append("|\n");
+        
+        // Type row
+        md.append("| ").append(padRight("**Type**", colWidths[0])).append(" ");
+        for (int col = 0; col < table.getCols(); col++) {
+            boolean isALEColumn = (col == table.getCols() - 1 && table.getCols() >= 4);
+            String colType = isALEColumn ? "" : table.getColumnTypeName(col);
+            md.append("| ").append(padRight(colType, colWidths[col + 1])).append(" ");
+        }
+        md.append("|\n");
+        
+        // Initial values row (if enabled)
+        if (table.showInitialValues) {
+            md.append("| ").append(padRight("**Initial**", colWidths[0])).append(" ");
+            for (int col = 0; col < table.getCols(); col++) {
+                double initValue = table.getInitialValue(col);
+                String valueStr;
+                if (initValue == 0) {
+                    valueStr = "0";
+                } else {
+                    // Format as integer if whole number, otherwise with decimals
+                    if (initValue == Math.floor(initValue)) {
+                        valueStr = String.valueOf((int) initValue);
+                    } else {
+                        valueStr = CircuitElm.showFormat.format(initValue);
+                    }
+                }
+                md.append("| ").append(padRight(valueStr, colWidths[col + 1])).append(" ");
+            }
+            md.append("|\n");
+        }
+        
+        // Flow rows
+        for (int row = 0; row < table.getRows(); row++) {
+            String rowDesc = table.getRowDescription(row);
+            if (rowDesc == null || rowDesc.trim().isEmpty()) {
+                rowDesc = "Flow" + (row + 1);
+            }
+            
+            md.append("| ").append(padRight("**" + rowDesc + "**", colWidths[0])).append(" ");
+            
+            for (int col = 0; col < table.getCols(); col++) {
+                boolean isALEColumn = (col == table.getCols() - 1 && table.getCols() >= 4);
+                String cellContent = "";
+                
+                if (isALEColumn) {
+                    // Leave A-L-E column empty for flow rows (or calculate if needed)
+                    cellContent = "";
+                } else {
+                    String equation = table.getCellEquation(row, col);
+                    if (equation != null && !equation.trim().isEmpty()) {
+                        cellContent = formatCellForDocument(equation);
+                    }
+                }
+                
+                md.append("| ").append(padRight(cellContent, colWidths[col + 1])).append(" ");
+            }
+            md.append("|\n");
+        }
+        
+        // Integration row (∫ Flows)
+        md.append("| ").append(padRight("**∫ Flows**", colWidths[0])).append(" ");
+        for (int col = 0; col < table.getCols(); col++) {
+            boolean isALEColumn = (col == table.getCols() - 1 && table.getCols() >= 4);
+            String valueStr;
+            
+            if (isALEColumn) {
+                valueStr = "0";
+            } else {
+                double initValue = table.showInitialValues ? table.getInitialValue(col) : 0;
+                if (initValue == 0) {
+                    valueStr = "0+∫";
+                } else if (initValue == Math.floor(initValue)) {
+                    valueStr = String.valueOf((int) initValue) + "+∫";
+                } else {
+                    valueStr = CircuitElm.showFormat.format(initValue) + "+∫";
+                }
+            }
+            md.append("| ").append(padRight(valueStr, colWidths[col + 1])).append(" ");
+        }
+        md.append("|\n\n");
+    }
+    
+    /**
+     * Format a cell equation for documentation
+     * Converts variable names to math mode with subscripts where appropriate
+     */
+    private String formatCellForDocument(String equation) {
+        if (equation == null || equation.trim().isEmpty()) {
+            return "";
+        }
+        
+        String result = equation.trim();
+        
+        // If the equation contains underscores, wrap in $ for math mode
+        if (result.contains("_")) {
+            // Handle sign prefixes
+            if (result.startsWith("-")) {
+                result = "$-" + result.substring(1) + "$";
+            } else if (result.startsWith("+")) {
+                result = "+$" + result.substring(1) + "$";
+            } else {
+                result = "$" + result + "$";
+            }
+        } else {
+            // For simple variable names, just add sign if not present
+            if (!result.startsWith("-") && !result.startsWith("+")) {
+                result = "+" + result;
+            }
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Calculate column widths for document format
+     */
+    private int[] calculateDocColumnWidths(TableElm table) {
+        int[] widths = new int[table.getCols() + 1];
+        
+        // First column: flow descriptions
+        widths[0] = "Flows↓/Stocks→".length();
+        for (int row = 0; row < table.getRows(); row++) {
+            String rowDesc = table.getRowDescription(row);
+            if (rowDesc != null) {
+                int len = rowDesc.length() + 4; // +4 for ** bold markers
+                if (len > widths[0]) widths[0] = len;
+            }
+        }
+        // Check special rows
+        if ("**∫ Flows**".length() > widths[0]) widths[0] = "**∫ Flows**".length();
+        if ("**Initial**".length() > widths[0]) widths[0] = "**Initial**".length();
+        if ("**Type**".length() > widths[0]) widths[0] = "**Type**".length();
+        
+        // Stock columns
+        for (int col = 0; col < table.getCols(); col++) {
+            String header = table.getColumnHeader(col);
+            int headerLen = (header != null ? header.length() : 0);
+            // Account for $ wrapping
+            if (header != null && header.contains("_")) {
+                headerLen += 2;
+            }
+            widths[col + 1] = Math.max(headerLen, 5); // Minimum width of 5
+            
+            // Check cell contents
+            for (int row = 0; row < table.getRows(); row++) {
+                String eq = table.getCellEquation(row, col);
+                if (eq != null) {
+                    String formatted = formatCellForDocument(eq);
+                    if (formatted.length() > widths[col + 1]) {
+                        widths[col + 1] = formatted.length();
+                    }
+                }
+            }
+        }
+        
+        return widths;
     }
     
     /**

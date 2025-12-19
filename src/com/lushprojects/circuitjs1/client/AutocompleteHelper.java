@@ -205,6 +205,89 @@ public class AutocompleteHelper {
     }
     
     /**
+     * Handles Tab key completion for simple whole-text fields (like flow descriptions)
+     * This matches the entire text, not individual words
+     */
+    public static void handleSimpleTabCompletion(TextBox textBox, java.util.List<String> completionList, 
+                                                  Label hintLabel, AutocompleteState state) {
+        if (!state.isActive()) {
+            // First Tab press - start new completion
+            String text = textBox.getText().trim();
+            if (text.isEmpty()) {
+                state.reset();
+                hintLabel.setVisible(false);
+                return;
+            }
+            
+            // Find all matches for the entire text
+            java.util.List<String> matches = findMatches(text, completionList);
+            
+            if (matches.isEmpty()) {
+                state.reset();
+                hintLabel.setVisible(false);
+                return;
+            }
+            
+            if (matches.size() == 1) {
+                // Single match - complete immediately
+                textBox.setText(matches.get(0));
+                textBox.setCursorPos(matches.get(0).length());
+                state.reset();
+                hintLabel.setVisible(false);
+            } else {
+                // Multiple matches - complete with first match immediately
+                textBox.setText(matches.get(0));
+                textBox.setCursorPos(matches.get(0).length());
+                
+                // Setup state for cycling
+                state.currentMatches = matches;
+                state.currentMatchIndex = 0;
+                state.completionStartPos = 0;
+                state.originalWord = text;
+                
+                // Show matches with first one highlighted
+                displayMatches(matches, hintLabel, 0);
+            }
+        } else {
+            // Subsequent Tab presses - cycle through matches
+            state.currentMatchIndex = (state.currentMatchIndex + 1) % state.currentMatches.size();
+            String nextMatch = state.currentMatches.get(state.currentMatchIndex);
+            
+            // Replace entire text
+            textBox.setText(nextMatch);
+            textBox.setCursorPos(nextMatch.length());
+            
+            // Update hint to highlight current match
+            displayMatches(state.currentMatches, hintLabel, state.currentMatchIndex);
+        }
+    }
+    
+    /**
+     * Update match display for simple whole-text fields (like flow descriptions)
+     * Matches against the entire text, not individual words
+     */
+    public static void updateSimpleMatchDisplay(TextBox textBox, java.util.List<String> completionList, 
+                                                Label hintLabel, AutocompleteState state) {
+        // Reset tab completion state when user types
+        state.reset();
+        
+        String text = textBox.getText().trim();
+        if (text.isEmpty()) {
+            hintLabel.setVisible(false);
+            return;
+        }
+        
+        // Find matches for the entire text
+        java.util.List<String> matches = findMatches(text, completionList);
+        
+        if (matches.isEmpty()) {
+            hintLabel.setVisible(false);
+        } else {
+            displayMatches(matches, hintLabel, 0);
+        }
+    }
+    
+    /**
      * Create styled hint label for displaying autocomplete hints
      */
     public static Label createHintLabel() {
@@ -315,6 +398,7 @@ public class AutocompleteHelper {
     
     /**
      * Display matches in hint label with optional highlighting
+     * Current match is shown in bold with brackets: [match]
      */
     private static void displayMatches(java.util.List<String> matches, Label hintLabel, int highlightIndex) {
         if (matches.isEmpty()) {
@@ -322,22 +406,25 @@ public class AutocompleteHelper {
             return;
         }
         
-        StringBuilder sb = new StringBuilder();
+        StringBuilder html = new StringBuilder();
+        html.append("<span style='color:#666'>");
         for (int i = 0; i < matches.size(); i++) {
-            if (i > 0) sb.append("  ");
+            if (i > 0) html.append("  ");
             if (i == highlightIndex) {
-                sb.append("[").append(matches.get(i)).append("]");
+                html.append("<b>[").append(matches.get(i)).append("]</b>");
             } else {
-                sb.append(matches.get(i));
+                html.append(matches.get(i));
             }
         }
+        html.append("</span>");
         
-        hintLabel.setText(sb.toString());
+        hintLabel.getElement().setInnerHTML(html.toString());
         hintLabel.setVisible(true);
     }
     
     /**
      * Display both validation errors and matches
+     * Shows matches with first one highlighted in bold brackets, undefined symbols shown separately
      */
     private static void displayValidationAndMatches(java.util.List<String> undefinedSymbols, 
                                                    java.util.List<String> matches, Label hintLabel) {
@@ -348,25 +435,26 @@ public class AutocompleteHelper {
         
         StringBuilder html = new StringBuilder();
         
-        // Show undefined symbols in red
-        if (!undefinedSymbols.isEmpty()) {
-            html.append("<span style='color:#cc0000'>Undefined: ");
-            for (int i = 0; i < undefinedSymbols.size(); i++) {
-                if (i > 0) html.append(", ");
-                html.append(undefinedSymbols.get(i));
+        // Show matches with first one highlighted (primary display)
+        if (!matches.isEmpty()) {
+            html.append("<span style='color:#666'>");
+            for (int i = 0; i < matches.size(); i++) {
+                if (i > 0) html.append("  ");
+                if (i == 0) {
+                    html.append("<b>[").append(matches.get(i)).append("]</b>");
+                } else {
+                    html.append(matches.get(i));
+                }
             }
             html.append("</span>");
         }
         
-        // Show matches in gray
-        if (!matches.isEmpty()) {
-            if (html.length() > 0) {
-                html.append("<span style='color:#666'> | Matches: </span>");
-            }
-            html.append("<span style='color:#666'>");
-            for (int i = 0; i < matches.size(); i++) {
-                if (i > 0) html.append("  ");
-                html.append(matches.get(i));
+        // Show undefined symbols in red (only if no matches, to avoid clutter)
+        if (!undefinedSymbols.isEmpty() && matches.isEmpty()) {
+            html.append("<span style='color:#cc0000'>Undefined: ");
+            for (int i = 0; i < undefinedSymbols.size(); i++) {
+                if (i > 0) html.append(", ");
+                html.append(undefinedSymbols.get(i));
             }
             html.append("</span>");
         }

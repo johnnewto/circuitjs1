@@ -2103,7 +2103,7 @@ class Scope {
         g.startBatch();
         
         int ox = -1, oy = -1;
-        int prevMaxY = -1;  // Track previous max Y point for connecting lines
+        int prevY = -1;  // Track previous Y point for connecting lines
         
         if (drawFromZero && !plot2d) {
             // Draw from zero mode: use history buffers instead of circular buffer
@@ -2124,6 +2124,10 @@ class Scope {
                     if (histIdx >= historySize)
                         histIdx = historySize - 1;
                     
+                    // Use midpoint (average) of min and max for smoother interpolation
+                    double midVal = (histMinV[histIdx] + histMaxV[histIdx]) / 2.0;
+                    int midvy = (int) (plot.gridMult * (midVal + plot.plotOffset));
+                    
                     int minvy = (int) (plot.gridMult*(histMinV[histIdx]+plot.plotOffset));
                     int maxvy = (int) (plot.gridMult*(histMaxV[histIdx]+plot.plotOffset));
                     
@@ -2133,38 +2137,16 @@ class Scope {
                         minRangeHi = 1000;
                     }
                     
-                    // Clamp Y coordinates to valid drawing range to prevent overlapping axis
-                    int y1 = maxy - minvy;
-                    int y2 = maxy - maxvy;
-                    y1 = Math.max(0, Math.min(rect.height - 1, y1));
-                    y2 = Math.max(0, Math.min(rect.height - 1, y2));
+                    // Clamp Y coordinate to valid drawing range
+                    int y = maxy - midvy;
+                    y = Math.max(0, Math.min(rect.height - 1, y));
                     
-                    // Draw vertical segment for this pixel (captures min/max range)
-                    if (y1 != y2) {
-                        g.drawLine(x+i, y1, x+i, y2);
+                    // Draw line from previous point to current point
+                    if (prevY != -1) {
+                        g.drawLine(x+i-1, prevY, x+i, y);
                     }
                     
-                    // Connect to previous point with diagonal line
-                    if (prevMaxY != -1) {
-                        // Draw from previous max to current min (for continuity)
-                        int prevY = Math.max(0, Math.min(rect.height - 1, maxy - prevMaxY));
-                        g.drawLine(x+i-1, prevY, x+i, y1);
-                    }
-                    
-                    prevMaxY = maxvy;
-                    
-                    if (ox != -1) {
-                        if (minvy == oy && maxvy == oy)
-                            continue;
-                        int oyY = Math.max(0, Math.min(rect.height - 1, maxy - oy));
-                        g.drawLine(ox, oyY, x+i, oyY);
-                        ox = oy = -1;
-                    }
-                    if (minvy == maxvy) {
-                        ox = x+i;
-                        oy = minvy;
-                        continue;
-                    }
+                    prevY = y;
                 }
             } else {
                 // Fixed scale: show most recent data that fits
@@ -2181,6 +2163,10 @@ class Scope {
                         if (histIdx >= historySize)
                             histIdx = historySize - 1;
                         
+                        // Use midpoint (average) of min and max for smoother interpolation
+                        double midVal = (histMinV[histIdx] + histMaxV[histIdx]) / 2.0;
+                        int midvy = (int) (plot.gridMult * (midVal + plot.plotOffset));
+                        
                         int minvy = (int) (plot.gridMult*(histMinV[histIdx]+plot.plotOffset));
                         int maxvy = (int) (plot.gridMult*(histMaxV[histIdx]+plot.plotOffset));
                         
@@ -2190,37 +2176,16 @@ class Scope {
                             minRangeHi = 1000;
                         }
                         
-                        // Clamp Y coordinates to valid drawing range to prevent overlapping axis
-                        int y1 = maxy - minvy;
-                        int y2 = maxy - maxvy;
-                        y1 = Math.max(0, Math.min(rect.height - 1, y1));
-                        y2 = Math.max(0, Math.min(rect.height - 1, y2));
+                        // Clamp Y coordinate to valid drawing range
+                        int y = maxy - midvy;
+                        y = Math.max(0, Math.min(rect.height - 1, y));
                         
-                        // Draw vertical segment for this pixel
-                        if (y1 != y2) {
-                            g.drawLine(x+i, y1, x+i, y2);
+                        // Draw line from previous point to current point
+                        if (prevY != -1) {
+                            g.drawLine(x+i-1, prevY, x+i, y);
                         }
                         
-                        // Connect to previous point
-                        if (prevMaxY != -1) {
-                            int prevY = Math.max(0, Math.min(rect.height - 1, maxy - prevMaxY));
-                            g.drawLine(x+i-1, prevY, x+i, y1);
-                        }
-                        
-                        prevMaxY = maxvy;
-                        
-                        if (ox != -1) {
-                            if (minvy == oy && maxvy == oy)
-                                continue;
-                            int oyY = Math.max(0, Math.min(rect.height - 1, maxy - oy));
-                            g.drawLine(ox, oyY, x+i, oyY);
-                            ox = oy = -1;
-                        }
-                        if (minvy == maxvy) {
-                            ox = x+i;
-                            oy = minvy;
-                            continue;
-                        }
+                        prevY = y;
                     }
                 } else {
                     // Screen is full, show most recent window
@@ -2234,6 +2199,10 @@ class Scope {
                         if (histIdx < 0) histIdx = 0;
                         if (histIdx >= historySize) histIdx = historySize - 1;
                         
+                        // Use midpoint (average) of min and max for smoother interpolation
+                        double midVal = (histMinV[histIdx] + histMaxV[histIdx]) / 2.0;
+                        int midvy = (int) (plot.gridMult * (midVal + plot.plotOffset));
+                        
                         int minvy = (int) (plot.gridMult*(histMinV[histIdx]+plot.plotOffset));
                         int maxvy = (int) (plot.gridMult*(histMaxV[histIdx]+plot.plotOffset));
                         
@@ -2243,37 +2212,16 @@ class Scope {
                             minRangeHi = 1000;
                         }
                         
-                        // Clamp Y coordinates to valid drawing range to prevent overlapping axis
-                        int y1 = maxy - minvy;
-                        int y2 = maxy - maxvy;
-                        y1 = Math.max(0, Math.min(rect.height - 1, y1));
-                        y2 = Math.max(0, Math.min(rect.height - 1, y2));
+                        // Clamp Y coordinate to valid drawing range
+                        int y = maxy - midvy;
+                        y = Math.max(0, Math.min(rect.height - 1, y));
                         
-                        // Draw vertical segment for this pixel
-                        if (y1 != y2) {
-                            g.drawLine(x+i, y1, x+i, y2);
+                        // Draw line from previous point to current point
+                        if (prevY != -1) {
+                            g.drawLine(x+i-1, prevY, x+i, y);
                         }
                         
-                        // Connect to previous point
-                        if (prevMaxY != -1) {
-                            int prevY = Math.max(0, Math.min(rect.height - 1, maxy - prevMaxY));
-                            g.drawLine(x+i-1, prevY, x+i, y1);
-                        }
-                        
-                        prevMaxY = maxvy;
-                        
-                        if (ox != -1) {
-                            if (minvy == oy && maxvy == oy)
-                                continue;
-                            int oyY = Math.max(0, Math.min(rect.height - 1, maxy - oy));
-                            g.drawLine(ox, oyY, x+i, oyY);
-                            ox = oy = -1;
-                        }
-                        if (minvy == maxvy) {
-                            ox = x+i;
-                            oy = minvy;
-                            continue;
-                        }
+                        prevY = y;
                     }
                 }
             }
@@ -2281,6 +2229,11 @@ class Scope {
             // Original right-to-left scrolling behavior
             for (i = 0; i != rect.width; i++) {
                 int ip = (i+ipa) & (scopePointCount-1);
+                
+                // Use midpoint (average) of min and max for smoother interpolation
+                double midVal = (minV[ip] + maxV[ip]) / 2.0;
+                int midvy = (int) (plot.gridMult * (midVal + plot.plotOffset));
+                
                 int minvy = (int) (plot.gridMult*(minV[ip]+plot.plotOffset));
                 int maxvy = (int) (plot.gridMult*(maxV[ip]+plot.plotOffset));
                 
@@ -2291,43 +2244,17 @@ class Scope {
                     minRangeHi = 1000; // avoid triggering this test again
                 }
                 
-                // Clamp Y coordinates to valid drawing range to prevent overlapping axis
-                int y1 = maxy - minvy;
-                int y2 = maxy - maxvy;
-                y1 = Math.max(0, Math.min(rect.height - 1, y1));
-                y2 = Math.max(0, Math.min(rect.height - 1, y2));
+                // Clamp Y coordinate to valid drawing range
+                int y = maxy - midvy;
+                y = Math.max(0, Math.min(rect.height - 1, y));
                 
-                // Draw vertical segment for this pixel
-                if (y1 != y2) {
-                    g.drawLine(x+i, y1, x+i, y2);
+                // Draw line from previous point to current point
+                if (prevY != -1) {
+                    g.drawLine(x+i-1, prevY, x+i, y);
                 }
                 
-                // Connect to previous point
-                if (prevMaxY != -1) {
-                    int prevY = Math.max(0, Math.min(rect.height - 1, maxy - prevMaxY));
-                    g.drawLine(x+i-1, prevY, x+i, y1);
-                }
-                
-                prevMaxY = maxvy;
-                
-                if (ox != -1) {
-                    if (minvy == oy && maxvy == oy)
-                        continue;
-                    int oyY = Math.max(0, Math.min(rect.height - 1, maxy - oy));
-                    g.drawLine(ox, oyY, x+i, oyY);
-                    ox = oy = -1;
-                }
-                if (minvy == maxvy) {
-                    ox = x+i;
-                    oy = minvy;
-                    continue;
-                }
+                prevY = y;
             } // for (i=0...)
-        }
-        
-        if (ox != -1) {
-            int oyY = Math.max(0, Math.min(rect.height - 1, maxy - oy));
-            g.drawLine(ox, oyY, x+i-1, oyY); // Horizontal
         }
         
         g.endBatch();
@@ -3627,9 +3554,19 @@ class Scope {
 	    }
 	    sb.append("],\n");
 	    
-	    // Min values array
-	    sb.append("      \"minValues\": [");
+	    // Interpolated midpoint values array (average of min and max)
+	    sb.append("      \"values\": [");
 	    int ipa = p.startIndex(width);
+	    for (int x = 0; x < width; x++) {
+		if (x > 0) sb.append(", ");
+		int ip = (x + ipa) & (scopePointCount - 1);
+		double midpoint = (p.minValues[ip] + p.maxValues[ip]) / 2.0;
+		sb.append(midpoint);
+	    }
+	    sb.append("],\n");
+	    
+	    // Min values array (kept for CSV export compatibility)
+	    sb.append("      \"minValues\": [");
 	    for (int x = 0; x < width; x++) {
 		if (x > 0) sb.append(", ");
 		int ip = (x + ipa) & (scopePointCount - 1);
@@ -3637,7 +3574,7 @@ class Scope {
 	    }
 	    sb.append("],\n");
 	    
-	    // Max values array
+	    // Max values array (kept for CSV export compatibility)
 	    sb.append("      \"maxValues\": [");
 	    for (int x = 0; x < width; x++) {
 		if (x > 0) sb.append(", ");
@@ -3736,7 +3673,16 @@ class Scope {
 	    sb.append("],\n");
 	    
 	    if (p.historyMinValues != null && p.historyMaxValues != null) {
-		// Min values array
+		// Interpolated midpoint values array (average of min and max)
+		sb.append("      \"values\": [");
+		for (int x = 0; x < historySize; x++) {
+		    if (x > 0) sb.append(", ");
+		    double midpoint = (p.historyMinValues[x] + p.historyMaxValues[x]) / 2.0;
+		    sb.append(midpoint);
+		}
+		sb.append("],\n");
+		
+		// Min values array (kept for CSV export compatibility)
 		sb.append("      \"minValues\": [");
 		for (int x = 0; x < historySize; x++) {
 		    if (x > 0) sb.append(", ");
@@ -3744,7 +3690,7 @@ class Scope {
 		}
 		sb.append("],\n");
 		
-		// Max values array
+		// Max values array (kept for CSV export compatibility)
 		sb.append("      \"maxValues\": [");
 		for (int x = 0; x < historySize; x++) {
 		    if (x > 0) sb.append(", ");
@@ -3752,6 +3698,7 @@ class Scope {
 		}
 		sb.append("]\n");
 	    } else {
+		sb.append("      \"values\": [],\n");
 		sb.append("      \"minValues\": [],\n");
 		sb.append("      \"maxValues\": []\n");
 	    }

@@ -28,8 +28,6 @@ import com.google.gwt.user.client.ui.Grid;
 import com.google.gwt.user.client.ui.TextBox;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
-import com.google.gwt.user.client.ui.SuggestBox;
-import com.google.gwt.user.client.ui.MultiWordSuggestOracle;
 
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
@@ -1103,8 +1101,8 @@ import java.util.Map;
                 aleLabel.setTitle(titleText);
                 editGrid.setWidget(STOCK_VALUES_ROW, DATA_START_COL + col, aleLabel);
             } else {
-                SuggestBox stockBox = createStockValueSuggestBox(col);
-                editGrid.setWidget(STOCK_VALUES_ROW, DATA_START_COL + col, stockBox);
+                VerticalPanel stockPanel = createStockValueTextBox(col);
+                editGrid.setWidget(STOCK_VALUES_ROW, DATA_START_COL + col, stockPanel);
             }
         }
         
@@ -1145,8 +1143,8 @@ import java.util.Map;
             editGrid.setText(gridRow, BUTTON_COL, "");
             
             // Label column - editable text for flow descriptions
-            TextBox flowDescBox = createFlowDescriptionTextBox(row);
-            editGrid.setWidget(gridRow, LABEL_COL, flowDescBox);
+            VerticalPanel flowDescPanel = createFlowDescriptionTextBox(row);
+            editGrid.setWidget(gridRow, LABEL_COL, flowDescPanel);
             
             // Data columns
             for (int col = 0; col < dataCols; col++) {
@@ -1289,17 +1287,64 @@ import java.util.Map;
     // =============================================================================
     
     /**
-     * Create textbox for editing flow descriptions
+     * Create textbox for editing flow descriptions with bash-style Tab autocomplete
+     * Returns a VerticalPanel containing hint label + textbox (same pattern as cell text boxes)
      */
-    private TextBox createFlowDescriptionTextBox(final int row) {
+    private VerticalPanel createFlowDescriptionTextBox(final int row) {
+        // Create the completion list from existing flow descriptions (unique names)
+        final java.util.List<String> completionList = createFlowDescriptionCompletionList();
+        
+        // Create the textbox
         final TextBox textBox = new TextBox();
         // Initialize with row description from TableElm
         String rowDesc = tableElement.getRowDescription(row);
         textBox.setText(rowDesc != null ? rowDesc : "");
         textBox.addStyleName("tableFlowInput");
+        textBox.setWidth("100%");
         
         // Prevent keyboard events from deleting table element while typing
         preventKeyboardPropagation(textBox);
+        
+        // Setup autocomplete panel with hint label
+        VerticalPanel container = new VerticalPanel();
+        container.setWidth("100%");
+        
+        final Label hintLabel = AutocompleteHelper.createHintLabel();
+        container.add(hintLabel);
+        container.add(textBox);
+        
+        // Track autocomplete state for this textbox
+        final AutocompleteHelper.AutocompleteState state = new AutocompleteHelper.AutocompleteState();
+        autocompleteStates.put(textBox, state);
+        
+        // Handle Tab for autocomplete and Enter to finish editing
+        textBox.addKeyDownHandler(new KeyDownHandler() {
+            public void onKeyDown(KeyDownEvent event) {
+                if (event.getNativeKeyCode() == KeyCodes.KEY_TAB) {
+                    event.preventDefault();
+                    AutocompleteHelper.handleSimpleTabCompletion(textBox, completionList, hintLabel, state);
+                } else if (event.getNativeKeyCode() == KeyCodes.KEY_ENTER) {
+                    event.preventDefault();
+                    hintLabel.setVisible(false);
+                    state.reset();
+                    textBox.setFocus(false);
+                }
+            }
+        });
+        
+        // Handle text changes for real-time match display
+        textBox.addKeyPressHandler(new KeyPressHandler() {
+            public void onKeyPress(KeyPressEvent event) {
+                // Schedule update after character is inserted
+                com.google.gwt.core.client.Scheduler.get().scheduleDeferred(
+                    new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
+                        public void execute() {
+                            AutocompleteHelper.updateSimpleMatchDisplay(textBox, completionList, hintLabel, state);
+                        }
+                    }
+                );
+            }
+        });
         
         textBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
@@ -1310,7 +1355,7 @@ import java.util.Map;
             }
         });
         
-        return textBox;
+        return container;
     }
     
     private Button createButton(String symbol, String tooltip) {
@@ -1321,18 +1366,129 @@ import java.util.Map;
     }
     
     /**
-     * Create SuggestBox for editing stock values (column headers) with autocomplete
-     * Shows all existing stock names from the registry as suggestions
+     * Create TextBox for editing stock values (column headers) with bash-style Tab autocomplete
+     * Returns a VerticalPanel containing hint label + textbox (same pattern as cell text boxes)
      */
-    private SuggestBox createStockValueSuggestBox(final int col) {
-        // Create oracle with all existing stock names
-        MultiWordSuggestOracle oracle = new MultiWordSuggestOracle();
+    private VerticalPanel createStockValueTextBox(final int col) {
+        // Create the completion list from all available stock names
+        final java.util.List<String> completionList = createStockNameCompletionList();
+        
+        // Create the textbox
+        final TextBox textBox = new TextBox();
+        textBox.setText(stockValues[col]); // Initialize with current value
+        textBox.addStyleName("tableStockInput");
+        textBox.setWidth("100%");
+        
+        // Prevent keyboard events from deleting table element while typing
+        preventKeyboardPropagation(textBox);
+        
+        // Setup autocomplete panel with hint label
+        VerticalPanel container = new VerticalPanel();
+        container.setWidth("100%");
+        
+        // Create hint label (initially hidden, appears when typing)
+        final Label hintLabel = AutocompleteHelper.createHintLabel();
+        
+        // Assemble: hint label above textbox
+        container.add(hintLabel);
+        container.add(textBox);
+        
+        // Initialize autocomplete state for this textbox
+        final AutocompleteHelper.AutocompleteState state = new AutocompleteHelper.AutocompleteState();
+        autocompleteStates.put(textBox, state);
+        
+        // Handle Tab key: cycle through completions, Enter key: accept and finish editing
+        textBox.addKeyDownHandler(new KeyDownHandler() {
+            public void onKeyDown(KeyDownEvent event) {
+                if (event.getNativeKeyCode() == KeyCodes.KEY_TAB) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    AutocompleteHelper.handleTabCompletion(textBox, completionList, hintLabel, state);
+                } else if (event.getNativeKeyCode() == KeyCodes.KEY_ENTER) {
+                    event.preventDefault();
+                    // Accept current selection: reset state and hide hint
+                    state.reset();
+                    hintLabel.setVisible(false);
+                    textBox.setFocus(false);
+                }
+            }
+        });
+        
+        // Handle typing: show matches in real-time
+        textBox.addKeyPressHandler(new KeyPressHandler() {
+            public void onKeyPress(KeyPressEvent event) {
+                // Wait for character to be added to textbox, then update display
+                com.google.gwt.core.client.Scheduler.get().scheduleDeferred(
+                    new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
+                        public void execute() {
+                            AutocompleteHelper.updateMatchDisplay(textBox, completionList, hintLabel, state);
+                        }
+                    }
+                );
+            }
+        });
+        
+        // Add key up handler to track changes
+        textBox.addKeyUpHandler(new KeyUpHandler() {
+            public void onKeyUp(KeyUpEvent event) {
+                // Store stock value name
+                stockValues[col] = textBox.getText();
+                textBox.addStyleName("modified");
+                markChanged();
+            }
+        });
+        
+        // Select all on focus
+        textBox.addFocusHandler(new FocusHandler() {
+            public void onFocus(FocusEvent event) {
+                textBox.selectAll();
+            }
+        });
+        
+        return container;
+    }
+    
+    /**
+     * Create completion list for flow descriptions (unique row names from all tables)
+     */
+    private java.util.List<String> createFlowDescriptionCompletionList() {
+        java.util.List<String> list = new java.util.ArrayList<String>();
+        
+        // Gather flow descriptions from all tables
+        if (sim != null && sim.elmList != null) {
+            for (int i = 0; i < sim.elmList.size(); i++) {
+                CircuitElm elm = sim.elmList.elementAt(i);
+                if (elm instanceof TableElm) {
+                    TableElm table = (TableElm) elm;
+                    for (int r = 0; r < table.getRows(); r++) {
+                        String flowDesc = table.getRowDescription(r);
+                        if (flowDesc != null && !flowDesc.trim().isEmpty() 
+                            && !flowDesc.startsWith("Row")  // Skip default "Row1", "Row2", etc.
+                            && !list.contains(flowDesc)) {
+                            list.add(flowDesc);
+                        }
+                    }
+                }
+            }
+        }
+        
+        java.util.Collections.sort(list);
+        return list;
+    }
+    
+    /**
+     * Create completion list for stock names (used by stock value autocomplete)
+     */
+    private java.util.List<String> createStockNameCompletionList() {
+        java.util.List<String> list = new java.util.ArrayList<String>();
         
         // Add all registered stock names
         java.util.Set<String> stockNames = StockFlowRegistry.getAllStockNames();
         if (stockNames != null && !stockNames.isEmpty()) {
             for (String stockName : stockNames) {
-                oracle.add(stockName);
+                if (!list.contains(stockName)) {
+                    list.add(stockName);
+                }
             }
         }
         
@@ -1345,37 +1501,17 @@ import java.util.Map;
                     for (int c = 0; c < table.getCols(); c++) {
                         String header = table.getColumnHeader(c);
                         if (header != null && !header.trim().isEmpty() && !header.equals("A-L-E")) {
-                            oracle.add(header.trim());
+                            if (!list.contains(header.trim())) {
+                                list.add(header.trim());
+                            }
                         }
                     }
                 }
             }
         }
         
-        final SuggestBox suggestBox = new SuggestBox(oracle);
-        suggestBox.setText(stockValues[col]); // Initialize with current value
-        suggestBox.addStyleName("tableStockInput");
-        suggestBox.setWidth("100%");
-        
-        // Prevent keyboard events from deleting table element while typing
-        preventKeyboardPropagation(suggestBox.getValueBox());
-        
-        suggestBox.getValueBox().addKeyUpHandler(new KeyUpHandler() {
-            public void onKeyUp(KeyUpEvent event) {
-                // Store stock value name
-                stockValues[col] = suggestBox.getText();
-                suggestBox.addStyleName("modified");
-                markChanged();
-            }
-        });
-        
-        suggestBox.getValueBox().addFocusHandler(new FocusHandler() {
-            public void onFocus(FocusEvent event) {
-                suggestBox.getValueBox().selectAll();
-            }
-        });
-        
-        return suggestBox;
+        java.util.Collections.sort(list);
+        return list;
     }
     
     /**
@@ -1388,6 +1524,16 @@ import java.util.Map;
         
         // Prevent keyboard events from deleting table element while typing
         preventKeyboardPropagation(textBox);
+        
+        // Handle Enter key to finish editing
+        textBox.addKeyDownHandler(new KeyDownHandler() {
+            public void onKeyDown(KeyDownEvent event) {
+                if (event.getNativeKeyCode() == KeyCodes.KEY_ENTER) {
+                    event.preventDefault();
+                    textBox.setFocus(false);
+                }
+            }
+        });
         
         textBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
@@ -1461,13 +1607,19 @@ import java.util.Map;
             final AutocompleteHelper.AutocompleteState state = new AutocompleteHelper.AutocompleteState();
             autocompleteStates.put(textBox, state);
             
-            // Handle Tab key: cycle through completions
+            // Handle Tab key: cycle through completions, Enter key: accept and finish editing
             textBox.addKeyDownHandler(new KeyDownHandler() {
                 public void onKeyDown(KeyDownEvent event) {
                     if (event.getNativeKeyCode() == KeyCodes.KEY_TAB) {
                         event.preventDefault();
                         event.stopPropagation();
                         AutocompleteHelper.handleTabCompletion(textBox, completionList, hintLabel, state);
+                    } else if (event.getNativeKeyCode() == KeyCodes.KEY_ENTER) {
+                        event.preventDefault();
+                        // Accept current selection: reset state and hide hint
+                        state.reset();
+                        hintLabel.setVisible(false);
+                        textBox.setFocus(false);
                     }
                 }
             });
