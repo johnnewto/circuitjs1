@@ -141,15 +141,32 @@ public class TableGeometryManager {
      */
     private void calculateBoundingBox() {
         int cellWidthPixels = getCellWidthPixels();
-        int rowDescColWidth = table.collapsedMode ? 0 : cellWidthPixels;
         
-        int tableWidth = rowDescColWidth + table.cellSpacing + 
-                        table.getCols() * cellWidthPixels + 
-                        (table.getCols() + 1) * table.cellSpacing;
+        // Row description column width: 1.5x cell width (matches TableRenderer)
+        int rowDescColWidth = cellWidthPixels * 3 / 2;
+        
+        // Calculate total data columns width (matching TableRenderer.getTotalDataColumnsWidth)
+        int totalDataColumnsWidth = 0;
+        for (int c = 0; c < table.getCols(); c++) {
+            // ALE column is half width
+            boolean isALECol = hasALEColumn() && c == table.getCols() - 1;
+            int colWidth = isALECol ? cellWidthPixels / 2 : cellWidthPixels;
+            totalDataColumnsWidth += colWidth + table.cellSpacing;
+        }
+        totalDataColumnsWidth += table.cellSpacing; // Extra spacing at end
+        
+        int tableWidth = rowDescColWidth + table.cellSpacing + totalDataColumnsWidth;
         int tableHeight = calculateTableHeight();
 
         // Set bounding box to match table size
         table.setBbox(table.x, table.y, table.x + tableWidth, table.y + tableHeight);
+    }
+    
+    /**
+     * Check if the table has an A-L-E computed column
+     */
+    private boolean hasALEColumn() {
+        return table.getCols() >= 4;
     }
     
     /**

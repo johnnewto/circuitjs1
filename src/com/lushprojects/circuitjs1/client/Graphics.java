@@ -497,8 +497,54 @@ public class Graphics {
 	       requestExitFullScreen();
 	       isFullScreen=false;
 	   }
-	   
-	   private native static void requestExitFullScreen() /*-{
+   
+   /**
+    * Fill a rounded rectangle
+    * @param x X position
+    * @param y Y position
+    * @param width Width
+    * @param height Height
+    * @param radius Corner radius
+    */
+   public void fillRoundRect(int x, int y, int width, int height, int radius) {
+       context.beginPath();
+       context.moveTo(x + radius, y);
+       context.lineTo(x + width - radius, y);
+       context.arcTo(x + width, y, x + width, y + radius, radius);
+       context.lineTo(x + width, y + height - radius);
+       context.arcTo(x + width, y + height, x + width - radius, y + height, radius);
+       context.lineTo(x + radius, y + height);
+       context.arcTo(x, y + height, x, y + height - radius, radius);
+       context.lineTo(x, y + radius);
+       context.arcTo(x, y, x + radius, y, radius);
+       context.closePath();
+       context.fill();
+   }
+   
+   /**
+    * Draw a rounded rectangle outline
+    * @param x X position
+    * @param y Y position
+    * @param width Width
+    * @param height Height
+    * @param radius Corner radius
+    */
+   public void drawRoundRect(int x, int y, int width, int height, int radius) {
+       context.beginPath();
+       context.moveTo(x + radius, y);
+       context.lineTo(x + width - radius, y);
+       context.arcTo(x + width, y, x + width, y + radius, radius);
+       context.lineTo(x + width, y + height - radius);
+       context.arcTo(x + width, y + height, x + width - radius, y + height, radius);
+       context.lineTo(x + radius, y + height);
+       context.arcTo(x, y + height, x, y + height - radius, radius);
+       context.lineTo(x, y + radius);
+       context.arcTo(x, y, x + radius, y, radius);
+       context.closePath();
+       context.stroke();
+   }
+   
+   private native static void requestExitFullScreen() /*-{
 	   var d = $doc;
 
 	   if (d.exitFullscreen) {

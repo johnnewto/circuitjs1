@@ -28,8 +28,74 @@ public class TableRenderer {
     protected static final Font CELL_FONT = new Font("SansSerif", 0, 11);  // Non-bold like ActionTimeElm
     protected static final String LETTER_SPACING = "0.5px"; // For better readability
     
+    // Modern styling configuration
+    protected static final boolean MODERN_STYLE = true; // Enable modern CSS-inspired styling
+    protected static final int CORNER_RADIUS = 8; // Rounded corner radius for modern look
+    
+    // Modern color scheme (inspired by Piccalilli's table styling)
+    // Dark mode colors
+    protected static final Color HEADER_BG_DARK = new Color(55, 55, 75);     // Subtle blue-tinted header
+    protected static final Color FOOTER_BG_DARK = new Color(55, 55, 75);     // Match header
+    protected static final Color ROW_EVEN_BG_DARK = new Color(45, 45, 50);   // Slightly lighter alternate
+    protected static final Color ROW_ODD_BG_DARK = new Color(35, 35, 40);    // Base row color
+    protected static final Color TABLE_BG_DARK = new Color(30, 30, 35);      // Table background
+    protected static final Color GRID_LINE_DARK = new Color(60, 60, 65);     // Subtle grid lines
+    protected static final Color HEADER_BORDER_DARK = new Color(80, 80, 100); // Stronger header border
+    
+    // Light mode colors (printable)
+    protected static final Color HEADER_BG_LIGHT = new Color(235, 235, 245);   // Light purple-tinted
+    protected static final Color FOOTER_BG_LIGHT = new Color(235, 235, 245);   // Match header
+    protected static final Color ROW_EVEN_BG_LIGHT = new Color(248, 248, 252); // Very subtle alternate
+    protected static final Color ROW_ODD_BG_LIGHT = new Color(255, 255, 255);  // White base
+    protected static final Color TABLE_BG_LIGHT = new Color(255, 255, 255);    // White background
+    protected static final Color GRID_LINE_LIGHT = new Color(220, 220, 230);   // Subtle grid
+    protected static final Color HEADER_BORDER_LIGHT = new Color(180, 180, 200); // Stronger header border
+    
     public TableRenderer(TableElm table) {
         this.table = table;
+    }
+    
+    // Helper methods for modern styling colors based on theme
+    protected boolean isPrintable() {
+        return CirSim.theSim.printableCheckItem.getState();
+    }
+    
+    protected Color getHeaderBgColor() {
+        return isPrintable() ? HEADER_BG_LIGHT : HEADER_BG_DARK;
+    }
+    
+    protected Color getFooterBgColor() {
+        return isPrintable() ? FOOTER_BG_LIGHT : FOOTER_BG_DARK;
+    }
+    
+    protected Color getRowBgColor(int row) {
+        if (isPrintable()) {
+            return (row % 2 == 0) ? ROW_EVEN_BG_LIGHT : ROW_ODD_BG_LIGHT;
+        }
+        return (row % 2 == 0) ? ROW_EVEN_BG_DARK : ROW_ODD_BG_DARK;
+    }
+    
+    protected Color getTableBgColor() {
+        return isPrintable() ? TABLE_BG_LIGHT : TABLE_BG_DARK;
+    }
+    
+    protected Color getGridLineColor() {
+        return isPrintable() ? GRID_LINE_LIGHT : GRID_LINE_DARK;
+    }
+    
+    protected Color getHeaderBorderColor() {
+        return isPrintable() ? HEADER_BORDER_LIGHT : HEADER_BORDER_DARK;
+    }
+    
+    /**
+     * Get text color that's appropriate for the current theme.
+     * Uses white for dark mode and dark gray for light/printable mode.
+     */
+    protected Color getTextColor() {
+        if (MODERN_STYLE && isPrintable()) {
+            return new Color(30, 30, 30); // Dark text for light backgrounds
+        }
+        return CircuitElm.whiteColor;
     }
     
     /**
@@ -213,18 +279,31 @@ public class TableRenderer {
      * Draw table background
      */
     private void drawTableBackground(Graphics g, TableDimensions dims) {
-        Color bgColor = CirSim.theSim.printableCheckItem.getState() ? 
-            new Color(230, 230, 230) : new Color(40, 40, 40);
-        g.setColor(bgColor);
-        g.fillRect(dims.tableX + 1, dims.tableY + 1, dims.tableWidth - 2, dims.tableHeight - 2);
+        if (MODERN_STYLE) {
+            // Modern style: use rounded corners and theme-aware colors
+            g.setColor(getTableBgColor());
+            g.fillRoundRect(dims.tableX + 1, dims.tableY + 1, dims.tableWidth - 2, dims.tableHeight - 2, CORNER_RADIUS);
+        } else {
+            // Legacy style
+            Color bgColor = CirSim.theSim.printableCheckItem.getState() ? 
+                new Color(230, 230, 230) : new Color(40, 40, 40);
+            g.setColor(bgColor);
+            g.fillRect(dims.tableX + 1, dims.tableY + 1, dims.tableWidth - 2, dims.tableHeight - 2);
+        }
     }
     
     /**
      * Draw table border
      */
     private void drawTableBorder(Graphics g, TableDimensions dims) {
-        g.setColor(table.nonConverged ? Color.blue : CircuitElm.lightGrayColor);
-        g.drawRect(dims.tableX, dims.tableY, dims.tableWidth, dims.tableHeight);
+        if (MODERN_STYLE) {
+            // Modern style: subtle rounded border
+            g.setColor(table.nonConverged ? Color.blue : getGridLineColor());
+            g.drawRoundRect(dims.tableX, dims.tableY, dims.tableWidth, dims.tableHeight, CORNER_RADIUS);
+        } else {
+            g.setColor(table.nonConverged ? Color.blue : CircuitElm.lightGrayColor);
+            g.drawRect(dims.tableX, dims.tableY, dims.tableWidth, dims.tableHeight);
+        }
     }
     
     /**
@@ -232,6 +311,11 @@ public class TableRenderer {
      */
     private int drawComponentsInOrder(Graphics g, TableDimensions dims) {
         int currentY = 10;
+        
+        // In modern style, draw row backgrounds first (before content)
+        if (MODERN_STYLE) {
+            drawRowBackgrounds(g, dims);
+        }
         
         drawTitle(g, currentY);
         currentY += 10;
@@ -263,6 +347,51 @@ public class TableRenderer {
         currentY += table.cellHeight + table.cellSpacing;
         
         return currentY;
+    }
+    
+    /**
+     * Draw row backgrounds for modern styling (zebra striping, header/footer backgrounds)
+     */
+    private void drawRowBackgrounds(Graphics g, TableDimensions dims) {
+        int tableX = dims.tableX;
+        int tableY = dims.tableY;
+        int tableWidth = dims.tableWidth;
+        int rowHeight = table.cellHeight + table.cellSpacing;
+        
+        // Calculate Y positions for different sections
+        int currentY = tableY + dims.titleHeight;
+        
+        // Type row background (header style)
+        if (!table.collapsedMode && dims.typeRowHeight > 0) {
+            g.setColor(getHeaderBgColor());
+            g.fillRect(tableX + 2, currentY, tableWidth - 4, rowHeight);
+            currentY += rowHeight;
+        }
+        
+        // Column headers row background (header style)
+        g.setColor(getHeaderBgColor());
+        g.fillRect(tableX + 2, currentY, tableWidth - 4, rowHeight);
+        currentY += rowHeight;
+        
+        // Initial values row background (if shown) - use odd row color to distinguish from header
+        if (table.showInitialValues && !table.collapsedMode) {
+            g.setColor(getRowBgColor(1)); // Use odd row color to distinguish from header
+            g.fillRect(tableX + 2, currentY, tableWidth - 4, rowHeight);
+            currentY += rowHeight;
+        }
+        
+        // Data rows with zebra striping
+        if (!table.collapsedMode) {
+            for (int row = 0; row < table.rows; row++) {
+                g.setColor(getRowBgColor(row));
+                g.fillRect(tableX + 2, currentY + row * rowHeight, tableWidth - 4, rowHeight);
+            }
+            currentY += table.rows * rowHeight;
+        }
+        
+        // Computed/Sum row background (footer style)
+        g.setColor(getFooterBgColor());
+        g.fillRect(tableX + 2, currentY, tableWidth - 4, rowHeight);
     }
     
     /**
@@ -698,11 +827,11 @@ public class TableRenderer {
         if (isArrowHovered) {
             // Draw a subtle background for the arrow to indicate it's clickable
             Rectangle arrowRect = table.getCollapseArrowRect();
-            g.setColor("#4a4a4a"); // Slightly lighter gray
+            g.setColor(isPrintable() ? "#d0d0d0" : "#4a4a4a"); // Theme-aware hover background
             g.fillRect(arrowRect.x, arrowRect.y, arrowRect.width, arrowRect.height);
             g.setColor(CircuitElm.selectColor); // Make arrow blue when hovering
         } else {
-            g.setColor(CircuitElm.whiteColor);
+            g.setColor(getTextColor());
         }
         
         table.drawCenteredText(g, collapseIndicator, indicatorX, titleY, true);
@@ -710,18 +839,23 @@ public class TableRenderer {
         // Draw title centered at top of table with enhanced font
         g.setFont(TITLE_FONT);
         g.setLetterSpacing(LETTER_SPACING);
-        g.setColor(CircuitElm.whiteColor);
+        g.setColor(getTextColor());
         table.drawCenteredText(g, table.tableTitle, tableX + tableWidth / 2, titleY, true);
         
         // Draw priority on the RIGHT side of the title row
         String priorityText = "P:" + table.priority;
         int priorityX = tableX + tableWidth - 30; // Position near right edge
         g.setFont(HEADER_FONT); // Smaller font for priority
-        g.setColor(CircuitElm.whiteColor);
+        g.setColor(getTextColor());
         table.drawCenteredText(g, priorityText, priorityX, titleY, true);
         
         // Draw grid line at bottom of title row (20 pixels high, not cellHeight)
-        g.setColor(CircuitElm.lightGrayColor);
+        // Modern style uses stronger header border color
+        if (MODERN_STYLE) {
+            g.setColor(getHeaderBorderColor());
+        } else {
+            g.setColor(CircuitElm.lightGrayColor);
+        }
         int titleBottomY = tableY + 20;
         g.drawLine(tableX, titleBottomY, tableX + tableWidth, titleBottomY);
     }
@@ -729,7 +863,7 @@ public class TableRenderer {
     protected void drawColumnHeaders(Graphics g, int offsetY) {
         g.setFont(HEADER_FONT);
         g.setLetterSpacing(LETTER_SPACING);
-        g.setColor(CircuitElm.whiteColor);
+        g.setColor(getTextColor());
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int headerY = tableY + offsetY;
@@ -764,12 +898,77 @@ public class TableRenderer {
             displayHeader = truncateText(displayHeader, g, colWidth - 10);
             
             // Draw header text
-            g.setColor(CircuitElm.whiteColor);
+            g.setColor(getTextColor());
             table.drawCenteredText(g, displayHeader, cellX + colWidth/2, headerY + table.cellHeight/2, true);
         }
         
-        // Draw grid lines for this row
-        drawRowGridLine(g, offsetY, tableX, rowDescColWidth, cellWidthPixels, false);
+        // Draw grid lines for header row - use header border style for stronger separation
+        drawRowGridLineWithStyle(g, offsetY, tableX, rowDescColWidth, cellWidthPixels, false, true);
+    }
+    
+    /**
+     * Draw grid lines for a row with optional header-style border
+     * @param isHeaderRow if true, uses stronger header border color for bottom line
+     */
+    private void drawRowGridLineWithStyle(Graphics g, int offsetY, int tableX, int rowDescColWidth, int cellWidthPixels, boolean isSumRow, boolean isHeaderRow) {
+        int tableY = table.getTableY();
+        int rowY = tableY + offsetY;
+        int tableWidth = rowDescColWidth + table.cellSpacing + getTotalDataColumnsWidth(cellWidthPixels);
+        
+        // Set appropriate color
+        if (MODERN_STYLE) {
+            g.setColor(getGridLineColor());
+        } else {
+            g.setColor(CircuitElm.lightGrayColor);
+        }
+        
+        // Draw double line above sum row
+        if (isSumRow) {
+            if (MODERN_STYLE) {
+                g.setColor(getHeaderBorderColor());
+            }
+            g.drawLine(tableX, rowY - 2, tableX + tableWidth, rowY - 2);
+            if (MODERN_STYLE) {
+                g.setColor(getGridLineColor());
+            }
+        }
+        
+        // Bottom line - use stronger color for header rows
+        if (MODERN_STYLE && isHeaderRow) {
+            g.setColor(getHeaderBorderColor());
+        }
+        g.drawLine(tableX, rowY + table.cellHeight, tableX + tableWidth, rowY + table.cellHeight);
+        
+        // Reset to grid line color for vertical lines
+        if (MODERN_STYLE) {
+            g.setColor(getGridLineColor());
+        }
+        
+        // Vertical lines
+        g.drawLine(tableX, rowY, tableX, rowY + table.cellHeight);
+        int x = tableX + table.cellSpacing + rowDescColWidth;
+        g.drawLine(x, rowY, x, rowY + table.cellHeight);
+        
+        // Between and after data columns
+        for (int col = 0; col <= table.getCols(); col++) {
+            x = getColumnX(col, tableX, rowDescColWidth, cellWidthPixels);
+            
+            boolean drawDouble = false;
+            if (col > 0 && col < table.getCols()) {
+                ColumnType prevType = table.getColumnType(col - 1);
+                ColumnType currType = table.getColumnType(col);
+                if (prevType != null && currType != null && prevType != currType) {
+                    drawDouble = true;
+                }
+            }
+            
+            if (drawDouble) {
+                g.drawLine(x - 1, rowY, x - 1, rowY + table.cellHeight);
+                g.drawLine(x + 1, rowY, x + 1, rowY + table.cellHeight);
+            } else {
+                g.drawLine(x, rowY, x, rowY + table.cellHeight);
+            }
+        }
     }
     
     protected void drawColumnTypeRow(Graphics g, int offsetY) {
@@ -782,7 +981,7 @@ public class TableRenderer {
         // Draw row description column cell text with header font
         g.setFont(HEADER_FONT);
         g.setLetterSpacing(LETTER_SPACING);
-        g.setColor(CircuitElm.whiteColor);
+        g.setColor(getTextColor());
         table.drawCenteredText(g, "", tableX + table.cellSpacing + rowDescColWidth/2, typeRowY + table.cellHeight/2, true);
         
         // Draw column type cells text - merge adjacent cells with same type
@@ -847,7 +1046,7 @@ public class TableRenderer {
         // Draw row description cell for initial conditions with header font
         g.setFont(HEADER_FONT);
         g.setLetterSpacing(LETTER_SPACING);
-        g.setColor(CircuitElm.whiteColor);
+        g.setColor(getTextColor());
         table.drawCenteredText(g, "Initial", tableX + table.cellSpacing + rowDescColWidth/2, initialRowY + table.cellHeight/2, true);
 
         // Use cell font for values
@@ -902,7 +1101,7 @@ public class TableRenderer {
             // Draw row description text with header font
             g.setFont(HEADER_FONT);
             g.setLetterSpacing(LETTER_SPACING);
-            g.setColor(CircuitElm.whiteColor);
+            g.setColor(getTextColor());
             String rowDesc = (table.rowDescriptions != null && row < table.rowDescriptions.length) ?
                             table.rowDescriptions[row] : "Row" + (row + 1);
             
@@ -1101,7 +1300,12 @@ public class TableRenderer {
         int tableY = table.getTableY();
         int rowY = tableY + offsetY;
         
-        g.setColor(CircuitElm.lightGrayColor);
+        // Modern style uses theme-aware colors
+        if (MODERN_STYLE) {
+            g.setColor(getGridLineColor());
+        } else {
+            g.setColor(CircuitElm.lightGrayColor);
+        }
         int tableWidth = rowDescColWidth + table.cellSpacing + getTotalDataColumnsWidth(cellWidthPixels);
         
         // Horizontal lines (top and bottom of row)
@@ -1161,13 +1365,24 @@ public class TableRenderer {
         int tableY = table.getTableY();
         int rowY = tableY + offsetY;
         
-        g.setColor(CircuitElm.lightGrayColor);
+        // Modern style uses theme-aware colors, stronger border for sum row
+        if (MODERN_STYLE) {
+            g.setColor(isSumRow ? getHeaderBorderColor() : getGridLineColor());
+        } else {
+            g.setColor(CircuitElm.lightGrayColor);
+        }
         int tableWidth = rowDescColWidth + table.cellSpacing + getTotalDataColumnsWidth(cellWidthPixels);
         
         // Horizontal lines
-        // Draw double line above sum row
+        // Draw double line above sum row (stronger separator)
         if (isSumRow) {
+            if (MODERN_STYLE) {
+                g.setColor(getHeaderBorderColor()); // Use stronger color for footer separator
+            }
             g.drawLine(tableX, rowY - 2, tableX + tableWidth, rowY - 2);
+            if (MODERN_STYLE) {
+                g.setColor(getGridLineColor()); // Back to subtle for other lines
+            }
         }
         // Only draw bottom line (top line is drawn by table border or previous row's bottom)
         g.drawLine(tableX, rowY + table.cellHeight, tableX + tableWidth, rowY + table.cellHeight);

@@ -402,6 +402,47 @@ public class TableElm extends ChipElm {
         if (geometryManager != null) {
             geometryManager.setPoints();
         }
+        // Update x2 and y2 to reflect actual table bounds for getCircuitBounds()
+        // This is needed for export as image and center circuit to work correctly
+        updateBoundsForExport();
+    }
+    
+    /**
+     * Update x2 and y2 to match the actual rendered table dimensions.
+     * This is needed because getCircuitBounds() uses x, x2, y, y2 directly,
+     * not the bounding box set by setBbox().
+     */
+    private void updateBoundsForExport() {
+        int cellWidthPixels = getCellWidthPixels();
+        
+        // Row description column width: 1.5x cell width (matches TableRenderer)
+        int rowDescColWidth = cellWidthPixels * 3 / 2;
+        
+        // Calculate total data columns width
+        int totalDataColumnsWidth = 0;
+        for (int c = 0; c < getCols(); c++) {
+            // ALE column is half width (when 4+ columns)
+            boolean isALECol = getCols() >= 4 && c == getCols() - 1;
+            int colWidth = isALECol ? cellWidthPixels / 2 : cellWidthPixels;
+            totalDataColumnsWidth += colWidth + cellSpacing;
+        }
+        totalDataColumnsWidth += cellSpacing; // Extra spacing at end
+        
+        int tableWidth = rowDescColWidth + cellSpacing + totalDataColumnsWidth;
+        
+        // Calculate table height (matching TableRenderer)
+        int titleHeight = 20;
+        int typeRowHeight = collapsedMode ? 0 : (cellHeight + cellSpacing);
+        int headerRowHeight = cellHeight + cellSpacing;
+        int initialRowHeight = (showInitialValues && !collapsedMode) ? (cellHeight + cellSpacing) : 0;
+        int dataRowsHeight = collapsedMode ? 0 : (rows * (cellHeight + cellSpacing));
+        int computedRowHeight = cellHeight + cellSpacing;
+        int tableHeight = titleHeight + typeRowHeight + headerRowHeight + 
+                         initialRowHeight + dataRowsHeight + computedRowHeight;
+        
+        // Update x2 and y2 for getCircuitBounds()
+        x2 = x + tableWidth;
+        y2 = y + tableHeight;
     }
 
     // Helper method to get table origin coordinates

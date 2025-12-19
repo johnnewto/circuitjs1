@@ -145,7 +145,7 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
         
         g.setFont(HEADER_FONT);
         g.setLetterSpacing(LETTER_SPACING);
-        g.setColor(CircuitElm.whiteColor);
+        g.setColor(getTextColor());
         
         // Draw "Flows↓/Stock Vars →" label in row description column (skip in collapsed mode)
         if (!table.collapsedMode) {
@@ -184,7 +184,7 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
         
         g.setFont(HEADER_FONT);
         g.setLetterSpacing(LETTER_SPACING);
-        g.setColor(CircuitElm.whiteColor);
+        g.setColor(getTextColor());
         
         // Draw empty row description
         table.drawCenteredText(g, "", tableX + table.cellSpacing + rowDescColWidth/2, 
@@ -227,7 +227,7 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
         
         g.setFont(HEADER_FONT);
         g.setLetterSpacing(LETTER_SPACING);
-        g.setColor(CircuitElm.whiteColor);
+        g.setColor(getTextColor());
         
         // Draw "Type:" label in row description column
         table.drawCenteredText(g, "Type:", tableX + table.cellSpacing + rowDescColWidth/2, 

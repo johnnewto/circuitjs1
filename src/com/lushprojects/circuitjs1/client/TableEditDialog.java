@@ -1288,117 +1288,247 @@ import java.util.Map;
     //=== TEXTBOX CREATION METHODS ==================================================
     // =============================================================================
     
+    //=== DUPLICATE VALIDATION =====================================================
+    //=============================================================================
+    
     /**
-     * Check if a flow description is duplicated in another row of the same table
-     * @param name The flow description to check
-     * @param excludeRow The row index to exclude from checking (the row being edited)
-     * @return The row index where duplicate exists, or -1 if no duplicate
+     * Functional interface for getting a name at a given index
      */
-    private int findDuplicateFlowDescription(String name, int excludeRow) {
+    private interface NameProvider {
+        String getName(int index);
+    }
+    
+    /**
+     * Generic duplicate finder - checks if a name exists at another index
+     * @param name The name to check
+     * @param excludeIndex The index to exclude from checking
+     * @param count Total number of items to check
+     * @param nameProvider Function to get name at each index
+     * @param skipPredicate Optional predicate to skip certain indices (e.g., A-L-E column)
+     * @return The index where duplicate exists, or -1 if no duplicate
+     */
+    private int findDuplicate(String name, int excludeIndex, int count, 
+                              NameProvider nameProvider, int skipIndex) {
         if (name == null || name.trim().isEmpty()) {
-            return -1; // Empty names are allowed (not considered duplicates)
+            return -1;
         }
         String trimmedName = name.trim();
-        for (int r = 0; r < dataRows; r++) {
-            if (r == excludeRow) continue;
-            String rowDesc = tableElement.getRowDescription(r);
-            if (rowDesc != null && rowDesc.trim().equalsIgnoreCase(trimmedName)) {
-                return r;
+        for (int i = 0; i < count; i++) {
+            if (i == excludeIndex || i == skipIndex) continue;
+            String existing = nameProvider.getName(i);
+            if (existing != null && existing.trim().equalsIgnoreCase(trimmedName)) {
+                return i;
             }
         }
         return -1;
     }
     
+    /** Check for duplicate flow description in another row */
+    private int findDuplicateFlowDescription(String name, int excludeRow) {
+        return findDuplicate(name, excludeRow, dataRows, 
+            new NameProvider() { public String getName(int i) { return tableElement.getRowDescription(i); } },
+            -1);
+    }
+    
+    /** Check for duplicate stock name in another column (skips A-L-E column) */
+    private int findDuplicateStockName(String name, int excludeCol) {
+        return findDuplicate(name, excludeCol, dataCols,
+            new NameProvider() { public String getName(int i) { return isALEColumn(i) ? null : stockValues[i]; } },
+            -1);
+    }
+    
     /**
-     * Create textbox for editing flow descriptions with bash-style Tab autocomplete
-     * Returns a VerticalPanel containing hint label + textbox (same pattern as cell text boxes)
+     * Rename a flow description in all tables that have the same description at any row.
+     * This propagates the rename across all TableElm instances in the circuit.
      */
-    private VerticalPanel createFlowDescriptionTextBox(final int row) {
-        // Create the completion list from existing flow descriptions (unique names)
-        final java.util.List<String> completionList = createFlowDescriptionCompletionList();
+    private void renameFlowDescriptionInAllTables(String oldDesc, String newDesc) {
+        if (oldDesc == null || oldDesc.equals(newDesc)) return;
+        if (sim == null || sim.elmList == null) return;
         
-        // Create the textbox
-        final TextBox textBox = new TextBox();
-        // Initialize with row description from TableElm
-        String rowDesc = tableElement.getRowDescription(row);
-        textBox.setText(rowDesc != null ? rowDesc : "");
-        textBox.addStyleName("tableFlowInput");
-        textBox.setWidth("100%");
+        int count = 0;
         
-        // Check for duplicate on initial load and highlight if needed
-        int initialDuplicate = findDuplicateFlowDescription(rowDesc, row);
-        if (initialDuplicate >= 0 && rowDesc != null) {
-            textBox.addStyleName("error-input");
-            textBox.setTitle("Duplicate: '" + rowDesc.trim() + "' already exists in row " + (initialDuplicate + 1));
+        for (int i = 0; i < sim.elmList.size(); i++) {
+            CircuitElm ce = sim.elmList.elementAt(i);
+            if (ce instanceof TableElm && ce != tableElement) {
+                TableElm otherTable = (TableElm) ce;
+                int rows = otherTable.getRows();
+                for (int r = 0; r < rows; r++) {
+                    String desc = otherTable.getRowDescription(r);
+                    if (oldDesc.equals(desc)) {
+                        otherTable.setRowDescription(r, newDesc);
+                        count++;
+                    }
+                }
+            }
         }
         
-        // Prevent keyboard events from deleting table element while typing
-        preventKeyboardPropagation(textBox);
-        
-        // Setup autocomplete panel with hint label
+        if (count > 0) {
+            setStatus("✓ Renamed '" + oldDesc + "' → '" + newDesc + "' in " + count + " other table(s)");
+        }
+    }
+    
+    /**
+     * Apply duplicate validation styling to a textbox
+     * @param textBox The textbox to style
+     * @param duplicateIndex The index of the duplicate (-1 if none)
+     * @param name The name being checked
+     * @param itemType "row" or "column" for status message
+     */
+    private void applyDuplicateStyle(TextBox textBox, int duplicateIndex, String name, String itemType) {
+        if (duplicateIndex >= 0 && name != null && !name.trim().isEmpty()) {
+            textBox.addStyleName("error-input");
+            String msg = "Duplicate: '" + name.trim() + "' already exists in " + itemType + " " + (duplicateIndex + 1);
+            textBox.setTitle(msg);
+            setStatus("⚠️ " + msg);
+        } else {
+            textBox.removeStyleName("error-input");
+            textBox.setTitle("");
+        }
+    }
+    
+    //=== TEXTBOX CREATION HELPERS =================================================
+    //=============================================================================
+    
+    /**
+     * Create a container panel with hint label for autocomplete textboxes
+     */
+    private VerticalPanel createAutocompleteContainer(TextBox textBox, Label hintLabel) {
         VerticalPanel container = new VerticalPanel();
         container.setWidth("100%");
-        
-        final Label hintLabel = AutocompleteHelper.createHintLabel();
         container.add(hintLabel);
         container.add(textBox);
-        
-        // Track autocomplete state for this textbox
-        final AutocompleteHelper.AutocompleteState state = new AutocompleteHelper.AutocompleteState();
-        autocompleteStates.put(textBox, state);
-        
-        // Handle Tab for autocomplete and Enter to finish editing
+        return container;
+    }
+    
+    /**
+     * Setup common keyboard handlers for textboxes with autocomplete
+     * @param textBox The textbox to configure
+     * @param completionList List of completion options
+     * @param hintLabel Label for showing hints
+     * @param state Autocomplete state
+     * @param useSimpleCompletion true for whole-text matching, false for word-level
+     * @param onEnter Optional action to run on Enter key (after blur)
+     */
+    private void setupAutocompleteHandlers(final TextBox textBox, 
+                                           final java.util.List<String> completionList,
+                                           final Label hintLabel,
+                                           final AutocompleteHelper.AutocompleteState state,
+                                           final boolean useSimpleCompletion,
+                                           final Runnable onEnter) {
+        // Tab key: cycle through completions, Enter key: finish editing
         textBox.addKeyDownHandler(new KeyDownHandler() {
             public void onKeyDown(KeyDownEvent event) {
                 if (event.getNativeKeyCode() == KeyCodes.KEY_TAB) {
                     event.preventDefault();
-                    AutocompleteHelper.handleSimpleTabCompletion(textBox, completionList, hintLabel, state);
+                    event.stopPropagation();
+                    if (useSimpleCompletion) {
+                        AutocompleteHelper.handleSimpleTabCompletion(textBox, completionList, hintLabel, state);
+                    } else {
+                        AutocompleteHelper.handleTabCompletion(textBox, completionList, hintLabel, state);
+                    }
                 } else if (event.getNativeKeyCode() == KeyCodes.KEY_ENTER) {
                     event.preventDefault();
-                    hintLabel.setVisible(false);
                     state.reset();
+                    hintLabel.setVisible(false);
                     textBox.setFocus(false);
+                    if (onEnter != null) {
+                        onEnter.run();
+                    }
                 }
             }
         });
         
-        // Handle text changes for real-time match display
+        // Show matches in real-time while typing
         textBox.addKeyPressHandler(new KeyPressHandler() {
             public void onKeyPress(KeyPressEvent event) {
-                // Schedule update after character is inserted
                 com.google.gwt.core.client.Scheduler.get().scheduleDeferred(
                     new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
                         public void execute() {
-                            AutocompleteHelper.updateSimpleMatchDisplay(textBox, completionList, hintLabel, state);
+                            if (useSimpleCompletion) {
+                                AutocompleteHelper.updateSimpleMatchDisplay(textBox, completionList, hintLabel, state);
+                            } else {
+                                AutocompleteHelper.updateMatchDisplay(textBox, completionList, hintLabel, state);
+                            }
                         }
                     }
                 );
             }
         });
+    }
+    
+    /** Add select-all-on-focus behavior to a textbox */
+    private void addSelectAllOnFocus(final TextBox textBox) {
+        textBox.addFocusHandler(new FocusHandler() {
+            public void onFocus(FocusEvent event) {
+                textBox.selectAll();
+            }
+        });
+    }
+    
+    //=== TEXTBOX CREATION METHODS ==================================================
+    // =============================================================================
+    
+    /**
+     * Create textbox for editing flow descriptions with bash-style Tab autocomplete
+     */
+    private VerticalPanel createFlowDescriptionTextBox(final int row) {
+        final java.util.List<String> completionList = createFlowDescriptionCompletionList();
         
+        // Create and configure textbox
+        final TextBox textBox = new TextBox();
+        String rowDesc = tableElement.getRowDescription(row);
+        textBox.setText(rowDesc != null ? rowDesc : "");
+        textBox.addStyleName("tableFlowInput");
+        textBox.setWidth("100%");
+        
+        // Track original value for rename propagation
+        final String[] originalDesc = new String[] { rowDesc };
+        
+        // Check for initial duplicate
+        int initialDuplicate = findDuplicateFlowDescription(rowDesc, row);
+        if (initialDuplicate >= 0 && rowDesc != null) {
+            applyDuplicateStyle(textBox, initialDuplicate, rowDesc, "row");
+        }
+        
+        preventKeyboardPropagation(textBox);
+        
+        // Setup autocomplete
+        final Label hintLabel = AutocompleteHelper.createHintLabel();
+        final AutocompleteHelper.AutocompleteState state = new AutocompleteHelper.AutocompleteState();
+        autocompleteStates.put(textBox, state);
+        
+        setupAutocompleteHandlers(textBox, completionList, hintLabel, state, true, null);
+        
+        // Track changes with duplicate validation
         textBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
                 String newDesc = textBox.getText();
-                int duplicateRow = findDuplicateFlowDescription(newDesc, row);
-                
-                if (duplicateRow >= 0) {
-                    // Show warning - duplicate found
-                    textBox.addStyleName("error-input");
-                    textBox.setTitle("Duplicate: '" + newDesc.trim() + "' already exists in row " + (duplicateRow + 1));
-                    setStatus("⚠️ Duplicate flow description: '" + newDesc.trim() + "' exists in row " + (duplicateRow + 1));
-                } else {
-                    // No duplicate - clear warning
-                    textBox.removeStyleName("error-input");
-                    textBox.setTitle("");
-                }
-                // Store flow description in TableElm's rowDescriptions
+                applyDuplicateStyle(textBox, findDuplicateFlowDescription(newDesc, row), newDesc, "row");
                 tableElement.setRowDescription(row, newDesc);
                 textBox.addStyleName("modified");
                 markChanged();
             }
         });
         
-        return container;
+        // Propagate rename to all tables on blur
+        textBox.addBlurHandler(new BlurHandler() {
+            public void onBlur(BlurEvent event) {
+                String newDesc = textBox.getText();
+                if (originalDesc[0] != null && !originalDesc[0].equals(newDesc)) {
+                    renameFlowDescriptionInAllTables(originalDesc[0], newDesc);
+                    originalDesc[0] = newDesc; // Update for next edit
+                }
+            }
+        });
+        
+        // Update original on focus (in case value was changed externally)
+        textBox.addFocusHandler(new FocusHandler() {
+            public void onFocus(FocusEvent event) {
+                originalDesc[0] = textBox.getText();
+            }
+        });
+        
+        return createAutocompleteContainer(textBox, hintLabel);
     }
     
     private Button createButton(String symbol, String tooltip) {
@@ -1409,112 +1539,40 @@ import java.util.Map;
     }
     
     /**
-     * Check if a stock name is duplicated in another column of the same table
-     * @param name The stock name to check
-     * @param excludeCol The column index to exclude from checking (the column being edited)
-     * @return The column index where duplicate exists, or -1 if no duplicate
-     */
-    private int findDuplicateStockName(String name, int excludeCol) {
-        if (name == null || name.trim().isEmpty()) {
-            return -1; // Empty names are allowed (not considered duplicates)
-        }
-        String trimmedName = name.trim();
-        for (int c = 0; c < dataCols; c++) {
-            if (c == excludeCol) continue;
-            if (isALEColumn(c)) continue; // Skip A-L-E column
-            if (stockValues[c] != null && stockValues[c].trim().equalsIgnoreCase(trimmedName)) {
-                return c;
-            }
-        }
-        return -1;
-    }
-    
-    /**
      * Create TextBox for editing stock values (column headers) with bash-style Tab autocomplete
-     * Returns a VerticalPanel containing hint label + textbox (same pattern as cell text boxes)
      */
     private VerticalPanel createStockValueTextBox(final int col) {
-        // Create the completion list from all available stock names
         final java.util.List<String> completionList = createStockNameCompletionList();
         
-        // Create the textbox
+        // Create and configure textbox
         final TextBox textBox = new TextBox();
-        textBox.setText(stockValues[col]); // Initialize with current value
+        textBox.setText(stockValues[col]);
         textBox.addStyleName("tableStockInput");
         textBox.setWidth("100%");
         
-        // Check for duplicate on initial load and highlight if needed
+        // Check for initial duplicate
         int initialDuplicate = findDuplicateStockName(stockValues[col], col);
         if (initialDuplicate >= 0) {
-            textBox.addStyleName("error-input");
-            textBox.setTitle("Duplicate: '" + stockValues[col].trim() + "' already exists in column " + (initialDuplicate + 1));
+            applyDuplicateStyle(textBox, initialDuplicate, stockValues[col], "column");
         }
         
-        // Prevent keyboard events from deleting table element while typing
         preventKeyboardPropagation(textBox);
         
-        // Setup autocomplete panel with hint label
-        VerticalPanel container = new VerticalPanel();
-        container.setWidth("100%");
-        
-        // Create hint label (initially hidden, appears when typing)
+        // Setup autocomplete
         final Label hintLabel = AutocompleteHelper.createHintLabel();
-        
-        // Assemble: hint label above textbox
-        container.add(hintLabel);
-        container.add(textBox);
-        
-        // Initialize autocomplete state for this textbox
         final AutocompleteHelper.AutocompleteState state = new AutocompleteHelper.AutocompleteState();
         autocompleteStates.put(textBox, state);
         
-        // Handle Tab key: cycle through completions, Enter key: accept and finish editing
-        textBox.addKeyDownHandler(new KeyDownHandler() {
-            public void onKeyDown(KeyDownEvent event) {
-                if (event.getNativeKeyCode() == KeyCodes.KEY_TAB) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    AutocompleteHelper.handleTabCompletion(textBox, completionList, hintLabel, state);
-                } else if (event.getNativeKeyCode() == KeyCodes.KEY_ENTER) {
-                    event.preventDefault();
-                    // Accept current selection: reset state and hide hint
-                    state.reset();
-                    hintLabel.setVisible(false);
-                    textBox.setFocus(false);
-                }
-            }
-        });
+        setupAutocompleteHandlers(textBox, completionList, hintLabel, state, false, null);
         
-        // Handle typing: show matches in real-time
-        textBox.addKeyPressHandler(new KeyPressHandler() {
-            public void onKeyPress(KeyPressEvent event) {
-                // Wait for character to be added to textbox, then update display
-                com.google.gwt.core.client.Scheduler.get().scheduleDeferred(
-                    new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
-                        public void execute() {
-                            AutocompleteHelper.updateMatchDisplay(textBox, completionList, hintLabel, state);
-                        }
-                    }
-                );
-            }
-        });
-        
-        // Add key up handler to track changes with duplicate validation
+        // Track changes with duplicate validation
         textBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
                 String newName = textBox.getText();
                 int duplicateCol = findDuplicateStockName(newName, col);
+                applyDuplicateStyle(textBox, duplicateCol, newName, "column");
                 
-                if (duplicateCol >= 0) {
-                    // Show warning - duplicate found
-                    textBox.addStyleName("error-input");
-                    textBox.setTitle("Duplicate: '" + newName.trim() + "' already exists in column " + (duplicateCol + 1));
-                    setStatus("⚠️ Duplicate stock name: '" + newName.trim() + "' exists in column " + (duplicateCol + 1));
-                } else {
-                    // No duplicate - clear warning
-                    textBox.removeStyleName("error-input");
-                    textBox.setTitle("");
-                    // Store stock value name
+                if (duplicateCol < 0) {
                     stockValues[col] = newName;
                     textBox.addStyleName("modified");
                     markChanged();
@@ -1522,23 +1580,33 @@ import java.util.Map;
             }
         });
         
-        // Select all on focus
-        textBox.addFocusHandler(new FocusHandler() {
-            public void onFocus(FocusEvent event) {
-                textBox.selectAll();
-            }
-        });
-        
-        return container;
+        addSelectAllOnFocus(textBox);
+        return createAutocompleteContainer(textBox, hintLabel);
     }
 
-    /**
-     * Create completion list for flow descriptions (unique row names from all tables)
-     */
+    //=== COMPLETION LIST BUILDERS =================================================
+    //=============================================================================
+    
+    /** Helper to add unique non-empty items to a list */
+    private void addUnique(java.util.List<String> list, String item) {
+        if (item != null && !item.trim().isEmpty() && !list.contains(item.trim())) {
+            list.add(item.trim());
+        }
+    }
+    
+    /** Helper to add all items from a set to a list (unique) */
+    private void addAllUnique(java.util.List<String> list, java.util.Set<String> items) {
+        if (items != null) {
+            for (String item : items) {
+                addUnique(list, item);
+            }
+        }
+    }
+    
+    /** Create completion list for flow descriptions (unique row names from all tables) */
     private java.util.List<String> createFlowDescriptionCompletionList() {
         java.util.List<String> list = new java.util.ArrayList<String>();
         
-        // Gather flow descriptions from all tables
         if (sim != null && sim.elmList != null) {
             for (int i = 0; i < sim.elmList.size(); i++) {
                 CircuitElm elm = sim.elmList.elementAt(i);
@@ -1546,10 +1614,9 @@ import java.util.Map;
                     TableElm table = (TableElm) elm;
                     for (int r = 0; r < table.getRows(); r++) {
                         String flowDesc = table.getRowDescription(r);
-                        if (flowDesc != null && !flowDesc.trim().isEmpty() 
-                            && !flowDesc.startsWith("Row")  // Skip default "Row1", "Row2", etc.
-                            && !list.contains(flowDesc)) {
-                            list.add(flowDesc);
+                        // Skip default "Row1", "Row2", etc.
+                        if (flowDesc != null && !flowDesc.startsWith("Row")) {
+                            addUnique(list, flowDesc);
                         }
                     }
                 }
@@ -1560,23 +1627,14 @@ import java.util.Map;
         return list;
     }
     
-    /**
-     * Create completion list for stock names (used by stock value autocomplete)
-     */
+    /** Create completion list for stock names */
     private java.util.List<String> createStockNameCompletionList() {
         java.util.List<String> list = new java.util.ArrayList<String>();
         
-        // Add all registered stock names
-        java.util.Set<String> stockNames = StockFlowRegistry.getAllStockNames();
-        if (stockNames != null && !stockNames.isEmpty()) {
-            for (String stockName : stockNames) {
-                if (!list.contains(stockName)) {
-                    list.add(stockName);
-                }
-            }
-        }
+        // Add registered stock names
+        addAllUnique(list, StockFlowRegistry.getAllStockNames());
         
-        // Add stock names from all tables (including non-registered ones)
+        // Add stock names from all tables
         if (sim != null && sim.elmList != null) {
             for (int i = 0; i < sim.elmList.size(); i++) {
                 CircuitElm elm = sim.elmList.elementAt(i);
@@ -1584,10 +1642,8 @@ import java.util.Map;
                     TableElm table = (TableElm) elm;
                     for (int c = 0; c < table.getCols(); c++) {
                         String header = table.getColumnHeader(c);
-                        if (header != null && !header.trim().isEmpty() && !header.equals("A-L-E")) {
-                            if (!list.contains(header.trim())) {
-                                list.add(header.trim());
-                            }
+                        if (header != null && !header.equals("A-L-E")) {
+                            addUnique(list, header);
                         }
                     }
                 }
@@ -1606,10 +1662,9 @@ import java.util.Map;
         textBox.setText(Double.toString(initialValues[col]));
         textBox.addStyleName("tableInitialInput");
         
-        // Prevent keyboard events from deleting table element while typing
         preventKeyboardPropagation(textBox);
         
-        // Handle Enter key to finish editing
+        // Enter key finishes editing
         textBox.addKeyDownHandler(new KeyDownHandler() {
             public void onKeyDown(KeyDownEvent event) {
                 if (event.getNativeKeyCode() == KeyCodes.KEY_ENTER) {
@@ -1619,48 +1674,37 @@ import java.util.Map;
             }
         });
         
+        // Parse and validate numeric input
         textBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
                 try {
-                    double value = Double.parseDouble(textBox.getText());
-                    initialValues[col] = value;
+                    initialValues[col] = Double.parseDouble(textBox.getText());
                     textBox.removeStyleName("error");
-                    
-                    // Recalculate A_L_E initial value when any initial value changes
                     updateALEColumns();
                 } catch (NumberFormatException e) {
                     textBox.addStyleName("error");
-                    // Don't update the value if it's not valid
                 }
                 textBox.addStyleName("modified");
                 markChanged();
             }
         });
         
-        textBox.addFocusHandler(new FocusHandler() {
-            public void onFocus(FocusEvent event) {
-                textBox.selectAll();
-            }
-        });
-        
+        addSelectAllOnFocus(textBox);
         return textBox;
     }
     
     /**
-     * Create textbox for editing cell equations with autocomplete (bash-style Tab completion)
-     * Returns a VerticalPanel containing hint label + textbox
-     * Non-master columns are editable and changes propagate to the master table
+     * Create textbox for editing cell equations with autocomplete
+     * Non-master columns sync changes to the master table
      */
     private VerticalPanel createCellTextBox(final int row, final int col) {
-        // Check if this column is a master column (editable) or non-master (synced from master)
         final boolean isMaster = isMasterColumn(col);
         final String stockName = stockValues[col];
-        final TableElm masterTable = isMaster ? null : ComputedValues.getMasterTable(stockName != null ? stockName.trim() : "");
-        
-        // Create the completion list from all available variables
+        final TableElm masterTable = isMaster ? null : 
+            ComputedValues.getMasterTable(stockName != null ? stockName.trim() : "");
         final java.util.List<String> completionList = createCompletionList();
         
-        // Create the textbox
+        // Create and configure textbox
         final TextBox textBox = new TextBox();
         textBox.setText(cellData[row][col]);
         textBox.addStyleName("tableCellInput");
@@ -1669,96 +1713,49 @@ import java.util.Map;
         // Style non-master columns to indicate they sync to master
         if (!isMaster && masterTable != null) {
             textBox.addStyleName("synced-column");
-            String masterTableName = masterTable.getTableTitle();
-            textBox.setTitle("Synced: Changes update master table '" + masterTableName + "' and all related tables");
+            textBox.setTitle("Synced: Changes update master table '" + masterTable.getTableTitle() + "' and all related tables");
         }
         
-        // Prevent keyboard events from deleting table element while typing
         preventKeyboardPropagation(textBox);
         
-        // Setup autocomplete panel with hint label
-        VerticalPanel container = new VerticalPanel();
-        container.setWidth("100%");
-        
-        // Create hint label (initially hidden, appears when typing)
+        // Setup autocomplete
         final Label hintLabel = AutocompleteHelper.createHintLabel();
-        
-        // Assemble: hint label above textbox
-        container.add(hintLabel);
-        container.add(textBox);
-        
-        // Initialize autocomplete state for this textbox
         final AutocompleteHelper.AutocompleteState state = new AutocompleteHelper.AutocompleteState();
         autocompleteStates.put(textBox, state);
         
-        // Handle Tab key: cycle through completions, Enter key: accept and finish editing
-        textBox.addKeyDownHandler(new KeyDownHandler() {
-            public void onKeyDown(KeyDownEvent event) {
-                if (event.getNativeKeyCode() == KeyCodes.KEY_TAB) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    AutocompleteHelper.handleTabCompletion(textBox, completionList, hintLabel, state);
-                } else if (event.getNativeKeyCode() == KeyCodes.KEY_ENTER) {
-                    event.preventDefault();
-                    // Accept current selection: reset state and hide hint
-                    state.reset();
-                    hintLabel.setVisible(false);
-                    textBox.setFocus(false);
-                    // Sync changes - if non-master, update master first
-                    if (!isMaster && masterTable != null) {
-                        updateMasterAndSync(masterTable, stockName, row, col, textBox.getText());
-                    } else {
-                        syncMasterToRelatedTables();
-                    }
-                }
-            }
-        });
-        
-        // Handle typing: show matches in real-time and validate symbols
-        textBox.addKeyPressHandler(new KeyPressHandler() {
-            public void onKeyPress(KeyPressEvent event) {
-                // Wait for character to be added to textbox, then update display
-                com.google.gwt.core.client.Scheduler.get().scheduleDeferred(
-                    new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
-                        public void execute() {
-                            AutocompleteHelper.updateMatchDisplay(textBox, completionList, hintLabel, state);
-                        }
-                    }
-                );
-            }
-        });
-        
-        // Add key up handler to track changes
-        textBox.addKeyUpHandler(new KeyUpHandler() {
-            public void onKeyUp(KeyUpEvent event) {
-                cellData[row][col] = textBox.getText();
-                textBox.addStyleName("modified");
-                markChanged();
-                
-                // Recalculate A_L_E columns when any cell changes
-                updateALEColumns();
-            }
-        });
-        
-        // Select all on focus
-        textBox.addFocusHandler(new FocusHandler() {
-            public void onFocus(FocusEvent event) {
-                textBox.selectAll();
-            }
-        });
-        
-        // Sync to related tables when focus leaves the cell
-        textBox.addBlurHandler(new BlurHandler() {
-            public void onBlur(BlurEvent event) {
+        // Sync action for Enter/Blur
+        final Runnable syncAction = new Runnable() {
+            public void run() {
                 if (!isMaster && masterTable != null) {
                     updateMasterAndSync(masterTable, stockName, row, col, textBox.getText());
                 } else {
                     syncMasterToRelatedTables();
                 }
             }
+        };
+        
+        setupAutocompleteHandlers(textBox, completionList, hintLabel, state, false, syncAction);
+        
+        // Track changes
+        textBox.addKeyUpHandler(new KeyUpHandler() {
+            public void onKeyUp(KeyUpEvent event) {
+                cellData[row][col] = textBox.getText();
+                textBox.addStyleName("modified");
+                markChanged();
+                updateALEColumns();
+            }
         });
         
-        // Validate immediately on creation - show only undefined symbols
+        addSelectAllOnFocus(textBox);
+        
+        // Sync on blur
+        textBox.addBlurHandler(new BlurHandler() {
+            public void onBlur(BlurEvent event) {
+                syncAction.run();
+            }
+        });
+        
+        // Validate on creation
         com.google.gwt.core.client.Scheduler.get().scheduleDeferred(
             new com.google.gwt.core.client.Scheduler.ScheduledCommand() {
                 public void execute() {
@@ -1767,67 +1764,46 @@ import java.util.Map;
             }
         );
         
-        return container;
+        return createAutocompleteContainer(textBox, hintLabel);
     }
     
     //=== AUTOCOMPLETE HELPER METHODS ==============================================
     //=============================================================================
     
-    /**
-     * Create completion list from all available variables
-     */
+    /** Math functions and constants available in expressions */
+    private static final String[] BUILTIN_FUNCTIONS = {
+        "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
+        "exp", "log", "log10", "sqrt", "abs", "floor", "ceil",
+        "min", "max", "pi", "e", "t"
+    };
+    
+    /** Create completion list from all available variables and functions */
     private java.util.List<String> createCompletionList() {
         java.util.List<String> list = new java.util.ArrayList<String>();
         
         // Add labeled node names
-        if (LabeledNodeElm.labelList != null && !LabeledNodeElm.labelList.isEmpty()) {
+        if (LabeledNodeElm.labelList != null) {
             for (String labelName : LabeledNodeElm.labelList.keySet()) {
-                list.add(labelName);
+                addUnique(list, labelName);
             }
         }
         
-        // Add stock variables (column headers from this and other tables)
-        java.util.Set<String> stockNames = StockFlowRegistry.getAllStockNames();
-        if (stockNames != null && !stockNames.isEmpty()) {
-            for (String stockName : stockNames) {
-                if (!list.contains(stockName)) {
-                    list.add(stockName);
-                }
-            }
-        }
+        // Add registered stock and cell equation variables
+        addAllUnique(list, StockFlowRegistry.getAllStockNames());
+        addAllUnique(list, StockFlowRegistry.getAllCellEquationVariables());
         
-        // Add variables used in cell equations
-        java.util.Set<String> cellVariables = StockFlowRegistry.getAllCellEquationVariables();
-        if (cellVariables != null && !cellVariables.isEmpty()) {
-            for (String varName : cellVariables) {
-                if (!list.contains(varName)) {
-                    list.add(varName);
-                }
-            }
-        }
-        
-        // Add current table's stock values (excluding A-L-E computed column)
+        // Add current table's stock values (excluding A-L-E)
         if (stockValues != null) {
             for (int col = 0; col < stockValues.length; col++) {
-                // Skip A-L-E column - it's computed, not a real stock
-                if (isALEColumn(col)) {
-                    continue;
-                }
-                String stock = stockValues[col];
-                if (stock != null && !stock.trim().isEmpty() && !list.contains(stock)) {
-                    list.add(stock);
+                if (!isALEColumn(col)) {
+                    addUnique(list, stockValues[col]);
                 }
             }
         }
         
         // Add math functions and constants
-        String[] builtIns = {"sin", "cos", "tan", "asin", "acos", "atan", "atan2",
-                            "exp", "log", "log10", "sqrt", "abs", "floor", "ceil",
-                            "min", "max", "pi", "e", "t"};
-        for (String fn : builtIns) {
-            if (!list.contains(fn)) {
-                list.add(fn);
-            }
+        for (String fn : BUILTIN_FUNCTIONS) {
+            addUnique(list, fn);
         }
         
         return list;
