@@ -158,14 +158,58 @@ Or simply remove/comment out the script block.
 
 ## Privacy & Security
 
-When deploying to GitHub Pages, the Cloudflare Worker URL is visible in the HTML source. This only exposes:
+### What's Publicly Visible
 
-- ✅ The worker URL (public endpoint)
-- ❌ NOT your Cloudflare account credentials
-- ❌ NOT your API keys
-- ❌ NOT the worker source code
+When deploying to GitHub Pages, the Cloudflare Worker URL is visible in the HTML source:
+
+| Item | Visible in Source? | Security Risk |
+|------|-------------------|---------------|
+| Cloudflare Worker URL | ✅ Yes | **Low** - It's a public endpoint |
+| Cloudflare account credentials | ❌ No | None |
+| Cloudflare API keys | ❌ No | None |
+| Worker source code | ❌ No | None |
 
 The worker can only shorten URLs - it has no access to your Cloudflare account.
+
+### Potential Concerns
+
+#### 1. Quota Abuse (Low Risk)
+
+Anyone who views your `circuitjs.html` source can call your Cloudflare Worker, potentially using your 100K free requests/day quota.
+
+**Mitigation:** Add origin checking to your worker:
+
+```javascript
+export default {
+  async fetch(request) {
+    // Only allow requests from your domains
+    const origin = request.headers.get('Origin');
+    const allowedOrigins = [
+      'https://johnnewto.github.io',
+      'http://localhost:8000',
+      'http://127.0.0.1:8000'
+    ];
+    
+    if (origin && !allowedOrigins.includes(origin)) {
+      return new Response('Forbidden', { status: 403 });
+    }
+    
+    // ... rest of the shortener code
+  }
+};
+```
+
+#### 2. Shortened URLs Always Point to Your Domain (No Risk)
+
+The worker hardcodes your GitHub Pages URL as the base, so shortened URLs always point to your site. An attacker cannot use your worker to shorten arbitrary URLs.
+
+#### 3. No Sensitive Data Transmitted (No Risk)
+
+The worker only sends circuit data (already public in the URL) to tinyurl.com. No user credentials or private data are involved.
+
+### Security Verdict: ✅ Reasonably Secure
+
+The architecture is safe. The only consideration is potential quota abuse, which can be mitigated with origin checking if needed.
 
 ## Costs
 

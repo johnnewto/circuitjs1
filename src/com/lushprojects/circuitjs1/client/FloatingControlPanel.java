@@ -21,6 +21,7 @@ package com.lushprojects.circuitjs1.client;
 
 import com.lushprojects.circuitjs1.client.util.Locale;
 
+import com.google.gwt.core.client.GWT;
 import com.google.gwt.core.client.Scheduler;
 import com.google.gwt.dom.client.Element;
 import com.google.gwt.dom.client.Style;
@@ -28,7 +29,14 @@ import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.MouseDownEvent;
 import com.google.gwt.event.dom.client.MouseMoveEvent;
 import com.google.gwt.event.dom.client.MouseUpEvent;
+import com.google.gwt.http.client.Request;
+import com.google.gwt.http.client.RequestBuilder;
+import com.google.gwt.http.client.RequestCallback;
+import com.google.gwt.http.client.RequestException;
+import com.google.gwt.http.client.Response;
+import com.google.gwt.http.client.URL;
 import com.google.gwt.user.client.Window;
+import com.google.gwt.user.client.Window.Location;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.HorizontalPanel;
 import com.google.gwt.user.client.ui.RootPanel;
@@ -150,7 +158,128 @@ public class FloatingControlPanel {
             else
                 Graphics.viewFullScreen();
         });
+        
+        // Share button - create short URL and copy to clipboard
+        if (isShortUrlSupported()) {
+            createIconButton("cirjsicon-export", "Share Circuit (Copy Short URL)", e -> {
+                shareCircuit((Button) e.getSource());
+            });
+        }
     }
+    
+    /** Check if short URL feature is supported (configured in circuitjs.html) */
+    private boolean isShortUrlSupported() {
+        return ExportAsUrlDialog.getShortRelayUrl() != null;
+    }
+    
+    /** Share the circuit by creating a short URL and copying to clipboard */
+    private void shareCircuit(Button shareButton) {
+        // Get the circuit dump
+        String dump = sim.dumpCircuit();
+        
+        // Build the URL (same as ExportAsUrlDialog)
+        String[] start = Location.getHref().split("\\?");
+        if (CirSim.isElectron())
+            start[0] = "https://johnnewto.github.io/circuitjs1/circuitjs.html";
+        String query = "?ctz=" + compress(dump) + "&editable=false";
+        String requrl = URL.encodeQueryString(query);
+        
+        // Get relay URL
+        String relayUrl = ExportAsUrlDialog.getShortRelayUrl();
+        if (relayUrl == null)
+            relayUrl = "shortrelay.php";
+        String url = relayUrl + "?v=" + requrl;
+        
+        // Update button to show loading state
+        String originalHtml = shareButton.getHTML();
+        shareButton.setHTML("<i class=\"cirjsicon-cw share-spinner\"></i>");
+        shareButton.setEnabled(false);
+        
+        // Make the request
+        RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, url);
+        try {
+            requestBuilder.sendRequest(null, new RequestCallback() {
+                public void onError(Request request, Throwable exception) {
+                    GWT.log("Share Error", exception);
+                    shareButton.setHTML(originalHtml);
+                    shareButton.setEnabled(true);
+                    Window.alert(Locale.LS("Failed to create short URL"));
+                }
+
+                public void onResponseReceived(Request request, Response response) {
+                    shareButton.setHTML(originalHtml);
+                    shareButton.setEnabled(true);
+                    
+                    if (response.getStatusCode() == Response.SC_OK) {
+                        String shortUrl = response.getText().trim();
+                        copyToClipboard(shortUrl);
+                        showShareNotification(shortUrl);
+                    } else {
+                        Window.alert(Locale.LS("Shortener error: ") + response.getStatusText());
+                    }
+                }
+            });
+        } catch (RequestException e) {
+            GWT.log("Share request failed", e);
+            shareButton.setHTML(originalHtml);
+            shareButton.setEnabled(true);
+            Window.alert(Locale.LS("Failed to create short URL"));
+        }
+    }
+    
+    /** Show a toast notification that URL was copied */
+    private void showShareNotification(String shortUrl) {
+        // Create toast notification element
+        com.google.gwt.dom.client.DivElement toast = 
+            com.google.gwt.dom.client.Document.get().createDivElement();
+        toast.setInnerHTML("<i class=\"cirjsicon-export\"></i>&nbsp;" + 
+            Locale.LS("Short URL copied!") + " <span class=\"toast-url\">" + shortUrl + "</span>");
+        toast.setClassName("toast-notification");
+        
+        com.google.gwt.dom.client.BodyElement body = 
+            com.google.gwt.dom.client.Document.get().getBody();
+        body.appendChild(toast);
+        
+        // Remove after animation completes (3 seconds)
+        com.google.gwt.user.client.Timer timer = new com.google.gwt.user.client.Timer() {
+            @Override
+            public void run() {
+                toast.removeFromParent();
+            }
+        };
+        timer.schedule(3500);
+    }
+    
+    /** Compress circuit data using LZString (same as ExportAsUrlDialog) */
+    private native String compress(String dump) /*-{
+        return $wnd.LZString.compressToEncodedURIComponent(dump);
+    }-*/;
+    
+    /** Copy text to clipboard */
+    private native void copyToClipboard(String text) /*-{
+        // Use the fallback method which is more reliable
+        var textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";  // Avoid scrolling to bottom
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.width = "2em";
+        textArea.style.height = "2em";
+        textArea.style.padding = "0";
+        textArea.style.border = "none";
+        textArea.style.outline = "none";
+        textArea.style.boxShadow = "none";
+        textArea.style.background = "transparent";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            document.execCommand('copy');
+        } catch (err) {
+            console.error('Failed to copy to clipboard:', err);
+        }
+        document.body.removeChild(textArea);
+    }-*/;
     
     /** Create a text button. */
     private Button createButton(String text, String style, ClickHandler handler) {

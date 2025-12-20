@@ -109,7 +109,7 @@ public class ExportAsUrlDialog extends Dialog {
 		closeOnEnter = false;
 		String start[] = Location.getHref().split("\\?");
 		if (CirSim.theSim.isElectron())
-		    start[0] = "https://www.falstad.com/circuit/circuitjs.html";
+		    start[0] = "https://johnnewto.github.io/circuitjs1/circuitjs.html";
 		String query="?ctz=" + compress(dump) + "&editable=false";
 		dump = start[0] + query;
 		requrl = URL.encodeQueryString(query);
