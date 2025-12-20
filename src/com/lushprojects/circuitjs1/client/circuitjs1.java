@@ -40,7 +40,7 @@ public class circuitjs1 implements EntryPoint {
 
     // Set to true if the server runs the shortrelay.php file in the same directory
     // as the circuit simulator
-    public static final boolean shortRelaySupported = true;
+    public static final boolean shortRelaySupported = false;
 
     static CirSim mysim;
 

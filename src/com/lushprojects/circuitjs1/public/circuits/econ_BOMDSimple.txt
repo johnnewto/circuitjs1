@@ -1,49 +1,48 @@
-$ 1 0.05 0.34903429574618416 50 5 50 5e-11
-255 112 144 208 144 0 3 4 6 16 0 true 2 true Banks \0 Loans Deposits Banks_e A-L-E Banks\sLoans Interest\spayments Bank\sSpending 100 90 10 0 ASSET LIABILITY EQUITY ASSET Credit Credit \0 \0 \0 -Interest Interest \0 \0 Spend_banks Spend_banks \0 0.001
-255 624 144 720 144 0 3 4 6 16 0 true 2 false Non-Bank\sPrivate\sSector \0 Deposits Loans Private_e A-L-E Banks\sLoans Interest\spayments Bank\sSpending 90 100 -10 0 ASSET LIABILITY EQUITY ASSET Credit Credit \0 \0 -Interest \0 -Interest \0 Spend_banks \0 Spend_banks \0 0.001
+$ 3 0.05 0.34903429574618416 50 5 50 5e-11
+% voltageUnit $
+255 112 144 592 276 0 3 4 6 16 0 true 2 1 false 5 0 true Banks \0 Loans Deposits Banks_e A-L-E Banks\sLoans Interest\spayments Bank\sSpending 100 90 10 0 ASSET LIABILITY EQUITY COMPUTED Credit Credit \0 \0 \0 -Interest Interest \0 \0 Spend_banks Spend_banks \0 0.001
+255 624 144 1104 276 0 3 4 6 16 0 true 2 0 false 5 0 true Non-Bank\sPrivate\sSector \0 Deposits Loans Private_e A-L-E Banks\sLoans Interest\spayments Bank\sSpending 90 100 -10 0 ASSET LIABILITY EQUITY COMPUTED Credit Credit \0 \0 -Interest \0 -Interest \0 Spend_banks \0 Spend_banks \0 0.001
 207 144 384 96 384 60 Loans
-258 144 384 176 384 3 0.05 Interest_rate
+258 144 384 192 384 3 0.05 Interest_rate
 207 192 384 240 384 60 Interest
 207 560 384 608 384 60 Spend_Banks
-258 512 384 544 384 3 1 freq_Banks
+258 512 384 560 384 3 1 freq_Banks
 207 512 384 464 384 60 Banks_e
-207 976 400 976 368 60 Money
-258 1008 400 1040 400 1 2 Velocity
+207 984 408 984 376 60 Money
+258 1016 408 1064 408 1 2 Velocity
 207 928 400 880 400 60 Deposits
 207 432 672 512 672 60 Deposits
 207 928 416 880 416 60 Banks_e
 207 432 656 512 656 60 Loans
-251 928 400 960 400 1 2
-250 208 576 224 576 1 2 a*b
-w 976 400 1008 400 0
-207 1056 400 1088 400 60 GDP
-207 96 592 48 592 60 GDP
-207 256 576 304 576 60 Credit
-w 96 576 208 576 0
-w 208 592 96 592 0
-207 576 544 528 544 60 GDP
-257 640 560 656 560 1 2 a*(1/(b!\q0?b:1e-9))
-w 576 576 640 576 0
+251 928 408 984 408 3 2
+250 208 576 272 576 3 2
+w 984 408 1016 408 0
+207 1064 408 1096 408 60 GDP
+207 208 584 48 584 60 GDP
+207 272 576 320 576 60 Credit
+w 80 568 208 568 0
+207 576 552 528 552 60 GDP
+257 632 560 688 560 3 2
+w 576 568 632 568 0
 w 688 560 704 560 0
-259 576 544 608 544 1 1 dadt
-w 640 560 624 544 0
-w 576 544 576 576 0
-x 480 351 642 354 4 24 Bank\sSpending
-x 809 354 881 357 4 24 Money
-x 71 355 264 358 4 24 Interest\sPayments
-x 1080 381 1271 384 4 16 GDP\sfrom\sMoney\sTurnover
-x 506 505 640 508 4 24 Growth\sRate
-x 43 495 329 498 4 24 Credit\sas\sa\sfraction\sof\sGDP
-w 96 560 96 544 0
+259 576 552 632 552 1
+w 576 552 576 568 0
+x 480 351 649 354 4 24 Bank\sSpending 808080FF
+x 809 354 883 357 4 24 Money 808080FF
+x 71 355 272 358 4 24 Interest\sPayments 808080FF
+x 1080 381 1282 384 4 16 GDP\sfrom\sMoney\sTurnover 808080FF
+x 506 505 646 508 4 24 Growth\sRate 808080FF
+x 43 495 343 498 4 24 Credit\sas\sa\sfraction\sof\sGDP 808080FF
+w 80 568 80 544 0
 207 432 688 512 688 60 Banks_e
-258 96 544 128 544 1 100 \0
-w 96 576 96 560 0
+258 80 544 144 544 1 100 \0
 368 144 544 192 544 1 0 Credit%GDP
 368 752 560 800 560 1 0 Growth_rate
-258 704 560 736 560 1 100 \0
-R 96 544 48 544 0 1 0.1 0.2 0 0 0.5 Credit_Ratio
-x 148 94 1001 97 4 20 Model\sshows\sa\ssimple\seconomic\smodel,\sin\swhich\sbank\slending\screates\sboth\sLoans\sand\sDeposits.
-x 140 115 1084 118 4 20 Borrowers\sthen\spay\sinterest,\sand\sthe\sbanks\spurchase\sgoods\sand\sservices\sfrom\sthe\snon-bank\sprivate\ssector.
-o 22 4 0 12290 1120.6149727869388 0.0001 0 2 22 3 GDP
-o 13 4 0 12290 3032.663224543772 0.0001 1 6 13 3 11 0 11 3 36 0 36 3
-o 40 1 0 4098 160 25.6 2 4 40 3 39 0 39 3
+258 704 560 752 560 1 100 \0
+R 80 544 32 544 0 1 0.1 0.2 0 0 0.5 Credit_Ratio
+x 148 94 1047 97 4 20 Model\sshows\sa\ssimple\seconomic\smodel,\sin\swhich\sbank\slending\screates\sboth\sLoans\sand\sDeposits. 808080FF
+x 140 115 1136 118 4 20 Borrowers\sthen\spay\sinterest,\sand\sthe\sbanks\spurchase\sgoods\sand\sservices\sfrom\sthe\snon-bank\sprivate\ssector. 808080FF
+o 21 4 0 12290 881.3390317722849 0.0001 0 2 21 3 GDP
+o 13 4 0 12290 1306.564701702879 0.0001 1 6 13 3 11 0 11 3 34 0 34 3
+o 37 1 0 4098 80 25.6 2 4 37 3 36 0 36 3
+% AST 1 1

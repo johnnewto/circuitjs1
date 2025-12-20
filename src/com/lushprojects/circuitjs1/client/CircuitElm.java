@@ -1025,6 +1025,8 @@ public abstract class CircuitElm implements Editable {
   
 	 if (!sim.simIsRunning())
 	    return cc;
+	 if (cur == 0)
+	    return 0;
 	double cadd = cur*currentMult;
 	if (cadd > 6 || cadd < -6)
 	    return CURRENT_TOO_FAST;

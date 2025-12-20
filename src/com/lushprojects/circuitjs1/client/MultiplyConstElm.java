@@ -159,10 +159,6 @@ class MultiplyConstElm extends CircuitElm {
         sim.stampVoltageSource(nodes[1], 0, voltSource);
         // stampVCVS makes it controlled by the input voltage with gain coefficient
         sim.stampVCVS(nodes[0], 0, effectiveGain, voltSource);
-        
-        // Add high-value resistor from input to ground to prevent floating node
-        // This is needed because VCVS measures voltage but doesn't provide DC path
-        sim.stampResistor(nodes[0], 0, 1e8);
     }
     
     boolean showAsPercent() {

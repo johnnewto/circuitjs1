@@ -10,6 +10,11 @@ package com.lushprojects.circuitjs1.client;
 class DifferentiatorElm extends CircuitElm {
     final int FLAG_SMALL = 1;
     
+    // Minimum value to prevent numerical instability
+    static final double MIN_VALUE = 1e-9;
+    // Maximum derivative magnitude to prevent solver instability
+    static final double MAX_DERIVATIVE = 1e6;
+    
     int opsize, opheight, opwidth;
     Point inPost, inLead;
     Polygon bodyPoly;
@@ -148,7 +153,9 @@ class DifferentiatorElm extends CircuitElm {
             double v0 = expr.eval(exprState);
             
             // Check output voltage convergence (relaxed threshold for derivative calculation)
-            if (Math.abs(volts[1] - v0) > Math.abs(v0) * 0.01 && sim.subIterations < 100) {
+            double outputDelta = Math.abs(volts[1] - v0);
+            double tolerance = Math.max(Math.abs(v0) * 0.01, MIN_VALUE);
+            if (outputDelta > tolerance && sim.subIterations < 100) {
                 sim.converged = false;
             }
             
@@ -163,8 +170,13 @@ class DifferentiatorElm extends CircuitElm {
             exprState.values[0] = volts[0] - dv;
             double v2 = expr.eval(exprState);
             double dx = (v - v2) / dv;
+            
+            // Clamp derivative to prevent solver instability
             if (Math.abs(dx) < 1e-6)
                 dx = sign(dx, 1e-6);
+            if (Math.abs(dx) > MAX_DERIVATIVE)
+                dx = sign(dx, MAX_DERIVATIVE);
+            
             sim.stampMatrix(vn, nodes[0], -dx);
             rs -= dx * volts[0];
             exprState.values[0] = volts[0];

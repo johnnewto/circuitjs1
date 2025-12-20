@@ -145,8 +145,6 @@ class DividerElm extends CircuitElm {
         // Stamp small placeholder values for inputs to ensure matrix is well-conditioned at startup
         for (int i = 0; i < inputCount; i++) {
             sim.stampMatrix(vn, nodes[i], 1e-20);
-            // Add high-value resistor to ground for each input to prevent floating node issues
-            sim.stampResistor(0, nodes[i], 1e8);
         }
     }
     

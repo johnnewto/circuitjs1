@@ -2,10 +2,12 @@
 set -o errexit -o nounset # bash script safety
 
 # For GWT download URLs see https://www.gwtproject.org/versions.html
-GWT_VERSION="2.8.2"
-#GWT_URL="https://github.com/gwtproject/gwt/releases/download/2.10.0/gwt-2.10.0.zip"
-#GWT_URL="https://storage.googleapis.com/gwt-releases/gwt-2.9.0.zip"
-GWT_URL="https://goo.gl/pZZPXS" # 2.8.2
+# Note: Google Storage URLs for older GWT versions (2.8.x, 2.9.x) return 403 Forbidden
+# Use GitHub releases for newer versions which are more reliably available
+GWT_VERSION="2.10.0"
+GWT_URL="https://github.com/gwtproject/gwt/releases/download/2.10.0/gwt-2.10.0.zip"
+#GWT_URL="https://storage.googleapis.com/gwt-releases/gwt-2.9.0.zip"  # 403 Forbidden
+#GWT_URL="https://goo.gl/pZZPXS" # 2.8.2 - 403 Forbidden
 #GWT_URL="https://goo.gl/TysXZl" # 2.8.1 (does not run)
 
 SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
@@ -74,7 +76,13 @@ webserver() {
 
     (
         cd $webroot
-        python3 -m http.server --bind ${WEB_BINDADDRESS} ${WEB_PORT}
+        # Use PHP server if available (supports shortrelay.php), otherwise fall back to Python
+        if command -v php > /dev/null 2>&1; then
+            php -S ${WEB_BINDADDRESS}:${WEB_PORT}
+        else
+            echo "Warning: PHP not installed. Short URL feature will not work."
+            python3 -m http.server --bind ${WEB_BINDADDRESS} ${WEB_PORT}
+        fi
     )
 }
 

@@ -181,9 +181,9 @@ class LabeledNodeElm extends CircuitElm {
     
     // Add high-value resistor to ground to prevent singular matrix when
     // the labeled node is only connected to high-impedance inputs
-    void stamp() {
-        sim.stampResistor(nodes[0], 0, 1e8);
-    }
+    // void stamp() {
+    //     sim.stampResistor(nodes[0], 0, 1e8);
+    // }
     
     void drag(int xx, int yy) {
 	// Check if a specific handle was grabbed

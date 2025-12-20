@@ -30,6 +30,11 @@ class MultiplyElm extends CircuitElm {
     Font labelFont;
     double lastVolts[];
     
+    // Minimum value to prevent numerical instability
+    static final double MIN_VALUE = 1e-9;
+    // Maximum derivative magnitude to prevent solver instability
+    static final double MAX_DERIVATIVE = 1e6;
+    
     public MultiplyElm(int xx, int yy) {
         super(xx, yy);
         noDiagonal = true;
@@ -139,8 +144,6 @@ class MultiplyElm extends CircuitElm {
         // Stamp small placeholder values for inputs to ensure matrix is well-conditioned at startup
         for (int i = 0; i < inputCount; i++) {
             sim.stampMatrix(vn, nodes[i], 1e-20);
-            // Add high-value resistor to ground for each input to prevent floating node issues
-            sim.stampResistor(0, nodes[i], 1e8);
         }
     }
     
@@ -156,8 +159,10 @@ class MultiplyElm extends CircuitElm {
         for (int i = 0; i < inputCount; i++)
             v0 *= volts[i];
         
-        // Check convergence
-        if (Math.abs(volts[inputCount] - v0) > Math.abs(v0) * 0.01 && sim.subIterations < 100)
+        // Check convergence with minimum threshold to avoid false failures near zero
+        double outputDelta = Math.abs(volts[inputCount] - v0);
+        double tolerance = Math.max(Math.abs(v0) * 0.01, MIN_VALUE);
+        if (outputDelta > tolerance && sim.subIterations < 100)
             sim.converged = false;
         
         double rs = v0;
@@ -181,8 +186,12 @@ class MultiplyElm extends CircuitElm {
                 }
             }
             double dx = (vPlus - vMinus) / dv;
+            
+            // Clamp derivative to prevent solver instability
             if (Math.abs(dx) < 1e-6)
                 dx = sign(dx, 1e-6);
+            if (Math.abs(dx) > MAX_DERIVATIVE)
+                dx = sign(dx, MAX_DERIVATIVE);
             
             sim.stampMatrix(vn, nodes[i], -dx);
             rs -= dx * volts[i];

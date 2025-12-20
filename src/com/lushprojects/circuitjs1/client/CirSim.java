@@ -2129,6 +2129,10 @@ public CirSim() {
             Point cn = badConnectionList.get(i);
             g.setColor(Color.red);
             g.fillOval(cn.x - 3, cn.y - 3, 7, 7);
+            // // Log bad connection location to help identify the problem
+            // if (i == 0)
+            //     console("Bad connections at:");
+            // console("  (" + cn.x + ", " + cn.y + ")");
         }
 
         // draw the selection rect
@@ -2341,7 +2345,8 @@ public CirSim() {
 	    }
 	    int x = leftX + 5;
 	    if (ct != 0)
-		x = scopes[ct-1].rightEdge() + 20;
+		x = scopes[ct-1].rightEdge();
+	    // x -= 16;  // Shift info text left
 //	    x = max(x, canvasWidth*2/3);
 	  //  x=cv.getCoordinateSpaceWidth()*2/3;
 	    
@@ -2355,6 +2360,11 @@ public CirSim() {
 					Locale.LS(" bad connection") : Locale.LS(" bad connections"));
 	    if (savedFlag)
 		info[lineCount++] = "(saved)";
+	    
+	    // Show cursor position (grid-snapped coordinates)
+	    int snapX = snapGrid(inverseTransformX(mouseCursorX));
+	    int snapY = snapGrid(inverseTransformY(mouseCursorY));
+	    info[lineCount++] = "cursor: (" + snapX + ", " + snapY + ")";
 
 	    // Calculate required height for all lines (15 pixels per line plus initial offset)
 	    int requiredHeight = 15 * (lineCount + 1);
