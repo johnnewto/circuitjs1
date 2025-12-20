@@ -14,138 +14,180 @@ Thanks to: Edward Calver for 15 new components and other improvements; Rodrigo H
 
 ## Building the web application
 
-The web application can be compiled and run locally using Eclipse, or in a cloud development container like Github Codespaces or gitpod.io. Both of these services provide a number of free usage hours every month. You can also use the cloud tools from `./dev.sh` on your local Linux machine or in a local docker container.
+The web application is built using Google Web Toolkit (GWT), which compiles Java to JavaScript. Development is done locally using VS Code and the `dev.sh` helper script.
 
-### Development using Eclipse
+### Prerequisites
 
-The tools you will need to build the project are:
-
-* Eclipse, Oxygen version.
-* GWT plugin for Eclipse.
-
-Install "Eclipse for Java developers" from [here](https://www.eclipse.org/downloads/packages/). To add the GWT plugin for Eclipse follow the instructions [here](https://gwt-plugins.github.io/documentation/gwt-eclipse-plugin/Download.html).
-
-This repository is a project folder for your Eclipse project space. Once you have a local copy you can then build and run in development mode or build for deployment. Running in super development mode is done by right clicking on the web application project circuitjs1 and select `Debug As > GWT Development mode with Jetty` from the popup menu. and choosing [http://127.0.0.1:8888/circuitjs.html](http://127.0.0.1:8888/circuitjs.html) from the "Development Mode" tab which appears. 
-
-Building for deployment is done by selecting the project root node and using the GWT button on the Eclipse taskbar and choosing "GWT Compile Project...".
-
-GWT will build its output in to the "war" directory. In the "war" directory the file "iframe.html" is loaded as an iFrame in to the spare space at the bottom of the right hand pannel. It can be used for branding etc.
-
-### Development using cloud containers
-
-1. Install [Visual Studio Code](https://code.visualstudio.com/) and the appropriate remote extension: either [Gitpod Extension](https://marketplace.visualstudio.com/items?itemName=gitpod.gitpod-desktop) or [Codespaces Extension](https://marketplace.visualstudio.com/items?itemName=GitHub.codespaces).
-2. Open your fork of the `circuitjs1` repository in your chosen provider's dev container.
-3. This should open a new tab in your browser showing VS Code. Click in the green button in the bottom left corner, then select "Open in VS Code Desktop" in the popup menu that opened. Click "Allow" in all URL popups and authenticate using github if asked.
-
-Once you have successfully connected your local VS Code to the remote workspace, you should be able to see the content of the remote container in your local VS Code. You can now continue with the setup:
-
-4. Open a shell inside the dev container by pressing `Ctrl+Backtick` or pressing `F1` and typing "Create new Terminal".
-5. Make sure you are in the folder `/workspaces/circuitjs1` inside the container (necessary only once per newly created container).
-6. Run `./dev.sh setup` to install all development dependencies, including GWT and Java.
-7. Run `./dev.sh start` to start the web server and the GWT code server. This will start two services: http://localhost:8000 and http://localhost:9876.
-8. Make sure both port and 8000 and 9876 are forwarded in the "Ports" tab (next to "Terminal").
-9. If you edit a Java file in VS Code and reload http://localhost:8000, it should recompile the file automatically. It will then load the compiled JavaScript and the corresponding source map from the code server running on http://localhost:9876. You should be able to see the your changes in the web application.
-
-> ***Note:*** When running the web application server inside a remote dev container, port forwarding is necessary in order to access the remote server from your own computer. This port forwarding is provided by Visual Studio Code running on your local computer.
->
-> Theoretically, it would be possible to use the browser-based VS Code interface. However, both Gitpod and Codespaces map forwarded ports to different domain names instead of different ports, which confuses the GWT code loader. It is possible to fix this by live-patching the `serverUrl` variable in `circuitjs1.nocache.js` using a custom HTTP server, but it also requires setting the port visibility to "Public" to avoid CORS errors due to redirects. Using a local installation of VS Code is much simpler.
-
-### Development using Gradle
-
-To build the application using gradle, do the following:
+Install the required development tools:
 
 ```bash
-# 1. Run Gradle build with verbose output:
-gradle compileGwt --console verbose --info
-# 2. Create the web-site directory from the build files:
-gradle makeSite --console verbose --info
+sudo apt-get update
+sudo apt-get install openjdk-8-jdk-headless
 ```
 
-Now, just open `site/circuitjs.html` with your browser and enjoy!
+- **Java 8 JDK** - Required for GWT compilation
 
-You can do the same thing inside GitHub Codespaces.  Then after creating the site directory, you can create a web server using:
+Optional dependencies:
+```bash
+sudo apt-get install ant php-cli php-curl
+```
+
+- **Ant** - Only needed if using `./dev.sh compile` (alternatively use Gradle)
+- **PHP** - Optional, enables the URL shortener feature during local development (see [URL Shortener](#url-shortener-shortrelayphp) section)
+
+### Initial Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/johnnewto/circuitjs1.git
+   cd circuitjs1
+   ```
+
+2. Run the setup script to download GWT and configure the build:
+   ```bash
+   ./dev.sh setup
+   ```
+   This downloads GWT 2.10.0 and creates the necessary build configuration.
+
+### Development Workflow
+
+Start the development server:
 
 ```bash
-cd site
-python3 -m http.server
+./dev.sh start
 ```
 
-Then go to the Ports tab, hover over the "Forwarded Address" and click "Follow Link".  Then click `circuitjs.html` to view the application.
+This launches two services:
+- **Web server** at http://localhost:8000 - Serves the application using PHP (if installed) or Python
+- **GWT Code Server** at http://localhost:9876 - Provides live recompilation
+
+> **Note:** The PHP server is used instead of Python when available because it can execute `shortrelay.php` for URL shortening. If PHP is not installed, the web server falls back to Python and the "Create short URL" button won't work locally.
+
+Open http://localhost:8000/circuitjs.html in your browser.
+
+**Live reload workflow:**
+1. Edit Java source files in `src/com/lushprojects/circuitjs1/client/`
+2. Save your changes
+3. Reload the browser page - GWT automatically recompiles the modified code
+
+### Building for Production
+
+Compile the application for deployment:
+
+```bash
+./gradlew compileGwt
+```
+
+Or using Ant:
+
+```bash
+./dev.sh compile
+```
+
+The compiled output is placed in the `war/` directory.
+
+### Available dev.sh Commands
+
+| Command | Description |
+|---------|-------------|
+| `./dev.sh setup` | Install GWT and configure build environment |
+| `./dev.sh start` | Start development server with live reload |
+| `./dev.sh compile` | Compile for production deployment |
+
+### Using VS Code
+
+Open the project folder in VS Code for the best development experience:
+
+```bash
+code .
+```
+
+Recommended extensions:
+- **Language Support for Java** - Syntax highlighting and IntelliSense
+- **Debugger for Java** - Java debugging support
+
+The project structure:
+```
+src/com/lushprojects/circuitjs1/client/   # Java source code
+war/                                       # Web application output
+  circuitjs.html                          # Main application HTML
+  circuitjs1/                             # Compiled GWT output
+```
 
 ## Deployment of the web application
 
-* "GWT Compile Project..." as explained above or run `./dev.sh compile`. This will put the outputs in to the "war" directory in the Eclipse project folder. You then need to copy everything in the "war" directory, except the "WEB-INF" directory, on to your web server.
-* Customize the header of the file "circuitjs1.html" to include your tracking, favicon etc.
-* Customize the "iframe.html" file to include any branding you want in the right hand panel of the application
-* The optional file "shortrelay.php" is a server-side script to act as a relay to a URL shortening service to avoid cross-origin problems with a purely client solution. You may want to customize this for your site. If you don't want to use this feature edit the circuitjs1.java file before compiling.
-* If you wish to enable dropbox loading and saving a dropbox API app-key is needed. This should be edited in to the circuitjs.html file where needed. If this is not included the relevant features will be disabled.
+After compiling with `./gradlew compileGwt` or `./dev.sh compile`, deploy the contents of the `war/` directory to your web server (excluding the `WEB-INF/` directory).
 
+### Customization
 
-The link for the full-page version of the application is now:
-`http://<your host>/<your path>/circuitjs1.html`
-(you can rename the "circuitjs1.html" file if you want too though you should also update "shortrelay.php" if you do).
+- **circuitjs.html** - Customize the header to include your tracking, favicon, etc.
+- **iframe.html** - Add branding content for the right-hand panel
+- **shortrelay.php** - URL shortener relay (requires PHP, see below)
+- **Dropbox integration** - Add your Dropbox API app-key to `circuitjs.html` if needed
 
-Just for reference the files should look like this
+### Directory structure
 
 ```
--+ Directory containing the front page (eg "circuitjs")
-  +- circuitjs.html - full page version of application
-  +- iframe.html - see notes above
-  +- shortrelay.php - see notes above
-  ++ circuitjs1 (directory)
-   +- various files built by GWT
-   +- circuits (directory, containing example circuits)
-   +- setuplist.txt (index in to example circuit directory)
+-+ Your web directory
+  +- circuitjs.html      # Main application page
+  +- iframe.html         # Branding panel content
+  +- shortrelay.php      # URL shortener (optional, requires PHP)
+  ++ circuitjs1/         # GWT compiled output
+     +- circuits/        # Example circuits
+     +- setuplist.txt    # Circuit directory index
 ```
 
-## Docker/podman containers
+## URL Shortener (shortrelay.php)
 
-### Building and Running Circuitjs in docker containers
+The "Export as URL" feature includes a "Create short URL" button that generates shortened URLs via tinyurl.com. This feature requires server-side PHP support because:
 
-*(replace the podman command with docker if you prefere docker)*
+1. **CORS restrictions** - Browsers block direct JavaScript calls to third-party URL shortening APIs
+2. **URL encoding** - The circuit data contains special characters that need server-side processing
 
-- To build Docker image using podman: 
+### How it works
 
-```
-podman build -f circuitjs1.Containerfile -t circuitjs1:latest
-```
-
-- To then run Docker image using podman:
+The `shortrelay.php` script acts as a relay between the browser and tinyurl.com:
 
 ```
-podman run --name=circuitjs1 --rm -d -p 8000:8000 circuitjs1:latest
+Browser → shortrelay.php → tinyurl.com → shortrelay.php → Browser
 ```
 
-CircuitJS1 should be accessable at: http://localhost:8000/circuitjs.html
+The script receives the circuit URL, properly encodes it, calls tinyurl.com's API, and returns the shortened URL.
 
+### Server requirements
 
-### Development using docker containers
+- PHP with the `curl` extension enabled
+- Outbound HTTP access to tinyurl.com
 
-(replace the podman command with docker if you prefere docker)
+### Local development
 
-- To build the development Docker image using podman: 
+For local development with PHP support, use:
 
-```
-podman build -f dev-start.Containerfile -t circuitjs1-dev:latest
-```
-
-- To then run the development Docker image using podman:
-
-```
-podman run --rm -it -p 127.0.0.1:8000:8000/tcp -p 127.0.0.1:9876:9876/tcp circuitjs1-dev:latest
+```bash
+./dev.sh start
 ```
 
-CircuitJS1 should be accessable at: http://localhost:8000/circuitjs.html
+This uses PHP's built-in server (if PHP is installed) which can execute `shortrelay.php`. Install PHP if needed:
 
-If you need to modify the files while the container is running (using the gwt auto-build method):
-
-```
-podman run --rm -it -v $(pwd):/src:Z  -p 127.0.0.1:8000:8000/tcp -p 127.0.0.1:9876:9876/tcp  circuitjs1-dev:latest
+```bash
+sudo apt-get install php-cli php-curl
 ```
 
-This will use the current directory inside the container.
+### Static hosting (GitHub Pages, etc.)
 
+The URL shortener **does not work** on static hosting platforms like GitHub Pages, Netlify, or S3 because they cannot execute PHP.
 
+To disable the "Create short URL" button, set `shortRelaySupported = false` in `src/com/lushprojects/circuitjs1/client/circuitjs1.java` before compiling.
+
+### Custom URL shortener
+
+You can modify `shortrelay.php` to use a different URL shortening service by changing the API endpoint:
+
+```php
+curl_setopt($ch, CURLOPT_URL, 'http://tinyurl.com/api-create.php?url='. $v);
+```
+
+Replace this with your preferred service's API.
 
 ## Embedding
 
