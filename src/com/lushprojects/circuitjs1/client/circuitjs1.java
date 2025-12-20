@@ -38,10 +38,6 @@ public class circuitjs1 implements EntryPoint {
 
     public static final String versionString = "3.1.3js";
 
-    // Set to true if the server runs the shortrelay.php file in the same directory
-    // as the circuit simulator
-    public static final boolean shortRelaySupported = false;
-
     static CirSim mysim;
 
     // This is the program entrypoint! 

@@ -234,6 +234,16 @@ input.locked-column[readonly] {
   <!-- Include the next line to allow support for dropbox import/export. You will need your own app key. -->
   <!--<script type="text/javascript" src="https://www.dropbox.com/static/api/2/dropins.js" id="dropboxjs" data-app-key="YOUR_KEY"></script>-->
 
+  <!-- URL shortener relay configuration -->
+  <!-- Uses local PHP on localhost, Cloudflare Worker on production -->
+  <script>
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      window.shortRelayUrl = "shortrelay.php";
+    } else {
+      window.shortRelayUrl = "https://circuitjs-shortener.johnnewto.workers.dev";
+    }
+  </script>
+
   <script language="javascript" src="lz-string.min.js"></script>
    
     <!-- This script tag is what actually loads the GWT module.  The -->

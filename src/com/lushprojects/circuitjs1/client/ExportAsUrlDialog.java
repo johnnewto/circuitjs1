@@ -48,8 +48,16 @@ public class ExportAsUrlDialog extends Dialog {
 	public boolean shortIsSupported() {
 		if (CirSim.theSim.isElectron())
 		    return false;
-		return circuitjs1.shortRelaySupported;
+		// Check if shortRelayUrl is configured in circuitjs.html
+		return getShortRelayUrl() != null;
 	}
+	
+	// Get the short relay URL from JavaScript (configured in circuitjs.html)
+	static public native String getShortRelayUrl() /*-{
+		if ($wnd.shortRelayUrl !== undefined && $wnd.shortRelayUrl !== null && $wnd.shortRelayUrl !== '')
+			return $wnd.shortRelayUrl;
+		return null;
+	}-*/;
 	
 //	static public final native boolean bitlyIsSupported() 
 //	/*-{
@@ -61,7 +69,10 @@ public class ExportAsUrlDialog extends Dialog {
 	static public void createShort(String urlin) 
 	{
     	String url;
-    	url = "shortrelay.php"+"?v="+urlin; 
+    	String relayUrl = getShortRelayUrl();
+    	if (relayUrl == null)
+    		relayUrl = "shortrelay.php";
+    	url = relayUrl + "?v=" + urlin; 
     	textArea.setText("Waiting for short URL for web service...");
 		RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, url);
 		try {
