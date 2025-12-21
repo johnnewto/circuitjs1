@@ -1,7 +1,9 @@
 ---
 title: "Electronics Components"
 subtitle: "Traditional electronic circuit elements"
+toc: true
 ---
+
 
 ## Overview
 

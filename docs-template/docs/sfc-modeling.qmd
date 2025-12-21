@@ -1,7 +1,9 @@
 ---
 title: "Stock-Flow Consistent Modeling"
 subtitle: "Economic Modeling with CircuitJS1"
+toc: true
 ---
+
 
 ## Introduction to SFC Modeling
 

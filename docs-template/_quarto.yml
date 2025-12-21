@@ -17,28 +17,28 @@ website:
         href: app.qmd
       - text: "Documentation"
         menu:
+          # Split mode: add ?split=true
           - text: "User Guide"
-            href: docs/user-guide.qmd
+            href: docs/user-guide.html?split=true
           - text: "Examples"
-            href: docs/examples.qmd
+            href: docs/examples.html?split=true
           - text: "Plotly Viewer"
             href: docs/plotly-viewer.qmd
       - text: "Economics"
         menu:
-          - text: "Money from First Principles"
-            href: docs/money-first-principles.qmd
-          - text: "Money Series (Split)"
-            href: docs/money/index.qmd
-          - text: "Economics Tutorials"
-            href: docs/economics-tutorials.qmd
-          - text: "SFC Modeling"
-            href: docs/sfc-modeling.qmd
+          - text: "Money First Principles"
+            href: docs/money/index.html?split=true
+            # href: docs/money/01-introduction.html?split=true
+          - text: "Economics Tutorials (Split)"
+            href: docs/economics-tutorials.html?split=true
+          - text: "SFC Modeling (Split)"
+            href: docs/sfc-modeling.html?split=true
       - text: "Electronics"
         menu:
-          - text: "Electronic Tutorials"
-            href: docs/electronics-tutorials.qmd
-          - text: "Electronics Components"
-            href: docs/electronics.qmd
+          - text: "Electronic Tutorials (Split)"
+            href: docs/electronics-tutorials.html?split=true
+          - text: "Electronics Components (Split)"
+            href: docs/electronics.html?split=true
       - text: "Development"
         menu:
           - text: "Contributing"
@@ -56,7 +56,6 @@ website:
         - docs/plotly-viewer.qmd
     - title: "Economics"
       contents:
-        - docs/money-first-principles.qmd
         - section: "Money from First Principles Series"
           contents:
             - docs/money/index.qmd
@@ -93,7 +92,12 @@ website:
 format:
   html:
     theme: cosmo
-    css: styles.css
+    css: 
+      - styles.css
+      - docs/auto-embed.css
+    include-after-body:
+      - text: |
+          <script src="/docs/auto-embed.js"></script>
     toc: true
     code-fold: false
     code-tools: true

@@ -1,7 +1,9 @@
 ---
 title: "User Guide"
 subtitle: "Complete guide to using CircuitJS1"
+toc: true
 ---
+
 
 ## Getting Started
 

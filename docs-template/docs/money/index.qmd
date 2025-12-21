@@ -27,22 +27,20 @@ This series breaks down the fundamental principles of money, banking, and govern
 6. **[The Fundamental Identity](05-fundamental-identity.qmd)**  
    Sectoral balances and the key insight
 
-7. **[Implementing in CircuitJS](06-implementation.qmd)**  
-   Building the models step-by-step
 
-8. **[Policy Implications](07-policy-implications.qmd)**  
+7. **[Policy Implications](07-policy-implications.qmd)**  
    What each model predicts for government policy
 
-9. **[Advanced Topics](08-advanced-topics.qmd)**  
+8. **[Advanced Topics](08-advanced-topics.qmd)**  
    Money supply, inflation, trade, and capital adequacy
 
-10. **[Exercises](09-exercises.qmd)**  
+9. **[Exercises](09-exercises.qmd)**  
     Hands-on model building and experimentation
 
-11. **[Key Takeaways](10-key-takeaways.qmd)**  
+10. **[Key Takeaways](10-key-takeaways.qmd)**  
      Summary of main insights
 
-12. **[Further Reading](11-further-reading.qmd)**  
+11. **[Further Reading](11-further-reading.qmd)**  
      Resources for deeper exploration
 
 ---

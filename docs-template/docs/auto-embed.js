@@ -1,0 +1,215 @@
+/**
+ * Auto-embed and Split Layout Controller
+ * 
+ * Features:
+ * 1. Auto-detects if page is in iframe → adds 'embedded' class to hide navbar
+ * 2. Checks for ?split=true URL param → creates split layout with CircuitJS
+ * 
+ * Usage in _quarto.yml:
+ *   - Direct: docs/user-guide.qmd
+ *   - Split:  docs/user-guide.qmd?split=true
+ */
+
+(function() {
+  'use strict';
+  
+  // Debug: confirm script is loaded
+  console.log('[auto-embed] Script loaded at:', window.location.href);
+
+  // 1. Detect if we're in an iframe and add 'embedded' class
+  var isEmbedded = window.self !== window.top;
+  console.log('[auto-embed] isEmbedded:', isEmbedded, 'location:', window.location.href);
+  
+  if (isEmbedded) {
+    document.documentElement.classList.add('embedded');
+    console.log('[auto-embed] Added embedded class, setting up link interceptor');
+    
+    // Intercept navigation links to update parent URL (maintain split mode)
+    // Use capture phase to ensure we get the event first
+    document.addEventListener('click', function(e) {
+      console.log('[auto-embed] Click detected on:', e.target.tagName);
+      var link = e.target.closest('a');
+      if (!link) {
+        console.log('[auto-embed] No link found');
+        return;
+      }
+      
+      var href = link.getAttribute('href');
+      console.log('[auto-embed] Link href:', href);
+      if (!href) return;
+      
+      // Skip anchors and special protocols
+      if (href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('javascript:')) {
+        console.log('[auto-embed] Skipping anchor/special link');
+        return;
+      }
+      
+      // Skip truly external links (different origin)
+      if (href.startsWith('http')) {
+        try {
+          var linkUrl = new URL(href);
+          if (linkUrl.origin !== window.location.origin) {
+            console.log('[auto-embed] Skipping external link (different origin)');
+            return;
+          }
+          // Same origin absolute URL - extract pathname
+          href = linkUrl.pathname + linkUrl.search;
+          console.log('[auto-embed] Same-origin absolute URL, using path:', href);
+        } catch (e) {
+          console.log('[auto-embed] Skipping malformed URL');
+          return;
+        }
+      }
+      
+      // For internal .html or .qmd links, update parent URL with ?split=true
+      if (href.endsWith('.html') || href.endsWith('.qmd') || href.includes('.html?') || href.includes('.qmd?')) {
+        console.log('[auto-embed] Internal link detected, preventing default');
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Convert .qmd to .html and ensure ?split=true
+        var newHref = href.replace('.qmd', '.html');
+        if (!newHref.includes('split=true')) {
+          newHref += (newHref.includes('?') ? '&' : '?') + 'split=true';
+        }
+        
+        // Resolve relative URL based on current iframe location
+        var base = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+        var fullUrl = new URL(newHref, window.location.origin + base).href;
+        console.log('[auto-embed] Navigating parent to:', fullUrl);
+        
+        // Navigate parent window
+        try {
+          window.parent.location.href = fullUrl;
+        } catch (err) {
+          // Fallback if cross-origin
+          console.warn('[auto-embed] Could not navigate parent, using postMessage', err);
+          window.parent.postMessage({ type: 'navigate', url: fullUrl }, '*');
+        }
+        return false;
+      }
+    }, true); // Use capture phase
+  }
+
+  // 2. Check for split mode via URL parameter
+  var urlParams = new URLSearchParams(window.location.search);
+  var isSplitMode = urlParams.get('split') === 'true';
+
+  if (!isSplitMode) return; // Exit if not split mode
+
+  // Add split-mode class
+  document.documentElement.classList.add('split-mode');
+
+  // Listen for navigation messages from iframe (fallback for cross-origin)
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'navigate' && e.data.url) {
+      window.location.href = e.data.url;
+    }
+  });
+
+  // Wait for DOM
+  function initSplitMode() {
+    // Get the current page URL without the split parameter
+    var contentUrl = window.location.pathname;
+    
+    // Measure navbar height
+    var navbar = document.querySelector('#quarto-header, nav.navbar, header.navbar, .navbar');
+    var navbarHeight = navbar ? navbar.getBoundingClientRect().height : 60;
+    document.documentElement.style.setProperty('--navbar-height', navbarHeight + 'px');
+
+    // Hide original content
+    var mainContent = document.querySelector('#quarto-content, main.content, main');
+    if (mainContent) {
+      mainContent.style.display = 'none';
+    }
+
+    // Create split container
+    var splitContainer = document.createElement('div');
+    splitContainer.className = 'split-wrap';
+    splitContainer.id = 'split';
+    splitContainer.innerHTML = 
+      '<div id="panel-left">' +
+        '<iframe src="' + getCircuitJSUrl() + '" title="CircuitJS1 Electronic Circuit Simulator"></iframe>' +
+      '</div>' +
+      '<div id="panel-right">' +
+        '<iframe src="' + contentUrl + '" title="Content"></iframe>' +
+      '</div>';
+
+    document.body.appendChild(splitContainer);
+
+    // Load Split.js dynamically
+    var script = document.createElement('script');
+    script.src = 'https://unpkg.com/split.js/dist/split.min.js';
+    script.onload = initSplitJS;
+    document.head.appendChild(script);
+  }
+
+  function getCircuitJSUrl() {
+    // Determine CircuitJS URL based on current path depth
+    var depth = (window.location.pathname.match(/\//g) || []).length - 1;
+    var prefix = '';
+    for (var i = 0; i < depth; i++) {
+      prefix += '../';
+    }
+    return prefix + 'circuitjs.html?startCircuit=blank.txt&editable=true';
+  }
+
+  var splitInstance = null;
+  var currentMode = null;
+
+  function isMobile() {
+    return window.innerWidth <= 768;
+  }
+
+  function initSplitJS() {
+    var mobile = isMobile();
+    var mode = mobile ? 'vertical' : 'horizontal';
+    currentMode = mode;
+
+    var container = document.getElementById('split');
+    container.classList.toggle('vertical', mobile);
+
+    splitInstance = Split(['#panel-left', '#panel-right'], {
+      sizes: mobile ? [40, 60] : [60, 40],
+      minSize: mobile ? [150, 150] : [250, 250],
+      gutterSize: 8,
+      direction: mode
+    });
+
+    // Handle resize
+    var resizeTimer;
+    window.addEventListener('resize', function() {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function() {
+        var mobile = isMobile();
+        var mode = mobile ? 'vertical' : 'horizontal';
+        
+        if (mode !== currentMode) {
+          currentMode = mode;
+          if (splitInstance) {
+            splitInstance.destroy();
+            var oldGutter = document.querySelector('.gutter');
+            if (oldGutter) oldGutter.remove();
+          }
+          
+          var container = document.getElementById('split');
+          container.classList.toggle('vertical', mobile);
+          
+          splitInstance = Split(['#panel-left', '#panel-right'], {
+            sizes: mobile ? [40, 60] : [60, 40],
+            minSize: mobile ? [150, 150] : [250, 250],
+            gutterSize: 8,
+            direction: mode
+          });
+        }
+      }, 150);
+    });
+  }
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSplitMode);
+  } else {
+    initSplitMode();
+  }
+})();

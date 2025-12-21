@@ -7,6 +7,7 @@ format:
     css: ../circuitjs-docs.css
 ---
 
+
 <script src="../circuitjs-utils.js"></script>
 
 ## Sectoral Balances
@@ -39,7 +40,7 @@ In the BOMD model:
 ---
 
 <div class="nav-buttons" style="display: flex; justify-content: flex-end; margin-top: 2em; padding-top: 1em; border-top: 1px solid #e0e0e0;">
-<a href="06-implementation.qmd" style="text-decoration: none;">Next: Implementing in CircuitJS →</a>
+<a href="07-policy-implications.qmd" style="text-decoration: none;">Next: Policy Implications →</a>
 </div>
 
 <div class="split-footer">

@@ -1,7 +1,9 @@
 ---
 title: "Building CircuitJS1"
 subtitle: "Development setup and build instructions"
+toc: true
 ---
+
 
 ## Prerequisites
 

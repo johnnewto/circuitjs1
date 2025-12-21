@@ -10,9 +10,10 @@ format:
           <script src="../circuitjs-utils.js"></script>
 ---
 
+
 ## 3. Endogenous Money Model (BOMD)
 
-<div id="bomd-model" class="circuit-section" data-name="BOMD Model" data-circuit="/circuitjs.html?ctz=CQAgbArCAMB03SgRlgZgEwBYnurpAnEhJOuiBNBRVRAKYC0SSAUOhFBiDgBwg9VeMEOTDhuYqgBcATgFc6I4QDMAhgBsAzoqjT5igEKqAdgGtNIADpUASnW0yAbvZAAJAPZztH9QBMLAGIAljIAthYAogCOckFSAJ4gRmaa0bEJIACCDAAyDBEgAAqq8ZaaAOqqAOYuAMLuxppyoQAOUkEN3AgiVADsglSDWQDKwxEAKiA5AJKZBtMz4wCaU7PziysRAIoAqtPLINt7B7UA8gCyhTvjEQAiVlSVNRYMTy7WD58fDPWNzYq-JqhRQfUGDeDQVgADxE6AIIAIonQSARUEwInR4xkJk0qgAxu0GmVxqoAEbqexlAAUAHF3L4KaVNCTyfYAJT8aACAQBAJsaC9ECYLgYKjC8ioMB8SUgN6afmC1Ay9A8aW4EQkEAymm3QpsMCoCTgdE8Xoo1AEIbnVRBYwKjFUFV8QjkJ1asTBMLygDuIlVfulyv90BYvqVYjdqB46LdIfYgbEoq1EAl6sNcDEbwA+gBvTQAC1UMjoAF9Q1qZUnwwGYPb0L0JdGK4mmzLAf82CmhSLoOjMJhpb3uCJy1H0UnxVr1SHfZPUEOxzW4wKhQItUOIP31+OxIUZO5lHF5bhBWRx02kL0Wzu3J5vO4-MeIHwsI7-ewI-6UeQAGq5z3hGW8awueMaYFQi4ouif45q4rhARAKJgA2ybkP045dt+9rIRKXZgOBqHuiAAHHiuOHunw+EQVKREeF4dA+P49oNhBXZXtKXYyucDR0PELDuNwfbCLw0BiEgUawJgYDEGO0kQKgvS9OicAIJCwjOuOXTCRBSiOlq+k6ag-HUMpQrSeiSBgOCKJQdQhrEMJnAsFGRoBDZwjwkwIAwSRJbcM5zqCm5w4DCAXkwXBfmsAApCMkw2SwQA&editable=false">
+<div id="bomd-model" class="circuit-section" data-name="BOMD Model" data-circuit="/circuitjs.html?ctz=CQAgbA7CAMB00FYQCZYEYAcBmNi0BZMxloN8wR98QFo6boaBTAWjTQCgBSEANwHsANgBcAhgHMmAVQB2AS2EhgHZAiQssYDCBYIqIdsh2bqjCtQpoKjYQCcArkxQwQAM1GCAzk6Q2HTgDE5WwBbTxAAHUYg0PCACzQQGLCAfQBvAFEAR3sFAE8AXxAAQRYAGRYMkAAFUTyIzwB1CSZwgCF7es8AcX5+ABN2-ltbfgB3BoBZfhkmPJA20RkAa08GgGUAByYZfpq6hoBJGWEmW1bFXt5hDe3duRlxBhdaF2L19YyAFRAAYQB5SbVKRfDIAERAGQAilJDl8AJp-QHA0EQljNSThKI6DGtSKMX4zTz2EJObGEmTE0n4v7nfoKGm-OkM7FbHb9dKLFaeIqsu4ctJc1a8xgsY7CdLJHk0sUnSXBMIikBs3bpK7CJUqgXqpVwOicVTqDAICi6fQaCCmkwuczgAzWEB2RzORjuLw+FxOpwACX49m8cSEgxpvv9TF9gmD3qwIG93vS2VywkKJXKlX2XVxayGI3GUxmcwzRxOZwuRc8QoaASYTg6XV6A3CX1EAA9RMI5DNKIxGPgeyUPt8QGVDsU2ocRwjITC4YiAUCQeCQFmaSvsevGBuQOL5bElTu0lKlSxq2TRaeZRSqWedFeSTeWM2WzKnzS9dADWodMbTRh6CwMG0XQTRcXAQCgSwHS9F03A8bw7T8Z1qlsOReHbJgGiFLFGAAJVaM5eDxMEmAAIwlQ8FWlYiyLVfhriKUNvAjYMpQWJZVlTCoqlqTMWnaToGgbYM2mGUYJk8aZZnmHji1Oc5PEUGSK3YqsazY7lbnZEAn3bTsZBAdVNPuR4DLom4KxmfoNg8PERN2WTSwUgx6H7PtnjAxh3k+H4vKHXyfhHMcJ1nYdR3HSdEWhWEp3nFEly3bEV3RPiaQSzdRTvalMpvLcmSYelFFy5lCvS1LSoPI8dAqyilTSmUL2xBrSrqrVOXY6UWFawV2uPV8t0fVsyppLqdSGvl2Vo+ihpYOzg2xWbsLGxgDwW2rmuWuVBUs6VsXfThnzQBBEgAtAYyoKATt7FBqAyXZ+EkGQ-WzSS5nzfomEEEA-2+6AAgCFQwBjACIGOshEjANAjDYB1JlEB4VGgC7IdIHQSCA9gwFFNGQE0EAXryBGkeQMBqBYEhRUhgBOU1yZxihGPDINPEJnRIZJ1GrFZ5BqY5ihcalFQjq59myZRthsdF7QY2QQX0bAEDoYpzG5cYRJIdgJAADV0jjApZdZiBoFJ4nSasBWTYMSgQG1ii9xZ6GFasCnDdNzG6djJ7GcjZmSCR8hjbcth8GQAPGFx5D+FcBRmbGVmjqhkP0ZNLH2egDhY7YZPUawKHDsh7OjDT1Rc-j1HA4IEWQ7DlB7adlW4-NJ33ey9PWeVgu27Fi2i4QFWgOQHO47dsnB5jOAKFxdJ1jiURzj1jO69RkXDuH7vW4dmnl-bsnU9rl2l9NiAEAT9n+co2vt4t6GQ9Rnnce6MFqlr0uR5L-O2DId2swvsXDAb03864zygVC+jt35oH3mwQBFAH5P1UHLMBudt5-zHvAaAlMMGYKwdgpAwCFDpBwuhPW8DhYANzsgTmUCjCoKNtguhWDtybUIacYhiNSGs3AVgI2HDqEUGouRI8tcKGmj-lA4+PD3bVTtr7Vm0BB5sFxmwOgFNca4ywrXORCdf7KNRijXGDNmI+zYUo+RojcD-j-tQAWMiWCQKrjoCA5p7HUFgfbfAEAoaAR0PgHmAEpZ8NIgImqbib4AVFFgSmniw4BJorbRUAA9NIsCuCsKRpojuSj-wD14YwoJ0jjHsEtKjP8HCnElP5jWIRoTkAlPFpXcpFApGKn1uLaptTCk03KTAdASQawEKIRo0xWgdAYKQf45U-I2rclSbI9pwyqFy3GeokhSi5no3SdDbQatrZTOFCoCBrN5FYHEeXNyjAjD8N3AkpJj8UkgEuUksyBRElcFgUUAAxH9P69B3l0G+UXYx8saaByBajDxVsRpPPtlgT+ZNA7HITm5NR21BZIGRjoPQFh-wRMsFbCw9pPT+Bgm6eCvhHREq+OcUQxJbDzGxFcM4MhSQnHuYEyaGptJUppXkBMOR8hFFKFxbSrZdJdkMp4LUDwnjitmtZQQtlLIOXkoofs-Z-KhSChFac0U5zIkXBCPqjBDU6EhVNbEnVJmPLNYwBaCxtrTRWttY8jrdg7R7Ggz8QE7EgvNki7pOAJkTUPLYUQABjYhvcHHgPmWALeUt-XKMTUm5R1AnyShDeG+2IMxkOPEZsq2ribGxtdkBYtuirpPjcfIiW+AhnaGoMRKOoaFCCyhggIpksMU1N0fGmWGdQVwtFO2mmnM079rjRijttMAUXWHcYbhLBAZQy4dQBtbKrUahaXOjQC7j5ARXTjbpiBcn9NOKtKty6F21uXbjagLrBgRuOtesu4TYX2OluvPd87SbPp3aYT93bO0sF-djMd3ijlXurfgbQYHgPVvkSBlGM7vHgtsW29+4KXGPw4NUFD5CgLB1Nt2j9Nj3HkKHeAkgBbsOkdQ6dU0L96PuweTqEJRH92RK5uMljTyXlvJw3h78opCNCcPTLWtiRfE51VlRsmPNzn0BJU4JTqKHFQwgJx2gpMTTUEkzQO0o7yXOkLrBd0+nEJOF+DsOwHhMLsWGsIfgobli4XwrYQi4QGW2CZdZv4YJeVJhTIK9MARBDjBSIkHSHYxVmSMvSEyMrFUSpskMeynhxSOUUHWQSfRhKiTzBJAs0kDjpZLMq8slZPAXlVi5WRarBwBTCsFKcgVwohSiiFWK+qlo9YGs+Y1W5TUcotUG0adUZr2ttXVe9HUZtrR63VRb60FvLa3HtDg-BwBQBg5QCG1AqNwESFdSAh7jkuDO1gDbNBtugRqdACgaMc4UPII41ABBkBQHfB+S22h21ibHigGM0tKYuG5oenxLgIeXZhSgCgARtksEO9046iQ8HkWYUwIoepOAw4+0kBHSOkdsBPWkDHWP4A4-rVAeHls4CF1gKbQNqpg1hvJx+DgMPoP49p7AenjO00s-DUezgPB3g-DVhwIAA&editable=false">
 
 **BOMD** = Bank-Originated Money and Debt
 
@@ -49,6 +50,36 @@ In BOMD, **money creation occurs on the Asset side** of bank balance sheets:
 - Credit creates $Debt_{Firms}$ (bank asset) + Firm deposits
 - Bond sales create $Debt_{Gov}$ (bank asset) + Government account
 - In Loanable Funds, all operations are on Liabilities/Equity side (cancel out)
+
+### Interactive Controls
+
+Adjust the government spending fraction to see how it affects the economy:
+
+<button onclick="CircuitJSUtils.cycleSlider('Spend_{Frac}', [0.31, 0.30, 0.29, 0.30, 0.31], 300, this)" class="slider-toggle-btn">
+  <span class="btn-icon">⚡</span> Spend<sub>Frac</sub>: <span class="slider-value">31%</span>
+</button>
+
+<table id="bomd-table" class="realtime-table">
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="rt-label">Loading...</td><td class="rt-value">—</td></tr>
+  </tbody>
+</table>
+
+<script>
+  // Start the realtime table after page loads
+  document.addEventListener('DOMContentLoaded', function() {
+    // Wait for CircuitJS to be ready, then start table updates
+    setTimeout(() => {
+      startRealtimeTable('bomd-table', ['GDP', 'Debt_{Govt}^{%GDP}', 'Debt_{Firms}^{GDP%}', 'Firms', 'HouseHolds', 'Banks'], 200);
+    }, 2000);
+  });
+</script>
 
 ### Differential Equations (BOMD)
 

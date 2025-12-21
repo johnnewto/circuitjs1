@@ -7,6 +7,7 @@ format:
     code-fold: false
 ---
 
+
 ## Overview
 
 The **Interactive Plotly Viewer** provides instant, interactive visualization of oscilloscope data using Plotly.js in a new browser window. This feature allows you to explore your circuit simulation results with powerful zooming, panning, and data export capabilities.

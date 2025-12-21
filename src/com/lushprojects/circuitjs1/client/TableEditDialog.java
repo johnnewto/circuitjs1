@@ -1014,36 +1014,22 @@ import java.util.Map;
                 aleLabel.addStyleName("computed-column");
                 aleLabel.setTitle(titleText);
                 editGrid.setWidget(TYPE_ROW, DATA_START_COL + col, aleLabel);
-            } else if (!isMasterColumn(col)) {
-                // Non-master column: show type with sync indicator (editable, syncs to master)
-                String stockName = stockValues[col];
-                TableElm masterTable = ComputedValues.getMasterTable(stockName != null ? stockName.trim() : "");
-                String masterTableName = (masterTable != null) ? masterTable.getTableTitle() : "unknown";
-                
-                // Get the column type and add sync symbol
-                ColumnType colType = columnTypes[col];
-                String typeLabel;
-                if (colType == ColumnType.ASSET) {
-                    typeLabel = "🔄 💹 Asset";
-                } else if (colType == ColumnType.LIABILITY) {
-                    typeLabel = "🔄 📄 Liability";
-                } else if (colType == ColumnType.EQUITY) {
-                    typeLabel = "🔄 🏦 Equity";
-                } else {
-                    typeLabel = "🔄 Synced";
-                }
-                
-                Label syncLabel = new Label(typeLabel);
-                syncLabel.addStyleName("synced-column");
-                syncLabel.setTitle("Synced: Stock '" + stockName + "' is mastered by table '" + masterTableName + "'. Edits update master and sync all tables.");
-                editGrid.setWidget(TYPE_ROW, DATA_START_COL + col, syncLabel);
             } else {
-                // Create dropdown for column type selection
+                // Editable dropdown for column type selection
+                // Non-master columns show sync indicator in dropdown options
+                final boolean isMaster = isMasterColumn(col);
+                final String stockName = stockValues[col];
+                TableElm masterTable = isMaster ? null : ComputedValues.getMasterTable(stockName != null ? stockName.trim() : "");
+                String masterTableName = (masterTable != null) ? masterTable.getTableTitle() : "";
+                
+                // Add sync symbol prefix for non-master columns
+                String prefix = isMaster ? "" : "🔄 ";
+                
                 final int finalCol = col;
                 final Choice typeChoice = new Choice();
-                typeChoice.add("💹 Asset");
-                typeChoice.add("📄 Liability");
-                typeChoice.add("🏦 Equity");
+                typeChoice.add(prefix + "💹 Asset");
+                typeChoice.add(prefix + "📄 Liability");
+                typeChoice.add(prefix + "🏦 Equity");
                 
                 // Set current selection based on column type
                 ColumnType colType = columnTypes[col];
@@ -1053,6 +1039,11 @@ import java.util.Map;
                     typeChoice.select(1);
                 } else if (colType == ColumnType.EQUITY) {
                     typeChoice.select(2);
+                }
+                
+                // Add tooltip for non-master columns
+                if (!isMaster && masterTable != null) {
+                    typeChoice.setTitle("Synced: Stock '" + stockName + "' is mastered by table '" + masterTableName + "'. Edits update master and sync all tables.");
                 }
                 
                 typeChoice.addChangeHandler(new com.google.gwt.event.dom.client.ChangeHandler() {
@@ -2384,9 +2375,12 @@ import java.util.Map;
      * When editing a non-master column, this updates the master table's data first,
      * then synchronizes all related tables (including this one).
      * 
+     * IMPORTANT: Row matching is done by flow description, not by row index, because
+     * tables may have different row ordering or different sets of flows.
+     * 
      * @param masterTable The master table that owns this stock
      * @param stockName The stock name being edited
-     * @param row The row index being edited
+     * @param row The row index being edited in THIS table
      * @param col The column index in this table
      * @param newValue The new cell value
      */
@@ -2394,6 +2388,14 @@ import java.util.Map;
         if (masterTable == null || stockName == null) {
             return;
         }
+        
+        // Get the flow description for this row (used for matching)
+        String flowDesc = tableElement.getRowDescription(row);
+        if (flowDesc == null || flowDesc.trim().isEmpty()) {
+            setStatus("⚠️ Cannot sync: row " + row + " has no flow description");
+            return;
+        }
+        flowDesc = flowDesc.trim();
         
         // Find the column in the master table that has this stock name
         int masterCol = -1;
@@ -2410,8 +2412,28 @@ import java.util.Map;
             return;
         }
         
-        // Update the master table's cell
-        masterTable.setCellEquation(row, masterCol, newValue);
+        // Find the matching row in the master table by flow description
+        int masterRow = -1;
+        for (int r = 0; r < masterTable.getRows(); r++) {
+            String masterFlowDesc = masterTable.getRowDescription(r);
+            if (masterFlowDesc != null && masterFlowDesc.trim().equalsIgnoreCase(flowDesc)) {
+                masterRow = r;
+                break;
+            }
+        }
+        
+        // If the flow description doesn't exist in master table, we need to create it
+        if (masterRow < 0) {
+            // Add a new row to the master table
+            int newRowCount = masterTable.getRows() + 1;
+            masterTable.resizeTable(newRowCount, masterTable.getCols());
+            masterRow = newRowCount - 1;
+            masterTable.setRowDescription(masterRow, flowDesc);
+            setStatus("✓ Created new flow '" + flowDesc + "' in master table '" + masterTable.getTableTitle() + "'");
+        }
+        
+        // Update the master table's cell at the matched row
+        masterTable.setCellEquation(masterRow, masterCol, newValue);
         
         // Update our local data too
         cellData[row][col] = newValue;
@@ -2419,7 +2441,7 @@ import java.util.Map;
         // Sync from master to all related tables
         StockFlowRegistry.synchronizeRelatedTables(masterTable);
         
-        setStatus("✓ Updated master table '" + masterTable.getTableTitle() + "' and synced all related tables");
+        setStatus("✓ Updated master table '" + masterTable.getTableTitle() + "' (row: " + flowDesc + ") and synced all related tables");
     }
     
     /**

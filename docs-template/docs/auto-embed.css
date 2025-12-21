@@ -1,0 +1,141 @@
+/**
+ * Auto-embed detection - Hide navbar when page is in an iframe
+ * This eliminates the need for separate embed/split versions of pages
+ */
+
+/* Detect iframe embedding and hide navbar/footer */
+@media all {
+  /* When embedded in iframe, hide navigation chrome */
+  html.embedded #quarto-header,
+  html.embedded .navbar,
+  html.embedded nav.navbar,
+  html.embedded header.navbar,
+  html.embedded .nav-footer,
+  html.embedded footer {
+    display: none !important;
+  }
+  
+  html.embedded body {
+    padding-top: 0 !important;
+  }
+  
+  html.embedded #quarto-content {
+    margin-top: 0 !important;
+    padding-top: 1rem !important;
+  }
+}
+
+/* Split layout styles - applied when ?split=true */
+html.split-mode body {
+  margin: 0;
+  overflow: hidden;
+}
+
+html.split-mode .quarto-container {
+  max-width: 100% !important;
+  padding: 0 !important;
+}
+
+html.split-mode main.content,
+html.split-mode main {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+html.split-mode #quarto-content {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+html.split-mode #quarto-content > * {
+  padding: 0 !important;
+}
+
+html.split-mode .page-columns {
+  padding: 0 !important;
+}
+
+html.split-mode footer,
+html.split-mode .nav-footer {
+  display: none !important;
+}
+
+/* Split container */
+.split-wrap {
+  display: flex;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin-top: var(--navbar-height, 60px);
+  height: calc(100vh - var(--navbar-height, 60px));
+}
+
+.split-wrap.vertical {
+  flex-direction: column;
+}
+
+.split-wrap > div {
+  overflow: hidden;
+  min-height: 0;
+  min-width: 0;
+}
+
+.split-wrap iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+/* Gutter styling */
+.gutter {
+  background: linear-gradient(180deg, #e0e0e0, #f5f5f5, #e0e0e0);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.gutter-horizontal {
+  cursor: col-resize;
+  width: 8px;
+}
+
+.gutter-vertical {
+  cursor: row-resize;
+  height: 8px;
+}
+
+.gutter:hover {
+  background: linear-gradient(180deg, #667eea, #764ba2, #667eea);
+}
+
+/* Grip indicator */
+.gutter::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  background: repeating-linear-gradient(180deg, #999 0px, #999 2px, transparent 2px, transparent 6px);
+}
+
+.gutter-horizontal::after {
+  width: 4px;
+  height: 40px;
+}
+
+.gutter-vertical::after {
+  width: 40px;
+  height: 4px;
+  background: repeating-linear-gradient(90deg, #999 0px, #999 2px, transparent 2px, transparent 6px);
+}
+
+.gutter:hover::after {
+  background: repeating-linear-gradient(180deg, #fff 0px, #fff 2px, transparent 2px, transparent 6px);
+}
+
+.gutter-vertical:hover::after {
+  background: repeating-linear-gradient(90deg, #fff 0px, #fff 2px, transparent 2px, transparent 6px);
+}

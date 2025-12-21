@@ -1,7 +1,9 @@
 ---
 title: "Economics Tutorials"
 subtitle: "Step-by-step guides for economic modeling with Stock-Flow Consistent (SFC) analysis"
+toc: true
 ---
+
 
 ## Introduction to Economics in CircuitJS
 
@@ -55,13 +57,10 @@ Learn the basics by modeling a bank account with deposits and withdrawals.
      - Income flow: 100
      - Spending flow: -80
 
-4. **Add a Ground Connection**
-   - Important: All economic models need a ground reference
-   - Right-click: **Inputs and Sources > Ground**
-   - Connect table outputs to ground
+
 
 5. **Run the Simulation**
-   - Press **Space** to start
+   - Press **Run** to start
    - Watch the Deposits column accumulate over time
    - Net flow = 100 - 80 = 20 per time period
 

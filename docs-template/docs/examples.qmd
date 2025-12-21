@@ -1,7 +1,9 @@
 ---
 title: "Circuit Examples"
 subtitle: "Sample circuits to get you started"
+toc: true
 ---
+
 
 ## Economics & System Dynamics Models
 

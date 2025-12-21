@@ -1,7 +1,9 @@
 ---
 title: "Contributing to CircuitJS1"
 subtitle: "How to contribute to the project"
+toc: true
 ---
+
 
 ## Welcome Contributors!
 

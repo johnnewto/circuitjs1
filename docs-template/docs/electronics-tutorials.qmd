@@ -1,7 +1,9 @@
 ---
 title: "Electronic Tutorials"
 subtitle: "Step-by-step electronics learning guides"
+toc: true
 ---
+
 
 ## Getting Started Tutorials
 

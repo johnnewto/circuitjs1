@@ -1,7 +1,9 @@
 ---
 title: "API Reference"
 subtitle: "Developer reference for CircuitJS1 internals"
+toc: true
 ---
+
 
 ## Core Classes
 
