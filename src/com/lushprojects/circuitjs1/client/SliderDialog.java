@@ -233,8 +233,11 @@ class SliderDialog extends Dialog  {
 		    try {
 			adj.sliderText = ei.labelBox == null ? "" : ei.labelBox.getText();
 			CirSim.console("slidertext " + adj.sliderText + " " + ei.labelBox);
-			if (adj.label != null)
-			    adj.label.setText(adj.sliderText);
+			if (adj.label != null) {
+			    EditInfo labelEi = adj.elm.getEditInfo(adj.editItem);
+			    String valueStr = labelEi != null ? adj.getFormattedValue(labelEi, labelEi.value) : "";
+			    adj.updateLabelHTML(adj.sliderText, valueStr);
+			}
 			
 			// Parse min value with validation
 			String minText = ei.minBox.getText().trim();

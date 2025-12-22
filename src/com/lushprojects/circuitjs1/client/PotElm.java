@@ -71,7 +71,8 @@ class PotElm extends CircuitElm implements Command, MouseWheelHandler {
     		position + " " + sliderText; }
     
     void createSlider() {
-    	sim.addWidgetToVerticalPanel(label = new Label(sliderText));
+    	sim.addWidgetToVerticalPanel(label = new Label());
+    	label.getElement().setInnerHTML(Locale.convertToHTML(Locale.LS(sliderText)));
     	label.addStyleName("topSpace");
     	int value = (int) Math.round((position-.005)/.0099);
     	sim.addWidgetToVerticalPanel(slider = new Scrollbar(Scrollbar.HORIZONTAL, value, 1, 0, 101, this, this));

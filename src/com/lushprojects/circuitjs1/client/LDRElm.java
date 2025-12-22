@@ -58,7 +58,8 @@ class LDRElm extends CircuitElm implements Command, MouseWheelHandler {
     }
 
     void createSlider() {
-	sim.addWidgetToVerticalPanel(label = new Label(sliderText));
+	sim.addWidgetToVerticalPanel(label = new Label());
+	label.getElement().setInnerHTML(Locale.convertToHTML(Locale.LS(sliderText)));
 	label.addStyleName("topSpace");
 	int value = (int) (position*100);
 	sim.addWidgetToVerticalPanel(slider = new Scrollbar(Scrollbar.HORIZONTAL, value, 1, 0, 101, this, this));

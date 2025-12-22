@@ -8344,7 +8344,7 @@ public CirSim() {
 	            // Update the slider label to show current value
 	            if (adj.label != null) {
 	                String valueStr = adj.getFormattedValue(ei, value);
-	                adj.label.setText(com.lushprojects.circuitjs1.client.util.Locale.LS(adj.sliderText) + ": " + valueStr);
+	                adj.updateLabelHTML(adj.sliderText, valueStr);
 	            }
 	            return true;
 	        }
