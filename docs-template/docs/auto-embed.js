@@ -145,13 +145,20 @@
   }
 
   function getCircuitJSUrl() {
-    // Determine CircuitJS URL based on current path depth
-    var depth = (window.location.pathname.match(/\//g) || []).length - 1;
-    var prefix = '';
-    for (var i = 0; i < depth; i++) {
-      prefix += '../';
+    // Build absolute URL to circuitjs.html at site root
+    // Works for both local dev (/) and GitHub Pages (/circuitjs1/)
+    var pathname = window.location.pathname;
+    
+    // Find the site root by looking for known path segments
+    // e.g., /circuitjs1/docs/money/ → /circuitjs1/
+    // e.g., /docs/money/ → /
+    var siteRoot = '/';
+    var match = pathname.match(/^(\/[^\/]+\/)?docs\//);
+    if (match && match[1]) {
+      siteRoot = match[1]; // e.g., /circuitjs1/
     }
-    return prefix + 'circuitjs.html?startCircuit=blank.txt&editable=true';
+    
+    return siteRoot + 'circuitjs.html?startCircuit=blank.txt&editable=true';
   }
 
   var splitInstance = null;
