@@ -31,9 +31,12 @@ format:
 
 ---
 
-<div class="nav-buttons" style="display: flex; justify-content: flex-end; margin-top: 2em; padding-top: 1em; border-top: 1px solid #e0e0e0;">
-<a href="index.qmd" style="text-decoration: none;">Back to Series Index</a>
-</div>
+<table style="width: 100%; margin-top: 2em; padding-top: 1em; border-top: 1px solid #e0e0e0; border-collapse: collapse; font-size: 1.1em;">
+<tr>
+<td style="text-align: left; border: none;"><a href="10-key-takeaways.qmd">← Prev</a></td>
+<td style="text-align: right; border: none;"><a href="index.qmd">Back to Series Index</a></td>
+</tr>
+</table>
 
 <div class="split-footer">
 Originally by Paul Falstad, adapted by Iain Sharp.<br>

@@ -152,5 +152,96 @@ public class Locale {
     public static SafeHtml LSHTML(String s) {
         return SafeHtmlUtils.fromTrustedString(LS(s));
     }
+    
+    /**
+     * Convert text with LaTeX-style subscripts/superscripts and Greek symbols to HTML.
+     * Supports: Z_1 (single char), Z_{text} (bracketed), Z^2 (superscript), \beta (Greek)
+     * 
+     * @param input String with LaTeX-style formatting
+     * @return HTML string with proper <sub> and <sup> tags
+     */
+    public static String convertToHTML(String input) {
+        if (input == null)
+            return null;
+        
+        // First convert Greek symbols
+        String str = convertGreekSymbols(input);
+        
+        // If no subscripts or superscripts, return as-is (with HTML escaping)
+        if (str.indexOf('_') < 0 && str.indexOf('^') < 0)
+            return escapeHTML(str);
+        
+        StringBuilder result = new StringBuilder();
+        int pos = 0;
+        
+        while (pos < str.length()) {
+            char c = str.charAt(pos);
+            
+            // Check for subscript or superscript
+            if (c == '_' || c == '^') {
+                boolean isSubscript = (c == '_');
+                pos++; // skip the _ or ^
+                
+                if (pos >= str.length()) break;
+                
+                // Check if it's bracketed {text} or single character
+                String scriptText;
+                if (str.charAt(pos) == '{') {
+                    // Find matching closing brace
+                    int endBrace = str.indexOf('}', pos);
+                    if (endBrace < 0) {
+                        // No closing brace, treat rest as script
+                        scriptText = str.substring(pos + 1);
+                        pos = str.length();
+                    } else {
+                        scriptText = str.substring(pos + 1, endBrace);
+                        pos = endBrace + 1;
+                    }
+                } else {
+                    // Single character
+                    scriptText = String.valueOf(str.charAt(pos));
+                    pos++;
+                }
+                
+                // Add HTML tag
+                String tag = isSubscript ? "sub" : "sup";
+                result.append("<").append(tag).append(">");
+                result.append(escapeHTML(scriptText));
+                result.append("</").append(tag).append(">");
+                
+            } else {
+                // Regular character - escape HTML special chars
+                result.append(escapeHTMLChar(c));
+                pos++;
+            }
+        }
+        
+        return result.toString();
+    }
+    
+    /**
+     * Escape HTML special characters in a string
+     */
+    private static String escapeHTML(String s) {
+        if (s == null) return null;
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < s.length(); i++) {
+            sb.append(escapeHTMLChar(s.charAt(i)));
+        }
+        return sb.toString();
+    }
+    
+    /**
+     * Escape a single HTML special character
+     */
+    private static String escapeHTMLChar(char c) {
+        switch (c) {
+            case '<': return "&lt;";
+            case '>': return "&gt;";
+            case '&': return "&amp;";
+            case '"': return "&quot;";
+            default: return String.valueOf(c);
+        }
+    }
 
 }

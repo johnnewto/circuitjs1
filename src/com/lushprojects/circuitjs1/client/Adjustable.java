@@ -95,7 +95,8 @@ public class Adjustable implements Command {
     void createSlider(CirSim sim, double value) {
         EditInfo ei = elm.getEditInfo(editItem);
         String valueStr = getFormattedValue(ei, value);
-        sim.addWidgetToVerticalPanel(label = new Label(Locale.LS(sliderText) + ": " + valueStr));
+        sim.addWidgetToVerticalPanel(label = new Label());
+        updateLabelHTML(sliderText, valueStr);
         label.addStyleName("topSpace");
         int intValue = (int) ((value-minValue)*100/(maxValue-minValue));
         sim.addWidgetToVerticalPanel(slider = new Scrollbar(Scrollbar.HORIZONTAL, intValue, 1, 0, 101, this, elm));
@@ -122,7 +123,7 @@ public class Adjustable implements Command {
             EditInfo ei = elm.getEditInfo(editItem);
             if (ei != null) {
                 String valueStr = getFormattedValue(ei, value);
-                label.setText(Locale.LS(sliderText) + ": " + valueStr);
+                updateLabelHTML(sliderText, valueStr);
             }
         }
     }
@@ -153,7 +154,7 @@ public class Adjustable implements Command {
 	// Update label to show current value
 	if (label != null) {
 	    String valueStr = getFormattedValue(ei, ei.value);
-	    label.setText(Locale.LS(sliderText) + ": " + valueStr);
+	    updateLabelHTML(sliderText, valueStr);
 	}
 	
 	// Update ActionScheduler display message when manually adjusting slider
@@ -164,6 +165,13 @@ public class Adjustable implements Command {
 	}
 	
 	elm.sim.repaint();
+    }
+    
+    // Helper method to update label with HTML content (for subscripts/superscripts)
+    void updateLabelHTML(String sliderText, String valueStr) {
+        if (label == null) return;
+        String htmlText = Locale.convertToHTML(Locale.LS(sliderText)) + ": " + valueStr;
+        label.getElement().setInnerHTML(htmlText);
     }
     
     // Helper method to get formatted value, checking for custom formatting from element

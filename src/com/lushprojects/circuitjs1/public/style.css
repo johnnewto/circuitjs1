@@ -11,7 +11,7 @@
 	top: 50px;
 	right: 0;
 	z-index: 1;
-	transition: right 1s;
+	transition: right 0.3s;
 }
 .triggerLabel:before {
 	content: "‖";
@@ -22,7 +22,7 @@
 }
 
 .trigger:checked+.triggerLabel {
-	right: 128px;
+	right: 166px;
 }
 
 /* selects the side panel - same pattern for all screen sizes */
@@ -30,10 +30,11 @@
 	width: 0 !important;
 	background: white;
 	z-index: 1;
-	transition: width 1s;
+	transition: width 0.3s;
+	overflow: hidden;
 }
 .trigger:checked+.triggerLabel+div {
-	width: 128px !important;
+	width: 166px !important;
 }
 
 /* Make canvas full width when panel is hidden - for all screen sizes */

@@ -67,24 +67,35 @@
         e.preventDefault();
         e.stopPropagation();
         
-        // Convert .qmd to .html and ensure ?split=true
+        // Convert .qmd to .html (remove ?split=true for iframe src - iframe doesn't need it)
         var newHref = href.replace('.qmd', '.html');
-        if (!newHref.includes('split=true')) {
-          newHref += (newHref.includes('?') ? '&' : '?') + 'split=true';
-        }
+        // Remove split=true from iframe URL since the iframe content shouldn't have it
+        newHref = newHref.replace(/[?&]split=true/, '');
         
         // Resolve relative URL based on current iframe location
         var base = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
-        var fullUrl = new URL(newHref, window.location.origin + base).href;
-        console.log('[auto-embed] Navigating parent to:', fullUrl);
+        var contentUrl = new URL(newHref, window.location.origin + base).href;
+        console.log('[auto-embed] Updating content iframe to:', contentUrl);
         
-        // Navigate parent window
+        // Update only the content iframe, not the parent page
         try {
-          window.parent.location.href = fullUrl;
+          // Find the content iframe in parent and update its src
+          var contentIframe = window.parent.document.querySelector('#panel-right iframe');
+          if (contentIframe) {
+            contentIframe.src = contentUrl;
+            // Update parent URL for bookmarking (using history API, no reload)
+            var parentUrl = contentUrl.replace(/\?.*$/, '') + '?split=true';
+            window.parent.history.pushState({}, '', parentUrl);
+            console.log('[auto-embed] Updated content iframe and parent URL');
+          } else {
+            // Fallback: navigate parent (shouldn't happen in normal split mode)
+            console.warn('[auto-embed] Content iframe not found, falling back to parent navigation');
+            window.parent.location.href = contentUrl + (contentUrl.includes('?') ? '&' : '?') + 'split=true';
+          }
         } catch (err) {
           // Fallback if cross-origin
-          console.warn('[auto-embed] Could not navigate parent, using postMessage', err);
-          window.parent.postMessage({ type: 'navigate', url: fullUrl }, '*');
+          console.warn('[auto-embed] Could not update iframe, using postMessage', err);
+          window.parent.postMessage({ type: 'navigate', url: contentUrl }, '*');
         }
         return false;
       }

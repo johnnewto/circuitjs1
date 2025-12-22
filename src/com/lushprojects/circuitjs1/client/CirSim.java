@@ -700,7 +700,7 @@ public CirSim() {
 		    setToolbar();
 		}
 	}));
-	toolbarCheckItem.setState(!hideMenu && !noEditing && !hideSidebar && startCircuit == null && startCircuitText == null && startCircuitLink == null);
+	toolbarCheckItem.setState(!hideMenu && !noEditing && !hideSidebar);
 	
 	m.addItem(electronicsModeCheckItem = new CheckboxMenuItem(Locale.LS("Electronics Mode"),
 		new Command() { public void execute(){
@@ -2166,11 +2166,19 @@ public CirSim() {
 
         perfmon.stopContext(); // updateCircuit
         
-        // Always show framerate
+        // Always show time and framerate in top left
         g.setColor(CircuitElm.whiteColor);
         int height = 15;
         int increment = 15;
-        g.drawString("Framerate: " + CircuitElm.showFormat.format(framerate), 10, height);
+        
+        // Show simulation time first
+        String timeStr = "t = " + formatTimeFixed(t);
+        double timerate = 160*getIterCount()*timeStep;
+        if (timerate >= .1)
+            timeStr += " (" + CircuitElm.showFormat.format(timerate) + "x)";
+        g.drawString(timeStr, 10, height);
+        
+        g.drawString("Framerate: " + CircuitElm.showFormat.format(framerate), 10, height += increment);
         g.drawString("subiter: " + subIterations, 10, height += increment);
         
         if (shouldDrawGraphics && developerMode) {
@@ -2298,28 +2306,23 @@ public CirSim() {
 	} else if (!hideInfoBox) {
 	    // in JS it doesn't matter how big this is, there's no out-of-bounds exception
 	    String info[] = new String[10];
+	    int infoIdx = 0;
 	    
-	    // Always show time as first element with fixed 2 decimal places
-	    info[0] = "t = " + formatTimeFixed(t);
-		// info[0] = "t = " + NumberFormat.getFormat("0.00").format(t);
-	    double timerate = 160*getIterCount()*timeStep;
-	    if (timerate >= .1)
-	        info[0] += " (" + CircuitElm.showFormat.format(timerate) + "x)";
-	    
+	    // Time is now shown in top left, so start with element info
 	    if (mouseElm != null) {
 		if (mousePost == -1) {
-		    // Shift element info down by one
+		    // Show element info
 		    String[] elmInfo = new String[10];
 		    mouseElm.getInfo(elmInfo);
 		    for (int idx = 0; idx < elmInfo.length && elmInfo[idx] != null; idx++) {
-		        info[idx + 1] = Locale.LS(elmInfo[idx]);
+		        info[infoIdx++] = Locale.LS(elmInfo[idx]);
 		    }
 		} else {
-		    info[1] = "V = " + CircuitElm.getUnitText(mouseElm.getPostVoltage(mousePost), "V");
+		    info[infoIdx++] = "V = " + CircuitElm.getUnitText(mouseElm.getPostVoltage(mousePost), "V");
 		    // Add node name if available
 		    String nodeName = LabeledNodeElm.getNameByNode(mouseElm.nodes[mousePost]);
 		    if (nodeName != null)
-			info[2] = "Node: " + nodeName;
+			info[infoIdx++] = "Node: " + nodeName;
 		}
 
             
@@ -2331,8 +2334,8 @@ public CirSim() {
 //		*/
 		
 	    } else {
-	    	// When no element is selected, also show timestep info
-	    	info[1] = Locale.LS("time step = ") + CircuitElm.getUnitText(timeStep, "s");
+	    	// When no element is selected, show timestep info
+	    	info[0] = Locale.LS("time step = ") + CircuitElm.getUnitText(timeStep, "s");
 	    }
 	    if (hintType != -1) {
 		for (i = 0; info[i] != null; i++)
@@ -4578,7 +4581,7 @@ public CirSim() {
      */
     void openIframeViewer() {
     	IframeViewerDialog.openUrlWithSelector("Documentation", 
-    	    "../docs/money-content.html", "");
+    	    "../docs/money/index.html", "");
     }
     
     int countScopeElms() {
@@ -4815,6 +4818,11 @@ public CirSim() {
 	// Add voltage unit symbol if it's not the default "V"
 	if (!voltageUnitSymbol.equals("V")) {
 	    dump += "% voltageUnit " + CustomLogicModel.escape(voltageUnitSymbol) + "\n";
+	}
+	
+	// Add toolbar visibility state
+	if (toolbarCheckItem != null) {
+	    dump += "% showToolbar " + (toolbarCheckItem.getState() ? "true" : "false") + "\n";
 	}
 	
 	return dump;
@@ -5145,6 +5153,12 @@ public CirSim() {
 				    transformLoaded = true;
 				} catch (Exception e) {
 				    // Ignore parse errors
+				}
+			    } else if (settingType.equals("showToolbar") && st.hasMoreTokens()) {
+				String value = st.nextToken();
+				if (toolbarCheckItem != null) {
+				    toolbarCheckItem.setState(value.equals("true"));
+				    setToolbar();
 				}
 			    } else if (settingType.equals("AS") || settingType.equals("AST")) {
 				// Action Schedule entry (AS), Action Schedule Times, pause and animation (AST)

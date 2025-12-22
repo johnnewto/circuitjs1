@@ -77,6 +77,9 @@ class LabeledNodeElm extends CircuitElm {
     // Cache for reverse lookup: node number -> label name
     private static HashMap<Integer, String> nodeToLabelCache;
     
+    // Track which label text is currently being hovered (for highlighting related nodes)
+    private static String hoveredLabelText = null;
+    
     boolean isInternal() { return (flags & FLAG_INTERNAL) != 0; }
     boolean showLabelNodes() { return (flags & FLAG_SHOW_ALL_NODES) != 0; }
     boolean showAllCircuitNodes() { return (flags & FLAG_SHOW_ALL_CIRCUIT_NODES) != 0; }
@@ -424,4 +427,36 @@ class LabeledNodeElm extends CircuitElm {
     }
     
     String getName() { return text; }
+    
+    // Override to track when a LabeledNodeElm is being hovered
+    @Override
+    void setMouseElm(boolean v) {
+        super.setMouseElm(v);
+        if (v) {
+            // This node is now being hovered - store its label text
+            hoveredLabelText = text;
+        } else if (hoveredLabelText != null && hoveredLabelText.equals(text)) {
+            // This node is no longer being hovered - clear the tracked text
+            hoveredLabelText = null;
+        }
+    }
+    
+    // Override to highlight all nodes with the same label name
+    @Override
+    boolean needsHighlight() {
+        // First check standard highlight conditions
+        if (super.needsHighlight()) {
+            return true;
+        }
+        // Also highlight if another LabeledNodeElm with the same text is being hovered
+        if (hoveredLabelText != null && hoveredLabelText.equals(text)) {
+            return true;
+        }
+        return false;
+    }
+    
+    // Check if this is a "related" highlight (same name as hovered node, but not directly hovered)
+    boolean isRelatedHighlight() {
+        return !super.needsHighlight() && hoveredLabelText != null && hoveredLabelText.equals(text);
+    }
 }

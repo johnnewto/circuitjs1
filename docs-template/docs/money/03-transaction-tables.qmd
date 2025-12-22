@@ -112,9 +112,12 @@ This system is **sustainable** with only private sector debt.
 
 ---
 
-<div class="nav-buttons" style="display: flex; justify-content: flex-end; margin-top: 2em; padding-top: 1em; border-top: 1px solid #e0e0e0;">
-<a href="04-banking-models.qmd" style="text-decoration: none;">Next: Two Competing Models of Banking →</a>
-</div>
+<table style="width: 100%; margin-top: 2em; padding-top: 1em; border-top: 1px solid #e0e0e0; border-collapse: collapse; font-size: 1.1em;">
+<tr>
+<td style="text-align: left; border: none;"><a href="01-introduction.qmd">← Prev</a></td>
+<td style="text-align: right; border: none;"><a href="04-banking-models.qmd">Next: Two Competing Models of Banking →</a></td>
+</tr>
+</table>
 
 <div class="split-footer">
 [Back to Series Index](index.qmd)

@@ -4,6 +4,11 @@ subtitle: "Step-by-step electronics learning guides"
 toc: true
 ---
 
+<script src="circuitjs-utils.js"></script>
+
+<div id="LRC-circuit" class="circuit-section" data-name="LRC-circuit" data-circuit="/circuitjs.html?ctz=CQAgjCAMB0l3BWcMBMcUHYMGZIA4UA2ATmIxAUgpABZsKBTAWjDACgBSEANwHsAbAC4BDAOYMAqgDsAloJDBOIAM4ALXgHcAKrwEAjYQCcQgwwFcGbY2AyEQeKtjw17VKmEhtlIJy4e0aPFcocBAAM2F+ZUsNcFtgmztsBBQoNgBjH2cfFLik3JcYeEgwJEJobAwU3GJKmjIqiBY3Nn4sv0ds5NT3KFg0MnqUTBKSIM9uAKDuqeC3WiokeZgkADUrdpzUmkCtkI9PXloQQkKF0hA0Psgly+PsNiP6U5CaSAuroqQIVPoHo6oLyobwuMEIKCWsCQqR6PjYTh8IAAYhA3LBiqj0SUSiAWCAAMLCAAOwnScmEUnSDDSCJcKJCRQgYFgTQgAEkpAATMzpESU6meBFUem9DyskAAJQYyhkyj5VLSXAAggBlLQhFBsVShFwPIA&editable=false
+">
+
 
 ## Getting Started Tutorials
 
@@ -56,7 +61,9 @@ Learn the basics by building a simple LED circuit.
 - Without it, the LED would be damaged by excessive current
 - Current flows from positive to negative through the complete circuit
 
----
+</div> <!--"LRC-circuit" -->
+
+***
 
 ### Tutorial 2: RC Timing Circuit
 
@@ -94,7 +101,7 @@ Build a circuit that demonstrates capacitor charging and discharging.
 - **63% Rule**: Capacitor reaches 63% of final voltage in one time constant
 - **Exponential Behavior**: Charging follows 1 - e^(-t/τ), discharging follows e^(-t/τ)
 
----
+***
 
 ### Tutorial 3: Op-Amp Basics
 
@@ -130,7 +137,7 @@ Learn operational amplifier fundamentals with a non-inverting amplifier.
 - **Output**: 11V peak-to-peak sine wave
 - **Phase**: Input and output are in phase (non-inverting)
 
----
+***
 
 ## Intermediate Tutorials
 
@@ -170,7 +177,7 @@ Build a simple combinational circuit: (A AND B) OR (C AND D)
    - Test each combination
    - Verify expected behavior
 
----
+***
 
 ### Tutorial 5: Oscillators
 
@@ -197,7 +204,7 @@ Using an op-amp comparator with RC timing:
    - RC delay networks
    - Observe frequency vs. number of stages
 
----
+***
 
 ## Advanced Tutorials
 
@@ -229,7 +236,7 @@ Design and build active filter circuits.
 2. **Same cutoff frequency** calculation
 3. **Opposite response**: passes high frequencies, rejects low
 
----
+***
 
 ### Tutorial 7: Power Supply Design
 
@@ -262,7 +269,7 @@ Build a complete linear power supply.
    - Monitor regulation under different loads
    - Measure ripple and regulation
 
----
+***
 
 ## Troubleshooting Tutorials
 
@@ -303,7 +310,7 @@ Build a complete linear power supply.
    - Verify probe points
    - Check for high-impedance nodes
 
----
+***
 
 ## Practice Exercises
 
@@ -327,7 +334,7 @@ Take a working circuit and:
 2. Improve efficiency
 3. Add protection features
 
----
+***
 
 ## Next Steps
 
@@ -338,6 +345,6 @@ After completing these tutorials:
 3. **Contribute**: Learn about [Contributing](contributing.qmd) to the project
 4. **Build from Source**: See [Building Guide](building.qmd) for development
 
----
+***
 
 *These tutorials progress from basic concepts to advanced circuit design. Take your time with each section and experiment with variations to deepen your understanding.*

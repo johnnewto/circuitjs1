@@ -1,5 +1,6 @@
 $ 67 0.05 2.008553692318767 54 5 50 0.000049999999999999996
 % voltageUnit $
+% showToolbar true
 255 -1352 -912 -872 -860 0 8 4 6 16 0 true 2 1 true 5 0 true Firms \0 Firms Debt Firm_{equity} A-L-E Pay\sInterest Lending Bank\sSpending Govt\sTaxes Govt\sSpends Workers\sConsume Hire\sWorkers Interest\son\sBonds 10 0 10 0 ASSET LIABILITY EQUITY COMPUTED -Interest \0 -Interest \0 Lend Lend \0 \0 0.5*Spend_{banks} \0 0.5*Spend_{banks} \0 -0.5*Tax \0 -0.5*Tax \0 0.5*Spend_{Govt} \0 0.5*Spend_{Govt} \0 Con_W \0 Con_W \0 -Wages \0 -Wages \0 \0 \0 \0 \0 0.001
 255 -1384 -856 -904 -804 0 5 4 6 16 0 true 2 0 true 5 0 true Workers \0 Workers Stock2 Savers_equ A-L-E Bank\sSpending Govt\sTaxes Govt\sSpends Workers\sConsume Hire\sWorkers 80 0 80 0 ASSET LIABILITY EQUITY COMPUTED 0.5*Spend_{banks} \0 0.5*Spend_{banks} \0 -0.5*Tax \0 -0.5*Tax \0 0.5*Spend_{Govt} \0 0.5*Spend_{Govt} \0 -Con_W \0 -Con_W \0 Wages \0 Wages \0 0.001
 255 -1320 -968 -552 -916 0 9 7 6 16 0 true 2 0 true 4 0 true Banks \0 Reserves Debt Gov_{Bonds} Workers Firms Banks A-L-E Lending Pay\sInterest Bank\sSpending Govt\sTaxes Govt\sSpends Govt\sSells\sBonds Interest\son\sBonds Workers\sConsume Hire\sWorkers 100 0 0 80 10 10 0 ASSET ASSET ASSET LIABILITY LIABILITY EQUITY COMPUTED \0 Lend \0 \0 Lend \0 \0 \0 \0 \0 \0 -Interest Interest \0 \0 \0 \0 0.5*Spend_{banks} 0.5*Spend_{banks} -Spend_{banks} \0 -Tax \0 \0 -0.5*Tax -0.5*Tax \0 \0 Spend_{Govt} \0 \0 0.5*Spend_{Govt} 0.5*Spend_{Govt} \0 \0 -Bonds \0 Bonds \0 \0 \0 \0 Int_{Bonds} \0 \0 \0 \0 Int_{Bonds} \0 \0 \0 \0 -Con_W Con_W \0 \0 \0 \0 \0 Wages -Wages \0 \0 0.001
@@ -10,8 +11,8 @@ $ 67 0.05 2.008553692318767 54 5 50 0.000049999999999999996
 207 -400 -264 -328 -264 36 Wages
 w -992 -544 -960 -544 0
 207 -992 -544 -1008 -608 36 Money
-w -912 -544 -896 -544 0
-207 -896 -544 -880 -608 36 GDP
+w -912 -544 -888 -544 0
+207 -888 -480 -832 -480 36 GDP
 207 -784 -544 -736 -544 36 Lend
 207 -872 -376 -824 -376 36 Fee
 207 -1016 -376 -1032 -432 36 Interest
@@ -40,7 +41,7 @@ w -512 -584 -384 -584 0
 258 -584 -480 -520 -480 3 0.25 Spend_{frac}
 258 -832 -544 -784 -544 3 0.05 Lend\sRate
 258 -960 -544 -912 -544 1 2 Velocity
-w -896 -544 -832 -544 0
+w -888 -544 -832 -544 0
 258 -920 -376 -872 -376 1 0.5 Fee_{rate}
 258 -1064 -376 -1016 -376 1 0.05 Interest_{Rate}
 258 -1008 -296 -960 -296 1 0.1 Spend_{rate}
@@ -70,18 +71,19 @@ O -1128 -640 -1088 -640 1 1
 207 72 -424 128 -424 36 Govt_{Debt}^{GDP%}
 403 160 -976 584 -688 0 67_2_0_x1c01206_100_0.1_-1_4_L0:100_67_3_66_0_66_3
 257 152 -512 200 -512 2 2
+w -888 -480 -888 -544 0
 o 47 2 3 x1c01206 100 0.0001 0 6 L0:100 48 3 66 0 66 3 67 0 67 3 T:Debt\s%\sGDP
-o 11 2 0 xc01206 25373187.667693928 0.0001 1 2 11 3 T:GDP
+o 11 2 0 xc01206 12686593.833846964 0.0001 1 2 11 3 T:GDP
 38 44 F1 1 0 0.2 -1 Interest\sRate 0.01
-38 36 F1 1 0.2 0.4 -1 Govt\sTax\sRate 0.01
-38 37 F1 1 0.2 0.4 -1 Govt\sSpend\sRate 0.01
+38 36 F1 1 0.2 0.4 -1 Tax_{frac} 0.01
+38 37 F1 1 0.2 0.4 -1 Spend_{frac} 0.01
 38 51 F1 0 0 200 -1 Stop\sTime 1
 38 38 F1 1 0 0.05 -1 Lend\sRate 0.01
 % AST 1 1
 % AS 4 0 Stop\sTime 120 \0 \0 true false
-% AS 5 0 Govt\sTax\sRate 0.3 \0 \s true false
-% AS 6 0 Govt\sSpend\sRate 0.3 \0 \s true false
+% AS 5 0 Tax_{frac} 0.3 \0 \s true false
+% AS 6 0 Spend_{frac} 0.31 \0 \s true false
 % AS 8 0 Lend\sRate 0 \0 Govt\sZero\sDeficit,\sNo\sBank\sLending true false
 % AS 9 10 Lend\sRate 0.05 \0 Bank\sLending\sat\s5%\sGDP true false
-% AS 7 40 Govt\sSpend\sRate 0.33 \0 Govt\sSpends,\sruns\sa\sdeficit true false
-% AS 2 80 Govt\sSpend\sRate 0.25 \0 Govt\sRuns\sa\sSurplus true false
+% AS 7 40 Spend_{frac} 0.31 \0 Govt\sSpends,\sruns\sa\sdeficit true false
+% AS 2 80 Spend_{frac} 0.25 \0 Govt\sRuns\sa\sSurplus true false
