@@ -1,9 +1,9 @@
-$ 67 0.05 2.1831051418620846 44 5000 50 5e-11
+$ 67 0.05 1.3241202019156522 44 5000 50 5e-11
 % voltageUnit $
 % showToolbar true
-255 -856 -800 -88 -556 0 10 7 6 16 0 true 2 0 false 6 0 true Private\sBanks \0 Reserves Debt_{Firms} Debt_{Govt} HouseHolds Firms Banks A-L-E Pay\sWages Buy\sGoods Borrow\sMoney Pay\sInterest Pay\sBank\sFee Banks\sSpend Taxation Govt\sSpending Govt\sBond\sSales Bond\sInterest 100 0 0 40 50 10 0 ASSET ASSET ASSET LIABILITY LIABILITY EQUITY COMPUTED \0 \0 \0 Wages -Wages \0 \0 \0 \0 \0 -Consume Consume \0 \0 \0 Credit \0 \0 Credit \0 \0 \0 \0 \0 Int_{Firms} -Int_{Firms} \0 \0 \0 \0 \0 -Fee \0 Fee \0 \0 \0 \0 \0 Spend_{Banks} -Spend_{Banks} \0 -Tax \0 \0 -Tax \0 \0 \0 Spend_{Govt} \0 \0 \0 Spend_{Govt} \0 \0 -Bonds \0 Bonds \0 \0 \0 \0 Int_{Bonds} \0 \0 \0 \0 Int_{Bonds} \0 0.001
-x 151 -813 447 -810 4 24 Endogenous\sMoney\sModel 808080FF
-263 -871 -841 612 -16 0 Main
+255 -864 -816 -96 -540 0 12 7 6 16 0 true 2 1 false 6 0 true Private\sBanks \0 Reserves Debt_{Firms} Debt_{Govt} HouseHolds Firms Banks A-L-E Pay\sWages Buy\sGoods Borrow\sMoney Pay\sInterest Pay\sBank\sFee Banks\sSpend Taxation Govt\sSpending CB\sBond\sSales CB\sBond\sBuy Bond\sInterest Bond\sSales\sto\sNon\sBanks 100 0 0 40 50 10 0 ASSET ASSET ASSET LIABILITY LIABILITY EQUITY COMPUTED \0 \0 \0 Wages -Wages \0 \0 \0 \0 \0 -Consume Consume \0 \0 \0 Credit \0 \0 Credit \0 \0 \0 \0 \0 \0 -Int_{Firms} Int_{Firms} \0 \0 \0 \0 -Fee \0 Fee \0 \0 \0 \0 \0 Spend_{Banks} -Spend_{Banks} \0 -Tax \0 \0 -Tax \0 \0 \0 Spend_{Govt} \0 \0 \0 Spend_{Govt} \0 \0 -Bonds \0 Bonds \0 \0 \0 \0 BondBuy \0 -BondBuy \0 \0 \0 \0 Int_{Bonds} \0 \0 \0 \0 Int_{Bonds} \0 \0 \0 -Bonds_B^{NB} \0 -Bonds_B^{NB} \0 \0 0.001
+x -570 -855 -360 -852 4 24 Further\sOperations 808080FF
+263 -909 -826 -26 -161 0 Main
 207 -1208 -208 -1160 -208 36 Money
 207 -1264 -200 -1296 -200 36 HouseHolds
 207 -1264 -216 -1296 -216 36 Firms
@@ -26,54 +26,74 @@ w -1656 -264 -1608 -264 0
 207 -1608 -112 -1544 -112 36 Credit
 207 -1656 -112 -1704 -112 36 GDP
 258 -1656 -112 -1608 -112 3 0.009999999999999995 Credit_{Rate}
-258 -1264 -112 -1216 -112 3 0.04999999999999999 Int_{Rate}
+258 -1264 -112 -1216 -112 3 0 Int_{Rate}
 207 -1264 -112 -1304 -112 36 Debt_{Firms}
 207 -1216 -112 -1152 -112 36 Int_{Firms}
 207 -1032 -136 -1000 -136 36 Banks
 207 -1032 -208 -1000 -208 36 HouseHolds
 207 -1032 -112 -1000 -112 4 Firms
-207 -704 -240 -744 -240 4 GDP
-207 -472 -88 -496 -88 36 Debt_{Firms}
-207 -424 -80 -392 -80 36 Debt_{Firms}^{GDP%}
+207 -1368 -448 -1408 -448 4 GDP
+207 -640 -248 -664 -248 36 Debt_{Firms}
+207 -592 -240 -560 -240 36 Debt_{Firms}^{GDP%}
 207 -1032 -232 -1000 -232 36 Int_{Firms}
 207 -1176 -280 -1144 -280 36 Fee
 207 -1224 -280 -1264 -280 36 Int_{Firms}
 258 -1224 -280 -1176 -280 3 0.1 Fee_{Rate}
 207 -1032 -168 -992 -168 36 Spend_{Banks}
 207 -1080 -168 -1128 -168 36 Banks
-258 -1080 -168 -1032 -168 1 1 V_{Banks}
-217 -132 -352 40 -140 0 2 Debt_{Firms}^{GDP%} Debt_{Govt}^{%GDP} #FFFF00 #00FF00
-207 -656 -240 -656 -272 4 Spend_{Govt}
-207 -384 -240 -352 -240 36 Bonds
-255 -72 -552 408 -404 1 4 4 6 16 0 true 2 0 false 5 0 true Treasury \0 Government Debt_{Govt} Treasury_{Equity} A-L-E Taxation Govt\sSpending Govt\sBond\sSales Bond\sInterest 0 0 0 0 ASSET LIABILITY EQUITY COMPUTED Tax \0 Tax \0 -Spend_{Govt} \0 -Spend_{Govt} \0 Bonds Bonds \0 \0 -Int_{Bonds} \0 -Int_{Bonds} \0 0.001
-258 -704 -240 -656 -240 3 0.31 Spend_{Frac}
-258 -712 -168 -664 -168 3 0.30000000000000004 Tax_{Frac}
-207 -712 -168 -752 -168 4 GDP
-207 -664 -168 -664 -200 4 Tax
-207 -432 -208 -432 -168 4 Deficit
-252 -576 -208 -528 -208 3 2
-w -656 -240 -576 -216 0
-w -664 -168 -576 -200 0
-207 -576 -304 -632 -304 4 Debt_{Govt}
-258 -576 -304 -528 -304 3 0.05 Int_{RateBonds}
-207 -432 -304 -432 -336 4 Int_{Bonds}
-251 -432 -240 -384 -240 3 2
-w -528 -304 -432 -304 0
-w -528 -208 -432 -208 0
-w -432 -304 -432 -248 0
-w -432 -232 -432 -208 0
-207 -472 -72 -512 -72 4 GDP
-P -472 -128 -424 -128 3 2
-207 -472 -120 -512 -120 4 GDP
-207 -472 -136 -512 -136 36 Debt_{Govt}
-207 -424 -128 -392 -128 36 Debt_{Govt}^{%GDP}
-P -472 -80 -424 -80 3 2
-431 96 -320 120 -296 0 200 false false
-255 -72 -800 504 -652 1 4 5 6 16 0 true 2 0 false 5 0 true Central\sBank \0 Stock0 Reserves Government CD_{Equity} A-L-E Taxation Govt\sSpending Govt\sBond\sSales Bond\sInterest 0 100 0 -100 0 ASSET LIABILITY LIABILITY EQUITY COMPUTED \0 -Tax Tax \0 \0 \0 Spend_{Govt} -Spend_{Govt} \0 \0 \0 -Bonds Bonds \0 \0 \0 Int_{Bonds} -Int_{Bonds} \0 \0 0.001
-o 65 8 0 4614 40 0.1 0 4 65 3 33 0 33 3
-o 55 8 0 12806 605549228591919000000 0.0001 1 8 55 3 21 0 21 3 27 0 27 3 47 0 47 3
+258 -1080 -168 -1032 -168 1 0.4 V_{Banks}
+217 -222 -531 -74 -343 0 3 Debt_{Firms}^{GDP%} Debt_{Govt}^{%GDP} Debt_{Govt}^{CB}% #FFFF00 #00FF00 #00FFFF
+207 -1320 -448 -1320 -480 4 Spend_{Govt}
+207 -1048 -448 -1016 -448 36 Bonds
+258 -1368 -448 -1320 -448 3 0.31 Spend_{Frac}
+258 -1376 -376 -1328 -376 3 0.30000000000000004 Tax_{Frac}
+207 -1376 -376 -1416 -376 4 GDP
+207 -1328 -376 -1328 -408 4 Tax
+207 -1096 -416 -1096 -376 4 Deficit
+252 -1240 -416 -1192 -416 3 2
+w -1320 -448 -1240 -424 0
+w -1328 -376 -1240 -408 0
+207 -1240 -512 -1296 -512 4 Debt_{Govt}
+258 -1240 -512 -1192 -512 3 0.03 Int_{RateBonds}
+207 -1096 -512 -1096 -544 4 Int_{Bonds}
+251 -1096 -448 -1048 -448 3 2
+w -1192 -512 -1096 -512 0
+w -1192 -416 -1096 -416 0
+w -1096 -512 -1096 -456 0
+w -1096 -440 -1096 -416 0
+207 -640 -232 -680 -232 4 GDP
+P -640 -288 -592 -288 3 2 100
+207 -640 -280 -680 -280 4 GDP
+207 -640 -296 -680 -296 36 Debt_{Govt}
+207 -592 -288 -560 -288 36 Debt_{Govt}^{%GDP}
+P -640 -240 -592 -240 3 2 100
+431 -16 -640 8 -616 0 200 false false
+255 -848 -528 -272 -348 1 6 5 6 16 0 true 2 0 false 5 0 true Central\sBank \0 Debt_{Govt}^{CB} Reserves Government CD_{Equity} A-L-E Taxation Govt\sSpending CB\sBond\sSales Bond\sInterest CB\sBond\sBuy Bond\sSales\sto\sNon\sBanks 0 100 0 -100 0 ASSET LIABILITY LIABILITY EQUITY COMPUTED \0 -Tax Tax \0 \0 \0 Spend_{Govt} -Spend_{Govt} \0 \0 \0 -Bonds Bonds \0 \0 \0 Int_{Bonds} -Int_{Bonds} \0 \0 BondBuy BondBuy \0 \0 \0 \0 \0 \0 \0 \0 0.001
+207 -648 -336 -696 -336 36 Debt_{Govt}
+258 -648 -336 -584 -336 3 0.02 BondBuy_{Rate}
+207 -584 -336 -530 -336 36 BondBuy
+207 -176 -64 -144 -64 4 Reserves
+P -640 -192 -592 -192 3 2 100
+207 -640 -184 -680 -184 4 GDP
+207 -592 -192 -560 -192 36 Debt_{Govt}^{CB}%
+207 -640 -200 -664 -200 36 Debt_{Govt}^{CB}
+207 -144 -304 -112 -304 36 Bonds_B^{NB}
+258 -224 -304 -144 -304 3 0 BondSell_{Rate}
+207 -224 -304 -272 -304 36 Debt_{Govt}
+207 -288 -224 -328 -224 36 GDP
+259 -288 -224 -224 -224 1
+P -224 -216 -168 -216 2 2 20
+w -224 -208 -288 -208 0
+w -288 -224 -288 -208 0
+207 -168 -216 -128 -216 36 GDPGrowth%
+o 64 8 0 4614 20 0.0001 0 8 64 3 33 0 33 3 74 0 74 3 84 0 84 3
+o 54 8 0 12806 0.0001 0.0001 1 10 54 3 21 0 21 3 27 0 27 3 46 0 46 3 71 0 71 3
 38 24 F1 1 -0.1 0.1 -1 Credit_{Rate} 0.01
 38 25 F1 1 -0.1 0.1 -1 Int_{Rate} 0.01
-38 45 F1 1 0.2 0.4 -1 Spend_{Frac} 0.01
-38 46 F1 1 0.2 0.4 -1 Tax_{Frac} 0.01
+38 44 F1 1 0.2 0.4 -1 Spend_{Frac} 0.01
+38 45 F1 1 0.2 0.4 -1 Tax_{Frac} 0.01
+38 69 F1 1 0 0.05 -1 BondBuy_{Rate} 0.01
+38 53 F1 1 0 0.1 -1 Int_{RateBonds} 0.01
+38 77 F1 1 0 0.1 -1 BondSell_{Rate} 0.01
+38 40 F1 1 0 2 -1 V_{Banks} 0.1
 % AST 1 1

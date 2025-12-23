@@ -322,6 +322,21 @@
   }
 
   /**
+   * Convert LaTeX-style subscript/superscript notation to HTML.
+   * Handles patterns like: Name_{sub}^{super}, Name_{sub}, Name^{super}
+   * @param {string} name - Label name with LaTeX notation
+   * @returns {string} HTML formatted string
+   */
+  function formatLabelAsHTML(name) {
+    if (!name) return '';
+    // Convert _{...} to <sub>...</sub>
+    var result = name.replace(/\_\{([^}]+)\}/g, '<sub>$1</sub>');
+    // Convert ^{...} to <sup>...</sup>
+    result = result.replace(/\^\{([^}]+)\}/g, '<sup>$1</sup>');
+    return result;
+  }
+
+  /**
    * Initialize a real-time data table that updates from CircuitJS.
    * Caches the CircuitJS reference locally to avoid repeated lookups.
    * 
@@ -378,7 +393,7 @@
         var value = sim.getLabeledNodeValue ? sim.getLabeledNodeValue(name) : 
                     sim.getNodeVoltage ? sim.getNodeVoltage(name) : 0;
         var row = document.createElement('tr');
-        row.innerHTML = '<td class="rt-label">' + name + '</td>' +
+        row.innerHTML = '<td class="rt-label">' + formatLabelAsHTML(name) + '</td>' +
                         '<td class="rt-value">' + formatValue(value) + '</td>';
         tbody.appendChild(row);
       });

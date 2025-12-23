@@ -290,18 +290,23 @@ public class GodlyTableElm extends TableElm {
             }
             
             // Compute column sum (like parent does) and cache individual cell values
+            // Also track max cell magnitude for convergence threshold calculation
+            // This handles the case where large values cancel to near-zero
             double columnSum = 0.0;
+            double maxCellMagnitude = 0.0;
             TableColumn column = columns.get(col);
             for (int row = 0; row < rows; row++) {
                 double cellValue = getVoltageForCell(row, col);
                 column.setCachedCellValue(row, cellValue); // Cache the value for rendering
                 columnSum += cellValue;
+                maxCellMagnitude = Math.max(maxCellMagnitude, Math.abs(cellValue));
             }
             
             // Like VCVSElm: check input convergence using dynamic threshold
             // Check if column sum (our "input") has converged
             if (Math.abs(columnSum - lastColumnSums[col]) > convergeLimit) {
                 sim.converged = false;
+
                 // Debug: log convergence failure details
                 if (sim.subIterations > 20) {
                     CirSim.console("GodlyTable[" + columns.get(col).getStockName() + "] col " + col + 
@@ -312,7 +317,9 @@ public class GodlyTableElm extends TableElm {
                 }
             }
             lastColumnSums[col] = columnSum;
-            
+            // if (sim.subIterations <= 100)
+            //     sim.converged = false;
+
             // Perform integration on the column sum (like VCVSElm evaluates expression)
             double integratedValue = performIntegration(col, columnSum);
             integratedValues[col] = integratedValue;
@@ -321,19 +328,25 @@ public class GodlyTableElm extends TableElm {
             // Combined check: only stamp if both master for this column AND output pin exists
             if (pins[col].output) {
                 int vn = pins[col].voltSource + sim.nodeList.size();
-                // Check output voltage convergence (like VCVSElm, but with minimum threshold)
+                // Check output voltage convergence
                 double outputVoltage = volts[col];
                 double voltageDiff = Math.abs(outputVoltage - integratedValue);
-                // Use relative threshold (1%) but with minimum absolute threshold (1e-6)
-                // to avoid false convergence failures when values are near zero
-                double threshold = Math.max(Math.abs(integratedValue) * 0.01, 1e-6);
+                // Use threshold based on the larger of:
+                // 1. Relative threshold (0.1%) of integrated value
+                // 2. Relative threshold (0.1%) of max cell magnitude (handles large cancelling values)
+                // 3. Minimum absolute threshold (1e-6) for numerical stability
+                // This prevents false convergence failures when large values sum to near-zero
+                double threshold = Math.max(
+                    Math.max(Math.abs(integratedValue), maxCellMagnitude) * 0.001,
+                    1e-6
+                );
                 if (voltageDiff > threshold && sim.subIterations < 100) {
                     sim.converged = false;
                     // Debug: log voltage convergence failure details
                     if (sim.subIterations > 20) {
                         CirSim.console("GodlyTable[" + columns.get(col).getStockName() + "] col " + col + 
                                      " voltage convergence failed: diff=" + voltageDiff + 
-                                     " threshold=" + threshold +
+                                     " threshold=" + threshold + " (maxCell=" + maxCellMagnitude + ")" +
                                      " (output=" + outputVoltage + ", integrated=" + integratedValue + 
                                      ") at t=" + sim.t + " subiter=" + sim.subIterations);
                     }

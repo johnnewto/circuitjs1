@@ -1,0 +1,180 @@
+---
+title: "Further Bond Operations"
+toc: true
+toc-depth: 3
+format:
+  html:
+    css: ../circuitjs-docs.css
+    include-in-header:
+      - text: |
+          <script src="../circuitjs-utils.js"></script>
+---
+
+
+## 4. Further Bond Operations
+
+<div id="bond-operations" class="circuit-section" data-name="Bond Operations" data-circuit="/circuitjs.html?ctz=CQAgbA7CAMB00FYQEZYGYBMAWZHp+QE5kEwEMMQssQFp7bpaBTAWmWQCgBSEANwD2AGwAuAQwDmzAKoA7AJYiQwHiADOACwEB3ACoDhAIzEAnECJMBXZpwwIkrABxgaT5GBCtCH1gixMmXBAoD3cYcytmEEpkEAAzMSE1KI8mC2sQAAUTeT4xEWYAHTUAITFZAGs1EEKmACVmZJM+RpAAEWZDEQB9AG8AMXkTAFs1AF92zp7egHEBPhEJgAkBS2SVoQATasGR6rLK6oBBVgAZVgBRLLEAT2KAdUlWkss7tTmBbZASgRMTHWKAFkBLJmDdrm8AJKyAomRpKTK3YoHCrFfrMKIotTFADKAAdmLJNiBdGIAB75eQgkBzBa4glE+SyCQgADCJWRIM2uMSrXZnKJyNe3y5xWhsPhIsFahxvOxahEAmKADkQcjylUUAwAlQmHQteEjjicRddCAjSazRbTSBTpCjiVIXbdABNW32x3Ot0XACK0khrrZAHlAZlpLoLm0akxatGQI8pNVWAnWrG0zGM55WSC1JZhlFs7Jc-m4+m2XDNopS0xWRWq2WG5nWOK+rtRhMWwMhu3q73WOiorGB73GyB8YTNn0sRNWOOiVONeM46xSWS+6uR0w55PZvNFpuxwyd7T92XWD8idVYxevqPr1yXuDY+eH8K70xOzel++QJ+ud-M2fL9uhKAA9XplRKCYgP-EDwMg6DMzgeguDXXwICYJx7E8NAwEwxxyCoaIaH6SwTBEDRmBMYogwJExKRzEBHGgZjmP6fpbDANBPEIaBCE8RwMB8ITPHcWImEBMQmVsaAoHYPBHE8BTRPcTDlNwkBgVBG4ZLk3AXCUhh5O8QymA0lY1mYDZtl00ShNcDAwmM4Swg0ts1FsBBYnkgzWGU+SWMMxTuIwTzFPYMgfFU0S8PC6LYlwWAkAANT6JYljGMLRIwhzfPcUglIM2IaFSrs9kyvA9MimLMOQHKapAczVnWYQbMq0SsF87BaqwbAlP8RqPGyAQ4kUDztFErzKD8rA4tINSDOgTgJvYealMwSagj8jalrsaaSC27qOq6gaQtsiLAouybqAajTC2LGwVtU8KMA2i6XsWrL3vW-a1u2yhuLgDwUz6HENFMZhMqe2LCtcEg8NhmBlpigq-LymG0ZoXbZOy6BcrhiBCMxwaQHc87nsRiK+r8kyNJmNpMnJqafs2-bHBoDSUw89rvvYLaSBuvmAY8WtmErERyeqoXcbhoI6YZr78qi-mMY4AGYHgPjCG1nXdd1pBRfFvo6nySHFfslT9sc5X1Y-GFjdNiqcZ82X9rQPHLZJjoulbbtxnJ63Pb5om1ZJzt3KdvToDe5ANPYehao0jSsXJ6Ppv85AE6CkmLJarZuedzOY-5rPpZIv3ydw8LqDi-xq9moj6cZnmXDUhvWDAE7go8b3pgj86EEIdOBt8BGZrMnupl98rwKb7hI9EtOWfjozXuF397bK9tybq4TmJUwWMH3tyMQD6mj9qi2-OPjxw79iqEDiigHP3vmID3syNdiAcHYKBf45jmAcK2t9pAJJtuBchx-6Z1fu4OKuA4pgOTouRWLFapgIAaAxS4lYAlUgVUCqdUlIUE8AgNA3kICuDQFgQGjVJg+y3uMWeDN570OmCeMY4FuBNwmL3PoHDwLsjGLwAAxOxdiDARH0AkUwKR0BxEcR5rHPAnga6iUwJhWaTAaAQN3AsaBeN65xWgE5NRyd-yKyrqo9uyjNEN0BugWIuj+j0QAMYPzimgd+OFvHsEwOFLxHgHHuwTqEsJ9AaCrlbG46BgSfFRRwD4OJNAm6VyPvE9R6TWB1yIquVOJlslOUzgU5JkxRquMUJ5K2I9EkqSHqo1y0RkZ+JUdkmxR1sl9SWk9fxGT5I1MCtjPSHTmbOVIUEGgfC9GLHNiPUZHB6m+DlhraOG9pgmwKF+AxBT5l8R8H4GgNA-yXgft5YpPg1Hx3bmYppT0iDTV2TsoI3S6nTVqfHAptSXkfP2SXT5BVvnnOsbVPZDTUjnVbsvIBakNopIVpkTwkLr7hUHunRwwVohaiGYikeF9EWvzxXC5uzskUYAKdCpStNJ4MI4QPRZR8UVjwZV7Ke0zOG9G4QzTKCKO64rmfS06mLM5LRoWcnwkLwpgDCEwPATAEhJCiPK5InkHDsxRVkjAEBprUOweAWgerpURAyJQOViRkj6rSJENkhILCJHVJUOMUyBG9CESABoTQWjVFpFRWQ+YYRsjaH0C4ABHSwigbgTBOOcK4q4GKyBpHuekE4mQsn5KUUUMo5RSm5GocUVFJRppvEKcERbM1CEaMURUKo1SlEXOEYV4QV6GmNDaO0DonQBjdG2z0naQC+n9IGVkIYwwRijM+DcG5Ry6I4Z4ade5EJ9i-Nmq8gE7bTC2Z4Y52wF33iJI+bN+6fw-mQiYiF7c0BxzACUpO1L2Hzq+i4AJcdH5UKTisygN5Hy-zNjzF9OFn3u3-UEjwn7Xjk18XlQWBkaDuqop6zgPKkX3NIYs5DIUsVntquzfFWHDk0gVr+1Diy-podvfw+dgioLcEw6ZRFXUGAaSdRRl1UFyaC3dq7HCHtzGXjghBVjdgXrUw4x1Kh3Hwg3hxMwIQQhv3-2flxhyWrFMsppfenmzK-LCY1X1eWzdB5KXRcQhy58+pcB5QpvyRSMGB0oHZ75ln-KaeUg5ozWmX4vUGZLF6RSNWuQ8E3GY-xtAUWowIcANBFLaKlTQFRJ6THhEUgZbiF7wipe4pQ8ImXuLYaYNhtAnBwt+CYvWi+HhsBkOcIQJKmccB+EcF4lZKEUAGmKyFcS0RYghSgDKqA3FOrhAGxljrEAuucDQIpPq-QEqeDgDgs55YxaKDkysrgE3ohIGmy11gc2v6iTWSt5Ca3FI3S2zgk1uD9vOJiat8bJ3NszbgBduGJJyTRLEO42762r2k0eyshwsRQM3EO-AY7tBuJnfCLt9gB3egbOYBuo7d3ghQEhwEWAC3JPSdk3Dx2X2TtMDR5imHpVpxf1UEaM0CVOBAA">
+
+**Building on the BOMD framework**, this section explores additional bond market operations and their effects on money creation, bank reserves, and the broader economy.
+
+### Open Market Operations
+
+Central banks use **Open Market Operations (OMO)** to manage interest rates and liquidity in the banking system.
+
+**Bond Purchases by Central Bank:**
+- Central bank buys government bonds from banks
+- Banks receive reserves in exchange
+- Increases reserve levels (quantitative easing)
+
+**Bond Sales by Central Bank:**
+- Central bank sells government bonds to banks  
+- Banks pay with reserves
+- Decreases reserve levels (quantitative tightening)
+
+### Godley Table: Central Bank Bond Operations
+
+| Flows↓/Stocks→      | Reserves        | CB Holdings    | Bank Holdings | Banks Equity |
+|:------------------- |----------------:|---------------:|--------------:|-------------:|
+| **Type**            | Asset           | Asset          | Asset         | Equity       |
+| **Initial**         | 100             | 50             | 50            | 10           |
+| **CB Buys Bonds**   | +QE             | +QE            | -QE           |              |
+| **CB Sells Bonds**  | -QT             | -QT            | +QT           |              |
+| **∫ Flows**         | 100+∫           | 50+∫           | 50+∫          | 10           |
+
+Where:
+- **QE** = Quantitative Easing (bond purchases)
+- **QT** = Quantitative Tightening (bond sales)
+
+### Interactive Controls
+
+Adjust the central bank bond operations to see their effects:
+
+<button onclick="CircuitJSUtils.cycleSlider('BondBuy_{Rate}', [0.02, 0.05, 0.0], 300, this)" class="slider-toggle-btn">
+  <span class="btn-icon">⚡</span> BondBuy<sub>Rate</sub>: <span class="slider-value">2%</span>
+</button>
+
+<table id="bond-ops-table" class="realtime-table">
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="rt-label">Loading...</td><td class="rt-value">—</td></tr>
+  </tbody>
+</table>
+
+<script>
+  // Start the realtime table after page loads
+  document.addEventListener('DOMContentLoaded', function() {
+    // Wait for CircuitJS to be ready, then start table updates
+    setTimeout(() => {
+      startRealtimeTable('bond-ops-table', ['GDP', 'Reserves', 'Debt_{Govt}^{%GDP}', 'Debt_{Firms}^{GDP%}', 'Debt_{Govt}^{CB}%'], 200);
+    }, 2000);
+  });
+</script>
+
+### Money Creation and Destruction via Bonds
+
+This adds two more means by which fiat money can be created and destroyed. Bond sales by private banks to non-banks are financed by non-banks reducing their deposits, which destroys money; and Central Bank purchases of Bonds from Non-Banks create money.
+
+The sale of bonds by banks to non-banks reverses the money creation effect of a government deficit, while it also adds another method of government money creation—paying interest on bonds owned by the non-bank private sector. Central Bank bond purchases from non-banks also create money. The general formula for money creation is shown in the Equation:
+
+$$
+\frac{d}{dt} \text{Money} = \text{Credit} + (\text{Spend}_{\text{Gov}} - \text{Tax} + \text{Int}_{\text{Bonds}}^B) - \text{Bonds}_{\text{B}}^{NB} + \text{Bonds}_{\text{CB}}^{NB} + \text{Int}_{\text{Bonds}}^{NB} \quad (9)
+$$
+
+### Key Bond Operations
+
+#### 1. Yield Curve Control
+
+Central banks can target specific bond yields by committing to buy/sell unlimited quantities at target prices:
+
+$$Yield_{Target} = \frac{Coupon}{Price_{Target}}$$
+
+**Effects:**
+- Stabilizes long-term interest rates
+- Reduces government borrowing costs
+- Anchors market expectations
+
+#### 2. Bond Rollover
+
+When government bonds mature:
+
+| Operation        | Reserve Effect | Debt Effect  |
+|:-----------------|:--------------:|:------------:|
+| **Pay Off**      | -Principal     | -Principal   |
+| **Rollover**     | 0              | 0            |
+| **Partial Roll** | -Partial       | -Partial     |
+
+**Rollover Equation:**
+$$\Delta Debt = New_{Issues} - Maturities + Rollover$$
+
+#### 3. Interest Rate Corridor
+
+Banks hold reserves that earn interest from the central bank:
+
+$$Int_{Reserves} = Reserves \times Rate_{CB}$$
+
+This creates a floor for interbank lending rates.
+
+### Differential Equations (Extended)
+
+Building on the BOMD equations:
+
+$$\frac{dReserves}{dt} = Spend_{Gov} + Int_{Gov} + QE - Tax - Bonds - QT$$
+
+$$\frac{dCB_{Holdings}}{dt} = QE - QT - Maturities_{CB}$$
+
+$$\frac{dBank_{Holdings}}{dt} = Bonds - QE + QT + Maturities_{CB}$$
+
+$$\frac{dBanks}{dt} = Int_{Gov} + Int_{Firms} + Int_{Reserves} - Spend_{Banks}$$
+
+### Transmission Mechanisms
+
+**Portfolio Balance Channel:**
+When central bank buys bonds:
+1. Banks have fewer bonds, more reserves
+2. Seek yield → buy other assets
+3. Asset prices rise, yields fall
+4. Borrowing costs decrease economy-wide
+
+**Signaling Channel:**
+Bond operations signal future policy intentions:
+- Large QE → "low rates for longer"
+- QT announcement → tightening ahead
+
+### Practical Implications
+
+| Scenario                     | Bond Action   | Effect on Economy      |
+|:-----------------------------|:--------------|:-----------------------|
+| **Recession**                | CB buys bonds | ↑ Reserves, ↓ Rates    |
+| **Inflation**                | CB sells bonds| ↓ Reserves, ↑ Rates    |
+| **Financial Crisis**         | Massive QE    | Stabilize markets      |
+| **Debt Ceiling Concerns**    | Rollover      | Maintain liquidity     |
+
+### Result: Policy Flexibility
+
+The BOMD framework reveals that:
+
+- Bond operations are **reserve management tools**, not funding operations
+- Central bank can always set interest rates through bond operations
+- Government solvency is not constrained by bond market
+
+**Conclusion**: Understanding bond operations clarifies that monetary and fiscal policy are deeply interconnected through the banking system's balance sheet.
+
+</div>
+
+---
+
+<table style="width: 100%; margin-top: 2em; padding-top: 1em; border-top: 1px solid #e0e0e0; border-collapse: collapse; font-size: 1.1em;">
+<tr>
+<td style="text-align: left; border: none;"><a href="04c-endogenous-money.qmd">← Prev</a></td>
+<td style="text-align: right; border: none;"><a href="05-fundamental-identity.qmd">Next: The Fundamental Identity →</a></td>
+</tr>
+</table>
+
+<div class="split-footer">
+[Back to Series Index](index.qmd)
+</div>

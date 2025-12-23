@@ -298,10 +298,10 @@ public class TableRenderer {
     private void drawTableBorder(Graphics g, TableDimensions dims) {
         if (MODERN_STYLE) {
             // Modern style: subtle rounded border
-            g.setColor(table.nonConverged ? Color.blue : getGridLineColor());
+            g.setColor(table.nonConverged ? Color.red : getGridLineColor());
             g.drawRoundRect(dims.tableX, dims.tableY, dims.tableWidth, dims.tableHeight, CORNER_RADIUS);
         } else {
-            g.setColor(table.nonConverged ? Color.blue : CircuitElm.lightGrayColor);
+            g.setColor(table.nonConverged ? Color.red : CircuitElm.lightGrayColor);
             g.drawRect(dims.tableX, dims.tableY, dims.tableWidth, dims.tableHeight);
         }
     }
@@ -812,7 +812,7 @@ public class TableRenderer {
         // The title area spans from the top of the table to just before the Type row (20 pixels total)
         if (table.needsHighlight()) {
             Rectangle arrowRect = table.getCollapseArrowRect();
-            g.setColor(CircuitElm.selectColor); // Light blue
+            g.setColor(table.getHighlightColor()); // Red for non-convergence, cyan for other highlights
             // Draw background rectangle covering the title area, but skip the arrow area on the left
             g.fillRect(arrowRect.x + arrowRect.width, tableY, tableWidth - arrowRect.width, 20);
         }

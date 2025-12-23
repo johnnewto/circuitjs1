@@ -41,7 +41,7 @@ In the BOMD model:
 
 <table style="width: 100%; margin-top: 2em; padding-top: 1em; border-top: 1px solid #e0e0e0; border-collapse: collapse; font-size: 1.1em;">
 <tr>
-<td style="text-align: left; border: none;"><a href="04c-endogenous-money.qmd">← Prev</a></td>
+<td style="text-align: left; border: none;"><a href="04d-further-bond-operations.qmd">← Prev</a></td>
 <td style="text-align: right; border: none;"><a href="07-policy-implications.qmd">Next: Policy Implications →</a></td>
 </tr>
 </table>

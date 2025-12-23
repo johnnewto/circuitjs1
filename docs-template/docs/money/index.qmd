@@ -24,23 +24,26 @@ This series breaks down the fundamental principles of money, banking, and govern
 5. **[Endogenous Money Model (BOMD)](04c-endogenous-money.qmd)**  
    Part 3: Bank-Originated Money and Debt
 
-6. **[The Fundamental Identity](05-fundamental-identity.qmd)**  
+6. **[Further Bond Operations](04d-further-bond-operations.qmd)**  
+   Part 4: Open Market Operations and Central Bank Tools
+
+7. **[The Fundamental Identity](05-fundamental-identity.qmd)**  
    Sectoral balances and the key insight
 
 
-7. **[Policy Implications](07-policy-implications.qmd)**  
+8. **[Policy Implications](07-policy-implications.qmd)**  
    What each model predicts for government policy
 
-8. **[Advanced Topics](08-advanced-topics.qmd)**  
+9. **[Advanced Topics](08-advanced-topics.qmd)**  
    Money supply, inflation, trade, and capital adequacy
 
-9. **[Exercises](09-exercises.qmd)**  
+10. **[Exercises](09-exercises.qmd)**  
     Hands-on model building and experimentation
 
-10. **[Key Takeaways](10-key-takeaways.qmd)**  
+11. **[Key Takeaways](10-key-takeaways.qmd)**  
      Summary of main insights
 
-11. **[Further Reading](11-further-reading.qmd)**  
+12. **[Further Reading](11-further-reading.qmd)**  
      Resources for deeper exploration
 
 ---

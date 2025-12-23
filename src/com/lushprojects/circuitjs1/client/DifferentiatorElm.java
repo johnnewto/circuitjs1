@@ -10,10 +10,8 @@ package com.lushprojects.circuitjs1.client;
 class DifferentiatorElm extends CircuitElm {
     final int FLAG_SMALL = 1;
     
-    // Minimum value to prevent numerical instability
+    // Minimum value for convergence tolerance
     static final double MIN_VALUE = 1e-9;
-    // Maximum derivative magnitude to prevent solver instability
-    static final double MAX_DERIVATIVE = 1e6;
     
     int opsize, opheight, opwidth;
     Point inPost, inLead;
@@ -25,6 +23,11 @@ class DifferentiatorElm extends CircuitElm {
     ExprState exprState;
     String exprString;
     double lastVolts[];
+    
+    // Startup settling to avoid initial spike from comparing to uninitialized values
+    // settleTimeStep tracks which timestep we started settling; -1 means settled
+    int settleTimeStep = -1;
+    boolean needsSettle = true;
     
     public DifferentiatorElm(int xx, int yy) {
         super(xx, yy);
@@ -134,60 +137,52 @@ class DifferentiatorElm extends CircuitElm {
         sim.stampVoltageSource(0, nodes[1], voltSource);
     }
     
-    double sign(double a, double b) {
-        return a > 0 ? b : -b;
-    }
-    
     void doStep() {
-        // On first timestep, initialize lastVolts to current voltages to avoid spike
-        if (sim.timeStepCount == 0) {
-            lastVolts[0] = volts[0];
-            exprState.lastValues[0] = volts[0];
+        int vn = voltSource + sim.nodeList.size();
+        
+        // Settling logic: wait for one full timestep to let circuit stabilize
+        // before computing derivatives
+        if (needsSettle) {
+            if (settleTimeStep < 0) {
+                // First call - record the starting timestep
+                settleTimeStep = sim.timeStepCount;
+            }
+            
+            // Keep settling until we've moved past the initial timestep
+            if (sim.timeStepCount <= settleTimeStep) {
+                // Still in settling phase - update lastVolts and output 0
+                lastVolts[0] = volts[0];
+                exprState.lastValues[0] = volts[0];
+                exprState.values[0] = volts[0];
+                sim.stampRightSide(vn, 0);
+                return;
+            } else {
+                // Settling complete - we now have valid lastVolts from the settled state
+                needsSettle = false;
+            }
         }
         
-        int vn = voltSource + sim.nodeList.size();
         if (expr != null) {
-            // calculate output
+            // Calculate output using expression (computes dadt)
             exprState.values[0] = volts[0];
             exprState.t = sim.t;
             double v0 = expr.eval(exprState);
             
-            // Check output voltage convergence (relaxed threshold for derivative calculation)
+            // Check convergence
             double outputDelta = Math.abs(volts[1] - v0);
-            double tolerance = Math.max(Math.abs(v0) * 0.01, MIN_VALUE);
-            if (outputDelta > tolerance && sim.subIterations < 100) {
+            double tolerance = Math.max(Math.abs(v0) * 0.001, MIN_VALUE);
+            if (outputDelta > tolerance && sim.subIterations < 100)
                 sim.converged = false;
-            }
             
-            double rs = v0;
-            
-            // calculate and stamp output derivatives
-            double dv = volts[0] - lastVolts[0];
-            if (Math.abs(dv) < 1e-6)
-                dv = 1e-6;
-            exprState.values[0] = volts[0];
-            double v = expr.eval(exprState);
-            exprState.values[0] = volts[0] - dv;
-            double v2 = expr.eval(exprState);
-            double dx = (v - v2) / dv;
-            
-            // Clamp derivative to prevent solver instability
-            if (Math.abs(dx) < 1e-6)
-                dx = sign(dx, 1e-6);
-            if (Math.abs(dx) > MAX_DERIVATIVE)
-                dx = sign(dx, MAX_DERIVATIVE);
-            
-            sim.stampMatrix(vn, nodes[0], -dx);
-            rs -= dx * volts[0];
-            exprState.values[0] = volts[0];
-            
-            sim.stampRightSide(vn, rs);
+            // Stamp the output directly - high-impedance input doesn't need derivative linearization
+            sim.stampRightSide(vn, v0);
         }
-
-        lastVolts[0] = volts[0];
+        // Note: lastVolts is updated in stepFinished(), not here, 
+        // to avoid changing it during subiterations
     }
 
     void stepFinished() {
+        lastVolts[0] = volts[0];  // Update lastVolts only when timestep completes
         exprState.updateLastValues(volts[1]);
     }
     
@@ -211,6 +206,8 @@ class DifferentiatorElm extends CircuitElm {
     void reset() {
         super.reset();
         lastVolts = new double[1];
+        needsSettle = true;  // Reset settling state
+        settleTimeStep = -1;
         if (exprState != null)
             exprState.reset();
     }

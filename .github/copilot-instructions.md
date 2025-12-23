@@ -239,6 +239,108 @@ String dump() // Serialize element state
 - Verify white background compatibility
 - Test parameter editing interface
 
+## High-Impedance Arithmetic Elements
+
+Elements like `MultiplyElm`, `DividerElm`, `PercentElm`, and `DifferentiatorElm` have **high-impedance inputs** - no current flows through them. This has important implications for implementation.
+
+### Key Insight: No Derivative Linearization Needed
+
+Traditional Newton-Raphson linearization uses derivatives to accelerate convergence:
+```java
+// DON'T DO THIS for high-impedance inputs:
+rs -= derivative * volts[i];  // Causes catastrophic cancellation with large values
+sim.stampMatrix(vn, nodes[i], derivative);
+```
+
+**Problem**: When input voltages are very large (e.g., 1e15), the derivative calculation causes catastrophic floating-point cancellation, leading to wildly incorrect outputs.
+
+**Solution**: Use **direct stamping** instead - simply stamp the computed value directly:
+```java
+// DO THIS for high-impedance arithmetic elements:
+@Override
+public void doStep() {
+    double v0 = volts[0];  // Read current input voltage
+    double result = computeResult(v0);  // Your computation
+    int vn = nodes[inputCount];  // Internal node for voltage source
+    sim.stampRightSide(vn, result);  // Direct stamp - no derivatives
+}
+```
+
+### Why This Works
+
+1. **No current flows** through high-impedance inputs (`getConnection()` returns `false`)
+2. The solver naturally iterates: each subiteration reads updated `volts[]`, computes new result, stamps it
+3. Convergence happens through the voltage source's natural feedback, not derivative acceleration
+4. Eliminates numerical instability with extreme values
+
+### Standard Pattern for Arithmetic Elements
+
+```java
+class MyArithmeticElm extends CircuitElm {
+    int inputCount = 2;
+    int voltSource;
+    
+    @Override
+    public boolean nonLinear() { return true; }
+    
+    @Override
+    public int getVoltageSourceCount() { return 1; }
+    
+    @Override
+    public int getInternalNodeCount() { return 1; }
+    
+    @Override
+    public boolean getConnection(int n1, int n2) { 
+        return false;  // High-impedance: no connections between terminals
+    }
+    
+    @Override
+    public void stamp() {
+        int vn = nodes[inputCount];  // Internal node
+        sim.stampNonLinear(vn);  // Mark as nonlinear
+        sim.stampVoltageSource(0, nodes[inputCount + 1], voltSource);  // Output driver
+    }
+    
+    @Override
+    public void doStep() {
+        double result = /* compute from volts[0], volts[1], etc. */;
+        
+        // Optional: clamp extreme values
+        result = Math.max(-1e12, Math.min(1e12, result));
+        
+        int vn = nodes[inputCount];
+        sim.stampRightSide(vn, result);  // Direct stamp
+    }
+}
+```
+
+### Convergence Behavior
+
+- **Linear-only circuits**: 1 subiteration (no convergence checking needed)
+- **With nonlinear elements**: Typically 2-4 subiterations
+- **All elements participate** in every subiteration - the solver runs globally
+- **Any unconverged element** forces another iteration for the whole circuit
+
+### Convergence Threshold for Large Cancelling Values
+
+When summing values that may cancel (e.g., large positive + large negative ≈ 0), use a threshold based on the **maximum magnitude**, not the result:
+
+```java
+// Track maximum magnitude during computation
+double maxMagnitude = 0;
+double sum = 0;
+for (int i = 0; i < values.length; i++) {
+    sum += values[i];
+    maxMagnitude = Math.max(maxMagnitude, Math.abs(values[i]));
+}
+
+// Threshold based on max magnitude, not the near-zero sum
+double threshold = Math.max(maxMagnitude * 0.001, 1e-6);
+if (Math.abs(newValue - oldValue) > threshold) {
+    sim.converged = false;
+}
+```
+
 ## Important Notes
 
 - This is a **client-side only** application - all Java code compiles to JavaScript

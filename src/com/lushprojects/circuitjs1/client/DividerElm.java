@@ -28,19 +28,15 @@ class DividerElm extends CircuitElm {
     Point inPosts[], inLeads[];
     Polygon bodyPoly;
     Font labelFont;
-    double lastVolts[];
     
-    // Minimum denominator value to prevent numerical instability
+    // Minimum denominator value to prevent divide by zero
     static final double MIN_DENOMINATOR = 1e-6;
-    // Maximum derivative magnitude to prevent solver instability
-    static final double MAX_DERIVATIVE = 1e6;
     
     public DividerElm(int xx, int yy) {
         super(xx, yy);
         noDiagonal = true;
         inputCount = 2;
         setSize(sim.smallGridCheckItem.getState() ? 1 : 2);
-        lastVolts = new double[inputCount];
     }
     
     public DividerElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
@@ -48,7 +44,6 @@ class DividerElm extends CircuitElm {
         noDiagonal = true;
         inputCount = Integer.parseInt(st.nextToken());
         setSize((f & FLAG_SMALL) != 0 ? 1 : 2);
-        lastVolts = new double[inputCount];
     }
     
     String dump() {
@@ -138,40 +133,22 @@ class DividerElm extends CircuitElm {
     boolean nonLinear() { return true; }
     
     void stamp() {
-        // Nonlinear voltage source for output - use same pattern as VCVSElm
+        // Nonlinear voltage source for output
         int vn = sim.nodeList.size() + voltSource;
         sim.stampNonLinear(vn);
         sim.stampVoltageSource(0, nodes[inputCount], voltSource);
-        // Stamp small placeholder values for inputs to ensure matrix is well-conditioned at startup
-        for (int i = 0; i < inputCount; i++) {
-            sim.stampMatrix(vn, nodes[i], 1e-20);
-        }
-    }
-    
-    double sign(double a, double b) {
-        return a > 0 ? b : -b;
     }
     
     void doStep() {
         int vn = sim.nodeList.size() + voltSource;
         
         // Check for divide by zero on denominators (inputs 1+)
-        boolean divByZero = false;
         for (int i = 1; i < inputCount; i++) {
             if (Math.abs(volts[i]) < MIN_DENOMINATOR) {
-                divByZero = true;
-                break;
+                // Divide by zero - output zero
+                sim.stampRightSide(vn, 0.0);
+                return;
             }
-        }
-        
-        // If divide by zero detected, output zero and converge
-        if (divByZero) {
-            // Stamp small derivatives for inputs to ensure matrix is well-conditioned
-            for (int i = 0; i < inputCount; i++) {
-                sim.stampMatrix(vn, nodes[i], -1e-6);
-            }
-            sim.stampRightSide(vn, 0.0);
-            return;
         }
         
         // Calculate output: V1 / V2 / V3 / ...
@@ -181,70 +158,12 @@ class DividerElm extends CircuitElm {
         
         // Check convergence
         double outputDelta = Math.abs(volts[inputCount] - v0);
-        double tolerance = Math.max(Math.abs(v0) * 0.01, 1e-9);
+        double tolerance = Math.max(Math.abs(v0) * 0.001, 1e-9);
         if (outputDelta > tolerance && sim.subIterations < 100)
             sim.converged = false;
         
-        double rs = v0;
-        
-        // Calculate and stamp output derivatives for each input
-        for (int i = 0; i < inputCount; i++) {
-            double dv = volts[i] - lastVolts[i];
-            if (Math.abs(dv) < 1e-6)
-                dv = 1e-6;
-            
-            // Calculate partial derivative dV0/dVi numerically
-            double vPlus = volts[0];
-            double vMinus = volts[0];
-            for (int j = 1; j < inputCount; j++) {
-                if (j == i) {
-                    vPlus /= volts[j];
-                    // Guard against divide by zero in vMinus calculation
-                    double denom = volts[j] - dv;
-                    if (Math.abs(denom) < MIN_DENOMINATOR)
-                        denom = sign(denom, MIN_DENOMINATOR);
-                    vMinus /= denom;
-                } else {
-                    // Guard against divide by zero for all denominators
-                    double denom = volts[j];
-                    if (Math.abs(denom) < MIN_DENOMINATOR)
-                        denom = sign(denom, MIN_DENOMINATOR);
-                    vPlus /= denom;
-                    vMinus /= denom;
-                }
-            }
-            // For input 0 (numerator)
-            if (i == 0) {
-                vPlus = volts[0];
-                vMinus = volts[0] - dv;
-                for (int j = 1; j < inputCount; j++) {
-                    // Guard against divide by zero for all denominators
-                    double denom = volts[j];
-                    if (Math.abs(denom) < MIN_DENOMINATOR)
-                        denom = sign(denom, MIN_DENOMINATOR);
-                    vPlus /= denom;
-                    vMinus /= denom;
-                }
-            }
-            
-            double dx = (vPlus - vMinus) / dv;
-            
-            // Clamp derivative to prevent solver instability
-            if (Math.abs(dx) < 1e-6)
-                dx = sign(dx, 1e-6);
-            if (Math.abs(dx) > MAX_DERIVATIVE)
-                dx = sign(dx, MAX_DERIVATIVE);
-            
-            sim.stampMatrix(vn, nodes[i], -dx);
-            rs -= dx * volts[i];
-        }
-        
-        // stampVoltageSource already stamped +1 for output node, so just stamp right side
-        sim.stampRightSide(vn, rs);
-        
-        // Save last voltages
-        for (int i = 0; i < inputCount; i++)
-            lastVolts[i] = volts[i];
+        // Stamp the output directly - high-impedance inputs don't need derivative linearization
+        sim.stampRightSide(vn, v0);
     }
     
     void getInfo(String arr[]) {
@@ -270,7 +189,6 @@ class DividerElm extends CircuitElm {
     
     void reset() {
         super.reset();
-        lastVolts = new double[inputCount];
     }
     
     public EditInfo getEditInfo(int n) {
@@ -286,7 +204,6 @@ class DividerElm extends CircuitElm {
             if (ei.value < 2 || ei.value > 8)
                 return;
             inputCount = (int) ei.value;
-            lastVolts = new double[inputCount];
             allocNodes();
             setPoints();
         }

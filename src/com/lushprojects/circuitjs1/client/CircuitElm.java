@@ -1062,6 +1062,10 @@ public abstract class CircuitElm implements Editable {
     }
     
     Color getVoltageColor(Graphics g, double volts) {
+    	// Check for non-convergence first - always red
+    	if (nonConverged) {
+    	    return Color.red;
+    	}
     	if (needsHighlight()) {
     	    	return (selectColor);
     	}
@@ -1076,12 +1080,10 @@ public abstract class CircuitElm implements Editable {
     	    c = colorScaleCount-1;
     	return (colorScale[c]);
     }
-    // int nonConvergedBlinkCount = 0;
+    
     void setVoltageColor(Graphics g, double volts) {
-    	if (nonConverged) {
-            // nonConvergedBlinkCount ++;
-			// if((nonConvergedBlinkCount/20) % 2 == 0)
-    		g.setColor(Color.blue);
+    	if (nonConverged) { //  non Converged elements coloured blue;
+    		g.setColor(Color.red);
     	} else {
     		g.setColor(getVoltageColor(g, volts));
     	}
@@ -1183,11 +1185,19 @@ public abstract class CircuitElm implements Editable {
 		(mouseElmRef instanceof ScopeElm && ((ScopeElm) mouseElmRef).elmScope.getElm()==this); 
     }
     
-    // Get the color to use for highlighting (blue for non-convergence, selectColor for selection)
+    // Get the color to use for highlighting (red for non-convergence, selectColor for selection)
     Color getHighlightColor() {
 	if (nonConverged)
-	    return Color.blue;
+	    return Color.red;
 	return selectColor;
+    }
+    
+    // Get body/outline color - use this instead of "needsHighlight() ? selectColor : defaultColor"
+    // Returns red for non-convergence, selectColor for other highlights, or the default color
+    Color getBodyColor(Color defaultColor) {
+	if (needsHighlight())
+	    return getHighlightColor();
+	return defaultColor;
     }
     
     boolean isSelected() { return selected; }

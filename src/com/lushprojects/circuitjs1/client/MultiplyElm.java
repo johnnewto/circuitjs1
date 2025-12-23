@@ -28,19 +28,15 @@ class MultiplyElm extends CircuitElm {
     Point inPosts[], inLeads[];
     Polygon bodyPoly;
     Font labelFont;
-    double lastVolts[];
     
-    // Minimum value to prevent numerical instability
+    // Minimum value for convergence tolerance
     static final double MIN_VALUE = 1e-9;
-    // Maximum derivative magnitude to prevent solver instability
-    static final double MAX_DERIVATIVE = 1e6;
     
     public MultiplyElm(int xx, int yy) {
         super(xx, yy);
         noDiagonal = true;
         inputCount = 2;
         setSize(sim.smallGridCheckItem.getState() ? 1 : 2);
-        lastVolts = new double[inputCount];
     }
     
     public MultiplyElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
@@ -48,7 +44,6 @@ class MultiplyElm extends CircuitElm {
         noDiagonal = true;
         inputCount = Integer.parseInt(st.nextToken());
         setSize((f & FLAG_SMALL) != 0 ? 1 : 2);
-        lastVolts = new double[inputCount];
     }
     
     String dump() {
@@ -137,18 +132,10 @@ class MultiplyElm extends CircuitElm {
     boolean nonLinear() { return true; }
     
     void stamp() {
-        // Nonlinear voltage source for output - use same pattern as VCVSElm
+        // Nonlinear voltage source for output
         int vn = sim.nodeList.size() + voltSource;
         sim.stampNonLinear(vn);
         sim.stampVoltageSource(0, nodes[inputCount], voltSource);
-        // Stamp small placeholder values for inputs to ensure matrix is well-conditioned at startup
-        for (int i = 0; i < inputCount; i++) {
-            sim.stampMatrix(vn, nodes[i], 1e-20);
-        }
-    }
-    
-    double sign(double a, double b) {
-        return a > 0 ? b : -b;
     }
     
     void doStep() {
@@ -161,48 +148,12 @@ class MultiplyElm extends CircuitElm {
         
         // Check convergence with minimum threshold to avoid false failures near zero
         double outputDelta = Math.abs(volts[inputCount] - v0);
-        double tolerance = Math.max(Math.abs(v0) * 0.01, MIN_VALUE);
+        double tolerance = Math.max(Math.abs(v0) * 0.001, MIN_VALUE);
         if (outputDelta > tolerance && sim.subIterations < 100)
             sim.converged = false;
         
-        double rs = v0;
-        
-        // Calculate and stamp output derivatives for each input
-        for (int i = 0; i < inputCount; i++) {
-            double dv = volts[i] - lastVolts[i];
-            if (Math.abs(dv) < 1e-6)
-                dv = 1e-6;
-            
-            // Calculate partial derivative dV0/dVi
-            double vPlus = 1;
-            double vMinus = 1;
-            for (int j = 0; j < inputCount; j++) {
-                if (j == i) {
-                    vPlus *= volts[j];
-                    vMinus *= volts[j] - dv;
-                } else {
-                    vPlus *= volts[j];
-                    vMinus *= volts[j];
-                }
-            }
-            double dx = (vPlus - vMinus) / dv;
-            
-            // Clamp derivative to prevent solver instability
-            if (Math.abs(dx) < 1e-6)
-                dx = sign(dx, 1e-6);
-            if (Math.abs(dx) > MAX_DERIVATIVE)
-                dx = sign(dx, MAX_DERIVATIVE);
-            
-            sim.stampMatrix(vn, nodes[i], -dx);
-            rs -= dx * volts[i];
-        }
-        
-        // stampVoltageSource already stamped +1 for output node, so just stamp right side
-        sim.stampRightSide(vn, rs);
-        
-        // Save last voltages
-        for (int i = 0; i < inputCount; i++)
-            lastVolts[i] = volts[i];
+        // Stamp the output directly - high-impedance inputs don't need derivative linearization
+        sim.stampRightSide(vn, v0);
     }
     
     void getInfo(String arr[]) {
@@ -228,7 +179,6 @@ class MultiplyElm extends CircuitElm {
     
     void reset() {
         super.reset();
-        lastVolts = new double[inputCount];
     }
     
     public EditInfo getEditInfo(int n) {
@@ -244,7 +194,6 @@ class MultiplyElm extends CircuitElm {
             if (ei.value < 2 || ei.value > 8)
                 return;
             inputCount = (int) ei.value;
-            lastVolts = new double[inputCount];
             allocNodes();
             setPoints();
         }
