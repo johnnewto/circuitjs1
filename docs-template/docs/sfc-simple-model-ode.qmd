@@ -1,0 +1,263 @@
+---
+title: "A Simple SFC Model (ODE Form)"
+subtitle: "Three-Sector Stock-Flow Consistent Model with Differential Equations"
+author:
+  - name: "Yannis Dafermos"
+    affiliation: "University of the West of England"
+  - name: "Maria Nikolaidi"
+    affiliation: "University of Greenwich"
+date: "August 2019"
+toc: true
+toc-depth: 3
+format:
+  html:
+    css: circuitjs-docs.css
+    include-in-header:
+      - text: |
+          <script src="circuitjs-utils.js"></script>
+---
+
+## Brief Description
+
+This is a simple SFC model that consists of three sectors: **firms**, **households**, and **banks**. This version presents the model using **differential equations** suitable for implementation in CircuitJS1.
+
+- **Firms** undertake investment by using retained profits and loans
+- A part of firms' profits is distributed to households
+- **Households** accumulate savings in the form of deposits
+- **Banks** provide firm loans by creating deposits
+- Banks' profits are distributed to households
+
+In the model, loans are endogenously created when firms receive credit from banks. The model is calibrated using data for the US economy over the period 1960-2010.
+
+## Balance Sheet Matrix
+
+| | Households | Firms | Commercial banks | Total |
+|---|:---:|:---:|:---:|:---:|
+| Deposits | +D | | -D | 0 |
+| Loans | | -L | +L | 0 |
+| Capital | | +K | | +K |
+| **Total (net worth)** | **+D** | **+V~F~** | **0** | **+K** |
+
+**Key insight**: Every financial asset has a corresponding liability. Banks have zero net worth.
+
+## Transactions Flow Matrix
+
+| | Households | Firms | | Banks | | Total |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| | | Current | Capital | Current | Capital | |
+| Consumption | -C | +C | | | | 0 |
+| Investment | | +I | -I | | | 0 |
+| Wages | +W | -W | | | | 0 |
+| Firms' profits | +DP | -TP | +RP | | | 0 |
+| Banks' profits | +BP | | | -BP | | 0 |
+| Interest on deposits | +int~D~·D | | | -int~D~·D | | 0 |
+| Interest on loans | | -int~L~·L | | +int~L~·L | | 0 |
+| Change in deposits | -dD/dt | | | | +dD/dt | 0 |
+| Change in loans | | | +dL/dt | | -dL/dt | 0 |
+| **Total** | **0** | **0** | **0** | **0** | **0** | **0** |
+
+## Flow Definitions
+
+### Income Flows
+
+- **Wages**: Households ← Firms
+$$W = s_W \cdot Y$$
+
+- **Consumption**: Households → Firms
+$$C = c_1 \cdot W + c_2 \cdot Y_C + c_3 \cdot D$$
+
+- **Investment**: Internal to Firms (financed by retained profits + loans)
+$$I = g_K \cdot K$$
+
+### Profit Flows
+
+- **Total Profits**: Firms generate
+$$TP = Y - W - int_L \cdot L$$
+
+- **Retained Profits**: Kept by Firms
+$$RP = s_F \cdot TP$$
+
+- **Distributed Profits**: Firms → Households
+$$DP = TP - RP$$
+
+### Interest Flows
+
+- **Interest on Loans**: Firms → Banks
+$$Int_L = int_L \cdot L$$
+
+- **Interest on Deposits**: Banks → Households
+$$Int_D = int_D \cdot D$$
+
+### Bank Profits
+
+- **Bank Profits**: Banks → Households
+$$BP = Int_L - Int_D = int_L \cdot L - int_D \cdot D$$
+
+### Capital Income
+
+- **Household Capital Income**:
+$$Y_C = DP + BP + Int_D$$
+
+## Differential Equations (Stock Dynamics)
+
+The stock variables evolve according to these differential equations:
+
+### Household Deposits
+
+$$\frac{dD}{dt} = W + Y_C - C$$
+
+Expanding:
+$$\frac{dD}{dt} = W + DP + BP + int_D \cdot D - C$$
+
+### Firm Loans
+
+$$\frac{dL}{dt} = I - RP$$
+
+Firms borrow the difference between investment and retained profits.
+
+### Capital Stock
+
+$$\frac{dK}{dt} = I$$
+
+Capital accumulates through investment.
+
+### Firm Net Worth
+
+$$\frac{dV_F}{dt} = RP - int_L \cdot L + \frac{dK}{dt} - \frac{dL}{dt}$$
+
+Simplifying:
+$$\frac{dV_F}{dt} = TP - DP = RP$$
+
+## Complete System of Equations
+
+### Parameters
+
+| Symbol | Description | Value |
+|--------|-------------|-------|
+| s~W~ | Wage share of output | 0.60 |
+| c~1~ | Propensity to consume from wages | 0.90 |
+| c~2~ | Propensity to consume from capital income | 0.75 |
+| c~3~ | Propensity to consume from deposits | 0.47 |
+| g~K~ | Investment rate (growth of capital) | 0.03 |
+| s~F~ | Retention rate of profits | 0.18 |
+| int~L~ | Interest rate on loans | 0.05 |
+| int~D~ | Interest rate on deposits | 0.02 |
+
+### Algebraic Equations (Flows)
+
+$$Y = C + I$$
+
+$$W = s_W \cdot Y$$
+
+$$C = c_1 \cdot W + c_2 \cdot Y_C + c_3 \cdot D$$
+
+$$I = g_K \cdot K$$
+
+$$TP = Y - W - int_L \cdot L$$
+
+$$RP = s_F \cdot TP$$
+
+$$DP = TP - RP$$
+
+$$BP = int_L \cdot L - int_D \cdot D$$
+
+$$Y_C = DP + BP + int_D \cdot D$$
+
+### Differential Equations (Stocks)
+
+$$\frac{dD}{dt} = W + DP + BP + int_D \cdot D - C$$
+
+$$\frac{dL}{dt} = I - RP$$
+
+$$\frac{dK}{dt} = I$$
+
+### Redundant Equation (Consistency Check)
+
+$$D = L$$
+
+This identity confirms stock-flow consistency: all deposits are backed by loans.
+
+## CircuitJS1 Implementation
+
+This model can be implemented in CircuitJS1 using:
+
+1. **Godley Tables**: For tracking balance sheets of each sector
+2. **ODE Elements**: For integrating the stock dynamics
+3. **Arithmetic Elements**: For computing flows from stocks
+
+### Stock Variables (use ODE/Integrator elements)
+
+- `D` - Household deposits
+- `L` - Firm loans  
+- `K` - Capital stock
+
+### Flow Computations (use arithmetic elements)
+
+Connect the differential equations using multipliers, adders, and the stock values.
+
+## Model Dynamics
+
+### Steady State
+
+At steady state, all growth rates are equal:
+$$g_Y = g_K = g_D = g_L = g$$
+
+The steady-state leverage ratio:
+$$\frac{L}{K} = \frac{g_K}{s_F \cdot (1 - s_W) - int_L \cdot (L/K)}$$
+
+### Stability Analysis
+
+The model exhibits stable dynamics when:
+
+- Consumption propensities ensure positive saving
+- Investment doesn't exceed available financing
+- Interest rates don't cause explosive debt dynamics
+
+## Key Insights
+
+### Endogenous Money Creation
+
+$$\frac{dL}{dt} = \frac{dD}{dt}$$
+
+When banks extend loans, they simultaneously create deposits. This is the essence of endogenous money.
+
+### Stock-Flow Consistency
+
+Every flow has a source and destination:
+
+- **Horizontal**: Financial assets = Financial liabilities
+- **Vertical**: All income is spent or saved
+- **Quadruple entry**: Each transaction affects 4 cells in the matrices
+
+### Profit Distribution
+
+Firm profits flow to:
+1. **Retained profits** (RP) → Internal financing for investment
+2. **Distributed profits** (DP) → Household income
+
+Bank profits flow entirely to households (as bank owners).
+
+## Related Resources
+
+- [SFC Modeling Overview](sfc-modeling.qmd) - Introduction to Stock-Flow Consistent modeling
+- [Simple SFC Model (Discrete)](sfc-simple-model.qmd) - Difference equation version with R code
+- [Examples](examples.qmd#economics--system-dynamics-models) - BOMD and other economic models
+
+## References
+
+- Godley, W. & Lavoie, M. (2007) *Monetary Economics: An Integrated Approach*
+- Caverzasi, E. & Godin, A. (2015) "Post-Keynesian stock-flow-consistent modelling: a survey"
+- Nikiforos, M. & Zezza, G. (2017) "Stock-flow Consistent Macroeconomic Models: A Survey"
+
+---
+
+<table style="width: 100%; margin-top: 2em; padding-top: 1em; border-top: 1px solid #e0e0e0; border-collapse: collapse; font-size: 1.1em;">
+<tr>
+<td style="text-align: left; border: none;"><a href="sfc-simple-model.qmd">← Discrete Version</a></td>
+<td style="text-align: right; border: none;"><a href="sfc-modeling.qmd">SFC Modeling Overview →</a></td>
+</tr>
+</table>
+
+<div class="split-footer">
+*This page presents the simple SFC model by Yannis Dafermos and Maria Nikolaidi in differential equation form.*
+</div>

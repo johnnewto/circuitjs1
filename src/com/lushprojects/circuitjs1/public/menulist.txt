@@ -21,6 +21,8 @@ PercentElm|Percent/Ratio Meter
 AdderElm|Adder
 SubtracterElm|Subtracter
 GodlyTableElm|Godly Table||g
+TableElm|Table
+SFCTableElm|SFC Table
 FlowsMasterElm|Flow Master
 StockMasterElm|Stock Master
 CurrentTransactionsMatrixElm |Current Transactions Matrix

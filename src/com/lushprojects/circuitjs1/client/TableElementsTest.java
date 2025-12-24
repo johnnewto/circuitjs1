@@ -205,6 +205,35 @@ String circuit =
         runner.assertNoErrors();
     }
 
+    /**
+     * Test SFC (Stock-Flow Consistent) Table element
+     * Expected: Grand total (bottom-right cell) should equal 715
+     */
+    public void testSFCTable() {
+        String circuit = 
+            "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
+            "% voltageUnit $\n" +
+            "% showToolbar true\n" +
+            "265 304 80 880 212 0 4 5 6 16 0 false 2 0 false 5 0 false SFC\\sTable\\s4 \\0 Households Firms Banks Govt Σ Consumption Wages Interest Taxes 0 0 0 0 0 SECTOR SECTOR SECTOR SECTOR COMPUTED -100 \\p1000 0 0 \\0 wages -2*wages 0 0 \\0 \\p5 -10 wages 0 \\0 -200 -15 0 \\p35 \\0 true 0.000001\n" +
+            "207 480 256 544 256 4 wages\n" +
+            "R 480 256 400 256 0 0 40 5 0 0 0.5 V\n" +
+            "263 263 37 901 302 0 Main\n" +
+            "% AST 1 1\n";
+
+        CircuitTestRunner runner = new CircuitTestRunner();
+        runner.loadCircuitFromText(circuit);
+        runner.runToTime(0.01);
+        
+        runner.assertNoErrors();
+        
+        // Find the SFC table and check grand total
+        SFCTableElm sfcTable = (SFCTableElm) runner.findElement(SFCTableElm.class);
+        assertNotNull("SFC Table should exist", sfcTable);
+        
+        double grandTotal = sfcTable.getGrandTotal();
+        assertEquals("SFC Table grand total should be 715", 715, grandTotal, 715 * VOLTAGE_TOLERANCE);
+    }
+
     
     
     /**
@@ -215,7 +244,8 @@ String circuit =
             "testGodleyTableComplex",
             "testGodleyTableBasic",
             "testCTMBasic",
-            "testCTM"
+            "testCTM",
+            "testSFCTable"
         };
     }
     
@@ -229,6 +259,7 @@ String circuit =
             else if ("testGodleyTableBasic".equals(testName)) testGodleyTableBasic();
             else if ("testCTMBasic".equals(testName)) testCTMBasic();
             else if ("testCTM".equals(testName)) testCTM();
+            else if ("testSFCTable".equals(testName)) testSFCTable();
             else {
                 throw new IllegalArgumentException("Unknown test: " + testName);
             }
@@ -263,6 +294,7 @@ String circuit =
         runTest("testGodleyTableComplex", () -> testGodleyTableComplex());
         runTest("testCTMBasic", () -> testCTMBasic());
         runTest("testStockFlowBasic", () -> testCTM());
+        runTest("testSFCTable", () -> testSFCTable());
         
         console("");
         console("=== Test Results ===");

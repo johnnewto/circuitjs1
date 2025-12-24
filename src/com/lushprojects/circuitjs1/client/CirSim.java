@@ -7453,6 +7453,7 @@ public CirSim() {
 		case 451: return new FlowsMasterElm(x1, y1, x2, y2, f, st);
 		case 262: return new EquationElm(x1, y1, x2, y2, f, st);
 		case 264: return new DivideConstElm(x1, y1, x2, y2, f, st);
+		case 265: return new SFCTableElm(x1, y1, x2, y2, f, st);
 		case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
     	case 368: return new TestPointElm(x1, y1, x2, y2, f, st);
     	case 370: return new AmmeterElm(x1, y1, x2, y2, f, st);
@@ -7808,6 +7809,8 @@ public CirSim() {
 			return (CircuitElm) new FlowsMasterElm(x1, y1);
 	if (n=="CurrentTransactionsMatrixElm")
 			return (CircuitElm) new CurrentTransactionsMatrixElm(x1, y1);
+	if (n=="SFCTableElm")
+			return (CircuitElm) new SFCTableElm(x1, y1);
 	if (n.equals("TableVoltageElm")) 
 				return (CircuitElm) new TableVoltageElm(x1, y1);		// handle CustomCompositeElm:modelname
     	if (n.startsWith("CustomCompositeElm:")) {

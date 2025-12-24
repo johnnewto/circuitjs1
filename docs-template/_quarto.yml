@@ -33,6 +33,10 @@ website:
             href: docs/economics-tutorials.html?split=true
           - text: "SFC Modeling (Split)"
             href: docs/sfc-modeling.html?split=true
+          - text: "Simple SFC Model (Split)"
+            href: docs/sfc-simple-model.html?split=true
+          - text: "Simple SFC Model - ODE (Split)"
+            href: docs/sfc-simple-model-ode.html?split=true
       - text: "Electronics"
         menu:
           - text: "Electronic Tutorials (Split)"
@@ -73,6 +77,8 @@ website:
             - docs/money/11-further-reading.qmd
         - docs/economics-tutorials.qmd
         - docs/sfc-modeling.qmd
+        - docs/sfc-simple-model.qmd
+        - docs/sfc-simple-model-ode.qmd
     - title: "Electronics"
       contents:
         - docs/electronics-tutorials.qmd

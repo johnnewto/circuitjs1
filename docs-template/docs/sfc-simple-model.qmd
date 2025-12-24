@@ -1,0 +1,312 @@
+---
+title: "A Simple SFC Model"
+subtitle: "Three-Sector Stock-Flow Consistent Model"
+author:
+  - name: "Yannis Dafermos"
+    affiliation: "University of the West of England"
+  - name: "Maria Nikolaidi"
+    affiliation: "University of Greenwich"
+date: "August 2019"
+toc: true
+---
+
+## Brief Description
+
+This is a simple SFC model that consists of three sectors: **firms**, **households**, and **banks**. 
+
+- **Firms** undertake investment by using retained profits and loans
+- A part of firms' profits is distributed to households
+- **Households** accumulate savings in the form of deposits
+- **Banks** provide firm loans by creating deposits
+- Banks' profits are distributed to households
+
+In the model, loans are endogenously created when firms receive credit from banks. The model is calibrated using data for the US economy over the period 1960-2010.
+
+## Balance Sheet Matrix
+
+The balance sheet matrix shows the stock positions of all sectors:
+
+| | Households | Firms | Commercial banks | Total |
+|---|:---:|:---:|:---:|:---:|
+| Deposits | +D | | -D | 0 |
+| Loans | | -L | +L | 0 |
+| Capital | | +K | | +K |
+| **Total (net worth)** | **+D** | **+V~F~** | **0** | **+K** |
+
+**Key observations:**
+
+- Household wealth consists entirely of deposits
+- Firm net worth (V~F~) equals capital minus loans: V~F~ = K - L
+- Banks have zero net worth (assets = liabilities)
+- Total economy net worth equals physical capital stock
+
+## Transactions Flow Matrix
+
+The transactions flow matrix shows all flows between sectors:
+
+| | Households | Firms | | Commercial banks | | Total |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| | | Current | Capital | Current | Capital | |
+| Consumption | -C | +C | | | | 0 |
+| Investment | | +I | -I | | | 0 |
+| Wages | +W | -W | | | | 0 |
+| Firms' profits | +DP | -TP | +RP | | | 0 |
+| Banks' profits | +BP | | | -BP | | 0 |
+| Interest on deposits | +int~D~D~-1~ | | | -int~D~D~-1~ | | 0 |
+| Interest on loans | | -int~L~L~-1~ | | +int~L~L~-1~ | | 0 |
+| Change in deposits | -ΔD | | | | +ΔD | 0 |
+| Change in loans | | | +ΔL | | -ΔL | 0 |
+| **Total** | **0** | **0** | **0** | **0** | **0** | **0** |
+
+**Key observations:**
+
+- Every row sums to zero (stock-flow consistency)
+- Every column sums to zero (budget constraints satisfied)
+- Current and capital accounts are separated for firms and banks
+
+## Model Equations
+
+### Households
+
+$$\text{Wage income: } W = s_w Y \tag{1}$$
+
+$$\text{Capital income: } Y_C = DP + BP + int_D D_{-1} \tag{2}$$
+
+$$\text{Consumption: } C = c_1 W_{-1} + c_2 Y_{C-1} + c_3 D_{-1} \tag{3}$$
+
+$$\text{Deposits (identity): } D = D_{-1} + W + Y_C - C \tag{4}$$
+
+### Firms
+
+$$\text{Output: } Y = C + I \tag{5}$$
+
+$$\text{Total profits (identity): } TP = Y - W - int_L L_{-1} \tag{6}$$
+
+$$\text{Retained profits: } RP = s_F TP_{-1} \tag{7}$$
+
+$$\text{Distributed profits (identity): } DP = TP - RP \tag{8}$$
+
+$$\text{Investment: } I = s_K K_{-1} \tag{9}$$
+
+$$\text{Capital stock: } K = K_{-1} + I \tag{10}$$
+
+$$\text{Loans (identity): } L = L_{-1} + I - RP \tag{11}$$
+
+### Banks
+
+$$\text{Profits (identity): } BP = int_L L_{-1} - int_D D_{-1} \tag{12}$$
+
+$$\text{Deposits (redundant identity): } D_{red} = L \tag{13}$$
+
+### Auxiliary Equations
+
+$$\text{Potential output: } Y^* = vK \tag{14}$$
+
+$$\text{Capacity utilisation: } u = Y / Y^* \tag{15}$$
+
+$$\text{Growth rate of output: } g_Y = (Y - Y_{-1})/Y_{-1} \tag{16}$$
+
+$$\text{Leverage ratio: } lev = L / K \tag{17}$$
+
+## Symbols and Values
+
+### Parameters
+
+| Symbol | Description | Value/Calibration |
+|--------|-------------|-------------------|
+| c~1~ | Propensity to consume out of wage income | 0.9 |
+| c~2~ | Propensity to consume out of capital income | 0.75 |
+| c~3~ | Propensity to consume out of deposits | 0.474 |
+| g~K~ | Growth rate of capital | US 1960-2010 mean value of g~Y~ |
+| int~D~ | Interest rate on deposits | US 1960-2010 mean value |
+| int~L~ | Interest rate on loans | US 1960-2010 mean value |
+| s~F~ | Retention rate of firms | 0.179 |
+| s~W~ | Wage share | US 1960-2010 mean value |
+| v | Capital productivity | Calculated using equations (14) and (15) |
+
+### Endogenous Variables
+
+| Symbol | Description | Calculation |
+|--------|-------------|-------------|
+| W | Wage income of households | Equation (1) |
+| Y~C~ | Capital income of households | Equation (2) |
+| C | Consumption expenditures | Equation (3) |
+| D | Deposits | Equation (4) |
+| Y | Output | US 1960 value (trillion 2009 US\$) |
+| TP | Total profits of firms | Equation (6) |
+| RP | Retained profits | Equation (7) |
+| DP | Distributed profits | Equation (8) |
+| I | Investment | Equation (9) |
+| K | Capital stock | US 1960 value (trillion 2009 US\$) |
+| L | Loans | US 1960 value (trillion 2009 US\$) |
+| BP | Profits of banks | Equation (12) |
+| D~red~ | Deposits (redundant) | Equation (13) |
+| Y* | Potential output | Equation (14) |
+| u | Capacity utilisation | US 1960 value |
+| g~Y~ | Growth rate of output | US 1960-2010 mean value |
+| lev | Leverage ratio | Equation (17) |
+
+## R Implementation
+
+### Step 1: Setup
+
+Clear the workspace and set the number of time periods:
+
+```r
+rm(list=ls(all=TRUE))
+T <- 51  # 51 periods for 1960-2010
+```
+
+### Step 2: Load Data
+
+Download US data for 1960-2010 (from FRED and BIS):
+
+```r
+Data <- read.csv("Data.csv")
+
+# To estimate the mean of a variable:
+mean(Data[,c("g_Y")])
+```
+
+### Step 3: Initialize Variables
+
+Create vectors for all endogenous variables:
+
+```r
+# Endogenous variables 
+W <- vector(length=T)    
+Y_C <- vector(length=T)    
+CO <- vector(length=T)    
+D <- vector(length=T)      
+Y <- vector(length=T)      
+TP <- vector(length=T)    
+RP <- vector(length=T)    
+DP <- vector(length=T)    
+I <- vector(length=T)    
+K <- vector(length=T)    
+L <- vector(length=T)    
+BP <- vector(length=T)    
+D_red <- vector(length=T)    
+Y_star <- vector(length=T)  # auxiliary variable   
+u <- vector(length=T)       # auxiliary variable   
+g_Y <- vector(length=T)     # auxiliary variable   
+lev <- vector(length=T)     # auxiliary variable
+```
+
+### Step 4: Set Parameters and Initial Values
+
+```r
+# Parameters 
+for (i in 1:T) { 
+  if (i == 1) { 
+    for (iterations in 1:10){ 
+      c_1 <- 0.9  
+      c_2 <- 0.75  
+      c_3 <- 0.473755074
+      g_K <- mean(Data[,c("g_Y")])  
+      int_D <- mean(Data[,c("int_D")])  
+      int_L <- mean(Data[,c("int_L")])  
+      s_F <- 0.17863783
+      s_W <- mean(Data[,c("s_W")])  
+      v <- Y[i]/(K[i]*u[i])  
+      
+      # Initial values 
+      W[i] <- s_W*Y[i]  
+      Y_C[i] <- DP[i]+BP[i]+int_D*(D[i]/(1+g_K))  
+      CO[i] <- Y[i]-I[i]  
+      D[i] <- L[i]   
+      Y[i] <- Data[1,c("Y")]  
+      TP[i] <- Y[i]-W[i]-int_L*(L[i]/(1+g_K))  
+      RP[i] <- s_F*TP[i]/(1+g_K) 
+      DP[i] <- TP[i]-RP[i]  
+      I[i] <- (g_K/(1+g_K))*K[i]  
+      K[i] <- Data[1,c("K")]              
+      L[i] <- Data[1,c("L")]  
+      BP[i] <- int_L*(L[i]/(1+g_K))-int_D*(D[i]/(1+g_K))  
+      D_red[i] <- L[i]  
+      Y_star[i] <- v*K[i]  
+      u[i] <- Data[1,c("u")]  
+      g_Y[i] <- g_K  
+      lev[i] <- L[i]/K[i]  
+    } 
+  }
+```
+
+### Step 5: Run the Model
+
+```r
+  # Equations 
+  else { 
+    for (iterations in 1:10){ 
+      # Households 
+      W[i] <- s_W*Y[i] 
+      Y_C[i] <- DP[i]+BP[i]+int_D*D[i-1] 
+      CO[i] <- c_1*W[i-1]+c_2*Y_C[i-1]+c_3*D[i-1] 
+      D[i] <- D[i-1]+W[i]+Y_C[i]-CO[i] 
+      
+      # Firms 
+      Y[i] <- CO[i]+I[i] 
+      TP[i] <- Y[i]-W[i]-int_L*L[i-1] 
+      RP[i] <- s_F*TP[i-1] 
+      DP[i] <- TP[i]-RP[i] 
+      I[i] <- g_K*K[i-1] 
+      K[i] <- K[i-1]+I[i] 
+      L[i] <- L[i-1]+I[i]-RP[i] 
+      
+      # Banks 
+      BP[i] <- int_L*L[i-1]-int_D*D[i-1] 
+      D_red[i] <- L[i] 
+      
+      # Auxiliary equations 
+      Y_star[i] <- v*K[i] 
+      u[i] <- Y[i]/Y_star[i] 
+      g_Y[i] <- (Y[i]-Y[i-1])/Y[i-1] 
+      lev[i] <- L[i]/K[i] 
+    } 
+  } 
+}
+```
+
+## Key Model Insights
+
+### Endogenous Money Creation
+
+In this model, money (deposits) is created endogenously when banks extend loans to firms:
+
+1. Firms need external financing: I - RP (investment minus retained profits)
+2. Banks create deposits when they grant loans
+3. The redundant identity D~red~ = L confirms balance sheet consistency
+
+### Stock-Flow Consistency
+
+The model maintains perfect accounting consistency:
+
+- **Horizontal consistency**: Every financial asset has a corresponding liability
+- **Vertical consistency**: All flows are tracked from source to destination
+- **Quadruple entry**: Each transaction affects four cells in the matrices
+
+### Steady State Properties
+
+In the baseline scenario, the model achieves a steady state where:
+
+- Economic growth equals the mean US growth rate (1960-2010)
+- All ratios (leverage, capacity utilisation) remain constant
+- The system is fully balanced
+
+## Related Resources
+
+- [SFC Modeling Overview](sfc-modeling.qmd) - Introduction to Stock-Flow Consistent modeling
+- [Economics Tutorials](economics-tutorials.qmd) - Hands-on tutorials with CircuitJS1
+- [Examples](examples.qmd#economics--system-dynamics-models) - BOMD and other economic models
+
+## References
+
+This model and documentation are based on teaching materials developed for SFC modeling courses. For the theoretical foundations, see:
+
+- Godley, W. & Lavoie, M. (2007) *Monetary Economics: An Integrated Approach to Credit, Money, Income, Production and Wealth*
+- Caverzasi, E. & Godin, A. (2015) "Post-Keynesian stock-flow-consistent modelling: a survey"
+- Nikiforos, M. & Zezza, G. (2017) "Stock-flow Consistent Macroeconomic Models: A Survey"
+
+---
+
+*This page presents the simple SFC model developed by Yannis Dafermos and Maria Nikolaidi for educational purposes.*

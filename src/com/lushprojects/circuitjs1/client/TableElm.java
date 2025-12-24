@@ -134,6 +134,11 @@ public class TableElm extends ChipElm {
      * NOTE: Empty/blank column headers are NOT registered as they are ignored
      */
     private void registerAllStocks() {
+        // Allow subclasses to disable stock registration (e.g., SFCTableElm)
+        if (!shouldRegisterStocks()) {
+            return;
+        }
+        
         if (columns != null) {
             for (int col = 0; col < columns.size(); col++) {
                 
@@ -150,6 +155,15 @@ public class TableElm extends ChipElm {
                 StockFlowRegistry.registerStock(column.getStockName().trim(), this);
             }
         }
+    }
+    
+    /**
+     * Whether this table should register its columns as stocks in the registry.
+     * Override in subclasses to disable registration (e.g., display-only tables).
+     * @return true to register stocks, false to skip registration
+     */
+    protected boolean shouldRegisterStocks() {
+        return true;
     }
     
     /**
@@ -911,6 +925,7 @@ public class TableElm extends ChipElm {
      * Set column header and update stock registry
      * NOTE: A-L-E computed columns are NOT registered as they are not real stocks
      * NOTE: Empty/blank column headers are NOT registered (ignored)
+     * NOTE: Tables that return false from shouldRegisterStocks() skip registration
      */
     public void setColumnHeader(int col, String header) {
         if (col < 0 || col >= columns.size()) return;
@@ -919,7 +934,8 @@ public class TableElm extends ChipElm {
         String oldHeader = column.getStockName();
         
         // Don't register/unregister A-L-E computed columns or empty headers
-        if (!column.isALE()) {
+        // Also skip if this table doesn't register stocks (e.g., SFCTableElm)
+        if (!column.isALE() && shouldRegisterStocks()) {
             // Unregister old stock name (if not empty)
             if (oldHeader != null && !oldHeader.trim().isEmpty()) {
                 StockFlowRegistry.unregisterStock(oldHeader.trim(), this);

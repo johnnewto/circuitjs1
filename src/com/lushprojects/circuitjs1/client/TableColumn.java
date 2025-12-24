@@ -29,7 +29,8 @@ public class TableColumn {
         ASSET,
         LIABILITY,
         EQUITY,
-        COMPUTED  // A-L-E computed columns use this type
+        COMPUTED,  // A-L-E computed columns use this type
+        SECTOR     // Economic sector columns for SFC tables
     }
     
     // Column identification and type
@@ -254,7 +255,8 @@ public class TableColumn {
                     equity += value;
                     break;
                 case COMPUTED:
-                    // Skip computed columns
+                case SECTOR:
+                    // Skip computed and sector columns
                     break;
             }
         }

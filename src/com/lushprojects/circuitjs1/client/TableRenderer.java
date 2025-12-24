@@ -145,6 +145,7 @@ public class TableRenderer {
             case ASSET: return "Asset";
             case LIABILITY: return "Liability";
             case EQUITY: return "Equity";
+            case SECTOR: return "Sector";
             default: return "Unknown";
         }
         // Note: A_L_E is detected positionally (last column when cols >= 4), not by type
