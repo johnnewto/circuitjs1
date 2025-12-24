@@ -1401,6 +1401,7 @@ public CirSim() {
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Integrator"), "IntegratorElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add ODE"), "ODEElm"));
     	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Equation"), "EquationElm"));
+    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Equation Table"), "EquationTableElm"));
 		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Adder"), "AdderElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Subtracter"), "SubtracterElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Table"), "TableElm"));
@@ -6114,6 +6115,9 @@ public CirSim() {
     			if (!te.isCollapseArrowClicked(gx, gy)) {
     				te.openTableEditDialog();
     			}
+    		} else if (mouseElm instanceof EquationTableElm) {
+    			// Special handling for EquationTableElm - open EquationTableEditDialog
+    			((EquationTableElm) mouseElm).openEditDialog();
     		} else if (mouseElm instanceof ActionTimeElm) {
     			// Special handling for ActionTimeElm - open ActionTimeDialog
     			ActionTimeDialog.openDialog(this);
@@ -7452,6 +7456,7 @@ public CirSim() {
 		case 450: return new StockMasterElm(x1, y1, x2, y2, f, st);
 		case 451: return new FlowsMasterElm(x1, y1, x2, y2, f, st);
 		case 262: return new EquationElm(x1, y1, x2, y2, f, st);
+		case 266: return new EquationTableElm(x1, y1, x2, y2, f, st);
 		case 264: return new DivideConstElm(x1, y1, x2, y2, f, st);
 		case 265: return new SFCTableElm(x1, y1, x2, y2, f, st);
 		case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
@@ -7793,6 +7798,8 @@ public CirSim() {
     	    		return (CircuitElm) new ODEElm(x1, y1);
     	if (n=="EquationElm")
     	    		return (CircuitElm) new EquationElm(x1, y1);
+    	if (n=="EquationTableElm")
+    	    		return (CircuitElm) new EquationTableElm(x1, y1);
     	if (n=="AdderElm")
     	    		return (CircuitElm) new AdderElm(x1, y1);    	
     	if (n=="SubtracterElm")
