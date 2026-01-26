@@ -77,25 +77,26 @@ public class TableElementsTest {
 String circuit = 
     "$ 67 0.05 7.010541234668786 44 5000 50 5e-11\n" +
     "% voltageUnit $\n" +
-    "255 -632 -552 -568 -552 0 5 4 6 16 0 true 2 1 false 5 0 true Firms \\0 Firms .. Firms_{Equity} A-L-E Pay\\sWages Buy\\sGoods Borrow\\sMoney Banks\\sSpend Pay\\sInterest 50 0 50 0 ASSET LIABILITY EQUITY COMPUTED -Wages \\0 -Wages \\0 Consume \\0 Consume \\0 Credit \\0 Credit \\0 Spend_{Banks} \\0 Spend_{Banks} \\0 -Int_{Firms} \\0 -Int_{Firms} \\0 0.001\n" +
-    "255 -1328 -552 -1296 -552 0 5 5 6 16 0 true 2 1 false 5 0 true Households \\0 HouseHolds Debt_{Firms} . HH_{Equity} A-L-E Pay\\sWages\\s Borrow\\sMoney Pay\\sInterest Pay\\sBank\\sFee Buy\\sGoods 40 0 0 40 0 ASSET ASSET LIABILITY EQUITY COMPUTED Wages \\0 \\0 Wages \\0 -Credit Credit \\0 \\0 \\0 Int_{Firms} \\0 \\0 Int_{Firms} \\0 -Fee \\0 \\0 -Fee \\0 -Consume \\0 \\0 -Consume \\0 0.001\n" +
-    "255 -944 -752 -880 -752 0 6 5 6 16 0 true 2 1 false 6 0 true Private\\sBanks \\0 Reserves HouseHolds Firms Banks A-L-E Pay\\sWages Buy\\sGoods Borrow\\sMoney Pay\\sInterest Pay\\sBank\\sFee Banks\\sSpend 100 40 50 10 0 ASSET LIABILITY LIABILITY EQUITY COMPUTED \\0 Wages -Wages \\0 \\0 \\0 -Consume Consume \\0 \\0 \\0 -Credit Credit \\0 \\0 \\0 Int_{Firms} -Int_{Firms} \\0 \\0 \\0 -Fee \\0 Fee \\0 \\0 \\0 Spend_{Banks} -Spend_{Banks} \\0 0.001\n" +
+    "% showToolbar true\n" +
+    "255 -632 -552 -152 -388 0 5 4 6 16 0 true 2 1 false 5 0 true Firms \\0 Firms .. Firms_{Equity} A-L-E Pay\\sWages Buy\\sGoods Borrow\\sMoney Banks\\sSpend Pay\\sInterest 50 0 50 0 ASSET LIABILITY EQUITY COMPUTED -Wages \\0 -Wages \\0 Consume \\0 Consume \\0 Credit \\0 Credit \\0 Spend_{Banks} \\0 Spend_{Banks} \\0 -Int_{Firms} \\0 -Int_{Firms} \\0 0.001\n" +
+    "255 -1328 -552 -752 -388 0 5 5 6 16 0 true 2 1 false 5 0 true Households \\0 HouseHolds Debt_{Firms} . HH_{Equity} A-L-E Pay\\sWages\\s Borrow\\sMoney Pay\\sInterest Pay\\sBank\\sFee Buy\\sGoods 40 0 0 40 0 ASSET ASSET LIABILITY EQUITY COMPUTED Wages \\0 \\0 Wages \\0 -Credit Credit \\0 \\0 \\0 Int_{Firms} \\0 \\0 Int_{Firms} \\0 -Fee \\0 \\0 -Fee \\0 -Consume \\0 \\0 -Consume \\0 0.001\n" +
+    "255 -944 -752 -368 -572 0 6 5 6 16 0 true 2 1 false 6 0 true Private\\sBanks \\0 Reserves HouseHolds Firms Banks A-L-E Pay\\sWages Buy\\sGoods Borrow\\sMoney Pay\\sInterest Pay\\sBank\\sFee Banks\\sSpend 100 40 50 10 0 ASSET LIABILITY LIABILITY EQUITY COMPUTED \\0 Wages -Wages \\0 \\0 \\0 -Consume Consume \\0 \\0 \\0 -Credit Credit \\0 \\0 \\0 Int_{Firms} -Int_{Firms} \\0 \\0 \\0 -Fee \\0 Fee \\0 \\0 \\0 Spend_{Banks} -Spend_{Banks} \\0 0.001\n" +
     "x -243 -718 11 -715 4 24 Loanable\\sFunds\\sModel 808080FF\n" +
     "263 -1376 -771 83 -106 0 Main\n" +
-    "207 -504 -248 -456 -248 36 Money\n" +
+    "207 -504 -240 -456 -240 36 Money\n" +
     "207 -552 -232 -584 -232 36 HouseHolds\n" +
     "207 -552 -248 -584 -248 36 Firms\n" +
-    "251 -552 -248 -520 -248 1 2\n" +
-    "258 -944 -192 -928 -192 1 12.5 V_{HH}\n" +
-    "258 -992 -288 -976 -288 1 4 V_{Firms}\n" +
+    "251 -552 -240 -504 -240 3 2\n" +
+    "258 -944 -192 -896 -192 1 12.5 V_{HH}\n" +
+    "258 -992 -288 -944 -288 1 4 V_{Firms}\n" +
     "207 -944 -192 -992 -192 36 HouseHolds\n" +
-    "207 -752 -272 -712 -272 36 Profits\n" +
+    "207 -736 -264 -696 -264 36 Profits\n" +
     "w -800 -272 -848 -288 0\n" +
     "w -848 -256 -800 -256 0\n" +
-    "252 -800 -272 -784 -272 1 2\n" +
+    "252 -800 -264 -736 -264 3 2\n" +
     "207 -896 -192 -832 -192 36 Consume\n" +
     "w -896 -256 -896 -288 0\n" +
-    "258 -896 -256 -880 -256 3 0.6 Wage_{Share}\n" +
+    "258 -896 -256 -848 -256 3 0.6 Wage_{Share}\n" +
     "w -896 -288 -848 -288 0\n" +
     "w -944 -288 -896 -288 0\n" +
     "207 -992 -288 -1040 -288 36 Firms\n" +
@@ -103,8 +104,8 @@ String circuit =
     "207 -800 -256 -800 -208 36 Wages\n" +
     "207 -896 -144 -832 -144 36 Credit\n" +
     "207 -944 -144 -992 -144 36 GDP\n" +
-    "258 -944 -144 -928 -144 3 0.009999999999999995 Credit_{Rate}\n" +
-    "258 -552 -144 -536 -144 3 0.009999999999999995 Int_{Rate}\n" +
+    "258 -944 -144 -896 -144 3 0.009999999999999995 Credit_{Rate}\n" +
+    "258 -552 -144 -504 -144 3 0.009999999999999995 Int_{Rate}\n" +
     "207 -552 -144 -592 -144 36 Debt_{Firms}\n" +
     "207 -504 -144 -440 -144 36 Int_{Firms}\n" +
     "207 -272 -176 -240 -176 36 Banks\n" +
@@ -112,23 +113,22 @@ String circuit =
     "207 -272 -144 -224 -144 4 Firms\n" +
     "207 -240 -320 -280 -320 4 GDP\n" +
     "207 -240 -336 -264 -336 4 Debt_{Firms}\n" +
-    "257 -240 -336 -232 -336 1 2 a*(1/(b!\\q0?b:1e-9))\n" +
-    "207 -192 -336 -160 -336 36 Debt_{GDP}\n" +
+    "257 -240 -328 -192 -328 3 2\n" +
+    "207 -192 -328 -160 -328 36 Debt_{GDP}\n" +
     "207 -320 -264 -288 -264 36 Int_{Firms}\n" +
     "207 -464 -312 -432 -312 36 Fee\n" +
     "207 -512 -312 -552 -312 36 Int_{Firms}\n" +
-    "258 -512 -312 -496 -312 3 0.1 Fee_{Rate}\n" +
+    "258 -512 -312 -464 -312 3 0.1 Fee_{Rate}\n" +
     "207 -320 -200 -280 -200 36 Spend_{Banks}\n" +
     "207 -368 -200 -416 -200 36 Banks\n" +
-    "258 -368 -200 -352 -200 1 1 V_{Banks}\n" +
+    "258 -368 -200 -320 -200 1 1 V_{Banks}\n" +
     "431 -88 -664 -72 -648 0 50 true false\n" +
     "217 -33 -556 128 -368 0 3 Banks HH_{Equity} Firms_{Equity} #FFFF00 #00FF00 #00FFFF\n" +
     "o 31 8 0 4614 640 0.1 0 8 31 3 30 0 30 3 32 0 32 3 22 0 22 3\n" +
-    "o 36 4 0 4614 0.625 0.1 1 2 36 3\n" +
+    "o 36 4 0 4614 0.3125 0.1 1 2 36 3\n" +
     "38 26 F1 1 -0.1 0.1 -1 Credit_{Rate} 0.01\n" +
     "38 27 F1 1 -0.1 0.1 -1 Int_{Rate} 0.01\n" +
     "% AST 1 1\n";
-
 
 
         CircuitTestRunner runner = new CircuitTestRunner();
@@ -234,8 +234,41 @@ String circuit =
         assertEquals("SFC Table grand total should be 715", 715, grandTotal, 715 * VOLTAGE_TOLERANCE);
     }
 
-    
-    
+    /**
+     * Test Equation Table element
+     * Expected: Y1 integrates 1 (constant), Y2 integrates X (5V source)
+     */
+    public void testEquationTable() {
+        String circuit = 
+            "$ 3 0.01 20 50 5 50 5e-11\n" +
+            "% voltageUnit $\n" +
+            "% showToolbar true\n" +
+            "266 280 520 390 580 1 EqnTable 3 Y1 integrate(1,10) \0 0.5 Y2 integrate(X) c 0.5 Y3 Y1 c 0.5\n" +
+            "207 288 632 345 632 36 Y2\n" +
+            "207 288 600 345 600 36 Y1\n" +            "207 288 664 345 664 36 Y3\n" +            "207 544 536 608 536 4 X\n" +
+            "R 544 536 496 536 0 0 40 5 0 0 0.5 V\n" +
+            "38 0 F1 5 0 1 -1 Row\\s1\\s's_W' 0\n" +
+            "% AST 0 2\n";
+
+        CircuitTestRunner runner = new CircuitTestRunner();
+        runner.loadCircuitFromText(circuit);
+        runner.runToTime(10);
+        
+        runner.assertNoErrors();
+        
+        // Y1 = integrate(1) with initial 0, so after 10s: Y1 = 10 + 0 = 10
+        double y1Voltage = runner.getNodeVoltage("Y1");
+        assertEquals("Y1 should integrate to 20", 20, y1Voltage, 20 * VOLTAGE_TOLERANCE);
+        
+        // Y2 = integrate(X) where X=5V with initial 0, so after 10s: Y2 = 5*10 + 0 = 50
+        double y2Voltage = runner.getNodeVoltage("Y2");
+        assertEquals("Y2 should integrate to 50", 50, y2Voltage, 50 * VOLTAGE_TOLERANCE);
+
+        // Y3 = Y1, so after 10s: Y3 = 10
+        double y3Voltage = runner.getNodeVoltage("Y3");
+        assertEquals("Y3 should equal Y1", y1Voltage, y3Voltage, y1Voltage * VOLTAGE_TOLERANCE);
+    }
+
     /**
      * Get list of all test method names
      */
@@ -245,7 +278,8 @@ String circuit =
             "testGodleyTableBasic",
             "testCTMBasic",
             "testCTM",
-            "testSFCTable"
+            "testSFCTable",
+            "testEquationTable"
         };
     }
     
@@ -260,6 +294,7 @@ String circuit =
             else if ("testCTMBasic".equals(testName)) testCTMBasic();
             else if ("testCTM".equals(testName)) testCTM();
             else if ("testSFCTable".equals(testName)) testSFCTable();
+            else if ("testEquationTable".equals(testName)) testEquationTable();
             else {
                 throw new IllegalArgumentException("Unknown test: " + testName);
             }
@@ -294,6 +329,7 @@ String circuit =
         runTest("testGodleyTableComplex", () -> testGodleyTableComplex());
         runTest("testCTMBasic", () -> testCTMBasic());
         runTest("testStockFlowBasic", () -> testCTM());
+        runTest("testEquationTable", () -> testEquationTable());
         runTest("testSFCTable", () -> testSFCTable());
         
         console("");

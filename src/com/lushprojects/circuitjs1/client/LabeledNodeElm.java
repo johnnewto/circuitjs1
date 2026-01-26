@@ -260,7 +260,11 @@ class LabeledNodeElm extends CircuitElm {
 		}
 		
 		if (showVoltage()) {
-		    String voltageText = " = " + getVoltageText(volts[0]);
+		    // Check for computed value first (from EquationTableElm, GodlyTableElm, etc.)
+		    // This allows labeled nodes to display computed values even when not directly connected
+		    Double computedValue = ComputedValues.getComputedValue(text);
+		    double displayVoltage = (computedValue != null) ? computedValue.doubleValue() : volts[0];
+		    String voltageText = " = " + getVoltageText(displayVoltage);
 		    displayText = displayText + voltageText;
 		}
 		drawLabeledNode(g, displayText, point1, lead1);
@@ -268,6 +272,7 @@ class LabeledNodeElm extends CircuitElm {
 		curcount = updateDotCount(current, curcount);
 		drawDots(g, point1, lead1, curcount);
 		drawPosts(g);
+		// Hint tooltip is drawn by CirSim.drawHintTooltip() after all elements
     }
     double getCurrentIntoNode(int n) { return -current; }
     void setCurrent(int x, double c) { current = c; }
@@ -282,22 +287,30 @@ class LabeledNodeElm extends CircuitElm {
 		    displayName = "★" + text;
 		}
 		
-		arr[0] = Locale.LS(displayName) + " (" + Locale.LS("Labeled Node") + ")";
-		arr[1] = "I = " + getCurrentText(getCurrent());
+		// Show hint from HintRegistry first if available
+		String hint = HintRegistry.getHint(text);
+		if (hint != null && !hint.isEmpty()) {
+		    arr[0] = hint;
+		    arr[1] = Locale.LS(displayName) + " (" + Locale.LS("Labeled Node") + ")";
+		} else {
+		    arr[0] = Locale.LS(displayName) + " (" + Locale.LS("Labeled Node") + ")";
+		    arr[1] = "";
+		}
+		arr[2] = "I = " + getCurrentText(getCurrent());
 		
 		// Use custom voltage unit symbol (e.g., $ for economics mode)
 		String voltUnit = (sim != null && sim.voltageUnitSymbol != null) ? sim.voltageUnitSymbol : "V";
-		arr[2] = voltUnit + " = " + getVoltageText(volts[0]);
+		arr[3] = voltUnit + " = " + getVoltageText(volts[0]);
 		
 		// Add node number information for debugging
 		LabelEntry le = labelList.get(text);
 		if (le != null)
-			arr[3] = "Node: " + le.node;
+			arr[4] = "Node: " + le.node;
 		else
-			arr[3] = "Node: not assigned";
+			arr[4] = "Node: not assigned";
 		
 		// Show stock status if this is a stock
-		int idx = 4;
+		int idx = 5;
 		if (StockFlowRegistry.isStock(text)) {
 		    arr[idx++] = "Stock: Yes (registered in table)";
 		    if (StockFlowRegistry.isSharedStock(text)) {

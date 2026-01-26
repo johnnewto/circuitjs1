@@ -151,6 +151,17 @@ class Expr {
 	    return es.lastOutput;
 	case E_TIMESTEP:
 	    return CirSim.theSim.timeStep;
+	case E_INTEGRATE:
+	    // integrate(x) or integrate(x, initial)
+	    // At t=0 with initial value: base = initial
+	    // Otherwise: base = lastoutput
+	    // Result = base + timestep * x
+	    double base = es.lastOutput;
+	    if (right != null && es.t == 0) {
+		// Use initial value at t=0 instead of lastOutput (which starts at 0)
+		base = right.eval(es);
+	    }
+	    return base + CirSim.theSim.timeStep * left.eval(es);
 	case E_NODE_REF:
 	    // Direct node reference - get voltage from labeled node or computed value
 	    if (CirSim.theSim != null && nodeName != null) {
@@ -236,25 +247,26 @@ class Expr {
     static final int E_PWRS = 29;
     static final int E_LASTOUTPUT = 30;
     static final int E_TIMESTEP = 31;
-    static final int E_TERNARY = 32;
-    static final int E_OR = 33;
-    static final int E_AND = 34;
-    static final int E_EQUALS = 35;
-    static final int E_LEQ = 36;
-    static final int E_GEQ = 37;
-    static final int E_LESS = 38;
-    static final int E_GREATER = 39;
-    static final int E_NEQ = 40;
-    static final int E_NOT = 41;
-    static final int E_FLOOR = 42;
-    static final int E_CEIL = 43;
-    static final int E_ASIN = 44;
-    static final int E_ACOS = 45;
-    static final int E_ATAN = 46;
-    static final int E_SINH = 47;
-    static final int E_COSH = 48;
-    static final int E_TANH = 49;
-    static final int E_A = 50;
+    static final int E_INTEGRATE = 32;
+    static final int E_TERNARY = 33;
+    static final int E_OR = 34;
+    static final int E_AND = 35;
+    static final int E_EQUALS = 36;
+    static final int E_LEQ = 37;
+    static final int E_GEQ = 38;
+    static final int E_LESS = 39;
+    static final int E_GREATER = 40;
+    static final int E_NEQ = 41;
+    static final int E_NOT = 42;
+    static final int E_FLOOR = 43;
+    static final int E_CEIL = 44;
+    static final int E_ASIN = 45;
+    static final int E_ACOS = 46;
+    static final int E_ATAN = 47;
+    static final int E_SINH = 48;
+    static final int E_COSH = 49;
+    static final int E_TANH = 50;
+    static final int E_A = 51;
     static final int E_DADT = E_A+10; // must be E_A+10
     static final int E_LASTA = E_DADT+10; // should be at end and equal to E_DADT+10
     static final int E_NODE_REF = E_LASTA+10; // Direct node reference by name
@@ -586,6 +598,8 @@ class ExprParser {
 			return parseFunc(Expr.E_FLOOR);
 		if (skipIgnoreCase("ceil"))
 			return parseFunc(Expr.E_CEIL);
+		if (skipIgnoreCase("integrate"))
+			return parseFuncMulti(Expr.E_INTEGRATE, 1, 2);
 		if (skipIgnoreCase("min"))
 			return parseFuncMulti(Expr.E_MIN, 2, 1000);
 		if (skipIgnoreCase("max"))

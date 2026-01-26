@@ -221,15 +221,15 @@ public class SFCTableElm extends TableElm {
         }
         
         // Debug: log values for first row
-        StringBuilder sb = new StringBuilder();
-        sb.append("[SFCTableElm.doStep] ").append(tableTitle).append(" row0: ");
-        for (int col = 0; col < columns.size(); col++) {
-            TableColumn column = columns.get(col);
-            if (column.getType() != ColumnType.COMPUTED) {
-                sb.append(column.getStockName()).append("=").append(column.getCachedCellValue(0)).append(" ");
-            }
-        }
-        CirSim.console(sb.toString());
+        // StringBuilder sb = new StringBuilder();
+        // sb.append("[SFCTableElm.doStep] ").append(tableTitle).append(" row0: ");
+        // for (int col = 0; col < columns.size(); col++) {
+        //     TableColumn column = columns.get(col);
+        //     if (column.getType() != ColumnType.COMPUTED) {
+        //         sb.append(column.getStockName()).append("=").append(column.getCachedCellValue(0)).append(" ");
+        //     }
+        // }
+        // CirSim.console(sb.toString());
     }
     
     /**

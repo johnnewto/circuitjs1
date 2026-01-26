@@ -74,8 +74,8 @@ import java.util.Map;
     private static final String INITIAL_CONDITIONS_LABEL = "InitialConditions";
     
     // Unicode symbols for contextual buttons
-    private static final String SYMBOL_ADD = "⧾";           // Add column/row button
-    private static final String SYMBOL_DELETE = "⧿";       // Delete column/row button  
+    private static final String SYMBOL_ADD = "➕";           // Add column/row button
+    private static final String SYMBOL_DELETE = "➖";       // Delete column/row button  
     private static final String SYMBOL_LEFT = "⇐";         // Move left button
     private static final String SYMBOL_RIGHT = "⇒";        // Move right button
     private static final String SYMBOL_UP = "⇑";           // Move up button

@@ -1,11 +1,22 @@
-$ 3 0.000005 10.20027730826997 50 5 50 5e-11
+$ 3 0.005 0.18682459574322224 50 5 50 5e-11
 % voltageUnit $
 % showToolbar true
-265 272 48 848 180 0 4 5 6 16 0 false 2 0 false 5 0 false Balance\sSheet \0 Households Firms Banks Total Σ Deposits Loans Capital Total\s(net\sworth) 0 0 0 0 0 SECTOR SECTOR SECTOR SECTOR COMPUTED \pD \0 -D \0 \0 \0 -L \pL \0 \0 \0 \pK \0 \pK \0 \pD \pV_F \0 \pK \0 true 0.000001
-265 208 272 976 484 0 9 7 6 16 0 false 2 1 false 5 0 false Transaction\sFlow\sMatrix \0 Households_C Firms_{Current} Firms_{Capital} Banks_{Current} Banks_{Capital} Govt Σ Consumption Investment Wages Firm's\sProfit Bank's\sProfit Interest\son\sDeposits Interest\son\sLoans Change\sin\sDeposits Change\sin\sLoans 0 0 0 0 0 0 0 SECTOR SECTOR SECTOR SECTOR SECTOR SECTOR COMPUTED -C C \0 \0 \0 \0 \0 \0 I -I \0 \0 \0 \0 W -W \0 \0 \0 \0 \0 DP -TP RP \0 \0 \0 \0 BP \0 \0 -BP \0 \0 \0 int_D*D \0 \0 -int_D*D \0 \0 \0 \0 int_L*L \0 -int_L*L \0 \0 \0 \\DeltaD \0 \0 \0 -\\DeltaD \0 \0 \0 \0 \\DeltaL \0 -\\DeltaL \0 \0 true 0.000001
-207 704 512 761 512 4 Y
-266 488 496 568 542 1 EqnTable 2 W s_W\s*\sY s_W 0.35 Y2 0 b 0.5
-R 704 512 648 512 0 0 40 5 0 0 0.5 V
-207 664 544 696 544 36 W
+265 160 24 736 156 0 4 5 6 16 0 false 2 1 false 5 0 false Balance\sSheet \0 Households Firms Banks Total Σ Deposits Loans Capital Total\s(net\sworth) 0 0 0 0 0 SECTOR SECTOR SECTOR SECTOR COMPUTED \pD \0 -D \0 \0 \0 -L \pL \0 \0 \0 \pK X \pK \0 \pD \pV_F \0 \pK \0 true 0.000001
+265 160 168 928 380 0 9 7 6 16 0 false 2 1 false 5 0 false Transaction\sFlow\sMatrix \0 Households_C Firms_{Current} Firms_{Capital} Banks_{Current} Banks_{Capital} Govt Σ Consumption Investment Wages Firm's\sProfit Bank's\sProfit Interest\son\sDeposits Interest\son\sLoans Change\sin\sDeposits Change\sin\sLoans 0 0 0 0 0 0 0 SECTOR SECTOR SECTOR SECTOR SECTOR SECTOR COMPUTED -C C \0 \0 \0 \0 \0 \0 I -I \0 \0 \0 \0 W -W \0 \0 \0 \0 \0 DP -TP RP \0 \0 \0 \0 BP \0 \0 -BP \0 \0 \0 int_D*D \0 \0 -int_D*D \0 \0 \0 \0 int_L*L \0 -int_L*L \0 \0 \0 \\DeltaD \0 \0 \0 -\\DeltaD \0 \0 \0 \0 \\DeltaL \0 -\\DeltaL \0 \0 true 0.000001
+207 1024 40 1081 40 4 Y
+266 160 392 402 480 1 Households 5 Y2 W \0 0.63 W s_W\s*\sY s_W 0.35 Y_C lastoutput\ptimestep*(DP\pBP\pint_D) \0 0.5 C c_1\s*\sW\s\p\sY_C\s\p\sC_3\s*\sD \0 0.5 D integrate(W\s\p\sY_C\s-\sC) \0 0.5
+R 1024 40 968 40 0 0 40 5 0 0 0.5 V
+207 984 72 1016 72 36 W
+R 952 24 896 24 0 0 40 5 0 0 0.5 V
+207 952 24 1009 24 36 X
+266 424 392 582 508 1 Firms 7 Y C\s\p\sI \0 0.5 TP Y\s-\sW\s-\sint_L\s*\sL \0 0.35 RP S_F\s*\sTP \0 0.5 DP TP\s-\sRP \0 0.5 I g_K\s*\sK \0 0.5 K integrate(K)\s\p\sI \0 0.5 L integrate(L)\s\p\sI\s-\sRP \0 0.5
 38 3 F1 5 0 1 -1 Row\s1\s's_W' 0
 % AST 0 2
+% Hint Y Output\svalue
+% Hint TP Total\sProfits
+% Hint RP Retained\sProfits
+% Hint W Wage\sIncome\sof\sHouseholds
+% Hint D Deposits
+% Hint L Loans
+% Hint C Consumption\sExpenditure
+% Hint DP Distributed\sProfits

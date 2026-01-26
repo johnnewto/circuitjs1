@@ -38,8 +38,8 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 public class EquationTableEditDialog extends Dialog {
     
     // Unicode symbols for contextual buttons
-    private static final String SYMBOL_ADD = "⧾";
-    private static final String SYMBOL_DELETE = "⧿";
+    private static final String SYMBOL_ADD = "➕";
+    private static final String SYMBOL_DELETE = "➖";
     private static final String SYMBOL_UP = "⇑";
     private static final String SYMBOL_DOWN = "⇓";
     
@@ -49,7 +49,8 @@ public class EquationTableEditDialog extends Dialog {
     private static final int COL_EQUATION = 2;
     private static final int COL_SLIDER_VAR = 3;
     private static final int COL_SLIDER_VALUE = 4;
-    private static final int NUM_COLS = 5;
+    private static final int COL_HINT = 5;
+    private static final int NUM_COLS = 6;
     
     // Grid row indices
     private static final int HEADER_ROW = 0;
@@ -75,6 +76,7 @@ public class EquationTableEditDialog extends Dialog {
     private String[] equations;
     private String[] sliderVarNames;
     private double[] sliderValues;
+    private String[] hints;
     
     // Track changes
     private boolean hasChanges = false;
@@ -110,12 +112,16 @@ public class EquationTableEditDialog extends Dialog {
         equations = new String[MAX_ROWS];
         sliderVarNames = new String[MAX_ROWS];
         sliderValues = new double[MAX_ROWS];
+        hints = new String[MAX_ROWS];
         
         for (int i = 0; i < MAX_ROWS; i++) {
             outputNames[i] = tableElement.getOutputName(i);
             equations[i] = tableElement.getEquation(i);
             sliderVarNames[i] = tableElement.getSliderVarName(i);
             sliderValues[i] = tableElement.getSliderValue(i);
+            // Get hint from central HintRegistry
+            String hint = HintRegistry.getHint(outputNames[i]);
+            hints[i] = (hint != null) ? hint : "";
         }
     }
     
@@ -153,7 +159,7 @@ public class EquationTableEditDialog extends Dialog {
         
         // Scrollable table area
         scrollPanel = new ScrollPanel();
-        scrollPanel.setWidth("650px");
+        scrollPanel.setWidth("780px");
         scrollPanel.setHeight("300px");
         scrollPanel.addStyleName("topSpace");
         mainPanel.add(scrollPanel);
@@ -251,6 +257,10 @@ public class EquationTableEditDialog extends Dialog {
         Label headerSliderVal = new Label("Slider Value");
         headerSliderVal.getElement().getStyle().setProperty("fontWeight", "bold");
         editGrid.setWidget(HEADER_ROW, COL_SLIDER_VALUE, headerSliderVal);
+        
+        Label headerHint = new Label("Hint");
+        headerHint.getElement().getStyle().setProperty("fontWeight", "bold");
+        editGrid.setWidget(HEADER_ROW, COL_HINT, headerHint);
         
         // Data rows
         for (int row = 0; row < rowCount; row++) {
@@ -367,6 +377,19 @@ public class EquationTableEditDialog extends Dialog {
         });
         addSelectAllOnFocus(sliderValBox);
         editGrid.setWidget(gridRow, COL_SLIDER_VALUE, sliderValBox);
+        
+        // Hint textbox
+        final TextBox hintBox = new TextBox();
+        hintBox.setText(hints[row]);
+        hintBox.setWidth("120px");
+        hintBox.addKeyUpHandler(new KeyUpHandler() {
+            public void onKeyUp(KeyUpEvent event) {
+                hints[row] = hintBox.getText();
+                markChanged();
+            }
+        });
+        addSelectAllOnFocus(hintBox);
+        editGrid.setWidget(gridRow, COL_HINT, hintBox);
     }
     
     /**
@@ -512,6 +535,7 @@ public class EquationTableEditDialog extends Dialog {
             equations[i + 1] = equations[i];
             sliderVarNames[i + 1] = sliderVarNames[i];
             sliderValues[i + 1] = sliderValues[i];
+            hints[i + 1] = hints[i];
         }
         
         // Initialize new row
@@ -519,6 +543,7 @@ public class EquationTableEditDialog extends Dialog {
         equations[insertAt] = "0";
         sliderVarNames[insertAt] = String.valueOf((char)('a' + insertAt));
         sliderValues[insertAt] = 0.5;
+        hints[insertAt] = "hint" + (insertAt + 1);
         
         rowCount++;
         
@@ -542,6 +567,7 @@ public class EquationTableEditDialog extends Dialog {
             equations[i] = equations[i + 1];
             sliderVarNames[i] = sliderVarNames[i + 1];
             sliderValues[i] = sliderValues[i + 1];
+            hints[i] = hints[i + 1];
         }
         
         rowCount--;
@@ -574,6 +600,10 @@ public class EquationTableEditDialog extends Dialog {
         sliderValues[fromIndex] = sliderValues[toIndex];
         sliderValues[toIndex] = tempVal;
         
+        String tempHint = hints[fromIndex];
+        hints[fromIndex] = hints[toIndex];
+        hints[toIndex] = tempHint;
+        
         String direction = (fromIndex < toIndex) ? "down" : "up";
         setStatus("Row " + (fromIndex + 1) + " moved " + direction);
         markChanged();
@@ -596,6 +626,10 @@ public class EquationTableEditDialog extends Dialog {
             tableElement.setEquation(row, equations[row]);
             tableElement.setSliderVarName(row, sliderVarNames[row]);
             tableElement.setSliderValue(row, sliderValues[row]);
+            // Save hint to central HintRegistry
+            if (hints[row] != null && !hints[row].trim().isEmpty()) {
+                HintRegistry.setHint(outputNames[row], hints[row]);
+            }
         }
         
         // Trigger reparse and node reallocation

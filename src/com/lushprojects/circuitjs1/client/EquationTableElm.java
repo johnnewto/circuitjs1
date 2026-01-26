@@ -29,6 +29,9 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 class EquationTableElm extends CircuitElm {
     final int FLAG_SMALL = 1;
     
+    // Debug flag - set to true to enable detailed console output
+    private static boolean DEBUG = false;
+    
     private String tableName = "EqnTable";  // User-defined name for this element
     
     // Per-row data
@@ -46,6 +49,9 @@ class EquationTableElm extends CircuitElm {
     // Row movement pending action (-1 = none, row index = pending swap with row+1)
     private int pendingMoveDown = -1;
     private int pendingMoveUp = -1;
+    
+    // Mouse hover tracking for per-row hints
+    private int hoveredRow = -1;
     
     // Geometry
     int opsize;
@@ -196,8 +202,9 @@ class EquationTableElm extends CircuitElm {
     // High-impedance: no current path between posts
     boolean getConnection(int n1, int n2) { return false; }
     
-    // Each output connects to ground
-    boolean hasGroundConnection(int n) { return true; }
+    // Outputs do NOT connect to ground - they create their own independent nodes
+    // (voltage sources drive the nodes)
+    boolean hasGroundConnection(int n) { return false; }
     
     double getCurrentIntoNode(int n) {
         if (n >= 0 && n < rowCount)
@@ -212,6 +219,9 @@ class EquationTableElm extends CircuitElm {
     }
     
     private void parseEquation(int row) {
+        if (DEBUG) {
+            CirSim.console("[EquationTableElm." + tableName + "] Parsing row " + row + ": '" + equations[row] + "'");
+        }
         try {
             ExprParser parser = new ExprParser(equations[row]);
             compiledExprs[row] = parser.parseExpression();
@@ -219,6 +229,8 @@ class EquationTableElm extends CircuitElm {
             if (err != null) {
                 CirSim.console("EquationTableElm row " + row + ": Parse error in '" + equations[row] + "': " + err);
                 compiledExprs[row] = null;
+            } else if (DEBUG) {
+                CirSim.console("[EquationTableElm." + tableName + "] Row " + row + " parsed successfully");
             }
         } catch (Exception e) {
             CirSim.console("EquationTableElm row " + row + ": Error parsing '" + equations[row] + "': " + e.getMessage());
@@ -242,10 +254,55 @@ class EquationTableElm extends CircuitElm {
     }
     
     void stamp() {
+        if (DEBUG) {
+            CirSim.console("[EquationTableElm." + tableName + "] stamp() called, rowCount=" + rowCount + ", voltSource=" + voltSource);
+        }
         for (int row = 0; row < rowCount; row++) {
+            int outputNode = nodes[row];
             int vn = voltSource + row + sim.nodeList.size();
+            
+            if (DEBUG) {
+                CirSim.console("[EquationTableElm." + tableName + "] Row " + row + " (" + outputNames[row] + "): vn=" + vn + ", node=" + outputNode + ", voltSource=" + (voltSource + row));
+            }
+            
+            // Can't stamp voltage source to ground node (would be ground-to-ground)
+            if (outputNode == 0) {
+                CirSim.console("EquationTableElm [" + tableName + "] Row " + row + " (" + outputNames[row] + "): WARNING - Skipping stamp, output node is ground!");
+                continue;
+            }
+            
             sim.stampNonLinear(vn);
-            sim.stampVoltageSource(0, nodes[row], voltSource + row);
+            sim.stampVoltageSource(0, outputNode, voltSource + row);
+            
+            // Add high-value resistor from output to ground to help matrix conditioning
+            sim.stampResistor(outputNode, 0, 1e8);
+        }
+        
+        // Connect output nodes to labeled nodes
+        connectToLabeledNodes();
+    }
+    
+    /**
+     * Connect each output row to its corresponding labeled node (if it exists)
+     * This allows the output voltage to appear in labeled nodes with the same name
+     */
+    private void connectToLabeledNodes() {
+        for (int row = 0; row < rowCount; row++) {
+            String outputName = outputNames[row];
+            if (outputName == null || outputName.trim().isEmpty()) continue;
+            
+            // Find labeled node with this name
+            Integer labeledNodeNum = LabeledNodeElm.getByName(outputName.trim());
+            int outputNode = nodes[row];
+            
+            if (labeledNodeNum != null && labeledNodeNum > 0 && outputNode > 0) {
+                // Connect via very low resistance (1μΩ) - effectively a wire
+                sim.stampResistor(outputNode, labeledNodeNum, 1e-6);
+                
+                if (DEBUG) {
+                    CirSim.console("[EquationTableElm." + tableName + "] Connected row " + row + " (" + outputName + ") node " + outputNode + " to labeled node " + labeledNodeNum);
+                }
+            }
         }
     }
     
@@ -259,36 +316,106 @@ class EquationTableElm extends CircuitElm {
     }
     
     void doStep() {
+        if (DEBUG && sim.subIterations == 0) {
+            CirSim.console("[EquationTableElm." + tableName + "] doStep() at t=" + sim.t);
+        }
         for (int row = 0; row < rowCount; row++) {
             int vn = voltSource + row + sim.nodeList.size();
             
             if (compiledExprs[row] != null) {
                 ExprState state = exprStates[row];
                 
-                // Set slider variable value (using 'a' slot = values[0])
+                // Set slider variable as 'a' (values[0]) for simple variable reference
                 state.values[0] = sliderValues[row];
                 state.t = sim.t;
                 
+                // ALSO register slider variable as a computed value so E_NODE_REF can find it
+                String sliderVar = sliderVarNames[row];
+                if (sliderVar != null && !sliderVar.isEmpty()) {
+                    ComputedValues.setComputedValue(sliderVar, sliderValues[row]);
+                }
+                
                 double equationValue = compiledExprs[row].eval(state);
+                
+                if (DEBUG) {
+                    CirSim.console("[EquationTableElm." + tableName + "] Row " + row + " (" + outputNames[row] + "):");
+                    CirSim.console("  Equation: " + equations[row]);
+                    CirSim.console("  Slider " + sliderVarNames[row] + "=" + sliderValues[row] + " (registered as computed value)");
+                    CirSim.console("  state.lastOutput=" + exprStates[row].lastOutput + " (from previous step)");
+                    CirSim.console("  state.values[0]=" + state.values[0]);
+                    CirSim.console("  state.t=" + state.t);
+                    
+                    // Try to identify what variables might be in the equation
+                    String eq = equations[row];
+                    CirSim.console("  Checking for labeled nodes in equation...");
+                    String[] labeledNodes = LabeledNodeElm.getSortedLabeledNodeNames();
+                    if (labeledNodes != null && labeledNodes.length > 0) {
+                        for (String nodeName : labeledNodes) {
+                            if (eq.contains(nodeName)) {
+                                // Get node number and voltage
+                                Integer nodeNum = LabeledNodeElm.getByName(nodeName);
+                                double nodeValue = 0;
+                                if (nodeNum != null && nodeNum > 0 && nodeNum <= sim.nodeVoltages.length) {
+                                    nodeValue = sim.nodeVoltages[nodeNum - 1]; // nodeVoltages is 0-indexed, excludes ground
+                                }
+                                CirSim.console("    Found labeled node '" + nodeName + "' (node " + nodeNum + ") = " + nodeValue);
+                            }
+                        }
+                    } else {
+                        CirSim.console("    No labeled nodes found in circuit");
+                    }
+                    
+                    // Also check computed values (including slider)
+                    CirSim.console("  Checking computed values...");
+                    Double sliderComputedVal = ComputedValues.getComputedValue(sliderVar);
+                    if (sliderComputedVal != null) {
+                        CirSim.console("    Slider '" + sliderVar + "' computed value = " + sliderComputedVal);
+                    }
+                    
+                    CirSim.console("  Evaluated value: " + equationValue);
+                    CirSim.console("  Last value: " + lastOutputValues[row]);
+                    CirSim.console("  Output voltage: " + volts[row]);
+                }
                 
                 // Check convergence
                 double convergeLimit = getConvergeLimit(row);
-                if (Math.abs(equationValue - lastOutputValues[row]) > convergeLimit) {
+                boolean equationConverged = Math.abs(equationValue - lastOutputValues[row]) <= convergeLimit;
+                if (!equationConverged) {
                     sim.converged = false;
+                    if (DEBUG) {
+                        CirSim.console("  Equation NOT converged: diff=" + Math.abs(equationValue - lastOutputValues[row]) + ", limit=" + convergeLimit);
+                    }
+                } else if (DEBUG) {
+                    CirSim.console("  Equation converged");
                 }
                 lastOutputValues[row] = equationValue;
                 
                 outputValues[row] = equationValue;
                 
+                // Register output immediately so subsequent rows can reference it in same subiteration
+                // This allows intra-table dependencies (e.g., Y2 = Y1 + 1) to work correctly
+                String outputName = outputNames[row];
+                if (outputName != null && !outputName.trim().isEmpty()) {
+                    ComputedValues.setComputedValue(outputName.trim(), equationValue);
+                }
+                
                 // Check output voltage convergence
                 double outputVoltage = volts[row];
                 double voltageDiff = Math.abs(outputVoltage - outputValues[row]);
                 double threshold = Math.max(Math.abs(outputValues[row]) * 0.01, 1e-6);
-                if (voltageDiff > threshold && sim.subIterations < 100) {
+                boolean voltageConverged = voltageDiff <= threshold || sim.subIterations >= 100;
+                if (!voltageConverged) {
                     sim.converged = false;
+                    if (DEBUG) {
+                        CirSim.console("  Voltage NOT converged: diff=" + voltageDiff + ", threshold=" + threshold + ", subIter=" + sim.subIterations);
+                    }
+                } else if (DEBUG) {
+                    CirSim.console("  Voltage converged");
                 }
                 
                 sim.stampRightSide(vn, outputValues[row]);
+            } else if (DEBUG) {
+                CirSim.console("[EquationTableElm." + tableName + "] Row " + row + ": NULL compiled expression!");
             }
         }
     }
@@ -296,17 +423,28 @@ class EquationTableElm extends CircuitElm {
     @Override
     public void stepFinished() {
         // Register outputs as labeled nodes
+        if (DEBUG) {
+            CirSim.console("[EquationTableElm." + tableName + "] stepFinished() - registering outputs:");
+        }
         for (int row = 0; row < rowCount; row++) {
             String name = outputNames[row];
             if (name != null && !name.trim().isEmpty()) {
                 registerComputedValueAsLabeledNode(name.trim(), outputValues[row]);
                 ComputedValues.markComputedThisStep(name.trim());
+                if (DEBUG) {
+                    CirSim.console("  " + name.trim() + " = " + outputValues[row]);
+                }
+            }
+            
+            // Update ExprState for next timestep (like VCVSElm does)
+            if (exprStates[row] != null) {
+                exprStates[row].updateLastValues(outputValues[row]);
             }
         }
     }
     
     /**
-     * Register a computed value so it can be accessed via LabeledNodeElm.getVoltageForNode()
+     * Register a computed value so it can be accessed by other elements via ComputedValues
      */
     private void registerComputedValueAsLabeledNode(String name, double value) {
         ComputedValues.setComputedValue(name, value);
@@ -314,6 +452,9 @@ class EquationTableElm extends CircuitElm {
     
     @Override
     public void reset() {
+        if (DEBUG) {
+            CirSim.console("[EquationTableElm." + tableName + "] reset() called");
+        }
         super.reset();
         for (int row = 0; row < rowCount; row++) {
             if (exprStates[row] != null) {
@@ -321,6 +462,13 @@ class EquationTableElm extends CircuitElm {
             }
             outputValues[row] = 0.0;
             lastOutputValues[row] = 0.0;
+            
+            // Register initial values with ComputedValues at t=0
+            // This ensures labeled nodes show initial values before simulation starts
+            String name = outputNames[row];
+            if (name != null && !name.trim().isEmpty()) {
+                registerComputedValueAsLabeledNode(name.trim(), outputValues[row]);
+            }
         }
     }
     
@@ -376,10 +524,33 @@ class EquationTableElm extends CircuitElm {
         g.setColor(Color.gray);
         g.drawLine(tableX, tableY + rowHeight, tableX + tableWidth, tableY + rowHeight);
         
+        // Determine which row the mouse is hovering over
+        // Convert mouse screen coordinates to circuit coordinates
+        hoveredRow = -1;
+        int mouseCircuitX = sim.inverseTransformX(sim.mouseCursorX);
+        int mouseCircuitY = sim.inverseTransformY(sim.mouseCursorY);
+        if (mouseCircuitX >= tableX && mouseCircuitX <= tableX + tableWidth &&
+            mouseCircuitY >= tableY && mouseCircuitY <= tableY + tableHeight) {
+            // Calculate which row, accounting for title row at top
+            int relativeY = mouseCircuitY - (tableY + rowHeight); // Offset from start of first data row
+            if (relativeY >= 0) {
+                int mouseRowIndex = relativeY / rowHeight;
+                if (mouseRowIndex >= 0 && mouseRowIndex < rowCount) {
+                    hoveredRow = mouseRowIndex;
+                }
+            }
+        }
+        
         // Draw each row
         g.setFont(valueFont);
         for (int row = 0; row < rowCount; row++) {
-            int rowY = tableY + (row + 1) * rowHeight + cellPadding;
+            int rowY = tableY + (row + 1) * rowHeight;
+            
+            // Highlight hovered row
+            if (row == hoveredRow) {
+                g.setColor(new Color(80, 80, 100)); // Subtle highlight color
+                g.fillRect(tableX + 1, rowY + 1, tableWidth - 2, rowHeight - 1);
+            }
             
             // Build display string with slider value substituted
             String displayEquation = equations[row];
@@ -409,6 +580,34 @@ class EquationTableElm extends CircuitElm {
                 g.setColor(Color.gray);
                 int sepY = tableY + (row + 2) * rowHeight;
                 g.drawLine(tableX, sepY, tableX + tableWidth, sepY);
+            }
+        }
+        
+        // Draw hint tooltip above mouse when hovering over a row
+        if (hoveredRow >= 0 && hoveredRow < rowCount) {
+            String hint = HintRegistry.getHint(outputNames[hoveredRow]);
+            if (hint != null && !hint.trim().isEmpty()) {
+                g.setFont(valueFont);
+                int hintWidth = (int) g.context.measureText(hint).getWidth() + 8;
+                int hintHeight = opsize == 1 ? 12 : 16;
+                
+                // Position above the mouse cursor
+                int tooltipX = mouseCircuitX - hintWidth / 2;
+                int tooltipY = mouseCircuitY - hintHeight - 4;
+                
+                // Keep tooltip within table bounds horizontally
+                if (tooltipX < tableX) tooltipX = tableX;
+                if (tooltipX + hintWidth > tableX + tableWidth) tooltipX = tableX + tableWidth - hintWidth;
+                
+                // Draw tooltip background
+                g.setColor(new Color(60, 60, 80));
+                g.fillRect(tooltipX, tooltipY, hintWidth, hintHeight);
+                g.setColor(Color.gray);
+                g.drawRect(tooltipX, tooltipY, hintWidth, hintHeight);
+                
+                // Draw tooltip text
+                g.setColor(Color.yellow);
+                g.drawString(hint, tooltipX + 4, tooltipY + hintHeight - 3);
             }
         }
         
@@ -481,7 +680,7 @@ class EquationTableElm extends CircuitElm {
                     }
                     
                     // Add math functions
-                    String[] funcs = {"sin", "cos", "tan", "exp", "log", "sqrt", "abs", "min", "max", "pow", "floor", "ceil"};
+                    String[] funcs = {"sin", "cos", "tan", "exp", "log", "sqrt", "abs", "min", "max", "pow", "floor", "ceil", "integrate"};
                     for (String f : funcs) {
                         if (!completions.contains(f)) completions.add(f);
                     }
@@ -489,6 +688,8 @@ class EquationTableElm extends CircuitElm {
                     // Add constants
                     if (!completions.contains("pi")) completions.add("pi");
                     if (!completions.contains("t")) completions.add("t");
+                    if (!completions.contains("lastoutput")) completions.add("lastoutput");
+                    if (!completions.contains("timestep")) completions.add("timestep");
                     
                     ei.completionList = completions;
                     return ei;
@@ -668,11 +869,31 @@ class EquationTableElm extends CircuitElm {
     @Override
     void getInfo(String arr[]) {
         arr[0] = "Equation Table: " + tableName;
-        arr[1] = "Rows: " + rowCount;
         
-        int idx = 2;
-        for (int row = 0; row < rowCount && idx < arr.length - 1; row++) {
-            arr[idx++] = outputNames[row] + " = " + getUnitText(outputValues[row], "");
+        // If hovering over a specific row, show detailed info for that row
+        if (hoveredRow >= 0 && hoveredRow < rowCount) {
+            // Show hint first if not empty (from central HintRegistry)
+            String hint = HintRegistry.getHint(outputNames[hoveredRow]);
+            if (hint != null && !hint.trim().isEmpty()) {
+                arr[1] = hint;
+            } else {
+                arr[1] = "Row " + (hoveredRow + 1) + ": " + outputNames[hoveredRow];
+            }
+            arr[2] = "Row " + (hoveredRow + 1) + ": " + outputNames[hoveredRow];
+            arr[3] = "Equation: " + equations[hoveredRow];
+            arr[4] = "Slider: " + sliderVarNames[hoveredRow] + " = " + getShortUnitText(sliderValues[hoveredRow], "");
+            arr[5] = "Output: " + getUnitText(outputValues[hoveredRow], "");
+            if (compiledExprs[hoveredRow] == null) {
+                arr[6] = "⚠ Equation parse error";
+            }
+        } else {
+            // Show summary when not hovering over any row
+            arr[1] = "Rows: " + rowCount;
+            
+            int idx = 2;
+            for (int row = 0; row < rowCount && idx < arr.length - 1; row++) {
+                arr[idx++] = outputNames[row] + " = " + getUnitText(outputValues[row], "");
+            }
         }
     }
     

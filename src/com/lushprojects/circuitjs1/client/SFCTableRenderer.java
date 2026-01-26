@@ -56,15 +56,15 @@ public class SFCTableRenderer extends TableRenderer {
      */
     private void updateSigmaColumn() {
         if (!hasALEColumn()) {
-            CirSim.console("[SFCTableRenderer.updateSigmaColumn] hasALEColumn=false, skipping");
+            // CirSim.console("[SFCTableRenderer.updateSigmaColumn] hasALEColumn=false, skipping");
             return;
         }
         
         int sigmaCol = table.getCols() - 1;
         int sectorColCount = getSectorColumnCount();
         
-        CirSim.console("[SFCTableRenderer.updateSigmaColumn] sigmaCol=" + sigmaCol + 
-                      ", sectorColCount=" + sectorColCount + ", rows=" + table.rows);
+        // CirSim.console("[SFCTableRenderer.updateSigmaColumn] sigmaCol=" + sigmaCol + 
+        //               ", sectorColCount=" + sectorColCount + ", rows=" + table.rows);
         
         // Calculate row sums for Σ column
         double sigmaColumnSum = 0.0;
@@ -85,7 +85,7 @@ public class SFCTableRenderer extends TableRenderer {
             }
             
             if (row == 0) {
-                CirSim.console("[SFCTableRenderer.updateSigmaColumn] row0: " + rowDebug + " => rowSum=" + rowSum);
+                // CirSim.console("[SFCTableRenderer.updateSigmaColumn] row0: " + rowDebug + " => rowSum=" + rowSum);
             }
             
             sigmaColumnSum += rowSum;
@@ -95,16 +95,16 @@ public class SFCTableRenderer extends TableRenderer {
             cachedSumValues[sigmaCol] = sigmaColumnSum;
         }
         
-        // Also log all cachedSumValues
-        StringBuilder sb = new StringBuilder("[SFCTableRenderer] cachedSumValues: ");
-        for (int i = 0; i < cachedSumValues.length; i++) {
-            sb.append("col").append(i).append("=").append(cachedSumValues[i]).append(" ");
-        }
-        CirSim.console(sb.toString());
+        // // Also log all cachedSumValues
+        // StringBuilder sb = new StringBuilder("[SFCTableRenderer] cachedSumValues: ");
+        // for (int i = 0; i < cachedSumValues.length; i++) {
+        //     sb.append("col").append(i).append("=").append(cachedSumValues[i]).append(" ");
+        // }
+        // CirSim.console(sb.toString());
     }
     
     /**
-     * Get the number of sector columns (excluding Σ column)
+     * Get the number of sector columns (excsluding Σ column)
      */
     private int getSectorColumnCount() {
         if (table.columns == null) return 0;

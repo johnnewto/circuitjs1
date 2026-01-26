@@ -223,7 +223,7 @@ MouseOutHandler, MouseWheelHandler {
     static final int MODE_DRAG_SPLITTER = 7;  // Dragging scope panel splitter
     
     // UI layout constants
-    static final int infoWidth = 100;         // Width of info panel in pixels
+    static final int infoWidth = 200;         // Width of info panel in pixels
     
     int dragGridX, dragGridY, dragScreenX, dragScreenY, initDragGridX, initDragGridY;
     long mouseDownTime;
@@ -2214,6 +2214,9 @@ public CirSim() {
 
         lastFrameTime = lastTime;
 
+        // Draw hint tooltips for hovered elements (after all other graphics so they're on top)
+        drawHintTooltip(g);
+
         // Draw action scheduler display message if present (after all other graphics)
         drawActionSchedulerMessage(g, cvcontext);
 
@@ -2221,6 +2224,47 @@ public CirSim() {
         // This should always be the last 
         // thing called by updateCircuit();
         callUpdateHook();
+    }
+
+    /**
+     * Draw hint tooltip for the currently hovered element.
+     * This is called after all elements are drawn so tooltips appear on top.
+     */
+    void drawHintTooltip(Graphics g) {
+        if (mouseElm == null) return;
+        
+        String hint = null;
+        
+        // Check if it's a LabeledNodeElm
+        if (mouseElm instanceof LabeledNodeElm) {
+            LabeledNodeElm lne = (LabeledNodeElm) mouseElm;
+            hint = HintRegistry.getHint(lne.text);
+        }
+        
+        // Draw the tooltip if we have one
+        if (hint != null && !hint.trim().isEmpty()) {
+            g.context.setFont("bold 14px SansSerif");
+            int hintWidth = (int) g.context.measureText(hint).getWidth() + 16;
+            int hintHeight = 24;
+            
+            // Position above the mouse cursor in screen coordinates
+            int tooltipX = mouseCursorX - hintWidth / 2;
+            int tooltipY = mouseCursorY - hintHeight - 10;
+            
+            // Keep on screen
+            if (tooltipX < 5) tooltipX = 5;
+            if (tooltipY < 5) tooltipY = mouseCursorY + 20; // Below cursor if too high
+            
+            // Draw opaque tooltip background
+            g.context.setFillStyle("#000000");
+            g.context.fillRect(tooltipX, tooltipY, hintWidth, hintHeight);
+            g.context.setStrokeStyle("#888888");
+            g.context.strokeRect(tooltipX, tooltipY, hintWidth, hintHeight);
+            
+            // Draw tooltip text
+            g.context.setFillStyle("#FFFF00");
+            g.context.fillText(hint, tooltipX + 8, tooltipY + hintHeight - 7);
+        }
     }
 
     void drawActionSchedulerMessage(Graphics g, Context2d context) {
@@ -2350,7 +2394,6 @@ public CirSim() {
 	    int x = leftX + 5;
 	    if (ct != 0)
 		x = scopes[ct-1].rightEdge();
-	    // x -= 16;  // Shift info text left
 //	    x = max(x, canvasWidth*2/3);
 	  //  x=cv.getCoordinateSpaceWidth()*2/3;
 	    
@@ -2433,8 +2476,6 @@ public CirSim() {
     	}
     	int colct = pos+1;
     	int iw = infoWidth;
-    	if (colct <= 2)
-    		iw = iw*3/2;
     	int w = (canvasWidth-iw) / colct;
     	int marg = 10;
     	if (w < marg*2)
@@ -4283,6 +4324,9 @@ public CirSim() {
     	if (item=="variablebrowser") {
     	    	VariableBrowserDialog.openDialog(this);
     	}
+    	if (item=="hinteditor") {
+    	    	HintEditorDialog.openDialog(this);
+    	}
     	if (item=="actiontimedialog") {
     	    	ActionTimeDialog.openDialog(this);
     	}
@@ -4860,6 +4904,11 @@ public CirSim() {
 		if (schedulerDump != null && !schedulerDump.isEmpty()) {
 		    dump += schedulerDump;
 		}
+		// Dump hints from HintRegistry
+		String hintsDump = HintRegistry.dumpAll();
+		if (hintsDump != null && !hintsDump.isEmpty()) {
+		    dump += hintsDump;
+		}
 		if (hintType != -1)
 			dump += "h " + hintType + " " + hintItem1 + " " +
 			hintItem2 + "\n";
@@ -4911,6 +4960,7 @@ public CirSim() {
     	MenuBar varBrowserMenu = new MenuBar(true);
     	varBrowserMenu.setAutoOpen(true);
     	varBrowserMenu.addItem(menuItemWithShortcut("list-ul", "Variable Browser...", "\\", new MyCommand("edit", "variablebrowser")));
+    	varBrowserMenu.addItem(menuItemWithShortcut("book", "Glossary Editor...", "", new MyCommand("edit", "hinteditor")));
     	varBrowserMenu.addItem(menuItemWithShortcut("clock-o", "Action Time Schedule...", "", new MyCommand("edit", "actiontimedialog")));
     	varBrowserMenu.addItem(menuItemWithShortcut("code", "Embedded Viewer...", "", new MyCommand("edit", "iframeviewer")));
     	varBrowserMenu.addItem(menuItemWithShortcut("check-square-o", "Math Elements Test Suite...", "", new MyCommand("edit", "mathtestdialog")));
@@ -5032,6 +5082,9 @@ public CirSim() {
 	    
 	    // Clear master table registrations for computed values
 	    ComputedValues.clearMasterTables();
+	    
+	    // Clear hints registry
+	    HintRegistry.clear();
 	    
 	    // Clear action scheduler
 	    ActionScheduler scheduler = ActionScheduler.getInstance(this);
@@ -5165,6 +5218,9 @@ public CirSim() {
 				// Action Schedule entry (AS), Action Schedule Times, pause and animation (AST)
 				ActionScheduler scheduler = ActionScheduler.getInstance(this);
 				scheduler.load(line);
+			    } else if (settingType.equals("Hint")) {
+				// Glossary hint entry: % Hint varname description
+				HintRegistry.parseHintLine(line);
 			    }
 			}
 			break;
