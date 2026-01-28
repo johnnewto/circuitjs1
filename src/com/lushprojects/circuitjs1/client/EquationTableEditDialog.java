@@ -47,10 +47,11 @@ public class EquationTableEditDialog extends Dialog {
     private static final int COL_BUTTONS = 0;
     private static final int COL_OUTPUT_NAME = 1;
     private static final int COL_EQUATION = 2;
-    private static final int COL_SLIDER_VAR = 3;
-    private static final int COL_SLIDER_VALUE = 4;
-    private static final int COL_HINT = 5;
-    private static final int NUM_COLS = 6;
+    private static final int COL_INITIAL_VALUE = 3;
+    private static final int COL_SLIDER_VAR = 4;
+    private static final int COL_SLIDER_VALUE = 5;
+    private static final int COL_HINT = 6;
+    private static final int NUM_COLS = 7;
     
     // Grid row indices
     private static final int HEADER_ROW = 0;
@@ -74,6 +75,7 @@ public class EquationTableEditDialog extends Dialog {
     private int rowCount;
     private String[] outputNames;
     private String[] equations;
+    private String[] initialEquations;
     private String[] sliderVarNames;
     private double[] sliderValues;
     private String[] hints;
@@ -110,6 +112,7 @@ public class EquationTableEditDialog extends Dialog {
         rowCount = tableElement.getRowCount();
         outputNames = new String[MAX_ROWS];
         equations = new String[MAX_ROWS];
+        initialEquations = new String[MAX_ROWS];
         sliderVarNames = new String[MAX_ROWS];
         sliderValues = new double[MAX_ROWS];
         hints = new String[MAX_ROWS];
@@ -117,6 +120,7 @@ public class EquationTableEditDialog extends Dialog {
         for (int i = 0; i < MAX_ROWS; i++) {
             outputNames[i] = tableElement.getOutputName(i);
             equations[i] = tableElement.getEquation(i);
+            initialEquations[i] = tableElement.getInitialEquation(i);
             sliderVarNames[i] = tableElement.getSliderVarName(i);
             sliderValues[i] = tableElement.getSliderValue(i);
             // Get hint from central HintRegistry
@@ -250,6 +254,10 @@ public class EquationTableEditDialog extends Dialog {
         headerEquation.getElement().getStyle().setProperty("fontWeight", "bold");
         editGrid.setWidget(HEADER_ROW, COL_EQUATION, headerEquation);
         
+        Label headerInitial = new Label("Initial (t=0)");
+        headerInitial.getElement().getStyle().setProperty("fontWeight", "bold");
+        editGrid.setWidget(HEADER_ROW, COL_INITIAL_VALUE, headerInitial);
+        
         Label headerSliderVar = new Label("Slider Var");
         headerSliderVar.getElement().getStyle().setProperty("fontWeight", "bold");
         editGrid.setWidget(HEADER_ROW, COL_SLIDER_VAR, headerSliderVar);
@@ -338,8 +346,12 @@ public class EquationTableEditDialog extends Dialog {
         editGrid.setWidget(gridRow, COL_OUTPUT_NAME, outputNameBox);
         
         // Equation textbox with autocomplete
-        VerticalPanel eqPanel = createEquationTextBox(row);
+        VerticalPanel eqPanel = createEquationTextBox(row, false);
         editGrid.setWidget(gridRow, COL_EQUATION, eqPanel);
+        
+        // Initial value textbox with autocomplete
+        VerticalPanel initPanel = createEquationTextBox(row, true);
+        editGrid.setWidget(gridRow, COL_INITIAL_VALUE, initPanel);
         
         // Slider variable name textbox
         final TextBox sliderVarBox = new TextBox();
@@ -394,11 +406,13 @@ public class EquationTableEditDialog extends Dialog {
     
     /**
      * Create equation textbox with autocomplete
+     * @param row the row index
+     * @param isInitial true for initial value equation, false for main equation
      */
-    private VerticalPanel createEquationTextBox(final int row) {
+    private VerticalPanel createEquationTextBox(final int row, final boolean isInitial) {
         final TextBox textBox = new TextBox();
-        textBox.setText(equations[row]);
-        textBox.setWidth("200px");
+        textBox.setText(isInitial ? initialEquations[row] : equations[row]);
+        textBox.setWidth(isInitial ? "100px" : "200px");
         
         final Label hintLabel = new Label();
         hintLabel.getElement().getStyle().setProperty("fontSize", "10px");
@@ -424,7 +438,11 @@ public class EquationTableEditDialog extends Dialog {
         
         textBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
-                equations[row] = textBox.getText();
+                if (isInitial) {
+                    initialEquations[row] = textBox.getText();
+                } else {
+                    equations[row] = textBox.getText();
+                }
                 markChanged();
                 
                 int keyCode = event.getNativeKeyCode();
@@ -533,6 +551,7 @@ public class EquationTableEditDialog extends Dialog {
         for (int i = rowCount - 1; i >= insertAt; i--) {
             outputNames[i + 1] = outputNames[i];
             equations[i + 1] = equations[i];
+            initialEquations[i + 1] = initialEquations[i];
             sliderVarNames[i + 1] = sliderVarNames[i];
             sliderValues[i + 1] = sliderValues[i];
             hints[i + 1] = hints[i];
@@ -541,6 +560,7 @@ public class EquationTableEditDialog extends Dialog {
         // Initialize new row
         outputNames[insertAt] = "Y" + (insertAt + 1);
         equations[insertAt] = "0";
+        initialEquations[insertAt] = "";
         sliderVarNames[insertAt] = String.valueOf((char)('a' + insertAt));
         sliderValues[insertAt] = 0.5;
         hints[insertAt] = "hint" + (insertAt + 1);
@@ -565,6 +585,7 @@ public class EquationTableEditDialog extends Dialog {
         for (int i = rowIndex; i < rowCount - 1; i++) {
             outputNames[i] = outputNames[i + 1];
             equations[i] = equations[i + 1];
+            initialEquations[i] = initialEquations[i + 1];
             sliderVarNames[i] = sliderVarNames[i + 1];
             sliderValues[i] = sliderValues[i + 1];
             hints[i] = hints[i + 1];
@@ -591,6 +612,10 @@ public class EquationTableEditDialog extends Dialog {
         String tempEq = equations[fromIndex];
         equations[fromIndex] = equations[toIndex];
         equations[toIndex] = tempEq;
+        
+        String tempInit = initialEquations[fromIndex];
+        initialEquations[fromIndex] = initialEquations[toIndex];
+        initialEquations[toIndex] = tempInit;
         
         String tempVar = sliderVarNames[fromIndex];
         sliderVarNames[fromIndex] = sliderVarNames[toIndex];
@@ -624,6 +649,7 @@ public class EquationTableEditDialog extends Dialog {
         for (int row = 0; row < rowCount; row++) {
             tableElement.setOutputName(row, outputNames[row]);
             tableElement.setEquation(row, equations[row]);
+            tableElement.setInitialEquation(row, initialEquations[row]);
             tableElement.setSliderVarName(row, sliderVarNames[row]);
             tableElement.setSliderValue(row, sliderValues[row]);
             // Save hint to central HintRegistry

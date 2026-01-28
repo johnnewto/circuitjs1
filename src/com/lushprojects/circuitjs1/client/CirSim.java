@@ -5098,7 +5098,7 @@ public CirSim() {
 	    t = timeStepAccum = 0;
 	    elmList.removeAllElements();
 	    hintType = -1;
-	    maxTimeStep = 5e-6;
+	    maxTimeStep = (currentToolbarType == ToolbarType.ECONOMICS) ? 0.01 : 5e-6;
 	    minTimeStep = 50e-12;
 	    dotsCheckItem.setState(false);
 	    smallGridCheckItem.setState(false);

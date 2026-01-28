@@ -24,6 +24,7 @@ import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.HorizontalPanel;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.Label;
+import com.google.gwt.user.client.ui.HTML;
 import com.google.gwt.user.client.ui.FlexTable;
 import com.google.gwt.user.client.ui.ScrollPanel;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
@@ -189,7 +190,18 @@ public class VariableBrowserDialog extends DialogBox {
             }
         }
         
-        // Add labeled node names (second priority)
+        // Add equation table output names (second priority)
+        Set<String> eqnOutputs = StockFlowRegistry.getAllEquationOutputNames();
+        if (eqnOutputs != null && !eqnOutputs.isEmpty()) {
+            for (String name : eqnOutputs) {
+                if (!addedNames.contains(name)) {
+                    variables.add(new VariableInfo(name, "Equation"));
+                    addedNames.add(name);
+                }
+            }
+        }
+        
+        // Add labeled node names (third priority)
         String[] labeledNodes = LabeledNodeElm.getSortedLabeledNodeNames();
         if (labeledNodes != null && labeledNodes.length > 0) {
             for (String nodeName : labeledNodes) {
@@ -200,7 +212,7 @@ public class VariableBrowserDialog extends DialogBox {
             }
         }
         
-        // Add variables from cell equations (third priority)
+        // Add variables from cell equations (fourth priority)
         Set<String> cellVariables = StockFlowRegistry.getAllCellEquationVariables();
         if (cellVariables != null && !cellVariables.isEmpty()) {
             for (String varName : cellVariables) {
@@ -217,7 +229,9 @@ public class VariableBrowserDialog extends DialogBox {
         // Populate table
         int row = 1;
         for (final VariableInfo var : variables) {
-            varTable.setText(row, 0, var.name);
+            // Use HTML widget with Locale.convertToHTML for super/subscript rendering
+            HTML nameHtml = new HTML(Locale.convertToHTML(var.name));
+            varTable.setWidget(row, 0, nameHtml);
             varTable.setText(row, 1, var.type);
             
             // Add click handler to place variable on canvas

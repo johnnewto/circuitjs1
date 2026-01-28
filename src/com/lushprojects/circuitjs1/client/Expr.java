@@ -7,12 +7,22 @@ class ExprState {
     double values[];
     double lastValues[];
     double lastOutput;
+    double lastDiffInput;  // For diff() function
+    double lastIntOutput;  // For integrate() function - committed value from last timestep
+    double lastDiffTime;   // Last time diff() was updated (prevent double-update)
+    double lastIntTime;    // Last time integrate() was committed
+    double pendingIntInput; // Current input value for integrate (updated each subiteration)
     double t;
     ExprState(int xx) {
 	//n = xx;
 	values = new double[9];
 	lastValues = new double[9];
 	values[4] = Math.E;
+	lastDiffInput = 0;
+	lastIntOutput = 0;
+	lastDiffTime = -1;
+	lastIntTime = -1;
+	pendingIntInput = 0;
     }
     
     void updateLastValues(double lastOut) {
@@ -26,6 +36,19 @@ class ExprState {
 	for (int i = 0; i != values.length; i++)
 	    lastValues[i] = 0;
 	lastOutput = 0;
+	lastDiffInput = 0;
+	lastIntOutput = 0;
+	lastDiffTime = -1;
+	lastIntTime = -1;
+	pendingIntInput = 0;
+    }
+    
+    // Call this at the end of each timestep to commit the integration
+    void commitIntegration(double timeStep) {
+	if (t != lastIntTime) {
+	    lastIntOutput = lastIntOutput + timeStep * pendingIntInput;
+	    lastIntTime = t;
+	}
     }
 }
 
@@ -151,17 +174,35 @@ class Expr {
 	    return es.lastOutput;
 	case E_TIMESTEP:
 	    return CirSim.theSim.timeStep;
-	case E_INTEGRATE:
-	    // integrate(x) or integrate(x, initial)
-	    // At t=0 with initial value: base = initial
-	    // Otherwise: base = lastoutput
-	    // Result = base + timestep * x
-	    double base = es.lastOutput;
-	    if (right != null && es.t == 0) {
-		// Use initial value at t=0 instead of lastOutput (which starts at 0)
-		base = right.eval(es);
+	case E_INTEGRATE: {
+	    // integrate(x) - integrates the expression over time
+	    // Store the current input value - it will be committed at stepFinished()
+	    // This ensures we use the converged input value, not the first subiteration's value
+	    double inputVal = left.eval(es);
+	    es.pendingIntInput = inputVal;
+	    
+	    // Return what the integral WILL be after this timestep commits
+	    // This allows the circuit to converge to the correct value
+	    double result = es.lastIntOutput + CirSim.theSim.timeStep * inputVal;
+	    return result;
+	}
+	case E_DIFF: {
+	    // diff(x) - differentiate the expression
+	    // Only update once per timestep to prevent incorrect derivative
+	    double input = left.eval(es);
+	    double result;
+	    if (es.t == 0) {
+		result = 0;  // No derivative at t=0
+	    } else if (es.t != es.lastDiffTime) {
+		result = (input - es.lastDiffInput) / CirSim.theSim.timeStep;
+		es.lastDiffInput = input;
+		es.lastDiffTime = es.t;
+	    } else {
+		// Already computed this timestep, return cached result
+		result = (input - es.lastDiffInput) / CirSim.theSim.timeStep;
 	    }
-	    return base + CirSim.theSim.timeStep * left.eval(es);
+	    return result;
+	}
 	case E_NODE_REF:
 	    // Direct node reference - get voltage from labeled node or computed value
 	    if (CirSim.theSim != null && nodeName != null) {
@@ -270,6 +311,7 @@ class Expr {
     static final int E_DADT = E_A+10; // must be E_A+10
     static final int E_LASTA = E_DADT+10; // should be at end and equal to E_DADT+10
     static final int E_NODE_REF = E_LASTA+10; // Direct node reference by name
+    static final int E_DIFF = E_NODE_REF+1; // Differentiation function diff(x)
 };
 
 class ExprParser {
@@ -513,36 +555,29 @@ class ExprParser {
 			getToken();
 			return new Expr(Expr.E_T);
 		}
-		// Handle single-letter variables a-i (case insensitive)
-		if (token.length() == 1) {
-			char c = Character.toLowerCase(token.charAt(0));
+		// Handle built-in variables _a through _i (underscore prefix)
+		// This avoids conflict with single-letter labeled nodes like 'I', 'K'
+		if (token.length() == 2 && token.charAt(0) == '_') {
+			char c = Character.toLowerCase(token.charAt(1));
 			if (c >= 'a' && c <= 'i') {
 			getToken();
 			return new Expr(Expr.E_A + (c-'a'));
 			}
 		}
 		
-		// // Check if token is a labeled node name (case-insensitive comparison)
-		// if (LabeledNodeElm.labelList != null && !LabeledNodeElm.labelList.isEmpty()) {
-		// 	String[] availableNodes = getSortedLabeledNodes();
-		// 	for (String availNode : availableNodes) {
-		// 		if (availNode.equalsIgnoreCase(token)) {
-		// 			getToken();
-		// 			return new Expr(Expr.E_NODE_REF, availNode);  // Direct node reference
-		// 		}
-		// 	}
-		// }
-		// Handle last variables (lasta, lastb, etc.) - case insensitive
-		if (token.toLowerCase().startsWith("last") && token.length() == 5) {
-			char c = Character.toLowerCase(token.charAt(4));
+		// Handle last variables (_lasta, _lastb, etc.) - case insensitive
+		// Format: _last followed by letter a-i
+		if (token.toLowerCase().startsWith("_last") && token.length() == 6) {
+			char c = Character.toLowerCase(token.charAt(5));
 			if (c >= 'a' && c <= 'i') {
 			getToken();
 			return new Expr(Expr.E_LASTA + (c-'a'));
 			}
 		}
-		// Handle derivatives (dadt, dbdt, etc.) - case insensitive
-		if (token.toLowerCase().endsWith("dt") && token.toLowerCase().startsWith("d") && token.length() == 4) {
-			char c = Character.toLowerCase(token.charAt(1));
+		// Handle derivatives (_dadt, _dbdt, etc.) - case insensitive
+		// Format: _d followed by letter a-i, followed by dt
+		if (token.toLowerCase().startsWith("_d") && token.toLowerCase().endsWith("dt") && token.length() == 5) {
+			char c = Character.toLowerCase(token.charAt(2));
 			if (c >= 'a' && c <= 'i') {
 			getToken();
 			return new Expr(Expr.E_DADT + (c-'a'));
@@ -599,7 +634,9 @@ class ExprParser {
 		if (skipIgnoreCase("ceil"))
 			return parseFunc(Expr.E_CEIL);
 		if (skipIgnoreCase("integrate"))
-			return parseFuncMulti(Expr.E_INTEGRATE, 1, 2);
+			return parseFunc(Expr.E_INTEGRATE);
+		if (skipIgnoreCase("diff"))
+			return parseFunc(Expr.E_DIFF);
 		if (skipIgnoreCase("min"))
 			return parseFuncMulti(Expr.E_MIN, 2, 1000);
 		if (skipIgnoreCase("max"))

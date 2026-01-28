@@ -240,15 +240,22 @@ String circuit =
      */
     public void testEquationTable() {
         String circuit = 
-            "$ 3 0.01 20 50 5 50 5e-11\n" +
+            "$ 3 0.01 19.867427341514983 50 5 50 5e-11\n" +
             "% voltageUnit $\n" +
             "% showToolbar true\n" +
-            "266 280 520 390 580 1 EqnTable 3 Y1 integrate(1,10) \0 0.5 Y2 integrate(X) c 0.5 Y3 Y1 c 0.5\n" +
+            "266 280 504 426 578 1 EqnTable 4 Y1 integrate(1)\\s\\p\\s10 \\0 \\0 0.5 Y2 integrate(X\\s\\p\\s2*X) \\0 \\0 0.5 Y3 Y1 \\0 \\0 0.5 Y4 diff(ramp_1) \\0 \\0 0.5\n" +
             "207 288 632 345 632 36 Y2\n" +
-            "207 288 600 345 600 36 Y1\n" +            "207 288 664 345 664 36 Y3\n" +            "207 544 536 608 536 4 X\n" +
+            "207 288 600 345 600 36 Y1\n" +
+            "207 288 664 345 664 36 Y3\n" +
+            "207 544 536 608 536 4 X\n" +
             "R 544 536 496 536 0 0 40 5 0 0 0.5 V\n" +
+            "R 536 616 488 616 0 3 0.025 5 5 0 0.5 V\n" +
+            "207 536 616 600 616 4 ramp_1\n" +
+            "207 288 696 345 696 36 Y4\n" +
+            "o 7 64 0 4614 10 0.1 0 2 7 3\n" +
             "38 0 F1 5 0 1 -1 Row\\s1\\s's_W' 0\n" +
             "% AST 0 2\n";
+
 
         CircuitTestRunner runner = new CircuitTestRunner();
         runner.loadCircuitFromText(circuit);
@@ -260,13 +267,18 @@ String circuit =
         double y1Voltage = runner.getNodeVoltage("Y1");
         assertEquals("Y1 should integrate to 20", 20, y1Voltage, 20 * VOLTAGE_TOLERANCE);
         
-        // Y2 = integrate(X) where X=5V with initial 0, so after 10s: Y2 = 5*10 + 0 = 50
+        // Y2 = integrate(X + 2 * X) where X=5V with initial 0, so after 10s: Y2 = 5*30  = 150
         double y2Voltage = runner.getNodeVoltage("Y2");
-        assertEquals("Y2 should integrate to 50", 50, y2Voltage, 50 * VOLTAGE_TOLERANCE);
+        assertEquals("Y2 should integrate to 150", 150, y2Voltage, 150 * VOLTAGE_TOLERANCE);
 
         // Y3 = Y1, so after 10s: Y3 = 10
         double y3Voltage = runner.getNodeVoltage("Y3");
         assertEquals("Y3 should equal Y1", y1Voltage, y3Voltage, y1Voltage * VOLTAGE_TOLERANCE);
+
+        // Y4 = diff(ramp_1), ramp_1 increases from 0 to 10V over 20s, so diff = 0.5V
+        double y4Voltage = runner.getNodeVoltage("Y4");
+        assertEquals("Y4 should equal diff(ramp_1)", 0.5, y4Voltage, 0.5 * VOLTAGE_TOLERANCE);
+
     }
 
     /**

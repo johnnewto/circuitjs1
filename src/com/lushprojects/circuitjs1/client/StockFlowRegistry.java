@@ -162,6 +162,30 @@ public class StockFlowRegistry {
     }
     
     /**
+     * Get all output names from EquationTableElm instances
+     * These are computed variables that can be referenced by other elements
+     */
+    public static Set<String> getAllEquationOutputNames() {
+        Set<String> outputs = new HashSet<String>();
+        CirSim sim = CirSim.theSim;
+        if (sim == null || sim.elmList == null) return outputs;
+        
+        for (int i = 0; i < sim.elmList.size(); i++) {
+            CircuitElm elm = sim.elmList.elementAt(i);
+            if (elm instanceof EquationTableElm) {
+                EquationTableElm eqn = (EquationTableElm) elm;
+                String[] names = eqn.getOutputNames();
+                for (String name : names) {
+                    if (name != null && !name.trim().isEmpty()) {
+                        outputs.add(name.trim());
+                    }
+                }
+            }
+        }
+        return outputs;
+    }
+    
+    /**
      * Extract all variable names (identifiers) from all table cell equations
      * Returns variables that appear in any cell equation across all tables
      */
