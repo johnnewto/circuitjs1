@@ -85,7 +85,9 @@ class EditOptions implements Editable {
 		    ei.checkbox = new Checkbox("Auto-Adjust Timestep", sim.adjustTimeStep);
 		    return ei;
 		}
-		if (n == 15 && sim.adjustTimeStep)
+		if (n == 15)
+		    return new EditInfo("Convergence Check Threshold (subiterations)", sim.convergenceCheckThreshold, 0, 100).setDimensionless();
+		if (n == 16 && sim.adjustTimeStep)
 		    return new EditInfo("Minimum time step size (s)", sim.minTimeStep, 0, 0);
 
 		return null;
@@ -173,7 +175,9 @@ class EditOptions implements Editable {
 		    sim.adjustTimeStep = ei.checkbox.getState();
 		    ei.newDialog = true;
 		}
-		if (n == 15 && ei.value > 0)
+		if (n == 15 && ei.value >= 0)
+		    sim.convergenceCheckThreshold = (int)ei.value;
+		if (n == 16 && ei.value > 0)
 		    sim.minTimeStep = ei.value;
 	}
 	

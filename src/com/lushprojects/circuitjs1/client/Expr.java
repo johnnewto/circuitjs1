@@ -7,11 +7,12 @@ class ExprState {
     double values[];
     double lastValues[];
     double lastOutput;
-    double lastDiffInput;  // For diff() function
+    double lastDiffInput;  // For diff() function - committed value from last timestep
     double lastIntOutput;  // For integrate() function - committed value from last timestep
-    double lastDiffTime;   // Last time diff() was updated (prevent double-update)
+    double lastDiffTime;   // Last time diff() was committed
     double lastIntTime;    // Last time integrate() was committed
     double pendingIntInput; // Current input value for integrate (updated each subiteration)
+    double pendingDiffInput; // Current input value for diff (to be committed at stepFinished)
     double t;
     ExprState(int xx) {
 	//n = xx;
@@ -23,6 +24,7 @@ class ExprState {
 	lastDiffTime = -1;
 	lastIntTime = -1;
 	pendingIntInput = 0;
+	pendingDiffInput = 0;
     }
     
     void updateLastValues(double lastOut) {
@@ -41,18 +43,36 @@ class ExprState {
 	lastDiffTime = -1;
 	lastIntTime = -1;
 	pendingIntInput = 0;
+	pendingDiffInput = 0;
     }
     
-    // Call this at the end of each timestep to commit the integration
+    // Call this at the end of each timestep to commit the integration and differentiation
     void commitIntegration(double timeStep) {
 	if (t != lastIntTime) {
 	    lastIntOutput = lastIntOutput + timeStep * pendingIntInput;
 	    lastIntTime = t;
 	}
+	if (t != lastDiffTime) {
+	    lastDiffInput = pendingDiffInput;
+	    lastDiffTime = t;
+	}
     }
 }
 
 class Expr {
+    // Global tracking of unresolved node references during evaluation
+    static Vector<String> unresolvedReferences = new Vector<String>();
+    
+    /** Clear the unresolved references list (call at start of each timestep) */
+    static void clearUnresolvedReferences() {
+	unresolvedReferences.clear();
+    }
+    
+    /** Get all unresolved references found during evaluation */
+    static Vector<String> getUnresolvedReferences() {
+	return unresolvedReferences;
+    }
+    
     Expr(Expr e1, Expr e2, int v) {
 	children = new Vector<Expr>();
 	children.add(e1);
@@ -188,17 +208,14 @@ class Expr {
 	}
 	case E_DIFF: {
 	    // diff(x) - differentiate the expression
-	    // Only update once per timestep to prevent incorrect derivative
+	    // Use committed value from previous timestep for stable convergence
 	    double input = left.eval(es);
+	    es.pendingDiffInput = input;  // Store for commit at stepFinished
 	    double result;
-	    if (es.t == 0) {
-		result = 0;  // No derivative at t=0
-	    } else if (es.t != es.lastDiffTime) {
-		result = (input - es.lastDiffInput) / CirSim.theSim.timeStep;
-		es.lastDiffInput = input;
-		es.lastDiffTime = es.t;
+	    if (es.t == 0 || es.lastDiffTime < 0) {
+		result = 0;  // No derivative at t=0 or before first commit
 	    } else {
-		// Already computed this timestep, return cached result
+		// Always use committed lastDiffInput for consistent results across subiterations
 		result = (input - es.lastDiffInput) / CirSim.theSim.timeStep;
 	    }
 	    return result;
@@ -212,7 +229,14 @@ class Expr {
 		    return computedValue.doubleValue();
 		}
 		// Then check for actual labeled node voltage
-		return CirSim.theSim.getLabeledNodeVoltage(nodeName);
+		Integer labeledNode = LabeledNodeElm.getByName(nodeName);
+		if (labeledNode != null && labeledNode != 0) {
+		    return CirSim.theSim.getLabeledNodeVoltage(nodeName);
+		}
+		// Not found - track as unresolved (only add once)
+		if (!unresolvedReferences.contains(nodeName)) {
+		    unresolvedReferences.add(nodeName);
+		}
 	    }
 	    return 0.0;
 	default:

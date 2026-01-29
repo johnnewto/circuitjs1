@@ -273,6 +273,9 @@ MouseOutHandler, MouseWheelHandler {
 	// Adaptive timestep control - reduces timestep when convergence is difficult
 	boolean adjustTimeStep;
 	
+	// Convergence check threshold - subiterations before marking element as non-converged
+	int convergenceCheckThreshold = 20;
+	
 	// Developer mode - shows additional debug info (framerate, steprate, performance metrics)
 	boolean developerMode = false;
 	
@@ -2182,6 +2185,14 @@ public CirSim() {
         g.drawString("Framerate: " + CircuitElm.showFormat.format(framerate), 10, height += increment);
         g.drawString("subiter: " + subIterations, 10, height += increment);
         
+        // Show any unresolved references from EquationTableElm elements
+        String unresolvedMsg = getUnresolvedReferencesMessage();
+        if (unresolvedMsg != null) {
+            g.setColor(Color.yellow);
+            g.drawString(unresolvedMsg, 10, height += increment);
+            g.setColor(CircuitElm.whiteColor);
+        }
+        
         if (shouldDrawGraphics && developerMode) {
             g.drawString("Steprate: " + CircuitElm.showFormat.format(steprate), 10, height += increment);
             g.drawString("Steprate/iter: " + CircuitElm.showFormat.format(steprate / getIterCount()), 10, height += increment);
@@ -3926,6 +3937,9 @@ public CirSim() {
             for (i = 0; i != elmArr.length; i++)
                 elmArr[i].startIteration();
 
+            // Clear unresolved references tracking at start of each timestep
+            Expr.clearUnresolvedReferences();
+
 			steps++;
 			
             int subiterCount = (adjustTimeStep && timeStep/2 > minTimeStep) ? 100 : 5000;
@@ -3957,7 +3971,7 @@ public CirSim() {
 
 
                         // Quick debug: identify element that just failed convergence
-                        if (subiter > 20) {
+                        if (subiter > convergenceCheckThreshold) {
                             elmArr[i].nonConverged = true;
                             String text = "CirSim: Element causing convergence failure: " +
                                     elmArr[i].getClass().getSimpleName() + " at (" +
@@ -8346,6 +8360,21 @@ public CirSim() {
 		return 0;
 	    // subtract one because ground is not included in nodeVoltages[]
 	    return nodeVoltages[node.intValue()-1];
+	}
+	
+	/**
+	 * Get a message listing all unresolved references from expression evaluation.
+	 * @return Message string, or null if no unresolved references
+	 */
+	String getUnresolvedReferencesMessage() {
+	    java.util.Vector<String> unresolved = Expr.getUnresolvedReferences();
+	    if (unresolved.size() == 0) return null;
+	    StringBuilder sb = new StringBuilder("Not found: ");
+	    for (int i = 0; i < unresolved.size(); i++) {
+		if (i > 0) sb.append(", ");
+		sb.append(unresolved.get(i));
+	    }
+	    return sb.toString();
 	}
 	
 	void setExtVoltage(String name, double v) {

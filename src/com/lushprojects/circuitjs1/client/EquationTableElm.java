@@ -6,8 +6,6 @@
 
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.util.Locale;
-
 /**
  * EquationTableElm - Table of Equations with Adjustable Sliders
  * 
@@ -121,25 +119,22 @@ class EquationTableElm extends CircuitElm {
     //=============================================================================
     
     /** Display size mode (1 = small, 2 = normal) */
-    int opsize;
+    private int opsize;
     
     /** Calculated table width in pixels */
-    int tableWidth;
+    private int tableWidth;
     
     /** Calculated table height in pixels */
-    int tableHeight;
+    private int tableHeight;
     
     /** Height of each row in pixels */
-    int rowHeight = 18;
+    private int rowHeight = 18;
     
     /** Padding inside cells */
-    int cellPadding = 4;
+    private int cellPadding = 4;
     
-    /** Font for row labels/names */
-    Font labelFont;
-    
-    /** Font for values */
-    Font valueFont;
+    /** Renderer for drawing the table */
+    private EquationTableRenderer renderer;
     
     //=============================================================================
     // CONSTRUCTORS
@@ -172,6 +167,10 @@ class EquationTableElm extends CircuitElm {
         setSize(sim.smallGridCheckItem.getState() ? 1 : 2);
         parseAllEquations();
         allocNodes();
+        
+        // Create renderer
+        renderer = new EquationTableRenderer(this);
+        renderer.updateFonts(opsize);
     }
     
     /**
@@ -232,6 +231,10 @@ class EquationTableElm extends CircuitElm {
         setSize((f & FLAG_SMALL) != 0 ? 1 : 2);
         parseAllEquations();
         allocNodes();
+        
+        // Create renderer
+        renderer = new EquationTableRenderer(this);
+        renderer.updateFonts(opsize);
     }
     
     //=============================================================================
@@ -293,6 +296,9 @@ class EquationTableElm extends CircuitElm {
         flags = (flags & ~FLAG_SMALL) | ((s == 1) ? FLAG_SMALL : 0);
         rowHeight = (s == 1) ? 14 : 18;
         cellPadding = (s == 1) ? 2 : 4;
+        if (renderer != null) {
+            renderer.updateFonts(opsize);
+        }
     }
     
     //=============================================================================
@@ -334,10 +340,6 @@ class EquationTableElm extends CircuitElm {
         // Update x2, y2 for proper bounds
         x2 = x + tableWidth;
         y2 = y + tableHeight;
-        
-        // Set up fonts
-        labelFont = new Font("SansSerif", 0, opsize == 2 ? 12 : 10);
-        valueFont = new Font("SansSerif", 0, opsize == 2 ? 10 : 8);
     }
     
     //=============================================================================
@@ -476,13 +478,22 @@ class EquationTableElm extends CircuitElm {
      */
     double getConvergeLimit(int row) {
         // Adaptive tolerance: stricter early, relaxed if struggling
+        // More lenient thresholds help diff() equations converge faster
         double relativeTolerance;
-        if (sim.subIterations < 10)
+        if (sim.subIterations < 3)
             relativeTolerance = 0.001;
-        else if (sim.subIterations < 100)
+        else if (sim.subIterations < 10)
             relativeTolerance = 0.01;
+        else if (sim.subIterations < 50)
+            relativeTolerance = 0.05;
         else
             relativeTolerance = 0.1;
+        
+        // For diff() equations, increase tolerance to account for division by timestep
+        // which amplifies small input variations
+        if (equations[row].contains("diff")) {
+            relativeTolerance *= 10;  // 10x more lenient for diff equations
+        }
         
         // Scale by the magnitude of the values involved
         double maxMagnitude = Math.max(1.0, Math.abs(outputValues[row]));
@@ -699,10 +710,9 @@ class EquationTableElm extends CircuitElm {
             ComputedValues.setComputedValue(outputName.trim(), equationValue);
         }
         
-        // Check voltage convergence
-        checkVoltageConvergence(row);
-        
         // Stamp the computed value into the matrix
+        // Note: No voltage convergence check needed - the voltage source forces the node
+        // to match the stamped value, so equation convergence is sufficient
         sim.stampRightSide(vn, outputValues[row]);
     }
     
@@ -713,12 +723,22 @@ class EquationTableElm extends CircuitElm {
      */
     private void checkEquationConvergence(int row, double equationValue) {
         double convergeLimit = getConvergeLimit(row);
-        boolean converged = Math.abs(equationValue - lastOutputValues[row]) <= convergeLimit;
+        double diff = Math.abs(equationValue - lastOutputValues[row]);
+        boolean converged = diff <= convergeLimit;
+        
+        // For diff() equations, skip convergence check during early subiterations
+        // because the input to diff() needs time to settle first
+        boolean hasDiff = equations[row].contains("diff");
+        
+        if (hasDiff && sim.subIterations < 5) {
+            // Don't report non-convergence yet - let input settle
+            return;
+        }
         
         if (!converged) {
             sim.converged = false;
             if (DEBUG) {
-                CirSim.console("  Equation NOT converged: diff=" + Math.abs(equationValue - lastOutputValues[row]) + ", limit=" + convergeLimit);
+                CirSim.console("  Equation NOT converged: diff=" + diff + ", limit=" + convergeLimit);
             }
         } else if (DEBUG) {
             CirSim.console("  Equation converged");
@@ -733,7 +753,21 @@ class EquationTableElm extends CircuitElm {
         double outputVoltage = volts[row];
         double voltageDiff = Math.abs(outputVoltage - outputValues[row]);
         double threshold = Math.max(Math.abs(outputValues[row]) * 0.01, 1e-6);
+        
+        // For diff() equations, use much larger threshold since derivative amplifies variations
+        boolean hasDiff = equations[row].contains("diff");
+        if (hasDiff) {
+            threshold = Math.max(Math.abs(outputValues[row]) * 0.1, 0.01);  // 10% or 0.01 minimum
+        }
+        
         boolean converged = voltageDiff <= threshold || sim.subIterations >= 100;
+        
+        // Log voltage convergence for diff equations
+        if (hasDiff) {
+            CirSim.console("[diff voltage] " + outputNames[row] + " subIter=" + sim.subIterations +
+                ", voltageDiff=" + voltageDiff + ", threshold=" + threshold + 
+                ", converged=" + converged);
+        }
         
         if (!converged) {
             sim.converged = false;
@@ -892,194 +926,10 @@ class EquationTableElm extends CircuitElm {
     
     /**
      * Draw the table element.
-     * Renders the table background, title, rows, and hover tooltips.
+     * Delegates to EquationTableRenderer for actual drawing.
      */
     void draw(Graphics g) {
-        int tableX = x;
-        int tableY = y;
-        boolean selected = needsHighlight();
-        
-        // Draw table background
-        g.setColor(Color.darkGray);
-        g.fillRect(tableX, tableY, tableWidth, tableHeight);
-        
-        // Draw border (highlighted when selected)
-        drawTableBorder(g, tableX, tableY, selected);
-        
-        // Draw title row
-        drawTitleRow(g, tableX, tableY);
-        
-        // Update hover state
-        updateHoveredRow(tableX, tableY);
-        
-        // Draw data rows
-        g.setFont(valueFont);
-        for (int row = 0; row < rowCount; row++) {
-            drawDataRow(g, tableX, tableY, row);
-        }
-        
-        // Draw tooltip for hovered row
-        drawHoverTooltip(g, tableX);
-        
-        // Update bounding box
-        setBbox(tableX, tableY, tableX + tableWidth, tableY + tableHeight);
-    }
-    
-    /**
-     * Draw the table border, with highlighting when selected.
-     */
-    private void drawTableBorder(Graphics g, int tableX, int tableY, boolean selected) {
-        g.setColor(selected ? selectColor : Color.gray);
-        g.drawRect(tableX, tableY, tableWidth, tableHeight);
-        if (selected) {
-            g.drawRect(tableX + 1, tableY + 1, tableWidth - 2, tableHeight - 2);
-        }
-    }
-    
-    /**
-     * Draw the title row with table name.
-     */
-    private void drawTitleRow(Graphics g, int tableX, int tableY) {
-        g.setFont(labelFont);
-        g.setColor(whiteColor);
-        int titleY = tableY + rowHeight - cellPadding;
-        drawCenteredText(g, tableName, tableX + tableWidth / 2, titleY - 2, true);
-        
-        // Separator line after title
-        g.setColor(Color.gray);
-        g.drawLine(tableX, tableY + rowHeight, tableX + tableWidth, tableY + rowHeight);
-    }
-    
-    /**
-     * Update which row the mouse is hovering over.
-     */
-    private void updateHoveredRow(int tableX, int tableY) {
-        hoveredRow = -1;
-        int mouseCircuitX = sim.inverseTransformX(sim.mouseCursorX);
-        int mouseCircuitY = sim.inverseTransformY(sim.mouseCursorY);
-        
-        if (mouseCircuitX >= tableX && mouseCircuitX <= tableX + tableWidth &&
-            mouseCircuitY >= tableY && mouseCircuitY <= tableY + tableHeight) {
-            // Calculate row index, accounting for title row
-            int relativeY = mouseCircuitY - (tableY + rowHeight);
-            if (relativeY >= 0) {
-                int mouseRowIndex = relativeY / rowHeight;
-                if (mouseRowIndex >= 0 && mouseRowIndex < rowCount) {
-                    hoveredRow = mouseRowIndex;
-                }
-            }
-        }
-    }
-    
-    /**
-     * Draw a single data row.
-     */
-    private void drawDataRow(Graphics g, int tableX, int tableY, int row) {
-        int rowY = tableY + (row + 1) * rowHeight;
-        
-        // Highlight hovered row
-        if (row == hoveredRow) {
-            g.setColor(new Color(80, 80, 100));
-            g.fillRect(tableX + 1, rowY + 1, tableWidth - 2, rowHeight - 1);
-        }
-        
-        // Build display equation with slider value substituted
-        String displayEquation = buildDisplayEquation(row);
-        String rowText = outputNames[row] + " = " + displayEquation;
-        
-        // Draw row text
-        g.setColor(whiteColor);
-        g.drawString(rowText, tableX + cellPadding, rowY + rowHeight - cellPadding - 2);
-        
-        // Draw current value on right side
-        String valueText = getShortUnitText(outputValues[row], "");
-        int valueWidth = (int) g.context.measureText(valueText).getWidth();
-        g.setColor(Color.cyan);
-        g.drawString(valueText, tableX + tableWidth - valueWidth - cellPadding, rowY + rowHeight - cellPadding - 2);
-        
-        // Draw initial value indicator if present
-        drawInitialValueIndicator(g, tableX, rowY, row, valueWidth);
-        
-        // Draw row separator
-        if (row < rowCount - 1) {
-            g.setColor(Color.gray);
-            int sepY = tableY + (row + 2) * rowHeight;
-            g.drawLine(tableX, sepY, tableX + tableWidth, sepY);
-        }
-    }
-    
-    /**
-     * Build the display equation string with slider variable substituted.
-     */
-    private String buildDisplayEquation(int row) {
-        String displayEquation = equations[row];
-        displayEquation = Locale.convertGreekSymbols(displayEquation);
-        
-        // Substitute slider variable with its value
-        String sliderVar = sliderVarNames[row];
-        if (sliderVar != null && !sliderVar.isEmpty()) {
-            String valueStr = getShortUnitText(sliderValues[row], "");
-            displayEquation = displayEquation.replaceAll("\\b" + sliderVar + "\\b", valueStr);
-        }
-        
-        return displayEquation;
-    }
-    
-    /**
-     * Draw the initial value indicator for a row (shown in yellow brackets).
-     */
-    private void drawInitialValueIndicator(Graphics g, int tableX, int rowY, int row, int valueWidth) {
-        String initEq = initialEquations[row];
-        if (initEq == null || initEq.trim().isEmpty()) {
-            return;
-        }
-        
-        Font smallFont = new Font("SansSerif", 0, opsize == 2 ? 8 : 7);
-        g.setFont(smallFont);
-        String initText = "[" + initEq + "]";
-        int initWidth = (int) g.context.measureText(initText).getWidth();
-        g.setColor(Color.yellow);
-        g.drawString(initText, tableX + tableWidth - valueWidth - initWidth - cellPadding * 2, rowY + rowHeight - cellPadding - 2);
-        g.setFont(valueFont);
-    }
-    
-    /**
-     * Draw tooltip for hovered row if a hint is available.
-     */
-    private void drawHoverTooltip(Graphics g, int tableX) {
-        if (hoveredRow < 0 || hoveredRow >= rowCount) {
-            return;
-        }
-        
-        String hint = HintRegistry.getHint(outputNames[hoveredRow]);
-        if (hint == null || hint.trim().isEmpty()) {
-            return;
-        }
-        
-        int mouseCircuitX = sim.inverseTransformX(sim.mouseCursorX);
-        int mouseCircuitY = sim.inverseTransformY(sim.mouseCursorY);
-        
-        g.setFont(valueFont);
-        int hintWidth = (int) g.context.measureText(hint).getWidth() + 8;
-        int hintHeight = opsize == 1 ? 12 : 16;
-        
-        // Position above the mouse cursor
-        int tooltipX = mouseCircuitX - hintWidth / 2;
-        int tooltipY = mouseCircuitY - hintHeight - 4;
-        
-        // Keep tooltip within table bounds horizontally
-        tooltipX = Math.max(tooltipX, tableX);
-        tooltipX = Math.min(tooltipX, tableX + tableWidth - hintWidth);
-        
-        // Draw tooltip background
-        g.setColor(new Color(60, 60, 80));
-        g.fillRect(tooltipX, tooltipY, hintWidth, hintHeight);
-        g.setColor(Color.gray);
-        g.drawRect(tooltipX, tooltipY, hintWidth, hintHeight);
-        
-        // Draw tooltip text
-        g.setColor(Color.yellow);
-        g.drawString(hint, tooltipX + 4, tooltipY + hintHeight - 3);
+        renderer.draw(g);
     }
     
     //=============================================================================
@@ -1193,6 +1043,32 @@ class EquationTableElm extends CircuitElm {
     
     /** Set the table name */
     public void setTableName(String name) { tableName = name; }
+    
+    /** Get the table width in pixels */
+    public int getTableWidth() { return tableWidth; }
+    
+    /** Get the table height in pixels */
+    public int getTableHeight() { return tableHeight; }
+    
+    /** Get the row height in pixels */
+    public int getRowHeight() { return rowHeight; }
+    
+    /** Get the cell padding in pixels */
+    public int getCellPadding() { return cellPadding; }
+    
+    /** Get the display size mode (1 = small, 2 = normal) */
+    public int getOpsize() { return opsize; }
+    
+    /** Get the hovered row index (-1 if none) */
+    public int getHoveredRow() { return hoveredRow; }
+    
+    /** Set the hovered row index */
+    public void setHoveredRow(int row) { hoveredRow = row; }
+    
+    /** Get output value for a row */
+    public double getOutputValue(int row) {
+        return (row >= 0 && row < MAX_ROWS) ? outputValues[row] : 0.0;
+    }
     
     /** Get the number of active rows */
     public int getRowCount() { return rowCount; }

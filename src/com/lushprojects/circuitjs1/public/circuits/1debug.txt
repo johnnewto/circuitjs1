@@ -1,14 +1,10 @@
-$ 3 0.005 0.44816890703380646 50 5 50 5e-11
+$ 3 0.005 7.010541234668786 50 5 50 5e-11
 % voltageUnit $
 % showToolbar true
-265 160 0 736 132 0 4 5 6 16 0 false 2 1 false 5 0 false Balance\sSheet \0 Households Firms Banks Total Σ Deposits Loans Capital Total\s(net\sworth) 0 0 0 0 0 SECTOR SECTOR SECTOR SECTOR COMPUTED \pD \0 -D \0 \0 \0 -L \pL \0 \0 \0 \pK X \pK \0 \pD \pV_F \0 \pK \0 true 0.000001
-265 160 168 928 380 0 9 7 6 16 0 false 2 1 false 5 0 false Transaction\sFlow\sMatrix \0 Households_C Firms_{Current} Firms_{Capital} Banks_{Current} Banks_{Capital} Govt Σ Consumption Investment Wages Firm's\sProfit Bank's\sProfit Interest\son\sDeposits Interest\son\sLoans Change\sin\sDeposits Change\sin\sLoans 0 0 0 0 0 0 0 SECTOR SECTOR SECTOR SECTOR SECTOR SECTOR COMPUTED -C C \0 \0 \0 \0 \0 \0 I -I \0 \0 \0 \0 W -W \0 \0 \0 \0 \0 DP -TP RP \0 \0 \0 \0 BP \0 \0 -BP \0 \0 \0 int_D*D \0 \0 -int_D*D \0 \0 \0 \0 int_L*L \0 -int_L*L \0 \0 \0 \\DeltaD \0 \0 \0 -\\DeltaD \0 \0 \0 \0 \\DeltaL \0 -\\DeltaL \0 \0 true 0.000001
-207 1024 40 1081 40 4 Y
-266 144 392 356 466 1 Households 4 W s_W\s*\sY \0 \0 0.35 Y_C DP\pBP\pint_D\s*\sD \0 \0 0.5 C c_1\s*\sW\s\p\sc_2\s*\sY_C\s\p\sC_3\s*\sD \0 \0 0.5 D integrate(W\s\p\sY_C\s-\sC) 1.148 \0 0.5
-R 1024 40 968 40 0 0 40 5 0 0 0.5 V
+265 128 16 704 148 0 4 5 6 16 0 false 2 1 false 5 0 false Balance\sSheet \0 Households Firms Banks Total Σ Deposits Loans Capital Total\s(net\sworth) 0 0 0 0 0 SECTOR SECTOR SECTOR SECTOR COMPUTED \pD \0 -D \0 \0 \0 -L \pL \0 \0 \0 \pK \0 \pK \0 \pD \pV_F \0 \pK \0 true 0.000001
+265 128 160 896 372 0 9 7 6 16 0 false 2 1 false 5 0 false Transaction\sFlow\sMatrix \0 Households_C Firms_{Current} Firms_{Capital} Banks_{Current} Banks_{Capital} Govt Σ Consumption Investment Wages Firm's\sProfit Bank's\sProfit Interest\son\sDeposits Interest\son\sLoans Change\sin\sDeposits Change\sin\sLoans 0 0 0 0 0 0 0 SECTOR SECTOR SECTOR SECTOR SECTOR SECTOR COMPUTED -C C \0 \0 \0 \0 \0 \0 I -I \0 \0 \0 \0 W -W \0 \0 \0 \0 \0 DP -TP RP \0 \0 \0 \0 BP \0 \0 -BP \0 \0 \0 int_D*D \0 \0 -int_D*D \0 \0 \0 \0 int_L*L \0 -int_L*L \0 \0 \0 \\DeltaD \0 \0 \0 -\\DeltaD \0 \0 \0 \0 \\DeltaL \0 -\\DeltaL \0 \0 true 0.000001
+266 144 392 356 466 1 Households 4 W s_W\s*\sY \0 \0 0.35 Y_C DP\pBP\pint_D\s*\sD \0 \0 0.5 C c_1\s*\sW\s\p\sc_2\s*\sY_C\s\p\sc_3\s*\sD \0 \0 0.5 D integrate(W\s\p\sY_C\s-\sC) 1.148 \0 0.5
 207 1032 128 1064 128 36 W
-R 952 24 896 24 0 0 40 5 0 0 0.5 V
-207 952 24 1009 24 36 X
 266 368 392 562 508 1 Firms 7 Y C\s\p\sI 3.109 \0 0.5 TP Y\s-\sW\s-\sint_L\s*\sL \0 \0 0.35 RP S_F\s*\sTP \0 \0 0.5 DP TP\s-\sRP \0 \0 0.5 I g_K\s*\sK \0 \0 0.5 K integrate(I) 9.898 \0 0.5 L integrate(\sI\s-\sRP\s) 1.148 \0 0.5
 266 568 392 732 438 1 Banks 2 BP int_L\s*\sL\s-\sint_D\s*\sD \0 \0 0.5 D_r L \0 \0 0.5
 266 752 392 874 466 1 Auxiliary\sEquations 4 Y^* v\s*\sK \0 \0 0.5 u Y\s/\sY^* 0.801 \0 0.5 g_Y diff(Y) \0 \0 0.5 lev L\s/\sK \0 \0 0.5
@@ -20,7 +16,10 @@ R 952 24 896 24 0 0 40 5 0 0 0.5 V
 207 1032 312 1064 312 36 K
 207 1032 168 1064 168 36 L
 207 1032 336 1088 336 36 Y_C
-38 3 F1 5 0 1 -1 Row\s1\s's_W' 0
+x 165 -5 791 -2 4 24 https://sites.google.com/site/marianikolaidi/sfc-modelling 808080FF
+x 170 -35 397 -32 4 24 A\ssimple\sSFC\smodel 808080FF
+o 7 64 3 4614 80 0.1 0 7 7 3 12 0 12 3 10 0 10 3 7 3
+o 7 64 0 12806 15.831403249916058 0.0001 1 2 7 3
 % AST 0 2
 % Hint Y Output\svalue
 % Hint TP Total\sProfits
@@ -46,4 +45,4 @@ R 952 24 896 24 0 0 40 5 0 0 0.5 V
 % Hint c_2 Propensity\sto\sconsume\sout\sof\scapital\sincome
 % Hint Y_C Capital\sIncome\sHouseholds
 % Hint c_3 Propensity\sto\sconsume\sout\sof\sdeposits
-% Hint S_F hint2
+% Hint S_F Retention\srate\sof\sfirms
