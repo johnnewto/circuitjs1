@@ -828,14 +828,7 @@ public class TableRenderer {
         int tableWidth = rowDescColWidth + table.cellSpacing + getTotalDataColumnsWidth(cellWidthPixels);
         int titleY = tableY + offsetY;
         
-        // Draw light blue background for title area if hovering, but exclude the arrow area
-        // The title area spans from the top of the table to just before the Type row (20 pixels total)
-        if (table.needsHighlight()) {
-            Rectangle arrowRect = table.getCollapseArrowRect();
-            g.setColor(table.getHighlightColor()); // Red for non-convergence, cyan for other highlights
-            // Draw background rectangle covering the title area, but skip the arrow area on the left
-            g.fillRect(arrowRect.x + arrowRect.width, tableY, tableWidth - arrowRect.width, 20);
-        }
+        // Note: Highlight is shown via border only (in drawTableBorder), not title bar fill
         
         // Draw collapse state indicator on the LEFT side first
         // ▼ (U+25BC) for expanded, ▲ (U+25B6) for collapsed
