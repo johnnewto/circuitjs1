@@ -67,7 +67,7 @@ Two specialized display elements for monitoring stock-flow models:
 ```
 Circuit Model
     │
-    ├─── TableElm / GodleyTableElm
+    ├─── TableElm / GodlyTableElm
     │    ├─── outputNames[] ──────────┐
     │    │     (Stock columns)        │
     │    │                            ▼

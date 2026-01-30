@@ -131,14 +131,14 @@ Works in all modern browsers:
 
 ## Comparison with Other Methods
 
-| Feature | Interactive Viewer | Export Dialog | plotly-example.html |
-|---------|-------------------|---------------|---------------------|
-| **Speed** | Instant | Manual file saving | Manual file loading |
-| **Data Source** | All/Single scope | Single scope | Manual |
-| **Interaction** | Built-in | None | Built-in |
-| **Downloads** | Optional | Primary purpose | Optional |
-| **Setup** | None | None | Open HTML file |
-| **Offline** | CDN required | Yes | CDN required |
+| Feature | Interactive Viewer | Export Dialog |
+|---------|-------------------|---------------|
+| **Speed** | Instant | Manual file saving |
+| **Data Source** | All/Single scope | Single scope |
+| **Interaction** | Built-in | None |
+| **Downloads** | Optional | Primary purpose |
+| **Setup** | None | None |
+| **Offline** | CDN required | Yes |
 
 ## Use Cases
 
@@ -195,7 +195,6 @@ Works in all modern browsers:
 
 ### Related Files
 - `ExportScopeDataDialog.java` - Manual export dialog
-- `plotly-example.html` - Standalone viewer example
 
 ## Code Architecture
 

@@ -59,12 +59,14 @@ Structured format with metadata:
 
 ## Using Exported Data
 
-### With Plotly.js (Included Example)
+### With Plotly.js (Built-in Viewer)
 
-Open `plotly-example.html` in a web browser:
+CircuitJS1 has a built-in Plotly viewer. From the **Scopes** menu, select **View All in Plotly**.
 
-1. Click "Load JSON File" and select your exported JSON file
-2. Or paste JSON data directly into the textarea and click "Plot from Textarea"
+Alternatively, you can use the exported JSON with any Plotly.js implementation:
+
+1. Load the JSON data
+2. Use Plotly.js `Plotly.newPlot()` with the traces
 3. Interact with the plot: zoom, pan, export as PNG, hover for values
 
 ### With Python
@@ -133,7 +135,6 @@ Each sample point stores both minimum and maximum values captured during that ti
 ### Files Added
 
 - `ExportScopeDataDialog.java`: Dialog for choosing export format and data source
-- `plotly-example.html`: Example HTML file showing how to visualize exported data
 
 ### Files Modified
 

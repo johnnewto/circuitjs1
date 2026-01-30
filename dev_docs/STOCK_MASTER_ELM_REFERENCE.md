@@ -2,7 +2,7 @@
 
 ## Overview
 
-`StockMasterElm` is a specialized circuit element that provides a real-time view of all **master stocks** in the circuit. It displays which table is the electrical "master" (driver) for each stock variable across all TableElm and GodleyTableElm elements.
+`StockMasterElm` is a specialized circuit element that provides a real-time view of all **master stocks** in the circuit. It displays which table is the electrical "master" (driver) for each stock variable across all TableElm and GodlyTableElm elements.
 
 ## Purpose
 
@@ -45,32 +45,9 @@ In stock-flow models with multiple tables sharing the same stock variables (e.g.
 
 ## Technical Details
 
-### File Location
 - **Source**: `src/com/lushprojects/circuitjs1/client/StockMasterElm.java`
 - **Dump Type**: 450
 - **Base Class**: `ChipElm`
-
-### Key Methods
-
-- `updateStockInfo()` - Queries ComputedValues registry for all master stocks
-- `draw(Graphics g)` - Renders the table with stock information
-- `getVoltageSourceCount()` - Returns 0 (no electrical outputs)
-- `getPostCount()` - Returns 0 (no electrical connections)
-
-### Integration with ComputedValues
-
-The StockMasterElm relies on the `ComputedValues` static registry:
-
-```java
-// Get all stock names
-String[] names = ComputedValues.getComputedValueNames();
-
-// Get stock value
-Double value = ComputedValues.getComputedValue(name);
-
-// Get master table
-Object masterTable = ComputedValues.getComputingTable(name);
-```
 
 ## Usage Scenarios
 
@@ -109,24 +86,6 @@ Verify that:
 **Use StockMasterElm when**: You want a persistent, in-circuit view of master stocks during simulation
 
 **Use Markdown Debug View when**: You need detailed flow-by-flow analysis and complete stock sharing information
-
-## Implementation Architecture
-
-```
-StockMasterElm (ChipElm)
-    ├── StockInfo (inner class)
-    │   ├── name: String
-    │   ├── value: double
-    │   └── tableName: String
-    │
-    ├── Cache (500ms refresh)
-    │   └── List<StockInfo>
-    │
-    └── Rendering
-        ├── Title row
-        ├── Header row (Stock | Value | Master Table)
-        └── Data rows (one per stock)
-```
 
 ## Configuration
 
@@ -168,13 +127,6 @@ Possible improvements:
 ## Related Components
 
 - **TableElm** - Main stock-flow table component
-- **GodleyTableElm** - Specialized stock-flow table (Godley's accounting)
+- **GodlyTableElm** - Specialized stock-flow table (Godley's accounting)
+- **FlowsMasterElm** - Displays all flows across tables
 - **ComputedValues** - Static registry for stock values and master assignments
-- **TableMarkdownDebugDialog** - Detailed stock-flow analysis tool
-- **TableVoltageElm** - Voltage source driven by stock values
-
-## See Also
-
-- `STOCK_FLOW_SYNC_SUMMARY.md` - Master stock synchronization architecture
-- `ComputedValues.java` - Stock registry implementation
-- `TableRenderer.java` - Table rendering utilities

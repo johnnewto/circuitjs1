@@ -1,55 +1,54 @@
-# PercentElm - Ratio/Percentage Display Element
+# PercentElm - Percentage Output Element
 
 ## Overview
 
-`PercentElm` is a display-only circuit element that computes and displays the ratio or percentage of two input voltages. It divides the first input by the second input (V1/V2) and can display the result either as a simple ratio or as a percentage.
+`PercentElm` is an **active circuit element** that computes the percentage of multiple input voltages and outputs the result as an actual voltage. It divides the first input by all subsequent inputs and multiplies by 100, outputting this value through a voltage source.
+
+**Formula**: `Vout = (V0 / V1 / V2 / ...) × 100`
 
 ## Key Features
 
-- **Display-Only**: Does not affect circuit behavior (acts as open circuit/infinite impedance)
-- **No Circuit Stamping**: Pure computational element without derivative stamping
-- **Ratio Calculation**: Computes V1/V2 where V1 is the voltage at the first terminal and V2 is at the second
-- **Dual Display Modes**: 
-  - Ratio mode: Shows the raw division result
-  - Percentage mode: Shows the ratio × 100 with % symbol
-- **Configurable Scaling**: Auto, m, 1, K, M scale options
-- **Division by Zero Protection**: Returns 0 when denominator is near zero (< 1e-12)
+- **Active Output**: Produces actual voltage output via a nonlinear voltage source
+- **Multi-Input Support**: Configurable 2-8 input terminals
+- **Percentage Calculation**: Outputs (V0 / V1 / V2 / ...) × 100 as voltage
+- **Output Clamping**: Optional clamp level to prevent runaway values
+- **Division by Zero Protection**: Returns 0 when any denominator is near zero (< 1e-6)
+- **High-Impedance Inputs**: No current flows through input terminals
+- **Nonlinear Element**: Uses iterative convergence like other arithmetic elements
 
 ## Usage
 
 ### Adding to Circuit
-1. From the menu: **Draw → Add Percent/Ratio Meter**
-2. Place two terminals in your circuit to measure the voltage ratio
-3. The first terminal is the numerator (V1)
-4. The second terminal is the denominator (V2)
+1. From the menu: **Draw → Add Percent**
+2. Connect input terminals to voltage sources
+3. The first terminal (top) is the numerator (V0)
+4. Subsequent terminals are denominators (V1, V2, ...)
+5. The output terminal provides the computed percentage voltage
 
 ### Configuration Options
 
 Right-click on the element and select "Edit..." to access:
 
-1. **Show Value**: Toggle display of the computed value
-2. **Show as Percentage**: 
-   - Checked: Displays result × 100 with % symbol
-   - Unchecked: Displays raw ratio value
-3. **Scale**: Choose display scale (Auto, m, 1, K, M)
-4. **Fixed Precision**: Use fixed decimal precision for the scale
+1. **Number of Inputs**: Set between 2 and 8 input terminals
+2. **Clamp Level (%)**: Maximum output magnitude (0 = no clamping)
+3. **Small**: Toggle smaller visual size
 
 ## Use Cases
 
-### 1. Voltage Divider Analysis
-Monitor the output/input ratio of a voltage divider to verify the divider formula.
+### 1. Percentage Calculations
+Output the ratio of two voltages as a percentage for use in other calculations.
 
-### 2. Efficiency Calculations
-Display power efficiency by connecting to power measurements (Pout/Pin).
+### 2. Efficiency Calculations  
+Compute efficiency (Pout/Pin × 100) and feed to other circuit elements.
 
-### 3. Feedback Ratio Monitoring
-In amplifier circuits, monitor the feedback ratio for gain calculations.
+### 3. Stock-Flow Models
+Calculate percentage changes in economic models.
 
-### 4. Comparative Measurements
-Compare two voltage levels in a circuit and see their relationship as a percentage.
+### 4. Control Systems
+Generate percentage-based control signals for feedback loops.
 
-### 5. Battery State of Charge
-Display battery voltage as a percentage of nominal voltage.
+### 5. Signal Processing
+Create ratio-based outputs for signal conditioning.
 
 ## Technical Details
 
@@ -57,81 +56,65 @@ Display battery voltage as a percentage of nominal voltage.
 `src/com/lushprojects/circuitjs1/client/PercentElm.java`
 
 ### Dump Type
-Character: `%`
+Character: `'P'`
 
 ### Electrical Behavior
-- **Impedance**: Infinite (open circuit)
-- **Power Dissipation**: 0 watts
-- **Circuit Impact**: None - purely for display
-- **Connections**: No electrical connection between terminals
+- **Input Impedance**: Infinite (high-impedance inputs, no current flow)
+- **Output**: Active voltage source driving computed percentage
+- **Nonlinear**: Uses iterative convergence (doStep() method)
+- **Connections**: No electrical connection between input terminals; output connects to ground
 
-### Implementation Notes
+### Implementation Pattern
 
-1. **Extends CircuitElm**: Inherits basic circuit element functionality
-2. **No stamp() implementation**: Does not modify circuit matrices
-3. **Computation in stepFinished()**: Calculates ratio after each simulation step
-4. **Safe Division**: Handles division by zero gracefully
+PercentElm follows the **high-impedance arithmetic element** pattern:
+- `nonLinear()` returns `true`
+- `getVoltageSourceCount()` returns `1`
+- `getConnection(n1, n2)` returns `false` (no input-to-input connections)
+- `hasGroundConnection(n)` returns `true` for output terminal
+- Uses direct stamping in `doStep()` without derivative linearization
 
-### Registration
+### Convergence
 
-The element is registered in `CirSim.java`:
-- **createCe()**: Case '%' for file loading
-- **constructElement()**: "PercentElm" for UI creation
-- **composeMainMenu()**: Menu entry "Add Percent/Ratio Meter"
-
-## Example Circuit
-
-```
-$ 1 0.000005 10.20027730826997 50 5 50 5e-11
-v 128 176 128 320 0 0 40 10 0 0 0.5
-r 128 176 256 176 0 100
-g 128 320 128 352 0 0
-v 384 176 384 320 0 0 40 5 0 0 0.5
-r 384 176 512 176 0 100
-g 384 320 384 352 0 0
-% 256 176 512 176 3 0
-o 6 64 0 4098 10 0.1 0 2 6 3
+The element checks convergence based on output value stability:
+```java
+double tolerance = Math.max(Math.abs(v0) * 0.001, 1e-6);
+if (outputDelta > tolerance && sim.subIterations < 100)
+    sim.converged = false;
 ```
 
-This circuit:
-- Creates two voltage sources (10V and 5V)
-- Connects them through resistors to the PercentElm
-- Displays the ratio 10V/5V = 2.0 (or 200% if percentage mode enabled)
+## Example Usage
+
+With two 5V inputs:
+- V0 = 5V, V1 = 5V
+- Output = (5 / 5) × 100 = 100V
+
+With 10V and 5V:
+- V0 = 10V, V1 = 5V  
+- Output = (10 / 5) × 100 = 200V
 
 ## Comparison with Similar Elements
 
-### vs ProbeElm
-- **ProbeElm**: Measures single voltage with various metrics (RMS, peak, etc.)
-- **PercentElm**: Computes ratio of two voltages
-
 ### vs DividerElm
-- **DividerElm**: Produces an output voltage that is V1/V2 (affects circuit)
-- **PercentElm**: Display-only, does not produce output or affect circuit
+- **DividerElm**: Outputs V0/V1 directly (raw division)
+- **PercentElm**: Outputs (V0/V1/...) × 100 (percentage)
 
-### vs OutputElm
-- **OutputElm**: Shows single voltage value
-- **PercentElm**: Shows ratio of two voltages
+### vs MultiplyElm
+- **MultiplyElm**: Outputs V0 × V1 × ... (multiplication)
+- **PercentElm**: Outputs V0/V1/... × 100 (division with percentage scaling)
+
+### vs ProbeElm
+- **ProbeElm**: Display-only, measures single voltage
+- **PercentElm**: Active output, computes and outputs percentage
 
 ## Limitations
 
-1. **No Output Pin**: Cannot drive other circuit elements
-2. **Display Only**: Cannot be used in feedback loops
-3. **Two Terminal Only**: Cannot compute ratios of more than two inputs
-4. **Voltage Only**: Cannot directly compute ratios of currents (use voltage measurements across known resistors)
-
-## Future Enhancements
-
-Potential improvements could include:
-- Multi-input ratio calculations (V1/(V2+V3))
-- Current ratio measurement
-- Logarithmic display (dB)
-- Min/max ratio tracking
-- Time-averaged ratio calculation
+1. **Minimum Denominator**: Values below 1e-6 treated as zero (outputs 0V)
+2. **No Current Ratio**: Cannot directly measure current ratios
+3. **Voltage Output**: Result is a voltage, not a unitless percentage
 
 ## Related Elements
 
-- `ProbeElm`: Voltage measurement with various modes
-- `DividerElm`: Division with circuit output
+- `DividerElm`: Division without percentage scaling
 - `MultiplyElm`: Multiplication of inputs
-- `OutputElm`: Single voltage display
-- `OhmMeterElm`: Resistance measurement
+- `VCVSElm`: Voltage-controlled voltage source with expressions
+- `GodlyTableElm`: Table-based calculations with integration
