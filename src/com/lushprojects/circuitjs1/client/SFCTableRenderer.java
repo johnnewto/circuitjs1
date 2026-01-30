@@ -159,6 +159,14 @@ public class SFCTableRenderer extends TableRenderer {
     }
     
     /**
+     * Override to hide type row for SFC tables (no space allocated)
+     */
+    @Override
+    protected boolean shouldShowTypeRow() {
+        return false;
+    }
+    
+    /**
      * Override column type row to hide it for SFC tables
      */
     @Override

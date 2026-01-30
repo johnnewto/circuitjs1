@@ -6,6 +6,9 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.google.gwt.event.dom.client.MouseWheelEvent;
+import com.google.gwt.event.dom.client.MouseWheelHandler;
+
 /**
  * EquationTableElm - Table of Equations with Adjustable Sliders
  * 
@@ -41,7 +44,7 @@ package com.lushprojects.circuitjs1.client;
  * @see TableElm Similar visual table element for display
  * @see ComputedValues Registry for accessing equation outputs
  */
-class EquationTableElm extends CircuitElm {
+class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     //=============================================================================
     // CONSTANTS
@@ -312,26 +315,62 @@ class EquationTableElm extends CircuitElm {
     void setPoints() {
         super.setPoints();
         
-        // Calculate required width based on content
-        int charWidth = opsize == 1 ? 6 : 8;
-        int maxTextLen = 10;  // Minimum width
+        // Use canvas context for accurate text measurement when available
+        int maxTextWidth = 50;  // Minimum width in pixels
         
-        // Include header in width calculation
-        maxTextLen = Math.max(maxTextLen, tableName.length());
-        
-        // Check each row for maximum text length
-        for (int row = 0; row < rowCount; row++) {
-            String displayText = outputNames[row] + " = " + equations[row];
-            // Include initial equation in width calculation if present
-            String initEq = initialEquations[row];
-            if (initEq != null && !initEq.trim().isEmpty()) {
-                displayText += " [" + initEq + "]";
+        if (sim != null && sim.cvcontext != null) {
+            // Accurate measurement using canvas context
+            String titleFontSpec = (opsize == 1 ? "10" : "12") + "pt SansSerif";
+            String rowFontSpec = (opsize == 1 ? "8" : "10") + "pt SansSerif";
+            String initFontSpec = (opsize == 1 ? "7" : "8") + "pt SansSerif";
+            
+            // Measure title width
+            sim.cvcontext.setFont(titleFontSpec);
+            maxTextWidth = Math.max(maxTextWidth, (int) sim.cvcontext.measureText(tableName).getWidth());
+            
+            // Measure each row
+            sim.cvcontext.setFont(rowFontSpec);
+            int scrollIconWidth = opsize == 1 ? 10 : 14;
+            int valueSpacing = opsize == 1 ? 16 : 20;
+            // valueSpacing = 10; // No extra spacing needed
+
+            for (int row = 0; row < rowCount; row++) {
+                String displayText = outputNames[row] + " = " + equations[row];
+                int rowWidth = scrollIconWidth + (int) sim.cvcontext.measureText(displayText).getWidth() + valueSpacing;
+                
+                // Include initial equation width if present
+                String initEq = initialEquations[row];
+                if (initEq != null && !initEq.trim().isEmpty()) {
+                    sim.cvcontext.setFont(initFontSpec);
+                    rowWidth += (int) sim.cvcontext.measureText("[" + initEq + "]").getWidth() + cellPadding;
+                    sim.cvcontext.setFont(rowFontSpec);
+                }
+                maxTextWidth = Math.max(maxTextWidth, rowWidth);
             }
-            maxTextLen = Math.max(maxTextLen, displayText.length());
-        }
+        } /* else {
+            // Fallback: estimate using average character widths
+            double avgCharWidth = opsize == 1 ? 4.5 : 5.5;
+            double titleCharWidth = opsize == 1 ? 5.5 : 6.5;
+            maxTextWidth = Math.max(maxTextWidth, (int)(tableName.length() * titleCharWidth));
+            
+            int scrollIconWidth = opsize == 1 ? 10 : 14;
+            int valueSpacing = opsize == 1 ? 20 : 24;
+            
+            for (int row = 0; row < rowCount; row++) {
+                String displayText = outputNames[row] + " = " + equations[row];
+                int rowWidth = scrollIconWidth + (int)(displayText.length() * avgCharWidth) + valueSpacing;
+                
+                String initEq = initialEquations[row];
+                if (initEq != null && !initEq.trim().isEmpty()) {
+                    double initCharWidth = opsize == 1 ? 3.5 : 4.5;
+                    rowWidth += (int)((initEq.length() + 2) * initCharWidth);
+                }
+                maxTextWidth = Math.max(maxTextWidth, rowWidth);
+            }
+        } */
         
-        // Calculate final dimensions
-        tableWidth = Math.max(80, maxTextLen * charWidth + cellPadding * 4);
+        // Calculate final dimensions with padding
+        tableWidth = Math.max(80, maxTextWidth + cellPadding * 2);
         tableHeight = (rowCount + 1) * rowHeight + cellPadding * 2;  // +1 for title row
         
         // Set bounding box for hit testing
@@ -1005,6 +1044,8 @@ class EquationTableElm extends CircuitElm {
         
         if (compiledExprs[hoveredRow] == null) {
             arr[7] = "⚠ Equation parse error";
+        } else if (isAdjustableRow(hoveredRow)) {
+            arr[7] = "scroll to adjust value";
         }
     }
     
@@ -1062,8 +1103,17 @@ class EquationTableElm extends CircuitElm {
     /** Get the hovered row index (-1 if none) */
     public int getHoveredRow() { return hoveredRow; }
     
-    /** Set the hovered row index */
-    public void setHoveredRow(int row) { hoveredRow = row; }
+    /** Set the hovered row index and update cursor for adjustable rows */
+    public void setHoveredRow(int row) {
+        hoveredRow = row;
+        // Update cursor based on whether row is adjustable
+        if (row >= 0 && isAdjustableRow(row)) {
+            sim.setCursorStyle("cursorAdjust");
+        } else {
+            // Reset cursor to default based on mouse mode
+            sim.setCursorStyle(sim.mouseMode == CirSim.MODE_ADD_ELM ? "cursorCross" : "cursorPointer");
+        }
+    }
     
     /** Get output value for a row */
     public double getOutputValue(int row) {
@@ -1163,5 +1213,136 @@ class EquationTableElm extends CircuitElm {
                 e.printStackTrace();
             }
         }
+    }
+    
+    //=============================================================================
+    // MOUSE WHEEL HANDLING
+    //=============================================================================
+    
+    /**
+     * Handle mouse wheel events to adjust numeric equation values.
+     * Only works when hovering over a row whose equation is a simple number.
+     */
+    public void onMouseWheel(MouseWheelEvent e) {
+        // Must have a hovered row
+        if (hoveredRow < 0 || hoveredRow >= rowCount) return;
+        
+        // Check if equation is a simple number
+        String eq = equations[hoveredRow].trim();
+        Double currentValue = parseNumericEquation(eq);
+        if (currentValue == null) return;  // Not a simple number
+        
+        // Push undo state on first wheel movement
+        sim.pushUndo();
+        
+        // Calculate step size based on value magnitude
+        double magnitude = Math.abs(currentValue);
+        double scale;
+        if (magnitude == 0) {
+            scale = 0.1;  // Default step for zero
+        } else if (magnitude < 1) {
+            // For small values, use finer steps
+            scale = Math.pow(10, Math.floor(Math.log10(magnitude)) - 1);
+        } else {
+            // Step size is ~1% of magnitude, rounded to power of 10
+            scale = Math.pow(10, Math.floor(Math.log10(magnitude)) - 1);
+        }
+        
+        // Apply change based on wheel direction (negative deltaY = scroll up = increase)
+        double delta = e.getDeltaY() * sim.wheelSensitivity;
+        int direction = (delta > 0) ? -1 : 1;  // scroll down = decrease, scroll up = increase
+        double newValue = currentValue + direction * scale;
+        
+        // Update equation string
+        equations[hoveredRow] = formatNumericValue(newValue);
+        parseEquation(hoveredRow);
+        sim.needAnalyze();
+    }
+    
+    /**
+     * Try to parse equation as a simple numeric value.
+     * @param eq The equation string
+     * @return The numeric value, or null if not a simple number
+     */
+    private Double parseNumericEquation(String eq) {
+        if (eq == null || eq.isEmpty()) return null;
+        
+        try {
+            // Handle optional leading sign
+            String trimmed = eq.trim();
+            return Double.parseDouble(trimmed);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+    
+    /**
+     * Check if a row's equation is adjustable via mouse wheel.
+     * @param row Row index
+     * @return true if equation is a simple numeric value
+     */
+    public boolean isAdjustableRow(int row) {
+        if (row < 0 || row >= rowCount) return false;
+        return parseNumericEquation(equations[row]) != null;
+    }
+    
+    /**
+     * Format a numeric value for display as an equation.
+     * Shows maximum of 4 significant digits.
+     * @param val The value to format
+     * @return Formatted string
+     */
+    private String formatNumericValue(double val) {
+        // Handle zero specially
+        if (val == 0) return "0";
+        
+        double absVal = Math.abs(val);
+        
+        // For integers in reasonable range that fit in 4 digits, use integer format
+        if (val == Math.floor(val) && absVal < 10000 && absVal >= 1) {
+            return String.valueOf((long) val);
+        }
+        
+        // Calculate number of digits before decimal point
+        int digitsBeforeDecimal = (absVal >= 1) ? (int) Math.floor(Math.log10(absVal)) + 1 : 0;
+        
+        // Calculate decimal places needed for 4 significant figures
+        int decimalPlaces = Math.max(0, 4 - digitsBeforeDecimal);
+        
+        // For very small or very large values, use scientific notation with 4 sig figs
+        if (absVal < 1e-4 || absVal >= 1e6) {
+            // Format with 3 decimal places in scientific notation (4 sig figs total)
+            double exponent = Math.floor(Math.log10(absVal));
+            double mantissa = val / Math.pow(10, exponent);
+            String mantissaStr = formatDecimal(mantissa, 3);
+            return mantissaStr + "e" + (int) exponent;
+        }
+        
+        // Format with appropriate decimal places
+        return formatDecimal(val, decimalPlaces);
+    }
+    
+    /**
+     * Format a double with specified decimal places, trimming trailing zeros.
+     */
+    private String formatDecimal(double val, int decimalPlaces) {
+        // Round to specified decimal places
+        double factor = Math.pow(10, decimalPlaces);
+        double rounded = Math.round(val * factor) / factor;
+        
+        // Convert to string
+        String formatted;
+        if (decimalPlaces == 0) {
+            formatted = String.valueOf((long) rounded);
+        } else {
+            formatted = String.valueOf(rounded);
+            
+            // Trim trailing zeros after decimal point
+            if (formatted.contains(".") && !formatted.contains("E") && !formatted.contains("e")) {
+                formatted = formatted.replaceAll("0+$", "").replaceAll("\\.$", "");
+            }
+        }
+        
+        return formatted;
     }
 }

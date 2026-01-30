@@ -341,6 +341,169 @@ if (Math.abs(newValue - oldValue) > threshold) {
 }
 ```
 
+### Voltage Convergence Checks for High-Impedance Elements
+
+For high-impedance elements that output via a voltage source, **do NOT add a separate voltage convergence check**. This is a common pitfall:
+
+```java
+// DON'T DO THIS for voltage-source outputs:
+void checkVoltageConvergence() {
+    double expected = computedValue;
+    double actual = volts[outputNode];
+    if (Math.abs(expected - actual) > 1e-6) {
+        sim.converged = false;  // WRONG - causes extra iterations
+    }
+}
+```
+
+**Why this is wrong**: The voltage source *forces* the output node to the stamped value. If the equation has converged (stamped value is stable), the voltage will automatically match on the next iteration. Adding a voltage check creates a one-iteration lag that causes unnecessary extra subiterations.
+
+**Correct approach**: Only check convergence of the *computed value*, not the resulting voltage:
+
+```java
+// DO THIS - check equation convergence only:
+void checkConvergence() {
+    double newValue = computeResult();
+    if (Math.abs(newValue - lastComputedValue) > threshold) {
+        sim.converged = false;
+    }
+    lastComputedValue = newValue;
+}
+```
+
+**Key insight**: For any high-impedance element that directly stamps its computed value via a voltage source:
+- The voltage check is **redundant** because the voltage source guarantees the node voltage equals the stamped value
+- Adding the check introduces a **timing mismatch** - the voltage reflects the *previous* subiteration's stamped value
+- This mismatch causes the solver to run 1-2 extra iterations unnecessarily
+
+## Money Circuit Calculations / Stock-Flow Economic Modeling
+
+CircuitJS1 extends circuit simulation to support **Stock-Flow Consistent (SFC) economic models** inspired by Steve Keen's Minsky program. These models use voltage to represent monetary values (stocks) and current to represent flows between accounts.
+
+### Core Concepts
+
+| Electrical Analog | Economic Meaning | Example |
+|-------------------|------------------|---------|
+| Voltage | Stock level (account balance) | Bank deposits = 100V |
+| Current | Flow rate (transaction/second) | Wages = 50 A/s |
+| Ground | Reference point | Central bank reserves |
+| Voltage source | Initial stock value | Starting balance |
+
+### Key Element Classes
+
+- **TableElm**: Base table for balance sheets with rows (flows) and columns (stocks)
+- **GodlyTableElm**: Extended table with integration (stock accumulation over time)
+- **EquationTableElm**: Table with expression-based cell values
+- **SFCTableElm**: Stock-Flow Consistent matrix for multi-sector models
+- **CurrentTransactionsMatrixElm (CTM)**: Aggregates flows across all sectors
+- **StockMasterElm**: Displays which table "owns" each stock (diagnostic)
+- **FlowsMasterElm**: Lists all flows across all tables (diagnostic)
+
+### Stock Master Pattern
+
+When multiple tables share a stock name (column), only **ONE table can be the electrical master** - the table that actually drives the voltage:
+
+```java
+// In ComputedValues registry:
+// Each stock has exactly one master table that stamps its voltage
+ComputedValues.registerComputedValue("Firms", firmsTable, initialValue);
+ComputedValues.getComputingTable("Firms");  // Returns the master table
+```
+
+**Rule**: The first table to register a stock becomes its master. Other tables read the voltage but don't drive it.
+
+### Stock-Flow Synchronization
+
+Tables sharing stocks need synchronized row descriptions (flow names):
+
+```
+Table A: "Cash" stock with flows [Sales, Interest]
+Table B: "Cash" stock with flows [Wages, Rent]
+
+SYNCHRONIZED: Both tables show [Sales, Interest, Wages, Rent]
+```
+
+The `StockFlowRegistry` service handles this synchronization - see [STOCK_FLOW_SYNC_SUMMARY.md](../dev_docs/STOCK_FLOW_SYNC_SUMMARY.md).
+
+### Balance Sheet Accounting (A = L + E)
+
+Godley Tables enforce double-entry bookkeeping:
+- **Asset columns**: Positive values
+- **Liability columns**: Negative values  
+- **Equity columns**: Balancing entry
+- **A-L-E column**: Should always sum to zero (computed automatically)
+
+```
+| Flow↓ / Stock→ | Assets | Liabilities | Equity | A-L-E |
+|----------------|--------|-------------|--------|-------|
+| Type           | ASSET  | LIABILITY   | EQUITY | COMPUTED |
+| Initial        | 100    | -80         | -20    | 0     |
+| Transaction    | +10    | -10         |        | 0     |
+```
+
+### Integration in Tables
+
+Godley Tables can integrate flows to accumulate stocks over time:
+
+```java
+// Cell equation with integration:
+"0.001"  // means: stock += 0.001 * flow_value * dt
+
+// The table stamps:
+sim.stampVoltageSource(0, stockNode, voltSource, accumulatedValue);
+```
+
+### Convergence Considerations for Economic Elements
+
+Economic table elements are **high-impedance arithmetic elements** that follow the patterns described above:
+
+1. **Direct stamping**: Tables stamp computed values directly via voltage sources
+2. **No voltage convergence check**: Redundant for voltage-source outputs
+3. **Equation convergence only**: Check if computed cell values have stabilized
+4. **Integration state**: Use committed/pending pattern for `integrate()` and `diff()` functions
+
+### Convergence Threshold for Large Cancelling Values
+
+When summing values that may cancel (e.g., large positive + large negative ≈ 0), use a threshold based on the **maximum magnitude**, not the result:
+
+```java
+// Track maximum magnitude during computation
+double maxMagnitude = 0;
+double sum = 0;
+for (int i = 0; i < values.length; i++) {
+    sum += values[i];
+    maxMagnitude = Math.max(maxMagnitude, Math.abs(values[i]));
+}
+
+// Threshold based on max magnitude, not the near-zero sum
+double threshold = Math.max(maxMagnitude * 0.001, 1e-6);
+if (Math.abs(newValue - oldValue) > threshold) {
+    sim.converged = false;
+}
+```
+
+### Adding New Economic Elements
+
+1. Extend `TableElm` or `GodlyTableElm` for table-based elements
+2. Use `ComputedValues` registry for cross-table variable sharing
+3. Register stock ownership to prevent conflicts
+4. Implement `getConnection()` returning `false` for high-impedance inputs
+5. Follow direct-stamping pattern (no derivative linearization needed)
+
+### Testing Economic Models
+
+Test circuits for economic models are in `src/com/lushprojects/circuitjs1/public/circuits/`:
+- `econ_BOMDSimple.txt` - Bank Originated Money and Debt (simple)
+- `econ_BOMDwithGovt.txt` - BOMD with government sector
+- `econ_SimpleSFCModel.txt` - Stock-Flow Consistent example
+
+### Documentation Resources
+
+- [dev_docs/STOCK_FLOW_DOCS_INDEX.md](../dev_docs/STOCK_FLOW_DOCS_INDEX.md) - Complete documentation index
+- [dev_docs/STOCK_MASTER_ELM_REFERENCE.md](../dev_docs/STOCK_MASTER_ELM_REFERENCE.md) - Stock master element
+- [dev_docs/FLOWS_MASTER_ELM_REFERENCE.md](../dev_docs/FLOWS_MASTER_ELM_REFERENCE.md) - Flows master element
+- [docs-template/docs/money/](../docs-template/docs/money/) - Economic modeling tutorials
+
 ## Important Notes
 
 - This is a **client-side only** application - all Java code compiles to JavaScript
@@ -349,3 +512,105 @@ if (Math.abs(newValue - oldValue) > threshold) {
 - **Cross-browser compatibility** is essential for web deployment
 - **Touch/mobile support** should be considered for UI changes
 - **Matrix optimization** is critical - use `circuitRowInfo[]` for complex modifications
+- **Matrix optimization** is critical - use `circuitRowInfo[]` for complex modifications
+## Common Pitfalls & Solutions
+
+### GWT-Specific Pitfalls
+
+| What Doesn't Work | What To Do Instead |
+|-------------------|-------------------|
+| `String.format()` | Use `CircuitElm.showFormat.format()` or `NumberFormat` |
+| `StringTokenizer` import | Already available, don't import `java.util.StringTokenizer` |
+| `System.out.println()` | Use `CirSim.console("message")` for browser console |
+| `Math.random()` | Use `Math.random()` (GWT supports this) |
+| Java reflection | Not supported - use explicit class mapping |
+| Most `java.io.*` | Use GWT-specific file handling |
+
+### Simulation Loop Timing
+
+**Method Call Order** (per timestep):
+1. `startIteration()` - Called once before subiterations begin
+2. `doStep()` - Called each subiteration (for nonlinear elements)
+3. `stepFinished()` - Called once after convergence achieved
+
+**Committed/Pending Pattern** for stateful calculations (integrate, diff):
+```java
+// In ExprState or element state:
+double pendingValue;   // Written during doStep()
+double lastValue;      // Read during doStep(), committed from pending
+
+@Override void startIteration() {
+    // Commit pending → last at START of new timestep
+    lastValue = pendingValue;
+}
+
+@Override void doStep() {
+    // Read from lastValue (stable), write to pendingValue
+    pendingValue = computeNewValue(lastValue);
+}
+```
+
+### Debugging Tips
+
+- **Console logging**: `CirSim.console("message: " + value)` outputs to browser dev console
+- **Element info**: Override `getInfo(String[] arr)` to show debug values on mouse hover
+- **Convergence issues**: Check `sim.subIterations` after timestep to see iteration count
+- **Non-converged elements**: Set `sim.convergenceCheckThreshold` in Options → Other to identify slow-converging elements
+
+### Common Convergence Problems
+
+| Symptom | Likely Cause | Solution |
+|---------|--------------|----------|
+| Excessive subiterations | Voltage convergence check on voltage-source output | Remove voltage check, only check equation convergence |
+| Values oscillating | Using current subiteration input for derivative | Use committed/pending pattern |
+| Never converges | Threshold too tight for large values | Use magnitude-based threshold |
+| 1-2 extra iterations | Redundant convergence check | Remove redundant checks |
+
+### Expression Parser (Expr.java)
+
+The `Expr` class parses mathematical expressions with these built-in functions:
+
+**Stateless functions**: `sin`, `cos`, `tan`, `exp`, `log`, `sqrt`, `abs`, `min`, `max`, `floor`, `ceil`
+
+**Stateful functions** (require ExprState):
+- `integrate(x)` - Numerical integration over time
+- `diff(x)` - Numerical differentiation over time
+
+**ExprState Pattern**:
+```java
+ExprState es = new ExprState();  // One per expression instance
+double result = expr.eval(es);   // Pass state for integrate/diff
+es.commitIntegration();          // Call in stepFinished()
+es.reset();                      // Call when circuit resets
+```
+
+### Adding UI Options
+
+To add a new option in **Options → Other Options**:
+
+1. Add variable to `CirSim.java`: `int myNewOption = defaultValue;`
+2. In `EditOptions.java`, add to `getEditInfo(int n)`:
+   ```java
+   if (n == nextNumber)
+       return new EditInfo("Option Label", sim.myNewOption, minVal, maxVal);
+   ```
+3. In `EditOptions.java`, add to `setEditValue(int n, EditInfo ei)`:
+   ```java
+   if (n == nextNumber) { sim.myNewOption = (int) ei.value; return; }
+   ```
+
+### File Format (Circuit Dump)
+
+Circuit files use text format with element dump strings:
+- First line: `$ speed timeStep ...` (simulation parameters)
+- Each element: `dumpType x1 y1 x2 y2 flags [parameters...]`
+- Text escaping: spaces → `\s`, backslash → `\\`
+
+```java
+// In dump():
+return super.dump() + " " + myParam1 + " " + CustomLogicModel.escape(myString);
+
+// In constructor from StringTokenizer:
+myParam1 = Double.parseDouble(st.nextToken());
+myString = CustomLogicModel.unescape(st.nextToken());
+```

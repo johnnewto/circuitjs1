@@ -40,6 +40,7 @@ import com.google.gwt.user.client.ui.DockLayoutPanel;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.RootLayoutPanel;
 import com.google.gwt.user.client.ui.RootPanel;
+import com.google.gwt.canvas.dom.client.CanvasGradient;
 import com.google.gwt.canvas.dom.client.Context2d;
 import com.google.gwt.canvas.dom.client.Context2d.LineCap;
 import com.google.gwt.event.dom.client.MouseDownEvent;
@@ -2188,7 +2189,7 @@ public CirSim() {
         // Show any unresolved references from EquationTableElm elements
         String unresolvedMsg = getUnresolvedReferencesMessage();
         if (unresolvedMsg != null) {
-            g.setColor(Color.yellow);
+            g.setColor(Color.red);
             g.drawString(unresolvedMsg, 10, height += increment);
             g.setColor(CircuitElm.whiteColor);
         }
@@ -2245,36 +2246,103 @@ public CirSim() {
         if (mouseElm == null) return;
         
         String hint = null;
+        String valueStr = null;
+        String label = null;
+        boolean isInScope = false;
         
         // Check if it's a LabeledNodeElm
         if (mouseElm instanceof LabeledNodeElm) {
             LabeledNodeElm lne = (LabeledNodeElm) mouseElm;
             hint = HintRegistry.getHint(lne.text);
+            label = lne.text;
+            valueStr = CircuitElm.showFormat.format(lne.volts[0]);
+        }
+        // Check if it's an EquationTableElm with a hovered row
+        else if (mouseElm instanceof EquationTableElm) {
+            EquationTableElm ete = (EquationTableElm) mouseElm;
+            int hoveredRow = ete.getHoveredRow();
+            if (hoveredRow >= 0 && hoveredRow < ete.getRowCount()) {
+                String outputName = ete.getOutputName(hoveredRow);
+                hint = HintRegistry.getHint(outputName);
+                label = outputName;
+                valueStr = CircuitElm.showFormat.format(ete.getOutputValue(hoveredRow));
+            }
+        }
+        // Check if it's a ScopeElm (undocked scope) with a selected plot
+        else if (mouseElm instanceof ScopeElm) {
+            ScopeElm se = (ScopeElm) mouseElm;
+            CircuitElm plotElm = se.elmScope.getElm();
+            if (plotElm instanceof LabeledNodeElm) {
+                LabeledNodeElm lne = (LabeledNodeElm) plotElm;
+                hint = HintRegistry.getHint(lne.text);
+                label = lne.text;
+                isInScope = true;  // Don't show value for scope
+            }
         }
         
         // Draw the tooltip if we have one
         if (hint != null && !hint.trim().isEmpty()) {
-            g.context.setFont("bold 14px SansSerif");
-            int hintWidth = (int) g.context.measureText(hint).getWidth() + 16;
+            // Build display text: "Hint Description: Label = Value" or just "Hint Description: Label" if in scope area
+            String displayText;
+            if (scopeSelected != -1 || isInScope) {
+                // Mouse is over scope area - don't show value
+                displayText = hint + ": " + label;
+            } else {
+                // Mouse is over circuit area - show value
+                displayText = hint + ": " + label + " = " + valueStr;
+            }
+            
+            g.context.setFont("500 12px system-ui, -apple-system, sans-serif");
+            int hintWidth = (int) g.context.measureText(displayText).getWidth() + 16;
             int hintHeight = 24;
+            int radius = 6;
             
             // Position above the mouse cursor in screen coordinates
             int tooltipX = mouseCursorX - hintWidth / 2;
             int tooltipY = mouseCursorY - hintHeight - 10;
             
             // Keep on screen
-            if (tooltipX < 5) tooltipX = 5;
-            if (tooltipY < 5) tooltipY = mouseCursorY + 20; // Below cursor if too high
+            if (tooltipX < 8) tooltipX = 8;
+            if (tooltipX + hintWidth > canvasWidth - 8) tooltipX = canvasWidth - hintWidth - 8;
+            if (tooltipY < 8) tooltipY = mouseCursorY + 20; // Below cursor if too high
             
-            // Draw opaque tooltip background
-            g.context.setFillStyle("#000000");
-            g.context.fillRect(tooltipX, tooltipY, hintWidth, hintHeight);
-            g.context.setStrokeStyle("#888888");
-            g.context.strokeRect(tooltipX, tooltipY, hintWidth, hintHeight);
+            // Draw shadow
+            g.context.setShadowColor("rgba(0, 0, 0, 0.25)");
+            g.context.setShadowBlur(8);
+            g.context.setShadowOffsetX(0);
+            g.context.setShadowOffsetY(2);
+            
+            // Draw rounded rectangle background
+            g.context.beginPath();
+            g.context.moveTo(tooltipX + radius, tooltipY);
+            g.context.lineTo(tooltipX + hintWidth - radius, tooltipY);
+            g.context.quadraticCurveTo(tooltipX + hintWidth, tooltipY, tooltipX + hintWidth, tooltipY + radius);
+            g.context.lineTo(tooltipX + hintWidth, tooltipY + hintHeight - radius);
+            g.context.quadraticCurveTo(tooltipX + hintWidth, tooltipY + hintHeight, tooltipX + hintWidth - radius, tooltipY + hintHeight);
+            g.context.lineTo(tooltipX + radius, tooltipY + hintHeight);
+            g.context.quadraticCurveTo(tooltipX, tooltipY + hintHeight, tooltipX, tooltipY + hintHeight - radius);
+            g.context.lineTo(tooltipX, tooltipY + radius);
+            g.context.quadraticCurveTo(tooltipX, tooltipY, tooltipX + radius, tooltipY);
+            g.context.closePath();
+            
+            // Fill with modern dark color
+            g.context.setFillStyle("#1e1e2e");
+            g.context.fill();
+            
+            // Reset shadow before drawing border and text
+            g.context.setShadowColor("transparent");
+            g.context.setShadowBlur(0);
+            g.context.setShadowOffsetX(0);
+            g.context.setShadowOffsetY(0);
+            
+            // Draw accent border
+            g.context.setStrokeStyle("#6c7086");
+            g.context.setLineWidth(1);
+            g.context.stroke();
             
             // Draw tooltip text
-            g.context.setFillStyle("#FFFF00");
-            g.context.fillText(hint, tooltipX + 8, tooltipY + hintHeight - 7);
+            g.context.setFillStyle("#cdd6f4");
+            g.context.fillText(displayText, tooltipX + 8, tooltipY + hintHeight / 2 + 4);
         }
     }
 
@@ -3461,8 +3529,8 @@ public CirSim() {
 		int i, j;
 		for (i = 0; i != elmList.size(); i++) {
 			CircuitElm ce = getElm(i);
-			// Skip TableElm posts - they are hidden but remain electrically functional
-			if (ce instanceof TableElm)
+			// Skip TableElm and EquationTableElm posts - they are hidden but remain electrically functional
+			if (ce instanceof TableElm || ce instanceof EquationTableElm)
 			continue;
 			int posts = ce.getPostCount();
 			for (j = 0; j != posts; j++) {
@@ -3485,7 +3553,7 @@ public CirSim() {
 			Point cn = entry.getKey();
 			for (j = 0; j != elmList.size() && !bad; j++) {
 				CircuitElm ce = getElm(j);
-				if ( ce instanceof GraphicElm || ce instanceof TableElm)
+				if ( ce instanceof GraphicElm || ce instanceof TableElm || ce instanceof EquationTableElm)
 				continue;
 				// does this post intersect elm's bounding box?
 				if (!ce.boundingBox.contains(cn.x, cn.y))

@@ -214,12 +214,14 @@ public class TableRenderer {
         // Update cached values if needed
         updateCachedValuesIfNeeded();
 
-        // Draw background and border
+        // Draw background first
         drawTableBackground(g, dims);
-        drawTableBorder(g, dims);
 
-        // Draw components in order
+        // Draw components in order (includes row backgrounds)
         drawComponentsInOrder(g, dims);
+        
+        // Draw border LAST so it's on top of row backgrounds
+        drawTableBorder(g, dims);
 
         // Draw pins
         drawPins(g);
@@ -239,7 +241,7 @@ public class TableRenderer {
         
         // Calculate heights
         dims.titleHeight = 20;
-        dims.typeRowHeight = table.collapsedMode ? 0 : (table.cellHeight + table.cellSpacing);
+        dims.typeRowHeight = (table.collapsedMode || !shouldShowTypeRow()) ? 0 : (table.cellHeight + table.cellSpacing);
         int extraRowsHeight = table.collapsedMode ? 0 : getExtraRowsBeforeTypeRowHeight();
         dims.headerRowHeight = table.cellHeight + table.cellSpacing;
         dims.initialRowHeight = (table.showInitialValues && !table.collapsedMode) ? 
@@ -254,6 +256,15 @@ public class TableRenderer {
                           dims.initialRowHeight + dims.dataRowsHeight + dims.computedRowHeight;
         
         return dims;
+    }
+    
+    /**
+     * Hook method for subclasses to control whether the type row is shown.
+     * SFCTableRenderer overrides this to return false.
+     * @return true to show type row, false to hide it
+     */
+    protected boolean shouldShowTypeRow() {
+        return true;
     }
     
     /**
@@ -299,8 +310,13 @@ public class TableRenderer {
     private void drawTableBorder(Graphics g, TableDimensions dims) {
         if (MODERN_STYLE) {
             // Modern style: subtle rounded border
-            g.setColor(table.nonConverged ? Color.red : getGridLineColor());
+            boolean selected = table.needsHighlight();
+            g.setColor(table.nonConverged ? Color.red : (selected ? CircuitElm.selectColor : getGridLineColor()));
             g.drawRoundRect(dims.tableX, dims.tableY, dims.tableWidth, dims.tableHeight, CORNER_RADIUS);
+            if (selected) {
+                // Draw double border when selected for better visibility
+                g.drawRoundRect(dims.tableX + 1, dims.tableY + 1, dims.tableWidth - 2, dims.tableHeight - 2, CORNER_RADIUS);
+            }
         } else {
             g.setColor(table.nonConverged ? Color.red : CircuitElm.lightGrayColor);
             g.drawRect(dims.tableX, dims.tableY, dims.tableWidth, dims.tableHeight);
@@ -326,7 +342,7 @@ public class TableRenderer {
             currentY = drawExtraRowsBeforeTypeRow(g, currentY);
         }
         
-        if (!table.collapsedMode) {
+        if (!table.collapsedMode && shouldShowTypeRow()) {
             drawColumnTypeRow(g, currentY);
             currentY += table.cellHeight + table.cellSpacing;
         }
@@ -359,25 +375,28 @@ public class TableRenderer {
         int tableWidth = dims.tableWidth;
         int rowHeight = table.cellHeight + table.cellSpacing;
         
+        // Inset from edges to preserve rounded corners
+        int edgeInset = MODERN_STYLE ? CORNER_RADIUS / 2 + 1 : 2;
+        
         // Calculate Y positions for different sections
         int currentY = tableY + dims.titleHeight;
         
         // Type row background (header style)
         if (!table.collapsedMode && dims.typeRowHeight > 0) {
             g.setColor(getHeaderBgColor());
-            g.fillRect(tableX + 2, currentY, tableWidth - 4, rowHeight);
+            g.fillRect(tableX + edgeInset, currentY, tableWidth - edgeInset * 2, rowHeight);
             currentY += rowHeight;
         }
         
         // Column headers row background (header style)
         g.setColor(getHeaderBgColor());
-        g.fillRect(tableX + 2, currentY, tableWidth - 4, rowHeight);
+        g.fillRect(tableX + edgeInset, currentY, tableWidth - edgeInset * 2, rowHeight);
         currentY += rowHeight;
         
         // Initial values row background (if shown) - use odd row color to distinguish from header
         if (table.showInitialValues && !table.collapsedMode) {
             g.setColor(getRowBgColor(1)); // Use odd row color to distinguish from header
-            g.fillRect(tableX + 2, currentY, tableWidth - 4, rowHeight);
+            g.fillRect(tableX + edgeInset, currentY, tableWidth - edgeInset * 2, rowHeight);
             currentY += rowHeight;
         }
         
@@ -385,14 +404,14 @@ public class TableRenderer {
         if (!table.collapsedMode) {
             for (int row = 0; row < table.rows; row++) {
                 g.setColor(getRowBgColor(row));
-                g.fillRect(tableX + 2, currentY + row * rowHeight, tableWidth - 4, rowHeight);
+                g.fillRect(tableX + edgeInset, currentY + row * rowHeight, tableWidth - edgeInset * 2, rowHeight);
             }
             currentY += table.rows * rowHeight;
         }
         
-        // Computed/Sum row background (footer style)
+        // Computed/Sum row background (footer style) - reduce height slightly for bottom edge
         g.setColor(getFooterBgColor());
-        g.fillRect(tableX + 2, currentY, tableWidth - 4, rowHeight);
+        g.fillRect(tableX + edgeInset, currentY, tableWidth - edgeInset * 2, rowHeight - 2);
     }
     
     /**
@@ -858,7 +877,9 @@ public class TableRenderer {
             g.setColor(CircuitElm.lightGrayColor);
         }
         int titleBottomY = tableY + 20;
-        g.drawLine(tableX, titleBottomY, tableX + tableWidth, titleBottomY);
+        // Inset from edges to preserve rounded corners
+        int inset = MODERN_STYLE ? CORNER_RADIUS / 2 : 0;
+        g.drawLine(tableX + inset, titleBottomY, tableX + tableWidth - inset, titleBottomY);
     }
 
     protected void drawColumnHeaders(Graphics g, int offsetY) {
@@ -923,12 +944,15 @@ public class TableRenderer {
             g.setColor(CircuitElm.lightGrayColor);
         }
         
+        // Inset from edges to preserve rounded corners
+        int inset = MODERN_STYLE ? CORNER_RADIUS / 2 : 0;
+        
         // Draw double line above sum row
         if (isSumRow) {
             if (MODERN_STYLE) {
                 g.setColor(getHeaderBorderColor());
             }
-            g.drawLine(tableX, rowY - 2, tableX + tableWidth, rowY - 2);
+            g.drawLine(tableX + inset, rowY - 2, tableX + tableWidth - inset, rowY - 2);
             if (MODERN_STYLE) {
                 g.setColor(getGridLineColor());
             }
@@ -938,20 +962,19 @@ public class TableRenderer {
         if (MODERN_STYLE && isHeaderRow) {
             g.setColor(getHeaderBorderColor());
         }
-        g.drawLine(tableX, rowY + table.cellHeight, tableX + tableWidth, rowY + table.cellHeight);
+        g.drawLine(tableX + inset, rowY + table.cellHeight, tableX + tableWidth - inset, rowY + table.cellHeight);
         
         // Reset to grid line color for vertical lines
         if (MODERN_STYLE) {
             g.setColor(getGridLineColor());
         }
         
-        // Vertical lines
-        g.drawLine(tableX, rowY, tableX, rowY + table.cellHeight);
+        // Vertical lines - skip left edge (outer border handles it)
         int x = tableX + table.cellSpacing + rowDescColWidth;
         g.drawLine(x, rowY, x, rowY + table.cellHeight);
         
-        // Between and after data columns
-        for (int col = 0; col <= table.getCols(); col++) {
+        // Between data columns (skip last column - right edge handled by outer border)
+        for (int col = 0; col < table.getCols(); col++) {
             x = getColumnX(col, tableX, rowDescColWidth, cellWidthPixels);
             
             boolean drawDouble = false;
@@ -1309,29 +1332,28 @@ public class TableRenderer {
         }
         int tableWidth = rowDescColWidth + table.cellSpacing + getTotalDataColumnsWidth(cellWidthPixels);
         
-        // Horizontal lines (top and bottom of row)
-        g.drawLine(tableX, rowY, tableX + tableWidth, rowY);
-        g.drawLine(tableX, rowY + table.cellHeight, tableX + tableWidth, rowY + table.cellHeight);
+        // Inset from edges to preserve rounded corners
+        int inset = MODERN_STYLE ? CORNER_RADIUS / 2 : 0;
         
-        // Vertical lines
-        // Left edge
-        g.drawLine(tableX, rowY, tableX, rowY + table.cellHeight);
+        // Horizontal lines (top and bottom of row) - inset from edges
+        g.drawLine(tableX + inset, rowY, tableX + tableWidth - inset, rowY);
+        g.drawLine(tableX + inset, rowY + table.cellHeight, tableX + tableWidth - inset, rowY + table.cellHeight);
+        
+        // Vertical lines - skip left edge (outer border handles it)
         // After description column
         int x = tableX + table.cellSpacing + rowDescColWidth;
         g.drawLine(x, rowY, x, rowY + table.cellHeight);
         
-        // Between and after data columns - merge cells with same type (no vertical lines)
-        for (int col = 0; col <= table.getCols(); col++) {
+        // Between data columns - merge cells with same type (no vertical lines between same types)
+        // Skip right edge (outer border handles it)
+        for (int col = 0; col < table.getCols(); col++) {
             x = getColumnX(col, tableX, rowDescColWidth, cellWidthPixels);
             
             // Check if we should draw a line at this position
             boolean drawDouble = false;
             boolean drawLine = false;
             
-            if (col == table.getCols()) {
-                // Always draw line at right edge of table
-                drawLine = true;
-            } else if (col > 0 && col < table.getCols()) {
+            if (col > 0 && col < table.getCols()) {
                 // Check if column type changes between adjacent columns
                 ColumnType prevType = table.getColumnType(col - 1);
                 ColumnType currType = table.getColumnType(col);
@@ -1350,7 +1372,7 @@ public class TableRenderer {
                     g.drawLine(x - 1, rowY, x - 1, rowY + table.cellHeight);
                     g.drawLine(x + 1, rowY, x + 1, rowY + table.cellHeight);
                 } else {
-                    // Draw single vertical line (only at right edge)
+                    // Draw single vertical line
                     g.drawLine(x, rowY, x, rowY + table.cellHeight);
                 }
             }
@@ -1374,29 +1396,30 @@ public class TableRenderer {
         }
         int tableWidth = rowDescColWidth + table.cellSpacing + getTotalDataColumnsWidth(cellWidthPixels);
         
-        // Horizontal lines
+        // Inset from edges to preserve rounded corners
+        int inset = MODERN_STYLE ? CORNER_RADIUS / 2 : 0;
+        
+        // Horizontal lines - inset from edges
         // Draw double line above sum row (stronger separator)
         if (isSumRow) {
             if (MODERN_STYLE) {
                 g.setColor(getHeaderBorderColor()); // Use stronger color for footer separator
             }
-            g.drawLine(tableX, rowY - 2, tableX + tableWidth, rowY - 2);
+            g.drawLine(tableX + inset, rowY - 2, tableX + tableWidth - inset, rowY - 2);
             if (MODERN_STYLE) {
                 g.setColor(getGridLineColor()); // Back to subtle for other lines
             }
         }
         // Only draw bottom line (top line is drawn by table border or previous row's bottom)
-        g.drawLine(tableX, rowY + table.cellHeight, tableX + tableWidth, rowY + table.cellHeight);
+        g.drawLine(tableX + inset, rowY + table.cellHeight, tableX + tableWidth - inset, rowY + table.cellHeight);
         
-        // Vertical lines
-        // Left edge
-        g.drawLine(tableX, rowY, tableX, rowY + table.cellHeight);
+        // Vertical lines - skip left edge (outer border handles it)
         // After description column
         int x = tableX + table.cellSpacing + rowDescColWidth;
         g.drawLine(x, rowY, x, rowY + table.cellHeight);
         
-        // Between and after data columns - always draw all vertical lines
-        for (int col = 0; col <= table.getCols(); col++) {
+        // Between data columns - skip right edge (outer border handles it)
+        for (int col = 0; col < table.getCols(); col++) {
             x = getColumnX(col, tableX, rowDescColWidth, cellWidthPixels);
             
             // Check if we should draw a double line (when column type changes)
