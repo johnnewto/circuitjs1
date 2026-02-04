@@ -261,8 +261,8 @@ class LabeledNodeElm extends CircuitElm {
 		
 		if (showVoltage()) {
 		    // Check for computed value first (from EquationTableElm, GodlyTableElm, etc.)
-		    // This allows labeled nodes to display computed values even when not directly connected
-		    Double computedValue = ComputedValues.getComputedValue(text);
+		    // Use CONVERGED value for stable display (doesn't vary during subiterations)
+		    Double computedValue = ComputedValues.getConvergedValue(text);
 		    double displayVoltage = (computedValue != null) ? computedValue.doubleValue() : volts[0];
 		    String voltageText = " = " + getVoltageText(displayVoltage);
 		    displayText = displayText + voltageText;
@@ -278,6 +278,25 @@ class LabeledNodeElm extends CircuitElm {
     void setCurrent(int x, double c) { current = c; }
     double getVoltageDiff() { 
         return volts[0]; 
+    }
+    
+    /**
+     * Get value for scope display.
+     * For voltage, use converged computed value if available for stable display.
+     */
+    @Override
+    double getScopeValue(int x) {
+        if (x == Scope.VAL_CURRENT) {
+            return getCurrent();
+        } else if (x == Scope.VAL_POWER) {
+            return getPower();
+        }
+        // For voltage: prefer converged computed value for stable scope display
+        Double computedValue = ComputedValues.getConvergedValue(text);
+        if (computedValue != null) {
+            return computedValue.doubleValue();
+        }
+        return volts[0];
     }
 	
     void getInfo(String arr[]) {

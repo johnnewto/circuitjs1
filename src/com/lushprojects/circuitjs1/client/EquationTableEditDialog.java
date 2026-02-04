@@ -57,8 +57,8 @@ public class EquationTableEditDialog extends Dialog {
     private static final int HEADER_ROW = 0;
     private static final int DATA_START_ROW = 1;
     
-    // Max rows
-    private static final int MAX_ROWS = 8;
+    /** Maximum number of equation rows supported */
+    private static final int MAX_ROWS = 32;
     
     // Core references
     private final EquationTableElm tableElement;

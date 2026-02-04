@@ -9,10 +9,10 @@ class ExprState {
     double lastOutput;
     double lastDiffInput;  // For diff() function - committed value from last timestep
     double lastIntOutput;  // For integrate() function - committed value from last timestep
-    double lastDiffTime;   // Last time diff() was committed
     double lastIntTime;    // Last time integrate() was committed
     double pendingIntInput; // Current input value for integrate (updated each subiteration)
     double pendingDiffInput; // Current input value for diff (to be committed at stepFinished)
+    boolean diffInitialized; // True after first commit, so diff has valid lastDiffInput
     double t;
     ExprState(int xx) {
 	//n = xx;
@@ -21,10 +21,10 @@ class ExprState {
 	values[4] = Math.E;
 	lastDiffInput = 0;
 	lastIntOutput = 0;
-	lastDiffTime = -1;
 	lastIntTime = -1;
 	pendingIntInput = 0;
 	pendingDiffInput = 0;
+	diffInitialized = false;
     }
     
     void updateLastValues(double lastOut) {
@@ -40,10 +40,10 @@ class ExprState {
 	lastOutput = 0;
 	lastDiffInput = 0;
 	lastIntOutput = 0;
-	lastDiffTime = -1;
 	lastIntTime = -1;
 	pendingIntInput = 0;
 	pendingDiffInput = 0;
+	diffInitialized = false;
     }
     
     // Call this at the end of each timestep to commit the integration and differentiation
@@ -52,16 +52,21 @@ class ExprState {
 	    lastIntOutput = lastIntOutput + timeStep * pendingIntInput;
 	    lastIntTime = t;
 	}
-	if (t != lastDiffTime) {
-	    lastDiffInput = pendingDiffInput;
-	    lastDiffTime = t;
-	}
+	lastDiffInput = pendingDiffInput;
+	diffInitialized = true;
     }
 }
 
 class Expr {
     // Global tracking of unresolved node references during evaluation
     static Vector<String> unresolvedReferences = new Vector<String>();
+    
+    /**
+     * When true, E_NODE_REF lookups use getConvergedValue() instead of getComputedValue().
+     * This should be set to true for display-only evaluations (SFC tables, etc.)
+     * to get stable values that don't vary during subiterations.
+     */
+    static boolean useConvergedValues = false;
     
     /** Clear the unresolved references list (call at start of each timestep) */
     static void clearUnresolvedReferences() {
@@ -208,23 +213,65 @@ class Expr {
 	}
 	case E_DIFF: {
 	    // diff(x) - differentiate the expression
-	    // Use committed value from previous timestep for stable convergence
+	    // Returns (current - last) / timeStep
+	    // 
+	    // DESIGN: diff() computes the rate of change between the CONVERGED values
+	    // at consecutive timesteps. During subiterations, the input may still be
+	    // converging, but we return (input - lastDiffInput) / dt using whatever
+	    // the current input value is.
+	    //
+	    // The key insight: we always store pendingDiffInput with the latest input,
+	    // and at stepFinished(), that converged value becomes lastDiffInput for
+	    // the next timestep. So the NEXT timestep's diff will be correct.
+	    //
+	    // For the CURRENT timestep, diff may vary across subiterations until
+	    // the input converges. This is normal nonlinear behavior - the final
+	    // converged diff value is what matters for the simulation result.
+	    
 	    double input = left.eval(es);
 	    es.pendingDiffInput = input;  // Store for commit at stepFinished
-	    double result;
-	    if (es.t == 0 || es.lastDiffTime < 0) {
-		result = 0;  // No derivative at t=0 or before first commit
-	    } else {
-		// Always use committed lastDiffInput for consistent results across subiterations
-		result = (input - es.lastDiffInput) / CirSim.theSim.timeStep;
+	    
+	    // Return 0 until we have a valid previous value to compare against
+	    if (!es.diffInitialized) {
+		return 0;
 	    }
-	    return result;
+	    
+	    return (input - es.lastDiffInput) / CirSim.theSim.timeStep;
 	}
+	case E_LAST:
+	    // last(x) - return the PREVIOUS timestep's converged value
+	    // This is used for sfcr-style V[-1] notation
+	    // IMPORTANT: last() must NOT fall back to current subiteration values,
+	    // otherwise Hs = last(Hs) + 1 would increment on every subiteration!
+	    if (left != null && left.type == E_NODE_REF && left.nodeName != null) {
+		String varName = left.nodeName;
+		// Get ONLY the converged value from previous timestep (no fallback!)
+		Double laggedValue = ComputedValues.getLaggedValue(varName);
+		if (laggedValue != null) {
+		    return laggedValue.doubleValue();
+		}
+		// No converged value yet (first timestep) - try X_init as fallback
+		// This matches sfcr behavior where initial values are used for V[-1] in period 1
+		Double initValue = ComputedValues.getComputedValue(varName + "_init");
+		if (initValue != null) {
+		    return initValue.doubleValue();
+		}
+		// Also try without underscore (e.g., Vinit for V)
+		initValue = ComputedValues.getComputedValue(varName + "init");
+		if (initValue != null) {
+		    return initValue.doubleValue();
+		}
+		// No initial value found - return 0
+	    }
+	    return 0.0;
 	case E_NODE_REF:
 	    // Direct node reference - get voltage from labeled node or computed value
 	    if (CirSim.theSim != null && nodeName != null) {
 		// First check for computed values (from TableElm)
-		Double computedValue = ComputedValues.getComputedValue(nodeName);
+		// Use converged values if flag is set (for stable display)
+		Double computedValue = useConvergedValues 
+		    ? ComputedValues.getConvergedValue(nodeName)
+		    : ComputedValues.getComputedValue(nodeName);
 		if (computedValue != null) {
 		    return computedValue.doubleValue();
 		}
@@ -336,6 +383,7 @@ class Expr {
     static final int E_LASTA = E_DADT+10; // should be at end and equal to E_DADT+10
     static final int E_NODE_REF = E_LASTA+10; // Direct node reference by name
     static final int E_DIFF = E_NODE_REF+1; // Differentiation function diff(x)
+    static final int E_LAST = E_DIFF+1; // last(x) - returns previous timestep's converged value
 };
 
 class ExprParser {
@@ -607,6 +655,15 @@ class ExprParser {
 			return new Expr(Expr.E_DADT + (c-'a'));
 			}
 		}
+		// Also support dadt without underscore (dadt, dbdt, etc.) - case insensitive
+		// Format: d followed by letter a-i, followed by dt (length 4)
+		if (token.toLowerCase().startsWith("d") && token.toLowerCase().endsWith("dt") && token.length() == 4) {
+			char c = Character.toLowerCase(token.charAt(1));
+			if (c >= 'a' && c <= 'i') {
+			getToken();
+			return new Expr(Expr.E_DADT + (c-'a'));
+			}
+		}
 		if (token.equalsIgnoreCase("lastoutput")) {
 			getToken();
 			return new Expr(Expr.E_LASTOUTPUT);
@@ -661,6 +718,8 @@ class ExprParser {
 			return parseFunc(Expr.E_INTEGRATE);
 		if (skipIgnoreCase("diff"))
 			return parseFunc(Expr.E_DIFF);
+		if (skipIgnoreCase("last"))
+			return parseFunc(Expr.E_LAST);
 		if (skipIgnoreCase("min"))
 			return parseFuncMulti(Expr.E_MIN, 2, 1000);
 		if (skipIgnoreCase("max"))

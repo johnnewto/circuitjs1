@@ -253,7 +253,8 @@ public class EquationTableRenderer {
         
         // Build display equation with slider value substituted
         String displayEquation = buildDisplayEquation(row);
-        String rowText = table.getOutputName(row) + " = " + displayEquation;
+        String outputName = Locale.convertGreekSymbols(table.getOutputName(row));
+        String rowText = outputName + " = " + displayEquation;
         
         // Draw scroll icon on adjustable rows (numeric equations) to indicate mouse wheel adjustment
         int textX = tableX + cellPadding;

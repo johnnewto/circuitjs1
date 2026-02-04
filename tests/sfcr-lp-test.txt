@@ -1,0 +1,259 @@
+# Model LP - Godley & Lavoie Chapter 5
+# Based on sfcr R package implementation
+# https://joaomacalos.github.io/sfcr/articles/articles/gl3-lp.html
+
+#===============================================================================
+# INITIALIZATION
+#===============================================================================
+
+@init
+  timestep: 0.1
+  voltageUnit: $
+  timeUnit: yr
+@end
+
+#===============================================================================
+# PARAMETERS (Exogenous Variables)
+#===============================================================================
+
+@parameters Params
+  G = 20                    # Government expenditure
+  rb = 0.03                 # Interest rate on bills
+  pbl = 20                  # Price of bonds (perpetuities)
+  \theta = 0.1938           # Tax rate
+  \alpha1 = 0.8             # Propensity to consume out of expected income
+  \alpha2 = 0.2             # Propensity to consume out of wealth
+  \lambda20 = 0.44196       # Portfolio parameter (bills constant)
+  \lambda22 = 1.1           # Portfolio parameter (bills/bill rate)
+  \lambda23 = -1            # Portfolio parameter (bills/bond return)
+  \lambda24 = -0.03         # Portfolio parameter (bills/income)
+  \lambda30 = 0.3997        # Portfolio parameter (bonds constant)
+  \lambda32 = -1            # Portfolio parameter (bonds/bill rate)
+  \lambda33 = 1.1           # Portfolio parameter (bonds/bond return)
+  \lambda34 = -0.03         # Portfolio parameter (bonds/income)
+  \chi = 0.1                # Weight of expected capital gains
+@end
+
+#===============================================================================
+# INITIAL VALUES (Steady State Approximation)
+#===============================================================================
+
+@equations Init
+  V_init = 20             # Initial household wealth
+  Bh_init = 64.9            # Initial bills held by households
+  BLh_init = 0.75           # Initial bonds held (units)
+  Bs_init = 64.9            # Initial bills supplied
+  Hs_init = 6.7             # Initial money supply
+@end
+
+#===============================================================================
+# EQUATIONS - National Income (eq1-eq3)
+#===============================================================================
+
+@equations NationalIncome
+  # eq1: GDP identity
+  Y ~ C + G
+  
+  # eq2: Regular disposable income
+  YDr ~ Y - TX + rb * last(Bh) + last(BLh)
+  
+  # eq3: Taxes
+  TX ~ \theta * (Y + rb * last(Bh) + last(BLh))
+@end
+
+#===============================================================================
+# EQUATIONS - Household Wealth (eq4-eq7)
+#===============================================================================
+
+@equations HouseholdWealth
+  # eq4: Wealth accumulation (STOCK)
+  V ~ V_init + integrate(YDr - C + CG)
+  
+  # eq5: Capital gains on bonds
+  CG ~ diff(pbl) * last(BLh)
+  
+  # eq6: Consumption function
+  C ~ \alpha1 * YDEr + \alpha2 * last(V)
+  
+  # eq7: Expected wealth
+  VE ~ last(V) + (YDEr - C) + CG
+@end
+
+#===============================================================================
+# EQUATIONS - Portfolio Allocation (eq8-eq13)
+#===============================================================================
+
+@equations Portfolio
+  # eq8: Money held (residual)
+  Hh ~ V - Bh - pbl * BLh
+  
+  # eq9: Desired money
+  Hd ~ VE - Bd - pbl * BLd
+  
+  # eq10: Demand for bills
+  Bd ~ VE * \lambda20 + VE * (\lambda22 * rb + \lambda23 * ERrbl) + \lambda24 * YDEr
+  
+  # eq11: Demand for bonds (units)
+  BLd ~ VE * (\lambda30 + \lambda32 * rb + \lambda33 * ERrbl + \lambda34 * (YDEr / max(VE, 0.01))) / pbl
+  
+  # eq12: Bills held = bills demanded
+  Bh ~ Bd
+  
+  # eq13: Bonds held = bonds demanded
+  BLh ~ BLd
+@end
+
+#===============================================================================
+# EQUATIONS - Government (eq14, eq17)
+#===============================================================================
+
+@equations Government
+  # eq14: Government bills supply (STOCK)
+  # Bs ~ Bs[-1] + (G + rb[-1]*Bs[-1] + BLs[-1]) - (TX + rb[-1]*Bcb[-1]) - (d(BLs)*pbl)
+  govt_{spending} ~ G + rb * last(Bs) + last(BLs)
+  govt_{revenue} ~ TX + rb * last(Bcb)
+  bond_{financing} ~ diff(BLs) * pbl
+  Bs ~ Bs_init + integrate(govt_{spending} - govt_{revenue} - bond_{financing})
+  
+  # eq17: Bond supply = bonds held
+  BLs ~ BLh
+@end
+
+#===============================================================================
+# EQUATIONS - Central Bank (eq15-eq16)
+#===============================================================================
+
+@equations CentralBank
+  # eq15: Money supply (STOCK)
+  Hs ~ Hs_init + integrate(diff(Bcb))
+  
+  # eq16: CB bill holdings (residual)
+  Bcb ~ Bs - Bh
+@end
+
+#===============================================================================
+# EQUATIONS - Interest Rates & Expectations (eq18-eq22)
+#===============================================================================
+
+@equations Expectations
+  # eq18: Expected return on bonds
+  ERrbl ~ rbl + \chi * ((pebl - pbl) / max(pbl, 0.01))
+  
+  # eq19: Bond yield
+  rbl ~ 1 / pbl
+  
+  # eq20: Expected bond price (= actual, no speculation)
+  pebl ~ pbl
+  
+  # eq21: Expected capital gains
+  CGE ~ \chi * (pebl - pbl) * BLh
+  
+  # eq22: Expected income (adaptive)
+  YDEr ~ last(YDr)
+@end
+
+#===============================================================================
+# VERIFICATION
+#===============================================================================
+
+@equations Verify
+  # Accounting checks (should all be ~0)
+  check_Hh ~ Hh - Hs                  # Money market
+  check_wealth ~ V - (Hh + Bh + pbl * BLh)  # Wealth composition
+  savings ~ YDr - C + CG              # Household savings
+@end
+
+#===============================================================================
+# HINTS
+#===============================================================================
+
+@hints
+  Y: National income (GDP)
+  C: Consumption
+  G: Government expenditure
+  YDr: Regular disposable income
+  YDEr: Expected disposable income
+  TX: Taxes
+  V: Household wealth
+  VE: Expected household wealth
+  CG: Capital gains on bonds
+  CGE: Expected capital gains
+  Hh: Cash held by households
+  Hd: Desired cash
+  Hs: Cash supplied (money supply)
+  Bh: Bills held by households
+  Bd: Desired bills
+  Bs: Bills supplied by government
+  Bcb: Bills held by central bank
+  BLh: Bonds held by households
+  BLd: Desired bonds
+  BLs: Bonds supplied by government
+  pbl: Price of bonds
+  pebl: Expected price of bonds
+  rb: Interest rate on bills
+  rbl: Interest rate on bonds (yield)
+  ERrbl: Expected return on bonds
+@end
+
+#===============================================================================
+# SCOPES
+#===============================================================================
+
+@scope Y
+@scope C
+@scope V
+@scope Bh
+@scope BLh
+@scope Hh
+@scope check_Hh
+@scope savings
+
+#===============================================================================
+# RAW CIRCUIT ELEMENTS (Optional)
+# Use @circuit block to add standard CircuitJS elements
+#===============================================================================
+
+# Example: Add a scope element directly
+@circuit
+  431 480 64 592 160 0 50 true false
+@end
+
+#===============================================================================
+# EXPECTED VALUES - SFCR R Package Reference
+#===============================================================================
+# Source: "Chapter 5: Model LP"
+# File: /home/john/repos/sfcr/vignettes/articles/gl3-lp.Rmd
+#
+# Steady-state values (periods 31-50):
+#
+#  period     Y   YDr    TX     V    CG     C    VE    Hh    Hd    Bd   BLd
+#      31  115.  95.3  22.9  95.3     0  95.2  95.2  20.1  20.0  37.6  1.88
+#      32  115.  95.4  22.9  95.4     0  95.3  95.3  20.1  20.1  37.7  1.88
+#      33  115.  95.5  22.9  95.5     0  95.4  95.4  20.1  20.1  37.7  1.88
+#      34  115.  95.5  23.0  95.5     0  95.5  95.5  20.1  20.1  37.7  1.88
+#      35  116.  95.6  23.0  95.6     0  95.5  95.5  20.1  20.1  37.7  1.89
+#      36  116.  95.6  23.0  95.6     0  95.6  95.6  20.1  20.1  37.7  1.89
+#      37  116.  95.6  23.0  95.6     0  95.6  95.6  20.1  20.1  37.8  1.89
+#      38  116.  95.7  23.0  95.7     0  95.6  95.6  20.1  20.1  37.8  1.89
+#      39  116.  95.7  23.0  95.7     0  95.7  95.7  20.1  20.1  37.8  1.89
+#      40  116.  95.7  23.0  95.7     0  95.7  95.7  20.1  20.1  37.8  1.89
+#      41  116.  95.7  23.0  95.7     0  95.7  95.7  20.1  20.1  37.8  1.89
+#      42  116.  95.7  23.0  95.7     0  95.7  95.7  20.1  20.1  37.8  1.89
+#      43  116.  95.7  23.0  95.7     0  95.7  95.7  20.1  20.1  37.8  1.89
+#      44  116.  95.7  23.0  95.7     0  95.7  95.7  20.1  20.1  37.8  1.89
+#      45  116.  95.7  23.0  95.7     0  95.7  95.7  20.1  20.1  37.8  1.89
+#      46  116.  95.8  23.0  95.8     0  95.7  95.7  20.1  20.1  37.8  1.89
+#      47  116.  95.8  23.0  95.8     0  95.8  95.8  20.1  20.1  37.8  1.89
+#      48  116.  95.8  23.0  95.8     0  95.8  95.8  20.1  20.1  37.8  1.89
+#      49  116.  95.8  23.0  95.8     0  95.8  95.8  20.1  20.1  37.8  1.89
+#      50  116.  95.8  23.0  95.8     0  95.8  95.8  20.1  20.1  37.8  1.89
+#
+# Expected steady-state targets:
+#   Y  ≈ 116
+#   V  ≈ 95.8
+#   C  ≈ 95.8
+#   TX ≈ 23.0
+#   Hh ≈ 20.1
+#   Bd ≈ 37.8
+#   BLd ≈ 1.89
+#===============================================================================

@@ -1,0 +1,155 @@
+# Complex SFC Test - Circular References & Multiple Stocks
+# Tests: Simultaneous equations, multiple integrate(), last(), nested dependencies
+
+#===============================================================================
+# INITIALIZATION
+#===============================================================================
+
+@init
+  timestep: 1
+  voltageUnit: $
+  timeUnit: yr
+@end
+
+#===============================================================================
+# PARAMETERS
+#===============================================================================
+
+@parameters Params
+  G = 20                  # Government spending
+  r = 0.02                # Interest rate
+  \alpha_1 = 0.6          # Propensity to consume from income
+  \alpha_2 = 0.4          # Propensity to consume from wealth
+  \theta = 0.2            # Tax rate
+@end
+
+#===============================================================================
+# INITIAL VALUES
+#===============================================================================
+
+@equations Init
+  H_init = 50             # Initial household wealth
+  B_init = 30             # Initial government bonds held
+@end
+
+#===============================================================================
+# CIRCULAR REFERENCE TEST 1: Basic Y-C-YD loop
+# Y -> TX -> YD -> C -> Y (circular!)
+#===============================================================================
+
+@equations IncomeLoop
+  Y ~ C + G                           # Y depends on C
+  TX ~ \theta * Y                     # TX depends on Y
+  YD ~ Y - TX + r * last(B)           # YD depends on Y, plus interest on lagged bonds
+  C ~ \alpha_1 * YD + \alpha_2 * last(H)  # C depends on YD and lagged wealth
+@end
+
+#===============================================================================
+# CIRCULAR REFERENCE TEST 2: Portfolio allocation
+# In SFC models, bonds are typically supply-determined (households buy all govt debt)
+#===============================================================================
+
+@equations Portfolio
+  # Expected wealth = current wealth
+  V_E ~ H + B
+  
+  # Desired bond holdings (for reference, not binding)
+  B_d ~ 0.4 * V_E + 0.1 * (YD / max(V_E, 1))
+  
+  # Actual bonds held = bonds supplied by government (supply-determined)
+  # This is the SFC closure - households absorb all government debt
+  B ~ B_s
+  
+  # Money is residual (buffer stock)
+  H_d ~ V_E - B_d
+@end
+
+#===============================================================================
+# STOCKS: Only ONE integrate() - government debt drives everything
+# In SFC: household savings ≡ government deficit (accounting identity)
+#===============================================================================
+
+@equations Stocks
+  # Government deficit (= household savings by accounting identity)
+  DEF ~ G + r * last(B) - TX
+  
+  # Government debt accumulates deficits - this is THE stock
+  DEBT ~ integrate(DEF)
+  
+  # Bond supply = accumulated debt
+  B_s ~ B_init + DEBT
+  
+  # Bonds held = bonds supplied (market clearing)
+  B ~ B_s
+  
+  # Total wealth = initial wealth + accumulated savings (= accumulated deficits)
+  V ~ H_init + B_init + DEBT
+  
+  # Money is residual
+  H ~ V - B
+@end
+
+#===============================================================================
+# VERIFICATION EQUATIONS
+#===============================================================================
+
+@equations Verification
+  # These should be equal if model is consistent
+  savings ~ YD - C                    # Household saving flow
+  wealth_check ~ V - (H + B)          # Should be ~0
+  bond_market ~ B_s - B               # Should be ~0 in equilibrium
+  
+  # Lagged values for comparison
+  H_lag ~ last(H)
+  B_lag ~ last(B)
+  V_lag ~ last(V)
+@end
+
+#===============================================================================
+# HINTS
+#===============================================================================
+
+@hints
+  Y: National income
+  C: Consumption
+  G: Government spending
+  TX: Taxes
+  YD: Disposable income
+  H: Household money holdings
+  B: Household bond holdings
+  V: Total household wealth
+  V_E: Expected wealth
+  B_d: Desired bonds
+  H_d: Desired money
+  DEF: Government deficit
+  DEBT: Government debt stock
+  B_s: Bond supply
+  savings: Household savings flow
+  wealth_check: Should be 0 if V = H + B
+  bond_market: Should be 0 if B_s = B
+@end
+
+#===============================================================================
+# SCOPES
+#===============================================================================
+
+@scope Y
+@scope C
+@scope V
+@scope H
+@scope B
+@scope DEF
+@scope savings
+@scope wealth_check
+
+# Expected behavior:
+# 1. Y-C-YD loop should converge within subiterations
+# 2. H and B should sum to V at all times (wealth_check ≈ 0)
+# 3. V should grow over time as savings accumulate
+# 4. last(H), last(B), last(V) should show previous timestep values
+# 5. Bond market should clear (bond_market ≈ 0)
+#
+# Circular dependencies being tested:
+# - Y <- C <- YD <- Y (income loop)
+# - B <- B_d <- V_E <- H <- V <- B (portfolio loop)  
+# - TX <- Y <- C <- YD <- TX (tax loop)

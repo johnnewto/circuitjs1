@@ -8,15 +8,39 @@ package com.lushprojects.circuitjs1.client;
 
 /**
  * TableEquationManager - Handles equation compilation and evaluation for TableElm
- * Separates equation management from circuit simulation logic
+ * Separates equation management from circuit simulation logic.
+ * 
+ * Supports two evaluation modes:
+ * - Simulation mode (default): Uses current computed values (may vary during subiterations)
+ * - Display mode: Uses converged values (stable for display elements)
  */
 public class TableEquationManager {
     private final TableElm table;
     private final CirSim sim;
     
+    /** If true, use converged values for stable display */
+    private boolean useConvergedValues = false;
+    
     public TableEquationManager(TableElm table, CirSim sim) {
         this.table = table;
         this.sim = sim;
+    }
+    
+    /**
+     * Set whether to use converged values for evaluation.
+     * Display-only tables should set this to true for stable display.
+     * 
+     * @param useConverged true to use converged (stable) values
+     */
+    public void setUseConvergedValues(boolean useConverged) {
+        this.useConvergedValues = useConverged;
+    }
+    
+    /**
+     * Check if this manager is using converged values
+     */
+    public boolean isUsingConvergedValues() {
+        return useConvergedValues;
     }
     
     /**
@@ -107,17 +131,35 @@ public class TableEquationManager {
         }
 
         // Full expression evaluation
+        // Set global flag so Expr.eval() uses converged values if needed
+        boolean savedFlag = Expr.useConvergedValues;
+        Expr.useConvergedValues = useConvergedValues;
+        
         ExprState state = column.getExpressionState(row);
         updateExpressionState(state);
-        return e.eval(state);
+        double result = e.eval(state);
+        
+        // Restore flag
+        Expr.useConvergedValues = savedFlag;
+        
+        return result;
     }
     
     /**
      * Evaluate a direct node reference (optimized path)
+     * Uses converged values if useConvergedValues is true (for display stability)
      */
     private double evaluateNodeReference(String nodeName) {
         // Check computed values first
-        Double computedValue = ComputedValues.getComputedValue(nodeName);
+        Double computedValue;
+        if (useConvergedValues) {
+            // Use converged values for stable display
+            computedValue = ComputedValues.getConvergedValue(nodeName);
+        } else {
+            // Use current values for simulation
+            computedValue = ComputedValues.getComputedValue(nodeName);
+        }
+        
         if (computedValue != null) {
             return computedValue;
         }

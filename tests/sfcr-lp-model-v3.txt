@@ -1,0 +1,226 @@
+# LP SFC Model - Godley & Lavoie Chapter 5 (CircuitJS V3)
+# Minimal changes: Initial values, integrate() for stocks, division protection
+# Reference: https://joaomacalos.github.io/sfcr/articles/articles/gl3-lp.html
+
+#===============================================================================
+# INITIALIZATION SETTINGS
+#===============================================================================
+
+@init
+  timestep: 0..05           # Simulation timestep (years)
+  voltageUnit: $          # Use $ for money values
+  timeUnit: yr            # Use years for time
+  showToolbar: true       # Show component toolbar
+  showValues: true        # Show values on components
+@end
+
+#===============================================================================
+# PARAMETERS (Exogenous Variables)
+#===============================================================================
+
+@parameters Parameters
+  G = 20                              # Government expenditure
+  r_b = 0.03                          # Interest rate on bills
+  p_bl = 20                           # Price of bonds (perpetuities)
+  \theta = 0.1938                     # Tax rate
+  \alpha_1 = 0.8                      # Propensity to consume out of expected income
+  \alpha_2 = 0.2                      # Propensity to consume out of wealth
+  \lambda_20 = 0.44196                # Portfolio parameter (bills constant)
+  \lambda_22 = 1.1                    # Portfolio parameter (bills/bill rate)
+  \lambda_23 = -1                     # Portfolio parameter (bills/bond return)
+  \lambda_24 = -0.03                  # Portfolio parameter (bills/income)
+  \lambda_30 = 0.3997                 # Portfolio parameter (bonds constant)
+  \lambda_32 = -1                     # Portfolio parameter (bonds/bill rate)
+  \lambda_33 = 1.1                    # Portfolio parameter (bonds/bond return)
+  \lambda_34 = -0.03                  # Portfolio parameter (bonds/income)
+  \chi = 0.1                          # Weight of expected capital gains in bond return
+@end
+
+
+#===============================================================================
+# INITIAL VALUES (Approximate Steady State)
+#===============================================================================
+
+@equations Initial_Values
+  V_init = 86.5                       # Initial household wealth
+  B_h_init = 64.9                     # Initial bills held by households
+  BL_h_init = 0.75                    # Initial bonds held (units)
+  B_s_init = 64.9                     # Initial bills supplied
+  H_s_init = 6.7                      # Initial money supply
+  B_cb_init = 0                       # Initial CB bill holdings
+  YD_r_init = 80                      # Initial disposable income (for expectations)
+@end
+
+
+#===============================================================================
+# EQUATIONS - National Income
+#===============================================================================
+
+@equations national_income
+  Y ~ C + G                                           # eq1: GDP identity
+  YD_r ~ Y - TX + r_b * B_h + BL_h                   # eq2: Disposable income (regular)
+  TX ~ \theta * (Y + r_b * B_h + BL_h)               # eq3: Taxes
+@end
+
+
+#===============================================================================
+# EQUATIONS - Household Wealth (STOCKS - use integrate)
+#===============================================================================
+
+@equations household_wealth
+  # eq4: Wealth accumulation - stock integrates savings + capital gains
+  V ~ V_init + integrate(YD_r - C + CG)
+  
+  # eq5: Capital gains on bonds (p_bl is constant, so CG = 0)
+  CG ~ 0
+  
+  # eq7: Expected wealth = current wealth (simplified)
+  V_E ~ V
+@end
+
+
+#===============================================================================
+# EQUATIONS - Consumption
+# eq6 = C ~ alpha1 * YDEr + alpha2 * V[-1],
+#===============================================================================
+
+@equations consumption
+  C ~ \alpha_1 * YD_Er + \alpha_2 * V                # eq6: Consumption function
+@end
+
+
+#===============================================================================
+# EQUATIONS - Portfolio Allocation
+#===============================================================================
+
+@equations portfolio
+  H_h ~ V - B_h - p_bl * BL_h                        # eq8: Money demand (residual)
+  H_d ~ V_E - B_d - p_bl * BL_d                      # eq9: Desired money demand
+  
+  # eq10: Demand for bills (portfolio choice)
+  B_d ~ (V_E * \lambda_20) + V_E * (\lambda_22 * r_b + \lambda_23 * ERr_bl) + \lambda_24 * YD_Er
+  
+  # eq11: Demand for bonds (portfolio choice) - PROTECTED against V_E = 0
+  BL_d ~ V_E * (\lambda_30 + \lambda_32 * r_b + \lambda_33 * ERr_bl + \lambda_34 * (YD_Er / max(V_E, 0.01))) / p_bl
+  
+  B_h ~ B_d                                          # eq12: Bills held = bills demanded
+  BL_h ~ BL_d                                        # eq13: Bonds held = bonds demanded
+@end
+
+
+#===============================================================================
+# EQUATIONS - Government Sector (STOCK - use integrate)
+#===============================================================================
+
+@equations government
+  # Government deficit flow (what gets integrated)
+  govt_deficit ~ (G + r_b * B_s + BL_s) - (TX + r_b * B_cb) - (\DeltaBL_s * p_bl)
+  
+  # eq14: Government bills supply - stock accumulates deficit
+  B_s ~ B_s_init + integrate(govt_deficit)
+  
+  BL_s ~ BL_h                                        # eq17: Bonds supply = bonds held
+@end
+
+
+#===============================================================================
+# EQUATIONS - Central Bank (STOCK - use integrate)
+#===============================================================================
+
+@equations central_bank
+  # eq15: Money supply - stock accumulates CB bill purchases
+  H_s ~ H_s_init + integrate(\DeltaB_cb)
+  
+  B_cb ~ B_s - B_h                                   # eq16: CB holdings of bills (residual)
+@end
+
+
+#===============================================================================
+# EQUATIONS - Interest Rates and Expectations
+#===============================================================================
+
+@equations rates_expectations
+  ERr_bl ~ r_bl + \chi * ((pe_bl - p_bl) / max(p_bl, 0.01))    # eq18: Expected return on bonds (protected)
+  r_bl ~ 1 / p_bl                                    # eq19: Bond yield
+  pe_bl ~ p_bl                                       # eq20: Expected bond price (baseline)
+  CGE ~ \chi * (pe_bl - p_bl) * BL_h                # eq21: Expected capital gains
+  YD_Er ~ YD_r                                       # eq22: Expected income = actual (adaptive)
+@end
+
+
+#===============================================================================
+# EQUATIONS - Changes (Deltas)
+#===============================================================================
+
+@equations deltas
+  \DeltaH_h ~ diff(H_h)                             # Change in household money
+  \DeltaH_s ~ diff(H_s)                             # Change in money supply
+  \DeltaB_h ~ diff(B_h)                             # Change in household bills
+  \DeltaB_s ~ diff(B_s)                             # Change in government bills
+  \DeltaB_cb ~ diff(B_cb)                           # Change in CB bills
+  \DeltaBL_h ~ diff(BL_h)                           # Change in household bonds
+  \DeltaBL_s ~ diff(BL_s)                           # Change in government bonds
+@end
+
+
+#===============================================================================
+# HINTS (Variable Documentation)
+#===============================================================================
+
+@hints
+  Y: National income (GDP)
+  C: Consumption
+  G: Government expenditure
+  YD_r: Regular household disposable income
+  YD_Er: Expected household disposable income
+  TX: Taxes
+  V: Household wealth
+  V_E: Expected household wealth
+  CG: Capital gains on bonds
+  CGE: Expected capital gains on bonds
+  H_h: Cash money held by households
+  H_d: Desired cash money
+  H_s: Cash money supplied by central bank
+  B_h: Bills held by households
+  B_d: Desired bills
+  B_s: Bills supplied by government
+  B_cb: Bills held by central bank
+  BL_h: Bonds held by households
+  BL_d: Desired bonds
+  BL_s: Bonds supplied by government
+  p_bl: Price of bonds (perpetuities)
+  pe_bl: Expected price of bonds
+  r_b: Interest rate on bills
+  r_bl: Interest rate on bonds (yield)
+  ERr_bl: Expected rate of return on bonds
+  govt_deficit: Government budget deficit flow
+  \DeltaH_h: Change in household money holdings
+  \DeltaH_s: Change in money supply
+  \DeltaB_h: Change in household bill holdings
+  \DeltaB_s: Change in government bills
+  \DeltaB_cb: Change in central bank bill holdings
+  \DeltaBL_h: Change in household bond holdings
+  \DeltaBL_s: Change in government bonds
+@end
+
+
+#===============================================================================
+# HIDDEN EQUATION (Model Closure)
+#===============================================================================
+
+# Hidden equation for model consistency check:
+# H_s = H_h (Money supplied = Money demanded)
+
+@hidden H_s = H_h
+
+
+#===============================================================================
+# SCOPES (Variables to display)
+#===============================================================================
+
+@scope Y
+@scope C
+@scope V
+@scope B_h
+@scope BL_h
+@scope H_h

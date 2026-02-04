@@ -53,6 +53,11 @@ public class SFCTableElm extends TableElm {
         showInitialValues = false;  // SFC tables don't use initial values
         collapsedMode = false;
         
+        // SFC tables are display-only - use converged values for stable display
+        if (equationManager != null) {
+            equationManager.setUseConvergedValues(true);
+        }
+        
         // Initialize with pre-populated structure
         initializeSFCTable();
         
@@ -70,6 +75,11 @@ public class SFCTableElm extends TableElm {
         super(xa, ya, xb, yb, f, st);
         
         showALE = false;  // We use Σ instead of A-L-E
+        
+        // SFC tables are display-only - use converged values for stable display
+        if (equationManager != null) {
+            equationManager.setUseConvergedValues(true);
+        }
         
         // Parse SFC-specific properties if available
         if (st.hasMoreTokens()) {
@@ -219,17 +229,6 @@ public class SFCTableElm extends TableElm {
             
             column.setLastSum(columnSum);
         }
-        
-        // Debug: log values for first row
-        // StringBuilder sb = new StringBuilder();
-        // sb.append("[SFCTableElm.doStep] ").append(tableTitle).append(" row0: ");
-        // for (int col = 0; col < columns.size(); col++) {
-        //     TableColumn column = columns.get(col);
-        //     if (column.getType() != ColumnType.COMPUTED) {
-        //         sb.append(column.getStockName()).append("=").append(column.getCachedCellValue(0)).append(" ");
-        //     }
-        // }
-        // CirSim.console(sb.toString());
     }
     
     /**

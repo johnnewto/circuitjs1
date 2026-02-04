@@ -44,6 +44,22 @@ import com.google.gwt.event.dom.client.MouseWheelHandler;
  * @see TableElm Similar visual table element for display
  * @see ComputedValues Registry for accessing equation outputs
  */
+/**
+ * EquationTableElm - Pure Computational Equation Table
+ * 
+ * A table of named equations that compute values each timestep.
+ * This is a PURE COMPUTATIONAL element:
+ * - No electrical posts or circuit connections
+ * - Values are written to ComputedValues registry
+ * - Other elements can read values via ComputedValues
+ * - Use ComputedValueSourceElm to bridge values into electrical domain
+ * 
+ * Features:
+ * - Multiple rows of named equations
+ * - Initial value equations for t=0
+ * - Slider variables for interactive adjustment
+ * - integrate() and diff() functions for dynamic systems
+ */
 class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     //=============================================================================
@@ -54,7 +70,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     private static final int FLAG_SMALL = 1;
     
     /** Maximum number of equation rows supported */
-    private static final int MAX_ROWS = 8;
+    private static final int MAX_ROWS = 32;
     
     //=============================================================================
     // DEBUG CONFIGURATION
@@ -388,8 +404,8 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** @return Dump type identifier for serialization (266) */
     int getDumpType() { return 266; }
     
-    /** @return Number of electrical posts (one per row) */
-    int getPostCount() { return rowCount; }
+    /** @return Number of electrical posts - 0 for pure computational */
+    int getPostCount() { return 0; }
     
     /**
      * Get the position of a post.
@@ -403,10 +419,10 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         return new Point(x + tableWidth, postY);
     }
     
-    /** @return Number of voltage sources needed (one per row) */
-    int getVoltageSourceCount() { return rowCount; }
+    /** @return Number of voltage sources needed - 0 for pure computational */
+    int getVoltageSourceCount() { return 0; }
     
-    /** @return true - this element requires iterative nonlinear solving */
+    /** @return true - equations may depend on other values that change */
     boolean nonLinear() { return true; }
     
     /**
@@ -423,10 +439,9 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /**
      * Get current flowing into a node.
+     * Pure computational - no posts, no current.
      */
     double getCurrentIntoNode(int n) {
-        if (n >= 0 && n < rowCount)
-            return -current;
         return 0;
     }
     
@@ -561,80 +576,23 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /**
      * Stamp the element into the circuit matrix.
-     * Called once during circuit analysis setup.
-     * 
-     * For each row:
-     * - Mark the voltage source row as nonlinear (values change each iteration)
-     * - Stamp a voltage source from ground to the output node
-     * - Add conditioning resistor to help matrix stability
-     * - Connect to any matching labeled nodes
+     * Pure computational - does nothing.
      */
     void stamp() {
-        if (DEBUG) {
-            CirSim.console("[EquationTableElm." + tableName + "] stamp() called, rowCount=" + rowCount + ", voltSource=" + voltSource);
-        }
-        
-        for (int row = 0; row < rowCount; row++) {
-            int outputNode = nodes[row];
-            int vn = voltSource + row + sim.nodeList.size();
-            
-            if (DEBUG) {
-                CirSim.console("[EquationTableElm." + tableName + "] Row " + row + " (" + outputNames[row] + "): vn=" + vn + ", node=" + outputNode + ", voltSource=" + (voltSource + row));
-            }
-            
-            // Skip if output node is ground (would cause matrix issues)
-            if (outputNode == 0) {
-                CirSim.console("EquationTableElm [" + tableName + "] Row " + row + " (" + outputNames[row] + "): WARNING - Skipping stamp, output node is ground!");
-                continue;
-            }
-            
-            // Stamp the voltage source for this row
-            sim.stampNonLinear(vn);
-            sim.stampVoltageSource(0, outputNode, voltSource + row);
-            
-            // Add high-value resistor for matrix conditioning (helps convergence)
-            sim.stampResistor(outputNode, 0, 1e8);
-        }
-        
-        // Connect outputs to any labeled nodes with matching names
-        connectToLabeledNodes();
+        // Pure computational element - no MNA matrix participation
     }
     
-    /**
-     * Connect each output row to its corresponding labeled node.
-     * This allows the equation output to appear in labeled nodes with the same name,
-     * making the value accessible to other circuit elements.
-     */
-    private void connectToLabeledNodes() {
-        for (int row = 0; row < rowCount; row++) {
-            String outputName = outputNames[row];
-            if (outputName == null || outputName.trim().isEmpty()) continue;
-            
-            // Look up labeled node by name
-            Integer labeledNodeNum = LabeledNodeElm.getByName(outputName.trim());
-            int outputNode = nodes[row];
-            
-            if (labeledNodeNum != null && labeledNodeNum > 0 && outputNode > 0) {
-                // Connect via very low resistance (essentially a wire)
-                sim.stampResistor(outputNode, labeledNodeNum, 1e-6);
-                
-                if (DEBUG) {
-                    CirSim.console("[EquationTableElm." + tableName + "] Connected row " + row + " (" + outputName + ") node " + outputNode + " to labeled node " + labeledNodeNum);
-                }
-            }
-        }
-    }
+    // connectToLabeledNodes removed - pure computational uses ComputedValues instead
     
     /**
      * Perform one iteration step of the simulation.
-     * Called multiple times per timestep until convergence is achieved.
+     * Pure computational: evaluates equations and writes to ComputedValues.
      * 
-     * For each row, this method:
-     * 1. Handles initial value evaluation at t=0 (if initial equation exists)
-     * 2. Evaluates the main equation using current circuit state
-     * 3. Checks for convergence against previous iteration
-     * 4. Stamps the computed value into the matrix right-hand side
-     * 5. Registers the output as a computed value for other elements
+     * For each row:
+     * 1. Handles initial value evaluation at t=0
+     * 2. Evaluates the main equation
+     * 3. Checks for convergence
+     * 4. Registers output in ComputedValues
      */
     void doStep() {
         if (DEBUG && sim.subIterations == 0) {
@@ -642,13 +600,11 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
         
         for (int row = 0; row < rowCount; row++) {
-            int vn = voltSource + row + sim.nodeList.size();
-            
             // Handle initial value at t=0
             if (sim.t == 0 && compiledInitialExprs[row] != null) {
-                // On first sub-iteration, stamp 0 as placeholder to let circuit solve first
+                // On first sub-iteration, use 0 as placeholder
                 if (sim.subIterations == 0 && !initialValueApplied[row]) {
-                    sim.stampRightSide(vn, 0);
+                    outputValues[row] = 0;
                     continue;
                 }
                 
@@ -656,14 +612,11 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 if (!initialValueApplied[row]) {
                     evaluateInitialValue(row);
                 }
-                
-                // Stamp the initial value (skip main equation at t=0)
-                sim.stampRightSide(vn, outputValues[row]);
                 continue;
             }
             
             // Normal timestep: evaluate main equation
-            evaluateMainEquation(row, vn);
+            evaluateMainEquationPure(row);
         }
     }
     
@@ -706,10 +659,10 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /**
      * Evaluate the main equation for a row during normal simulation.
+     * Pure computational - writes to ComputedValues instead of MNA.
      * @param row Row index
-     * @param vn Voltage source node in matrix
      */
-    private void evaluateMainEquation(int row, int vn) {
+    private void evaluateMainEquationPure(int row) {
         if (compiledExprs[row] == null) {
             if (DEBUG) {
                 CirSim.console("[EquationTableElm." + tableName + "] Row " + row + ": NULL compiled expression!");
@@ -723,7 +676,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         state.values[0] = sliderValues[row];
         state.t = sim.t;
         
-        // Register slider as computed value for E_NODE_REF lookups
+        // Register slider as computed value for lookups
         String sliderVar = sliderVarNames[row];
         if (sliderVar != null && !sliderVar.isEmpty()) {
             ComputedValues.setComputedValue(sliderVar, sliderValues[row]);
@@ -742,17 +695,16 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         lastOutputValues[row] = equationValue;
         outputValues[row] = equationValue;
         
-        // Register output immediately for intra-table dependencies
-        // This allows e.g. Y2 = Y1 + 1 to work within the same table
+        // Register output in ComputedValues for other elements to use
         String outputName = outputNames[row];
         if (outputName != null && !outputName.trim().isEmpty()) {
             ComputedValues.setComputedValue(outputName.trim(), equationValue);
         }
-        
-        // Stamp the computed value into the matrix
-        // Note: No voltage convergence check needed - the voltage source forces the node
-        // to match the stamped value, so equation convergence is sufficient
-        sim.stampRightSide(vn, outputValues[row]);
+    }
+    
+    // Legacy method kept for compatibility - not used in pure computational mode
+    private void evaluateMainEquation(int row, int vn) {
+        evaluateMainEquationPure(row);
     }
     
     /**

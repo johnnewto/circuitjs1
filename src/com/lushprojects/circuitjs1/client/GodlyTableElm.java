@@ -21,24 +21,36 @@ package com.lushprojects.circuitjs1.client;
 
 
 /**
- * GodlyTableElm - Table with Integration Capabilities
- * Extends TableElm to add integration of column sums over time
- * Uses equation: lastoutput + timestep * integrationGain * columnSum
+ * GodlyTableElm - Pure Computational Table with Integration Capabilities
  * 
- * Current Calculation:
- * - Each output pin has a current proportional to its column sum (flow)
- * - Current = columnSum * currentScale
- * - Default: 1V column sum produces 1mA current
- * - Positive flow (inflow) produces positive current into the node
- * - Negative flow (outflow) produces negative current (current out of node)
- * - This represents the rate of change, making physical sense in stock-flow modeling
+ * Extends TableElm but operates as a PURE COMPUTATIONAL element:
+ * - No circuit posts or voltage sources
+ * - Does not participate in MNA matrix solving
+ * - Computes values and writes them to ComputedValues registry
+ * - Other elements can read these values via ComputedValues or use
+ *   ComputedValueSourceElm to bridge values into the electrical domain
+ * 
+ * Integration:
+ * - Uses equation: lastoutput + timestep * columnSum
+ * - Accumulated values are registered in ComputedValues for each column
+ * 
+ * Benefits of pure computational approach:
+ * - Order-independent evaluation (no voltage source iteration needed)
+ * - Lower computational cost (no matrix entries)
+ * - Cleaner separation between accounting logic and electrical simulation
+ * 
+ * To connect a computed value to electrical circuit, use ComputedValueSourceElm.
  */
 public class GodlyTableElm extends TableElm {
     private Expr integrationExpr;                // Compiled integration expression
     private ExprState[] integrationStates;       // Integration state for each column
     private double[] integratedValues;           // Integration value for each column
     private double[] lastColumnSums;             // Last column sums for convergence check
-    private double currentScale = 0.001;         // Scale factor for current calculation (default 1mA per volt)
+    private double[] lastIntegratedValues;       // For convergence checking
+    private double currentScale = 0.001;         // Scale factor (kept for backward compat in dump)
+    
+    // Pure computational mode: no electrical posts
+    private static final boolean PURE_COMPUTATIONAL = true;
     
     // Constructor for new table
     public GodlyTableElm(int xx, int yy) {
@@ -47,7 +59,63 @@ public class GodlyTableElm extends TableElm {
         initIntegration();
     }
     
-    // Get convergence limit (same as VCVSElm/VCCSElm)
+    //=========================================================================
+    // PURE COMPUTATIONAL: Override circuit element methods
+    //=========================================================================
+    
+    /**
+     * Pure computational element has no posts.
+     * Use ComputedValueSourceElm to bridge values to electrical domain.
+     */
+    @Override
+    int getPostCount() {
+        return 0;  // No electrical posts
+    }
+    
+    /**
+     * Pure computational element has no voltage sources.
+     */
+    @Override
+    int getVoltageSourceCount() {
+        return 0;  // No voltage sources
+    }
+    
+    /**
+     * Pure computational element doesn't stamp to MNA matrix.
+     */
+    @Override
+    void stamp() {
+        // No MNA matrix participation - pure computational
+    }
+    
+    /**
+     * Override setupPins to create no pins.
+     */
+    @Override
+    void setupPins() {
+        // Calculate visual size based on table dimensions (needed for drawing)
+        int cellWidthPixels = getCellWidthPixels();
+        int rowDescColWidth = cellWidthPixels * 3 / 2;
+        
+        // Standard rows: header + data rows + initial values + computed values
+        int totalRows = rows + 3; // +3 for header, initial, computed
+        if (showInitialValues)
+            totalRows++;
+        
+        int tableWidthPixels = (rowDescColWidth + getCols() * cellWidthPixels) + 2 * cellSpacing;
+        int tableHeightPixels = (totalRows + 2) * cellHeight + (totalRows + 3) * cellSpacing + 20;
+        
+        sizeX = (tableWidthPixels + cspc2 - 1) / cspc2;
+        sizeY = (tableHeightPixels + cspc2 - 1) / cspc2;
+        
+        // No pins for pure computational element
+        pins = new Pin[0];
+        
+        // Still need to initialize integration arrays
+        ensureArraysSized();
+    }
+    
+    // Get convergence limit for pure computational convergence check
     // More lenient over time to help convergence
     double getConvergeLimit() {
         // Base relative tolerance (0.1% to 1% depending on iteration count)
@@ -200,13 +268,7 @@ public class GodlyTableElm extends TableElm {
         }
     }
     
-    @Override
-    void setupPins() {
-        super.setupPins();
-        // Reinitialize integration arrays when pins/columns change
-        ensureArraysSized();
-        // Note: Master column status is checked dynamically via isMasterForColumn()
-    }
+    // setupPins() is now overridden above for pure computational mode
     
     // Ensure all arrays are properly sized for current column count
     private void ensureArraysSized() {
@@ -240,22 +302,23 @@ public class GodlyTableElm extends TableElm {
             }
         }
         
+        // Resize lastIntegratedValues array for convergence checking
+        if (lastIntegratedValues == null || lastIntegratedValues.length != cols) {
+            double[] oldValues = lastIntegratedValues;
+            lastIntegratedValues = new double[cols];
+            if (oldValues != null) {
+                System.arraycopy(oldValues, 0, lastIntegratedValues, 0, Math.min(oldValues.length, cols));
+            }
+        }
+        
         // Note: Master column status is determined per-column via isMasterForColumn()
     }
 
     @Override
     public void doStep() {
-        // Track if this element caused convergence failure
-        boolean wasConverged = sim.converged;
+        // Pure computational: compute values and write to ComputedValues
+        // No MNA matrix interaction
         
-        // Update input pin values from circuit
-        int postCount = getPostCount();
-        for (int i = 0; i < postCount; i++) {
-            Pin p = pins[i];
-            if (!p.output)
-                p.value = volts[i] > getThreshold();
-        }
-
         // Initialize arrays if needed
         if (lastColumnSums == null) {
             lastColumnSums = new double[getCols()];
@@ -263,19 +326,19 @@ public class GodlyTableElm extends TableElm {
         if (integratedValues == null) {
             integratedValues = new double[getCols()];
         }
+        if (lastIntegratedValues == null) {
+            lastIntegratedValues = new double[getCols()];
+        }
 
-        // Like VCVSElm: compute outputs and stamp during each iteration
+        // Pure computational: compute outputs for all master columns
         // Performance optimizations:
         // 1. Skip A-L-E column by limiting loop (it's always the last column)
         // 2. Check master status per-column using isMasterForColumn()
         // 3. Avoid boxing by using primitives throughout
         int colLimit = (getCols() >= 4) ? (getCols() - 1) : getCols(); // Exclude A-L-E column if it exists
         
-        // Get convergence limit for input checking (like VCVSElm)
+        // Get convergence limit for equation checking
         double convergeLimit = getConvergeLimit();
-        
-        // Debug logging only on first iteration of each timestep
-        boolean shouldLog = (sim.subIterations == 0 && sim.t > 0 && sim.t < 0.01);
         
         for (int col = 0; col < colLimit; col++) {
             // Check if this column is mastered by this table (may vary per column)
@@ -283,13 +346,10 @@ public class GodlyTableElm extends TableElm {
             
             // Only compute if we are the master for this specific column
             if (!isMasterForThisName) {
-                // if (shouldLog) {
-                //     CirSim.console("[GODLY_STAMP] GodlyTable '" + tableTitle + "' col " + col + " '" + columns.get(col).getStockName() + "': SKIPPED (not master)");
-                // }
                 continue;
             }
             
-            // Compute column sum (like parent does) and cache individual cell values
+            // Compute column sum and cache individual cell values
             // Also track max cell magnitude for convergence threshold calculation
             // This handles the case where large values cancel to near-zero
             double columnSum = 0.0;
@@ -302,68 +362,40 @@ public class GodlyTableElm extends TableElm {
                 maxCellMagnitude = Math.max(maxCellMagnitude, Math.abs(cellValue));
             }
             
-            // Like VCVSElm: check input convergence using dynamic threshold
-            // Check if column sum (our "input") has converged
-            if (Math.abs(columnSum - lastColumnSums[col]) > convergeLimit) {
-                sim.converged = false;
-
-                // Debug: log convergence failure details
-                if (sim.subIterations > 20) {
-                    CirSim.console("GodlyTable[" + columns.get(col).getStockName() + "] col " + col + 
-                                 " sum convergence failed: diff=" + Math.abs(columnSum - lastColumnSums[col]) + 
-                                 " limit=" + convergeLimit +
-                                 " (new=" + columnSum + ", old=" + lastColumnSums[col] + 
-                                 ") at t=" + sim.t + " subiter=" + sim.subIterations);
-                }
-            }
+            // Check equation convergence (integrated value stability)
             lastColumnSums[col] = columnSum;
-            // if (sim.subIterations <= 100)
-            //     sim.converged = false;
 
-            // Perform integration on the column sum (like VCVSElm evaluates expression)
+            // Perform integration on the column sum
             double integratedValue = performIntegration(col, columnSum);
             integratedValues[col] = integratedValue;
             
-            // Like VCVSElm: stamp matrix for nonlinear iteration
-            // Combined check: only stamp if both master for this column AND output pin exists
-            if (pins[col].output) {
-                int vn = pins[col].voltSource + sim.nodeList.size();
-                // Check output voltage convergence
-                double outputVoltage = volts[col];
-                double voltageDiff = Math.abs(outputVoltage - integratedValue);
-                // Use threshold based on the larger of:
-                // 1. Relative threshold (0.1%) of integrated value
-                // 2. Relative threshold (0.1%) of max cell magnitude (handles large cancelling values)
-                // 3. Minimum absolute threshold (1e-6) for numerical stability
-                // This prevents false convergence failures when large values sum to near-zero
-                double threshold = Math.max(
-                    Math.max(Math.abs(integratedValue), maxCellMagnitude) * 0.001,
-                    1e-6
-                );
-                if (voltageDiff > threshold && sim.subIterations < 100) {
-                    sim.converged = false;
-                    // Debug: log voltage convergence failure details
-                    if (sim.subIterations > 20) {
-                        CirSim.console("GodlyTable[" + columns.get(col).getStockName() + "] col " + col + 
-                                     " voltage convergence failed: diff=" + voltageDiff + 
-                                     " threshold=" + threshold + " (maxCell=" + maxCellMagnitude + ")" +
-                                     " (output=" + outputVoltage + ", integrated=" + integratedValue + 
-                                     ") at t=" + sim.t + " subiter=" + sim.subIterations);
-                    }
+            // Check convergence: has the integrated value stabilized?
+            // Use threshold based on the larger of:
+            // 1. Relative threshold (0.1%) of integrated value
+            // 2. Relative threshold (0.1%) of max cell magnitude (handles large cancelling values)
+            // 3. Minimum absolute threshold (1e-6) for numerical stability
+            double threshold = Math.max(
+                Math.max(Math.abs(integratedValue), maxCellMagnitude) * 0.001,
+                1e-6
+            );
+            double valueDiff = Math.abs(integratedValue - lastIntegratedValues[col]);
+            if (valueDiff > threshold && sim.subIterations < 100) {
+                sim.converged = false;
+                // Debug: log convergence failure details
+                if (sim.subIterations > 20) {
+                    CirSim.console("GodlyTable[" + columns.get(col).getStockName() + "] col " + col + 
+                                 " value convergence failed: diff=" + valueDiff + 
+                                 " threshold=" + threshold +
+                                 " (new=" + integratedValue + ", old=" + lastIntegratedValues[col] + 
+                                 ") at t=" + sim.t + " subiter=" + sim.subIterations);
                 }
-                // Stamp the right side with the integrated value
-                sim.stampRightSide(vn, integratedValue);
-                
-                // if (shouldLog) {
-                //     CirSim.console("[GODLY_STAMP] GodlyTable '" + tableTitle + "' col " + col + " '" + columns.get(col).getStockName() + "': vsrc=" + pins[col].voltSource + " vn=" + vn + " sum=" + columnSum + " integrated=" + integratedValue);
-                // }
             }
-        }
-        
-        // Debug: overall convergence status for this element
-        if (wasConverged && !sim.converged && sim.subIterations > 20) {
-            CirSim.console("GodlyTable (" + rows + "x" + getCols() + ") at (" + x + "," + y + 
-                         ") caused convergence failure at subiter=" + sim.subIterations);
+            lastIntegratedValues[col] = integratedValue;
+            
+            // Write computed value to registry immediately (for intra-step reads)
+            // This uses pending values that will be committed after all elements compute
+            String name = columns.get(col).getStockName();
+            ComputedValues.setComputedValue(name, integratedValue);
         }
     }
     
@@ -423,52 +455,36 @@ public class GodlyTableElm extends TableElm {
     
     @Override
     double getCurrentIntoNode(int n) {
-        // n is the pin/post number (0 to getCols()-1)
-        if (n < 0 || n >= getCols() || lastColumnSums == null || n >= lastColumnSums.length) {
-            return 0.0;
-        }
-        
-        // Calculate custom current based on column sum (flow value)
-        // Current is proportional to the flow (column sum before integration)
-        // This represents the rate of change, which makes physical sense:
-        // - Positive column sum (inflow) -> positive current into the node
-        // - Negative column sum (outflow) -> negative current (current out of node)
-        
-        double columnSum = lastColumnSums[n];
-        
-        // Scale the column sum to get current
-        // Default: 1V column sum = 1mA current, make negative to show increase in stock as current flow into node
-        return -columnSum * currentScale;
+        // Pure computational element has no posts, so no current flow
+        return 0.0;
     }
 
     @Override
     void getInfo(String arr[]) {
-        arr[0] = "Godly Table (" + rows + "x" + getCols() + ") with Integration";
-        arr[1] = "Equation: y[n+1] = y[n] + dt * columnSum";
-        arr[2] = "Current scale: " + getUnitText(currentScale, "A/V");
+        arr[0] = "Godly Table (" + rows + "x" + getCols() + ") Pure Computational";
+        arr[1] = "Integration: y[n+1] = y[n] + dt * columnSum";
+        arr[2] = "Values available via ComputedValues registry";
 
         int idx = 3;
 
-        // Show output pin values (integrated results) and currents
-        for (int col = 0; col < Math.min(getCols(), 2) && idx < arr.length - 1; col++) {
+        // Show integrated values (stocks)
+        for (int col = 0; col < Math.min(getCols(), 3) && idx < arr.length - 1; col++) {
             String header = columns.get(col).getStockName();
             
-            // Show integrated value
-            Double integratedValue = ComputedValues.getComputedValue(header);
+            // Show integrated value - use converged value for stable display
+            Double integratedValue = ComputedValues.getConvergedValue(header);
             if (integratedValue != null) {
-                arr[idx++] = header + "∫ = " + getVoltageText(integratedValue.doubleValue());
-            }
-            
-            // Show current (flow)
-            if (idx < arr.length - 1) {
-                double current = getCurrentIntoNode(col);
-                String currentDir = current >= 0 ? "→" : "←";
-                arr[idx++] = header + " I " + currentDir + " = " + getUnitText(Math.abs(current), "A");
+                arr[idx++] = header + " = " + getVoltageText(integratedValue.doubleValue());
             }
         }
 
-        if (getCols() > 2 && idx < arr.length - 1) {
-            arr[idx++] = "... (" + getCols() + " integrated outputs total)";
+        if (getCols() > 3 && idx < arr.length - 1) {
+            arr[idx++] = "... (" + getCols() + " computed outputs total)";
+        }
+        
+        // Hint about bridging to circuit
+        if (idx < arr.length - 1) {
+            arr[idx++] = "Use CV Source to connect to circuit";
         }
     }
     
@@ -492,8 +508,13 @@ public class GodlyTableElm extends TableElm {
     // }
     
     // Static helper methods
+    
+    /**
+     * Get the integrated value for a column header.
+     * Returns converged value for stable display.
+     */
     public static Double getIntegratedValue(String columnHeader) {
-        return ComputedValues.getComputedValue(columnHeader);
+        return ComputedValues.getConvergedValue(columnHeader);
     }
 
     public static void resetColumnIntegration(String columnHeader) {

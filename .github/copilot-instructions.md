@@ -64,9 +64,30 @@ websocket/                                # WebSocket server components
 
 1. Create new class extending `CircuitElm`
 2. Implement required methods: `draw()`, `stamp()`, `getInfo()`, etc.
-3. Add to element selection UI
-4. Update element factory/creation logic
-5. Add internationalization strings if needed
+3. Add to element selection UI:
+   - Add to `CirSim.createCe()` switch statement with dump type number
+   - Add to `CirSim.constructElement()` for class name lookup
+   - Add menu item in `CirSim.java` (search for `mainMenuBar.addItem`)
+   - Add to `src/com/lushprojects/circuitjs1/public/menulist.txt`
+4. Add internationalization strings if needed
+
+### Menu List File
+
+The file `src/com/lushprojects/circuitjs1/public/menulist.txt` defines the component menu structure:
+
+```
+### Format: ClassName|Display Name|Display Shortcut (optional)|Keyboard Shortcut (optional)
+### + creates submenu, - closes submenu
+### Lines starting with # are comments
+
+WireElm|Wire||w
+ResistorElm|Resistor||r
++Passive Components
+CapacitorElm|Capacitor||c
+-
+```
+
+When adding a new element, add a line in the appropriate section of this file.
 
 ### File Modification Guidelines
 
@@ -499,9 +520,8 @@ Test circuits for economic models are in `src/com/lushprojects/circuitjs1/public
 
 ### Documentation Resources
 
-- [dev_docs/STOCK_FLOW_DOCS_INDEX.md](../dev_docs/STOCK_FLOW_DOCS_INDEX.md) - Complete documentation index
-- [dev_docs/STOCK_MASTER_ELM_REFERENCE.md](../dev_docs/STOCK_MASTER_ELM_REFERENCE.md) - Stock master element
-- [dev_docs/FLOWS_MASTER_ELM_REFERENCE.md](../dev_docs/FLOWS_MASTER_ELM_REFERENCE.md) - Flows master element
+- [dev_docs/ARCHITECTURE.md](../dev_docs/ARCHITECTURE.md) - **Main architecture overview** (start here)
+- [dev_docs/STOCK_FLOW_DOCS_INDEX.md](../dev_docs/STOCK_FLOW_DOCS_INDEX.md) - Stock-flow documentation index
 - [docs-template/docs/money/](../docs-template/docs/money/) - Economic modeling tutorials
 
 ## Important Notes

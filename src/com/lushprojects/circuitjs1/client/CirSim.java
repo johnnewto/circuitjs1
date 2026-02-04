@@ -1410,6 +1410,7 @@ public CirSim() {
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Subtracter"), "SubtracterElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Table"), "TableElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Godly Table"), "GodlyTableElm"));
+	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add CV Source"), "ComputedValueSourceElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Master Stocks Table"), "StockMasterElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Flows Table"), "FlowsMasterElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Current Transactions Matrix"), "CurrentTransactionsMatrixElm"));
@@ -4005,12 +4006,16 @@ public CirSim() {
             for (i = 0; i != elmArr.length; i++)
                 elmArr[i].startIteration();
 
+            // Clear pending computed values at start of new timestep
+            // (values from previous timestep are already in current buffer)
+            ComputedValues.clearPendingValues();
+
             // Clear unresolved references tracking at start of each timestep
             Expr.clearUnresolvedReferences();
 
 			steps++;
 			
-            int subiterCount = (adjustTimeStep && timeStep/2 > minTimeStep) ? 100 : 5000;
+            int subiterCount = (adjustTimeStep && timeStep/2 > minTimeStep) ? 100 : 200;
             for (subiter = 0; subiter != subiterCount; subiter++) {
                 converged = true;
                 subIterations = subiter;
@@ -4048,6 +4053,12 @@ public CirSim() {
                         }
                     }
                 }
+                
+                // Commit pending computed values to current buffer after ALL doStep() calls complete.
+                // This enables order-independent evaluation - all elements see the same values
+                // regardless of their position in the element array.
+                ComputedValues.commitPendingToCurrentValues();
+                
                 if (stopMessage != null)
                     return;
                 boolean printit = debugprint;
@@ -4121,8 +4132,9 @@ public CirSim() {
                 timeStepCount++;
             }
 
-            // Clear computed values once before calling stepFinished() on all elements
-            // LabeledNodeElm.clearComputedValues();
+            // Commit converged values before calling stepFinished() on elements
+            // This makes stable values available for display elements
+            ComputedValues.commitConvergedValues();
 
             for (i = 0; i != elmArr.length; i++)
                 elmArr[i].stepFinished();
@@ -5094,14 +5106,91 @@ public CirSim() {
 }
 
     void readCircuit(String text, int flags) {
+	// Check if this is SFCR format (human-readable SFC model definition)
+	if (SFCRParser.isSFCRFormat(text)) {
+	    // Clear existing circuit first
+	    readCircuit(new byte[0], flags);
+	    
+	    // Parse SFCR format
+	    SFCRParser parser = new SFCRParser(this);
+	    if (parser.parse(text)) {
+		console("Loaded SFCR model with " + parser.getCreatedElements().size() + " elements");
+		
+		// Process any raw circuit lines from @circuit blocks
+		java.util.ArrayList<String> rawLines = parser.getRawCircuitLines();
+		if (!rawLines.isEmpty()) {
+		    console("Processing " + rawLines.size() + " raw circuit elements");
+		    for (String line : rawLines) {
+			try {
+			    processCircuitLine(line);
+			} catch (Exception e) {
+			    console("Error processing circuit line: " + line + " - " + e.getMessage());
+			}
+		    }
+		}
+		
+		needAnalyze();
+	    } else {
+		console("Failed to parse SFCR model");
+	    }
+	    if ((flags & RC_KEEP_TITLE) == 0)
+		titleLabel.setText(null);
+	    return;
+	}
+	
 	readCircuit(text.getBytes(), flags);
 	if ((flags & RC_KEEP_TITLE) == 0)
 	    titleLabel.setText(null);
     }
 
     void readCircuit(String text) {
-	readCircuit(text.getBytes(), 0);
-	titleLabel.setText(null);
+	readCircuit(text, 0);
+    }
+
+    /**
+     * Process a single circuit element definition line.
+     * Used by SFCRParser to add raw circuit elements from @circuit blocks.
+     * 
+     * @param line The element definition line (e.g., "431 480 64 592 160 0 50 true false")
+     */
+    void processCircuitLine(String line) {
+	if (line == null || line.trim().isEmpty()) {
+	    return;
+	}
+	
+	line = line.trim();
+	
+	// Parse the element type and parameters
+	StringTokenizer st = new StringTokenizer(line);
+	String type = st.nextToken();
+	int tint = type.charAt(0);
+	if (tint > 127 && tint < 256)
+	    tint = type.charAt(0) - 256;  // Handle signed byte conversion
+	
+	try {
+	    // For numeric dump types
+	    if (type.length() > 1 || !Character.isLetter(type.charAt(0))) {
+		tint = Integer.parseInt(type);
+	    }
+	    
+	    int x1 = Integer.parseInt(st.nextToken());
+	    int y1 = Integer.parseInt(st.nextToken());
+	    int x2 = Integer.parseInt(st.nextToken());
+	    int y2 = Integer.parseInt(st.nextToken());
+	    int f = Integer.parseInt(st.nextToken());
+	    
+	    CircuitElm newce = createCe(tint, x1, y1, x2, y2, f, st);
+	    if (newce == null) {
+		console("Unrecognized element type: " + type);
+		return;
+	    }
+	    
+	    newce.setPoints();
+	    elmList.addElement(newce);
+	    
+	} catch (Exception e) {
+	    console("Error parsing circuit line: " + line + " - " + e.getMessage());
+	}
     }
 
     void setCircuitTitle(String s) {
@@ -7597,6 +7686,7 @@ public CirSim() {
 		case 266: return new EquationTableElm(x1, y1, x2, y2, f, st);
 		case 264: return new DivideConstElm(x1, y1, x2, y2, f, st);
 		case 265: return new SFCTableElm(x1, y1, x2, y2, f, st);
+		case 267: return new ComputedValueSourceElm(x1, y1, x2, y2, f, st);
 		case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
     	case 368: return new TestPointElm(x1, y1, x2, y2, f, st);
     	case 370: return new AmmeterElm(x1, y1, x2, y2, f, st);
@@ -7956,6 +8046,8 @@ public CirSim() {
 			return (CircuitElm) new CurrentTransactionsMatrixElm(x1, y1);
 	if (n=="SFCTableElm")
 			return (CircuitElm) new SFCTableElm(x1, y1);
+	if (n=="ComputedValueSourceElm")
+			return (CircuitElm) new ComputedValueSourceElm(x1, y1);
 	if (n.equals("TableVoltageElm")) 
 				return (CircuitElm) new TableVoltageElm(x1, y1);		// handle CustomCompositeElm:modelname
     	if (n.startsWith("CustomCompositeElm:")) {

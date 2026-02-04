@@ -199,7 +199,7 @@ Loop continuously:
   1. analyzeCircuit()    - Setup and validation
   2. stampCircuit()      - Build MNA matrices  
   3. runCircuit()        - Solve equations
-  4. drawCircuit()       - Render visualization
+  4. Draw graphics       - Render visualization (inline)
 ```
 
 #### Phase 1: Analysis (`analyzeCircuit()`)
@@ -224,7 +224,7 @@ Loop continuously:
   - Check convergence
 - Update element states
 
-#### Phase 4: Drawing (`drawCircuit()`)
+#### Phase 4: Drawing (inline in `updateCircuit()`)
 - Render each element via `draw()`
 - Draw current flow dots
 - Render scopes
@@ -268,7 +268,64 @@ B[vsIdx] = V
 - Represented as resistor + current source
 - Iteratively updated until convergence
 
-### 6. User Interface
+### 6. Pure Computational Domain
+
+Some elements (stock-flow tables, equation tables) operate as **pure computational** elements that don't participate in MNA matrix solving. They compute values and write to a shared registry.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Pure Computational Domain                     │
+│                                                                  │
+│  ┌──────────────┐  ┌──────────────────┐  ┌─────────────────┐   │
+│  │ GodlyTableElm│  │EquationTableElm  │  │  SFCTableElm    │   │
+│  │  (integrate) │  │   (equations)    │  │ (transactions)  │   │
+│  └──────┬───────┘  └────────┬─────────┘  └───────┬─────────┘   │
+│         │                   │                     │             │
+│         └───────────┬───────┴─────────────────────┘             │
+│                     ▼                                           │
+│             ┌──────────────────┐                               │
+│             │  ComputedValues  │ ◄── Double-buffered registry  │
+│             │    Registry      │                               │
+│             └────────┬─────────┘                               │
+│                      │                                         │
+└──────────────────────┼─────────────────────────────────────────┘
+                       │
+         ┌─────────────┴─────────────┐
+         ▼                           ▼
+  ┌──────────────────┐       ┌───────────────┐
+  │LabeledNodeElm    │       │ Variable      │
+  │(reads from CV)   │       │ Browser       │
+  │    ───────────   │       │ (Display)     │
+  │ComputedValueSource       └───────────────┘
+  │       Elm        │
+  │ (Bridge element) │
+  └────────┬─────────┘
+           │
+           ▼
+   ┌───────────────────────────────────────┐
+   │          Electrical Domain             │
+   │  (MNA Matrix, Scopes, Other Elements)  │
+   └───────────────────────────────────────┘
+```
+
+#### Pure Computational Elements
+- **GodlyTableElm**: Stock-flow table with integration (y[n+1] = y[n] + dt × columnSum)
+- **EquationTableElm**: Named equations evaluated each timestep
+- **SFCTableElm**: Stock-Flow Consistent transaction matrix
+
+These elements:
+- Return `0` from `getPostCount()` - no electrical posts
+- Return `0` from `getVoltageSourceCount()` - no voltage sources  
+- Have empty `stamp()` methods - no MNA matrix entries
+- Write results to `ComputedValues` registry in `doStep()`
+
+#### Bridging to Electrical Domain
+1. **LabeledNodeElm**: Automatically reads from ComputedValues when names match (ideal for scopes)
+2. **ComputedValueSourceElm**: Explicit bridge element that outputs a named value as voltage
+
+See [PURE_COMPUTATIONAL_TABLES.md](PURE_COMPUTATIONAL_TABLES.md) for details.
+
+### 7. User Interface
 
 **Canvas**: HTML5 Canvas element for drawing
 - Mouse handlers: drag, select, add components
@@ -286,7 +343,7 @@ B[vsIdx] = V
 
 **Dialogs**: Edit element properties, settings
 
-### 7. Data Persistence
+### 8. Data Persistence
 
 **LocalStorage**: Browser storage for:
 - Circuit text (serialized)
@@ -306,7 +363,7 @@ B[vsIdx] = V
 - Dropbox picker
 - Built-in example circuits
 
-### 8. Build Process
+### 9. Build Process
 
 **Source**: Java files in `src/com/lushprojects/circuitjs1/client/`
 
@@ -338,15 +395,18 @@ src/com/lushprojects/circuitjs1/client/
 ├── Scope.java                   # Oscilloscope
 ├── Graphics.java                # Canvas wrapper
 └── util/
-    └── Locale.java              # Internationalization
+    ├── Locale.java              # Internationalization
+    └── PerfMonitor.java         # Performance monitoring
 
 war/
 ├── circuitjs.html               # Main HTML page
 ├── circuitjs1/                  # GWT compiled output
 │   ├── circuitjs1.nocache.js   # GWT loader
-│   ├── *.cache.html            # Compiled permutations
+│   ├── *.cache.js              # Compiled permutations
 │   ├── circuits/               # Example circuits
 │   ├── setuplist.txt           # Circuit index
+│   ├── menulist.txt            # Menu structure
+│   ├── style.css               # Stylesheet
 │   └── locale_*.txt            # Translation files
 └── iframe.html                  # Branding frame
 
@@ -356,7 +416,7 @@ build.gradle                     # Gradle build config
 ## Technology Stack
 
 - **Language**: Java 8 (client-side only)
-- **Framework**: Google Web Toolkit (GWT) 2.8.2
+- **Framework**: Google Web Toolkit (GWT) 2.9.0
 - **Build**: Gradle + Ant (legacy)
 - **Graphics**: HTML5 Canvas API
 - **Storage**: Browser LocalStorage
@@ -381,7 +441,7 @@ build.gradle                     # Gradle build config
 
 ## References
 
-- [INTERNALS.md](INTERNALS.md) - Detailed simulation theory
+- [INTERNALS.md](../INTERNALS.md) - Detailed simulation theory
 - [CircuitJS1 Original](https://www.falstad.com/circuit/) - Paul Falstad's original
 - GWT Documentation: https://www.gwtproject.org/
 - Modified Nodal Analysis: Pillage et al. (1999)

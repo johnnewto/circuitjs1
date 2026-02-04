@@ -1,0 +1,91 @@
+# Simple SFC Test - Tests basic features
+# Tests: parameters, equations, integrate(), last(), [-1] syntax
+
+#===============================================================================
+# INITIALIZATION
+#===============================================================================
+
+@init
+  timestep: 1             # 1 year per step
+  voltageUnit: $
+  timeUnit: yr
+@end
+
+#===============================================================================
+# PARAMETERS
+#===============================================================================
+
+@parameters Params
+  G = 20                  # Government spending (constant)
+  \alpha = 0.6            # Propensity to consume out of income
+  \theta = 0.2            # Tax rate
+@end
+
+#===============================================================================
+# INITIAL VALUES
+#===============================================================================
+
+@equations Init
+  H_init = 0              # Initial money stock
+@end
+
+#===============================================================================
+# CORE MODEL EQUATIONS
+#===============================================================================
+
+@equations Income
+  Y ~ C + G                           # GDP = Consumption + Govt spending
+  YD ~ Y - TX                         # Disposable income
+  TX ~ \theta * Y                     # Taxes
+@end
+
+@equations Consumption
+  # Test last() function: consume from last period's wealth
+  C ~ \alpha * YD + (1 - \alpha) * last(H)
+@end
+
+@equations Wealth
+  # Test integrate(): wealth accumulates savings
+  H ~ H_init + integrate(YD - C)
+@end
+
+#===============================================================================
+# TEST: Explicit lag syntax [-1]
+#===============================================================================
+
+@equations LagTest
+  # This tests V[-1] -> last(V) conversion
+  H_lagged ~ H[-1]                    # Should equal last(H)
+  savings ~ YD - C                    # Current period savings
+@end
+
+#===============================================================================
+# HINTS
+#===============================================================================
+
+@hints
+  Y: National income (GDP)
+  C: Consumption
+  G: Government spending
+  YD: Disposable income
+  TX: Taxes
+  H: Household wealth (money stock)
+  H_lagged: Previous period wealth (test)
+  savings: Current savings flow
+@end
+
+#===============================================================================
+# SCOPES
+#===============================================================================
+
+@scope Y
+@scope C
+@scope H
+@scope H_lagged
+
+# Expected behavior:
+# - Y should converge to ~100 (G=20, multiplier = 1/(1-alpha*(1-theta)) = 1/0.52 ≈ 1.92, so Y ≈ 38.5)
+# - Actually with wealth effect it's more complex
+# - H should grow each period as savings accumulate
+# - H_lagged should always equal H from the previous timestep
+# - On first timestep: last(H) = 0, H_lagged = 0

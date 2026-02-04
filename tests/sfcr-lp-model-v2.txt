@@ -1,0 +1,174 @@
+# LP SFC Model - Godley & Lavoie Chapter 5 (CircuitJS Version)
+# Adapted for continuous-time simulation
+# Reference: https://joaomacalos.github.io/sfcr/articles/articles/gl3-lp.html
+
+#===============================================================================
+# PARAMETERS (Exogenous Variables)
+#===============================================================================
+
+@equations Parameters
+  G = 20                              # Government expenditure
+  r_b = 0.03                          # Interest rate on bills
+  p_bl = 20                           # Price of bonds (perpetuities)
+  \theta = 0.1938                     # Tax rate
+  \alpha_1 = 0.8                      # Propensity to consume out of expected income
+  \alpha_2 = 0.2                      # Propensity to consume out of wealth
+  \lambda_20 = 0.44196                # Portfolio parameter (bills constant)
+  \lambda_22 = 1.1                    # Portfolio parameter (bills/bill rate)
+  \lambda_23 = -1                     # Portfolio parameter (bills/bond return)
+  \lambda_24 = -0.03                  # Portfolio parameter (bills/income)
+  \lambda_30 = 0.3997                 # Portfolio parameter (bonds constant)
+  \lambda_32 = -1                     # Portfolio parameter (bonds/bill rate)
+  \lambda_33 = 1.1                    # Portfolio parameter (bonds/bond return)
+  \lambda_34 = -0.03                  # Portfolio parameter (bonds/income)
+  \chi = 0.1                          # Weight of expected capital gains in bond return
+@end
+
+
+#===============================================================================
+# INITIAL VALUES (Approximate Steady State)
+# These provide starting points for the stock variables
+#===============================================================================
+
+@equations Initial_Values
+  V_init = 86.5                       # Initial household wealth
+  H_h_init = 6.7                      # Initial money held
+  B_h_init = 64.9                     # Initial bills held by households
+  BL_h_init = 0.75                    # Initial bonds held (units, not value)
+  B_s_init = 64.9                     # Initial bills supplied
+  H_s_init = 6.7                      # Initial money supply
+  B_cb_init = 0                       # Initial CB bill holdings
+@end
+
+
+#===============================================================================
+# FLOW EQUATIONS - National Income
+# These compute instantaneous flows from current stock values
+#===============================================================================
+
+@equations National_Income
+  Y = C + G                                      # GDP identity
+  YD_r = Y - TX + r_b * B_h + BL_h              # Disposable income (regular)
+  TX = \theta * (Y + r_b * B_h + BL_h)          # Taxes
+@end
+
+
+#===============================================================================
+# FLOW EQUATIONS - Consumption
+#===============================================================================
+
+@equations Consumption
+  C = \alpha_1 * YD_Er + \alpha_2 * V           # Consumption function
+  YD_Er = YD_r                                   # Expected income = actual (adaptive)
+@end
+
+
+#===============================================================================
+# STOCK EQUATIONS - Household Wealth
+# Stocks accumulate flows over time using integrate()
+#===============================================================================
+
+@equations Wealth_Stocks
+  V = V_init + integrate(YD_r - C)              # Wealth accumulates savings
+  V_E = V                                        # Expected wealth = actual
+@end
+
+
+#===============================================================================
+# PORTFOLIO ALLOCATION
+# Determines how wealth is allocated across assets
+#===============================================================================
+
+@equations Portfolio
+  # Bond yield and expected return
+  r_bl = 1 / p_bl                                # Bond yield (perpetuity)
+  ERr_bl = r_bl                                  # Expected return = yield (no cap gains expected)
+  
+  # Demand for bills (portfolio choice) - protect against V_E = 0
+  B_d = max(0, V_E * \lambda_20 + V_E * (\lambda_22 * r_b + \lambda_23 * ERr_bl) + \lambda_24 * YD_Er)
+  
+  # Demand for bonds (portfolio choice) - protect against division issues
+  BL_d = max(0, V_E * (\lambda_30 + \lambda_32 * r_b + \lambda_33 * ERr_bl + \lambda_34 * (YD_Er / max(V_E, 0.01))) / p_bl)
+  
+  # Actual holdings follow demand
+  B_h = B_d
+  BL_h = BL_d
+  
+  # Money is the residual
+  H_h = max(0, V - B_h - p_bl * BL_h)
+  H_d = H_h
+@end
+
+
+#===============================================================================
+# GOVERNMENT SECTOR
+# Government issues bills to finance deficit
+#===============================================================================
+
+@equations Government
+  # Government deficit (spending + interest - taxes)
+  govt_deficit = G + r_b * B_s + BL_s - TX - r_b * B_cb
+  
+  # Bills supply accumulates deficit (net of bond issuance)
+  B_s = B_s_init + integrate(govt_deficit)
+  
+  # Bonds supply equals demand (market clearing)
+  BL_s = BL_h
+@end
+
+
+#===============================================================================
+# CENTRAL BANK
+# CB provides residual financing
+#===============================================================================
+
+@equations Central_Bank
+  # CB holds bills not held by households
+  B_cb = B_s - B_h
+  
+  # Money supply equals CB bill holdings (simplified)
+  H_s = H_h                                      # Money market clears
+@end
+
+
+#===============================================================================
+# HINTS (Variable Documentation)
+#===============================================================================
+
+@hints
+  Y: National income (GDP)
+  C: Consumption
+  G: Government expenditure
+  YD_r: Regular household disposable income
+  YD_Er: Expected household disposable income
+  TX: Taxes
+  V: Household wealth
+  V_E: Expected household wealth
+  H_h: Cash money held by households
+  H_d: Desired cash money
+  H_s: Cash money supplied by central bank
+  B_h: Bills held by households
+  B_d: Desired bills
+  B_s: Bills supplied by government
+  B_cb: Bills held by central bank
+  BL_h: Bonds held by households
+  BL_d: Desired bonds
+  BL_s: Bonds supplied by government
+  p_bl: Price of bonds (perpetuities)
+  r_b: Interest rate on bills
+  r_bl: Interest rate on bonds (yield)
+  ERr_bl: Expected rate of return on bonds
+  govt_deficit: Government budget deficit
+@end
+
+
+#===============================================================================
+# SCOPES (Variables to display)
+#===============================================================================
+
+@scope Y
+@scope C
+@scope V
+@scope B_h
+@scope BL_h
+@scope H_h

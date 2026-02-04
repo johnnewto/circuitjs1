@@ -34,13 +34,39 @@ import java.util.Set;
  * - Store computed values by name (String key -> Double value)
  * - Track which values have been computed in the current simulation step
  * - Track which table element is the "master" computer for each value
+ * - Maintain separate "converged" values for display elements to use
  * - Clear all values or reset tracking flags as needed
  * - Thread-safe access to computed values
+ * 
+ * Three-value system (double-buffering for order-independent evaluation):
+ * - "current" values: Stable values from end of last doStep() cycle - READ from during doStep()
+ * - "pending" values: New values being written during current doStep() - WRITE to during doStep()
+ * - "converged" values: Committed at end of timestep, used by display elements
+ * 
+ * Double-buffering workflow:
+ * 1. At start of doStep() cycle: current values are stable from previous cycle
+ * 2. Elements READ from current (getComputedValue), WRITE to pending (setComputedValue)
+ * 3. After ALL elements complete doStep(): call commitPendingToCurrentValues()
+ * 4. Pending values become current, making them available for next iteration
+ * 5. At end of converged timestep: call commitConvergedValues() for display elements
+ * 
+ * This makes evaluation order-independent: Element A and B both see the same
+ * "current" values regardless of which doStep() runs first.
  */
 public class ComputedValues {
     
-    // Storage for computed values: name -> value
+    // Storage for current values: name -> value (stable, read from during doStep)
     private static HashMap<String, Double> computedValues;
+    
+    // Storage for pending values: name -> value (written to during doStep, committed after)
+    private static HashMap<String, Double> pendingValues;
+    
+    // Storage for converged values: name -> value (committed at end of timestep)
+    // Display elements (scopes, SFC tables) should read from this for stable display
+    private static HashMap<String, Double> convergedValues;
+    
+    // Flag to enable/disable double-buffering (allows gradual migration)
+    private static boolean doubleBufferingEnabled = true;
     
     // Track which values have been computed this simulation step
     private static Set<String> computedThisStep;
@@ -56,6 +82,12 @@ public class ComputedValues {
         if (computedValues == null) {
             computedValues = new HashMap<String, Double>();
         }
+        if (pendingValues == null) {
+            pendingValues = new HashMap<String, Double>();
+        }
+        if (convergedValues == null) {
+            convergedValues = new HashMap<String, Double>();
+        }
         if (computedThisStep == null) {
             computedThisStep = new HashSet<String>();
         }
@@ -68,8 +100,30 @@ public class ComputedValues {
     }
     
     /**
+     * Enable or disable double-buffering mode.
+     * When enabled: writes go to pending buffer, reads come from current buffer
+     * When disabled: writes and reads both use current buffer (legacy behavior)
+     * 
+     * @param enabled true to enable double-buffering, false for immediate mode
+     */
+    public static void setDoubleBufferingEnabled(boolean enabled) {
+        doubleBufferingEnabled = enabled;
+    }
+    
+    /**
+     * Check if double-buffering is enabled.
+     * @return true if double-buffering is enabled
+     */
+    public static boolean isDoubleBufferingEnabled() {
+        return doubleBufferingEnabled;
+    }
+    
+    /**
      * Set a computed value for a given name with the computing table element
      * Used by elements like TableElm to store calculated values
+     * 
+     * When double-buffering is enabled, this writes to the pending buffer.
+     * The value becomes visible to other elements after commitPendingToCurrentValues().
      * 
      * @param name The name/key for the computed value
      * @param value The computed value to store
@@ -79,7 +133,15 @@ public class ComputedValues {
         if (name == null || name.isEmpty()) return;
         
         ensureInitialized();
-        computedValues.put(name, value);
+        
+        if (doubleBufferingEnabled) {
+            // Write to pending buffer (will be committed after all doStep() calls)
+            pendingValues.put(name, value);
+        } else {
+            // Legacy immediate mode: write directly to current values
+            computedValues.put(name, value);
+        }
+        
         if (computingTable != null) {
             computedByTable.put(name, computingTable);
         }
@@ -97,8 +159,14 @@ public class ComputedValues {
     }
     
     /**
-     * Get a computed value by name
-     * Used by elements like TableVoltageElm and Expr to retrieve values
+     * Get a computed value by name (current/subiteration value)
+     * Used by simulation elements during doStep() for calculations.
+     * 
+     * When double-buffering is enabled, this reads from the current buffer
+     * (values committed from the previous doStep cycle), making evaluation
+     * order-independent.
+     * 
+     * NOTE: Display elements should use getConvergedValue() instead for stable display.
      * 
      * @param name The name/key of the computed value
      * @return The computed value, or null if not found
@@ -106,6 +174,114 @@ public class ComputedValues {
     public static Double getComputedValue(String name) {
         if (name == null || computedValues == null) return null;
         return computedValues.get(name);
+    }
+    
+    /**
+     * Get a pending value by name (value written this doStep cycle, not yet committed)
+     * Used internally or for debugging. Most code should use getComputedValue().
+     * 
+     * @param name The name/key of the pending value
+     * @return The pending value, or null if not found
+     */
+    public static Double getPendingValue(String name) {
+        if (name == null || pendingValues == null) return null;
+        return pendingValues.get(name);
+    }
+    
+    /**
+     * Commit pending values to current values.
+     * Called by CirSim AFTER all elements complete their doStep() calls.
+     * This makes the new values visible to all elements in the next iteration.
+     * 
+     * For order-independent evaluation, call sequence is:
+     * 1. All elements doStep() - read from current, write to pending
+     * 2. commitPendingToCurrentValues() - pending becomes current
+     * 3. Repeat until converged
+     */
+    public static void commitPendingToCurrentValues() {
+        if (!doubleBufferingEnabled) return;
+        
+        ensureInitialized();
+        
+        // Move all pending values to current
+        for (String name : pendingValues.keySet()) {
+            Double value = pendingValues.get(name);
+            if (value != null) {
+                computedValues.put(name, value);
+            }
+        }
+        // Don't clear pending - keep for reference during timestep
+        // It will be overwritten by new values in the next doStep cycle
+    }
+    
+    /**
+     * Clear pending values buffer.
+     * Called at the start of a new timestep to ensure clean state.
+     */
+    public static void clearPendingValues() {
+        if (pendingValues != null) {
+            pendingValues.clear();
+        }
+    }
+    
+    /**
+     * Get a converged value by name (stable value for display)
+     * Used by display elements (scopes, SFC tables, etc.) to get stable values.
+     * Returns the value from the end of the PREVIOUS timestep, which is guaranteed
+     * to be converged and stable across all subiterations of the current timestep.
+     * 
+     * @param name The name/key of the computed value
+     * @return The converged value, or the current value if no converged value exists
+     */
+    public static Double getConvergedValue(String name) {
+        if (name == null) return null;
+        ensureInitialized();
+        
+        // First try converged values (stable)
+        Double converged = convergedValues.get(name);
+        if (converged != null) {
+            return converged;
+        }
+        
+        // Fall back to current value (for first timestep before any commit)
+        return computedValues.get(name);
+    }
+    
+    /**
+     * Get a lagged value by name (STRICTLY from previous timestep only)
+     * Used by lag() function for sfcr-style V[-1] notation.
+     * Returns ONLY the converged value from the previous timestep.
+     * Does NOT fall back to current values - returns null if no converged value exists.
+     * 
+     * This ensures lag(X) returns a stable value that doesn't change during subiterations.
+     * On the first timestep (before any convergence), this returns null.
+     * 
+     * @param name The name/key of the computed value
+     * @return The converged value from previous timestep, or null if none exists
+     */
+    public static Double getLaggedValue(String name) {
+        if (name == null) return null;
+        ensureInitialized();
+        
+        // ONLY return converged values - never fall back to current
+        return convergedValues.get(name);
+    }
+    
+    /**
+     * Commit all current computed values as converged values.
+     * Called by CirSim at the end of each successfully converged timestep.
+     * After this call, getConvergedValue() will return the newly committed values.
+     */
+    public static void commitConvergedValues() {
+        ensureInitialized();
+        
+        // Copy all current values to converged values
+        for (String name : computedValues.keySet()) {
+            Double value = computedValues.get(name);
+            if (value != null) {
+                convergedValues.put(name, value);
+            }
+        }
     }
     
     /**
@@ -159,12 +335,18 @@ public class ComputedValues {
     }
     
     /**
-     * Clear all computed values
+     * Clear all computed values (current, pending, and converged)
      * Called by CirSim when resetting the circuit state
      */
     public static void clearComputedValues() {
         if (computedValues != null) {
             computedValues.clear();
+        }
+        if (pendingValues != null) {
+            pendingValues.clear();
+        }
+        if (convergedValues != null) {
+            convergedValues.clear();
         }
         if (computedByTable != null) {
             computedByTable.clear();

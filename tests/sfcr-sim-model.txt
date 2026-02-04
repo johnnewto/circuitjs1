@@ -4,18 +4,6 @@
 # by Wynne Godley and Marc Lavoie, chapter 3, figures 3.2 and 3.3.
 
 #===============================================================================
-# INITIALIZATION SETTINGS
-#===============================================================================
-
-@init
-  timestep: 0.1           # Simulation timestep (years)
-  voltageUnit: $          # Use $ for money values
-  timeUnit: yr            # Use years for time
-  showToolbar: true       # Show component toolbar
-  showValues: true        # Show values on components
-@end
-
-#===============================================================================
 # BALANCE SHEET MATRIX
 #===============================================================================
 
@@ -62,7 +50,7 @@ type: transaction_flow
   N_s ~ N_d                           # Labor market clearing
   YD ~ W * N_s - T_s                  # Disposable income
   T_d ~ \theta * W * N_s              # Tax collection
-  C_d ~ \alpha_1 * YD + \alpha_2 * H_h[-1]    # Consumption function
+  C_d ~ \alpha_1 * YD + \alpha_2 * H_h    # Consumption function
   H_s ~ integrate(G_d - T_d)          # Govt money stock (cumulative deficit)
 @end
 
@@ -98,8 +86,24 @@ type: transaction_flow
 #===============================================================================
 
 @hints
-  Y: Output Yay!
-
+  Y: Output
+  C_d: Consumption goods Supply/Demand
+  C_s: Consumption goods Supply/Demand
+  G_s: Services supplied to / demand by Govt
+  T_s: Tax
+  N_s: Supply/Demand for labour
+  YD: Disposable Income
+  T_d: Tax
+  N_d: Supply/Demand for labour
+  G_d: Government demand for services
+  W: Nominal Wages Rate
+  H_s: Cash money, supplied by the central bank
+  H_h: Cash money held by households
+  \alpha_1: Propensity to Spend Income
+  \alpha_2: Propensity to Spend Wealth
+  \theta: Tax Rate
+  \DeltaH_h: Change in household money holdings
+  \DeltaH_s: Change in government money supply
 @end
 
 

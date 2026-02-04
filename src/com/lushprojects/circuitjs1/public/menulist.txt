@@ -24,6 +24,7 @@ SubtracterElm|Subtracter
 GodlyTableElm|Godly Table||g
 TableElm|Table
 SFCTableElm|SFC Table
+ComputedValueSourceElm|CV Source
 FlowsMasterElm|Flow Master
 StockMasterElm|Stock Master
 CurrentTransactionsMatrixElm |Current Transactions Matrix
