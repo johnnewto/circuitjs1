@@ -270,25 +270,24 @@ B[vsIdx] = V
 
 ### 6. Pure Computational Domain
 
-Some elements (stock-flow tables, equation tables) operate as **pure computational** elements that don't participate in MNA matrix solving. They compute values and write to a shared registry.
+Some elements (stock-flow tables) operate as **pure computational** elements that don't participate in MNA matrix solving. They compute values and write to a shared registry.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Pure Computational Domain                     │
 │                                                                  │
-│  ┌──────────────┐  ┌──────────────────┐  ┌─────────────────┐   │
-│  │ GodlyTableElm│  │EquationTableElm  │  │  SFCTableElm    │   │
-│  │  (integrate) │  │   (equations)    │  │ (transactions)  │   │
-│  └──────┬───────┘  └────────┬─────────┘  └───────┬─────────┘   │
-│         │                   │                     │             │
-│         └───────────┬───────┴─────────────────────┘             │
-│                     ▼                                           │
-│             ┌──────────────────┐                               │
-│             │  ComputedValues  │ ◄── Double-buffered registry  │
-│             │    Registry      │                               │
-│             └────────┬─────────┘                               │
-│                      │                                         │
-└──────────────────────┼─────────────────────────────────────────┘
+│                    ┌─────────────────┐                          │
+│                    │  SFCTableElm    │                          │
+│                    │ (transactions)  │                          │
+│                    └───────┬─────────┘                          │
+│                            │                                    │
+│                            ▼                                    │
+│             ┌──────────────────┐                                │
+│             │  ComputedValues  │ ◄── Double-buffered registry   │
+│             │    Registry      │                                │
+│             └────────┬─────────┘                                │
+│                      │                                          │
+└──────────────────────┼──────────────────────────────────────────┘
                        │
          ┌─────────────┴─────────────┐
          ▼                           ▼
@@ -309,19 +308,26 @@ Some elements (stock-flow tables, equation tables) operate as **pure computation
 ```
 
 #### Pure Computational Elements
-- **GodlyTableElm**: Stock-flow table with integration (y[n+1] = y[n] + dt × columnSum)
-- **EquationTableElm**: Named equations evaluated each timestep
 - **SFCTableElm**: Stock-Flow Consistent transaction matrix
 
-These elements:
+These elements by default:
 - Return `0` from `getPostCount()` - no electrical posts
 - Return `0` from `getVoltageSourceCount()` - no voltage sources  
 - Have empty `stamp()` methods - no MNA matrix entries
 - Write results to `ComputedValues` registry in `doStep()`
 
+#### MNA-Integrated Elements
+- **GodlyTableElm**: Stock-flow table with integration (y[n+1] = y[n] + dt × columnSum). Participates in MNA by stamping voltage sources to drive stock values. Uses a hybrid approach for node allocation:
+  - If a LabeledNode exists on canvas with matching stock name → drives that node directly
+  - If no LabeledNode exists → creates an internal node and registers it in `LabeledNodeElm.labelList`
+  - This allows scopes and other elements to connect by name, whether or not there's a visible LabeledNode
+- **EquationTableElm**: Named equations evaluated each timestep. Participates in MNA by creating voltage source outputs that drive LabeledNode nodes directly.
+
 #### Bridging to Electrical Domain
 1. **LabeledNodeElm**: Automatically reads from ComputedValues when names match (ideal for scopes)
 2. **ComputedValueSourceElm**: Explicit bridge element that outputs a named value as voltage
+3. **GodlyTableElm**: Directly drives LabeledNode voltages via MNA (no bridge needed)
+4. **EquationTableElm**: Directly drives LabeledNode voltages via MNA (no bridge needed)
 
 See [PURE_COMPUTATIONAL_TABLES.md](PURE_COMPUTATIONAL_TABLES.md) for details.
 

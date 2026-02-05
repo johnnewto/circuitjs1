@@ -1,4 +1,5 @@
 ### setuplist.txt first line must be a comment
+expr-functions-test.txt Expr Functions Reference
 +Economics
 econ_BOMD.txt BOMD 
 econ_BOMDwithGovt.txt BOMD with Government 
@@ -8,6 +9,7 @@ econ_KeenMinskyGodley01.txt Keen Minsky Godley 01
 econ_KeenMinskyGodley02.txt Keen Minsky Godley 02
 econ_SimpleSFCModel.txt Simple SFC Model
 econ_SIM_Godley_Lavoie.txt SIM Godley Lavoie
+econ_BMW_Godley_Lavoie7.txt BMW Godley Lavoie Ch7
 -
 +Debug
 >1debug.txt Debug 1

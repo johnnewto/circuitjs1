@@ -1,6 +1,31 @@
+# Godley and Lavoie (2007) Chapter 7: Model BMW
+# Source: https://joaomacalos.github.io/sfcr/articles/articles/gl5-bmw.html
+# Bank-Money World model - Version with explicit lagged variables
+
 # Model BMW - Bank-Money World (Godley & Lavoie Chapter 7)
 # Based on sfcr R package implementation
 # Reference: Monetary Economics by Wynne Godley and Marc Lavoie, Chapter 7
+#
+# This version uses lag(x, 1) function to represent year-lagged variables
+# matching the sfcr R package [-1] notation:
+#   rl[-1] -> lag(rl, 1)
+#   Ld[-1] -> lag(Ld, 1)
+#   K[-1]  -> lag(K, 1)
+#   etc.
+#
+# Available lag functions:
+#   last(x)     - returns value from PREVIOUS TIMESTEP (very short lag)
+#   lag(x, n)   - returns value from n TIME UNITS ago (e.g., 1 year)
+
+#===============================================================================
+# TEXT LABEL
+#===============================================================================
+
+@circuit
+x 500 32 400 32 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW
+x 500 56 400 56 4 12 Bank-Money\sWorld\smodel\s(with\sexplicit\slagged\svariables)
+x 500 80 400 80 4 12 Steady-state:\sY=160,\sCs=144,\sIs=16,\sK=160,\sMh=160
+@end
 
 #===============================================================================
 # INITIALIZATION
@@ -14,6 +39,7 @@
 
 #===============================================================================
 # PARAMETERS (Exogenous Variables)
+# Reference: bmw_external in sfcr
 #===============================================================================
 
 @parameters Params
@@ -27,10 +53,9 @@
   pr = 1                  # Labor productivity
 @end
 
-
-
 #===============================================================================
-# EQUATIONS - Market Clearing (eq1-eq4)
+# EQUATIONS - Basic behavioral equations (eq1-eq4)
+# sfcr: Cs ~ Cd, Is ~ Id, Ns ~ Nd, Ls ~ Ls[-1] + Ld - Ld[-1]
 #===============================================================================
 
 @equations MarketClearing
@@ -40,11 +65,17 @@
   Ns ~ Nd                  # Labor market clears
   
   # Loan supply tracks loan demand changes
+  # sfcr: Ls ~ Ls[-1] + Ld - Ld[-1]
   Ls ~ integrate(diff(Ld))
 @end
 
 #===============================================================================
-# EQUATIONS - Firms (eq5-eq8)
+# EQUATIONS - Transactions of Firms (eq5-eq8)
+# sfcr:
+#   Y ~ Cs + Is
+#   WBd ~ Y - rl[-1] * Ld[-1] - AF
+#   AF ~ delta * K[-1]
+#   Ld ~ Ld[-1] + Id - AF
 #===============================================================================
 
 @equations Firms
@@ -52,41 +83,61 @@
   Y ~ Cs + Is
   
   # Wage bill demanded by firms (residual after interest and depreciation)
-  WBd ~ Y - last(rl) * last(Ld) - AF
+  # sfcr: WBd ~ Y - rl[-1] * Ld[-1] - AF
+  # Interest on loans uses 1-YEAR LAGGED interest rate and loan balance
+  WBd ~ Y - lag(rl, 1) * lag(Ld, 1) - AF
   
   # Amortization funds (depreciation)
-  AF ~ \delta * last(K)
+  # sfcr: AF ~ delta * K[-1]
+  # Based on 1-YEAR LAGGED capital stock
+  AF ~ \delta * lag(K, 1)
   
   # Loan demand accumulates investment net of depreciation
+  # sfcr: Ld ~ Ld[-1] + Id - AF
   Ld ~ integrate(Id - AF)
 @end
 
 #===============================================================================
-# EQUATIONS - Households (eq9-eq10)
+# EQUATIONS - Transactions of Households (eq9-eq10)
+# sfcr:
+#   YD ~ WBs + rm[-1] * Mh[-1]
+#   Mh ~ Mh[-1] + YD - Cd
 #===============================================================================
 
 @equations Households
   # Disposable income = wages + interest on deposits
-  YD ~ WBs + last(rm) * last(Mh)
+  # sfcr: YD ~ WBs + rm[-1] * Mh[-1]
+  # Interest income uses 1-YEAR LAGGED deposit rate and money holdings
+  YD ~ WBs + lag(rm, 1) * lag(Mh, 1)
   
   # Money holdings accumulate savings (STOCK)
+  # sfcr: Mh ~ Mh[-1] + YD - Cd
   Mh ~ Mh_init + integrate(YD - Cd)
 @end
 
 #===============================================================================
-# EQUATIONS - Banks (eq11-eq12)
+# EQUATIONS - Transactions of Banks (eq11-eq12)
+# sfcr:
+#   Ms ~ Ms[-1] + Ls - Ls[-1]
+#   rm ~ rl
 #===============================================================================
 
 @equations Banks
   # Money supply tracks loan supply changes
+  # sfcr: Ms ~ Ms[-1] + Ls - Ls[-1]
   Ms ~ integrate(diff(Ls))
   
   # Deposit rate = loan rate (simplified bank balance)
+  # sfcr: rm ~ rl
   rm ~ rl
 @end
 
 #===============================================================================
-# EQUATIONS - Wage Bill (eq13-eq15)
+# EQUATIONS - The Wage Bill (eq13-eq15)
+# sfcr:
+#   WBs ~ W * Ns
+#   Nd ~ Y / pr
+#   W ~ WBd / Nd
 #===============================================================================
 
 @equations WageBill
@@ -97,34 +148,50 @@
   Nd ~ Y / pr
   
   # Wage rate (equilibrates wage bill)
+  # Added max() to prevent division by zero
   W ~ WBd / max(Nd, 0.01)
 @end
 
 #===============================================================================
-# EQUATIONS - Consumption (eq16)
+# EQUATIONS - Household Behavior (eq16)
+# sfcr: Cd ~ alpha0 + alpha1 * YD + alpha2 * Mh[-1]
 #===============================================================================
 
 @equations Consumption
   # Consumption function with autonomous + income + wealth effects
-  Cd ~ \alpha0 + \alpha1 * YD + \alpha2 * last(Mh)
+  # sfcr: Cd ~ alpha0 + alpha1 * YD + alpha2 * Mh[-1]
+  # Wealth effect uses 1-YEAR LAGGED money holdings
+  Cd ~ \alpha0 + \alpha1 * YD + \alpha2 * lag(Mh, 1)
 @end
 
 #===============================================================================
-# EQUATIONS - Investment (eq17-eq20)
+# EQUATIONS - Investment Behavior (eq17-eq20)
+# sfcr:
+#   K ~ K[-1] + Id - DA
+#   DA ~ delta * K[-1]
+#   KT ~ kappa * Y[-1]
+#   Id ~ gamma * (KT - K[-1]) + DA
 #===============================================================================
 
 @equations Investment
   # Capital stock accumulates investment (STOCK)
+  # sfcr: K ~ K[-1] + Id - DA
   K ~ K_init + integrate(Id - DA)
   
   # Depreciation (actual)
-  DA ~ \delta * last(K)
+  # sfcr: DA ~ delta * K[-1]
+  # Based on 1-YEAR LAGGED capital stock
+  DA ~ \delta * lag(K, 1)
   
   # Target capital stock based on output
-  KT ~ \kappa * last(Y)
+  # sfcr: KT ~ kappa * Y[-1]
+  # Based on 1-YEAR LAGGED output
+  KT ~ \kappa * lag(Y, 1)
   
   # Investment to adjust capital toward target
-  Id ~ \gamma * (KT - last(K)) + DA
+  # sfcr: Id ~ gamma * (KT - K[-1]) + DA
+  # Adjustment uses 1-YEAR LAGGED capital stock
+  Id ~ \gamma * (KT - lag(K, 1)) + DA
 @end
 
 #===============================================================================
@@ -136,7 +203,10 @@
   check_money ~ Mh - Ms            # Money market
   check_loans ~ Ls - Ld            # Loan market
   check_labor ~ Ns - Nd            # Labor market
-  firm_profit ~ Y - WBd - rl * Ld - AF  # Firm profit (should be ~0)
+  
+  # Firm profit check (should be ~0)
+  # Uses lagged values to match sfcr transaction matrix
+  firm_profit ~ Y - WBd - lag(rl, 1) * lag(Ld, 1) - AF
 @end
 
 #===============================================================================
@@ -156,21 +226,21 @@
   WBs: Wage bill supplied
   WBd: Wage bill demanded
   W: Wage rate
-  YD: Household disposable income
+  YD: Household disposable income = WBs + lag(rm,1) * lag(Mh,1)
   Mh: Household money holdings (deposits)
   Ms: Money supply (bank deposits)
   rm: Interest rate on deposits
   rl: Interest rate on loans
   K: Capital stock
-  KT: Target capital stock
-  DA: Depreciation actual
-  AF: Amortization funds
-  \alpha0: Autonomous consumption
-  \alpha1: Propensity to consume from income
-  \alpha2: Propensity to consume from wealth
-  \delta: Depreciation rate
-  \gamma: Investment adjustment speed
-  \kappa: Capital-output ratio
+  KT: Target capital stock = kappa * lag(Y,1)
+  DA: Depreciation actual = delta * lag(K,1)
+  AF: Amortization funds = delta * lag(K,1)
+  \\alpha0: Autonomous consumption
+  \\alpha1: Propensity to consume from income
+  \\alpha2: Propensity to consume from wealth
+  \\delta: Depreciation rate
+  \\gamma: Investment adjustment speed
+  \\kappa: Capital-output ratio
   pr: Labor productivity
 @end
 
@@ -186,6 +256,69 @@
 @scope Ld
 @scope W
 @scope check_money
+@scope YD
+
+#===============================================================================
+# CIRCUIT ELEMENTS
+#===============================================================================
+
+@circuit
+207 544 304 608 304 36 Y
+403 544 320 896 512 0 9_4_0_xc01206_320_0.1_-1_1
+@end
+
+#===============================================================================
+# SFCR R PACKAGE EQUATIONS - REFERENCE
+#===============================================================================
+# Source: https://joaomacalos.github.io/sfcr/articles/articles/gl5-bmw.html
+#
+# bmw_eqs <- sfcr_set(
+#   # Basic behavioral equations
+#   Cs ~ Cd,
+#   Is ~ Id,
+#   Ns ~ Nd,
+#   Ls ~ Ls[-1] + Ld - Ld[-1],
+#   
+#   # Transactions of the firms
+#   Y ~ Cs + Is,
+#   WBd ~ Y - rl[-1] * Ld[-1] - AF,
+#   AF ~ delta * K[-1],
+#   Ld ~ Ld[-1] + Id - AF,
+#   
+#   # Transactions of households
+#   YD ~ WBs + rm[-1] * Mh[-1],
+#   Mh ~ Mh[-1] + YD - Cd,
+#   
+#   # Transactions of the banks
+#   Ms ~ Ms[-1] + Ls - Ls[-1],
+#   rm ~ rl,
+#   
+#   # The wage bill
+#   WBs ~ W * Ns,
+#   Nd ~ Y / pr,
+#   W ~ WBd / Nd,
+#   
+#   # Household behavior
+#   Cd ~ alpha0 + alpha1 * YD + alpha2 * Mh[-1],
+#   
+#   # The investment behavior
+#   K ~ K[-1] + Id - DA,
+#   DA ~ delta * K[-1],
+#   KT ~ kappa * Y[-1],
+#   Id ~ gamma * (KT - K[-1]) + DA
+# )
+#
+# bmw_external <- sfcr_set(
+#   rl ~ 0.025,
+#   alpha0 ~ 20,
+#   alpha1 ~ 0.75,
+#   alpha2 ~ 0.10,
+#   delta ~ 0.10,
+#   gamma ~ 0.15,
+#   kappa ~ 1,
+#   pr ~ 1
+# )
+#===============================================================================
 
 #===============================================================================
 # EXPECTED STEADY-STATE VALUES - SFCR R Package Reference
@@ -214,31 +347,10 @@
 #   - Mh = Ms = Ls = Ld = 160 (money = loans)
 #   - K/Y = 160/160 = 1 = kappa (target achieved)
 #
+# Lagged variable relationships at steady state:
+#   - YD = WBs + rm[-1] * Mh[-1] = 140 + 0.025 * 160 = 140 + 4 = 144
+#   - WBd = Y - rl[-1] * Ld[-1] - AF = 160 - 0.025*160 - 16 = 160 - 4 - 16 = 140
+#   - Interest income = rm * Mh = 0.025 * 160 = 4
+#   - Interest expense = rl * Ld = 0.025 * 160 = 4
+#
 #===============================================================================
-
-
-
-> bmw %>% tail(n = 20)
-# A tibble: 20 × 29
-   period    Cs    Is    Ns    Ls     Y   WBd    AF    Ld    YD    Mh    Ms
-    <int> <dbl> <dbl> <dbl> <dbl> <dbl> <dbl> <dbl> <dbl> <dbl> <dbl> <dbl>
- 1     31  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
- 2     32  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
- 3     33  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
- 4     34  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
- 5     35  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
- 6     36  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
- 7     37  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
- 8     38  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
- 9     39  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
-10     40  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
-11     41  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
-12     42  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
-13     43  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
-14     44  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
-15     45  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
-16     46  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
-17     47  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
-18     48  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
-19     49  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.
-20     50  144.  16.0  160.  160.  160.  140.  16.0  160.  144.  160.  160.

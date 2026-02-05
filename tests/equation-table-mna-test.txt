@@ -1,0 +1,110 @@
+# Equation Table MNA Mode Test
+# Tests that EquationTableElm electrical outputs work correctly in MNA mode
+#
+# This circuit demonstrates:
+# 1. Equation table outputs as voltage sources
+# 2. Electrical connections to other elements
+# 3. Current flow through connected elements
+# 4. Time-varying equations (sin, integrate)
+
+$ 1 0.000005 10.20027730826997 50 5 43 5e-11
+# Simulation settings: 5us timestep
+
+#===============================================================================
+# Test 1: Basic DC Output
+# Equation table outputs a constant 5V, connected to a 1k resistor to ground
+#===============================================================================
+
+# Equation Table with MNA mode (flag 2 = MNA enabled)
+# Format: 266 x1 y1 x2 y2 flags tableName rowCount [row data...]
+# Row data: outputName equation initialEq sliderVar sliderValue
+266 192 160 192 176 2 Test1 1 V1 5 _ a 0.5
+
+# Resistor connected from V1 output to ground (should see 5mA = 5V/1k)
+r 272 160 272 224 0 1000
+
+# Ground
+g 272 224 272 240 0 0
+
+# Wire from equation table post to resistor
+w 192 169 272 160 0
+
+#===============================================================================
+# Test 2: Sine Wave Output
+# Equation generates sin(t*1000) connected to resistor
+#===============================================================================
+
+266 192 288 192 304 2 Test2 1 Vsine sin(t*1000) _ b 0.5
+
+# Resistor to ground
+r 272 288 272 352 0 1000
+
+# Ground
+g 272 352 272 368 0 0
+
+# Wire
+w 192 297 272 288 0
+
+#===============================================================================
+# Test 3: Multi-row table with dependent equations
+# Row 1: Base voltage from slider
+# Row 2: Double of row 1
+#===============================================================================
+
+266 192 416 192 464 2 Test3 2 Vbase a*10 _ a 0.5 Vdouble Vbase*2 _ b 0.5
+
+# Resistor from Vbase (first post) to ground
+r 272 425 272 480 0 1000
+
+# Resistor from Vdouble (second post) to ground
+r 352 443 352 480 0 1000
+
+# Ground connections
+g 272 480 272 496 0 0
+g 352 480 352 496 0 0
+
+# Wires
+w 192 425 272 425 0
+w 192 443 352 443 0
+
+#===============================================================================
+# Test 4: Integration - Ramp generator
+# Integrates a constant to produce a ramp
+#===============================================================================
+
+266 192 544 192 560 2 Test4 1 Vramp integrate(1) 0 c 0.5
+
+# Resistor to ground
+r 272 544 272 608 0 1000
+
+# Ground
+g 272 608 272 624 0 0
+
+# Wire
+w 192 553 272 544 0
+
+#===============================================================================
+# Scopes to visualize outputs
+#===============================================================================
+
+# Scope on V1 (should show constant 5V)
+o 0 16 0 4099 5 0.1 0 2 0 3
+38 0 0 0 1001 V1
+
+# Scope on Vsine (should show sine wave)
+o 1 16 0 4099 5 0.1 0 2 1 3
+38 1 0 0 1001 Vsine
+
+# Scope on Vdouble (should be 2x Vbase, adjustable via slider)
+o 2 16 0 4099 10 0.1 0 2 2 3
+38 2 0 0 1001 Vdouble
+
+# Scope on Vramp (should show rising ramp from integration)
+o 3 16 0 4099 5 0.1 0 2 3 3
+38 3 0 0 1001 Vramp
+
+# Expected Results:
+# - Test1: V1 = 5V constant, resistor current = 5mA
+# - Test2: Vsine oscillates as sin(t*1000), ~1kHz sine wave
+# - Test3: Vbase = 5V (slider a=0.5 * 10), Vdouble = 10V
+# - Test4: Vramp increases linearly from 0 (integrating constant 1)

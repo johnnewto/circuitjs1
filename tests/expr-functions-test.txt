@@ -1,0 +1,299 @@
+# Expression Functions Test
+# This file demonstrates ALL available functions in the Expr parser
+# for use in EquationTableElm and other expression-based elements.
+
+#===============================================================================
+# BASIC MATH OPERATORS
+#===============================================================================
+
+@equations Basic.Operators
+  add.test ~ 3 + 5                    # Addition: 8
+  sub.test ~ 10 - 3                   # Subtraction: 7
+  mul.test ~ 4 * 5                    # Multiplication: 20
+  div.test ~ 15 / 3                   # Division: 5
+  pow.test ~ 2 ^ 8                    # Power: 256
+  mod.test ~ mod(17, 5)               # Modulo: 2
+  neg.test ~ -5                       # Unary minus: -5
+  paren.test ~ (2 + 3) * 4            # Parentheses: 20
+@end
+
+
+#===============================================================================
+# CONSTANTS
+#===============================================================================
+
+@equations Constants
+  pi.test ~ pi                        # Pi: 3.14159...
+  time.test ~ t                       # Current simulation time
+  dt.test ~ timestep                  # Current timestep size
+@end
+
+
+#===============================================================================
+# TRIGONOMETRIC FUNCTIONS
+#===============================================================================
+
+@equations Trigonometric
+  sin.test ~ sin(t)                   # Sine
+  cos.test ~ cos(t)                   # Cosine
+  tan.test ~ tan(t)                   # Tangent
+  sin.freq ~ sin(t * 1000)            # Sine at 1000 rad/s
+  cos.freq ~ cos(t * 2 * pi * 60)     # Cosine at 60 Hz
+@end
+
+
+#===============================================================================
+# INVERSE TRIGONOMETRIC FUNCTIONS
+#===============================================================================
+
+@equations Inverse.Trig
+  asin.test ~ asin(0.5)               # Arc sine: ~0.524 rad
+  acos.test ~ acos(0.5)               # Arc cosine: ~1.047 rad
+  atan.test ~ atan(1)                 # Arc tangent: ~0.785 rad (pi/4)
+@end
+
+
+#===============================================================================
+# HYPERBOLIC FUNCTIONS
+#===============================================================================
+
+@equations Hyperbolic
+  sinh.test ~ sinh(1)                 # Hyperbolic sine: ~1.175
+  cosh.test ~ cosh(1)                 # Hyperbolic cosine: ~1.543
+  tanh.test ~ tanh(1)                 # Hyperbolic tangent: ~0.762
+@end
+
+
+#===============================================================================
+# EXPONENTIAL AND LOGARITHMIC
+#===============================================================================
+
+@equations Exp.Log
+  exp.test ~ exp(1)                   # e^1: ~2.718
+  log.test ~ log(10)                  # Natural log of 10: ~2.303
+  exp.decay ~ exp(-t * 100)           # Exponential decay
+  log.growth ~ log(1 + t)             # Logarithmic growth
+@end
+
+
+#===============================================================================
+# POWER AND ROOT FUNCTIONS
+#===============================================================================
+
+@equations Power.Root
+  sqrt.test ~ sqrt(16)                # Square root: 4
+  abs.test ~ abs(-5)                  # Absolute value: 5
+  pwr.test ~ pwr(-2, 3)               # |x|^y = |-2|^3 = 8
+  pwrs.test ~ pwrs(-2, 3)             # Signed power: -8
+@end
+
+
+#===============================================================================
+# ROUNDING FUNCTIONS
+#===============================================================================
+
+@equations Rounding
+  floor.test ~ floor(3.7)             # Floor: 3
+  floor.neg ~ floor(-3.7)             # Floor negative: -4
+  ceil.test ~ ceil(3.2)               # Ceiling: 4
+  ceil.neg ~ ceil(-3.2)               # Ceiling negative: -3
+@end
+
+
+#===============================================================================
+# MIN, MAX, CLAMP
+#===============================================================================
+
+@equations MinMaxClamp
+  min.test ~ min(5, 3)                # Minimum of 2 args: 3
+  min.multi ~ min(5, 3, 8, 1, 9)      # Minimum of many args: 1
+  max.test ~ max(5, 3)                # Maximum of 2 args: 5
+  max.multi ~ max(5, 3, 8, 1, 9)      # Maximum of many args: 9
+  clamp.test ~ clamp(t*100, 0, 10)    # Clamp between 0 and 10
+@end
+
+
+#===============================================================================
+# WAVE GENERATORS
+#===============================================================================
+
+@equations Waves
+  tri.wave ~ tri(t * 1000)            # Triangle wave: -1 to +1
+  saw.wave ~ saw(t * 1000)            # Sawtooth wave: -1 to +1
+@end
+
+
+#===============================================================================
+# STEP AND SELECT FUNCTIONS
+#===============================================================================
+
+@equations Step.Select
+  step.test ~ step(t - 0.001)         # Step at t=1ms: 0 before, 1 after
+  step.pulse ~ step(t - 0.001, 0.005) # Pulse from 1ms to 5ms
+  select.test ~ select(sin(t*1000), -1, 1) # -1 if sin<=0, else 1
+@end
+
+
+#===============================================================================
+# PIECEWISE LINEAR (PWL)
+#===============================================================================
+
+@equations Piecewise.Linear
+  # pwl(x, x0,y0, x1,y1, x2,y2, ...)
+  # Returns interpolated y value based on x
+  pwl.test ~ pwl(t*1000, 0,0, 1,5, 2,5, 3,0) # Trapezoid shape
+@end
+
+
+#===============================================================================
+# COMPARISON OPERATORS
+#===============================================================================
+
+@equations Comparisons
+  eq.test ~ (5 == 5)                  # Equals: 1 (true)
+  neq.test ~ (5 != 3)                 # Not equals: 1 (true)
+  lt.test ~ (3 < 5)                   # Less than: 1 (true)
+  gt.test ~ (5 > 3)                   # Greater than: 1 (true)
+  leq.test ~ (5 <= 5)                 # Less or equal: 1 (true)
+  geq.test ~ (5 >= 5)                 # Greater or equal: 1 (true)
+@end
+
+
+#===============================================================================
+# LOGICAL OPERATORS
+#===============================================================================
+
+@equations Logical
+  and.test ~ (1 && 1)                 # Logical AND: 1
+  and.false ~ (1 && 0)                # AND with false: 0
+  or.test ~ (0 || 1)                  # Logical OR: 1
+  or.false ~ (0 || 0)                 # OR both false: 0
+  not.test ~ !0                       # Logical NOT: 1
+  not.true ~ !1                       # NOT of true: 0
+@end
+
+
+#===============================================================================
+# TERNARY CONDITIONAL
+#===============================================================================
+
+@equations Ternary
+  tern.test ~ (t > 0.001) ? 10 : 0    # If t>1ms then 10 else 0
+  tern.wave ~ (sin(t*1000) > 0) ? 1 : -1  # Square wave from sine
+@end
+
+
+#===============================================================================
+# TIME-BASED FUNCTIONS (Stateful)
+#===============================================================================
+
+@equations Time.Based
+  # integrate(x) - Numerical integration over time
+  integral ~ integrate(1)             # Integral of 1 = t (ramp)
+  int.sine ~ integrate(sin(t*100))    # Integral of sine
+
+  # diff(x) - Numerical differentiation
+  deriv.t ~ diff(t)                   # Derivative of t = 1
+  deriv.sq ~ diff(t * t)              # Derivative of t^2 = 2t
+@end
+
+
+#===============================================================================
+# LAST VALUE FUNCTION
+#===============================================================================
+
+@equations Last.Value
+  # last(x) - Returns previous timestep's converged value
+  # Useful for difference equations and sfcr-style lagged variables
+  ramp ~ integrate(1)                 # Ramp up
+  delta ~ ramp - last(ramp)           # Change per timestep = timestep
+@end
+
+
+#===============================================================================
+# LASTOUTPUT - Self-referencing
+#===============================================================================
+
+@equations Lastoutput
+  # lastoutput - Returns this equation's output from previous timestep
+  # Creates feedback loop / memory
+  counter ~ lastoutput + 0.001        # Counts up each millisecond
+@end
+
+
+#===============================================================================
+# COMBINED EXAMPLES
+#===============================================================================
+
+@equations Combined.Examples
+  # Damped oscillator
+  damped.osc ~ exp(-t * 10) * sin(t * 100)
+  
+  # Rectified sine (absolute value)
+  rectified ~ abs(sin(t * 1000))
+  
+  # Half-wave rectifier using max
+  half.rect ~ max(0, sin(t * 1000))
+  
+  # Clipped sine (soft limiter)
+  clipped ~ clamp(2 * sin(t * 1000), -1, 1)
+  
+  # Frequency modulation
+  fm.signal ~ sin(t * 1000 + 5 * sin(t * 100))
+  
+  # Amplitude modulation  
+  am.signal ~ (1 + 0.5 * sin(t * 100)) * sin(t * 1000)
+  
+  # Exponential growth with saturation
+  saturated ~ 10 * (1 - exp(-t * 100))
+@end
+
+
+#===============================================================================
+# VARIABLE REFERENCES (Node References)
+#===============================================================================
+
+@equations Variable.Refs
+  # Any identifier can reference a LabeledNode or ComputedValue
+  source ~ 10 * sin(t * 100)          # Source signal
+  doubled ~ source * 2                # Reference 'source' from above
+  offset ~ source + 5                 # Offset by 5
+@end
+
+
+#===============================================================================
+# GREEK SYMBOLS (LaTeX-style)
+#===============================================================================
+
+@equations Greek.Symbols
+  # Greek letters using backslash notation
+  \alpha ~ 0.6                        # Alpha parameter
+  \beta ~ 0.4                         # Beta parameter
+  \theta ~ 0.2                        # Theta parameter
+  \omega ~ 2 * pi * 60                # Omega (angular frequency 60Hz)
+  \gamma ~ \alpha + \beta             # Reference other Greek vars
+@end
+
+
+#===============================================================================
+# SUBSCRIPTED VARIABLES (LaTeX-style)
+#===============================================================================
+
+@equations Subscripted
+  # Subscripts using underscore
+  V.1 ~ 10                            # V subscript 1
+  V.2 ~ 20                            # V subscript 2
+  V.out ~ V.1 + V.2                   # Reference subscripted vars
+  X.{total} ~ V.1 * V.2               # Curly brace subscript
+@end
+
+
+#===============================================================================
+# SCOPE DISPLAY
+#===============================================================================
+
+@scope sin.test
+@scope cos.test
+@scope integral
+@scope damped.osc
+@scope tri.wave

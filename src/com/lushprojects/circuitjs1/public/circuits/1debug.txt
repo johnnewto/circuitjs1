@@ -1,113 +1,59 @@
-# SIM SFC Model - Godley & Lavoie Chapter 3
-# This file demonstrates the SFCR-compatible text format for CircuitJS1
-# Based on: Monetary Economics: An Integrated Approach to Credit, Money, Income, Production and Wealth
-# by Wynne Godley and Marc Lavoie, chapter 3, figures 3.2 and 3.3.
-
-#===============================================================================
-# INITIALIZATION SETTINGS
-#===============================================================================
-
-@init
-  timestep: 0.1           # Simulation timestep (years)
-  voltageUnit: $          # Use $ for money values
-  timeUnit: yr            # Use years for time
-  showToolbar: true       # Show component toolbar
-  showValues: true        # Show values on components
-@end
-
-#===============================================================================
-# BALANCE SHEET MATRIX
-#===============================================================================
-
-@matrix Balance_Sheet
-columns: Households_b, Production_b, Government_b
-codes: h, p, g
-type: balance_sheet
-
-| Stock           | h           | p           | g           |
-|-----------------|-------------|-------------|-------------|
-| Money stock     | H_h         |             | -H_s        |
-
-@end_matrix
-
-
-#===============================================================================
-# TRANSACTION FLOW MATRIX
-#===============================================================================
-
-@matrix Transaction_Flow_Matrix
-columns: Households, Production, Govt
-codes: h, p, g
-type: transaction_flow
-
-| Flow              | h           | p           | g           |
-|-------------------|-------------|-------------|-------------|
-| Consumption       | -C_d        | C_s         |             |
-| Govt Expenditures |             | G_s         | -G_d        |
-| Wages             | W * N_s     | -W * N_s    |             |
-| Taxes             | -T_s        |             | T_d         |
-| Money stock       | -\DeltaH_h  |             | \DeltaH_s   |
-
-@end_matrix
-
-
-#===============================================================================
-# EQUATIONS (Block 1)
-#===============================================================================
-
-@equations equations_1
-  C_s ~ C_d                           # Supply = Demand identity
-  G_s ~ G_d                           # Govt supply = demand  
-  T_s ~ T_d                           # Tax identity
-  N_s ~ N_d                           # Labor market clearing
-  YD ~ W * N_s - T_s                  # Disposable income
-  T_d ~ \theta * W * N_s              # Tax collection
-  C_d ~ \alpha_1 * YD + \alpha_2 * H_h[-1]    # Consumption function
-  H_s ~ integrate(G_d - T_d)          # Govt money stock (cumulative deficit)
-@end
-
-
-#===============================================================================
-# EQUATIONS (Block 2)
-#===============================================================================
-
-@equations equations_2
-  H_h ~ integrate(YD - C_d)           # Household money holdings (savings)
-  Y ~ C_s + G_s                       # Total output (GDP)
-  N_d ~ Y / W                         # Labor demand
-  \DeltaH_h ~ diff(H_h)               # Change in household money
-  \DeltaH_s ~ diff(H_s)               # Change in govt money
-@end
-
-
-#===============================================================================
-# PARAMETERS (Exogenous Variables)
-#===============================================================================
-
-@parameters Parameters
-  \alpha_1 = 0.6                      # Propensity to consume out of income
-  \alpha_2 = 0.4                      # Propensity to consume out of wealth
-  \theta = 0.2                        # Tax rate
-  G_d = 20                            # Government demand for goods/services
-  W = 1                               # Nominal wage rate
-@end
-
-
-#===============================================================================
-# HINTS (Variable Documentation)
-#===============================================================================
-
-@hints
-  Y: Output Yay!
-
-@end
-
-
-#===============================================================================
-# SCOPES (Variables to display in oscilloscope)
-#===============================================================================
-
-@scope C_s
-@scope Y
-@scope \DeltaH_h
-@scope \DeltaH_s
+$ 0 0.01 2.803162489452614 50 5 50 5e-11
+% voltageUnit $
+% showToolbar true
+266 176 24 298 194 0 s\sParams 8 rl 0.025 \0 \0 0.5 \\alpha0 20 \0 \0 0.5 \\alpha1 0.75 \0 \0 0.5 \\alpha2 0.10 \0 \0 0.5 \\delta 0.1 \0 \0 0.5 \\gamma 0.15 \0 \0 0.5 \\kappa 1 \0 \0 0.5 pr 1 \0 \0 0.5
+266 320 136 487 234 0 MarketClearing 4 Cs Cd \0 \0 0.5 Is Id \0 \0 0.5 Ns Nd \0 \0 0.5 Ls integrate(diff(Ld)) \0 \0 0.5
+266 176 248 422 400 0 Firms 7 Y Cs\s\p\sIs \0 \0 0.5 WBd Y\s-\slag(rl,\s1)\s*\slag(Ld,\s1)\s-\sAF \0 \0 0.5 AF \\delta\s*\slag(K,\s1) \0 \0 0.5 Ld integrate(Id\s-\sAF) \0 \0 0.5 KK t \0 g 0.5 Y5 lag(KK,\s1) \0 e 0.5 Y6 KK\s-\slag(KK,\s1) \0 f 0.5
+266 176 424 415 486 0 Households 2 YD WBs\s\p\slag(rm,\s1)\s*\slag(Mh,\s1) \0 \0 0.5 Mh Mh_init\s\p\sintegrate(YD\s-\sCd) \0 \0 0.5
+266 176 504 345 566 0 Banks 2 Ms integrate(diff(Ls)) \0 \0 0.5 rm rl \0 \0 0.5
+266 176 584 361 664 0 WageBill 3 WBs W\s*\sNs \0 \0 0.5 Nd Y\s/\spr \0 \0 0.5 W WBd\s/\smax(Nd,\s0.01) \0 \0 0.5
+266 176 680 496 724 0 Consumption 1 Cd \\alpha0\s\p\s\\alpha1\s*\sYD\s\p\s\\alpha2\s*\slag(Mh,\s1) \0 \0 0.5
+266 176 744 418 842 0 Investment 4 K K_init\s\p\sintegrate(Id\s-\sDA) \0 \0 0.5 DA \\delta\s*\slag(K,\s1) \0 \0 0.5 KT \\kappa\s*\slag(Y,\s1) \0 \0 0.5 Id \\gamma\s*\s(KT\s-\slag(K,\s1))\s\p\sDA \0 \0 0.5
+266 176 856 492 954 0 Verify 4 check_money Mh\s-\sMs \0 \0 0.5 check_loans Ls\s-\sLd \0 \0 0.5 check_labor Ns\s-\sNd \0 \0 0.5 firm_profit Y\s-\sWBd\s-\slag(rl,\s1)\s*\slag(Ld,\s1)\s-\sAF \0 \0 0.5
+x 500 32 899 35 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW 808080FF
+x 500 56 801 59 4 12 Bank-Money\sWorld\smodel\s(with\sexplicit\slagged\svariables) 808080FF
+x 500 80 785 83 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF
+207 544 304 608 304 36 Y
+403 528 336 864 560 0 12_8_0_xc01206_320_0.1_-1_1
+% AST 0 2
+% Hint rl Interest\srate\son\sloans
+% Hint \alpha0 Autonomous\sconsumption
+% Hint \alpha1 Propensity\sto\sconsume\sfrom\sincome
+% Hint \alpha2 Propensity\sto\sconsume\sfrom\swealth
+% Hint \delta Depreciation\srate
+% Hint \gamma Adjustment\sspeed\sof\scapital\sto\starget
+% Hint \kappa Capital-output\sratio\starget
+% Hint pr Labor\sproductivity
+% Hint Cs Consumption\ssupply
+% Hint Is Investment\ssupply
+% Hint Ns Labor\ssupply
+% Hint check_money Money\smarket
+% Hint check_loans Loan\smarket
+% Hint check_labor Labor\smarket
+% Hint Y National\sincome\s(output)
+% Hint Cd Consumption\sdemand
+% Hint Id Investment\sdemand
+% Hint Nd Labor\sdemand
+% Hint Ls Loan\ssupply
+% Hint Ld Loan\sdemand
+% Hint WBs Wage\sbill\ssupplied
+% Hint WBd Wage\sbill\sdemanded
+% Hint W Wage\srate
+% Hint YD Household\sdisposable\sincome\s\q\sWBs\s\p\slag(rm,1)\s*\slag(Mh,1)
+% Hint Mh Household\smoney\sholdings\s(deposits)
+% Hint Ms Money\ssupply\s(bank\sdeposits)
+% Hint rm Interest\srate\son\sdeposits
+% Hint K Capital\sstock
+% Hint KT Target\scapital\sstock\s\q\skappa\s*\slag(Y,1)
+% Hint DA Depreciation\sactual\s\q\sdelta\s*\slag(K,1)
+% Hint AF Amortization\sfunds\s\q\sdelta\s*\slag(K,1)
+% Hint \\alpha0 Autonomous\sconsumption
+% Hint \\alpha1 Propensity\sto\sconsume\sfrom\sincome
+% Hint \\alpha2 Propensity\sto\sconsume\sfrom\swealth
+% Hint \\delta Depreciation\srate
+% Hint \\gamma Investment\sadjustment\sspeed
+% Hint \\kappa Capital-output\sratio
+% Hint Y5 hint5
+% Hint Y6 hint6
+% Hint Y7 hint7
+% Hint KK hint7

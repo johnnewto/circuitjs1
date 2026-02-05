@@ -1,0 +1,275 @@
+# PC SFC Model - Godley & Lavoie Chapter 4 (Portfolio Choice)
+# Reference: https://joaomacalos.github.io/sfcr/articles/articles/gl2-pc.html
+# A model with government money AND bills
+
+#===============================================================================
+# INITIALIZATION SETTINGS
+#===============================================================================
+
+@init
+  timestep: 0.05          # Simulation timestep (years)
+  voltageUnit: $          # Use $ for money values
+  timeUnit: yr            # Use years for time
+  showToolbar: true       # Show component toolbar
+  showValues: true        # Show values on components
+@end
+
+#===============================================================================
+# TEXT LABEL
+#===============================================================================
+
+@circuit
+x 500 32 400 32 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s4:\sModel\sPC
+x 500 56 400 56 4 12 Portfolio\sChoice\s-\sBills\sand\sMoney
+x 500 80 400 80 4 12 Steady-state:\sY=105.8,\sV=86.5,\sBh=64.9,\sHh=21.6
+@end
+
+#===============================================================================
+# PARAMETERS (Exogenous Variables)
+# Source: pc_ext in sfcr
+#===============================================================================
+
+@parameters Parameters
+  r = 0.025               # Interest rate on bills
+  G = 20                  # Government expenditure
+  \alpha_1 = 0.6          # Propensity to consume out of income
+  \alpha_2 = 0.4          # Propensity to consume out of wealth
+  \theta = 0.2            # Tax rate
+  \lambda_0 = 0.635       # Portfolio parameter - bills constant
+  \lambda_1 = 0.05        # Portfolio parameter - bills/interest rate
+  \lambda_2 = 0.01        # Portfolio parameter - bills/income ratio
+@end
+
+#===============================================================================
+# INITIAL VALUES (Approximate Steady State)
+# From sfcr simulation results
+#===============================================================================
+
+@equations Initial_Values
+  V_init = 86.5           # Initial household wealth
+  Bh_init = 64.9          # Initial bills held by households
+  Bs_init = 64.9          # Initial bills supplied
+  Hs_init = 21.6          # Initial money supply
+  Bcb_init = 0            # Initial CB bill holdings
+@end
+
+#===============================================================================
+# EQUATIONS - National Income (eq1-eq3)
+# sfcr:
+#   Y ~ C + G
+#   YD ~ Y - TX + r[-1] * Bh[-1]
+#   TX ~ theta * (Y + r[-1] * Bh[-1])
+#===============================================================================
+
+@equations National_Income
+  # eq1: GDP identity
+  Y ~ C + G
+  
+  # eq2: Disposable income
+  # Interest income uses LAGGED rate and LAGGED bills (sfcr: r[-1] * Bh[-1])
+  YD ~ Y - TX + lag(r, 1) * lag(Bh, 1)
+  
+  # eq3: Taxes
+  TX ~ \theta * (Y + lag(r, 1) * lag(Bh, 1))
+@end
+
+#===============================================================================
+# EQUATIONS - Household Wealth (eq4)
+# sfcr: V ~ V[-1] + (YD - C)
+#===============================================================================
+
+@equations Household_Wealth
+  # eq4: Wealth accumulation (STOCK)
+  V ~ V_init + integrate(YD - C)
+@end
+
+#===============================================================================
+# EQUATIONS - Consumption (eq5)
+# sfcr: C ~ alpha1 * YD + alpha2 * V[-1]
+#===============================================================================
+
+@equations Consumption
+  # eq5: Consumption function
+  # Uses LAGGED wealth (sfcr: V[-1])
+  C ~ \alpha_1 * YD + \alpha_2 * lag(V, 1)
+@end
+
+#===============================================================================
+# EQUATIONS - Portfolio Allocation (eq6-eq7)
+# sfcr:
+#   Hh ~ V - Bh
+#   Bh ~ V * (lambda0 + lambda1 * r - lambda2 * (YD/V))
+#===============================================================================
+
+@equations Portfolio
+  # eq7: Demand for bills (portfolio choice)
+  # Protected against V = 0
+  Bh ~ V * (\lambda_0 + \lambda_1 * r - \lambda_2 * (YD / max(V, 0.01)))
+  
+  # eq6: Money demand (residual from balance sheet)
+  Hh ~ V - Bh
+@end
+
+#===============================================================================
+# EQUATIONS - Government (eq8)
+# sfcr: Bs ~ Bs[-1] + (G + r[-1] * Bs[-1]) - (TX + r[-1] * Bcb[-1])
+#===============================================================================
+
+@equations Government
+  # eq8: Government bills supply (STOCK)
+  # Deficit = spending + interest - taxes - CB profits
+  govt_deficit ~ (G + lag(r, 1) * lag(Bs, 1)) - (TX + lag(r, 1) * lag(Bcb, 1))
+  Bs ~ Bs_init + integrate(govt_deficit)
+@end
+
+#===============================================================================
+# EQUATIONS - Central Bank (eq9-eq10)
+# sfcr:
+#   Hs ~ Hs[-1] + Bcb - Bcb[-1]
+#   Bcb ~ Bs - Bh
+#===============================================================================
+
+@equations Central_Bank
+  # eq10: CB holdings of bills (residual - buys what households don't want)
+  Bcb ~ Bs - Bh
+  
+  # eq9: Money supply (STOCK) - increases when CB buys bills
+  Hs ~ Hs_init + integrate(diff(Bcb))
+@end
+
+#===============================================================================
+# EQUATIONS - Changes (Deltas) for display
+#===============================================================================
+
+@equations Deltas
+  \DeltaV ~ diff(V)           # Change in wealth
+  \DeltaBh ~ diff(Bh)         # Change in bills held
+  \DeltaHh ~ diff(Hh)         # Change in money held
+  \DeltaBs ~ diff(Bs)         # Change in bills supplied
+  \DeltaHs ~ diff(Hs)         # Change in money supply
+@end
+
+#===============================================================================
+# EQUATIONS - Verification
+#===============================================================================
+
+@equations Verify
+  # Hidden equation: Money supply = Money demand (should be ~0)
+  check_money ~ Hs - Hh
+  
+  # Balance sheet check: V = Bh + Hh
+  check_balance ~ V - Bh - Hh
+  
+  # Bills market: Bs = Bh + Bcb
+  check_bills ~ Bs - Bh - Bcb
+@end
+
+#===============================================================================
+# HINTS (Variable Documentation)
+#===============================================================================
+
+@hints
+  Y: National income (GDP) = C + G
+  C: Consumption = alpha1 * YD + alpha2 * V[-1]
+  G: Government expenditure (exogenous)
+  YD: Disposable income = Y - TX + r[-1] * Bh[-1]
+  TX: Taxes = theta * (Y + r[-1] * Bh[-1])
+  V: Household wealth (stock) = V[-1] + YD - C
+  Bh: Bills held by households (portfolio choice)
+  Hh: Cash money held by households = V - Bh
+  Bs: Bills supplied by government (stock)
+  Hs: Money supply from central bank (stock)
+  Bcb: Bills held by central bank = Bs - Bh
+  r: Interest rate on bills (exogenous)
+  \theta: Tax rate
+  \alpha_1: Propensity to consume from income
+  \alpha_2: Propensity to consume from wealth
+  \lambda_0: Portfolio parameter - bills constant
+  \lambda_1: Portfolio parameter - bills/rate sensitivity
+  \lambda_2: Portfolio parameter - bills/income sensitivity
+  govt_deficit: Government budget deficit flow
+  check_money: Hs - Hh (should be ~0, hidden equation)
+  check_balance: V - Bh - Hh (should be ~0)
+  check_bills: Bs - Bh - Bcb (should be ~0)
+@end
+
+#===============================================================================
+# HIDDEN EQUATION (Model Closure)
+#===============================================================================
+
+# Hidden equation for model consistency:
+# Hs = Hh (Money supplied = Money demanded)
+
+@hidden Hs = Hh
+
+#===============================================================================
+# SCOPES (Variables to display)
+#===============================================================================
+
+@scope Y
+@scope C
+@scope YD
+@scope V
+@scope Bh
+@scope Hh
+@scope check_money
+
+#===============================================================================
+# SFCR R PACKAGE EQUATIONS - REFERENCE
+#===============================================================================
+# Source: https://joaomacalos.github.io/sfcr/articles/articles/gl2-pc.html
+#
+# pc_eqs <- sfcr_set(
+#   Y ~ C + G,
+#   YD ~ Y - TX + r[-1] * Bh[-1],
+#   TX ~ theta * (Y + r[-1] * Bh[-1]),
+#   V ~ V[-1] + (YD - C),
+#   C ~ alpha1 * YD + alpha2 * V[-1],
+#   Hh ~ V - Bh,
+#   Hh1 ~ V * ((1 - lambda0) - lambda1 * r + lambda2 * (YD/V)),
+#   Bh ~ V * (lambda0 + lambda1 * r - lambda2 * (YD/V)),
+#   Bs ~ Bs[-1] + (G + r[-1] * Bs[-1]) - (TX + r[-1] * Bcb[-1]),
+#   Hs ~ Hs[-1] + Bcb - Bcb[-1],
+#   Bcb ~ Bs - Bh
+# )
+#
+# pc_ext <- sfcr_set(
+#   r ~ 0.025,
+#   G ~ 20,
+#   alpha1 ~ 0.6,
+#   alpha2 ~ 0.4,
+#   theta ~ 0.2,
+#   lambda0 ~ 0.635,
+#   lambda1 ~ 0.05,
+#   lambda2 ~ 0.01
+# )
+#===============================================================================
+
+#===============================================================================
+# EXPECTED STEADY-STATE VALUES
+#===============================================================================
+# From sfcr simulation (periods 60-70):
+#
+#   Y    ≈ 105.8    (National income)
+#   C    ≈ 85.8     (Consumption)
+#   YD   ≈ 85.8     (Disposable income)
+#   TX   ≈ 21.7     (Taxes)
+#   V    ≈ 86.5     (Household wealth)
+#   Bh   ≈ 64.9     (Bills held)
+#   Hh   ≈ 21.6     (Money held)
+#   Bs   ≈ 64.9     (Bills supplied)
+#   Hs   ≈ 21.6     (Money supply)
+#   Bcb  ≈ 0        (CB bill holdings)
+#
+# Key relationships at steady state:
+#   - Y = C + G = 85.8 + 20 = 105.8
+#   - V = Bh + Hh = 64.9 + 21.6 = 86.5
+#   - Bs = Bh + Bcb = 64.9 + 0 = 64.9
+#   - YD = C (savings = 0 at steady state)
+#   - Interest income = r * Bh = 0.025 * 64.9 ≈ 1.6
+#
+# Portfolio allocation:
+#   - Bh/V = 64.9/86.5 ≈ 0.75
+#   - Hh/V = 21.6/86.5 ≈ 0.25
+#
+#===============================================================================

@@ -69,6 +69,9 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** Flag indicating small display mode */
     private static final int FLAG_SMALL = 1;
     
+    /** Flag indicating MNA (electrical) mode vs pure computational mode */
+    private static final int FLAG_MNA_MODE = 2;
+    
     /** Maximum number of equation rows supported */
     private static final int MAX_ROWS = 32;
     
@@ -134,6 +137,19 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     private int hoveredRow = -1;
     
     //=============================================================================
+    // INSTANCE STATE - MNA Node Tracking (Hybrid Approach)
+    //=============================================================================
+    
+    /** Node number for each row's output (-1 if none) */
+    private int[] labeledNodeNumbers;
+    
+    /** Voltage source index for each row (-1 if none) */
+    private int[] rowVoltSources;
+    
+    /** Total voltage sources allocated */
+    private int voltSourceCount;
+    
+    //=============================================================================
     // INSTANCE STATE - Geometry & Rendering
     //=============================================================================
     
@@ -170,6 +186,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         super(xx, yy);
         noDiagonal = true;
         rowCount = 2;
+        flags |= FLAG_MNA_MODE;  // MNA mode is the default
         initArrays();
         
         // Set default values for the initial rows
@@ -404,7 +421,10 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** @return Dump type identifier for serialization (266) */
     int getDumpType() { return 266; }
     
-    /** @return Number of electrical posts - 0 for pure computational */
+    /** @return true if in MNA (electrical) mode, false for pure computational */
+    boolean isMnaMode() { return (flags & FLAG_MNA_MODE) != 0; }
+    
+    /** @return Number of electrical posts - always 0 (no visible posts) */
     int getPostCount() { return 0; }
     
     /**
@@ -419,8 +439,43 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         return new Point(x + tableWidth, postY);
     }
     
-    /** @return Number of voltage sources needed - 0 for pure computational */
-    int getVoltageSourceCount() { return 0; }
+    /** 
+     * @return Number of voltage sources needed - one per row with valid output name
+     * This counts voltage sources before findLabeledNodes() runs, so we count all valid rows.
+     */
+    int getVoltageSourceCount() { 
+        if (!isMnaMode()) return 0;
+        
+        int count = 0;
+        for (int row = 0; row < rowCount; row++) {
+            String outputName = outputNames[row];
+            if (outputName != null && !outputName.trim().isEmpty()) {
+                count++;
+            }
+        }
+        return count;
+    }
+    
+    /**
+     * Override getInternalNodeCount to create internal nodes for rows
+     * that do NOT have an existing LabeledNode on the canvas.
+     */
+    int getInternalNodeCount() {
+        if (!isMnaMode()) return 0;
+        
+        int count = 0;
+        for (int row = 0; row < rowCount; row++) {
+            String outputName = outputNames[row];
+            if (outputName != null && !outputName.trim().isEmpty()) {
+                // Only need internal node if NO existing LabeledNode
+                Integer existingNode = LabeledNodeElm.getByName(outputName.trim());
+                if (existingNode == null || existingNode < 0) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
     
     /** @return true - equations may depend on other values that change */
     boolean nonLinear() { return true; }
@@ -439,10 +494,29 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /**
      * Get current flowing into a node.
-     * Pure computational - no posts, no current.
+     * In MNA mode, returns the current from the voltage source for that row.
+     * In pure computational mode, returns 0 (no posts, no current).
      */
     double getCurrentIntoNode(int n) {
+        if (isMnaMode() && n < rowCount) {
+            return current[n];
+        }
         return 0;
+    }
+    
+    /** Current for each row's voltage source (MNA mode only) */
+    private double[] current = new double[MAX_ROWS];
+    
+    /**
+     * Set current for a voltage source (called by simulator).
+     * @param vs Voltage source index within this element
+     * @param c Current value
+     */
+    @Override
+    void setCurrent(int vs, double c) {
+        if (vs < rowCount) {
+            current[vs] = c;
+        }
     }
     
     //=============================================================================
@@ -575,28 +649,115 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     }
     
     /**
+     * Find or create nodes for each row output.
+     * If a LabeledNode exists on canvas, use that node.
+     * Otherwise, use our internal node and register it in labelList.
+     * Called during stamp() after internal nodes are allocated.
+     */
+    private void findLabeledNodes() {
+        labeledNodeNumbers = new int[rowCount];
+        rowVoltSources = new int[rowCount];
+        voltSourceCount = 0;
+        
+        int internalNodeIdx = 0;  // Index into internal nodes (nodes[] array)
+        
+        for (int row = 0; row < rowCount; row++) {
+            labeledNodeNumbers[row] = -1;
+            rowVoltSources[row] = -1;
+            
+            String outputName = outputNames[row];
+            if (outputName == null || outputName.trim().isEmpty()) continue;
+            
+            // Check if a LabeledNode already exists on canvas
+            Integer existingNodeNum = LabeledNodeElm.getByName(outputName.trim());
+            
+            if (existingNodeNum != null && existingNodeNum >= 0) {
+                // Use existing LabeledNode's node - drive it with our voltage source
+                labeledNodeNumbers[row] = existingNodeNum;
+                rowVoltSources[row] = voltSourceCount;
+                voltSourceCount++;
+            } else {
+                // No existing LabeledNode - use our internal node and register it
+                if (nodes != null && internalNodeIdx < nodes.length) {
+                    int internalNode = nodes[internalNodeIdx];
+                    labeledNodeNumbers[row] = internalNode;
+                    
+                    // Register this internal node so other elements can find it by name
+                    registerInternalNodeAsLabel(outputName.trim(), internalNode);
+                    
+                    internalNodeIdx++;
+                    
+                    rowVoltSources[row] = voltSourceCount;
+                    voltSourceCount++;
+                }
+            }
+        }
+    }
+    
+    /**
+     * Register an internal node number with LabeledNodeElm's static labelList.
+     * This allows other elements to find this node by name.
+     */
+    private void registerInternalNodeAsLabel(String name, int nodeNum) {
+        if (LabeledNodeElm.labelList == null) {
+            LabeledNodeElm.resetNodeList();
+        }
+        
+        LabeledNodeElm.LabelEntry entry = new LabeledNodeElm.LabelEntry();
+        entry.node = nodeNum;
+        entry.point = new Point(x, y);  // Use table position as dummy
+        
+        LabeledNodeElm.labelList.put(name, entry);
+    }
+    
+    /**
      * Stamp the element into the circuit matrix.
-     * Pure computational - does nothing.
+     * In MNA mode, stamps voltage sources for each row output using hybrid approach.
+     * In pure computational mode, does nothing.
      */
     void stamp() {
-        // Pure computational element - no MNA matrix participation
+        if (!isMnaMode()) {
+            // Pure computational element - no MNA matrix participation
+            return;
+        }
+        
+        // Find or create nodes for each row
+        findLabeledNodes();
+        
+        // MNA mode: stamp voltage sources for each row
+        for (int row = 0; row < rowCount; row++) {
+            int nodeNum = labeledNodeNumbers[row];
+            int vs = rowVoltSources[row];
+            
+            if (nodeNum >= 0 && vs >= 0) {
+                int vn = voltSource + vs + sim.nodeList.size();
+                sim.stampNonLinear(vn);
+                sim.stampVoltageSource(0, nodeNum, voltSource + vs);
+                
+                // Stamp tiny load resistance to prevent matrix elimination
+                double loadResistance = 1e9;
+                sim.stampResistor(nodeNum, 0, loadResistance);
+            }
+        }
     }
     
     // connectToLabeledNodes removed - pure computational uses ComputedValues instead
     
     /**
      * Perform one iteration step of the simulation.
-     * Pure computational: evaluates equations and writes to ComputedValues.
+     * 
+     * In pure computational mode: evaluates equations and writes to ComputedValues.
+     * In MNA mode: evaluates equations and stamps voltage sources.
      * 
      * For each row:
      * 1. Handles initial value evaluation at t=0
      * 2. Evaluates the main equation
      * 3. Checks for convergence
-     * 4. Registers output in ComputedValues
+     * 4. Outputs to ComputedValues (pure) or MNA matrix (electrical)
      */
     void doStep() {
         if (DEBUG && sim.subIterations == 0) {
-            CirSim.console("[EquationTableElm." + tableName + "] doStep() at t=" + sim.t);
+            CirSim.console("[EquationTableElm." + tableName + "] doStep() at t=" + sim.t + " mnaMode=" + isMnaMode());
         }
         
         for (int row = 0; row < rowCount; row++) {
@@ -605,6 +766,10 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 // On first sub-iteration, use 0 as placeholder
                 if (sim.subIterations == 0 && !initialValueApplied[row]) {
                     outputValues[row] = 0;
+                    if (isMnaMode() && rowVoltSources != null && rowVoltSources[row] >= 0) {
+                        int vn = voltSource + rowVoltSources[row] + sim.nodeList.size();
+                        sim.stampRightSide(vn, 0);
+                    }
                     continue;
                 }
                 
@@ -616,7 +781,11 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             }
             
             // Normal timestep: evaluate main equation
-            evaluateMainEquationPure(row);
+            if (isMnaMode()) {
+                evaluateMainEquationMna(row);
+            } else {
+                evaluateMainEquationPure(row);
+            }
         }
     }
     
@@ -643,6 +812,12 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         
         // Initialize integration state to start from initial value
         exprStates[row].lastIntOutput = initialValue;
+        
+        // In MNA mode, stamp the initial value via stampRightSide (consistent with EquationElm)
+        if (isMnaMode() && rowVoltSources != null && rowVoltSources[row] >= 0) {
+            int vn = voltSource + rowVoltSources[row] + sim.nodeList.size();
+            sim.stampRightSide(vn, initialValue);
+        }
         
         // Register immediately for other elements/rows to use
         String outputName = outputNames[row];
@@ -702,9 +877,70 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
     }
     
-    // Legacy method kept for compatibility - not used in pure computational mode
+    /**
+     * Evaluate the main equation for a row in MNA mode.
+     * Stamps the computed value to the voltage source in the MNA matrix.
+     * 
+     * Following INTERNALS.md and EquationElm pattern:
+     * - Calculate vn = voltage source row in matrix
+     * - Use stampRightSide(vn, value) to set the voltage
+     * 
+     * @param row Row index
+     */
+    private void evaluateMainEquationMna(int row) {
+        if (compiledExprs[row] == null) {
+            if (DEBUG) {
+                CirSim.console("[EquationTableElm." + tableName + "] Row " + row + ": NULL compiled expression!");
+            }
+            return;
+        }
+        
+        ExprState state = exprStates[row];
+        
+        // Set up evaluation context
+        state.values[0] = sliderValues[row];
+        state.t = sim.t;
+        
+        // Register slider as computed value for lookups
+        String sliderVar = sliderVarNames[row];
+        if (sliderVar != null && !sliderVar.isEmpty()) {
+            ComputedValues.setComputedValue(sliderVar, sliderValues[row]);
+        }
+        
+        // Evaluate the equation
+        double equationValue = compiledExprs[row].eval(state);
+        
+        // Debug output for troubleshooting
+        if (DEBUG) {
+            logEquationEvaluation(row, state, equationValue);
+        }
+        
+        // Check equation convergence
+        checkEquationConvergence(row, equationValue);
+        lastOutputValues[row] = equationValue;
+        outputValues[row] = equationValue;
+        
+        // Stamp to MNA matrix via stampRightSide (consistent with EquationElm)
+        // vn = voltage source row in matrix
+        if (rowVoltSources != null && rowVoltSources[row] >= 0) {
+            int vn = voltSource + rowVoltSources[row] + sim.nodeList.size();
+            sim.stampRightSide(vn, equationValue);
+        }
+        
+        // Also register in ComputedValues for consistency
+        String outputName = outputNames[row];
+        if (outputName != null && !outputName.trim().isEmpty()) {
+            ComputedValues.setComputedValue(outputName.trim(), equationValue);
+        }
+    }
+    
+    // Legacy method kept for compatibility
     private void evaluateMainEquation(int row, int vn) {
-        evaluateMainEquationPure(row);
+        if (isMnaMode()) {
+            evaluateMainEquationMna(row);
+        } else {
+            evaluateMainEquationPure(row);
+        }
     }
     
     /**
@@ -907,12 +1143,19 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     //=============================================================================
     
     /**
-     * Override to hide posts - electrical connections remain functional
-     * but visual connection dots are not drawn (like TableElm).
+     * Override to conditionally hide posts.
+     * In MNA mode, draw posts normally. In pure computational mode, hide them.
      */
     @Override
     void drawPosts(Graphics g) {
-        // Intentionally empty - posts are hidden
+        if (isMnaMode()) {
+            // MNA mode: draw posts for electrical connections
+            for (int i = 0; i < getPostCount(); i++) {
+                Point p = getPost(i);
+                drawPost(g, p);
+            }
+        }
+        // Pure computational mode: intentionally empty - no posts to draw
     }
     
     /**
@@ -934,6 +1177,10 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         if (n == 0) {
             return EditInfo.createCheckbox("Small", (flags & FLAG_SMALL) != 0);
         }
+        if (n == 1) {
+            // MNA mode is default. When unchecked, outputs go to ComputedValues only (no electrical posts).
+            return EditInfo.createCheckbox("Electrical Outputs", isMnaMode());
+        }
         return null;
     }
     
@@ -951,6 +1198,15 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             }
             setPoints();
         }
+        if (n == 1) {
+            boolean wasEnabled = isMnaMode();
+            flags = ei.changeFlag(flags, FLAG_MNA_MODE);
+            if (wasEnabled != isMnaMode()) {
+                // Mode changed - need to reanalyze circuit
+                allocNodes();
+                sim.needAnalyze();
+            }
+        }
     }
     
     //=============================================================================
@@ -962,7 +1218,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      */
     @Override
     void getInfo(String arr[]) {
-        arr[0] = "Equation Table: " + tableName;
+        arr[0] = "Equation Table: " + tableName + (isMnaMode() ? " (Electrical)" : " (Computed)");
         
         if (hoveredRow >= 0 && hoveredRow < rowCount) {
             // Show detailed info for hovered row

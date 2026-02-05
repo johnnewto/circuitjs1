@@ -21,36 +21,30 @@ package com.lushprojects.circuitjs1.client;
 
 
 /**
- * GodlyTableElm - Pure Computational Table with Integration Capabilities
+ * GodlyTableElm - Table with Integration Capabilities
+ * Extends TableElm to add integration of column sums over time
+ * Uses equation: lastoutput + timestep * integrationGain * columnSum
  * 
- * Extends TableElm but operates as a PURE COMPUTATIONAL element:
- * - No circuit posts or voltage sources
- * - Does not participate in MNA matrix solving
- * - Computes values and writes them to ComputedValues registry
- * - Other elements can read these values via ComputedValues or use
- *   ComputedValueSourceElm to bridge values into the electrical domain
- * 
- * Integration:
- * - Uses equation: lastoutput + timestep * columnSum
- * - Accumulated values are registered in ComputedValues for each column
- * 
- * Benefits of pure computational approach:
- * - Order-independent evaluation (no voltage source iteration needed)
- * - Lower computational cost (no matrix entries)
- * - Cleaner separation between accounting logic and electrical simulation
- * 
- * To connect a computed value to electrical circuit, use ComputedValueSourceElm.
+ * Current Calculation:
+ * - Each output pin has a current proportional to its column sum (flow)
+ * - Current = columnSum * currentScale
+ * - Default: 1V column sum produces 1mA current
+ * - Positive flow (inflow) produces positive current into the node
+ * - Negative flow (outflow) produces negative current (current out of node)
+ * - This represents the rate of change, making physical sense in stock-flow modeling
  */
 public class GodlyTableElm extends TableElm {
-    private Expr integrationExpr;                // Compiled integration expression
+    private Expr[] integrationExprs;             // Compiled integration expression PER COLUMN (to avoid state sharing)
     private ExprState[] integrationStates;       // Integration state for each column
     private double[] integratedValues;           // Integration value for each column
     private double[] lastColumnSums;             // Last column sums for convergence check
-    private double[] lastIntegratedValues;       // For convergence checking
-    private double currentScale = 0.001;         // Scale factor (kept for backward compat in dump)
+    private double currentScale = 0.001;         // Scale factor for current calculation (default 1mA per volt)
     
-    // Pure computational mode: no electrical posts
-    private static final boolean PURE_COMPUTATIONAL = true;
+    // Alternative approach: stamp directly to LabeledNode nodes (no visible posts)
+    private int[] labeledNodeNumbers;            // Node number for each column's LabeledNode (-1 if none)
+    private int[] colVoltSources;                // Voltage source index for each column (-1 if none)
+    private int voltSourceCount;                 // Total voltage sources needed
+    private double[] colCurrents;                // Current through each column's voltage source
     
     // Constructor for new table
     public GodlyTableElm(int xx, int yy) {
@@ -59,63 +53,7 @@ public class GodlyTableElm extends TableElm {
         initIntegration();
     }
     
-    //=========================================================================
-    // PURE COMPUTATIONAL: Override circuit element methods
-    //=========================================================================
-    
-    /**
-     * Pure computational element has no posts.
-     * Use ComputedValueSourceElm to bridge values to electrical domain.
-     */
-    @Override
-    int getPostCount() {
-        return 0;  // No electrical posts
-    }
-    
-    /**
-     * Pure computational element has no voltage sources.
-     */
-    @Override
-    int getVoltageSourceCount() {
-        return 0;  // No voltage sources
-    }
-    
-    /**
-     * Pure computational element doesn't stamp to MNA matrix.
-     */
-    @Override
-    void stamp() {
-        // No MNA matrix participation - pure computational
-    }
-    
-    /**
-     * Override setupPins to create no pins.
-     */
-    @Override
-    void setupPins() {
-        // Calculate visual size based on table dimensions (needed for drawing)
-        int cellWidthPixels = getCellWidthPixels();
-        int rowDescColWidth = cellWidthPixels * 3 / 2;
-        
-        // Standard rows: header + data rows + initial values + computed values
-        int totalRows = rows + 3; // +3 for header, initial, computed
-        if (showInitialValues)
-            totalRows++;
-        
-        int tableWidthPixels = (rowDescColWidth + getCols() * cellWidthPixels) + 2 * cellSpacing;
-        int tableHeightPixels = (totalRows + 2) * cellHeight + (totalRows + 3) * cellSpacing + 20;
-        
-        sizeX = (tableWidthPixels + cspc2 - 1) / cspc2;
-        sizeY = (tableHeightPixels + cspc2 - 1) / cspc2;
-        
-        // No pins for pure computational element
-        pins = new Pin[0];
-        
-        // Still need to initialize integration arrays
-        ensureArraysSized();
-    }
-    
-    // Get convergence limit for pure computational convergence check
+    // Get convergence limit (same as VCVSElm/VCCSElm)
     // More lenient over time to help convergence
     double getConvergeLimit() {
         // Base relative tolerance (0.1% to 1% depending on iteration count)
@@ -168,13 +106,12 @@ public class GodlyTableElm extends TableElm {
     }
     
     private void initIntegration() {
-        // Parse the integration expression (doesn't depend on column count)
-        parseIntegrationExpr();
-        
         // Only initialize arrays if we have columns
         // Otherwise, ensureArraysSized() will be called later from setupPins()
         if (getCols() > 0) {
             ensureArraysSized();
+            // Parse per-column expressions after we know column count
+            parseIntegrationExprs();
         }
     }
     
@@ -197,29 +134,44 @@ public class GodlyTableElm extends TableElm {
         state.values[0] = columnSum; // 'a' = columnSum
         state.t = sim.t;
         
+        double lastOut = state.lastOutput;
+        
         // Evaluate integration expression: lastoutput + timestep * a
-        double result = integrationExpr.eval(state);
+        // Each column has its own Expr instance to avoid state sharing/caching issues
+        Expr expr = (integrationExprs != null && col < integrationExprs.length) ? integrationExprs[col] : null;
+        if (expr == null) {
+            return lastOut;
+        }
+        double result = expr.eval(state);
         
         // Return result (state.lastOutput will be updated in stepFinished)
         return result;
     }
     
-    private void parseIntegrationExpr() {
-        try {
-            // Create expression: lastoutput + timestep * a
-            // Where 'a' will be (columnSum * integrationGain) - gain is pre-applied
-            // This implements numerical integration: y[n+1] = y[n] + dt * f(t,y)
-            String exprStr = "lastoutput + timestep*a";
-            ExprParser parser = new ExprParser(exprStr);
-            integrationExpr = parser.parseExpression();
-            String err = parser.gotError();
-            if (err != null) {
-                CirSim.console("GodlyTableElm: Parse error in integration expression: " + exprStr + ": " + err);
-                integrationExpr = null;
+    private void parseIntegrationExprs() {
+        int cols = getCols();
+        if (cols == 0) return;
+        
+        integrationExprs = new Expr[cols];
+        
+        // Create a SEPARATE expression instance for each column
+        // This avoids any internal state/caching issues in Expr.eval()
+        // Note: Use _a (underscore prefix) for values[0] - plain 'a' would be parsed as a node reference
+        String exprStr = "lastoutput + timestep*_a";
+        
+        for (int col = 0; col < cols; col++) {
+            try {
+                ExprParser parser = new ExprParser(exprStr);
+                integrationExprs[col] = parser.parseExpression();
+                String err = parser.gotError();
+                if (err != null) {
+                    CirSim.console("GodlyTableElm: Parse error in integration expression for col " + col + ": " + err);
+                    integrationExprs[col] = null;
+                }
+            } catch (Exception e) {
+                CirSim.console("GodlyTableElm: Error parsing integration expression for col " + col + ": " + e.getMessage());
+                integrationExprs[col] = null;
             }
-        } catch (Exception e) {
-            CirSim.console("GodlyTableElm: Error parsing integration expression: " + e.getMessage());
-            integrationExpr = null;
         }
     }
     
@@ -268,7 +220,171 @@ public class GodlyTableElm extends TableElm {
         }
     }
     
-    // setupPins() is now overridden above for pure computational mode
+    @Override
+    void setupPins() {
+        // Don't call super.setupPins() - we don't use pins for output
+        // super.setupPins();
+        
+        // Register as master if not already done (needed for priority system)
+        if (columns != null) {
+            for (int col = 0; col < columns.size(); col++) {
+                TableColumn column = columns.get(col);
+                if (!column.isALE() && !column.isEmpty()) {
+                    String name = column.getStockName();
+                    // Use base priority (weighted priority is handled in parent class)
+                    ComputedValues.registerMasterTable(name.trim(), this, priority);
+                }
+            }
+        }
+        
+        // Initialize pins array to avoid null checks (but with 0 posts)
+        pins = new Pin[0];
+        
+        // Note: findLabeledNodes() is called in stamp() after internal nodes are allocated
+        
+        // Reinitialize integration arrays when columns change
+        ensureArraysSized();
+        // Note: Master column status is checked dynamically via isMasterForColumn()
+    }
+    
+    /**
+     * Override getPostCount to return 0 - no visible posts.
+     * We stamp directly to LabeledNode nodes instead.
+     */
+    @Override
+    int getPostCount() {
+        return 0;  // No visible posts
+    }
+    
+    /**
+     * Override getVoltageSourceCount to allocate voltage sources for
+     * each master column. One voltage source per master column.
+     */
+    @Override
+    int getVoltageSourceCount() {
+        // Same count as internal nodes - one per master column
+        return countMasterColumns();
+    }
+    
+    /**
+     * Override getInternalNodeCount to create internal nodes only for master columns
+     * that do NOT have an existing LabeledNode on the canvas.
+     * Columns with existing LabeledNodes will use those nodes instead.
+     */
+    @Override
+    int getInternalNodeCount() {
+        if (columns == null) return 0;
+        
+        int cols = getCols();
+        int colLimit = (cols >= 4) ? (cols - 1) : cols; // Exclude A-L-E column
+        int count = 0;
+        
+        for (int col = 0; col < colLimit; col++) {
+            if (isMasterForColumn(col)) {
+                String stockName = columns.get(col).getStockName();
+                if (stockName != null && !stockName.trim().isEmpty()) {
+                    // Only need internal node if NO existing LabeledNode
+                    Integer existingNode = LabeledNodeElm.getByName(stockName.trim());
+                    if (existingNode == null || existingNode < 0) {
+                        count++;
+                    }
+                }
+            }
+        }
+        return count;
+    }
+    
+    /**
+     * Count master columns that need voltage sources.
+     * ALL master columns need voltage sources to drive their values.
+     */
+    private int countMasterColumns() {
+        if (columns == null) return 0;
+        
+        int cols = getCols();
+        int colLimit = (cols >= 4) ? (cols - 1) : cols; // Exclude A-L-E column
+        int count = 0;
+        
+        for (int col = 0; col < colLimit; col++) {
+            if (isMasterForColumn(col)) {
+                String stockName = columns.get(col).getStockName();
+                if (stockName != null && !stockName.trim().isEmpty()) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+    
+    /**
+     * Find or create nodes for each master column.
+     * If a LabeledNode exists on canvas, use that node.
+     * Otherwise, use our internal node and register it in labelList.
+     * Called during stamp() after internal nodes are allocated.
+     */
+    private void findLabeledNodes() {
+        int cols = getCols();
+        labeledNodeNumbers = new int[cols];
+        colVoltSources = new int[cols];
+        colCurrents = new double[cols];
+        voltSourceCount = 0;
+        
+        int colLimit = (cols >= 4) ? (cols - 1) : cols; // Exclude A-L-E column
+        int internalNodeIdx = 0;  // Index into internal nodes (nodes[] array)
+        
+        for (int col = 0; col < cols; col++) {
+            labeledNodeNumbers[col] = -1;
+            colVoltSources[col] = -1;
+            
+            if (col >= colLimit) continue;  // Skip A-L-E column
+            if (!isMasterForColumn(col)) continue;  // Only master columns
+            
+            String stockName = columns.get(col).getStockName();
+            if (stockName == null || stockName.trim().isEmpty()) continue;
+            
+            // Check if a LabeledNode already exists on canvas
+            Integer existingNodeNum = LabeledNodeElm.getByName(stockName.trim());
+            
+            if (existingNodeNum != null && existingNodeNum >= 0) {
+                // Use existing LabeledNode's node - drive it with our voltage source
+                labeledNodeNumbers[col] = existingNodeNum;
+                colVoltSources[col] = voltSourceCount;
+                voltSourceCount++;
+            } else {
+                // No existing LabeledNode - use our internal node and register it
+                if (nodes != null && internalNodeIdx < nodes.length) {
+                    int internalNode = nodes[internalNodeIdx];
+                    labeledNodeNumbers[col] = internalNode;
+                    
+                    // Register this internal node so other elements can find it by name
+                    registerInternalNodeAsLabel(stockName.trim(), internalNode);
+                    
+                    internalNodeIdx++;
+                    
+                    colVoltSources[col] = voltSourceCount;
+                    voltSourceCount++;
+                }
+            }
+        }
+    }
+    
+    /**
+     * Register an internal node number with LabeledNodeElm's static labelList.
+     * This allows other elements to find this node by name using LabeledNodeElm.getByName().
+     */
+    private void registerInternalNodeAsLabel(String name, int nodeNum) {
+        if (LabeledNodeElm.labelList == null) {
+            LabeledNodeElm.resetNodeList();
+        }
+        
+        // Create a LabelEntry for this name
+        // Note: we don't have a Point for this, so we use a dummy position
+        LabeledNodeElm.LabelEntry entry = new LabeledNodeElm.LabelEntry();
+        entry.node = nodeNum;
+        entry.point = new Point(x, y);  // Use table position as dummy
+        
+        LabeledNodeElm.labelList.put(name, entry);
+    }
     
     // Ensure all arrays are properly sized for current column count
     private void ensureArraysSized() {
@@ -302,23 +418,98 @@ public class GodlyTableElm extends TableElm {
             }
         }
         
-        // Resize lastIntegratedValues array for convergence checking
-        if (lastIntegratedValues == null || lastIntegratedValues.length != cols) {
-            double[] oldValues = lastIntegratedValues;
-            lastIntegratedValues = new double[cols];
-            if (oldValues != null) {
-                System.arraycopy(oldValues, 0, lastIntegratedValues, 0, Math.min(oldValues.length, cols));
-            }
+        // Resize integrationExprs array (one Expr per column to avoid state sharing)
+        if (integrationExprs == null || integrationExprs.length != cols) {
+            parseIntegrationExprs();  // Re-parse to create new array with correct size
         }
         
         // Note: Master column status is determined per-column via isMasterForColumn()
     }
 
+    /**
+     * Override stamp() to stamp voltage sources directly to LabeledNode nodes.
+     * This is the alternative approach: no visible posts, direct connection.
+     * Called once during analyzeCircuit(), after setupPins() and after voltage sources are allocated.
+     */
+    @Override
+    void stamp() {
+        // Refresh LabeledNode lookup (in case nodes changed since setupPins)
+        findLabeledNodes();
+        
+        // Stamp voltage sources from ground to each LabeledNode's node
+        int cols = getCols();
+        int colLimit = (cols >= 4) ? (cols - 1) : cols; // Exclude A-L-E column
+        
+        for (int col = 0; col < colLimit; col++) {
+            if (labeledNodeNumbers == null || col >= labeledNodeNumbers.length) continue;
+            
+            int nodeNum = labeledNodeNumbers[col];
+            int vs = colVoltSources[col];
+            
+            if (nodeNum >= 0 && vs >= 0) {
+                // Stamp voltage source from ground (0) to the LabeledNode's node
+                // This drives the LabeledNode to the integrated value
+                int vn = voltSource + vs + sim.nodeList.size();
+                sim.stampNonLinear(vn);
+                sim.stampVoltageSource(0, nodeNum, voltSource + vs);
+                
+                // IMPORTANT: Stamp a tiny load resistance to ground to prevent
+                // the matrix solver from eliminating this node as trivial.
+                // Without this, unconnected internal nodes get optimized away.
+                double loadResistance = 1e9;  // 1 gigaohm - tiny load
+                sim.stampResistor(nodeNum, 0, loadResistance);
+            }
+        }
+    }
+    
+    /**
+     * Override setCurrent to track current for each column's voltage source.
+     */
+    @Override
+    public void setCurrent(int vn, double c) {
+        if (colCurrents == null || colVoltSources == null) return;
+        
+        // Find which column this voltage source belongs to
+        for (int col = 0; col < colVoltSources.length; col++) {
+            if (colVoltSources[col] >= 0 && voltSource + colVoltSources[col] == vn) {
+                colCurrents[col] = c;
+                return;
+            }
+        }
+    }
+    
+    /**
+     * Override setVoltageSource to store voltage source indices.
+     * Unlike TableElm which uses pins, we track voltage sources in colVoltSources[].
+     */
+    @Override
+    void setVoltageSource(int j, int vs) {
+        // Store base voltage source for compatibility
+        if (j == 0) {
+            voltSource = vs;
+        }
+        // Voltage source allocation is handled in findLabeledNodes() based on colVoltSources[]
+        // No need to assign to pins since we don't have any
+    }
+    
+    /**
+     * Override getCurrentIntoNode to return current for each column.
+     * Since we don't have visible posts, we return current based on column index.
+     */
+    double getCurrentForColumn(int col) {
+        if (colCurrents != null && col >= 0 && col < colCurrents.length) {
+            return colCurrents[col];
+        }
+        return 0;
+    }
+
     @Override
     public void doStep() {
-        // Pure computational: compute values and write to ComputedValues
-        // No MNA matrix interaction
+        // Track if this element caused convergence failure
+        boolean wasConverged = sim.converged;
         
+        // No input pins in this alternative approach (getPostCount() returns 0)
+
         // Initialize arrays if needed
         if (lastColumnSums == null) {
             lastColumnSums = new double[getCols()];
@@ -326,18 +517,15 @@ public class GodlyTableElm extends TableElm {
         if (integratedValues == null) {
             integratedValues = new double[getCols()];
         }
-        if (lastIntegratedValues == null) {
-            lastIntegratedValues = new double[getCols()];
-        }
 
-        // Pure computational: compute outputs for all master columns
+        // Like VCVSElm: compute outputs and stamp during each iteration
         // Performance optimizations:
         // 1. Skip A-L-E column by limiting loop (it's always the last column)
         // 2. Check master status per-column using isMasterForColumn()
         // 3. Avoid boxing by using primitives throughout
         int colLimit = (getCols() >= 4) ? (getCols() - 1) : getCols(); // Exclude A-L-E column if it exists
         
-        // Get convergence limit for equation checking
+        // Get convergence limit for input checking (like VCVSElm)
         double convergeLimit = getConvergeLimit();
         
         for (int col = 0; col < colLimit; col++) {
@@ -349,7 +537,7 @@ public class GodlyTableElm extends TableElm {
                 continue;
             }
             
-            // Compute column sum and cache individual cell values
+            // Compute column sum (like parent does) and cache individual cell values
             // Also track max cell magnitude for convergence threshold calculation
             // This handles the case where large values cancel to near-zero
             double columnSum = 0.0;
@@ -362,40 +550,44 @@ public class GodlyTableElm extends TableElm {
                 maxCellMagnitude = Math.max(maxCellMagnitude, Math.abs(cellValue));
             }
             
-            // Check equation convergence (integrated value stability)
-            lastColumnSums[col] = columnSum;
-
-            // Perform integration on the column sum
-            double integratedValue = performIntegration(col, columnSum);
-            integratedValues[col] = integratedValue;
-            
-            // Check convergence: has the integrated value stabilized?
-            // Use threshold based on the larger of:
-            // 1. Relative threshold (0.1%) of integrated value
-            // 2. Relative threshold (0.1%) of max cell magnitude (handles large cancelling values)
-            // 3. Minimum absolute threshold (1e-6) for numerical stability
-            double threshold = Math.max(
-                Math.max(Math.abs(integratedValue), maxCellMagnitude) * 0.001,
-                1e-6
-            );
-            double valueDiff = Math.abs(integratedValue - lastIntegratedValues[col]);
-            if (valueDiff > threshold && sim.subIterations < 100) {
+            // Like VCVSElm: check input convergence using dynamic threshold
+            // Check if column sum (our "input") has converged
+            if (Math.abs(columnSum - lastColumnSums[col]) > convergeLimit) {
                 sim.converged = false;
+
                 // Debug: log convergence failure details
                 if (sim.subIterations > 20) {
                     CirSim.console("GodlyTable[" + columns.get(col).getStockName() + "] col " + col + 
-                                 " value convergence failed: diff=" + valueDiff + 
-                                 " threshold=" + threshold +
-                                 " (new=" + integratedValue + ", old=" + lastIntegratedValues[col] + 
+                                 " sum convergence failed: diff=" + Math.abs(columnSum - lastColumnSums[col]) + 
+                                 " limit=" + convergeLimit +
+                                 " (new=" + columnSum + ", old=" + lastColumnSums[col] + 
                                  ") at t=" + sim.t + " subiter=" + sim.subIterations);
                 }
             }
-            lastIntegratedValues[col] = integratedValue;
+            lastColumnSums[col] = columnSum;
+            // if (sim.subIterations <= 100)
+            //     sim.converged = false;
+
+            // Perform integration on the column sum (like VCVSElm evaluates expression)
+            double integratedValue = performIntegration(col, columnSum);
+            integratedValues[col] = integratedValue;
             
-            // Write computed value to registry immediately (for intra-step reads)
-            // This uses pending values that will be committed after all elements compute
-            String name = columns.get(col).getStockName();
-            ComputedValues.setComputedValue(name, integratedValue);
+            // Alternative approach: stamp directly to LabeledNode's node
+            // Check if this column has a matching LabeledNode with a voltage source
+            if (labeledNodeNumbers != null && col < labeledNodeNumbers.length &&
+                labeledNodeNumbers[col] >= 0 && colVoltSources[col] >= 0) {
+                
+                int vn = voltSource + colVoltSources[col] + sim.nodeList.size();
+                
+                // Stamp the right side with the integrated value
+                sim.stampRightSide(vn, integratedValue);
+            }
+        }
+        
+        // Debug: overall convergence status for this element
+        if (wasConverged && !sim.converged && sim.subIterations > 20) {
+            CirSim.console("GodlyTable (" + rows + "x" + getCols() + ") at (" + x + "," + y + 
+                         ") caused convergence failure at subiter=" + sim.subIterations);
         }
     }
     
@@ -453,38 +645,36 @@ public class GodlyTableElm extends TableElm {
         return 0.0;
     }
     
-    @Override
-    double getCurrentIntoNode(int n) {
-        // Pure computational element has no posts, so no current flow
-        return 0.0;
-    }
+    // Current is tracked in colCurrents[] via setCurrent() override
+    // Current flows through voltage sources connected to LabeledNode nodes
 
     @Override
     void getInfo(String arr[]) {
-        arr[0] = "Godly Table (" + rows + "x" + getCols() + ") Pure Computational";
-        arr[1] = "Integration: y[n+1] = y[n] + dt * columnSum";
-        arr[2] = "Values available via ComputedValues registry";
+        arr[0] = "Godly Table (" + rows + "x" + getCols() + ") with Integration";
+        arr[1] = "Equation: y[n+1] = y[n] + dt * columnSum";
 
-        int idx = 3;
+        int idx = 2;
 
-        // Show integrated values (stocks)
-        for (int col = 0; col < Math.min(getCols(), 3) && idx < arr.length - 1; col++) {
+        // Show output values (integrated results) and currents
+        for (int col = 0; col < Math.min(getCols(), 2) && idx < arr.length - 1; col++) {
             String header = columns.get(col).getStockName();
             
-            // Show integrated value - use converged value for stable display
-            Double integratedValue = ComputedValues.getConvergedValue(header);
+            // Show integrated value
+            Double integratedValue = ComputedValues.getComputedValue(header);
             if (integratedValue != null) {
-                arr[idx++] = header + " = " + getVoltageText(integratedValue.doubleValue());
+                arr[idx++] = header + "∫ = " + getVoltageText(integratedValue.doubleValue());
+            }
+            
+            // Show current (from colCurrents, set via setCurrent)
+            if (idx < arr.length - 1 && colCurrents != null && col < colCurrents.length) {
+                double current = colCurrents[col];
+                String currentDir = current >= 0 ? "→" : "←";
+                arr[idx++] = header + " I " + currentDir + " = " + getUnitText(Math.abs(current), "A");
             }
         }
 
-        if (getCols() > 3 && idx < arr.length - 1) {
-            arr[idx++] = "... (" + getCols() + " computed outputs total)";
-        }
-        
-        // Hint about bridging to circuit
-        if (idx < arr.length - 1) {
-            arr[idx++] = "Use CV Source to connect to circuit";
+        if (getCols() > 2 && idx < arr.length - 1) {
+            arr[idx++] = "... (" + getCols() + " integrated outputs total)";
         }
     }
     
@@ -508,13 +698,8 @@ public class GodlyTableElm extends TableElm {
     // }
     
     // Static helper methods
-    
-    /**
-     * Get the integrated value for a column header.
-     * Returns converged value for stable display.
-     */
     public static Double getIntegratedValue(String columnHeader) {
-        return ComputedValues.getConvergedValue(columnHeader);
+        return ComputedValues.getComputedValue(columnHeader);
     }
 
     public static void resetColumnIntegration(String columnHeader) {
@@ -530,7 +715,7 @@ public class GodlyTableElm extends TableElm {
         CirSim.console("Position: (" + x + "," + y + ")");
         CirSim.console("Size: " + rows + "x" + getCols());
         CirSim.console("Time: t=" + sim.t + ", timeStep=" + sim.timeStep);
-        CirSim.console("Integration Expression: " + (integrationExpr != null ? "valid" : "NULL"));
+        CirSim.console("Integration Expressions: " + (integrationExprs != null ? integrationExprs.length + " columns" : "NULL"));
         
         int colLimit = (getCols() >= 4) ? (getCols() - 1) : getCols();
         for (int col = 0; col < colLimit; col++) {

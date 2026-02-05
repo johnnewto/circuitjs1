@@ -14,6 +14,19 @@ class ExprState {
     double pendingDiffInput; // Current input value for diff (to be committed at stepFinished)
     boolean diffInitialized; // True after first commit, so diff has valid lastDiffInput
     double t;
+    
+    // For lag() function - circular buffer of historical values
+    // Each lag() call in an expression gets its own buffer, indexed by lagIndex
+    static final int LAG_BUFFER_SIZE = 10000;  // Max history entries per lag
+    static final int MAX_LAG_BUFFERS = 10;     // Max number of lag() calls per expression
+    double[][] lagBufferValues;    // [lagIndex][bufferPos] = value
+    double[][] lagBufferTimes;     // [lagIndex][bufferPos] = time
+    int[] lagBufferHead;           // Write position for each buffer
+    int[] lagBufferCount;          // Number of valid entries in each buffer
+    double[] lagPendingValue;      // Current value to commit at stepFinished
+    double[] lagLastCommitTime;    // Last time we committed to each buffer
+    int lagBufferIndex;            // Current lag buffer being used during eval
+    
     ExprState(int xx) {
 	//n = xx;
 	values = new double[9];
@@ -25,6 +38,18 @@ class ExprState {
 	pendingIntInput = 0;
 	pendingDiffInput = 0;
 	diffInitialized = false;
+	
+	// Initialize lag buffers
+	lagBufferValues = new double[MAX_LAG_BUFFERS][LAG_BUFFER_SIZE];
+	lagBufferTimes = new double[MAX_LAG_BUFFERS][LAG_BUFFER_SIZE];
+	lagBufferHead = new int[MAX_LAG_BUFFERS];
+	lagBufferCount = new int[MAX_LAG_BUFFERS];
+	lagPendingValue = new double[MAX_LAG_BUFFERS];
+	lagLastCommitTime = new double[MAX_LAG_BUFFERS];
+	for (int i = 0; i < MAX_LAG_BUFFERS; i++) {
+	    lagLastCommitTime[i] = -1;
+	}
+	lagBufferIndex = 0;
     }
     
     void updateLastValues(double lastOut) {
@@ -44,6 +69,15 @@ class ExprState {
 	pendingIntInput = 0;
 	pendingDiffInput = 0;
 	diffInitialized = false;
+	
+	// Reset lag buffers
+	for (int i = 0; i < MAX_LAG_BUFFERS; i++) {
+	    lagBufferHead[i] = 0;
+	    lagBufferCount[i] = 0;
+	    lagPendingValue[i] = 0;
+	    lagLastCommitTime[i] = -1;
+	}
+	lagBufferIndex = 0;
     }
     
     // Call this at the end of each timestep to commit the integration and differentiation
@@ -54,12 +88,82 @@ class ExprState {
 	}
 	lastDiffInput = pendingDiffInput;
 	diffInitialized = true;
+	
+	// Commit lag buffer values
+	for (int i = 0; i < MAX_LAG_BUFFERS; i++) {
+	    if (t != lagLastCommitTime[i] && lagLastCommitTime[i] >= 0) {
+		// Add new entry to circular buffer
+		lagBufferValues[i][lagBufferHead[i]] = lagPendingValue[i];
+		lagBufferTimes[i][lagBufferHead[i]] = t;
+		lagBufferHead[i] = (lagBufferHead[i] + 1) % LAG_BUFFER_SIZE;
+		if (lagBufferCount[i] < LAG_BUFFER_SIZE) {
+		    lagBufferCount[i]++;
+		}
+		lagLastCommitTime[i] = t;
+	    }
+	}
+    }
+    
+    // Reset the lag buffer index at the start of each evaluation
+    void resetLagIndex() {
+	lagBufferIndex = 0;
+    }
+    
+    // Get the value from the lag buffer at time (currentTime - delay)
+    // Returns the input value if not enough history exists
+    double getLaggedValue(int bufferIdx, double delay, double currentValue) {
+	if (bufferIdx >= MAX_LAG_BUFFERS || lagBufferCount[bufferIdx] == 0) {
+	    return currentValue;  // No history yet
+	}
+	
+	double targetTime = t - delay;
+	if (targetTime < 0) {
+	    return currentValue;  // Before simulation start
+	}
+	
+	// Search backwards through the circular buffer to find the value at targetTime
+	int count = lagBufferCount[bufferIdx];
+	int head = lagBufferHead[bufferIdx];
+	
+	// Start from most recent and go backwards
+	double prevTime = -1;
+	double prevValue = currentValue;
+	
+	for (int i = 0; i < count; i++) {
+	    int idx = (head - 1 - i + LAG_BUFFER_SIZE) % LAG_BUFFER_SIZE;
+	    double bufTime = lagBufferTimes[bufferIdx][idx];
+	    double bufValue = lagBufferValues[bufferIdx][idx];
+	    
+	    if (bufTime <= targetTime) {
+		// Found it - interpolate if we have a next point
+		if (prevTime >= 0 && prevTime > bufTime) {
+		    // Linear interpolation between bufTime and prevTime
+		    double alpha = (targetTime - bufTime) / (prevTime - bufTime);
+		    return bufValue + alpha * (prevValue - bufValue);
+		}
+		return bufValue;
+	    }
+	    prevTime = bufTime;
+	    prevValue = bufValue;
+	}
+	
+	// targetTime is before our oldest record - return oldest value
+	int oldestIdx = (head - count + LAG_BUFFER_SIZE) % LAG_BUFFER_SIZE;
+	return lagBufferValues[bufferIdx][oldestIdx];
     }
 }
 
 class Expr {
     // Global tracking of unresolved node references during evaluation
     static Vector<String> unresolvedReferences = new Vector<String>();
+    
+    // Counter for assigning unique lag buffer indices at parse time
+    static int nextLagIndex = 0;
+    
+    /** Reset the lag index counter (call when starting a new expression parse) */
+    static void resetLagIndexCounter() {
+	nextLagIndex = 0;
+    }
     
     /**
      * When true, E_NODE_REF lookups use getConvergedValue() instead of getComputedValue().
@@ -96,6 +200,27 @@ class Expr {
 	type = v;
 	nodeName = name;
     }
+    
+    // Constructor for E_LAG with assigned buffer index
+    Expr(Expr e1, Expr e2, int v, int assignedLagIndex) {
+	children = new Vector<Expr>();
+	children.add(e1);
+	if (e2 != null)
+	    children.add(e2);
+	type = v;
+	lagIndex = assignedLagIndex;
+    }
+    
+    /**
+     * Evaluate this expression, resetting the lag buffer index first.
+     * Use this for top-level expression evaluation to ensure each lag() call
+     * gets the correct buffer. For recursive sub-expression evaluation, use eval().
+     */
+    double evalFresh(ExprState es) {
+	es.resetLagIndex();
+	return eval(es);
+    }
+    
     double eval(ExprState es) {
 	Expr left = null;
 	Expr right = null;
@@ -203,6 +328,9 @@ class Expr {
 	    // integrate(x) - integrates the expression over time
 	    // Store the current input value - it will be committed at stepFinished()
 	    // This ensures we use the converged input value, not the first subiteration's value
+		// Mathematically:
+		// USEs The forward Euler method is a first-order numerical quadrature / integration scheme for ODEs
+		// K(t + Δt) ≈ K(t) + Δt × [I(t) − AF(t)]
 	    double inputVal = left.eval(es);
 	    es.pendingIntInput = inputVal;
 	    
@@ -264,6 +392,53 @@ class Expr {
 		// No initial value found - return 0
 	    }
 	    return 0.0;
+	case E_LAG: {
+	    // lag(x, delay) - return the value of x from 'delay' time units ago
+	    // Uses a circular buffer to store historical values
+	    // Example: lag(Y, 1) returns Y from 1 year ago (if timeUnit is yr)
+	    double inputVal = left.eval(es);
+	    double delay = right.eval(es);
+	    
+	    // Use the fixed buffer index assigned at parse time
+	    // This ensures the same lag() call uses the same buffer across subiterations
+	    int bufIdx = lagIndex;
+	    if (bufIdx < 0 || bufIdx >= ExprState.MAX_LAG_BUFFERS) {
+		bufIdx = 0;  // Fallback if not properly assigned
+	    }
+	    
+	    // Store pending value for commit
+	    es.lagPendingValue[bufIdx] = inputVal;
+	    if (es.lagLastCommitTime[bufIdx] < 0) {
+		es.lagLastCommitTime[bufIdx] = es.t - 1;  // Mark as initialized
+	    }
+	    
+	    // Check if we have enough history
+	    double targetTime = es.t - delay;
+	    boolean needsInitialValue = (es.lagBufferCount[bufIdx] == 0) || (targetTime < 0);
+	    
+	    if (needsInitialValue) {
+		// Try to find an initial value if the argument is a node reference
+		// This matches sfcr behavior where V[-1] in period 1 uses V_init
+		if (left.type == E_NODE_REF && left.nodeName != null) {
+		    String varName = left.nodeName;
+		    // Try X_init first
+		    Double initValue = ComputedValues.getComputedValue(varName + "_init");
+		    if (initValue != null) {
+			return initValue.doubleValue();
+		    }
+		    // Also try without underscore (e.g., Vinit for V)
+		    initValue = ComputedValues.getComputedValue(varName + "init");
+		    if (initValue != null) {
+			return initValue.doubleValue();
+		    }
+		}
+		// No initial value found - return 0 (sfcr default)
+		return 0.0;
+	    }
+	    
+	    // Get the lagged value from the buffer
+	    return es.getLaggedValue(bufIdx, delay, inputVal);
+	}
 	case E_NODE_REF:
 	    // Direct node reference - get voltage from labeled node or computed value
 	    if (CirSim.theSim != null && nodeName != null) {
@@ -330,6 +505,7 @@ class Expr {
     double value;
     String nodeName; // For E_NODE_REF expressions
     int type;
+    int lagIndex = -1; // Buffer index for E_LAG expressions, assigned at parse time
     static final int E_ADD = 1;
     static final int E_SUB = 2;
     static final int E_T = 3;
@@ -384,6 +560,7 @@ class Expr {
     static final int E_NODE_REF = E_LASTA+10; // Direct node reference by name
     static final int E_DIFF = E_NODE_REF+1; // Differentiation function diff(x)
     static final int E_LAST = E_DIFF+1; // last(x) - returns previous timestep's converged value
+    static final int E_LAG = E_LAST+1;  // lag(x, delay) - returns value from 'delay' time units ago
 };
 
 class ExprParser {
@@ -615,6 +792,22 @@ class ExprParser {
 	    setError("bad number of function args: " + args);
 	return e;
     }
+    
+    // Special parser for lag() that assigns a unique buffer index at parse time
+    Expr parseLag() {
+	skipOrError("(");
+	Expr e1 = parse();  // The value expression
+	skipOrError(",");
+	Expr e2 = parse();  // The delay expression
+	skipOrError(")");
+	// Assign a unique buffer index at parse time
+	int assignedIndex = Expr.nextLagIndex++;
+	if (assignedIndex >= ExprState.MAX_LAG_BUFFERS) {
+	    setError("too many lag() calls in expression (max " + ExprState.MAX_LAG_BUFFERS + ")");
+	    assignedIndex = ExprState.MAX_LAG_BUFFERS - 1;
+	}
+	return new Expr(e1, e2, Expr.E_LAG, assignedIndex);
+    }
 
     Expr parseTerm() {
 		if (skip("(")) {
@@ -720,6 +913,8 @@ class ExprParser {
 			return parseFunc(Expr.E_DIFF);
 		if (skipIgnoreCase("last"))
 			return parseFunc(Expr.E_LAST);
+		if (skipIgnoreCase("lag"))
+			return parseLag();  // Special parser that assigns buffer index at parse time
 		if (skipIgnoreCase("min"))
 			return parseFuncMulti(Expr.E_MIN, 2, 1000);
 		if (skipIgnoreCase("max"))
@@ -769,6 +964,8 @@ class ExprParser {
 	tlen = text.length();
 	pos = 0;
 	err = null;
+	// Reset lag index counter so each expression parse starts fresh
+	Expr.resetLagIndexCounter();
 	getToken();
     }
     
