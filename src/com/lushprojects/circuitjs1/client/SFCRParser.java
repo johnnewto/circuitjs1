@@ -61,6 +61,9 @@ public class SFCRParser {
     // Track raw circuit element lines to pass through
     private ArrayList<String> rawCircuitLines = new ArrayList<String>();
     
+    // Track info/documentation content (markdown)
+    private String infoContent = null;
+    
     /**
      * Create a new SFCR parser
      * @param sim The circuit simulator instance
@@ -85,7 +88,10 @@ public class SFCRParser {
         if (trimmed.contains("@matrix") || 
             trimmed.contains("@equations") || 
             trimmed.contains("@parameters") ||
-            trimmed.contains("@init")) {
+            trimmed.contains("@init") || trimmed.contains("@hints") ||
+            trimmed.contains("@scope") || trimmed.contains("@circuit") ||
+            trimmed.contains("@info") )
+            {
             return true;
         }
         
@@ -160,6 +166,8 @@ public class SFCRParser {
                     i++;
                 } else if (line.startsWith("@circuit")) {
                     i = parseCircuitBlock(lines, i);
+                } else if (line.startsWith("@info")) {
+                    i = parseInfoBlock(lines, i);
                 } else if (line.contains("sfcr_matrix") || line.contains("<-")) {
                     // Try to parse R-style sfcr syntax
                     i = parseRStyleBlock(lines, i);
@@ -596,6 +604,63 @@ public class SFCRParser {
         return rawCircuitLines;
     }
     
+    /**
+     * Get the info/documentation content (markdown)
+     * @return The info content, or null if not present
+     */
+    public String getInfoContent() {
+        return infoContent;
+    }
+    
+    /**
+     * Parse @info block - markdown documentation
+     * Content is stored and can be displayed using InfoViewerDialog.
+     * 
+     * Example:
+     * @info Model Documentation
+     * # Bank-Money World Model
+     * 
+     * This model demonstrates...
+     * 
+     * ## Key Variables
+     * - Y: National income
+     * - C: Consumption
+     * @end
+     * 
+     * Returns line index after block
+     */
+    private int parseInfoBlock(String[] lines, int startIndex) {
+        String headerLine = lines[startIndex].trim();
+        
+        // Extract optional title from header line
+        String title = headerLine.length() > 5 ? headerLine.substring(5).trim() : "Documentation";
+        
+        StringBuilder content = new StringBuilder();
+        content.append("# ").append(title.isEmpty() ? "Model Information" : title).append("\n\n");
+        
+        int i = startIndex + 1;  // Skip @info line
+        
+        while (i < lines.length) {
+            String line = lines[i];
+            String trimmed = line.trim();
+            
+            // Check for end of block
+            if (trimmed.equals("@end") || (trimmed.startsWith("@") && !trimmed.equals("@end"))) {
+                if (trimmed.equals("@end")) {
+                    i++;
+                }
+                break;
+            }
+            
+            // Preserve the line as-is (including indentation for code blocks)
+            content.append(line).append("\n");
+            i++;
+        }
+        
+        infoContent = content.toString();
+        return i;
+    }
+
     /**
      * Try to parse R-style sfcr syntax
      * 

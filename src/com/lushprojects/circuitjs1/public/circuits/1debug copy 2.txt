@@ -1,6 +1,0 @@
-$ 1 0.000005 10.20027730826997 50 5 50 5e-11
-255 -64 64 -48 64 0 1 5 6 16 0 true 2 true false 4 Table\s11 \0 Stock_1 H1 Stock_2 Stock4 A-L-E Flow_1 10 0 0 10 0 ASSET ASSET LIABILITY EQUITY ASSET vr vr \0 \0 \0 0.001
-R 144 320 96 320 0 1 1 5 0 0 0.5 V
-207 144 320 208 320 4 vr
-255 -64 192 -32 192 0 1 5 6 16 0 true 2 false false 5 Table\s12 \0 Stock_1 Stock_2 H2 Stock_3 A-L-E Flow_1 10 0 0 0 0 ASSET LIABILITY LIABILITY EQUITY ASSET vr \0 \0 \0 \0 0.001
-254 -64 -64 -32 -64 0 1 7 6 16 0 true 2 false false 5 Current\sTransactions\sMatrix \0 H1 Stock4 Stock_1 Stock_2 H2 Stock_3 A-L-E Flow_1 0 10 10 0 0 0 0 ASSET EQUITY ASSET LIABILITY LIABILITY EQUITY ASSET vr \0 vr \0 \0 \0 \0

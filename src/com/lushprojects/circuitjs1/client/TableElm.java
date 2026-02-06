@@ -960,6 +960,18 @@ public class TableElm extends ChipElm {
         return "";
     }
     
+    /**
+     * Get the TableColumn object for a given column index
+     * @param col Column index
+     * @return TableColumn object, or null if out of bounds
+     */
+    public TableColumn getColumn(int col) {
+        if (columns == null || col < 0 || col >= columns.size()) {
+            return null;
+        }
+        return columns.get(col);
+    }
+    
     // Getter methods for TableEditDialog
     public int getRows() { return rows; }
     public int getCols() { return (columns != null) ? columns.size() : 0; }

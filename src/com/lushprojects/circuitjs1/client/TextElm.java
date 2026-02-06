@@ -132,14 +132,58 @@ class TextElm extends GraphicElm {
 	for (i = 0; i != lines.size(); i++) {
 	    String s = (String) (lines.elementAt(i));
 	    s = Locale.LS(s);
-	    int sw=(int)g.context.measureText(s).getWidth();
-	    g.drawString(s, x, cury);
-	    if ((flags & FLAG_BAR) != 0) {
-		int by = cury-g.currentFontSize;
-		g.drawLine(x, by, x+sw-1, by);
+	    
+	    // Check for hyperlink pattern [[...]] and style differently
+	    int linkStart = s.indexOf("[[");
+	    int linkEnd = s.indexOf("]]");
+	    if (linkStart >= 0 && linkEnd > linkStart) {
+		// Draw text before link
+		String before = s.substring(0, linkStart);
+		String linkText = s.substring(linkStart + 2, linkEnd);
+		String after = s.substring(linkEnd + 2);
+		
+		int curx = x;
+		
+		// Draw before text in normal color
+		if (before.length() > 0) {
+		    g.drawString(before, curx, cury);
+		    curx += (int)g.context.measureText(before).getWidth();
+		}
+		
+		// Draw link text in blue with underline
+		if (needsHighlight() && !isBeingEdited) {
+		    g.setColor(selectColor);
+		} else {
+		    g.setColor("#4488FF");
+		}
+		g.drawString(linkText, curx, cury);
+		int linkWidth = (int)g.context.measureText(linkText).getWidth();
+		g.drawLine(curx, cury + 2, curx + linkWidth, cury + 2); // underline
+		curx += linkWidth;
+		
+		// Restore color and draw after text
+		if (needsHighlight() && !isBeingEdited) {
+		    g.setColor(selectColor);
+		} else {
+		    applyColorWithAlpha(g);
+		}
+		if (after.length() > 0) {
+		    g.drawString(after, curx, cury);
+		    curx += (int)g.context.measureText(after).getWidth();
+		}
+		
+		int sw = curx - x;
+		adjustBbox(x, cury-g.currentFontSize, x+sw, cury+3);
+	    } else {
+		// Normal text, no link
+		int sw=(int)g.context.measureText(s).getWidth();
+		g.drawString(s, x, cury);
+		if ((flags & FLAG_BAR) != 0) {
+		    int by = cury-g.currentFontSize;
+		    g.drawLine(x, by, x+sw-1, by);
+		}
+		adjustBbox(x, cury-g.currentFontSize, x+sw, cury+3);
 	    }
-	    adjustBbox(x, cury-g.currentFontSize,
-		       x+sw, cury+3);
 	    cury += g.currentFontSize+3;
 	}
 	x2 = boundingBox.x + boundingBox.width;
@@ -332,5 +376,62 @@ class TextElm extends GraphicElm {
     }
     @Override
     int getShortcut() { return 't'; }
+    
+    /**
+     * Check if this text element contains a hyperlink pattern [[...]]
+     * and return the link text if found.
+     * Supports:
+     *   [[info]] - opens model info dialog
+     *   [[url:http://example.com]] - opens URL in new window
+     */
+    String getLinkText() {
+	// Check for [[...]] pattern in any line
+	for (int i = 0; i < lines.size(); i++) {
+	    String line = lines.get(i);
+	    int start = line.indexOf("[[");
+	    int end = line.indexOf("]]");
+	    if (start >= 0 && end > start + 2) {
+		return line.substring(start + 2, end);
+	    }
+	}
+	return null;
+    }
+    
+    /**
+     * Check if this text element is a clickable hyperlink.
+     */
+    boolean isHyperlink() {
+	return getLinkText() != null;
+    }
+    
+    /**
+     * Handle click on hyperlink.
+     * Returns true if the click was handled.
+     */
+    boolean handleLinkClick() {
+	String linkText = getLinkText();
+	if (linkText == null) return false;
+	
+	String lowerLink = linkText.toLowerCase().trim();
+	
+	// Handle [[info]] - open model info dialog
+	if (lowerLink.equals("info") || lowerLink.equals("model info") || 
+	    lowerLink.equals("about") || lowerLink.equals("help")) {
+	    if (sim.modelInfoContent != null && !sim.modelInfoContent.isEmpty()) {
+		InfoViewerDialog.showInfoInIframe("Model Information", sim.modelInfoContent);
+	    } else {
+		com.google.gwt.user.client.Window.alert("No model information available.\nAdd an @info block to your SFCR file.");
+	    }
+	    return true;
+	}
+	
+	// Handle [[url:...]] - open URL in new window
+	if (lowerLink.startsWith("url:")) {
+	    String url = linkText.substring(4).trim();
+	    com.google.gwt.user.client.Window.open(url, "_blank", "");
+	    return true;
+	}
+	
+	return false;
+    }
 }
-

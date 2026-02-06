@@ -1,59 +1,164 @@
-$ 0 0.01 2.803162489452614 50 5 50 5e-11
-% voltageUnit $
-% showToolbar true
-266 176 24 298 194 0 s\sParams 8 rl 0.025 \0 \0 0.5 \\alpha0 20 \0 \0 0.5 \\alpha1 0.75 \0 \0 0.5 \\alpha2 0.10 \0 \0 0.5 \\delta 0.1 \0 \0 0.5 \\gamma 0.15 \0 \0 0.5 \\kappa 1 \0 \0 0.5 pr 1 \0 \0 0.5
-266 320 136 487 234 0 MarketClearing 4 Cs Cd \0 \0 0.5 Is Id \0 \0 0.5 Ns Nd \0 \0 0.5 Ls integrate(diff(Ld)) \0 \0 0.5
-266 176 248 422 400 0 Firms 7 Y Cs\s\p\sIs \0 \0 0.5 WBd Y\s-\slag(rl,\s1)\s*\slag(Ld,\s1)\s-\sAF \0 \0 0.5 AF \\delta\s*\slag(K,\s1) \0 \0 0.5 Ld integrate(Id\s-\sAF) \0 \0 0.5 KK t \0 g 0.5 Y5 lag(KK,\s1) \0 e 0.5 Y6 KK\s-\slag(KK,\s1) \0 f 0.5
-266 176 424 415 486 0 Households 2 YD WBs\s\p\slag(rm,\s1)\s*\slag(Mh,\s1) \0 \0 0.5 Mh Mh_init\s\p\sintegrate(YD\s-\sCd) \0 \0 0.5
-266 176 504 345 566 0 Banks 2 Ms integrate(diff(Ls)) \0 \0 0.5 rm rl \0 \0 0.5
-266 176 584 361 664 0 WageBill 3 WBs W\s*\sNs \0 \0 0.5 Nd Y\s/\spr \0 \0 0.5 W WBd\s/\smax(Nd,\s0.01) \0 \0 0.5
-266 176 680 496 724 0 Consumption 1 Cd \\alpha0\s\p\s\\alpha1\s*\sYD\s\p\s\\alpha2\s*\slag(Mh,\s1) \0 \0 0.5
-266 176 744 418 842 0 Investment 4 K K_init\s\p\sintegrate(Id\s-\sDA) \0 \0 0.5 DA \\delta\s*\slag(K,\s1) \0 \0 0.5 KT \\kappa\s*\slag(Y,\s1) \0 \0 0.5 Id \\gamma\s*\s(KT\s-\slag(K,\s1))\s\p\sDA \0 \0 0.5
-266 176 856 492 954 0 Verify 4 check_money Mh\s-\sMs \0 \0 0.5 check_loans Ls\s-\sLd \0 \0 0.5 check_labor Ns\s-\sNd \0 \0 0.5 firm_profit Y\s-\sWBd\s-\slag(rl,\s1)\s*\slag(Ld,\s1)\s-\sAF \0 \0 0.5
+# CircuitJS1 SFCR Export
+# Generated from circuit simulation
+
+@info
+# Model Documentation
+
+## Bank-Money World Model (BMW)
+
+**Source:** Godley & Lavoie (2007) Chapter 7  
+**Based on:** sfcr R package implementation
+
+This model demonstrates **stock-flow consistent (SFC) modeling** of a monetary economy with banks creating money through lending.
+
+### Key Features
+
+- Banks create money by issuing loans
+- Households hold deposits and consume
+- Firms invest and employ workers
+- No government sector (simplified version)
+
+### Key Variables
+
+| Variable | Description |
+|----------|-------------|
+| **Y** | National income (output) |
+| **C** | Consumption |
+| **I** | Investment |
+| **K** | Capital stock |
+| **Mh** | Household money holdings |
+| **Ld** | Loan demand |
+
+### Steady-State Values
+
+At steady state (t → ∞):
+- Y = 160, C = 144, I = 16
+- K = 160 (capital-output ratio = 1)
+- Mh = Ms = Ld = Ls = 160
+
+### References
+
+> Godley, W., & Lavoie, M. (2007). *Monetary Economics: An Integrated Approach to Credit, Money, Income, Production and Wealth*. Palgrave Macmillan.
+
+@end
+
+@init
+  timestep: 0.01
+  voltageUnit: $
+  timeUnit: yr
+@end
+
+@parameters s_s_s_Params
+  rl = 0.025  # Interest rate on loans
+  \alpha0 = 20  # Autonomous consumption
+  \alpha1 = 0.75  # Propensity to consume from income
+  \alpha2 = 0.10  # Propensity to consume from wealth
+  \delta = 0.1  # Depreciation rate
+  \gamma = 0.15  # Adjustment speed of capital to target
+  \kappa = 1  # Capital-output ratio target
+  pr = 1  # Labor productivity
+@end
+
+@equations MarketClearing
+  Cs ~ Cd  # Consumption supply
+  Is ~ Id  # Investment supply
+  Ns ~ Nd  # Labor supply
+  Ls ~ integrate(diff(Ld))  # Loan supply
+@end
+
+@equations Firms
+  Y ~ Cs + Is  # National income (output)
+  WBd ~ Y - lag(rl, 1) * lag(Ld, 1) - AF  # Wage bill demanded
+  AF ~ \delta * lag(K, 1)  # Amortization funds = delta * lag(K,1)
+  Ld ~ integrate(Id - AF)  # Loan demand
+  KK ~ t  # hint7
+  Y5 ~ lag(KK, 1)  # hint5
+  Y6 ~ KK - lag(KK, 1)  # hint6
+@end
+
+@equations Households
+  YD ~ WBs + lag(rm, 1) * lag(Mh, 1)  # Household disposable income = WBs + lag(rm,1) * lag(Mh,1)
+  Mh ~ Mh_init + integrate(YD - Cd)  # Household money holdings (deposits)
+@end
+
+@equations Banks
+  Ms ~ integrate(diff(Ls))  # Money supply (bank deposits)
+  rm ~ rl  # Interest rate on deposits
+@end
+
+@equations WageBill
+  WBs ~ W * Ns  # Wage bill supplied
+  Nd ~ Y / pr  # Labor demand
+  W ~ WBd / max(Nd, 0.01)  # Wage rate
+@end
+
+@equations Consumption
+  Cd ~ \alpha0 + \alpha1 * YD + \alpha2 * lag(Mh, 1)  # Consumption demand
+@end
+
+@equations Investment
+  K ~ K_init + integrate(Id - DA)  # Capital stock
+  DA ~ \delta * lag(K, 1)  # Depreciation actual = delta * lag(K,1)
+  KT ~ \kappa * lag(Y, 1)  # Target capital stock = kappa * lag(Y,1)
+  Id ~ \gamma * (KT - lag(K, 1)) + DA  # Investment demand
+@end
+
+@equations Verify
+  check_money ~ Mh - Ms  # Money market
+  check_loans ~ Ls - Ld  # Loan market
+  check_labor ~ Ns - Nd  # Labor market
+  firm_profit ~ Y - WBd - lag(rl, 1) * lag(Ld, 1) - AF
+@end
+
+@hints
+  rl: Interest rate on loans
+  \alpha0: Autonomous consumption
+  \alpha1: Propensity to consume from income
+  \alpha2: Propensity to consume from wealth
+  \delta: Depreciation rate
+  \gamma: Adjustment speed of capital to target
+  \kappa: Capital-output ratio target
+  pr: Labor productivity
+  Cs: Consumption supply
+  Is: Investment supply
+  Ns: Labor supply
+  Ls: Loan supply
+  Y: National income (output)
+  WBd: Wage bill demanded
+  AF: Amortization funds = delta * lag(K,1)
+  Ld: Loan demand
+  KK: hint7
+  Y5: hint5
+  Y6: hint6
+  YD: Household disposable income = WBs + lag(rm,1) * lag(Mh,1)
+  Mh: Household money holdings (deposits)
+  Ms: Money supply (bank deposits)
+  rm: Interest rate on deposits
+  WBs: Wage bill supplied
+  Nd: Labor demand
+  W: Wage rate
+  Cd: Consumption demand
+  K: Capital stock
+  DA: Depreciation actual = delta * lag(K,1)
+  KT: Target capital stock = kappa * lag(Y,1)
+  Id: Investment demand
+  check_money: Money market
+  check_loans: Loan market
+  check_labor: Labor market
+  \\alpha0: Autonomous consumption
+  \\alpha1: Propensity to consume from income
+  \\alpha2: Propensity to consume from wealth
+  \\delta: Depreciation rate
+  \\gamma: Investment adjustment speed
+  \\kappa: Capital-output ratio
+  Y7: hint7
+@end
+
+@circuit
 x 500 32 899 35 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW 808080FF
 x 500 56 801 59 4 12 Bank-Money\sWorld\smodel\s(with\sexplicit\slagged\svariables) 808080FF
 x 500 80 785 83 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF
+x 500 101 523 104 4 14 [[Info]] 4488FFFF
 207 544 304 608 304 36 Y
-403 528 336 864 560 0 12_8_0_xc01206_320_0.1_-1_1
-% AST 0 2
-% Hint rl Interest\srate\son\sloans
-% Hint \alpha0 Autonomous\sconsumption
-% Hint \alpha1 Propensity\sto\sconsume\sfrom\sincome
-% Hint \alpha2 Propensity\sto\sconsume\sfrom\swealth
-% Hint \delta Depreciation\srate
-% Hint \gamma Adjustment\sspeed\sof\scapital\sto\starget
-% Hint \kappa Capital-output\sratio\starget
-% Hint pr Labor\sproductivity
-% Hint Cs Consumption\ssupply
-% Hint Is Investment\ssupply
-% Hint Ns Labor\ssupply
-% Hint check_money Money\smarket
-% Hint check_loans Loan\smarket
-% Hint check_labor Labor\smarket
-% Hint Y National\sincome\s(output)
-% Hint Cd Consumption\sdemand
-% Hint Id Investment\sdemand
-% Hint Nd Labor\sdemand
-% Hint Ls Loan\ssupply
-% Hint Ld Loan\sdemand
-% Hint WBs Wage\sbill\ssupplied
-% Hint WBd Wage\sbill\sdemanded
-% Hint W Wage\srate
-% Hint YD Household\sdisposable\sincome\s\q\sWBs\s\p\slag(rm,1)\s*\slag(Mh,1)
-% Hint Mh Household\smoney\sholdings\s(deposits)
-% Hint Ms Money\ssupply\s(bank\sdeposits)
-% Hint rm Interest\srate\son\sdeposits
-% Hint K Capital\sstock
-% Hint KT Target\scapital\sstock\s\q\skappa\s*\slag(Y,1)
-% Hint DA Depreciation\sactual\s\q\sdelta\s*\slag(K,1)
-% Hint AF Amortization\sfunds\s\q\sdelta\s*\slag(K,1)
-% Hint \\alpha0 Autonomous\sconsumption
-% Hint \\alpha1 Propensity\sto\sconsume\sfrom\sincome
-% Hint \\alpha2 Propensity\sto\sconsume\sfrom\swealth
-% Hint \\delta Depreciation\srate
-% Hint \\gamma Investment\sadjustment\sspeed
-% Hint \\kappa Capital-output\sratio
-% Hint Y5 hint5
-% Hint Y6 hint6
-% Hint Y7 hint7
-% Hint KK hint7
+403 544 320 848 528 0 13_8_0_xc01206_320_0.1_-1_1
+@end

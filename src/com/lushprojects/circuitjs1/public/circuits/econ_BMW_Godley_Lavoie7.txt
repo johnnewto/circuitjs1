@@ -1,24 +1,47 @@
-# Godley and Lavoie (2007) Chapter 7: Model BMW
-# Source: vignettes/articles/gl5-bmw.Rmd
-# Bank-Money World model
+# CircuitJS1 SFCR Export
+# Generated from circuit simulation
 
-# Model BMW - Bank-Money World (Godley & Lavoie Chapter 7)
-# Based on sfcr R package implementation
-# Reference: Monetary Economics by Wynne Godley and Marc Lavoie, Chapter 7
+@info
+# Model Documentation
 
-#===============================================================================
-# TEXT LABEL
-#===============================================================================
 
-@circuit
-x 500 32 400 32 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW
-x 500 56 400 56 4 12 Bank-Money\sWorld\smodel
-x 500 80 400 80 4 12 Steady-state:\sY=160,\sCs=144,\sIs=16,\sK=160,\sMh=160
+## Bank-Money World Model (BMW)
+
+**Source:** Godley & Lavoie (2007) Chapter 7  
+**Based on:** sfcr R package implementation
+
+This model demonstrates **stock-flow consistent (SFC) modeling** of a monetary economy with banks creating money through lending.
+
+### Key Features
+
+- Banks create money by issuing loans
+- Households hold deposits and consume
+- Firms invest and employ workers
+- No government sector (simplified version)
+
+### Key Variables
+
+| Variable | Description |
+|----------|-------------|
+| **Y** | National income (output) |
+| **C** | Consumption |
+| **I** | Investment |
+| **K** | Capital stock |
+| **Mh** | Household money holdings |
+| **Ld** | Loan demand |
+
+### Steady-State Values
+
+At steady state (t → ∞):
+- Y = 160, C = 144, I = 16
+- K = 160 (capital-output ratio = 1)
+- Mh = Ms = Ld = Ls = 160
+
+### References
+
+> Godley, W., & Lavoie, M. (2007). *Monetary Economics: An Integrated Approach to Credit, Money, Income, Production and Wealth*. Palgrave Macmillan.
+
 @end
-
-#===============================================================================
-# INITIALIZATION
-#===============================================================================
 
 @init
   timestep: 0.01
@@ -26,215 +49,116 @@ x 500 80 400 80 4 12 Steady-state:\sY=160,\sCs=144,\sIs=16,\sK=160,\sMh=160
   timeUnit: yr
 @end
 
-#===============================================================================
-# PARAMETERS (Exogenous Variables)
-#===============================================================================
-
-@parameters Params
-  rl = 0.025              # Interest rate on loans
-  \alpha0 = 20            # Autonomous consumption
-  \alpha1 = 0.75          # Propensity to consume from income
-  \alpha2 = 0.10          # Propensity to consume from wealth
-  \delta = 0.10           # Depreciation rate
-  \gamma = 0.15           # Adjustment speed of capital to target
-  \kappa = 1              # Capital-output ratio target
-  pr = 1                  # Labor productivity
+@parameters s_s_Params
+  rl = 0.025  # Interest rate on loans
+  \alpha0 = 20  # Autonomous consumption
+  \alpha1 = 0.75  # Propensity to consume from income
+  \alpha2 = 0.10  # Propensity to consume from wealth
+  \delta = 0.1  # Depreciation rate
+  \gamma = 0.15  # Adjustment speed of capital to target
+  \kappa = 1  # Capital-output ratio target
+  pr = 1  # Labor productivity
 @end
-
-
-
-#===============================================================================
-# EQUATIONS - Market Clearing (eq1-eq4)
-#===============================================================================
 
 @equations MarketClearing
-  # Supply = Demand identities
-  Cs ~ Cd                  # Consumption goods market clears
-  Is ~ Id                  # Investment goods market clears
-  Ns ~ Nd                  # Labor market clears
-  
-  # Loan supply tracks loan demand changes
-  Ls ~ integrate(diff(Ld))
+  Cs ~ Cd  # Consumption supply
+  Is ~ Id  # Investment supply
+  Ns ~ Nd  # Labor supply
+  Ls ~ integrate(diff(Ld))  # Loan supply
 @end
-
-#===============================================================================
-# EQUATIONS - Firms (eq5-eq8)
-#===============================================================================
 
 @equations Firms
-  # Total output = consumption + investment
-  Y ~ Cs + Is
-  
-  # Wage bill demanded by firms (residual after interest and depreciation)
-  WBd ~ Y - last(rl) * last(Ld) - AF
-  
-  # Amortization funds (depreciation)
-  AF ~ \delta * last(K)
-  
-  # Loan demand accumulates investment net of depreciation
-  Ld ~ integrate(Id - AF)
+  Y ~ Cs + Is  # National income (output)
+  WBd ~ Y - lag(rl, 1) * lag(Ld, 1) - AF  # Wage bill demanded
+  AF ~ \delta * lag(K, 1)  # Amortization funds = delta * lag(K,1)
+  Ld ~ integrate(Id - AF)  # Loan demand
+  KK ~ t  # hint7
+  Y5 ~ lag(KK, 1)  # hint5
+  Y6 ~ KK - lag(KK, 1)  # hint6
 @end
-
-#===============================================================================
-# EQUATIONS - Households (eq9-eq10)
-#===============================================================================
 
 @equations Households
-  # Disposable income = wages + interest on deposits
-  YD ~ WBs + last(rm) * last(Mh)
-  
-  # Money holdings accumulate savings (STOCK)
-  Mh ~ Mh_init + integrate(YD - Cd)
+  YD ~ WBs + lag(rm, 1) * lag(Mh, 1)  # Household disposable income = WBs + lag(rm,1) * lag(Mh,1)
+  Mh ~ Mh_init + integrate(YD - Cd)  # Household money holdings (deposits)
 @end
-
-#===============================================================================
-# EQUATIONS - Banks (eq11-eq12)
-#===============================================================================
 
 @equations Banks
-  # Money supply tracks loan supply changes
-  Ms ~ integrate(diff(Ls))
-  
-  # Deposit rate = loan rate (simplified bank balance)
-  rm ~ rl
+  Ms ~ integrate(diff(Ls))  # Money supply (bank deposits)
+  rm ~ rl  # Interest rate on deposits
 @end
-
-#===============================================================================
-# EQUATIONS - Wage Bill (eq13-eq15)
-#===============================================================================
 
 @equations WageBill
-  # Wage bill supplied to households
-  WBs ~ W * Ns
-  
-  # Labor demand based on output and productivity
-  Nd ~ Y / pr
-  
-  # Wage rate (equilibrates wage bill)
-  W ~ WBd / max(Nd, 0.01)
+  WBs ~ W * Ns  # Wage bill supplied
+  Nd ~ Y / pr  # Labor demand
+  W ~ WBd / max(Nd, 0.01)  # Wage rate
 @end
-
-#===============================================================================
-# EQUATIONS - Consumption (eq16)
-#===============================================================================
 
 @equations Consumption
-  # Consumption function with autonomous + income + wealth effects
-  Cd ~ \alpha0 + \alpha1 * YD + \alpha2 * last(Mh)
+  Cd ~ \alpha0 + \alpha1 * YD + \alpha2 * lag(Mh, 1)  # Consumption demand
 @end
-
-#===============================================================================
-# EQUATIONS - Investment (eq17-eq20)
-#===============================================================================
 
 @equations Investment
-  # Capital stock accumulates investment (STOCK)
-  K ~ K_init + integrate(Id - DA)
-  
-  # Depreciation (actual)
-  DA ~ \delta * last(K)
-  
-  # Target capital stock based on output
-  KT ~ \kappa * last(Y)
-  
-  # Investment to adjust capital toward target
-  Id ~ \gamma * (KT - last(K)) + DA
+  K ~ K_init + integrate(Id - DA)  # Capital stock
+  DA ~ \delta * lag(K, 1)  # Depreciation actual = delta * lag(K,1)
+  KT ~ \kappa * lag(Y, 1)  # Target capital stock = kappa * lag(Y,1)
+  Id ~ \gamma * (KT - lag(K, 1)) + DA  # Investment demand
 @end
-
-#===============================================================================
-# VERIFICATION
-#===============================================================================
 
 @equations Verify
-  # Accounting checks (should all be ~0)
-  check_money ~ Mh - Ms            # Money market
-  check_loans ~ Ls - Ld            # Loan market
-  check_labor ~ Ns - Nd            # Labor market
-  firm_profit ~ Y - WBd - rl * Ld - AF  # Firm profit (should be ~0)
+  check_money ~ Mh - Ms  # Money market
+  check_loans ~ Ls - Ld  # Loan market
+  check_labor ~ Ns - Nd  # Labor market
+  firm_profit ~ Y - WBd - lag(rl, 1) * lag(Ld, 1) - AF
 @end
 
-#===============================================================================
-# HINTS
-#===============================================================================
-
 @hints
-  Y: National income (output)
-  Cs: Consumption supply
-  Cd: Consumption demand
-  Is: Investment supply
-  Id: Investment demand
-  Ns: Labor supply
-  Nd: Labor demand
-  Ls: Loan supply
-  Ld: Loan demand
-  WBs: Wage bill supplied
-  WBd: Wage bill demanded
-  W: Wage rate
-  YD: Household disposable income
-  Mh: Household money holdings (deposits)
-  Ms: Money supply (bank deposits)
-  rm: Interest rate on deposits
   rl: Interest rate on loans
-  K: Capital stock
-  KT: Target capital stock
-  DA: Depreciation actual
-  AF: Amortization funds
   \alpha0: Autonomous consumption
   \alpha1: Propensity to consume from income
   \alpha2: Propensity to consume from wealth
   \delta: Depreciation rate
-  \gamma: Investment adjustment speed
-  \kappa: Capital-output ratio
+  \gamma: Adjustment speed of capital to target
+  \kappa: Capital-output ratio target
   pr: Labor productivity
+  Cs: Consumption supply
+  Is: Investment supply
+  Ns: Labor supply
+  Ls: Loan supply
+  Y: National income (output)
+  WBd: Wage bill demanded
+  AF: Amortization funds = delta * lag(K,1)
+  Ld: Loan demand
+  KK: hint7
+  Y5: hint5
+  Y6: hint6
+  YD: Household disposable income = WBs + lag(rm,1) * lag(Mh,1)
+  Mh: Household money holdings (deposits)
+  Ms: Money supply (bank deposits)
+  rm: Interest rate on deposits
+  WBs: Wage bill supplied
+  Nd: Labor demand
+  W: Wage rate
+  Cd: Consumption demand
+  K: Capital stock
+  DA: Depreciation actual = delta * lag(K,1)
+  KT: Target capital stock = kappa * lag(Y,1)
+  Id: Investment demand
+  check_money: Money market
+  check_loans: Loan market
+  check_labor: Labor market
+  \\alpha0: Autonomous consumption
+  \\alpha1: Propensity to consume from income
+  \\alpha2: Propensity to consume from wealth
+  \\delta: Depreciation rate
+  \\gamma: Investment adjustment speed
+  \\kappa: Capital-output ratio
+  Y7: hint7
 @end
-
-#===============================================================================
-# SCOPES
-#===============================================================================
-
-@scope Y
-@scope Cd
-@scope Id
-@scope K
-@scope Mh
-@scope Ld
-@scope W
-@scope check_money
-
-#===============================================================================
-# CIRCUIT ELEMENTS
-#===============================================================================
 
 @circuit
+x 500 32 899 35 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW 808080FF
+x 500 56 801 59 4 12 Bank-Money\sWorld\smodel\s(with\sexplicit\slagged\svariables) 808080FF
+x 500 80 785 83 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF
 207 544 304 608 304 36 Y
-403 544 320 896 512 0 9_4_0_xc01206_320_0.1_-1_1
+403 528 336 864 560 0 12_8_0_xc01206_320_0.1_-1_1
 @end
-
-#===============================================================================
-# EXPECTED STEADY-STATE VALUES - SFCR R Package Reference
-#===============================================================================
-# Source: sfcr R package - BMW model (Godley & Lavoie Chapter 7)
-#
-# Steady-state values (periods 31-50):
-#
-#   Y   = 160    (National income/output)
-#   Cs  = 144    (Consumption supply)
-#   Is  = 16     (Investment supply)
-#   Ns  = 160    (Labor supply)
-#   Ls  = 160    (Loan supply)
-#   Ld  = 160    (Loan demand)
-#   WBd = 140    (Wage bill demanded)
-#   AF  = 16     (Amortization funds)
-#   YD  = 144    (Disposable income)
-#   Mh  = 160    (Household money)
-#   Ms  = 160    (Money supply)
-#   K   = 160    (Capital stock, since K/Y = kappa = 1)
-#
-# Key relationships at steady state:
-#   - Y = Cs + Is = 144 + 16 = 160
-#   - Id = DA = delta * K = 0.10 * 160 = 16 (investment = depreciation)
-#   - YD = Cd = 144 (savings = 0)
-#   - Mh = Ms = Ls = Ld = 160 (money = loans)
-#   - K/Y = 160/160 = 1 = kappa (target achieved)
-#
-#===============================================================================

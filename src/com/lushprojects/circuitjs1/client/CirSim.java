@@ -171,6 +171,8 @@ MouseOutHandler, MouseWheelHandler {
     String voltageUnitSymbol = "$"; // Custom voltage unit symbol ($ for economics default)
     String timeUnitSymbol = "yr"; // Custom time unit symbol (yr for economics default)
     boolean useWeightedPriority = false; // Weighted priority for Asset/Equity columns
+    String modelInfoContent = null; // Markdown info content from @info block in SFCR files
+    MenuItem viewModelInfoItem; // Menu item for viewing model info
     private Label powerLabel;
     private Label titleLabel;
     private Scrollbar speedBar;
@@ -587,6 +589,10 @@ public CirSim() {
 	fileMenuBar.addItem(exportAsUrlItem);
 	exportAsTextItem = iconMenuItem("export", "Export As Text...", new MyCommand("file","exportastext"));
 	fileMenuBar.addItem(exportAsTextItem);
+	fileMenuBar.addItem(iconMenuItem("export", "Export As SFCR...", new MyCommand("file","exportassfcr")));
+	viewModelInfoItem = iconMenuItem("doc-text", "View Model Info...", new MyCommand("file","viewmodelinfo"));
+	viewModelInfoItem.setEnabled(false); // Enabled when info content is available
+	fileMenuBar.addItem(viewModelInfoItem);
 	fileMenuBar.addItem(iconMenuItem("image", "Export As Image...", new MyCommand("file","exportasimage")));
 	fileMenuBar.addItem(iconMenuItem("image", "Copy Circuit Image to Clipboard", new MyCommand("file","copypng")));
 	fileMenuBar.addItem(iconMenuItem("image", "Export As SVG...", new MyCommand("file","exportassvg")));    	
@@ -4377,6 +4383,13 @@ public CirSim() {
     		doExportAsText();
     		unsavedChanges = false;
     	}
+    	if (item=="exportassfcr") {
+    		doExportAsSFCR();
+    		unsavedChanges = false;
+    	}
+    	if (item=="viewmodelinfo") {
+    		doViewModelInfo();
+    	}
     	if (item=="exportasimage")
 		doExportAsImage();
     	if (item=="copypng") {
@@ -4882,6 +4895,22 @@ public CirSim() {
     	dialogShowing.show();
     }
 
+    void doExportAsSFCR()
+    {
+    	SFCRExporter exporter = new SFCRExporter(this);
+    	String sfcrText = exporter.export();
+    	dialogShowing = new ExportAsTextDialog(this, sfcrText);
+    	dialogShowing.show();
+    }
+
+    void doViewModelInfo()
+    {
+    	if (modelInfoContent != null && !modelInfoContent.isEmpty()) {
+    	    // Show in new window with full markdown support
+    	    InfoViewerDialog.showInfoInWindow("Model Information", modelInfoContent);
+    	}
+    }
+
     void doExportAsImage()
     {
     	dialogShowing = new ExportAsImageDialog(CAC_IMAGE);
@@ -5115,6 +5144,18 @@ public CirSim() {
 	    SFCRParser parser = new SFCRParser(this);
 	    if (parser.parse(text)) {
 		console("Loaded SFCR model with " + parser.getCreatedElements().size() + " elements");
+		
+		// Store info content if available
+		modelInfoContent = parser.getInfoContent();
+		if (viewModelInfoItem != null) {
+		    viewModelInfoItem.setEnabled(modelInfoContent != null && !modelInfoContent.isEmpty());
+		}
+		
+		// Auto-display model info when loading a file with @info block
+		// Use embedded iframe dialog (always visible, no focus issues)
+		if (modelInfoContent != null && !modelInfoContent.isEmpty()) {
+		    InfoViewerDialog.showInfoInIframe("Model Information", modelInfoContent);
+		}
 		
 		// Process any raw circuit lines from @circuit blocks
 		java.util.ArrayList<String> rawLines = parser.getRawCircuitLines();
@@ -6333,6 +6374,15 @@ public CirSim() {
     	e.preventDefault();
  //   	if (!didSwitch && mouseElm != null)
     	if (mouseElm != null && !(mouseElm instanceof SwitchElm) && !noEditCheckItem.getState()) {
+    		// Special handling for TextElm hyperlinks [[...]]
+    		if (mouseElm instanceof TextElm) {
+    			TextElm te = (TextElm) mouseElm;
+    			if (te.isHyperlink() && te.handleLinkClick()) {
+    				// Link was handled, don't open edit dialog
+    				return;
+    			}
+    			// Not a hyperlink or not handled, fall through to edit
+    		}
     		// Special handling for TableElm - open TableEditDialog instead of standard properties
     		if (mouseElm instanceof TableElm) {
     			// Don't open dialog if double-click is on the collapse arrow
