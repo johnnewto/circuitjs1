@@ -7,12 +7,23 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.lushprojects.circuitjs1.client.TableColumn.ColumnType;
+import com.google.gwt.user.client.ui.DialogBox;
+import com.google.gwt.user.client.ui.VerticalPanel;
+import com.google.gwt.user.client.ui.HorizontalPanel;
+import com.google.gwt.user.client.ui.Button;
+import com.google.gwt.user.client.ui.Frame;
+import com.google.gwt.user.client.ui.HasHorizontalAlignment;
+import com.google.gwt.event.dom.client.ClickHandler;
+import com.google.gwt.event.dom.client.ClickEvent;
+import com.google.gwt.core.client.Scheduler;
+import com.google.gwt.dom.client.Style.Unit;
+import com.lushprojects.circuitjs1.client.util.Locale;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * SFCSankeyViewer - Opens a Plotly.js Sankey diagram in a popup window
+ * SFCSankeyViewer - Displays a Plotly.js Sankey diagram in an internal dialog or popup window
  * 
  * Visualizes money flows between sectors in an SFC Transaction table.
  * Uses sfcr convention:
@@ -29,6 +40,8 @@ import java.util.Map;
 public class SFCSankeyViewer {
     
     private SFCTableElm table;
+    private boolean showArrows = true;  // Default to showing arrow links
+    private static SankeyDialog dialogInstance = null;  // Singleton for internal dialog
     
     // Sector color mapping (Plotly color palette)
     private static final Map<String, String> SECTOR_COLORS = new HashMap<>();
@@ -48,13 +61,57 @@ public class SFCSankeyViewer {
     }
     
     /**
-     * Open the Sankey diagram in a new browser window.
+     * Create viewer with arrow option.
      */
-    public void openViewer() {
-        String html = generatePlotlyHTML();
+    public SFCSankeyViewer(SFCTableElm table, boolean showArrows) {
+        this.table = table;
+        this.showArrows = showArrows;
+    }
+    
+    /**
+     * Set whether to show arrow links.
+     */
+    public void setShowArrows(boolean show) {
+        this.showArrows = show;
+    }
+    
+    /**
+     * Open the Sankey diagram in an internal dialog window.
+     * This is the default method - shows diagram inside the app.
+     */
+    public void openDialog() {
+        if (dialogInstance == null) {
+            dialogInstance = new SankeyDialog(this);
+        } else {
+            dialogInstance.updateContent(this);
+        }
+        dialogInstance.show();
+        dialogInstance.center();
+        // Defer content loading until after dialog is attached to DOM
+        Scheduler.get().scheduleDeferred(new Scheduler.ScheduledCommand() {
+            @Override
+            public void execute() {
+                dialogInstance.loadContent();
+            }
+        });
+    }
+    
+    /**
+     * Open the Sankey diagram in a new external browser window.
+     */
+    public void openExternalWindow() {
+        String html = generatePlotlyHTML(false);  // Full standalone HTML
         if (!openWindowWithHTML(html)) {
             CirSim.console("Sankey viewer popup was blocked. Please allow popups for this site.");
         }
+    }
+    
+    /**
+     * Open the Sankey diagram - defaults to internal dialog.
+     * @deprecated Use openDialog() or openExternalWindow() instead.
+     */
+    public void openViewer() {
+        openDialog();
     }
     
     /**
@@ -67,12 +124,13 @@ public class SFCSankeyViewer {
     
     /**
      * Build the Sankey data structure from the SFC table.
+     * Package-visible for use by SankeyDialog refresh.
      * 
      * Structure:
      * - Nodes: sectors (left), transactions (middle), sectors_out (right)
      * - Links: from sector→transaction (for negative values), transaction→sector_out (for positive values)
      */
-    private String buildSankeyJSON() {
+    String buildSankeyJSON() {
         ArrayList<TableColumn> columns = table.columns;
         int rows = table.rows;
         String[] rowDescriptions = table.rowDescriptions;
@@ -254,8 +312,9 @@ public class SFCSankeyViewer {
     
     /**
      * Generate complete HTML document with Plotly.js Sankey diagram.
+     * @param embedded If true, generates minimal HTML suitable for iframe embedding
      */
-    private String generatePlotlyHTML() {
+    String generatePlotlyHTML(boolean embedded) {
         String jsonData = buildSankeyJSON();
         String title = table.tableTitle != null ? table.tableTitle : "SFC Table";
         
@@ -269,40 +328,55 @@ public class SFCSankeyViewer {
         html.append("  <title>Sankey Diagram - ").append(escapeJSON(title)).append("</title>\n");
         html.append("  <script src=\"https://cdn.plot.ly/plotly-2.27.0.min.js\"></script>\n");
         html.append("  <style>\n");
-        html.append("    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }\n");
-        html.append("    .container { max-width: 1400px; margin: 0 auto; }\n");
-        html.append("    h1 { color: #333; margin-bottom: 5px; }\n");
-        html.append("    .subtitle { color: #666; margin-bottom: 20px; font-size: 14px; }\n");
-        html.append("    .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\n");
-        html.append("    #sankey-chart { width: 100%; height: 700px; }\n");
-        html.append("    .legend { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px; padding: 15px; background: #fafafa; border-radius: 4px; }\n");
-        html.append("    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 14px; }\n");
-        html.append("    .legend-color { width: 20px; height: 20px; border-radius: 4px; }\n");
-        html.append("    .controls { margin-top: 20px; }\n");
-        html.append("    button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px; }\n");
-        html.append("    button:hover { background: #0056b3; }\n");
-        html.append("    .info { margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 4px; font-size: 14px; color: #0066cc; }\n");
-        html.append("  </style>\n");
-        html.append("</head>\n");
-        html.append("<body>\n");
-        html.append("  <div class=\"container\">\n");
-        html.append("    <h1>Sankey Diagram: ").append(escapeJSON(title)).append("</h1>\n");
-        html.append("    <p class=\"subtitle\">Stock-Flow Consistent Transaction Flows</p>\n");
-        html.append("    <div class=\"chart-container\">\n");
-        html.append("      <div id=\"sankey-chart\"></div>\n");
-        html.append("    </div>\n");
-        html.append("    <div id=\"legend\" class=\"legend\"></div>\n");
-        html.append("    <div class=\"controls\">\n");
-        html.append("      <button onclick=\"downloadAsPNG()\">Download as PNG</button>\n");
-        html.append("      <button onclick=\"downloadAsSVG()\">Download as SVG</button>\n");
-        html.append("    </div>\n");
-        html.append("    <div class=\"info\">\n");
-        html.append("      <strong>How to read this diagram:</strong> Money flows from left to right. ");
-        html.append("      Sectors on the left are <em>sources</em> (outflows/payments), transactions in the middle show the flow type, ");
-        html.append("      and sectors on the right are <em>targets</em> (inflows/receipts). ");
-        html.append("      Band width represents the amount of the flow.\n");
-        html.append("    </div>\n");
-        html.append("  </div>\n");
+        
+        if (embedded) {
+            // Minimal styling for embedded iframe
+            html.append("    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: white; }\n");
+            html.append("    #sankey-chart { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }\n");
+            html.append("  </style>\n");
+            html.append("</head>\n");
+            html.append("<body>\n");
+            html.append("  <div id=\"sankey-chart\"></div>\n");
+        } else {
+            // Full standalone styling
+            html.append("    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }\n");
+            html.append("    .container { max-width: 1400px; margin: 0 auto; }\n");
+            html.append("    h1 { color: #333; margin-bottom: 5px; }\n");
+            html.append("    .subtitle { color: #666; margin-bottom: 20px; font-size: 14px; }\n");
+            html.append("    .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\n");
+            html.append("    #sankey-chart { width: 100%; height: 700px; }\n");
+            html.append("    .legend { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px; padding: 15px; background: #fafafa; border-radius: 4px; }\n");
+            html.append("    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 14px; }\n");
+            html.append("    .legend-color { width: 20px; height: 20px; border-radius: 4px; }\n");
+            html.append("    .controls { margin-top: 20px; }\n");
+            html.append("    button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px; }\n");
+            html.append("    button:hover { background: #0056b3; }\n");
+            html.append("    .info { margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 4px; font-size: 14px; color: #0066cc; }\n");
+            html.append("  </style>\n");
+            html.append("</head>\n");
+            html.append("<body>\n");
+            html.append("  <div class=\"container\">\n");
+            html.append("    <h1>Sankey Diagram: ").append(escapeJSON(title)).append("</h1>\n");
+            html.append("    <p class=\"subtitle\">Stock-Flow Consistent Transaction Flows</p>\n");
+            html.append("    <div class=\"chart-container\">\n");
+            html.append("      <div id=\"sankey-chart\"></div>\n");
+            html.append("    </div>\n");
+            html.append("    <div id=\"legend\" class=\"legend\"></div>\n");
+            html.append("    <div class=\"controls\">\n");
+            html.append("      <button id=\"arrowBtn\" onclick=\"toggleArrows()\">" + (showArrows ? "Hide Arrows" : "Show Arrows") + "</button>\n");
+            html.append("      <button onclick=\"downloadAsPNG()\">Download as PNG</button>\n");
+            html.append("      <button onclick=\"downloadAsSVG()\">Download as SVG</button>\n");
+            html.append("    </div>\n");
+            html.append("    <div class=\"info\">\n");
+            html.append("      <strong>How to read this diagram:</strong> Money flows from left to right. ");
+            html.append("      Sectors on the left are <em>sources</em> (outflows/payments), transactions in the middle show the flow type, ");
+            html.append("      and sectors on the right are <em>targets</em> (inflows/receipts). ");
+            html.append("      Band width represents the amount of the flow.\n");
+            html.append("    </div>\n");
+            html.append("  </div>\n");
+        }
+        
+        // Common script section
         html.append("  <script>\n");
         html.append("    const data = ").append(jsonData).append(";\n");
         html.append("    \n");
@@ -323,6 +397,9 @@ public class SFCSankeyViewer {
         html.append("        target: data.linkTargets,\n");
         html.append("        value: data.linkValues,\n");
         html.append("        color: data.linkColors,\n");
+        if (showArrows) {
+            html.append("        arrowlen: 15,\n");
+        }
         html.append("        customdata: data.linkLabels,\n");
         html.append("        hovertemplate: '%{customdata}<extra></extra>'\n");
         html.append("      }\n");
@@ -341,28 +418,40 @@ public class SFCSankeyViewer {
         html.append("    };\n");
         html.append("    \n");
         html.append("    Plotly.newPlot('sankey-chart', [trace], layout, config);\n");
-        html.append("    \n");
-        html.append("    // Build legend from unique sectors\n");
-        html.append("    const legendDiv = document.getElementById('legend');\n");
-        html.append("    const sectors = new Map();\n");
-        html.append("    const numSectors = (data.nodeLabels.length - ").append(table.rows).append(") / 2;\n");
-        html.append("    for (let i = 0; i < numSectors; i++) {\n");
-        html.append("      sectors.set(data.nodeLabels[i], data.nodeColors[i]);\n");
-        html.append("    }\n");
-        html.append("    sectors.forEach((color, name) => {\n");
-        html.append("      const item = document.createElement('div');\n");
-        html.append("      item.className = 'legend-item';\n");
-        html.append("      item.innerHTML = `<div class=\"legend-color\" style=\"background: ${color}\"></div><span>${name}</span>`;\n");
-        html.append("      legendDiv.appendChild(item);\n");
-        html.append("    });\n");
-        html.append("    \n");
-        html.append("    function downloadAsPNG() {\n");
-        html.append("      Plotly.downloadImage('sankey-chart', { format: 'png', width: 1400, height: 700, filename: 'sankey-diagram' });\n");
-        html.append("    }\n");
-        html.append("    \n");
-        html.append("    function downloadAsSVG() {\n");
-        html.append("      Plotly.downloadImage('sankey-chart', { format: 'svg', width: 1400, height: 700, filename: 'sankey-diagram' });\n");
-        html.append("    }\n");
+        
+        if (!embedded) {
+            // Legend and controls for standalone window only
+            html.append("    \n");
+            html.append("    // Build legend from unique sectors\n");
+            html.append("    const legendDiv = document.getElementById('legend');\n");
+            html.append("    const sectors = new Map();\n");
+            html.append("    const numSectors = (data.nodeLabels.length - ").append(table.rows).append(") / 2;\n");
+            html.append("    for (let i = 0; i < numSectors; i++) {\n");
+            html.append("      sectors.set(data.nodeLabels[i], data.nodeColors[i]);\n");
+            html.append("    }\n");
+            html.append("    sectors.forEach((color, name) => {\n");
+            html.append("      const item = document.createElement('div');\n");
+            html.append("      item.className = 'legend-item';\n");
+            html.append("      item.innerHTML = `<div class=\"legend-color\" style=\"background: ${color}\"></div><span>${name}</span>`;\n");
+            html.append("      legendDiv.appendChild(item);\n");
+            html.append("    });\n");
+            html.append("    \n");
+            html.append("    function downloadAsPNG() {\n");
+            html.append("      Plotly.downloadImage('sankey-chart', { format: 'png', width: 1400, height: 700, filename: 'sankey-diagram' });\n");
+            html.append("    }\n");
+            html.append("    \n");
+            html.append("    function downloadAsSVG() {\n");
+            html.append("      Plotly.downloadImage('sankey-chart', { format: 'svg', width: 1400, height: 700, filename: 'sankey-diagram' });\n");
+            html.append("    }\n");
+            html.append("    \n");
+            html.append("    let showArrows = " + showArrows + ";\n");
+            html.append("    function toggleArrows() {\n");
+            html.append("      showArrows = !showArrows;\n");
+            html.append("      document.getElementById('arrowBtn').textContent = showArrows ? 'Hide Arrows' : 'Show Arrows';\n");
+            html.append("      Plotly.restyle('sankey-chart', { 'link.arrowlen': showArrows ? 15 : 0 });\n");
+            html.append("    }\n");
+        }
+        
         html.append("  </script>\n");
         html.append("</body>\n");
         html.append("</html>\n");
@@ -386,4 +475,107 @@ public class SFCSankeyViewer {
             return false;
         }
     }-*/;
+    
+    /**
+     * Internal dialog for displaying the Sankey diagram.
+     * Uses an iframe to embed the Plotly chart.
+     */
+    static class SankeyDialog extends DialogBox {
+        private Frame chartFrame;
+        private SFCSankeyViewer currentViewer;
+        private static final int DIALOG_WIDTH = 800;
+        private static final int DIALOG_HEIGHT = 550;
+        
+        public SankeyDialog(SFCSankeyViewer viewer) {
+            super(false, false);  // Not auto-hide, not modal
+            currentViewer = viewer;
+            
+            String title = viewer.table.tableTitle != null ? viewer.table.tableTitle : "SFC Table";
+            setText(Locale.LS("Sankey Diagram") + ": " + title);
+            
+            VerticalPanel vp = new VerticalPanel();
+            vp.setWidth(DIALOG_WIDTH + "px");
+            setWidget(vp);
+            
+            // Create iframe for Plotly chart
+            chartFrame = new Frame();
+            chartFrame.setSize(DIALOG_WIDTH + "px", (DIALOG_HEIGHT - 50) + "px");
+            chartFrame.getElement().getStyle().setBorderWidth(0, Unit.PX);
+            chartFrame.getElement().getStyle().setProperty("border", "1px solid #ccc");
+            vp.add(chartFrame);
+            
+            // Content will be loaded after dialog is shown via loadContent()
+            
+            // Bottom button panel
+            HorizontalPanel hp = new HorizontalPanel();
+            hp.setWidth("100%");
+            hp.getElement().getStyle().setMarginTop(10, Unit.PX);
+            hp.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_LEFT);
+            vp.add(hp);
+            
+            // Open in external window button
+            Button externalBtn = new Button(Locale.LS("Open in Window"));
+            externalBtn.addClickHandler(new ClickHandler() {
+                public void onClick(ClickEvent event) {
+                    currentViewer.openExternalWindow();
+                }
+            });
+            hp.add(externalBtn);
+            
+            // Spacer
+            HorizontalPanel spacer = new HorizontalPanel();
+            spacer.setWidth("100%");
+            hp.add(spacer);
+            hp.setCellWidth(spacer, "100%");
+            
+            // Close button
+            hp.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_RIGHT);
+            Button closeBtn = new Button(Locale.LS("Close"));
+            closeBtn.addClickHandler(new ClickHandler() {
+                public void onClick(ClickEvent event) {
+                    hide();
+                }
+            });
+            hp.add(closeBtn);
+        }
+        
+        @Override
+        public void show() {
+            super.show();
+        }
+        
+        @Override
+        public void hide() {
+            super.hide();
+        }
+        
+        /**
+         * Load the Plotly chart content into the iframe (initial load).
+         * Must be called after dialog is attached to DOM.
+         */
+        public void loadContent() {
+            String html = currentViewer.generatePlotlyHTML(true);  // Embedded mode
+            loadIframeContent(chartFrame.getElement(), html);
+        }
+        
+        /**
+         * Update the dialog with new content from a different viewer.
+         */
+        public void updateContent(SFCSankeyViewer viewer) {
+            currentViewer = viewer;
+            String title = viewer.table.tableTitle != null ? viewer.table.tableTitle : "SFC Table";
+            setText(Locale.LS("Sankey Diagram") + ": " + title);
+            // Content will be loaded by openDialog() after this
+        }
+        
+        /**
+         * Native method to write HTML content to an iframe (initial load).
+         */
+        private native void loadIframeContent(com.google.gwt.dom.client.Element iframe, String html) /*-{
+            var doc = iframe.contentDocument || iframe.contentWindow.document;
+            doc.open();
+            doc.write(html);
+            doc.close();
+        }-*/;
+    }
 }

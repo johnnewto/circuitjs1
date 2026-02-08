@@ -32,9 +32,13 @@ public class SFCTableElm extends TableElm {
     // SFC-specific properties
     protected boolean highlightImbalances = true; // Red highlighting for non-zero Σ values
     protected double balanceTolerance = 1e-6;   // Tolerance for balance checking
+    protected boolean showSankeyView = false;   // Toggle between table and Sankey view
     
     // Custom renderer for SFC tables
     private SFCTableRenderer sfcRenderer;
+    
+    // Sankey diagram renderer
+    private SFCSankeyRenderer sankeyRenderer;
     
     // Static counter for table numbering
     private static int nextSFCTableNumber = 1;
@@ -63,6 +67,7 @@ public class SFCTableElm extends TableElm {
         
         // Create custom renderer
         sfcRenderer = new SFCTableRenderer(this);
+        sankeyRenderer = new SFCSankeyRenderer(this);
         
         setupPins();
         setPoints();
@@ -96,12 +101,20 @@ public class SFCTableElm extends TableElm {
                 balanceTolerance = 1e-6;
             }
         }
+        if (st.hasMoreTokens()) {
+            try {
+                showSankeyView = Boolean.parseBoolean(st.nextToken());
+            } catch (Exception e) {
+                showSankeyView = false;
+            }
+        }
         
         // Update counter based on loaded title
         updateSFCTableCounter(tableTitle);
         
         // Create custom renderer
         sfcRenderer = new SFCTableRenderer(this);
+        sankeyRenderer = new SFCSankeyRenderer(this);
         
         setupPins();
         setPoints();
@@ -166,7 +179,7 @@ public class SFCTableElm extends TableElm {
     @Override
     public String dump() {
         // Include SFC-specific properties in dump
-        return super.dump() + " " + highlightImbalances + " " + balanceTolerance;
+        return super.dump() + " " + highlightImbalances + " " + balanceTolerance + " " + showSankeyView;
     }
     
     /**
@@ -183,6 +196,15 @@ public class SFCTableElm extends TableElm {
      */
     @Override
     void setupPins() {
+        if (showSankeyView && sankeyRenderer != null) {
+            // Calculate size for Sankey view
+            int[] sankeySize = sankeyRenderer.getRequiredSize();
+            sizeX = (sankeySize[0] + cspc2 - 1) / cspc2;
+            sizeY = (sankeySize[1] + cspc2 - 1) / cspc2;
+            pins = new Pin[0];
+            return;
+        }
+        
         // Calculate size based on table dimensions
         int cellWidthPixels = getCellWidthPixels();
         int rowDescColWidth = cellWidthPixels * 3 / 2;
@@ -403,7 +425,18 @@ public class SFCTableElm extends TableElm {
     
     @Override
     void draw(Graphics g) {
-        if (sfcRenderer != null) {
+        if (showSankeyView && sankeyRenderer != null) {
+            // Draw Sankey diagram
+            int width = sizeX * cspc2;
+            int height = sizeY * cspc2;
+            sankeyRenderer.draw(g, x, y, width, height);
+            
+            // Draw bounding box for selection
+            if (needsHighlight()) {
+                g.setColor(selectColor);
+                g.drawRect(x, y, width, height);
+            }
+        } else if (sfcRenderer != null) {
             sfcRenderer.draw(g);
         } else {
             super.draw(g);
@@ -482,6 +515,11 @@ public class SFCTableElm extends TableElm {
             ei.choice.select(showCellValues);
             return ei;
         }
+        if (n == 6) {
+            EditInfo ei = new EditInfo("Show Sankey Diagram", 0, -1, -1);
+            ei.checkbox = new Checkbox("", showSankeyView);
+            return ei;
+        }
         return null;
     }
     
@@ -499,6 +537,8 @@ public class SFCTableElm extends TableElm {
             cellHeight = (int)ei.value;
         } else if (n == 5) {
             showCellValues = ei.choice.getSelectedIndex();
+        } else if (n == 6) {
+            showSankeyView = ei.checkbox.getValue();
         }
         
         setupPins();
