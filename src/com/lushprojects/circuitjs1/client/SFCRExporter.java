@@ -200,7 +200,8 @@ public class SFCRExporter {
         int rowCount = eqTable.getRowCount();
         if (rowCount == 0) return "";
         
-        sb.append("@equations ").append(sanitizeName(tableName)).append("\n");
+        sb.append("@equations ").append(sanitizeName(tableName));
+        sb.append(formatPosition(eqTable)).append("\n");
         
         for (int row = 0; row < rowCount; row++) {
             String name = eqTable.getOutputName(row);
@@ -230,7 +231,8 @@ public class SFCRExporter {
             tableName = "Stocks";
         }
         
-        sb.append("@equations ").append(sanitizeName(tableName)).append("\n");
+        sb.append("@equations ").append(sanitizeName(tableName));
+        sb.append(formatPosition(godlyTable)).append("\n");
         
         // Export column stock names with their integration expressions
         int cols = godlyTable.getCols();
@@ -306,7 +308,8 @@ public class SFCRExporter {
             tableName = "SFC_Matrix";
         }
         
-        sb.append("@matrix ").append(sanitizeName(tableName)).append("\n");
+        sb.append("@matrix ").append(sanitizeName(tableName));
+        sb.append(formatPosition(sfcTable)).append("\n");
         
         // Count data columns (exclude computed Σ column)
         int totalCols = sfcTable.getCols();
@@ -410,5 +413,10 @@ public class SFCRExporter {
     private String sanitizeName(String name) {
         if (name == null) return "Unnamed";
         return name.replaceAll("\\s+", "_");
+    }
+    
+    /** Format position string for block header. */
+    private String formatPosition(CircuitElm elm) {
+        return " x=" + elm.x + " y=" + elm.y;
     }
 }

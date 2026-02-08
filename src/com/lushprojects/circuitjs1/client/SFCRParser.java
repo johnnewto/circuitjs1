@@ -35,6 +35,25 @@ import java.util.Vector;
 public class SFCRParser {
     
     // =========================================================================
+    // Helper class for block position parsing
+    // =========================================================================
+    
+    /** Parsed block header with optional position. */
+    private static class BlockPosition {
+        String name;
+        int x = Integer.MIN_VALUE;  // MIN_VALUE means auto-position (not set)
+        int y = Integer.MIN_VALUE;
+        
+        BlockPosition(String name) {
+            this.name = name;
+        }
+        
+        boolean hasPosition() {
+            return x != Integer.MIN_VALUE && y != Integer.MIN_VALUE;
+        }
+    }
+    
+    // =========================================================================
     // Fields
     // =========================================================================
     
@@ -304,7 +323,16 @@ public class SFCRParser {
     /** Parse @matrix block - creates SFCTableElm. */
     private int parseMatrixBlock(String[] lines, int startIndex) {
         String headerLine = lines[startIndex].trim();
-        String matrixName = extractBlockName(headerLine, "@matrix");
+        BlockPosition blockPos = parseBlockHeader(headerLine, "@matrix");
+        String matrixName = blockPos.name;
+        
+        // Store position for element creation
+        int savedX = currentX;
+        int savedY = currentY;
+        if (blockPos.hasPosition()) {
+            currentX = blockPos.x;
+            currentY = blockPos.y;
+        }
         
         // Parse matrix properties
         ArrayList<String> columnNames = new ArrayList<String>();
@@ -392,13 +420,28 @@ public class SFCRParser {
             createSFCTable(matrixName, columnNames, rowNames, tableRows, matrixType);
         }
         
+        // Restore position if we used explicit positioning
+        if (blockPos.hasPosition()) {
+            currentX = savedX;
+            // Keep currentY updated from element creation
+        }
+        
         return i;
     }
     
     /** Parse @equations block - creates EquationTableElm. Inline # comments become hints. */
     private int parseEquationsBlock(String[] lines, int startIndex) {
         String headerLine = lines[startIndex].trim();
-        String blockName = extractBlockName(headerLine, "@equations");
+        BlockPosition blockPos = parseBlockHeader(headerLine, "@equations");
+        String blockName = blockPos.name;
+        
+        // Store position for element creation
+        int savedX = currentX;
+        int savedY = currentY;
+        if (blockPos.hasPosition()) {
+            currentX = blockPos.x;
+            currentY = blockPos.y;
+        }
         
         ArrayList<String> outputNames = new ArrayList<String>();
         ArrayList<String> equations = new ArrayList<String>();
@@ -458,6 +501,12 @@ public class SFCRParser {
         // Create EquationTableElm from parsed data
         if (!outputNames.isEmpty()) {
             createEquationTable(blockName, outputNames, equations);
+        }
+        
+        // Restore position if we used explicit positioning
+        if (blockPos.hasPosition()) {
+            currentX = savedX;
+            // Keep currentY updated from element creation
         }
         
         return i;
@@ -866,11 +915,54 @@ public class SFCRParser {
     
     /** Extract block name: "@matrix Foo" -> "Foo". */
     private String extractBlockName(String line, String keyword) {
-        String name = line.substring(keyword.length()).trim();
-        if (name.isEmpty()) {
-            return keyword.substring(1); // Remove @ prefix
+        BlockPosition pos = parseBlockHeader(line, keyword);
+        return pos.name;
+    }
+    
+    /**
+     * Parse block header with optional position.
+     * Format: "@keyword Name x=100 y=200" or "@keyword Name"
+     * Position can be in any order: "@keyword x=100 y=200 Name" also works.
+     */
+    private BlockPosition parseBlockHeader(String line, String keyword) {
+        String rest = line.substring(keyword.length()).trim();
+        BlockPosition pos = new BlockPosition(keyword.substring(1)); // Default name is keyword without @
+        
+        if (rest.isEmpty()) {
+            return pos;
         }
-        return name;
+        
+        // Parse x=N and y=N if present
+        StringBuilder nameBuilder = new StringBuilder();
+        String[] parts = rest.split("\\s+");
+        
+        for (String part : parts) {
+            if (part.toLowerCase().startsWith("x=")) {
+                try {
+                    pos.x = Integer.parseInt(part.substring(2));
+                } catch (NumberFormatException e) {
+                    // Ignore invalid x value
+                }
+            } else if (part.toLowerCase().startsWith("y=")) {
+                try {
+                    pos.y = Integer.parseInt(part.substring(2));
+                } catch (NumberFormatException e) {
+                    // Ignore invalid y value
+                }
+            } else {
+                // Part of the name
+                if (nameBuilder.length() > 0) {
+                    nameBuilder.append(" ");
+                }
+                nameBuilder.append(part);
+            }
+        }
+        
+        if (nameBuilder.length() > 0) {
+            pos.name = nameBuilder.toString();
+        }
+        
+        return pos;
     }
     
     /** Parse comma-separated list: "a, b, c" -> ["a", "b", "c"]. */

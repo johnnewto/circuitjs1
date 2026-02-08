@@ -49,7 +49,7 @@ At steady state (t → ∞):
   timeUnit: yr
 @end
 
-@equations s_Parameters
+@equations s_Parameters x=672 y=360
   rl ~ 0.025  # Interest rate on loans
   \alpha0 ~ 20  # Autonomous consumption
   \alpha1 ~ 0.75  # Propensity to consume from income
@@ -60,14 +60,14 @@ At steady state (t → ∞):
   pr ~ 1  # Labor productivity
 @end
 
-@equations MarketClearing
+@equations MarketClearing x=304 y=680
   Cs ~ Cd  # Consumption supply
   Is ~ Id  # Investment supply
   Ns ~ Nd  # Labor supply
   Ls ~ integrate(diff(Ld))  # Loan supply
 @end
 
-@equations Firms
+@equations Firms x=80 y=504
   Y ~ Cs + Is  # National income (output)
   WBd ~ Y - lag(rl, 1) * lag(Ld, 1) - AF  # Wage bill demanded
   AF ~ \delta * lag(K, 1)  # Amortization funds = delta * lag(K,1)
@@ -77,34 +77,34 @@ At steady state (t → ∞):
   Y6 ~ KK - lag(KK, 1)  # hint6
 @end
 
-@equations Households
+@equations Households x=352 y=504
   YD ~ WBs + lag(rm, 1) * lag(Mh, 1)  # Household disposable income = WBs + lag(rm,1) * lag(Mh,1)
   Mh ~ Mh_init + integrate(YD - Cd)  # Household money holdings (deposits)
 @end
 
-@equations Banks
+@equations Banks x=640 y=536
   Ms ~ integrate(diff(Ls))  # Money supply (bank deposits)
   rm ~ rl  # Interest rate on deposits
 @end
 
-@equations WageBill
+@equations WageBill x=96 y=680
   WBs ~ W * Ns  # Wage bill supplied
   Nd ~ Y / pr  # Labor demand
   W ~ WBd / max(Nd, 0.01)  # Wage rate
 @end
 
-@equations Consumption
+@equations Consumption x=416 y=616
   Cd ~ \alpha0 + \alpha1 * YD + \alpha2 * lag(Mh, 1)  # Consumption demand
 @end
 
-@equations Investment
+@equations Investment x=528 y=680
   K ~ K_init + integrate(Id - DA)  # Capital stock
   DA ~ \delta * lag(K, 1)  # Depreciation actual = delta * lag(K,1)
   KT ~ \kappa * lag(Y, 1)  # Target capital stock = kappa * lag(Y,1)
   Id ~ \gamma * (KT - lag(K, 1)) + DA  # Investment demand
 @end
 
-@matrix Balance_Sheet
+@matrix Balance_Sheet x=80 y=360
 
 | Transaction | Households | Firms | Banks |
 |-------------|------|------|------|
@@ -115,7 +115,7 @@ At steady state (t → ∞):
 | Column Total | 0 | 0 | 0 |
 @end
 
-@matrix Transaction_Flow_Matrix
+@matrix Transaction_Flow_Matrix x=80 y=152
 
 | Transaction | Households_C | Firms_{Current} | Firms_{Capital} | Banks_{Current} | Banks_{Capital} | Govt |
 |-------------|------|------|------|------|------|------|
@@ -175,16 +175,16 @@ At steady state (t → ∞):
 @end
 
 @circuit
-x 873 31 1294 34 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW 808080FF
-x 873 55 1201 58 4 12 Bank-Money\sWorld\smodel\s(with\sexplicit\slagged\svariables) 808080FF
-x 873 79 1183 82 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF
-207 800 432 864 432 52 Y
-403 752 464 1056 624 0 13_8_0_4614_320_0.1_-1_1
-r 704 144 784 144 0 100
-v 784 144 784 16 0 0 40 5 0 0 0.5 V
-l 704 16 704 144 0 100 0.00010269027253753722 0
-c 704 144 592 144 4 0.000015 -1.1675867078226045 -10 0
-w 592 16 592 144 0
-s 704 16 784 16 0 1 false
-r 592 16 704 16 0 10
+x 89 92 510 95 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW 808080FF
+x 89 116 417 119 4 12 Bank-Money\sWorld\smodel\s(with\sexplicit\slagged\svariables) 808080FF
+x 89 140 399 143 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF
+207 896 592 960 592 52 Y
+403 848 624 1152 784 0 13_8_0_4614_320_0.1_-1_1
+r 1024 480 1104 480 0 100
+v 1104 480 1104 352 0 0 40 5 0 0 0.5 V
+l 1024 352 1024 480 0 100 3.32312539161418e-7 0
+c 1024 480 912 480 4 0.000015 0.000034642433626347474 -10 0
+w 912 352 912 480 0
+s 1024 352 1104 352 0 1 false
+r 912 352 1024 352 0 10
 @end

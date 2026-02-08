@@ -67,7 +67,7 @@ Description of the model...
 All equations and constants. Creates an `EquationTableElm`.
 
 ```
-@equations Model
+@equations Model x=200 y=100
   # Constants
   α_1 ~ 0.6                       # Propensity to consume income
   α_2 ~ 0.4                       # Propensity to consume wealth
@@ -83,6 +83,8 @@ All equations and constants. Creates an `EquationTableElm`.
 @end
 ```
 
+**Position:** Optional `x=N y=N` places the table at specific canvas coordinates.
+
 - Use `~` (sfcr-style) or `=` for assignment
 - Inline `# comment` becomes a hint (unless overridden by `@hints`)
 - Self-accumulation `X ~ expr + X[-1]` auto-converts to `integrate(expr)`
@@ -96,7 +98,7 @@ All equations and constants. Creates an `EquationTableElm`.
 SFC transaction matrix. Creates an `SFCTableElm`.
 
 ```
-@matrix Transaction_Flow
+@matrix Transaction_Flow x=400 y=100
 columns: Households, Firms, Govt
 
 | Transaction     | Households  | Firms       | Govt        |
@@ -107,6 +109,8 @@ columns: Households, Firms, Govt
 | Taxes           | -T_s        |             | T_d         |
 @end
 ```
+
+**Position:** Optional `x=N y=N` places the table at specific canvas coordinates.
 
 - `columns:` defines column headers (optional if table header row present)
 - `codes:` short codes for R-style compatibility (optional)
