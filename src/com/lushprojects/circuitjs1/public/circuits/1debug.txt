@@ -131,8 +131,8 @@ At steady state (t → ∞):
 | [Production] |  | Y |  |  |  |  |
 | Wages | WBd | -WBs |  |  | 0 |  |
 | Depreciation |  | -DA | DA |  | 0 |  |
-| Interest on Loans |  | -rl*lag(Ld,1) |  | rl*lag(Ls,1) | 0 |  |
-| Interest on Deposits | rm*lag(Mh,1) |  |  | -rm*lag(Ms,1) | 0 |  |
+| Interest on Loans |  | -rl*Ld |  | rl*Ls | 0 |  |
+| Interest on Deposits | rm*Mh |  |  | -rm*Ms | 0 |  |
 | Change in Loans |  |  | diff(Ld) | -diff(Ls) | 0 |  |
 | Change in Deposits |  |  |  | diff(Ms) | -diff(Mh) |  |
 @end
@@ -189,8 +189,8 @@ x 873 79 1183 82 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q16
 403 752 464 1056 624 0 14_8_0_4614_320_0.1_-1_1
 r 704 144 784 144 0 100
 v 784 144 784 16 0 0 40 5 0 0 0.5 V
-l 704 16 704 144 0 100 -0.0004533324491581987 0
-c 704 144 592 144 4 0.000015 8.876534029678949 -10 0
+l 704 16 704 144 0 100 0.0016820236137449363 0
+c 704 144 592 144 4 0.000015 4.380920384422323 -10 0
 w 592 16 592 144 0
 s 704 16 784 16 0 1 false
 r 592 16 704 16 0 10

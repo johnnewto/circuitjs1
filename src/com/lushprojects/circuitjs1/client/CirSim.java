@@ -188,6 +188,7 @@ MouseOutHandler, MouseWheelHandler {
     MenuItem elmAddScopeMenuItem;
     MenuItem elmSplitMenuItem;
     MenuItem elmSliderMenuItem;
+    MenuItem elmSankeyMenuItem;
     MenuItem elmFlipXMenuItem, elmFlipYMenuItem, elmFlipXYMenuItem;
     MenuItem elmSwapMenuItem;
     MenuItem stackAllItem;
@@ -956,6 +957,7 @@ public CirSim() {
 	elmMenuBar.addItem(elmFlipXYMenuItem =  new MenuItem(Locale.LS("Flip XY"),new MyCommand("elm","flipxy")));
 	elmMenuBar.addItem(elmSplitMenuItem = menuItemWithShortcut("", "Split Wire", Locale.LS(ctrlMetaKey + "click"), new MyCommand("elm","split")));
 	elmMenuBar.addItem(elmSliderMenuItem = new MenuItem(Locale.LS("Sliders..."),new MyCommand("elm","sliders")));
+	elmMenuBar.addItem(elmSankeyMenuItem = new MenuItem(Locale.LS("View Sankey Diagram..."),new MyCommand("elm","viewSankey")));
 
 	scopePopupMenu = new ScopePopupMenu();
 
@@ -4557,6 +4559,11 @@ public CirSim() {
     	}
     	if (item=="sliders")
     	    doSliders(menuElm);
+    	
+    	if (item=="viewSankey" && menuElm instanceof SFCTableElm) {
+    	    SFCSankeyViewer viewer = new SFCSankeyViewer((SFCTableElm) menuElm);
+    	    viewer.openViewer();
+    	}
 
     	if (item=="viewInScope" && menuElm != null) {
     		int i;
@@ -6295,6 +6302,7 @@ public CirSim() {
 		    elmSwapMenuItem .setEnabled(mouseElm.getPostCount() == 2);
     	    	    elmSplitMenuItem.setEnabled(canSplit(mouseElm));
     	    	    elmSliderMenuItem.setEnabled(sliderItemEnabled(mouseElm));
+    	    	    elmSankeyMenuItem.setEnabled(mouseElm instanceof SFCTableElm);
 		    boolean canFlipX = mouseElm.canFlipX();
 		    boolean canFlipY = mouseElm.canFlipY();
 		    boolean canFlipXY = mouseElm.canFlipXY();
