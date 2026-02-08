@@ -14,13 +14,14 @@ Documentation for stock-flow modeling features in CircuitJS1.
 - Use ComputedValueSourceElm to bridge to electrical domain
 - Double-buffering ensures order-independent evaluation
 
-### SFCR_FORMAT_PROPOSAL.md
+### SFCR_FORMAT_REFERENCE.md
 **Purpose:** Human-readable text format for SFC models (inspired by R sfcr package)  
 **Key Points:**
 - Human-readable alternative to binary dump format
 - Compatible with sfcr R package syntax
 - Supports `@matrix`, `@equations`, `@parameters`, `@hints`, `@scope` blocks
-- Can parse R-style `sfcr_matrix()` and `sfcr_set()` definitions
+- Import via File → Import from Text or File → Open
+- Export via File → Export as SFCR
 
 ### STOCK_FLOW_SYNC_SUMMARY.md
 **Purpose:** Row synchronization between tables sharing stocks  

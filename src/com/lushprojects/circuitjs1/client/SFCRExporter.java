@@ -13,60 +13,44 @@ import java.util.Set;
 import java.util.Vector;
 
 /**
- * SFCRExporter - Exports circuit in SFCR-compatible text format
+ * Exports circuit in SFCR-compatible text format.
  * 
- * Generates human-readable Stock-Flow Consistent model definitions
- * compatible with the R sfcr package (https://github.com/joaomacalos/sfcr).
+ * Generates human-readable Stock-Flow Consistent model definitions compatible
+ * with the R sfcr package (https://github.com/joaomacalos/sfcr).
  * 
- * Supported output blocks:
- * - @init: Simulation settings (timestep, voltageUnit, timeUnit)
- * - @parameters: Constant equations (pure numeric values)
- * - @equations: Variable equations with expressions
- * - @matrix: SFC transaction matrices (from SFCTableElm)
- * - @hints: Variable documentation
- * - @circuit: Non-SFCR elements (passthrough for full circuit reconstruction)
+ * Output blocks:
+ *   @init       - Simulation settings (timestep, units)
+ *   @info       - Model documentation (markdown)
+ *   @equations  - All equations (from EquationTableElm, GodlyTableElm)
+ *   @matrix     - Transaction matrices (from SFCTableElm)
+ *   @hints      - Variable documentation
+ *   @circuit    - Non-SFCR elements (passthrough)
  * 
- * Example output:
- * <pre>
- * @init
- *   timestep: 0.01
- *   voltageUnit: $
- *   timeUnit: yr
- * @end
- * 
- * @parameters Params
- *   r = 0.025              # Interest rate
- *   alpha = 0.75           # Propensity to consume
- * @end
- * 
- * @equations Model
- *   Y ~ C + I              # National income
- *   C ~ alpha * YD         # Consumption
- * @end
- * </pre>
+ * @see SFCRParser
+ * @see <a href="../dev_docs/SFCR_FORMAT_REFERENCE.md">SFCR Format Reference</a>
  */
 public class SFCRExporter {
     
-    private CirSim sim;
+    // =========================================================================
+    // Fields
+    // =========================================================================
     
-    // Track elements by type for export
+    private CirSim sim;
     private ArrayList<EquationTableElm> equationTables = new ArrayList<EquationTableElm>();
     private ArrayList<SFCTableElm> sfcTables = new ArrayList<SFCTableElm>();
     private ArrayList<GodlyTableElm> godlyTables = new ArrayList<GodlyTableElm>();
     private ArrayList<CircuitElm> otherElements = new ArrayList<CircuitElm>();
     
-    /**
-     * Create a new SFCR exporter
-     * @param sim The circuit simulator instance
-     */
+    // =========================================================================
+    // Constructor & Public API
+    // =========================================================================
+    
+    /** Create a new SFCR exporter. */
     public SFCRExporter(CirSim sim) {
         this.sim = sim;
     }
     
-    /**
-     * Export the current circuit in SFCR format
-     * @return SFCR-formatted text
-     */
+    /** Export the current circuit in SFCR format. */
     public String export() {
         StringBuilder sb = new StringBuilder();
         
@@ -92,16 +76,11 @@ public class SFCRExporter {
             sb.append("\n");
         }
         
-        // Export equation tables as @parameters and @equations
+        // Export equation tables as @equations
         for (EquationTableElm eqTable : equationTables) {
-            String[] blocks = exportEquationTable(eqTable);
-            // blocks[0] = parameters, blocks[1] = equations
-            if (blocks[0] != null && !blocks[0].isEmpty()) {
-                sb.append(blocks[0]);
-                sb.append("\n");
-            }
-            if (blocks[1] != null && !blocks[1].isEmpty()) {
-                sb.append(blocks[1]);
+            String block = exportEquationTable(eqTable);
+            if (!block.isEmpty()) {
+                sb.append(block);
                 sb.append("\n");
             }
         }
@@ -142,9 +121,11 @@ public class SFCRExporter {
         return sb.toString();
     }
     
-    /**
-     * Categorize elements for export
-     */
+    // =========================================================================
+    // Block Exporters
+    // =========================================================================
+    
+    /** Categorize elements for export. */
     private void categorizeElements() {
         equationTables.clear();
         sfcTables.clear();
@@ -166,9 +147,7 @@ public class SFCRExporter {
         }
     }
     
-    /**
-     * Export @info block with model documentation
-     */
+    /** Export @info block with model documentation. */
     private String exportInfoBlock() {
         if (sim.modelInfoContent == null || sim.modelInfoContent.isEmpty()) {
             return "";
@@ -187,9 +166,7 @@ public class SFCRExporter {
         return sb.toString();
     }
     
-    /**
-     * Export @init block with simulation settings
-     */
+    /** Export @init block with simulation settings. */
     private String exportInitBlock() {
         StringBuilder sb = new StringBuilder();
         sb.append("@init\n");
@@ -211,26 +188,20 @@ public class SFCRExporter {
         return sb.toString();
     }
     
-    /**
-     * Export an EquationTableElm as @parameters and/or @equations blocks
-     * @return String[2] where [0]=parameters block, [1]=equations block
-     */
-    private String[] exportEquationTable(EquationTableElm eqTable) {
-        StringBuilder params = new StringBuilder();
-        StringBuilder eqns = new StringBuilder();
+    /** Export EquationTableElm as @equations block. */
+    private String exportEquationTable(EquationTableElm eqTable) {
+        StringBuilder sb = new StringBuilder();
         
         String tableName = eqTable.getTableName();
         if (tableName == null || tableName.isEmpty()) {
             tableName = "Equations";
         }
         
-        // Separate parameters (pure constants) from equations (expressions)
-        ArrayList<String> paramNames = new ArrayList<String>();
-        ArrayList<String> paramValues = new ArrayList<String>();
-        ArrayList<String> eqnNames = new ArrayList<String>();
-        ArrayList<String> eqnExprs = new ArrayList<String>();
-        
         int rowCount = eqTable.getRowCount();
+        if (rowCount == 0) return "";
+        
+        sb.append("@equations ").append(sanitizeName(tableName)).append("\n");
+        
         for (int row = 0; row < rowCount; row++) {
             String name = eqTable.getOutputName(row);
             String expr = eqTable.getEquation(row);
@@ -238,57 +209,19 @@ public class SFCRExporter {
             if (name == null || name.isEmpty()) continue;
             if (expr == null) expr = "0";
             
-            // Check if this is a simple constant
-            if (isSimpleConstant(expr)) {
-                paramNames.add(name);
-                paramValues.add(expr);
-            } else {
-                eqnNames.add(name);
-                eqnExprs.add(expr);
+            String hint = HintRegistry.getHint(name);
+            sb.append("  ").append(name).append(" ~ ").append(expr);
+            if (hint != null && !hint.trim().isEmpty()) {
+                sb.append("  # ").append(hint);
             }
+            sb.append("\n");
         }
         
-        // Build parameters block
-        if (!paramNames.isEmpty()) {
-            params.append("@parameters ").append(sanitizeName(tableName)).append("\n");
-            for (int i = 0; i < paramNames.size(); i++) {
-                String name = paramNames.get(i);
-                String value = paramValues.get(i);
-                String hint = HintRegistry.getHint(name);
-                
-                params.append("  ").append(name).append(" = ").append(value);
-                if (hint != null && !hint.trim().isEmpty()) {
-                    params.append("  # ").append(hint);
-                }
-                params.append("\n");
-            }
-            params.append("@end\n");
-        }
-        
-        // Build equations block
-        if (!eqnNames.isEmpty()) {
-            eqns.append("@equations ").append(sanitizeName(tableName)).append("\n");
-            for (int i = 0; i < eqnNames.size(); i++) {
-                String name = eqnNames.get(i);
-                String expr = eqnExprs.get(i);
-                String hint = HintRegistry.getHint(name);
-                
-                eqns.append("  ").append(name).append(" ~ ").append(expr);
-                if (hint != null && !hint.trim().isEmpty()) {
-                    eqns.append("  # ").append(hint);
-                }
-                eqns.append("\n");
-            }
-            eqns.append("@end\n");
-        }
-        
-        return new String[] { params.toString(), eqns.toString() };
+        sb.append("@end\n");
+        return sb.toString();
     }
-    
-    /**
-     * Export a GodlyTableElm as @equations block
-     * GodlyTables use integration, so we export their stock columns
-     */
+
+    /** Export GodlyTableElm as @equations block (integration-based stocks). */
     private String exportGodlyTable(GodlyTableElm godlyTable) {
         StringBuilder sb = new StringBuilder();
         
@@ -328,9 +261,7 @@ public class SFCRExporter {
         return sb.toString();
     }
     
-    /**
-     * Build an expression representing the sum of flows in a column
-     */
+    /** Build an expression representing the sum of flows in a column. */
     private String buildColumnFlowExpression(GodlyTableElm table, int col) {
         StringBuilder sb = new StringBuilder();
         
@@ -366,9 +297,7 @@ public class SFCRExporter {
         return sb.toString();
     }
     
-    /**
-     * Export an SFCTableElm as @matrix block
-     */
+    /** Export SFCTableElm as @matrix block. */
     private String exportSFCTable(SFCTableElm sfcTable) {
         StringBuilder sb = new StringBuilder();
         
@@ -379,28 +308,24 @@ public class SFCRExporter {
         
         sb.append("@matrix ").append(sanitizeName(tableName)).append("\n");
         
-        // Export columns line
-        sb.append("columns: ");
-        int cols = sfcTable.getCols();
-        for (int col = 0; col < cols; col++) {
+        // Count data columns (exclude computed Σ column)
+        int totalCols = sfcTable.getCols();
+        int dataCols = 0;
+        for (int col = 0; col < totalCols; col++) {
             TableColumn column = sfcTable.getColumn(col);
-            if (column == null) continue;
-            if (col > 0) sb.append(", ");
-            sb.append(column.getStockName());
+            if (column != null && !column.isALE()) {
+                dataCols++;
+            }
         }
+        
+        // Export as markdown table only (no separate columns: line to avoid duplication)
         sb.append("\n");
         
-        // Export type
-        sb.append("type: transaction_flow\n");
-        
-        // Export as markdown table
-        sb.append("\n");
-        
-        // Header row
+        // Header row (exclude computed Σ column - it will be auto-added on import)
         sb.append("| Transaction |");
-        for (int col = 0; col < cols; col++) {
+        for (int col = 0; col < totalCols; col++) {
             TableColumn column = sfcTable.getColumn(col);
-            if (column != null) {
+            if (column != null && !column.isALE()) {
                 sb.append(" ").append(column.getStockName()).append(" |");
             }
         }
@@ -408,12 +333,12 @@ public class SFCRExporter {
         
         // Separator row
         sb.append("|-------------|");
-        for (int col = 0; col < cols; col++) {
+        for (int col = 0; col < dataCols; col++) {
             sb.append("------|");
         }
         sb.append("\n");
         
-        // Data rows
+        // Data rows (exclude computed Σ column)
         int rows = sfcTable.getRows();
         for (int row = 0; row < rows; row++) {
             String rowDesc = sfcTable.getRowDescription(row);
@@ -421,11 +346,13 @@ public class SFCRExporter {
             
             sb.append("| ").append(rowDesc).append(" |");
             
-            for (int col = 0; col < cols; col++) {
+            for (int col = 0; col < totalCols; col++) {
                 TableColumn column = sfcTable.getColumn(col);
-                String cellExpr = (column != null) ? column.getCellEquation(row) : "0";
-                if (cellExpr == null) cellExpr = "0";
-                sb.append(" ").append(cellExpr).append(" |");
+                if (column != null && !column.isALE()) {
+                    String cellExpr = column.getCellEquation(row);
+                    if (cellExpr == null) cellExpr = "";
+                    sb.append(" ").append(cellExpr).append(" |");
+                }
             }
             sb.append("\n");
         }
@@ -434,9 +361,7 @@ public class SFCRExporter {
         return sb.toString();
     }
     
-    /**
-     * Export hints as @hints block
-     */
+    /** Export hints as @hints block. */
     private String exportHints() {
         Set<String> names = HintRegistry.getAllNames();
         if (names.isEmpty()) {
@@ -457,9 +382,7 @@ public class SFCRExporter {
         return sb.toString();
     }
     
-    /**
-     * Export non-SFCR elements in @circuit block
-     */
+    /** Export non-SFCR elements in @circuit block. */
     private String exportCircuitElements() {
         if (otherElements.isEmpty()) {
             return "";
@@ -479,26 +402,11 @@ public class SFCRExporter {
         return sb.toString();
     }
     
-    /**
-     * Check if an expression is a simple constant (numeric value)
-     */
-    private boolean isSimpleConstant(String expr) {
-        if (expr == null || expr.isEmpty()) return false;
-        
-        String trimmed = expr.trim();
-        
-        // Try to parse as a number
-        try {
-            Double.parseDouble(trimmed);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
+    // =========================================================================
+    // Helpers
+    // =========================================================================
     
-    /**
-     * Sanitize a name for use in SFCR format (replace spaces with underscores)
-     */
+    /** Sanitize name for SFCR format (replace spaces with underscores). */
     private String sanitizeName(String name) {
         if (name == null) return "Unnamed";
         return name.replaceAll("\\s+", "_");

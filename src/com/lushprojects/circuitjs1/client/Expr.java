@@ -25,6 +25,7 @@ class ExprState {
     int[] lagBufferCount;          // Number of valid entries in each buffer
     double[] lagPendingValue;      // Current value to commit at stepFinished
     double[] lagLastCommitTime;    // Last time we committed to each buffer
+    int[] lagBufferTotalCount;     // Total entries ever added to each buffer (for debugging)
     int lagBufferIndex;            // Current lag buffer being used during eval
     
     ExprState(int xx) {
@@ -46,8 +47,10 @@ class ExprState {
 	lagBufferCount = new int[MAX_LAG_BUFFERS];
 	lagPendingValue = new double[MAX_LAG_BUFFERS];
 	lagLastCommitTime = new double[MAX_LAG_BUFFERS];
+	lagBufferTotalCount = new int[MAX_LAG_BUFFERS];
 	for (int i = 0; i < MAX_LAG_BUFFERS; i++) {
 	    lagLastCommitTime[i] = -1;
+	    lagBufferTotalCount[i] = 0;
 	}
 	lagBufferIndex = 0;
     }
@@ -76,6 +79,7 @@ class ExprState {
 	    lagBufferCount[i] = 0;
 	    lagPendingValue[i] = 0;
 	    lagLastCommitTime[i] = -1;
+	    lagBufferTotalCount[i] = 0;
 	}
 	lagBufferIndex = 0;
     }
@@ -99,6 +103,7 @@ class ExprState {
 		if (lagBufferCount[i] < LAG_BUFFER_SIZE) {
 		    lagBufferCount[i]++;
 		}
+		lagBufferTotalCount[i]++;  // Track total entries ever added
 		lagLastCommitTime[i] = t;
 	    }
 	}
@@ -150,6 +155,51 @@ class ExprState {
 	// targetTime is before our oldest record - return oldest value
 	int oldestIdx = (head - count + LAG_BUFFER_SIZE) % LAG_BUFFER_SIZE;
 	return lagBufferValues[bufferIdx][oldestIdx];
+    }
+    
+    // Get a simple moving average of lag buffer values over one period
+    // Averages all samples within the time window [currentTime - delay, currentTime]
+    // For timestep=0.01 and delay=1, this averages ~100 points
+    double getLaggedMovingAverage(int bufferIdx, double delay, double initValue) {
+	if (bufferIdx >= MAX_LAG_BUFFERS || lagBufferCount[bufferIdx] == 0) {
+	    return initValue;  // No history yet
+	}
+	
+	int count = lagBufferCount[bufferIdx];
+	int head = lagBufferHead[bufferIdx];
+	double windowStart = t - delay;
+	
+	// Simple moving average: sum values within the window
+	double sum = lagPendingValue[bufferIdx];  // Include current pending value
+	int numPoints = 1;
+	
+	for (int i = 0; i < count; i++) {
+	    int idx = (head - 1 - i + LAG_BUFFER_SIZE) % LAG_BUFFER_SIZE;
+	    double bufTime = lagBufferTimes[bufferIdx][idx];
+	    
+	    // Only include entries within our window
+	    if (bufTime < windowStart) {
+		break;  // Older entries are outside the window
+	    }
+	    
+	    sum += lagBufferValues[bufferIdx][idx];
+	    numPoints++;
+	}
+	
+	// If window extends before buffer history, pad with initValue
+	// This smoothly transitions from initValue to actual data
+	if (windowStart < 0 && numPoints > 0) {
+	    // Calculate how many "virtual" init samples to add
+	    // based on how much of the window is before t=0
+	    double fractionBeforeStart = -windowStart / delay;
+	    int initPoints = (int)(fractionBeforeStart * numPoints);
+	    if (initPoints > 0) {
+		sum += initValue * initPoints;
+		numPoints += initPoints;
+	    }
+	}
+	
+	return sum / numPoints;
     }
 }
 
@@ -209,6 +259,183 @@ class Expr {
 	    children.add(e2);
 	type = v;
 	lagIndex = assignedLagIndex;
+    }
+    
+    /**
+     * Check if this expression is a compile-time constant.
+     * Returns true if the expression tree contains only literal values (E_VAL)
+     * and pure math operations on them — no time, variable references,
+     * integrate/diff/lag/last, slider variables, or other dynamic inputs.
+     * 
+     * This allows EquationTableElm to treat rows with constant expressions
+     * (e.g., parameter definitions like "rl ~ 0.025") as linear elements
+     * that can be stamped once instead of recomputed every subiteration.
+     */
+    boolean isConstant() {
+	switch (type) {
+	case E_VAL:
+	    return true;
+	// Pure math operations: constant if all children are constant
+	case E_ADD: case E_SUB: case E_MUL: case E_DIV: case E_POW:
+	case E_MOD: case E_UMINUS: case E_NOT:
+	case E_OR: case E_AND:
+	case E_EQUALS: case E_NEQ: case E_LEQ: case E_GEQ:
+	case E_LESS: case E_GREATER:
+	case E_SIN: case E_COS: case E_TAN:
+	case E_ASIN: case E_ACOS: case E_ATAN:
+	case E_SINH: case E_COSH: case E_TANH:
+	case E_ABS: case E_EXP: case E_LOG: case E_SQRT:
+	case E_FLOOR: case E_CEIL:
+	case E_MIN: case E_MAX: case E_CLAMP:
+	case E_PWR: case E_PWRS:
+	case E_STEP: case E_SELECT:
+	case E_PWL:
+	case E_TERNARY:
+	    if (children != null) {
+		for (int i = 0; i < children.size(); i++) {
+		    if (!children.get(i).isConstant())
+			return false;
+		}
+	    }
+	    return true;
+	// Everything else is dynamic (time, node refs, integrate, diff, lag, etc.)
+	default:
+	    return false;
+	}
+    }
+    
+    /**
+     * Check if this expression is a simple node alias (bare E_NODE_REF).
+     * Returns true for expressions like "Cd" that just reference another named node.
+     * 
+     * Alias rows in EquationTableElm can be optimized away entirely —
+     * the output name is registered as pointing to the same node as the
+     * referenced name, eliminating a voltage source and matrix row.
+     */
+    boolean isNodeAlias() {
+	return type == E_NODE_REF && nodeName != null;
+    }
+    
+    /**
+     * Get the referenced node name for alias expressions.
+     * Only meaningful when isNodeAlias() returns true.
+     * @return The node name this expression references, or null
+     */
+    String getNodeName() {
+	return nodeName;
+    }
+    
+    /**
+     * Check if this expression is a linear combination of node references and constants.
+     * Linear expressions can be stamped as VCVS without needing doStep().
+     * 
+     * Linear forms:
+     * - Constants: 5, 2+3
+     * - Node refs: Cs, Cd
+     * - Addition/subtraction of linear terms: Cs + Is, Y - C
+     * - Scalar multiplication: 2 * Cs, Cs * 3
+     * - Unary minus: -Cs
+     * 
+     * Non-linear (require doStep):
+     * - Products of node refs: Cs * Is
+     * - Division by node refs: Y / pr
+     * - Transcendental functions of node refs: sin(Cs)
+     * - Time-dependent: t, integrate(), diff(), lag()
+     */
+    boolean isLinearCombination() {
+	return getLinearTerms(new java.util.HashMap<String, Double>()) != null;
+    }
+    
+    /**
+     * Extract linear terms from this expression.
+     * Returns the constant term if successful, or null if not a linear combination.
+     * 
+     * @param terms Map to populate with nodeName -> coefficient
+     * @return The constant term, or null if expression is not linear
+     */
+    Double getLinearTerms(java.util.HashMap<String, Double> terms) {
+	return getLinearTermsInternal(terms, 1.0);
+    }
+    
+    /**
+     * Internal recursive helper for extracting linear terms with a multiplier.
+     * @param terms Map to populate with nodeName -> coefficient
+     * @param multiplier Current multiplier from parent expressions
+     * @return The constant term contribution, or null if not linear
+     */
+    private Double getLinearTermsInternal(java.util.HashMap<String, Double> terms, double multiplier) {
+	Expr left = null;
+	Expr right = null;
+	if (children != null && children.size() > 0) {
+	    left = children.firstElement();
+	    if (children.size() >= 2)
+		right = children.get(1);
+	}
+	
+	switch (type) {
+	case E_VAL:
+	    // Constant: contributes to constant term
+	    return value * multiplier;
+	    
+	case E_NODE_REF:
+	    // Node reference: add coefficient to terms map
+	    if (nodeName == null) return null;
+	    Double existing = terms.get(nodeName);
+	    terms.put(nodeName, (existing != null ? existing : 0.0) + multiplier);
+	    return 0.0;  // No constant contribution
+	    
+	case E_UMINUS:
+	    // Unary minus: negate multiplier
+	    return left.getLinearTermsInternal(terms, -multiplier);
+	    
+	case E_ADD:
+	    // Addition: sum of both sides
+	    Double leftConst = left.getLinearTermsInternal(terms, multiplier);
+	    if (leftConst == null) return null;
+	    Double rightConst = right.getLinearTermsInternal(terms, multiplier);
+	    if (rightConst == null) return null;
+	    return leftConst + rightConst;
+	    
+	case E_SUB:
+	    // Subtraction: left - right
+	    leftConst = left.getLinearTermsInternal(terms, multiplier);
+	    if (leftConst == null) return null;
+	    rightConst = right.getLinearTermsInternal(terms, -multiplier);
+	    if (rightConst == null) return null;
+	    return leftConst + rightConst;
+	    
+	case E_MUL:
+	    // Multiplication: one side must be constant
+	    if (left.isConstant()) {
+		// Left is constant, multiply into right
+		double scalar = left.eval(null);  // Safe: isConstant means no state needed
+		return right.getLinearTermsInternal(terms, multiplier * scalar);
+	    } else if (right.isConstant()) {
+		// Right is constant, multiply into left
+		double scalar = right.eval(null);
+		return left.getLinearTermsInternal(terms, multiplier * scalar);
+	    }
+	    // Both sides have node refs: not linear (e.g., Cs * Is)
+	    return null;
+	    
+	case E_DIV:
+	    // Division: divisor must be constant
+	    if (right.isConstant()) {
+		double divisor = right.eval(null);
+		if (Math.abs(divisor) < 1e-12) return null;  // Division by zero
+		return left.getLinearTermsInternal(terms, multiplier / divisor);
+	    }
+	    // Dividing by a node ref: not linear
+	    return null;
+	    
+	default:
+	    // If it's a constant expression (trig, etc. of constants), treat as constant
+	    if (isConstant()) {
+		return eval(null) * multiplier;
+	    }
+	    // Everything else (integrate, diff, lag, t, etc.) is not linear
+	    return null;
+	}
     }
     
     /**
@@ -409,35 +636,44 @@ class Expr {
 	    // Store pending value for commit
 	    es.lagPendingValue[bufIdx] = inputVal;
 	    if (es.lagLastCommitTime[bufIdx] < 0) {
-		es.lagLastCommitTime[bufIdx] = es.t - 1;  // Mark as initialized
+		es.lagLastCommitTime[bufIdx] = 0;  // Mark as initialized (use 0 so commits start immediately)
 	    }
 	    
 	    // Check if we have enough history
 	    double targetTime = es.t - delay;
-	    boolean needsInitialValue = (es.lagBufferCount[bufIdx] == 0) || (targetTime < 0);
 	    
-	    if (needsInitialValue) {
-		// Try to find an initial value if the argument is a node reference
-		// This matches sfcr behavior where V[-1] in period 1 uses V_init
-		if (left.type == E_NODE_REF && left.nodeName != null) {
-		    String varName = left.nodeName;
-		    // Try X_init first
-		    Double initValue = ComputedValues.getComputedValue(varName + "_init");
-		    if (initValue != null) {
-			return initValue.doubleValue();
-		    }
+	    // Get initial value for this variable (if available)
+	    double initValue = 0.0;
+	    if (left.type == E_NODE_REF && left.nodeName != null) {
+		String varName = left.nodeName;
+		// Try X_init first
+		Double iv = ComputedValues.getComputedValue(varName + "_init");
+		if (iv != null) {
+		    initValue = iv.doubleValue();
+		} else {
 		    // Also try without underscore (e.g., Vinit for V)
-		    initValue = ComputedValues.getComputedValue(varName + "init");
-		    if (initValue != null) {
-			return initValue.doubleValue();
+		    iv = ComputedValues.getComputedValue(varName + "init");
+		    if (iv != null) {
+			initValue = iv.doubleValue();
 		    }
 		}
-		// No initial value found - return 0 (sfcr default)
-		return 0.0;
 	    }
 	    
-	    // Get the lagged value from the buffer
-	    return es.getLaggedValue(bufIdx, delay, inputVal);
+	    // MOVING AVERAGE FILTER: Always use a moving average over one period.
+	    // This smooths out discontinuities by averaging all samples within
+	    // the window [t-delay, t]. For timestep=0.01 and delay=1, averages ~100 points.
+	    // During the first period (t < delay), initValue is used to pad the window.
+	    double result = es.getLaggedMovingAverage(bufIdx, delay, initValue);
+	    
+	    // Debug logging for Y2
+	    // Log all lag() calls to diagnose - left.type=" + left.type + " nodeName=" + left.nodeName
+	    // if (left.nodeName != null && left.nodeName.contains("YD")) {
+		// CirSim.console("lag(" + left.nodeName + "," + delay + ") t=" + es.t + 
+		//     " type=" + left.type + " init=" + initValue + 
+		//     " input=" + inputVal + " mavg=" + result);
+	    // }
+	    
+	    return result;
 	}
 	case E_NODE_REF:
 	    // Direct node reference - get voltage from labeled node or computed value

@@ -21,7 +21,7 @@ EquationTableElm|Equation Table
 PercentElm|Percent/Ratio Meter
 AdderElm|Adder
 SubtracterElm|Subtracter
-GodlyTableElm|Godly Table||g
+GodlyTableElm|Godly Table
 TableElm|Table
 SFCTableElm|SFC Table
 ComputedValueSourceElm|CV Source

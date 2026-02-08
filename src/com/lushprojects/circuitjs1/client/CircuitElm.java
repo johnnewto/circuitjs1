@@ -252,6 +252,10 @@ public abstract class CircuitElm implements Editable {
     // for non-linear elements, use this to stamp values that don't change each iteration, and call stampRightSide() or stampNonLinear() as needed
     void stamp() {}
     
+    // called after all elements have had stamp() called, for elements that need to
+    // stamp values that depend on nodes registered by other elements during stamp()
+    void postStamp() {}
+    
     // stamp matrix values for non-linear elements
     void doStep() {}
     

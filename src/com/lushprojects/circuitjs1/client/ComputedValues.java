@@ -159,6 +159,20 @@ public class ComputedValues {
     }
     
     /**
+     * Write a value directly to the current buffer, bypassing the pending buffer.
+     * Used by startIteration() to seed values (e.g., alias values) that must be
+     * visible to all elements during the upcoming doStep() cycle.
+     * 
+     * @param name The name/key for the computed value
+     * @param value The computed value to store
+     */
+    public static void setComputedValueDirect(String name, double value) {
+        if (name == null || name.isEmpty()) return;
+        ensureInitialized();
+        computedValues.put(name, value);
+    }
+    
+    /**
      * Get a computed value by name (current/subiteration value)
      * Used by simulation elements during doStep() for calculations.
      * 

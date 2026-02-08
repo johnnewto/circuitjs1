@@ -89,6 +89,11 @@ class EditOptions implements Editable {
 		    return new EditInfo("Convergence Check Threshold (subiterations)", sim.convergenceCheckThreshold, 0, 100).setDimensionless();
 		if (n == 16 && sim.adjustTimeStep)
 		    return new EditInfo("Minimum time step size (s)", sim.minTimeStep, 0, 0);
+		if (n == 17) {
+		    EditInfo ei = new EditInfo("", 0, -1, -1);
+		    ei.checkbox = new Checkbox("MNA Mode", sim.equationTableMnaMode);
+		    return ei;
+		}
 
 		return null;
 	}
@@ -179,6 +184,10 @@ class EditOptions implements Editable {
 		    sim.convergenceCheckThreshold = (int)ei.value;
 		if (n == 16 && ei.value > 0)
 		    sim.minTimeStep = ei.value;
+		if (n == 17) {
+		    sim.equationTableMnaMode = ei.checkbox.getState();
+		    sim.needAnalyze();
+		}
 	}
 	
 	Color setColor(String name, EditInfo ei, Color def) {

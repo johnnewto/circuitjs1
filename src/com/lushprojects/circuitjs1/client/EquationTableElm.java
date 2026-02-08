@@ -129,12 +129,40 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** Track if initial value has been applied this simulation run */
     private boolean[] initialValueApplied;
     
+    /** Track which rows have constant expressions (can be stamped linearly) */
+    private boolean[] isConstantRow;
+    
+    /** Track which rows are node aliases (e.g. Cs ~ Cd) — no VS or matrix row needed */
+    private boolean[] isAliasRow;
+    
+    /** Track which rows are linear combinations (e.g. Y ~ Cs + Is) — stamped as VCVS */
+    private boolean[] isLinearRow;
+    
+    /** Track which linear rows need deferred VCVS stamping in postStamp() */
+    private boolean[] needsPostStamp;
+    
+    /** Linear term coefficients for each row: nodeName -> coefficient */
+    @SuppressWarnings("unchecked")
+    private java.util.HashMap<String, Double>[] linearTerms = new java.util.HashMap[MAX_ROWS];
+    
+    /** Constant term for linear rows */
+    private double[] linearConstant;
+    
+    /** Whether all alias rows have been successfully resolved to target nodes */
+    private boolean aliasesResolved;
+    
     //=============================================================================
     // INSTANCE STATE - UI Interaction
     //=============================================================================
     
     /** Currently hovered row index (-1 = none) - for tooltip display */
     private int hoveredRow = -1;
+    
+    /** Row that failed convergence (-1 = none) - for debugging */
+    private int failedConvergenceRow = -1;
+    
+    /** Details about the convergence failure */
+    private String convergenceFailureInfo = null;
     
     //=============================================================================
     // INSTANCE STATE - MNA Node Tracking (Hybrid Approach)
@@ -293,6 +321,11 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         outputValues = new double[MAX_ROWS];
         lastOutputValues = new double[MAX_ROWS];
         initialValueApplied = new boolean[MAX_ROWS];
+        isConstantRow = new boolean[MAX_ROWS];
+        isAliasRow = new boolean[MAX_ROWS];
+        isLinearRow = new boolean[MAX_ROWS];
+        needsPostStamp = new boolean[MAX_ROWS];
+        linearConstant = new double[MAX_ROWS];
         
         // Set reasonable defaults for all rows
         for (int i = 0; i < MAX_ROWS; i++) {
@@ -422,7 +455,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     int getDumpType() { return 266; }
     
     /** @return true if in MNA (electrical) mode, false for pure computational */
-    boolean isMnaMode() { return (flags & FLAG_MNA_MODE) != 0; }
+    boolean isMnaMode() { return sim.equationTableMnaMode; }
     
     /** @return Number of electrical posts - always 0 (no visible posts) */
     int getPostCount() { return 0; }
@@ -446,8 +479,10 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     int getVoltageSourceCount() { 
         if (!isMnaMode()) return 0;
         
+        updateRowClassifications();
         int count = 0;
         for (int row = 0; row < rowCount; row++) {
+            if (isAliasRow[row]) continue;  // Aliases need no voltage source
             String outputName = outputNames[row];
             if (outputName != null && !outputName.trim().isEmpty()) {
                 count++;
@@ -463,8 +498,10 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     int getInternalNodeCount() {
         if (!isMnaMode()) return 0;
         
+        updateRowClassifications();
         int count = 0;
         for (int row = 0; row < rowCount; row++) {
+            if (isAliasRow[row]) continue;  // Aliases share target node, need no internal node
             String outputName = outputNames[row];
             if (outputName != null && !outputName.trim().isEmpty()) {
                 // Only need internal node if NO existing LabeledNode
@@ -477,8 +514,70 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         return count;
     }
     
-    /** @return true - equations may depend on other values that change */
-    boolean nonLinear() { return true; }
+    /** @return true if any row has a non-constant, non-alias, non-linear expression requiring iterative solving */
+    boolean nonLinear() {
+        updateRowClassifications();
+        for (int row = 0; row < rowCount; row++) {
+            if (!isConstantRow[row] && !isAliasRow[row] && !isLinearRow[row])
+                return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Update isConstantRow and isAliasRow flags based on compiled expressions.
+     * 
+     * Row classifications (checked in priority order):
+     * 1. ALIAS: Expression is a bare node reference (E_NODE_REF), e.g. "Cs ~ Cd".
+     *    The output name becomes an alias for the target node — no voltage source,
+     *    no internal node, no matrix row needed. Eliminates 2 matrix rows per alias.
+     * 2. CONSTANT: Expression contains only literal values and pure math, e.g. "rl ~ 0.025".
+     *    Stamped once as a linear DC voltage source.
+     * 3. DYNAMIC: Everything else — requires nonlinear doStep() evaluation.
+     */
+    private void updateRowClassifications() {
+        for (int row = 0; row < rowCount; row++) {
+            isConstantRow[row] = false;
+            isAliasRow[row] = false;
+            isLinearRow[row] = false;
+            linearTerms[row] = null;
+            linearConstant[row] = 0.0;
+            
+            if (compiledExprs[row] == null) continue;
+            
+            String initEq = initialEquations[row];
+            boolean hasInitEq = (initEq != null && !initEq.trim().isEmpty());
+            
+            // Check alias first (bare node reference with no initial equation)
+            if (!hasInitEq && compiledExprs[row].isNodeAlias()) {
+                isAliasRow[row] = true;
+                continue;
+            }
+            
+            // Check constant (pure literal math with no initial equation)
+            if (!hasInitEq && compiledExprs[row].isConstant()) {
+                isConstantRow[row] = true;
+                continue;
+            }
+            
+            // Check linear combination (e.g., Y ~ Cs + Is, Y ~ 2*Cs - 3)
+            if (!hasInitEq) {
+                java.util.HashMap<String, Double> terms = new java.util.HashMap<String, Double>();
+                Double constTerm = compiledExprs[row].getLinearTerms(terms);
+                if (constTerm != null && !terms.isEmpty()) {
+                    // It's a linear combination with at least one node reference
+                    isLinearRow[row] = true;
+                    linearTerms[row] = terms;
+                    linearConstant[row] = constTerm.doubleValue();
+                }
+            }
+        }
+    }
+    
+    // Keep old name for any external callers
+    private void updateConstantFlags() {
+        updateRowClassifications();
+    }
     
     /**
      * Check if two posts are electrically connected.
@@ -665,6 +764,9 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             labeledNodeNumbers[row] = -1;
             rowVoltSources[row] = -1;
             
+            // Alias rows don't need nodes or voltage sources
+            if (isAliasRow[row]) continue;
+            
             String outputName = outputNames[row];
             if (outputName == null || outputName.trim().isEmpty()) continue;
             
@@ -711,18 +813,76 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     }
     
     /**
+     * Register alias rows: point the output name to the target node.
+     * For "Cs ~ Cd", registers "Cs" in labelList pointing to the same node as "Cd".
+     * This eliminates the voltage source and matrix row entirely —
+     * Cs and Cd become the same electrical node.
+     */
+    private void registerAliasNodes() {
+        aliasesResolved = true;  // Assume success; set false if any fail
+        for (int row = 0; row < rowCount; row++) {
+            if (!isAliasRow[row]) continue;
+            
+            String outputName = outputNames[row];
+            if (outputName == null || outputName.trim().isEmpty()) continue;
+            
+            String targetName = compiledExprs[row].getNodeName();
+            if (targetName == null) continue;
+            
+            // Look up the target node number
+            Integer targetNodeNum = LabeledNodeElm.getByName(targetName);
+            if (targetNodeNum != null && targetNodeNum >= 0) {
+                // Register output name as pointing to the same node
+                registerInternalNodeAsLabel(outputName.trim(), targetNodeNum);
+                labeledNodeNumbers[row] = targetNodeNum;
+                
+                if (DEBUG) {
+                    CirSim.console("[EquationTableElm." + tableName + "] Alias: " + 
+                        outputName.trim() + " -> " + targetName + " (node " + targetNodeNum + ")");
+                }
+            } else {
+                // Target node doesn't exist yet — will retry in startIteration()
+                aliasesResolved = false;
+                if (DEBUG) {
+                    CirSim.console("[EquationTableElm." + tableName + "] Alias target '" + 
+                        targetName + "' not found yet, deferring resolution");
+                }
+            }
+        }
+    }
+    
+    /**
      * Stamp the element into the circuit matrix.
      * In MNA mode, stamps voltage sources for each row output using hybrid approach.
      * In pure computational mode, does nothing.
      */
     void stamp() {
+        // Update row classifications (alias, constant, dynamic)
+        updateRowClassifications();
+        
         if (!isMnaMode()) {
-            // Pure computational element - no MNA matrix participation
+            // Pure computational mode: register constants and aliases immediately
+            for (int row = 0; row < rowCount; row++) {
+                if (isConstantRow[row] && compiledExprs[row] != null) {
+                    double constantValue = compiledExprs[row].eval(exprStates[row]);
+                    outputValues[row] = constantValue;
+                    lastOutputValues[row] = constantValue;
+                    String outputName = outputNames[row];
+                    if (outputName != null && !outputName.trim().isEmpty()) {
+                        ComputedValues.setComputedValue(outputName.trim(), constantValue);
+                    }
+                }
+                // Alias rows in pure mode: no action needed at stamp time.
+                // In doStep(), we'll copy the target's value to the alias name.
+            }
             return;
         }
         
-        // Find or create nodes for each row
+        // Find or create nodes for each row (skips alias rows)
         findLabeledNodes();
+        
+        // Register alias rows: point output name to target node (no VS, no matrix row)
+        registerAliasNodes();
         
         // MNA mode: stamp voltage sources for each row
         for (int row = 0; row < rowCount; row++) {
@@ -730,13 +890,139 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             int vs = rowVoltSources[row];
             
             if (nodeNum >= 0 && vs >= 0) {
-                int vn = voltSource + vs + sim.nodeList.size();
-                sim.stampNonLinear(vn);
-                sim.stampVoltageSource(0, nodeNum, voltSource + vs);
+                if (isConstantRow[row]) {
+                    // Constant expression: stamp as linear voltage source with fixed value
+                    // Evaluate once and stamp directly (like DC VoltageElm)
+                    double constantValue = compiledExprs[row].eval(exprStates[row]);
+                    sim.stampVoltageSource(0, nodeNum, voltSource + vs, constantValue);
+                    outputValues[row] = constantValue;
+                    lastOutputValues[row] = constantValue;
+                    
+                    // Register in ComputedValues so other elements can reference it
+                    String outputName = outputNames[row];
+                    if (outputName != null && !outputName.trim().isEmpty()) {
+                        ComputedValues.setComputedValue(outputName.trim(), constantValue);
+                    }
+                } else if (isLinearRow[row]) {
+                    // Linear expression: stamp as VCVS (Voltage Controlled Voltage Source)
+                    // For Y ~ c1*N1 + c2*N2 + const, stamp:
+                    //   V_Y = c1*V_N1 + c2*V_N2 + const
+                    // Using: stampVoltageSource for the output, stampVCVS for each input
+                    
+                    // First, verify ALL referenced nodes exist - if any are missing,
+                    // defer to postStamp() where they should exist after all stamp() calls complete
+                    boolean allNodesFound = true;
+                    for (String refName : linearTerms[row].keySet()) {
+                        Integer refNode = LabeledNodeElm.getByName(refName);
+                        if (refNode == null || refNode < 0) {
+                            allNodesFound = false;
+                            break;
+                        }
+                    }
+                    
+                    if (allNodesFound) {
+                        // All nodes found - stamp as linear VCVS now
+                        sim.stampVoltageSource(0, nodeNum, voltSource + vs, linearConstant[row]);
+                        stampLinearRow(row, nodeNum, vs);
+                    } else {
+                        // Defer VCVS stamping to postStamp() when all nodes will exist
+                        needsPostStamp[row] = true;
+                        sim.stampVoltageSource(0, nodeNum, voltSource + vs, linearConstant[row]);
+                        if (DEBUG) {
+                            CirSim.console("[EquationTableElm." + tableName + 
+                                "] Linear row '" + outputNames[row] + "': deferring VCVS to postStamp()");
+                        }
+                    }
+                } else {
+                    // Non-linear expression: stamp as nonlinear (value set in doStep)
+                    int vn = voltSource + vs + sim.nodeList.size();
+                    sim.stampNonLinear(vn);
+                    sim.stampVoltageSource(0, nodeNum, voltSource + vs);
+                }
                 
                 // Stamp tiny load resistance to prevent matrix elimination
                 double loadResistance = 1e9;
                 sim.stampResistor(nodeNum, 0, loadResistance);
+            }
+        }
+    }
+    
+    /**
+     * Stamp a linear row as VCVS (Voltage Controlled Voltage Source).
+     * Helper method used by both stamp() and postStamp().
+     * 
+     * @param row Row index
+     * @param nodeNum Output node number
+     * @param vs Voltage source index within this element
+     */
+    private void stampLinearRow(int row, int nodeNum, int vs) {
+        // Stamp VCVS coefficients for each referenced node
+        for (java.util.Map.Entry<String, Double> entry : linearTerms[row].entrySet()) {
+            String refName = entry.getKey();
+            double coef = entry.getValue();
+            Integer refNode = LabeledNodeElm.getByName(refName);
+            if (refNode != null && refNode >= 0) {
+                // stampVCVS(controlNode, controlNode2, coef, voltSourceIdx)
+                sim.stampVCVS(refNode, 0, coef, voltSource + vs);
+            }
+        }
+        
+        // Register initial value in ComputedValues
+        String outputName = outputNames[row];
+        if (outputName != null && !outputName.trim().isEmpty()) {
+            ComputedValues.setComputedValue(outputName.trim(), linearConstant[row]);
+        }
+        
+        if (DEBUG) {
+            CirSim.console("[EquationTableElm." + tableName + 
+                "] Stamped linear VCVS for '" + outputNames[row] + "'");
+        }
+    }
+    
+    /**
+     * Called after all elements have had stamp() called.
+     * Handles deferred VCVS stamping for linear rows whose referenced nodes
+     * weren't available during stamp() due to element ordering.
+     */
+    @Override
+    void postStamp() {
+        if (!isMnaMode()) return;
+        
+        for (int row = 0; row < rowCount; row++) {
+            if (!needsPostStamp[row]) continue;
+            
+            int nodeNum = labeledNodeNumbers[row];
+            int vs = rowVoltSources[row];
+            
+            if (nodeNum >= 0 && vs >= 0) {
+                // Now all nodes should exist - stamp the VCVS coefficients
+                boolean allNodesFound = true;
+                String missingNode = null;
+                for (String refName : linearTerms[row].keySet()) {
+                    Integer refNode = LabeledNodeElm.getByName(refName);
+                    if (refNode == null || refNode < 0) {
+                        allNodesFound = false;
+                        missingNode = refName;
+                        break;
+                    }
+                }
+                
+                if (allNodesFound) {
+                    stampLinearRow(row, nodeNum, vs);
+                    needsPostStamp[row] = false;  // Successfully stamped
+                } else {
+                    // Node not found even after all stamp() calls - it's probably defined
+                    // in ComputedValues (pure computational) rather than as an MNA node.
+                    // Fall back to nonlinear evaluation which can read from both sources.
+                    if (DEBUG) {
+                        CirSim.console("[EquationTableElm." + tableName + 
+                            "] postStamp: node '" + missingNode + "' not an MNA node for row '" + 
+                            outputNames[row] + "', using nonlinear evaluation");
+                    }
+                    isLinearRow[row] = false;
+                    int vn = voltSource + vs + sim.nodeList.size();
+                    sim.stampNonLinear(vn);
+                }
             }
         }
     }
@@ -755,12 +1041,85 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * 3. Checks for convergence
      * 4. Outputs to ComputedValues (pure) or MNA matrix (electrical)
      */
+    
+    /**
+     * Called once per timestep before subiterations begin.
+     * Resolves any alias rows whose targets weren't available during stamp()
+     * (due to stamp ordering — target table may stamp after this table).
+     * Also seeds alias ComputedValues for the upcoming doStep cycle.
+     */
+    @Override
+    public void startIteration() {
+        // Retry alias resolution if any failed during stamp()
+        if (!aliasesResolved && isMnaMode()) {
+            registerAliasNodes();
+        }
+        
+        // Seed alias values into ComputedValues so other expressions can find them.
+        // In MNA mode, the alias shares the target's node, so read the node voltage
+        // and write it to ComputedValues (current buffer, not pending).
+        if (isMnaMode()) {
+            for (int row = 0; row < rowCount; row++) {
+                if (!isAliasRow[row]) continue;
+                String outputName = outputNames[row];
+                if (outputName == null || outputName.trim().isEmpty()) continue;
+                
+                String targetName = compiledExprs[row].getNodeName();
+                if (targetName != null) {
+                    // Read target voltage and seed into ComputedValues
+                    double val = sim.getLabeledNodeVoltage(targetName);
+                    outputValues[row] = val;
+                    // Write directly to current buffer so it's available during doStep
+                    ComputedValues.setComputedValueDirect(outputName.trim(), val);
+                }
+            }
+        }
+    }
+    
     void doStep() {
         if (DEBUG && sim.subIterations == 0) {
             CirSim.console("[EquationTableElm." + tableName + "] doStep() at t=" + sim.t + " mnaMode=" + isMnaMode());
         }
         
         for (int row = 0; row < rowCount; row++) {
+            // Skip constant rows - they were stamped linearly in stamp()
+            if (isConstantRow[row]) continue;
+            
+            // Skip linear rows in MNA mode - they were stamped as VCVS in stamp()
+            // (Still need to update outputValues for display purposes)
+            if (isLinearRow[row] && isMnaMode()) {
+                // Read the computed voltage from the labeled node
+                String outputName = outputNames[row];
+                if (outputName != null && !outputName.trim().isEmpty()) {
+                    double val = sim.getLabeledNodeVoltage(outputName.trim());
+                    outputValues[row] = val;
+                    lastOutputValues[row] = val;
+                    ComputedValues.setComputedValue(outputName.trim(), val);
+                }
+                continue;
+            }
+            
+            // Alias rows: copy target value to ComputedValues so other expressions
+            // can resolve the alias name. In MNA mode, read from shared node voltage.
+            // In pure mode, read from ComputedValues.
+            if (isAliasRow[row]) {
+                String targetName = compiledExprs[row].getNodeName();
+                double val;
+                if (isMnaMode()) {
+                    val = sim.getLabeledNodeVoltage(targetName);
+                } else {
+                    Double targetValue = ComputedValues.getComputedValue(targetName);
+                    val = (targetValue != null) ? targetValue.doubleValue() : 0.0;
+                }
+                outputValues[row] = val;
+                lastOutputValues[row] = val;
+                String outputName = outputNames[row];
+                if (outputName != null && !outputName.trim().isEmpty()) {
+                    ComputedValues.setComputedValue(outputName.trim(), val);
+                }
+                continue;
+            }
+            
             // Handle initial value at t=0
             if (sim.t == 0 && compiledInitialExprs[row] != null) {
                 // On first sub-iteration, use 0 as placeholder
@@ -964,11 +1323,18 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         
         if (!converged) {
             sim.converged = false;
-            if (DEBUG) {
-                CirSim.console("  Equation NOT converged: diff=" + diff + ", limit=" + convergeLimit);
+            failedConvergenceRow = row;
+            convergenceFailureInfo = outputNames[row] + ": diff=" + getShortUnitText(diff, "") + 
+                ", limit=" + getShortUnitText(convergeLimit, "") + 
+                ", last=" + getShortUnitText(lastOutputValues[row], "") +
+                ", new=" + getShortUnitText(equationValue, "");
+            if (sim.subIterations > sim.convergenceCheckThreshold) {
+                CirSim.console("[" + tableName + "] t=" + sim.t + " dt=" + sim.timeStep + " Convergence failure: " + convergenceFailureInfo);
             }
-        } else if (DEBUG) {
-            CirSim.console("  Equation converged");
+        } else if (failedConvergenceRow == row) {
+            // This row converged now, clear the failure
+            failedConvergenceRow = -1;
+            convergenceFailureInfo = null;
         }
     }
     
@@ -1059,6 +1425,26 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
         
         for (int row = 0; row < rowCount; row++) {
+            // For alias rows in MNA mode, read the shared node voltage
+            // and register in ComputedValues for consistency
+            if (isAliasRow[row]) {
+                String name = outputNames[row];
+                if (name != null && !name.trim().isEmpty()) {
+                    String targetName = compiledExprs[row].getNodeName();
+                    if (isMnaMode()) {
+                        // MNA mode: read voltage from the shared node via labeled node lookup
+                        outputValues[row] = sim.getLabeledNodeVoltage(targetName);
+                    } else {
+                        // Pure mode: copy from target ComputedValue
+                        Double targetValue = ComputedValues.getComputedValue(targetName);
+                        outputValues[row] = (targetValue != null) ? targetValue.doubleValue() : 0.0;
+                    }
+                    ComputedValues.setComputedValue(name.trim(), outputValues[row]);
+                    ComputedValues.markComputedThisStep(name.trim());
+                }
+                continue;
+            }
+            
             // Register output as computed value
             String name = outputNames[row];
             if (name != null && !name.trim().isEmpty()) {
@@ -1177,10 +1563,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         if (n == 0) {
             return EditInfo.createCheckbox("Small", (flags & FLAG_SMALL) != 0);
         }
-        if (n == 1) {
-            // MNA mode is default. When unchecked, outputs go to ComputedValues only (no electrical posts).
-            return EditInfo.createCheckbox("Electrical Outputs", isMnaMode());
-        }
         return null;
     }
     
@@ -1198,15 +1580,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             }
             setPoints();
         }
-        if (n == 1) {
-            boolean wasEnabled = isMnaMode();
-            flags = ei.changeFlag(flags, FLAG_MNA_MODE);
-            if (wasEnabled != isMnaMode()) {
-                // Mode changed - need to reanalyze circuit
-                allocNodes();
-                sim.needAnalyze();
-            }
-        }
     }
     
     //=============================================================================
@@ -1219,6 +1592,20 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     @Override
     void getInfo(String arr[]) {
         arr[0] = "Equation Table: " + tableName + (isMnaMode() ? " (Electrical)" : " (Computed)");
+        
+        // Show convergence failure info if applicable
+        if (nonConverged && convergenceFailureInfo != null) {
+            arr[1] = "⚠ Convergence failure: " + convergenceFailureInfo;
+            // Still show row info after convergence warning
+            if (hoveredRow >= 0 && hoveredRow < rowCount) {
+                String[] rowInfo = new String[10];
+                getHoveredRowInfo(rowInfo);
+                for (int i = 1; i < rowInfo.length && rowInfo[i] != null && i + 1 < arr.length; i++) {
+                    arr[i + 1] = rowInfo[i];
+                }
+            }
+            return;
+        }
         
         if (hoveredRow >= 0 && hoveredRow < rowCount) {
             // Show detailed info for hovered row
@@ -1241,7 +1628,19 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             arr[1] = "Row " + (hoveredRow + 1) + ": " + outputNames[hoveredRow];
         }
         
-        arr[2] = "Row " + (hoveredRow + 1) + ": " + outputNames[hoveredRow];
+        // Build classification description with icon
+        String classDesc;
+        if (isAliasRow[hoveredRow]) {
+            classDesc = "→ alias (shares node with " + compiledExprs[hoveredRow].getNodeName() + ")";
+        } else if (isConstantRow[hoveredRow]) {
+            classDesc = "● constant (stamped once)";
+        } else if (isLinearRow[hoveredRow]) {
+            classDesc = "L linear (VCVS, no iteration)";
+        } else {
+            classDesc = "⟳ dynamic (evaluated each step)";
+        }
+        
+        arr[2] = "Row " + (hoveredRow + 1) + ": " + outputNames[hoveredRow] + " [" + classDesc + "]";
         arr[3] = "Equation: " + equations[hoveredRow];
         
         String initEq = initialEquations[hoveredRow];
@@ -1330,6 +1729,30 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /** Get the number of active rows */
     public int getRowCount() { return rowCount; }
+    
+    /** Check if row is classified as alias (bare node reference) */
+    public boolean isAliasRow(int row) {
+        return (row >= 0 && row < MAX_ROWS) ? isAliasRow[row] : false;
+    }
+    
+    /** Check if row is classified as constant (pure literal math) */
+    public boolean isConstantRow(int row) {
+        return (row >= 0 && row < MAX_ROWS) ? isConstantRow[row] : false;
+    }
+    
+    /** Check if row is classified as linear (VCVS, no iteration) */
+    public boolean isLinearRow(int row) {
+        return (row >= 0 && row < MAX_ROWS) ? isLinearRow[row] : false;
+    }
+    
+    /** Get row classification as string */
+    public String getRowClassification(int row) {
+        if (row < 0 || row >= MAX_ROWS) return "unknown";
+        if (isAliasRow[row]) return "alias";
+        if (isConstantRow[row]) return "constant";
+        if (isLinearRow[row]) return "linear";
+        return "dynamic";
+    }
     
     /** Set the number of active rows (1 to MAX_ROWS) */
     public void setRowCount(int count) { 

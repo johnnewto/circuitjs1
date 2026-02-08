@@ -11,72 +11,55 @@ import java.util.HashMap;
 import java.util.Vector;
 
 /**
- * SFCRParser - Parser for SFCR-compatible text format
+ * Parser for SFCR-compatible text format.
  * 
- * Parses human-readable Stock-Flow Consistent model definitions
- * inspired by the R sfcr package (https://github.com/joaomacalos/sfcr).
+ * Parses human-readable Stock-Flow Consistent model definitions inspired by
+ * the R sfcr package (https://github.com/joaomacalos/sfcr).
  * 
  * Supported blocks:
- * - @matrix: Transaction flow matrices and balance sheets
- * - @equations: Equation definitions (inline # comments become hints)
- * - @parameters: Exogenous parameters (inline # comments become hints)
- * - @hints: Variable documentation (overrides auto-generated hints)
- * - @scope: Scope/probe definitions
- * - @circuit: Raw CircuitJS element definitions (passthrough)
+ *   @init       - Simulation settings (timestep, units, display options)
+ *   @info       - Model documentation (markdown)
+ *   @equations  - Variable equations (creates EquationTableElm)
+ *   @parameters - Alias for @equations (sfcr compatibility)
+ *   @matrix     - Transaction flow matrices (creates SFCTableElm)
+ *   @hints      - Variable tooltips (overrides inline comments)
+ *   @scope      - Oscilloscope displays
+ *   @circuit    - Raw CircuitJS element passthrough
  * 
- * Hints are automatically extracted from inline comments:
+ * Inline comments become hints:
  *   YD ~ W * N_s - T_s   # Disposable income
- * Creates hint: YD -> "Disposable income"
  * 
- * Explicit @hints blocks can override auto-generated hints.
- * 
- * Example usage:
- * <pre>
- * SFCRParser parser = new SFCRParser(sim);
- * if (parser.isSFCRFormat(text)) {
- *     parser.parse(text);
- *     // Elements are added to sim.elmList
- * }
- * </pre>
+ * @see SFCRExporter
+ * @see <a href="../dev_docs/SFCR_FORMAT_REFERENCE.md">SFCR Format Reference</a>
  */
 public class SFCRParser {
     
+    // =========================================================================
+    // Fields
+    // =========================================================================
+    
     private CirSim sim;
-    private int currentX = 176;  // Starting X position
-    private int currentY = 24;   // Starting Y position
-    private int elementSpacing = 16;  // Vertical spacing between elements
+    private int currentX = 176;
+    private int currentY = 24;
+    private int elementSpacing = 16;
     
-    // Track created elements for positioning
     private ArrayList<CircuitElm> createdElements = new ArrayList<CircuitElm>();
-    
-    // Track hint definitions
     private HashMap<String, String> hints = new HashMap<String, String>();
-    
-    // Track scopes to add
     private ArrayList<String> scopeVariables = new ArrayList<String>();
-    
-    // Track init settings (timestep, voltageUnit, etc.)
     private HashMap<String, String> initSettings = new HashMap<String, String>();
-    
-    // Track raw circuit element lines to pass through
     private ArrayList<String> rawCircuitLines = new ArrayList<String>();
-    
-    // Track info/documentation content (markdown)
     private String infoContent = null;
     
-    /**
-     * Create a new SFCR parser
-     * @param sim The circuit simulator instance
-     */
+    // =========================================================================
+    // Constructor & Public API
+    // =========================================================================
+    
+    /** Create a new SFCR parser. */
     public SFCRParser(CirSim sim) {
         this.sim = sim;
     }
     
-    /**
-     * Check if text appears to be in SFCR format
-     * @param text The text to check
-     * @return true if text starts with SFCR markers
-     */
+    /** Check if text appears to be in SFCR format. */
     public static boolean isSFCRFormat(String text) {
         if (text == null || text.trim().isEmpty()) {
             return false;
@@ -114,11 +97,7 @@ public class SFCRParser {
         return false;
     }
     
-    /**
-     * Parse SFCR-format text and create circuit elements
-     * @param text The SFCR model definition
-     * @return true if parsing succeeded
-     */
+    /** Parse SFCR-format text and create circuit elements. */
     public boolean parse(String text) {
         if (text == null || text.trim().isEmpty()) {
             return false;
@@ -195,28 +174,19 @@ public class SFCRParser {
         }
     }
     
-    /**
-     * Parse metadata comment (% prefix - preserved on export)
-     */
+    // =========================================================================
+    // Block Parsers
+    // =========================================================================
+    
+    /** Parse metadata comment (% prefix - preserved on export). */
     private void parseMetadataComment(String line) {
         // Could store these for export, for now just skip
     }
     
     /**
-     * Parse @init block - simulation initialization settings
-     * 
-     * Supports:
-     *   timestep: 0.1      -> Sets simulation timestep
-     *   speed: 64          -> Sets simulation speed (log scale)
-     *   voltageRange: 5    -> Sets voltage display range
-     *   voltageUnit: $     -> Sets voltage unit symbol ($ for economics)
-     *   timeUnit: yr       -> Sets time unit symbol
-     *   showToolbar: true  -> Show/hide toolbar
-     *   showDots: true     -> Show current flow dots
-     *   showVolts: true    -> Show voltage colors
-     *   showValues: true   -> Show component values
-     *   
-     * Returns the line index after the block
+     * Parse @init block - simulation settings.
+     * Supports: timestep, voltageRange, voltageUnit, timeUnit, showToolbar,
+     * showDots, showVolts, showValues, showPower.
      */
     private int parseInitBlock(String[] lines, int startIndex) {
         String headerLine = lines[startIndex].trim();
@@ -271,9 +241,7 @@ public class SFCRParser {
         return i;
     }
     
-    /**
-     * Parse inline init parameters: @init key=value key=value
-     */
+    /** Parse inline init parameters: @init key=value key=value */
     private void parseInitInline(String params) {
         // Parse: key=value key=value or key:value
         String[] parts = params.split("\\s+");
@@ -288,9 +256,7 @@ public class SFCRParser {
         }
     }
     
-    /**
-     * Apply parsed init settings to the simulator
-     */
+    /** Apply parsed init settings to the simulator. */
     private void applyInitSettings() {
         for (String key : initSettings.keySet()) {
             String value = initSettings.get(key);
@@ -335,10 +301,7 @@ public class SFCRParser {
         }
     }
     
-    /**
-     * Parse @matrix block
-     * Returns the line index after the block
-     */
+    /** Parse @matrix block - creates SFCTableElm. */
     private int parseMatrixBlock(String[] lines, int startIndex) {
         String headerLine = lines[startIndex].trim();
         String matrixName = extractBlockName(headerLine, "@matrix");
@@ -395,24 +358,28 @@ public class SFCRParser {
                 }
                 
                 String[] cells = parseTableRow(line);
-                if (cells.length > 0) {
-                    // First cell is row name
-                    rowNames.add(cells[0]);
-                    
-                    // Rest are cell values
-                    String[] rowData = new String[cells.length - 1];
-                    for (int j = 1; j < cells.length; j++) {
-                        rowData[j - 1] = cells[j];
-                    }
-                    tableRows.add(rowData);
-                    
-                    // If no columns defined yet, use header row
-                    if (columnNames.isEmpty() && tableRows.size() == 1) {
-                        for (String cell : rowData) {
-                            columnNames.add(cell);
+                if (cells.length > 1) {
+                    // If no columns defined yet, this is the header row
+                    if (columnNames.isEmpty()) {
+                        // Use cells 1..n as column names (skip cell 0 which is row header label)
+                        for (int j = 1; j < cells.length; j++) {
+                            columnNames.add(cells[j]);
                         }
-                        tableRows.clear();
-                        rowNames.clear();
+                    } else {
+                        // This is a data row
+                        // First cell is row name
+                        rowNames.add(cells[0]);
+                        
+                        // Rest are cell values (match number of columns)
+                        String[] rowData = new String[columnNames.size()];
+                        for (int j = 0; j < columnNames.size(); j++) {
+                            if (j + 1 < cells.length) {
+                                rowData[j] = cells[j + 1];
+                            } else {
+                                rowData[j] = "";
+                            }
+                        }
+                        tableRows.add(rowData);
                     }
                 }
             }
@@ -428,10 +395,7 @@ public class SFCRParser {
         return i;
     }
     
-    /**
-     * Parse @equations block
-     * Extracts inline comments as auto-generated hints (can be overridden by @hints)
-     */
+    /** Parse @equations block - creates EquationTableElm. Inline # comments become hints. */
     private int parseEquationsBlock(String[] lines, int startIndex) {
         String headerLine = lines[startIndex].trim();
         String blockName = extractBlockName(headerLine, "@equations");
@@ -499,18 +463,13 @@ public class SFCRParser {
         return i;
     }
     
-    /**
-     * Parse @parameters block (similar to equations but for constants)
-     */
+    /** Parse @parameters block (constants - same as @equations). */
     private int parseParametersBlock(String[] lines, int startIndex) {
         // Parameters are just equations with constant values
         return parseEquationsBlock(lines, startIndex);
     }
     
-    /**
-     * Parse @hints block
-     * These hints override any auto-generated hints from inline comments
-     */
+    /** Parse @hints block - overrides auto-generated hints from inline comments. */
     private int parseHintsBlock(String[] lines, int startIndex) {
         int i = startIndex + 1;
         
@@ -543,9 +502,7 @@ public class SFCRParser {
         return i;
     }
     
-    /**
-     * Parse @scope line
-     */
+    /** Parse @scope line. */
     private void parseScopeLine(String line) {
         String varName = line.substring(6).trim(); // Remove "@scope"
         varName = normalizeVariableName(varName);
@@ -554,20 +511,9 @@ public class SFCRParser {
         }
     }
     
-    /**
-     * Parse @circuit block - raw CircuitJS element definitions
-     * Lines are passed through directly to the circuit loader.
-     * 
-     * Example:
-     * @circuit
-     *   431 480 64 592 160 0 50 true false
-     *   w 96 48 96 112 0
-     * @end
-     * 
-     * Returns line index after block
-     */
+    /** Parse @circuit block - raw CircuitJS element definitions (passthrough). */
     private int parseCircuitBlock(String[] lines, int startIndex) {
-        int i = startIndex + 1;  // Skip @circuit line
+        int i = startIndex + 1;
         
         while (i < lines.length) {
             String line = lines[i].trim();
@@ -594,51 +540,40 @@ public class SFCRParser {
         return i;
     }
     
-    /**
-     * Get raw circuit lines to be appended to circuit dump
-     * These will be processed by CirSim's standard element loader
-     * 
-     * @return List of raw circuit element definition lines
-     */
+    /** Get raw circuit lines for standard element loader. */
     public ArrayList<String> getRawCircuitLines() {
         return rawCircuitLines;
     }
     
-    /**
-     * Get the info/documentation content (markdown)
-     * @return The info content, or null if not present
-     */
+    /** Get the @info block content (markdown), or null if not present. */
     public String getInfoContent() {
         return infoContent;
     }
     
-    /**
-     * Parse @info block - markdown documentation
-     * Content is stored and can be displayed using InfoViewerDialog.
-     * 
-     * Example:
-     * @info Model Documentation
-     * # Bank-Money World Model
-     * 
-     * This model demonstrates...
-     * 
-     * ## Key Variables
-     * - Y: National income
-     * - C: Consumption
-     * @end
-     * 
-     * Returns line index after block
-     */
+    /** Parse @info block - markdown documentation for InfoViewerDialog. */
     private int parseInfoBlock(String[] lines, int startIndex) {
         String headerLine = lines[startIndex].trim();
         
-        // Extract optional title from header line
-        String title = headerLine.length() > 5 ? headerLine.substring(5).trim() : "Documentation";
+        // Extract optional title from header line (e.g., "@info Model Documentation")
+        String title = headerLine.length() > 5 ? headerLine.substring(5).trim() : "";
         
         StringBuilder content = new StringBuilder();
-        content.append("# ").append(title.isEmpty() ? "Model Information" : title).append("\n\n");
         
         int i = startIndex + 1;  // Skip @info line
+        
+        // Check if first content line already starts with a markdown header
+        boolean hasMarkdownHeader = false;
+        if (i < lines.length) {
+            String firstLine = lines[i].trim();
+            if (firstLine.startsWith("#") && !firstLine.equals("@end") && !firstLine.startsWith("@")) {
+                hasMarkdownHeader = true;
+            }
+        }
+        
+        // Only add a title header if there isn't one already and we have a title
+        if (!hasMarkdownHeader && !title.isEmpty()) {
+            content.append("# ").append(title).append("\n\n");
+        }
         
         while (i < lines.length) {
             String line = lines[i];
@@ -661,12 +596,11 @@ public class SFCRParser {
         return i;
     }
 
-    /**
-     * Try to parse R-style sfcr syntax
-     * 
-     * sfcr_matrix(columns = c(...), codes = c(...), c("row", col = "expr"), ...)
-     * sfcr_set(var ~ expr, ...)
-     */
+    // =========================================================================
+    // R-Style sfcr Syntax Support
+    // =========================================================================
+    
+    /** Parse R-style sfcr_matrix() or sfcr_set() syntax. */
     private int parseRStyleBlock(String[] lines, int startIndex) {
         StringBuilder blockText = new StringBuilder();
         int i = startIndex;
@@ -707,9 +641,7 @@ public class SFCRParser {
         return i;
     }
     
-    /**
-     * Parse R-style sfcr_matrix definition
-     */
+    /** Parse R-style sfcr_matrix definition. */
     private void parseRStyleMatrix(String block) {
         // Extract matrix name from assignment
         String matrixName = "Matrix";
@@ -747,14 +679,9 @@ public class SFCRParser {
         }
     }
     
-    /**
-     * Parse a single R-style row definition
-     */
+    /** Parse a single R-style row: "RowName", code = "expr", ... */
     private void parseRStyleRow(String rowDef, ArrayList<String> rowNames, 
                                  ArrayList<String[]> tableRows, ArrayList<String> codes) {
-        // Format: "RowName", code = "expr", code2 = "expr2"
-        
-        // Extract row name (first quoted string)
         int firstQuote = rowDef.indexOf('"');
         int secondQuote = rowDef.indexOf('"', firstQuote + 1);
         if (firstQuote < 0 || secondQuote < 0) return;
@@ -799,9 +726,7 @@ public class SFCRParser {
         tableRows.add(rowData);
     }
     
-    /**
-     * Parse R-style sfcr_set for equations
-     */
+    /** Parse R-style sfcr_set for equations. */
     private void parseRStyleEquations(String block) {
         // Extract name from assignment
         String blockName = "Equations";
@@ -864,9 +789,7 @@ public class SFCRParser {
         }
     }
     
-    /**
-     * Extract a named vector from R code: name = c("a", "b", "c")
-     */
+    /** Extract a named vector from R code: name = c("a", "b", "c"). */
     private ArrayList<String> extractRVector(String block, String name) {
         ArrayList<String> result = new ArrayList<String>();
         
@@ -900,9 +823,7 @@ public class SFCRParser {
         return result;
     }
     
-    /**
-     * Find matching closing parenthesis
-     */
+    /** Find matching closing parenthesis. */
     private int findMatchingParen(String text, int openIdx) {
         int depth = 0;
         for (int i = openIdx; i < text.length(); i++) {
@@ -916,9 +837,7 @@ public class SFCRParser {
         return -1;
     }
     
-    /**
-     * Split string by top-level commas (not inside parentheses)
-     */
+    /** Split string by top-level commas (not inside parentheses). */
     private ArrayList<String> splitByTopLevelComma(String text) {
         ArrayList<String> result = new ArrayList<String>();
         int depth = 0;
@@ -945,10 +864,7 @@ public class SFCRParser {
     // Helper Methods
     // =========================================================================
     
-    /**
-     * Extract block name from header line
-     * "@matrix Transaction_Flow_Matrix" -> "Transaction_Flow_Matrix"
-     */
+    /** Extract block name: "@matrix Foo" -> "Foo". */
     private String extractBlockName(String line, String keyword) {
         String name = line.substring(keyword.length()).trim();
         if (name.isEmpty()) {
@@ -957,9 +873,7 @@ public class SFCRParser {
         return name;
     }
     
-    /**
-     * Parse comma-separated list: "a, b, c" -> ["a", "b", "c"]
-     */
+    /** Parse comma-separated list: "a, b, c" -> ["a", "b", "c"]. */
     private ArrayList<String> parseCommaSeparatedList(String text) {
         ArrayList<String> result = new ArrayList<String>();
         for (String part : text.split(",")) {
@@ -971,27 +885,36 @@ public class SFCRParser {
         return result;
     }
     
-    /**
-     * Parse markdown table row: "| a | b | c |" -> ["a", "b", "c"]
-     */
+    /** Parse markdown table row: "| a | b | c |" -> ["a", "b", "c"]. */
     private String[] parseTableRow(String line) {
-        // Remove leading/trailing pipes and split
+        // Remove leading/trailing pipes
         if (line.startsWith("|")) line = line.substring(1);
         if (line.endsWith("|")) line = line.substring(0, line.length() - 1);
         
-        String[] parts = line.split("\\|");
-        String[] result = new String[parts.length];
+        String[] parts = line.split("\\|", -1);  // -1 to keep trailing empty strings
         
+        // Filter out completely empty trailing parts (from trailing whitespace before |)
+        // and trim each cell
+        ArrayList<String> cells = new ArrayList<String>();
         for (int i = 0; i < parts.length; i++) {
-            result[i] = parts[i].trim();
+            String cell = parts[i].trim();
+            // Always add cells (even empty ones) except trailing empty after last real content
+            cells.add(cell);
         }
         
-        return result;
+        // Remove trailing empty cells
+        while (!cells.isEmpty() && cells.get(cells.size() - 1).isEmpty()) {
+            cells.remove(cells.size() - 1);
+        }
+        
+        return cells.toArray(new String[0]);
     }
     
-    /**
-     * Normalize variable name: convert Greek symbol representations
-     */
+    // =========================================================================
+    // Expression Normalization
+    // =========================================================================
+    
+    /** Normalize variable name: convert Greek symbol representations. */
     private String normalizeVariableName(String name) {
         if (name == null) return "";
         
@@ -1026,10 +949,7 @@ public class SFCRParser {
         return name.trim();
     }
     
-    /**
-     * Normalize expression: convert symbols and lagged notation
-     * Note: Self-accumulation (X ~ expr + X[-1]) is handled separately by convertSelfAccumulation
-     */
+    /** Normalize expression: convert symbols, d() -> diff(), ∫() -> integrate(). */
     private String normalizeExpression(String expr) {
         if (expr == null) return "";
         
@@ -1067,16 +987,9 @@ public class SFCRParser {
     }
     
     /**
-     * Convert self-accumulation pattern to integrate():
-     *   X ~ expr + X[-1]  →  X ~ integrate(expr)
-     *   X ~ X[-1] + expr  →  X ~ integrate(expr)
-     * 
-     * For non-self-referential lagged values, just strip [-1]:
-     *   Y[-1]  →  Y  (uses current value as approximation)
-     * 
-     * @param varName The output variable name
-     * @param expr The expression (already normalized)
-     * @return Converted expression
+     * Convert self-accumulation to integrate():
+     *   X ~ expr + X[-1] -> X ~ integrate(expr)
+     * For other lagged values, converts V[-1] -> last(V).
      */
     private String convertSelfAccumulation(String varName, String expr) {
         if (expr == null || !expr.contains("[-1]")) {
@@ -1119,11 +1032,7 @@ public class SFCRParser {
         return convertLagToFunction(expr);
     }
     
-    /**
-     * Convert [-1] lag notation to last() function calls
-     * Example: V[-1] becomes last(V)
-     * This uses ComputedValues.getLaggedValue() to get the previous timestep's value
-     */
+    /** Convert [-1] lag notation to last() function: V[-1] -> last(V). */
     private String convertLagToFunction(String expr) {
         StringBuilder result = new StringBuilder();
         int i = 0;
@@ -1179,21 +1088,13 @@ public class SFCRParser {
         return result.toString();
     }
     
-    /**
-     * Strip [-1] lag notation from expression (legacy - uses current value as approximation)
-     * @deprecated Use convertLagToFunction instead
-     */
+    /** @deprecated Use convertLagToFunction instead. */
     @SuppressWarnings("unused")
     private String stripLagNotation(String expr) {
         return expr.replace("[-1]", "");
     }
     
-    /**
-     * Convert sfcr-style lagged notation: varname[-1] -> (varname - diff(varname))
-     * Manual parsing since GWT doesn't support java.util.regex
-     * 
-     * @deprecated Use convertSelfAccumulation instead
-     */
+    /** @deprecated Use convertSelfAccumulation instead. */
     @SuppressWarnings("unused")
     private String convertLaggedValues(String expr) {
         StringBuilder result = new StringBuilder();
@@ -1255,15 +1156,25 @@ public class SFCRParser {
     // Element Creation
     // =========================================================================
     
-    /**
-     * Create SFCTableElm from parsed matrix data
-     */
+    /** Create SFCTableElm from parsed matrix data. */
     private void createSFCTable(String name, ArrayList<String> columnNames,
                                  ArrayList<String> rowNames, ArrayList<String[]> tableRows,
                                  String matrixType) {
         // Build the dump string for SFCTableElm (type 265)
         int rows = rowNames.size();
-        int cols = columnNames.size() + 1; // +1 for Σ column
+        
+        // Check if last column is already a sum column (Σ, Sigma, Total, Sum, etc.)
+        boolean hasSumColumn = false;
+        if (!columnNames.isEmpty()) {
+            String lastCol = columnNames.get(columnNames.size() - 1).trim();
+            if (lastCol.equals("Σ") || lastCol.equalsIgnoreCase("Sigma") || 
+                lastCol.equalsIgnoreCase("Sum") || lastCol.equalsIgnoreCase("Total") ||
+                lastCol.equalsIgnoreCase("Row total") || lastCol.equals("∑")) {
+                hasSumColumn = true;
+            }
+        }
+        
+        int cols = hasSumColumn ? columnNames.size() : columnNames.size() + 1; // +1 for Σ column if not present
         
         StringBuilder dump = new StringBuilder();
         
@@ -1290,11 +1201,20 @@ public class SFCRParser {
         // Table units
         dump.append("\\0 ");  // Empty units
         
-        // Column headers (including Σ)
-        for (String col : columnNames) {
-            dump.append(CustomLogicModel.escape(col)).append(" ");
+        // Column headers
+        if (hasSumColumn) {
+            // Use provided column names as-is (last one is already sum column)
+            for (int i = 0; i < columnNames.size() - 1; i++) {
+                dump.append(CustomLogicModel.escape(columnNames.get(i))).append(" ");
+            }
+            dump.append("Σ ");  // Normalize the sum column name
+        } else {
+            // Add Σ column
+            for (String col : columnNames) {
+                dump.append(CustomLogicModel.escape(col)).append(" ");
+            }
+            dump.append("Σ ");
         }
-        dump.append("Σ ");
         
         // Row descriptions
         for (String row : rowNames) {
@@ -1313,10 +1233,16 @@ public class SFCRParser {
         dump.append("COMPUTED ");
         
         // Cell equations (row by row)
+        // Number of data columns (excluding the Σ column)
+        int dataCols = cols - 1;
         for (int r = 0; r < rows; r++) {
             String[] rowData = tableRows.get(r);
-            for (int c = 0; c < cols - 1; c++) {
+            for (int c = 0; c < dataCols; c++) {
                 String eq = (c < rowData.length) ? rowData[c] : "";
+                // Convert "-" (empty cell marker) to empty string
+                if (eq.equals("-") || eq.trim().isEmpty()) {
+                    eq = "";
+                }
                 dump.append(CustomLogicModel.escape(eq)).append(" ");
             }
             dump.append("\\0 ");  // Empty equation for Σ column
@@ -1349,9 +1275,7 @@ public class SFCRParser {
         }
     }
     
-    /**
-     * Create EquationTableElm from parsed equation data
-     */
+    /** Create EquationTableElm from parsed equation data. */
     private void createEquationTable(String name, ArrayList<String> outputNames,
                                       ArrayList<String> equations) {
         int rows = outputNames.size();
@@ -1367,8 +1291,9 @@ public class SFCRParser {
         int y2 = currentY + (rows + 2) * 16;
         
         // Type 266 = EquationTableElm
+        // Flag 2 = FLAG_MNA_MODE (electrical outputs mode)
         dump.append("266 ").append(x1).append(" ").append(y1).append(" ");
-        dump.append(x2).append(" ").append(y2).append(" 0 ");
+        dump.append(x2).append(" ").append(y2).append(" 2 ");
         
         // Table name (escaped)
         dump.append(CustomLogicModel.escape(name.replace("_", " "))).append(" ");
@@ -1385,7 +1310,7 @@ public class SFCRParser {
             dump.append("0.5 ");  // Slider value (default)
         }
         
-        CirSim.console("Creating EquationTable: " + name + " with " + rows + " equations");
+        // CirSim.console("Creating EquationTable: " + name + " with " + rows + " equations");
         
         try {
             StringTokenizer st = new StringTokenizer(dump.toString());
@@ -1408,10 +1333,7 @@ public class SFCRParser {
         }
     }
     
-    /**
-     * Add scopes for requested variables
-     * TODO: ProbeElm creation needs more investigation - disabled for now
-     */
+    /** Add scopes for requested variables (TODO: not yet implemented). */
     private void addScopes() {
         // Scope/probe creation is disabled for now - the probe element
         // requires specific geometry setup that needs more investigation
@@ -1426,9 +1348,7 @@ public class SFCRParser {
         // ProbeElm needs to connect to a labeled node, not just reference a variable name
     }
     
-    /**
-     * Get list of created elements (for testing/debugging)
-     */
+    /** Get list of created elements (for testing/debugging). */
     public ArrayList<CircuitElm> getCreatedElements() {
         return createdElements;
     }

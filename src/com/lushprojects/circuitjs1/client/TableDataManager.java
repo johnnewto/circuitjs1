@@ -341,12 +341,12 @@ public class TableDataManager {
                 }
                 
                 // Log first column's equation data
-                if (col == 0) {
-                    CirSim.console("[PARSE] Column 0 ('" + stockNames[col] + "'): " + nonEmptyCount + " non-empty equations out of " + table.rows);
-                    if (table.rows > 0) {
-                        CirSim.console("[PARSE] First equation: '" + cellEquations[0][col] + "'");
-                    }
-                }
+                // if (col == 0) {
+                //     CirSim.console("[PARSE] Column 0 ('" + stockNames[col] + "'): " + nonEmptyCount + " non-empty equations out of " + table.rows);
+                //     if (table.rows > 0) {
+                //         CirSim.console("[PARSE] First equation: '" + cellEquations[0][col] + "'");
+                //     }
+                // }
                 
                 table.columns.add(column);
             }

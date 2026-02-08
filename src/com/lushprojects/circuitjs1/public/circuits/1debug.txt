@@ -2,6 +2,7 @@
 # Generated from circuit simulation
 
 @info
+
 # Model Documentation
 
 ## Bank-Money World Model (BMW)
@@ -48,15 +49,15 @@ At steady state (t → ∞):
   timeUnit: yr
 @end
 
-@parameters s_s_s_Params
-  rl = 0.025  # Interest rate on loans
-  \alpha0 = 20  # Autonomous consumption
-  \alpha1 = 0.75  # Propensity to consume from income
-  \alpha2 = 0.10  # Propensity to consume from wealth
-  \delta = 0.1  # Depreciation rate
-  \gamma = 0.15  # Adjustment speed of capital to target
-  \kappa = 1  # Capital-output ratio target
-  pr = 1  # Labor productivity
+@equations s_Parameters
+  rl ~ 0.025  # Interest rate on loans
+  \alpha0 ~ 20  # Autonomous consumption
+  \alpha1 ~ 0.75  # Propensity to consume from income
+  \alpha2 ~ 0.10  # Propensity to consume from wealth
+  \delta ~ 0.1  # Depreciation rate
+  \gamma ~ 0.15  # Adjustment speed of capital to target
+  \kappa ~ 1  # Capital-output ratio target
+  pr ~ 1  # Labor productivity
 @end
 
 @equations MarketClearing
@@ -110,6 +111,32 @@ At steady state (t → ∞):
   firm_profit ~ Y - WBd - lag(rl, 1) * lag(Ld, 1) - AF
 @end
 
+@matrix Balance_Sheet
+
+| Transaction | Households | Firms | Banks |
+|-------------|------|------|------|
+| Deposits | Mh |  | -Ms |
+| Loans |  | -Ld | Ls |
+| Fixed Capital |  | K |  |
+| Balance (net worth) | -Mh | K-Ld | 0 |
+| Column Total | 0 | 0 | 0 |
+@end
+
+@matrix Transaction_Flow_Matrix
+
+| Transaction | Households_C | Firms_{Current} | Firms_{Capital} | Banks_{Current} | Banks_{Capital} | Govt |
+|-------------|------|------|------|------|------|------|
+| Consumption | -Cd | Cs |  |  | 0 |  |
+| Investment |  | Id | -Id |  | 0 |  |
+| [Production] |  | Y |  |  |  |  |
+| Wages | WBd | -WBs |  |  | 0 |  |
+| Depreciation |  | -DA | DA |  | 0 |  |
+| Interest on Loans |  | -rl*lag(Ld,1) |  | rl*lag(Ls,1) | 0 |  |
+| Interest on Deposits | rm*lag(Mh,1) |  |  | -rm*lag(Ms,1) | 0 |  |
+| Change in Loans |  |  | diff(Ld) | -diff(Ls) | 0 |  |
+| Change in Deposits |  |  |  | diff(Ms) | -diff(Mh) |  |
+@end
+
 @hints
   rl: Interest rate on loans
   \alpha0: Autonomous consumption
@@ -155,10 +182,16 @@ At steady state (t → ∞):
 @end
 
 @circuit
-x 500 32 899 35 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW 808080FF
-x 500 56 801 59 4 12 Bank-Money\sWorld\smodel\s(with\sexplicit\slagged\svariables) 808080FF
-x 500 80 785 83 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF
-x 500 101 523 104 4 14 [[Info]] 4488FFFF
-207 544 304 608 304 36 Y
-403 544 320 848 528 0 13_8_0_xc01206_320_0.1_-1_1
+x 873 31 1294 34 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW 808080FF
+x 873 55 1201 58 4 12 Bank-Money\sWorld\smodel\s(with\sexplicit\slagged\svariables) 808080FF
+x 873 79 1183 82 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF
+207 800 432 864 432 52 Y
+403 752 464 1056 624 0 14_8_0_4614_320_0.1_-1_1
+r 704 144 784 144 0 100
+v 784 144 784 16 0 0 40 5 0 0 0.5 V
+l 704 16 704 144 0 100 -0.0004533324491581987 0
+c 704 144 592 144 4 0.000015 8.876534029678949 -10 0
+w 592 16 592 144 0
+s 704 16 784 16 0 1 false
+r 592 16 704 16 0 10
 @end

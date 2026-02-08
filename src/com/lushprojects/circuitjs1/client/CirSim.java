@@ -282,6 +282,9 @@ MouseOutHandler, MouseWheelHandler {
 	// Developer mode - shows additional debug info (framerate, steprate, performance metrics)
 	boolean developerMode = false;
 	
+	// Equation table MNA mode - when true, equation tables create electrical outputs
+	boolean equationTableMnaMode = true;
+	
 	// Circuit hint types - show helpful formulas when related elements are present
 	static final int HINT_LC = 1;      // LC resonant frequency hint
 	static final int HINT_RC = 2;      // RC time constant hint
@@ -2498,6 +2501,9 @@ public CirSim() {
 	    int snapX = snapGrid(inverseTransformX(mouseCursorX));
 	    int snapY = snapGrid(inverseTransformY(mouseCursorY));
 	    info[lineCount++] = "cursor: (" + snapX + ", " + snapY + ")";
+	    
+	    // Show equation table mode
+	    info[lineCount++] = "EqnTable: " + (equationTableMnaMode ? "MNA" : "Computed");
 
 	    // Calculate required height for all lines (15 pixels per line plus initial offset)
 	    int requiredHeight = 15 * (lineCount + 1);
@@ -3362,6 +3368,13 @@ public CirSim() {
 	    ce.setParentList(elmList);
 	    ce.stamp();
 	}
+	
+	// second pass: allow elements to stamp deferred items (e.g., VCVS that depend on
+	// nodes registered by other elements during their stamp() calls)
+	for (i = 0; i != elmList.size(); i++) {
+	    CircuitElm ce = getElm(i);
+	    ce.postStamp();
+	}
 
 	if (!simplifyMatrix(matrixSize))
 	    return;
@@ -4052,10 +4065,13 @@ public CirSim() {
                         // Quick debug: identify element that just failed convergence
                         if (subiter > convergenceCheckThreshold) {
                             elmArr[i].nonConverged = true;
-                            String text = "CirSim: Element causing convergence failure: " +
-                                    elmArr[i].getClass().getSimpleName() + " at (" +
-                                    elmArr[i].x + "," + elmArr[i].y + ")";
-                            console(text);
+                            // EquationTableElm prints its own detailed message, so skip generic message
+                            if (!(elmArr[i] instanceof EquationTableElm)) {
+                                String text = "CirSim: t=" + t + " dt=" + timeStep + " Element causing convergence failure: " +
+                                        elmArr[i].getClass().getSimpleName() + " at (" +
+                                        elmArr[i].x + "," + elmArr[i].y + ")";
+                                console(text);
+                            }
                         }
                     }
                 }
@@ -4125,7 +4141,7 @@ public CirSim() {
                 stampCircuit();
                 continue;
             }
-            if (subiter > 5 || timeStep < maxTimeStep)
+            if (subiter > 20 || timeStep < maxTimeStep)
                 console("converged after " + subiter + " iterations, timeStep = " + timeStep);
             if (subiter < 3)
                 goodIterations++;

@@ -240,19 +240,57 @@ public class SFCTableElm extends TableElm {
     }
     
     /**
-     * SFC table doesn't stamp anything to the circuit matrix
+     * SFC table doesn't stamp anything to the circuit matrix.
+     * Pure computational element - no MNA participation.
      */
     @Override
     void stamp() {
-        // Display-only - no circuit connections
+        // Pure computational - no circuit connections
     }
     
     /**
-     * SFC table doesn't have voltage sources
+     * SFC table doesn't have voltage sources.
+     * Pure computational element - no MNA participation.
      */
     @Override
     int getVoltageSourceCount() {
-        return 0;  // Display-only
+        return 0;
+    }
+    
+    /**
+     * SFC table doesn't need internal nodes.
+     * Pure computational element - no MNA participation.
+     */
+    @Override
+    int getInternalNodeCount() {
+        return 0;
+    }
+    
+    /**
+     * SFC table is not nonlinear (it's purely computational).
+     * Returns false to avoid unnecessary convergence iterations.
+     */
+    @Override
+    public boolean nonLinear() {
+        return false;
+    }
+    
+    /**
+     * SFC table has no electrical connections between terminals.
+     * Pure computational element - no MNA participation.
+     */
+    @Override
+    public boolean getConnection(int n1, int n2) {
+        return false;
+    }
+    
+    /**
+     * SFC table has no ground connections.
+     * Pure computational element - no MNA participation.
+     */
+    @Override
+    public boolean hasGroundConnection(int n) {
+        return false;
     }
     
     /**
