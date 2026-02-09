@@ -7,6 +7,7 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.lushprojects.circuitjs1.client.TableColumn.ColumnType;
+import com.lushprojects.circuitjs1.client.SFCSankeyRenderer.SankeyLayout;
 import java.util.ArrayList;
 
 /**
@@ -33,6 +34,9 @@ public class SFCTableElm extends TableElm {
     protected boolean highlightImbalances = true; // Red highlighting for non-zero Σ values
     protected double balanceTolerance = 1e-6;   // Tolerance for balance checking
     protected boolean showSankeyView = false;   // Toggle between table and Sankey view
+    protected SankeyLayout sankeyLayout = SankeyLayout.LINEAR; // Sankey diagram layout mode
+    protected int sankeyWidth = 300;  // Width of Sankey diagram in pixels
+    protected int sankeyHeight = 250; // Height of Sankey diagram in pixels
     
     // Custom renderer for SFC tables
     private SFCTableRenderer sfcRenderer;
@@ -108,6 +112,27 @@ public class SFCTableElm extends TableElm {
                 showSankeyView = false;
             }
         }
+        if (st.hasMoreTokens()) {
+            try {
+                sankeyLayout = SankeyLayout.valueOf(st.nextToken());
+            } catch (Exception e) {
+                sankeyLayout = SankeyLayout.LINEAR;
+            }
+        }
+        if (st.hasMoreTokens()) {
+            try {
+                sankeyWidth = Integer.parseInt(st.nextToken());
+            } catch (Exception e) {
+                sankeyWidth = 300;
+            }
+        }
+        if (st.hasMoreTokens()) {
+            try {
+                sankeyHeight = Integer.parseInt(st.nextToken());
+            } catch (Exception e) {
+                sankeyHeight = 250;
+            }
+        }
         
         // Update counter based on loaded title
         updateSFCTableCounter(tableTitle);
@@ -115,6 +140,7 @@ public class SFCTableElm extends TableElm {
         // Create custom renderer
         sfcRenderer = new SFCTableRenderer(this);
         sankeyRenderer = new SFCSankeyRenderer(this);
+        sankeyRenderer.setLayoutMode(sankeyLayout);
         
         setupPins();
         setPoints();
@@ -179,7 +205,7 @@ public class SFCTableElm extends TableElm {
     @Override
     public String dump() {
         // Include SFC-specific properties in dump
-        return super.dump() + " " + highlightImbalances + " " + balanceTolerance + " " + showSankeyView;
+        return super.dump() + " " + highlightImbalances + " " + balanceTolerance + " " + showSankeyView + " " + sankeyLayout.name() + " " + sankeyWidth + " " + sankeyHeight;
     }
     
     /**
@@ -197,10 +223,9 @@ public class SFCTableElm extends TableElm {
     @Override
     void setupPins() {
         if (showSankeyView && sankeyRenderer != null) {
-            // Calculate size for Sankey view
-            int[] sankeySize = sankeyRenderer.getRequiredSize();
-            sizeX = (sankeySize[0] + cspc2 - 1) / cspc2;
-            sizeY = (sankeySize[1] + cspc2 - 1) / cspc2;
+            // Use user-specified Sankey size
+            sizeX = (sankeyWidth + cspc2 - 1) / cspc2;
+            sizeY = (sankeyHeight + cspc2 - 1) / cspc2;
             pins = new Pin[0];
             return;
         }
@@ -520,6 +545,20 @@ public class SFCTableElm extends TableElm {
             ei.checkbox = new Checkbox("", showSankeyView);
             return ei;
         }
+        if (n == 7) {
+            EditInfo ei = new EditInfo("Sankey Layout", 0);
+            ei.choice = new Choice();
+            ei.choice.add("Linear (3 columns)");
+            ei.choice.add("Circular (feedback links)");
+            ei.choice.select(sankeyLayout == SankeyLayout.CIRCULAR ? 1 : 0);
+            return ei;
+        }
+        if (n == 8) {
+            return new EditInfo("Sankey Width (pixels)", sankeyWidth, 150, 800);
+        }
+        if (n == 9) {
+            return new EditInfo("Sankey Height (pixels)", sankeyHeight, 100, 600);
+        }
         return null;
     }
     
@@ -539,6 +578,15 @@ public class SFCTableElm extends TableElm {
             showCellValues = ei.choice.getSelectedIndex();
         } else if (n == 6) {
             showSankeyView = ei.checkbox.getValue();
+        } else if (n == 7) {
+            sankeyLayout = (ei.choice.getSelectedIndex() == 1) ? SankeyLayout.CIRCULAR : SankeyLayout.LINEAR;
+            if (sankeyRenderer != null) {
+                sankeyRenderer.setLayoutMode(sankeyLayout);
+            }
+        } else if (n == 8) {
+            sankeyWidth = Math.max(150, (int)ei.value);
+        } else if (n == 9) {
+            sankeyHeight = Math.max(100, (int)ei.value);
         }
         
         setupPins();

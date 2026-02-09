@@ -7760,6 +7760,7 @@ public CirSim() {
 		case 266: return new EquationTableElm(x1, y1, x2, y2, f, st);
 		case 264: return new DivideConstElm(x1, y1, x2, y2, f, st);
 		case 265: return new SFCTableElm(x1, y1, x2, y2, f, st);
+		case 466: return new SFCSankeyElm(x1, y1, x2, y2, f, st);
 		case 267: return new ComputedValueSourceElm(x1, y1, x2, y2, f, st);
 		case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
     	case 368: return new TestPointElm(x1, y1, x2, y2, f, st);
@@ -8120,6 +8121,8 @@ public CirSim() {
 			return (CircuitElm) new CurrentTransactionsMatrixElm(x1, y1);
 	if (n=="SFCTableElm")
 			return (CircuitElm) new SFCTableElm(x1, y1);
+	if (n=="SFCSankeyElm")
+			return (CircuitElm) new SFCSankeyElm(x1, y1);
 	if (n=="ComputedValueSourceElm")
 			return (CircuitElm) new ComputedValueSourceElm(x1, y1);
 	if (n.equals("TableVoltageElm")) 

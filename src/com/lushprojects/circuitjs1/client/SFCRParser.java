@@ -92,7 +92,7 @@ public class SFCRParser {
             trimmed.contains("@parameters") ||
             trimmed.contains("@init") || trimmed.contains("@hints") ||
             trimmed.contains("@scope") || trimmed.contains("@circuit") ||
-            trimmed.contains("@info") )
+            trimmed.contains("@info") || trimmed.contains("@sankey") )
             {
             return true;
         }
@@ -164,6 +164,8 @@ public class SFCRParser {
                     i++;
                 } else if (line.startsWith("@circuit")) {
                     i = parseCircuitBlock(lines, i);
+                } else if (line.startsWith("@sankey")) {
+                    i = parseSankeyBlock(lines, i);
                 } else if (line.startsWith("@info")) {
                     i = parseInfoBlock(lines, i);
                 } else if (line.contains("sfcr_matrix") || line.contains("<-")) {
@@ -592,6 +594,119 @@ public class SFCRParser {
     /** Get raw circuit lines for standard element loader. */
     public ArrayList<String> getRawCircuitLines() {
         return rawCircuitLines;
+    }
+    
+    /** 
+     * Parse @sankey block - creates SFCSankeyElm.
+     * Format:
+     *   @sankey [Title] x=X y=Y
+     *     source: TableName   (optional - blank for auto)
+     *     layout: linear|circular
+     *     width: 300
+     *     height: 250
+     *   @end
+     */
+    private int parseSankeyBlock(String[] lines, int startIndex) {
+        String headerLine = lines[startIndex].trim();
+        BlockPosition blockPos = parseBlockHeader(headerLine, "@sankey");
+        String sourceName = "";
+        String layout = "LINEAR";
+        int width = 300;
+        int height = 250;
+        
+        int i = startIndex + 1;
+        
+        // Parse options
+        while (i < lines.length) {
+            String line = lines[i].trim();
+            
+            // Check for end of block
+            if (line.equals("@end") || line.startsWith("@")) {
+                if (line.equals("@end")) {
+                    i++;
+                }
+                break;
+            }
+            
+            // Skip empty lines and comments
+            if (line.isEmpty() || line.startsWith("#")) {
+                i++;
+                continue;
+            }
+            
+            // Parse key: value
+            int colonIdx = line.indexOf(':');
+            if (colonIdx > 0) {
+                String key = line.substring(0, colonIdx).trim().toLowerCase();
+                String value = line.substring(colonIdx + 1).trim();
+                
+                // Remove trailing comment
+                int commentIdx = value.indexOf('#');
+                if (commentIdx >= 0) {
+                    value = value.substring(0, commentIdx).trim();
+                }
+                
+                switch (key) {
+                    case "source":
+                        sourceName = value;
+                        break;
+                    case "layout":
+                        layout = value.toUpperCase();
+                        if (!layout.equals("CIRCULAR")) {
+                            layout = "LINEAR";
+                        }
+                        break;
+                    case "width":
+                        try {
+                            width = Integer.parseInt(value);
+                        } catch (Exception e) {}
+                        break;
+                    case "height":
+                        try {
+                            height = Integer.parseInt(value);
+                        } catch (Exception e) {}
+                        break;
+                }
+            }
+            
+            i++;
+        }
+        
+        // Create the Sankey element
+        int posX = blockPos.hasPosition() ? blockPos.x : currentX;
+        int posY = blockPos.hasPosition() ? blockPos.y : currentY;
+        
+        SFCSankeyElm sankeyElm = new SFCSankeyElm(posX, posY);
+        
+        // Set properties using reflection-like approach via setEditValue
+        // We need to set properties directly since the element is already created
+        // Use the dump/load mechanism by building a tokenizer
+        String dumpStr = "466 " + posX + " " + posY + " " + (posX + 16) + " " + (posY + 16) + " 0 " +
+                         CustomLogicModel.escape(sourceName) + " " + layout + " " + width + " " + height;
+        
+        try {
+            StringTokenizer st = new StringTokenizer(dumpStr);
+            st.nextToken(); // skip dump type
+            int x1 = Integer.parseInt(st.nextToken());
+            int y1 = Integer.parseInt(st.nextToken());
+            int x2 = Integer.parseInt(st.nextToken());
+            int y2 = Integer.parseInt(st.nextToken());
+            int f = Integer.parseInt(st.nextToken());
+            
+            sankeyElm = new SFCSankeyElm(x1, y1, x2, y2, f, st);
+        } catch (Exception e) {
+            CirSim.console("SFCRParser: Error creating Sankey element: " + e.getMessage());
+        }
+        
+        sim.elmList.addElement(sankeyElm);
+        createdElements.add(sankeyElm);
+        
+        // Update position for next element
+        if (!blockPos.hasPosition()) {
+            currentY += height + elementSpacing;
+        }
+        
+        return i;
     }
     
     /** Get the @info block content (markdown), or null if not present. */

@@ -24,6 +24,7 @@ SubtracterElm|Subtracter
 GodlyTableElm|Godly Table
 TableElm|Table
 SFCTableElm|SFC Table
+SFCSankeyElm|SFC Sankey Diagram
 ComputedValueSourceElm|CV Source
 FlowsMasterElm|Flow Master
 StockMasterElm|Stock Master

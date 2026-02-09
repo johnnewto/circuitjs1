@@ -39,6 +39,7 @@ public class SFCRExporter {
     private ArrayList<EquationTableElm> equationTables = new ArrayList<EquationTableElm>();
     private ArrayList<SFCTableElm> sfcTables = new ArrayList<SFCTableElm>();
     private ArrayList<GodlyTableElm> godlyTables = new ArrayList<GodlyTableElm>();
+    private ArrayList<SFCSankeyElm> sankeyDiagrams = new ArrayList<SFCSankeyElm>();
     private ArrayList<CircuitElm> otherElements = new ArrayList<CircuitElm>();
     
     // =========================================================================
@@ -103,6 +104,15 @@ public class SFCRExporter {
             }
         }
         
+        // Export Sankey diagrams as @sankey
+        for (SFCSankeyElm sankey : sankeyDiagrams) {
+            String block = exportSankeyDiagram(sankey);
+            if (!block.isEmpty()) {
+                sb.append(block);
+                sb.append("\n");
+            }
+        }
+        
         // Export hints
         String hintsBlock = exportHints();
         if (!hintsBlock.isEmpty()) {
@@ -130,6 +140,7 @@ public class SFCRExporter {
         equationTables.clear();
         sfcTables.clear();
         godlyTables.clear();
+        sankeyDiagrams.clear();
         otherElements.clear();
         
         for (int i = 0; i < sim.elmList.size(); i++) {
@@ -141,6 +152,8 @@ public class SFCRExporter {
                 sfcTables.add((SFCTableElm) elm);
             } else if (elm instanceof GodlyTableElm) {
                 godlyTables.add((GodlyTableElm) elm);
+            } else if (elm instanceof SFCSankeyElm) {
+                sankeyDiagrams.add((SFCSankeyElm) elm);
             } else {
                 otherElements.add(elm);
             }
@@ -359,6 +372,31 @@ public class SFCRExporter {
             }
             sb.append("\n");
         }
+        
+        sb.append("@end\n");
+        return sb.toString();
+    }
+    
+    /** Export SFCSankeyElm as @sankey block. */
+    private String exportSankeyDiagram(SFCSankeyElm sankey) {
+        StringBuilder sb = new StringBuilder();
+        
+        String sourceName = sankey.getSourceTableName();
+        String layout = sankey.getLayoutMode().name().toLowerCase();
+        int width = sankey.getWidth();
+        int height = sankey.getHeight();
+        
+        // Header with position
+        sb.append("@sankey");
+        sb.append(formatPosition(sankey)).append("\n");
+        
+        // Properties
+        if (sourceName != null && !sourceName.isEmpty()) {
+            sb.append("  source: ").append(sourceName).append("\n");
+        }
+        sb.append("  layout: ").append(layout).append("\n");
+        sb.append("  width: ").append(width).append("\n");
+        sb.append("  height: ").append(height).append("\n");
         
         sb.append("@end\n");
         return sb.toString();
