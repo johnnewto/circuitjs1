@@ -6,6 +6,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.google.gwt.canvas.client.Canvas;
+import com.google.gwt.canvas.dom.client.Context2d;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 /**
@@ -27,6 +29,16 @@ public class EquationTableRenderer {
     private static final boolean MODERN_STYLE = true;
     private static final int CORNER_RADIUS = 8;
     
+    // Cached canvas for static parts (grid lines, backgrounds, borders)
+    // Only text/hover is redrawn each frame - major performance win for tables
+    private Canvas cachedCanvas;
+    private Context2d cachedContext;
+    private boolean cacheValid = false;
+    private int cachedWidth = 0;
+    private int cachedHeight = 0;
+    private int cachedRowCount = 0;
+    private boolean cachedPrintable = false;
+    
     // Dark mode colors (matches TableRenderer)
     private static final Color HEADER_BG_DARK = new Color(55, 55, 75);
     private static final Color ROW_EVEN_BG_DARK = new Color(45, 45, 50);
@@ -43,8 +55,143 @@ public class EquationTableRenderer {
     
     public EquationTableRenderer(EquationTableElm table) {
         this.table = table;
+        initCache();
     }
     
+    /**
+     * Initialize the cached canvas for static parts.
+     */
+    private void initCache() {
+        cachedCanvas = Canvas.createIfSupported();
+        if (cachedCanvas != null) {
+            cachedContext = cachedCanvas.getContext2d();
+        }
+    }
+    
+    /**
+     * Invalidate the cached static rendering.
+     * Call this when table structure changes (resize, rows added/removed).
+     */
+    public void invalidateCache() {
+        cacheValid = false;
+    }
+    
+    /**
+     * Ensure cache is valid and properly sized.
+     * Returns true if cache is usable, false if no caching available.
+     */
+    private boolean ensureCacheValid(int width, int height, int rowCount) {
+        if (cachedCanvas == null || cachedContext == null) {
+            return false;
+        }
+        
+        boolean printable = isPrintable();
+        
+        // Check if cache needs refresh
+        if (!cacheValid || width != cachedWidth || height != cachedHeight || 
+            rowCount != cachedRowCount || printable != cachedPrintable) {
+            
+            // Resize canvas if needed
+            if (width != cachedWidth || height != cachedHeight) {
+                cachedCanvas.setCoordinateSpaceWidth(width);
+                cachedCanvas.setCoordinateSpaceHeight(height);
+            }
+            
+            // Draw static parts to cache
+            drawStaticToCache(width, height, rowCount);
+            
+            // Update cached state
+            cachedWidth = width;
+            cachedHeight = height;
+            cachedRowCount = rowCount;
+            cachedPrintable = printable;
+            cacheValid = true;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Draw static parts (backgrounds, grid lines, borders) to cached canvas.
+     * This is only called when cache is invalid.
+     */
+    private void drawStaticToCache(int width, int height, int rowCount) {
+        Context2d ctx = cachedContext;
+        int rowHeight = table.getRowHeight();
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, width, height);
+        
+        // Draw table background with rounded corners
+        if (MODERN_STYLE) {
+            ctx.setFillStyle(getTableBgColor().getHexValue());
+            // Simple rounded rect using arc
+            ctx.beginPath();
+            ctx.moveTo(CORNER_RADIUS, 0);
+            ctx.lineTo(width - CORNER_RADIUS, 0);
+            ctx.arcTo(width, 0, width, CORNER_RADIUS, CORNER_RADIUS);
+            ctx.lineTo(width, height - CORNER_RADIUS);
+            ctx.arcTo(width, height, width - CORNER_RADIUS, height, CORNER_RADIUS);
+            ctx.lineTo(CORNER_RADIUS, height);
+            ctx.arcTo(0, height, 0, height - CORNER_RADIUS, CORNER_RADIUS);
+            ctx.lineTo(0, CORNER_RADIUS);
+            ctx.arcTo(0, 0, CORNER_RADIUS, 0, CORNER_RADIUS);
+            ctx.closePath();
+            ctx.fill();
+        } else {
+            ctx.setFillStyle("#333333");
+            ctx.fillRect(0, 0, width, height);
+        }
+        
+        // Draw title row background (header style)
+        ctx.setFillStyle(getHeaderBgColor().getHexValue());
+        ctx.fillRect(2, 2, width - 4, rowHeight - 2);
+        
+        // Draw data rows with zebra striping
+        for (int row = 0; row < rowCount; row++) {
+            int rowY = (row + 1) * rowHeight;
+            ctx.setFillStyle(getRowBgColor(row).getHexValue());
+            ctx.fillRect(2, rowY, width - 4, rowHeight);
+        }
+        
+        // Draw row separator lines
+        ctx.setStrokeStyle(getGridLineColor().getHexValue());
+        ctx.setLineWidth(1);
+        // Title separator
+        ctx.beginPath();
+        ctx.moveTo(0, rowHeight);
+        ctx.lineTo(width, rowHeight);
+        ctx.stroke();
+        // Row separators
+        for (int row = 0; row < rowCount - 1; row++) {
+            int sepY = (row + 2) * rowHeight;
+            ctx.beginPath();
+            ctx.moveTo(0, sepY);
+            ctx.lineTo(width, sepY);
+            ctx.stroke();
+        }
+        
+        // Draw border (non-selected state - selected border drawn dynamically)
+        if (MODERN_STYLE) {
+            ctx.setStrokeStyle(getGridLineColor().getHexValue());
+            ctx.beginPath();
+            ctx.moveTo(CORNER_RADIUS, 0);
+            ctx.lineTo(width - CORNER_RADIUS, 0);
+            ctx.arcTo(width, 0, width, CORNER_RADIUS, CORNER_RADIUS);
+            ctx.lineTo(width, height - CORNER_RADIUS);
+            ctx.arcTo(width, height, width - CORNER_RADIUS, height, CORNER_RADIUS);
+            ctx.lineTo(CORNER_RADIUS, height);
+            ctx.arcTo(0, height, 0, height - CORNER_RADIUS, CORNER_RADIUS);
+            ctx.lineTo(0, CORNER_RADIUS);
+            ctx.arcTo(0, 0, CORNER_RADIUS, 0, CORNER_RADIUS);
+            ctx.closePath();
+            ctx.stroke();
+        } else {
+            ctx.setStrokeStyle("#808080");
+            ctx.strokeRect(0, 0, width, height);
+        }
+    }
+
     // Helper methods for theme-aware colors
     private boolean isPrintable() {
         return CirSim.theSim.printableCheckItem.getState();
@@ -112,8 +259,8 @@ public class EquationTableRenderer {
     
     /**
      * Draw the table element.
-     * Renders the table background, title, rows, and hover tooltips.
-     * Uses modern styling matching TableRenderer.
+     * Uses cached canvas for static parts (backgrounds, grid lines, borders).
+     * Only text and hover effects are drawn each frame.
      */
     public void draw(Graphics g) {
         int tableX = table.x;
@@ -122,40 +269,80 @@ public class EquationTableRenderer {
         int tableWidth = table.getTableWidth();
         int tableHeight = table.getTableHeight();
         int rowHeight = table.getRowHeight();
+        int rowCount = table.getRowCount();
         
-        // Draw table background with rounded corners
-        if (MODERN_STYLE) {
-            g.setColor(getTableBgColor());
-            g.fillRoundRect(tableX + 1, tableY + 1, tableWidth - 2, tableHeight - 2, CORNER_RADIUS);
+        // Try to use cached static rendering
+        boolean usingCache = ensureCacheValid(tableWidth, tableHeight, rowCount);
+        
+        if (usingCache) {
+            // Blit cached background/grid to main canvas
+            g.context.drawImage(cachedContext.getCanvas(), tableX, tableY);
+            
+            // Draw selection border on top if selected (dynamic - not cached)
+            if (selected) {
+                drawSelectionBorder(g, tableX, tableY, tableWidth, tableHeight);
+            }
         } else {
-            g.setColor(Color.darkGray);
-            g.fillRect(tableX, tableY, tableWidth, tableHeight);
+            // Fallback: draw everything directly (no cache available)
+            if (MODERN_STYLE) {
+                g.setColor(getTableBgColor());
+                g.fillRoundRect(tableX + 1, tableY + 1, tableWidth - 2, tableHeight - 2, CORNER_RADIUS);
+            } else {
+                g.setColor(Color.darkGray);
+                g.fillRect(tableX, tableY, tableWidth, tableHeight);
+            }
+            
+            if (MODERN_STYLE) {
+                drawRowBackgrounds(g, tableX, tableY, tableWidth, rowHeight);
+            }
+            
+            drawTableBorder(g, tableX, tableY, selected);
         }
-        
-        // Draw row backgrounds (zebra striping)
-        if (MODERN_STYLE) {
-            drawRowBackgrounds(g, tableX, tableY, tableWidth, rowHeight);
-        }
-        
-        // Draw border (highlighted when selected)
-        drawTableBorder(g, tableX, tableY, selected);
-        
-        // Draw title row
-        drawTitleRow(g, tableX, tableY);
         
         // Update hover state
         updateHoveredRow(tableX, tableY);
         
-        // Draw data rows
-        g.setFont(valueFont);
-        for (int row = 0; row < table.getRowCount(); row++) {
-            drawDataRow(g, tableX, tableY, row);
-        }
+        // Draw hover highlight (dynamic - not cached)
+        drawHoverHighlight(g, tableX, tableY);
         
-        // Note: Tooltip is now drawn centrally by CirSim.drawHintTooltip()
+        // Draw title row text (dynamic - not cached)
+        drawTitleRow(g, tableX, tableY);
+        
+        // Draw data rows (text only when using cache, full when not)
+        g.setFont(valueFont);
+        for (int row = 0; row < rowCount; row++) {
+            drawDataRow(g, tableX, tableY, row, usingCache);
+        }
         
         // Update bounding box
         table.setBbox(tableX, tableY, tableX + tableWidth, tableY + tableHeight);
+    }
+    
+    /**
+     * Draw selection border (only when table is selected).
+     */
+    private void drawSelectionBorder(Graphics g, int tableX, int tableY, int tableWidth, int tableHeight) {
+        g.setColor(CircuitElm.selectColor);
+        if (MODERN_STYLE) {
+            g.drawRoundRect(tableX, tableY, tableWidth, tableHeight, CORNER_RADIUS);
+            g.drawRoundRect(tableX + 1, tableY + 1, tableWidth - 2, tableHeight - 2, CORNER_RADIUS);
+        } else {
+            g.drawRect(tableX, tableY, tableWidth, tableHeight);
+            g.drawRect(tableX + 1, tableY + 1, tableWidth - 2, tableHeight - 2);
+        }
+    }
+    
+    /**
+     * Draw hover highlight for the currently hovered row.
+     */
+    private void drawHoverHighlight(Graphics g, int tableX, int tableY) {
+        int hoveredRow = table.getHoveredRow();
+        if (hoveredRow >= 0 && hoveredRow < table.getRowCount()) {
+            int rowY = tableY + (hoveredRow + 1) * table.getRowHeight();
+            Color hoverColor = isPrintable() ? new Color(220, 220, 240) : new Color(65, 65, 85);
+            g.setColor(hoverColor);
+            g.fillRect(tableX + 1, rowY + 1, table.getTableWidth() - 2, table.getRowHeight() - 1);
+        }
     }
     
     /**
@@ -236,20 +423,14 @@ public class EquationTableRenderer {
     
     /**
      * Draw a single data row.
+     * @param usingCache If true, skip drawing backgrounds/separators (they're in cached canvas)
      */
-    private void drawDataRow(Graphics g, int tableX, int tableY, int row) {
+    private void drawDataRow(Graphics g, int tableX, int tableY, int row, boolean usingCache) {
         int rowY = tableY + (row + 1) * table.getRowHeight();
         int rowHeight = table.getRowHeight();
         int cellPadding = table.getCellPadding();
         int tableWidth = table.getTableWidth();
         boolean isHovered = (row == table.getHoveredRow());
-        
-        // Highlight hovered row (slightly brighter than zebra stripe)
-        if (isHovered) {
-            Color hoverColor = isPrintable() ? new Color(220, 220, 240) : new Color(65, 65, 85);
-            g.setColor(hoverColor);
-            g.fillRect(tableX + 1, rowY + 1, tableWidth - 2, rowHeight - 1);
-        }
         
         // Build display equation with slider value substituted
         String displayEquation = buildDisplayEquation(row);
@@ -308,8 +489,8 @@ public class EquationTableRenderer {
         // Draw initial value indicator if present
         drawInitialValueIndicator(g, tableX, rowY, row, valueWidth);
         
-        // Draw row separator
-        if (row < table.getRowCount() - 1) {
+        // Draw row separator (only if not using cached canvas)
+        if (!usingCache && row < table.getRowCount() - 1) {
             g.setColor(getGridLineColor());
             int sepY = tableY + (row + 2) * rowHeight;
             g.drawLine(tableX, sepY, tableX + tableWidth, sepY);

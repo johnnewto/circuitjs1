@@ -6,6 +6,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.google.gwt.canvas.client.Canvas;
+import com.google.gwt.canvas.dom.client.Context2d;
 import com.lushprojects.circuitjs1.client.TableColumn.ColumnType;
 
 /**
@@ -51,10 +53,175 @@ public class TableRenderer {
     protected static final Color GRID_LINE_LIGHT = new Color(220, 220, 230);   // Subtle grid
     protected static final Color HEADER_BORDER_LIGHT = new Color(180, 180, 200); // Stronger header border
     
+    // Cached canvas for static parts (backgrounds, grid lines, borders)
+    // Only text is redrawn each frame - major performance win for tables
+    private Canvas cachedCanvas;
+    private Context2d cachedContext;
+    private boolean cacheValid = false;
+    private int cachedWidth = 0;
+    private int cachedHeight = 0;
+    private int cachedRows = 0;
+    private int cachedCols = 0;
+    private boolean cachedPrintable = false;
+    private boolean cachedCollapsedMode = false;
+    
     public TableRenderer(TableElm table) {
         this.table = table;
+        initCache();
     }
     
+    /**
+     * Initialize the cached canvas for static parts.
+     */
+    private void initCache() {
+        cachedCanvas = Canvas.createIfSupported();
+        if (cachedCanvas != null) {
+            cachedContext = cachedCanvas.getContext2d();
+        }
+    }
+    
+    /**
+     * Invalidate the cached static rendering.
+     * Call this when table structure changes (resize, rows/cols added/removed).
+     */
+    public void invalidateCache() {
+        cacheValid = false;
+    }
+    
+    /**
+     * Ensure cache is valid and properly sized.
+     * Returns true if cache is usable, false if no caching available.
+     */
+    private boolean ensureCacheValid(TableDimensions dims) {
+        if (cachedCanvas == null || cachedContext == null) {
+            return false;
+        }
+        
+        boolean printable = isPrintable();
+        int cols = table.getCols();
+        
+        // Check if cache needs refresh
+        if (!cacheValid || dims.tableWidth != cachedWidth || dims.tableHeight != cachedHeight || 
+            table.rows != cachedRows || cols != cachedCols || 
+            printable != cachedPrintable || table.collapsedMode != cachedCollapsedMode) {
+            
+            // Resize canvas if needed
+            if (dims.tableWidth != cachedWidth || dims.tableHeight != cachedHeight) {
+                cachedCanvas.setCoordinateSpaceWidth(dims.tableWidth);
+                cachedCanvas.setCoordinateSpaceHeight(dims.tableHeight);
+            }
+            
+            // Draw static parts to cache
+            drawStaticToCache(dims);
+            
+            // Update cached state
+            cachedWidth = dims.tableWidth;
+            cachedHeight = dims.tableHeight;
+            cachedRows = table.rows;
+            cachedCols = cols;
+            cachedPrintable = printable;
+            cachedCollapsedMode = table.collapsedMode;
+            cacheValid = true;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Draw static parts (backgrounds, grid lines, borders) to cached canvas.
+     * This is only called when cache is invalid.
+     */
+    private void drawStaticToCache(TableDimensions dims) {
+        Context2d ctx = cachedContext;
+        int width = dims.tableWidth;
+        int height = dims.tableHeight;
+        int rowHeight = table.cellHeight + table.cellSpacing;
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, width, height);
+        
+        // Draw table background with rounded corners
+        if (MODERN_STYLE) {
+            ctx.setFillStyle(getTableBgColor().getHexValue());
+            ctx.beginPath();
+            ctx.moveTo(CORNER_RADIUS, 0);
+            ctx.lineTo(width - CORNER_RADIUS, 0);
+            ctx.arcTo(width, 0, width, CORNER_RADIUS, CORNER_RADIUS);
+            ctx.lineTo(width, height - CORNER_RADIUS);
+            ctx.arcTo(width, height, width - CORNER_RADIUS, height, CORNER_RADIUS);
+            ctx.lineTo(CORNER_RADIUS, height);
+            ctx.arcTo(0, height, 0, height - CORNER_RADIUS, CORNER_RADIUS);
+            ctx.lineTo(0, CORNER_RADIUS);
+            ctx.arcTo(0, 0, CORNER_RADIUS, 0, CORNER_RADIUS);
+            ctx.closePath();
+            ctx.fill();
+        } else {
+            ctx.setFillStyle(isPrintable() ? "#e6e6e6" : "#282828");
+            ctx.fillRect(0, 0, width, height);
+        }
+        
+        // Draw row backgrounds with zebra striping
+        int edgeInset = MODERN_STYLE ? CORNER_RADIUS / 2 + 1 : 2;
+        int currentY = dims.titleHeight;
+        
+        // Extra rows before type row (for subclasses like CTM)
+        if (!table.collapsedMode) {
+            currentY += getExtraRowsBeforeTypeRowHeight();
+        }
+        
+        // Type row background (header style)
+        if (!table.collapsedMode && dims.typeRowHeight > 0) {
+            ctx.setFillStyle(getHeaderBgColor().getHexValue());
+            ctx.fillRect(edgeInset, currentY, width - edgeInset * 2, rowHeight);
+            currentY += rowHeight;
+        }
+        
+        // Column headers row background (header style)
+        ctx.setFillStyle(getHeaderBgColor().getHexValue());
+        ctx.fillRect(edgeInset, currentY, width - edgeInset * 2, rowHeight);
+        currentY += rowHeight;
+        
+        // Initial values row background (if shown)
+        if (table.showInitialValues && !table.collapsedMode) {
+            ctx.setFillStyle(getRowBgColor(1).getHexValue());
+            ctx.fillRect(edgeInset, currentY, width - edgeInset * 2, rowHeight);
+            currentY += rowHeight;
+        }
+        
+        // Data rows with zebra striping
+        if (!table.collapsedMode) {
+            for (int row = 0; row < table.rows; row++) {
+                ctx.setFillStyle(getRowBgColor(row).getHexValue());
+                ctx.fillRect(edgeInset, currentY + row * rowHeight, width - edgeInset * 2, rowHeight);
+            }
+            currentY += table.rows * rowHeight;
+        }
+        
+        // Computed/Sum row background (footer style)
+        ctx.setFillStyle(getFooterBgColor().getHexValue());
+        ctx.fillRect(edgeInset, currentY, width - edgeInset * 2, rowHeight - 2);
+        
+        // Draw border (non-selected, non-error state)
+        if (MODERN_STYLE) {
+            ctx.setStrokeStyle(getGridLineColor().getHexValue());
+            ctx.beginPath();
+            ctx.moveTo(CORNER_RADIUS, 0);
+            ctx.lineTo(width - CORNER_RADIUS, 0);
+            ctx.arcTo(width, 0, width, CORNER_RADIUS, CORNER_RADIUS);
+            ctx.lineTo(width, height - CORNER_RADIUS);
+            ctx.arcTo(width, height, width - CORNER_RADIUS, height, CORNER_RADIUS);
+            ctx.lineTo(CORNER_RADIUS, height);
+            ctx.arcTo(0, height, 0, height - CORNER_RADIUS, CORNER_RADIUS);
+            ctx.lineTo(0, CORNER_RADIUS);
+            ctx.arcTo(0, 0, CORNER_RADIUS, 0, CORNER_RADIUS);
+            ctx.closePath();
+            ctx.stroke();
+        } else {
+            ctx.setStrokeStyle("#808080");
+            ctx.strokeRect(0, 0, width, height);
+        }
+    }
+
     // Helper methods for modern styling colors based on theme
     protected boolean isPrintable() {
         return CirSim.theSim.printableCheckItem.getState();
@@ -207,6 +374,7 @@ public class TableRenderer {
     
     /**
      * Main draw method - orchestrates all drawing operations
+     * Uses cached canvas for static parts (backgrounds, grid lines) when available.
      */
     public void draw(Graphics g) {
         TableDimensions dims = calculateTableDimensions();
@@ -214,14 +382,30 @@ public class TableRenderer {
         // Update cached values if needed
         updateCachedValuesIfNeeded();
 
-        // Draw background first
-        drawTableBackground(g, dims);
-
-        // Draw components in order (includes row backgrounds)
-        drawComponentsInOrder(g, dims);
+        // Try to use cached static rendering
+        boolean usingCache = ensureCacheValid(dims);
         
-        // Draw border LAST so it's on top of row backgrounds
-        drawTableBorder(g, dims);
+        if (usingCache) {
+            // Blit cached background/grid to main canvas
+            g.context.drawImage(cachedContext.getCanvas(), dims.tableX, dims.tableY);
+            
+            // Draw selection/error border on top if needed (dynamic - not cached)
+            boolean selected = table.needsHighlight();
+            if (selected || table.nonConverged) {
+                drawTableBorder(g, dims);
+            }
+        } else {
+            // Fallback: draw backgrounds directly (no cache available)
+            drawTableBackground(g, dims);
+        }
+
+        // Draw components in order (text, values - skips row backgrounds when using cache)
+        drawComponentsInOrder(g, dims, usingCache);
+        
+        // Draw border if not using cache (cache already has non-selected border)
+        if (!usingCache) {
+            drawTableBorder(g, dims);
+        }
 
         // Draw pins
         drawPins(g);
@@ -325,12 +509,13 @@ public class TableRenderer {
     
     /**
      * Draw all table components in order, return final Y position
+     * @param usingCache If true, skip drawing backgrounds (they're in cached canvas)
      */
-    private int drawComponentsInOrder(Graphics g, TableDimensions dims) {
+    private int drawComponentsInOrder(Graphics g, TableDimensions dims, boolean usingCache) {
         int currentY = 10;
         
-        // In modern style, draw row backgrounds first (before content)
-        if (MODERN_STYLE) {
+        // In modern style, draw row backgrounds first (before content) - skip if using cache
+        if (MODERN_STYLE && !usingCache) {
             drawRowBackgrounds(g, dims);
         }
         

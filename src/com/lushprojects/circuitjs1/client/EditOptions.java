@@ -94,6 +94,11 @@ class EditOptions implements Editable {
 		    ei.checkbox = new Checkbox("MNA Mode", sim.equationTableMnaMode);
 		    return ei;
 		}
+		if (n == 18) {
+		    EditInfo ei = new EditInfo("", 0, -1, -1);
+		    ei.checkbox = new Checkbox("Use WASM Solver", CirSim.useWasmSolver);
+		    return ei;
+		}
 
 		return null;
 	}
@@ -187,6 +192,10 @@ class EditOptions implements Editable {
 		if (n == 17) {
 		    sim.equationTableMnaMode = ei.checkbox.getState();
 		    sim.needAnalyze();
+		}
+		if (n == 18) {
+		    CirSim.useWasmSolver = ei.checkbox.getState();
+		    CirSim.console("WASM solver " + (CirSim.useWasmSolver ? "enabled" : "disabled"));
 		}
 	}
 	

@@ -435,6 +435,40 @@ build.gradle                     # Gradle build config
 - **Timestep**: Adaptive based on simulation speed setting
 - **Rendering**: Optimized drawing with current dots animation
 - **Convergence**: Iterative solving for nonlinear elements
+- **WASM Matrix Solver**: Optional WASM-based LU solver with SIMD for large matrices (30+ nodes)
+
+### Table Renderer Caching
+
+Table elements (`TableRenderer`, `EquationTableRenderer`) use **cached canvas rendering** to optimize performance.
+
+**Cached (drawn once per structure change):**
+- Table background with rounded corners
+- Row backgrounds (header, zebra stripes, footer)
+- Grid lines
+- Table border (non-selected state)
+
+**Drawn each frame (text only):**
+- Title text
+- Column headers
+- Cell values (with voltage coloring)
+- Initial values row
+- Computed/sum row
+- Selection/error border overlay
+
+The cache auto-invalidates when table dimensions, row/column count, theme, or collapse mode changes. This eliminates ~20+ fill/stroke calls per table per frame, replacing them with a single `drawImage()` blit.
+
+```java
+// Cache pattern used by TableRenderer/EquationTableRenderer:
+Canvas cachedCanvas = Canvas.createIfSupported();
+Context2d cachedContext = cachedCanvas.getContext2d();
+
+// Draw static parts once:
+drawStaticToCache(dims);  // backgrounds, grid, borders
+
+// Each frame:
+g.context.drawImage(cachedContext.getCanvas(), tableX, tableY);  // fast blit
+drawDynamicContent(g);  // text only
+```
 
 ## Key Characteristics
 
@@ -450,6 +484,7 @@ build.gradle                     # Gradle build config
 - [INTERNALS.md](../INTERNALS.md) - Detailed simulation theory
 - [EQUATION_TABLE_SIMPLIFICATION.md](EQUATION_TABLE_SIMPLIFICATION.md) - Row classification and matrix optimization
 - [PURE_COMPUTATIONAL_TABLES.md](PURE_COMPUTATIONAL_TABLES.md) - Pure computational element architecture
+- [WASM_MATRIX_SOLVER.md](WASM_MATRIX_SOLVER.md) - WASM-based LU decomposition with SIMD
 - [CircuitJS1 Original](https://www.falstad.com/circuit/) - Paul Falstad's original
 - GWT Documentation: https://www.gwtproject.org/
 - Modified Nodal Analysis: Pillage et al. (1999)
