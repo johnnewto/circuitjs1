@@ -613,6 +613,11 @@ public class SFCRParser {
         String layout = "LINEAR";
         int width = 300;
         int height = 250;
+        // Scale visualization options
+        boolean showScaleBar = true;
+        double fixedMaxScale = 0;
+        boolean useHighWaterMark = false;
+        boolean showFlowLabels = false;
         
         int i = startIndex + 1;
         
@@ -666,6 +671,20 @@ public class SFCRParser {
                             height = Integer.parseInt(value);
                         } catch (Exception e) {}
                         break;
+                    case "showscalebar":
+                        showScaleBar = value.equalsIgnoreCase("true") || value.equals("1");
+                        break;
+                    case "fixedmaxscale":
+                        try {
+                            fixedMaxScale = Double.parseDouble(value);
+                        } catch (Exception e) {}
+                        break;
+                    case "usehighwatermark":
+                        useHighWaterMark = value.equalsIgnoreCase("true") || value.equals("1");
+                        break;
+                    case "showflowlabels":
+                        showFlowLabels = value.equalsIgnoreCase("true") || value.equals("1");
+                        break;
                 }
             }
             
@@ -682,7 +701,9 @@ public class SFCRParser {
         // We need to set properties directly since the element is already created
         // Use the dump/load mechanism by building a tokenizer
         String dumpStr = "466 " + posX + " " + posY + " " + (posX + 16) + " " + (posY + 16) + " 0 " +
-                         CustomLogicModel.escape(sourceName) + " " + layout + " " + width + " " + height;
+                         CustomLogicModel.escape(sourceName) + " " + layout + " " + width + " " + height + " " +
+                         (showScaleBar ? "1" : "0") + " " + fixedMaxScale + " " +
+                         (useHighWaterMark ? "1" : "0") + " " + (showFlowLabels ? "1" : "0");
         
         try {
             StringTokenizer st = new StringTokenizer(dumpStr);

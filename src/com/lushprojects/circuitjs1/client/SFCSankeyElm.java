@@ -32,6 +32,12 @@ public class SFCSankeyElm extends CircuitElm {
     private int width = 300;
     private int height = 250;
     
+    // Scale visualization options
+    private boolean showScaleBar = true;       // Option 1: Show scale bar on RHS
+    private double fixedMaxScale = 0;           // Option 2: Fixed scale (0 = auto)
+    private boolean useHighWaterMark = false;   // Option 3: Use historical peak
+    private boolean showFlowLabels = false;     // Option 5: Numeric labels on links
+    
     // Size in grid units
     private int sizeX, sizeY;
     
@@ -77,6 +83,35 @@ public class SFCSankeyElm extends CircuitElm {
                 height = 250;
             }
         }
+        // Load scale visualization options
+        if (st.hasMoreTokens()) {
+            try {
+                showScaleBar = st.nextToken().equals("1");
+            } catch (Exception e) {
+                showScaleBar = true;
+            }
+        }
+        if (st.hasMoreTokens()) {
+            try {
+                fixedMaxScale = Double.parseDouble(st.nextToken());
+            } catch (Exception e) {
+                fixedMaxScale = 0;
+            }
+        }
+        if (st.hasMoreTokens()) {
+            try {
+                useHighWaterMark = st.nextToken().equals("1");
+            } catch (Exception e) {
+                useHighWaterMark = false;
+            }
+        }
+        if (st.hasMoreTokens()) {
+            try {
+                showFlowLabels = st.nextToken().equals("1");
+            } catch (Exception e) {
+                showFlowLabels = false;
+            }
+        }
         
         setupSize();
     }
@@ -98,7 +133,9 @@ public class SFCSankeyElm extends CircuitElm {
     @Override
     public String dump() {
         return super.dump() + " " + CustomLogicModel.escape(sourceTableName) + " " + 
-               layoutMode.name() + " " + width + " " + height;
+               layoutMode.name() + " " + width + " " + height + " " +
+               (showScaleBar ? "1" : "0") + " " + fixedMaxScale + " " +
+               (useHighWaterMark ? "1" : "0") + " " + (showFlowLabels ? "1" : "0");
     }
     
     @Override
@@ -156,6 +193,10 @@ public class SFCSankeyElm extends CircuitElm {
             sankeyRenderer = new SFCSankeyRenderer(sourceTable);
         }
         sankeyRenderer.setLayoutMode(layoutMode);
+        sankeyRenderer.setShowScaleBar(showScaleBar);
+        sankeyRenderer.setFixedMaxScale(fixedMaxScale);
+        sankeyRenderer.setUseHighWaterMark(useHighWaterMark);
+        sankeyRenderer.setShowFlowLabels(showFlowLabels);
         
         // Draw the Sankey diagram
         int drawWidth = sizeX * sim.gridSize;
@@ -267,6 +308,19 @@ public class SFCSankeyElm extends CircuitElm {
         if (n == 3) {
             return new EditInfo("Height (pixels)", height, 100, 600);
         }
+        // Scale visualization options
+        if (n == 4) {
+            return EditInfo.createCheckbox("Show Scale Bar", showScaleBar);
+        }
+        if (n == 5) {
+            return new EditInfo("Fixed Max Scale (0=auto)", fixedMaxScale, 0, 1e12);
+        }
+        if (n == 6) {
+            return EditInfo.createCheckbox("Use High-Water Mark", useHighWaterMark);
+        }
+        if (n == 7) {
+            return EditInfo.createCheckbox("Show Flow Labels", showFlowLabels);
+        }
         return null;
     }
     
@@ -287,6 +341,26 @@ public class SFCSankeyElm extends CircuitElm {
         } else if (n == 3) {
             height = Math.max(100, (int)ei.value);
             setupSize();
+        } else if (n == 4) {
+            showScaleBar = ei.checkbox.getState();
+            if (sankeyRenderer != null) {
+                sankeyRenderer.setShowScaleBar(showScaleBar);
+            }
+        } else if (n == 5) {
+            fixedMaxScale = Math.max(0, ei.value);
+            if (sankeyRenderer != null) {
+                sankeyRenderer.setFixedMaxScale(fixedMaxScale);
+            }
+        } else if (n == 6) {
+            useHighWaterMark = ei.checkbox.getState();
+            if (sankeyRenderer != null) {
+                sankeyRenderer.setUseHighWaterMark(useHighWaterMark);
+            }
+        } else if (n == 7) {
+            showFlowLabels = ei.checkbox.getState();
+            if (sankeyRenderer != null) {
+                sankeyRenderer.setShowFlowLabels(showFlowLabels);
+            }
         }
     }
     
@@ -310,5 +384,21 @@ public class SFCSankeyElm extends CircuitElm {
     
     public int getHeight() {
         return height;
+    }
+    
+    public boolean getShowScaleBar() {
+        return showScaleBar;
+    }
+    
+    public double getFixedMaxScale() {
+        return fixedMaxScale;
+    }
+    
+    public boolean getUseHighWaterMark() {
+        return useHighWaterMark;
+    }
+    
+    public boolean getShowFlowLabels() {
+        return showFlowLabels;
     }
 }

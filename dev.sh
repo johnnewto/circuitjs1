@@ -94,6 +94,15 @@ start() {
     codeserver | tee "codeserver.log"
 }
 
+startprod() {
+    echo "Compiling with full optimization (production mode)..."
+    compile
+    echo ""
+    echo "Starting web server http://${WEB_BINDADDRESS}:${WEB_PORT}"
+    echo "Press Ctrl+C to stop"
+    webserver
+}
+
 
 for func in $(compgen -A function); do
     if [[ $func == "$1" ]]; then

@@ -91,8 +91,11 @@ The compiled output is placed in the `war/` directory.
 | Command | Description |
 |---------|-------------|
 | `./dev.sh setup` | Install GWT and configure build environment |
-| `./dev.sh start` | Start development server with live reload |
+| `./dev.sh start` | Start development server with live reload (slower runtime) |
+| `./dev.sh startprod` | Compile with full optimization and start web server (production speed) |
 | `./dev.sh compile` | Compile for production deployment |
+
+> **Tip:** Use `./dev.sh startprod` when you need to test performance-critical code at production speed without the overhead of SuperDevMode.
 
 ### Using VS Code
 

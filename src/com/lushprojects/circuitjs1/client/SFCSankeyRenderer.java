@@ -105,6 +105,14 @@ public class SFCSankeyRenderer {
     private boolean needsFullRedraw = true;
     private int cachedX, cachedY, cachedWidth, cachedHeight;
     
+    // Scale visualization options
+    private boolean showScaleBar = true;       // Show scale bar on RHS
+    private double fixedMaxScale = 0;           // Fixed scale (0 = auto)
+    private boolean useHighWaterMark = false;   // Use historical peak
+    private boolean showFlowLabels = false;     // Show numeric labels on links
+    private double highWaterMark = 0;           // Tracked maximum flow ever seen
+    private double currentMaxFlow = 0;          // Current maximum flow for scale bar
+    
     /**
      * Represents a node in the Sankey diagram
      */
@@ -170,6 +178,44 @@ public class SFCSankeyRenderer {
      */
     public void setLayoutMode(SankeyLayout mode) {
         this.layoutMode = mode;
+    }
+    
+    /**
+     * Set whether to show the scale bar on the right side
+     */
+    public void setShowScaleBar(boolean show) {
+        this.showScaleBar = show;
+    }
+    
+    /**
+     * Set fixed maximum scale (0 = auto-scale)
+     */
+    public void setFixedMaxScale(double maxScale) {
+        this.fixedMaxScale = maxScale;
+    }
+    
+    /**
+     * Set whether to use high-water mark for scaling
+     */
+    public void setUseHighWaterMark(boolean use) {
+        this.useHighWaterMark = use;
+        if (!use) {
+            highWaterMark = 0;  // Reset when disabled
+        }
+    }
+    
+    /**
+     * Set whether to show numeric labels on flow links
+     */
+    public void setShowFlowLabels(boolean show) {
+        this.showFlowLabels = show;
+    }
+    
+    /**
+     * Reset the high-water mark (useful when restarting simulation)
+     */
+    public void resetHighWaterMark() {
+        highWaterMark = 0;
     }
     
     /**
@@ -549,7 +595,7 @@ public class SFCSankeyRenderer {
         
         // Left margin for labels (approximate max label width)
         int leftLabelMargin = 80;  // Space for left-side labels
-        int rightLabelMargin = 60; // Space for right-side labels
+        int rightLabelMargin = showScaleBar ? 90 : 60; // Extra space for scale bar
         
         drawX = x + PADDING + leftLabelMargin;
         drawWidth = availableWidth - leftLabelMargin - rightLabelMargin;
@@ -575,9 +621,30 @@ public class SFCSankeyRenderer {
         int col3X = drawX + (nodeWidth + columnGap) * 2;
         
         // Calculate total flow per column - we need to fit the tallest column
-        double maxColumnFlow = Math.max(1.0, Math.max(
+        double rawMaxFlow = Math.max(1.0, Math.max(
             sumColumnFlow(leftNodes),
             Math.max(sumColumnFlow(middleNodes), sumColumnFlow(rightNodes))));
+        
+        // Store current max flow for scale bar display
+        currentMaxFlow = rawMaxFlow;
+        
+        // Update high-water mark if tracking
+        if (useHighWaterMark && rawMaxFlow > highWaterMark) {
+            highWaterMark = rawMaxFlow;
+        }
+        
+        // Determine effective max flow for scaling
+        double maxColumnFlow;
+        if (fixedMaxScale > 0) {
+            // Use fixed max scale
+            maxColumnFlow = fixedMaxScale;
+        } else if (useHighWaterMark && highWaterMark > 0) {
+            // Use high-water mark
+            maxColumnFlow = highWaterMark;
+        } else {
+            // Auto-scale to current max
+            maxColumnFlow = rawMaxFlow;
+        }
         
         // Sort nodes to minimize link crossings (order by average connected position)
         sortNodesForStraighterPaths();
@@ -823,6 +890,11 @@ public class SFCSankeyRenderer {
             drawNode(g, node, false, node == hoveredNode);  // Label on right
         }
         
+        // Draw scale bar on right side if enabled
+        if (showScaleBar) {
+            drawScaleBar(g, x, y, width, height);
+        }
+        
         // Draw tooltip if hovering
         if (hoveredNode != null || hoveredLink != null) {
             drawTooltip(g, x, y, width, height);
@@ -932,6 +1004,82 @@ public class SFCSankeyRenderer {
     }
     
     /**
+     * Draw scale bar on the right side showing flow magnitude
+     */
+    private void drawScaleBar(Graphics g, int diagramX, int diagramY, int diagramWidth, int diagramHeight) {
+        // Scale bar position - right side of diagram
+        int barX = diagramX + diagramWidth - 55;
+        int barY = drawY;
+        int barWidth = 15;
+        int barHeight = drawHeight;
+        
+        if (barHeight < 30) return;  // Too small to draw meaningfully
+        
+        // Determine scale value to display
+        double scaleMax;
+        String scaleMode;
+        if (fixedMaxScale > 0) {
+            scaleMax = fixedMaxScale;
+            scaleMode = "Fixed";
+        } else if (useHighWaterMark && highWaterMark > 0) {
+            scaleMax = highWaterMark;
+            scaleMode = "Peak";
+        } else {
+            scaleMax = currentMaxFlow;
+            scaleMode = "Auto";
+        }
+        
+        // Draw gradient bar (darker at top = higher value)
+        for (int i = 0; i < barHeight; i++) {
+            double t = 1.0 - (double) i / barHeight;  // 1 at top, 0 at bottom
+            int gray = (int) (220 - t * 150);  // Light gray at bottom, darker at top
+            g.setColor("rgb(" + gray + "," + gray + "," + (gray + 20) + ")");
+            g.context.fillRect(barX, barY + i, barWidth, 1);
+        }
+        
+        // Draw border
+        g.setColor("#666666");
+        g.context.strokeRect(barX, barY, barWidth, barHeight);
+        
+        // Draw tick marks and labels
+        g.context.setFont("9px sans-serif");
+        int numTicks = 5;
+        for (int i = 0; i <= numTicks; i++) {
+            double t = (double) i / numTicks;
+            int tickY = barY + (int) ((1 - t) * barHeight);
+            double value = t * scaleMax;
+            
+            // Tick mark
+            g.setColor("#333333");
+            g.context.fillRect(barX + barWidth, tickY, 3, 1);
+            
+            // Value label
+            String label = CircuitElm.getUnitText(value, "$");
+            g.drawString(label, barX + barWidth + 5, tickY + 3);
+        }
+        
+        // Draw current flow indicator if using fixed/HWM scale
+        if ((fixedMaxScale > 0 || useHighWaterMark) && currentMaxFlow < scaleMax) {
+            double currentT = currentMaxFlow / scaleMax;
+            int currentY = barY + (int) ((1 - currentT) * barHeight);
+            
+            // Draw arrow pointing to current level
+            g.setColor("#EF4444");  // Red-500
+            g.context.beginPath();
+            g.context.moveTo(barX - 3, currentY);
+            g.context.lineTo(barX - 8, currentY - 4);
+            g.context.lineTo(barX - 8, currentY + 4);
+            g.context.closePath();
+            g.context.fill();
+        }
+        
+        // Draw scale mode label at bottom
+        g.setColor("#666666");
+        g.context.setFont("8px sans-serif");
+        g.drawString(scaleMode, barX, barY + barHeight + 12);
+    }
+
+    /**
      * Draw a single node rectangle with label
      */
     private void drawNode(Graphics g, SankeyNode node, boolean labelLeft, boolean highlighted) {
@@ -1021,6 +1169,59 @@ public class SFCSankeyRenderer {
             g.setColor("#F59E0B");  // Amber-500
             g.context.stroke();
         }
+        
+        // Draw flow label if enabled
+        if (showFlowLabels && link.bandwidth >= 8) {
+            drawFlowLabel(g, link, x1, y1, x2, y2);
+        }
+    }
+    
+    /**
+     * Draw a numeric flow label on a link
+     */
+    private void drawFlowLabel(Graphics g, SankeyLink link, int x1, int y1, int x2, int y2) {
+        // Position label at center of link
+        int labelX = (x1 + x2) / 2;
+        int labelY = (y1 + y2) / 2;
+        
+        // Format the value
+        String label = CircuitElm.getUnitText(link.value, "$");
+        
+        // Draw background for readability
+        g.context.setFont("9px sans-serif");
+        double textWidth = g.context.measureText(label).getWidth();
+        int padding = 2;
+        int bgWidth = (int) textWidth + padding * 2;
+        int bgHeight = 12;
+        
+        g.setColor("rgba(255, 255, 255, 0.85)");
+        g.context.fillRect(labelX - bgWidth / 2, labelY - bgHeight / 2, bgWidth, bgHeight);
+        
+        // Draw label text
+        g.setColor("#333333");
+        g.drawString(label, (int)(labelX - textWidth / 2), labelY + 3);
+    }
+    
+    /**
+     * Draw a numeric flow label at a specific position
+     */
+    private void drawFlowLabelAt(Graphics g, double value, int labelX, int labelY) {
+        // Format the value
+        String label = CircuitElm.getUnitText(value, "$");
+        
+        // Draw background for readability
+        g.context.setFont("9px sans-serif");
+        double textWidth = g.context.measureText(label).getWidth();
+        int padding = 2;
+        int bgWidth = (int) textWidth + padding * 2;
+        int bgHeight = 12;
+        
+        g.setColor("rgba(255, 255, 255, 0.85)");
+        g.context.fillRect(labelX - bgWidth / 2, labelY - bgHeight / 2, bgWidth, bgHeight);
+        
+        // Draw label text
+        g.setColor("#333333");
+        g.drawString(label, (int)(labelX - textWidth / 2), labelY + 3);
     }
     
     /**
@@ -1154,6 +1355,13 @@ public class SFCSankeyRenderer {
         
         // Draw a small arrow to indicate direction (optional enhancement)
         drawCircularLinkArrow(g, link, x2, y2);
+        
+        // Draw flow label if enabled (position at midpoint of route)
+        if (showFlowLabels && link.bandwidth >= 8) {
+            int labelX = (x1 + x2) / 2;
+            int labelY = routeY;
+            drawFlowLabelAt(g, link.value, labelX, labelY);
+        }
     }
     
     /**

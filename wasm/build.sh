@@ -74,6 +74,11 @@ emcc "$SCRIPT_DIR/matrix_solver_simd.c" \
 
 echo "SIMD build complete!"
 
+# Copy the bridge script
+echo ""
+echo "Copying bridge script..."
+cp "$SCRIPT_DIR/wasm_solver_bridge.js" "$OUTPUT_DIR/"
+
 echo ""
 echo "Build complete!"
 echo ""

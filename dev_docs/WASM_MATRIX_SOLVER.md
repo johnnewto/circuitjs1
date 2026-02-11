@@ -33,12 +33,21 @@ On browsers supporting WebAssembly SIMD (Chrome 91+, Firefox 89+, Safari 16.4+, 
 | `wasm/matrix_solver.c` | C source code for LU factorization (standard) |
 | `wasm/matrix_solver_simd.c` | C source code with SIMD intrinsics |
 | `wasm/build.sh` | Emscripten build script (builds both versions) |
+| `wasm/wasm_solver_bridge.js` | JavaScript API bridge (source) |
 | `war/circuitjs1/matrix_solver.js` | WASM loader - standard (generated) |
 | `war/circuitjs1/matrix_solver.wasm` | WASM binary - standard (generated) |
 | `war/circuitjs1/matrix_solver_simd.js` | WASM loader - SIMD (generated) |
 | `war/circuitjs1/matrix_solver_simd.wasm` | WASM binary - SIMD (generated) |
-| `war/circuitjs1/wasm_solver_bridge.js` | JavaScript API bridge with SIMD detection |
+| `war/circuitjs1/wasm_solver_bridge.js` | JavaScript API bridge (deployed copy) |
 | `src/.../WasmMatrixSolver.java` | GWT JSNI wrapper |
+
+### File Deployment Note
+
+The `wasm_solver_bridge.js` source is stored in `wasm/` and copied to `war/circuitjs1/` during WASM build.
+
+**Important**: Running `./gradlew compileGwt` followed by copying GWT output to `war/circuitjs1/` will overwrite the bridge file. After GWT compile, either:
+1. Run `wasm/build.sh` to restore the bridge file, OR
+2. Manually copy: `cp wasm/wasm_solver_bridge.js war/circuitjs1/`
 
 ## Building the WASM Module
 
@@ -160,6 +169,29 @@ This is JIT warmup behavior:
 - Predictable timing gives smoother real-time feel
 
 The solver uses WASM for matrices ≥30×30 based on real-world testing.
+
+### V8 Production Mode Performance
+
+**Important:** The JavaScript performance numbers above assume **production-optimized compilation** (GWT optimize=9). Development builds are significantly slower.
+
+| Compilation Mode | Command | Runtime Performance |
+|------------------|---------|---------------------|
+| Production (optimize=9) | `./dev.sh compile` or `./dev.sh startprod` | **Same speed as WASM** |
+| Production (optimize=9) | `./gradlew compileGwt -Pgwt.compiler.optimize=9` | **Same speed as WASM** |
+| Development (optimize=0) | `./gradlew compileGwt` (default) | **~2x slower** |
+| SuperDevMode | `./dev.sh start` | **~2x slower** |
+
+**For performance testing:**
+- Use `./dev.sh startprod` for production-speed local testing
+- GitHub Pages deployment always uses optimize=9 via `ant build`
+- Development mode (`./dev.sh start`) prioritizes compilation speed over runtime speed
+
+**Real-world comparison (100 seconds simulation):**
+- Production V8: 3.1 seconds
+- Production WASM: 3.1 seconds
+- Development V8: 6.2 seconds (2x slower)
+
+Modern V8 JIT optimization is so effective that fully-optimized GWT JavaScript matches WASM performance for typical circuit sizes. WASM's primary benefit is **consistency** - avoiding GC pauses and JIT deoptimization - rather than raw speed advantage.
 
 ## Configuration
 

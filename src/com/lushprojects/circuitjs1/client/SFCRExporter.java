@@ -398,6 +398,14 @@ public class SFCRExporter {
         sb.append("  width: ").append(width).append("\n");
         sb.append("  height: ").append(height).append("\n");
         
+        // Scale visualization options
+        sb.append("  showScaleBar: ").append(sankey.getShowScaleBar()).append("\n");
+        if (sankey.getFixedMaxScale() > 0) {
+            sb.append("  fixedMaxScale: ").append(sankey.getFixedMaxScale()).append("\n");
+        }
+        sb.append("  useHighWaterMark: ").append(sankey.getUseHighWaterMark()).append("\n");
+        sb.append("  showFlowLabels: ").append(sankey.getShowFlowLabels()).append("\n");
+        
         sb.append("@end\n");
         return sb.toString();
     }
