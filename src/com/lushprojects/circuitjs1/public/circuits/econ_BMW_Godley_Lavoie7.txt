@@ -49,7 +49,7 @@ At steady state (t → ∞):
   timeUnit: yr
 @end
 
-@equations s_Parameters x=672 y=360
+@equations Parameters x=672 y=360
   rl ~ 0.025  # Interest rate on loans
   \alpha0 ~ 20  # Autonomous consumption
   \alpha1 ~ 0.75  # Propensity to consume from income
@@ -141,6 +141,9 @@ At steady state (t → ∞):
   layout: linear
   width: 500
   height: 300
+  showScaleBar: false
+  useHighWaterMark: true
+  showFlowValues: true
 @end
 
 @hints
@@ -197,10 +200,11 @@ x 89 140 399 143 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q16
 207 896 592 960 592 52 Y
 r 1024 480 1104 480 0 100
 v 1104 480 1104 352 0 0 40 5 0 0 0.5 V
-l 1024 352 1024 480 0 100 0.0000622056377878358 0
-c 1024 480 912 480 4 0.000015 -0.07583563542363514 -10 0
+l 1024 352 1024 480 0 100 -2.6695321035982722e-8 0
+c 1024 480 912 480 4 0.000015 -0.000022980076823117932 -10 0
 w 912 352 912 480 0
 s 1024 352 1104 352 0 1 false
 r 912 352 1024 352 0 10
 403 896 624 1232 832 0 15_2_0_4614_320_0.1_-1_1
+431 624 48 672 80 0 100 true false
 @end

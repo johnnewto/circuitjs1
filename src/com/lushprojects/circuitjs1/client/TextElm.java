@@ -418,7 +418,7 @@ class TextElm extends GraphicElm {
 	if (lowerLink.equals("info") || lowerLink.equals("model info") || 
 	    lowerLink.equals("about") || lowerLink.equals("help")) {
 	    if (sim.modelInfoContent != null && !sim.modelInfoContent.isEmpty()) {
-		InfoViewerDialog.showInfoInIframe("Model Information", sim.modelInfoContent);
+		InfoViewerDialog.showInfoInIframe("Model Information", sim.modelInfoContent, true);
 	    } else {
 		com.google.gwt.user.client.Window.alert("No model information available.\nAdd an @info block to your SFCR file.");
 	    }

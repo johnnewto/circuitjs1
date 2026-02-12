@@ -36,7 +36,7 @@ public class SFCSankeyElm extends CircuitElm {
     private boolean showScaleBar = true;       // Option 1: Show scale bar on RHS
     private double fixedMaxScale = 0;           // Option 2: Fixed scale (0 = auto)
     private boolean useHighWaterMark = false;   // Option 3: Use historical peak
-    private boolean showFlowLabels = false;     // Option 5: Numeric labels on links
+    private boolean showFlowValues = false;     // Option 5: Numeric values on links
     
     // Size in grid units
     private int sizeX, sizeY;
@@ -107,9 +107,9 @@ public class SFCSankeyElm extends CircuitElm {
         }
         if (st.hasMoreTokens()) {
             try {
-                showFlowLabels = st.nextToken().equals("1");
+                showFlowValues = st.nextToken().equals("1");
             } catch (Exception e) {
-                showFlowLabels = false;
+                showFlowValues = false;
             }
         }
         
@@ -135,7 +135,7 @@ public class SFCSankeyElm extends CircuitElm {
         return super.dump() + " " + CustomLogicModel.escape(sourceTableName) + " " + 
                layoutMode.name() + " " + width + " " + height + " " +
                (showScaleBar ? "1" : "0") + " " + fixedMaxScale + " " +
-               (useHighWaterMark ? "1" : "0") + " " + (showFlowLabels ? "1" : "0");
+               (useHighWaterMark ? "1" : "0") + " " + (showFlowValues ? "1" : "0");
     }
     
     @Override
@@ -196,7 +196,7 @@ public class SFCSankeyElm extends CircuitElm {
         sankeyRenderer.setShowScaleBar(showScaleBar);
         sankeyRenderer.setFixedMaxScale(fixedMaxScale);
         sankeyRenderer.setUseHighWaterMark(useHighWaterMark);
-        sankeyRenderer.setShowFlowLabels(showFlowLabels);
+        sankeyRenderer.setShowFlowValues(showFlowValues);
         
         // Draw the Sankey diagram
         int drawWidth = sizeX * sim.gridSize;
@@ -319,7 +319,7 @@ public class SFCSankeyElm extends CircuitElm {
             return EditInfo.createCheckbox("Use High-Water Mark", useHighWaterMark);
         }
         if (n == 7) {
-            return EditInfo.createCheckbox("Show Flow Labels", showFlowLabels);
+            return EditInfo.createCheckbox("Show Flow Amounts", showFlowValues);
         }
         return null;
     }
@@ -357,9 +357,9 @@ public class SFCSankeyElm extends CircuitElm {
                 sankeyRenderer.setUseHighWaterMark(useHighWaterMark);
             }
         } else if (n == 7) {
-            showFlowLabels = ei.checkbox.getState();
+            showFlowValues = ei.checkbox.getState();
             if (sankeyRenderer != null) {
-                sankeyRenderer.setShowFlowLabels(showFlowLabels);
+                sankeyRenderer.setShowFlowValues(showFlowValues);
             }
         }
     }
@@ -398,7 +398,7 @@ public class SFCSankeyElm extends CircuitElm {
         return useHighWaterMark;
     }
     
-    public boolean getShowFlowLabels() {
-        return showFlowLabels;
+    public boolean getShowFlowValues() {
+        return showFlowValues;
     }
 }

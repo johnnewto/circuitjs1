@@ -404,7 +404,7 @@ public class SFCRExporter {
             sb.append("  fixedMaxScale: ").append(sankey.getFixedMaxScale()).append("\n");
         }
         sb.append("  useHighWaterMark: ").append(sankey.getUseHighWaterMark()).append("\n");
-        sb.append("  showFlowLabels: ").append(sankey.getShowFlowLabels()).append("\n");
+        sb.append("  showFlowValues: ").append(sankey.getShowFlowValues()).append("\n");
         
         sb.append("@end\n");
         return sb.toString();

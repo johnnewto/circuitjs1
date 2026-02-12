@@ -109,7 +109,7 @@ public class SFCSankeyRenderer {
     private boolean showScaleBar = true;       // Show scale bar on RHS
     private double fixedMaxScale = 0;           // Fixed scale (0 = auto)
     private boolean useHighWaterMark = false;   // Use historical peak
-    private boolean showFlowLabels = false;     // Show numeric labels on links
+    private boolean showFlowValues = false;     // Show numeric values on links
     private double highWaterMark = 0;           // Tracked maximum flow ever seen
     private double currentMaxFlow = 0;          // Current maximum flow for scale bar
     
@@ -205,10 +205,10 @@ public class SFCSankeyRenderer {
     }
     
     /**
-     * Set whether to show numeric labels on flow links
+     * Set whether to show numeric values on flow links
      */
-    public void setShowFlowLabels(boolean show) {
-        this.showFlowLabels = show;
+    public void setShowFlowValues(boolean show) {
+        this.showFlowValues = show;
     }
     
     /**
@@ -857,7 +857,7 @@ public class SFCSankeyRenderer {
         
         // Draw title
         g.setColor("#333333");
-        g.context.setFont("bold 12px sans-serif");
+        g.setFont(new Font("SansSerif", Font.BOLD, 12));
         String suffix = (layoutMode == SankeyLayout.CIRCULAR) ? " (Circular Sankey)" : " (Sankey)";
         String title = table.tableTitle != null ? table.tableTitle + suffix : "Sankey Diagram";
         g.drawString(title, x + PADDING, y + 15);
@@ -877,9 +877,9 @@ public class SFCSankeyRenderer {
         }
         
         // Draw nodes
-        g.context.setFont("10px sans-serif");
+        g.setFont(new Font("SansSerif", 0, 10));
         for (SankeyNode node : leftNodes) {
-            drawNode(g, node, true, node == hoveredNode);  // Label on left
+            drawNode(g, node, true, node == hoveredNode);  // Label on left (outer side)
         }
         if (layoutMode != SankeyLayout.CIRCULAR) {
             for (SankeyNode node : middleNodes) {
@@ -887,7 +887,7 @@ public class SFCSankeyRenderer {
             }
         }
         for (SankeyNode node : rightNodes) {
-            drawNode(g, node, false, node == hoveredNode);  // Label on right
+            drawNode(g, node, false, node == hoveredNode);  // Label on right (outer side)
         }
         
         // Draw scale bar on right side if enabled
@@ -958,13 +958,14 @@ public class SFCSankeyRenderer {
         }
         
         // Calculate tooltip size
-        g.context.setFont("11px sans-serif");
+        g.setFont(new Font("SansSerif", 0, 11));
         int padding = 6;
         int lineHeight = 14;
         int maxWidth = 0;
         for (String line : lines) {
             if (line != null && !line.isEmpty()) {
-                double w = g.context.measureText(line).getWidth();
+                // Use measureWidth to handle subscripts in node names
+                double w = g.measureWidth(line);
                 maxWidth = Math.max(maxWidth, (int)w);
             }
         }
@@ -1053,9 +1054,9 @@ public class SFCSankeyRenderer {
             g.setColor("#333333");
             g.context.fillRect(barX + barWidth, tickY, 3, 1);
             
-            // Value label
-            String label = CircuitElm.getUnitText(value, "$");
-            g.drawString(label, barX + barWidth + 5, tickY + 3);
+            // Value text
+            String valueText = CircuitElm.getUnitText(value, "$");
+            g.drawString(valueText, barX + barWidth + 5, tickY + 3);
         }
         
         // Draw current flow indicator if using fixed/HWM scale
@@ -1109,8 +1110,9 @@ public class SFCSankeyRenderer {
         String label = node.name;  // Show full label text
         
         if (labelLeft) {
-            // Draw label to the left of node
-            double textWidth = g.context.measureText(label).getWidth();
+            // Draw label to the left of node (right-justified)
+            // Use measureWidth which properly handles subscripts _{} at smaller font size
+            double textWidth = g.measureWidth(label);
             g.drawString(label, (int)(node.x - textWidth - 4), node.y + node.height / 2 + 4);
         } else {
             // Draw label to the right of node
@@ -1170,58 +1172,58 @@ public class SFCSankeyRenderer {
             g.context.stroke();
         }
         
-        // Draw flow label if enabled
-        if (showFlowLabels && link.bandwidth >= 8) {
-            drawFlowLabel(g, link, x1, y1, x2, y2);
+        // Draw flow value if enabled
+        if (showFlowValues && link.bandwidth >= 8) {
+            drawFlowValue(g, link, x1, y1, x2, y2);
         }
     }
     
     /**
-     * Draw a numeric flow label on a link
+     * Draw a numeric flow value on a link
      */
-    private void drawFlowLabel(Graphics g, SankeyLink link, int x1, int y1, int x2, int y2) {
-        // Position label at center of link
-        int labelX = (x1 + x2) / 2;
-        int labelY = (y1 + y2) / 2;
+    private void drawFlowValue(Graphics g, SankeyLink link, int x1, int y1, int x2, int y2) {
+        // Position value 3/4 of the way along the link (closer to target)
+        int valueX = x1 + (x2 - x1) * 3 / 4;
+        int valueY = y1 + (y2 - y1) * 3 / 4;
         
         // Format the value
-        String label = CircuitElm.getUnitText(link.value, "$");
+        String valueText = CircuitElm.getUnitText(link.value, "$");
         
         // Draw background for readability
         g.context.setFont("9px sans-serif");
-        double textWidth = g.context.measureText(label).getWidth();
+        double textWidth = g.context.measureText(valueText).getWidth();
         int padding = 2;
         int bgWidth = (int) textWidth + padding * 2;
         int bgHeight = 12;
         
         g.setColor("rgba(255, 255, 255, 0.85)");
-        g.context.fillRect(labelX - bgWidth / 2, labelY - bgHeight / 2, bgWidth, bgHeight);
+        g.context.fillRect(valueX - bgWidth / 2, valueY - bgHeight / 2, bgWidth, bgHeight);
         
-        // Draw label text
+        // Draw value text
         g.setColor("#333333");
-        g.drawString(label, (int)(labelX - textWidth / 2), labelY + 3);
+        g.drawString(valueText, (int)(valueX - textWidth / 2), valueY + 3);
     }
     
     /**
-     * Draw a numeric flow label at a specific position
+     * Draw a numeric flow value at a specific position
      */
-    private void drawFlowLabelAt(Graphics g, double value, int labelX, int labelY) {
+    private void drawFlowValueAt(Graphics g, double value, int valueX, int valueY) {
         // Format the value
-        String label = CircuitElm.getUnitText(value, "$");
+        String valueText = CircuitElm.getUnitText(value, "$");
         
         // Draw background for readability
         g.context.setFont("9px sans-serif");
-        double textWidth = g.context.measureText(label).getWidth();
+        double textWidth = g.context.measureText(valueText).getWidth();
         int padding = 2;
         int bgWidth = (int) textWidth + padding * 2;
         int bgHeight = 12;
         
         g.setColor("rgba(255, 255, 255, 0.85)");
-        g.context.fillRect(labelX - bgWidth / 2, labelY - bgHeight / 2, bgWidth, bgHeight);
+        g.context.fillRect(valueX - bgWidth / 2, valueY - bgHeight / 2, bgWidth, bgHeight);
         
-        // Draw label text
+        // Draw value text
         g.setColor("#333333");
-        g.drawString(label, (int)(labelX - textWidth / 2), labelY + 3);
+        g.drawString(valueText, (int)(valueX - textWidth / 2), valueY + 3);
     }
     
     /**
@@ -1356,11 +1358,11 @@ public class SFCSankeyRenderer {
         // Draw a small arrow to indicate direction (optional enhancement)
         drawCircularLinkArrow(g, link, x2, y2);
         
-        // Draw flow label if enabled (position at midpoint of route)
-        if (showFlowLabels && link.bandwidth >= 8) {
-            int labelX = (x1 + x2) / 2;
-            int labelY = routeY;
-            drawFlowLabelAt(g, link.value, labelX, labelY);
+        // Draw flow value if enabled (position at midpoint of route)
+        if (showFlowValues && link.bandwidth >= 8) {
+            int valueX = (x1 + x2) / 2;
+            int valueY = routeY;
+            drawFlowValueAt(g, link.value, valueX, valueY);
         }
     }
     

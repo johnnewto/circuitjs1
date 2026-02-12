@@ -5190,7 +5190,7 @@ public CirSim() {
 		// Auto-display model info when loading a file with @info block
 		// Use embedded iframe dialog (always visible, no focus issues)
 		if (modelInfoContent != null && !modelInfoContent.isEmpty()) {
-		    InfoViewerDialog.showInfoInIframe("Model Information", modelInfoContent);
+		    InfoViewerDialog.showInfoInIframe("Model Information", modelInfoContent, true);
 		}
 		
 		// Process any raw circuit lines from @circuit blocks

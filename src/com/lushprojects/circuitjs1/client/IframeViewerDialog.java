@@ -125,7 +125,7 @@ public class IframeViewerDialog extends DialogBox {
      * @param h Height in pixels
      */
     private IframeViewerDialog(String title, String src, String selector, int w, int h) {
-        super(false, false); // not auto-hide, NOT modal
+        super(true, false); // auto-hide when clicking outside, NOT modal
         
         this.iframeSrc = src;
         this.cssSelector = selector;

@@ -617,7 +617,7 @@ public class SFCRParser {
         boolean showScaleBar = true;
         double fixedMaxScale = 0;
         boolean useHighWaterMark = false;
-        boolean showFlowLabels = false;
+        boolean showFlowValues = false;
         
         int i = startIndex + 1;
         
@@ -682,8 +682,9 @@ public class SFCRParser {
                     case "usehighwatermark":
                         useHighWaterMark = value.equalsIgnoreCase("true") || value.equals("1");
                         break;
-                    case "showflowlabels":
-                        showFlowLabels = value.equalsIgnoreCase("true") || value.equals("1");
+                    case "showflowlabels":  // backward compatibility
+                    case "showflowvalues":
+                        showFlowValues = value.equalsIgnoreCase("true") || value.equals("1");
                         break;
                 }
             }
@@ -703,7 +704,7 @@ public class SFCRParser {
         String dumpStr = "466 " + posX + " " + posY + " " + (posX + 16) + " " + (posY + 16) + " 0 " +
                          CustomLogicModel.escape(sourceName) + " " + layout + " " + width + " " + height + " " +
                          (showScaleBar ? "1" : "0") + " " + fixedMaxScale + " " +
-                         (useHighWaterMark ? "1" : "0") + " " + (showFlowLabels ? "1" : "0");
+                         (useHighWaterMark ? "1" : "0") + " " + (showFlowValues ? "1" : "0");
         
         try {
             StringTokenizer st = new StringTokenizer(dumpStr);
