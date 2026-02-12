@@ -33,10 +33,12 @@ public class LoadFile extends FileUpload implements  ChangeHandler {
 		 }-*/;
 	
 	static public void doLoadCallback(String s, String t) {
+		CirSim.console("Loading local file: " + t);
 		sim.pushUndo();
 		sim.readCircuit(s);
 		sim.createNewLoadFile();
 		sim.setCircuitTitle(t);
+		sim.currentCircuitFile = "local: " + t;
 		ExportAsLocalFileDialog.setLastFileName(t);
 		sim.unsavedChanges = false;
 	}

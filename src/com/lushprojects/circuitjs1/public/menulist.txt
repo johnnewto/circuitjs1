@@ -25,6 +25,8 @@ GodlyTableElm|Godly Table
 TableElm|Table
 SFCTableElm|SFC Table
 SFCSankeyElm|SFC Sankey Diagram
+SFCSectorElm|SFC Sector (MNA)
+SFCFlowElm|SFC Flow (MNA)
 ComputedValueSourceElm|CV Source
 FlowsMasterElm|Flow Master
 StockMasterElm|Stock Master

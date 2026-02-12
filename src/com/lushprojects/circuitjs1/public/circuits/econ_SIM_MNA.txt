@@ -1,0 +1,87 @@
+$ 1 5E-6 10.634267539816555 50 5 50 5e-11
+# G&L SIM Model using MNA Current-Flow Pattern
+# Based on Godley & Lavoie "Monetary Economics" Chapter 3
+#
+# KEY INSIGHT: Using current as flow and voltage as stock,
+# KCL automatically enforces the SFC accounting identity:
+#   ΣInflows - ΣOutflows = dStock/dt
+#
+# Parameters:
+#   α₁ = 0.6  (propensity to consume out of income)
+#   α₂ = 0.4  (propensity to consume out of wealth)  
+#   θ  = 0.2  (tax rate)
+#   G  = 20   (government spending - exogenous)
+#   W  = 1    (wage rate)
+
+# ============================================================
+# SECTOR NODES (SFCSectorElm - capacitors accumulate stocks)
+# Voltage = Stock level (money holdings)
+# ============================================================
+
+# Households: accumulates savings H_h
+268 176 224 176 224 0 Households 0 1.0
+
+# Government: accumulates deficit H_s (negative = debt)
+268 464 224 464 224 0 Government 0 1.0
+
+# Firms: pass-through sector (small capacitance)
+# In basic SIM, firms don't retain earnings
+268 320 96 320 96 0 Firms 0 0.01
+
+# ============================================================
+# TRANSACTION FLOWS (SFCFlowElm - current sources)
+# Current = Flow rate ($/time)
+# ============================================================
+
+# Government Spending: G → Firms
+# Fixed exogenous flow of 20
+269 464 224 320 96 0 G_spending 20 G 20
+
+# Wages: Firms → Households  
+# W * N_s, but since W=1 and N_s determined endogenously,
+# use expression: wages flow proportional to govt spending in steady state
+# Simplification: Wages = G / (1 - α₁*(1-θ)) ≈ 38.5 at steady state
+269 320 96 176 224 0 Wages 38.5 w 38.5
+
+# Taxes: Households → Government
+# T = θ * W * N_s = θ * Wages = 0.2 * Wages
+269 176 224 464 224 0 Taxes 0.2*38.5 theta 0.2
+
+# Consumption: Households → Firms
+# C_d = α₁ * YD + α₂ * H_h
+# where YD = Wages - Taxes = Wages * (1 - θ)
+# C_d = α₁ * Wages * (1-θ) + α₂ * Vs
+# Vs = household stock (voltage at household node)
+269 176 224 320 96 0 Consumption 0.6*38.5*0.8+0.4*Vs alpha1 0.6
+
+# ============================================================
+# LABELS & DOCUMENTATION
+# ============================================================
+
+x 120 176 240 179 6 24 Households
+x 414 176 554 179 6 24 Government
+x 276 48 374 51 6 24 Firms
+
+# Flow labels
+x 372 144 494 147 4 14 G\sspending\s=\s20
+x 200 144 290 147 4 14 Wages
+x 278 264 360 267 4 14 Taxes\s=\sθ·W
+x 200 298 368 301 4 14 Consumption\s=\sα₁·YD\s+\sα₂·H_h
+
+# Model description
+x 96 360 640 363 4 12 G&L\sSIM\sModel\s(Chapter\s3)\s-\sMNA\sCurrent-Flow\sImplementation
+x 96 380 640 383 4 12 Sectors\sare\scapacitors:\svoltage\s=\sstock\slevel\s(money\sholdings)
+x 96 400 640 403 4 12 Transactions\sare\scurrent\ssources:\scurrent\s=\sflow\srate
+x 96 420 640 423 4 12 KCL\senforces:\sΣInflows\s-\sΣOutflows\s=\sdStock/dt\s(SFC\sidentity)
+
+# Parameters box
+x 520 360 680 363 4 12 Parameters:
+x 520 378 680 381 4 12 α₁\s=\s0.6\s(consume\sincome)
+x 520 396 680 399 4 12 α₂\s=\s0.4\s(consume\swealth)
+x 520 414 680 417 4 12 θ\s=\s0.2\s(tax\srate)
+x 520 432 680 435 4 12 G\s=\s20\s(govt\sspending)
+
+# Scope displays
+o 0 64 0 4099 40 0.00009765625 0 2 0 3
+o 1 64 0 4099 40 0.00009765625 1 2 1 3
+o 2 64 0 4099 40 0.00009765625 2 2 2 3

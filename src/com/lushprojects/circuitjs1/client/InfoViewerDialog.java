@@ -251,6 +251,10 @@ public class InfoViewerDialog extends DialogBox {
         html.append("  <title>").append(escapeHtml(title)).append("</title>\n");
         html.append("  <script src=\"https://cdn.jsdelivr.net/npm/marked/marked.min.js\"></script>\n");
         html.append("  <script src=\"https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js\"></script>\n");
+        // Add KaTeX for math rendering
+        html.append("  <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css\">\n");
+        html.append("  <script src=\"https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js\"></script>\n");
+        html.append("  <script src=\"https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js\"></script>\n");
         html.append("  <style>\n");
         html.append("    body { \n");
         html.append("      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;\n");
@@ -311,6 +315,17 @@ public class InfoViewerDialog extends DialogBox {
         html.append("  <script>\n");
         html.append("    var markdown = \"").append(escapedMarkdown).append("\";\n");
         html.append("    document.getElementById('content').innerHTML = marked.parse(markdown);\n");
+        html.append("    \n");
+        html.append("    // Render LaTeX math equations with KaTeX\n");
+        html.append("    renderMathInElement(document.getElementById('content'), {\n");
+        html.append("      delimiters: [\n");
+        html.append("        {left: '$$', right: '$$', display: true},\n");
+        html.append("        {left: '$', right: '$', display: false},\n");
+        html.append("        {left: '\\\\[', right: '\\\\]', display: true},\n");
+        html.append("        {left: '\\\\(', right: '\\\\)', display: false}\n");
+        html.append("      ],\n");
+        html.append("      throwOnError: false\n");
+        html.append("    });\n");
         html.append("    \n");
         html.append("    // Wrap tables with preceding headers in sections for better page breaks\n");
         html.append("    const content = document.getElementById('content');\n");

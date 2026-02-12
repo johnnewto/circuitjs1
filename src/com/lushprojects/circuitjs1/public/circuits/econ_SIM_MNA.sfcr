@@ -1,0 +1,175 @@
+# G&L SIM Model - MNA Current-Flow Implementation
+# SFCR Format for CircuitJS1
+
+#===============================================================================
+# MODEL DOCUMENTATION
+#===============================================================================
+
+@info
+# SIM Model (Godley & Lavoie Chapter 3)
+## MNA Current-Flow Implementation
+
+This model demonstrates the **current-as-flow** approach to Stock-Flow Consistent modeling using Modified Nodal Analysis (MNA).
+
+### Key Innovation
+Instead of using voltage sources and expression-based tables, this model uses:
+- **Capacitor nodes** (SFCSectorElm) for sectors — voltage = stock level
+- **Current sources** (SFCFlowElm) for transactions — current = flow rate
+
+### Why This Works
+Kirchhoff's Current Law (KCL) at each node automatically enforces the SFC accounting identity:
+$$\sum I_{in} - \sum I_{out} = C \frac{dV}{dt}$$
+
+Which translates economically to:
+$$\text{Inflows} - \text{Outflows} = \Delta\text{Stock}$$
+
+### Sectors
+| Sector | Stock Variable | Meaning |
+|--------|---------------|---------|
+| Households | H_h | Money holdings (wealth) |
+| Firms | — | Pass-through (no retained earnings) |
+| Government | H_s | Money supply (negative = debt) |
+
+### Transaction Flows
+| Flow | From → To | Equation |
+|------|-----------|----------|
+| G_spending | Govt → Firms | G = 20 (exogenous) |
+| Wages | Firms → HH | W × N_s |
+| Taxes | HH → Govt | θ × W × N_s |
+| Consumption | HH → Firms | α₁ × YD + α₂ × H_h |
+
+### Steady State Solution
+At steady state (dH/dt = 0):
+- Y* = G / (1 - α₁(1-θ)) = 38.46
+- H_h* = 80
+- H_s* = -80 (government debt)
+
+### Reference
+Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
+@end
+
+
+#===============================================================================
+# SIMULATION SETTINGS
+#===============================================================================
+
+@init
+  timestep: 5e-6
+  voltageUnit: $
+  timeUnit: yr
+  showDots: true
+  showVolts: true
+@end
+
+
+#===============================================================================
+# PARAMETERS
+#===============================================================================
+
+@equations Parameters x=550 y=330
+  # Behavioral parameters
+  α_1 ~ 0.6                    # Propensity to consume out of income
+  α_2 ~ 0.4                    # Propensity to consume out of wealth
+  θ ~ 0.2                      # Tax rate
+  
+  # Exogenous variables
+  G ~ 20                       # Government spending
+  W ~ 1                        # Wage rate (normalized)
+  
+  # Derived steady-state values
+  Y_star ~ G / (1 - α_1*(1-θ)) # Steady state output ≈ 38.46
+  H_star ~ ((1-α_1)*(1-θ)*Y_star) / α_2  # Steady state wealth = 80
+@end
+
+
+#===============================================================================
+# VARIABLE HINTS
+#===============================================================================
+
+@hints
+  H_h: Household money holdings (wealth)
+  H_s: Government money supply (negative = debt)
+  G: Government spending (exogenous)
+  W: Nominal wage rate
+  α_1: Propensity to consume out of income
+  α_2: Propensity to consume out of wealth
+  θ: Tax rate
+  Y_star: Steady state output
+  H_star: Steady state household wealth
+  Wages: Wage payments from Firms to Households
+  Taxes: Tax payments from Households to Government
+  Consumption: Consumer spending from Households to Firms
+  G_spending: Government purchases from Firms
+@end
+
+
+#===============================================================================
+# CIRCUIT ELEMENTS (MNA Current-Flow)
+#===============================================================================
+
+@circuit
+  # ============================================================
+  # SECTOR NODES (SFCSectorElm - Type 268)
+  # Format: 268 x y x y flags name initialStock capacitance
+  # Voltage = Stock level, Current = Net flow into sector
+  # ============================================================
+  
+  # Households: accumulates savings H_h
+  268 176 224 176 224 0 H_h 0 1.0
+  
+  # Government: accumulates deficit H_s (negative = debt)  
+  268 464 224 464 224 0 H_s 0 1.0
+  
+  # Firms: pass-through sector (tiny capacitance)
+  268 320 96 320 96 0 Firms 0 0.01
+  
+  # ============================================================
+  # TRANSACTION FLOWS (SFCFlowElm - Type 269)
+  # Format: 269 x1 y1 x2 y2 flags name equation sliderVar sliderVal
+  # Current = Flow rate (from node1 to node2)
+  # Equation can use: Vs (source voltage), Vd (dest voltage)
+  # ============================================================
+  
+  # Government Spending: Govt → Firms (fixed 20)
+  269 464 224 320 96 0 G_spending 20 G 20
+  
+  # Wages: Firms → Households (Y = output ≈ 38.5 at steady state)
+  269 320 96 176 224 0 Wages 38.5 w 38.5
+  
+  # Taxes: Households → Govt (T = θ × Y)
+  269 176 224 464 224 0 Taxes 0.2*38.5 theta 0.2
+  
+  # Consumption: Households → Firms
+  # C_d = α₁ × YD + α₂ × H_h = α₁ × (1-θ) × Y + α₂ × Vs
+  # where Vs = household stock (voltage)
+  269 176 224 320 96 0 Consumption 0.6*38.5*0.8+0.4*Vs alpha1 0.6
+  
+  # ============================================================
+  # LABELS
+  # ============================================================
+  
+  # Sector labels
+  x 120 176 240 179 6 24 Households
+  x 414 176 554 179 6 24 Government  
+  x 276 48 374 51 6 24 Firms
+  
+  # Flow labels
+  x 372 144 494 147 4 14 G\sspending\s=\s20
+  x 200 144 290 147 4 14 Wages
+  x 278 264 360 267 4 14 Taxes\s=\sθ·Y
+  x 200 298 368 301 4 14 Consumption\s=\sα₁·YD\s+\sα₂·H_h
+  
+  # Model description
+  x 80 400 640 403 4 12 G&L\sSIM\sModel\s-\sMNA\sCurrent-Flow\sImplementation
+  x 80 418 640 421 4 12 Sectors\s=\scapacitors\s(voltage\s=\sstock),\sFlows\s=\scurrent\ssources
+  x 80 436 640 439 4 12 KCL\senforces:\sΣInflows\s-\sΣOutflows\s=\sdStock/dt
+
+@end
+
+
+#===============================================================================
+# SCOPE DISPLAYS
+#===============================================================================
+
+@scope H_h
+@scope H_s

@@ -1,0 +1,129 @@
+# CircuitJS1 SFCR Export
+# Generated from circuit simulation
+
+@info
+# SIM Model (Godley & Lavoie Chapter 3)
+## Voltage Source Equation Implementation
+
+This model demonstrates the **equation-based** approach to Stock-Flow Consistent modeling using EquationTableElm voltage sources.
+
+### Approach
+This model uses:
+- **Equation Tables** (EquationTableElm) — each output is a voltage source
+- **integrate() functions** — for stock accumulation over time
+- **Balance Sheet & Transaction Flow matrices** — for accounting verification
+
+### Stock-Flow Equations
+Stocks accumulate via integration of flows:
+$$H_h = \int (YD - C_d) \, dt$$
+$$H_s = \int (G_d - T_d) \, dt$$
+
+### Sectors
+| Sector | Stock Variable | Meaning |
+|--------|---------------|---------|
+| Households | $H_h$ | Money holdings (wealth) |
+| Firms | — | Pass-through (no retained earnings) |
+| Government | $H_s$ | Money supply (negative = debt) |
+
+### Transaction Flows
+| Flow | From → To | Equation |
+|------|-----------|----------|
+| G_d | Govt → Firms | $G = 20$ (exogenous) |
+| Wages | Firms → HH | $W \times N_s$ |
+| Taxes | HH → Govt | $\theta \times W \times N_s$ |
+| Consumption | HH → Firms | $\alpha_1 \times YD + \alpha_2 \times H_h$ |
+
+### Steady State Solution
+At steady state ($dH/dt = 0$):
+- $Y^* = G / (1 - \alpha_1(1-\theta)) = 38.46$
+- $H_h^* = 80$
+- $H_s^* = -80$ (government debt)
+
+### Reference
+Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
+@end
+
+@init
+  timestep: 0.1
+  voltageUnit: $
+  timeUnit: yr
+  showDots: true
+  showVolts: true
+  showValues: true
+  showPower: false
+@end
+
+@equations equations_1 x=168 y=264
+  C_s ~ C_d  # Consumption goods Supply/Demand
+  G_s ~ G_d  # Services supplied to / demand by Govt
+  T_s ~ T_d  # Tax
+  N_s ~ N_d  # Supply/Demand for labour
+  YD ~ W * N_s - T_s  # Disposable Income
+  T_d ~ \theta * W * N_s  # Tax
+  C_d ~ \alpha_1*YD+ \alpha_2*H_h  # Consumption goods Supply/Demand
+  H_s ~ integrate(G_d - T_d)  # cash money, supplied by the central bank
+@end
+
+@equations equations_2 x=424 y=264
+  H_h ~ integrate(YD - C_d)  # Cash money held by households
+  Y ~ C_s + G_s  # Output
+  N_d ~ Y / W  # Supply/Demand for labour
+@end
+
+@equations Parameters x=504 y=400
+  \alpha_1 ~ 0.6  # Propensity to Spend Income
+  \alpha_2 ~ 0.4  # Propensity to Spend Wealth
+  \theta ~ 0.2  # Tax Rate
+  G_d ~ 20  # Government demad for services
+  W ~ 1  # Nominal Wages Rate
+@end
+
+@matrix Balance_Sheet x=176 y=24
+
+| Transaction | Households_b | Production_b | Government_b |
+|-------------|------|------|------|
+| Money stock | H_h |  | -H_s |
+@end
+
+@matrix Transaction_Flow_Matrix x=176 y=104
+
+| Transaction | Households | Production | Govt |
+|-------------|------|------|------|
+| Consumption | -C_d | C_s |  |
+| Govt Expenditures |  | G_s | -G_d |
+| Wages | W * N_s | -W * N_s |  |
+| Taxes | -T_s |  | T_d |
+| Money stock | -\DeltaH_h |  | \DeltaH_s |
+@end
+
+@hints
+  C_s: Consumption goods Supply/Demand
+  G_s: Services supplied to / demand by Govt
+  T_s: Tax
+  N_s: Supply/Demand for labour
+  YD: Disposable Income
+  T_d: Tax
+  C_d: Consumption goods Supply/Demand
+  H_s: cash money, supplied by the central bank
+  H_h: Cash money held by households
+  Y: Output
+  N_d: Supply/Demand for labour
+  \alpha_1: Propensity to Spend Income
+  \alpha_2: Propensity to Spend Wealth
+  \theta: Tax Rate
+  G_d: Government demad for services
+  W: Nominal Wages Rate
+@end
+
+@circuit
+x 203 -78 378 -75 4 24 SIM\sSFC\smodel 808080FF
+207 680 216 741 217 4 C_s
+207 680 256 743 256 36 Y
+403 696 272 960 448 0 7_4_0_xc01206_320_0.1_-1_2_7_3
+x 218 -53 682 -50 4 16 This\scode\sreplicates\sresults\sin\sthe\sbook\sMonetary\sEconomics: 808080FF
+x 215 -11 722 -8 4 16 \sby\sWynne\sGodley\sand\sMarc\sLavoie,\schapter\s3,\sfigures\s3.2\sand\s3.3. 808080FF
+x 218 -33 779 -30 4 16 \sAn\sIntegrated\sApproach\sto\sCredit,\sMoney,\sIncome,\sProduction\sand\sWealth 808080FF
+207 768 144 800 144 36 \\DeltaH_h
+207 768 96 800 96 4 \\DeltaH_s
+431 896 64 960 112 0 50 true false
+@end

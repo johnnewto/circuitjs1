@@ -29,9 +29,11 @@ public class ImportFromDropboxDialog extends Dialog {
 		sim=csim;
 	}
 	
-	static public void doLoadCallback(String s) {
+	static public void doLoadCallback(String s, String link) {
+		CirSim.console("Loading from URL: " + link);
 		sim.pushUndo();
 		sim.readCircuit(s);
+		sim.currentCircuitFile = "URL: " + link;
 		sim.allowSave(false);
 	}
 	
@@ -42,7 +44,7 @@ public class ImportFromDropboxDialog extends Dialog {
 		  	xhr.addEventListener("load", function reqListener() { 
 	//			console.log(xhr.responseText);
 				var text = xhr.responseText;
-	       		@com.lushprojects.circuitjs1.client.ImportFromDropboxDialog::doLoadCallback(Ljava/lang/String;)(text);
+	       		@com.lushprojects.circuitjs1.client.ImportFromDropboxDialog::doLoadCallback(Ljava/lang/String;Ljava/lang/String;)(text, link);
 			});
 			xhr.open("GET", link, false);
 			xhr.send();

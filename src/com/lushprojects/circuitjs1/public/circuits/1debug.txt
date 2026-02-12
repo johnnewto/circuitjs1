@@ -2,209 +2,105 @@
 # Generated from circuit simulation
 
 @info
+# SIM Model (Godley & Lavoie Chapter 3)
+## MNA Current-Flow Implementation
 
-# Model Documentation
+This model demonstrates the **current-as-flow** approach to Stock-Flow Consistent modeling using Modified Nodal Analysis (MNA).
 
-## Bank-Money World Model (BMW)
+### Key Innovation
+Instead of using voltage sources and expression-based tables, this model uses:
+- **Capacitor nodes** (SFCSectorElm) for sectors — voltage = stock level
+- **Current sources** (SFCFlowElm) for transactions — current = flow rate
 
-**Source:** Godley & Lavoie (2007) Chapter 7  
-**Based on:** sfcr R package implementation
+### Why This Works
+Kirchhoff's Current Law (KCL) at each node automatically enforces the SFC accounting identity:
+$$\sum I_{in} - \sum I_{out} = C \frac{dV}{dt}$$
 
-This model demonstrates **stock-flow consistent (SFC) modeling** of a monetary economy with banks creating money through lending.
+Which translates economically to:
+$$\text{Inflows} - \text{Outflows} = \Delta\text{Stock}$$
 
-### Key Features
+### Sectors
+| Sector | Stock Variable | Meaning |
+|--------|---------------|---------|
+| Households | $H_h$ | Money holdings (wealth) |
+| Firms | — | Pass-through (no retained earnings) |
+| Government | $H_s$ | Money supply (negative = debt) |
 
-- Banks create money by issuing loans
-- Households hold deposits and consume
-- Firms invest and employ workers
-- No government sector (simplified version)
+### Transaction Flows
+| Flow | From → To | Equation |
+|------|-----------|----------|
+| G_spending | Govt → Firms | $G = 20$ (exogenous) |
+| Wages | Firms → HH | $W \times N_s$ |
+| Taxes | HH → Govt | $\theta \times W \times N_s$ |
+| Consumption | HH → Firms | $\alpha_1 \times YD + \alpha_2 \times H_h$ |
 
-### Key Variables
+### Steady State Solution
+At steady state ($dH/dt = 0$):
+- $Y^* = G / (1 - \alpha_1(1-\theta)) = 38.46$
+- $H_h^* = 80$
+- $H_s^* = -80$ (government debt)
 
-| Variable | Description |
-|----------|-------------|
-| **Y** | National income (output) |
-| **C** | Consumption |
-| **I** | Investment |
-| **K** | Capital stock |
-| **Mh** | Household money holdings |
-| **Ld** | Loan demand |
-
-### Steady-State Values
-
-At steady state (t → ∞):
-- Y = 160, C = 144, I = 16
-- K = 160 (capital-output ratio = 1)
-- Mh = Ms = Ld = Ls = 160
-
-### References
-
-> Godley, W., & Lavoie, M. (2007). *Monetary Economics: An Integrated Approach to Credit, Money, Income, Production and Wealth*. Palgrave Macmillan.
-
+### Reference
+Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
 @end
 
 @init
   timestep: 0.1
   voltageUnit: $
   timeUnit: yr
+  showDots: true
+  showVolts: true
+  showValues: true
+  showPower: false
 @end
 
-@equations s_Parameters x=672 y=360
-  rl ~ 0.025  # Interest rate on loans
-  \alpha0 ~ 20  # Autonomous consumption
-  \alpha1 ~ 0.75  # Propensity to consume from income
-  \alpha2 ~ 0.10  # Propensity to consume from wealth
-  \delta ~ 0.1  # Depreciation rate
-  \gamma ~ 0.15  # Adjustment speed of capital to target
-  \kappa ~ 1  # Capital-output ratio target
-  pr ~ 1  # Labor productivity
-@end
-
-@equations MarketClearing x=304 y=680
-  Cs ~ Cd  # Consumption supply
-  Is ~ Id  # Investment supply
-  Ns ~ Nd  # Labor supply
-  Ls ~ integrate(diff(Ld))  # Loan supply
-@end
-
-@equations Firms x=80 y=504
-  Y ~ Cs + Is  # National income (output)
-  WBd ~ Y - lag(rl, 1) * lag(Ld, 1) - AF  # Wage bill demanded
-  AF ~ \delta * lag(K, 1)  # Amortization funds = delta * lag(K,1)
-  Ld ~ integrate(Id - AF)  # Loan demand
-  KK ~ t  # hint7
-  Y5 ~ lag(KK, 1)  # hint5
-  Y6 ~ KK - lag(KK, 1)  # hint6
-@end
-
-@equations Households x=352 y=504
-  YD ~ WBs + lag(rm, 1) * lag(Mh, 1)  # Household disposable income = WBs + lag(rm,1) * lag(Mh,1)
-  Mh ~ integrate(YD - Cd)  # Household money holdings (deposits)
-@end
-
-@equations Banks x=640 y=536
-  Ms ~ integrate(diff(Ls))  # Money supply (bank deposits)
-  rm ~ rl  # Interest rate on deposits
-@end
-
-@equations WageBill x=96 y=664
-  WBs ~ W * Ns  # Wage bill supplied
-  Nd ~ Y / pr  # Labor demand
-  W ~ WBd / max(Nd, 0.01)  # Wage rate
-@end
-
-@equations Consumption x=400 y=600
-  Cd ~ \alpha0 + \alpha1 * YD + \alpha2 * lag(Mh, 1)  # Consumption demand
-@end
-
-@equations Investment x=528 y=680
-  K ~ integrate(Id - DA)  # Capital stock
-  DA ~ \delta * lag(K, 1)  # Depreciation actual = delta * lag(K,1)
-  KT ~ \kappa * lag(Y, 1)  # Target capital stock = kappa * lag(Y,1)
-  Id ~ \gamma * (KT - lag(K, 1)) + DA  # Investment demand
-@end
-
-@equations \Delta x=96 y=752
-  \DeltaLd ~ diff(Ld)
-  \DeltaLs ~ diff(Ls)
-  \DeltaMs ~ diff(Ms)  # hint3
-  \DeltaMh ~ diff(Mh)  # hint4
-@end
-
-@matrix Balance_Sheet x=80 y=360
-
-| Transaction | Households | Firms | Banks |
-|-------------|------|------|------|
-| Deposits | Mh |  | -Ms |
-| Loans |  | -Ld | Ls |
-| Fixed Capital |  | K |  |
-| Balance (net worth) | -Mh |  |  |
-@end
-
-@matrix Transaction_Flow_Matrix x=80 y=152
-
-| Transaction | Households_C | Firms_{Current} | Firms_{Capital} | Banks_{Current} | Banks_{Capital} | Govt |
-|-------------|------|------|------|------|------|------|
-| Consumption | -Cd | Cs |  |  | 0 |  |
-| Investment |  | Id | -Id |  | 0 |  |
-| [Production] |  | Y |  |  |  |  |
-| Wages | WBd | -WBs |  |  | 0 |  |
-| Depreciation |  | -DA | DA |  | 0 |  |
-| Interest on Loans |  | -rl*Ld |  | rl*Ls | 0 |  |
-| Interest on Deposits | rm*Mh |  |  | -rm*Ms | 0 |  |
-| Change in Loans |  |  | \DeltaLd |  | - \DeltaLs |  |
-| Change in Deposits | -\DeltaMh |  |  |  | \DeltaMs |  |
-@end
-
-@sankey x=928 y=32
-  source: Transaction Flow Matrix
-  layout: linear
-  width: 500
-  height: 300
-  showScaleBar: false
-  useHighWaterMark: true
-  showFlowValues: true
+@equations Parameters x=502 y=426
+  \alpha_1 ~ 0.6  # Propensity to consume out of income
+  \alpha_2 ~ 0.4  # Propensity to consume out of wealth
+  \theta ~ 0.2  # Tax rate
+  G ~ 20  # Government spending (exogenous)
+  W ~ 1  # Nominal wage rate
+  Y_star ~ G / (1 - \alpha_1*(1-\theta))  # Steady state output
+  H_star ~ ((1-\alpha_1)*(1-\theta)*Y_star) / \alpha_2  # Steady state household wealth
 @end
 
 @hints
-  rl: Interest rate on loans
-  \alpha0: Autonomous consumption
-  \alpha1: Propensity to consume from income
-  \alpha2: Propensity to consume from wealth
-  \delta: Depreciation rate
-  \gamma: Adjustment speed of capital to target
-  \kappa: Capital-output ratio target
-  pr: Labor productivity
-  Cs: Consumption supply
-  Is: Investment supply
-  Ns: Labor supply
-  Ls: Loan supply
-  Y: National income (output)
-  WBd: Wage bill demanded
-  AF: Amortization funds = delta * lag(K,1)
-  Ld: Loan demand
-  KK: hint7
-  Y5: hint5
-  Y6: hint6
-  YD: Household disposable income = WBs + lag(rm,1) * lag(Mh,1)
-  Mh: Household money holdings (deposits)
-  Ms: Money supply (bank deposits)
-  rm: Interest rate on deposits
-  WBs: Wage bill supplied
-  Nd: Labor demand
-  W: Wage rate
-  Cd: Consumption demand
-  K: Capital stock
-  DA: Depreciation actual = delta * lag(K,1)
-  KT: Target capital stock = kappa * lag(Y,1)
-  Id: Investment demand
-  \DeltaMs: hint3
-  \DeltaMh: hint4
-  check_money: Money market
-  check_loans: Loan market
-  check_labor: Labor market
-  \\alpha0: Autonomous consumption
-  \\alpha1: Propensity to consume from income
-  \\alpha2: Propensity to consume from wealth
-  \\delta: Depreciation rate
-  \\gamma: Investment adjustment speed
-  \\kappa: Capital-output ratio
-  Y7: hint7
-  \DeltaMd: hint4
+  \alpha_1: Propensity to consume out of income
+  \alpha_2: Propensity to consume out of wealth
+  \theta: Tax rate
+  G: Government spending (exogenous)
+  W: Nominal wage rate
+  Y_star: Steady state output
+  H_star: Steady state household wealth
+  H_h: Household money holdings (wealth)
+  H_s: Government money supply (negative = debt)
+  Wages: Wage payments from Firms to Households
+  Taxes: Tax payments from Households to Government
+  Consumption: Consumer spending from Households to Firms
+  G_spending: Government purchases from Firms
 @end
 
 @circuit
-x 89 92 510 95 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW 808080FF
-x 89 116 417 119 4 12 Bank-Money\sWorld\smodel\s(with\sexplicit\slagged\svariables) 808080FF
-x 89 140 399 143 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF
-207 896 592 960 592 52 Y
-r 1024 480 1104 480 0 100
-v 1104 480 1104 352 0 0 40 5 0 0 0.5 V
-l 1024 352 1024 480 0 100 0.0000015567200026233758 0
-c 1024 480 912 480 4 0.000015 -0.0072224970791845726 -10 0
-w 912 352 912 480 0
-s 1024 352 1104 352 0 1 false
-r 912 352 1024 352 0 10
-403 896 624 1232 832 0 15_2_0_4614_320_0.1_-1_1
-431 624 48 672 80 0 100 true false
+268 176 224 176 224 0 H_h 0 1
+268 464 224 464 224 0 H_s 0 1
+268 320 96 320 96 0 Firms 0 0.01
+269 464 224 320 96 0 G_{spending} 20 G 20
+269 256 32 112 160 0 Wages 38.5 w 38.5
+269 176 224 464 224 0 Taxes 0.2*38.5 theta 0.2
+269 176 224 320 96 0 Consumption 0.6*38.5*0.8\p0.4*Vs alpha1 0.6
+x 18 301 144 304 6 24 Households 808080FF
+x 340 349 472 352 6 24 Government 808080FF
+x 309 45 368 48 6 24 Firms 808080FF
+x 370 102 473 105 4 14 G\sspending\s\q\s20 808080FF
+x 116 54 159 57 4 14 Wages 808080FF
+x 278 264 352 267 4 14 Taxes\s\q\sθ·Y 808080FF
+x 200 298 396 301 4 14 Consumption\s\q\sα₁·YD\s\p\sα₂·H_h 808080FF
+x 80 400 360 403 4 12 G\aL\sSIM\sModel\s-\sMNA\sCurrent-Flow\sImplementation 808080FF
+x 80 418 415 421 4 12 Sectors\s\q\scapacitors\s(voltage\s\q\sstock),\sFlows\s\q\scurrent\ssources 808080FF
+x 80 436 332 439 4 12 KCL\senforces:\sΣInflows\s-\sΣOutflows\s\q\sdStock/dt 808080FF
+431 848 112 912 160 0 10 true false
+w 256 32 320 96 0
+w 112 160 176 224 0
+403 512 272 784 400 0 2_1_0_4615_160_12.8_-1_2_2_3
+403 512 48 784 176 0 4_1_0_4615_163840_25.6_-1_2_4_3
 @end

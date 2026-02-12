@@ -173,6 +173,7 @@ MouseOutHandler, MouseWheelHandler {
     boolean useWeightedPriority = false; // Weighted priority for Asset/Equity columns
     String modelInfoContent = null; // Markdown info content from @info block in SFCR files
     MenuItem viewModelInfoItem; // Menu item for viewing model info
+    String currentCircuitFile = null; // Current circuit file name and location for display
     private Label powerLabel;
     private Label titleLabel;
     private Scrollbar speedBar;
@@ -967,8 +968,10 @@ public CirSim() {
 	setWheelSensitivity();
 
 	if (startCircuitText != null) {
+	    console("Loading embedded circuit from URL");
 	    getSetupList(false);
 	    readCircuit(startCircuitText);
+	    currentCircuitFile = "embedded";
 	    unsavedChanges = false;
 	} else {
 	    if (stopMessage == null && startCircuitLink!=null) {
@@ -976,11 +979,13 @@ public CirSim() {
 		getSetupList(false);
 		ImportFromDropboxDialog.setSim(this);
 		ImportFromDropboxDialog.doImportDropboxLink(startCircuitLink, false);
+		// currentCircuitFile set by ImportFromDropboxDialog
 	    } else {
 		readCircuit("");
 		if (stopMessage == null && startCircuit != null) {
 		    getSetupList(false);
 		    readSetupFile(startCircuit, startLabel);
+		    // currentCircuitFile set by readSetupFile
 		}
 		else
 		    getSetupList(true);
@@ -2190,7 +2195,13 @@ public CirSim() {
         int height = 15;
         int increment = 15;
         
-        // Show simulation time first
+        // Show circuit file name and location first
+        if (currentCircuitFile != null) {
+            g.drawString("File: " + currentCircuitFile, 10, height);
+            height += increment;
+        }
+        
+        // Show simulation time
         String timeStr = "t = " + formatTimeFixed(t);
         double timerate = 160*getIterCount()*timeStep;
         if (timerate >= .1)
@@ -5171,8 +5182,16 @@ public CirSim() {
 }
 
     void readCircuit(String text, int flags) {
+	// Debug: log first 200 chars of text to see what we're parsing
+	if (text != null && !text.trim().isEmpty()) {
+	    String preview = text.length() > 200 ? text.substring(0, 200) : text;
+	    console("readCircuit text preview: " + preview.replace("\n", "\\n"));
+	    console("isSFCRFormat result: " + SFCRParser.isSFCRFormat(text));
+	}
+	
 	// Check if this is SFCR format (human-readable SFC model definition)
 	if (SFCRParser.isSFCRFormat(text)) {
+	    console("Parsing mode: SFCRParser (SFCR format detected)" + (currentCircuitFile != null ? " - " + currentCircuitFile : ""));
 	    // Clear existing circuit first
 	    readCircuit(new byte[0], flags);
 	    
@@ -5215,6 +5234,10 @@ public CirSim() {
 	    return;
 	}
 	
+	// Only log parse mode when there's actual content (not empty init)
+	if (text != null && !text.trim().isEmpty()) {
+	    console("Parsing mode: Standard circuit format" + (currentCircuitFile != null ? " - " + currentCircuitFile : ""));
+	}
 	readCircuit(text.getBytes(), flags);
 	if ((flags & RC_KEEP_TITLE) == 0)
 	    titleLabel.setText(null);
@@ -5279,10 +5302,12 @@ public CirSim() {
 		System.out.println(str);
 		// don't avoid caching here, it's unnecessary and makes offline PWA's not work
 		String url=GWT.getModuleBaseURL()+"circuits/"+str; // +"?v="+random.nextInt(); 
+		console("Loading circuit file: circuits/" + str);
 		loadFileFromURL(url);
 		if (title != null)
 		    titleLabel.setText(title);
 		unsavedChanges = false;
+		currentCircuitFile = "circuits/" + str;
 		ExportAsLocalFileDialog.setLastFileName(null);
 	}
 	
@@ -7822,6 +7847,8 @@ public CirSim() {
 		case 265: return new SFCTableElm(x1, y1, x2, y2, f, st);
 		case 466: return new SFCSankeyElm(x1, y1, x2, y2, f, st);
 		case 267: return new ComputedValueSourceElm(x1, y1, x2, y2, f, st);
+		case 268: return new SFCSectorElm(x1, y1, x2, y2, f, st);
+		case 269: return new SFCFlowElm(x1, y1, x2, y2, f, st);
 		case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
     	case 368: return new TestPointElm(x1, y1, x2, y2, f, st);
     	case 370: return new AmmeterElm(x1, y1, x2, y2, f, st);
@@ -8183,6 +8210,10 @@ public CirSim() {
 			return (CircuitElm) new SFCTableElm(x1, y1);
 	if (n=="SFCSankeyElm")
 			return (CircuitElm) new SFCSankeyElm(x1, y1);
+	if (n=="SFCSectorElm")
+			return (CircuitElm) new SFCSectorElm(x1, y1);
+	if (n=="SFCFlowElm")
+			return (CircuitElm) new SFCFlowElm(x1, y1);
 	if (n=="ComputedValueSourceElm")
 			return (CircuitElm) new ComputedValueSourceElm(x1, y1);
 	if (n.equals("TableVoltageElm")) 

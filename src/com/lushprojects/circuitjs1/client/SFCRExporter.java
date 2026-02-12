@@ -197,6 +197,12 @@ public class SFCRExporter {
             sb.append("  timeUnit: ").append(sim.timeUnitSymbol).append("\n");
         }
         
+        // Display options - always export current state
+        sb.append("  showDots: ").append(sim.dotsCheckItem.getState()).append("\n");
+        sb.append("  showVolts: ").append(sim.voltsCheckItem.getState()).append("\n");
+        sb.append("  showValues: ").append(sim.showValuesCheckItem.getState()).append("\n");
+        sb.append("  showPower: ").append(sim.powerCheckItem.getState()).append("\n");
+        
         sb.append("@end\n");
         return sb.toString();
     }

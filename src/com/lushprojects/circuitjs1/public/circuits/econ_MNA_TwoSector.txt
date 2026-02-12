@@ -1,0 +1,13 @@
+$ 1 5E-6 10.634267539816555 50 5 50 5e-11
+268 192 208 192 208 0 Households 100 1.0
+268 448 208 448 208 0 Firms 100 1.0
+269 192 208 448 208 0 Wages 50 rate 1.0
+269 448 208 192 208 0 Consumption 0.4*Vs prop 0.4
+x 147 160 297 163 6 24 Households
+x 388 160 478 163 6 24 Firms
+x 259 235 383 238 4 18 ← Wages (Fixed)
+x 246 262 408 265 4 18 Consumption → (0.4×Stock)
+x 115 398 617 401 4 12 Simple\s2-Sector\sEconomy:\sWages\sflow\sfrom\sFirms\sto\sHouseholds,\sConsumption\sflows\sback
+x 115 426 617 429 4 12 KCL\sat\seach\snode\senforces:\s∑Inflows\s-\s∑Outflows\s=\sdStock/dt\s(SFC\sidentity)
+o 0 64 0 4099 5 0.00009765625 0 2 0 3
+o 1 64 0 4099 5 0.00009765625 1 2 1 3
