@@ -385,20 +385,20 @@ public class EquationTableEditDialog extends Dialog {
         
         // Output mode dropdown
         final ListBox modeBox = new ListBox();
-        modeBox.addItem("Voltage", "VOLTAGE");
-        modeBox.addItem("Current→", "CURRENT");
-        modeBox.addItem("Capacitor", "CAPACITOR");
+        modeBox.addItem("Voltage", "VOLTAGE_MODE");
+        modeBox.addItem("Flow→", "FLOW_MODE");
+        modeBox.addItem("Sector", "SECTOR_MODE");
         // Set selected based on current mode
         RowOutputMode currentMode = outputModes[row];
-        if (currentMode == RowOutputMode.CURRENT) modeBox.setSelectedIndex(1);
-        else if (currentMode == RowOutputMode.CAPACITOR) modeBox.setSelectedIndex(2);
+        if (currentMode == RowOutputMode.FLOW_MODE) modeBox.setSelectedIndex(1);
+        else if (currentMode == RowOutputMode.SECTOR_MODE) modeBox.setSelectedIndex(2);
         else modeBox.setSelectedIndex(0);
         modeBox.addChangeHandler(new ChangeHandler() {
             public void onChange(ChangeEvent event) {
                 String val = modeBox.getSelectedValue();
-                if ("CURRENT".equals(val)) outputModes[row] = RowOutputMode.CURRENT;
-                else if ("CAPACITOR".equals(val)) outputModes[row] = RowOutputMode.CAPACITOR;
-                else outputModes[row] = RowOutputMode.VOLTAGE;
+                if ("FLOW_MODE".equals(val)) outputModes[row] = RowOutputMode.FLOW_MODE;
+                else if ("SECTOR_MODE".equals(val)) outputModes[row] = RowOutputMode.SECTOR_MODE;
+                else outputModes[row] = RowOutputMode.VOLTAGE_MODE;
                 markChanged();
                 // Enable/disable target and capacitance fields based on mode
                 updateModeFields(gridRow, outputModes[row]);
@@ -419,7 +419,7 @@ public class EquationTableEditDialog extends Dialog {
         });
         addSelectAllOnFocus(targetBox);
         // Disable if mode is VOLTAGE
-        targetBox.setEnabled(outputModes[row] != RowOutputMode.VOLTAGE);
+        targetBox.setEnabled(outputModes[row] != RowOutputMode.VOLTAGE_MODE);
         editGrid.setWidget(gridRow, COL_TARGET, targetBox);
         
         // Capacitance value (for CAPACITOR mode)
@@ -446,7 +446,7 @@ public class EquationTableEditDialog extends Dialog {
         });
         addSelectAllOnFocus(capBox);
         // Only enable if mode is CAPACITOR
-        capBox.setEnabled(outputModes[row] == RowOutputMode.CAPACITOR);
+        capBox.setEnabled(outputModes[row] == RowOutputMode.SECTOR_MODE);
         editGrid.setWidget(gridRow, COL_CAPACITANCE, capBox);
         
         // Slider variable name textbox
@@ -620,10 +620,10 @@ public class EquationTableEditDialog extends Dialog {
         Widget capWidget = editGrid.getWidget(gridRow, COL_CAPACITANCE);
         
         if (targetWidget instanceof TextBox) {
-            ((TextBox) targetWidget).setEnabled(mode != RowOutputMode.VOLTAGE);
+            ((TextBox) targetWidget).setEnabled(mode != RowOutputMode.VOLTAGE_MODE);
         }
         if (capWidget instanceof TextBox) {
-            ((TextBox) capWidget).setEnabled(mode == RowOutputMode.CAPACITOR);
+            ((TextBox) capWidget).setEnabled(mode == RowOutputMode.SECTOR_MODE);
         }
     }
     
@@ -676,7 +676,7 @@ public class EquationTableEditDialog extends Dialog {
         outputNames[insertAt] = "Y" + (insertAt + 1);
         equations[insertAt] = "0";
         initialEquations[insertAt] = "";
-        outputModes[insertAt] = RowOutputMode.VOLTAGE;
+        outputModes[insertAt] = RowOutputMode.VOLTAGE_MODE;
         targetNodeNames[insertAt] = "";
         capacitances[insertAt] = 1.0;
         sliderVarNames[insertAt] = String.valueOf((char)('a' + insertAt));

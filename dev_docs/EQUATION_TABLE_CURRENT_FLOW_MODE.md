@@ -5,7 +5,7 @@
 The core implementation is complete as of the latest commit. The following features have been added to `EquationTableElm.java`:
 
 ### What's Implemented
-- **RowOutputMode enum**: `VOLTAGE`, `CURRENT`, `CAPACITOR`
+- **RowOutputMode enum**: `VOLTAGE_MODE`, `FLOW_MODE`, `SECTOR_MODE`
 - **Per-row mode arrays**: `outputModes[]`, `targetNodeNames[]`, `capacitances[]`
 - **Capacitor state tracking**: `capLastVoltages[]`, `capLastCurrents[]`, `capCurSourceValue[]`
 - **stamp() method**: Dispatches to mode-specific stamping (`stampVoltageModeRow()`, `stampCurrentModeRow()`, `stampCapacitorModeRow()`)
@@ -14,16 +14,16 @@ The core implementation is complete as of the latest commit. The following featu
 - **stepFinished()**: Saves capacitor state for next timestep and registers stock voltage in ComputedValues
 - **Serialization**: dump()/load() support for mode, target, and capacitance per row
 
-### ComputedValues Timing (Critical for CAPACITOR Mode)
+### ComputedValues Timing (Critical for SECTOR_MODE)
 
-CAPACITOR mode rows update their stock voltage in `stepFinished()`, which runs AFTER the matrix solve. To ensure display elements (like `LabeledNodeElm`) see the correct value, the execution order is:
+SECTOR_MODE rows update their stock voltage in `stepFinished()`, which runs AFTER the matrix solve. To ensure display elements (like `LabeledNodeElm`) see the correct value, the execution order is:
 
 ```
 doStep() for ALL elements  → stamps current sources, writes to pendingValues
 commitPendingTo...()       → pendingValues → computedValues
 [repeat if not converged]
 
-stepFinished() for ALL     → CAPACITOR rows write stock voltage to pendingValues
+stepFinished() for ALL     → SECTOR_MODE rows write stock voltage to pendingValues
 commitPendingTo...()       → pendingValues → computedValues
 commitConvergedValues()    → computedValues → convergedValues (for display)
 ```
@@ -269,9 +269,9 @@ Rearranged as companion model:
 ```java
 // New row mode enum
 enum RowOutputMode {
-    VOLTAGE,      // Existing: stamps voltage source
-    CURRENT,      // New: stamps current source to target
-    CAPACITOR     // New: stamps capacitor companion model
+    VOLTAGE_MODE, // Default: stamps voltage source
+    FLOW_MODE,    // stamps current source to target
+    SECTOR_MODE   // stamps capacitor companion model
 }
 
 // Per-row fields for capacitor mode
@@ -286,7 +286,7 @@ private boolean[] useTrapezoidal;    // Integration method flag
 ```java
 void stamp() {
     for (int row = 0; row < rowCount; row++) {
-        if (outputModes[row] == RowOutputMode.CAPACITOR) {
+        if (outputModes[row] == RowOutputMode.SECTOR_MODE) {
             // Stamp companion resistor (linear, done once)
             double compResistance = sim.timeStep / capacitances[row];
             int stockNode = labeledNodeNumbers[row];
@@ -308,7 +308,7 @@ void stamp() {
 @Override
 void startIteration() {
     for (int row = 0; row < rowCount; row++) {
-        if (outputModes[row] == RowOutputMode.CAPACITOR) {
+        if (outputModes[row] == RowOutputMode.SECTOR_MODE) {
             double compResistance = sim.timeStep / capacitances[row];
             
             // Trapezoidal: I_hist = -V_old/R - I_old
@@ -358,7 +358,7 @@ private void evaluateCapacitorModeRow(int row) {
 @Override
 void stepFinished() {
     for (int row = 0; row < rowCount; row++) {
-        if (outputModes[row] == RowOutputMode.CAPACITOR) {
+        if (outputModes[row] == RowOutputMode.SECTOR_MODE) {
             // Save state for next timestep
             lastVoltages[row] = volts[row];
             lastCurrents[row] = calculateCapacitorCurrent(row);
@@ -415,7 +415,7 @@ initialEquations[row] = "100";  // Start with stock of 100
 @Override
 void reset() {
     for (int row = 0; row < rowCount; row++) {
-        if (outputModes[row] == RowOutputMode.CAPACITOR) {
+        if (outputModes[row] == RowOutputMode.SECTOR_MODE) {
             if (compiledInitialExprs[row] != null) {
                 lastVoltages[row] = compiledInitialExprs[row].eval(exprStates[row]);
             } else {
@@ -569,9 +569,9 @@ public String dump() {
         // New fields for output mode:
         sb.append(" ").append(outputModes[row].ordinal());  // 0=V, 1=I, 2=C
         sb.append(" ").append(CustomLogicModel.escape(
-            outputModes[row] == RowOutputMode.CURRENT ? targetNodeNames[row] : ""));
+            outputModes[row] == RowOutputMode.FLOW_MODE ? targetNodeNames[row] : ""));
         sb.append(" ").append(
-            outputModes[row] == RowOutputMode.CAPACITOR ? capacitances[row] : 1.0);
+            outputModes[row] == RowOutputMode.SECTOR_MODE ? capacitances[row] : 1.0);
     }
     
     return sb.toString();
@@ -581,7 +581,7 @@ public String dump() {
 ## Implementation Roadmap
 
 ### Phase 1: Data Structures
-1. Add `RowOutputMode` enum (VOLTAGE, CURRENT, CAPACITOR)
+1. Add `RowOutputMode` enum (VOLTAGE_MODE, FLOW_MODE, SECTOR_MODE)
 2. Add `outputModes[]`, `targetNodeNames[]`, `capacitances[]` arrays
 3. Add capacitor state arrays: `lastVoltages[]`, `lastCurrents[]`, `capCurSourceValue[]`
 

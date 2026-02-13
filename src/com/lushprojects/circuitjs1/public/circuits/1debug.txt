@@ -1,30 +1,33 @@
-$ 1 0.1 26.59566520631553 50 5 50 5e-11
+$ 1 0.1 2.1831051418620846 33 5 43 5e-11
 % voltageUnit $
 % showToolbar true
-266 168 104 416 274 2 equations\s1 8 C_s C_d \0 \0 0.5 0 \0 1 G_s G_d \0 \0 0.5 0 \0 1 T_s T_d \0 \0 0.5 0 \0 1 N_s N_d \0 \0 0.5 0 \0 1 YD W*N_s-T_s \0 \0 0.5 0 \0 1 T_d \\theta*W*N_s \0 \0 0.5 0 \0 1 C_d \\alpha_1*YD\p\\alpha_2*H_h \0 \0 0.5 0 \0 1 H_s 1 0 \0 0.5 2 Ground 1
-266 424 104 572 184 2 equations\s2 3 Y C_s\pG_s \0 \0 0.5 0 \0 1 N_d Y/W \0 \0 0.5 0 gnd 1 H_h YD-C_d 0 \0 0.5 2 Ground 1
-266 456 208 581 324 2 Parameters 5 \\alpha_1 0.6 \0 \0 0.5 0 \0 1 \\alpha_2 0.4 \0 \0 0.5 0 \0 1 \\theta 0.2 \0 \0 0.5 0 \0 1 G_d 20 \0 \0 0.5 0 \0 1 W 1 \0 \0 0.5 0 \0 1
-431 896 64 960 112 0 50 true false
-g 336 304 336 368 0 0
-207 336 304 419 304 4 Ground
-207 672 80 756 80 4 Y
-403 608 96 880 256 0 6_4_0_4614_160_0.1_-1_2_6_3
-265 176 -72 656 76 0 5 4 6 16 0 false 2 1 false 5 0 false Transaction\sFlow\sMatrix \0 Households Production Govt Σ Consumption Govt\sExpenditures Wages Taxes Money\sstock 0 0 0 0 SECTOR SECTOR SECTOR COMPUTED -C_d C_s \0 \0 \0 G_s -G_d \0 W\s*\sN_s -W\s*\sN_s \0 \0 -T_s \0 T_d \0 -\\DeltaH_h \0 \\DeltaH_s \0 true 0.000001 false LINEAR 300 250
-265 176 -152 656 -68 0 1 4 6 16 0 false 2 1 false 5 0 false Balance\sSheet \0 Households_b Production_b Government_b Σ Money\sstock 0 0 0 0 SECTOR SECTOR SECTOR COMPUTED H_h \0 -H_s \0 true 0.000001 false LINEAR 300 250
+x 96 32 509 35 4 24 EquationTable\sCURRENT\sMode\sDemo 808080FF
+x 96 64 547 67 4 14 Demonstrates\sCURRENT\smode:\sequation\svalue\sbecomes\scurrent\ssource 808080FF
+x 96 96 525 99 4 12 Current\sflows\sFROM\soutput\snode\sTO\starget\snode.\sR1\sconverts\scurrent\sto\svoltage. 666666FF
+266 128 176 255 292 0 Current.Demo 5 rate 2 \0 r 0.5 0 \0 1 scale rate \0 s 0.5 0 \0 1 T_d \\theta*W \0 c 0.5 0 \0 1 Y8 G_d\s-\sT_d \0 d 0.5 1 Y9 1 Flow rate 1 f 0.5 1 Load 1
+207 304 -128 368 -128 100 Flow
+207 528 224 480 224 100 Load
+r 576 224 576 288 0 100
+g 576 288 576 320 0 0
+w 528 224 576 224 3
+x 417 511 651 514 4 14 Load\snode\sreceives\scurrent\sfrom\sFlow 4488FFFF
+x 128 352 369 355 4 14 CURRENT\smode:\sFlow\s→\starget:\sLoad 00AA00FF
+x 421 402 636 405 4 12 V(Load)\s\q\sFlow\s*\sR1\s\q\s10\s*\s100\s\q\s1000V 666666FF
+x 96 416 274 419 4 12 Try\sadjusting\srate\sor\sscale\s(hover\s \sscroll)\sto\schange\sthe\sflow!\sWatch\sLoad\svoltage\schange.
+266 552 -128 670 -12 2 Parameters 5 \\alpha_1 0.6 \0 \0 0.5 0 \0 1 \\alpha_2 0.4 \0 \0 0.5 0 \0 1 \\theta 0.2 \0 \0 0.5 0 \0 1 G_d 20 \0 \0 0.5 0 \0 1 W 1 \0 \0 0.5 0 \0 1
+c 592 32 592 96 4 1 1980.9909999997212 0.001 0
+207 656 32 704 32 36 Y9
+w 656 32 592 32 3
+g 592 96 592 112 0 0
+207 720 96 768 96 36 Y8
+r 720 96 720 160 0 100
+g 720 160 720 192 0 0
+268 304 -128 304 -96 0 Sector 0 1
+207 304 -128 400 -176 100 Y8
+431 80 -176 112 -144 0 100 true false
 % AST 0 2
-% Hint C_s Consumption\sgoods\sSupply/Demand
-% Hint G_s Services\ssupplied\sto\s/\sdemand\sby\sGovt
-% Hint T_s Tax
-% Hint N_s Supply/Demand\sfor\slabour
-% Hint YD Disposable\sIncome
-% Hint T_d Tax
-% Hint C_d Consumption\sgoods\sSupply/Demand
-% Hint H_s cash\smoney,\ssupplied\sby\sthe\scentral\sbank\s(CAPACITOR\smode)
-% Hint H_h Cash\smoney\sheld\sby\shouseholds\s(CAPACITOR\smode)
-% Hint Y Output
-% Hint N_d Supply/Demand\sfor\slabour
-% Hint \alpha_1 Propensity\sto\sSpend\sIncome
-% Hint \alpha_2 Propensity\sto\sSpend\sWealth
-% Hint \theta Tax\sRate
-% Hint G_d Government\sdemad\sfor\sservices
-% Hint W Nominal\sWages\sRate
+% Hint Y4 hint4
+% Hint T_d hint3
+% Hint Y3 hint3
+% Hint Y8 hint4
+% Hint T_dd hint3

@@ -84,11 +84,11 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      */
     public enum RowOutputMode {
         /** Voltage mode (default): stamps voltage source, equation = voltage value */
-        VOLTAGE,
-        /** Current mode: stamps current source between two nodes, equation = flow rate */
-        CURRENT,
-        /** Capacitor mode: stamps companion model, equation = net inflow current */
-        CAPACITOR
+        VOLTAGE_MODE,
+        /** Flow mode: stamps current source between two nodes, equation = flow rate */
+        FLOW_MODE,
+        /** Sector mode: stamps companion model, equation = net inflow current */
+        SECTOR_MODE
     }
     
     //=============================================================================
@@ -157,6 +157,9 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** Track which linear rows need deferred VCVS stamping in postStamp() */
     private boolean[] needsPostStamp;
     
+    /** Track which rows contain diff() expressions (precomputed for convergence) */
+    private boolean[] hasDiffExpr;
+    
     /** Linear term coefficients for each row: nodeName -> coefficient */
     @SuppressWarnings("unchecked")
     private java.util.HashMap<String, Double>[] linearTerms = new java.util.HashMap[MAX_ROWS];
@@ -167,32 +170,35 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** Whether all alias rows have been successfully resolved to target nodes */
     private boolean aliasesResolved;
     
+    /** Whether row classifications are up to date (avoids redundant recomputation) */
+    private boolean classificationsValid;
+    
     //=============================================================================
     // INSTANCE STATE - Per-Row Output Mode Arrays
     //=============================================================================
     
-    /** Output mode per row (VOLTAGE, CURRENT, or CAPACITOR) */
+    /** Output mode per row (VOLTAGE_MODE, FLOW_MODE, or SECTOR_MODE) */
     private RowOutputMode[] outputModes;
     
-    /** For CURRENT mode: target node name (flow goes FROM output name TO target) */
+    /** For FLOW_MODE: target node name (flow goes FROM output name TO target) */
     private String[] targetNodeNames;
     
-    /** For CAPACITOR mode: capacitance value (default 1.0) */
+    /** For SECTOR_MODE: capacitance value (default 1.0) */
     private double[] capacitances;
     
-    /** For CAPACITOR mode: last timestep voltage (for companion model) */
+    /** For SECTOR_MODE: last timestep voltage (for companion model) */
     private double[] capLastVoltages;
     
-    /** For CAPACITOR mode: last timestep current (for trapezoidal integration) */
+    /** For SECTOR_MODE: last timestep current (for trapezoidal integration) */
     private double[] capLastCurrents;
     
-    /** For CAPACITOR mode: current source value computed in startIteration */
+    /** For SECTOR_MODE: current source value computed in startIteration */
     private double[] capCurSourceValue;
     
-    /** For CURRENT mode: resolved target node number (-1 if unresolved) */
+    /** For FLOW_MODE: resolved target node number (-1 if unresolved) */
     private int[] targetNodeNumbers;
     
-    /** For CURRENT mode: computed flow value (for display and getCurrentIntoNode) */
+    /** For FLOW_MODE: computed flow value (for display and getCurrentIntoNode) */
     private double[] flowValues;
     
     //=============================================================================
@@ -418,7 +424,9 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         isAliasRow = new boolean[MAX_ROWS];
         isLinearRow = new boolean[MAX_ROWS];
         needsPostStamp = new boolean[MAX_ROWS];
+        hasDiffExpr = new boolean[MAX_ROWS];
         linearConstant = new double[MAX_ROWS];
+        classificationsValid = false;
         
         // Initialize output mode arrays
         outputModes = new RowOutputMode[MAX_ROWS];
@@ -443,7 +451,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             initialValueApplied[i] = false;
             
             // Output mode defaults
-            outputModes[i] = RowOutputMode.VOLTAGE;
+            outputModes[i] = RowOutputMode.VOLTAGE_MODE;
             targetNodeNames[i] = "";
             capacitances[i] = 1.0;
             capLastVoltages[i] = 0.0;
@@ -511,7 +519,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             sim.cvcontext.setFont(rowFontSpec);
             int scrollIconWidth = opsize == 1 ? 10 : 14;
             int valueSpacing = opsize == 1 ? 16 : 20;
-            // valueSpacing = 10; // No extra spacing needed
 
             for (int row = 0; row < rowCount; row++) {
                 String displayText = outputNames[row] + " = " + equations[row];
@@ -526,27 +533,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 }
                 maxTextWidth = Math.max(maxTextWidth, rowWidth);
             }
-        } /* else {
-            // Fallback: estimate using average character widths
-            double avgCharWidth = opsize == 1 ? 4.5 : 5.5;
-            double titleCharWidth = opsize == 1 ? 5.5 : 6.5;
-            maxTextWidth = Math.max(maxTextWidth, (int)(tableName.length() * titleCharWidth));
-            
-            int scrollIconWidth = opsize == 1 ? 10 : 14;
-            int valueSpacing = opsize == 1 ? 20 : 24;
-            
-            for (int row = 0; row < rowCount; row++) {
-                String displayText = outputNames[row] + " = " + equations[row];
-                int rowWidth = scrollIconWidth + (int)(displayText.length() * avgCharWidth) + valueSpacing;
-                
-                String initEq = initialEquations[row];
-                if (initEq != null && !initEq.trim().isEmpty()) {
-                    double initCharWidth = opsize == 1 ? 3.5 : 4.5;
-                    rowWidth += (int)((initEq.length() + 2) * initCharWidth);
-                }
-                maxTextWidth = Math.max(maxTextWidth, rowWidth);
-            }
-        } */
+        }
         
         // Calculate final dimensions with padding
         tableWidth = Math.max(80, maxTextWidth + cellPadding * 2);
@@ -586,8 +573,8 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     }
     
     /** 
-     * @return Number of voltage sources needed - one per VOLTAGE mode row with valid output name.
-     * CURRENT and CAPACITOR modes don't use voltage sources.
+     * @return Number of voltage sources needed - one per VOLTAGE_MODE row with valid output name.
+     * FLOW_MODE and SECTOR_MODE don't use voltage sources.
      * This counts voltage sources before findLabeledNodes() runs, so we count all valid rows.
      */
     int getVoltageSourceCount() { 
@@ -598,9 +585,8 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         for (int row = 0; row < rowCount; row++) {
             if (isAliasRow[row]) continue;  // Aliases need no voltage source
             // Only VOLTAGE mode uses voltage sources
-            if (outputModes[row] != RowOutputMode.VOLTAGE) continue;
-            String outputName = outputNames[row];
-            if (outputName != null && !outputName.trim().isEmpty()) {
+            if (outputModes[row] != RowOutputMode.VOLTAGE_MODE) continue;
+            if (isValidOutputName(row)) {
                 count++;
             }
         }
@@ -610,8 +596,8 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /**
      * Override getInternalNodeCount to create internal nodes for rows
      * that do NOT have an existing LabeledNode on the canvas.
-     * CURRENT mode doesn't need internal nodes (uses existing labeled nodes for source/target).
-     * VOLTAGE and CAPACITOR modes may need internal nodes.
+     * FLOW_MODE doesn't need internal nodes (uses existing labeled nodes for source/target).
+     * VOLTAGE_MODE and SECTOR_MODE may need internal nodes.
      */
     int getInternalNodeCount() {
         if (!isMnaMode()) return 0;
@@ -620,12 +606,11 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         int count = 0;
         for (int row = 0; row < rowCount; row++) {
             if (isAliasRow[row]) continue;  // Aliases share target node, need no internal node
-            // CURRENT mode doesn't need internal nodes
-            if (outputModes[row] == RowOutputMode.CURRENT) continue;
-            String outputName = outputNames[row];
-            if (outputName != null && !outputName.trim().isEmpty()) {
+            // FLOW_MODE doesn't need internal nodes
+            if (outputModes[row] == RowOutputMode.FLOW_MODE) continue;
+            if (isValidOutputName(row)) {
                 // Only need internal node if NO existing LabeledNode
-                Integer existingNode = LabeledNodeElm.getByName(outputName.trim());
+                Integer existingNode = LabeledNodeElm.getByName(outputNames[row].trim());
                 if (existingNode == null || existingNode < 0) {
                     count++;
                 }
@@ -635,13 +620,12 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     }
     
     /** @return true if any row has a non-constant, non-alias, non-linear expression requiring iterative solving,
-     *  or if any row uses CURRENT or CAPACITOR output mode (which always require doStep) */
+     *  or if any row uses FLOW_MODE or SECTOR_MODE output mode (which always require doStep) */
     boolean nonLinear() {
         updateRowClassifications();
         for (int row = 0; row < rowCount; row++) {
-            // CURRENT and CAPACITOR modes always require doStep() evaluation
-            if (outputModes[row] == RowOutputMode.CURRENT || outputModes[row] == RowOutputMode.CAPACITOR) {
-                CirSim.console("[EquationTableElm." + tableName + "] nonLinear() returning TRUE due to row " + row + " mode=" + outputModes[row]);
+            // FLOW_MODE and SECTOR_MODE always require doStep() evaluation
+            if (outputModes[row] == RowOutputMode.FLOW_MODE || outputModes[row] == RowOutputMode.SECTOR_MODE) {
                 return true;
             }
             // VOLTAGE mode: check expression linearity
@@ -652,7 +636,8 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     }
     
     /**
-     * Update isConstantRow and isAliasRow flags based on compiled expressions.
+     * Update isConstantRow, isAliasRow, isLinearRow, and hasDiffExpr flags
+     * based on compiled expressions.
      * 
      * Row classifications (checked in priority order):
      * 1. ALIAS: Expression is a bare node reference (E_NODE_REF), e.g. "Cs ~ Cd".
@@ -660,17 +645,26 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      *    no internal node, no matrix row needed. Eliminates 2 matrix rows per alias.
      * 2. CONSTANT: Expression contains only literal values and pure math, e.g. "rl ~ 0.025".
      *    Stamped once as a linear DC voltage source.
-     * 3. DYNAMIC: Everything else — requires nonlinear doStep() evaluation.
+     * 3. LINEAR: Expression is a linear combination of node refs, e.g. "Y ~ Cs + Is".
+     *    Stamped as VCVS (no iteration needed).
+     * 4. DYNAMIC: Everything else — requires nonlinear doStep() evaluation.
+     * 
+     * Results are cached; call {@link #invalidateClassifications()} when equations change.
      */
     private void updateRowClassifications() {
+        if (classificationsValid) return;
         for (int row = 0; row < rowCount; row++) {
             isConstantRow[row] = false;
             isAliasRow[row] = false;
             isLinearRow[row] = false;
+            hasDiffExpr[row] = false;
             linearTerms[row] = null;
             linearConstant[row] = 0.0;
             
             if (compiledExprs[row] == null) continue;
+            
+            // Precompute diff() presence for convergence checks
+            hasDiffExpr[row] = equations[row].contains("diff");
             
             String initEq = initialEquations[row];
             boolean hasInitEq = (initEq != null && !initEq.trim().isEmpty());
@@ -682,13 +676,16 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             }
             
             // Check constant (pure literal math with no initial equation)
-            if (!hasInitEq && compiledExprs[row].isConstant()) {
+            // FLOW_MODE and SECTOR_MODE need to stamp every iteration, so they're never "constant"
+            if (!hasInitEq && compiledExprs[row].isConstant() && 
+                outputModes[row] == RowOutputMode.VOLTAGE_MODE) {
                 isConstantRow[row] = true;
                 continue;
             }
             
             // Check linear combination (e.g., Y ~ Cs + Is, Y ~ 2*Cs - 3)
-            if (!hasInitEq) {
+            // Only for VOLTAGE_MODE - FLOW_MODE/SECTOR_MODE need to stamp every iteration
+            if (!hasInitEq && outputModes[row] == RowOutputMode.VOLTAGE_MODE) {
                 java.util.HashMap<String, Double> terms = new java.util.HashMap<String, Double>();
                 Double constTerm = compiledExprs[row].getLinearTerms(terms);
                 if (constTerm != null && !terms.isEmpty()) {
@@ -699,11 +696,59 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 }
             }
         }
+        classificationsValid = true;
     }
     
-    // Keep old name for any external callers
-    private void updateConstantFlags() {
-        updateRowClassifications();
+    /**
+     * Mark row classifications as stale. Call when equations, output modes,
+     * or initial equations change.
+     */
+    private void invalidateClassifications() {
+        classificationsValid = false;
+    }
+    
+    //=============================================================================
+    // HELPERS - Used across evaluation and registration methods
+    //=============================================================================
+    
+    /**
+     * Check if a row's output name is non-null and non-empty.
+     * Consolidates the repeated `name != null && !name.trim().isEmpty()` pattern.
+     * @param row Row index
+     * @return true if the output name is usable
+     */
+    private boolean isValidOutputName(int row) {
+        String name = outputNames[row];
+        return name != null && !name.trim().isEmpty();
+    }
+    
+    /**
+     * Prepare the evaluation state for a row before evaluating its expression.
+     * Sets slider value, time, and registers the slider variable in ComputedValues.
+     * @param row Row index
+     * @return The prepared ExprState, ready for eval()
+     */
+    private ExprState prepareEvalState(int row) {
+        ExprState state = exprStates[row];
+        state.values[0] = sliderValues[row];
+        state.t = sim.t;
+        
+        String sliderVar = sliderVarNames[row];
+        if (sliderVar != null && !sliderVar.isEmpty()) {
+            ComputedValues.setComputedValue(sliderVar, sliderValues[row]);
+        }
+        return state;
+    }
+    
+    /**
+     * Register a row's output value in ComputedValues by its output name.
+     * @param row Row index
+     * @param value Value to register
+     */
+    private void registerOutputValue(int row, double value) {
+        if (isValidOutputName(row)) {
+            ComputedValues.setComputedValue(outputNames[row].trim(), value);
+        }
     }
     
     /**
@@ -762,9 +807,11 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /**
      * Parse the initial value equation for a specific row.
+     * Invalidates cached row classifications since initial equations affect classification.
      * @param row Row index
      */
     private void parseInitialEquation(int row) {
+        invalidateClassifications();
         String initEq = initialEquations[row];
         if (initEq == null || initEq.trim().isEmpty()) {
             compiledInitialExprs[row] = null;
@@ -795,9 +842,11 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /**
      * Parse the main equation for a specific row.
      * Compiles the equation string into an expression tree for efficient evaluation.
+     * Invalidates cached row classifications since expression content changed.
      * @param row Row index
      */
     private void parseEquation(int row) {
+        invalidateClassifications();
         if (DEBUG) {
             CirSim.console("[EquationTableElm." + tableName + "] Parsing row " + row + ": '" + equations[row] + "'");
         }
@@ -845,7 +894,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         
         // For diff() equations, increase tolerance to account for division by timestep
         // which amplifies small input variations
-        if (equations[row].contains("diff")) {
+        if (hasDiffExpr[row]) {
             relativeTolerance *= 10;  // 10x more lenient for diff equations
         }
         
@@ -880,9 +929,9 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * Otherwise, use our internal node and register it in labelList.
      * Called during stamp() after internal nodes are allocated.
      * 
-     * CURRENT mode uses existing labeled nodes for source/target.
-     * CAPACITOR mode may need internal nodes if no LabeledNode exists.
-     * VOLTAGE mode uses voltage sources.
+     * FLOW_MODE uses existing labeled nodes for source/target.
+     * SECTOR_MODE may need internal nodes if no LabeledNode exists.
+     * VOLTAGE_MODE uses voltage sources.
      */
     private void findLabeledNodes() {
         labeledNodeNumbers = new int[rowCount];
@@ -898,21 +947,21 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             // Alias rows don't need nodes or voltage sources
             if (isAliasRow[row]) continue;
             
-            String outputName = outputNames[row];
-            if (outputName == null || outputName.trim().isEmpty()) continue;
+            if (!isValidOutputName(row)) continue;
+            String outputName = outputNames[row].trim();
             
-            // CURRENT mode uses existing labeled nodes only (no internal nodes)
-            if (outputModes[row] == RowOutputMode.CURRENT) {
-                Integer existingNodeNum = LabeledNodeElm.getByName(outputName.trim());
+            // FLOW_MODE uses existing labeled nodes only (no internal nodes)
+            if (outputModes[row] == RowOutputMode.FLOW_MODE) {
+                Integer existingNodeNum = LabeledNodeElm.getByName(outputName);
                 if (existingNodeNum != null && existingNodeNum >= 0) {
                     labeledNodeNumbers[row] = existingNodeNum;
                 }
                 continue;
             }
             
-            // CAPACITOR mode: use existing node or create internal node (no voltage source)
-            if (outputModes[row] == RowOutputMode.CAPACITOR) {
-                Integer existingNodeNum = LabeledNodeElm.getByName(outputName.trim());
+            // SECTOR_MODE: use existing node or create internal node (no voltage source)
+            if (outputModes[row] == RowOutputMode.SECTOR_MODE) {
+                Integer existingNodeNum = LabeledNodeElm.getByName(outputName);
                 if (existingNodeNum != null && existingNodeNum >= 0) {
                     labeledNodeNumbers[row] = existingNodeNum;
                 } else {
@@ -920,7 +969,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                     if (nodes != null && internalNodeIdx < nodes.length) {
                         int internalNode = nodes[internalNodeIdx];
                         labeledNodeNumbers[row] = internalNode;
-                        registerInternalNodeAsLabel(outputName.trim(), internalNode);
+                        registerInternalNodeAsLabel(outputName, internalNode);
                         internalNodeIdx++;
                     }
                 }
@@ -928,7 +977,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             }
             
             // VOLTAGE mode: Check if a LabeledNode already exists on canvas
-            Integer existingNodeNum = LabeledNodeElm.getByName(outputName.trim());
+            Integer existingNodeNum = LabeledNodeElm.getByName(outputName);
             
             if (existingNodeNum != null && existingNodeNum >= 0) {
                 // Use existing LabeledNode's node - drive it with our voltage source
@@ -942,7 +991,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                     labeledNodeNumbers[row] = internalNode;
                     
                     // Register this internal node so other elements can find it by name
-                    registerInternalNodeAsLabel(outputName.trim(), internalNode);
+                    registerInternalNodeAsLabel(outputName, internalNode);
                     
                     internalNodeIdx++;
                     
@@ -980,8 +1029,8 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         for (int row = 0; row < rowCount; row++) {
             if (!isAliasRow[row]) continue;
             
-            String outputName = outputNames[row];
-            if (outputName == null || outputName.trim().isEmpty()) continue;
+            if (!isValidOutputName(row)) continue;
+            String outputName = outputNames[row].trim();
             
             String targetName = compiledExprs[row].getNodeName();
             if (targetName == null) continue;
@@ -990,7 +1039,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             Integer targetNodeNum = LabeledNodeElm.getByName(targetName);
             if (targetNodeNum != null && targetNodeNum >= 0) {
                 // Register output name as pointing to the same node
-                registerInternalNodeAsLabel(outputName.trim(), targetNodeNum);
+                registerInternalNodeAsLabel(outputName, targetNodeNum);
                 labeledNodeNumbers[row] = targetNodeNum;
                 
                 if (DEBUG) {
@@ -1024,10 +1073,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                     double constantValue = compiledExprs[row].eval(exprStates[row]);
                     outputValues[row] = constantValue;
                     lastOutputValues[row] = constantValue;
-                    String outputName = outputNames[row];
-                    if (outputName != null && !outputName.trim().isEmpty()) {
-                        ComputedValues.setComputedValue(outputName.trim(), constantValue);
-                    }
+                    registerOutputValue(row, constantValue);
                 }
                 // Alias rows in pure mode: no action needed at stamp time.
                 // In doStep(), we'll copy the target's value to the alias name.
@@ -1049,13 +1095,13 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             RowOutputMode mode = outputModes[row];
             
             switch (mode) {
-            case VOLTAGE:
+            case VOLTAGE_MODE:
                 stampVoltageModeRow(row);
                 break;
-            case CURRENT:
+            case FLOW_MODE:
                 stampCurrentModeRow(row);
                 break;
-            case CAPACITOR:
+            case SECTOR_MODE:
                 stampCapacitorModeRow(row);
                 break;
             }
@@ -1079,11 +1125,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 outputValues[row] = constantValue;
                 lastOutputValues[row] = constantValue;
                 
-                // Register in ComputedValues so other elements can reference it
-                String outputName = outputNames[row];
-                if (outputName != null && !outputName.trim().isEmpty()) {
-                    ComputedValues.setComputedValue(outputName.trim(), constantValue);
-                }
+                registerOutputValue(row, constantValue);
             } else if (isLinearRow[row]) {
                 // Linear expression: stamp as VCVS (Voltage Controlled Voltage Source)
                 // For Y ~ c1*N1 + c2*N2 + const, stamp:
@@ -1128,7 +1170,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     }
     
     /**
-     * Stamp a CURRENT mode row - injects current between source and target nodes.
+     * Stamp a FLOW_MODE row - injects current between source and target nodes.
      * Equation value is evaluated in doStep() and stamped as current source.
      * 
      * Current flows FROM the source node (row's output name/labeled node) 
@@ -1140,17 +1182,17 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         if (sourceNode == null || sourceNode < 0) {
             if (DEBUG) {
                 CirSim.console("[EquationTableElm." + tableName + 
-                    "] CURRENT row '" + outputNames[row] + "': source node not found");
+                    "] FLOW_MODE row '" + outputNames[row] + "': source node not found");
             }
             return;
         }
         
-        // Resolve target node - CURRENT mode requires explicit target
+        // Resolve target node - FLOW_MODE requires explicit target
         String targetName = targetNodeNames[row];
         if (targetName == null || targetName.trim().isEmpty()) {
             if (DEBUG) {
                 CirSim.console("[EquationTableElm." + tableName + 
-                    "] CURRENT row '" + outputNames[row] + "': no target specified");
+                    "] FLOW_MODE row '" + outputNames[row] + "': no target specified");
             }
             return;
         }
@@ -1163,7 +1205,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             if (targetNode == null || targetNode < 0) {
                 if (DEBUG) {
                     CirSim.console("[EquationTableElm." + tableName + 
-                        "] CURRENT row '" + outputNames[row] + "': target '" + targetName + "' not found");
+                        "] FLOW_MODE row '" + outputNames[row] + "': target '" + targetName + "' not found");
                 }
                 return;
             }
@@ -1185,13 +1227,13 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         
         if (DEBUG) {
             CirSim.console("[EquationTableElm." + tableName + 
-                "] CURRENT row '" + outputNames[row] + "' → '" + targetName + 
+                "] FLOW_MODE row '" + outputNames[row] + "' → '" + targetName + 
                 "': stamped nonlinear nodes " + sourceNode + " → " + targetNode);
         }
     }
     
     /**
-     * Stamp a CAPACITOR mode row - integrating current source with companion model.
+     * Stamp a SECTOR_MODE row - integrating current source with companion model.
      * Equation evaluates to inflow rate, which is integrated via capacitor dynamics.
      * 
      * Companion model: resistor R = dt/C in parallel with history current source.
@@ -1203,7 +1245,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         if (sourceNode == null || sourceNode < 0) {
             if (DEBUG) {
                 CirSim.console("[EquationTableElm." + tableName + 
-                    "] CAPACITOR row '" + outputNames[row] + "': source node not found");
+                    "] SECTOR_MODE row '" + outputNames[row] + "': source node not found");
             }
             return;
         }
@@ -1214,12 +1256,13 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         if (targetName == null || targetName.trim().isEmpty() || targetName.trim().equalsIgnoreCase("gnd")) {
             // Empty or "gnd" means connect to ground (node 0)
             targetNode = 0;
+
         } else {
             targetNode = LabeledNodeElm.getByName(targetName.trim());
             if (targetNode == null || targetNode < 0) {
                 if (DEBUG) {
                     CirSim.console("[EquationTableElm." + tableName + 
-                        "] CAPACITOR row '" + outputNames[row] + "': target '" + targetName + "' not found");
+                        "] SECTOR_MODE row '" + outputNames[row] + "': target '" + targetName + "' not found");
                 }
                 return;
             }
@@ -1234,11 +1277,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         if (cap <= 0) cap = 1.0; // Safeguard
         double compResistance = sim.timeStep / cap;
         
-        // // Always log CAPACITOR stamp for debugging
-        // CirSim.console("[CAPACITOR STAMP] row " + row + " '" + outputNames[row] + "' → '" + targetName + 
-        //     "': C=" + cap + " dt=" + sim.timeStep + " R=" + compResistance + 
-        //     " sourceNode=" + sourceNode + " targetNode=" + targetNode);
-        
         // Stamp companion resistor between source and target nodes
         sim.stampResistor(sourceNode, targetNode, compResistance);
         
@@ -1252,8 +1290,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         // Also mark for right-side changes (current source will be stamped in doStep)
         sim.stampRightSide(sourceNode);
         sim.stampRightSide(targetNode);
-        
-        // CirSim.console("[CAPACITOR STAMP] row " + row + ": stamped resistor, marked nonlinear and rsChanges");
     }
     
     /**
@@ -1277,10 +1313,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
         
         // Register initial value in ComputedValues
-        String outputName = outputNames[row];
-        if (outputName != null && !outputName.trim().isEmpty()) {
-            ComputedValues.setComputedValue(outputName.trim(), linearConstant[row]);
-        }
+        registerOutputValue(row, linearConstant[row]);
         
         if (DEBUG) {
             CirSim.console("[EquationTableElm." + tableName + 
@@ -1356,7 +1389,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * Resolves any alias rows whose targets weren't available during stamp()
      * (due to stamp ordering — target table may stamp after this table).
      * Also seeds alias ComputedValues for the upcoming doStep cycle.
-     * Calculates capacitor history currents for CAPACITOR mode rows.
+     * Calculates capacitor history currents for SECTOR_MODE rows.
      */
     @Override
     public void startIteration() {
@@ -1371,8 +1404,8 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         if (isMnaMode()) {
             for (int row = 0; row < rowCount; row++) {
                 if (!isAliasRow[row]) continue;
-                String outputName = outputNames[row];
-                if (outputName == null || outputName.trim().isEmpty()) continue;
+                if (!isValidOutputName(row)) continue;
+                String outputName = outputNames[row].trim();
                 
                 String targetName = compiledExprs[row].getNodeName();
                 if (targetName != null) {
@@ -1380,14 +1413,14 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                     double val = sim.getLabeledNodeVoltage(targetName);
                     outputValues[row] = val;
                     // Write directly to current buffer so it's available during doStep
-                    ComputedValues.setComputedValueDirect(outputName.trim(), val);
+                    ComputedValues.setComputedValueDirect(outputName, val);
                 }
             }
             
-            // Calculate capacitor history currents for CAPACITOR mode rows
+            // Calculate capacitor history currents for SECTOR_MODE rows
             // Uses backward Euler: I_hist = -V_last / R where R = dt/C
             for (int row = 0; row < rowCount; row++) {
-                if (outputModes[row] != RowOutputMode.CAPACITOR) continue;
+                if (outputModes[row] != RowOutputMode.SECTOR_MODE) continue;
                 
                 double cap = capacitances[row];
                 if (cap <= 0) cap = 1.0;
@@ -1396,11 +1429,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 // History current based on last voltage difference
                 // I_hist = -V_last / R (backward Euler)
                 capCurSourceValue[row] = -capLastVoltages[row] / compResistance;
-                
-                // Always log for CAPACITOR debugging
-                    // CirSim.console("[CAPACITOR startIteration] row " + row + " '" + outputNames[row] + 
-                    // //     "': V_last=" + capLastVoltages[row] + " C=" + cap + " R=" + compResistance + 
-                    // //     " I_hist=" + capCurSourceValue[row]);
             }
         }
     }
@@ -1418,12 +1446,11 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             // (Still need to update outputValues for display purposes)
             if (isLinearRow[row] && isMnaMode()) {
                 // Read the computed voltage from the labeled node
-                String outputName = outputNames[row];
-                if (outputName != null && !outputName.trim().isEmpty()) {
-                    double val = sim.getLabeledNodeVoltage(outputName.trim());
+                if (isValidOutputName(row)) {
+                    double val = sim.getLabeledNodeVoltage(outputNames[row].trim());
                     outputValues[row] = val;
                     lastOutputValues[row] = val;
-                    ComputedValues.setComputedValue(outputName.trim(), val);
+                    registerOutputValue(row, val);
                 }
                 continue;
             }
@@ -1442,25 +1469,20 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 }
                 outputValues[row] = val;
                 lastOutputValues[row] = val;
-                String outputName = outputNames[row];
-                if (outputName != null && !outputName.trim().isEmpty()) {
-                    ComputedValues.setComputedValue(outputName.trim(), val);
-                }
+                registerOutputValue(row, val);
                 continue;
             }
             
             // Handle initial value at t=0
             if (sim.t == 0 && compiledInitialExprs[row] != null) {
-                // On first sub-iteration, use 0 as placeholder for VOLTAGE mode
-                // For CAPACITOR mode, we need to stamp something reasonable
+                // On first sub-iteration, use 0 as placeholder for VOLTAGE_MODE
+                // For SECTOR_MODE, we need to stamp something reasonable
                 if (sim.subIterations == 0 && !initialValueApplied[row]) {
-                    // CirSim.console("[CAPACITOR doStep] row " + row + " t=0 subIter=0: placeholder stamp");
                     outputValues[row] = 0;
-                    if (outputModes[row] == RowOutputMode.CAPACITOR) {
-                        // CAPACITOR: stamp zero current for now, will be corrected on next subiteration
+                    if (outputModes[row] == RowOutputMode.SECTOR_MODE) {
+                        // SECTOR_MODE: stamp zero current for now, will be corrected on next subiteration
                         int sourceNode = labeledNodeNumbers[row];
                         int targetNode = targetNodeNumbers[row];
-                        // CirSim.console("[CAPACITOR doStep] row " + row + ": stamping I=0 between " + sourceNode + " → " + targetNode);
                         if (sourceNode >= 0 && targetNode >= 0) {
                             sim.stampCurrentSource(sourceNode, targetNode, 0);
                         }
@@ -1473,14 +1495,13 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 
                 // Evaluate initial value and compute history current on first pass
                 if (!initialValueApplied[row]) {
-                    // CirSim.console("[CAPACITOR doStep] row " + row + " t=0 subIter=" + sim.subIterations + ": evaluating initial value");
                     evaluateInitialValue(row);
                     continue;
                 }
                 
                 // After initial value is computed, KEEP stamping the history current on subsequent iterations
                 // (circuitRightSide gets reset each iteration, so we must re-stamp)
-                if (outputModes[row] == RowOutputMode.CAPACITOR) {
+                if (outputModes[row] == RowOutputMode.SECTOR_MODE) {
                     int sourceNode = labeledNodeNumbers[row];
                     int targetNode = targetNodeNumbers[row];
                     if (sourceNode >= 0 && targetNode >= 0) {
@@ -1492,8 +1513,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                         double inflowValue = flowValues[row]; // also stored from evaluateInitialValue
                         // inflowValue is current INTO node, so SUBTRACT (negative = into)
                         double totalCurrent = historyCurrent - inflowValue;
-                        // CirSim.console("[CAPACITOR doStep] row " + row + " t=0 subIter=" + sim.subIterations + 
-                        //     ": re-stamping history current I=" + totalCurrent);
                         sim.stampCurrentSource(sourceNode, targetNode, totalCurrent);
                     }
                 }
@@ -1503,17 +1522,13 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             // Normal timestep: evaluate based on output mode
             RowOutputMode mode = outputModes[row];
             
-            if (mode == RowOutputMode.CURRENT) {
+            if (mode == RowOutputMode.FLOW_MODE) {
                 evaluateCurrentModeRow(row);
-            } else if (mode == RowOutputMode.CAPACITOR) {
+            } else if (mode == RowOutputMode.SECTOR_MODE) {
                 evaluateCapacitorModeRow(row);
             } else {
-                // VOLTAGE mode - original behavior
-                if (isMnaMode()) {
-                    evaluateMainEquationMna(row);
-                } else {
-                    evaluateMainEquationPure(row);
-                }
+                // VOLTAGE mode - handles both pure and MNA
+                evaluateVoltageModeRow(row);
             }
         }
     }
@@ -1545,20 +1560,13 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         // Handle based on output mode
         RowOutputMode mode = outputModes[row];
         
-        if (mode == RowOutputMode.CAPACITOR) {
-            // CAPACITOR mode: initial value is the starting stock voltage
-            // Initialize capLastVoltages so the first history current is correct
+        if (mode == RowOutputMode.SECTOR_MODE) {
+            // SECTOR_MODE: initial value is the starting stock voltage
             capLastVoltages[row] = initialValue;
             
-            // CirSim.console("[CAPACITOR evaluateInitialValue] row " + row + " '" + outputNames[row] + 
-            //     "': initialValue=" + initialValue + " (from initial expr '" + initialEquations[row] + "')");
-            
-            // Also stamp the correct current source for this initial voltage
-            // Since startIteration() already ran with capLastVoltages=0, we need to stamp here
+            // Stamp the correct current source for this initial voltage
             int sourceNode = labeledNodeNumbers[row];
             int targetNode = targetNodeNumbers[row];
-            
-            // CirSim.console("[CAPACITOR evaluateInitialValue] row " + row + ": sourceNode=" + sourceNode + " targetNode=" + targetNode);
             
             if (sourceNode >= 0 && targetNode >= 0) {
                 double cap = capacitances[row];
@@ -1579,9 +1587,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 // Inflow is conceptually current INTO Stock, so SUBTRACT it (since negative = into)
                 double totalCurrent = historyCurrent - inflowValue;
                 
-                // CirSim.console("[CAPACITOR evaluateInitialValue] row " + row + ": C=" + cap + " R=" + compResistance + 
-                //     " inflowValue=" + inflowValue + " historyCurrent=" + historyCurrent + " totalCurrent=" + totalCurrent);
-                
                 sim.stampCurrentSource(sourceNode, targetNode, totalCurrent);
                 
                 // CRITICAL: Force another iteration so the solver actually applies this current
@@ -1589,8 +1594,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 
                 // Update capCurSourceValue for next startIteration
                 capCurSourceValue[row] = historyCurrent;
-            } else {
-                // CirSim.console("[CAPACITOR evaluateInitialValue] row " + row + ": FAILED - nodes not valid!");
             }
         } else if (isMnaMode() && rowVoltSources != null && rowVoltSources[row] >= 0) {
             // VOLTAGE mode in MNA: stamp the initial value via stampRightSide
@@ -1599,10 +1602,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
         
         // Register immediately for other elements/rows to use
-        String outputName = outputNames[row];
-        if (outputName != null && !outputName.trim().isEmpty()) {
-            ComputedValues.setComputedValue(outputName.trim(), initialValue);
-        }
+        registerOutputValue(row, initialValue);
         
         // Store initial value for re-stamping in subsequent iterations
         outputValues[row] = initialValue;
@@ -1615,11 +1615,13 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     }
     
     /**
-     * Evaluate the main equation for a row during normal simulation.
-     * Pure computational - writes to ComputedValues instead of MNA.
+     * Evaluate the main equation for a VOLTAGE mode row during normal simulation.
+     * Handles both pure computational and MNA modes:
+     * - Pure: writes result to ComputedValues
+     * - MNA: stamps result to voltage source in MNA matrix + ComputedValues
      * @param row Row index
      */
-    private void evaluateMainEquationPure(int row) {
+    private void evaluateVoltageModeRow(int row) {
         if (compiledExprs[row] == null) {
             if (DEBUG) {
                 CirSim.console("[EquationTableElm." + tableName + "] Row " + row + ": NULL compiled expression!");
@@ -1627,107 +1629,28 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             return;
         }
         
-        ExprState state = exprStates[row];
-        
-        // Set up evaluation context
-        state.values[0] = sliderValues[row];
-        state.t = sim.t;
-        
-        // Register slider as computed value for lookups
-        String sliderVar = sliderVarNames[row];
-        if (sliderVar != null && !sliderVar.isEmpty()) {
-            ComputedValues.setComputedValue(sliderVar, sliderValues[row]);
-        }
-        
-        // Evaluate the equation
+        ExprState state = prepareEvalState(row);
         double equationValue = compiledExprs[row].eval(state);
         
-        // Debug output for troubleshooting
         if (DEBUG) {
             logEquationEvaluation(row, state, equationValue);
         }
         
-        // Check equation convergence
         checkEquationConvergence(row, equationValue);
         lastOutputValues[row] = equationValue;
         outputValues[row] = equationValue;
         
-        // Register output in ComputedValues for other elements to use
-        String outputName = outputNames[row];
-        if (outputName != null && !outputName.trim().isEmpty()) {
-            ComputedValues.setComputedValue(outputName.trim(), equationValue);
-        }
-    }
-    
-    /**
-     * Evaluate the main equation for a row in MNA mode.
-     * Stamps the computed value to the voltage source in the MNA matrix.
-     * 
-     * Following INTERNALS.md and EquationElm pattern:
-     * - Calculate vn = voltage source row in matrix
-     * - Use stampRightSide(vn, value) to set the voltage
-     * 
-     * @param row Row index
-     */
-    private void evaluateMainEquationMna(int row) {
-        if (compiledExprs[row] == null) {
-            if (DEBUG) {
-                CirSim.console("[EquationTableElm." + tableName + "] Row " + row + ": NULL compiled expression!");
-            }
-            return;
-        }
-        
-        ExprState state = exprStates[row];
-        
-        // Set up evaluation context
-        state.values[0] = sliderValues[row];
-        state.t = sim.t;
-        
-        // Register slider as computed value for lookups
-        String sliderVar = sliderVarNames[row];
-        if (sliderVar != null && !sliderVar.isEmpty()) {
-            ComputedValues.setComputedValue(sliderVar, sliderValues[row]);
-        }
-        
-        // Evaluate the equation
-        double equationValue = compiledExprs[row].eval(state);
-        
-        // Debug output for troubleshooting
-        if (DEBUG) {
-            logEquationEvaluation(row, state, equationValue);
-        }
-        
-        // Check equation convergence
-        checkEquationConvergence(row, equationValue);
-        lastOutputValues[row] = equationValue;
-        outputValues[row] = equationValue;
-        
-        // Stamp to MNA matrix via stampRightSide (consistent with EquationElm)
-        // vn = voltage source row in matrix
-        if (rowVoltSources != null && rowVoltSources[row] >= 0) {
+        // MNA mode: stamp to matrix
+        if (isMnaMode() && rowVoltSources != null && rowVoltSources[row] >= 0) {
             int vn = voltSource + rowVoltSources[row] + sim.nodeList.size();
             sim.stampRightSide(vn, equationValue);
         }
         
-        // Also register in ComputedValues for consistency
-        String outputName = outputNames[row];
-        if (outputName != null && !outputName.trim().isEmpty()) {
-            ComputedValues.setComputedValue(outputName.trim(), equationValue);
-        }
-    }
-    
-    // Legacy method kept for compatibility
-    private void evaluateMainEquation(int row, int vn) {
-        if (isMnaMode()) {
-            evaluateMainEquationMna(row);
-        } else {
-            evaluateMainEquationPure(row);
-        }
+        registerOutputValue(row, equationValue);
     }
     
     /**
-     * Evaluate a CURRENT mode row - stamps current source between source and target nodes.
-     * Uses Newton-Raphson linearization for nonlinear expressions.
+     * Evaluate a FLOW_MODE row - stamps current source between source and target nodes.
      * 
      * Current flows FROM source node (outputNames[row]) TO target node (targetNodeNames[row]).
      * Equation value = current magnitude.
@@ -1735,7 +1658,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     private void evaluateCurrentModeRow(int row) {
         if (compiledExprs[row] == null) {
             if (DEBUG) {
-                CirSim.console("[EquationTableElm." + tableName + "] CURRENT row " + row + ": NULL compiled expression!");
+                CirSim.console("[EquationTableElm." + tableName + "] FLOW_MODE row " + row + ": NULL compiled expression!");
             }
             return;
         }
@@ -1746,22 +1669,12 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         if (sourceNode < 0 || targetNode < 0) {
             if (DEBUG) {
                 CirSim.console("[EquationTableElm." + tableName + 
-                    "] CURRENT row " + row + ": nodes not resolved (src=" + sourceNode + ", tgt=" + targetNode + ")");
+                    "] FLOW_MODE row " + row + ": nodes not resolved (src=" + sourceNode + ", tgt=" + targetNode + ")");
             }
             return;
         }
         
-        ExprState state = exprStates[row];
-        
-        // Set up evaluation context
-        state.values[0] = sliderValues[row];
-        state.t = sim.t;
-        
-        // Register slider as computed value for lookups
-        String sliderVar = sliderVarNames[row];
-        if (sliderVar != null && !sliderVar.isEmpty()) {
-            ComputedValues.setComputedValue(sliderVar, sliderValues[row]);
-        }
+        ExprState state = prepareEvalState(row);
         
         // Evaluate the equation to get flow value
         double flowValue = compiledExprs[row].eval(state);
@@ -1779,21 +1692,17 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         // Positive flowValue = current out of source, into target
         sim.stampCurrentSource(sourceNode, targetNode, flowValue);
         
-        // Register flow value in ComputedValues
-        String outputName = outputNames[row];
-        if (outputName != null && !outputName.trim().isEmpty()) {
-            ComputedValues.setComputedValue(outputName.trim(), flowValue);
-        }
+        registerOutputValue(row, flowValue);
         
         if (DEBUG && sim.subIterations == 0) {
             CirSim.console("[EquationTableElm." + tableName + 
-                "] CURRENT row '" + outputNames[row] + "': flow=" + flowValue + 
+                "] FLOW_MODE row '" + outputNames[row] + "': flow=" + flowValue + 
                 " from node " + sourceNode + " to " + targetNode);
         }
     }
     
     /**
-     * Evaluate a CAPACITOR mode row - companion model integration.
+     * Evaluate a SECTOR_MODE row - companion model integration.
      * Combines equation-based inflow with capacitor dynamics.
      * 
      * Companion model: resistor R = dt/C stamped in stamp(),
@@ -1802,42 +1711,23 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * Total current = history_current + equation_inflow
      */
     private void evaluateCapacitorModeRow(int row) {
-        // Always log for CAPACITOR debugging
-        // CirSim.console("[CAPACITOR] evaluateCapacitorModeRow row=" + row + " t=" + sim.t + " subIter=" + sim.subIterations);
-        
         if (compiledExprs[row] == null) {
-            CirSim.console("[CAPACITOR] row " + row + ": NULL compiled expression!");
+            CirSim.console("[SECTOR_MODE] row " + row + ": NULL compiled expression!");
             return;
         }
         
         int sourceNode = labeledNodeNumbers[row];
         int targetNode = targetNodeNumbers[row];
         
-        // CirSim.console("[CAPACITOR] row " + row + ": sourceNode=" + sourceNode + " targetNode=" + targetNode);
-        
         if (sourceNode < 0 || targetNode < 0) {
-            CirSim.console("[CAPACITOR] row " + row + ": nodes not resolved!");
+            CirSim.console("[SECTOR_MODE] row " + row + ": nodes not resolved!");
             return;
         }
         
-        ExprState state = exprStates[row];
-        
-        // Set up evaluation context
-        state.values[0] = sliderValues[row];
-        state.t = sim.t;
-        
-        // Register slider as computed value for lookups
-        String sliderVar = sliderVarNames[row];
-        if (sliderVar != null && !sliderVar.isEmpty()) {
-            ComputedValues.setComputedValue(sliderVar, sliderValues[row]);
-        }
+        ExprState state = prepareEvalState(row);
         
         // Evaluate the equation to get inflow rate
         double inflowValue = compiledExprs[row].eval(state);
-        
-        // CirSim.console("[CAPACITOR] row " + row + " '" + outputNames[row] + "': equation='" + equations[row] + 
-        //     "' inflowValue=" + inflowValue + " capCurSourceValue=" + capCurSourceValue[row] +
-        //     " capLastVoltages=" + capLastVoltages[row]);
         
         // Store for display
         flowValues[row] = inflowValue;
@@ -1852,8 +1742,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         // inflowValue is current INTO the Stock node, so we SUBTRACT it (negative = into node)
         double totalCurrent = capCurSourceValue[row] - inflowValue;
         
-        // CirSim.console("[CAPACITOR] row " + row + ": stamping current source from " + sourceNode + " to " + targetNode + " I=" + totalCurrent);
-        
         sim.stampCurrentSource(sourceNode, targetNode, totalCurrent);
         
         // Note: Do NOT register ComputedValues here - stepFinished() handles it correctly
@@ -1862,7 +1750,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         
         if (DEBUG && sim.subIterations == 0) {
             CirSim.console("[EquationTableElm." + tableName + 
-                "] CAPACITOR row '" + outputNames[row] + "': inflow=" + inflowValue + 
+                "] SECTOR_MODE row '" + outputNames[row] + "': inflow=" + inflowValue + 
                 ", history=" + capCurSourceValue[row] + ", total=" + totalCurrent);
         }
     }
@@ -1879,9 +1767,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         
         // For diff() equations, skip convergence check during early subiterations
         // because the input to diff() needs time to settle first
-        boolean hasDiff = equations[row].contains("diff");
-        
-        if (hasDiff && sim.subIterations < 5) {
+        if (hasDiffExpr[row] && sim.subIterations < 5) {
             // Don't report non-convergence yet - let input settle
             return;
         }
@@ -1900,40 +1786,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             // This row converged now, clear the failure
             failedConvergenceRow = -1;
             convergenceFailureInfo = null;
-        }
-    }
-    
-    /**
-     * Check if the output voltage has converged to the computed value.
-     * @param row Row index
-     */
-    private void checkVoltageConvergence(int row) {
-        double outputVoltage = volts[row];
-        double voltageDiff = Math.abs(outputVoltage - outputValues[row]);
-        double threshold = Math.max(Math.abs(outputValues[row]) * 0.01, 1e-6);
-        
-        // For diff() equations, use much larger threshold since derivative amplifies variations
-        boolean hasDiff = equations[row].contains("diff");
-        if (hasDiff) {
-            threshold = Math.max(Math.abs(outputValues[row]) * 0.1, 0.01);  // 10% or 0.01 minimum
-        }
-        
-        boolean converged = voltageDiff <= threshold || sim.subIterations >= 100;
-        
-        // Log voltage convergence for diff equations
-        if (hasDiff) {
-            CirSim.console("[diff voltage] " + outputNames[row] + " subIter=" + sim.subIterations +
-                ", voltageDiff=" + voltageDiff + ", threshold=" + threshold + 
-                ", converged=" + converged);
-        }
-        
-        if (!converged) {
-            sim.converged = false;
-            if (DEBUG) {
-                CirSim.console("  Voltage NOT converged: diff=" + voltageDiff + ", threshold=" + threshold + ", subIter=" + sim.subIterations);
-            }
-        } else if (DEBUG) {
-            CirSim.console("  Voltage converged");
         }
     }
     
@@ -1981,7 +1833,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /**
      * Called after a successful timestep is completed.
      * Registers outputs as labeled nodes and updates expression states.
-     * Saves capacitor state for CAPACITOR mode rows.
+     * Saves capacitor state for SECTOR_MODE rows.
      */
     @Override
     public void stepFinished() {
@@ -1993,8 +1845,8 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             // For alias rows in MNA mode, read the shared node voltage
             // and register in ComputedValues for consistency
             if (isAliasRow[row]) {
-                String name = outputNames[row];
-                if (name != null && !name.trim().isEmpty()) {
+                if (isValidOutputName(row)) {
+                    String name = outputNames[row].trim();
                     String targetName = compiledExprs[row].getNodeName();
                     if (isMnaMode()) {
                         // MNA mode: read voltage from the shared node via labeled node lookup
@@ -2004,47 +1856,47 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                         Double targetValue = ComputedValues.getComputedValue(targetName);
                         outputValues[row] = (targetValue != null) ? targetValue.doubleValue() : 0.0;
                     }
-                    ComputedValues.setComputedValue(name.trim(), outputValues[row]);
-                    ComputedValues.markComputedThisStep(name.trim());
+                    ComputedValues.setComputedValue(name, outputValues[row]);
+                    ComputedValues.markComputedThisStep(name);
                 }
                 continue;
             }
             
-            // Save capacitor state for CAPACITOR mode rows
-            if (outputModes[row] == RowOutputMode.CAPACITOR && isMnaMode()) {
-                String sourceName = outputNames[row];
-                String targetName = targetNodeNames[row];
-                if (sourceName != null && !sourceName.trim().isEmpty() && 
-                    targetName != null && !targetName.trim().isEmpty()) {
+            // Save capacitor state for SECTOR_MODE rows
+            if (outputModes[row] == RowOutputMode.SECTOR_MODE && isMnaMode()) {
+                if (isValidOutputName(row)) {
+                    String sourceName = outputNames[row].trim();
+                    String targetName = targetNodeNames[row];
                     // Save voltage difference for next timestep's history current calculation
-                    double sourceVoltage = sim.getLabeledNodeVoltage(sourceName.trim());
-                    double targetVoltage = sim.getLabeledNodeVoltage(targetName.trim());
+                    double sourceVoltage = sim.getLabeledNodeVoltage(sourceName);
+                    // If targetName is empty or "gnd", target voltage is 0 (ground)
+                    double targetVoltage = 0;
+                    if (targetName != null && !targetName.trim().isEmpty() && 
+                        !targetName.trim().equalsIgnoreCase("gnd")) {
+                        targetVoltage = sim.getLabeledNodeVoltage(targetName.trim());
+                    }
                     capLastVoltages[row] = sourceVoltage - targetVoltage;
                     capLastCurrents[row] = flowValues[row];
                     
-                    // For CAPACITOR mode, outputValues should show the stock VOLTAGE, not the flow
+                    // For SECTOR_MODE, outputValues should show the stock VOLTAGE, not the flow
                     // This is the value displayed in the table and registered in ComputedValues
                     outputValues[row] = capLastVoltages[row];
                     
-                    // CirSim.console("[CAPACITOR stepFinished] row " + row + " '" + outputNames[row] + 
-                    //     "': sourceV=" + sourceVoltage + " targetV=" + targetVoltage + 
-                    //     " -> capLastVoltages=" + capLastVoltages[row] + " outputValues=" + outputValues[row]);
-                    
                     if (DEBUG) {
                         CirSim.console("[EquationTableElm." + tableName + 
-                            "] CAPACITOR row '" + outputNames[row] + "': saved V=" + capLastVoltages[row] + 
+                            "] SECTOR_MODE row '" + outputNames[row] + "': saved V=" + capLastVoltages[row] + 
                             ", I=" + capLastCurrents[row]);
                     }
                 }
             }
             
             // Register output as computed value
-            String name = outputNames[row];
-            if (name != null && !name.trim().isEmpty()) {
-                ComputedValues.setComputedValue(name.trim(), outputValues[row]);
-                ComputedValues.markComputedThisStep(name.trim());
+            if (isValidOutputName(row)) {
+                String name = outputNames[row].trim();
+                ComputedValues.setComputedValue(name, outputValues[row]);
+                ComputedValues.markComputedThisStep(name);
                 if (DEBUG) {
-                    CirSim.console("  " + name.trim() + " = " + outputValues[row]);
+                    CirSim.console("  " + name + " = " + outputValues[row]);
                 }
             }
             
@@ -2089,10 +1941,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             flowValues[row] = 0.0;
             
             // Register initial values with ComputedValues
-            String name = outputNames[row];
-            if (name != null && !name.trim().isEmpty()) {
-                ComputedValues.setComputedValue(name.trim(), outputValues[row]);
-            }
+            registerOutputValue(row, outputValues[row]);
         }
     }
     
@@ -2426,7 +2275,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /** Get output mode for a row */
     public RowOutputMode getOutputMode(int row) {
-        return (row >= 0 && row < MAX_ROWS) ? outputModes[row] : RowOutputMode.VOLTAGE;
+        return (row >= 0 && row < MAX_ROWS) ? outputModes[row] : RowOutputMode.VOLTAGE_MODE;
     }
     
     /** Set output mode for a row */
@@ -2436,7 +2285,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
     }
     
-    /** Get target node name for a row (used in CURRENT/CAPACITOR modes) */
+    /** Get target node name for a row (used in FLOW_MODE/SECTOR_MODE) */
     public String getTargetNodeName(int row) {
         return (row >= 0 && row < MAX_ROWS && targetNodeNames[row] != null) ? targetNodeNames[row] : "";
     }
@@ -2448,7 +2297,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
     }
     
-    /** Get capacitance for a row (used in CAPACITOR mode) */
+    /** Get capacitance for a row (used in SECTOR_MODE) */
     public double getCapacitance(int row) {
         return (row >= 0 && row < MAX_ROWS) ? capacitances[row] : 1.0;
     }

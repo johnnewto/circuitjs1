@@ -1,0 +1,34 @@
+$ 1 0.1 2.3728258192205156 50 5 50 5e-11
+% voltageUnit $
+% showToolbar true
+266 120 88 368 276 2 equations\s1 9 C_s C_d \0 \0 0.5 0 \0 1 G_s G_d \0 \0 0.5 0 \0 1 T_s T_d \0 \0 0.5 0 \0 1 N_s N_d \0 \0 0.5 0 \0 1 YD W*N_s-T_s \0 \0 0.5 0 \0 1 T_d \\theta*W*N_s \0 \0 0.5 0 \0 1 C_d \\alpha_1*YD\p\\alpha_2*H_h \0 \0 0.5 0 \0 1 Y8 G_d\s-\s\\theta*W*N_s \0 h 0.5 1 Y9 1 H_s G_d\s-\sT_d 0 \0 0.5 2 \0 1
+266 472 72 620 152 2 equations\s2 3 Y C_s\pG_s \0 \0 0.5 0 \0 1 N_d Y/W \0 \0 0.5 0 gnd 1 H_h YD-C_d 0 \0 0.5 2 \0 1
+266 520 256 645 372 2 Parameters 5 \\alpha_1 0.6 \0 \0 0.5 0 \0 1 \\alpha_2 0.4 \0 \0 0.5 0 \0 1 \\theta 0.2 \0 \0 0.5 0 \0 1 G_d 20 \0 \0 0.5 0 \0 1 W 1 \0 \0 0.5 0 \0 1
+431 928 64 992 112 0 50 true false
+207 672 80 756 80 4 Y
+403 640 96 912 256 0 4_4_0_4614_160_0.1_-1_2_4_3
+265 176 -72 656 76 0 5 4 6 16 0 false 2 1 false 5 0 false Transaction\sFlow\sMatrix \0 Households Production Govt Σ Consumption Govt\sExpenditures Wages Taxes Money\sstock 0 0 0 0 SECTOR SECTOR SECTOR COMPUTED -C_d C_s \0 \0 \0 G_s -G_d \0 W\s*\sN_s -W\s*\sN_s \0 \0 -T_s \0 T_d \0 -\\DeltaH_h Y9 \\DeltaH_s \0 true 0.000001 false LINEAR 300 250
+265 176 -152 656 -68 0 1 4 6 16 0 false 2 1 false 5 0 false Balance\sSheet \0 Households_b Production_b Government_b Σ Money\sstock 0 0 0 0 SECTOR SECTOR SECTOR COMPUTED H_h \0 -H_s \0 true 0.000001 false LINEAR 300 250
+207 736 368 800 368 36 Y8
+g 496 528 496 576 0 0
+w 624 400 496 400 3
+207 624 400 688 400 36 Y9
+c 496 400 496 528 4 1 85.31212069644349 0.001 0
+% AST 0 2
+% Hint C_s Consumption\sgoods\sSupply/Demand
+% Hint G_s Services\ssupplied\sto\s/\sdemand\sby\sGovt
+% Hint T_s Tax
+% Hint N_s Supply/Demand\sfor\slabour
+% Hint YD Disposable\sIncome
+% Hint T_d Tax
+% Hint C_d Consumption\sgoods\sSupply/Demand
+% Hint H_s cash\smoney,\ssupplied\sby\sthe\scentral\sbank\s(CAPACITOR\smode)
+% Hint H_h Cash\smoney\sheld\sby\shouseholds\s(CAPACITOR\smode)
+% Hint Y Output
+% Hint N_d Supply/Demand\sfor\slabour
+% Hint \alpha_1 Propensity\sto\sSpend\sIncome
+% Hint \alpha_2 Propensity\sto\sSpend\sWealth
+% Hint \theta Tax\sRate
+% Hint G_d Government\sdemad\sfor\sservices
+% Hint W Nominal\sWages\sRate
+% Hint Y8 hint8

@@ -1,10 +1,10 @@
-$ 1 0.0001 10.634267539816555 50 5 43 5e-11
+$ 1 0.0001 10.634267539816555 33 5 43 5e-11
 % voltageUnit $
 % showToolbar true
 x 96 32 509 35 4 24 EquationTable\sCURRENT\sMode\sDemo 808080FF
 x 96 64 547 67 4 14 Demonstrates\sCURRENT\smode:\sequation\svalue\sbecomes\scurrent\ssource 808080FF
 x 96 96 525 99 4 12 Current\sflows\sFROM\soutput\snode\sTO\starget\snode.\sR1\sconverts\scurrent\sto\svoltage. 666666FF
-266 128 176 264 256 0 Current.Demo 3 rate 2 \0 r 0.5 0 \0 1 scale 5 \0 s 0.5 0 \0 1 Flow rate*scale \0 f 0.5 1 Load 1
+266 128 176 295 292 0 Current.Demo 5 rate 2 \0 r 0.5 0 \0 1 scale rate \0 s 0.5 0 \0 1 T_d \\theta*W \0 c 0.5 0 \0 1 Y8 G_d\s-\sT_d \0 d 0.5 1 Y9 1 Flow rate\s-\srate*scale \0 f 0.5 1 Load 1
 207 416 224 480 224 36 Flow
 207 480 272 400 272 36 Load
 r 528 272 528 336 0 100
@@ -14,4 +14,14 @@ x 601 351 835 354 4 14 Load\snode\sreceives\scurrent\sfrom\sFlow 4488FFFF
 x 128 352 369 355 4 14 CURRENT\smode:\sFlow\s→\starget:\sLoad 00AA00FF
 x 421 402 636 405 4 12 V(Load)\s\q\sFlow\s*\sR1\s\q\s10\s*\s100\s\q\s1000V 666666FF
 x 96 416 274 419 4 12 Try\sadjusting\srate\sor\sscale\s(hover\s \sscroll)\sto\schange\sthe\sflow!\sWatch\sLoad\svoltage\schange.
+266 552 -128 670 -12 2 Parameters 5 \\alpha_1 0.6 \0 \0 0.5 0 \0 1 \\alpha_2 0.4 \0 \0 0.5 0 \0 1 \\theta 0.2 \0 \0 0.5 0 \0 1 G_d 20 \0 \0 0.5 0 \0 1 W 1 \0 \0 0.5 0 \0 1
+c 608 32 608 96 4 1 0.001 0.001 0
+207 672 32 720 32 36 Y9
+w 672 32 608 32 3
+g 608 96 608 112 0 0
 % AST 0 2
+% Hint Y4 hint4
+% Hint T_d hint3
+% Hint Y3 hint3
+% Hint Y8 hint4
+% Hint T_dd hint3
