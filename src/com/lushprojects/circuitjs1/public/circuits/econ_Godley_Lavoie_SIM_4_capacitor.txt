@@ -1,0 +1,132 @@
+# CircuitJS1 SFCR Export
+# Generated from circuit simulation
+
+@info
+# SIM Model (Godley & Lavoie Chapter 3)
+## Capacitor Mode Implementation
+
+This model demonstrates the **capacitor mode** approach to Stock-Flow Consistent modeling using EquationTableElm's built-in integration.
+
+### Approach
+This model uses:
+- **Equation Tables** (EquationTableElm) — voltage mode for behavioral equations
+- **Capacitor mode rows** — for stock accumulation (no external capacitor needed)
+- **Balance Sheet & Transaction Flow matrices** — for accounting verification
+
+### Key Difference from SIM_3
+Instead of using `integrate()` function in voltage mode:
+$$H_h = \int (YD - C_d) \, dt$$
+
+This model uses **capacitor mode** where the equation specifies the **net inflow**:
+$$H_h \leftarrow YD - C_d$$
+
+The integration is handled automatically by the MNA companion model:
+$$H(t) = H(t-dt) + dt \times \text{NetInflow}$$
+
+### Sectors
+| Sector | Stock Variable | Mode | Meaning |
+|--------|---------------|------|---------|
+| Households | $H_h$ | CAPACITOR | Money holdings (wealth) |
+| Firms | — | — | Pass-through (no retained earnings) |
+| Government | $H_s$ | CAPACITOR | Money supply (negative = debt) |
+
+### Transaction Flows
+| Flow | From → To | Equation |
+|------|-----------|----------|
+| G_d | Govt → Firms | $G = 20$ (exogenous) |
+| Wages | Firms → HH | $W \times N_s$ |
+| Taxes | HH → Govt | $\theta \times W \times N_s$ |
+| Consumption | HH → Firms | $\alpha_1 \times YD + \alpha_2 \times H_h$ |
+
+### Steady State Solution
+At steady state ($dH/dt = 0$):
+- $Y^* = G / (1 - \alpha_1(1-\theta)) = 38.46$
+- $H_h^* = 80$
+- $H_s^* = -80$ (government debt)
+
+### Reference
+Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
+@end
+
+@init
+  timestep: 0.1
+  voltageUnit: $
+  timeUnit: yr
+  showDots: true
+  showVolts: true
+  showValues: true
+  showPower: false
+@end
+
+@matrix Balance_Sheet x=176 y=24
+
+| Transaction | Households_b | Production_b | Government_b |
+|-------------|------|------|------|
+| Money stock | H_h |  | -H_s |
+@end
+
+@matrix Transaction_Flow_Matrix x=176 y=104
+
+| Transaction | Households | Production | Govt |
+|-------------|------|------|------|
+| Consumption | -C_d | C_s |  |
+| Govt Expenditures |  | G_s | -G_d |
+| Wages | W * N_s | -W * N_s |  |
+| Taxes | -T_s |  | T_d |
+| Money stock | -\DeltaH_h |  | \DeltaH_s |
+@end
+
+@hints
+  C_s: Consumption goods Supply/Demand
+  G_s: Services supplied to / demand by Govt
+  T_s: Tax
+  N_s: Supply/Demand for labour
+  YD: Disposable Income
+  T_d: Tax
+  C_d: Consumption goods Supply/Demand
+  H_s: cash money, supplied by the central bank (CAPACITOR mode)
+  H_h: Cash money held by households (CAPACITOR mode)
+  Y: Output
+  N_d: Supply/Demand for labour
+  \alpha_1: Propensity to Spend Income
+  \alpha_2: Propensity to Spend Wealth
+  \theta: Tax Rate
+  G_d: Government demad for services
+  W: Nominal Wages Rate
+@end
+
+@circuit
+x 203 -78 378 -75 4 24 SIM\sSFC\smodel\s(Capacitor\sMode) 808080FF
+
+# equations_1: C_s, G_s, T_s, N_s, YD, T_d, C_d + H_s (capacitor mode)
+# format: type x1 y1 x2 y2 flags tableName rowCount [per-row: name eq init sliderVar sliderVal mode target cap]
+# 8 rows: 7 voltage mode (0) + 1 capacitor mode (2) for H_s
+266 168 264 368 424 2 equations_1 8 C_s C_d \0 \0 0.5 0 \0 1 G_s G_d \0 \0 0.5 0 \0 1 T_s T_d \0 \0 0.5 0 \0 1 N_s N_d \0 \0 0.5 0 \0 1 YD W*N_s-T_s \0 \0 0.5 0 \0 1 T_d \\theta*W*N_s \0 \0 0.5 0 \0 1 C_d \\alpha_1*YD+\\alpha_2*H_h \0 \0 0.5 0 \0 1 H_s G_d-T_d 0 \0 0.5 2 \0 1
+
+# equations_2: H_h (capacitor mode), Y, N_d (voltage mode)
+# 3 rows: 1 capacitor mode (2) for H_h + 2 voltage mode (0)
+266 424 264 624 360 2 equations_2 3 H_h YD-C_d 0 \0 0.5 2 \0 1 Y C_s+G_s \0 \0 0.5 0 \0 1 N_d Y/W \0 \0 0.5 0 \0 1
+
+# Parameters table (all voltage mode)
+266 504 400 704 528 2 Parameters 5 \\alpha_1 0.6 \0 \0 0.5 0 \0 1 \\alpha_2 0.4 \0 \0 0.5 0 \0 1 \\theta 0.2 \0 \0 0.5 0 \0 1 G_d 20 \0 \0 0.5 0 \0 1 W 1 \0 \0 0.5 0 \0 1
+
+# Labels for display
+207 680 216 741 217 4 C_s
+207 680 256 743 256 36 Y
+
+# Scope
+403 696 272 960 448 0 7_4_0_xc01206_320_0.1_-1_2_7_3
+
+# Info text
+x 218 -53 682 -50 4 16 This\scode\sreplicates\sresults\sin\sthe\sbook\sMonetary\sEconomics: 808080FF
+x 215 -11 722 -8 4 16 \sby\sWynne\sGodley\sand\sMarc\sLavoie,\schapter\s3,\sfigures\s3.2\sand\s3.3. 808080FF
+x 218 -33 779 -30 4 16 \sAn\sIntegrated\sApproach\sto\sCredit,\sMoney,\sIncome,\sProduction\sand\sWealth 808080FF
+x 310 -95 600 -92 4 12 CAPACITOR\smode\sfor\sstock\sintegration 00AA00FF
+
+# Delta displays
+207 768 144 800 144 36 \\DeltaH_h
+207 768 96 800 96 4 \\DeltaH_s
+
+# PlotlyViewer
+431 896 64 960 112 0 50 true false
+@end

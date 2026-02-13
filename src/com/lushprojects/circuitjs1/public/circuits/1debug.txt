@@ -1,106 +1,30 @@
-# CircuitJS1 SFCR Export
-# Generated from circuit simulation
-
-@info
-# SIM Model (Godley & Lavoie Chapter 3)
-## MNA Current-Flow Implementation
-
-This model demonstrates the **current-as-flow** approach to Stock-Flow Consistent modeling using Modified Nodal Analysis (MNA).
-
-### Key Innovation
-Instead of using voltage sources and expression-based tables, this model uses:
-- **Capacitor nodes** (SFCSectorElm) for sectors — voltage = stock level
-- **Current sources** (SFCFlowElm) for transactions — current = flow rate
-
-### Why This Works
-Kirchhoff's Current Law (KCL) at each node automatically enforces the SFC accounting identity:
-$$\sum I_{in} - \sum I_{out} = C \frac{dV}{dt}$$
-
-Which translates economically to:
-$$\text{Inflows} - \text{Outflows} = \Delta\text{Stock}$$
-
-### Sectors
-| Sector | Stock Variable | Meaning |
-|--------|---------------|---------|
-| Households | $H_h$ | Money holdings (wealth) |
-| Firms | — | Pass-through (no retained earnings) |
-| Government | $H_s$ | Money supply (negative = debt) |
-
-### Transaction Flows
-| Flow | From → To | Equation |
-|------|-----------|----------|
-| G_spending | Govt → Firms | $G = 20$ (exogenous) |
-| Wages | Firms → HH | $W \times N_s$ |
-| Taxes | HH → Govt | $\theta \times W \times N_s$ |
-| Consumption | HH → Firms | $\alpha_1 \times YD + \alpha_2 \times H_h$ |
-
-### Steady State Solution
-At steady state ($dH/dt = 0$):
-- $Y^* = G / (1 - \alpha_1(1-\theta)) = 38.46$
-- $H_h^* = 80$
-- $H_s^* = -80$ (government debt)
-
-### Reference
-Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
-@end
-
-@init
-  timestep: 0.1
-  voltageUnit: $
-  timeUnit: yr
-  showDots: true
-  showVolts: true
-  showValues: true
-  showPower: false
-@end
-
-@equations Parameters x=502 y=426
-  \alpha_1 ~ 0.6  # Propensity to consume out of income
-  \alpha_2 ~ 0.4  # Propensity to consume out of wealth
-  \theta ~ 0.2  # Tax rate
-  G ~ 20  # Government spending (exogenous)
-  W ~ 1  # Nominal wage rate
-  Y_star ~ G / (1 - \alpha_1*(1-\theta))  # Steady state output
-  H_star ~ ((1-\alpha_1)*(1-\theta)*Y_star) / \alpha_2  # Steady state household wealth
-@end
-
-@hints
-  \alpha_1: Propensity to consume out of income
-  \alpha_2: Propensity to consume out of wealth
-  \theta: Tax rate
-  G: Government spending (exogenous)
-  W: Nominal wage rate
-  Y_star: Steady state output
-  H_star: Steady state household wealth
-  H_h: Household money holdings (wealth)
-  H_s: Government money supply (negative = debt)
-  Wages: Wage payments from Firms to Households
-  Taxes: Tax payments from Households to Government
-  Consumption: Consumer spending from Households to Firms
-  G_spending: Government purchases from Firms
-@end
-
-@circuit
-268 176 224 176 224 0 H_h 0 1
-268 464 224 464 224 0 H_s 0 1
-268 320 96 320 96 0 Firms 0 0.01
-269 464 224 320 96 0 G_{spending} 20 G 20
-269 256 32 112 160 0 Wages 38.5 w 38.5
-269 176 224 464 224 0 Taxes 0.2*38.5 theta 0.2
-269 176 224 320 96 0 Consumption 0.6*38.5*0.8\p0.4*Vs alpha1 0.6
-x 18 301 144 304 6 24 Households 808080FF
-x 340 349 472 352 6 24 Government 808080FF
-x 309 45 368 48 6 24 Firms 808080FF
-x 370 102 473 105 4 14 G\sspending\s\q\s20 808080FF
-x 116 54 159 57 4 14 Wages 808080FF
-x 278 264 352 267 4 14 Taxes\s\q\sθ·Y 808080FF
-x 200 298 396 301 4 14 Consumption\s\q\sα₁·YD\s\p\sα₂·H_h 808080FF
-x 80 400 360 403 4 12 G\aL\sSIM\sModel\s-\sMNA\sCurrent-Flow\sImplementation 808080FF
-x 80 418 415 421 4 12 Sectors\s\q\scapacitors\s(voltage\s\q\sstock),\sFlows\s\q\scurrent\ssources 808080FF
-x 80 436 332 439 4 12 KCL\senforces:\sΣInflows\s-\sΣOutflows\s\q\sdStock/dt 808080FF
-431 848 112 912 160 0 10 true false
-w 256 32 320 96 0
-w 112 160 176 224 0
-403 512 272 784 400 0 2_1_0_4615_160_12.8_-1_2_2_3
-403 512 48 784 176 0 4_1_0_4615_163840_25.6_-1_2_4_3
-@end
+$ 1 0.1 26.59566520631553 50 5 50 5e-11
+% voltageUnit $
+% showToolbar true
+266 168 104 416 274 2 equations\s1 8 C_s C_d \0 \0 0.5 0 \0 1 G_s G_d \0 \0 0.5 0 \0 1 T_s T_d \0 \0 0.5 0 \0 1 N_s N_d \0 \0 0.5 0 \0 1 YD W*N_s-T_s \0 \0 0.5 0 \0 1 T_d \\theta*W*N_s \0 \0 0.5 0 \0 1 C_d \\alpha_1*YD\p\\alpha_2*H_h \0 \0 0.5 0 \0 1 H_s 1 0 \0 0.5 2 Ground 1
+266 424 104 572 184 2 equations\s2 3 Y C_s\pG_s \0 \0 0.5 0 \0 1 N_d Y/W \0 \0 0.5 0 gnd 1 H_h YD-C_d 0 \0 0.5 2 Ground 1
+266 456 208 581 324 2 Parameters 5 \\alpha_1 0.6 \0 \0 0.5 0 \0 1 \\alpha_2 0.4 \0 \0 0.5 0 \0 1 \\theta 0.2 \0 \0 0.5 0 \0 1 G_d 20 \0 \0 0.5 0 \0 1 W 1 \0 \0 0.5 0 \0 1
+431 896 64 960 112 0 50 true false
+g 336 304 336 368 0 0
+207 336 304 419 304 4 Ground
+207 672 80 756 80 4 Y
+403 608 96 880 256 0 6_4_0_4614_160_0.1_-1_2_6_3
+265 176 -72 656 76 0 5 4 6 16 0 false 2 1 false 5 0 false Transaction\sFlow\sMatrix \0 Households Production Govt Σ Consumption Govt\sExpenditures Wages Taxes Money\sstock 0 0 0 0 SECTOR SECTOR SECTOR COMPUTED -C_d C_s \0 \0 \0 G_s -G_d \0 W\s*\sN_s -W\s*\sN_s \0 \0 -T_s \0 T_d \0 -\\DeltaH_h \0 \\DeltaH_s \0 true 0.000001 false LINEAR 300 250
+265 176 -152 656 -68 0 1 4 6 16 0 false 2 1 false 5 0 false Balance\sSheet \0 Households_b Production_b Government_b Σ Money\sstock 0 0 0 0 SECTOR SECTOR SECTOR COMPUTED H_h \0 -H_s \0 true 0.000001 false LINEAR 300 250
+% AST 0 2
+% Hint C_s Consumption\sgoods\sSupply/Demand
+% Hint G_s Services\ssupplied\sto\s/\sdemand\sby\sGovt
+% Hint T_s Tax
+% Hint N_s Supply/Demand\sfor\slabour
+% Hint YD Disposable\sIncome
+% Hint T_d Tax
+% Hint C_d Consumption\sgoods\sSupply/Demand
+% Hint H_s cash\smoney,\ssupplied\sby\sthe\scentral\sbank\s(CAPACITOR\smode)
+% Hint H_h Cash\smoney\sheld\sby\shouseholds\s(CAPACITOR\smode)
+% Hint Y Output
+% Hint N_d Supply/Demand\sfor\slabour
+% Hint \alpha_1 Propensity\sto\sSpend\sIncome
+% Hint \alpha_2 Propensity\sto\sSpend\sWealth
+% Hint \theta Tax\sRate
+% Hint G_d Government\sdemad\sfor\sservices
+% Hint W Nominal\sWages\sRate

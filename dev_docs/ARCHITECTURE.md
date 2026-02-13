@@ -331,6 +331,52 @@ These elements by default:
 
 See [PURE_COMPUTATIONAL_TABLES.md](PURE_COMPUTATIONAL_TABLES.md) for details.
 
+#### ComputedValues Double-Buffering System
+
+The `ComputedValues` registry uses a **double-buffering system** to ensure **order-independent evaluation** of circuit elements.
+
+**The Problem:**
+When multiple elements reference each other's outputs during `doStep()`, the element evaluation order matters:
+- Element A reads Element B's output
+- Element B reads Element A's output
+- If A runs first, it sees B's *old* value; if B runs first, A sees the *new* value
+- Results depend on array order → non-deterministic behavior
+
+**The Solution - Three Separate Buffers:**
+
+| Buffer | Purpose |
+|--------|---------|
+| `computedValues` (current) | Values ALL elements read from during `doStep()` |
+| `pendingValues` | Values elements write to during `doStep()` |
+| `convergedValues` | Stable values for display (from last completed timestep) |
+
+**Execution Flow Per Subiteration:**
+
+```
+startIteration()          → seed current buffer with initial values
+                          
+doStep() for ALL          → READ from computedValues (same snapshot for all)
+elements                  → WRITE to pendingValues (isolated)
+
+commitPendingTo...()      → pendingValues → computedValues
+                            (now all elements see each other's new values)
+
+[repeat if not converged]
+
+stepFinished() for ALL    → final updates to pendingValues
+commitPendingTo...()      → pendingValues → computedValues  
+commitConvergedValues()   → computedValues → convergedValues (for display)
+```
+
+**Key Insight:** Whether element A or B is evaluated first doesn't matter - they both see the same "snapshot" of values from the previous iteration.
+
+**API Summary:**
+- `setComputedValue(name, value)` → writes to pendingValues
+- `getComputedValue(name)` → reads from computedValues (current subiteration)
+- `getConvergedValue(name)` → reads from convergedValues (for display elements)
+- `commitPendingToCurrentValues()` → called by CirSim after all doStep() calls
+- `commitConvergedValues()` → called by CirSim after stepFinished() completes
+
 ### 7. User Interface
 
 **Canvas**: HTML5 Canvas element for drawing

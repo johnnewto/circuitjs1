@@ -9,6 +9,7 @@ package com.lushprojects.circuitjs1.client;
 import com.google.gwt.canvas.client.Canvas;
 import com.google.gwt.canvas.dom.client.Context2d;
 import com.lushprojects.circuitjs1.client.util.Locale;
+import com.lushprojects.circuitjs1.client.EquationTableElm.RowOutputMode;
 
 /**
  * EquationTableRenderer - Handles all drawing operations for EquationTableElm
@@ -449,6 +450,27 @@ public class EquationTableRenderer {
             int iconWidth = (int) g.context.measureText("↕ ").getWidth();
             g.setFont(valueFont);  // Restore to valueFont (what drawDataRow uses)
             textX += iconWidth;
+        }
+        
+        // Draw output mode icon (only for non-VOLTAGE modes)
+        RowOutputMode mode = table.getOutputMode(row);
+        if (mode != RowOutputMode.VOLTAGE) {
+            String modeIcon;
+            Color modeColor;
+            if (mode == RowOutputMode.CURRENT) {
+                modeIcon = "I→";  // Current flow mode
+                modeColor = new Color(200, 50, 50);  // Red for current
+            } else {
+                modeIcon = "C∫";  // Capacitor/integration mode
+                modeColor = new Color(50, 150, 200);  // Cyan for capacitor
+            }
+            int modeIconSize = table.getOpsize() == 1 ? 9 : 11;
+            g.setFont(new Font("SansSerif", Font.BOLD, modeIconSize));
+            g.setColor(modeColor);
+            g.drawString(modeIcon, textX, rowY + rowHeight - cellPadding - 1);
+            int modeIconWidth = (int) g.context.measureText(modeIcon + " ").getWidth();
+            g.setFont(valueFont);  // Restore to valueFont
+            textX += modeIconWidth;
         }
         
         // Draw row classification icon

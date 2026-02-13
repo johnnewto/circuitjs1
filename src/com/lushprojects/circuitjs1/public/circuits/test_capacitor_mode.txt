@@ -1,0 +1,10 @@
+$ 1 0.1 0.019691167520419408 50 5 43 5e-11
+% voltageUnit $
+% showToolbar true
+266 128 176 278 274 0 Capacitor.Demo 4 inflow 1 \0 i 0.5 0 \0 1 target_{init} 0 \0 t 0.5 0 \0 1 capacitance 1.0 \0 c 0.5 0 \0 1 Stock inflow*2 0 s 0.5 2 Ground 1
+207 416 224 480 224 36 Stock
+207 480 272 416 272 36 Ground
+g 528 272 528 304 0 0
+w 480 272 528 272 0
+431 640 128 656 144 0 0.2 true false
+% AST 0 2

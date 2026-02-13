@@ -3442,6 +3442,14 @@ public CirSim() {
     // or at least it did before we added wire removal
     boolean simplifyMatrix(int matrixSize) {
 	int i, j;
+	
+	// Debug: show lsChanges/rsChanges state for each row
+	// console("[simplifyMatrix] matrixSize=" + matrixSize);
+	for (i = 0; i != matrixSize; i++) {
+	    RowInfo re = circuitRowInfo[i];
+	    // console("[simplifyMatrix] row " + i + ": lsChanges=" + re.lsChanges + " rsChanges=" + re.rsChanges + " dropRow=" + re.dropRow);
+	}
+	
 	for (i = 0; i != matrixSize; i++) {
 	    int qp = -1;
 	    double qv = 0;
@@ -3489,6 +3497,13 @@ public CirSim() {
 		    System.out.println("type already " + elt.type + " for " + qp + "!");
 		    continue;
 		}
+		// Don't mark as constant if column's row has lsChanges or rsChanges 
+		// (its values will change in doStep)
+		if (elt.lsChanges || elt.rsChanges) {
+		    console("[simplifyMatrix] Skipping ROW_CONST for col " + qp + " (lsChanges=" + elt.lsChanges + " rsChanges=" + elt.rsChanges + ")");
+		    continue;
+		}
+		// console("[simplifyMatrix] Marking col " + qp + " as ROW_CONST from row " + i);
 		elt.type = RowInfo.ROW_CONST;
 //		console("ROW_CONST " + i + " " + rsadd);
 		elt.value = (circuitRightSide[i]+rsadd)/qv;
@@ -3899,8 +3914,10 @@ public CirSim() {
     
     // indicate that the values on the left side of row i change in doStep()
     void stampNonLinear(int i) {
-	if (i > 0)
+	if (i > 0) {
+	    // console("[stampNonLinear] node=" + i + " -> rowInfo[" + (i-1) + "].lsChanges = true");
 	    circuitRowInfo[i-1].lsChanges = true;
+	}
     }
     
     // Get information about what element/node is associated with a matrix row
@@ -4143,11 +4160,23 @@ public CirSim() {
                         return;
                     }
                 }
+                // // Debug: show matrix before solve for 1x1 matrix
+                // if (circuitMatrixSize == 1) {
+                //     console("[lu_solve] BEFORE: A[0][0]=" + circuitMatrix[0][0] + " b[0]=" + circuitRightSide[0]);
+                // }
                 lu_solve_auto(circuitMatrix, circuitMatrixSize, circuitPermute,
                      circuitRightSide);
+                // // Debug: show solution for 1x1 matrix
+                // if (circuitMatrixSize == 1) {
+                //     console("[lu_solve] AFTER: rs[0]=" + circuitRightSide[0]);
+                // }
                 applySolvedRightSide(circuitRightSide);
-                if (!circuitNonLinear)
+                if (!circuitNonLinear) {
+                    if (circuitMatrixSize == 1) {
+                        console("[runCircuit] circuitNonLinear=false, exiting after first iteration");
+                    }
                     break;
+                }
             }
             if (subiter == subiterCount) {
                 // convergence failed
@@ -4179,14 +4208,18 @@ public CirSim() {
                 timeStepCount++;
             }
 
-            // Commit converged values before calling stepFinished() on elements
-            // This makes stable values available for display elements
-            ComputedValues.commitConvergedValues();
-
             for (i = 0; i != elmArr.length; i++)
                 elmArr[i].stepFinished();
             if (!delayWireProcessing)
                 calcWireCurrents();
+            
+            // Commit pending values from stepFinished() to current buffer
+            // (stepFinished() uses setComputedValue which writes to pendingValues)
+            ComputedValues.commitPendingToCurrentValues();
+            
+            // Commit converged values AFTER stepFinished() so elements can update their outputs first
+            // This makes stable values available for display elements
+            ComputedValues.commitConvergedValues();
             
             // Execute scheduled actions after circuit state is fully settled
             ActionScheduler scheduler = ActionScheduler.getInstance(this);
@@ -4223,6 +4256,14 @@ public CirSim() {
     void applySolvedRightSide(double rs[]) {
 //	console("setvoltages " + rs);
 	int j;
+	// // Debug: show the mapping and values being applied
+	// if (circuitMatrixSize == 1) {
+	//     console("[applySolvedRightSide] 1x1 matrix: rs[0]=" + rs[0]);
+	//     for (j = 0; j != circuitMatrixFullSize; j++) {
+	// 	RowInfo ri = circuitRowInfo[j];
+	// 	console("[applySolvedRightSide] row " + j + ": type=" + ri.type + " mapRow=" + ri.mapRow + " mapCol=" + ri.mapCol + " value=" + ri.value);
+	//     }
+	// }
 	for (j = 0; j != circuitMatrixFullSize; j++) {
 	    RowInfo ri = circuitRowInfo[j];
 	    double res = 0;
@@ -4235,6 +4276,9 @@ public CirSim() {
 		break;
 	    }
 	    if (j < nodeList.size()-1) {
+		// if (circuitMatrixSize == 1) {
+		//     console("[applySolvedRightSide] nodeVoltages[" + j + "] = " + res);
+		// }
 		nodeVoltages[j] = res;
 	    } else {
 		int ji = j-(nodeList.size()-1);

@@ -1,0 +1,17 @@
+$ 1 0.0001 10.634267539816555 50 5 43 5e-11
+% voltageUnit $
+% showToolbar true
+x 96 32 509 35 4 24 EquationTable\sCURRENT\sMode\sDemo 808080FF
+x 96 64 547 67 4 14 Demonstrates\sCURRENT\smode:\sequation\svalue\sbecomes\scurrent\ssource 808080FF
+x 96 96 525 99 4 12 Current\sflows\sFROM\soutput\snode\sTO\starget\snode.\sR1\sconverts\scurrent\sto\svoltage. 666666FF
+266 128 176 264 256 0 Current.Demo 3 rate 2 \0 r 0.5 0 \0 1 scale 5 \0 s 0.5 0 \0 1 Flow rate*scale \0 f 0.5 1 Load 1
+207 416 224 480 224 36 Flow
+207 480 272 400 272 36 Load
+r 528 272 528 336 0 100
+g 528 336 528 368 0 0
+w 480 272 528 272 0
+x 601 351 835 354 4 14 Load\snode\sreceives\scurrent\sfrom\sFlow 4488FFFF
+x 128 352 369 355 4 14 CURRENT\smode:\sFlow\s→\starget:\sLoad 00AA00FF
+x 421 402 636 405 4 12 V(Load)\s\q\sFlow\s*\sR1\s\q\s10\s*\s100\s\q\s1000V 666666FF
+x 96 416 274 419 4 12 Try\sadjusting\srate\sor\sscale\s(hover\s \sscroll)\sto\schange\sthe\sflow!\sWatch\sLoad\svoltage\schange.
+% AST 0 2

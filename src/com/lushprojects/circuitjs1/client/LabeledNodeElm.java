@@ -30,6 +30,7 @@ class LabeledNodeElm extends CircuitElm {
     final int FLAG_SHOW_ALL_NODES = 8;
     final int FLAG_SHOW_ALL_CIRCUIT_NODES = 16;
     final int FLAG_SHOW_VOLTAGE = 32;
+    final int FLAG_SHOW_CURRENT = 64;
     
     public LabeledNodeElm(int xx, int yy) {
 	super(xx, yy);
@@ -84,6 +85,7 @@ class LabeledNodeElm extends CircuitElm {
     boolean showLabelNodes() { return (flags & FLAG_SHOW_ALL_NODES) != 0; }
     boolean showAllCircuitNodes() { return (flags & FLAG_SHOW_ALL_CIRCUIT_NODES) != 0; }
     boolean showVoltage() { return (flags & FLAG_SHOW_VOLTAGE) != 0; }
+    boolean showCurrent() { return (flags & FLAG_SHOW_CURRENT) != 0; }
 
     public static native void console(String text)
     /*-{
@@ -267,6 +269,10 @@ class LabeledNodeElm extends CircuitElm {
 		    String voltageText = " = " + getVoltageText(displayVoltage);
 		    displayText = displayText + voltageText;
 		}
+		if (showCurrent()) {
+		    String currentText = " I=" + getCurrentText(getCurrent());
+		    displayText = displayText + currentText;
+		}
 		drawLabeledNode(g, displayText, point1, lead1);
 
 		curcount = updateDotCount(current, curcount);
@@ -433,6 +439,11 @@ class LabeledNodeElm extends CircuitElm {
             ei.checkbox = new Checkbox("Show All Circuit Nodes", showAllCircuitNodes());
             return ei;
         }
+        if (n == 5) {
+            EditInfo ei = new EditInfo("", 0, -1, -1);
+            ei.checkbox = new Checkbox("Show Current", showCurrent());
+            return ei;
+        }
 	return null;
     }
     public void setEditValue(int n, EditInfo ei) {
@@ -453,6 +464,8 @@ class LabeledNodeElm extends CircuitElm {
 	    flags = ei.changeFlag(flags, FLAG_SHOW_ALL_NODES);
 	if (n == 4)
 	    flags = ei.changeFlag(flags, FLAG_SHOW_ALL_CIRCUIT_NODES);
+	if (n == 5)
+	    flags = ei.changeFlag(flags, FLAG_SHOW_CURRENT);
     }
     @Override String getScopeText(int v) {
 	return text;

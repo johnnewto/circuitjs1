@@ -48,9 +48,11 @@ websocket/                                # WebSocket server components
 ### Build & Development
 
 - **Primary Build**: Use Gradle (`./gradlew compileGwt`) for building
-- **Development Mode**: use `./dev.sh start` to launch dev server
+- **Development Mode**: use `./dev.sh start` to launch dev server (GWT Super Dev Mode)
 - **Output**: Compiled JavaScript goes to `war/circuitjs1/`
 - **Local Testing**: Use development server or open `war/circuitjs.html` directly
+- **Incremental Changes**: For small code changes during debugging, don't wait for full recompile - the user will reload and test, then report results. Only compile when explicitly requested or when making final changes.
+- **Super Dev Mode**: When dev server is running, it automatically recompiles Java→JavaScript on page reload. No need to run `./gradlew compileGwt` during iterative debugging.
 
 ### GWT-Specific Considerations
 
