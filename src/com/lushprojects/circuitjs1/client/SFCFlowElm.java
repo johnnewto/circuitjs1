@@ -9,7 +9,7 @@ package com.lushprojects.circuitjs1.client;
 /**
  * SFCFlowElm - Stock-Flow Consistent Transaction Flow Element
  * 
- * Represents an economic flow (transaction) between two sector nodes
+ * Represents an economic flow (transaction) between two stock nodes
  * using current as the fundamental flow variable.
  * 
  * <h3>Physical Analogy:</h3>
@@ -23,8 +23,8 @@ package com.lushprojects.circuitjs1.client;
  * <h3>Flow Equation:</h3>
  * The flow can be specified as an equation using:
  * <ul>
- *   <li><code>Vs</code> - Source sector stock level (voltage)</li>
- *   <li><code>Vd</code> - Destination sector stock level (voltage)</li>
+ *   <li><code>Vs</code> - Source stock level (voltage)</li>
+ *   <li><code>Vd</code> - Destination stock level (voltage)</li>
  *   <li><code>t</code> - Simulation time</li>
  *   <li>Parameters (slider variables)</li>
  *   <li>References to other computed values</li>
@@ -43,10 +43,10 @@ package com.lushprojects.circuitjs1.client;
  *   <li>Nonlinear element (flow may depend on voltages)</li>
  *   <li>Stamps current source between nodes</li>
  *   <li>Uses Newton-Raphson iteration for voltage-dependent flows</li>
- *   <li>KCL at sector nodes automatically enforces SFC identity</li>
+ *   <li>KCL at stock nodes automatically enforces SFC identity</li>
  * </ul>
  * 
- * @see SFCSectorElm For the sector nodes this connects
+ * @see SFCStockElm For the stock nodes this connects
  */
 public class SFCFlowElm extends CircuitElm {
     
@@ -251,8 +251,8 @@ public class SFCFlowElm extends CircuitElm {
         
         // Check convergence of input voltages
         double convergeLimit = getConvergeLimit();
-        double vs = volts[0];  // Source sector stock
-        double vd = volts[1];  // Destination sector stock
+        double vs = volts[0];  // Source stock
+        double vd = volts[1];  // Destination stock
         
         if (Math.abs(vs - lastVs) > convergeLimit || 
             Math.abs(vd - lastVd) > convergeLimit) {

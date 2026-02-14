@@ -7891,7 +7891,7 @@ public CirSim() {
 		case 265: return new SFCTableElm(x1, y1, x2, y2, f, st);
 		case 466: return new SFCSankeyElm(x1, y1, x2, y2, f, st);
 		case 267: return new ComputedValueSourceElm(x1, y1, x2, y2, f, st);
-		case 268: return new SFCSectorElm(x1, y1, x2, y2, f, st);
+		case 268: return new SFCStockElm(x1, y1, x2, y2, f, st);
 		case 269: return new SFCFlowElm(x1, y1, x2, y2, f, st);
 		case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
     	case 368: return new TestPointElm(x1, y1, x2, y2, f, st);
@@ -8254,8 +8254,8 @@ public CirSim() {
 			return (CircuitElm) new SFCTableElm(x1, y1);
 	if (n=="SFCSankeyElm")
 			return (CircuitElm) new SFCSankeyElm(x1, y1);
-	if (n=="SFCSectorElm")
-			return (CircuitElm) new SFCSectorElm(x1, y1);
+	if (n=="SFCStockElm")
+			return (CircuitElm) new SFCStockElm(x1, y1);
 	if (n=="SFCFlowElm")
 			return (CircuitElm) new SFCFlowElm(x1, y1);
 	if (n=="ComputedValueSourceElm")

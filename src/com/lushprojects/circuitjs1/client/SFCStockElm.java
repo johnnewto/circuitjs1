@@ -7,9 +7,9 @@
 package com.lushprojects.circuitjs1.client;
 
 /**
- * SFCSectorElm - Stock-Flow Consistent Sector Element
+ * SFCStockElm - Stock-Flow Consistent Stock Element
  * 
- * Represents an economic sector (Household, Firm, Bank, Government, etc.)
+ * Represents an economic stock (Household savings, Firm deposits, Bank reserves, etc.)
  * using the current-as-flow MNA approach.
  * 
  * <h3>Physical Analogy:</h3>
@@ -36,18 +36,18 @@ package com.lushprojects.circuitjs1.client;
  * 
  * <h3>Features:</h3>
  * <ul>
- *   <li>Named sector for reference in flow equations</li>
+ *   <li>Named stock for reference in flow equations</li>
  *   <li>Configurable initial stock value</li>
  *   <li>Visual display of current stock level</li>
- *   <li>Connects to SFCFlowElm for inter-sector transactions</li>
+ *   <li>Connects to SFCFlowElm for inter-stock transactions</li>
  * </ul>
  * 
  * @see SFCFlowElm For defining flows between sectors
  */
-public class SFCSectorElm extends CircuitElm {
+public class SFCStockElm extends CircuitElm {
     
-    /** Sector name (e.g., "Households", "Firms", "Banks", "Govt") */
-    private String sectorName = "Sector";
+    /** Stock name (e.g., "H_h", "H_f", "H_b", "H_g") */
+    private String stockName = "Stock";
     
     /** Initial stock value (balance at t=0) */
     private double initialStock = 0;
@@ -83,9 +83,9 @@ public class SFCSectorElm extends CircuitElm {
     /**
      * Constructor for creating element from UI menu.
      */
-    public SFCSectorElm(int xx, int yy) {
+    public SFCStockElm(int xx, int yy) {
         super(xx, yy);
-        sectorName = "Sector";
+        stockName = "Stock";
         initialStock = 0;
         stockCapacitance = 1.0;
     }
@@ -93,11 +93,11 @@ public class SFCSectorElm extends CircuitElm {
     /**
      * Constructor for loading from file.
      */
-    public SFCSectorElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
+    public SFCStockElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
         super(xa, ya, xb, yb, f);
         
         if (st.hasMoreTokens()) {
-            sectorName = CustomLogicModel.unescape(st.nextToken());
+            stockName = CustomLogicModel.unescape(st.nextToken());
         }
         if (st.hasMoreTokens()) {
             try {
@@ -125,7 +125,7 @@ public class SFCSectorElm extends CircuitElm {
     @Override
     String dump() {
         return super.dump() + " " + 
-               CustomLogicModel.escape(sectorName) + " " + 
+               CustomLogicModel.escape(stockName) + " " + 
                initialStock + " " + 
                stockCapacitance;
     }
@@ -135,7 +135,7 @@ public class SFCSectorElm extends CircuitElm {
     // =========================================================================
     
     @Override
-    int getPostCount() { return 1; }  // Single node representing the sector
+    int getPostCount() { return 1; }  // Single node representing the stock
     
     @Override
     void setPoints() {
@@ -228,8 +228,8 @@ public class SFCSectorElm extends CircuitElm {
         calculateCurrent();
         
         // Register stock value for use by other elements
-        ComputedValues.setComputedValue(sectorName, stockValue, this);
-        ComputedValues.markComputedThisStep(sectorName);
+        ComputedValues.setComputedValue(stockName, stockValue, this);
+        ComputedValues.markComputedThisStep(stockName);
     }
     
     @Override
@@ -247,7 +247,7 @@ public class SFCSectorElm extends CircuitElm {
     
     @Override
     double getCurrentIntoNode(int n) {
-        // Current into the sector node (positive = inflow)
+        // Current into the stock node (positive = inflow)
         return -netCurrent;
     }
     
@@ -266,12 +266,12 @@ public class SFCSectorElm extends CircuitElm {
         // Set color based on stock value
         setVoltageColor(g, volts[0]);
         
-        // Draw a circle representing the sector
+        // Draw a circle representing the stock
         int radius = 15;
         g.setColor(needsHighlight() ? selectColor : lightGrayColor);
         g.fillOval(x - radius, y - radius, radius * 2, radius * 2);
         
-        // Draw sector outline (use context.arc for stroke)
+        // Draw stock outline (use context.arc for stroke)
         setVoltageColor(g, volts[0]);
         g.context.beginPath();
         g.context.arc(x, y, radius, 0, 2 * Math.PI);
@@ -283,9 +283,9 @@ public class SFCSectorElm extends CircuitElm {
         g.drawLine(x - capWidth, capY - 3, x + capWidth, capY - 3);
         g.drawLine(x - capWidth, capY + 3, x + capWidth, capY + 3);
         
-        // Draw sector name above
+        // Draw stock name above
         g.setColor(whiteColor);
-        drawCenteredText(g, sectorName, x, y - 25, true);
+        drawCenteredText(g, stockName, x, y - 25, true);
         
         // Draw stock value below
         String stockText = getVoltageText(stockValue);
@@ -297,7 +297,7 @@ public class SFCSectorElm extends CircuitElm {
         // Draw current dots (showing flow)
         if (sim.dragElm != this) {
             updateDotCount();
-            // Draw dots moving toward/away from sector based on current direction
+            // Draw dots moving toward/away from stock based on current direction
         }
         
         // Draw net flow indicator
@@ -317,7 +317,7 @@ public class SFCSectorElm extends CircuitElm {
     
     @Override
     void getInfo(String arr[]) {
-        arr[0] = "SFC Sector: " + sectorName;
+        arr[0] = "SFC Stock: " + stockName;
         arr[1] = "Stock = " + getVoltageText(stockValue);
         arr[2] = "Net Flow = " + getCurrentText(netCurrent);
         arr[3] = "Initial = " + getVoltageText(initialStock);
@@ -331,8 +331,8 @@ public class SFCSectorElm extends CircuitElm {
     @Override
     public EditInfo getEditInfo(int n) {
         if (n == 0) {
-            EditInfo ei = new EditInfo("Sector Name", 0, -1, -1);
-            ei.text = sectorName;
+            EditInfo ei = new EditInfo("Stock Name", 0, -1, -1);
+            ei.text = stockName;
             return ei;
         }
         if (n == 1) {
@@ -352,7 +352,7 @@ public class SFCSectorElm extends CircuitElm {
     @Override
     public void setEditValue(int n, EditInfo ei) {
         if (n == 0) {
-            sectorName = ei.textf.getText();
+            stockName = ei.textf.getText();
         }
         if (n == 1) {
             initialStock = ei.value;
@@ -373,12 +373,12 @@ public class SFCSectorElm extends CircuitElm {
     // ACCESSORS
     // =========================================================================
     
-    /** Get sector name for flow equation references */
-    public String getSectorName() { return sectorName; }
+    /** Get stock name for flow equation references */
+    public String getStockName() { return stockName; }
     
     /** Get current stock value */
     public double getStockValue() { return stockValue; }
     
-    /** Get net current (flow) into sector */
+    /** Get net current (flow) into stock */
     public double getNetCurrent() { return netCurrent; }
 }

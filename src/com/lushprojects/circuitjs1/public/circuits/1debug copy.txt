@@ -9,7 +9,7 @@ This model demonstrates the **current-as-flow** approach to Stock-Flow Consisten
 
 ### Key Innovation
 Instead of using voltage sources and expression-based tables, this model uses:
-- **Capacitor nodes** (SFCSectorElm) for sectors — voltage = stock level
+- **Capacitor nodes** (SFCStockElm) for stocks — voltage = stock level
 - **Current sources** (SFCFlowElm) for transactions — current = flow rate
 
 ### Why This Works

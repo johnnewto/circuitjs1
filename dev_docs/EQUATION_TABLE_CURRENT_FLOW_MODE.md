@@ -232,7 +232,7 @@ NetSavings -> HH_Cap = Income - Consumption
 # The capacitor at HH_Cap naturally integrates: V = (1/C)∫I dt
 ```
 
-In current mode, you'd typically connect the current source to a **capacitor** (SFCSectorElm) which performs the integration in the circuit domain.
+In current mode, you'd typically connect the current source to a **capacitor** (SFCStockElm) which performs the integration in the circuit domain.
 
 ### Hybrid Approach: Explicit vs Implicit Integration
 
@@ -246,7 +246,7 @@ In current mode, you'd typically connect the current source to a **capacitor** (
 
 ### Motivation
 
-Rather than requiring a separate `SFCSectorElm` capacitor element for each stock, a row can directly implement the **capacitor companion model**. This makes the row act as an **integrating stock** that receives current (flow) and accumulates it as voltage (stock level).
+Rather than requiring a separate `SFCStockElm` capacitor element for each stock, a row can directly implement the **capacitor companion model**. This makes the row act as an **integrating stock** that receives current (flow) and accumulates it as voltage (stock level).
 
 ### How It Works
 
@@ -429,7 +429,7 @@ void reset() {
 
 ### Advantages of Capacitor Mode
 
-1. **Self-contained**: No need for separate `SFCSectorElm` elements
+1. **Self-contained**: No need for separate `SFCStockElm` elements
 2. **KCL automatic**: Multiple flows can reference the same stock node
 3. **Accurate integration**: Uses proper companion model (trapezoidal or backward Euler)
 4. **Initial conditions**: Supports initial value equations
@@ -664,7 +664,7 @@ Adding current flow mode and capacitor mode to `EquationTableElm` would provide 
 
 1. **Leverages MNA** for automatic conservation enforcement (KCL = SFC identity)
 2. **Maintains compatibility** with existing voltage mode for mixed models
-3. **Current mode** enables direct flow modeling with `SFCSectorElm` capacitors
+3. **Current mode** enables direct flow modeling with `SFCStockElm` capacitors
 4. **Capacitor mode** provides self-contained integrating stocks (no external elements needed)
 5. **Preserves all expression features** including `integrate()`, `diff()`, parameters
 6. **Mixed tables** can combine all three modes for comprehensive SFC models

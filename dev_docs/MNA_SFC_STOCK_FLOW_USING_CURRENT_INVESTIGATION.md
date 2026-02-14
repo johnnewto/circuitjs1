@@ -226,18 +226,18 @@ class SFCFlowElm extends CircuitElm {
 }
 ```
 
-### New Element: SFCSectorElm (Proposed)
+### New Element: SFCStockElm (Proposed)
 
 ```java
 /**
- * SFCSectorElm - Economic Sector with Stock Capacitor
+ * SFCStockElm - Economic Stock with Capacitor
  * 
  * Represents an economic agent (household, firm, bank, govt).
  * Has a stock capacitor that accumulates flows.
  * The voltage at the node represents the stock level.
  */
-class SFCSectorElm extends CircuitElm {
-    String sectorName;
+class SFCStockElm extends CircuitElm {
+    String stockName;
     double initialStock;      // Initial balance
     double stockCapacitance;  // How quickly stock responds to flows
     double compResistance;
@@ -328,7 +328,7 @@ Current animation (dots moving along wires) directly visualizes economic flows:
 
 ### Phase 1: Basic Current-Flow SFC Elements
 
-1. **SFCSectorElm** - Capacitor-based sector with stock accumulation
+1. **SFCStockElm** - Capacitor-based stock with accumulation
 2. **SFCFlowElm** - Configurable current source between sectors
 3. **SFCPolicyElm** - Voltage source for policy constraints
 
@@ -469,9 +469,9 @@ H_h ~ integrate(YD - C_d)           # Household money (savings)
 
 Two proof-of-concept elements have been created to demonstrate the current-as-flow MNA approach:
 
-### SFCSectorElm (Type 268)
-- Location: [SFCSectorElm.java](../src/com/lushprojects/circuitjs1/client/SFCSectorElm.java)
-- Implements capacitor-based sector with stock accumulation
+### SFCStockElm (Type 268)
+- Location: [SFCStockElm.java](../src/com/lushprojects/circuitjs1/client/SFCStockElm.java)
+- Implements capacitor-based stock with accumulation
 - Stock level = node voltage, Net flow = current into node
 - KCL automatically enforces SFC accounting identity
 
@@ -481,7 +481,7 @@ Two proof-of-concept elements have been created to demonstrate the current-as-fl
 - Flow equation can reference source/destination stock levels
 - Uses Newton-Raphson linearization for convergence
 
-Both elements are registered in the menu under "SFC Sector (MNA)" and "SFC Flow (MNA)".
+Both elements are registered in the menu under "SFC Stock (MNA)" and "SFC Flow (MNA)".
 
 ## Conclusion
 
