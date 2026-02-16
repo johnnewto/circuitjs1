@@ -73,7 +73,7 @@ class EditDialog extends Dialog {
 //		setLayout(new EditDialogLayout());
 		mainPanel=new VerticalPanel();
 		setWidget(mainPanel);
-		einfos = new EditInfo[10];
+		einfos = new EditInfo[20];
 //		noCommaFormat = DecimalFormat.getInstance();
 //		noCommaFormat.setMaximumFractionDigits(10);
 //		noCommaFormat.setGroupingUsed(false);

@@ -235,6 +235,15 @@ public class InfoViewerDialog extends DialogBox {
     }-*/;
     
     /**
+     * Public access to generate markdown viewer HTML.
+     * Used by other dialogs (like EquationTableMarkdownDebugDialog) that want to render
+     * markdown in their own windows.
+     */
+    public static String generateMarkdownViewerHTMLPublic(String title, String markdown) {
+        return generateMarkdownViewerHTML(title, markdown);
+    }
+    
+    /**
      * Generate complete HTML with marked.js for rendering markdown.
      */
     private static String generateMarkdownViewerHTML(String title, String markdown) {

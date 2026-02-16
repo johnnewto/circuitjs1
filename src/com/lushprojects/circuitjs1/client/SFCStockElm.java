@@ -138,6 +138,28 @@ public class SFCStockElm extends CircuitElm {
     int getPostCount() { return 1; }  // Single node representing the stock
     
     @Override
+    void registerLabels() {
+        // Pre-register stock name in the labeled node system BEFORE wire closure.
+        // This allows LabeledNodeElm elements with the same name to merge their
+        // post with this element's post, so they share the same MNA node.
+        if (stockName != null && !stockName.isEmpty()) {
+            LabeledNodeElm.preRegisterLabel(stockName, point1);
+        }
+    }
+    
+    @Override
+    void setNode(int p, int n) {
+        super.setNode(p, n);
+        
+        // Update the labeled node entry with the assigned MNA node number.
+        // Needed for LabeledNodeElm.getByName() to return this node,
+        // especially when no LabeledNodeElm exists for this stock name.
+        if (p == 0 && stockName != null && !stockName.isEmpty()) {
+            LabeledNodeElm.registerLabeledNode(stockName, point1, n);
+        }
+    }
+    
+    @Override
     void setPoints() {
         super.setPoints();
         // Set up label position above the post
@@ -268,9 +290,6 @@ public class SFCStockElm extends CircuitElm {
         
         // Draw a circle representing the stock
         int radius = 15;
-        g.setColor(needsHighlight() ? selectColor : lightGrayColor);
-        g.fillOval(x - radius, y - radius, radius * 2, radius * 2);
-        
         // Draw stock outline (use context.arc for stroke)
         setVoltageColor(g, volts[0]);
         g.context.beginPath();

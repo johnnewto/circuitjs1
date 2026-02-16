@@ -80,25 +80,28 @@ class EditOptions implements Editable {
 		    return new EditInfo("Mouse Wheel Sensitivity", sim.wheelSensitivity);
 		if (n == 13)
 		    return new EditInfo("Graphics Update Interval (frames)", sim.graphicsUpdateInterval, 1, 10).setDimensionless();
-		if (n == 14) {
-		    EditInfo ei = new EditInfo("", 0, -1, -1);
-		    ei.checkbox = new Checkbox("Auto-Adjust Timestep", sim.adjustTimeStep);
-		    return ei;
-		}
-		if (n == 15)
+		if (n == 14)
 		    return new EditInfo("Convergence Check Threshold (subiterations)", sim.convergenceCheckThreshold, 0, 100).setDimensionless();
-		if (n == 16 && sim.adjustTimeStep)
-		    return new EditInfo("Minimum time step size (s)", sim.minTimeStep, 0, 0);
-		if (n == 17) {
+		if (n == 15) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
 		    ei.checkbox = new Checkbox("MNA Mode", sim.equationTableMnaMode);
 		    return ei;
 		}
-		if (n == 18) {
+		if (n == 16) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
 		    ei.checkbox = new Checkbox("Use WASM Solver", CirSim.useWasmSolver);
 		    return ei;
 		}
+		// Conditional items must be last. When the condition is false,
+		// getEditInfo() returns null which terminates the dialog loop,
+		// hiding any items that would follow.
+		if (n == 17) {
+		    EditInfo ei = new EditInfo("", 0, -1, -1);
+		    ei.checkbox = new Checkbox("Auto-Adjust Timestep", sim.adjustTimeStep);
+		    return ei;
+		}
+		if (n == 18 && sim.adjustTimeStep)
+		    return new EditInfo("Minimum time step size (s)", sim.minTimeStep, 0, 0);
 
 		return null;
 	}
@@ -181,22 +184,22 @@ class EditOptions implements Editable {
 		    if (stor != null)
 			stor.setItem("graphicsUpdateInterval", Integer.toString(sim.graphicsUpdateInterval));
 		}
-		if (n == 14) {
-		    sim.adjustTimeStep = ei.checkbox.getState();
-		    ei.newDialog = true;
-		}
-		if (n == 15 && ei.value >= 0)
+		if (n == 14 && ei.value >= 0)
 		    sim.convergenceCheckThreshold = (int)ei.value;
-		if (n == 16 && ei.value > 0)
-		    sim.minTimeStep = ei.value;
-		if (n == 17) {
+		if (n == 15) {
 		    sim.equationTableMnaMode = ei.checkbox.getState();
 		    sim.needAnalyze();
 		}
-		if (n == 18) {
+		if (n == 16) {
 		    CirSim.useWasmSolver = ei.checkbox.getState();
 		    CirSim.console("WASM solver " + (CirSim.useWasmSolver ? "enabled" : "disabled"));
 		}
+		if (n == 17) {
+		    sim.adjustTimeStep = ei.checkbox.getState();
+		    ei.newDialog = true;
+		}
+		if (n == 18 && ei.value > 0)
+		    sim.minTimeStep = ei.value;
 	}
 	
 	Color setColor(String name, EditInfo ei, Color def) {

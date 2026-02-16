@@ -42,7 +42,7 @@ public abstract class CircuitElm implements Editable {
     static Point ps1, ps2;
     
     static CirSim sim;
-    static public Color whiteColor, lightGrayColor, selectColor;
+    static public Color whiteColor, lightGrayColor, selectColor, connectedColor;
     static public Color positiveColor, negativeColor, neutralColor, currentColor;
     static Font unitsFont;
 
@@ -247,6 +247,11 @@ public abstract class CircuitElm implements Editable {
     double getCurrent() { return current; }
 
     void setParentList(Vector<CircuitElm> elmList) {}
+    
+    // called during calculateWireClosure() to let elements pre-register their
+    // names in the labeled node system before wire closure merges nodes.
+    // Override in elements that have named posts (e.g. SFCStockElm).
+    void registerLabels() {}
     
     // stamp matrix values for linear elements.
     // for non-linear elements, use this to stamp values that don't change each iteration, and call stampRightSide() or stampNonLinear() as needed
@@ -1071,7 +1076,7 @@ public abstract class CircuitElm implements Editable {
     	    return Color.red;
     	}
     	if (needsHighlight()) {
-    	    	return (selectColor);
+    	    	return (getHighlightColor());
     	}
     	if (!sim.voltsCheckItem.getState()) {
     	    	return(whiteColor);
@@ -1184,15 +1189,39 @@ public abstract class CircuitElm implements Editable {
 	return ((x1 == y1 && x2 == y2) || (x1 == y2 && x2 == y1));
     }
     boolean needsHighlight() { 
-	return mouseElmRef==this || selected || sim.plotYElm == this || nonConverged ||
+	if (mouseElmRef==this || selected || sim.plotYElm == this || nonConverged ||
 		// Test if the current mouseElm is a ScopeElm and, if so, does it belong to this elm
-		(mouseElmRef instanceof ScopeElm && ((ScopeElm) mouseElmRef).elmScope.getElm()==this); 
+		(mouseElmRef instanceof ScopeElm && ((ScopeElm) mouseElmRef).elmScope.getElm()==this))
+	    return true;
+	// Highlight elements sharing the same MNA node as a hovered LabeledNodeElm
+	if (sim.highlightedNode >= 0) {
+	    for (int i = 0; i < getPostCount(); i++)
+		if (nodes[i] == sim.highlightedNode)
+		    return true;
+	}
+	return false;
     }
     
-    // Get the color to use for highlighting (red for non-convergence, selectColor for selection)
+    // Check if this element is highlighted only because it shares an MNA node
+    // with a hovered LabeledNodeElm (not directly hovered/selected)
+    boolean isConnectedHighlight() {
+	if (mouseElmRef==this || selected || sim.plotYElm == this || nonConverged)
+	    return false;
+	if (sim.highlightedNode >= 0) {
+	    for (int i = 0; i < getPostCount(); i++)
+		if (nodes[i] == sim.highlightedNode)
+		    return true;
+	}
+	return false;
+    }
+    
+    // Get the color to use for highlighting
+    // red for non-convergence, connectedColor for shared-node, selectColor for direct selection
     Color getHighlightColor() {
 	if (nonConverged)
 	    return Color.red;
+	if (isConnectedHighlight())
+	    return connectedColor;
 	return selectColor;
     }
     

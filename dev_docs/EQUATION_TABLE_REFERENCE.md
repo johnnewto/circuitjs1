@@ -34,6 +34,7 @@ Each row stores the following:
 | `outputModes[row]` | RowOutputMode | VOLTAGE_MODE, FLOW_MODE, or SECTOR_MODE |
 | `targetNodeNames[row]` | String | Target node for FLOW_MODE/SECTOR_MODE |
 | `capacitances[row]` | double | Capacitance value for SECTOR_MODE (default 1.0) |
+| `useBackwardEuler[row]` | boolean | Integration method for SECTOR_MODE: `false` = trapezoidal (default), `true` = backward Euler |
 
 ## Row Output Modes
 
@@ -63,10 +64,10 @@ The equation result is stamped as a **current source** flowing between two named
 
 The equation result represents **net inflow current** integrated via a companion capacitor model. The node voltage represents the accumulated stock.
 
-- **Stamp:** Companion resistor `R = dt/C` in `stamp()`, history current source in `doStep()`
+- **Stamp:** Companion resistor `R = dt/(2C)` (trapezoidal) or `R = dt/C` (backward Euler) in `stamp()`, history current source in `doStep()`
 - **Nodes needed:** 1 (stock node), optionally connects to a target node (default: ground)
 - **Equation meaning:** Net inflow rate (positive → stock increases)
-- **Integration:** Built-in backward Euler: `Stock(t) = Stock(t-dt) + dt × NetInflow / C`
+- **Integration:** Trapezoidal (default, more accurate) or Backward Euler (more stable); configurable per row in edit dialog
 - **Use cases:** Accumulating stocks (bank deposits, wealth, inventory)
 - **Always nonlinear:** Requires `doStep()` evaluation every subiteration
 
@@ -77,7 +78,7 @@ The equation result represents **net inflow current** integrated via a companion
 | Output | Drives voltage | Drives current | Integrates inflow |
 | Drive type | VCVS (linear) or computational (dynamic) | VCCS (computational) | Companion resistor + computational current |
 | Stamp type | `stampVoltageSource` | `stampCurrentSource` | `stampResistor` + `stampCurrentSource` |
-| Integration | Use `integrate()` in equation | External capacitor | Built-in (backward Euler) |
+| Integration | Use `integrate()` in equation | External capacitor | Built-in (trapezoidal or backward Euler) |
 | Conservation (KCL) | No (voltage forced) | Yes (at target node) | Yes (at stock node) |
 | Nodes required | 1 (output) | 2 (source + target) | 1 (stock node) |
 | Equation meaning | Output value directly | Flow rate from→to | Net inflow to stock |
@@ -155,7 +156,7 @@ case SECTOR_MODE:
 |--------|------|----------------|
 | `stampVoltageModeRow()` | VOLTAGE_MODE | Voltage source (constant, linear VCVS, or nonlinear) + load resistor |
 | `stampCurrentModeRow()` | FLOW_MODE | Marks source/target nodes as nonlinear; current stamped in `doStep()` |
-| `stampCapacitorModeRow()` | SECTOR_MODE | Companion resistor `R = dt/C` + marks nodes for right-side updates |
+| `stampCapacitorModeRow()` | SECTOR_MODE | Companion resistor `R = dt/(2C)` or `dt/C` + marks nodes for right-side updates |
 
 ### Execution Order Per Timestep
 
@@ -179,7 +180,9 @@ postStamp()
 startIteration()                    — once per timestep, before subiterations
   ├── Retry unresolved aliases
   ├── Seed alias values into ComputedValues
-  └── Calculate capacitor history currents (I_hist = -V_last / R)
+  └── Calculate capacitor history currents:
+        ├── Trapezoidal: I_hist = -V_last / R - I_last  (R = dt/(2C))
+        └── Backward Euler: I_hist = -V_last / R        (R = dt/C)
 
 [subiteration loop]
   doStep()                          — called each subiteration
@@ -193,9 +196,9 @@ startIteration()                    — once per timestep, before subiterations
 
 stepFinished()                      — once per timestep, after convergence
   ├── Alias rows: read target voltage, register in ComputedValues
-  ├── SECTOR_MODE rows: save capLastVoltages, capLastCurrents; set outputValues = stock voltage
+  ├── SECTOR_MODE rows: save capLastVoltage, capLastCurrent; set outputValue = stock voltage
   ├── Register all output values in ComputedValues
-  └── Commit integration state (exprStates[row].commitIntegration)
+  └── Commit integration state (rows[row].exprState.commitIntegration)
 ```
 
 ### Initial Value Handling (t=0)
@@ -205,8 +208,8 @@ If `initialEquations[row]` is set:
 1. **Subiteration 0:** Stamp a placeholder (0) to let the solver warm up.
 2. **Subiteration 1:** Call `evaluateInitialValue(row)`:
    - Evaluate the initial expression at `t=0`
-   - Set `outputValues[row]`, `lastOutputValues[row]`, `exprStates[row].lastIntOutput`
-   - For SECTOR_MODE: set `capLastVoltages[row]`, stamp history current
+   - Set `rows[row].outputValue`, `rows[row].lastOutputValue`, `rows[row].exprState.lastIntOutput`
+   - For SECTOR_MODE: set `rows[row].capLastVoltage`, stamp history current
    - For VOLTAGE_MODE: stamp via `stampRightSide(vn, initialValue)`
    - Register in ComputedValues immediately
 3. **Subsequent subiterations at t=0:** Re-stamp the same initial value (right-side resets each subiteration).
@@ -304,15 +307,18 @@ The mode is a **global** setting (`sim.equationTableMnaMode`, toggled in Options
 266 x1 y1 x2 y2 flags tableName rowCount [per-row-data...]
 ```
 
-**Per-row data (8 tokens per row):**
+**Per-row data (9 tokens per row):**
 
 ```
-outputName equation initialEquation sliderVarName sliderValue outputModeOrdinal targetNodeName capacitance
+outputName equation initialEquation sliderVarName sliderValue outputModeOrdinal targetNodeName capacitance useBackwardEuler
 ```
 
 - `outputModeOrdinal`: 0 = VOLTAGE_MODE, 1 = FLOW_MODE, 2 = SECTOR_MODE
+- `useBackwardEuler`: 0 = trapezoidal (default), 1 = backward Euler
 - Strings are escaped via `CustomLogicModel.escape()` (spaces → `\s`, backslash → `\\`)
 - Empty initial equations serialize as empty string
+
+**Previous format (8 tokens per row):** Detected automatically when `tokenCount == rowCount * 8`. Missing `useBackwardEuler` field defaults to `false` (trapezoidal).
 
 **Legacy format (5 tokens per row):** Detected automatically when `tokenCount == rowCount * 5`. Missing mode fields default to VOLTAGE_MODE.
 
@@ -356,6 +362,7 @@ The edit dialog is opened by double-clicking the table element. It provides:
 - **Per-row mode:** output mode dropdown (VOLTAGE / CURRENT / CAPACITOR)
 - **Per-row target:** target node name (for CURRENT/CAPACITOR modes)
 - **Per-row capacitance:** capacitance value (for CAPACITOR mode)
+- **Per-row integration method:** Trapezoidal or Backward Euler dropdown (for CAPACITOR mode)
 - **Row reordering:** up/down buttons
 - **Autocomplete:** for equation editing (references labeled nodes, computed values)
 
@@ -376,18 +383,19 @@ Internal nodes are registered in `LabeledNodeElm.labelList` so other elements ca
 
 ### Companion Model (CAPACITOR Mode)
 
-The backward Euler discretization converts the capacitor into:
+The companion model converts the capacitor into a resistor + current source. Two integration methods are supported per row (default: trapezoidal):
 
-```
-Capacitor: I = C × dV/dt
-Discretized: I = (C/dt) × (V_new - V_old)
-Companion: Resistor G = C/dt + Current source I_hist = -V_old × G
-```
+| Method | Companion Resistance | History Current | Characteristics |
+|--------|---------------------|-----------------|----------------|
+| Trapezoidal | `R = dt/(2C)` | `I_hist = -V_old/R - I_old` | More accurate, can oscillate if RC ≪ dt |
+| Backward Euler | `R = dt/C` | `I_hist = -V_old/R` | Less accurate, more stable (no oscillation) |
 
-- **stamp():** Stamps the companion resistor `R = dt/C`
-- **startIteration():** Computes `capCurSourceValue[row] = -capLastVoltages[row] / R`
+This matches `CapacitorElm` and `SFCStockElm` companion model implementations.
+
+- **stamp():** Stamps the companion resistor (R depends on integration method)
+- **startIteration():** Computes history current (formula depends on integration method)
 - **doStep():** Stamps `totalCurrent = capCurSourceValue[row] - inflowValue`
-- **stepFinished():** Saves `capLastVoltages[row]` and `capLastCurrents[row]` for next timestep
+- **stepFinished():** Saves `capLastVoltage` and computes `capLastCurrent = V/R + capCurSourceValue - flowValue`
 
 ### ComputedValues Timing
 

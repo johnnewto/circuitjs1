@@ -310,6 +310,9 @@ MouseOutHandler, MouseWheelHandler {
     private TableElm lastInteractedTable = null; // Track last table clicked for draw order
     boolean didSwitch = false;
     int mousePost = -1;
+    
+    // MNA node number currently highlighted (from hovering a LabeledNodeElm), or -1
+    int highlightedNode = -1;
     CircuitElm plotXElm, plotYElm;
     int draggingPost;
     SwitchElm heldSwitchElm;
@@ -1113,6 +1116,8 @@ public CirSim() {
 	    CircuitElm.selectColor = new Color(URL.decodeQueryString(selectColor));
 	else
 	    CircuitElm.selectColor = Color.cyan;
+	// Connected-node highlight: darker cyan to distinguish from direct selection
+	CircuitElm.connectedColor = new Color(0, 140, 140);
 	
 	if (currentColor != null)
 	    CircuitElm.currentColor = new Color(URL.decodeQueryString(currentColor));
@@ -2777,6 +2782,13 @@ public CirSim() {
 	GroundElm.resetNodeList();
 	nodeMap = new HashMap<Point,NodeMapEntry>();
 //	int mergeCount = 0;
+	
+	// Pre-register labels from elements that have named posts (e.g. SFCStockElm).
+	// This seeds the labelList so that LabeledNodeElm.getConnectedPost() can find
+	// these points during wire closure and merge them into the same node.
+	for (i = 0; i != elmList.size(); i++)
+	    getElm(i).registerLabels();
+	
 	wireInfoList = new Vector<WireInfo>();
 	for (i = 0; i != elmList.size(); i++) {
 	    CircuitElm ce = getElm(i);
@@ -3611,6 +3623,19 @@ public CirSim() {
 			if (entry.getValue() == 1) {
 			boolean bad = false;
 			Point cn = entry.getKey();
+			
+			// Posts connected via named labels (e.g. SFCStockElm) are not bad —
+			// they have a logical connection even without a physical wire
+			boolean hasLabelConnection = false;
+			for (j = 0; j != elmList.size(); j++) {
+				CircuitElm ce = getElm(j);
+				if (ce.getPostCount() > 0 && ce.getPost(0).equals(cn)) {
+				if (ce instanceof SFCStockElm || ce instanceof LabeledNodeElm)
+					hasLabelConnection = true;
+				}
+			}
+			if (hasLabelConnection) continue;
+			
 			for (j = 0; j != elmList.size() && !bad; j++) {
 				CircuitElm ce = getElm(j);
 				if ( ce instanceof GraphicElm || ce instanceof TableElm || ce instanceof EquationTableElm)
@@ -6040,6 +6065,12 @@ public CirSim() {
     		int i;
     		for (i = 0; i < adjustables.size(); i++)
     		    adjustables.get(i).setMouseElm(ce);
+    		
+    		// Track highlighted MNA node for cross-element highlighting
+    		if (ce instanceof LabeledNodeElm)
+    		    highlightedNode = ce.nodes[0];
+    		else
+    		    highlightedNode = -1;
     	}
     }
 

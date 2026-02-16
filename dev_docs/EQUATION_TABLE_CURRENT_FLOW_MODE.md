@@ -10,7 +10,7 @@ The core implementation is complete as of the latest commit. The following featu
 - **Capacitor state tracking**: `capLastVoltages[]`, `capLastCurrents[]`, `capCurSourceValue[]`
 - **stamp() method**: Dispatches to mode-specific stamping (`stampVoltageModeRow()`, `stampCurrentModeRow()`, `stampCapacitorModeRow()`)
 - **doStep() method**: Dispatches to mode-specific evaluation (`evaluateCurrentModeRow()`, `evaluateCapacitorModeRow()`)
-- **startIteration()**: Calculates capacitor history current for backward Euler integration
+- **startIteration()**: Calculates capacitor history current (trapezoidal or backward Euler)
 - **stepFinished()**: Saves capacitor state for next timestep and registers stock voltage in ComputedValues
 - **Serialization**: dump()/load() support for mode, target, and capacitance per row
 
@@ -251,18 +251,30 @@ Rather than requiring a separate `SFCStockElm` capacitor element for each stock,
 ### How It Works
 
 The capacitor companion model converts a capacitor into:
-1. A **resistor** with conductance G = C/dt (the "companion resistance")
+1. A **resistor** with conductance G (the "companion resistance")
 2. A **current source** that maintains continuity with the previous timestep
+
+Two integration methods are supported per row (configurable in the edit dialog, default: trapezoidal):
 
 ```
 Capacitor: I = C × dV/dt
 
-Discretized (Backward Euler): I = (C/dt) × (V_new - V_old)
+Trapezoidal discretization:
+  R = dt/(2C)
+  I_hist = -V_old/R - I_old
+  More accurate, can oscillate if RC ≪ dt
+
+Backward Euler discretization:
+  R = dt/C
+  I_hist = -V_old/R
+  Less accurate, more stable (no oscillation)
 
 Rearranged as companion model:
-  - Resistor: G = C/dt connected node to ground
-  - Current source: I_hist = -V_old × G (preserves previous state)
+  - Resistor: G = 1/R connected node to ground
+  - Current source: I_hist (preserves previous state)
 ```
+
+This matches `CapacitorElm` and `SFCStockElm` companion model implementations.
 
 ### Implementation
 
@@ -278,7 +290,7 @@ enum RowOutputMode {
 private double[] capacitances;       // Capacitance value (default 1.0)
 private double[] lastVoltages;       // V_old for companion model
 private double[] lastCurrents;       // For trapezoidal integration
-private boolean[] useTrapezoidal;    // Integration method flag
+private boolean[] useBackwardEuler;   // Integration method flag (false = trapezoidal, true = backward Euler)
 ```
 
 ### stamp() for Capacitor Mode
@@ -309,14 +321,16 @@ void stamp() {
 void startIteration() {
     for (int row = 0; row < rowCount; row++) {
         if (outputModes[row] == RowOutputMode.SECTOR_MODE) {
-            double compResistance = sim.timeStep / capacitances[row];
+            double compResistance = rows[row].useBackwardEuler
+                ? sim.timeStep / capacitances[row]
+                : sim.timeStep / (2 * capacitances[row]);
             
-            // Trapezoidal: I_hist = -V_old/R - I_old
-            // Backward Euler: I_hist = -V_old/R
-            if (useTrapezoidal[row]) {
-                capCurSourceValue[row] = -lastVoltages[row] / compResistance - lastCurrents[row];
-            } else {
+            if (rows[row].useBackwardEuler) {
+                // Backward Euler: I_hist = -V_old/R
                 capCurSourceValue[row] = -lastVoltages[row] / compResistance;
+            } else {
+                // Trapezoidal: I_hist = -V_old/R - I_old
+                capCurSourceValue[row] = -lastVoltages[row] / compResistance - lastCurrents[row];
             }
         }
     }
@@ -431,7 +445,7 @@ void reset() {
 
 1. **Self-contained**: No need for separate `SFCStockElm` elements
 2. **KCL automatic**: Multiple flows can reference the same stock node
-3. **Accurate integration**: Uses proper companion model (trapezoidal or backward Euler)
+3. **Accurate integration**: Uses proper companion model (trapezoidal or backward Euler, matching `SFCStockElm` and `CapacitorElm`)
 4. **Initial conditions**: Supports initial value equations
 5. **Mixed models**: Can combine voltage, current, and capacitor rows in one table
 
@@ -583,7 +597,7 @@ public String dump() {
 ### Phase 1: Data Structures
 1. Add `RowOutputMode` enum (VOLTAGE_MODE, FLOW_MODE, SECTOR_MODE)
 2. Add `outputModes[]`, `targetNodeNames[]`, `capacitances[]` arrays
-3. Add capacitor state arrays: `lastVoltages[]`, `lastCurrents[]`, `capCurSourceValue[]`
+4. Add capacitor state arrays: `lastVoltages[]`, `lastCurrents[]`, `capCurSourceValue[]`, `useBackwardEuler[]`
 
 ### Phase 2: Current Mode Implementation
 4. Implement `evaluateCurrentModeRow()`
@@ -602,13 +616,14 @@ public String dump() {
 13. Add per-row mode dropdown in edit dialog
 14. Add target node field (current mode) with autocomplete
 15. Add capacitance field (capacitor mode)
-16. Update visual rendering to show mode icons (V, I→, ⊥)
+16. Add integration method dropdown (Trapezoidal / Backward Euler) for capacitor mode
+17. Update visual rendering to show mode icons (V, I→, ⊥)
 
 ### Phase 5: Testing & Polish
-17. Test mixed-mode tables (V + I + C rows)
-18. Test full SFC models (SIM, SIMEX)
-19. Verify KCL conservation in models
-20. Add trapezoidal integration option for capacitor mode
+18. Test mixed-mode tables (V + I + C rows)
+19. Test full SFC models (SIM, SIMEX)
+20. Verify KCL conservation in models
+21. Test trapezoidal vs backward Euler integration for capacitor mode
 
 ## Example: Complete SFC Model
 

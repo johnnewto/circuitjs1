@@ -479,12 +479,6 @@ public class EquationTableRenderer {
         if (table.isAliasRow(row)) {
             classIcon = "→";  // Arrow: alias (shares node)
             classColor = new Color(128, 128, 128);  // Gray
-        } else if (table.isConstantRow(row)) {
-            classIcon = "●";  // Bullet: constant (stamped once)
-            classColor = new Color(0, 100, 200);  // Blue
-        } else if (table.isLinearRow(row)) {
-            classIcon = "L";  // L: linear (VCVS, no iteration)
-            classColor = new Color(0, 140, 0);  // Green
         } else {
             classIcon = "⟳";  // Cycle: dynamic (evaluated each step)
             classColor = new Color(200, 100, 0);  // Orange

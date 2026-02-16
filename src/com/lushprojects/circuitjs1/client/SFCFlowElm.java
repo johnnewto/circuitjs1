@@ -367,7 +367,7 @@ public class SFCFlowElm extends CircuitElm {
         drawThickLine(g, lead2, point2);
         
         // Draw flow symbol (line with arrow showing direction)
-        g.setColor(needsHighlight() ? selectColor : Color.gray);
+        g.setColor(needsHighlight() ? getHighlightColor() : Color.gray);
         drawThickLine(g, lead1, lead2);
         
         // Draw arrow indicating flow direction

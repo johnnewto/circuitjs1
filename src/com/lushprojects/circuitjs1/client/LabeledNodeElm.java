@@ -78,9 +78,6 @@ class LabeledNodeElm extends CircuitElm {
     // Cache for reverse lookup: node number -> label name
     private static HashMap<Integer, String> nodeToLabelCache;
     
-    // Track which label text is currently being hovered (for highlighting related nodes)
-    private static String hoveredLabelText = null;
-    
     boolean isInternal() { return (flags & FLAG_INTERNAL) != 0; }
     boolean showLabelNodes() { return (flags & FLAG_SHOW_ALL_NODES) != 0; }
     boolean showAllCircuitNodes() { return (flags & FLAG_SHOW_ALL_CIRCUIT_NODES) != 0; }
@@ -125,6 +122,56 @@ class LabeledNodeElm extends CircuitElm {
     }
     
     /**
+     * Pre-register a label name with a physical point BEFORE wire closure.
+     * Called during calculateWireClosure() for elements like SFCStockElm that
+     * want their post to be merged with any LabeledNodeElm sharing the same name.
+     *
+     * When LabeledNodeElm.getConnectedPost() later runs for this name, it will
+     * find this entry and return the pre-registered point, causing wire closure
+     * to merge the two physical points into the same NodeMapEntry.
+     *
+     * @param name The label name (e.g. stock name)
+     * @param point The physical point of the element's post
+     */
+    public static void preRegisterLabel(String name, Point point) {
+        if (name == null || name.isEmpty()) return;
+        if (labelList == null) return;
+        
+        // Don't overwrite if already registered (first registration wins,
+        // consistent with LabeledNodeElm.getConnectedPost() behavior)
+        if (labelList.containsKey(name)) return;
+        
+        LabelEntry le = new LabelEntry();
+        le.point = point;
+        labelList.put(name, le);
+        invalidateCache();
+    }
+    
+    /**
+     * Register an external element's node as a labeled node.
+     * Used by elements like SFCStockElm that want their nodes accessible by name
+     * after node allocation (setNode phase). Updates the node number on an
+     * existing label entry, or creates one if no LabeledNodeElm exists.
+     *
+     * @param name The label name (e.g. stock name)
+     * @param point The physical point of the node
+     * @param nodeNum The MNA node number assigned during makeNodeList()
+     */
+    public static void registerLabeledNode(String name, Point point, int nodeNum) {
+        if (name == null || name.isEmpty()) return;
+        if (labelList == null) return;
+        
+        LabelEntry le = labelList.get(name);
+        if (le == null) {
+            le = new LabelEntry();
+            le.point = point;
+            labelList.put(name, le);
+        }
+        le.node = nodeNum;
+        invalidateCache();
+    }
+    
+    /**
      * Get all labeled node names in the circuit
      * @return Set of all label names, or null if none
      */
@@ -150,7 +197,8 @@ class LabeledNodeElm extends CircuitElm {
     final int circleSize = 17;
     void setPoints() {
 		super.setPoints();
-		lead1 = interpPoint(point1, point2, 1-circleSize/dn);
+		// No circle gap needed — text is drawn to the side by drawLabeledNode()
+		lead1 = interpPoint(point1, point2, 1);
     }
     
     // get post we're connected to
@@ -191,6 +239,8 @@ class LabeledNodeElm extends CircuitElm {
     // }
     
     void drag(int xx, int yy) {
+	xx = sim.snapGrid(xx);
+	yy = sim.snapGrid(yy);
 	// Check if a specific handle was grabbed
 	if (lastHandleGrabbed == 0) {
 	    // Dragging the first point (x, y) - the connection point
@@ -198,6 +248,12 @@ class LabeledNodeElm extends CircuitElm {
 	    y = yy;
 	} else {
 	    // Dragging the second point (x2, y2) - the label end, or initial creation
+	    if (noDiagonal) {
+		if (Math.abs(x-xx) < Math.abs(y-yy))
+		    xx = x;
+		else
+		    yy = y;
+	    }
 	    x2 = xx;
 	    y2 = yy;
 	}
@@ -245,13 +301,11 @@ class LabeledNodeElm extends CircuitElm {
     void draw(Graphics g) {
 		setVoltageColor(g, volts[0]);
 		drawThickLine(g, point1, lead1);
-		g.setColor(needsHighlight() ? selectColor : whiteColor);
+		g.setColor(needsHighlight() ? getHighlightColor() : whiteColor);
 		setPowerColor(g, false);
 
 		// Set consistent font before drawing label
     	g.setFont(unitsFont);
-		interpPoint(point1, point2, ps2, 1+11./dn);
-		setBbox(point1, ps2, circleSize);
 		
 		// Display label with optional voltage and stock indicator
 		String displayText = text;
@@ -274,6 +328,9 @@ class LabeledNodeElm extends CircuitElm {
 		    displayText = displayText + currentText;
 		}
 		drawLabeledNode(g, displayText, point1, lead1);
+		
+		// Set bbox to just the wire+circle area, excluding the text label.
+		setBbox(point1, lead1, circleSize);
 
 		curcount = updateDotCount(current, curcount);
 		drawDots(g, point1, lead1, curcount);
@@ -472,36 +529,4 @@ class LabeledNodeElm extends CircuitElm {
     }
     
     String getName() { return text; }
-    
-    // Override to track when a LabeledNodeElm is being hovered
-    @Override
-    void setMouseElm(boolean v) {
-        super.setMouseElm(v);
-        if (v) {
-            // This node is now being hovered - store its label text
-            hoveredLabelText = text;
-        } else if (hoveredLabelText != null && hoveredLabelText.equals(text)) {
-            // This node is no longer being hovered - clear the tracked text
-            hoveredLabelText = null;
-        }
-    }
-    
-    // Override to highlight all nodes with the same label name
-    @Override
-    boolean needsHighlight() {
-        // First check standard highlight conditions
-        if (super.needsHighlight()) {
-            return true;
-        }
-        // Also highlight if another LabeledNodeElm with the same text is being hovered
-        if (hoveredLabelText != null && hoveredLabelText.equals(text)) {
-            return true;
-        }
-        return false;
-    }
-    
-    // Check if this is a "related" highlight (same name as hovered node, but not directly hovered)
-    boolean isRelatedHighlight() {
-        return !super.needsHighlight() && hoveredLabelText != null && hoveredLabelText.equals(text);
-    }
 }

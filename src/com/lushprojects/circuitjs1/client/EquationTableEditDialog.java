@@ -56,10 +56,11 @@ public class EquationTableEditDialog extends Dialog {
     private static final int COL_MODE = 4;
     private static final int COL_TARGET = 5;
     private static final int COL_CAPACITANCE = 6;
-    private static final int COL_SLIDER_VAR = 7;
-    private static final int COL_SLIDER_VALUE = 8;
-    private static final int COL_HINT = 9;
-    private static final int NUM_COLS = 10;
+    private static final int COL_INTEGRATION = 7;
+    private static final int COL_SLIDER_VAR = 8;
+    private static final int COL_SLIDER_VALUE = 9;
+    private static final int COL_HINT = 10;
+    private static final int NUM_COLS = 11;
     
     // Grid row indices
     private static final int HEADER_ROW = 0;
@@ -87,12 +88,16 @@ public class EquationTableEditDialog extends Dialog {
     private RowOutputMode[] outputModes;
     private String[] targetNodeNames;
     private double[] capacitances;
+    private boolean[] useBackwardEuler;
     private String[] sliderVarNames;
     private double[] sliderValues;
     private String[] hints;
     
     // Track changes
     private boolean hasChanges = false;
+    
+    // Debug dialog reference
+    private EquationTableMarkdownDebugDialog debugDialog = null;
     
     // Autocomplete state per textbox
     private java.util.Map<TextBox, AutocompleteHelper.AutocompleteState> autocompleteStates = 
@@ -127,6 +132,7 @@ public class EquationTableEditDialog extends Dialog {
         outputModes = new RowOutputMode[MAX_ROWS];
         targetNodeNames = new String[MAX_ROWS];
         capacitances = new double[MAX_ROWS];
+        useBackwardEuler = new boolean[MAX_ROWS];
         sliderVarNames = new String[MAX_ROWS];
         sliderValues = new double[MAX_ROWS];
         hints = new String[MAX_ROWS];
@@ -138,6 +144,7 @@ public class EquationTableEditDialog extends Dialog {
             outputModes[i] = tableElement.getOutputMode(i);
             targetNodeNames[i] = tableElement.getTargetNodeName(i);
             capacitances[i] = tableElement.getCapacitance(i);
+            useBackwardEuler[i] = tableElement.getUseBackwardEuler(i);
             sliderVarNames[i] = tableElement.getSliderVarName(i);
             sliderValues[i] = tableElement.getSliderValue(i);
             // Get hint from central HintRegistry
@@ -180,7 +187,7 @@ public class EquationTableEditDialog extends Dialog {
         
         // Scrollable table area
         scrollPanel = new ScrollPanel();
-        scrollPanel.setWidth("780px");
+        scrollPanel.setWidth("840px");
         scrollPanel.setHeight("300px");
         scrollPanel.addStyleName("topSpace");
         mainPanel.add(scrollPanel);
@@ -231,6 +238,14 @@ public class EquationTableEditDialog extends Dialog {
             }
         });
         buttonPanel.add(propertiesButton);
+        
+        Button debugButton = new Button("Debug");
+        debugButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                showDebugDialog();
+            }
+        });
+        buttonPanel.add(debugButton);
         
         // Spacer
         Label spacer = new Label();
@@ -287,6 +302,11 @@ public class EquationTableEditDialog extends Dialog {
         headerCap.getElement().getStyle().setProperty("fontWeight", "bold");
         headerCap.setTitle("Capacitance (for CAPACITOR mode)");
         editGrid.setWidget(HEADER_ROW, COL_CAPACITANCE, headerCap);
+        
+        Label headerInteg = new Label("Integ.");
+        headerInteg.getElement().getStyle().setProperty("fontWeight", "bold");
+        headerInteg.setTitle("Integration method (Trapezoidal or Backward Euler)");
+        editGrid.setWidget(HEADER_ROW, COL_INTEGRATION, headerInteg);
         
         Label headerSliderVar = new Label("Slider Var");
         headerSliderVar.getElement().getStyle().setProperty("fontWeight", "bold");
@@ -448,6 +468,21 @@ public class EquationTableEditDialog extends Dialog {
         // Only enable if mode is CAPACITOR
         capBox.setEnabled(outputModes[row] == RowOutputMode.SECTOR_MODE);
         editGrid.setWidget(gridRow, COL_CAPACITANCE, capBox);
+        
+        // Integration method dropdown (for SECTOR mode)
+        final ListBox integBox = new ListBox();
+        integBox.addItem("Trap", "trap");
+        integBox.addItem("Euler", "euler");
+        integBox.setSelectedIndex(useBackwardEuler[row] ? 1 : 0);
+        integBox.setTitle("Integration: Trapezoidal (more accurate) or Backward Euler (more stable)");
+        integBox.addChangeHandler(new ChangeHandler() {
+            public void onChange(ChangeEvent event) {
+                useBackwardEuler[row] = "euler".equals(integBox.getSelectedValue());
+                markChanged();
+            }
+        });
+        integBox.setEnabled(outputModes[row] == RowOutputMode.SECTOR_MODE);
+        editGrid.setWidget(gridRow, COL_INTEGRATION, integBox);
         
         // Slider variable name textbox
         final TextBox sliderVarBox = new TextBox();
@@ -618,12 +653,16 @@ public class EquationTableEditDialog extends Dialog {
         // Get the target textbox and capacitance textbox from the grid
         Widget targetWidget = editGrid.getWidget(gridRow, COL_TARGET);
         Widget capWidget = editGrid.getWidget(gridRow, COL_CAPACITANCE);
+        Widget integWidget = editGrid.getWidget(gridRow, COL_INTEGRATION);
         
         if (targetWidget instanceof TextBox) {
             ((TextBox) targetWidget).setEnabled(mode != RowOutputMode.VOLTAGE_MODE);
         }
         if (capWidget instanceof TextBox) {
             ((TextBox) capWidget).setEnabled(mode == RowOutputMode.SECTOR_MODE);
+        }
+        if (integWidget instanceof ListBox) {
+            ((ListBox) integWidget).setEnabled(mode == RowOutputMode.SECTOR_MODE);
         }
     }
     
@@ -667,6 +706,7 @@ public class EquationTableEditDialog extends Dialog {
             outputModes[i + 1] = outputModes[i];
             targetNodeNames[i + 1] = targetNodeNames[i];
             capacitances[i + 1] = capacitances[i];
+            useBackwardEuler[i + 1] = useBackwardEuler[i];
             sliderVarNames[i + 1] = sliderVarNames[i];
             sliderValues[i + 1] = sliderValues[i];
             hints[i + 1] = hints[i];
@@ -679,6 +719,7 @@ public class EquationTableEditDialog extends Dialog {
         outputModes[insertAt] = RowOutputMode.VOLTAGE_MODE;
         targetNodeNames[insertAt] = "";
         capacitances[insertAt] = 1.0;
+        useBackwardEuler[insertAt] = false;
         sliderVarNames[insertAt] = String.valueOf((char)('a' + insertAt));
         sliderValues[insertAt] = 0.5;
         hints[insertAt] = "hint" + (insertAt + 1);
@@ -707,6 +748,7 @@ public class EquationTableEditDialog extends Dialog {
             outputModes[i] = outputModes[i + 1];
             targetNodeNames[i] = targetNodeNames[i + 1];
             capacitances[i] = capacitances[i + 1];
+            useBackwardEuler[i] = useBackwardEuler[i + 1];
             sliderVarNames[i] = sliderVarNames[i + 1];
             sliderValues[i] = sliderValues[i + 1];
             hints[i] = hints[i + 1];
@@ -750,6 +792,10 @@ public class EquationTableEditDialog extends Dialog {
         capacitances[fromIndex] = capacitances[toIndex];
         capacitances[toIndex] = tempCap;
         
+        boolean tempEuler = useBackwardEuler[fromIndex];
+        useBackwardEuler[fromIndex] = useBackwardEuler[toIndex];
+        useBackwardEuler[toIndex] = tempEuler;
+        
         String tempVar = sliderVarNames[fromIndex];
         sliderVarNames[fromIndex] = sliderVarNames[toIndex];
         sliderVarNames[toIndex] = tempVar;
@@ -786,6 +832,7 @@ public class EquationTableEditDialog extends Dialog {
             tableElement.setOutputMode(row, outputModes[row]);
             tableElement.setTargetNodeName(row, targetNodeNames[row]);
             tableElement.setCapacitance(row, capacitances[row]);
+            tableElement.setUseBackwardEuler(row, useBackwardEuler[row]);
             tableElement.setSliderVarName(row, sliderVarNames[row]);
             tableElement.setSliderValue(row, sliderValues[row]);
             // Save hint to central HintRegistry
@@ -822,6 +869,21 @@ public class EquationTableEditDialog extends Dialog {
      */
     private void setStatus(String message) {
         statusLabel.setText(message);
+    }
+    
+    /**
+     * Show the debug dialog for inspecting equation table state
+     */
+    private void showDebugDialog() {
+        if (debugDialog != null) {
+            debugDialog.refresh();
+            if (!debugDialog.isShowing()) {
+                debugDialog.show();
+            }
+        } else {
+            debugDialog = new EquationTableMarkdownDebugDialog(tableElement);
+            debugDialog.show();
+        }
     }
     
     /**
