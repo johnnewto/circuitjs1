@@ -1198,6 +1198,13 @@ public abstract class CircuitElm implements Editable {
 	    for (int i = 0; i < getPostCount(); i++)
 		if (nodes[i] == sim.highlightedNode)
 		    return true;
+	    // For LabeledNodeElm, also check labelList node (follows aliases)
+	    // as fallback for alias rows not merged at wire closure time
+	    if (this instanceof LabeledNodeElm) {
+		Integer labelNode = LabeledNodeElm.getByName(((LabeledNodeElm) this).getName());
+		if (labelNode != null && labelNode == sim.highlightedNode)
+		    return true;
+	    }
 	}
 	return false;
     }
@@ -1211,6 +1218,12 @@ public abstract class CircuitElm implements Editable {
 	    for (int i = 0; i < getPostCount(); i++)
 		if (nodes[i] == sim.highlightedNode)
 		    return true;
+	    // For LabeledNodeElm, also check labelList node (follows aliases)
+	    if (this instanceof LabeledNodeElm) {
+		Integer labelNode = LabeledNodeElm.getByName(((LabeledNodeElm) this).getName());
+		if (labelNode != null && labelNode == sim.highlightedNode)
+		    return true;
+	    }
 	}
 	return false;
     }

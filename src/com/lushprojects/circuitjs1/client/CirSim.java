@@ -6066,10 +6066,13 @@ public CirSim() {
     		for (i = 0; i < adjustables.size(); i++)
     		    adjustables.get(i).setMouseElm(ce);
     		
-    		// Track highlighted MNA node for cross-element highlighting
-    		if (ce instanceof LabeledNodeElm)
-    		    highlightedNode = ce.nodes[0];
-    		else
+    		// Track highlighted MNA node for cross-element highlighting.
+    		// Use labelList node (follows aliases) rather than physical nodes[0],
+    		// as fallback for alias rows not merged at wire closure time.
+    		if (ce instanceof LabeledNodeElm) {
+    		    Integer labelNode = LabeledNodeElm.getByName(((LabeledNodeElm) ce).getName());
+    		    highlightedNode = (labelNode != null) ? labelNode : ce.nodes[0];
+    		} else
     		    highlightedNode = -1;
     	}
     }

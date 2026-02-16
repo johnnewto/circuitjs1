@@ -207,6 +207,7 @@ public class EquationTableMarkdownDebugDialog {
         appendLabeledNodeInfo(md);
         appendAllEquationTablesInCircuit(md);
         appendMatrixEquationSummary(md);
+        appendCircuitDump(md);
         
         return md.toString();
     }
@@ -273,12 +274,12 @@ public class EquationTableMarkdownDebugDialog {
         md.append("## Row Summary\n\n");
         
         // Header
-        md.append("| # | Output | Mode | Class | Equation | Target | Initial | Value | Slider |\n");
-        md.append("|---|--------|------|-------|----------|--------|---------|-------|--------|\n");
+        md.append("| # | Node(s) | Mode | Class | Equation | Initial | Value | Slider |\n");
+        md.append("|---|---------|------|-------|----------|---------|-------|--------|\n");
         
         int rowCount = sourceTable.getRowCount();
         for (int row = 0; row < rowCount; row++) {
-            String outputName = sourceTable.getOutputName(row);
+            String outputName = sourceTable.getDisplayOutputName(row);
             String equation = sourceTable.getEquation(row);
             String initialEq = sourceTable.getInitialEquation(row);
             RowOutputMode mode = sourceTable.getOutputMode(row);
@@ -286,13 +287,12 @@ public class EquationTableMarkdownDebugDialog {
             double value = sourceTable.getOutputValue(row);
             String sliderVar = sourceTable.getSliderVarName(row);
             double sliderVal = sourceTable.getSliderValue(row);
-            String target = sourceTable.getTargetNodeName(row);
             
             // Mode icon
             String modeStr;
             switch (mode) {
                 case FLOW_MODE: modeStr = "FLOW"; break;
-                case SECTOR_MODE: modeStr = "SECTOR"; break;
+                case STOCK_MODE: modeStr = "STOCK"; break;
                 default: modeStr = "VOLTAGE"; break;
             }
             
@@ -307,9 +307,6 @@ public class EquationTableMarkdownDebugDialog {
             // Initial equation (wrap for KaTeX if needed)
             String initStr = (initialEq != null && !initialEq.trim().isEmpty()) ? wrapForKaTeX(initialEq) : "-";
             
-            // Target node (wrap for KaTeX if needed)
-            String targetStr = (target != null && !target.trim().isEmpty()) ? wrapForKaTeX(target) : "-";
-            
             // Output and equation wrapped for KaTeX
             String outputWrapped = wrapForKaTeX(outputName);
             String equationWrapped = wrapForKaTeX(truncate(equation, 30));
@@ -319,7 +316,6 @@ public class EquationTableMarkdownDebugDialog {
               .append(" | ").append(modeStr)
               .append(" | ").append(classIcon)
               .append(" | ").append(equationWrapped)
-              .append(" | ").append(targetStr)
               .append(" | ").append(initStr)
               .append(" | ").append(valueStr)
               .append(" | ").append(sliderVar).append("=").append(sliderVal)
@@ -337,7 +333,7 @@ public class EquationTableMarkdownDebugDialog {
         
         int rowCount = sourceTable.getRowCount();
         for (int row = 0; row < rowCount; row++) {
-            String outputName = sourceTable.getOutputName(row);
+            String outputName = sourceTable.getDisplayOutputName(row);
             String equation = sourceTable.getEquation(row);
             String initialEq = sourceTable.getInitialEquation(row);
             RowOutputMode mode = sourceTable.getOutputMode(row);
@@ -352,15 +348,13 @@ public class EquationTableMarkdownDebugDialog {
             String modeDesc;
             switch (mode) {
                 case FLOW_MODE:
-                    String target = sourceTable.getTargetNodeName(row);
-                    modeDesc = "FLOW_MODE: current source from " + wrapForKaTeX(outputName) + " to " + 
-                        (target != null && !target.isEmpty() ? wrapForKaTeX(target) : "(none)");
+                    modeDesc = "FLOW_MODE: current source " + wrapForKaTeX(outputName);
                     break;
-                case SECTOR_MODE:
-                    String sTarget = sourceTable.getTargetNodeName(row);
+                case STOCK_MODE:
                     double cap = sourceTable.getCapacitance(row);
-                    modeDesc = "SECTOR_MODE: companion model, C=" + cap + 
-                        ", target=" + (sTarget != null && !sTarget.isEmpty() ? wrapForKaTeX(sTarget) : "gnd");
+                    String target = sourceTable.getTargetNodeName(row);
+                    modeDesc = "STOCK_MODE: companion model, C=" + cap + 
+                        ", target=" + (target != null && !target.isEmpty() ? wrapForKaTeX(target) : "gnd");
                     break;
                 default:
                     modeDesc = "VOLTAGE_MODE: drives labeled node via voltage source";
@@ -379,42 +373,43 @@ public class EquationTableMarkdownDebugDialog {
             md.append("- **Slider:** ").append(wrapForKaTeX(sliderVar)).append(" = ").append(sliderVal).append("\n");
             
             // Hint from HintRegistry
-            String hint = HintRegistry.getHint(outputName);
+            String hint = HintRegistry.getHint(sourceTable.getOutputName(row));
             if (hint != null && !hint.trim().isEmpty()) {
                 md.append("- **Hint:** ").append(hint).append("\n");
             }
             
-            // ComputedValues lookup
-            Double cv = ComputedValues.getComputedValue(outputName);
+            // ComputedValues lookup (use source-only name)
+            String sourceName = sourceTable.getOutputName(row);
+            Double cv = ComputedValues.getComputedValue(sourceName);
             if (cv != null) {
-                md.append("- **ComputedValues[").append(wrapForKaTeX(outputName)).append("]:** ").append(cv).append("\n");
+                md.append("- **ComputedValues[").append(wrapForKaTeX(sourceName)).append("]:** ").append(cv).append("\n");
             } else {
-                md.append("- **ComputedValues[").append(wrapForKaTeX(outputName)).append("]:** *(not registered)*\n");
+                md.append("- **ComputedValues[").append(wrapForKaTeX(sourceName)).append("]:** *(not registered)*\n");
             }
             
-            // Labeled node lookup
+            // Labeled node lookup (use source-only name)
             if (sourceTable.isMnaMode()) {
-                Integer nodeNum = LabeledNodeElm.getByName(outputName);
+                Integer nodeNum = LabeledNodeElm.getByName(sourceName);
                 if (nodeNum != null && nodeNum >= 0) {
-                    md.append("- **LabeledNode:** node #").append(nodeNum).append("\n");
+                    md.append("- **LabeledNode[").append(wrapForKaTeX(sourceName)).append("]:** node #").append(nodeNum).append("\n");
                     // Try to read voltage from sim
-                    double nodeVoltage = sim.getLabeledNodeVoltage(outputName);
+                    double nodeVoltage = sim.getLabeledNodeVoltage(sourceName);
                     md.append("- **Node Voltage:** ").append(CircuitElm.getUnitText(nodeVoltage, "V")).append("\n");
                 } else {
                     md.append("- **LabeledNode:** *(not found)*\n");
                 }
                 
-                // For FLOW_MODE/SECTOR_MODE, show target node info too
-                if (mode == RowOutputMode.FLOW_MODE || mode == RowOutputMode.SECTOR_MODE) {
-                    String target = sourceTable.getTargetNodeName(row);
-                    if (target != null && !target.trim().isEmpty() && !target.equalsIgnoreCase("gnd")) {
-                        Integer targetNode = LabeledNodeElm.getByName(target.trim());
+                // For FLOW_MODE/STOCK_MODE, show target node info too
+                if (mode == RowOutputMode.FLOW_MODE || mode == RowOutputMode.STOCK_MODE) {
+                    String targetName = sourceTable.getTargetNodeName(row);
+                    if (targetName != null && !targetName.trim().isEmpty() && !targetName.equalsIgnoreCase("gnd")) {
+                        Integer targetNode = LabeledNodeElm.getByName(targetName.trim());
                         if (targetNode != null && targetNode >= 0) {
-                            md.append("- **Target LabeledNode[").append(wrapForKaTeX(target)).append("]:** node #").append(targetNode).append("\n");
+                            md.append("- **Target LabeledNode[").append(wrapForKaTeX(targetName)).append("]:** node #").append(targetNode).append("\n");
                             md.append("- **Target Voltage:** ").append(
-                                CircuitElm.getUnitText(sim.getLabeledNodeVoltage(target.trim()), "V")).append("\n");
+                                CircuitElm.getUnitText(sim.getLabeledNodeVoltage(targetName.trim()), "V")).append("\n");
                         } else {
-                            md.append("- **Target LabeledNode[").append(wrapForKaTeX(target)).append("]:** *(not found)*\n");
+                            md.append("- **Target LabeledNode[").append(wrapForKaTeX(targetName)).append("]:** *(not found)*\n");
                         }
                     } else {
                         md.append("- **Target:** ground (0V)\n");
@@ -547,6 +542,20 @@ public class EquationTableMarkdownDebugDialog {
         md.append("\n");
     }
     
+    // =========================================================================
+    // CIRCUIT DUMP
+    // =========================================================================
+    
+    /**
+     * Append the full circuit dump text in a code block.
+     */
+    private void appendCircuitDump(StringBuilder md) {
+        md.append("## Circuit Dump\n\n");
+        md.append("```\n");
+        md.append(sim.dumpCircuit());
+        md.append("```\n\n");
+    }
+
     // =========================================================================
     // MATRIX EQUATION SUMMARY  (X = A^-1 B)
     // =========================================================================
@@ -722,8 +731,8 @@ public class EquationTableMarkdownDebugDialog {
             int vsIdx = 0;
             for (int row = 0; row < eqt.getRowCount(); row++) {
                 RowOutputMode mode = eqt.getOutputMode(row);
-                // VOLTAGE_MODE and SECTOR_MODE rows use voltage sources
-                if (mode == RowOutputMode.VOLTAGE_MODE || mode == RowOutputMode.SECTOR_MODE) {
+                // VOLTAGE_MODE and STOCK_MODE rows use voltage sources
+                if (mode == RowOutputMode.VOLTAGE_MODE || mode == RowOutputMode.STOCK_MODE) {
                     if (!eqt.isAliasRow(row)) {
                         if (vsIdx == localVs) {
                             String outputName = eqt.getOutputName(row);

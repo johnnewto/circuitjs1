@@ -676,20 +676,36 @@ class Expr {
 	    return result;
 	}
 	case E_NODE_REF:
-	    // Direct node reference - get voltage from labeled node or computed value
+	    // Direct node reference - get voltage from labeled node or computed value.
+	    //
+	    // In MNA mode, the matrix solver is the source of truth for node voltages.
+	    // Check labeled node voltage FIRST so that the solver's result is authoritative
+	    // for physical nodes. ComputedValues is only used as fallback for variables
+	    // without physical nodes (parameters, slider vars, pure-computational outputs).
+	    //
+	    // In pure-computational mode (no MNA), ComputedValues is the only source.
 	    if (CirSim.theSim != null && nodeName != null) {
-		// First check for computed values (from TableElm)
-		// Use converged values if flag is set (for stable display)
-		Double computedValue = useConvergedValues 
-		    ? ComputedValues.getConvergedValue(nodeName)
-		    : ComputedValues.getComputedValue(nodeName);
-		if (computedValue != null) {
-		    return computedValue.doubleValue();
-		}
-		// Then check for actual labeled node voltage
-		Integer labeledNode = LabeledNodeElm.getByName(nodeName);
-		if (labeledNode != null && labeledNode != 0) {
-		    return CirSim.theSim.getLabeledNodeVoltage(nodeName);
+		if (CirSim.theSim.equationTableMnaMode) {
+		    // MNA mode: labeled node voltage first (authoritative from matrix solver)
+		    Integer labeledNode = LabeledNodeElm.getByName(nodeName);
+		    if (labeledNode != null && labeledNode != 0) {
+			return CirSim.theSim.getLabeledNodeVoltage(nodeName);
+		    }
+		    // Fall back to ComputedValues for non-physical variables
+		    Double computedValue = useConvergedValues
+			? ComputedValues.getConvergedValue(nodeName)
+			: ComputedValues.getComputedValue(nodeName);
+		    if (computedValue != null) {
+			return computedValue.doubleValue();
+		    }
+		} else {
+		    // Pure-computational mode: ComputedValues is the only source
+		    Double computedValue = useConvergedValues
+			? ComputedValues.getConvergedValue(nodeName)
+			: ComputedValues.getComputedValue(nodeName);
+		    if (computedValue != null) {
+			return computedValue.doubleValue();
+		    }
 		}
 		// Not found - track as unresolved (only add once)
 		if (!unresolvedReferences.contains(nodeName)) {

@@ -435,7 +435,7 @@ public class EquationTableRenderer {
         
         // Build display equation with slider value substituted
         String displayEquation = buildDisplayEquation(row);
-        String outputName = Locale.convertGreekSymbols(table.getOutputName(row));
+        String outputName = Locale.convertGreekSymbols(table.getDisplayOutputName(row));
         String rowText = outputName + " = " + displayEquation;
         
         // Draw scroll icon on adjustable rows (numeric equations) to indicate mouse wheel adjustment
@@ -461,8 +461,8 @@ public class EquationTableRenderer {
                 modeIcon = "I→";  // Flow mode
                 modeColor = new Color(200, 50, 50);  // Red for flow
             } else {
-                modeIcon = "C∫";  // Sector/integration mode
-                modeColor = new Color(50, 150, 200);  // Cyan for sector
+                modeIcon = "C∫";  // Stock/integration mode
+                modeColor = new Color(50, 150, 200);  // Cyan for stock
             }
             int modeIconSize = table.getOpsize() == 1 ? 9 : 11;
             g.setFont(new Font("SansSerif", Font.BOLD, modeIconSize));
@@ -496,7 +496,8 @@ public class EquationTableRenderer {
         g.drawString(rowText, textX, rowY + rowHeight - cellPadding - 2);
         
         // Draw current value on right side with voltage coloring
-        double outputValue = table.getOutputValue(row);
+        // For STOCK rows, shows stock level (node voltage) instead of inflow rate
+        double outputValue = table.getDisplayValue(row);
         String valueText = CircuitElm.getShortUnitText(outputValue, "");
         int valueWidth = (int) g.context.measureText(valueText).getWidth();
         g.setColor(getVoltageColor(outputValue));

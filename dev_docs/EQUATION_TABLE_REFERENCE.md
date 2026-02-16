@@ -31,10 +31,10 @@ Each row stores the following:
 | `initialEquations[row]` | String | Expression evaluated only at t=0 (optional) |
 | `sliderVarNames[row]` | String | Name of the slider variable (accessible in equations) |
 | `sliderValues[row]` | double | Current slider value |
-| `outputModes[row]` | RowOutputMode | VOLTAGE_MODE, FLOW_MODE, or SECTOR_MODE |
-| `targetNodeNames[row]` | String | Target node for FLOW_MODE/SECTOR_MODE |
-| `capacitances[row]` | double | Capacitance value for SECTOR_MODE (default 1.0) |
-| `useBackwardEuler[row]` | boolean | Integration method for SECTOR_MODE: `false` = trapezoidal (default), `true` = backward Euler |
+| `outputModes[row]` | RowOutputMode | VOLTAGE_MODE, FLOW_MODE, or STOCK_MODE |
+| `targetNodeNames[row]` | String | Target node for FLOW_MODE/STOCK_MODE |
+| `capacitances[row]` | double | Capacitance value for STOCK_MODE (default 1.0) |
+| `useBackwardEuler[row]` | boolean | Integration method for STOCK_MODE: `false` = trapezoidal (default), `true` = backward Euler |
 
 ## Row Output Modes
 
@@ -60,7 +60,7 @@ The equation result is stamped as a **current source** flowing between two named
 - **Use cases:** Transaction flows, wage payments, consumption spending
 - **Always nonlinear:** Requires `doStep()` evaluation every subiteration
 
-### SECTOR_MODE
+### STOCK_MODE
 
 The equation result represents **net inflow current** integrated via a companion capacitor model. The node voltage represents the accumulated stock.
 
@@ -73,7 +73,7 @@ The equation result represents **net inflow current** integrated via a companion
 
 ### Mode Comparison
 
-| Feature | VOLTAGE_MODE | FLOW_MODE | SECTOR_MODE |
+| Feature | VOLTAGE_MODE | FLOW_MODE | STOCK_MODE |
 |---------|---------|---------|-----------|
 | Output | Drives voltage | Drives current | Integrates inflow |
 | Drive type | VCVS (linear) or computational (dynamic) | VCCS (computational) | Companion resistor + computational current |
@@ -117,7 +117,7 @@ Standard nonlinear stamping with `stampNonLinear(vn)` in `stamp()`, value comput
 
 ### Classification Rules
 
-- FLOW_MODE and SECTOR_MODE rows are **never** classified as constant or linear — they always require `doStep()`.
+- FLOW_MODE and STOCK_MODE rows are **never** classified as constant or linear — they always require `doStep()`.
 - Rows with initial equations (`initialEquations[row]` non-empty) are always **dynamic**, since they require special t=0 handling.
 - If all rows in a table are constant/alias/linear, `nonLinear()` returns `false`, preventing the table from forcing the entire circuit into nonlinear mode.
 
@@ -146,7 +146,7 @@ case VOLTAGE_MODE:
 case FLOW_MODE:
     stampCurrentModeRow(row);
     break;
-case SECTOR_MODE:
+case STOCK_MODE:
     stampCapacitorModeRow(row);
     break;
 }
@@ -156,7 +156,7 @@ case SECTOR_MODE:
 |--------|------|----------------|
 | `stampVoltageModeRow()` | VOLTAGE_MODE | Voltage source (constant, linear VCVS, or nonlinear) + load resistor |
 | `stampCurrentModeRow()` | FLOW_MODE | Marks source/target nodes as nonlinear; current stamped in `doStep()` |
-| `stampCapacitorModeRow()` | SECTOR_MODE | Companion resistor `R = dt/(2C)` or `dt/C` + marks nodes for right-side updates |
+| `stampCapacitorModeRow()` | STOCK_MODE | Companion resistor `R = dt/(2C)` or `dt/C` + marks nodes for right-side updates |
 
 ### Execution Order Per Timestep
 
@@ -172,7 +172,7 @@ analyzeCircuit()
               ├── Linear:    stampVoltageSource + stampVCVS (or defer to postStamp)
               ├── Dynamic:   stampNonLinear(vn) + stampVoltageSource(0, node, vs)
               ├── FLOW_MODE:   stampNonLinear + stampRightSide on both nodes
-              └── SECTOR_MODE: stampResistor(companion) + stampNonLinear + stampRightSide
+              └── STOCK_MODE: stampResistor(companion) + stampNonLinear + stampRightSide
 
 postStamp()
   └── Stamps deferred VCVS coefficients for linear rows
@@ -192,11 +192,11 @@ startIteration()                    — once per timestep, before subiterations
     ├── t=0 handling: evaluateInitialValue()
     ├── VOLTAGE_MODE: evaluateVoltageModeRow()
     ├── FLOW_MODE: evaluateCurrentModeRow()
-    └── SECTOR_MODE: evaluateCapacitorModeRow()
+    └── STOCK_MODE: evaluateCapacitorModeRow()
 
 stepFinished()                      — once per timestep, after convergence
   ├── Alias rows: read target voltage, register in ComputedValues
-  ├── SECTOR_MODE rows: save capLastVoltage, capLastCurrent; set outputValue = stock voltage
+  ├── STOCK_MODE rows: save capLastVoltage, capLastCurrent; set outputValue = stock voltage
   ├── Register all output values in ComputedValues
   └── Commit integration state (rows[row].exprState.commitIntegration)
 ```
@@ -209,7 +209,7 @@ If `initialEquations[row]` is set:
 2. **Subiteration 1:** Call `evaluateInitialValue(row)`:
    - Evaluate the initial expression at `t=0`
    - Set `rows[row].outputValue`, `rows[row].lastOutputValue`, `rows[row].exprState.lastIntOutput`
-   - For SECTOR_MODE: set `rows[row].capLastVoltage`, stamp history current
+   - For STOCK_MODE: set `rows[row].capLastVoltage`, stamp history current
    - For VOLTAGE_MODE: stamp via `stampRightSide(vn, initialValue)`
    - Register in ComputedValues immediately
 3. **Subsequent subiterations at t=0:** Re-stamp the same initial value (right-side resets each subiteration).
@@ -280,7 +280,7 @@ The mode is a **global** setting (`sim.equationTableMnaMode`, toggled in Options
 - Rows create labeled nodes and voltage sources in the circuit matrix
 - Values participate in MNA solving (KCL enforcement)
 - Row classifications (alias, constant, linear) reduce matrix size
-- FLOW_MODE/SECTOR_MODE inject current sources
+- FLOW_MODE/STOCK_MODE inject current sources
 
 ### Pure Computational Mode
 
@@ -297,7 +297,7 @@ The mode is a **global** setting (`sim.equationTableMnaMode`, toggled in Options
 | Matrix entries | Yes | No |
 | ComputedValues | Yes (also registered) | Yes (primary output) |
 | FLOW_MODE | Stamps current source | N/A |
-| SECTOR_MODE | Companion model | N/A |
+| STOCK_MODE | Companion model | N/A |
 
 ## Serialization Format
 
@@ -313,7 +313,7 @@ The mode is a **global** setting (`sim.equationTableMnaMode`, toggled in Options
 outputName equation initialEquation sliderVarName sliderValue outputModeOrdinal targetNodeName capacitance useBackwardEuler
 ```
 
-- `outputModeOrdinal`: 0 = VOLTAGE_MODE, 1 = FLOW_MODE, 2 = SECTOR_MODE
+- `outputModeOrdinal`: 0 = VOLTAGE_MODE, 1 = FLOW_MODE, 2 = STOCK_MODE
 - `useBackwardEuler`: 0 = trapezoidal (default), 1 = backward Euler
 - Strings are escaped via `CustomLogicModel.escape()` (spaces → `\s`, backslash → `\\`)
 - Empty initial equations serialize as empty string

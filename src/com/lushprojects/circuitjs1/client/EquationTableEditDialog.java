@@ -54,13 +54,12 @@ public class EquationTableEditDialog extends Dialog {
     private static final int COL_EQUATION = 2;
     private static final int COL_INITIAL_VALUE = 3;
     private static final int COL_MODE = 4;
-    private static final int COL_TARGET = 5;
-    private static final int COL_CAPACITANCE = 6;
-    private static final int COL_INTEGRATION = 7;
-    private static final int COL_SLIDER_VAR = 8;
-    private static final int COL_SLIDER_VALUE = 9;
-    private static final int COL_HINT = 10;
-    private static final int NUM_COLS = 11;
+    private static final int COL_CAPACITANCE = 5;
+    private static final int COL_INTEGRATION = 6;
+    private static final int COL_SLIDER_VAR = 7;
+    private static final int COL_SLIDER_VALUE = 8;
+    private static final int COL_HINT = 9;
+    private static final int NUM_COLS = 10;
     
     // Grid row indices
     private static final int HEADER_ROW = 0;
@@ -86,7 +85,6 @@ public class EquationTableEditDialog extends Dialog {
     private String[] equations;
     private String[] initialEquations;
     private RowOutputMode[] outputModes;
-    private String[] targetNodeNames;
     private double[] capacitances;
     private boolean[] useBackwardEuler;
     private String[] sliderVarNames;
@@ -130,7 +128,6 @@ public class EquationTableEditDialog extends Dialog {
         equations = new String[MAX_ROWS];
         initialEquations = new String[MAX_ROWS];
         outputModes = new RowOutputMode[MAX_ROWS];
-        targetNodeNames = new String[MAX_ROWS];
         capacitances = new double[MAX_ROWS];
         useBackwardEuler = new boolean[MAX_ROWS];
         sliderVarNames = new String[MAX_ROWS];
@@ -138,17 +135,17 @@ public class EquationTableEditDialog extends Dialog {
         hints = new String[MAX_ROWS];
         
         for (int i = 0; i < MAX_ROWS; i++) {
-            outputNames[i] = tableElement.getOutputName(i);
+            outputNames[i] = tableElement.getDisplayOutputName(i);
             equations[i] = tableElement.getEquation(i);
             initialEquations[i] = tableElement.getInitialEquation(i);
             outputModes[i] = tableElement.getOutputMode(i);
-            targetNodeNames[i] = tableElement.getTargetNodeName(i);
             capacitances[i] = tableElement.getCapacitance(i);
             useBackwardEuler[i] = tableElement.getUseBackwardEuler(i);
             sliderVarNames[i] = tableElement.getSliderVarName(i);
             sliderValues[i] = tableElement.getSliderValue(i);
-            // Get hint from central HintRegistry
-            String hint = HintRegistry.getHint(outputNames[i]);
+            // Get hint from central HintRegistry using source name only
+            String sourceName = EquationTableElm.parseCombinedName(outputNames[i])[0];
+            String hint = HintRegistry.getHint(sourceName);
             hints[i] = (hint != null) ? hint : "";
         }
     }
@@ -187,7 +184,7 @@ public class EquationTableEditDialog extends Dialog {
         
         // Scrollable table area
         scrollPanel = new ScrollPanel();
-        scrollPanel.setWidth("840px");
+        scrollPanel.setWidth("780px");
         scrollPanel.setHeight("300px");
         scrollPanel.addStyleName("topSpace");
         mainPanel.add(scrollPanel);
@@ -278,8 +275,9 @@ public class EquationTableEditDialog extends Dialog {
         // Header row
         editGrid.setText(HEADER_ROW, COL_BUTTONS, "");
         
-        Label headerOutput = new Label("Output Name");
+        Label headerOutput = new Label("Node(s)");
         headerOutput.getElement().getStyle().setProperty("fontWeight", "bold");
+        headerOutput.setTitle("Node name, or From->To for Flow/Stock modes");
         editGrid.setWidget(HEADER_ROW, COL_OUTPUT_NAME, headerOutput);
         
         Label headerEquation = new Label("Equation");
@@ -293,10 +291,6 @@ public class EquationTableEditDialog extends Dialog {
         Label headerMode = new Label("Mode");
         headerMode.getElement().getStyle().setProperty("fontWeight", "bold");
         editGrid.setWidget(HEADER_ROW, COL_MODE, headerMode);
-        
-        Label headerTarget = new Label("Target");
-        headerTarget.getElement().getStyle().setProperty("fontWeight", "bold");
-        editGrid.setWidget(HEADER_ROW, COL_TARGET, headerTarget);
         
         Label headerCap = new Label("Cap");
         headerCap.getElement().getStyle().setProperty("fontWeight", "bold");
@@ -383,9 +377,11 @@ public class EquationTableEditDialog extends Dialog {
         editGrid.setWidget(gridRow, COL_BUTTONS, buttonPanel);
         
         // Output name textbox
+        // Output name textbox (combined format: "S1->S2" for Flow/Stock, "rate" for Voltage)
         final TextBox outputNameBox = new TextBox();
         outputNameBox.setText(outputNames[row]);
-        outputNameBox.setWidth("80px");
+        outputNameBox.setWidth("110px");
+        outputNameBox.setTitle("Node name (Voltage), or From->To (Flow/Stock)");
         outputNameBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
                 outputNames[row] = outputNameBox.getText();
@@ -406,41 +402,25 @@ public class EquationTableEditDialog extends Dialog {
         // Output mode dropdown
         final ListBox modeBox = new ListBox();
         modeBox.addItem("Voltage", "VOLTAGE_MODE");
-        modeBox.addItem("Flow→", "FLOW_MODE");
-        modeBox.addItem("Sector", "SECTOR_MODE");
+        modeBox.addItem("Flow\u2192", "FLOW_MODE");
+        modeBox.addItem("Stock", "STOCK_MODE");
         // Set selected based on current mode
         RowOutputMode currentMode = outputModes[row];
         if (currentMode == RowOutputMode.FLOW_MODE) modeBox.setSelectedIndex(1);
-        else if (currentMode == RowOutputMode.SECTOR_MODE) modeBox.setSelectedIndex(2);
+        else if (currentMode == RowOutputMode.STOCK_MODE) modeBox.setSelectedIndex(2);
         else modeBox.setSelectedIndex(0);
         modeBox.addChangeHandler(new ChangeHandler() {
             public void onChange(ChangeEvent event) {
                 String val = modeBox.getSelectedValue();
                 if ("FLOW_MODE".equals(val)) outputModes[row] = RowOutputMode.FLOW_MODE;
-                else if ("SECTOR_MODE".equals(val)) outputModes[row] = RowOutputMode.SECTOR_MODE;
+                else if ("STOCK_MODE".equals(val)) outputModes[row] = RowOutputMode.STOCK_MODE;
                 else outputModes[row] = RowOutputMode.VOLTAGE_MODE;
                 markChanged();
-                // Enable/disable target and capacitance fields based on mode
+                // Enable/disable capacitance fields based on mode
                 updateModeFields(gridRow, outputModes[row]);
             }
         });
         editGrid.setWidget(gridRow, COL_MODE, modeBox);
-        
-        // Target node name (for CURRENT/CAPACITOR modes)
-        final TextBox targetBox = new TextBox();
-        targetBox.setText(targetNodeNames[row] != null ? targetNodeNames[row] : "");
-        targetBox.setWidth("70px");
-        targetBox.setTitle("Target node name (current flows TO this node)");
-        targetBox.addKeyUpHandler(new KeyUpHandler() {
-            public void onKeyUp(KeyUpEvent event) {
-                targetNodeNames[row] = targetBox.getText();
-                markChanged();
-            }
-        });
-        addSelectAllOnFocus(targetBox);
-        // Disable if mode is VOLTAGE
-        targetBox.setEnabled(outputModes[row] != RowOutputMode.VOLTAGE_MODE);
-        editGrid.setWidget(gridRow, COL_TARGET, targetBox);
         
         // Capacitance value (for CAPACITOR mode)
         final TextBox capBox = new TextBox();
@@ -466,10 +446,10 @@ public class EquationTableEditDialog extends Dialog {
         });
         addSelectAllOnFocus(capBox);
         // Only enable if mode is CAPACITOR
-        capBox.setEnabled(outputModes[row] == RowOutputMode.SECTOR_MODE);
+        capBox.setEnabled(outputModes[row] == RowOutputMode.STOCK_MODE);
         editGrid.setWidget(gridRow, COL_CAPACITANCE, capBox);
         
-        // Integration method dropdown (for SECTOR mode)
+        // Integration method dropdown (for STOCK mode)
         final ListBox integBox = new ListBox();
         integBox.addItem("Trap", "trap");
         integBox.addItem("Euler", "euler");
@@ -481,7 +461,7 @@ public class EquationTableEditDialog extends Dialog {
                 markChanged();
             }
         });
-        integBox.setEnabled(outputModes[row] == RowOutputMode.SECTOR_MODE);
+        integBox.setEnabled(outputModes[row] == RowOutputMode.STOCK_MODE);
         editGrid.setWidget(gridRow, COL_INTEGRATION, integBox);
         
         // Slider variable name textbox
@@ -647,22 +627,17 @@ public class EquationTableEditDialog extends Dialog {
     }
     
     /**
-     * Update target and capacitance field enabled states based on mode
+     * Update capacitance and integration field enabled states based on mode
      */
     private void updateModeFields(int gridRow, RowOutputMode mode) {
-        // Get the target textbox and capacitance textbox from the grid
-        Widget targetWidget = editGrid.getWidget(gridRow, COL_TARGET);
         Widget capWidget = editGrid.getWidget(gridRow, COL_CAPACITANCE);
         Widget integWidget = editGrid.getWidget(gridRow, COL_INTEGRATION);
         
-        if (targetWidget instanceof TextBox) {
-            ((TextBox) targetWidget).setEnabled(mode != RowOutputMode.VOLTAGE_MODE);
-        }
         if (capWidget instanceof TextBox) {
-            ((TextBox) capWidget).setEnabled(mode == RowOutputMode.SECTOR_MODE);
+            ((TextBox) capWidget).setEnabled(mode == RowOutputMode.STOCK_MODE);
         }
         if (integWidget instanceof ListBox) {
-            ((ListBox) integWidget).setEnabled(mode == RowOutputMode.SECTOR_MODE);
+            ((ListBox) integWidget).setEnabled(mode == RowOutputMode.STOCK_MODE);
         }
     }
     
@@ -704,7 +679,6 @@ public class EquationTableEditDialog extends Dialog {
             equations[i + 1] = equations[i];
             initialEquations[i + 1] = initialEquations[i];
             outputModes[i + 1] = outputModes[i];
-            targetNodeNames[i + 1] = targetNodeNames[i];
             capacitances[i + 1] = capacitances[i];
             useBackwardEuler[i + 1] = useBackwardEuler[i];
             sliderVarNames[i + 1] = sliderVarNames[i];
@@ -717,7 +691,6 @@ public class EquationTableEditDialog extends Dialog {
         equations[insertAt] = "0";
         initialEquations[insertAt] = "";
         outputModes[insertAt] = RowOutputMode.VOLTAGE_MODE;
-        targetNodeNames[insertAt] = "";
         capacitances[insertAt] = 1.0;
         useBackwardEuler[insertAt] = false;
         sliderVarNames[insertAt] = String.valueOf((char)('a' + insertAt));
@@ -746,7 +719,6 @@ public class EquationTableEditDialog extends Dialog {
             equations[i] = equations[i + 1];
             initialEquations[i] = initialEquations[i + 1];
             outputModes[i] = outputModes[i + 1];
-            targetNodeNames[i] = targetNodeNames[i + 1];
             capacitances[i] = capacitances[i + 1];
             useBackwardEuler[i] = useBackwardEuler[i + 1];
             sliderVarNames[i] = sliderVarNames[i + 1];
@@ -783,10 +755,6 @@ public class EquationTableEditDialog extends Dialog {
         RowOutputMode tempMode = outputModes[fromIndex];
         outputModes[fromIndex] = outputModes[toIndex];
         outputModes[toIndex] = tempMode;
-        
-        String tempTarget = targetNodeNames[fromIndex];
-        targetNodeNames[fromIndex] = targetNodeNames[toIndex];
-        targetNodeNames[toIndex] = tempTarget;
         
         double tempCap = capacitances[fromIndex];
         capacitances[fromIndex] = capacitances[toIndex];
@@ -826,18 +794,18 @@ public class EquationTableEditDialog extends Dialog {
         
         // Apply row data
         for (int row = 0; row < rowCount; row++) {
-            tableElement.setOutputName(row, outputNames[row]);
+            tableElement.setOutputName(row, outputNames[row]);  // Parses "A->B" format
             tableElement.setEquation(row, equations[row]);
             tableElement.setInitialEquation(row, initialEquations[row]);
             tableElement.setOutputMode(row, outputModes[row]);
-            tableElement.setTargetNodeName(row, targetNodeNames[row]);
             tableElement.setCapacitance(row, capacitances[row]);
             tableElement.setUseBackwardEuler(row, useBackwardEuler[row]);
             tableElement.setSliderVarName(row, sliderVarNames[row]);
             tableElement.setSliderValue(row, sliderValues[row]);
-            // Save hint to central HintRegistry
+            // Save hint to central HintRegistry using source name only
+            String sourceName = EquationTableElm.parseCombinedName(outputNames[row])[0];
             if (hints[row] != null && !hints[row].trim().isEmpty()) {
-                HintRegistry.setHint(outputNames[row], hints[row]);
+                HintRegistry.setHint(sourceName, hints[row]);
             }
         }
         
