@@ -215,25 +215,33 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     private class FlowModeHandler implements RowModeHandler {
         @Override
         public void stamp(int row) {
-            // Resolve source node
-            Integer sourceNode = LabeledNodeElm.getByName(rows[row].outputName);
-            if (sourceNode == null || sourceNode < 0) return;
+            // Resolve the named node
+            Integer namedNode = LabeledNodeElm.getByName(rows[row].outputName);
+            if (namedNode == null || namedNode < 0) return;
             
-            // Resolve target node
+            // Resolve target node (default to ground if empty or "gnd")
             String targetName = rows[row].targetNodeName;
-            if (targetName == null || targetName.trim().isEmpty()) return;
+            boolean singleNode = (targetName == null || targetName.trim().isEmpty() ||
+                targetName.trim().equalsIgnoreCase("gnd"));
             
-            Integer targetNode;
-            if (targetName.trim().equalsIgnoreCase("gnd")) {
-                targetNode = 0;
+            int sourceNode, targetNode;
+            if (singleNode) {
+                // Single-node FLOW: current flows FROM ground TO the named node.
+                // Positive equation value = current injected into the node.
+                sourceNode = 0;   // ground
+                targetNode = namedNode;
             } else {
-                targetNode = LabeledNodeElm.getByName(targetName.trim());
-                if (targetNode == null || targetNode < 0) return;
+                // Two-node FLOW: current flows FROM source TO target.
+                // Source is the output name, target is the explicit target node.
+                sourceNode = namedNode;
+                Integer resolvedTarget = LabeledNodeElm.getByName(targetName.trim());
+                if (resolvedTarget == null || resolvedTarget < 0) return;
+                targetNode = resolvedTarget;
             }
             
             // Store resolved node numbers for doStep()
-            rows[row].targetNodeNumber = targetNode;
             rows[row].labeledNodeNumber = sourceNode;
+            rows[row].targetNodeNumber = targetNode;
             
             // Mark nodes as nonlinear to prevent matrix elimination
             sim.stampNonLinear(sourceNode);
@@ -669,7 +677,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             int valueSpacing = opsize == 1 ? 16 : 20;
 
             for (int row = 0; row < rowCount; row++) {
-                String displayText = getDisplayOutputName(row) + " = " + rows[row].equation;
+                String displayText = getUIDisplayOutputName(row) + " = " + rows[row].equation;
                 // Start with classification icon width (always present)
                 int leftIconsWidth = classIconWidth;
                 // Add adjustable scroll icon if applicable
@@ -1796,7 +1804,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         if (hint != null && !hint.trim().isEmpty()) {
             arr[1] = hint;
         } else {
-            arr[1] = "Row " + (hoveredRow + 1) + ": " + getDisplayOutputName(hoveredRow);
+            arr[1] = "Row " + (hoveredRow + 1) + ": " + getFlowDisplayName(hoveredRow);
         }
         
         // Build classification description with icon
@@ -1807,22 +1815,65 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             classDesc = "⟳ dynamic (evaluated each step)";
         }
         
-        arr[2] = "Row " + (hoveredRow + 1) + ": " + getDisplayOutputName(hoveredRow) + " [" + classDesc + "]";
+        arr[2] = getFlowDisplayName(hoveredRow) + " = " + getUnitText(rows[hoveredRow].outputValue, "") + " [" + classDesc + "]";
         arr[3] = "Equation: " + rows[hoveredRow].equation;
         
         String initEq = rows[hoveredRow].initialEquation;
-        arr[4] = "Initial (t=0): " + (initEq != null && !initEq.trim().isEmpty() ? initEq : "(none)");
         
-        arr[5] = "Slider: " + rows[hoveredRow].sliderVarName + " = " + getShortUnitText(rows[hoveredRow].sliderValue, "");
-        arr[6] = "Output: " + getUnitText(rows[hoveredRow].outputValue, "");
+        // For FLOW_MODE, show the full current source direction
+        if (rows[hoveredRow].outputMode == RowOutputMode.FLOW_MODE) {
+            String sourceName = rows[hoveredRow].outputName;
+            String targetName = rows[hoveredRow].targetNodeName;
+            boolean singleNode = (targetName == null || targetName.trim().isEmpty() ||
+                targetName.trim().equalsIgnoreCase("gnd"));
+            if (singleNode) {
+                arr[4] = "Flow: gnd \u2192 " + sourceName + " (positive = into " + sourceName + ")";
+            } else {
+                arr[4] = "Flow: " + sourceName + " \u2192 " + targetName + " (positive = " + sourceName + " to " + targetName + ")";
+            }
+            arr[5] = "Initial (t=0): " + (initEq != null && !initEq.trim().isEmpty() ? initEq : "(none)");
+            arr[6] = "Slider: " + rows[hoveredRow].sliderVarName + " = " + getShortUnitText(rows[hoveredRow].sliderValue, "");
+            arr[7] = "Output: " + getUnitText(rows[hoveredRow].outputValue, "");
+            
+            if (rows[hoveredRow].compiledExpr == null) {
+                arr[8] = "\u26A0 Equation parse error";
+            } else if (isAdjustableRow(hoveredRow)) {
+                arr[8] = "scroll to adjust value";
+            }
+        } else {
+            arr[4] = "Initial (t=0): " + (initEq != null && !initEq.trim().isEmpty() ? initEq : "(none)");
         
-        if (rows[hoveredRow].compiledExpr == null) {
-            arr[7] = "⚠ Equation parse error";
-        } else if (isAdjustableRow(hoveredRow)) {
-            arr[7] = "scroll to adjust value";
+            arr[5] = "Slider: " + rows[hoveredRow].sliderVarName + " = " + getShortUnitText(rows[hoveredRow].sliderValue, "");
+            arr[6] = "Output: " + getUnitText(rows[hoveredRow].outputValue, "");
+        
+            if (rows[hoveredRow].compiledExpr == null) {
+                arr[7] = "\u26A0 Equation parse error";
+            } else if (isAdjustableRow(hoveredRow)) {
+                arr[7] = "scroll to adjust value";
+            }
         }
     }
     
+    /**
+     * Get the full flow-direction display name for a FLOW_MODE row.
+     * Single-node: "gnd \u2192 S3", two-node: "S1 \u2192 S2".
+     * For non-FLOW rows, returns getUIDisplayOutputName().
+     */
+    public String getFlowDisplayName(int row) {
+        if (rows[row].outputMode == RowOutputMode.FLOW_MODE) {
+            String nodeName = rows[row].outputName;
+            String targetName = rows[row].targetNodeName;
+            boolean singleNode = (targetName == null || targetName.trim().isEmpty() ||
+                targetName.trim().equalsIgnoreCase("Gnd"));
+            if (singleNode) {
+                return "Gnd \u2192 " + nodeName;
+            } else {
+                return nodeName + " \u2192 " + targetName;
+            }
+        }
+        return getUIDisplayOutputName(row);
+    }
+
     /**
      * Get summary info when not hovering over a specific row.
      */
@@ -1831,7 +1882,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         
         int idx = 2;
         for (int row = 0; row < rowCount && idx < arr.length - 1; row++) {
-            arr[idx++] = getDisplayOutputName(row) + " = " + getUnitText(rows[row].outputValue, "");
+            arr[idx++] = getFlowDisplayName(row) + " = " + getUnitText(rows[row].outputValue, "");
         }
     }
     
@@ -1940,9 +1991,10 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /**
      * Get the display output name for a row (combined "source->target" format).
-     * For FLOW/STOCK modes with a target, returns "source->target".
-     * For VOLTAGE mode or no target, returns just the source name.
+     * For FLOW/STOCK modes with an explicit non-ground target, returns "source->target".
+     * For VOLTAGE mode, no target, or target="gnd", returns just the source name.
      * Always uses ASCII "->" separator for dump compatibility.
+     * Ground targets are omitted since they are the implicit default.
      */
     public String getDisplayOutputName(int row) {
         if (row < 0 || row >= MAX_ROWS) return "";
@@ -1950,9 +2002,34 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         // Normalize any Unicode arrow characters in stored name to ASCII
         name = normalizeArrows(name);
         String target = rows[row].targetNodeName;
-        if (target != null && !target.isEmpty()) {
+        if (target != null && !target.isEmpty() && !target.trim().equalsIgnoreCase("gnd")) {
             target = normalizeArrows(target);
             return name + "->" + target;
+        }
+        return name;
+    }
+    
+    /**
+     * Get the UI display output name for a row with mode-aware Unicode separators.
+     * For FLOW mode with an explicit non-ground target, returns "source\u2192target" (→).
+     * For STOCK mode with an explicit non-ground target, returns "source\u22A3\u22A2target" (⊣⊢).
+     * Single-node names (no target, or target="gnd") display as just the node name,
+     * since ground reference is the implicit default.
+     * Use this for rendering, tooltips, and user-facing display.
+     * For serialization (dump), use getDisplayOutputName() instead.
+     */
+    public String getUIDisplayOutputName(int row) {
+        if (row < 0 || row >= MAX_ROWS) return "";
+        String name = normalizeArrows(rows[row].outputName);
+        String target = rows[row].targetNodeName;
+        if (target != null && !target.isEmpty() && !target.trim().equalsIgnoreCase("gnd")) {
+            target = normalizeArrows(target);
+            RowOutputMode mode = rows[row].outputMode;
+            if (mode == RowOutputMode.STOCK_MODE) {
+                return name + "\u22A3\u22A2" + target;  // ⊣⊢
+            } else {
+                return name + "\u2192" + target;  // → (flow and default)
+            }
         }
         return name;
     }
@@ -1995,10 +2072,16 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         
         // Check for separators in priority order:
         // 1. ASCII "->" (standard format)
-        // 2. Unicode "→" (U+2192, may come from font ligatures or user input)
-        // 3. Unicode "⊣⊢" (U+22A3 U+22A2, stock separator from user input)
+        // 2. ASCII "-||-" (stock separator typed without Unicode)
+        // 3. Unicode "→" (U+2192, flow arrow from UI display)
+        // 4. Unicode "⊣⊢" (U+22A3 U+22A2, stock separator from UI display)
+        // 5. Comma "," (convenient shorthand for either mode)
         int arrowIdx = combined.indexOf("->");
         int sepLen = 2;
+        if (arrowIdx < 0) {
+            arrowIdx = combined.indexOf("-||-");
+            sepLen = 4;
+        }
         if (arrowIdx < 0) {
             arrowIdx = combined.indexOf("\u2192"); // →
             sepLen = 1;
@@ -2006,6 +2089,10 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         if (arrowIdx < 0) {
             arrowIdx = combined.indexOf("\u22A3\u22A2"); // ⊣⊢
             sepLen = 2;
+        }
+        if (arrowIdx < 0) {
+            arrowIdx = combined.indexOf(",");
+            sepLen = 1;
         }
         if (arrowIdx >= 0) {
             return new String[]{

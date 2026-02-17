@@ -279,7 +279,7 @@ public class EquationTableMarkdownDebugDialog {
         
         int rowCount = sourceTable.getRowCount();
         for (int row = 0; row < rowCount; row++) {
-            String outputName = sourceTable.getDisplayOutputName(row);
+            String outputName = sourceTable.getUIDisplayOutputName(row);
             String equation = sourceTable.getEquation(row);
             String initialEq = sourceTable.getInitialEquation(row);
             RowOutputMode mode = sourceTable.getOutputMode(row);
@@ -333,7 +333,7 @@ public class EquationTableMarkdownDebugDialog {
         
         int rowCount = sourceTable.getRowCount();
         for (int row = 0; row < rowCount; row++) {
-            String outputName = sourceTable.getDisplayOutputName(row);
+            String outputName = sourceTable.getUIDisplayOutputName(row);
             String equation = sourceTable.getEquation(row);
             String initialEq = sourceTable.getInitialEquation(row);
             RowOutputMode mode = sourceTable.getOutputMode(row);

@@ -135,7 +135,7 @@ public class EquationTableEditDialog extends Dialog {
         hints = new String[MAX_ROWS];
         
         for (int i = 0; i < MAX_ROWS; i++) {
-            outputNames[i] = tableElement.getDisplayOutputName(i);
+            outputNames[i] = tableElement.getUIDisplayOutputName(i);
             equations[i] = tableElement.getEquation(i);
             initialEquations[i] = tableElement.getInitialEquation(i);
             outputModes[i] = tableElement.getOutputMode(i);
@@ -277,7 +277,7 @@ public class EquationTableEditDialog extends Dialog {
         
         Label headerOutput = new Label("Node(s)");
         headerOutput.getElement().getStyle().setProperty("fontWeight", "bold");
-        headerOutput.setTitle("Node name, or From->To for Flow/Stock modes");
+        headerOutput.setTitle("Node name (ground-referenced by default). Use From\u2192To for two explicit nodes. Separators: , -> -||-");
         editGrid.setWidget(HEADER_ROW, COL_OUTPUT_NAME, headerOutput);
         
         Label headerEquation = new Label("Equation");
@@ -381,7 +381,7 @@ public class EquationTableEditDialog extends Dialog {
         final TextBox outputNameBox = new TextBox();
         outputNameBox.setText(outputNames[row]);
         outputNameBox.setWidth("110px");
-        outputNameBox.setTitle("Node name (Voltage), or From->To (Flow/Stock)");
+        outputNameBox.setTitle("Node name (ground-referenced by default). Use From\u2192To for two explicit nodes. Separators: , -> -||-");
         outputNameBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
                 outputNames[row] = outputNameBox.getText();

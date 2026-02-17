@@ -2298,7 +2298,7 @@ public CirSim() {
             if (hoveredRow >= 0 && hoveredRow < ete.getRowCount()) {
                 String outputName = ete.getOutputName(hoveredRow);
                 hint = HintRegistry.getHint(outputName);
-                label = outputName;
+                label = ete.getFlowDisplayName(hoveredRow);
                 valueStr = CircuitElm.showFormat.format(ete.getOutputValue(hoveredRow));
             }
         }
@@ -2320,10 +2320,10 @@ public CirSim() {
             String displayText;
             if (scopeSelected != -1 || isInScope) {
                 // Mouse is over scope area - don't show value
-                displayText = hint + ": " + label;
+                displayText = hint + ":   " + label;
             } else {
                 // Mouse is over circuit area - show value
-                displayText = hint + ": " + label + " = " + valueStr;
+                displayText = hint + ":   " + label + " = " + valueStr;
             }
             
             g.context.setFont("500 12px system-ui, -apple-system, sans-serif");

@@ -42,10 +42,10 @@ Each row operates in one of three modes, determining how the equation result is 
 
 ### VOLTAGE_MODE (Default)
 
-The equation result is driven as a **voltage** via a voltage source.
+The equation result is driven as a **voltage** via a voltage source. The first argument to `stampVoltageSource` is `0` (the ground node), so each row drives its output node relative to ground — the equation result is the absolute voltage at that node.
 
-- **Stamp:** `stampVoltageSource(0, node, vs, value)`
-- **Nodes needed:** 1 (output node)
+- **Stamp:** `stampVoltageSource(0, node, vs, value)` — ground-referenced
+- **Nodes needed:** 1 (output node, driven relative to ground)
 - **Use cases:** Stock levels, prices, parameters, computed quantities
 - **Row classifications apply:** alias, constant, linear, or dynamic
 
@@ -54,9 +54,11 @@ The equation result is driven as a **voltage** via a voltage source.
 The equation result is stamped as a **current source** flowing between two named nodes.
 
 - **Stamp:** `stampCurrentSource(sourceNode, targetNode, flowValue)` in `doStep()`
-- **Nodes needed:** 2 (source = output name, target = `targetNodeNames[row]`)
-- **Direction:** Positive value = current flows FROM source TO target
-- **Target:** Required — specify a node name or `"gnd"` for ground
+- **Nodes needed:** 1 or 2 (single node defaults to ground reference)
+- **Direction:**
+  - **Single-node** (e.g. `S3`): current flows from ground → S3. Positive value = current injected **into** S3.
+  - **Two-node** (e.g. `S1→S2`): current flows from S1 → S2. Positive value = current flows from S1 to S2.
+- **Target:** Optional — if omitted or `"gnd"`, defaults to ground (single-node mode)
 - **Use cases:** Transaction flows, wage payments, consumption spending
 - **Always nonlinear:** Requires `doStep()` evaluation every subiteration
 
@@ -80,8 +82,8 @@ The equation result represents **net inflow current** integrated via a companion
 | Stamp type | `stampVoltageSource` | `stampCurrentSource` | `stampResistor` + `stampCurrentSource` |
 | Integration | Use `integrate()` in equation | External capacitor | Built-in (trapezoidal or backward Euler) |
 | Conservation (KCL) | No (voltage forced) | Yes (at target node) | Yes (at stock node) |
-| Nodes required | 1 (output) | 2 (source + target) | 1 (stock node) |
-| Equation meaning | Output value directly | Flow rate from→to | Net inflow to stock |
+| Nodes required | 1 (output) | 1 (gnd ref) or 2 (source + target) | 1 (stock node) |
+| Equation meaning | Output value directly | Flow rate (single: gnd→node, two: from→to) | Net inflow to stock |
 
 ## Row Classifications
 
