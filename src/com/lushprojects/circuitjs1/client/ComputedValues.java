@@ -76,6 +76,10 @@ public class ComputedValues {
     
     // Track the priority of the master table for each value (name -> priority)
     private static HashMap<String, Integer> masterTablePriorities;
+
+    // Track names that should resolve as parameter values before labeled-node voltage
+    // in MNA expression evaluation (name -> registration ref count).
+    private static HashMap<String, Integer> parameterNameRefCounts;
     
     // Initialize storage if needed
     private static void ensureInitialized() {
@@ -97,6 +101,45 @@ public class ComputedValues {
         if (masterTablePriorities == null) {
             masterTablePriorities = new HashMap<String, Integer>();
         }
+        if (parameterNameRefCounts == null) {
+            parameterNameRefCounts = new HashMap<String, Integer>();
+        }
+    }
+
+    /**
+     * Register a computed name as a parameter-style name.
+     * Parameter names are resolved from ComputedValues before labeled-node voltage
+     * in MNA mode.
+     */
+    public static void registerParameterName(String name) {
+        if (name == null || name.isEmpty()) return;
+        ensureInitialized();
+        Integer count = parameterNameRefCounts.get(name);
+        parameterNameRefCounts.put(name, Integer.valueOf((count == null) ? 1 : (count.intValue() + 1)));
+    }
+
+    /**
+     * Unregister a parameter-style name previously registered with registerParameterName().
+     */
+    public static void unregisterParameterName(String name) {
+        if (name == null || name.isEmpty() || parameterNameRefCounts == null) return;
+        Integer count = parameterNameRefCounts.get(name);
+        if (count == null) return;
+        int next = count.intValue() - 1;
+        if (next <= 0) {
+            parameterNameRefCounts.remove(name);
+        } else {
+            parameterNameRefCounts.put(name, Integer.valueOf(next));
+        }
+    }
+
+    /**
+     * Check whether a name is registered as a parameter-style name.
+     */
+    public static boolean isParameterName(String name) {
+        if (name == null || parameterNameRefCounts == null) return false;
+        Integer count = parameterNameRefCounts.get(name);
+        return count != null && count.intValue() > 0;
     }
     
     /**
@@ -364,6 +407,9 @@ public class ComputedValues {
         }
         if (computedByTable != null) {
             computedByTable.clear();
+        }
+        if (parameterNameRefCounts != null) {
+            parameterNameRefCounts.clear();
         }
     }
     

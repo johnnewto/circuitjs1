@@ -686,6 +686,17 @@ class Expr {
 	    // In pure-computational mode (no MNA), ComputedValues is the only source.
 	    if (CirSim.theSim != null && nodeName != null) {
 		if (CirSim.theSim.equationTableMnaMode) {
+			    // PARAM names in MNA mode must resolve from ComputedValues first,
+			    // even when a same-named labeled node exists.
+			    if (ComputedValues.isParameterName(nodeName)) {
+				Double parameterValue = useConvergedValues
+				    ? ComputedValues.getConvergedValue(nodeName)
+				    : ComputedValues.getComputedValue(nodeName);
+				if (parameterValue != null) {
+				    return parameterValue.doubleValue();
+				}
+			    }
+
 		    // MNA mode: labeled node voltage first (authoritative from matrix solver)
 		    Integer labeledNode = LabeledNodeElm.getByName(nodeName);
 		    if (labeledNode != null && labeledNode != 0) {
@@ -843,13 +854,13 @@ class ExprParser {
 				break;
 			}
 		} else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '\\') {
-			// Support identifiers with letters, numbers, underscores, Greek symbols (\beta), 
-			// and LaTeX formatting (Z_1, x^2, Z_{banks})
+			// Support identifiers with letters, numbers, underscores, Greek symbols (\beta),
+			// dot namespaces (flow.Y3), and LaTeX formatting (Z_1, x^2, Z_{banks})
 			// Must start with letter, underscore, or backslash
 			for (i = pos; i != tlen; i++) {
 				char ch = text.charAt(i);
 				if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || 
-					  (ch >= '0' && ch <= '9') || ch == '_' || ch == '\\' || ch == '^' || ch == '{' || ch == '}'))
+					  (ch >= '0' && ch <= '9') || ch == '_' || ch == '\\' || ch == '^' || ch == '{' || ch == '}' || ch == '.'))
 					break;
 			}
 		} else {
@@ -893,11 +904,12 @@ class ExprParser {
 	if (!((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_' || first == '\\'))
 	    return false;
 	
-	// Remaining characters must be letters, numbers, underscores, backslashes, or script markers
+	// Remaining characters must be letters, numbers, underscores, backslashes,
+	// script markers, or dot namespace separators.
 	for (int i = 1; i < token.length(); i++) {
 	    char c = token.charAt(i);
 	    if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
-		  (c >= '0' && c <= '9') || c == '_' || c == '\\' || c == '^' || c == '{' || c == '}'))
+		  (c >= '0' && c <= '9') || c == '_' || c == '\\' || c == '^' || c == '{' || c == '}' || c == '.'))
 		return false;
 	}
 	

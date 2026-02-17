@@ -139,7 +139,9 @@ public class EquationTableEditDialog extends Dialog {
             equations[i] = tableElement.getEquation(i);
             initialEquations[i] = tableElement.getInitialEquation(i);
             outputModes[i] = tableElement.getOutputMode(i);
-            capacitances[i] = tableElement.getCapacitance(i);
+            capacitances[i] = (outputModes[i] == RowOutputMode.FLOW_MODE)
+                ? tableElement.getFlowShuntResistance(i)
+                : tableElement.getCapacitance(i);
             useBackwardEuler[i] = tableElement.getUseBackwardEuler(i);
             sliderVarNames[i] = tableElement.getSliderVarName(i);
             sliderValues[i] = tableElement.getSliderValue(i);
@@ -282,19 +284,21 @@ public class EquationTableEditDialog extends Dialog {
         
         Label headerEquation = new Label("Equation");
         headerEquation.getElement().getStyle().setProperty("fontWeight", "bold");
+        headerEquation.setTitle("Alias shortcut: a bare node reference (with empty Initial) becomes a ⇔ Alias row.");
         editGrid.setWidget(HEADER_ROW, COL_EQUATION, headerEquation);
         
         Label headerInitial = new Label("Initial (t=0)");
         headerInitial.getElement().getStyle().setProperty("fontWeight", "bold");
         editGrid.setWidget(HEADER_ROW, COL_INITIAL_VALUE, headerInitial);
         
-        Label headerMode = new Label("Mode");
+        Label headerMode = new Label("Mode / ⇔ Alias");
         headerMode.getElement().getStyle().setProperty("fontWeight", "bold");
+        headerMode.setTitle("⇔ Alias rows are auto-detected (bare node reference + empty Initial), fixed to Voltage behavior, and Mode is locked.");
         editGrid.setWidget(HEADER_ROW, COL_MODE, headerMode);
         
-        Label headerCap = new Label("Cap");
+        Label headerCap = new Label("Shunt R / Cap");
         headerCap.getElement().getStyle().setProperty("fontWeight", "bold");
-        headerCap.setTitle("Capacitance (for CAPACITOR mode)");
+        headerCap.setTitle("FLOW: Shunt R (real load to ground). STOCK: Capacitance.");
         editGrid.setWidget(HEADER_ROW, COL_CAPACITANCE, headerCap);
         
         Label headerInteg = new Label("Integ.");
@@ -392,11 +396,11 @@ public class EquationTableEditDialog extends Dialog {
         editGrid.setWidget(gridRow, COL_OUTPUT_NAME, outputNameBox);
         
         // Equation textbox with autocomplete
-        VerticalPanel eqPanel = createEquationTextBox(row, false);
+        final VerticalPanel eqPanel = createEquationTextBox(row, false);
         editGrid.setWidget(gridRow, COL_EQUATION, eqPanel);
         
         // Initial value textbox with autocomplete
-        VerticalPanel initPanel = createEquationTextBox(row, true);
+        final VerticalPanel initPanel = createEquationTextBox(row, true);
         editGrid.setWidget(gridRow, COL_INITIAL_VALUE, initPanel);
         
         // Output mode dropdown
@@ -404,34 +408,83 @@ public class EquationTableEditDialog extends Dialog {
         modeBox.addItem("Voltage", "VOLTAGE_MODE");
         modeBox.addItem("Flow\u2192", "FLOW_MODE");
         modeBox.addItem("Stock", "STOCK_MODE");
+        modeBox.addItem("Param", "PARAM_MODE");
         // Set selected based on current mode
         RowOutputMode currentMode = outputModes[row];
         if (currentMode == RowOutputMode.FLOW_MODE) modeBox.setSelectedIndex(1);
         else if (currentMode == RowOutputMode.STOCK_MODE) modeBox.setSelectedIndex(2);
+        else if (currentMode == RowOutputMode.PARAM_MODE) modeBox.setSelectedIndex(3);
         else modeBox.setSelectedIndex(0);
         modeBox.addChangeHandler(new ChangeHandler() {
             public void onChange(ChangeEvent event) {
                 String val = modeBox.getSelectedValue();
+                RowOutputMode previousMode = outputModes[row];
                 if ("FLOW_MODE".equals(val)) outputModes[row] = RowOutputMode.FLOW_MODE;
                 else if ("STOCK_MODE".equals(val)) outputModes[row] = RowOutputMode.STOCK_MODE;
+                else if ("PARAM_MODE".equals(val)) outputModes[row] = RowOutputMode.PARAM_MODE;
                 else outputModes[row] = RowOutputMode.VOLTAGE_MODE;
+                if (outputModes[row] == RowOutputMode.FLOW_MODE && previousMode != RowOutputMode.FLOW_MODE) {
+                    capacitances[row] = 1e9;
+                }
                 markChanged();
                 // Enable/disable capacitance fields based on mode
                 updateModeFields(gridRow, outputModes[row]);
             }
         });
-        editGrid.setWidget(gridRow, COL_MODE, modeBox);
+        final Label aliasBadge = new Label("⇔ Alias");
+        aliasBadge.getElement().getStyle().setProperty("marginLeft", "4px");
+        aliasBadge.getElement().getStyle().setProperty("fontSize", "11px");
+        aliasBadge.getElement().getStyle().setProperty("color", "#666");
+        aliasBadge.setVisible(false);
+        aliasBadge.setTitle("Alias row: output is a node alias (mode fixed to Voltage)");
+
+        HorizontalPanel modePanel = new HorizontalPanel();
+        modePanel.setSpacing(2);
+        modePanel.add(modeBox);
+        modePanel.add(aliasBadge);
+        editGrid.setWidget(gridRow, COL_MODE, modePanel);
+
+        Widget eqWidget = eqPanel.getWidget(0);
+        if (eqWidget instanceof TextBox) {
+            ((TextBox) eqWidget).addKeyUpHandler(new KeyUpHandler() {
+                public void onKeyUp(KeyUpEvent event) {
+                    updateAliasModeUi(row, gridRow, modeBox, aliasBadge);
+                }
+            });
+            ((TextBox) eqWidget).addBlurHandler(new BlurHandler() {
+                public void onBlur(BlurEvent event) {
+                    updateAliasModeUi(row, gridRow, modeBox, aliasBadge);
+                }
+            });
+        }
+        Widget initWidget = initPanel.getWidget(0);
+        if (initWidget instanceof TextBox) {
+            ((TextBox) initWidget).addKeyUpHandler(new KeyUpHandler() {
+                public void onKeyUp(KeyUpEvent event) {
+                    updateAliasModeUi(row, gridRow, modeBox, aliasBadge);
+                }
+            });
+            ((TextBox) initWidget).addBlurHandler(new BlurHandler() {
+                public void onBlur(BlurEvent event) {
+                    updateAliasModeUi(row, gridRow, modeBox, aliasBadge);
+                }
+            });
+        }
+
+        updateAliasModeUi(row, gridRow, modeBox, aliasBadge);
         
-        // Capacitance value (for CAPACITOR mode)
+        // Mode parameter value (FLOW: Shunt R, STOCK: Capacitance)
         final TextBox capBox = new TextBox();
         capBox.setText(CircuitElm.getShortUnitText(capacitances[row], ""));
         capBox.setWidth("50px");
-        capBox.setTitle("Capacitance value (for integration)");
+        capBox.setTitle(getModeParamTooltip(outputModes[row]));
         capBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
                 try {
                     capacitances[row] = EditDialog.parseUnits(capBox.getText());
-                    if (capacitances[row] <= 0) capacitances[row] = 1.0;
+                    if (capacitances[row] <= 0) {
+                        capacitances[row] = (outputModes[row] == RowOutputMode.FLOW_MODE) ? 1e9 : 1.0;
+                    }
                     capBox.getElement().getStyle().clearBackgroundColor();
                     markChanged();
                 } catch (Exception e) {
@@ -445,8 +498,8 @@ public class EquationTableEditDialog extends Dialog {
             }
         });
         addSelectAllOnFocus(capBox);
-        // Only enable if mode is CAPACITOR
-        capBox.setEnabled(outputModes[row] == RowOutputMode.STOCK_MODE);
+        // Enable for FLOW and STOCK only
+        capBox.setEnabled(outputModes[row] == RowOutputMode.FLOW_MODE || outputModes[row] == RowOutputMode.STOCK_MODE);
         editGrid.setWidget(gridRow, COL_CAPACITANCE, capBox);
         
         // Integration method dropdown (for STOCK mode)
@@ -606,6 +659,14 @@ public class EquationTableEditDialog extends Dialog {
             if (!completions.contains(outputNames[i])) {
                 completions.add(outputNames[i]);
             }
+
+            // Add FLOW computed-value keys (flow.<output>) so equations can
+            // reference FLOW magnitudes without clobbering stock/node values.
+            String[] parts = EquationTableElm.parseCombinedName(outputNames[i]);
+            String flowKey = EquationTableElm.getFlowComputedKeyForName(parts[0]);
+            if (flowKey != null && !completions.contains(flowKey)) {
+                completions.add(flowKey);
+            }
         }
         
         // Add this row's slider variable
@@ -634,11 +695,75 @@ public class EquationTableEditDialog extends Dialog {
         Widget integWidget = editGrid.getWidget(gridRow, COL_INTEGRATION);
         
         if (capWidget instanceof TextBox) {
-            ((TextBox) capWidget).setEnabled(mode == RowOutputMode.STOCK_MODE);
+            ((TextBox) capWidget).setEnabled(mode == RowOutputMode.FLOW_MODE || mode == RowOutputMode.STOCK_MODE);
+            ((TextBox) capWidget).setTitle(getModeParamTooltip(mode));
         }
         if (integWidget instanceof ListBox) {
             ((ListBox) integWidget).setEnabled(mode == RowOutputMode.STOCK_MODE);
         }
+    }
+
+    private String getModeParamTooltip(RowOutputMode mode) {
+        if (mode == RowOutputMode.FLOW_MODE) {
+            return "Shunt R for FLOW. Lower values create a real electrical load to ground.";
+        }
+        if (mode == RowOutputMode.STOCK_MODE) {
+            return "Capacitance for STOCK integration.";
+        }
+        if (mode == RowOutputMode.PARAM_MODE) {
+            return "Not used in PARAM mode.";
+        }
+        return "Not used in VOLTAGE mode.";
+    }
+
+    /**
+     * True when the edited row currently matches alias criteria:
+     * parsed equation is a bare node alias and initial equation is empty.
+     */
+    private boolean isAliasRowByInput(int row) {
+        if (row < 0 || row >= rowCount) {
+            return false;
+        }
+
+        String eq = equations[row];
+        if (eq == null || eq.trim().isEmpty()) {
+            return false;
+        }
+
+        String initEq = initialEquations[row];
+        if (initEq != null && !initEq.trim().isEmpty()) {
+            return false;
+        }
+
+        ExprParser parser = new ExprParser(eq);
+        Expr expr = parser.parseExpression();
+        if (parser.gotError() != null || expr == null) {
+            return false;
+        }
+
+        return expr.isNodeAlias();
+    }
+
+    /**
+     * Keep mode UI consistent with alias state.
+     * Alias rows are fixed to voltage alias behavior in the solver.
+     */
+    private void updateAliasModeUi(int row, int gridRow, ListBox modeBox, Label aliasBadge) {
+        boolean alias = isAliasRowByInput(row);
+        if (alias) {
+            outputModes[row] = RowOutputMode.VOLTAGE_MODE;
+            modeBox.setSelectedIndex(0);
+            modeBox.setItemText(0, "⇔ Alias");
+            modeBox.setEnabled(false);
+            aliasBadge.setVisible(false);
+        } else {
+            modeBox.setItemText(0, "Voltage");
+            modeBox.setEnabled(true);
+            modeBox.setTitle("Output mode");
+            aliasBadge.setVisible(false);
+        }
+
+        updateModeFields(gridRow, outputModes[row]);
     }
     
     /**
@@ -799,6 +924,7 @@ public class EquationTableEditDialog extends Dialog {
             tableElement.setInitialEquation(row, initialEquations[row]);
             tableElement.setOutputMode(row, outputModes[row]);
             tableElement.setCapacitance(row, capacitances[row]);
+            tableElement.setFlowShuntResistance(row, capacitances[row]);
             tableElement.setUseBackwardEuler(row, useBackwardEuler[row]);
             tableElement.setSliderVarName(row, sliderVarNames[row]);
             tableElement.setSliderValue(row, sliderValues[row]);

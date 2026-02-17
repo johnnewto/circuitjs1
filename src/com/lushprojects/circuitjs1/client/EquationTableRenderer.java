@@ -437,6 +437,7 @@ public class EquationTableRenderer {
         String displayEquation = buildDisplayEquation(row);
         String outputName = Locale.convertGreekSymbols(table.getUIDisplayOutputName(row));
         String rowText = outputName + " = " + displayEquation;
+        boolean isAliasRow = table.isAliasRow(row);
         
         // Draw scroll icon on adjustable rows (numeric equations) to indicate mouse wheel adjustment
         int textX = tableX + cellPadding;
@@ -454,12 +455,15 @@ public class EquationTableRenderer {
         
         // Draw output mode icon (only for non-VOLTAGE_MODE modes)
         RowOutputMode mode = table.getOutputMode(row);
-        if (mode != RowOutputMode.VOLTAGE_MODE) {
+        if (!isAliasRow && mode != RowOutputMode.VOLTAGE_MODE) {
             String modeIcon;
             Color modeColor;
             if (mode == RowOutputMode.FLOW_MODE) {
                 modeIcon = "I→";  // Flow mode
                 modeColor = new Color(200, 50, 50);  // Red for flow
+            } else if (mode == RowOutputMode.PARAM_MODE) {
+                modeIcon = "P";  // Parameter mode
+                modeColor = new Color(120, 80, 180);  // Purple for parameter
             } else {
                 modeIcon = "C∫";  // Stock/integration mode
                 modeColor = new Color(50, 150, 200);  // Cyan for stock
@@ -476,8 +480,8 @@ public class EquationTableRenderer {
         // Draw row classification icon
         String classIcon;
         Color classColor;
-        if (table.isAliasRow(row)) {
-            classIcon = "→";  // Arrow: alias (shares node)
+        if (isAliasRow) {
+            classIcon = "⇔";  // Alias (shared node)
             classColor = new Color(128, 128, 128);  // Gray
         } else {
             classIcon = "⟳";  // Cycle: dynamic (evaluated each step)

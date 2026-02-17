@@ -293,6 +293,7 @@ public class EquationTableMarkdownDebugDialog {
             switch (mode) {
                 case FLOW_MODE: modeStr = "FLOW"; break;
                 case STOCK_MODE: modeStr = "STOCK"; break;
+                case PARAM_MODE: modeStr = "PARAM"; break;
                 default: modeStr = "VOLTAGE"; break;
             }
             
@@ -355,6 +356,9 @@ public class EquationTableMarkdownDebugDialog {
                     String target = sourceTable.getTargetNodeName(row);
                     modeDesc = "STOCK_MODE: companion model, C=" + cap + 
                         ", target=" + (target != null && !target.isEmpty() ? wrapForKaTeX(target) : "gnd");
+                    break;
+                case PARAM_MODE:
+                    modeDesc = "PARAM_MODE: computed value only (ComputedValues registry, no MNA stamping)";
                     break;
                 default:
                     modeDesc = "VOLTAGE_MODE: drives labeled node via voltage source";

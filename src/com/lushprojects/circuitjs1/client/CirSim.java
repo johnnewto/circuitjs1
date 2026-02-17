@@ -3399,6 +3399,10 @@ public CirSim() {
 	
 	connectUnconnectedNodes();
 
+	// Lightweight EquationTable coordination: first register all non-FLOW outputs,
+	// then validate FLOW endpoints before per-element stamp() calls.
+	EquationTableElm.coordinateLabelsForStamp(elmList);
+
 	// stamp linear circuit elements
 	for (i = 0; i != elmList.size(); i++) {
 	    CircuitElm ce = getElm(i);

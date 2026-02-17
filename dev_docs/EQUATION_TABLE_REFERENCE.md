@@ -1,13 +1,17 @@
-# EquationTableElm — Complete Reference
+# EquationTableElm — Complete Reference (Source-Accurate Feb 17)
 
 ## Overview
 
-`EquationTableElm` is a table-based circuit element where each row defines a named equation output. It provides a spreadsheet-like interface for defining mathematical relationships, with outputs accessible as labeled nodes (MNA mode) or via the `ComputedValues` registry (pure computational mode).
+`EquationTableElm` is a table-based element where each row defines a named equation output.
+It supports two simulator-wide execution modes:
+
+- **MNA (Electrical) mode**: rows stamp voltage/current behavior into the circuit matrix.
+- **Pure Computational mode**: rows evaluate and publish values through `ComputedValues` only.
 
 **Dump type:** 266  
 **Source:** [EquationTableElm.java](../src/com/lushprojects/circuitjs1/client/EquationTableElm.java)  
 **Renderer:** [EquationTableRenderer.java](../src/com/lushprojects/circuitjs1/client/EquationTableRenderer.java)  
-**Max rows:** 32  
+**Max rows:** 32
 
 ## Quick Facts
 
@@ -16,431 +20,305 @@
 | Post count | 0 (no visible electrical posts) |
 | High-impedance | Yes — `getConnection()` always returns `false` |
 | Ground connection | None — `hasGroundConnection()` returns `false` |
-| Nonlinear | Depends on row content (see [Row Classifications](#row-classifications)) |
+| Nonlinear | True if any non-alias row exists; FLOW/STOCK/PARAM rows always require `doStep()` |
 | Modes | MNA (electrical) or Pure Computational (global setting) |
-| Mode toggle | Options → Other Options → "MNA Mode" checkbox (`sim.equationTableMnaMode`) |
+| Mode toggle | Options → Other Options → `sim.equationTableMnaMode` |
 
-## Per-Row Data
+## Per-Row Data Model
 
-Each row stores the following:
+Current implementation stores row state in `EquationRow` objects (not parallel arrays):
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `outputNames[row]` | String | Name of the output (becomes a labeled node or ComputedValue key) |
-| `equations[row]` | String | Expression evaluated each timestep |
-| `initialEquations[row]` | String | Expression evaluated only at t=0 (optional) |
-| `sliderVarNames[row]` | String | Name of the slider variable (accessible in equations) |
-| `sliderValues[row]` | double | Current slider value |
-| `outputModes[row]` | RowOutputMode | VOLTAGE_MODE, FLOW_MODE, or STOCK_MODE |
-| `targetNodeNames[row]` | String | Target node for FLOW_MODE/STOCK_MODE |
-| `capacitances[row]` | double | Capacitance value for STOCK_MODE (default 1.0) |
-| `useBackwardEuler[row]` | boolean | Integration method for STOCK_MODE: `false` = trapezoidal (default), `true` = backward Euler |
+| `outputName` | String | Source/output node name; may be combined with target in UI input |
+| `equation` | String | Main expression evaluated each step |
+| `initialEquation` | String | Optional expression evaluated at `t=0` |
+| `sliderVarName` | String | Slider variable available in equations |
+| `sliderValue` | double | Slider variable value |
+| `outputMode` | `RowOutputMode` | `VOLTAGE_MODE`, `FLOW_MODE`, `STOCK_MODE`, or `PARAM_MODE` |
+| `targetNodeName` | String | Optional target node for FLOW/STOCK |
+| `capacitance` | double | Companion-model C for STOCK rows |
+| `shuntResistance` | double | FLOW shunt resistance (`Shunt R`), default `1e9` |
+| `useBackwardEuler` | boolean | STOCK integration method (`false` trapezoidal, `true` backward Euler) |
+
+Runtime fields include compiled expressions, `ExprState`, alias flags, node ids, voltage-source index, and stock companion history values.
 
 ## Row Output Modes
 
-Each row operates in one of three modes, determining how the equation result is stamped into the circuit.
-
 ### VOLTAGE_MODE (Default)
 
-The equation result is driven as a **voltage** via a voltage source. The first argument to `stampVoltageSource` is `0` (the ground node), so each row drives its output node relative to ground — the equation result is the absolute voltage at that node.
+Equation result is interpreted as voltage and applied to a ground-referenced output via voltage source topology.
 
-- **Stamp:** `stampVoltageSource(0, node, vs, value)` — ground-referenced
-- **Nodes needed:** 1 (output node, driven relative to ground)
-- **Use cases:** Stock levels, prices, parameters, computed quantities
-- **Row classifications apply:** alias, constant, linear, or dynamic
+- **Topology stamp (in `stamp()`):** `sim.stampVoltageSource(0, node, vs)`
+- **Value stamp (in `doStep()`):** `sim.stampRightSide(vn, equationValue)`
+- **Extra stabilization:** tiny load resistor `sim.stampResistor(node, 0, 1e9)`
+- **Nodes needed:** 1 output node (existing labeled node or internal node)
 
 ### FLOW_MODE
 
-The equation result is stamped as a **current source** flowing between two named nodes.
+Equation result is interpreted as current and stamped with `stampCurrentSource`.
 
-- **Stamp:** `stampCurrentSource(sourceNode, targetNode, flowValue)` in `doStep()`
-- **Nodes needed:** 1 or 2 (single node defaults to ground reference)
-- **Direction:**
-  - **Single-node** (e.g. `S3`): current flows from ground → S3. Positive value = current injected **into** S3.
-  - **Two-node** (e.g. `S1→S2`): current flows from S1 → S2. Positive value = current flows from S1 to S2.
-- **Target:** Optional — if omitted or `"gnd"`, defaults to ground (single-node mode)
-- **Use cases:** Transaction flows, wage payments, consumption spending
-- **Always nonlinear:** Requires `doStep()` evaluation every subiteration
+- **Stamp:** `sim.stampCurrentSource(sourceNode, targetNode, flowValue)` in `doStep()`
+- **Shunt R:** each non-ground FLOW endpoint stamps `sim.stampResistor(node, 0, shuntR)`
+- **Default:** `shuntR = 1e9` (minimal loading, mainly stabilization)
+- **Important:** lowering `Shunt R` creates a **real electrical load** to ground and changes circuit behavior
+- **Single-node form (`S3`):** flow is `gnd -> S3`; positive means current injected into `S3`
+- **Two-node form (`S1->S2`):** flow is `S1 -> S2`; positive means source-to-target
+- **Target default:** empty or `gnd` means ground
+- **Always nonlinear:** evaluated each subiteration
+- **ComputedValues key:** FLOW rows publish magnitude under `flow.<outputName>` (sanitized to parser-safe identifier chars)
+- **Important:** FLOW rows still do **not** register to `ComputedValues[outputName]` (prevents clobbering stock/node voltage values)
 
 ### STOCK_MODE
 
-The equation result represents **net inflow current** integrated via a companion capacitor model. The node voltage represents the accumulated stock.
+Equation result is interpreted as net inflow current driving a stock integrated by a capacitor companion model.
 
-- **Stamp:** Companion resistor `R = dt/(2C)` (trapezoidal) or `R = dt/C` (backward Euler) in `stamp()`, history current source in `doStep()`
-- **Nodes needed:** 1 (stock node), optionally connects to a target node (default: ground)
-- **Equation meaning:** Net inflow rate (positive → stock increases)
-- **Integration:** Trapezoidal (default, more accurate) or Backward Euler (more stable); configurable per row in edit dialog
-- **Use cases:** Accumulating stocks (bank deposits, wealth, inventory)
-- **Always nonlinear:** Requires `doStep()` evaluation every subiteration
+- **Companion resistor (in `stamp()`):**
+  - Trapezoidal: $R = \frac{dt}{2C}$
+  - Backward Euler: $R = \frac{dt}{C}$
+- **Current source (in `doStep()`):** `totalCurrent = capCurSourceValue - inflowValue`
+- **Display value:** stock node voltage (level), not inflow
+- **Always nonlinear:** evaluated each subiteration
+
+### PARAM_MODE
+
+Equation result is interpreted as a computed parameter value only.
+
+- **Stamping:** none (no `stampVoltageSource`, no `stampCurrentSource`, no node stamping)
+- **Output:** published directly to `ComputedValues[outputName]`
+- **Nodes needed:** 0
+- **Voltage sources needed:** 0
+- **Use case:** shared coefficients/parameters/intermediate values that should not create electrical nodes
+- **Always nonlinear:** evaluated each subiteration (like other dynamic rows)
 
 ### Mode Comparison
 
-| Feature | VOLTAGE_MODE | FLOW_MODE | STOCK_MODE |
-|---------|---------|---------|-----------|
-| Output | Drives voltage | Drives current | Integrates inflow |
-| Drive type | VCVS (linear) or computational (dynamic) | VCCS (computational) | Companion resistor + computational current |
-| Stamp type | `stampVoltageSource` | `stampCurrentSource` | `stampResistor` + `stampCurrentSource` |
-| Integration | Use `integrate()` in equation | External capacitor | Built-in (trapezoidal or backward Euler) |
-| Conservation (KCL) | No (voltage forced) | Yes (at target node) | Yes (at stock node) |
-| Nodes required | 1 (output) | 1 (gnd ref) or 2 (source + target) | 1 (stock node) |
-| Equation meaning | Output value directly | Flow rate (single: gnd→node, two: from→to) | Net inflow to stock |
+| Feature | VOLTAGE_MODE | FLOW_MODE | STOCK_MODE | PARAM_MODE |
+|---------|--------------|-----------|------------|------------|
+| Equation meaning | Output voltage | Flow rate | Net inflow rate | Computed parameter |
+| Primary stamp | `stampVoltageSource` + RHS | `stampCurrentSource` | `stampResistor` + `stampCurrentSource` | none |
+| Node model | Ground-referenced output | Source/target current path | Integrating source/target path | no node |
+| Integration | Only if expression uses `integrate()` | External to mode | Built-in companion model | None (unless expression itself uses stateful funcs) |
 
-## Row Classifications
+## Row Classification (Current Implementation)
 
-Each VOLTAGE_MODE row is classified at circuit setup time to minimize matrix size and avoid unnecessary nonlinear iteration. Classifications are checked in priority order.
+Rows are currently classified as:
 
-### 1. Alias — No Matrix Entry
+1. **Alias** — bare node alias expression with no initial equation
+2. **Dynamic** — everything else
 
-**Pattern:** Bare node reference, e.g. `Cs ~ Cd`
+Alias criteria:
 
-The output name is registered in `LabeledNodeElm.labelList` pointing to the **same node number** as the target. No voltage source, no internal node, no matrix row allocated.
+- compiled expression is node alias (`isNodeAlias()`), and
+- `initialEquation` is empty.
 
-**Savings:** 2 matrix rows eliminated per alias.
+Alias rows:
 
-### 2. Constant — Linear Stamp
+- allocate no voltage source,
+- allocate no internal node,
+- map output label to target node label,
+- are pre-registered in `registerLabels()` so wire closure merges physical nodes.
 
-**Pattern:** Pure literal values and math, e.g. `rl ~ 0.025`
+Edit dialog UX for aliases:
 
-Evaluated once during `stamp()` and baked into the matrix as a linear DC voltage source. No `stampNonLinear()`, no `doStep()` work. Eligible for CirSim's matrix simplification pass.
+- Alias rows are marked with `⇔ Alias` beside the Mode field.
+- Mode selection is disabled for alias rows and fixed to Voltage behavior.
 
-### 3. Linear — VCVS Stamp
-
-**Pattern:** Linear combination of node references with constant coefficients, e.g. `Y ~ Cs + Is`, `Y ~ 2*Cd - 3*Is + 5`
-
-Stamped as a Voltage-Controlled Voltage Source (VCVS). The matrix solver computes the correct output in one pass — no iterative `doStep()` evaluation needed.
-
-**Deferred stamping:** If referenced nodes don't exist yet during `stamp()` (due to element ordering), VCVS coefficients are deferred to `postStamp()`.
-
-### 4. Dynamic — Nonlinear doStep()
-
-**Pattern:** Everything else — node references in non-linear expressions, `integrate()`, `diff()`, `lag()`, `t`, etc.
-
-Standard nonlinear stamping with `stampNonLinear(vn)` in `stamp()`, value computed and stamped via `stampRightSide(vn, value)` in `doStep()` each subiteration.
-
-### Classification Rules
-
-- FLOW_MODE and STOCK_MODE rows are **never** classified as constant or linear — they always require `doStep()`.
-- Rows with initial equations (`initialEquations[row]` non-empty) are always **dynamic**, since they require special t=0 handling.
-- If all rows in a table are constant/alias/linear, `nonLinear()` returns `false`, preventing the table from forcing the entire circuit into nonlinear mode.
-
-### Visual Indicators
-
-| Icon | Color | Classification |
-|------|-------|---------------|
-| → | Gray | Alias |
-| ● | Blue | Constant |
-| L | Green | Linear |
-| ⟳ | Orange | Dynamic |
+> Note: older docs may mention `constant`/`linear`/`VCVS` classifications. Those are not part of the current `EquationTableElm` behavior.
 
 ## Simulation Lifecycle
 
-### Mode Dispatch in stamp()
+### `stamp()`
 
-After row classifications are computed and nodes are allocated, `stamp()` dispatches each row to its mode-specific stamping method:
+Before per-element `stamp()` calls, `CirSim.stampCircuit()` runs lightweight
+EquationTable coordination across all `EquationTableElm` instances:
 
-```java
-RowOutputMode mode = outputModes[row];
+1. **Pass 1 (non-FLOW rows):** pre-register VOLTAGE/STOCK output names to node numbers
+  so those names resolve globally regardless of table stamp order.
+2. **Pass 2 (FLOW rows):** auto-create missing source/target endpoint labels using
+  reserved internal nodes, then emit diagnostics only if an endpoint still cannot
+  be resolved.
 
-switch (mode) {
-case VOLTAGE_MODE:
-    stampVoltageModeRow(row);
-    break;
-case FLOW_MODE:
-    stampCurrentModeRow(row);
-    break;
-case STOCK_MODE:
-    stampCapacitorModeRow(row);
-    break;
-}
-```
+1. `updateRowClassifications()`
+2. if pure mode: return (no matrix stamping)
+3. `findLabeledNodes()` (resolve existing or allocate/register internal nodes)
+4. `registerAliasNodes()`
+5. per non-alias row: mode handler `stamp(row)`
 
-| Method | Mode | What It Stamps |
-|--------|------|----------------|
-| `stampVoltageModeRow()` | VOLTAGE_MODE | Voltage source (constant, linear VCVS, or nonlinear) + load resistor |
-| `stampCurrentModeRow()` | FLOW_MODE | Marks source/target nodes as nonlinear; current stamped in `doStep()` |
-| `stampCapacitorModeRow()` | STOCK_MODE | Companion resistor `R = dt/(2C)` or `dt/C` + marks nodes for right-side updates |
+### `startIteration()`
 
-### Execution Order Per Timestep
+- Retry unresolved aliases
+- Seed alias values to `ComputedValues` (direct buffer)
+- Seed STOCK node voltages to `ComputedValues`
+- Compute STOCK history term (`capCurSourceValue`)
 
-```
-analyzeCircuit()
-  └── stamp()
-        ├── updateRowClassifications()
-        ├── findLabeledNodes()          — allocates nodes, skips alias rows
-        ├── registerAliasNodes()        — points alias names to target nodes
-        └── per-row stamping (mode dispatch above):
-              ├── Alias:     (nothing — handled by registerAliasNodes)
-              ├── Constant:  stampVoltageSource(0, node, vs, value)
-              ├── Linear:    stampVoltageSource + stampVCVS (or defer to postStamp)
-              ├── Dynamic:   stampNonLinear(vn) + stampVoltageSource(0, node, vs)
-              ├── FLOW_MODE:   stampNonLinear + stampRightSide on both nodes
-              └── STOCK_MODE: stampResistor(companion) + stampNonLinear + stampRightSide
+### `doStep()`
 
-postStamp()
-  └── Stamps deferred VCVS coefficients for linear rows
+Per row:
 
-startIteration()                    — once per timestep, before subiterations
-  ├── Retry unresolved aliases
-  ├── Seed alias values into ComputedValues
-  └── Calculate capacitor history currents:
-        ├── Trapezoidal: I_hist = -V_last / R - I_last  (R = dt/(2C))
-        └── Backward Euler: I_hist = -V_last / R        (R = dt/C)
+- alias rows copy target value
+- if `t == 0` and `initialEquation` exists, run initial-value path
+- otherwise evaluate and stamp via mode handler
+- run convergence check using adaptive threshold
 
-[subiteration loop]
-  doStep()                          — called each subiteration
-    ├── Skip constant rows
-    ├── Skip linear rows (MNA mode) — read computed voltage for display
-    ├── Alias rows: copy target value to ComputedValues
-    ├── t=0 handling: evaluateInitialValue()
-    ├── VOLTAGE_MODE: evaluateVoltageModeRow()
-    ├── FLOW_MODE: evaluateCurrentModeRow()
-    └── STOCK_MODE: evaluateCapacitorModeRow()
+### `stepFinished()`
 
-stepFinished()                      — once per timestep, after convergence
-  ├── Alias rows: read target voltage, register in ComputedValues
-  ├── STOCK_MODE rows: save capLastVoltage, capLastCurrent; set outputValue = stock voltage
-  ├── Register all output values in ComputedValues
-  └── Commit integration state (rows[row].exprState.commitIntegration)
-```
+- Alias rows: publish target value under alias name
+- STOCK rows: save companion state (`capLastVoltage`, `capLastCurrent`), set output to stock level
+- Publish non-FLOW outputs to `ComputedValues`
+- Commit `ExprState` integration and update last values
 
-### Initial Value Handling (t=0)
+## Initial Value Handling (`initialEquation`)
 
-If `initialEquations[row]` is set:
+At `t=0`:
 
-1. **Subiteration 0:** Stamp a placeholder (0) to let the solver warm up.
-2. **Subiteration 1:** Call `evaluateInitialValue(row)`:
-   - Evaluate the initial expression at `t=0`
-   - Set `rows[row].outputValue`, `rows[row].lastOutputValue`, `rows[row].exprState.lastIntOutput`
-   - For STOCK_MODE: set `rows[row].capLastVoltage`, stamp history current
-   - For VOLTAGE_MODE: stamp via `stampRightSide(vn, initialValue)`
-   - Register in ComputedValues immediately
-3. **Subsequent subiterations at t=0:** Re-stamp the same initial value (right-side resets each subiteration).
-
-After `initialValueApplied[row]` is set to `true`, the row proceeds with normal equation evaluation for all subsequent timesteps.
+1. First subiteration may stamp placeholder values.
+2. `evaluateInitialValue(row)` computes initial value and initializes expression integration state.
+3. VOLTAGE rows stamp initial RHS voltage.
+4. STOCK rows initialize stock voltage and stamp companion/history current.
+5. Initial value is registered immediately for dependent expressions.
 
 ## Expression System
 
-Equations are parsed by `ExprParser` into `Expr` trees and evaluated via `Expr.eval(ExprState)`.
+Rows parse with `ExprParser` and evaluate with `Expr.eval(ExprState)`.
 
-### Available Functions
+### Functions (commonly used)
 
-**Stateless:** `sin`, `cos`, `tan`, `exp`, `log`, `sqrt`, `abs`, `min`, `max`, `floor`, `ceil`
+- Stateless: `sin`, `cos`, `tan`, `exp`, `log`, `sqrt`, `abs`, `min`, `max`, `floor`, `ceil`
+- Stateful: `integrate(x)`, `diff(x)`
 
-**Stateful (require ExprState):**
-- `integrate(x)` — numerical integration over time
-- `diff(x)` — numerical differentiation over time
-- `lag(x, tau)` — exponential smoothing / first-order lag
+### Variable Sources
 
-### Variable Resolution
-
-Equations can reference:
-
-| Source | Example | Resolution |
-|--------|---------|------------|
-| Slider variable | `rate` (if row's slider is named "rate") | `exprStates[row].values[0]` |
-| ComputedValues | `YD`, `Wages`, any registered name | `ComputedValues.getComputedValue(name)` |
-| Labeled node voltages | `V_HH`, `Firms` | `LabeledNodeElm.getByName(name)` → node voltage |
-| Time | `t` | `sim.t` |
-| Other row outputs | `Y1`, `Y2` | Via ComputedValues (registered each `doStep`) |
-
-### Slider Variables
-
-Each row has a named slider variable (default: `a`, `b`, `c`, ...) with a value (default 0.5). The slider value is:
-- Passed to the expression as `exprStates[row].values[0]`
-- Registered in `ComputedValues` under the slider variable name
-- Adjustable in the edit dialog
+| Source | Resolution |
+|--------|------------|
+| Slider variable | `ExprState.values[0]` |
+| Time `t` | `sim.t` |
+| Named values | `ComputedValues` |
+| FLOW magnitudes | `ComputedValues` key `flow.<outputName>` |
+| Labeled nodes | via node/labeled-node lookup used by expression evaluation |
 
 ## Convergence
 
-### Adaptive Tolerance
+Convergence limit is adaptive and magnitude-scaled:
 
-Convergence threshold scales with subiteration count and value magnitude:
+- relative tolerance increases with subiteration count,
+- rows containing `diff()` get a 10x looser tolerance,
+- early subiterations for `diff()` skip strict checks.
 
-| Subiterations | Relative Tolerance |
-|--------------|-------------------|
-| < 3 | 0.001 (0.1%) |
-| 3–9 | 0.01 (1%) |
-| 10–49 | 0.05 (5%) |
-| ≥ 50 | 0.1 (10%) |
+Formula shape:
 
-For `diff()` equations, tolerance is multiplied by 10× to account for timestep-amplified variations. Early subiterations (< 5) skip convergence checks entirely for `diff()` rows to let inputs settle.
+$$limit = max(1, |current|, |last|) \times relativeTolerance$$
 
-### Formula
+If `|new - last| > limit`, row marks simulator unconverged (`sim.converged = false`) and stores diagnostics.
 
-```
-threshold = max(1.0, max(|currentValue|, |lastValue|)) × relativeTolerance
-```
+## MNA Mode vs Pure Computational Mode
 
-If `|newValue - lastValue| > threshold`, `sim.converged` is set to `false`.
+Mode is global (`sim.equationTableMnaMode`).
 
-## Modes: MNA vs Pure Computational
+### MNA Mode
 
-The mode is a **global** setting (`sim.equationTableMnaMode`, toggled in Options → Other Options).
-
-### MNA Mode (Default)
-
-- Rows create labeled nodes and voltage sources in the circuit matrix
-- Values participate in MNA solving (KCL enforcement)
-- Row classifications (alias, constant, linear) reduce matrix size
-- FLOW_MODE/STOCK_MODE inject current sources
+- Voltage rows drive circuit nodes.
+- Flow/Stock rows stamp current behavior.
+- Param rows are computation-only (no electrical stamp).
+- Alias rows share electrical nodes with targets.
+- Outputs are also published to `ComputedValues` for cross-expression use.
 
 ### Pure Computational Mode
 
-- No electrical posts, no voltage sources, no matrix entries
-- All values written to `ComputedValues` registry
-- Other elements read values via `ComputedValues.getComputedValue(name)`
-- Use `ComputedValueSourceElm` or `LabeledNodeElm` to bridge to electrical domain
-- Linear rows evaluate dynamically (no VCVS optimization)
+- No matrix stamping.
+- Rows evaluate and publish values to `ComputedValues`.
+- Alias rows mirror target computed values by name.
 
-| Aspect | MNA Mode | Pure Computational |
-|--------|----------|-------------------|
-| Posts | 0 (but internal nodes created) | 0 |
-| Voltage sources | 1 per VOLTAGE row | 0 |
-| Matrix entries | Yes | No |
-| ComputedValues | Yes (also registered) | Yes (primary output) |
-| FLOW_MODE | Stamps current source | N/A |
-| STOCK_MODE | Companion model | N/A |
+## Naming, Targets, and Separators
 
-## Serialization Format
+`setOutputName()` accepts combined source/target syntax and splits automatically.
 
-### Dump Format
+Accepted separators:
 
-```
-266 x1 y1 x2 y2 flags tableName rowCount [per-row-data...]
-```
+- `->`
+- `-||-`
+- `→`
+- `⊣⊢`
+- `,`
 
-**Per-row data (9 tokens per row):**
+Helpers:
 
-```
-outputName equation initialEquation sliderVarName sliderValue outputModeOrdinal targetNodeName capacitance useBackwardEuler
-```
+- `getDisplayOutputName()` uses ASCII `source->target` (dump-safe)
+- `getUIDisplayOutputName()` uses Unicode arrows/symbols for UI
+- `normalizeArrows()` converts Unicode separators to ASCII internally
 
-- `outputModeOrdinal`: 0 = VOLTAGE_MODE, 1 = FLOW_MODE, 2 = STOCK_MODE
-- `useBackwardEuler`: 0 = trapezoidal (default), 1 = backward Euler
-- Strings are escaped via `CustomLogicModel.escape()` (spaces → `\s`, backslash → `\\`)
-- Empty initial equations serialize as empty string
+For `PARAM_MODE`, any explicit target is ignored for stamping because the row has no electrical connection.
 
-**Previous format (8 tokens per row):** Detected automatically when `tokenCount == rowCount * 8`. Missing `useBackwardEuler` field defaults to `false` (trapezoidal).
+## Serialization
 
-**Legacy format (5 tokens per row):** Detected automatically when `tokenCount == rowCount * 5`. Missing mode fields default to VOLTAGE_MODE.
+`dump()` writes:
 
-### Flags
+1. `super.dump()`
+2. escaped table name
+3. row count
+4. per-row tokens:
+   - combined output name (`source` or `source->target`)
+   - equation
+   - initial equation
+   - slider var name
+   - slider value
+   - output mode ordinal
+   - reserved target token (currently empty for compatibility)
+   - capacitance
+  - shunt resistance
+   - backward-Euler flag (`0/1`)
 
-| Flag | Value | Meaning |
-|------|-------|---------|
-| `FLAG_SMALL` | 1 | Small display mode (smaller fonts, tighter rows) |
-| `FLAG_MNA_MODE` | 2 | MNA electrical mode (set on construction, but actual mode read from `sim.equationTableMnaMode`) |
+Loader supports legacy formats:
+
+- 10 tokens/row (newest; includes shunt resistance)
+- 9 tokens/row (previous newest; no shunt resistance token)
+- 8 tokens/row (without backward-Euler flag)
+- 5 tokens/row (legacy)
+
+Current output mode ordinals: `0=VOLTAGE`, `1=FLOW`, `2=STOCK`, `3=PARAM`.
+
+## Edit Dialog
+
+`EquationTableEditDialog` supports:
+
+- table name editing
+- row add/delete/reorder (1..32)
+- fields: Node(s), Equation, Initial (t=0), Mode, Shunt R / Cap, Integ., Slider Var, Slider Value, Hint
+- equation autocomplete
+- per-row STOCK integration method (Trap/Euler)
+- `PARAM_MODE` disables Shunt/Cap and Integ. controls for that row
+- apply path: set fields → parse → alloc nodes → recompute points → `needAnalyze()` + repaint
 
 ## Mouse Interaction
 
-### Mouse Wheel
+When hovering a row with a plain numeric equation:
 
-When hovering over a row whose equation is a simple numeric value (parseable as a `double`), scrolling the mouse wheel adjusts the value:
+- mouse wheel increments/decrements value,
+- step size scales by magnitude,
+- undo state is pushed,
+- numeric literal is reformatted for compact display.
 
-- **Scroll up:** Increase value
-- **Scroll down:** Decrease value
-- **Step size:** Proportional to value magnitude (1/10th of the order of magnitude)
-- **Precision:** Values formatted with up to 4 significant figures
-- **Undo:** First wheel movement pushes undo state
+## Debugging and Inspection
 
-### Hover Tooltip
-
-Hovering over a row displays detailed info in the sidebar:
-- Hint text (from `HintRegistry`)
-- Row classification with icon (→ alias, ● constant, L linear, ⟳ dynamic)
-- Equation text
-- Initial equation (if any)
-- Slider name and value
-- Current output value
-- Parse error (if any)
-
-## UI / Edit Dialog
-
-The edit dialog is opened by double-clicking the table element. It provides:
-
-- **Table name** field
-- **Row count** adjustment
-- **Per-row fields:** output name, equation, initial equation, slider variable name, slider value
-- **Per-row mode:** output mode dropdown (VOLTAGE / CURRENT / CAPACITOR)
-- **Per-row target:** target node name (for CURRENT/CAPACITOR modes)
-- **Per-row capacitance:** capacitance value (for CAPACITOR mode)
-- **Per-row integration method:** Trapezoidal or Backward Euler dropdown (for CAPACITOR mode)
-- **Row reordering:** up/down buttons
-- **Autocomplete:** for equation editing (references labeled nodes, computed values)
-
-The single property in the standard edit dialog (`getEditInfo`/`setEditValue`) is the "Small" checkbox for display size.
-
-## Key Implementation Details
-
-### Node Allocation Strategy
-
-In MNA mode, `findLabeledNodes()` determines how each row connects to the circuit:
-
-1. **Alias rows:** Skipped entirely — no nodes or voltage sources.
-2. **CURRENT mode:** Uses existing `LabeledNodeElm` nodes only. Does not allocate internal nodes.
-3. **CAPACITOR mode:** Uses existing `LabeledNodeElm` if available, otherwise allocates an internal node and registers it in `labelList`.
-4. **VOLTAGE mode:** Uses existing `LabeledNodeElm` if available, otherwise allocates an internal node. Always allocates a voltage source index.
-
-Internal nodes are registered in `LabeledNodeElm.labelList` so other elements can find them by name.
-
-### Companion Model (CAPACITOR Mode)
-
-The companion model converts the capacitor into a resistor + current source. Two integration methods are supported per row (default: trapezoidal):
-
-| Method | Companion Resistance | History Current | Characteristics |
-|--------|---------------------|-----------------|----------------|
-| Trapezoidal | `R = dt/(2C)` | `I_hist = -V_old/R - I_old` | More accurate, can oscillate if RC ≪ dt |
-| Backward Euler | `R = dt/C` | `I_hist = -V_old/R` | Less accurate, more stable (no oscillation) |
-
-This matches `CapacitorElm` and `SFCStockElm` companion model implementations.
-
-- **stamp():** Stamps the companion resistor (R depends on integration method)
-- **startIteration():** Computes history current (formula depends on integration method)
-- **doStep():** Stamps `totalCurrent = capCurSourceValue[row] - inflowValue`
-- **stepFinished():** Saves `capLastVoltage` and computes `capLastCurrent = V/R + capCurSourceValue - flowValue`
-
-### ComputedValues Timing
-
-Values are registered in `ComputedValues` at multiple points:
-
-1. **stamp():** Constant rows register their fixed values
-2. **startIteration():** Alias rows seed target values (direct buffer)
-3. **doStep():** Dynamic/VOLTAGE/CURRENT rows register via `setComputedValue` (pending buffer)
-4. **stepFinished():** All rows register final values; CAPACITOR rows register stock voltage (not flow)
-
-The double-buffering in ComputedValues ensures that reads during `doStep()` see values from the previous commit, avoiding order-dependent results.
-
-### Debug Logging
-
-Set `DEBUG = true` in the source to enable detailed console output via `CirSim.console()`:
-- Equation parsing results
-- Row classifications
-- Per-row evaluation details (slider values, referenced nodes, computed results)
-- Convergence checks (threshold, diff, pass/fail)
-- Node allocation and stamping
-
-Also visible at runtime: set `sim.convergenceCheckThreshold` in Options → Other to log convergence failures after N subiterations.
-
-## Related Documentation
-
-| Document | Description |
-|----------|-------------|
-| [EQUATION_TABLE_SIMPLIFICATION.md](EQUATION_TABLE_SIMPLIFICATION.md) | Row classification system and matrix optimization details |
-| [EQUATION_TABLE_CURRENT_FLOW_MODE.md](EQUATION_TABLE_CURRENT_FLOW_MODE.md) | Design and implementation of CURRENT/CAPACITOR modes |
-| [PURE_COMPUTATIONAL_TABLES.md](PURE_COMPUTATIONAL_TABLES.md) | Pure computational architecture and ComputedValues bridging |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Overall system architecture and ComputedValues double-buffering |
-| [AUTOCOMPLETE_FEATURE.md](AUTOCOMPLETE_FEATURE.md) | Autocomplete in equation editing |
-| [GREEK_SYMBOLS_FEATURE.md](GREEK_SYMBOLS_FEATURE.md) | Greek symbol support in variable names |
+- `DEBUG` flag in `EquationTableElm` enables detailed console logs.
+- `EquationTableMarkdownDebugDialog` provides a markdown debug report with:
+  - table summary,
+  - row details,
+  - labeled-node mappings,
+  - `ComputedValues` checks,
+  - matrix summary (`X = A⁻¹B`),
+  - full circuit dump.
 
 ## Related Source Files
 
 | File | Role |
 |------|------|
-| [EquationTableElm.java](../src/com/lushprojects/circuitjs1/client/EquationTableElm.java) | Main element class |
-| [EquationTableRenderer.java](../src/com/lushprojects/circuitjs1/client/EquationTableRenderer.java) | Drawing/rendering |
-| [Expr.java](../src/com/lushprojects/circuitjs1/client/Expr.java) | Expression tree (`isConstant()`, `isNodeAlias()`, `getLinearTerms()`) |
-| [ExprParser.java](../src/com/lushprojects/circuitjs1/client/ExprParser.java) | Expression parser |
-| [ExprState.java](../src/com/lushprojects/circuitjs1/client/ExprState.java) | Per-row evaluation state (`integrate`, `diff`, `lastOutput`) |
-| [ComputedValues.java](../src/com/lushprojects/circuitjs1/client/ComputedValues.java) | Registry for cross-element value sharing |
-| [LabeledNodeElm.java](../src/com/lushprojects/circuitjs1/client/LabeledNodeElm.java) | Named node lookup (`labelList`, `getByName()`) |
-| [CirSim.java](../src/com/lushprojects/circuitjs1/client/CirSim.java) | `equationTableMnaMode`, `stampVoltageSource()`, `stampCurrentSource()` |
+| [EquationTableElm.java](../src/com/lushprojects/circuitjs1/client/EquationTableElm.java) | Core behavior, stamping, lifecycle |
+| [EquationTableRenderer.java](../src/com/lushprojects/circuitjs1/client/EquationTableRenderer.java) | Drawing and row visuals |
+| [EquationTableEditDialog.java](../src/com/lushprojects/circuitjs1/client/EquationTableEditDialog.java) | Editing UI and apply flow |
+| [EquationTableMarkdownDebugDialog.java](../src/com/lushprojects/circuitjs1/client/EquationTableMarkdownDebugDialog.java) | Debug markdown inspection |
+| [ExprParser.java](../src/com/lushprojects/circuitjs1/client/ExprParser.java) | Equation parsing |
+| [ExprState.java](../src/com/lushprojects/circuitjs1/client/ExprState.java) | Stateful expression evaluation |
+| [ComputedValues.java](../src/com/lushprojects/circuitjs1/client/ComputedValues.java) | Shared computed-value registry |
+| [LabeledNodeElm.java](../src/com/lushprojects/circuitjs1/client/LabeledNodeElm.java) | Named node lookup and registration |
+| [CirSim.java](../src/com/lushprojects/circuitjs1/client/CirSim.java) | Global mode switch and matrix stamping APIs |
