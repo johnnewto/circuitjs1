@@ -1,0 +1,31 @@
+$ 3 0.1 0.6798259793203881 33 5 43 5e-11
+% voltageUnit $
+% showToolbar true
+266 128 176 264 274 0 Current.Demo 4 rate 3.3 \0 r 0.5 0 \0 1 0 S1->S2 1 \0 b 0.5 1 \0 1 0 S1->S0 0 \0 c 0.5 2 \0 1 0 S2 0 \0 d 0.5 2 \0 1 0
+268 256 -128 256 -96 0 From_s 0 1
+431 144 -192 176 -160 0 100 true false
+269 304 -128 464 -128 0 Flow 1 rate 1
+268 512 -128 464 -96 0 To_s 0 1
+213 64 32 112 32 0 0 1
+c 224 64 224 112 4 1 -72.1499999999958 0 0
+c 480 64 480 112 4 1 72.1499999999958 0 0
+g 224 112 224 128 0 0
+g 480 112 480 128 0 0
+w 160 64 224 64 0
+w 160 32 480 32 1
+w 480 32 480 64 0
+207 480 32 529 32 100 Vc2
+207 224 64 353 64 100 Vc1
+207 304 -128 368 -192 4 From_s
+207 464 -128 520 -184 100 To_s
+207 624 192 688 192 36 S1
+207 624 240 688 240 36 S2
+r -96 240 -16 240 0 1000
+207 -16 240 16 240 36 S0
+g -96 240 -96 256 0 0
+x -208 -308 710 -305 4 24 SFC\sKCL\sNode\sTable\sdemo\s(dump\stype\s270) 808080FF
+x -208 -288 790 -285 4 16 Cells\scontain\snode\slabels\s(S1,S2,S0);\scolumn\snodes\sare\smerged\sby\slabel\spre-registration 808080FF
+270 -440 -272 136 -140 1 4 5 6 16 0 false 2 1 false 5 0 false SFC\sKCL\sNode\sTable\sDemo \0 Households Firms Banks Govt Σ Consumption Wages Interest Taxes 0 0 0 0 0 SECTOR SECTOR SECTOR SECTOR COMPUTED -100 \p100 0 0 \0 S1 S2 0 0 \0 \p5 -10 \p5 0 \0 -20 -15 0 \p35 \0 true 0.000001 false LINEAR 300 250
+% AST 0 2
+% Hint S1 hint3
+% Hint S2 hint4

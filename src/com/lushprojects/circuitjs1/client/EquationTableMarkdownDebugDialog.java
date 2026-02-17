@@ -27,6 +27,9 @@ import com.google.gwt.user.client.ui.DialogBox;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.lushprojects.circuitjs1.client.EquationTableElm.RowOutputMode;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Set;
 
 /**
  * EquationTableMarkdownDebugDialog - Debug dialog for inspecting EquationTableElm state
@@ -468,6 +471,51 @@ public class EquationTableMarkdownDebugDialog {
             }
         }
         md.append("\n");
+
+        appendAllComputedValuesInfo(md);
+    }
+
+    /**
+     * Append all ComputedValues currently in the global registry,
+     * including flow.* entries published by EquationTable FLOW_MODE rows.
+     */
+    private void appendAllComputedValuesInfo(StringBuilder md) {
+        md.append("## All ComputedValues (Global)\n\n");
+
+        Set<String> allNamesSet = ComputedValues.getAllNames();
+        if (allNamesSet == null || allNamesSet.isEmpty()) {
+            md.append("*(No ComputedValues currently registered)*\n\n");
+            return;
+        }
+
+        ArrayList<String> allNames = new ArrayList<String>(allNamesSet);
+        String[] sortedNames = allNames.toArray(new String[allNames.size()]);
+        Arrays.sort(sortedNames);
+
+        md.append("| Name | Value | Type |\n");
+        md.append("|------|-------|------|\n");
+
+        int flowCount = 0;
+        for (int i = 0; i < sortedNames.length; i++) {
+            String name = sortedNames[i];
+            boolean isFlow = (name != null && name.startsWith("flow."));
+            if (isFlow) {
+                flowCount++;
+            }
+
+            Double valueObj = ComputedValues.getComputedValue(name);
+            String valueStr = (valueObj != null) ? CircuitElm.getShortUnitText(valueObj.doubleValue(), "") : "*(null)*";
+
+            md.append("| ").append(wrapForKaTeX(name))
+              .append(" | ").append(valueStr)
+              .append(" | ").append(isFlow ? "FLOW" : "VALUE")
+              .append(" |\n");
+        }
+
+        md.append("\n");
+        md.append("Total entries: **").append(sortedNames.length).append("**");
+        md.append("  ");
+        md.append("Flow entries (`flow.*`): **").append(flowCount).append("**\n\n");
     }
     
     // =========================================================================

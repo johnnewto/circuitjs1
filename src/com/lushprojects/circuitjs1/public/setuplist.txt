@@ -10,6 +10,7 @@ econ_KeenMinskyGodley02.txt Keen Minsky Godley 02
 econ_SimpleSFCModel.txt Simple SFC Model
 econ_SIM_MNA.txt SFCStockElm SFCFlowElm Test
 econ_Godley_Lavoie_SIM_3.txt SIM Godley Lavoie Ch3
+econ_Godley_Lavoie_SIM_3_SFCFlowTable.txt SIM Godley Lavoie Ch3 (SFC Flow Table)
 econ_Godley_Lavoie_BMW_7.txt BMW Godley Lavoie Ch7
 -
 +Debug

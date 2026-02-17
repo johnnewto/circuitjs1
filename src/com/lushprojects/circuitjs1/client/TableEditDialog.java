@@ -234,10 +234,10 @@ import java.util.Map;
         // Initialize with data from TableElm or defaults for new table
         this.dataRows = Math.max(1, tableElm.getRows()); // At least 1 data row
         
-        // For CTM, use actual column count (can be less than 4)
+        // For CTM-like tables, use actual column count (can be less than 4)
         // For regular tables, enforce minimum of 4 columns (A, L, E, A-L-E)
-        boolean isCTM = tableElm instanceof CurrentTransactionsMatrixElm;
-        if (isCTM) {
+        boolean isCtmLike = isCtmLikeTable(tableElm);
+        if (isCtmLike) {
             this.dataCols = Math.max(1, tableElm.getCols()); // CTM: use actual count
         } else {
             this.dataCols = Math.max(4, tableElm.getCols()); // Regular: at least 4 columns
@@ -394,6 +394,8 @@ import java.util.Map;
      * Copy data from TableElm into local arrays for editing
      */
     private void copyTableData() {
+        boolean isCtmLike = isCtmLikeTable(tableElement);
+
         // Initialize data arrays
         cellData = new String[dataRows][dataCols];
         
@@ -404,31 +406,38 @@ import java.util.Map;
         columnTypes = new ColumnType[dataCols];
         columnHeaderTexts = new String[dataCols];
         
-        // Set default stock values and types according to specification
-        // Initial configuration: 1 Asset, 1 Liability, 1 Equity, and last column is A_L_E (if 4+ columns)
-        if (dataCols >= 1) {
-            stockValues[0] = "Stock0";
-            columnTypes[0] = ColumnType.ASSET;
-        }
-        if (dataCols >= 2) {
-            stockValues[1] = "Stock1";
-            columnTypes[1] = ColumnType.LIABILITY;
-        }
-        if (dataCols >= 3) {
-            stockValues[2] = "Stock2";
-            columnTypes[2] = ColumnType.EQUITY;
-        }
-        
-        // All remaining columns (including column 3) get default stock names and ASSET type
-        for (int col = 3; col < dataCols; col++) {
-            stockValues[col] = "Stock" + col;
-            columnTypes[col] = ColumnType.ASSET;
-        }
-        
-        // For tables with 4+ columns, the LAST column is always A_L_E
-        if (dataCols >= 4) {
-            stockValues[dataCols - 1] = "A-L-E";  // A_L_E column label
-            // Note: Column type can remain ASSET, we detect A_L_E positionally
+        if (isCtmLike) {
+            for (int col = 0; col < dataCols; col++) {
+                stockValues[col] = "Stock" + col;
+                columnTypes[col] = ColumnType.SECTOR;
+            }
+        } else {
+            // Set default stock values and types according to specification
+            // Initial configuration: 1 Asset, 1 Liability, 1 Equity, and last column is A_L_E (if 4+ columns)
+            if (dataCols >= 1) {
+                stockValues[0] = "Stock0";
+                columnTypes[0] = ColumnType.ASSET;
+            }
+            if (dataCols >= 2) {
+                stockValues[1] = "Stock1";
+                columnTypes[1] = ColumnType.LIABILITY;
+            }
+            if (dataCols >= 3) {
+                stockValues[2] = "Stock2";
+                columnTypes[2] = ColumnType.EQUITY;
+            }
+
+            // All remaining columns (including column 3) get default stock names and ASSET type
+            for (int col = 3; col < dataCols; col++) {
+                stockValues[col] = "Stock" + col;
+                columnTypes[col] = ColumnType.ASSET;
+            }
+
+            // For tables with 4+ columns, the LAST column is always A_L_E
+            if (dataCols >= 4) {
+                stockValues[dataCols - 1] = "A-L-E";  // A_L_E column label
+                // Note: Column type can remain ASSET, we detect A_L_E positionally
+            }
         }
         
         // Copy existing data from TableElm if available
@@ -474,13 +483,19 @@ import java.util.Map;
             }
             
             // Initialize column header texts (source table name for CTM, table title for regular tables)
-            boolean isCTM = tableElement instanceof CurrentTransactionsMatrixElm;
-            if (isCTM) {
-                CurrentTransactionsMatrixElm ctm = (CurrentTransactionsMatrixElm) tableElement;
-                for (int col = 0; col < Math.min(dataCols, existingCols); col++) {
-                    String sourceTableName = ctm.getSourceTableName(col);
-                    columnHeaderTexts[col] = (sourceTableName != null && !sourceTableName.isEmpty()) 
-                        ? sourceTableName : tableElement.getTableTitle();
+            if (isCtmLike) {
+                if (tableElement instanceof CurrentTransactionsMatrixElm) {
+                    CurrentTransactionsMatrixElm ctm = (CurrentTransactionsMatrixElm) tableElement;
+                    for (int col = 0; col < Math.min(dataCols, existingCols); col++) {
+                        String sourceTableName = ctm.getSourceTableName(col);
+                        columnHeaderTexts[col] = (sourceTableName != null && !sourceTableName.isEmpty())
+                            ? sourceTableName : tableElement.getTableTitle();
+                    }
+                } else {
+                    String tableTitle = tableElement.getTableTitle();
+                    for (int col = 0; col < dataCols; col++) {
+                        columnHeaderTexts[col] = tableTitle;
+                    }
                 }
             } else {
                 String tableTitle = tableElement.getTableTitle();
@@ -1919,8 +1934,14 @@ import java.util.Map;
         }
         
         // Initialize new row
+        boolean cloneInsertedRowValues = tableElement instanceof SFCFlowTable;
         for (int c = 0; c < dataCols; c++) {
-            newCellData[rowIndex + 1][c] = "";
+            if (cloneInsertedRowValues) {
+                String prior = cellData[rowIndex][c];
+                newCellData[rowIndex + 1][c] = (prior != null) ? prior : "";
+            } else {
+                newCellData[rowIndex + 1][c] = "";
+            }
         }
         
         // Copy remaining rows
@@ -1975,6 +1996,11 @@ import java.util.Map;
         if (sim != null) {
             sim.repaint();
         }
+    }
+
+    private boolean isCtmLikeTable(TableElm element) {
+        return element instanceof CurrentTransactionsMatrixElm ||
+             element instanceof SFCFlowTable;
     }
     
     // Delete a row at the specified index

@@ -59,7 +59,7 @@ Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
   W_s->W_d ~ W * N_s ; mode=flow ; slider=f ; sliderValue=0.5  # hint6
   YD ~ W * N_s - T_s ; mode=voltage ; slider=e ; sliderValue=0.5  # Disposable Income
   T_s->T_d ~ \theta * W * N_s ; mode=flow ; slider=f ; sliderValue=0.5  # Tax
-  C_d ~ \alpha_1*YD+ \alpha_2*H_h ; mode=voltage ; slider=g ; sliderValue=0.5  # Consumption goods Supply/Demand
+  C_d->C_s ~ \alpha_1*YD+ \alpha_2*H_h ; mode=flow ; slider=g ; sliderValue=0.5  # Consumption goods Supply/Demand
 @end
 
 @equations equations_2 x=424 y=264
@@ -83,7 +83,7 @@ Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
 
 | Transaction | H_s | Production | Govt |
 |-------------|------|------|------|
-| Consumption | -C_d | C_s |  |
+| Consumption | C_d | C_s |  |
 | Govt Expenditures |  | G_s | G_d |
 | Wages | W_d | W_s |  |
 | Taxes | T_s |  | T_d |
@@ -115,11 +115,13 @@ Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
 x 203 -78 378 -75 4 24 SIM\sSFC\smodel 808080FF
 207 680 216 741 217 4 C_s
 207 680 256 743 256 36 Y
-403 696 272 960 448 0 6_4_0_xc01206_343597383680_0.1_-1_2_6_3
+403 696 272 960 448 0 6_4_0_xc01206_737869762948382000000_0.1_-1_2_6_3
 x 218 -53 682 -50 4 16 This\scode\sreplicates\sresults\sin\sthe\sbook\sMonetary\sEconomics: 808080FF
 x 215 -11 722 -8 4 16 \sby\sWynne\sGodley\sand\sMarc\sLavoie,\schapter\s3,\sfigures\s3.2\sand\s3.3. 808080FF
 x 218 -33 779 -30 4 16 \sAn\sIntegrated\sApproach\sto\sCredit,\sMoney,\sIncome,\sProduction\sand\sWealth 808080FF
 207 768 144 800 144 36 \\DeltaH_h
 207 768 96 800 96 4 \\DeltaH_s
 431 896 64 960 112 0 50 true false
+207 1056 224 1120 224 164 W_s
+207 1056 128 1120 128 164 Production
 @end

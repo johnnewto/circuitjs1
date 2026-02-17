@@ -31,6 +31,9 @@ import com.google.gwt.event.dom.client.MouseWheelHandler;
  *   <li>Custom slider variable per row for interactive parameter adjustment</li>
  *   <li>Support for initial value equations (evaluated only at t=0)</li>
  *   <li>Row output modes: VOLTAGE (default), FLOW (current source), STOCK (capacitor)</li>
+ *   <li>FLOW rows publish endpoint flow keys with direction sign:
+ *       flow.&lt;source&gt; = -value, flow.&lt;target&gt; = +value
+ *       (target omitted when it is ground)</li>
  *   <li>integrate() and diff() functions for dynamic systems</li>
  *   <li>Row reordering via up/down buttons in edit dialog</li>
  *   <li>Autocomplete support for equation editing</li>
@@ -1119,37 +1122,42 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * Key format: flow.<sanitizedOutputName>
      */
     static String getFlowComputedKeyForName(String outputName) {
-        if (outputName == null || outputName.trim().isEmpty()) {
-            return null;
-        }
-
-        String name = outputName.trim();
-        StringBuilder safe = new StringBuilder();
-        for (int i = 0; i < name.length(); i++) {
-            char ch = name.charAt(i);
-            boolean valid = (ch >= 'a' && ch <= 'z') ||
-                            (ch >= 'A' && ch <= 'Z') ||
-                            (ch >= '0' && ch <= '9') ||
-                            ch == '_' || ch == '\\' || ch == '^' || ch == '{' || ch == '}' || ch == '.';
-            safe.append(valid ? ch : '_');
-        }
-
-        if (safe.length() == 0) {
-            return "flow.";
-        }
-        if (safe.charAt(0) == '.') {
-            safe.insert(0, '_');
-        }
-
-        return "flow." + safe.toString();
+        return ComputedValues.getFlowComputedKeyForName(outputName);
     }
 
-    /** Register FLOW value in ComputedValues under its dedicated flow. key. */
+    /**
+     * Register FLOW value in ComputedValues under dedicated flow. keys.
+     *
+     * Sign convention for two-node flow S1->S2:
+     * - flow.S1 = -value (outflow from source stock)
+     * - flow.S2 = +value (inflow to target stock)
+     *
+     * For one-node/ground-target flow, only flow.<source> is published.
+     */
     private void registerFlowValue(int row, double value) {
         if (!isValidOutputName(row)) return;
-        String key = getFlowComputedKeyForName(rows[row].outputName.trim());
-        if (key != null) {
-            ComputedValues.setComputedValue(key, value);
+
+        String sourceName = rows[row].outputName.trim();
+        String sourceKey = getFlowComputedKeyForName(sourceName);
+        String targetName = rows[row].targetNodeName;
+        boolean hasNonGroundTarget = false;
+        if (targetName != null) {
+            String trimmedTarget = targetName.trim();
+            hasNonGroundTarget = !trimmedTarget.isEmpty() && !trimmedTarget.equalsIgnoreCase("gnd");
+        }
+
+        // Two-node flows publish source as negative (outflow), otherwise source-only.
+        double sourcePublished = hasNonGroundTarget ? -value : value;
+        if (sourceKey != null) {
+            ComputedValues.setComputedValue(sourceKey, sourcePublished);
+        }
+
+        if (hasNonGroundTarget) {
+            String trimmedTarget = targetName.trim();
+            String targetKey = getFlowComputedKeyForName(trimmedTarget);
+            if (targetKey != null) {
+                ComputedValues.setComputedValue(targetKey, value);
+            }
         }
     }
     
@@ -1918,10 +1926,23 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 }
             }
             if (rows[row].outputMode == RowOutputMode.FLOW_MODE && isValidOutputName(row)) {
-                String flowKey = getFlowComputedKeyForName(rows[row].outputName.trim());
-                if (flowKey != null) {
-                    ComputedValues.setComputedValue(flowKey, rows[row].outputValue);
-                    ComputedValues.markComputedThisStep(flowKey);
+                // Re-publish using the same signed dual-endpoint convention as doStep().
+                registerFlowValue(row, rows[row].outputValue);
+
+                String sourceKey = getFlowComputedKeyForName(rows[row].outputName.trim());
+                if (sourceKey != null) {
+                    ComputedValues.markComputedThisStep(sourceKey);
+                }
+
+                String targetName = rows[row].targetNodeName;
+                if (targetName != null) {
+                    String trimmedTarget = targetName.trim();
+                    if (!trimmedTarget.isEmpty() && !trimmedTarget.equalsIgnoreCase("gnd")) {
+                        String targetKey = getFlowComputedKeyForName(trimmedTarget);
+                        if (targetKey != null) {
+                            ComputedValues.markComputedThisStep(targetKey);
+                        }
+                    }
                 }
             }
             

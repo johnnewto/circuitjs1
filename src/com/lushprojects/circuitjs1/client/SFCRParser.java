@@ -21,7 +21,7 @@ import java.util.Vector;
  *   @info       - Model documentation (markdown)
  *   @equations  - Variable equations (creates EquationTableElm)
  *   @parameters - Alias for @equations (sfcr compatibility)
- *   @matrix     - Transaction flow matrices (creates SFCTableElm)
+ *   @matrix     - Transaction flow matrices (creates SFCTableElm or SFCFlowTable)
  *   @hints      - Variable tooltips (overrides inline comments)
  *   @scope      - Oscilloscope displays
  *   @circuit    - Raw CircuitJS element passthrough
@@ -322,7 +322,7 @@ public class SFCRParser {
         }
     }
     
-    /** Parse @matrix block - creates SFCTableElm. */
+    /** Parse @matrix block - creates SFCTableElm or SFCFlowTable. */
     private int parseMatrixBlock(String[] lines, int startIndex) {
         String headerLine = lines[startIndex].trim();
         BlockPosition blockPos = parseBlockHeader(headerLine, "@matrix");
@@ -340,6 +340,9 @@ public class SFCRParser {
         ArrayList<String> columnNames = new ArrayList<String>();
         ArrayList<String> columnCodes = new ArrayList<String>();
         String matrixType = "transaction_flow"; // default
+        Boolean showInitialValues = null;
+        Boolean showFlowValues = null;
+        Boolean useBackwardEuler = null;
         
         int i = startIndex + 1;
         ArrayList<String[]> tableRows = new ArrayList<String[]>();
@@ -360,23 +363,54 @@ public class SFCRParser {
                 continue;
             }
             
-            // Parse column definitions
-            if (line.startsWith("columns:")) {
-                columnNames = parseCommaSeparatedList(line.substring(8));
-                i++;
-                continue;
-            }
-            
-            if (line.startsWith("codes:")) {
-                columnCodes = parseCommaSeparatedList(line.substring(6));
-                i++;
-                continue;
-            }
-            
-            if (line.startsWith("type:")) {
-                matrixType = line.substring(5).trim();
-                i++;
-                continue;
+            // Parse key/value properties
+            int colonIdx = line.indexOf(':');
+            if (colonIdx > 0 && !line.startsWith("|")) {
+                String key = line.substring(0, colonIdx).trim().toLowerCase();
+                String value = line.substring(colonIdx + 1).trim();
+
+                if (key.equals("columns")) {
+                    columnNames = parseCommaSeparatedList(value);
+                    i++;
+                    continue;
+                }
+
+                if (key.equals("codes")) {
+                    columnCodes = parseCommaSeparatedList(value);
+                    i++;
+                    continue;
+                }
+
+                if (key.equals("type")) {
+                    matrixType = value;
+                    i++;
+                    continue;
+                }
+
+                if (key.equals("showflowvalues") || key.equals("show_flow_values")) {
+                    showFlowValues = Boolean.valueOf(value.equalsIgnoreCase("true") || value.equals("1") || value.equalsIgnoreCase("yes"));
+                    i++;
+                    continue;
+                }
+
+                if (key.equals("showinitialvalues") || key.equals("show_initial_values")) {
+                    showInitialValues = Boolean.valueOf(value.equalsIgnoreCase("true") || value.equals("1") || value.equalsIgnoreCase("yes"));
+                    i++;
+                    continue;
+                }
+
+                if (key.equals("integration")) {
+                    String mode = value.toLowerCase();
+                    useBackwardEuler = Boolean.valueOf(mode.equals("backward_euler") || mode.equals("backward euler") || mode.equals("backwardeuler"));
+                    i++;
+                    continue;
+                }
+
+                if (key.equals("usebackwardeuler") || key.equals("use_backward_euler")) {
+                    useBackwardEuler = Boolean.valueOf(value.equalsIgnoreCase("true") || value.equals("1") || value.equalsIgnoreCase("yes"));
+                    i++;
+                    continue;
+                }
             }
             
             // Parse markdown table row
@@ -417,9 +451,10 @@ public class SFCRParser {
             i++;
         }
         
-        // Create SFCTableElm from parsed data
+        // Create matrix table from parsed data
         if (!columnNames.isEmpty() && !tableRows.isEmpty()) {
-            createSFCTable(matrixName, columnNames, rowNames, tableRows, matrixType);
+            createMatrixTable(matrixName, columnNames, rowNames, tableRows, matrixType,
+                              showInitialValues, showFlowValues, useBackwardEuler);
         }
         
         // Restore position if we used explicit positioning
@@ -447,6 +482,11 @@ public class SFCRParser {
         
         ArrayList<String> outputNames = new ArrayList<String>();
         ArrayList<String> equations = new ArrayList<String>();
+        ArrayList<EquationTableElm.RowOutputMode> outputModes = new ArrayList<EquationTableElm.RowOutputMode>();
+        ArrayList<String> targetNodeNames = new ArrayList<String>();
+        ArrayList<String> sliderVarNames = new ArrayList<String>();
+        ArrayList<Double> sliderValues = new ArrayList<Double>();
+        ArrayList<String> initialEquations = new ArrayList<String>();
         
         int i = startIndex + 1;
         
@@ -482,14 +522,76 @@ public class SFCRParser {
             }
             
             if (parts != null && parts.length == 2) {
-                String name = normalizeVariableName(parts[0].trim());
-                String expr = normalizeExpression(parts[1].trim());
+                String leftPart = parts[0].trim();
+                String rightPart = parts[1].trim();
+
+                String exprText = rightPart;
+                HashMap<String, String> rowMeta = new HashMap<String, String>();
+                int metaIdx = rightPart.indexOf(';');
+                if (metaIdx >= 0) {
+                    exprText = rightPart.substring(0, metaIdx).trim();
+                    String metaText = rightPart.substring(metaIdx + 1).trim();
+                    String[] metaParts = metaText.split(";");
+                    for (int m = 0; m < metaParts.length; m++) {
+                        String token = metaParts[m].trim();
+                        int eq = token.indexOf('=');
+                        if (eq > 0) {
+                            String key = token.substring(0, eq).trim().toLowerCase();
+                            String val = token.substring(eq + 1).trim();
+                            rowMeta.put(key, val);
+                        }
+                    }
+                }
+
+                String normalizedLeft = normalizeVariableName(leftPart);
+                String[] nameParts = EquationTableElm.parseCombinedName(normalizedLeft);
+                String name = normalizeVariableName(nameParts[0]);
+
+                String targetName = "";
+                if (nameParts[1] != null && !nameParts[1].trim().isEmpty()) {
+                    targetName = normalizeVariableName(nameParts[1].trim());
+                }
+
+                String expr = normalizeExpression(exprText);
                 
                 // Convert self-accumulation pattern: X ~ expr + X[-1] → X ~ integrate(expr)
                 expr = convertSelfAccumulation(name, expr);
                 
                 outputNames.add(name);
                 equations.add(expr);
+
+                EquationTableElm.RowOutputMode mode = parseEquationRowMode(rowMeta.get("mode"));
+                if (mode == EquationTableElm.RowOutputMode.VOLTAGE_MODE && !targetName.isEmpty()) {
+                    mode = EquationTableElm.RowOutputMode.FLOW_MODE;
+                }
+                outputModes.add(mode);
+
+                if (targetName.isEmpty()) {
+                    String metaTarget = rowMeta.get("target");
+                    if (metaTarget != null && !metaTarget.trim().isEmpty()) {
+                        targetName = normalizeVariableName(metaTarget.trim());
+                    }
+                }
+                targetNodeNames.add(targetName);
+
+                String sliderVar = rowMeta.get("slider");
+                if (sliderVar == null || sliderVar.trim().isEmpty()) {
+                    sliderVar = String.valueOf((char)('a' + (outputNames.size() - 1) % 26));
+                }
+                sliderVarNames.add(sliderVar);
+
+                double sliderValue = 0.5;
+                String sliderValueStr = rowMeta.get("slidervalue");
+                if (sliderValueStr != null) {
+                    try {
+                        sliderValue = Double.parseDouble(sliderValueStr);
+                    } catch (Exception e) {
+                    }
+                }
+                sliderValues.add(Double.valueOf(sliderValue));
+
+                String initEq = rowMeta.get("initial");
+                initialEquations.add((initEq != null) ? initEq : "");
                 
                 // Store inline comment as auto-hint (only if not already set by @hints)
                 if (inlineComment != null && !inlineComment.isEmpty() && !hints.containsKey(name)) {
@@ -502,7 +604,8 @@ public class SFCRParser {
         
         // Create EquationTableElm from parsed data
         if (!outputNames.isEmpty()) {
-            createEquationTable(blockName, outputNames, equations);
+            createEquationTable(blockName, outputNames, equations, outputModes,
+                targetNodeNames, sliderVarNames, sliderValues, initialEquations);
         }
         
         // Restore position if we used explicit positioning
@@ -861,7 +964,8 @@ public class SFCRParser {
         
         // Create table if we have data
         if (!columnNames.isEmpty() && !tableRows.isEmpty()) {
-            createSFCTable(matrixName, columnNames, rowNames, tableRows, "transaction_flow");
+            createMatrixTable(matrixName, columnNames, rowNames, tableRows, "transaction_flow",
+                              null, null, null);
         }
     }
     
@@ -971,7 +1075,22 @@ public class SFCRParser {
         }
         
         if (!outputNames.isEmpty()) {
-            createEquationTable(blockName, outputNames, equations);
+            ArrayList<EquationTableElm.RowOutputMode> outputModes = new ArrayList<EquationTableElm.RowOutputMode>();
+            ArrayList<String> targetNodeNames = new ArrayList<String>();
+            ArrayList<String> sliderVarNames = new ArrayList<String>();
+            ArrayList<Double> sliderValues = new ArrayList<Double>();
+            ArrayList<String> initialEquations = new ArrayList<String>();
+
+            for (int i = 0; i < outputNames.size(); i++) {
+                outputModes.add(EquationTableElm.RowOutputMode.VOLTAGE_MODE);
+                targetNodeNames.add("");
+                sliderVarNames.add(String.valueOf((char)('a' + (i % 26))));
+                sliderValues.add(Double.valueOf(0.5));
+                initialEquations.add("");
+            }
+
+            createEquationTable(blockName, outputNames, equations, outputModes,
+                targetNodeNames, sliderVarNames, sliderValues, initialEquations);
         }
     }
     
@@ -1385,11 +1504,15 @@ public class SFCRParser {
     // Element Creation
     // =========================================================================
     
-    /** Create SFCTableElm from parsed matrix data. */
-    private void createSFCTable(String name, ArrayList<String> columnNames,
-                                 ArrayList<String> rowNames, ArrayList<String[]> tableRows,
-                                 String matrixType) {
-        // Build the dump string for SFCTableElm (type 265)
+    /** Create matrix table element from parsed matrix data. */
+    private void createMatrixTable(String name, ArrayList<String> columnNames,
+                                   ArrayList<String> rowNames, ArrayList<String[]> tableRows,
+                                   String matrixType, Boolean showInitialValuesOverride,
+                                   Boolean showFlowValuesOverride,
+                                   Boolean useBackwardEulerOverride) {
+        boolean createFlowTable = isFlowMatrixType(matrixType);
+
+        // Build the dump string for SFCTableElm (type 265) or SFCFlowTable (type 270)
         int rows = rowNames.size();
         
         // Check if last column is already a sum column (Σ, Sigma, Total, Sum, etc.)
@@ -1413,7 +1536,7 @@ public class SFCRParser {
         int x2 = currentX + 400; // Approximate width
         int y2 = currentY + (rows + 3) * 16; // Approximate height
         
-        dump.append("265 ").append(x1).append(" ").append(y1).append(" ");
+        dump.append(createFlowTable ? "270 " : "265 ").append(x1).append(" ").append(y1).append(" ");
         dump.append(x2).append(" ").append(y2).append(" 0 ");
         
         // Table data: rows cols cellWidthInGrids cellHeight cellSpacing
@@ -1422,7 +1545,8 @@ public class SFCRParser {
         dump.append("6 16 0 ");  // cellWidthInGrids, cellHeight, cellSpacing
         
         // showInitialValues decimalPlaces showCellValues collapsedMode priority initMode showALE
-        dump.append("false 2 1 false 5 0 false ");
+        boolean showInitial = (showInitialValuesOverride != null) ? showInitialValuesOverride.booleanValue() : createFlowTable;
+        dump.append(showInitial ? "true 2 1 false 5 0 false " : "false 2 1 false 5 0 false ");
         
         // Table title (escaped)
         dump.append(CustomLogicModel.escape(name.replace("_", " "))).append(" ");
@@ -1477,11 +1601,19 @@ public class SFCRParser {
             dump.append("\\0 ");  // Empty equation for Σ column
         }
         
-        // SFC-specific: highlightImbalances balanceTolerance
-        dump.append("true 0.000001");
+        // SFC-specific fields.
+        // For SFCTableElm: highlightImbalances balanceTolerance
+        // For SFCFlowTable: highlightImbalances balanceTolerance showFlowValues useBackwardEuler
+        if (createFlowTable) {
+            boolean showFlow = (showFlowValuesOverride != null) ? showFlowValuesOverride.booleanValue() : true;
+            boolean backwardEuler = (useBackwardEulerOverride != null) ? useBackwardEulerOverride.booleanValue() : false;
+            dump.append("true 0.000001 ").append(showFlow).append(" ").append(backwardEuler);
+        } else {
+            dump.append("true 0.000001");
+        }
         
         // Create element by parsing the dump string
-        CirSim.console("Creating SFCTable: " + name);
+        CirSim.console("Creating " + (createFlowTable ? "SFCFlowTable" : "SFCTable") + ": " + name);
         
         try {
             StringTokenizer st = new StringTokenizer(dump.toString());
@@ -1500,13 +1632,36 @@ public class SFCRParser {
                 currentY = yb + elementSpacing;
             }
         } catch (Exception e) {
-            CirSim.console("Error creating SFCTable: " + e.getMessage());
+            CirSim.console("Error creating matrix table: " + e.getMessage());
         }
     }
+
+    /** Determine whether @matrix type should create SFCFlowTable. */
+    private boolean isFlowMatrixType(String matrixType) {
+        if (matrixType == null) {
+            return false;
+        }
+        String t = matrixType.trim().toLowerCase();
+        return t.equals("flow_table") || t.equals("sfc_flow_table") || t.equals("kcl_flow");
+    }
     
+    private EquationTableElm.RowOutputMode parseEquationRowMode(String mode) {
+        if (mode == null) return EquationTableElm.RowOutputMode.VOLTAGE_MODE;
+        String m = mode.trim().toLowerCase();
+        if (m.equals("flow") || m.equals("flow_mode")) return EquationTableElm.RowOutputMode.FLOW_MODE;
+        if (m.equals("stock") || m.equals("stock_mode")) return EquationTableElm.RowOutputMode.STOCK_MODE;
+        if (m.equals("param") || m.equals("parameter") || m.equals("param_mode")) return EquationTableElm.RowOutputMode.PARAM_MODE;
+        return EquationTableElm.RowOutputMode.VOLTAGE_MODE;
+    }
+
     /** Create EquationTableElm from parsed equation data. */
     private void createEquationTable(String name, ArrayList<String> outputNames,
-                                      ArrayList<String> equations) {
+                                     ArrayList<String> equations,
+                                     ArrayList<EquationTableElm.RowOutputMode> outputModes,
+                                     ArrayList<String> targetNodeNames,
+                                     ArrayList<String> sliderVarNames,
+                                     ArrayList<Double> sliderValues,
+                                     ArrayList<String> initialEquations) {
         int rows = outputNames.size();
         if (rows == 0) return;
         if (rows > 32) rows = 32; // Max rows for EquationTableElm
@@ -1531,12 +1686,33 @@ public class SFCRParser {
         dump.append(rows).append(" ");
         
         // For each row: outputName equation initialEquation sliderVarName sliderValue
+        //               outputMode targetNode capacitance shuntResistance useBackwardEuler
         for (int i = 0; i < rows; i++) {
             dump.append(CustomLogicModel.escape(outputNames.get(i))).append(" ");
             dump.append(CustomLogicModel.escape(equations.get(i))).append(" ");
-            dump.append("\\0 ");  // Initial equation (empty)
-            dump.append("\\0 ");  // Slider var name (empty)
-            dump.append("0.5 ");  // Slider value (default)
+            String initEq = (i < initialEquations.size() && initialEquations.get(i) != null)
+                ? initialEquations.get(i) : "";
+            dump.append(CustomLogicModel.escape(initEq)).append(" ");
+
+            String sliderVar = (i < sliderVarNames.size() && sliderVarNames.get(i) != null)
+                ? sliderVarNames.get(i) : "";
+            dump.append(CustomLogicModel.escape(sliderVar)).append(" ");
+
+            double sliderValue = (i < sliderValues.size() && sliderValues.get(i) != null)
+                ? sliderValues.get(i).doubleValue() : 0.5;
+            dump.append(sliderValue).append(" ");
+
+            EquationTableElm.RowOutputMode mode = (i < outputModes.size() && outputModes.get(i) != null)
+                ? outputModes.get(i) : EquationTableElm.RowOutputMode.VOLTAGE_MODE;
+            dump.append(mode.ordinal()).append(" ");
+
+            String target = (i < targetNodeNames.size() && targetNodeNames.get(i) != null)
+                ? targetNodeNames.get(i) : "";
+            dump.append(CustomLogicModel.escape(target)).append(" ");
+
+            dump.append("1.0 ");     // capacitance
+            dump.append("1.0E9 ");   // shuntResistance
+            dump.append("0 ");       // useBackwardEuler
         }
         
         // CirSim.console("Creating EquationTable: " + name + " with " + rows + " equations");

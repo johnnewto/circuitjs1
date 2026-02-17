@@ -22,7 +22,7 @@ import java.util.Vector;
  *   @init       - Simulation settings (timestep, units)
  *   @info       - Model documentation (markdown)
  *   @equations  - All equations (from EquationTableElm, GodlyTableElm)
- *   @matrix     - Transaction matrices (from SFCTableElm)
+ *   @matrix     - Transaction matrices (from SFCTableElm, SFCFlowTable)
  *   @hints      - Variable documentation
  *   @circuit    - Non-SFCR elements (passthrough)
  * 
@@ -38,6 +38,7 @@ public class SFCRExporter {
     private CirSim sim;
     private ArrayList<EquationTableElm> equationTables = new ArrayList<EquationTableElm>();
     private ArrayList<SFCTableElm> sfcTables = new ArrayList<SFCTableElm>();
+    private ArrayList<SFCFlowTable> sfcFlowTables = new ArrayList<SFCFlowTable>();
     private ArrayList<GodlyTableElm> godlyTables = new ArrayList<GodlyTableElm>();
     private ArrayList<SFCSankeyElm> sankeyDiagrams = new ArrayList<SFCSankeyElm>();
     private ArrayList<CircuitElm> otherElements = new ArrayList<CircuitElm>();
@@ -103,6 +104,15 @@ public class SFCRExporter {
                 sb.append("\n");
             }
         }
+
+        // Export SFC flow tables as @matrix
+        for (SFCFlowTable flowTable : sfcFlowTables) {
+            String block = exportSFCFlowTable(flowTable);
+            if (!block.isEmpty()) {
+                sb.append(block);
+                sb.append("\n");
+            }
+        }
         
         // Export Sankey diagrams as @sankey
         for (SFCSankeyElm sankey : sankeyDiagrams) {
@@ -139,6 +149,7 @@ public class SFCRExporter {
     private void categorizeElements() {
         equationTables.clear();
         sfcTables.clear();
+        sfcFlowTables.clear();
         godlyTables.clear();
         sankeyDiagrams.clear();
         otherElements.clear();
@@ -148,6 +159,8 @@ public class SFCRExporter {
             
             if (elm instanceof EquationTableElm) {
                 equationTables.add((EquationTableElm) elm);
+            } else if (elm instanceof SFCFlowTable) {
+                sfcFlowTables.add((SFCFlowTable) elm);
             } else if (elm instanceof SFCTableElm) {
                 sfcTables.add((SFCTableElm) elm);
             } else if (elm instanceof GodlyTableElm) {
@@ -223,14 +236,29 @@ public class SFCRExporter {
         sb.append(formatPosition(eqTable)).append("\n");
         
         for (int row = 0; row < rowCount; row++) {
-            String name = eqTable.getOutputName(row);
+            String name = eqTable.getDisplayOutputName(row);
             String expr = eqTable.getEquation(row);
             
             if (name == null || name.isEmpty()) continue;
             if (expr == null) expr = "0";
-            
-            String hint = HintRegistry.getHint(name);
+
+            EquationTableElm.RowOutputMode mode = eqTable.getOutputMode(row);
+            String sliderVar = eqTable.getSliderVarName(row);
+            double sliderValue = eqTable.getSliderValue(row);
+            String initialEq = eqTable.getInitialEquation(row);
+
+            String sourceName = eqTable.getOutputName(row);
+            String hint = HintRegistry.getHint(sourceName);
+
             sb.append("  ").append(name).append(" ~ ").append(expr);
+            sb.append(" ; mode=").append(formatEquationRowMode(mode));
+            if (sliderVar != null && !sliderVar.trim().isEmpty()) {
+                sb.append(" ; slider=").append(sliderVar.trim());
+            }
+            sb.append(" ; sliderValue=").append(sliderValue);
+            if (initialEq != null && !initialEq.trim().isEmpty()) {
+                sb.append(" ; initial=").append(initialEq.trim());
+            }
             if (hint != null && !hint.trim().isEmpty()) {
                 sb.append("  # ").append(hint);
             }
@@ -239,6 +267,18 @@ public class SFCRExporter {
         
         sb.append("@end\n");
         return sb.toString();
+    }
+
+    private String formatEquationRowMode(EquationTableElm.RowOutputMode mode) {
+        if (mode == null) {
+            return "voltage";
+        }
+        switch (mode) {
+            case FLOW_MODE: return "flow";
+            case STOCK_MODE: return "stock";
+            case PARAM_MODE: return "param";
+            default: return "voltage";
+        }
     }
 
     /** Export GodlyTableElm as @equations block (integration-based stocks). */
@@ -329,6 +369,7 @@ public class SFCRExporter {
         
         sb.append("@matrix ").append(sanitizeName(tableName));
         sb.append(formatPosition(sfcTable)).append("\n");
+        sb.append("  type: transaction_flow\n");
         
         // Count data columns (exclude computed Σ column)
         int totalCols = sfcTable.getCols();
@@ -379,6 +420,70 @@ public class SFCRExporter {
             sb.append("\n");
         }
         
+        sb.append("@end\n");
+        return sb.toString();
+    }
+
+    /** Export SFCFlowTable as @matrix block. */
+    private String exportSFCFlowTable(SFCFlowTable flowTable) {
+        StringBuilder sb = new StringBuilder();
+
+        String tableName = flowTable.getTableTitle();
+        if (tableName == null || tableName.isEmpty()) {
+            tableName = "SFC_Flow_Table";
+        }
+
+        sb.append("@matrix ").append(sanitizeName(tableName));
+        sb.append(formatPosition(flowTable)).append("\n");
+        sb.append("  type: flow_table\n");
+        sb.append("  showInitialValues: ").append(flowTable.showInitialValues).append("\n");
+        sb.append("  showFlowValues: ").append(flowTable.isShowFlowValues()).append("\n");
+        sb.append("  integration: ").append(flowTable.isUseBackwardEuler() ? "backward_euler" : "trapezoidal").append("\n");
+
+        int totalCols = flowTable.getCols();
+        int dataCols = 0;
+        for (int col = 0; col < totalCols; col++) {
+            TableColumn column = flowTable.getColumn(col);
+            if (column != null && !column.isALE()) {
+                dataCols++;
+            }
+        }
+
+        sb.append("\n");
+
+        sb.append("| Transaction |");
+        for (int col = 0; col < totalCols; col++) {
+            TableColumn column = flowTable.getColumn(col);
+            if (column != null && !column.isALE()) {
+                sb.append(" ").append(column.getStockName()).append(" |");
+            }
+        }
+        sb.append("\n");
+
+        sb.append("|-------------|");
+        for (int col = 0; col < dataCols; col++) {
+            sb.append("------|");
+        }
+        sb.append("\n");
+
+        int rows = flowTable.getRows();
+        for (int row = 0; row < rows; row++) {
+            String rowDesc = flowTable.getRowDescription(row);
+            if (rowDesc == null) rowDesc = "Row" + row;
+
+            sb.append("| ").append(rowDesc).append(" |");
+
+            for (int col = 0; col < totalCols; col++) {
+                TableColumn column = flowTable.getColumn(col);
+                if (column != null && !column.isALE()) {
+                    String cellExpr = column.getCellEquation(row);
+                    if (cellExpr == null) cellExpr = "";
+                    sb.append(" ").append(cellExpr).append(" |");
+                }
+            }
+            sb.append("\n");
+        }
+
         sb.append("@end\n");
         return sb.toString();
     }

@@ -5297,6 +5297,17 @@ public CirSim() {
 			}
 		    }
 		}
+
+		// Match standard readCircuit(byte[]) behavior: apply explicit viewport if
+		// present, otherwise center the loaded circuit on screen.
+		if ((flags & RC_NO_CENTER) == 0) {
+		    ViewportElm viewportElm = findViewportElm();
+		    if (viewportElm != null) {
+			applyViewportTransform(viewportElm);
+		    } else {
+			centreCircuit();
+		    }
+		}
 		
 		needAnalyze();
 	    } else {
@@ -7931,6 +7942,7 @@ public CirSim() {
 		case 267: return new ComputedValueSourceElm(x1, y1, x2, y2, f, st);
 		case 268: return new SFCStockElm(x1, y1, x2, y2, f, st);
 		case 269: return new SFCFlowElm(x1, y1, x2, y2, f, st);
+		case 270: return new SFCFlowTable(x1, y1, x2, y2, f, st);
 		case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
     	case 368: return new TestPointElm(x1, y1, x2, y2, f, st);
     	case 370: return new AmmeterElm(x1, y1, x2, y2, f, st);
@@ -8296,6 +8308,8 @@ public CirSim() {
 			return (CircuitElm) new SFCStockElm(x1, y1);
 	if (n=="SFCFlowElm")
 			return (CircuitElm) new SFCFlowElm(x1, y1);
+	if (n=="SFCKclNodeTableElm" || n=="SFCFlowTable")
+			return (CircuitElm) new SFCFlowTable(x1, y1);
 	if (n=="ComputedValueSourceElm")
 			return (CircuitElm) new ComputedValueSourceElm(x1, y1);
 	if (n.equals("TableVoltageElm")) 

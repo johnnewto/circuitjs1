@@ -24,6 +24,7 @@ SubtracterElm|Subtracter
 GodlyTableElm|Godly Table
 TableElm|Table
 SFCTableElm|SFC Table
+SFCFlowTable|SFC Flow Table
 SFCSankeyElm|SFC Sankey Diagram
 SFCStockElm|SFC Stock (MNA)
 SFCFlowElm|SFC Flow (MNA)

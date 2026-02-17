@@ -31,9 +31,11 @@ class LabeledNodeElm extends CircuitElm {
     final int FLAG_SHOW_ALL_CIRCUIT_NODES = 16;
     final int FLAG_SHOW_VOLTAGE = 32;
     final int FLAG_SHOW_CURRENT = 64;
+	final int FLAG_SHOW_FLOW = 128;
     
     public LabeledNodeElm(int xx, int yy) {
 	super(xx, yy);
+	flags |= (FLAG_SHOW_FLOW | FLAG_SHOW_VOLTAGE);
 	text = "label";
     }
     public LabeledNodeElm(int xa, int ya, int xb, int yb, int f,
@@ -83,6 +85,7 @@ class LabeledNodeElm extends CircuitElm {
     boolean showAllCircuitNodes() { return (flags & FLAG_SHOW_ALL_CIRCUIT_NODES) != 0; }
     boolean showVoltage() { return (flags & FLAG_SHOW_VOLTAGE) != 0; }
     boolean showCurrent() { return (flags & FLAG_SHOW_CURRENT) != 0; }
+	boolean showFlow() { return (flags & FLAG_SHOW_FLOW) != 0; }
 
     public static native void console(String text)
     /*-{
@@ -327,6 +330,16 @@ class LabeledNodeElm extends CircuitElm {
 		    String currentText = " I=" + getCurrentText(getCurrent());
 		    displayText = displayText + currentText;
 		}
+		if (showFlow()) {
+		    String flowText = " F=";
+		    Double flowValue = ComputedValues.getConvergedFlowValue(text);
+		    if (flowValue != null) {
+			flowText += getCurrentText(flowValue.doubleValue());
+		    } else {
+			flowText += "0 A";
+		    }
+		    displayText = displayText + flowText;
+		}
 		drawLabeledNode(g, displayText, point1, lead1);
 		
 		// Set bbox to just the wire+circle area, excluding the text label.
@@ -379,20 +392,26 @@ class LabeledNodeElm extends CircuitElm {
 		    arr[1] = "";
 		}
 		arr[2] = "I = " + getCurrentText(getCurrent());
+		int idx = 3;
+		if (showFlow()) {
+			Double flowValue = ComputedValues.getConvergedFlowValue(text);
+			if (flowValue != null) {
+				arr[idx++] = "Flow = " + getCurrentText(flowValue.doubleValue());
+			}
+		}
 		
 		// Use custom voltage unit symbol (e.g., $ for economics mode)
 		String voltUnit = (sim != null && sim.voltageUnitSymbol != null) ? sim.voltageUnitSymbol : "V";
-		arr[3] = voltUnit + " = " + getVoltageText(volts[0]);
+		arr[idx++] = voltUnit + " = " + getVoltageText(volts[0]);
 		
 		// Add node number information for debugging
 		LabelEntry le = labelList.get(text);
 		if (le != null)
-			arr[4] = "Node: " + le.node;
+			arr[idx++] = "Node: " + le.node;
 		else
-			arr[4] = "Node: not assigned";
+			arr[idx++] = "Node: not assigned";
 		
 		// Show stock status if this is a stock
-		int idx = 5;
 		if (StockFlowRegistry.isStock(text)) {
 		    arr[idx++] = "Stock: Yes (registered in table)";
 		    if (StockFlowRegistry.isSharedStock(text)) {
@@ -501,6 +520,11 @@ class LabeledNodeElm extends CircuitElm {
             ei.checkbox = new Checkbox("Show Current", showCurrent());
             return ei;
         }
+		if (n == 6) {
+			EditInfo ei = new EditInfo("", 0, -1, -1);
+			ei.checkbox = new Checkbox("Show Flow", showFlow());
+			return ei;
+		}
 	return null;
     }
     public void setEditValue(int n, EditInfo ei) {
@@ -523,6 +547,8 @@ class LabeledNodeElm extends CircuitElm {
 	    flags = ei.changeFlag(flags, FLAG_SHOW_ALL_CIRCUIT_NODES);
 	if (n == 5)
 	    flags = ei.changeFlag(flags, FLAG_SHOW_CURRENT);
+	if (n == 6)
+	    flags = ei.changeFlag(flags, FLAG_SHOW_FLOW);
     }
     @Override String getScopeText(int v) {
 	return text;

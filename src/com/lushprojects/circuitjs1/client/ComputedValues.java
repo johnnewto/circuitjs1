@@ -54,6 +54,7 @@ import java.util.Set;
  * "current" values regardless of which doStep() runs first.
  */
 public class ComputedValues {
+    private static final String FLOW_KEY_PREFIX = "flow.";
     
     // Storage for current values: name -> value (stable, read from during doStep)
     private static HashMap<String, Double> computedValues;
@@ -302,6 +303,58 @@ public class ComputedValues {
         
         // Fall back to current value (for first timestep before any commit)
         return computedValues.get(name);
+    }
+
+    /**
+     * Build parser-safe ComputedValues key for a FLOW output name.
+     * Key format: flow.<sanitizedOutputName>
+     */
+    public static String getFlowComputedKeyForName(String outputName) {
+        if (outputName == null || outputName.trim().isEmpty()) {
+            return null;
+        }
+
+        String name = outputName.trim();
+        StringBuilder safe = new StringBuilder();
+        for (int i = 0; i < name.length(); i++) {
+            char ch = name.charAt(i);
+            boolean valid = (ch >= 'a' && ch <= 'z') ||
+                            (ch >= 'A' && ch <= 'Z') ||
+                            (ch >= '0' && ch <= '9') ||
+                            ch == '_' || ch == '\\' || ch == '^' || ch == '{' || ch == '}' || ch == '.';
+            safe.append(valid ? ch : '_');
+        }
+
+        if (safe.length() == 0) {
+            return FLOW_KEY_PREFIX;
+        }
+        if (safe.charAt(0) == '.') {
+            safe.insert(0, '_');
+        }
+
+        return FLOW_KEY_PREFIX + safe.toString();
+    }
+
+    /**
+     * Get current/subiteration FLOW value for a label name from flow.* namespace.
+     */
+    public static Double getComputedFlowValue(String outputName) {
+        String key = getFlowComputedKeyForName(outputName);
+        if (key == null) {
+            return null;
+        }
+        return getComputedValue(key);
+    }
+
+    /**
+     * Get converged/stable FLOW value for a label name from flow.* namespace.
+     */
+    public static Double getConvergedFlowValue(String outputName) {
+        String key = getFlowComputedKeyForName(outputName);
+        if (key == null) {
+            return null;
+        }
+        return getConvergedValue(key);
     }
     
     /**
