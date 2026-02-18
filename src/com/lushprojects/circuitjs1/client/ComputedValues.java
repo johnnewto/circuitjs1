@@ -54,7 +54,7 @@ import java.util.Set;
  * "current" values regardless of which doStep() runs first.
  */
 public class ComputedValues {
-    private static final String FLOW_KEY_PREFIX = "flow.";
+    private static final String FLOW_KEY_SUFFIX = ".flow";
     
     // Storage for current values: name -> value (stable, read from during doStep)
     private static HashMap<String, Double> computedValues;
@@ -307,7 +307,7 @@ public class ComputedValues {
 
     /**
      * Build parser-safe ComputedValues key for a FLOW output name.
-     * Key format: flow.<sanitizedOutputName>
+     * Key format: <sanitizedOutputName>.flow
      */
     public static String getFlowComputedKeyForName(String outputName) {
         if (outputName == null || outputName.trim().isEmpty()) {
@@ -326,17 +326,17 @@ public class ComputedValues {
         }
 
         if (safe.length() == 0) {
-            return FLOW_KEY_PREFIX;
+            return FLOW_KEY_SUFFIX;
         }
         if (safe.charAt(0) == '.') {
             safe.insert(0, '_');
         }
 
-        return FLOW_KEY_PREFIX + safe.toString();
+        return safe.toString() + FLOW_KEY_SUFFIX;
     }
 
     /**
-     * Get current/subiteration FLOW value for a label name from flow.* namespace.
+     * Get current/subiteration FLOW value for a label name from *.flow namespace.
      */
     public static Double getComputedFlowValue(String outputName) {
         String key = getFlowComputedKeyForName(outputName);
@@ -347,7 +347,7 @@ public class ComputedValues {
     }
 
     /**
-     * Get converged/stable FLOW value for a label name from flow.* namespace.
+     * Get converged/stable FLOW value for a label name from *.flow namespace.
      */
     public static Double getConvergedFlowValue(String outputName) {
         String key = getFlowComputedKeyForName(outputName);
@@ -355,6 +355,56 @@ public class ComputedValues {
             return null;
         }
         return getConvergedValue(key);
+    }
+
+    private static Double getValueByName(String name, boolean converged) {
+        return converged ? getConvergedValue(name) : getComputedValue(name);
+    }
+
+    private static Double getFlowByName(String name, boolean converged) {
+        return converged ? getConvergedFlowValue(name) : getComputedFlowValue(name);
+    }
+
+    private static Double getValueFlowInternal(String baseName, boolean converged, boolean flowFirst) {
+        if (baseName == null || baseName.trim().isEmpty()) {
+            return null;
+        }
+        String trimmed = baseName.trim();
+        Double first = flowFirst ? getFlowByName(trimmed, converged) : getValueByName(trimmed, converged);
+        if (first != null) {
+            return first;
+        }
+        return flowFirst ? getValueByName(trimmed, converged) : getFlowByName(trimmed, converged);
+    }
+
+    /**
+     * Get current/subiteration value by base name, then fall back to baseName.flow.
+     * Useful when callers want one lookup path for value-or-flow semantics.
+     */
+    public static Double getComputedValueOrFlow(String baseName) {
+        return getValueFlowInternal(baseName, false, false);
+    }
+
+    /**
+     * Get current/subiteration value by base name.flow first, then fall back to baseName.
+     * Useful when flow should take precedence over stock/node values.
+     */
+    public static Double getComputedFlowOrValue(String baseName) {
+        return getValueFlowInternal(baseName, false, true);
+    }
+
+    /**
+     * Get converged/stable value by base name, then fall back to baseName.flow.
+     */
+    public static Double getConvergedValueOrFlow(String baseName) {
+        return getValueFlowInternal(baseName, true, false);
+    }
+
+    /**
+     * Get converged/stable value by base name.flow first, then fall back to baseName.
+     */
+    public static Double getConvergedFlowOrValue(String baseName) {
+        return getValueFlowInternal(baseName, true, true);
     }
     
     /**

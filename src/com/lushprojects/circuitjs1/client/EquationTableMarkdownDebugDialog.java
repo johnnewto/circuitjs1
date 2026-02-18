@@ -477,7 +477,7 @@ public class EquationTableMarkdownDebugDialog {
 
     /**
      * Append all ComputedValues currently in the global registry,
-     * including flow.* entries published by EquationTable FLOW_MODE rows.
+        * including *.flow entries published by EquationTable FLOW_MODE rows.
      */
     private void appendAllComputedValuesInfo(StringBuilder md) {
         md.append("## All ComputedValues (Global)\n\n");
@@ -498,7 +498,7 @@ public class EquationTableMarkdownDebugDialog {
         int flowCount = 0;
         for (int i = 0; i < sortedNames.length; i++) {
             String name = sortedNames[i];
-            boolean isFlow = (name != null && name.startsWith("flow."));
+            boolean isFlow = (name != null && name.endsWith(".flow"));
             if (isFlow) {
                 flowCount++;
             }
@@ -515,7 +515,7 @@ public class EquationTableMarkdownDebugDialog {
         md.append("\n");
         md.append("Total entries: **").append(sortedNames.length).append("**");
         md.append("  ");
-        md.append("Flow entries (`flow.*`): **").append(flowCount).append("**\n\n");
+        md.append("Flow entries (`*.flow`): **").append(flowCount).append("**\n\n");
     }
     
     // =========================================================================

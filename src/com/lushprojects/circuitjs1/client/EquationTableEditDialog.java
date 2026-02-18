@@ -660,7 +660,7 @@ public class EquationTableEditDialog extends Dialog {
                 completions.add(outputNames[i]);
             }
 
-            // Add FLOW computed-value keys (flow.<output>) so equations can
+            // Add FLOW computed-value keys (<output>.flow) so equations can
             // reference FLOW magnitudes without clobbering stock/node values.
             String[] parts = EquationTableElm.parseCombinedName(outputNames[i]);
             String flowKey = EquationTableElm.getFlowComputedKeyForName(parts[0]);

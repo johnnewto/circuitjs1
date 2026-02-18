@@ -66,7 +66,7 @@ Equation result is interpreted as current and stamped with `stampCurrentSource`.
 - **Two-node form (`S1->S2`):** flow is `S1 -> S2`; positive means source-to-target
 - **Target default:** empty or `gnd` means ground
 - **Always nonlinear:** evaluated each subiteration
-- **ComputedValues key:** FLOW rows publish magnitude under `flow.<outputName>` (sanitized to parser-safe identifier chars)
+- **ComputedValues key:** FLOW rows publish magnitude under `<outputName>.flow` (sanitized to parser-safe identifier chars)
 - **Important:** FLOW rows still do **not** register to `ComputedValues[outputName]` (prevents clobbering stock/node voltage values)
 
 ### STOCK_MODE
@@ -194,7 +194,7 @@ Rows parse with `ExprParser` and evaluate with `Expr.eval(ExprState)`.
 | Slider variable | `ExprState.values[0]` |
 | Time `t` | `sim.t` |
 | Named values | `ComputedValues` |
-| FLOW magnitudes | `ComputedValues` key `flow.<outputName>` |
+| FLOW magnitudes | `ComputedValues` key `<outputName>.flow` |
 | Labeled nodes | via node/labeled-node lookup used by expression evaluation |
 
 ## Convergence

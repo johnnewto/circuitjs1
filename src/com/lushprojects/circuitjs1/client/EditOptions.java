@@ -92,15 +92,20 @@ class EditOptions implements Editable {
 		    ei.checkbox = new Checkbox("Use WASM Solver", CirSim.useWasmSolver);
 		    return ei;
 		}
+		if (n == 17) {
+		    EditInfo ei = new EditInfo("", 0, -1, -1);
+		    ei.checkbox = new Checkbox("Show Electronics Circuits", sim.showElectronicsCircuits);
+		    return ei;
+		}
 		// Conditional items must be last. When the condition is false,
 		// getEditInfo() returns null which terminates the dialog loop,
 		// hiding any items that would follow.
-		if (n == 17) {
+		if (n == 18) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
 		    ei.checkbox = new Checkbox("Auto-Adjust Timestep", sim.adjustTimeStep);
 		    return ei;
 		}
-		if (n == 18 && sim.adjustTimeStep)
+		if (n == 19 && sim.adjustTimeStep)
 		    return new EditInfo("Minimum time step size (s)", sim.minTimeStep, 0, 0);
 
 		return null;
@@ -195,10 +200,19 @@ class EditOptions implements Editable {
 		    CirSim.console("WASM solver " + (CirSim.useWasmSolver ? "enabled" : "disabled"));
 		}
 		if (n == 17) {
+		    boolean newValue = ei.checkbox.getState();
+		    if (sim.showElectronicsCircuits != newValue) {
+			sim.showElectronicsCircuits = newValue;
+			sim.setOptionInStorage("showElectronicsCircuits", sim.showElectronicsCircuits);
+			if (Window.confirm(Locale.LS("Must restart to reload circuit menu. Restart now?")))
+			    Window.Location.reload();
+		    }
+		}
+		if (n == 18) {
 		    sim.adjustTimeStep = ei.checkbox.getState();
 		    ei.newDialog = true;
 		}
-		if (n == 18 && ei.value > 0)
+		if (n == 19 && ei.value > 0)
 		    sim.minTimeStep = ei.value;
 	}
 	

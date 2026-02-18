@@ -287,6 +287,9 @@ MouseOutHandler, MouseWheelHandler {
 	
 	// Equation table MNA mode - when true, equation tables create electrical outputs
 	boolean equationTableMnaMode = true;
+
+	// When true, include the electronics circuit library in the Circuits menu
+	boolean showElectronicsCircuits = false;
 	
 	// Circuit hint types - show helpful formulas when related elements are present
 	static final int HINT_LC = 1;      // LC resonant frequency hint
@@ -545,6 +548,7 @@ public CirSim() {
 	    noEditing = !qp.getBooleanValue("editable", true);
 	    mouseWheelEdit = qp.getBooleanValue("mouseWheelEdit", getOptionFromStorage("mouseWheelEdit", true));
 	    useWeightedPriority = getOptionFromStorage("weightedPriority", false);
+	    showElectronicsCircuits = getOptionFromStorage("showElectronicsCircuits", false);
 	    positiveColor = qp.getValue("positiveColor");
 	    negativeColor = qp.getValue("negativeColor");
 	    neutralColor = qp.getValue("neutralColor");
@@ -4771,7 +4775,7 @@ public CirSim() {
     	}
     	if (item=="newblankcircuit") {
     	    pushUndo();
-    	    readSetupFile("blank.txt", "Blank Circuit");
+		    readSetupFile("electronics/blank.txt", "Blank Circuit");
     	}
     		
     	//	if (ac.indexOf("setup ") == 0) {
@@ -5158,57 +5162,66 @@ public CirSim() {
 		return dump;
     }
 
-    void getSetupList(final boolean openDefault) {
+	void getSetupList(final boolean openDefault) {
+	    MenuBar circuitsMenu = new MenuBar(true);
+	    circuitsMenu.setAutoOpen(true);
+	    menuBar.addItem(Locale.LS("Circuits"), circuitsMenu);
+	    addDialogsMenu();
 
-    	String url;
-    	url = GWT.getModuleBaseURL()+"setuplist.txt"; // +"?v="+random.nextInt();
-		RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, url);
-		try {
-			requestBuilder.sendRequest(null, new RequestCallback() {
-				public void onError(Request request, Throwable exception) {
-					if (!hideMenu)
-					    Window.alert(Locale.LS("Can't load circuit list!"));
-					GWT.log("File Error Response", exception);
-				}
+	    loadSetupListIntoMenu("setuplist_economics.txt", circuitsMenu, openDefault, showElectronicsCircuits);
+	}
 
-				public void onResponseReceived(Request request, Response response) {
-					// processing goes here
-					if (response.getStatusCode()==Response.SC_OK) {
-					String text = response.getText();
-					processSetupList(text.getBytes(), openDefault);
-					// end or processing
-					}
-					else { 
-						Window.alert(Locale.LS("Can't load circuit list!"));
-						GWT.log("Bad file server response:"+response.getStatusText() );
-					}
-				}
-			});
-		} catch (RequestException e) {
-			GWT.log("failed file reading", e);
-		}
-    }
+	void addDialogsMenu() {
+	    MenuBar varBrowserMenu = new MenuBar(true);
+	    varBrowserMenu.setAutoOpen(true);
+	    varBrowserMenu.addItem(menuItemWithShortcut("list-ul", "Variable Browser...", "\\", new MyCommand("edit", "variablebrowser")));
+	    varBrowserMenu.addItem(menuItemWithShortcut("book", "Glossary Editor...", "", new MyCommand("edit", "hinteditor")));
+	    varBrowserMenu.addItem(menuItemWithShortcut("clock-o", "Action Time Schedule...", "", new MyCommand("edit", "actiontimedialog")));
+	    varBrowserMenu.addItem(menuItemWithShortcut("code", "Embedded Viewer...", "", new MyCommand("edit", "iframeviewer")));
+	    varBrowserMenu.addItem(menuItemWithShortcut("check-square-o", "Math Elements Test Suite...", "", new MyCommand("edit", "mathtestdialog")));
+	    varBrowserMenu.addItem(menuItemWithShortcut("table", "Table Elements Test Suite...", "", new MyCommand("edit", "tabletestdialog")));
+	    menuBar.addItem(Locale.LS("Dialogs"), varBrowserMenu);
+	}
+
+	void loadSetupListIntoMenu(final String setupListPath, final MenuBar circuitsMenu,
+			final boolean openDefault, final boolean loadElectronicsAfter) {
+	    final String circuitPrefix = setupListPath.equals("setuplist_economics.txt") ? "economics/" :
+			(setupListPath.equals("setuplist_electronics.txt") ? "electronics/" : "");
+	    String url = GWT.getModuleBaseURL() + setupListPath;
+	    RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, url);
+	    try {
+		requestBuilder.sendRequest(null, new RequestCallback() {
+		    public void onError(Request request, Throwable exception) {
+			if (!hideMenu)
+			    Window.alert(Locale.LS("Can't load circuit list!"));
+			GWT.log("File Error Response", exception);
+		    }
+
+		    public void onResponseReceived(Request request, Response response) {
+			if (response.getStatusCode() == Response.SC_OK) {
+			    String text = response.getText();
+			    processSetupList(text.getBytes(), openDefault, circuitsMenu, circuitPrefix);
+			    if (loadElectronicsAfter)
+				loadSetupListIntoMenu("setuplist_electronics.txt", circuitsMenu, false, false);
+			} else {
+			    if (!hideMenu)
+				Window.alert(Locale.LS("Can't load circuit list!"));
+			    GWT.log("Bad file server response:" + response.getStatusText());
+			}
+		    }
+		});
+	    } catch (RequestException e) {
+		GWT.log("failed file reading", e);
+	    }
+	}
 		
-    void processSetupList(byte b[], final boolean openDefault) {
+	void processSetupList(byte b[], final boolean openDefault, MenuBar circuitsMenu, String circuitPrefix) {
 	int len = b.length;
     	MenuBar currentMenuBar;
     	MenuBar stack[] = new MenuBar[6];
     	int stackptr = 0;
-    	currentMenuBar=new MenuBar(true);
-    	currentMenuBar.setAutoOpen(true);
-    	menuBar.addItem(Locale.LS("Circuits"), currentMenuBar);
+	currentMenuBar = circuitsMenu;
     	stack[stackptr++] = currentMenuBar;
-    	
-    	// Add Variable Browser menu after Circuits
-    	MenuBar varBrowserMenu = new MenuBar(true);
-    	varBrowserMenu.setAutoOpen(true);
-    	varBrowserMenu.addItem(menuItemWithShortcut("list-ul", "Variable Browser...", "\\", new MyCommand("edit", "variablebrowser")));
-    	varBrowserMenu.addItem(menuItemWithShortcut("book", "Glossary Editor...", "", new MyCommand("edit", "hinteditor")));
-    	varBrowserMenu.addItem(menuItemWithShortcut("clock-o", "Action Time Schedule...", "", new MyCommand("edit", "actiontimedialog")));
-    	varBrowserMenu.addItem(menuItemWithShortcut("code", "Embedded Viewer...", "", new MyCommand("edit", "iframeviewer")));
-    	varBrowserMenu.addItem(menuItemWithShortcut("check-square-o", "Math Elements Test Suite...", "", new MyCommand("edit", "mathtestdialog")));
-    	varBrowserMenu.addItem(menuItemWithShortcut("table", "Table Elements Test Suite...", "", new MyCommand("edit", "tabletestdialog")));
-    	menuBar.addItem(Locale.LS("Dialogs"), varBrowserMenu);
     	int p;
     	for (p = 0; p < len; ) {
     		int l;
@@ -5227,7 +5240,8 @@ public CirSim() {
     			currentMenuBar.addItem(Locale.LS(line.substring(1)),n);
     			currentMenuBar = stack[stackptr++] = n;
     		} else if (line.charAt(0) == '-') {
-    			currentMenuBar = stack[--stackptr-1];
+			if (stackptr > 1)
+			    currentMenuBar = stack[--stackptr-1];
     		} else {
     			int i = line.indexOf(' ');
     			if (i > 0) {
@@ -5236,14 +5250,15 @@ public CirSim() {
     				if (line.charAt(0) == '>')
     					first = true;
     				String file = line.substring(first ? 1 : 0, i);
+				    String prefixedFile = circuitPrefix + file;
     				currentMenuBar.addItem(new MenuItem(title,
-    					new MyCommand("circuits", "setup "+file+" " + title)));
+					new MyCommand("circuits", "setup "+prefixedFile+" " + title)));
     				if (file.equals(startCircuit) && startLabel == null) {
     				    startLabel = title;
     				    titleLabel.setText(title);
     				}
     				if (first && startCircuit == null) {
-    					startCircuit = file;
+					startCircuit = prefixedFile;
     					startLabel = title;
     					if (openDefault && stopMessage == null)
     						readSetupFile(startCircuit, startLabel);
@@ -5383,26 +5398,45 @@ public CirSim() {
     }
     
 	void readSetupFile(String str, String title) {
-		System.out.println(str);
-		// don't avoid caching here, it's unnecessary and makes offline PWA's not work
-		String url=GWT.getModuleBaseURL()+"circuits/"+str; // +"?v="+random.nextInt(); 
-		console("Loading circuit file: circuits/" + str);
-		loadFileFromURL(url);
-		if (title != null)
-		    titleLabel.setText(title);
-		unsavedChanges = false;
-		currentCircuitFile = "circuits/" + str;
-		ExportAsLocalFileDialog.setLastFileName(null);
+		String[] candidates;
+		if (str.indexOf('/') >= 0)
+		    candidates = new String[] { str };
+		else
+		    candidates = new String[] { str, "economics/" + str, "electronics/" + str };
+		readSetupFileCandidates(candidates, 0, title);
+	}
+
+	void readSetupFileCandidates(final String[] candidates, final int index, final String title) {
+		if (index >= candidates.length) {
+		    Window.alert(Locale.LS("Can't load circuit!"));
+		    return;
+		}
+		final String circuitPath = candidates[index];
+		String url = GWT.getModuleBaseURL() + "circuits/" + circuitPath;
+		console("Loading circuit file: circuits/" + circuitPath);
+		loadFileFromURL(url, new Command() {
+		    public void execute() {
+			if (title != null)
+			    titleLabel.setText(title);
+			unsavedChanges = false;
+			currentCircuitFile = "circuits/" + circuitPath;
+			ExportAsLocalFileDialog.setLastFileName(null);
+		    }
+		}, new Command() {
+		    public void execute() {
+			readSetupFileCandidates(candidates, index + 1, title);
+		    }
+		});
 	}
 	
-	void loadFileFromURL(String url) {
+	void loadFileFromURL(String url, final Command successCallback, final Command failureCallback) {
 	    RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, url);
 	    
 	    try {
 		requestBuilder.sendRequest(null, new RequestCallback() {
 		    public void onError(Request request, Throwable exception) {
-			Window.alert(Locale.LS("Can't load circuit!"));
-			GWT.log("File Error Response", exception);
+			if (failureCallback != null)
+			    failureCallback.execute();
 		    }
 
 		    public void onResponseReceived(Request request, Response response) {
@@ -5411,15 +5445,18 @@ public CirSim() {
 			    readCircuit(text, RC_KEEP_TITLE);
 			    allowSave(false);
 			    unsavedChanges = false;
+			    if (successCallback != null)
+				successCallback.execute();
 			}
 			else { 
-			    Window.alert(Locale.LS("Can't load circuit!"));
-			    GWT.log("Bad file server response:"+response.getStatusText() );
+			    if (failureCallback != null)
+				failureCallback.execute();
 			}
 		    }
 		});
 	    } catch (RequestException e) {
-		GWT.log("failed file reading", e);
+		if (failureCallback != null)
+		    failureCallback.execute();
 	    }
 
 	}
@@ -8937,6 +8974,18 @@ public CirSim() {
 	    }
 	    return names;
 	}
+
+	void setExprPerfProbeEnabled(boolean enabled) {
+	    Expr.setPerfProbeEnabled(enabled);
+	}
+
+	void resetExprPerfProbe() {
+	    Expr.resetPerfProbe();
+	}
+
+	String getExprPerfProbeReport() {
+	    return Expr.getPerfProbeReport();
+	}
 	
 	// ========== END LABELED NODE & COMPUTED VALUE API METHODS ==========
 
@@ -8976,7 +9025,10 @@ public CirSim() {
 	        getSliderNames: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::getSliderNames()(); }),
 	        getLabeledNodeNames: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::getLabeledNodeNames()(); }),
 	        getLabeledNodeValue: $entry(function(name) { return that.@com.lushprojects.circuitjs1.client.CirSim::getLabeledNodeValue(Ljava/lang/String;)(name); }),
-	        getComputedValueNames: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::getComputedValueNames()(); })
+	        getComputedValueNames: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::getComputedValueNames()(); }),
+	        setExprPerfProbeEnabled: $entry(function(enabled) { return that.@com.lushprojects.circuitjs1.client.CirSim::setExprPerfProbeEnabled(Z)(enabled); }),
+	        resetExprPerfProbe: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::resetExprPerfProbe()(); }),
+	        getExprPerfProbeReport: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::getExprPerfProbeReport()(); })
 	    };
 	    var hook = $wnd.oncircuitjsloaded;
 	    if (hook)

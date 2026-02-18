@@ -336,7 +336,7 @@ class LabeledNodeElm extends CircuitElm {
 		    if (flowValue != null) {
 			flowText += getCurrentText(flowValue.doubleValue());
 		    } else {
-			flowText += "0 A";
+			flowText += "None";
 		    }
 		    displayText = displayText + flowText;
 		}
@@ -397,6 +397,8 @@ class LabeledNodeElm extends CircuitElm {
 			Double flowValue = ComputedValues.getConvergedFlowValue(text);
 			if (flowValue != null) {
 				arr[idx++] = "Flow = " + getCurrentText(flowValue.doubleValue());
+			} else {
+				arr[idx++] = "Flow = None";
 			}
 		}
 		

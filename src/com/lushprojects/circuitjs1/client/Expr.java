@@ -221,6 +221,97 @@ class Expr {
      * to get stable values that don't vary during subiterations.
      */
     static boolean useConvergedValues = false;
+
+    // Lightweight runtime profiler for expression access paths.
+    // - node ref path: E_NODE_REF (label/computed-value lookup)
+    // - local slot path: E_A/E_DADT/E_LASTA (exprState array access)
+    static boolean perfProbeEnabled = false;
+    static long perfNodeRefEvalCount = 0;
+    static long perfNodeRefEvalTimeNanos = 0;
+    static long perfLocalSlotEvalCount = 0;
+    static long perfLocalSlotEvalTimeNanos = 0;
+
+    static void setPerfProbeEnabled(boolean enabled) {
+	perfProbeEnabled = enabled;
+    }
+
+    static boolean isPerfProbeEnabled() {
+	return perfProbeEnabled;
+    }
+
+    static void resetPerfProbe() {
+	perfNodeRefEvalCount = 0;
+	perfNodeRefEvalTimeNanos = 0;
+	perfLocalSlotEvalCount = 0;
+	perfLocalSlotEvalTimeNanos = 0;
+    }
+
+    static String getPerfProbeReport() {
+	double nodeAvgNs = (perfNodeRefEvalCount > 0)
+	    ? (double) perfNodeRefEvalTimeNanos / (double) perfNodeRefEvalCount
+	    : 0;
+	double slotAvgNs = (perfLocalSlotEvalCount > 0)
+	    ? (double) perfLocalSlotEvalTimeNanos / (double) perfLocalSlotEvalCount
+	    : 0;
+
+	String ratioText;
+	if (slotAvgNs > 0) {
+	    ratioText = " ratio(node/slot)=" + (nodeAvgNs / slotAvgNs);
+	} else {
+	    ratioText = " ratio(node/slot)=n/a";
+	}
+
+	return "ExprPerf enabled=" + perfProbeEnabled +
+	    " nodeRef[count=" + perfNodeRefEvalCount +
+	    ", avgNs=" + nodeAvgNs +
+	    ", totalNs=" + perfNodeRefEvalTimeNanos + "]" +
+	    " localSlot[count=" + perfLocalSlotEvalCount +
+	    ", avgNs=" + slotAvgNs +
+	    ", totalNs=" + perfLocalSlotEvalTimeNanos + "]" +
+	    ratioText;
+    }
+
+    private static long getPerfNowNanos() {
+	// GWT/J2CL-compatible coarse timing; aggregate many calls for meaningful averages.
+	return System.currentTimeMillis() * 1000000L;
+    }
+
+    private static void recordNodeRefTiming(long startNanos) {
+	if (!perfProbeEnabled)
+	    return;
+	perfNodeRefEvalCount++;
+	perfNodeRefEvalTimeNanos += (getPerfNowNanos() - startNanos);
+    }
+
+    private static void recordLocalSlotTiming(long startNanos) {
+	if (!perfProbeEnabled)
+	    return;
+	perfLocalSlotEvalCount++;
+	perfLocalSlotEvalTimeNanos += (getPerfNowNanos() - startNanos);
+    }
+
+    private static double returnNodeRefValue(double value, long startNanos) {
+	recordNodeRefTiming(startNanos);
+	return value;
+    }
+
+    private static Double getComputedByMode(String name) {
+	return useConvergedValues
+	    ? ComputedValues.getConvergedValue(name)
+	    : ComputedValues.getComputedValue(name);
+    }
+
+    private static Double getComputedFlowByMode(String name) {
+	return useConvergedValues
+	    ? ComputedValues.getConvergedFlowValue(name)
+	    : ComputedValues.getComputedFlowValue(name);
+    }
+
+    private static Double getComputedFlowOrValueByMode(String name) {
+	return useConvergedValues
+	    ? ComputedValues.getConvergedFlowOrValue(name)
+	    : ComputedValues.getComputedFlowOrValue(name);
+    }
     
     /** Clear the unresolved references list (call at start of each timestep) */
     static void clearUnresolvedReferences() {
@@ -676,46 +767,48 @@ class Expr {
 	    return result;
 	}
 	case E_NODE_REF:
+	    long nodeRefStartNanos = perfProbeEnabled ? getPerfNowNanos() : 0;
 	    // Direct node reference - get voltage from labeled node or computed value.
 	    //
-	    // In MNA mode, the matrix solver is the source of truth for node voltages.
-	    // Check labeled node voltage FIRST so that the solver's result is authoritative
-	    // for physical nodes. ComputedValues is only used as fallback for variables
-	    // without physical nodes (parameters, slider vars, pure-computational outputs).
+	    // Resolution order (MNA mode):
+	    // 1) PARAM name exact match from ComputedValues (parameter override)
+	    // 2) NAME.flow from ComputedValues (flow-first behavior)
+	    // 3) Labeled-node voltage from matrix solution (physical node value)
+	    // 4) NAME exact match from ComputedValues (non-physical fallback)
 	    //
-	    // In pure-computational mode (no MNA), ComputedValues is the only source.
+	    // In pure-computational mode (no MNA): NAME.flow first, then NAME.
 	    if (CirSim.theSim != null && nodeName != null) {
 		if (CirSim.theSim.equationTableMnaMode) {
 			    // PARAM names in MNA mode must resolve from ComputedValues first,
 			    // even when a same-named labeled node exists.
 			    if (ComputedValues.isParameterName(nodeName)) {
-				Double parameterValue = useConvergedValues
-				    ? ComputedValues.getConvergedValue(nodeName)
-				    : ComputedValues.getComputedValue(nodeName);
+				Double parameterValue = getComputedByMode(nodeName);
 				if (parameterValue != null) {
-				    return parameterValue.doubleValue();
+				    return returnNodeRefValue(parameterValue.doubleValue(), nodeRefStartNanos);
 				}
 			    }
+
+		    // If a flow value exists for this name, prefer it.
+		    Double flowPreferredValue = getComputedFlowByMode(nodeName);
+		    if (flowPreferredValue != null) {
+			return returnNodeRefValue(flowPreferredValue.doubleValue(), nodeRefStartNanos);
+		    }
 
 		    // MNA mode: labeled node voltage first (authoritative from matrix solver)
 		    Integer labeledNode = LabeledNodeElm.getByName(nodeName);
 		    if (labeledNode != null && labeledNode != 0) {
-			return CirSim.theSim.getLabeledNodeVoltage(nodeName);
+			return returnNodeRefValue(CirSim.theSim.getLabeledNodeVoltage(nodeName), nodeRefStartNanos);
 		    }
 		    // Fall back to ComputedValues for non-physical variables
-		    Double computedValue = useConvergedValues
-			? ComputedValues.getConvergedValue(nodeName)
-			: ComputedValues.getComputedValue(nodeName);
+		    Double computedValue = getComputedByMode(nodeName);
 		    if (computedValue != null) {
-			return computedValue.doubleValue();
+			return returnNodeRefValue(computedValue.doubleValue(), nodeRefStartNanos);
 		    }
 		} else {
 		    // Pure-computational mode: ComputedValues is the only source
-		    Double computedValue = useConvergedValues
-			? ComputedValues.getConvergedValue(nodeName)
-			: ComputedValues.getComputedValue(nodeName);
+		    Double computedValue = getComputedFlowOrValueByMode(nodeName);
 		    if (computedValue != null) {
-			return computedValue.doubleValue();
+			return returnNodeRefValue(computedValue.doubleValue(), nodeRefStartNanos);
 		    }
 		}
 		// Not found - track as unresolved (only add once)
@@ -723,14 +816,32 @@ class Expr {
 		    unresolvedReferences.add(nodeName);
 		}
 	    }
-	    return 0.0;
+	    return returnNodeRefValue(0.0, nodeRefStartNanos);
 	default:
-	    if (type >= E_LASTA)
-		return es.lastValues[type-E_LASTA];
-	    if (type >= E_DADT)
-		return (es.values[type-E_DADT]-es.lastValues[type-E_DADT])/CirSim.theSim.timeStep;
-	    if (type >= E_A)
-		return es.values[type-E_A];
+	    if (type >= E_LASTA) {
+		if (!perfProbeEnabled)
+		    return es.lastValues[type-E_LASTA];
+		long slotStartNanos = getPerfNowNanos();
+		double slotValue = es.lastValues[type-E_LASTA];
+		recordLocalSlotTiming(slotStartNanos);
+		return slotValue;
+	    }
+	    if (type >= E_DADT) {
+		if (!perfProbeEnabled)
+		    return (es.values[type-E_DADT]-es.lastValues[type-E_DADT])/CirSim.theSim.timeStep;
+		long slotStartNanos = getPerfNowNanos();
+		double slotValue = (es.values[type-E_DADT]-es.lastValues[type-E_DADT])/CirSim.theSim.timeStep;
+		recordLocalSlotTiming(slotStartNanos);
+		return slotValue;
+	    }
+	    if (type >= E_A) {
+		if (!perfProbeEnabled)
+		    return es.values[type-E_A];
+		long slotStartNanos = getPerfNowNanos();
+		double slotValue = es.values[type-E_A];
+		recordLocalSlotTiming(slotStartNanos);
+		return slotValue;
+	    }
 	    CirSim.console("unknown\n");
 	}
 	return 0;
@@ -855,7 +966,7 @@ class ExprParser {
 			}
 		} else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '\\') {
 			// Support identifiers with letters, numbers, underscores, Greek symbols (\beta),
-			// dot namespaces (flow.Y3), and LaTeX formatting (Z_1, x^2, Z_{banks})
+			// dot namespaces (Y3.flow), and LaTeX formatting (Z_1, x^2, Z_{banks})
 			// Must start with letter, underscore, or backslash
 			for (i = pos; i != tlen; i++) {
 				char ch = text.charAt(i);

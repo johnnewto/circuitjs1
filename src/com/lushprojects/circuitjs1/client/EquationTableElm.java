@@ -32,7 +32,7 @@ import com.google.gwt.event.dom.client.MouseWheelHandler;
  *   <li>Support for initial value equations (evaluated only at t=0)</li>
  *   <li>Row output modes: VOLTAGE (default), FLOW (current source), STOCK (capacitor)</li>
  *   <li>FLOW rows publish endpoint flow keys with direction sign:
- *       flow.&lt;source&gt; = -value, flow.&lt;target&gt; = +value
+ *       &lt;source&gt;.flow = -value, &lt;target&gt;.flow = +value
  *       (target omitted when it is ground)</li>
  *   <li>integrate() and diff() functions for dynamic systems</li>
  *   <li>Row reordering via up/down buttons in edit dialog</li>
@@ -289,7 +289,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             // Do NOT registerOutputValue here: outputName for FLOW is the source
             // node name (e.g. "S1" from "S1->S2"), and registering the flow
             // magnitude would clobber any STOCK row's value for that name.
-            // FLOW values are published via a separate flow. key namespace.
+            // FLOW values are published via a separate .flow key namespace.
         }
     }
     
@@ -1119,20 +1119,20 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
 
     /**
      * Build parser-safe ComputedValues key for a FLOW output name.
-     * Key format: flow.<sanitizedOutputName>
+     * Key format: <sanitizedOutputName>.flow
      */
     static String getFlowComputedKeyForName(String outputName) {
         return ComputedValues.getFlowComputedKeyForName(outputName);
     }
 
     /**
-     * Register FLOW value in ComputedValues under dedicated flow. keys.
+        * Register FLOW value in ComputedValues under dedicated *.flow keys.
      *
      * Sign convention for two-node flow S1->S2:
-     * - flow.S1 = -value (outflow from source stock)
-     * - flow.S2 = +value (inflow to target stock)
+        * - S1.flow = -value (outflow from source stock)
+        * - S2.flow = +value (inflow to target stock)
      *
-     * For one-node/ground-target flow, only flow.<source> is published.
+        * For one-node/ground-target flow, only <source>.flow is published.
      */
     private void registerFlowValue(int row, double value) {
         if (!isValidOutputName(row)) return;

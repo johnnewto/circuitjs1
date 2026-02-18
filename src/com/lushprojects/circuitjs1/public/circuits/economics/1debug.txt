@@ -1,0 +1,140 @@
+# CircuitJS1 SFCR Export
+# Generated from circuit simulation
+
+@info
+# SIM Model (Godley & Lavoie Chapter 3)
+## Flow-Mode Equation Implementation
+
+This model demonstrates Stock-Flow Consistent modeling using **EquationTableElm row modes**, with emphasis on **FLOW mode** transactions.
+
+### Approach
+This model uses:
+- **FLOW mode rows** (`A->B`) — equations stamp current sources from source sector to target sector
+- **STOCK mode rows** — equations define net inflow and update stock levels with capacitor-companion integration
+- **PARAM mode rows** — behavioral parameters (`\alpha_1`, `\alpha_2`, `\theta`, `G`, `W`) shared across equations
+- **Balance Sheet & Transaction Flow matrices** — for accounting verification
+
+### Flow-Mode Semantics
+- `X->Y ~ expr ; mode=flow` means positive flow moves from `X` to `Y`
+- FLOW rows enforce directional transaction logic through MNA current-source stamping
+- Current conservation (KCL) links all sector flows consistently at shared labeled nodes
+
+### Stock Accumulation
+Stock levels are driven by net flow balances in STOCK rows:
+$$H_h' = YD - C_d$$
+$$H_s' = G_d - T_d$$
+with numerical integration over time via the STOCK companion model.
+
+### Sectors
+| Sector | Stock Variable | Meaning |
+|--------|---------------|---------|
+| Households | $H_h$ | Money holdings (wealth) |
+| Firms | — | Pass-through (no retained earnings) |
+| Government | $H_s$ | Money supply (negative = debt) |
+
+### Transaction Flows
+| Flow | From → To | Equation |
+|------|-----------|----------|
+| G_d | Govt → Firms | $G = 20$ (exogenous) |
+| Wages | Firms → HH | $W \times N_s$ |
+| Taxes | HH → Govt | $\theta \times W \times N_s$ |
+| Consumption | HH → Firms | $\alpha_1 \times YD + \alpha_2 \times H_h$ |
+
+### Steady State Solution
+At steady state ($dH/dt = 0$):
+- $Y^* = G / (1 - \alpha_1(1-\theta)) = 38.46$
+- $H_h^* = 80$
+- $H_s^* = -80$ (government debt)G_d
+
+### Reference
+Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
+@end
+
+@init
+  timestep: 0.1
+  voltageUnit: $
+  timeUnit: yr
+  showDots: true
+  showVolts: true
+  showValues: true
+  showPower: false
+@end
+
+@equations equations_1 x=24 y=152
+  G_d->G_s ~ 20 ; mode=flow ; slider=b ; sliderValue=0.5  # Services supplied to / demand by Govt
+  N_s ~ N_d ; mode=voltage ; slider=d ; sliderValue=0.5  # Supply/Demand for labour
+  W_s->W_d ~ W * N_d ; mode=flow ; slider=f ; sliderValue=0.5  # Wages supplied , demanded
+  YD ~ W * N_d + T_s ; mode=flow ; slider=e ; sliderValue=0.5  # Disposable Income
+  T_s->T_d ~ \theta * -W_s ; mode=flow ; slider=f ; sliderValue=0.5  # Tax
+  C_d->C_s ~ \alpha_1*YD+ \alpha_2*H_h ; mode=flow ; slider=g ; sliderValue=0.5  # Consumption goods Supply/Demand
+@end
+
+@equations equations_2 x=376 y=152
+  H_{hh} ~ YD + C_d ; mode=stock ; slider=b ; sliderValue=0.5  # Cash money held by households
+  H_s ~ Govt ; mode=voltage ; slider=c ; sliderValue=0.5  # Money supplied by the central bank
+  Y ~ C_s + G_s ; mode=flow ; slider=b ; sliderValue=0.5  # Output
+  N_d ~ Y / W ; mode=flow ; slider=c ; sliderValue=0.5  # Supply/Demand for labour
+@end
+
+@equations Parameters x=56 y=320
+  \alpha_1 ~ 0.6 ; mode=param ; slider=a ; sliderValue=0.5  # Propensity to Spend Income
+  \alpha_2 ~ 0.4 ; mode=param ; slider=b ; sliderValue=0.5  # Propensity to Spend Wealth
+  \theta ~ 0.2 ; mode=param ; slider=c ; sliderValue=0.5  # Tax Rate
+  G ~ 20 ; mode=param ; slider=d ; sliderValue=0.5  # Services supplied to / demand by Govt
+  W ~ 1 ; mode=param ; slider=e ; sliderValue=0.5  # Nominal Wages Rate
+@end
+
+@matrix Transaction_Flow_Matrix x=64 y=-40
+  type: flow_table
+  showInitialValues: true
+  showFlowValues: true
+  integration: trapezoidal
+
+| Transaction | H_h | Production | Govt |
+|-------------|------|------|------|
+| Consumption | C_d | C_s |  |
+| Govt Expenditures |  | G_s | G_d |
+| Wages | W_d | W_s |  |
+| Taxes | T_s |  | T_d |
+@end
+
+@hints
+  G_d: Services supplied to / demand by Govt
+  N_s: Supply/Demand for labour
+  W_s: Wages supplied , demanded
+  YD: Disposable Income
+  T_s: Tax
+  C_d: Consumption goods Supply/Demand
+  H_{hh}: Cash money held by households
+  H_s: Money supplied by the central bank
+  Y: Output
+  N_d: Supply/Demand for labour
+  \alpha_1: Propensity to Spend Income
+  \alpha_2: Propensity to Spend Wealth
+  \theta: Tax Rate
+  G: Services supplied to / demand by Govt
+  W: Nominal Wages Rate
+  H_h: hint2
+  Y1: hint2
+  C_s: Consumption goods Supply/Demand
+  G_s: Services supplied to / demand by Govt
+  T_d: Tax
+  WxN: hint6
+  H_hh: hint2
+@end
+
+@circuit
+207 680 216 741 217 180 C_d
+207 528 288 567 288 164 Y
+431 896 64 960 112 0 50 true false
+207 712 288 776 288 164 T_s
+207 712 320 776 320 164 W_d
+207 672 144 736 144 164 H_h
+207 688 192 752 192 164 H_s
+403 352 320 608 464 0 5_2_0_12806_99.9554367167885_0.0001_-1_2_5_3
+g 448 288 416 288 0 0
+r 448 288 528 288 0 1
+207 912 208 976 208 164 Govt
+x -108 305 277 308 4 24 alias\sN_s,\scopy\sflow\salso\sfrom\sN_d FF0000FF
+x -48 117 386 120 4 24 Label\ssum\sRow\selement\s,\sH_h,\sH_s\setc FF0000FF
+@end
