@@ -245,6 +245,17 @@ public class EquationTableEditDialog extends Dialog {
             }
         });
         buttonPanel.add(debugButton);
+
+        Button referenceButton = new Button(Locale.LS("Reference"));
+        referenceButton.setTitle("Open EquationTable reference documentation");
+        referenceButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                ReferenceDocs.openMarkdownReference(
+                    "EquationTable Reference",
+                    "docs/reference/EquationTableReference.md");
+            }
+        });
+        buttonPanel.add(referenceButton);
         
         // Spacer
         Label spacer = new Label();

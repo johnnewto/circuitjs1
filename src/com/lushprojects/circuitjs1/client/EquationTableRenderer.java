@@ -503,6 +503,12 @@ public class EquationTableRenderer {
         // For STOCK rows, shows stock level (node voltage) instead of inflow rate
         double outputValue = table.getDisplayValue(row);
         String valueText = CircuitElm.getShortUnitText(outputValue, "");
+        boolean showFlowUnits = (mode == RowOutputMode.FLOW_MODE) || table.isAliasRowDisplayingFlow(row);
+        if (showFlowUnits) {
+            valueText += " F";
+        } else {
+            valueText += " V";
+        }
         int valueWidth = (int) g.context.measureText(valueText).getWidth();
         g.setColor(getVoltageColor(outputValue));
         g.drawString(valueText, tableX + tableWidth - valueWidth - cellPadding, rowY + rowHeight - cellPadding - 2);

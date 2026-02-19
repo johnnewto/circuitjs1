@@ -42,7 +42,7 @@ public class SFCSankeyRenderer {
         CIRCULAR    // 2-column layout with circular links
     }
     
-    private SFCTableElm table;
+    private TableElm table;
     private SankeyLayout layoutMode = SankeyLayout.LINEAR;
     
     // Layout constants
@@ -112,6 +112,10 @@ public class SFCSankeyRenderer {
     private boolean showFlowValues = false;     // Show numeric values on links
     private double highWaterMark = 0;           // Tracked maximum flow ever seen
     private double currentMaxFlow = 0;          // Current maximum flow for scale bar
+
+    // Optional debug instrumentation for ordering/crossing optimization
+    private boolean debugCrossings = false;
+    private String lastRunDebugSummary = "";
     
     /**
      * Represents a node in the Sankey diagram
@@ -155,14 +159,14 @@ public class SFCSankeyRenderer {
         int bandwidth;  // Kept for compatibility (average or source)
     }
     
-    public SFCSankeyRenderer(SFCTableElm table) {
+    public SFCSankeyRenderer(TableElm table) {
         this.table = table;
     }
     
     /**
      * Get the source table
      */
-    public SFCTableElm getTable() {
+    public TableElm getTable() {
         return table;
     }
     
@@ -209,6 +213,16 @@ public class SFCSankeyRenderer {
      */
     public void setShowFlowValues(boolean show) {
         this.showFlowValues = show;
+    }
+
+    /**
+     * Enable/disable crossing optimization debug logs.
+     */
+    public void setDebugCrossings(boolean debug) {
+        this.debugCrossings = debug;
+        if (debug) {
+            lastRunDebugSummary = "";
+        }
     }
     
     /**
@@ -335,6 +349,25 @@ public class SFCSankeyRenderer {
             buildLinearLayout();
         }
     }
+
+    /**
+     * Resolve a Sankey cell value using flow-first semantics.
+     * If the cell label has a published flow value, use it; otherwise
+     * fall back to the table's computed cell voltage/value.
+     */
+    private double getSankeyCellValue(int row, int col) {
+        String label = table.getCellEquation(row, col);
+        if (label != null) {
+            String trimmed = label.trim();
+            if (!trimmed.isEmpty() && !"0".equals(trimmed)) {
+                Double publishedFlow = ComputedValues.getComputedFlowValue(trimmed);
+                if (publishedFlow != null) {
+                    return publishedFlow.doubleValue();
+                }
+            }
+        }
+        return table.getVoltageForCell(row, col);
+    }
     
     /**
      * Build the linear 3-column layout (original behavior)
@@ -395,7 +428,7 @@ public class SFCSankeyRenderer {
                     continue;
                 }
                 
-                double value = table.getVoltageForCell(row, col);
+                double value = getSankeyCellValue(row, col);
                 if (Math.abs(value) < 1e-10) {
                     continue;
                 }
@@ -495,7 +528,7 @@ public class SFCSankeyRenderer {
                     continue;
                 }
                 
-                double value = table.getVoltageForCell(row, col);
+                double value = getSankeyCellValue(row, col);
                 if (Math.abs(value) < 1e-10) {
                     continue;
                 }
@@ -666,72 +699,295 @@ public class SFCSankeyRenderer {
     }
     
     /**
-     * Sort nodes in each column to minimize link crossings.
-     * Orders nodes by their average connected position in adjacent columns.
+     * Sort nodes in each column to reduce link crossings.
+     * Uses iterative barycentric sweeps plus adjacent-swap local minimization.
      */
     private void sortNodesForStraighterPaths() {
-        // Build connection maps: node -> list of connected node indices
-        // We'll do multiple passes, optimizing each column based on neighbors
-        
-        // First, assign initial indices based on current order
-        for (int i = 0; i < leftNodes.size(); i++) leftNodes.get(i).flowOffsetIn = i;
-        for (int i = 0; i < middleNodes.size(); i++) middleNodes.get(i).flowOffsetIn = i;
-        for (int i = 0; i < rightNodes.size(); i++) rightNodes.get(i).flowOffsetIn = i;
-        
-        // Sort middle column by average position of left and right connections
-        if (!middleNodes.isEmpty()) {
-            sortColumnByConnections(middleNodes, true, true);
+        StringBuilder debugRun = debugCrossings ? new StringBuilder() : null;
+
+        assignNodeOrderIndices();
+        int previousCrossings = calculateTotalCrossings();
+        final int maxPasses = 10;
+        int bestCrossings = previousCrossings;
+
+        appendDebugLine(debugRun, "start crossings=" + previousCrossings + " " + getCrossingBreakdown());
+
+        for (int pass = 0; pass < maxPasses; pass++) {
+            if (layoutMode == SankeyLayout.CIRCULAR) {
+                sortColumnByBarycenter(rightNodes, leftNodes, null);
+                assignNodeOrderIndices();
+                int swapRight = minimizeCrossingsByAdjacentSwaps("right", rightNodes, leftNodes, null);
+
+                sortColumnByBarycenter(leftNodes, null, rightNodes);
+                assignNodeOrderIndices();
+                int swapLeft = minimizeCrossingsByAdjacentSwaps("left", leftNodes, null, rightNodes);
+
+                appendDebugLine(debugRun, "pass=" + pass + " swaps[left=" + swapLeft + ", right=" + swapRight + "]");
+            } else {
+                sortColumnByBarycenter(middleNodes, leftNodes, rightNodes);
+                assignNodeOrderIndices();
+                int swapMid1 = minimizeCrossingsByAdjacentSwaps("middle-1", middleNodes, leftNodes, rightNodes);
+
+                sortColumnByBarycenter(rightNodes, middleNodes, null);
+                assignNodeOrderIndices();
+                int swapRight = minimizeCrossingsByAdjacentSwaps("right", rightNodes, middleNodes, null);
+
+                sortColumnByBarycenter(middleNodes, leftNodes, rightNodes);
+                assignNodeOrderIndices();
+                int swapMid2 = minimizeCrossingsByAdjacentSwaps("middle-2", middleNodes, leftNodes, rightNodes);
+
+                sortColumnByBarycenter(leftNodes, null, middleNodes);
+                assignNodeOrderIndices();
+                int swapLeft = minimizeCrossingsByAdjacentSwaps("left", leftNodes, null, middleNodes);
+
+                appendDebugLine(debugRun, "pass=" + pass + " swaps[left=" + swapLeft + ", mid1=" + swapMid1 + ", right=" + swapRight + ", mid2=" + swapMid2 + "]");
+            }
+
+            assignNodeOrderIndices();
+            int currentCrossings = calculateTotalCrossings();
+            if (currentCrossings < bestCrossings) {
+                bestCrossings = currentCrossings;
+            }
+
+            appendDebugLine(debugRun, "pass=" + pass + " crossings=" + currentCrossings + " best=" + bestCrossings + " " + getCrossingBreakdown());
+
+            if (currentCrossings >= previousCrossings) {
+                appendDebugLine(debugRun, "stop pass=" + pass + " (no further improvement)");
+                break;
+            }
+            previousCrossings = currentCrossings;
         }
-        
-        // Sort right column by average position of left connections (sources)
-        if (!rightNodes.isEmpty()) {
-            sortColumnByConnections(rightNodes, true, false);
-        }
-        
-        // Re-sort left column based on updated middle/right positions
-        if (!leftNodes.isEmpty()) {
-            sortColumnByConnections(leftNodes, false, true);
-        }
+
+        appendDebugLine(debugRun, "end crossings=" + previousCrossings + " best=" + bestCrossings + " " + getCrossingBreakdown());
+        emitDebugRun(debugRun);
     }
-    
-    /**
-     * Sort a column's nodes by average Y position of their connections
-     */
-    private void sortColumnByConnections(ArrayList<SankeyNode> nodes, boolean considerSources, boolean considerTargets) {
-        // Calculate average connection index for each node
-        final java.util.HashMap<SankeyNode, Double> avgPosition = new java.util.HashMap<>();
-        
+
+    private void sortColumnByBarycenter(final ArrayList<SankeyNode> nodes,
+                                        ArrayList<SankeyNode> leftNeighbor,
+                                        ArrayList<SankeyNode> rightNeighbor) {
+        if (nodes == null || nodes.size() < 2) {
+            return;
+        }
+
+        final HashMap<SankeyNode, Integer> leftIndex = buildNodeIndexMap(leftNeighbor);
+        final HashMap<SankeyNode, Integer> rightIndex = buildNodeIndexMap(rightNeighbor);
+        final HashMap<SankeyNode, Double> barycenter = new HashMap<SankeyNode, Double>();
+        final HashMap<SankeyNode, Integer> originalIndex = buildNodeIndexMap(nodes);
+
         for (SankeyNode node : nodes) {
-            double sumPos = 0;
+            double sum = 0;
             int count = 0;
-            
+
             for (SankeyLink link : links) {
-                if (considerTargets && link.source == node) {
-                    // This node is a source, look at target position
-                    sumPos += link.target.flowOffsetIn;
+                SankeyNode other = null;
+                if (link.source == node) {
+                    other = link.target;
+                } else if (link.target == node) {
+                    other = link.source;
+                }
+                if (other == null) {
+                    continue;
+                }
+
+                Integer leftPos = leftIndex.get(other);
+                if (leftPos != null) {
+                    sum += leftPos.intValue();
                     count++;
                 }
-                if (considerSources && link.target == node) {
-                    // This node is a target, look at source position
-                    sumPos += link.source.flowOffsetIn;
+
+                Integer rightPos = rightIndex.get(other);
+                if (rightPos != null) {
+                    sum += rightPos.intValue();
                     count++;
                 }
             }
-            
-            avgPosition.put(node, count > 0 ? sumPos / count : node.flowOffsetIn);
+
+            if (count > 0) {
+                barycenter.put(node, sum / count);
+            } else {
+                barycenter.put(node, (double) originalIndex.get(node).intValue());
+            }
         }
-        
-        // Sort by average position
+
         java.util.Collections.sort(nodes, new java.util.Comparator<SankeyNode>() {
             @Override
             public int compare(SankeyNode a, SankeyNode b) {
-                return Double.compare(avgPosition.get(a), avgPosition.get(b));
+                int cmp = Double.compare(barycenter.get(a), barycenter.get(b));
+                if (cmp != 0) {
+                    return cmp;
+                }
+                return Integer.compare(originalIndex.get(a), originalIndex.get(b));
             }
         });
-        
-        // Update indices after sort
+    }
+
+    private int minimizeCrossingsByAdjacentSwaps(String label,
+                                                 ArrayList<SankeyNode> nodes,
+                                                 ArrayList<SankeyNode> leftNeighbor,
+                                                 ArrayList<SankeyNode> rightNeighbor) {
+        if (nodes == null || nodes.size() < 2) {
+            return 0;
+        }
+
+        boolean improved = true;
+        int guard = 0;
+        int guardLimit = Math.max(4, nodes.size() * 3);
+        int acceptedSwaps = 0;
+
+        while (improved && guard < guardLimit) {
+            improved = false;
+            guard++;
+
+            for (int i = 0; i < nodes.size() - 1; i++) {
+                int before = countCrossingsWithNeighbors(nodes, leftNeighbor, rightNeighbor);
+
+                SankeyNode a = nodes.get(i);
+                nodes.set(i, nodes.get(i + 1));
+                nodes.set(i + 1, a);
+                assignNodeOrderIndices();
+
+                int after = countCrossingsWithNeighbors(nodes, leftNeighbor, rightNeighbor);
+                if (after < before) {
+                    improved = true;
+                    acceptedSwaps++;
+                } else {
+                    SankeyNode b = nodes.get(i);
+                    nodes.set(i, nodes.get(i + 1));
+                    nodes.set(i + 1, b);
+                    assignNodeOrderIndices();
+                }
+            }
+        }
+
+        return acceptedSwaps;
+    }
+
+    private void assignNodeOrderIndices() {
+        for (int i = 0; i < leftNodes.size(); i++) {
+            leftNodes.get(i).flowOffsetIn = i;
+        }
+        for (int i = 0; i < middleNodes.size(); i++) {
+            middleNodes.get(i).flowOffsetIn = i;
+        }
+        for (int i = 0; i < rightNodes.size(); i++) {
+            rightNodes.get(i).flowOffsetIn = i;
+        }
+    }
+
+    private int calculateTotalCrossings() {
+        if (layoutMode == SankeyLayout.CIRCULAR) {
+            return countPairCrossings(leftNodes, rightNodes);
+        }
+        return countPairCrossings(leftNodes, middleNodes) + countPairCrossings(middleNodes, rightNodes);
+    }
+
+    private int countCrossingsWithNeighbors(ArrayList<SankeyNode> nodes,
+                                            ArrayList<SankeyNode> leftNeighbor,
+                                            ArrayList<SankeyNode> rightNeighbor) {
+        int total = 0;
+        if (leftNeighbor != null && !leftNeighbor.isEmpty() && nodes != null && !nodes.isEmpty()) {
+            total += countPairCrossings(leftNeighbor, nodes);
+        }
+        if (rightNeighbor != null && !rightNeighbor.isEmpty() && nodes != null && !nodes.isEmpty()) {
+            total += countPairCrossings(nodes, rightNeighbor);
+        }
+        return total;
+    }
+
+    private int countPairCrossings(ArrayList<SankeyNode> columnA, ArrayList<SankeyNode> columnB) {
+        if (columnA == null || columnB == null || columnA.size() < 2 || columnB.size() < 2) {
+            return 0;
+        }
+
+        HashMap<SankeyNode, Integer> idxA = buildNodeIndexMap(columnA);
+        HashMap<SankeyNode, Integer> idxB = buildNodeIndexMap(columnB);
+
+        ArrayList<Integer> aPositions = new ArrayList<Integer>();
+        ArrayList<Integer> bPositions = new ArrayList<Integer>();
+
+        for (SankeyLink link : links) {
+            Integer aPos = null;
+            Integer bPos = null;
+
+            Integer srcA = idxA.get(link.source);
+            Integer tgtB = idxB.get(link.target);
+            if (srcA != null && tgtB != null) {
+                aPos = srcA;
+                bPos = tgtB;
+            } else {
+                Integer srcB = idxB.get(link.source);
+                Integer tgtA = idxA.get(link.target);
+                if (srcB != null && tgtA != null) {
+                    aPos = tgtA;
+                    bPos = srcB;
+                }
+            }
+
+            if (aPos != null && bPos != null) {
+                aPositions.add(aPos);
+                bPositions.add(bPos);
+            }
+        }
+
+        int crossings = 0;
+        for (int i = 0; i < aPositions.size(); i++) {
+            int a1 = aPositions.get(i).intValue();
+            int b1 = bPositions.get(i).intValue();
+            for (int j = i + 1; j < aPositions.size(); j++) {
+                int a2 = aPositions.get(j).intValue();
+                int b2 = bPositions.get(j).intValue();
+                if ((a1 - a2) * (b1 - b2) < 0) {
+                    crossings++;
+                }
+            }
+        }
+        return crossings;
+    }
+
+    private HashMap<SankeyNode, Integer> buildNodeIndexMap(ArrayList<SankeyNode> nodes) {
+        HashMap<SankeyNode, Integer> indexMap = new HashMap<SankeyNode, Integer>();
+        if (nodes == null) {
+            return indexMap;
+        }
         for (int i = 0; i < nodes.size(); i++) {
-            nodes.get(i).flowOffsetIn = i;
+            indexMap.put(nodes.get(i), Integer.valueOf(i));
+        }
+        return indexMap;
+    }
+
+    private String getCrossingBreakdown() {
+        if (layoutMode == SankeyLayout.CIRCULAR) {
+            return "[L-R=" + countPairCrossings(leftNodes, rightNodes) + "]";
+        }
+        int lm = countPairCrossings(leftNodes, middleNodes);
+        int mr = countPairCrossings(middleNodes, rightNodes);
+        return "[L-M=" + lm + ", M-R=" + mr + "]";
+    }
+
+    private void appendDebugLine(StringBuilder sb, String line) {
+        if (!debugCrossings || sb == null) {
+            return;
+        }
+        sb.append(line).append('\n');
+    }
+
+    private void emitDebugRun(StringBuilder sb) {
+        if (!debugCrossings || sb == null || sb.length() == 0) {
+            return;
+        }
+
+        String summary = sb.toString();
+        if (summary.equals(lastRunDebugSummary)) {
+            return;
+        }
+        lastRunDebugSummary = summary;
+
+        String[] lines = summary.split("\\n");
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            if (line.length() > 0) {
+                CirSim.console("[SankeyDebug] " + line);
+            }
         }
     }
     

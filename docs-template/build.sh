@@ -17,6 +17,19 @@ fi
 # Return to docs directory
 cd docs-template
 
+# Step 1: Sync published reference docs from dev_docs whitelist
+echo "Step 1: Syncing public reference docs..."
+if [ -x "../dev_docs/sync_reference_docs.sh" ]; then
+    ../dev_docs/sync_reference_docs.sh
+else
+    bash ../dev_docs/sync_reference_docs.sh
+fi
+
+if [ $? -ne 0 ]; then
+    echo "Error: Reference docs sync failed"
+    exit 1
+fi
+
 # Step 2: Render the Quarto site
 echo "Step 2: Rendering Quarto site..."
 quarto render

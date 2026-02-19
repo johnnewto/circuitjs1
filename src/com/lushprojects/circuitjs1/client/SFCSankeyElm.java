@@ -21,7 +21,7 @@ import com.lushprojects.circuitjs1.client.SFCSankeyRenderer.SankeyLayout;
 public class SFCSankeyElm extends CircuitElm {
     
     // Reference to the source table
-    private SFCTableElm sourceTable;
+    private TableElm sourceTable;
     private String sourceTableName = "";  // Empty = auto-find first SFC table
     
     // Sankey renderer
@@ -152,15 +152,15 @@ public class SFCSankeyElm extends CircuitElm {
     /**
      * Find the source SFCTableElm to visualize
      */
-    private SFCTableElm findSourceTable() {
+    private TableElm findSourceTable() {
         if (sim == null || sim.elmList == null) {
             return null;
         }
         
         for (int i = 0; i < sim.elmList.size(); i++) {
             CircuitElm elm = sim.elmList.get(i);
-            if (elm instanceof SFCTableElm) {
-                SFCTableElm table = (SFCTableElm) elm;
+            if (elm instanceof SFCTableElm || elm instanceof SFCFlowTable) {
+                TableElm table = (TableElm) elm;
                 
                 // If no specific name, use first found
                 if (sourceTableName == null || sourceTableName.isEmpty()) {

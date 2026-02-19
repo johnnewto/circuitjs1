@@ -61,9 +61,9 @@ Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
 @end
 
 @equations equations_1 x=24 y=152
-  G_d->G_s ~ 20 ; mode=flow ; slider=b ; sliderValue=0.5  # Services supplied to / demand by Govt
-  N_s ~ N_d ; mode=voltage ; slider=d ; sliderValue=0.5  # Supply/Demand for labour
-  W_s->W_d ~ W * N_d ; mode=flow ; slider=f ; sliderValue=0.5  # Wages supplied , demanded
+  G_d->G_s ~ 1*G ; mode=flow ; slider=b ; sliderValue=0.5  # Services supplied to / demand by Govt
+  N_ss ~ N_d ; mode=voltage ; slider=d ; sliderValue=0.5  # Supply/Demand for labour
+  W_s->W_d ~ W * N_s ; mode=flow ; slider=f ; sliderValue=0.5  # Wages supplied , demanded
   YD ~ W * N_d + T_s ; mode=flow ; slider=e ; sliderValue=0.5  # Disposable Income
   T_s->T_d ~ \theta * -W_s ; mode=flow ; slider=f ; sliderValue=0.5  # Tax
   C_d->C_s ~ \alpha_1*YD+ \alpha_2*H_h ; mode=flow ; slider=g ; sliderValue=0.5  # Consumption goods Supply/Demand
@@ -74,6 +74,7 @@ Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
   H_s ~ Govt ; mode=voltage ; slider=c ; sliderValue=0.5  # Money supplied by the central bank
   Y ~ C_s + G_s ; mode=flow ; slider=b ; sliderValue=0.5  # Output
   N_d ~ Y / W ; mode=flow ; slider=c ; sliderValue=0.5  # Supply/Demand for labour
+  N_s ~ N_d ; mode=voltage ; slider=e ; sliderValue=0.5  # Supply/Demand for labour
 @end
 
 @equations Parameters x=56 y=320
@@ -84,7 +85,7 @@ Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
   W ~ 1 ; mode=param ; slider=e ; sliderValue=0.5  # Nominal Wages Rate
 @end
 
-@matrix Transaction_Flow_Matrix x=64 y=-40
+@matrix Transaction_Flow_Matrix x=-64 y=-40
   type: flow_table
   showInitialValues: true
   showFlowValues: true
@@ -98,9 +99,18 @@ Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
 | Taxes | T_s |  | T_d |
 @end
 
+@sankey x=464 y=-176
+  layout: linear
+  width: 400
+  height: 250
+  showScaleBar: false
+  useHighWaterMark: true
+  showFlowValues: false
+@end
+
 @hints
   G_d: Services supplied to / demand by Govt
-  N_s: Supply/Demand for labour
+  N_ss: Supply/Demand for labour
   W_s: Wages supplied , demanded
   YD: Disposable Income
   T_s: Tax
@@ -109,6 +119,7 @@ Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
   H_s: Money supplied by the central bank
   Y: Output
   N_d: Supply/Demand for labour
+  N_s: Supply/Demand for labour
   \alpha_1: Propensity to Spend Income
   \alpha_2: Propensity to Spend Wealth
   \theta: Tax Rate
@@ -121,17 +132,18 @@ Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
   T_d: Tax
   WxN: hint6
   H_hh: hint2
+  20: Services supplied to / demand by Govt
 @end
 
 @circuit
 207 680 216 741 217 180 C_d
 207 528 288 567 288 164 Y
-431 896 64 960 112 0 50 true false
+431 896 112 960 160 0 50 true false
 207 712 288 776 288 164 T_s
 207 712 320 776 320 164 W_d
 207 672 144 736 144 164 H_h
 207 688 192 752 192 164 H_s
-403 352 320 608 464 0 5_2_0_12806_99.9554367167885_0.0001_-1_2_5_3
+403 352 320 608 464 0 5_2_0_12806_99.95863874139341_0.0001_-1_2_5_3
 g 448 288 416 288 0 0
 r 448 288 528 288 0 1
 207 912 208 976 208 164 Govt

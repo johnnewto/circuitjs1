@@ -5,12 +5,14 @@ on:
     branches: [ main, master ]
     paths:
       - 'docs-template/**'
+      - 'dev_docs/**'
       - 'src/**'
       - 'war/**'
   pull_request:
     branches: [ main, master ]
     paths:
       - 'docs-template/**'
+      - 'dev_docs/**'
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
@@ -95,6 +97,11 @@ jobs:
         chmod +x build-docs-only.sh
         ./build-docs-only.sh
       working-directory: docs-template
+
+    - name: Print Generated Reference Index
+      run: |
+        echo "Generated ReferenceIndex.md:"
+        cat src/com/lushprojects/circuitjs1/public/docs/reference/ReferenceIndex.md
       
     - name: Upload Pages Artifact
       uses: actions/upload-pages-artifact@v4
@@ -147,6 +154,11 @@ jobs:
           chmod +x build-docs-only.sh
           ./build-docs-only.sh
         working-directory: docs-template
+
+      - name: Print Generated Reference Index
+        run: |
+          echo "Generated ReferenceIndex.md:"
+          cat src/com/lushprojects/circuitjs1/public/docs/reference/ReferenceIndex.md
       
       - name: Validate Site Structure
         run: |

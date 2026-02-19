@@ -428,7 +428,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     private EquationRow[] rows;
     
     /** Whether all alias rows have been successfully resolved to target nodes */
-    private boolean aliasesResolved;
+    private boolean aliasesResolved;    
     
     /** Whether row classifications are up to date (avoids redundant recomputation) */
     private boolean classificationsValid;
@@ -1160,6 +1160,25 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             }
         }
     }
+
+    /**
+     * Mirror a target flow namespace value into an alias row's own flow key.
+     * For alias row "A = B", this publishes A.flow = B.flow each doStep(),
+     * but only when B.flow exists.
+     */
+    private void registerAliasFlowValue(int row, String targetName) {
+        if (!isValidOutputName(row) || targetName == null) return;
+
+        String aliasKey = getFlowComputedKeyForName(rows[row].outputName.trim());
+        String targetKey = getFlowComputedKeyForName(targetName);
+        if (aliasKey == null || targetKey == null) return;
+
+        Double targetFlow = ComputedValues.getComputedValue(targetKey);
+        if (targetFlow == null) {
+            return;
+        }
+        ComputedValues.setComputedValue(aliasKey, targetFlow.doubleValue());
+    }
     
     /**
      * Check if two posts are electrically connected.
@@ -1665,6 +1684,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 rows[row].outputValue = val;
                 rows[row].lastOutputValue = val;
                 registerOutputValue(row, val);
+                registerAliasFlowValue(row, targetName);
                 continue;
             }
             
@@ -2266,6 +2286,17 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      */
     public double getDisplayValue(int row) {
         if (row < 0 || row >= MAX_ROWS) return 0.0;
+
+        if (isAliasRowDisplayingFlow(row)) {
+            String targetName = rows[row].compiledExpr.getNodeName();
+            if (targetName != null) {
+                Double targetFlow = ComputedValues.getComputedFlowValue(targetName);
+                if (targetFlow != null) {
+                    return targetFlow.doubleValue();
+                }
+            }
+        }
+
         if (rows[row].outputMode == RowOutputMode.STOCK_MODE && isMnaMode()) {
             // Show stock level (node voltage) for STOCK rows
             int nodeNum = rows[row].labeledNodeNumber;
@@ -2282,6 +2313,18 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** Check if row is classified as alias (bare node reference) */
     public boolean isAliasRow(int row) {
         return (row >= 0 && row < MAX_ROWS) ? rows[row].isAlias : false;
+    }
+
+    /**
+     * True when an alias row should display FLOW semantics for its target name.
+     * This is dynamic: if target.flow exists, alias displays flow; otherwise value.
+     */
+    public boolean isAliasRowDisplayingFlow(int row) {
+        if (row < 0 || row >= MAX_ROWS) return false;
+        if (!rows[row].isAlias || rows[row].compiledExpr == null) return false;
+        String targetName = rows[row].compiledExpr.getNodeName();
+        if (targetName == null || targetName.trim().isEmpty()) return false;
+        return ComputedValues.getComputedFlowValue(targetName) != null;
     }
     
     /** Get row classification as string */

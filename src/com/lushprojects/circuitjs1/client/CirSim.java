@@ -173,6 +173,7 @@ MouseOutHandler, MouseWheelHandler {
     boolean useWeightedPriority = false; // Weighted priority for Asset/Equity columns
     String modelInfoContent = null; // Markdown info content from @info block in SFCR files
     MenuItem viewModelInfoItem; // Menu item for viewing model info
+	MenuItem helpViewModelInfoItem; // Help menu item for viewing model info
     String currentCircuitFile = null; // Current circuit file name and location for display
     private Label powerLabel;
     private Label titleLabel;
@@ -180,6 +181,7 @@ MouseOutHandler, MouseWheelHandler {
     private Scrollbar currentBar;
     private Scrollbar powerBar;
     MenuBar elmMenuBar;
+	MenuBar helpMenuBar;
     MenuItem elmEditMenuItem;
     MenuItem elmCutMenuItem;
     MenuItem elmCopyMenuItem;
@@ -713,6 +715,13 @@ public CirSim() {
 	}));
 	m.addItem(showValuesCheckItem = new CheckboxMenuItem(Locale.LS("Show Values")));
 	showValuesCheckItem.setState(true);
+
+	helpMenuBar = new MenuBar(true);
+	helpViewModelInfoItem = menuItemWithShortcut("doc-text", "View Model Info...", "", new MyCommand("help", "viewmodelinfo"));
+	helpViewModelInfoItem.setEnabled(false);
+	helpMenuBar.addItem(helpViewModelInfoItem);
+	helpMenuBar.addItem(menuItemWithShortcut("folder", "Reference Docs...", "", new MyCommand("help", "referencedocs")));
+
 	//m.add(conductanceCheckItem = getCheckItem(LS("Show Conductance")));
 	m.addItem(smallGridCheckItem = new CheckboxMenuItem(Locale.LS("Small Grid"),
 		new Command() { public void execute(){
@@ -4565,6 +4574,9 @@ public CirSim() {
     	if (item=="iframeviewer") {
     	    	openIframeViewer();
     	}
+	if (item=="referencedocs") {
+	    	openReferenceDocsViewer();
+	}
     	if (menu=="options" && item=="other")
     		doEdit(new EditOptions(this));
     	if (item=="devtools")
@@ -4661,9 +4673,9 @@ public CirSim() {
     	if (item=="sliders")
     	    doSliders(menuElm);
     	
-    	if (item=="viewSankey" && menuElm instanceof SFCTableElm) {
-    	    SFCSankeyViewer viewer = new SFCSankeyViewer((SFCTableElm) menuElm);
-    	    viewer.openViewer();
+	    if (item=="viewSankey" && (menuElm instanceof SFCTableElm || menuElm instanceof SFCFlowTable)) {
+	    	SFCSankeyViewer viewer = new SFCSankeyViewer((TableElm) menuElm);
+	    	viewer.openDialog();
     	}
 
     	if (item=="viewInScope" && menuElm != null) {
@@ -4859,6 +4871,13 @@ public CirSim() {
     	IframeViewerDialog.openUrlWithSelector("Documentation", 
     	    "../docs/money/index.html", "");
     }
+
+	void openReferenceDocsViewer() {
+	    String viewerUrl = GWT.getModuleBaseURL() +
+	        "docs/markdown-viewer.html?doc=reference/ReferenceIndex.md";
+	    IframeViewerDialog.openDialog("Reference Docs",
+	        viewerUrl, 900, 700);
+	}
     
     int countScopeElms() {
 	int c = 0;
@@ -5175,12 +5194,15 @@ public CirSim() {
 	    MenuBar varBrowserMenu = new MenuBar(true);
 	    varBrowserMenu.setAutoOpen(true);
 	    varBrowserMenu.addItem(menuItemWithShortcut("list-ul", "Variable Browser...", "\\", new MyCommand("edit", "variablebrowser")));
-	    varBrowserMenu.addItem(menuItemWithShortcut("book", "Glossary Editor...", "", new MyCommand("edit", "hinteditor")));
+	    varBrowserMenu.addItem(menuItemWithShortcut("doc-text", "Glossary Editor...", "", new MyCommand("edit", "hinteditor")));
 	    varBrowserMenu.addItem(menuItemWithShortcut("clock-o", "Action Time Schedule...", "", new MyCommand("edit", "actiontimedialog")));
 	    varBrowserMenu.addItem(menuItemWithShortcut("code", "Embedded Viewer...", "", new MyCommand("edit", "iframeviewer")));
 	    varBrowserMenu.addItem(menuItemWithShortcut("check-square-o", "Math Elements Test Suite...", "", new MyCommand("edit", "mathtestdialog")));
 	    varBrowserMenu.addItem(menuItemWithShortcut("table", "Table Elements Test Suite...", "", new MyCommand("edit", "tabletestdialog")));
 	    menuBar.addItem(Locale.LS("Dialogs"), varBrowserMenu);
+	    if (helpMenuBar != null && helpMenuBar.getParent() == null) {
+		menuBar.addItem(Locale.LS("Help"), helpMenuBar);
+	    }
 	}
 
 	void loadSetupListIntoMenu(final String setupListPath, final MenuBar circuitsMenu,
@@ -5292,6 +5314,9 @@ public CirSim() {
 		modelInfoContent = parser.getInfoContent();
 		if (viewModelInfoItem != null) {
 		    viewModelInfoItem.setEnabled(modelInfoContent != null && !modelInfoContent.isEmpty());
+		}
+		if (helpViewModelInfoItem != null) {
+		    helpViewModelInfoItem.setEnabled(modelInfoContent != null && !modelInfoContent.isEmpty());
 		}
 		
 		// Auto-display model info when loading a file with @info block
@@ -5476,6 +5501,9 @@ public CirSim() {
 	    
 	    // Clear master table registrations for computed values
 	    ComputedValues.clearMasterTables();
+	    
+	    // Clear all computed values when loading a new circuit to avoid stale state
+	    ComputedValues.clearComputedValues();
 	    
 	    // Clear hints registry
 	    HintRegistry.clear();
@@ -6470,7 +6498,7 @@ public CirSim() {
 		    elmSwapMenuItem .setEnabled(mouseElm.getPostCount() == 2);
     	    	    elmSplitMenuItem.setEnabled(canSplit(mouseElm));
     	    	    elmSliderMenuItem.setEnabled(sliderItemEnabled(mouseElm));
-    	    	    elmSankeyMenuItem.setEnabled(mouseElm instanceof SFCTableElm);
+		    	    elmSankeyMenuItem.setEnabled(mouseElm instanceof SFCTableElm || mouseElm instanceof SFCFlowTable);
 		    boolean canFlipX = mouseElm.canFlipX();
 		    boolean canFlipY = mouseElm.canFlipY();
 		    boolean canFlipXY = mouseElm.canFlipXY();

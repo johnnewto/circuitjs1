@@ -659,6 +659,15 @@ import java.util.Map;
             }
         });
         buttonPanel.add(debugButton);
+
+        Button referenceButton = new Button(Locale.LS("Reference"));
+        referenceButton.setTitle("Open table reference documentation");
+        referenceButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                ReferenceDocs.openMarkdownReference(getReferenceDocTitle(), getReferenceDocPath());
+            }
+        });
+        buttonPanel.add(referenceButton);
         
         // Add spacer to push Close to the right
         Label spacer = new Label();
@@ -676,6 +685,20 @@ import java.util.Map;
         buttonPanel.add(closeButton);
         
         return buttonPanel;
+    }
+
+    private String getReferenceDocPath() {
+        if (tableElement instanceof CurrentTransactionsMatrixElm || tableElement instanceof SFCFlowTable) {
+            return "docs/reference/SfcMnaElementsReference.md";
+        }
+        return "docs/reference/StockFlowTableReference.md";
+    }
+
+    private String getReferenceDocTitle() {
+        if (tableElement instanceof CurrentTransactionsMatrixElm || tableElement instanceof SFCFlowTable) {
+            return "SFC MNA Elements Reference";
+        }
+        return "Stock-Flow Table Reference";
     }
     
     /**

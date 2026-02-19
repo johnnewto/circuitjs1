@@ -71,7 +71,7 @@ public class SFCSankeyViewer {
         }
     }
     
-    private SFCTableElm table;
+    private TableElm table;
     private boolean showArrows = true;  // Default to showing arrow links
     private ChartLibrary chartLibrary = ChartLibrary.D3;  // Default to D3 (supports real-time updates)
     private static SankeyDialog dialogInstance = null;  // Singleton for internal dialog
@@ -96,14 +96,14 @@ public class SFCSankeyViewer {
     private static final Map<String, Integer> SECTOR_COLOR_INDEX = new HashMap<>();
     private static int nextColorIndex = 0;
     
-    public SFCSankeyViewer(SFCTableElm table) {
+    public SFCSankeyViewer(TableElm table) {
         this.table = table;
     }
     
     /**
      * Create viewer with arrow option.
      */
-    public SFCSankeyViewer(SFCTableElm table, boolean showArrows) {
+    public SFCSankeyViewer(TableElm table, boolean showArrows) {
         this.table = table;
         this.showArrows = showArrows;
     }
@@ -111,7 +111,7 @@ public class SFCSankeyViewer {
     /**
      * Create viewer with arrow option and chart library.
      */
-    public SFCSankeyViewer(SFCTableElm table, boolean showArrows, ChartLibrary library) {
+    public SFCSankeyViewer(TableElm table, boolean showArrows, ChartLibrary library) {
         this.table = table;
         this.showArrows = showArrows;
         this.chartLibrary = library;
@@ -195,6 +195,25 @@ public class SFCSankeyViewer {
      */
     private String getTransactionColor() {
         return TRANSACTION_COLOR;
+    }
+
+    /**
+     * Resolve a Sankey cell value using flow-first semantics.
+     * If the cell label has a published flow value, use it; otherwise
+     * fall back to the table's computed cell voltage/value.
+     */
+    private double getSankeyCellValue(int row, int col) {
+        String label = table.getCellEquation(row, col);
+        if (label != null) {
+            String trimmed = label.trim();
+            if (!trimmed.isEmpty() && !"0".equals(trimmed)) {
+                Double publishedFlow = ComputedValues.getComputedFlowValue(trimmed);
+                if (publishedFlow != null) {
+                    return publishedFlow.doubleValue();
+                }
+            }
+        }
+        return table.getVoltageForCell(row, col);
     }
     
     /**
@@ -282,7 +301,7 @@ public class SFCSankeyViewer {
                     continue;  // Skip Σ column
                 }
                 
-                double value = table.getVoltageForCell(row, col);
+                double value = getSankeyCellValue(row, col);
                 if (Math.abs(value) < 1e-10) {
                     continue;  // Skip zero values
                 }

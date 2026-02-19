@@ -54,31 +54,32 @@ Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
 @end
 
 @equations equations_1 x=168 y=264
-  C_s ~ C_d  # Consumption goods Supply/Demand
-  G_s ~ G_d  # Services supplied to / demand by Govt
-  T_s ~ T_d  # Tax
-  N_s ~ N_d  # Supply/Demand for labour
-  YD ~ W * N_s - T_s  # Disposable Income
-  T_d ~ \theta * W * N_s  # Tax
-  C_d ~ \alpha_1*YD+ \alpha_2*H_h  # Consumption goods Supply/Demand
-  H_s ~ integrate(G_d - T_d)  # cash money, supplied by the central bank
+  C_s ~ C_d ; mode=voltage ; slider=a ; sliderValue=0.5  # Consumption goods Supply/Demand
+  G_s ~ G_d ; mode=voltage ; slider=b ; sliderValue=0.5  # Services supplied to / demand by Govt
+  T_s ~ T_d ; mode=voltage ; slider=c ; sliderValue=0.5  # Tax
+  N_s ~ N_d ; mode=voltage ; slider=d ; sliderValue=0.5  # Supply/Demand for labour
+  YD ~ W * N_s - T_s ; mode=voltage ; slider=e ; sliderValue=0.5  # Disposable Income
+  T_d ~ \theta * W * N_s ; mode=voltage ; slider=f ; sliderValue=0.5  # Tax
+  C_d ~ \alpha_1*YD+ \alpha_2*H_h ; mode=voltage ; slider=g ; sliderValue=0.5  # Consumption goods Supply/Demand
+  H_s ~ integrate(G_d - T_d) ; mode=voltage ; slider=h ; sliderValue=0.5  # cash money, supplied by the central bank
 @end
 
-@equations equations_2 x=424 y=264
-  H_h ~ integrate(YD - C_d)  # Cash money held by households
-  Y ~ C_s + G_s  # Output
-  N_d ~ Y / W  # Supply/Demand for labour
+@equations equations_2 x=440 y=264
+  H_h ~ integrate(YD - C_d) ; mode=voltage ; slider=a ; sliderValue=0.5  # Cash money held by households
+  Y ~ C_s + G_s ; mode=voltage ; slider=b ; sliderValue=0.5  # Output
+  N_d ~ Y / W ; mode=voltage ; slider=c ; sliderValue=0.5  # Supply/Demand for labour
 @end
 
-@equations Parameters x=504 y=400
-  \alpha_1 ~ 0.6  # Propensity to Spend Income
-  \alpha_2 ~ 0.4  # Propensity to Spend Wealth
-  \theta ~ 0.2  # Tax Rate
-  G_d ~ 20  # Government demad for services
-  W ~ 1  # Nominal Wages Rate
+@equations Parameters x=440 y=352
+  \alpha_1 ~ 0.6 ; mode=voltage ; slider=a ; sliderValue=0.5  # Propensity to Spend Income
+  \alpha_2 ~ 0.4 ; mode=voltage ; slider=b ; sliderValue=0.5  # Propensity to Spend Wealth
+  \theta ~ 0.2 ; mode=voltage ; slider=c ; sliderValue=0.5  # Tax Rate
+  G_d ~ 20 ; mode=voltage ; slider=d ; sliderValue=0.5  # Government demad for services
+  W ~ 1 ; mode=voltage ; slider=e ; sliderValue=0.5  # Nominal Wages Rate
 @end
 
 @matrix Balance_Sheet x=176 y=24
+  type: transaction_flow
 
 | Transaction | Households_b | Production_b | Government_b |
 |-------------|------|------|------|
@@ -86,6 +87,7 @@ Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
 @end
 
 @matrix Transaction_Flow_Matrix x=176 y=104
+  type: transaction_flow
 
 | Transaction | Households | Production | Govt |
 |-------------|------|------|------|
@@ -94,6 +96,16 @@ Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
 | Wages | W * N_s | -W * N_s |  |
 | Taxes | -T_s |  | T_d |
 | Money stock | -\DeltaH_h |  | \DeltaH_s |
+@end
+
+@sankey x=672 y=-8
+  source: Transaction Flow Matrix
+  layout: linear
+  width: 400
+  height: 250
+  showScaleBar: false
+  useHighWaterMark: true
+  showFlowValues: true
 @end
 
 @hints
@@ -116,14 +128,13 @@ Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
 @end
 
 @circuit
-x 203 -78 378 -75 4 24 SIM\sSFC\smodel 808080FF
-207 680 216 741 217 4 C_s
-207 680 256 743 256 36 Y
-403 696 272 960 448 0 7_4_0_xc01206_320_0.1_-1_2_7_3
-x 218 -53 682 -50 4 16 This\scode\sreplicates\sresults\sin\sthe\sbook\sMonetary\sEconomics: 808080FF
-x 215 -11 722 -8 4 16 \sby\sWynne\sGodley\sand\sMarc\sLavoie,\schapter\s3,\sfigures\s3.2\sand\s3.3. 808080FF
-x 218 -33 779 -30 4 16 \sAn\sIntegrated\sApproach\sto\sCredit,\sMoney,\sIncome,\sProduction\sand\sWealth 808080FF
-207 768 144 800 144 36 \\DeltaH_h
-207 768 96 800 96 4 \\DeltaH_s
-431 896 64 960 112 0 50 true false
+x 168 -76 343 -73 4 24 SIM\sSFC\smodel 808080FF
+207 680 296 743 296 36 Y
+x 183 -51 539 -48 4 12 This\scode\sreplicates\sresults\sin\sthe\sbook\sMonetary\sEconomics: 808080FF
+x 180 -9 568 -6 4 12 \sby\sWynne\sGodley\sand\sMarc\sLavoie,\schapter\s3,\sfigures\s3.2\sand\s3.3. 808080FF
+x 183 -31 612 -28 4 12 \sAn\sIntegrated\sApproach\sto\sCredit,\sMoney,\sIncome,\sProduction\sand\sWealth 808080FF
+207 832 288 864 288 36 \\DeltaH_h
+207 832 272 864 272 4 \\DeltaH_s
+431 624 -48 688 0 0 50 true false
+403 672 320 928 496 0 7_2_0_4614_160_0.1_-1_2_7_3
 @end
