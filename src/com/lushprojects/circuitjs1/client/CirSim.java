@@ -265,6 +265,7 @@ MouseOutHandler, MouseWheelHandler {
     
     // Error/stop handling
     String stopMessage;            // Error message when simulation stops
+	String warningMessage;         // Non-fatal warning shown in bottom-left status area
     
     // Timestep control
     double timeStep;               // Current timestep (time between iterations)
@@ -2556,12 +2557,88 @@ public CirSim() {
 	    for (i = 0; info[i] != null; i++)
 		g.drawString(info[i], x, ybase+15*(i+1));
 	}
+	if (stopMessage == null && warningMessage != null && !warningMessage.isEmpty()) {
+	    g.setColor(Color.red);
+	    g.drawString(warningMessage, 10, canvasHeight-10);
+	    g.setColor(CircuitElm.whiteColor);
+	}
     }
     
     Color getBackgroundColor() {
 	if (printableCheckItem.getState())
 	    return Color.white;
 	return Color.black;
+    }
+
+    /**
+     * Detect collisions where EquationTable PARAM names match physical LabeledNode
+     * names. These collisions can change name-resolution behavior in MNA mode.
+     */
+    private void updateEquationParameterCollisionWarning() {
+	if (elmList == null || elmList.isEmpty()) {
+	    warningMessage = null;
+	    return;
+	}
+
+	java.util.HashSet<String> labeledNames = new java.util.HashSet<String>();
+	for (int i = 0; i < elmList.size(); i++) {
+	    CircuitElm ce = getElm(i);
+	    if (ce instanceof LabeledNodeElm) {
+		LabeledNodeElm lne = (LabeledNodeElm) ce;
+		if (lne.text != null) {
+		    String name = lne.text.trim();
+		    if (!name.isEmpty()) {
+			labeledNames.add(name);
+		    }
+		}
+	    }
+	}
+
+	if (labeledNames.isEmpty()) {
+	    warningMessage = null;
+	    return;
+	}
+
+	java.util.HashSet<String> collisions = new java.util.HashSet<String>();
+	for (int i = 0; i < elmList.size(); i++) {
+	    CircuitElm ce = getElm(i);
+	    if (!(ce instanceof EquationTableElm)) {
+		continue;
+	    }
+
+	    EquationTableElm table = (EquationTableElm) ce;
+	    int rows = table.getRowCount();
+	    for (int row = 0; row < rows; row++) {
+		if (table.getOutputMode(row) != EquationTableElm.RowOutputMode.PARAM_MODE) {
+		    continue;
+		}
+		String outputName = table.getOutputName(row);
+		if (outputName == null) {
+		    continue;
+		}
+		String paramName = outputName.trim();
+		if (!paramName.isEmpty() && labeledNames.contains(paramName)) {
+		    collisions.add(paramName);
+		}
+	    }
+	}
+
+	if (collisions.isEmpty()) {
+	    warningMessage = null;
+	    return;
+	}
+
+	java.util.ArrayList<String> sorted = new java.util.ArrayList<String>(collisions);
+	java.util.Collections.sort(sorted);
+	StringBuilder sb = new StringBuilder();
+	sb.append("Warning: PARAM/LabeledNode name collision: ");
+	for (int i = 0; i < sorted.size(); i++) {
+	    if (i > 0) {
+		sb.append(", ");
+	    }
+	    sb.append(sorted.get(i));
+	}
+	warningMessage = sb.toString();
     }
     
     int oldScopeCount = -1;
@@ -3278,6 +3355,7 @@ public CirSim() {
     // Most of this has been moved to preStampCircuit() so it can be avoided if the simulation is stopped.
     void analyzeCircuit() {
 	stopMessage = null;
+	warningMessage = null;
 	stopElm = null;
 	
 	// Log WASM solver status (once) and free any previous allocations
@@ -3299,6 +3377,9 @@ public CirSim() {
     boolean preStampCircuit(boolean subcircuit) {
 	int i, j;
 	nodeList = new Vector<CircuitNode>();
+
+	// Surface non-fatal equation-name hazards in the bottom status area.
+	updateEquationParameterCollisionWarning();
 
 	calculateWireClosure();
 	setGroundNode(subcircuit);

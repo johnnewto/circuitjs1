@@ -12,6 +12,7 @@ econ_SIM_MNA.txt SFCStockElm SFCFlowElm Test
 econ_Godley_Lavoie_SIM_3.txt SIM Godley Lavoie SIM Model Ch3
 econ_Godley_Lavoie_SIM_3_SFCFlowTable.txt SIM Godley Lavoie SIM Model  Ch3 (SFC Flow Table)
 econ_Godley_Lavoie_BMW_7.txt BMW Godley Lavoie BMW Model Ch7
+econ_Godley_Lavoie_BMW_7_SFCFlowTable.txt BMW Godley Lavoie BMW Model Ch7 (SFC Flow Table)
 -
 +Debug
 >1debug.txt Debug 1
@@ -24,6 +25,7 @@ econ_Godley_Lavoie_BMW_7.txt BMW Godley Lavoie BMW Model Ch7
 1debugcopy5.txt Debug 5
 -
 +Basics
+1year_delay.txt Stock-based first-order delay (dY/dt = (X-Y)/tau)
 ohms.txt Ohm's Law
 resistors.txt Resistors
 cap.txt Capacitor

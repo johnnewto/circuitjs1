@@ -1803,7 +1803,7 @@ import java.util.Map;
     private static final String[] BUILTIN_FUNCTIONS = {
         "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
         "exp", "log", "log10", "sqrt", "abs", "floor", "ceil",
-        "min", "max", "pi", "e", "t"
+        "min", "max", "smooth", "pi", "e", "t"
     };
     
     /** Create completion list from all available variables and functions */

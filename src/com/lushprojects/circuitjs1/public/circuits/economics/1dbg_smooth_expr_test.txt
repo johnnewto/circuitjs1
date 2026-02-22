@@ -1,0 +1,39 @@
+# CircuitJS1 SFCR Export
+# Generated from circuit simulation
+
+@init
+  timestep: 0.1
+  voltageUnit: $
+  timeUnit: yr
+  showDots: true
+  showVolts: true
+  showValues: true
+  showPower: false
+@end
+
+@equations EqnTable x=-288 y=96
+  \theta ~ 1 ; mode=voltage ; slider=a ; sliderValue=0.5
+  Y2 ~ 1*Y ; mode=flow ; slider=b ; sliderValue=0.5
+  Y3 ~ smooth(Y2, 1) ; mode=voltage ; slider=c ; sliderValue=0.5  # hint3
+  Y4 ~ smooth(Y2, 1) ; mode=flow ; slider=d ; sliderValue=0.5  # hint4
+@end
+
+@hints
+  Y3: hint3
+  Y4: hint4
+@end
+
+@circuit
+g 96 224 96 272 0 0
+v 96 144 96 80 0 2 0.1 -5 5 0 0.5 V
+w 96 224 96 144 0
+w 96 80 128 80 0
+w 128 80 176 80 0
+212 176 80 192 80 0 1 (lastoutput\s\p\s\\theta\s*\stimestep*Y)/(1\p\\theta\s*\stimestep)
+g 272 112 272 144 0 0
+207 272 80 320 80 164 Y^e
+207 96 80 96 16 164 Y
+431 -240 -48 -192 0 0 20 true false
+403 160 192 480 416 0 9_1_0_4614_10_0.1_-1_4_9_3_8_0_8_3
+207 -272 208 -208 208 164 Y3
+@end

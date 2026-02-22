@@ -147,6 +147,5 @@ Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
 g 448 288 416 288 0 0
 r 448 288 528 288 0 1
 207 912 208 976 208 164 Govt
-x -108 305 277 308 4 24 alias\sN_s,\scopy\sflow\salso\sfrom\sN_d FF0000FF
 x -48 117 386 120 4 24 Label\ssum\sRow\selement\s,\sH_h,\sH_s\setc FF0000FF
 @end

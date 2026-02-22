@@ -41,6 +41,11 @@ setNodeVoltages() →
 element.setNodeVoltage() → 
 volts[n] = voltage
 ```
+
+## Warnings vs Stop Messages
+
+CircuitJS1 shows two message levels in the lower-left status area. A **stop message** (`stopMessage`) is fatal for the current run: it is set by `stop(...)` for hard failures (for example matrix errors), simulation is halted, and the message remains until re-analysis/editing. A **warning message** (`warningMessage`) is non-fatal: simulation continues while flagging possible modeling issues (for example a PARAM name colliding with a `LabeledNodeElm` name, which can affect name resolution in MNA mode).
+
 ## For Example
 In  [`LabeledNodeElm`](src/com/lushprojects/circuitjs1/client/LabeledNodeElm.java), `volts[0]` contains the voltage of the node that this labeled node is connected to, as calculated by the circuit simulation matrix solver. This voltage gets updated every simulation timestep as the circuit state evolves.
 

@@ -1179,6 +1179,56 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
         ComputedValues.setComputedValue(aliasKey, targetFlow.doubleValue());
     }
+
+    /**
+     * Resolve the current value for an alias target name.
+     *
+     * In MNA mode, aliases usually share a labeled node and should read that node's
+     * solved voltage. But if the alias target is a PARAM/computed-only name (no
+     * physical node), fall back to ComputedValues so aliases can mirror parameters.
+     */
+    private double resolveAliasTargetValue(String targetName) {
+        if (targetName == null || targetName.isEmpty()) {
+            return 0.0;
+        }
+
+        if (isMnaMode()) {
+            if (ComputedValues.isParameterName(targetName)) {
+                Double parameterValue = ComputedValues.getComputedValue(targetName);
+                if (parameterValue != null) {
+                    return parameterValue.doubleValue();
+                }
+            }
+
+            Integer labeledNode = LabeledNodeElm.getByName(targetName);
+            if (labeledNode != null && labeledNode.intValue() > 0) {
+                return sim.getLabeledNodeVoltage(targetName);
+            }
+
+            Double computedValue = ComputedValues.getComputedValue(targetName);
+            if (computedValue != null) {
+                return computedValue.doubleValue();
+            }
+
+            Double flowValue = ComputedValues.getComputedFlowValue(targetName);
+            if (flowValue != null) {
+                return flowValue.doubleValue();
+            }
+            return 0.0;
+        }
+
+        Double targetValue = ComputedValues.getComputedValue(targetName);
+        if (targetValue != null) {
+            return targetValue.doubleValue();
+        }
+
+        Double flowValue = ComputedValues.getComputedFlowValue(targetName);
+        if (flowValue != null) {
+            return flowValue.doubleValue();
+        }
+
+        return 0.0;
+    }
     
     /**
      * Check if two posts are electrically connected.
@@ -1623,8 +1673,8 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 
                 String targetName = rows[row].compiledExpr.getNodeName();
                 if (targetName != null) {
-                    // Read target voltage and seed into ComputedValues
-                    double val = sim.getLabeledNodeVoltage(targetName);
+                    // Seed from alias target (node voltage or computed parameter)
+                    double val = resolveAliasTargetValue(targetName);
                     rows[row].outputValue = val;
                     // Write directly to current buffer so it's available during doStep
                     ComputedValues.setComputedValueDirect(outputName, val);
@@ -1674,13 +1724,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             // In pure mode, read from ComputedValues.
             if (rows[row].isAlias) {
                 String targetName = rows[row].compiledExpr.getNodeName();
-                double val;
-                if (isMnaMode()) {
-                    val = sim.getLabeledNodeVoltage(targetName);
-                } else {
-                    Double targetValue = ComputedValues.getComputedValue(targetName);
-                    val = (targetValue != null) ? targetValue.doubleValue() : 0.0;
-                }
+                double val = resolveAliasTargetValue(targetName);
                 rows[row].outputValue = val;
                 rows[row].lastOutputValue = val;
                 registerOutputValue(row, val);
@@ -1875,14 +1919,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 if (isValidOutputName(row)) {
                     String name = rows[row].outputName.trim();
                     String targetName = rows[row].compiledExpr.getNodeName();
-                    if (isMnaMode()) {
-                        // MNA mode: read voltage from the shared node via labeled node lookup
-                        rows[row].outputValue = sim.getLabeledNodeVoltage(targetName);
-                    } else {
-                        // Pure mode: copy from target ComputedValue
-                        Double targetValue = ComputedValues.getComputedValue(targetName);
-                        rows[row].outputValue = (targetValue != null) ? targetValue.doubleValue() : 0.0;
-                    }
+                    rows[row].outputValue = resolveAliasTargetValue(targetName);
                     ComputedValues.setComputedValue(name, rows[row].outputValue);
                     ComputedValues.markComputedThisStep(name);
                 }

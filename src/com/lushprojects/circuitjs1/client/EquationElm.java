@@ -417,6 +417,7 @@ class EquationElm extends CircuitElm {
             if (!completions.contains("atan2")) completions.add("atan2");
             if (!completions.contains("floor")) completions.add("floor");
             if (!completions.contains("ceil")) completions.add("ceil");
+            if (!completions.contains("smooth")) completions.add("smooth");
             
             // Add common constants
             if (!completions.contains("pi")) completions.add("pi");

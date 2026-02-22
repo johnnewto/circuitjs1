@@ -47,71 +47,76 @@ At steady state (t → ∞):
   timestep: 0.1
   voltageUnit: $
   timeUnit: yr
+  showDots: false
+  showVolts: true
+  showValues: true
+  showPower: false
 @end
 
 @equations Parameters x=672 y=360
-  rl ~ 0.025  # Interest rate on loans
-  \alpha0 ~ 20  # Autonomous consumption
-  \alpha1 ~ 0.75  # Propensity to consume from income
-  \alpha2 ~ 0.10  # Propensity to consume from wealth
-  \delta ~ 0.1  # Depreciation rate
-  \gamma ~ 0.15  # Adjustment speed of capital to target
-  \kappa ~ 1  # Capital-output ratio target
-  pr ~ 1  # Labor productivity
+  rl ~ 0.025 ; mode=param ; slider=a ; sliderValue=0.5  # Interest rate on loans
+  \alpha0 ~ 20 ; mode=param ; slider=b ; sliderValue=0.5  # Autonomous consumption
+  \alpha1 ~ 0.75 ; mode=param ; slider=c ; sliderValue=0.5  # Propensity to consume from income
+  \alpha2 ~ 0.10 ; mode=param ; slider=d ; sliderValue=0.5  # Propensity to consume from wealth
+  \delta ~ 0.1 ; mode=param ; slider=e ; sliderValue=0.5  # Depreciation rate
+  \gamma ~ 0.15 ; mode=param ; slider=f ; sliderValue=0.5  # Adjustment speed of capital to target
+  \kappa ~ 1 ; mode=param ; slider=g ; sliderValue=0.5  # Capital-output ratio target
+  pr ~ 1 ; mode=param ; slider=h ; sliderValue=0.5  # Labor productivity
 @end
 
 @equations MarketClearing x=304 y=680
-  Cs ~ Cd  # Consumption supply
-  Is ~ Id  # Investment supply
-  Ns ~ Nd  # Labor supply
-  Ls ~ integrate(diff(Ld))  # Loan supply
+  Cs ~ Cd ; mode=voltage ; slider=a ; sliderValue=0.5  # Consumption supply
+  Is ~ Id ; mode=voltage ; slider=b ; sliderValue=0.5  # Investment supply
+  Ns ~ Nd ; mode=voltage ; slider=c ; sliderValue=0.5  # Labor supply
+  Ls ~ Ld ; mode=voltage ; slider=d ; sliderValue=0.5  # Loan supply
 @end
 
 @equations Firms x=80 y=504
-  Y ~ Cs + Is  # National income (output)
-  WBd ~ Y - lag(rl, 1) * lag(Ld, 1) - AF  # Wage bill demanded
-  AF ~ \delta * lag(K, 1)  # Amortization funds = delta * lag(K,1)
-  Ld ~ integrate(Id - AF)  # Loan demand
-  KK ~ t  # hint7
-  Y5 ~ lag(KK, 1)  # hint5
-  Y6 ~ KK - lag(KK, 1)  # hint6
+  Y ~ Cs + Is ; mode=voltage ; slider=a ; sliderValue=0.5  # National income (output)
+  WBd ~ Y - smooth(rl, 1) * smooth(Ld, 1) - AF ; mode=voltage ; slider=b ; sliderValue=0.5  # Wage bill demanded
+  AF ~ \delta * smooth(K, 1) ; mode=voltage ; slider=c ; sliderValue=0.5  # Amortization funds = delta * lag(K,1)
+  Ld ~ integrate(Id - AF) ; mode=voltage ; slider=d ; sliderValue=0.5  # Loan demand
+  KK ~ t ; mode=voltage ; slider=e ; sliderValue=0.5  # hint7
+  Y5 ~ smooth(KK, 1) ; mode=voltage ; slider=f ; sliderValue=0.5  # hint5
+  Y6 ~ KK - smooth(KK, 1) ; mode=voltage ; slider=g ; sliderValue=0.5  # hint6
 @end
 
-@equations Households x=352 y=504
-  YD ~ WBs + lag(rm, 1) * lag(Mh, 1)  # Household disposable income = WBs + lag(rm,1) * lag(Mh,1)
-  Mh ~ integrate(YD - Cd)  # Household money holdings (deposits)
+@equations Households x=416 y=536
+  YD ~ WBs + smooth(rm, 1) * smooth(Mh, 1) ; mode=voltage ; slider=a ; sliderValue=0.5  # Household disposable income = WBs + lag(rm,1) * lag(Mh,1)
+  Mh ~ integrate(YD - Cd) ; mode=voltage ; slider=b ; sliderValue=0.5  # Household money holdings (deposits)
 @end
 
-@equations Banks x=640 y=536
-  Ms ~ integrate(diff(Ls))  # Money supply (bank deposits)
-  rm ~ rl  # Interest rate on deposits
+@equations Banks x=736 y=536
+  Ms ~ Ls ; mode=voltage ; slider=a ; sliderValue=0.5  # Money supply (bank deposits)
+  rm ~ rl ; mode=voltage ; slider=b ; sliderValue=0.5  # Interest rate on deposits
 @end
 
 @equations WageBill x=96 y=664
-  WBs ~ W * Ns  # Wage bill supplied
-  Nd ~ Y / pr  # Labor demand
-  W ~ WBd / max(Nd, 0.01)  # Wage rate
+  WBs ~ W * Ns ; mode=voltage ; slider=a ; sliderValue=0.5  # Wage bill supplied
+  Nd ~ Y / pr ; mode=voltage ; slider=b ; sliderValue=0.5  # Labor demand
+  W ~ WBd / max(Nd, 0.01) ; mode=voltage ; slider=c ; sliderValue=0.5  # Wage rate
 @end
 
 @equations Consumption x=400 y=600
-  Cd ~ \alpha0 + \alpha1 * YD + \alpha2 * lag(Mh, 1)  # Consumption demand
+  Cd ~ \alpha0 + \alpha1 * YD + \alpha2 * smooth(Mh, 1) ; mode=voltage ; slider=a ; sliderValue=0.5  # Consumption demand
 @end
 
 @equations Investment x=528 y=680
-  K ~ integrate(Id - DA)  # Capital stock
-  DA ~ \delta * lag(K, 1)  # Depreciation actual = delta * lag(K,1)
-  KT ~ \kappa * lag(Y, 1)  # Target capital stock = kappa * lag(Y,1)
-  Id ~ \gamma * (KT - lag(K, 1)) + DA  # Investment demand
+  K ~ integrate(Id - DA) ; mode=voltage ; slider=a ; sliderValue=0.5  # Capital stock
+  DA ~ \delta * smooth(K, 1) ; mode=voltage ; slider=b ; sliderValue=0.5  # Depreciation actual = delta * lag(K,1)
+  KT ~ \kappa * smooth(Y, 1) ; mode=voltage ; slider=c ; sliderValue=0.5  # Target capital stock = kappa * lag(Y,1)
+  Id ~ \gamma * (KT - smooth(K, 1)) + DA ; mode=voltage ; slider=d ; sliderValue=0.5  # Investment demand
 @end
 
 @equations \Delta x=96 y=752
-  \DeltaLd ~ diff(Ld)
-  \DeltaLs ~ diff(Ls)
-  \DeltaMs ~ diff(Ms)  # hint3
-  \DeltaMh ~ diff(Mh)  # hint4
+  \DeltaLd ~ diff(Ld) ; mode=voltage ; slider=a ; sliderValue=0.5
+  \DeltaLs ~ diff(Ls) ; mode=voltage ; slider=b ; sliderValue=0.5
+  \DeltaMs ~ diff(Ms) ; mode=voltage ; slider=c ; sliderValue=0.5  # hint3
+  \DeltaMh ~ diff(Mh) ; mode=voltage ; slider=d ; sliderValue=0.5  # hint4
 @end
 
 @matrix Balance_Sheet x=80 y=360
+  type: transaction_flow
 
 | Transaction | Households | Firms | Banks |
 |-------------|------|------|------|
@@ -122,6 +127,7 @@ At steady state (t → ∞):
 @end
 
 @matrix Transaction_Flow_Matrix x=80 y=152
+  type: transaction_flow
 
 | Transaction | Households_C | Firms_{Current} | Firms_{Capital} | Banks_{Current} | Banks_{Capital} | Govt |
 |-------------|------|------|------|------|------|------|
@@ -200,11 +206,11 @@ x 89 140 399 143 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q16
 207 896 592 960 592 52 Y
 r 1024 480 1104 480 0 100
 v 1104 480 1104 352 0 0 40 5 0 0 0.5 V
-l 1024 352 1024 480 0 100 -2.6695321035982722e-8 0
-c 1024 480 912 480 4 0.000015 -0.000022980076823117932 -10 0
+l 1024 352 1024 480 0 100 -0.00021763733646916624 0
+c 1024 480 912 480 4 0.000015 -2.332541905318563 -10 0
 w 912 352 912 480 0
 s 1024 352 1104 352 0 1 false
 r 912 352 1024 352 0 10
 403 896 624 1232 832 0 15_2_0_4614_320_0.1_-1_1
-431 624 48 672 80 0 100 true false
+431 624 48 672 80 0 50 true false
 @end

@@ -1,0 +1,86 @@
+# CircuitJS1 SFCR Export
+# Generated from circuit simulation
+
+@info
+# 1-year delay comparison (step + sine)
+
+This debug circuit compares three delay patterns side-by-side:
+
+1) lag-based delay (uses Expr lag() history)
+2) stock-based first-order delay (dY/dt = (X-Y)/tau)
+3) continuous-time expectations state Y^e using exponential-kernel integration
+
+Notes:
+- `lag(x,1)` in this build uses history + smoothing behavior (not ideal pure transport).
+- stock version is a classic first-order exponential delay with time constant `tau`.
+- exponential-kernel form uses an integrating-factor equivalent with `exp(...)` terms.
+- time unit is years, so `1` means 1 year.
+@end
+
+@init
+  timestep: 0.02
+  voltageUnit: $
+  timeUnit: yr
+  showDots: false
+  showVolts: true
+  showValues: true
+  showPower: false
+@end
+
+@equations Inputs x=96 y=48
+  tau ~ 1 ; mode=param ; slider=a ; sliderValue=0.5  # Delay time constant in years for stock-based first-order delay
+  freq ~ 0.25 ; mode=param ; slider=b ; sliderValue=0.5  # Sine frequency in cycles per year
+  \theta ~ 0.5 ; mode=param ; slider=e ; sliderValue=0.5  # Expectation adjustment speed (1/yr)
+  Ye_{0} ~ 0 ; mode=param ; slider=g ; sliderValue=0.5  # Initial expected-output state at t=0
+  step_{in} ~ step(t - 1) ; mode=voltage ; slider=c ; sliderValue=0.5  # Input step signal
+  sine_{in} ~ sin(2 * pi * freq * t) ; mode=voltage ; slider=d ; sliderValue=0.5  # Input sine signal
+@end
+
+@equations Lag.Based x=96 y=320
+  step_{lag1y} ~ lag(step_{in}, 1) ; mode=voltage ; slider=a ; sliderValue=0.5  # 1-year lag() delayed step
+  sine_{lag1y} ~ lag(sine_{in}, 1) ; mode=voltage ; slider=b ; sliderValue=0.5  # 1-year lag() delayed sine
+@end
+
+@equations Stock.Based x=96 y=224
+  step_{stock1y} ~ (step_{in} - step_{stock1y}) / tau ; mode=stock ; slider=a ; sliderValue=0.5  # Stock-based delayed step
+  sine_{stock1y} ~ (sine_{in} - sine_{stock1y}) / tau ; mode=stock ; slider=b ; sliderValue=0.5  # Stock-based delayed sine
+@end
+
+@equations Continuous.Expectations x=400 y=48
+  step_{Ye} ~ exp(-\theta * t) * (Ye_{0} + \theta * integrate(exp(\theta * t) * step_{in})) ; mode=voltage ; slider=a ; sliderValue=0.5  # Y^e via exp-kernel integration, finite-start form
+  sine_{Ye} ~ exp(-\theta * t) * (Ye_{0} + \theta * integrate(exp(\theta * t) * sine_{in})) ; mode=voltage ; slider=b ; sliderValue=0.5  # Y^e via exp-kernel integration, finite-start form
+@end
+
+@equations Error.Check x=464 y=176
+  step_{errLagMinusStock} ~ step_{lag1y} - step_{stock1y} ; mode=voltage ; slider=a ; sliderValue=0.5  # Difference between lag and stock delay for step input
+  sine_{errLagMinusStock} ~ sine_{lag1y} - sine_{stock1y} ; mode=voltage ; slider=b ; sliderValue=0.5  # Difference between lag and stock delay for sine input
+@end
+
+@hints
+  tau: Delay time constant in years for stock-based first-order delay
+  freq: Sine frequency in cycles per year
+  \theta: Expectation adjustment speed (1/yr)
+  Ye_{0}: Initial expected-output state at t=0
+  step_{in}: Input step signal
+  sine_{in}: Input sine signal
+  step_{lag1y}: 1-year lag() delayed step
+  sine_{lag1y}: 1-year lag() delayed sine
+  step_{stock1y}: Stock-based delayed step
+  sine_{stock1y}: Stock-based delayed sine
+  step_{Ye}: Y^e via exp-kernel integration, finite-start form
+  sine_{Ye}: Y^e via exp-kernel integration, finite-start form
+  step_{errLagMinusStock}: Difference between lag and stock delay for step input
+  sine_{errLagMinusStock}: Difference between lag and stock delay for sine input
+@end
+
+@circuit
+x 97 2 454 5 4 18 Delay\sdebug:\s1-year\sdelay\sdirect\scomparison 808080FF
+x 97 26 523 29 4 12 Left:\sinputs,\sMiddle:\slag(x,1),\sRight:\sstock\sfirst-order\sdelay\s\p\sexp-kernel\sY^e\sstate 808080FF
+207 640 144 656 144 164 sine_{stock1y}
+207 640 128 656 128 164 step_{stock1y}
+207 832 128 848 128 164 step_{Ye}
+207 832 144 848 144 164 sine_{Ye}
+207 480 128 496 128 164 step_{in}
+207 480 144 496 144 164 sine_{in}
+431 144 416 160 448 0 10 true false
+@end

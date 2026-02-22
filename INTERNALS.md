@@ -334,6 +334,10 @@ Called when something in the circuit changes. Performs initial setup, then searc
 
 `stampCircuit()` is always called after `analyzeCircuit()`.
 
+### Warnings vs Stop Messages
+
+CircuitJS1 uses two message levels in the lower-left status area. A **stop message** (`stopMessage`) is fatal for the current run: it is set by `stop(...)` for hard failures (for example matrix errors), simulation is halted, and the message is shown until the circuit is re-analyzed or edited. A **warning message** (`warningMessage`) is non-fatal: simulation continues, but the user is informed about potential model issues (for example a PARAM name colliding with a `LabeledNodeElm` name, which can change name resolution behavior in MNA mode). Warnings are recomputed during pre-stamp analysis and cleared when no hazard is detected.
+
 ## `stampCircuit()`
 
 Creates the MNA matrices using info from `analyzeCircuit()` and fills them with data from each circuit element.

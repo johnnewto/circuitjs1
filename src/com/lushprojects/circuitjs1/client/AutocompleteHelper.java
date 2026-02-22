@@ -534,7 +534,7 @@ public class AutocompleteHelper {
         String lowerSymbol = symbol.toLowerCase();
         String[] builtIns = {"sin", "cos", "tan", "asin", "acos", "atan", "atan2",
                             "exp", "log", "log10", "sqrt", "abs", "floor", "ceil",
-                            "min", "max", "pi", "e", "t"};
+                            "min", "max", "smooth", "pi", "e", "t"};
         for (String fn : builtIns) {
             if (fn.equals(lowerSymbol)) {
                 return true;

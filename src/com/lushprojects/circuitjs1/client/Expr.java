@@ -27,6 +27,13 @@ class ExprState {
     double[] lagLastCommitTime;    // Last time we committed to each buffer
     int[] lagBufferTotalCount;     // Total entries ever added to each buffer (for debugging)
     int lagBufferIndex;            // Current lag buffer being used during eval
+
+	// For smooth() function - per-call implicit-Euler state
+	static final int MAX_SMOOTH_STATES = 10;  // Max number of smooth() calls per expression
+	double[] smoothLastOutput;      // Last committed output for each smooth() call
+	double[] smoothPendingOutput;   // Current subiteration output to commit at stepFinished
+	double[] smoothLastCommitTime;  // Last time each smooth state was committed
+	boolean[] smoothInitialized;    // True after first use of each smooth() call
     
     ExprState(int xx) {
 	//n = xx;
@@ -53,6 +60,15 @@ class ExprState {
 	    lagBufferTotalCount[i] = 0;
 	}
 	lagBufferIndex = 0;
+
+	// Initialize smooth() states
+	smoothLastOutput = new double[MAX_SMOOTH_STATES];
+	smoothPendingOutput = new double[MAX_SMOOTH_STATES];
+	smoothLastCommitTime = new double[MAX_SMOOTH_STATES];
+	smoothInitialized = new boolean[MAX_SMOOTH_STATES];
+	for (int i = 0; i < MAX_SMOOTH_STATES; i++) {
+	    smoothLastCommitTime[i] = -1;
+	}
     }
     
     void updateLastValues(double lastOut) {
@@ -82,6 +98,14 @@ class ExprState {
 	    lagBufferTotalCount[i] = 0;
 	}
 	lagBufferIndex = 0;
+
+	// Reset smooth() states
+	for (int i = 0; i < MAX_SMOOTH_STATES; i++) {
+	    smoothLastOutput[i] = 0;
+	    smoothPendingOutput[i] = 0;
+	    smoothLastCommitTime[i] = -1;
+	    smoothInitialized[i] = false;
+	}
     }
     
     // Call this at the end of each timestep to commit the integration and differentiation
@@ -105,6 +129,14 @@ class ExprState {
 		}
 		lagBufferTotalCount[i]++;  // Track total entries ever added
 		lagLastCommitTime[i] = t;
+	    }
+	}
+
+	// Commit smooth() outputs (one committed state per smooth call)
+	for (int i = 0; i < MAX_SMOOTH_STATES; i++) {
+	    if (smoothInitialized[i] && t != smoothLastCommitTime[i]) {
+		smoothLastOutput[i] = smoothPendingOutput[i];
+		smoothLastCommitTime[i] = t;
 	    }
 	}
     }
@@ -209,10 +241,12 @@ class Expr {
     
     // Counter for assigning unique lag buffer indices at parse time
     static int nextLagIndex = 0;
+	static int nextSmoothIndex = 0;
     
     /** Reset the lag index counter (call when starting a new expression parse) */
     static void resetLagIndexCounter() {
 	nextLagIndex = 0;
+	nextSmoothIndex = 0;
     }
     
     /**
@@ -766,6 +800,31 @@ class Expr {
 	    
 	    return result;
 	}
+	case E_SMOOTH: {
+	    // smooth(x, theta) - first-order implicit Euler smoother:
+	    // y[n] = (y[n-1] + theta*dt*x[n]) / (1 + theta*dt)
+	    double inputVal = left.eval(es);
+	    double theta = right.eval(es);
+	    int idx = smoothIndex;
+	    if (idx < 0 || idx >= ExprState.MAX_SMOOTH_STATES) {
+		idx = 0;
+	    }
+	    if (!es.smoothInitialized[idx]) {
+		es.smoothInitialized[idx] = true;
+		es.smoothLastOutput[idx] = es.lastOutput;
+		es.smoothPendingOutput[idx] = es.lastOutput;
+		es.smoothLastCommitTime[idx] = -1;
+	    }
+	    double dt = CirSim.theSim.timeStep;
+	    double denom = 1 + theta * dt;
+	    if (Math.abs(denom) < 1e-12) {
+		es.smoothPendingOutput[idx] = es.smoothLastOutput[idx];
+		return 0.0;
+	    }
+	    double result = (es.smoothLastOutput[idx] + theta * dt * inputVal) / denom;
+	    es.smoothPendingOutput[idx] = result;
+	    return result;
+	}
 	case E_NODE_REF:
 	    long nodeRefStartNanos = perfProbeEnabled ? getPerfNowNanos() : 0;
 	    // Direct node reference - get voltage from labeled node or computed value.
@@ -880,6 +939,7 @@ class Expr {
     String nodeName; // For E_NODE_REF expressions
     int type;
     int lagIndex = -1; // Buffer index for E_LAG expressions, assigned at parse time
+	int smoothIndex = -1; // State index for E_SMOOTH expressions, assigned at parse time
     static final int E_ADD = 1;
     static final int E_SUB = 2;
     static final int E_T = 3;
@@ -935,6 +995,7 @@ class Expr {
     static final int E_DIFF = E_NODE_REF+1; // Differentiation function diff(x)
     static final int E_LAST = E_DIFF+1; // last(x) - returns previous timestep's converged value
     static final int E_LAG = E_LAST+1;  // lag(x, delay) - returns value from 'delay' time units ago
+	static final int E_SMOOTH = E_LAG+1; // smooth(x, theta) - implicit Euler smoothing
 };
 
 class ExprParser {
@@ -1184,6 +1245,23 @@ class ExprParser {
 	return new Expr(e1, e2, Expr.E_LAG, assignedIndex);
     }
 
+    // Special parser for smooth() that assigns a unique state index at parse time
+    Expr parseSmooth() {
+	skipOrError("(");
+	Expr e1 = parse();  // The input expression
+	skipOrError(",");
+	Expr e2 = parse();  // The theta expression
+	skipOrError(")");
+	Expr e = new Expr(e1, e2, Expr.E_SMOOTH);
+	int assignedIndex = Expr.nextSmoothIndex++;
+	if (assignedIndex >= ExprState.MAX_SMOOTH_STATES) {
+	    setError("too many smooth() calls in expression (max " + ExprState.MAX_SMOOTH_STATES + ")");
+	    assignedIndex = ExprState.MAX_SMOOTH_STATES - 1;
+	}
+	e.smoothIndex = assignedIndex;
+	return e;
+    }
+
     Expr parseTerm() {
 		if (skip("(")) {
 			Expr e = parse();
@@ -1290,6 +1368,8 @@ class ExprParser {
 			return parseFunc(Expr.E_LAST);
 		if (skipIgnoreCase("lag"))
 			return parseLag();  // Special parser that assigns buffer index at parse time
+		if (skipIgnoreCase("smooth"))
+			return parseSmooth();
 		if (skipIgnoreCase("min"))
 			return parseFuncMulti(Expr.E_MIN, 2, 1000);
 		if (skipIgnoreCase("max"))
