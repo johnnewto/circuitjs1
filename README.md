@@ -223,6 +223,37 @@ You can add query parameters to link to change the applications startup behaviou
 ```
 The simulator can also interface with your javascript code.  See [war/jsinterface.html](http://www.falstad.com/circuit/jsinterface.html) for an example.
 
+### Expression Performance Probe API
+
+For profiling expression-evaluation paths from JavaScript (for example `E_NODE_REF` vs `E_GSLOT`), use the `CircuitJS1` API methods below:
+
+```javascript
+// Enable probe counters/timing
+CircuitJS1.setExprPerfProbeEnabled(true);
+
+// Optional: clear counters before a test run
+CircuitJS1.resetExprPerfProbe();
+
+// ... run simulation / press reset / execute your scenario ...
+
+// Read one-line summary report
+console.log(CircuitJS1.getExprPerfProbeReport());
+
+// Disable when done (recommended)
+CircuitJS1.setExprPerfProbeEnabled(false);
+```
+
+The report includes counts and avg timing for:
+- `nodeRef` (`E_NODE_REF`, name-based lookup path)
+- `localSlot` (`ExprState` array slots)
+- `globalSlot` (`E_GSLOT`, circuit-global array fast path)
+- `nodeRefNames` (sample of unresolved/non-slotted names still using `E_NODE_REF`)
+
+Notes:
+- Keep the probe disabled in normal usage; enabling it adds measurement overhead.
+- For regression checks, compare reports before and after **Reset** as well as after reloading a circuit.
+- Typical optimization target: `nodeRef[count=0]` with most lookups on `globalSlot`.
+
 ## Building an Electron application
 
 The [Electron](https://electronjs.org/) project allows web applications to be distributed as local executables for a variety of platforms. This repository contains the additional files needed to build circuitJS1 as an Electron application.
