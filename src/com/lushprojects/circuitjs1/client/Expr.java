@@ -249,12 +249,25 @@ class Expr {
 	nextSmoothIndex = 0;
     }
     
-    /**
-     * When true, E_NODE_REF lookups use getConvergedValue() instead of getComputedValue().
-     * This should be set to true for display-only evaluations (SFC tables, etc.)
-     * to get stable values that don't vary during subiterations.
-     */
-    static boolean useConvergedValues = false;
+	/**
+	 * Explicit evaluation context passed through expression evaluation.
+	 * This replaces implicit global mode flags and makes value-source behavior
+	 * deterministic per evaluation call.
+	 */
+	static class EvaluationContext {
+	final boolean useConvergedValues;
+
+	EvaluationContext(boolean useConvergedValues) {
+	    this.useConvergedValues = useConvergedValues;
+	}
+	}
+
+	private static final EvaluationContext CURRENT_CONTEXT = new EvaluationContext(false);
+	private static final EvaluationContext CONVERGED_CONTEXT = new EvaluationContext(true);
+
+	static EvaluationContext getEvaluationContext(boolean useConvergedValues) {
+	return useConvergedValues ? CONVERGED_CONTEXT : CURRENT_CONTEXT;
+	}
 
     // Lightweight runtime profiler for expression access paths.
     // - node ref path: E_NODE_REF (label/computed-value lookup)
@@ -329,22 +342,38 @@ class Expr {
 	return value;
     }
 
-    private static Double getComputedByMode(String name) {
-	return useConvergedValues
+    private static Double getComputedByMode(String name, EvaluationContext context) {
+	return context.useConvergedValues
 	    ? ComputedValues.getConvergedValue(name)
 	    : ComputedValues.getComputedValue(name);
     }
 
-    private static Double getComputedFlowByMode(String name) {
-	return useConvergedValues
+    private static Double getComputedFlowByMode(String name, EvaluationContext context) {
+	return context.useConvergedValues
 	    ? ComputedValues.getConvergedFlowValue(name)
 	    : ComputedValues.getComputedFlowValue(name);
     }
 
-    private static Double getComputedFlowOrValueByMode(String name) {
-	return useConvergedValues
+    private static Double getComputedFlowOrValueByMode(String name, EvaluationContext context) {
+	return context.useConvergedValues
 	    ? ComputedValues.getConvergedFlowOrValue(name)
 	    : ComputedValues.getComputedFlowOrValue(name);
+    }
+
+    private static Double getAliasParameterComputedByMode(String name, EvaluationContext context) {
+	Double computedValue = getComputedByMode(name, context);
+	if (computedValue == null)
+	    return null;
+
+	Object computingTable = ComputedValues.getComputingTable(name);
+	if (!(computingTable instanceof EquationTableElm))
+	    return null;
+
+	EquationTableElm eqTable = (EquationTableElm) computingTable;
+	if (!eqTable.isAliasToParameterName(name))
+	    return null;
+
+	return computedValue;
     }
     
     /** Clear the unresolved references list (call at start of each timestep) */
@@ -570,10 +599,19 @@ class Expr {
      */
     double evalFresh(ExprState es) {
 	es.resetLagIndex();
-	return eval(es);
+	return eval(es, CURRENT_CONTEXT);
+    }
+
+    double evalFresh(ExprState es, EvaluationContext context) {
+	es.resetLagIndex();
+	return eval(es, context);
     }
     
     double eval(ExprState es) {
+	return eval(es, CURRENT_CONTEXT);
+    }
+
+    double eval(ExprState es, EvaluationContext context) {
 	Expr left = null;
 	Expr right = null;
 	if (children != null && children.size() > 0) {
@@ -582,95 +620,95 @@ class Expr {
 		right = children.lastElement();
 	}
 	switch (type) {
-	case E_ADD: return left.eval(es)+right.eval(es);
-	case E_SUB: return left.eval(es)-right.eval(es);
-	case E_MUL: return left.eval(es)*right.eval(es);
+	case E_ADD: return left.eval(es, context)+right.eval(es, context);
+	case E_SUB: return left.eval(es, context)-right.eval(es, context);
+	case E_MUL: return left.eval(es, context)*right.eval(es, context);
 	case E_DIV: {
-	    double divisor = right.eval(es);
+	    double divisor = right.eval(es, context);
 	    // Protect against division by zero
 	    if (Math.abs(divisor) < 1e-12)
 		return 0.0;
-	    return left.eval(es) / divisor;
+	    return left.eval(es, context) / divisor;
 	}
-	case E_POW: return Math.pow(left.eval(es), right.eval(es));
-	case E_OR:  return (left.eval(es) != 0 || right.eval(es) != 0) ? 1 : 0;
-	case E_AND: return (left.eval(es) != 0 && right.eval(es) != 0) ? 1 : 0;
-	case E_EQUALS: return (left.eval(es) == right.eval(es)) ? 1 : 0;
-	case E_NEQ: return (left.eval(es) != right.eval(es)) ? 1 : 0;
-	case E_LEQ: return (left.eval(es) <= right.eval(es)) ? 1 : 0;
-	case E_GEQ: return (left.eval(es) >= right.eval(es)) ? 1 : 0;
-	case E_LESS: return (left.eval(es) < right.eval(es)) ? 1 : 0;
-	case E_GREATER: return (left.eval(es) > right.eval(es)) ? 1 : 0;
-	case E_TERNARY: return children.get(left.eval(es) != 0 ? 1 : 2).eval(es);
-	case E_UMINUS: return -left.eval(es);
-	case E_NOT: return left.eval(es) == 0 ? 1 : 0;
+	case E_POW: return Math.pow(left.eval(es, context), right.eval(es, context));
+	case E_OR:  return (left.eval(es, context) != 0 || right.eval(es, context) != 0) ? 1 : 0;
+	case E_AND: return (left.eval(es, context) != 0 && right.eval(es, context) != 0) ? 1 : 0;
+	case E_EQUALS: return (left.eval(es, context) == right.eval(es, context)) ? 1 : 0;
+	case E_NEQ: return (left.eval(es, context) != right.eval(es, context)) ? 1 : 0;
+	case E_LEQ: return (left.eval(es, context) <= right.eval(es, context)) ? 1 : 0;
+	case E_GEQ: return (left.eval(es, context) >= right.eval(es, context)) ? 1 : 0;
+	case E_LESS: return (left.eval(es, context) < right.eval(es, context)) ? 1 : 0;
+	case E_GREATER: return (left.eval(es, context) > right.eval(es, context)) ? 1 : 0;
+	case E_TERNARY: return children.get(left.eval(es, context) != 0 ? 1 : 2).eval(es, context);
+	case E_UMINUS: return -left.eval(es, context);
+	case E_NOT: return left.eval(es, context) == 0 ? 1 : 0;
 	case E_VAL: return value;
 	case E_T: return es.t;
-	case E_SIN: return Math.sin(left.eval(es));
-	case E_COS: return Math.cos(left.eval(es));
-	case E_ABS: return Math.abs(left.eval(es));
-	case E_EXP: return Math.exp(left.eval(es));
-	case E_LOG: return Math.log(left.eval(es));
-	case E_SQRT: return Math.sqrt(left.eval(es));
-	case E_TAN: return Math.tan(left.eval(es));
-	case E_ASIN: return Math.asin(left.eval(es));
-	case E_ACOS: return Math.acos(left.eval(es));
-	case E_ATAN: return Math.atan(left.eval(es));
-	case E_SINH: return Math.sinh(left.eval(es));
-	case E_COSH: return Math.cosh(left.eval(es));
-	case E_TANH: return Math.tanh(left.eval(es));
-	case E_FLOOR: return Math.floor(left.eval(es));
-	case E_CEIL: return Math.ceil(left.eval(es));
+	case E_SIN: return Math.sin(left.eval(es, context));
+	case E_COS: return Math.cos(left.eval(es, context));
+	case E_ABS: return Math.abs(left.eval(es, context));
+	case E_EXP: return Math.exp(left.eval(es, context));
+	case E_LOG: return Math.log(left.eval(es, context));
+	case E_SQRT: return Math.sqrt(left.eval(es, context));
+	case E_TAN: return Math.tan(left.eval(es, context));
+	case E_ASIN: return Math.asin(left.eval(es, context));
+	case E_ACOS: return Math.acos(left.eval(es, context));
+	case E_ATAN: return Math.atan(left.eval(es, context));
+	case E_SINH: return Math.sinh(left.eval(es, context));
+	case E_COSH: return Math.cosh(left.eval(es, context));
+	case E_TANH: return Math.tanh(left.eval(es, context));
+	case E_FLOOR: return Math.floor(left.eval(es, context));
+	case E_CEIL: return Math.ceil(left.eval(es, context));
 	case E_MIN: {
 	    int i;
-	    double x = left.eval(es);
+	    double x = left.eval(es, context);
 	    for (i = 1; i < children.size(); i++)
-		x = Math.min(x,  children.get(i).eval(es));
+		x = Math.min(x,  children.get(i).eval(es, context));
 	    return x;
 	}
 	case E_MAX: {
 	    int i;
-	    double x = left.eval(es);
+	    double x = left.eval(es, context);
 	    for (i = 1; i < children.size(); i++)
-		x = Math.max(x,  children.get(i).eval(es));
+		x = Math.max(x,  children.get(i).eval(es, context));
 	    return x;
 	}
 	case E_CLAMP:
-	    return Math.min(Math.max(left.eval(es), children.get(1).eval(es)), children.get(2).eval(es));
+	    return Math.min(Math.max(left.eval(es, context), children.get(1).eval(es, context)), children.get(2).eval(es, context));
 	case E_STEP: {
-	    double x = left.eval(es); 
+	    double x = left.eval(es, context); 
 	    if (right == null)
 		return (x < 0) ? 0 : 1;
-	    return (x > right.eval(es)) ? 0 : (x < 0) ? 0 : 1;
+	    return (x > right.eval(es, context)) ? 0 : (x < 0) ? 0 : 1;
 	}
 	case E_SELECT: {
-	    double x = left.eval(es);
-	    return children.get(x > 0 ? 2 : 1).eval(es);
+	    double x = left.eval(es, context);
+	    return children.get(x > 0 ? 2 : 1).eval(es, context);
 	}
 	case E_TRIANGLE: {
-	    double x = posmod(left.eval(es), Math.PI*2)/Math.PI;
+	    double x = posmod(left.eval(es, context), Math.PI*2)/Math.PI;
 	    return (x < 1) ? -1+x*2 : 3-x*2;
 	}
 	case E_SAWTOOTH: {
-	    double x = posmod(left.eval(es), Math.PI*2)/Math.PI;
+	    double x = posmod(left.eval(es, context), Math.PI*2)/Math.PI;
 	    return x-1;
 	}
 	case E_MOD: {
-	    double divisor = right.eval(es);
+	    double divisor = right.eval(es, context);
 	    // Protect against modulo by zero
 	    if (Math.abs(divisor) < 1e-12)
 		return 0.0;
-	    return left.eval(es) % divisor;
+	    return left.eval(es, context) % divisor;
 	}
 	case E_PWL:
-	    return pwl(es, children);
+	    return pwl(es, children, context);
 	case E_PWR:
-	    return Math.pow(Math.abs(left.eval(es)), right.eval(es));
+	    return Math.pow(Math.abs(left.eval(es, context)), right.eval(es, context));
 	case E_PWRS: {
-	    double x = left.eval(es);
+	    double x = left.eval(es, context);
 	    if (x < 0)
-		return -Math.pow(-x, right.eval(es)); 
-	    return Math.pow(x, right.eval(es)); 
+		return -Math.pow(-x, right.eval(es, context)); 
+	    return Math.pow(x, right.eval(es, context)); 
 	}
 	case E_LASTOUTPUT:
 	    return es.lastOutput;
@@ -683,7 +721,7 @@ class Expr {
 		// Mathematically:
 		// USEs The forward Euler method is a first-order numerical quadrature / integration scheme for ODEs
 		// K(t + Δt) ≈ K(t) + Δt × [I(t) − AF(t)]
-	    double inputVal = left.eval(es);
+	    double inputVal = left.eval(es, context);
 	    es.pendingIntInput = inputVal;
 	    
 	    // Return what the integral WILL be after this timestep commits
@@ -708,7 +746,7 @@ class Expr {
 	    // the input converges. This is normal nonlinear behavior - the final
 	    // converged diff value is what matters for the simulation result.
 	    
-	    double input = left.eval(es);
+	    double input = left.eval(es, context);
 	    es.pendingDiffInput = input;  // Store for commit at stepFinished
 	    
 	    // Return 0 until we have a valid previous value to compare against
@@ -748,8 +786,8 @@ class Expr {
 	    // lag(x, delay) - return the value of x from 'delay' time units ago
 	    // Uses a circular buffer to store historical values
 	    // Example: lag(Y, 1) returns Y from 1 year ago (if timeUnit is yr)
-	    double inputVal = left.eval(es);
-	    double delay = right.eval(es);
+	    double inputVal = left.eval(es, context);
+	    double delay = right.eval(es, context);
 	    
 	    // Use the fixed buffer index assigned at parse time
 	    // This ensures the same lag() call uses the same buffer across subiterations
@@ -803,8 +841,8 @@ class Expr {
 	case E_SMOOTH: {
 	    // smooth(x, theta) - first-order implicit Euler smoother:
 	    // y[n] = (y[n-1] + theta*dt*x[n]) / (1 + theta*dt)
-	    double inputVal = left.eval(es);
-	    double theta = right.eval(es);
+	    double inputVal = left.eval(es, context);
+	    double theta = right.eval(es, context);
 	    int idx = smoothIndex;
 	    if (idx < 0 || idx >= ExprState.MAX_SMOOTH_STATES) {
 		idx = 0;
@@ -841,16 +879,24 @@ class Expr {
 			    // PARAM names in MNA mode must resolve from ComputedValues first,
 			    // even when a same-named labeled node exists.
 			    if (ComputedValues.isParameterName(nodeName)) {
-				Double parameterValue = getComputedByMode(nodeName);
+				Double parameterValue = getComputedByMode(nodeName, context);
 				if (parameterValue != null) {
 				    return returnNodeRefValue(parameterValue.doubleValue(), nodeRefStartNanos);
 				}
 			    }
 
 		    // If a flow value exists for this name, prefer it.
-		    Double flowPreferredValue = getComputedFlowByMode(nodeName);
+			    Double flowPreferredValue = getComputedFlowByMode(nodeName, context);
 		    if (flowPreferredValue != null) {
 			return returnNodeRefValue(flowPreferredValue.doubleValue(), nodeRefStartNanos);
+		    }
+
+		    // For alias rows that mirror PARAM names (e.g. rm = rl),
+		    // prefer the computed alias value before reading same-named
+		    // labeled-node voltage.
+		    Double aliasParameterValue = getAliasParameterComputedByMode(nodeName, context);
+		    if (aliasParameterValue != null) {
+			return returnNodeRefValue(aliasParameterValue.doubleValue(), nodeRefStartNanos);
 		    }
 
 		    // MNA mode: labeled node voltage first (authoritative from matrix solver)
@@ -859,13 +905,13 @@ class Expr {
 			return returnNodeRefValue(CirSim.theSim.getLabeledNodeVoltage(nodeName), nodeRefStartNanos);
 		    }
 		    // Fall back to ComputedValues for non-physical variables
-		    Double computedValue = getComputedByMode(nodeName);
+		    Double computedValue = getComputedByMode(nodeName, context);
 		    if (computedValue != null) {
 			return returnNodeRefValue(computedValue.doubleValue(), nodeRefStartNanos);
 		    }
 		} else {
 		    // Pure-computational mode: ComputedValues is the only source
-		    Double computedValue = getComputedFlowOrValueByMode(nodeName);
+		    Double computedValue = getComputedFlowOrValueByMode(nodeName, context);
 		    if (computedValue != null) {
 			return returnNodeRefValue(computedValue.doubleValue(), nodeRefStartNanos);
 		    }
@@ -907,13 +953,17 @@ class Expr {
     }
     
     double pwl(ExprState es, Vector<Expr> args) {
-	double x = args.get(0).eval(es);
-	double x0 = args.get(1).eval(es);
-	double y0 = args.get(2).eval(es);
+	return pwl(es, args, CURRENT_CONTEXT);
+    }
+
+    double pwl(ExprState es, Vector<Expr> args, EvaluationContext context) {
+	double x = args.get(0).eval(es, context);
+	double x0 = args.get(1).eval(es, context);
+	double y0 = args.get(2).eval(es, context);
 	if (x < x0)
 	    return y0;
-	double x1 = args.get(3).eval(es);
-	double y1 = args.get(4).eval(es);
+	double x1 = args.get(3).eval(es, context);
+	double y1 = args.get(4).eval(es, context);
 	int i = 5;
 	while (true) {
 	    if (x < x1)
@@ -922,8 +972,8 @@ class Expr {
 		break;
 	    x0 = x1;
 	    y0 = y1;
-	    x1 = args.get(i  ).eval(es);
-	    y1 = args.get(i+1).eval(es);
+	    x1 = args.get(i  ).eval(es, context);
+	    y1 = args.get(i+1).eval(es, context);
 	    i += 2;
 	}
 	return y1;

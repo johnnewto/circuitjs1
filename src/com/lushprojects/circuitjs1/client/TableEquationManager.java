@@ -124,48 +124,17 @@ public class TableEquationManager {
         Expr e = column.getCompiledExpression(row);
         
         if (e == null) return 0.0;
-        
-        // Fast-path: direct node reference optimization
-        if (e.type == Expr.E_NODE_REF && e.nodeName != null) {
-            return evaluateNodeReference(e.nodeName);
-        }
 
-        // Full expression evaluation
-        // Set global flag so Expr.eval() uses converged values if needed
-        boolean savedFlag = Expr.useConvergedValues;
-        Expr.useConvergedValues = useConvergedValues;
-        
+        // Full expression evaluation.
+        // Intentionally defer all variable source resolution to Expr.E_NODE_REF
+        // so flow/value/labeled-node precedence is centralized and consistent.
+        Expr.EvaluationContext evalContext = Expr.getEvaluationContext(useConvergedValues);
+
         ExprState state = column.getExpressionState(row);
         updateExpressionState(state);
-        double result = e.eval(state);
-        
-        // Restore flag
-        Expr.useConvergedValues = savedFlag;
+        double result = e.eval(state, evalContext);
         
         return result;
-    }
-    
-    /**
-     * Evaluate a direct node reference (optimized path)
-     * Uses converged values if useConvergedValues is true (for display stability)
-     */
-    private double evaluateNodeReference(String nodeName) {
-        // Check computed values first
-        Double computedValue;
-        if (useConvergedValues) {
-            // Use converged values for stable display
-            computedValue = ComputedValues.getConvergedValue(nodeName);
-        } else {
-            // Use current values for simulation
-            computedValue = ComputedValues.getComputedValue(nodeName);
-        }
-        
-        if (computedValue != null) {
-            return computedValue;
-        }
-        
-        // Fall back to labeled node voltage
-        return sim != null ? sim.getLabeledNodeVoltage(nodeName) : 0.0;
     }
     
     /**

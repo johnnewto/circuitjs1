@@ -1113,7 +1113,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      */
     private void registerOutputValue(int row, double value) {
         if (isValidOutputName(row)) {
-            ComputedValues.setComputedValue(rows[row].outputName.trim(), value);
+            ComputedValues.setComputedValue(rows[row].outputName.trim(), value, this);
         }
     }
 
@@ -1976,7 +1976,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             // would clobber the stock's value in ComputedValues.
             if (rows[row].outputMode != RowOutputMode.FLOW_MODE && isValidOutputName(row)) {
                 String name = rows[row].outputName.trim();
-                ComputedValues.setComputedValue(name, rows[row].outputValue);
+                ComputedValues.setComputedValue(name, rows[row].outputValue, this);
                 ComputedValues.markComputedThisStep(name);
                 if (DEBUG) {
                     CirSim.console("  " + name + " = " + rows[row].outputValue);
@@ -2362,6 +2362,31 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         String targetName = rows[row].compiledExpr.getNodeName();
         if (targetName == null || targetName.trim().isEmpty()) return false;
         return ComputedValues.getComputedFlowValue(targetName) != null;
+    }
+
+    /**
+     * Check whether the given output name is an alias row whose target is a
+     * PARAM-mode name. Used by Expr MNA lookup to prefer ComputedValues for
+     * alias-to-parameter outputs before labeled-node voltage.
+     */
+    public boolean isAliasToParameterName(String outputName) {
+        if (outputName == null) return false;
+        String trimmedOutput = outputName.trim();
+        if (trimmedOutput.isEmpty()) return false;
+
+        for (int row = 0; row < rowCount; row++) {
+            if (!rows[row].isAlias || rows[row].compiledExpr == null) continue;
+            if (!isValidOutputName(row)) continue;
+            if (!trimmedOutput.equals(rows[row].outputName.trim())) continue;
+
+            String targetName = rows[row].compiledExpr.getNodeName();
+            if (targetName == null) return false;
+            String trimmedTarget = targetName.trim();
+            if (trimmedTarget.isEmpty()) return false;
+
+            return ComputedValues.isParameterName(trimmedTarget);
+        }
+        return false;
     }
     
     /** Get row classification as string */
