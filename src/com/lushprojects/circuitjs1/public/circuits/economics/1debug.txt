@@ -106,33 +106,6 @@ At steady state (t → ∞):
   Ls ~ Ld ; mode=voltage ; slider=d ; sliderValue=0.5  # Loan supply
 @end
 
-@matrix Transaction_Flow_Matrix x=32 y=152
-  type: transaction_flow
-
-| Transaction | Households_C | Firms_{Current} | Firms_{Capital} | Banks_{Current} | Banks_{Capital} | Govt |
-|-------------|------|------|------|------|------|------|
-| Consumption | -Cd | Cs |  |  | 0 |  |
-| Investment |  | Id | -Id |  | 0 |  |
-| [Production] |  | Y |  |  |  |  |
-| Wages | WBd | -WBs |  |  | 0 |  |
-| Depreciation |  | -DA | DA |  | 0 |  |
-| Interest on Loans |  | -rl*Ld |  | rl*Ls | 0 |  |
-| Interest on Deposits | rm*Mh |  |  | -rm*Ms | 0 |  |
-| Change in Loans |  |  | \DeltaLd |  | - \DeltaLs |  |
-| Change in Deposits | -\DeltaMh |  |  |  | \DeltaMs |  |
-@end
-
-@matrix Balance_Sheet x=32 y=360
-  type: transaction_flow
-
-| Transaction | Households | Firms | Banks |
-|-------------|------|------|------|
-| Deposits | Mh |  | -Ms |
-| Loans |  | -Ld | Ls |
-| Fixed Capital |  | K |  |
-| Balance (net worth) | -Mh |  |  |
-@end
-
 @hints
   rl: Interest rate on loans
   \alpha0: Autonomous consumption
@@ -202,5 +175,4 @@ g 896 544 896 592 0 0
 207 864 224 928 224 164 K
 207 864 208 928 208 164 Mh
 207 864 192 928 192 164 Ms
-403 944 576 1216 736 0 11_2_0_12806_179.2655158407043_0.0001_-1_1
 @end

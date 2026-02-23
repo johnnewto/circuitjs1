@@ -81,6 +81,10 @@ public class ComputedValues {
     // Track names that should resolve as parameter values before labeled-node voltage
     // in MNA expression evaluation (name -> registration ref count).
     private static HashMap<String, Integer> parameterNameRefCounts;
+
+    // Track pre-registered computed names so lookups/slot builders can discover
+    // names even before first runtime value write (name -> registration ref count).
+    private static HashMap<String, Integer> registeredComputedNameRefCounts;
     
     // Initialize storage if needed
     private static void ensureInitialized() {
@@ -105,6 +109,63 @@ public class ComputedValues {
         if (parameterNameRefCounts == null) {
             parameterNameRefCounts = new HashMap<String, Integer>();
         }
+        if (registeredComputedNameRefCounts == null) {
+            registeredComputedNameRefCounts = new HashMap<String, Integer>();
+        }
+    }
+
+    /**
+     * Pre-register a computed name without writing a value.
+     *
+     * This allows discovery/analysis passes to see expected names before first
+     * doStep() evaluation publishes an actual numeric value.
+     */
+    public static void registerComputedName(String name) {
+        if (name == null) return;
+        String trimmed = name.trim();
+        if (trimmed.isEmpty()) return;
+        ensureInitialized();
+        Integer count = registeredComputedNameRefCounts.get(trimmed);
+        registeredComputedNameRefCounts.put(trimmed,
+            Integer.valueOf((count == null) ? 1 : (count.intValue() + 1)));
+    }
+
+    /**
+     * Remove one registration reference for a pre-registered computed name.
+     */
+    public static void unregisterComputedName(String name) {
+        if (name == null || registeredComputedNameRefCounts == null) return;
+        String trimmed = name.trim();
+        if (trimmed.isEmpty()) return;
+        Integer count = registeredComputedNameRefCounts.get(trimmed);
+        if (count == null) return;
+        int next = count.intValue() - 1;
+        if (next <= 0) {
+            registeredComputedNameRefCounts.remove(trimmed);
+        } else {
+            registeredComputedNameRefCounts.put(trimmed, Integer.valueOf(next));
+        }
+    }
+
+    /**
+     * Check whether a name has been pre-registered as an expected computed key.
+     */
+    public static boolean isComputedNameRegistered(String name) {
+        if (name == null || registeredComputedNameRefCounts == null) return false;
+        String trimmed = name.trim();
+        if (trimmed.isEmpty()) return false;
+        Integer count = registeredComputedNameRefCounts.get(trimmed);
+        return count != null && count.intValue() > 0;
+    }
+
+    /**
+     * Get all pre-registered computed names.
+     */
+    public static Set<String> getRegisteredComputedNames() {
+        if (registeredComputedNameRefCounts == null || registeredComputedNameRefCounts.isEmpty()) {
+            return null;
+        }
+        return new HashSet<String>(registeredComputedNameRefCounts.keySet());
     }
 
     /**
@@ -141,6 +202,14 @@ public class ComputedValues {
         if (name == null || parameterNameRefCounts == null) return false;
         Integer count = parameterNameRefCounts.get(name);
         return count != null && count.intValue() > 0;
+    }
+
+    /**
+     * Get all registered parameter names.
+     */
+    public static Set<String> getAllParameterNames() {
+        if (parameterNameRefCounts == null || parameterNameRefCounts.isEmpty()) return null;
+        return new HashSet<String>(parameterNameRefCounts.keySet());
     }
     
     /**
@@ -514,6 +583,9 @@ public class ComputedValues {
         if (parameterNameRefCounts != null) {
             parameterNameRefCounts.clear();
         }
+        if (registeredComputedNameRefCounts != null) {
+            registeredComputedNameRefCounts.clear();
+        }
     }
     
     /**
@@ -568,10 +640,19 @@ public class ComputedValues {
      * @return Set of all computed value names, or null if none
      */
     public static Set<String> getAllNames() {
-        if (computedValues == null || computedValues.isEmpty()) {
+        boolean hasComputed = computedValues != null && !computedValues.isEmpty();
+        boolean hasRegistered = registeredComputedNameRefCounts != null && !registeredComputedNameRefCounts.isEmpty();
+        if (!hasComputed && !hasRegistered) {
             return null;
         }
-        return computedValues.keySet();
+        HashSet<String> allNames = new HashSet<String>();
+        if (hasComputed) {
+            allNames.addAll(computedValues.keySet());
+        }
+        if (hasRegistered) {
+            allNames.addAll(registeredComputedNameRefCounts.keySet());
+        }
+        return allNames;
     }
     
     /**

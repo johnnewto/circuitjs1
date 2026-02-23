@@ -255,6 +255,50 @@ stepFinished()
 
 Note: In Pure mode, linear rows are evaluated dynamically since there's no MNA matrix to encode the VCVS relationship.
 
+## Runtime Expression Lookup Optimization (`E_GSLOT`)
+
+Beyond row classification, EquationTable performance also depends on how variable names are resolved at eval time.
+
+### Why this matters
+
+- `E_NODE_REF` uses name-based lookup paths (`ComputedValues`, flow/value fallback, labeled-node lookup).
+- In large SFC models, this path can dominate runtime.
+
+### Fast-path strategy
+
+1. `CirSim.buildCircuitVariableSlots()` builds a circuit-global slot map after stamping.
+2. `EquationTableElm.postStamp()` walks `compiledExpr` and `compiledInitialExpr` trees.
+3. `Expr.resolveGSlot(nameToSlot)` converts `E_NODE_REF` leaves to `E_GSLOT` where possible.
+4. Runtime eval uses direct `circuitVariables[index]` array reads.
+
+This preserves expression semantics but removes HashMap overhead from hot loops.
+
+### Reset-specific gotcha
+
+When Reset is pressed:
+
+1. `CirSim.resetAction()` calls `ComputedValues.clearComputedValues()`.
+2. That clears parameter/computed-name registration maps.
+3. If `EquationTableElm.reset()` does not clear its local tracking sets first, refresh logic may skip re-registering names.
+4. Missing registrations mean some parameter names do not get slots, and those references remain `E_NODE_REF`.
+
+### Required fix in `EquationTableElm.reset()`
+
+Before calling `refreshParameterNameRegistry()` / `refreshComputedNameRegistry()`:
+
+- clear `registeredParamNames`
+- clear `registeredComputedNames`
+
+Then refresh, so all names are re-registered into `ComputedValues` after reset.
+
+### Validation target
+
+For regression checks, verify perf probe output shows:
+
+- `nodeRef[count=0]`
+- parameter symbols (for example `rl`, `\delta`, `\alpha0`) absent from `nodeRefNames`
+- stable behavior both immediately after load and after Reset
+
 ## Related Files
 
 - [Expr.java](../src/com/lushprojects/circuitjs1/client/Expr.java) — `isConstant()`, `isNodeAlias()`, `getNodeName()`

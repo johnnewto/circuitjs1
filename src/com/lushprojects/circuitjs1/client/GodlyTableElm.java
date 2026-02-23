@@ -461,7 +461,20 @@ public class GodlyTableElm extends TableElm {
             }
         }
     }
-    
+
+    @Override
+    void postStamp() {
+        super.postStamp();
+        CirSim csim = CirSim.theSim;
+        if (csim == null || csim.nameToSlot == null) return;
+        if (integrationExprs != null) {
+            for (int i = 0; i < integrationExprs.length; i++) {
+                if (integrationExprs[i] != null)
+                    integrationExprs[i].resolveGSlot(csim.nameToSlot);
+            }
+        }
+    }
+
     /**
      * Override setCurrent to track current for each column's voltage source.
      */

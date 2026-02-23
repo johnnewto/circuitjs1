@@ -377,6 +377,40 @@ commitConvergedValues()   → computedValues → convergedValues (for display)
 - `commitPendingToCurrentValues()` → called by CirSim after all doStep() calls
 - `commitConvergedValues()` → called by CirSim after stepFinished() completes
 
+#### Expression Fast Path (`E_GSLOT`)
+
+To reduce expression-evaluation overhead in hot simulation loops, CircuitJS1 uses a two-phase name resolution strategy:
+
+1. **Analysis/stamp phase**: `CirSim.buildCircuitVariableSlots()` builds a stable slot table:
+    - `nameToSlot` (`name -> index`)
+    - `slotNames[]` (reverse map for sync)
+    - `circuitVariables[]` (runtime values)
+2. **Post-stamp phase**: elements with compiled expressions call `Expr.resolveGSlot(nameToSlot)` from `postStamp()`.
+    - `E_NODE_REF` leaves are converted to `E_GSLOT` when a slot exists.
+    - `nodeName` is retained so expressions can be re-resolved after re-analysis.
+3. **Runtime eval**: `E_GSLOT` reads `circuitVariables[index]` directly (array lookup), bypassing `ComputedValues`/label HashMap lookup paths.
+
+This keeps lookup semantics centralized at analysis time while making per-eval runtime cost predictable and low.
+
+#### Reset Lifecycle Pitfall (and Fix)
+
+`CirSim.resetAction()` clears `ComputedValues` registries before calling each element's `reset()`.  
+For `EquationTableElm`, this exposed a subtle ref-count issue:
+
+- `ComputedValues.clearComputedValues()` empties parameter/computed name registries.
+- If `EquationTableElm.reset()` immediately calls `refreshParameterNameRegistry()` without clearing its internal tracking sets first, it may skip re-registering names (it thinks they are already registered).
+- Missing parameter-name registrations prevent slot creation for parameter symbols, so expressions can fall back to `E_NODE_REF` after reset.
+
+The fix is to clear `registeredParamNames` and `registeredComputedNames` in `EquationTableElm.reset()` before refresh/re-register.
+
+### Observed Impact
+
+On the BMW debug model (`public/circuits/economics/1debug.txt`), the final behavior is:
+
+- `nodeRef[count=0]` before and after reset
+- parameter names resolve through `E_GSLOT` consistently
+- end-to-end simulation throughput improved by about **2×** in user measurements
+
 ### 7. User Interface
 
 **Canvas**: HTML5 Canvas element for drawing

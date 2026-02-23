@@ -226,7 +226,16 @@ public class SFCFlowElm extends CircuitElm {
         sim.stampNonLinear(nodes[0]);
         sim.stampNonLinear(nodes[1]);
     }
-    
+
+    @Override
+    void postStamp() {
+        super.postStamp();
+        CirSim csim = CirSim.theSim;
+        if (csim == null || csim.nameToSlot == null) return;
+        if (compiledExpr != null)
+            compiledExpr.resolveGSlot(csim.nameToSlot);
+    }
+
     /**
      * Get convergence limit based on iteration count.
      * More lenient over time to help convergence.

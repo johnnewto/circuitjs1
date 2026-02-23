@@ -270,13 +270,19 @@ class Expr {
 	}
 
     // Lightweight runtime profiler for expression access paths.
-    // - node ref path: E_NODE_REF (label/computed-value lookup)
-    // - local slot path: E_A/E_DADT/E_LASTA (exprState array access)
+    // - node ref path:    E_NODE_REF (label/computed-value HashMap lookup)
+    // - local slot path:  E_A/E_DADT/E_LASTA (ExprState array index)
+    // - global slot path: E_GSLOT (circuitVariables[] array index – fastest)
     static boolean perfProbeEnabled = false;
     static long perfNodeRefEvalCount = 0;
     static long perfNodeRefEvalTimeNanos = 0;
     static long perfLocalSlotEvalCount = 0;
     static long perfLocalSlotEvalTimeNanos = 0;
+    static long perfGlobalSlotEvalCount = 0;
+    static long perfGlobalSlotEvalTimeNanos = 0;
+    // Captures the first N unique node names still going through E_NODE_REF (diagnostic)
+    static java.util.ArrayList<String> perfNodeRefNameSamples = new java.util.ArrayList<String>();
+    static final int PERF_SAMPLE_LIMIT = 30;
 
     static void setPerfProbeEnabled(boolean enabled) {
 	perfProbeEnabled = enabled;
@@ -291,6 +297,9 @@ class Expr {
 	perfNodeRefEvalTimeNanos = 0;
 	perfLocalSlotEvalCount = 0;
 	perfLocalSlotEvalTimeNanos = 0;
+	perfGlobalSlotEvalCount = 0;
+	perfGlobalSlotEvalTimeNanos = 0;
+	perfNodeRefNameSamples.clear();
     }
 
     static String getPerfProbeReport() {
@@ -300,14 +309,18 @@ class Expr {
 	double slotAvgNs = (perfLocalSlotEvalCount > 0)
 	    ? (double) perfLocalSlotEvalTimeNanos / (double) perfLocalSlotEvalCount
 	    : 0;
-
+	double gslotAvgNs = (perfGlobalSlotEvalCount > 0)
+	    ? (double) perfGlobalSlotEvalTimeNanos / (double) perfGlobalSlotEvalCount
+	    : 0;
 	String ratioText;
-	if (slotAvgNs > 0) {
-	    ratioText = " ratio(node/slot)=" + (nodeAvgNs / slotAvgNs);
+	if (gslotAvgNs > 0) {
+	    ratioText = " ratio(nodeRef/globalSlot)=" + (nodeAvgNs / gslotAvgNs);
+	} else if (slotAvgNs > 0) {
+	    ratioText = " ratio(nodeRef/localSlot)=" + (nodeAvgNs / slotAvgNs);
 	} else {
-	    ratioText = " ratio(node/slot)=n/a";
+	    ratioText = " ratio=n/a";
 	}
-
+	String samples = perfNodeRefNameSamples.isEmpty() ? "(none)" : perfNodeRefNameSamples.toString();
 	return "ExprPerf enabled=" + perfProbeEnabled +
 	    " nodeRef[count=" + perfNodeRefEvalCount +
 	    ", avgNs=" + nodeAvgNs +
@@ -315,7 +328,11 @@ class Expr {
 	    " localSlot[count=" + perfLocalSlotEvalCount +
 	    ", avgNs=" + slotAvgNs +
 	    ", totalNs=" + perfLocalSlotEvalTimeNanos + "]" +
-	    ratioText;
+	    " globalSlot[count=" + perfGlobalSlotEvalCount +
+	    ", avgNs=" + gslotAvgNs +
+	    ", totalNs=" + perfGlobalSlotEvalTimeNanos + "]" +
+	    ratioText +
+	    " nodeRefNames=" + samples;
     }
 
     private static long getPerfNowNanos() {
@@ -335,6 +352,13 @@ class Expr {
 	    return;
 	perfLocalSlotEvalCount++;
 	perfLocalSlotEvalTimeNanos += (getPerfNowNanos() - startNanos);
+    }
+
+    private static void recordGlobalSlotTiming(long startNanos) {
+	if (!perfProbeEnabled)
+	    return;
+	perfGlobalSlotEvalCount++;
+	perfGlobalSlotEvalTimeNanos += (getPerfNowNanos() - startNanos);
     }
 
     private static double returnNodeRefValue(double value, long startNanos) {
@@ -459,17 +483,80 @@ class Expr {
     }
     
     /**
-     * Check if this expression is a simple node alias (bare E_NODE_REF).
+     * Check if this expression is a simple node alias (bare E_NODE_REF or E_GSLOT).
      * Returns true for expressions like "Cd" that just reference another named node.
-     * 
+     * Accepts E_GSLOT as well since it is a resolved E_NODE_REF that still carries nodeName.
+     *
      * Alias rows in EquationTableElm can be optimized away entirely —
      * the output name is registered as pointing to the same node as the
      * referenced name, eliminating a voltage source and matrix row.
      */
     boolean isNodeAlias() {
-	return type == E_NODE_REF && nodeName != null;
+	return (type == E_NODE_REF || type == E_GSLOT) && nodeName != null;
     }
-    
+
+    /**
+     * Walk this expression tree, converting E_NODE_REF nodes to E_GSLOT where the name
+     * has a pre-assigned slot in the circuit-global array.  Also re-resolves E_GSLOT
+     * nodes in case slot indices changed after a re-analyzeCircuit call.
+     * <p>
+     * nodeName is preserved in both cases so the node can be re-resolved later.
+     *
+     * @param nameToSlot  map built by CirSim.buildCircuitVariableSlots() after stamp phase
+     */
+    void resolveGSlot(java.util.HashMap<String, Integer> nameToSlot) {
+	if (children != null) {
+	    for (int i = 0; i < children.size(); i++)
+		children.get(i).resolveGSlot(nameToSlot);
+	}
+	if ((type == E_NODE_REF || type == E_GSLOT) && nodeName != null) {
+	    Integer slot = nameToSlot.get(nodeName);
+	    if (slot != null) {
+		type = E_GSLOT;
+		value = (double) slot;
+	    } else if (type == E_GSLOT) {
+		// Slot no longer available after circuit change — demote back to HashMap lookup
+		type = E_NODE_REF;
+	    }
+	}
+    }
+
+    /**
+     * Same as resolveGSlot but also counts outcomes.
+     * Returns int[3]: [newly converted, already E_GSLOT, stayed E_NODE_REF].
+     */
+    int[] resolveGSlotCounted(java.util.HashMap<String, Integer> nameToSlot) {
+	int converted = 0, alreadySlot = 0, stayed = 0;
+	if (children != null) {
+	    for (int i = 0; i < children.size(); i++) {
+		int[] sub = children.get(i).resolveGSlotCounted(nameToSlot);
+		converted += sub[0]; alreadySlot += sub[1]; stayed += sub[2];
+	    }
+	}
+	if (nodeName != null) {
+	    if (type == E_NODE_REF) {
+		Integer slot = nameToSlot.get(nodeName);
+		if (slot != null) {
+		    type = E_GSLOT;
+		    value = (double) slot;
+		    converted++;
+		} else {
+		    stayed++;
+		}
+	    } else if (type == E_GSLOT) {
+		Integer slot = nameToSlot.get(nodeName);
+		if (slot != null) {
+		    value = (double) slot; // refresh slot index
+		    alreadySlot++;
+		} else {
+		    type = E_NODE_REF; // demote
+		    stayed++;
+		}
+	    }
+	}
+	return new int[] { converted, alreadySlot, stayed };
+    }
+
     /**
      * Get the referenced node name for alias expressions.
      * Only meaningful when isNodeAlias() returns true.
@@ -532,7 +619,8 @@ class Expr {
 	    return value * multiplier;
 	    
 	case E_NODE_REF:
-	    // Node reference: add coefficient to terms map
+	case E_GSLOT:
+	    // Node reference: add coefficient to terms map (E_GSLOT preserves nodeName)
 	    if (nodeName == null) return null;
 	    Double existing = terms.get(nodeName);
 	    terms.put(nodeName, (existing != null ? existing : 0.0) + multiplier);
@@ -761,7 +849,7 @@ class Expr {
 	    // This is used for sfcr-style V[-1] notation
 	    // IMPORTANT: last() must NOT fall back to current subiteration values,
 	    // otherwise Hs = last(Hs) + 1 would increment on every subiteration!
-	    if (left != null && left.type == E_NODE_REF && left.nodeName != null) {
+	    if (left != null && (left.type == E_NODE_REF || left.type == E_GSLOT) && left.nodeName != null) {
 		String varName = left.nodeName;
 		// Get ONLY the converged value from previous timestep (no fallback!)
 		Double laggedValue = ComputedValues.getLaggedValue(varName);
@@ -826,8 +914,22 @@ class Expr {
 	    // This smooths out discontinuities by averaging all samples within
 	    // the window [t-delay, t]. For timestep=0.01 and delay=1, averages ~100 points.
 	    // During the first period (t < delay), initValue is used to pad the window.
+	    if ((left.type == E_NODE_REF || left.type == E_GSLOT) && left.nodeName != null) {
+		String varName = left.nodeName;
+		// Try X_init first
+		Double iv = ComputedValues.getComputedValue(varName + "_init");
+		if (iv != null) {
+		    initValue = iv.doubleValue();
+		} else {
+		    // Also try without underscore (e.g., Vinit for V)
+		    iv = ComputedValues.getComputedValue(varName + "init");
+		    if (iv != null) {
+			initValue = iv.doubleValue();
+		    }
+		}
+	    }
 	    double result = es.getLaggedMovingAverage(bufIdx, delay, initValue);
-	    
+
 	    // Debug logging for Y2
 	    // Log all lag() calls to diagnose - left.type=" + left.type + " nodeName=" + left.nodeName
 	    // if (left.nodeName != null && left.nodeName.contains("YD")) {
@@ -863,8 +965,28 @@ class Expr {
 	    es.smoothPendingOutput[idx] = result;
 	    return result;
 	}
+	case E_GSLOT: {
+	    // Fast-path: direct index into circuit-global array (resolved at analysis time from E_NODE_REF).
+	    // value holds the slot index. nodeName is preserved for re-resolution after re-analyze.
+	    CirSim gslotSim = CirSim.theSim;
+	    if (gslotSim != null && gslotSim.circuitVariables != null) {
+		int gslot = (int) value;
+		if (gslot >= 0 && gslot < gslotSim.circuitVariables.length) {
+		    if (!perfProbeEnabled)
+			return gslotSim.circuitVariables[gslot];
+		    long gslotStartNanos = getPerfNowNanos();
+		    double gslotValue = gslotSim.circuitVariables[gslot];
+		    recordGlobalSlotTiming(gslotStartNanos);
+		    return gslotValue;
+		}
+	    }
+	    return 0.0;
+	}
 	case E_NODE_REF:
 	    long nodeRefStartNanos = perfProbeEnabled ? getPerfNowNanos() : 0;
+	    if (perfProbeEnabled && nodeName != null && perfNodeRefNameSamples.size() < PERF_SAMPLE_LIMIT
+		    && !perfNodeRefNameSamples.contains(nodeName))
+		perfNodeRefNameSamples.add(nodeName);
 	    // Direct node reference - get voltage from labeled node or computed value.
 	    //
 	    // Resolution order (MNA mode):
@@ -1046,6 +1168,7 @@ class Expr {
     static final int E_LAST = E_DIFF+1; // last(x) - returns previous timestep's converged value
     static final int E_LAG = E_LAST+1;  // lag(x, delay) - returns value from 'delay' time units ago
 	static final int E_SMOOTH = E_LAG+1; // smooth(x, theta) - implicit Euler smoothing
+	static final int E_GSLOT = E_SMOOTH+10; // Circuit-global array slot (fast-path replacement for E_NODE_REF)
 };
 
 class ExprParser {

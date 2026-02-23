@@ -161,4 +161,21 @@ public class TableEquationManager {
     private boolean isValidCell(int row, int col) {
         return row >= 0 && row < table.rows && col >= 0 && col < table.columns.size();
     }
+
+    /**
+     * Walk all compiled cell expressions and convert E_NODE_REF nodes to E_GSLOT
+     * using the circuit-global slot map built by CirSim.buildCircuitVariableSlots().
+     * Called from TableElm.postStamp() after the slot map is available.
+     */
+    public void resolveAllGSlots(java.util.HashMap<String, Integer> nameToSlot) {
+        if (nameToSlot == null || table.columns == null) return;
+        for (int col = 0; col < table.columns.size(); col++) {
+            TableColumn column = table.columns.get(col);
+            for (int row = 0; row < table.rows; row++) {
+                Expr e = column.getCompiledExpression(row);
+                if (e != null)
+                    e.resolveGSlot(nameToSlot);
+            }
+        }
+    }
 }

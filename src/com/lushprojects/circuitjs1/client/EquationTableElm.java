@@ -435,6 +435,9 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
 
     /** PARAM_MODE names currently registered for this table (reference-counted globally). */
     private java.util.HashSet<String> registeredParamNames;
+
+    /** Pre-registered ComputedValues keys currently registered for this table. */
+    private java.util.HashSet<String> registeredComputedNames;
     
     //=============================================================================
     // INSTANCE STATE - UI Interaction
@@ -678,6 +681,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
         classificationsValid = false;
         registeredParamNames = new java.util.HashSet<String>();
+        registeredComputedNames = new java.util.HashSet<String>();
     }
 
     /**
@@ -711,6 +715,88 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
 
         registeredParamNames = currentParamNames;
+    }
+
+    /**
+     * Pre-register expected ComputedValues keys for this table.
+     *
+     * Keys tracked:
+     * - row output names
+     * - FLOW namespace keys (<name>.flow) for source/target
+     * - per-row slider variable names
+     */
+    private void refreshComputedNameRegistry() {
+        if (registeredComputedNames == null) {
+            registeredComputedNames = new java.util.HashSet<String>();
+        }
+
+        java.util.HashSet<String> currentComputedNames = new java.util.HashSet<String>();
+        for (int row = 0; row < rowCount; row++) {
+            if (isValidOutputName(row)) {
+                String outputName = rows[row].outputName.trim();
+                currentComputedNames.add(outputName);
+
+                if (rows[row].outputMode == RowOutputMode.FLOW_MODE) {
+                    String sourceFlowKey = getFlowComputedKeyForName(outputName);
+                    if (sourceFlowKey != null && !sourceFlowKey.isEmpty()) {
+                        currentComputedNames.add(sourceFlowKey);
+                    }
+
+                    String targetName = rows[row].targetNodeName;
+                    if (targetName != null) {
+                        String trimmedTarget = targetName.trim();
+                        boolean hasNonGroundTarget = !trimmedTarget.isEmpty() && !trimmedTarget.equalsIgnoreCase("gnd");
+                        if (hasNonGroundTarget) {
+                            String targetFlowKey = getFlowComputedKeyForName(trimmedTarget);
+                            if (targetFlowKey != null && !targetFlowKey.isEmpty()) {
+                                currentComputedNames.add(targetFlowKey);
+                            }
+                        }
+                    }
+                }
+            }
+
+            String sliderVar = rows[row].sliderVarName;
+            if (sliderVar != null) {
+                String trimmedSlider = sliderVar.trim();
+                if (!trimmedSlider.isEmpty()) {
+                    currentComputedNames.add(trimmedSlider);
+                }
+            }
+        }
+
+        for (String name : registeredComputedNames) {
+            if (!currentComputedNames.contains(name)) {
+                ComputedValues.unregisterComputedName(name);
+            }
+        }
+
+        for (String name : currentComputedNames) {
+            if (!registeredComputedNames.contains(name)) {
+                ComputedValues.registerComputedName(name);
+            }
+        }
+
+        registeredComputedNames = currentComputedNames;
+    }
+
+    /**
+     * Unregister all names currently tracked by this element from global registries.
+     */
+    private void unregisterNameRegistries() {
+        if (registeredParamNames != null) {
+            for (String name : registeredParamNames) {
+                ComputedValues.unregisterParameterName(name);
+            }
+            registeredParamNames.clear();
+        }
+
+        if (registeredComputedNames != null) {
+            for (String name : registeredComputedNames) {
+                ComputedValues.unregisterComputedName(name);
+            }
+            registeredComputedNames.clear();
+        }
     }
     
     /**
@@ -1609,6 +1695,11 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     void stamp() {
         // Update row classifications (alias, constant, dynamic)
         updateRowClassifications();
+
+        // Explicit pre-registration during analysis/stamp so expected keys are
+        // available before the first startIteration()/doStep() pass.
+        refreshParameterNameRegistry();
+        refreshComputedNameRegistry();
         
         if (!isMnaMode()) {
             // Pure computational mode: no matrix stamping needed.
@@ -1631,6 +1722,34 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
     }
     
+    /**
+     * Called by CirSim after ALL elements have run stamp() and after the circuit-global
+     * slot table (nameToSlot / circuitVariables[]) has been built by
+     * buildCircuitVariableSlots().  Walks every compiled expression in this table and
+     * converts E_NODE_REF leaf nodes to E_GSLOT nodes so that subsequent eval() calls
+     * bypass the HashMap waterfall and read directly from circuitVariables[].
+     */
+    @Override
+    void postStamp() {
+        super.postStamp();
+        resolveExprSlots();
+    }
+
+    /**
+     * Walk all compiled expressions in this table and call resolveGSlot() on each,
+     * converting E_NODE_REF nodes to E_GSLOT where the name has a slot assignment.
+     */
+    void resolveExprSlots() {
+        CirSim sim = CirSim.theSim;
+        if (sim == null || sim.nameToSlot == null) return;
+        for (int row = 0; row < rowCount; row++) {
+            if (rows[row].compiledExpr != null)
+                rows[row].compiledExpr.resolveGSlot(sim.nameToSlot);
+            if (rows[row].compiledInitialExpr != null)
+                rows[row].compiledInitialExpr.resolveGSlot(sim.nameToSlot);
+        }
+    }
+
     // connectToLabeledNodes removed - pure computational uses ComputedValues instead
     
     /**
@@ -1656,6 +1775,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     @Override
     public void startIteration() {
         refreshParameterNameRegistry();
+        refreshComputedNameRegistry();
 
         // Retry alias resolution if any failed during stamp()
         if (!aliasesResolved && isMnaMode()) {
@@ -2037,7 +2157,23 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
 
         // Keep PARAM registry accurate after reset/edit-mode changes.
+        // Clear internal tracking sets first so that refreshXxx() always re-registers
+        // everything from scratch.  This is necessary because resetAction() calls
+        // ComputedValues.clearComputedValues() which wipes parameterNameRefCounts and
+        // computedNameRefCounts before calling reset() on each element.  Without this
+        // clear, refreshParameterNameRegistry() sees all names still in
+        // registeredParamNames and skips the registerParameterName() calls, leaving the
+        // registry empty and breaking buildCircuitVariableSlots() → E_GSLOT conversion.
+        if (registeredParamNames != null) registeredParamNames.clear();
+        if (registeredComputedNames != null) registeredComputedNames.clear();
         refreshParameterNameRegistry();
+        refreshComputedNameRegistry();
+    }
+
+    @Override
+    void delete() {
+        unregisterNameRegistries();
+        super.delete();
     }
     
     //=============================================================================

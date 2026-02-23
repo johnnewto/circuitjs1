@@ -136,7 +136,16 @@ class DifferentiatorElm extends CircuitElm {
         sim.stampNonLinear(vn);
         sim.stampVoltageSource(0, nodes[1], voltSource);
     }
-    
+
+    @Override
+    void postStamp() {
+        super.postStamp();
+        CirSim csim = CirSim.theSim;
+        if (csim == null || csim.nameToSlot == null) return;
+        if (expr != null)
+            expr.resolveGSlot(csim.nameToSlot);
+    }
+
     void doStep() {
         int vn = voltSource + sim.nodeList.size();
         

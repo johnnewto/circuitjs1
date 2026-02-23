@@ -23,6 +23,14 @@ Documentation for stock-flow modeling features in CircuitJS1.
 - Import via File → Import from Text or File → Open
 - Export via File → Export as SFCR
 
+### EQUATION_TABLE_SIMPLIFICATION.md
+**Purpose:** EquationTable row classification and runtime optimization reference  
+**Key Points:**
+- Alias/constant/linear/dynamic row classification and matrix impact
+- Deferred `postStamp()` behavior for cross-element dependencies
+- `E_NODE_REF` → `E_GSLOT` conversion flow for fast runtime expression lookup
+- Reset lifecycle gotcha and required re-registration behavior for parameter names
+
 ### STOCK_FLOW_SYNC_SUMMARY.md
 **Purpose:** Row synchronization between tables sharing stocks  
 **Key Points:**
@@ -35,6 +43,13 @@ Documentation for stock-flow modeling features in CircuitJS1.
 **Key Points:**
 - StockMasterElm - shows master table assignments
 - FlowsMasterElm - shows all flows across tables
+
+### ARCHITECTURE.md
+**Purpose:** System-level architecture across MNA, computed-value registry, and bridging  
+**Key Points:**
+- Pure-computational and MNA-integrated stock-flow elements
+- `ComputedValues` double-buffering lifecycle
+- Circuit-global expression slot system (`E_GSLOT`) and reset-safe registration flow
 
 ### STOCK_MASTER_ELM_REFERENCE.md
 **Purpose:** Reference for the Master Stocks display element  

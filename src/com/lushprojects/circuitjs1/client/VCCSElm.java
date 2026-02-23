@@ -72,6 +72,15 @@ class VCCSElm extends ChipElm {
             sim.stampNonLinear(nodes[inputCount+1]);
 	}
 
+	@Override
+	void postStamp() {
+	    super.postStamp();
+	    CirSim csim = CirSim.theSim;
+	    if (csim == null || csim.nameToSlot == null) return;
+	    if (expr != null)
+		expr.resolveGSlot(csim.nameToSlot);
+	}
+
         double sign(double a, double b) {
             return a > 0 ? b : -b;
         }

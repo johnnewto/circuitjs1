@@ -706,6 +706,14 @@ public class TableElm extends ChipElm {
         // Connect to labeled nodes
         connectToLabeledNodes();
     }
+
+    @Override
+    void postStamp() {
+        super.postStamp();
+        CirSim csim = CirSim.theSim;
+        if (csim == null || csim.nameToSlot == null) return;
+        equationManager.resolveAllGSlots(csim.nameToSlot);
+    }
     
     /**
      * Stamp voltage source for a master column

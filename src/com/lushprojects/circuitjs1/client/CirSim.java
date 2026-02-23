@@ -328,6 +328,13 @@ MouseOutHandler, MouseWheelHandler {
     double circuitRightSide[];            // [B] Known values (current sources, voltage sources)
     double nodeVoltages[];                // [X] Solution vector (node voltages + voltage source currents)
     double lastNodeVoltages[];            // Previous solution for convergence checking
+
+    // Circuit-global value array for E_GSLOT fast expression evaluation path.
+    // Filled once per subiteration (after applySolvedRightSide + commitPendingToCurrentValues).
+    // Indexed by slot number stored inside each E_GSLOT Expr node.
+    double[] circuitVariables;           // Flat value array: node voltages + computed values
+    String[] slotNames;                  // Parallel name array: slotNames[i] is the name for circuitVariables[i]
+    java.util.HashMap<String, Integer> nameToSlot; // name → circuitVariables[] slot index (used at analysis time only)
     double origMatrix[][];                // Original matrix before simplification
     double origRightSide[];               // Original right side before simplification
     RowInfo circuitRowInfo[];             // Metadata for each matrix row (optimization info)
@@ -3504,6 +3511,10 @@ public CirSim() {
 	    ce.stamp();
 	}
 	
+	// Build slot table for E_GSLOT fast lookup, now that all stamp() calls
+	// (and their refreshComputedNameRegistry() side-effects) have completed.
+	buildCircuitVariableSlots();
+
 	// second pass: allow elements to stamp deferred items (e.g., VCVS that depend on
 	// nodes registered by other elements during their stamp() calls)
 	for (i = 0; i != elmList.size(); i++) {
@@ -4245,6 +4256,7 @@ public CirSim() {
                 // This enables order-independent evaluation - all elements see the same values
                 // regardless of their position in the element array.
                 ComputedValues.commitPendingToCurrentValues();
+                // Note: circuitVariables sync happens after applySolvedRightSide() below.
                 
                 if (stopMessage != null)
                     return;
@@ -4339,6 +4351,7 @@ public CirSim() {
             // Commit pending values from stepFinished() to current buffer
             // (stepFinished() uses setComputedValue which writes to pendingValues)
             ComputedValues.commitPendingToCurrentValues();
+            syncAllSlots(); // keep circuitVariables current for E_GSLOT reads
             
             // Commit converged values AFTER stepFinished() so elements can update their outputs first
             // This makes stable values available for display elements
@@ -4410,6 +4423,7 @@ public CirSim() {
 	}
 	
 	setNodeVoltages(nodeVoltages);
+	syncAllSlots();
     }
     
     // set node voltages in each element given an array of node voltages
@@ -8924,7 +8938,108 @@ public CirSim() {
 		    a[i][j] = inva[i][j];
 	}
 	
-	double getLabeledNodeVoltage(String name) {
+    // -----------------------------------------------------------------------
+    // E_GSLOT support: circuit-global variable array
+    // -----------------------------------------------------------------------
+
+    /**
+     * Build nameToSlot and circuitVariables[] after all stamp() calls have run
+     * (so pre-registered computed names are fully populated in ComputedValues).
+     * Called from stampCircuit() between the first stamp pass and postStamp().
+     */
+    void buildCircuitVariableSlots() {
+	nameToSlot = new java.util.HashMap<String, Integer>();
+	int slot = 0;
+
+	// Labeled nodes first so expression trees can reference physical node voltages
+	String[] labeledNames = LabeledNodeElm.getSortedLabeledNodeNames();
+	if (labeledNames != null) {
+	    for (String name : labeledNames) {
+		if (name != null && !nameToSlot.containsKey(name))
+		    nameToSlot.put(name, slot++);
+	    }
+	}
+
+	// All pre-registered and runtime computed names
+	java.util.Set<String> allComputedNames = ComputedValues.getAllNames();
+	if (allComputedNames != null) {
+	    for (String name : allComputedNames) {
+		if (name != null && !nameToSlot.containsKey(name))
+		    nameToSlot.put(name, slot++);
+	    }
+	}
+
+	// Parameter names (sliders, PARAM rows) — stored in a separate registry
+	// in ComputedValues; getAllNames() does not include them.
+	java.util.Set<String> allParamNames = ComputedValues.getAllParameterNames();
+	console("[buildSlots] paramNames=" + (allParamNames != null ? allParamNames.toString() : "NULL"));
+	if (allParamNames != null) {
+	    for (String name : allParamNames) {
+		if (name != null && !nameToSlot.containsKey(name))
+		    nameToSlot.put(name, slot++);
+	    }
+	}
+
+	// Build the parallel plain array: slotNames[i] = name at index i.
+	// This lets syncAllSlots() iterate a simple array instead of HashMap.entrySet().
+	circuitVariables = new double[slot];
+	slotNames = new String[slot];
+	for (java.util.Map.Entry<String, Integer> e : nameToSlot.entrySet())
+	    slotNames[e.getValue()] = e.getKey();
+
+	syncAllSlots();
+    }
+
+    /**
+     * Synchronise circuitVariables[] from the live simulation state
+     * (nodeVoltages[] + ComputedValues current buffer).  Replicates the
+     * same resolution-order waterfall as E_NODE_REF so that E_GSLOT eval
+     * returns exactly the same value without any HashMap lookups.
+     * <p>
+     * Called once per subiteration, after applySolvedRightSide() and
+     * commitPendingToCurrentValues() have both been applied.
+     */
+    void syncAllSlots() {
+	if (circuitVariables == null || slotNames == null)
+	    return;
+	// Plain array loop — no HashMap overhead, no iterator allocation.
+	for (int s = 0; s < slotNames.length; s++) {
+	    String name = slotNames[s];
+	    if (name != null)
+		circuitVariables[s] = resolveSlotValue(name);
+	}
+    }
+
+    /**
+     * Resolve a single name to its current value using the same priority
+     * waterfall as Expr's E_NODE_REF case for CURRENT_CONTEXT.
+     */
+    double resolveSlotValue(String name) {
+	if (equationTableMnaMode) {
+	    // Priority 1: PARAM override (parameter names shadow physical nodes)
+	    if (ComputedValues.isParameterName(name)) {
+		Double v = ComputedValues.getComputedValue(name);
+		if (v != null) return v;
+	    }
+	    // Priority 2: Flow value
+	    Double flowVal = ComputedValues.getComputedFlowValue(name);
+	    if (flowVal != null) return flowVal;
+	    // Priority 3: Labeled node voltage
+	    Integer node = LabeledNodeElm.getByName(name);
+	    if (node != null && node != 0
+		    && nodeVoltages != null && (node - 1) < nodeVoltages.length)
+		return nodeVoltages[node - 1];
+	    // Priority 4: Generic computed value
+	    Double cv = ComputedValues.getComputedValue(name);
+	    return cv != null ? cv : 0.0;
+	} else {
+	    // Pure-computational mode
+	    Double cv = ComputedValues.getComputedFlowOrValue(name);
+	    return cv != null ? cv : 0.0;
+	}
+    }
+
+    double getLabeledNodeVoltage(String name) {
 	    Integer node = LabeledNodeElm.getByName(name);
 	    if (node == null || node == 0)
 		return 0;
