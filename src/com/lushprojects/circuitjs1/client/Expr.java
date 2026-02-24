@@ -279,7 +279,7 @@ class Expr {
     static long perfLocalSlotEvalCount = 0;
     static long perfLocalSlotEvalTimeNanos = 0;
     static long perfGlobalSlotEvalCount = 0;
-    static long perfGlobalSlotEvalTimeNanos = 0;
+    // Note: no perfGlobalSlotEvalTimeNanos — E_GSLOT is count-only (per-call timing is dominated by JS timestamp overhead)
     // Captures the first N unique node names still going through E_NODE_REF (diagnostic)
     static java.util.ArrayList<String> perfNodeRefNameSamples = new java.util.ArrayList<String>();
     static final int PERF_SAMPLE_LIMIT = 30;
@@ -298,7 +298,6 @@ class Expr {
 	perfLocalSlotEvalCount = 0;
 	perfLocalSlotEvalTimeNanos = 0;
 	perfGlobalSlotEvalCount = 0;
-	perfGlobalSlotEvalTimeNanos = 0;
 	perfNodeRefNameSamples.clear();
     }
 
@@ -309,13 +308,9 @@ class Expr {
 	double slotAvgNs = (perfLocalSlotEvalCount > 0)
 	    ? (double) perfLocalSlotEvalTimeNanos / (double) perfLocalSlotEvalCount
 	    : 0;
-	double gslotAvgNs = (perfGlobalSlotEvalCount > 0)
-	    ? (double) perfGlobalSlotEvalTimeNanos / (double) perfGlobalSlotEvalCount
-	    : 0;
+	// globalSlot is count-only (no per-call timing — see E_GSLOT case)
 	String ratioText;
-	if (gslotAvgNs > 0) {
-	    ratioText = " ratio(nodeRef/globalSlot)=" + (nodeAvgNs / gslotAvgNs);
-	} else if (slotAvgNs > 0) {
+	if (slotAvgNs > 0) {
 	    ratioText = " ratio(nodeRef/localSlot)=" + (nodeAvgNs / slotAvgNs);
 	} else {
 	    ratioText = " ratio=n/a";
@@ -328,16 +323,18 @@ class Expr {
 	    " localSlot[count=" + perfLocalSlotEvalCount +
 	    ", avgNs=" + slotAvgNs +
 	    ", totalNs=" + perfLocalSlotEvalTimeNanos + "]" +
-	    " globalSlot[count=" + perfGlobalSlotEvalCount +
-	    ", avgNs=" + gslotAvgNs +
-	    ", totalNs=" + perfGlobalSlotEvalTimeNanos + "]" +
+	    " globalSlot[count=" + perfGlobalSlotEvalCount + " (count-only)]" +
 	    ratioText +
 	    " nodeRefNames=" + samples;
     }
 
+    private static native double perfNowMs() /*-{
+        return ($wnd.performance && $wnd.performance.now) ? $wnd.performance.now() : Date.now();
+    }-*/;
+
     private static long getPerfNowNanos() {
-	// GWT/J2CL-compatible coarse timing; aggregate many calls for meaningful averages.
-	return System.currentTimeMillis() * 1000000L;
+        // Use performance.now() (microsecond resolution in browsers) converted to nanoseconds.
+	return (long)(perfNowMs() * 1_000_000.0);
     }
 
     private static void recordNodeRefTiming(long startNanos) {
@@ -352,13 +349,6 @@ class Expr {
 	    return;
 	perfLocalSlotEvalCount++;
 	perfLocalSlotEvalTimeNanos += (getPerfNowNanos() - startNanos);
-    }
-
-    private static void recordGlobalSlotTiming(long startNanos) {
-	if (!perfProbeEnabled)
-	    return;
-	perfGlobalSlotEvalCount++;
-	perfGlobalSlotEvalTimeNanos += (getPerfNowNanos() - startNanos);
     }
 
     private static double returnNodeRefValue(double value, long startNanos) {
@@ -968,16 +958,14 @@ class Expr {
 	case E_GSLOT: {
 	    // Fast-path: direct index into circuit-global array (resolved at analysis time from E_NODE_REF).
 	    // value holds the slot index. nodeName is preserved for re-resolution after re-analyze.
+	    // Perf probe: count only — per-call timing of a ~1 ns array read is dominated by
+	    // JS timestamp overhead (~500 ns/call) and produces meaningless avgNs numbers.
 	    CirSim gslotSim = CirSim.theSim;
 	    if (gslotSim != null && gslotSim.circuitVariables != null) {
 		int gslot = (int) value;
 		if (gslot >= 0 && gslot < gslotSim.circuitVariables.length) {
-		    if (!perfProbeEnabled)
-			return gslotSim.circuitVariables[gslot];
-		    long gslotStartNanos = getPerfNowNanos();
-		    double gslotValue = gslotSim.circuitVariables[gslot];
-		    recordGlobalSlotTiming(gslotStartNanos);
-		    return gslotValue;
+		    if (perfProbeEnabled) perfGlobalSlotEvalCount++;
+		    return gslotSim.circuitVariables[gslot];
 		}
 	    }
 	    return 0.0;

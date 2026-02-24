@@ -17,6 +17,7 @@ GWT_DIR="$SDK_DIR/gwt-$GWT_VERSION"
 WEB_PORT=${WEB_PORT:-8000}
 WEB_BINDADDRESS=${WEB_BINDADDRESS:-127.0.0.1}
 CODESERVER_BINDADDRESS=${CODESERVER_BINDADDRESS:-127.0.0.1}
+CODESERVER_PORT=${CODESERVER_PORT:-9876}
 
 compile() {
     ant build
@@ -68,6 +69,7 @@ codeserver() {
         com.google.gwt.dev.codeserver.CodeServer \
         -launcherDir war \
 	-bindAddress ${CODESERVER_BINDADDRESS} \
+	-port ${CODESERVER_PORT} \
         com.lushprojects.circuitjs1.circuitjs1
 }
 
@@ -86,9 +88,28 @@ webserver() {
     )
 }
 
+stop() {
+    echo "Stopping code server and web server (if running)..."
+
+    # Stop GWT CodeServer instances for this module
+    pkill -f "com.google.gwt.dev.codeserver.CodeServer.*com.lushprojects.circuitjs1.circuitjs1" 2>/dev/null || true
+
+    # Stop web servers started by this script (matching configured bind/port)
+    pkill -f "php -S ${WEB_BINDADDRESS}:${WEB_PORT}" 2>/dev/null || true
+    pkill -f "python3 -m http.server --bind ${WEB_BINDADDRESS} ${WEB_PORT}" 2>/dev/null || true
+
+    echo "Stop signal sent."
+}
+
+restart() {
+    stop
+    start
+}
+
 start() {
     echo "Starting web server http://${WEB_BINDADDRESS}:${WEB_PORT}"
-    trap "pkill -f \"python -m http.server\"" EXIT
+    echo "Starting code server http://${CODESERVER_BINDADDRESS}:${CODESERVER_PORT}"
+    trap "stop" EXIT
     webserver >"webserver.log" 2>&1 &
     sleep 0.5
     codeserver | tee "codeserver.log"

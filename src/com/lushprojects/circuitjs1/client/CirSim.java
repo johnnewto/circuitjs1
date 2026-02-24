@@ -5305,7 +5305,8 @@ public CirSim() {
 	    final String circuitPrefix = setupListPath.equals("setuplist_economics.txt") ? "economics/" :
 			(setupListPath.equals("setuplist_electronics.txt") ? "electronics/" : "");
 	    String url = GWT.getModuleBaseURL() + setupListPath;
-	    RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, url);
+	    String cacheBustedUrl = url + (url.indexOf('?') >= 0 ? "&" : "?") + "v=" + System.currentTimeMillis();
+	    RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, cacheBustedUrl);
 	    try {
 		requestBuilder.sendRequest(null, new RequestCallback() {
 		    public void onError(Request request, Throwable exception) {
@@ -5533,8 +5534,9 @@ public CirSim() {
 		}
 		final String circuitPath = candidates[index];
 		String url = GWT.getModuleBaseURL() + "circuits/" + circuitPath;
+		String cacheBustedUrl = url + (url.indexOf('?') >= 0 ? "&" : "?") + "v=" + System.currentTimeMillis();
 		console("Loading circuit file: circuits/" + circuitPath);
-		loadFileFromURL(url, new Command() {
+		loadFileFromURL(cacheBustedUrl, new Command() {
 		    public void execute() {
 			if (title != null)
 			    titleLabel.setText(title);
@@ -9024,6 +9026,16 @@ public CirSim() {
 	    // Priority 2: Flow value
 	    Double flowVal = ComputedValues.getComputedFlowValue(name);
 	    if (flowVal != null) return flowVal;
+	    // Priority 2.5: Alias-to-parameter override (mirrors Expr E_NODE_REF path)
+	    Double aliasComputed = ComputedValues.getComputedValue(name);
+	    if (aliasComputed != null) {
+		Object computingTable = ComputedValues.getComputingTable(name);
+		if (computingTable instanceof EquationTableElm) {
+		    EquationTableElm eqTable = (EquationTableElm) computingTable;
+		    if (eqTable.isAliasToParameterName(name))
+			return aliasComputed;
+		}
+	    }
 	    // Priority 3: Labeled node voltage
 	    Integer node = LabeledNodeElm.getByName(name);
 	    if (node != null && node != 0

@@ -350,23 +350,114 @@ When multiple elements reference each other's outputs during `doStep()`, the ele
 | `pendingValues` | Values elements write to during `doStep()` |
 | `convergedValues` | Stable values for display (from last completed timestep) |
 
-**Execution Flow Per Subiteration:**
+**Execution Flow Per Timestep:**
 
 ```
-startIteration()          → seed current buffer with initial values
-                          
-doStep() for ALL          → READ from computedValues (same snapshot for all)
-elements                  → WRITE to pendingValues (isolated)
+startIteration()          → element-level init (called ONCE, before subiteration loop)
+(once per timestep)         seeds alias/stock values into current buffer via
+                            setComputedValueDirect()
+clearPendingValues()      → pending buffer cleared for new timestep
+
+─── subiteration loop ──────────────────────────────────────────────────────
+
+doStep() for ALL          → READ circuitVariables[] via E_GSLOT
+elements                    (snapshot built by syncAllSlots at end of previous sub)
+                          → READ from computedValues (current buffer)
+                          → WRITE to pendingValues (isolated)
 
 commitPendingTo...()      → pendingValues → computedValues
-                            (now all elements see each other's new values)
+
+lu_factor (nonlinear)     → refactor matrix if nonlinear elements changed it
++ lu_solve                → solve A·x = b
++ applySolvedRightSide()  → nodeVoltages[] updated, setNodeVoltages() called
+  → syncAllSlots()        → circuitVariables[] refreshed for next doStep() read
 
 [repeat if not converged]
 
-stepFinished() for ALL    → final updates to pendingValues
-commitPendingTo...()      → pendingValues → computedValues  
+─── convergence epilogue ───────────────────────────────────────────────────
+
+stepFinished() for ALL    → final state commits to pendingValues
+commitPendingTo...()      → pendingValues → computedValues
+syncAllSlots()            → circuitVariables[] refreshed
 commitConvergedValues()   → computedValues → convergedValues (for display)
 ```
+
+**One-Way Data Authority Flow**
+
+```mermaid
+flowchart TD
+    subgraph MNA["MNA Solver Domain"]
+        A["Circuit Matrix Solve<br/>per subiteration"] --> B["nodeVoltages[] by node index"]
+        B --> C["Named labeled nodes<br/>LabeledNodeElm name -> node"]
+        B --> D["Unnamed/internal nodes<br/>element internals"]
+    end
+
+    subgraph CV["ComputedValues"]
+        G["current/pending/converged values"]
+        H["flow namespace name.flow"]
+        I["PARAM name registry"]
+    end
+
+    B --> S["syncAllSlots()<br/>resolveSlotValue(name)"]
+    G --> S
+    H --> S
+    I --> S
+    C --> S
+
+    S --> V["circuitVariables[] slot snapshot<br/>E_GSLOT fast path"]
+
+    V --> J["Expr resolver read path"]
+    J --> K["Equation/Table evaluation"]
+    K --> G
+    K --> H
+
+    D -. "excluded from named slot map" .-> X["Not addressable by name"]
+
+```
+
+**Safety Constraints**
+
+| Constraint | As-built rule |
+|---|---|
+| Authority | Matrix solve is authoritative for node voltages (`nodeVoltages[]`). |
+| Namespace model | There is no separate `node:` namespace in `ComputedValues`. |
+| Internal node export | Unnamed/internal nodes are not exported by name and are excluded from named slot mapping. |
+
+**Runtime Flow (runCircuit)**
+
+```mermaid
+%%{init: {'sequence': {'messageAlign': 'left'}}}%%
+sequenceDiagram
+    participant ET as Equation/Table doStep
+    participant CV as ComputedValues buffers
+    participant MS as Matrix Solve
+    participant SV as syncAllSlots/circuitVariables
+    participant EX as Expr Resolver
+
+    loop Each subiteration
+        Note over ET,SV: E_GSLOT reads circuitVariables[] built by PREVIOUS syncAllSlots
+        ET->>CV: doStep():<br/>1. read circuitVariables[] via E_GSLOT<br/>2. write value/flow → pending (ComputedValues)
+        CV->>CV: commitPendingToCurrentValues()
+        MS->>MS: lu_factor (nonlinear only) + lu_solve
+        MS->>MS: applySolvedRightSide() → <br/> setNodeVoltages(nodeVoltages[])
+        MS->>SV: syncAllSlots()  → <br/>refresh circuitVariables[] <br/>for NEXT subiteration
+    end
+
+    Note over ET,CV: At converged timestep end
+    ET->>CV: stepFinished() state commits
+    CV->>CV: commitPendingToCurrentValues()
+    MS->>SV: syncAllSlots()
+    CV->>CV: commitConvergedValues()
+    EX->>CV: display paths read converged
+```
+
+**Legend**
+
+- `nodeVoltages[]`: solved MNA node voltages (authoritative), applied to elements via `setNodeVoltages()`.
+- `circuitVariables[]`: per-subiteration slot snapshot used by `E_GSLOT`, built by `syncAllSlots()` from labeled-node voltages + ComputedValues current values.
+- `value` and `flow` data are stored in ComputedValues buffers (`pending` → `current` → `converged`).
+- PARAM names are a separate registry used in resolver precedence and slot-building.
+- Internal/unnamed nodes are excluded from named slot mapping and cannot be referenced by name.
 
 **Key Insight:** Whether element A or B is evaluated first doesn't matter - they both see the same "snapshot" of values from the previous iteration.
 

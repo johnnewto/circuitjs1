@@ -20,7 +20,7 @@ It supports two simulator-wide execution modes:
 | Post count | 0 (no visible electrical posts) |
 | High-impedance | Yes — `getConnection()` always returns `false` |
 | Ground connection | None — `hasGroundConnection()` returns `false` |
-| Nonlinear | True if any non-alias row exists; FLOW/STOCK/PARAM rows always require `doStep()` |
+| Nonlinear | True whenever any non-alias row exists (all of VOLTAGE, FLOW, STOCK, PARAM count) |
 | Modes | MNA (electrical) or Pure Computational (global setting) |
 | Mode toggle | Options → Other Options → `sim.equationTableMnaMode` |
 
@@ -52,7 +52,7 @@ Equation result is interpreted as voltage and applied to a ground-referenced out
 - **Topology stamp (in `stamp()`):** `sim.stampVoltageSource(0, node, vs)`
 - **Value stamp (in `doStep()`):** `sim.stampRightSide(vn, equationValue)`
 - **Extra stabilization:** tiny load resistor `sim.stampResistor(node, 0, 1e9)`
-- **Nodes needed:** 1 output node (existing labeled node or internal node, note: internal nodes are accessible, by reference or placing a labeled node)
+- **Nodes needed:** 1 output node — uses an existing `LabeledNodeElm` with the matching name if present; otherwise allocates an internal node and registers it under that name, so it is reachable by name even without a visible labeled node on canvas.
 
 ### FLOW_MODE
 
@@ -131,20 +131,23 @@ Edit dialog UX for aliases:
 
 ### `stamp()`
 
-Before per-element `stamp()` calls, `CirSim.stampCircuit()` runs lightweight
-EquationTable coordination across all `EquationTableElm` instances:
+Before per-element `stamp()` calls, `CirSim.stampCircuit()` invokes the static
+`EquationTableElm.coordinateLabelsForStamp()` across all `EquationTableElm` instances:
 
-1. **Pass 1 (non-FLOW rows):** pre-register VOLTAGE/STOCK output names to node numbers
+1. **Pass 1 (VOLTAGE/STOCK rows only — FLOW and PARAM excluded):** pre-register output names to node numbers
   so those names resolve globally regardless of table stamp order.
-2. **Pass 2 (FLOW rows):** auto-create missing source/target endpoint labels using
+2. **Pass 2 (FLOW rows only):** auto-create missing source/target endpoint labels using
   reserved internal nodes, then emit diagnostics only if an endpoint still cannot
   be resolved.
 
+After the coordination pass, each element's own `stamp()` runs:
+
 1. `updateRowClassifications()`
-2. if pure mode: return (no matrix stamping)
-3. `findLabeledNodes()` (resolve existing or allocate/register internal nodes)
-4. `registerAliasNodes()`
-5. per non-alias row: mode handler `stamp(row)`
+2. `refreshParameterNameRegistry()` and `refreshComputedNameRegistry()`
+3. if pure mode: return (no matrix stamping)
+4. `findLabeledNodes()` (resolve existing or allocate/register internal nodes)
+5. `registerAliasNodes()`
+6. per non-alias row: mode handler `stamp(row)`
 
 ### `startIteration()`
 
