@@ -281,6 +281,7 @@ class Scope {
     final int FLAG_DRAW_FROM_ZERO = 1<<22; // Draw from t=0 on left, growing right
     final int FLAG_AUTO_SCALE_TIME = 1<<23; // Auto-adjust time scale when reaching edge
     final int FLAG_MAX_SCALE_LIMITS = 1<<24; // Max scale limits present
+	final int FLAG_PLOT_REFS = 1<<25; // Per-plot stable element references present
     
     // ====================
     // VALUE TYPE CONSTANTS
@@ -3000,8 +3001,51 @@ class Scope {
 	}
 	if (hasMaxLimits)
 	    flags |= FLAG_MAX_SCALE_LIMITS;
+
+	// Include stable per-plot references so scope bindings survive element line reordering
+	flags |= FLAG_PLOT_REFS;
 	
 	return flags;
+    }
+
+    String getElementRefToken(CircuitElm elm) {
+	if (elm == null)
+	    return "U:";
+	return "U:" + CustomLogicModel.escape(elm.getPersistentUid());
+    }
+
+    CircuitElm resolveElementRef(String token, int fallbackIndex) {
+	if (token != null && token.startsWith("U:")) {
+	    String target = CustomLogicModel.unescape(token.substring(2));
+	    if (!target.isEmpty()) {
+		for (int i = 0; i < sim.elmList.size(); i++) {
+		    CircuitElm candidate = sim.getElm(i);
+		    if (candidate == null)
+			continue;
+		    if (target.equals(candidate.getPersistentUid()))
+			return candidate;
+		}
+	    }
+	}
+	// Backward compatibility with older transient R:<escaped dump> references
+	if (token != null && token.startsWith("R:")) {
+	    String target = token.substring(2);
+	    if (!target.isEmpty()) {
+		for (int i = 0; i < sim.elmList.size(); i++) {
+		    CircuitElm candidate = sim.getElm(i);
+		    if (candidate == null)
+			continue;
+		    String d = candidate.dump();
+		    if (d == null)
+			continue;
+		    if (CustomLogicModel.escape(d).equals(target))
+			return candidate;
+		}
+	    }
+	}
+	if (fallbackIndex >= 0)
+	    return sim.getElm(fallbackIndex);
+	return null;
     }
     
 
@@ -3019,7 +3063,8 @@ class Scope {
     	String x = "o " + eno + " " +
     			vPlot.scopePlotSpeed + " " + vPlot.value + " " 
     			+ exportAsDecOrHex(flags, FLAG_PERPLOTFLAGS) + " " +
-    			scale[UNITS_V] + " " + scale[UNITS_A] + " " + position + " " +
+					((flags & FLAG_PLOT_REFS) != 0 ? getElementRefToken(vPlot.elm) + " " : "") +
+				scale[UNITS_V] + " " + scale[UNITS_A] + " " + position + " " +
     			plots.size();
 	if ((flags & FLAG_DIVISIONS) != 0)
 	    x += " " + manDivisions;
@@ -3037,6 +3082,8 @@ class Scope {
     	    ScopePlot p = plots.get(i);
     	    if ((flags & FLAG_PERPLOTFLAGS) !=0)
     		x += " " + Integer.toHexString(p.getPlotFlags()); // NB always export in Hex (no prefix)
+		    if ((flags & FLAG_PLOT_REFS) != 0 && i > 0)
+			x += " " + getElementRefToken(p.elm);
     	    if (i > 0)
     		x += " " + sim.locateElm(p.elm) + " " + p.value;
     	    // dump scale if units are not V or A
@@ -3059,16 +3106,21 @@ class Scope {
     	int e = Integer.parseInt(st.nextToken());
     	if (e == -1)
     		return;
-    	CircuitElm ce = sim.getElm(e);
-    	setElm(ce);
+	CircuitElm ce = sim.getElm(e);
     	speed = Integer.parseInt(st.nextToken());
     	int value = Integer.parseInt(st.nextToken());
-    	
-    	// fix old value for VAL_POWER which doesn't work for transistors (because it's the same as VAL_IB) 
-    	if (!(ce instanceof TransistorElm) && value == VAL_POWER_OLD)
-    	    value = VAL_POWER;
-    	
+	
     	int flags = importDecOrHex(st.nextToken());
+	boolean hasPlotRefs = (flags & FLAG_PLOT_REFS) != 0;
+	String plot0RefToken = null;
+	if (hasPlotRefs && st.hasMoreTokens())
+	    plot0RefToken = st.nextToken();
+	ce = resolveElementRef(plot0RefToken, e);
+	
+	// fix old value for VAL_POWER which doesn't work for transistors (because it's the same as VAL_IB)
+	if (!(ce instanceof TransistorElm) && value == VAL_POWER_OLD)
+	    value = VAL_POWER;
+	
     	scale[UNITS_V] = Double.parseDouble(st.nextToken());
     	scale[UNITS_A] = Double.parseDouble(st.nextToken());
     	if (scale[UNITS_V] == 0)
@@ -3119,10 +3171,14 @@ class Scope {
 		}
 		
     		int i;
-    		int u = ce.getScopeUnits(value);
+			if (ce == null)
+			    ce = sim.getElm(e);
+			if (ce == null)
+			    return;
+			int u = ce.getScopeUnits(value);
 		if (u > UNITS_A)
 		    scale[u] = Double.parseDouble(st.nextToken());
-    		setValue(value);
+			setValue(value, ce);
     		// setValue(0) creates an extra plot for current, so remove that
     		while (plots.size() > 1)
     		    plots.removeElementAt(1);
@@ -3131,10 +3187,17 @@ class Scope {
     		for (i = 0; i != sz; i++) {
     		    if (hasPlotFlags)
     			plotFlags=Integer.parseInt(st.nextToken(), 16); // Import in hex (no prefix)
+			    String refToken = null;
+			    if (hasPlotRefs && i > 0)
+				refToken = st.nextToken();
     		    if (i!=0) {
         		    int ne = Integer.parseInt(st.nextToken());
         		    int val = Integer.parseInt(st.nextToken());
-        		    CircuitElm elm = sim.getElm(ne);
+				CircuitElm elm = resolveElementRef(refToken, ne);
+				if (elm == null)
+				    elm = sim.getElm(ne);
+				if (elm == null)
+				    elm = ce;
         		    u = elm.getScopeUnits(val);
         		    if (u > UNITS_A)
         			scale[u] = Double.parseDouble(st.nextToken());

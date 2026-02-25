@@ -1449,11 +1449,11 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         // More lenient thresholds help diff() equations converge faster
         double relativeTolerance;
         if (sim.subIterations < 3)
-            relativeTolerance = 0.001;
+            relativeTolerance = 0.0001;
         else if (sim.subIterations < 10)
-            relativeTolerance = 0.01;
+            relativeTolerance = 0.001;
         else if (sim.subIterations < 50)
-            relativeTolerance = 0.05;
+            relativeTolerance = 0.005;
         else
             relativeTolerance = 0.1;
         

@@ -293,6 +293,9 @@ MouseOutHandler, MouseWheelHandler {
 
 	// When true, include the electronics circuit library in the Circuits menu
 	boolean showElectronicsCircuits = false;
+
+	// When true, append timestamp query parameter when loading setup lists/circuits
+	boolean enableCacheBustedUrls = true;
 	
 	// Circuit hint types - show helpful formulas when related elements are present
 	static final int HINT_LC = 1;      // LC resonant frequency hint
@@ -559,6 +562,7 @@ public CirSim() {
 	    mouseWheelEdit = qp.getBooleanValue("mouseWheelEdit", getOptionFromStorage("mouseWheelEdit", true));
 	    useWeightedPriority = getOptionFromStorage("weightedPriority", false);
 	    showElectronicsCircuits = getOptionFromStorage("showElectronicsCircuits", false);
+	    enableCacheBustedUrls = getOptionFromStorage("enableCacheBustedUrls", true);
 	    positiveColor = qp.getValue("positiveColor");
 	    negativeColor = qp.getValue("negativeColor");
 	    neutralColor = qp.getValue("neutralColor");
@@ -1057,7 +1061,7 @@ public CirSim() {
     // Load menu definition from menulist.txt
     void loadMenuDefinition() {
 	String url = GWT.getModuleBaseURL() + "menulist.txt";
-	RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, url);
+	RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, getLoadUrl(url));
 	try {
 	    requestBuilder.sendRequest(null, new RequestCallback() {
 		public void onError(Request request, Throwable exception) {
@@ -5248,7 +5252,7 @@ public CirSim() {
 			String m = ce.dumpModel();
 			if (m != null && !m.isEmpty())
 			dump += m + "\n";
-			dump += ce.dump() + "\n";
+			dump += getElementDumpWithUid(ce) + "\n";
 		}
 		for (i = 0; i != scopeCount; i++) {
 			String d = scopes[i].dump();
@@ -5274,6 +5278,65 @@ public CirSim() {
 			dump += "h " + hintType + " " + hintItem1 + " " +
 			hintItem2 + "\n";
 		return dump;
+    }
+
+    String getElementDumpWithUid(CircuitElm ce) {
+	String d = ce.dump();
+	if (d == null)
+	    return null;
+	return d + " U:" + CustomLogicModel.escape(ce.getPersistentUid());
+    }
+
+    static class ElementDumpParseResult {
+	StringTokenizer tokenizer;
+	String uid;
+	ElementDumpParseResult(StringTokenizer tokenizer, String uid) {
+	    this.tokenizer = tokenizer;
+	    this.uid = uid;
+	}
+    }
+
+    ElementDumpParseResult parseElementTokensWithUid(StringTokenizer st) {
+	java.util.ArrayList<String> tokens = new java.util.ArrayList<String>();
+	String uid = null;
+	while (st.hasMoreTokens()) {
+	    String tok = st.nextToken();
+	    if (uid == null && tok.startsWith("U:")) {
+		uid = CustomLogicModel.unescape(tok.substring(2));
+		continue;
+	    }
+	    tokens.add(tok);
+	}
+	String remaining = "";
+	for (int i = 0; i < tokens.size(); i++) {
+	    if (i > 0)
+		remaining += " ";
+	    remaining += tokens.get(i);
+	}
+	return new ElementDumpParseResult(new StringTokenizer(remaining, " "), uid);
+    }
+
+    CircuitElm findElmByUid(String uid) {
+	if (uid == null || uid.isEmpty())
+	    return null;
+	for (int i = 0; i < elmList.size(); i++) {
+	    CircuitElm ce = getElm(i);
+	    if (uid.equals(ce.getPersistentUid()))
+		return ce;
+	}
+	return null;
+    }
+
+    void assignPersistentUid(CircuitElm ce, String uidFromFile) {
+	String uid = uidFromFile;
+	if (uid == null || uid.isEmpty())
+	    uid = ce.getPersistentUid();
+	if (!uid.equals(ce.getPersistentUid()))
+	    ce.setPersistentUid(uid);
+	while (findElmByUid(uid) != null) {
+	    uid = CircuitElm.generatePersistentUid();
+	    ce.setPersistentUid(uid);
+	}
     }
 
 	void getSetupList(final boolean openDefault) {
@@ -5305,7 +5368,7 @@ public CirSim() {
 	    final String circuitPrefix = setupListPath.equals("setuplist_economics.txt") ? "economics/" :
 			(setupListPath.equals("setuplist_electronics.txt") ? "electronics/" : "");
 	    String url = GWT.getModuleBaseURL() + setupListPath;
-	    String cacheBustedUrl = url + (url.indexOf('?') >= 0 ? "&" : "?") + "v=" + System.currentTimeMillis();
+	    String cacheBustedUrl = getLoadUrl(url);
 	    RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, cacheBustedUrl);
 	    try {
 		requestBuilder.sendRequest(null, new RequestCallback() {
@@ -5499,13 +5562,15 @@ public CirSim() {
 	    int y2 = Integer.parseInt(st.nextToken());
 	    int f = Integer.parseInt(st.nextToken());
 	    
-	    CircuitElm newce = createCe(tint, x1, y1, x2, y2, f, st);
+	    ElementDumpParseResult parsed = parseElementTokensWithUid(st);
+	    CircuitElm newce = createCe(tint, x1, y1, x2, y2, f, parsed.tokenizer);
 	    if (newce == null) {
 		console("Unrecognized element type: " + type);
 		return;
 	    }
 	    
 	    newce.setPoints();
+	    assignPersistentUid(newce, parsed.uid);
 	    elmList.addElement(newce);
 	    
 	} catch (Exception e) {
@@ -5534,9 +5599,8 @@ public CirSim() {
 		}
 		final String circuitPath = candidates[index];
 		String url = GWT.getModuleBaseURL() + "circuits/" + circuitPath;
-		String cacheBustedUrl = url + (url.indexOf('?') >= 0 ? "&" : "?") + "v=" + System.currentTimeMillis();
 		console("Loading circuit file: circuits/" + circuitPath);
-		loadFileFromURL(cacheBustedUrl, new Command() {
+		loadFileFromURL(url, new Command() {
 		    public void execute() {
 			if (title != null)
 			    titleLabel.setText(title);
@@ -5552,7 +5616,7 @@ public CirSim() {
 	}
 	
 	void loadFileFromURL(String url, final Command successCallback, final Command failureCallback) {
-	    RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, url);
+	    RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, getLoadUrl(url));
 	    
 	    try {
 		requestBuilder.sendRequest(null, new RequestCallback() {
@@ -5581,6 +5645,12 @@ public CirSim() {
 		    failureCallback.execute();
 	    }
 
+	}
+
+	String getLoadUrl(String url) {
+	    if (!enableCacheBustedUrls)
+		return url;
+	    return url + (url.indexOf('?') >= 0 ? "&" : "?") + "v=" + System.currentTimeMillis();
 	}
 
     static final int RC_RETAIN = 1;
@@ -5777,8 +5847,8 @@ public CirSim() {
 		    int x2 = Integer.parseInt(st.nextToken());
 		    int y2 = Integer.parseInt(st.nextToken());
 		    int f  = Integer.parseInt(st.nextToken());
-		    
-		    CircuitElm newce = createCe(tint, x1, y1, x2, y2, f, st);
+		    ElementDumpParseResult parsed = parseElementTokensWithUid(st);
+		    CircuitElm newce = createCe(tint, x1, y1, x2, y2, f, parsed.tokenizer);
 		    if (newce==null) {
 			System.out.println("unrecognized dump type: " + type);
 			break;
@@ -5792,6 +5862,7 @@ public CirSim() {
 			console("allocnodes not called! " + tint);
 		     */
 		    newce.setPoints();
+		    assignPersistentUid(newce, parsed.uid);
 		    elmList.addElement(newce);
 		} catch (Exception ee) {
 		    ee.printStackTrace();
@@ -7324,7 +7395,7 @@ public CirSim() {
     		// elm by number get's messed up in the dump. For now we will just ignore them
     		// until I can be bothered to come up with something better
     		if (willDelete(ce) && !(ce instanceof ScopeElm) ) {
-    			clipboard += ce.dump() + "\n";
+				clipboard += getElementDumpWithUid(ce) + "\n";
     		}
     	}
     	writeClipboardToStorage();
@@ -7440,7 +7511,7 @@ public CirSim() {
 		r += m + "\n";
 	    // See notes on do cut why we don't copy ScopeElms.
 	    if (ce.isSelected() && !(ce instanceof ScopeElm))
-		r += ce.dump() + "\n";
+		r += getElementDumpWithUid(ce) + "\n";
 	}
 	return r;
     }

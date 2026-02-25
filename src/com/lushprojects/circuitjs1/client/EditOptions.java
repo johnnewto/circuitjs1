@@ -97,15 +97,20 @@ class EditOptions implements Editable {
 		    ei.checkbox = new Checkbox("Show Electronics Circuits", sim.showElectronicsCircuits);
 		    return ei;
 		}
+		if (n == 18) {
+		    EditInfo ei = new EditInfo("", 0, -1, -1);
+		    ei.checkbox = new Checkbox("Enable Cache-Busted URLs", sim.enableCacheBustedUrls);
+		    return ei;
+		}
 		// Conditional items must be last. When the condition is false,
 		// getEditInfo() returns null which terminates the dialog loop,
 		// hiding any items that would follow.
-		if (n == 18) {
+		if (n == 19) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
 		    ei.checkbox = new Checkbox("Auto-Adjust Timestep", sim.adjustTimeStep);
 		    return ei;
 		}
-		if (n == 19 && sim.adjustTimeStep)
+		if (n == 20 && sim.adjustTimeStep)
 		    return new EditInfo("Minimum time step size (s)", sim.minTimeStep, 0, 0);
 
 		return null;
@@ -154,7 +159,7 @@ class EditOptions implements Editable {
 		            Window.Location.reload();
 		}
 		if (n == 3) {
-		    CircuitElm.positiveColor = setColor("positiveColor", ei, Color.green);
+		    CircuitElm.positiveColor = setColor("positiveColor", ei, new Color("#0eb053"));
 		    CircuitElm.setColorScale();
 		}
 		if (n == 4) {
@@ -209,11 +214,36 @@ class EditOptions implements Editable {
 		    }
 		}
 		if (n == 18) {
+		    sim.enableCacheBustedUrls = ei.checkbox.getState();
+		    sim.setOptionInStorage("enableCacheBustedUrls", sim.enableCacheBustedUrls);
+		}
+		if (n == 19) {
 		    sim.adjustTimeStep = ei.checkbox.getState();
 		    ei.newDialog = true;
 		}
-		if (n == 19 && ei.value > 0)
+		if (n == 20 && ei.value > 0)
 		    sim.minTimeStep = ei.value;
+	}
+
+	void resetPreferences() {
+	    if (!Window.confirm(Locale.LS("Reset all saved preferences and reload?")))
+		return;
+	    Storage stor = Storage.getLocalStorageIfSupported();
+	    if (stor == null) {
+		Window.alert(Locale.LS("Browser storage is not available."));
+		return;
+	    }
+	    String keys[] = {
+		"crossHair", "euroResistors", "euroGates", "whiteBackground", "conventionalCurrent",
+		"mouseWheelEdit", "weightedPriority", "showElectronicsCircuits", "alternativeColor",
+		"enableCacheBustedUrls",
+		"positiveColor", "negativeColor", "neutralColor", "selectColor", "currentColor",
+		"language", "wheelSensitivity", "graphicsUpdateInterval", "voltageUnitSymbol",
+		"scopeDefaults", "shortcuts"
+	    };
+	    for (int i = 0; i < keys.length; i++)
+		stor.removeItem(keys[i]);
+	    Window.Location.reload();
 	}
 	
 	Color setColor(String name, EditInfo ei, Color def) {

@@ -7,8 +7,6 @@
 package com.lushprojects.circuitjs1.client;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
 
@@ -127,6 +125,13 @@ public class SFCRExporter {
         String hintsBlock = exportHints();
         if (!hintsBlock.isEmpty()) {
             sb.append(hintsBlock);
+            sb.append("\n");
+        }
+
+        // Export docked scopes as @scope blocks (UID-based references)
+        String scopesBlock = exportScopes();
+        if (!scopesBlock.isEmpty()) {
+            sb.append(scopesBlock);
             sb.append("\n");
         }
         
@@ -552,13 +557,61 @@ public class SFCRExporter {
         sb.append("@circuit\n");
         
         for (CircuitElm elm : otherElements) {
-            String dump = elm.dump();
+            String dump = sim.getElementDumpWithUid(elm);
             if (dump != null && !dump.isEmpty()) {
                 sb.append(dump).append("\n");
             }
         }
         
         sb.append("@end\n");
+        return sb.toString();
+    }
+
+    /** Export docked scopes in @scope blocks using UID-based trace references. */
+    private String exportScopes() {
+        if (sim.scopeCount <= 0) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < sim.scopeCount; i++) {
+            Scope s = sim.scopes[i];
+            if (s == null || s.plots == null || s.plots.size() == 0) {
+                continue;
+            }
+
+            String scopeName = s.getScopeMenuName();
+            if (scopeName == null || scopeName.isEmpty()) {
+                scopeName = "Scope_" + (i + 1);
+            }
+
+            sb.append("@scope ").append(sanitizeName(scopeName))
+              .append(" position=").append(s.position).append("\n");
+            sb.append("  speed: ").append(s.speed).append("\n");
+            sb.append("  flags: ").append(Scope.exportAsDecOrHex(s.getFlags(), s.FLAG_PERPLOTFLAGS)).append("\n");
+
+            if (s.getTitle() != null && !s.getTitle().isEmpty()) {
+                sb.append("  title: ").append(CustomLogicModel.escape(s.getTitle())).append("\n");
+            }
+            if (s.getText() != null && !s.getText().isEmpty()) {
+                sb.append("  label: ").append(CustomLogicModel.escape(s.getText())).append("\n");
+            }
+
+            for (int p = 0; p < s.plots.size(); p++) {
+                ScopePlot sp = s.plots.get(p);
+                if (sp == null || sp.elm == null) {
+                    continue;
+                }
+                String uid = sp.elm.getPersistentUid();
+                if (p == 0) {
+                    sb.append("  source: uid:").append(uid).append(" value:").append(sp.value).append("\n");
+                } else {
+                    sb.append("  trace: uid:").append(uid).append(" value:").append(sp.value).append("\n");
+                }
+            }
+
+            sb.append("@end\n");
+        }
         return sb.toString();
     }
     

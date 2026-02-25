@@ -305,6 +305,7 @@ public class IframeViewerDialog extends DialogBox {
      */
     public static void openCircuit(String title, String circuitFile, boolean editable, int w, int h) {
         String src = "circuitjs.html?startCircuit=" + circuitFile + "&editable=" + editable;
+        src = addCacheBustParamIfEnabled(src);
         openDialog(title, src, w, h);
     }
     
@@ -316,6 +317,7 @@ public class IframeViewerDialog extends DialogBox {
      */
     public static void openCircuit(String title, String circuitFile, boolean editable) {
         String src = "circuitjs.html?startCircuit=" + circuitFile + "&editable=" + editable;
+        src = addCacheBustParamIfEnabled(src);
         openDialog(title, src);
     }
     
@@ -325,7 +327,15 @@ public class IframeViewerDialog extends DialogBox {
      * @param circuitUrl Full URL including parameters
      */
     public static void openCircuitUrl(String title, String circuitUrl) {
-        openDialog(title, circuitUrl);
+        openDialog(title, addCacheBustParamIfEnabled(circuitUrl));
+    }
+
+    private static String addCacheBustParamIfEnabled(String url) {
+        if (url == null)
+            return null;
+        if (CirSim.theSim == null || !CirSim.theSim.enableCacheBustedUrls)
+            return url;
+        return url + (url.indexOf('?') >= 0 ? "&" : "?") + "v=" + System.currentTimeMillis();
     }
     
     /**

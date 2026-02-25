@@ -148,7 +148,7 @@ At steady state (t → ∞):
   height: 250
   showScaleBar: false
   useHighWaterMark: true
-  showFlowValues: false
+  showFlowValues: true
 @end
 
 @hints
@@ -201,12 +201,12 @@ At steady state (t → ∞):
 @end
 
 @circuit
-x 89 92 663 95 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW\s(SFC\sFlow\sTable) 808080FF
-x 89 116 353 119 4 12 Bank-Money\sWorld\smodel\s(flow-mode\svariant) 808080FF
-x 89 140 399 143 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF
-207 960 544 1024 544 180 Y
-431 704 64 752 96 0 50 true false
-r 960 544 896 544 0 1
-g 896 544 896 592 0 0
-403 928 576 1168 720 0 14_2_0_4614_320_0.1_-1_1
+x 89 92 663 95 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW\s(SFC\sFlow\sTable) 808080FF U:Ck8M0l
+x 89 116 353 119 4 12 Bank-Money\sWorld\smodel\s(flow-mode\svariant) 808080FF U:BRUOXo
+x 89 140 399 143 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF U:C67zij
+207 960 544 1024 544 180 Y U:K79ipy
+431 704 64 752 96 0 50 true false U:Ozs0Ey
+r 960 544 896 544 0 1 U:PSgFCy
+g 896 544 896 592 0 0 U:KqCssR
+403 928 576 1168 720 0 14_2_0_x2001206_U:C67zij_320_0.1_-1_2_U:K79ipy_15_0 U:HBpi4u
 @end

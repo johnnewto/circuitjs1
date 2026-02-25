@@ -84,9 +84,9 @@ In Godley table accounting:
 
 Shared flows are important in stock-flow accounting as they represent transactions between sectors.
 
-## Comparison with TableMasterElm
+## Comparison with StockMasterElm
 
-| Feature | FlowsMasterElm | TableMasterElm |
+| Feature | FlowsMasterElm | StockMasterElm |
 |---------|----------------|----------------|
 | Shows | Flows (rows) | Stocks (columns) |
 | Display | Flow usage count | Current stock values |
@@ -96,7 +96,7 @@ Shared flows are important in stock-flow accounting as they represent transactio
 
 **Use FlowsMasterElm when**: You want to see all transaction types and their distribution across tables
 
-**Use TableMasterElm when**: You want to monitor stock values and master table assignments
+**Use StockMasterElm when**: You want to monitor stock values and master table assignments
 
 ## Configuration
 

@@ -52,6 +52,23 @@ public class SFCRParser {
             return x != Integer.MIN_VALUE && y != Integer.MIN_VALUE;
         }
     }
+
+    /** Parsed scope trace reference. */
+    private static class ScopeTraceSpec {
+        String uid;
+        int value = Scope.VAL_VOLTAGE;
+    }
+
+    /** Parsed @scope block configuration. */
+    private static class ScopeBlockSpec {
+        String name = "scope";
+        int position = 0;
+        int speed = -1;
+        int flags = Integer.MIN_VALUE;
+        String title;
+        String label;
+        ArrayList<ScopeTraceSpec> traces = new ArrayList<ScopeTraceSpec>();
+    }
     
     // =========================================================================
     // Fields
@@ -65,6 +82,7 @@ public class SFCRParser {
     private ArrayList<CircuitElm> createdElements = new ArrayList<CircuitElm>();
     private HashMap<String, String> hints = new HashMap<String, String>();
     private ArrayList<String> scopeVariables = new ArrayList<String>();
+    private ArrayList<ScopeBlockSpec> scopeBlocks = new ArrayList<ScopeBlockSpec>();
     private HashMap<String, String> initSettings = new HashMap<String, String>();
     private ArrayList<String> rawCircuitLines = new ArrayList<String>();
     private String infoContent = null;
@@ -125,6 +143,7 @@ public class SFCRParser {
         createdElements.clear();
         hints.clear();
         scopeVariables.clear();
+        scopeBlocks.clear();
         initSettings.clear();
         currentY = 24;
         
@@ -160,8 +179,12 @@ public class SFCRParser {
                 } else if (line.startsWith("@hints")) {
                     i = parseHintsBlock(lines, i);
                 } else if (line.startsWith("@scope")) {
-                    parseScopeLine(line);
-                    i++;
+                    if (looksLikeScopeBlock(lines, i)) {
+                        i = parseScopeBlock(lines, i);
+                    } else {
+                        parseScopeLine(line);
+                        i++;
+                    }
                 } else if (line.startsWith("@circuit")) {
                     i = parseCircuitBlock(lines, i);
                 } else if (line.startsWith("@sankey")) {
@@ -664,6 +687,149 @@ public class SFCRParser {
             scopeVariables.add(varName);
         }
     }
+
+    /** Check whether @scope at startIndex is block-form (@scope ... @end). */
+    private boolean looksLikeScopeBlock(String[] lines, int startIndex) {
+        int i = startIndex + 1;
+        while (i < lines.length) {
+            String line = lines[i].trim();
+            if (line.isEmpty() || line.startsWith("#")) {
+                i++;
+                continue;
+            }
+            if (line.equals("@end")) {
+                return true;
+            }
+            if (line.startsWith("@")) {
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /** Parse @scope block with UID-based source/trace references. */
+    private int parseScopeBlock(String[] lines, int startIndex) {
+        String header = lines[startIndex].trim();
+        ScopeBlockSpec spec = new ScopeBlockSpec();
+
+        String rest = header.substring(6).trim(); // Remove "@scope"
+        if (!rest.isEmpty()) {
+            String[] parts = rest.split("\\s+");
+            StringBuilder nameBuilder = new StringBuilder();
+            for (String part : parts) {
+                if (part.toLowerCase().startsWith("position=")) {
+                    try {
+                        spec.position = Integer.parseInt(part.substring(9));
+                    } catch (Exception e) {
+                        // Ignore malformed position
+                    }
+                } else {
+                    if (nameBuilder.length() > 0) {
+                        nameBuilder.append(" ");
+                    }
+                    nameBuilder.append(part);
+                }
+            }
+            if (nameBuilder.length() > 0) {
+                spec.name = nameBuilder.toString();
+            }
+        }
+
+        int i = startIndex + 1;
+        while (i < lines.length) {
+            String line = lines[i].trim();
+
+            if (line.equals("@end")) {
+                i++;
+                break;
+            }
+            if (line.startsWith("@")) {
+                break;
+            }
+            if (line.isEmpty() || line.startsWith("#")) {
+                i++;
+                continue;
+            }
+
+            int sep = line.indexOf(':');
+            int eq = line.indexOf('=');
+            int split = sep >= 0 ? sep : eq;
+            if (split > 0) {
+                String key = line.substring(0, split).trim().toLowerCase();
+                String value = line.substring(split + 1).trim();
+
+                if (key.equals("speed")) {
+                    try {
+                        spec.speed = Integer.parseInt(value);
+                    } catch (Exception e) {
+                        // Ignore malformed speed
+                    }
+                } else if (key.equals("flags")) {
+                    try {
+                        spec.flags = Scope.importDecOrHex(value);
+                    } catch (Exception e) {
+                        // Ignore malformed flags
+                    }
+                } else if (key.equals("title")) {
+                    spec.title = CustomLogicModel.unescape(value);
+                } else if (key.equals("label")) {
+                    spec.label = CustomLogicModel.unescape(value);
+                } else if (key.equals("source") || key.equals("trace")) {
+                    ScopeTraceSpec trace = parseScopeTraceSpec(value);
+                    if (trace != null && trace.uid != null && trace.uid.length() > 0) {
+                        if (key.equals("source")) {
+                            spec.traces.add(0, trace);
+                        } else {
+                            spec.traces.add(trace);
+                        }
+                    }
+                }
+            }
+
+            i++;
+        }
+
+        if (!spec.traces.isEmpty()) {
+            scopeBlocks.add(spec);
+        }
+
+        return i;
+    }
+
+    /** Parse "uid:ABC123 value:0" or "uid=ABC123 value=0" trace payload. */
+    private ScopeTraceSpec parseScopeTraceSpec(String payload) {
+        if (payload == null || payload.isEmpty()) {
+            return null;
+        }
+
+        ScopeTraceSpec trace = new ScopeTraceSpec();
+        String[] parts = payload.split("\\s+");
+        for (String part : parts) {
+            if (part.toLowerCase().startsWith("uid:")) {
+                trace.uid = part.substring(4);
+            } else if (part.toLowerCase().startsWith("uid=")) {
+                trace.uid = part.substring(4);
+            } else if (part.toLowerCase().startsWith("value:")) {
+                try {
+                    trace.value = Integer.parseInt(part.substring(6));
+                } catch (Exception e) {
+                    // Keep default
+                }
+            } else if (part.toLowerCase().startsWith("value=")) {
+                try {
+                    trace.value = Integer.parseInt(part.substring(6));
+                } catch (Exception e) {
+                    // Keep default
+                }
+            }
+        }
+
+        if (trace.uid != null && trace.uid.length() > 0) {
+            return trace;
+        }
+        return null;
+    }
     
     /** Parse @circuit block - raw CircuitJS element definitions (passthrough). */
     private int parseCircuitBlock(String[] lines, int startIndex) {
@@ -823,6 +989,7 @@ public class SFCRParser {
             CirSim.console("SFCRParser: Error creating Sankey element: " + e.getMessage());
         }
         
+        sim.assignPersistentUid(sankeyElm, null);
         sim.elmList.addElement(sankeyElm);
         createdElements.add(sankeyElm);
         
@@ -1627,6 +1794,7 @@ public class SFCRParser {
             CircuitElm ce = CirSim.createCe(type, xa, ya, xb, yb, flags, st);
             if (ce != null) {
                 ce.setPoints();  // Initialize geometry (required after construction)
+                sim.assignPersistentUid(ce, null);
                 sim.elmList.addElement(ce);
                 createdElements.add(ce);
                 currentY = yb + elementSpacing;
@@ -1729,6 +1897,7 @@ public class SFCRParser {
             CircuitElm ce = CirSim.createCe(type, xa, ya, xb, yb, flags, st);
             if (ce != null) {
                 ce.setPoints();  // Initialize geometry (required after construction)
+                sim.assignPersistentUid(ce, null);
                 sim.elmList.addElement(ce);
                 createdElements.add(ce);
                 currentY = yb + elementSpacing;
@@ -1738,19 +1907,68 @@ public class SFCRParser {
         }
     }
     
-    /** Add scopes for requested variables (TODO: not yet implemented). */
+    /** Add scopes from parsed @scope blocks and legacy @scope var lines. */
     private void addScopes() {
-        // Scope/probe creation is disabled for now - the probe element
-        // requires specific geometry setup that needs more investigation
-        if (scopeVariables.isEmpty()) {
-            return;
+        boolean addedAny = false;
+
+        // New block form: @scope ... @end with uid-based traces
+        for (ScopeBlockSpec block : scopeBlocks) {
+            if (block.traces.isEmpty()) {
+                continue;
+            }
+            if (sim.scopeCount >= sim.scopes.length) {
+                break;
+            }
+
+            Scope scope = new Scope(sim);
+            scope.plots = new Vector<ScopePlot>();
+
+            for (int i = 0; i < block.traces.size(); i++) {
+                ScopeTraceSpec trace = block.traces.get(i);
+                CircuitElm elm = sim.findElmByUid(trace.uid);
+                if (elm == null) {
+                    continue;
+                }
+                int units = elm.getScopeUnits(trace.value);
+                double manScale = scope.getManScaleFromMaxScale(units, false);
+                scope.plots.add(new ScopePlot(elm, units, trace.value, manScale));
+            }
+
+            if (scope.plots.isEmpty()) {
+                continue;
+            }
+
+            scope.position = block.position;
+            if (block.speed > 0) {
+                scope.setSpeed(block.speed);
+            }
+            if (block.flags != Integer.MIN_VALUE) {
+                scope.setFlags(block.flags);
+            }
+            if (block.title != null) {
+                scope.setTitle(block.title);
+            }
+            if (block.label != null) {
+                scope.setText(block.label);
+            }
+
+            scope.initialize();
+            scope.calcVisiblePlots();
+
+            sim.scopes[sim.scopeCount] = scope;
+            sim.scopeCount++;
+            addedAny = true;
         }
-        
-        CirSim.console("SFCR: Skipping scope creation for " + scopeVariables.size() + 
-                       " variables (not yet implemented)");
-        
-        // TODO: Implement proper probe creation
-        // ProbeElm needs to connect to a labeled node, not just reference a variable name
+
+        // Legacy one-line form: @scope varname (still unsupported for probe binding)
+        if (!scopeVariables.isEmpty()) {
+            CirSim.console("SFCR: Skipping legacy @scope variable mapping for " + scopeVariables.size() +
+                    " variables (probe binding not implemented)");
+        }
+
+        if (addedAny) {
+            sim.setupScopes();
+        }
     }
     
     /** Get list of created elements (for testing/debugging). */

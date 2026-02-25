@@ -222,9 +222,9 @@ Both elements:
 
 ## Related Documentation
 
-- `TABLE_MASTER_ELM_REFERENCE.md` - Detailed StockMasterElm docs
+- `STOCK_MASTER_ELM_REFERENCE.md` - Detailed StockMasterElm docs
 - `FLOWS_MASTER_ELM_REFERENCE.md` - Detailed FlowsMasterElm docs
-- `STOCK_FLOW_IMPLEMENTATION_COMPLETE.md` - Overall architecture
+- `ARCHITECTURE.md` - Overall architecture
 - `TableElm.java` - Table implementation
 - `ComputedValues.java` - Stock registry
 

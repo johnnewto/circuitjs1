@@ -2,32 +2,34 @@
 
 ## Overview
 
-Stock-flow table elements (GodlyTableElm, EquationTableElm, SFCTableElm) are now **pure computational** - they do not participate in the MNA (Modified Nodal Analysis) circuit matrix. Instead, they compute values and write them to the `ComputedValues` registry.
+Stock-flow table elements now use a **mixed architecture**. Some are pure computational/display-only, while others participate in MNA without exposing visible posts. This document summarizes current behavior and recommended bridging patterns.
 
 ## Key Design Principles
 
-### Pure Computational Elements
+### Element Modes
 
-These elements:
-- Return `0` from `getPostCount()` - no electrical posts
-- Return `0` from `getVoltageSourceCount()` - no voltage sources
-- Have empty `stamp()` methods - no MNA matrix entries
-- Write results to `ComputedValues` registry in `doStep()`
+#### Pure computational / display-only
+- `SFCTableElm`: no posts, no voltage sources, empty `stamp()`, evaluates/caches values for display.
+- `EquationTableElm` when `equationTableMnaMode=false`: no MNA stamping; values are computed and published through `ComputedValues`.
+
+#### MNA-backed with hidden node wiring
+- `GodlyTableElm`: `getPostCount()==0` (no visible posts) but it allocates internal nodes/voltage sources and stamps matrix entries to drive master stocks.
+- `EquationTableElm` when `equationTableMnaMode=true`: stamps per-row outputs (`VOLTAGE_MODE`, `FLOW_MODE`, `STOCK_MODE`) using voltage/current-source behavior.
 
 ### Benefits
 
-1. **Order Independence**: No dependency on MNA matrix solving order
-2. **Lower Cost**: No matrix entries means faster simulation
-3. **Cleaner Separation**: Accounting logic separated from electrical simulation
-4. **Double Buffering**: Uses ComputedValues' double-buffer for consistent reads
+1. **Flexible modeling**: choose matrix-coupled rows when conservation coupling matters, or pure mode for lightweight computation.
+2. **Cleaner separation**: display/computation-only elements avoid unnecessary matrix complexity.
+3. **Registry integration**: `ComputedValues` still provides cross-element name/value sharing.
+4. **Stable display reads**: converged-value buffering avoids subiteration flicker.
 
 ### Elements Affected
 
 | Element | Type | Notes |
 |---------|------|-------|
-| GodlyTableElm | Pure Computational | Integration of stocks over time |
-| EquationTableElm | Pure Computational | Named equation rows |
-| SFCTableElm | Pure Computational | SFC transaction matrix |
+| GodlyTableElm | MNA-backed (hidden posts) | Drives master stock nodes via voltage-source stamping |
+| EquationTableElm | Dual mode | Pure or MNA mode, with per-row output modes |
+| SFCTableElm | Pure computational/display | Evaluates table values without circuit stamping |
 
 ### Base TableElm
 
@@ -153,9 +155,9 @@ void stepFinished() {
 
 ### Existing Circuits
 
-Circuits saved with the old MNA-based tables may need adjustment:
-- Wire connections to table output posts no longer work
-- Add ComputedValueSourceElm elements to bridge values to scopes
+Circuits should be validated against the mode in use:
+- For pure mode tables, bridge into the electrical domain with `ComputedValueSourceElm` or `LabeledNodeElm` scope reads.
+- For MNA-mode equation rows and Godly master stocks, values are already represented in the circuit solve via labeled/internal nodes.
 
 ### Variable Browser
 

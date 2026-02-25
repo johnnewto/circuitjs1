@@ -64,6 +64,7 @@ public abstract class CircuitElm implements Editable {
     int x2, y2;
     
     int flags, nodes[], voltSource;
+	String persistentUid;
     
     // length along x and y axes, and sign of difference
     int dx, dy, dsign;
@@ -173,7 +174,7 @@ public abstract class CircuitElm implements Editable {
 	int i;
 
 	if (positiveColor == null)
-	    positiveColor = Color.green;
+	    positiveColor = new Color("#0eb053");
 	if (negativeColor == null)
 	    negativeColor = Color.red;
 	if (neutralColor == null)
@@ -227,6 +228,24 @@ public abstract class CircuitElm implements Editable {
 	int t = getDumpType();
 	return (t < 127 ? ((char)t)+" " : t+" ") + x + " " + y + " " +
 	    x2 + " " + y2 + " " + flags;
+    }
+
+    static String generatePersistentUid() {
+	final String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+	StringBuilder sb = new StringBuilder(6);
+	for (int i = 0; i < 6; i++)
+	    sb.append(chars.charAt(Random.nextInt(chars.length())));
+	return sb.toString();
+    }
+
+    String getPersistentUid() {
+	if (persistentUid == null || persistentUid.isEmpty())
+	    persistentUid = generatePersistentUid();
+	return persistentUid;
+    }
+
+    void setPersistentUid(String uid) {
+	persistentUid = uid;
     }
     
     // handle reset button

@@ -96,6 +96,15 @@ class EditDialog extends Dialog {
 				closeDialog();
 			}
 		});
+		if (elm instanceof EditOptions) {
+		    Button resetPrefsButton = new Button(Locale.LS("Reset Preferences"));
+		    bottomButtonPanel.add(resetPrefsButton);
+		    resetPrefsButton.addClickHandler(new ClickHandler() {
+			public void onClick(ClickEvent event) {
+			    ((EditOptions) elm).resetPreferences();
+			}
+		    });
+		}
 		bottomButtonPanel.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_RIGHT);
 		bottomButtonPanel.add(cancelButton = new Button(Locale.LS("Cancel")));
 		cancelButton.addClickHandler(new ClickHandler() {
