@@ -1,0 +1,156 @@
+# CircuitJS1 SFCR Export
+# Generated from circuit simulation
+
+@info
+
+# Model Documentation
+
+## Regional Two-Region Model (REG)
+
+**Source:** Godley & Lavoie (2007) Chapter 6  
+**Based on:** sfcr R package implementation
+
+This model demonstrates a **stock-flow consistent (SFC) two-region economy** (North/South) with external trade, government bills, and central bank balance-sheet dynamics.
+
+### Key Features
+
+- Two regions (North and South) linked by imports/exports
+- Region-level household and firm sectors with separate income, taxes, and consumption
+- Government spending/taxation and bill issuance (`Bs`), with central bank holdings (`Bcb`)
+- Portfolio choice for household money vs. bills (`Hh`, `Bh`) with lagged interest effects
+
+### Key Variables
+
+| Variable | Description |
+|----------|-------------|
+| **Y** | National income (output) |
+| **C** | Consumption |
+| **I** | Investment |
+| **K** | Capital stock |
+| **Hh** | Household money holdings |
+| **Bh** | Household bill holdings |
+| **Bs** | Government bills outstanding |
+| **Bcb** | Central bank bill holdings |
+
+### Steady-State Values
+
+At steady state (for symmetric calibration):
+- North and South converge to matching real/financial ratios
+- Government deficit/surplus flows are mirrored by changes in `Bs` and `Bcb`
+- Portfolio shares are governed by `lambda0`, `lambda1`, `lambda2` with lagged wealth/income terms
+
+### References
+
+> Godley, W., & Lavoie, M. (2007). *Monetary Economics: An Integrated Approach to Credit, Money, Income, Production and Wealth*. Palgrave Macmillan.
+
+@end
+# CircuitJS1 SFCR Export
+# Generated from circuit simulation
+
+@init
+  timestep: 0.1
+  voltageUnit: $
+  timeUnit: yr
+  showDots: false
+  showVolts: true
+  showValues: true
+  showPower: false
+  equationTableTolerance: 0.001
+@end
+
+@equations reg_eqs x=176 y=24
+  Y_N ~ C_N + G_N + X_N - IM_N ; mode=voltage ; sliderValue=0
+  Y_S ~ C_S + G_S + X_S - IM_S ; mode=voltage ; sliderValue=0
+  IM_N ~ mu_N * Y_N ; mode=voltage ; sliderValue=0
+  IM_S ~ mu_S * Y_S ; mode=voltage ; sliderValue=0
+  X_N ~ IM_S ; mode=voltage ; sliderValue=0
+  X_S ~ IM_N ; mode=voltage ; sliderValue=0
+  YD_N ~ Y_N - TX_N + last(r) * last(Bh_N) ; mode=voltage ; sliderValue=0
+  YD_S ~ Y_S - TX_S + last(r) * last(Bh_S) ; mode=voltage ; sliderValue=0
+  TX_N ~ \theta * ( Y_N + last(r) * last(Bh_N) ) ; mode=voltage ; sliderValue=0
+  TX_S ~ \theta * ( Y_S + last(r) * last(Bh_S) ) ; mode=voltage ; sliderValue=0
+  V_N ~ integrate(( YD_N - C_N )) ; mode=voltage ; sliderValue=0
+  V_S ~ integrate(( YD_S - C_S )) ; mode=voltage ; sliderValue=0
+  C_N ~ \alpha_1_N * YD_N + \alpha_2_N * last(V_N) ; mode=voltage ; sliderValue=0
+  C_S ~ \alpha_1_S * YD_S + \alpha_2_S * last(V_S) ; mode=voltage ; sliderValue=0
+  Hh_N ~ V_N - Bh_N ; mode=voltage ; sliderValue=0
+  Hh_S ~ V_S - Bh_S ; mode=voltage ; sliderValue=0
+  Bh_N ~ V_N * ( lambda0_N + lambda1_N * r - lambda2_N * ( YD_N/V_N ) ) ; mode=voltage ; sliderValue=0
+  Bh_S ~ V_S * ( lambda0_S + lambda1_S * r - lambda2_S * ( YD_S/V_S ) ) ; mode=voltage ; sliderValue=0
+  TX ~ TX_N + TX_S ; mode=voltage ; sliderValue=0
+  G ~ G_N + G_S ; mode=voltage ; sliderValue=0
+  Bh ~ Bh_N + Bh_S ; mode=voltage ; sliderValue=0
+  Hh ~ Hh_N + Hh_S ; mode=voltage ; sliderValue=0
+  Bs ~ integrate(( G + last(r) *  ) - ( TX + last(r) * last(Bcb) )) ; mode=voltage ; sliderValue=0
+  Hs ~ integrate(Bcb - last(Bcb)) ; mode=voltage ; sliderValue=0
+  Bcb ~ Bs - Bh ; mode=voltage ; sliderValue=0
+@end
+
+@equations reg_ext x=704 y=24
+  r ~ 0.025 ; mode=voltage ; sliderValue=0
+  G_S ~ 20 ; mode=voltage ; sliderValue=0
+  G_N ~ 20 ; mode=voltage ; sliderValue=0
+  mu_N ~ 0.15 ; mode=voltage ; sliderValue=0
+  mu_S ~ 0.15 ; mode=voltage ; sliderValue=0
+  \alpha_1_N ~ 0.7 ; mode=voltage ; sliderValue=0
+  \alpha_1_S ~ 0.7 ; mode=voltage ; sliderValue=0
+  \alpha_2_N ~ 0.3 ; mode=voltage ; sliderValue=0
+  \alpha_2_S ~ 0.3 ; mode=voltage ; sliderValue=0
+  lambda0_N ~ 0.67 ; mode=voltage ; sliderValue=0
+  lambda0_S ~ 0.67 ; mode=voltage ; sliderValue=0
+  lambda1_N ~ 0.05 ; mode=voltage ; sliderValue=0
+  lambda1_S ~ 0.05 ; mode=voltage ; sliderValue=0
+  lambda2_N ~ 0.01 ; mode=voltage ; sliderValue=0
+  lambda2_S ~ 0.01 ; mode=voltage ; sliderValue=0
+  \theta ~ 0.2 ; mode=voltage ; sliderValue=0
+@end
+
+@matrix bs_reg x=736 y=408
+  type: transaction_flow
+
+| Transaction | North_HH | South_HH | Government | Central Bank |
+|-------------|------|------|------|------|
+| Money | +Hh_N | +Hh_S |  | -Hs |
+| Bills | +Bh_N | +Bh_S | -Bs | +Bcb |
+| Wealth | -V_N | -V_S | V_N + V_S |  |
+@end
+
+@matrix tfm_reg x=192 y=568
+  type: transaction_flow
+
+| Transaction | North_HH | North_Firms | South_HH | South_Firms | Government | Central Bank |
+|-------------|------|------|------|------|------|------|
+| Consumption | -C_N | +C_N | -C_S | +C_S |  |  |
+| Govt. Exp |  | +G_N |  | +G_S | -G |  |
+| North X to South |  | +X_N |  | -IM_S |  |  |
+| South X to North |  | -IM_N |  | +X_S |  |  |
+| GDP | +Y_N | -Y_N | +Y_S | -Y_S |  |  |
+| Interest payments | +r[-1] * Bh_N[-1] |  | +r[-1] * Bh_S[-1] |  | -r[-1] * Bs[-1] | +r[-1] * Bcb[-1] |
+| CB Profits |  |  |  |  | +r[-1] * Bcb[-1] | -r[-1] * Bcb[-1] |
+| Taxes | -TX_N |  | -TX_S |  | +TX |  |
+| Ch. cash | -diff(Hh_N) |  | -diff(Hh_S) |  |  | +diff(Hs) |
+| Ch. bills | -diff(Bh_N) |  | -diff(Bh_S) |  | +diff(Bs) | -diff(Bcb) |
+@end
+
+@sankey x=912 y=32
+  source: tfm reg
+  layout: linear
+  width: 400
+  height: 250
+  showScaleBar: false
+  useHighWaterMark: true
+  showFlowValues: false
+@end
+
+@circuit
+207 1040 400 1104 400 164 Hh_S U:i_vMWr
+207 1040 368 1104 368 164 Hh_N U:3uX0Af
+431 1376 144 1392 176 0 50 true false U:YIhcd7
+@end
+
+@scope Hh_S position=0
+  speed: 1
+  flags: x2001206
+  source: uid:i_vMWr value:0
+@end
+

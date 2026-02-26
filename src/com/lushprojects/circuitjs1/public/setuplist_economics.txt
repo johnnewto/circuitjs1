@@ -11,6 +11,7 @@ econ_SimpleSFCModel.txt Simple SFC Model
 econ_SIM_MNA.txt SFCStockElm SFCFlowElm Test
 econ_Godley_Lavoie_SIM_3.txt SIM Godley Lavoie SIM Model Ch3
 econ_Godley_Lavoie_SIM_3_SFCFlowTable.txt SIM Godley Lavoie SIM Model  Ch3 (SFC Flow Table)
+econ_Godley_Lavoie_REG_6.txt BMW Godley Lavoie REG Model Ch6
 econ_Godley_Lavoie_BMW_7.txt BMW Godley Lavoie BMW Model Ch7
 econ_Godley_Lavoie_BMW_7_SFCFlowTable.txt BMW Godley Lavoie BMW Model Ch7 (SFC Flow Table)
 -

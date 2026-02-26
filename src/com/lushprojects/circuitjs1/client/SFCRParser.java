@@ -68,6 +68,17 @@ public class SFCRParser {
         String title;
         String label;
         ArrayList<ScopeTraceSpec> traces = new ArrayList<ScopeTraceSpec>();
+        // Embedded scope geometry (from ScopeElm export)
+        int x1 = Integer.MIN_VALUE;
+        int y1 = Integer.MIN_VALUE;
+        int x2 = Integer.MIN_VALUE;
+        int y2 = Integer.MIN_VALUE;
+        String elmUid;
+
+        boolean hasGeometry() {
+            return x1 != Integer.MIN_VALUE && y1 != Integer.MIN_VALUE
+                && x2 != Integer.MIN_VALUE && y2 != Integer.MIN_VALUE;
+        }
     }
     
     // =========================================================================
@@ -207,9 +218,6 @@ public class SFCRParser {
                 HintRegistry.setHint(varName, hints.get(varName));
             }
             
-            // Add scopes for requested variables
-            addScopes();
-            
             return true;
             
         } catch (Exception e) {
@@ -335,6 +343,15 @@ public class SFCRParser {
                         break;
                     case "showPower":
                         sim.powerCheckItem.setState(value.equals("true"));
+                        break;
+                    case "equationTableTolerance":
+                    case "equationTableConvergenceTolerance":
+                        {
+                            double tol = Double.parseDouble(value);
+                            if (tol > 0) {
+                                sim.equationTableConvergenceTolerance = tol;
+                            }
+                        }
                         break;
                     default:
                         CirSim.console("SFCRParser: Unknown init setting: " + key);
@@ -527,7 +544,7 @@ public class SFCRParser {
                 i++;
                 continue;
             }
-            
+
             // Extract inline comment as hint BEFORE removing it
             String inlineComment = null;
             int commentIdx = line.indexOf('#');
@@ -598,12 +615,14 @@ public class SFCRParser {
                 targetNodeNames.add(targetName);
 
                 String sliderVar = rowMeta.get("slider");
-                if (sliderVar == null || sliderVar.trim().isEmpty()) {
-                    sliderVar = String.valueOf((char)('a' + (outputNames.size() - 1) % 26));
+                if (sliderVar == null) {
+                    sliderVar = "";
+                } else {
+                    sliderVar = sliderVar.trim();
                 }
                 sliderVarNames.add(sliderVar);
 
-                double sliderValue = 0.5;
+                double sliderValue = 0.0;
                 String sliderValueStr = rowMeta.get("slidervalue");
                 if (sliderValueStr != null) {
                     try {
@@ -784,6 +803,16 @@ public class SFCRParser {
                             spec.traces.add(trace);
                         }
                     }
+                } else if (key.equals("x1")) {
+                    try { spec.x1 = Integer.parseInt(value); } catch (Exception e) {}
+                } else if (key.equals("y1")) {
+                    try { spec.y1 = Integer.parseInt(value); } catch (Exception e) {}
+                } else if (key.equals("x2")) {
+                    try { spec.x2 = Integer.parseInt(value); } catch (Exception e) {}
+                } else if (key.equals("y2")) {
+                    try { spec.y2 = Integer.parseInt(value); } catch (Exception e) {}
+                } else if (key.equals("elmuid")) {
+                    spec.elmUid = value;
                 }
             }
 
@@ -863,6 +892,11 @@ public class SFCRParser {
     /** Get raw circuit lines for standard element loader. */
     public ArrayList<String> getRawCircuitLines() {
         return rawCircuitLines;
+    }
+
+    /** Finalize scope creation after all elements (including @circuit raw lines) are loaded. */
+    public void applyParsedScopes() {
+        addScopes();
     }
     
     /** 
@@ -1251,8 +1285,8 @@ public class SFCRParser {
             for (int i = 0; i < outputNames.size(); i++) {
                 outputModes.add(EquationTableElm.RowOutputMode.VOLTAGE_MODE);
                 targetNodeNames.add("");
-                sliderVarNames.add(String.valueOf((char)('a' + (i % 26))));
-                sliderValues.add(Double.valueOf(0.5));
+                sliderVarNames.add("");
+                sliderValues.add(Double.valueOf(0.0));
                 initialEquations.add("");
             }
 
@@ -1916,6 +1950,60 @@ public class SFCRParser {
             if (block.traces.isEmpty()) {
                 continue;
             }
+
+            // If this scope has geometry, create an embedded ScopeElm (floating scope).
+            // First check if a matching ScopeElm already exists from @circuit.
+            ScopeElm matchingScopeElm = findScopeElmByPrimaryTrace(block.traces.get(0).uid);
+            if (matchingScopeElm == null && block.hasGeometry()) {
+                // Create a new ScopeElm with the exported geometry
+                matchingScopeElm = new ScopeElm(block.x1, block.y1);
+                matchingScopeElm.x2 = block.x2;
+                matchingScopeElm.y2 = block.y2;
+                sim.assignPersistentUid(matchingScopeElm, block.elmUid);
+                sim.elmList.addElement(matchingScopeElm);
+                createdElements.add(matchingScopeElm);
+            }
+
+            if (matchingScopeElm != null && matchingScopeElm.elmScope != null) {
+                Scope embedded = matchingScopeElm.elmScope;
+                embedded.plots = new Vector<ScopePlot>();
+
+                for (int i = 0; i < block.traces.size(); i++) {
+                    ScopeTraceSpec trace = block.traces.get(i);
+                    CircuitElm elm = sim.findElmByUid(trace.uid);
+                    if (elm == null) {
+                        continue;
+                    }
+                    int units = elm.getScopeUnits(trace.value);
+                    double manScale = embedded.getManScaleFromMaxScale(units, false);
+                    embedded.plots.add(new ScopePlot(elm, units, trace.value, manScale));
+                }
+
+                if (embedded.plots.size() > 0) {
+                    embedded.initialize();
+
+                    // Apply parsed properties AFTER initialize() which resets speed to 64
+                    if (block.speed > 0) {
+                        embedded.setSpeed(block.speed);
+                    }
+                    if (block.flags != Integer.MIN_VALUE) {
+                        embedded.setFlags(block.flags);
+                    }
+                    if (block.title != null) {
+                        embedded.setTitle(block.title);
+                    }
+                    if (block.label != null) {
+                        embedded.setText(block.label);
+                    }
+
+                    embedded.calcVisiblePlots();
+                    matchingScopeElm.setPoints();
+                    addedAny = true;
+                    continue;
+                }
+            }
+
+            // No geometry and no matching ScopeElm: create as docked scope
             if (sim.scopeCount >= sim.scopes.length) {
                 break;
             }
@@ -1939,6 +2027,9 @@ public class SFCRParser {
             }
 
             scope.position = block.position;
+            scope.initialize();
+
+            // Apply parsed properties AFTER initialize() which resets speed to 64
             if (block.speed > 0) {
                 scope.setSpeed(block.speed);
             }
@@ -1952,7 +2043,6 @@ public class SFCRParser {
                 scope.setText(block.label);
             }
 
-            scope.initialize();
             scope.calcVisiblePlots();
 
             sim.scopes[sim.scopeCount] = scope;
@@ -1969,6 +2059,31 @@ public class SFCRParser {
         if (addedAny) {
             sim.setupScopes();
         }
+    }
+
+    private ScopeElm findScopeElmByPrimaryTrace(String uid) {
+        if (uid == null || uid.length() == 0) {
+            return null;
+        }
+        for (int i = 0; i < sim.elmList.size(); i++) {
+            CircuitElm ce = sim.elmList.get(i);
+            if (!(ce instanceof ScopeElm)) {
+                continue;
+            }
+            ScopeElm se = (ScopeElm) ce;
+            if (se.elmScope == null || se.elmScope.plots == null || se.elmScope.plots.size() == 0) {
+                continue;
+            }
+            ScopePlot firstPlot = se.elmScope.plots.get(0);
+            if (firstPlot == null || firstPlot.elm == null) {
+                continue;
+            }
+            String firstUid = firstPlot.elm.getPersistentUid();
+            if (uid.equals(firstUid)) {
+                return se;
+            }
+        }
+        return null;
     }
     
     /** Get list of created elements (for testing/debugging). */

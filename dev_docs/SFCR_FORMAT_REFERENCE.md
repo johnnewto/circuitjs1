@@ -135,14 +135,31 @@ Tooltips for variables. Overrides inline comments.
 
 ---
 
-### @scope — Oscilloscope Display
+### @scope — Scope Viewer (UID Traces)
 
-Add scope for a variable.
+Defines a docked scope with one source trace and optional additional traces.
+
+```
+@scope Main_Scope position=0
+  speed: 64
+  flags: x800060
+  source: uid:Ab3_Xz value:0
+  trace: uid:Q9m-L2 value:0
+@end
+```
+
+| Field | Description |
+|-------|-------------|
+| `position` | Dock position/index used by the scope layout |
+| `speed` | Scope sample speed |
+| `flags` | Scope flags (decimal or `x...` hex) |
+| `source` | Primary trace (`uid` + `value`) |
+| `trace` | Additional trace (`uid` + `value`) |
+
+Legacy single-line form is still accepted for import compatibility:
 
 ```
 @scope Y
-@scope C_d
-@scope ∆H_h
 ```
 
 ---
@@ -168,7 +185,7 @@ Pass-through for native CircuitJS1 element dump format.
 | `@equations` | `EquationTableElm` (266) |
 | `@parameters` | `EquationTableElm` (266) — import alias |
 | `@hints` | `HintRegistry` |
-| `@scope` | `ProbeElm` + `ScopeElm` |
+| `@scope` | `Scope` entries (resolved by element UID) |
 | `@circuit` | Native elements |
 
 ---

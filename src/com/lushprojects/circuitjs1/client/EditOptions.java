@@ -83,21 +83,24 @@ class EditOptions implements Editable {
 		if (n == 14)
 		    return new EditInfo("Convergence Check Threshold (subiterations)", sim.convergenceCheckThreshold, 0, 100).setDimensionless();
 		if (n == 15) {
+		    return new EditInfo("Equation Table Convergence Tolerance", sim.equationTableConvergenceTolerance, 0, 0).setDimensionless();
+		}
+		if (n == 16) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
 		    ei.checkbox = new Checkbox("MNA Mode", sim.equationTableMnaMode);
 		    return ei;
 		}
-		if (n == 16) {
+		if (n == 17) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
 		    ei.checkbox = new Checkbox("Use WASM Solver", CirSim.useWasmSolver);
 		    return ei;
 		}
-		if (n == 17) {
+		if (n == 18) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
 		    ei.checkbox = new Checkbox("Show Electronics Circuits", sim.showElectronicsCircuits);
 		    return ei;
 		}
-		if (n == 18) {
+		if (n == 19) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
 		    ei.checkbox = new Checkbox("Enable Cache-Busted URLs", sim.enableCacheBustedUrls);
 		    return ei;
@@ -105,12 +108,12 @@ class EditOptions implements Editable {
 		// Conditional items must be last. When the condition is false,
 		// getEditInfo() returns null which terminates the dialog loop,
 		// hiding any items that would follow.
-		if (n == 19) {
+		if (n == 20) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
 		    ei.checkbox = new Checkbox("Auto-Adjust Timestep", sim.adjustTimeStep);
 		    return ei;
 		}
-		if (n == 20 && sim.adjustTimeStep)
+		if (n == 21 && sim.adjustTimeStep)
 		    return new EditInfo("Minimum time step size (s)", sim.minTimeStep, 0, 0);
 
 		return null;
@@ -197,14 +200,22 @@ class EditOptions implements Editable {
 		if (n == 14 && ei.value >= 0)
 		    sim.convergenceCheckThreshold = (int)ei.value;
 		if (n == 15) {
+		    if (ei.value > 0) {
+			sim.equationTableConvergenceTolerance = ei.value;
+			Storage stor = Storage.getLocalStorageIfSupported();
+			if (stor != null)
+			    stor.setItem("equationTableConvergenceTolerance", Double.toString(sim.equationTableConvergenceTolerance));
+		    }
+		}
+		if (n == 16) {
 		    sim.equationTableMnaMode = ei.checkbox.getState();
 		    sim.needAnalyze();
 		}
-		if (n == 16) {
+		if (n == 17) {
 		    CirSim.useWasmSolver = ei.checkbox.getState();
 		    CirSim.console("WASM solver " + (CirSim.useWasmSolver ? "enabled" : "disabled"));
 		}
-		if (n == 17) {
+		if (n == 18) {
 		    boolean newValue = ei.checkbox.getState();
 		    if (sim.showElectronicsCircuits != newValue) {
 			sim.showElectronicsCircuits = newValue;
@@ -213,15 +224,15 @@ class EditOptions implements Editable {
 			    Window.Location.reload();
 		    }
 		}
-		if (n == 18) {
+		if (n == 19) {
 		    sim.enableCacheBustedUrls = ei.checkbox.getState();
 		    sim.setOptionInStorage("enableCacheBustedUrls", sim.enableCacheBustedUrls);
 		}
-		if (n == 19) {
+		if (n == 20) {
 		    sim.adjustTimeStep = ei.checkbox.getState();
 		    ei.newDialog = true;
 		}
-		if (n == 20 && ei.value > 0)
+		if (n == 21 && ei.value > 0)
 		    sim.minTimeStep = ei.value;
 	}
 
@@ -236,7 +247,7 @@ class EditOptions implements Editable {
 	    String keys[] = {
 		"crossHair", "euroResistors", "euroGates", "whiteBackground", "conventionalCurrent",
 		"mouseWheelEdit", "weightedPriority", "showElectronicsCircuits", "alternativeColor",
-		"enableCacheBustedUrls",
+		"enableCacheBustedUrls", "equationTableConvergenceTolerance",
 		"positiveColor", "negativeColor", "neutralColor", "selectColor", "currentColor",
 		"language", "wheelSensitivity", "graphicsUpdateInterval", "voltageUnitSymbol",
 		"scopeDefaults", "shortcuts"

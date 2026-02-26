@@ -15,6 +15,7 @@ import com.google.gwt.user.client.ui.TextBox;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.Widget;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
+import com.google.gwt.user.client.ui.HasVerticalAlignment;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.KeyUpHandler;
@@ -163,13 +164,24 @@ public class EquationTableEditDialog extends Dialog {
         // Table name editor at the top
         HorizontalPanel titlePanel = new HorizontalPanel();
         titlePanel.addStyleName("topSpace");
+        titlePanel.setWidth("100%");
+        titlePanel.setSpacing(4);
+        titlePanel.setVerticalAlignment(HasVerticalAlignment.ALIGN_MIDDLE);
+        titlePanel.getElement().getStyle().setProperty("padding", "4px 8px");
+        titlePanel.getElement().getStyle().setProperty("border", "1px solid #d0d7de");
+        titlePanel.getElement().getStyle().setProperty("borderRadius", "8px");
+        titlePanel.getElement().getStyle().setProperty("backgroundColor", "#f8fafc");
+
         Label titleLabel = new Label("Table Name:");
-        titleLabel.setWidth("80px");
+        titleLabel.getElement().getStyle().setProperty("fontWeight", "600");
+        titleLabel.getElement().getStyle().setProperty("color", "#4b5563");
+        titleLabel.setWidth("88px");
         titlePanel.add(titleLabel);
         
         tableNameBox = new TextBox();
         tableNameBox.setText(tableElement.getTableName());
-        tableNameBox.setWidth("200px");
+        tableNameBox.setWidth("220px");
+        tableNameBox.setTitle("Equation table name");
         tableNameBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
                 markChanged();
@@ -179,9 +191,13 @@ public class EquationTableEditDialog extends Dialog {
         
         // Row count label
         Label rowCountLabel = new Label("Rows: " + rowCount);
-        rowCountLabel.getElement().getStyle().setProperty("marginLeft", "20px");
+        rowCountLabel.getElement().getStyle().setProperty("marginLeft", "6px");
+        rowCountLabel.getElement().getStyle().setProperty("padding", "2px 6px");
+        rowCountLabel.getElement().getStyle().setProperty("backgroundColor", "#eef2f7");
+        rowCountLabel.getElement().getStyle().setProperty("borderRadius", "999px");
+        rowCountLabel.getElement().getStyle().setProperty("color", "#374151");
         titlePanel.add(rowCountLabel);
-        
+
         mainPanel.add(titlePanel);
         
         // Scrollable table area
@@ -200,7 +216,7 @@ public class EquationTableEditDialog extends Dialog {
         statusLabel.addStyleName("topSpace");
         mainPanel.add(statusLabel);
     }
-    
+
     /**
      * Create the bottom button panel
      */
@@ -829,8 +845,8 @@ public class EquationTableEditDialog extends Dialog {
         outputModes[insertAt] = RowOutputMode.VOLTAGE_MODE;
         capacitances[insertAt] = 1.0;
         useBackwardEuler[insertAt] = false;
-        sliderVarNames[insertAt] = String.valueOf((char)('a' + insertAt));
-        sliderValues[insertAt] = 0.5;
+        sliderVarNames[insertAt] = "";
+        sliderValues[insertAt] = 0;
         hints[insertAt] = "hint" + (insertAt + 1);
         
         rowCount++;

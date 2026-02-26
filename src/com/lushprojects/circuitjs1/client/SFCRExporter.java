@@ -7,8 +7,8 @@
 package com.lushprojects.circuitjs1.client;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Set;
-import java.util.Vector;
 
 /**
  * Exports circuit in SFCR-compatible text format.
@@ -23,6 +23,7 @@ import java.util.Vector;
  *   @matrix     - Transaction matrices (from SFCTableElm, SFCFlowTable)
  *   @hints      - Variable documentation
  *   @circuit    - Non-SFCR elements (passthrough)
+ *   @scope      - Docked and undocked scopes with trace references (UID-based)
  * 
  * @see SFCRParser
  * @see <a href="../dev_docs/SFCR_FORMAT_REFERENCE.md">SFCR Format Reference</a>
@@ -40,6 +41,7 @@ public class SFCRExporter {
     private ArrayList<GodlyTableElm> godlyTables = new ArrayList<GodlyTableElm>();
     private ArrayList<SFCSankeyElm> sankeyDiagrams = new ArrayList<SFCSankeyElm>();
     private ArrayList<CircuitElm> otherElements = new ArrayList<CircuitElm>();
+    private HashSet<CircuitElm> scopeElmsExportedAsBlocks = new HashSet<CircuitElm>();
     
     // =========================================================================
     // Constructor & Public API
@@ -53,6 +55,7 @@ public class SFCRExporter {
     /** Export the current circuit in SFCR format. */
     public String export() {
         StringBuilder sb = new StringBuilder();
+        scopeElmsExportedAsBlocks.clear();
         
         // Categorize elements
         categorizeElements();
@@ -127,20 +130,20 @@ public class SFCRExporter {
             sb.append(hintsBlock);
             sb.append("\n");
         }
-
-        // Export docked scopes as @scope blocks (UID-based references)
-        String scopesBlock = exportScopes();
-        if (!scopesBlock.isEmpty()) {
-            sb.append(scopesBlock);
-            sb.append("\n");
-        }
         
         // Export other circuit elements in @circuit block
         if (!otherElements.isEmpty()) {
             String circuitBlock = exportCircuitElements();
             if (!circuitBlock.isEmpty()) {
                 sb.append(circuitBlock);
+                sb.append("\n");
             }
+        }
+
+        // Export scopes after @circuit so trace targets are defined earlier in file
+        String scopesBlock = exportScopes();
+        if (!scopesBlock.isEmpty()) {
+            sb.append(scopesBlock);
         }
         
         return sb.toString();
@@ -220,6 +223,7 @@ public class SFCRExporter {
         sb.append("  showVolts: ").append(sim.voltsCheckItem.getState()).append("\n");
         sb.append("  showValues: ").append(sim.showValuesCheckItem.getState()).append("\n");
         sb.append("  showPower: ").append(sim.powerCheckItem.getState()).append("\n");
+        sb.append("  equationTableTolerance: ").append(Double.toString(sim.equationTableConvergenceTolerance)).append("\n");
         
         sb.append("@end\n");
         return sb.toString();
@@ -557,6 +561,13 @@ public class SFCRExporter {
         sb.append("@circuit\n");
         
         for (CircuitElm elm : otherElements) {
+            if (elm instanceof ScopeElm) {
+                ScopeElm se = (ScopeElm) elm;
+                // Skip raw 403 dump when we can represent this scope in @scope block.
+                if (scopeElmsExportedAsBlocks.contains(elm) || canExportScopeAsBlock(se.elmScope)) {
+                    continue;
+                }
+            }
             String dump = sim.getElementDumpWithUid(elm);
             if (dump != null && !dump.isEmpty()) {
                 sb.append(dump).append("\n");
@@ -569,50 +580,117 @@ public class SFCRExporter {
 
     /** Export docked scopes in @scope blocks using UID-based trace references. */
     private String exportScopes() {
-        if (sim.scopeCount <= 0) {
-            return "";
-        }
-
         StringBuilder sb = new StringBuilder();
+
+        // Export docked scopes (no geometry - they live in the scope dock)
         for (int i = 0; i < sim.scopeCount; i++) {
             Scope s = sim.scopes[i];
-            if (s == null || s.plots == null || s.plots.size() == 0) {
+            if (!appendScopeBlock(sb, s, i + 1, "Scope", null)) {
                 continue;
             }
-
-            String scopeName = s.getScopeMenuName();
-            if (scopeName == null || scopeName.isEmpty()) {
-                scopeName = "Scope_" + (i + 1);
-            }
-
-            sb.append("@scope ").append(sanitizeName(scopeName))
-              .append(" position=").append(s.position).append("\n");
-            sb.append("  speed: ").append(s.speed).append("\n");
-            sb.append("  flags: ").append(Scope.exportAsDecOrHex(s.getFlags(), s.FLAG_PERPLOTFLAGS)).append("\n");
-
-            if (s.getTitle() != null && !s.getTitle().isEmpty()) {
-                sb.append("  title: ").append(CustomLogicModel.escape(s.getTitle())).append("\n");
-            }
-            if (s.getText() != null && !s.getText().isEmpty()) {
-                sb.append("  label: ").append(CustomLogicModel.escape(s.getText())).append("\n");
-            }
-
-            for (int p = 0; p < s.plots.size(); p++) {
-                ScopePlot sp = s.plots.get(p);
-                if (sp == null || sp.elm == null) {
-                    continue;
-                }
-                String uid = sp.elm.getPersistentUid();
-                if (p == 0) {
-                    sb.append("  source: uid:").append(uid).append(" value:").append(sp.value).append("\n");
-                } else {
-                    sb.append("  trace: uid:").append(uid).append(" value:").append(sp.value).append("\n");
-                }
-            }
-
-            sb.append("@end\n");
         }
+
+        // Export embedded scope elements (ScopeElm) with geometry
+        int embeddedIndex = 1;
+        for (int i = 0; i < sim.elmList.size(); i++) {
+            CircuitElm elm = sim.elmList.get(i);
+            if (!(elm instanceof ScopeElm)) {
+                continue;
+            }
+            ScopeElm scopeElm = (ScopeElm) elm;
+            if (appendScopeBlock(sb, scopeElm.elmScope, embeddedIndex++, "Embedded_Scope", scopeElm)) {
+                scopeElmsExportedAsBlocks.add(scopeElm);
+            }
+        }
+
         return sb.toString();
+    }
+
+    private boolean canExportScopeAsBlock(Scope s) {
+        if (s == null || s.plots == null || s.plots.size() == 0) {
+            return false;
+        }
+        for (int p = 0; p < s.plots.size(); p++) {
+            ScopePlot sp = s.plots.get(p);
+            if (sp != null && sp.elm != null) {
+                String uid = sp.elm.getPersistentUid();
+                if (uid != null && !uid.isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean appendScopeBlock(StringBuilder sb, Scope s, int defaultIndex, String defaultPrefix, ScopeElm scopeElm) {
+        if (s == null || s.plots == null || s.plots.size() == 0) {
+            return false;
+        }
+
+        int validPlots = 0;
+        for (int p = 0; p < s.plots.size(); p++) {
+            ScopePlot sp = s.plots.get(p);
+            if (sp != null && sp.elm != null && sp.elm.getPersistentUid() != null && !sp.elm.getPersistentUid().isEmpty()) {
+                validPlots++;
+            }
+        }
+        if (validPlots == 0) {
+            return false;
+        }
+
+        String scopeName = s.getScopeMenuName();
+        if (scopeName == null || scopeName.isEmpty()) {
+            scopeName = defaultPrefix + "_" + defaultIndex;
+        }
+
+        sb.append("@scope ").append(sanitizeName(scopeName))
+          .append(" position=").append(s.position).append("\n");
+
+        // For embedded scopes, include the ScopeElm geometry and UID
+        if (scopeElm != null) {
+            sb.append("  x1: ").append(scopeElm.x).append("\n");
+            sb.append("  y1: ").append(scopeElm.y).append("\n");
+            sb.append("  x2: ").append(scopeElm.x2).append("\n");
+            sb.append("  y2: ").append(scopeElm.y2).append("\n");
+            String elmUid = scopeElm.getPersistentUid();
+            if (elmUid != null && !elmUid.isEmpty()) {
+                sb.append("  elmUid: ").append(elmUid).append("\n");
+            }
+        }
+
+        sb.append("  speed: ").append(s.speed).append("\n");
+        sb.append("  flags: ").append(Scope.exportAsDecOrHex(s.getFlags(), s.FLAG_PERPLOTFLAGS)).append("\n");
+
+        if (s.getTitle() != null && !s.getTitle().isEmpty()) {
+            sb.append("  title: ").append(CustomLogicModel.escape(s.getTitle())).append("\n");
+        }
+        if (s.getText() != null && !s.getText().isEmpty()) {
+            sb.append("  label: ").append(CustomLogicModel.escape(s.getText())).append("\n");
+        }
+
+        boolean wroteSource = false;
+        for (int p = 0; p < s.plots.size(); p++) {
+            ScopePlot sp = s.plots.get(p);
+            if (sp == null || sp.elm == null) {
+                continue;
+            }
+            String uid = sp.elm.getPersistentUid();
+            if (uid == null || uid.isEmpty()) {
+                continue;
+            }
+            if (!wroteSource) {
+                sb.append("  source: uid:").append(uid).append(" value:").append(sp.value).append("\n");
+                wroteSource = true;
+            } else {
+                sb.append("  trace: uid:").append(uid).append(" value:").append(sp.value).append("\n");
+            }
+        }
+
+        if (!wroteSource) {
+            return false;
+        }
+        sb.append("@end\n");
+        return true;
     }
     
     // =========================================================================

@@ -46,6 +46,7 @@ class ScopePlot {
     double minValues[], maxValues[];
     int scopePointCount;
     int ptr; // Pointer to the current sample in circular buffer
+	int samplesCaptured; // Number of valid samples currently stored (up to scopePointCount)
     
     // Plot configuration
     int value; // The property being shown (e.g., VAL_CURRENT, VAL_VOLTAGE)
@@ -111,7 +112,19 @@ class ScopePlot {
      * @return Starting index in circular buffer
      */
     int startIndex(int w) {
-	return ptr + scopePointCount - w; 
+	int displayWidth = getDisplayWidth(w);
+	if (displayWidth <= 0)
+	    return 0;
+	if (samplesCaptured < w)
+	    return 0;
+	return ptr + scopePointCount - displayWidth;
+    }
+
+    int getDisplayWidth(int w) {
+	if (w <= 0)
+	    return 0;
+	int captured = Math.max(samplesCaptured, 1);
+	return Math.min(w, captured);
     }
     
     /**
@@ -122,9 +135,12 @@ class ScopePlot {
      */
     void reset(int spc, int sp, boolean full) {
 	int oldSpc = scopePointCount;
+	int oldSamplesCaptured = samplesCaptured;
 	scopePointCount = spc;
-	if (scopePlotSpeed != sp)
+	if (scopePlotSpeed != sp) {
 	    oldSpc = 0; // throw away old data
+	    oldSamplesCaptured = 0;
+	}
 	scopePlotSpeed = sp;
 	// Adjust the time constant of the AC coupled filter in proportion to the number of samples
 	// we are seeing on the scope (if my maths is right). The constant is empirically determined
@@ -133,7 +149,7 @@ class ScopePlot {
 	double oldMax[] = maxValues;
     	minValues = new double[scopePointCount];
     	maxValues = new double[scopePointCount];
-    	if (oldMin != null && !full) {
+    	if (oldMin != null && !full && oldSpc > 0) {
     	    // preserve old data if possible
     	    int i;
     	    for (i = 0; i != scopePointCount && i != oldSpc; i++) {
@@ -145,6 +161,10 @@ class ScopePlot {
     	} else
     	    lastUpdateTime = CirSim.theSim.t;
     	ptr = 0;
+		if (oldMin != null && !full && oldSpc > 0)
+		    samplesCaptured = Math.max(1, Math.min(scopePointCount, Math.min(oldSpc, oldSamplesCaptured)));
+	else
+	    samplesCaptured = 1;
     }
 
     /**
@@ -177,6 +197,8 @@ class ScopePlot {
 	if (CirSim.theSim.t - lastUpdateTime >= CirSim.theSim.maxTimeStep * scopePlotSpeed) {
 	    ptr = (ptr + 1) & (scopePointCount - 1);
 	    minValues[ptr] = maxValues[ptr] = v;
+	    if (samplesCaptured < scopePointCount)
+		samplesCaptured++;
 	    lastUpdateTime += CirSim.theSim.maxTimeStep * scopePlotSpeed;
 	}
     }
@@ -1800,7 +1822,7 @@ class Scope {
     	
     	drawCursor(g);
     	
-    	if (plots.get(0).ptr > 5 && !manualScale) {
+		if (plots.get(0).samplesCaptured > 5 && !manualScale) {
     	    for (i = 0; i != UNITS_COUNT; i++)
     		if (scale[i] > 1e-4 && reduceRange[i])
     		    scale[i] /= 2;
@@ -1822,10 +1844,13 @@ class Scope {
     	    ScopePlot plot = visiblePlots.get(si);
     	    if (plot.units != units)
     		continue;
-    	    int ipa = plot.startIndex(rect.width);
+		    int displayWidth = plot.getDisplayWidth(rect.width);
+		    if (displayWidth <= 0)
+			continue;
+		    int ipa = plot.startIndex(displayWidth);
     	    double maxV[] = plot.maxValues;
     	    double minV[] = plot.minValues;
-    	    for (i = 0; i != rect.width; i++) {
+		    for (i = 0; i != displayWidth; i++) {
     		int ip = (i+ipa) & (scopePointCount-1);
     		if (maxV[ip] > maxValue)
     		    maxValue = maxV[ip];
@@ -1840,12 +1865,15 @@ class Scope {
 		if (manualScale)
 			return;
     	int i;
-    	int ipa = plot.startIndex(rect.width);
+		int displayWidth = plot.getDisplayWidth(rect.width);
+		if (displayWidth <= 0)
+		    return;
+		int ipa = plot.startIndex(displayWidth);
     	double maxV[] = plot.maxValues;
     	double minV[] = plot.minValues;
     	double max = 0;
     	double gridMax = scale[plot.units];
-    	for (i = 0; i != rect.width; i++) {
+		for (i = 0; i != displayWidth; i++) {
     	    int ip = (i+ipa) & (scopePointCount-1);
     	    if (maxV[ip] > max)
     			max = maxV[ip];
@@ -1927,7 +1955,6 @@ class Scope {
     	    color = CircuitElm.selectColor.getHexValue();
 	else if (selected)
 	    color = plot.color;
-    	int ipa = plot.startIndex(rect.width);
     	double maxV[] = plot.maxValues;
     	double minV[] = plot.minValues;
     	double gridMax;
@@ -2063,27 +2090,40 @@ class Scope {
     		// Draw action time markers
     		drawActionTimeMarkers(g, startTime, displayTimeSpan);
     	    } else {
-    		// Normal scrolling mode: gridlines scroll with time
-    		double tstart = sim.t-sim.maxTimeStep*speed*rect.width;
-    		double tx = sim.t-(sim.t % gridStepX);
+			int displayWidth = plot.getDisplayWidth(rect.width);
+			if (displayWidth < rect.width) {
+			    // Initial fill mode: draw static grid and start scrolling only when plot scrolls
+			    for (int ll = 0; ; ll++) {
+				double tl = ll * gridStepX;
+				int gx = (int) (tl / ts);
+				if (gx >= rect.width)
+				    break;
+				col = (ll % 10 == 0) ? majorDiv : minorDiv;
+				g.setColor(col);
+				g.drawLine(gx, 0, gx, rect.height - 1);
+			    }
+			} else {
+			    // Normal scrolling mode: gridlines scroll with time
+			    double tstart = sim.t-sim.maxTimeStep*speed*rect.width;
+			    double tx = sim.t-(sim.t % gridStepX);
 
-    		for (int ll = 0; ; ll++) {
-    		    double tl = tx-gridStepX*ll;
-    		    int gx = (int) ((tl-tstart)/ts);
-    		    if (gx < 0)
-    			break;
-    		    if (gx >= rect.width)
-    			continue;
-    		    if (tl < 0)
-    			continue;
-    		    col = minorDiv;
-    		    // first = 0;
-    		    if (((tl+gridStepX/4) % (gridStepX*10)) < gridStepX) {
-    			col = majorDiv;
-    		    }
-    		    g.setColor(col);
-    		    g.drawLine(gx,0,gx,rect.height-1);
-    		}
+			    for (int ll = 0; ; ll++) {
+				double tl = tx-gridStepX*ll;
+				int gx = (int) ((tl-tstart)/ts);
+				if (gx < 0)
+				    break;
+				if (gx >= rect.width)
+				    continue;
+				if (tl < 0)
+				    continue;
+				col = minorDiv;
+				if (((tl+gridStepX/4) % (gridStepX*10)) < gridStepX) {
+				    col = majorDiv;
+				}
+				g.setColor(col);
+				g.drawLine(gx,0,gx,rect.height-1);
+			    }
+			}
     	    }
     	}
     	
@@ -2226,10 +2266,16 @@ class Scope {
                     }
                 }
             }
-        } else {
-            // Original right-to-left scrolling behavior
-            for (i = 0; i != rect.width; i++) {
-                int ip = (i+ipa) & (scopePointCount-1);
+		} else {
+		    // Normal mode: fill from left first, then scroll once full width is reached
+		    int displayWidth = plot.getDisplayWidth(rect.width);
+		    if (displayWidth <= 0) {
+			g.endBatch();
+			return;
+		    }
+		    int ipa = plot.startIndex(displayWidth);
+		    for (i = 0; i != displayWidth; i++) {
+			int ip = (i + ipa) & (scopePointCount-1);
                 
                 // Use midpoint (average) of min and max for smoother interpolation
                 double midVal = (minV[ip] + maxV[ip]) / 2.0;
@@ -2297,8 +2343,18 @@ class Scope {
 		    cursorTime = startTime + (relativeX * rect.width * sim.maxTimeStep * speed);
 		}
 	    } else {
-		// Original right-to-left scrolling calculation
-		cursorTime = sim.t-sim.maxTimeStep*speed*(rect.x+rect.width-mouseX);
+		int displayWidth = plots.get(0).getDisplayWidth(rect.width);
+		if (displayWidth <= 0) {
+		    cursorTime = -1;
+		} else {
+		    int localX = mouseX - rect.x;
+		    if (localX < 0 || localX >= displayWidth) {
+			cursorTime = -1;
+		    } else {
+			int agePixels = (displayWidth - 1) - localX;
+			cursorTime = sim.t - sim.maxTimeStep * speed * agePixels;
+		    }
+		}
 	    }
 	}
     	checkForSelection(mouseX, mouseY);
@@ -2317,8 +2373,14 @@ class Scope {
 	    selectedPlot = -1;
 	    return;
 	}
-	int ipa = plots.get(0).startIndex(rect.width);
-	int ip = (mouseX-rect.x+ipa) & (scopePointCount-1);
+	int displayWidth = plots.get(0).getDisplayWidth(rect.width);
+	int localX = mouseX - rect.x;
+	if (displayWidth <= 0 || localX < 0 || localX >= displayWidth) {
+	    selectedPlot = -1;
+	    return;
+	}
+	int ipa = plots.get(0).startIndex(displayWidth);
+	int ip = (localX+ipa) & (scopePointCount-1);
     	int maxy = (rect.height-1)/2;
     	int y = maxy;
     	int i;
@@ -2368,12 +2430,18 @@ class Scope {
             
             double timeFromStart = cursorTime - startTime;
             cursorX = rect.x + (int)(rect.width * timeFromStart / displayTimeSpan);
-        } else {
-            // Normal scrolling mode
-            cursorX = -(int) ((sim.t-cursorTime)/(sim.maxTimeStep*speed) - rect.x - rect.width);
+	    } else {
+		int displayWidth = plots.get(0).getDisplayWidth(rect.width);
+		if (displayWidth <= 0) {
+		    cursorX = -1;
+		} else {
+		    int agePixels = (int) ((sim.t-cursorTime)/(sim.maxTimeStep*speed));
+		    cursorX = rect.x + (displayWidth - 1) - agePixels;
+		}
         }
         
-        if (cursorX >= rect.x) {
+	    int cursorMaxX = rect.x + plots.get(0).getDisplayWidth(rect.width);
+	    if (cursorX >= rect.x && cursorX < cursorMaxX) {
         int maxy = (rect.height-1)/2;
         int y = maxy;
         if (visiblePlots.size() > 0) {
@@ -2391,9 +2459,14 @@ class Scope {
                 }
             } else {
                 // Get value from circular buffer
-                int ipa = plots.get(0).startIndex(rect.width);
-                int ip = (cursorX-rect.x+ipa) & (scopePointCount-1);
-                value = plot.maxValues[ip];
+			    int displayWidth = plots.get(0).getDisplayWidth(rect.width);
+			    if (displayWidth > 0) {
+				int ipa = plots.get(0).startIndex(displayWidth);
+				int ip = (cursorX-rect.x+ipa) & (scopePointCount-1);
+				value = plot.maxValues[ip];
+			    } else {
+				value = 0;
+			    }
             }
             
             info[ct++] = plot.getUnitText(value);
@@ -2410,7 +2483,7 @@ class Scope {
             if (cursorX < 0)
             cursorX = sim.mouseCursorX;
             info[ct++] = CircuitElm.getUnitText(maxFrequency*(sim.mouseCursorX-rect.x)/rect.width, "Hz");
-        } else if (cursorX < rect.x)
+		} else if (plots.size() == 0 || cursorX < rect.x || cursorX >= rect.x + plots.get(0).getDisplayWidth(rect.width))
             return;
         
     if (visiblePlots.size() > 0)
@@ -2531,44 +2604,42 @@ class Scope {
     }
     
     void drawScale(ScopePlot plot, Graphics g) {
-    	    if (!isManualScale()) {
-        	    if ( gridStepY!=0 && (!(showV && showI))) {
-        		String vScaleText=" V=" + plot.getUnitText(gridStepY)+"/div";
-        	    	drawInfoText(g, "H="+CircuitElm.getUnitText(displayGridStepX, "s")+"/div" + vScaleText);
-        	    }
-    	    }  else {
-    		if (rect.y + rect.height <= textY+5)
-    		    return;
-    		double x = 0;
-    		String hs = "H="+CircuitElm.getUnitText(displayGridStepX, "s")+"/div";
-    		g.drawString(hs, 0, textY);
-    		x+=g.measureWidth(hs);
-		final double bulletWidth = 17;
-		int scaledSpacing = getScaledFontSize(15);
-    		for (int i=0; i<visiblePlots.size(); i++) {
-    		    ScopePlot p=visiblePlots.get(i);
-    		    String s=p.getUnitText(p.manScale);
-    		    if (p!=null) {
-    			String vScaleText="="+s+"/div";
-    			double vScaleWidth=g.measureWidth(vScaleText);
-    			if (x+bulletWidth+vScaleWidth > rect.width) {
-    			    x=0;
-    			    textY += scaledSpacing;
-    			    if (rect.y + rect.height <= textY+5)
-    	    		    	return;
-    			}
-    			g.setColor(p.color);
-    			g.fillOval((int)x+7, textY-9, 8, 8);
-    			x+=bulletWidth;
-    			g.setColor(CircuitElm.whiteColor);
-    			g.drawString(vScaleText, (int)x, textY);
-    			x+=vScaleWidth;
-    		    }
-    		}
-    		textY += scaledSpacing;
-    	    }
-
-	
+	if (!isManualScale()) {
+	    if (gridStepY != 0 && (!(showV && showI))) {
+		String vScaleText = " V=" + plot.getUnitText(gridStepY) + "/div";
+		drawInfoText(g, "H=" + CircuitElm.getUnitText(displayGridStepX, "s") + "/div" + vScaleText);
+	    }
+	} else {
+	    if (rect.y + rect.height <= textY + 5)
+		return;
+	    double x = 0;
+	    String hs = "H=" + CircuitElm.getUnitText(displayGridStepX, "s") + "/div";
+	    g.drawString(hs, 0, textY);
+	    x += g.measureWidth(hs);
+	    final double bulletWidth = 17;
+	    int scaledSpacing = getScaledFontSize(15);
+	    for (int i = 0; i < visiblePlots.size(); i++) {
+		ScopePlot p = visiblePlots.get(i);
+		String s = p.getUnitText(p.manScale);
+		if (p != null) {
+		    String vScaleText = "=" + s + "/div";
+		    double vScaleWidth = g.measureWidth(vScaleText);
+		    if (x + bulletWidth + vScaleWidth > rect.width) {
+			x = 0;
+			textY += scaledSpacing;
+			if (rect.y + rect.height <= textY + 5)
+			    return;
+		    }
+		    g.setColor(p.color);
+		    g.fillOval((int) x + 7, textY - 9, 8, 8);
+		    x += bulletWidth;
+		    g.setColor(CircuitElm.whiteColor);
+		    g.drawString(vScaleText, (int) x, textY);
+		    x += vScaleWidth;
+		}
+	    }
+	    textY += scaledSpacing;
+	}
     }
     
     void drawAverage(Graphics g) {
@@ -3561,10 +3632,14 @@ class Scope {
 	int width = rect.width;
 	if (width > scopePointCount)
 	    width = scopePointCount;
+	if (visiblePlots.size() > 0)
+	    width = visiblePlots.get(0).getDisplayWidth(width);
+	if (width <= 0)
+	    return "No circular buffer data available\n";
 	
 	for (int x = 0; x < width; x++) {
 	    // Calculate time for this sample
-	    double time = sim.t - (width - x) * sim.maxTimeStep * speed;
+	    double time = sim.t - (width - 1 - x) * sim.maxTimeStep * speed;
 	    sb.append(time);
 	    
 	    for (int i = 0; i < visiblePlots.size(); i++) {
@@ -3596,6 +3671,13 @@ class Scope {
 	int width = rect.width;
 	if (width > scopePointCount)
 	    width = scopePointCount;
+	if (visiblePlots.size() > 0)
+	    width = visiblePlots.get(0).getDisplayWidth(width);
+	if (width <= 0) {
+	    sb.append("  ]\n");
+	    sb.append("}\n");
+	    return sb.toString();
+	}
 	
 	for (int i = 0; i < visiblePlots.size(); i++) {
 	    ScopePlot p = visiblePlots.get(i);
@@ -3612,7 +3694,7 @@ class Scope {
 	    // Time array
 	    for (int x = 0; x < width; x++) {
 		if (x > 0) sb.append(", ");
-		double time = sim.t - (width - x) * sim.maxTimeStep * speed;
+		double time = sim.t - (width - 1 - x) * sim.maxTimeStep * speed;
 		sb.append(time);
 	    }
 	    sb.append("],\n");
@@ -3680,7 +3762,7 @@ class Scope {
 	
 	// Data rows
 	for (int x = 0; x < historySize; x++) {
-	    double time = startTime + x * historySampleInterval;
+	    double time = x * historySampleInterval;
 	    sb.append(time);
 	    
 	    for (int i = 0; i < visiblePlots.size(); i++) {
@@ -3710,7 +3792,8 @@ class Scope {
 	sb.append("{\n");
 	sb.append("  \"source\": \"CircuitJS1 Scope\",\n");
 	sb.append("  \"exportType\": \"history\",\n");
-	sb.append("  \"startTime\": ").append(startTime).append(",\n");
+	sb.append("  \"startTime\": 0,\n");
+	sb.append("  \"absoluteStartTime\": ").append(startTime).append(",\n");
 	sb.append("  \"historySize\": ").append(historySize).append(",\n");
 	sb.append("  \"sampleInterval\": ").append(historySampleInterval).append(",\n");
 	sb.append("  \"plots\": [\n");
@@ -3730,7 +3813,7 @@ class Scope {
 	    sb.append("      \"time\": [");
 	    for (int x = 0; x < historySize; x++) {
 		if (x > 0) sb.append(", ");
-		double time = startTime + x * historySampleInterval;
+		double time = x * historySampleInterval;
 		sb.append(time);
 	    }
 	    sb.append("],\n");

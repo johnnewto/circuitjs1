@@ -291,6 +291,9 @@ MouseOutHandler, MouseWheelHandler {
 	// Equation table MNA mode - when true, equation tables create electrical outputs
 	boolean equationTableMnaMode = true;
 
+	// Global base convergence tolerance used by all EquationTableElm instances
+	double equationTableConvergenceTolerance = 0.001;
+
 	// When true, include the electronics circuit library in the Circuits menu
 	boolean showElectronicsCircuits = false;
 
@@ -1164,6 +1167,13 @@ public CirSim() {
 		int gui = Integer.parseInt(guiStr);
 		if (gui >= 1 && gui <= 10)
 		    graphicsUpdateInterval = gui;
+	    }
+
+	    String eqTolStr = stor.getItem("equationTableConvergenceTolerance");
+	    if (eqTolStr != null) {
+		double eqTol = Double.parseDouble(eqTolStr);
+		if (eqTol > 0)
+		    equationTableConvergenceTolerance = eqTol;
 	    }
 	} catch (Exception e) {}
     }
@@ -5496,6 +5506,9 @@ public CirSim() {
 			}
 		    }
 		}
+
+		// Create scopes after all elements are present so UID trace refs resolve.
+		parser.applyParsedScopes();
 
 		// Match standard readCircuit(byte[]) behavior: apply explicit viewport if
 		// present, otherwise center the loaded circuit on screen.

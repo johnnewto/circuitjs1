@@ -62,6 +62,9 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
 
     /** Default FLOW shunt resistance to avoid loading by default. */
     private static final double DEFAULT_FLOW_SHUNT_RESISTANCE = 1e9;
+
+    /** Default base convergence tolerance for equation convergence checks. */
+    private static final double DEFAULT_CONVERGENCE_TOLERANCE = 0.001;
     
     //=============================================================================
     // ROW OUTPUT MODE - Determines how each row's equation result is used
@@ -130,8 +133,8 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             outputName = "Y" + (index + 1);
             equation = "0";
             initialEquation = "";
-            sliderVarName = String.valueOf((char)('a' + (index % 26)));
-            sliderValue = 0.5;
+            sliderVarName = "";
+            sliderValue = 0;
             exprState = new ExprState(1);  // 1 variable slot for slider
             outputMode = RowOutputMode.VOLTAGE_MODE;
             targetNodeName = "";
@@ -416,7 +419,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /** User-defined name for this table element (displayed in title bar) */
     private String tableName = "EqnTable";
-    
+
     /** Number of active rows (1 to MAX_ROWS) */
     private int rowCount = 2;
     
@@ -502,13 +505,13 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         // Set default values for the initial rows
         rows[0].outputName = "Y1";
         rows[0].equation = "0";
-        rows[0].sliderVarName = "a";
-        rows[0].sliderValue = 0.5;
+        rows[0].sliderVarName = "";
+        rows[0].sliderValue = 0;
         
         rows[1].outputName = "Y2";
         rows[1].equation = "0";
-        rows[1].sliderVarName = "b";
-        rows[1].sliderValue = 0.5;
+        rows[1].sliderVarName = "";
+        rows[1].sliderValue = 0;
         
         setSize(sim.smallGridCheckItem.getState() ? 1 : 2);
         parseAllEquations();
@@ -565,14 +568,16 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         // 10 tokens/row = newest format (+ shuntResistance)
         // 9 tokens/row  = previous newest format (no shuntResistance)
         // 8 tokens/row  = new format (no backward Euler flag)
-        // If totalTokens == rowCount * 5, it's old format
-        // Otherwise, assume old format for safety
-        boolean newestFormatWithShunt = (tokenCount == rowCount * 10);
-        boolean newestFormat = newestFormatWithShunt || (tokenCount == rowCount * 9);
-        boolean newFormat = newestFormat || (tokenCount == rowCount * 8);
+        // 5 tokens/row  = old format
+        int tokenStartIndex = 0;
+        int remainingTokenCount = tokenCount;
+
+        boolean newestFormatWithShunt = (remainingTokenCount == rowCount * 10);
+        boolean newestFormat = newestFormatWithShunt || (remainingTokenCount == rowCount * 9);
+        boolean newFormat = newestFormat || (remainingTokenCount == rowCount * 8);
         
         // Parse per-row data
-        int tokenIndex = 0;
+        int tokenIndex = tokenStartIndex;
         for (int row = 0; row < rowCount; row++) {
             if (tokenIndex < tokens.size()) {
                 rows[row].outputName = CustomLogicModel.unescape(tokens.get(tokenIndex++));
@@ -590,7 +595,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 try {
                     rows[row].sliderValue = Double.parseDouble(tokens.get(tokenIndex++));
                 } catch (Exception e) {
-                    rows[row].sliderValue = 0.5;
+                    rows[row].sliderValue = 0;
                 }
             }
             
@@ -1444,18 +1449,21 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * @param row Row index
      * @return Convergence threshold value
      */
+ 
     double getConvergeLimit(int row) {
         // Adaptive tolerance: stricter early, relaxed if struggling
         // More lenient thresholds help diff() equations converge faster
+        double baseTolerance = getConvergenceTolerance();
+
         double relativeTolerance;
         if (sim.subIterations < 3)
-            relativeTolerance = 0.0001;
+            relativeTolerance = baseTolerance;
         else if (sim.subIterations < 10)
-            relativeTolerance = 0.001;
+            relativeTolerance = baseTolerance * 10;
         else if (sim.subIterations < 50)
-            relativeTolerance = 0.005;
+            relativeTolerance = baseTolerance * 50;
         else
-            relativeTolerance = 0.1;
+            relativeTolerance = baseTolerance * 100;
         
         // For diff() equations, increase tolerance to account for division by timestep
         // which amplifies small input variations
@@ -1468,8 +1476,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         maxMagnitude = Math.max(maxMagnitude, Math.abs(rows[row].lastOutputValue));
         
         return maxMagnitude * relativeTolerance;
-    }
-    
+    }   
     //=============================================================================
     // CIRCUIT ELEMENT INTERFACE - Simulation
     //=============================================================================
@@ -2341,22 +2348,24 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             arr[5] = "Initial (t=0): " + (initEq != null && !initEq.trim().isEmpty() ? initEq : "(none)");
             arr[6] = "Slider: " + rows[hoveredRow].sliderVarName + " = " + getShortUnitText(rows[hoveredRow].sliderValue, "");
             arr[7] = "Output: " + getUnitText(rows[hoveredRow].outputValue, "");
+            arr[8] = "Convergence Tol: " + Double.toString(getConvergenceTolerance());
             
             if (rows[hoveredRow].compiledExpr == null) {
-                arr[8] = "\u26A0 Equation parse error";
+                arr[9] = "\u26A0 Equation parse error";
             } else if (isAdjustableRow(hoveredRow)) {
-                arr[8] = "scroll to adjust value";
+                arr[9] = "scroll to adjust value";
             }
         } else {
             arr[4] = "Initial (t=0): " + (initEq != null && !initEq.trim().isEmpty() ? initEq : "(none)");
         
             arr[5] = "Slider: " + rows[hoveredRow].sliderVarName + " = " + getShortUnitText(rows[hoveredRow].sliderValue, "");
             arr[6] = "Output: " + getUnitText(rows[hoveredRow].outputValue, "");
+            arr[7] = "Convergence Tol: " + Double.toString(getConvergenceTolerance());
         
             if (rows[hoveredRow].compiledExpr == null) {
-                arr[7] = "\u26A0 Equation parse error";
+                arr[8] = "\u26A0 Equation parse error";
             } else if (isAdjustableRow(hoveredRow)) {
-                arr[7] = "scroll to adjust value";
+                arr[8] = "scroll to adjust value";
             }
         }
     }
@@ -2416,6 +2425,21 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /** Set the table name */
     public void setTableName(String name) { tableName = name; }
+
+    /** Get global base convergence tolerance used by equation tables. */
+    public double getConvergenceTolerance() {
+        if (sim != null && sim.equationTableConvergenceTolerance > 0) {
+            return sim.equationTableConvergenceTolerance;
+        }
+        return DEFAULT_CONVERGENCE_TOLERANCE;
+    }
+
+    /** Set global base convergence tolerance used by equation tables. Must be positive. */
+    public void setConvergenceTolerance(double tolerance) {
+        if (sim != null) {
+            sim.equationTableConvergenceTolerance = (tolerance > 0) ? tolerance : DEFAULT_CONVERGENCE_TOLERANCE;
+        }
+    }
     
     /** Get the table width in pixels */
     public int getTableWidth() { return tableWidth; }
