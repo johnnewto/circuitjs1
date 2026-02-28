@@ -291,6 +291,9 @@ MouseOutHandler, MouseWheelHandler {
 	// Equation table MNA mode - when true, equation tables create electrical outputs
 	boolean equationTableMnaMode = true;
 
+	// Experimental: Newton Jacobian stamping for EquationTable VOLTAGE_MODE MNA rows.
+	boolean equationTableNewtonJacobianEnabled = false;
+
 	// Global base convergence tolerance used by all EquationTableElm instances
 	double equationTableConvergenceTolerance = 0.001;
 
@@ -566,6 +569,7 @@ public CirSim() {
 	    useWeightedPriority = getOptionFromStorage("weightedPriority", false);
 	    showElectronicsCircuits = getOptionFromStorage("showElectronicsCircuits", false);
 	    enableCacheBustedUrls = getOptionFromStorage("enableCacheBustedUrls", true);
+	    equationTableNewtonJacobianEnabled = getOptionFromStorage("equationTableNewtonJacobianEnabled", false);
 	    positiveColor = qp.getValue("positiveColor");
 	    negativeColor = qp.getValue("negativeColor");
 	    neutralColor = qp.getValue("neutralColor");
@@ -4265,7 +4269,8 @@ public CirSim() {
                         }
                     }
                 }
-                
+
+
                 // Commit pending computed values to current buffer after ALL doStep() calls complete.
                 // This enables order-independent evaluation - all elements see the same values
                 // regardless of their position in the element array.
@@ -4971,7 +4976,7 @@ public CirSim() {
     	}
     	tableTestDialog.show();
     }
-    
+
     /**
      * Open the iframe viewer dialog with external documentation
      * Uses CSS selector to show only the split-right content panel

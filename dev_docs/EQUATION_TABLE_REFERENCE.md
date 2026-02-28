@@ -1,4 +1,4 @@
-# EquationTableElm — Complete Reference (Source-Accurate Feb 17)
+# EquationTableElm — Complete Reference (Source-Accurate Feb 28)
 
 ## Overview
 
@@ -23,6 +23,7 @@ It supports two simulator-wide execution modes:
 | Nonlinear | True whenever any non-alias row exists (all of VOLTAGE, FLOW, STOCK, PARAM count) |
 | Modes | MNA (electrical) or Pure Computational (global setting) |
 | Mode toggle | Options → Other Options → `sim.equationTableMnaMode` |
+| Newton toggle | Options → Other Options → `sim.equationTableNewtonJacobianEnabled` |
 
 ## Per-Row Data Model
 
@@ -107,6 +108,12 @@ Rows are currently classified as:
 1. **Alias** — bare node alias expression with no initial equation
 2. **Dynamic** — everything else
 
+Special row-name behavior:
+
+- **Comment row** if `outputName` starts with `#`
+- Comment rows are non-simulating metadata rows: no expression compile, no stamping, and not treated as valid output producers
+- In UI, comment text is shown from the row name body (text after `#`)
+
 Alias criteria:
 
 - compiled expression is node alias (`isNodeAlias()`), and
@@ -164,6 +171,19 @@ Per row:
 - if `t == 0` and `initialEquation` exists, run initial-value path
 - otherwise evaluate and stamp via mode handler
 - run convergence check using adaptive threshold
+
+### Newton Jacobian path (kept)
+
+For `VOLTAGE_MODE` rows in MNA mode, EquationTable supports an optional Newton linearization path before falling back to direct RHS stamping.
+
+- Global toggle: `sim.equationTableNewtonJacobianEnabled`
+- Scope: VOLTAGE rows with usable same-period MNA references
+- Excludes stateful historical expressions (`integrate`, `diff`, `lag`, `last`, `smooth`)
+- If eligible, it stamps Jacobian terms into the VS equation row and adjusted RHS
+- If not eligible (or derivatives invalid), it falls back to direct `stampRightSide`
+- Per-row debug status is exposed by:
+  - `getNewtonJacobianDebugStatus(row)`
+  - `wasNewtonJacobianApplied(row)`
 
 ### `stepFinished()`
 
@@ -291,6 +311,7 @@ Current output mode ordinals: `0=VOLTAGE`, `1=FLOW`, `2=STOCK`, `3=PARAM`.
 - equation autocomplete
 - per-row STOCK integration method (Trap/Euler)
 - `PARAM_MODE` disables Shunt/Cap and Integ. controls for that row
+- comment rows using `#` in Node(s): mode is locked to non-simulating comment behavior and equation text is treated as comment content
 - apply path: set fields → parse → alloc nodes → recompute points → `needAnalyze()` + repaint
 
 ## Mouse Interaction
@@ -307,7 +328,7 @@ When hovering a row with a plain numeric equation:
 - `DEBUG` flag in `EquationTableElm` enables detailed console logs.
 - `EquationTableMarkdownDebugDialog` provides a markdown debug report with:
   - table summary,
-  - row details,
+  - row details (including Jacobian status/path),
   - labeled-node mappings,
   - `ComputedValues` checks,
   - matrix summary (`X = A⁻¹B`),

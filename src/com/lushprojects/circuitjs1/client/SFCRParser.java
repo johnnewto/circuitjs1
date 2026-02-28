@@ -539,8 +539,17 @@ public class SFCRParser {
                 break;
             }
             
-            // Skip comments and empty lines
-            if (line.isEmpty() || line.startsWith("#")) {
+            // Keep full-line comments as dedicated non-simulating table rows
+            if (line.startsWith("#")) {
+                appendCommentRow(line,
+                    outputNames, equations, outputModes, targetNodeNames,
+                    sliderVarNames, sliderValues, initialEquations);
+                i++;
+                continue;
+            }
+
+            // Skip empty lines
+            if (line.isEmpty()) {
                 i++;
                 continue;
             }
@@ -594,8 +603,8 @@ public class SFCRParser {
 
                 String expr = normalizeExpression(exprText);
                 
-                // Convert self-accumulation pattern: X ~ expr + X[-1] → X ~ integrate(expr)
-                expr = convertSelfAccumulation(name, expr);
+                // Convert lag notation: V[-1] → last(V)
+                expr = convertLagNotation(name, expr);
                 
                 outputNames.add(name);
                 equations.add(expr);
@@ -1228,6 +1237,11 @@ public class SFCRParser {
         
         ArrayList<String> outputNames = new ArrayList<String>();
         ArrayList<String> equations = new ArrayList<String>();
+        ArrayList<EquationTableElm.RowOutputMode> outputModes = new ArrayList<EquationTableElm.RowOutputMode>();
+        ArrayList<String> targetNodeNames = new ArrayList<String>();
+        ArrayList<String> sliderVarNames = new ArrayList<String>();
+        ArrayList<Double> sliderValues = new ArrayList<Double>();
+        ArrayList<String> initialEquations = new ArrayList<String>();
         
         // Find content between sfcr_set( and final )
         int start = block.indexOf("sfcr_set(");
@@ -1245,6 +1259,38 @@ public class SFCRParser {
         for (String part : parts) {
             part = part.trim();
             if (part.isEmpty()) continue;
+
+            String[] partLines = part.split("\\r?\\n");
+            StringBuilder cleanedPart = new StringBuilder();
+            for (int li = 0; li < partLines.length; li++) {
+                String line = partLines[li].trim();
+                if (line.isEmpty()) {
+                    continue;
+                }
+                if (line.startsWith("#")) {
+                    appendCommentRow(line,
+                        outputNames, equations, outputModes, targetNodeNames,
+                        sliderVarNames, sliderValues, initialEquations);
+                    continue;
+                }
+                if (cleanedPart.length() > 0) {
+                    cleanedPart.append(" ");
+                }
+                cleanedPart.append(line);
+            }
+
+            part = cleanedPart.toString().trim();
+            if (part.isEmpty()) {
+                continue;
+            }
+
+            int inlineCommentIdx = part.indexOf('#');
+            if (inlineCommentIdx >= 0) {
+                part = part.substring(0, inlineCommentIdx).trim();
+                if (part.isEmpty()) {
+                    continue;
+                }
+            }
             
             // Strip named equation prefix: "e1 = TX_s ~ expr" -> "TX_s ~ expr"
             // This handles sfcr-style named equations like e1 = ..., e2 = ..., etc.
@@ -1267,29 +1313,20 @@ public class SFCRParser {
                 String name = normalizeVariableName(eqParts[0].trim());
                 String expr = normalizeExpression(eqParts[1].trim());
                 
-                // Convert self-accumulation pattern: X ~ expr + X[-1] → X ~ integrate(expr)
-                expr = convertSelfAccumulation(name, expr);
+                // Convert lag notation: V[-1] → last(V)
+                expr = convertLagNotation(name, expr);
                 
                 outputNames.add(name);
                 equations.add(expr);
-            }
-        }
-        
-        if (!outputNames.isEmpty()) {
-            ArrayList<EquationTableElm.RowOutputMode> outputModes = new ArrayList<EquationTableElm.RowOutputMode>();
-            ArrayList<String> targetNodeNames = new ArrayList<String>();
-            ArrayList<String> sliderVarNames = new ArrayList<String>();
-            ArrayList<Double> sliderValues = new ArrayList<Double>();
-            ArrayList<String> initialEquations = new ArrayList<String>();
-
-            for (int i = 0; i < outputNames.size(); i++) {
                 outputModes.add(EquationTableElm.RowOutputMode.VOLTAGE_MODE);
                 targetNodeNames.add("");
                 sliderVarNames.add("");
                 sliderValues.add(Double.valueOf(0.0));
                 initialEquations.add("");
             }
-
+        }
+        
+        if (!outputNames.isEmpty()) {
             createEquationTable(blockName, outputNames, equations, outputModes,
                 targetNodeNames, sliderVarNames, sliderValues, initialEquations);
         }
@@ -1529,55 +1566,28 @@ public class SFCRParser {
         // Convert ∫(x) to integrate(x)
         expr = expr.replace("∫(", "integrate(");
         
-        // Don't convert lagged values here - that's handled by convertSelfAccumulation
+        // Don't convert lagged values here - that's handled by convertLagNotation
         // after we know the output variable name
         
         return expr.trim();
     }
     
     /**
-     * Convert self-accumulation to integrate():
-     *   X ~ expr + X[-1] -> X ~ integrate(expr)
-     * For other lagged values, converts V[-1] -> last(V).
+     * Convert lagged values to last():
+     *   V[-1] -> last(V)
+     *
+     * Self-references are intentionally kept as last(V) by default so expressions like
+     *   Ls ~ Ls[-1] + Ld - Ld[-1]
+     * become
+     *   Ls ~ last(Ls) + Ld - last(Ld)
+     *
+     * Use integrate(...) explicitly in source text when integrator semantics are desired.
      */
-    private String convertSelfAccumulation(String varName, String expr) {
+    private String convertLagNotation(String varName, String expr) {
         if (expr == null || !expr.contains("[-1]")) {
             return expr;
         }
-        
-        // Check for self-accumulation pattern: expr contains varName[-1]
-        String selfLag = varName + "[-1]";
-        
-        if (expr.contains(selfLag)) {
-            // This is a self-accumulation pattern
-            // Remove the varName[-1] term and wrap remaining in integrate()
-            
-            // Handle: expr + varName[-1]
-            String remaining = expr.replace("+ " + selfLag, "")
-                                   .replace("+" + selfLag, "")
-                                   .replace(selfLag + " +", "")
-                                   .replace(selfLag + "+", "")
-                                   .replace(selfLag, "")  // In case it's the only term
-                                   .trim();
-            
-            // Clean up any trailing/leading operators
-            if (remaining.startsWith("+")) {
-                remaining = remaining.substring(1).trim();
-            }
-            if (remaining.endsWith("+")) {
-                remaining = remaining.substring(0, remaining.length() - 1).trim();
-            }
-            
-            // If there's remaining expression, wrap in integrate()
-            if (!remaining.isEmpty()) {
-                return "integrate(" + remaining + ")";
-            } else {
-                // Just varName[-1] by itself means constant (no change)
-                return varName;
-            }
-        }
-        
-        // Not self-accumulation - convert V[-1] to last(V) for previous timestep value
+        // Convert all lagged references, including self-lag terms.
         return convertLagToFunction(expr);
     }
     
@@ -1643,7 +1653,7 @@ public class SFCRParser {
         return expr.replace("[-1]", "");
     }
     
-    /** @deprecated Use convertSelfAccumulation instead. */
+    /** @deprecated Use convertLagNotation instead. */
     @SuppressWarnings("unused")
     private String convertLaggedValues(String expr) {
         StringBuilder result = new StringBuilder();
@@ -1854,6 +1864,31 @@ public class SFCRParser {
         if (m.equals("stock") || m.equals("stock_mode")) return EquationTableElm.RowOutputMode.STOCK_MODE;
         if (m.equals("param") || m.equals("parameter") || m.equals("param_mode")) return EquationTableElm.RowOutputMode.PARAM_MODE;
         return EquationTableElm.RowOutputMode.VOLTAGE_MODE;
+    }
+
+    /** Append a non-simulating comment row to an equation table payload. */
+    private void appendCommentRow(String comment,
+                                  ArrayList<String> outputNames,
+                                  ArrayList<String> equations,
+                                  ArrayList<EquationTableElm.RowOutputMode> outputModes,
+                                  ArrayList<String> targetNodeNames,
+                                  ArrayList<String> sliderVarNames,
+                                  ArrayList<Double> sliderValues,
+                                  ArrayList<String> initialEquations) {
+        if (comment == null) return;
+        String text = comment.trim();
+        if (text.startsWith("#")) {
+            text = text.substring(1).trim();
+        }
+        if (text.isEmpty()) return;
+
+        outputNames.add("# " + text);
+        equations.add("");
+        outputModes.add(EquationTableElm.RowOutputMode.PARAM_MODE);
+        targetNodeNames.add("");
+        sliderVarNames.add("");
+        sliderValues.add(Double.valueOf(0));
+        initialEquations.add("");
     }
 
     /** Create EquationTableElm from parsed equation data. */

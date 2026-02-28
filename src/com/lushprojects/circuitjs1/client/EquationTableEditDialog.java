@@ -150,6 +150,13 @@ public class EquationTableEditDialog extends Dialog {
             String sourceName = EquationTableElm.parseCombinedName(outputNames[i])[0];
             String hint = HintRegistry.getHint(sourceName);
             hints[i] = (hint != null) ? hint : "";
+
+            if (tableElement.isCommentRow(i)) {
+                outputNames[i] = "#";
+                equations[i] = tableElement.getCommentText(i);
+                initialEquations[i] = "";
+                outputModes[i] = RowOutputMode.PARAM_MODE;
+            }
         }
     }
     
@@ -202,7 +209,7 @@ public class EquationTableEditDialog extends Dialog {
         
         // Scrollable table area
         scrollPanel = new ScrollPanel();
-        scrollPanel.setWidth("780px");
+        scrollPanel.setWidth("1200px");
         scrollPanel.setHeight("300px");
         scrollPanel.addStyleName("topSpace");
         mainPanel.add(scrollPanel);
@@ -425,10 +432,14 @@ public class EquationTableEditDialog extends Dialog {
         // Equation textbox with autocomplete
         final VerticalPanel eqPanel = createEquationTextBox(row, false);
         editGrid.setWidget(gridRow, COL_EQUATION, eqPanel);
+        final TextBox equationBox = (eqPanel.getWidgetCount() > 0 && eqPanel.getWidget(0) instanceof TextBox)
+            ? (TextBox) eqPanel.getWidget(0) : null;
         
         // Initial value textbox with autocomplete
         final VerticalPanel initPanel = createEquationTextBox(row, true);
         editGrid.setWidget(gridRow, COL_INITIAL_VALUE, initPanel);
+        final TextBox initialBox = (initPanel.getWidgetCount() > 0 && initPanel.getWidget(0) instanceof TextBox)
+            ? (TextBox) initPanel.getWidget(0) : null;
         
         // Output mode dropdown
         final ListBox modeBox = new ListBox();
@@ -475,12 +486,12 @@ public class EquationTableEditDialog extends Dialog {
         if (eqWidget instanceof TextBox) {
             ((TextBox) eqWidget).addKeyUpHandler(new KeyUpHandler() {
                 public void onKeyUp(KeyUpEvent event) {
-                    updateAliasModeUi(row, gridRow, modeBox, aliasBadge);
+                    updateAliasModeUi(row, gridRow, modeBox, aliasBadge, outputNameBox, equationBox, initialBox);
                 }
             });
             ((TextBox) eqWidget).addBlurHandler(new BlurHandler() {
                 public void onBlur(BlurEvent event) {
-                    updateAliasModeUi(row, gridRow, modeBox, aliasBadge);
+                    updateAliasModeUi(row, gridRow, modeBox, aliasBadge, outputNameBox, equationBox, initialBox);
                 }
             });
         }
@@ -488,17 +499,28 @@ public class EquationTableEditDialog extends Dialog {
         if (initWidget instanceof TextBox) {
             ((TextBox) initWidget).addKeyUpHandler(new KeyUpHandler() {
                 public void onKeyUp(KeyUpEvent event) {
-                    updateAliasModeUi(row, gridRow, modeBox, aliasBadge);
+                    updateAliasModeUi(row, gridRow, modeBox, aliasBadge, outputNameBox, equationBox, initialBox);
                 }
             });
             ((TextBox) initWidget).addBlurHandler(new BlurHandler() {
                 public void onBlur(BlurEvent event) {
-                    updateAliasModeUi(row, gridRow, modeBox, aliasBadge);
+                    updateAliasModeUi(row, gridRow, modeBox, aliasBadge, outputNameBox, equationBox, initialBox);
                 }
             });
         }
 
-        updateAliasModeUi(row, gridRow, modeBox, aliasBadge);
+        outputNameBox.addKeyUpHandler(new KeyUpHandler() {
+            public void onKeyUp(KeyUpEvent event) {
+                updateAliasModeUi(row, gridRow, modeBox, aliasBadge, outputNameBox, equationBox, initialBox);
+            }
+        });
+        outputNameBox.addBlurHandler(new BlurHandler() {
+            public void onBlur(BlurEvent event) {
+                updateAliasModeUi(row, gridRow, modeBox, aliasBadge, outputNameBox, equationBox, initialBox);
+            }
+        });
+
+        updateAliasModeUi(row, gridRow, modeBox, aliasBadge, outputNameBox, equationBox, initialBox);
         
         // Mode parameter value (FLOW: Shunt R, STOCK: Capacitance)
         final TextBox capBox = new TextBox();
@@ -603,7 +625,7 @@ public class EquationTableEditDialog extends Dialog {
     private VerticalPanel createEquationTextBox(final int row, final boolean isInitial) {
         final TextBox textBox = new TextBox();
         textBox.setText(isInitial ? initialEquations[row] : equations[row]);
-        textBox.setWidth(isInitial ? "100px" : "200px");
+        textBox.setWidth("386px");
         
         final Label hintLabel = new Label();
         hintLabel.getElement().getStyle().setProperty("fontSize", "10px");
@@ -743,12 +765,45 @@ public class EquationTableEditDialog extends Dialog {
         return "Not used in VOLTAGE mode.";
     }
 
+    private enum ModeLockType {
+        NONE,
+        ALIAS,
+        COMMENT
+    }
+
+    private ModeLockType getModeLockType(int row) {
+        if (isCommentRowByInput(row)) {
+            return ModeLockType.COMMENT;
+        }
+        if (isAliasRowByInput(row)) {
+            return ModeLockType.ALIAS;
+        }
+        return ModeLockType.NONE;
+    }
+
+    private boolean isCommentRowByInput(int row) {
+        if (row < 0 || row >= rowCount) {
+            return false;
+        }
+        String displayName = outputNames[row];
+        if (displayName == null) {
+            return false;
+        }
+        String[] parts = EquationTableElm.parseCombinedName(displayName);
+        String sourceName = (parts != null && parts.length > 0) ? parts[0] : displayName;
+        return EquationTableElm.isCommentRowName(sourceName);
+    }
+
     /**
      * True when the edited row currently matches alias criteria:
      * parsed equation is a bare node alias and initial equation is empty.
      */
     private boolean isAliasRowByInput(int row) {
         if (row < 0 || row >= rowCount) {
+            return false;
+        }
+
+        if (isCommentRowByInput(row)) {
             return false;
         }
 
@@ -775,13 +830,22 @@ public class EquationTableEditDialog extends Dialog {
      * Keep mode UI consistent with alias state.
      * Alias rows are fixed to voltage alias behavior in the solver.
      */
-    private void updateAliasModeUi(int row, int gridRow, ListBox modeBox, Label aliasBadge) {
-        boolean alias = isAliasRowByInput(row);
-        if (alias) {
+    private void updateAliasModeUi(int row, int gridRow, ListBox modeBox, Label aliasBadge,
+                                   TextBox outputNameBox, TextBox equationBox, TextBox initialBox) {
+        ModeLockType lockType = getModeLockType(row);
+        if (lockType == ModeLockType.ALIAS) {
             outputModes[row] = RowOutputMode.VOLTAGE_MODE;
             modeBox.setSelectedIndex(0);
             modeBox.setItemText(0, "⇔ Alias");
             modeBox.setEnabled(false);
+            modeBox.setTitle("Alias row: output is a node alias (mode fixed to Voltage)");
+            aliasBadge.setVisible(false);
+        } else if (lockType == ModeLockType.COMMENT) {
+            outputModes[row] = RowOutputMode.PARAM_MODE;
+            modeBox.setItemText(0, "# Comment");
+            modeBox.setSelectedIndex(0);
+            modeBox.setEnabled(false);
+            modeBox.setTitle("Comment row: non-simulating metadata row (mode locked)");
             aliasBadge.setVisible(false);
         } else {
             modeBox.setItemText(0, "Voltage");
@@ -790,7 +854,24 @@ public class EquationTableEditDialog extends Dialog {
             aliasBadge.setVisible(false);
         }
 
+        updateCommentRowFieldWidths(lockType == ModeLockType.COMMENT, outputNameBox, equationBox, initialBox);
         updateModeFields(gridRow, outputModes[row]);
+    }
+
+    private void updateCommentRowFieldWidths(boolean isCommentRow, TextBox outputNameBox,
+                                             TextBox equationBox, TextBox initialBox) {
+        if (outputNameBox != null) {
+            outputNameBox.setWidth(isCommentRow ? "24px" : "110px");
+            outputNameBox.getElement().getStyle().setProperty("fontWeight", isCommentRow ? "bold" : "normal");
+        }
+        if (initialBox != null) {
+            initialBox.setWidth("90px");
+            initialBox.getElement().getStyle().setProperty("fontWeight", isCommentRow ? "bold" : "normal");
+        }
+        if (equationBox != null) {
+            equationBox.setWidth("386px");
+            equationBox.getElement().getStyle().setProperty("fontWeight", isCommentRow ? "bold" : "normal");
+        }
     }
     
     /**
@@ -946,7 +1027,28 @@ public class EquationTableEditDialog extends Dialog {
         
         // Apply row data
         for (int row = 0; row < rowCount; row++) {
-            tableElement.setOutputName(row, outputNames[row]);  // Parses "A->B" format
+            String outputName = outputNames[row] == null ? "" : outputNames[row].trim();
+            boolean isCommentRow = EquationTableElm.isCommentRowName(outputName);
+
+            if (isCommentRow) {
+                String commentText = equations[row] == null ? "" : equations[row].trim();
+                outputName = commentText.isEmpty() ? "#" : ("# " + commentText);
+            }
+
+            tableElement.setOutputName(row, outputName);  // Parses "A->B" format
+
+            if (isCommentRow) {
+                tableElement.setEquation(row, "");
+                tableElement.setInitialEquation(row, "");
+                tableElement.setOutputMode(row, RowOutputMode.PARAM_MODE);
+                tableElement.setCapacitance(row, 1.0);
+                tableElement.setFlowShuntResistance(row, 1e9);
+                tableElement.setUseBackwardEuler(row, false);
+                tableElement.setSliderVarName(row, "");
+                tableElement.setSliderValue(row, 0);
+                continue;
+            }
+
             tableElement.setEquation(row, equations[row]);
             tableElement.setInitialEquation(row, initialEquations[row]);
             tableElement.setOutputMode(row, outputModes[row]);
@@ -956,7 +1058,7 @@ public class EquationTableEditDialog extends Dialog {
             tableElement.setSliderVarName(row, sliderVarNames[row]);
             tableElement.setSliderValue(row, sliderValues[row]);
             // Save hint to central HintRegistry using source name only
-            String sourceName = EquationTableElm.parseCombinedName(outputNames[row])[0];
+            String sourceName = EquationTableElm.parseCombinedName(outputName)[0];
             if (hints[row] != null && !hints[row].trim().isEmpty()) {
                 HintRegistry.setHint(sourceName, hints[row]);
             }

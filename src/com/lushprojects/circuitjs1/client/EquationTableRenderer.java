@@ -432,6 +432,22 @@ public class EquationTableRenderer {
         int cellPadding = table.getCellPadding();
         int tableWidth = table.getTableWidth();
         boolean isHovered = (row == table.getHoveredRow());
+
+        if (table.isCommentRow(row)) {
+            String comment = table.getCommentText(row);
+            g.setFont(new Font("SansSerif", Font.BOLD, table.getOpsize() == 2 ? 10 : 8));
+            g.setColor(getTextColor());
+            g.drawString("# " + Locale.convertGreekSymbols(comment), tableX + cellPadding,
+                rowY + rowHeight - cellPadding - 2);
+            g.setFont(valueFont);
+
+            if (!usingCache && row < table.getRowCount() - 1) {
+                g.setColor(getGridLineColor());
+                int sepY = tableY + (row + 2) * rowHeight;
+                g.drawLine(tableX, sepY, tableX + tableWidth, sepY);
+            }
+            return;
+        }
         
         // Build display equation with slider value substituted
         String displayEquation = buildDisplayEquation(row);

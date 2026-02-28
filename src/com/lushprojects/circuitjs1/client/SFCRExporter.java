@@ -245,6 +245,18 @@ public class SFCRExporter {
         sb.append(formatPosition(eqTable)).append("\n");
         
         for (int row = 0; row < rowCount; row++) {
+            String sourceName = eqTable.getOutputName(row);
+            if (EquationTableElm.isCommentRowName(sourceName)) {
+                String comment = sourceName == null ? "" : sourceName.trim();
+                if (comment.startsWith("#")) {
+                    comment = comment.substring(1).trim();
+                }
+                if (!comment.isEmpty()) {
+                    sb.append("  # ").append(comment).append("\n");
+                }
+                continue;
+            }
+
             String name = eqTable.getDisplayOutputName(row);
             String expr = eqTable.getEquation(row);
             
@@ -256,7 +268,6 @@ public class SFCRExporter {
             double sliderValue = eqTable.getSliderValue(row);
             String initialEq = eqTable.getInitialEquation(row);
 
-            String sourceName = eqTable.getOutputName(row);
             String hint = HintRegistry.getHint(sourceName);
 
             sb.append("  ").append(name).append(" ~ ").append(expr);

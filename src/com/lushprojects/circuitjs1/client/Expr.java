@@ -555,6 +555,54 @@ class Expr {
     String getNodeName() {
 	return nodeName;
     }
+
+    /**
+     * Collect same-period node references used by this expression.
+     *
+     * This is used for SCC dependency graph extraction. References nested inside
+     * stateful historical operators are excluded because they do not create
+     * same-period algebraic coupling:
+     * - last(x)
+     * - lag(x, d)
+     * - integrate(x)
+     * - diff(x)
+     * - smooth(x, theta)
+     *
+     * @param out target set to populate with referenced names
+     */
+    void collectSamePeriodRefs(java.util.Set<String> out) {
+	collectSamePeriodRefsInternal(out, false);
+    }
+
+    private void collectSamePeriodRefsInternal(java.util.Set<String> out, boolean inHistoricalContext) {
+	if (out == null)
+	    return;
+
+	boolean childHistoricalContext = inHistoricalContext;
+	switch (type) {
+	case E_LAST:
+	case E_LAG:
+	case E_INTEGRATE:
+	case E_DIFF:
+	case E_SMOOTH:
+	    childHistoricalContext = true;
+	    break;
+	default:
+	    break;
+	}
+
+	if (!inHistoricalContext && (type == E_NODE_REF || type == E_GSLOT) && nodeName != null) {
+	    String trimmed = nodeName.trim();
+	    if (!trimmed.isEmpty())
+		out.add(trimmed);
+	}
+
+	if (children == null)
+	    return;
+
+	for (int i = 0; i < children.size(); i++)
+	    children.get(i).collectSamePeriodRefsInternal(out, childHistoricalContext);
+    }
     
     /**
      * Check if this expression is a linear combination of node references and constants.

@@ -80,14 +80,16 @@ package com.lushprojects.circuitjs1.client;
 				double v = expr.eval(exprState);
 				exprState.values[i] = volts[i]-dv;
 				double v2 = expr.eval(exprState);
-				double dx = (v-v2)/dv;
+	
+				double dx = (v-v2)/dv; // numerical derivative ∂f/∂input_i
 				if (Math.abs(dx) < 1e-6)
 					dx = sign(dx, 1e-6);
 	//        	    if (sim.subIterations > 1)
 	//        		sim.console("ccedx " + i + " " + dx + " v " + v + " v2 " + v2 + " dv " + dv + " lv " + lastVolts[i] + " " + volts[i] + " " + sim.subIterations + " " + sim.t);
-				sim.stampMatrix(vn,  nodes[i], -dx);
-				// adjust right side
-				rs -= dx*volts[i];
+
+				sim.stampMatrix(vn,  nodes[i], -dx); // stamp Jacobian entry into global MNA matrix
+				
+				rs -= dx*volts[i]; // adjust RHS: constant term of linearization = f(x0) - J·x0
 				exprState.values[i] = volts[i];
 			}
 			sim.stampRightSide(vn, rs);

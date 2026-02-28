@@ -83,6 +83,11 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         /** Parameter mode: computes value and publishes to ComputedValues only */
         PARAM_MODE
     }
+
+    /** True when a row name encodes a non-simulating comment line. */
+    public static boolean isCommentRowName(String name) {
+        return name != null && name.trim().startsWith("#");
+    }
     
     //=============================================================================
     // ROW DATA CLASS - Consolidates all per-row state
@@ -114,6 +119,8 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         boolean initialValueApplied;
         boolean isAlias;
         boolean hasDiffExpr;
+        boolean lastNewtonJacobianApplied;
+        String lastNewtonJacobianStatus;
         
         // MNA runtime state (STOCK_MODE)
         double capLastVoltage;
@@ -144,6 +151,8 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             targetNodeNumber = -1;
             labeledNodeNumber = -1;
             rowVoltSource = -1;
+            lastNewtonJacobianApplied = false;
+            lastNewtonJacobianStatus = "not attempted";
         }
         
         /** Reset runtime state for simulation restart */
@@ -156,6 +165,8 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             capLastCurrent = 0.0;
             capCurSourceValue = 0.0;
             flowValue = 0.0;
+            lastNewtonJacobianApplied = false;
+            lastNewtonJacobianStatus = "not attempted";
         }
     }
     
@@ -198,6 +209,9 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         @Override
         public void evaluate(int row) {
             if (rows[row].compiledExpr == null) return;
+
+            rows[row].lastNewtonJacobianApplied = false;
+            rows[row].lastNewtonJacobianStatus = "not attempted";
             
             ExprState state = prepareEvalState(row);
             double equationValue = rows[row].compiledExpr.eval(state);
@@ -214,7 +228,14 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             // MNA mode: stamp to matrix
             if (isMnaMode() && rows[row].rowVoltSource >= 0) {
                 int vn = voltSource + rows[row].rowVoltSource + sim.nodeList.size();
-                sim.stampRightSide(vn, equationValue);
+                if (!stampVoltageModeNewtonJacobian(row, state, equationValue, vn)) {
+                    if ("not attempted".equals(rows[row].lastNewtonJacobianStatus)) {
+                        rows[row].lastNewtonJacobianStatus = "fallback: direct rhs";
+                    }
+                    sim.stampRightSide(vn, equationValue);
+                }
+            } else {
+                rows[row].lastNewtonJacobianStatus = "not in mna voltage path";
             }
             
             registerOutputValue(row, equationValue);
@@ -865,15 +886,22 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             int valueSpacing = opsize == 1 ? 16 : 20;
 
             for (int row = 0; row < rowCount; row++) {
-                String displayText = getUIDisplayOutputName(row) + " = " + rows[row].equation;
-                // Start with classification icon width (always present)
-                int leftIconsWidth = classIconWidth;
-                // Add adjustable scroll icon if applicable
-                if (isAdjustableRow(row))
-                    leftIconsWidth += scrollIconWidth;
-                // Add output mode icon if not VOLTAGE_MODE
-                if (rows[row].outputMode != RowOutputMode.VOLTAGE_MODE)
-                    leftIconsWidth += modeIconWidth;
+                String displayText;
+                int leftIconsWidth;
+                if (isCommentRow(row)) {
+                    displayText = "# " + getCommentText(row);
+                    leftIconsWidth = 0;
+                } else {
+                    displayText = getUIDisplayOutputName(row) + " = " + rows[row].equation;
+                    // Start with classification icon width (always present)
+                    leftIconsWidth = classIconWidth;
+                    // Add adjustable scroll icon if applicable
+                    if (isAdjustableRow(row))
+                        leftIconsWidth += scrollIconWidth;
+                    // Add output mode icon if not VOLTAGE_MODE
+                    if (rows[row].outputMode != RowOutputMode.VOLTAGE_MODE)
+                        leftIconsWidth += modeIconWidth;
+                }
                 int rowWidth = leftIconsWidth + (int) sim.cvcontext.measureText(displayText).getWidth() + valueSpacing;
                 
                 // Include initial equation width if present
@@ -1176,7 +1204,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      */
     private boolean isValidOutputName(int row) {
         String name = rows[row].outputName;
-        return name != null && !name.trim().isEmpty();
+        return name != null && !name.trim().isEmpty() && !isCommentRowName(name);
     }
     
     /**
@@ -1320,6 +1348,182 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
 
         return 0.0;
     }
+
+    /**
+     * Phase 1 Newton Jacobian stamping for VOLTAGE_MODE MNA rows.
+     *
+     * Linearizes Vout = f(x) into: Vout - sum(df/dx_i * x_i) = f(x0) - sum(df/dx_i * x0_i)
+     * and stamps the off-diagonal Jacobian entries on the voltage-source equation row.
+     *
+     * Scope guardrails for Phase 1:
+     * - VOLTAGE_MODE rows only
+     * - MNA/labeled-node dependencies only
+     * - expressions with stateful historical operators are excluded
+     *
+     * @return true if Jacobian stamping was applied; false to use direct RHS stamping fallback.
+     */
+    private boolean stampVoltageModeNewtonJacobian(int row, ExprState state, double equationValue, int vn) {
+        String ineligibleReason = getVoltageModeNewtonIneligibilityReason(row);
+        if (ineligibleReason != null) {
+            rows[row].lastNewtonJacobianStatus = ineligibleReason;
+            return false;
+        }
+
+        java.util.LinkedHashSet<String> refs = new java.util.LinkedHashSet<String>();
+        rows[row].compiledExpr.collectSamePeriodRefs(refs);
+        if (refs.isEmpty()) {
+            rows[row].lastNewtonJacobianStatus = "no same-period refs";
+            return false;
+        }
+
+        double rhs = equationValue;
+        boolean stampedAny = false;
+        boolean sawMnaRef = false;
+        int invalidDerivativeCount = 0;
+
+        for (String refName : refs) {
+            if (refName == null || refName.isEmpty()) {
+                continue;
+            }
+
+            Integer labeledNode = LabeledNodeElm.getByName(refName);
+            if (labeledNode == null || labeledNode.intValue() <= 0) {
+                continue;
+            }
+            sawMnaRef = true;
+
+            double baseValue = sim.resolveSlotValue(refName);
+            double dv = Math.abs(baseValue) * 1e-6;
+            if (dv < 1e-6) {
+                dv = 1e-6;
+            }
+
+            double[] restore = perturbReferenceValue(refName, labeledNode.intValue(), baseValue + dv);
+            double perturbedValue;
+            try {
+                perturbedValue = rows[row].compiledExpr.eval(state);
+            } finally {
+                restoreReferenceValue(refName, labeledNode.intValue(), restore);
+            }
+
+            if (Double.isNaN(perturbedValue) || Double.isInfinite(perturbedValue)) {
+                invalidDerivativeCount++;
+                continue;
+            }
+
+            double dx = (perturbedValue - equationValue) / dv;
+            if (Double.isNaN(dx) || Double.isInfinite(dx)) {
+                invalidDerivativeCount++;
+                continue;
+            }
+
+            sim.stampMatrix(vn, labeledNode.intValue(), -dx);
+            rhs -= dx * baseValue;
+            stampedAny = true;
+        }
+
+        if (!stampedAny) {
+            if (!sawMnaRef) {
+                rows[row].lastNewtonJacobianStatus = "no mna refs";
+            } else if (invalidDerivativeCount > 0) {
+                rows[row].lastNewtonJacobianStatus = "mna refs but invalid derivatives";
+            } else {
+                rows[row].lastNewtonJacobianStatus = "mna refs but no usable derivatives";
+            }
+            return false;
+        }
+
+        sim.stampRightSide(vn, rhs);
+        rows[row].lastNewtonJacobianApplied = true;
+        rows[row].lastNewtonJacobianStatus = "applied (refs=" + refs.size() + ")";
+        return true;
+    }
+
+    /**
+     * Eligibility checks for Phase 1 Jacobian stamping.
+     */
+    private String getVoltageModeNewtonIneligibilityReason(int row) {
+        if (!isMnaMode()) {
+            return "ineligible: table not in mna mode";
+        }
+        if (sim == null) {
+            return "ineligible: sim unavailable";
+        }
+        if (!sim.equationTableNewtonJacobianEnabled) {
+            return "ineligible: global toggle off";
+        }
+        if (rows[row].outputMode != RowOutputMode.VOLTAGE_MODE) {
+            return "ineligible: row mode is " + rows[row].outputMode;
+        }
+        if (rows[row].compiledExpr == null) {
+            return "ineligible: missing compiled expr";
+        }
+        if (rows[row].rowVoltSource < 0) {
+            return "ineligible: no voltage source row";
+        }
+        if (rows[row].isAlias) {
+            return "ineligible: alias row";
+        }
+
+        String eq = rows[row].equation;
+        if (eq == null) {
+            return null;
+        }
+        String lower = eq.toLowerCase();
+        if (lower.contains("integrate(") || lower.contains("diff(") || lower.contains("lag(") ||
+                lower.contains("last(") || lower.contains("smooth(")) {
+            return "ineligible: stateful expr";
+        }
+        return null;
+    }
+
+    /**
+     * Perturb a named reference value for finite-difference derivative estimation.
+     *
+     * Returns a restore snapshot:
+     * [0] previous node voltage,
+     * [1] previous circuitVariables slot value (NaN when unavailable),
+     * [2] slot index (NaN when unavailable).
+     */
+    private double[] perturbReferenceValue(String refName, int labeledNode, double newValue) {
+        double oldNodeVoltage = 0.0;
+        if (sim.nodeVoltages != null && labeledNode > 0 && labeledNode - 1 < sim.nodeVoltages.length) {
+            oldNodeVoltage = sim.nodeVoltages[labeledNode - 1];
+            sim.nodeVoltages[labeledNode - 1] = newValue;
+        }
+
+        double oldSlotValue = Double.NaN;
+        double slotIndex = Double.NaN;
+        if (sim.nameToSlot != null && sim.circuitVariables != null) {
+            Integer slot = sim.nameToSlot.get(refName);
+            if (slot != null && slot.intValue() >= 0 && slot.intValue() < sim.circuitVariables.length) {
+                int s = slot.intValue();
+                oldSlotValue = sim.circuitVariables[s];
+                sim.circuitVariables[s] = newValue;
+                slotIndex = s;
+            }
+        }
+
+        return new double[] { oldNodeVoltage, oldSlotValue, slotIndex };
+    }
+
+    /** Restore reference value snapshot created by perturbReferenceValue(). */
+    private void restoreReferenceValue(String refName, int labeledNode, double[] restore) {
+        if (restore == null || restore.length < 3) {
+            return;
+        }
+
+        if (sim.nodeVoltages != null && labeledNode > 0 && labeledNode - 1 < sim.nodeVoltages.length) {
+            sim.nodeVoltages[labeledNode - 1] = restore[0];
+        }
+
+        if (!Double.isNaN(restore[2]) && sim.circuitVariables != null) {
+            int s = (int) restore[2];
+            if (s >= 0 && s < sim.circuitVariables.length && !Double.isNaN(restore[1])) {
+                sim.circuitVariables[s] = restore[1];
+            }
+        }
+    }
     
     /**
      * Check if two posts are electrically connected.
@@ -1382,6 +1586,10 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      */
     private void parseInitialEquation(int row) {
         invalidateClassifications();
+        if (isCommentRow(row)) {
+            rows[row].compiledInitialExpr = null;
+            return;
+        }
         String initEq = rows[row].initialEquation;
         if (initEq == null || initEq.trim().isEmpty()) {
             rows[row].compiledInitialExpr = null;
@@ -1417,6 +1625,10 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      */
     private void parseEquation(int row) {
         invalidateClassifications();
+        if (isCommentRow(row)) {
+            rows[row].compiledExpr = null;
+            return;
+        }
         if (DEBUG) {
             CirSim.console("[EquationTableElm." + tableName + "] Parsing row " + row + ": '" + rows[row].equation + "'");
         }
@@ -2555,6 +2767,18 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         if (rows[row].isAlias) return "alias";
         return "dynamic";
     }
+
+    /** Get per-row Newton Jacobian debug status for VOLTAGE_MODE MNA path. */
+    public String getNewtonJacobianDebugStatus(int row) {
+        if (row < 0 || row >= MAX_ROWS) return "invalid row";
+        return rows[row].lastNewtonJacobianStatus;
+    }
+
+    /** True when Newton Jacobian stamping was applied on the most recent row evaluation. */
+    public boolean wasNewtonJacobianApplied(int row) {
+        if (row < 0 || row >= MAX_ROWS) return false;
+        return rows[row].lastNewtonJacobianApplied;
+    }
     
     /** Set the number of active rows (1 to MAX_ROWS) */
     public void setRowCount(int count) { 
@@ -2578,6 +2802,9 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     public String getDisplayOutputName(int row) {
         if (row < 0 || row >= MAX_ROWS) return "";
         String name = rows[row].outputName;
+        if (isCommentRowName(name)) {
+            return name;
+        }
         // Normalize any Unicode arrow characters in stored name to ASCII
         name = normalizeArrows(name);
         String target = rows[row].targetNodeName;
@@ -2599,6 +2826,9 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      */
     public String getUIDisplayOutputName(int row) {
         if (row < 0 || row >= MAX_ROWS) return "";
+        if (isCommentRow(row)) {
+            return rows[row].outputName;
+        }
         String name = normalizeArrows(rows[row].outputName);
         String target = rows[row].targetNodeName;
         if (target != null && !target.isEmpty() && !target.trim().equalsIgnoreCase("gnd")) {
@@ -2630,6 +2860,15 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      */
     public void setOutputName(int row, String name) {
         if (row >= 0 && row < MAX_ROWS) {
+            if (isCommentRowName(name)) {
+                String trimmed = name == null ? "" : name.trim();
+                if (!trimmed.startsWith("#")) {
+                    trimmed = "# " + trimmed;
+                }
+                rows[row].outputName = trimmed;
+                rows[row].targetNodeName = "";
+                return;
+            }
             String[] parts = parseCombinedName(name);
             rows[row].outputName = parts[0];
             if (!parts[1].isEmpty()) {
@@ -2734,7 +2973,24 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     public RowOutputMode getOutputMode(int row) {
         return (row >= 0 && row < MAX_ROWS) ? rows[row].outputMode : RowOutputMode.VOLTAGE_MODE;
     }
-    
+
+    /** True if this row is a non-simulating comment row. */
+    public boolean isCommentRow(int row) {
+        return row >= 0 && row < MAX_ROWS && isCommentRowName(rows[row].outputName);
+    }
+
+    /** Returns comment text without the leading '#', or empty string for non-comment rows. */
+    public String getCommentText(int row) {
+        if (!isCommentRow(row)) {
+            return "";
+        }
+        String text = rows[row].outputName == null ? "" : rows[row].outputName.trim();
+        if (text.startsWith("#")) {
+            text = text.substring(1).trim();
+        }
+        return text;
+    }
+
     /** Set output mode for a row */
     public void setOutputMode(int row, RowOutputMode mode) {
         if (row >= 0 && row < MAX_ROWS) {

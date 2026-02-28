@@ -263,6 +263,7 @@ public class EquationTableMarkdownDebugDialog {
             md.append("| Time Step | ").append(sim.timeStep).append(" |\n");
             md.append("| Sub-iterations | ").append(sim.subIterations).append(" |\n");
             md.append("| EqnTable MNA Mode (global) | ").append(sim.equationTableMnaMode).append(" |\n");
+            md.append("| EqnTable Newton Jacobian (global) | ").append(sim.equationTableNewtonJacobianEnabled).append(" |\n");
         } else {
             md.append("*(Simulator not available)*\n");
         }
@@ -277,8 +278,8 @@ public class EquationTableMarkdownDebugDialog {
         md.append("## Row Summary\n\n");
         
         // Header
-        md.append("| # | Node(s) | Mode | Class | Equation | Initial | Value | Slider |\n");
-        md.append("|---|---------|------|-------|----------|---------|-------|--------|\n");
+        md.append("| # | Node(s) | Mode | Class | Equation | Initial | Value | Slider | Jacobian |\n");
+        md.append("|---|---------|------|-------|----------|---------|-------|--------|----------|\n");
         
         int rowCount = sourceTable.getRowCount();
         for (int row = 0; row < rowCount; row++) {
@@ -290,6 +291,7 @@ public class EquationTableMarkdownDebugDialog {
             double value = sourceTable.getOutputValue(row);
             String sliderVar = sourceTable.getSliderVarName(row);
             double sliderVal = sourceTable.getSliderValue(row);
+            String jacobianStatus = sourceTable.getNewtonJacobianDebugStatus(row);
             
             // Mode icon
             String modeStr;
@@ -323,6 +325,7 @@ public class EquationTableMarkdownDebugDialog {
               .append(" | ").append(initStr)
               .append(" | ").append(valueStr)
               .append(" | ").append(sliderVar).append("=").append(sliderVal)
+              .append(" | ").append(wrapForKaTeX(truncate(jacobianStatus, 28)))
               .append(" |\n");
         }
         md.append("\n");
@@ -345,6 +348,8 @@ public class EquationTableMarkdownDebugDialog {
             double value = sourceTable.getOutputValue(row);
             String sliderVar = sourceTable.getSliderVarName(row);
             double sliderVal = sourceTable.getSliderValue(row);
+            String jacobianStatus = sourceTable.getNewtonJacobianDebugStatus(row);
+            boolean jacobianApplied = sourceTable.wasNewtonJacobianApplied(row);
             
             md.append("### Row ").append(row).append(": ").append(wrapForKaTeX(outputName)).append("\n\n");
             
@@ -378,6 +383,8 @@ public class EquationTableMarkdownDebugDialog {
             
             md.append("- **Current Value:** ").append(CircuitElm.getUnitText(value, "")).append("\n");
             md.append("- **Slider:** ").append(wrapForKaTeX(sliderVar)).append(" = ").append(sliderVal).append("\n");
+            md.append("- **Jacobian Path:** ").append(jacobianApplied ? "applied" : "fallback").append("\n");
+            md.append("- **Jacobian Debug:** ").append(wrapForKaTeX(jacobianStatus)).append("\n");
             
             // Hint from HintRegistry
             String hint = HintRegistry.getHint(sourceTable.getOutputName(row));

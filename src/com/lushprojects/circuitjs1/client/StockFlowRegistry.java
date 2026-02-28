@@ -177,7 +177,10 @@ public class StockFlowRegistry {
                 String[] names = eqn.getOutputNames();
                 for (String name : names) {
                     if (name != null && !name.trim().isEmpty()) {
-                        outputs.add(name.trim());
+                        String trimmed = name.trim();
+                        if (!EquationTableElm.isCommentRowName(trimmed)) {
+                            outputs.add(trimmed);
+                        }
                     }
                 }
             }

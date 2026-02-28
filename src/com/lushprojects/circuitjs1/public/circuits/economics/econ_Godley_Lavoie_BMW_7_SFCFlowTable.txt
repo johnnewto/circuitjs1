@@ -52,67 +52,68 @@ At steady state (t → ∞):
   showVolts: true
   showValues: true
   showPower: false
+  equationTableTolerance: 0.001
 @end
 
 @equations Parameters x=544 y=360
-  rl ~ 0.025 ; mode=param ; slider=a ; sliderValue=0.5  # Interest rate on loans
-  \alpha0 ~ 20 ; mode=param ; slider=b ; sliderValue=0.5  # Autonomous consumption
-  \alpha1 ~ 0.75 ; mode=param ; slider=c ; sliderValue=0.5  # Propensity to consume from income
-  \alpha2 ~ 0.10 ; mode=param ; slider=d ; sliderValue=0.5  # Propensity to consume from wealth
-  \delta ~ 0.1 ; mode=param ; slider=e ; sliderValue=0.5  # Depreciation rate
-  \gamma ~ 0.15 ; mode=param ; slider=f ; sliderValue=0.5  # Adjustment speed of capital to target
-  \kappa ~ 1 ; mode=param ; slider=g ; sliderValue=0.5  # Capital-output ratio target
-  pr ~ 1 ; mode=param ; slider=h ; sliderValue=0.5  # Labor productivity
+  rl ~ 0.025 ; mode=param ; sliderValue=0  # Interest rate on loans
+  \alpha0 ~ 20 ; mode=param ; sliderValue=0  # Autonomous consumption
+  \alpha1 ~ 0.75 ; mode=param ; sliderValue=0  # Propensity to consume from income
+  \alpha2 ~ 0.10 ; mode=param ; sliderValue=0  # Propensity to consume from wealth
+  \delta ~ 0.1 ; mode=param ; sliderValue=0  # Depreciation rate
+  \gamma ~ 0.15 ; mode=param ; sliderValue=0  # Adjustment speed of capital to target
+  \kappa ~ 1 ; mode=param ; sliderValue=0  # Capital-output ratio target
+  pr ~ 1 ; mode=param ; sliderValue=0  # Labor productivity
 @end
 
 @equations Firms x=32 y=488
-  Y ~ Cs + Id ; mode=flow ; slider=a ; sliderValue=0.5  # National income (output)
-  WBd ~ Y - lag(rl, 1) * lag(Ld,1) - AF ; mode=flow ; slider=b ; sliderValue=0.5  # Wage bill demanded
-  AF ~ \delta * lag(K,1) ; mode=flow ; slider=c ; sliderValue=0.5  # Amortization funds = delta * lag(K,1)
-  Ld ~ (Id - AF) ; mode=stock ; slider=d ; sliderValue=0.5  # Loan demand
-  Y5 ~ (Id - AF) ; mode=stock ; slider=e ; sliderValue=0.5  # hint5
-  Y6 ~ rm*Mh ; mode=voltage ; slider=e ; sliderValue=0.5  # hint5
-  Y7 ~ 1*rm ; mode=voltage ; slider=g ; sliderValue=0.5  # hint7
+  Y ~ Cs + Id ; mode=flow ; sliderValue=0  # National income (output)
+  WBd ~ Y - lag(rl, 1) * lag(Ld,1) - AF ; mode=flow ; sliderValue=0  # Wage bill demanded
+  AF ~ \delta * lag(K,1) ; mode=flow ; sliderValue=0  # Amortization funds = delta * lag(K,1)
+  Ld ~ (Id - AF) ; mode=stock ; sliderValue=0  # Loan demand
+  Y5 ~ (Id - AF) ; mode=stock ; sliderValue=0  # hint5
+  Y6 ~ rm*Mh ; mode=voltage ; sliderValue=0  # hint5
+  Y7 ~ 1*rm ; mode=voltage ; sliderValue=0  # hint7
 @end
 
 @equations Households x=304 y=488
-  YD ~ WBs + rl * lag(Mh,1) ; mode=flow ; slider=a ; sliderValue=0.5  # Household disposable income = WBs + lag(rm,1) * lag(Mh,1)
-  Mh ~ YD + Cd ; mode=stock ; slider=b ; sliderValue=0.5  # Household money holdings (deposits)
+  YD ~ WBs + rl * lag(Mh,1) ; mode=flow ; sliderValue=0  # Household disposable income = WBs + lag(rm,1) * lag(Mh,1)
+  Mh ~ YD + Cd ; mode=stock ; sliderValue=0  # Household money holdings (deposits)
 @end
 
 @equations Banks x=720 y=536
-  Ms ~ Ls ; mode=voltage ; slider=a ; sliderValue=0.5  # Money supply (bank deposits)
-  rm ~ rl ; mode=voltage ; slider=b ; sliderValue=0.5  # Interest rate on deposits
-  Y3 ~ 1*rm ; mode=voltage ; slider=c ; sliderValue=0.5  # hint3
+  Ms ~ Ls ; mode=voltage ; sliderValue=0  # Money supply (bank deposits)
+  rm ~ rl ; mode=voltage ; sliderValue=0  # Interest rate on deposits
+  Y3 ~ 1*rm ; mode=voltage ; sliderValue=0  # hint3
 @end
 
 @equations WageBill x=32 y=648
-  WBs ~ W * Ns ; mode=flow ; slider=a ; sliderValue=0.5  # Wage bill supplied
-  Nd->Ns ~ Y / pr ; mode=flow ; slider=b ; sliderValue=0.5  # Labor demand
-  W ~ WBd / max(Ns, 0.01) ; mode=flow ; slider=c ; sliderValue=0.5  # Wage rate
-  Y4 ~ WBd/Ns ; mode=voltage ; slider=d ; sliderValue=0.5  # hint4
+  WBs ~ W * Ns ; mode=flow ; sliderValue=0  # Wage bill supplied
+  Nd->Ns ~ Y / pr ; mode=flow ; sliderValue=0  # Labor demand
+  W ~ WBd / max(Ns, 0.01) ; mode=flow ; sliderValue=0  # Wage rate
+  Y4 ~ WBd/Ns ; mode=voltage ; sliderValue=0  # hint4
 @end
 
 @equations Consumption x=320 y=568
-  Cd->Cs ~ \alpha0 + \alpha1 * YD + \alpha2 * lag(Mh,1) ; mode=flow ; slider=a ; sliderValue=0.5  # Consumption demand
+  Cd->Cs ~ \alpha0 + \alpha1 * YD + \alpha2 * lag(Mh,1) ; mode=flow ; sliderValue=0  # Consumption demand
 @end
 
 @equations Investment x=448 y=664
-  K ~ Id - DA ; mode=stock ; slider=a ; sliderValue=0.5  # Capital stock
-  DA ~ \delta * lag(K,1) ; mode=flow ; slider=b ; sliderValue=0.5  # Depreciation actual = delta * lag(K,1)
-  KT ~ \kappa * lag(Y,1) ; mode=flow ; slider=c ; sliderValue=0.5  # Target capital stock = kappa * lag(Y,1)
-  Is->Id ~ \gamma * (KT - lag(K,1)) + DA ; mode=flow ; slider=d ; sliderValue=0.5  # Investment demand
+  K ~ Id - DA ; mode=stock ; sliderValue=0  # Capital stock
+  DA ~ \delta * lag(K,1) ; mode=flow ; sliderValue=0  # Depreciation actual = delta * lag(K,1)
+  KT ~ \kappa * lag(Y,1) ; mode=flow ; sliderValue=0  # Target capital stock = kappa * lag(Y,1)
+  Is->Id ~ \gamma * (KT - lag(K,1)) + DA ; mode=flow ; sliderValue=0  # Investment demand
 @end
 
 @equations MarketClearing x=784 y=680
-  Ls ~ Ld ; mode=voltage ; slider=d ; sliderValue=0.5  # Loan supply
+  Ls ~ Ld ; mode=voltage ; sliderValue=0  # Loan supply
 @end
 
 @equations \Delta x=256 y=656
-  \DeltaLd ~ diff(Ld) ; mode=voltage ; slider=a ; sliderValue=0.5
-  \DeltaLs ~ diff(Ls) ; mode=voltage ; slider=b ; sliderValue=0.5
-  \DeltaMs ~ diff(Ms) ; mode=voltage ; slider=c ; sliderValue=0.5  # hint3
-  \DeltaMh ~ diff(Mh) ; mode=voltage ; slider=d ; sliderValue=0.5  # hint4
+  \DeltaLd ~ diff(Ld) ; mode=voltage ; sliderValue=0
+  \DeltaLs ~ diff(Ls) ; mode=voltage ; sliderValue=0
+  \DeltaMs ~ diff(Ms) ; mode=voltage ; sliderValue=0  # hint3
+  \DeltaMh ~ diff(Mh) ; mode=voltage ; sliderValue=0  # hint4
 @end
 
 @matrix Transaction_Flow_Matrix x=16 y=152
@@ -208,5 +209,20 @@ x 89 140 399 143 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q16
 431 704 64 752 96 0 50 true false U:Ozs0Ey
 r 960 544 896 544 0 1 U:PSgFCy
 g 896 544 896 592 0 0 U:KqCssR
-403 928 576 1168 720 0 14_2_0_x2001206_U:C67zij_320_0.1_-1_2_U:K79ipy_15_0 U:HBpi4u
+@end
+
+@scope Y position=0
+  speed: 1
+  flags: x2001206
+  source: uid:K79ipy value:0
+@end
+@scope Embedded_Scope_1 position=-1
+  x1: 1152
+  y1: 576
+  x2: 1456
+  y2: 704
+  elmUid: VxClzM
+  speed: 1
+  flags: x2001206
+  source: uid:K79ipy value:0
 @end
