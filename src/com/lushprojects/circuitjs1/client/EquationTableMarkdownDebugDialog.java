@@ -283,6 +283,9 @@ public class EquationTableMarkdownDebugDialog {
         
         int rowCount = sourceTable.getRowCount();
         for (int row = 0; row < rowCount; row++) {
+            if (isCommentRow(sourceTable, row)) {
+                continue;
+            }
             String outputName = sourceTable.getUIDisplayOutputName(row);
             String equation = sourceTable.getEquation(row);
             String initialEq = sourceTable.getInitialEquation(row);
@@ -340,6 +343,9 @@ public class EquationTableMarkdownDebugDialog {
         
         int rowCount = sourceTable.getRowCount();
         for (int row = 0; row < rowCount; row++) {
+            if (isCommentRow(sourceTable, row)) {
+                continue;
+            }
             String outputName = sourceTable.getUIDisplayOutputName(row);
             String equation = sourceTable.getEquation(row);
             String initialEq = sourceTable.getInitialEquation(row);
@@ -447,6 +453,9 @@ public class EquationTableMarkdownDebugDialog {
         
         int rowCount = sourceTable.getRowCount();
         for (int row = 0; row < rowCount; row++) {
+            if (isCommentRow(sourceTable, row)) {
+                continue;
+            }
             String name = sourceTable.getOutputName(row);
             double tableValue = sourceTable.getOutputValue(row);
             Double cvValue = ComputedValues.getComputedValue(name);
@@ -466,6 +475,9 @@ public class EquationTableMarkdownDebugDialog {
         // Also show slider variables in ComputedValues
         md.append("\n**Slider Variables in ComputedValues:**\n\n");
         for (int row = 0; row < rowCount; row++) {
+            if (isCommentRow(sourceTable, row)) {
+                continue;
+            }
             String sliderVar = sourceTable.getSliderVarName(row);
             if (sliderVar != null && !sliderVar.isEmpty()) {
                 Double sv = ComputedValues.getComputedValue(sliderVar);
@@ -542,6 +554,9 @@ public class EquationTableMarkdownDebugDialog {
         
         int rowCount = sourceTable.getRowCount();
         for (int row = 0; row < rowCount; row++) {
+            if (isCommentRow(sourceTable, row)) {
+                continue;
+            }
             String name = sourceTable.getOutputName(row);
             boolean isAlias = sourceTable.isAliasRow(row);
             
@@ -586,9 +601,17 @@ public class EquationTableMarkdownDebugDialog {
                 
                 // List output names
                 md.append(" → outputs: ");
+                boolean appendedAny = false;
                 for (int row = 0; row < eqt.getRowCount(); row++) {
-                    if (row > 0) md.append(", ");
+                    if (isCommentRow(eqt, row)) {
+                        continue;
+                    }
+                    if (appendedAny) md.append(", ");
                     md.append(wrapForKaTeX(eqt.getOutputName(row)));
+                    appendedAny = true;
+                }
+                if (!appendedAny) {
+                    md.append("(none)");
                 }
                 md.append("\n");
                 count++;
@@ -699,6 +722,12 @@ public class EquationTableMarkdownDebugDialog {
             }
         }
         return labels;
+    }
+
+    /** True when a row's output name is a comment marker row (starts with '#'). */
+    private boolean isCommentRow(EquationTableElm table, int row) {
+        String outputName = table.getOutputName(row);
+        return EquationTableElm.isCommentRowName(outputName);
     }
     
     /**

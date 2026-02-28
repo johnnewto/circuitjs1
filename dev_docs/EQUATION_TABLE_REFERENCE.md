@@ -11,7 +11,7 @@ It supports two simulator-wide execution modes:
 **Dump type:** 266  
 **Source:** [EquationTableElm.java](../src/com/lushprojects/circuitjs1/client/EquationTableElm.java)  
 **Renderer:** [EquationTableRenderer.java](../src/com/lushprojects/circuitjs1/client/EquationTableRenderer.java)  
-**Max rows:** 32
+**Max rows:** 64
 
 ## Quick Facts
 
@@ -67,6 +67,7 @@ Equation result is interpreted as current and stamped with `stampCurrentSource`.
 - **Two-node form (`S1->S2`):** flow is `S1 -> S2`; positive means source-to-target
 - **Target default:** empty or `gnd` means ground
 - **Always nonlinear:** evaluated each subiteration
+- **Newton path (optional):** with `sim.equationTableNewtonJacobianEnabled`, eligible FLOW rows stamp Jacobian terms into source/target KCL rows; otherwise they use direct `stampCurrentSource`
 - **ComputedValues key:** FLOW rows publish magnitude under `<outputName>.flow` (sanitized to parser-safe identifier chars)
 - **Important:** FLOW rows still do **not** register to `ComputedValues[outputName]` (prevents clobbering stock/node voltage values)
 
@@ -98,6 +99,7 @@ Equation result is interpreted as a computed parameter value only.
 |---------|--------------|-----------|------------|------------|
 | Equation meaning | Output voltage | Flow rate | Net inflow rate | Computed parameter |
 | Primary stamp | `stampVoltageSource` + RHS | `stampCurrentSource` | `stampResistor` + `stampCurrentSource` | none |
+| Newton Jacobian (optional) | VS-equation-row Jacobian + RHS adjust | Source/target KCL Jacobian + node RHS adjust | not implemented | not applicable |
 | Node model | Ground-referenced output | Source/target current path | Integrating source/target path | no node |
 | Integration | Only if expression uses `integrate()` | External to mode | Built-in companion model | None (unless expression itself uses stateful funcs) |
 
@@ -174,13 +176,19 @@ Per row:
 
 ### Newton Jacobian path (kept)
 
-For `VOLTAGE_MODE` rows in MNA mode, EquationTable supports an optional Newton linearization path before falling back to direct RHS stamping.
+For MNA rows, EquationTable supports an optional Newton linearization path for `VOLTAGE_MODE` and `FLOW_MODE` before falling back to direct stamping.
 
 - Global toggle: `sim.equationTableNewtonJacobianEnabled`
-- Scope: VOLTAGE rows with usable same-period MNA references
+- Scope:
+  - `VOLTAGE_MODE` rows with usable same-period MNA references
+  - `FLOW_MODE` rows with usable same-period MNA references
 - Excludes stateful historical expressions (`integrate`, `diff`, `lag`, `last`, `smooth`)
-- If eligible, it stamps Jacobian terms into the VS equation row and adjusted RHS
-- If not eligible (or derivatives invalid), it falls back to direct `stampRightSide`
+- If eligible:
+  - `VOLTAGE_MODE`: stamps Jacobian terms into the VS equation row plus adjusted RHS
+  - `FLOW_MODE`: stamps Jacobian terms into source/target KCL rows plus adjusted node RHS terms
+- If not eligible (or derivatives invalid):
+  - `VOLTAGE_MODE` falls back to direct `stampRightSide`
+  - `FLOW_MODE` falls back to direct `stampCurrentSource`
 - Per-row debug status is exposed by:
   - `getNewtonJacobianDebugStatus(row)`
   - `wasNewtonJacobianApplied(row)`
@@ -306,7 +314,7 @@ Current output mode ordinals: `0=VOLTAGE`, `1=FLOW`, `2=STOCK`, `3=PARAM`.
 `EquationTableEditDialog` supports:
 
 - table name editing
-- row add/delete/reorder (1..32)
+- row add/delete/reorder (1..64)
 - fields: Node(s), Equation, Initial (t=0), Mode, Shunt R / Cap, Integ., Slider Var, Slider Value, Hint
 - equation autocomplete
 - per-row STOCK integration method (Trap/Euler)

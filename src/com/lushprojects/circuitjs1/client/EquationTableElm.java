@@ -58,7 +58,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     private static final int FLAG_MNA_MODE = 2;
     
     /** Maximum number of equation rows supported */
-    private static final int MAX_ROWS = 32;
+    private static final int MAX_ROWS = 64;
 
     /** Default FLOW shunt resistance to avoid loading by default. */
     private static final double DEFAULT_FLOW_SHUNT_RESISTANCE = 1e9;
@@ -295,6 +295,9 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         @Override
         public void evaluate(int row) {
             if (rows[row].compiledExpr == null) return;
+
+            rows[row].lastNewtonJacobianApplied = false;
+            rows[row].lastNewtonJacobianStatus = "not attempted";
             
             int sourceNode = rows[row].labeledNodeNumber;
             int targetNode = rows[row].targetNodeNumber;
@@ -308,8 +311,13 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             rows[row].lastOutputValue = flowValue;
             rows[row].outputValue = flowValue;
             registerFlowValue(row, flowValue);
-            
-            sim.stampCurrentSource(sourceNode, targetNode, flowValue);
+
+            if (!stampFlowModeNewtonJacobian(row, state, flowValue, sourceNode, targetNode)) {
+                if ("not attempted".equals(rows[row].lastNewtonJacobianStatus)) {
+                    rows[row].lastNewtonJacobianStatus = "fallback: direct current source";
+                }
+                sim.stampCurrentSource(sourceNode, targetNode, flowValue);
+            }
             // Do NOT registerOutputValue here: outputName for FLOW is the source
             // node name (e.g. "S1" from "S1->S2"), and registering the flow
             // magnitude would clobber any STOCK row's value for that name.
@@ -1440,6 +1448,97 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     }
 
     /**
+     * Phase 1 Newton Jacobian stamping for FLOW_MODE MNA rows.
+     *
+     * Linearizes I = f(x) and stamps into the source/target KCL rows:
+     * - source row receives +dI/dx terms and RHS constant for -I contribution
+     * - target row receives -dI/dx terms and RHS constant for +I contribution
+     *
+     * @return true if Jacobian stamping was applied; false to use direct current-source fallback.
+     */
+    private boolean stampFlowModeNewtonJacobian(int row, ExprState state, double flowValue, int sourceNode, int targetNode) {
+        String ineligibleReason = getFlowModeNewtonIneligibilityReason(row, sourceNode, targetNode);
+        if (ineligibleReason != null) {
+            rows[row].lastNewtonJacobianStatus = ineligibleReason;
+            return false;
+        }
+
+        java.util.LinkedHashSet<String> refs = new java.util.LinkedHashSet<String>();
+        rows[row].compiledExpr.collectSamePeriodRefs(refs);
+        if (refs.isEmpty()) {
+            rows[row].lastNewtonJacobianStatus = "no same-period refs";
+            return false;
+        }
+
+        double rhsSource = -flowValue;
+        double rhsTarget = flowValue;
+        boolean stampedAny = false;
+        boolean sawMnaRef = false;
+        int invalidDerivativeCount = 0;
+
+        for (String refName : refs) {
+            if (refName == null || refName.isEmpty()) {
+                continue;
+            }
+
+            Integer labeledNode = LabeledNodeElm.getByName(refName);
+            if (labeledNode == null || labeledNode.intValue() <= 0) {
+                continue;
+            }
+            sawMnaRef = true;
+
+            double baseValue = sim.resolveSlotValue(refName);
+            double dv = Math.abs(baseValue) * 1e-6;
+            if (dv < 1e-6) {
+                dv = 1e-6;
+            }
+
+            double[] restore = perturbReferenceValue(refName, labeledNode.intValue(), baseValue + dv);
+            double perturbedValue;
+            try {
+                perturbedValue = rows[row].compiledExpr.eval(state);
+            } finally {
+                restoreReferenceValue(refName, labeledNode.intValue(), restore);
+            }
+
+            if (Double.isNaN(perturbedValue) || Double.isInfinite(perturbedValue)) {
+                invalidDerivativeCount++;
+                continue;
+            }
+
+            double dx = (perturbedValue - flowValue) / dv;
+            if (Double.isNaN(dx) || Double.isInfinite(dx)) {
+                invalidDerivativeCount++;
+                continue;
+            }
+
+            int refNode = labeledNode.intValue();
+            sim.stampMatrix(sourceNode, refNode, dx);
+            sim.stampMatrix(targetNode, refNode, -dx);
+            rhsSource += dx * baseValue;
+            rhsTarget -= dx * baseValue;
+            stampedAny = true;
+        }
+
+        if (!stampedAny) {
+            if (!sawMnaRef) {
+                rows[row].lastNewtonJacobianStatus = "no mna refs";
+            } else if (invalidDerivativeCount > 0) {
+                rows[row].lastNewtonJacobianStatus = "mna refs but invalid derivatives";
+            } else {
+                rows[row].lastNewtonJacobianStatus = "mna refs but no usable derivatives";
+            }
+            return false;
+        }
+
+        sim.stampRightSide(sourceNode, rhsSource);
+        sim.stampRightSide(targetNode, rhsTarget);
+        rows[row].lastNewtonJacobianApplied = true;
+        rows[row].lastNewtonJacobianStatus = "applied flow jacobian (refs=" + refs.size() + ")";
+        return true;
+    }
+
+    /**
      * Eligibility checks for Phase 1 Jacobian stamping.
      */
     private String getVoltageModeNewtonIneligibilityReason(int row) {
@@ -1460,6 +1559,42 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
         if (rows[row].rowVoltSource < 0) {
             return "ineligible: no voltage source row";
+        }
+        if (rows[row].isAlias) {
+            return "ineligible: alias row";
+        }
+
+        String eq = rows[row].equation;
+        if (eq == null) {
+            return null;
+        }
+        String lower = eq.toLowerCase();
+        if (lower.contains("integrate(") || lower.contains("diff(") || lower.contains("lag(") ||
+                lower.contains("last(") || lower.contains("smooth(")) {
+            return "ineligible: stateful expr";
+        }
+        return null;
+    }
+
+    /** Eligibility checks for FLOW_MODE Jacobian stamping. */
+    private String getFlowModeNewtonIneligibilityReason(int row, int sourceNode, int targetNode) {
+        if (!isMnaMode()) {
+            return "ineligible: table not in mna mode";
+        }
+        if (sim == null) {
+            return "ineligible: sim unavailable";
+        }
+        if (!sim.equationTableNewtonJacobianEnabled) {
+            return "ineligible: global toggle off";
+        }
+        if (rows[row].outputMode != RowOutputMode.FLOW_MODE) {
+            return "ineligible: row mode is " + rows[row].outputMode;
+        }
+        if (rows[row].compiledExpr == null) {
+            return "ineligible: missing compiled expr";
+        }
+        if (sourceNode < 0 || targetNode < 0) {
+            return "ineligible: unresolved flow endpoints";
         }
         if (rows[row].isAlias) {
             return "ineligible: alias row";

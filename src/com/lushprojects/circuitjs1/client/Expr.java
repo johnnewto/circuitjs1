@@ -894,6 +894,15 @@ class Expr {
 		if (laggedValue != null) {
 		    return laggedValue.doubleValue();
 		}
+		// FLOW rows publish under a dedicated *.flow namespace. If the
+		// base name has no lagged value, fall back to its lagged flow key.
+		String flowKey = ComputedValues.getFlowComputedKeyForName(varName);
+		if (flowKey != null) {
+		    Double laggedFlowValue = ComputedValues.getLaggedValue(flowKey);
+		    if (laggedFlowValue != null) {
+			return laggedFlowValue.doubleValue();
+		    }
+		}
 		// No converged value yet (first timestep) - try X_init as fallback
 		// This matches sfcr behavior where initial values are used for V[-1] in period 1
 		Double initValue = ComputedValues.getComputedValue(varName + "_init");

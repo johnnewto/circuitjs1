@@ -1,0 +1,63 @@
+# CircuitJS1 SFCR Export
+# Generated from circuit simulation
+
+@init
+  timestep: 1
+  voltageUnit: $
+  timeUnit: yr
+  showDots: false
+  showVolts: true
+  showValues: true
+  showPower: false
+  equationTableTolerance: 0.00001
+@end
+
+@equations bmw_eqs x=176 y=24
+  Cs ~ Cd ; mode=voltage ; sliderValue=0
+  Is ~ Id ; mode=voltage ; sliderValue=0
+  Ns ~ Nd ; mode=voltage ; sliderValue=0
+  Ls ~ last(Ls) + Ld - last(Ld) ; mode=voltage ; sliderValue=0
+  Y ~ Cs + Is ; mode=voltage ; sliderValue=0
+  WBd ~ Y - last(rl) * last(Ld) - AF ; mode=voltage ; sliderValue=0
+  AF ~ delta * last(K) ; mode=voltage ; sliderValue=0
+  Ld ~ last(Ld) + Id - AF ; mode=voltage ; sliderValue=0
+  YD ~ WBs + last(rm) * last(Mh) ; mode=voltage ; sliderValue=0
+  Mh ~ last(Mh) + YD - Cd ; mode=voltage ; sliderValue=0
+  Ms ~ last(Ms) + Ls - last(Ls) ; mode=voltage ; sliderValue=0
+  rm ~ rl ; mode=voltage ; sliderValue=0
+  WBs ~ W * Ns ; mode=voltage ; sliderValue=0
+  Nd ~ Y / pr ; mode=voltage ; sliderValue=0
+  W ~ WBd / Nd ; mode=voltage ; sliderValue=0
+  Cd ~ alpha0 + \alpha_1 * YD + \alpha_2 * last(Mh) ; mode=voltage ; sliderValue=0
+  K ~ last(K) + Id - DA ; mode=voltage ; sliderValue=0
+  DA ~ delta * last(K) ; mode=voltage ; sliderValue=0
+  KT ~ kappa * last(Y) ; mode=voltage ; sliderValue=0
+  Id ~ gamma * (KT - last(K)) + DA ; mode=voltage ; sliderValue=0
+@end
+
+@equations bmw_external x=-32 y=264
+  rl ~ 0.025 ; mode=param ; sliderValue=0
+  alpha0 ~ 20 ; mode=param ; sliderValue=0
+  \alpha_1 ~ 0.75 ; mode=param ; sliderValue=0
+  \alpha_2 ~ 0.10 ; mode=param ; sliderValue=0
+  delta ~ 0.10 ; mode=param ; sliderValue=0
+  gamma ~ 0.15 ; mode=param ; sliderValue=0
+  kappa ~ 1 ; mode=param ; sliderValue=0
+  pr ~ 1 ; mode=param ; sliderValue=0
+@end
+
+@circuit
+431 16 48 32 96 0 50 true false U:IsYZcJ
+207 592 176 656 176 164 Y U:jwsp9L
+@end
+
+@scope Embedded_Scope_1 position=-1
+  x1: 640
+  y1: 224
+  x2: 960
+  y2: 384
+  elmUid: 6VWMMF
+  speed: 1
+  flags: x2001206
+  source: uid:jwsp9L value:0
+@end
