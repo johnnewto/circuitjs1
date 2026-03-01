@@ -170,6 +170,7 @@ MouseOutHandler, MouseWheelHandler {
     ToolbarType currentToolbarType = ToolbarType.ECONOMICS;
     String voltageUnitSymbol = "$"; // Custom voltage unit symbol ($ for economics default)
     String timeUnitSymbol = "yr"; // Custom time unit symbol (yr for economics default)
+	int infoViewerUpdateIntervalMs = 100; // InfoViewer live update throttling interval
     boolean useWeightedPriority = false; // Weighted priority for Asset/Equity columns
     String modelInfoContent = null; // Markdown info content from @info block in SFCR files
     MenuItem viewModelInfoItem; // Menu item for viewing model info
@@ -2304,6 +2305,9 @@ public CirSim() {
 
         // Draw action scheduler display message if present (after all other graphics)
         drawActionSchedulerMessage(g, cvcontext);
+
+		// Push throttled live values to InfoViewer (popup and embedded iframe) if open
+		InfoViewerDialog.pushLiveDataUpdate();
 
         
         // This should always be the last 
@@ -9331,6 +9335,8 @@ public CirSim() {
 	    var that = this;
 	    $wnd.CircuitJS1 = {
 	        setSimRunning: $entry(function(run) { that.@com.lushprojects.circuitjs1.client.CirSim::setSimRunning(Z)(run); } ),
+	        reset: $entry(function() { that.@com.lushprojects.circuitjs1.client.CirSim::resetAction()(); } ),
+	        step: $entry(function() { that.@com.lushprojects.circuitjs1.client.CirSim::stepCircuit()(); } ),
 	        getTime: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::t; } ),
 	        getTimeStep: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::timeStep; } ),
 	        setTimeStep: $entry(function(ts) { that.@com.lushprojects.circuitjs1.client.CirSim::timeStep = ts; } ), // don't use this, see #843

@@ -25,6 +25,7 @@ Auto-detected when content contains `@matrix`, `@equations`, `@parameters`, `@in
   timestep: 0.1
   voltageUnit: $
   timeUnit: yr
+  infoViewerUpdateIntervalMs: 100
   showDots: false
   showVolts: false
 @end
@@ -41,6 +42,7 @@ Auto-detected when content contains `@matrix`, `@equations`, `@parameters`, `@in
 | `showVolts` | Show voltage colors |
 | `showValues` | Show component values |
 | `showPower` | Show power dissipation |
+| `infoViewerUpdateIntervalMs` | Throttle interval (ms) for live Info Viewer updates (default: `200`) |
 
 ---
 

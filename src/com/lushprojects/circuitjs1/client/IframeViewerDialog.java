@@ -174,8 +174,8 @@ public class IframeViewerDialog extends DialogBox {
         
         vp.add(new HTML(containerHtml));
         
-        // Position at right side of screen
-        setPopupPosition(Window.getClientWidth() - w - 40, 60);
+        // Position at left side of screen
+        setPopupPosition(20, 60);
         show();
         
         // Add close button to title bar

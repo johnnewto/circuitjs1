@@ -1,5 +1,11 @@
 # CircuitJS1 TODOs
 
+## Flows in equation table
+make it so that each flow has a 1 ohm resistor so that value and flow are the same, investigate how this could simplify eval.
+
+## Tables should reset
+ To the node or computed value in both circuit and info tables
+
 ## Stock-Flow / Economic Modeling
 
 ### Net Worth Visualization for Sankey Diagrams
@@ -31,46 +37,7 @@ StockFlowRegistry.synchronizeAllTables();   // Todo-JN   prob needs to be remove
 
 This call may need to be moved to a more appropriate location in the initialization sequence.
 
----
 
-## UI / Editor
-
-### EditCompositeModelDialog Mouse Event Stubs
-**File:** [EditCompositeModelDialog.java](src/com/lushprojects/circuitjs1/client/EditCompositeModelDialog.java#L295-L302)
-
-Auto-generated stubs for `onMouseOver` and `onMouseOut` - implement if hover behavior is needed for composite model editing.
-
-## Performance / Optimization
-
-### ✅ Speed Difference Resolved - GWT Optimization Level
-
-**Issue:** Local build (http://127.0.0.1:8000) was 2x slower than GitHub Pages deployment.
-
-**Root Cause:** GWT compiler optimization level differences:
-
-| Build Method | Optimization | Runtime Speed |
-|--------------|--------------|---------------|
-| `./gradlew compileGwt` (default) | optimize=0 | Slow - 6.2s for 100s simulation |
-| `./gradlew compileGwt -Pgwt.compiler.optimize=9` | optimize=9 | Fast - 3.1s for 100s simulation |
-| `./dev.sh compile` (ant build) | optimize=9 (GWT default) | Fast - 3.1s for 100s simulation |
-| GitHub Pages deployment | optimize=9 | Fast - 3.1s for 100s simulation |
-
-**Solution Implemented:**
-- Added `./dev.sh startprod` command that compiles with full optimization (optimize=9) and starts web server
-- Updated README.md with documentation
-- Updated WASM_MATRIX_SOLVER.md with performance comparison
-
-**Key Finding:** 
-Production-optimized V8 JavaScript (optimize=9) **matches WASM performance** for typical circuit sizes. WASM's primary benefit is consistency (avoiding GC pauses and JIT deoptimization) rather than raw speed advantage over fully-optimized JavaScript.
-
-**Usage:**
-```bash
-./dev.sh startprod  # Compile with optimize=9 and start web server
-```
-
-**Related Files:**
-- [dev.sh](dev.sh) - Added `startprod` command
-- [README.md](README.md) - Updated command table
-- [dev_docs/WASM_MATRIX_SOLVER.md](dev_docs/WASM_MATRIX_SOLVER.md) - Added V8 production mode performance section
+section
 
 ---

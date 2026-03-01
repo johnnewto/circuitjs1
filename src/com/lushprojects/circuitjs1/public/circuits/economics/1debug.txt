@@ -2,156 +2,169 @@
 # Generated from circuit simulation
 
 @info
+# SIM Model (Godley & Lavoie, Ch.3) — Live Dashboard
 
-# Model Documentation
+This document is editable in the Info Viewer and updates while simulation runs.
 
-## Bank-Money World Model (BMW)
-## Flow-Mode Equation Implementation
+> **Time:** {{t}} yr  
+> **Step:** {{dt}} yr
 
-**Source:** Godley & Lavoie (2007) Chapter 7  
-**Based on:** sfcr R package implementation
+## 1) Headline Variables
 
-This model provides an **SFC Flow Table** version of BMW using EquationTable row modes.
+| Variable | Live value | Meaning |
+|---|---:|---|
+| Output | {{Y}} | Aggregate production/income |
+| Disposable income | {{YD}} | Household disposable income |
+| Consumption demand | {{C_d}} | Desired consumption |
+| Government demand | {{G_d}} | Exogenous government spending |
+| Taxes paid | {{T_d}} | Taxes transferred to government |
+| Household money stock | {{H_h}} | Wealth stock |
+| Government money stock | {{H_s}} | Negative of debt position |
 
-### Approach
+## 2) Behavioral/Accounting Equations
 
-- **FLOW mode rows** (`A->B`) for directional transactions
-- **STOCK mode rows** for state accumulation (`Mh`, `Ld`, `K`)
-- **PARAM mode rows** for exogenous/behavioral constants
-- **Flow Table matrix** for transaction tracking
+$$Y = C_s + G_s$$
+$$N_d = \frac{Y}{W}$$
+$$YD = W\cdot N_s - T_s$$
+$$T_d = \theta \cdot W \cdot N_s$$
+$$C_d = \alpha_1\cdot YD + \alpha_2\cdot H_h$$
+$$H_h = \int (YD - C_d)\,dt$$
+$$H_s = \int (G_d - T_d)\,dt$$
 
-### Key Variables
+## 3) Accounting Tables
 
-| Variable | Description |
-|----------|-------------|
-| **Y** | National income (output) |
-| **C** | Consumption |
-| **I** | Investment |
-| **K** | Capital stock |
-| **Mh** | Household money holdings |
-| **Ld** | Loan demand |
+```{circuit}
+table: Balance_Sheet
+```
 
-### Steady-State Values
+```{circuit}
+table: Transaction_Flow_Matrix
+```
 
-At steady state (t → ∞):
-- Y = 160, C = 144, I = 16
-- K = 160 (capital-output ratio = 1)
-- Mh = Ms = Ld = Ls = 160
+## 4) Time-Series Panel
 
-### References
+```{circuit}
+plot: Y, YD, C_d, H_h, H_s
+title: SIM3 Core Stocks and Flows
+yaxis: $
+window: 200
+```
 
-> Godley, W., & Lavoie, M. (2007). *Monetary Economics: An Integrated Approach to Credit, Money, Income, Production and Wealth*. Palgrave Macmillan.
+## 5) Existing Scope Mirror
 
+```{circuit}
+scope: 0
+```
+
+### Reference
+Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
 @end
 
 @init
   timestep: 0.1
   voltageUnit: $
   timeUnit: yr
-  showDots: false
+  showDots: true
   showVolts: true
   showValues: true
   showPower: false
   equationTableTolerance: 0.001
+  infoViewerUpdateIntervalMs: 100
 @end
 
-@equations Parameters x=176 y=232
-  rl ~ 0.025 ; mode=param ; sliderValue=0  # Interest rate on loans
-  \alpha0 ~ 20 ; mode=param ; sliderValue=0  # Autonomous consumption
-  \alpha1 ~ 0.75 ; mode=param ; sliderValue=0  # Propensity to consume from income
-  \alpha2 ~ 0.10 ; mode=param ; sliderValue=0  # Propensity to consume from wealth
-  \delta ~ 0.1 ; mode=param ; sliderValue=0  # Depreciation rate
-  \gamma ~ 0.15 ; mode=param ; sliderValue=0  # Adjustment speed of capital to target
-  \kappa ~ 1 ; mode=param ; sliderValue=0  # Capital-output ratio target
-  pr ~ 1 ; mode=param ; sliderValue=0  # Labor productivity
-  # equations Firms x=32 y=488
-  Y ~ Cs + Id ; mode=flow ; sliderValue=0  # National income (output)
-  WBd ~ Y - last(rl) * last(Ld) - AF ; mode=flow ; sliderValue=0  # Wage bill demanded
-  AF ~ \delta * last(K) ; mode=flow ; sliderValue=0  # Amortization funds = delta * last(K)
-  Ld ~ (Id - AF) ; mode=stock ; sliderValue=0  # Loan demand
-  # equations Households x=304 y=488
-  YD ~ WBs + rl * last(Mh) ; mode=flow ; sliderValue=0  # Household disposable income = WBs + last(rm) * last(Mh)
-  Y17 ~ last(Mh) ; mode=flow ; sliderValue=0  # hint17
-  Mh ~ YD + Cd ; mode=stock ; sliderValue=0  # Household money holdings (deposits)
-  # equations Banks x=720 y=536
-  Ms ~ Ls ; mode=voltage ; sliderValue=0  # Money supply (bank deposits)
-  rm ~ rl ; mode=voltage ; sliderValue=0  # Interest rate on deposits
-  # equations WageBill x=32 y=648
-  WBs ~ W * Ns ; mode=flow ; sliderValue=0  # Wage bill supplied
-  Nd->Ns ~ Y / pr ; mode=flow ; sliderValue=0  # Labor demand
-  W ~ WBd / max(Ns, 0.01) ; mode=flow ; sliderValue=0  # Wage rate
-  # equations Consumption
-  Cd->Cs ~ \alpha0 + \alpha1 * YD + \alpha2 * last(Mh) ; mode=flow ; sliderValue=0  # Consumption demand
-  # quations Investment
-  K ~ Id - DA ; mode=stock ; sliderValue=0  # Capital stock
-  DA ~ \delta * last(K) ; mode=flow ; sliderValue=0  # Depreciation actual = delta * last(K)
-  KT ~ \kappa * last(Y) ; mode=flow ; sliderValue=0  # Target capital stock = kappa * last(Y)
-  Y31 ~ last(Y) ; mode=flow ; sliderValue=0  # hint31
-  Is->Id ~ \gamma * (KT - last(K)) + DA ; mode=flow ; sliderValue=0  # Investment demand
+@equations equations_1 x=168 y=264
+  C_s ~ C_d ; mode=voltage ; slider=a ; sliderValue=0.5  # Consumption goods Supply/Demand
+  G_s ~ G_d ; mode=voltage ; slider=b ; sliderValue=0.5  # Services supplied to / demand by Govt
+  T_s ~ T_d ; mode=voltage ; slider=c ; sliderValue=0.5  # Tax
+  N_s ~ N_d ; mode=voltage ; slider=d ; sliderValue=0.5  # Supply/Demand for labour
+  YD ~ W * N_s - T_s ; mode=voltage ; slider=e ; sliderValue=0.5  # Disposable Income
+  T_d ~ \theta * W * N_s ; mode=voltage ; slider=f ; sliderValue=0.5  # Tax
+  C_d ~ \alpha_1*YD+ \alpha_2*H_h ; mode=voltage ; slider=g ; sliderValue=0.5  # Consumption goods Supply/Demand
+  H_s ~ integrate(G_d - T_d) ; mode=voltage ; slider=h ; sliderValue=0.5  # cash money, supplied by the central bank
+@end
+
+@equations equations_2 x=440 y=264
+  H_h ~ integrate(YD - C_d) ; mode=voltage ; slider=a ; sliderValue=0.5  # Cash money held by households
+  Y ~ C_s + G_s ; mode=voltage ; slider=b ; sliderValue=0.5  # Output
+  N_d ~ Y / W ; mode=voltage ; slider=c ; sliderValue=0.5  # Supply/Demand for labour
+@end
+
+@equations Parameters x=440 y=352
+  \alpha_1 ~ 0.6 ; mode=voltage ; slider=a ; sliderValue=0.5  # Propensity to Spend Income
+  \alpha_2 ~ 0.4 ; mode=voltage ; slider=b ; sliderValue=0.5  # Propensity to Spend Wealth
+  \theta ~ 0.2 ; mode=voltage ; slider=c ; sliderValue=0.5  # Tax Rate
+  G_d ~ 20 ; mode=voltage ; slider=d ; sliderValue=0.5  # Government demad for services
+  W ~ 1 ; mode=voltage ; slider=e ; sliderValue=0.5  # Nominal Wages Rate
+@end
+
+@matrix Balance_Sheet x=176 y=24
+  type: transaction_flow
+
+| Transaction | Households_b | Production_b | Government_b |
+|-------------|------|------|------|
+| Money stock | H_h |  | -H_s |
+@end
+
+@matrix Transaction_Flow_Matrix x=176 y=104
+  type: transaction_flow
+
+| Transaction | Households | Production | Govt |
+|-------------|------|------|------|
+| Consumption | -C_d | C_s |  |
+| Govt Expenditures |  | G_s | -G_d |
+| Wages | W * N_s | -W * N_s |  |
+| Taxes | -T_s |  | T_d |
+| Money stock | -\DeltaH_h |  | \DeltaH_s |
+@end
+
+@sankey x=672 y=-8
+  source: Transaction Flow Matrix
+  layout: linear
+  width: 400
+  height: 250
+  showScaleBar: false
+  useHighWaterMark: true
+  showFlowValues: true
 @end
 
 @hints
-  rl: Interest rate on loans
-  \alpha0: Autonomous consumption
-  \alpha1: Propensity to consume from income
-  \alpha2: Propensity to consume from wealth
-  \delta: Depreciation rate
-  \gamma: Adjustment speed of capital to target
-  \kappa: Capital-output ratio target
-  pr: Labor productivity
-  Y: National income (output)
-  WBd: Wage bill demanded
-  AF: Amortization funds = delta * last(K)
-  Ld: Loan demand
-  YD: Household disposable income = WBs + last(rm) * last(Mh)
-  Y17: hint17
-  Mh: Household money holdings (deposits)
-  Ms: Money supply (bank deposits)
-  rm: Interest rate on deposits
-  WBs: Wage bill supplied
-  Nd: Labor demand
-  W: Wage rate
-  Cd: Consumption demand
-  K: Capital stock
-  DA: Depreciation actual = delta * last(K)
-  KT: Target capital stock = kappa * last(Y)
-  Y31: hint31
-  Is: Investment demand
-  Ls: Loan supply
-  Y5: hint5
-  Y6: hint5
-  Y7: hint7
-  Y3: hint3
-  Y4: hint4
-  \DeltaMs: hint3
-  \DeltaMh: hint4
-  Id: Investment demand
-  KK: hint7
-  Cs: Consumption supply
-  Ns: Labor supply
-  check_money: Money market
-  check_loans: Loan market
-  check_labor: Labor market
-  \\alpha0: Autonomous consumption
-  \\alpha1: Propensity to consume from income
-  \\alpha2: Propensity to consume from wealth
-  \\delta: Depreciation rate
-  \\gamma: Investment adjustment speed
-  \\kappa: Capital-output ratio
-  \DeltaMd: hint4
+  C_s: Consumption goods Supply/Demand
+  G_s: Services supplied to / demand by Govt
+  T_s: Tax
+  N_s: Supply/Demand for labour
+  YD: Disposable Income
+  T_d: Tax
+  C_d: Consumption goods Supply/Demand
+  H_s: cash money, supplied by the central bank
+  H_h: Cash money held by households
+  Y: Output
+  N_d: Supply/Demand for labour
+  \alpha_1: Propensity to Spend Income
+  \alpha_2: Propensity to Spend Wealth
+  \theta: Tax Rate
+  G_d: Government demad for services
+  W: Nominal Wages Rate
 @end
 
 @circuit
-x 585 252 1128 255 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW\s(SFC\sFlow\sTable) 808080FF U:Ck8M0l
-x 585 276 828 279 4 12 Bank-Money\sWorld\smodel\s(flow-mode\svariant) 808080FF U:BRUOXo
-x 585 300 870 303 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF U:C67zij
-207 960 544 1024 544 180 Y U:K79ipy
-431 1200 224 1248 256 0 50 true false U:Ozs0Ey
-g 896 544 896 592 0 0 U:KqCssR
+x 168 -76 343 -73 4 24 SIM\sSFC\smodel 808080FF U:UDdG9O
+207 680 296 743 296 36 Y U:NK09JN
+x 183 -51 539 -48 4 12 This\scode\sreplicates\sresults\sin\sthe\sbook\sMonetary\sEconomics: 808080FF U:vTOXuO
+x 180 -9 568 -6 4 12 \sby\sWynne\sGodley\sand\sMarc\sLavoie,\schapter\s3,\sfigures\s3.2\sand\s3.3. 808080FF U:vszJiZ
+x 183 -31 612 -28 4 12 \sAn\sIntegrated\sApproach\sto\sCredit,\sMoney,\sIncome,\sProduction\sand\sWealth 808080FF U:n8iWdZ
+207 832 288 864 288 36 \\DeltaH_h U:iNj5hB
+207 832 272 864 272 4 \\DeltaH_s U:fwL2c2
+431 624 -48 688 0 0 50 true false U:uITTfe
 @end
 
-@scope Y position=0
-  speed: 1
-  flags: x2003206
-  source: uid:K79ipy value:0
+@scope Embedded_Scope_1 position=-1
+  x1: 672
+  y1: 320
+  x2: 928
+  y2: 496
+  elmUid: quhTow
+  speed: 2
+  flags: x2001206
+  source: uid:NK09JN value:0
+  trace: uid:NK09JN value:3
 @end

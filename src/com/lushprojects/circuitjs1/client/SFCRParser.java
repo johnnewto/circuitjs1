@@ -237,8 +237,8 @@ public class SFCRParser {
     
     /**
      * Parse @init block - simulation settings.
-     * Supports: timestep, voltageRange, voltageUnit, timeUnit, showToolbar,
-     * showDots, showVolts, showValues, showPower.
+    * Supports: timestep, voltageRange, voltageUnit, timeUnit, showToolbar,
+    * showDots, showVolts, showValues, showPower, infoViewerUpdateIntervalMs.
      */
     private int parseInitBlock(String[] lines, int startIndex) {
         String headerLine = lines[startIndex].trim();
@@ -350,6 +350,14 @@ public class SFCRParser {
                             double tol = Double.parseDouble(value);
                             if (tol > 0) {
                                 sim.equationTableConvergenceTolerance = tol;
+                            }
+                        }
+                        break;
+                    case "infoViewerUpdateIntervalMs":
+                        {
+                            int interval = Integer.parseInt(value);
+                            if (interval > 0) {
+                                sim.infoViewerUpdateIntervalMs = interval;
                             }
                         }
                         break;
