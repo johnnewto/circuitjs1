@@ -147,6 +147,7 @@ final class InfoViewerTableMarkdown {
         }
 
         LinkedHashSet<String> tableNames = collectCircuitTableNames(sim);
+        LinkedHashSet<String> sankeyTableNames = collectSankeyTableNames(sim);
         ArrayList<String> keyVars = collectPrimaryComputedNames(6);
         ArrayList<ArrayList<String>> scopePlotVars = collectScopePlotVariables(sim, 5);
 
@@ -176,7 +177,28 @@ final class InfoViewerTableMarkdown {
 
         md.append("## Tables\n\n");
         if (tableNames.isEmpty()) {
-            md.append("- No table elements found in this circuit.\n\n");
+            md.append("<!-- No table elements found — replace the variable names below with your circuit's computed values -->\n\n");
+            md.append("### Transaction Flow Matrix\n\n");
+            // Build a compact example using whatever vars are available, or generic placeholders
+            java.util.ArrayList<String> exVars = collectPrimaryComputedNames(8);
+            // Try to guess sector-like groups: pick up to 4 non-empty vars for columns
+            String s1 = exVars.size() > 0 ? exVars.get(0) : "C_d";
+            String s2 = exVars.size() > 1 ? exVars.get(1) : "C_s";
+            String s3 = exVars.size() > 2 ? exVars.get(2) : "G_d";
+            String s4 = exVars.size() > 3 ? exVars.get(3) : "G_s";
+            md.append("| Flow/Stock | Households | Production | Govt | \u03a3 |\n");
+            md.append("|---|---|---|---|---|\n");
+            md.append("| Consumption | -").append(s1).append(" = {{").append(s1).append("}} | ")
+              .append(s2).append(" = {{").append(s2).append("}} | | |\n");
+            md.append("| Govt Expenditure | | ").append(s3).append(" = {{").append(s3).append("}} | -")
+              .append(s4).append(" = {{").append(s4).append("}} | |\n");
+            if (exVars.size() > 5) {
+                String s5 = exVars.get(4);
+                String s6 = exVars.get(5);
+                md.append("| Income | ").append(s5).append(" = {{").append(s5).append("}} | -")
+                  .append(s6).append(" = {{").append(s6).append("}} | | |\n");
+            }
+            md.append("\n");
         } else {
             for (String tableName : tableNames) {
                 md.append("```{circuit}\n");
@@ -217,10 +239,45 @@ final class InfoViewerTableMarkdown {
             }
         }
 
+        md.append("## Sankeys\n\n");
+        if (sankeyTableNames.isEmpty()) {
+            md.append("<!-- Replace 'Transaction_Flow_Matrix' with the name of a table element in your circuit -->\n\n");
+            md.append("```{circuit}\n");
+            md.append("sankey: Transaction_Flow_Matrix\n");
+            md.append("title: Money Flows\n");
+            md.append("width: 600\n");
+            md.append("height: 320\n");
+            md.append("```\n\n");
+        } else {
+            for (String tableName : sankeyTableNames) {
+                md.append("```{circuit}\n");
+                md.append("sankey: ").append(tableName).append("\n");
+                md.append("title: ").append(tableName).append("\n");
+                md.append("width: 600\n");
+                md.append("height: 320\n");
+                md.append("```\n\n");
+            }
+        }
+
         md.append("## Notes\n\n");
         md.append("- Edit text and equations as needed.\n");
         md.append("- Use `Save to Model` to persist into the circuit @info block.\n");
         return md.toString();
+    }
+
+    private static LinkedHashSet<String> collectSankeyTableNames(CirSim sim) {
+        LinkedHashSet<String> names = new LinkedHashSet<String>();
+        if (sim == null || sim.elmList == null) {
+            return names;
+        }
+        for (int i = 0; i < sim.elmList.size(); i++) {
+            CircuitElm elm = sim.elmList.get(i);
+            // Only TableElm subclasses (not EquationTableElm) have column/row data for Sankey
+            if (elm instanceof TableElm && !(elm instanceof EquationTableElm)) {
+                addNonEmptyTitle(names, ((TableElm) elm).getTableTitle());
+            }
+        }
+        return names;
     }
 
     private static LinkedHashSet<String> collectCircuitTableNames(CirSim sim) {

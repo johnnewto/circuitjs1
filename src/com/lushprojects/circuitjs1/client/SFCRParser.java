@@ -1956,7 +1956,7 @@ public class SFCRParser {
             dump.append(CustomLogicModel.escape(target)).append(" ");
 
             dump.append("1.0 ");     // capacitance
-            dump.append("1.0E9 ");   // shuntResistance
+            dump.append(EquationTableElm.getDefaultFlowShuntResistance()).append(" ");   // shuntResistance
             dump.append("0 ");       // useBackwardEuler
         }
         

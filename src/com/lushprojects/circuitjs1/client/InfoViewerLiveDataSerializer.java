@@ -39,6 +39,7 @@ final class InfoViewerLiveDataSerializer {
 
         sb.append("}");
         appendLiveTablesJson(sb, sim);
+        appendLiveSankeysJson(sb, sim);
         sb.append("}\n");
         return sb.toString();
     }
@@ -229,6 +230,27 @@ final class InfoViewerLiveDataSerializer {
         sb.append(']');
 
         sb.append('}');
+    }
+
+    private static void appendLiveSankeysJson(StringBuilder sb, CirSim sim) {
+        sb.append(",\"sankeys\":[");
+        boolean first = true;
+        if (sim.elmList != null) {
+            for (int i = 0; i < sim.elmList.size(); i++) {
+                CircuitElm elm = sim.elmList.get(i);
+                if (!(elm instanceof TableElm)) continue;
+                TableElm table = (TableElm) elm;
+                String title = table.getTableTitle();
+                if (title == null || title.trim().isEmpty()) continue;
+                String sankeyJson = new SFCSankeyViewer(table).buildSankeyJSON();
+                if (!first) sb.append(',');
+                first = false;
+                sb.append("{\"name\":\"").append(escapeJson(title.trim())).append("\",\"data\":");
+                sb.append(sankeyJson);
+                sb.append('}');
+            }
+        }
+        sb.append(']');
     }
 
     private static boolean appendLiveVar(StringBuilder sb, String name, double value, boolean first) {

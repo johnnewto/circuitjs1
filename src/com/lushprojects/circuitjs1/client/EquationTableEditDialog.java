@@ -462,7 +462,7 @@ public class EquationTableEditDialog extends Dialog {
                 else if ("PARAM_MODE".equals(val)) outputModes[row] = RowOutputMode.PARAM_MODE;
                 else outputModes[row] = RowOutputMode.VOLTAGE_MODE;
                 if (outputModes[row] == RowOutputMode.FLOW_MODE && previousMode != RowOutputMode.FLOW_MODE) {
-                    capacitances[row] = 1e9;
+                    capacitances[row] = EquationTableElm.getDefaultFlowShuntResistance();
                 }
                 markChanged();
                 // Enable/disable capacitance fields based on mode
@@ -532,7 +532,9 @@ public class EquationTableEditDialog extends Dialog {
                 try {
                     capacitances[row] = EditDialog.parseUnits(capBox.getText());
                     if (capacitances[row] <= 0) {
-                        capacitances[row] = (outputModes[row] == RowOutputMode.FLOW_MODE) ? 1e9 : 1.0;
+                        capacitances[row] = (outputModes[row] == RowOutputMode.FLOW_MODE)
+                            ? EquationTableElm.getDefaultFlowShuntResistance()
+                            : 1.0;
                     }
                     capBox.getElement().getStyle().clearBackgroundColor();
                     markChanged();
@@ -1042,7 +1044,7 @@ public class EquationTableEditDialog extends Dialog {
                 tableElement.setInitialEquation(row, "");
                 tableElement.setOutputMode(row, RowOutputMode.PARAM_MODE);
                 tableElement.setCapacitance(row, 1.0);
-                tableElement.setFlowShuntResistance(row, 1e9);
+                tableElement.setFlowShuntResistance(row, EquationTableElm.getDefaultFlowShuntResistance());
                 tableElement.setUseBackwardEuler(row, false);
                 tableElement.setSliderVarName(row, "");
                 tableElement.setSliderValue(row, 0);

@@ -61,7 +61,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     private static final int MAX_ROWS = 64;
 
     /** Default FLOW shunt resistance to avoid loading by default. */
-    private static final double DEFAULT_FLOW_SHUNT_RESISTANCE = 1e9;
+    private static final double DEFAULT_FLOW_SHUNT_RESISTANCE = 1;
 
     /** Default base convergence tolerance for equation convergence checks. */
     private static final double DEFAULT_CONVERGENCE_TOLERANCE = 0.001;
@@ -3160,6 +3160,11 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** Get FLOW shunt resistance for a row. */
     public double getFlowShuntResistance(int row) {
         return (row >= 0 && row < MAX_ROWS) ? rows[row].shuntResistance : DEFAULT_FLOW_SHUNT_RESISTANCE;
+    }
+
+    /** Get default FLOW shunt resistance used for initialization/fallback. */
+    public static double getDefaultFlowShuntResistance() {
+        return DEFAULT_FLOW_SHUNT_RESISTANCE;
     }
 
     /** Set FLOW shunt resistance for a row. */
