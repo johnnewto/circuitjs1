@@ -2,50 +2,63 @@
 # Generated from circuit simulation
 
 @info
+# Model Live Dashboard
 
-# Model Documentation
+> **Time:** {{t}}  
+> **Step:** {{dt}}
 
-## Regional Two-Region Model (REG)
+## Key Variables
 
-**Source:** Godley & Lavoie (2007) Chapter 6  
-**Based on:** sfcr R package implementation
+| Variable | Live value |
+|---|---:|
+| X_N | {{X_N}} |
+| X_S | {{X_S}} |
+| Y_N | {{Y_N}} |
+| Y_S | {{Y_S}} |
+| IM_N | {{IM_N}} |
+| IM_S | {{IM_S}} |
 
-This model demonstrates a **stock-flow consistent (SFC) two-region economy** (North/South) with external trade, government bills, and central bank balance-sheet dynamics.
+## Compose Tables
 
-### Key Features
+- Add live tables like
 
-- Two regions (North and South) linked by imports/exports
-- Region-level household and firm sectors with separate income, taxes, and consumption
-- Government spending/taxation and bill issuance (`Bs`), with central bank holdings (`Bcb`)
-- Portfolio choice for household money vs. bills (`Hh`, `Bh`) with lagged interest effects
+| Variable | Live value | Meaning |
+|---|---:|---|
+| Output | Y_N = {{Y_N}} | Aggregate production/income |
+| Disposable income | Y_S = {{Y_S}} | Household disposable income |
 
-### Key Variables
+## Tables
 
-| Variable | Description |
-|----------|-------------|
-| **Y** | National income (output) |
-| **C** | Consumption |
-| **I** | Investment |
-| **K** | Capital stock |
-| **Hh** | Household money holdings |
-| **Bh** | Household bill holdings |
-| **Bs** | Government bills outstanding |
-| **Bcb** | Central bank bill holdings |
+```{circuit}
+table: reg eqs
+```
 
-### Steady-State Values
+```{circuit}
+table: reg ext
+```
 
-At steady state (for symmetric calibration):
-- North and South converge to matching real/financial ratios
-- Government deficit/surplus flows are mirrored by changes in `Bs` and `Bcb`
-- Portfolio shares are governed by `lambda0`, `lambda1`, `lambda2` with lagged wealth/income terms
+```{circuit}
+table: bs reg
+```
 
-### References
+```{circuit}
+table: tfm reg
+```
 
-> Godley, W., & Lavoie, M. (2007). *Monetary Economics: An Integrated Approach to Credit, Money, Income, Production and Wealth*. Palgrave Macmillan.
+## Plots
 
+```{circuit}
+plot: Hh_S
+title: Hh_S
+yaxis: Value
+window: 200
+```
+
+## Notes
+
+- Edit text and equations as needed.
+- Use `Save to Model` to persist into the circuit @info block.
 @end
-# CircuitJS1 SFCR Export
-# Generated from circuit simulation
 
 @init
   timestep: 0.1
@@ -56,6 +69,7 @@ At steady state (for symmetric calibration):
   showValues: true
   showPower: false
   equationTableTolerance: 0.001
+  infoViewerUpdateIntervalMs: 100
 @end
 
 @equations reg_eqs x=176 y=24
@@ -153,4 +167,3 @@ At steady state (for symmetric calibration):
   flags: x2001206
   source: uid:i_vMWr value:0
 @end
-
