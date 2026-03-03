@@ -281,7 +281,7 @@ MouseOutHandler, MouseWheelHandler {
     // Frame rate control
     double minFrameRate = 20;      // Target minimum frame rate (FPS)
 	// Adaptive timestep control - reduces timestep when convergence is difficult
-	boolean adjustTimeStep;
+	boolean adjustTimeStep = false;
 	
 	// Convergence check threshold - subiterations before marking element as non-converged
 	int convergenceCheckThreshold = 100;

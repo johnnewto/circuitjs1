@@ -26,7 +26,7 @@ import com.google.gwt.event.dom.client.MouseWheelHandler;
  * 
  * <h3>Features:</h3>
  * <ul>
- *   <li>Multiple rows (1-32), each defining an independent equation</li>
+ *   <li>Multiple rows (1-64), each defining an independent equation</li>
  *   <li>Each row has a named output that becomes accessible as a labeled node</li>
  *   <li>Custom slider variable per row for interactive parameter adjustment</li>
  *   <li>Support for initial value equations (evaluated only at t=0)</li>
@@ -58,7 +58,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     private static final int FLAG_MNA_MODE = 2;
     
     /** Maximum number of equation rows supported */
-    private static final int MAX_ROWS = 64;
+    public static final int MAX_ROWS = 64;
 
     /** Default FLOW shunt resistance to avoid loading by default. */
     private static final double DEFAULT_FLOW_SHUNT_RESISTANCE = 1;

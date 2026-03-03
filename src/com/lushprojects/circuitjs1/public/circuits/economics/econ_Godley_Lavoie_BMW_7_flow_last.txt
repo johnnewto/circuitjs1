@@ -1,6 +1,78 @@
 # CircuitJS1 SFCR Export
 # Generated from circuit simulation
 
+@info
+
+# Model Documentation
+
+## Bank-Money World Model (BMW)
+## Flow/Param Equation Implementation using last()
+
+**Source:** Godley & Lavoie (2007) Chapter 7  
+**Based on:** sfcr R package implementation  
+**Reference:** https://joaomacalos.github.io/sfcr/articles/articles/gl5-bmw.html
+
+This model provides a **flow/param only** version of BMW, using `last(name)`
+for all lagged values (`name[-1]` in the sfcr notation).
+
+### Approach
+
+- **FLOW mode rows** (`A->B` or single node) for all behavioral/accounting equations
+- **PARAM mode rows** for exogenous/behavioral constants
+- `last(name)` replaces all `lag(name, 1)` / `name[-1]` lagged references
+- No STOCK or VOLTAGE mode rows
+
+### Key Variables
+
+| Variable | Description |
+|----------|-------------|
+| **Y** | National income (output) |
+| **C** | Consumption |
+| **I** | Investment |
+| **K** | Capital stock |
+| **Mh** | Household money holdings |
+| **Ld** | Loan demand |
+
+### sfcr Equations (original R notation)
+
+```r
+bmw_eqs <- sfcr_set(
+  Cs ~ Cd,
+  Is ~ Id,
+  Ns ~ Nd,
+  Ls ~ Ls[-1] + Ld - Ld[-1],
+  Y ~ Cs + Is,
+  WBd ~ Y - rl[-1] * Ld[-1] - AF,
+  AF ~ delta * K[-1],
+  Ld ~ Ld[-1] + Id - AF,
+  YD ~ WBs + rm[-1] * Mh[-1],
+  Mh ~ Mh[-1] + YD - Cd,
+  Ms ~ Ms[-1] + Ls - Ls[-1],
+  rm ~ rl,
+  WBs ~ W * Ns,
+  Nd ~ Y / pr,
+  W ~ WBd / Nd,
+  Cd ~ alpha0 + alpha1 * YD + alpha2 * Mh[-1],
+  K ~ K[-1] + Id - DA,
+  DA ~ delta * K[-1],
+  KT ~ kappa * Y[-1],
+  Id ~ gamma * (KT - K[-1]) + DA
+)
+```
+
+### Steady-State Values
+
+At steady state (t → ∞):
+- Y = 160, Cd = 144, Id = 16
+- K = 160 (capital-output ratio = 1)
+- Mh = Ms = Ld = Ls = 160
+
+### References
+
+> Godley, W., & Lavoie, M. (2007). *Monetary Economics: An Integrated Approach to Credit, Money, Income, Production and Wealth*. Palgrave Macmillan.
+
+@end
+
 @init
   timestep: 1
   voltageUnit: $
@@ -9,12 +81,11 @@
   showVolts: true
   showValues: true
   showPower: false
-  equationTableTolerance: 0.00001
+  equationTableTolerance: 0.001
   infoViewerUpdateIntervalMs: 100
 @end
 
-@equations BMW x=32 y=344
-  # Parameters
+@equations Parameters x=544 y=360
   rl ~ 0.025 ; mode=param ; sliderValue=0  # Interest rate on loans
   \alpha0 ~ 20 ; mode=param ; sliderValue=0  # Autonomous consumption
   \alpha1 ~ 0.75 ; mode=param ; sliderValue=0  # Propensity to consume from income
@@ -23,36 +94,47 @@
   \gamma ~ 0.15 ; mode=param ; sliderValue=0  # Adjustment speed of capital to target
   \kappa ~ 1 ; mode=param ; sliderValue=0  # Capital-output ratio target
   pr ~ 1 ; mode=param ; sliderValue=0  # Labor productivity
-  # Basic behavioral equations
+@end
+
+@equations MarketClearing x=752 y=376
   Cs ~ Cd ; mode=voltage ; sliderValue=0  # Consumption supply
   Is ~ Id ; mode=voltage ; sliderValue=0  # Investment supply
   Ns ~ Nd ; mode=voltage ; sliderValue=0  # Labour supply
   Ls ~ last(Ls) + Ld - last(Ld) ; mode=flow ; sliderValue=0  # Loan supply
-  # Transactions of the firms
+  Ms ~ last(Ms) + Ls - last(Ls) ; mode=flow ; sliderValue=0  # Money supply
+  rm ~ rl ; mode=voltage ; sliderValue=0  # Deposit interest rate
+@end
+
+@equations Firms x=32 y=472
   Y ~ Cs + Is ; mode=flow ; sliderValue=0  # National income (output)
   WBd ~ Y - last(rl) * last(Ld) - AF ; mode=flow ; sliderValue=0  # Wage bill demanded
   AF ~ \delta * last(K) ; mode=flow ; sliderValue=0  # Amortisation funds
   Ld ~ last(Ld) + Id - AF ; mode=flow ; sliderValue=0  # Loan demand
-  # Transactions of households
+@end
+
+@equations Households x=32 y=584
   YD ~ WBs + last(rm) * last(Mh) ; mode=flow ; sliderValue=0  # Household disposable income
   Mh ~ last(Mh) + YD - Cd ; mode=flow ; sliderValue=0  # Household money holdings (deposits)
-  # Transactions of the banks
-  Ms ~ last(Ms) + Ls - last(Ls) ; mode=flow ; sliderValue=0  # Money supply
-  rm ~ rl ; mode=voltage ; sliderValue=0  # Deposit interest rate
-  # The wage bill
+@end
+
+@equations WageBill x=32 y=648
   WBs ~ W * Ns ; mode=flow ; sliderValue=0  # Wage bill supplied
   Nd ~ Y / pr ; mode=flow ; sliderValue=0  # Labour demand
   W ~ WBd / max(Nd, 0.01) ; mode=flow ; sliderValue=0  # Wage rate
-  # Household behavior
+@end
+
+@equations Consumption x=320 y=568
   Cd ~ \alpha0 + \alpha1 * YD + \alpha2 * last(Mh) ; mode=flow ; sliderValue=0  # Consumption demand
-  # The investment behavior
-  K ~ last(K) + Id - DA ; mode=flow ; sliderValue=0  # Capital stock
+@end
+
+@equations Investment x=448 y=664
   DA ~ \delta * last(K) ; mode=flow ; sliderValue=0  # Depreciation (actual)
   KT ~ \kappa * last(Y) ; mode=flow ; sliderValue=0  # Target capital stock
   Id ~ \gamma * (KT - last(K)) + DA ; mode=flow ; sliderValue=0  # Investment demand
+  K ~ last(K) + Id - DA ; mode=flow ; sliderValue=0  # Capital stock
 @end
 
-@matrix Transaction_Flow_Matrix x=432 y=344
+@matrix Transaction_Flow_Matrix x=16 y=152
   type: transaction_flow
 
 | Transaction | Households_C | Firms_{Current} | Firms_{Capital} | Banks_{Current} | Banks_{Capital} |
@@ -68,7 +150,7 @@
 | Change in Deposits | -(Mh-last(Mh)) |  |  |  | Ms-last(Ms) |
 @end
 
-@matrix Balance_Sheet x=432 y=584
+@matrix Balance_Sheet x=32 y=344
   type: transaction_flow
 
 | Transaction | Households | Firms | Banks |
@@ -77,6 +159,15 @@
 | Loans |  | -Ld | Ls |
 | Fixed Capital |  | K |  |
 | Balance (net worth) | -Mh |  |  |
+@end
+
+@sankey x=960 y=64
+  layout: linear
+  width: 400
+  height: 250
+  showScaleBar: false
+  useHighWaterMark: true
+  showFlowValues: true
 @end
 
 @hints
@@ -92,41 +183,35 @@
   Is: Investment supply
   Ns: Labour supply
   Ls: Loan supply
+  Ms: Money supply
+  rm: Deposit interest rate
   Y: National income (output)
   WBd: Wage bill demanded
   AF: Amortisation funds
   Ld: Loan demand
   YD: Household disposable income
   Mh: Household money holdings (deposits)
-  Ms: Money supply
-  rm: Deposit interest rate
   WBs: Wage bill supplied
   Nd: Labour demand
   W: Wage rate
   Cd: Consumption demand
-  K: Capital stock
   DA: Depreciation (actual)
   KT: Target capital stock
   Id: Investment demand
+  K: Capital stock
 @end
 
 @circuit
-x 89 268 643 271 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW\s(flow/param,\slast()) 808080FF U:Ck8M0l
-x 89 292 394 295 4 12 Bank-Money\sWorld\smodel\s(flow-only\svariant,\slast()\sfor\slag) 808080FF U:BRUOXo
-x 89 316 374 319 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF U:C67zij
-207 656 736 720 736 180 Y U:K79ipy
-431 704 288 752 320 0 50 true false U:Ozs0Ey
-207 1008 688 1072 688 164 Ms U:1ZqYCM
-207 1008 720 1072 720 164 Mh U:USgC2r
+x 89 92 643 95 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW\s(flow/param,\slast()) 808080FF U:Ck8M0l
+x 89 116 394 119 4 12 Bank-Money\sWorld\smodel\s(flow-only\svariant,\slast()\sfor\slag) 808080FF U:BRUOXo
+x 89 140 374 143 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF U:C67zij
+207 960 544 1024 544 180 Y U:K79ipy
+431 704 64 752 96 0 50 true false U:Ozs0Ey
+g 896 544 896 592 0 0 U:KqCssR
 @end
 
-@scope Embedded_Scope_1 position=-1
-  x1: 448
-  y1: 752
-  x2: 832
-  y2: 1008
-  elmUid: KaRSfa
-  speed: 64
+@scope Y position=0
+  speed: 1
   flags: x2001206
   source: uid:K79ipy value:0
 @end

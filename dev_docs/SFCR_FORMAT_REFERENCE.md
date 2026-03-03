@@ -25,6 +25,7 @@ Auto-detected when content contains `@matrix`, `@equations`, `@parameters`, `@in
   timestep: 0.1
   voltageUnit: $
   timeUnit: yr
+  autoAdjustTimestep: false
   infoViewerUpdateIntervalMs: 100
   showDots: false
   showVolts: false
@@ -36,6 +37,7 @@ Auto-detected when content contains `@matrix`, `@equations`, `@parameters`, `@in
 | `timestep` | Simulation timestep (seconds) |
 | `voltageUnit` | Display unit symbol (default: `V`, use `$` for economics) |
 | `timeUnit` | Time unit symbol (e.g., `yr`, `qtr`) |
+| `autoAdjustTimestep` | Enable adaptive timestep (`true`/`false`); defaults to `false` when omitted |
 | `voltageRange` | Voltage display range |
 | `showToolbar` | Show/hide toolbar (`true`/`false`) |
 | `showDots` | Show current flow dots |

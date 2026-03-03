@@ -238,7 +238,8 @@ public class SFCRParser {
     /**
      * Parse @init block - simulation settings.
     * Supports: timestep, voltageRange, voltageUnit, timeUnit, showToolbar,
-    * showDots, showVolts, showValues, showPower, infoViewerUpdateIntervalMs.
+    * showDots, showVolts, showValues, showPower, autoAdjustTimestep,
+    * infoViewerUpdateIntervalMs.
      */
     private int parseInitBlock(String[] lines, int startIndex) {
         String headerLine = lines[startIndex].trim();
@@ -310,6 +311,9 @@ public class SFCRParser {
     
     /** Apply parsed init settings to the simulator. */
     private void applyInitSettings() {
+        // SFCR default is fixed timestep unless explicitly overridden.
+        sim.adjustTimeStep = false;
+
         for (String key : initSettings.keySet()) {
             String value = initSettings.get(key);
             try {
@@ -343,6 +347,10 @@ public class SFCRParser {
                         break;
                     case "showPower":
                         sim.powerCheckItem.setState(value.equals("true"));
+                        break;
+                    case "autoAdjustTimestep":
+                    case "adjustTimeStep":
+                        sim.adjustTimeStep = value.equals("true");
                         break;
                     case "equationTableTolerance":
                     case "equationTableConvergenceTolerance":
@@ -1891,7 +1899,7 @@ public class SFCRParser {
                                      ArrayList<String> initialEquations) {
         int rows = outputNames.size();
         if (rows == 0) return;
-        if (rows > 32) rows = 32; // Max rows for EquationTableElm
+        if (rows > EquationTableElm.MAX_ROWS) rows = EquationTableElm.MAX_ROWS;
         
         StringBuilder dump = new StringBuilder();
         

@@ -9,7 +9,7 @@
   showVolts: true
   showValues: true
   showPower: false
-  equationTableTolerance: 0.00001
+  equationTableTolerance: 1e-7
   infoViewerUpdateIntervalMs: 100
 @end
 
@@ -27,29 +27,30 @@
   Cs ~ Cd ; mode=voltage ; sliderValue=0  # Consumption supply
   Is ~ Id ; mode=voltage ; sliderValue=0  # Investment supply
   Ns ~ Nd ; mode=voltage ; sliderValue=0  # Labour supply
-  Ls ~ last(Ls) + Ld - last(Ld) ; mode=flow ; sliderValue=0  # Loan supply
+  Ls ~ last(Ls) + Ld - last(Ld) ; mode=voltage ; sliderValue=0  # Loan supply
   # Transactions of the firms
-  Y ~ Cs + Is ; mode=flow ; sliderValue=0  # National income (output)
-  WBd ~ Y - last(rl) * last(Ld) - AF ; mode=flow ; sliderValue=0  # Wage bill demanded
-  AF ~ \delta * last(K) ; mode=flow ; sliderValue=0  # Amortisation funds
-  Ld ~ last(Ld) + Id - AF ; mode=flow ; sliderValue=0  # Loan demand
+  Y ~ Cs + Is ; mode=voltage ; sliderValue=0  # National income (output)
+  WBd ~ Y - last(rl) * last(Ld) - AF ; mode=voltage ; sliderValue=0  # Wage bill demanded
+  AF ~ \delta * last(K) ; mode=voltage ; sliderValue=0  # Amortisation funds
+  Ld ~ last(Ld) + Id - AF ; mode=voltage ; sliderValue=0  # Loan demand
+  Y20 ~ last(Ld) ; mode=voltage ; sliderValue=0  # hint20
   # Transactions of households
-  YD ~ WBs + last(rm) * last(Mh) ; mode=flow ; sliderValue=0  # Household disposable income
-  Mh ~ last(Mh) + YD - Cd ; mode=flow ; sliderValue=0  # Household money holdings (deposits)
+  YD ~ WBs + last(rm) * last(Mh) ; mode=voltage ; sliderValue=0  # Household disposable income
+  Mh ~ last(Mh) + YD - Cd ; mode=voltage ; sliderValue=0  # Household money holdings (deposits)
   # Transactions of the banks
-  Ms ~ last(Ms) + Ls - last(Ls) ; mode=flow ; sliderValue=0  # Money supply
+  Ms ~ last(Ms) + Ls - last(Ls) ; mode=voltage ; sliderValue=0  # Money supply
   rm ~ rl ; mode=voltage ; sliderValue=0  # Deposit interest rate
   # The wage bill
-  WBs ~ W * Ns ; mode=flow ; sliderValue=0  # Wage bill supplied
-  Nd ~ Y / pr ; mode=flow ; sliderValue=0  # Labour demand
-  W ~ WBd / max(Nd, 0.01) ; mode=flow ; sliderValue=0  # Wage rate
+  WBs ~ W * Ns ; mode=voltage ; sliderValue=0  # Wage bill supplied
+  Nd ~ Y / pr ; mode=voltage ; sliderValue=0  # Labour demand
+  W ~ WBd / max(Nd, 0.01) ; mode=voltage ; sliderValue=0  # Wage rate
   # Household behavior
-  Cd ~ \alpha0 + \alpha1 * YD + \alpha2 * last(Mh) ; mode=flow ; sliderValue=0  # Consumption demand
+  Cd ~ \alpha0 + \alpha1 * YD + \alpha2 * last(Mh) ; mode=voltage ; sliderValue=0  # Consumption demand
   # The investment behavior
-  K ~ last(K) + Id - DA ; mode=flow ; sliderValue=0  # Capital stock
-  DA ~ \delta * last(K) ; mode=flow ; sliderValue=0  # Depreciation (actual)
-  KT ~ \kappa * last(Y) ; mode=flow ; sliderValue=0  # Target capital stock
-  Id ~ \gamma * (KT - last(K)) + DA ; mode=flow ; sliderValue=0  # Investment demand
+  K ~ last(K) + Id - DA ; mode=voltage ; sliderValue=0  # Capital stock
+  DA ~ \delta * last(K) ; mode=voltage ; sliderValue=0  # Depreciation (actual)
+  KT ~ \kappa * last(Y) ; mode=voltage ; sliderValue=0  # Target capital stock
+  Id ~ \gamma * (KT - last(K)) + DA ; mode=voltage ; sliderValue=0  # Investment demand
 @end
 
 @matrix Transaction_Flow_Matrix x=432 y=344
@@ -108,11 +109,12 @@
   DA: Depreciation (actual)
   KT: Target capital stock
   Id: Investment demand
+  Y20: hint20
 @end
 
 @circuit
-x 89 268 643 271 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW\s(flow/param,\slast()) 808080FF U:Ck8M0l
-x 89 292 394 295 4 12 Bank-Money\sWorld\smodel\s(flow-only\svariant,\slast()\sfor\slag) 808080FF U:BRUOXo
+x 89 268 669 271 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW\s(voltage/param,\slast()) 808080FF U:Ck8M0l
+x 89 292 412 295 4 12 Bank-Money\sWorld\smodel\s(voltage-only\svariant,\slast()\sfor\slag) 808080FF U:BRUOXo
 x 89 316 374 319 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF U:C67zij
 207 656 736 720 736 180 Y U:K79ipy
 431 704 288 752 320 0 50 true false U:Ozs0Ey
@@ -126,7 +128,7 @@ x 89 316 374 319 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q16
   x2: 832
   y2: 1008
   elmUid: KaRSfa
-  speed: 64
-  flags: x2001206
+  speed: 1
+  flags: x2003206
   source: uid:K79ipy value:0
 @end

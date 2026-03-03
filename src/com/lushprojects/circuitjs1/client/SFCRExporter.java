@@ -210,6 +210,7 @@ public class SFCRExporter {
         sb.append("  showVolts: ").append(sim.voltsCheckItem.getState()).append("\n");
         sb.append("  showValues: ").append(sim.showValuesCheckItem.getState()).append("\n");
         sb.append("  showPower: ").append(sim.powerCheckItem.getState()).append("\n");
+        sb.append("  autoAdjustTimestep: ").append(sim.adjustTimeStep).append("\n");
         sb.append("  equationTableTolerance: ").append(Double.toString(sim.equationTableConvergenceTolerance)).append("\n");
         sb.append("  infoViewerUpdateIntervalMs: ").append(sim.infoViewerUpdateIntervalMs).append("\n");
         
