@@ -11,14 +11,14 @@
 **Source:** Godley & Lavoie (2007) Chapter 7  
 **Based on:** sfcr R package implementation
 
-This model provides an **SFC Flow Table** version of BMW using EquationTable row modes.
+This model provides an **SFC Table** version of BMW using EquationTable row modes.
 
 ### Approach
 
 - **FLOW mode rows** (`A->B`) for directional transactions
 - **STOCK mode rows** for state accumulation (`Mh`, `Ld`, `K`)
 - **PARAM mode rows** for exogenous/behavioral constants
-- **Flow Table matrix** for transaction tracking
+- **Transaction matrix** for flow tracking
 
 ### Key Variables
 

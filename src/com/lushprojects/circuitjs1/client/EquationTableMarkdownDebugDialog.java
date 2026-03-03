@@ -218,7 +218,12 @@ public class EquationTableMarkdownDebugDialog {
     // =========================================================================
     // TABLE OVERVIEW
     // =========================================================================
-    
+
+    /**
+     * Append a Markdown table summarising the top-level identity and configuration
+     * of the equation table: name, row count, mode, voltage/current source counts,
+     * node counts, position, and serialization dump type.
+     */
     private void appendTableOverview(StringBuilder md) {
         md.append("## Table Overview\n\n");
         
@@ -246,7 +251,12 @@ public class EquationTableMarkdownDebugDialog {
     // =========================================================================
     // CIRCUIT MATRIX INFO
     // =========================================================================
-    
+
+    /**
+     * Append a Markdown table showing circuit-level simulation parameters:
+     * matrix size, node count, voltage source count, current time and timestep,
+     * subiteration count, and the global MNA/Jacobian mode flags from {@link CirSim}.
+     */
     private void appendCircuitMatrixInfo(StringBuilder md) {
         md.append("## Circuit Matrix Info\n\n");
         
@@ -273,7 +283,13 @@ public class EquationTableMarkdownDebugDialog {
     // =========================================================================
     // ROW SUMMARY TABLE
     // =========================================================================
-    
+
+    /**
+     * Append a compact one-row-per-equation Markdown summary table showing:
+     * row index, node(s), output mode, classification, equation, initial equation,
+     * current output value, slider variable, and Newton-Jacobian status.
+     * Comment rows are skipped.
+     */
     private void appendRowDetailsTable(StringBuilder md) {
         md.append("## Row Summary\n\n");
         
@@ -337,7 +353,14 @@ public class EquationTableMarkdownDebugDialog {
     // =========================================================================
     // PER-ROW DETAILED INFO
     // =========================================================================
-    
+
+    /**
+     * Append a detailed per-row section for each non-comment row.
+     * Each row gets a level-3 Markdown header and bullet-point details:
+     * mode description, classification, equation, current value, slider state,
+     * Jacobian path status, optional hint, and {@link ComputedValues} / labeled-node lookups.
+     * For FLOW/STOCK rows, target node info and voltage are also shown.
+     */
     private void appendPerRowDetails(StringBuilder md) {
         md.append("## Per-Row Details\n\n");
         
@@ -444,7 +467,13 @@ public class EquationTableMarkdownDebugDialog {
     // =========================================================================
     // COMPUTED VALUES REGISTRY
     // =========================================================================
-    
+
+    /**
+     * Append a Markdown table comparing each row's output value against the current
+     * entry in the {@link ComputedValues} registry, flagging any mismatch.
+     * Also lists slider-variable entries and delegates to
+     * {@link #appendAllComputedValuesInfo} for a global registry dump.
+     */
     private void appendComputedValuesInfo(StringBuilder md) {
         md.append("## ComputedValues Registry (this table's outputs)\n\n");
         
@@ -540,7 +569,12 @@ public class EquationTableMarkdownDebugDialog {
     // =========================================================================
     // LABELED NODE INFO
     // =========================================================================
-    
+
+    /**
+     * Append a Markdown table of labeled-node lookups for this table's output names:
+     * output name, assigned MNA node number, solved voltage, and alias flag.
+     * If the table is in pure computational mode the section shows a short notice instead.
+     */
     private void appendLabeledNodeInfo(StringBuilder md) {
         if (!sourceTable.isMnaMode()) {
             md.append("## Labeled Nodes\n\n*(Pure computational mode - no labeled nodes)*\n\n");
@@ -576,7 +610,12 @@ public class EquationTableMarkdownDebugDialog {
     // =========================================================================
     // ALL EQUATION TABLES IN CIRCUIT
     // =========================================================================
-    
+
+    /**
+     * Append a bullet-list of all {@link EquationTableElm} instances in the circuit.
+     * The current table is marked with {@code [THIS]}.  Each entry shows the table name,
+     * row count, object identity hash, and the list of output names.
+     */
     private void appendAllEquationTablesInCircuit(StringBuilder md) {
         md.append("## All EquationTableElm in Circuit\n\n");
         
@@ -841,18 +880,18 @@ public class EquationTableMarkdownDebugDialog {
     
     /**
      * Append the A matrix (admittance matrix) in table form.
-     * Uses origMatrix (stamped values before doStep modifications) when available.
+     * Uses circuitMatrix so the report shows the matrix from the last stamped iteration.
      */
     private void appendMatrixA(StringBuilder md, int matSize, int fullSize, String[] rowLabels) {
-        md.append("### A Matrix (Admittance)\n\n");
+        md.append("### A Matrix (Admittance, Last Iteration Stamped Snapshot)\n\n");
         
         if (matSize > 30) {
             md.append("*(Matrix too large to display: ").append(matSize).append(" x ").append(matSize).append(")*\n\n");
             return;
         }
         
-        // Use origMatrix if available (shows stamped values), otherwise circuitMatrix
-        double[][] matrix = (sim.origMatrix != null) ? sim.origMatrix : sim.circuitMatrix;
+        // Use circuitMatrix so we display the latest stamped A snapshot.
+        double[][] matrix = sim.circuitMatrix;
         
         // If matrix was simplified, we show the simplified matrix with mapped labels
         int displaySize = matSize;
@@ -890,17 +929,17 @@ public class EquationTableMarkdownDebugDialog {
     /**
      * Append X (solution) and B (right-side) vectors in a combined table.
      *
-     * X = solution vector: node voltages followed by voltage source currents.
+     * X = last-solved snapshot: node voltages followed by voltage source currents.
      *     Built from nodeVoltages[] and voltage source element currents,
      *     NOT from circuitRightSide (which holds B after nonlinear convergence).
-     * B = right-side vector: current source contributions for node rows,
+     * B = stamped snapshot: right-side vector with current source contributions for node rows,
      *     voltage source values for VS rows. After convergence break,
      *     circuitRightSide holds the full B (origRightSide + doStep stamps).
      */
     private void appendVectorsXB(StringBuilder md, int matSize, int fullSize, int nodeCount, String[] rowLabels) {
-        md.append("### X (Solution) and B (Right Side) Vectors\n\n");
-        md.append("| Row | Label | Meaning | X (solution) | B (right side) |\n");
-        md.append("|-----|-------|---------|-------------|----------------|\n");
+        md.append("### X/B Snapshots (Last-Solved X vs Stamped B)\n\n");
+        md.append("| Row | Label | Meaning | X (last-solved snapshot) | B (stamped snapshot) |\n");
+        md.append("|-----|-------|---------|--------------------------|----------------------|\n");
         
         // B vector: circuitRightSide holds the full B (origRightSide + doStep stamps)
         // after convergence, because the subiteration loop breaks BEFORE lu_solve.
@@ -928,9 +967,9 @@ public class EquationTableMarkdownDebugDialog {
         }
         md.append("\n");
         
-        md.append("**Legend:** X contains node voltages (V) and VS currents (A). "
-                + "B contains independent current source values (A) for node rows "
-                + "and voltage source values (V) for VS rows.\n\n");
+        md.append("**Legend:** X is the last solved snapshot (node voltages in V and VS currents in A). "
+            + "B is the current stamped snapshot (independent current sources in A for node rows "
+            + "and voltage source values in V for VS rows). In nonlinear runs these snapshots can differ by one subiteration.\n\n");
     }
     
     /**
@@ -1039,13 +1078,22 @@ public class EquationTableMarkdownDebugDialog {
     // =========================================================================
     // UTILITY METHODS
     // =========================================================================
-    
+
+    /**
+     * Truncate a string to at most {@code maxLen} characters, appending {@code "..."}.
+     * Returns an empty string for {@code null} input.
+     */
     private String truncate(String str, int maxLen) {
         if (str == null) return "";
         if (str.length() <= maxLen) return str;
         return str.substring(0, maxLen - 3) + "...";
     }
     
+    /**
+     * Inject a {@code <style>} element into the page that makes elements with
+     * the {@code resizable-panel} CSS class user-resizable.  Idempotent — uses
+     * a unique id to avoid injecting the style block more than once.
+     */
     private native void addResizableStyles() /*-{
         if (!$doc.getElementById('resizable-panel-style')) {
             var style = $doc.createElement('style');
@@ -1061,6 +1109,12 @@ public class EquationTableMarkdownDebugDialog {
         }
     }-*/;
     
+    /**
+     * Add the {@code resizable-panel} CSS class to the given DOM element,
+     * enabling CSS {@code resize: both} on the text area.
+     *
+     * @param element DOM element to make resizable (typically the {@code <textarea>}).
+     */
     private native void makeResizable(com.google.gwt.dom.client.Element element) /*-{
         element.classList.add('resizable-panel');
     }-*/;

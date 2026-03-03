@@ -21,7 +21,7 @@ import java.util.Vector;
  *   @info       - Model documentation (markdown)
  *   @equations  - Variable equations (creates EquationTableElm)
  *   @parameters - Alias for @equations (sfcr compatibility)
- *   @matrix     - Transaction flow matrices (creates SFCTableElm or SFCFlowTable)
+ *   @matrix     - Transaction flow matrices (creates SFCTableElm)
  *   @hints      - Variable tooltips (overrides inline comments)
  *   @scope      - Oscilloscope displays
  *   @circuit    - Raw CircuitJS element passthrough
@@ -370,7 +370,7 @@ public class SFCRParser {
         }
     }
     
-    /** Parse @matrix block - creates SFCTableElm or SFCFlowTable. */
+    /** Parse @matrix block - creates SFCTableElm. */
     private int parseMatrixBlock(String[] lines, int startIndex) {
         String headerLine = lines[startIndex].trim();
         BlockPosition blockPos = parseBlockHeader(headerLine, "@matrix");
@@ -1729,9 +1729,7 @@ public class SFCRParser {
                                    String matrixType, Boolean showInitialValuesOverride,
                                    Boolean showFlowValuesOverride,
                                    Boolean useBackwardEulerOverride) {
-        boolean createFlowTable = isFlowMatrixType(matrixType);
-
-        // Build the dump string for SFCTableElm (type 265) or SFCFlowTable (type 270)
+        // Build the dump string for SFCTableElm (type 265)
         int rows = rowNames.size();
         
         // Check if last column is already a sum column (Σ, Sigma, Total, Sum, etc.)
@@ -1755,7 +1753,7 @@ public class SFCRParser {
         int x2 = currentX + 400; // Approximate width
         int y2 = currentY + (rows + 3) * 16; // Approximate height
         
-        dump.append(createFlowTable ? "270 " : "265 ").append(x1).append(" ").append(y1).append(" ");
+        dump.append("265 ").append(x1).append(" ").append(y1).append(" ");
         dump.append(x2).append(" ").append(y2).append(" 0 ");
         
         // Table data: rows cols cellWidthInGrids cellHeight cellSpacing
@@ -1764,7 +1762,7 @@ public class SFCRParser {
         dump.append("6 16 0 ");  // cellWidthInGrids, cellHeight, cellSpacing
         
         // showInitialValues decimalPlaces showCellValues collapsedMode priority initMode showALE
-        boolean showInitial = (showInitialValuesOverride != null) ? showInitialValuesOverride.booleanValue() : createFlowTable;
+        boolean showInitial = (showInitialValuesOverride != null) ? showInitialValuesOverride.booleanValue() : false;
         dump.append(showInitial ? "true 2 1 false 5 0 false " : "false 2 1 false 5 0 false ");
         
         // Table title (escaped)
@@ -1822,17 +1820,10 @@ public class SFCRParser {
         
         // SFC-specific fields.
         // For SFCTableElm: highlightImbalances balanceTolerance
-        // For SFCFlowTable: highlightImbalances balanceTolerance showFlowValues useBackwardEuler
-        if (createFlowTable) {
-            boolean showFlow = (showFlowValuesOverride != null) ? showFlowValuesOverride.booleanValue() : true;
-            boolean backwardEuler = (useBackwardEulerOverride != null) ? useBackwardEulerOverride.booleanValue() : false;
-            dump.append("true 0.000001 ").append(showFlow).append(" ").append(backwardEuler);
-        } else {
-            dump.append("true 0.000001");
-        }
+        dump.append("true 0.000001");
         
         // Create element by parsing the dump string
-        CirSim.console("Creating " + (createFlowTable ? "SFCFlowTable" : "SFCTable") + ": " + name);
+        CirSim.console("Creating SFCTable: " + name);
         
         try {
             StringTokenizer st = new StringTokenizer(dump.toString());
@@ -1856,15 +1847,6 @@ public class SFCRParser {
         }
     }
 
-    /** Determine whether @matrix type should create SFCFlowTable. */
-    private boolean isFlowMatrixType(String matrixType) {
-        if (matrixType == null) {
-            return false;
-        }
-        String t = matrixType.trim().toLowerCase();
-        return t.equals("flow_table") || t.equals("sfc_flow_table") || t.equals("kcl_flow");
-    }
-    
     private EquationTableElm.RowOutputMode parseEquationRowMode(String mode) {
         if (mode == null) return EquationTableElm.RowOutputMode.VOLTAGE_MODE;
         String m = mode.trim().toLowerCase();

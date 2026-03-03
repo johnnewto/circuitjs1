@@ -43,9 +43,18 @@ public class SFCTableElm extends TableElm {
     
     // Sankey diagram renderer
     private SFCSankeyRenderer sankeyRenderer;
+
+    // Tracks view mode transitions so table cache can be invalidated when needed
+    private boolean lastDrawWasSankeyView = false;
     
     // Static counter for table numbering
     private static int nextSFCTableNumber = 1;
+
+    private void invalidateTableRenderCache() {
+        if (sfcRenderer != null) {
+            sfcRenderer.invalidateCache();
+        }
+    }
     
     /**
      * Constructor for new SFC table created from menu.
@@ -451,6 +460,8 @@ public class SFCTableElm extends TableElm {
     @Override
     void draw(Graphics g) {
         if (showSankeyView && sankeyRenderer != null) {
+            lastDrawWasSankeyView = true;
+
             // Draw Sankey diagram
             int width = sizeX * cspc2;
             int height = sizeY * cspc2;
@@ -462,8 +473,13 @@ public class SFCTableElm extends TableElm {
                 g.drawRect(x, y, width, height);
             }
         } else if (sfcRenderer != null) {
+            if (lastDrawWasSankeyView) {
+                invalidateTableRenderCache();
+            }
+            lastDrawWasSankeyView = false;
             sfcRenderer.draw(g);
         } else {
+            lastDrawWasSankeyView = false;
             super.draw(g);
         }
     }
@@ -588,6 +604,8 @@ public class SFCTableElm extends TableElm {
         } else if (n == 9) {
             sankeyHeight = Math.max(100, (int)ei.value);
         }
+
+        invalidateTableRenderCache();
         
         setupPins();
         setPoints();

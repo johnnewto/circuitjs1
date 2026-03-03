@@ -20,7 +20,7 @@ import java.util.Set;
  *   @init       - Simulation settings (timestep, units)
  *   @info       - Model documentation (markdown)
  *   @equations  - All equations (from EquationTableElm, GodlyTableElm)
- *   @matrix     - Transaction matrices (from SFCTableElm, SFCFlowTable)
+ *   @matrix     - Transaction matrices (from SFCTableElm)
  *   @hints      - Variable documentation
  *   @circuit    - Non-SFCR elements (passthrough)
  *   @scope      - Docked and undocked scopes with trace references (UID-based)
@@ -37,7 +37,6 @@ public class SFCRExporter {
     private CirSim sim;
     private ArrayList<EquationTableElm> equationTables = new ArrayList<EquationTableElm>();
     private ArrayList<SFCTableElm> sfcTables = new ArrayList<SFCTableElm>();
-    private ArrayList<SFCFlowTable> sfcFlowTables = new ArrayList<SFCFlowTable>();
     private ArrayList<GodlyTableElm> godlyTables = new ArrayList<GodlyTableElm>();
     private ArrayList<SFCSankeyElm> sankeyDiagrams = new ArrayList<SFCSankeyElm>();
     private ArrayList<CircuitElm> otherElements = new ArrayList<CircuitElm>();
@@ -106,15 +105,6 @@ public class SFCRExporter {
             }
         }
 
-        // Export SFC flow tables as @matrix
-        for (SFCFlowTable flowTable : sfcFlowTables) {
-            String block = exportSFCFlowTable(flowTable);
-            if (!block.isEmpty()) {
-                sb.append(block);
-                sb.append("\n");
-            }
-        }
-        
         // Export Sankey diagrams as @sankey
         for (SFCSankeyElm sankey : sankeyDiagrams) {
             String block = exportSankeyDiagram(sankey);
@@ -157,7 +147,6 @@ public class SFCRExporter {
     private void categorizeElements() {
         equationTables.clear();
         sfcTables.clear();
-        sfcFlowTables.clear();
         godlyTables.clear();
         sankeyDiagrams.clear();
         otherElements.clear();
@@ -167,8 +156,6 @@ public class SFCRExporter {
             
             if (elm instanceof EquationTableElm) {
                 equationTables.add((EquationTableElm) elm);
-            } else if (elm instanceof SFCFlowTable) {
-                sfcFlowTables.add((SFCFlowTable) elm);
             } else if (elm instanceof SFCTableElm) {
                 sfcTables.add((SFCTableElm) elm);
             } else if (elm instanceof GodlyTableElm) {
@@ -445,70 +432,6 @@ public class SFCRExporter {
         return sb.toString();
     }
 
-    /** Export SFCFlowTable as @matrix block. */
-    private String exportSFCFlowTable(SFCFlowTable flowTable) {
-        StringBuilder sb = new StringBuilder();
-
-        String tableName = flowTable.getTableTitle();
-        if (tableName == null || tableName.isEmpty()) {
-            tableName = "SFC_Flow_Table";
-        }
-
-        sb.append("@matrix ").append(sanitizeName(tableName));
-        sb.append(formatPosition(flowTable)).append("\n");
-        sb.append("  type: flow_table\n");
-        sb.append("  showInitialValues: ").append(flowTable.showInitialValues).append("\n");
-        sb.append("  showFlowValues: ").append(flowTable.isShowFlowValues()).append("\n");
-        sb.append("  integration: ").append(flowTable.isUseBackwardEuler() ? "backward_euler" : "trapezoidal").append("\n");
-
-        int totalCols = flowTable.getCols();
-        int dataCols = 0;
-        for (int col = 0; col < totalCols; col++) {
-            TableColumn column = flowTable.getColumn(col);
-            if (column != null && !column.isALE()) {
-                dataCols++;
-            }
-        }
-
-        sb.append("\n");
-
-        sb.append("| Transaction |");
-        for (int col = 0; col < totalCols; col++) {
-            TableColumn column = flowTable.getColumn(col);
-            if (column != null && !column.isALE()) {
-                sb.append(" ").append(column.getStockName()).append(" |");
-            }
-        }
-        sb.append("\n");
-
-        sb.append("|-------------|");
-        for (int col = 0; col < dataCols; col++) {
-            sb.append("------|");
-        }
-        sb.append("\n");
-
-        int rows = flowTable.getRows();
-        for (int row = 0; row < rows; row++) {
-            String rowDesc = flowTable.getRowDescription(row);
-            if (rowDesc == null) rowDesc = "Row" + row;
-
-            sb.append("| ").append(rowDesc).append(" |");
-
-            for (int col = 0; col < totalCols; col++) {
-                TableColumn column = flowTable.getColumn(col);
-                if (column != null && !column.isALE()) {
-                    String cellExpr = column.getCellEquation(row);
-                    if (cellExpr == null) cellExpr = "";
-                    sb.append(" ").append(cellExpr).append(" |");
-                }
-            }
-            sb.append("\n");
-        }
-
-        sb.append("@end\n");
-        return sb.toString();
-    }
-    
     /** Export SFCSankeyElm as @sankey block. */
     private String exportSankeyDiagram(SFCSankeyElm sankey) {
         StringBuilder sb = new StringBuilder();

@@ -16,6 +16,8 @@ import com.lushprojects.circuitjs1.client.TableColumn.ColumnType;
  */
 public class TableRenderer {
     protected final TableElm table;  // Protected to allow subclass access
+    private java.util.HashMap<String, String> truncatedTextCache = new java.util.HashMap<String, String>();
+    private static final int TRUNCATED_TEXT_CACHE_LIMIT = 4000;
     
     // Cache for cell values to avoid recalculating every frame
     protected double[][] cachedCellValues;
@@ -28,6 +30,7 @@ public class TableRenderer {
     private static final Font TITLE_FONT = new Font("SansSerif", Font.BOLD, 13);
     protected static final Font HEADER_FONT = new Font("SansSerif", Font.BOLD, 11);
     protected static final Font CELL_FONT = new Font("SansSerif", 0, 11);  // Non-bold like ActionTimeElm
+    private static final Font PERF_FONT = new Font("SansSerif", 0, 9);
     protected static final String LETTER_SPACING = "0.5px"; // For better readability
     
     // Modern styling configuration
@@ -55,15 +58,36 @@ public class TableRenderer {
     
     // Cached canvas for static parts (backgrounds, grid lines, borders)
     // Only text is redrawn each frame - major performance win for tables
-    private Canvas cachedCanvas;
-    private Context2d cachedContext;
+    private Canvas backgroundLayerCanvas;
+    private Context2d backgroundLayerCtx;
+    private Canvas contentLayerCanvas;
+    private Context2d contentLayerCtx;
     private boolean cacheValid = false;
+    private boolean contentCacheValid = false;
     private int cachedWidth = 0;
     private int cachedHeight = 0;
+    private int contentCachedWidth = 0;
+    private int contentCachedHeight = 0;
     private int cachedRows = 0;
     private int cachedCols = 0;
+    private float cachedScale = -1;
+    private int contentCachedRows = 0;
+    private int contentCachedCols = 0;
+    private float contentCachedScale = -1;
     private boolean cachedPrintable = false;
     private boolean cachedCollapsedMode = false;
+    private boolean contentCachedPrintable = false;
+    private boolean contentCachedCollapsedMode = false;
+    private boolean contentCachedVoltsVisible = false;
+    private int contentCachedShowCellValues = -1;
+    private long contentCachedDataTime = -1;
+    private int cacheRebuildCount = 0;
+    private long lastCacheHitLogTime = 0;
+    protected static final long CACHE_HIT_LOG_INTERVAL_MS = 2000;
+    private boolean skipDataRowGridLinesInDynamicPass = false;
+    private boolean skipNonDataRowGridLinesInDynamicPass = false;
+    private double renderTimeEmaMs = 0;
+    private boolean hasRenderTimingSample = false;
     
     public TableRenderer(TableElm table) {
         this.table = table;
@@ -74,9 +98,13 @@ public class TableRenderer {
      * Initialize the cached canvas for static parts.
      */
     private void initCache() {
-        cachedCanvas = Canvas.createIfSupported();
-        if (cachedCanvas != null) {
-            cachedContext = cachedCanvas.getContext2d();
+        backgroundLayerCanvas = Canvas.createIfSupported();
+        if (backgroundLayerCanvas != null) {
+            backgroundLayerCtx = backgroundLayerCanvas.getContext2d();
+        }
+        contentLayerCanvas = Canvas.createIfSupported();
+        if (contentLayerCanvas != null) {
+            contentLayerCtx = contentLayerCanvas.getContext2d();
         }
     }
     
@@ -86,6 +114,18 @@ public class TableRenderer {
      */
     public void invalidateCache() {
         cacheValid = false;
+        contentCacheValid = false;
+    }
+
+    private boolean isVoltsVisible() {
+        return CirSim.theSim != null && CirSim.theSim.voltsCheckItem != null && CirSim.theSim.voltsCheckItem.getState();
+    }
+
+    private float getRenderScale() {
+        if (CirSim.theSim == null) {
+            return 1;
+        }
+        return Math.max(1, CirSim.devicePixelRatio());
     }
     
     /**
@@ -93,26 +133,36 @@ public class TableRenderer {
      * Returns true if cache is usable, false if no caching available.
      */
     private boolean ensureCacheValid(TableDimensions dims) {
-        if (cachedCanvas == null || cachedContext == null) {
+        if (backgroundLayerCanvas == null || backgroundLayerCtx == null) {
+            return false;
+        }
+        if (CirSim.theSim != null && !CirSim.theSim.tableRenderCacheEnabled) {
             return false;
         }
         
         boolean printable = isPrintable();
         int cols = table.getCols();
+        float renderScale = getRenderScale();
         
         // Check if cache needs refresh
         if (!cacheValid || dims.tableWidth != cachedWidth || dims.tableHeight != cachedHeight || 
             table.rows != cachedRows || cols != cachedCols || 
-            printable != cachedPrintable || table.collapsedMode != cachedCollapsedMode) {
+            printable != cachedPrintable || table.collapsedMode != cachedCollapsedMode ||
+            renderScale != cachedScale) {
             
             // Resize canvas if needed
-            if (dims.tableWidth != cachedWidth || dims.tableHeight != cachedHeight) {
-                cachedCanvas.setCoordinateSpaceWidth(dims.tableWidth);
-                cachedCanvas.setCoordinateSpaceHeight(dims.tableHeight);
+            if (dims.tableWidth != cachedWidth || dims.tableHeight != cachedHeight || renderScale != cachedScale) {
+                backgroundLayerCanvas.setCoordinateSpaceWidth((int) Math.ceil(dims.tableWidth * renderScale));
+                backgroundLayerCanvas.setCoordinateSpaceHeight((int) Math.ceil(dims.tableHeight * renderScale));
             }
+
+            backgroundLayerCtx.setTransform(1, 0, 0, 1, 0, 0);
+            backgroundLayerCtx.clearRect(0, 0, backgroundLayerCanvas.getCoordinateSpaceWidth(), backgroundLayerCanvas.getCoordinateSpaceHeight());
+            backgroundLayerCtx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
             
             // Draw static parts to cache
             drawStaticToCache(dims);
+            cacheRebuildCount++;
             
             // Update cached state
             cachedWidth = dims.tableWidth;
@@ -121,9 +171,64 @@ public class TableRenderer {
             cachedCols = cols;
             cachedPrintable = printable;
             cachedCollapsedMode = table.collapsedMode;
+            cachedScale = renderScale;
             cacheValid = true;
         }
         
+        return true;
+    }
+
+    private boolean ensureContentCacheValid(TableDimensions dims) {
+        if (contentLayerCanvas == null || contentLayerCtx == null) {
+            return false;
+        }
+        if (CirSim.theSim != null && !CirSim.theSim.tableRenderCacheEnabled) {
+            return false;
+        }
+
+        boolean printable = isPrintable();
+        int cols = table.getCols();
+        boolean voltsVisible = isVoltsVisible();
+        float renderScale = getRenderScale();
+
+        if (!contentCacheValid ||
+            dims.tableWidth != contentCachedWidth || dims.tableHeight != contentCachedHeight ||
+            table.rows != contentCachedRows || cols != contentCachedCols ||
+            printable != contentCachedPrintable ||
+            table.collapsedMode != contentCachedCollapsedMode ||
+            voltsVisible != contentCachedVoltsVisible ||
+            table.showCellValues != contentCachedShowCellValues ||
+            lastUpdateTime != contentCachedDataTime ||
+            renderScale != contentCachedScale) {
+
+            if (dims.tableWidth != contentCachedWidth || dims.tableHeight != contentCachedHeight || renderScale != contentCachedScale) {
+                contentLayerCanvas.setCoordinateSpaceWidth((int) Math.ceil(dims.tableWidth * renderScale));
+                contentLayerCanvas.setCoordinateSpaceHeight((int) Math.ceil(dims.tableHeight * renderScale));
+            }
+
+            contentLayerCtx.setTransform(1, 0, 0, 1, 0, 0);
+            contentLayerCtx.clearRect(0, 0, contentLayerCanvas.getCoordinateSpaceWidth(), contentLayerCanvas.getCoordinateSpaceHeight());
+            contentLayerCtx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
+
+            Graphics cacheGraphics = new Graphics(contentLayerCtx);
+            contentLayerCtx.save();
+            contentLayerCtx.translate(-dims.tableX, -dims.tableY);
+            drawComponentsInOrder(cacheGraphics, dims, true);
+            contentLayerCtx.restore();
+
+            contentCachedWidth = dims.tableWidth;
+            contentCachedHeight = dims.tableHeight;
+            contentCachedRows = table.rows;
+            contentCachedCols = cols;
+            contentCachedPrintable = printable;
+            contentCachedCollapsedMode = table.collapsedMode;
+            contentCachedVoltsVisible = voltsVisible;
+            contentCachedShowCellValues = table.showCellValues;
+            contentCachedDataTime = lastUpdateTime;
+            contentCachedScale = renderScale;
+            contentCacheValid = true;
+        }
+
         return true;
     }
     
@@ -132,7 +237,7 @@ public class TableRenderer {
      * This is only called when cache is invalid.
      */
     private void drawStaticToCache(TableDimensions dims) {
-        Context2d ctx = cachedContext;
+        Context2d ctx = backgroundLayerCtx;
         int width = dims.tableWidth;
         int height = dims.tableHeight;
         int rowHeight = table.cellHeight + table.cellSpacing;
@@ -200,6 +305,12 @@ public class TableRenderer {
         // Computed/Sum row background (footer style)
         ctx.setFillStyle(getFooterBgColor().getHexValue());
         ctx.fillRect(edgeInset, currentY, width - edgeInset * 2, rowHeight - 2);
+
+        // Draw data row grid lines in cache so we can skip redrawing them each frame
+        drawDataRowGridLinesToCache(dims);
+
+        // Draw non-data row grid lines in cache (type/header/initial/sum)
+        drawNonDataRowGridLinesToCache(dims);
         
         // Draw border (non-selected, non-error state)
         if (MODERN_STYLE) {
@@ -220,6 +331,268 @@ public class TableRenderer {
             ctx.setStrokeStyle("#808080");
             ctx.strokeRect(0, 0, width, height);
         }
+
+        onStaticCacheRebuilt();
+    }
+
+    private void drawDataRowGridLinesToCache(TableDimensions dims) {
+        if (table.collapsedMode || table.rows <= 0) {
+            return;
+        }
+
+        int rowHeight = table.cellHeight + table.cellSpacing;
+        int dataStartY = dims.titleHeight;
+
+        if (!table.collapsedMode) {
+            dataStartY += getExtraRowsBeforeTypeRowHeight();
+        }
+        if (!table.collapsedMode && dims.typeRowHeight > 0) {
+            dataStartY += rowHeight;
+        }
+
+        dataStartY += rowHeight; // column header row
+
+        if (table.showInitialValues && !table.collapsedMode) {
+            dataStartY += rowHeight;
+        }
+
+        for (int row = 0; row < table.rows; row++) {
+            int rowY = dataStartY + row * rowHeight;
+            drawSingleRowGridLineToCache(rowY, dims);
+        }
+    }
+
+    private void drawSingleRowGridLineToCache(int rowY, TableDimensions dims) {
+        Context2d ctx = backgroundLayerCtx;
+        int tableX = 0;
+        int tableWidth = dims.tableWidth;
+        int rowDescColWidth = dims.rowDescColWidth;
+        int cellWidthPixels = dims.cellWidthPixels;
+        int inset = MODERN_STYLE ? CORNER_RADIUS / 2 : 0;
+
+        ctx.setStrokeStyle(getGridLineColor().getHexValue());
+
+        // Bottom horizontal line
+        ctx.beginPath();
+        ctx.moveTo(tableX + inset, rowY + table.cellHeight);
+        ctx.lineTo(tableX + tableWidth - inset, rowY + table.cellHeight);
+        ctx.stroke();
+
+        // Vertical separator after row description column
+        int x = tableX + table.cellSpacing + rowDescColWidth;
+        ctx.beginPath();
+        ctx.moveTo(x, rowY);
+        ctx.lineTo(x, rowY + table.cellHeight);
+        ctx.stroke();
+
+        // Vertical separators between data columns (including double-lines on type change)
+        for (int col = 0; col < table.getCols(); col++) {
+            x = getColumnX(col, tableX, rowDescColWidth, cellWidthPixels);
+
+            boolean drawDouble = false;
+            if (col > 0 && col < table.getCols()) {
+                ColumnType prevType = table.getColumnType(col - 1);
+                ColumnType currType = table.getColumnType(col);
+                if (prevType != null && currType != null && prevType != currType) {
+                    drawDouble = true;
+                }
+            }
+
+            if (drawDouble) {
+                ctx.beginPath();
+                ctx.moveTo(x - 1, rowY);
+                ctx.lineTo(x - 1, rowY + table.cellHeight);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(x + 1, rowY);
+                ctx.lineTo(x + 1, rowY + table.cellHeight);
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.moveTo(x, rowY);
+                ctx.lineTo(x, rowY + table.cellHeight);
+                ctx.stroke();
+            }
+        }
+    }
+
+    private void drawNonDataRowGridLinesToCache(TableDimensions dims) {
+        int rowHeight = table.cellHeight + table.cellSpacing;
+        int currentY = dims.titleHeight;
+
+        if (!table.collapsedMode) {
+            currentY += getExtraRowsBeforeTypeRowHeight();
+        }
+
+        if (!table.collapsedMode && dims.typeRowHeight > 0) {
+            drawTypeRowGridLinesToCache(currentY, dims);
+            currentY += rowHeight;
+        }
+
+        drawRowGridLineToCache(currentY, dims, false, true);
+        currentY += rowHeight;
+
+        if (table.showInitialValues && !table.collapsedMode) {
+            drawRowGridLineToCache(currentY, dims, false, false);
+            currentY += rowHeight;
+        }
+
+        if (!table.collapsedMode) {
+            currentY += table.rows * rowHeight;
+        }
+
+        drawRowGridLineToCache(currentY, dims, true, false);
+    }
+
+    private void drawRowGridLineToCache(int rowY, TableDimensions dims, boolean isSumRow, boolean isHeaderRow) {
+        Context2d ctx = backgroundLayerCtx;
+        int tableX = 0;
+        int tableWidth = dims.tableWidth;
+        int rowDescColWidth = dims.rowDescColWidth;
+        int cellWidthPixels = dims.cellWidthPixels;
+        int inset = MODERN_STYLE ? CORNER_RADIUS / 2 : 0;
+
+        if (MODERN_STYLE) {
+            ctx.setStrokeStyle((isHeaderRow || isSumRow) ? getHeaderBorderColor().getHexValue() : getGridLineColor().getHexValue());
+        } else {
+            ctx.setStrokeStyle(CircuitElm.lightGrayColor.getHexValue());
+        }
+
+        if (isSumRow) {
+            ctx.beginPath();
+            ctx.moveTo(tableX + inset, rowY - 2);
+            ctx.lineTo(tableX + tableWidth - inset, rowY - 2);
+            ctx.stroke();
+            if (MODERN_STYLE) {
+                ctx.setStrokeStyle(getGridLineColor().getHexValue());
+            }
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(tableX + inset, rowY + table.cellHeight);
+        ctx.lineTo(tableX + tableWidth - inset, rowY + table.cellHeight);
+        ctx.stroke();
+
+        if (MODERN_STYLE) {
+            ctx.setStrokeStyle(getGridLineColor().getHexValue());
+        }
+
+        int x = tableX + table.cellSpacing + rowDescColWidth;
+        ctx.beginPath();
+        ctx.moveTo(x, rowY);
+        ctx.lineTo(x, rowY + table.cellHeight);
+        ctx.stroke();
+
+        for (int col = 0; col < table.getCols(); col++) {
+            x = getColumnX(col, tableX, rowDescColWidth, cellWidthPixels);
+
+            boolean drawDouble = false;
+            if (col > 0 && col < table.getCols()) {
+                ColumnType prevType = table.getColumnType(col - 1);
+                ColumnType currType = table.getColumnType(col);
+                if (prevType != null && currType != null && prevType != currType) {
+                    drawDouble = true;
+                }
+            }
+
+            if (drawDouble) {
+                ctx.beginPath();
+                ctx.moveTo(x - 1, rowY);
+                ctx.lineTo(x - 1, rowY + table.cellHeight);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(x + 1, rowY);
+                ctx.lineTo(x + 1, rowY + table.cellHeight);
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.moveTo(x, rowY);
+                ctx.lineTo(x, rowY + table.cellHeight);
+                ctx.stroke();
+            }
+        }
+    }
+
+    private void drawTypeRowGridLinesToCache(int rowY, TableDimensions dims) {
+        Context2d ctx = backgroundLayerCtx;
+        int tableX = 0;
+        int tableWidth = dims.tableWidth;
+        int rowDescColWidth = dims.rowDescColWidth;
+        int cellWidthPixels = dims.cellWidthPixels;
+        int inset = MODERN_STYLE ? CORNER_RADIUS / 2 : 0;
+
+        if (MODERN_STYLE) {
+            ctx.setStrokeStyle(getGridLineColor().getHexValue());
+        } else {
+            ctx.setStrokeStyle(CircuitElm.lightGrayColor.getHexValue());
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(tableX + inset, rowY);
+        ctx.lineTo(tableX + tableWidth - inset, rowY);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(tableX + inset, rowY + table.cellHeight);
+        ctx.lineTo(tableX + tableWidth - inset, rowY + table.cellHeight);
+        ctx.stroke();
+
+        int x = tableX + table.cellSpacing + rowDescColWidth;
+        ctx.beginPath();
+        ctx.moveTo(x, rowY);
+        ctx.lineTo(x, rowY + table.cellHeight);
+        ctx.stroke();
+
+        for (int col = 0; col < table.getCols(); col++) {
+            x = getColumnX(col, tableX, rowDescColWidth, cellWidthPixels);
+
+            boolean drawDouble = false;
+            boolean drawLine = false;
+            if (col > 0 && col < table.getCols()) {
+                ColumnType prevType = table.getColumnType(col - 1);
+                ColumnType currType = table.getColumnType(col);
+                if (prevType != null && currType != null && prevType != currType) {
+                    drawDouble = true;
+                    drawLine = true;
+                }
+            }
+
+            if (drawLine) {
+                if (drawDouble) {
+                    ctx.beginPath();
+                    ctx.moveTo(x - 1, rowY);
+                    ctx.lineTo(x - 1, rowY + table.cellHeight);
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.moveTo(x + 1, rowY);
+                    ctx.lineTo(x + 1, rowY + table.cellHeight);
+                    ctx.stroke();
+                } else {
+                    ctx.beginPath();
+                    ctx.moveTo(x, rowY);
+                    ctx.lineTo(x, rowY + table.cellHeight);
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+
+    protected void onStaticCacheRebuilt() {
+    }
+
+    protected void onCacheHit() {
+        long now = System.currentTimeMillis();
+        if (now - lastCacheHitLogTime < CACHE_HIT_LOG_INTERVAL_MS) {
+            return;
+        }
+        lastCacheHitLogTime = now;
+        onCacheHitThrottled();
+    }
+
+    protected void onCacheHitThrottled() {
     }
 
     // Helper methods for modern styling colors based on theme
@@ -377,6 +750,7 @@ public class TableRenderer {
      * Uses cached canvas for static parts (backgrounds, grid lines) when available.
      */
     public void draw(Graphics g) {
+        long renderStartNs = System.nanoTime();
         TableDimensions dims = calculateTableDimensions();
         
         // Update cached values if needed
@@ -384,15 +758,24 @@ public class TableRenderer {
 
         // Try to use cached static rendering
         boolean usingCache = ensureCacheValid(dims);
+        boolean usingContentCache = false;
+        skipDataRowGridLinesInDynamicPass = usingCache;
+        skipNonDataRowGridLinesInDynamicPass = usingCache;
         
         if (usingCache) {
+            onCacheHit();
             // Blit cached background/grid to main canvas
-            g.context.drawImage(cachedContext.getCanvas(), dims.tableX, dims.tableY);
+            g.context.drawImage(backgroundLayerCtx.getCanvas(), dims.tableX, dims.tableY, dims.tableWidth, dims.tableHeight);
             
             // Draw selection/error border on top if needed (dynamic - not cached)
             boolean selected = table.needsHighlight();
-            if (selected || table.nonConverged) {
+            if (selected) {
                 drawTableBorder(g, dims);
+            }
+
+            usingContentCache = ensureContentCacheValid(dims);
+            if (usingContentCache) {
+                g.context.drawImage(contentLayerCtx.getCanvas(), dims.tableX, dims.tableY, dims.tableWidth, dims.tableHeight);
             }
         } else {
             // Fallback: draw backgrounds directly (no cache available)
@@ -400,7 +783,9 @@ public class TableRenderer {
         }
 
         // Draw components in order (text, values - skips row backgrounds when using cache)
-        drawComponentsInOrder(g, dims, usingCache);
+        if (!usingContentCache) {
+            drawComponentsInOrder(g, dims, usingCache);
+        }
         
         // Draw border if not using cache (cache already has non-selected border)
         if (!usingCache) {
@@ -409,6 +794,50 @@ public class TableRenderer {
 
         // Draw pins
         drawPins(g);
+
+        double renderMs = (System.nanoTime() - renderStartNs) * 1e-6;
+        if (!hasRenderTimingSample) {
+            renderTimeEmaMs = renderMs;
+            hasRenderTimingSample = true;
+        } else {
+            renderTimeEmaMs = renderTimeEmaMs * 0.9 + renderMs * 0.1;
+        }
+        drawRenderTimingOverlay(g, dims, usingCache, renderMs);
+
+        // Reset transient draw-state flag
+        skipDataRowGridLinesInDynamicPass = false;
+        skipNonDataRowGridLinesInDynamicPass = false;
+    }
+
+    private void drawRenderTimingOverlay(Graphics g, TableDimensions dims, boolean usingCache, double renderMs) {
+        if (CirSim.theSim == null || !CirSim.theSim.developerMode || !table.needsHighlight()) {
+            return;
+        }
+        String timingText = (usingCache ? "C " : "N ") +
+            formatTimingMs(renderMs) + "ms (" +
+            formatTimingMs(renderTimeEmaMs) + "ms) R:" + cacheRebuildCount;
+        g.setFont(PERF_FONT);
+        g.setColor(isPrintable() ? new Color(40, 40, 40) : new Color(170, 255, 210));
+        g.drawString(timingText, dims.tableX + 34, dims.tableY + 10);
+    }
+
+    private String formatTimingMs(double value) {
+        double rounded = Math.round(value * 100.0) / 100.0;
+        String text = Double.toString(rounded);
+
+        int dot = text.indexOf('.');
+        if (dot < 0) {
+            return text + ".00";
+        }
+
+        int decimals = text.length() - dot - 1;
+        if (decimals == 0) {
+            return text + "00";
+        }
+        if (decimals == 1) {
+            return text + "0";
+        }
+        return text;
     }
     
     /**
@@ -1001,6 +1430,9 @@ public class TableRenderer {
         cachedCellValues = null;
         cachedSumValues = null;
         lastUpdateTime = 0;
+        truncatedTextCache.clear();
+        contentCacheValid = false;
+        contentCachedDataTime = -1;
     }
     
     protected void drawTitle(Graphics g, int offsetY) {
@@ -1103,7 +1535,9 @@ public class TableRenderer {
         }
         
         // Draw grid lines for header row - use header border style for stronger separation
-        drawRowGridLineWithStyle(g, offsetY, tableX, rowDescColWidth, cellWidthPixels, false, true);
+        if (!skipNonDataRowGridLinesInDynamicPass) {
+            drawRowGridLineWithStyle(g, offsetY, tableX, rowDescColWidth, cellWidthPixels, false, true);
+        }
     }
     
     /**
@@ -1235,7 +1669,9 @@ public class TableRenderer {
         }
         
         // Draw grid lines for this row (special handling for type row merging)
-        drawTypeRowGridLines(g, offsetY, tableX, rowDescColWidth, cellWidthPixels);
+        if (!skipNonDataRowGridLinesInDynamicPass) {
+            drawTypeRowGridLines(g, offsetY, tableX, rowDescColWidth, cellWidthPixels);
+        }
     }
 
     protected void drawInitialConditionsRow(Graphics g, int offsetY) {
@@ -1285,7 +1721,9 @@ public class TableRenderer {
         }
         
         // Draw grid lines for this row
-        drawRowGridLine(g, offsetY, tableX, rowDescColWidth, cellWidthPixels, false);
+        if (!skipNonDataRowGridLinesInDynamicPass) {
+            drawRowGridLine(g, offsetY, tableX, rowDescColWidth, cellWidthPixels, false);
+        }
     }
 
     protected void drawTableCells(Graphics g, int offsetY) {
@@ -1379,7 +1817,9 @@ public class TableRenderer {
             
             // Draw grid lines for this row
             int rowY = tableY + baseY + row * (table.cellHeight + table.cellSpacing);
-            drawRowGridLine(g, rowY - tableY, tableX, rowDescColWidth, cellWidthPixels, false);
+            if (!skipDataRowGridLinesInDynamicPass) {
+                drawRowGridLine(g, rowY - tableY, tableX, rowDescColWidth, cellWidthPixels, false);
+            }
         }
     }
     
@@ -1396,12 +1836,22 @@ public class TableRenderer {
         if (text == null || text.isEmpty()) {
             return text;
         }
+
+        String cacheKey = g.currentFontSize + "|" + maxWidth + "|" + text;
+        String cached = truncatedTextCache.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
         
         // Measure actual width of the full text
         double fullWidth = g.measureWidth(text);
         
         // If it fits, return as-is
         if (fullWidth <= maxWidth) {
+            if (truncatedTextCache.size() >= TRUNCATED_TEXT_CACHE_LIMIT) {
+                truncatedTextCache.clear();
+            }
+            truncatedTextCache.put(cacheKey, text);
             return text;
         }
         
@@ -1422,6 +1872,11 @@ public class TableRenderer {
                 right = mid - 1;  // Too wide, try shorter
             }
         }
+
+        if (truncatedTextCache.size() >= TRUNCATED_TEXT_CACHE_LIMIT) {
+            truncatedTextCache.clear();
+        }
+        truncatedTextCache.put(cacheKey, bestFit);
         
         return bestFit;
     }
@@ -1492,7 +1947,9 @@ public class TableRenderer {
         }
         
         // Draw grid lines for computed row (with double line above)
-        drawRowGridLine(g, offsetY, tableX, rowDescColWidth, cellWidthPixels, true);
+        if (!skipNonDataRowGridLinesInDynamicPass) {
+            drawRowGridLine(g, offsetY, tableX, rowDescColWidth, cellWidthPixels, true);
+        }
     }
 
     /**

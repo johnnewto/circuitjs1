@@ -12,19 +12,53 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 import com.lushprojects.circuitjs1.client.EquationTableElm.RowOutputMode;
 
 /**
- * EquationTableRenderer - Handles all drawing operations for EquationTableElm
- * Separates rendering logic from circuit simulation logic
- * 
- * Similar pattern to SFCTableRenderer which extends TableRenderer,
- * this class handles the visual presentation of the equation table.
- * Uses the same modern color scheme as TableRenderer for consistency.
+ * EquationTableRenderer — All drawing operations for {@link EquationTableElm}.
+ *
+ * <h3>Responsibility</h3>
+ * Separates visual presentation from circuit simulation logic, following the same
+ * delegation pattern as {@code SFCTableRenderer} / {@code TableRenderer}.
+ *
+ * <h3>Caching Strategy</h3>
+ * Static parts of the table (row backgrounds, zebra striping, grid lines, rounded border)
+ * are rendered once into an off-screen {@link Canvas} and composited each frame with
+ * {@code drawImage}.  Only dynamic content (row text, hover highlight, values, selection
+ * border) is drawn directly to the main canvas each frame.
+ *
+ * The cache is invalidated (via {@link #invalidateCache()}) whenever the table structure
+ * changes: rows added/removed, display size changed, or print mode toggled.
+ *
+ * <h3>Theming</h3>
+ * Colors switch automatically between dark mode (default) and light/{@code printable} mode
+ * using the {@code theSim.printableCheckItem} state flag.  All theme colors are defined as
+ * static constants at the top of the class.
+ *
+ * <h3>Row Icons</h3>
+ * Each data row renders a set of icons in its left margin:
+ * <ul>
+ *   <li><b>↕ (adjustable)</b>: row equation is a plain number; mouse-wheel adjusts it.</li>
+ *   <li><b>I→ / C∫ / P (mode)</b>: FLOW / STOCK / PARAM mode indicator.</li>
+ *   <li><b>⇔ / ⟳ (classification)</b>: alias row vs. dynamic (evaluated each timestep).</li>
+ * </ul>
+ *
+ * @see EquationTableElm#draw(Graphics) Main entry point that delegates here
+ * @see EquationTableElm#setPoints()   Causes cache invalidation on resize
  */
 public class EquationTableRenderer {
     private final EquationTableElm table;
+
+    private String[] cachedDisplayEquationByRow;
+    private String[] cachedEquationSourceByRow;
+    private String[] cachedSliderVarByRow;
+    private double[] cachedSliderValueByRow;
+    private String[] cachedOutputNameByRow;
+    private String[] cachedRawOutputNameByRow;
     
     // Fonts for different parts of the table
     private Font labelFont;
     private Font valueFont;
+    private Font perfFont = new Font("SansSerif", 0, 9);
+    private double renderTimeEmaMs = 0;
+    private boolean hasRenderTimingSample = false;
     
     // Modern styling configuration (matches TableRenderer)
     private static final boolean MODERN_STYLE = true;
@@ -32,13 +66,26 @@ public class EquationTableRenderer {
     
     // Cached canvas for static parts (grid lines, backgrounds, borders)
     // Only text/hover is redrawn each frame - major performance win for tables
-    private Canvas cachedCanvas;
-    private Context2d cachedContext;
-    private boolean cacheValid = false;
-    private int cachedWidth = 0;
-    private int cachedHeight = 0;
-    private int cachedRowCount = 0;
-    private boolean cachedPrintable = false;
+    private Canvas backgroundLayerCanvas;
+    private Context2d backgroundLayerCtx;
+    private Canvas contentLayerCanvas;
+    private Context2d contentLayerCtx;
+    private boolean backgroundCacheValid = false;
+    private boolean contentCacheValid = false;
+    private int backgroundCachedWidth = 0;
+    private int backgroundCachedHeight = 0;
+    private int backgroundCachedRowCount = 0;
+    private boolean backgroundCachedPrintable = false;
+    private float backgroundCachedScale = -1;
+    private int contentCachedWidth = 0;
+    private int contentCachedHeight = 0;
+    private int contentCachedRowCount = 0;
+    private boolean contentCachedPrintable = false;
+    private boolean contentCachedVoltsVisible = false;
+    private float contentCachedScale = -1;
+    private long contentCachedTimeBucket = -1;
+    private static final long CONTENT_CACHE_UPDATE_INTERVAL_MS = 200;
+    private int cacheRebuildCount = 0;
     
     // Dark mode colors (matches TableRenderer)
     private static final Color HEADER_BG_DARK = new Color(55, 55, 75);
@@ -63,10 +110,21 @@ public class EquationTableRenderer {
      * Initialize the cached canvas for static parts.
      */
     private void initCache() {
-        cachedCanvas = Canvas.createIfSupported();
-        if (cachedCanvas != null) {
-            cachedContext = cachedCanvas.getContext2d();
+        backgroundLayerCanvas = Canvas.createIfSupported();
+        if (backgroundLayerCanvas != null) {
+            backgroundLayerCtx = backgroundLayerCanvas.getContext2d();
         }
+        contentLayerCanvas = Canvas.createIfSupported();
+        if (contentLayerCanvas != null) {
+            contentLayerCtx = contentLayerCanvas.getContext2d();
+        }
+    }
+
+    private float getRenderScale() {
+        if (CirSim.theSim == null) {
+            return 1;
+        }
+        return Math.max(1, CirSim.devicePixelRatio());
     }
     
     /**
@@ -74,7 +132,36 @@ public class EquationTableRenderer {
      * Call this when table structure changes (resize, rows added/removed).
      */
     public void invalidateCache() {
-        cacheValid = false;
+        backgroundCacheValid = false;
+        contentCacheValid = false;
+        clearRowTextCaches();
+    }
+
+    private boolean isVoltsVisible() {
+        return CirSim.theSim != null && CirSim.theSim.voltsCheckItem != null && CirSim.theSim.voltsCheckItem.getState();
+    }
+
+    private void clearRowTextCaches() {
+        cachedDisplayEquationByRow = null;
+        cachedEquationSourceByRow = null;
+        cachedSliderVarByRow = null;
+        cachedSliderValueByRow = null;
+        cachedOutputNameByRow = null;
+        cachedRawOutputNameByRow = null;
+    }
+
+    private void ensureRowTextCacheCapacity(int rowCount) {
+        if (cachedDisplayEquationByRow == null || cachedDisplayEquationByRow.length != rowCount) {
+            cachedDisplayEquationByRow = new String[rowCount];
+            cachedEquationSourceByRow = new String[rowCount];
+            cachedSliderVarByRow = new String[rowCount];
+            cachedSliderValueByRow = new double[rowCount];
+            cachedOutputNameByRow = new String[rowCount];
+            cachedRawOutputNameByRow = new String[rowCount];
+            for (int i = 0; i < rowCount; i++) {
+                cachedSliderValueByRow[i] = Double.NaN;
+            }
+        }
     }
     
     /**
@@ -82,33 +169,94 @@ public class EquationTableRenderer {
      * Returns true if cache is usable, false if no caching available.
      */
     private boolean ensureCacheValid(int width, int height, int rowCount) {
-        if (cachedCanvas == null || cachedContext == null) {
+        if (backgroundLayerCanvas == null || backgroundLayerCtx == null) {
+            return false;
+        }
+        if (CirSim.theSim != null && !CirSim.theSim.tableRenderCacheEnabled) {
             return false;
         }
         
         boolean printable = isPrintable();
+        float renderScale = getRenderScale();
         
         // Check if cache needs refresh
-        if (!cacheValid || width != cachedWidth || height != cachedHeight || 
-            rowCount != cachedRowCount || printable != cachedPrintable) {
+        if (!backgroundCacheValid || width != backgroundCachedWidth || height != backgroundCachedHeight || 
+            rowCount != backgroundCachedRowCount || printable != backgroundCachedPrintable ||
+            renderScale != backgroundCachedScale) {
             
             // Resize canvas if needed
-            if (width != cachedWidth || height != cachedHeight) {
-                cachedCanvas.setCoordinateSpaceWidth(width);
-                cachedCanvas.setCoordinateSpaceHeight(height);
+            if (width != backgroundCachedWidth || height != backgroundCachedHeight || renderScale != backgroundCachedScale) {
+                backgroundLayerCanvas.setCoordinateSpaceWidth((int) Math.ceil(width * renderScale));
+                backgroundLayerCanvas.setCoordinateSpaceHeight((int) Math.ceil(height * renderScale));
             }
+
+            backgroundLayerCtx.setTransform(1, 0, 0, 1, 0, 0);
+            backgroundLayerCtx.clearRect(0, 0, backgroundLayerCanvas.getCoordinateSpaceWidth(), backgroundLayerCanvas.getCoordinateSpaceHeight());
+            backgroundLayerCtx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
             
             // Draw static parts to cache
             drawStaticToCache(width, height, rowCount);
+            cacheRebuildCount++;
             
             // Update cached state
-            cachedWidth = width;
-            cachedHeight = height;
-            cachedRowCount = rowCount;
-            cachedPrintable = printable;
-            cacheValid = true;
+            backgroundCachedWidth = width;
+            backgroundCachedHeight = height;
+            backgroundCachedRowCount = rowCount;
+            backgroundCachedPrintable = printable;
+            backgroundCachedScale = renderScale;
+            backgroundCacheValid = true;
         }
         
+        return true;
+    }
+
+    private boolean ensureContentCacheValid(int tableX, int tableY, int width, int height, int rowCount) {
+        if (contentLayerCanvas == null || contentLayerCtx == null) {
+            return false;
+        }
+        if (CirSim.theSim != null && !CirSim.theSim.tableRenderCacheEnabled) {
+            return false;
+        }
+
+        boolean printable = isPrintable();
+        boolean voltsVisible = isVoltsVisible();
+        float renderScale = getRenderScale();
+        long timeBucket = System.currentTimeMillis() / CONTENT_CACHE_UPDATE_INTERVAL_MS;
+
+        if (!contentCacheValid || width != contentCachedWidth || height != contentCachedHeight ||
+            rowCount != contentCachedRowCount || printable != contentCachedPrintable ||
+            voltsVisible != contentCachedVoltsVisible || renderScale != contentCachedScale ||
+            timeBucket != contentCachedTimeBucket) {
+
+            if (width != contentCachedWidth || height != contentCachedHeight || renderScale != contentCachedScale) {
+                contentLayerCanvas.setCoordinateSpaceWidth((int) Math.ceil(width * renderScale));
+                contentLayerCanvas.setCoordinateSpaceHeight((int) Math.ceil(height * renderScale));
+            }
+
+            contentLayerCtx.setTransform(1, 0, 0, 1, 0, 0);
+            contentLayerCtx.clearRect(0, 0, contentLayerCanvas.getCoordinateSpaceWidth(), contentLayerCanvas.getCoordinateSpaceHeight());
+            contentLayerCtx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
+
+            Graphics cacheGraphics = new Graphics(contentLayerCtx);
+            contentLayerCtx.save();
+            contentLayerCtx.translate(-tableX, -tableY);
+            drawTitleRow(cacheGraphics, tableX, tableY);
+            cacheGraphics.setFont(valueFont);
+            for (int row = 0; row < rowCount; row++) {
+                drawDataRow(cacheGraphics, tableX, tableY, row, true, false);
+            }
+            contentLayerCtx.restore();
+
+            contentCachedWidth = width;
+            contentCachedHeight = height;
+            contentCachedRowCount = rowCount;
+            contentCachedPrintable = printable;
+            contentCachedVoltsVisible = voltsVisible;
+            contentCachedScale = renderScale;
+            contentCachedTimeBucket = timeBucket;
+            contentCacheValid = true;
+        }
+
         return true;
     }
     
@@ -117,7 +265,7 @@ public class EquationTableRenderer {
      * This is only called when cache is invalid.
      */
     private void drawStaticToCache(int width, int height, int rowCount) {
-        Context2d ctx = cachedContext;
+        Context2d ctx = backgroundLayerCtx;
         int rowHeight = table.getRowHeight();
         
         // Clear canvas
@@ -193,6 +341,13 @@ public class EquationTableRenderer {
         }
     }
 
+    //=============================================================================
+    // THEME-AWARE COLOR HELPERS
+    //
+    // Each helper checks isPrintable() to select between the light (printable)
+    // and dark (normal) color palettes defined above.
+    //=============================================================================
+
     // Helper methods for theme-aware colors
     private boolean isPrintable() {
         return CirSim.theSim.printableCheckItem.getState();
@@ -225,8 +380,14 @@ public class EquationTableRenderer {
     }
     
     /**
-     * Get voltage color for value display - red/green based on voltage.
-     * Matches TableRenderer.getTextVoltageColor() behavior.
+     * Return a voltage-keyed color for displaying a numeric value on the right side
+     * of each row.  When the "Voltage Colors" display option is off, returns plain white.
+     * When on, maps the value through the standard {@link CircuitElm#colorScale} gradient
+     * (red for negative, green for positive, neutral for zero) using the circuit-wide
+     * {@code voltageRange} as the scale.
+     *
+     * @param volts Value to colorize (treated as a voltage).
+     * @return Color from the voltage color scale.
      */
     private Color getVoltageColor(double volts) {
         if (!CirSim.theSim.voltsCheckItem.getState()) {
@@ -252,6 +413,7 @@ public class EquationTableRenderer {
     public void updateFonts(int opsize) {
         labelFont = new Font("SansSerif", 0, opsize == 2 ? 12 : 10);
         valueFont = new Font("SansSerif", 0, opsize == 2 ? 10 : 8);
+        perfFont = new Font("SansSerif", 0, opsize == 2 ? 9 : 8);
     }
     
     //=============================================================================
@@ -264,6 +426,7 @@ public class EquationTableRenderer {
      * Only text and hover effects are drawn each frame.
      */
     public void draw(Graphics g) {
+        long renderStartNs = System.nanoTime();
         int tableX = table.x;
         int tableY = table.y;
         boolean selected = table.needsHighlight();
@@ -274,10 +437,11 @@ public class EquationTableRenderer {
         
         // Try to use cached static rendering
         boolean usingCache = ensureCacheValid(tableWidth, tableHeight, rowCount);
+        boolean usingContentCache = false;
         
         if (usingCache) {
             // Blit cached background/grid to main canvas
-            g.context.drawImage(cachedContext.getCanvas(), tableX, tableY);
+            g.context.drawImage(backgroundLayerCtx.getCanvas(), tableX, tableY, tableWidth, tableHeight);
             
             // Draw selection border on top if selected (dynamic - not cached)
             if (selected) {
@@ -302,21 +466,69 @@ public class EquationTableRenderer {
         
         // Update hover state
         updateHoveredRow(tableX, tableY);
+
+        if (usingCache) {
+            usingContentCache = ensureContentCacheValid(tableX, tableY, tableWidth, tableHeight, rowCount);
+        }
         
         // Draw hover highlight (dynamic - not cached)
         drawHoverHighlight(g, tableX, tableY);
         
-        // Draw title row text (dynamic - not cached)
-        drawTitleRow(g, tableX, tableY);
-        
-        // Draw data rows (text only when using cache, full when not)
-        g.setFont(valueFont);
-        for (int row = 0; row < rowCount; row++) {
-            drawDataRow(g, tableX, tableY, row, usingCache);
+        if (usingContentCache) {
+            g.context.drawImage(contentLayerCtx.getCanvas(), tableX, tableY, tableWidth, tableHeight);
+        } else {
+            // Draw title row text (dynamic - not cached)
+            drawTitleRow(g, tableX, tableY);
+
+            // Draw data rows (text only when using cache, full when not)
+            g.setFont(valueFont);
+            for (int row = 0; row < rowCount; row++) {
+                drawDataRow(g, tableX, tableY, row, usingCache, true);
+            }
         }
         
         // Update bounding box
         table.setBbox(tableX, tableY, tableX + tableWidth, tableY + tableHeight);
+
+        double renderMs = (System.nanoTime() - renderStartNs) * 1e-6;
+        if (!hasRenderTimingSample) {
+            renderTimeEmaMs = renderMs;
+            hasRenderTimingSample = true;
+        } else {
+            renderTimeEmaMs = renderTimeEmaMs * 0.9 + renderMs * 0.1;
+        }
+        drawRenderTimingOverlay(g, tableX, tableY, selected, usingCache, renderMs);
+    }
+
+    private void drawRenderTimingOverlay(Graphics g, int tableX, int tableY, boolean selected, boolean usingCache, double renderMs) {
+        if (CirSim.theSim == null || !CirSim.theSim.developerMode || !selected) {
+            return;
+        }
+        String timingText = (usingCache ? "C " : "N ") +
+            formatTimingMs(renderMs) + "ms (" +
+            formatTimingMs(renderTimeEmaMs) + "ms) R:" + cacheRebuildCount;
+        g.setFont(perfFont);
+        g.setColor(isPrintable() ? new Color(40, 40, 40) : new Color(170, 255, 210));
+        g.drawString(timingText, tableX + 26, tableY + 10);
+    }
+
+    private String formatTimingMs(double value) {
+        double rounded = Math.round(value * 100.0) / 100.0;
+        String text = Double.toString(rounded);
+
+        int dot = text.indexOf('.');
+        if (dot < 0) {
+            return text + ".00";
+        }
+
+        int decimals = text.length() - dot - 1;
+        if (decimals == 0) {
+            return text + "00";
+        }
+        if (decimals == 1) {
+            return text + "0";
+        }
+        return text;
     }
     
     /**
@@ -426,12 +638,12 @@ public class EquationTableRenderer {
      * Draw a single data row.
      * @param usingCache If true, skip drawing backgrounds/separators (they're in cached canvas)
      */
-    private void drawDataRow(Graphics g, int tableX, int tableY, int row, boolean usingCache) {
+    private void drawDataRow(Graphics g, int tableX, int tableY, int row, boolean usingCache, boolean allowHoverStyling) {
         int rowY = tableY + (row + 1) * table.getRowHeight();
         int rowHeight = table.getRowHeight();
         int cellPadding = table.getCellPadding();
         int tableWidth = table.getTableWidth();
-        boolean isHovered = (row == table.getHoveredRow());
+        boolean isHovered = allowHoverStyling && (row == table.getHoveredRow());
 
         if (table.isCommentRow(row)) {
             String comment = table.getCommentText(row);
@@ -451,7 +663,7 @@ public class EquationTableRenderer {
         
         // Build display equation with slider value substituted
         String displayEquation = buildDisplayEquation(row);
-        String outputName = Locale.convertGreekSymbols(table.getUIDisplayOutputName(row));
+        String outputName = getCachedOutputName(row);
         String rowText = outputName + " = " + displayEquation;
         boolean isAliasRow = table.isAliasRow(row);
         
@@ -544,17 +756,59 @@ public class EquationTableRenderer {
      * Build the display equation string with slider variable substituted.
      */
     private String buildDisplayEquation(int row) {
-        String displayEquation = table.getEquation(row);
-        displayEquation = Locale.convertGreekSymbols(displayEquation);
-        
-        // Substitute slider variable with its value
+        int rowCount = table.getRowCount();
+        ensureRowTextCacheCapacity(rowCount);
+
+        String equation = table.getEquation(row);
+        if (equation == null) {
+            equation = "";
+        }
         String sliderVar = table.getSliderVarName(row);
-        if (sliderVar != null && !sliderVar.isEmpty()) {
-            String valueStr = CircuitElm.getShortUnitText(table.getSliderValue(row), "");
+        if (sliderVar == null) {
+            sliderVar = "";
+        }
+        double sliderValue = sliderVar.isEmpty() ? Double.NaN : table.getSliderValue(row);
+
+        boolean cacheValidForRow = equation.equals(cachedEquationSourceByRow[row])
+            && sliderVar.equals(cachedSliderVarByRow[row])
+            && (Double.isNaN(sliderValue) ? Double.isNaN(cachedSliderValueByRow[row]) : sliderValue == cachedSliderValueByRow[row])
+            && cachedDisplayEquationByRow[row] != null;
+
+        if (cacheValidForRow) {
+            return cachedDisplayEquationByRow[row];
+        }
+
+        String displayEquation = Locale.convertGreekSymbols(equation);
+        if (!sliderVar.isEmpty()) {
+            String valueStr = CircuitElm.getShortUnitText(sliderValue, "");
             displayEquation = displayEquation.replaceAll("\\b" + sliderVar + "\\b", valueStr);
         }
-        
+
+        cachedEquationSourceByRow[row] = equation;
+        cachedSliderVarByRow[row] = sliderVar;
+        cachedSliderValueByRow[row] = sliderValue;
+        cachedDisplayEquationByRow[row] = displayEquation;
         return displayEquation;
+    }
+
+    private String getCachedOutputName(int row) {
+        int rowCount = table.getRowCount();
+        ensureRowTextCacheCapacity(rowCount);
+
+        String rawOutputName = table.getUIDisplayOutputName(row);
+        if (rawOutputName == null) {
+            rawOutputName = "";
+        }
+
+        String cachedOutputName = cachedOutputNameByRow[row];
+        if (cachedOutputName != null && rawOutputName.equals(cachedRawOutputNameByRow[row])) {
+            return cachedOutputName;
+        }
+
+        String converted = Locale.convertGreekSymbols(rawOutputName);
+        cachedRawOutputNameByRow[row] = rawOutputName;
+        cachedOutputNameByRow[row] = converted;
+        return converted;
     }
     
     /**

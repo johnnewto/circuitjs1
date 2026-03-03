@@ -41,6 +41,35 @@ import com.lushprojects.circuitjs1.client.EquationTableElm.RowOutputMode;
  * 
  * Pattern follows TableEditDialog for row manipulation.
  */
+/**
+ * EquationTableEditDialog — Modal editor for configuring all rows of an {@link EquationTableElm}.
+ *
+ * <h3>Layout</h3>
+ * The dialog is organized as a vertically stacked main panel:
+ * <ol>
+ *   <li><b>Title bar</b> — table name textbox + live row count badge.</li>
+ *   <li><b>Scrollable grid</b> — one row per equation, columns:
+ *       Buttons | Node(s) | Equation | Initial (t=0) | Mode | Shunt R / Cap |
+ *       Integ. | Slider Var | Slider Value | Hint</li>
+ *   <li><b>Button bar</b> — Apply, OK, Properties, Debug, Reference, Close.</li>
+ *   <li><b>Status label</b> — feedback after row operations and Apply.</li>
+ * </ol>
+ *
+ * <h3>Apply Flow</h3>
+ * {@link #applyChanges()} copies the local parallel arrays back to {@link EquationTableElm},
+ * calls {@code parseAllEquationsPublic()}, {@code allocNodes()}, and {@code setPoints()},
+ * then triggers {@code sim.needAnalyze()} so the circuit re-analyses with updated equations.
+ *
+ * <h3>Alias Detection</h3>
+ * The dialog detects alias rows in real time: if an equation is a bare node reference
+ * and the initial equation is empty, the Mode dropdown is locked to show ⇔ Alias
+ * and mode selection is disabled (enforced by {@link #updateAliasModeUi}).
+ *
+ * <h3>Comment Rows</h3>
+ * Rows whose Node(s) field starts with {@code #} are treated as non-simulating comment rows.
+ * Their equation field becomes the comment text, the Mode is locked to PARAM, and styling
+ * is adjusted to indicate the special row type.
+ */
 public class EquationTableEditDialog extends Dialog {
     
     // Unicode symbols for contextual buttons
@@ -683,6 +712,27 @@ public class EquationTableEditDialog extends Dialog {
         return container;
     }
     
+    //=========================================================================
+    // AUTOCOMPLETE HELPERS
+    //=========================================================================
+
+    /**
+     * Build the list of autocomplete candidates for an equation textbox.
+     *
+     * The list includes (in order):
+     * <ol>
+     *   <li>All stock names from {@link StockFlowRegistry}.</li>
+     *   <li>All labeled node names from {@link LabeledNodeElm}.</li>
+     *   <li>Output names defined in this table's current row data.</li>
+     *   <li>FLOW computed-value keys ({@code <name>.flow}) for FLOW rows.</li>
+     *   <li>The slider variable name for the row being edited.</li>
+     *   <li>Built-in math functions: sin, cos, tan, exp, log, sqrt, abs, etc.</li>
+     *   <li>Constants: {@code pi}, {@code t}.</li>
+     * </ol>
+     *
+     * @param row Zero-based row index (used to include this row's slider variable).
+     * @return Mutable list of candidate completion strings.
+     */
     /**
      * Create completion list for equation autocomplete
      */
@@ -754,6 +804,18 @@ public class EquationTableEditDialog extends Dialog {
         }
     }
 
+    /**
+     * Return a context-sensitive tooltip for the Shunt R / Cap field based on the current mode.
+     *
+     * <ul>
+     *   <li>FLOW_MODE  — field controls shunt resistance to ground.</li>
+     *   <li>STOCK_MODE — field controls capacitance of the companion model.</li>
+     *   <li>PARAM/VOLTAGE — field is not applicable and the tooltip says so.</li>
+     * </ul>
+     *
+     * @param mode Current row output mode.
+     * @return Tooltip string for the capacitance/shunt-R field.
+     */
     private String getModeParamTooltip(RowOutputMode mode) {
         if (mode == RowOutputMode.FLOW_MODE) {
             return "Shunt R for FLOW. Lower values create a real electrical load to ground.";
@@ -767,12 +829,33 @@ public class EquationTableEditDialog extends Dialog {
         return "Not used in VOLTAGE mode.";
     }
 
+    //=========================================================================
+    // ALIAS AND COMMENT ROW DETECTION
+    //=========================================================================
+
+    /**
+     * Classifies why the Mode dropdown for a row should be locked (if at all).
+     * <ul>
+     *   <li>{@code NONE}    — free mode selection; user can change it via the dropdown.</li>
+     *   <li>{@code ALIAS}   — row is detected as an alias (bare node ref, empty initial);
+     *                         mode is fixed to Voltage/Alias behavior.</li>
+     *   <li>{@code COMMENT} — row name starts with {@code #}; mode is locked to PARAM.</li>
+     * </ul>
+     */
     private enum ModeLockType {
         NONE,
         ALIAS,
         COMMENT
     }
 
+    /**
+     * Determine whether and why the Mode dropdown for {@code row} should be locked.
+     *
+     * Checked in priority order: comment rows take precedence over alias detection.
+     *
+     * @param row Zero-based row index into the local parallel arrays.
+     * @return Lock type describing whether/why the dropdown is locked.
+     */
     private ModeLockType getModeLockType(int row) {
         if (isCommentRowByInput(row)) {
             return ModeLockType.COMMENT;
@@ -783,6 +866,16 @@ public class EquationTableEditDialog extends Dialog {
         return ModeLockType.NONE;
     }
 
+    /**
+     * Return {@code true} if the current Node(s) input for {@code row} identifies it
+     * as a comment row (source name starts with {@code #}).
+     *
+     * Uses the local {@code outputNames[]} copy rather than the live element state,
+     * so it reflects in-flight editor changes before Apply is clicked.
+     *
+     * @param row Zero-based row index.
+     * @return {@code true} if the row should be treated as a non-simulating comment.
+     */
     private boolean isCommentRowByInput(int row) {
         if (row < 0 || row >= rowCount) {
             return false;
@@ -860,6 +953,18 @@ public class EquationTableEditDialog extends Dialog {
         updateModeFields(gridRow, outputModes[row]);
     }
 
+    /**
+     * Adjust the widths and font weights of per-row input fields based on whether the
+     * row is a comment row.
+     *
+     * Comment rows compress the Node(s) field (just shows "#") and bold text to make
+     * the comment content stand out visually from equation rows.
+     *
+     * @param isCommentRow {@code true} to apply comment-row styling.
+     * @param outputNameBox The Node(s) textbox for the row.
+     * @param equationBox   The Equation textbox (reused as comment text field).
+     * @param initialBox    The Initial (t=0) textbox (hidden/narrowed for comments).
+     */
     private void updateCommentRowFieldWidths(boolean isCommentRow, TextBox outputNameBox,
                                              TextBox equationBox, TextBox initialBox) {
         if (outputNameBox != null) {

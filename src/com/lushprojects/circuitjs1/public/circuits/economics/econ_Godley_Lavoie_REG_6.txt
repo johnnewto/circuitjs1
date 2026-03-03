@@ -9,14 +9,7 @@
 
 ## Key Variables
 
-| Variable | Live value |
-|---|---:|
-| X_N | {{X_N}} |
-| X_S | {{X_S}} |
-| Y_N | {{Y_N}} |
-| Y_S | {{Y_S}} |
-| IM_N | {{IM_N}} |
-| IM_S | {{IM_S}} |
+- Add live placeholders like `{{Y}}`, `{{C_d}}`, `{{H_h}}`
 
 ## Compose Tables
 
@@ -24,8 +17,8 @@
 
 | Variable | Live value | Meaning |
 |---|---:|---|
-| Output | Y_N = {{Y_N}} | Aggregate production/income |
-| Disposable income | Y_S = {{Y_S}} | Household disposable income |
+| Output | Y = {{Y}} | Aggregate production/income |
+| Disposable income | YD = {{YD}} | Household disposable income |
 
 ## Tables
 
@@ -47,11 +40,22 @@ table: tfm reg
 
 ## Plots
 
+- No scope plots detected. Add a plot block manually.
+
+## Sankeys
+
 ```{circuit}
-plot: Hh_S
-title: Hh_S
-yaxis: Value
-window: 200
+sankey: bs reg
+title: bs reg
+width: 600
+height: 320
+```
+
+```{circuit}
+sankey: tfm reg
+title: tfm reg
+width: 600
+height: 320
 ```
 
 ## Notes
@@ -61,14 +65,14 @@ window: 200
 @end
 
 @init
-  timestep: 0.1
+  timestep: 1
   voltageUnit: $
   timeUnit: yr
   showDots: false
   showVolts: true
   showValues: true
   showPower: false
-  equationTableTolerance: 0.001
+  equationTableTolerance: 0.0001
   infoViewerUpdateIntervalMs: 100
 @end
 
@@ -83,8 +87,8 @@ window: 200
   YD_S ~ Y_S - TX_S + last(r) * last(Bh_S) ; mode=voltage ; sliderValue=0
   TX_N ~ \theta * ( Y_N + last(r) * last(Bh_N) ) ; mode=voltage ; sliderValue=0
   TX_S ~ \theta * ( Y_S + last(r) * last(Bh_S) ) ; mode=voltage ; sliderValue=0
-  V_N ~ integrate(( YD_N - C_N )) ; mode=voltage ; sliderValue=0
-  V_S ~ integrate(( YD_S - C_S )) ; mode=voltage ; sliderValue=0
+  V_N ~ last(V_N) + ( YD_N - C_N ) ; mode=voltage ; sliderValue=0
+  V_S ~ last(V_S) + ( YD_S - C_S ) ; mode=voltage ; sliderValue=0
   C_N ~ \alpha_1_N * YD_N + \alpha_2_N * last(V_N) ; mode=voltage ; sliderValue=0
   C_S ~ \alpha_1_S * YD_S + \alpha_2_S * last(V_S) ; mode=voltage ; sliderValue=0
   Hh_N ~ V_N - Bh_N ; mode=voltage ; sliderValue=0
@@ -95,16 +99,16 @@ window: 200
   G ~ G_N + G_S ; mode=voltage ; sliderValue=0
   Bh ~ Bh_N + Bh_S ; mode=voltage ; sliderValue=0
   Hh ~ Hh_N + Hh_S ; mode=voltage ; sliderValue=0
-  Bs ~ integrate(( G + last(r) *  ) - ( TX + last(r) * last(Bcb) )) ; mode=voltage ; sliderValue=0
-  Hs ~ integrate(Bcb - last(Bcb)) ; mode=voltage ; sliderValue=0
+  Bs ~ last(Bs) + ( G + last(r) * last(Bs) ) - ( TX + last(r) * last(Bcb) ) ; mode=voltage ; sliderValue=0
+  Hs ~ last(Hs) +  Bcb - last(Bcb) ; mode=voltage ; sliderValue=0
   Bcb ~ Bs - Bh ; mode=voltage ; sliderValue=0
 @end
 
 @equations reg_ext x=704 y=24
-  r ~ 0.025 ; mode=voltage ; sliderValue=0
-  G_S ~ 20 ; mode=voltage ; sliderValue=0
-  G_N ~ 20 ; mode=voltage ; sliderValue=0
-  mu_N ~ 0.15 ; mode=voltage ; sliderValue=0
+  r ~ 0.025 ; mode=flow ; sliderValue=0
+  G_S ~ 20 ; mode=flow ; sliderValue=0
+  G_N ~ 20 ; mode=flow ; sliderValue=0
+  mu_N ~ 0.15 ; mode=flow ; sliderValue=0
   mu_S ~ 0.15 ; mode=voltage ; sliderValue=0
   \alpha_1_N ~ 0.7 ; mode=voltage ; sliderValue=0
   \alpha_1_S ~ 0.7 ; mode=voltage ; sliderValue=0
@@ -119,7 +123,7 @@ window: 200
   \theta ~ 0.2 ; mode=voltage ; sliderValue=0
 @end
 
-@matrix bs_reg x=736 y=408
+@matrix bs_reg x=704 y=408
   type: transaction_flow
 
 | Transaction | North_HH | South_HH | Government | Central Bank |
@@ -127,6 +131,9 @@ window: 200
 | Money | +Hh_N | +Hh_S |  | -Hs |
 | Bills | +Bh_N | +Bh_S | -Bs | +Bcb |
 | Wealth | -V_N | -V_S | V_N + V_S |  |
+| GDP | Y_N | Y_S |  |  |
+| Govt. Exp |  |  | - G |  |
+| Consumption | - C_N | - C_S |  |  |
 @end
 
 @matrix tfm_reg x=192 y=568
@@ -134,11 +141,11 @@ window: 200
 
 | Transaction | North_HH | North_Firms | South_HH | South_Firms | Government | Central Bank |
 |-------------|------|------|------|------|------|------|
-| Consumption | -C_N | +C_N | -C_S | +C_S |  |  |
-| Govt. Exp |  | +G_N |  | +G_S | -G |  |
+| Consumption | - C_N | +C_N | - C_S | +C_S |  |  |
+| Govt. Exp |  | +G_N |  | +G_S | - G |  |
 | North X to South |  | +X_N |  | -IM_S |  |  |
 | South X to North |  | -IM_N |  | +X_S |  |  |
-| GDP | +Y_N | -Y_N | +Y_S | -Y_S |  |  |
+| GDP | Y_N | -Y_N | Y_S | -Y_S |  |  |
 | Interest payments | +r[-1] * Bh_N[-1] |  | +r[-1] * Bh_S[-1] |  | -r[-1] * Bs[-1] | +r[-1] * Bcb[-1] |
 | CB Profits |  |  |  |  | +r[-1] * Bcb[-1] | -r[-1] * Bcb[-1] |
 | Taxes | -TX_N |  | -TX_S |  | +TX |  |
@@ -157,13 +164,14 @@ window: 200
 @end
 
 @circuit
-207 1040 400 1104 400 164 Hh_S U:i_vMWr
+207 1040 384 1104 384 164 Hh_S U:i_vMWr
 207 1040 368 1104 368 164 Hh_N U:3uX0Af
 431 1376 144 1392 176 0 50 true false U:YIhcd7
+431 912 336 944 384 0 9 true false U:zIu8XN
 @end
 
 @scope Hh_S position=0
   speed: 1
-  flags: x2001206
+  flags: x2003206
   source: uid:i_vMWr value:0
 @end

@@ -688,14 +688,14 @@ import java.util.Map;
     }
 
     private String getReferenceDocPath() {
-        if (tableElement instanceof CurrentTransactionsMatrixElm || tableElement instanceof SFCFlowTable) {
+        if (tableElement instanceof CurrentTransactionsMatrixElm) {
             return "docs/reference/SfcMnaElementsReference.md";
         }
         return "docs/reference/StockFlowTableReference.md";
     }
 
     private String getReferenceDocTitle() {
-        if (tableElement instanceof CurrentTransactionsMatrixElm || tableElement instanceof SFCFlowTable) {
+        if (tableElement instanceof CurrentTransactionsMatrixElm) {
             return "SFC MNA Elements Reference";
         }
         return "Stock-Flow Table Reference";
@@ -1957,7 +1957,7 @@ import java.util.Map;
         }
         
         // Initialize new row
-        boolean cloneInsertedRowValues = tableElement instanceof SFCFlowTable;
+        boolean cloneInsertedRowValues = false;
         for (int c = 0; c < dataCols; c++) {
             if (cloneInsertedRowValues) {
                 String prior = cellData[rowIndex][c];
@@ -2022,8 +2022,7 @@ import java.util.Map;
     }
 
     private boolean isCtmLikeTable(TableElm element) {
-        return element instanceof CurrentTransactionsMatrixElm ||
-             element instanceof SFCFlowTable;
+        return element instanceof CurrentTransactionsMatrixElm;
     }
     
     // Delete a row at the specified index

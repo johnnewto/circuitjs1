@@ -1,0 +1,44 @@
+# CircuitJS1 SFCR Export
+# Generated from circuit simulation
+
+@init
+  timestep: 1
+  voltageUnit: $
+  timeUnit: yr
+  showDots: false
+  showVolts: true
+  showValues: true
+  showPower: false
+  equationTableTolerance: 0.00001
+  infoViewerUpdateIntervalMs: 100
+@end
+
+@equations sim_eqs x=176 y=24
+  YD ~ W * N - TX ; mode=flow ; sliderValue=0
+  C ~ \alpha_1 * YD + \alpha_2 * last(Hh) ; mode=flow ; sliderValue=0
+  Y5 ~ \alpha_1 * YD + \alpha_2 * last(Hh) ; mode=flow ; sliderValue=0  # hint5
+  Hh ~ YD - C + last(Hh) ; mode=flow ; sliderValue=0
+  N ~ Y / 1 ; mode=flow ; sliderValue=0
+  Y ~ C + G ; mode=flow ; sliderValue=0
+  TX ~ \theta * W * N ; mode=flow ; sliderValue=0
+  Hs ~ G - TX + last(Hs) ; mode=flow ; sliderValue=0
+  # external
+  G ~ 20 ; mode=param ; sliderValue=0
+  W ~ 1 ; mode=param ; sliderValue=0
+  \alpha_1 ~ 0.6 ; mode=param ; sliderValue=0
+  \alpha_2 ~ 0.4 ; mode=param ; sliderValue=0
+  \theta ~ 0.2 ; mode=param ; sliderValue=0
+@end
+
+@hints
+  Y5: hint5
+  Y3: hint3
+  Y6: hint6
+@end
+
+@circuit
+431 480 -16 560 16 0 10 true false U:pHgDzQ
+207 752 208 816 208 180 Y U:3XMSIA
+207 752 160 816 160 164 N U:EYZS9m
+@end
+

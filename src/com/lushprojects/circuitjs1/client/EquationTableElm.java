@@ -1371,293 +1371,101 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * @return true if Jacobian stamping was applied; false to use direct RHS stamping fallback.
      */
     private boolean stampVoltageModeNewtonJacobian(int row, ExprState state, double equationValue, int vn) {
-        String ineligibleReason = getVoltageModeNewtonIneligibilityReason(row);
+        EquationRow rowData = rows[row];
+        String ineligibleReason = EquationTableJacobianHelper.getVoltageModeIneligibilityReason(this, rowData);
         if (ineligibleReason != null) {
-            rows[row].lastNewtonJacobianStatus = ineligibleReason;
+            rowData.lastNewtonJacobianStatus = ineligibleReason;
             return false;
         }
 
         java.util.LinkedHashSet<String> refs = new java.util.LinkedHashSet<String>();
-        rows[row].compiledExpr.collectSamePeriodRefs(refs);
+        rowData.compiledExpr.collectSamePeriodRefs(refs);
         if (refs.isEmpty()) {
-            rows[row].lastNewtonJacobianStatus = "no same-period refs";
+            rowData.lastNewtonJacobianStatus = "no same-period refs";
             return false;
         }
 
-        double rhs = equationValue;
-        boolean stampedAny = false;
-        boolean sawMnaRef = false;
-        int invalidDerivativeCount = 0;
-
-        for (String refName : refs) {
-            if (refName == null || refName.isEmpty()) {
-                continue;
-            }
-
-            Integer labeledNode = LabeledNodeElm.getByName(refName);
-            if (labeledNode == null || labeledNode.intValue() <= 0) {
-                continue;
-            }
-            sawMnaRef = true;
-
-            double baseValue = sim.resolveSlotValue(refName);
-            double dv = Math.abs(baseValue) * 1e-6;
-            if (dv < 1e-6) {
-                dv = 1e-6;
-            }
-
-            double[] restore = perturbReferenceValue(refName, labeledNode.intValue(), baseValue + dv);
-            double perturbedValue;
-            try {
-                perturbedValue = rows[row].compiledExpr.eval(state);
-            } finally {
-                restoreReferenceValue(refName, labeledNode.intValue(), restore);
-            }
-
-            if (Double.isNaN(perturbedValue) || Double.isInfinite(perturbedValue)) {
-                invalidDerivativeCount++;
-                continue;
-            }
-
-            double dx = (perturbedValue - equationValue) / dv;
-            if (Double.isNaN(dx) || Double.isInfinite(dx)) {
-                invalidDerivativeCount++;
-                continue;
-            }
-
-            sim.stampMatrix(vn, labeledNode.intValue(), -dx);
-            rhs -= dx * baseValue;
-            stampedAny = true;
-        }
-
-        if (!stampedAny) {
-            if (!sawMnaRef) {
-                rows[row].lastNewtonJacobianStatus = "no mna refs";
-            } else if (invalidDerivativeCount > 0) {
-                rows[row].lastNewtonJacobianStatus = "mna refs but invalid derivatives";
+        // Value/voltage mode: single node, matrixSign = -1 → stamps -dx, rhs = +val - sum(dx·base)
+        int[] stats = new int[3]; // [sawMnaRef, stampedCount, invalidCount]
+        int stamped = EquationTableJacobianHelper.stampSingleNodeJacobian(this, rowData.compiledExpr,
+                state, refs, equationValue, vn, -1.0, stats);
+        if (stamped == 0) {
+            if (stats[0] == 0) {
+                rowData.lastNewtonJacobianStatus = "no mna refs";
+            } else if (stats[2] > 0) {
+                rowData.lastNewtonJacobianStatus = "mna refs but invalid derivatives";
             } else {
-                rows[row].lastNewtonJacobianStatus = "mna refs but no usable derivatives";
+                rowData.lastNewtonJacobianStatus = "mna refs but no usable derivatives";
             }
             return false;
         }
 
-        sim.stampRightSide(vn, rhs);
-        rows[row].lastNewtonJacobianApplied = true;
-        rows[row].lastNewtonJacobianStatus = "applied (refs=" + refs.size() + ")";
+        rowData.lastNewtonJacobianApplied = true;
+        rowData.lastNewtonJacobianStatus = "applied (refs=" + refs.size() + ")";
         return true;
     }
 
     /**
      * Phase 1 Newton Jacobian stamping for FLOW_MODE MNA rows.
      *
-     * Linearizes I = f(x) and stamps into the source/target KCL rows:
-     * - source row receives +dI/dx terms and RHS constant for -I contribution
-     * - target row receives -dI/dx terms and RHS constant for +I contribution
+     * With a 1Ω shunt resistor to ground on every flow endpoint, the KCL identity
+     * V_node = ±flowValue holds at each endpoint, making the flow Jacobian mathematically
+     * equivalent to two value Jacobians — one per endpoint with opposite sign conventions:
+     *
+     *   sourceNode: matrixSign = +1  →  stamps +dx,  rhs = −flowValue + Σ dx·V₀
+     *   targetNode: matrixSign = −1  →  stamps −dx,  rhs = +flowValue − Σ dx·V₀
+     *
+     * Both calls delegate to {@link #stampSingleNodeJacobian}, the same helper used by
+     * VOLTAGE_MODE, eliminating the previously duplicated per-ref perturbation loop.
      *
      * @return true if Jacobian stamping was applied; false to use direct current-source fallback.
      */
     private boolean stampFlowModeNewtonJacobian(int row, ExprState state, double flowValue, int sourceNode, int targetNode) {
-        String ineligibleReason = getFlowModeNewtonIneligibilityReason(row, sourceNode, targetNode);
+        EquationRow rowData = rows[row];
+        String ineligibleReason = EquationTableJacobianHelper.getFlowModeIneligibilityReason(this, rowData, sourceNode, targetNode);
         if (ineligibleReason != null) {
-            rows[row].lastNewtonJacobianStatus = ineligibleReason;
+            rowData.lastNewtonJacobianStatus = ineligibleReason;
             return false;
         }
 
         java.util.LinkedHashSet<String> refs = new java.util.LinkedHashSet<String>();
-        rows[row].compiledExpr.collectSamePeriodRefs(refs);
+        rowData.compiledExpr.collectSamePeriodRefs(refs);
         if (refs.isEmpty()) {
-            rows[row].lastNewtonJacobianStatus = "no same-period refs";
+            rowData.lastNewtonJacobianStatus = "no same-period refs";
             return false;
         }
 
-        double rhsSource = -flowValue;
-        double rhsTarget = flowValue;
-        boolean stampedAny = false;
-        boolean sawMnaRef = false;
-        int invalidDerivativeCount = 0;
-
-        for (String refName : refs) {
-            if (refName == null || refName.isEmpty()) {
-                continue;
-            }
-
-            Integer labeledNode = LabeledNodeElm.getByName(refName);
-            if (labeledNode == null || labeledNode.intValue() <= 0) {
-                continue;
-            }
-            sawMnaRef = true;
-
-            double baseValue = sim.resolveSlotValue(refName);
-            double dv = Math.abs(baseValue) * 1e-6;
-            if (dv < 1e-6) {
-                dv = 1e-6;
-            }
-
-            double[] restore = perturbReferenceValue(refName, labeledNode.intValue(), baseValue + dv);
-            double perturbedValue;
-            try {
-                perturbedValue = rows[row].compiledExpr.eval(state);
-            } finally {
-                restoreReferenceValue(refName, labeledNode.intValue(), restore);
-            }
-
-            if (Double.isNaN(perturbedValue) || Double.isInfinite(perturbedValue)) {
-                invalidDerivativeCount++;
-                continue;
-            }
-
-            double dx = (perturbedValue - flowValue) / dv;
-            if (Double.isNaN(dx) || Double.isInfinite(dx)) {
-                invalidDerivativeCount++;
-                continue;
-            }
-
-            int refNode = labeledNode.intValue();
-            sim.stampMatrix(sourceNode, refNode, dx);
-            sim.stampMatrix(targetNode, refNode, -dx);
-            rhsSource += dx * baseValue;
-            rhsTarget -= dx * baseValue;
-            stampedAny = true;
-        }
-
-        if (!stampedAny) {
-            if (!sawMnaRef) {
-                rows[row].lastNewtonJacobianStatus = "no mna refs";
-            } else if (invalidDerivativeCount > 0) {
-                rows[row].lastNewtonJacobianStatus = "mna refs but invalid derivatives";
-            } else {
-                rows[row].lastNewtonJacobianStatus = "mna refs but no usable derivatives";
-            }
+        if (!EquationTableJacobianHelper.hasAnyMnaRefs(refs)) {
+            rowData.lastNewtonJacobianStatus = "no mna refs";
             return false;
         }
 
-        sim.stampRightSide(sourceNode, rhsSource);
-        sim.stampRightSide(targetNode, rhsTarget);
-        rows[row].lastNewtonJacobianApplied = true;
-        rows[row].lastNewtonJacobianStatus = "applied flow jacobian (refs=" + refs.size() + ")";
+        // Stamp each endpoint using the shared single-node value Jacobian helper.
+        // sourceNode (current leaves):  matrixSign = +1 → stamps +dx, rhs = −flow + Σ dx·V₀
+        // targetNode (current enters):  matrixSign = −1 → stamps −dx, rhs = +flow − Σ dx·V₀
+        int[] statsSource = new int[3]; // [sawMnaRef, stampedCount, invalidCount]
+        int[] statsTarget = new int[3];
+        int stampedSource = (sourceNode > 0)
+                ? EquationTableJacobianHelper.stampSingleNodeJacobian(this, rowData.compiledExpr,
+                        state, refs, flowValue, sourceNode, +1.0, statsSource)
+                : 0;
+        int stampedTarget = (targetNode > 0)
+                ? EquationTableJacobianHelper.stampSingleNodeJacobian(this, rowData.compiledExpr,
+                        state, refs, flowValue, targetNode, -1.0, statsTarget)
+                : 0;
+        int totalStamped = stampedSource + stampedTarget;
+
+        if (totalStamped == 0) {
+            int totalInvalid = statsSource[2] + statsTarget[2];
+            rowData.lastNewtonJacobianStatus = (totalInvalid > 0)
+                    ? "mna refs but invalid derivatives"
+                    : "mna refs but no usable derivatives";
+            return false;
+        }
+
+        rowData.lastNewtonJacobianApplied = true;
+        rowData.lastNewtonJacobianStatus = "applied flow jacobian (refs=" + refs.size() + ")";
         return true;
-    }
-
-    /**
-     * Eligibility checks for Phase 1 Jacobian stamping.
-     */
-    private String getVoltageModeNewtonIneligibilityReason(int row) {
-        if (!isMnaMode()) {
-            return "ineligible: table not in mna mode";
-        }
-        if (sim == null) {
-            return "ineligible: sim unavailable";
-        }
-        if (!sim.equationTableNewtonJacobianEnabled) {
-            return "ineligible: global toggle off";
-        }
-        if (rows[row].outputMode != RowOutputMode.VOLTAGE_MODE) {
-            return "ineligible: row mode is " + rows[row].outputMode;
-        }
-        if (rows[row].compiledExpr == null) {
-            return "ineligible: missing compiled expr";
-        }
-        if (rows[row].rowVoltSource < 0) {
-            return "ineligible: no voltage source row";
-        }
-        if (rows[row].isAlias) {
-            return "ineligible: alias row";
-        }
-
-        String eq = rows[row].equation;
-        if (eq == null) {
-            return null;
-        }
-        String lower = eq.toLowerCase();
-        if (lower.contains("integrate(") || lower.contains("diff(") || lower.contains("lag(") ||
-                lower.contains("last(") || lower.contains("smooth(")) {
-            return "ineligible: stateful expr";
-        }
-        return null;
-    }
-
-    /** Eligibility checks for FLOW_MODE Jacobian stamping. */
-    private String getFlowModeNewtonIneligibilityReason(int row, int sourceNode, int targetNode) {
-        if (!isMnaMode()) {
-            return "ineligible: table not in mna mode";
-        }
-        if (sim == null) {
-            return "ineligible: sim unavailable";
-        }
-        if (!sim.equationTableNewtonJacobianEnabled) {
-            return "ineligible: global toggle off";
-        }
-        if (rows[row].outputMode != RowOutputMode.FLOW_MODE) {
-            return "ineligible: row mode is " + rows[row].outputMode;
-        }
-        if (rows[row].compiledExpr == null) {
-            return "ineligible: missing compiled expr";
-        }
-        if (sourceNode < 0 || targetNode < 0) {
-            return "ineligible: unresolved flow endpoints";
-        }
-        if (rows[row].isAlias) {
-            return "ineligible: alias row";
-        }
-
-        String eq = rows[row].equation;
-        if (eq == null) {
-            return null;
-        }
-        String lower = eq.toLowerCase();
-        if (lower.contains("integrate(") || lower.contains("diff(") || lower.contains("lag(") ||
-                lower.contains("last(") || lower.contains("smooth(")) {
-            return "ineligible: stateful expr";
-        }
-        return null;
-    }
-
-    /**
-     * Perturb a named reference value for finite-difference derivative estimation.
-     *
-     * Returns a restore snapshot:
-     * [0] previous node voltage,
-     * [1] previous circuitVariables slot value (NaN when unavailable),
-     * [2] slot index (NaN when unavailable).
-     */
-    private double[] perturbReferenceValue(String refName, int labeledNode, double newValue) {
-        double oldNodeVoltage = 0.0;
-        if (sim.nodeVoltages != null && labeledNode > 0 && labeledNode - 1 < sim.nodeVoltages.length) {
-            oldNodeVoltage = sim.nodeVoltages[labeledNode - 1];
-            sim.nodeVoltages[labeledNode - 1] = newValue;
-        }
-
-        double oldSlotValue = Double.NaN;
-        double slotIndex = Double.NaN;
-        if (sim.nameToSlot != null && sim.circuitVariables != null) {
-            Integer slot = sim.nameToSlot.get(refName);
-            if (slot != null && slot.intValue() >= 0 && slot.intValue() < sim.circuitVariables.length) {
-                int s = slot.intValue();
-                oldSlotValue = sim.circuitVariables[s];
-                sim.circuitVariables[s] = newValue;
-                slotIndex = s;
-            }
-        }
-
-        return new double[] { oldNodeVoltage, oldSlotValue, slotIndex };
-    }
-
-    /** Restore reference value snapshot created by perturbReferenceValue(). */
-    private void restoreReferenceValue(String refName, int labeledNode, double[] restore) {
-        if (restore == null || restore.length < 3) {
-            return;
-        }
-
-        if (sim.nodeVoltages != null && labeledNode > 0 && labeledNode - 1 < sim.nodeVoltages.length) {
-            sim.nodeVoltages[labeledNode - 1] = restore[0];
-        }
-
-        if (!Double.isNaN(restore[2]) && sim.circuitVariables != null) {
-            int s = (int) restore[2];
-            if (s >= 0 && s < sim.circuitVariables.length && !Double.isNaN(restore[1])) {
-                sim.circuitVariables[s] = restore[1];
-            }
-        }
     }
     
     /**
@@ -2187,74 +1995,154 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
     }
     
+    /**
+     * Perform one simulation subiteration step.
+     *
+     * Called every subiteration of the nonlinear solver until convergence.
+     * Iterates over all rows and dispatches to the appropriate handler:
+     * <ol>
+     *   <li>Alias rows — copy value from the aliased target.</li>
+     *   <li>At {@code t=0} with an {@code initialEquation} — stamp placeholder then evaluate initial value.</li>
+     *   <li>All other rows — evaluate via the mode handler ({@link RowModeHandler#evaluate}).</li>
+     * </ol>
+     * Convergence is checked inside each mode handler via {@link #checkEquationConvergence}.
+     */
     void doStep() {
         if (DEBUG && sim.subIterations == 0) {
             CirSim.console("[EquationTableElm." + tableName + "] doStep() at t=" + sim.t + " mnaMode=" + isMnaMode());
         }
         
         for (int row = 0; row < rowCount; row++) {
-            // Alias rows: copy target value to ComputedValues so other expressions
-            // can resolve the alias name. In MNA mode, read from shared node voltage.
-            // In pure mode, read from ComputedValues.
-            if (rows[row].isAlias) {
-                String targetName = rows[row].compiledExpr.getNodeName();
-                double val = resolveAliasTargetValue(targetName);
-                rows[row].outputValue = val;
-                rows[row].lastOutputValue = val;
-                registerOutputValue(row, val);
-                registerAliasFlowValue(row, targetName);
+            if (handleAliasRow(row)) {
                 continue;
             }
-            
-            // Handle initial value at t=0
-            if (sim.t == 0 && rows[row].compiledInitialExpr != null) {
-                // On first sub-iteration, use 0 as placeholder for VOLTAGE_MODE
-                // For STOCK_MODE, we need to stamp something reasonable
-                if (sim.subIterations == 0 && !rows[row].initialValueApplied) {
-                    rows[row].outputValue = 0;
-                    if (rows[row].outputMode == RowOutputMode.STOCK_MODE) {
-                        // STOCK_MODE: stamp zero current for now, will be corrected on next subiteration
-                        int sourceNode = rows[row].labeledNodeNumber;
-                        int targetNode = rows[row].targetNodeNumber;
-                        if (sourceNode >= 0 && targetNode >= 0) {
-                            sim.stampCurrentSource(sourceNode, targetNode, 0);
-                        }
-                    } else if (isMnaMode() && rows[row].rowVoltSource >= 0) {
-                        int vn = voltSource + rows[row].rowVoltSource + sim.nodeList.size();
-                        sim.stampRightSide(vn, 0);
-                    }
-                    continue;
-                }
-                
-                // Evaluate initial value and compute history current on first pass
-                if (!rows[row].initialValueApplied) {
-                    evaluateInitialValue(row);
-                    continue;
-                }
-                
-                // After initial value is computed, KEEP stamping the history current on subsequent iterations
-                // (circuitRightSide gets reset each iteration, so we must re-stamp)
-                if (rows[row].outputMode == RowOutputMode.STOCK_MODE) {
-                    int sourceNode = rows[row].labeledNodeNumber;
-                    int targetNode = rows[row].targetNodeNumber;
-                    if (sourceNode >= 0 && targetNode >= 0) {
-                        double cap = rows[row].capacitance;
-                        if (cap <= 0) cap = 1.0;
-                        double compResistance = sim.timeStep / (2 * cap);
-                        double initialValue = rows[row].outputValue; // stored from evaluateInitialValue
-                        double historyCurrent = -initialValue / compResistance - rows[row].capLastCurrent;
-                        double inflowValue = rows[row].flowValue; // also stored from evaluateInitialValue
-                        // inflowValue is current INTO node, so SUBTRACT (negative = into)
-                        double totalCurrent = historyCurrent - inflowValue;
-                        sim.stampCurrentSource(sourceNode, targetNode, totalCurrent);
-                    }
-                }
+
+            if (handleInitialValueRowAtT0(row)) {
                 continue;
             }
             
             // Normal timestep: evaluate via mode handler
             getHandler(rows[row].outputMode).evaluate(row);
         }
+    }
+
+    /**
+     * Handle an alias row during {@link #doStep}.
+     *
+     * Alias rows share the electrical node of their target; no equation needs solving.
+     * The target value is read (via {@link #resolveAliasTargetValue}) and written
+     * to {@code ComputedValues} and the row's {@code outputValue}.
+     * The flow namespace key ({@code <alias>.flow}) is also mirrored from the target
+     * when the target has published a flow value.
+     *
+     * @param row Row index to check and handle.
+     * @return {@code true} if the row is an alias (caller should skip normal processing).
+     */
+    private boolean handleAliasRow(int row) {
+        if (!rows[row].isAlias) {
+            return false;
+        }
+
+        String targetName = rows[row].compiledExpr.getNodeName();
+        double val = resolveAliasTargetValue(targetName);
+        rows[row].outputValue = val;
+        rows[row].lastOutputValue = val;
+        registerOutputValue(row, val);
+        registerAliasFlowValue(row, targetName);
+        return true;
+    }
+
+    /**
+     * Handle a row that has an {@code initialEquation} during the {@code t=0} timestep.
+     *
+     * At {@code t=0}, up to three subiteration paths are taken (in order):
+     * <ol>
+     *   <li>First subiteration ({@code subIterations==0}): stamp a zero placeholder so
+     *       the solver has a valid RHS to solve from.</li>
+     *   <li>Subsequent subiterations, not yet applied: call {@link #evaluateInitialValue}
+     *       to compute and stamp the true initial value and seed expression state.</li>
+     *   <li>After initial value is applied: re-stamp STOCK_MODE history current so the
+     *       companion model stays consistent.</li>
+     * </ol>
+     *
+     * @param row Row index to check and handle.
+     * @return {@code true} if this is an initial-value row at t=0 (caller should skip
+     *         normal equation evaluation for this subiteration).
+     */
+    private boolean handleInitialValueRowAtT0(int row) {
+        if (sim.t != 0 || rows[row].compiledInitialExpr == null) {
+            return false;
+        }
+
+        if (sim.subIterations == 0 && !rows[row].initialValueApplied) {
+            stampInitialPlaceholder(row);
+            return true;
+        }
+
+        if (!rows[row].initialValueApplied) {
+            evaluateInitialValue(row);
+            return true;
+        }
+
+        restampInitialStockCurrent(row);
+        return true;
+    }
+
+    /**
+     * Stamp a zero-value placeholder into the MNA matrix for a row at the start of the
+     * {@code t=0} timestep (first subiteration only).
+     *
+     * This gives the solver a valid, non-garbage RHS before the initial equation has been
+     * evaluated.  It is replaced in the next subiteration by the true initial value.
+     *
+     * @param row Row index to stamp a placeholder for.
+     */
+    private void stampInitialPlaceholder(int row) {
+        rows[row].outputValue = 0;
+        if (rows[row].outputMode == RowOutputMode.STOCK_MODE) {
+            int sourceNode = rows[row].labeledNodeNumber;
+            int targetNode = rows[row].targetNodeNumber;
+            if (sourceNode >= 0 && targetNode >= 0) {
+                sim.stampCurrentSource(sourceNode, targetNode, 0);
+            }
+            return;
+        }
+
+        if (isMnaMode() && rows[row].rowVoltSource >= 0) {
+            int vn = voltSource + rows[row].rowVoltSource + sim.nodeList.size();
+            sim.stampRightSide(vn, 0);
+        }
+    }
+
+    /**
+     * Re-stamp the STOCK_MODE companion current source at {@code t=0} after the initial
+     * value has been applied and {@code initialValueApplied} is {@code true}.
+     *
+     * Subsequent subiterations at {@code t=0} keep the companion current consistent
+     * with the initial stock voltage by re-computing the trapezoidal history current
+     * and subtracting the equation's inflow contribution.
+     *
+     * @param row Row index to re-stamp.
+     */
+    private void restampInitialStockCurrent(int row) {
+        if (rows[row].outputMode != RowOutputMode.STOCK_MODE) {
+            return;
+        }
+
+        int sourceNode = rows[row].labeledNodeNumber;
+        int targetNode = rows[row].targetNodeNumber;
+        if (sourceNode < 0 || targetNode < 0) {
+            return;
+        }
+
+        double cap = rows[row].capacitance;
+        if (cap <= 0) cap = 1.0;
+        double compResistance = sim.timeStep / (2 * cap);
+        double initialValue = rows[row].outputValue;
+        double historyCurrent = -initialValue / compResistance - rows[row].capLastCurrent;
+        double inflowValue = rows[row].flowValue;
+        double totalCurrent = historyCurrent - inflowValue;
+        sim.stampCurrentSource(sourceNode, targetNode, totalCurrent);
     }
     
     /**
@@ -2350,28 +2238,67 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         double convergeLimit = getConvergeLimit(row);
         double diff = Math.abs(equationValue - rows[row].lastOutputValue);
         boolean converged = diff <= convergeLimit;
-        
-        // For diff() equations, skip convergence check during early subiterations
-        // because the input to diff() needs time to settle first
-        if (rows[row].hasDiffExpr && sim.subIterations < 5) {
-            // Don't report non-convergence yet - let input settle
+
+        if (shouldSkipConvergenceCheck(row)) {
             return;
         }
-        
+
         if (!converged) {
             sim.converged = false;
             failedConvergenceRow = row;
-            convergenceFailureInfo = rows[row].outputName + ": diff=" + getShortUnitText(diff, "") + 
-                ", limit=" + getShortUnitText(convergeLimit, "") + 
-                ", last=" + getShortUnitText(rows[row].lastOutputValue, "") +
-                ", new=" + getShortUnitText(equationValue, "");
-            if (sim.subIterations > sim.convergenceCheckThreshold) {
-                CirSim.console("[" + tableName + "] t=" + sim.t + " dt=" + sim.timeStep + " Convergence failure: " + convergenceFailureInfo);
-            }
+            convergenceFailureInfo = buildConvergenceFailureInfo(row, diff, convergeLimit, equationValue);
+            logConvergenceFailureIfThresholdExceeded();
         } else if (failedConvergenceRow == row) {
             // This row converged now, clear the failure
             failedConvergenceRow = -1;
             convergenceFailureInfo = null;
+        }
+    }
+
+    /**
+     * Return {@code true} when convergence checking should be skipped for this row and subiteration.
+     *
+     * For rows that use {@code diff()}, the numerical differentiation is not meaningful until
+     * the solver has run at least 5 subiterations (the first few passes have transient state).
+     * Skipping early checks prevents premature divergence flags.
+     *
+     * @param row Row index.
+     * @return {@code true} if convergence checking should be bypassed.
+     */
+    private boolean shouldSkipConvergenceCheck(int row) {
+        return rows[row].hasDiffExpr && sim.subIterations < 5;
+    }
+
+    /**
+     * Build a human-readable description of a convergence failure for debug display.
+     *
+     * Shows the output name, the difference between old and new values, the convergence
+     * limit, and both old and new values in short-unit form.
+     *
+     * @param row           Row that failed to converge.
+     * @param diff          Absolute difference between the new and previous values.
+     * @param convergeLimit Convergence threshold that was exceeded.
+     * @param equationValue New (not-yet-converged) computed value.
+     * @return Formatted diagnostics string stored in {@link #convergenceFailureInfo}.
+     */
+    private String buildConvergenceFailureInfo(int row, double diff, double convergeLimit, double equationValue) {
+        return rows[row].outputName + ": diff=" + getShortUnitText(diff, "")
+            + ", limit=" + getShortUnitText(convergeLimit, "")
+            + ", last=" + getShortUnitText(rows[row].lastOutputValue, "")
+            + ", new=" + getShortUnitText(equationValue, "");
+    }
+
+    /**
+     * Log the current convergence failure to the browser console if the subiteration count
+     * has exceeded {@link CirSim#convergenceCheckThreshold}.
+     *
+     * The threshold prevents log spam during normal solving; messages only appear when
+     * the solver is genuinely struggling (too many iterations).
+     */
+    private void logConvergenceFailureIfThresholdExceeded() {
+        if (sim.subIterations > sim.convergenceCheckThreshold) {
+            CirSim.console("[" + tableName + "] t=" + sim.t + " dt=" + sim.timeStep
+                    + " Convergence failure: " + convergenceFailureInfo);
         }
     }
     

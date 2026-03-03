@@ -284,7 +284,7 @@ MouseOutHandler, MouseWheelHandler {
 	boolean adjustTimeStep;
 	
 	// Convergence check threshold - subiterations before marking element as non-converged
-	int convergenceCheckThreshold = 20;
+	int convergenceCheckThreshold = 100;
 	
 	// Developer mode - shows additional debug info (framerate, steprate, performance metrics)
 	boolean developerMode = false;
@@ -303,6 +303,9 @@ MouseOutHandler, MouseWheelHandler {
 
 	// When true, append timestamp query parameter when loading setup lists/circuits
 	boolean enableCacheBustedUrls = true;
+
+	// Global toggle for offscreen table blit caching
+	boolean tableRenderCacheEnabled = true;
 	
 	// Circuit hint types - show helpful formulas when related elements are present
 	static final int HINT_LC = 1;      // LC resonant frequency hint
@@ -570,6 +573,7 @@ public CirSim() {
 	    useWeightedPriority = getOptionFromStorage("weightedPriority", false);
 	    showElectronicsCircuits = getOptionFromStorage("showElectronicsCircuits", false);
 	    enableCacheBustedUrls = getOptionFromStorage("enableCacheBustedUrls", true);
+	    tableRenderCacheEnabled = getOptionFromStorage("tableRenderCacheEnabled", true);
 	    equationTableNewtonJacobianEnabled = getOptionFromStorage("equationTableNewtonJacobianEnabled", false);
 	    positiveColor = qp.getValue("positiveColor");
 	    negativeColor = qp.getValue("negativeColor");
@@ -4274,7 +4278,6 @@ public CirSim() {
                     }
                 }
 
-
                 // Commit pending computed values to current buffer after ALL doStep() calls complete.
                 // This enables order-independent evaluation - all elements see the same values
                 // regardless of their position in the element array.
@@ -4791,7 +4794,7 @@ public CirSim() {
     	if (item=="sliders")
     	    doSliders(menuElm);
     	
-	    if (item=="viewSankey" && (menuElm instanceof SFCTableElm || menuElm instanceof SFCFlowTable)) {
+	    if (item=="viewSankey" && (menuElm instanceof SFCTableElm)) {
 	    	SFCSankeyViewer viewer = new SFCSankeyViewer((TableElm) menuElm);
 	    	viewer.openDialog();
     	}
@@ -6688,7 +6691,7 @@ public CirSim() {
 		    elmSwapMenuItem .setEnabled(mouseElm.getPostCount() == 2);
     	    	    elmSplitMenuItem.setEnabled(canSplit(mouseElm));
     	    	    elmSliderMenuItem.setEnabled(sliderItemEnabled(mouseElm));
-		    	    elmSankeyMenuItem.setEnabled(mouseElm instanceof SFCTableElm || mouseElm instanceof SFCFlowTable);
+		    	    elmSankeyMenuItem.setEnabled(mouseElm instanceof SFCTableElm);
 		    boolean canFlipX = mouseElm.canFlipX();
 		    boolean canFlipY = mouseElm.canFlipY();
 		    boolean canFlipXY = mouseElm.canFlipXY();
@@ -8197,7 +8200,7 @@ public CirSim() {
 		case 267: return new ComputedValueSourceElm(x1, y1, x2, y2, f, st);
 		case 268: return new SFCStockElm(x1, y1, x2, y2, f, st);
 		case 269: return new SFCFlowElm(x1, y1, x2, y2, f, st);
-		case 270: return new SFCFlowTable(x1, y1, x2, y2, f, st);
+		case 270: return new SFCTableElm(x1, y1, x2, y2, f, st);
 		case 350: return new ThermistorNTCElm(x1, y1, x2, y2, f, st);
     	case 368: return new TestPointElm(x1, y1, x2, y2, f, st);
     	case 370: return new AmmeterElm(x1, y1, x2, y2, f, st);
@@ -8563,8 +8566,8 @@ public CirSim() {
 			return (CircuitElm) new SFCStockElm(x1, y1);
 	if (n=="SFCFlowElm")
 			return (CircuitElm) new SFCFlowElm(x1, y1);
-	if (n=="SFCKclNodeTableElm" || n=="SFCFlowTable")
-			return (CircuitElm) new SFCFlowTable(x1, y1);
+	if (n=="SFCKclNodeTableElm")
+			return (CircuitElm) new SFCTableElm(x1, y1);
 	if (n=="ComputedValueSourceElm")
 			return (CircuitElm) new ComputedValueSourceElm(x1, y1);
 	if (n.equals("TableVoltageElm")) 

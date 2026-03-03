@@ -159,7 +159,7 @@ public class SFCSankeyElm extends CircuitElm {
         
         for (int i = 0; i < sim.elmList.size(); i++) {
             CircuitElm elm = sim.elmList.get(i);
-            if (elm instanceof SFCTableElm || elm instanceof SFCFlowTable) {
+            if (elm instanceof SFCTableElm) {
                 TableElm table = (TableElm) elm;
                 
                 // If no specific name, use first found

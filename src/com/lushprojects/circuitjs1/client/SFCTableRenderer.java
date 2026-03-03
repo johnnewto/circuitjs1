@@ -16,6 +16,10 @@ import com.lushprojects.circuitjs1.client.TableColumn.ColumnType;
  * - Σ row at bottom (column sums for vertical consistency)
  * - Red highlighting for non-zero sums (balance errors)
  * - "Sector" type label for sector columns
+ *
+ * Rendering cache note:
+ * This renderer intentionally reuses TableRenderer's offscreen blit cache
+ * (cached canvas + drawImage composite) for static layers.
  */
 public class SFCTableRenderer extends TableRenderer {
     private final SFCTableElm sfcTable;
@@ -23,6 +27,24 @@ public class SFCTableRenderer extends TableRenderer {
     public SFCTableRenderer(SFCTableElm table) {
         super(table);
         this.sfcTable = table;
+    }
+
+    /**
+     * Uses shared blit caching from TableRenderer.
+     */
+    @Override
+    public void draw(Graphics g) {
+        super.draw(g);
+    }
+
+    @Override
+    protected void onStaticCacheRebuilt() {
+        // CirSim.console("[SFCTableRenderer] Blit cache rebuilt and ready");
+    }
+
+    @Override
+    protected void onCacheHitThrottled() {
+        // CirSim.console("[SFCTableRenderer] Blit cache hit (reused cached canvas)");
     }
     
     /**

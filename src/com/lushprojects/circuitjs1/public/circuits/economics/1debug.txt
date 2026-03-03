@@ -2,176 +2,226 @@
 # Generated from circuit simulation
 
 @info
-# Model Live Dashboard
 
-> **Time:** {{t}}  
-> **Step:** {{dt}}
+# Model Documentation
 
-## Key Variables
+## Bank-Money World Model (BMW)
+## Flow-Mode Equation Implementation
 
-- Add live placeholders like `{{Y}}`, `{{C_d}}`, `{{H_h}}`
+**Source:** Godley & Lavoie (2007) Chapter 7  
+**Based on:** sfcr R package implementation
 
-## Compose Tables
+This model provides an **SFC Flow Table** version of BMW using EquationTable row modes.
 
-- Add live tables like
+### Approach
 
-| Variable | Live value | Meaning |
-|---|---:|---|
-| Output | Y = {{Y}} | Aggregate production/income |
-| Disposable income | YD = {{YD}} | Household disposable income |
+- **FLOW mode rows** (`A->B`) for directional transactions
+- **STOCK mode rows** for state accumulation (`Mh`, `Ld`, `K`)
+- **PARAM mode rows** for exogenous/behavioral constants
+- **Flow Table matrix** for transaction tracking
 
-## Tables
+### Key Variables
 
-```{circuit}
-table: reg eqs
-```
+| Variable | Description |
+|----------|-------------|
+| **Y** | National income (output) |
+| **C** | Consumption |
+| **I** | Investment |
+| **K** | Capital stock |
+| **Mh** | Household money holdings |
+| **Ld** | Loan demand |
 
-```{circuit}
-table: reg ext
-```
+### Steady-State Values
 
-```{circuit}
-table: bs reg
-```
+At steady state (t → ∞):
+- Y = 160, C = 144, I = 16
+- K = 160 (capital-output ratio = 1)
+- Mh = Ms = Ld = Ls = 160
 
-```{circuit}
-table: tfm reg
-```
+### References
 
-## Plots
+> Godley, W., & Lavoie, M. (2007). *Monetary Economics: An Integrated Approach to Credit, Money, Income, Production and Wealth*. Palgrave Macmillan.
 
-- No scope plots detected. Add a plot block manually.
-
-## Sankeys
-
-```{circuit}
-sankey: bs reg
-title: bs reg
-width: 600
-height: 320
-```
-
-```{circuit}
-sankey: tfm reg
-title: tfm reg
-width: 600
-height: 320
-```
-
-## Notes
-
-- Edit text and equations as needed.
-- Use `Save to Model` to persist into the circuit @info block.
 @end
 
 @init
-  timestep: 1
+  timestep: 0.1
   voltageUnit: $
   timeUnit: yr
   showDots: false
   showVolts: true
   showValues: true
   showPower: false
-  equationTableTolerance: 0.0001
+  equationTableTolerance: 0.001
   infoViewerUpdateIntervalMs: 100
 @end
 
-@equations reg_eqs x=176 y=24
-  Y_N ~ C_N + G_N + X_N - IM_N ; mode=voltage ; sliderValue=0
-  Y_S ~ C_S + G_S + X_S - IM_S ; mode=voltage ; sliderValue=0
-  IM_N ~ mu_N * Y_N ; mode=voltage ; sliderValue=0
-  IM_S ~ mu_S * Y_S ; mode=voltage ; sliderValue=0
-  X_N ~ IM_S ; mode=voltage ; sliderValue=0
-  X_S ~ IM_N ; mode=voltage ; sliderValue=0
-  YD_N ~ Y_N - TX_N + last(r) * last(Bh_N) ; mode=voltage ; sliderValue=0
-  YD_S ~ Y_S - TX_S + last(r) * last(Bh_S) ; mode=voltage ; sliderValue=0
-  TX_N ~ \theta * ( Y_N + last(r) * last(Bh_N) ) ; mode=voltage ; sliderValue=0
-  TX_S ~ \theta * ( Y_S + last(r) * last(Bh_S) ) ; mode=voltage ; sliderValue=0
-  V_N ~ last(V_N) + ( YD_N - C_N ) ; mode=voltage ; sliderValue=0
-  V_S ~ last(V_S) + ( YD_S - C_S ) ; mode=voltage ; sliderValue=0
-  C_N ~ \alpha_1_N * YD_N + \alpha_2_N * last(V_N) ; mode=voltage ; sliderValue=0
-  C_S ~ \alpha_1_S * YD_S + \alpha_2_S * last(V_S) ; mode=voltage ; sliderValue=0
-  Hh_N ~ V_N - Bh_N ; mode=voltage ; sliderValue=0
-  Hh_S ~ V_S - Bh_S ; mode=voltage ; sliderValue=0
-  Bh_N ~ V_N * ( lambda0_N + lambda1_N * r - lambda2_N * ( YD_N/V_N ) ) ; mode=voltage ; sliderValue=0
-  Bh_S ~ V_S * ( lambda0_S + lambda1_S * r - lambda2_S * ( YD_S/V_S ) ) ; mode=voltage ; sliderValue=0
-  TX ~ TX_N + TX_S ; mode=voltage ; sliderValue=0
-  G ~ G_N + G_S ; mode=voltage ; sliderValue=0
-  Bh ~ Bh_N + Bh_S ; mode=voltage ; sliderValue=0
-  Hh ~ Hh_N + Hh_S ; mode=voltage ; sliderValue=0
-  Bs ~ last(Bs) + ( G + last(r) * last(Bs) ) - ( TX + last(r) * last(Bcb) ) ; mode=voltage ; sliderValue=0
-  Hs ~ last(Hs) +  Bcb - last(Bcb) ; mode=voltage ; sliderValue=0
-  Bcb ~ Bs - Bh ; mode=voltage ; sliderValue=0
+@equations Parameters x=544 y=360
+  rl ~ 0.025 ; mode=param ; sliderValue=0  # Interest rate on loans
+  \alpha0 ~ 20 ; mode=param ; sliderValue=0  # Autonomous consumption
+  \alpha1 ~ 0.75 ; mode=param ; sliderValue=0  # Propensity to consume from income
+  \alpha2 ~ 0.10 ; mode=param ; sliderValue=0  # Propensity to consume from wealth
+  \delta ~ 0.1 ; mode=param ; sliderValue=0  # Depreciation rate
+  \gamma ~ 0.15 ; mode=param ; sliderValue=0  # Adjustment speed of capital to target
+  \kappa ~ 1 ; mode=param ; sliderValue=0  # Capital-output ratio target
+  pr ~ 1 ; mode=param ; sliderValue=0  # Labor productivity
 @end
 
-@equations reg_ext x=704 y=24
-  r ~ 0.025 ; mode=flow ; sliderValue=0
-  G_S ~ 20 ; mode=flow ; sliderValue=0
-  G_N ~ 20 ; mode=flow ; sliderValue=0
-  mu_N ~ 0.15 ; mode=flow ; sliderValue=0
-  mu_S ~ 0.15 ; mode=voltage ; sliderValue=0
-  \alpha_1_N ~ 0.7 ; mode=voltage ; sliderValue=0
-  \alpha_1_S ~ 0.7 ; mode=voltage ; sliderValue=0
-  \alpha_2_N ~ 0.3 ; mode=voltage ; sliderValue=0
-  \alpha_2_S ~ 0.3 ; mode=voltage ; sliderValue=0
-  lambda0_N ~ 0.67 ; mode=voltage ; sliderValue=0
-  lambda0_S ~ 0.67 ; mode=voltage ; sliderValue=0
-  lambda1_N ~ 0.05 ; mode=voltage ; sliderValue=0
-  lambda1_S ~ 0.05 ; mode=voltage ; sliderValue=0
-  lambda2_N ~ 0.01 ; mode=voltage ; sliderValue=0
-  lambda2_S ~ 0.01 ; mode=voltage ; sliderValue=0
-  \theta ~ 0.2 ; mode=voltage ; sliderValue=0
+@equations Firms x=32 y=488
+  Y ~ Cs + Id ; mode=flow ; sliderValue=0  # National income (output)
+  WBd ~ Y - lag(rl, 1) * lag(Ld,1) - AF ; mode=flow ; sliderValue=0  # Wage bill demanded
+  AF ~ \delta * lag(K,1) ; mode=flow ; sliderValue=0  # Amortization funds = delta * lag(K,1)
+  Ld ~ (Id - AF) ; mode=stock ; sliderValue=0  # Loan demand
+  Y5 ~ (Id - AF) ; mode=stock ; sliderValue=0  # hint5
+  Y6 ~ rm*Mh ; mode=voltage ; sliderValue=0  # hint5
+  Y7 ~ 1*rm ; mode=voltage ; sliderValue=0  # hint7
 @end
 
-@matrix bs_reg x=704 y=408
+@equations Households x=304 y=488
+  YD ~ WBs + rl * lag(Mh,1) ; mode=flow ; sliderValue=0  # Household disposable income = WBs + lag(rm,1) * lag(Mh,1)
+  Mh ~ YD + Cd ; mode=stock ; sliderValue=0  # Household money holdings (deposits)
+@end
+
+@equations Banks x=720 y=536
+  Ms ~ Ls ; mode=voltage ; sliderValue=0  # Money supply (bank deposits)
+  rm ~ rl ; mode=voltage ; sliderValue=0  # Interest rate on deposits
+  Y3 ~ 1*rm ; mode=voltage ; sliderValue=0  # hint3
+@end
+
+@equations WageBill x=32 y=648
+  WBs ~ W * Ns ; mode=flow ; sliderValue=0  # Wage bill supplied
+  Nd->Ns ~ Y / pr ; mode=flow ; sliderValue=0  # Labor demand
+  W ~ WBd / max(Ns, 0.01) ; mode=flow ; sliderValue=0  # Wage rate
+  Y4 ~ WBd/Ns ; mode=voltage ; sliderValue=0  # hint4
+@end
+
+@equations Consumption x=320 y=568
+  Cd->Cs ~ \alpha0 + \alpha1 * YD + \alpha2 * lag(Mh,1) ; mode=flow ; sliderValue=0  # Consumption demand
+@end
+
+@equations Investment x=448 y=664
+  K ~ Id - DA ; mode=stock ; sliderValue=0  # Capital stock
+  DA ~ \delta * lag(K,1) ; mode=flow ; sliderValue=0  # Depreciation actual = delta * lag(K,1)
+  KT ~ \kappa * lag(Y,1) ; mode=flow ; sliderValue=0  # Target capital stock = kappa * lag(Y,1)
+  Is->Id ~ \gamma * (KT - lag(K,1)) + DA ; mode=flow ; sliderValue=0  # Investment demand
+@end
+
+@equations MarketClearing x=784 y=680
+  Ls ~ Ld ; mode=voltage ; sliderValue=0  # Loan supply
+@end
+
+@equations \Delta x=256 y=656
+  \DeltaLd ~ diff(Ld) ; mode=voltage ; sliderValue=0
+  \DeltaLs ~ diff(Ls) ; mode=voltage ; sliderValue=0
+  \DeltaMs ~ diff(Ms) ; mode=voltage ; sliderValue=0  # hint3
+  \DeltaMh ~ diff(Mh) ; mode=voltage ; sliderValue=0  # hint4
+@end
+
+@matrix Transaction_Flow_Matrix x=16 y=152
   type: transaction_flow
 
-| Transaction | North_HH | South_HH | Government | Central Bank |
-|-------------|------|------|------|------|
-| Money | +Hh_N | +Hh_S |  | -Hs |
-| Bills | +Bh_N | +Bh_S | -Bs | +Bcb |
-| Wealth | -V_N | -V_S | V_N + V_S |  |
-| GDP | Y_N | Y_S |  |  |
-| Govt. Exp |  |  | - G |  |
-| Consumption | - C_N | - C_S |  |  |
-@end
-
-@matrix tfm_reg x=192 y=568
-  type: transaction_flow
-
-| Transaction | North_HH | North_Firms | South_HH | South_Firms | Government | Central Bank |
+| Transaction | Households_C | Firms_{Current} | Firms_{Capital} | Banks_{Current} | Banks_{Capital} | Govt |
 |-------------|------|------|------|------|------|------|
-| Consumption | - C_N | +C_N | - C_S | +C_S |  |  |
-| Govt. Exp |  | +G_N |  | +G_S | - G |  |
-| North X to South |  | +X_N |  | -IM_S |  |  |
-| South X to North |  | -IM_N |  | +X_S |  |  |
-| GDP | Y_N | -Y_N | Y_S | -Y_S |  |  |
-| Interest payments | +r[-1] * Bh_N[-1] |  | +r[-1] * Bh_S[-1] |  | -r[-1] * Bs[-1] | +r[-1] * Bcb[-1] |
-| CB Profits |  |  |  |  | +r[-1] * Bcb[-1] | -r[-1] * Bcb[-1] |
-| Taxes | -TX_N |  | -TX_S |  | +TX |  |
-| Ch. cash | -diff(Hh_N) |  | -diff(Hh_S) |  |  | +diff(Hs) |
-| Ch. bills | -diff(Bh_N) |  | -diff(Bh_S) |  | +diff(Bs) | -diff(Bcb) |
+| Consumption | Cd | Cs |  |  | 0 |  |
+| Investment |  | Id | -Id |  | 0 |  |
+| [Production] |  | Y |  |  |  |  |
+| Wages | WBd | -WBs |  |  | 0 |  |
+| Depreciation |  | -DA | DA |  | 0 |  |
+| Interest on Loans |  | -rl*Ld |  | rl*Ls | 0 |  |
+| Interest on Deposits | rm*Mh |  |  | -rm*Ms | 0 |  |
+| Change in Loans |  |  | \DeltaLd |  | - \DeltaLs |  |
+| Change in Deposits | -\DeltaMh |  |  |  | \DeltaMs |  |
 @end
 
-@sankey x=912 y=32
-  source: tfm reg
+@matrix Balance_Sheet x=48 y=360
+  type: transaction_flow
+
+| Transaction | Households | Firms | Banks |
+|-------------|------|------|------|
+| Deposits | Mh |  | -Ms |
+| Loans |  | -Ld | Ls |
+| Fixed Capital |  | K |  |
+| Balance (net worth) | -Mh |  |  |
+@end
+
+@sankey x=816 y=160
   layout: linear
   width: 400
   height: 250
   showScaleBar: false
   useHighWaterMark: true
-  showFlowValues: false
+  showFlowValues: true
+@end
+
+@hints
+  rl: Interest rate on loans
+  \alpha0: Autonomous consumption
+  \alpha1: Propensity to consume from income
+  \alpha2: Propensity to consume from wealth
+  \delta: Depreciation rate
+  \gamma: Adjustment speed of capital to target
+  \kappa: Capital-output ratio target
+  pr: Labor productivity
+  Y: National income (output)
+  WBd: Wage bill demanded
+  AF: Amortization funds = delta * lag(K,1)
+  Ld: Loan demand
+  Y5: hint5
+  Y6: hint5
+  Y7: hint7
+  YD: Household disposable income = WBs + lag(rm,1) * lag(Mh,1)
+  Mh: Household money holdings (deposits)
+  Ms: Money supply (bank deposits)
+  rm: Interest rate on deposits
+  Y3: hint3
+  WBs: Wage bill supplied
+  Nd: Labor demand
+  W: Wage rate
+  Y4: hint4
+  Cd: Consumption demand
+  K: Capital stock
+  DA: Depreciation actual = delta * lag(K,1)
+  KT: Target capital stock = kappa * lag(Y,1)
+  Is: Investment demand
+  Ls: Loan supply
+  \DeltaMs: hint3
+  \DeltaMh: hint4
+  Id: Investment demand
+  KK: hint7
+  Cs: Consumption supply
+  Ns: Labor supply
+  check_money: Money market
+  check_loans: Loan market
+  check_labor: Labor market
+  \\alpha0: Autonomous consumption
+  \\alpha1: Propensity to consume from income
+  \\alpha2: Propensity to consume from wealth
+  \\delta: Depreciation rate
+  \\gamma: Investment adjustment speed
+  \\kappa: Capital-output ratio
+  \DeltaMd: hint4
 @end
 
 @circuit
-207 1040 384 1104 384 164 Hh_S U:i_vMWr
-207 1040 368 1104 368 164 Hh_N U:3uX0Af
-431 1376 144 1392 176 0 50 true false U:YIhcd7
-431 912 336 944 384 0 9 true false U:zIu8XN
+x 89 92 632 95 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW\s(SFC\sFlow\sTable) 808080FF U:Ck8M0l
+x 89 116 332 119 4 12 Bank-Money\sWorld\smodel\s(flow-mode\svariant) 808080FF U:BRUOXo
+x 89 140 374 143 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF U:C67zij
+207 1168 528 1232 528 180 Y U:K79ipy
+431 704 64 752 96 0 150 true false U:Ozs0Ey
 @end
 
-@scope Hh_S position=0
+@scope Y position=0
   speed: 1
-  flags: x2003206
-  source: uid:i_vMWr value:0
+  flags: x2001206
+  source: uid:K79ipy value:0
+@end
+@scope Embedded_Scope_1 position=-1
+  x1: 1152
+  y1: 576
+  x2: 1456
+  y2: 704
+  elmUid: VxClzM
+  speed: 1
+  flags: x2001206
+  source: uid:K79ipy value:0
 @end
