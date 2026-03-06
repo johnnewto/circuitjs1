@@ -1,7 +1,11 @@
 # CircuitJS1 TODOs
 
+## are aliases needed, params seem to do a better job
+
 ## Flows in equation table
 make it so that each flow has a 1 ohm resistor so that value and flow are the same, investigate how this could simplify eval.
+
+
 
 ## Tables should reset
  To the node or computed value in both circuit and info tables
