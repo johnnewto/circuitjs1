@@ -374,22 +374,6 @@ class Expr {
 	    : ComputedValues.getComputedFlowOrValue(name);
     }
 
-    private static Double getAliasParameterComputedByMode(String name, EvaluationContext context) {
-	Double computedValue = getComputedByMode(name, context);
-	if (computedValue == null)
-	    return null;
-
-	Object computingTable = ComputedValues.getComputingTable(name);
-	if (!(computingTable instanceof EquationTableElm))
-	    return null;
-
-	EquationTableElm eqTable = (EquationTableElm) computingTable;
-	if (!eqTable.isAliasToParameterName(name))
-	    return null;
-
-	return computedValue;
-    }
-    
     /** Clear the unresolved references list (call at start of each timestep) */
     static void clearUnresolvedReferences() {
 	unresolvedReferences.clear();
@@ -473,19 +457,6 @@ class Expr {
     }
     
     /**
-     * Check if this expression is a simple node alias (bare E_NODE_REF or E_GSLOT).
-     * Returns true for expressions like "Cd" that just reference another named node.
-     * Accepts E_GSLOT as well since it is a resolved E_NODE_REF that still carries nodeName.
-     *
-     * Alias rows in EquationTableElm can be optimized away entirely —
-     * the output name is registered as pointing to the same node as the
-     * referenced name, eliminating a voltage source and matrix row.
-     */
-    boolean isNodeAlias() {
-	return (type == E_NODE_REF || type == E_GSLOT) && nodeName != null;
-    }
-
-    /**
      * Walk this expression tree, converting E_NODE_REF nodes to E_GSLOT where the name
      * has a pre-assigned slot in the circuit-global array.  Also re-resolves E_GSLOT
      * nodes in case slot indices changed after a re-analyzeCircuit call.
@@ -545,15 +516,6 @@ class Expr {
 	    }
 	}
 	return new int[] { converted, alreadySlot, stayed };
-    }
-
-    /**
-     * Get the referenced node name for alias expressions.
-     * Only meaningful when isNodeAlias() returns true.
-     * @return The node name this expression references, or null
-     */
-    String getNodeName() {
-	return nodeName;
     }
 
     /**
@@ -1056,14 +1018,6 @@ class Expr {
 			    Double flowPreferredValue = getComputedFlowByMode(nodeName, context);
 		    if (flowPreferredValue != null) {
 			return returnNodeRefValue(flowPreferredValue.doubleValue(), nodeRefStartNanos);
-		    }
-
-		    // For alias rows that mirror PARAM names (e.g. rm = rl),
-		    // prefer the computed alias value before reading same-named
-		    // labeled-node voltage.
-		    Double aliasParameterValue = getAliasParameterComputedByMode(nodeName, context);
-		    if (aliasParameterValue != null) {
-			return returnNodeRefValue(aliasParameterValue.doubleValue(), nodeRefStartNanos);
 		    }
 
 		    // MNA mode: labeled node voltage first (authoritative from matrix solver)

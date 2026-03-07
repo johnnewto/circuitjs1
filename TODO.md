@@ -1,6 +1,7 @@
 # CircuitJS1 TODOs
 
-## are aliases needed, params seem to do a better job
+## Timing issues
+ there are timing issues between params and volts (/ Flow?) which cause convergence slowing or failure 
 
 ## Flows in equation table
 make it so that each flow has a 1 ohm resistor so that value and flow are the same, investigate how this could simplify eval.

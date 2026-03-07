@@ -273,7 +273,7 @@ public class ComputedValues {
     
     /**
      * Write a value directly to the current buffer, bypassing the pending buffer.
-     * Used by startIteration() to seed values (e.g., alias values) that must be
+    * Used by startIteration() to seed values that must be
      * visible to all elements during the upcoming doStep() cycle.
      * 
      * @param name The name/key for the computed value

@@ -20,7 +20,7 @@ It supports two simulator-wide execution modes:
 | Post count | 0 (no visible electrical posts) |
 | High-impedance | Yes — `getConnection()` always returns `false` |
 | Ground connection | None — `hasGroundConnection()` returns `false` |
-| Nonlinear | True whenever any non-alias row exists (all of VOLTAGE, FLOW, STOCK, PARAM count) |
+| Nonlinear | True whenever any non-comment row exists (all of VOLTAGE, FLOW, STOCK, PARAM count) |
 | Modes | MNA (electrical) or Pure Computational (global setting) |
 | Mode toggle | Options → Other Options → `sim.equationTableMnaMode` |
 | Newton toggle | Options → Other Options → `sim.equationTableNewtonJacobianEnabled` |
@@ -42,7 +42,7 @@ Current implementation stores row state in `EquationRow` objects (not parallel a
 | `shuntResistance` | double | FLOW shunt resistance (`Shunt R`), default `1e9` |
 | `useBackwardEuler` | boolean | STOCK integration method (`false` trapezoidal, `true` backward Euler) |
 
-Runtime fields include compiled expressions, `ExprState`, alias flags, node ids, voltage-source index, and stock companion history values.
+Runtime fields include compiled expressions, `ExprState`, node ids, voltage-source index, and stock companion history values.
 
 ## Row Output Modes
 
@@ -107,8 +107,8 @@ Equation result is interpreted as a computed parameter value only.
 
 Rows are currently classified as:
 
-1. **Alias** — bare node alias expression with no initial equation
-2. **Dynamic** — everything else
+1. **Comment** — output name starts with `#` (non-simulating metadata row)
+2. **Dynamic** — all normal equation rows
 
 Special row-name behavior:
 
@@ -116,23 +116,8 @@ Special row-name behavior:
 - Comment rows are non-simulating metadata rows: no expression compile, no stamping, and not treated as valid output producers
 - In UI, comment text is shown from the row name body (text after `#`)
 
-Alias criteria:
-
-- compiled expression is node alias (`isNodeAlias()`), and
-- `initialEquation` is empty.
-
-Alias rows:
-
-- allocate no voltage source,
-- allocate no internal node,
-- map output label to target node label,
-- are pre-registered in `registerLabels()` so wire closure merges physical nodes,
-- mirror flow namespace conditionally each `doStep()`: `<alias>.flow` is copied from `<target>.flow` only when `<target>.flow` exists (no synthetic `0` flow is created).
-
-Edit dialog UX for aliases:
-
-- Alias rows are marked with `⇔ Alias` beside the Mode field.
-- Mode selection is disabled for alias rows and fixed to Voltage behavior.
+Bare-node equations like `A = B` are evaluated as normal equations and do **not** imply
+electrical node merging. Use explicit wiring/labeled-node topology when physical node identity is required.
 
 > Note: older docs may mention `constant`/`linear`/`VCVS` classifications. Those are not part of the current `EquationTableElm` behavior.
 
@@ -155,13 +140,10 @@ After the coordination pass, each element's own `stamp()` runs:
 2. `refreshParameterNameRegistry()` and `refreshComputedNameRegistry()`
 3. if pure mode: return (no matrix stamping)
 4. `findLabeledNodes()` (resolve existing or allocate/register internal nodes)
-5. `registerAliasNodes()`
-6. per non-alias row: mode handler `stamp(row)`
+5. per non-comment row: mode handler `stamp(row)`
 
 ### `startIteration()`
 
-- Retry unresolved aliases
-- Seed alias values to `ComputedValues` (direct buffer)
 - Seed STOCK node voltages to `ComputedValues`
 - Compute STOCK history term (`capCurSourceValue`)
 
@@ -169,7 +151,6 @@ After the coordination pass, each element's own `stamp()` runs:
 
 Per row:
 
-- alias rows copy target value and mirror `<target>.flow` to `<alias>.flow` only when target flow exists
 - if `t == 0` and `initialEquation` exists, run initial-value path
 - otherwise evaluate and stamp via mode handler
 - run convergence check using adaptive threshold
@@ -195,7 +176,6 @@ For MNA rows, EquationTable supports an optional Newton linearization path for `
 
 ### `stepFinished()`
 
-- Alias rows: publish target value under alias name
 - STOCK rows: save companion state (`capLastVoltage`, `capLastCurrent`), set output to stock level
 - Publish non-FLOW outputs to `ComputedValues`
 - Commit `ExprState` integration and update last values
@@ -252,14 +232,12 @@ Mode is global (`sim.equationTableMnaMode`).
 - Voltage rows drive circuit nodes.
 - Flow/Stock rows stamp current behavior.
 - Param rows are computation-only (no electrical stamp).
-- Alias rows share electrical nodes with targets.
 - Outputs are also published to `ComputedValues` for cross-expression use.
 
 ### Pure Computational Mode
 
 - No matrix stamping.
 - Rows evaluate and publish values to `ComputedValues`.
-- Alias rows mirror target computed values by name.
 
 ## Naming, Targets, and Separators
 

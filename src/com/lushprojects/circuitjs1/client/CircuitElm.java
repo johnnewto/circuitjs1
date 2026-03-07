@@ -1217,8 +1217,8 @@ public abstract class CircuitElm implements Editable {
 	    for (int i = 0; i < getPostCount(); i++)
 		if (nodes[i] == sim.highlightedNode)
 		    return true;
-	    // For LabeledNodeElm, also check labelList node (follows aliases)
-	    // as fallback for alias rows not merged at wire closure time
+	    // For LabeledNodeElm, also check labelList node lookup as fallback
+	    // when highlight source comes from name-based node tracking
 	    if (this instanceof LabeledNodeElm) {
 		Integer labelNode = LabeledNodeElm.getByName(((LabeledNodeElm) this).getName());
 		if (labelNode != null && labelNode == sim.highlightedNode)
@@ -1237,7 +1237,7 @@ public abstract class CircuitElm implements Editable {
 	    for (int i = 0; i < getPostCount(); i++)
 		if (nodes[i] == sim.highlightedNode)
 		    return true;
-	    // For LabeledNodeElm, also check labelList node (follows aliases)
+	    // For LabeledNodeElm, also check labelList node lookup as fallback
 	    if (this instanceof LabeledNodeElm) {
 		Integer labelNode = LabeledNodeElm.getByName(((LabeledNodeElm) this).getName());
 		if (labelNode != null && labelNode == sim.highlightedNode)

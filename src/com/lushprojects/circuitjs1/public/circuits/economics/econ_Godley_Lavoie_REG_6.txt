@@ -72,6 +72,7 @@ height: 320
   showVolts: true
   showValues: true
   showPower: false
+  autoAdjustTimestep: false
   equationTableTolerance: 0.0001
   infoViewerUpdateIntervalMs: 100
 @end
@@ -81,8 +82,8 @@ height: 320
   Y_S ~ C_S + G_S + X_S - IM_S ; mode=voltage ; sliderValue=0
   IM_N ~ mu_N * Y_N ; mode=voltage ; sliderValue=0
   IM_S ~ mu_S * Y_S ; mode=voltage ; sliderValue=0
-  X_N ~ IM_S ; mode=voltage ; sliderValue=0
-  X_S ~ IM_N ; mode=voltage ; sliderValue=0
+  X_N ~ IM_S+0 ; mode=voltage ; sliderValue=0
+  X_S ~ IM_N+0 ; mode=voltage ; sliderValue=0
   YD_N ~ Y_N - TX_N + last(r) * last(Bh_N) ; mode=voltage ; sliderValue=0
   YD_S ~ Y_S - TX_S + last(r) * last(Bh_S) ; mode=voltage ; sliderValue=0
   TX_N ~ \theta * ( Y_N + last(r) * last(Bh_N) ) ; mode=voltage ; sliderValue=0

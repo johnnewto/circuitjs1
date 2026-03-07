@@ -117,7 +117,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         double outputValue;
         double lastOutputValue;
         boolean initialValueApplied;
-        boolean isAlias;
         boolean hasDiffExpr;
         boolean lastNewtonJacobianApplied;
         String lastNewtonJacobianStatus;
@@ -459,9 +458,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** All per-row state consolidated into EquationRow objects */
     private EquationRow[] rows;
     
-    /** Whether all alias rows have been successfully resolved to target nodes */
-    private boolean aliasesResolved;    
-    
     /** Whether row classifications are up to date (avoids redundant recomputation) */
     private boolean classificationsValid;
 
@@ -730,7 +726,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
 
         java.util.HashSet<String> currentParamNames = new java.util.HashSet<String>();
         for (int row = 0; row < rowCount; row++) {
-            if (rows[row].isAlias) continue;
             if (rows[row].outputMode != RowOutputMode.PARAM_MODE) continue;
             if (!isValidOutputName(row)) continue;
             currentParamNames.add(rows[row].outputName.trim());
@@ -971,7 +966,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         updateRowClassifications();
         int count = 0;
         for (int row = 0; row < rowCount; row++) {
-            if (rows[row].isAlias) continue;  // Aliases need no voltage source
             // Only VOLTAGE mode uses voltage sources
             if (rows[row].outputMode != RowOutputMode.VOLTAGE_MODE) continue;
             if (isValidOutputName(row)) {
@@ -995,8 +989,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         updateRowClassifications();
         int count = 0;
         for (int row = 0; row < rowCount; row++) {
-            if (rows[row].isAlias) continue;  // Aliases share target node, need no internal node
-
             if (rows[row].outputMode == RowOutputMode.FLOW_MODE) {
                 // FLOW source may need an internal node if unresolved
                 if (isValidOutputName(row)) {
@@ -1027,7 +1019,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         return count;
     }
     
-    /** @return true if any row has a non-alias expression requiring iterative solving,
+    /** @return true if any row has an expression requiring iterative solving,
      *  or if any row uses FLOW_MODE or STOCK_MODE output mode (which always require doStep) */
     boolean nonLinear() {
         updateRowClassifications();
@@ -1036,42 +1028,25 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             if (rows[row].outputMode == RowOutputMode.FLOW_MODE || rows[row].outputMode == RowOutputMode.STOCK_MODE) {
                 return true;
             }
-            // Non-alias VOLTAGE mode rows are nonlinear (need doStep)
-            if (!rows[row].isAlias)
+            if (!isCommentRow(row))
                 return true;
         }
         return false;
     }
     
     /**
-     * Update isAliasRow and hasDiffExpr flags based on compiled expressions.
-     * 
-     * Row classifications (checked in priority order):
-     * 1. ALIAS: Expression is a bare node reference (E_NODE_REF), e.g. "Cs ~ Cd".
-     *    The output name becomes an alias for the target node — no voltage source,
-     *    no internal node, no matrix row needed. Eliminates 2 matrix rows per alias.
-     * 2. DYNAMIC: Everything else — requires nonlinear doStep() evaluation.
-     * 
+     * Update cached per-row classification metadata used by simulation.
      * Results are cached; call {@link #invalidateClassifications()} when equations change.
      */
     private void updateRowClassifications() {
         if (classificationsValid) return;
         for (int row = 0; row < rowCount; row++) {
-            rows[row].isAlias = false;
             rows[row].hasDiffExpr = false;
             
             if (rows[row].compiledExpr == null) continue;
             
             // Precompute diff() presence for convergence checks
             rows[row].hasDiffExpr = rows[row].equation.contains("diff");
-            
-            String initEq = rows[row].initialEquation;
-            boolean hasInitEq = (initEq != null && !initEq.trim().isEmpty());
-            
-            // Check alias (bare node reference with no initial equation)
-            if (!hasInitEq && rows[row].compiledExpr.isNodeAlias()) {
-                rows[row].isAlias = true;
-            }
         }
         classificationsValid = true;
     }
@@ -1130,7 +1105,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             for (int row = 0; row < table.rowCount; row++) {
                 EquationRow rowData = table.rows[row];
 
-                if (rowData.isAlias) continue;
                 if (rowData.outputMode == RowOutputMode.FLOW_MODE || rowData.outputMode == RowOutputMode.PARAM_MODE) continue;
                 if (!table.isValidOutputName(row)) continue;
 
@@ -1162,7 +1136,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             for (int row = 0; row < table.rowCount; row++) {
                 EquationRow rowData = table.rows[row];
 
-                if (rowData.isAlias) continue;
                 if (rowData.outputMode != RowOutputMode.FLOW_MODE) continue;
                 if (!table.isValidOutputName(row)) continue;
 
@@ -1286,75 +1259,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 ComputedValues.setComputedValue(targetKey, value);
             }
         }
-    }
-
-    /**
-     * Mirror a target flow namespace value into an alias row's own flow key.
-     * For alias row "A = B", this publishes A.flow = B.flow each doStep(),
-     * but only when B.flow exists.
-     */
-    private void registerAliasFlowValue(int row, String targetName) {
-        if (!isValidOutputName(row) || targetName == null) return;
-
-        String aliasKey = getFlowComputedKeyForName(rows[row].outputName.trim());
-        String targetKey = getFlowComputedKeyForName(targetName);
-        if (aliasKey == null || targetKey == null) return;
-
-        Double targetFlow = ComputedValues.getComputedValue(targetKey);
-        if (targetFlow == null) {
-            return;
-        }
-        ComputedValues.setComputedValue(aliasKey, targetFlow.doubleValue());
-    }
-
-    /**
-     * Resolve the current value for an alias target name.
-     *
-     * In MNA mode, aliases usually share a labeled node and should read that node's
-     * solved voltage. But if the alias target is a PARAM/computed-only name (no
-     * physical node), fall back to ComputedValues so aliases can mirror parameters.
-     */
-    private double resolveAliasTargetValue(String targetName) {
-        if (targetName == null || targetName.isEmpty()) {
-            return 0.0;
-        }
-
-        if (isMnaMode()) {
-            if (ComputedValues.isParameterName(targetName)) {
-                Double parameterValue = ComputedValues.getComputedValue(targetName);
-                if (parameterValue != null) {
-                    return parameterValue.doubleValue();
-                }
-            }
-
-            Integer labeledNode = LabeledNodeElm.getByName(targetName);
-            if (labeledNode != null && labeledNode.intValue() > 0) {
-                return sim.getLabeledNodeVoltage(targetName);
-            }
-
-            Double computedValue = ComputedValues.getComputedValue(targetName);
-            if (computedValue != null) {
-                return computedValue.doubleValue();
-            }
-
-            Double flowValue = ComputedValues.getComputedFlowValue(targetName);
-            if (flowValue != null) {
-                return flowValue.doubleValue();
-            }
-            return 0.0;
-        }
-
-        Double targetValue = ComputedValues.getComputedValue(targetName);
-        if (targetValue != null) {
-            return targetValue.doubleValue();
-        }
-
-        Double flowValue = ComputedValues.getComputedFlowValue(targetName);
-        if (flowValue != null) {
-            return flowValue.doubleValue();
-        }
-
-        return 0.0;
     }
 
     /**
@@ -1669,9 +1573,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             rows[row].labeledNodeNumber = -1;
             rows[row].rowVoltSource = -1;
             
-            // Alias rows don't need nodes or voltage sources
-            if (rows[row].isAlias) continue;
-            
             if (!isValidOutputName(row)) continue;
             String outputName = rows[row].outputName.trim();
             
@@ -1749,113 +1650,12 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     }
     
     /**
-     * Register alias rows: point the output name to the target node.
-     * For "Cs ~ Cd", registers "Cs" in labelList pointing to the same node as "Cd".
-     * This eliminates the voltage source and matrix row entirely —
-     * Cs and Cd become the same electrical node.
-     */
-    private void registerAliasNodes() {
-        aliasesResolved = true;  // Assume success; set false if any fail
-        for (int row = 0; row < rowCount; row++) {
-            if (!rows[row].isAlias) continue;
-            
-            if (!isValidOutputName(row)) continue;
-            String outputName = rows[row].outputName.trim();
-            
-            String targetName = rows[row].compiledExpr.getNodeName();
-            if (targetName == null) continue;
-            
-            // Look up the target node number
-            Integer targetNodeNum = LabeledNodeElm.getByName(targetName);
-            if (targetNodeNum != null && targetNodeNum >= 0) {
-                // Register output name as pointing to the same node
-                registerInternalNodeAsLabel(outputName, targetNodeNum);
-                rows[row].labeledNodeNumber = targetNodeNum;
-                
-                if (DEBUG) {
-                    CirSim.console("[EquationTableElm." + tableName + "] Alias: " + 
-                        outputName.trim() + " -> " + targetName + " (node " + targetNodeNum + ")");
-                }
-            } else {
-                // Target node doesn't exist yet — will retry in startIteration()
-                aliasesResolved = false;
-                if (DEBUG) {
-                    CirSim.console("[EquationTableElm." + tableName + "] Alias target '" + 
-                        targetName + "' not found yet, deferring resolution");
-                }
-            }
-        }
-    }
-    
-    /**
-     * Pre-register alias labels before wire closure so that alias names
-     * merge into the same MNA node as their target during calculateWireClosure().
-     *
-     * For an alias row like "S1" with equation "S0", this finds the LabeledNodeElm
-     * with text "S0" on the canvas and pre-registers "S1" pointing to S0's physical
-     * point. When wire closure later processes the S1 LabeledNodeElm, it finds this
-     * entry and merges S1 into S0's node — giving them the same physical MNA node.
-     *
-     * This eliminates the split-brain problem where the labelList node differs from
-     * the element's nodes[0], making highlighting and other node-based lookups work
-     * correctly without special-case workarounds.
-     *
-     * Falls back to registerAliasNodes() during stamp() for cases where no canvas
-     * LabeledNodeElm exists for the target (e.g. target created by another table).
-     */
-    @Override
-    void registerLabels() {
-        if (!isMnaMode()) return;
-
-        updateRowClassifications();
-
-        for (int row = 0; row < rowCount; row++) {
-            if (!rows[row].isAlias) continue;
-            if (!isValidOutputName(row)) continue;
-
-            String aliasName = rows[row].outputName.trim();
-            String targetName = rows[row].compiledExpr.getNodeName();
-            if (targetName == null) continue;
-
-            // Find the target's LabeledNodeElm on the canvas to get its physical point
-            Point targetPoint = findLabeledNodePoint(targetName);
-            if (targetPoint != null) {
-                LabeledNodeElm.preRegisterLabel(aliasName, targetPoint);
-                if (DEBUG) {
-                    CirSim.console("[EquationTableElm." + tableName + "] registerLabels: " +
-                        "pre-registered alias '" + aliasName + "' -> '" + targetName +
-                        "' point=(" + targetPoint.x + "," + targetPoint.y + ")");
-                }
-            }
-        }
-    }
-
-    /**
-     * Find the physical point of a LabeledNodeElm on the canvas with the given text.
-     * Scans the element list for a matching LabeledNodeElm.
-     * @param name The label text to search for
-     * @return The element's point1, or null if not found
-     */
-    private Point findLabeledNodePoint(String name) {
-        for (int i = 0; i < sim.elmList.size(); i++) {
-            CircuitElm ce = sim.elmList.get(i);
-            if (ce instanceof LabeledNodeElm) {
-                LabeledNodeElm lne = (LabeledNodeElm) ce;
-                if (name.equals(lne.getName())) {
-                    return lne.point1;
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
      * Stamp the element into the circuit matrix.
      * In MNA mode, stamps voltage sources for each row output using hybrid approach.
      * In pure computational mode, does nothing.
      */
     void stamp() {
-        // Update row classifications (alias, constant, dynamic)
+        // Update row classifications
         updateRowClassifications();
 
         // Explicit pre-registration during analysis/stamp so expected keys are
@@ -1865,20 +1665,15 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         
         if (!isMnaMode()) {
             // Pure computational mode: no matrix stamping needed.
-            // Alias rows handled in doStep() by copying target value.
             return;
         }
         
-        // Find or create nodes for each row (skips alias rows)
+        // Find or create nodes for each row
         findLabeledNodes();
-        
-        // Register alias rows: point output name to target node (no VS, no matrix row)
-        registerAliasNodes();
         
         // MNA mode: stamp each row according to its output mode
         for (int row = 0; row < rowCount; row++) {
-            // Skip alias rows - handled by registerAliasNodes()
-            if (rows[row].isAlias) continue;
+            if (isCommentRow(row)) continue;
             
             getHandler(rows[row].outputMode).stamp(row);
         }
@@ -1929,9 +1724,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /**
      * Called once per timestep before subiterations begin.
-     * Resolves any alias rows whose targets weren't available during stamp()
-     * (due to stamp ordering — target table may stamp after this table).
-     * Also seeds alias ComputedValues for the upcoming doStep cycle.
      * Calculates capacitor history currents for STOCK_MODE rows.
      */
     @Override
@@ -1939,30 +1731,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         refreshParameterNameRegistry();
         refreshComputedNameRegistry();
 
-        // Retry alias resolution if any failed during stamp()
-        if (!aliasesResolved && isMnaMode()) {
-            registerAliasNodes();
-        }
-        
-        // Seed alias values into ComputedValues so other expressions can find them.
-        // In MNA mode, the alias shares the target's node, so read the node voltage
-        // and write it to ComputedValues (current buffer, not pending).
         if (isMnaMode()) {
-            for (int row = 0; row < rowCount; row++) {
-                if (!rows[row].isAlias) continue;
-                if (!isValidOutputName(row)) continue;
-                String outputName = rows[row].outputName.trim();
-                
-                String targetName = rows[row].compiledExpr.getNodeName();
-                if (targetName != null) {
-                    // Seed from alias target (node voltage or computed parameter)
-                    double val = resolveAliasTargetValue(targetName);
-                    rows[row].outputValue = val;
-                    // Write directly to current buffer so it's available during doStep
-                    ComputedValues.setComputedValueDirect(outputName, val);
-                }
-            }
-            
             // Seed STOCK_MODE node voltages into ComputedValues so expressions
             // in doStep read the actual stock level, not a stale or wrong value.
             for (int row = 0; row < rowCount; row++) {
@@ -2001,9 +1770,8 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * Called every subiteration of the nonlinear solver until convergence.
      * Iterates over all rows and dispatches to the appropriate handler:
      * <ol>
-     *   <li>Alias rows — copy value from the aliased target.</li>
-     *   <li>At {@code t=0} with an {@code initialEquation} — stamp placeholder then evaluate initial value.</li>
-     *   <li>All other rows — evaluate via the mode handler ({@link RowModeHandler#evaluate}).</li>
+    *   <li>At {@code t=0} with an {@code initialEquation} — stamp placeholder then evaluate initial value.</li>
+    *   <li>All other rows — evaluate via the mode handler ({@link RowModeHandler#evaluate}).</li>
      * </ol>
      * Convergence is checked inside each mode handler via {@link #checkEquationConvergence}.
      */
@@ -2013,10 +1781,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
         
         for (int row = 0; row < rowCount; row++) {
-            if (handleAliasRow(row)) {
-                continue;
-            }
-
             if (handleInitialValueRowAtT0(row)) {
                 continue;
             }
@@ -2024,32 +1788,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             // Normal timestep: evaluate via mode handler
             getHandler(rows[row].outputMode).evaluate(row);
         }
-    }
-
-    /**
-     * Handle an alias row during {@link #doStep}.
-     *
-     * Alias rows share the electrical node of their target; no equation needs solving.
-     * The target value is read (via {@link #resolveAliasTargetValue}) and written
-     * to {@code ComputedValues} and the row's {@code outputValue}.
-     * The flow namespace key ({@code <alias>.flow}) is also mirrored from the target
-     * when the target has published a flow value.
-     *
-     * @param row Row index to check and handle.
-     * @return {@code true} if the row is an alias (caller should skip normal processing).
-     */
-    private boolean handleAliasRow(int row) {
-        if (!rows[row].isAlias) {
-            return false;
-        }
-
-        String targetName = rows[row].compiledExpr.getNodeName();
-        double val = resolveAliasTargetValue(targetName);
-        rows[row].outputValue = val;
-        rows[row].lastOutputValue = val;
-        registerOutputValue(row, val);
-        registerAliasFlowValue(row, targetName);
-        return true;
     }
 
     /**
@@ -2314,19 +2052,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
         
         for (int row = 0; row < rowCount; row++) {
-            // For alias rows in MNA mode, read the shared node voltage
-            // and register in ComputedValues for consistency
-            if (rows[row].isAlias) {
-                if (isValidOutputName(row)) {
-                    String name = rows[row].outputName.trim();
-                    String targetName = rows[row].compiledExpr.getNodeName();
-                    rows[row].outputValue = resolveAliasTargetValue(targetName);
-                    ComputedValues.setComputedValue(name, rows[row].outputValue);
-                    ComputedValues.markComputedThisStep(name);
-                }
-                continue;
-            }
-            
             // Save capacitor state for STOCK_MODE rows
             if (rows[row].outputMode == RowOutputMode.STOCK_MODE && isMnaMode()) {
                 if (isValidOutputName(row)) {
@@ -2595,13 +2320,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             arr[1] = "Row " + (hoveredRow + 1) + ": " + getFlowDisplayName(hoveredRow);
         }
         
-        // Build classification description with icon
-        String classDesc;
-        if (rows[hoveredRow].isAlias) {
-            classDesc = "→ alias (shares node with " + rows[hoveredRow].compiledExpr.getNodeName() + ")";
-        } else {
-            classDesc = "⟳ dynamic (evaluated each step)";
-        }
+        String classDesc = "⟳ dynamic (evaluated each step)";
         
         arr[2] = getFlowDisplayName(hoveredRow) + " = " + getUnitText(rows[hoveredRow].outputValue, "") + " [" + classDesc + "]";
         arr[3] = "Equation: " + rows[hoveredRow].equation;
@@ -2758,16 +2477,6 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     public double getDisplayValue(int row) {
         if (row < 0 || row >= MAX_ROWS) return 0.0;
 
-        if (isAliasRowDisplayingFlow(row)) {
-            String targetName = rows[row].compiledExpr.getNodeName();
-            if (targetName != null) {
-                Double targetFlow = ComputedValues.getComputedFlowValue(targetName);
-                if (targetFlow != null) {
-                    return targetFlow.doubleValue();
-                }
-            }
-        }
-
         if (rows[row].outputMode == RowOutputMode.STOCK_MODE && isMnaMode()) {
             // Show stock level (node voltage) for STOCK rows
             int nodeNum = rows[row].labeledNodeNumber;
@@ -2781,52 +2490,10 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** Get the number of active rows */
     public int getRowCount() { return rowCount; }
     
-    /** Check if row is classified as alias (bare node reference) */
-    public boolean isAliasRow(int row) {
-        return (row >= 0 && row < MAX_ROWS) ? rows[row].isAlias : false;
-    }
-
-    /**
-     * True when an alias row should display FLOW semantics for its target name.
-     * This is dynamic: if target.flow exists, alias displays flow; otherwise value.
-     */
-    public boolean isAliasRowDisplayingFlow(int row) {
-        if (row < 0 || row >= MAX_ROWS) return false;
-        if (!rows[row].isAlias || rows[row].compiledExpr == null) return false;
-        String targetName = rows[row].compiledExpr.getNodeName();
-        if (targetName == null || targetName.trim().isEmpty()) return false;
-        return ComputedValues.getComputedFlowValue(targetName) != null;
-    }
-
-    /**
-     * Check whether the given output name is an alias row whose target is a
-     * PARAM-mode name. Used by Expr MNA lookup to prefer ComputedValues for
-     * alias-to-parameter outputs before labeled-node voltage.
-     */
-    public boolean isAliasToParameterName(String outputName) {
-        if (outputName == null) return false;
-        String trimmedOutput = outputName.trim();
-        if (trimmedOutput.isEmpty()) return false;
-
-        for (int row = 0; row < rowCount; row++) {
-            if (!rows[row].isAlias || rows[row].compiledExpr == null) continue;
-            if (!isValidOutputName(row)) continue;
-            if (!trimmedOutput.equals(rows[row].outputName.trim())) continue;
-
-            String targetName = rows[row].compiledExpr.getNodeName();
-            if (targetName == null) return false;
-            String trimmedTarget = targetName.trim();
-            if (trimmedTarget.isEmpty()) return false;
-
-            return ComputedValues.isParameterName(trimmedTarget);
-        }
-        return false;
-    }
-    
     /** Get row classification as string */
     public String getRowClassification(int row) {
         if (row < 0 || row >= MAX_ROWS) return "unknown";
-        if (rows[row].isAlias) return "alias";
+        if (isCommentRow(row)) return "comment";
         return "dynamic";
     }
 

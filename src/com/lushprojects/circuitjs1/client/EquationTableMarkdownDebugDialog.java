@@ -323,7 +323,7 @@ public class EquationTableMarkdownDebugDialog {
             
             // Classification icon
             String classIcon;
-            if ("alias".equals(classification)) classIcon = "-> alias";
+            if ("comment".equals(classification)) classIcon = "# comment";
             else classIcon = "~ dynamic";
             
             // Format value
@@ -572,7 +572,7 @@ public class EquationTableMarkdownDebugDialog {
 
     /**
      * Append a Markdown table of labeled-node lookups for this table's output names:
-     * output name, assigned MNA node number, solved voltage, and alias flag.
+     * output name, assigned MNA node number, and solved voltage.
      * If the table is in pure computational mode the section shows a short notice instead.
      */
     private void appendLabeledNodeInfo(StringBuilder md) {
@@ -583,8 +583,8 @@ public class EquationTableMarkdownDebugDialog {
         
         md.append("## Labeled Nodes (for this table's outputs)\n\n");
         
-        md.append("| Output Name | Node # | Voltage | Is Alias |\n");
-        md.append("|-------------|--------|---------|----------|\n");
+        md.append("| Output Name | Node # | Voltage |\n");
+        md.append("|-------------|--------|---------|\n");
         
         int rowCount = sourceTable.getRowCount();
         for (int row = 0; row < rowCount; row++) {
@@ -592,7 +592,6 @@ public class EquationTableMarkdownDebugDialog {
                 continue;
             }
             String name = sourceTable.getOutputName(row);
-            boolean isAlias = sourceTable.isAliasRow(row);
             
             Integer nodeNum = LabeledNodeElm.getByName(name);
             String nodeStr = (nodeNum != null && nodeNum >= 0) ? "#" + nodeNum : "*(none)*";
@@ -601,7 +600,6 @@ public class EquationTableMarkdownDebugDialog {
             
             md.append("| ").append(wrapForKaTeX(name)).append(" | ").append(nodeStr)
               .append(" | ").append(voltStr)
-              .append(" | ").append(isAlias ? "YES" : "no")
               .append(" |\n");
         }
         md.append("\n");
@@ -860,15 +858,13 @@ public class EquationTableMarkdownDebugDialog {
                 RowOutputMode mode = eqt.getOutputMode(row);
                 // VOLTAGE_MODE and STOCK_MODE rows use voltage sources
                 if (mode == RowOutputMode.VOLTAGE_MODE || mode == RowOutputMode.STOCK_MODE) {
-                    if (!eqt.isAliasRow(row)) {
-                        if (vsIdx == localVs) {
-                            String outputName = eqt.getOutputName(row);
-                            if (outputName != null && !outputName.isEmpty()) {
-                                return outputName;
-                            }
+                    if (vsIdx == localVs) {
+                        String outputName = eqt.getOutputName(row);
+                        if (outputName != null && !outputName.isEmpty()) {
+                            return outputName;
                         }
-                        vsIdx++;
                     }
+                    vsIdx++;
                 }
             }
         } else if (owner instanceof LabeledNodeElm) {

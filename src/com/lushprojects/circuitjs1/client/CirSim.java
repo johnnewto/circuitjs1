@@ -6339,9 +6339,8 @@ public CirSim() {
     		for (i = 0; i < adjustables.size(); i++)
     		    adjustables.get(i).setMouseElm(ce);
     		
-    		// Track highlighted MNA node for cross-element highlighting.
-    		// Use labelList node (follows aliases) rather than physical nodes[0],
-    		// as fallback for alias rows not merged at wire closure time.
+			// Track highlighted MNA node for cross-element highlighting.
+			// Use labelList node when available, then fall back to physical nodes[0].
     		if (ce instanceof LabeledNodeElm) {
     		    Integer labelNode = LabeledNodeElm.getByName(((LabeledNodeElm) ce).getName());
     		    highlightedNode = (labelNode != null) ? labelNode : ce.nodes[0];
@@ -9122,16 +9121,6 @@ public CirSim() {
 	    // Priority 2: Flow value
 	    Double flowVal = ComputedValues.getComputedFlowValue(name);
 	    if (flowVal != null) return flowVal;
-	    // Priority 2.5: Alias-to-parameter override (mirrors Expr E_NODE_REF path)
-	    Double aliasComputed = ComputedValues.getComputedValue(name);
-	    if (aliasComputed != null) {
-		Object computingTable = ComputedValues.getComputingTable(name);
-		if (computingTable instanceof EquationTableElm) {
-		    EquationTableElm eqTable = (EquationTableElm) computingTable;
-		    if (eqTable.isAliasToParameterName(name))
-			return aliasComputed;
-		}
-	    }
 	    // Priority 3: Labeled node voltage
 	    Integer node = LabeledNodeElm.getByName(name);
 	    if (node != null && node != 0

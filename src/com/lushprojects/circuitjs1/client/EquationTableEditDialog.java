@@ -60,11 +60,6 @@ import com.lushprojects.circuitjs1.client.EquationTableElm.RowOutputMode;
  * calls {@code parseAllEquationsPublic()}, {@code allocNodes()}, and {@code setPoints()},
  * then triggers {@code sim.needAnalyze()} so the circuit re-analyses with updated equations.
  *
- * <h3>Alias Detection</h3>
- * The dialog detects alias rows in real time: if an equation is a bare node reference
- * and the initial equation is empty, the Mode dropdown is locked to show ⇔ Alias
- * and mode selection is disabled (enforced by {@link #updateAliasModeUi}).
- *
  * <h3>Comment Rows</h3>
  * Rows whose Node(s) field starts with {@code #} are treated as non-simulating comment rows.
  * Their equation field becomes the comment text, the Mode is locked to PARAM, and styling
@@ -347,16 +342,15 @@ public class EquationTableEditDialog extends Dialog {
         
         Label headerEquation = new Label("Equation");
         headerEquation.getElement().getStyle().setProperty("fontWeight", "bold");
-        headerEquation.setTitle("Alias shortcut: a bare node reference (with empty Initial) becomes a ⇔ Alias row.");
         editGrid.setWidget(HEADER_ROW, COL_EQUATION, headerEquation);
         
         Label headerInitial = new Label("Initial (t=0)");
         headerInitial.getElement().getStyle().setProperty("fontWeight", "bold");
         editGrid.setWidget(HEADER_ROW, COL_INITIAL_VALUE, headerInitial);
         
-        Label headerMode = new Label("Mode / ⇔ Alias");
+        Label headerMode = new Label("Mode");
         headerMode.getElement().getStyle().setProperty("fontWeight", "bold");
-        headerMode.setTitle("⇔ Alias rows are auto-detected (bare node reference + empty Initial), fixed to Voltage behavior, and Mode is locked.");
+        headerMode.setTitle("Output mode");
         editGrid.setWidget(HEADER_ROW, COL_MODE, headerMode);
         
         Label headerCap = new Label("Shunt R / Cap");
@@ -498,29 +492,18 @@ public class EquationTableEditDialog extends Dialog {
                 updateModeFields(gridRow, outputModes[row]);
             }
         });
-        final Label aliasBadge = new Label("⇔ Alias");
-        aliasBadge.getElement().getStyle().setProperty("marginLeft", "4px");
-        aliasBadge.getElement().getStyle().setProperty("fontSize", "11px");
-        aliasBadge.getElement().getStyle().setProperty("color", "#666");
-        aliasBadge.setVisible(false);
-        aliasBadge.setTitle("Alias row: output is a node alias (mode fixed to Voltage)");
-
-        HorizontalPanel modePanel = new HorizontalPanel();
-        modePanel.setSpacing(2);
-        modePanel.add(modeBox);
-        modePanel.add(aliasBadge);
-        editGrid.setWidget(gridRow, COL_MODE, modePanel);
+        editGrid.setWidget(gridRow, COL_MODE, modeBox);
 
         Widget eqWidget = eqPanel.getWidget(0);
         if (eqWidget instanceof TextBox) {
             ((TextBox) eqWidget).addKeyUpHandler(new KeyUpHandler() {
                 public void onKeyUp(KeyUpEvent event) {
-                    updateAliasModeUi(row, gridRow, modeBox, aliasBadge, outputNameBox, equationBox, initialBox);
+                    updateModeLockUi(row, gridRow, modeBox, outputNameBox, equationBox, initialBox);
                 }
             });
             ((TextBox) eqWidget).addBlurHandler(new BlurHandler() {
                 public void onBlur(BlurEvent event) {
-                    updateAliasModeUi(row, gridRow, modeBox, aliasBadge, outputNameBox, equationBox, initialBox);
+                    updateModeLockUi(row, gridRow, modeBox, outputNameBox, equationBox, initialBox);
                 }
             });
         }
@@ -528,28 +511,28 @@ public class EquationTableEditDialog extends Dialog {
         if (initWidget instanceof TextBox) {
             ((TextBox) initWidget).addKeyUpHandler(new KeyUpHandler() {
                 public void onKeyUp(KeyUpEvent event) {
-                    updateAliasModeUi(row, gridRow, modeBox, aliasBadge, outputNameBox, equationBox, initialBox);
+                    updateModeLockUi(row, gridRow, modeBox, outputNameBox, equationBox, initialBox);
                 }
             });
             ((TextBox) initWidget).addBlurHandler(new BlurHandler() {
                 public void onBlur(BlurEvent event) {
-                    updateAliasModeUi(row, gridRow, modeBox, aliasBadge, outputNameBox, equationBox, initialBox);
+                    updateModeLockUi(row, gridRow, modeBox, outputNameBox, equationBox, initialBox);
                 }
             });
         }
 
         outputNameBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
-                updateAliasModeUi(row, gridRow, modeBox, aliasBadge, outputNameBox, equationBox, initialBox);
+                updateModeLockUi(row, gridRow, modeBox, outputNameBox, equationBox, initialBox);
             }
         });
         outputNameBox.addBlurHandler(new BlurHandler() {
             public void onBlur(BlurEvent event) {
-                updateAliasModeUi(row, gridRow, modeBox, aliasBadge, outputNameBox, equationBox, initialBox);
+                updateModeLockUi(row, gridRow, modeBox, outputNameBox, equationBox, initialBox);
             }
         });
 
-        updateAliasModeUi(row, gridRow, modeBox, aliasBadge, outputNameBox, equationBox, initialBox);
+        updateModeLockUi(row, gridRow, modeBox, outputNameBox, equationBox, initialBox);
         
         // Mode parameter value (FLOW: Shunt R, STOCK: Capacitance)
         final TextBox capBox = new TextBox();
@@ -830,28 +813,23 @@ public class EquationTableEditDialog extends Dialog {
     }
 
     //=========================================================================
-    // ALIAS AND COMMENT ROW DETECTION
+    // COMMENT ROW DETECTION
     //=========================================================================
 
     /**
      * Classifies why the Mode dropdown for a row should be locked (if at all).
      * <ul>
      *   <li>{@code NONE}    — free mode selection; user can change it via the dropdown.</li>
-     *   <li>{@code ALIAS}   — row is detected as an alias (bare node ref, empty initial);
-     *                         mode is fixed to Voltage/Alias behavior.</li>
      *   <li>{@code COMMENT} — row name starts with {@code #}; mode is locked to PARAM.</li>
      * </ul>
      */
     private enum ModeLockType {
         NONE,
-        ALIAS,
         COMMENT
     }
 
     /**
      * Determine whether and why the Mode dropdown for {@code row} should be locked.
-     *
-     * Checked in priority order: comment rows take precedence over alias detection.
      *
      * @param row Zero-based row index into the local parallel arrays.
      * @return Lock type describing whether/why the dropdown is locked.
@@ -859,9 +837,6 @@ public class EquationTableEditDialog extends Dialog {
     private ModeLockType getModeLockType(int row) {
         if (isCommentRowByInput(row)) {
             return ModeLockType.COMMENT;
-        }
-        if (isAliasRowByInput(row)) {
-            return ModeLockType.ALIAS;
         }
         return ModeLockType.NONE;
     }
@@ -889,64 +864,20 @@ public class EquationTableEditDialog extends Dialog {
         return EquationTableElm.isCommentRowName(sourceName);
     }
 
-    /**
-     * True when the edited row currently matches alias criteria:
-     * parsed equation is a bare node alias and initial equation is empty.
-     */
-    private boolean isAliasRowByInput(int row) {
-        if (row < 0 || row >= rowCount) {
-            return false;
-        }
-
-        if (isCommentRowByInput(row)) {
-            return false;
-        }
-
-        String eq = equations[row];
-        if (eq == null || eq.trim().isEmpty()) {
-            return false;
-        }
-
-        String initEq = initialEquations[row];
-        if (initEq != null && !initEq.trim().isEmpty()) {
-            return false;
-        }
-
-        ExprParser parser = new ExprParser(eq);
-        Expr expr = parser.parseExpression();
-        if (parser.gotError() != null || expr == null) {
-            return false;
-        }
-
-        return expr.isNodeAlias();
-    }
-
-    /**
-     * Keep mode UI consistent with alias state.
-     * Alias rows are fixed to voltage alias behavior in the solver.
-     */
-    private void updateAliasModeUi(int row, int gridRow, ListBox modeBox, Label aliasBadge,
+    /** Keep mode UI consistent with comment-row lock state. */
+    private void updateModeLockUi(int row, int gridRow, ListBox modeBox,
                                    TextBox outputNameBox, TextBox equationBox, TextBox initialBox) {
         ModeLockType lockType = getModeLockType(row);
-        if (lockType == ModeLockType.ALIAS) {
-            outputModes[row] = RowOutputMode.VOLTAGE_MODE;
-            modeBox.setSelectedIndex(0);
-            modeBox.setItemText(0, "⇔ Alias");
-            modeBox.setEnabled(false);
-            modeBox.setTitle("Alias row: output is a node alias (mode fixed to Voltage)");
-            aliasBadge.setVisible(false);
-        } else if (lockType == ModeLockType.COMMENT) {
+        if (lockType == ModeLockType.COMMENT) {
             outputModes[row] = RowOutputMode.PARAM_MODE;
             modeBox.setItemText(0, "# Comment");
             modeBox.setSelectedIndex(0);
             modeBox.setEnabled(false);
             modeBox.setTitle("Comment row: non-simulating metadata row (mode locked)");
-            aliasBadge.setVisible(false);
         } else {
             modeBox.setItemText(0, "Voltage");
             modeBox.setEnabled(true);
             modeBox.setTitle("Output mode");
-            aliasBadge.setVisible(false);
         }
 
         updateCommentRowFieldWidths(lockType == ModeLockType.COMMENT, outputNameBox, equationBox, initialBox);

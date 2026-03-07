@@ -37,7 +37,7 @@ import com.lushprojects.circuitjs1.client.EquationTableElm.RowOutputMode;
  * <ul>
  *   <li><b>↕ (adjustable)</b>: row equation is a plain number; mouse-wheel adjusts it.</li>
  *   <li><b>I→ / C∫ / P (mode)</b>: FLOW / STOCK / PARAM mode indicator.</li>
- *   <li><b>⇔ / ⟳ (classification)</b>: alias row vs. dynamic (evaluated each timestep).</li>
+ *   <li><b>⟳ (classification)</b>: dynamic row (evaluated each timestep).</li>
  * </ul>
  *
  * @see EquationTableElm#draw(Graphics) Main entry point that delegates here
@@ -665,7 +665,6 @@ public class EquationTableRenderer {
         String displayEquation = buildDisplayEquation(row);
         String outputName = getCachedOutputName(row);
         String rowText = outputName + " = " + displayEquation;
-        boolean isAliasRow = table.isAliasRow(row);
         
         // Draw scroll icon on adjustable rows (numeric equations) to indicate mouse wheel adjustment
         int textX = tableX + cellPadding;
@@ -683,7 +682,7 @@ public class EquationTableRenderer {
         
         // Draw output mode icon (only for non-VOLTAGE_MODE modes)
         RowOutputMode mode = table.getOutputMode(row);
-        if (!isAliasRow && mode != RowOutputMode.VOLTAGE_MODE) {
+        if (mode != RowOutputMode.VOLTAGE_MODE) {
             String modeIcon;
             Color modeColor;
             if (mode == RowOutputMode.FLOW_MODE) {
@@ -706,15 +705,8 @@ public class EquationTableRenderer {
         }
         
         // Draw row classification icon
-        String classIcon;
-        Color classColor;
-        if (isAliasRow) {
-            classIcon = "⇔";  // Alias (shared node)
-            classColor = new Color(128, 128, 128);  // Gray
-        } else {
-            classIcon = "⟳";  // Cycle: dynamic (evaluated each step)
-            classColor = new Color(200, 100, 0);  // Orange
-        }
+        String classIcon = "⟳";  // Dynamic (evaluated each step)
+        Color classColor = new Color(200, 100, 0);  // Orange
         int iconSize = table.getOpsize() == 1 ? 10 : 12;
         g.setFont(new Font("SansSerif", 0, iconSize));  // 0 = plain (no bold)
         g.setColor(classColor);
@@ -731,7 +723,7 @@ public class EquationTableRenderer {
         // For STOCK rows, shows stock level (node voltage) instead of inflow rate
         double outputValue = table.getDisplayValue(row);
         String valueText = CircuitElm.getShortUnitText(outputValue, "");
-        boolean showFlowUnits = (mode == RowOutputMode.FLOW_MODE) || table.isAliasRowDisplayingFlow(row);
+        boolean showFlowUnits = (mode == RowOutputMode.FLOW_MODE);
         if (showFlowUnits) {
             valueText += " F";
         } else {

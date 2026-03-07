@@ -66,7 +66,6 @@ final class EquationTableJacobianHelper {
      *   <li>Row output mode is not {@code VOLTAGE_MODE}.</li>
      *   <li>Row has no compiled expression.</li>
      *   <li>Row has no assigned voltage source index.</li>
-     *   <li>Row is an alias (node shared with target; no free equation to linearize).</li>
      *   <li>Equation contains stateful operators ({@code integrate}, {@code diff}, etc.).</li>
      * </ol>
      *
@@ -93,9 +92,6 @@ final class EquationTableJacobianHelper {
         }
         if (rowData.rowVoltSource < 0) {
             return "ineligible: no voltage source row";
-        }
-        if (rowData.isAlias) {
-            return "ineligible: alias row";
         }
         if (hasStatefulOperators(rowData.equation)) {
             return "ineligible: stateful expr";
@@ -137,9 +133,6 @@ final class EquationTableJacobianHelper {
         }
         if (sourceNode < 0 || targetNode < 0) {
             return "ineligible: unresolved flow endpoints";
-        }
-        if (rowData.isAlias) {
-            return "ineligible: alias row";
         }
         if (hasStatefulOperators(rowData.equation)) {
             return "ineligible: stateful expr";
