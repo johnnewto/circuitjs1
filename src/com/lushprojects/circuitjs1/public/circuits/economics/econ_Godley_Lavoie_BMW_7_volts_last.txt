@@ -9,6 +9,7 @@
   showVolts: true
   showValues: true
   showPower: false
+  autoAdjustTimestep: false
   equationTableTolerance: 1e-7
   infoViewerUpdateIntervalMs: 100
 @end
@@ -25,21 +26,20 @@
   pr ~ 1 ; mode=param ; sliderValue=0  # Labor productivity
   # Basic behavioral equations
   Cs ~ Cd ; mode=voltage ; sliderValue=0  # Consumption supply
-  Is ~ Id ; mode=voltage ; sliderValue=0  # Investment supply
+  Is ~ Id ; mode=param ; sliderValue=0  # Investment supply
   Ns ~ Nd ; mode=voltage ; sliderValue=0  # Labour supply
-  Ls ~ last(Ls) + Ld - last(Ld) ; mode=voltage ; sliderValue=0  # Loan supply
+  Ls ~ last(Ls) + Ld - last(Ld) ; mode=param ; sliderValue=0  # Loan supply
   # Transactions of the firms
   Y ~ Cs + Is ; mode=voltage ; sliderValue=0  # National income (output)
   WBd ~ Y - last(rl) * last(Ld) - AF ; mode=voltage ; sliderValue=0  # Wage bill demanded
-  AF ~ \delta * last(K) ; mode=voltage ; sliderValue=0  # Amortisation funds
-  Ld ~ last(Ld) + Id - AF ; mode=voltage ; sliderValue=0  # Loan demand
-  Y20 ~ last(Ld) ; mode=voltage ; sliderValue=0  # hint20
+  AF ~ \delta * last(K) ; mode=param ; sliderValue=0  # Amortisation funds
+  Ld ~ last(Ld) + Id - AF ; mode=param ; sliderValue=0  # Loan demand
   # Transactions of households
   YD ~ WBs + last(rm) * last(Mh) ; mode=voltage ; sliderValue=0  # Household disposable income
-  Mh ~ last(Mh) + YD - Cd ; mode=voltage ; sliderValue=0  # Household money holdings (deposits)
+  Mh ~ last(Mh) + YD - Cd ; mode=param ; sliderValue=0  # Household money holdings (deposits)
   # Transactions of the banks
-  Ms ~ last(Ms) + Ls - last(Ls) ; mode=voltage ; sliderValue=0  # Money supply
-  rm ~ rl ; mode=voltage ; sliderValue=0  # Deposit interest rate
+  Ms ~ last(Ms) + Ls - last(Ls) ; mode=param ; sliderValue=0  # Money supply
+  rm ~ rl ; mode=param ; sliderValue=0  # Deposit interest rate
   # The wage bill
   WBs ~ W * Ns ; mode=voltage ; sliderValue=0  # Wage bill supplied
   Nd ~ Y / pr ; mode=voltage ; sliderValue=0  # Labour demand
@@ -47,10 +47,10 @@
   # Household behavior
   Cd ~ \alpha0 + \alpha1 * YD + \alpha2 * last(Mh) ; mode=voltage ; sliderValue=0  # Consumption demand
   # The investment behavior
-  K ~ last(K) + Id - DA ; mode=voltage ; sliderValue=0  # Capital stock
-  DA ~ \delta * last(K) ; mode=voltage ; sliderValue=0  # Depreciation (actual)
-  KT ~ \kappa * last(Y) ; mode=voltage ; sliderValue=0  # Target capital stock
-  Id ~ \gamma * (KT - last(K)) + DA ; mode=voltage ; sliderValue=0  # Investment demand
+  K ~ last(K) + Id - DA ; mode=param ; sliderValue=0  # Capital stock
+  DA ~ \delta * last(K) ; mode=param ; sliderValue=0  # Depreciation (actual)
+  KT ~ \kappa * last(Y) ; mode=param ; sliderValue=0  # Target capital stock
+  Id ~ \gamma * (KT - last(K)) + DA ; mode=param ; sliderValue=0  # Investment demand
 @end
 
 @matrix Transaction_Flow_Matrix x=432 y=344
@@ -97,6 +97,7 @@
   WBd: Wage bill demanded
   AF: Amortisation funds
   Ld: Loan demand
+  Y20: hint20
   YD: Household disposable income
   Mh: Household money holdings (deposits)
   Ms: Money supply
@@ -109,7 +110,6 @@
   DA: Depreciation (actual)
   KT: Target capital stock
   Id: Investment demand
-  Y20: hint20
 @end
 
 @circuit

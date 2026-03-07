@@ -193,6 +193,7 @@ MouseOutHandler, MouseWheelHandler {
     MenuItem elmSplitMenuItem;
     MenuItem elmSliderMenuItem;
     MenuItem elmSankeyMenuItem;
+	MenuItem elmDagBlocksMenuItem;
     MenuItem elmFlipXMenuItem, elmFlipYMenuItem, elmFlipXYMenuItem;
     MenuItem elmSwapMenuItem;
     MenuItem stackAllItem;
@@ -1001,6 +1002,7 @@ public CirSim() {
 	elmMenuBar.addItem(elmSplitMenuItem = menuItemWithShortcut("", "Split Wire", Locale.LS(ctrlMetaKey + "click"), new MyCommand("elm","split")));
 	elmMenuBar.addItem(elmSliderMenuItem = new MenuItem(Locale.LS("Sliders..."),new MyCommand("elm","sliders")));
 	elmMenuBar.addItem(elmSankeyMenuItem = new MenuItem(Locale.LS("View Sankey Diagram..."),new MyCommand("elm","viewSankey")));
+	elmMenuBar.addItem(elmDagBlocksMenuItem = new MenuItem(Locale.LS("View DAG Blocks Plot..."),new MyCommand("elm","viewDagBlocks")));
 
 	scopePopupMenu = new ScopePopupMenu();
 
@@ -4799,6 +4801,11 @@ public CirSim() {
 	    	viewer.openDialog();
     	}
 
+	    if (item=="viewDagBlocks" && (menuElm instanceof EquationTableElm)) {
+		SFCRDagBlocksViewer viewer = new SFCRDagBlocksViewer(this);
+		viewer.openExternalWindow();
+	    }
+
     	if (item=="viewInScope" && menuElm != null) {
     		int i;
     		for (i = 0; i != scopeCount; i++)
@@ -6691,6 +6698,7 @@ public CirSim() {
     	    	    elmSplitMenuItem.setEnabled(canSplit(mouseElm));
     	    	    elmSliderMenuItem.setEnabled(sliderItemEnabled(mouseElm));
 		    	    elmSankeyMenuItem.setEnabled(mouseElm instanceof SFCTableElm);
+				    elmDagBlocksMenuItem.setEnabled(mouseElm instanceof EquationTableElm);
 		    boolean canFlipX = mouseElm.canFlipX();
 		    boolean canFlipY = mouseElm.canFlipY();
 		    boolean canFlipXY = mouseElm.canFlipXY();

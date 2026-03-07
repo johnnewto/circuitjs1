@@ -536,6 +536,17 @@ class Expr {
 	collectSamePeriodRefsInternal(out, false);
     }
 
+	/**
+	 * Collect all node references used by this expression, including references
+	 * nested inside historical operators like lag(), last(), integrate(), diff(),
+	 * and smooth().
+	 *
+	 * @param out target set to populate with referenced names
+	 */
+	void collectAllRefs(java.util.Set<String> out) {
+	collectAllRefsInternal(out);
+	}
+
     private void collectSamePeriodRefsInternal(java.util.Set<String> out, boolean inHistoricalContext) {
 	if (out == null)
 	    return;
@@ -564,6 +575,23 @@ class Expr {
 
 	for (int i = 0; i < children.size(); i++)
 	    children.get(i).collectSamePeriodRefsInternal(out, childHistoricalContext);
+    }
+
+    private void collectAllRefsInternal(java.util.Set<String> out) {
+	if (out == null)
+	    return;
+
+	if ((type == E_NODE_REF || type == E_GSLOT) && nodeName != null) {
+	    String trimmed = nodeName.trim();
+	    if (!trimmed.isEmpty())
+		out.add(trimmed);
+	}
+
+	if (children == null)
+	    return;
+
+	for (int i = 0; i < children.size(); i++)
+	    children.get(i).collectAllRefsInternal(out);
     }
     
     /**

@@ -16,30 +16,30 @@
 
 @equations BMW x=32 y=344
   # Parameters
-  rl ~ 0.025 ; mode=flow ; sliderValue=0  # Interest rate on loans
-  \alpha0 ~ 20 ; mode=flow ; sliderValue=0  # Autonomous consumption
-  \alpha1 ~ 0.75 ; mode=flow ; sliderValue=0  # Propensity to consume from income
-  \alpha2 ~ 0.10 ; mode=flow ; sliderValue=0  # Propensity to consume from wealth
-  \delta ~ 0.1 ; mode=flow ; sliderValue=0  # Depreciation rate
-  \gamma ~ 0.15 ; mode=flow ; sliderValue=0  # Adjustment speed of capital to target
-  \kappa ~ 1 ; mode=flow ; sliderValue=0  # Capital-output ratio target
-  pr ~ 1 ; mode=flow ; sliderValue=0  # Labor productivity
+  rl ~ 0.025 ; mode=param ; sliderValue=0  # Interest rate on loans
+  \alpha0 ~ 20 ; mode=param ; sliderValue=0  # Autonomous consumption
+  \alpha1 ~ 0.75 ; mode=param ; sliderValue=0  # Propensity to consume from income
+  \alpha2 ~ 0.10 ; mode=param ; sliderValue=0  # Propensity to consume from wealth
+  \delta ~ 0.1 ; mode=param ; sliderValue=0  # Depreciation rate
+  \gamma ~ 0.15 ; mode=param ; sliderValue=0  # Adjustment speed of capital to target
+  \kappa ~ 1 ; mode=param ; sliderValue=0  # Capital-output ratio target
+  pr ~ 1 ; mode=param ; sliderValue=0  # Labor productivity
   # Basic behavioral equations
   Cs ~ Cd ; mode=flow ; sliderValue=0  # Consumption supply
-  Is ~ Id ; mode=flow ; sliderValue=0  # Investment supply
+  Is ~ Id ; mode=param ; sliderValue=0  # Investment supply
   Ns ~ Nd ; mode=flow ; sliderValue=0  # Labour supply
-  Ls ~ last(Ls) + Ld - last(Ld) ; mode=flow ; sliderValue=0  # Loan supply
+  Ls ~ last(Ls) + Ld - last(Ld) ; mode=param ; sliderValue=0  # Loan supply
   # Transactions of the firms
   Y ~ Cs + Is ; mode=flow ; sliderValue=0  # National income (output)
   WBd ~ Y - last(rl) * last(Ld) - AF ; mode=flow ; sliderValue=0  # Wage bill demanded
-  AF ~ \delta * last(K) ; mode=flow ; sliderValue=0  # Amortisation funds
-  Ld ~ last(Ld) + Id - AF ; mode=flow ; sliderValue=0  # Loan demand
+  AF ~ \delta * last(K) ; mode=param ; sliderValue=0  # Amortisation funds
+  Ld ~ last(Ld) + Id - AF ; mode=param ; sliderValue=0  # Loan demand
   # Transactions of households
   YD ~ WBs + last(rm) * last(Mh) ; mode=flow ; sliderValue=0  # Household disposable income
-  Mh ~ last(Mh) + YD - Cd ; mode=flow ; sliderValue=0  # Household money holdings (deposits)
+  Mh ~ last(Mh) + YD - Cd ; mode=param ; sliderValue=0  # Household money holdings (deposits)
   # Transactions of the banks
-  Ms ~ last(Ms) + Ls - last(Ls) ; mode=flow ; sliderValue=0  # Money supply
-  rm ~ rl ; mode=flow ; sliderValue=0  # Deposit interest rate
+  Ms ~ last(Ms) + Ls - last(Ls) ; mode=param ; sliderValue=0  # Money supply
+  rm ~ rl ; mode=param ; sliderValue=0  # Deposit interest rate
   # The wage bill
   WBs ~ W * Ns ; mode=flow ; sliderValue=0  # Wage bill supplied
   Nd ~ Y / pr ; mode=flow ; sliderValue=0  # Labour demand
@@ -47,10 +47,10 @@
   # Household behavior
   Cd ~ \alpha0 + \alpha1 * YD + \alpha2 * last(Mh) ; mode=flow ; sliderValue=0  # Consumption demand
   # The investment behavior
-  K ~ last(K) + Id - DA ; mode=flow ; sliderValue=0  # Capital stock
-  DA ~ \delta * last(K) ; mode=flow ; sliderValue=0  # Depreciation (actual)
-  KT ~ \kappa * last(Y) ; mode=flow ; sliderValue=0  # Target capital stock
-  Id ~ \gamma * (KT - last(K)) + DA ; mode=flow ; sliderValue=0  # Investment demand
+  K ~ last(K) + Id - DA ; mode=param ; sliderValue=0  # Capital stock
+  DA ~ \delta * last(K) ; mode=param ; sliderValue=0  # Depreciation (actual)
+  KT ~ \kappa * last(Y) ; mode=param ; sliderValue=0  # Target capital stock
+  Id ~ \gamma * (KT - last(K)) + DA ; mode=param ; sliderValue=0  # Investment demand
 @end
 
 @matrix Transaction_Flow_Matrix x=432 y=344
