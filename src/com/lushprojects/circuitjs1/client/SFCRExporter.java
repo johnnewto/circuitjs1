@@ -18,6 +18,7 @@ import java.util.Set;
  * 
  * Output blocks:
  *   @init       - Simulation settings (timestep, units)
+ *   @action     - Action Time schedule (timed target updates)
  *   @info       - Model documentation (markdown)
  *   @equations  - All equations (from EquationTableElm, GodlyTableElm)
  *   @matrix     - Transaction matrices (from SFCTableElm)
@@ -75,6 +76,13 @@ public class SFCRExporter {
         String initBlock = exportInitBlock();
         if (!initBlock.isEmpty()) {
             sb.append(initBlock);
+            sb.append("\n");
+        }
+
+        // Export Action Time schedule as @action block
+        String actionBlock = exportActionBlock();
+        if (!actionBlock.isEmpty()) {
+            sb.append(actionBlock);
             sb.append("\n");
         }
         
@@ -214,6 +222,50 @@ public class SFCRExporter {
         sb.append("  equationTableTolerance: ").append(Double.toString(sim.equationTableConvergenceTolerance)).append("\n");
         sb.append("  infoViewerUpdateIntervalMs: ").append(sim.infoViewerUpdateIntervalMs).append("\n");
         
+        sb.append("@end\n");
+        return sb.toString();
+    }
+
+    /** Export ActionScheduler as @action block. */
+    private String exportActionBlock() {
+        ActionScheduler scheduler = ActionScheduler.getInstance(sim);
+        if (scheduler == null) {
+            return "";
+        }
+
+        java.util.List<ActionScheduler.ScheduledAction> actions = scheduler.getAllActions();
+        if (actions == null || actions.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("@action\n");
+        sb.append("  pauseTime: ").append(scheduler.getPauseTime()).append("\n");
+        sb.append("\n");
+        sb.append("| time | target | value | text | enabled | stop |\n");
+        sb.append("|------|--------|-------|------|---------|------|\n");
+
+        for (ActionScheduler.ScheduledAction action : actions) {
+            String target = (action.sliderName == null) ? "" : action.sliderName;
+            String valueExpr = (action.valueExpression == null) ? "" : action.valueExpression.trim();
+            String value = valueExpr.isEmpty() ? Double.toString(action.sliderValue) : valueExpr;
+            String text = (action.postText == null) ? "" : action.postText;
+
+            sb.append("| ")
+              .append(action.actionTime)
+              .append(" | ")
+              .append(escapeTableCell(target))
+              .append(" | ")
+              .append(escapeTableCell(value))
+              .append(" | ")
+              .append(escapeTableCell(text))
+              .append(" | ")
+              .append(action.enabled)
+              .append(" | ")
+              .append(action.stopSimulation)
+              .append(" |\n");
+        }
+
         sb.append("@end\n");
         return sb.toString();
     }
@@ -636,6 +688,12 @@ public class SFCRExporter {
     private String sanitizeName(String name) {
         if (name == null) return "Unnamed";
         return name.replaceAll("\\s+", "_");
+    }
+
+    /** Escape markdown table cell delimiters. */
+    private String escapeTableCell(String text) {
+        if (text == null) return "";
+        return text.replace("|", "\\|");
     }
     
     /** Format position string for block header. */

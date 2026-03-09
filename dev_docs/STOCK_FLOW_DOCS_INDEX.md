@@ -78,6 +78,14 @@ This index reflects the current mixed architecture in the codebase:
 - Real-time voltage values
 - Menu: Add Master Stocks Table
 
+### SCENARIO_ELM_REFERENCE.md
+**Purpose:** Reference for the `ScenarioElm` time-windowed parameter override element  
+**Key Points:**
+- Applies ADD / MULTIPLY / REPLACE overrides to `ComputedValues` targets during a time window
+- Can reset scope plots and open Plotly Viewer on activation
+- Works alongside `ActionScheduler` scenario overrides on the same target
+- Menu: Add Scenario
+
 ### FLOWS_MASTER_ELM_REFERENCE.md
 **Purpose:** Reference for the All Flows display element  
 **Key Points:**
@@ -93,6 +101,7 @@ This index reflects the current mixed architecture in the codebase:
 
 ## Related Components
 
+- **ScenarioElm** - Time-windowed ADD/MULTIPLY/REPLACE override on a `ComputedValues` target
 - **TableElm** - Base stock-flow table (still has electrical posts)
 - **GodlyTableElm** - MNA-backed table with hidden-node voltage-source driving for master stocks
 - **SFCTableElm** - Display-only/pure computational SFC transaction matrix

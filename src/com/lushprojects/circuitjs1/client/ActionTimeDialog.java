@@ -47,7 +47,11 @@ import com.lushprojects.circuitjs1.client.ActionScheduler.ScheduledAction;
 import com.google.gwt.user.client.Event;
 import com.google.gwt.user.client.Event.NativePreviewHandler;
 import com.google.gwt.user.client.Event.NativePreviewEvent;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.LinkedHashSet;
 
 /**
  * Non-modal dialog for managing scheduled actions in the simulation.
@@ -156,7 +160,7 @@ public class ActionTimeDialog extends DialogBox {
         // Add table headers
         actionTable.setText(0, 0, Locale.LS("⋮⋮"));
         actionTable.setText(0, 1, Locale.LS("Time"));
-        actionTable.setText(0, 2, Locale.LS("Slider/Action"));
+        actionTable.setText(0, 2, Locale.LS("Target (Adjustable Param)"));
         actionTable.setText(0, 3, Locale.LS("Value"));
         actionTable.setText(0, 4, Locale.LS("Text"));
         actionTable.setText(0, 5, Locale.LS("Enabled"));
@@ -208,33 +212,6 @@ public class ActionTimeDialog extends DialogBox {
         pausePanel.add(pauseLabel);
         pausePanel.add(pauseTimeBox);
         
-        // Add Animation Time input
-        HorizontalPanel animPanel = new HorizontalPanel();
-        animPanel.setSpacing(5);
-        animPanel.getElement().getStyle().setMarginRight(20, Unit.PX);
-        
-        Label animLabel = new Label(Locale.LS("Animation Time (s):"));
-        animLabel.getElement().getStyle().setMarginRight(5, Unit.PX);
-        
-        final TextBox animTimeBox = new TextBox();
-        animTimeBox.setWidth("60px");
-        animTimeBox.setValue(String.valueOf(scheduler.getAnimationTime()));
-        animTimeBox.setTitle("Duration for animating slider changes (minimum 0.1s)");
-        
-        animTimeBox.addChangeHandler(new ChangeHandler() {
-            public void onChange(ChangeEvent event) {
-                try {
-                    double animTime = Double.parseDouble(animTimeBox.getValue());
-                    scheduler.setAnimationTime(animTime);
-                } catch (NumberFormatException e) {
-                    animTimeBox.setValue(String.valueOf(scheduler.getAnimationTime()));
-                }
-            }
-        });
-        
-        animPanel.add(animLabel);
-        animPanel.add(animTimeBox);
-        
         // Add Enable Element checkbox
         HorizontalPanel enablePanel = new HorizontalPanel();
         enablePanel.setSpacing(5);
@@ -259,7 +236,6 @@ public class ActionTimeDialog extends DialogBox {
         Button closeButton = new Button(Locale.LS("Close"));
         
         hp.add(pausePanel);
-        hp.add(animPanel);
         hp.add(enablePanel);
         hp.add(addButton);
         hp.add(clearButton);
@@ -382,15 +358,19 @@ public class ActionTimeDialog extends DialogBox {
             // Action Time column
             actionTable.setText(row, 1, CircuitElm.getUnitText(action.actionTime, "s"));
             
-            // Slider Name column
+            // Target Name column
             String sliderName = action.sliderName;
             if (sliderName == null || sliderName.isEmpty()) {
                 sliderName = "(none)";
             }
             actionTable.setText(row, 2, sliderName);
+            if (!"(none)".equals(sliderName) && !isAdjustableParamTarget(sliderName)) {
+                actionTable.getCellFormatter().getElement(row, 2).getStyle().setProperty("color", "#cc0000");
+                actionTable.getCellFormatter().getElement(row, 2).setTitle("Warning: target must be adjustable and param mode");
+            }
             
-            // Slider Value column
-            String valueText = getFormattedSliderValue(action.sliderName, action.sliderValue);
+            // Target Value column
+            String valueText = formatActionValueDisplay(action);
             actionTable.setText(row, 3, valueText);
             
             // Display Text column (show current text)
@@ -558,34 +538,53 @@ public class ActionTimeDialog extends DialogBox {
         timeBox.setWidth("200px");
         timeBox.setValue(existingAction == null ? CircuitElm.getUnitText(sim.t, "") : String.valueOf(existingAction.actionTime));
         
-        final ListBox sliderBox = new ListBox();
-        sliderBox.setWidth("200px");
-        List<String> sliders = scheduler.getAvailableSliders();
-        sliderBox.addItem("(none)", "");
-        for (String slider : sliders) {
-            sliderBox.addItem(slider, slider);
+        final ListBox targetBox = new ListBox();
+        targetBox.setWidth("200px");
+        List<String> targets = getAdjustableParamTargets();
+        targetBox.addItem("(none)", "");
+        for (String target : targets) {
+            targetBox.addItem(target, target);
         }
         if (existingAction != null && existingAction.sliderName != null) {
-            for (int i = 0; i < sliderBox.getItemCount(); i++) {
-                if (sliderBox.getValue(i).equals(existingAction.sliderName)) {
-                    sliderBox.setSelectedIndex(i);
+            boolean foundExistingTarget = false;
+            for (int i = 0; i < targetBox.getItemCount(); i++) {
+                if (targetBox.getValue(i).equals(existingAction.sliderName)) {
+                    targetBox.setSelectedIndex(i);
+                    foundExistingTarget = true;
                     break;
                 }
+            }
+            if (!foundExistingTarget && existingAction.sliderName.length() > 0) {
+                targetBox.addItem(existingAction.sliderName, existingAction.sliderName);
+                targetBox.setSelectedIndex(targetBox.getItemCount() - 1);
             }
         }
         
         final TextBox valueBox = new TextBox();
         valueBox.setWidth("200px");
-        valueBox.setValue(existingAction == null ? "0.0" : String.valueOf(existingAction.sliderValue));
+        if (existingAction == null) {
+            valueBox.setValue("0.0");
+        } else if (existingAction.valueExpression != null && !existingAction.valueExpression.trim().isEmpty()) {
+            valueBox.setValue(existingAction.valueExpression);
+        } else {
+            valueBox.setValue(String.valueOf(existingAction.sliderValue));
+        }
+
+        final Label targetWarningLabel = new Label();
+        targetWarningLabel.getElement().getStyle().setColor("#cc0000");
+        targetWarningLabel.getElement().getStyle().setFontSize(11, Unit.PX);
         
-        // Add change handler to slider dropdown to auto-populate current value
-        sliderBox.addChangeHandler(new ChangeHandler() {
+        // Add change handler to target dropdown to auto-populate current value
+        targetBox.addChangeHandler(new ChangeHandler() {
             public void onChange(ChangeEvent event) {
-                String selectedSlider = sliderBox.getValue(sliderBox.getSelectedIndex());
-                if (selectedSlider != null && !selectedSlider.isEmpty()) {
-                    double currentValue = scheduler.getSliderValue(selectedSlider);
-                    valueBox.setValue(String.valueOf(currentValue));
+                String selectedTarget = targetBox.getValue(targetBox.getSelectedIndex());
+                if (selectedTarget != null && !selectedTarget.isEmpty()) {
+                    double currentValue = scheduler.getActionTargetValue(selectedTarget);
+                    if (!Double.isNaN(currentValue)) {
+                        valueBox.setValue(String.valueOf(currentValue));
+                    }
                 }
+                updateTargetWarningLabel(targetWarningLabel, selectedTarget);
             }
         });
         
@@ -598,10 +597,12 @@ public class ActionTimeDialog extends DialogBox {
         
         // Add form rows
         vp.add(createFormRow("Action Time (s):", timeBox));
-        vp.add(createFormRow("Slider/Action Name:", sliderBox));
-        vp.add(createFormRow("Value:", valueBox));
+        vp.add(createFormRow("Target Name:", targetBox));
+        vp.add(createFormRow("", targetWarningLabel));
+        vp.add(createFormRow("Value / Expr (*0.5,+1,-10,=10):", valueBox));
         vp.add(createFormRow("Display Text:", postTextBox));
         vp.add(createFormRow("Enabled:", enabledBox));
+        updateTargetWarningLabel(targetWarningLabel, targetBox.getValue(targetBox.getSelectedIndex()));
         
         // Add buttons
         HorizontalPanel buttonPanel = new HorizontalPanel();
@@ -619,8 +620,15 @@ public class ActionTimeDialog extends DialogBox {
             public void onClick(ClickEvent event) {
                 try {
                     double time = Double.parseDouble(timeBox.getValue());
-                    String slider = sliderBox.getValue(sliderBox.getSelectedIndex());
-                    double value = Double.parseDouble(valueBox.getValue());
+                    String slider = targetBox.getValue(targetBox.getSelectedIndex());
+                    String valueInput = valueBox.getValue() == null ? "" : valueBox.getValue().trim();
+                    boolean expressionMode = isValueExpression(valueInput);
+                    double value;
+                    if (expressionMode) {
+                        value = 0.0;
+                    } else {
+                        value = Double.parseDouble(valueInput);
+                    }
                     String preText = "";  // No longer editable
                     String postText = postTextBox.getValue();
                     boolean enabled = enabledBox.getValue();
@@ -630,12 +638,15 @@ public class ActionTimeDialog extends DialogBox {
                         // Create new action
                         ScheduledAction newAction = new ScheduledAction(0, time, slider,
                             value, preText, postText, enabled, stopSimulation);
+                        newAction.valueExpression = expressionMode ? valueInput : "";
                         scheduler.addAction(newAction);
                     } else {
                         // Update existing action
                         existingAction.actionTime = time;
                         existingAction.sliderName = slider;
                         existingAction.sliderValue = value;
+                        existingAction.valueExpression = expressionMode ? valueInput : "";
+                        existingAction.resolvedValueSet = false;
                         existingAction.preText = preText;
                         existingAction.postText = postText;
                         existingAction.enabled = enabled;
@@ -646,7 +657,7 @@ public class ActionTimeDialog extends DialogBox {
                     refresh();
                     editDialog.hide();
                 } catch (NumberFormatException ex) {
-                    com.google.gwt.user.client.Window.alert("Invalid number format");
+                    com.google.gwt.user.client.Window.alert("Invalid value. Use number or expression like *0.5, +1, -10, =10");
                 }
             }
         });
@@ -701,6 +712,95 @@ public class ActionTimeDialog extends DialogBox {
         row.add(widget);
         
         return row;
+    }
+
+    private boolean isValueExpression(String input) {
+        if (input == null) {
+            return false;
+        }
+        String trimmed = input.trim();
+        if (trimmed.isEmpty()) {
+            return false;
+        }
+        char c = trimmed.charAt(0);
+        return c == '+' || c == '-' || c == '*' || c == '=';
+    }
+
+    private String formatActionValueDisplay(ScheduledAction action) {
+        if (action == null) {
+            return "";
+        }
+
+        String target = (action.sliderName == null) ? "" : action.sliderName.trim();
+        String expression = (action.valueExpression == null) ? "" : action.valueExpression.trim();
+
+        if (!expression.isEmpty()) {
+            String formattedExpr = expression;
+            char op = expression.charAt(0);
+            if (expression.length() > 1 && (op == '+' || op == '-' || op == '*' || op == '=')) {
+                formattedExpr = op + " " + expression.substring(1).trim();
+            }
+            if (!target.isEmpty()) {
+                return target + " " + formattedExpr;
+            }
+            return formattedExpr;
+        }
+
+        String valueText = getFormattedSliderValue(action.sliderName, action.sliderValue);
+        if (!target.isEmpty()) {
+            return target + " = " + valueText;
+        }
+        return valueText;
+    }
+
+    private List<String> getAdjustableParamTargets() {
+        Set<String> names = new LinkedHashSet<String>();
+
+        for (int i = 0; i < sim.elmList.size(); i++) {
+            CircuitElm ce = sim.getElm(i);
+            if (!(ce instanceof EquationTableElm))
+                continue;
+
+            EquationTableElm table = (EquationTableElm) ce;
+            int rows = table.getRowCount();
+            for (int row = 0; row < rows; row++) {
+                if (!table.isAdjustableRow(row) || table.isCommentRow(row))
+                    continue;
+                if (table.getOutputMode(row) != EquationTableElm.RowOutputMode.PARAM_MODE)
+                    continue;
+
+                String name = table.getOutputName(row);
+                if (name == null)
+                    continue;
+                name = name.trim();
+                if (!name.isEmpty())
+                    names.add(name);
+            }
+        }
+
+        List<String> targets = new ArrayList<String>(names);
+        Collections.sort(targets);
+        return targets;
+    }
+
+    private boolean isAdjustableParamTarget(String targetName) {
+        if (targetName == null)
+            return false;
+        String name = targetName.trim();
+        if (name.isEmpty())
+            return false;
+        List<String> targets = getAdjustableParamTargets();
+        return targets.contains(name);
+    }
+
+    private void updateTargetWarningLabel(Label warningLabel, String selectedTarget) {
+        if (warningLabel == null)
+            return;
+        if (selectedTarget != null && !selectedTarget.trim().isEmpty() && !isAdjustableParamTarget(selectedTarget)) {
+            warningLabel.setText("Warning: target must be adjustable and param mode");
+        } else {
+            warningLabel.setText("");
+        }
     }
     
     /**

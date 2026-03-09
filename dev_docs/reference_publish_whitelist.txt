@@ -11,3 +11,4 @@ PLOTLY_VIEWER_FEATURE.md|PlotlyViewerFeature.md|Plotly Viewer Feature
 GREEK_SYMBOLS_FEATURE.md|GreekSymbolsFeature.md|Greek Symbols Feature
 STOP_SIMULATION_FEATURE.md|StopSimulationFeature.md|Stop Simulation Feature
 ACTION_SCHEDULER_QUICK_REFERENCE.md|ActionSchedulerQuickReference.md|Action Scheduler Quick Reference
+SCENARIO_ELM_REFERENCE.md|ScenarioElmReference.md|Scenario Element Reference

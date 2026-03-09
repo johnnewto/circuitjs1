@@ -253,14 +253,7 @@ class ActionTimeElm extends CircuitElm {
                 g.setFont(new Font("SansSerif", 0, 10));
                 g.setColor(textColor);
                 String actionText = getUnitText(action.actionTime, "s") + ": ";
-                if (action.stopSimulation) {
-                    actionText += "[STOP SIMULATION]";
-                } else if (action.sliderName != null && !action.sliderName.isEmpty()) {
-                    actionText += action.sliderName + "=" + 
-                                 getFormattedSliderValue(action.sliderName, action.sliderValue);
-                } else {
-                    actionText += "(no action)";
-                }
+                actionText += scheduler.getFormattedActionText(action);
                 
                 // Truncate if too long
                 if (actionText.length() > 30) {

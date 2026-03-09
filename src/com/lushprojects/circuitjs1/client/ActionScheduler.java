@@ -22,7 +22,10 @@ package com.lushprojects.circuitjs1.client;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import com.google.gwt.user.client.Timer;
 
 /**
@@ -38,25 +41,23 @@ public class ActionScheduler {
     private String displayMessage = null;
     private boolean isPaused = false;
     private double pauseTime = 0.0;  // Seconds to pause after each action (0 = no pause)
-    private double animationTime = 2.0;  // Seconds to animate slider changes (default 2s)
     private Timer resumeTimer = null;  // Timer to auto-resume after pause
-    private Timer animationTimer = null;  // Timer for animating slider changes
     private boolean simulationStarted = false;  // Track if simulation has run beyond initial state
+    private Set<String> actionOverrideTargets = new HashSet<String>();
+    private static final String ACTION_OVERRIDE_SOURCE = "ActionScheduler";
     
     /**
      * State machine for scheduled actions
      * PENDING - Not yet reached action time
      * READY - Action at t=0, should execute immediately on first step
      * WAITING - Action time reached, timer started, waiting to execute
-     * ANIMATING - Slider value is being animated over 2 seconds
-     * EXECUTING - Animation complete, action is executing (transient)
+     * EXECUTING - Action is executing (transient)
      * COMPLETED - Action fully executed
      */
     public enum ActionState {
         PENDING,
         READY,
         WAITING,
-        ANIMATING,
         EXECUTING,
         COMPLETED
     }
@@ -69,22 +70,28 @@ public class ActionScheduler {
         public double actionTime;
         public String sliderName;
         public double sliderValue;
+        public String valueExpression;
         public String preText;
         public String postText;
         public boolean enabled;
         public boolean stopSimulation;
         public ActionState state;  // Current state of the action
+        public double resolvedValue;
+        public boolean resolvedValueSet;
         
         public ScheduledAction() {
             this.id = 0;
             this.actionTime = 1.0;
             this.sliderName = "";
             this.sliderValue = 0.0;
+            this.valueExpression = "";
             this.preText = "";
             this.postText = "After";
             this.enabled = true;
             this.stopSimulation = false;
             this.state = ActionState.PENDING;
+            this.resolvedValue = 0.0;
+            this.resolvedValueSet = false;
         }
         
         public ScheduledAction(int id, double actionTime, String sliderName, 
@@ -93,18 +100,24 @@ public class ActionScheduler {
             this.actionTime = actionTime;
             this.sliderName = sliderName;
             this.sliderValue = sliderValue;
+            this.valueExpression = "";
             this.preText = preText;
             this.postText = postText;
             this.enabled = enabled;
             this.stopSimulation = stopSimulation;
             // Actions at t=0 start in READY state to execute immediately
             this.state = (actionTime == 0.0) ? ActionState.READY : ActionState.PENDING;
+            this.resolvedValue = 0.0;
+            this.resolvedValueSet = false;
         }
         
         public ScheduledAction copy() {
             ScheduledAction copy = new ScheduledAction(id, actionTime, sliderName, 
                 sliderValue, preText, postText, enabled, stopSimulation);
             copy.state = this.state;
+            copy.valueExpression = this.valueExpression;
+            copy.resolvedValue = this.resolvedValue;
+            copy.resolvedValueSet = this.resolvedValueSet;
             return copy;
         }
     }
@@ -174,150 +187,57 @@ public class ActionScheduler {
         if (resumeTimer != null) {
             resumeTimer.cancel();
         }
-        
-        // Animation duration from configuration
-        final double animationDuration = animationTime;
-        final double waitBeforeAnimation = Math.max(0, delaySeconds - animationDuration);
-        
-        // Create timer to start animation phase
-        int waitMs = (int) (waitBeforeAnimation * 1000);
+
+        int waitMs = (int) (Math.max(0, delaySeconds) * 1000);
         resumeTimer = new Timer() {
             public void run() {
-                // WAITING → ANIMATING
-                transitionToAnimating(actions);
-                
-                // Start slider animation
-                animateActions(actions, animationDuration);
+                completeActions(actions);
             }
         };
-        
+
         resumeTimer.schedule(waitMs);
     }
-    
-    /**
-     * Animate slider changes over a duration
-     */
-    private void animateActions(final List<ScheduledAction> actions, double durationSeconds) {
-        final int stepDelayMs = 50;  // 50ms between animation steps
-        final int steps = (int) Math.ceil((durationSeconds * 1000) / stepDelayMs);  // Calculate steps to meet duration
 
-        // Build and display message at start of animation
+    /**
+     * Complete action execution after pause delay
+     */
+    private void completeActions(List<ScheduledAction> actions) {
+        isPaused = false;
         StringBuilder allActionText = new StringBuilder();
+        
         for (ScheduledAction action : actions) {
-            // Build action text with formatted value
-            String actionText = "";
-            if (action.sliderName != null && !action.sliderName.isEmpty()) {
-                actionText = action.sliderName + " = " + getFormattedSliderValue(action.sliderName, action.sliderValue);
-            }
+            // WAITING → EXECUTING
+            transitionToExecuting(action);
             
-            // Collect action text for display
+            // Set final value
+            if (action.sliderName != null && action.sliderName.length() > 0) {
+                double targetValue = action.resolvedValueSet ? action.resolvedValue : action.sliderValue;
+                setActionTargetValue(action.sliderName, targetValue);
+            }
+
+            String actionText = formatActionText(action);
+
+            if (allActionText.length() > 0) {
+                allActionText.append("; ");
+            }
             if (action.postText != null && !action.postText.isEmpty()) {
-                if (allActionText.length() > 0) {
-                    allActionText.append("; ");
-                }
                 allActionText.append(action.postText);
                 if (!actionText.isEmpty()) {
                     allActionText.append(": ").append(actionText);
                 }
-            }
-        }
-        
-        // Set display message at start of animation
-        if (allActionText.length() > 0) {
-            displayMessage = allActionText.toString();
-            CirSim.console("Animating: " + displayMessage);
-            sim.repaint();  // Force redraw to show the message immediately
-        }
-        
-        // Get starting values for all sliders and highlight them
-        final double[] startValues = new double[actions.size()];
-        for (int i = 0; i < actions.size(); i++) {
-            ScheduledAction action = actions.get(i);
-            if (action.sliderName != null && !action.sliderName.isEmpty()) {
-                startValues[i] = getSliderValue(action.sliderName);
-                highlightSlider(action.sliderName, true);  // Highlight during animation
-            }
-        }
-        
-        final int[] currentStep = {0};
-        
-        animationTimer = new Timer() {
-            public void run() {
-                currentStep[0]++;
-                double progress = (double) currentStep[0] / steps;
-                
-                // Update all slider values and build display message
-                StringBuilder animationText = new StringBuilder();
-                for (int i = 0; i < actions.size(); i++) {
-                    ScheduledAction action = actions.get(i);
-                    if (action.sliderName != null && !action.sliderName.isEmpty()) {
-                        // Linear interpolation
-                        double currentValue = startValues[i] + (action.sliderValue - startValues[i]) * progress;
-                        setSliderValue(action.sliderName, currentValue);
-                        
-                        // Build updated display message with current value
-                        if (action.postText != null && !action.postText.isEmpty()) {
-                            if (animationText.length() > 0) {
-                                animationText.append("; ");
-                            }
-                            animationText.append(action.postText);
-                            animationText.append(": ").append(action.sliderName).append(" = " )
-                                .append(getFormattedSliderValue(action.sliderName, currentValue));
-                        }
-                    }
-                }
-                
-                // Update display message with current animated values
-                if (animationText.length() > 0) {
-                    displayMessage = animationText.toString();
-                }
-                
-                // Repaint to show updated slider values and display message
-                sim.repaint();
-                
-                // Check if animation is complete
-                if (currentStep[0] >= steps) {
-                    // Remove highlights
-                    for (int i = 0; i < actions.size(); i++) {
-                        ScheduledAction action = actions.get(i);
-                        if (action.sliderName != null && !action.sliderName.isEmpty()) {
-                            highlightSlider(action.sliderName, false);
-                        }
-                    }
-                    
-                    // ANIMATING → EXECUTING → COMPLETED
-                    animationTimer = null;
-                    completeActions(actions);
-                } else {
-                    // Continue animation
-                    this.schedule(stepDelayMs);
-                }
-            }
-        };
-        
-        animationTimer.schedule(stepDelayMs);
-    }
-    
-    /**
-     * Complete action execution after animation
-     */
-    private void completeActions(List<ScheduledAction> actions) {
-        isPaused = false;
-        
-        for (ScheduledAction action : actions) {
-            // ANIMATING → EXECUTING
-            transitionToExecuting(action);
-            
-            // Ensure final value is set exactly
-            if (action.sliderName != null && action.sliderName.length() > 0) {
-                setSliderValue(action.sliderName, action.sliderValue);
+            } else if (!actionText.isEmpty()) {
+                allActionText.append(actionText);
             }
             
             // EXECUTING → COMPLETED
             transitionToCompleted(action, sim.t);
+            action.resolvedValueSet = false;
         }
-        
-        // Display message is already set at start of animation, so no need to update it here
+
+        if (allActionText.length() > 0) {
+            displayMessage = allActionText.toString();
+            sim.repaint();
+        }
         
         sim.setSimRunning(true);
         CirSim.console("Resumed: " + actions.size() + " action(s) completed");
@@ -361,35 +281,12 @@ public class ActionScheduler {
     }
     
     /**
-     * Get the animation time for slider changes (in seconds)
-     */
-    public double getAnimationTime() {
-        return animationTime;
-    }
-    
-    /**
-     * Set the animation time for slider changes (in seconds)
-     * @param seconds Seconds to animate slider changes (minimum 0.1s)
-     */
-    public void setAnimationTime(double seconds) {
-        animationTime = Math.max(0.1, seconds);
-    }
-    
-    /**
      * Clear paused state (called when user manually starts simulation)
      * If there's a pending action timer, trigger it immediately
      */
     public void clearPausedState() {
         if (isPaused) {
             isPaused = false;
-            
-            // Cancel any animation in progress and unhighlight sliders
-            if (animationTimer != null) {
-                animationTimer.cancel();
-                animationTimer = null;
-                // Unhighlight all animating sliders
-                unhighlightAllSliders();
-            }
             
             if (resumeTimer != null) {
                 // Trigger the timer immediately instead of just canceling it
@@ -407,18 +304,10 @@ public class ActionScheduler {
      * Triggers pending actions immediately before stopping
      */
     public void cancelResumeTimer() {
-        // Cancel any animation in progress and unhighlight sliders
-        if (animationTimer != null) {
-            animationTimer.cancel();
-            animationTimer = null;
-            // Unhighlight all animating sliders
-            unhighlightAllSliders();
-        }
-        
         if (resumeTimer != null) {
             // Trigger the timer immediately to execute pending actions
             resumeTimer.cancel();
-            resumeTimer.run();  // Execute the actions now (starts animation)
+            resumeTimer.run();
             resumeTimer = null;
             isPaused = false;  // Clear pause state
             
@@ -534,6 +423,7 @@ public class ActionScheduler {
      * Clear all actions
      */
     public void clearAll() {
+        clearActionOverrides();
         actions.clear();
         ActionTimeDialog.refreshIfOpen();
     }
@@ -592,9 +482,11 @@ public class ActionScheduler {
      * Reset all triggered flags (called when simulation is reset)
      */
     public void reset() {
+        clearActionOverrides();
         for (ScheduledAction action : actions) {
             // Reset to READY if action is at t=0, otherwise PENDING
             action.state = (action.actionTime == 0.0) ? ActionState.READY : ActionState.PENDING;
+            action.resolvedValueSet = false;
         }
         displayMessage = null;
         lastActionText = null;  // Clear last action text on reset
@@ -641,28 +533,27 @@ public class ActionScheduler {
             
             // Execute the action NOW - set slider value
             if (action.sliderName != null && action.sliderName.length() > 0) {
-                setSliderValue(action.sliderName, action.sliderValue);
+                double targetValue = resolveActionTargetValue(action);
+                setActionTargetValue(action.sliderName, targetValue);
             }
             
-            // Build action text with formatted value
-            String actionText = "";
-            if (action.sliderName != null && !action.sliderName.isEmpty()) {
-                actionText = action.sliderName + " = " + getFormattedSliderValue(action.sliderName, action.sliderValue);
-            }
+            String actionText = formatActionText(action);
             
-            // Collect action text for display
+            if (allActionText.length() > 0) {
+                allActionText.append("; ");
+            }
             if (action.postText != null && !action.postText.isEmpty()) {
-                if (allActionText.length() > 0) {
-                    allActionText.append("; ");
-                }
                 allActionText.append(action.postText);
                 if (!actionText.isEmpty()) {
                     allActionText.append(": ").append(actionText);
                 }
+            } else if (!actionText.isEmpty()) {
+                allActionText.append(actionText);
             }
             
             // EXECUTING → COMPLETED
             transitionReadyToCompleted(action);
+            action.resolvedValueSet = false;
         }
         
         // Set combined display message
@@ -729,6 +620,7 @@ public class ActionScheduler {
                     anyStateChanged = true;
                 } else {
                     // Normal actions transition to WAITING and get queued for execution
+                    resolveActionTargetValue(action);
                     transitionToWaiting(action, currentTime);
                     triggered.add(action);
                     anyStateChanged = true;
@@ -767,22 +659,11 @@ public class ActionScheduler {
     }
     
     /**
-     * Transition action(s) from WAITING to ANIMATING state
-     */
-    private void transitionToAnimating(List<ScheduledAction> actions) {
-        for (ScheduledAction action : actions) {
-            action.state = ActionState.ANIMATING;
-            CirSim.console("Action #" + action.id + ": WAITING → ANIMATING");
-        }
-        ActionTimeDialog.refreshIfOpen();
-    }
-    
-    /**
-     * Transition action from ANIMATING to EXECUTING state
+     * Transition action from WAITING to EXECUTING state
      */
     private void transitionToExecuting(ScheduledAction action) {
         action.state = ActionState.EXECUTING;
-        CirSim.console("Action #" + action.id + ": ANIMATING → EXECUTING");
+        CirSim.console("Action #" + action.id + ": WAITING → EXECUTING");
     }
     
     /**
@@ -825,8 +706,17 @@ public class ActionScheduler {
     /**
      * Find a slider by name and set its value
      */
-    private void setSliderValue(String name, double value) {
-        Adjustable adj = findAdjustableByName(name);
+    private void setActionTargetValue(String name, double value) {
+        if (name == null || name.isEmpty()) {
+            return;
+        }
+
+        String resolvedName = resolveExistingTargetName(name);
+        if (resolvedName == null || resolvedName.isEmpty()) {
+            resolvedName = name;
+        }
+
+        Adjustable adj = findAdjustableByName(resolvedName);
         if (adj != null) {
             adj.setSliderValue(value);
             EditInfo ei = adj.elm.getEditInfo(adj.editItem);
@@ -842,27 +732,11 @@ public class ActionScheduler {
                 }
             }
         } else {
-            CirSim.console("Warning: Slider '" + name + "' not found");
-        }
-    }
-    
-    /**
-     * Highlight or unhighlight a slider by name
-     */
-    private void highlightSlider(String name, boolean highlight) {
-        Adjustable adj = findAdjustableByName(name);
-        if (adj != null) {
-            adj.highlightSlider(highlight);
-        }
-    }
-    
-    /**
-     * Unhighlight all sliders (called when animation is cancelled)
-     */
-    private void unhighlightAllSliders() {
-        for (int i = 0; i < sim.adjustables.size(); i++) {
-            Adjustable adj = sim.adjustables.get(i);
-            adj.highlightSlider(false);
+            ComputedValues.setComputedValueDirect(resolvedName, value);
+            ComputedValues.setComputedValue(resolvedName, value);
+            ComputedValues.setScenarioOverride(resolvedName, ACTION_OVERRIDE_SOURCE,
+                ScenarioElm.MODE_REPLACE, value, true);
+            actionOverrideTargets.add(resolvedName);
         }
     }
     
@@ -877,6 +751,63 @@ public class ActionScheduler {
             }
         }
         return null;
+    }
+
+    /**
+     * Resolve the final target value for an action exactly once when it is triggered.
+     * Supports expression forms: *x, +x, -x, =x and plain numeric (treated as absolute value).
+     */
+    private double resolveActionTargetValue(ScheduledAction action) {
+        if (action == null) {
+            return 0.0;
+        }
+        if (action.resolvedValueSet) {
+            return action.resolvedValue;
+        }
+
+        String expr = action.valueExpression;
+        if (expr == null || expr.trim().isEmpty()) {
+            action.resolvedValue = action.sliderValue;
+            action.resolvedValueSet = true;
+            return action.resolvedValue;
+        }
+
+        String trimmed = expr.trim();
+        double current = getActionTargetValue(action.sliderName);
+        if (Double.isNaN(current)) {
+            current = action.sliderValue;
+        }
+
+        char op = trimmed.charAt(0);
+        String rhsText = trimmed;
+        if (op == '+' || op == '-' || op == '*' || op == '=') {
+            rhsText = trimmed.substring(1).trim();
+        } else {
+            op = '=';
+        }
+
+        double rhs;
+        try {
+            rhs = Double.parseDouble(rhsText);
+        } catch (Exception e) {
+            rhs = action.sliderValue;
+            op = '=';
+        }
+
+        double resolved = rhs;
+        if (op == '+') {
+            resolved = current + rhs;
+        } else if (op == '-') {
+            resolved = current - rhs;
+        } else if (op == '*') {
+            resolved = current * rhs;
+        } else {
+            resolved = rhs;
+        }
+
+        action.resolvedValue = resolved;
+        action.resolvedValueSet = true;
+        return resolved;
     }
     
     /**
@@ -909,8 +840,8 @@ public class ActionScheduler {
     public String dump() {
         StringBuilder sb = new StringBuilder();
         
-        // Save pause time and animation time configuration
-        sb.append("% AST ").append(pauseTime).append(" ").append(animationTime).append("\n");
+        // Save pause time configuration
+        sb.append("% AST ").append(pauseTime).append("\n");
         
         // Save individual actions
         for (ScheduledAction action : actions) {
@@ -922,7 +853,8 @@ public class ActionScheduler {
             sb.append(CustomLogicModel.escape(action.preText)).append(" ");
             sb.append(CustomLogicModel.escape(action.postText)).append(" ");
             sb.append(action.enabled).append(" ");
-            sb.append(action.stopSimulation).append("\n");
+            sb.append(action.stopSimulation).append(" ");
+            sb.append(CustomLogicModel.escape(action.valueExpression == null ? "" : action.valueExpression)).append("\n");
         }
         return sb.toString();
     }
@@ -931,16 +863,13 @@ public class ActionScheduler {
      * Load actions from string
      */
     public void load(String line) {
-        // Check if this is the new AST config line (pause time and animation time)
+        // Check if this is AST config line (pause time; optional legacy animation time ignored)
         if (line.startsWith("% AST ")) {
-            // Line format: % AST pauseTime animationTime
+            // Line format: % AST pauseTime [animationTime]
             try {
                 String[] values = line.substring(6).trim().split("\\s+");
                 if (values.length >= 1) {
                     pauseTime = Double.parseDouble(values[0]);
-                }
-                if (values.length >= 2) {
-                    animationTime = Double.parseDouble(values[1]);
                 }
             } catch (Exception e) {
                 CirSim.console("Error loading AST config: " + e.getMessage());
@@ -948,37 +877,26 @@ public class ActionScheduler {
             return;
         }
         
-        // Check if this is a pause time config line (legacy format)
+        // Check if this is a pause time config line (legacy format; optional second token ignored)
         if (line.startsWith("% APT ")) {
             // Line format: % APT pauseTime [animationTime]
             try {
                 String[] values = line.substring(6).trim().split("\\s+");
                 pauseTime = Double.parseDouble(values[0]);
-                // Load animation time if present (backward compatibility)
-                if (values.length >= 2) {
-                    animationTime = Double.parseDouble(values[1]);
-                }
             } catch (Exception e) {
                 CirSim.console("Error loading pause/animation time: " + e.getMessage());
             }
             return;
         }
         
-        // Check if this is an animation time config line (legacy format)
+        // Ignore legacy animation-time-only config line.
         if (line.startsWith("% AAT ")) {
-            // Line format: % AAT animationTime
-            try {
-                String value = line.substring(6).trim();
-                animationTime = Double.parseDouble(value);
-            } catch (Exception e) {
-                CirSim.console("Error loading animation time: " + e.getMessage());
-            }
             return;
         }
         
         // Otherwise it's an action line
-        // Line format: % AS id time sliderName value preText postText enabled [stopSimulation]
-        String[] parts = line.substring(5).trim().split(" ", 8); // Skip "% AS "
+        // Line format: % AS id time sliderName value preText postText enabled [stopSimulation] [valueExpression]
+        String[] parts = line.substring(5).trim().split(" ", 9); // Skip "% AS "
         
         if (parts.length >= 7) {
             try {
@@ -990,14 +908,19 @@ public class ActionScheduler {
                 String postText = CustomLogicModel.unescape(parts[5]);
                 boolean enabled = Boolean.parseBoolean(parts[6]);
                 boolean stopSimulation = false;
+                String valueExpression = "";
                 
                 // Read stopSimulation flag if present (backward compatibility)
                 if (parts.length >= 8) {
                     stopSimulation = Boolean.parseBoolean(parts[7]);
                 }
+                if (parts.length >= 9) {
+                    valueExpression = CustomLogicModel.unescape(parts[8]);
+                }
                 
                 ScheduledAction action = new ScheduledAction(id, time, sliderName,
                     value, preText, postText, enabled, stopSimulation);
+                action.valueExpression = valueExpression;
                 actions.add(action);
             } catch (Exception e) {
                 CirSim.console("Error loading action: " + e.getMessage());
@@ -1017,6 +940,33 @@ public class ActionScheduler {
             }
         }
         return sliders;
+    }
+
+    /**
+     * Get all available action targets by name:
+     * sliders, labeled nodes, computed values, and parameter names.
+     */
+    public List<String> getAvailableActionTargets() {
+        Set<String> targets = new LinkedHashSet<String>();
+
+        targets.addAll(getAvailableSliders());
+
+        Set<String> nodeNames = LabeledNodeElm.getAllNodeNames();
+        if (nodeNames != null) {
+            targets.addAll(nodeNames);
+        }
+
+        Set<String> computedNames = ComputedValues.getAllNames();
+        if (computedNames != null) {
+            targets.addAll(computedNames);
+        }
+
+        Set<String> parameterNames = ComputedValues.getAllParameterNames();
+        if (parameterNames != null) {
+            targets.addAll(parameterNames);
+        }
+
+        return new ArrayList<String>(targets);
     }
     
     /**
@@ -1046,6 +996,34 @@ public class ActionScheduler {
         }
         return Double.NaN;
     }
+
+    /**
+     * Resolve current action target value by name.
+     * Looks for slider first, then computed/current/converged values.
+     */
+    public double getActionTargetValue(String name) {
+        String resolvedName = resolveExistingTargetName(name);
+        if (resolvedName == null || resolvedName.isEmpty()) {
+            resolvedName = name;
+        }
+
+        double sliderValue = getSliderValue(resolvedName);
+        if (!Double.isNaN(sliderValue)) {
+            return sliderValue;
+        }
+
+        Double computed = ComputedValues.getComputedValue(resolvedName);
+        if (computed != null) {
+            return computed.doubleValue();
+        }
+
+        Double converged = ComputedValues.getConvergedValue(resolvedName);
+        if (converged != null) {
+            return converged.doubleValue();
+        }
+
+        return Double.NaN;
+    }
     
     /**
      * Get formatted value for a slider/action, checking element for custom formatting
@@ -1072,5 +1050,142 @@ public class ActionScheduler {
         com.google.gwt.i18n.client.NumberFormat fixedFormat = 
             com.google.gwt.i18n.client.NumberFormat.getFormat("0.000");
         return fixedFormat.format(value);
+    }
+
+    private String formatActionText(ScheduledAction action) {
+        if (action == null) {
+            return "";
+        }
+
+        String target = action.sliderName == null ? "" : action.sliderName.trim();
+        if (target.isEmpty()) {
+            return "";
+        }
+
+        String expression = action.valueExpression == null ? "" : action.valueExpression.trim();
+        if (!expression.isEmpty()) {
+            char op = expression.charAt(0);
+            if (expression.length() > 1 && (op == '+' || op == '-' || op == '*' || op == '=')) {
+                return target + " " + op + " " + expression.substring(1).trim();
+            }
+            return target + " = " + expression;
+        }
+
+        double targetValue = action.resolvedValueSet ? action.resolvedValue : action.sliderValue;
+        return target + " = " + getFormattedSliderValue(action.sliderName, targetValue);
+    }
+
+    public String getFormattedActionText(ScheduledAction action) {
+        if (action == null) {
+            return "";
+        }
+        if (action.stopSimulation) {
+            return "[STOP SIMULATION]";
+        }
+        String text = formatActionText(action);
+        if (text == null || text.isEmpty()) {
+            return "(no action)";
+        }
+        return text;
+    }
+
+    private void clearActionOverrides() {
+        if (actionOverrideTargets == null || actionOverrideTargets.isEmpty()) {
+            return;
+        }
+        for (String target : actionOverrideTargets) {
+            ComputedValues.clearScenarioOverride(target, ACTION_OVERRIDE_SOURCE);
+        }
+        actionOverrideTargets.clear();
+    }
+
+    private String resolveExistingTargetName(String rawName) {
+        if (rawName == null) {
+            return null;
+        }
+        List<String> candidates = getTargetNameCandidates(rawName);
+        if (candidates.isEmpty()) {
+            return rawName;
+        }
+
+        for (String candidate : candidates) {
+            if (candidate == null || candidate.isEmpty()) {
+                continue;
+            }
+            if (findAdjustableByName(candidate) != null) {
+                return candidate;
+            }
+            if (ComputedValues.isParameterName(candidate) ||
+                ComputedValues.hasComputedValue(candidate) ||
+                ComputedValues.getConvergedValue(candidate) != null ||
+                LabeledNodeElm.getByName(candidate) != null) {
+                return candidate;
+            }
+        }
+
+        return candidates.get(0);
+    }
+
+    private List<String> getTargetNameCandidates(String rawName) {
+        LinkedHashSet<String> names = new LinkedHashSet<String>();
+        if (rawName == null) {
+            return new ArrayList<String>(names);
+        }
+
+        String trimmed = rawName.trim();
+        addTargetVariants(names, trimmed);
+
+        if (trimmed.length() >= 2 && trimmed.startsWith("$") && trimmed.endsWith("$")) {
+            addTargetVariants(names, trimmed.substring(1, trimmed.length() - 1).trim());
+        }
+
+        return new ArrayList<String>(names);
+    }
+
+    private void addTargetVariants(Set<String> names, String base) {
+        if (base == null) {
+            return;
+        }
+        String trimmed = base.trim();
+        if (trimmed.isEmpty()) {
+            return;
+        }
+
+        names.add(trimmed);
+        String collapsed = collapseBackslashes(trimmed);
+        names.add(collapsed);
+
+        String greek = normalizeGreekTarget(collapsed);
+        names.add(greek);
+        names.add(collapseBackslashes(greek));
+    }
+
+    private String collapseBackslashes(String value) {
+        if (value == null || value.isEmpty()) {
+            return value;
+        }
+        String collapsed = value;
+        while (collapsed.indexOf("\\\\") >= 0) {
+            collapsed = collapsed.replace("\\\\", "\\");
+        }
+        return collapsed;
+    }
+
+    private String normalizeGreekTarget(String value) {
+        if (value == null || value.isEmpty()) {
+            return value;
+        }
+
+        String normalized = value;
+        normalized = normalized.replace("α", "\\alpha");
+        normalized = normalized.replace("θ", "\\theta");
+        normalized = normalized.replace("Δ", "\\Delta");
+        normalized = normalized.replace("∆", "\\Delta");
+
+        normalized = normalized.replaceAll("(^|[^\\\\])alpha_?([0-9])", "$1\\\\alpha$2");
+        normalized = normalized.replaceAll("(^|[^\\\\])theta", "$1\\\\theta");
+        normalized = normalized.replaceAll("(^|[^\\\\])Delta", "$1\\\\Delta");
+
+        return normalized;
     }
 }

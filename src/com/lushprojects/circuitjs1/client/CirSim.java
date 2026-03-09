@@ -1489,6 +1489,7 @@ public CirSim() {
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Current Transactions Matrix"), "CurrentTransactionsMatrixElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Stop Time"), "StopTimeElm"));
 	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Action Time"), "ActionTimeElm"));
+	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Scenario"), "ScenarioElm"));
 	// mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Spare"), "Spare"));
     	MenuBar passMenuBar = new MenuBar(true);
     	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Capacitor"), "CapacitorElm"));
@@ -4561,6 +4562,16 @@ public CirSim() {
 	scheduler.reset();
 	
     	repaint();
+    }
+
+    void onScenarioActivated(boolean resetPlots, boolean openPlotlyViewer) {
+	if (resetPlots) {
+	    for (int i = 0; i != scopeCount; i++)
+		scopes[i].resetGraph(true);
+	}
+	if (openPlotlyViewer) {
+	    new ScopeViewerDialog(this, null, true);
+	}
     }
     
     static void electronSaveAsCallback(String s) {
@@ -8220,6 +8231,7 @@ public CirSim() {
     	case 216: return new OhmMeterElm(x1, y1, x2, y2, f, st);
     	case 217: return new PieChartElm(x1, y1, x2, y2, f, st);
     	case 263: return new ViewportElm(x1, y1, x2, y2, f, st);
+		case 236: return new ScenarioElm(x1, y1, x2, y2, f, st);
     	
    		case 250: return new MultiplyElm(x1, y1, x2, y2, f, st);
    		case 251: return new AdderElm(x1, y1, x2, y2, f, st);
@@ -8529,6 +8541,8 @@ public CirSim() {
 		return (CircuitElm) new StopTimeElm(x1, y1);
     	if (n=="ActionTimeElm")
 		return (CircuitElm) new ActionTimeElm(x1, y1);
+	if (n=="ScenarioElm")
+		return (CircuitElm) new ScenarioElm(x1, y1);
     	if (n=="OpAmpRealElm")
 		return (CircuitElm) new OpAmpRealElm(x1, y1);
     	if (n=="CustomCompositeElm")

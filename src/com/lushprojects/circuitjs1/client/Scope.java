@@ -1489,6 +1489,8 @@ class Scope {
 	
 	for (int i = 0; i < enabledActions.size(); i++) {
 	    ActionScheduler.ScheduledAction action = enabledActions.get(i);
+	    if (action.actionTime > sim.t)
+		continue;
 	    double timeFromStart = action.actionTime - startTime;
 	    if (timeFromStart < 0 || timeFromStart > displayTimeSpan)
 		continue;
@@ -1526,14 +1528,17 @@ class Scope {
 	java.util.HashMap<Double, ActionScheduler.ScheduledAction> actionsByTime = new java.util.HashMap<Double, ActionScheduler.ScheduledAction>();
 	
 	for (ActionScheduler.ScheduledAction action : enabledActions) {
-	    if (action.state == ActionScheduler.ActionState.COMPLETED && 
-		action.postText != null && !action.postText.trim().isEmpty() &&
-		action.actionTime > 0) {
-		// Keep only the last action at each time (higher ID = more recent)
-		ActionScheduler.ScheduledAction existing = actionsByTime.get(action.actionTime);
-		if (existing == null || action.id > existing.id) {
-		    actionsByTime.put(action.actionTime, action);
-		}
+	    if (action.postText == null || action.postText.trim().isEmpty())
+		continue;
+	    if (action.actionTime <= 0 || action.actionTime > sim.t)
+		continue;
+	    if (action.state == ActionScheduler.ActionState.PENDING ||
+		action.state == ActionScheduler.ActionState.READY)
+		continue;
+	    // Keep only the last action at each time (higher ID = more recent)
+	    ActionScheduler.ScheduledAction existing = actionsByTime.get(action.actionTime);
+	    if (existing == null || action.id > existing.id) {
+		actionsByTime.put(action.actionTime, action);
 	    }
 	}
 	
@@ -1844,7 +1849,7 @@ class Scope {
     	    ScopePlot plot = visiblePlots.get(si);
     	    if (plot.units != units)
     		continue;
-		    int displayWidth = plot.getDisplayWidth(rect.width);
+			    int displayWidth = getDisplaySampleWidth(plot);
 		    if (displayWidth <= 0)
 			continue;
 		    int ipa = plot.startIndex(displayWidth);
@@ -1865,7 +1870,7 @@ class Scope {
 		if (manualScale)
 			return;
     	int i;
-		int displayWidth = plot.getDisplayWidth(rect.width);
+		int displayWidth = getDisplaySampleWidth(plot);
 		if (displayWidth <= 0)
 		    return;
 		int ipa = plot.startIndex(displayWidth);
@@ -1902,7 +1907,7 @@ class Scope {
     double calcGridStepX() {
 	int multptr = 0;
     	double gsx = 1e-15;
-    	double ts = sim.maxTimeStep * speed;
+	double ts = getTimePerPixel();
     	
     	while (gsx < ts * MIN_PIXEL_SPACING) {
     	    gsx *= multa[(multptr++) % 3];
@@ -1937,6 +1942,24 @@ class Scope {
 	// Get current pointer position and subtract offset
 	int currentPos = plot.ptr;
 	return (currentPos - offset) & (scopePointCount - 1);
+    }
+
+    int getHorizontalPixelStride() {
+	if (!plot2d && speed <= 8)
+	    return 4;
+	if (!plot2d && speed <= 16)
+	    return 2;
+	return 1;
+    }
+
+    double getTimePerPixel() {
+	return sim.maxTimeStep * speed / getHorizontalPixelStride();
+    }
+
+    int getDisplaySampleWidth(ScopePlot plot) {
+	int stride = getHorizontalPixelStride();
+	int requiredSamples = (rect.width + stride - 1) / stride;
+	return plot.getDisplayWidth(requiredSamples);
     }
     
     void drawPlot(Graphics g, ScopePlot plot, boolean allPlotsSameUnits, boolean selected, boolean allSelected) {
@@ -2012,7 +2035,7 @@ class Scope {
     	    majorDiv = CircuitElm.selectColor.getHexValue();
     	
     	// Vertical (T) gridlines
-    	double ts = sim.maxTimeStep*speed;
+	    double ts = getTimePerPixel();
     	gridStepX = calcGridStepX();
 
     	boolean highlightCenter = !isManualScale();
@@ -2089,9 +2112,12 @@ class Scope {
     		
     		// Draw action time markers
     		drawActionTimeMarkers(g, startTime, displayTimeSpan);
-    	    } else {
-			int displayWidth = plot.getDisplayWidth(rect.width);
-			if (displayWidth < rect.width) {
+		    } else {
+				int displayWidth = getDisplaySampleWidth(plot);
+				int displayPixelWidth = displayWidth * getHorizontalPixelStride();
+				if (displayPixelWidth < rect.width) {
+				    double actionStartTime = 0;
+				    double actionDisplayTimeSpan = ts * rect.width;
 			    // Initial fill mode: draw static grid and start scrolling only when plot scrolls
 			    for (int ll = 0; ; ll++) {
 				double tl = ll * gridStepX;
@@ -2102,9 +2128,10 @@ class Scope {
 				g.setColor(col);
 				g.drawLine(gx, 0, gx, rect.height - 1);
 			    }
+			    drawActionTimeMarkers(g, actionStartTime, actionDisplayTimeSpan);
 			} else {
 			    // Normal scrolling mode: gridlines scroll with time
-			    double tstart = sim.t-sim.maxTimeStep*speed*rect.width;
+			    double tstart = sim.t-ts*rect.width;
 			    double tx = sim.t-(sim.t % gridStepX);
 
 			    for (int ll = 0; ; ll++) {
@@ -2123,6 +2150,7 @@ class Scope {
 				g.setColor(col);
 				g.drawLine(gx,0,gx,rect.height-1);
 			    }
+			    drawActionTimeMarkers(g, tstart, ts * rect.width);
 			}
     	    }
     	}
@@ -2268,7 +2296,8 @@ class Scope {
             }
 		} else {
 		    // Normal mode: fill from left first, then scroll once full width is reached
-		    int displayWidth = plot.getDisplayWidth(rect.width);
+		    int stride = getHorizontalPixelStride();
+		    int displayWidth = getDisplaySampleWidth(plot);
 		    if (displayWidth <= 0) {
 			g.endBatch();
 			return;
@@ -2276,6 +2305,7 @@ class Scope {
 		    int ipa = plot.startIndex(displayWidth);
 		    for (i = 0; i != displayWidth; i++) {
 			int ip = (i + ipa) & (scopePointCount-1);
+                int curX = x + i*stride;
                 
                 // Use midpoint (average) of min and max for smoother interpolation
                 double midVal = (minV[ip] + maxV[ip]) / 2.0;
@@ -2297,7 +2327,7 @@ class Scope {
                 
                 // Draw line from previous point to current point
                 if (prevY != -1) {
-                    g.drawLine(x+i-1, prevY, x+i, y);
+					g.drawLine(curX-stride, prevY, curX, y);
                 }
                 
                 prevY = y;
@@ -2340,19 +2370,22 @@ class Scope {
 		    cursorTime = startTime + (relativeX * elapsedTime);
 		} else {
 		    // Mouse position maps to actual time with fixed scale
-		    cursorTime = startTime + (relativeX * rect.width * sim.maxTimeStep * speed);
+		    cursorTime = startTime + (relativeX * rect.width * getTimePerPixel());
 		}
 	    } else {
-		int displayWidth = plots.get(0).getDisplayWidth(rect.width);
+		int stride = getHorizontalPixelStride();
+		int displayWidth = getDisplaySampleWidth(plots.get(0));
 		if (displayWidth <= 0) {
 		    cursorTime = -1;
 		} else {
 		    int localX = mouseX - rect.x;
-		    if (localX < 0 || localX >= displayWidth) {
+		    int displayPixelWidth = displayWidth * stride;
+		    if (localX < 0 || localX >= displayPixelWidth) {
 			cursorTime = -1;
 		    } else {
-			int agePixels = (displayWidth - 1) - localX;
-			cursorTime = sim.t - sim.maxTimeStep * speed * agePixels;
+			int sampleX = localX / stride;
+			int ageSamples = (displayWidth - 1) - sampleX;
+			cursorTime = sim.t - sim.maxTimeStep * speed * ageSamples;
 		    }
 		}
 	    }
@@ -2373,14 +2406,17 @@ class Scope {
 	    selectedPlot = -1;
 	    return;
 	}
-	int displayWidth = plots.get(0).getDisplayWidth(rect.width);
+	int stride = getHorizontalPixelStride();
+	int displayWidth = getDisplaySampleWidth(plots.get(0));
 	int localX = mouseX - rect.x;
-	if (displayWidth <= 0 || localX < 0 || localX >= displayWidth) {
+	int displayPixelWidth = displayWidth * stride;
+	if (displayWidth <= 0 || localX < 0 || localX >= displayPixelWidth) {
 	    selectedPlot = -1;
 	    return;
 	}
+	int sampleX = localX / stride;
 	int ipa = plots.get(0).startIndex(displayWidth);
-	int ip = (localX+ipa) & (scopePointCount-1);
+	int ip = (sampleX+ipa) & (scopePointCount-1);
     	int maxy = (rect.height-1)/2;
     	int y = maxy;
     	int i;
@@ -2425,22 +2461,23 @@ class Scope {
             if (autoScaleTime && elapsedTime > 0) {
                 displayTimeSpan = elapsedTime;
             } else {
-                displayTimeSpan = sim.maxTimeStep * speed * rect.width;
+			displayTimeSpan = getTimePerPixel() * rect.width;
             }
             
             double timeFromStart = cursorTime - startTime;
             cursorX = rect.x + (int)(rect.width * timeFromStart / displayTimeSpan);
 	    } else {
-		int displayWidth = plots.get(0).getDisplayWidth(rect.width);
+		int stride = getHorizontalPixelStride();
+		int displayWidth = getDisplaySampleWidth(plots.get(0));
 		if (displayWidth <= 0) {
 		    cursorX = -1;
 		} else {
-		    int agePixels = (int) ((sim.t-cursorTime)/(sim.maxTimeStep*speed));
-		    cursorX = rect.x + (displayWidth - 1) - agePixels;
+		    int ageSamples = (int) ((sim.t-cursorTime)/(sim.maxTimeStep*speed));
+		    cursorX = rect.x + (displayWidth - 1 - ageSamples) * stride;
 		}
         }
         
-	    int cursorMaxX = rect.x + plots.get(0).getDisplayWidth(rect.width);
+	    int cursorMaxX = rect.x + getDisplaySampleWidth(plots.get(0)) * getHorizontalPixelStride();
 	    if (cursorX >= rect.x && cursorX < cursorMaxX) {
         int maxy = (rect.height-1)/2;
         int y = maxy;
@@ -2459,10 +2496,12 @@ class Scope {
                 }
             } else {
                 // Get value from circular buffer
-			    int displayWidth = plots.get(0).getDisplayWidth(rect.width);
+			    int stride = getHorizontalPixelStride();
+			    int displayWidth = getDisplaySampleWidth(plots.get(0));
 			    if (displayWidth > 0) {
 				int ipa = plots.get(0).startIndex(displayWidth);
-				int ip = (cursorX-rect.x+ipa) & (scopePointCount-1);
+				int sampleX = (cursorX-rect.x) / stride;
+				int ip = (sampleX+ipa) & (scopePointCount-1);
 				value = plot.maxValues[ip];
 			    } else {
 				value = 0;
@@ -2483,7 +2522,7 @@ class Scope {
             if (cursorX < 0)
             cursorX = sim.mouseCursorX;
             info[ct++] = CircuitElm.getUnitText(maxFrequency*(sim.mouseCursorX-rect.x)/rect.width, "Hz");
-		} else if (plots.size() == 0 || cursorX < rect.x || cursorX >= rect.x + plots.get(0).getDisplayWidth(rect.width))
+		} else if (plots.size() == 0 || cursorX < rect.x || cursorX >= rect.x + getDisplaySampleWidth(plots.get(0)) * getHorizontalPixelStride())
             return;
         
     if (visiblePlots.size() > 0)

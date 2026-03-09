@@ -85,6 +85,15 @@ public class ComputedValues {
     // Track pre-registered computed names so lookups/slot builders can discover
     // names even before first runtime value write (name -> registration ref count).
     private static HashMap<String, Integer> registeredComputedNameRefCounts;
+
+    private static class ScenarioOverride {
+        int mode;
+        double magnitude;
+        boolean active;
+    }
+
+    // target name -> (source key -> override)
+    private static HashMap<String, HashMap<String, ScenarioOverride>> scenarioOverrides;
     
     // Initialize storage if needed
     private static void ensureInitialized() {
@@ -111,6 +120,9 @@ public class ComputedValues {
         }
         if (registeredComputedNameRefCounts == null) {
             registeredComputedNameRefCounts = new HashMap<String, Integer>();
+        }
+        if (scenarioOverrides == null) {
+            scenarioOverrides = new HashMap<String, HashMap<String, ScenarioOverride>>();
         }
     }
 
@@ -300,7 +312,83 @@ public class ComputedValues {
      */
     public static Double getComputedValue(String name) {
         if (name == null || computedValues == null) return null;
-        return computedValues.get(name);
+        Double baseValue = computedValues.get(name);
+        if (baseValue == null) {
+            return null;
+        }
+        return applyScenarioOverrides(name, baseValue.doubleValue());
+    }
+
+    public static void setScenarioOverride(String targetName, String sourceKey, int mode, double magnitude, boolean active) {
+        if (targetName == null || sourceKey == null) {
+            return;
+        }
+
+        String tn = targetName.trim();
+        String sk = sourceKey.trim();
+        if (tn.isEmpty() || sk.isEmpty()) {
+            return;
+        }
+
+        ensureInitialized();
+
+        HashMap<String, ScenarioOverride> bySource = scenarioOverrides.get(tn);
+        if (bySource == null) {
+            bySource = new HashMap<String, ScenarioOverride>();
+            scenarioOverrides.put(tn, bySource);
+        }
+
+        ScenarioOverride override = bySource.get(sk);
+        if (override == null) {
+            override = new ScenarioOverride();
+            bySource.put(sk, override);
+        }
+
+        override.mode = mode;
+        override.magnitude = magnitude;
+        override.active = active;
+    }
+
+    public static void clearScenarioOverride(String targetName, String sourceKey) {
+        if (targetName == null || sourceKey == null || scenarioOverrides == null) {
+            return;
+        }
+
+        HashMap<String, ScenarioOverride> bySource = scenarioOverrides.get(targetName.trim());
+        if (bySource == null) {
+            return;
+        }
+
+        bySource.remove(sourceKey.trim());
+        if (bySource.isEmpty()) {
+            scenarioOverrides.remove(targetName.trim());
+        }
+    }
+
+    private static Double applyScenarioOverrides(String targetName, double baseValue) {
+        if (scenarioOverrides == null || targetName == null) {
+            return Double.valueOf(baseValue);
+        }
+
+        HashMap<String, ScenarioOverride> bySource = scenarioOverrides.get(targetName);
+        if (bySource == null || bySource.isEmpty()) {
+            return Double.valueOf(baseValue);
+        }
+
+        double value = baseValue;
+        for (ScenarioOverride override : bySource.values()) {
+            if (override == null || !override.active) {
+                continue;
+            }
+            if (override.mode == ScenarioElm.MODE_MULTIPLY) {
+                value *= override.magnitude;
+            } else if (override.mode == ScenarioElm.MODE_REPLACE) {
+                value = override.magnitude;
+            } else {
+                value += override.magnitude;
+            }
+        }
+        return Double.valueOf(value);
     }
     
     /**
@@ -367,11 +455,15 @@ public class ComputedValues {
         // First try converged values (stable)
         Double converged = convergedValues.get(name);
         if (converged != null) {
-            return converged;
+            return applyScenarioOverrides(name, converged.doubleValue());
         }
         
         // Fall back to current value (for first timestep before any commit)
-        return computedValues.get(name);
+        Double current = computedValues.get(name);
+        if (current == null) {
+            return null;
+        }
+        return applyScenarioOverrides(name, current.doubleValue());
     }
 
     /**
@@ -585,6 +677,9 @@ public class ComputedValues {
         }
         if (registeredComputedNameRefCounts != null) {
             registeredComputedNameRefCounts.clear();
+        }
+        if (scenarioOverrides != null) {
+            scenarioOverrides.clear();
         }
     }
     

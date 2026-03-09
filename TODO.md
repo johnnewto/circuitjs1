@@ -1,7 +1,7 @@
 # CircuitJS1 TODOs
 
-## Timing issues
- there are timing issues between params and volts (/ Flow?) which cause convergence slowing or failure 
+## Add warning to action editor
+for targets that are nt adjustable
 
 ## Flows in equation table
 make it so that each flow has a 1 ohm resistor so that value and flow are the same, investigate how this could simplify eval.

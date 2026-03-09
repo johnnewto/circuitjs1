@@ -12,7 +12,7 @@ Human-readable text format for Stock-Flow Consistent (SFC) models in CircuitJS1.
 | Export | **File → Export as SFCR** |
 | URL | `?ctz=` compressed parameter |
 
-Auto-detected when content contains `@matrix`, `@equations`, `@parameters`, `@init`, `@hints`, `@scope`, `@circuit`, or `@info` blocks.
+Auto-detected when content contains `@matrix`, `@equations`, `@parameters`, `@init`, `@action`, `@hints`, `@scope`, `@circuit`, or `@info` blocks.
 
 ---
 
@@ -45,6 +45,37 @@ Auto-detected when content contains `@matrix`, `@equations`, `@parameters`, `@in
 | `showValues` | Show component values |
 | `showPower` | Show power dissipation |
 | `infoViewerUpdateIntervalMs` | Throttle interval (ms) for live Info Viewer updates (default: `200`) |
+
+---
+
+### @action — Scheduled Actions
+
+Defines the Action Scheduler schedule: timed parameter updates.
+
+```
+@action
+  pauseTime: 0
+
+| time | target | value | text | enabled | stop |
+|------|--------|-------|------|---------|------|
+| 30   | alpha0 | =10   | propensity to spend | true | false |
+| 40   | alpha0 | +10   | After               | true | false |
+@end
+```
+
+| Field | Description |
+|-------|-------------|
+| `pauseTime` | Seconds to wait after trigger before applying value (default `0`) |
+| `time` | Simulation time (seconds) when action fires |
+| `target` | Name of the PARAM_MODE variable to update |
+| `value` | Absolute number (`50`) or expression (`+10`, `-5`, `*0.5`, `=50`) |
+| `text` | Display text shown on scope / ActionTimeElm at trigger |
+| `enabled` | `true` / `false` |
+| `stop` | `true` to stop simulation instead of updating a value |
+
+Relative expressions (`+`, `-`, `*`) resolve the target's current value **at the moment the action fires**.
+
+Importing an `@action` block **replaces** the existing schedule entirely.
 
 ---
 
@@ -188,6 +219,7 @@ Pass-through for native CircuitJS1 element dump format.
 | `@matrix` | `SFCTableElm` (265) |
 | `@equations` | `EquationTableElm` (266) |
 | `@parameters` | `EquationTableElm` (266) — import alias |
+| `@action` | `ActionScheduler` (replaces existing schedule) |
 | `@hints` | `HintRegistry` |
 | `@scope` | `Scope` entries (resolved by element UID) |
 | `@circuit` | Native elements |

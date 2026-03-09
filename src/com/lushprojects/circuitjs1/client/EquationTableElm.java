@@ -2474,6 +2474,16 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      */
     public double getDisplayValue(int row) {
         if (row < 0 || row >= MAX_ROWS) return 0.0;
+
+        // For non-flow rows, prefer the published ComputedValues value so UI reflects
+        // Scenario/Action overrides and any other registry-level adjustments.
+        if (rows[row].outputMode != RowOutputMode.FLOW_MODE && isValidOutputName(row)) {
+            Double computed = ComputedValues.getComputedValue(rows[row].outputName.trim());
+            if (computed != null) {
+                return computed.doubleValue();
+            }
+        }
+
         return rows[row].outputValue;
     }
     

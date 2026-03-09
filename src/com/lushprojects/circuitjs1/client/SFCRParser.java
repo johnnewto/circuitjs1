@@ -18,6 +18,7 @@ import java.util.Vector;
  * 
  * Supported blocks:
  *   @init       - Simulation settings (timestep, units, display options)
+ *   @action     - Action Time schedule (timed target updates)
  *   @info       - Model documentation (markdown)
  *   @equations  - Variable equations (creates EquationTableElm)
  *   @parameters - Alias for @equations (sfcr compatibility)
@@ -119,7 +120,7 @@ public class SFCRParser {
         if (trimmed.contains("@matrix") || 
             trimmed.contains("@equations") || 
             trimmed.contains("@parameters") ||
-            trimmed.contains("@init") || trimmed.contains("@hints") ||
+            trimmed.contains("@init") || trimmed.contains("@action") || trimmed.contains("@hints") ||
             trimmed.contains("@scope") || trimmed.contains("@circuit") ||
             trimmed.contains("@info") || trimmed.contains("@sankey") )
             {
@@ -181,6 +182,8 @@ public class SFCRParser {
                 // Parse block markers
                 if (line.startsWith("@init")) {
                     i = parseInitBlock(lines, i);
+                } else if (line.startsWith("@action")) {
+                    i = parseActionBlock(lines, i);
                 } else if (line.startsWith("@matrix")) {
                     i = parseMatrixBlock(lines, i);
                 } else if (line.startsWith("@equations")) {
@@ -376,6 +379,95 @@ public class SFCRParser {
                 CirSim.console("SFCRParser: Invalid init value for " + key + ": " + value);
             }
         }
+    }
+
+    /** Parse @action block - timed target updates for ActionScheduler. */
+    private int parseActionBlock(String[] lines, int startIndex) {
+        ActionScheduler scheduler = ActionScheduler.getInstance(sim);
+        if (scheduler == null) {
+            return startIndex + 1;
+        }
+
+        // Replace existing schedule with block contents.
+        scheduler.clearAll();
+
+        int i = startIndex + 1;
+        while (i < lines.length) {
+            String line = lines[i].trim();
+
+            if (line.startsWith("@end")) {
+                i++;
+                break;
+            }
+
+            if (line.isEmpty() || line.startsWith("#")) {
+                i++;
+                continue;
+            }
+
+            int colonIdx = line.indexOf(':');
+            if (colonIdx > 0 && !line.startsWith("|")) {
+                String key = line.substring(0, colonIdx).trim().toLowerCase();
+                String value = line.substring(colonIdx + 1).trim();
+
+                try {
+                    if (key.equals("pausetime") || key.equals("pause_time")) {
+                        scheduler.setPauseTime(Double.parseDouble(value));
+                    } else if (key.equals("animationtime") || key.equals("animation_time")) {
+                        // legacy key: ignored
+                    }
+                } catch (Exception e) {
+                    CirSim.console("SFCRParser: Invalid @action setting " + key + "=" + value);
+                }
+
+                i++;
+                continue;
+            }
+
+            if (line.startsWith("|")) {
+                // Skip markdown header/separator rows.
+                if (line.contains("---") || line.toLowerCase().contains("time") && line.toLowerCase().contains("target")) {
+                    i++;
+                    continue;
+                }
+
+                String[] cells = parseTableRow(line);
+                if (cells.length >= 6) {
+                    try {
+                        double actionTime = Double.parseDouble(cells[0].trim());
+                        String target = unescapeTableCell(cells[1]);
+                        String valueSpec = unescapeTableCell(cells[2]);
+                        String postText = unescapeTableCell(cells[3]);
+                        boolean enabled = parseBoolean(cells[4], true);
+                        boolean stop = parseBoolean(cells[5], false);
+
+                        double numericValue = 0.0;
+                        String expression = "";
+                        String trimmedValue = valueSpec == null ? "" : valueSpec.trim();
+                        if (!trimmedValue.isEmpty()) {
+                            char lead = trimmedValue.charAt(0);
+                            if (lead == '+' || lead == '-' || lead == '*' || lead == '=') {
+                                expression = trimmedValue;
+                            } else {
+                                numericValue = Double.parseDouble(trimmedValue);
+                            }
+                        }
+
+                        ActionScheduler.ScheduledAction action =
+                            new ActionScheduler.ScheduledAction(0, actionTime, target,
+                                numericValue, "", postText, enabled, stop);
+                        action.valueExpression = expression;
+                        scheduler.addAction(action);
+                    } catch (Exception e) {
+                        CirSim.console("SFCRParser: Invalid @action row: " + line);
+                    }
+                }
+            }
+
+            i++;
+        }
+
+        return i;
     }
     
     /** Parse @matrix block - creates SFCTableElm. */
@@ -1566,6 +1658,21 @@ public class SFCRParser {
         }
         
         return cells.toArray(new String[0]);
+    }
+
+    /** Parse flexible boolean strings (true/false, 1/0, yes/no). */
+    private boolean parseBoolean(String text, boolean defaultValue) {
+        if (text == null) return defaultValue;
+        String t = text.trim().toLowerCase();
+        if (t.equals("true") || t.equals("1") || t.equals("yes")) return true;
+        if (t.equals("false") || t.equals("0") || t.equals("no")) return false;
+        return defaultValue;
+    }
+
+    /** Unescape markdown table cell escapes. */
+    private String unescapeTableCell(String text) {
+        if (text == null) return "";
+        return text.replace("\\|", "|").trim();
     }
     
     // =========================================================================

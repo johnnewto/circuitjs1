@@ -33,6 +33,7 @@ StockMasterElm|Stock Master
 CurrentTransactionsMatrixElm |Current Transactions Matrix
 StopTimeElm|Stop Time
 ActionTimeElm|Action Time
+ScenarioElm|Scenario
 PieChartElm|Pie Chart
 ViewportElm|Viewport
 
