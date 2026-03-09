@@ -36,8 +36,8 @@ import com.lushprojects.circuitjs1.client.EquationTableElm.RowOutputMode;
  * Each data row renders a set of icons in its left margin:
  * <ul>
  *   <li><b>↕ (adjustable)</b>: row equation is a plain number; mouse-wheel adjusts it.</li>
- *   <li><b>I→ / C∫ / P (mode)</b>: FLOW / STOCK / PARAM mode indicator.</li>
- *   <li><b>⟳ (classification)</b>: dynamic row (evaluated each timestep).</li>
+ *   <li><b>I→ / P (mode)</b>: FLOW / PARAM mode indicator.</li>
+ *   <li><b>⟳ (classification)</b>: cyclic row (member of a graph cycle).</li>
  * </ul>
  *
  * @see EquationTableElm#draw(Graphics) Main entry point that delegates here
@@ -644,12 +644,14 @@ public class EquationTableRenderer {
         int cellPadding = table.getCellPadding();
         int tableWidth = table.getTableWidth();
         boolean isHovered = allowHoverStyling && (row == table.getHoveredRow());
+        int iconAreaStartX = tableX + cellPadding;
+        int textX = iconAreaStartX + getRowIconReservedWidth(g);
 
         if (table.isCommentRow(row)) {
             String comment = table.getCommentText(row);
             g.setFont(new Font("SansSerif", Font.BOLD, table.getOpsize() == 2 ? 10 : 8));
             g.setColor(getTextColor());
-            g.drawString("# " + Locale.convertGreekSymbols(comment), tableX + cellPadding,
+            g.drawString("# " + Locale.convertGreekSymbols(comment), textX,
                 rowY + rowHeight - cellPadding - 2);
             g.setFont(valueFont);
 
@@ -664,20 +666,25 @@ public class EquationTableRenderer {
         // Build display equation with slider value substituted
         String displayEquation = buildDisplayEquation(row);
         String outputName = getCachedOutputName(row);
-        String rowText = outputName + " = " + displayEquation;
+        String rowText;
+        if (containsStandaloneAssignment(displayEquation)) {
+            rowText = displayEquation;
+        } else {
+            rowText = outputName + " = " + displayEquation;
+        }
         
         // Draw scroll icon on adjustable rows (numeric equations) to indicate mouse wheel adjustment
-        int textX = tableX + cellPadding;
+        int iconX = iconAreaStartX;
         boolean isAdjustable = table.isAdjustableRow(row);
         if (isAdjustable) {
             // Use larger bold font for icon
             int iconSize = table.getOpsize() == 1 ? 12 : 16;
             g.setFont(new Font("SansSerif", Font.BOLD, iconSize));
             g.setColor(isHovered ? new Color(0, 100, 200) : new Color(0, 60, 140));  // Dark blue, darker on hover
-            g.drawString("↕", textX, rowY + rowHeight - cellPadding - 1);
+            g.drawString("↕", iconX, rowY + rowHeight - cellPadding - 1);
             int iconWidth = (int) g.context.measureText("↕ ").getWidth();
             g.setFont(valueFont);  // Restore to valueFont (what drawDataRow uses)
-            textX += iconWidth;
+            iconX += iconWidth;
         }
         
         // Draw output mode icon (only for non-VOLTAGE_MODE modes)
@@ -688,39 +695,38 @@ public class EquationTableRenderer {
             if (mode == RowOutputMode.FLOW_MODE) {
                 modeIcon = "I→";  // Flow mode
                 modeColor = new Color(200, 50, 50);  // Red for flow
-            } else if (mode == RowOutputMode.PARAM_MODE) {
+            } else {
                 modeIcon = "P";  // Parameter mode
                 modeColor = new Color(120, 80, 180);  // Purple for parameter
-            } else {
-                modeIcon = "C∫";  // Stock/integration mode
-                modeColor = new Color(50, 150, 200);  // Cyan for stock
             }
             int modeIconSize = table.getOpsize() == 1 ? 9 : 11;
             g.setFont(new Font("SansSerif", Font.BOLD, modeIconSize));
             g.setColor(modeColor);
-            g.drawString(modeIcon, textX, rowY + rowHeight - cellPadding - 1);
+            g.drawString(modeIcon, iconX, rowY + rowHeight - cellPadding - 1);
             int modeIconWidth = (int) g.context.measureText(modeIcon + " ").getWidth();
             g.setFont(valueFont);  // Restore to valueFont
-            textX += modeIconWidth;
+            iconX += modeIconWidth;
         }
         
-        // Draw row classification icon
-        String classIcon = "⟳";  // Dynamic (evaluated each step)
-        Color classColor = new Color(200, 100, 0);  // Orange
-        int iconSize = table.getOpsize() == 1 ? 10 : 12;
-        g.setFont(new Font("SansSerif", 0, iconSize));  // 0 = plain (no bold)
-        g.setColor(classColor);
-        g.drawString(classIcon, textX, rowY + rowHeight - cellPadding - 1);
-        int classIconWidth = (int) g.context.measureText(classIcon + " ").getWidth();
-        g.setFont(valueFont);  // Restore to valueFont
-        textX += classIconWidth;
+        // Draw row classification icon (cyclic rows only)
+        String classification = table.getRowClassification(row);
+        if ("cyclic".equals(classification)) {
+            String classIcon = "⟳";
+            Color classColor = new Color(200, 100, 0);  // Orange
+            int iconSize = table.getOpsize() == 1 ? 10 : 12;
+            g.setFont(new Font("SansSerif", 0, iconSize));  // 0 = plain (no bold)
+            g.setColor(classColor);
+            g.drawString(classIcon, iconX, rowY + rowHeight - cellPadding - 1);
+            int classIconWidth = (int) g.context.measureText(classIcon + " ").getWidth();
+            g.setFont(valueFont);  // Restore to valueFont
+            iconX += classIconWidth;
+        }
         
         // Draw row text
         g.setColor(getTextColor());
         g.drawString(rowText, textX, rowY + rowHeight - cellPadding - 2);
         
         // Draw current value on right side with voltage coloring
-        // For STOCK rows, shows stock level (node voltage) instead of inflow rate
         double outputValue = table.getDisplayValue(row);
         String valueText = CircuitElm.getShortUnitText(outputValue, "");
         boolean showFlowUnits = (mode == RowOutputMode.FLOW_MODE);
@@ -742,6 +748,53 @@ public class EquationTableRenderer {
             int sepY = tableY + (row + 2) * rowHeight;
             g.drawLine(tableX, sepY, tableX + tableWidth, sepY);
         }
+    }
+
+    /**
+     * Return true if text contains an assignment '=' that is not part of
+     * comparison operators like ==, <=, >=, or !=.
+     */
+    private boolean containsStandaloneAssignment(String text) {
+        if (text == null || text.isEmpty()) {
+            return false;
+        }
+        for (int i = 0; i < text.length(); i++) {
+            if (text.charAt(i) != '=') {
+                continue;
+            }
+            char prev = (i > 0) ? text.charAt(i - 1) : '\0';
+            char next = (i + 1 < text.length()) ? text.charAt(i + 1) : '\0';
+            if (prev == '=' || prev == '<' || prev == '>' || prev == '!' || next == '=') {
+                continue;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Reserve a fixed left gutter for row icons so equation text starts at the same x-position
+     * regardless of which icons are present on a particular row.
+     */
+    private int getRowIconReservedWidth(Graphics g) {
+        int adjustableSize = table.getOpsize() == 1 ? 12 : 16;
+        int modeIconSize = table.getOpsize() == 1 ? 9 : 11;
+        int classIconSize = table.getOpsize() == 1 ? 10 : 12;
+
+        g.setFont(new Font("SansSerif", Font.BOLD, adjustableSize));
+        int adjustableWidth = (int) g.context.measureText("↕ ").getWidth();
+
+        g.setFont(new Font("SansSerif", Font.BOLD, modeIconSize));
+        int flowWidth = (int) g.context.measureText("I→ ").getWidth();
+        int paramWidth = (int) g.context.measureText("P ").getWidth();
+        int modeWidth = Math.max(flowWidth, paramWidth);
+
+        g.setFont(new Font("SansSerif", 0, classIconSize));
+        int classWidth = (int) g.context.measureText("⟳ ").getWidth();
+
+        g.setFont(valueFont);
+
+        return adjustableWidth + modeWidth + classWidth + 2;
     }
     
     /**

@@ -1462,6 +1462,32 @@ class ExprParser {
 	return e;
     }
 
+    /**
+     * Parse postfix lag alias index after a variable name.
+     * Accepts token-level forms equivalent to -1, including spaced variants
+     * like "-1" and "- 1" (because tokenization strips whitespace).
+     */
+    private boolean parsePostfixLastAliasIndex(String closeToken) {
+	int sign = 1;
+	if (skip("+")) {
+	    sign = 1;
+	} else if (skip("-")) {
+	    sign = -1;
+	}
+
+	double numeric;
+	try {
+	    numeric = Double.valueOf(token).doubleValue();
+	    getToken();
+	} catch (Exception e) {
+	    return false;
+	}
+
+	skipOrError(closeToken);
+	double value = sign * numeric;
+	return Math.abs(value + 1.0) < 1e-12;
+    }
+
     Expr parseTerm() {
 		if (skip("(")) {
 			Expr e = parse();
@@ -1593,6 +1619,27 @@ class ExprParser {
 		if (isValidIdentifier(token)) {
 			String nodeRef = token;
 			getToken();
+
+			// Alternative lagged-reference syntax: X(-1) == last(X)
+			// Keep scope intentionally narrow to avoid introducing generic function-call
+			// semantics on arbitrary identifiers.
+			if (skip("(")) {
+				if (parsePostfixLastAliasIndex(")")) {
+					return new Expr(new Expr(Expr.E_NODE_REF, nodeRef), null, Expr.E_LAST);
+				}
+				setError("only (-1) is supported after variable names; use last(" + nodeRef + ")");
+				return new Expr(Expr.E_NODE_REF, nodeRef);
+			}
+
+			// Alternative SFCR-style syntax: X[-1] == last(X)
+			if (skip("[")) {
+				if (parsePostfixLastAliasIndex("]")) {
+					return new Expr(new Expr(Expr.E_NODE_REF, nodeRef), null, Expr.E_LAST);
+				}
+				setError("only [-1] is supported after variable names; use last(" + nodeRef + ")");
+				return new Expr(Expr.E_NODE_REF, nodeRef);
+			}
+
 			return new Expr(Expr.E_NODE_REF, nodeRef);
 }	
 		// Finally try numeric parsing	

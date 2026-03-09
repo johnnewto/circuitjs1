@@ -91,7 +91,7 @@ All equations and constants. Creates an `EquationTableElm`.
 
 - Use `~` (sfcr-style) or `=` for assignment
 - Inline `# comment` becomes a hint (unless overridden by `@hints`)
-- Self-accumulation `X ~ expr + X[-1]` auto-converts to `integrate(expr)`
+- Lag syntax is preserved as written on import (e.g. `X[-1]`, `X(-1)`, `X [ - 1 ]`)
 
 > **Note:** `@parameters` is accepted as an alias for `@equations` (for sfcr compatibility).
 
@@ -201,7 +201,7 @@ Pass-through for native CircuitJS1 element dump format.
 | Assignment | `~` or `=` |
 | Integration | `integrate(expr)` |
 | Differentiation | `diff(expr)` |
-| Lagged value | `X[-1]` → converts to `integrate()` pattern |
+| Lagged value | `X[-1]`, `X(-1)`, `X [ - 1 ]` (preserved as written) |
 | Greek letters | Unicode (`α`, `θ`, `∆`) or ASCII (`alpha`, `theta`) |
 
 ---

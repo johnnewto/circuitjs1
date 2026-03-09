@@ -28,13 +28,7 @@ This index reflects the current mixed architecture in the codebase:
 - Import via `File → Import From Text...` or `File → Open`
 - Export via `File → Export As SFCR...`
 
-### EQUATION_TABLE_SIMPLIFICATION.md
-**Purpose:** EquationTable row classification and runtime optimization reference  
-**Key Points:**
-- Alias/constant/linear/dynamic row classification and matrix impact
-- Deferred `postStamp()` behavior for cross-element dependencies
-- `E_NODE_REF` → `E_GSLOT` conversion flow for fast runtime expression lookup
-- Reset lifecycle gotcha and required re-registration behavior for parameter names
+### ~~EQUATION_TABLE_SIMPLIFICATION.md~~ *(removed — content merged into [EQUATION_TABLE_REFERENCE.md](EQUATION_TABLE_REFERENCE.md))*
 
 ### STOCK_FLOW_SYNC_SUMMARY.md
 **Purpose:** Row synchronization between tables sharing stocks  
@@ -59,7 +53,7 @@ This index reflects the current mixed architecture in the codebase:
 ### EQUATION_TABLE_CURRENT_FLOW_MODE.md
 **Purpose:** Detailed reference for EquationTable row output modes and current-flow behavior  
 **Key Points:**
-- Documents `VOLTAGE_MODE`, `FLOW_MODE`, `STOCK_MODE`, and `PARAM_MODE`
+- Documents `VOLTAGE_MODE`, `FLOW_MODE`, and `PARAM_MODE` (legacy notes may mention removed `STOCK_MODE`)
 - Includes stamping and lifecycle details (`stamp`, `doStep`, `startIteration`, `stepFinished`)
 - Covers `ComputedValues` timing and convergence considerations
 

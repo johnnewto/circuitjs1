@@ -29,6 +29,7 @@ import com.google.gwt.event.dom.client.ClickEvent;
 import com.lushprojects.circuitjs1.client.EquationTableElm.RowOutputMode;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
@@ -56,6 +57,7 @@ public class EquationTableMarkdownDebugDialog {
     private TextArea textArea;
     private EquationTableElm sourceTable;
     private CirSim sim;
+    private Set<String> cyclicalNodeNames = new LinkedHashSet<String>();
     
     /**
      * Create the debug dialog for an EquationTableElm
@@ -199,10 +201,15 @@ public class EquationTableMarkdownDebugDialog {
     
     private String generateMarkdownContent() {
         StringBuilder md = new StringBuilder();
+
+        // Match viewer defaults used in DAG window:
+        // same-period graph, with # Parameters sections ignored.
+        cyclicalNodeNames = SFCRDagBlocksViewer.getCyclicalNodeNames(sim, false, true);
         
         md.append("# Equation Table Debug View\n\n");
         
         appendTableOverview(md);
+        appendCyclicalNodeSummary(md);
         appendCircuitMatrixInfo(md);
         appendRowDetailsTable(md);
         appendPerRowDetails(md);
@@ -213,6 +220,25 @@ public class EquationTableMarkdownDebugDialog {
         appendCircuitDump(md);
         
         return md.toString();
+    }
+
+    /** Append cyclical-node summary derived from global equation DAG analysis. */
+    private void appendCyclicalNodeSummary(StringBuilder md) {
+        md.append("## Cyclical Nodes (Global DAG)\n\n");
+        md.append("- **Mode:** Same-Period refs\n");
+        md.append("- **Parameters Filter:** Ignore `# Parameters` section\n");
+        md.append("- **Cyclical Node Count:** ").append(cyclicalNodeNames != null ? cyclicalNodeNames.size() : 0).append("\n");
+
+        if (cyclicalNodeNames == null || cyclicalNodeNames.isEmpty()) {
+            md.append("- *(No cyclical nodes detected)*\n\n");
+            return;
+        }
+
+        md.append("\n");
+        for (String name : cyclicalNodeNames) {
+            md.append("- ").append(wrapForKaTeX(name)).append("\n");
+        }
+        md.append("\n");
     }
     
     // =========================================================================
@@ -294,8 +320,8 @@ public class EquationTableMarkdownDebugDialog {
         md.append("## Row Summary\n\n");
         
         // Header
-        md.append("| # | Node(s) | Mode | Class | Equation | Initial | Value | Slider | Jacobian |\n");
-        md.append("|---|---------|------|-------|----------|---------|-------|--------|----------|\n");
+        md.append("| # | Node(s) | Mode | Class | Equation | Initial | Value | Slider | Cyclical | Jacobian |\n");
+        md.append("|---|---------|------|-------|----------|---------|-------|--------|----------|----------|\n");
         
         int rowCount = sourceTable.getRowCount();
         for (int row = 0; row < rowCount; row++) {
@@ -311,12 +337,12 @@ public class EquationTableMarkdownDebugDialog {
             String sliderVar = sourceTable.getSliderVarName(row);
             double sliderVal = sourceTable.getSliderValue(row);
             String jacobianStatus = sourceTable.getNewtonJacobianDebugStatus(row);
+            boolean isCyclical = isRowCyclical(sourceTable.getOutputName(row));
             
             // Mode icon
             String modeStr;
             switch (mode) {
                 case FLOW_MODE: modeStr = "FLOW"; break;
-                case STOCK_MODE: modeStr = "STOCK"; break;
                 case PARAM_MODE: modeStr = "PARAM"; break;
                 default: modeStr = "VOLTAGE"; break;
             }
@@ -324,7 +350,8 @@ public class EquationTableMarkdownDebugDialog {
             // Classification icon
             String classIcon;
             if ("comment".equals(classification)) classIcon = "# comment";
-            else classIcon = "~ dynamic";
+            else if ("cyclic".equals(classification)) classIcon = "⟳ cyclic";
+            else classIcon = "other";
             
             // Format value
             String valueStr = CircuitElm.getShortUnitText(value, "");
@@ -344,6 +371,7 @@ public class EquationTableMarkdownDebugDialog {
               .append(" | ").append(initStr)
               .append(" | ").append(valueStr)
               .append(" | ").append(sliderVar).append("=").append(sliderVal)
+              .append(" | ").append(isCyclical ? "YES" : "NO")
               .append(" | ").append(wrapForKaTeX(truncate(jacobianStatus, 28)))
               .append(" |\n");
         }
@@ -359,7 +387,7 @@ public class EquationTableMarkdownDebugDialog {
      * Each row gets a level-3 Markdown header and bullet-point details:
      * mode description, classification, equation, current value, slider state,
      * Jacobian path status, optional hint, and {@link ComputedValues} / labeled-node lookups.
-     * For FLOW/STOCK rows, target node info and voltage are also shown.
+    * For FLOW rows, target node info and voltage are also shown.
      */
     private void appendPerRowDetails(StringBuilder md) {
         md.append("## Per-Row Details\n\n");
@@ -388,12 +416,6 @@ public class EquationTableMarkdownDebugDialog {
                 case FLOW_MODE:
                     modeDesc = "FLOW_MODE: current source " + wrapForKaTeX(outputName);
                     break;
-                case STOCK_MODE:
-                    double cap = sourceTable.getCapacitance(row);
-                    String target = sourceTable.getTargetNodeName(row);
-                    modeDesc = "STOCK_MODE: companion model, C=" + cap + 
-                        ", target=" + (target != null && !target.isEmpty() ? wrapForKaTeX(target) : "gnd");
-                    break;
                 case PARAM_MODE:
                     modeDesc = "PARAM_MODE: computed value only (ComputedValues registry, no MNA stamping)";
                     break;
@@ -412,6 +434,7 @@ public class EquationTableMarkdownDebugDialog {
             
             md.append("- **Current Value:** ").append(CircuitElm.getUnitText(value, "")).append("\n");
             md.append("- **Slider:** ").append(wrapForKaTeX(sliderVar)).append(" = ").append(sliderVal).append("\n");
+            md.append("- **Cyclical (Global DAG):** ").append(isRowCyclical(sourceTable.getOutputName(row)) ? "YES" : "NO").append("\n");
             md.append("- **Jacobian Path:** ").append(jacobianApplied ? "applied" : "fallback").append("\n");
             md.append("- **Jacobian Debug:** ").append(wrapForKaTeX(jacobianStatus)).append("\n");
             
@@ -442,8 +465,8 @@ public class EquationTableMarkdownDebugDialog {
                     md.append("- **LabeledNode:** *(not found)*\n");
                 }
                 
-                // For FLOW_MODE/STOCK_MODE, show target node info too
-                if (mode == RowOutputMode.FLOW_MODE || mode == RowOutputMode.STOCK_MODE) {
+                // For FLOW_MODE, show target node info too
+                if (mode == RowOutputMode.FLOW_MODE) {
                     String targetName = sourceTable.getTargetNodeName(row);
                     if (targetName != null && !targetName.trim().isEmpty() && !targetName.equalsIgnoreCase("gnd")) {
                         Integer targetNode = LabeledNodeElm.getByName(targetName.trim());
@@ -564,6 +587,18 @@ public class EquationTableMarkdownDebugDialog {
         md.append("Total entries: **").append(sortedNames.length).append("**");
         md.append("  ");
         md.append("Flow entries (`*.flow`): **").append(flowCount).append("**\n\n");
+    }
+
+    /** True when this row output name belongs to a cyclical SCC in global DAG analysis. */
+    private boolean isRowCyclical(String outputName) {
+        if (cyclicalNodeNames == null || outputName == null) {
+            return false;
+        }
+        String trimmed = outputName.trim();
+        if (trimmed.length() == 0) {
+            return false;
+        }
+        return cyclicalNodeNames.contains(trimmed);
     }
     
     // =========================================================================
@@ -856,8 +891,8 @@ public class EquationTableMarkdownDebugDialog {
             int vsIdx = 0;
             for (int row = 0; row < eqt.getRowCount(); row++) {
                 RowOutputMode mode = eqt.getOutputMode(row);
-                // VOLTAGE_MODE and STOCK_MODE rows use voltage sources
-                if (mode == RowOutputMode.VOLTAGE_MODE || mode == RowOutputMode.STOCK_MODE) {
+                // VOLTAGE_MODE rows use voltage sources
+                if (mode == RowOutputMode.VOLTAGE_MODE) {
                     if (vsIdx == localVs) {
                         String outputName = eqt.getOutputName(row);
                         if (outputName != null && !outputName.isEmpty()) {

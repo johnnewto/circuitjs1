@@ -1,20 +1,24 @@
-# Adding Current Flow Mode to EquationTableElm
+# Adding Current Flow Mode to EquationTableElm (Historical Notes)
+
+> **Status update (current code):** `EquationTableElm` now supports `VOLTAGE_MODE`, `FLOW_MODE`, and `PARAM_MODE`.
+> `STOCK_MODE` has been removed from runtime behavior. Any legacy references to `STOCK_MODE`
+> in this document are historical implementation notes.
 
 ## Implementation Status: ✅ IMPLEMENTED
 
 The core implementation is complete as of the latest commit. The following features have been added to `EquationTableElm.java`:
 
 ### What's Implemented
-- **RowOutputMode enum**: `VOLTAGE_MODE`, `FLOW_MODE`, `STOCK_MODE`
-- **Per-row mode arrays**: `outputModes[]`, `targetNodeNames[]`, `capacitances[]`
+- **RowOutputMode enum (current):** `VOLTAGE_MODE`, `FLOW_MODE`, `PARAM_MODE`
+- **Per-row mode arrays**: `outputModes[]`, `targetNodeNames[]`, `legacyStockParam[]`
 - **Capacitor state tracking**: `capLastVoltages[]`, `capLastCurrents[]`, `capCurSourceValue[]`
 - **stamp() method**: Dispatches to mode-specific stamping (`stampVoltageModeRow()`, `stampCurrentModeRow()`, `stampCapacitorModeRow()`)
 - **doStep() method**: Dispatches to mode-specific evaluation (`evaluateCurrentModeRow()`, `evaluateCapacitorModeRow()`)
 - **startIteration()**: Calculates capacitor history current (trapezoidal or backward Euler)
 - **stepFinished()**: Saves capacitor state for next timestep and registers stock voltage in ComputedValues
-- **Serialization**: dump()/load() support for mode, target, and capacitance per row
+- **Serialization**: dump()/load() support for mode, target, and a legacy stock-parameter token per row
 
-### ComputedValues Timing (Critical for STOCK_MODE)
+### ComputedValues Timing (Historical STOCK_MODE Notes)
 
 STOCK_MODE rows update their stock voltage in `stepFinished()`, which runs AFTER the matrix solve. To ensure display elements (like `LabeledNodeElm`) see the correct value, the execution order is:
 
@@ -31,9 +35,11 @@ commitConvergedValues()    → computedValues → convergedValues (for display)
 **Key point**: `stepFinished()` values are committed to both `computedValues` AND `convergedValues` before the next draw cycle. See [ARCHITECTURE.md](ARCHITECTURE.md#computedvalues-double-buffering-system) for full details on the double-buffering system.
 
 ### What's Pending
-- **UI Edit Dialog**: Mode selector dropdown, target node field, capacitance field
-- **Renderer Icons**: Visual indicators for row output modes
+- **UI Edit Dialog**: Mode selector dropdown, target node field, and legacy stock-parameter field
 - **Integration Testing**: Full circuit testing with the new modes
+
+### What's Implemented (additional)
+- **Cyclic-row icon**: `EquationTableRenderer` renders a `⟳` icon on rows whose output name appears in the same-period SCC (strongly connected component) set, making cyclical dependencies visible in the table UI.
 
 ---
 
@@ -287,7 +293,7 @@ enum RowOutputMode {
 }
 
 // Per-row fields for capacitor mode
-private double[] capacitances;       // Capacitance value (default 1.0)
+private double[] legacyStockParam;   // Legacy stock parameter (default 1.0)
 private double[] lastVoltages;       // V_old for companion model
 private double[] lastCurrents;       // For trapezoidal integration
 private boolean[] useBackwardEuler;   // Integration method flag (false = trapezoidal, true = backward Euler)
@@ -300,7 +306,7 @@ void stamp() {
     for (int row = 0; row < rowCount; row++) {
         if (outputModes[row] == RowOutputMode.STOCK_MODE) {
             // Stamp companion resistor (linear, done once)
-            double compResistance = sim.timeStep / capacitances[row];
+            double compResistance = sim.timeStep / legacyStockParam[row];
             int stockNode = labeledNodeNumbers[row];
             sim.stampResistor(stockNode, 0, compResistance);
             sim.stampRightSide(stockNode);  // Mark for doStep updates
@@ -322,8 +328,8 @@ void startIteration() {
     for (int row = 0; row < rowCount; row++) {
         if (outputModes[row] == RowOutputMode.STOCK_MODE) {
             double compResistance = rows[row].useBackwardEuler
-                ? sim.timeStep / capacitances[row]
-                : sim.timeStep / (2 * capacitances[row]);
+                ? sim.timeStep / legacyStockParam[row]
+                : sim.timeStep / (2 * legacyStockParam[row]);
             
             if (rows[row].useBackwardEuler) {
                 // Backward Euler: I_hist = -V_old/R
@@ -342,7 +348,7 @@ void startIteration() {
 ```java
 private void evaluateCapacitorModeRow(int row) {
     int stockNode = labeledNodeNumbers[row];
-    double compResistance = sim.timeStep / capacitances[row];
+    double compResistance = sim.timeStep / legacyStockParam[row];
     
     // Stamp history current source (maintains previous state)
     sim.stampCurrentSource(stockNode, 0, capCurSourceValue[row]);
@@ -401,7 +407,7 @@ void stepFinished() {
 ╚══════════════════════════════════════════════════════╝
 ```
 
-The `⊥` symbol (or capacitor icon) indicates capacitor mode. The `[C=1]` shows capacitance (optional, default 1.0).
+The `⊥` symbol (or capacitor icon) indicates capacitor mode. The `[C=1]` shows a legacy stock parameter (optional, default 1.0).
 
 **Equation meaning in capacitor mode:**
 - The equation computes **net inflow** (current into the stock)
@@ -409,7 +415,7 @@ The `⊥` symbol (or capacitor icon) indicates capacitor mode. The `[C=1]` shows
 - Negative value → stock decreases
 - Result: `Stock(t) = Stock(t-dt) + dt × NetInflow / C`
 
-### Capacitance Interpretation
+### Legacy Stock-Parameter Interpretation
 
 | C Value | Meaning | Stock Response |
 |---------|---------|----------------|
@@ -530,7 +536,7 @@ Add a dropdown per row for output mode:
 │ ┌──────────────────────────────────────────────┐ │
 │ │ Output Mode:  [▼ Voltage / Current / Capacitor]│
 │ │ Target Node:  [Firms____________] (if Current)│
-│ │ Capacitance:  [1.0____] (if Capacitor)        │
+│ │ Legacy Stock Param: [1.0____] (if Capacitor)  │
 │ │ Equation:     [100_______________]           │ │
 │ │ Initial:      [____________________]         │ │
 │ │ Slider (a):   [1.0__] ═══════════◉═         │ │
@@ -565,7 +571,7 @@ Extend the dump format to include current mode flags:
 // ... existing ... mode1 target1 cap1 mode2 target2 cap2 ...
 // Where mode: 0=voltage, 1=current, 2=capacitor
 // target: node name for current mode (empty string otherwise)
-// cap: capacitance for capacitor mode (1.0 default)
+// legacyStockParam: stock parameter for capacitor mode (1.0 default)
 
 @Override
 public String dump() {
@@ -585,7 +591,7 @@ public String dump() {
         sb.append(" ").append(CustomLogicModel.escape(
             outputModes[row] == RowOutputMode.FLOW_MODE ? targetNodeNames[row] : ""));
         sb.append(" ").append(
-            outputModes[row] == RowOutputMode.STOCK_MODE ? capacitances[row] : 1.0);
+            outputModes[row] == RowOutputMode.STOCK_MODE ? legacyStockParam[row] : 1.0);
     }
     
     return sb.toString();
@@ -596,7 +602,7 @@ public String dump() {
 
 ### Phase 1: Data Structures
 1. Add `RowOutputMode` enum (VOLTAGE_MODE, FLOW_MODE, STOCK_MODE)
-2. Add `outputModes[]`, `targetNodeNames[]`, `capacitances[]` arrays
+2. Add `outputModes[]`, `targetNodeNames[]`, `legacyStockParam[]` arrays
 4. Add capacitor state arrays: `lastVoltages[]`, `lastCurrents[]`, `capCurSourceValue[]`, `useBackwardEuler[]`
 
 ### Phase 2: Current Mode Implementation
@@ -615,7 +621,7 @@ public String dump() {
 ### Phase 4: UI Integration
 13. Add per-row mode dropdown in edit dialog
 14. Add target node field (current mode) with autocomplete
-15. Add capacitance field (capacitor mode)
+15. Add legacy stock-parameter field (capacitor mode)
 16. Add integration method dropdown (Trapezoidal / Backward Euler) for capacitor mode
 17. Update visual rendering to show mode icons (V, I→, ⊥)
 

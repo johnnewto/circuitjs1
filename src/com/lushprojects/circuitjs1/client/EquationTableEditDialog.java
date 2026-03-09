@@ -49,9 +49,9 @@ import com.lushprojects.circuitjs1.client.EquationTableElm.RowOutputMode;
  * <ol>
  *   <li><b>Title bar</b> — table name textbox + live row count badge.</li>
  *   <li><b>Scrollable grid</b> — one row per equation, columns:
- *       Buttons | Node(s) | Equation | Initial (t=0) | Mode | Shunt R / Cap |
+ *       Buttons | Node(s) | Equation | Initial (t=0) | Mode | Shunt R |
  *       Integ. | Slider Var | Slider Value | Hint</li>
- *   <li><b>Button bar</b> — Apply, OK, Properties, Debug, Reference, Close.</li>
+ *   <li><b>Button bar</b> — Apply, OK, Properties, Debug, Reference, Toggle Modes, Close.</li>
  *   <li><b>Status label</b> — feedback after row operations and Apply.</li>
  * </ol>
  *
@@ -79,7 +79,7 @@ public class EquationTableEditDialog extends Dialog {
     private static final int COL_EQUATION = 2;
     private static final int COL_INITIAL_VALUE = 3;
     private static final int COL_MODE = 4;
-    private static final int COL_CAPACITANCE = 5;
+    private static final int COL_SHUNT_RESISTANCE = 5;
     private static final int COL_INTEGRATION = 6;
     private static final int COL_SLIDER_VAR = 7;
     private static final int COL_SLIDER_VALUE = 8;
@@ -110,7 +110,7 @@ public class EquationTableEditDialog extends Dialog {
     private String[] equations;
     private String[] initialEquations;
     private RowOutputMode[] outputModes;
-    private double[] capacitances;
+    private double[] shuntResistances;
     private boolean[] useBackwardEuler;
     private String[] sliderVarNames;
     private double[] sliderValues;
@@ -153,7 +153,7 @@ public class EquationTableEditDialog extends Dialog {
         equations = new String[MAX_ROWS];
         initialEquations = new String[MAX_ROWS];
         outputModes = new RowOutputMode[MAX_ROWS];
-        capacitances = new double[MAX_ROWS];
+        shuntResistances = new double[MAX_ROWS];
         useBackwardEuler = new boolean[MAX_ROWS];
         sliderVarNames = new String[MAX_ROWS];
         sliderValues = new double[MAX_ROWS];
@@ -164,9 +164,7 @@ public class EquationTableEditDialog extends Dialog {
             equations[i] = tableElement.getEquation(i);
             initialEquations[i] = tableElement.getInitialEquation(i);
             outputModes[i] = tableElement.getOutputMode(i);
-            capacitances[i] = (outputModes[i] == RowOutputMode.FLOW_MODE)
-                ? tableElement.getFlowShuntResistance(i)
-                : tableElement.getCapacitance(i);
+            shuntResistances[i] = tableElement.getFlowShuntResistance(i);
             useBackwardEuler[i] = tableElement.getUseBackwardEuler(i);
             sliderVarNames[i] = tableElement.getSliderVarName(i);
             sliderValues[i] = tableElement.getSliderValue(i);
@@ -303,6 +301,15 @@ public class EquationTableEditDialog extends Dialog {
             }
         });
         buttonPanel.add(referenceButton);
+
+        Button toggleModesButton = new Button("Toggle Modes");
+        toggleModesButton.setTitle("Swap row modes: Flow ↔ Voltage (Param/comment rows unchanged)");
+        toggleModesButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                toggleFlowVoltageModes();
+            }
+        });
+        buttonPanel.add(toggleModesButton);
         
         // Spacer
         Label spacer = new Label();
@@ -353,10 +360,10 @@ public class EquationTableEditDialog extends Dialog {
         headerMode.setTitle("Output mode");
         editGrid.setWidget(HEADER_ROW, COL_MODE, headerMode);
         
-        Label headerCap = new Label("Shunt R / Cap");
+        Label headerCap = new Label("Shunt R");
         headerCap.getElement().getStyle().setProperty("fontWeight", "bold");
-        headerCap.setTitle("FLOW: Shunt R (real load to ground). STOCK: Capacitance.");
-        editGrid.setWidget(HEADER_ROW, COL_CAPACITANCE, headerCap);
+        headerCap.setTitle("FLOW: Shunt resistance (real load to ground).");
+        editGrid.setWidget(HEADER_ROW, COL_SHUNT_RESISTANCE, headerCap);
         
         Label headerInteg = new Label("Integ.");
         headerInteg.getElement().getStyle().setProperty("fontWeight", "bold");
@@ -438,7 +445,7 @@ public class EquationTableEditDialog extends Dialog {
         editGrid.setWidget(gridRow, COL_BUTTONS, buttonPanel);
         
         // Output name textbox
-        // Output name textbox (combined format: "S1->S2" for Flow/Stock, "rate" for Voltage)
+        // Output name textbox (combined format: "S1->S2" for Flow, "rate" for Voltage)
         final TextBox outputNameBox = new TextBox();
         outputNameBox.setText(outputNames[row]);
         outputNameBox.setWidth("110px");
@@ -468,27 +475,24 @@ public class EquationTableEditDialog extends Dialog {
         final ListBox modeBox = new ListBox();
         modeBox.addItem("Voltage", "VOLTAGE_MODE");
         modeBox.addItem("Flow\u2192", "FLOW_MODE");
-        modeBox.addItem("Stock", "STOCK_MODE");
         modeBox.addItem("Param", "PARAM_MODE");
         // Set selected based on current mode
         RowOutputMode currentMode = outputModes[row];
         if (currentMode == RowOutputMode.FLOW_MODE) modeBox.setSelectedIndex(1);
-        else if (currentMode == RowOutputMode.STOCK_MODE) modeBox.setSelectedIndex(2);
-        else if (currentMode == RowOutputMode.PARAM_MODE) modeBox.setSelectedIndex(3);
+        else if (currentMode == RowOutputMode.PARAM_MODE) modeBox.setSelectedIndex(2);
         else modeBox.setSelectedIndex(0);
         modeBox.addChangeHandler(new ChangeHandler() {
             public void onChange(ChangeEvent event) {
                 String val = modeBox.getSelectedValue();
                 RowOutputMode previousMode = outputModes[row];
                 if ("FLOW_MODE".equals(val)) outputModes[row] = RowOutputMode.FLOW_MODE;
-                else if ("STOCK_MODE".equals(val)) outputModes[row] = RowOutputMode.STOCK_MODE;
                 else if ("PARAM_MODE".equals(val)) outputModes[row] = RowOutputMode.PARAM_MODE;
                 else outputModes[row] = RowOutputMode.VOLTAGE_MODE;
                 if (outputModes[row] == RowOutputMode.FLOW_MODE && previousMode != RowOutputMode.FLOW_MODE) {
-                    capacitances[row] = EquationTableElm.getDefaultFlowShuntResistance();
+                    shuntResistances[row] = EquationTableElm.getDefaultFlowShuntResistance();
                 }
                 markChanged();
-                // Enable/disable capacitance fields based on mode
+                // Enable/disable shunt field based on mode
                 updateModeFields(gridRow, outputModes[row]);
             }
         });
@@ -534,17 +538,17 @@ public class EquationTableEditDialog extends Dialog {
 
         updateModeLockUi(row, gridRow, modeBox, outputNameBox, equationBox, initialBox);
         
-        // Mode parameter value (FLOW: Shunt R, STOCK: Capacitance)
+        // Mode parameter value (FLOW: Shunt R)
         final TextBox capBox = new TextBox();
-        capBox.setText(CircuitElm.getShortUnitText(capacitances[row], ""));
+        capBox.setText(CircuitElm.getShortUnitText(shuntResistances[row], ""));
         capBox.setWidth("50px");
         capBox.setTitle(getModeParamTooltip(outputModes[row]));
         capBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
                 try {
-                    capacitances[row] = EditDialog.parseUnits(capBox.getText());
-                    if (capacitances[row] <= 0) {
-                        capacitances[row] = (outputModes[row] == RowOutputMode.FLOW_MODE)
+                    shuntResistances[row] = EditDialog.parseUnits(capBox.getText());
+                    if (shuntResistances[row] <= 0) {
+                        shuntResistances[row] = (outputModes[row] == RowOutputMode.FLOW_MODE)
                             ? EquationTableElm.getDefaultFlowShuntResistance()
                             : 1.0;
                     }
@@ -557,15 +561,15 @@ public class EquationTableEditDialog extends Dialog {
         });
         capBox.addBlurHandler(new BlurHandler() {
             public void onBlur(BlurEvent event) {
-                capBox.setText(CircuitElm.getShortUnitText(capacitances[row], ""));
+                capBox.setText(CircuitElm.getShortUnitText(shuntResistances[row], ""));
             }
         });
         addSelectAllOnFocus(capBox);
-        // Enable for FLOW and STOCK only
-        capBox.setEnabled(outputModes[row] == RowOutputMode.FLOW_MODE || outputModes[row] == RowOutputMode.STOCK_MODE);
-        editGrid.setWidget(gridRow, COL_CAPACITANCE, capBox);
+        // Enable for FLOW only
+        capBox.setEnabled(outputModes[row] == RowOutputMode.FLOW_MODE);
+        editGrid.setWidget(gridRow, COL_SHUNT_RESISTANCE, capBox);
         
-        // Integration method dropdown (for STOCK mode)
+        // Integration method dropdown (legacy; disabled)
         final ListBox integBox = new ListBox();
         integBox.addItem("Trap", "trap");
         integBox.addItem("Euler", "euler");
@@ -577,7 +581,7 @@ public class EquationTableEditDialog extends Dialog {
                 markChanged();
             }
         });
-        integBox.setEnabled(outputModes[row] == RowOutputMode.STOCK_MODE);
+        integBox.setEnabled(false);
         editGrid.setWidget(gridRow, COL_INTEGRATION, integBox);
         
         // Slider variable name textbox
@@ -772,39 +776,35 @@ public class EquationTableEditDialog extends Dialog {
     }
     
     /**
-     * Update capacitance and integration field enabled states based on mode
+    * Update shunt and integration field enabled states based on mode
      */
     private void updateModeFields(int gridRow, RowOutputMode mode) {
-        Widget capWidget = editGrid.getWidget(gridRow, COL_CAPACITANCE);
+        Widget capWidget = editGrid.getWidget(gridRow, COL_SHUNT_RESISTANCE);
         Widget integWidget = editGrid.getWidget(gridRow, COL_INTEGRATION);
         
         if (capWidget instanceof TextBox) {
-            ((TextBox) capWidget).setEnabled(mode == RowOutputMode.FLOW_MODE || mode == RowOutputMode.STOCK_MODE);
+            ((TextBox) capWidget).setEnabled(mode == RowOutputMode.FLOW_MODE);
             ((TextBox) capWidget).setTitle(getModeParamTooltip(mode));
         }
         if (integWidget instanceof ListBox) {
-            ((ListBox) integWidget).setEnabled(mode == RowOutputMode.STOCK_MODE);
+            ((ListBox) integWidget).setEnabled(false);
         }
     }
 
     /**
-     * Return a context-sensitive tooltip for the Shunt R / Cap field based on the current mode.
+    * Return a context-sensitive tooltip for the Shunt R field based on the current mode.
      *
      * <ul>
      *   <li>FLOW_MODE  — field controls shunt resistance to ground.</li>
-     *   <li>STOCK_MODE — field controls capacitance of the companion model.</li>
      *   <li>PARAM/VOLTAGE — field is not applicable and the tooltip says so.</li>
      * </ul>
      *
      * @param mode Current row output mode.
-     * @return Tooltip string for the capacitance/shunt-R field.
+    * @return Tooltip string for the shunt-resistance field.
      */
     private String getModeParamTooltip(RowOutputMode mode) {
         if (mode == RowOutputMode.FLOW_MODE) {
             return "Shunt R for FLOW. Lower values create a real electrical load to ground.";
-        }
-        if (mode == RowOutputMode.STOCK_MODE) {
-            return "Capacitance for STOCK integration.";
         }
         if (mode == RowOutputMode.PARAM_MODE) {
             return "Not used in PARAM mode.";
@@ -881,7 +881,57 @@ public class EquationTableEditDialog extends Dialog {
         }
 
         updateCommentRowFieldWidths(lockType == ModeLockType.COMMENT, outputNameBox, equationBox, initialBox);
+        updateNodeColumnEmphasis(row, lockType == ModeLockType.COMMENT, outputNameBox);
         updateModeFields(gridRow, outputModes[row]);
+    }
+
+    /**
+     * Visually de-emphasize the Node(s) column when equation text already contains
+     * an explicit assignment LHS (e.g. "X - X[-1] = ...").
+     */
+    private void updateNodeColumnEmphasis(int row, boolean isCommentRow, TextBox outputNameBox) {
+        if (outputNameBox == null) {
+            return;
+        }
+
+        if (isCommentRow) {
+            outputNameBox.getElement().getStyle().clearColor();
+            outputNameBox.getElement().getStyle().clearBackgroundColor();
+            outputNameBox.getElement().getStyle().clearProperty("opacity");
+            return;
+        }
+
+        boolean equationHasExplicitLhs = containsStandaloneAssignment(equations[row]);
+        if (equationHasExplicitLhs) {
+            outputNameBox.getElement().getStyle().setProperty("opacity", "0.72");
+            outputNameBox.getElement().getStyle().setProperty("color", "#6b7280");
+            outputNameBox.getElement().getStyle().setProperty("backgroundColor", "#f8fafc");
+            outputNameBox.setTitle("Output variable is still used for semantics; equation already includes explicit LHS");
+        } else {
+            outputNameBox.getElement().getStyle().clearProperty("opacity");
+            outputNameBox.getElement().getStyle().clearColor();
+            outputNameBox.getElement().getStyle().clearBackgroundColor();
+            outputNameBox.setTitle("Node name (ground-referenced by default). Use From→To for two explicit nodes. Separators: , -> -||-");
+        }
+    }
+
+    /** Return true if expression contains assignment '=' not part of ==, <=, >=, or !=. */
+    private boolean containsStandaloneAssignment(String expression) {
+        if (expression == null || expression.isEmpty()) {
+            return false;
+        }
+        for (int i = 0; i < expression.length(); i++) {
+            if (expression.charAt(i) != '=') {
+                continue;
+            }
+            char prev = (i > 0) ? expression.charAt(i - 1) : '\0';
+            char next = (i + 1 < expression.length()) ? expression.charAt(i + 1) : '\0';
+            if (prev == '=' || prev == '<' || prev == '>' || prev == '!' || next == '=') {
+                continue;
+            }
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -950,7 +1000,7 @@ public class EquationTableEditDialog extends Dialog {
             equations[i + 1] = equations[i];
             initialEquations[i + 1] = initialEquations[i];
             outputModes[i + 1] = outputModes[i];
-            capacitances[i + 1] = capacitances[i];
+            shuntResistances[i + 1] = shuntResistances[i];
             useBackwardEuler[i + 1] = useBackwardEuler[i];
             sliderVarNames[i + 1] = sliderVarNames[i];
             sliderValues[i + 1] = sliderValues[i];
@@ -962,7 +1012,7 @@ public class EquationTableEditDialog extends Dialog {
         equations[insertAt] = "0";
         initialEquations[insertAt] = "";
         outputModes[insertAt] = RowOutputMode.VOLTAGE_MODE;
-        capacitances[insertAt] = 1.0;
+        shuntResistances[insertAt] = EquationTableElm.getDefaultFlowShuntResistance();
         useBackwardEuler[insertAt] = false;
         sliderVarNames[insertAt] = "";
         sliderValues[insertAt] = 0;
@@ -990,7 +1040,7 @@ public class EquationTableEditDialog extends Dialog {
             equations[i] = equations[i + 1];
             initialEquations[i] = initialEquations[i + 1];
             outputModes[i] = outputModes[i + 1];
-            capacitances[i] = capacitances[i + 1];
+            shuntResistances[i] = shuntResistances[i + 1];
             useBackwardEuler[i] = useBackwardEuler[i + 1];
             sliderVarNames[i] = sliderVarNames[i + 1];
             sliderValues[i] = sliderValues[i + 1];
@@ -1027,9 +1077,9 @@ public class EquationTableEditDialog extends Dialog {
         outputModes[fromIndex] = outputModes[toIndex];
         outputModes[toIndex] = tempMode;
         
-        double tempCap = capacitances[fromIndex];
-        capacitances[fromIndex] = capacitances[toIndex];
-        capacitances[toIndex] = tempCap;
+        double tempShuntR = shuntResistances[fromIndex];
+        shuntResistances[fromIndex] = shuntResistances[toIndex];
+        shuntResistances[toIndex] = tempShuntR;
         
         boolean tempEuler = useBackwardEuler[fromIndex];
         useBackwardEuler[fromIndex] = useBackwardEuler[toIndex];
@@ -1049,6 +1099,41 @@ public class EquationTableEditDialog extends Dialog {
         
         String direction = (fromIndex < toIndex) ? "down" : "up";
         setStatus("Row " + (fromIndex + 1) + " moved " + direction);
+        markChanged();
+        populateGrid();
+    }
+
+    /**
+     * Toggle row output modes globally: FLOW_MODE ↔ VOLTAGE_MODE.
+     * PARAM_MODE and comment rows are left unchanged.
+     */
+    private void toggleFlowVoltageModes() {
+        int switchedToFlow = 0;
+        int switchedToVoltage = 0;
+
+        for (int row = 0; row < rowCount; row++) {
+            if (isCommentRowByInput(row)) {
+                continue;
+            }
+
+            if (outputModes[row] == RowOutputMode.FLOW_MODE) {
+                outputModes[row] = RowOutputMode.VOLTAGE_MODE;
+                switchedToVoltage++;
+            } else if (outputModes[row] == RowOutputMode.VOLTAGE_MODE) {
+                outputModes[row] = RowOutputMode.FLOW_MODE;
+                if (shuntResistances[row] <= 0) {
+                    shuntResistances[row] = EquationTableElm.getDefaultFlowShuntResistance();
+                }
+                switchedToFlow++;
+            }
+        }
+
+        if (switchedToFlow == 0 && switchedToVoltage == 0) {
+            setStatus("No Flow/Voltage rows to toggle");
+            return;
+        }
+
+        setStatus("Toggled modes: " + switchedToFlow + " to Flow, " + switchedToVoltage + " to Voltage");
         markChanged();
         populateGrid();
     }
@@ -1079,7 +1164,6 @@ public class EquationTableEditDialog extends Dialog {
                 tableElement.setEquation(row, "");
                 tableElement.setInitialEquation(row, "");
                 tableElement.setOutputMode(row, RowOutputMode.PARAM_MODE);
-                tableElement.setCapacitance(row, 1.0);
                 tableElement.setFlowShuntResistance(row, EquationTableElm.getDefaultFlowShuntResistance());
                 tableElement.setUseBackwardEuler(row, false);
                 tableElement.setSliderVarName(row, "");
@@ -1090,8 +1174,7 @@ public class EquationTableEditDialog extends Dialog {
             tableElement.setEquation(row, equations[row]);
             tableElement.setInitialEquation(row, initialEquations[row]);
             tableElement.setOutputMode(row, outputModes[row]);
-            tableElement.setCapacitance(row, capacitances[row]);
-            tableElement.setFlowShuntResistance(row, capacitances[row]);
+            tableElement.setFlowShuntResistance(row, shuntResistances[row]);
             tableElement.setUseBackwardEuler(row, useBackwardEuler[row]);
             tableElement.setSliderVarName(row, sliderVarNames[row]);
             tableElement.setSliderValue(row, sliderValues[row]);

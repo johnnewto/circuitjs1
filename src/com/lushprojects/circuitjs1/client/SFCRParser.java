@@ -609,7 +609,10 @@ public class SFCRParser {
                 }
 
                 String normalizedLeft = normalizeVariableName(leftPart);
-                String[] nameParts = EquationTableElm.parseCombinedName(normalizedLeft);
+                String[] lhsAliasParts = splitDifferenceLeftAlias(normalizedLeft);
+                boolean hasDifferenceAlias = lhsAliasParts[1] != null && !lhsAliasParts[1].isEmpty();
+
+                String[] nameParts = EquationTableElm.parseCombinedName(lhsAliasParts[0]);
                 String name = normalizeVariableName(nameParts[0]);
 
                 String targetName = "";
@@ -619,11 +622,16 @@ public class SFCRParser {
 
                 String expr = normalizeExpression(exprText);
                 
-                // Convert lag notation: V[-1] → last(V)
-                expr = convertLagNotation(name, expr);
+                // Keep lag notation exactly as imported (e.g. X[-1], X(-1), X [ - 1 ]).
+                // Equation parsing/evaluation supports lag forms directly.
                 
                 outputNames.add(name);
-                equations.add(expr);
+                if (hasDifferenceAlias) {
+                    String lhsDisplay = lhsAliasParts[0] + " - " + lhsAliasParts[1];
+                    equations.add(lhsDisplay + " = " + expr);
+                } else {
+                    equations.add(expr);
+                }
 
                 EquationTableElm.RowOutputMode mode = parseEquationRowMode(rowMeta.get("mode"));
                 if (mode == EquationTableElm.RowOutputMode.VOLTAGE_MODE && !targetName.isEmpty()) {
@@ -688,6 +696,55 @@ public class SFCRParser {
     private int parseParametersBlock(String[] lines, int startIndex) {
         // Parameters are just equations with constant values
         return parseEquationsBlock(lines, startIndex);
+    }
+
+    /**
+     * Split an alias-form left side "X - term" into ["X", "term"].
+     * Returns [left, null] when alias pattern is not detected.
+     */
+    private String[] splitDifferenceLeftAlias(String left) {
+        if (left == null) {
+            return new String[] { "", null };
+        }
+
+        String trimmed = left.trim();
+        if (trimmed.isEmpty()) {
+            return new String[] { "", null };
+        }
+
+        int minusIdx = trimmed.indexOf('-');
+        if (minusIdx <= 0) {
+            return new String[] { trimmed, null };
+        }
+
+        String candidateName = trimmed.substring(0, minusIdx).trim();
+        String candidateOffset = trimmed.substring(minusIdx + 1).trim();
+        if (candidateOffset.isEmpty() || !looksLikeSimpleVariableName(candidateName)) {
+            return new String[] { trimmed, null };
+        }
+
+        return new String[] { candidateName, candidateOffset };
+    }
+
+    /** Conservative variable-name check for left-side alias detection. */
+    private boolean looksLikeSimpleVariableName(String name) {
+        if (name == null || name.isEmpty()) {
+            return false;
+        }
+
+        char first = name.charAt(0);
+        if (!(Character.isLetter(first) || first == '_' || first == '\\')) {
+            return false;
+        }
+
+        for (int i = 1; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if (!(Character.isLetterOrDigit(c) || c == '_' || c == '\\' || c == '^' || c == '{' || c == '}' || c == '.')) {
+                return false;
+            }
+        }
+
+        return true;
     }
     
     /** Parse @hints block - overrides auto-generated hints from inline comments. */
@@ -1329,8 +1386,7 @@ public class SFCRParser {
                 String name = normalizeVariableName(eqParts[0].trim());
                 String expr = normalizeExpression(eqParts[1].trim());
                 
-                // Convert lag notation: V[-1] → last(V)
-                expr = convertLagNotation(name, expr);
+                // Keep lag notation exactly as imported (e.g. V[-1], V(-1), V [ - 1 ]).
                 
                 outputNames.add(name);
                 equations.add(expr);
@@ -1582,149 +1638,9 @@ public class SFCRParser {
         // Convert ∫(x) to integrate(x)
         expr = expr.replace("∫(", "integrate(");
         
-        // Don't convert lagged values here - that's handled by convertLagNotation
-        // after we know the output variable name
+        // Keep lagged values exactly as imported (e.g. X[-1], X(-1), X [ - 1 ]).
         
         return expr.trim();
-    }
-    
-    /**
-     * Convert lagged values to last():
-     *   V[-1] -> last(V)
-     *
-     * Self-references are intentionally kept as last(V) by default so expressions like
-     *   Ls ~ Ls[-1] + Ld - Ld[-1]
-     * become
-     *   Ls ~ last(Ls) + Ld - last(Ld)
-     *
-     * Use integrate(...) explicitly in source text when integrator semantics are desired.
-     */
-    private String convertLagNotation(String varName, String expr) {
-        if (expr == null || !expr.contains("[-1]")) {
-            return expr;
-        }
-        // Convert all lagged references, including self-lag terms.
-        return convertLagToFunction(expr);
-    }
-    
-    /** Convert [-1] lag notation to last() function: V[-1] -> last(V). */
-    private String convertLagToFunction(String expr) {
-        StringBuilder result = new StringBuilder();
-        int i = 0;
-        
-        while (i < expr.length()) {
-            // Look for [-1] pattern
-            int lagIdx = expr.indexOf("[-1]", i);
-            if (lagIdx < 0) {
-                // No more lag patterns, append rest
-                result.append(expr.substring(i));
-                break;
-            }
-            
-            // Find the variable name before [-1]
-            int varEnd = lagIdx;
-            int varStart = varEnd;
-            
-            // Skip whitespace before [-1]
-            while (varStart > i && Character.isWhitespace(expr.charAt(varStart - 1))) {
-                varStart--;
-            }
-            varEnd = varStart;
-            
-            // Find start of identifier (letters, digits, underscores)
-            while (varStart > i) {
-                char c = expr.charAt(varStart - 1);
-                if (Character.isLetterOrDigit(c) || c == '_') {
-                    varStart--;
-                } else {
-                    break;
-                }
-            }
-            
-            if (varStart < varEnd) {
-                // Found a variable name - convert to last(varName)
-                String varName = expr.substring(varStart, varEnd);
-                
-                // Append everything before the variable
-                result.append(expr.substring(i, varStart));
-                
-                // Append last(varName)
-                result.append("last(").append(varName).append(")");
-                
-                // Move past [-1]
-                i = lagIdx + 4;
-            } else {
-                // No variable found, just append up to and including [-1]
-                result.append(expr.substring(i, lagIdx + 4));
-                i = lagIdx + 4;
-            }
-        }
-        
-        return result.toString();
-    }
-    
-    /** @deprecated Use convertLagToFunction instead. */
-    @SuppressWarnings("unused")
-    private String stripLagNotation(String expr) {
-        return expr.replace("[-1]", "");
-    }
-    
-    /** @deprecated Use convertLagNotation instead. */
-    @SuppressWarnings("unused")
-    private String convertLaggedValues(String expr) {
-        StringBuilder result = new StringBuilder();
-        int i = 0;
-        
-        while (i < expr.length()) {
-            // Look for [-1] pattern
-            int lagIdx = expr.indexOf("[-1]", i);
-            if (lagIdx < 0) {
-                // No more lag patterns, append rest
-                result.append(expr.substring(i));
-                break;
-            }
-            
-            // Find the variable name before [-1]
-            // Walk backwards to find start of identifier
-            int varEnd = lagIdx;
-            int varStart = varEnd;
-            
-            // Skip whitespace before [-1]
-            while (varStart > i && Character.isWhitespace(expr.charAt(varStart - 1))) {
-                varStart--;
-            }
-            varEnd = varStart;
-            
-            // Find start of identifier (letters, digits, underscores)
-            while (varStart > i) {
-                char c = expr.charAt(varStart - 1);
-                if (Character.isLetterOrDigit(c) || c == '_') {
-                    varStart--;
-                } else {
-                    break;
-                }
-            }
-            
-            if (varStart < varEnd) {
-                // Found a variable name
-                String varName = expr.substring(varStart, varEnd);
-                
-                // Append everything before the variable
-                result.append(expr.substring(i, varStart));
-                
-                // Append the converted expression: (var - diff(var))
-                result.append("(").append(varName).append(" - diff(").append(varName).append("))");
-                
-                // Move past [-1]
-                i = lagIdx + 4;
-            } else {
-                // No variable found, just append up to and including [-1]
-                result.append(expr.substring(i, lagIdx + 4));
-                i = lagIdx + 4;
-            }
-        }
-        
-        return result.toString();
     }
     
     // =========================================================================
@@ -1859,7 +1775,7 @@ public class SFCRParser {
         if (mode == null) return EquationTableElm.RowOutputMode.VOLTAGE_MODE;
         String m = mode.trim().toLowerCase();
         if (m.equals("flow") || m.equals("flow_mode")) return EquationTableElm.RowOutputMode.FLOW_MODE;
-        if (m.equals("stock") || m.equals("stock_mode")) return EquationTableElm.RowOutputMode.STOCK_MODE;
+        if (m.equals("stock") || m.equals("stock_mode")) return EquationTableElm.RowOutputMode.FLOW_MODE;
         if (m.equals("param") || m.equals("parameter") || m.equals("param_mode")) return EquationTableElm.RowOutputMode.PARAM_MODE;
         return EquationTableElm.RowOutputMode.VOLTAGE_MODE;
     }
@@ -1939,7 +1855,14 @@ public class SFCRParser {
 
             EquationTableElm.RowOutputMode mode = (i < outputModes.size() && outputModes.get(i) != null)
                 ? outputModes.get(i) : EquationTableElm.RowOutputMode.VOLTAGE_MODE;
-            dump.append(mode.ordinal()).append(" ");
+            int modeOrdinal = 0;
+            if (mode == EquationTableElm.RowOutputMode.FLOW_MODE) {
+                modeOrdinal = 1;
+            } else if (mode == EquationTableElm.RowOutputMode.PARAM_MODE) {
+                // Keep on-disk numbering compatible with EquationTableElm.dump().
+                modeOrdinal = 3;
+            }
+            dump.append(modeOrdinal).append(" ");
 
             String target = (i < targetNodeNames.size() && targetNodeNames.get(i) != null)
                 ? targetNodeNames.get(i) : "";

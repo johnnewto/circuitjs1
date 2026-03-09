@@ -194,6 +194,8 @@ MouseOutHandler, MouseWheelHandler {
     MenuItem elmSliderMenuItem;
     MenuItem elmSankeyMenuItem;
 	MenuItem elmDagBlocksMenuItem;
+	MenuItem elmEquationTableDebugMenuItem;
+	MenuItem elmEquationTableReferenceMenuItem;
     MenuItem elmFlipXMenuItem, elmFlipYMenuItem, elmFlipXYMenuItem;
     MenuItem elmSwapMenuItem;
     MenuItem stackAllItem;
@@ -1003,6 +1005,8 @@ public CirSim() {
 	elmMenuBar.addItem(elmSliderMenuItem = new MenuItem(Locale.LS("Sliders..."),new MyCommand("elm","sliders")));
 	elmMenuBar.addItem(elmSankeyMenuItem = new MenuItem(Locale.LS("View Sankey Diagram..."),new MyCommand("elm","viewSankey")));
 	elmMenuBar.addItem(elmDagBlocksMenuItem = new MenuItem(Locale.LS("View DAG Blocks Plot..."),new MyCommand("elm","viewDagBlocks")));
+	elmMenuBar.addItem(elmEquationTableDebugMenuItem = new MenuItem(Locale.LS("View EquationTable Debug Info..."),new MyCommand("elm","viewEquationTableDebug")));
+	elmMenuBar.addItem(elmEquationTableReferenceMenuItem = new MenuItem(Locale.LS("View EquationTable Reference..."),new MyCommand("elm","viewEquationTableReference")));
 
 	scopePopupMenu = new ScopePopupMenu();
 
@@ -2331,6 +2335,7 @@ public CirSim() {
         String hint = null;
         String valueStr = null;
         String label = null;
+		java.util.ArrayList<String> tooltipLines = new java.util.ArrayList<String>();
         boolean isInScope = false;
         
         // Check if it's a LabeledNodeElm
@@ -2345,10 +2350,11 @@ public CirSim() {
             EquationTableElm ete = (EquationTableElm) mouseElm;
             int hoveredRow = ete.getHoveredRow();
             if (hoveredRow >= 0 && hoveredRow < ete.getRowCount()) {
-                String outputName = ete.getOutputName(hoveredRow);
-                hint = HintRegistry.getHint(outputName);
-                label = ete.getFlowDisplayName(hoveredRow);
-                valueStr = CircuitElm.showFormat.format(ete.getOutputValue(hoveredRow));
+				hint = "Equation";
+				String hintExpandedEquation = ete.getHintExpandedEquationForDisplay(hoveredRow);
+				if (hintExpandedEquation != null && !hintExpandedEquation.trim().isEmpty()) {
+					tooltipLines.add(hintExpandedEquation);
+				}
             }
         }
         // Check if it's a ScopeElm (undocked scope) with a selected plot
@@ -2365,19 +2371,34 @@ public CirSim() {
         
         // Draw the tooltip if we have one
         if (hint != null && !hint.trim().isEmpty()) {
-            // Build display text: "Hint Description: Label = Value" or just "Hint Description: Label" if in scope area
-            String displayText;
-            if (scopeSelected != -1 || isInScope) {
-                // Mouse is over scope area - don't show value
-                displayText = hint + ":   " + label;
-            } else {
-                // Mouse is over circuit area - show value
-                displayText = hint + ":   " + label + " = " + valueStr;
+			if (tooltipLines.isEmpty()) {
+				// Build display text: "Hint Description: Label = Value" or just "Hint Description: Label" if in scope area
+				String displayText;
+				if (scopeSelected != -1 || isInScope) {
+					// Mouse is over scope area - don't show value
+					displayText = hint + ":   " + label;
+				} else {
+					// Mouse is over circuit area - show value
+					displayText = hint + ":   " + label + " = " + valueStr;
+				}
+				tooltipLines.add(displayText);
             }
             
             g.context.setFont("500 12px system-ui, -apple-system, sans-serif");
-            int hintWidth = (int) g.context.measureText(displayText).getWidth() + 16;
-            int hintHeight = 24;
+			int hintWidth = 0;
+			for (String line : tooltipLines) {
+				int lineWidth = (int) g.context.measureText(line).getWidth() + 16;
+				if (lineWidth > hintWidth) {
+					hintWidth = lineWidth;
+				}
+			}
+			if (hintWidth <= 0) {
+				return;
+			}
+
+			int lineHeight = 16;
+			int verticalPadding = 8;
+			int hintHeight = verticalPadding * 2 + tooltipLines.size() * lineHeight;
             int radius = 6;
             
             // Position above the mouse cursor in screen coordinates
@@ -2425,7 +2446,10 @@ public CirSim() {
             
             // Draw tooltip text
             g.context.setFillStyle("#cdd6f4");
-            g.context.fillText(displayText, tooltipX + 8, tooltipY + hintHeight / 2 + 4);
+			int textY = tooltipY + verticalPadding + 12;
+			for (int i = 0; i < tooltipLines.size(); i++) {
+				g.context.fillText(tooltipLines.get(i), tooltipX + 8, textY + i * lineHeight);
+			}
         }
     }
 
@@ -4806,6 +4830,16 @@ public CirSim() {
 		viewer.openExternalWindow();
 	    }
 
+	    if (item=="viewEquationTableDebug" && (menuElm instanceof EquationTableElm)) {
+		new EquationTableMarkdownDebugDialog((EquationTableElm) menuElm).show();
+	    }
+
+	    if (item=="viewEquationTableReference" && (menuElm instanceof EquationTableElm)) {
+		ReferenceDocs.openMarkdownReference(
+		    "EquationTable Reference",
+		    "docs/reference/EquationTableReference.md");
+	    }
+
     	if (item=="viewInScope" && menuElm != null) {
     		int i;
     		for (i = 0; i != scopeCount; i++)
@@ -6699,6 +6733,8 @@ public CirSim() {
     	    	    elmSliderMenuItem.setEnabled(sliderItemEnabled(mouseElm));
 		    	    elmSankeyMenuItem.setEnabled(mouseElm instanceof SFCTableElm);
 				    elmDagBlocksMenuItem.setEnabled(mouseElm instanceof EquationTableElm);
+					    elmEquationTableDebugMenuItem.setEnabled(mouseElm instanceof EquationTableElm);
+					    elmEquationTableReferenceMenuItem.setEnabled(mouseElm instanceof EquationTableElm);
 		    boolean canFlipX = mouseElm.canFlipX();
 		    boolean canFlipY = mouseElm.canFlipY();
 		    boolean canFlipXY = mouseElm.canFlipXY();

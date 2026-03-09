@@ -12,9 +12,12 @@ import java.util.LinkedHashSet;
  *
  * Triggered from EquationTableElm context menu. It aggregates equations from
  * all EquationTableElm elements in the circuit, computes dependency edges,
- * identifies SCC blocks/cycles, and renders an interactive graph in Plotly.
+ * identifies SCC blocks/cycles, and renders an interactive graph in Cytoscape.
  */
 class SFCRDagBlocksViewer {
+    private static final String WINDOW_KEY = "sfcrDagBlocksWindow";
+    private static final String POPUP_FEATURES = "width=1400,height=900";
+
     private static final String[] BLOCK_COLORS = {
         "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
         "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"
@@ -22,11 +25,13 @@ class SFCRDagBlocksViewer {
 
     private final CirSim sim;
 
+    /** Lightweight equation record used during dependency graph construction. */
     private static class EquationDef {
         String name;
         String equation;
     }
 
+    /** Directed dependency edge: from source equation node to target equation node. */
     private static class EdgeDef {
         int from;
         int to;
@@ -37,6 +42,7 @@ class SFCRDagBlocksViewer {
         }
     }
 
+    /** Fully assembled graph payload consumed by the HTML renderer. */
     private static class GraphData {
         ArrayList<String> nodes = new ArrayList<String>();
         ArrayList<EdgeDef> edges = new ArrayList<EdgeDef>();
@@ -45,6 +51,10 @@ class SFCRDagBlocksViewer {
         int blockCount;
     }
 
+    /**
+     * Tarjan SCC implementation used to assign nodes to strongly connected components.
+     * SCCs are then used to compute block IDs and cyclical flags.
+     */
     private static class TarjanContext {
         int[] index;
         int[] low;
@@ -121,6 +131,40 @@ class SFCRDagBlocksViewer {
         this.sim = sim;
     }
 
+    /**
+     * Compute cyclical equation node names for the current circuit DAG.
+     *
+     * Package-visible so debug tooling (e.g. EquationTableMarkdownDebugDialog)
+     * can surface cyclical membership without duplicating SCC logic.
+     */
+    static java.util.Set<String> getCyclicalNodeNames(CirSim sim, boolean includeHistoricalRefs,
+            boolean ignoreExternalSections) {
+        java.util.LinkedHashSet<String> cyclical = new java.util.LinkedHashSet<String>();
+        if (sim == null) {
+            return cyclical;
+        }
+
+        SFCRDagBlocksViewer viewer = new SFCRDagBlocksViewer(sim);
+        GraphData graph = viewer.buildGraph(includeHistoricalRefs, ignoreExternalSections);
+        if (graph == null || graph.nodes == null || graph.cyclicalByNode == null) {
+            return cyclical;
+        }
+
+        int n = Math.min(graph.nodes.size(), graph.cyclicalByNode.length);
+        for (int i = 0; i < n; i++) {
+            if (graph.cyclicalByNode[i]) {
+                String name = graph.nodes.get(i);
+                if (name != null && name.trim().length() > 0) {
+                    cyclical.add(name.trim());
+                }
+            }
+        }
+        return cyclical;
+    }
+
+    /**
+     * Build all graph variants and open/reuse the external viewer popup.
+     */
     void openExternalWindow() {
         GraphData samePeriodGraph = buildGraph(false, false);
         GraphData historicalGraph = buildGraph(true, false);
@@ -132,8 +176,14 @@ class SFCRDagBlocksViewer {
         }
     }
 
-    private GraphData buildGraph(boolean includeHistoricalRefs, boolean ignoreParameterSections) {
-        ArrayList<EquationDef> equations = collectEquations(ignoreParameterSections);
+    /**
+     * Build graph data for one dependency mode and filter setting.
+     *
+     * @param includeHistoricalRefs true to include refs inside historical operators
+     * @param ignoreExternalSections true to skip rows under "# Parameters" and "# External" sections
+     */
+    private GraphData buildGraph(boolean includeHistoricalRefs, boolean ignoreExternalSections) {
+        ArrayList<EquationDef> equations = collectEquations(ignoreExternalSections);
         GraphData graph = new GraphData();
         if (equations.isEmpty()) {
             graph.blockByNode = new int[0];
@@ -172,7 +222,11 @@ class SFCRDagBlocksViewer {
         return graph;
     }
 
-    private ArrayList<EquationDef> collectEquations(boolean ignoreParameterSections) {
+    /**
+     * Collect equation rows from all EquationTableElm instances.
+     * Optionally excludes rows inside "# Parameters" or "# External" sections until the next comment row.
+     */
+    private ArrayList<EquationDef> collectEquations(boolean ignoreExternalSections) {
         ArrayList<EquationDef> out = new ArrayList<EquationDef>();
         HashSet<String> seenNames = new HashSet<String>();
 
@@ -184,22 +238,22 @@ class SFCRDagBlocksViewer {
 
             EquationTableElm table = (EquationTableElm) ce;
             int rowCount = table.getRowCount();
-            boolean ignoringParametersInThisTable = false;
+            boolean ignoringSpecialSectionInThisTable = false;
             for (int row = 0; row < rowCount; row++) {
                 if (table.isCommentRow(row)) {
-                    if (ignoreParameterSections) {
-                        if (ignoringParametersInThisTable) {
-                            ignoringParametersInThisTable = false;
+                    if (ignoreExternalSections) {
+                        if (ignoringSpecialSectionInThisTable) {
+                            ignoringSpecialSectionInThisTable = false;
                         }
-                        String commentText = safeTrim(table.getCommentText(row)).toLowerCase();
-                        if (commentText.startsWith("parameters")) {
-                            ignoringParametersInThisTable = true;
+                        String commentText = safeTrim(table.getCommentText(row));
+                        if (isIgnoredSectionHeaderComment(commentText)) {
+                            ignoringSpecialSectionInThisTable = true;
                         }
                     }
                     continue;
                 }
 
-                if (ignoreParameterSections && ignoringParametersInThisTable) {
+                if (ignoreExternalSections && ignoringSpecialSectionInThisTable) {
                     continue;
                 }
 
@@ -233,15 +287,45 @@ class SFCRDagBlocksViewer {
         return out;
     }
 
+    /** Returns true when comment text marks the start of an ignored section. */
+    private boolean isIgnoredSectionHeaderComment(String commentText) {
+        if (commentText == null) {
+            return false;
+        }
+        String normalized = commentText.trim().toLowerCase();
+        while (normalized.length() > 0 &&
+                (normalized.charAt(0) == '[' || normalized.charAt(0) == '(' || normalized.charAt(0) == '{')) {
+            normalized = normalized.substring(1).trim();
+        }
+        while (normalized.length() > 0) {
+            char last = normalized.charAt(normalized.length() - 1);
+            if (last == ']' || last == ')' || last == '}' || last == ':') {
+                normalized = normalized.substring(0, normalized.length() - 1).trim();
+            } else {
+                break;
+            }
+        }
+        return "parameter".equals(normalized)
+                || "parameters".equals(normalized)
+                || "external".equals(normalized)
+                || "externals".equals(normalized);
+    }
+
+    /** Parse equation expression and collect dependency refs by selected mode. */
     private LinkedHashSet<String> parseReferences(String equation, boolean includeHistoricalRefs) {
         LinkedHashSet<String> refs = new LinkedHashSet<String>();
         if (equation == null || equation.length() == 0) {
             return refs;
         }
 
-        ExprParser parser = new ExprParser(equation);
-        Expr expr = parser.parseExpression();
-        if (parser.gotError() != null || expr == null) {
+        Expr expr = tryParseExpression(equation);
+        if (expr == null) {
+            String rhs = extractAssignmentRightHandSide(equation);
+            if (rhs != null && rhs.length() > 0) {
+                expr = tryParseExpression(rhs);
+            }
+        }
+        if (expr == null) {
             return refs;
         }
 
@@ -253,6 +337,83 @@ class SFCRDagBlocksViewer {
         return refs;
     }
 
+    private Expr tryParseExpression(String expressionText) {
+        if (expressionText == null || expressionText.trim().length() == 0) {
+            return null;
+        }
+        ExprParser parser = new ExprParser(expressionText);
+        Expr expr = parser.parseExpression();
+        if (parser.gotError() != null || expr == null) {
+            return null;
+        }
+        return expr;
+    }
+
+    /**
+     * For rows authored as "LHS = RHS" inside the equation field, return RHS.
+     * Returns null if no plain assignment marker is found.
+     */
+    private String extractAssignmentRightHandSide(String equation) {
+        if (equation == null) {
+            return null;
+        }
+
+        int parenDepth = 0;
+        int bracketDepth = 0;
+        int braceDepth = 0;
+        for (int i = 0; i < equation.length(); i++) {
+            char ch = equation.charAt(i);
+            if (ch == '(') {
+                parenDepth++;
+                continue;
+            }
+            if (ch == ')') {
+                parenDepth = Math.max(0, parenDepth - 1);
+                continue;
+            }
+            if (ch == '[') {
+                bracketDepth++;
+                continue;
+            }
+            if (ch == ']') {
+                bracketDepth = Math.max(0, bracketDepth - 1);
+                continue;
+            }
+            if (ch == '{') {
+                braceDepth++;
+                continue;
+            }
+            if (ch == '}') {
+                braceDepth = Math.max(0, braceDepth - 1);
+                continue;
+            }
+
+            if (ch != '=' || parenDepth > 0 || bracketDepth > 0 || braceDepth > 0) {
+                continue;
+            }
+
+            char prev = (i > 0) ? equation.charAt(i - 1) : '\0';
+            char next = (i + 1 < equation.length()) ? equation.charAt(i + 1) : '\0';
+            if (prev == '=' || next == '=' || prev == '!' || prev == '<' || prev == '>') {
+                continue;
+            }
+
+            String lhs = equation.substring(0, i).trim();
+            String rhs = equation.substring(i + 1).trim();
+            if (lhs.length() == 0 || rhs.length() == 0) {
+                return null;
+            }
+            return rhs;
+        }
+        return null;
+    }
+
+    /**
+     * Compute SCC blocks and cyclical flags.
+     *
+     * Block IDs are assigned by topological ordering of the SCC condensation graph,
+     * giving stable forward-flow layering in the renderer.
+     */
     private void computeBlocksAndCycles(GraphData graph) {
         int nodeCount = graph.nodes.size();
         ArrayList<ArrayList<Integer>> adjacency = new ArrayList<ArrayList<Integer>>();
@@ -343,16 +504,28 @@ class SFCRDagBlocksViewer {
         graph.blockCount = Math.max(0, nextBlock - 1);
     }
 
-        private String generateHTML(GraphData samePeriodGraph, GraphData historicalGraph,
+    /** Build complete standalone popup HTML with Cytoscape renderer and controls. */
+    private String generateHTML(GraphData samePeriodGraph, GraphData historicalGraph,
             GraphData samePeriodNoParamsGraph, GraphData historicalNoParamsGraph) {
         String sameJson = graphToJSON(samePeriodGraph, "Same-Period Dependencies");
         String historicalJson = graphToJSON(historicalGraph, "Historical + Same-Period Dependencies");
         String sameNoParamsJson = graphToJSON(samePeriodNoParamsGraph,
-            "Same-Period Dependencies (Parameters Excluded)");
+            "Same-Period Dependencies (Parameters/External Excluded)");
         String historicalNoParamsJson = graphToJSON(historicalNoParamsGraph,
-            "Historical + Same-Period Dependencies (Parameters Excluded)");
+            "Historical + Same-Period Dependencies (Parameters/External Excluded)");
 
         StringBuilder html = new StringBuilder();
+        appendHtmlHead(html);
+        appendHtmlBodyStart(html);
+        appendHtmlControls(html);
+        appendHtmlStatusAndContainers(html);
+        appendHtmlScript(html, sameJson, historicalJson, sameNoParamsJson, historicalNoParamsJson);
+        appendHtmlBodyEnd(html);
+        return html.toString();
+    }
+
+    /** Append HTML head, JS library imports, and CSS styling. */
+    private void appendHtmlHead(StringBuilder html) {
         html.append("<!doctype html>\n");
         html.append("<html><head><meta charset='utf-8'>\n");
         html.append("<title>SFCR DAG Blocks Plot</title>\n");
@@ -369,10 +542,18 @@ class SFCRDagBlocksViewer {
         html.append("#legend{border:1px solid #ddd;border-radius:6px;padding:8px;background:#fafafa;margin:0 0 8px 0;}\n");
         html.append("#legend.hidden{display:none;}\n");
         html.append(".legendRow{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:12px;}\n");
-        html.append(".swatch{display:inline-block;width:12px;height:12px;border:1px solid #333;}\n");
         html.append(".shapeKey{display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;border:1px solid #333;background:#fff;}\n");
         html.append("#dagPlot{width:100%;height:calc(100vh - 170px);min-height:420px;border:1px solid #eee;}\n");
-        html.append("</style></head><body>\n");
+        html.append("</style></head>\n");
+    }
+
+    /** Append opening body tag. */
+    private void appendHtmlBodyStart(StringBuilder html) {
+        html.append("<body>\n");
+    }
+
+    /** Append top control row (mode, direction, labels, filters, legend toggle). */
+    private void appendHtmlControls(StringBuilder html) {
         html.append("<div id='controls'>\n");
         html.append("<strong>Mode:</strong>\n");
         html.append("<button id='btnSame' class='active'>Same-Period</button>\n");
@@ -381,9 +562,13 @@ class SFCRDagBlocksViewer {
         html.append("<select id='layoutDir'><option value='TB'>Top → Bottom</option><option value='LR' selected>Left → Right</option></select>\n");
         html.append("<label>Labels:</label>\n");
         html.append("<select id='labelMode'><option value='compact' selected>Compact</option><option value='full'>Full</option><option value='none'>None</option></select>\n");
-        html.append("<label style='user-select:none;'><input id='ignoreParams' type='checkbox' checked/> Ignore # Parameters section</label>\n");
+        html.append("<label style='user-select:none;'><input id='ignoreParams' type='checkbox' checked/> Ignore # Parameters / # External sections</label>\n");
         html.append("<button id='toggleLegend'>Hide Legend</button>\n");
         html.append("</div>\n");
+    }
+
+    /** Append status badges, legend container, and graph container. */
+    private void appendHtmlStatusAndContainers(StringBuilder html) {
         html.append("<div id='status'>\n");
         html.append("<span id='modeBadge' class='badge'></span>\n");
         html.append("<span id='filterBadge' class='badge'></span>\n");
@@ -391,6 +576,11 @@ class SFCRDagBlocksViewer {
         html.append("</div>\n");
         html.append("<div id='legend'></div>\n");
         html.append("<div id='dagPlot'></div>\n");
+    }
+
+    /** Append all viewer JavaScript and inline data payloads. */
+    private void appendHtmlScript(StringBuilder html, String sameJson, String historicalJson,
+            String sameNoParamsJson, String historicalNoParamsJson) {
         html.append("<script>\n");
         html.append("const sameData=").append(sameJson).append(";\n");
         html.append("const historicalData=").append(historicalJson).append(";\n");
@@ -413,11 +603,11 @@ class SFCRDagBlocksViewer {
         html.append("}\n");
         html.append("function updateStatusBadges(){\n");
         html.append("  const modeText = (active==='historical') ? 'Mode: Historical + Same-Period' : 'Mode: Same-Period';\n");
-        html.append("  const filterText = document.getElementById('ignoreParams').checked ? 'Filter: Parameters Excluded' : 'Filter: All Sections';\n");
+        html.append("  const filterText = document.getElementById('ignoreParams').checked ? 'Filter: Parameters/External Excluded' : 'Filter: All Sections';\n");
         html.append("  document.getElementById('modeBadge').textContent = modeText;\n");
         html.append("  document.getElementById('filterBadge').textContent = filterText;\n");
         html.append("}\n");
-        html.append("function buildLegend(g){\n");
+        html.append("function buildLegend(){\n");
         html.append("  const legend = document.getElementById('legend');\n");
         html.append("  let html = '<div style=\"font-weight:600;margin-bottom:4px;\">Legend</div>';\n");
         html.append("  html += '<div class=\"legendRow\"><span class=\"shapeKey\" style=\"border-radius:2px;\"></span><span>Cyclical</span><span class=\"shapeKey\" style=\"border-radius:6px;\"></span><span>Non-cyclical</span></div>';\n");
@@ -453,7 +643,7 @@ class SFCRDagBlocksViewer {
         html.append("  const title = g.title || 'SFCR DAG Blocks Plot';\n");
         html.append("  document.title = title;\n");
         html.append("  updateStatusBadges();\n");
-        html.append("  buildLegend(g);\n");
+        html.append("  buildLegend();\n");
         html.append("  if(typeof cytoscape === 'undefined'){\n");
         html.append("    document.getElementById('dagPlot').innerHTML='<div style=\"padding:12px;color:#b00;\">Cytoscape failed to load.</div>';\n");
         html.append("    return;\n");
@@ -494,8 +684,12 @@ class SFCRDagBlocksViewer {
         html.append("document.getElementById('toggleLegend').addEventListener('click',()=>{const lg=document.getElementById('legend');const hidden=lg.classList.toggle('hidden');document.getElementById('toggleLegend').textContent=hidden?'Show Legend':'Hide Legend';});\n");
         html.append("window.addEventListener('resize', function(){ if(cy){ cy.fit(undefined, 24); } });\n");
         html.append("setMode('same');\n");
-        html.append("</script></body></html>\n");
-        return html.toString();
+        html.append("</script>\n");
+    }
+
+    /** Append closing body/html tags. */
+    private void appendHtmlBodyEnd(StringBuilder html) {
+        html.append("</body></html>\n");
     }
 
     private String graphToJSON(GraphData graph, String titleSuffix) {
@@ -545,6 +739,7 @@ class SFCRDagBlocksViewer {
         return s == null ? "" : s.trim();
     }
 
+    /** Escape string for safe embedding into JSON literals in generated HTML. */
     private String escapeJson(String s) {
         if (s == null) {
             return "";
@@ -569,12 +764,16 @@ class SFCRDagBlocksViewer {
         return out.toString();
     }
 
+    /**
+     * Open or reuse the named popup window and write full HTML content into it.
+     * The window is also tracked in global `plotlyWindows` for existing shared cleanup paths.
+     */
     private native boolean openOrReuseWindowWithHTML(String html) /*-{
         if (!$wnd.plotlyWindows) {
             $wnd.plotlyWindows = [];
         }
 
-        var windowKey = 'sfcrDagBlocksWindow';
+        var windowKey = "sfcrDagBlocksWindow";
         var viewerWindow = $wnd[windowKey];
         if (viewerWindow && !viewerWindow.closed) {
             viewerWindow.document.open();
@@ -584,7 +783,7 @@ class SFCRDagBlocksViewer {
             return true;
         }
 
-        viewerWindow = $wnd.open('', windowKey, 'width=1400,height=900');
+        viewerWindow = $wnd.open('', windowKey, "width=1400,height=900");
         if (!viewerWindow) {
             $wnd.alert('Please allow pop-ups for this site to view the DAG blocks plot.');
             return false;

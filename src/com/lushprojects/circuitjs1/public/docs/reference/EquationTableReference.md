@@ -1,240 +1,155 @@
-# EquationTableElm — Complete Reference (Source-Accurate Feb 17)
+# EquationTableElm — Source-Accurate Reference
 
 ## Overview
 
-`EquationTableElm` is a table-based element where each row defines a named equation output.
+`EquationTableElm` is a table element where each row defines a named equation output.
 It supports two simulator-wide execution modes:
 
 - **MNA (Electrical) mode**: rows stamp voltage/current behavior into the circuit matrix.
-- **Pure Computational mode**: rows evaluate and publish values through `ComputedValues` only.
+- **Pure Computational mode**: rows evaluate and publish through `ComputedValues` only.
 
-**Dump type:** 266  
-**Source:** [EquationTableElm.java](../src/com/lushprojects/circuitjs1/client/EquationTableElm.java)  
-**Renderer:** [EquationTableRenderer.java](../src/com/lushprojects/circuitjs1/client/EquationTableRenderer.java)  
-**Max rows:** 32
+**Dump type:** `266`  
+**Source:** `src/com/lushprojects/circuitjs1/client/EquationTableElm.java`  
+**Renderer:** `src/com/lushprojects/circuitjs1/client/EquationTableRenderer.java`  
+**Max rows:** `64`
 
 ## Quick Facts
 
 | Property | Value |
-|----------|-------|
-| Post count | 0 (no visible electrical posts) |
-| High-impedance | Yes — `getConnection()` always returns `false` |
-| Ground connection | None — `hasGroundConnection()` returns `false` |
-| Nonlinear | True if any non-alias row exists; FLOW/STOCK/PARAM rows always require `doStep()` |
-| Modes | MNA (electrical) or Pure Computational (global setting) |
-| Mode toggle | Options → Other Options → `sim.equationTableMnaMode` |
+|---|---|
+| Post count | `0` |
+| High-impedance | `getConnection()` always returns `false` |
+| Ground connection | `hasGroundConnection()` always returns `false` |
+| Nonlinear | effectively true for all non-comment rows; FLOW rows always require `doStep()` |
+| Global mode switch | `sim.equationTableMnaMode` |
 
-## Per-Row Data Model
+## Per-Row Data Model (`EquationRow`)
 
-Current implementation stores row state in `EquationRow` objects (not parallel arrays):
+Each row stores:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `outputName` | String | Source/output node name; may be combined with target in UI input |
-| `equation` | String | Main expression evaluated each step |
-| `initialEquation` | String | Optional expression evaluated at `t=0` |
-| `sliderVarName` | String | Slider variable available in equations |
-| `sliderValue` | double | Slider variable value |
-| `outputMode` | `RowOutputMode` | `VOLTAGE_MODE`, `FLOW_MODE`, `STOCK_MODE`, or `PARAM_MODE` |
-| `targetNodeName` | String | Optional target node for FLOW/STOCK |
-| `capacitance` | double | Companion-model C for STOCK rows |
-| `shuntResistance` | double | FLOW shunt resistance (`Shunt R`), default `1e9` |
-| `useBackwardEuler` | boolean | STOCK integration method (`false` trapezoidal, `true` backward Euler) |
+- `outputName`
+- `equation`
+- `initialEquation`
+- `sliderVarName`
+- `sliderValue`
+- `outputMode` (`VOLTAGE_MODE`, `FLOW_MODE`, `PARAM_MODE`)
+- `targetNodeName` (used by FLOW)
+- `shuntResistance` (FLOW stabilization/load, default `1`)
+- `useBackwardEuler` (persisted, currently not used in mode-specific stamping)
 
-Runtime fields include compiled expressions, `ExprState`, alias flags, node ids, voltage-source index, and stock companion history values.
+Runtime state also includes parsed expressions, `ExprState`, node ids, voltage-source index, flow value, and Newton Jacobian debug flags.
 
 ## Row Output Modes
 
-### VOLTAGE_MODE (Default)
+### `VOLTAGE_MODE` (default)
 
-Equation result is interpreted as voltage and applied to a ground-referenced output via voltage source topology.
+Equation result is treated as a voltage and applied via a voltage source.
 
-- **Topology stamp (in `stamp()`):** `sim.stampVoltageSource(0, node, vs)`
-- **Value stamp (in `doStep()`):** `sim.stampRightSide(vn, equationValue)`
-- **Extra stabilization:** tiny load resistor `sim.stampResistor(node, 0, 1e9)`
-- **Nodes needed:** 1 output node (existing labeled node or internal node, note: internal nodes are accessible, by reference or placing a labeled node)
+- Stamps nonlinearity at voltage-source equation row.
+- Stamps `sim.stampVoltageSource(0, node, vs)`.
+- Stamps a tiny load resistor `1e9 Ω` from node to ground.
+- In `doStep()`: stamps RHS value (or Newton Jacobian linearization when eligible).
 
-### FLOW_MODE
+### `FLOW_MODE`
 
-Equation result is interpreted as current and stamped with `stampCurrentSource`.
+Equation result is treated as current between source/target endpoints.
 
-- **Stamp:** `sim.stampCurrentSource(sourceNode, targetNode, flowValue)` in `doStep()`
-- **Shunt R:** each non-ground FLOW endpoint stamps `sim.stampResistor(node, 0, shuntR)`
-- **Default:** `shuntR = 1e9` (minimal loading, mainly stabilization)
-- **Important:** lowering `Shunt R` creates a **real electrical load** to ground and changes circuit behavior
-- **Single-node form (`S3`):** flow is `gnd -> S3`; positive means current injected into `S3`
-- **Two-node form (`S1->S2`):** flow is `S1 -> S2`; positive means source-to-target
-- **Target default:** empty or `gnd` means ground
-- **Always nonlinear:** evaluated each subiteration
-- **ComputedValues key:** FLOW rows publish magnitude under `<outputName>.flow` (sanitized to parser-safe identifier chars)
-- **Important:** FLOW rows still do **not** register to `ComputedValues[outputName]` (prevents clobbering stock/node voltage values)
+- Single-node flow (empty target or `gnd`): current is `gnd → outputName`.
+- Two-node flow: current is `outputName → targetNodeName`.
+- Endpoints are marked nonlinear and get shunt resistors to ground using `shuntResistance` (default `1 Ω`).
+- In `doStep()`: stamps `stampCurrentSource(source, target, value)` unless Newton Jacobian flow linearization is applied.
+- Publishes flow namespace keys:
+  - `<source>.flow = -value` for two-node flow (outflow sign)
+  - `<target>.flow = +value` for two-node flow
+  - source-only publish for ground-target case
 
-### STOCK_MODE
+### `PARAM_MODE`
 
-Equation result is interpreted as net inflow current driving a stock integrated by a capacitor companion model.
+Computation-only row.
 
-- **Companion resistor (in `stamp()`):**
-  - Trapezoidal: $R = \frac{dt}{2C}$
-  - Backward Euler: $R = \frac{dt}{C}$
-- **Current source (in `doStep()`):** `totalCurrent = capCurSourceValue - inflowValue`
-- **Display value:** stock node voltage (level), not inflow
-- **Always nonlinear:** evaluated each subiteration
+- No matrix stamping.
+- No nodes or voltage sources.
+- Equation value is published to `ComputedValues[outputName]`.
 
-### PARAM_MODE
+## Comment Rows
 
-Equation result is interpreted as a computed parameter value only.
+A row is a comment if `outputName.trim().startsWith("#")`.
 
-- **Stamping:** none (no `stampVoltageSource`, no `stampCurrentSource`, no node stamping)
-- **Output:** published directly to `ComputedValues[outputName]`
-- **Nodes needed:** 0
-- **Voltage sources needed:** 0
-- **Use case:** shared coefficients/parameters/intermediate values that should not create electrical nodes
-- **Always nonlinear:** evaluated each subiteration (like other dynamic rows)
-
-### Mode Comparison
-
-| Feature | VOLTAGE_MODE | FLOW_MODE | STOCK_MODE | PARAM_MODE |
-|---------|--------------|-----------|------------|------------|
-| Equation meaning | Output voltage | Flow rate | Net inflow rate | Computed parameter |
-| Primary stamp | `stampVoltageSource` + RHS | `stampCurrentSource` | `stampResistor` + `stampCurrentSource` | none |
-| Node model | Ground-referenced output | Source/target current path | Integrating source/target path | no node |
-| Integration | Only if expression uses `integrate()` | External to mode | Built-in companion model | None (unless expression itself uses stateful funcs) |
-
-## Row Classification (Current Implementation)
-
-Rows are currently classified as:
-
-1. **Alias** — bare node alias expression with no initial equation
-2. **Dynamic** — everything else
-
-Alias criteria:
-
-- compiled expression is node alias (`isNodeAlias()`), and
-- `initialEquation` is empty.
-
-Alias rows:
-
-- allocate no voltage source,
-- allocate no internal node,
-- map output label to target node label,
-- are pre-registered in `registerLabels()` so wire closure merges physical nodes,
-- mirror flow namespace conditionally each `doStep()`: `<alias>.flow` is copied from `<target>.flow` only when `<target>.flow` exists (no synthetic `0` flow is created).
-
-Edit dialog UX for aliases:
-
-- Alias rows are marked with `⇔ Alias` beside the Mode field.
-- Mode selection is disabled for alias rows and fixed to Voltage behavior.
-
-> Note: older docs may mention `constant`/`linear`/`VCVS` classifications. Those are not part of the current `EquationTableElm` behavior.
+- Comment rows are non-simulating.
+- They are excluded from parsing/stamping/evaluation behavior.
+- UI helpers expose comment text without `#`.
 
 ## Simulation Lifecycle
 
 ### `stamp()`
 
-Before per-element `stamp()` calls, `CirSim.stampCircuit()` runs lightweight
-EquationTable coordination across all `EquationTableElm` instances:
+1. Updates row classifications.
+2. Ensures pre-registration of parameter/computed names.
+3. Returns immediately in pure-computational global mode.
+4. Resolves labeled/internal nodes.
+5. Dispatches per-row stamp through mode handlers (`VOLTAGE`/`FLOW`/`PARAM`).
 
-1. **Pass 1 (non-FLOW rows):** pre-register VOLTAGE/STOCK output names to node numbers
-  so those names resolve globally regardless of table stamp order.
-2. **Pass 2 (FLOW rows):** auto-create missing source/target endpoint labels using
-  reserved internal nodes, then emit diagnostics only if an endpoint still cannot
-  be resolved.
+### `postStamp()`
 
-1. `updateRowClassifications()`
-2. if pure mode: return (no matrix stamping)
-3. `findLabeledNodes()` (resolve existing or allocate/register internal nodes)
-4. `registerAliasNodes()`
-5. per non-alias row: mode handler `stamp(row)`
+Resolves expression node references to global slot indices (`E_GSLOT`) using `sim.nameToSlot`.
 
 ### `startIteration()`
 
-- Retry unresolved aliases
-- Seed alias values to `ComputedValues` (direct buffer)
-- Seed STOCK node voltages to `ComputedValues`
-- Compute STOCK history term (`capCurSourceValue`)
+Ensures name registries are up to date.
 
 ### `doStep()`
 
 Per row:
 
-- alias rows copy target value and mirror `<target>.flow` to `<alias>.flow` only when target flow exists
-- if `t == 0` and `initialEquation` exists, run initial-value path
-- otherwise evaluate and stamp via mode handler
-- run convergence check using adaptive threshold
+- If `t=0` and `initialEquation` exists, performs initial-value path.
+- Otherwise evaluates via row mode handler.
+- Runs convergence checking (`checkEquationConvergence`).
 
 ### `stepFinished()`
 
-- Alias rows: publish target value under alias name
-- STOCK rows: save companion state (`capLastVoltage`, `capLastCurrent`), set output to stock level
-- Publish non-FLOW outputs to `ComputedValues`
-- Commit `ExprState` integration and update last values
+- Re-publishes outputs to `ComputedValues`.
+- Re-publishes FLOW `.flow` keys and marks them computed-this-step.
+- Commits integration state (`ExprState.commitIntegration`).
+- Updates last-values state for next timestep.
+
+### `reset()` / `delete()`
+
+- `reset()` clears runtime row state and re-syncs global name registries.
+- `delete()` unregisters this element’s tracked names from global registries.
 
 ## Initial Value Handling (`initialEquation`)
 
-At `t=0`:
+At `t=0` for rows with an initial expression:
 
-1. First subiteration may stamp placeholder values.
-2. `evaluateInitialValue(row)` computes initial value and initializes expression integration state.
-3. VOLTAGE rows stamp initial RHS voltage.
-4. STOCK rows initialize stock voltage and stamp companion/history current.
-5. Initial value is registered immediately for dependent expressions.
+1. First subiteration stamps placeholder zero (voltage RHS path).
+2. Next subiteration evaluates initial expression.
+3. Seeds row output state and expression history.
+4. Immediately publishes output (and FLOW keys for FLOW rows).
 
-## Expression System
+## Global Label Coordination (MNA)
 
-Rows parse with `ExprParser` and evaluate with `Expr.eval(ExprState)`.
+`coordinateLabelsForStamp(elmList)` performs two passes across all MNA Equation Tables:
 
-### Functions (commonly used)
+1. Pre-registers non-FLOW output labels (VOLTAGE/PARAM filtering keeps FLOW separate).
+2. Auto-creates missing FLOW endpoints from reserved internal nodes, then logs unresolved diagnostics.
 
-- Stateless: `sin`, `cos`, `tan`, `exp`, `log`, `sqrt`, `abs`, `min`, `max`, `floor`, `ceil`
-- Stateful: `integrate(x)`, `diff(x)`
-
-### Variable Sources
-
-| Source | Resolution |
-|--------|------------|
-| Slider variable | `ExprState.values[0]` |
-| Time `t` | `sim.t` |
-| Named values | `ComputedValues` |
-| FLOW magnitudes | `ComputedValues` key `<outputName>.flow` |
-| Labeled nodes | via node/labeled-node lookup used by expression evaluation |
+This avoids stamp-order issues for inter-table references.
 
 ## Convergence
 
-Convergence limit is adaptive and magnitude-scaled:
+Row convergence uses magnitude-scaled adaptive tolerance:
 
-- relative tolerance increases with subiteration count,
-- rows containing `diff()` get a 10x looser tolerance,
-- early subiterations for `diff()` skip strict checks.
+- Base tolerance from `sim.equationTableConvergenceTolerance` (fallback default `0.001`).
+- Tolerance is relaxed at higher subiteration counts.
+- Rows containing `diff()` get additional tolerance relaxation.
+- Early convergence checks for `diff()` rows are skipped for first few subiterations.
 
-Formula shape:
+If a row exceeds limit, it marks `sim.converged = false` and stores failure diagnostics.
 
-$$limit = max(1, |current|, |last|) \times relativeTolerance$$
+## Naming and Parsing
 
-If `|new - last| > limit`, row marks simulator unconverged (`sim.converged = false`) and stores diagnostics.
-
-## MNA Mode vs Pure Computational Mode
-
-Mode is global (`sim.equationTableMnaMode`).
-
-### MNA Mode
-
-- Voltage rows drive circuit nodes.
-- Flow/Stock rows stamp current behavior.
-- Param rows are computation-only (no electrical stamp).
-- Alias rows share electrical nodes with targets.
-- Outputs are also published to `ComputedValues` for cross-expression use.
-
-### Pure Computational Mode
-
-- No matrix stamping.
-- Rows evaluate and publish values to `ComputedValues`.
-- Alias rows mirror target computed values by name.
-
-## Naming, Targets, and Separators
-
-`setOutputName()` accepts combined source/target syntax and splits automatically.
-
-Accepted separators:
+`setOutputName()` accepts combined source/target syntax and splits it via `parseCombinedName()`.
+Accepted separators include:
 
 - `->`
 - `-||-`
@@ -242,84 +157,39 @@ Accepted separators:
 - `⊣⊢`
 - `,`
 
-Helpers:
+Display helpers:
 
-- `getDisplayOutputName()` uses ASCII `source->target` (dump-safe)
-- `getUIDisplayOutputName()` uses Unicode arrows/symbols for UI
-- `normalizeArrows()` converts Unicode separators to ASCII internally
+- `getDisplayOutputName()` returns ASCII-safe `source->target` (dump-friendly).
+- `getUIDisplayOutputName()` returns UI arrow form (`source→target`).
 
-For `PARAM_MODE`, any explicit target is ignored for stamping because the row has no electrical connection.
+## Serialization Format
 
-## Serialization
+`dump()` writes per row (current format):
 
-`dump()` writes:
+1. combined output name (`source` or `source->target`)
+2. equation
+3. initial equation
+4. slider var
+5. slider value
+6. mode ordinal (`0=VOLTAGE`, `1=FLOW`, `3=PARAM`; `2` reserved legacy compatibility)
+7. empty target compatibility token
+8. legacy capacitance compatibility token (`1.0`)
+9. shunt resistance
+10. backward-Euler flag (`0/1`)
 
-1. `super.dump()`
-2. escaped table name
-3. row count
-4. per-row tokens:
-   - combined output name (`source` or `source->target`)
-   - equation
-   - initial equation
-   - slider var name
-   - slider value
-   - output mode ordinal
-   - reserved target token (currently empty for compatibility)
-   - capacitance
-  - shunt resistance
-   - backward-Euler flag (`0/1`)
+Loader compatibility recognizes:
 
-Loader supports legacy formats:
+- `10` tokens/row (newest)
+- `9` tokens/row
+- `8` tokens/row
+- `5` tokens/row (legacy)
 
-- 10 tokens/row (newest; includes shunt resistance)
-- 9 tokens/row (previous newest; no shunt resistance token)
-- 8 tokens/row (without backward-Euler flag)
-- 5 tokens/row (legacy)
+## What Is Not In Current `EquationTableElm`
 
-Current output mode ordinals: `0=VOLTAGE`, `1=FLOW`, `2=STOCK`, `3=PARAM`.
+The current implementation does **not** include:
 
-## Edit Dialog
+- `STOCK_MODE` row mode
+- alias-row classification/registration flow
+- stock companion-capacitor stamping behavior
 
-`EquationTableEditDialog` supports:
-
-- table name editing
-- row add/delete/reorder (1..32)
-- fields: Node(s), Equation, Initial (t=0), Mode, Shunt R / Cap, Integ., Slider Var, Slider Value, Hint
-- equation autocomplete
-- per-row STOCK integration method (Trap/Euler)
-- `PARAM_MODE` disables Shunt/Cap and Integ. controls for that row
-- apply path: set fields → parse → alloc nodes → recompute points → `needAnalyze()` + repaint
-
-## Mouse Interaction
-
-When hovering a row with a plain numeric equation:
-
-- mouse wheel increments/decrements value,
-- step size scales by magnitude,
-- undo state is pushed,
-- numeric literal is reformatted for compact display.
-
-## Debugging and Inspection
-
-- `DEBUG` flag in `EquationTableElm` enables detailed console logs.
-- `EquationTableMarkdownDebugDialog` provides a markdown debug report with:
-  - table summary,
-  - row details,
-  - labeled-node mappings,
-  - `ComputedValues` checks,
-  - matrix summary (`X = A⁻¹B`),
-  - full circuit dump.
-
-## Related Source Files
-
-| File | Role |
-|------|------|
-| [EquationTableElm.java](../src/com/lushprojects/circuitjs1/client/EquationTableElm.java) | Core behavior, stamping, lifecycle |
-| [EquationTableRenderer.java](../src/com/lushprojects/circuitjs1/client/EquationTableRenderer.java) | Drawing and row visuals |
-| [EquationTableEditDialog.java](../src/com/lushprojects/circuitjs1/client/EquationTableEditDialog.java) | Editing UI and apply flow |
-| [EquationTableMarkdownDebugDialog.java](../src/com/lushprojects/circuitjs1/client/EquationTableMarkdownDebugDialog.java) | Debug markdown inspection |
-| [ExprParser.java](../src/com/lushprojects/circuitjs1/client/ExprParser.java) | Equation parsing |
-| [ExprState.java](../src/com/lushprojects/circuitjs1/client/ExprState.java) | Stateful expression evaluation |
-| [ComputedValues.java](../src/com/lushprojects/circuitjs1/client/ComputedValues.java) | Shared computed-value registry |
-| [LabeledNodeElm.java](../src/com/lushprojects/circuitjs1/client/LabeledNodeElm.java) | Named node lookup and registration |
-| [CirSim.java](../src/com/lushprojects/circuitjs1/client/CirSim.java) | Global mode switch and matrix stamping APIs |
+If older docs mention these, they describe earlier/experimental behavior, not the current source.

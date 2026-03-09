@@ -1,6 +1,81 @@
 # CircuitJS1 SFCR Export
 # Generated from circuit simulation
 
+@info
+The **SFC model BMW** refers to one of the foundational models in the book *Monetary Economics: An Integrated Approach to Credit, Money, Income, Production and Wealth* (2007) by **Wynne Godley** and **Marc Lavoie**. This is a key text in **Post-Keynesian economics** that develops **Stock-Flow Consistent (SFC)** macroeconomic modeling.
+
+**SFC models** ensure every financial flow (e.g., income, spending, borrowing) corresponds to changes in stocks (e.g., wealth, debt, capital), with all sectoral balance sheets and transactions matrices adding up correctly — nothing is created or destroyed without accounting for it. This enforces strict accounting coherence between real (production, investment) and financial (money, credit, debt) sides of the economy.
+
+**BMW** stands for **"Bank-Money World"** (or sometimes interpreted as a "bank-money" economy). It is presented in Chapter 7 of the book and represents one of the simplest yet insightful SFC models that explicitly includes **commercial banks** and **endogenous credit money**.
+
+### Core structure and sectors in Model BMW
+It is a **closed economy** (no foreign sector) with **no government** and **no central bank / base money / cash**. Money exists purely as bank deposits created through lending.
+
+Three main sectors / agents:
+
+- **Households**
+- **Firms** (non-financial corporations)
+- **Banks** (commercial banks)
+
+### Balance sheet matrix (simplified, from Godley & Lavoie 2007, around p. 219)
+
+| Item              | Households | Firms          | Banks     | Total |
+|-------------------|------------|----------------|-----------|-------|
+| **Assets**        |            |                |           |       |
+| Deposits (M)      | +M         |                | -M        | 0     |
+| Loans (L)         |            | -L             | +L        | 0     |
+| Fixed capital (K) |            | +K             |           | +K    |
+| **Liabilities & Equity** |       |                |           |       |
+| Loans             |            | +L (liability) |           |       |
+| Deposits          |            |                | +M (liability) |       |
+| Equity / Net worth| Vₕ         | V_f (often implicit or zero profits) |       |       |
+
+- Households hold all the **money** (bank deposits M = household wealth).
+- Firms hold physical **capital** (K) but finance part of investment via **bank loans** (L).
+- Banks intermediate: loans to firms = deposits from households.
+- No cash, no government bonds, no bills — pure "bank money" world.
+
+Key: **Money is endogenous** — created when banks grant loans to firms, destroyed when loans are repaid.
+
+### Main assumptions and behavioural features
+- Fixed prices (no inflation dynamics in basic version).
+- Zero net profits for firms in steady state (or very low).
+- Firms aim for a **target capital-to-output ratio** (normal utilization).
+- Investment is partly financed by **internal funds** (amortization / depreciation funds) and partly by **new bank loans**.
+- Households consume out of disposable income (wages + interest income minus taxes if any, but often simplified).
+- No government sector → no taxes, no public spending, no public debt (this is deliberately simple to focus on private credit dynamics).
+
+### How the model works (key mechanisms)
+1. **Production and income**  
+   Output (Y) = consumption (C) + investment (I).  
+   Wages are the main income source for households.
+
+2. **Investment and financing**  
+   Gross investment I = replacement investment (depreciation DA) + net investment.  
+   Firms target K / Y ≈ constant → desired capital stock depends on expected/output.  
+   If internal funds (retained earnings + depreciation) < required investment → firms borrow ΔL from banks.
+
+3. **Money creation**  
+   Banks create new deposits (ΔM) when they make new loans (ΔL).  
+   Households receive these deposits as income or wealth.
+
+4. **Consumption**  
+   Households consume a fraction of income + wealth effects (they hold wealth only as deposits).
+
+5. **Dynamics**  
+   The model shows how private debt (loans L) builds up when investment > saving from internal sources.  
+   In steady state: growth requires consistent saving/investment rates, but without government the model often needs parameter tuning for stable growth.  
+   It illustrates endogenous money, credit-driven investment, and potential instability from debt accumulation.
+
+### Why BMW is important
+- It bridges **real** (production, capital accumulation) and **financial** (credit, money creation) spheres in a coherent way.
+- Demonstrates **endogenous money** (loans create deposits, not vice versa).
+- Shows limits of pure private economies: without government deficits, achieving stable full-employment growth is difficult (related to Godley's later work on unsustainable processes).
+- Serves as a stepping stone to more complex models (e.g., BMWK adds capital, others add government, open economy, inflation).
+
+
+@end
+
 @init
   timestep: 1
   voltageUnit: $
@@ -10,13 +85,14 @@
   showValues: true
   showPower: false
   autoAdjustTimestep: false
-  equationTableTolerance: 1e-7
-  infoViewerUpdateIntervalMs: 100
+  equationTableTolerance: 0.00001
+  infoViewerUpdateIntervalMs: 200
 @end
 
 @equations BMW x=32 y=344
   # Parameters
   rl ~ 0.025 ; mode=param ; sliderValue=0  # Interest rate on loans
+  Y3 ~ Cs + Cd ; mode=voltage ; sliderValue=0
   \alpha0 ~ 20 ; mode=param ; sliderValue=0  # Autonomous consumption
   \alpha1 ~ 0.75 ; mode=param ; sliderValue=0  # Propensity to consume from income
   \alpha2 ~ 0.10 ; mode=param ; sliderValue=0  # Propensity to consume from wealth
@@ -25,27 +101,27 @@
   \kappa ~ 1 ; mode=param ; sliderValue=0  # Capital-output ratio target
   pr ~ 1 ; mode=param ; sliderValue=0  # Labor productivity
   # Basic behavioral equations
-  Cs ~ Cd ; mode=voltage ; sliderValue=0  # Consumption supply
+  Cs ~ Cd ; mode=flow ; sliderValue=0  # Consumption supply
   Is ~ Id ; mode=param ; sliderValue=0  # Investment supply
-  Ns ~ Nd ; mode=voltage ; sliderValue=0  # Labour supply
-  Ls ~ last(Ls) + Ld - last(Ld) ; mode=param ; sliderValue=0  # Loan supply
+  Ns ~ Nd ; mode=flow ; sliderValue=0  # Labour supply
+  Ls - Ls[-1] ~ Ld - Ld[-1] ; mode=param ; sliderValue=0  # Loan supply
   # Transactions of the firms
-  Y ~ Cs + Is ; mode=voltage ; sliderValue=0  # National income (output)
-  WBd ~ Y - last(rl) * last(Ld) - AF ; mode=voltage ; sliderValue=0  # Wage bill demanded
+  Y ~ Y = Cs + Is ; mode=flow ; sliderValue=0  # National income (output)
+  WBd ~ Y - last(rl) * last(Ld) - AF ; mode=flow ; sliderValue=0  # Wage bill demanded
   AF ~ \delta * last(K) ; mode=param ; sliderValue=0  # Amortisation funds
   Ld ~ last(Ld) + Id - AF ; mode=param ; sliderValue=0  # Loan demand
   # Transactions of households
-  YD ~ WBs + last(rm) * last(Mh) ; mode=voltage ; sliderValue=0  # Household disposable income
+  YD ~ WBs + last(rm) * last(Mh) ; mode=flow ; sliderValue=0  # Household disposable income
   Mh ~ last(Mh) + YD - Cd ; mode=param ; sliderValue=0  # Household money holdings (deposits)
   # Transactions of the banks
   Ms ~ last(Ms) + Ls - last(Ls) ; mode=param ; sliderValue=0  # Money supply
   rm ~ rl ; mode=param ; sliderValue=0  # Deposit interest rate
   # The wage bill
-  WBs ~ W * Ns ; mode=voltage ; sliderValue=0  # Wage bill supplied
-  Nd ~ Y / pr ; mode=voltage ; sliderValue=0  # Labour demand
-  W ~ WBd / max(Nd, 0.01) ; mode=voltage ; sliderValue=0  # Wage rate
+  WBs ~ W * Ns ; mode=flow ; sliderValue=0  # Wage bill supplied
+  Nd ~ Y / pr ; mode=flow ; sliderValue=0  # Labour demand
+  W ~ WBd / max(Nd, 0.01) ; mode=flow ; sliderValue=0  # Wage rate
   # Household behavior
-  Cd ~ \alpha0 + \alpha1 * YD + \alpha2 * last(Mh) ; mode=voltage ; sliderValue=0  # Consumption demand
+  Cd ~ \alpha0 + \alpha1 * YD + \alpha2 * last(Mh) ; mode=flow ; sliderValue=0  # Consumption demand
   # The investment behavior
   K ~ last(K) + Id - DA ; mode=param ; sliderValue=0  # Capital stock
   DA ~ \delta * last(K) ; mode=param ; sliderValue=0  # Depreciation (actual)
@@ -97,7 +173,6 @@
   WBd: Wage bill demanded
   AF: Amortisation funds
   Ld: Loan demand
-  Y20: hint20
   YD: Household disposable income
   Mh: Household money holdings (deposits)
   Ms: Money supply
@@ -110,11 +185,12 @@
   DA: Depreciation (actual)
   KT: Target capital stock
   Id: Investment demand
+  Ls - Ls[-1]: Loan supply
 @end
 
 @circuit
-x 89 268 669 271 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW\s(voltage/param,\slast()) 808080FF U:Ck8M0l
-x 89 292 412 295 4 12 Bank-Money\sWorld\smodel\s(voltage-only\svariant,\slast()\sfor\slag) 808080FF U:BRUOXo
+x 89 268 643 271 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW\s(flow/param,\slast()) 808080FF U:Ck8M0l
+x 89 292 394 295 4 12 Bank-Money\sWorld\smodel\s(flow-only\svariant,\slast()\sfor\slag) 808080FF U:BRUOXo
 x 89 316 374 319 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF U:C67zij
 207 656 736 720 736 180 Y U:K79ipy
 431 704 288 752 320 0 50 true false U:Ozs0Ey
@@ -129,6 +205,6 @@ x 89 316 374 319 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q16
   y2: 1008
   elmUid: KaRSfa
   speed: 1
-  flags: x2003206
+  flags: x2001206
   source: uid:K79ipy value:0
 @end

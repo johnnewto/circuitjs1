@@ -284,7 +284,6 @@ public class SFCRExporter {
         }
         switch (mode) {
             case FLOW_MODE: return "flow";
-            case STOCK_MODE: return "stock";
             case PARAM_MODE: return "param";
             default: return "voltage";
         }

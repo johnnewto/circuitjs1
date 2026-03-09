@@ -321,7 +321,7 @@ These elements by default:
   - If a LabeledNode exists on canvas with matching stock name → drives that node directly
   - If no LabeledNode exists → creates an internal node and registers it in `LabeledNodeElm.labelList`
   - This allows scopes and other elements to connect by name, whether or not there's a visible LabeledNode
-- **EquationTableElm**: Named equations evaluated each timestep. Participates in MNA by creating voltage source outputs that drive LabeledNode nodes directly. Supports row classification optimization (alias, constant, linear, dynamic) to minimize matrix size. See [EQUATION_TABLE_SIMPLIFICATION.md](EQUATION_TABLE_SIMPLIFICATION.md) for details.
+- **EquationTableElm**: Named equations evaluated each timestep. Participates in MNA by creating voltage source outputs that drive LabeledNode nodes directly. Supports three per-row output modes (`VOLTAGE_MODE`, `FLOW_MODE`, `PARAM_MODE`) and row classification optimization (alias, constant, linear, dynamic) to minimize matrix size. See [EQUATION_TABLE_REFERENCE.md](EQUATION_TABLE_REFERENCE.md) for details.
 
 #### Bridging to Electrical Domain
 1. **LabeledNodeElm**: Automatically reads from ComputedValues when names match (ideal for scopes)
@@ -653,7 +653,7 @@ drawDynamicContent(g);  // text only
 ## References
 
 - [INTERNALS.md](../INTERNALS.md) - Detailed simulation theory
-- [EQUATION_TABLE_SIMPLIFICATION.md](EQUATION_TABLE_SIMPLIFICATION.md) - Row classification and matrix optimization
+- [EQUATION_TABLE_REFERENCE.md](EQUATION_TABLE_REFERENCE.md) - EquationTableElm row modes, convergence, serialization
 - [PURE_COMPUTATIONAL_TABLES.md](PURE_COMPUTATIONAL_TABLES.md) - Pure computational element architecture
 - [WASM_MATRIX_SOLVER.md](WASM_MATRIX_SOLVER.md) - WASM-based LU decomposition with SIMD
 - [CircuitJS1 Original](https://www.falstad.com/circuit/) - Paul Falstad's original

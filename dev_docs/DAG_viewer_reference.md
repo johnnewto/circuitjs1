@@ -23,11 +23,13 @@ The viewer supports two dependency interpretations:
 
 The popup includes a mode toggle button to switch between these views.
 
-## Parameters Section Filter
+## Parameters / External Section Filter
 
-- The popup includes an **Ignore # Parameters section** checkbox.
-- When enabled, equations are excluded starting at a comment row whose text begins with `# Parameters` and continuing until the next `#` comment row in that same equation table.
+- The popup includes an **Ignore # Parameters / # External sections** checkbox (checked by default).
+- When enabled, rows are excluded starting at a comment row whose text (after stripping bracket/paren/brace wrappers and a trailing colon) matches any of: `parameter`, `parameters`, `external`, `externals` (case-insensitive).
+- Exclusion continues until the next comment row in that same equation table.
 - This filter is applied independently per `EquationTableElm` and works with both dependency modes.
+- Four graph datasets are pre-computed at popup open time (same-period/historical × params-included/excluded) so toggling the checkbox switches instantly without re-parsing.
 
 ## Graph Semantics
 
