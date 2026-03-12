@@ -9,6 +9,7 @@ package com.lushprojects.circuitjs1.client;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Vector;
 
 /**
  * Exports circuit in SFCR-compatible text format.
@@ -41,6 +42,7 @@ public class SFCRExporter {
     private ArrayList<GodlyTableElm> godlyTables = new ArrayList<GodlyTableElm>();
     private ArrayList<SFCSankeyElm> sankeyDiagrams = new ArrayList<SFCSankeyElm>();
     private ArrayList<CircuitElm> otherElements = new ArrayList<CircuitElm>();
+    private ActionTimeElm actionTimeElmForExport = null;
     private HashSet<CircuitElm> scopeElmsExportedAsBlocks = new HashSet<CircuitElm>();
     
     // =========================================================================
@@ -158,6 +160,7 @@ public class SFCRExporter {
         godlyTables.clear();
         sankeyDiagrams.clear();
         otherElements.clear();
+        actionTimeElmForExport = null;
         
         for (int i = 0; i < sim.elmList.size(); i++) {
             CircuitElm elm = sim.elmList.get(i);
@@ -170,6 +173,10 @@ public class SFCRExporter {
                 godlyTables.add((GodlyTableElm) elm);
             } else if (elm instanceof SFCSankeyElm) {
                 sankeyDiagrams.add((SFCSankeyElm) elm);
+            } else if (elm instanceof ActionTimeElm) {
+                if (actionTimeElmForExport == null) {
+                    actionTimeElmForExport = (ActionTimeElm) elm;
+                }
             } else {
                 otherElements.add(elm);
             }
@@ -229,18 +236,40 @@ public class SFCRExporter {
     /** Export ActionScheduler as @action block. */
     private String exportActionBlock() {
         ActionScheduler scheduler = ActionScheduler.getInstance(sim);
-        if (scheduler == null) {
+        if (scheduler == null && actionTimeElmForExport == null) {
             return "";
         }
 
-        java.util.List<ActionScheduler.ScheduledAction> actions = scheduler.getAllActions();
-        if (actions == null || actions.isEmpty()) {
+        java.util.List<ActionScheduler.ScheduledAction> actions =
+            (scheduler == null) ? null : scheduler.getAllActions();
+        boolean hasActions = actions != null && !actions.isEmpty();
+        if (!hasActions && actionTimeElmForExport == null) {
             return "";
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("@action\n");
-        sb.append("  pauseTime: ").append(scheduler.getPauseTime()).append("\n");
+        if (actionTimeElmForExport != null) {
+            String actionName = sanitizeName(actionTimeElmForExport.title);
+            sb.append("@action ").append(actionName).append(formatPosition(actionTimeElmForExport)).append("\n");
+        } else {
+            sb.append("@action\n");
+        }
+
+        double pauseTime = (scheduler == null) ? 0 : scheduler.getPauseTime();
+        sb.append("  pauseTime: ").append(pauseTime).append("\n");
+
+        if (actionTimeElmForExport != null) {
+            sb.append("  enabled: ").append(actionTimeElmForExport.enabled).append("\n");
+            sb.append("  element: ")
+              .append(actionTimeElmForExport.x).append(" ")
+              .append(actionTimeElmForExport.y).append(" ")
+              .append(actionTimeElmForExport.x2).append(" ")
+              .append(actionTimeElmForExport.y2).append(" ")
+              .append(actionTimeElmForExport.flags)
+              .append("\n");
+        }
+
+        if (hasActions) {
         sb.append("\n");
         sb.append("| time | target | value | text | enabled | stop |\n");
         sb.append("|------|--------|-------|------|---------|------|\n");
@@ -265,6 +294,7 @@ public class SFCRExporter {
               .append(action.stopSimulation)
               .append(" |\n");
         }
+          }
 
         sb.append("@end\n");
         return sb.toString();
@@ -281,6 +311,8 @@ public class SFCRExporter {
         
         int rowCount = eqTable.getRowCount();
         if (rowCount == 0) return "";
+
+        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_EQUATIONS, sanitizeName(tableName));
         
         sb.append("@equations ").append(sanitizeName(tableName));
         sb.append(formatPosition(eqTable)).append("\n");
@@ -349,6 +381,8 @@ public class SFCRExporter {
         if (tableName == null || tableName.isEmpty()) {
             tableName = "Stocks";
         }
+
+        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_EQUATIONS, sanitizeName(tableName));
         
         sb.append("@equations ").append(sanitizeName(tableName));
         sb.append(formatPosition(godlyTable)).append("\n");
@@ -426,6 +460,8 @@ public class SFCRExporter {
         if (tableName == null || tableName.isEmpty()) {
             tableName = "SFC_Matrix";
         }
+
+        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_MATRIX, sanitizeName(tableName));
         
         sb.append("@matrix ").append(sanitizeName(tableName));
         sb.append(formatPosition(sfcTable)).append("\n");
@@ -492,6 +528,8 @@ public class SFCRExporter {
         String layout = sankey.getLayoutMode().name().toLowerCase();
         int width = sankey.getWidth();
         int height = sankey.getHeight();
+
+        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_SANKEY, "");
         
         // Header with position
         sb.append("@sankey");
@@ -523,19 +561,79 @@ public class SFCRExporter {
         if (names.isEmpty()) {
             return "";
         }
+
+        Set<String> namesCoveredByEquationBlocks = collectNamesCoveredByEquationBlocks();
         
         StringBuilder sb = new StringBuilder();
         sb.append("@hints\n");
+        int exportedCount = 0;
         
         for (String name : names) {
+            if (name == null || name.trim().isEmpty()) {
+                continue;
+            }
+            if (namesCoveredByEquationBlocks.contains(name.trim())) {
+                continue;
+            }
             String hint = HintRegistry.getHint(name);
             if (hint != null && !hint.trim().isEmpty()) {
-                sb.append("  ").append(name).append(": ").append(hint).append("\n");
+                sb.append("  ").append(name.trim()).append(": ").append(hint).append("\n");
+                exportedCount++;
             }
+        }
+
+        if (exportedCount == 0) {
+            return "";
         }
         
         sb.append("@end\n");
         return sb.toString();
+    }
+
+    /** Collect names whose hints are already emitted inline in @equations blocks. */
+    private Set<String> collectNamesCoveredByEquationBlocks() {
+        Set<String> covered = new HashSet<String>();
+
+        for (EquationTableElm eqTable : equationTables) {
+            if (eqTable == null) {
+                continue;
+            }
+            int rowCount = eqTable.getRowCount();
+            for (int row = 0; row < rowCount; row++) {
+                String sourceName = eqTable.getOutputName(row);
+                if (sourceName == null) {
+                    continue;
+                }
+                String trimmed = sourceName.trim();
+                if (trimmed.isEmpty() || EquationTableElm.isCommentRowName(trimmed)) {
+                    continue;
+                }
+                covered.add(trimmed);
+            }
+        }
+
+        for (GodlyTableElm godlyTable : godlyTables) {
+            if (godlyTable == null) {
+                continue;
+            }
+            int cols = godlyTable.getCols();
+            for (int col = 0; col < cols; col++) {
+                TableColumn column = godlyTable.getColumn(col);
+                if (column == null || column.isALE()) {
+                    continue;
+                }
+                String stockName = column.getStockName();
+                if (stockName == null) {
+                    continue;
+                }
+                String trimmed = stockName.trim();
+                if (!trimmed.isEmpty()) {
+                    covered.add(trimmed);
+                }
+            }
+        }
+
+        return covered;
     }
     
     /** Export non-SFCR elements in @circuit block. */
@@ -630,6 +728,8 @@ public class SFCRExporter {
             scopeName = defaultPrefix + "_" + defaultIndex;
         }
 
+                appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_SCOPE, sanitizeName(scopeName));
+
         sb.append("@scope ").append(sanitizeName(scopeName))
           .append(" position=").append(s.position).append("\n");
 
@@ -699,5 +799,31 @@ public class SFCRExporter {
     /** Format position string for block header. */
     private String formatPosition(CircuitElm elm) {
         return " x=" + elm.x + " y=" + elm.y;
+    }
+
+    private void appendLeadingBlockComments(StringBuilder sb, String blockType, String blockName) {
+        if (sim == null || sb == null) {
+            return;
+        }
+        String key = SFCRBlockCommentRegistry.makeKey(blockType, blockName);
+        Vector<String> comments = sim.getSFCRDocumentState().getBlockComments(key);
+        if (comments == null || comments.size() == 0) {
+            return;
+        }
+        for (int i = 0; i < comments.size(); i++) {
+            String line = comments.get(i);
+            if (line == null) {
+                continue;
+            }
+            String out = line.trim();
+            if (out.isEmpty()) {
+                continue;
+            }
+            if (!out.startsWith("#")) {
+                out = "# " + out;
+            }
+            sb.append(out).append("\n");
+        }
+        sb.append("\n");
     }
 }

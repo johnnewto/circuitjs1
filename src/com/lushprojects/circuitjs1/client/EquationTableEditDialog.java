@@ -302,14 +302,32 @@ public class EquationTableEditDialog extends Dialog {
         });
         buttonPanel.add(referenceButton);
 
-        Button toggleModesButton = new Button("Toggle Modes");
-        toggleModesButton.setTitle("Swap row modes: Flow ↔ Voltage (Param/comment rows unchanged)");
+        Button toggleModesButton = new Button("Toggle Flow↔Voltage");
+        toggleModesButton.setTitle("Toggle row modes: Flow ↔ Voltage (Param/comment rows unchanged)");
         toggleModesButton.addClickHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
                 toggleFlowVoltageModes();
             }
         });
         buttonPanel.add(toggleModesButton);
+
+        Button classifyModesButton = new Button("Classify Modes");
+        classifyModesButton.setTitle("Set cyclic rows to Voltage and non-cyclic rows to Param");
+        classifyModesButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                classifyRowsByCyclicMode();
+            }
+        });
+        buttonPanel.add(classifyModesButton);
+
+        Button toggleDelaySyntaxButton = new Button("Toggle last↔delay");
+        toggleDelaySyntaxButton.setTitle("Toggle syntax: last(Name)/Name[-1] ↔ delay(Name)");
+        toggleDelaySyntaxButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                toggleLagDelaySyntax();
+            }
+        });
+        buttonPanel.add(toggleDelaySyntaxButton);
         
         // Spacer
         Label spacer = new Label();
@@ -1136,6 +1154,366 @@ public class EquationTableEditDialog extends Dialog {
         setStatus("Toggled modes: " + switchedToFlow + " to Flow, " + switchedToVoltage + " to Voltage");
         markChanged();
         populateGrid();
+    }
+
+    /**
+     * Classify row modes in one pass:
+     * cyclic rows -> VOLTAGE_MODE, non-cyclic rows -> PARAM_MODE.
+     * Comment rows are skipped.
+     */
+    private void classifyRowsByCyclicMode() {
+        int convertedToVoltage = 0;
+        int convertedToParam = 0;
+
+        for (int row = 0; row < rowCount; row++) {
+            if (isCommentRowByInput(row)) {
+                continue;
+            }
+
+            boolean isCyclic = "cyclic".equals(tableElement.getRowClassification(row));
+            RowOutputMode targetMode = isCyclic ? RowOutputMode.VOLTAGE_MODE : RowOutputMode.PARAM_MODE;
+
+            if (outputModes[row] != targetMode) {
+                outputModes[row] = targetMode;
+                if (isCyclic) {
+                    convertedToVoltage++;
+                } else {
+                    convertedToParam++;
+                }
+            }
+        }
+
+        if (convertedToVoltage == 0 && convertedToParam == 0) {
+            setStatus("Rows already match cyclic mode classification");
+            return;
+        }
+
+        setStatus("Classified modes: " + convertedToVoltage + " cyclic→Voltage, " + convertedToParam + " non-cyclic→Param");
+        markChanged();
+        populateGrid();
+    }
+
+    /**
+     * Toggle lagged-reference syntax in row equations:
+        * - delay(Name) -> Name[-1]
+        * - Name[-1] -> last(Name)
+        * - last(Name) -> delay(Name)
+     */
+    private void toggleLagDelaySyntax() {
+        int changedCells = 0;
+
+        for (int row = 0; row < rowCount; row++) {
+            if (isCommentRowByInput(row)) {
+                continue;
+            }
+
+            String newEq = toggleLagDelaySyntaxInText(equations[row]);
+            if (!safeEquals(newEq, equations[row])) {
+                equations[row] = newEq;
+                changedCells++;
+            }
+
+            String newInitEq = toggleLagDelaySyntaxInText(initialEquations[row]);
+            if (!safeEquals(newInitEq, initialEquations[row])) {
+                initialEquations[row] = newInitEq;
+                changedCells++;
+            }
+        }
+
+        if (changedCells == 0) {
+            setStatusWithEquivalence("No delay()/[-1]/last() patterns found");
+            return;
+        }
+
+        setStatusWithEquivalence("Toggled lag/delay syntax in " + changedCells + " field(s)");
+        markChanged();
+        populateGrid();
+    }
+
+    private void setStatusWithEquivalence(String baseMessage) {
+        setStatus(baseMessage + "  |  Equivalence check: " + buildEquivalenceSummary());
+    }
+
+    private String buildEquivalenceSummary() {
+        int lastCount = 0;
+        int indexCount = 0;
+        int delayCount = 0;
+
+        for (int row = 0; row < rowCount; row++) {
+            if (isCommentRowByInput(row)) {
+                continue;
+            }
+
+            lastCount += countSimpleFunctionCalls(equations[row], "last");
+            lastCount += countSimpleFunctionCalls(initialEquations[row], "last");
+
+            indexCount += countIndexMinusOneRefs(equations[row]);
+            indexCount += countIndexMinusOneRefs(initialEquations[row]);
+
+            delayCount += countSimpleFunctionCalls(equations[row], "delay");
+            delayCount += countSimpleFunctionCalls(initialEquations[row], "delay");
+        }
+
+        return "last=" + lastCount + ", [-1]=" + indexCount + ", delay=" + delayCount;
+    }
+
+    private int countSimpleFunctionCalls(String text, String fnName) {
+        if (text == null || text.length() == 0) {
+            return 0;
+        }
+
+        int count = 0;
+        int i = 0;
+        int n = text.length();
+
+        while (i < n) {
+            if (matchesWordIgnoreCase(text, i, fnName)) {
+                int p = i + fnName.length();
+                p = skipWhitespace(text, p);
+                if (p < n && text.charAt(p) == '(') {
+                    int q = skipWhitespace(text, p + 1);
+                    if (q < n && isIdentifierStartChar(text.charAt(q))) {
+                        q++;
+                        while (q < n && isIdentifierPartChar(text.charAt(q))) {
+                            q++;
+                        }
+                        q = skipWhitespace(text, q);
+                        if (q < n && text.charAt(q) == ')') {
+                            count++;
+                            i = q + 1;
+                            continue;
+                        }
+                    }
+                }
+            }
+            i++;
+        }
+
+        return count;
+    }
+
+    private int countIndexMinusOneRefs(String text) {
+        if (text == null || text.length() == 0) {
+            return 0;
+        }
+
+        int count = 0;
+        int i = 0;
+        int n = text.length();
+
+        while (i < n) {
+            if (isIdentifierStartChar(text.charAt(i))) {
+                i++;
+                while (i < n && isIdentifierPartChar(text.charAt(i))) {
+                    i++;
+                }
+
+                int p = skipWhitespace(text, i);
+                if (p < n && text.charAt(p) == '[') {
+                    int q = skipWhitespace(text, p + 1);
+                    if (q < n && text.charAt(q) == '-') {
+                        q = skipWhitespace(text, q + 1);
+                        if (q < n && text.charAt(q) == '1') {
+                            q = skipWhitespace(text, q + 1);
+                            if (q < n && text.charAt(q) == ']') {
+                                count++;
+                                i = q + 1;
+                                continue;
+                            }
+                        }
+                    }
+                }
+                continue;
+            }
+            i++;
+        }
+
+        return count;
+    }
+
+    private boolean safeEquals(String a, String b) {
+        if (a == null) return b == null;
+        return a.equals(b);
+    }
+
+    private String toggleLagDelaySyntaxInText(String text) {
+        if (text == null || text.length() == 0) {
+            return text;
+        }
+
+        // 3-way cycle for simple identifiers:
+        // delay(Name) -> Name[-1] -> last(Name) -> delay(Name)
+
+        // Step 1: delay(Name) -> Name[-1]
+        String toIndex = replaceSimpleFunctionCallWithIndex(text, "delay");
+        if (!safeEquals(toIndex, text)) {
+            return toIndex;
+        }
+
+        // Step 2: Name[-1] -> last(Name)
+        String toLast = replaceIndexMinusOneWithFunction(text, "last");
+        if (!safeEquals(toLast, text)) {
+            return toLast;
+        }
+
+        // Step 3: last(Name) -> delay(Name)
+        return replaceSimpleFunctionCall(text, "last", "delay");
+    }
+
+    private String replaceSimpleFunctionCall(String text, String fromFn, String toFn) {
+        StringBuilder out = new StringBuilder();
+        int i = 0;
+        int n = text.length();
+
+        while (i < n) {
+            if (matchesWordIgnoreCase(text, i, fromFn)) {
+                int fnStart = i;
+                int p = i + fromFn.length();
+                p = skipWhitespace(text, p);
+                if (p < n && text.charAt(p) == '(') {
+                    int q = skipWhitespace(text, p + 1);
+                    if (q < n && isIdentifierStartChar(text.charAt(q))) {
+                        int idStart = q;
+                        q++;
+                        while (q < n && isIdentifierPartChar(text.charAt(q))) {
+                            q++;
+                        }
+                        String ident = text.substring(idStart, q);
+                        q = skipWhitespace(text, q);
+                        if (q < n && text.charAt(q) == ')') {
+                            out.append(toFn).append("(").append(ident).append(")");
+                            i = q + 1;
+                            continue;
+                        }
+                    }
+                }
+                // Not a simple function call; copy one char and continue.
+                out.append(text.charAt(fnStart));
+                i = fnStart + 1;
+                continue;
+            }
+
+            out.append(text.charAt(i));
+            i++;
+        }
+
+        return out.toString();
+    }
+
+    private String replaceSimpleFunctionCallWithIndex(String text, String fromFn) {
+        StringBuilder out = new StringBuilder();
+        int i = 0;
+        int n = text.length();
+
+        while (i < n) {
+            if (matchesWordIgnoreCase(text, i, fromFn)) {
+                int fnStart = i;
+                int p = i + fromFn.length();
+                p = skipWhitespace(text, p);
+                if (p < n && text.charAt(p) == '(') {
+                    int q = skipWhitespace(text, p + 1);
+                    if (q < n && isIdentifierStartChar(text.charAt(q))) {
+                        int idStart = q;
+                        q++;
+                        while (q < n && isIdentifierPartChar(text.charAt(q))) {
+                            q++;
+                        }
+                        String ident = text.substring(idStart, q);
+                        q = skipWhitespace(text, q);
+                        if (q < n && text.charAt(q) == ')') {
+                            out.append(ident).append("[-1]");
+                            i = q + 1;
+                            continue;
+                        }
+                    }
+                }
+                out.append(text.charAt(fnStart));
+                i = fnStart + 1;
+                continue;
+            }
+
+            out.append(text.charAt(i));
+            i++;
+        }
+
+        return out.toString();
+    }
+
+    private String replaceIndexMinusOneWithFunction(String text, String toFn) {
+        StringBuilder out = new StringBuilder();
+        int i = 0;
+        int n = text.length();
+
+        while (i < n) {
+            if (isIdentifierStartChar(text.charAt(i))) {
+                int idStart = i;
+                i++;
+                while (i < n && isIdentifierPartChar(text.charAt(i))) {
+                    i++;
+                }
+                String ident = text.substring(idStart, i);
+
+                int p = skipWhitespace(text, i);
+                if (p < n && text.charAt(p) == '[') {
+                    int q = skipWhitespace(text, p + 1);
+                    if (q < n && text.charAt(q) == '-') {
+                        q = skipWhitespace(text, q + 1);
+                        if (q < n && text.charAt(q) == '1') {
+                            q = skipWhitespace(text, q + 1);
+                            if (q < n && text.charAt(q) == ']') {
+                                out.append(toFn).append("(").append(ident).append(")");
+                                i = q + 1;
+                                continue;
+                            }
+                        }
+                    }
+                }
+
+                out.append(ident);
+                continue;
+            }
+
+            out.append(text.charAt(i));
+            i++;
+        }
+
+        return out.toString();
+    }
+
+    private int skipWhitespace(String text, int index) {
+        int i = index;
+        while (i < text.length() && Character.isWhitespace(text.charAt(i))) {
+            i++;
+        }
+        return i;
+    }
+
+    private boolean isIdentifierStartChar(char ch) {
+        return Character.isLetter(ch) || ch == '_' || ch == '\\';
+    }
+
+    private boolean isIdentifierPartChar(char ch) {
+        return Character.isLetterOrDigit(ch) || ch == '_' || ch == '\\' || ch == '^' || ch == '{' || ch == '}' || ch == '.';
+    }
+
+    private boolean matchesWordIgnoreCase(String text, int start, String word) {
+        int end = start + word.length();
+        if (start < 0 || end > text.length()) {
+            return false;
+        }
+        if (!text.regionMatches(true, start, word, 0, word.length())) {
+            return false;
+        }
+
+        char prev = (start > 0) ? text.charAt(start - 1) : '\0';
+        char next = (end < text.length()) ? text.charAt(end) : '\0';
+        if (start > 0 && isIdentifierPartChar(prev)) {
+            return false;
+        }
+        if (end < text.length() && isIdentifierPartChar(next)) {
+            return false;
+        }
+        return true;
     }
     
     /**

@@ -29,6 +29,8 @@ class SFCRDagBlocksViewer {
     private static class EquationDef {
         String name;
         String equation;
+        String hint;
+        String hintEquation;
     }
 
     /** Directed dependency edge: from source equation node to target equation node. */
@@ -45,6 +47,8 @@ class SFCRDagBlocksViewer {
     /** Fully assembled graph payload consumed by the HTML renderer. */
     private static class GraphData {
         ArrayList<String> nodes = new ArrayList<String>();
+        ArrayList<String> nodeHints = new ArrayList<String>();
+        ArrayList<String> nodeHintEquations = new ArrayList<String>();
         ArrayList<EdgeDef> edges = new ArrayList<EdgeDef>();
         int[] blockByNode;
         boolean[] cyclicalByNode;
@@ -145,7 +149,7 @@ class SFCRDagBlocksViewer {
         }
 
         SFCRDagBlocksViewer viewer = new SFCRDagBlocksViewer(sim);
-        GraphData graph = viewer.buildGraph(includeHistoricalRefs, ignoreExternalSections);
+        GraphData graph = viewer.buildGraph(includeHistoricalRefs, ignoreExternalSections, false);
         if (graph == null || graph.nodes == null || graph.cyclicalByNode == null) {
             return cyclical;
         }
@@ -166,11 +170,18 @@ class SFCRDagBlocksViewer {
      * Build all graph variants and open/reuse the external viewer popup.
      */
     void openExternalWindow() {
-        GraphData samePeriodGraph = buildGraph(false, false);
-        GraphData historicalGraph = buildGraph(true, false);
-        GraphData samePeriodNoParamsGraph = buildGraph(false, true);
-        GraphData historicalNoParamsGraph = buildGraph(true, true);
-        String html = generateHTML(samePeriodGraph, historicalGraph, samePeriodNoParamsGraph, historicalNoParamsGraph);
+        GraphData samePeriodGraph = buildGraph(false, false, false);
+        GraphData historicalGraph = buildGraph(true, false, false);
+        GraphData samePeriodNoParamsGraph = buildGraph(false, true, false);
+        GraphData historicalNoParamsGraph = buildGraph(true, true, false);
+        GraphData samePeriodNoAdjustableGraph = buildGraph(false, false, true);
+        GraphData historicalNoAdjustableGraph = buildGraph(true, false, true);
+        GraphData samePeriodNoParamsNoAdjustableGraph = buildGraph(false, true, true);
+        GraphData historicalNoParamsNoAdjustableGraph = buildGraph(true, true, true);
+        String html = generateHTML(samePeriodGraph, historicalGraph,
+                samePeriodNoParamsGraph, historicalNoParamsGraph,
+                samePeriodNoAdjustableGraph, historicalNoAdjustableGraph,
+                samePeriodNoParamsNoAdjustableGraph, historicalNoParamsNoAdjustableGraph);
         if (!openOrReuseWindowWithHTML(html)) {
             CirSim.console("DAG Blocks viewer popup was blocked. Please allow popups for this site.");
         }
@@ -181,9 +192,11 @@ class SFCRDagBlocksViewer {
      *
      * @param includeHistoricalRefs true to include refs inside historical operators
      * @param ignoreExternalSections true to skip rows under "# Parameters" and "# External" sections
+     * @param ignoreAdjustableRows true to skip rows where table.isAdjustableRow(row)
      */
-    private GraphData buildGraph(boolean includeHistoricalRefs, boolean ignoreExternalSections) {
-        ArrayList<EquationDef> equations = collectEquations(ignoreExternalSections);
+    private GraphData buildGraph(boolean includeHistoricalRefs, boolean ignoreExternalSections,
+            boolean ignoreAdjustableRows) {
+        ArrayList<EquationDef> equations = collectEquations(ignoreExternalSections, ignoreAdjustableRows);
         GraphData graph = new GraphData();
         if (equations.isEmpty()) {
             graph.blockByNode = new int[0];
@@ -197,6 +210,8 @@ class SFCRDagBlocksViewer {
             EquationDef eq = equations.get(i);
             nodeIndexByName.put(eq.name, Integer.valueOf(i));
             graph.nodes.add(eq.name);
+            graph.nodeHints.add(eq.hint);
+            graph.nodeHintEquations.add(eq.hintEquation);
         }
 
         HashSet<String> edgeSet = new HashSet<String>();
@@ -226,7 +241,7 @@ class SFCRDagBlocksViewer {
      * Collect equation rows from all EquationTableElm instances.
      * Optionally excludes rows inside "# Parameters" or "# External" sections until the next comment row.
      */
-    private ArrayList<EquationDef> collectEquations(boolean ignoreExternalSections) {
+    private ArrayList<EquationDef> collectEquations(boolean ignoreExternalSections, boolean ignoreAdjustableRows) {
         ArrayList<EquationDef> out = new ArrayList<EquationDef>();
         HashSet<String> seenNames = new HashSet<String>();
 
@@ -257,6 +272,10 @@ class SFCRDagBlocksViewer {
                     continue;
                 }
 
+                if (ignoreAdjustableRows && table.isAdjustableRow(row)) {
+                    continue;
+                }
+
                 String outputName = safeTrim(table.getOutputName(row));
                 String equation = safeTrim(table.getEquation(row));
                 if (outputName.length() == 0 || equation.length() == 0) {
@@ -274,6 +293,8 @@ class SFCRDagBlocksViewer {
                 EquationDef eq = new EquationDef();
                 eq.name = outputName;
                 eq.equation = equation;
+                eq.hint = safeTrim(HintRegistry.getHint(outputName));
+                eq.hintEquation = safeTrim(table.getHintExpandedEquationForDisplay(row));
                 out.add(eq);
             }
         }
@@ -506,20 +527,32 @@ class SFCRDagBlocksViewer {
 
     /** Build complete standalone popup HTML with Cytoscape renderer and controls. */
     private String generateHTML(GraphData samePeriodGraph, GraphData historicalGraph,
-            GraphData samePeriodNoParamsGraph, GraphData historicalNoParamsGraph) {
+            GraphData samePeriodNoParamsGraph, GraphData historicalNoParamsGraph,
+            GraphData samePeriodNoAdjustableGraph, GraphData historicalNoAdjustableGraph,
+            GraphData samePeriodNoParamsNoAdjustableGraph, GraphData historicalNoParamsNoAdjustableGraph) {
         String sameJson = graphToJSON(samePeriodGraph, "Same-Period Dependencies");
         String historicalJson = graphToJSON(historicalGraph, "Historical + Same-Period Dependencies");
         String sameNoParamsJson = graphToJSON(samePeriodNoParamsGraph,
             "Same-Period Dependencies (Parameters/External Excluded)");
         String historicalNoParamsJson = graphToJSON(historicalNoParamsGraph,
             "Historical + Same-Period Dependencies (Parameters/External Excluded)");
+        String sameNoAdjustableJson = graphToJSON(samePeriodNoAdjustableGraph,
+            "Same-Period Dependencies (Adjustable Rows Excluded)");
+        String historicalNoAdjustableJson = graphToJSON(historicalNoAdjustableGraph,
+            "Historical + Same-Period Dependencies (Adjustable Rows Excluded)");
+        String sameNoParamsNoAdjustableJson = graphToJSON(samePeriodNoParamsNoAdjustableGraph,
+            "Same-Period Dependencies (Parameters/External + Adjustable Rows Excluded)");
+        String historicalNoParamsNoAdjustableJson = graphToJSON(historicalNoParamsNoAdjustableGraph,
+            "Historical + Same-Period Dependencies (Parameters/External + Adjustable Rows Excluded)");
 
         StringBuilder html = new StringBuilder();
         appendHtmlHead(html);
         appendHtmlBodyStart(html);
         appendHtmlControls(html);
         appendHtmlStatusAndContainers(html);
-        appendHtmlScript(html, sameJson, historicalJson, sameNoParamsJson, historicalNoParamsJson);
+        appendHtmlScript(html, sameJson, historicalJson, sameNoParamsJson, historicalNoParamsJson,
+            sameNoAdjustableJson, historicalNoAdjustableJson,
+            sameNoParamsNoAdjustableJson, historicalNoParamsNoAdjustableJson);
         appendHtmlBodyEnd(html);
         return html.toString();
     }
@@ -544,6 +577,7 @@ class SFCRDagBlocksViewer {
         html.append(".legendRow{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:12px;}\n");
         html.append(".shapeKey{display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;border:1px solid #333;background:#fff;}\n");
         html.append("#dagPlot{width:100%;height:calc(100vh - 170px);min-height:420px;border:1px solid #eee;}\n");
+        html.append("#nodeHoverTip{position:fixed;z-index:99999;max-width:560px;padding:8px 10px;background:#fff;border:1px solid #bbb;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.15);font-size:12px;line-height:1.35;color:#222;white-space:normal;pointer-events:none;display:none;}\n");
         html.append("</style></head>\n");
     }
 
@@ -562,7 +596,9 @@ class SFCRDagBlocksViewer {
         html.append("<select id='layoutDir'><option value='TB'>Top → Bottom</option><option value='LR' selected>Left → Right</option></select>\n");
         html.append("<label>Labels:</label>\n");
         html.append("<select id='labelMode'><option value='compact' selected>Compact</option><option value='full'>Full</option><option value='none'>None</option></select>\n");
+        html.append("<label style='user-select:none;'><input id='useHints' type='checkbox'/> Use hint text for labels</label>\n");
         html.append("<label style='user-select:none;'><input id='ignoreParams' type='checkbox' checked/> Ignore # Parameters / # External sections</label>\n");
+        html.append("<label style='user-select:none;'><input id='ignoreAdjustable' type='checkbox' checked/> Ignore adjustable rows</label>\n");
         html.append("<button id='toggleLegend'>Hide Legend</button>\n");
         html.append("</div>\n");
     }
@@ -574,38 +610,126 @@ class SFCRDagBlocksViewer {
         html.append("<span id='filterBadge' class='badge'></span>\n");
         html.append("<span class='badge'>Tip: click node to highlight neighborhood</span>\n");
         html.append("</div>\n");
+        html.append("<div id='nodeHoverTip'></div>\n");
         html.append("<div id='legend'></div>\n");
         html.append("<div id='dagPlot'></div>\n");
     }
 
     /** Append all viewer JavaScript and inline data payloads. */
     private void appendHtmlScript(StringBuilder html, String sameJson, String historicalJson,
-            String sameNoParamsJson, String historicalNoParamsJson) {
+            String sameNoParamsJson, String historicalNoParamsJson,
+            String sameNoAdjustableJson, String historicalNoAdjustableJson,
+            String sameNoParamsNoAdjustableJson, String historicalNoParamsNoAdjustableJson) {
         html.append("<script>\n");
         html.append("const sameData=").append(sameJson).append(";\n");
         html.append("const historicalData=").append(historicalJson).append(";\n");
         html.append("const sameNoParamsData=").append(sameNoParamsJson).append(";\n");
         html.append("const historicalNoParamsData=").append(historicalNoParamsJson).append(";\n");
+        html.append("const sameNoAdjustableData=").append(sameNoAdjustableJson).append(";\n");
+        html.append("const historicalNoAdjustableData=").append(historicalNoAdjustableJson).append(";\n");
+        html.append("const sameNoParamsNoAdjustableData=").append(sameNoParamsNoAdjustableJson).append(";\n");
+        html.append("const historicalNoParamsNoAdjustableData=").append(historicalNoParamsNoAdjustableJson).append(";\n");
         html.append("let active='same';\n");
         html.append("let cy=null;\n");
+        html.append("let hoverTipEl=null;\n");
         html.append("function colorForBlock(block){const c=").append(jsStringArray(BLOCK_COLORS)).append(";return c[(Math.max(1,block)-1)%c.length];}\n");
+        html.append("function formatMathLabel(text){\n");
+        html.append("  if(!text) return '';\n");
+        html.append("  const greek = {\n");
+        html.append("    alpha:'α',beta:'β',gamma:'γ',delta:'δ',epsilon:'ε',zeta:'ζ',eta:'η',theta:'θ',iota:'ι',kappa:'κ',lambda:'λ',mu:'μ',nu:'ν',xi:'ξ',omicron:'ο',pi:'π',rho:'ρ',sigma:'σ',tau:'τ',upsilon:'υ',phi:'φ',chi:'χ',psi:'ψ',omega:'ω',\n");
+        html.append("    Alpha:'Α',Beta:'Β',Gamma:'Γ',Delta:'Δ',Epsilon:'Ε',Zeta:'Ζ',Eta:'Η',Theta:'Θ',Iota:'Ι',Kappa:'Κ',Lambda:'Λ',Mu:'Μ',Nu:'Ν',Xi:'Ξ',Omicron:'Ο',Pi:'Π',Rho:'Ρ',Sigma:'Σ',Tau:'Τ',Upsilon:'Υ',Phi:'Φ',Chi:'Χ',Psi:'Ψ',Omega:'Ω',\n");
+        html.append("    degree:'°',pm:'±',times:'×',div:'÷',infty:'∞',sqrt:'√',approx:'≈',neq:'≠',leq:'≤',geq:'≥'\n");
+        html.append("  };\n");
+        html.append("  const subMap = {\n");
+        html.append("    '0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','+':'₊','-':'₋','=':'₌','(':'₍',')':'₎',\n");
+        html.append("    'a':'ₐ','e':'ₑ','h':'ₕ','i':'ᵢ','j':'ⱼ','k':'ₖ','l':'ₗ','m':'ₘ','n':'ₙ','o':'ₒ','p':'ₚ','r':'ᵣ','s':'ₛ','t':'ₜ','u':'ᵤ','v':'ᵥ','x':'ₓ'\n");
+        html.append("  };\n");
+        html.append("  const supMap = {\n");
+        html.append("    '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻','=':'⁼','(':'⁽',')':'⁾',\n");
+        html.append("    'a':'ᵃ','b':'ᵇ','c':'ᶜ','d':'ᵈ','e':'ᵉ','f':'ᶠ','g':'ᵍ','h':'ʰ','i':'ⁱ','j':'ʲ','k':'ᵏ','l':'ˡ','m':'ᵐ','n':'ⁿ','o':'ᵒ','p':'ᵖ','r':'ʳ','s':'ˢ','t':'ᵗ','u':'ᵘ','v':'ᵛ','w':'ʷ','x':'ˣ','y':'ʸ','z':'ᶻ'\n");
+        html.append("  };\n");
+        html.append("  let s = String(text).replace(/\\\\([A-Za-z]+)/g, function(_, key){ return Object.prototype.hasOwnProperty.call(greek, key) ? greek[key] : _; });\n");
+        html.append("  function mapScriptWithFallback(value, map, marker, wasBraced){\n");
+        html.append("    let out='';\n");
+        html.append("    for(let i=0;i<value.length;i++){\n");
+        html.append("      const ch=value.charAt(i);\n");
+        html.append("      if(Object.prototype.hasOwnProperty.call(map, ch)) out += map[ch];\n");
+        html.append("      else return marker + (wasBraced ? ('{' + value + '}') : value);\n");
+        html.append("    }\n");
+        html.append("    return out;\n");
+        html.append("  }\n");
+        html.append("  let out = '';\n");
+        html.append("  for(let i=0;i<s.length;i++){\n");
+        html.append("    const ch = s.charAt(i);\n");
+        html.append("    if(ch !== '_' && ch !== '^'){ out += ch; continue; }\n");
+        html.append("    const isSub = (ch === '_');\n");
+        html.append("    if(i + 1 >= s.length){ out += ch; continue; }\n");
+        html.append("    let script = '';\n");
+        html.append("    let wasBraced = false;\n");
+        html.append("    if(s.charAt(i + 1) === '{'){\n");
+        html.append("      wasBraced = true;\n");
+        html.append("      let j = i + 2;\n");
+        html.append("      while(j < s.length && s.charAt(j) !== '}') j++;\n");
+        html.append("      if(j < s.length){ script = s.substring(i + 2, j); i = j; }\n");
+        html.append("      else { script = s.substring(i + 2); i = s.length - 1; }\n");
+        html.append("    } else {\n");
+        html.append("      script = s.charAt(i + 1);\n");
+        html.append("      i = i + 1;\n");
+        html.append("    }\n");
+        html.append("    out += mapScriptWithFallback(script, isSub ? subMap : supMap, ch, wasBraced);\n");
+        html.append("  }\n");
+        html.append("  return out;\n");
+        html.append("}\n");
         html.append("function compactLabel(s){if(!s) return ''; return s.length>22 ? s.substring(0,21)+'…' : s;}\n");
         html.append("function toElements(g){\n");
         html.append("  const elements=[];\n");
-        html.append("  for(let i=0;i<g.nodes.length;i++){const n=g.nodes[i];elements.push({data:{id:'n'+i,labelFull:n.name,labelDisplay:compactLabel(n.name),block:n.block,cyclical:n.cyclical?1:0,color:colorForBlock(n.block)}});}\n");
+        html.append("  const useHints = !!(document.getElementById('useHints') && document.getElementById('useHints').checked);\n");
+        html.append("  for(let i=0;i<g.nodes.length;i++){const n=g.nodes[i];const raw=(useHints && n.hint && String(n.hint).trim().length>0)?n.hint:n.name;const fmt=formatMathLabel(raw);const hintEq=formatMathLabel(n.hintEq||'');elements.push({data:{id:'n'+i,labelFull:fmt,labelDisplay:compactLabel(fmt),hintEq:hintEq,block:n.block,cyclical:n.cyclical?1:0,color:colorForBlock(n.block)}});}\n");
         html.append("  for(let i=0;i<g.edges.length;i++){const e=g.edges[i];const cyc=(g.nodes[e.from]&&g.nodes[e.from].block===g.nodes[e.to].block)?1:0;elements.push({data:{id:'e'+i,source:'n'+e.from,target:'n'+e.to,weight:cyc?1:3}});}\n");
         html.append("  return elements;\n");
         html.append("}\n");
+        html.append("function getHoverTipEl(){\n");
+        html.append("  if(!hoverTipEl){ hoverTipEl = document.getElementById('nodeHoverTip'); }\n");
+        html.append("  return hoverTipEl;\n");
+        html.append("}\n");
+        html.append("function hideHoverTip(){\n");
+        html.append("  const el = getHoverTipEl();\n");
+        html.append("  if(!el) return;\n");
+        html.append("  el.style.display = 'none';\n");
+        html.append("}\n");
+        html.append("function showHoverTip(evt, text){\n");
+        html.append("  const el = getHoverTipEl();\n");
+        html.append("  if(!el || !text) return;\n");
+        html.append("  el.textContent = text;\n");
+        html.append("  const oe = evt && evt.originalEvent ? evt.originalEvent : null;\n");
+        html.append("  const x = oe && typeof oe.clientX === 'number' ? oe.clientX : 12;\n");
+        html.append("  const y = oe && typeof oe.clientY === 'number' ? oe.clientY : 12;\n");
+        html.append("  el.style.left = (x + 12) + 'px';\n");
+        html.append("  el.style.top = (y + 12) + 'px';\n");
+        html.append("  el.style.display = 'block';\n");
+        html.append("}\n");
         html.append("function getActiveDataset(mode){\n");
         html.append("  const ignoreParams = !!document.getElementById('ignoreParams').checked;\n");
-        html.append("  if(mode==='historical'){ return ignoreParams ? historicalNoParamsData : historicalData; }\n");
-        html.append("  return ignoreParams ? sameNoParamsData : sameData;\n");
+        html.append("  const ignoreAdjustable = !!document.getElementById('ignoreAdjustable').checked;\n");
+        html.append("  if(mode==='historical'){\n");
+        html.append("    if(ignoreParams && ignoreAdjustable) return historicalNoParamsNoAdjustableData;\n");
+        html.append("    if(ignoreParams) return historicalNoParamsData;\n");
+        html.append("    if(ignoreAdjustable) return historicalNoAdjustableData;\n");
+        html.append("    return historicalData;\n");
+        html.append("  }\n");
+        html.append("  if(ignoreParams && ignoreAdjustable) return sameNoParamsNoAdjustableData;\n");
+        html.append("  if(ignoreParams) return sameNoParamsData;\n");
+        html.append("  if(ignoreAdjustable) return sameNoAdjustableData;\n");
+        html.append("  return sameData;\n");
         html.append("}\n");
         html.append("function updateStatusBadges(){\n");
         html.append("  const modeText = (active==='historical') ? 'Mode: Historical + Same-Period' : 'Mode: Same-Period';\n");
-        html.append("  const filterText = document.getElementById('ignoreParams').checked ? 'Filter: Parameters/External Excluded' : 'Filter: All Sections';\n");
-        html.append("  document.getElementById('modeBadge').textContent = modeText;\n");
-        html.append("  document.getElementById('filterBadge').textContent = filterText;\n");
+        html.append("  const filters = [];\n");
+        html.append("  if(document.getElementById('ignoreParams').checked) filters.push('Parameters/External Excluded');\n");
+        html.append("  if(document.getElementById('ignoreAdjustable').checked) filters.push('Adjustable Rows Excluded');\n");
+        html.append("  const filterText = filters.length ? ('Filter: ' + filters.join(' + ')) : 'Filter: None';\n");
+        html.append("  document.getElementById('modeBadge').textContent = formatMathLabel(modeText);\n");
+        html.append("  document.getElementById('filterBadge').textContent = formatMathLabel(filterText);\n");
         html.append("}\n");
         html.append("function buildLegend(){\n");
         html.append("  const legend = document.getElementById('legend');\n");
@@ -630,6 +754,18 @@ class SFCRDagBlocksViewer {
         html.append("}\n");
         html.append("function enableNeighborhoodHighlight(){\n");
         html.append("  if(!cy) return;\n");
+        html.append("  cy.on('mouseover', 'node', function(evt){\n");
+        html.append("    const n = evt.target;\n");
+        html.append("    const tip = (n && n.data) ? (n.data('hintEq') || '') : '';\n");
+        html.append("    if(tip) showHoverTip(evt, tip);\n");
+        html.append("    else hideHoverTip();\n");
+        html.append("  });\n");
+        html.append("  cy.on('mousemove', 'node', function(evt){\n");
+        html.append("    const n = evt.target;\n");
+        html.append("    const tip = (n && n.data) ? (n.data('hintEq') || '') : '';\n");
+        html.append("    if(tip) showHoverTip(evt, tip);\n");
+        html.append("  });\n");
+        html.append("  cy.on('mouseout', 'node', function(){ hideHoverTip(); });\n");
         html.append("  cy.on('tap', 'node', function(evt){\n");
         html.append("    const n = evt.target;\n");
         html.append("    cy.elements().addClass('faded');\n");
@@ -641,7 +777,7 @@ class SFCRDagBlocksViewer {
         html.append("function renderGraph(mode){\n");
         html.append("  const g=getActiveDataset(mode);\n");
         html.append("  const title = g.title || 'SFCR DAG Blocks Plot';\n");
-        html.append("  document.title = title;\n");
+        html.append("  document.title = formatMathLabel(title);\n");
         html.append("  updateStatusBadges();\n");
         html.append("  buildLegend();\n");
         html.append("  if(typeof cytoscape === 'undefined'){\n");
@@ -649,6 +785,7 @@ class SFCRDagBlocksViewer {
         html.append("    return;\n");
         html.append("  }\n");
         html.append("  if(cy){cy.destroy();cy=null;}\n");
+        html.append("  hideHoverTip();\n");
         html.append("  cy = cytoscape({\n");
         html.append("    container: document.getElementById('dagPlot'),\n");
         html.append("    elements: toElements(g),\n");
@@ -679,7 +816,9 @@ class SFCRDagBlocksViewer {
         html.append("document.getElementById('btnSame').addEventListener('click',()=>setMode('same'));\n");
         html.append("document.getElementById('btnHist').addEventListener('click',()=>setMode('historical'));\n");
         html.append("document.getElementById('layoutDir').addEventListener('change',()=>renderGraph(active));\n");
+        html.append("document.getElementById('useHints').addEventListener('change',()=>renderGraph(active));\n");
         html.append("document.getElementById('ignoreParams').addEventListener('change',()=>renderGraph(active));\n");
+        html.append("document.getElementById('ignoreAdjustable').addEventListener('change',()=>renderGraph(active));\n");
         html.append("document.getElementById('labelMode').addEventListener('change',()=>{applyLabelMode(); if(cy){cy.fit(undefined,24);}});\n");
         html.append("document.getElementById('toggleLegend').addEventListener('click',()=>{const lg=document.getElementById('legend');const hidden=lg.classList.toggle('hidden');document.getElementById('toggleLegend').textContent=hidden?'Show Legend':'Hide Legend';});\n");
         html.append("window.addEventListener('resize', function(){ if(cy){ cy.fit(undefined, 24); } });\n");
@@ -703,6 +842,8 @@ class SFCRDagBlocksViewer {
             }
             sb.append("{");
             sb.append("\"name\":\"").append(escapeJson(graph.nodes.get(i))).append("\",");
+            sb.append("\"hint\":\"").append(escapeJson(graph.nodeHints != null && i < graph.nodeHints.size() ? graph.nodeHints.get(i) : "")).append("\",");
+            sb.append("\"hintEq\":\"").append(escapeJson(graph.nodeHintEquations != null && i < graph.nodeHintEquations.size() ? graph.nodeHintEquations.get(i) : "")).append("\",");
             sb.append("\"block\":").append(graph.blockByNode != null && i < graph.blockByNode.length ? graph.blockByNode[i] : 0).append(",");
             sb.append("\"cyclical\":").append(graph.cyclicalByNode != null && i < graph.cyclicalByNode.length && graph.cyclicalByNode[i] ? "true" : "false");
             sb.append("}");

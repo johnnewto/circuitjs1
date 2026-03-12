@@ -2,11 +2,24 @@
 # This file demonstrates ALL available functions in the Expr parser
 # for use in EquationTableElm and other expression-based elements.
 
+@init
+  timestep: 0.01
+  voltageUnit: $
+  timeUnit: yr
+  showDots: false
+  showVolts: true
+  showValues: true
+  showPower: false
+  autoAdjustTimestep: false
+  equationTableTolerance: 0.0001
+  infoViewerUpdateIntervalMs: 200
+@end
+
 #===============================================================================
 # BASIC MATH OPERATORS
 #===============================================================================
 
-@equations Basic.Operators
+@equations Basic.Operators x=-112 y=1560
   add.test ~ 3 + 5                    # Addition: 8
   sub.test ~ 10 - 3                   # Subtraction: 7
   mul.test ~ 4 * 5                    # Multiplication: 20
@@ -22,7 +35,7 @@
 # CONSTANTS
 #===============================================================================
 
-@equations Constants
+@equations Constants x=-112 y=1736
   pi.test ~ pi                        # Pi: 3.14159...
   time.test ~ t                       # Current simulation time
   dt.test ~ timestep                  # Current timestep size
@@ -33,7 +46,7 @@
 # TRIGONOMETRIC FUNCTIONS
 #===============================================================================
 
-@equations Trigonometric
+@equations Trigonometric x=-112 y=1832
   sin.test ~ sin(t)                   # Sine
   cos.test ~ cos(t)                   # Cosine
   tan.test ~ tan(t)                   # Tangent
@@ -46,7 +59,7 @@
 # INVERSE TRIGONOMETRIC FUNCTIONS
 #===============================================================================
 
-@equations Inverse.Trig
+@equations Inverse.Trig x=-112 y=1960
   asin.test ~ asin(0.5)               # Arc sine: ~0.524 rad
   acos.test ~ acos(0.5)               # Arc cosine: ~1.047 rad
   atan.test ~ atan(1)                 # Arc tangent: ~0.785 rad (pi/4)
@@ -57,7 +70,7 @@
 # HYPERBOLIC FUNCTIONS
 #===============================================================================
 
-@equations Hyperbolic
+@equations Hyperbolic x=-112 y=2056
   sinh.test ~ sinh(1)                 # Hyperbolic sine: ~1.175
   cosh.test ~ cosh(1)                 # Hyperbolic cosine: ~1.543
   tanh.test ~ tanh(1)                 # Hyperbolic tangent: ~0.762
@@ -68,7 +81,7 @@
 # EXPONENTIAL AND LOGARITHMIC
 #===============================================================================
 
-@equations Exp.Log
+@equations Exp.Log x=-112 y=2152
   exp.test ~ exp(1)                   # e^1: ~2.718
   log.test ~ log(10)                  # Natural log of 10: ~2.303
   exp.decay ~ exp(-t * 100)           # Exponential decay
@@ -80,7 +93,7 @@
 # POWER AND ROOT FUNCTIONS
 #===============================================================================
 
-@equations Power.Root
+@equations Power.Root x=-112 y=2264
   sqrt.test ~ sqrt(16)                # Square root: 4
   abs.test ~ abs(-5)                  # Absolute value: 5
   pwr.test ~ pwr(-2, 3)               # |x|^y = |-2|^3 = 8
@@ -92,7 +105,7 @@
 # ROUNDING FUNCTIONS
 #===============================================================================
 
-@equations Rounding
+@equations Rounding x=224 y=1624
   floor.test ~ floor(3.7)             # Floor: 3
   floor.neg ~ floor(-3.7)             # Floor negative: -4
   ceil.test ~ ceil(3.2)               # Ceiling: 4
@@ -104,7 +117,7 @@
 # MIN, MAX, CLAMP
 #===============================================================================
 
-@equations MinMaxClamp
+@equations MinMaxClamp x=224 y=1736
   min.test ~ min(5, 3)                # Minimum of 2 args: 3
   min.multi ~ min(5, 3, 8, 1, 9)      # Minimum of many args: 1
   max.test ~ max(5, 3)                # Maximum of 2 args: 5
@@ -117,7 +130,7 @@
 # WAVE GENERATORS
 #===============================================================================
 
-@equations Waves
+@equations Waves x=224 y=1864
   tri.wave ~ tri(t * 1000)            # Triangle wave: -1 to +1
   saw.wave ~ saw(t * 1000)            # Sawtooth wave: -1 to +1
 @end
@@ -127,7 +140,7 @@
 # STEP AND SELECT FUNCTIONS
 #===============================================================================
 
-@equations Step.Select
+@equations Step.Select x=224 y=1944
   step.test ~ step(t - 0.001)         # Step at t=1ms: 0 before, 1 after
   step.pulse ~ step(t - 0.001, 0.005) # Pulse from 1ms to 5ms
   select.test ~ select(sin(t*1000), -1, 1) # -1 if sin<=0, else 1
@@ -138,7 +151,7 @@
 # PIECEWISE LINEAR (PWL)
 #===============================================================================
 
-@equations Piecewise.Linear
+@equations Piecewise.Linear x=224 y=2040
   # pwl(x, x0,y0, x1,y1, x2,y2, ...)
   # Returns interpolated y value based on x
   pwl.test ~ pwl(t*1000, 0,0, 1,5, 2,5, 3,0) # Trapezoid shape
@@ -149,7 +162,7 @@
 # COMPARISON OPERATORS
 #===============================================================================
 
-@equations Comparisons
+@equations Comparisons x=224 y=2136
   eq.test ~ (5 == 5)                  # Equals: 1 (true)
   neq.test ~ (5 != 3)                 # Not equals: 1 (true)
   lt.test ~ (3 < 5)                   # Less than: 1 (true)
@@ -163,7 +176,7 @@
 # LOGICAL OPERATORS
 #===============================================================================
 
-@equations Logical
+@equations Logical x=224 y=2280
   and.test ~ (1 && 1)                 # Logical AND: 1
   and.false ~ (1 && 0)                # AND with false: 0
   or.test ~ (0 || 1)                  # Logical OR: 1
@@ -177,7 +190,7 @@
 # TERNARY CONDITIONAL
 #===============================================================================
 
-@equations Ternary
+@equations Ternary x=544 y=1640
   tern.test ~ (t > 0.001) ? 10 : 0    # If t>1ms then 10 else 0
   tern.wave ~ (sin(t*1000) > 0) ? 1 : -1  # Square wave from sine
 @end
@@ -187,7 +200,7 @@
 # TIME-BASED FUNCTIONS (Stateful)
 #===============================================================================
 
-@equations Time.Based
+@equations Time.Based x=544 y=1720
   # integrate(x) - Numerical integration over time
   integral ~ integrate(1)             # Integral of 1 = t (ramp)
   int.sine ~ integrate(sin(t*100))    # Integral of sine
@@ -202,7 +215,7 @@
 # LAST VALUE FUNCTION
 #===============================================================================
 
-@equations Last.Value
+@equations Last.Value x=544 y=1864
   # last(x) - Returns previous timestep's converged value
   # Useful for difference equations and sfcr-style lagged variables
   ramp ~ integrate(1)                 # Ramp up
@@ -214,7 +227,7 @@
 # LASTOUTPUT - Self-referencing
 #===============================================================================
 
-@equations Lastoutput
+@equations Lastoutput x=544 y=1976
   # lastoutput - Returns this equation's output from previous timestep
   # Creates feedback loop / memory
   counter ~ lastoutput + 0.001        # Counts up each millisecond
@@ -225,7 +238,7 @@
 # COMBINED EXAMPLES
 #===============================================================================
 
-@equations Combined.Examples
+@equations Combined.Examples x=544 y=2072
   # Damped oscillator
   damped.osc ~ exp(-t * 10) * sin(t * 100)
   
@@ -253,7 +266,7 @@
 # VARIABLE REFERENCES (Node References)
 #===============================================================================
 
-@equations Variable.Refs
+@equations Variable.Refs x=1024 y=2056
   # Any identifier can reference a LabeledNode or ComputedValue
   source ~ 10 * sin(t * 100)          # Source signal
   doubled ~ source * 2                # Reference 'source' from above
@@ -265,7 +278,7 @@
 # GREEK SYMBOLS (LaTeX-style)
 #===============================================================================
 
-@equations Greek.Symbols
+@equations Greek.Symbols x=1040 y=1912
   # Greek letters using backslash notation
   \alpha ~ 0.6                        # Alpha parameter
   \beta ~ 0.4                         # Beta parameter
@@ -279,7 +292,7 @@
 # SUBSCRIPTED VARIABLES (LaTeX-style)
 #===============================================================================
 
-@equations Subscripted
+@equations Subscripted x=1120 y=2184
   # Subscripts using underscore
   V.1 ~ 10                            # V subscript 1
   V.2 ~ 20                            # V subscript 2

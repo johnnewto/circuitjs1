@@ -165,6 +165,21 @@ final class EquationTableJacobianHelper {
     }
 
     /**
+     * Return {@code true} when equation text contains historical reference syntax.
+     *
+     * This intentionally includes both explicit function form ({@code last(x)}) and
+     * postfix aliases ({@code x[-1]} and {@code x(-1)}), which are semantically
+     * equivalent in the expression parser.
+     */
+    static boolean hasHistoricalRefSyntax(String eq) {
+        if (eq == null) {
+            return false;
+        }
+        String lower = eq.toLowerCase();
+        return lower.contains("last(") || lower.contains("[-1]") || lower.contains("(-1)");
+    }
+
+    /**
      * Compute and stamp Newton–Raphson Jacobian entries for a single MNA equation row.
      *
      * <p>For each reference name in {@code refs} that resolves to a labeled MNA node,
@@ -256,8 +271,8 @@ final class EquationTableJacobianHelper {
      * derivatives unreliable (the perturbed evaluation would corrupt the history state).
      * Equations containing these operators are excluded from Jacobian stamping.
      *
-     * Checked names (case-insensitive): {@code integrate(}, {@code diff(}, {@code lag(},
-     * {@code last(}, {@code smooth(}.
+    * Checked names (case-insensitive): {@code integrate(}, {@code diff(}, {@code lag(},
+    * {@code smooth(}, {@code delay(}.
      *
      * @param eq  Raw equation string (may be {@code null}).
      * @return {@code true} if any stateful operator is present.
@@ -268,7 +283,7 @@ final class EquationTableJacobianHelper {
         }
         String lower = eq.toLowerCase();
         return lower.contains("integrate(") || lower.contains("diff(") || lower.contains("lag(")
-                || lower.contains("last(") || lower.contains("smooth(");
+            || lower.contains("smooth(") || lower.contains("delay(");
     }
 
     /**

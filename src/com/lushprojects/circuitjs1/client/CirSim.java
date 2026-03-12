@@ -173,9 +173,15 @@ MouseOutHandler, MouseWheelHandler {
 	int infoViewerUpdateIntervalMs = 100; // InfoViewer live update throttling interval
     boolean useWeightedPriority = false; // Weighted priority for Asset/Equity columns
     String modelInfoContent = null; // Markdown info content from @info block in SFCR files
+	private SFCRDocumentState sfcrDocumentState = new SFCRDocumentState();
     MenuItem viewModelInfoItem; // Menu item for viewing model info
 	MenuItem helpViewModelInfoItem; // Help menu item for viewing model info
     String currentCircuitFile = null; // Current circuit file name and location for display
+
+	SFCRDocumentState getSFCRDocumentState() {
+	return sfcrDocumentState;
+	}
+
     private Label powerLabel;
     private Label titleLabel;
     private Scrollbar speedBar;

@@ -37,8 +37,8 @@ import java.util.Set;
  * 
  * Shows a formatted markdown view of the equation table's internal state including:
  * - Table configuration (name, mode, row count)
- * - Per-row details: output names, equations, classifications, output modes,
- *   current values, slider variables, convergence state
+ * - Two row-summary tables (compact + detailed)
+ *   with equations, convergence status, hints, and node lookups
  * - MNA node assignments and voltage source allocations
  * - ComputedValues registry entries for this table
  * - Circuit matrix info
@@ -212,7 +212,7 @@ public class EquationTableMarkdownDebugDialog {
         appendCyclicalNodeSummary(md);
         appendCircuitMatrixInfo(md);
         appendRowDetailsTable(md);
-        appendPerRowDetails(md);
+        appendRowDetailsExtraTable(md);
         appendComputedValuesInfo(md);
         appendLabeledNodeInfo(md);
         appendAllEquationTablesInCircuit(md);
@@ -324,7 +324,7 @@ public class EquationTableMarkdownDebugDialog {
         md.append("|---|---------|------|-------|----------|---------|-------|--------|----------|----------|\n");
         
         int rowCount = sourceTable.getRowCount();
-        for (int row = 0; row < rowCount; row++) {
+            for (int row = 0; row < rowCount; row++) {
             if (isCommentRow(sourceTable, row)) {
                 continue;
             }
@@ -379,112 +379,63 @@ public class EquationTableMarkdownDebugDialog {
     }
     
     // =========================================================================
-    // PER-ROW DETAILED INFO
+    // SECOND ROW SUMMARY (DETAILS)
     // =========================================================================
 
     /**
-     * Append a detailed per-row section for each non-comment row.
-     * Each row gets a level-3 Markdown header and bullet-point details:
-     * mode description, classification, equation, current value, slider state,
-     * Jacobian path status, optional hint, and {@link ComputedValues} / labeled-node lookups.
-    * For FLOW rows, target node info and voltage are also shown.
+     * Append a second, detailed row-summary table for non-comment rows.
      */
-    private void appendPerRowDetails(StringBuilder md) {
-        md.append("## Per-Row Details\n\n");
-        
+    private void appendRowDetailsExtraTable(StringBuilder md) {
+        md.append("## Row Summary 2\n\n");
+        md.append("| # | Hint | ComputedValues | Labeled Node | Node Voltage |\n");
+        md.append("|---|------|----------------|--------------|--------------|\n");
+
         int rowCount = sourceTable.getRowCount();
         for (int row = 0; row < rowCount; row++) {
             if (isCommentRow(sourceTable, row)) {
                 continue;
             }
-            String outputName = sourceTable.getUIDisplayOutputName(row);
-            String equation = sourceTable.getEquation(row);
-            String initialEq = sourceTable.getInitialEquation(row);
-            RowOutputMode mode = sourceTable.getOutputMode(row);
-            String classification = sourceTable.getRowClassification(row);
-            double value = sourceTable.getOutputValue(row);
-            String sliderVar = sourceTable.getSliderVarName(row);
-            double sliderVal = sourceTable.getSliderValue(row);
-            String jacobianStatus = sourceTable.getNewtonJacobianDebugStatus(row);
-            boolean jacobianApplied = sourceTable.wasNewtonJacobianApplied(row);
-            
-            md.append("### Row ").append(row).append(": ").append(wrapForKaTeX(outputName)).append("\n\n");
-            
-            // Mode description
-            String modeDesc;
-            switch (mode) {
-                case FLOW_MODE:
-                    modeDesc = "FLOW_MODE: current source " + wrapForKaTeX(outputName);
-                    break;
-                case PARAM_MODE:
-                    modeDesc = "PARAM_MODE: computed value only (ComputedValues registry, no MNA stamping)";
-                    break;
-                default:
-                    modeDesc = "VOLTAGE_MODE: drives labeled node via voltage source";
-                    break;
-            }
-            
-            md.append("- **Mode:** ").append(modeDesc).append("\n");
-            md.append("- **Classification:** ").append(classification).append("\n");
-            md.append("- **Equation:** ").append(wrapForKaTeX(equation)).append("\n");
-            
-            if (initialEq != null && !initialEq.trim().isEmpty()) {
-                md.append("- **Initial Equation (t=0):** ").append(wrapForKaTeX(initialEq)).append("\n");
-            }
-            
-            md.append("- **Current Value:** ").append(CircuitElm.getUnitText(value, "")).append("\n");
-            md.append("- **Slider:** ").append(wrapForKaTeX(sliderVar)).append(" = ").append(sliderVal).append("\n");
-            md.append("- **Cyclical (Global DAG):** ").append(isRowCyclical(sourceTable.getOutputName(row)) ? "YES" : "NO").append("\n");
-            md.append("- **Jacobian Path:** ").append(jacobianApplied ? "applied" : "fallback").append("\n");
-            md.append("- **Jacobian Debug:** ").append(wrapForKaTeX(jacobianStatus)).append("\n");
-            
-            // Hint from HintRegistry
-            String hint = HintRegistry.getHint(sourceTable.getOutputName(row));
-            if (hint != null && !hint.trim().isEmpty()) {
-                md.append("- **Hint:** ").append(hint).append("\n");
-            }
-            
-            // ComputedValues lookup (use source-only name)
+
             String sourceName = sourceTable.getOutputName(row);
+            String hint = HintRegistry.getHint(sourceName);
+            String hintStr = (hint != null && !hint.trim().isEmpty()) ? hint : "-";
+
             Double cv = ComputedValues.getComputedValue(sourceName);
-            if (cv != null) {
-                md.append("- **ComputedValues[").append(wrapForKaTeX(sourceName)).append("]:** ").append(cv).append("\n");
-            } else {
-                md.append("- **ComputedValues[").append(wrapForKaTeX(sourceName)).append("]:** *(not registered)*\n");
-            }
-            
-            // Labeled node lookup (use source-only name)
+            String cvStr = (cv != null) ? CircuitElm.getUnitText(cv.doubleValue(), "") : "-";
+
+            String nodeInfo = "-";
+            String voltageInfo = "-";
             if (sourceTable.isMnaMode()) {
-                Integer nodeNum = LabeledNodeElm.getByName(sourceName);
-                if (nodeNum != null && nodeNum >= 0) {
-                    md.append("- **LabeledNode[").append(wrapForKaTeX(sourceName)).append("]:** node #").append(nodeNum).append("\n");
-                    // Try to read voltage from sim
-                    double nodeVoltage = sim.getLabeledNodeVoltage(sourceName);
-                    md.append("- **Node Voltage:** ").append(CircuitElm.getUnitText(nodeVoltage, "V")).append("\n");
-                } else {
-                    md.append("- **LabeledNode:** *(not found)*\n");
+                Integer sourceNode = LabeledNodeElm.getByName(sourceName);
+                if (sourceNode != null && sourceNode >= 0) {
+                    nodeInfo = "#" + sourceNode;
+                    voltageInfo = CircuitElm.getUnitText(sim.getLabeledNodeVoltage(sourceName), "V");
                 }
-                
-                // For FLOW_MODE, show target node info too
-                if (mode == RowOutputMode.FLOW_MODE) {
+
+                if (sourceTable.getOutputMode(row) == RowOutputMode.FLOW_MODE) {
                     String targetName = sourceTable.getTargetNodeName(row);
-                    if (targetName != null && !targetName.trim().isEmpty() && !targetName.equalsIgnoreCase("gnd")) {
+                    if (targetName == null || targetName.trim().isEmpty() || targetName.trim().equalsIgnoreCase("gnd")) {
+                        nodeInfo = nodeInfo + " → gnd";
+                    } else {
                         Integer targetNode = LabeledNodeElm.getByName(targetName.trim());
                         if (targetNode != null && targetNode >= 0) {
-                            md.append("- **Target LabeledNode[").append(wrapForKaTeX(targetName)).append("]:** node #").append(targetNode).append("\n");
-                            md.append("- **Target Voltage:** ").append(
-                                CircuitElm.getUnitText(sim.getLabeledNodeVoltage(targetName.trim()), "V")).append("\n");
+                            nodeInfo = nodeInfo + " → #" + targetNode;
+                            voltageInfo = voltageInfo + " / " + CircuitElm.getUnitText(sim.getLabeledNodeVoltage(targetName.trim()), "V");
                         } else {
-                            md.append("- **Target LabeledNode[").append(wrapForKaTeX(targetName)).append("]:** *(not found)*\n");
+                            nodeInfo = nodeInfo + " → ?";
                         }
-                    } else {
-                        md.append("- **Target:** ground (0V)\n");
                     }
                 }
             }
-            
-            md.append("\n");
+
+            md.append("| ").append(row)
+              .append(" | ").append(wrapForKaTeX(truncate(hintStr, 36)))
+              .append(" | ").append(wrapForKaTeX(cvStr))
+              .append(" | ").append(wrapForKaTeX(nodeInfo))
+              .append(" | ").append(wrapForKaTeX(voltageInfo))
+              .append(" |\n");
         }
+        md.append("\n");
     }
     
     // =========================================================================

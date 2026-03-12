@@ -98,6 +98,7 @@ public class SFCRParser {
     private HashMap<String, String> initSettings = new HashMap<String, String>();
     private ArrayList<String> rawCircuitLines = new ArrayList<String>();
     private String infoContent = null;
+    private boolean actionElementFromActionBlock = false;
     
     // =========================================================================
     // Constructor & Public API
@@ -157,17 +158,28 @@ public class SFCRParser {
         scopeVariables.clear();
         scopeBlocks.clear();
         initSettings.clear();
+        rawCircuitLines.clear();
+        actionElementFromActionBlock = false;
+        sim.getSFCRDocumentState().clearBlockComments();
         currentY = 24;
         
         try {
             String[] lines = text.split("\n");
             int i = 0;
+            Vector<String> pendingBlockComments = new Vector<String>();
             
             while (i < lines.length) {
                 String line = lines[i].trim();
                 
-                // Skip empty lines and comments
-                if (line.isEmpty() || line.startsWith("#")) {
+                // Skip empty lines (preserve pending comments across blank separators)
+                if (line.isEmpty()) {
+                    i++;
+                    continue;
+                }
+
+                // Track full-line comments so they can be attached to the next element block
+                if (line.startsWith("#")) {
+                    pendingBlockComments.add(line);
                     i++;
                     continue;
                 }
@@ -181,34 +193,52 @@ public class SFCRParser {
                 
                 // Parse block markers
                 if (line.startsWith("@init")) {
+                    pendingBlockComments.clear();
                     i = parseInitBlock(lines, i);
                 } else if (line.startsWith("@action")) {
+                    pendingBlockComments.clear();
                     i = parseActionBlock(lines, i);
                 } else if (line.startsWith("@matrix")) {
+                    storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_MATRIX,
+                        extractBlockName(line, "@matrix"), pendingBlockComments);
                     i = parseMatrixBlock(lines, i);
                 } else if (line.startsWith("@equations")) {
+                    storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_EQUATIONS,
+                        extractBlockName(line, "@equations"), pendingBlockComments);
                     i = parseEquationsBlock(lines, i);
                 } else if (line.startsWith("@parameters")) {
+                    storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_EQUATIONS,
+                        extractBlockName(line, "@parameters"), pendingBlockComments);
                     i = parseParametersBlock(lines, i);
                 } else if (line.startsWith("@hints")) {
+                    pendingBlockComments.clear();
                     i = parseHintsBlock(lines, i);
                 } else if (line.startsWith("@scope")) {
                     if (looksLikeScopeBlock(lines, i)) {
+                        storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_SCOPE,
+                            extractScopeBlockName(line), pendingBlockComments);
                         i = parseScopeBlock(lines, i);
                     } else {
+                        pendingBlockComments.clear();
                         parseScopeLine(line);
                         i++;
                     }
                 } else if (line.startsWith("@circuit")) {
+                    pendingBlockComments.clear();
                     i = parseCircuitBlock(lines, i);
                 } else if (line.startsWith("@sankey")) {
+                    storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_SANKEY,
+                        "", pendingBlockComments);
                     i = parseSankeyBlock(lines, i);
                 } else if (line.startsWith("@info")) {
+                    pendingBlockComments.clear();
                     i = parseInfoBlock(lines, i);
                 } else if (line.contains("sfcr_matrix") || line.contains("<-")) {
                     // Try to parse R-style sfcr syntax
+                    pendingBlockComments.clear();
                     i = parseRStyleBlock(lines, i);
                 } else {
+                    pendingBlockComments.clear();
                     i++;
                 }
             }
@@ -383,6 +413,8 @@ public class SFCRParser {
 
     /** Parse @action block - timed target updates for ActionScheduler. */
     private int parseActionBlock(String[] lines, int startIndex) {
+        String headerLine = lines[startIndex].trim();
+        BlockPosition actionBlockPos = parseBlockHeader(headerLine, "@action");
         ActionScheduler scheduler = ActionScheduler.getInstance(sim);
         if (scheduler == null) {
             return startIndex + 1;
@@ -390,6 +422,29 @@ public class SFCRParser {
 
         // Replace existing schedule with block contents.
         scheduler.clearAll();
+
+        boolean hasAnyActionRows = false;
+        boolean actionElmEnabled = true;
+        boolean actionElmEnabledSpecified = false;
+        boolean actionElmSpecified = false;
+        int actionElmX1 = 704;
+        int actionElmY1 = 416;
+        int actionElmX2 = 720;
+        int actionElmY2 = 432;
+        int actionElmFlags = 0;
+        String actionElmTitle = "Action Schedule";
+
+        if (actionBlockPos != null && actionBlockPos.name != null && !actionBlockPos.name.isEmpty() &&
+                !actionBlockPos.name.equalsIgnoreCase("action")) {
+            actionElmTitle = actionBlockPos.name.replace('_', ' ');
+        }
+        if (actionBlockPos != null && actionBlockPos.hasPosition()) {
+            actionElmX1 = actionBlockPos.x;
+            actionElmY1 = actionBlockPos.y;
+            actionElmX2 = actionElmX1 + 16;
+            actionElmY2 = actionElmY1 + 16;
+            actionElmSpecified = true;
+        }
 
         int i = startIndex + 1;
         while (i < lines.length) {
@@ -413,6 +468,25 @@ public class SFCRParser {
                 try {
                     if (key.equals("pausetime") || key.equals("pause_time")) {
                         scheduler.setPauseTime(Double.parseDouble(value));
+                    } else if (key.equals("enabled") || key.equals("actionelementenabled") || key.equals("action_element_enabled")) {
+                        actionElmEnabled = parseBoolean(value, true);
+                        actionElmEnabledSpecified = true;
+                    } else if (key.equals("name") || key.equals("title")) {
+                        if (value != null && value.trim().length() > 0) {
+                            actionElmTitle = value.trim().replace('_', ' ');
+                        }
+                    } else if (key.equals("element") || key.equals("actionelement") || key.equals("action_element")) {
+                        String[] parts = value.trim().split("\\s+");
+                        if (parts.length >= 4) {
+                            actionElmX1 = Integer.parseInt(parts[0]);
+                            actionElmY1 = Integer.parseInt(parts[1]);
+                            actionElmX2 = Integer.parseInt(parts[2]);
+                            actionElmY2 = Integer.parseInt(parts[3]);
+                            if (parts.length >= 5) {
+                                actionElmFlags = Integer.parseInt(parts[4]);
+                            }
+                            actionElmSpecified = true;
+                        }
                     } else if (key.equals("animationtime") || key.equals("animation_time")) {
                         // legacy key: ignored
                     }
@@ -458,6 +532,7 @@ public class SFCRParser {
                                 numericValue, "", postText, enabled, stop);
                         action.valueExpression = expression;
                         scheduler.addAction(action);
+                        hasAnyActionRows = true;
                     } catch (Exception e) {
                         CirSim.console("SFCRParser: Invalid @action row: " + line);
                     }
@@ -467,7 +542,42 @@ public class SFCRParser {
             i++;
         }
 
+        if (hasAnyActionRows || actionElmEnabledSpecified || actionElmSpecified) {
+            ActionTimeElm actionElm = findActionTimeElm();
+            if (actionElm == null) {
+                actionElm = new ActionTimeElm(actionElmX1, actionElmY1, actionElmX2, actionElmY2, actionElmFlags, null);
+                actionElm.setPoints();
+                sim.assignPersistentUid(actionElm, null);
+                sim.elmList.addElement(actionElm);
+                createdElements.add(actionElm);
+            } else if (actionElmSpecified) {
+                actionElm.x = actionElmX1;
+                actionElm.y = actionElmY1;
+                actionElm.x2 = actionElmX2;
+                actionElm.y2 = actionElmY2;
+                actionElm.flags = actionElmFlags;
+                actionElm.setPoints();
+            }
+
+            actionElm.title = actionElmTitle;
+
+            if (actionElmEnabledSpecified || actionElmSpecified || hasAnyActionRows) {
+                actionElm.enabled = actionElmEnabled;
+            }
+            actionElementFromActionBlock = true;
+        }
+
         return i;
+    }
+
+    private ActionTimeElm findActionTimeElm() {
+        for (int idx = 0; idx < sim.elmList.size(); idx++) {
+            CircuitElm ce = sim.getElm(idx);
+            if (ce instanceof ActionTimeElm) {
+                return (ActionTimeElm) ce;
+            }
+        }
+        return null;
     }
     
     /** Parse @matrix block - creates SFCTableElm. */
@@ -1051,6 +1161,12 @@ public class SFCRParser {
             
             // Skip empty lines and comments
             if (line.isEmpty() || line.startsWith("#")) {
+                i++;
+                continue;
+            }
+
+            // If @action already carried ActionTimeElm state, skip duplicate raw 432 line.
+            if (actionElementFromActionBlock && line.startsWith("432 ")) {
                 i++;
                 continue;
             }
@@ -1658,6 +1774,43 @@ public class SFCRParser {
         }
         
         return cells.toArray(new String[0]);
+    }
+
+    /** Persist pending leading # comments for a block key and clear accumulator. */
+    private void storePendingBlockComments(String blockType, String blockName, Vector<String> pendingComments) {
+        if (pendingComments == null || pendingComments.size() == 0) {
+            return;
+        }
+        String key = SFCRBlockCommentRegistry.makeKey(blockType, blockName);
+        sim.getSFCRDocumentState().setBlockComments(key, pendingComments);
+        pendingComments.clear();
+    }
+
+    /** Extract scope block name from header, ignoring known key=value attributes. */
+    private String extractScopeBlockName(String headerLine) {
+        if (headerLine == null) {
+            return "scope";
+        }
+        String rest = headerLine.substring(6).trim();
+        if (rest.isEmpty()) {
+            return "scope";
+        }
+        String[] parts = rest.split("\\s+");
+        StringBuilder nameBuilder = new StringBuilder();
+        for (int i = 0; i < parts.length; i++) {
+            String part = parts[i];
+            if (part.toLowerCase().startsWith("position=")) {
+                continue;
+            }
+            if (nameBuilder.length() > 0) {
+                nameBuilder.append(" ");
+            }
+            nameBuilder.append(part);
+        }
+        if (nameBuilder.length() == 0) {
+            return "scope";
+        }
+        return nameBuilder.toString();
     }
 
     /** Parse flexible boolean strings (true/false, 1/0, yes/no). */

@@ -1274,7 +1274,11 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
 
         rowData.lastNewtonJacobianApplied = true;
-        rowData.lastNewtonJacobianStatus = "applied (refs=" + refs.size() + ")";
+        if (EquationTableJacobianHelper.hasHistoricalRefSyntax(rowData.equation)) {
+            rowData.lastNewtonJacobianStatus = "applied (refs=" + refs.size() + "; hist ok)";
+        } else {
+            rowData.lastNewtonJacobianStatus = "applied (refs=" + refs.size() + ")";
+        }
         return true;
     }
 
@@ -1337,7 +1341,11 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
 
         rowData.lastNewtonJacobianApplied = true;
-        rowData.lastNewtonJacobianStatus = "applied flow jacobian (refs=" + refs.size() + ")";
+        if (EquationTableJacobianHelper.hasHistoricalRefSyntax(rowData.equation)) {
+            rowData.lastNewtonJacobianStatus = "applied flow jacobian (refs=" + refs.size() + "; hist ok)";
+        } else {
+            rowData.lastNewtonJacobianStatus = "applied flow jacobian (refs=" + refs.size() + ")";
+        }
         return true;
     }
     
@@ -1816,7 +1824,10 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             return true;
         }
 
-        return false;
+        // Keep initial seeds fixed for the full t=0 solve, matching sfcr-style
+        // period-1 initialization semantics.
+        restampAppliedInitialValue(row);
+        return true;
     }
 
     /**
@@ -1870,6 +1881,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         
         // Register immediately for other elements/rows to use
         registerOutputValue(row, initialValue);
+        registerInitialSeedValue(row, initialValue);
         if (mode == RowOutputMode.FLOW_MODE) {
             registerFlowValue(row, initialValue);
         }
@@ -1882,6 +1894,36 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
         
         rows[row].initialValueApplied = true;
+    }
+
+    /**
+     * Re-stamp and re-register an already-applied initial value during t=0 subiterations.
+     */
+    private void restampAppliedInitialValue(int row) {
+        double initialValue = rows[row].outputValue;
+
+        if (isMnaMode() && rows[row].rowVoltSource >= 0) {
+            int vn = voltSource + rows[row].rowVoltSource + sim.nodeList.size();
+            sim.stampRightSide(vn, initialValue);
+        }
+
+        registerOutputValue(row, initialValue);
+        if (rows[row].outputMode == RowOutputMode.FLOW_MODE) {
+            registerFlowValue(row, initialValue);
+        }
+    }
+
+    /**
+     * Publish explicit sfcr-style initial seed aliases for lag fallback.
+     */
+    private void registerInitialSeedValue(int row, double value) {
+        if (!isValidOutputName(row)) {
+            return;
+        }
+
+        String outputName = rows[row].outputName.trim();
+        ComputedValues.setComputedValue(outputName + "_init", value, this);
+        ComputedValues.setComputedValue(outputName + "init", value, this);
     }
     
     /**

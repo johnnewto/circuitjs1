@@ -1,7 +1,13 @@
 # CircuitJS1 TODOs
-
+## add equation table prefix or suffix system
+so that equations can be not duplicated and  written without _UK, _US
 ## Add warning to action editor
 for targets that are nt adjustable
+## allow SFCR to save as SFCR
+as well as table
+
+## look at separating out compute
+so to make it the backend for page display, running a subset of  R code
 
 ## Flows in equation table
 make it so that each flow has a 1 ohm resistor so that value and flow are the same, investigate how this could simplify eval.

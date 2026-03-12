@@ -26,6 +26,7 @@ The feature consists of multiple integrated components:
 | Escape Sequence | Symbol | Unicode |
 |----------------|--------|---------|
 | `\alpha`       | α      | U+03B1  |
+| ``\alpha`       | α      | U+03B1  |
 | `\beta`        | β      | U+03B2  |
 | `\gamma`       | γ      | U+03B3  |
 | `\delta`       | δ      | U+03B4  |

@@ -8,10 +8,12 @@ This debug circuit compares two delay patterns side-by-side:
 
 1) lag-based delay (uses Expr lag() history)
 2) stock-based first-order delay (dY/dt = (X-Y)/tau)
+3) delay() first-order delay shorthand
 
 Notes:
 - `lag(x,1)` in this build uses history + smoothing behavior (not ideal pure transport).
 - stock version is a classic first-order exponential delay with time constant `tau`.
+- `delay(x,tau)` is shorthand for the same first-order stock dynamics.
 - time unit is years, so `1` means 1 year.
 @end
 
@@ -23,6 +25,9 @@ Notes:
   showVolts: true
   showValues: true
   showPower: false
+  autoAdjustTimestep: false
+  equationTableTolerance: 0.0001
+  infoViewerUpdateIntervalMs: 200
 @end
 
 @equations Inputs x=96 y=96
@@ -32,19 +37,26 @@ Notes:
   sine_{in} ~ sin(2 * pi * freq * t) ; mode=voltage ; slider=d ; sliderValue=0.5  # Input sine signal
 @end
 
-@equations Lag.Based x=368 y=96
+@equations Stock.Based x=592 y=96
+  step_{stock1y} ~ integrate ( (step_{in} - step_{stock1y}) / tau) ; mode=voltage ; slider=a ; sliderValue=0.5  # Stock-based delayed step
+  sine_{stock1y} ~ integrate ((sine_{in} - sine_{stock1y}) / tau ) ; mode=voltage ; slider=b ; sliderValue=0.5  # Stock-based delayed sine
+@end
+
+@equations Lag.Based x=376 y=96
   step_{lag1y} ~ lag(step_{in}, 1) ; mode=voltage ; slider=a ; sliderValue=0.5  # 1-year lag() delayed step
   sine_{lag1y} ~ lag(sine_{in}, 1) ; mode=voltage ; slider=b ; sliderValue=0.5  # 1-year lag() delayed sine
 @end
 
-@equations Stock.Based x=656 y=96
-  step_{stock1y} ~ (step_{in} - step_{stock1y}) / tau ; mode=stock ; slider=a ; sliderValue=0.5  # Stock-based delayed step
-  sine_{stock1y} ~ (sine_{in} - sine_{stock1y}) / tau ; mode=stock ; slider=b ; sliderValue=0.5  # Stock-based delayed sine
+@equations Delay.Function x=968 y=96
+  step_{delay1y} ~ delay(step_{in}, tau) ; mode=voltage ; slider=a ; sliderValue=0.5  # delay() shorthand delayed step
+  sine_{delay1y} ~ delay(sine_{in}) ; mode=voltage ; slider=b ; sliderValue=0.5  # delay() shorthand delayed sine
 @end
 
 @equations Error.Check x=96 y=208
   step_{errLagMinusStock} ~ step_{lag1y} - step_{stock1y} ; mode=voltage ; slider=a ; sliderValue=0.5  # Difference between lag and stock delay for step input
   sine_{errLagMinusStock} ~ sine_{lag1y} - sine_{stock1y} ; mode=voltage ; slider=b ; sliderValue=0.5  # Difference between lag and stock delay for sine input
+  step_{errDelayMinusStock} ~ step_{delay1y} - step_{stock1y} ; mode=voltage ; slider=c ; sliderValue=0.5  # Difference between delay() and stock delay for step input
+  sine_{errDelayMinusStock} ~ sine_{delay1y} - sine_{stock1y} ; mode=voltage ; slider=d ; sliderValue=0.5  # Difference between delay() and stock delay for sine input
 @end
 
 @hints
@@ -52,21 +64,60 @@ Notes:
   freq: Sine frequency in cycles per year
   step_{in}: Input step signal
   sine_{in}: Input sine signal
-  step_{lag1y}: 1-year lag() delayed step
-  sine_{lag1y}: 1-year lag() delayed sine
   step_{stock1y}: Stock-based delayed step
   sine_{stock1y}: Stock-based delayed sine
+  step_{lag1y}: 1-year lag() delayed step
+  sine_{lag1y}: 1-year lag() delayed sine
+  step_{delay1y}: delay() shorthand delayed step
+  sine_{delay1y}: delay() shorthand delayed sine
   step_{errLagMinusStock}: Difference between lag and stock delay for step input
   sine_{errLagMinusStock}: Difference between lag and stock delay for sine input
+  step_{errDelayMinusStock}: Difference between delay() and stock delay for step input
+  sine_{errDelayMinusStock}: Difference between delay() and stock delay for sine input
 @end
 
 @circuit
-x 96 32 453 35 4 18 Delay\sdebug:\s1-year\sdelay\sdirect\scomparison 808080FF
-x 96 56 493 59 4 12 Left:\sinputs,\sMiddle:\slag(x,1),\sRight:\sstock\sfirst-order\sdelay\s(dY/dt\q(X-Y)/tau) 808080FF
-207 768 256 832 256 164 sine_{stock1y}
-207 768 208 832 208 164 step_{stock1y}
-403 544 288 800 416 0 6_2_0_4614_1.25_0.1_-1_4_7_0_9_0_10_0
-207 560 208 624 208 164 step_{in}
-207 560 256 624 256 164 sine_{in}
-431 624 0 640 32 0 10 true false
+x 96 32 453 35 4 18 Delay\sdebug:\s1-year\sdelay\sdirect\scomparison 808080FF U:t9AwIy
+x 96 56 493 59 4 12 Left:\sinputs,\sMiddle:\slag(x,1),\sRight:\sstock\sfirst-order\sdelay\s(dY/dt\q(X-Y)/tau) 808080FF U:UKdoLq
+207 768 256 832 256 164 sine_{stock1y} U:X_RSz0
+207 768 208 832 208 164 step_{stock1y} U:8o3IxH
+207 560 208 624 208 164 step_{in} U:LiHnqQ
+207 560 256 624 256 164 sine_{in} U:ik41TV
+431 624 0 640 32 0 10 true false U:cjaDwb
+207 1024 208 1088 208 164 sine_{delay1y} U:cLHmUA
+207 1024 256 1088 256 164 step_{delay1y} U:sGNvqL
+@end
+
+@scope Embedded_Scope_1 position=-1
+  x1: 528
+  y1: 336
+  x2: 800
+  y2: 480
+  elmUid: i0oXc_
+  speed: 8
+  flags: x2001206
+  source: uid:8o3IxH value:0
+  trace: uid:X_RSz0 value:0
+@end
+@scope Embedded_Scope_2 position=-1
+  x1: 192
+  y1: 336
+  x2: 448
+  y2: 480
+  elmUid: xfv68y
+  speed: 8
+  flags: x2001206
+  source: uid:LiHnqQ value:0
+  trace: uid:ik41TV value:0
+@end
+@scope Embedded_Scope_3 position=-1
+  x1: 944
+  y1: 336
+  x2: 1200
+  y2: 480
+  elmUid: nV7Iwj
+  speed: 8
+  flags: x2001206
+  source: uid:cLHmUA value:0
+  trace: uid:sGNvqL value:0
 @end

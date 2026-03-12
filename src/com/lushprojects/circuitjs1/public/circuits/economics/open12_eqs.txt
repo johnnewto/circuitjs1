@@ -1,0 +1,184 @@
+# CircuitJS1 SFCR Export
+# Generated from circuit simulation
+
+@init
+  timestep: 0.01
+  voltageUnit: $
+  timeUnit: yr
+  showDots: false
+  showVolts: true
+  showValues: true
+  showPower: false
+  autoAdjustTimestep: false
+  equationTableTolerance: 0.0001
+  infoViewerUpdateIntervalMs: 200
+@end
+
+@equations open12_eqs x=352 y=264
+  yd_uk ~ (y_uk + r_uk[-1]*b_ukuk_d[-1] + xr_us*r_us[-1]*b_ukus_s[-1])*(1 - \theta_uk) + (xr_us - xr_us[-1])*b_ukus_s[-1] ; mode=voltage ; sliderValue=0  # Disposable income in UK - eq. 12.1
+  yd_hs_uk ~ yd_uk + (xr_us - xr_us[-1])*b_ukus_s[-1] ; mode=param ; sliderValue=0  # Haig-Simons disposable income in UK - eq. 12.2
+  v_uk ~ v_uk[-1] + yd_uk - cons_uk ; mode=param ; sliderValue=0  # Wealth accumulation in UK - eq. 12.3
+  yd_us ~ (y_us + r_us[-1]*b_usus_d[-1] + xr_uk*r_uk[-1]*b_usuk_s[-1])*(1 - \theta_us) + (xr_uk - xr_uk[-1])*b_usuk_s[-1] ; mode=voltage ; sliderValue=0  # Disposable income in US - eq. 12.4
+  yd_hs_us ~ yd_us + diff(xr_uk)*b_usuk_s[-1] ; mode=param ; sliderValue=0  # Haig-Simons disposable income in US - eq. 12.5
+  v_us ~ v_us[-1] + yd_us - cons_us ; mode=param ; sliderValue=0  # Wealth accumulation in US - eq. 12.6
+  t_uk ~ \theta_uk*(y_uk + r_uk[-1]*b_ukuk_d[-1] + xr_us*r_us[-1]*b_ukus_s[-1]) ; mode=param ; sliderValue=0  # Taxes in UK - eq. 12.7
+  t_us ~ \theta_us*(y_us + r_us[-1]*b_usus_d[-1] + xr_uk*r_uk[-1]*b_usuk_s[-1]) ; mode=param ; sliderValue=0  # Taxes in US - eq. 12.8
+  # Equations 12.9 & 12.10 are dropped in favour of equations 12.53 & 12.54
+  f_cb_uk ~ r_uk[-1]*b_cb_ukuk_d[-1] + r_us[-1]*b_cb_ukus_s[-1]*xr_us ; mode=param ; sliderValue=0  # Profits of Central Bank in UK - eq. 12.11 - typo in the book for r_us
+  f_cb_us ~ r_us[-1]*b_cb_usus_d[-1] ; mode=param ; sliderValue=0  # Profits of Central Bank in US - eq. 12.12
+  b_uk_s ~ b_uk_s[-1] + g_uk + r_uk[-1]*b_uk_s[-1] - t_uk - f_cb_uk ; mode=param ; sliderValue=0  # Government budget constraint - UK - eq. 12.13
+  b_us_s ~ b_us_s[-1] + g_us + r_us[-1]*b_us_s[-1] - t_us - f_cb_us ; mode=param ; sliderValue=0  # Government budget constraint - US - eq. 12.14
+  cab_uk ~ x_uk - im_uk + xr_us*r_us[-1]*b_ukus_s[-1] - r_uk[-1]*b_usuk_s[-1] + r_us[-1]*b_cb_ukus_s[-1]*xr_us ; mode=param ; sliderValue=0  # Current account balance - UK - eq. 12.15
+  kab_uk ~ kabp_uk - (xr_us*(b_cb_ukus_s - b_cb_ukus_s[-1]) + pg_uk*(or_uk - or_uk[-1])) ; mode=param ; sliderValue=0  # Capital account balance in UK - eq. 12.16
+  cab_us ~ x_us - im_us + xr_uk*r_uk[-1]*b_usuk_s[-1] - r_us[-1]*b_ukus_s[-1] - r_us[-1]*b_cb_ukus_s[-1] ; mode=param ; sliderValue=0  # Current account balance in US - eq. 12.17
+  kab_us ~ kabp_us + (b_cb_ukus_s - b_cb_ukus_s[-1]) - pg_us*(or_us - or_us[-1]) ; mode=param ; sliderValue=0  # Capital account balance in US - eq. 12.18
+  kabp_uk ~ - (b_ukus_s - b_ukus_s[-1])*xr_us + (b_usuk_s - b_usuk_s[-1]) ; mode=param ; sliderValue=0  # Capital account balance in UK, net of official transactions - eq. 12.19
+  kabp_us ~ - (b_usuk_s - b_usuk_s[-1])*xr_uk + (b_ukus_s - b_ukus_s[-1]) ; mode=param ; sliderValue=0  # Capital account balance in US, net of official transactions - eq. 12.20
+  # TRADE
+  pm_uk ~ exp(nu0m + nu1m*log(py_us) + (1 - nu1m)*log(py_uk) - nu1m*log(xr_uk)) ; mode=voltage ; sliderValue=0  # Import prices in UK - eq. 12.21
+  px_uk ~ exp(nu0x + nu1x*log(py_us) + (1 - nu1x)*log(py_uk) - nu1x*log(xr_uk)) ; mode=voltage ; sliderValue=0  # Export prices in UK - eq. 12.22
+  px_us ~ pm_uk*xr_uk ; mode=voltage ; sliderValue=0  # Export prices in US - eq. 12.23
+  pm_us ~ px_uk*xr_uk ; mode=voltage ; sliderValue=0  # Import prices in US - eq. 12.24
+  x_k_uk ~ exp(eps0 - eps1*log(pm_us/py_us) + eps2*log(y_k_us)) ; mode=voltage ; sliderValue=0  # Real exports from UK - eq. 12.25 - depends on current relative price
+  im_k_uk ~ exp(mu0 - mu1*log(pm_uk[-1]/py_uk[-1]) + mu2*log(y_k_uk)) ; mode=voltage ; sliderValue=0  # Real imports of UK - eq. 12.26
+  x_k_us ~ im_k_uk ; mode=voltage ; sliderValue=0  # Real exports from US - eq. 12.27
+  im_k_us ~ x_k_uk ; mode=voltage ; sliderValue=0  # Real imports of US - eq. 12.28
+  x_uk ~ x_k_uk*px_uk ; mode=voltage ; sliderValue=0  # Exports of UK - eq. 12.29
+  x_us ~ x_k_us*px_us ; mode=voltage ; sliderValue=0  # Exports of US - eq. 12.30
+  im_uk ~ im_k_uk*pm_uk ; mode=voltage ; sliderValue=0  # Imports of UK - eq. 12.31
+  im_us ~ im_k_us*pm_us ; mode=voltage ; sliderValue=0  # Imports of US - eq. 12.32
+@end
+
+@equations open12b_eqs x=-176 y=264
+  # INCOME AND EXPENDITURE
+  v_k_uk ~ v_uk/pds_uk ; mode=param ; sliderValue=0  # Real wealth in UK - eq. 12.33
+  v_k_us ~ v_us/pds_us ; mode=param ; sliderValue=0  # Real wealth in US - eq. 12.34
+  ydhs_k_uk ~ yd_uk/pds_uk - v_k_uk[-1]*(pds_uk - pds_uk[-1])/pds_uk ; mode=voltage ; sliderValue=0  # Real Haig-Simons disposable income in UK - eq. 12.35
+  ydhs_k_us ~ yd_us/pds_us - v_k_us[-1]*(pds_us - pds_us[-1])/pds_us ; mode=voltage ; sliderValue=0  # Real Haig-Simons disposable income in US - eq. 12.36
+  c_k_uk ~ \alpha_1_uk*ydhse_k_uk + \alpha_2_uk*v_k_uk[-1] ; mode=voltage ; sliderValue=0  # Real consumption in UK - eq. 12.37
+  c_k_us ~ \alpha_1_us*ydhse_k_us + \alpha_2_us*v_k_us[-1] ; mode=voltage ; sliderValue=0  # Real consumption in US - eq. 12.38
+  ydhse_k_uk ~ (ydhs_k_uk + ydhs_k_uk[-1])/2 ; mode=voltage ; sliderValue=0  # Expected real Haig-Simons disposable income in UK - eq. 12.39
+  ydhse_k_us ~ (ydhs_k_us + ydhs_k_us[-1])/2 ; mode=voltage ; sliderValue=0  # Expected real Haig-Simons disposable income in US - eq. 12.40
+  s_k_uk ~ c_k_uk + g_k_uk + x_k_uk ; mode=voltage ; sliderValue=0  # Real sales in UK - eq. 12.41
+  s_k_us ~ c_k_us + g_k_us + x_k_us ; mode=voltage ; sliderValue=0  # Real sales in US - eq. 12.42
+  s_uk ~ s_k_uk*ps_uk ; mode=voltage ; sliderValue=0  # Value of sales in UK - eq. 12.43
+  s_us ~ s_k_us*ps_us ; mode=voltage ; sliderValue=0  # Value of sales in US - eq. 12.44
+  ps_uk ~ (1 + phi_uk)*(w_uk*n_uk + im_uk)/s_k_uk ; mode=voltage ; sliderValue=0  # Price of sales in UK - eq. 12.45
+  ps_us ~ (1 + phi_us)*(w_us*n_us + im_us)/s_k_us ; mode=voltage ; sliderValue=0  # Price of sales in US - eq. 12.46
+  pds_uk ~ (s_uk - x_uk)/(s_k_uk - x_k_uk) ; mode=voltage ; sliderValue=0  # Price of domestic sales in UK - eq. 12.47
+  pds_us ~ (s_us - x_us)/(s_k_us - x_k_us) ; mode=voltage ; sliderValue=0  # Price of domestic sales in US - eq. 12.48
+  ds_uk ~ s_uk - x_uk ; mode=param ; sliderValue=0  # Domestic sales in UK - eq. 12.49
+  ds_us ~ s_us - x_us ; mode=param ; sliderValue=0  # Domestic sales in US - eq. 12.50
+  ds_k_uk ~ c_k_uk + g_k_uk ; mode=param ; sliderValue=0  # Real domestic sales in UK - eq. 12.51
+  ds_k_us ~ c_k_us + g_k_us ; mode=param ; sliderValue=0  # Real domestic sales in US - eq. 12.52
+  y_uk ~ s_uk - im_uk ; mode=voltage ; sliderValue=0  # Value of output in UK - eq. 12.53
+  y_us ~ s_us - im_us ; mode=voltage ; sliderValue=0  # Value of output in US - eq. 12.54
+  y_k_uk ~ s_k_uk - im_k_uk ; mode=voltage ; sliderValue=0  # Value of real output in UK - eq. 12.55
+  y_k_us ~ s_k_us - im_k_us ; mode=voltage ; sliderValue=0  # Value of real output in US - eq. 12.56
+  py_uk ~ y_uk/y_k_uk ; mode=voltage ; sliderValue=0  # Price of output in UK - eq. 12.57
+  py_us ~ y_us/y_k_us ; mode=voltage ; sliderValue=0  # Price of output in US - eq. 12.58
+  cons_uk ~ c_k_uk*pds_uk ; mode=param ; sliderValue=0  # Consumption in UK - eq. 12.59
+  cons_us ~ c_k_us*pds_us ; mode=param ; sliderValue=0  # Consumption in US - eq. 12.60
+  g_uk ~ g_k_uk*pds_uk ; mode=param ; sliderValue=0  # Government expenditure in UK - eq. 12.61
+  g_us ~ g_k_us*pds_us ; mode=param ; sliderValue=0  # Government expenditure in US - eq. 12.62
+  # Note: tax definitions in the book as eqns 12.63 & 12.64 are already as eqns 12.7 & 12.8
+  n_uk ~ y_k_uk/pr_uk ; mode=voltage ; sliderValue=0  # Employment in UK - eq. 12.65
+  n_us ~ y_k_us/pr_us ; mode=voltage ; sliderValue=0  # Employment in US - eq. 12.66
+@end
+
+@equations open12c_eqs x=-912 y=264
+  # ASSET DEMANDS
+  b_ukuk_d ~ v_uk*(lambda10 + lambda11*r_uk - lambda12*(r_us + dxre_us)) ; mode=param ; sliderValue=0  # Demand for UK bills in UK - eq. 12.67
+  b_ukus_d ~ v_uk*(lambda20 - lambda21*r_uk + lambda22*(r_us + dxre_us)) ; mode=param ; sliderValue=0  # Demand for US bills in UK - 12.68F
+  # Base interest rates r_uk - eq. 12.68R
+  # r_uk ~ (lambda20 + lambda22*(r_us + dxre_us) - b_ukus_d/v_uk)/lambda21,
+  h_uk_d ~ v_uk - b_ukuk_d - b_ukus_d ; mode=param ; sliderValue=0  # Demand for money in UK - eq. 12.69
+  b_usus_d ~ v_us*(lambda40 + lambda41*r_us - lambda42*(r_uk + dxre_uk)) ; mode=param ; sliderValue=0  # Demand for US bills in US - eq. 12.70
+  b_usuk_d ~ v_us*(lambda50 - lambda51*r_us + lambda52*(r_uk + dxre_uk)) ; mode=param ; sliderValue=0  # Demand for UK bills in US - eq. 12.71
+  h_us_d ~ v_us - b_usus_d - b_usuk_d ; mode=param ; sliderValue=0  # Demand for money in US - eq. 12.72
+  # Note - we follow eqns numbering in the text...
+  # Expected change in UK exchange rate - eq. 12.75
+  # dxre_uk ~ (xre_uk - xr_uk[-1])/xr_uk
+  # Expected change in US exchange rate - eq. 12.76
+  # dxre_us ~ (xre_us - xr_us[-1])/xr_us
+  # ASSET SUPPLIES
+  h_us_s ~ h_us_d ; mode=param ; sliderValue=0  # Supply of cash in US - eq. 12.77
+  b_usus_s ~ b_usus_d ; mode=param ; sliderValue=0  # Supply of US bills to CountryN - eq. 12.78
+  b_cb_usus_s ~ b_cb_usus_d ; mode=param ; sliderValue=0  # Supply of US bills to US Central bank - eq. 12.79
+  h_uk_s ~ h_uk_d ; mode=param ; sliderValue=0  # Suply of cash in UK - eq. 12.80
+  b_ukuk_s ~ b_ukuk_d ; mode=param ; sliderValue=0  # Bills issued by US acquired by US - eq. 12.81
+  b_cb_ukuk_s ~ b_cb_ukuk_d ; mode=param ; sliderValue=0  # Supply of UK bills to UK Central bank - eq. 12.82 (MODLER MACRO VERSION)
+  # BOOK VERSION - eq. 12.82A
+  # b_cb_ukuk_s ~ b_uk_s - b_ukuk_s - b_usuk_s
+  b_cb_usus_d ~ b_cb_usus_d[-1] + (h_us_s - h_us_s[-1]) - (or_us - or_us[-1])*pg_us ; mode=param ; sliderValue=0  # Balance sheet of US Central bank - eq. 12.83 - expressed as changes
+  b_cb_ukuk_d ~ b_cb_ukuk_d[-1] + (h_uk_s - h_uk_s[-1]) - (b_cb_ukus_s - b_cb_ukus_s[-1])*xr_us - (or_uk - or_uk[-1])*pg_uk ; mode=param ; sliderValue=0  # Balance sheet of UK Central bank - eq. 12.84
+  pg_uk ~ pg_us/xr_uk ; mode=param ; sliderValue=0  # Price of gold is equal in the two countries - eq. 12.85
+  xr_us ~ 1/xr_uk ; mode=param ; sliderValue=0  # US exchange rate - eq. 12.86
+  b_usuk_s ~ b_usuk_d*xr_us ; mode=param ; sliderValue=0  # Equilibrium condition for bills issued by UK acquired by US - eq. 12.87
+  b_cb_ukus_d ~ b_cb_ukus_s*xr_us ; mode=param ; sliderValue=0  # Equilibrium condition for bills issued by US acquired by UK Central bank - eq. 12.88
+  # UK Exchange rate - eq. 12.89FL - xr_uk is now exogenous
+  # xr_uk ~ b_ukus_s/b_ukus_d
+  psbr_uk ~ g_uk + r_uk[-1]*b_uk_s[-1] - t_uk - f_cb_uk ; mode=param ; sliderValue=0  # Government deficit in the UK
+  psbr_us ~ g_us + r_us[-1]*b_us_s[-1] - t_us - f_cb_us ; mode=param ; sliderValue=0  # Government deficit in the US
+  nafa_uk ~ psbr_uk + cab_uk ; mode=param ; sliderValue=0  # Net accumulation of financial assets in the UK
+  nafa_us ~ psbr_us + cab_us ; mode=param ; sliderValue=0  # Net accumulation of financial assets in the US
+  b_cb_ukuk_sa ~ b_uk_s - b_ukuk_s - b_usuk_s ; mode=param ; sliderValue=0  # Hidden equation
+  nwcb_uk ~ -h_uk_d + b_cb_ukuk_d + b_cb_ukus_d * xr_us + or_uk * pg_uk ; mode=param ; sliderValue=0  # Net wealth of CBUK
+  b_ukus_s ~ xr_uk*b_ukus_d ; mode=param ; sliderValue=0  # Demand of UK Bills in US
+  b_cb_ukus_s ~ b_us_s - b_usus_s - b_cb_usus_d - b_ukus_s ; mode=param ; sliderValue=0  # Supply of UK bills to us
+@end
+
+@equations s_open12_ext x=-1104 y=248
+  \alpha_1_uk ~ 0.75 ; mode=param ; sliderValue=0
+  \alpha_1_us ~ 0.75 ; mode=param ; sliderValue=0
+  \alpha_2_uk ~ 0.13333 ; mode=param ; sliderValue=0
+  \alpha_2_us ~ 0.13333 ; mode=param ; sliderValue=0
+  eps0 ~ - 2.1 ; mode=param ; sliderValue=0
+  eps1 ~ 0.7 ; mode=param ; sliderValue=0
+  eps2 ~ 1 ; mode=param ; sliderValue=0
+  lambda10 ~ 0.7 ; mode=param ; sliderValue=0
+  lambda11 ~ 5 ; mode=param ; sliderValue=0
+  lambda12 ~ 5 ; mode=param ; sliderValue=0
+  lambda20 ~ 0.25 ; mode=param ; sliderValue=0
+  lambda21 ~ 5 ; mode=param ; sliderValue=0
+  lambda22 ~ 5 ; mode=param ; sliderValue=0
+  lambda40 ~ 0.7 ; mode=param ; sliderValue=0
+  lambda41 ~ 5 ; mode=param ; sliderValue=0
+  lambda42 ~ 5 ; mode=param ; sliderValue=0
+  lambda50 ~ 0.25 ; mode=param ; sliderValue=0
+  lambda51 ~ 5 ; mode=param ; sliderValue=0
+  lambda52 ~ 5 ; mode=param ; sliderValue=0
+  mu0 ~ - 2.1 ; mode=param ; sliderValue=0
+  mu1 ~ 0.7 ; mode=param ; sliderValue=0
+  mu2 ~ 1 ; mode=param ; sliderValue=0
+  nu0m ~ - 0.00001 ; mode=param ; sliderValue=0
+  nu0x ~ - 0.00001 ; mode=param ; sliderValue=0
+  nu1m ~ 0.7 ; mode=param ; sliderValue=0
+  nu1x ~ 0.5 ; mode=param ; sliderValue=0
+  phi_uk ~ 0.2381 ; mode=param ; sliderValue=0
+  phi_us ~ 0.2381 ; mode=param ; sliderValue=0
+  \theta_uk ~ 0.2 ; mode=param ; sliderValue=0
+  \theta_us ~ 0.2 ; mode=param ; sliderValue=0
+  # Exogenous variables
+  # b_cb_ukus_s ~ 0.02031,
+  dxre_us ~ 0 ; mode=param ; sliderValue=0
+  g_k_uk ~ 16 ; mode=param ; sliderValue=0
+  g_k_us ~ 16 ; mode=param ; sliderValue=0
+  or_uk ~ 7 ; mode=param ; sliderValue=0
+  pg_us ~ 1 ; mode=param ; sliderValue=0
+  pr_uk ~ 1.3333 ; mode=param ; sliderValue=0
+  pr_us ~ 1.3333 ; mode=param ; sliderValue=0
+  # r_uk ~ 0.03,
+  r_us ~ 0.03 ; mode=param ; sliderValue=0
+  w_uk ~ 1 ; mode=param ; sliderValue=0
+  w_us ~ 1 ; mode=param ; sliderValue=0
+  # xr_uk ~ 1.0003,
+  # xr_us ~ 0.99971,
+  xre_uk ~ 1.0003 ; mode=param ; sliderValue=0
+  xre_us ~ 0.99971 ; mode=param ; sliderValue=0
+  or_us ~ 7 ; mode=param ; sliderValue=0
+  dxre_uk ~ 0 ; mode=param ; sliderValue=0
+  xr_uk ~ 1.0003, ; mode=param ; sliderValue=0
+  r_uk ~ 0.03 ; mode=param ; sliderValue=0
+@end
+

@@ -76,6 +76,9 @@ Key: **Money is endogenous** — created when banks grant loans to firms, destro
 
 @end
 
+# CircuitJS1 SFCR Export
+# Generated from circuit simulation
+
 @init
   timestep: 1
   voltageUnit: $
@@ -85,14 +88,23 @@ Key: **Money is endogenous** — created when banks grant loans to firms, destro
   showValues: true
   showPower: false
   autoAdjustTimestep: false
-  equationTableTolerance: 0.00001
+  equationTableTolerance: 0.0001
   infoViewerUpdateIntervalMs: 200
+@end
+
+@action
+  pauseTime: 0
+
+| time | target | value | text | enabled | stop |
+|------|--------|-------|------|---------|------|
+| 30 | \alpha0 | =10 | propensity to spend | true | false |
+| 40 | \alpha0 | +10 | After | true | false |
 @end
 
 @equations BMW x=32 y=344
   # Parameters
   rl ~ 0.025 ; mode=param ; sliderValue=0  # Interest rate on loans
-  Y3 ~ Cs + Cd ; mode=voltage ; sliderValue=0
+  Y3 ~ Cs + Cd ; mode=param ; sliderValue=0
   \alpha0 ~ 20 ; mode=param ; sliderValue=0  # Autonomous consumption
   \alpha1 ~ 0.75 ; mode=param ; sliderValue=0  # Propensity to consume from income
   \alpha2 ~ 0.10 ; mode=param ; sliderValue=0  # Propensity to consume from wealth
@@ -104,7 +116,7 @@ Key: **Money is endogenous** — created when banks grant loans to firms, destro
   Cs ~ Cd ; mode=flow ; sliderValue=0  # Consumption supply
   Is ~ Id ; mode=param ; sliderValue=0  # Investment supply
   Ns ~ Nd ; mode=flow ; sliderValue=0  # Labour supply
-  Ls - Ls[-1] ~ Ld - Ld[-1] ; mode=param ; sliderValue=0  # Loan supply
+  Ls ~ Ls - Ls[-1] = Ld - Ld[-1] ; mode=param ; sliderValue=0  # - Ls[-1] Loan supply
   # Transactions of the firms
   Y ~ Y = Cs + Is ; mode=flow ; sliderValue=0  # National income (output)
   WBd ~ Y - last(rl) * last(Ld) - AF ; mode=flow ; sliderValue=0  # Wage bill demanded
@@ -168,7 +180,7 @@ Key: **Money is endogenous** — created when banks grant loans to firms, destro
   Cs: Consumption supply
   Is: Investment supply
   Ns: Labour supply
-  Ls: Loan supply
+  Ls: - Ls[-1] Loan supply
   Y: National income (output)
   WBd: Wage bill demanded
   AF: Amortisation funds
@@ -185,7 +197,6 @@ Key: **Money is endogenous** — created when banks grant loans to firms, destro
   DA: Depreciation (actual)
   KT: Target capital stock
   Id: Investment demand
-  Ls - Ls[-1]: Loan supply
 @end
 
 @circuit
@@ -193,11 +204,18 @@ x 89 268 643 271 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW\s(flo
 x 89 292 394 295 4 12 Bank-Money\sWorld\smodel\s(flow-only\svariant,\slast()\sfor\slag) 808080FF U:BRUOXo
 x 89 316 374 319 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF U:C67zij
 207 656 736 720 736 180 Y U:K79ipy
-431 704 288 752 320 0 50 true false U:Ozs0Ey
+431 1424 368 1472 400 0 70 true false U:Ozs0Ey
 207 1008 688 1072 688 164 Ms U:1ZqYCM
 207 1008 720 1072 720 164 Mh U:USgC2r
+207 1232 656 1296 656 164 \\alpha0 U:9LTbPZ
+432 1248 368 1296 400 0 true U:AQbYDI
 @end
 
+@scope Y position=0
+  speed: 1
+  flags: x2001206
+  source: uid:K79ipy value:0
+@end
 @scope Embedded_Scope_1 position=-1
   x1: 448
   y1: 752

@@ -558,6 +558,7 @@ class Expr {
 	case E_INTEGRATE:
 	case E_DIFF:
 	case E_SMOOTH:
+	case E_DELAY:
 	    childHistoricalContext = true;
 	    break;
 	default:
@@ -1002,6 +1003,38 @@ class Expr {
 	    es.smoothPendingOutput[idx] = result;
 	    return result;
 	}
+	case E_DELAY: {
+	    // delay(x, tau=1) - first-order delay/lag:
+	    // y' = (x - y) / tau
+	    // Implicit Euler form:
+	    // y[n] = (tau*y[n-1] + dt*x[n]) / (tau + dt)
+	    // Equivalent behavior to: y ~ integrate((x - y)/tau)
+	    double inputVal = left.eval(es, context);
+	    double tau = (right != null) ? right.eval(es, context) : 1.0;
+	    int idx = smoothIndex;
+	    if (idx < 0 || idx >= ExprState.MAX_SMOOTH_STATES) {
+		idx = 0;
+	    }
+	    if (!es.smoothInitialized[idx]) {
+		es.smoothInitialized[idx] = true;
+		es.smoothLastOutput[idx] = es.lastOutput;
+		es.smoothPendingOutput[idx] = es.lastOutput;
+		es.smoothLastCommitTime[idx] = -1;
+	    }
+	    double dt = CirSim.theSim.timeStep;
+	    if (Math.abs(tau) < 1e-12) {
+		es.smoothPendingOutput[idx] = inputVal;
+		return inputVal;
+	    }
+	    double denom = tau + dt;
+	    if (Math.abs(denom) < 1e-12) {
+		es.smoothPendingOutput[idx] = es.smoothLastOutput[idx];
+		return es.smoothLastOutput[idx];
+	    }
+	    double result = (tau * es.smoothLastOutput[idx] + dt * inputVal) / denom;
+	    es.smoothPendingOutput[idx] = result;
+	    return result;
+	}
 	case E_GSLOT: {
 	    // Fast-path: direct index into circuit-global array (resolved at analysis time from E_NODE_REF).
 	    // value holds the slot index. nodeName is preserved for re-resolution after re-analyze.
@@ -1195,7 +1228,8 @@ class Expr {
     static final int E_LAST = E_DIFF+1; // last(x) - returns previous timestep's converged value
     static final int E_LAG = E_LAST+1;  // lag(x, delay) - returns value from 'delay' time units ago
 	static final int E_SMOOTH = E_LAG+1; // smooth(x, theta) - implicit Euler smoothing
-	static final int E_GSLOT = E_SMOOTH+10; // Circuit-global array slot (fast-path replacement for E_NODE_REF)
+	static final int E_DELAY = E_SMOOTH+1; // delay(x, tau=1) - first-order lag y'=(x-y)/tau
+	static final int E_GSLOT = E_DELAY+10; // Circuit-global array slot (fast-path replacement for E_NODE_REF)
 };
 
 class ExprParser {
@@ -1462,6 +1496,25 @@ class ExprParser {
 	return e;
     }
 
+    // Parser for delay(x[, tau]) where tau defaults to 1
+    Expr parseDelay() {
+	skipOrError("(");
+	Expr e1 = parse();  // The input expression
+	Expr e2 = new Expr(Expr.E_VAL, 1.0);  // Default tau
+	if (skip(",")) {
+	    e2 = parse();
+	}
+	skipOrError(")");
+	Expr e = new Expr(e1, e2, Expr.E_DELAY);
+	int assignedIndex = Expr.nextSmoothIndex++;
+	if (assignedIndex >= ExprState.MAX_SMOOTH_STATES) {
+	    setError("too many delay()/smooth() calls in expression (max " + ExprState.MAX_SMOOTH_STATES + ")");
+	    assignedIndex = ExprState.MAX_SMOOTH_STATES - 1;
+	}
+	e.smoothIndex = assignedIndex;
+	return e;
+    }
+
     /**
      * Parse postfix lag alias index after a variable name.
      * Accepts token-level forms equivalent to -1, including spaced variants
@@ -1596,6 +1649,8 @@ class ExprParser {
 			return parseLag();  // Special parser that assigns buffer index at parse time
 		if (skipIgnoreCase("smooth"))
 			return parseSmooth();
+		if (skipIgnoreCase("delay"))
+			return parseDelay();
 		if (skipIgnoreCase("min"))
 			return parseFuncMulti(Expr.E_MIN, 2, 1000);
 		if (skipIgnoreCase("max"))

@@ -30,17 +30,20 @@ import java.util.List;
  */
 class ActionTimeElm extends CircuitElm {
     boolean enabled;
+    String title;
     private boolean playPauseIconHovered = false;
     private Rectangle playPauseIconRect = null;
     
     public ActionTimeElm(int xx, int yy) {
         super(xx, yy);
         enabled = true; // Enabled by default
+        title = "Action Schedule";
     }
     
     public ActionTimeElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
         super(xa, ya, xb, yb, f);
         enabled = true; // Default to enabled for backward compatibility
+        title = "Action Schedule";
         // For backward compatibility, read old format but don't use it
         // Just consume the tokens
         try {
@@ -60,11 +63,19 @@ class ActionTimeElm extends CircuitElm {
         } catch (Exception e) {
             // No enabled flag in saved file, use default
         }
+        // Optional title token (new format)
+        try {
+            if (st != null && st.hasMoreTokens()) {
+                title = CustomLogicModel.unescape(st.nextToken());
+            }
+        } catch (Exception e) {
+            // No title token in saved file, use default
+        }
     }
     
     String dump() { 
         // Save enabled state
-        return super.dump() + " " + enabled; 
+        return super.dump() + " " + enabled + " " + CustomLogicModel.escape(title); 
     }
     
     void reset() {
@@ -104,7 +115,7 @@ class ActionTimeElm extends CircuitElm {
         Font f = new Font("SansSerif", Font.BOLD, 14);
         g.setFont(f);
         
-        int width = 200;
+        int width = 300;
         int lineHeight = 18;
         int headerHeight = 30;
         int actionHeight = 20;
@@ -149,9 +160,9 @@ class ActionTimeElm extends CircuitElm {
         f = new Font("SansSerif", Font.BOLD, 14);
         g.setFont(f);
         g.setColor(Color.white);
-        String title = "Action Schedule";
-        int textWidth = (int)g.context.measureText(title).getWidth();
-        g.drawString(title, cx - textWidth/2, cy - height/2 + 18);
+        String headerTitle = (title == null || title.isEmpty()) ? "Action Schedule" : title;
+        int textWidth = (int)g.context.measureText(headerTitle).getWidth();
+        g.drawString(headerTitle, cx - textWidth/2, cy - height/2 + 18);
         
         // Draw current time
         f = new Font("SansSerif", 0, 11);
@@ -254,10 +265,14 @@ class ActionTimeElm extends CircuitElm {
                 g.setColor(textColor);
                 String actionText = getUnitText(action.actionTime, "s") + ": ";
                 actionText += scheduler.getFormattedActionText(action);
+
+                if (action.postText != null && action.postText.length() > 0) {
+                    actionText += " - " + action.postText;
+                }
                 
                 // Truncate if too long
-                if (actionText.length() > 30) {
-                    actionText = actionText.substring(0, 27) + "...";
+                if (actionText.length() > 66) {
+                    actionText = actionText.substring(0, 53) + "...";
                 }
                 
                 g.drawString(actionText, cx - width/2 + 30, yPos);
@@ -293,7 +308,7 @@ class ActionTimeElm extends CircuitElm {
     }
     
     void getInfo(String arr[]) {
-        arr[0] = "Action Schedule Display";
+        arr[0] = ((title == null || title.isEmpty()) ? "Action Schedule" : title) + " Display";
         arr[1] = "element enabled = " + (enabled ? "yes" : "no");
         arr[2] = "current time = " + getUnitText(sim.t, "s");
         
@@ -341,6 +356,11 @@ class ActionTimeElm extends CircuitElm {
             return ei;
         }
         if (n == 1) {
+            EditInfo ei = new EditInfo("Title", 0, -1, -1);
+            ei.text = title;
+            return ei;
+        }
+        if (n == 2) {
             EditInfo ei = new EditInfo("", 0, -1, -1);
             ei.text = "This element displays scheduled actions";
             ei.text += "\n\nDouble-click to open Action Time Dialog";
@@ -355,6 +375,14 @@ class ActionTimeElm extends CircuitElm {
     public void setEditValue(int n, EditInfo ei) {
         if (n == 0) {
             enabled = ei.checkbox.getState();
+            return;
+        }
+        if (n == 1) {
+            if (ei.text != null && ei.text.trim().length() > 0) {
+                title = ei.text.trim();
+            } else {
+                title = "Action Schedule";
+            }
         }
     }
     
