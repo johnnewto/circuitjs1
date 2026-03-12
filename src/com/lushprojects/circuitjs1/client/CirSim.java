@@ -5219,9 +5219,7 @@ public CirSim() {
 
     void doExportAsSFCR()
     {
-    	SFCRExporter exporter = new SFCRExporter(this);
-    	String sfcrText = exporter.export();
-    	dialogShowing = new ExportAsTextDialog(this, sfcrText);
+		dialogShowing = new ExportAsSFCRDialog(this);
     	dialogShowing.show();
     }
 

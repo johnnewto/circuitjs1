@@ -14,9 +14,7 @@ econ_Godley_Lavoie_SIM_3_SFCFlowTable.txt SIM Godley & Lavoie SIM Model  Ch3 (SF
 econ_Godley_Lavoie_REG_6.txt BMW Godley & Lavoie REG Model Ch6
 econ_Godley_Lavoie_OPEN_6.txt BMW Godley & Lavoie OPEN Model Ch6
 econ_Godley_Lavoie_BMW_7.txt BMW Godley & Lavoie BMW Model Ch7
-econ_Godley_Lavoie_BMW_7_SFCFlowTable.txt BMW Godley & Lavoie BMW Model Ch7 (SFC Flow Table)
-econ_Godley_Lavoie_BMW_7_flow_last.txt BMW Godley & Lavoie BMW Model Ch7 (flow/param, last())
-econ_Godley_Lavoie_BMW_7_volts_last.txt BMW Godley & Lavoie BMW Model Ch7 (volts/param, last())
+econ_Godley_Lavoie_BMW_7_volts_param.txt BMW Godley & Lavoie BMW Model Ch7 (volts/param)
 expr-functions-test.txt Expr Functions Reference
 -
 +Debug

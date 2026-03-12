@@ -1253,6 +1253,8 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
 
         java.util.LinkedHashSet<String> refs = new java.util.LinkedHashSet<String>();
         rowData.compiledExpr.collectSamePeriodRefs(refs);
+        java.util.LinkedHashSet<String> skippedParamRefs = EquationTableJacobianHelper.collectSkippedParameterRefs(refs);
+        String skippedParamsSuffix = EquationTableJacobianHelper.formatSkippedParameterRefs(skippedParamRefs);
         if (refs.isEmpty()) {
             rowData.lastNewtonJacobianStatus = "no same-period refs";
             return false;
@@ -1264,20 +1266,20 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 state, refs, equationValue, vn, -1.0, stats);
         if (stamped == 0) {
             if (stats[0] == 0) {
-                rowData.lastNewtonJacobianStatus = "no mna refs";
+                rowData.lastNewtonJacobianStatus = "no mna refs" + skippedParamsSuffix;
             } else if (stats[2] > 0) {
-                rowData.lastNewtonJacobianStatus = "mna refs but invalid derivatives";
+                rowData.lastNewtonJacobianStatus = "mna refs but invalid derivatives" + skippedParamsSuffix;
             } else {
-                rowData.lastNewtonJacobianStatus = "mna refs but no usable derivatives";
+                rowData.lastNewtonJacobianStatus = "mna refs but no usable derivatives" + skippedParamsSuffix;
             }
             return false;
         }
 
         rowData.lastNewtonJacobianApplied = true;
         if (EquationTableJacobianHelper.hasHistoricalRefSyntax(rowData.equation)) {
-            rowData.lastNewtonJacobianStatus = "applied (refs=" + refs.size() + "; hist ok)";
+            rowData.lastNewtonJacobianStatus = "applied (refs=" + refs.size() + "; hist ok)" + skippedParamsSuffix;
         } else {
-            rowData.lastNewtonJacobianStatus = "applied (refs=" + refs.size() + ")";
+            rowData.lastNewtonJacobianStatus = "applied (refs=" + refs.size() + ")" + skippedParamsSuffix;
         }
         return true;
     }
@@ -1307,13 +1309,15 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
 
         java.util.LinkedHashSet<String> refs = new java.util.LinkedHashSet<String>();
         rowData.compiledExpr.collectSamePeriodRefs(refs);
+        java.util.LinkedHashSet<String> skippedParamRefs = EquationTableJacobianHelper.collectSkippedParameterRefs(refs);
+        String skippedParamsSuffix = EquationTableJacobianHelper.formatSkippedParameterRefs(skippedParamRefs);
         if (refs.isEmpty()) {
             rowData.lastNewtonJacobianStatus = "no same-period refs";
             return false;
         }
 
         if (!EquationTableJacobianHelper.hasAnyMnaRefs(refs)) {
-            rowData.lastNewtonJacobianStatus = "no mna refs";
+            rowData.lastNewtonJacobianStatus = "no mna refs" + skippedParamsSuffix;
             return false;
         }
 
@@ -1335,16 +1339,16 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         if (totalStamped == 0) {
             int totalInvalid = statsSource[2] + statsTarget[2];
             rowData.lastNewtonJacobianStatus = (totalInvalid > 0)
-                    ? "mna refs but invalid derivatives"
-                    : "mna refs but no usable derivatives";
+                    ? "mna refs but invalid derivatives" + skippedParamsSuffix
+                    : "mna refs but no usable derivatives" + skippedParamsSuffix;
             return false;
         }
 
         rowData.lastNewtonJacobianApplied = true;
         if (EquationTableJacobianHelper.hasHistoricalRefSyntax(rowData.equation)) {
-            rowData.lastNewtonJacobianStatus = "applied flow jacobian (refs=" + refs.size() + "; hist ok)";
+            rowData.lastNewtonJacobianStatus = "applied flow jacobian (refs=" + refs.size() + "; hist ok)" + skippedParamsSuffix;
         } else {
-            rowData.lastNewtonJacobianStatus = "applied flow jacobian (refs=" + refs.size() + ")";
+            rowData.lastNewtonJacobianStatus = "applied flow jacobian (refs=" + refs.size() + ")" + skippedParamsSuffix;
         }
         return true;
     }

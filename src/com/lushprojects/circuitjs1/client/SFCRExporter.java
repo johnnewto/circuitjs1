@@ -31,12 +31,18 @@ import java.util.Vector;
  * @see <a href="../dev_docs/SFCR_FORMAT_REFERENCE.md">SFCR Format Reference</a>
  */
 public class SFCRExporter {
+
+    public enum ExportSyntax {
+        BLOCK_FORMAT,
+        R_STYLE
+    }
     
     // =========================================================================
     // Fields
     // =========================================================================
     
     private CirSim sim;
+    private ExportSyntax exportSyntax;
     private ArrayList<EquationTableElm> equationTables = new ArrayList<EquationTableElm>();
     private ArrayList<SFCTableElm> sfcTables = new ArrayList<SFCTableElm>();
     private ArrayList<GodlyTableElm> godlyTables = new ArrayList<GodlyTableElm>();
@@ -51,7 +57,13 @@ public class SFCRExporter {
     
     /** Create a new SFCR exporter. */
     public SFCRExporter(CirSim sim) {
+        this(sim, ExportSyntax.BLOCK_FORMAT);
+    }
+
+    /** Create a new SFCR exporter with explicit syntax style. */
+    public SFCRExporter(CirSim sim, ExportSyntax syntax) {
         this.sim = sim;
+        this.exportSyntax = (syntax == null) ? ExportSyntax.BLOCK_FORMAT : syntax;
     }
     
     /** Export the current circuit in SFCR format. */
@@ -88,27 +100,33 @@ public class SFCRExporter {
             sb.append("\n");
         }
         
-        // Export equation tables as @equations
+        // Export equation tables
         for (EquationTableElm eqTable : equationTables) {
-            String block = exportEquationTable(eqTable);
+            String block = (exportSyntax == ExportSyntax.R_STYLE)
+                ? exportEquationTableRStyle(eqTable)
+                : exportEquationTable(eqTable);
             if (!block.isEmpty()) {
                 sb.append(block);
                 sb.append("\n");
             }
         }
         
-        // Export GodlyTableElm as @equations (since they compute values with integration)
+        // Export GodlyTableElm equations (integration-based stocks)
         for (GodlyTableElm godlyTable : godlyTables) {
-            String block = exportGodlyTable(godlyTable);
+            String block = (exportSyntax == ExportSyntax.R_STYLE)
+                ? exportGodlyTableRStyle(godlyTable)
+                : exportGodlyTable(godlyTable);
             if (!block.isEmpty()) {
                 sb.append(block);
                 sb.append("\n");
             }
         }
         
-        // Export SFC tables as @matrix
+        // Export SFC tables
         for (SFCTableElm sfcTable : sfcTables) {
-            String block = exportSFCTable(sfcTable);
+            String block = (exportSyntax == ExportSyntax.R_STYLE)
+                ? exportSFCTableRStyle(sfcTable)
+                : exportSFCTable(sfcTable);
             if (!block.isEmpty()) {
                 sb.append(block);
                 sb.append("\n");
@@ -363,14 +381,230 @@ public class SFCRExporter {
     }
 
     private String formatEquationRowMode(EquationTableElm.RowOutputMode mode) {
-        if (mode == null) {
-            return "voltage";
+        return SFCRUtil.formatEquationRowMode(mode);
+    }
+
+    /** Export EquationTableElm as R-style sfcr_set() assignment. */
+    private String exportEquationTableRStyle(EquationTableElm eqTable) {
+        StringBuilder sb = new StringBuilder();
+
+        String tableName = eqTable.getTableName();
+        if (tableName == null || tableName.isEmpty()) {
+            tableName = "Equations";
         }
-        switch (mode) {
-            case FLOW_MODE: return "flow";
-            case PARAM_MODE: return "param";
-            default: return "voltage";
+
+        int rowCount = eqTable.getRowCount();
+        if (rowCount == 0) {
+            return "";
         }
+
+        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_EQUATIONS, sanitizeName(tableName));
+
+        int equationCount = 0;
+        for (int row = 0; row < rowCount; row++) {
+            String sourceName = eqTable.getOutputName(row);
+            if (EquationTableElm.isCommentRowName(sourceName)) {
+                continue;
+            }
+            String name = eqTable.getDisplayOutputName(row);
+            if (name != null && !name.isEmpty()) {
+                equationCount++;
+            }
+        }
+
+        if (equationCount == 0) {
+            return "";
+        }
+
+        String assignmentName = toRAssignmentName(tableName);
+        sb.append(assignmentName).append(" <- sfcr_set(\n");
+
+        String metadataComment = formatRBlockMetadataComment(eqTable, null).trim();
+        if (!metadataComment.isEmpty()) {
+            sb.append("  ").append(metadataComment).append("\n");
+        }
+
+        int emitted = 0;
+        for (int row = 0; row < rowCount; row++) {
+            String sourceName = eqTable.getOutputName(row);
+            if (EquationTableElm.isCommentRowName(sourceName)) {
+                String comment = sourceName == null ? "" : sourceName.trim();
+                if (comment.startsWith("#")) {
+                    comment = comment.substring(1).trim();
+                }
+                if (!comment.isEmpty()) {
+                    sb.append("  # ").append(comment).append("\n");
+                }
+                continue;
+            }
+
+            String name = eqTable.getDisplayOutputName(row);
+            String expr = eqTable.getEquation(row);
+            if (name == null || name.isEmpty()) {
+                continue;
+            }
+            if (expr == null) {
+                expr = "0";
+            }
+
+            EquationTableElm.RowOutputMode mode = eqTable.getOutputMode(row);
+            String sliderVar = eqTable.getSliderVarName(row);
+            double sliderValue = eqTable.getSliderValue(row);
+            String initialEq = eqTable.getInitialEquation(row);
+
+            emitted++;
+            sb.append("  e").append(emitted).append(" = ").append(name).append(" ~ ").append(expr);
+            if (emitted < equationCount) {
+                sb.append(",");
+            }
+
+            String hint = HintRegistry.getHint(sourceName);
+            // Persist row-editable properties inside bracket metadata so R-style
+            // export/import keeps mode/slider settings without changing core syntax.
+            String rowMeta = formatRStyleEquationInlineMetadata(mode, sliderVar, sliderValue, initialEq);
+            if ((hint != null && !hint.trim().isEmpty()) || !rowMeta.isEmpty()) {
+                sb.append("  #");
+                if (hint != null && !hint.trim().isEmpty()) {
+                    sb.append(" ").append(hint.trim());
+                }
+                if (!rowMeta.isEmpty()) {
+                    if (hint != null && !hint.trim().isEmpty()) {
+                        sb.append("  ");
+                    } else {
+                        sb.append(" ");
+                    }
+                    sb.append(rowMeta);
+                }
+            }
+            sb.append("\n");
+        }
+        sb.append(")\n");
+        return sb.toString();
+    }
+
+    /** Export GodlyTableElm as R-style sfcr_set() assignment. */
+    private String exportGodlyTableRStyle(GodlyTableElm godlyTable) {
+        StringBuilder sb = new StringBuilder();
+
+        String tableName = godlyTable.getTableTitle();
+        if (tableName == null || tableName.isEmpty()) {
+            tableName = "Stocks";
+        }
+
+        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_EQUATIONS, sanitizeName(tableName));
+        sb.append(formatRBlockMetadataComment(godlyTable, null));
+
+        ArrayList<String> equationLines = new ArrayList<String>();
+        int cols = godlyTable.getCols();
+        for (int col = 0; col < cols; col++) {
+            TableColumn column = godlyTable.getColumn(col);
+            if (column == null || column.isALE()) {
+                continue;
+            }
+
+            String stockName = column.getStockName();
+            if (stockName == null || stockName.isEmpty()) {
+                continue;
+            }
+
+            String flowExpr = buildColumnFlowExpression(godlyTable, col);
+            equationLines.add("  e" + (equationLines.size() + 1) + " = "
+                + stockName + " ~ " + stockName + "_init + integrate(" + flowExpr + ")");
+        }
+
+        if (equationLines.isEmpty()) {
+            return "";
+        }
+
+        String assignmentName = toRAssignmentName(tableName);
+        sb.append(assignmentName).append(" <- sfcr_set(\n");
+        for (int i = 0; i < equationLines.size(); i++) {
+            sb.append(equationLines.get(i));
+            if (i < equationLines.size() - 1) {
+                sb.append(",");
+            }
+            sb.append("\n");
+        }
+        sb.append(")\n");
+        return sb.toString();
+    }
+
+    /** Export SFCTableElm as R-style sfcr_matrix() assignment. */
+    private String exportSFCTableRStyle(SFCTableElm sfcTable) {
+        StringBuilder sb = new StringBuilder();
+
+        String tableName = sfcTable.getTableTitle();
+        if (tableName == null || tableName.isEmpty()) {
+            tableName = "SFC_Matrix";
+        }
+
+        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_MATRIX, sanitizeName(tableName));
+
+        ArrayList<String> stockNames = new ArrayList<String>();
+        ArrayList<String> stockCodes = new ArrayList<String>();
+        Set<String> usedCodes = new HashSet<String>();
+
+        int totalCols = sfcTable.getCols();
+        for (int col = 0; col < totalCols; col++) {
+            TableColumn column = sfcTable.getColumn(col);
+            if (column == null || column.isALE()) {
+                continue;
+            }
+            String stockName = column.getStockName();
+            if (stockName == null || stockName.trim().isEmpty()) {
+                stockName = "Column" + (stockNames.size() + 1);
+            }
+            stockNames.add(stockName);
+            stockCodes.add(makeUniqueRCode(toRCodeIdentifier(stockName), usedCodes));
+        }
+
+        if (stockNames.isEmpty()) {
+            return "";
+        }
+
+        String assignmentName = toRAssignmentName(tableName);
+        sb.append(assignmentName).append(" <- sfcr_matrix(\n");
+        String metadataComment = formatRBlockMetadataComment(sfcTable, "transaction_flow").trim();
+        if (!metadataComment.isEmpty()) {
+            sb.append("  ").append(metadataComment).append("\n");
+        }
+        sb.append("  columns = c(").append(joinRQuoted(stockNames)).append("),\n");
+        sb.append("  codes = c(").append(joinRQuoted(stockCodes)).append("),\n");
+
+        int rows = sfcTable.getRows();
+        for (int row = 0; row < rows; row++) {
+            String rowDesc = sfcTable.getRowDescription(row);
+            if (rowDesc == null || rowDesc.trim().isEmpty()) {
+                rowDesc = "Row" + row;
+            }
+
+            sb.append("  c(\"").append(escapeRString(rowDesc)).append("\"");
+            int dataColIndex = 0;
+            for (int col = 0; col < totalCols; col++) {
+                TableColumn column = sfcTable.getColumn(col);
+                if (column == null || column.isALE()) {
+                    continue;
+                }
+                String cellExpr = column.getCellEquation(row);
+                if (cellExpr == null) {
+                    cellExpr = "";
+                }
+                sb.append(", ")
+                  .append(stockCodes.get(dataColIndex))
+                  .append(" = \"")
+                  .append(escapeRString(cellExpr))
+                  .append("\"");
+                dataColIndex++;
+            }
+            sb.append(")");
+            if (row < rows - 1) {
+                sb.append(",");
+            }
+            sb.append("\n");
+        }
+
+        sb.append(")\n");
+        return sb.toString();
     }
 
     /** Export GodlyTableElm as @equations block (integration-based stocks). */
@@ -786,14 +1020,91 @@ public class SFCRExporter {
     
     /** Sanitize name for SFCR format (replace spaces with underscores). */
     private String sanitizeName(String name) {
-        if (name == null) return "Unnamed";
-        return name.replaceAll("\\s+", "_");
+        return SFCRUtil.sanitizeName(name);
+    }
+
+    private String toRAssignmentName(String name) {
+        String base = sanitizeName(name);
+        return toRCodeIdentifier(base);
+    }
+
+    private String toRCodeIdentifier(String text) {
+        if (text == null || text.length() == 0) {
+            return "x";
+        }
+        String cleaned = text.replaceAll("[^A-Za-z0-9_]", "_");
+        if (cleaned.length() == 0) {
+            cleaned = "x";
+        }
+        char first = cleaned.charAt(0);
+        if (!(Character.isLetter(first) || first == '_')) {
+            cleaned = "x_" + cleaned;
+        }
+        return cleaned;
+    }
+
+    private String makeUniqueRCode(String base, Set<String> usedCodes) {
+        String safeBase = (base == null || base.length() == 0) ? "x" : base;
+        String candidate = safeBase;
+        int suffix = 1;
+        while (usedCodes.contains(candidate)) {
+            candidate = safeBase + "_" + suffix;
+            suffix++;
+        }
+        usedCodes.add(candidate);
+        return candidate;
+    }
+
+    private String joinRQuoted(ArrayList<String> values) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < values.size(); i++) {
+            if (i > 0) {
+                sb.append(", ");
+            }
+            sb.append("\"").append(escapeRString(values.get(i))).append("\"");
+        }
+        return sb.toString();
+    }
+
+    private String escapeRString(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private String formatRBlockMetadataComment(CircuitElm elm, String type) {
+        if (elm == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("# [ x=").append(elm.x).append(" y=").append(elm.y);
+        if (type != null && type.trim().length() > 0) {
+            sb.append(" type: ").append(type.trim());
+        }
+        sb.append(" ]\n");
+        return sb.toString();
+    }
+
+    private String formatRStyleEquationInlineMetadata(EquationTableElm.RowOutputMode mode,
+            String sliderVar, double sliderValue, String initialEq) {
+        // Format: [mode=param, slider=foo, sliderValue=0, initial=... ]
+        StringBuilder sb = new StringBuilder();
+        sb.append("[mode=").append(formatEquationRowMode(mode));
+        if (sliderVar != null && !sliderVar.trim().isEmpty()) {
+            sb.append(", slider=").append(sliderVar.trim());
+        }
+        sb.append(", sliderValue=").append(sliderValue);
+        if (initialEq != null && !initialEq.trim().isEmpty()) {
+            sb.append(", initial=").append(initialEq.trim());
+        }
+        sb.append(" ]");
+        return sb.toString();
     }
 
     /** Escape markdown table cell delimiters. */
     private String escapeTableCell(String text) {
-        if (text == null) return "";
-        return text.replace("|", "\\|");
+        return SFCRUtil.escapeTableCell(text);
     }
     
     /** Format position string for block header. */

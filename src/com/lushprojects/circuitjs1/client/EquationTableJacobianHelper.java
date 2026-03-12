@@ -51,6 +51,47 @@ import java.util.LinkedHashSet;
 final class EquationTableJacobianHelper {
     private EquationTableJacobianHelper() {}
 
+    /** Return same-period refs that are registered PARAM names (skipped from Jacobian). */
+    static LinkedHashSet<String> collectSkippedParameterRefs(LinkedHashSet<String> refs) {
+        LinkedHashSet<String> out = new LinkedHashSet<String>();
+        if (refs == null) {
+            return out;
+        }
+        for (String refName : refs) {
+            if (refName == null || refName.isEmpty()) {
+                continue;
+            }
+            if (ComputedValues.isParameterName(refName)) {
+                out.add(refName);
+            }
+        }
+        return out;
+    }
+
+    /** Build compact status suffix for skipped PARAM refs, e.g. "; skip params=\alpha0,\alpha1,+2". */
+    static String formatSkippedParameterRefs(LinkedHashSet<String> skippedParamRefs) {
+        if (skippedParamRefs == null || skippedParamRefs.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder("; skip params=");
+        int shown = 0;
+        int total = skippedParamRefs.size();
+        for (String name : skippedParamRefs) {
+            if (shown >= 3) {
+                break;
+            }
+            if (shown > 0) {
+                sb.append(",");
+            }
+            sb.append(name);
+            shown++;
+        }
+        if (total > shown) {
+            sb.append(",+").append(total - shown);
+        }
+        return sb.toString();
+    }
+
     /**
      * Check whether VOLTAGE_MODE Jacobian stamping is eligible for a given row.
      *
@@ -156,6 +197,9 @@ final class EquationTableJacobianHelper {
             if (refName == null || refName.isEmpty()) {
                 continue;
             }
+            if (ComputedValues.isParameterName(refName)) {
+                continue;
+            }
             Integer labeledNode = LabeledNodeElm.getByName(refName);
             if (labeledNode != null && labeledNode.intValue() > 0) {
                 return true;
@@ -226,6 +270,7 @@ final class EquationTableJacobianHelper {
 
         for (String refName : refs) {
             if (refName == null || refName.isEmpty()) continue;
+            if (ComputedValues.isParameterName(refName)) continue;
 
             Integer labeledNode = LabeledNodeElm.getByName(refName);
             if (labeledNode == null || labeledNode.intValue() <= 0) continue;
