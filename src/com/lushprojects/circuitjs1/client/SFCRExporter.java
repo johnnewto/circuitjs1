@@ -244,7 +244,10 @@ public class SFCRExporter {
         sb.append("  showValues: ").append(sim.showValuesCheckItem.getState()).append("\n");
         sb.append("  showPower: ").append(sim.powerCheckItem.getState()).append("\n");
         sb.append("  autoAdjustTimestep: ").append(sim.adjustTimeStep).append("\n");
+        sb.append("  equationTableMnaMode: ").append(sim.equationTableMnaMode).append("\n");
+        sb.append("  equationTableNewtonJacobianEnabled: ").append(sim.equationTableNewtonJacobianEnabled).append("\n");
         sb.append("  equationTableTolerance: ").append(Double.toString(sim.equationTableConvergenceTolerance)).append("\n");
+        sb.append("  convergenceCheckThreshold: ").append(sim.convergenceCheckThreshold).append("\n");
         sb.append("  infoViewerUpdateIntervalMs: ").append(sim.infoViewerUpdateIntervalMs).append("\n");
         
         sb.append("@end\n");

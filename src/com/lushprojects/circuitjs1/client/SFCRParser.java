@@ -282,7 +282,9 @@ public class SFCRParser {
      * Parse @init block - simulation settings.
     * Supports: timestep, voltageRange, voltageUnit, timeUnit, showToolbar,
     * showDots, showVolts, showValues, showPower, autoAdjustTimestep,
-    * infoViewerUpdateIntervalMs.
+    * equationTableMnaMode, equationTableNewtonJacobianEnabled,
+    * equationTableTolerance/equationTableConvergenceTolerance,
+    * convergenceCheckThreshold, infoViewerUpdateIntervalMs.
      */
     private int parseInitBlock(String[] lines, int startIndex) {
         String headerLine = lines[startIndex].trim();
@@ -395,12 +397,30 @@ public class SFCRParser {
                     case "adjustTimeStep":
                         sim.adjustTimeStep = value.equals("true");
                         break;
+                    case "equationTableMnaMode":
+                    case "eqnTableMnaMode":
+                        sim.equationTableMnaMode = value.equals("true");
+                        break;
+                    case "equationTableNewtonJacobianEnabled":
+                    case "eqnTableNewtonJacobian":
+                    case "equationTableNewtonJacobian":
+                        sim.equationTableNewtonJacobianEnabled = value.equals("true");
+                        break;
                     case "equationTableTolerance":
                     case "equationTableConvergenceTolerance":
                         {
                             double tol = Double.parseDouble(value);
                             if (tol > 0) {
                                 sim.equationTableConvergenceTolerance = tol;
+                            }
+                        }
+                        break;
+                    case "convergenceCheckThreshold":
+                    case "subiterationConvergenceThreshold":
+                        {
+                            int threshold = Integer.parseInt(value);
+                            if (threshold >= 0) {
+                                sim.convergenceCheckThreshold = threshold;
                             }
                         }
                         break;

@@ -1,8 +1,10 @@
 # CircuitJS1 TODOs
 ## add equation table prefix or suffix system
 so that equations can be not duplicated and  written without _UK, _US
+
 ## Add warning to action editor
 for targets that are nt adjustable
+
 ## allow SFCR to save as SFCR
 as well as table
 

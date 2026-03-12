@@ -5312,6 +5312,12 @@ public CirSim() {
 	if (toolbarCheckItem != null) {
 	    dump += "% showToolbar " + (toolbarCheckItem.getState() ? "true" : "false") + "\n";
 	}
+
+	// Persist equation-table global controls and convergence tuning in circuit file
+	dump += "% equationTableMnaMode " + (equationTableMnaMode ? "true" : "false") + "\n";
+	dump += "% equationTableNewtonJacobianEnabled " + (equationTableNewtonJacobianEnabled ? "true" : "false") + "\n";
+	dump += "% equationTableConvergenceTolerance " + equationTableConvergenceTolerance + "\n";
+	dump += "% convergenceCheckThreshold " + convergenceCheckThreshold + "\n";
 	
 	return dump;
     }
@@ -5883,6 +5889,22 @@ public CirSim() {
 				if (toolbarCheckItem != null) {
 				    toolbarCheckItem.setState(value.equals("true"));
 				    setToolbar();
+				}
+			    } else if (settingType.equals("equationTableMnaMode") && st.hasMoreTokens()) {
+				equationTableMnaMode = st.nextToken().equals("true");
+			    } else if (settingType.equals("equationTableNewtonJacobianEnabled") && st.hasMoreTokens()) {
+				equationTableNewtonJacobianEnabled = st.nextToken().equals("true");
+			    } else if (settingType.equals("equationTableConvergenceTolerance") && st.hasMoreTokens()) {
+				try {
+				    equationTableConvergenceTolerance = Double.parseDouble(st.nextToken());
+				} catch (Exception e) {
+				    // Ignore parse errors
+				}
+			    } else if (settingType.equals("convergenceCheckThreshold") && st.hasMoreTokens()) {
+				try {
+				    convergenceCheckThreshold = Integer.parseInt(st.nextToken());
+				} catch (Exception e) {
+				    // Ignore parse errors
 				}
 			    } else if (settingType.equals("AS") || settingType.equals("AST")) {
 				// Action Schedule entry (AS), Action Schedule Times, pause and animation (AST)
