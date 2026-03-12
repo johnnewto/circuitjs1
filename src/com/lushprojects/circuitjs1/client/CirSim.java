@@ -367,7 +367,6 @@ MouseOutHandler, MouseWheelHandler {
     boolean simRunningBeforeDrag;         // Saved state: was simulation running before drag started?
     boolean circuitNonLinear;             // True if circuit has nonlinear elements (diodes, transistors)
     boolean circuitNeedsMap;              // True if matrix simplification created row mapping
-    static boolean useWasmSolver = true;  // Whether to use WASM matrix solver when available
     
     // Circuit dimensions
     int voltageSourceCount;               // Number of voltage sources (adds rows to matrix)
@@ -3424,11 +3423,6 @@ public CirSim() {
 	warningMessage = null;
 	stopElm = null;
 	
-	// Log WASM solver status (once) and free any previous allocations
-	WasmMatrixSolver.logStatus();
-	WasmMatrixSolver.freeMemory();
-	lastWasmFactoredSize = 0;  // Invalidate fast solve path
-	
 	if (elmList.isEmpty()) {
 	    postDrawList = new Vector<Point>();
 	    badConnectionList = new Vector<Point>();
@@ -3591,7 +3585,7 @@ public CirSim() {
 	// if a matrix is linear, we can do the lu_factor here instead of
 	// needing to do it every frame
 	if (!circuitNonLinear) {
-	    int badRow = lu_factor_auto(circuitMatrix, circuitMatrixSize, circuitPermute);
+	    int badRow = lu_factor(circuitMatrix, circuitMatrixSize, circuitPermute);
 	    if (badRow >= 0) {
 		stop("Singular matrix! " + getMatrixRowInfo(badRow), null);
 		return;
@@ -4348,7 +4342,7 @@ public CirSim() {
                     // stop if converged (elements check for convergence in doStep())
                     if (converged && subiter > 0)
                     break;
-                    int badRow = lu_factor_auto(circuitMatrix, circuitMatrixSize, circuitPermute);
+					int badRow = lu_factor(circuitMatrix, circuitMatrixSize, circuitPermute);
                     if (badRow >= 0) {
                         stop("Singular matrix! " + getMatrixRowInfo(badRow), null);
                         return;
@@ -4358,7 +4352,7 @@ public CirSim() {
                 // if (circuitMatrixSize == 1) {
                 //     console("[lu_solve] BEFORE: A[0][0]=" + circuitMatrix[0][0] + " b[0]=" + circuitRightSide[0]);
                 // }
-                lu_solve_auto(circuitMatrix, circuitMatrixSize, circuitPermute,
+				lu_solve(circuitMatrix, circuitMatrixSize, circuitPermute,
                      circuitRightSide);
                 // // Debug: show solution for 1x1 matrix
                 // if (circuitMatrixSize == 1) {
@@ -7951,53 +7945,6 @@ public CirSim() {
 
     String getLabelTextForClass(String cls) {
 	return classToLabelMap.get(cls);
-    }
-
-    // ========== Matrix Solver Wrappers ==========
-    // These methods choose between WASM and JavaScript implementations
-    static boolean wasmUsageLogged = false;  // Log WASM usage once
-    static int lastWasmFactoredSize = 0;     // Track size from last WASM lu_factor for fast solve
-    
-    /**
-     * LU factorization with automatic WASM/JS selection.
-     * Uses WASM for matrices larger than MIN_WASM_SIZE when available.
-     */
-    int lu_factor_auto(double a[][], int n, int ipvt[]) {
-        if (useWasmSolver && WasmMatrixSolver.shouldUseWasm(n)) {
-            if (!wasmUsageLogged) {
-                wasmUsageLogged = true;
-                console("Using WASM for " + n + "x" + n + " matrix");
-            }
-            int result = WasmMatrixSolver.luFactor(a, n, ipvt);
-            if (result == -2) {
-                // WASM error, fall back to JavaScript
-                console("WASM lu_factor failed, using JavaScript fallback");
-                lastWasmFactoredSize = 0;
-                return lu_factor(a, n, ipvt);
-            }
-            lastWasmFactoredSize = n;  // Enable fast solve path
-            return result;
-        }
-        lastWasmFactoredSize = 0;
-        return lu_factor(a, n, ipvt);
-    }
-    
-    /**
-     * LU solve with automatic WASM/JS selection.
-     * Uses fast path (skips matrix copy) if immediately following lu_factor_auto.
-     */
-    void lu_solve_auto(double a[][], int n, int ipvt[], double b[]) {
-        if (useWasmSolver && WasmMatrixSolver.shouldUseWasm(n)) {
-            if (lastWasmFactoredSize == n) {
-                // Fast path: matrix/ipvt already in WASM from lu_factor_auto
-                WasmMatrixSolver.luSolveFromFactor(n, b);
-            } else {
-                // Full copy needed (standalone solve without preceding factor)
-                WasmMatrixSolver.luSolve(a, n, ipvt, b);
-            }
-            return;
-        }
-        lu_solve(a, n, ipvt, b);
     }
 
     // factors a matrix into upper and lower triangular matrices by

@@ -8,6 +8,7 @@ package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.canvas.client.Canvas;
 import com.google.gwt.canvas.dom.client.Context2d;
+import com.google.gwt.core.client.Duration;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.lushprojects.circuitjs1.client.EquationTableElm.RowOutputMode;
 
@@ -426,7 +427,7 @@ public class EquationTableRenderer {
      * Only text and hover effects are drawn each frame.
      */
     public void draw(Graphics g) {
-        long renderStartNs = System.nanoTime();
+        double renderStartMs = Duration.currentTimeMillis();
         int tableX = table.x;
         int tableY = table.y;
         boolean selected = table.needsHighlight();
@@ -490,7 +491,7 @@ public class EquationTableRenderer {
         // Update bounding box
         table.setBbox(tableX, tableY, tableX + tableWidth, tableY + tableHeight);
 
-        double renderMs = (System.nanoTime() - renderStartNs) * 1e-6;
+        double renderMs = Duration.currentTimeMillis() - renderStartMs;
         if (!hasRenderTimingSample) {
             renderTimeEmaMs = renderMs;
             hasRenderTimingSample = true;

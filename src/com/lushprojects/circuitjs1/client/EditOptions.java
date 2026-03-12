@@ -97,20 +97,15 @@ class EditOptions implements Editable {
 		}
 		if (n == 18) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
-		    ei.checkbox = new Checkbox("Use WASM Solver", CirSim.useWasmSolver);
+		    ei.checkbox = new Checkbox("Show Electronics Circuits", sim.showElectronicsCircuits);
 		    return ei;
 		}
 		if (n == 19) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
-		    ei.checkbox = new Checkbox("Show Electronics Circuits", sim.showElectronicsCircuits);
-		    return ei;
-		}
-		if (n == 20) {
-		    EditInfo ei = new EditInfo("", 0, -1, -1);
 		    ei.checkbox = new Checkbox("Enable Cache-Busted URLs", sim.enableCacheBustedUrls);
 		    return ei;
 		}
-		if (n == 21) {
+		if (n == 20) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
 		    ei.checkbox = new Checkbox("Enable Table Render Cache", sim.tableRenderCacheEnabled);
 		    return ei;
@@ -118,12 +113,12 @@ class EditOptions implements Editable {
 		// Conditional items must be last. When the condition is false,
 		// getEditInfo() returns null which terminates the dialog loop,
 		// hiding any items that would follow.
-		if (n == 22) {
+		if (n == 21) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
 		    ei.checkbox = new Checkbox("Auto-Adjust Timestep", sim.adjustTimeStep);
 		    return ei;
 		}
-		if (n == 23 && sim.adjustTimeStep)
+		if (n == 22 && sim.adjustTimeStep)
 		    return new EditInfo("Minimum time step size (s)", sim.minTimeStep, 0, 0);
 
 		return null;
@@ -226,10 +221,6 @@ class EditOptions implements Editable {
 		    sim.setOptionInStorage("equationTableNewtonJacobianEnabled", sim.equationTableNewtonJacobianEnabled);
 		}
 		if (n == 18) {
-		    CirSim.useWasmSolver = ei.checkbox.getState();
-		    CirSim.console("WASM solver " + (CirSim.useWasmSolver ? "enabled" : "disabled"));
-		}
-		if (n == 19) {
 		    boolean newValue = ei.checkbox.getState();
 		    if (sim.showElectronicsCircuits != newValue) {
 			sim.showElectronicsCircuits = newValue;
@@ -238,19 +229,19 @@ class EditOptions implements Editable {
 			    Window.Location.reload();
 		    }
 		}
-		if (n == 20) {
+		if (n == 19) {
 		    sim.enableCacheBustedUrls = ei.checkbox.getState();
 		    sim.setOptionInStorage("enableCacheBustedUrls", sim.enableCacheBustedUrls);
 		}
-		if (n == 21) {
+		if (n == 20) {
 		    sim.tableRenderCacheEnabled = ei.checkbox.getState();
 		    sim.setOptionInStorage("tableRenderCacheEnabled", sim.tableRenderCacheEnabled);
 		}
-		if (n == 22) {
+		if (n == 21) {
 		    sim.adjustTimeStep = ei.checkbox.getState();
 		    ei.newDialog = true;
 		}
-		if (n == 23 && ei.value > 0)
+		if (n == 22 && ei.value > 0)
 		    sim.minTimeStep = ei.value;
 	}
 

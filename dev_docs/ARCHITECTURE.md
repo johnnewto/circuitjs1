@@ -606,7 +606,7 @@ build.gradle                     # Gradle build config
 - **Timestep**: Adaptive based on simulation speed setting
 - **Rendering**: Optimized drawing with current dots animation
 - **Convergence**: Iterative solving for nonlinear elements
-- **WASM Matrix Solver**: Optional WASM-based LU solver with SIMD for large matrices (30+ nodes)
+- **Matrix Solver**: Java/GWT LU decomposition (`lu_factor`/`lu_solve`) with matrix simplification
 
 ### Table Renderer Caching
 
@@ -655,7 +655,6 @@ drawDynamicContent(g);  // text only
 - [INTERNALS.md](../INTERNALS.md) - Detailed simulation theory
 - [EQUATION_TABLE_REFERENCE.md](EQUATION_TABLE_REFERENCE.md) - EquationTableElm row modes, convergence, serialization
 - [PURE_COMPUTATIONAL_TABLES.md](PURE_COMPUTATIONAL_TABLES.md) - Pure computational element architecture
-- [WASM_MATRIX_SOLVER.md](WASM_MATRIX_SOLVER.md) - WASM-based LU decomposition with SIMD
 - [CircuitJS1 Original](https://www.falstad.com/circuit/) - Paul Falstad's original
 - GWT Documentation: https://www.gwtproject.org/
 - Modified Nodal Analysis: Pillage et al. (1999)

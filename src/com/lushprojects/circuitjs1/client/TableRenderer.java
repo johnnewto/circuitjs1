@@ -8,6 +8,7 @@ package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.canvas.client.Canvas;
 import com.google.gwt.canvas.dom.client.Context2d;
+import com.google.gwt.core.client.Duration;
 import com.lushprojects.circuitjs1.client.TableColumn.ColumnType;
 
 /**
@@ -750,7 +751,7 @@ public class TableRenderer {
      * Uses cached canvas for static parts (backgrounds, grid lines) when available.
      */
     public void draw(Graphics g) {
-        long renderStartNs = System.nanoTime();
+        double renderStartMs = Duration.currentTimeMillis();
         TableDimensions dims = calculateTableDimensions();
         
         // Update cached values if needed
@@ -795,7 +796,7 @@ public class TableRenderer {
         // Draw pins
         drawPins(g);
 
-        double renderMs = (System.nanoTime() - renderStartNs) * 1e-6;
+        double renderMs = Duration.currentTimeMillis() - renderStartMs;
         if (!hasRenderTimingSample) {
             renderTimeEmaMs = renderMs;
             hasRenderTimingSample = true;
