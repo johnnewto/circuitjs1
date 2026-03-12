@@ -79,13 +79,6 @@ public class SFCRExporter {
         sb.append("# Generated from circuit simulation\n");
         sb.append("\n");
         
-        // Export @info block if available
-        String infoBlock = exportInfoBlock();
-        if (!infoBlock.isEmpty()) {
-            sb.append(infoBlock);
-            sb.append("\n");
-        }
-        
         // Export @init block
         String initBlock = exportInitBlock();
         if (!initBlock.isEmpty()) {
@@ -162,6 +155,16 @@ public class SFCRExporter {
         String scopesBlock = exportScopes();
         if (!scopesBlock.isEmpty()) {
             sb.append(scopesBlock);
+        }
+
+        // Export @info block last (documentation footer)
+        String infoBlock = exportInfoBlock();
+        if (!infoBlock.isEmpty()) {
+            if (sb.length() > 0 && sb.charAt(sb.length() - 1) != '\n') {
+                sb.append("\n");
+            }
+            sb.append("\n");
+            sb.append(infoBlock);
         }
         
         return sb.toString();

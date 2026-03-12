@@ -26,6 +26,10 @@ Auto-detected when content contains `@matrix`, `@equations`, `@parameters`, `@in
   voltageUnit: $
   timeUnit: yr
   autoAdjustTimestep: false
+  equationTableMnaMode: true
+  equationTableNewtonJacobianEnabled: false
+  equationTableTolerance: 0.001
+  convergenceCheckThreshold: 100
   infoViewerUpdateIntervalMs: 100
   showDots: false
   showVolts: false
@@ -44,7 +48,18 @@ Auto-detected when content contains `@matrix`, `@equations`, `@parameters`, `@in
 | `showVolts` | Show voltage colors |
 | `showValues` | Show component values |
 | `showPower` | Show power dissipation |
+| `equationTableMnaMode` | Global EquationTable electrical mode toggle (`true` = MNA/electrical, `false` = pure computational) |
+| `equationTableNewtonJacobianEnabled` | Global EquationTable Newton Jacobian toggle |
+| `equationTableTolerance` | EquationTable convergence tolerance (`> 0`) |
+| `equationTableConvergenceTolerance` | Alias of `equationTableTolerance` |
+| `convergenceCheckThreshold` | Global subiteration threshold before reporting non-convergence (`>= 0`) |
+| `subiterationConvergenceThreshold` | Alias of `convergenceCheckThreshold` |
 | `infoViewerUpdateIntervalMs` | Throttle interval (ms) for live Info Viewer updates (default: `200`) |
+
+Notes:
+- `equationTableTolerance` and `equationTableConvergenceTolerance` are interchangeable on import.
+- `convergenceCheckThreshold` and `subiterationConvergenceThreshold` are interchangeable on import.
+- `equationTableMnaMode` and `equationTableNewtonJacobianEnabled` are exported by SFCR exporter and applied at import time.
 
 ---
 
@@ -124,6 +139,24 @@ All equations and constants. Creates an `EquationTableElm`.
 - Inline `# comment` becomes a hint (unless overridden by `@hints`)
 - Lag syntax is preserved as written on import (e.g. `X[-1]`, `X(-1)`, `X [ - 1 ]`)
 
+Optional per-row metadata can be appended using `; key=value` tokens:
+
+```
+  WBs ~ W * Ns ; mode=flow ; target=WBd ; slider=wageRate ; sliderValue=0.88 ; initial=0
+```
+
+| Metadata key | Meaning |
+|--------------|---------|
+| `mode` | Row output mode: `voltage`, `flow`, `param` |
+| `target` | FLOW-mode target node name (if not using `A->B` in the output name) |
+| `slider` | Slider variable name for this row |
+| `sliderValue` | Slider initial/current numeric value |
+| `initial` | Initial equation string |
+
+Notes:
+- Full-line `# ...` comments inside `@equations` are preserved as non-simulating comment rows.
+- Output names can use combined flow syntax (for example `A->B`) and are normalized on import.
+
 > **Note:** `@parameters` is accepted as an alias for `@equations` (for sfcr compatibility).
 
 ---
@@ -150,6 +183,10 @@ columns: Households, Firms, Govt
 - `columns:` defines column headers (optional if table header row present)
 - `codes:` short codes for R-style compatibility (optional)
 - `type: transaction_flow | balance_sheet` (optional)
+- `showFlowValues:` / `show_flow_values:` (optional boolean)
+- `showInitialValues:` / `show_initial_values:` (optional boolean)
+- `integration:` accepts `backward_euler`/`backward euler`/`backwardeuler` (optional)
+- `useBackwardEuler:` / `use_backward_euler:` (optional boolean)
 - Empty cells: leave blank or use `0`
 - Σ column auto-added on import
 
@@ -190,12 +227,48 @@ Defines a docked scope with one source trace and optional additional traces.
 | `flags` | Scope flags (decimal or `x...` hex) |
 | `source` | Primary trace (`uid` + `value`) |
 | `trace` | Additional trace (`uid` + `value`) |
+| `title` | Optional explicit scope title |
+| `label` | Optional scope label text |
+| `x1`,`y1`,`x2`,`y2` | Optional explicit scope rectangle |
+| `elmUid` | Optional UID for scope anchor element |
 
 Legacy single-line form is still accepted for import compatibility:
 
 ```
 @scope Y
 ```
+
+Note: legacy one-line scope import is accepted, but variable-name probe binding is not auto-resolved.
+
+---
+
+### @sankey — Sankey Diagram
+
+Defines an `SFCSankeyElm` view for table flows.
+
+```
+@sankey x=900 y=220
+  source: Transaction_Flow
+  layout: linear
+  width: 300
+  height: 250
+  showScaleBar: true
+  fixedMaxScale: 0
+  useHighWaterMark: false
+  showFlowValues: false
+@end
+```
+
+| Setting | Description |
+|---------|-------------|
+| `source` | Source table name (optional; blank enables auto-source) |
+| `layout` | `linear` or `circular` |
+| `width`, `height` | Diagram size |
+| `showScaleBar` | Show/hide scale bar |
+| `fixedMaxScale` | Fixed max scale (`0` = auto) |
+| `useHighWaterMark` | Keep scale at observed max |
+| `showFlowValues` | Show numeric flow values |
+| `showFlowLabels` | Backward-compatible alias of `showFlowValues` |
 
 ---
 
@@ -210,6 +283,22 @@ Pass-through for native CircuitJS1 element dump format.
 @end
 ```
 
+### Native `%` Directives (Circuit Dump Format)
+
+When importing native CircuitJS1 text dumps (non-SFCR), these `%` lines are recognized:
+
+| Directive | Meaning |
+|-----------|---------|
+| `% voltageUnit <symbol>` | Set display voltage unit symbol |
+| `% showToolbar true\|false` | Show or hide toolbar |
+| `% equationTableMnaMode true\|false` | Set global EquationTable MNA mode |
+| `% equationTableNewtonJacobianEnabled true\|false` | Set global EquationTable Newton Jacobian toggle |
+| `% equationTableConvergenceTolerance <number>` | Set global EquationTable convergence tolerance |
+| `% convergenceCheckThreshold <integer>` | Set global convergence-check subiteration threshold |
+| `% viewport ...` / `% transform ...` | Set viewport/canvas transform |
+| `% AS ...` / `% AST ...` | Load Action Scheduler entries |
+| `% Hint ...` | Load variable hint glossary entry |
+
 ---
 
 ## Element Mapping
@@ -222,7 +311,9 @@ Pass-through for native CircuitJS1 element dump format.
 | `@action` | `ActionScheduler` (replaces existing schedule) |
 | `@hints` | `HintRegistry` |
 | `@scope` | `Scope` entries (resolved by element UID) |
+| `@sankey` | `SFCSankeyElm` |
 | `@circuit` | Native elements |
+| `@info` | Model info markdown content |
 
 ---
 
@@ -254,6 +345,69 @@ eqs <- sfcr_set(
   C_d ~ alpha1 * YD
 )
 ```
+
+### Exporting R sfcr Syntax
+
+Use **File → Export as SFCR** and select:
+- **Block format (@equations/@matrix)**, or
+- **R sfcr syntax (sfcr_set/sfcr_matrix)**
+
+When **R sfcr syntax** is selected, export is **hybrid**:
+- `@init`, `@action`, `@info`, `@hints`, `@scope`, `@sankey`, `@circuit` remain block-based.
+- Equation and matrix content is emitted as R assignments:
+  - `name <- sfcr_set(...)` for `EquationTableElm` and `GodlyTableElm`
+  - `name <- sfcr_matrix(...)` for `SFCTableElm`
+
+R-style export carries extra metadata to preserve round-trip fidelity:
+- **Block metadata comment** before R assignments:
+  - `# [ x=400 y=120 type: transaction_flow ]`
+  - Parsed on import and used for element position and matrix type.
+- **Inline row metadata** in equation comments:
+  - `# ... [mode=param, slider=alpha0, sliderValue=0, initial=...]`
+  - Parsed on import to restore row mode/slider/initial settings.
+
+Current parser behavior for R-style imports:
+- Accepts `sfcr_set()` and `sfcr_matrix()` blocks (with assignment names).
+- Accepts metadata comments in `# [ ... ]` form.
+- Accepts named equation prefixes like `e1 = X ~ expr` and strips the `e1 =` part.
+- Keeps standalone `#` lines as non-simulating comment rows in equation tables.
+
+Notes:
+- R-style scope/probe definitions are not a separate syntax; scopes remain `@scope` blocks.
+- `codes=` in `sfcr_matrix()` is used to map row entries back to matrix columns on import.
+
+#### Minimal R-Style Export Example
+
+```text
+# CircuitJS1 SFCR Export
+
+@init
+  timestep: 1
+  voltageUnit: $
+  autoAdjustTimestep: false
+@end
+
+# [ x=120 y=220 ]
+bmw_eqs <- sfcr_set(
+  e1 = Y ~ C + I,  # [mode=voltage, sliderValue=0 ]
+  e2 = C ~ alpha1 * YD + alpha2 * Mh  # Consumption function [mode=param, slider=alpha1, sliderValue=0.75 ]
+)
+
+# [ x=420 y=220 type: transaction_flow ]
+tfm <- sfcr_matrix(
+  columns = c("Households", "Firms"),
+  codes = c("h", "f"),
+  c("Consumption", h = "-C", f = "C"),
+  c("Investment",  h = "",   f = "I")
+)
+
+@scope Main_Scope position=0
+  speed: 64
+  flags: x800060
+@end
+```
+
+This example shows the hybrid structure produced by R-style export: R assignments for equations/matrices plus standard `@...` blocks for simulator/UI configuration.
 
 ---
 
