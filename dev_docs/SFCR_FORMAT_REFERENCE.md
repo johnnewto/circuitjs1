@@ -2,7 +2,7 @@
 
 Human-readable text format for Stock-Flow Consistent (SFC) models in CircuitJS1.
 
-**Implementation**: [SFCRParser.java](../src/com/lushprojects/circuitjs1/client/SFCRParser.java), [SFCRExporter.java](../src/com/lushprojects/circuitjs1/client/SFCRExporter.java)
+**Implementation**: [SFCRParser.java](../src/com/lushprojects/circuitjs1/client/SFCRParser.java), [SFCRExporter.java](../src/com/lushprojects/circuitjs1/client/SFCRExporter.java), [SFCRUtil.java](../src/com/lushprojects/circuitjs1/client/SFCRUtil.java) (shared utilities)
 
 ## Usage
 

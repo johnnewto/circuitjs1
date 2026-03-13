@@ -178,7 +178,7 @@ public final class InfoViewerContentBuilder {
 
                     block.append(blockLine).append("\n");
 
-                    int delta = parenthesesDelta(blockLine);
+                    int delta = SFCRUtil.parenthesesDelta(blockLine);
                     if (delta != 0 || blockLine.indexOf('(') >= 0) {
                         hasParen = true;
                     }
@@ -263,19 +263,4 @@ public final class InfoViewerContentBuilder {
             || trimmedLine.startsWith("@plot");
     }
 
-    private static int parenthesesDelta(String line) {
-        if (line == null || line.isEmpty()) {
-            return 0;
-        }
-        int delta = 0;
-        for (int i = 0; i < line.length(); i++) {
-            char ch = line.charAt(i);
-            if (ch == '(') {
-                delta++;
-            } else if (ch == ')') {
-                delta--;
-            }
-        }
-        return delta;
-    }
 }

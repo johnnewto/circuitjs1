@@ -265,7 +265,7 @@ public class SFCRExporter {
                     String rLine = lines[j];
                     rStyle.append(rLine).append("\n");
                     end = j;
-                    int delta = parenthesesDelta(rLine);
+                    int delta = SFCRUtil.parenthesesDelta(rLine);
                     if (delta != 0 || rLine.indexOf('(') >= 0) {
                         hasParen = true;
                     }
@@ -454,22 +454,6 @@ public class SFCRExporter {
         sb.append(replacement).append("\n");
         sb.append("```");
         return sb.toString();
-    }
-
-    private int parenthesesDelta(String line) {
-        if (line == null || line.isEmpty()) {
-            return 0;
-        }
-        int delta = 0;
-        for (int i = 0; i < line.length(); i++) {
-            char ch = line.charAt(i);
-            if (ch == '(') {
-                delta++;
-            } else if (ch == ')') {
-                delta--;
-            }
-        }
-        return delta;
     }
 
     /** Collapse excessive blank lines outside fenced code blocks. */
@@ -771,7 +755,7 @@ public class SFCRExporter {
 
         StringBuilder sb = new StringBuilder();
         if (actionTimeElmForExport != null) {
-            String actionName = sanitizeName(actionTimeElmForExport.title);
+            String actionName = SFCRUtil.sanitizeName(actionTimeElmForExport.title);
             sb.append("@action ").append(actionName).append(formatPosition(actionTimeElmForExport)).append("\n");
         } else {
             sb.append("@action\n");
@@ -805,11 +789,11 @@ public class SFCRExporter {
             sb.append("| ")
               .append(action.actionTime)
               .append(" | ")
-              .append(escapeTableCell(target))
+              .append(SFCRUtil.escapeTableCell(target))
               .append(" | ")
-              .append(escapeTableCell(value))
+              .append(SFCRUtil.escapeTableCell(value))
               .append(" | ")
-              .append(escapeTableCell(text))
+              .append(SFCRUtil.escapeTableCell(text))
               .append(" | ")
               .append(action.enabled)
               .append(" | ")
@@ -834,9 +818,9 @@ public class SFCRExporter {
         int rowCount = eqTable.getRowCount();
         if (rowCount == 0) return "";
 
-        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_EQUATIONS, sanitizeName(tableName));
+        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_EQUATIONS, SFCRUtil.sanitizeName(tableName));
         
-        sb.append("@equations ").append(sanitizeName(tableName));
+        sb.append("@equations ").append(SFCRUtil.sanitizeName(tableName));
         sb.append(formatPosition(eqTable)).append("\n");
         
         for (int row = 0; row < rowCount; row++) {
@@ -866,7 +850,7 @@ public class SFCRExporter {
             String hint = sanitizeHintForRStyleExport(HintRegistry.getHint(sourceName));
 
             sb.append("  ").append(name).append(" ~ ").append(expr);
-            sb.append(" ; mode=").append(formatEquationRowMode(mode));
+            sb.append(" ; mode=").append(SFCRUtil.formatEquationRowMode(mode));
             if (sliderVar != null && !sliderVar.trim().isEmpty()) {
                 sb.append(" ; slider=").append(sliderVar.trim());
             }
@@ -884,10 +868,6 @@ public class SFCRExporter {
         return sb.toString();
     }
 
-    private String formatEquationRowMode(EquationTableElm.RowOutputMode mode) {
-        return SFCRUtil.formatEquationRowMode(mode);
-    }
-
     /** Export EquationTableElm as R-style sfcr_set() assignment. */
     private String exportEquationTableRStyle(EquationTableElm eqTable) {
         StringBuilder sb = new StringBuilder();
@@ -902,7 +882,7 @@ public class SFCRExporter {
             return "";
         }
 
-        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_EQUATIONS, sanitizeName(tableName));
+        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_EQUATIONS, SFCRUtil.sanitizeName(tableName));
 
         int equationCount = 0;
         for (int row = 0; row < rowCount; row++) {
@@ -982,7 +962,7 @@ public class SFCRExporter {
             tableName = "Stocks";
         }
 
-        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_EQUATIONS, sanitizeName(tableName));
+        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_EQUATIONS, SFCRUtil.sanitizeName(tableName));
         sb.append(formatRBlockMetadataComment(godlyTable, null));
 
         ArrayList<String> equationLines = new ArrayList<String>();
@@ -1029,7 +1009,7 @@ public class SFCRExporter {
             tableName = "SFC_Matrix";
         }
 
-        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_MATRIX, sanitizeName(tableName));
+        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_MATRIX, SFCRUtil.sanitizeName(tableName));
 
         ArrayList<String> stockNames = new ArrayList<String>();
         ArrayList<String> stockCodes = new ArrayList<String>();
@@ -1107,9 +1087,9 @@ public class SFCRExporter {
             tableName = "Stocks";
         }
 
-        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_EQUATIONS, sanitizeName(tableName));
+        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_EQUATIONS, SFCRUtil.sanitizeName(tableName));
         
-        sb.append("@equations ").append(sanitizeName(tableName));
+        sb.append("@equations ").append(SFCRUtil.sanitizeName(tableName));
         sb.append(formatPosition(godlyTable)).append("\n");
         
         // Export column stock names with their integration expressions
@@ -1186,9 +1166,9 @@ public class SFCRExporter {
             tableName = "SFC_Matrix";
         }
 
-        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_MATRIX, sanitizeName(tableName));
+        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_MATRIX, SFCRUtil.sanitizeName(tableName));
         
-        sb.append("@matrix ").append(sanitizeName(tableName));
+        sb.append("@matrix ").append(SFCRUtil.sanitizeName(tableName));
         sb.append(formatPosition(sfcTable)).append("\n");
         sb.append("  type: transaction_flow\n");
         
@@ -1453,9 +1433,9 @@ public class SFCRExporter {
             scopeName = defaultPrefix + "_" + defaultIndex;
         }
 
-                appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_SCOPE, sanitizeName(scopeName));
+                appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_SCOPE, SFCRUtil.sanitizeName(scopeName));
 
-        sb.append("@scope ").append(sanitizeName(scopeName))
+        sb.append("@scope ").append(SFCRUtil.sanitizeName(scopeName))
           .append(" position=").append(s.position).append("\n");
 
         // For embedded scopes, include the ScopeElm geometry and UID
@@ -1508,14 +1488,9 @@ public class SFCRExporter {
     // =========================================================================
     // Helpers
     // =========================================================================
-    
-    /** Sanitize name for SFCR format (replace spaces with underscores). */
-    private String sanitizeName(String name) {
-        return SFCRUtil.sanitizeName(name);
-    }
 
     private String toRAssignmentName(String name) {
-        String base = sanitizeName(name);
+        String base = SFCRUtil.sanitizeName(name);
         return toRCodeIdentifier(base);
     }
 
@@ -1581,7 +1556,7 @@ public class SFCRExporter {
             String sliderVar, double sliderValue, String initialEq) {
         // Format: [mode=param, slider=foo, sliderValue=0, initial=... ]
         StringBuilder sb = new StringBuilder();
-        sb.append("[mode=").append(formatEquationRowMode(mode));
+        sb.append("[mode=").append(SFCRUtil.formatEquationRowMode(mode));
         if (sliderVar != null && !sliderVar.trim().isEmpty()) {
             sb.append(", slider=").append(sliderVar.trim());
         }
@@ -1689,11 +1664,6 @@ public class SFCRExporter {
         return parsed > 0;
     }
 
-    /** Escape markdown table cell delimiters. */
-    private String escapeTableCell(String text) {
-        return SFCRUtil.escapeTableCell(text);
-    }
-    
     /** Format position string for block header. */
     private String formatPosition(CircuitElm elm) {
         return " x=" + elm.x + " y=" + elm.y;

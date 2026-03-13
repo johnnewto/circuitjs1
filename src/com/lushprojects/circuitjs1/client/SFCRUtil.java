@@ -70,6 +70,32 @@ public class SFCRUtil {
     }
 
     // =========================================================================
+    // Parenthesis counting
+    // =========================================================================
+
+    /**
+     * Count the net change in parenthesis depth over a single line of text.
+     * Returns a positive value when there are more opening than closing
+     * parentheses, negative when there are more closing, and 0 when balanced.
+     * Null/empty input returns 0.
+     */
+    public static int parenthesesDelta(String line) {
+        if (line == null || line.isEmpty()) {
+            return 0;
+        }
+        int delta = 0;
+        for (int i = 0; i < line.length(); i++) {
+            char ch = line.charAt(i);
+            if (ch == '(') {
+                delta++;
+            } else if (ch == ')') {
+                delta--;
+            }
+        }
+        return delta;
+    }
+
+    // =========================================================================
     // Expression / variable name normalization (import-side)
     // =========================================================================
 

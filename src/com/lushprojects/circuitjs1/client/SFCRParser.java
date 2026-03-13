@@ -567,9 +567,9 @@ public class SFCRParser {
                 if (cells.length >= 6) {
                     try {
                         double actionTime = Double.parseDouble(cells[0].trim());
-                        String target = unescapeTableCell(cells[1]);
-                        String valueSpec = unescapeTableCell(cells[2]);
-                        String postText = unescapeTableCell(cells[3]);
+                        String target = SFCRUtil.unescapeTableCell(cells[1]);
+                        String valueSpec = SFCRUtil.unescapeTableCell(cells[2]);
+                        String postText = SFCRUtil.unescapeTableCell(cells[3]);
                         boolean enabled = parseBoolean(cells[4], true);
                         boolean stop = parseBoolean(cells[5], false);
 
@@ -868,19 +868,19 @@ public class SFCRParser {
                     }
                 }
 
-                String normalizedLeft = normalizeVariableName(leftPart);
+                String normalizedLeft = SFCRUtil.normalizeVariableName(leftPart);
                 String[] lhsAliasParts = splitDifferenceLeftAlias(normalizedLeft);
                 boolean hasDifferenceAlias = lhsAliasParts[1] != null && !lhsAliasParts[1].isEmpty();
 
                 String[] nameParts = EquationTableElm.parseCombinedName(lhsAliasParts[0]);
-                String name = normalizeVariableName(nameParts[0]);
+                String name = SFCRUtil.normalizeVariableName(nameParts[0]);
 
                 String targetName = "";
                 if (nameParts[1] != null && !nameParts[1].trim().isEmpty()) {
-                    targetName = normalizeVariableName(nameParts[1].trim());
+                    targetName = SFCRUtil.normalizeVariableName(nameParts[1].trim());
                 }
 
-                String expr = normalizeExpression(exprText);
+                String expr = SFCRUtil.normalizeExpression(exprText);
                 
                 // Keep lag notation exactly as imported (e.g. X[-1], X(-1), X [ - 1 ]).
                 // Equation parsing/evaluation supports lag forms directly.
@@ -893,7 +893,7 @@ public class SFCRParser {
                     equations.add(expr);
                 }
 
-                EquationTableElm.RowOutputMode mode = parseEquationRowMode(rowMeta.get("mode"));
+                EquationTableElm.RowOutputMode mode = SFCRUtil.parseEquationRowMode(rowMeta.get("mode"));
                 if (mode == EquationTableElm.RowOutputMode.VOLTAGE_MODE && !targetName.isEmpty()) {
                     mode = EquationTableElm.RowOutputMode.FLOW_MODE;
                 }
@@ -902,7 +902,7 @@ public class SFCRParser {
                 if (targetName.isEmpty()) {
                     String metaTarget = rowMeta.get("target");
                     if (metaTarget != null && !metaTarget.trim().isEmpty()) {
-                        targetName = normalizeVariableName(metaTarget.trim());
+                        targetName = SFCRUtil.normalizeVariableName(metaTarget.trim());
                     }
                 }
                 targetNodeNames.add(targetName);
@@ -1029,7 +1029,7 @@ public class SFCRParser {
             // Parse hint: "varname: description"
             int colonIdx = line.indexOf(':');
             if (colonIdx > 0) {
-                String varName = normalizeVariableName(line.substring(0, colonIdx).trim());
+                String varName = SFCRUtil.normalizeVariableName(line.substring(0, colonIdx).trim());
                 String description = line.substring(colonIdx + 1).trim();
                 hints.put(varName, description);
             }
@@ -1043,7 +1043,7 @@ public class SFCRParser {
     /** Parse @scope line. */
     private void parseScopeLine(String line) {
         String varName = line.substring(6).trim(); // Remove "@scope"
-        varName = normalizeVariableName(varName);
+        varName = SFCRUtil.normalizeVariableName(varName);
         if (!varName.isEmpty()) {
             scopeVariables.add(varName);
         }
@@ -1695,7 +1695,7 @@ public class SFCRParser {
             String code = codes.get(i);
             String exprValue = extractRQuotedAssignmentValue(rest, code);
             if (exprValue != null) {
-                rowData[i] = normalizeExpression(exprValue);
+                rowData[i] = SFCRUtil.normalizeExpression(exprValue);
             }
         }
         
@@ -1846,8 +1846,8 @@ public class SFCRParser {
             // Parse: var ~ expr
             tildeIdx = part.indexOf('~');
             if (tildeIdx >= 0) {
-                String name = normalizeVariableName(part.substring(0, tildeIdx).trim());
-                String expr = normalizeExpression(part.substring(tildeIdx + 1).trim());
+                String name = SFCRUtil.normalizeVariableName(part.substring(0, tildeIdx).trim());
+                String expr = SFCRUtil.normalizeExpression(part.substring(tildeIdx + 1).trim());
                 
                 // Keep lag notation exactly as imported (e.g. V[-1], V(-1), V [ - 1 ]).
                 
@@ -1856,7 +1856,7 @@ public class SFCRParser {
                 EquationTableElm.RowOutputMode mode = currentSectionMode;
                 String inlineMode = inlineMeta.get("mode");
                 if (inlineMode != null && !inlineMode.isEmpty()) {
-                    mode = parseEquationRowMode(inlineMode);
+                    mode = SFCRUtil.parseEquationRowMode(inlineMode);
                 }
                 outputModes.add(mode);
                 targetNodeNames.add("");
@@ -2315,25 +2315,6 @@ public class SFCRParser {
         return defaultValue;
     }
 
-    /** Unescape markdown table cell escapes. */
-    private String unescapeTableCell(String text) {
-        return SFCRUtil.unescapeTableCell(text);
-    }
-    
-    // =========================================================================
-    // Expression Normalization
-    // =========================================================================
-    
-    /** Normalize variable name: convert Greek symbol representations. */
-    private String normalizeVariableName(String name) {
-        return SFCRUtil.normalizeVariableName(name);
-    }
-    
-    /** Normalize expression: convert symbols, d() -> diff(), ∫() -> integrate(). */
-    private String normalizeExpression(String expr) {
-        return SFCRUtil.normalizeExpression(expr);
-    }
-    
     // =========================================================================
     // Element Creation
     // =========================================================================
@@ -2460,10 +2441,6 @@ public class SFCRParser {
         } catch (Exception e) {
             CirSim.console("Error creating matrix table: " + e.getMessage());
         }
-    }
-
-    private EquationTableElm.RowOutputMode parseEquationRowMode(String mode) {
-        return SFCRUtil.parseEquationRowMode(mode);
     }
 
     /** Append a non-simulating comment row to an equation table payload. */
