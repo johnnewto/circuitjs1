@@ -58,7 +58,7 @@ public class ExportAsSFCRDialog extends Dialog {
 
         blockFormatButton = new RadioButton("sfcrExportFormat", "Block format (@equations/@matrix)");
         rStyleButton = new RadioButton("sfcrExportFormat", "R sfcr syntax (sfcr_set/sfcr_matrix)");
-        blockFormatButton.setValue(true);
+        rStyleButton.setValue(true);
 
         ValueChangeHandler<Boolean> formatChangeHandler = new ValueChangeHandler<Boolean>() {
             public void onValueChange(ValueChangeEvent<Boolean> event) {

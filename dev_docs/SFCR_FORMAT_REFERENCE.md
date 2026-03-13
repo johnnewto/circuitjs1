@@ -110,6 +110,45 @@ Description of the model...
 @end
 ```
 
+#### InfoViewer Directive Blocks inside `@info`
+
+Inside `@info`, fenced blocks tagged as ` ```{circuit} ` are treated as **viewer directives** (not plain code samples).
+They can mount live widgets in the Model Info viewer.
+
+Supported directive patterns include:
+
+- `table: <name>` for live table mounts
+- `sankey: <table>` or `@sankey ... @end` for Sankey mounts
+- `@scope ... @end` for live scope mounts
+- Plot directives via either fenced keys (`plot:` / `vars:`) or block form `@plot ... @end`
+
+Example:
+
+```{circuit}
+table: Transaction_Flow_Matrix
+```
+
+`@plot` can be used directly in `@info` markdown (fences optional):
+
+```
+@plot
+vars: Y, C_d
+title: Output and Consumption
+ylabel: Value
+points: 300
+xaxis: Time (years)
+legend: true
+style: lines+points
+@end
+```
+
+Plot aliases accepted by the viewer:
+
+- `plot:` or `vars:` (same meaning)
+- `xaxis:` or `xlabel:` (same meaning)
+- `yaxis:` or `ylabel:` (same meaning)
+- `window:` or `points:` (same meaning)
+
 ---
 
 ### @equations — Equations & Constants
@@ -353,7 +392,8 @@ Use **File → Export as SFCR** and select:
 - **R sfcr syntax (sfcr_set/sfcr_matrix)**
 
 When **R sfcr syntax** is selected, export is **hybrid**:
-- `@init`, `@action`, `@info`, `@hints`, `@scope`, `@sankey`, `@circuit` remain block-based.
+- `@init`, `@action`, `@hints`, `@scope`, `@sankey`, `@circuit` remain block-based.
+- Model documentation is exported as inline markdown (without an `@info` wrapper) for round-trip fidelity.
 - Equation and matrix content is emitted as R assignments:
   - `name <- sfcr_set(...)` for `EquationTableElm` and `GodlyTableElm`
   - `name <- sfcr_matrix(...)` for `SFCTableElm`

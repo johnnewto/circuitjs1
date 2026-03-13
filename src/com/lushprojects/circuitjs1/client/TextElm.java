@@ -417,8 +417,9 @@ class TextElm extends GraphicElm {
 	// Handle [[info]] - open model info dialog
 	if (lowerLink.equals("info") || lowerLink.equals("model info") || 
 	    lowerLink.equals("about") || lowerLink.equals("help")) {
-	    if (sim.modelInfoContent != null && !sim.modelInfoContent.isEmpty()) {
-		InfoViewerDialog.showInfoInIframe("Model Information", sim.modelInfoContent, true);
+	    String editorContent = sim.getModelInfoEditorContent();
+	    if (editorContent != null && !editorContent.isEmpty()) {
+		InfoViewerDialog.showInfoInIframe("Model Information", editorContent, false);
 	    } else {
 		com.google.gwt.user.client.Window.alert("No model information available.\nAdd an @info block to your SFCR file.");
 	    }

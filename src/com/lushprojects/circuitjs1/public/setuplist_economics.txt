@@ -18,7 +18,7 @@ econ_Godley_Lavoie_BMW_7_volts_param.txt BMW Godley & Lavoie BMW Model Ch7 (volt
 expr-functions-test.txt Expr Functions Reference
 -
 +Debug
->1debug.txt Debug 1
+>1debug.md Debug 1
 1dbg_LRC+Table.txt Dbg LRC+Table
 1dbg_CTM&GodleyTest.txt CTM & Godley Test
 1dbg_percent_meter_test.txt Percent Meter Test

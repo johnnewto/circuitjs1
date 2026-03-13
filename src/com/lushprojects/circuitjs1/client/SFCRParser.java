@@ -178,6 +178,8 @@ public class SFCRParser {
             String[] lines = text.split("\n");
             int i = 0;
             Vector<String> pendingBlockComments = new Vector<String>();
+            boolean inFence = false;
+            boolean pendingCommentsConsumedInFence = false;
             
             while (i < lines.length) {
                 String line = lines[i].trim();
@@ -188,9 +190,25 @@ public class SFCRParser {
                     continue;
                 }
 
-                // Track full-line comments so they can be attached to the next element block
+                // Track markdown fences so pending headings/comments can attach to
+                // structural constructs inside fenced blocks (e.g. ```{r} ... sfcr_set ... ```).
+                if (line.startsWith("```")) {
+                    if (!inFence) {
+                        inFence = true;
+                        pendingCommentsConsumedInFence = false;
+                    } else {
+                        inFence = false;
+                        if (!pendingCommentsConsumedInFence) {
+                            pendingBlockComments.clear();
+                        }
+                    }
+                    i++;
+                    continue;
+                }
+
+                // Track full-line comments/markdown so they can be attached to the next element block
                 if (line.startsWith("#")) {
-                    pendingBlockComments.add(line);
+                    pendingBlockComments.add(lines[i]);
                     i++;
                     continue;
                 }
@@ -210,14 +228,17 @@ public class SFCRParser {
                     pendingBlockComments.clear();
                     i = parseActionBlock(lines, i);
                 } else if (line.startsWith("@matrix")) {
+                    if (inFence) pendingCommentsConsumedInFence = true;
                     storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_MATRIX,
                         extractBlockName(line, "@matrix"), pendingBlockComments);
                     i = parseMatrixBlock(lines, i);
                 } else if (line.startsWith("@equations")) {
+                    if (inFence) pendingCommentsConsumedInFence = true;
                     storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_EQUATIONS,
                         extractBlockName(line, "@equations"), pendingBlockComments);
                     i = parseEquationsBlock(lines, i);
                 } else if (line.startsWith("@parameters")) {
+                    if (inFence) pendingCommentsConsumedInFence = true;
                     storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_EQUATIONS,
                         extractBlockName(line, "@parameters"), pendingBlockComments);
                     i = parseParametersBlock(lines, i);
@@ -226,6 +247,7 @@ public class SFCRParser {
                     i = parseHintsBlock(lines, i);
                 } else if (line.startsWith("@scope")) {
                     if (looksLikeScopeBlock(lines, i)) {
+                        if (inFence) pendingCommentsConsumedInFence = true;
                         storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_SCOPE,
                             extractScopeBlockName(line), pendingBlockComments);
                         i = parseScopeBlock(lines, i);
@@ -238,6 +260,7 @@ public class SFCRParser {
                     pendingBlockComments.clear();
                     i = parseCircuitBlock(lines, i);
                 } else if (line.startsWith("@sankey")) {
+                    if (inFence) pendingCommentsConsumedInFence = true;
                     storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_SANKEY,
                         "", pendingBlockComments);
                     i = parseSankeyBlock(lines, i);
@@ -246,13 +269,18 @@ public class SFCRParser {
                     i = parseInfoBlock(lines, i);
                 } else if (line.contains("sfcr_matrix") || line.contains("<-")) {
                     // Try to parse R-style sfcr syntax
+                    if (inFence) pendingCommentsConsumedInFence = true;
                     i = parseRStyleBlock(lines, i, pendingBlockComments);
                 } else {
-                    pendingBlockComments.clear();
+                    // Preserve non-block inline markdown context (headings/prose) so it
+                    // can round-trip and remain associated with the next structural block.
+                    if (!inFence) {
+                        pendingBlockComments.add(lines[i]);
+                    }
                     i++;
                 }
             }
-            
+
             // Apply init settings first (timestep, units, etc.)
             applyInitSettings();
             
@@ -1600,22 +1628,28 @@ public class SFCRParser {
         }
         
         // Extract rows: c("RowName", code = "expr", ...)
+        // Parse top-level sfcr_matrix(...) arguments so we don't treat
+        // columns=c(...) and codes=c(...) vectors as table rows.
         ArrayList<String> rowNames = new ArrayList<String>();
         ArrayList<String[]> tableRows = new ArrayList<String[]>();
-        
-        // Find row definitions: c("name", ...)
-        int searchStart = block.indexOf("sfcr_matrix");
-        while (true) {
-            int cStart = block.indexOf("c(\"", searchStart);
-            if (cStart < 0) break;
-            
-            int cEnd = findMatchingParen(block, cStart + 1);
-            if (cEnd < 0) break;
-            
-            String rowDef = block.substring(cStart + 2, cEnd);
-            parseRStyleRow(rowDef, rowNames, tableRows, columnCodes);
-            
-            searchStart = cEnd + 1;
+
+        if (matrixStart >= 0) {
+            int contentStart = matrixStart + "sfcr_matrix(".length();
+            int contentEnd = findMatchingParen(block, contentStart - 1);
+            if (contentEnd > contentStart) {
+                String content = block.substring(contentStart, contentEnd);
+                ArrayList<String> args = splitByTopLevelComma(content);
+                for (int ai = 0; ai < args.size(); ai++) {
+                    String arg = args.get(ai).trim();
+                    if (arg.startsWith("c(")) {
+                        int argEnd = arg.lastIndexOf(')');
+                        if (argEnd > 2) {
+                            String rowDef = arg.substring(2, argEnd);
+                            parseRStyleRow(rowDef, rowNames, tableRows, columnCodes);
+                        }
+                    }
+                }
+            }
         }
         
         int savedX = currentX;
@@ -1643,10 +1677,10 @@ public class SFCRParser {
     private void parseRStyleRow(String rowDef, ArrayList<String> rowNames, 
                                  ArrayList<String[]> tableRows, ArrayList<String> codes) {
         int firstQuote = rowDef.indexOf('"');
-        int secondQuote = rowDef.indexOf('"', firstQuote + 1);
+        int secondQuote = findClosingQuote(rowDef, firstQuote);
         if (firstQuote < 0 || secondQuote < 0) return;
         
-        String rowName = rowDef.substring(firstQuote + 1, secondQuote);
+        String rowName = unescapeRString(rowDef.substring(firstQuote + 1, secondQuote));
         rowNames.add(rowName);
         
         // Initialize row with empty values
@@ -1659,31 +1693,40 @@ public class SFCRParser {
         String rest = rowDef.substring(secondQuote + 1);
         for (int i = 0; i < codes.size(); i++) {
             String code = codes.get(i);
-            // Look for "code = "expr"" or "code = +expr" patterns
-            String pattern1 = code + " = \"";
-            String pattern2 = code + "=\"";
-            String pattern3 = code + " = ";
-            
-            int idx = rest.indexOf(pattern1);
-            if (idx >= 0) {
-                int exprStart = idx + pattern1.length();
-                int exprEnd = rest.indexOf('"', exprStart);
-                if (exprEnd > exprStart) {
-                    rowData[i] = normalizeExpression(rest.substring(exprStart, exprEnd));
-                }
-            } else {
-                idx = rest.indexOf(pattern2);
-                if (idx >= 0) {
-                    int exprStart = idx + pattern2.length();
-                    int exprEnd = rest.indexOf('"', exprStart);
-                    if (exprEnd > exprStart) {
-                        rowData[i] = normalizeExpression(rest.substring(exprStart, exprEnd));
-                    }
-                }
+            String exprValue = extractRQuotedAssignmentValue(rest, code);
+            if (exprValue != null) {
+                rowData[i] = normalizeExpression(exprValue);
             }
         }
         
         tableRows.add(rowData);
+    }
+
+    /** Extract quoted assignment value for code = "..." from a row definition tail. */
+    private String extractRQuotedAssignmentValue(String text, String code) {
+        if (text == null || code == null || code.length() == 0) {
+            return null;
+        }
+
+        String pattern1 = code + " = \"";
+        String pattern2 = code + "=\"";
+        int idx = text.indexOf(pattern1);
+        int patternLen = pattern1.length();
+        if (idx < 0) {
+            idx = text.indexOf(pattern2);
+            patternLen = pattern2.length();
+        }
+        if (idx < 0) {
+            return null;
+        }
+
+        int valueStart = idx + patternLen;
+        int valueEnd = findClosingQuote(text, valueStart - 1);
+        if (valueEnd <= valueStart) {
+            return null;
+        }
+
+        return unescapeRString(text.substring(valueStart, valueEnd));
     }
     
     /** Parse R-style sfcr_set for equations. */
@@ -1885,14 +1928,73 @@ public class SFCRParser {
         while (true) {
             int q1 = content.indexOf('"', pos);
             if (q1 < 0) break;
-            int q2 = content.indexOf('"', q1 + 1);
+            int q2 = findClosingQuote(content, q1);
             if (q2 < 0) break;
             
-            result.add(content.substring(q1 + 1, q2));
+            result.add(unescapeRString(content.substring(q1 + 1, q2)));
             pos = q2 + 1;
         }
         
         return result;
+    }
+
+    /** Find closing quote in a string, honoring escaped quotes (\"). */
+    private int findClosingQuote(String text, int openQuoteIdx) {
+        if (text == null || openQuoteIdx < 0 || openQuoteIdx >= text.length() || text.charAt(openQuoteIdx) != '"') {
+            return -1;
+        }
+        boolean escaped = false;
+        for (int i = openQuoteIdx + 1; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (escaped) {
+                escaped = false;
+                continue;
+            }
+            if (c == '\\') {
+                escaped = true;
+                continue;
+            }
+            if (c == '"') {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /** Unescape R-style string content (\\, \", \n, \r, \t). */
+    private String unescapeRString(String text) {
+        if (text == null || text.length() == 0) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        boolean escaped = false;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (!escaped) {
+                if (c == '\\') {
+                    escaped = true;
+                } else {
+                    sb.append(c);
+                }
+                continue;
+            }
+
+            switch (c) {
+                case '\\': sb.append('\\'); break;
+                case '"': sb.append('"'); break;
+                case 'n': sb.append('\n'); break;
+                case 'r': sb.append('\r'); break;
+                case 't': sb.append('\t'); break;
+                default:
+                    sb.append('\\').append(c);
+                    break;
+            }
+            escaped = false;
+        }
+        if (escaped) {
+            sb.append('\\');
+        }
+        return sb.toString();
     }
     
     /** Find matching closing parenthesis. */
@@ -1996,21 +2098,67 @@ public class SFCRParser {
             return trimmed;
         }
 
-        int close = trimmed.lastIndexOf(']');
-        if (close != trimmed.length() - 1) {
-            return trimmed;
-        }
-        int open = trimmed.lastIndexOf('[', close);
-        if (open < 0) {
-            return trimmed;
+        String working = trimmed;
+        int parsedTotal = 0;
+
+        // Consume one or more trailing bracketed metadata chunks, e.g.
+        // "hint [mode=voltage] [sliderValue=0]".
+        while (true) {
+            int close = working.lastIndexOf(']');
+            if (close != working.length() - 1) {
+                break;
+            }
+            int open = working.lastIndexOf('[', close);
+            if (open < 0) {
+                break;
+            }
+
+            String metaChunk = working.substring(open + 1, close).trim();
+            int parsedThisChunk = parseRStyleInlineMetadataChunk(metaChunk, outMeta);
+            if (parsedThisChunk == 0) {
+                break;
+            }
+
+            parsedTotal += parsedThisChunk;
+            working = working.substring(0, open).trim();
         }
 
-        String metaChunk = trimmed.substring(open + 1, close).trim();
-        if (metaChunk.isEmpty()) {
-            return trimmed.substring(0, open).trim();
+        // Also consume dangling unclosed trailing metadata prefixes such as
+        // "hint [mode=voltage" left behind by malformed repeated exports.
+        while (true) {
+            int open = working.lastIndexOf('[');
+            if (open < 0) {
+                break;
+            }
+
+            String tail = working.substring(open + 1).trim();
+            int parsedTail = parseRStyleInlineMetadataChunk(tail, outMeta);
+            if (parsedTail == 0) {
+                break;
+            }
+
+            parsedTotal += parsedTail;
+            working = working.substring(0, open).trim();
         }
 
-        String[] tokens = metaChunk.split(",");
+        if (parsedTotal == 0) {
+            return trimmed;
+        }
+        return working;
+    }
+
+    /** Parse comma-separated key=value metadata tokens into outMeta. */
+    private int parseRStyleInlineMetadataChunk(String metaChunk, HashMap<String, String> outMeta) {
+        if (metaChunk == null || outMeta == null) {
+            return 0;
+        }
+
+        String chunk = metaChunk.trim();
+        if (chunk.isEmpty()) {
+            return 0;
+        }
+
+        String[] tokens = chunk.split(",");
         int parsed = 0;
         for (int i = 0; i < tokens.length; i++) {
             String token = tokens[i].trim();
@@ -2025,11 +2173,7 @@ public class SFCRParser {
                 parsed++;
             }
         }
-
-        if (parsed == 0) {
-            return trimmed;
-        }
-        return trimmed.substring(0, open).trim();
+        return parsed;
     }
     
     // =========================================================================

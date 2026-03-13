@@ -146,14 +146,16 @@ $$G_N - TX_N = IM_N - X_N$$
   infoViewerUpdateIntervalMs: 200
 @end
 
-@action Action_Schedule x=1088 y=-16
+@action Scenarios:_propensity_to_import x=928 y=-32
   pauseTime: 0
   enabled: true
-  element: 1088 -16 1104 0 0
+  element: 928 -32 1072 80 0
 
 | time | target | value | text | enabled | stop |
 |------|--------|-------|------|---------|------|
 | 60 | \mu_S | 0.25 | propensity to import in the South | true | false |
+| 100 | \phi_N | 0.25 | Govts adjusts spending | true | false |
+| 100 | \phi_S | 0.25 | Govts adjusts spending | true | false |
 @end
 
 @equations open_eqs x=240 y=-24
@@ -187,8 +189,8 @@ $$G_N - TX_N = IM_N - X_N$$
   Bcb_S ~ Bs_S - Bh_S ; mode=voltage ; sliderValue=0  # Bills held by central bank S
   \deltaBcb_N ~ Bcb_N - Bcb_N[-1] ; mode=param ; sliderValue=0  # Change in central bank bill holdings N
   \deltaBcb_S ~ Bcb_S - Bcb_S[-1] ; mode=param ; sliderValue=0  # Change in central bank bill holdings S
-  or_N ~ or_N[-1] + ((Hs_N - Hs_N[-1] - (Bcb_N - Bcb_N[-1])) / pg_N) ; mode=voltage ; sliderValue=0  # Gold holdings by central bank N
-  or_S ~ or_S[-1] + ((Hs_S - Hs_S[-1] - (Bcb_S - Bcb_S[-1])) / pg_S) ; mode=voltage ; sliderValue=0  # Gold holdings by central bank S
+  or_N ~ or_N[-1] + ((Hs_N - Hs_N[-1] - (Bcb_N - Bcb_N[-1])) / pg_N) ; mode=voltage ; sliderValue=0 ; initial=200  # Gold holdings by central bank N
+  or_S ~ or_S[-1] + ((Hs_S - Hs_S[-1] - (Bcb_S - Bcb_S[-1])) / pg_S) ; mode=voltage ; sliderValue=0 ; initial=200  # Gold holdings by central bank S
   G_N ~ G_N[-1] + (\phi_N * ((or_N - or_N[-1]) * pg_N[-1])) ; mode=voltage ; sliderValue=0 ; initial=20  # Government expenditure N
   G_S ~ G_S[-1] + (\phi_S * ((or_S - or_S[-1]) * pg_S[-1])) ; mode=voltage ; sliderValue=0 ; initial=20  # Government expenditure S
   Hs_N ~ Hh_N ; mode=voltage ; sliderValue=0  # Supply of cash N
@@ -205,8 +207,8 @@ $$G_N - TX_N = IM_N - X_N$$
   pg_N ~ 1 ; mode=param ; sliderValue=0  # Price of gold N
   r_N ~ 0.025 ; mode=param ; sliderValue=0  # Interest rate on bills N
   r_S ~ 0.025 ; mode=param ; sliderValue=0  # Interest rate on bills S
-  \phi_N ~ 0.25 ; mode=param ; sliderValue=0  # Government expenditure adjustment speed N
-  \phi_S ~ 0.25 ; mode=param ; sliderValue=0  # Government expenditure adjustment speed S
+  \phi_N ~ 0 ; mode=param ; sliderValue=0  # Government expenditure adjustment speed N
+  \phi_S ~ 0 ; mode=param ; sliderValue=0  # Government expenditure adjustment speed S
   \mu_N ~ 0.15 ; mode=param ; sliderValue=0  # Import propensity N
   \mu_S ~ 0.15 ; mode=param ; sliderValue=0  # Import propensity S
   \alpha_1_N ~ 0.7 ; mode=param ; sliderValue=0  # Propensity to consume out of income N
@@ -219,8 +221,8 @@ $$G_N - TX_N = IM_N - X_N$$
   \lambda1_S ~ 0.05 ; mode=param ; sliderValue=0  # Asset demand parameter S
   \lambda2_N ~ 0.01 ; mode=param ; sliderValue=0  # Asset demand parameter N
   \lambda2_S ~ 0.01 ; mode=param ; sliderValue=0  # Asset demand parameter S
-  \theta_N ~ 0.2 ; mode=param ; sliderValue=0
-  \theta_S ~ 0.2 ; mode=param ; sliderValue=0
+  \theta_N ~ 0.2 ; mode=param ; sliderValue=0  # Tax rate N
+  \theta_S ~ 0.2 ; mode=param ; sliderValue=0  # Tax rate S
 @end
 
 @matrix bs_open x=912 y=712
@@ -250,16 +252,6 @@ $$G_N - TX_N = IM_N - X_N$$
 | Ch. cash | -diff(Hh_N) |  |  | +diff(Hs_N) | -diff(Hh_S) |  |  | +diff(Hs_S) |
 | Ch. bills | -diff(Bh_N) |  | +diff(Bs_N) | -diff(Bcb_N) | -diff(Bh_S) |  | +diff(Bs_S) | -diff(Bcb_S) |
 | Ch. Gold |  |  |  | -diff(or_N) * pg_N * xr |  |  |  | -diff(or_S) * pg_S |
-@end
-
-@sankey x=752 y=368
-  source: bs open
-  layout: linear
-  width: 500
-  height: 300
-  showScaleBar: false
-  useHighWaterMark: true
-  showFlowValues: true
 @end
 
 @circuit
@@ -296,13 +288,8 @@ $$G_N - TX_N = IM_N - X_N$$
   source: uid:qnoTQx value:0
   trace: uid:nz-PNA value:0
 @end
-@scope Embedded_Scope_1 position=-1
-  x1: 736
-  y1: 128
-  x2: 1280
-  y2: 352
-  elmUid: TY0_CP
-  speed: 2
+@scope Scope_3 position=2
+  speed: 1
   flags: x2001206
   source: uid:niClFq value:0
   trace: uid:Lm-XRW value:0

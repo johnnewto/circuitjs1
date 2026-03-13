@@ -44,6 +44,8 @@ public class InfoViewerDialog extends DialogBox {
     private static String currentRawMarkdown = null;
     private static String currentTitle = null;
     private static boolean currentAppendCircuitTables = false;
+    private static boolean currentLoadConstructsInCodeBlocks = true;
+    private static boolean currentRenderSfcrConstructTables = true;
     private static boolean appendCircuitTablesAsBlocks = true;
     private static long lastLiveUpdateMs = 0;
     private static final int DEFAULT_LIVE_UPDATE_INTERVAL_MS = 200;
@@ -75,7 +77,7 @@ public class InfoViewerDialog extends DialogBox {
      */
     public static void showInfoInWindow(String title, String markdown, boolean appendCircuitTables) {
         String rawMarkdown = normalizeMarkdown(markdown);
-        String displayMarkdown = buildDisplayMarkdown(rawMarkdown, appendCircuitTables);
+        String displayMarkdown = deriveDisplayMarkdown(title, rawMarkdown, appendCircuitTables);
 
         currentTitle = title;
         currentRawMarkdown = rawMarkdown;
@@ -84,7 +86,14 @@ public class InfoViewerDialog extends DialogBox {
         lastLiveUpdateMs = 0;
 
         installViewerMessageBridge();
-        String html = InfoViewerHtmlBuilder.generateMarkdownViewerHTML(title, displayMarkdown, rawMarkdown, isModelInfoTitle(title));
+        String html = InfoViewerHtmlBuilder.generateMarkdownViewerHTML(
+            title,
+            displayMarkdown,
+            rawMarkdown,
+            isModelInfoTitle(title),
+            currentLoadConstructsInCodeBlocks,
+            currentRenderSfcrConstructTables
+        );
         openWindowWithHTML(html);
     }
     
@@ -108,7 +117,7 @@ public class InfoViewerDialog extends DialogBox {
      */
     public static void showInfoInIframe(String title, String markdown, boolean appendCircuitTables) {
         String rawMarkdown = normalizeMarkdown(markdown);
-        String displayMarkdown = buildDisplayMarkdown(rawMarkdown, appendCircuitTables);
+        String displayMarkdown = deriveDisplayMarkdown(title, rawMarkdown, appendCircuitTables);
 
         currentTitle = title;
         currentRawMarkdown = rawMarkdown;
@@ -117,7 +126,14 @@ public class InfoViewerDialog extends DialogBox {
         lastLiveUpdateMs = 0;
         
         installViewerMessageBridge();
-        String html = InfoViewerHtmlBuilder.generateMarkdownViewerHTML(title, displayMarkdown, rawMarkdown, isModelInfoTitle(title));
+        String html = InfoViewerHtmlBuilder.generateMarkdownViewerHTML(
+            title,
+            displayMarkdown,
+            rawMarkdown,
+            isModelInfoTitle(title),
+            currentLoadConstructsInCodeBlocks,
+            currentRenderSfcrConstructTables
+        );
         String dataUrl = createDataUrl(html);
         IframeViewerDialog.openDialog(title, dataUrl, 900, 500);
         
@@ -151,6 +167,14 @@ public class InfoViewerDialog extends DialogBox {
             && !s.contains("*No tables found");
     }
 
+    private static String deriveDisplayMarkdown(String title, String rawMarkdown, boolean appendCircuitTables) {
+        String baseMarkdown = rawMarkdown;
+        if (isModelInfoTitle(title) && SFCRParser.isSFCRFormat(rawMarkdown)) {
+            baseMarkdown = InfoViewerContentBuilder.buildModelInfoMarkdown(rawMarkdown, "");
+        }
+        return buildDisplayMarkdown(baseMarkdown, appendCircuitTables);
+    }
+
     private static String buildDisplayMarkdown(String markdown, boolean appendCircuitTables) {
         String displayMarkdown = (markdown == null) ? "" : markdown;
         if (!appendCircuitTables) {
@@ -180,10 +204,15 @@ public class InfoViewerDialog extends DialogBox {
     public static void saveEditedMarkdown(String markdown) {
         String normalized = normalizeMarkdown(markdown);
         currentRawMarkdown = normalized;
-        currentMarkdown = buildDisplayMarkdown(normalized, currentAppendCircuitTables);
+        currentMarkdown = deriveDisplayMarkdown(currentTitle, normalized, currentAppendCircuitTables);
 
         if (CirSim.theSim != null && isModelInfoTitle(currentTitle)) {
+            if (SFCRParser.isSFCRFormat(normalized)) {
+                CirSim.theSim.importCircuitFromText(normalized, false);
+                return;
+            }
             CirSim.theSim.modelInfoContent = normalized;
+            CirSim.theSim.modelInfoSourceText = null;
             if (CirSim.theSim.viewModelInfoItem != null) {
                 CirSim.theSim.viewModelInfoItem.setEnabled(!normalized.isEmpty());
             }
@@ -205,6 +234,19 @@ public class InfoViewerDialog extends DialogBox {
             CirSim.theSim.resetAction();
         } else if ("step".equals(command)) {
             CirSim.theSim.stepCircuit();
+        }
+    }
+
+    public static void handleViewerOptionChanged(String key, boolean enabled) {
+        if (key == null) {
+            return;
+        }
+        if ("parse-code-fence-constructs".equals(key)) {
+            currentLoadConstructsInCodeBlocks = enabled;
+            return;
+        }
+        if ("render-sfcr-construct-tables".equals(key)) {
+            currentRenderSfcrConstructTables = enabled;
         }
     }
 
@@ -277,6 +319,10 @@ public class InfoViewerDialog extends DialogBox {
             }
             if (data.type === 'info-viewer-sim-command') {
                 @com.lushprojects.circuitjs1.client.InfoViewerDialog::handleSimulationCommand(Ljava/lang/String;)(data.command || '');
+                return;
+            }
+            if (data.type === 'info-viewer-option-changed') {
+                @com.lushprojects.circuitjs1.client.InfoViewerDialog::handleViewerOptionChanged(Ljava/lang/String;Z)(data.key || '', !!data.enabled);
             }
         });
     }-*/;

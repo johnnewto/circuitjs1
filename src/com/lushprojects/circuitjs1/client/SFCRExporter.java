@@ -20,7 +20,7 @@ import java.util.Vector;
  * Output blocks:
  *   @init       - Simulation settings (timestep, units)
  *   @action     - Action Time schedule (timed target updates)
- *   @info       - Model documentation (markdown)
+ *   (inline markdown) - Model documentation (no @info wrapper)
  *   @equations  - All equations (from EquationTableElm, GodlyTableElm)
  *   @matrix     - Transaction matrices (from SFCTableElm)
  *   @hints      - Variable documentation
@@ -57,17 +57,24 @@ public class SFCRExporter {
     
     /** Create a new SFCR exporter. */
     public SFCRExporter(CirSim sim) {
-        this(sim, ExportSyntax.BLOCK_FORMAT);
+        this(sim, ExportSyntax.R_STYLE);
     }
 
     /** Create a new SFCR exporter with explicit syntax style. */
     public SFCRExporter(CirSim sim, ExportSyntax syntax) {
         this.sim = sim;
-        this.exportSyntax = (syntax == null) ? ExportSyntax.BLOCK_FORMAT : syntax;
+        this.exportSyntax = (syntax == null) ? ExportSyntax.R_STYLE : syntax;
     }
     
     /** Export the current circuit in SFCR format. */
     public String export() {
+        if (sim != null && sim.modelInfoSourceText != null && !sim.modelInfoSourceText.trim().isEmpty()) {
+            String merged = exportWithTemplateMerge(sim.modelInfoSourceText);
+            if (merged != null && !merged.trim().isEmpty()) {
+                return normalizeBlankLinesOutsideFences(merged);
+            }
+        }
+
         StringBuilder sb = new StringBuilder();
         scopeElmsExportedAsBlocks.clear();
         
@@ -80,28 +87,17 @@ public class SFCRExporter {
         sb.append("\n");
         
         // Export @init block
-        String initBlock = exportInitBlock();
-        if (!initBlock.isEmpty()) {
-            sb.append(initBlock);
-            sb.append("\n");
-        }
+        appendExportBlock(sb, exportInitBlock());
 
         // Export Action Time schedule as @action block
-        String actionBlock = exportActionBlock();
-        if (!actionBlock.isEmpty()) {
-            sb.append(actionBlock);
-            sb.append("\n");
-        }
+        appendExportBlock(sb, exportActionBlock());
         
         // Export equation tables
         for (EquationTableElm eqTable : equationTables) {
             String block = (exportSyntax == ExportSyntax.R_STYLE)
                 ? exportEquationTableRStyle(eqTable)
                 : exportEquationTable(eqTable);
-            if (!block.isEmpty()) {
-                sb.append(block);
-                sb.append("\n");
-            }
+            appendExportBlock(sb, block);
         }
         
         // Export GodlyTableElm equations (integration-based stocks)
@@ -109,10 +105,7 @@ public class SFCRExporter {
             String block = (exportSyntax == ExportSyntax.R_STYLE)
                 ? exportGodlyTableRStyle(godlyTable)
                 : exportGodlyTable(godlyTable);
-            if (!block.isEmpty()) {
-                sb.append(block);
-                sb.append("\n");
-            }
+            appendExportBlock(sb, block);
         }
         
         // Export SFC tables
@@ -120,54 +113,456 @@ public class SFCRExporter {
             String block = (exportSyntax == ExportSyntax.R_STYLE)
                 ? exportSFCTableRStyle(sfcTable)
                 : exportSFCTable(sfcTable);
-            if (!block.isEmpty()) {
-                sb.append(block);
-                sb.append("\n");
-            }
+            appendExportBlock(sb, block);
         }
 
         // Export Sankey diagrams as @sankey
         for (SFCSankeyElm sankey : sankeyDiagrams) {
             String block = exportSankeyDiagram(sankey);
-            if (!block.isEmpty()) {
-                sb.append(block);
-                sb.append("\n");
-            }
+            appendExportBlock(sb, block);
         }
         
         // Export hints
-        String hintsBlock = exportHints();
-        if (!hintsBlock.isEmpty()) {
-            sb.append(hintsBlock);
-            sb.append("\n");
-        }
+        appendExportBlock(sb, exportHints());
         
         // Export other circuit elements in @circuit block
         if (!otherElements.isEmpty()) {
             String circuitBlock = exportCircuitElements();
-            if (!circuitBlock.isEmpty()) {
-                sb.append(circuitBlock);
-                sb.append("\n");
-            }
+            appendExportBlock(sb, circuitBlock);
         }
 
         // Export scopes after @circuit so trace targets are defined earlier in file
         String scopesBlock = exportScopes();
-        if (!scopesBlock.isEmpty()) {
-            sb.append(scopesBlock);
-        }
+        appendExportBlock(sb, scopesBlock);
 
-        // Export @info block last (documentation footer)
-        String infoBlock = exportInfoBlock();
-        if (!infoBlock.isEmpty()) {
+        // Export model documentation last as inline markdown (no @info wrapper)
+        String inlineDocs = exportInlineDocumentation();
+        if (!inlineDocs.isEmpty()) {
             if (sb.length() > 0 && sb.charAt(sb.length() - 1) != '\n') {
                 sb.append("\n");
             }
             sb.append("\n");
-            sb.append(infoBlock);
+            sb.append(inlineDocs);
         }
         
+        return normalizeBlankLinesOutsideFences(sb.toString());
+    }
+
+    private enum TemplateBlockType {
+        EQUATIONS,
+        MATRIX,
+        SANKEY,
+        SCOPE,
+        CIRCUIT,
+        OTHER
+    }
+
+    private String exportWithTemplateMerge(String sourceText) {
+        scopeElmsExportedAsBlocks.clear();
+        categorizeElements();
+
+        ArrayList<String> equationBlocks = buildCanonicalEquationBlocks();
+        ArrayList<String> matrixBlocks = buildCanonicalMatrixBlocks();
+        ArrayList<String> sankeyBlocks = buildCanonicalSankeyBlocks();
+        ArrayList<String> scopeBlocks = buildCanonicalScopeBlocks();
+        String circuitBlock = extractStructuralPayload(exportCircuitElements());
+
+        int eqIndex = 0;
+        int matrixIndex = 0;
+        int sankeyIndex = 0;
+        int scopeIndex = 0;
+
+        StringBuilder out = new StringBuilder();
+        String[] lines = sourceText.split("\n", -1);
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            String trimmed = line.trim();
+
+            if (trimmed.startsWith("```")) {
+                String fenceHeader = line;
+                StringBuilder fenced = new StringBuilder();
+                fenced.append(line).append("\n");
+                int end = i;
+                for (int j = i + 1; j < lines.length; j++) {
+                    fenced.append(lines[j]).append("\n");
+                    end = j;
+                    if (lines[j].trim().startsWith("```")) {
+                        break;
+                    }
+                }
+
+                TemplateBlockType type = detectTemplateBlockType(fenced.toString());
+                String replacement = null;
+                if (type == TemplateBlockType.EQUATIONS && eqIndex < equationBlocks.size()) {
+                    replacement = equationBlocks.get(eqIndex++);
+                } else if (type == TemplateBlockType.MATRIX && matrixIndex < matrixBlocks.size()) {
+                    replacement = matrixBlocks.get(matrixIndex++);
+                } else if (type == TemplateBlockType.SANKEY && sankeyIndex < sankeyBlocks.size()) {
+                    replacement = sankeyBlocks.get(sankeyIndex++);
+                } else if (type == TemplateBlockType.SCOPE && scopeIndex < scopeBlocks.size()) {
+                    replacement = scopeBlocks.get(scopeIndex++);
+                } else if (type == TemplateBlockType.CIRCUIT) {
+                    replacement = "";
+                }
+
+                if (replacement == null) {
+                    out.append(fenced.toString());
+                } else if (!replacement.isEmpty()) {
+                    out.append(wrapReplacementWithFenceLike(fenceHeader, replacement)).append("\n\n");
+                }
+
+                i = end;
+                continue;
+            }
+
+            if (trimmed.startsWith("@equations") || trimmed.startsWith("@parameters") ||
+                trimmed.startsWith("@matrix") || trimmed.startsWith("@sankey") ||
+                trimmed.startsWith("@scope") || trimmed.startsWith("@circuit")) {
+
+                StringBuilder rawBlock = new StringBuilder();
+                int end = i;
+                for (int j = i; j < lines.length; j++) {
+                    rawBlock.append(lines[j]).append("\n");
+                    end = j;
+                    if (lines[j].trim().equals("@end")) {
+                        break;
+                    }
+                }
+
+                TemplateBlockType type = detectTemplateBlockType(rawBlock.toString());
+                String replacement = null;
+                if (type == TemplateBlockType.EQUATIONS && eqIndex < equationBlocks.size()) {
+                    replacement = equationBlocks.get(eqIndex++);
+                } else if (type == TemplateBlockType.MATRIX && matrixIndex < matrixBlocks.size()) {
+                    replacement = matrixBlocks.get(matrixIndex++);
+                } else if (type == TemplateBlockType.SANKEY && sankeyIndex < sankeyBlocks.size()) {
+                    replacement = sankeyBlocks.get(sankeyIndex++);
+                } else if (type == TemplateBlockType.SCOPE && scopeIndex < scopeBlocks.size()) {
+                    replacement = scopeBlocks.get(scopeIndex++);
+                } else if (type == TemplateBlockType.CIRCUIT) {
+                    replacement = "";
+                }
+
+                if (replacement == null) {
+                    out.append(rawBlock.toString());
+                } else if (!replacement.isEmpty()) {
+                    out.append("```{r}\n");
+                    out.append(replacement).append("\n");
+                    out.append("```\n\n");
+                }
+
+                i = end;
+                continue;
+            }
+
+            if (looksLikeRStyleAssignmentStart(trimmed)) {
+                StringBuilder rStyle = new StringBuilder();
+                int end = i;
+                int parenDepth = 0;
+                boolean hasParen = false;
+                for (int j = i; j < lines.length; j++) {
+                    String rLine = lines[j];
+                    rStyle.append(rLine).append("\n");
+                    end = j;
+                    int delta = parenthesesDelta(rLine);
+                    if (delta != 0 || rLine.indexOf('(') >= 0) {
+                        hasParen = true;
+                    }
+                    parenDepth += delta;
+                    if (hasParen && parenDepth <= 0) {
+                        break;
+                    }
+                }
+
+                TemplateBlockType type = detectTemplateBlockType(rStyle.toString());
+                String replacement = null;
+                if (type == TemplateBlockType.EQUATIONS && eqIndex < equationBlocks.size()) {
+                    replacement = equationBlocks.get(eqIndex++);
+                } else if (type == TemplateBlockType.MATRIX && matrixIndex < matrixBlocks.size()) {
+                    replacement = matrixBlocks.get(matrixIndex++);
+                }
+
+                if (replacement == null) {
+                    out.append(rStyle.toString());
+                } else if (!replacement.isEmpty()) {
+                    out.append("```{r}\n");
+                    out.append(replacement).append("\n");
+                    out.append("```\n\n");
+                }
+
+                i = end;
+                continue;
+            }
+
+            out.append(line).append("\n");
+        }
+
+        while (eqIndex < equationBlocks.size()) {
+            out.append("\n```{r}\n").append(equationBlocks.get(eqIndex++)).append("\n```\n");
+        }
+        while (matrixIndex < matrixBlocks.size()) {
+            out.append("\n```{r}\n").append(matrixBlocks.get(matrixIndex++)).append("\n```\n");
+        }
+        while (sankeyIndex < sankeyBlocks.size()) {
+            out.append("\n```{r}\n").append(sankeyBlocks.get(sankeyIndex++)).append("\n```\n");
+        }
+        while (scopeIndex < scopeBlocks.size()) {
+            out.append("\n```{r}\n").append(scopeBlocks.get(scopeIndex++)).append("\n```\n");
+        }
+
+        if (circuitBlock != null && !circuitBlock.trim().isEmpty()) {
+            out.append("\n```{r}\n").append(circuitBlock).append("\n```\n");
+        }
+
+        return out.toString();
+    }
+
+    private ArrayList<String> buildCanonicalEquationBlocks() {
+        ArrayList<String> blocks = new ArrayList<String>();
+        for (EquationTableElm eqTable : equationTables) {
+            String block = (exportSyntax == ExportSyntax.R_STYLE)
+                ? exportEquationTableRStyle(eqTable)
+                : exportEquationTable(eqTable);
+            String payload = extractStructuralPayload(block);
+            if (!payload.isEmpty()) {
+                blocks.add(payload);
+            }
+        }
+        for (GodlyTableElm godlyTable : godlyTables) {
+            String block = (exportSyntax == ExportSyntax.R_STYLE)
+                ? exportGodlyTableRStyle(godlyTable)
+                : exportGodlyTable(godlyTable);
+            String payload = extractStructuralPayload(block);
+            if (!payload.isEmpty()) {
+                blocks.add(payload);
+            }
+        }
+        return blocks;
+    }
+
+    private ArrayList<String> buildCanonicalMatrixBlocks() {
+        ArrayList<String> blocks = new ArrayList<String>();
+        for (SFCTableElm sfcTable : sfcTables) {
+            String block = (exportSyntax == ExportSyntax.R_STYLE)
+                ? exportSFCTableRStyle(sfcTable)
+                : exportSFCTable(sfcTable);
+            String payload = extractStructuralPayload(block);
+            if (!payload.isEmpty()) {
+                blocks.add(payload);
+            }
+        }
+        return blocks;
+    }
+
+    private ArrayList<String> buildCanonicalSankeyBlocks() {
+        ArrayList<String> blocks = new ArrayList<String>();
+        for (SFCSankeyElm sankey : sankeyDiagrams) {
+            String payload = extractStructuralPayload(exportSankeyDiagram(sankey));
+            if (!payload.isEmpty()) {
+                blocks.add(payload);
+            }
+        }
+        return blocks;
+    }
+
+    private ArrayList<String> buildCanonicalScopeBlocks() {
+        ArrayList<String> blocks = new ArrayList<String>();
+        String scopes = exportScopes();
+        if (scopes == null || scopes.trim().isEmpty()) {
+            return blocks;
+        }
+        String[] lines = scopes.split("\n");
+        for (int i = 0; i < lines.length; i++) {
+            String t = lines[i].trim();
+            if (!t.startsWith("@scope")) {
+                continue;
+            }
+            StringBuilder one = new StringBuilder();
+            for (int j = i; j < lines.length; j++) {
+                one.append(lines[j]).append("\n");
+                if (lines[j].trim().equals("@end")) {
+                    i = j;
+                    break;
+                }
+            }
+            String payload = extractStructuralPayload(one.toString());
+            if (!payload.isEmpty()) {
+                blocks.add(payload);
+            }
+        }
+        return blocks;
+    }
+
+    private String extractStructuralPayload(String block) {
+        if (block == null) {
+            return "";
+        }
+        String trimmed = block.trim();
+        if (trimmed.isEmpty()) {
+            return "";
+        }
+        String[] lines = trimmed.split("\n");
+        int start = findStructuralStartLine(lines);
+        StringBuilder payload = new StringBuilder();
+        for (int i = start; i < lines.length; i++) {
+            payload.append(lines[i]).append("\n");
+        }
+        return payload.toString().trim();
+    }
+
+    private boolean looksLikeRStyleAssignmentStart(String trimmed) {
+        if (trimmed == null || trimmed.isEmpty()) {
+            return false;
+        }
+        if (!trimmed.contains("<-") || !trimmed.contains("sfcr_")) {
+            return false;
+        }
+        return trimmed.contains("sfcr_set") || trimmed.contains("sfcr_matrix");
+    }
+
+    private TemplateBlockType detectTemplateBlockType(String text) {
+        if (text == null || text.isEmpty()) {
+            return TemplateBlockType.OTHER;
+        }
+        String lower = text.toLowerCase();
+        if (lower.contains("@circuit")) {
+            return TemplateBlockType.CIRCUIT;
+        }
+        if (lower.contains("@equations") || lower.contains("@parameters") || lower.contains("sfcr_set")) {
+            return TemplateBlockType.EQUATIONS;
+        }
+        if (lower.contains("@matrix") || lower.contains("sfcr_matrix")) {
+            return TemplateBlockType.MATRIX;
+        }
+        if (lower.contains("@sankey")) {
+            return TemplateBlockType.SANKEY;
+        }
+        if (lower.contains("@scope")) {
+            return TemplateBlockType.SCOPE;
+        }
+        return TemplateBlockType.OTHER;
+    }
+
+    private String wrapReplacementWithFenceLike(String fenceHeader, String replacement) {
+        String header = (fenceHeader == null || fenceHeader.trim().isEmpty()) ? "```{r}" : fenceHeader.trim();
+        if (!header.startsWith("```")) {
+            header = "```{r}";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append(header).append("\n");
+        sb.append(replacement).append("\n");
+        sb.append("```");
         return sb.toString();
+    }
+
+    private int parenthesesDelta(String line) {
+        if (line == null || line.isEmpty()) {
+            return 0;
+        }
+        int delta = 0;
+        for (int i = 0; i < line.length(); i++) {
+            char ch = line.charAt(i);
+            if (ch == '(') {
+                delta++;
+            } else if (ch == ')') {
+                delta--;
+            }
+        }
+        return delta;
+    }
+
+    /** Collapse excessive blank lines outside fenced code blocks. */
+    private String normalizeBlankLinesOutsideFences(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+
+        String[] lines = text.split("\\n", -1);
+        StringBuilder out = new StringBuilder();
+        boolean inFence = false;
+        int blankRun = 0;
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            String trimmed = line.trim();
+
+            if (trimmed.startsWith("```")) {
+                inFence = !inFence;
+                blankRun = 0;
+                out.append(line).append("\n");
+                continue;
+            }
+
+            if (!inFence && trimmed.isEmpty()) {
+                blankRun++;
+                if (blankRun > 1) {
+                    continue;
+                }
+                out.append("\n");
+                continue;
+            }
+
+            blankRun = 0;
+            out.append(line).append("\n");
+        }
+
+        String normalized = out.toString();
+        while (normalized.endsWith("\n\n\n")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
+    }
+
+    private void appendExportBlock(StringBuilder sb, String block) {
+        if (sb == null || block == null) {
+            return;
+        }
+        String trimmed = block.trim();
+        if (trimmed.isEmpty()) {
+            return;
+        }
+        if (trimmed.startsWith("```")) {
+            sb.append(trimmed).append("\n\n");
+            return;
+        }
+        String[] lines = trimmed.split("\n");
+        int structuralStart = findStructuralStartLine(lines);
+
+        // Keep associated markdown/comments ABOVE the fenced structural block.
+        if (structuralStart > 0) {
+            for (int i = 0; i < structuralStart; i++) {
+                sb.append(lines[i]).append("\n");
+            }
+            sb.append("\n");
+        }
+
+        sb.append("```{r}\n");
+        if (structuralStart < lines.length) {
+            for (int i = structuralStart; i < lines.length; i++) {
+                sb.append(lines[i]).append("\n");
+            }
+        }
+        sb.append("```\n\n");
+    }
+
+    private int findStructuralStartLine(String[] lines) {
+        if (lines == null || lines.length == 0) {
+            return 0;
+        }
+        for (int i = 0; i < lines.length; i++) {
+            String t = lines[i] == null ? "" : lines[i].trim();
+            if (t.isEmpty()) {
+                continue;
+            }
+            if (t.startsWith("@")) {
+                return i;
+            }
+            if (t.matches("^[A-Za-z_][A-Za-z0-9_\\s-]*<-\\s*sfcr_(set|matrix)\\s*\\(.*$")) {
+                return i;
+            }
+        }
+        return 0;
     }
     
     // =========================================================================
@@ -204,23 +599,126 @@ public class SFCRExporter {
         }
     }
     
-    /** Export @info block with model documentation. */
-    private String exportInfoBlock() {
+    /** Export model documentation as inline markdown (no @info wrapper). */
+    private String exportInlineDocumentation() {
         if (sim.modelInfoContent == null || sim.modelInfoContent.isEmpty()) {
+            return "";
+        }
+
+        String sanitized = sanitizeInlineDocumentation(sim.modelInfoContent);
+        if (sanitized.isEmpty()) {
             return "";
         }
         
         StringBuilder sb = new StringBuilder();
-        sb.append("@info\n");
-        sb.append(sim.modelInfoContent);
-        
-        // Ensure content ends with newline before @end
-        if (!sim.modelInfoContent.endsWith("\n")) {
+        sb.append(sanitized);
+
+        // Ensure trailing newline for clean concatenation
+        if (!sanitized.endsWith("\n")) {
             sb.append("\n");
         }
-        sb.append("@end\n");
-        
+
         return sb.toString();
+    }
+
+    /**
+     * Keep narrative inline markdown and viewer plot directives, but drop structural
+     * SFCR definitions that are exported in native blocks (@equations/@matrix/etc)
+     * to avoid duplicated sections in the exported file.
+     */
+    private String sanitizeInlineDocumentation(String markdown) {
+        if (markdown == null || markdown.trim().isEmpty()) {
+            return "";
+        }
+
+        String[] lines = markdown.split("\n");
+        StringBuilder out = new StringBuilder();
+        boolean inFence = false;
+        StringBuilder fenceBuffer = new StringBuilder();
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            String trimmed = line.trim();
+
+            if (trimmed.startsWith("```")) {
+                if (!inFence) {
+                    inFence = true;
+                    fenceBuffer.setLength(0);
+                    fenceBuffer.append(line).append("\n");
+                    continue;
+                }
+
+                fenceBuffer.append(line).append("\n");
+                String block = fenceBuffer.toString();
+                if (shouldKeepFencedInlineBlock(block)) {
+                    out.append(block);
+                }
+                inFence = false;
+                continue;
+            }
+
+            if (inFence) {
+                fenceBuffer.append(line).append("\n");
+                continue;
+            }
+
+            if (startsStructuralSfcrBlock(trimmed)) {
+                int endIndex = i;
+                for (int j = i; j < lines.length; j++) {
+                    endIndex = j;
+                    if ("@end".equals(lines[j].trim())) {
+                        break;
+                    }
+                }
+                i = endIndex;
+                continue;
+            }
+
+            out.append(line).append("\n");
+        }
+
+        return out.toString().trim();
+    }
+
+    private boolean startsStructuralSfcrBlock(String trimmed) {
+        if (trimmed == null || trimmed.isEmpty()) {
+            return false;
+        }
+        if (trimmed.startsWith("@plot")) {
+            return false;
+        }
+        return trimmed.startsWith("@equations")
+            || trimmed.startsWith("@parameters")
+            || trimmed.startsWith("@matrix")
+            || trimmed.startsWith("@sankey")
+            || trimmed.startsWith("@scope")
+            || trimmed.startsWith("@circuit")
+            || trimmed.startsWith("@info");
+    }
+
+    private boolean shouldKeepFencedInlineBlock(String block) {
+        if (block == null || block.isEmpty()) {
+            return false;
+        }
+        String lower = block.toLowerCase();
+
+        // Keep plot directives in fenced blocks.
+        if (lower.contains("@plot") || lower.contains("plot:") || lower.contains("vars:")) {
+            return true;
+        }
+
+        // Drop structural duplicated blocks.
+        if (lower.contains("sfcr_set") || lower.contains("sfcr_matrix")) {
+            return false;
+        }
+        if (lower.contains("@equations") || lower.contains("@parameters") ||
+            lower.contains("@matrix") || lower.contains("@circuit") ||
+            lower.contains("@sankey") || lower.contains("@scope") ||
+            lower.contains("@info")) {
+            return false;
+        }
+
+        return true;
     }
     
     /** Export @init block with simulation settings. */
@@ -365,7 +863,7 @@ public class SFCRExporter {
             double sliderValue = eqTable.getSliderValue(row);
             String initialEq = eqTable.getInitialEquation(row);
 
-            String hint = HintRegistry.getHint(sourceName);
+            String hint = sanitizeHintForRStyleExport(HintRegistry.getHint(sourceName));
 
             sb.append("  ").append(name).append(" ~ ").append(expr);
             sb.append(" ; mode=").append(formatEquationRowMode(mode));
@@ -464,24 +962,11 @@ public class SFCRExporter {
                 sb.append(",");
             }
 
-            String hint = HintRegistry.getHint(sourceName);
+            String hint = sanitizeHintForRStyleExport(HintRegistry.getHint(sourceName));
             // Persist row-editable properties inside bracket metadata so R-style
             // export/import keeps mode/slider settings without changing core syntax.
             String rowMeta = formatRStyleEquationInlineMetadata(mode, sliderVar, sliderValue, initialEq);
-            if ((hint != null && !hint.trim().isEmpty()) || !rowMeta.isEmpty()) {
-                sb.append("  #");
-                if (hint != null && !hint.trim().isEmpty()) {
-                    sb.append(" ").append(hint.trim());
-                }
-                if (!rowMeta.isEmpty()) {
-                    if (hint != null && !hint.trim().isEmpty()) {
-                        sb.append("  ");
-                    } else {
-                        sb.append(" ");
-                    }
-                    sb.append(rowMeta);
-                }
-            }
+            appendRStyleInlineComment(sb, hint, rowMeta);
             sb.append("\n");
         }
         sb.append(")\n");
@@ -1108,6 +1593,102 @@ public class SFCRExporter {
         return sb.toString();
     }
 
+    /** Append an inline R-style comment from optional hint + metadata payload. */
+    private void appendRStyleInlineComment(StringBuilder sb, String hint, String rowMeta) {
+        String cleanHint = (hint == null) ? "" : hint.trim();
+        String cleanMeta = (rowMeta == null) ? "" : rowMeta.trim();
+        if (cleanHint.isEmpty() && cleanMeta.isEmpty()) {
+            return;
+        }
+
+        sb.append("  #");
+        if (!cleanHint.isEmpty()) {
+            sb.append(" ").append(cleanHint);
+        }
+        if (!cleanMeta.isEmpty()) {
+            if (!cleanHint.isEmpty()) {
+                sb.append("  ");
+            } else {
+                sb.append(" ");
+            }
+            sb.append(cleanMeta);
+        }
+    }
+
+    /**
+     * Remove trailing metadata chunks that may have leaked into hints from older
+     * malformed imports (e.g. repeated "[mode=voltage ..." fragments).
+     */
+    private String sanitizeHintForRStyleExport(String hint) {
+        if (hint == null) {
+            return null;
+        }
+
+        String working = hint.trim();
+        if (working.isEmpty()) {
+            return "";
+        }
+
+        while (true) {
+            int close = working.lastIndexOf(']');
+            if (close != working.length() - 1) {
+                break;
+            }
+            int open = working.lastIndexOf('[', close);
+            if (open < 0) {
+                break;
+            }
+            String chunk = working.substring(open + 1, close);
+            if (!looksLikeRStyleMetadataChunk(chunk)) {
+                break;
+            }
+            working = working.substring(0, open).trim();
+        }
+
+        while (true) {
+            int open = working.lastIndexOf('[');
+            if (open < 0) {
+                break;
+            }
+            String tail = working.substring(open + 1);
+            if (!looksLikeRStyleMetadataChunk(tail)) {
+                break;
+            }
+            working = working.substring(0, open).trim();
+        }
+
+        return working;
+    }
+
+    /** Heuristic check for comma-separated key=value metadata chunk. */
+    private boolean looksLikeRStyleMetadataChunk(String chunk) {
+        if (chunk == null) {
+            return false;
+        }
+        String text = chunk.trim();
+        if (text.isEmpty()) {
+            return false;
+        }
+
+        String[] tokens = text.split(",");
+        int parsed = 0;
+        for (int i = 0; i < tokens.length; i++) {
+            String token = tokens[i].trim();
+            int eq = token.indexOf('=');
+            if (eq <= 0) {
+                continue;
+            }
+            String key = token.substring(0, eq).trim().toLowerCase();
+            if (key.length() == 0) {
+                continue;
+            }
+            if (key.equals("mode") || key.equals("slider") || key.equals("slidervalue") || key.equals("initial")) {
+                parsed++;
+            }
+        }
+        return parsed > 0;
+    }
+
     /** Escape markdown table cell delimiters. */
     private String escapeTableCell(String text) {
         return SFCRUtil.escapeTableCell(text);
@@ -1132,14 +1713,7 @@ public class SFCRExporter {
             if (line == null) {
                 continue;
             }
-            String out = line.trim();
-            if (out.isEmpty()) {
-                continue;
-            }
-            if (!out.startsWith("#")) {
-                out = "# " + out;
-            }
-            sb.append(out).append("\n");
+            sb.append(line).append("\n");
         }
         sb.append("\n");
     }

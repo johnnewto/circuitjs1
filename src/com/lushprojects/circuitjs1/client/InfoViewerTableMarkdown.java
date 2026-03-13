@@ -213,12 +213,12 @@ final class InfoViewerTableMarkdown {
             if (fallback.isEmpty()) {
                 md.append("- No scope plots detected. Add a plot block manually.\n\n");
             } else {
-                md.append("```{circuit}\n");
-                md.append("plot: ").append(joinCsv(fallback)).append("\n");
+                md.append("@plot\n");
+                md.append("vars: ").append(joinCsv(fallback)).append("\n");
                 md.append("title: Model Dynamics\n");
                 md.append("yaxis: Value\n");
                 md.append("window: 200\n");
-                md.append("```\n\n");
+                md.append("@end\n\n");
             }
         } else {
             for (int i = 0; i < scopePlotVars.size(); i++) {
@@ -230,12 +230,12 @@ final class InfoViewerTableMarkdown {
                         scopeTitle = n.trim();
                     }
                 }
-                md.append("```{circuit}\n");
-                md.append("plot: ").append(joinCsv(vars)).append("\n");
+                md.append("@plot\n");
+                md.append("vars: ").append(joinCsv(vars)).append("\n");
                 md.append("title: ").append(scopeTitle).append("\n");
                 md.append("yaxis: Value\n");
                 md.append("window: 200\n");
-                md.append("```\n\n");
+                md.append("@end\n\n");
             }
         }
 
@@ -261,7 +261,7 @@ final class InfoViewerTableMarkdown {
 
         md.append("## Notes\n\n");
         md.append("- Edit text and equations as needed.\n");
-        md.append("- Use `Save to Model` to persist into the circuit @info block.\n");
+        md.append("- Use `Save to Model` to persist edits into the model source.\n");
         return md.toString();
     }
 

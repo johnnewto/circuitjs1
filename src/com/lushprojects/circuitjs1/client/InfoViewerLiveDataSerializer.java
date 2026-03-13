@@ -40,6 +40,7 @@ final class InfoViewerLiveDataSerializer {
         sb.append("}");
         appendLiveTablesJson(sb, sim);
         appendLiveSankeysJson(sb, sim);
+        appendLiveScopesJson(sb, sim);
         sb.append("}\n");
         return sb.toString();
     }
@@ -248,6 +249,58 @@ final class InfoViewerLiveDataSerializer {
                 sb.append("{\"name\":\"").append(escapeJson(title.trim())).append("\",\"data\":");
                 sb.append(sankeyJson);
                 sb.append('}');
+            }
+        }
+        sb.append(']');
+    }
+
+    private static void appendLiveScopesJson(StringBuilder sb, CirSim sim) {
+        sb.append(",\"scopes\":[");
+        boolean firstScope = true;
+        if (sim.scopes != null) {
+            for (int i = 0; i < sim.scopeCount; i++) {
+                Scope scope = sim.scopes[i];
+                if (scope == null || !scope.active()) {
+                    continue;
+                }
+                if (scope.visiblePlots == null || scope.visiblePlots.size() == 0) {
+                    continue;
+                }
+
+                if (!firstScope) {
+                    sb.append(',');
+                }
+                firstScope = false;
+
+                String scopeName = scope.getScopeMenuName();
+                if (scopeName == null || scopeName.trim().isEmpty()) {
+                    scopeName = "Scope " + (i + 1);
+                }
+
+                sb.append("{\"name\":\"").append(escapeJson(scopeName)).append("\"");
+                sb.append(",\"traces\":[");
+                boolean firstTrace = true;
+                for (int p = 0; p < scope.visiblePlots.size(); p++) {
+                    ScopePlot plot = scope.visiblePlots.get(p);
+                    if (plot == null || plot.elm == null) {
+                        continue;
+                    }
+                    if (!firstTrace) {
+                        sb.append(',');
+                    }
+                    firstTrace = false;
+
+                    String traceName = plot.elm.getScopeText(plot.value);
+                    if (traceName == null || traceName.trim().isEmpty()) {
+                        traceName = "Trace " + (p + 1);
+                    }
+                    double value = plot.lastValue;
+                    if (Double.isNaN(value) || Double.isInfinite(value)) {
+                        value = 0.0;
+                    }
+                    sb.append("{\"name\":\"").append(escapeJson(traceName)).append("\",\"value\":").append(value).append("}");
+                }
+                sb.append("]}");
             }
         }
         sb.append(']');

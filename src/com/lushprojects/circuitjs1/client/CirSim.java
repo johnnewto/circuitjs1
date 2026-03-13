@@ -173,6 +173,7 @@ MouseOutHandler, MouseWheelHandler {
 	int infoViewerUpdateIntervalMs = 100; // InfoViewer live update throttling interval
     boolean useWeightedPriority = false; // Weighted priority for Asset/Equity columns
     String modelInfoContent = null; // Markdown info content from @info block in SFCR files
+	String modelInfoSourceText = null; // Full SFCR source for editing in InfoViewer
 	private SFCRDocumentState sfcrDocumentState = new SFCRDocumentState();
     MenuItem viewModelInfoItem; // Menu item for viewing model info
 	MenuItem helpViewModelInfoItem; // Help menu item for viewing model info
@@ -180,6 +181,13 @@ MouseOutHandler, MouseWheelHandler {
 
 	SFCRDocumentState getSFCRDocumentState() {
 	return sfcrDocumentState;
+	}
+
+	String getModelInfoEditorContent() {
+	    if (modelInfoSourceText != null && !modelInfoSourceText.isEmpty()) {
+		return modelInfoSourceText;
+	    }
+	    return modelInfoContent;
 	}
 
     private Label powerLabel;
@@ -5219,9 +5227,10 @@ public CirSim() {
 
     void doViewModelInfo()
     {
-    	if (modelInfoContent != null && !modelInfoContent.isEmpty()) {
+	String editorContent = getModelInfoEditorContent();
+	if (editorContent != null && !editorContent.isEmpty()) {
     	    // Show in new window with full markdown support
-    	    InfoViewerDialog.showInfoInWindow("Model Information", modelInfoContent);
+	    InfoViewerDialog.showInfoInWindow("Model Information", editorContent);
     	}
     }
 
@@ -5546,20 +5555,22 @@ public CirSim() {
 	    SFCRParser parser = new SFCRParser(this);
 	    if (parser.parse(text)) {
 		console("Loaded SFCR model with " + parser.getCreatedElements().size() + " elements");
+		modelInfoSourceText = text;
 		
-		// Store info content if available
-		modelInfoContent = parser.getInfoContent();
+		// Store info content if available (compose inline markdown + @info block)
+		modelInfoContent = InfoViewerContentBuilder.buildModelInfoMarkdown(text, parser.getInfoContent());
+		String editorContent = getModelInfoEditorContent();
 		if (viewModelInfoItem != null) {
-		    viewModelInfoItem.setEnabled(modelInfoContent != null && !modelInfoContent.isEmpty());
+		    viewModelInfoItem.setEnabled(editorContent != null && !editorContent.isEmpty());
 		}
 		if (helpViewModelInfoItem != null) {
-		    helpViewModelInfoItem.setEnabled(modelInfoContent != null && !modelInfoContent.isEmpty());
+		    helpViewModelInfoItem.setEnabled(editorContent != null && !editorContent.isEmpty());
 		}
 		
 		// Auto-display model info when loading a file with @info block
 		// Use embedded iframe dialog (always visible, no focus issues)
 		if (modelInfoContent != null && !modelInfoContent.isEmpty()) {
-		    InfoViewerDialog.showInfoInIframe("Model Information", modelInfoContent, true);
+		    InfoViewerDialog.showInfoInIframe("Model Information", modelInfoSourceText, false);
 		}
 		
 		// Process any raw circuit lines from @circuit blocks
@@ -5600,6 +5611,14 @@ public CirSim() {
 	
 	// Only log parse mode when there's actual content (not empty init)
 	if (text != null && !text.trim().isEmpty()) {
+	    modelInfoSourceText = null;
+	    modelInfoContent = null;
+	    if (viewModelInfoItem != null) {
+		viewModelInfoItem.setEnabled(false);
+	    }
+	    if (helpViewModelInfoItem != null) {
+		helpViewModelInfoItem.setEnabled(false);
+	    }
 	    console("Parsing mode: Standard circuit format" + (currentCircuitFile != null ? " - " + currentCircuitFile : ""));
 	}
 	readCircuit(text.getBytes(), flags);
