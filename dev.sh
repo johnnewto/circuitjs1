@@ -124,6 +124,10 @@ startprod() {
     webserver
 }
 
+test() {
+    "$SCRIPT_DIR/tools/run-tests-and-open-report.sh"
+}
+
 
 for func in $(compgen -A function); do
     if [[ $func == "$1" ]]; then

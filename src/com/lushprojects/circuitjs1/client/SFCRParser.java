@@ -110,7 +110,58 @@ public class SFCRParser {
     private ArrayList<String> rawCircuitLines = new ArrayList<String>();
     private String infoContent = null;
     private boolean actionElementFromActionBlock = false;
-    
+
+    /** Non-null when in result-mode ({@link #parseToResult}). */
+    SFCRParseResult pendingResult = null;
+
+    // =========================================================================
+    // GWT-independent helpers (usable from plain-Java unit tests)
+    // =========================================================================
+
+    /**
+     * Map an SFCR mode keyword to its EquationTableElm dump ordinal.
+     * Mirrors SFCRUtil.parseEquationRowMode without loading EquationTableElm.
+     */
+    static int parseModeOrdinal(String mode) {
+        if (mode == null) return 0;
+        String m = mode.toLowerCase().trim();
+        if (m.equals("flow") || m.equals("flow_mode") || m.equals("stock") || m.equals("stock_mode")) return 1;
+        if (m.equals("param") || m.equals("parameter") || m.equals("param_mode")) return 3;
+        return 0;
+    }
+
+    /**
+     * Escape a token for the CircuitJS dump format.
+     * Mirrors CustomLogicModel.escape() without loading that class.
+     */
+    static String escapeToken(String s) {
+        if (s.length() == 0) return "\\0";
+        return s.replace("\\", "\\\\").replace("\n", "\\n").replace(" ", "\\s")
+                .replace("+", "\\p").replace("=", "\\q").replace("#", "\\h")
+                .replace("&", "\\a").replace("\r", "\\r");
+    }
+
+    /**
+     * Parse a combined "name-&gt;target" notation.
+     * Mirrors EquationTableElm.parseCombinedName() without loading that class.
+     */
+    static String[] parseCombinedNameLocal(String combined) {
+        if (combined == null) return new String[]{"", ""};
+        int arrowIdx = combined.indexOf("->");
+        int sepLen = 2;
+        if (arrowIdx < 0) { arrowIdx = combined.indexOf("-||-"); sepLen = 4; }
+        if (arrowIdx < 0) { arrowIdx = combined.indexOf("\u2192"); sepLen = 1; }   // \u2192 = →
+        if (arrowIdx < 0) { arrowIdx = combined.indexOf("\u22A3\u22A2"); sepLen = 2; }  // \u22A3\u22A2 = ⊣⊢
+        if (arrowIdx < 0) { arrowIdx = combined.indexOf(","); sepLen = 1; }
+        if (arrowIdx >= 0) {
+            return new String[]{
+                combined.substring(0, arrowIdx).trim(),
+                combined.substring(arrowIdx + sepLen).trim()
+            };
+        }
+        return new String[]{combined.trim(), ""};
+    }
+
     // =========================================================================
     // Constructor & Public API
     // =========================================================================
@@ -119,7 +170,31 @@ public class SFCRParser {
     public SFCRParser(CirSim sim) {
         this.sim = sim;
     }
-    
+
+    /**
+     * Parse SFCR text to a plain result object with no CirSim or GWT dependency.
+     *
+     * <p>Safe to call from plain-Java unit tests running on a standard JVM.
+     * Element instantiation is skipped; the dump strings that would normally be
+     * fed to {@code CirSim.createCe()} are collected in the returned
+     * {@link SFCRParseResult} instead.
+     *
+     * @param text SFCR-format source text
+     * @return parsed result, or {@code null} if text is null/empty
+     */
+    public static SFCRParseResult parseToResult(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return null;
+        }
+        SFCRParser parser = new SFCRParser(null);
+        parser.pendingResult = new SFCRParseResult();
+        parser.parse(text);
+        // Copy hints collected during block parsing into the result.
+        // (parse() also registers them with HintRegistry which is fine for tests.)
+        parser.pendingResult.hints.putAll(parser.hints);
+        return parser.pendingResult;
+    }
+
     /** Check if text appears to be in SFCR format. */
     public static boolean isSFCRFormat(String text) {
         if (text == null || text.trim().isEmpty()) {
@@ -171,7 +246,7 @@ public class SFCRParser {
         initSettings.clear();
         rawCircuitLines.clear();
         actionElementFromActionBlock = false;
-        sim.getSFCRDocumentState().clearBlockComments();
+        if (sim != null) sim.getSFCRDocumentState().clearBlockComments();
         currentY = 24;
         
         try {
@@ -384,6 +459,11 @@ public class SFCRParser {
     
     /** Apply parsed init settings to the simulator. */
     private void applyInitSettings() {
+        // In result-mode (no sim), just copy raw settings to the result.
+        if (pendingResult != null) {
+            pendingResult.initSettings.putAll(initSettings);
+            return;
+        }
         // SFCR default is fixed timestep unless explicitly overridden.
         sim.adjustTimeStep = false;
 
@@ -798,7 +878,7 @@ public class SFCRParser {
         
         ArrayList<String> outputNames = new ArrayList<String>();
         ArrayList<String> equations = new ArrayList<String>();
-        ArrayList<EquationTableElm.RowOutputMode> outputModes = new ArrayList<EquationTableElm.RowOutputMode>();
+        ArrayList<Integer> outputModes = new ArrayList<Integer>();
         ArrayList<String> targetNodeNames = new ArrayList<String>();
         ArrayList<String> sliderVarNames = new ArrayList<String>();
         ArrayList<Double> sliderValues = new ArrayList<Double>();
@@ -872,7 +952,7 @@ public class SFCRParser {
                 String[] lhsAliasParts = splitDifferenceLeftAlias(normalizedLeft);
                 boolean hasDifferenceAlias = lhsAliasParts[1] != null && !lhsAliasParts[1].isEmpty();
 
-                String[] nameParts = EquationTableElm.parseCombinedName(lhsAliasParts[0]);
+                String[] nameParts = parseCombinedNameLocal(lhsAliasParts[0]);
                 String name = SFCRUtil.normalizeVariableName(nameParts[0]);
 
                 String targetName = "";
@@ -893,9 +973,9 @@ public class SFCRParser {
                     equations.add(expr);
                 }
 
-                EquationTableElm.RowOutputMode mode = SFCRUtil.parseEquationRowMode(rowMeta.get("mode"));
-                if (mode == EquationTableElm.RowOutputMode.VOLTAGE_MODE && !targetName.isEmpty()) {
-                    mode = EquationTableElm.RowOutputMode.FLOW_MODE;
+                int mode = parseModeOrdinal(rowMeta.get("mode"));
+                if (mode == 0 && !targetName.isEmpty()) {
+                    mode = 1;  // FLOW_MODE (has a target but no explicit flow mode)
                 }
                 outputModes.add(mode);
 
@@ -1205,6 +1285,8 @@ public class SFCRParser {
     /** Parse @circuit block - raw CircuitJS element definitions (passthrough). */
     private int parseCircuitBlock(String[] lines, int startIndex) {
         int i = startIndex + 1;
+        String hintedBlockType = "";
+        String hintedBlockName = "";
         
         while (i < lines.length) {
             String line = lines[i].trim();
@@ -1218,7 +1300,19 @@ public class SFCRParser {
             }
             
             // Skip empty lines and comments
-            if (line.isEmpty() || line.startsWith("#")) {
+            if (line.isEmpty()) {
+                i++;
+                continue;
+            }
+
+            // Optional metadata hint for result-mode export/import round-trips:
+            // #@sfcrblock equations equations_1A
+            if (line.startsWith("#")) {
+                if (pendingResult != null && line.startsWith("#@sfcrblock")) {
+                    String[] parts = line.split("\\s+", 3);
+                    hintedBlockType = (parts.length >= 2) ? parts[1].trim() : "";
+                    hintedBlockName = (parts.length >= 3) ? parts[2].trim() : "";
+                }
                 i++;
                 continue;
             }
@@ -1231,10 +1325,50 @@ public class SFCRParser {
             
             // Store raw circuit line for later processing
             rawCircuitLines.add(line);
+
+            // In result-mode, also recover structured block dumps from known dump types.
+            if (pendingResult != null) {
+                String blockType = hintedBlockType;
+                String blockName = hintedBlockName;
+
+                if (blockType.isEmpty()) {
+                    blockType = inferBlockTypeFromCircuitDumpLine(line);
+                    blockName = "";
+                }
+
+                if (blockType != null && !blockType.isEmpty()) {
+                    pendingResult.blockDumps.add(new SFCRParseResult.BlockDump(blockType, blockName, line));
+                }
+
+                hintedBlockType = "";
+                hintedBlockName = "";
+            }
             i++;
         }
         
         return i;
+    }
+
+    private String inferBlockTypeFromCircuitDumpLine(String line) {
+        if (line == null || line.isEmpty()) {
+            return null;
+        }
+
+        int space = line.indexOf(' ');
+        String token = (space > 0) ? line.substring(0, space) : line;
+
+        int dumpType;
+        try {
+            dumpType = Integer.parseInt(token);
+        } catch (Exception e) {
+            return null;
+        }
+
+        if (dumpType == 266) return "equations";
+        if (dumpType == 265) return "matrix";
+        if (dumpType == 466) return "sankey";
+        if (dumpType == 432) return "action";
+        return null;
     }
     
     /** Get raw circuit lines for standard element loader. */
@@ -1346,16 +1480,23 @@ public class SFCRParser {
         // Create the Sankey element
         int posX = blockPos.hasPosition() ? blockPos.x : currentX;
         int posY = blockPos.hasPosition() ? blockPos.y : currentY;
-        
-        SFCSankeyElm sankeyElm = new SFCSankeyElm(posX, posY);
-        
-        // Set properties using reflection-like approach via setEditValue
-        // We need to set properties directly since the element is already created
-        // Use the dump/load mechanism by building a tokenizer
+
+        // Build dump string first so result-mode can capture it without loading GWT classes.
         String dumpStr = "466 " + posX + " " + posY + " " + (posX + 16) + " " + (posY + 16) + " 0 " +
-                         CustomLogicModel.escape(sourceName) + " " + layout + " " + width + " " + height + " " +
+                         escapeToken(sourceName) + " " + layout + " " + width + " " + height + " " +
                          (showScaleBar ? "1" : "0") + " " + fixedMaxScale + " " +
                          (useHighWaterMark ? "1" : "0") + " " + (showFlowValues ? "1" : "0");
+
+        // Result-mode: keep dump only, do not instantiate SFCSankeyElm/CircuitElm.
+        if (pendingResult != null) {
+            pendingResult.blockDumps.add(new SFCRParseResult.BlockDump("sankey", "", dumpStr));
+            if (!blockPos.hasPosition()) {
+                currentY += height + elementSpacing;
+            }
+            return i;
+        }
+
+        SFCSankeyElm sankeyElm = new SFCSankeyElm(posX, posY);
         
         try {
             StringTokenizer st = new StringTokenizer(dumpStr);
@@ -1736,7 +1877,7 @@ public class SFCRParser {
         
         ArrayList<String> outputNames = new ArrayList<String>();
         ArrayList<String> equations = new ArrayList<String>();
-        ArrayList<EquationTableElm.RowOutputMode> outputModes = new ArrayList<EquationTableElm.RowOutputMode>();
+        ArrayList<Integer> outputModes = new ArrayList<Integer>();
         ArrayList<String> targetNodeNames = new ArrayList<String>();
         ArrayList<String> sliderVarNames = new ArrayList<String>();
         ArrayList<Double> sliderValues = new ArrayList<Double>();
@@ -1758,7 +1899,7 @@ public class SFCRParser {
             effectiveMetadata.y = metadata.y;
             effectiveMetadata.type = metadata.type;
         }
-        EquationTableElm.RowOutputMode currentSectionMode = EquationTableElm.RowOutputMode.VOLTAGE_MODE;
+        int currentSectionMode = 0;  // VOLTAGE_MODE
         
         // Split by commas (but not commas inside parentheses)
         ArrayList<String> parts = splitByTopLevelComma(content);
@@ -1784,7 +1925,7 @@ public class SFCRParser {
 
                     String sectionText = line.substring(1).trim().toLowerCase();
                     if (isParametersSectionComment(sectionText)) {
-                        currentSectionMode = EquationTableElm.RowOutputMode.PARAM_MODE;
+                        currentSectionMode = 3;  // PARAM_MODE
                     }
 
                     appendCommentRow(line,
@@ -1853,10 +1994,10 @@ public class SFCRParser {
                 
                 outputNames.add(name);
                 equations.add(expr);
-                EquationTableElm.RowOutputMode mode = currentSectionMode;
+                int mode = currentSectionMode;
                 String inlineMode = inlineMeta.get("mode");
                 if (inlineMode != null && !inlineMode.isEmpty()) {
-                    mode = SFCRUtil.parseEquationRowMode(inlineMode);
+                    mode = parseModeOrdinal(inlineMode);
                 }
                 outputModes.add(mode);
                 targetNodeNames.add("");
@@ -2275,7 +2416,11 @@ public class SFCRParser {
             return;
         }
         String key = SFCRBlockCommentRegistry.makeKey(blockType, blockName);
-        sim.getSFCRDocumentState().setBlockComments(key, pendingComments);
+        if (pendingResult != null) {
+            pendingResult.blockComments.put(key, new ArrayList<String>(pendingComments));
+        } else {
+            sim.getSFCRDocumentState().setBlockComments(key, pendingComments);
+        }
         pendingComments.clear();
     }
 
@@ -2362,7 +2507,7 @@ public class SFCRParser {
         dump.append(showInitial ? "true 2 1 false 5 0 false " : "false 2 1 false 5 0 false ");
         
         // Table title (escaped)
-        dump.append(CustomLogicModel.escape(name.replace("_", " "))).append(" ");
+        dump.append(escapeToken(name.replace("_", " "))).append(" ");
         
         // Table units
         dump.append("\\0 ");  // Empty units
@@ -2371,20 +2516,20 @@ public class SFCRParser {
         if (hasSumColumn) {
             // Use provided column names as-is (last one is already sum column)
             for (int i = 0; i < columnNames.size() - 1; i++) {
-                dump.append(CustomLogicModel.escape(columnNames.get(i))).append(" ");
+                dump.append(escapeToken(columnNames.get(i))).append(" ");
             }
             dump.append("Σ ");  // Normalize the sum column name
         } else {
             // Add Σ column
             for (String col : columnNames) {
-                dump.append(CustomLogicModel.escape(col)).append(" ");
+                dump.append(escapeToken(col)).append(" ");
             }
             dump.append("Σ ");
         }
         
         // Row descriptions
         for (String row : rowNames) {
-            dump.append(CustomLogicModel.escape(row)).append(" ");
+            dump.append(escapeToken(row)).append(" ");
         }
         
         // Initial values (zeros)
@@ -2409,7 +2554,7 @@ public class SFCRParser {
                 if (eq.equals("-") || eq.trim().isEmpty()) {
                     eq = "";
                 }
-                dump.append(CustomLogicModel.escape(eq)).append(" ");
+                dump.append(escapeToken(eq)).append(" ");
             }
             dump.append("\\0 ");  // Empty equation for Σ column
         }
@@ -2417,6 +2562,13 @@ public class SFCRParser {
         // SFC-specific fields.
         // For SFCTableElm: highlightImbalances balanceTolerance
         dump.append("true 0.000001");
+        
+        // --- Result-mode: collect dump without instantiating elements ---
+        if (pendingResult != null) {
+            pendingResult.blockDumps.add(new SFCRParseResult.BlockDump("matrix", name, dump.toString()));
+            currentY = y2 + elementSpacing;
+            return;
+        }
         
         // Create element by parsing the dump string
         CirSim.console("Creating SFCTable: " + name);
@@ -2447,7 +2599,7 @@ public class SFCRParser {
     private void appendCommentRow(String comment,
                                   ArrayList<String> outputNames,
                                   ArrayList<String> equations,
-                                  ArrayList<EquationTableElm.RowOutputMode> outputModes,
+                                  ArrayList<Integer> outputModes,
                                   ArrayList<String> targetNodeNames,
                                   ArrayList<String> sliderVarNames,
                                   ArrayList<Double> sliderValues,
@@ -2461,7 +2613,7 @@ public class SFCRParser {
 
         outputNames.add("# " + text);
         equations.add("");
-        outputModes.add(EquationTableElm.RowOutputMode.PARAM_MODE);
+        outputModes.add(3);  // PARAM_MODE
         targetNodeNames.add("");
         sliderVarNames.add("");
         sliderValues.add(Double.valueOf(0));
@@ -2471,14 +2623,14 @@ public class SFCRParser {
     /** Create EquationTableElm from parsed equation data. */
     private void createEquationTable(String name, ArrayList<String> outputNames,
                                      ArrayList<String> equations,
-                                     ArrayList<EquationTableElm.RowOutputMode> outputModes,
+                                     ArrayList<Integer> outputModes,
                                      ArrayList<String> targetNodeNames,
                                      ArrayList<String> sliderVarNames,
                                      ArrayList<Double> sliderValues,
                                      ArrayList<String> initialEquations) {
         int rows = outputNames.size();
         if (rows == 0) return;
-        if (rows > EquationTableElm.MAX_ROWS) rows = EquationTableElm.MAX_ROWS;
+        if (rows > 64) rows = 64;  // EquationTableElm.MAX_ROWS
         
         StringBuilder dump = new StringBuilder();
         
@@ -2494,7 +2646,7 @@ public class SFCRParser {
         dump.append(x2).append(" ").append(y2).append(" 2 ");
         
         // Table name (escaped)
-        dump.append(CustomLogicModel.escape(name.replace("_", " "))).append(" ");
+        dump.append(escapeToken(name.replace("_", " "))).append(" ");
         
         // Row count
         dump.append(rows).append(" ");
@@ -2502,38 +2654,38 @@ public class SFCRParser {
         // For each row: outputName equation initialEquation sliderVarName sliderValue
         //               outputMode targetNode capacitance shuntResistance useBackwardEuler
         for (int i = 0; i < rows; i++) {
-            dump.append(CustomLogicModel.escape(outputNames.get(i))).append(" ");
-            dump.append(CustomLogicModel.escape(equations.get(i))).append(" ");
+            dump.append(escapeToken(outputNames.get(i))).append(" ");
+            dump.append(escapeToken(equations.get(i))).append(" ");
             String initEq = (i < initialEquations.size() && initialEquations.get(i) != null)
                 ? initialEquations.get(i) : "";
-            dump.append(CustomLogicModel.escape(initEq)).append(" ");
+            dump.append(escapeToken(initEq)).append(" ");
 
             String sliderVar = (i < sliderVarNames.size() && sliderVarNames.get(i) != null)
                 ? sliderVarNames.get(i) : "";
-            dump.append(CustomLogicModel.escape(sliderVar)).append(" ");
+            dump.append(escapeToken(sliderVar)).append(" ");
 
             double sliderValue = (i < sliderValues.size() && sliderValues.get(i) != null)
                 ? sliderValues.get(i).doubleValue() : 0.5;
             dump.append(sliderValue).append(" ");
 
-            EquationTableElm.RowOutputMode mode = (i < outputModes.size() && outputModes.get(i) != null)
-                ? outputModes.get(i) : EquationTableElm.RowOutputMode.VOLTAGE_MODE;
-            int modeOrdinal = 0;
-            if (mode == EquationTableElm.RowOutputMode.FLOW_MODE) {
-                modeOrdinal = 1;
-            } else if (mode == EquationTableElm.RowOutputMode.PARAM_MODE) {
-                // Keep on-disk numbering compatible with EquationTableElm.dump().
-                modeOrdinal = 3;
-            }
+            int modeOrdinal = (i < outputModes.size() && outputModes.get(i) != null)
+                ? outputModes.get(i) : 0;  // default VOLTAGE_MODE
             dump.append(modeOrdinal).append(" ");
 
             String target = (i < targetNodeNames.size() && targetNodeNames.get(i) != null)
                 ? targetNodeNames.get(i) : "";
-            dump.append(CustomLogicModel.escape(target)).append(" ");
+            dump.append(escapeToken(target)).append(" ");
 
             dump.append("1.0 ");     // capacitance
-            dump.append(EquationTableElm.getDefaultFlowShuntResistance()).append(" ");   // shuntResistance
+            dump.append("1.0 ");     // shuntResistance (DEFAULT_FLOW_SHUNT_RESISTANCE)
             dump.append("0 ");       // useBackwardEuler
+        }
+        
+        // --- Result-mode: collect dump without instantiating elements ---
+        if (pendingResult != null) {
+            pendingResult.blockDumps.add(new SFCRParseResult.BlockDump("equations", name, dump.toString()));
+            currentY = y2 + elementSpacing;
+            return;
         }
         
         // CirSim.console("Creating EquationTable: " + name + " with " + rows + " equations");

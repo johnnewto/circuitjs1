@@ -1,0 +1,266 @@
+package com.lushprojects.circuitjs1.client;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Plain-Java unit tests for the SFCR parse-to-result path.
+ *
+ * <p>These tests run on a standard JVM with no GWT, no CirSim, and no
+ * browser.  They exercise the text-parsing and dump-string generation
+ * logic of {@link SFCRParser#parseToResult(String)} using the circuit
+ * fixture file {@code test/resources/sfcr/parse_result_fixture.md}.
+ *
+ * <p>Run with: {@code ./gradlew test --tests "*.SFCRParseResultTest"}
+ */
+class SFCRParseResultTest {
+
+    private static String sfcrText;
+    private static SFCRParseResult result;
+
+    @BeforeAll
+    static void loadAndParse() throws Exception {
+        String projectDir = System.getProperty("projectDir");
+        assertNotNull(projectDir, "projectDir system property must be set by Gradle test task");
+
+        Path fixtureFile = Paths.get(projectDir,
+                "test", "resources", "sfcr", "parse_result_fixture.md");
+
+        assertTrue(Files.exists(fixtureFile),
+                "Test fixture file not found: " + fixtureFile.toAbsolutePath());
+
+        sfcrText = new String(Files.readAllBytes(fixtureFile));
+        result = SFCRParser.parseToResult(sfcrText);
+    }
+
+    // -------------------------------------------------------------------------
+    // Null / empty input
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testNullInputReturnsNull() {
+        assertNull(SFCRParser.parseToResult(null));
+    }
+
+    @Test
+    void testEmptyInputReturnsNull() {
+        assertNull(SFCRParser.parseToResult("   "));
+    }
+
+    // -------------------------------------------------------------------------
+    // Result is not null for a valid file
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testResultNotNull() {
+        assertNotNull(result, "parseToResult() must return a non-null result for valid SFCR text");
+    }
+
+    // -------------------------------------------------------------------------
+    // @init settings
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testTimestepParsed() {
+        assertEquals("1", result.initSettings.get("timestep"),
+            "@init timestep must be '1'");
+    }
+
+    @Test
+    void testVoltageUnitParsed() {
+        assertEquals("$", result.initSettings.get("voltageUnit"),
+                "@init voltageUnit must be '$'");
+    }
+
+    @Test
+    void testTimeUnitParsed() {
+        assertEquals("yr", result.initSettings.get("timeUnit"),
+                "@init timeUnit must be 'yr'");
+    }
+
+    @Test
+    void testShowDotsParsed() {
+        assertEquals("true", result.initSettings.get("showDots"),
+            "@init showDots must be 'true'");
+    }
+
+    // -------------------------------------------------------------------------
+    // Equation blocks
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testThreeEquationBlocksFound() {
+        List<SFCRParseResult.BlockDump> eqBlocks = result.getBlocksByType("equations");
+        assertEquals(3, eqBlocks.size(),
+                "Expected 3 equation blocks from sfcr_set assignments (equations_1A, equations_2, Parameters)");
+    }
+
+    @Test
+    void testEquationBlockNamesPresent() {
+        List<SFCRParseResult.BlockDump> eqBlocks = result.getBlocksByType("equations");
+        boolean hasEq1 = false, hasEq2 = false, hasParameters = false;
+        for (SFCRParseResult.BlockDump bd : eqBlocks) {
+            String n = bd.blockName;
+            if ("equations_1A".equals(n)) hasEq1 = true;
+            if ("equations_2".equals(n))  hasEq2 = true;
+            if ("Parameters".equals(n))   hasParameters = true;
+        }
+        assertTrue(hasEq1, "Missing 'equations_1A' block");
+        assertTrue(hasEq2, "Missing 'equations_2' block");
+        assertTrue(hasParameters, "Missing 'Parameters' block");
+    }
+
+    @Test
+        void testEquationDumpContainsYDAndTheta() {
+        SFCRParseResult.BlockDump block = result.findBlock("equations", "equations_1A");
+        assertNotNull(block, "equations_1A block must be present");
+        assertTrue(block.dumpString.contains("YD"),
+            "equations_1A dump must contain 'YD'");
+        assertTrue(block.dumpString.contains("\\theta"),
+            "equations_1A dump must contain '\\theta'");
+    }
+
+    @Test
+    void testDumpStartsWithType266() {
+        // EquationTableElm type number is 266
+        for (SFCRParseResult.BlockDump bd : result.getBlocksByType("equations")) {
+            assertTrue(bd.dumpString.startsWith("266 "),
+                    "Equation block dump must start with '266 ' (EquationTableElm type): " + bd.blockName);
+        }
+    }
+
+    @Test
+    void testTwoMatrixBlocksFound() {
+        assertEquals(2, result.getBlocksByType("matrix").size(),
+                "Expected 2 matrix blocks (Balance_Sheet, Transaction_Flow_Matrix)");
+    }
+
+    @Test
+    void testMatrixBlockNamesPresent() {
+        List<SFCRParseResult.BlockDump> matrixBlocks = result.getBlocksByType("matrix");
+        boolean hasBalanceSheet = false, hasTFM = false;
+        for (SFCRParseResult.BlockDump bd : matrixBlocks) {
+            if ("Balance_Sheet".equals(bd.blockName)) hasBalanceSheet = true;
+            if ("Transaction_Flow_Matrix".equals(bd.blockName)) hasTFM = true;
+        }
+        assertTrue(hasBalanceSheet, "Missing 'Balance_Sheet' matrix block");
+        assertTrue(hasTFM, "Missing 'Transaction_Flow_Matrix' matrix block");
+    }
+
+    @Test
+    void testOneSankeyBlockCaptured() {
+        List<SFCRParseResult.BlockDump> sankeyBlocks = result.getBlocksByType("sankey");
+        assertEquals(1, sankeyBlocks.size(),
+            "Expected 1 sankey block captured from @sankey in parse_result_fixture.md");
+        assertTrue(sankeyBlocks.get(0).dumpString.startsWith("466 "),
+                "Sankey dump must start with '466 ' (SFCSankeyElm type)");
+    }
+
+    // -------------------------------------------------------------------------
+    // Hints
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testHintsPopulatedFromInlineComments() {
+        // Inline comments in sfcr_set rows populate hints
+        assertTrue(result.hints.containsKey("YD"),
+            "Hints map must contain 'YD' (from inline # comment)");
+        String ydHint = result.hints.get("YD");
+        assertTrue(ydHint.contains("Disposable Income"),
+            "YD hint must contain 'Disposable Income', got: " + ydHint);
+    }
+
+    @Test
+    void testHintsFromHintsBlock() {
+        // This markdown fixture has no @hints block, but inline hints should still exist.
+        assertTrue(result.hints.containsKey("Y"),
+            "Hints map must contain 'Y' from inline sfcr_set comment");
+    }
+
+    // -------------------------------------------------------------------------
+    // escapeToken helper
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testEscapeTokenEmpty() {
+        assertEquals("\\0", SFCRParser.escapeToken(""));
+    }
+
+    @Test
+    void testEscapeTokenSpaces() {
+        assertEquals("hello\\sworld", SFCRParser.escapeToken("hello world"));
+    }
+
+    @Test
+    void testEscapeTokenSpecialChars() {
+        // backslash first, then equals, space, plus
+        String result = SFCRParser.escapeToken("a=b c+d");
+        assertTrue(result.contains("\\q"), "= must be escaped to \\q");
+        assertTrue(result.contains("\\s"), "space must be escaped to \\s");
+        assertTrue(result.contains("\\p"), "+ must be escaped to \\p");
+    }
+
+    // -------------------------------------------------------------------------
+    // parseModeOrdinal helper
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testParseModeOrdinalVoltage() {
+        assertEquals(0, SFCRParser.parseModeOrdinal(null));
+        assertEquals(0, SFCRParser.parseModeOrdinal("voltage"));
+        assertEquals(0, SFCRParser.parseModeOrdinal("VOLTAGE"));
+    }
+
+    @Test
+    void testParseModeOrdinalFlow() {
+        assertEquals(1, SFCRParser.parseModeOrdinal("flow"));
+        assertEquals(1, SFCRParser.parseModeOrdinal("stock"));
+        assertEquals(1, SFCRParser.parseModeOrdinal("stock_mode"));
+    }
+
+    @Test
+    void testParseModeOrdinalParam() {
+        assertEquals(3, SFCRParser.parseModeOrdinal("param"));
+        assertEquals(3, SFCRParser.parseModeOrdinal("parameter"));
+        assertEquals(3, SFCRParser.parseModeOrdinal("PARAM_MODE"));
+    }
+
+    // -------------------------------------------------------------------------
+    // parseCombinedNameLocal helper
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testParseCombinedNameNoSeparator() {
+        String[] parts = SFCRParser.parseCombinedNameLocal("myVar");
+        assertEquals("myVar", parts[0]);
+        assertEquals("",      parts[1]);
+    }
+
+    @Test
+    void testParseCombinedNameArrow() {
+        String[] parts = SFCRParser.parseCombinedNameLocal("source->target");
+        assertEquals("source", parts[0]);
+        assertEquals("target", parts[1]);
+    }
+
+    @Test
+    void testParseCombinedNameComma() {
+        String[] parts = SFCRParser.parseCombinedNameLocal("A , B");
+        assertEquals("A", parts[0]);
+        assertEquals("B", parts[1]);
+    }
+
+    @Test
+    void testParseCombinedNameNull() {
+        String[] parts = SFCRParser.parseCombinedNameLocal(null);
+        assertEquals("", parts[0]);
+        assertEquals("", parts[1]);
+    }
+}
