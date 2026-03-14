@@ -52,25 +52,32 @@ public class StockFlowRegistry {
     
     // ========== REGISTRY DATA STRUCTURES ==========
     
-    // Map: stock name → list of TableElm instances
-    private static Map<String, List<TableElm>> stockToTables = new HashMap<String, List<TableElm>>();
+    // Map: stock name → list of registered table views
+    private static Map<String, List<StockTableView>> stockToTables = new HashMap<String, List<StockTableView>>();
     
     // Cache of merged rows per stock (invalidated on changes)
     private static Map<String, LinkedHashSet<String>> mergedRowsCache = new HashMap<String, LinkedHashSet<String>>();
     
     // Synchronization guard to prevent infinite recursion
     private static Set<TableElm> currentlySynchronizing = new HashSet<TableElm>();
+
+    private static TableElm asTableElm(StockTableView table) {
+        if (table instanceof TableElm) {
+            return (TableElm) table;
+        }
+        return null;
+    }
     
     /**
      * Register a table's stock (column) for synchronization tracking
      */
-    public static void registerStock(String stockName, TableElm table) {
+    public static void registerStock(String stockName, StockTableView table) {
         if (stockName == null || stockName.trim().isEmpty()) return;
         
         if (!stockToTables.containsKey(stockName)) {
-            stockToTables.put(stockName, new ArrayList<TableElm>());
+            stockToTables.put(stockName, new ArrayList<StockTableView>());
         }
-        List<TableElm> tables = stockToTables.get(stockName);
+        List<StockTableView> tables = stockToTables.get(stockName);
         if (!tables.contains(table)) {
             tables.add(table);
             invalidateCache(stockName); // Cache is now stale
@@ -80,7 +87,7 @@ public class StockFlowRegistry {
     /**
      * Unregister a table (e.g., when deleted or stock name changed)
      */
-    public static void unregisterStock(String stockName, TableElm table) {
+    public static void unregisterStock(String stockName, StockTableView table) {
         if (stockToTables.containsKey(stockName)) {
             stockToTables.get(stockName).remove(table);
             invalidateCache(stockName);
@@ -90,9 +97,9 @@ public class StockFlowRegistry {
     /**
      * Unregister all stocks for a table (e.g., on deletion)
      */
-    public static void unregisterAllStocks(TableElm table) {
+    public static void unregisterAllStocks(StockTableView table) {
         List<String> stocksToRemove = new ArrayList<String>();
-        for (Map.Entry<String, List<TableElm>> entry : stockToTables.entrySet()) {
+        for (Map.Entry<String, List<StockTableView>> entry : stockToTables.entrySet()) {
             if (entry.getValue().contains(table)) {
                 entry.getValue().remove(table);
                 stocksToRemove.add(entry.getKey());
@@ -106,9 +113,9 @@ public class StockFlowRegistry {
     /**
      * Get all tables that share this stock name
      */
-    public static List<TableElm> getTablesForStock(String stockName) {
-        List<TableElm> tables = stockToTables.get(stockName);
-        return tables != null ? tables : new ArrayList<TableElm>();
+    public static List<StockTableView> getTablesForStock(String stockName) {
+        List<StockTableView> tables = stockToTables.get(stockName);
+        return tables != null ? tables : new ArrayList<StockTableView>();
     }
     
     /**
@@ -125,7 +132,7 @@ public class StockFlowRegistry {
      */
     public static Set<String> getSharedStocks() {
         Set<String> shared = new HashSet<String>();
-        for (Map.Entry<String, List<TableElm>> entry : stockToTables.entrySet()) {
+        for (Map.Entry<String, List<StockTableView>> entry : stockToTables.entrySet()) {
             if (entry.getValue().size() > 1) {
                 shared.add(entry.getKey());
             }
@@ -137,7 +144,7 @@ public class StockFlowRegistry {
      * Check if a stock is shared by multiple tables
      */
     public static boolean isSharedStock(String stockName) {
-        List<TableElm> tables = stockToTables.get(stockName);
+        List<StockTableView> tables = stockToTables.get(stockName);
         return tables != null && tables.size() > 1;
     }
     
@@ -413,7 +420,7 @@ public class StockFlowRegistry {
      * @param stockName The stock name to collect rows for
      * @param priorityTable Optional table whose row order should be preserved (null for default)
      */
-    public static LinkedHashSet<String> getMergedRowDescriptions(String stockName, TableElm priorityTable) {
+    public static LinkedHashSet<String> getMergedRowDescriptions(String stockName, StockTableView priorityTable) {
         // Can't use cache if we have a priority table (order matters)
         if (priorityTable == null && mergedRowsCache.containsKey(stockName)) {
             LinkedHashSet<String> cached = mergedRowsCache.get(stockName);
@@ -422,33 +429,29 @@ public class StockFlowRegistry {
         }
         
         LinkedHashSet<String> mergedRows = new LinkedHashSet<String>();
-        List<TableElm> tables = getTablesForStock(stockName);
+        List<StockTableView> tables = getTablesForStock(stockName);
         
         MRDlog( "Merging rows for stock '" + stockName + "' from " + tables.size() + " table(s)");
         
         // If we have a priority table, collect its rows first to establish order
         if (priorityTable != null && tables.contains(priorityTable)) {
-            int colIndex = priorityTable.findColumnByStockName(stockName);
-            if (colIndex >= 0) {
-                MRDlog( "Priority table: " + priorityTable.getTableTitle() + " (establishes row order)");
-                // Null safety check for priorityTable before calling getRows()
-                try {
-                    int priorityRows = priorityTable.getRows();
-                    for (int row = 0; row < priorityRows; row++) {
-                        String desc = priorityTable.getRowDescription(row);
-                        if (desc != null && !desc.trim().isEmpty()) {
-                            mergedRows.add(desc.trim());
-                            MRDlog( "  [Priority] Row " + row + ": '" + desc.trim() + "'");
-                        }
+            MRDlog( "Priority table: " + priorityTable.getTableTitle() + " (establishes row order)");
+            try {
+                int priorityRows = priorityTable.getRows();
+                for (int row = 0; row < priorityRows; row++) {
+                    String desc = priorityTable.getRowDescription(row);
+                    if (desc != null && !desc.trim().isEmpty()) {
+                        mergedRows.add(desc.trim());
+                        MRDlog( "  [Priority] Row " + row + ": '" + desc.trim() + "'");
                     }
-                } catch (Exception e) {
-                    MRDlog( "Error accessing priority table rows: " + e.getMessage());
                 }
+            } catch (Exception e) {
+                MRDlog( "Error accessing priority table rows: " + e.getMessage());
             }
         }
         
         // Now collect rows from all other tables (new rows will be added at end)
-        for (TableElm table : tables) {
+        for (StockTableView table : tables) {
             // Skip priority table since we already processed it
             if (table == priorityTable) continue;
             
@@ -458,32 +461,28 @@ public class StockFlowRegistry {
                 continue;
             }
             
-            int colIndex = table.findColumnByStockName(stockName);
-            if (colIndex >= 0) {
-                MRDlog( "Processing table: " + table.getTableTitle());
-                int rowsAdded = 0;
-                
-                // Null safety check before calling getRows()
-                try {
-                    int tableRows = table.getRows();
-                    for (int row = 0; row < tableRows; row++) {
-                        String desc = table.getRowDescription(row);
-                        if (desc != null && !desc.trim().isEmpty()) {
-                            String trimmedDesc = desc.trim();
-                            boolean isNew = !mergedRows.contains(trimmedDesc);
-                            mergedRows.add(trimmedDesc);
-                            if (isNew) {
-                                MRDlog( "  [NEW] Row " + row + ": '" + trimmedDesc + "'");
-                                rowsAdded++;
-                            } else {
-                                MRDlog( "  [EXISTS] Row " + row + ": '" + trimmedDesc + "' (skipped)");
-                            }
+            MRDlog( "Processing table: " + table.getTableTitle());
+            int rowsAdded = 0;
+            
+            try {
+                int tableRows = table.getRows();
+                for (int row = 0; row < tableRows; row++) {
+                    String desc = table.getRowDescription(row);
+                    if (desc != null && !desc.trim().isEmpty()) {
+                        String trimmedDesc = desc.trim();
+                        boolean isNew = !mergedRows.contains(trimmedDesc);
+                        mergedRows.add(trimmedDesc);
+                        if (isNew) {
+                            MRDlog( "  [NEW] Row " + row + ": '" + trimmedDesc + "'");
+                            rowsAdded++;
+                        } else {
+                            MRDlog( "  [EXISTS] Row " + row + ": '" + trimmedDesc + "' (skipped)");
                         }
                     }
-                    MRDlog( "  Added " + rowsAdded + " new row(s) from " + table.getTableTitle());
-                } catch (Exception e) {
-                    MRDlog( "Error accessing table rows for " + table.getTableTitle() + ": " + e.getMessage());
                 }
+                MRDlog( "  Added " + rowsAdded + " new row(s) from " + table.getTableTitle());
+            } catch (Exception e) {
+                MRDlog( "Error accessing table rows for " + table.getTableTitle() + ": " + e.getMessage());
             }
         }
         
@@ -789,12 +788,17 @@ public class StockFlowRegistry {
         for (int col = 0; col < triggerTable.getCols(); col++) {
             String stockName = triggerTable.getColumnHeader(col);
             if (stockName != null && !stockName.trim().isEmpty()) {
-                List<TableElm> tables = getTablesForStock(stockName);
+                List<StockTableView> tables = getTablesForStock(stockName);
                 if (tables.size() > 1) {
                     // This stock is shared by multiple tables
                     sharedStocks.add(stockName);
                 }
-                affectedTables.addAll(tables);
+                for (StockTableView tableView : tables) {
+                    TableElm table = asTableElm(tableView);
+                    if (table != null) {
+                        affectedTables.add(table);
+                    }
+                }
             }
         }
         
@@ -882,8 +886,13 @@ public class StockFlowRegistry {
     public static void synchronizeAllTables() {
         // Get all unique tables from registry
         Set<TableElm> allTables = new HashSet<TableElm>();
-        for (List<TableElm> tables : stockToTables.values()) {
-            allTables.addAll(tables);
+        for (List<StockTableView> tables : stockToTables.values()) {
+            for (StockTableView tableView : tables) {
+                TableElm table = asTableElm(tableView);
+                if (table != null) {
+                    allTables.add(table);
+                }
+            }
         }
         
         // For each table, ensure it has merged rows for all its shared stocks
@@ -916,7 +925,7 @@ public class StockFlowRegistry {
         sb.append("Shared stocks: ").append(getSharedStocks().size()).append("\n");
         sb.append("\nStock → Tables mapping:\n");
         
-        for (Map.Entry<String, List<TableElm>> entry : stockToTables.entrySet()) {
+        for (Map.Entry<String, List<StockTableView>> entry : stockToTables.entrySet()) {
             sb.append("  '").append(entry.getKey()).append("' → ");
             sb.append(entry.getValue().size()).append(" table(s)");
             if (entry.getValue().size() > 1) {
@@ -925,9 +934,13 @@ public class StockFlowRegistry {
             sb.append("\n");
             
             // Show table details with object IDs
-            for (TableElm table : entry.getValue()) {
-                sb.append("    - ").append(table.getTableTitle())
-                  .append(" (Object ID: #").append(System.identityHashCode(table)).append(")\n");
+            for (StockTableView table : entry.getValue()) {
+                if (table == null) {
+                    sb.append("    - null\n");
+                } else {
+                    sb.append("    - ").append(table.getTableTitle())
+                      .append(" (Object ID: #").append(System.identityHashCode(table)).append(")\n");
+                }
             }
         }
         
@@ -952,8 +965,9 @@ public class StockFlowRegistry {
 
         // For each stock, find tables that contain it
         for (String stock : stocks) {
-            List<TableElm> tables = getTablesForStock(stock);
-            for (TableElm table : tables) {
+            List<StockTableView> tables = getTablesForStock(stock);
+            for (StockTableView tableView : tables) {
+                TableElm table = asTableElm(tableView);
                 // Skip the source table
                 if (table == sourceTable) continue;
                 
@@ -1031,5 +1045,23 @@ public class StockFlowRegistry {
         }
 
         return deletedCount;
+    }
+
+    static class TestSupport {
+        static void seedStockEntries(String stockName, int entries) {
+            ArrayList<StockTableView> tables = new ArrayList<StockTableView>();
+            for (int i = 0; i < entries; i++) {
+                tables.add(null);
+            }
+            stockToTables.put(stockName, tables);
+        }
+
+        static void seedMergedRowsCache(String stockName, LinkedHashSet<String> rows) {
+            mergedRowsCache.put(stockName, rows);
+        }
+
+        static boolean isMergedRowsCached(String stockName) {
+            return mergedRowsCache.containsKey(stockName);
+        }
     }
 }

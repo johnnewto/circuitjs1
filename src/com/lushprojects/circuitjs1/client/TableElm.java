@@ -13,7 +13,7 @@ import java.util.ArrayList;
  * Simplified Table Element - Displays voltage values from equations
  * Extends ChipElm to provide output pins at each column
  */
-public class TableElm extends ChipElm {
+public class TableElm extends ChipElm implements StockTableView {
     protected int rows = 0;  // Start with zero rows for new tables
     protected int cellWidthInGrids = 6;  // Width of each cell in grid units (cspc)
     protected int cellHeight = 16; // Height of each cell in pixels (for drawing)
@@ -967,6 +967,15 @@ public class TableElm extends ChipElm {
         }
         return "";
     }
+
+    @Override
+    public String[] getColumnNames() {
+        String[] names = new String[getCols()];
+        for (int col = 0; col < names.length; col++) {
+            names[col] = getColumnHeader(col);
+        }
+        return names;
+    }
     
     /**
      * Get the TableColumn object for a given column index
@@ -1087,6 +1096,19 @@ public class TableElm extends ChipElm {
             return rowDescriptions[row];
         }
         return "Row" + (row + 1);
+    }
+
+    @Override
+    public String[] getRowDescriptions() {
+        String[] descriptions = new String[getRows()];
+        for (int row = 0; row < descriptions.length; row++) {
+            descriptions[row] = getRowDescription(row);
+        }
+        return descriptions;
+    }
+
+    @Override
+    public void onSharedStockAdded(String stockName) {
     }
     
     public void setRowDescription(int row, String description) {

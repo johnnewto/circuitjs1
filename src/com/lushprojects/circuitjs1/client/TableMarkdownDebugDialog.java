@@ -471,9 +471,9 @@ public class TableMarkdownDebugDialog {
             }
             
             if (stockName != null && !stockName.trim().isEmpty()) {
-                java.util.List<TableElm> tables = StockFlowRegistry.getTablesForStock(stockName);
+                                java.util.List<StockTableView> tables = StockFlowRegistry.getTablesForStock(stockName);
                 md.append(" → ").append(tables.size()).append(" table(s): ");
-                for (TableElm t : tables) {
+                                for (StockTableView t : tables) {
                     md.append("[").append(t.getTableTitle()).append(" #")
                       .append(System.identityHashCode(t)).append("] ");
                 }
@@ -512,8 +512,12 @@ public class TableMarkdownDebugDialog {
                 continue;
             }
             
-            java.util.List<TableElm> tables = StockFlowRegistry.getTablesForStock(stockName);
-            relatedTables.addAll(tables);
+            java.util.List<StockTableView> tables = StockFlowRegistry.getTablesForStock(stockName);
+            for (StockTableView tableView : tables) {
+                if (tableView instanceof TableElm) {
+                    relatedTables.add((TableElm) tableView);
+                }
+            }
         }
         
         return relatedTables;
@@ -748,11 +752,15 @@ public class TableMarkdownDebugDialog {
                 }
                 
                 // List all tables that reference this stock (with priorities and types)
-                java.util.List<TableElm> referencingTables = StockFlowRegistry.getTablesForStock(stockName);
+                java.util.List<StockTableView> referencingTables = StockFlowRegistry.getTablesForStock(stockName);
                 if (referencingTables.size() > 1) {
                     md.append("\n  - Also referenced by: ");
                     boolean first = true;
-                    for (TableElm table : referencingTables) {
+                    for (StockTableView tableView : referencingTables) {
+                        if (!(tableView instanceof TableElm)) {
+                            continue;
+                        }
+                        TableElm table = (TableElm) tableView;
                         if (table != masterTable) {
                             if (!first) md.append(", ");
                             
