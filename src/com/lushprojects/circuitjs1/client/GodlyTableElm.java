@@ -56,34 +56,7 @@ public class GodlyTableElm extends TableElm {
     // Get convergence limit (same as VCVSElm/VCCSElm)
     // More lenient over time to help convergence
     double getConvergeLimit() {
-        // Base relative tolerance (0.1% to 1% depending on iteration count)
-        double relativeTolerance;
-        if (sim.subIterations < 10)
-            relativeTolerance = 0.001;  // 0.1% for early iterations
-        else if (sim.subIterations < 100)
-            relativeTolerance = 0.01;   // 1% for mid iterations
-        else
-            relativeTolerance = 0.1;    // 10% for late iterations (help convergence)
-        
-        // Find maximum absolute value across all integrated values and column sums
-        // This makes the threshold scale with the magnitude of values
-        double maxMagnitude = 1.0;  // Minimum threshold (prevent division by zero)
-        
-        if (integratedValues != null) {
-            for (int i = 0; i < integratedValues.length; i++) {
-                maxMagnitude = Math.max(maxMagnitude, Math.abs(integratedValues[i]));
-            }
-        }
-        
-        if (lastColumnSums != null) {
-            for (int i = 0; i < lastColumnSums.length; i++) {
-                maxMagnitude = Math.max(maxMagnitude, Math.abs(lastColumnSums[i]));
-            }
-        }
-        
-        // Return relative limit scaled by magnitude
-        // For large values (e.g., 1000V), this gives reasonable thresholds (1V at 0.1%)
-        return maxMagnitude * relativeTolerance;
+        return StockFlowTableSemantics.convergenceLimit(sim.subIterations, integratedValues, lastColumnSums);
     }
     
     // File loading constructor  
@@ -127,7 +100,7 @@ public class GodlyTableElm extends TableElm {
         if (sim.t == 0.0) {
             double initialValue = getInitialValue(col);
             state.lastOutput = initialValue;
-            return initialValue;
+            return StockFlowTableSemantics.integratedValue(sim.t, initialValue, state.lastOutput, sim.timeStep, columnSum);
         }
         
         // Set up expression state
@@ -140,7 +113,7 @@ public class GodlyTableElm extends TableElm {
         // Each column has its own Expr instance to avoid state sharing/caching issues
         Expr expr = (integrationExprs != null && col < integrationExprs.length) ? integrationExprs[col] : null;
         if (expr == null) {
-            return lastOut;
+            return StockFlowTableSemantics.integratedValue(sim.t, getInitialValue(col), lastOut, sim.timeStep, columnSum);
         }
         double result = expr.eval(state);
         
@@ -565,7 +538,7 @@ public class GodlyTableElm extends TableElm {
             
             // Like VCVSElm: check input convergence using dynamic threshold
             // Check if column sum (our "input") has converged
-            if (Math.abs(columnSum - lastColumnSums[col]) > convergeLimit) {
+            if (StockFlowTableSemantics.shouldMarkUnconverged(columnSum, lastColumnSums[col], convergeLimit)) {
                 sim.converged = false;
 
                 // Debug: log convergence failure details
@@ -624,7 +597,7 @@ public class GodlyTableElm extends TableElm {
                 
                 // Update integration state for next timestep (like VCVSElm.stepFinished)
                 if (integrationStates[col] != null) {
-                    integrationStates[col].lastOutput = integratedValues[col];
+                    integrationStates[col].lastOutput = StockFlowTableSemantics.committedIntegrationState(integratedValues[col]);
                 }
             }
         }

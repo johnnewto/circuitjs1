@@ -948,8 +948,7 @@ public class SFCRParser {
                     }
                 }
 
-                String normalizedLeft = SFCRUtil.normalizeVariableName(leftPart);
-                String[] lhsAliasParts = splitDifferenceLeftAlias(normalizedLeft);
+                String[] lhsAliasParts = splitDifferenceLeftAlias(leftPart);
                 boolean hasDifferenceAlias = lhsAliasParts[1] != null && !lhsAliasParts[1].isEmpty();
 
                 String[] nameParts = parseCombinedNameLocal(lhsAliasParts[0]);
@@ -1054,6 +1053,14 @@ public class SFCRParser {
 
         int minusIdx = trimmed.indexOf('-');
         if (minusIdx <= 0) {
+            return new String[] { trimmed, null };
+        }
+
+        // Do not treat flow target separators as alias subtraction.
+        if (minusIdx + 1 < trimmed.length() && trimmed.charAt(minusIdx + 1) == '>') {
+            return new String[] { trimmed, null };
+        }
+        if (trimmed.indexOf("-||-") >= 0) {
             return new String[] { trimmed, null };
         }
 

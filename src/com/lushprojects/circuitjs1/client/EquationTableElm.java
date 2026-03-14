@@ -1568,31 +1568,13 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      */
  
     double getConvergeLimit(int row) {
-        // Adaptive tolerance: stricter early, relaxed if struggling
-        // More lenient thresholds help diff() equations converge faster
-        double baseTolerance = getConvergenceTolerance();
-
-        double relativeTolerance;
-        if (sim.subIterations < 3)
-            relativeTolerance = baseTolerance;
-        else if (sim.subIterations < 10)
-            relativeTolerance = baseTolerance * 10;
-        else if (sim.subIterations < 50)
-            relativeTolerance = baseTolerance * 50;
-        else
-            relativeTolerance = baseTolerance * 100;
-        
-        // For diff() equations, increase tolerance to account for division by timestep
-        // which amplifies small input variations
-        if (rows[row].hasDiffExpr) {
-            relativeTolerance *= 10;  // 10x more lenient for diff equations
-        }
-        
-        // Scale by the magnitude of the values involved
-        double maxMagnitude = Math.max(1.0, Math.abs(rows[row].outputValue));
-        maxMagnitude = Math.max(maxMagnitude, Math.abs(rows[row].lastOutputValue));
-        
-        return maxMagnitude * relativeTolerance;
+        return EquationTableSemantics.convergenceLimit(
+            getConvergenceTolerance(),
+            sim.subIterations,
+            rows[row].hasDiffExpr,
+            rows[row].outputValue,
+            rows[row].lastOutputValue
+        );
     }   
     //=============================================================================
     // CIRCUIT ELEMENT INTERFACE - Simulation
@@ -1938,13 +1920,12 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     private void checkEquationConvergence(int row, double equationValue) {
         double convergeLimit = getConvergeLimit(row);
         double diff = Math.abs(equationValue - rows[row].lastOutputValue);
-        boolean converged = diff <= convergeLimit;
-
-        if (shouldSkipConvergenceCheck(row)) {
-            return;
-        }
-
-        if (!converged) {
+        if (EquationTableSemantics.shouldMarkUnconverged(
+                equationValue,
+                rows[row].lastOutputValue,
+                convergeLimit,
+                rows[row].hasDiffExpr,
+                sim.subIterations)) {
             sim.converged = false;
             failedConvergenceRow = row;
             convergenceFailureInfo = buildConvergenceFailureInfo(row, diff, convergeLimit, equationValue);
@@ -1967,7 +1948,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * @return {@code true} if convergence checking should be bypassed.
      */
     private boolean shouldSkipConvergenceCheck(int row) {
-        return rows[row].hasDiffExpr && sim.subIterations < 5;
+        return EquationTableSemantics.shouldSkipConvergenceCheck(rows[row].hasDiffExpr, sim.subIterations);
     }
 
     /**
