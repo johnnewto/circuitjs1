@@ -171,6 +171,12 @@ public class SFCRParser {
         this.sim = sim;
     }
 
+    public static class ParseException extends RuntimeException {
+        ParseException(String message) {
+            super(message);
+        }
+    }
+
     /**
      * Parse SFCR text to a plain result object with no CirSim or GWT dependency.
      *
@@ -183,8 +189,15 @@ public class SFCRParser {
      * @return parsed result, or {@code null} if text is null/empty
      */
     public static SFCRParseResult parseToResult(String text) {
+        return parseToResult(text, false);
+    }
+
+    public static SFCRParseResult parseToResult(String text, boolean strict) {
         if (text == null || text.trim().isEmpty()) {
             return null;
+        }
+        if (strict) {
+            validateStrictInput(text);
         }
         SFCRParser parser = new SFCRParser(null);
         parser.pendingResult = new SFCRParseResult();
@@ -193,6 +206,95 @@ public class SFCRParser {
         // (parse() also registers them with HintRegistry which is fine for tests.)
         parser.pendingResult.hints.putAll(parser.hints);
         return parser.pendingResult;
+    }
+
+    private static void validateStrictInput(String text) {
+        String[] lines = text.split("\n");
+        String currentBlock = null;
+        int currentBlockStartLine = -1;
+        boolean hasValidRows = false;
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            String trimmed = line.trim();
+
+            if (trimmed.isEmpty() || trimmed.startsWith("#") || trimmed.startsWith("%")) {
+                continue;
+            }
+
+            if (trimmed.startsWith("@")) {
+                String directive = extractDirective(trimmed);
+                if ("@end".equals(directive)) {
+                    if (currentBlock == null) {
+                        throw new ParseException("Unexpected @end at line " + (i + 1));
+                    }
+                    if (requiresRows(currentBlock) && !hasValidRows) {
+                        throw new ParseException("Block " + currentBlock + " at line " +
+                                currentBlockStartLine + " contains no valid rows");
+                    }
+                    currentBlock = null;
+                    currentBlockStartLine = -1;
+                    hasValidRows = false;
+                    continue;
+                }
+
+                if (isKnownDirective(directive)) {
+                    if (currentBlock != null) {
+                        throw new ParseException("Missing @end for block " + currentBlock +
+                                " started at line " + currentBlockStartLine);
+                    }
+                    currentBlock = directive;
+                    currentBlockStartLine = i + 1;
+                    hasValidRows = false;
+                    continue;
+                }
+
+                throw new ParseException("Unknown directive " + directive + " at line " + (i + 1));
+            }
+
+            if (currentBlock == null) {
+                continue;
+            }
+
+            if ("@equations".equals(currentBlock) || "@parameters".equals(currentBlock)) {
+                if (!isValidEquationRow(trimmed)) {
+                    throw new ParseException("Invalid equation row at line " + (i + 1) + ": " + trimmed);
+                }
+                hasValidRows = true;
+            }
+        }
+
+        if (currentBlock != null) {
+            throw new ParseException("Missing @end for block " + currentBlock +
+                    " started at line " + currentBlockStartLine);
+        }
+    }
+
+    private static String extractDirective(String line) {
+        int end = line.indexOf(' ');
+        if (end < 0) {
+            end = line.length();
+        }
+        return line.substring(0, end).toLowerCase();
+    }
+
+    private static boolean isKnownDirective(String directive) {
+        return "@init".equals(directive) || "@action".equals(directive) ||
+                "@matrix".equals(directive) || "@equations".equals(directive) ||
+                "@parameters".equals(directive) || "@hints".equals(directive) ||
+                "@scope".equals(directive) || "@circuit".equals(directive) ||
+                "@info".equals(directive) || "@sankey".equals(directive);
+    }
+
+    private static boolean requiresRows(String directive) {
+        return "@equations".equals(directive) || "@parameters".equals(directive);
+    }
+
+    private static boolean isValidEquationRow(String trimmedLine) {
+        if (trimmedLine.startsWith("#") || trimmedLine.startsWith("%")) {
+            return false;
+        }
+        return trimmedLine.contains("~");
     }
 
     /** Check if text appears to be in SFCR format. */

@@ -1,30 +1,21 @@
 package com.lushprojects.circuitjs1.client;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.StringTokenizer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@ResourceLock("SFCRParser")
 class SFCRMixedModeRegressionTest {
 
     @Test
     void testMixedModeRowsPreservedAcrossParseExportParse() throws Exception {
-        String projectDir = System.getProperty("projectDir");
-        assertNotNull(projectDir, "projectDir system property must be set by Gradle test task");
-
-        Path fixtureFile = Paths.get(projectDir,
-                "test", "resources", "sfcr", "mixed_modes_fixture.md");
-        assertTrue(Files.exists(fixtureFile), "Fixture file not found: " + fixtureFile.toAbsolutePath());
-
-        String originalText = new String(Files.readAllBytes(fixtureFile));
+        String originalText = TestFixtures.loadSfcr("mixed_modes_fixture.md");
         SFCRParseResult first = SFCRParser.parseToResult(originalText);
         assertNotNull(first);
 
@@ -111,14 +102,7 @@ class SFCRMixedModeRegressionTest {
 
     @Test
     void testFlowModeInferredFromArrowSyntaxRoundTrip() throws Exception {
-        String projectDir = System.getProperty("projectDir");
-        assertNotNull(projectDir, "projectDir system property must be set by Gradle test task");
-
-        Path fixtureFile = Paths.get(projectDir,
-                "test", "resources", "sfcr", "mixed_modes_inferred_flow_fixture.md");
-        assertTrue(Files.exists(fixtureFile), "Fixture file not found: " + fixtureFile.toAbsolutePath());
-
-        String originalText = new String(Files.readAllBytes(fixtureFile));
+        String originalText = TestFixtures.loadSfcr("mixed_modes_inferred_flow_fixture.md");
         SFCRParseResult first = SFCRParser.parseToResult(originalText);
         assertNotNull(first);
 

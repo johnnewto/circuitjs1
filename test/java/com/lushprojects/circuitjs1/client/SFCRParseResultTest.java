@@ -2,10 +2,8 @@ package com.lushprojects.circuitjs1.client;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -20,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <p>Run with: {@code ./gradlew test --tests "*.SFCRParseResultTest"}
  */
+@ResourceLock("SFCRParser")
 class SFCRParseResultTest {
 
     private static String sfcrText;
@@ -27,16 +26,7 @@ class SFCRParseResultTest {
 
     @BeforeAll
     static void loadAndParse() throws Exception {
-        String projectDir = System.getProperty("projectDir");
-        assertNotNull(projectDir, "projectDir system property must be set by Gradle test task");
-
-        Path fixtureFile = Paths.get(projectDir,
-                "test", "resources", "sfcr", "parse_result_fixture.md");
-
-        assertTrue(Files.exists(fixtureFile),
-                "Test fixture file not found: " + fixtureFile.toAbsolutePath());
-
-        sfcrText = new String(Files.readAllBytes(fixtureFile));
+        sfcrText = TestFixtures.loadSfcr("parse_result_fixture.md");
         result = SFCRParser.parseToResult(sfcrText);
     }
 

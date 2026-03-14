@@ -88,6 +88,9 @@ sourceSets {
         java {
             srcDirs = ['test/java']
         }
+        resources {
+            srcDirs = ['test/resources']
+        }
     }
 }
 

@@ -1,27 +1,19 @@
 package com.lushprojects.circuitjs1.client;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@ResourceLock("SFCRParser")
 class SFCRExportParseRoundTripTest {
 
     @Test
     void testRoundTripParseExportParsePreservesStructure() throws Exception {
-        String projectDir = System.getProperty("projectDir");
-        assertNotNull(projectDir, "projectDir system property must be set by Gradle test task");
-
-        Path fixtureFile = Paths.get(projectDir,
-                "test", "resources", "sfcr", "parse_result_fixture.md");
-        assertTrue(Files.exists(fixtureFile), "Fixture file not found: " + fixtureFile.toAbsolutePath());
-
-        String originalText = new String(Files.readAllBytes(fixtureFile));
+        String originalText = TestFixtures.loadSfcr("parse_result_fixture.md");
         SFCRParseResult first = SFCRParser.parseToResult(originalText);
         assertNotNull(first, "First parse result must not be null");
 

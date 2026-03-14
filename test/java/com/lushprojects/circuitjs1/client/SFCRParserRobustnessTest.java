@@ -1,9 +1,11 @@
 package com.lushprojects.circuitjs1.client;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@ResourceLock("SFCRParser")
 class SFCRParserRobustnessTest {
 
     @Test
@@ -19,6 +21,16 @@ class SFCRParserRobustnessTest {
         assertNull(result.findBlock("equations", "RejectMe"),
                 "Malformed equations block with no valid rows should be rejected");
     }
+
+        @Test
+        void testStrictModeFailsOnMalformedEquationRows() {
+                String text =
+                                "@equations RejectMe\n" +
+                                "  this is definitely not a valid equation row\n" +
+                                "@end\n";
+
+                assertThrows(SFCRParser.ParseException.class, () -> SFCRParser.parseToResult(text, true));
+        }
 
     @Test
     void testMalformedEquationLinesAreIgnoredButValidRowsParse() {
@@ -49,6 +61,15 @@ class SFCRParserRobustnessTest {
         SFCRParseResult.BlockDump block = result.findBlock("equations", "NoEnd");
         assertNotNull(block, "Parser should tolerate missing @end at EOF");
     }
+
+        @Test
+        void testStrictModeFailsOnMissingEnd() {
+                String text =
+                                "@equations NoEnd\n" +
+                                "  A ~ 42\n";
+
+                assertThrows(SFCRParser.ParseException.class, () -> SFCRParser.parseToResult(text, true));
+        }
 
     @Test
     void testMixedRStyleAndBlockStyleBothParse() {

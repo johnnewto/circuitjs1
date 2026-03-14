@@ -41,20 +41,14 @@ public class StockFlowRegistry {
      * For line numbers, manually include them in the message string
      * Example: log("methodName", "Starting sync"); 
      */
-    public static native void log(String methodName, String message)
-    /*-{
-        console.log(methodName + " - " + message);
-    }-*/;
+    public static void log(String methodName, String message) {
+    }
     
-    public static native void MRDlog(String message)
-    /*-{
-        console.log("getMergedRowDescriptions - " + message);
-    }-*/;
+    public static void MRDlog(String message) {
+    }
     
-    public static native void SRTlog(String message)
-    /*-{
-        console.log("synchronizeRelatedTables - " + message);
-    }-*/;
+    public static void SRTlog(String message) {
+    }
     
     // ========== REGISTRY DATA STRUCTURES ==========
     

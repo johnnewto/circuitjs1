@@ -2,6 +2,7 @@ package com.lushprojects.circuitjs1.client;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -12,6 +13,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@ResourceLock("StockFlowRegistry")
 class StockFlowRegistryTest {
 
     @BeforeEach

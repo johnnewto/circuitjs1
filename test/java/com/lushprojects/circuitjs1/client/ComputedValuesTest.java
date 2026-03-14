@@ -2,9 +2,11 @@ package com.lushprojects.circuitjs1.client;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@ResourceLock("ComputedValues")
 class ComputedValuesTest {
 
     @BeforeEach

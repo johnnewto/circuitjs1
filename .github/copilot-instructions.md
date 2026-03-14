@@ -104,6 +104,17 @@ When adding a new element, add a line in the appropriate section of this file.
 - **Manual Testing**: Load test circuits in browser to verify functionality
 - **Build Verification**: Ensure `gradle compileGwt` completes successfully
 
+### Test-First Changes
+
+- **Default to JVM unit tests first**: For parser, semantics, registry, and solver logic, add tests in `test/java/...` that run with `./gradlew test` and do not require GWT UI runtime.
+- **Use fixture-driven parser tests**: For SFCR changes, add/update fixtures in `test/resources/sfcr/` and assert `SFCRParser.parseToResult()` structure (`initSettings`, `blockDumps`, `hints`) plus round-trip where relevant.
+- **Cover robustness explicitly**: Include at least one malformed/edge case test for parser/exporter work (e.g., malformed rows, missing `@end`, mixed R-style + block format, extreme numeric values).
+- **Test commit boundaries for stateful logic**: For `ComputedValues` and stock-flow state, assert behavior at commit points (`commitPendingToCurrentValues`, `commitConvergedValues`) and timestep boundaries (`doStep` vs `stepFinished`).
+- **Prefer extracting pure helpers for testability**: If core behavior is buried in GWT-dependent classes, extract small pure-Java semantics/helpers and test those directly instead of skipping tests.
+- **Numerical changes require deterministic checks**: For LU/matrix/solver changes, add known-solution tests, singular detection tests, and tolerance-based assertions.
+- **Validation command order**: Run targeted tests first (`./gradlew test --tests "*ClassName*"`), then run full suite (`./gradlew test`).
+- **No behavior change without tests**: If behavior changes and no test is added, document why in the PR/summary.
+
 ### Internationalization
 
 - **String Extraction**: Use `lang/getstrings.py` to extract translatable strings
