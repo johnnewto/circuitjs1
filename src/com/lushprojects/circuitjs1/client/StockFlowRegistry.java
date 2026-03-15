@@ -508,21 +508,6 @@ public class StockFlowRegistry {
     // ========== TABLE SYNCHRONIZATION ==========
     
     /**
-     * Helper class to hold stock equation data during synchronization
-     */
-    private static class StockEquation {
-        String stockName;
-        int columnIndex;
-        String equation;
-        
-        StockEquation(String stockName, int columnIndex, String equation) {
-            this.stockName = stockName;
-            this.columnIndex = columnIndex;
-            this.equation = equation;
-        }
-    }
-
-    /**
      * Synchronize a single table with merged rows for its stocks
      * 
      * Strategy: For each non-zero element in priority table:
@@ -558,172 +543,184 @@ public class StockFlowRegistry {
      * Synchronize elements from priority table to target table
      * Propagates ALL equations (including deletions/empty values) where both flow and stock exist (or creates flow if needed)
      */
-    private static boolean synchronizeElements(TableElm targetTable, TableElm sourceTable) {
-        // Null safety checks
+    private static boolean synchronizeElements(TableContentView targetTable, TableContentView sourceTable) {
         if (targetTable == null || sourceTable == null) {
-            MRDlog( "Cannot synchronize with null table(s)");
+            MRDlog("Cannot synchronize with null table(s)");
             return false;
         }
-        
-        boolean modified = false;
-        
-        // Build map of existing flow descriptions in target table
+
+        List<SyncPatch> patches = computeSyncPatches(sourceTable, targetTable);
+        if (patches.isEmpty()) {
+            return false;
+        }
+        TableElm targetElm = asTableElm(targetTable);
+        if (targetElm == null) {
+            MRDlog("Cannot apply sync patches to non-TableElm target");
+            return false;
+        }
+        applySyncPatches(patches, targetElm);
+        return true;
+    }
+
+    static List<SyncPatch> computeSyncPatches(TableContentView sourceTable, TableContentView targetTable) {
+        List<SyncPatch> patches = new ArrayList<SyncPatch>();
+        if (sourceTable == null || targetTable == null) {
+            return patches;
+        }
+
         Map<String, Integer> targetFlowRows = new HashMap<String, Integer>();
-        try {
-            int targetRows = targetTable.getRows();
-            for (int row = 0; row < targetRows; row++) {
-                String flowDesc = targetTable.getRowDescription(row);
-                if (flowDesc != null && !flowDesc.trim().isEmpty()) {
-                    targetFlowRows.put(flowDesc.trim(), row);
-                }
+        int targetRows = targetTable.getRows();
+        for (int row = 0; row < targetRows; row++) {
+            String flowDesc = targetTable.getRowDescription(row);
+            if (flowDesc != null && !flowDesc.trim().isEmpty()) {
+                targetFlowRows.put(flowDesc.trim(), row);
             }
-        } catch (Exception e) {
-            MRDlog( "Error accessing target table rows: " + e.getMessage());
-            return false;
         }
-        
-        // Collect flows that need to be added (flow → list of (stock, equation) pairs)
-        Map<String, List<StockEquation>> flowsToAdd = new HashMap<String, List<StockEquation>>();
-        
-        // Process each non-zero element from source table
-        try {
-            int sourceRows = sourceTable.getRows();
-            for (int sourceRow = 0; sourceRow < sourceRows; sourceRow++) {
-                String flowDesc = sourceTable.getRowDescription(sourceRow);
+
+        Map<String, Map<Integer, String>> flowsToAdd = new LinkedHashMap<String, Map<Integer, String>>();
+
+        int sourceRows = sourceTable.getRows();
+        for (int sourceRow = 0; sourceRow < sourceRows; sourceRow++) {
+            String flowDesc = sourceTable.getRowDescription(sourceRow);
             if (flowDesc == null || flowDesc.trim().isEmpty()) {
-                continue; // Skip rows without descriptions
+                continue;
             }
             flowDesc = flowDesc.trim();
-            
-            for (int sourceCol = 0; sourceCol < sourceTable.getCols(); sourceCol++) {
-                // Skip A_L_E columns (computed columns should not be synchronized)
-                // Last column is A_L_E when there are 4+ columns
-                if (sourceCol == sourceTable.getCols() - 1 && sourceTable.getCols() >= 4) {
+
+            int sourceCols = sourceTable.getCols();
+            for (int sourceCol = 0; sourceCol < sourceCols; sourceCol++) {
+                if (sourceCol == sourceCols - 1 && sourceCols >= 4) {
                     continue;
                 }
-                
-                String equation = sourceTable.getCellEquation(sourceRow, sourceCol);
-                
-                // Process ALL equations (including empty/zero) to handle deletions
-                // Normalize empty/null to empty string for consistent comparison
-                String normalizedEquation = (equation == null || equation.trim().isEmpty() || equation.trim().equals("0")) 
-                    ? "" : equation.trim();
-                
+
                 String stockName = sourceTable.getColumnHeader(sourceCol);
                 if (stockName == null || stockName.trim().isEmpty()) {
-                    continue; // Skip columns with blank headers (e.g., A_L_E columns)
-                }
-                
-                // Check if target table has this stock
-                int targetCol = targetTable.findColumnByStockName(stockName);
-                if (targetCol < 0) {
-                    continue; // Target table doesn't have this stock, skip
-                }
-                
-                // Skip if target column is A_L_E (computed column)
-                // Last column is A_L_E when there are 4+ columns
-                if (targetCol == targetTable.getCols() - 1 && targetTable.getCols() >= 4) {
                     continue;
                 }
-                
-                // Check if target table has this flow
-                if (targetFlowRows.containsKey(flowDesc)) {
-                    // Flow exists - always sync the equation (including deletions/empty values)
-                    int targetRow = targetFlowRows.get(flowDesc);
-                    String existingEquation = targetTable.getCellEquation(targetRow, targetCol);
-                    String normalizedExisting = (existingEquation == null || existingEquation.trim().isEmpty() || existingEquation.trim().equals("0"))
-                        ? "" : existingEquation.trim();
-                    
-                    // Update if different (including clearing to empty)
+
+                int targetCol = targetTable.findColumnByStockName(stockName);
+                if (targetCol < 0) {
+                    continue;
+                }
+
+                int targetCols = targetTable.getCols();
+                if (targetCol == targetCols - 1 && targetCols >= 4) {
+                    continue;
+                }
+
+                String normalizedEquation = normalizeEquation(sourceTable.getCellEquation(sourceRow, sourceCol));
+
+                Integer existingRow = targetFlowRows.get(flowDesc);
+                if (existingRow != null) {
+                    String normalizedExisting = normalizeEquation(targetTable.getCellEquation(existingRow.intValue(), targetCol));
                     if (!normalizedEquation.equals(normalizedExisting)) {
-                        targetTable.setCellEquation(targetRow, targetCol, normalizedEquation);
-                        modified = true;
-                        log("synchronizeElements", "Updated [" + targetRow + "," + targetCol + "] " + 
-                            flowDesc + " → " + stockName + ": `" + normalizedEquation + "` (was: `" + 
-                            normalizedExisting + "`)");
+                        patches.add(SyncPatch.setCellEquation(existingRow.intValue(), targetCol, normalizedEquation));
                     }
                 } else if (!normalizedEquation.isEmpty()) {
-                    // Flow doesn't exist AND equation is non-empty - queue it for addition
-                    // (Don't create new rows for empty equations)
-                    if (!flowsToAdd.containsKey(flowDesc)) {
-                        flowsToAdd.put(flowDesc, new ArrayList<StockEquation>());
+                    Map<Integer, String> rowEquations = flowsToAdd.get(flowDesc);
+                    if (rowEquations == null) {
+                        rowEquations = new LinkedHashMap<Integer, String>();
+                        flowsToAdd.put(flowDesc, rowEquations);
                     }
-                    flowsToAdd.get(flowDesc).add(new StockEquation(stockName, targetCol, normalizedEquation));
+                    rowEquations.put(Integer.valueOf(targetCol), normalizedEquation);
                 }
             }
-            }
-        } catch (Exception e) {
-            MRDlog( "Error processing source table rows: " + e.getMessage());
-            return false;
         }
-        
-        // Add new flows at the end
-        if (!flowsToAdd.isEmpty()) {
-            modified = true;
+
+        for (Map.Entry<String, Map<Integer, String>> entry : flowsToAdd.entrySet()) {
+            patches.add(SyncPatch.addRow(entry.getKey(), entry.getValue()));
+        }
+
+        int sourceCols = sourceTable.getCols();
+        for (int sourceCol = 0; sourceCol < sourceCols; sourceCol++) {
+            if (sourceCol == sourceCols - 1 && sourceCols >= 4) {
+                continue;
+            }
+
+            String stockName = sourceTable.getColumnHeader(sourceCol);
+            if (stockName == null || stockName.trim().isEmpty()) {
+                continue;
+            }
+
+            int targetCol = targetTable.findColumnByStockName(stockName);
+            if (targetCol < 0) {
+                continue;
+            }
+
+            int targetCols = targetTable.getCols();
+            if (targetCol == targetCols - 1 && targetCols >= 4) {
+                continue;
+            }
+
+            double sourceInitialValue = sourceTable.getInitialValue(sourceCol);
+            double targetInitialValue = targetTable.getInitialValue(targetCol);
+            if (Math.abs(sourceInitialValue - targetInitialValue) > 1e-10) {
+                patches.add(SyncPatch.setInitialValue(targetCol, sourceInitialValue));
+            }
+        }
+
+        return patches;
+    }
+
+    static void applySyncPatches(List<SyncPatch> patches, TableElm targetTable) {
+        if (patches == null || patches.isEmpty() || targetTable == null) {
+            return;
+        }
+
+        ArrayList<SyncPatch> addRowPatches = new ArrayList<SyncPatch>();
+        for (SyncPatch patch : patches) {
+            if (patch.kind == SyncPatch.Kind.ADD_ROW) {
+                addRowPatches.add(patch);
+                continue;
+            }
+
+            if (patch.kind == SyncPatch.Kind.SET_CELL_EQUATION) {
+                String previous = normalizeEquation(targetTable.getCellEquation(patch.row, patch.col));
+                targetTable.setCellEquation(patch.row, patch.col, patch.equation);
+                String flowDesc = targetTable.getRowDescription(patch.row);
+                String stockName = targetTable.getColumnHeader(patch.col);
+                log("synchronizeElements", "Updated [" + patch.row + "," + patch.col + "] " +
+                    flowDesc + " → " + stockName + ": `" + patch.equation + "` (was: `" + previous + "`)");
+                continue;
+            }
+
+            if (patch.kind == SyncPatch.Kind.SET_INITIAL_VALUE) {
+                String stockName = targetTable.getColumnHeader(patch.col);
+                double previous = targetTable.getInitialValue(patch.col);
+                targetTable.setInitialConditionValue(patch.col, patch.initialValue);
+                log("synchronizeElements", "Synced initial value for stock '" + stockName +
+                    "': " + patch.initialValue + " (was: " + previous + ")");
+            }
+        }
+
+        if (!addRowPatches.isEmpty()) {
             int originalRows = targetTable.getRows();
-            int newRowCount = originalRows + flowsToAdd.size();
-            
-            // Resize table
-            targetTable.resizeTable(newRowCount, targetTable.getCols());
-            
-            // Add each new flow
+            targetTable.resizeTable(originalRows + addRowPatches.size(), targetTable.getCols());
             int newRow = originalRows;
-            for (Map.Entry<String, List<StockEquation>> entry : flowsToAdd.entrySet()) {
-                String flowDesc = entry.getKey();
-                targetTable.setRowDescription(newRow, flowDesc);
-                
-                // Set equations for this flow
-                for (StockEquation se : entry.getValue()) {
-                    targetTable.setCellEquation(newRow, se.columnIndex, se.equation);
-                    log("synchronizeElements", "Created row " + newRow + ": " + 
-                        flowDesc + " → " + se.stockName + ": `" + se.equation + "`");
+            for (SyncPatch patch : addRowPatches) {
+                targetTable.setRowDescription(newRow, patch.flowDesc);
+                for (Map.Entry<Integer, String> eqEntry : patch.rowEquations.entrySet()) {
+                    int col = eqEntry.getKey().intValue();
+                    String equation = eqEntry.getValue();
+                    targetTable.setCellEquation(newRow, col, equation);
+                    String stockName = targetTable.getColumnHeader(col);
+                    log("synchronizeElements", "Created row " + newRow + ": " +
+                        patch.flowDesc + " → " + stockName + ": `" + equation + "`");
                 }
                 newRow++;
             }
         }
-        
-        // Synchronize initial values for shared stocks
-        // Copy initial values from source to target for columns that share the same stock name
-        try {
-            for (int sourceCol = 0; sourceCol < sourceTable.getCols(); sourceCol++) {
-                // Skip A_L_E columns
-                if (sourceCol == sourceTable.getCols() - 1 && sourceTable.getCols() >= 4) {
-                    continue;
-                }
-                
-                String stockName = sourceTable.getColumnHeader(sourceCol);
-                if (stockName == null || stockName.trim().isEmpty()) {
-                    continue;
-                }
-                
-                // Find this stock in the target table
-                int targetCol = targetTable.findColumnByStockName(stockName);
-                if (targetCol < 0) {
-                    continue; // Target table doesn't have this stock
-                }
-                
-                // Skip if target column is A_L_E
-                if (targetCol == targetTable.getCols() - 1 && targetTable.getCols() >= 4) {
-                    continue;
-                }
-                
-                // Copy initial value from source to target
-                double sourceInitialValue = sourceTable.getInitialValue(sourceCol);
-                double targetInitialValue = targetTable.getInitialValue(targetCol);
-                
-                // Only update if values differ
-                if (Math.abs(sourceInitialValue - targetInitialValue) > 1e-10) {
-                    targetTable.setInitialConditionValue(targetCol, sourceInitialValue);
-                    modified = true;
-                    log("synchronizeElements", "Synced initial value for stock '" + stockName + 
-                        "': " + sourceInitialValue + " (was: " + targetInitialValue + ")");
-                }
-            }
-        } catch (Exception e) {
-            MRDlog("Error synchronizing initial values: " + e.getMessage());
+    }
+
+    private static String normalizeEquation(String equation) {
+        if (equation == null) {
+            return "";
         }
-        
-        return modified;
+        String trimmed = equation.trim();
+        if (trimmed.isEmpty() || "0".equals(trimmed)) {
+            return "";
+        }
+        return trimmed;
     }
     
     // ========== RELATED TABLE SYNCHRONIZATION ==========

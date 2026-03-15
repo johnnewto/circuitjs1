@@ -203,7 +203,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             rows[row].lastNewtonJacobianStatus = "not attempted";
             
             ExprState state = prepareEvalState(row);
-            double equationValue = rows[row].compiledExpr.eval(state);
+            double equationValue = EquationTableSemantics.computeVoltageRowValue(rows[row].compiledExpr, state);
             
             if (DEBUG) {
                 CirSim.console("[EquationTableElm." + tableName + "] Row " + row + 
@@ -293,7 +293,14 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             if (sourceNode < 0 || targetNode < 0) return;
             
             ExprState state = prepareEvalState(row);
-            double flowValue = rows[row].compiledExpr.eval(state);
+            double flowValue = EquationTableSemantics.computeFlowRowValue(
+                rows[row].compiledExpr,
+                state,
+                volts,
+                sourceNode,
+                targetNode,
+                rows[row].shuntResistance
+            );
             
             rows[row].flowValue = flowValue;
             checkEquationConvergence(row, flowValue);
@@ -329,7 +336,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             if (rows[row].compiledExpr == null) return;
 
             ExprState state = prepareEvalState(row);
-            double parameterValue = rows[row].compiledExpr.eval(state);
+            double parameterValue = EquationTableSemantics.computeParamRowValue(rows[row].compiledExpr, state);
 
             checkEquationConvergence(row, parameterValue);
             rows[row].lastOutputValue = parameterValue;

@@ -1,16 +1,15 @@
 package com.lushprojects.circuitjs1.client;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import java.lang.reflect.Field;
-
-import sun.misc.Unsafe;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@DisplayName("Expr — parser and evaluator")
 class ExprTest {
 
     @Test
+    @DisplayName("arithmetic operators and built-in functions produce correct values")
     void testArithmeticAndBuiltinFunctions() {
         Expr expr = parse("2 + 3*4 + sin(pi/2) + max(1, 5, 3) - min(8, 2)");
         ExprState state = new ExprState(0);
@@ -20,6 +19,7 @@ class ExprTest {
     }
 
     @Test
+    @DisplayName("invalid expression leaves gotError() non-null")
     void testParseErrorOnInvalidExpression() {
         ExprParser parser = new ExprParser("1 + * 2");
         parser.parseExpression();
@@ -29,6 +29,7 @@ class ExprTest {
     }
 
     @Test
+    @DisplayName("division by zero returns 0.0 (protected)")
     void testDivisionByZeroReturnsZero() {
         Expr expr = parse("5 / 0");
         ExprState state = new ExprState(0);
@@ -37,6 +38,7 @@ class ExprTest {
     }
 
     @Test
+    @DisplayName("log(0) returns -Infinity; sqrt(-1) returns NaN")
     void testLogAndSqrtDomainBehavior() {
         Expr logExpr = parse("log(0)");
         Expr sqrtExpr = parse("sqrt(-1)");
@@ -50,53 +52,46 @@ class ExprTest {
     }
 
     @Test
-    void testIntegrateCommitBoundaryAcrossTimesteps() throws Exception {
-        withTimeStep(0.1, new ThrowingRunnable() {
-            @Override
-            public void run() {
-                Expr expr = parse("integrate(_a)");
-                ExprState state = new ExprState(0);
+    @DisplayName("integrate() accumulates using committed lastIntOutput across timesteps")
+    void testIntegrateCommitBoundaryAcrossTimesteps() {
+        Expr expr = parse("integrate(_a)");
+        ExprState state = new ExprState(0);
 
-                state.t = 0.0;
-                state.values[0] = 2.0;
-                assertEquals(0.2, expr.evalFresh(state), 1e-12);
-                state.commitIntegration(0.1);
-                assertEquals(0.2, state.lastIntOutput, 1e-12);
+        state.t = 0.0;
+        state.values[0] = 2.0;
+        assertEquals(0.2, expr.evalFresh(state, 0.1), 1e-12);
+        state.commitIntegration(0.1);
+        assertEquals(0.2, state.lastIntOutput, 1e-12);
 
-                state.t = 0.1;
-                state.values[0] = 3.0;
-                assertEquals(0.5, expr.evalFresh(state), 1e-12);
-                state.commitIntegration(0.1);
-                assertEquals(0.5, state.lastIntOutput, 1e-12);
-            }
-        });
+        state.t = 0.1;
+        state.values[0] = 3.0;
+        assertEquals(0.5, expr.evalFresh(state, 0.1), 1e-12);
+        state.commitIntegration(0.1);
+        assertEquals(0.5, state.lastIntOutput, 1e-12);
     }
 
     @Test
-    void testDiffUsesCommittedPreviousInput() throws Exception {
-        withTimeStep(0.1, new ThrowingRunnable() {
-            @Override
-            public void run() {
-                Expr expr = parse("diff(_a)");
-                ExprState state = new ExprState(0);
+    @DisplayName("diff() uses committed previous input to compute derivative")
+    void testDiffUsesCommittedPreviousInput() {
+        Expr expr = parse("diff(_a)");
+        ExprState state = new ExprState(0);
 
-                state.t = 0.0;
-                state.values[0] = 5.0;
-                assertEquals(0.0, expr.evalFresh(state), 1e-12);
-                state.commitIntegration(0.1);
-                assertTrue(state.diffInitialized);
-                assertEquals(5.0, state.lastDiffInput, 1e-12);
+        state.t = 0.0;
+        state.values[0] = 5.0;
+        assertEquals(0.0, expr.evalFresh(state, 0.1), 1e-12);
+        state.commitIntegration(0.1);
+        assertTrue(state.diffInitialized);
+        assertEquals(5.0, state.lastDiffInput, 1e-12);
 
-                state.t = 0.1;
-                state.values[0] = 8.0;
-                assertEquals(30.0, expr.evalFresh(state), 1e-12);
-                state.commitIntegration(0.1);
-                assertEquals(8.0, state.lastDiffInput, 1e-12);
-            }
-        });
+        state.t = 0.1;
+        state.values[0] = 8.0;
+        assertEquals(30.0, expr.evalFresh(state, 0.1), 1e-12);
+        state.commitIntegration(0.1);
+        assertEquals(8.0, state.lastDiffInput, 1e-12);
     }
 
     @Test
+    @DisplayName("ExprState.reset() zeroes all integration and diff fields")
     void testExprStateResetClearsIntegrationAndDiffState() {
         ExprState state = new ExprState(0);
         state.lastOutput = 10.0;
@@ -121,30 +116,5 @@ class ExprTest {
         Expr expression = parser.parseExpression();
         assertNull(parser.gotError(), "Parse error: " + parser.gotError());
         return expression;
-    }
-
-    private void withTimeStep(double timeStep, ThrowingRunnable runnable) throws Exception {
-        CirSim original = CirSim.theSim;
-        CirSim stub = newCirSimStub(timeStep);
-        try {
-            CirSim.theSim = stub;
-            runnable.run();
-        } finally {
-            CirSim.theSim = original;
-        }
-    }
-
-    private CirSim newCirSimStub(double timeStep) throws Exception {
-        Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
-        unsafeField.setAccessible(true);
-        Unsafe unsafe = (Unsafe) unsafeField.get(null);
-
-        CirSim sim = (CirSim) unsafe.allocateInstance(CirSim.class);
-        sim.timeStep = timeStep;
-        return sim;
-    }
-
-    private interface ThrowingRunnable {
-        void run() throws Exception;
     }
 }

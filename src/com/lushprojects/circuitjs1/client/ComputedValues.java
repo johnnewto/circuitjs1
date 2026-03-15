@@ -682,6 +682,37 @@ public class ComputedValues {
             scenarioOverrides.clear();
         }
     }
+
+    static void resetForTesting() {
+        if (computedValues != null) {
+            computedValues.clear();
+        }
+        if (pendingValues != null) {
+            pendingValues.clear();
+        }
+        if (convergedValues != null) {
+            convergedValues.clear();
+        }
+        if (computedThisStep != null) {
+            computedThisStep.clear();
+        }
+        if (computedByTable != null) {
+            computedByTable.clear();
+        }
+        if (masterTablePriorities != null) {
+            masterTablePriorities.clear();
+        }
+        if (parameterNameRefCounts != null) {
+            parameterNameRefCounts.clear();
+        }
+        if (registeredComputedNameRefCounts != null) {
+            registeredComputedNameRefCounts.clear();
+        }
+        if (scenarioOverrides != null) {
+            scenarioOverrides.clear();
+        }
+        doubleBufferingEnabled = true;
+    }
     
     /**
      * Reset the "computed this step" tracking flags

@@ -256,9 +256,15 @@ class Expr {
 	 */
 	static class EvaluationContext {
 	final boolean useConvergedValues;
+	final Double explicitTimeStep;
 
 	EvaluationContext(boolean useConvergedValues) {
+	    this(useConvergedValues, null);
+	}
+
+	EvaluationContext(boolean useConvergedValues, Double explicitTimeStep) {
 	    this.useConvergedValues = useConvergedValues;
+	    this.explicitTimeStep = explicitTimeStep;
 	}
 	}
 
@@ -267,6 +273,20 @@ class Expr {
 
 	static EvaluationContext getEvaluationContext(boolean useConvergedValues) {
 	return useConvergedValues ? CONVERGED_CONTEXT : CURRENT_CONTEXT;
+	}
+
+	static EvaluationContext getEvaluationContext(boolean useConvergedValues, double dt) {
+	return new EvaluationContext(useConvergedValues, Double.valueOf(dt));
+	}
+
+	private static double resolveTimeStep(EvaluationContext context) {
+	if (context != null && context.explicitTimeStep != null) {
+	    return context.explicitTimeStep.doubleValue();
+	}
+	if (CirSim.theSim != null) {
+	    return CirSim.theSim.timeStep;
+	}
+	return 0;
 	}
 
     // Lightweight runtime profiler for expression access paths.
@@ -723,10 +743,19 @@ class Expr {
 	es.resetLagIndex();
 	return eval(es, context);
     }
+
+    double evalFresh(ExprState es, double dt) {
+	es.resetLagIndex();
+	return eval(es, Expr.getEvaluationContext(false, dt));
+    }
     
     double eval(ExprState es) {
 	return eval(es, CURRENT_CONTEXT);
     }
+
+	double eval(ExprState es, double dt) {
+	return eval(es, Expr.getEvaluationContext(false, dt));
+	}
 
     double eval(ExprState es, EvaluationContext context) {
 	Expr left = null;
@@ -830,7 +859,7 @@ class Expr {
 	case E_LASTOUTPUT:
 	    return es.lastOutput;
 	case E_TIMESTEP:
-	    return CirSim.theSim.timeStep;
+	    return resolveTimeStep(context);
 	case E_INTEGRATE: {
 	    // integrate(x) - integrates the expression over time
 	    // Store the current input value - it will be committed at stepFinished()
@@ -840,10 +869,11 @@ class Expr {
 		// K(t + Δt) ≈ K(t) + Δt × [I(t) − AF(t)]
 	    double inputVal = left.eval(es, context);
 	    es.pendingIntInput = inputVal;
+	    double dt = resolveTimeStep(context);
 	    
 	    // Return what the integral WILL be after this timestep commits
 	    // This allows the circuit to converge to the correct value
-	    double result = es.lastIntOutput + CirSim.theSim.timeStep * inputVal;
+	    double result = es.lastIntOutput + dt * inputVal;
 	    return result;
 	}
 	case E_DIFF: {
@@ -870,8 +900,11 @@ class Expr {
 	    if (!es.diffInitialized) {
 		return 0;
 	    }
-	    
-	    return (input - es.lastDiffInput) / CirSim.theSim.timeStep;
+	    double dt = resolveTimeStep(context);
+	    if (Math.abs(dt) < 1e-12) {
+		return 0;
+	    }
+	    return (input - es.lastDiffInput) / dt;
 	}
 	case E_LAST:
 	    // last(x) - return the PREVIOUS timestep's converged value

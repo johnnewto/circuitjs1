@@ -76,4 +76,30 @@ final class EquationTableSemantics {
         }
         return Math.abs(newValue - lastValue) > convergeLimit;
     }
+
+    static double computeVoltageRowValue(Expr compiledExpr, ExprState state) {
+        if (compiledExpr == null) {
+            return 0;
+        }
+        return compiledExpr.eval(state);
+    }
+
+    static double computeFlowRowValue(Expr compiledExpr,
+                                      ExprState state,
+                                      double[] volts,
+                                      int sourceNodeIdx,
+                                      int targetNodeIdx,
+                                      double shuntResistance) {
+        if (compiledExpr == null) {
+            return 0;
+        }
+        return compiledExpr.eval(state);
+    }
+
+    static double computeParamRowValue(Expr compiledExpr, ExprState state) {
+        if (compiledExpr == null) {
+            return 0;
+        }
+        return compiledExpr.eval(state);
+    }
 }
