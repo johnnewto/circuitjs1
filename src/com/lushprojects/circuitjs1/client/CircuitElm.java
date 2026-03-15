@@ -26,7 +26,6 @@ import com.google.gwt.canvas.dom.client.Context2d;
 import com.google.gwt.canvas.dom.client.Context2d.LineCap;
 import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.core.client.JsArrayString;
-import com.google.gwt.i18n.client.NumberFormat;
 import com.google.gwt.storage.client.Storage;
 import com.google.gwt.user.client.Random;
 import com.lushprojects.circuitjs1.client.util.Locale;
@@ -46,9 +45,10 @@ public abstract class CircuitElm implements Editable {
     static public Color positiveColor, negativeColor, neutralColor, currentColor;
     static Font unitsFont;
 
-    static NumberFormat showFormat, shortFormat, fixedFormat;
+	static NumFmt.Formatter showFormat, shortFormat, fixedFormat;
     static final double pi = 3.14159265358979323846;
     static CircuitElm mouseElmRef = null;
+	static java.util.Random headlessRandom = new java.util.Random();
 
     static final int SCALE_AUTO = 0;
     static final int SCALE_1 = 1;
@@ -123,16 +123,18 @@ public abstract class CircuitElm implements Editable {
 	ps1 = new Point();
 	ps2 = new Point();
 	
-	Storage stor = Storage.getLocalStorageIfSupported();
 	decimalDigits = 3;
 	shortDecimalDigits = 1;
-	if (stor != null) {
-	    String s1 = stor.getItem("decimalDigits");
-	    String s2 = stor.getItem("decimalDigitsShort");
-	    if (s1 != null)
-		decimalDigits = Integer.parseInt(s1);
-	    if (s2 != null)
-		shortDecimalDigits = Integer.parseInt(s2);
+	if (RuntimeMode.isGwt()) {
+	    Storage stor = Storage.getLocalStorageIfSupported();
+	    if (stor != null) {
+		String s1 = stor.getItem("decimalDigits");
+		String s2 = stor.getItem("decimalDigitsShort");
+		if (s1 != null)
+		    decimalDigits = Integer.parseInt(s1);
+		if (s2 != null)
+		    shortDecimalDigits = Integer.parseInt(s2);
+	    }
 	}
 	setDecimalDigits(decimalDigits, false, false);
 	setDecimalDigits(shortDecimalDigits, true, false);
@@ -148,13 +150,13 @@ public abstract class CircuitElm implements Editable {
 	int ct = num;
 	for (; ct > 0; ct--)
 	    s += '#';
-	NumberFormat nf = NumberFormat.getFormat(s);
+	NumFmt.Formatter nf = NumFmt.forPattern(s);
 	if (sf)
 	    shortFormat = nf;
 	else
 	    showFormat = nf;
 	
-	if (save) {
+	if (save && RuntimeMode.isGwt()) {
 	    Storage stor = Storage.getLocalStorageIfSupported();
 	    if (stor != null)
 		stor.setItem(sf ? "decimalDigitsShort" : "decimalDigits", Integer.toString(num));
@@ -165,7 +167,7 @@ public abstract class CircuitElm implements Editable {
 	    ct = num;
 	    for (; ct > 0; ct--)
 		s += '0';
-	    fixedFormat = NumberFormat.getFormat(s);
+	    fixedFormat = NumFmt.forPattern(s);
 	}
     }
     
@@ -233,8 +235,10 @@ public abstract class CircuitElm implements Editable {
     static String generatePersistentUid() {
 	final String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 	StringBuilder sb = new StringBuilder(6);
-	for (int i = 0; i < 6; i++)
-	    sb.append(chars.charAt(Random.nextInt(chars.length())));
+	for (int i = 0; i < 6; i++) {
+	    int next = RuntimeMode.isHeadless() ? headlessRandom.nextInt(chars.length()) : Random.nextInt(chars.length());
+	    sb.append(chars.charAt(next));
+	}
 	return sb.toString();
     }
 
@@ -970,7 +974,7 @@ public abstract class CircuitElm implements Editable {
     }
     
     // Number format for economics mode (2 decimal places)
-    static NumberFormat economicsFormat = NumberFormat.getFormat("#,##0.00");
+	static NumFmt.Formatter economicsFormat = NumFmt.forPattern("#,##0.00");
     
     private static String getUnitText(double v, String u, boolean sf) {
 	// Check if this is a voltage unit and use custom symbol if set
@@ -995,7 +999,7 @@ public abstract class CircuitElm implements Editable {
 		return economicsFormat.format(v*1e-6) + sp + "M" + u;
 	    if (va < 1e12)
 		return economicsFormat.format(v*1e-9) + sp + "G" + u;
-	    return NumberFormat.getFormat("#.##E000").format(v) + sp + u;
+	    return NumFmt.forPattern("#.##E000").format(v) + sp + u;
 	}
 	
 	// Standard electronics mode: use full SI prefix range
@@ -1018,7 +1022,7 @@ public abstract class CircuitElm implements Editable {
 	    return format(v*1e-6, sf) + sp + "M" + u;
 	if (va < 1e12)
 	    return format(v*1e-9, sf) + sp + "G" + u;
-	return NumberFormat.getFormat("#.##E000").format(v) + sp + u;
+	return NumFmt.forPattern("#.##E000").format(v) + sp + u;
     }
     
     static String getCurrentText(double i) {
@@ -1033,7 +1037,7 @@ public abstract class CircuitElm implements Editable {
     static String getUnitTextWithScale(double val, String utext, int scale, boolean fixed) {
 	if (Math.abs(val) > 1e12)
 	    return getUnitText(val, utext);
-	NumberFormat nf = fixed ? fixedFormat : showFormat;
+	NumFmt.Formatter nf = fixed ? fixedFormat : showFormat;
 	if (scale == SCALE_1)
 	    return nf.format(val) + " " + utext;
 	if (scale == SCALE_M)

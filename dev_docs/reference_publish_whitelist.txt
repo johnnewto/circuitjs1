@@ -5,7 +5,7 @@
 # - display_title is used in generated ReferenceIndex.md
 
 EQUATION_TABLE_REFERENCE.md|EquationTableReference.md|EquationTable Reference
-STOCK_FLOW_DOCS_INDEX.md|StockFlowTableReference.md|Stock-Flow Table Docs Index
+DOCUMENTATION_INDEX.MD|StockFlowTableReference.md|Stock-Flow Table Docs Index
 SFC_MNA_ELEMENTS_REFERENCE.md|SfcMnaElementsReference.md|SFC MNA Elements Reference
 PLOTLY_VIEWER_FEATURE.md|PlotlyViewerFeature.md|Plotly Viewer Feature
 GREEK_SYMBOLS_FEATURE.md|GreekSymbolsFeature.md|Greek Symbols Feature

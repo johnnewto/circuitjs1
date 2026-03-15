@@ -200,6 +200,18 @@ tasks.withType(JavaCompile) {
     ]
 }
 
+task headlessCli(type: JavaExec, dependsOn: classes) {
+    group = 'circuitjs1'
+    description = 'Run a circuit headlessly and emit CSV output'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.lushprojects.circuitjs1.client.HeadlessRunner'
+    args = [
+        project.findProperty('circuit') ?: 'tests/sfcr-sim-model.txt',
+        project.findProperty('output') ?: '',
+        project.findProperty('steps') ?: '500'
+    ]
+}
+
 //=====================================================================
 // Plugin Configurations
 //=====================================================================

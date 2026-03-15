@@ -19,7 +19,9 @@
     <entry-point class="com.lushprojects.circuitjs1.client.circuitjs1" />
     <stylesheet src='style.css' />
     <!-- Specify the paths for translatable code                    -->
-    <source path='client'/>
+    <source path='client'>
+        <exclude name='HeadlessRunner.java'/>
+    </source>
     <!-- allow Super Dev Mode -->
     <add-linker name="xsiframe"/>
 </module>

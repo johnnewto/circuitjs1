@@ -111,6 +111,13 @@ public class EquationTableRenderer {
      * Initialize the cached canvas for static parts.
      */
     private void initCache() {
+    if (RuntimeMode.isHeadless()) {
+        backgroundLayerCanvas = null;
+        backgroundLayerCtx = null;
+        contentLayerCanvas = null;
+        contentLayerCtx = null;
+        return;
+    }
         backgroundLayerCanvas = Canvas.createIfSupported();
         if (backgroundLayerCanvas != null) {
             backgroundLayerCtx = backgroundLayerCanvas.getContext2d();

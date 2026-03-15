@@ -231,10 +231,11 @@ public class SFCTableElm extends TableElm {
      */
     @Override
     void setupPins() {
+        int grid = (cspc2 > 0) ? cspc2 : 16;
         if (showSankeyView && sankeyRenderer != null) {
             // Use user-specified Sankey size
-            sizeX = (sankeyWidth + cspc2 - 1) / cspc2;
-            sizeY = (sankeyHeight + cspc2 - 1) / cspc2;
+            sizeX = (sankeyWidth + grid - 1) / grid;
+            sizeY = (sankeyHeight + grid - 1) / grid;
             pins = new Pin[0];
             return;
         }
@@ -249,8 +250,8 @@ public class SFCTableElm extends TableElm {
         int tableWidthPixels = (rowDescColWidth + getCols() * cellWidthPixels) + 2 * cellSpacing;
         int tableHeightPixels = (totalRows + 2) * cellHeight + (totalRows + 3) * cellSpacing + 20;
         
-        sizeX = (tableWidthPixels + cspc2 - 1) / cspc2;
-        sizeY = (tableHeightPixels + cspc2 - 1) / cspc2;
+        sizeX = (tableWidthPixels + grid - 1) / grid;
+        sizeY = (tableHeightPixels + grid - 1) / grid;
         
         // No pins needed for display-only table
         pins = new Pin[0];

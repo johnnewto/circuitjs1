@@ -574,6 +574,7 @@ public class SFCRParser {
             try {
                 switch (key) {
                     case "timestep":
+                    case "timeStep":
                         sim.maxTimeStep = sim.timeStep = Double.parseDouble(value);
                         break;
                     case "voltageRange":
@@ -587,34 +588,42 @@ public class SFCRParser {
                         break;
                     case "showToolbar":
                         if (sim.toolbarCheckItem != null) {
-                            sim.toolbarCheckItem.setState(value.equals("true"));
+                            sim.toolbarCheckItem.setState(parseBoolean(value, sim.toolbarCheckItem.getState()));
                             sim.setToolbar();
                         }
                         break;
                     case "showDots":
-                        sim.dotsCheckItem.setState(value.equals("true"));
+                        if (sim.dotsCheckItem != null) {
+                            sim.dotsCheckItem.setState(parseBoolean(value, sim.dotsCheckItem.getState()));
+                        }
                         break;
                     case "showVolts":
-                        sim.voltsCheckItem.setState(value.equals("true"));
+                        if (sim.voltsCheckItem != null) {
+                            sim.voltsCheckItem.setState(parseBoolean(value, sim.voltsCheckItem.getState()));
+                        }
                         break;
                     case "showValues":
-                        sim.showValuesCheckItem.setState(value.equals("true"));
+                        if (sim.showValuesCheckItem != null) {
+                            sim.showValuesCheckItem.setState(parseBoolean(value, sim.showValuesCheckItem.getState()));
+                        }
                         break;
                     case "showPower":
-                        sim.powerCheckItem.setState(value.equals("true"));
+                        if (sim.powerCheckItem != null) {
+                            sim.powerCheckItem.setState(parseBoolean(value, sim.powerCheckItem.getState()));
+                        }
                         break;
                     case "autoAdjustTimestep":
                     case "adjustTimeStep":
-                        sim.adjustTimeStep = value.equals("true");
+                        sim.adjustTimeStep = parseBoolean(value, sim.adjustTimeStep);
                         break;
                     case "equationTableMnaMode":
                     case "eqnTableMnaMode":
-                        sim.equationTableMnaMode = value.equals("true");
+                        sim.equationTableMnaMode = parseBoolean(value, sim.equationTableMnaMode);
                         break;
                     case "equationTableNewtonJacobianEnabled":
                     case "eqnTableNewtonJacobian":
                     case "equationTableNewtonJacobian":
-                        sim.equationTableNewtonJacobianEnabled = value.equals("true");
+                        sim.equationTableNewtonJacobianEnabled = parseBoolean(value, sim.equationTableNewtonJacobianEnabled);
                         break;
                     case "equationTableTolerance":
                     case "equationTableConvergenceTolerance":
@@ -2581,6 +2590,15 @@ public class SFCRParser {
                                    Boolean useBackwardEulerOverride) {
         // Build the dump string for SFCTableElm (type 265)
         int rows = rowNames.size();
+
+        if (rows <= 0) {
+            CirSim.console("SFCRParser: Skipping matrix table '" + name + "' because it has no rows");
+            return;
+        }
+        if (columnNames == null || columnNames.isEmpty()) {
+            CirSim.console("SFCRParser: Skipping matrix table '" + name + "' because it has no columns");
+            return;
+        }
         
         // Check if last column is already a sum column (Σ, Sigma, Total, Sum, etc.)
         boolean hasSumColumn = false;
@@ -2594,6 +2612,10 @@ public class SFCRParser {
         }
         
         int cols = hasSumColumn ? columnNames.size() : columnNames.size() + 1; // +1 for Σ column if not present
+        if (cols <= 1) {
+            CirSim.console("SFCRParser: Skipping matrix table '" + name + "' because computed column count is invalid: " + cols);
+            return;
+        }
         
         StringBuilder dump = new StringBuilder();
         
@@ -2698,9 +2720,12 @@ public class SFCRParser {
                 sim.elmList.addElement(ce);
                 createdElements.add(ce);
                 currentY = yb + elementSpacing;
+            } else {
+                CirSim.console("SFCRParser: Failed to instantiate matrix table '" + name + "' (createCe returned null)");
             }
         } catch (Exception e) {
-            CirSim.console("Error creating matrix table: " + e.getMessage());
+            CirSim.console("Error creating matrix table '" + name + "': " + e.toString());
+            e.printStackTrace();
         }
     }
 

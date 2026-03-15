@@ -522,6 +522,28 @@ public CirSim() {
 	theSim = this;
 }
 
+    public void initHeadless() {
+	random = new Random();
+	transform = new double[6];
+	transform[0] = transform[3] = 1;
+	transform[1] = transform[2] = transform[4] = transform[5] = 0;
+	elmList = new Vector<CircuitElm>();
+	adjustables = new Vector<Adjustable>();
+	undoStack = new Vector<UndoItem>();
+	redoStack = new Vector<UndoItem>();
+	scopes = new Scope[20];
+	scopeColCount = new int[20];
+	scopeCount = 0;
+	canvasWidth = 1200;
+	canvasHeight = 800;
+	setCircuitArea();
+	timeStep = 5e-6;
+	maxTimeStep = 5e-2;
+	minTimeStep = 1e-12;
+	t = 0;
+	CircuitElm.initClass(this);
+    }
+
     String startCircuit = null;
     String startLabel = null;
     String startCircuitText = null;
@@ -1905,6 +1927,10 @@ public CirSim() {
 
     
     public void setSimRunning(boolean s) {
+	if (RuntimeMode.isHeadless()) {
+	    simRunning = s;
+	    return;
+	}
     	if (s) {
     	    	if (stopMessage != null)
     	    	    return;
@@ -1968,6 +1994,8 @@ public CirSim() {
     boolean needsRepaint;
     
     void repaint() {
+	if (RuntimeMode.isHeadless())
+	    return;
 	if (!needsRepaint) {
 	    needsRepaint = true;
 	    Scheduler.get().scheduleFixedDelay(new Scheduler.RepeatingCommand() {
@@ -2331,12 +2359,14 @@ public CirSim() {
         drawActionSchedulerMessage(g, cvcontext);
 
 		// Push throttled live values to InfoViewer (popup and embedded iframe) if open
-		InfoViewerDialog.pushLiveDataUpdate();
+		if (RuntimeMode.isGwt())
+		    InfoViewerDialog.pushLiveDataUpdate();
 
         
         // This should always be the last 
         // thing called by updateCircuit();
-        callUpdateHook();
+		if (RuntimeMode.isGwt())
+		    callUpdateHook();
     }
 
     /**
@@ -2864,7 +2894,8 @@ public CirSim() {
     void needAnalyze() {
 	analyzeFlag = true;
     	repaint();
-	enableDisableMenuItems();
+	if (RuntimeMode.isGwt())
+	    enableDisableMenuItems();
     }
     
     Vector<CircuitNode> nodeList;
@@ -2894,10 +2925,19 @@ public CirSim() {
 	return null;
     }
     
-    public static native void console(String text)
-    /*-{
-	    console.log(text);
-	}-*/;
+    public static void console(String text) {
+	if (RuntimeMode.isGwt())
+	    GWT.log(text);
+	else
+	    System.err.println(text);
+    }
+
+    void alertOrWarn(String message) {
+	if (RuntimeMode.isGwt())
+	    Window.alert(message);
+	else
+	    console("WARNING: " + message);
+    }
 
     public static native void debugger() /*-{ debugger; }-*/;
     
@@ -3511,12 +3551,14 @@ public CirSim() {
 	timeStep = maxTimeStep;
 	needsStamp = true;
 	
-	callAnalyzeHook();
+	if (RuntimeMode.isGwt()) {
+	    callAnalyzeHook();
 	
-	// Refresh Variable Browser dialog if it's open
-	VariableBrowserDialog.refreshIfOpen();
-	// Refresh Action Time Dialog if it's open
-	ActionTimeDialog.refreshIfOpen();
+	    // Refresh Variable Browser dialog if it's open
+	    VariableBrowserDialog.refreshIfOpen();
+	    // Refresh Action Time Dialog if it's open
+	    ActionTimeDialog.refreshIfOpen();
+	}
 	
 	return true;
     }
@@ -4175,6 +4217,8 @@ public CirSim() {
     }
 
     double getIterCount() {
+	if (RuntimeMode.isHeadless())
+	    return 1.0;
     	// IES - remove interaction
 	int val = speedBar.getValue();
 	if (val == 0)
@@ -4207,6 +4251,7 @@ public CirSim() {
             circuitMatrix = null;
             return;
         }
+		boolean headless = RuntimeMode.isHeadless();
         
         //int maxIter = getIterCount();
         boolean debugprint = dumpMatrix;
@@ -4216,12 +4261,13 @@ public CirSim() {
         long lit = lastIterTime;
         if (lit == 0) {
             lastIterTime = tm;
-            return;
+			if (!headless)
+		return;
         }
 
         // Check if we don't need to run simulation (for very slow simulation speeds).
         // If the circuit changed, do at least one iteration to make sure everything is consistent.
-        if (1000 >= steprate*(tm-lastIterTime) && !didAnalyze)
+		if (!headless && 1000 >= steprate*(tm-lastIterTime) && !didAnalyze)
             return;
 
         boolean delayWireProcessing = canDelayWireProcessing();
@@ -4428,7 +4474,8 @@ public CirSim() {
                 scopes[i].timeStep();
             for (i=0; i != scopeElmArr.length; i++)
                 scopeElmArr[i].stepScope();
-            callTimeStepHook();
+		    if (RuntimeMode.isGwt())
+			callTimeStepHook();
             // save last node voltages so we can restart the next iteration if necessary
             for (i = 0; i != lastNodeVoltages.length; i++)
                 lastNodeVoltages[i] = nodeVoltages[i];
@@ -4438,7 +4485,9 @@ public CirSim() {
             lit = tm;
             // Check whether enough time has elapsed to perform an *additional* iteration after
             // those we have already completed.  But limit total computation time to 50ms (20fps) by default
-            if ((timeStepCount-timeStepCountAtFrameStart)*1000 >= steprate*(tm-lastIterTime) || (tm-lastFrameTime > frameTimeLimit))
+			if (headless)
+		break;
+	    if ((timeStepCount-timeStepCountAtFrameStart)*1000 >= steprate*(tm-lastIterTime) || (tm-lastFrameTime > frameTimeLimit))
                 break;
             if (!simRunning)
                 break;
@@ -4640,7 +4689,7 @@ public CirSim() {
     
     public void menuPerformed(String menu, String item) {
 	if ((menu=="edit" || menu=="main" || menu=="scopes") && noEditCheckItem.getState()) {
-	    Window.alert(Locale.LS("Editing disabled.  Re-enable from the Options menu."));
+	    alertOrWarn(Locale.LS("Editing disabled.  Re-enable from the Options menu."));
 	    return;
 	}
     	if (item=="about")
@@ -5461,7 +5510,7 @@ public CirSim() {
 		requestBuilder.sendRequest(null, new RequestCallback() {
 		    public void onError(Request request, Throwable exception) {
 			if (!hideMenu)
-			    Window.alert(Locale.LS("Can't load circuit list!"));
+			    alertOrWarn(Locale.LS("Can't load circuit list!"));
 			GWT.log("File Error Response", exception);
 		    }
 
@@ -5473,7 +5522,7 @@ public CirSim() {
 				loadSetupListIntoMenu("setuplist_electronics.txt", circuitsMenu, false, false);
 			} else {
 			    if (!hideMenu)
-				Window.alert(Locale.LS("Can't load circuit list!"));
+				alertOrWarn(Locale.LS("Can't load circuit list!"));
 			    GWT.log("Bad file server response:" + response.getStatusText());
 			}
 		    }
@@ -5523,7 +5572,8 @@ public CirSim() {
 					new MyCommand("circuits", "setup "+prefixedFile+" " + title)));
     				if (file.equals(startCircuit) && startLabel == null) {
     				    startLabel = title;
-    				    titleLabel.setText(title);
+					    if (titleLabel != null)
+						titleLabel.setText(title);
     				}
     				if (first && startCircuit == null) {
 					startCircuit = prefixedFile;
@@ -5560,16 +5610,16 @@ public CirSim() {
 		// Store info content if available (compose inline markdown + @info block)
 		modelInfoContent = InfoViewerContentBuilder.buildModelInfoMarkdown(text, parser.getInfoContent());
 		String editorContent = getModelInfoEditorContent();
-		if (viewModelInfoItem != null) {
+		if (RuntimeMode.isGwt() && viewModelInfoItem != null) {
 		    viewModelInfoItem.setEnabled(editorContent != null && !editorContent.isEmpty());
 		}
-		if (helpViewModelInfoItem != null) {
+		if (RuntimeMode.isGwt() && helpViewModelInfoItem != null) {
 		    helpViewModelInfoItem.setEnabled(editorContent != null && !editorContent.isEmpty());
 		}
 		
 		// Auto-display model info when loading a file with @info block
 		// Use embedded iframe dialog (always visible, no focus issues)
-		if (modelInfoContent != null && !modelInfoContent.isEmpty()) {
+		if (RuntimeMode.isGwt() && modelInfoContent != null && !modelInfoContent.isEmpty()) {
 		    InfoViewerDialog.showInfoInIframe("Model Information", modelInfoSourceText, false);
 		}
 		
@@ -5587,7 +5637,9 @@ public CirSim() {
 		}
 
 		// Create scopes after all elements are present so UID trace refs resolve.
-		parser.applyParsedScopes();
+		// In headless mode, Scope/ScopeElm trigger GWT UI initialization, so skip them.
+		if (RuntimeMode.isGwt())
+		    parser.applyParsedScopes();
 
 		// Match standard readCircuit(byte[]) behavior: apply explicit viewport if
 		// present, otherwise center the loaded circuit on screen.
@@ -5604,7 +5656,7 @@ public CirSim() {
 	    } else {
 		console("Failed to parse SFCR model");
 	    }
-	    if ((flags & RC_KEEP_TITLE) == 0)
+	    if ((flags & RC_KEEP_TITLE) == 0 && titleLabel != null)
 		titleLabel.setText(null);
 	    return;
 	}
@@ -5622,7 +5674,7 @@ public CirSim() {
 	    console("Parsing mode: Standard circuit format" + (currentCircuitFile != null ? " - " + currentCircuitFile : ""));
 	}
 	readCircuit(text.getBytes(), flags);
-	if ((flags & RC_KEEP_TITLE) == 0)
+	if ((flags & RC_KEEP_TITLE) == 0 && titleLabel != null)
 	    titleLabel.setText(null);
     }
 
@@ -5679,7 +5731,7 @@ public CirSim() {
     }
 
     void setCircuitTitle(String s) {
-	if (s != null)
+	if (s != null && titleLabel != null)
 	    titleLabel.setText(s);
     }
     
@@ -5694,7 +5746,7 @@ public CirSim() {
 
 	void readSetupFileCandidates(final String[] candidates, final int index, final String title) {
 		if (index >= candidates.length) {
-		    Window.alert(Locale.LS("Can't load circuit!"));
+		    alertOrWarn(Locale.LS("Can't load circuit!"));
 		    return;
 		}
 		final String circuitPath = candidates[index];
@@ -5703,7 +5755,7 @@ public CirSim() {
 		loadFileFromURL(url, new Command() {
 		    public void execute() {
 			if (title != null)
-			    titleLabel.setText(title);
+			    setCircuitTitle(title);
 			unsavedChanges = false;
 			currentCircuitFile = "circuits/" + circuitPath;
 			ExportAsLocalFileDialog.setLastFileName(null);
@@ -5789,15 +5841,23 @@ public CirSim() {
 	    hintType = -1;
 	    maxTimeStep = (currentToolbarType == ToolbarType.ECONOMICS) ? 0.01 : 5e-6;
 	    minTimeStep = 50e-12;
-	    dotsCheckItem.setState(false);
-	    smallGridCheckItem.setState(false);
-	    powerCheckItem.setState(false);
-	    voltsCheckItem.setState(true);
-	    showValuesCheckItem.setState(true);
+	    if (dotsCheckItem != null)
+		dotsCheckItem.setState(false);
+	    if (smallGridCheckItem != null)
+		smallGridCheckItem.setState(false);
+	    if (powerCheckItem != null)
+		powerCheckItem.setState(false);
+	    if (voltsCheckItem != null)
+		voltsCheckItem.setState(true);
+	    if (showValuesCheckItem != null)
+		showValuesCheckItem.setState(true);
 	    setGrid();
-	    speedBar.setValue(117); // 57
-	    currentBar.setValue(50);
-	    powerBar.setValue(50);
+	    if (speedBar != null)
+		speedBar.setValue(117); // 57
+	    if (currentBar != null)
+		currentBar.setValue(50);
+	    if (powerBar != null)
+		powerBar.setValue(50);
 	    CircuitElm.voltageRange = 5;
 	    scopeCount = 0;
 	    lastIterTime = 0;
@@ -5990,13 +6050,17 @@ public CirSim() {
 	    p += l;
 	    
 	}
-	setPowerBarEnable();
-	enableItems();
+	if (RuntimeMode.isGwt()) {
+	    setPowerBarEnable();
+	    enableItems();
+	}
 	if ((flags & RC_RETAIN) == 0) {
 	    // create sliders as needed
-	    for (i = 0; i < adjustables.size(); i++) {
-		if (!adjustables.get(i).createSlider(this))
-		    adjustables.remove(i--);
+	    if (RuntimeMode.isGwt()) {
+		for (i = 0; i < adjustables.size(); i++) {
+		    if (!adjustables.get(i).createSlider(this))
+			adjustables.remove(i--);
+		}
 	    }
 	}
 //	if (!retain)
@@ -6053,27 +6117,38 @@ public CirSim() {
 	
 	if ((importFlags & RC_RETAIN) != 0) {
             // need to set small grid if pasted circuit uses it
-	    if ((flags & 2) != 0)
+	    if ((flags & 2) != 0 && smallGridCheckItem != null)
 		smallGridCheckItem.setState(true);
 	    return;
 	}
 	
-	dotsCheckItem.setState((flags & 1) != 0);
-	smallGridCheckItem.setState((flags & 2) != 0);
-	voltsCheckItem.setState((flags & 4) == 0);
-	powerCheckItem.setState((flags & 8) == 8);
-	showValuesCheckItem.setState((flags & 16) == 0);
+	if (dotsCheckItem != null)
+	    dotsCheckItem.setState((flags & 1) != 0);
+	if (smallGridCheckItem != null)
+	    smallGridCheckItem.setState((flags & 2) != 0);
+	if (voltsCheckItem != null)
+	    voltsCheckItem.setState((flags & 4) == 0);
+	if (powerCheckItem != null)
+	    powerCheckItem.setState((flags & 8) == 8);
+	if (showValuesCheckItem != null)
+	    showValuesCheckItem.setState((flags & 16) == 0);
 	adjustTimeStep = (flags & 64) != 0;
 	maxTimeStep = timeStep = new Double (st.nextToken()).doubleValue();
 	double sp = Double.parseDouble(st.nextToken());
 	int sp2 = (int) (Math.log(10*sp)*24+61.5);
 	//int sp2 = (int) (Math.log(sp)*24+1.5);
-	speedBar.setValue(sp2);
-	currentBar.setValue(Integer.parseInt(st.nextToken()));
+	if (speedBar != null)
+	    speedBar.setValue(sp2);
+	if (currentBar != null)
+	    currentBar.setValue(Integer.parseInt(st.nextToken()));
+	else
+	    st.nextToken();
 	CircuitElm.voltageRange = new Double (st.nextToken()).doubleValue();
 
 	try {
-	    powerBar.setValue(Integer.parseInt(st.nextToken()));
+	    int pbv = Integer.parseInt(st.nextToken());
+	    if (powerBar != null)
+		powerBar.setValue(pbv);
 	    minTimeStep = Double.parseDouble(st.nextToken());
 	} catch (Exception e) {
 	}
@@ -7257,7 +7332,10 @@ public CirSim() {
     }
     
     void setGrid() {
-	gridSize = (smallGridCheckItem.getState()) ? 8 : 16;
+	if (smallGridCheckItem != null)
+	    gridSize = (smallGridCheckItem.getState()) ? 8 : 16;
+	else
+	    gridSize = 16;
 	gridMask = ~(gridSize-1);
 	gridRound = gridSize/2-1;
     }
@@ -8011,6 +8089,8 @@ public CirSim() {
     }
 
     void addWidgetToVerticalPanel(Widget w) {
+	if (RuntimeMode.isHeadless() || w == null || verticalPanel == null)
+	    return;
     	if (iFrame!=null) {
     		int i=verticalPanel.getWidgetIndex(iFrame);
     		verticalPanel.insert(w, i);
@@ -8021,6 +8101,8 @@ public CirSim() {
     }
     
     void removeWidgetFromVerticalPanel(Widget w){
+	if (RuntimeMode.isHeadless() || w == null || verticalPanel == null)
+	    return;
     	verticalPanel.remove(w);
     	if (iFrame!=null)
     		setiFrameHeight();
@@ -8622,7 +8704,7 @@ public CirSim() {
 		if (!loadedCanvas2SVG) {
 			ScriptInjector.fromUrl("canvas2svg.js").setCallback(new Callback<Void,Exception>() {
 				public void onFailure(Exception reason) {
-					Window.alert("Can't load canvas2svg.js.");
+					alertOrWarn("Can't load canvas2svg.js.");
 				}
 				public void onSuccess(Void result) {
 					loadedCanvas2SVG = true;
@@ -8872,7 +8954,7 @@ public CirSim() {
                     sideLabels[side].add(lne);
 		    extnodes[ce.getNode(0)] = true;
 		    if (ce.getNode(0) == 0) {
-		        Window.alert("Node \"" + lne.text + "\" can't be connected to ground");
+		        alertOrWarn("Node \"" + lne.text + "\" can't be connected to ground");
 			return null;
 		    }
 		}
@@ -8931,7 +9013,7 @@ public CirSim() {
 	    for (i = 0; i != extList.size(); i++) {
 		ExtListEntry ent = extList.get(i);
 		if (!used[ent.node]) {
-		    Window.alert("Node \"" + ent.name + "\" is not used!");
+		    alertOrWarn("Node \"" + ent.name + "\" is not used!");
 		    return null;
 		}
 	    }
@@ -8944,7 +9026,7 @@ public CirSim() {
 			first = false;
 			continue;
 		    }
-		    Window.alert("Some nodes are unconnected!");
+		    alertOrWarn("Some nodes are unconnected!");
 		    return null;
 		}
 	    }	    

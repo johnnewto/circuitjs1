@@ -165,6 +165,6 @@ Computed values still appear in the Variable Browser through `ComputedValues.get
 
 ## Related Documentation
 
-- [STOCK_FLOW_DOCS_INDEX.md](STOCK_FLOW_DOCS_INDEX.md) - Full documentation index
+- [DOCUMENTATION_INDEX.MD](DOCUMENTATION_INDEX.MD) - Full documentation index
 - [STOCK_MASTER_ELM_REFERENCE.md](STOCK_MASTER_ELM_REFERENCE.md) - Master stocks display
 - [FLOWS_MASTER_ELM_REFERENCE.md](FLOWS_MASTER_ELM_REFERENCE.md) - Flows display

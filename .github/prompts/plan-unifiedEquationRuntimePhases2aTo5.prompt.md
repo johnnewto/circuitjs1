@@ -93,7 +93,7 @@ sequenceDiagram
 - For a same-name PARAM and labeled node in MNA mode, observed result matches legacy precedence behavior.
 - For a same-name FLOW and labeled node in MNA mode, observed result matches legacy flow-preferred behavior where applicable.
 - Unresolved reference list contents and warning behavior remain unchanged for existing benchmark circuits.
-- Economic replay circuit [src/com/lushprojects/circuitjs1/public/circuits/economics/1debug.txt](src/com/lushprojects/circuitjs1/public/circuits/economics/1debug.txt) preserves convergence behavior and key variable trajectories within expected numerical tolerance.
+- Economic replay circuit [test/resources/sfcr_debug_reference.md](test/resources/sfcr_debug_reference.md) preserves convergence behavior and key variable trajectories within expected numerical tolerance.
 - Display-only consumers using converged values remain stable across subiterations (no flicker/regression).
 - No new matrix-authority regressions: changing matrix-solved labeled-node voltage is reflected in node mirrors on the same subiteration cycle.
 
@@ -108,7 +108,7 @@ sequenceDiagram
 
 **Verification**
 - Functional regression: run existing equation/table tests, including [src/com/lushprojects/circuitjs1/client/MathElementsTest.java](src/com/lushprojects/circuitjs1/client/MathElementsTest.java) and [src/com/lushprojects/circuitjs1/client/TableElementsTest.java](src/com/lushprojects/circuitjs1/client/TableElementsTest.java).
-- Economic scenario replay: load [src/com/lushprojects/circuitjs1/public/circuits/economics/1debug.txt](src/com/lushprojects/circuitjs1/public/circuits/economics/1debug.txt) and compare key variables/subiteration counts before vs after each phase.
+- Economic scenario replay: load [test/resources/sfcr_debug_reference.md](test/resources/sfcr_debug_reference.md) and compare key variables/subiteration counts before vs after each phase.
 - Runtime parity gates per phase: confirm unresolved-reference list, PARAM precedence, flow key behavior, and converged display stability remain unchanged.
 - Performance gates: compare Expr node-ref average timing and total subiterations pre/post phase using existing probe hooks.
 

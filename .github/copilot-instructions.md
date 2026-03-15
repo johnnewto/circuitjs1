@@ -98,7 +98,7 @@ When adding a new element, add a line in the appropriate section of this file.
 - **Styling**: CSS changes in `war/circuitjs1/style.css`
 - **Build Config**: Gradle changes in `build.gradle`
 
-### Testing
+### Manual Testing
 
 - **Circuit Files**: Test circuits stored in `tests/` directory
 - **Manual Testing**: Load test circuits in browser to verify functionality
@@ -107,6 +107,7 @@ When adding a new element, add a line in the appropriate section of this file.
 ### Test-First Changes
 
 - **Default to JVM unit tests first**: For parser, semantics, registry, and solver logic, add tests in `test/java/...` that run with `./gradlew test` and do not require GWT UI runtime.
+- **Require clear test names**: Add `@DisplayName` to every new or modified JUnit test class and test method so failures are self-describing in Gradle reports.
 - **Use fixture-driven parser tests**: For SFCR changes, add/update fixtures in `test/resources/sfcr/` and assert `SFCRParser.parseToResult()` structure (`initSettings`, `blockDumps`, `hints`) plus round-trip where relevant.
 - **Cover robustness explicitly**: Include at least one malformed/edge case test for parser/exporter work (e.g., malformed rows, missing `@end`, mixed R-style + block format, extreme numeric values).
 - **Test commit boundaries for stateful logic**: For `ComputedValues` and stock-flow state, assert behavior at commit points (`commitPendingToCurrentValues`, `commitConvergedValues`) and timestep boundaries (`doStep` vs `stepFinished`).
@@ -534,7 +535,7 @@ Test circuits for economic models are in `src/com/lushprojects/circuitjs1/public
 ### Documentation Resources
 
 - [dev_docs/ARCHITECTURE.md](../dev_docs/ARCHITECTURE.md) - **Main architecture overview** (start here)
-- [dev_docs/STOCK_FLOW_DOCS_INDEX.md](../dev_docs/STOCK_FLOW_DOCS_INDEX.md) - Stock-flow documentation index
+- [dev_docs/DOCUMENTATION_INDEX.MD](../dev_docs/DOCUMENTATION_INDEX.MD) - Stock-flow documentation index
 - [docs-template/docs/money/](../docs-template/docs/money/) - Economic modeling tutorials
 
 ## Important Notes

@@ -496,7 +496,7 @@ The fix is to clear `registeredParamNames` and `registeredComputedNames` in `Equ
 
 ### Observed Impact
 
-On the BMW debug model (`public/circuits/economics/1debug.txt`), the final behavior is:
+On the BMW debug model (`test/resources/sfcr_debug_reference.md`), the final behavior is:
 
 - `nodeRef[count=0]` before and after reset
 - parameter names resolve through `E_GSLOT` consistently
@@ -655,6 +655,7 @@ drawDynamicContent(g);  // text only
 - [INTERNALS.md](../INTERNALS.md) - Detailed simulation theory
 - [EQUATION_TABLE_REFERENCE.md](EQUATION_TABLE_REFERENCE.md) - EquationTableElm row modes, convergence, serialization
 - [PURE_COMPUTATIONAL_TABLES.md](PURE_COMPUTATIONAL_TABLES.md) - Pure computational element architecture
+- [HEADLESS_RUNNER_TESTING_REFERENCE.md](HEADLESS_RUNNER_TESTING_REFERENCE.md) - JVM headless runner usage, CLI contract, and test workflow
 - [CircuitJS1 Original](https://www.falstad.com/circuit/) - Paul Falstad's original
 - GWT Documentation: https://www.gwtproject.org/
 - Modified Nodal Analysis: Pillage et al. (1999)

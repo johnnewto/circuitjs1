@@ -136,6 +136,12 @@ public class ActionScheduler {
         }
         return instance;
     }
+
+    private static void refreshActionTimeDialogIfGwt() {
+        if (RuntimeMode.isGwt()) {
+            ActionTimeDialog.refreshIfOpen();
+        }
+    }
     
     public static ActionScheduler getInstance() {
         return instance;
@@ -247,7 +253,7 @@ public class ActionScheduler {
         sim.updateRunStopButton();
         
         // Refresh dialog to show completed state
-        ActionTimeDialog.refreshIfOpen();
+        refreshActionTimeDialogIfGwt();
     }
     
     /**
@@ -312,7 +318,7 @@ public class ActionScheduler {
             isPaused = false;  // Clear pause state
             
             sim.updateRunStopButton();  // Update button to show normal stopped state
-            ActionTimeDialog.refreshIfOpen();  // Refresh dialog to show updated states
+            refreshActionTimeDialogIfGwt();  // Refresh dialog to show updated states
         }
     }
     
@@ -366,7 +372,7 @@ public class ActionScheduler {
         action.id = getNextId();
         actions.add(action);
         sortActions();
-        ActionTimeDialog.refreshIfOpen();
+        refreshActionTimeDialogIfGwt();
     }
     
     /**
@@ -377,7 +383,7 @@ public class ActionScheduler {
             if (actions.get(i).id == action.id) {
                 actions.set(i, action);
                 sortActions();
-                ActionTimeDialog.refreshIfOpen();
+                refreshActionTimeDialogIfGwt();
                 return;
             }
         }
@@ -390,7 +396,7 @@ public class ActionScheduler {
         for (int i = 0; i < actions.size(); i++) {
             if (actions.get(i).id == id) {
                 actions.remove(i);
-                ActionTimeDialog.refreshIfOpen();
+                refreshActionTimeDialogIfGwt();
                 return;
             }
         }
@@ -425,7 +431,7 @@ public class ActionScheduler {
     public void clearAll() {
         clearActionOverrides();
         actions.clear();
-        ActionTimeDialog.refreshIfOpen();
+        refreshActionTimeDialogIfGwt();
     }
     
     /**
@@ -474,7 +480,7 @@ public class ActionScheduler {
         if (action != null && oldIndex != -1 && newIndex >= 0 && newIndex < actions.size()) {
             actions.remove(oldIndex);
             actions.add(newIndex, action);
-            ActionTimeDialog.refreshIfOpen();
+            refreshActionTimeDialogIfGwt();
         }
     }
     
@@ -494,7 +500,7 @@ public class ActionScheduler {
         cancelResumeTimer();
         isPaused = false;
         simulationStarted = false;  // Reset on simulation reset
-        ActionTimeDialog.refreshIfOpen();
+        refreshActionTimeDialogIfGwt();
     }
     
     /**
@@ -593,7 +599,7 @@ public class ActionScheduler {
         
         if (!readyActions.isEmpty()) {
             executeActionsNow(readyActions);
-            ActionTimeDialog.refreshIfOpen();
+            refreshActionTimeDialogIfGwt();
         }
     }
     
@@ -629,7 +635,7 @@ public class ActionScheduler {
         }
         
         if (anyStateChanged) {
-            ActionTimeDialog.refreshIfOpen();
+            refreshActionTimeDialogIfGwt();
         }
         
         return triggered;

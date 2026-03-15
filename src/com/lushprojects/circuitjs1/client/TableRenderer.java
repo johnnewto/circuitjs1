@@ -99,6 +99,9 @@ public class TableRenderer {
      * Initialize the cached canvas for static parts.
      */
     private void initCache() {
+        if (RuntimeMode.isHeadless()) {
+            return;
+        }
         backgroundLayerCanvas = Canvas.createIfSupported();
         if (backgroundLayerCanvas != null) {
             backgroundLayerCtx = backgroundLayerCanvas.getContext2d();

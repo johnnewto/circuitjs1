@@ -1,11 +1,13 @@
 # CircuitJS1 SFCR Export
 # Generated from circuit simulation
-```{circuit}
+
+```{r}
 @init
   timestep: 1
   voltageUnit: $
   timeUnit: yr
   showDots: true
+  showVolts: true
   showValues: true
   showPower: false
   autoAdjustTimestep: false
@@ -14,26 +16,6 @@
   equationTableTolerance: 0.0001
   convergenceCheckThreshold: 100
   infoViewerUpdateIntervalMs: 200
-@end
-```
-
-# SIM Model (Godley & Lavoie Chapter 3)
-## Voltage Source Equation Implementation
-
-This model demonstrates the **equation-based** approach to Stock-Flow Consistent modeling using EquationTableElm voltage sources.
-
-```{circuit}
-@plot x=700 y=300 
-vars: Y, YD
-title: Output (Y)
-ylabel: Value $
-xlabel: Time (years)
-points: 200
-
-xmin: 0
-xmax: 100
-ymin: 0
-ymax: 100
 @end
 ```
 
@@ -94,6 +76,7 @@ Balance_Sheet <- sfcr_matrix(
 
 ## Transaction_Flow_Matrix
 TFM !!
+
 ```{r}
 Transaction_Flow_Matrix <- sfcr_matrix(
   # [ x=176 y=104 type: transaction_flow ]
@@ -109,6 +92,7 @@ Transaction_Flow_Matrix <- sfcr_matrix(
 
 ## Sankey Diagram
 sankey !! 
+
 ```{r}
 @sankey x=672 y=-8
   source: Transaction Flow Matrix
@@ -121,7 +105,23 @@ sankey !!
 @end
 ```
 
-```{a}
+```{r}
+@circuit
+x 168 -76 337 -73 4 24 SIM\sSFC\smodel 808080FF U:_JS6um
+207 680 296 743 296 36 Y U:-6Q_F4
+x 183 -51 509 -48 4 12 This\scode\sreplicates\sresults\sin\sthe\sbook\sMonetary\sEconomics: 808080FF U:MpBpa6
+x 180 -9 536 -6 4 12 \sby\sWynne\sGodley\sand\sMarc\sLavoie,\schapter\s3,\sfigures\s3.2\sand\s3.3. 808080FF U:rCjs3e
+x 183 -31 577 -28 4 12 \sAn\sIntegrated\sApproach\sto\sCredit,\sMoney,\sIncome,\sProduction\sand\sWealth 808080FF U:cdBS8b
+207 832 288 864 288 36 \\DeltaH_h U:MeqIB3
+207 832 272 864 272 4 \\DeltaH_s U:5DBes4
+431 672 -80 688 -64 0 50 true false U:0AZ1rw
+r 824 -88 936 -88 0 1000 U:kSRwWr
+207 936 -88 967 -88 36 Y2 U:g5KXPD
+207 824 -88 783 -88 36 Y U:kU1zw1
+@end
+```
+
+```{r}
 @scope Embedded_Scope_1 position=-1
   x1: 672
   y1: 320
@@ -132,19 +132,6 @@ sankey !!
   flags: x2001206
   source: uid:-6Q_F4 value:0
   trace: uid:-6Q_F4 value:3
-@end
-```
-
-```{r}
-@circuit
-x 168 -76 337 -73 4 24 SIM\sSFC\smodel 808080FF U:_JS6um
-207 680 296 743 296 36 Y U:-6Q_F4
-x 183 -51 509 -48 4 12 This\scode\sreplicates\sresults\sin\sthe\sbook\sMonetary\sEconomics: 808080FF U:MpBpa6
-x 180 -9 536 -6 4 12 \sby\sWynne\sGodley\sand\sMarc\sLavoie,\schapter\s3,\sfigures\s3.2\sand\s3.3. 808080FF U:rCjs3e
-x 183 -31 577 -28 4 12 \sAn\sIntegrated\sApproach\sto\sCredit,\sMoney,\sIncome,\sProduction\sand\sWealth 808080FF U:cdBS8b
-207 832 288 864 288 36 \\DeltaH_h U:MeqIB3
-207 832 272 864 272 4 \\DeltaH_s U:5DBes4
-431 624 -48 688 0 0 50 true false U:RIdZSv
 @end
 ```
 
