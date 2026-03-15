@@ -5,10 +5,14 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import org.junit.jupiter.api.DisplayName;
+
 @ResourceLock("SFCRParser")
+@DisplayName("SFCRParser — strict mode rejects malformed input")
 class SFCRParserRobustnessTest {
 
     @Test
+    @DisplayName("tolerant mode: block with no valid rows is silently dropped")
     void testMalformedBlockWithNoValidRowsIsRejected() {
         String text =
                 "@equations RejectMe\n" +
@@ -23,6 +27,7 @@ class SFCRParserRobustnessTest {
     }
 
         @Test
+        @DisplayName("strict mode: malformed equation rows throw ParseException")
         void testStrictModeFailsOnMalformedEquationRows() {
                 String text =
                                 "@equations RejectMe\n" +
@@ -33,6 +38,7 @@ class SFCRParserRobustnessTest {
         }
 
     @Test
+    @DisplayName("tolerant mode: malformed lines ignored, valid rows still parsed")
     void testMalformedEquationLinesAreIgnoredButValidRowsParse() {
         String text =
                 "@equations TestMalformed\n" +
@@ -50,6 +56,7 @@ class SFCRParserRobustnessTest {
     }
 
     @Test
+    @DisplayName("tolerant mode: missing @end at EOF is tolerated")
     void testMissingEndStillParsesTrailingEquationBlock() {
         String text =
                 "@equations NoEnd\n" +
@@ -63,6 +70,7 @@ class SFCRParserRobustnessTest {
     }
 
         @Test
+        @DisplayName("strict mode: missing @end throws ParseException")
         void testStrictModeFailsOnMissingEnd() {
                 String text =
                                 "@equations NoEnd\n" +
@@ -72,6 +80,7 @@ class SFCRParserRobustnessTest {
         }
 
     @Test
+    @DisplayName("tolerant mode: mixed R-style and @block-style both parse")
     void testMixedRStyleAndBlockStyleBothParse() {
         String text =
                 "RBlock <- sfcr_set(\n" +
@@ -89,6 +98,7 @@ class SFCRParserRobustnessTest {
     }
 
     @Test
+    @DisplayName("tolerant mode: extreme numeric values (1e300, 1e-300) survive round-trip")
     void testExtremeNumericValuesParseAndRoundTrip() {
         String text =
                 "@equations Extreme\n" +

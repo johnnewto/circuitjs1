@@ -1,6 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
@@ -19,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>Run with: {@code ./gradlew test --tests "*.SFCRParseResultTest"}
  */
 @ResourceLock("SFCRParser")
+@DisplayName("SFCRParser.parseToResult() — full fixture parse")
 class SFCRParseResultTest {
 
     private static String sfcrText;
@@ -35,11 +37,13 @@ class SFCRParseResultTest {
     // -------------------------------------------------------------------------
 
     @Test
+    @DisplayName("null input returns null")
     void testNullInputReturnsNull() {
         assertNull(SFCRParser.parseToResult(null));
     }
 
     @Test
+    @DisplayName("blank/whitespace-only input returns null")
     void testEmptyInputReturnsNull() {
         assertNull(SFCRParser.parseToResult("   "));
     }
@@ -49,6 +53,7 @@ class SFCRParseResultTest {
     // -------------------------------------------------------------------------
 
     @Test
+    @DisplayName("valid SFCR text returns non-null result")
     void testResultNotNull() {
         assertNotNull(result, "parseToResult() must return a non-null result for valid SFCR text");
     }
@@ -58,24 +63,28 @@ class SFCRParseResultTest {
     // -------------------------------------------------------------------------
 
     @Test
+    @DisplayName("@init timestep is parsed")
     void testTimestepParsed() {
         assertEquals("1", result.initSettings.get("timestep"),
             "@init timestep must be '1'");
     }
 
     @Test
+    @DisplayName("@init voltageUnit is parsed")
     void testVoltageUnitParsed() {
         assertEquals("$", result.initSettings.get("voltageUnit"),
                 "@init voltageUnit must be '$'");
     }
 
     @Test
+    @DisplayName("@init timeUnit is parsed")
     void testTimeUnitParsed() {
         assertEquals("yr", result.initSettings.get("timeUnit"),
                 "@init timeUnit must be 'yr'");
     }
 
     @Test
+    @DisplayName("@init showDots is parsed")
     void testShowDotsParsed() {
         assertEquals("true", result.initSettings.get("showDots"),
             "@init showDots must be 'true'");
@@ -86,6 +95,7 @@ class SFCRParseResultTest {
     // -------------------------------------------------------------------------
 
     @Test
+    @DisplayName("fixture contains 3 equation blocks")
     void testThreeEquationBlocksFound() {
         List<SFCRParseResult.BlockDump> eqBlocks = result.getBlocksByType("equations");
         assertEquals(3, eqBlocks.size(),
@@ -93,6 +103,7 @@ class SFCRParseResultTest {
     }
 
     @Test
+    @DisplayName("equation block names: equations_1A, equations_2, Parameters")
     void testEquationBlockNamesPresent() {
         List<SFCRParseResult.BlockDump> eqBlocks = result.getBlocksByType("equations");
         boolean hasEq1 = false, hasEq2 = false, hasParameters = false;
@@ -108,6 +119,7 @@ class SFCRParseResultTest {
     }
 
     @Test
+    @DisplayName("equations_1A dump contains YD and \\theta")
         void testEquationDumpContainsYDAndTheta() {
         SFCRParseResult.BlockDump block = result.findBlock("equations", "equations_1A");
         assertNotNull(block, "equations_1A block must be present");
@@ -118,6 +130,7 @@ class SFCRParseResultTest {
     }
 
     @Test
+    @DisplayName("every equation dump starts with '266 ' (EquationTableElm type)")
     void testDumpStartsWithType266() {
         // EquationTableElm type number is 266
         for (SFCRParseResult.BlockDump bd : result.getBlocksByType("equations")) {
@@ -127,12 +140,14 @@ class SFCRParseResultTest {
     }
 
     @Test
+    @DisplayName("fixture contains 2 matrix blocks")
     void testTwoMatrixBlocksFound() {
         assertEquals(2, result.getBlocksByType("matrix").size(),
                 "Expected 2 matrix blocks (Balance_Sheet, Transaction_Flow_Matrix)");
     }
 
     @Test
+    @DisplayName("matrix block names: Balance_Sheet, Transaction_Flow_Matrix")
     void testMatrixBlockNamesPresent() {
         List<SFCRParseResult.BlockDump> matrixBlocks = result.getBlocksByType("matrix");
         boolean hasBalanceSheet = false, hasTFM = false;
@@ -145,6 +160,7 @@ class SFCRParseResultTest {
     }
 
     @Test
+    @DisplayName("fixture contains 1 sankey block with dump type 466")
     void testOneSankeyBlockCaptured() {
         List<SFCRParseResult.BlockDump> sankeyBlocks = result.getBlocksByType("sankey");
         assertEquals(1, sankeyBlocks.size(),
@@ -158,6 +174,7 @@ class SFCRParseResultTest {
     // -------------------------------------------------------------------------
 
     @Test
+    @DisplayName("inline # comments populate hints map")
     void testHintsPopulatedFromInlineComments() {
         // Inline comments in sfcr_set rows populate hints
         assertTrue(result.hints.containsKey("YD"),
@@ -168,6 +185,7 @@ class SFCRParseResultTest {
     }
 
     @Test
+    @DisplayName("hints map contains 'Y' from inline sfcr_set comment")
     void testHintsFromHintsBlock() {
         // This markdown fixture has no @hints block, but inline hints should still exist.
         assertTrue(result.hints.containsKey("Y"),
@@ -179,16 +197,19 @@ class SFCRParseResultTest {
     // -------------------------------------------------------------------------
 
     @Test
+    @DisplayName("empty string escapes to \\0")
     void testEscapeTokenEmpty() {
         assertEquals("\\0", SFCRParser.escapeToken(""));
     }
 
     @Test
+    @DisplayName("spaces in token escape to \\s")
     void testEscapeTokenSpaces() {
         assertEquals("hello\\sworld", SFCRParser.escapeToken("hello world"));
     }
 
     @Test
+    @DisplayName("=, space, + escape to \\q, \\s, \\p respectively")
     void testEscapeTokenSpecialChars() {
         // backslash first, then equals, space, plus
         String result = SFCRParser.escapeToken("a=b c+d");
@@ -202,6 +223,7 @@ class SFCRParseResultTest {
     // -------------------------------------------------------------------------
 
     @Test
+    @DisplayName("null / 'voltage' → ordinal 0")
     void testParseModeOrdinalVoltage() {
         assertEquals(0, SFCRParser.parseModeOrdinal(null));
         assertEquals(0, SFCRParser.parseModeOrdinal("voltage"));
@@ -209,6 +231,7 @@ class SFCRParseResultTest {
     }
 
     @Test
+    @DisplayName("'flow' / 'stock' → ordinal 1")
     void testParseModeOrdinalFlow() {
         assertEquals(1, SFCRParser.parseModeOrdinal("flow"));
         assertEquals(1, SFCRParser.parseModeOrdinal("stock"));
@@ -216,6 +239,7 @@ class SFCRParseResultTest {
     }
 
     @Test
+    @DisplayName("'param' / 'parameter' → ordinal 3")
     void testParseModeOrdinalParam() {
         assertEquals(3, SFCRParser.parseModeOrdinal("param"));
         assertEquals(3, SFCRParser.parseModeOrdinal("parameter"));
@@ -227,6 +251,7 @@ class SFCRParseResultTest {
     // -------------------------------------------------------------------------
 
     @Test
+    @DisplayName("name with no separator returns full name and empty target")
     void testParseCombinedNameNoSeparator() {
         String[] parts = SFCRParser.parseCombinedNameLocal("myVar");
         assertEquals("myVar", parts[0]);
@@ -234,6 +259,7 @@ class SFCRParseResultTest {
     }
 
     @Test
+    @DisplayName("arrow syntax splits into source and target")
     void testParseCombinedNameArrow() {
         String[] parts = SFCRParser.parseCombinedNameLocal("source->target");
         assertEquals("source", parts[0]);
@@ -241,6 +267,7 @@ class SFCRParseResultTest {
     }
 
     @Test
+    @DisplayName("comma syntax splits into name and target")
     void testParseCombinedNameComma() {
         String[] parts = SFCRParser.parseCombinedNameLocal("A , B");
         assertEquals("A", parts[0]);
@@ -248,6 +275,7 @@ class SFCRParseResultTest {
     }
 
     @Test
+    @DisplayName("null input returns two empty strings")
     void testParseCombinedNameNull() {
         String[] parts = SFCRParser.parseCombinedNameLocal(null);
         assertEquals("", parts[0]);

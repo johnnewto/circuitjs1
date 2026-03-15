@@ -1,5 +1,6 @@
 package com.lushprojects.circuitjs1.client;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
@@ -9,9 +10,11 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ResourceLock("SFCRParser")
+@DisplayName("SFCRParser ↔ SFCRParseResultExporter — round-trip fidelity")
 class SFCRExportParseRoundTripTest {
 
     @Test
+    @DisplayName("parse → export → parse preserves block structure, init settings, and hints")
     void testRoundTripParseExportParsePreservesStructure() throws Exception {
         String originalText = TestFixtures.loadSfcr("parse_result_fixture.md");
         SFCRParseResult first = SFCRParser.parseToResult(originalText);

@@ -1,6 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
@@ -10,6 +11,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ResourceLock("StockFlowRegistry")
+@DisplayName("StockFlowRegistry — stock registration and cache invalidation")
 class StockFlowRegistryTest {
 
     private StockTableView createView(final String title) {
@@ -25,9 +27,11 @@ class StockFlowRegistryTest {
     @BeforeEach
     void setUp() {
         StockFlowRegistry.clearRegistry();
+        ComputedValues.resetForTesting();
     }
 
     @Test
+    @DisplayName("register/unregister transitions isSharedStock correctly")
     void testRegisterUnregisterAndSharedStockDetection() {
         StockTableView tableA = createView("TableA");
         StockTableView tableB = createView("TableB");
@@ -52,6 +56,7 @@ class StockFlowRegistryTest {
     }
 
     @Test
+    @DisplayName("registerStock and unregisterStock invalidate merged-rows cache")
     void testCacheInvalidationOnRegisterAndUnregister() {
         StockTableView table = createView("LoansTable");
         StockFlowRegistry.TestSupport.seedMergedRowsCache("Loans", new LinkedHashSet<String>());

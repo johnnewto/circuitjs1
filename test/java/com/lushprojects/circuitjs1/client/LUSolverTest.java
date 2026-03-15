@@ -1,14 +1,17 @@
 package com.lushprojects.circuitjs1.client;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@DisplayName("LUSolver — LU factorization and back-substitution")
 class LUSolverTest {
 
     private static final double EPS = 1e-9;
 
     @Test
+    @DisplayName("2×2 system solves to known exact solution")
     void testSolve2x2KnownSolution() {
         double[][] a = {
                 {2, 1},
@@ -26,6 +29,7 @@ class LUSolverTest {
     }
 
     @Test
+    @DisplayName("zero pivot triggers row exchange and still solves correctly")
     void testSolveRequiresPivoting() {
         double[][] a = {
                 {0, 2},
@@ -43,6 +47,7 @@ class LUSolverTest {
     }
 
     @Test
+    @DisplayName("all-zero row is detected as singular")
     void testSingularAllZeroRowDetected() {
         double[][] a = {
                 {1, 2},
@@ -55,6 +60,7 @@ class LUSolverTest {
     }
 
     @Test
+    @DisplayName("linearly dependent rows are detected as singular")
     void testSingularDependentRowsDetected() {
         double[][] a = {
                 {1, 2},
@@ -67,6 +73,7 @@ class LUSolverTest {
     }
 
     @Test
+    @DisplayName("3×3 system solves to known exact solution")
     void testSolve3x3KnownSolution() {
         double[][] a = {
                 {3, 2, -1},
@@ -86,6 +93,7 @@ class LUSolverTest {
     }
 
     @Test
+    @DisplayName("near-singular matrix factors and solves within tolerance")
     void testNearSingular2x2RemainsNumericallyReasonable() {
         double[][] a = {
                 {1.0, 1.0},

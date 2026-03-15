@@ -1,5 +1,6 @@
 package com.lushprojects.circuitjs1.client;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
@@ -11,9 +12,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @ResourceLock("SFCRParser")
+@DisplayName("SFCRParser — mixed row-mode round-trip regression")
 class SFCRMixedModeRegressionTest {
 
     @Test
+    @DisplayName("explicit VOLTAGE/FLOW/PARAM modes survive parse → export → parse")
     void testMixedModeRowsPreservedAcrossParseExportParse() throws Exception {
         String originalText = TestFixtures.loadSfcr("mixed_modes_fixture.md");
         SFCRParseResult first = SFCRParser.parseToResult(originalText);
@@ -101,6 +104,7 @@ class SFCRMixedModeRegressionTest {
     }
 
     @Test
+    @DisplayName("arrow syntax (A -> B) is inferred as FLOW mode and target is preserved")
     void testFlowModeInferredFromArrowSyntaxRoundTrip() throws Exception {
         String originalText = TestFixtures.loadSfcr("mixed_modes_inferred_flow_fixture.md");
         SFCRParseResult first = SFCRParser.parseToResult(originalText);

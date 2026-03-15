@@ -1,23 +1,23 @@
 package com.lushprojects.circuitjs1.client;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @ResourceLock("ComputedValues")
+@DisplayName("ComputedValues — double-buffering and commit semantics")
 class ComputedValuesTest {
 
     @BeforeEach
     void setUp() {
-        ComputedValues.clearComputedValues();
-        ComputedValues.setDoubleBufferingEnabled(true);
-        ComputedValues.clearPendingValues();
-        ComputedValues.resetComputedFlags();
+        ComputedValues.resetForTesting();
     }
 
     @Test
+    @DisplayName("pending value is invisible until commitPendingToCurrentValues()")
     void testDoubleBufferingRequiresCommitForVisibility() {
         ComputedValues.setComputedValue("X", 1.0);
 
@@ -36,6 +36,7 @@ class ComputedValuesTest {
     }
 
     @Test
+    @DisplayName("converged buffer only advances on commitConvergedValues()")
     void testConvergedCommitIsSeparateFromCurrentCommit() {
         ComputedValues.setComputedValue("Y", 10.0);
         ComputedValues.commitPendingToCurrentValues();
@@ -55,6 +56,7 @@ class ComputedValuesTest {
     }
 
     @Test
+    @DisplayName("immediate mode writes directly to current, skips pending buffer")
     void testImmediateModeBypassesPendingBuffer() {
         ComputedValues.setDoubleBufferingEnabled(false);
 
