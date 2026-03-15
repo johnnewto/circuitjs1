@@ -10,6 +10,7 @@ This is a quick operational reference for running CircuitJS1 simulations on the 
 
 - CLI entry point: `com.lushprojects.circuitjs1.client.HeadlessRunner`
 - Gradle task: `headlessCli`
+- Browser headless table mode: `circuitjs.html?headless=1...`
 - End-to-end tests:
   - `HeadlessRunnerE2ETest`
   - `HeadlessSimTest` (base class for headless simulation tests)
@@ -49,6 +50,35 @@ Defaults from `build.gradle`:
 ```bash
 ./dev.sh test
 ```
+
+---
+
+## Browser headless table mode
+
+This mode runs simulation in the browser, without normal simulator UI, and renders:
+
+- **Output Table** tab (time + computed values)
+- **Standard Output** tab (diagnostic logs)
+
+Use it from the normal app URL:
+
+```text
+http://127.0.0.1:8000/circuitjs.html?headless=1&startCircuit=economics/1debug.md&steps=50
+```
+
+### Supported query parameters
+
+- `headless=1` (required to enable this mode)
+- `startCircuit=<path>` (e.g. `economics/1debug.md`)
+- `steps=<n>` (default `1000`)
+- `cct=<inline circuit text>` (optional alternative)
+- `ctz=<compressed circuit text>` (optional alternative)
+
+### Open current in-memory circuit in this mode
+
+From **File → Open Headless Output Table...**.
+
+This opens a new tab with `headless=1&ctz=...` for the current unsaved circuit state.
 
 ---
 
@@ -142,6 +172,17 @@ When changing solver/runtime/economic model behavior:
   - Analyze phase raised a stop condition.
 - `HeadlessRunner: time did not advance at step ...`
   - Simulation did not advance time; inspect stop conditions and circuit validity.
+
+Browser mode (`Standard Output` tab):
+
+- `Headless load failed for all candidates of startCircuit=...`
+  - The `startCircuit` path could not be resolved.
+- `loadFileFromURLHeadless HTTP failure: ... status=...`
+  - URL returned non-2xx response.
+- `loadFileFromURLHeadless timeout after 15s: ...`
+  - Circuit file request stalled.
+- `window.onerror: ...` or `GWT uncaught exception: ...`
+  - Runtime exception occurred during load/simulation.
 
 ---
 

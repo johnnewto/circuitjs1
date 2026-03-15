@@ -25,12 +25,15 @@ package com.lushprojects.circuitjs1.client;
 // or https://github.com/sharpie7/circuitjs1/blob/master/INTERNALS.md
 
 import java.util.Vector;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.lang.Math;
 
 import com.google.gwt.canvas.client.Canvas;
@@ -544,6 +547,351 @@ public CirSim() {
 	CircuitElm.initClass(this);
     }
 
+    public void initHeadlessPanel(QueryParameters qp) {
+	RuntimeMode.setHeadless(true);
+	clearHeadlessStdout();
+	headlessStdoutEnabled = true;
+	installHeadlessGlobalErrorHooks();
+	GWT.setUncaughtExceptionHandler(new GWT.UncaughtExceptionHandler() {
+	    public void onUncaughtException(Throwable e) {
+		console("GWT uncaught exception: " + e);
+	    }
+	});
+	ComputedValues.resetForTesting();
+	initHeadless();
+	console("Headless panel mode enabled");
+
+	String cct = qp.getValue("cct");
+	if (cct != null)
+	    startCircuitText = cct.replace("%24", "$");
+	if (startCircuitText == null)
+	    startCircuitText = getElectronStartCircuitText();
+	String ctz = qp.getValue("ctz");
+	if (ctz != null)
+	    startCircuitText = decompress(ctz);
+	startCircuit = qp.getValue("startCircuit");
+	startLabel = qp.getValue("startLabel");
+	int steps = parsePositiveInt(qp.getValue("steps"), 1000);
+	console("Headless params: startCircuit=" + startCircuit + ", steps=" + steps +
+	    ", hasCct=" + (startCircuitText != null && startCircuitText.length() > 0));
+
+	renderHeadlessStatus("Loading circuit...");
+
+	if (startCircuitText != null && startCircuitText.length() > 0) {
+	    runHeadlessTableFromText(startCircuitText, steps, "embedded");
+	    return;
+	}
+
+	if (startCircuit != null && startCircuit.length() > 0) {
+	    loadHeadlessSetupFile(startCircuit, startLabel, steps);
+	    return;
+	}
+
+	renderHeadlessError("No circuit specified. Use startCircuit=..., cct=..., or ctz=...");
+    }
+
+    private int parsePositiveInt(String value, int defaultValue) {
+	if (value == null || value.trim().isEmpty())
+	    return defaultValue;
+	try {
+	    int parsed = Integer.parseInt(value.trim());
+	    return (parsed > 0) ? parsed : defaultValue;
+	} catch (Exception e) {
+	    return defaultValue;
+	}
+    }
+
+    private void loadHeadlessSetupFile(String str, String title, final int steps) {
+	String[] candidates;
+	if (str.indexOf('/') >= 0)
+	    candidates = new String[] { str };
+	else
+	    candidates = new String[] { str, "economics/" + str, "electronics/" + str };
+	loadHeadlessSetupFileCandidates(candidates, 0, title, steps);
+    }
+
+    private void loadHeadlessSetupFileCandidates(final String[] candidates, final int index, final String title, final int steps) {
+	if (index >= candidates.length) {
+	    console("Headless load failed for all candidates of startCircuit=" + startCircuit);
+	    renderHeadlessError("Can't load circuit file: " + startCircuit);
+	    return;
+	}
+
+	final String circuitPath = candidates[index];
+	String url = GWT.getModuleBaseURL() + "circuits/" + circuitPath;
+	console("Headless trying circuit path: circuits/" + circuitPath);
+	updateHeadlessStatusMessage("Loading circuits/" + circuitPath + " ...");
+	loadFileFromURLHeadless(url, new Command() {
+	    public void execute() {
+		console("Headless loaded circuit path: circuits/" + circuitPath);
+		updateHeadlessStatusMessage("Loaded circuits/" + circuitPath);
+		if (title != null)
+		    setCircuitTitle(title);
+		currentCircuitFile = "circuits/" + circuitPath;
+		runHeadlessTableSimulation(steps, currentCircuitFile);
+	    }
+	}, new Command() {
+	    public void execute() {
+		console("Headless failed circuit path: circuits/" + circuitPath + " (trying next)");
+		updateHeadlessStatusMessage("Failed circuits/" + circuitPath + ", trying next...");
+		loadHeadlessSetupFileCandidates(candidates, index + 1, title, steps);
+	    }
+	});
+    }
+
+    void onHeadlessLoadFileSuccess(String text, Command successCallback) {
+	readCircuit(text, RC_KEEP_TITLE);
+	unsavedChanges = false;
+	if (successCallback != null)
+	    successCallback.execute();
+    }
+
+    native void loadFileFromURLHeadless(String url, Command successCallback, Command failureCallback) /*-{
+	var self = this;
+	var loadUrl = self.@com.lushprojects.circuitjs1.client.CirSim::getLoadUrl(Ljava/lang/String;)(url);
+	@com.lushprojects.circuitjs1.client.CirSim::console(Ljava/lang/String;)("loadFileFromURLHeadless request: " + loadUrl);
+
+	var done = false;
+	function fail(msg) {
+	    if (done) return;
+	    done = true;
+	    @com.lushprojects.circuitjs1.client.CirSim::console(Ljava/lang/String;)(msg);
+	    if (failureCallback)
+		failureCallback.@com.google.gwt.user.client.Command::execute()();
+	}
+	function ok(text, status) {
+	    if (done) return;
+	    done = true;
+	    @com.lushprojects.circuitjs1.client.CirSim::console(Ljava/lang/String;)("loadFileFromURLHeadless success: " + loadUrl + " status=" + status);
+	    self.@com.lushprojects.circuitjs1.client.CirSim::onHeadlessLoadFileSuccess(Ljava/lang/String;Lcom/google/gwt/user/client/Command;)(text, successCallback);
+	}
+
+	try {
+	    if ($wnd.fetch) {
+		var timeoutId = $wnd.setTimeout(function() {
+		    fail("loadFileFromURLHeadless timeout after 15s: " + loadUrl);
+		}, 15000);
+
+		$wnd.fetch(loadUrl, { method: 'GET', cache: 'no-store' })
+		    .then(function(resp) {
+			if (done) return null;
+			if (!resp.ok) {
+			    $wnd.clearTimeout(timeoutId);
+			    fail("loadFileFromURLHeadless HTTP failure: " + loadUrl +
+				" status=" + resp.status + " text=" + resp.statusText);
+			    return null;
+			}
+			return resp.text().then(function(text) {
+			    $wnd.clearTimeout(timeoutId);
+			    ok(text, resp.status);
+			});
+		    }, function(err) {
+			$wnd.clearTimeout(timeoutId);
+			fail("loadFileFromURLHeadless fetch error: " + err);
+		    });
+	    } else {
+		@com.lushprojects.circuitjs1.client.CirSim::console(Ljava/lang/String;)("loadFileFromURLHeadless fetch unavailable; using XHR fallback");
+		if (!$wnd.XMLHttpRequest)
+		    throw "window.XMLHttpRequest unavailable";
+		var xhr = new $wnd.XMLHttpRequest();
+		xhr.open("GET", loadUrl, true);
+		xhr.timeout = 15000;
+		xhr.onreadystatechange = function() {
+		    if (xhr.readyState !== 4)
+			return;
+		    if ((xhr.status >= 200 && xhr.status < 300) || (xhr.status === 0 && xhr.responseText)) {
+			ok(xhr.responseText, xhr.status);
+		    } else {
+			fail("loadFileFromURLHeadless HTTP failure: " + loadUrl +
+			    " status=" + xhr.status + " text=" + xhr.statusText);
+		    }
+		};
+		xhr.onerror = function() {
+		    fail("loadFileFromURLHeadless onError: " + loadUrl);
+		};
+		xhr.ontimeout = function() {
+		    fail("loadFileFromURLHeadless timeout after 15s: " + loadUrl);
+		};
+		xhr.send();
+	    }
+	} catch (e) {
+	    fail("loadFileFromURLHeadless exception before/at send: " + e);
+	}
+    }-*/;
+
+    private void runHeadlessTableFromText(String circuitText, int steps, String source) {
+	console("Headless loading embedded circuit text source=" + source + ", length=" + circuitText.length());
+	readCircuit(circuitText, 0);
+	currentCircuitFile = source;
+	runHeadlessTableSimulation(steps, source);
+    }
+
+    private void runHeadlessTableSimulation(int steps, String source) {
+	console("Headless simulation start: source=" + source + ", steps=" + steps);
+	analyzeCircuit();
+	preStampAndStampCircuit();
+
+	Set<String> registered = ComputedValues.getRegisteredComputedNames();
+	List<String> keys = new ArrayList<String>(registered != null ? registered : Collections.<String>emptySet());
+	Collections.sort(keys);
+
+	StringBuilder content = new StringBuilder();
+	content.append("<div><b>Source:</b> ").append(SafeHtmlUtils.htmlEscape(source != null ? source : "(none)")).append("</div>");
+	content.append("<div><b>Requested steps:</b> ").append(steps).append("</div>");
+
+	if (stopMessage != null) {
+	    content.append("<div style='color:#c33; margin-top:8px;'><b>Analyze warning:</b> ")
+	      .append(SafeHtmlUtils.htmlEscape(stopMessage))
+	      .append("</div>");
+	}
+
+	content.append("<div style='margin-top:10px; max-height:70vh; overflow:auto;'>");
+	content.append("<table border='1' cellspacing='0' cellpadding='4'>");
+	content.append("<thead><tr><th>t</th>");
+	for (int i = 0; i < keys.size(); i++)
+	    content.append("<th>").append(SafeHtmlUtils.htmlEscape(keys.get(i))).append("</th>");
+	content.append("</tr></thead><tbody>");
+
+	boolean warnedNoTimeAdvance = false;
+	int completedSteps = 0;
+	for (int step = 0; step < steps; step++) {
+	    double prevT = t;
+	    runCircuit(step == 0);
+	    ComputedValues.commitConvergedValues();
+
+	    content.append("<tr>");
+	    appendHeadlessCell(content, String.valueOf(t));
+	    for (int i = 0; i < keys.size(); i++) {
+		Double value = ComputedValues.getConvergedValue(keys.get(i));
+		appendHeadlessCell(content, value != null ? String.valueOf(value) : "");
+	    }
+	    content.append("</tr>");
+
+	    completedSteps++;
+
+	    if (!warnedNoTimeAdvance && t == prevT)
+		warnedNoTimeAdvance = true;
+	    if (stopMessage != null)
+		break;
+	}
+
+	content.append("</tbody></table></div>");
+	content.append("<div style='margin-top:8px;'><b>Completed steps:</b> ").append(completedSteps).append("</div>");
+	if (warnedNoTimeAdvance) {
+	    content.append("<div style='color:#c77; margin-top:6px;'>Warning: simulation time did not advance in at least one step.</div>");
+	}
+	if (stopMessage != null) {
+	    content.append("<div style='color:#c33; margin-top:6px;'><b>Simulation stopped:</b> ")
+	      .append(SafeHtmlUtils.htmlEscape(stopMessage))
+	      .append("</div>");
+	}
+
+	RootPanel.get().getElement().setInnerHTML(buildHeadlessTabbedHtml("Output Table", content.toString()));
+    }
+
+    private void appendHeadlessCell(StringBuilder sb, String value) {
+	sb.append("<td>")
+	  .append(SafeHtmlUtils.htmlEscape(value != null ? value : ""))
+	  .append("</td>");
+    }
+
+    private void renderHeadlessStatus(String message) {
+	String content = "<div id='headless-status-message'>" + SafeHtmlUtils.htmlEscape(message) + "</div>";
+	RootPanel.get().getElement().setInnerHTML(buildHeadlessTabbedHtml("Output Table", content));
+    }
+
+    private void renderHeadlessError(String message) {
+	String content = "<div style='color:#c33;'>" + SafeHtmlUtils.htmlEscape(message) + "</div>";
+	RootPanel.get().getElement().setInnerHTML(buildHeadlessTabbedHtml("Output Table", content));
+    }
+
+    private String buildHeadlessTabbedHtml(String primaryTabTitle, String primaryContentHtml) {
+	StringBuilder sb = new StringBuilder();
+	sb.append("<div style='padding:12px;'>");
+	sb.append("<h2>Headless Output</h2>");
+	sb.append("<div style='margin:8px 0;'>");
+	sb.append("<button onclick=\"document.getElementById('headless-primary-tab').style.display='block';document.getElementById('headless-stdout-tab').style.display='none';\">")
+	  .append(SafeHtmlUtils.htmlEscape(primaryTabTitle))
+	  .append("</button>");
+	sb.append("<button style='margin-left:8px;' onclick=\"document.getElementById('headless-primary-tab').style.display='none';document.getElementById('headless-stdout-tab').style.display='block';\">Standard Output</button>");
+	sb.append("</div>");
+	sb.append("<div id='headless-primary-tab' style='display:block;'>").append(primaryContentHtml).append("</div>");
+	sb.append("<div id='headless-stdout-tab' style='display:none;'>");
+	sb.append("<div id='headless-stdout-pre' style='white-space:pre-wrap; font-family:monospace; max-height:70vh; overflow:auto; border:1px solid #ccc; padding:8px;'>")
+	  .append(getHeadlessStdoutHtml())
+	  .append("</div>");
+	sb.append("</div>");
+	sb.append("</div>");
+	return sb.toString();
+    }
+
+    static final int HEADLESS_STDOUT_MAX_LINES = 2000;
+    static boolean headlessStdoutEnabled = false;
+    static ArrayList<String> headlessStdoutLines = new ArrayList<String>();
+
+    static void clearHeadlessStdout() {
+	headlessStdoutLines.clear();
+    }
+
+    static void appendHeadlessStdout(String text) {
+	if (text == null)
+	    return;
+	headlessStdoutLines.add(text);
+	if (headlessStdoutLines.size() > HEADLESS_STDOUT_MAX_LINES)
+	    headlessStdoutLines.remove(0);
+	appendHeadlessStdoutDomLine(SafeHtmlUtils.htmlEscape(text));
+    }
+
+    static String getHeadlessStdoutHtml() {
+	if (headlessStdoutLines.isEmpty())
+	    return SafeHtmlUtils.htmlEscape("(no output yet)");
+	StringBuilder sb = new StringBuilder();
+	for (int i = 0; i < headlessStdoutLines.size(); i++) {
+	    if (i > 0)
+		sb.append("<br/>");
+	    sb.append(SafeHtmlUtils.htmlEscape(headlessStdoutLines.get(i)));
+	}
+	return sb.toString();
+    }
+
+    static native void appendHeadlessStdoutDomLine(String escapedLine) /*-{
+	var pane = $doc.getElementById('headless-stdout-pre');
+	if (!pane)
+	    return;
+	if (pane.innerHTML == '(no output yet)')
+	    pane.innerHTML = '';
+	if (pane.innerHTML.length > 0)
+	    pane.innerHTML += '<br/>';
+	pane.innerHTML += escapedLine;
+	pane.scrollTop = pane.scrollHeight;
+    }-*/;
+
+    static void updateHeadlessStatusMessage(String message) {
+	com.google.gwt.dom.client.Element el = Document.get().getElementById("headless-status-message");
+	if (el != null)
+	    el.setInnerText(message != null ? message : "");
+    }
+
+    static native void installHeadlessGlobalErrorHooks() /*-{
+	if ($wnd.__cirjsHeadlessHooksInstalled)
+	    return;
+	$wnd.__cirjsHeadlessHooksInstalled = true;
+
+	$wnd.onerror = function(message, source, lineno, colno, error) {
+	    var details = "window.onerror: " + message + " @ " + source + ":" + lineno + ":" + colno;
+	    if (error) details += " err=" + error;
+	    @com.lushprojects.circuitjs1.client.CirSim::console(Ljava/lang/String;)(details);
+	    return false;
+	};
+
+	if ($wnd.addEventListener) {
+	    $wnd.addEventListener('unhandledrejection', function(event) {
+		var reason = event && event.reason ? String(event.reason) : '(unknown reason)';
+		@com.lushprojects.circuitjs1.client.CirSim::console(Ljava/lang/String;)("unhandledrejection: " + reason);
+	    });
+	}
+    }-*/;
+
     String startCircuit = null;
     String startLabel = null;
     String startCircuitText = null;
@@ -665,6 +1013,7 @@ public CirSim() {
 	}
 	exportAsUrlItem = iconMenuItem("export", "Export As Link...", new MyCommand("file","exportasurl"));
 	fileMenuBar.addItem(exportAsUrlItem);
+	fileMenuBar.addItem(iconMenuItem("line-chart", "Open Headless Output Table...", new MyCommand("file", "openheadlesstable")));
 	exportAsTextItem = iconMenuItem("export", "Export As Text...", new MyCommand("file","exportastext"));
 	fileMenuBar.addItem(exportAsTextItem);
 	fileMenuBar.addItem(iconMenuItem("export", "Export As SFCR...", new MyCommand("file","exportassfcr")));
@@ -2926,6 +3275,8 @@ public CirSim() {
     }
     
     public static void console(String text) {
+	if (headlessStdoutEnabled)
+	    appendHeadlessStdout(text);
 	if (RuntimeMode.isGwt())
 	    GWT.log(text);
 	else
@@ -4718,6 +5069,9 @@ public CirSim() {
     		doExportAsUrl();
     		unsavedChanges = false;
     	}
+	if (item=="openheadlesstable") {
+		doOpenHeadlessOutputTable();
+	}
     	if (item=="exportaslocalfile") {
     		doExportAsLocalFile();
     		unsavedChanges = false;
@@ -5260,6 +5614,18 @@ public CirSim() {
 		dialogShowing = new ExportAsUrlDialog(dump);
 		dialogShowing.show();
     }
+
+	void doOpenHeadlessOutputTable()
+	{
+	String dump = dumpCircuit();
+	String[] start = Window.Location.getHref().split("\\?");
+	String query = "?headless=1&ctz=" + compressForUrl(dump);
+	Window.open(start[0] + query, "_blank", "");
+	}
+
+	native String compressForUrl(String dump) /*-{
+	return $wnd.LZString.compressToEncodedURIComponent(dump);
+	}-*/;
     
     void doExportAsText()
     {
@@ -5768,31 +6134,92 @@ public CirSim() {
 	}
 	
 	void loadFileFromURL(String url, final Command successCallback, final Command failureCallback) {
-	    RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, getLoadUrl(url));
+	    final String loadUrl = getLoadUrl(url);
+	    console("loadFileFromURL request: " + loadUrl);
+	    final boolean[] completed = new boolean[] { false };
+	    final Timer watchdog5s = new Timer() {
+		@Override
+		public void run() {
+		    if (!completed[0])
+			console("loadFileFromURL still waiting after 5s: " + loadUrl);
+		}
+	    };
+	    final Timer watchdog15s = new Timer() {
+		@Override
+		public void run() {
+		    if (completed[0])
+			return;
+		    completed[0] = true;
+		    console("loadFileFromURL timeout after 15s: " + loadUrl);
+		    if (failureCallback != null)
+			failureCallback.execute();
+		}
+	    };
+	    watchdog5s.schedule(5000);
+	    watchdog15s.schedule(15000);
+	    RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, loadUrl);
+	    requestBuilder.setTimeoutMillis(15000);
 	    
 	    try {
-		requestBuilder.sendRequest(null, new RequestCallback() {
+		Request activeRequest = requestBuilder.sendRequest(null, new RequestCallback() {
 		    public void onError(Request request, Throwable exception) {
-			if (failureCallback != null)
-			    failureCallback.execute();
+			try {
+			    if (completed[0])
+				return;
+			    completed[0] = true;
+			    watchdog5s.cancel();
+			    watchdog15s.cancel();
+			    String msg = "loadFileFromURL onError: " + loadUrl;
+			    if (exception != null && exception.getMessage() != null)
+				msg += " - " + exception.getMessage();
+			    console(msg);
+			    if (failureCallback != null)
+				failureCallback.execute();
+			} catch (Throwable t) {
+			    console("loadFileFromURL onError callback exception: " + t);
+			}
 		    }
 
 		    public void onResponseReceived(Request request, Response response) {
-			if (response.getStatusCode()==Response.SC_OK) {
-			    String text = response.getText();
-			    readCircuit(text, RC_KEEP_TITLE);
-			    allowSave(false);
-			    unsavedChanges = false;
-			    if (successCallback != null)
-				successCallback.execute();
-			}
-			else { 
+			try {
+			    if (completed[0])
+				return;
+			    completed[0] = true;
+			    watchdog5s.cancel();
+			    watchdog15s.cancel();
+			    if (response.getStatusCode()==Response.SC_OK) {
+				console("loadFileFromURL success: " + loadUrl + " status=" + response.getStatusCode());
+				String text = response.getText();
+				readCircuit(text, RC_KEEP_TITLE);
+				if (RuntimeMode.isGwt())
+				    allowSave(false);
+				unsavedChanges = false;
+				if (successCallback != null)
+				    successCallback.execute();
+			    }
+			    else {
+				console("loadFileFromURL HTTP failure: " + loadUrl +
+				    " status=" + response.getStatusCode() +
+				    " text=" + response.getStatusText());
+				if (failureCallback != null)
+				    failureCallback.execute();
+			    }
+			} catch (Throwable t) {
+			    console("loadFileFromURL onResponse callback exception: " + t);
 			    if (failureCallback != null)
 				failureCallback.execute();
 			}
 		    }
 		});
-	    } catch (RequestException e) {
+		console("loadFileFromURL sendRequest returned" + (activeRequest == null ? " (null request)" : ""));
+	    } catch (Throwable e) {
+		if (completed[0])
+		    return;
+		completed[0] = true;
+		watchdog5s.cancel();
+		watchdog15s.cancel();
+		console("loadFileFromURL request exception: " + loadUrl +
+		    (e.getMessage() != null ? " - " + e.getMessage() : ""));
 		if (failureCallback != null)
 		    failureCallback.execute();
 	    }
