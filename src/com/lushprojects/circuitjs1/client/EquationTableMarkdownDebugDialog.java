@@ -31,6 +31,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import com.google.gwt.user.client.Window;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 /**
  * EquationTableMarkdownDebugDialog - Debug dialog for inspecting EquationTableElm state
@@ -52,6 +57,38 @@ import java.util.Set;
  * - Copy to clipboard support
  */
 public class EquationTableMarkdownDebugDialog {
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Element")
+    private static class ElementLike {
+        @JsProperty(name = "id") native void setId(String id);
+        @JsProperty(name = "textContent") native void setTextContent(String text);
+        @JsMethod native void appendChild(ElementLike child);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Document")
+    private static class DocumentLike {
+        @JsMethod native void open();
+        @JsMethod native void write(String text);
+        @JsMethod native void close();
+        @JsMethod native boolean execCommand(String command);
+        @JsMethod native ElementLike getElementById(String id);
+        @JsMethod native ElementLike createElement(String tagName);
+        @JsProperty(name = "head") native ElementLike getHead();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Window")
+    private static class WindowLike {
+        @JsProperty(name = "document") native DocumentLike getDocument();
+        @JsMethod native void focus();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "window")
+    private static class GlobalWindowLike {
+        @JsMethod(name = "open") static native WindowLike open(String url, String target, String features);
+    }
+
+    @JsProperty(namespace = JsPackage.GLOBAL, name = "document")
+    private static native DocumentLike getDocument();
     
     private DialogBox dialog;
     private TextArea textArea;
@@ -178,22 +215,21 @@ public class EquationTableMarkdownDebugDialog {
     /**
      * Open HTML content in a truly new browser window (not reusing existing).
      */
-    private static native void openNewWindow(String html) /*-{
-        // Use _blank to always open a new window
-        var newWindow = $wnd.open('', '_blank', 'width=900,height=700');
-        if (newWindow) {
-            newWindow.document.open();
-            newWindow.document.write(html);
-            newWindow.document.close();
-            newWindow.focus();
-        } else {
-            alert('Please allow pop-ups for this site to view the rendered debug info.');
+    private static void openNewWindow(String html) {
+        WindowLike newWindow = GlobalWindowLike.open("", "_blank", "width=900,height=700");
+        if (newWindow == null) {
+            Window.alert("Please allow pop-ups for this site to view the rendered debug info.");
+            return;
         }
-    }-*/;
+        newWindow.getDocument().open();
+        newWindow.getDocument().write(html);
+        newWindow.getDocument().close();
+        newWindow.focus();
+    }
     
-    private static native boolean copyToClipboard() /*-{
-        return $doc.execCommand('copy');
-    }-*/;
+    private static boolean copyToClipboard() {
+        return getDocument().execCommand("copy");
+    }
     
     // =========================================================================
     // CONTENT GENERATION
@@ -1076,20 +1112,22 @@ public class EquationTableMarkdownDebugDialog {
      * the {@code resizable-panel} CSS class user-resizable.  Idempotent — uses
      * a unique id to avoid injecting the style block more than once.
      */
-    private native void addResizableStyles() /*-{
-        if (!$doc.getElementById('resizable-panel-style')) {
-            var style = $doc.createElement('style');
-            style.id = 'resizable-panel-style';
-            style.textContent = 
-                '.resizable-panel {' +
-                '  resize: both !important;' +
-                '  overflow: auto !important;' +
-                '  min-width: 300px !important;' +
-                '  min-height: 200px !important;' +
-                '}';
-            $doc.head.appendChild(style);
-        }
-    }-*/;
+    private void addResizableStyles() {
+        DocumentLike document = getDocument();
+        if (document.getElementById("resizable-panel-style") != null)
+            return;
+        ElementLike style = document.createElement("style");
+        style.setId("resizable-panel-style");
+        style.setTextContent(
+            ".resizable-panel {" +
+            "  resize: both !important;" +
+            "  overflow: auto !important;" +
+            "  min-width: 300px !important;" +
+            "  min-height: 200px !important;" +
+            "}"
+        );
+        document.getHead().appendChild(style);
+    }
     
     /**
      * Add the {@code resizable-panel} CSS class to the given DOM element,
@@ -1097,7 +1135,7 @@ public class EquationTableMarkdownDebugDialog {
      *
      * @param element DOM element to make resizable (typically the {@code <textarea>}).
      */
-    private native void makeResizable(com.google.gwt.dom.client.Element element) /*-{
-        element.classList.add('resizable-panel');
-    }-*/;
+    private void makeResizable(com.google.gwt.dom.client.Element element) {
+        element.addClassName("resizable-panel");
+    }
 }

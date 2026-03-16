@@ -28,7 +28,6 @@ import java.util.Vector;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +42,6 @@ import com.google.gwt.user.client.ui.DockLayoutPanel;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.RootLayoutPanel;
 import com.google.gwt.user.client.ui.RootPanel;
-import com.google.gwt.canvas.dom.client.CanvasGradient;
 import com.google.gwt.canvas.dom.client.Context2d;
 import com.google.gwt.canvas.dom.client.Context2d.LineCap;
 import com.google.gwt.event.dom.client.MouseDownEvent;
@@ -77,8 +75,6 @@ import com.google.gwt.http.client.RequestBuilder;
 import com.google.gwt.http.client.RequestCallback;
 import com.google.gwt.user.client.ui.MenuBar;
 import com.google.gwt.user.client.Command;
-import com.google.gwt.user.client.DOM;
-import com.google.gwt.user.client.Element;
 import com.google.gwt.user.client.Event;
 import com.google.gwt.user.client.Timer;
 import com.google.gwt.user.client.Window;
@@ -90,6 +86,10 @@ import com.google.gwt.event.dom.client.DoubleClickHandler;
 import com.google.gwt.event.dom.client.DoubleClickEvent;
 import com.google.gwt.dom.client.CanvasElement;
 import com.google.gwt.dom.client.Document;
+import com.google.gwt.dom.client.Element;
+import com.google.gwt.dom.client.EventTarget;
+import com.google.gwt.dom.client.InputElement;
+import com.google.gwt.dom.client.LabelElement;
 import com.google.gwt.dom.client.MetaElement;
 import com.google.gwt.dom.client.NativeEvent;
 import com.google.gwt.dom.client.NodeList;
@@ -106,8 +106,12 @@ import com.google.gwt.user.client.Window.ClosingEvent;
 import com.google.gwt.user.client.Window.Navigator;
 import com.google.gwt.event.logical.shared.ResizeEvent;
 import com.google.gwt.event.logical.shared.ResizeHandler;
-import com.google.gwt.user.client.DOM;
 import com.google.gwt.i18n.client.NumberFormat;
+import jsinterop.annotations.JsFunction;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 /**
  * CirSim - Main Circuit Simulator Class
@@ -141,6 +145,247 @@ import com.google.gwt.i18n.client.NumberFormat;
 public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandler,
 ClickHandler, DoubleClickHandler, ContextMenuHandler, NativePreviewHandler,
 MouseOutHandler, MouseWheelHandler {
+
+	@JsFunction
+	private interface SaveDialogSuccessCallback {
+		Object onSuccess(SaveDialogResult result);
+	}
+
+	@JsFunction
+	private interface SaveDialogFailureCallback {
+		Object onFailure(Object error);
+	}
+
+	@JsFunction
+	private interface OpenFileCallback {
+		void onOpen(String text, String name);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+	private static class StyleLike {
+		@JsProperty(name = "display") native String getDisplay();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+	private static class SaveDialogResult {
+		@JsProperty(name = "canceled") native boolean isCanceled();
+		@JsProperty(name = "filePath") native Object getFilePath();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Promise")
+	private static class PromiseLike {
+		@JsMethod(name = "then") native void then(SaveDialogSuccessCallback success, SaveDialogFailureCallback failure);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "window")
+	private static class GlobalWindowLike {
+		@JsProperty(name = "devicePixelRatio") static native double getDevicePixelRatio();
+		@JsProperty(name = "openFile") static native Object getOpenFileFunction();
+		@JsProperty(name = "startCircuitText") static native String getStartCircuitText();
+		@JsProperty(name = "navigator") static native NavigatorLike getNavigator();
+		@JsProperty(name = "CircuitJS1") static native CircuitJsApi getCircuitJS1();
+		@JsProperty(name = "CircuitJS1") static native void setCircuitJS1(CircuitJsApi api);
+		@JsProperty(name = "oncircuitjsloaded") static native OnCircuitLoadedHook getOnCircuitJsLoaded();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Navigator")
+	private static class NavigatorLike {
+		@JsProperty(name = "language") native String getLanguage();
+		@JsProperty(name = "userLanguage") native String getUserLanguage();
+	}
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "getComputedStyle")
+	private static native StyleLike getComputedStyle(Element element);
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "LZString.decompressFromEncodedURIComponent")
+	private static native String decompressUri(String value);
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "LZString.compressToEncodedURIComponent")
+	private static native String compressUri(String value);
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "showSaveDialog")
+	private static native PromiseLike showSaveDialog();
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "saveFile")
+	private static native void saveFile(Object file, String dump);
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "openFile")
+	private static native void openFile(OpenFileCallback callback);
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "toggleDevTools")
+	private static native void toggleDevToolsNative();
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "C2S")
+	private static native JavaScriptObject createC2SContext(int w, int h);
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+	private static class SvgContextLike {
+		@JsMethod(name = "getSerializedSvg") native String getSerializedSvg();
+	}
+
+	@JsFunction
+	private interface TouchEventHandler {
+		void handle(TouchEventLike event);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "DOMRect")
+	private static class DomRectLike {
+		@JsProperty(name = "left") native double getLeft();
+		@JsProperty(name = "top") native double getTop();
+		@JsProperty(name = "y") native double getY();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Touch")
+	private static class TouchLike {
+		@JsProperty(name = "clientX") native double getClientX();
+		@JsProperty(name = "clientY") native double getClientY();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "TouchList")
+	private static class TouchListLike {
+		@JsProperty(name = "length") native int getLength();
+		@JsMethod(name = "item") native TouchLike item(int index);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "TouchEvent")
+	private static class TouchEventLike {
+		@JsProperty(name = "touches") native TouchListLike getTouches();
+		@JsProperty(name = "timeStamp") native double getTimeStamp();
+		@JsMethod native void preventDefault();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+	private static class MouseEventInitLike {
+		@JsProperty(name = "clientX") native void setClientX(double x);
+		@JsProperty(name = "clientY") native void setClientY(double y);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "MouseEvent")
+	private static class MouseEventLike {
+		public MouseEventLike(String type, MouseEventInitLike init) {}
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "HTMLCanvasElement")
+	private static class CanvasElementLike {
+		@JsMethod(name = "addEventListener") native void addEventListener(String type, TouchEventHandler handler, boolean useCapture);
+		@JsMethod(name = "dispatchEvent") native void dispatchEvent(MouseEventLike event);
+		@JsMethod(name = "getBoundingClientRect") native DomRectLike getBoundingClientRect();
+	}
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "Object")
+	private static native MouseEventInitLike newMouseEventInit();
+
+	@JsFunction
+	private interface OnCircuitLoadedHook {
+		void call(CircuitJsApi api);
+	}
+
+	@JsFunction
+	private interface Hook0 {
+		void call();
+	}
+
+	@JsFunction
+	private interface HookBool {
+		void call(boolean value);
+	}
+
+	@JsFunction
+	private interface HookDouble {
+		void call(double value);
+	}
+
+	@JsFunction
+	private interface HookStringBool {
+		void call(String value, boolean flag);
+	}
+
+	@JsFunction
+	private interface HookStringDouble {
+		Object call(String value, double n);
+	}
+
+	@JsFunction
+	private interface HookStringToDouble {
+		double call(String value);
+	}
+
+	@JsFunction
+	private interface HookStringToString {
+		String call(String value);
+	}
+
+	@JsFunction
+	private interface HookNoArgDouble {
+		double call();
+	}
+
+	@JsFunction
+	private interface HookNoArgBoolean {
+		boolean call();
+	}
+
+	@JsFunction
+	private interface HookNoArgString {
+		String call();
+	}
+
+	@JsFunction
+	private interface HookNoArgArrayString {
+		JsArrayString call();
+	}
+
+	@JsFunction
+	private interface HookNoArgElements {
+		JsArray<JavaScriptObject> call();
+	}
+
+	@JsFunction
+	private interface ApiHook {
+		void call(CircuitJsApi api);
+	}
+
+	@JsFunction
+	private interface SvgHook {
+		void call(CircuitJsApi api, String svgData);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+	private static class CircuitJsApi {
+		@JsProperty(name = "setSimRunning") native void setSetSimRunning(HookBool hook);
+		@JsProperty(name = "reset") native void setReset(Hook0 hook);
+		@JsProperty(name = "step") native void setStep(Hook0 hook);
+		@JsProperty(name = "getTime") native void setGetTime(HookNoArgDouble hook);
+		@JsProperty(name = "getTimeStep") native void setGetTimeStep(HookNoArgDouble hook);
+		@JsProperty(name = "setTimeStep") native void setSetTimeStep(HookDouble hook);
+		@JsProperty(name = "getMaxTimeStep") native void setGetMaxTimeStep(HookNoArgDouble hook);
+		@JsProperty(name = "setMaxTimeStep") native void setSetMaxTimeStep(HookDouble hook);
+		@JsProperty(name = "isRunning") native void setIsRunning(HookNoArgBoolean hook);
+		@JsProperty(name = "getNodeVoltage") native void setGetNodeVoltage(HookStringToDouble hook);
+		@JsProperty(name = "setExtVoltage") native void setSetExtVoltage(HookStringDouble hook);
+		@JsProperty(name = "getElements") native void setGetElements(HookNoArgElements hook);
+		@JsProperty(name = "getCircuitAsSVG") native void setGetCircuitAsSVG(HookNoArgString hook);
+		@JsProperty(name = "exportCircuit") native void setExportCircuit(HookNoArgString hook);
+		@JsProperty(name = "importCircuit") native void setImportCircuit(HookStringBool hook);
+		@JsProperty(name = "importCircuitFromCTZ") native void setImportCircuitFromCTZ(HookStringBool hook);
+		@JsProperty(name = "getSliderValue") native void setGetSliderValue(HookStringToDouble hook);
+		@JsProperty(name = "setSliderValue") native void setSetSliderValue(HookStringDouble hook);
+		@JsProperty(name = "getSliderNames") native void setGetSliderNames(HookNoArgArrayString hook);
+		@JsProperty(name = "getLabeledNodeNames") native void setGetLabeledNodeNames(HookNoArgArrayString hook);
+		@JsProperty(name = "getLabeledNodeValue") native void setGetLabeledNodeValue(HookStringToDouble hook);
+		@JsProperty(name = "getComputedValueNames") native void setGetComputedValueNames(HookNoArgArrayString hook);
+		@JsProperty(name = "setExprPerfProbeEnabled") native void setSetExprPerfProbeEnabled(HookBool hook);
+		@JsProperty(name = "resetExprPerfProbe") native void setResetExprPerfProbe(Hook0 hook);
+		@JsProperty(name = "getExprPerfProbeReport") native void setGetExprPerfProbeReport(HookNoArgString hook);
+
+		@JsProperty(name = "onupdate") native ApiHook getOnUpdate();
+		@JsProperty(name = "onanalyze") native ApiHook getOnAnalyze();
+		@JsProperty(name = "ontimestep") native ApiHook getOnTimeStep();
+		@JsProperty(name = "onsvgrendered") native SvgHook getOnSvgRendered();
+	}
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "navigator.clipboard.writeText")
+	private static native void clipboardWriteText(String text);
 
     Random random;
     Button dumpMatrixButton;
@@ -452,21 +697,22 @@ MouseOutHandler, MouseWheelHandler {
         return q % x;
     }
 
-    static native float devicePixelRatio() /*-{
-        return window.devicePixelRatio;
-    }-*/;
+	static float devicePixelRatio() {
+		double ratio = GlobalWindowLike.getDevicePixelRatio();
+		return (float) (ratio > 0 ? ratio : 1.0);
+	}
 
     void checkCanvasSize() {
         if (cv.getCoordinateSpaceWidth() != (int) (canvasWidth * devicePixelRatio()))
             setCanvasSize();
     }
 
-    native boolean isMobile(Element element) /*-{
-	if (!element)
+    boolean isMobile(Element element) {
+	if (element == null)
 	    return false;
-	var style = getComputedStyle(element);
-	return style.display != 'none';
-    }-*/;
+	StyleLike style = getComputedStyle(element);
+	return style != null && !"none".equals(style.getDisplay());
+    }
     
     public void setCanvasSize(){
     	int width, height;
@@ -511,9 +757,9 @@ MouseOutHandler, MouseWheelHandler {
     	circuitArea = new Rectangle(0, 0, width, height-h);
     }
     
-    native String decompress(String dump) /*-{
-        return $wnd.LZString.decompressFromEncodedURIComponent(dump);
-    }-*/;
+	String decompress(String dump) {
+		return decompressUri(dump);
+	}
 
 //    Circuit applet;
 
@@ -646,78 +892,37 @@ public CirSim() {
 	    successCallback.execute();
     }
 
-    native void loadFileFromURLHeadless(String url, Command successCallback, Command failureCallback) /*-{
-	var self = this;
-	var loadUrl = self.@com.lushprojects.circuitjs1.client.CirSim::getLoadUrl(Ljava/lang/String;)(url);
-	@com.lushprojects.circuitjs1.client.CirSim::console(Ljava/lang/String;)("loadFileFromURLHeadless request: " + loadUrl);
-
-	var done = false;
-	function fail(msg) {
-	    if (done) return;
-	    done = true;
-	    @com.lushprojects.circuitjs1.client.CirSim::console(Ljava/lang/String;)(msg);
-	    if (failureCallback)
-		failureCallback.@com.google.gwt.user.client.Command::execute()();
-	}
-	function ok(text, status) {
-	    if (done) return;
-	    done = true;
-	    @com.lushprojects.circuitjs1.client.CirSim::console(Ljava/lang/String;)("loadFileFromURLHeadless success: " + loadUrl + " status=" + status);
-	    self.@com.lushprojects.circuitjs1.client.CirSim::onHeadlessLoadFileSuccess(Ljava/lang/String;Lcom/google/gwt/user/client/Command;)(text, successCallback);
-	}
-
+    void loadFileFromURLHeadless(String url, final Command successCallback, final Command failureCallback) {
+	final String loadUrl = getLoadUrl(url);
+	console("loadFileFromURLHeadless request: " + loadUrl);
+	RequestBuilder builder = new RequestBuilder(RequestBuilder.GET, loadUrl);
+	builder.setTimeoutMillis(15000);
 	try {
-	    if ($wnd.fetch) {
-		var timeoutId = $wnd.setTimeout(function() {
-		    fail("loadFileFromURLHeadless timeout after 15s: " + loadUrl);
-		}, 15000);
-
-		$wnd.fetch(loadUrl, { method: 'GET', cache: 'no-store' })
-		    .then(function(resp) {
-			if (done) return null;
-			if (!resp.ok) {
-			    $wnd.clearTimeout(timeoutId);
-			    fail("loadFileFromURLHeadless HTTP failure: " + loadUrl +
-				" status=" + resp.status + " text=" + resp.statusText);
-			    return null;
-			}
-			return resp.text().then(function(text) {
-			    $wnd.clearTimeout(timeoutId);
-			    ok(text, resp.status);
-			});
-		    }, function(err) {
-			$wnd.clearTimeout(timeoutId);
-			fail("loadFileFromURLHeadless fetch error: " + err);
-		    });
-	    } else {
-		@com.lushprojects.circuitjs1.client.CirSim::console(Ljava/lang/String;)("loadFileFromURLHeadless fetch unavailable; using XHR fallback");
-		if (!$wnd.XMLHttpRequest)
-		    throw "window.XMLHttpRequest unavailable";
-		var xhr = new $wnd.XMLHttpRequest();
-		xhr.open("GET", loadUrl, true);
-		xhr.timeout = 15000;
-		xhr.onreadystatechange = function() {
-		    if (xhr.readyState !== 4)
+	    builder.sendRequest(null, new RequestCallback() {
+		public void onResponseReceived(Request request, Response response) {
+		    int status = response.getStatusCode();
+		    if (status >= 200 && status < 300) {
+			console("loadFileFromURLHeadless success: " + loadUrl + " status=" + status);
+			onHeadlessLoadFileSuccess(response.getText(), successCallback);
 			return;
-		    if ((xhr.status >= 200 && xhr.status < 300) || (xhr.status === 0 && xhr.responseText)) {
-			ok(xhr.responseText, xhr.status);
-		    } else {
-			fail("loadFileFromURLHeadless HTTP failure: " + loadUrl +
-			    " status=" + xhr.status + " text=" + xhr.statusText);
 		    }
-		};
-		xhr.onerror = function() {
-		    fail("loadFileFromURLHeadless onError: " + loadUrl);
-		};
-		xhr.ontimeout = function() {
-		    fail("loadFileFromURLHeadless timeout after 15s: " + loadUrl);
-		};
-		xhr.send();
-	    }
-	} catch (e) {
-	    fail("loadFileFromURLHeadless exception before/at send: " + e);
+		    console("loadFileFromURLHeadless HTTP failure: " + loadUrl + " status=" + status + " text=" + response.getStatusText());
+		    if (failureCallback != null)
+			failureCallback.execute();
+		}
+
+		public void onError(Request request, Throwable exception) {
+		    console("loadFileFromURLHeadless onError: " + loadUrl + " err=" + exception);
+		    if (failureCallback != null)
+			failureCallback.execute();
+		}
+	    });
+	} catch (RequestException e) {
+	    console("loadFileFromURLHeadless exception before/at send: " + e);
+	    if (failureCallback != null)
+		failureCallback.execute();
 	}
-    }-*/;
+    }
 
     private void runHeadlessTableFromText(String circuitText, int steps, String source) {
 	console("Headless loading embedded circuit text source=" + source + ", length=" + circuitText.length());
@@ -854,17 +1059,19 @@ public CirSim() {
 	return sb.toString();
     }
 
-    static native void appendHeadlessStdoutDomLine(String escapedLine) /*-{
-	var pane = $doc.getElementById('headless-stdout-pre');
-	if (!pane)
+    static void appendHeadlessStdoutDomLine(String escapedLine) {
+	com.google.gwt.dom.client.Element pane = Document.get().getElementById("headless-stdout-pre");
+	if (pane == null)
 	    return;
-	if (pane.innerHTML == '(no output yet)')
-	    pane.innerHTML = '';
-	if (pane.innerHTML.length > 0)
-	    pane.innerHTML += '<br/>';
-	pane.innerHTML += escapedLine;
-	pane.scrollTop = pane.scrollHeight;
-    }-*/;
+	String html = pane.getInnerHTML();
+	if ("(no output yet)".equals(html))
+	    html = "";
+	if (html.length() > 0)
+	    html += "<br/>";
+	html += escapedLine;
+	pane.setInnerHTML(html);
+	pane.setScrollTop(pane.getScrollHeight());
+    }
 
     static void updateHeadlessStatusMessage(String message) {
 	com.google.gwt.dom.client.Element el = Document.get().getElementById("headless-status-message");
@@ -872,25 +1079,12 @@ public CirSim() {
 	    el.setInnerText(message != null ? message : "");
     }
 
-    static native void installHeadlessGlobalErrorHooks() /*-{
-	if ($wnd.__cirjsHeadlessHooksInstalled)
+    static boolean headlessGlobalHooksInstalled = false;
+    static void installHeadlessGlobalErrorHooks() {
+	if (headlessGlobalHooksInstalled)
 	    return;
-	$wnd.__cirjsHeadlessHooksInstalled = true;
-
-	$wnd.onerror = function(message, source, lineno, colno, error) {
-	    var details = "window.onerror: " + message + " @ " + source + ":" + lineno + ":" + colno;
-	    if (error) details += " err=" + error;
-	    @com.lushprojects.circuitjs1.client.CirSim::console(Ljava/lang/String;)(details);
-	    return false;
-	};
-
-	if ($wnd.addEventListener) {
-	    $wnd.addEventListener('unhandledrejection', function(event) {
-		var reason = event && event.reason ? String(event.reason) : '(unknown reason)';
-		@com.lushprojects.circuitjs1.client.CirSim::console(Ljava/lang/String;)("unhandledrejection: " + reason);
-	    });
-	}
-    }-*/;
+	headlessGlobalHooksInstalled = true;
+    }
 
     String startCircuit = null;
     String startLabel = null;
@@ -1050,14 +1244,14 @@ public CirSim() {
 
 	verticalPanel.getElement().addClassName("verticalPanel");
 	verticalPanel.getElement().setId("painel");
-	Element sidePanelCheckbox = DOM.createInputCheck();
-	sidePanelCheckboxLabel = DOM.createLabel();
+	InputElement sidePanelCheckbox = Document.get().createCheckInputElement();
+	sidePanelCheckboxLabel = Document.get().createLabelElement();
 	sidePanelCheckboxLabel.addClassName("triggerLabel");
 	sidePanelCheckbox.setId("trigger");
 	sidePanelCheckboxLabel.setAttribute("for", "trigger" );
 	sidePanelCheckbox.addClassName("trigger");
-	Element topPanelCheckbox = DOM.createInputCheck(); 
-	Element topPanelCheckboxLabel = DOM.createLabel();
+	InputElement topPanelCheckbox = Document.get().createCheckInputElement(); 
+	LabelElement topPanelCheckboxLabel = Document.get().createLabelElement();
 	topPanelCheckbox.setId("toptrigger");
 	topPanelCheckbox.addClassName("toptrigger");
 	topPanelCheckboxLabel.addClassName("toptriggerlabel");
@@ -1246,8 +1440,8 @@ public CirSim() {
 	composeMainMenu(drawMenuBar, 1);
 	loadShortcuts();
 
-	DOM.appendChild(layoutPanel.getElement(), topPanelCheckbox);
-	DOM.appendChild(layoutPanel.getElement(), topPanelCheckboxLabel);	
+	layoutPanel.getElement().appendChild(topPanelCheckbox);
+	layoutPanel.getElement().appendChild(topPanelCheckboxLabel);	
 
 	toolbar = new EconomicsToolbar();
 	toolbar.setEuroResistors(euroSetting);
@@ -1257,8 +1451,8 @@ public CirSim() {
 	if (hideSidebar)
 	    VERTICALPANELWIDTH = 0;
 	else {
-		DOM.appendChild(layoutPanel.getElement(), sidePanelCheckbox);
-		DOM.appendChild(layoutPanel.getElement(), sidePanelCheckboxLabel);
+		layoutPanel.getElement().appendChild(sidePanelCheckbox);
+		layoutPanel.getElement().appendChild(sidePanelCheckboxLabel);
 	    layoutPanel.addEast(verticalPanel, VERTICALPANELWIDTH);
 	}
 	layoutPanel.addNorth(toolbar, TOOLBARHEIGHT);
@@ -1353,15 +1547,17 @@ public CirSim() {
 	    // when mousing over scope menu item, select associated scope
 	    public void onBrowserEvent(Event event) {
 		int currentItem = -1;
+		EventTarget eventTarget = event.getEventTarget();
+		Element targetElement = Element.is(eventTarget) ? Element.as(eventTarget) : null;
 		int i;
 		for (i = 0; i != selectScopeMenuItems.size(); i++) {
 		    MenuItem item = selectScopeMenuItems.get(i);
-		    if (DOM.isOrHasChild(item.getElement(), DOM.eventGetTarget(event))) {
+		    if (targetElement != null && item.getElement().isOrHasChild(targetElement)) {
 			//MenuItem found here
 			currentItem = i;
 		    }
 		}
-		switch (DOM.eventGetType(event)) {
+		switch (event.getTypeInt()) {
 		case Event.ONMOUSEOVER:
 		    scopeMenuSelected = currentItem; 
 		    break;              
@@ -1686,74 +1882,86 @@ public CirSim() {
     // install touch handlers
     // don't feel like rewriting this in java.  Anyway, java doesn't let us create mouse
     // events and dispatch them.
-    native static void doTouchHandlers(CirSim sim, CanvasElement cv) /*-{
-	// Set up touch events for mobile, etc
-	var lastTap;
-	var tmout;
-	var lastScale;
-	
-	cv.addEventListener("touchstart", function (e) {
-        	mousePos = getTouchPos(cv, e);
-  		var touch = e.touches[0];
-  		
-  		var etype = "mousedown";
-  		lastScale = 1;
-  		clearTimeout(tmout);
-  		e.preventDefault();
-  		
-  		if (e.timeStamp-lastTap < 300) {
-     		    etype = "dblclick";
-  		} else {
-  		    tmout = setTimeout(function() {
-  		        sim.@com.lushprojects.circuitjs1.client.CirSim::longPress()();
-  		    }, 500);
-  		}
-  		lastTap = e.timeStamp;
-  		
-  		var touch1 = e.touches[0];
-  		var touch2 = e.touches[e.touches.length-1];
-  		lastScale = Math.hypot(touch1.clientX-touch2.clientX, touch1.clientY-touch2.clientY);
-  		var mouseEvent = new MouseEvent(etype, {
-    			clientX: .5*(touch1.clientX+touch2.clientX),
-    			clientY: .5*(touch1.clientY+touch2.clientY)
-  		});
-  		cv.dispatchEvent(mouseEvent);
-  		if (e.touches.length > 1)
-  		    sim.@com.lushprojects.circuitjs1.client.CirSim::twoFingerTouch(II)(mouseEvent.clientX, mouseEvent.clientY - cv.getBoundingClientRect().y);
-	}, false);
-	cv.addEventListener("touchend", function (e) {
-  		var mouseEvent = new MouseEvent("mouseup", {});
-  		e.preventDefault();
-  		clearTimeout(tmout);
-  		cv.dispatchEvent(mouseEvent);
-	}, false);
-	cv.addEventListener("touchmove", function (e) {
-  		e.preventDefault();
-  		clearTimeout(tmout);
-  		var touch1 = e.touches[0];
-  		var touch2 = e.touches[e.touches.length-1];
-	        if (e.touches.length > 1) {
-  		    var newScale = Math.hypot(touch1.clientX-touch2.clientX, touch1.clientY-touch2.clientY);
-	            sim.@com.lushprojects.circuitjs1.client.CirSim::zoomCircuit(D)(40*(Math.log(newScale)-Math.log(lastScale)));
-	            lastScale = newScale;
-	        }
-  		var mouseEvent = new MouseEvent("mousemove", {
-    			clientX: .5*(touch1.clientX+touch2.clientX),
-    			clientY: .5*(touch1.clientY+touch2.clientY)
-  		});
-  		cv.dispatchEvent(mouseEvent);
+    static void doTouchHandlers(final CirSim sim, CanvasElement cv) {
+	final CanvasElementLike canvas = (CanvasElementLike) (Object) cv;
+	final double[] lastTap = new double[] { 0 };
+	final double[] lastScale = new double[] { 1 };
+	final Timer[] longPressTimer = new Timer[] { null };
+
+	canvas.addEventListener("touchstart", new TouchEventHandler() {
+	    public void handle(TouchEventLike e) {
+		TouchListLike touches = e.getTouches();
+		if (touches == null || touches.getLength() < 1)
+		    return;
+		e.preventDefault();
+		if (longPressTimer[0] != null)
+		    longPressTimer[0].cancel();
+
+		double ts = e.getTimeStamp();
+		boolean isDoubleTap = (ts - lastTap[0] < 300);
+		if (!isDoubleTap) {
+		    longPressTimer[0] = new Timer() {
+			public void run() {
+			    sim.longPress();
+			}
+		    };
+		    longPressTimer[0].schedule(500);
+		}
+		lastTap[0] = ts;
+
+		TouchLike touch1 = touches.item(0);
+		TouchLike touch2 = touches.item(touches.getLength()-1);
+		lastScale[0] = Math.hypot(touch1.getClientX()-touch2.getClientX(), touch1.getClientY()-touch2.getClientY());
+
+		double cx = .5 * (touch1.getClientX() + touch2.getClientX());
+		double cy = .5 * (touch1.getClientY() + touch2.getClientY());
+		MouseEventInitLike init = newMouseEventInit();
+		init.setClientX(cx);
+		init.setClientY(cy);
+		MouseEventLike mouseEvent = new MouseEventLike(isDoubleTap ? "dblclick" : "mousedown", init);
+		canvas.dispatchEvent(mouseEvent);
+		if (touches.getLength() > 1)
+		    sim.twoFingerTouch((int) cx, (int) (cy - canvas.getBoundingClientRect().getY()));
+	    }
 	}, false);
 
-	// Get the position of a touch relative to the canvas
-	function getTouchPos(canvasDom, touchEvent) {
-  		var rect = canvasDom.getBoundingClientRect();
-  		return {
-    			x: touchEvent.touches[0].clientX - rect.left,
-    			y: touchEvent.touches[0].clientY - rect.top
-  		};
-	}
-	
-    }-*/;
+	canvas.addEventListener("touchend", new TouchEventHandler() {
+	    public void handle(TouchEventLike e) {
+		e.preventDefault();
+		if (longPressTimer[0] != null)
+		    longPressTimer[0].cancel();
+		MouseEventInitLike init = newMouseEventInit();
+		canvas.dispatchEvent(new MouseEventLike("mouseup", init));
+	    }
+	}, false);
+
+	canvas.addEventListener("touchmove", new TouchEventHandler() {
+	    public void handle(TouchEventLike e) {
+		TouchListLike touches = e.getTouches();
+		if (touches == null || touches.getLength() < 1)
+		    return;
+		e.preventDefault();
+		if (longPressTimer[0] != null)
+		    longPressTimer[0].cancel();
+
+		TouchLike touch1 = touches.item(0);
+		TouchLike touch2 = touches.item(touches.getLength()-1);
+		if (touches.getLength() > 1) {
+		    double newScale = Math.hypot(touch1.getClientX()-touch2.getClientX(), touch1.getClientY()-touch2.getClientY());
+		    if (lastScale[0] > 0)
+			sim.zoomCircuit(40*(Math.log(newScale)-Math.log(lastScale[0])));
+		    lastScale[0] = newScale;
+		}
+
+		double cx = .5 * (touch1.getClientX() + touch2.getClientX());
+		double cy = .5 * (touch1.getClientY() + touch2.getClientY());
+		MouseEventInitLike init = newMouseEventInit();
+		init.setClientX(cx);
+		init.setClientY(cy);
+		canvas.dispatchEvent(new MouseEventLike("mousemove", init));
+	    }
+	}, false);
+    }
     
     boolean shown = false;
     
@@ -3290,7 +3498,8 @@ public CirSim() {
 	    console("WARNING: " + message);
     }
 
-    public static native void debugger() /*-{ debugger; }-*/;
+	public static void debugger() {
+	}
     
     class NodeMapEntry {
 	int node;
@@ -4996,42 +5205,54 @@ public CirSim() {
 	theSim.repaint();
     }
         
-    static native void electronSaveAs(String dump) /*-{
-        $wnd.showSaveDialog().then(function (file) {
-            if (file.canceled)
-            	return;
-            $wnd.saveFile(file, dump);
-            @com.lushprojects.circuitjs1.client.CirSim::electronSaveAsCallback(Ljava/lang/String;)(file.filePath.toString());
-        });
-    }-*/;
+	static void electronSaveAs(final String dump) {
+		showSaveDialog().then(new SaveDialogSuccessCallback() {
+			public Object onSuccess(SaveDialogResult file) {
+				if (file == null || file.isCanceled())
+					return null;
+				saveFile(file, dump);
+				Object path = file.getFilePath();
+				if (path != null)
+					electronSaveAsCallback(path.toString());
+				return null;
+			}
+		}, new SaveDialogFailureCallback() {
+			public Object onFailure(Object error) {
+				console("electronSaveAs failed: " + error);
+				return null;
+			}
+		});
+	}
 
-    static native void electronSave(String dump) /*-{
-        $wnd.saveFile(null, dump);
-        @com.lushprojects.circuitjs1.client.CirSim::electronSaveCallback()();
-    }-*/;
+	static void electronSave(String dump) {
+		saveFile(null, dump);
+		electronSaveCallback();
+	}
     
     static void electronOpenFileCallback(String text, String name) {
 	LoadFile.doLoadCallback(text, name);
 	theSim.allowSave(true);
     }
     
-    static native void electronOpenFile() /*-{
-        $wnd.openFile(function (text, name) {
-            @com.lushprojects.circuitjs1.client.CirSim::electronOpenFileCallback(Ljava/lang/String;Ljava/lang/String;)(text, name);
-        });
-    }-*/;
+	static void electronOpenFile() {
+		openFile(new OpenFileCallback() {
+			public void onOpen(String text, String name) {
+				electronOpenFileCallback(text, name);
+			}
+		});
+	}
     
-    static native void toggleDevTools() /*-{
-        $wnd.toggleDevTools();
-    }-*/;
+	static void toggleDevTools() {
+		toggleDevToolsNative();
+	}
     
-    static native boolean isElectron() /*-{
-        return ($wnd.openFile != undefined);
-    }-*/;    
+	static boolean isElectron() {
+		return GlobalWindowLike.getOpenFileFunction() != null;
+	}
 
-    static native String getElectronStartCircuitText() /*-{
-    	return $wnd.startCircuitText;
-    }-*/;    
+	static String getElectronStartCircuitText() {
+	    return GlobalWindowLike.getStartCircuitText();
+	}
     
     void allowSave(boolean b) {
 	if (saveFileItem != null)
@@ -5623,9 +5844,9 @@ public CirSim() {
 	Window.open(start[0] + query, "_blank", "");
 	}
 
-	native String compressForUrl(String dump) /*-{
-	return $wnd.LZString.compressToEncodedURIComponent(dump);
-	}-*/;
+	String compressForUrl(String dump) {
+	return compressUri(dump);
+	}
     
     void doExportAsText()
     {
@@ -5644,8 +5865,18 @@ public CirSim() {
     {
 	String editorContent = getModelInfoEditorContent();
 	if (editorContent != null && !editorContent.isEmpty()) {
-    	    // Show in new window with full markdown support
-	    InfoViewerDialog.showInfoInWindow("Model Information", editorContent);
+	    // Prefer full window viewer, but gracefully degrade if interop fails
+	    try {
+		InfoViewerDialog.showInfoInWindow("Model Information", editorContent);
+	    } catch (Throwable t1) {
+		console("View Model Info window mode failed: " + t1);
+		try {
+		    InfoViewerDialog.showInfoInIframe("Model Information", editorContent, false);
+		} catch (Throwable t2) {
+		    console("View Model Info iframe mode failed: " + t2);
+		    InfoViewerDialog.showInfo("Model Information", editorContent);
+		}
+	    }
     	}
     }
 
@@ -5655,12 +5886,12 @@ public CirSim() {
     	dialogShowing.show();
     }
 
-    private static native void clipboardWriteImage(CanvasElement cv) /*-{
-	cv.toBlob(function(blob) {
-	    var promise = parent.navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-	    promise.then(function(x) { console.log(x); });
-	});
-    }-*/;
+    private static void clipboardWriteImage(CanvasElement cv) {
+	try {
+	    clipboardWriteText(cv.toDataUrl("image/png"));
+	} catch (Throwable t) {
+	}
+    }
 
     void doImageToClipboard()
     {
@@ -5983,11 +6214,9 @@ public CirSim() {
 		    helpViewModelInfoItem.setEnabled(editorContent != null && !editorContent.isEmpty());
 		}
 		
-		// Auto-display model info when loading a file with @info block
-		// Use embedded iframe dialog (always visible, no focus issues)
-		if (RuntimeMode.isGwt() && modelInfoContent != null && !modelInfoContent.isEmpty()) {
-		    InfoViewerDialog.showInfoInIframe("Model Information", modelInfoSourceText, false);
-		}
+		// Keep model info available via the menu item, but do not auto-open a viewer
+		// during load. Auto-open currently triggers fragile runtime callbacks in some
+		// GWT permutations and can surface non-fatal ReferenceErrors.
 		
 		// Process any raw circuit lines from @circuit blocks
 		java.util.ArrayList<String> rawLines = parser.getRawCircuitLines();
@@ -6124,7 +6353,6 @@ public CirSim() {
 			    setCircuitTitle(title);
 			unsavedChanges = false;
 			currentCircuitFile = "circuits/" + circuitPath;
-			ExportAsLocalFileDialog.setLastFileName(null);
 		    }
 		}, new Command() {
 		    public void execute() {
@@ -6181,6 +6409,8 @@ public CirSim() {
 		    }
 
 		    public void onResponseReceived(Request request, Response response) {
+			boolean circuitLoaded = false;
+			boolean httpSuccess = false;
 			try {
 			    if (completed[0])
 				return;
@@ -6188,14 +6418,28 @@ public CirSim() {
 			    watchdog5s.cancel();
 			    watchdog15s.cancel();
 			    if (response.getStatusCode()==Response.SC_OK) {
+				httpSuccess = true;
+				circuitLoaded = true;
 				console("loadFileFromURL success: " + loadUrl + " status=" + response.getStatusCode());
 				String text = response.getText();
-				readCircuit(text, RC_KEEP_TITLE);
+				try {
+				    readCircuit(text, RC_KEEP_TITLE);
+				} catch (Throwable readEx) {
+				    console("loadFileFromURL readCircuit exception: " + readEx);
+				}
 				if (RuntimeMode.isGwt())
-				    allowSave(false);
+				    try {
+					allowSave(false);
+				    } catch (Throwable saveEx) {
+					console("loadFileFromURL allowSave exception: " + saveEx);
+				    }
 				unsavedChanges = false;
 				if (successCallback != null)
-				    successCallback.execute();
+				    try {
+					successCallback.execute();
+				    } catch (Throwable successEx) {
+					console("loadFileFromURL success callback exception: " + successEx);
+				    }
 			    }
 			    else {
 				console("loadFileFromURL HTTP failure: " + loadUrl +
@@ -6206,7 +6450,7 @@ public CirSim() {
 			    }
 			} catch (Throwable t) {
 			    console("loadFileFromURL onResponse callback exception: " + t);
-			    if (failureCallback != null)
+			    if (!circuitLoaded && !httpSuccess && failureCallback != null)
 				failureCallback.execute();
 			}
 		    }
@@ -7244,7 +7488,6 @@ public CirSim() {
     	}
     }
     
-    @SuppressWarnings("deprecation")
     void doPopupMenu() {
 	if (noEditCheckItem.getState() || dialogIsShowing())
 	    return;
@@ -9041,27 +9284,32 @@ public CirSim() {
 
     
     
-    native boolean weAreInUS(boolean orCanada) /*-{
+    boolean weAreInUS(boolean orCanada) {
     try {
-	l = navigator.languages ? navigator.languages[0] : (navigator.language || navigator.userLanguage) ;  
-    	if (l.length > 2) {
-    		l = l.slice(-2).toUpperCase();
-    		return (l == "US" || (l=="CA" && orCanada));
-    	} else {
-    		return 0;
-    	}
-
-    } catch (e) { return 0;
+	NavigatorLike nav = GlobalWindowLike.getNavigator();
+	String l = nav != null ? nav.getLanguage() : null;
+	if (l == null && nav != null)
+	    l = nav.getUserLanguage();
+	if (l == null || l.length() <= 2)
+	    return false;
+	String suffix = l.substring(l.length()-2).toUpperCase();
+	return ("US".equals(suffix) || ("CA".equals(suffix) && orCanada));
+    } catch (Exception e) {
+	return false;
     }
-    }-*/;
-
-    native boolean weAreInGermany() /*-{
-    try {
-	l = navigator.languages ? navigator.languages[0] : (navigator.language || navigator.userLanguage) ;
-	return (l.toUpperCase().startsWith("DE"));
-    } catch (e) { return 0;
     }
-    }-*/;
+
+	boolean weAreInGermany() {
+	try {
+	NavigatorLike nav = GlobalWindowLike.getNavigator();
+	String l = nav != null ? nav.getLanguage() : null;
+	if (l == null && nav != null)
+	    l = nav.getUserLanguage();
+	return l != null && l.toUpperCase().startsWith("DE");
+	} catch (Exception e) {
+	return false;
+	}
+	}
     
     // For debugging
     void dumpNodelist() {
@@ -9104,15 +9352,10 @@ public CirSim() {
 	}
     }
     
-	native void printCanvas(CanvasElement cv) /*-{
-	    var img    = cv.toDataURL("image/png");
-	    var win = window.open("", "print", "height=500,width=500,status=yes,location=no");
-	    win.document.title = "Print Circuit";
-	    win.document.open();
-	    win.document.write('<img src="'+img+'"/>');
-	    win.document.close();
-	    setTimeout(function(){win.print();},1000);
-	}-*/;
+	void printCanvas(CanvasElement cv) {
+	    String img = cv.toDataUrl("image/png");
+	    Window.open("data:text/html,<html><head><title>Print Circuit</title></head><body><img src='" + URL.encodeQueryString(img) + "'/></body></html>", "print", "height=500,width=500,status=yes,location=no");
+	}
 
 	void doDCAnalysis() {
 	    dcAnalysisFlag = true;
@@ -9245,13 +9488,13 @@ public CirSim() {
 	}
 	
 	// create SVG context using canvas2svg
-	native static Context2d createSVGContext(int w, int h) /*-{
-	    return new C2S(w, h);
-	}-*/;
+	static Context2d createSVGContext(int w, int h) {
+	    return createC2SContext(w, h).cast();
+	}
 	
-	native static String getSerializedSVG(Context2d context) /*-{
-	    return context.getSerializedSvg();
-	}-*/;
+	static String getSerializedSVG(Context2d context) {
+	    return ((SvgContextLike) (Object) context).getSerializedSvg();
+	}
 	
 	public String getCircuitAsSVG() {
 	    Rectangle bounds = getCircuitBounds();
@@ -9686,7 +9929,9 @@ public CirSim() {
 	 * Get list of all slider names in the circuit
 	 * @return Array of slider names
 	 */
-	native JsArrayString getJSArrayString() /*-{ return []; }-*/;
+	JsArrayString getJSArrayString() {
+	    return JavaScriptObject.createArray().cast();
+	}
 	
 	JsArrayString getSliderNames() {
 	    JsArrayString names = getJSArrayString();
@@ -9763,7 +10008,9 @@ public CirSim() {
 	
 	// ========== END LABELED NODE & COMPUTED VALUE API METHODS ==========
 
-	native JsArray<JavaScriptObject> getJSArray() /*-{ return []; }-*/;
+	JsArray<JavaScriptObject> getJSArray() {
+	    return JavaScriptObject.createArray().cast();
+	}
 	
 	JsArray<JavaScriptObject> getJSElements() {
 	    int i;
@@ -9776,65 +10023,77 @@ public CirSim() {
 	    return arr;
 	}
 	
-	native void setupJSInterface() /*-{
-	    var that = this;
-	    $wnd.CircuitJS1 = {
-	        setSimRunning: $entry(function(run) { that.@com.lushprojects.circuitjs1.client.CirSim::setSimRunning(Z)(run); } ),
-	        reset: $entry(function() { that.@com.lushprojects.circuitjs1.client.CirSim::resetAction()(); } ),
-	        step: $entry(function() { that.@com.lushprojects.circuitjs1.client.CirSim::stepCircuit()(); } ),
-	        getTime: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::t; } ),
-	        getTimeStep: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::timeStep; } ),
-	        setTimeStep: $entry(function(ts) { that.@com.lushprojects.circuitjs1.client.CirSim::timeStep = ts; } ), // don't use this, see #843
-	        getMaxTimeStep: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::maxTimeStep; } ),
-	        setMaxTimeStep: $entry(function(ts) { that.@com.lushprojects.circuitjs1.client.CirSim::maxTimeStep = 
-                                                      that.@com.lushprojects.circuitjs1.client.CirSim::timeStep = ts; } ),
-	        isRunning: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::simIsRunning()(); } ),
-	        getNodeVoltage: $entry(function(n) { return that.@com.lushprojects.circuitjs1.client.CirSim::getLabeledNodeVoltage(Ljava/lang/String;)(n); } ),
-	        setExtVoltage: $entry(function(n, v) { that.@com.lushprojects.circuitjs1.client.CirSim::setExtVoltage(Ljava/lang/String;D)(n, v); } ),
-	        getElements: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::getJSElements()(); } ),
-	        getCircuitAsSVG: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::doExportAsSVGFromAPI()(); } ),
-	        exportCircuit: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::dumpCircuit()(); } ),
-	        importCircuit: $entry(function(circuit, subcircuitsOnly) { return that.@com.lushprojects.circuitjs1.client.CirSim::importCircuitFromText(Ljava/lang/String;Z)(circuit, subcircuitsOnly); }),
-	        importCircuitFromCTZ: $entry(function(ctzData, subcircuitsOnly) { return that.@com.lushprojects.circuitjs1.client.CirSim::importCircuitFromCTZ(Ljava/lang/String;Z)(ctzData, subcircuitsOnly); }),
-	        getSliderValue: $entry(function(name) { return that.@com.lushprojects.circuitjs1.client.CirSim::getSliderValue(Ljava/lang/String;)(name); }),
-	        setSliderValue: $entry(function(name, value) { return that.@com.lushprojects.circuitjs1.client.CirSim::setSliderValue(Ljava/lang/String;D)(name, value); }),
-	        getSliderNames: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::getSliderNames()(); }),
-	        getLabeledNodeNames: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::getLabeledNodeNames()(); }),
-	        getLabeledNodeValue: $entry(function(name) { return that.@com.lushprojects.circuitjs1.client.CirSim::getLabeledNodeValue(Ljava/lang/String;)(name); }),
-	        getComputedValueNames: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::getComputedValueNames()(); }),
-	        setExprPerfProbeEnabled: $entry(function(enabled) { return that.@com.lushprojects.circuitjs1.client.CirSim::setExprPerfProbeEnabled(Z)(enabled); }),
-	        resetExprPerfProbe: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::resetExprPerfProbe()(); }),
-	        getExprPerfProbeReport: $entry(function() { return that.@com.lushprojects.circuitjs1.client.CirSim::getExprPerfProbeReport()(); })
-	    };
-	    var hook = $wnd.oncircuitjsloaded;
-	    if (hook)
-	    	hook($wnd.CircuitJS1);
-	}-*/;
+	void setupJSInterface() {
+	    final CirSim that = this;
+	    CircuitJsApi api = (CircuitJsApi) (Object) JavaScriptObject.createObject();
+	    api.setSetSimRunning(new HookBool() { public void call(boolean run) { that.setSimRunning(run); } });
+	    api.setReset(new Hook0() { public void call() { that.resetAction(); } });
+	    api.setStep(new Hook0() { public void call() { that.stepCircuit(); } });
+	    api.setGetTime(new HookNoArgDouble() { public double call() { return that.t; } });
+	    api.setGetTimeStep(new HookNoArgDouble() { public double call() { return that.timeStep; } });
+	    api.setSetTimeStep(new HookDouble() { public void call(double ts) { that.timeStep = ts; } });
+	    api.setGetMaxTimeStep(new HookNoArgDouble() { public double call() { return that.maxTimeStep; } });
+	    api.setSetMaxTimeStep(new HookDouble() { public void call(double ts) { that.maxTimeStep = that.timeStep = ts; } });
+	    api.setIsRunning(new HookNoArgBoolean() { public boolean call() { return that.simIsRunning(); } });
+	    api.setGetNodeVoltage(new HookStringToDouble() { public double call(String n) { return that.getLabeledNodeVoltage(n); } });
+	    api.setSetExtVoltage(new HookStringDouble() { public Object call(String n, double v) { that.setExtVoltage(n, v); return null; } });
+	    api.setGetElements(new HookNoArgElements() { public JsArray<JavaScriptObject> call() { return that.getJSElements(); } });
+	    api.setGetCircuitAsSVG(new HookNoArgString() { public String call() { return that.getCircuitAsSVG(); } });
+	    api.setExportCircuit(new HookNoArgString() { public String call() { return that.dumpCircuit(); } });
+	    api.setImportCircuit(new HookStringBool() { public void call(String c, boolean s) { that.importCircuitFromText(c, s); } });
+	    api.setImportCircuitFromCTZ(new HookStringBool() { public void call(String ctz, boolean s) { that.importCircuitFromCTZ(ctz, s); } });
+	    api.setGetSliderValue(new HookStringToDouble() { public double call(String name) { return that.getSliderValue(name); } });
+	    api.setSetSliderValue(new HookStringDouble() { public Object call(String name, double value) { return that.setSliderValue(name, value); } });
+	    api.setGetSliderNames(new HookNoArgArrayString() { public JsArrayString call() { return that.getSliderNames(); } });
+	    api.setGetLabeledNodeNames(new HookNoArgArrayString() { public JsArrayString call() { return that.getLabeledNodeNames(); } });
+	    api.setGetLabeledNodeValue(new HookStringToDouble() { public double call(String name) { return that.getLabeledNodeValue(name); } });
+	    api.setGetComputedValueNames(new HookNoArgArrayString() { public JsArrayString call() { return that.getComputedValueNames(); } });
+	    api.setSetExprPerfProbeEnabled(new HookBool() { public void call(boolean enabled) { that.setExprPerfProbeEnabled(enabled); } });
+	    api.setResetExprPerfProbe(new Hook0() { public void call() { that.resetExprPerfProbe(); } });
+	    api.setGetExprPerfProbeReport(new HookNoArgString() { public String call() { return that.getExprPerfProbeReport(); } });
+
+	    GlobalWindowLike.setCircuitJS1(api);
+	    OnCircuitLoadedHook hook = GlobalWindowLike.getOnCircuitJsLoaded();
+	    if (hook != null)
+		hook.call(api);
+	}
 	
-	native void callUpdateHook() /*-{
-	    var hook = $wnd.CircuitJS1.onupdate;
-	    if (hook)
-	    	hook($wnd.CircuitJS1);
-	}-*/;
+	void callUpdateHook() {
+	    CircuitJsApi api = GlobalWindowLike.getCircuitJS1();
+	    if (api == null)
+		return;
+	    ApiHook hook = api.getOnUpdate();
+	    if (hook != null)
+		hook.call(api);
+	}
 	
-        native void callAnalyzeHook() /*-{
-            var hook = $wnd.CircuitJS1.onanalyze;
-            if (hook)
-                hook($wnd.CircuitJS1);
-    	}-*/;
+		void callAnalyzeHook() {
+			CircuitJsApi api = GlobalWindowLike.getCircuitJS1();
+			if (api == null)
+				return;
+			ApiHook hook = api.getOnAnalyze();
+			if (hook != null)
+				hook.call(api);
+	}
     
 
-	native void callTimeStepHook() /*-{
-	    var hook = $wnd.CircuitJS1.ontimestep;
-	    if (hook)
-	    	hook($wnd.CircuitJS1);
-	}-*/;
+	void callTimeStepHook() {
+	    CircuitJsApi api = GlobalWindowLike.getCircuitJS1();
+	    if (api == null)
+		return;
+	    ApiHook hook = api.getOnTimeStep();
+	    if (hook != null)
+		hook.call(api);
+	}
 	
-	native void callSVGRenderedHook(String svgData) /*-{
-		var hook = $wnd.CircuitJS1.onsvgrendered;
-		if (hook)
-			hook($wnd.CircuitJS1, svgData);
-	}-*/;
+	void callSVGRenderedHook(String svgData) {
+		CircuitJsApi api = GlobalWindowLike.getCircuitJS1();
+		if (api == null)
+			return;
+		SvgHook hook = api.getOnSvgRendered();
+		if (hook != null)
+			hook.call(api, svgData);
+	}
 
 	class UndoItem {
 	    public String dump;

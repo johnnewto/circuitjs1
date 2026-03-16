@@ -1,5 +1,8 @@
 package com.lushprojects.circuitjs1.client;
 
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+
 /*    
     Copyright (C) Paul Falstad and Iain Sharp
     
@@ -322,9 +325,8 @@ class TestPointElm extends CircuitElm {
     }
     
     //alert the user
-    public static native void alert(String msg) /*-{
-      $wnd.alert(msg);
-    }-*/;
+        @JsMethod(namespace = JsPackage.GLOBAL, name = "alert")
+        public static native void alert(String msg);
     
     double getScopeValue(int x){
         return selectedValue;

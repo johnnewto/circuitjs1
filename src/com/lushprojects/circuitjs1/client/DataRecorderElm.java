@@ -5,8 +5,31 @@ import java.util.Date;
 import com.google.gwt.i18n.client.DateTimeFormat;
 import com.google.gwt.user.client.ui.Anchor;
 import com.lushprojects.circuitjs1.client.util.Locale;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 public class DataRecorderElm extends CircuitElm {
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+	private static class BlobOptionsLike {
+		public BlobOptionsLike() {}
+		@JsProperty(name = "type") native void setType(String type);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Blob")
+	private static class BlobLike {
+		public BlobLike(Object parts, BlobOptionsLike options) {}
+	}
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "URL.createObjectURL")
+	private static native String createObjectURL(BlobLike blob);
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "URL.revokeObjectURL")
+	private static native void revokeObjectURL(String url);
+
+	private static String lastRecorderBlobUrl;
+
     int dataCount, dataPtr;
     int lastTimeStepCount;
     double data[];
@@ -75,19 +98,17 @@ public class DataRecorderElm extends CircuitElm {
 	    dataFull = false;
 	}
 	
-        static public final native String getBlobUrl(String data) 
-        /*-{
-                var datain=[""];
-                datain[0]=data;
-		var oldblob = $doc.recorderBlob;
-		// remove old blob if any.  We should do this when dialog is dismissed, but this is easier
-		if (oldblob)
-		    URL.revokeObjectURL(oldblob);
-                var blob=new Blob(datain, {type: 'text/plain' } );
-                var url = URL.createObjectURL(blob);
-                $doc.recorderBlob = url;
-                return url;
-        }-*/;
+	static public final String getBlobUrl(String data) {
+		if (lastRecorderBlobUrl != null)
+			revokeObjectURL(lastRecorderBlobUrl);
+		String[] parts = new String[] { data };
+		BlobOptionsLike options = new BlobOptionsLike();
+		options.setType("text/plain");
+		BlobLike blob = new BlobLike(parts, options);
+		String url = createObjectURL(blob);
+		lastRecorderBlobUrl = url;
+		return url;
+	}
 
 	public EditInfo getEditInfo(int n) {
 	    if (n == 0) {

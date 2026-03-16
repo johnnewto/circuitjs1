@@ -33,8 +33,28 @@ import com.google.gwt.http.client.Response;
 import com.google.gwt.storage.client.Storage;
 import com.google.gwt.user.client.Window;
 import com.lushprojects.circuitjs1.client.util.Locale;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 public class circuitjs1 implements EntryPoint {
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Array")
+    private static class StringArrayLike {
+        @JsProperty(name = "length") native int getLength();
+        @JsMethod(name = "at") native String at(int index);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Navigator")
+    private static class NavigatorLike {
+        @JsProperty native StringArrayLike getLanguages();
+        @JsProperty native String getLanguage();
+        @JsProperty(name = "userLanguage") native String getUserLanguage();
+    }
+
+    @JsProperty(namespace = JsPackage.GLOBAL, name = "navigator")
+    private static native NavigatorLike getNavigator();
 
     public static final String versionString = "3.1.3js";
 
@@ -47,18 +67,24 @@ public class circuitjs1 implements EntryPoint {
         loadLocale();
     }
 
-    native String language() /*-{
-        if (navigator.languages) {
-            if (navigator.languages.length > 0) {
-                return navigator.languages[0];
-            } else {
-                // In Electron, navigator.languages returns an empty array
-                return "en-US";
-            }
-        } else {
-            return (navigator.language || navigator.userLanguage);  
+    String language() {
+    NavigatorLike navigator = getNavigator();
+    if (navigator == null)
+        return "en-US";
+    StringArrayLike languages = navigator.getLanguages();
+    if (languages != null) {
+        if (languages.getLength() > 0) {
+        String first = languages.at(0);
+        return (first != null) ? first : "en-US";
         }
-    }-*/;
+        return "en-US";
+    }
+    String lang = navigator.getLanguage();
+    if (lang != null)
+        return lang;
+    String userLang = navigator.getUserLanguage();
+    return (userLang != null) ? userLang : "en-US";
+    }
 
     void loadLocale() {
         String url;

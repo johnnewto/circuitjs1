@@ -43,6 +43,8 @@ import com.google.gwt.event.dom.client.KeyDownEvent;
 import com.google.gwt.event.dom.client.KeyCodes;
 import com.google.gwt.event.dom.client.KeyPressHandler;
 import com.google.gwt.event.dom.client.KeyPressEvent;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
 
 interface Editable {
     EditInfo getEditInfo(int n);
@@ -468,9 +470,8 @@ class EditDialog extends Dialog {
 	/**
 	 * Native console.log for debugging.
 	 */
-	private native void console(String text) /*-{
-	    console.log(text);
-	}-*/;
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "console.log")
+	private static native void console(String text);
 	
 	public void closeDialog()
 	{

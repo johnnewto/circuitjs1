@@ -25,6 +25,12 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import com.google.gwt.user.client.Window;
+import jsinterop.annotations.JsFunction;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 /**
  * SFCSankeyViewer - Displays a Sankey diagram using Plotly.js or D3.js
@@ -54,6 +60,38 @@ import java.util.Map;
  * - Modify D3 node.append('rect').attr('width', d => scaleWidth(d.stockValue))
  */
 public class SFCSankeyViewer {
+
+    @JsFunction
+    private interface D3UpdateFunction {
+        void update(Object data);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Document")
+    private static class DocumentLike {
+        @JsMethod native void open();
+        @JsMethod native void write(String html);
+        @JsMethod native void close();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Window")
+    private static class WindowLike {
+        @JsProperty(name = "document") native DocumentLike getDocument();
+        @JsProperty(name = "updateD3Sankey") native D3UpdateFunction getUpdateD3Sankey();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "HTMLIFrameElement")
+    private static class IframeLike {
+        @JsProperty(name = "contentDocument") native DocumentLike getContentDocument();
+        @JsProperty(name = "contentWindow") native WindowLike getContentWindow();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "window")
+    private static class GlobalWindowLike {
+        @JsMethod(name = "open") static native WindowLike open(String url, String target, String features);
+    }
+
+    @JsMethod(namespace = JsPackage.GLOBAL, name = "JSON.parse")
+    private static native Object parseJson(String json);
     
     /** Chart rendering library */
     public enum ChartLibrary {
@@ -888,17 +926,16 @@ public class SFCSankeyViewer {
      * Uses native JavaScript to open window and write content.
      * @return true if window opened successfully, false if blocked
      */
-    private native boolean openWindowWithHTML(String html) /*-{
-        var newWindow = $wnd.open('', '_blank', 'width=1400,height=900');
-        if (newWindow) {
-            newWindow.document.write(html);
-            newWindow.document.close();
-            return true;
-        } else {
-            $wnd.alert('Please allow pop-ups for this site to view the Sankey diagram.');
+    private boolean openWindowWithHTML(String html) {
+        WindowLike newWindow = GlobalWindowLike.open("", "_blank", "width=1400,height=900");
+        if (newWindow == null) {
+            Window.alert("Please allow pop-ups for this site to view the Sankey diagram.");
             return false;
         }
-    }-*/;
+        newWindow.getDocument().write(html);
+        newWindow.getDocument().close();
+        return true;
+    }
     
     /**
      * Internal dialog for displaying the Sankey diagram.
@@ -1049,22 +1086,30 @@ public class SFCSankeyViewer {
         /**
          * Native method to write HTML content to an iframe (initial load).
          */
-        private native void loadIframeContent(com.google.gwt.dom.client.Element iframe, String html) /*-{
-            var doc = iframe.contentDocument || iframe.contentWindow.document;
+        private void loadIframeContent(com.google.gwt.dom.client.Element iframe, String html) {
+            IframeLike frame = (IframeLike) (Object) iframe;
+            DocumentLike doc = frame.getContentDocument();
+            if (doc == null && frame.getContentWindow() != null)
+                doc = frame.getContentWindow().getDocument();
+            if (doc == null)
+                return;
             doc.open();
             doc.write(html);
             doc.close();
-        }-*/;
+        }
         
         /**
          * Native method to update D3 chart data via iframe's updateD3Sankey function.
          */
-        private native void updateD3Chart(com.google.gwt.dom.client.Element iframe, String jsonData) /*-{
-            var win = iframe.contentWindow;
-            if (win && win.updateD3Sankey) {
-                var data = JSON.parse(jsonData);
-                win.updateD3Sankey(data);
-            }
-        }-*/;
+        private void updateD3Chart(com.google.gwt.dom.client.Element iframe, String jsonData) {
+            IframeLike frame = (IframeLike) (Object) iframe;
+            WindowLike win = frame.getContentWindow();
+            if (win == null)
+                return;
+            D3UpdateFunction update = win.getUpdateD3Sankey();
+            if (update == null)
+                return;
+            update.update(parseJson(jsonData));
+        }
     }
 }

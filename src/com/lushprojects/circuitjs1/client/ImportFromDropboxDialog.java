@@ -10,8 +10,20 @@ import com.google.gwt.user.client.ui.VerticalPanel;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.google.gwt.user.client.ui.HorizontalPanel;
 import com.google.gwt.user.client.Window;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 public class ImportFromDropboxDialog extends Dialog {
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "XMLHttpRequest")
+	private static class XMLHttpRequestLike {
+		public XMLHttpRequestLike() {}
+		@JsMethod native void open(String method, String url, boolean async);
+		@JsMethod native void send();
+		@JsProperty native String getResponseText();
+	}
 	
 		
 	VerticalPanel vp;
@@ -38,22 +50,15 @@ public class ImportFromDropboxDialog extends Dialog {
 	}
 	
 	
-	static public final native void doDropboxImport(String link)  /*-{
+	static public final void doDropboxImport(String link) {
 		try {
-			var xhr= new XMLHttpRequest();
-		  	xhr.addEventListener("load", function reqListener() { 
-	//			console.log(xhr.responseText);
-				var text = xhr.responseText;
-	       		@com.lushprojects.circuitjs1.client.ImportFromDropboxDialog::doLoadCallback(Ljava/lang/String;Ljava/lang/String;)(text, link);
-			});
+			XMLHttpRequestLike xhr = new XMLHttpRequestLike();
 			xhr.open("GET", link, false);
 			xhr.send();
+			doLoadCallback(xhr.getResponseText(), link);
+		} catch (Exception e) {
 		}
-		catch(err) {
-
-		}
-
- 	}-*/;
+	}
 
 	static public void doImportDropboxLink(String link, Boolean validateIsDropbox) {
 		if (validateIsDropbox && link.indexOf("https://www.dropbox.com/") != 0)

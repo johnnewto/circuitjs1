@@ -6,6 +6,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import com.google.gwt.user.client.Window;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 /**
  * External popup viewer for sfcr-style DAG blocks visualization.
@@ -17,6 +22,37 @@ import java.util.LinkedHashSet;
 class SFCRDagBlocksViewer {
     private static final String WINDOW_KEY = "sfcrDagBlocksWindow";
     private static final String POPUP_FEATURES = "width=1400,height=900";
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Document")
+    private static class DocumentLike {
+        @JsMethod native void open();
+        @JsMethod native void write(String text);
+        @JsMethod native void close();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Window")
+    private static class WindowLike {
+        @JsProperty(name = "document") native DocumentLike getDocument();
+        @JsProperty(name = "closed") native boolean isClosed();
+        @JsMethod native void focus();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Array")
+    private static class WindowArrayLike {
+        public WindowArrayLike() {}
+        @JsProperty(name = "length") native int getLength();
+        @JsMethod(name = "push") native int push(WindowLike value);
+        @JsMethod(name = "shift") native WindowLike shift();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "window")
+    private static class GlobalWindowLike {
+        @JsMethod(name = "open") static native WindowLike open(String url, String target, String features);
+        @JsProperty(name = "plotlyWindows") static native WindowArrayLike getPlotlyWindows();
+        @JsProperty(name = "plotlyWindows") static native void setPlotlyWindows(WindowArrayLike windows);
+        @JsProperty(name = WINDOW_KEY) static native WindowLike getDagWindow();
+        @JsProperty(name = WINDOW_KEY) static native void setDagWindow(WindowLike window);
+    }
 
     private static final String[] BLOCK_COLORS = {
         "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
@@ -909,34 +945,40 @@ class SFCRDagBlocksViewer {
      * Open or reuse the named popup window and write full HTML content into it.
      * The window is also tracked in global `plotlyWindows` for existing shared cleanup paths.
      */
-    private native boolean openOrReuseWindowWithHTML(String html) /*-{
-        if (!$wnd.plotlyWindows) {
-            $wnd.plotlyWindows = [];
+    private boolean openOrReuseWindowWithHTML(String html) {
+        WindowArrayLike windows = GlobalWindowLike.getPlotlyWindows();
+        if (windows == null) {
+            windows = new WindowArrayLike();
+            GlobalWindowLike.setPlotlyWindows(windows);
         }
 
-        var windowKey = "sfcrDagBlocksWindow";
-        var viewerWindow = $wnd[windowKey];
-        if (viewerWindow && !viewerWindow.closed) {
-            viewerWindow.document.open();
-            viewerWindow.document.write(html);
-            viewerWindow.document.close();
+        WindowLike viewerWindow = GlobalWindowLike.getDagWindow();
+        if (viewerWindow != null && !viewerWindow.isClosed()) {
+            viewerWindow.getDocument().open();
+            viewerWindow.getDocument().write(html);
+            viewerWindow.getDocument().close();
             viewerWindow.focus();
             return true;
         }
 
-        viewerWindow = $wnd.open('', windowKey, "width=1400,height=900");
-        if (!viewerWindow) {
-            $wnd.alert('Please allow pop-ups for this site to view the DAG blocks plot.');
+        viewerWindow = GlobalWindowLike.open("", WINDOW_KEY, POPUP_FEATURES);
+        if (viewerWindow == null) {
+            Window.alert("Please allow pop-ups for this site to view the DAG blocks plot.");
             return false;
         }
 
-        viewerWindow.document.write(html);
-        viewerWindow.document.close();
-        $wnd[windowKey] = viewerWindow;
-        $wnd.plotlyWindows.push(viewerWindow);
-        $wnd.plotlyWindows = $wnd.plotlyWindows.filter(function(w) {
-            return w && !w.closed;
-        });
+        viewerWindow.getDocument().write(html);
+        viewerWindow.getDocument().close();
+        GlobalWindowLike.setDagWindow(viewerWindow);
+
+        int len = windows.getLength();
+        for (int i = 0; i < len; i++) {
+            WindowLike existing = windows.shift();
+            if (existing != null && !existing.isClosed()) {
+                windows.push(existing);
+            }
+        }
+        windows.push(viewerWindow);
         return true;
-    }-*/;
+    }
 }

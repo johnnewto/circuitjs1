@@ -37,8 +37,34 @@ import com.google.gwt.http.client.RequestException;
 import com.google.gwt.http.client.Response;
 import com.google.gwt.http.client.Request;
 import com.google.gwt.user.client.ui.Anchor;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 public class ExportAsUrlDialog extends Dialog {
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "LZString")
+	private static class LZStringLike {
+		@JsMethod native String compressToEncodedURIComponent(String dump);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Window")
+	private static class WindowLike {
+		@JsProperty native String getShortRelayUrl();
+		@JsProperty native LZStringLike getLZString();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Document")
+	private static class DocumentLike {
+		@JsMethod native boolean execCommand(String command);
+	}
+
+	@JsProperty(namespace = JsPackage.GLOBAL, name = "window")
+	private static native WindowLike getWindow();
+
+	@JsProperty(namespace = JsPackage.GLOBAL, name = "document")
+	private static native DocumentLike getDocument();
 	
 	VerticalPanel vp;
 	Button shortButton;
@@ -53,11 +79,15 @@ public class ExportAsUrlDialog extends Dialog {
 	}
 	
 	// Get the short relay URL from JavaScript (configured in circuitjs.html)
-	static public native String getShortRelayUrl() /*-{
-		if ($wnd.shortRelayUrl !== undefined && $wnd.shortRelayUrl !== null && $wnd.shortRelayUrl !== '')
-			return $wnd.shortRelayUrl;
+	static public String getShortRelayUrl() {
+		WindowLike window = getWindow();
+		if (window == null)
+			return null;
+		String relayUrl = window.getShortRelayUrl();
+		if (relayUrl != null && !relayUrl.isEmpty())
+			return relayUrl;
 		return null;
-	}-*/;
+	}
 	
 //	static public final native boolean bitlyIsSupported() 
 //	/*-{
@@ -100,9 +130,12 @@ public class ExportAsUrlDialog extends Dialog {
 		}
     }
 	
-	native String compress(String dump) /*-{
-	    return $wnd.LZString.compressToEncodedURIComponent(dump);
-	}-*/;
+	String compress(String dump) {
+	    WindowLike window = getWindow();
+	    if (window == null || window.getLZString() == null)
+		return dump;
+	    return window.getLZString().compressToEncodedURIComponent(dump);
+	}
 	
 	public ExportAsUrlDialog( String dump) {
 		super();
@@ -172,8 +205,9 @@ public class ExportAsUrlDialog extends Dialog {
 		this.center();
 	}
 	
-	private static native boolean copyToClipboard() /*-{
-	    return $doc.execCommand('copy');
-	}-*/;
+	private static boolean copyToClipboard() {
+	    DocumentLike document = getDocument();
+	    return document != null && document.execCommand("copy");
+	}
 
 }

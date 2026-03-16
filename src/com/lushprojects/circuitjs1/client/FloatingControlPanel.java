@@ -40,12 +40,67 @@ import com.google.gwt.user.client.Window.Location;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.HorizontalPanel;
 import com.google.gwt.user.client.ui.RootPanel;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 /**
  * Draggable floating control panel overlaying the circuit canvas.
  * Provides Run/Stop, Reset, Step, Lock, and Fullscreen controls.
  */
 public class FloatingControlPanel {
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "DOMRect")
+    private static class DomRectLike {
+        @JsProperty(name = "left") native double getLeft();
+        @JsProperty(name = "top") native double getTop();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Element")
+    private static class ElementLike {
+        @JsMethod(name = "getBoundingClientRect") native DomRectLike getBoundingClientRect();
+        @JsMethod native void removeChild(ElementLike child);
+        @JsMethod native void appendChild(ElementLike child);
+    }
+
+    @JsMethod(namespace = JsPackage.GLOBAL, name = "LZString.compressToEncodedURIComponent")
+    private static native String compressUri(String dump);
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Document")
+    private static class DocumentLike {
+        @JsMethod native ElementLike createElement(String tagName);
+        @JsProperty(name = "body") native ElementLike getBody();
+        @JsMethod native boolean execCommand(String command);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "HTMLTextAreaElement")
+    private static class TextAreaLike extends ElementLike {
+        @JsProperty(name = "value") native void setValue(String value);
+        @JsProperty(name = "style") native StyleLike getStyle();
+        @JsMethod native void focus();
+        @JsMethod native void select();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "CSSStyleDeclaration")
+    private static class StyleLike {
+        @JsProperty(name = "position") native void setPosition(String value);
+        @JsProperty(name = "top") native void setTop(String value);
+        @JsProperty(name = "left") native void setLeft(String value);
+        @JsProperty(name = "width") native void setWidth(String value);
+        @JsProperty(name = "height") native void setHeight(String value);
+        @JsProperty(name = "padding") native void setPadding(String value);
+        @JsProperty(name = "border") native void setBorder(String value);
+        @JsProperty(name = "outline") native void setOutline(String value);
+        @JsProperty(name = "boxShadow") native void setBoxShadow(String value);
+        @JsProperty(name = "background") native void setBackground(String value);
+    }
+
+    @JsProperty(namespace = JsPackage.GLOBAL, name = "document")
+    private static native DocumentLike getDocument();
+
+    @JsMethod(namespace = JsPackage.GLOBAL, name = "console.error")
+    private static native void consoleError(String message, Object error);
     
     private final CirSim sim;
     private final HorizontalPanel panel;
@@ -251,35 +306,35 @@ public class FloatingControlPanel {
     }
     
     /** Compress circuit data using LZString (same as ExportAsUrlDialog) */
-    private native String compress(String dump) /*-{
-        return $wnd.LZString.compressToEncodedURIComponent(dump);
-    }-*/;
+    private String compress(String dump) {
+        return compressUri(dump);
+    }
     
     /** Copy text to clipboard */
-    private native void copyToClipboard(String text) /*-{
-        // Use the fallback method which is more reliable
-        var textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.style.position = "fixed";  // Avoid scrolling to bottom
-        textArea.style.top = "0";
-        textArea.style.left = "0";
-        textArea.style.width = "2em";
-        textArea.style.height = "2em";
-        textArea.style.padding = "0";
-        textArea.style.border = "none";
-        textArea.style.outline = "none";
-        textArea.style.boxShadow = "none";
-        textArea.style.background = "transparent";
-        document.body.appendChild(textArea);
+    private void copyToClipboard(String text) {
+        DocumentLike document = getDocument();
+        TextAreaLike textArea = (TextAreaLike) document.createElement("textarea");
+        textArea.setValue(text);
+        textArea.getStyle().setPosition("fixed");
+        textArea.getStyle().setTop("0");
+        textArea.getStyle().setLeft("0");
+        textArea.getStyle().setWidth("2em");
+        textArea.getStyle().setHeight("2em");
+        textArea.getStyle().setPadding("0");
+        textArea.getStyle().setBorder("none");
+        textArea.getStyle().setOutline("none");
+        textArea.getStyle().setBoxShadow("none");
+        textArea.getStyle().setBackground("transparent");
+        document.getBody().appendChild(textArea);
         textArea.focus();
         textArea.select();
         try {
-            document.execCommand('copy');
-        } catch (err) {
-            console.error('Failed to copy to clipboard:', err);
+            document.execCommand("copy");
+        } catch (Throwable err) {
+            consoleError("Failed to copy to clipboard:", err);
         }
-        document.body.removeChild(textArea);
-    }-*/;
+        document.getBody().removeChild(textArea);
+    }
     
     /** Create a text button. */
     private Button createButton(String text, String style, ClickHandler handler) {
@@ -355,11 +410,11 @@ public class FloatingControlPanel {
     public Button getRunStopButton() { return runStopButton; }
     
     // Native methods to get visual position including CSS transforms
-    private native double getBoundingRectLeft(Element elem) /*-{
-        return elem.getBoundingClientRect().left;
-    }-*/;
+    private double getBoundingRectLeft(Element elem) {
+        return ((ElementLike) (Object) elem).getBoundingClientRect().getLeft();
+    }
     
-    private native double getBoundingRectTop(Element elem) /*-{
-        return elem.getBoundingClientRect().top;
-    }-*/;
+    private double getBoundingRectTop(Element elem) {
+        return ((ElementLike) (Object) elem).getBoundingClientRect().getTop();
+    }
 }

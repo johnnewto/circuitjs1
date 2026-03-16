@@ -14,6 +14,12 @@ import com.google.gwt.user.client.ui.ScrollPanel;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.lushprojects.circuitjs1.client.util.Locale;
+import com.google.gwt.user.client.Window;
+import jsinterop.annotations.JsFunction;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 /**
  * InfoViewerDialog - Displays markdown-formatted info/documentation
@@ -38,6 +44,113 @@ import com.lushprojects.circuitjs1.client.util.Locale;
  *   InfoViewerDialog.showInfoInWindow("Full Docs", markdownText);
  */
 public class InfoViewerDialog extends DialogBox {
+
+    @JsFunction
+    private interface MessageEventHandler {
+        void handle(MessageEventLike event);
+    }
+
+    @JsFunction
+    private interface TimeoutCallback {
+        void run();
+    }
+
+    @JsFunction
+    private interface ElementEventHandler {
+        void handle(EventLike event);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+    private static class JsObjectLike {
+        @JsProperty(name = "type") native String getType();
+        @JsProperty(name = "markdown") native String getMarkdown();
+        @JsProperty(name = "command") native String getCommand();
+        @JsProperty(name = "key") native String getKey();
+        @JsProperty(name = "enabled") native boolean isEnabled();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "MessageEvent")
+    private static class MessageEventLike {
+        @JsProperty(name = "data") native JsObjectLike getData();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Event")
+    private static class EventLike {
+        @JsMethod native void stopPropagation();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "CSSStyleDeclaration")
+    private static class StyleLike {
+        @JsProperty(name = "background") native void setBackground(String value);
+        @JsProperty(name = "color") native void setColor(String value);
+        @JsProperty(name = "padding") native void setPadding(String value);
+        @JsProperty(name = "margin") native void setMargin(String value);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "NodeList")
+    private static class NodeListLike {
+        @JsProperty(name = "length") native int getLength();
+        @JsMethod(name = "item") native ElementLike item(int index);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Element")
+    private static class ElementLike {
+        @JsProperty(name = "className") native String getClassName();
+        @JsProperty(name = "className") native void setClassName(String value);
+        @JsProperty(name = "innerHTML") native void setInnerHTML(String value);
+        @JsProperty(name = "title") native void setTitle(String value);
+        @JsProperty(name = "style") native StyleLike getStyle();
+        @JsProperty(name = "onmouseenter") native void setOnMouseEnter(ElementEventHandler handler);
+        @JsProperty(name = "onmouseleave") native void setOnMouseLeave(ElementEventHandler handler);
+        @JsProperty(name = "onclick") native void setOnClick(ElementEventHandler handler);
+        @JsMethod native ElementLike querySelector(String selector);
+        @JsMethod native NodeListLike querySelectorAll(String selector);
+        @JsMethod native void appendChild(ElementLike child);
+        @JsMethod native void insertBefore(ElementLike node, ElementLike child);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Document")
+    private static class DocumentLike {
+        @JsMethod native void open();
+        @JsMethod native void write(String text);
+        @JsMethod native void close();
+        @JsMethod native ElementLike getElementById(String id);
+        @JsMethod native ElementLike createElement(String tagName);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Window")
+    private static class WindowLike {
+        @JsProperty(name = "closed") native boolean isClosed();
+        @JsMethod native void postMessage(Object message, String targetOrigin);
+        @JsMethod native void focus();
+        @JsMethod native void blur();
+        @JsProperty(name = "document") native DocumentLike getDocument();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "HTMLIFrameElement")
+    private static class IframeLike extends ElementLike {
+        @JsProperty(name = "contentWindow") native WindowLike getContentWindow();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "window")
+    private static class GlobalWindowLike {
+        @JsMethod(name = "open") static native WindowLike open(String url, String target, String features);
+        @JsMethod(name = "addEventListener") static native void addEventListener(String type, MessageEventHandler handler);
+        @JsMethod(name = "setTimeout") static native void setTimeout(TimeoutCallback cb, int ms);
+        @JsProperty(name = "_modelInfoWindow") static native WindowLike getModelInfoWindow();
+        @JsProperty(name = "_modelInfoWindow") static native void setModelInfoWindow(WindowLike w);
+        @JsProperty(name = "__circuitInfoViewerBridgeInstalled") static native boolean isBridgeInstalled();
+        @JsProperty(name = "__circuitInfoViewerBridgeInstalled") static native void setBridgeInstalled(boolean v);
+    }
+
+    @JsProperty(namespace = JsPackage.GLOBAL, name = "document")
+    private static native DocumentLike getDocument();
+
+    @JsMethod(namespace = JsPackage.GLOBAL, name = "JSON.parse")
+    private static native Object parseJson(String jsonData);
+
+    @JsMethod(namespace = JsPackage.GLOBAL, name = "encodeURIComponent")
+    private static native String encodeURIComponent(String text);
     
     private static InfoViewerDialog instance = null;
     private static String currentMarkdown = null;
@@ -272,60 +385,61 @@ public class InfoViewerDialog extends DialogBox {
         postLiveDataToViewers(json);
     }
 
-    private static native boolean hasActiveViewer() /*-{
-        var popupOpen = $wnd._modelInfoWindow && !$wnd._modelInfoWindow.closed;
-        var iframe = $doc.getElementById('iframeViewerContent');
-        var iframeOpen = iframe && iframe.contentWindow;
-        return !!(popupOpen || iframeOpen);
-    }-*/;
+    private static boolean hasActiveViewer() {
+        WindowLike popup = GlobalWindowLike.getModelInfoWindow();
+        boolean popupOpen = popup != null && !popup.isClosed();
+        IframeLike iframe = (IframeLike) getDocument().getElementById("iframeViewerContent");
+        boolean iframeOpen = iframe != null && iframe.getContentWindow() != null;
+        return popupOpen || iframeOpen;
+    }
 
-    private static native void postLiveDataToViewers(String jsonData) /*-{
-        var payload;
+    private static void postLiveDataToViewers(String jsonData) {
+        Object payload;
         try {
-            payload = JSON.parse(jsonData);
-        } catch (e) {
+            payload = parseJson(jsonData);
+        } catch (Throwable e) {
             return;
         }
 
-        var popup = $wnd._modelInfoWindow;
-        if (popup && !popup.closed) {
+        WindowLike popup = GlobalWindowLike.getModelInfoWindow();
+        if (popup != null && !popup.isClosed()) {
             try {
-                popup.postMessage(payload, '*');
-            } catch (e1) {}
+                popup.postMessage(payload, "*");
+            } catch (Throwable e1) {}
         }
 
-        var iframe = $doc.getElementById('iframeViewerContent');
-        if (iframe && iframe.contentWindow) {
+        IframeLike iframe = (IframeLike) getDocument().getElementById("iframeViewerContent");
+        if (iframe != null && iframe.getContentWindow() != null) {
             try {
-                iframe.contentWindow.postMessage(payload, '*');
-            } catch (e2) {}
+                iframe.getContentWindow().postMessage(payload, "*");
+            } catch (Throwable e2) {}
         }
-    }-*/;
+    }
 
-    private static native void installViewerMessageBridge() /*-{
-        if ($wnd.__circuitInfoViewerBridgeInstalled) {
+    private static void installViewerMessageBridge() {
+        if (GlobalWindowLike.isBridgeInstalled())
             return;
-        }
-        $wnd.__circuitInfoViewerBridgeInstalled = true;
-
-        $wnd.addEventListener('message', function(event) {
-            var data = event.data;
-            if (!data || !data.type) {
-                return;
-            }
-            if (data.type === 'info-viewer-save-markdown') {
-                @com.lushprojects.circuitjs1.client.InfoViewerDialog::saveEditedMarkdown(Ljava/lang/String;)(data.markdown || '');
-                return;
-            }
-            if (data.type === 'info-viewer-sim-command') {
-                @com.lushprojects.circuitjs1.client.InfoViewerDialog::handleSimulationCommand(Ljava/lang/String;)(data.command || '');
-                return;
-            }
-            if (data.type === 'info-viewer-option-changed') {
-                @com.lushprojects.circuitjs1.client.InfoViewerDialog::handleViewerOptionChanged(Ljava/lang/String;Z)(data.key || '', !!data.enabled);
+        GlobalWindowLike.setBridgeInstalled(true);
+        GlobalWindowLike.addEventListener("message", new MessageEventHandler() {
+            public void handle(MessageEventLike event) {
+                JsObjectLike data = event == null ? null : event.getData();
+                if (data == null || data.getType() == null)
+                    return;
+                String type = data.getType();
+                if ("info-viewer-save-markdown".equals(type)) {
+                    saveEditedMarkdown(data.getMarkdown() == null ? "" : data.getMarkdown());
+                    return;
+                }
+                if ("info-viewer-sim-command".equals(type)) {
+                    handleSimulationCommand(data.getCommand() == null ? "" : data.getCommand());
+                    return;
+                }
+                if ("info-viewer-option-changed".equals(type)) {
+                    handleViewerOptionChanged(data.getKey() == null ? "" : data.getKey(), data.isEnabled());
+                }
             }
         });
-    }-*/;
+    }
     
     /**
      * Called from JavaScript to open current content in new window and close the dialog.
@@ -338,106 +452,101 @@ public class InfoViewerDialog extends DialogBox {
     /**
      * Add an "Open in Window" button to the IframeViewerDialog title bar.
      */
-    private static native void addOpenInWindowButton() /*-{
-        // Delay to ensure dialog is rendered
-        setTimeout(function() {
-            var dialog = $doc.getElementById('iframeViewerDialog');
-            if (!dialog) return;
-            
-            // Find the caption/title bar element
-            var caption = dialog.querySelector('.Caption');
-            if (!caption) {
-                caption = dialog.querySelector('td.Caption');
-            }
-            if (!caption) {
-                var cells = dialog.querySelectorAll('td');
-                for (var i = 0; i < cells.length; i++) {
-                    if (cells[i].className && cells[i].className.indexOf('Caption') >= 0) {
-                        caption = cells[i];
-                        break;
+    private static void addOpenInWindowButton() {
+        GlobalWindowLike.setTimeout(new TimeoutCallback() {
+            public void run() {
+                ElementLike dialog = getDocument().getElementById("iframeViewerDialog");
+                if (dialog == null)
+                    return;
+
+                ElementLike caption = dialog.querySelector(".Caption");
+                if (caption == null)
+                    caption = dialog.querySelector("td.Caption");
+                if (caption == null) {
+                    NodeListLike cells = dialog.querySelectorAll("td");
+                    for (int i = 0; i < cells.getLength(); i++) {
+                        ElementLike cell = cells.item(i);
+                        String className = cell.getClassName();
+                        if (className != null && className.indexOf("Caption") >= 0) {
+                            caption = cell;
+                            break;
+                        }
                     }
                 }
-            }
-            
-            if (caption) {
-                // Check if button already exists
-                if (caption.querySelector('.open-in-window-btn')) return;
-                
-                // Create "Open in Window" button
-                var openBtn = $doc.createElement('span');
-                openBtn.className = 'open-in-window-btn';
-                openBtn.innerHTML = '&#x2197;'; // Unicode arrow pointing up-right
-                openBtn.style.cssText = 'cursor: pointer; font-size: 14px; font-weight: bold; ' +
-                                       'padding: 2px 6px; margin-left: 10px; border-radius: 4px; ' +
-                                       'color: #666; transition: all 0.2s;';
-                openBtn.title = 'Open in New Window';
-                
-                // Hover effects
-                openBtn.onmouseenter = function() {
-                    this.style.background = '#4488ff';
-                    this.style.color = 'white';
-                };
-                openBtn.onmouseleave = function() {
-                    this.style.background = 'transparent';
-                    this.style.color = '#666';
-                };
-                
-                // Click handler - call Java method to open in window and close dialog
-                openBtn.onclick = function(e) {
-                    e.stopPropagation();
-                    @com.lushprojects.circuitjs1.client.InfoViewerDialog::openCurrentInWindowAndCloseDialog()();
-                };
-                
-                // Insert before close button (which should be last)
-                var closeBtn = caption.querySelector('span:last-child');
-                if (closeBtn) {
+
+                if (caption == null || caption.querySelector(".open-in-window-btn") != null)
+                    return;
+
+                final ElementLike openBtn = getDocument().createElement("span");
+                openBtn.setClassName("open-in-window-btn");
+                openBtn.setInnerHTML("&#x2197;");
+                openBtn.setTitle("Open in New Window");
+                openBtn.getStyle().setPadding("2px 6px");
+                openBtn.getStyle().setMargin("0 0 0 10px");
+                openBtn.getStyle().setColor("#666");
+
+                openBtn.setOnMouseEnter(new ElementEventHandler() {
+                    public void handle(EventLike event) {
+                        openBtn.getStyle().setBackground("#4488ff");
+                        openBtn.getStyle().setColor("white");
+                    }
+                });
+                openBtn.setOnMouseLeave(new ElementEventHandler() {
+                    public void handle(EventLike event) {
+                        openBtn.getStyle().setBackground("transparent");
+                        openBtn.getStyle().setColor("#666");
+                    }
+                });
+                openBtn.setOnClick(new ElementEventHandler() {
+                    public void handle(EventLike event) {
+                        if (event != null)
+                            event.stopPropagation();
+                        openCurrentInWindowAndCloseDialog();
+                    }
+                });
+
+                ElementLike closeBtn = caption.querySelector("span:last-child");
+                if (closeBtn != null)
                     caption.insertBefore(openBtn, closeBtn);
-                } else {
+                else
                     caption.appendChild(openBtn);
-                }
             }
         }, 100);
-    }-*/;
+    }
     
     /**
      * Create a data URL from HTML content.
      */
-    private static native String createDataUrl(String html) /*-{
-        return 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
-    }-*/;
+    private static String createDataUrl(String html) {
+        return "data:text/html;charset=utf-8," + encodeURIComponent(html);
+    }
     
     /**
      * Open a new window with HTML content.
      * Reuses the same window if already open to avoid multiple popups.
      * Uses blur/focus trick to bring window to front in Chrome.
      */
-    private static native boolean openWindowWithHTML(String html) /*-{
-        // Use a named window to reuse it if already open
-        var windowName = 'circuitjs_model_info';
-        
-        // Open or reuse window with specific name
-        var newWindow = $wnd.open('', windowName, 'width=800,height=600');
-        if (newWindow) {
-            $wnd._modelInfoWindow = newWindow;
-            newWindow.document.open();
-            newWindow.document.write(html);
-            newWindow.document.close();
-            
-            // Blur main window then focus popup - helps in Chrome
-            $wnd.blur();
-            newWindow.focus();
-            
-            // Also try delayed focus as fallback
-            setTimeout(function() {
-                newWindow.focus();
-            }, 100);
-            
-            return true;
-        } else {
-            alert('Please allow pop-ups for this site to view documentation.');
+    private static boolean openWindowWithHTML(String html) {
+        String windowName = "circuitjs_model_info";
+        WindowLike newWindow = GlobalWindowLike.open("", windowName, "width=800,height=600");
+        if (newWindow == null) {
+            Window.alert("Please allow pop-ups for this site to view documentation.");
             return false;
         }
-    }-*/;
+        GlobalWindowLike.setModelInfoWindow(newWindow);
+        newWindow.getDocument().open();
+        newWindow.getDocument().write(html);
+        newWindow.getDocument().close();
+        newWindow.focus();
+        GlobalWindowLike.setTimeout(new TimeoutCallback() {
+            public void run() {
+                WindowLike modelWindow = GlobalWindowLike.getModelInfoWindow();
+                if (modelWindow != null && !modelWindow.isClosed())
+                    modelWindow.focus();
+            }
+        }, 100);
+        return true;
+    }
     
     /**
      * Public access to generate markdown viewer HTML.

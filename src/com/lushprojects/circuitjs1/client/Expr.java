@@ -2,6 +2,11 @@ package com.lushprojects.circuitjs1.client;
 
 import java.util.Vector;
 
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
+
 class ExprState {
     //int n;
     double values[];
@@ -348,9 +353,28 @@ class Expr {
 	    " nodeRefNames=" + samples;
     }
 
-    private static native double perfNowMs() /*-{
-        return ($wnd.performance && $wnd.performance.now) ? $wnd.performance.now() : Date.now();
-    }-*/;
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Performance")
+	private interface PerformanceLike {
+	double now();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Window")
+	private interface WindowLike {
+	@JsProperty
+	PerformanceLike getPerformance();
+	}
+
+	@JsProperty(namespace = JsPackage.GLOBAL, name = "window")
+	private static native WindowLike getWindow();
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "Date.now")
+	private static native double dateNow();
+
+	private static double perfNowMs() {
+	WindowLike window = getWindow();
+	PerformanceLike performance = (window == null) ? null : window.getPerformance();
+	return (performance != null) ? performance.now() : dateNow();
+	}
 
     private static long getPerfNowNanos() {
         // Use performance.now() (microsecond resolution in browsers) converted to nanoseconds.

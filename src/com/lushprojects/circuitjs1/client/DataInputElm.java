@@ -26,6 +26,11 @@ import com.google.gwt.event.dom.client.ChangeEvent;
 import com.google.gwt.event.dom.client.ChangeHandler;
 import com.google.gwt.user.client.ui.FileUpload;
 import com.lushprojects.circuitjs1.client.util.Locale;
+import jsinterop.annotations.JsFunction;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 class DataFileEntry {
     String fileName;
@@ -33,6 +38,36 @@ class DataFileEntry {
 }
 
 class DataInputElm extends RailElm {
+
+	@JsFunction
+	private interface LoadCallback {
+		void onLoad(Object event);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "File")
+	private static class FileLike {
+		@JsProperty(name = "name") native String getName();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "FileList")
+	private static class FileListLike {
+		@JsProperty(name = "length") native int getLength();
+		@JsMethod(name = "item") native FileLike item(int index);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Element")
+	private static class ElementLike {
+		@JsProperty(name = "files") native FileListLike getFiles();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "FileReader")
+	private static class FileReaderLike {
+		public FileReaderLike() {}
+		@JsProperty(name = "onload") native void setOnLoad(LoadCallback callback);
+		@JsProperty(name = "result") native String getResult();
+		@JsMethod native void readAsText(FileLike file);
+	}
+
     	ArrayList<Double> data;
     	double sampleLength;
     	double scaleFactor;
@@ -150,18 +185,22 @@ class DataInputElm extends RailElm {
 	}
 	
         // fetch data for a selected file
-        static native String fetchLoadFileData(DataInputElm elm, Element uploadElement) /*-{
-            var oFiles = uploadElement.files;
-            if (oFiles.length >= 1) {
-                        var reader = new FileReader();
-                        reader.onload = function(e) {
-                                var text = reader.result;
-                                elm.@com.lushprojects.circuitjs1.client.DataInputElm::doLoadCallback(Ljava/lang/String;Ljava/lang/String;)(text, oFiles[0].name);
-                        };
+		static String fetchLoadFileData(final DataInputElm elm, Element uploadElement) {
+			ElementLike element = (ElementLike) (Object) uploadElement;
+			FileListLike files = element.getFiles();
+			if (files == null || files.getLength() < 1)
+				return null;
 
-                        reader.readAsText(oFiles[0]);
-            }
-        }-*/;
+			final FileLike file = files.item(0);
+			final FileReaderLike reader = new FileReaderLike();
+			reader.setOnLoad(new LoadCallback() {
+				public void onLoad(Object event) {
+					elm.doLoadCallback(reader.getResult(), file.getName());
+				}
+			});
+			reader.readAsText(file);
+			return null;
+		}
 
         void doLoadCallback(String s, String t) {
             // parse data file.  each line contains a single voltage value

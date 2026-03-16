@@ -29,15 +29,25 @@ import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.i18n.client.DateTimeFormat;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
 
 public class ExportAsImageDialog extends Dialog {
 	
 	VerticalPanel vp;
 	
-	private static native String b64encode(String a) /*-{
-	  // string may have unicode text strings in it, so we don't just call btoa() 
-	  return window.btoa(unescape(encodeURIComponent(a)));
-	}-*/;
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "encodeURIComponent")
+	private static native String encodeURIComponent(String value);
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "unescape")
+	private static native String unescape(String value);
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "btoa")
+	private static native String btoa(String value);
+
+	private static String b64encode(String text) {
+	  return btoa(unescape(encodeURIComponent(text)));
+	}
 
 	public ExportAsImageDialog(int type) {
 		super();

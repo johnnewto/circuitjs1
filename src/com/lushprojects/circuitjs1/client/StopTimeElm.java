@@ -20,8 +20,31 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.lushprojects.circuitjs1.client.util.Locale;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 class StopTimeElm extends CircuitElm {
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Window")
+    private static class WindowLike {
+        @JsProperty(name = "closed") native boolean isClosed();
+        @JsMethod native void close();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Array")
+    private static class WindowArrayLike {
+        @JsProperty(name = "length") native int getLength();
+        @JsMethod(name = "shift") native WindowLike shift();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "window")
+    private static class GlobalWindowLike {
+        @JsProperty(name = "plotlyWindows") static native WindowArrayLike getPlotlyWindows();
+        @JsProperty(name = "plotlyWindows") static native void setPlotlyWindows(WindowArrayLike windows);
+    }
+
     double stopTime;
     boolean stopped;
     boolean enabled;
@@ -206,17 +229,18 @@ class StopTimeElm extends CircuitElm {
         new ScopeViewerDialog(sim, null, true);
     }
     
-    native void closePlotlyWindows() /*-{
-        // Close all windows opened by this app (stored in global variable)
-        if ($wnd.plotlyWindows) {
-            for (var i = 0; i < $wnd.plotlyWindows.length; i++) {
-                if ($wnd.plotlyWindows[i] && !$wnd.plotlyWindows[i].closed) {
-                    $wnd.plotlyWindows[i].close();
-                }
-            }
-            $wnd.plotlyWindows = [];
+    void closePlotlyWindows() {
+        WindowArrayLike windows = GlobalWindowLike.getPlotlyWindows();
+        if (windows == null)
+            return;
+        int len = windows.getLength();
+        for (int i = 0; i < len; i++) {
+            WindowLike window = windows.shift();
+            if (window != null && !window.isClosed())
+                window.close();
         }
-    }-*/;
+        GlobalWindowLike.setPlotlyWindows(null);
+    }
     
     // Override to prevent trying to find voltages (no posts)
     void setNodeVoltage(int n, double c) {

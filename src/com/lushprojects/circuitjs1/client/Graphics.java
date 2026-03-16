@@ -24,8 +24,39 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 public class Graphics {
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+	private static class ContextLike {
+		@JsProperty(name = "textAlign") native String getTextAlign();
+		@JsMethod(name = "setLineDash") native void setLineDashNative(double[] pattern);
+		@JsProperty(name = "letterSpacing") native void setLetterSpacing(String spacing);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Element")
+	private static class ElementLike {
+		@JsMethod(name = "requestFullscreen") native void requestFullscreen();
+		@JsMethod(name = "mozRequestFullScreen") native void mozRequestFullScreen();
+		@JsMethod(name = "webkitRequestFullscreen") native void webkitRequestFullscreen();
+		@JsMethod(name = "msRequestFullscreen") native void msRequestFullscreen();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Document")
+	private static class DocumentLike {
+		@JsProperty(name = "documentElement") native ElementLike getDocumentElement();
+		@JsMethod(name = "exitFullscreen") native void exitFullscreen();
+		@JsMethod(name = "mozExitFullScreen") native void mozExitFullScreen();
+		@JsMethod(name = "webkitExitFullscreen") native void webkitExitFullscreen();
+		@JsMethod(name = "msExitFullscreen") native void msExitFullscreen();
+	}
+
+	@JsProperty(namespace = JsPackage.GLOBAL, name = "document")
+	private static native DocumentLike getDocument();
 	
 	Context2d context;
 	int currentFontSize;
@@ -205,10 +236,10 @@ public class Graphics {
 	  /**
 	   * Get current text alignment setting
 	   */
-	  private native String getTextAlign() /*-{
-	      var ctx = this.@com.lushprojects.circuitjs1.client.Graphics::context;
-	      return ctx.textAlign || "left";
-	  }-*/;
+	  private String getTextAlign() {
+	      String align = ((ContextLike) (Object) context).getTextAlign();
+	      return align == null ? "left" : align;
+	  }
 	  
 	  /**
 	   * Extract normal text until next script marker
@@ -458,20 +489,21 @@ public class Graphics {
 	       setLineDash(context, a, b);
 	   }
 	   
-	   native static void setLineDash(Context2d context, int a, int b) /*-{
+	   static void setLineDash(Context2d context, int a, int b) {
+	       ContextLike ctx = (ContextLike) (Object) context;
 	       if (a == 0)
-	           context.setLineDash([]);
+	           ctx.setLineDashNative(new double[0]);
 	       else
-	       	   context.setLineDash([a, b]);
-	   }-*/;
+	           ctx.setLineDashNative(new double[] { a, b });
+	   }
 	   
 	   void setLetterSpacing(String spacing) {
 	       setLetterSpacingNative(context, spacing);
 	   }
 	   
-	   native static void setLetterSpacingNative(Context2d context, String spacing) /*-{
-	       context.letterSpacing = spacing;
-	   }-*/;
+	   static void setLetterSpacingNative(Context2d context, String spacing) {
+	       ((ContextLike) (Object) context).setLetterSpacing(spacing);
+	   }
 	   
 	   
 	   public static void viewFullScreen() {
@@ -479,19 +511,27 @@ public class Graphics {
 	       isFullScreen=true;
 	   }
 	   
-	   private native static void requestFullScreen() /*-{
-	   var element = $doc.documentElement;
-
-	   if (element.requestFullscreen) {
-	     element.requestFullscreen();
-	   } else if (element.mozRequestFullScreen) {
-	     element.mozRequestFullScreen();
-	   } else if (element.webkitRequestFullscreen) {
-	     element.webkitRequestFullscreen();
-	   } else if (element.msRequestFullscreen) {
-	     element.msRequestFullscreen();
+	   private static void requestFullScreen() {
+	   ElementLike element = getDocument().getDocumentElement();
+	   if (element == null)
+	       return;
+	   try {
+	       element.requestFullscreen();
+	   } catch (Throwable t1) {
+	       try {
+	           element.mozRequestFullScreen();
+	       } catch (Throwable t2) {
+	           try {
+	               element.webkitRequestFullscreen();
+	           } catch (Throwable t3) {
+	               try {
+	                   element.msRequestFullscreen();
+	               } catch (Throwable t4) {
+	               }
+	           }
+	       }
 	   }
-	 }-*/;
+	 }
 	   
 	   public static void exitFullScreen() {
 	       requestExitFullScreen();
@@ -544,19 +584,25 @@ public class Graphics {
        context.stroke();
    }
    
-   private native static void requestExitFullScreen() /*-{
-	   var d = $doc;
-
-	   if (d.exitFullscreen) {
-	     d.exitFullscreen();
-	   } else if (d.mozExitFullScreen) {
-	     d.mozExitFullScreen();
-	   } else if (d.webkitExitFullscreen) {
-	     d.webkitExitFullscreen();
-	   } else if (d.msExitFullscreen) {
-	     d.msExitFullscreen();
+   private static void requestExitFullScreen() {
+	   DocumentLike d = getDocument();
+	   try {
+	       d.exitFullscreen();
+	   } catch (Throwable t1) {
+	       try {
+	           d.mozExitFullScreen();
+	       } catch (Throwable t2) {
+	           try {
+	               d.webkitExitFullscreen();
+	           } catch (Throwable t3) {
+	               try {
+	                   d.msExitFullscreen();
+	               } catch (Throwable t4) {
+	               }
+	           }
+	       }
 	   }
-	 }-*/;
+	 }
 	   
 	   
 }

@@ -22,8 +22,25 @@ package com.lushprojects.circuitjs1.client;
 import java.util.HashMap;
 import com.google.gwt.http.client.URL;
 
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
+
 public class QueryParameters
 {
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Location")
+    private static class LocationLike {
+        @JsProperty native String getSearch();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Window")
+    private static class WindowLike {
+        @JsProperty native LocationLike getLocation();
+    }
+
+    @JsProperty(namespace = JsPackage.GLOBAL, name = "window")
+    private static native WindowLike getWindow();
+
     private HashMap<String, String> map = new HashMap<String, String>();
 
     public QueryParameters()
@@ -56,8 +73,11 @@ public class QueryParameters
     		return (val=="1" || val.equalsIgnoreCase("true"));
     }
     
-    private native String getQueryString()
-    /*-{
-          return $wnd.location.search;
-    }-*/;
+    private String getQueryString() {
+        WindowLike window = getWindow();
+        if (window == null || window.getLocation() == null)
+            return "";
+        String search = window.getLocation().getSearch();
+        return (search == null) ? "" : search;
+    }
 }

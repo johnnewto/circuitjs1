@@ -24,6 +24,11 @@ import com.google.gwt.user.client.ui.DialogBox;
 import com.google.gwt.user.client.ui.HTML;
 import com.google.gwt.user.client.ui.VerticalPanel;
 import com.lushprojects.circuitjs1.client.util.Locale;
+import jsinterop.annotations.JsFunction;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 /**
  * Non-modal dialog that displays an iframe with embedded content.
@@ -38,6 +43,111 @@ import com.lushprojects.circuitjs1.client.util.Locale;
  *   IframeViewerDialog.openUrlWithSelector("Docs", "http://localhost:5217/page.html", ".split-right");
  */
 public class IframeViewerDialog extends DialogBox {
+
+    @JsFunction
+    private interface EventCallback {
+        void handle(EventLike event);
+    }
+
+    @JsFunction
+    private interface ResizeObserverCallback {
+        void handle(ResizeObserverEntries entries);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Event")
+    private static class EventLike {
+        @JsMethod native void stopPropagation();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "CSSStyleDeclaration")
+    private static class StyleLike {
+        @JsProperty(name = "display") native void setDisplay(String value);
+        @JsProperty(name = "alignItems") native void setAlignItems(String value);
+        @JsProperty(name = "justifyContent") native void setJustifyContent(String value);
+        @JsProperty(name = "paddingRight") native void setPaddingRight(String value);
+        @JsProperty(name = "background") native void setBackground(String value);
+        @JsProperty(name = "color") native void setColor(String value);
+        @JsProperty(name = "margin") native void setMargin(String value);
+        @JsProperty(name = "padding") native void setPadding(String value);
+        @JsProperty(name = "fontFamily") native void setFontFamily(String value);
+        @JsProperty(name = "overflow") native void setOverflow(String value);
+        @JsProperty(name = "width") native void setWidth(String value);
+        @JsProperty(name = "height") native void setHeight(String value);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "NodeList")
+    private static class NodeListLike {
+        @JsProperty(name = "length") native int getLength();
+        @JsMethod(name = "item") native ElementLike item(int index);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Element")
+    private static class ElementLike {
+        @JsProperty(name = "className") native String getClassName();
+        @JsProperty(name = "innerHTML") native void setInnerHTML(String value);
+        @JsProperty(name = "title") native void setTitle(String value);
+        @JsProperty(name = "style") native StyleLike getStyle();
+        @JsProperty(name = "onmouseenter") native void setOnMouseEnter(EventCallback callback);
+        @JsProperty(name = "onmouseleave") native void setOnMouseLeave(EventCallback callback);
+        @JsProperty(name = "onclick") native void setOnClick(EventCallback callback);
+        @JsMethod native ElementLike querySelector(String selector);
+        @JsMethod native NodeListLike querySelectorAll(String selector);
+        @JsMethod native void appendChild(ElementLike child);
+        @JsMethod native ElementLike cloneNode(boolean deep);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Document")
+    private static class DocumentLike {
+        @JsProperty(name = "body") native ElementLike getBody();
+        @JsMethod native ElementLike getElementById(String id);
+        @JsMethod native ElementLike createElement(String tagName);
+        @JsMethod native ElementLike querySelector(String selector);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Window")
+    private static class WindowLike {
+        @JsProperty(name = "document") native DocumentLike getDocument();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "HTMLIFrameElement")
+    private static class IframeElementLike extends ElementLike {
+        @JsProperty(name = "onload") native void setOnLoad(EventCallback callback);
+        @JsProperty(name = "contentDocument") native DocumentLike getContentDocument();
+        @JsProperty(name = "contentWindow") native WindowLike getContentWindow();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "DOMRectReadOnly")
+    private static class DomRectLike {
+        @JsProperty(name = "height") native double getHeight();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "ResizeObserverEntry")
+    private static class ResizeObserverEntryLike {
+        @JsProperty(name = "contentRect") native DomRectLike getContentRect();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Array")
+    private static class ResizeObserverEntries {
+        @JsProperty(name = "length") native int getLength();
+        @JsMethod(name = "shift") native ResizeObserverEntryLike shift();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "ResizeObserver")
+    private static class ResizeObserverLike {
+        public ResizeObserverLike(ResizeObserverCallback callback) {}
+        @JsMethod native void observe(ElementLike target);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "window")
+    private static class GlobalWindowLike {
+        @JsProperty(name = "ResizeObserver") static native Object getResizeObserverCtor();
+    }
+
+    @JsProperty(namespace = JsPackage.GLOBAL, name = "document")
+    private static native DocumentLike getDocument();
+
+    @JsMethod(namespace = JsPackage.GLOBAL, name = "console.log")
+    private static native void consoleLog(String message);
     
     private static IframeViewerDialog instance = null;
     private static final String DIALOG_ID = "iframeViewerDialog";
@@ -193,107 +303,121 @@ public class IframeViewerDialog extends DialogBox {
     /**
      * Add a close icon button to the right side of the title bar.
      */
-    private native void addCloseButtonToTitleBar() /*-{
-        var dialog = $doc.getElementById('iframeViewerDialog');
-        if (!dialog) return;
-        
-        // Find the caption/title bar element
-        var caption = dialog.querySelector('.Caption');
-        if (!caption) {
-            // Try alternate selector for DialogBox caption
-            caption = dialog.querySelector('td.Caption');
-        }
-        if (!caption) {
-            // Last resort - first child table cell
-            var cells = dialog.querySelectorAll('td');
-            for (var i = 0; i < cells.length; i++) {
-                if (cells[i].className && cells[i].className.indexOf('Caption') >= 0) {
-                    caption = cells[i];
+    private void addCloseButtonToTitleBar() {
+        ElementLike dialog = getDocument().getElementById(DIALOG_ID);
+        if (dialog == null)
+            return;
+
+        ElementLike caption = dialog.querySelector(".Caption");
+        if (caption == null)
+            caption = dialog.querySelector("td.Caption");
+        if (caption == null) {
+            NodeListLike cells = dialog.querySelectorAll("td");
+            for (int i = 0; i < cells.getLength(); i++) {
+                ElementLike cell = cells.item(i);
+                String className = cell.getClassName();
+                if (className != null && className.indexOf("Caption") >= 0) {
+                    caption = cell;
                     break;
                 }
             }
         }
-        
-        if (caption) {
-            // Make caption a flex container
-            caption.style.display = 'flex';
-            caption.style.alignItems = 'center';
-            caption.style.justifyContent = 'space-between';
-            caption.style.paddingRight = '4px';
-            
-            // Create close button
-            var closeBtn = $doc.createElement('span');
-            closeBtn.innerHTML = '&#x2715;'; // Unicode X
-            closeBtn.style.cssText = 'cursor: pointer; font-size: 16px; font-weight: bold; ' +
-                                     'padding: 2px 6px; margin-left: 10px; border-radius: 4px; ' +
-                                     'color: #666; transition: all 0.2s;';
-            closeBtn.title = 'Close';
-            
-            // Hover effects
-            closeBtn.onmouseenter = function() {
-                this.style.background = '#ff4444';
-                this.style.color = 'white';
-            };
-            closeBtn.onmouseleave = function() {
-                this.style.background = 'transparent';
-                this.style.color = '#666';
-            };
-            
-            // Click handler
-            var self = this;
-            closeBtn.onclick = function(e) {
-                e.stopPropagation();
-                self.@com.lushprojects.circuitjs1.client.IframeViewerDialog::close()();
-            };
-            
-            caption.appendChild(closeBtn);
-        }
-    }-*/;
+
+        if (caption == null)
+            return;
+
+        caption.getStyle().setDisplay("flex");
+        caption.getStyle().setAlignItems("center");
+        caption.getStyle().setJustifyContent("space-between");
+        caption.getStyle().setPaddingRight("4px");
+
+        final ElementLike closeBtn = getDocument().createElement("span");
+        closeBtn.setInnerHTML("&#x2715;");
+        closeBtn.setTitle("Close");
+        closeBtn.getStyle().setPadding("2px 6px");
+        closeBtn.getStyle().setMargin("0 0 0 10px");
+        closeBtn.getStyle().setColor("#666");
+
+        closeBtn.setOnMouseEnter(new EventCallback() {
+            public void handle(EventLike event) {
+                closeBtn.getStyle().setBackground("#ff4444");
+                closeBtn.getStyle().setColor("white");
+            }
+        });
+        closeBtn.setOnMouseLeave(new EventCallback() {
+            public void handle(EventLike event) {
+                closeBtn.getStyle().setBackground("transparent");
+                closeBtn.getStyle().setColor("#666");
+            }
+        });
+        closeBtn.setOnClick(new EventCallback() {
+            public void handle(EventLike event) {
+                if (event != null)
+                    event.stopPropagation();
+                close();
+            }
+        });
+
+        caption.appendChild(closeBtn);
+    }
     /**
      * Set up JavaScript to extract content matching selector from iframe.
      */
-    private native void setupSelectorExtraction(String iframeId, String selector) /*-{
-        var iframe = $doc.getElementById(iframeId);
-        if (iframe) {
-            iframe.onload = function() {
+    private void setupSelectorExtraction(String iframeId, final String selector) {
+        final IframeElementLike iframe = (IframeElementLike) getDocument().getElementById(iframeId);
+        if (iframe == null)
+            return;
+
+        iframe.setOnLoad(new EventCallback() {
+            public void handle(EventLike event) {
                 try {
-                    var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                    var selectedContent = iframeDoc.querySelector(selector);
-                    if (selectedContent) {
-                        // Replace iframe body with just the selected content
-                        iframeDoc.body.innerHTML = '';
-                        iframeDoc.body.appendChild(selectedContent.cloneNode(true));
-                        // Add some basic styling
-                        iframeDoc.body.style.margin = '0';
-                        iframeDoc.body.style.padding = '16px';
-                        iframeDoc.body.style.fontFamily = 'system-ui, -apple-system, sans-serif';
-                        iframeDoc.body.style.overflow = 'auto';
-                    }
-                } catch(e) {
-                    // Cross-origin restriction - can't access iframe content
-                    console.log('Cannot extract selector - cross-origin restriction');
+                    DocumentLike iframeDoc = iframe.getContentDocument();
+                    if (iframeDoc == null && iframe.getContentWindow() != null)
+                        iframeDoc = iframe.getContentWindow().getDocument();
+                    if (iframeDoc == null)
+                        return;
+                    ElementLike selectedContent = iframeDoc.querySelector(selector);
+                    if (selectedContent == null)
+                        return;
+                    iframeDoc.getBody().setInnerHTML("");
+                    iframeDoc.getBody().appendChild(selectedContent.cloneNode(true));
+                    iframeDoc.getBody().getStyle().setMargin("0");
+                    iframeDoc.getBody().getStyle().setPadding("16px");
+                    iframeDoc.getBody().getStyle().setFontFamily("system-ui, -apple-system, sans-serif");
+                    iframeDoc.getBody().getStyle().setOverflow("auto");
+                } catch (Throwable e) {
+                    consoleLog("Cannot extract selector - cross-origin restriction");
                 }
-            };
-        }
-    }-*/;
+            }
+        });
+    }
     
     /**
      * Set up resize observer to sync iframe size when container is resized.
      */
-    private native void setupResizeObserver() /*-{
-        var container = $doc.getElementById('iframeContainer');
-        var iframe = $doc.getElementById('iframeViewerContent');
-        if (container && iframe && $wnd.ResizeObserver) {
-            var observer = new $wnd.ResizeObserver(function(entries) {
-                if (entries && entries.length > 0) {
-                    var entry = entries[0];
-                    iframe.style.width = '100%';
-                    iframe.style.height = entry.contentRect.height + 'px';
+    private void setupResizeObserver() {
+        final ElementLike container = getDocument().getElementById("iframeContainer");
+        final ElementLike iframe = getDocument().getElementById("iframeViewerContent");
+        if (container == null || iframe == null || GlobalWindowLike.getResizeObserverCtor() == null)
+            return;
+
+        ResizeObserverLike observer = new ResizeObserverLike(new ResizeObserverCallback() {
+            public void handle(ResizeObserverEntries entries) {
+                try {
+                    if (entries == null || entries.getLength() < 1)
+                        return;
+                    ResizeObserverEntryLike entry = entries.shift();
+                    if (entry == null || entry.getContentRect() == null)
+                        return;
+                    iframe.getStyle().setWidth("100%");
+                    iframe.getStyle().setHeight(entry.getContentRect().getHeight() + "px");
+                } catch (Throwable e) {
+                    consoleLog("ResizeObserver callback failed: " + e);
                 }
-            });
-            observer.observe(container);
-        }
-    }-*/;
+            }
+        });
+        observer.observe(container);
+    }
     
     /**
      * Open an iframe viewer with a circuit file.

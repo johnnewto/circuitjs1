@@ -10,8 +10,19 @@ import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.Anchor;
 import com.google.gwt.user.client.ui.Button;
 import com.lushprojects.circuitjs1.client.util.Locale;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 public class AudioOutputElm extends CircuitElm {
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Document")
+	private static class DocumentLike {
+		@JsProperty(name = "audioBlob") native String getAudioBlob();
+	}
+
+	@JsProperty(namespace = JsPackage.GLOBAL, name = "document")
+	private static native DocumentLike getDocument();
+
     int dataCount, dataPtr;
     double data[];
     boolean dataFull;
@@ -350,9 +361,10 @@ public class AudioOutputElm extends CircuitElm {
 	audio.play();
 }-*/;
 
-        static native String getLastBlob() /*-{
-            return $doc.audioBlob;
-        }-*/;
+		static String getLastBlob() {
+			DocumentLike document = getDocument();
+			return document == null ? null : document.getAudioBlob();
+		}
         
         void play() {
             int i;

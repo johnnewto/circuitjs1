@@ -19,6 +19,9 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+
 /**
  * Test suite for table-based circuit elements
  * 
@@ -378,9 +381,8 @@ String circuit =
     /**
      * Native console.log via JSNI
      */
-    private native void console(String message) /*-{
-        $wnd.console.log(message);
-    }-*/;
+    @JsMethod(namespace = JsPackage.GLOBAL, name = "console.log")
+    private static native void console(String message);
     
     /**
      * Helper assertions

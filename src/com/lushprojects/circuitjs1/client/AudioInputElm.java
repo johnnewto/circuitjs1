@@ -26,6 +26,11 @@ import com.google.gwt.event.dom.client.ChangeEvent;
 import com.google.gwt.event.dom.client.ChangeHandler;
 import com.google.gwt.user.client.ui.FileUpload;
 import com.lushprojects.circuitjs1.client.util.Locale;
+import jsinterop.annotations.JsFunction;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 class AudioFileEntry {
     String fileName;
@@ -33,6 +38,63 @@ class AudioFileEntry {
 }
 
 class AudioInputElm extends RailElm {
+
+	@JsFunction
+	private interface LoadCallback {
+		void onLoad(Object event);
+	}
+
+	@JsFunction
+	private interface AudioDecodeSuccessCallback {
+		void onSuccess(AudioBufferLike buffer);
+	}
+
+	@JsFunction
+	private interface AudioDecodeErrorCallback {
+		void onError(Object error);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "File")
+	private static class FileLike {
+		@JsProperty(name = "name") native String getName();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "FileList")
+	private static class FileListLike {
+		@JsProperty(name = "length") native int getLength();
+		@JsMethod(name = "item") native FileLike item(int index);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Element")
+	private static class ElementLike {
+		@JsProperty(name = "files") native FileListLike getFiles();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "FileReader")
+	private static class FileReaderLike {
+		public FileReaderLike() {}
+		@JsProperty(name = "onload") native void setOnLoad(LoadCallback callback);
+		@JsProperty(name = "result") native Object getResult();
+		@JsMethod native void readAsArrayBuffer(FileLike file);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "AudioBuffer")
+	private static class AudioBufferLike {
+		@JsMethod native JsArrayNumber getChannelData(int channelIndex);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "AudioContext")
+	private static class AudioContextLike {
+		public AudioContextLike() {}
+		@JsProperty(name = "sampleRate") native double getSampleRate();
+		@JsMethod native void decodeAudioData(Object audioData, AudioDecodeSuccessCallback successCallback, AudioDecodeErrorCallback errorCallback);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "webkitAudioContext")
+	private static class WebkitAudioContextLike extends AudioContextLike {
+		public WebkitAudioContextLike() {}
+	}
+
     	JsArrayNumber data;
     	double timeOffset;
     	int samplingRate;
@@ -151,23 +213,40 @@ class AudioInputElm extends RailElm {
 	}
 	
 	// fetch audio data for a selected file
-	static native String fetchLoadFileData(AudioInputElm elm, Element uploadElement) /*-{
-	    var oFiles = uploadElement.files;
-       	    var context = new (window.AudioContext || window.webkitAudioContext)();
-       	    elm.@com.lushprojects.circuitjs1.client.AudioInputElm::setSamplingRate(I)(context.sampleRate);
-	    if (oFiles.length >= 1) {
-                        var reader = new FileReader();
-                        reader.onload = function(e) {
-                		context.decodeAudioData(reader.result, function(buffer) {
-                    			var data = buffer.getChannelData(0); 
-                    			elm.@com.lushprojects.circuitjs1.client.AudioInputElm::gotAudioData(*)(data);
-                		},
-                		function(e){ console.log("Error with decoding audio data" + e.err); });
-                        };
+	static String fetchLoadFileData(final AudioInputElm elm, Element uploadElement) {
+	    final ElementLike element = (ElementLike) (Object) uploadElement;
+	    final FileListLike files = element.getFiles();
+	    if (files == null || files.getLength() < 1)
+		return null;
 
-                        reader.readAsArrayBuffer(oFiles[0]);
+	    AudioContextLike contextCandidate;
+	    try {
+		contextCandidate = new AudioContextLike();
+	    } catch (Throwable t) {
+		contextCandidate = new WebkitAudioContextLike();
 	    }
-	}-*/;
+	    final AudioContextLike context = contextCandidate;
+	    elm.setSamplingRate((int) context.getSampleRate());
+
+	    final FileLike file = files.item(0);
+	    final FileReaderLike reader = new FileReaderLike();
+	    reader.setOnLoad(new LoadCallback() {
+		public void onLoad(Object event) {
+		    context.decodeAudioData(reader.getResult(), new AudioDecodeSuccessCallback() {
+			public void onSuccess(AudioBufferLike buffer) {
+			    elm.gotAudioData(buffer.getChannelData(0));
+			}
+		    }, new AudioDecodeErrorCallback() {
+			public void onError(Object error) {
+			    CirSim.console("Error with decoding audio data");
+			}
+		    });
+		}
+	    });
+
+	    reader.readAsArrayBuffer(file);
+	    return null;
+	}
 	
 	void gotAudioData(JsArrayNumber d) {
 	    data = d;

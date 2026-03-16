@@ -34,28 +34,71 @@ import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.TextBox;
 import com.google.gwt.i18n.client.DateTimeFormat;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 public class ExportAsLocalFileDialog extends Dialog {
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Element")
+	private static class ElementLike {
+		@JsMethod native void click();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "HTMLAnchorElement")
+	private static class AnchorElementLike extends ElementLike {
+		@JsProperty(name = "download") native String getDownload();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Document")
+	private static class DocumentLike {
+		@JsMethod native AnchorElementLike createElement(String tagName);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+	private static class BlobOptionsLike {
+		public BlobOptionsLike() {}
+		@JsProperty(name = "type") native void setType(String type);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Blob")
+	private static class BlobLike {
+		public BlobLike(Object parts, BlobOptionsLike options) {}
+	}
+
+	@JsProperty(namespace = JsPackage.GLOBAL, name = "document")
+	private static native DocumentLike getDocument();
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "URL.createObjectURL")
+	private static native String createObjectURL(BlobLike blob);
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "URL.revokeObjectURL")
+	private static native void revokeObjectURL(String url);
+
+	private static String lastExportBlobUrl;
 	
 	VerticalPanel vp;
 	
-	static public final native boolean downloadIsSupported() 
-	/*-{
-		return !!(("download" in $doc.createElement("a")));
-	 }-*/;
+	static public final boolean downloadIsSupported() {
+		DocumentLike document = getDocument();
+		if (document == null)
+			return false;
+		AnchorElementLike anchor = document.createElement("a");
+		return anchor != null && anchor.getDownload() != null;
+	}
 	
-	static public final native String getBlobUrl(String data) 
-	/*-{
-		var datain=[""];
-		datain[0]=data;
-		var oldblob = $doc.exportBlob;
-		if (oldblob)
-		    URL.revokeObjectURL(oldblob);
-		var blob=new Blob(datain, {type: 'text/plain' } );
-		var url = URL.createObjectURL(blob);
-		$doc.exportBlob = url;
+	static public final String getBlobUrl(String data) {
+		if (lastExportBlobUrl != null)
+			revokeObjectURL(lastExportBlobUrl);
+		String[] parts = new String[] { data };
+		BlobOptionsLike options = new BlobOptionsLike();
+		options.setType("text/plain");
+		BlobLike blob = new BlobLike(parts, options);
+		String url = createObjectURL(blob);
+		lastExportBlobUrl = url;
 		return url;
-	}-*/;
+	}
 	
 	TextBox textBox;
 	static String lastFileName;
@@ -113,9 +156,9 @@ public class ExportAsLocalFileDialog extends Dialog {
 		this.center();
 	}
 	
-	static native void click(Element elem) /*-{
-	    elem.click();
-	}-*/;
+	static void click(Element elem) {
+		((ElementLike) (Object) elem).click();
+	}
 	
 	void apply() {
 	    String fname = textBox.getText();

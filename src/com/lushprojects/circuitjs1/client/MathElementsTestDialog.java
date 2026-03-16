@@ -28,6 +28,10 @@ import com.google.gwt.user.client.ui.ListBox;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
+import jsinterop.annotations.JsFunction;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 /**
  * MathElementsTestDialog - Always-on-top dialog for running mathematical element tests
@@ -44,6 +48,28 @@ import com.google.gwt.event.dom.client.ClickEvent;
  * - Resizable text area for viewing detailed results
  */
 public class MathElementsTestDialog {
+
+    @JsFunction
+    private interface ConsoleMethod {
+        void invoke(Object msg);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Console")
+    private static class ConsoleLike {
+        @JsProperty(name = "log") native ConsoleMethod getLog();
+        @JsProperty(name = "log") native void setLog(ConsoleMethod method);
+        @JsProperty(name = "error") native ConsoleMethod getError();
+        @JsProperty(name = "error") native void setError(ConsoleMethod method);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "window")
+    private static class GlobalWindowLike {
+        @JsProperty(name = "console") static native ConsoleLike getConsole();
+        @JsProperty(name = "_oldLog") static native ConsoleMethod getOldLog();
+        @JsProperty(name = "_oldLog") static native void setOldLog(ConsoleMethod method);
+        @JsProperty(name = "_oldError") static native ConsoleMethod getOldError();
+        @JsProperty(name = "_oldError") static native void setOldError(ConsoleMethod method);
+    }
     
     private DialogBox dialog;
     private TextArea outputArea;
@@ -478,34 +504,40 @@ public class MathElementsTestDialog {
     }
     
     // Store original console methods
-    private native void redirectConsoleOutput() /*-{
-        var self = this;
-        var oldLog = $wnd.console.log;
-        var oldError = $wnd.console.error;
-        
-        $wnd.console.log = function(msg) {
-            oldLog.apply($wnd.console, arguments);
-            self.@com.lushprojects.circuitjs1.client.MathElementsTestDialog::handleConsoleLog(Ljava/lang/String;)(String(msg));
-        };
-        
-        $wnd.console.error = function(msg) {
-            oldError.apply($wnd.console, arguments);
-            self.@com.lushprojects.circuitjs1.client.MathElementsTestDialog::handleConsoleError(Ljava/lang/String;)(String(msg));
-        };
-        
-        // Store old methods for restoration
-        $wnd._oldLog = oldLog;
-        $wnd._oldError = oldError;
-    }-*/;
+    private void redirectConsoleOutput() {
+        final ConsoleLike console = GlobalWindowLike.getConsole();
+        final ConsoleMethod oldLog = console.getLog();
+        final ConsoleMethod oldError = console.getError();
+
+        GlobalWindowLike.setOldLog(oldLog);
+        GlobalWindowLike.setOldError(oldError);
+
+        console.setLog(new ConsoleMethod() {
+            public void invoke(Object msg) {
+                if (oldLog != null)
+                    oldLog.invoke(msg);
+                handleConsoleLog(String.valueOf(msg));
+            }
+        });
+
+        console.setError(new ConsoleMethod() {
+            public void invoke(Object msg) {
+                if (oldError != null)
+                    oldError.invoke(msg);
+                handleConsoleError(String.valueOf(msg));
+            }
+        });
+    }
     
-    private native void restoreConsoleOutput() /*-{
-        if ($wnd._oldLog) {
-            $wnd.console.log = $wnd._oldLog;
-        }
-        if ($wnd._oldError) {
-            $wnd.console.error = $wnd._oldError;
-        }
-    }-*/;
+    private void restoreConsoleOutput() {
+        ConsoleLike console = GlobalWindowLike.getConsole();
+        ConsoleMethod oldLog = GlobalWindowLike.getOldLog();
+        ConsoleMethod oldError = GlobalWindowLike.getOldError();
+        if (oldLog != null)
+            console.setLog(oldLog);
+        if (oldError != null)
+            console.setError(oldError);
+    }
     
     /**
      * Handle console.log output

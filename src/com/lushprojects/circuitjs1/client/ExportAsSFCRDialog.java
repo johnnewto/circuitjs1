@@ -31,8 +31,20 @@ import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.event.logical.shared.ValueChangeHandler;
 import com.google.gwt.event.logical.shared.ValueChangeEvent;
 import com.lushprojects.circuitjs1.client.util.Locale;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 public class ExportAsSFCRDialog extends Dialog {
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Document")
+    private static class DocumentLike {
+        @JsMethod native boolean execCommand(String command);
+    }
+
+    @JsProperty(namespace = JsPackage.GLOBAL, name = "document")
+    private static native DocumentLike getDocument();
 
     VerticalPanel vp;
     CirSim sim;
@@ -132,7 +144,8 @@ public class ExportAsSFCRDialog extends Dialog {
         textArea.setText(exporter.export());
     }
 
-    private static native boolean copyToClipboard() /*-{
-        return $doc.execCommand('copy');
-    }-*/;
+    private static boolean copyToClipboard() {
+        DocumentLike document = getDocument();
+        return document != null && document.execCommand("copy");
+    }
 }

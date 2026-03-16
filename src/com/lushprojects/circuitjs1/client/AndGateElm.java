@@ -21,7 +21,17 @@ package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.canvas.dom.client.Context2d;
 
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsType;
+
     class AndGateElm extends GateElm {
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+	private interface Context2dNative {
+	    @JsMethod(name = "ellipse")
+	    void ellipse(double x, double y, double rx, double ry, double ro, double sa, double ea, boolean ccw);
+	}
+
 	public AndGateElm(int xx, int yy) { super(xx, yy); }
 	public AndGateElm(int xa, int ya, int xb, int yb, int f,
 			  StringTokenizer st) {
@@ -30,9 +40,10 @@ import com.google.gwt.canvas.dom.client.Context2d;
 	
 	String getGateText() { return "&"; }
 	
-	public final native void ellipse(Context2d g, double x, double y, double rx, double ry, double ro, double sa, double ea, boolean ccw) /*-{
-	    if (rx >= 0 && ry >= 0) g.ellipse(x, y, rx, ry, ro, sa, ea, ccw);
-	}-*/;
+	public final void ellipse(Context2d g, double x, double y, double rx, double ry, double ro, double sa, double ea, boolean ccw) {
+	    if (rx >= 0 && ry >= 0)
+		((Context2dNative) (Object) g).ellipse(x, y, rx, ry, ro, sa, ea, ccw);
+	}
 
 	void drawGatePolygon(Graphics g) {
 	    g.setLineWidth(3.0);

@@ -26,12 +26,45 @@ import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
+import com.google.gwt.user.client.Window;
 import com.lushprojects.circuitjs1.client.util.Locale;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 /**
  * Dialog that opens all scope data in an interactive Plotly.js viewer in a new window.
  */
 public class ScopeViewerDialog extends DialogBox {
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Document")
+    private static class DocumentLike {
+        @JsMethod native void write(String text);
+        @JsMethod native void close();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Window")
+    private static class WindowLike {
+        @JsProperty(name = "document") native DocumentLike getDocument();
+        @JsProperty(name = "closed") native boolean isClosed();
+        @JsMethod native void close();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Array")
+    private static class WindowArrayLike {
+        public WindowArrayLike() {}
+        @JsProperty(name = "length") native int getLength();
+        @JsMethod(name = "push") native int push(WindowLike value);
+        @JsMethod(name = "shift") native WindowLike shift();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "window")
+    private static class GlobalWindowLike {
+        @JsMethod(name = "open") static native WindowLike open(String url, String target, String features);
+        @JsProperty(name = "plotlyWindows") static native WindowArrayLike getPlotlyWindows();
+        @JsProperty(name = "plotlyWindows") static native void setPlotlyWindows(WindowArrayLike windows);
+    }
     
     CirSim sim;
     Scope singleScope;  // If viewing just one scope
@@ -602,28 +635,30 @@ public class ScopeViewerDialog extends DialogBox {
      * Tracks opened windows in a global array for cleanup.
      * @return true if window opened successfully, false if blocked
      */
-    native boolean openWindowWithHTML(String html) /*-{
-        // Initialize array to track Plotly windows if it doesn't exist
-        if (!$wnd.plotlyWindows) {
-            $wnd.plotlyWindows = [];
+    boolean openWindowWithHTML(String html) {
+        WindowArrayLike windows = GlobalWindowLike.getPlotlyWindows();
+        if (windows == null) {
+            windows = new WindowArrayLike();
+            GlobalWindowLike.setPlotlyWindows(windows);
         }
-        
-        var newWindow = $wnd.open('', '_blank', 'width=1400,height=900');
-        if (newWindow) {
-            newWindow.document.write(html);
-            newWindow.document.close();
-            
-            // Track this window
-            $wnd.plotlyWindows.push(newWindow);
-            
-            // Clean up closed windows from the array
-            $wnd.plotlyWindows = $wnd.plotlyWindows.filter(function(w) {
-                return w && !w.closed;
-            });
-            return true;
-        } else {
-            alert('Please allow pop-ups for this site to view the scope data.');
+
+        WindowLike newWindow = GlobalWindowLike.open("", "_blank", "width=1400,height=900");
+        if (newWindow == null) {
+            Window.alert("Please allow pop-ups for this site to view the scope data.");
             return false;
         }
-    }-*/;
+
+        newWindow.getDocument().write(html);
+        newWindow.getDocument().close();
+
+        int len = windows.getLength();
+        for (int i = 0; i < len; i++) {
+            WindowLike existing = windows.shift();
+            if (existing != null && !existing.isClosed()) {
+                windows.push(existing);
+            }
+        }
+        windows.push(newWindow);
+        return true;
+    }
 }

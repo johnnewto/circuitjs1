@@ -29,9 +29,49 @@ import com.google.gwt.core.client.JsArrayString;
 import com.google.gwt.storage.client.Storage;
 import com.google.gwt.user.client.Random;
 import com.lushprojects.circuitjs1.client.util.Locale;
+import jsinterop.annotations.JsFunction;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 // circuit element class
 public abstract class CircuitElm implements Editable {
+
+	@JsFunction
+	private interface StringSupplier {
+		String get();
+	}
+
+	@JsFunction
+	private interface DoubleSupplier {
+		double get();
+	}
+
+	@JsFunction
+	private interface IntSupplier {
+		int get();
+	}
+
+	@JsFunction
+	private interface JsArraySupplier {
+		JsArrayString get();
+	}
+
+	@JsFunction
+	private interface VoltageFunction {
+		double get(int n);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+	private static class ElmJsObject {
+		@JsProperty(name = "getType") native void setGetType(StringSupplier fn);
+		@JsProperty(name = "getInfo") native void setGetInfo(JsArraySupplier fn);
+		@JsProperty(name = "getVoltageDiff") native void setGetVoltageDiff(DoubleSupplier fn);
+		@JsProperty(name = "getVoltage") native void setGetVoltage(VoltageFunction fn);
+		@JsProperty(name = "getCurrent") native void setGetCurrent(DoubleSupplier fn);
+		@JsProperty(name = "getLabelName") native void setGetLabelName(StringSupplier fn);
+		@JsProperty(name = "getPostCount") native void setGetPostCount(IntSupplier fn);
+	}
     static double voltageRange = 5;
     static int colorScaleCount = 201; // odd so ground = gray 
     static Color colorScale[];
@@ -1343,7 +1383,9 @@ public abstract class CircuitElm implements Editable {
     
     String getClassName() { return getClass().getName().replace("com.lushprojects.circuitjs1.client.", ""); }
     
-    native JsArrayString getJsArrayString() /*-{ return []; }-*/;
+	JsArrayString getJsArrayString() {
+		return JavaScriptObject.createArray().cast();
+	}
     
     JsArrayString getInfoJS() {
 	JsArrayString jsarr = getJsArrayString();
@@ -1361,17 +1403,35 @@ public abstract class CircuitElm implements Editable {
 	return volts[n];
     }
     
-    native void addJSMethods() /*-{
-        var that = this;
-        this.getType = $entry(function() { return that.@com.lushprojects.circuitjs1.client.CircuitElm::getClassName()(); });
-        this.getInfo = $entry(function() { return that.@com.lushprojects.circuitjs1.client.CircuitElm::getInfoJS()(); });
-        this.getVoltageDiff = $entry(function() { return that.@com.lushprojects.circuitjs1.client.CircuitElm::getVoltageDiff()(); });
-        this.getVoltage = $entry(function(n) { return that.@com.lushprojects.circuitjs1.client.CircuitElm::getVoltageJS(I)(n); });
-        this.getCurrent = $entry(function() { return that.@com.lushprojects.circuitjs1.client.CircuitElm::getCurrent()(); });
-        this.getLabelName = $entry(function() { return that.@com.lushprojects.circuitjs1.client.LabeledNodeElm::getName()(); });
-        this.getPostCount = $entry(function() { return that.@com.lushprojects.circuitjs1.client.CircuitElm::getPostCount()(); });
-    }-*/;
+	void addJSMethods() {
+		ElmJsObject jsObject = (ElmJsObject) (Object) this;
+		jsObject.setGetType(new StringSupplier() {
+			public String get() { return getClassName(); }
+		});
+		jsObject.setGetInfo(new JsArraySupplier() {
+			public JsArrayString get() { return getInfoJS(); }
+		});
+		jsObject.setGetVoltageDiff(new DoubleSupplier() {
+			public double get() { return getVoltageDiff(); }
+		});
+		jsObject.setGetVoltage(new VoltageFunction() {
+			public double get(int n) { return getVoltageJS(n); }
+		});
+		jsObject.setGetCurrent(new DoubleSupplier() {
+			public double get() { return getCurrent(); }
+		});
+		jsObject.setGetLabelName(new StringSupplier() {
+			public String get() {
+				return (CircuitElm.this instanceof LabeledNodeElm) ? ((LabeledNodeElm) CircuitElm.this).getName() : "";
+			}
+		});
+		jsObject.setGetPostCount(new IntSupplier() {
+			public int get() { return getPostCount(); }
+		});
+	}
     
-    native JavaScriptObject getJavaScriptObject() /*-{ return this; }-*/;
+	JavaScriptObject getJavaScriptObject() {
+		return (JavaScriptObject) (Object) this;
+	}
     
 }

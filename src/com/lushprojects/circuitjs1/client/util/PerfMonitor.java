@@ -2,7 +2,28 @@ package com.lushprojects.circuitjs1.client.util;
 
 import java.util.*;
 
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
+
 public class PerfMonitor {
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Performance")
+    private static class PerformanceLike {
+        @JsMethod native double now();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Window")
+    private static class WindowLike {
+        @JsProperty native PerformanceLike getPerformance();
+    }
+
+    @JsProperty(namespace = JsPackage.GLOBAL, name = "window")
+    private static native WindowLike getWindow();
+
+    @JsMethod(namespace = JsPackage.GLOBAL, name = "Date.now")
+    private static native double dateNow();
     
     String rootCtxName;
     PerfEntry rootCtx;
@@ -62,18 +83,14 @@ public class PerfMonitor {
         }
     }
     
-    private static native float getTime() /*-{
-        // https://stackoverflow.com/questions/6875625
-        if (window.performance.now) {
-            return window.performance.now();
-        } else {
-            if (window.performance.webkitNow) {
-                return window.performance.webkitNow();
-            } else {
-                return new Date().getTime();
-            }
+    private static float getTime() {
+        WindowLike window = getWindow();
+        PerformanceLike performance = (window == null) ? null : window.getPerformance();
+        if (performance != null) {
+            return (float) performance.now();
         }
-    }-*/;
+        return (float) dateNow();
+    }
 
     class PerfEntry {
     

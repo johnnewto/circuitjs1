@@ -19,30 +19,99 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import jsinterop.annotations.JsFunction;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
+
 public class SRAMLoadFile extends EditDialogLoadFile {
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Element")
+	private static class ElementLike {
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "HTMLInputElement")
+	private static class InputElementLike extends ElementLike {
+		@JsProperty native FileListLike getFiles();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "FileList")
+	private static class FileListLike {
+		@JsProperty native int getLength();
+		@JsMethod native FileLike item(int index);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "File")
+	private static class FileLike {
+		@JsProperty native double getSize();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Document")
+	private static class DocumentLike {
+		@JsMethod native InputElementLike getElementById(String id);
+	}
+
+	@JsFunction
+	private interface FileReaderOnLoad {
+		void onLoad(Object event);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "FileReader")
+	private static class FileReaderLike {
+		public FileReaderLike() {}
+		@JsProperty native void setOnload(FileReaderOnLoad onload);
+		@JsProperty native Object getResult();
+		@JsMethod native void readAsArrayBuffer(FileLike file);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "ArrayBuffer")
+	private static class ArrayBufferLike {
+		@JsProperty native int getByteLength();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "DataView")
+	private static class DataViewLike {
+		public DataViewLike(ArrayBufferLike buffer) {}
+		@JsMethod native int getUint8(int byteOffset);
+	}
+
+	@JsProperty(namespace = JsPackage.GLOBAL, name = "document")
+	private static native DocumentLike getDocument();
 	
-	public final native void handle()
-	/*-{
-		var oFiles = $doc.getElementById("EditDialogLoadFileElement").files,
-		nFiles = oFiles.length;
-		if (nFiles>=1) {
-			if (oFiles[0].size >= 128000) {
-				@com.lushprojects.circuitjs1.client.EditDialogLoadFile::doErrorCallback(Ljava/lang/String;)("Cannot load: That file is too large!");
+	public final void handle() {
+		DocumentLike document = getDocument();
+		if (document == null)
+			return;
+		InputElementLike input = document.getElementById("EditDialogLoadFileElement");
+		if (input == null)
+			return;
+		FileListLike files = input.getFiles();
+		if (files == null || files.getLength() < 1)
+			return;
+		final FileLike file = files.item(0);
+		if (file == null)
+			return;
+		if (file.getSize() >= 128000) {
+			EditDialogLoadFile.doErrorCallback("Cannot load: That file is too large!");
+			return;
+		}
+
+		final FileReaderLike reader = new FileReaderLike();
+		reader.setOnload(event -> {
+			ArrayBufferLike buffer = (ArrayBufferLike) reader.getResult();
+			if (buffer == null) {
+				doLoadCallback("0:");
 				return;
 			}
-			
-			var reader = new FileReader();
-			reader.onload = function(e) {
-				var arr = new Uint8Array(reader.result);
-				var str = "0:";
-				for (var i = 0; i < arr.length; i++)
-					str += " " + arr[i];
-				@com.lushprojects.circuitjs1.client.SRAMLoadFile::doLoadCallback(Ljava/lang/String;)(str);
-			};
-	
-			reader.readAsArrayBuffer(oFiles[0]);
-		}
-	}-*/;
+			DataViewLike bytes = new DataViewLike(buffer);
+			StringBuilder text = new StringBuilder("0:");
+			for (int index = 0; index < buffer.getByteLength(); index++)
+				text.append(" ").append(bytes.getUint8(index));
+			doLoadCallback(text.toString());
+		});
+		reader.readAsArrayBuffer(file);
+	}
 	
 	static public void doLoadCallback(String data) {
 		SRAMElm.contentsOverride = data;

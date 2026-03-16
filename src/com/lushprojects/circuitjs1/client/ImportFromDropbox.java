@@ -1,6 +1,67 @@
 package com.lushprojects.circuitjs1.client;
 
+import jsinterop.annotations.JsFunction;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsOverlay;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
+
 public class ImportFromDropbox {
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+	private static class DropboxLike {
+		@JsMethod native boolean isBrowserSupported();
+		@JsMethod native void choose(ChooseOptions options);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Window")
+	private static class WindowLike {
+		@JsProperty native DropboxLike getDropbox();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+	private static class NavigatorLike {
+		@JsProperty native String getUserAgent();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+	private static class FileLike {
+		@JsProperty native String getLink();
+		@JsProperty native double getBytes();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Array")
+	private static class FileArrayLike {
+		@JsProperty(name = "length") native int getLength();
+		@JsMethod(name = "at") native FileLike at(int index);
+	}
+
+	@JsFunction
+	private interface SuccessCallback {
+		void onSuccess(FileArrayLike files);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+	private static class ChooseOptions {
+		@JsProperty native void setSuccess(SuccessCallback callback);
+		@JsProperty native void setLinkType(String linkType);
+		@JsProperty native void setMultiselect(boolean multiselect);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "XMLHttpRequest")
+	private static class XMLHttpRequestLike {
+		public XMLHttpRequestLike() {}
+		@JsMethod native void open(String method, String url, boolean async);
+		@JsMethod native void send();
+		@JsProperty native String getResponseText();
+	}
+
+	@JsProperty(namespace = JsPackage.GLOBAL, name = "window")
+	private static native WindowLike getWindow();
+
+	@JsProperty(namespace = JsPackage.GLOBAL, name = "navigator")
+	private static native NavigatorLike getNavigator();
 
 	
 	static CirSim sim;
@@ -12,20 +73,19 @@ public class ImportFromDropbox {
 //		CirSim.console("returned");
 	}
 	
-	static public final native boolean isSupported() 
-	/*-{
+	static public final boolean isSupported() {
 		try {
-			// Bug in firefox prevents Dropbox dialog working properly in this application
-			// even though Dropbox chooser supports firefox
-			// See https://github.com/gwtproject/gwt/issues/7923
-			if (/Firefox[\/\s](\d+\.\d+)/.test(navigator.userAgent))
+			NavigatorLike navigator = getNavigator();
+			String ua = (navigator == null) ? null : navigator.getUserAgent();
+			if (ua != null && ua.contains("Firefox/"))
 				return false;
-			return !!($wnd.Dropbox.isBrowserSupported());
-		} 
-		catch(err) {
+			WindowLike window = getWindow();
+			DropboxLike dropbox = (window == null) ? null : window.getDropbox();
+			return dropbox != null && dropbox.isBrowserSupported();
+		} catch (Exception e) {
 			return false;
 		}
- 	}-*/;
+	}
 	
 	static public void doLoadCallback(String s) {
 		sim.pushUndo();
@@ -33,50 +93,26 @@ public class ImportFromDropbox {
 	}
 	
 	
-	public final native void doDropboxImport() 
-	/*-{
-		var options = {
-
-		    // Required. Called when a user selects an item in the Chooser.
-		    success: function(files) {
-		    	try {
-			        //console.log("Here's the file link: " + files[0].link);
-			        if (files[0].bytes < 100000) {
-				        var xhr= new XMLHttpRequest();
-				        xhr.addEventListener("load", function reqListener() { 
-	//			        	console.log(xhr.responseText);
-				        	var text = xhr.responseText;
-	      					@com.lushprojects.circuitjs1.client.ImportFromDropbox::doLoadCallback(Ljava/lang/String;)(text);
-				        });
-			        }
-			        xhr.open("GET", files[0].link, false);
-			        xhr.send();
-		    	}
-		        catch(err) {
-		        } 
-		    },
-		
-		    // Optional. Called when the user closes the dialog without selecting a file
-		    // and does not include any parameters.
-		    // cancel: function() {
-		
-		    //},
-		
-		    // Optional. "preview" (default) is a preview link to the document for sharing,
-		    // "direct" is an expiring link to download the contents of the file. For more
-		    // information about link types, see Link types below.
-		    linkType: "direct", // "preview" or "direct"
-		
-		    // Optional. A value of false (default) limits selection to a single file, while
-		    // true enables multiple file selection.
-		    multiselect: false, // or true
-		
-		    // Optional. This is a list of file extensions. If specified, the user will
-		    // only be able to select files with these extensions. You may also specify
-		    // file types, such as "video" or "images" in the list. For more information,
-		    // see File types below. By default, all extensions are allowed.
-		    // extensions: ['.pdf', '.doc', '.docx'],
-		};
-		$wnd.Dropbox.choose(options);
-	 }-*/;
+	public final void doDropboxImport() {
+		ChooseOptions options = new ChooseOptions();
+		options.setLinkType("direct");
+		options.setMultiselect(false);
+		options.setSuccess(files -> {
+			try {
+				if (files == null || files.getLength() < 1)
+					return;
+				FileLike file = files.at(0);
+				if (file == null || file.getBytes() >= 100000)
+					return;
+				XMLHttpRequestLike xhr = new XMLHttpRequestLike();
+				xhr.open("GET", file.getLink(), false);
+				xhr.send();
+				doLoadCallback(xhr.getResponseText());
+			} catch (Exception e) {
+			}
+		});
+		WindowLike window = getWindow();
+		if (window != null && window.getDropbox() != null)
+			window.getDropbox().choose(options);
+	}
 }

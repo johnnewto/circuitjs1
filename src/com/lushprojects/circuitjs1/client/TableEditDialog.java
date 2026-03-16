@@ -45,6 +45,10 @@ import com.google.gwt.event.dom.client.KeyCodes;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import java.util.HashMap;
 import java.util.Map;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 
 
@@ -65,6 +69,24 @@ import java.util.Map;
  * - Markdown debug view for inspecting table structure
  */
  public class TableEditDialog extends Dialog {
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Element")
+    private static class ElementLike {
+        @JsProperty(name = "id") native String getId();
+        @JsProperty(name = "id") native void setId(String id);
+        @JsProperty(name = "textContent") native void setTextContent(String text);
+        @JsMethod native void appendChild(ElementLike child);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Document")
+    private static class DocumentLike {
+        @JsMethod native ElementLike getElementById(String id);
+        @JsMethod native ElementLike createElement(String tagName);
+        @JsProperty(name = "head") native ElementLike getHead();
+    }
+
+    @JsProperty(namespace = JsPackage.GLOBAL, name = "document")
+    private static native DocumentLike getDocument();
     
     //=== CONSTANTS AND CONFIGURATION ===============================================
     // =============================================================================
@@ -269,28 +291,29 @@ import java.util.Map;
     /**
      * Add CSS for resizable panels (inner content only, not dialog windows)
      */
-    private native void addResizableStyles() /*-{
-        // Add resize handle CSS only once
-        if (!$doc.getElementById('resizable-panel-style')) {
-            var style = $doc.createElement('style');
-            style.id = 'resizable-panel-style';
-            style.textContent = 
-                '.resizable-panel {' +
-                '  resize: both !important;' +
-                '  overflow: auto !important;' +
-                '  min-width: 300px !important;' +
-                '  min-height: 200px !important;' +
-                '}';
-            $doc.head.appendChild(style);
-        }
-    }-*/;
+    private void addResizableStyles() {
+        DocumentLike document = getDocument();
+        if (document.getElementById("resizable-panel-style") != null)
+            return;
+        ElementLike style = document.createElement("style");
+        style.setId("resizable-panel-style");
+        style.setTextContent(
+            ".resizable-panel {" +
+            "  resize: both !important;" +
+            "  overflow: auto !important;" +
+            "  min-width: 300px !important;" +
+            "  min-height: 200px !important;" +
+            "}"
+        );
+        document.getHead().appendChild(style);
+    }
     
     /**
      * Make a panel resizable (inner content areas only)
      */
-    private native void makeResizable(com.google.gwt.dom.client.Element element) /*-{
-        element.classList.add('resizable-panel');
-    }-*/;
+    private void makeResizable(com.google.gwt.dom.client.Element element) {
+        element.addClassName("resizable-panel");
+    }
     
     //=== INITIALIZATION METHODS ====================================================
     // =============================================================================

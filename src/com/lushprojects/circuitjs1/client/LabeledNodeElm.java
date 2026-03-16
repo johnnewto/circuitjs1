@@ -23,6 +23,8 @@ import java.util.HashMap;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.google.gwt.user.client.ui.SuggestBox;
 import com.google.gwt.user.client.ui.MultiWordSuggestOracle;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
 
 class LabeledNodeElm extends CircuitElm {
     final int FLAG_ESCAPE = 4;
@@ -87,10 +89,8 @@ class LabeledNodeElm extends CircuitElm {
     boolean showCurrent() { return (flags & FLAG_SHOW_CURRENT) != 0; }
 	boolean showFlow() { return (flags & FLAG_SHOW_FLOW) != 0; }
 
-    public static native void console(String text)
-    /*-{
-	    console.log(text);
-	}-*/;
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "console.log")
+	public static native void console(String text);
 
     static void resetNodeList() {
 		labelList = new HashMap<String,LabelEntry>();

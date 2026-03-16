@@ -25,10 +25,28 @@ import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.FileUpload;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
+
 /*
  * An abstract class for circuitjs which allows components to prompt for files from the user.
  */
 public abstract class EditDialogLoadFile extends FileUpload implements ChangeHandler  {
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Element")
+	private static class ElementLike {
+		@JsMethod native void click();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Document")
+	private static class DocumentLike {
+		@JsMethod native ElementLike getElementById(String id);
+	}
+
+	@JsProperty(namespace = JsPackage.GLOBAL, name = "document")
+	private static native DocumentLike getDocument();
 	
 	static public final boolean isSupported() { return LoadFile.isSupported(); }
 	
@@ -49,10 +67,14 @@ public abstract class EditDialogLoadFile extends FileUpload implements ChangeHan
 		handle();
 	}
 	
-	public final native void open() 
-	/*-{
-		$doc.getElementById("EditDialogLoadFileElement").click();
-	}-*/;
+	public final void open() {
+		DocumentLike document = getDocument();
+		if (document == null)
+			return;
+		ElementLike element = document.getElementById("EditDialogLoadFileElement");
+		if (element != null)
+			element.click();
+	}
 	
 	public abstract void handle();
 }

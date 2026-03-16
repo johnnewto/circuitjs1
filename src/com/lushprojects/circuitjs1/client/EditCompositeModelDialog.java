@@ -292,12 +292,10 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 	boolean dragging;
 	
 	public void onMouseOver(MouseOverEvent event) {
-	    // TODO Auto-generated method stub
 	    
 	}
 
 	public void onMouseOut(MouseOutEvent event) {
-	    // TODO Auto-generated method stub
 	    
 	}
 

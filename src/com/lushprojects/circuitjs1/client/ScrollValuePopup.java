@@ -30,9 +30,20 @@ import com.google.gwt.event.dom.client.MouseOutEvent;
 import com.google.gwt.event.dom.client.MouseOutHandler;
 import com.google.gwt.event.dom.client.MouseWheelEvent;
 import com.google.gwt.event.dom.client.MouseWheelHandler;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 public class ScrollValuePopup extends PopupPanel implements MouseOutHandler, MouseWheelHandler,
 	MouseDownHandler {
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Window")
+	private static class WindowLike {
+		@JsProperty native double getDevicePixelRatio();
+	}
+
+	@JsProperty(namespace = JsPackage.GLOBAL, name = "window")
+	private static native WindowLike getWindow();
 	
 	static final double e12[] = {1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2};
 	static final int labMax=5;
@@ -207,7 +218,13 @@ public class ScrollValuePopup extends PopupPanel implements MouseOutHandler, Mou
     	}
     }
     
-    native double getDevicePixelRatio() /*-{ return window.devicePixelRatio || 1; }-*/;
+    double getDevicePixelRatio() {
+	WindowLike window = getWindow();
+	if (window == null)
+	    return 1;
+	double ratio = window.getDevicePixelRatio();
+	return ratio > 0 ? ratio : 1;
+    }
 
     public int getSelIdx() {
     	int r;

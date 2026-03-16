@@ -51,11 +51,19 @@ import com.google.gwt.event.dom.client.TouchStartEvent;
 import com.google.gwt.event.dom.client.TouchStartHandler;
 import com.google.gwt.event.dom.client.ContextMenuEvent;
 import com.google.gwt.event.dom.client.ContextMenuHandler;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 
 public class Scrollbar extends  Composite implements 
 	ClickHandler, MouseDownHandler, MouseMoveHandler, MouseUpHandler, MouseOutHandler, MouseOverHandler,
 	MouseWheelHandler, TouchStartHandler, TouchCancelHandler, TouchEndHandler, TouchMoveHandler, ContextMenuHandler {
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+	private interface EventButtonsLike {
+		@JsProperty int getButtons();
+	}
 	
 	static int HORIZONTAL =1;
 	static int HMARGIN=2;
@@ -217,9 +225,9 @@ public class Scrollbar extends  Composite implements
 	    }
 	}
 	
-	native boolean noButtonsDown(NativeEvent e) /*-{
-	    return e.buttons == 0;
-	}-*/;
+	boolean noButtonsDown(NativeEvent e) {
+	    return ((EventButtonsLike) (Object) e).getButtons() == 0;
+	}
 	
 	public void onMouseMove(MouseMoveEvent e){
 //		GWT.log("Move");
