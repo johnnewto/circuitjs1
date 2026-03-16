@@ -40,28 +40,28 @@ World2 <- sfcr_set(
   e19 = CIR ~ CI / max(1, P),  # [mode=voltage, sliderValue=0 ]
   e20 = NRFR ~ max(0, NR) / NR_0,  # [mode=voltage, sliderValue=0 ]
   e21 = POLR ~ POL / POLS,  # Pollution ratio  [mode=voltage, sliderValue=0 ]
-  e22 = BR ~ P * BRN * lookup(BR_lookup, clamp(MSL, 0, 5)) * lookup(BR_lookup_2, clamp(CR, 0, 5)) * lookup(BR_lookup_3, clamp(FR, 0, 4)) * lookup(BR_lookup_4, clamp(POLR, 0, 60)),  # [mode=voltage, sliderValue=0 ]
-  e23 = DR ~ P * DRN * lookup(DR_lookup, clamp(MSL, 0, 5)) * lookup(DR_lookup_2, clamp(POLR, 0, 60)) * lookup(DR_lookup_3, clamp(FR, 0, 2)) * lookup(DR_lookup_4, clamp(CR, 0, 5)),  # [mode=voltage, sliderValue=0 ]
-  e24 = NRUR ~ P * NRUN * lookup(NRUR_lookup, clamp(MSL, 0, 10)),  # [mode=voltage, sliderValue=0 ]
+  e22 = BR ~ P * BRN * lookup(BRMM, clamp(MSL, 0, 5)) * lookup(BRCM, clamp(CR, 0, 5)) * lookup(BRFM, clamp(FR, 0, 4)) * lookup(BRPM, clamp(POLR, 0, 60)),  # [mode=voltage, sliderValue=0 ]
+  e23 = DR ~ P * DRN * lookup(DRMM, clamp(MSL, 0, 5)) * lookup(DRPM, clamp(POLR, 0, 60)) * lookup(DRFM, clamp(FR, 0, 2)) * lookup(DRCM, clamp(CR, 0, 5)),  # [mode=voltage, sliderValue=0 ]
+  e24 = NRUR ~ P * NRUN * lookup(NRMM, clamp(MSL, 0, 10)),  # [mode=voltage, sliderValue=0 ]
   e25 = CID ~ CI * CIDN,  # [mode=voltage, sliderValue=0 ]
-  e26 = CIG ~ P * lookup(CIG_lookup, clamp(MSL, 0, 5)) * CIGN,  # [mode=voltage, sliderValue=0 ]
-  e27 = POLG ~ P * POLN * lookup(POLG_lookup, clamp(CIR, 0, 5)),  # [mode=voltage, sliderValue=0 ]
-  e28 = POLA ~ POL / max(1e-9, lookup(POLA_lookup, clamp(POLR, 0, 60))),  # [mode=voltage, sliderValue=0 ]
-  e29 = CFIFR ~ lookup(CFIFR_lookup, clamp(FR, 0, 2)),  # [mode=voltage, sliderValue=0 ]
-  e30 = QLM ~ lookup(QLM_lookup, clamp(MSL, 0, 5)),  # [mode=voltage, sliderValue=0 ]
-  e31 = QLP ~ lookup(QLP_lookup, clamp(POLR, 0, 60)),  # [mode=voltage, sliderValue=0 ]
-  e32 = QLF ~ lookup(QLF_lookup, clamp(FR, 0, 4)),  # [mode=voltage, sliderValue=0 ]
-  e33 = CIQR ~ lookup(CIQR_lookup, clamp(QLM / max(1e-9, QLF), 0, 2)),  # [mode=voltage, sliderValue=0 ]
+  e26 = CIG ~ P * lookup(CIM, clamp(MSL, 0, 5)) * CIGN,  # [mode=voltage, sliderValue=0 ]
+  e27 = POLG ~ P * POLN * lookup(POLCM, clamp(CIR, 0, 5)),  # [mode=voltage, sliderValue=0 ]
+  e28 = POLA ~ POL / max(1e-9, lookup(POLAT, clamp(POLR, 0, 60))),  # [mode=voltage, sliderValue=0 ]
+  e29 = CFIFR ~ lookup(CFIFR, clamp(FR, 0, 2)),  # [mode=voltage, sliderValue=0 ]
+  e30 = QLM ~ lookup(QLM, clamp(MSL, 0, 5)),  # [mode=voltage, sliderValue=0 ]
+  e31 = QLP ~ lookup(QLP, clamp(POLR, 0, 60)),  # [mode=voltage, sliderValue=0 ]
+  e32 = QLF ~ lookup(QLF, clamp(FR, 0, 4)),  # [mode=voltage, sliderValue=0 ]
+  e33 = CIQR ~ lookup(CIQR, clamp(QLM / max(1e-9, QLF), 0, 2)),  # [mode=voltage, sliderValue=0 ]
   e34 = CIAF_D ~ CFIFR * CIQR,  # [mode=voltage, sliderValue=0 ]
   e35 = CIRA ~ CIR * CIAF / max(1e-9, CIAFN),  # [mode=voltage, sliderValue=0 ]
-  e36 = FCM ~ lookup(FCM_lookup, clamp(CR, 0, 5)),  # [mode=voltage, sliderValue=0 ]
-  e37 = FPCI ~ lookup(FPCI_lookup, clamp(CIRA, 0, 6)),  # [mode=voltage, sliderValue=0 ]
-  e38 = FPM ~ lookup(FPM_lookup, clamp(POLR, 0, 60)),  # [mode=voltage, sliderValue=0 ]
+  e36 = FCM ~ lookup(FCM, clamp(CR, 0, 5)),  # [mode=voltage, sliderValue=0 ]
+  e37 = FPCI ~ lookup(FPCI, clamp(CIRA, 0, 6)),  # [mode=voltage, sliderValue=0 ]
+  e38 = FPM ~ lookup(FPM, clamp(POLR, 0, 60)),  # [mode=voltage, sliderValue=0 ]
   e39 = FR ~ (FCM * FPCI * FPM * FC_COEFF) / FN,  # Food ratio  [mode=voltage, sliderValue=0 ]
-  e40 = NREM ~ lookup(NREM_lookup, clamp(NRFR, 0, 1)),  # [mode=voltage, sliderValue=0 ]
+  e40 = NREM ~ lookup(NREM, clamp(NRFR, 0, 1)),  # [mode=voltage, sliderValue=0 ]
   e41 = ECIR ~ (CIR * (1 - CIAF) * NREM) / max(1e-9, (1 - CIAFN)),  # [mode=voltage, sliderValue=0 ]
   e42 = MSL ~ ECIR / ECIRN,  # Material standard of living  [mode=voltage, sliderValue=0 ]
-  e43 = QLC ~ lookup(QLC_lookup, clamp(CR, 0, 5)),  # [mode=voltage, sliderValue=0 ]
+  e43 = QLC ~ lookup(QLC, clamp(CR, 0, 5)),  # [mode=voltage, sliderValue=0 ]
   e44 = QL ~ QLS * QLM * QLC * QLF * QLP,  # Quality of life  [mode=voltage, sliderValue=0 ]
   e45 = P_norm ~ P / P_0,  # [mode=voltage, sliderValue=0 ]
   e46 = P ~ integrate(BR - DR),  # Population (people)  [mode=voltage, sliderValue=0, initial=1.65e9 ]
@@ -113,7 +113,7 @@ Reference target from pyworld2 tests at year 2100:
 ## Lookup Tables (World2 Scoped)
 
 ```{r}
-@lookup BR_lookup scope=World2
+@lookup BRMM scope=World2
   0, 1.2
   1, 1
   2, 0.85
@@ -124,7 +124,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup BR_lookup_2 scope=World2
+@lookup BRCM scope=World2
   0, 1.05
   1, 1
   2, 0.9
@@ -135,7 +135,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup BR_lookup_3 scope=World2
+@lookup BRFM scope=World2
   0, 0
   1, 1
   2, 1.6
@@ -145,7 +145,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup BR_lookup_4 scope=World2
+@lookup BRPM scope=World2
   0, 1.02
   10, 0.9
   20, 0.7
@@ -157,7 +157,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup DR_lookup scope=World2
+@lookup DRMM scope=World2
   0, 3
   0.5, 1.8
   1, 1
@@ -173,7 +173,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup DR_lookup_2 scope=World2
+@lookup DRPM scope=World2
   0, 0.92
   10, 1.3
   20, 2
@@ -185,7 +185,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup DR_lookup_3 scope=World2
+@lookup DRFM scope=World2
   0, 30
   0.25, 3
   0.5, 2
@@ -199,7 +199,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup DR_lookup_4 scope=World2
+@lookup DRCM scope=World2
   0, 0.9
   1, 1
   2, 1.2
@@ -210,7 +210,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup NRUR_lookup scope=World2
+@lookup NRMM scope=World2
   0, 0
   1, 1
   2, 1.8
@@ -226,7 +226,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup CIG_lookup scope=World2
+@lookup CIM scope=World2
   0, 0.1
   1, 1
   2, 1.8
@@ -237,7 +237,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup POLG_lookup scope=World2
+@lookup POLCM scope=World2
   0, 0.05
   1, 1
   2, 3
@@ -248,7 +248,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup POLA_lookup scope=World2
+@lookup POLAT scope=World2
   0, 0.6
   10, 2.5
   20, 5
@@ -260,7 +260,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup CFIFR_lookup scope=World2
+@lookup CFIFR scope=World2
   0, 1
   0.5, 0.6
   1, 0.3
@@ -270,7 +270,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup QLM_lookup scope=World2
+@lookup QLM scope=World2
   0, 0.2
   1, 1
   2, 1.7
@@ -281,7 +281,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup QLP_lookup scope=World2
+@lookup QLP scope=World2
   0, 1.04
   10, 0.85
   20, 0.6
@@ -293,7 +293,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup QLF_lookup scope=World2
+@lookup QLF scope=World2
   0, 0
   1, 1
   2, 1.8
@@ -303,7 +303,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup CIQR_lookup scope=World2
+@lookup CIQR scope=World2
   0, 0.7
   0.5, 0.8
   1, 1
@@ -313,7 +313,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup FCM_lookup scope=World2
+@lookup FCM scope=World2
   0, 2.4
   1, 1
   2, 0.6
@@ -324,7 +324,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup FPCI_lookup scope=World2
+@lookup FPCI scope=World2
   0, 0.5
   1, 1
   2, 1.4
@@ -336,7 +336,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup FPM_lookup scope=World2
+@lookup FPM scope=World2
   0, 1.02
   10, 0.9
   20, 0.65
@@ -348,7 +348,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup NREM_lookup scope=World2
+@lookup NREM scope=World2
   0, 0
   0.25, 0.15
   0.5, 0.5
@@ -358,7 +358,7 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
-@lookup QLC_lookup scope=World2
+@lookup QLC scope=World2
   0, 2
   0.5, 1.3
   1, 1

@@ -39,12 +39,12 @@ class SFCRWorld2EndToEndTest {
         SFCRParseResult second = SFCRParser.parseToResult(exported);
         assertNotNull(second, "Second parse result must not be null");
         assertNotNull(second.findBlock("equations", "World2"), "World2 equations block must survive round-trip");
-        assertNotNull(second.findBlock("lookup", "BRMM"), "BRMM lookup must survive round-trip");
-        assertNotNull(second.findBlock("lookup", "DRMM"), "DRMM lookup must survive round-trip");
-        assertNotNull(second.findBlock("lookup", "POLAT"), "POLAT lookup must survive round-trip");
-        assertNotNull(second.findBlock("lookup", "NRMM"), "NRMM lookup must survive round-trip");
-        assertNotNull(second.findBlock("lookup", "QLM"), "QLM lookup must survive round-trip");
-        assertNotNull(second.findBlock("lookup", "QLP"), "QLP lookup must survive round-trip");
+        assertLookupPresent(second, "World2", "BRMM");
+        assertLookupPresent(second, "World2", "DRMM");
+        assertLookupPresent(second, "World2", "POLAT");
+        assertLookupPresent(second, "World2", "NRMM");
+        assertLookupPresent(second, "World2", "QLM");
+        assertLookupPresent(second, "World2", "QLP");
 
         List<String> firstSignature = toBlockSignature(first.blockDumps);
         List<String> secondSignature = toBlockSignature(second.blockDumps);
@@ -68,5 +68,12 @@ class SFCRWorld2EndToEndTest {
             signature.add(type + "|" + name + "|" + dump);
         }
         return signature;
+    }
+
+    private void assertLookupPresent(SFCRParseResult result, String scopeName, String lookupName) {
+        boolean foundUnscoped = result.findBlock("lookup", lookupName) != null;
+        boolean foundScoped = result.findBlock("lookup", scopeName + ":" + lookupName) != null;
+        assertTrue(foundUnscoped || foundScoped,
+                lookupName + " lookup must survive round-trip");
     }
 }
