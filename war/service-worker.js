@@ -1,30 +1,32 @@
 const CACHE_NAME = 'circuitjs1-app-cache-v1';
 const urlsToCache = [
-  '/circuit/about.html',
-  '/circuit/canvas2svg.js',
-  '/circuit/circuitjs.html',
-  '/circuit/crystal.html',
-  '/circuit/customfunction.html',
-  '/circuit/customlogic.html',
-  '/circuit/customtransformer.html',
-  '/circuit/diodecalc.html',
-  '/circuit/icon512.png',
-  '/circuit/icon128.png',
-  '/circuit/iframe.html',
-  '/circuit/lz-string.min.js',
-  '/circuit/manifest.json',
-  '/circuit/mexle.html',
-  '/circuit/mosfet-beta.html',
-  '/circuit/opampreal.html',
-  '/circuit/split.js',
-  '/circuit/subcircuits.html',
+    'about.html',
+    'canvas2svg.js',
+    'circuitjs.html',
+    'crystal.html',
+    'customfunction.html',
+    'customlogic.html',
+    'customtransformer.html',
+    'diodecalc.html',
+    'icon512.png',
+    'icon128.png',
+    'iframe.html',
+    'lz-string.min.js',
+    'manifest.json',
+    'mexle.html',
+    'mosfet-beta.html',
+    'opampreal.html',
+    'split.js',
+    'subcircuits.html',
   // put everything else here
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
+            .then(cache => Promise.all(
+                urlsToCache.map(url => cache.add(url).catch(() => null))
+            ))
   );
 });
 
