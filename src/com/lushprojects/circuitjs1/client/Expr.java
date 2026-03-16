@@ -461,7 +461,7 @@ class Expr {
 	case E_MIN: case E_MAX: case E_CLAMP:
 	case E_PWR: case E_PWRS:
 	case E_STEP: case E_SELECT:
-	case E_PWL:
+	 case E_PWL: case E_PWLX:
 	case E_TERNARY:
 	    if (children != null) {
 		for (int i = 0; i < children.size(); i++) {
@@ -848,6 +848,8 @@ class Expr {
 	}
 	case E_PWL:
 	    return pwl(es, children, context);
+	case E_PWLX:
+	    return pwlx(es, children, context);
 	case E_PWR:
 	    return Math.pow(Math.abs(left.eval(es, context)), right.eval(es, context));
 	case E_PWRS: {
@@ -1194,6 +1196,43 @@ class Expr {
 	return y1;
     }
 
+    double pwlx(ExprState es, Vector<Expr> args, EvaluationContext context) {
+	double x = args.get(0).eval(es, context);
+	double x0 = args.get(1).eval(es, context);
+	double y0 = args.get(2).eval(es, context);
+	double x1 = args.get(3).eval(es, context);
+	double y1 = args.get(4).eval(es, context);
+
+	if (x < x0) {
+	    double dx = x1 - x0;
+	    if (Math.abs(dx) < 1e-12)
+		return y0;
+	    return y0 + (x - x0) * (y1 - y0) / dx;
+	}
+
+	int i = 5;
+	while (true) {
+	    if (x < x1) {
+		double dx = x1 - x0;
+		if (Math.abs(dx) < 1e-12)
+		    return y0;
+		return y0 + (x - x0) * (y1 - y0) / dx;
+	    }
+	    if (i + 1 >= args.size())
+		break;
+	    x0 = x1;
+	    y0 = y1;
+	    x1 = args.get(i).eval(es, context);
+	    y1 = args.get(i + 1).eval(es, context);
+	    i += 2;
+	}
+
+	double dx = x1 - x0;
+	if (Math.abs(dx) < 1e-12)
+	    return y1;
+	return y0 + (x - x0) * (y1 - y0) / dx;
+    }
+
     double posmod(double x, double y) {
 	x %= y;
 	return (x >= 0) ? x : x+y;
@@ -1230,6 +1269,7 @@ class Expr {
     static final int E_MOD = 25;
     static final int E_STEP = 26;
     static final int E_SELECT = 27;
+	static final int E_PWLX = 94;
     static final int E_PWR = 28;
     static final int E_PWRS = 29;
     static final int E_LASTOUTPUT = 30;
@@ -1690,6 +1730,8 @@ class ExprParser {
 			return parseFuncMulti(Expr.E_MAX, 2, 1000);
 		if (skipIgnoreCase("pwl"))
 			return parseFuncMulti(Expr.E_PWL, 2, 1000);
+		if (skipIgnoreCase("pwlx"))
+			return parseFuncMulti(Expr.E_PWLX, 5, 1000);
 		if (skipIgnoreCase("mod"))
 			return parseFuncMulti(Expr.E_MOD, 2, 2);
 		if (skipIgnoreCase("step"))

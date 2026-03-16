@@ -1,4 +1,12 @@
 # CircuitJS1 TODOs
+increase equation table size
+headless cli use gslot mechanism
+
+## lookup table Canvas editing
+
+You’re right: this still needs a canvas-side editor path. Right now lookups are model-level data, not a dedicated editable canvas element.
+Next practical step is adding a minimal Lookup Table editor panel tied to EquationTable/Godly expressions using lookup(Name, x). Want me to implement that MVP next?
+
 ## add equation table prefix or suffix system
 so that equations can be not duplicated and  written without _UK, _US
 

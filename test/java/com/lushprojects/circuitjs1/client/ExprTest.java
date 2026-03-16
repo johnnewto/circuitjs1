@@ -71,6 +71,65 @@ class ExprTest {
     }
 
     @Test
+    @DisplayName("integrate() models dp/dt = 0.1*p with p(0)=100 and reaches ~110.52 at t=1s")
+    void testIntegrateExponentialGrowthAtOneSecond() {
+        Expr expr = parse("integrate(0.1 * _a)");
+        ExprState state = new ExprState(0);
+
+        double dt = 0.001;
+        int steps = 1000;
+
+        state.lastIntOutput = 100.0;
+        state.t = 0.0;
+
+        for (int step = 0; step < steps; step++) {
+            state.values[0] = state.lastIntOutput;
+            state.t = step * dt;
+            expr.evalFresh(state, dt);
+            state.commitIntegration(dt);
+        }
+
+        double pAtOneSecond = state.lastIntOutput;
+        double exact = 100.0 * Math.exp(0.1);
+
+        assertEquals(exact, pAtOneSecond, 0.01);
+        assertEquals(110.52, pAtOneSecond, 0.01);
+    }
+
+    @Test
+    @DisplayName("integrate() with dt=1 performs one Euler step and gives 110.0 at t=1s")
+    void testIntegrateSingleStepEulerAtOneSecond() {
+        Expr expr = parse("integrate(0.1 * _a)");
+        ExprState state = new ExprState(0);
+
+        state.lastIntOutput = 100.0;
+        state.values[0] = state.lastIntOutput;
+        state.t = 0.0;
+
+        expr.evalFresh(state, 1.0);
+        state.commitIntegration(1.0);
+
+        double pAtOneSecond = state.lastIntOutput;
+        double exact = 100.0 * Math.exp(0.1);
+
+        assertEquals(110.0, pAtOneSecond, 1e-12);
+        assertTrue(Math.abs(exact - pAtOneSecond) > 0.5);
+    }
+
+    @Test
+    @DisplayName("pwlx() linearly extrapolates outside endpoint ranges")
+    void testPwlxLinearExtrapolationOutsideRange() {
+        Expr expr = parse("pwlx(_a, 0, 0, 1, 2, 2, 4)");
+        ExprState state = new ExprState(0);
+
+        state.values[0] = -1.0;
+        assertEquals(-2.0, expr.evalFresh(state), 1e-12);
+
+        state.values[0] = 3.0;
+        assertEquals(6.0, expr.evalFresh(state), 1e-12);
+    }
+
+    @Test
     @DisplayName("diff() uses committed previous input to compute derivative")
     void testDiffUsesCommittedPreviousInput() {
         Expr expr = parse("diff(_a)");

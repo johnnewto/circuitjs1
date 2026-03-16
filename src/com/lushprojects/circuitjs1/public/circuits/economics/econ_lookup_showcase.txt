@@ -1,0 +1,79 @@
+@init
+  timestep: 0.05
+  timeUnit: s
+  equationTableMnaMode: false
+  equationTableTolerance: 0.01
+  convergenceCheckThreshold: 5000
+  showDots: false
+  showVolts: false
+@end
+
+# Global lookup table used by all equation blocks unless overridden by scope.
+@lookup Gain
+  | x | y |
+  | 0 | 0 |
+  | 1 | 1 |
+  | 2 | 1.5 |
+@end
+
+# Scoped override for @equations block named "ScopedDemo" only.
+@lookup Gain scope=ScopedDemo
+  0, 0
+  1, 2
+  2, 4
+@end
+
+# Another global table to show both invocation forms.
+@lookup Offset
+  0 0
+  1 0.5
+  2 1.0
+@end
+
+@equations GlobalDemo x=48 y=64
+  GD_x        ~ 1 + sin(t)
+  GD_lookup   ~ lookup(Gain, GD_x)
+  GD_short    ~ Gain(GD_x)
+  GD_offset   ~ lookup(Offset, GD_x)
+  GD_total    ~ GD_lookup + GD_offset
+@end
+
+@equations ScopedDemo x=384 y=64
+  SD_x        ~ 1 + sin(t)
+  SD_lookup   ~ lookup(Gain, SD_x)
+  SD_short    ~ Gain(SD_x)
+@end
+
+@hints
+  GD_x: GlobalDemo input signal (1 + sin(t), ranges from 0 to 2)
+  GD_lookup: GlobalDemo output using lookup(Table, x) form
+  GD_short: GlobalDemo output using Table(x) shorthand
+  GD_offset: GlobalDemo output from second global lookup table
+  GD_total: GlobalDemo sum of two lookup-driven outputs
+  SD_x: ScopedDemo input signal (same as GD_x)
+  SD_lookup: ScopedDemo output using scoped Gain override
+  SD_short: ScopedDemo shorthand output using scoped Gain override
+@end
+
+@info
+# Lookup Showcase (SFCR)
+
+This file demonstrates `@lookup` blocks in CircuitJS1 SFCR format.
+
+## What it shows
+
+- **Global lookup table** (`Gain`) used in `GlobalDemo`
+- **Scoped lookup override** (`Gain scope=ScopedDemo`) used only in `ScopedDemo`
+- Both invocation forms:
+  - `lookup(Gain, x)`
+  - `Gain(x)`
+- Multiple row formats accepted in `@lookup`:
+  - Markdown table rows
+  - CSV-style rows
+  - Whitespace-separated rows
+
+## Expected behavior
+
+For the same `x`, `ScopedDemo` outputs should be larger than `GlobalDemo`
+because the scoped `Gain` curve is steeper (0→0, 1→2, 2→4).
+@end

@@ -22,6 +22,7 @@ import java.util.Vector;
  *   @info       - Model documentation (markdown)
  *   @equations  - Variable equations (creates EquationTableElm)
  *   @parameters - Alias for @equations (sfcr compatibility)
+ *   @lookup     - Named lookup tables for equation interpolation
  *   @matrix     - Transaction flow matrices (creates SFCTableElm)
  *   @hints      - Variable tooltips (overrides inline comments)
  *   @scope      - Oscilloscope displays
@@ -92,6 +93,13 @@ public class SFCRParser {
             return x != Integer.MIN_VALUE && y != Integer.MIN_VALUE;
         }
     }
+
+    /** Parsed lookup table with x/y control points. */
+    private static class LookupTableSpec {
+        String name;
+        ArrayList<Double> xs = new ArrayList<Double>();
+        ArrayList<Double> ys = new ArrayList<Double>();
+    }
     
     // =========================================================================
     // Fields
@@ -108,6 +116,9 @@ public class SFCRParser {
     private ArrayList<ScopeBlockSpec> scopeBlocks = new ArrayList<ScopeBlockSpec>();
     private HashMap<String, String> initSettings = new HashMap<String, String>();
     private ArrayList<String> rawCircuitLines = new ArrayList<String>();
+    private HashMap<String, LookupTableSpec> globalLookupTables = new HashMap<String, LookupTableSpec>();
+    private HashMap<String, HashMap<String, LookupTableSpec>> scopedLookupTables =
+        new HashMap<String, HashMap<String, LookupTableSpec>>();
     private String infoContent = null;
     private boolean actionElementFromActionBlock = false;
 
@@ -261,6 +272,14 @@ public class SFCRParser {
                     throw new ParseException("Invalid equation row at line " + (i + 1) + ": " + trimmed);
                 }
                 hasValidRows = true;
+            } else if ("@lookup".equals(currentBlock)) {
+                if (isLookupHeaderRow(trimmed)) {
+                    continue;
+                }
+                if (!isValidLookupRow(trimmed)) {
+                    throw new ParseException("Invalid lookup row at line " + (i + 1) + ": " + trimmed);
+                }
+                hasValidRows = true;
             }
         }
 
@@ -283,11 +302,13 @@ public class SFCRParser {
                 "@matrix".equals(directive) || "@equations".equals(directive) ||
                 "@parameters".equals(directive) || "@hints".equals(directive) ||
                 "@scope".equals(directive) || "@circuit".equals(directive) ||
-                "@info".equals(directive) || "@sankey".equals(directive);
+                "@info".equals(directive) || "@sankey".equals(directive) ||
+                "@lookup".equals(directive);
     }
 
     private static boolean requiresRows(String directive) {
-        return "@equations".equals(directive) || "@parameters".equals(directive);
+        return "@equations".equals(directive) || "@parameters".equals(directive) ||
+               "@lookup".equals(directive);
     }
 
     private static boolean isValidEquationRow(String trimmedLine) {
@@ -295,6 +316,83 @@ public class SFCRParser {
             return false;
         }
         return trimmedLine.contains("~");
+    }
+
+    private static boolean isLookupHeaderRow(String trimmedLine) {
+        if (trimmedLine == null) {
+            return false;
+        }
+        String line = trimmedLine.trim();
+        if (line.startsWith("|") && line.endsWith("|")) {
+            String[] cells = line.substring(1, line.length() - 1).split("\\|");
+            if (cells.length >= 2) {
+                String c0 = cells[0].trim().toLowerCase();
+                String c1 = cells[1].trim().toLowerCase();
+                if (("x".equals(c0) || "ratio".equals(c0)) &&
+                    ("y".equals(c1) || "value".equals(c1) || "multiplier".equals(c1))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean isValidLookupRow(String trimmedLine) {
+        if (trimmedLine == null) {
+            return false;
+        }
+        String line = trimmedLine.trim();
+        if (line.isEmpty() || line.startsWith("#") || line.startsWith("%")) {
+            return false;
+        }
+        if (line.startsWith("|")) {
+            String[] cells = parseTableRowStatic(line);
+            if (cells.length < 2) {
+                return false;
+            }
+            return canParseDouble(cells[0]) && canParseDouble(cells[1]);
+        }
+
+        String[] parts;
+        if (line.contains(",")) {
+            parts = line.split(",", 2);
+        } else {
+            parts = line.split("\\s+");
+        }
+        if (parts.length < 2) {
+            return false;
+        }
+        return canParseDouble(parts[0]) && canParseDouble(parts[1]);
+    }
+
+    private static boolean canParseDouble(String text) {
+        if (text == null) {
+            return false;
+        }
+        String s = text.trim();
+        if (s.isEmpty()) {
+            return false;
+        }
+        try {
+            Double.parseDouble(s);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static String[] parseTableRowStatic(String line) {
+        String trimmed = line.trim();
+        if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) {
+            return new String[0];
+        }
+        trimmed = trimmed.substring(1, trimmed.length() - 1);
+        String[] rawCells = trimmed.split("\\|");
+        String[] cells = new String[rawCells.length];
+        for (int i = 0; i < rawCells.length; i++) {
+            cells[i] = rawCells[i].trim();
+        }
+        return cells;
     }
 
     /** Check if text appears to be in SFCR format. */
@@ -311,7 +409,8 @@ public class SFCRParser {
             trimmed.contains("@parameters") ||
             trimmed.contains("@init") || trimmed.contains("@action") || trimmed.contains("@hints") ||
             trimmed.contains("@scope") || trimmed.contains("@circuit") ||
-            trimmed.contains("@info") || trimmed.contains("@sankey") )
+            trimmed.contains("@info") || trimmed.contains("@sankey") ||
+            trimmed.contains("@lookup") )
             {
             return true;
         }
@@ -347,12 +446,15 @@ public class SFCRParser {
         scopeBlocks.clear();
         initSettings.clear();
         rawCircuitLines.clear();
+        globalLookupTables.clear();
+        scopedLookupTables.clear();
         actionElementFromActionBlock = false;
         if (sim != null) sim.getSFCRDocumentState().clearBlockComments();
         currentY = 24;
         
         try {
             String[] lines = text.split("\n");
+            preScanLookupTables(lines);
             int i = 0;
             Vector<String> pendingBlockComments = new Vector<String>();
             boolean inFence = false;
@@ -419,6 +521,9 @@ public class SFCRParser {
                     storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_EQUATIONS,
                         extractBlockName(line, "@parameters"), pendingBlockComments);
                     i = parseParametersBlock(lines, i);
+                } else if (line.startsWith("@lookup")) {
+                    pendingBlockComments.clear();
+                    i = parseLookupBlock(lines, i);
                 } else if (line.startsWith("@hints")) {
                     pendingBlockComments.clear();
                     i = parseHintsBlock(lines, i);
@@ -471,6 +576,86 @@ public class SFCRParser {
         } catch (Exception e) {
             CirSim.console("SFCRParser error: " + e.getMessage());
             return false;
+        }
+    }
+
+    private void preScanLookupTables(String[] lines) {
+        if (lines == null || lines.length == 0) {
+            return;
+        }
+
+        int i = 0;
+        while (i < lines.length) {
+            String headerLine = (lines[i] == null) ? "" : lines[i].trim();
+            if (!headerLine.startsWith("@lookup")) {
+                i++;
+                continue;
+            }
+
+            String header = headerLine.substring("@lookup".length()).trim();
+            if (header.isEmpty()) {
+                i++;
+                continue;
+            }
+
+            String lookupName = null;
+            String scopeName = null;
+            String[] tokens = header.split("\\s+");
+            for (int t = 0; t < tokens.length; t++) {
+                String token = tokens[t].trim();
+                if (token.isEmpty()) {
+                    continue;
+                }
+                int eq = token.indexOf('=');
+                if (eq > 0) {
+                    String key = token.substring(0, eq).trim().toLowerCase();
+                    String val = token.substring(eq + 1).trim();
+                    if ("scope".equals(key) || "local".equals(key) || "equations".equals(key) || "table".equals(key)) {
+                        scopeName = SFCRUtil.normalizeVariableName(val);
+                    }
+                } else if (lookupName == null) {
+                    lookupName = SFCRUtil.normalizeVariableName(token);
+                }
+            }
+
+            if (lookupName == null || lookupName.isEmpty()) {
+                i++;
+                continue;
+            }
+
+            LookupTableSpec table = new LookupTableSpec();
+            table.name = lookupName;
+
+            int j = i + 1;
+            while (j < lines.length) {
+                String row = (lines[j] == null) ? "" : lines[j].trim();
+                if (row.startsWith("@end")) {
+                    break;
+                }
+                if (!row.isEmpty() && !row.startsWith("#") && !row.startsWith("%")) {
+                    LookupPoint point = parseLookupPoint(row);
+                    if (point != null) {
+                        table.xs.add(Double.valueOf(point.x));
+                        table.ys.add(Double.valueOf(point.y));
+                    }
+                }
+                j++;
+            }
+
+            if (table.xs.size() >= 2 && isStrictlyIncreasing(table.xs)) {
+                if (scopeName == null || scopeName.isEmpty()) {
+                    globalLookupTables.put(table.name, table);
+                } else {
+                    HashMap<String, LookupTableSpec> byScope = scopedLookupTables.get(scopeName);
+                    if (byScope == null) {
+                        byScope = new HashMap<String, LookupTableSpec>();
+                        scopedLookupTables.put(scopeName, byScope);
+                    }
+                    byScope.put(table.name, table);
+                }
+            }
+
+            i = (j < lines.length) ? (j + 1) : j;
         }
     }
     
@@ -1071,6 +1256,7 @@ public class SFCRParser {
                 }
 
                 String expr = SFCRUtil.normalizeExpression(exprText);
+                expr = rewriteLookupCalls(expr, blockName);
                 
                 // Keep lag notation exactly as imported (e.g. X[-1], X(-1), X [ - 1 ]).
                 // Equation parsing/evaluation supports lag forms directly.
@@ -1116,6 +1302,9 @@ public class SFCRParser {
                 sliderValues.add(Double.valueOf(sliderValue));
 
                 String initEq = rowMeta.get("initial");
+                if (initEq != null && !initEq.trim().isEmpty()) {
+                    initEq = rewriteLookupCalls(initEq, blockName);
+                }
                 initialEquations.add((initEq != null) ? initEq : "");
                 
                 // Store inline comment as auto-hint (only if not already set by @hints)
@@ -1146,6 +1335,338 @@ public class SFCRParser {
     private int parseParametersBlock(String[] lines, int startIndex) {
         // Parameters are just equations with constant values
         return parseEquationsBlock(lines, startIndex);
+    }
+
+    /** Parse @lookup block and register global/scoped lookup table points. */
+    private int parseLookupBlock(String[] lines, int startIndex) {
+        String headerLine = lines[startIndex].trim();
+        String header = headerLine.substring("@lookup".length()).trim();
+        if (header.isEmpty()) {
+            return startIndex + 1;
+        }
+
+        String lookupName = null;
+        String scopeName = null;
+        String[] tokens = header.split("\\s+");
+        for (int t = 0; t < tokens.length; t++) {
+            String token = tokens[t].trim();
+            if (token.isEmpty()) {
+                continue;
+            }
+            int eq = token.indexOf('=');
+            if (eq > 0) {
+                String key = token.substring(0, eq).trim().toLowerCase();
+                String val = token.substring(eq + 1).trim();
+                if ("scope".equals(key) || "local".equals(key) || "equations".equals(key) || "table".equals(key)) {
+                    scopeName = SFCRUtil.normalizeVariableName(val);
+                }
+            } else if (lookupName == null) {
+                lookupName = SFCRUtil.normalizeVariableName(token);
+            }
+        }
+
+        if (lookupName == null || lookupName.isEmpty()) {
+            return startIndex + 1;
+        }
+
+        LookupTableSpec table = new LookupTableSpec();
+        table.name = lookupName;
+
+        int i = startIndex + 1;
+        while (i < lines.length) {
+            String line = lines[i].trim();
+            if (line.startsWith("@end")) {
+                i++;
+                break;
+            }
+            if (line.isEmpty() || line.startsWith("#") || line.startsWith("%")) {
+                i++;
+                continue;
+            }
+
+            LookupPoint point = parseLookupPoint(line);
+            if (point != null) {
+                table.xs.add(Double.valueOf(point.x));
+                table.ys.add(Double.valueOf(point.y));
+            }
+            i++;
+        }
+
+        if (table.xs.size() < 2) {
+            return i;
+        }
+        if (!isStrictlyIncreasing(table.xs)) {
+            return i;
+        }
+
+        if (scopeName == null || scopeName.isEmpty()) {
+            globalLookupTables.put(table.name, table);
+        } else {
+            HashMap<String, LookupTableSpec> byScope = scopedLookupTables.get(scopeName);
+            if (byScope == null) {
+                byScope = new HashMap<String, LookupTableSpec>();
+                scopedLookupTables.put(scopeName, byScope);
+            }
+            byScope.put(table.name, table);
+        }
+
+        if (pendingResult != null) {
+            String blockName = (scopeName == null || scopeName.isEmpty()) ? table.name : (scopeName + ":" + table.name);
+            StringBuilder dump = new StringBuilder();
+            dump.append("lookup ").append(table.name);
+            if (scopeName != null && !scopeName.isEmpty()) {
+                dump.append(" scope=").append(scopeName);
+            }
+            for (int p = 0; p < table.xs.size(); p++) {
+                dump.append(" ").append(table.xs.get(p).doubleValue()).append(",").append(table.ys.get(p).doubleValue());
+            }
+            pendingResult.blockDumps.add(new SFCRParseResult.BlockDump("lookup", blockName, dump.toString()));
+        }
+
+        return i;
+    }
+
+    private static class LookupPoint {
+        double x;
+        double y;
+
+        LookupPoint(double x, double y) {
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    private LookupPoint parseLookupPoint(String line) {
+        if (line == null) {
+            return null;
+        }
+        String trimmed = line.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+
+        String[] parts;
+        if (trimmed.startsWith("|")) {
+            String[] cells = parseTableRow(trimmed);
+            if (cells.length < 2) {
+                return null;
+            }
+            String c0 = cells[0].trim().toLowerCase();
+            String c1 = cells[1].trim().toLowerCase();
+            if (("x".equals(c0) || "ratio".equals(c0)) &&
+                ("y".equals(c1) || "value".equals(c1) || "multiplier".equals(c1))) {
+                return null;
+            }
+            parts = new String[] { cells[0], cells[1] };
+        } else if (trimmed.contains(",")) {
+            parts = trimmed.split(",", 2);
+        } else {
+            parts = trimmed.split("\\s+");
+            if (parts.length < 2) {
+                return null;
+            }
+        }
+
+        if (parts.length < 2) {
+            return null;
+        }
+        try {
+            double x = Double.parseDouble(parts[0].trim());
+            double y = Double.parseDouble(parts[1].trim());
+            return new LookupPoint(x, y);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private boolean isStrictlyIncreasing(ArrayList<Double> xs) {
+        if (xs == null || xs.size() < 2) {
+            return false;
+        }
+        for (int i = 1; i < xs.size(); i++) {
+            if (xs.get(i).doubleValue() <= xs.get(i - 1).doubleValue()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private LookupTableSpec findLookupTable(String equationScope, String lookupName) {
+        if (lookupName == null || lookupName.isEmpty()) {
+            return null;
+        }
+        String normalizedName = SFCRUtil.normalizeVariableName(lookupName);
+        if (equationScope != null && !equationScope.isEmpty()) {
+            HashMap<String, LookupTableSpec> local = scopedLookupTables.get(equationScope);
+            if (local != null) {
+                LookupTableSpec t = local.get(normalizedName);
+                if (t != null) {
+                    return t;
+                }
+            }
+        }
+        return globalLookupTables.get(normalizedName);
+    }
+
+    private String rewriteLookupCalls(String expr, String equationScope) {
+        if (expr == null || expr.trim().isEmpty()) {
+            return expr;
+        }
+        String rewritten = rewriteLookupFunctionCalls(expr, equationScope);
+        rewritten = rewriteNamedLookupCalls(rewritten, equationScope);
+        return rewritten;
+    }
+
+    private String rewriteLookupFunctionCalls(String expr, String equationScope) {
+        String out = expr;
+        int search = 0;
+        while (true) {
+            int fn = findFunctionCall(out, "lookup", search);
+            if (fn < 0) {
+                break;
+            }
+            int open = out.indexOf('(', fn);
+            if (open < 0) {
+                break;
+            }
+            int close = findMatchingParenForLookup(out, open);
+            if (close < 0) {
+                break;
+            }
+            String inside = out.substring(open + 1, close);
+            int comma = findTopLevelComma(inside);
+            if (comma < 0) {
+                search = close + 1;
+                continue;
+            }
+            String lookupName = inside.substring(0, comma).trim();
+            String argExpr = inside.substring(comma + 1).trim();
+            LookupTableSpec table = findLookupTable(equationScope, lookupName);
+            if (table == null) {
+                search = close + 1;
+                continue;
+            }
+            String replacement = buildPwlxExpression(argExpr, table);
+            out = out.substring(0, fn) + replacement + out.substring(close + 1);
+            search = fn + replacement.length();
+        }
+        return out;
+    }
+
+    private String rewriteNamedLookupCalls(String expr, String equationScope) {
+        String out = expr;
+        int i = 0;
+        while (i < out.length()) {
+            char c = out.charAt(i);
+            if (!isLookupNameStart(c)) {
+                i++;
+                continue;
+            }
+
+            int start = i;
+            i++;
+            while (i < out.length() && isLookupNamePart(out.charAt(i))) {
+                i++;
+            }
+            String identifier = out.substring(start, i);
+            LookupTableSpec table = findLookupTable(equationScope, identifier);
+            if (table == null || "lookup".equalsIgnoreCase(identifier)) {
+                continue;
+            }
+
+            int j = i;
+            while (j < out.length() && Character.isWhitespace(out.charAt(j))) {
+                j++;
+            }
+            if (j >= out.length() || out.charAt(j) != '(') {
+                continue;
+            }
+
+            int close = findMatchingParenForLookup(out, j);
+            if (close < 0) {
+                break;
+            }
+            String argExpr = out.substring(j + 1, close).trim();
+            String replacement = buildPwlxExpression(argExpr, table);
+            out = out.substring(0, start) + replacement + out.substring(close + 1);
+            i = start + replacement.length();
+        }
+        return out;
+    }
+
+    private String buildPwlxExpression(String argExpr, LookupTableSpec table) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("pwlx(").append(argExpr);
+        for (int i = 0; i < table.xs.size(); i++) {
+            sb.append(",").append(table.xs.get(i).doubleValue());
+            sb.append(",").append(table.ys.get(i).doubleValue());
+        }
+        sb.append(")");
+        return sb.toString();
+    }
+
+    private int findFunctionCall(String expr, String name, int fromIndex) {
+        String lower = expr.toLowerCase();
+        String needle = name.toLowerCase();
+        int idx = fromIndex;
+        while (true) {
+            idx = lower.indexOf(needle, idx);
+            if (idx < 0) {
+                return -1;
+            }
+            int end = idx + needle.length();
+            if (idx > 0 && isLookupNamePart(expr.charAt(idx - 1))) {
+                idx = end;
+                continue;
+            }
+            int j = end;
+            while (j < expr.length() && Character.isWhitespace(expr.charAt(j))) {
+                j++;
+            }
+            if (j < expr.length() && expr.charAt(j) == '(') {
+                return idx;
+            }
+            idx = end;
+        }
+    }
+
+    private int findMatchingParenForLookup(String text, int openIndex) {
+        int depth = 0;
+        for (int i = openIndex; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '(') {
+                depth++;
+            } else if (c == ')') {
+                depth--;
+                if (depth == 0) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    private int findTopLevelComma(String text) {
+        int depth = 0;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '(') {
+                depth++;
+            } else if (c == ')') {
+                depth--;
+            } else if (c == ',' && depth == 0) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private boolean isLookupNameStart(char c) {
+        return Character.isLetter(c) || c == '_' || c == '\\';
+    }
+
+    private boolean isLookupNamePart(char c) {
+        return Character.isLetterOrDigit(c) || c == '_' || c == '\\' || c == '^' || c == '{' || c == '}' || c == '.';
     }
 
     /**
@@ -1440,6 +1961,25 @@ public class SFCRParser {
                 i++;
                 continue;
             }
+
+            // Legacy/result-mode round-trip support: accept lookup dump lines
+            // embedded in @circuit blocks and register them as lookup tables.
+            if (line.startsWith("lookup ")) {
+                String parsedLookupBlockName = parseLookupDumpLineFromCircuit(line);
+                if (parsedLookupBlockName != null) {
+                    if (pendingResult != null) {
+                        String blockName = hintedBlockName;
+                        if (blockName == null || blockName.isEmpty()) {
+                            blockName = parsedLookupBlockName;
+                        }
+                        pendingResult.blockDumps.add(new SFCRParseResult.BlockDump("lookup", blockName, line));
+                    }
+                    hintedBlockType = "";
+                    hintedBlockName = "";
+                    i++;
+                    continue;
+                }
+            }
             
             // Store raw circuit line for later processing
             rawCircuitLines.add(line);
@@ -1465,6 +2005,78 @@ public class SFCRParser {
         }
         
         return i;
+    }
+
+    /** Parse legacy lookup dump line from @circuit and register the table. */
+    private String parseLookupDumpLineFromCircuit(String line) {
+        if (line == null) {
+            return null;
+        }
+
+        String trimmed = line.trim();
+        if (!trimmed.startsWith("lookup ")) {
+            return null;
+        }
+
+        String[] tokens = trimmed.split("\\s+");
+        if (tokens.length < 4) {
+            return null;
+        }
+
+        String lookupName = SFCRUtil.normalizeVariableName(tokens[1]);
+        if (lookupName == null || lookupName.isEmpty()) {
+            return null;
+        }
+
+        String scopeName = null;
+        LookupTableSpec table = new LookupTableSpec();
+        table.name = lookupName;
+
+        for (int j = 2; j < tokens.length; j++) {
+            String token = tokens[j];
+            if (token == null) {
+                continue;
+            }
+
+            String part = token.trim();
+            if (part.isEmpty()) {
+                continue;
+            }
+
+            if (part.startsWith("scope=")) {
+                String scopeToken = part.substring(6).trim();
+                if (!scopeToken.isEmpty()) {
+                    scopeName = SFCRUtil.normalizeVariableName(scopeToken);
+                }
+                continue;
+            }
+
+            LookupPoint point = parseLookupPoint(part);
+            if (point != null) {
+                table.xs.add(Double.valueOf(point.x));
+                table.ys.add(Double.valueOf(point.y));
+            }
+        }
+
+        if (table.xs.size() < 2) {
+            return null;
+        }
+        if (!isStrictlyIncreasing(table.xs)) {
+            return null;
+        }
+
+        if (scopeName == null || scopeName.isEmpty()) {
+            globalLookupTables.put(table.name, table);
+            return table.name;
+        }
+
+        HashMap<String, LookupTableSpec> byScope = scopedLookupTables.get(scopeName);
+        if (byScope == null) {
+            byScope = new HashMap<String, LookupTableSpec>();
+            scopedLookupTables.put(scopeName, byScope);
+        }
+        byScope.put(table.name, table);
+        return scopeName + ":" + table.name;
     }
 
     private String inferBlockTypeFromCircuitDumpLine(String line) {
@@ -2020,7 +2632,7 @@ public class SFCRParser {
         int currentSectionMode = 0;  // VOLTAGE_MODE
         
         // Split by commas (but not commas inside parentheses)
-        ArrayList<String> parts = splitByTopLevelComma(content);
+        ArrayList<String> parts = splitByTopLevelCommaIgnoringHashComments(content);
         
         for (String part : parts) {
             part = part.trim();
@@ -2107,6 +2719,7 @@ public class SFCRParser {
             if (tildeIdx >= 0) {
                 String name = SFCRUtil.normalizeVariableName(part.substring(0, tildeIdx).trim());
                 String expr = SFCRUtil.normalizeExpression(part.substring(tildeIdx + 1).trim());
+                expr = rewriteLookupCalls(expr, blockName);
                 
                 // Keep lag notation exactly as imported (e.g. V[-1], V(-1), V [ - 1 ]).
                 
@@ -2134,6 +2747,9 @@ public class SFCRParser {
                 sliderValues.add(Double.valueOf(sliderValue));
 
                 String initialEq = inlineMeta.get("initial");
+                if (initialEq != null && !initialEq.trim().isEmpty()) {
+                    initialEq = rewriteLookupCalls(initialEq, blockName);
+                }
                 initialEquations.add((initialEq != null) ? initialEq : "");
 
                 if (inlineComment != null) {
@@ -2404,6 +3020,87 @@ public class SFCRParser {
             return trimmed;
         }
         return working;
+    }
+
+    private ArrayList<String> splitByTopLevelCommaIgnoringHashComments(String text) {
+        ArrayList<String> result = new ArrayList<String>();
+        int depth = 0;
+        int start = 0;
+        boolean inHashComment = false;
+
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+
+            if (inHashComment) {
+                if (c == '\n' || c == '\r') {
+                    inHashComment = false;
+                }
+                continue;
+            }
+
+            if (c == '#') {
+                inHashComment = true;
+                continue;
+            }
+
+            if (c == '(') {
+                depth++;
+                continue;
+            }
+            if (c == ')') {
+                depth--;
+                continue;
+            }
+            if (c == ',' && depth == 0) {
+                int commentStart = i + 1;
+                while (commentStart < text.length()) {
+                    char ws = text.charAt(commentStart);
+                    if (ws != ' ' && ws != '\t') {
+                        break;
+                    }
+                    commentStart++;
+                }
+
+                if (commentStart < text.length() && text.charAt(commentStart) == '#') {
+                    int lineEnd = commentStart;
+                    while (lineEnd < text.length()) {
+                        char lc = text.charAt(lineEnd);
+                        if (lc == '\n' || lc == '\r') {
+                            break;
+                        }
+                        lineEnd++;
+                    }
+                    String partWithComment = text.substring(start, lineEnd).trim();
+                    if (!partWithComment.isEmpty()) {
+                        result.add(partWithComment);
+                    }
+
+                    start = lineEnd;
+                    if (start < text.length() && text.charAt(start) == '\r') {
+                        start++;
+                    }
+                    if (start < text.length() && text.charAt(start) == '\n') {
+                        start++;
+                    }
+                    i = start - 1;
+                } else {
+                    String part = text.substring(start, i).trim();
+                    if (!part.isEmpty()) {
+                        result.add(part);
+                    }
+                    start = i + 1;
+                }
+            }
+        }
+
+        if (start < text.length()) {
+            String lastPart = text.substring(start).trim();
+            if (!lastPart.isEmpty()) {
+                result.add(lastPart);
+            }
+        }
+
+        return result;
     }
 
     /** Parse comma-separated key=value metadata tokens into outMeta. */

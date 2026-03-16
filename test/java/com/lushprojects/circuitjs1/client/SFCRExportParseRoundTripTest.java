@@ -36,6 +36,37 @@ class SFCRExportParseRoundTripTest {
                 "Block dump signature (type/name/order/dump) must round-trip");
     }
 
+    @Test
+    @DisplayName("lookup blocks survive parse-result round-trip with scoped and global tables")
+    void testLookupBlocksRoundTrip() {
+        String text =
+                "@lookup BRMM\n" +
+                "  0, 1.2\n" +
+                "  1, 1.0\n" +
+                "  5, 0.78\n" +
+                "@end\n" +
+                "@lookup BRFM scope=World2\n" +
+                "  0, 0\n" +
+                "  1, 1\n" +
+                "  2, 1.9\n" +
+                "@end\n" +
+                "@equations World2\n" +
+                "  BRMM ~ lookup(BRMM, QL_R)\n" +
+                "  BRFM ~ BRFM(FR)\n" +
+                "@end\n";
+
+        SFCRParseResult first = SFCRParser.parseToResult(text);
+        assertNotNull(first);
+
+        String exported = SFCRParseResultExporter.export(first);
+        SFCRParseResult second = SFCRParser.parseToResult(exported);
+        assertNotNull(second);
+
+        assertNotNull(second.findBlock("lookup", "BRMM"));
+        assertNotNull(second.findBlock("lookup", "World2:BRFM"));
+        assertNotNull(second.findBlock("equations", "World2"));
+    }
+
     private List<String> toBlockSignature(List<SFCRParseResult.BlockDump> blocks) {
         ArrayList<String> signature = new ArrayList<String>();
         if (blocks == null) {

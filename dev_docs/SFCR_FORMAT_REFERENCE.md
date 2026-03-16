@@ -200,6 +200,50 @@ Notes:
 
 ---
 
+### @lookup — Named Interpolation Tables
+
+Defines reusable lookup tables for ratio → multiplier mappings (for example World2-style control curves).
+
+```
+@lookup BRMM
+  | x | y |
+  | 0 | 1.2 |
+  | 1 | 1.0 |
+  | 5 | 0.78 |
+@end
+
+@lookup BRFM scope=World2
+  0, 0
+  1, 1
+  2, 1.9
+@end
+```
+
+Row formats accepted:
+
+- Markdown table rows (`| x | y |`)
+- CSV-ish rows (`x, y`)
+- Whitespace-separated rows (`x y`)
+
+Rules:
+
+- At least 2 numeric points are required
+- `x` values must be strictly increasing
+- `scope=<equationsName>` creates a local table for one `@equations` block; otherwise table is global
+- Local scoped tables override global tables with the same name
+
+Equation-call syntax supported:
+
+- `lookup(TableName, x)`
+- `TableName(x)`
+
+Implementation note:
+
+- On import, lookup calls are rewritten to `pwlx(...)` expressions.
+- `pwlx` uses linear interpolation in-range and linear extrapolation outside endpoints.
+
+---
+
 ### @matrix — Transaction Flow Matrix
 
 SFC transaction matrix. Creates an `SFCTableElm`.

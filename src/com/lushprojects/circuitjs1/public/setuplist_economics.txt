@@ -16,7 +16,8 @@ econ_Godley_Lavoie_OPEN_6.txt BMW Godley & Lavoie OPEN Model Ch6
 econ_Godley_Lavoie_BMW_7.txt BMW Godley & Lavoie BMW Model Ch7
 econ_Godley_Lavoie_BMW_7_volts_param.txt BMW Godley & Lavoie BMW Model Ch7 (volts/param)
 expr-functions-test.txt Expr Functions Reference
--
+world2_forrester.md World2 forrester
+- 
 +Debug
 >1debug.md Debug 1
 1dbg_LRC+Table.txt Dbg LRC+Table
