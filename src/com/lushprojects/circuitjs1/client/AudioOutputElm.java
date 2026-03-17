@@ -2,7 +2,6 @@ package com.lushprojects.circuitjs1.client;
 
 import java.util.Date;
 
-import com.google.gwt.core.client.JsArrayInteger;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.i18n.client.DateTimeFormat;
@@ -10,6 +9,7 @@ import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.Anchor;
 import com.google.gwt.user.client.ui.Button;
 import com.lushprojects.circuitjs1.client.util.Locale;
+import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
@@ -18,10 +18,57 @@ public class AudioOutputElm extends CircuitElm {
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Document")
 	private static class DocumentLike {
 		@JsProperty(name = "audioBlob") native String getAudioBlob();
+		@JsProperty(name = "audioBlob") native void setAudioBlob(String audioBlob);
+		@JsProperty(name = "audioObject") native ElementLike getAudioObject();
+		@JsProperty(name = "audioObject") native void setAudioObject(ElementLike audioObject);
+		@JsMethod native AudioLike createElement(String tagName);
+		@JsProperty(name = "body") native ElementLike getBody();
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Element")
+	private static class ElementLike {
+		@JsMethod native ElementLike appendChild(ElementLike child);
+		@JsMethod native ElementLike removeChild(ElementLike child);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "ArrayBuffer")
+	private static class ArrayBufferLike {
+		public ArrayBufferLike(int byteLength) {}
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "DataView")
+	private static class DataViewLike {
+		public DataViewLike(ArrayBufferLike buffer) {}
+		@JsMethod native void setUint8(int byteOffset, int value);
+		@JsMethod native void setUint32(int byteOffset, int value, boolean littleEndian);
+		@JsMethod native void setInt16(int byteOffset, int value, boolean littleEndian);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "BlobPropertyBag")
+	private static class BlobPropertyBagLike {
+		public BlobPropertyBagLike() {}
+		@JsProperty(name = "type") native void setType(String type);
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Blob")
+	private static class BlobLike {
+		public BlobLike(Object[] parts, BlobPropertyBagLike options) {}
+	}
+
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "HTMLAudioElement")
+	private static class AudioLike extends ElementLike {
+		@JsProperty(name = "src") native void setSrc(String src);
+		@JsMethod native void play();
 	}
 
 	@JsProperty(namespace = JsPackage.GLOBAL, name = "document")
 	private static native DocumentLike getDocument();
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "URL.createObjectURL")
+	private static native String createObjectURL(BlobLike blob);
+
+	@JsMethod(namespace = JsPackage.GLOBAL, name = "URL.revokeObjectURL")
+	private static native void revokeObjectURL(String url);
 
     int dataCount, dataPtr;
     double data[];
@@ -246,120 +293,67 @@ public class AudioOutputElm extends CircuitElm {
             super.delete();
         }
         
-        public static native void playJS(JsArrayInteger samples, int sampleRate)
-            /*-{
-            var Wav = function(opt_params){
-        	this._sampleRate = opt_params && opt_params.sampleRate ? opt_params.sampleRate : 44100;
-        	this._channels = opt_params && opt_params.channels ? opt_params.channels : 2;  
-        	this._eof = true;
-        	this._bufferNeedle = 0;
-        	this._buffer;
-        	
-        	};
-
-        Wav.prototype.setBuffer = function(buffer){
-        	this._buffer = this.getWavInt16Array(buffer);
-        	this._bufferNeedle = 0;
-        	this._internalBuffer = '';
-        	this._hasOutputHeader = false;
-        	this._eof = false;
-        };
-
-        Wav.prototype.getBuffer = function(len){
-        	
-        	var rt;
-        	if( this._bufferNeedle + len >= this._buffer.length ){
-        		rt = new Int16Array(this._buffer.length - this._bufferNeedle);
-        		this._eof = true;
-        	}
-        	else {
-        		rt = new Int16Array(len);
-        	}
-        	
-        	for(var i=0; i<rt.length; i++){
-        		rt[i] = this._buffer[i+this._bufferNeedle];
-        	}
-        	this._bufferNeedle += rt.length;
-        	
-        	return  rt.buffer;
-        	
-
-        };
-
-        Wav.prototype.eof = function(){
-        	return this._eof;
-        };
-
-        Wav.prototype.getWavInt16Array = function(buffer){
-        		
-        	var intBuffer = new Int16Array(buffer.length + 23), tmp;
-        	
-        	intBuffer[0] = 0x4952; // "RI"
-        	intBuffer[1] = 0x4646; // "FF"
-        	
-        	intBuffer[2] = (2*buffer.length + 15) & 0x0000ffff; // RIFF size
-        	intBuffer[3] = ((2*buffer.length + 15) & 0xffff0000) >> 16; // RIFF size
-        	
-        	intBuffer[4] = 0x4157; // "WA"
-        	intBuffer[5] = 0x4556; // "VE"
-        		
-        	intBuffer[6] = 0x6d66; // "fm"
-        	intBuffer[7] = 0x2074; // "t "
-        		
-        	intBuffer[8] = 0x0012; // fmt chunksize: 18
-        	intBuffer[9] = 0x0000; //
-        		
-        	intBuffer[10] = 0x0001; // format tag : 1 
-        	intBuffer[11] = this._channels; // channels: 1
-        	
-        	intBuffer[12] = this._sampleRate & 0x0000ffff; // sample per sec
-        	intBuffer[13] = (this._sampleRate & 0xffff0000) >> 16; // sample per sec
-        	
-        	intBuffer[14] = (2*this._channels*this._sampleRate) & 0x0000ffff; // byte per sec
-        	intBuffer[15] = ((2*this._channels*this._sampleRate) & 0xffff0000) >> 16; // byte per sec
-        	
-        	intBuffer[16] = 2*this._channels; // block align
-        	intBuffer[17] = 0x0010; // bit per sample
-        	intBuffer[18] = 0x0000; // cb size
-        	intBuffer[19] = 0x6164; // "da"
-        	intBuffer[20] = 0x6174; // "ta"
-        	intBuffer[21] = (2*buffer.length) & 0x0000ffff; // data size[byte]
-        	intBuffer[22] = ((2*buffer.length) & 0xffff0000) >> 16; // data size[byte]	
-
-        	for (var i = 0; i < buffer.length; i++)
-        	    intBuffer[i+23] = buffer[i];
-        	
-        	return intBuffer;
-        };
-        var i=0,
-            wav = new Wav({sampleRate: sampleRate, channels: 1});
-        wav.setBuffer(samples);
-
-        var srclist = [];
-        while( !wav.eof() ){
-            srclist.push(wav.getBuffer(1000));
-        }
-
-	var oldblob = $doc.audioBlob;
-	var oldobj = $doc.audioObject;
-	// remove old blob and audio obj if any.  We should do this when audio is done playing, but this is easier
-	if (oldblob) {
-	    oldobj.parentNode.removeChild(oldobj);
-            URL.revokeObjectURL(oldblob);
+	private static void writeAscii(DataViewLike view, int offset, String s) {
+		for (int i = 0; i < s.length(); i++)
+			view.setUint8(offset + i, s.charAt(i));
 	}
 
-        var b = new Blob(srclist, {type:'audio/wav'});
-//        var URLObject = $wnd.webkitURL || $wnd.URL;
-//        var url = URLObject.createObjectURL(b);
-        var url = URL.createObjectURL(b);
-        $doc.audioBlob = url;
-//        console.log(url);
-	var audio = $doc.createElement("audio");
-	$doc.audioObject = audio;
-	audio.src = url;
-	$doc.body.appendChild(audio);
-	audio.play();
-}-*/;
+	private static String createWavBlobUrl(int[] samples, int sampleRate) {
+		int dataSize = samples.length * 2;
+		ArrayBufferLike wav = new ArrayBufferLike(44 + dataSize);
+		DataViewLike view = new DataViewLike(wav);
+
+		writeAscii(view, 0, "RIFF");
+		view.setUint32(4, 36 + dataSize, true);
+		writeAscii(view, 8, "WAVE");
+		writeAscii(view, 12, "fmt ");
+		view.setUint32(16, 16, true);
+		view.setInt16(20, 1, true);
+		view.setInt16(22, 1, true);
+		view.setUint32(24, sampleRate, true);
+		view.setUint32(28, sampleRate * 2, true);
+		view.setInt16(32, 2, true);
+		view.setInt16(34, 16, true);
+		writeAscii(view, 36, "data");
+		view.setUint32(40, dataSize, true);
+
+		int p = 44;
+		for (int sample : samples) {
+			int clamped = Math.max(-32768, Math.min(32767, sample));
+			view.setInt16(p, clamped, true);
+			p += 2;
+		}
+
+		BlobPropertyBagLike options = new BlobPropertyBagLike();
+		options.setType("audio/wav");
+		BlobLike blob = new BlobLike(new Object[] { wav }, options);
+		return createObjectURL(blob);
+	}
+
+	private static void playWavBlobUrl(String url) {
+		DocumentLike document = getDocument();
+		if (document == null)
+			return;
+
+		String oldBlobUrl = document.getAudioBlob();
+		ElementLike oldAudio = document.getAudioObject();
+		if (oldAudio != null) {
+			ElementLike body = document.getBody();
+			if (body != null)
+				body.removeChild(oldAudio);
+		}
+		if (oldBlobUrl != null)
+			revokeObjectURL(oldBlobUrl);
+
+		AudioLike audio = document.createElement("audio");
+		document.setAudioObject(audio);
+		document.setAudioBlob(url);
+		audio.setSrc(url);
+		ElementLike body = document.getBody();
+		if (body != null)
+			body.appendChild(audio);
+		audio.play();
+	}
 
 		static String getLastBlob() {
 			DocumentLike document = getDocument();
@@ -368,7 +362,6 @@ public class AudioOutputElm extends CircuitElm {
         
         void play() {
             int i;
-            JsArrayInteger arr = (JsArrayInteger)JsArrayInteger.createArray();
             int ct = dataPtr;
             int base = 0;
             if (dataFull) {
@@ -396,11 +389,12 @@ public class AudioOutputElm extends CircuitElm {
 	    int fadeOut = ct-fadeLen;
 	    
 	    double fadeMult = mult/fadeLen;
+	    int[] samples = new int[ct];
             for (i = 0; i != ct; i++) {
 		double fade = (i < fadeLen) ? i*fadeMult : (i > fadeOut) ? (ct-i)*fadeMult : mult;
         	int s = (int)((data[(i+base)%dataCount]+adj)*fade);
-        	arr.push(s);
+		samples[i] = s;
             }
-            playJS(arr, samplingRate);
+	    playWavBlobUrl(createWavBlobUrl(samples, samplingRate));
         }
 }

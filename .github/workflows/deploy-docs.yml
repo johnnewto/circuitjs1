@@ -83,6 +83,10 @@ jobs:
         echo "Verifying GWT setup completed:"
         ls -la ../gwt-* || echo "GWT directory not found in expected location"
         ls -la build.xml*
+
+    - name: Verify No Legacy JSNI
+      run: |
+        ./gradlew -q verifyNoLegacyJsni
         
     - name: Compile CircuitJS1 for Production  
       run: |
@@ -146,6 +150,8 @@ jobs:
           echo "Setting up GWT and generating build configuration..."
           chmod +x dev.sh
           ./dev.sh setup
+            echo "Verifying no legacy JSNI markers remain..."
+            ./gradlew -q verifyNoLegacyJsni
           echo "Running compilation..."
           ./dev.sh compile
       

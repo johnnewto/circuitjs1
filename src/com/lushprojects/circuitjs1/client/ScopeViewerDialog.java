@@ -156,19 +156,43 @@ public class ScopeViewerDialog extends DialogBox {
         
         // If single scope specified, only export that one
         if (singleScope != null) {
-            exportScope(allDataJson, singleScope, 0, true);
+            exportScope(allDataJson, singleScope, 0, getScopeName(singleScope, "Scope", 1));
         } else {
-            // Export all scopes
+            int exportedIndex = 0;
+            int dockedOrdinal = 1;
+            int undockedOrdinal = 1;
+
+            // Export all docked scopes
             for (int i = 0; i < sim.scopeCount; i++) {
                 Scope scope = sim.scopes[i];
-                if (scope.visiblePlots.size() == 0)
+                if (scope == null || scope.visiblePlots.size() == 0)
                     continue;
-                    
+
                 if (!first)
                     allDataJson.append(",\n");
                 first = false;
-                
-                exportScope(allDataJson, scope, i, first);
+
+                String scopeName = getScopeName(scope, "Scope", dockedOrdinal++);
+                exportScope(allDataJson, scope, exportedIndex++, scopeName);
+            }
+
+            // Export all undocked (floating) ScopeElm scopes
+            int floatingCount = sim.countScopeElms();
+            for (int i = 0; i < floatingCount; i++) {
+                ScopeElm scopeElm = sim.getNthScopeElm(i);
+                if (scopeElm == null)
+                    continue;
+
+                Scope scope = scopeElm.elmScope;
+                if (scope == null || scope.visiblePlots.size() == 0)
+                    continue;
+
+                if (!first)
+                    allDataJson.append(",\n");
+                first = false;
+
+                String scopeName = getScopeName(scope, "Undocked Scope", undockedOrdinal++);
+                exportScope(allDataJson, scope, exportedIndex++, scopeName);
             }
         }
         
@@ -189,9 +213,9 @@ public class ScopeViewerDialog extends DialogBox {
     /**
      * Exports a single scope's data to JSON.
      */
-    void exportScope(StringBuilder allDataJson, Scope scope, int index, boolean isFirst) {
+    void exportScope(StringBuilder allDataJson, Scope scope, int index, String scopeName) {
         allDataJson.append("{\n");
-        allDataJson.append("  \"scopeName\": \"").append(escapeJSON(getScopeName(scope, index))).append("\",\n");
+        allDataJson.append("  \"scopeName\": \"").append(escapeJSON(scopeName)).append("\",\n");
         allDataJson.append("  \"scopeIndex\": ").append(index).append(",\n");
         
         // Add action times if available
@@ -248,10 +272,10 @@ public class ScopeViewerDialog extends DialogBox {
         allDataJson.append("\n}");
     }
     
-    String getScopeName(Scope scope, int index) {
+    String getScopeName(Scope scope, String fallbackPrefix, int fallbackIndex) {
         String name = scope.getScopeMenuName();
         if (name == null || name.isEmpty())
-            name = "Scope " + (index + 1);
+            name = fallbackPrefix + " " + fallbackIndex;
         return name;
     }
     

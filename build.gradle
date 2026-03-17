@@ -25,7 +25,7 @@ buildscript {
       mavenCentral()
     }
     dependencies {
-        classpath("org.wisepersist:gwt-gradle-plugin:1.1.19")
+                classpath("org.wisepersist:gwt-gradle-plugin:1.1.19")
     }
 }
 
@@ -96,7 +96,8 @@ sourceSets {
 
 group = 'com.lushprojects.circuitjs1'
 version = '2.2.3'
-sourceCompatibility = 8  // Java '1.8'
+sourceCompatibility = JavaVersion.VERSION_11
+targetCompatibility = JavaVersion.VERSION_11
 
 
 //---------------------------------------------------------------------
@@ -170,6 +171,36 @@ task showRepos {
         println repositories.collect { it.name } 
         println "\n"
     }
+}
+
+task verifyNoLegacyJsni {
+    group 'verification'
+    description 'Fail build if legacy JSNI markers remain in Java sources.'
+    doLast {
+        def violations = []
+        fileTree(dir: 'src', include: '**/*.java').each { File f ->
+            int lineNo = 0
+            f.eachLine { String line ->
+                lineNo++
+                String trimmed = line.trim()
+                if (trimmed.startsWith('//'))
+                    return
+                if (trimmed.contains('/*-{') || trimmed.contains('}-*/'))
+                    violations << "${f.path}:${lineNo}: ${trimmed}"
+            }
+        }
+        if (!violations.isEmpty()) {
+            throw new GradleException('Legacy JSNI markers found:\n' + violations.join('\n'))
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn verifyNoLegacyJsni
+}
+
+tasks.matching { it.name == 'compileGwt' }.configureEach {
+    dependsOn verifyNoLegacyJsni
 }
 
 //---------------------------------------------------------------------

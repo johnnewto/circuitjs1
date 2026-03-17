@@ -289,8 +289,11 @@ public class Scrollbar extends  Composite implements
 	
 	public void onMouseWheel(MouseWheelEvent e) {
 		e.preventDefault();
-		if (enabled)
-			setValue(val+e.getDeltaY()/3);
+		if (enabled) {
+			int delta = CirSim.normalizeWheelDelta(e.getDeltaY());
+			if (delta != 0)
+				setValue(val+delta/3);
+		}
 	}
 	
 	public void onClick(ClickEvent e) {

@@ -5476,7 +5476,7 @@ public CirSim() {
     	if (item=="separateAll")
 		separateAll();
     	if (item=="viewAllPlotly")
-		new ScopeViewerDialog(this);
+			new ScopeViewerDialog(this, null, true);
     	if (item=="zoomin")
     	    zoomCircuit(20, true);
     	if (item=="zoomout")
@@ -5611,7 +5611,7 @@ public CirSim() {
     		if (item=="exportdata")
 			new ExportScopeDataDialog(s);
     		if (item=="viewplotly")
-			new ScopeViewerDialog(this, s);
+				new ScopeViewerDialog(this, s, true);
     		if (item=="drawfromzero")
     			s.toggleDrawFromZero();
     		deleteUnusedScopeElms();
@@ -7942,6 +7942,9 @@ public CirSim() {
     
     public void onMouseWheel(MouseWheelEvent e) {
     	e.preventDefault();
+	int wheelDelta = normalizeWheelDelta(e.getDeltaY());
+	if (wheelDelta == 0)
+	    return;
     	
     	// once we start zooming, don't allow other uses of mouse wheel for a while
     	// so we don't accidentally edit a resistor value while zooming
@@ -7951,7 +7954,7 @@ public CirSim() {
     	    zoomOnly = true;
     	
     	if (!zoomOnly)
-    	    scrollValues(e.getNativeEvent().getClientX(), e.getNativeEvent().getClientY(), e.getDeltaY());
+		    scrollValues(e.getNativeEvent().getClientX(), e.getNativeEvent().getClientY(), wheelDelta);
     	
     	if (mouseElm instanceof MouseWheelHandler && !zoomOnly)
     		((MouseWheelHandler) mouseElm).onMouseWheel(e);
@@ -7960,11 +7963,23 @@ public CirSim() {
     	else if (!dialogIsShowing()) {
     	    mouseCursorX=e.getX();
     	    mouseCursorY=e.getY();
-    	    zoomCircuit(-e.getDeltaY()*wheelSensitivity, false);
+		    zoomCircuit(-wheelDelta*wheelSensitivity, false);
     	    zoomTime = System.currentTimeMillis();
    	}
     	repaint();
     }
+
+	    static final int MAX_NORMALIZED_WHEEL_DELTA = 150;
+
+	    // Modern browsers can report large pixel deltas from high-resolution
+	    // trackpads. Clamp to keep zoom/edit interactions consistent.
+	    public static int normalizeWheelDelta(int deltaY) {
+		if (deltaY > MAX_NORMALIZED_WHEEL_DELTA)
+		    return MAX_NORMALIZED_WHEEL_DELTA;
+		if (deltaY < -MAX_NORMALIZED_WHEEL_DELTA)
+		    return -MAX_NORMALIZED_WHEEL_DELTA;
+		return deltaY;
+	    }
 
     void zoomCircuit(double dy) { zoomCircuit(dy, false); }
 

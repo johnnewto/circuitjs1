@@ -13,6 +13,8 @@ GWT_URL="https://github.com/gwtproject/gwt/releases/download/2.13.0/gwt-2.13.0.z
 SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 SDK_DIR="$SCRIPT_DIR/.."
 GWT_DIR="$SDK_DIR/gwt-$GWT_VERSION"
+GWT_PROD_MODULE="com.lushprojects.circuitjs1.circuitjs1"
+GWT_DEV_MODULE="com.lushprojects.circuitjs1.circuitjs1dev"
 
 WEB_PORT=${WEB_PORT:-8000}
 WEB_BINDADDRESS=${WEB_BINDADDRESS:-127.0.0.1}
@@ -64,7 +66,7 @@ setup() {
         mv build.xml build.xml.backup
     fi
     chmod +x "$GWT_DIR/webAppCreator"
-    "$GWT_DIR/webAppCreator" -out ../tempProject com.lushprojects.circuitjs1.circuitjs1
+    "$GWT_DIR/webAppCreator" -out ../tempProject "$GWT_PROD_MODULE"
     cp ../tempProject/build.xml ./
     sed -i 's/source="1.7"/source="1.8"/g' build.xml
     sed -i 's/target="1.7"/target="1.8"/g' build.xml
@@ -85,7 +87,7 @@ codeserver() {
         -launcherDir war \
 	-bindAddress ${CODESERVER_BINDADDRESS} \
 	-port ${CODESERVER_PORT} \
-        com.lushprojects.circuitjs1.circuitjs1
+        "$GWT_DEV_MODULE"
 }
 
 webserver() {
@@ -107,7 +109,7 @@ stop() {
     echo "Stopping code server and web server (if running)..."
 
     # Stop GWT CodeServer instances for this module
-    pkill -f "com.google.gwt.dev.codeserver.CodeServer.*com.lushprojects.circuitjs1.circuitjs1" 2>/dev/null || true
+    pkill -f "com.google.gwt.dev.codeserver.CodeServer.*$GWT_DEV_MODULE" 2>/dev/null || true
 
     # Stop web servers started by this script (matching configured bind/port)
     pkill -f "php -S ${WEB_BINDADDRESS}:${WEB_PORT}" 2>/dev/null || true

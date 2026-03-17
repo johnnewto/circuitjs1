@@ -19,8 +19,6 @@
 
 package com.lushprojects.circuitjs1.client;
 
-import jsinterop.annotations.JsMethod;
-import jsinterop.annotations.JsPackage;
 
 /**
  * Test suite for mathematical circuit elements
@@ -750,11 +748,9 @@ public class MathElementsTest {
         }
     }
     
-    /**
-     * Native console.log via JSNI
-     */
-    @JsMethod(namespace = JsPackage.GLOBAL, name = "console.log")
-    private static native void console(String message);
+    private static void console(String message) {
+        CirSim.console(message);
+    }
     
     /**
      * Helper assertions

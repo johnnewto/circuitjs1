@@ -57,6 +57,7 @@ public class ScrollValuePopup extends PopupPanel implements MouseOutHandler, Mou
 	CircuitElm myElm;
 	Label labels[];
 	double deltaY;
+	double scrollGain;
 	String name;
 	EditInfo inf;
 	CirSim sim;
@@ -66,6 +67,7 @@ public class ScrollValuePopup extends PopupPanel implements MouseOutHandler, Mou
 		super();
 		myElm=e;
 		deltaY=0;
+		scrollGain = 2;
 		sim=s;
 		sim.pushUndo();
 		vp=new VerticalPanel();
@@ -100,6 +102,7 @@ public class ScrollValuePopup extends PopupPanel implements MouseOutHandler, Mou
 	
 	private void setupValues() {
 		if (myElm instanceof ResistorElm) {
+			scrollGain = 2;
 			minpow=-1;
 			maxpow=7;
 		} 
@@ -176,7 +179,9 @@ public class ScrollValuePopup extends PopupPanel implements MouseOutHandler, Mou
 	
     public void onMouseWheel(MouseWheelEvent e) {
 	e.preventDefault();
-    	doDeltaY( e.getDeltaY());
+	int delta = CirSim.normalizeWheelDelta(e.getDeltaY());
+	if (delta != 0)
+	    doDeltaY(delta);
     }
     
     public void onMouseDown(MouseDownEvent e) {
@@ -198,7 +203,7 @@ public class ScrollValuePopup extends PopupPanel implements MouseOutHandler, Mou
     static final int scale = 6;
 
     public void doDeltaY(int dy) {
-    	deltaY += (dy/(double) getDevicePixelRatio());
+	    deltaY += (dy * scrollGain / (double) getDevicePixelRatio());
     	setElmValue();
     	setupLabels();
     }
