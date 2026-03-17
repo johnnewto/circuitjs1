@@ -4,8 +4,8 @@ set -o errexit -o nounset # bash script safety
 # For GWT download URLs see https://www.gwtproject.org/versions.html
 # Note: Google Storage URLs for older GWT versions (2.8.x, 2.9.x) return 403 Forbidden
 # Use GitHub releases for newer versions which are more reliably available
-GWT_VERSION="2.10.0"
-GWT_URL="https://github.com/gwtproject/gwt/releases/download/2.10.0/gwt-2.10.0.zip"
+GWT_VERSION="2.13.0"
+GWT_URL="https://github.com/gwtproject/gwt/releases/download/2.13.0/gwt-2.13.0.zip"
 #GWT_URL="https://storage.googleapis.com/gwt-releases/gwt-2.9.0.zip"  # 403 Forbidden
 #GWT_URL="https://goo.gl/pZZPXS" # 2.8.2 - 403 Forbidden
 #GWT_URL="https://goo.gl/TysXZl" # 2.8.1 (does not run)
@@ -18,6 +18,23 @@ WEB_PORT=${WEB_PORT:-8000}
 WEB_BINDADDRESS=${WEB_BINDADDRESS:-127.0.0.1}
 CODESERVER_BINDADDRESS=${CODESERVER_BINDADDRESS:-127.0.0.1}
 CODESERVER_PORT=${CODESERVER_PORT:-9876}
+
+ensure_gwt_sdk() {
+    if [[ -d "$GWT_DIR" ]]; then
+        return
+    fi
+
+    echo "GWT SDK not found at $GWT_DIR"
+    echo "Downloading GWT $GWT_VERSION from $GWT_URL"
+
+    mkdir -p "$SDK_DIR"
+    (
+        cd "$SDK_DIR"
+        wget "$GWT_URL" -O "gwt-$GWT_VERSION.zip"
+        unzip "gwt-$GWT_VERSION.zip"
+        rm "gwt-$GWT_VERSION.zip"
+    )
+}
 
 compile() {
     ant build
@@ -37,20 +54,11 @@ setup() {
         echo "Installing packages may need your sudo password."
         set -x
         sudo apt-get update
-        sudo apt-get install -y openjdk-8-jdk-headless ant
+        sudo apt-get install -y openjdk-11-jdk-headless ant
         set +x
     fi
 
-    if ! [[ -d "$GWT_DIR" ]]; then
-        mkdir -p "$SDK_DIR"
-        (
-            cd "$SDK_DIR"
-            wget "$GWT_URL" -O "gwt-$GWT_VERSION.zip"
-            unzip "gwt-$GWT_VERSION.zip"
-            rm "gwt-$GWT_VERSION.zip"
-            set +x
-        )
-    fi
+    ensure_gwt_sdk
 
     if [[ -e build.xml ]]; then
         mv build.xml build.xml.backup
@@ -64,6 +72,13 @@ setup() {
 }
 
 codeserver() {
+    ensure_gwt_sdk
+    if ! [[ -f "$GWT_DIR/gwt-codeserver.jar" && -f "$GWT_DIR/gwt-dev.jar" && -f "$GWT_DIR/gwt-user.jar" ]]; then
+        echo "Missing required GWT jars in $GWT_DIR"
+        echo "Expected: gwt-codeserver.jar, gwt-dev.jar, gwt-user.jar"
+        return 1
+    fi
+
     mkdir -p war
     java -classpath "src:$GWT_DIR/gwt-codeserver.jar:$GWT_DIR/gwt-dev.jar:$GWT_DIR/gwt-user.jar" \
         com.google.gwt.dev.codeserver.CodeServer \
