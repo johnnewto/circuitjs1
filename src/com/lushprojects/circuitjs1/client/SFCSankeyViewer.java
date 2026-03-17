@@ -7,6 +7,9 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.lushprojects.circuitjs1.client.TableColumn.ColumnType;
+import com.google.gwt.core.client.GWT;
+import com.google.gwt.resources.client.ClientBundle;
+import com.google.gwt.resources.client.TextResource;
 import com.google.gwt.user.client.ui.DialogBox;
 import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.HorizontalPanel;
@@ -60,6 +63,22 @@ import jsinterop.annotations.JsType;
  * - Modify D3 node.append('rect').attr('width', d => scaleWidth(d.stockValue))
  */
 public class SFCSankeyViewer {
+
+    interface SankeyViewerResources extends ClientBundle {
+        SankeyViewerResources INSTANCE = GWT.create(SankeyViewerResources.class);
+
+        @Source("SankeyPlotlyEmbeddedTemplate.html")
+        TextResource plotlyEmbeddedTemplate();
+
+        @Source("SankeyPlotlyStandaloneTemplate.html")
+        TextResource plotlyStandaloneTemplate();
+
+        @Source("SankeyD3EmbeddedTemplate.html")
+        TextResource d3EmbeddedTemplate();
+
+        @Source("SankeyD3StandaloneTemplate.html")
+        TextResource d3StandaloneTemplate();
+    }
 
     @JsFunction
     private interface D3UpdateFunction {
@@ -463,146 +482,15 @@ public class SFCSankeyViewer {
     String generatePlotlyHTML(boolean embedded) {
         String jsonData = buildSankeyJSON();
         String title = table.tableTitle != null ? table.tableTitle : "SFC Table";
-        
-        StringBuilder html = new StringBuilder();
-        
-        html.append("<!DOCTYPE html>\n");
-        html.append("<html lang=\"en\">\n");
-        html.append("<head>\n");
-        html.append("  <meta charset=\"UTF-8\">\n");
-        html.append("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
-        html.append("  <title>Sankey Diagram - ").append(escapeJSON(title)).append("</title>\n");
-        html.append("  <script src=\"https://cdn.plot.ly/plotly-2.27.0.min.js\"></script>\n");
-        html.append("  <style>\n");
-        
-        if (embedded) {
-            // Minimal styling for embedded iframe
-            html.append("    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: white; }\n");
-            html.append("    #sankey-chart { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }\n");
-            html.append("  </style>\n");
-            html.append("</head>\n");
-            html.append("<body>\n");
-            html.append("  <div id=\"sankey-chart\"></div>\n");
-        } else {
-            // Full standalone styling
-            html.append("    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }\n");
-            html.append("    .container { max-width: 1400px; margin: 0 auto; }\n");
-            html.append("    h1 { color: #333; margin-bottom: 5px; }\n");
-            html.append("    .subtitle { color: #666; margin-bottom: 20px; font-size: 14px; }\n");
-            html.append("    .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\n");
-            html.append("    #sankey-chart { width: 100%; height: 700px; }\n");
-            html.append("    .legend { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px; padding: 15px; background: #fafafa; border-radius: 4px; }\n");
-            html.append("    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 14px; }\n");
-            html.append("    .legend-color { width: 20px; height: 20px; border-radius: 4px; }\n");
-            html.append("    .controls { margin-top: 20px; }\n");
-            html.append("    button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px; }\n");
-            html.append("    button:hover { background: #0056b3; }\n");
-            html.append("    .info { margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 4px; font-size: 14px; color: #0066cc; }\n");
-            html.append("  </style>\n");
-            html.append("</head>\n");
-            html.append("<body>\n");
-            html.append("  <div class=\"container\">\n");
-            html.append("    <h1>Sankey Diagram: ").append(escapeJSON(title)).append("</h1>\n");
-            html.append("    <p class=\"subtitle\">Stock-Flow Consistent Transaction Flows</p>\n");
-            html.append("    <div class=\"chart-container\">\n");
-            html.append("      <div id=\"sankey-chart\"></div>\n");
-            html.append("    </div>\n");
-            html.append("    <div id=\"legend\" class=\"legend\"></div>\n");
-            html.append("    <div class=\"controls\">\n");
-            html.append("      <button id=\"arrowBtn\" onclick=\"toggleArrows()\">" + (showArrows ? "Hide Arrows" : "Show Arrows") + "</button>\n");
-            html.append("      <button onclick=\"downloadAsPNG()\">Download as PNG</button>\n");
-            html.append("      <button onclick=\"downloadAsSVG()\">Download as SVG</button>\n");
-            html.append("    </div>\n");
-            html.append("    <div class=\"info\">\n");
-            html.append("      <strong>How to read this diagram:</strong> Money flows from left to right. ");
-            html.append("      Sectors on the left are <em>sources</em> (outflows/payments), transactions in the middle show the flow type, ");
-            html.append("      and sectors on the right are <em>targets</em> (inflows/receipts). ");
-            html.append("      Band width represents the amount of the flow.\n");
-            html.append("    </div>\n");
-            html.append("  </div>\n");
-        }
-        
-        // Common script section
-        html.append("  <script>\n");
-        html.append("    const data = ").append(jsonData).append(";\n");
-        html.append("    \n");
-        html.append("    // Build Plotly Sankey trace\n");
-        html.append("    const trace = {\n");
-        html.append("      type: 'sankey',\n");
-        html.append("      orientation: 'h',\n");
-        html.append("      node: {\n");
-        html.append("        pad: 15,\n");
-        html.append("        thickness: 30,\n");
-        html.append("        line: { color: 'black', width: 0.5 },\n");
-        html.append("        label: data.nodeLabels,\n");
-        html.append("        color: data.nodeColors,\n");
-        html.append("        hovertemplate: '%{label}<extra></extra>'\n");
-        html.append("      },\n");
-        html.append("      link: {\n");
-        html.append("        source: data.linkSources,\n");
-        html.append("        target: data.linkTargets,\n");
-        html.append("        value: data.linkValues,\n");
-        html.append("        color: data.linkColors,\n");
-        if (showArrows) {
-            html.append("        arrowlen: 15,\n");
-        }
-        html.append("        customdata: data.linkLabels,\n");
-        html.append("        hovertemplate: '%{customdata}<extra></extra>'\n");
-        html.append("      }\n");
-        html.append("    };\n");
-        html.append("    \n");
-        html.append("    const layout = {\n");
-        html.append("      title: '',\n");
-        html.append("      font: { size: 12 },\n");
-        html.append("      margin: { l: 20, r: 20, t: 20, b: 20 }\n");
-        html.append("    };\n");
-        html.append("    \n");
-        html.append("    const config = {\n");
-        html.append("      responsive: true,\n");
-        html.append("      displayModeBar: true,\n");
-        html.append("      modeBarButtonsToRemove: ['lasso2d', 'select2d']\n");
-        html.append("    };\n");
-        html.append("    \n");
-        html.append("    Plotly.newPlot('sankey-chart', [trace], layout, config);\n");
-        
-        if (!embedded) {
-            // Legend and controls for standalone window only
-            html.append("    \n");
-            html.append("    // Build legend from unique sectors\n");
-            html.append("    const legendDiv = document.getElementById('legend');\n");
-            html.append("    const sectors = new Map();\n");
-            html.append("    const numSectors = (data.nodeLabels.length - ").append(table.rows).append(") / 2;\n");
-            html.append("    for (let i = 0; i < numSectors; i++) {\n");
-            html.append("      sectors.set(data.nodeLabels[i], data.nodeColors[i]);\n");
-            html.append("    }\n");
-            html.append("    sectors.forEach((color, name) => {\n");
-            html.append("      const item = document.createElement('div');\n");
-            html.append("      item.className = 'legend-item';\n");
-            html.append("      item.innerHTML = `<div class=\"legend-color\" style=\"background: ${color}\"></div><span>${name}</span>`;\n");
-            html.append("      legendDiv.appendChild(item);\n");
-            html.append("    });\n");
-            html.append("    \n");
-            html.append("    function downloadAsPNG() {\n");
-            html.append("      Plotly.downloadImage('sankey-chart', { format: 'png', width: 1400, height: 700, filename: 'sankey-diagram' });\n");
-            html.append("    }\n");
-            html.append("    \n");
-            html.append("    function downloadAsSVG() {\n");
-            html.append("      Plotly.downloadImage('sankey-chart', { format: 'svg', width: 1400, height: 700, filename: 'sankey-diagram' });\n");
-            html.append("    }\n");
-            html.append("    \n");
-            html.append("    let showArrows = " + showArrows + ";\n");
-            html.append("    function toggleArrows() {\n");
-            html.append("      showArrows = !showArrows;\n");
-            html.append("      document.getElementById('arrowBtn').textContent = showArrows ? 'Hide Arrows' : 'Show Arrows';\n");
-            html.append("      Plotly.restyle('sankey-chart', { 'link.arrowlen': showArrows ? 15 : 0 });\n");
-            html.append("    }\n");
-        }
-        
-        html.append("  </script>\n");
-        html.append("</body>\n");
-        html.append("</html>\n");
-        
-        return html.toString();
+        String template = embedded
+                ? SankeyViewerResources.INSTANCE.plotlyEmbeddedTemplate().getText()
+                : SankeyViewerResources.INSTANCE.plotlyStandaloneTemplate().getText();
+        return template
+                .replace("__TITLE__", escapeHtml(title))
+                .replace("__SANKEY_JSON__", jsonData)
+                .replace("__SHOW_ARROWS_BOOL__", Boolean.toString(showArrows))
+                .replace("__ARROW_BUTTON_TEXT__", showArrows ? "Hide Arrows" : "Show Arrows")
+                .replace("__TABLE_ROWS__", Integer.toString(table.rows));
     }
     
     /**
@@ -613,312 +501,22 @@ public class SFCSankeyViewer {
     String generateD3HTML(boolean embedded) {
         String jsonData = buildSankeyJSON();
         String title = table.tableTitle != null ? table.tableTitle : "SFC Table";
-        
-        StringBuilder html = new StringBuilder();
-        
-        html.append("<!DOCTYPE html>\n");
-        html.append("<html lang=\"en\">\n");
-        html.append("<head>\n");
-        html.append("  <meta charset=\"UTF-8\">\n");
-        html.append("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
-        html.append("  <title>Sankey Diagram (D3) - ").append(escapeJSON(title)).append("</title>\n");
-        html.append("  <script src=\"https://d3js.org/d3.v7.min.js\"></script>\n");
-        html.append("  <script src=\"https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js\"></script>\n");
-        html.append("  <style>\n");
-        
-        if (embedded) {
-            // Minimal styling for embedded iframe
-            html.append("    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: white; }\n");
-            html.append("    #sankey-chart { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }\n");
-            html.append("    .node rect { fill-opacity: 0.9; shape-rendering: crispEdges; }\n");
-            html.append("    .node text { font-size: 11px; pointer-events: none; }\n");
-            html.append("    .link { fill: none; stroke-opacity: 0.4; }\n");
-            html.append("    .link:hover { stroke-opacity: 0.7; }\n");
-            html.append("    .tooltip { position: absolute; background: rgba(0,0,0,0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000; }\n");
-            html.append("  </style>\n");
-            html.append("</head>\n");
-            html.append("<body>\n");
-            html.append("  <div id=\"sankey-chart\"></div>\n");
-        } else {
-            // Full standalone styling
-            html.append("    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }\n");
-            html.append("    .container { max-width: 1400px; margin: 0 auto; }\n");
-            html.append("    h1 { color: #333; margin-bottom: 5px; }\n");
-            html.append("    .subtitle { color: #666; margin-bottom: 20px; font-size: 14px; }\n");
-            html.append("    .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\n");
-            html.append("    #sankey-chart { width: 100%; height: 700px; }\n");
-            html.append("    .node rect { fill-opacity: 0.9; shape-rendering: crispEdges; cursor: move; }\n");
-            html.append("    .node text { font-size: 12px; pointer-events: none; }\n");
-            html.append("    .link { fill: none; stroke-opacity: 0.4; }\n");
-            html.append("    .link:hover { stroke-opacity: 0.7; }\n");
-            html.append("    .legend { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px; padding: 15px; background: #fafafa; border-radius: 4px; }\n");
-            html.append("    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 14px; }\n");
-            html.append("    .legend-color { width: 20px; height: 20px; border-radius: 4px; }\n");
-            html.append("    .controls { margin-top: 20px; }\n");
-            html.append("    button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px; }\n");
-            html.append("    button:hover { background: #0056b3; }\n");
-            html.append("    .info { margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 4px; font-size: 14px; color: #0066cc; }\n");
-            html.append("    .tooltip { position: absolute; background: rgba(0,0,0,0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000; }\n");
-            html.append("  </style>\n");
-            html.append("</head>\n");
-            html.append("<body>\n");
-            html.append("  <div class=\"container\">\n");
-            html.append("    <h1>Sankey Diagram (D3): ").append(escapeJSON(title)).append("</h1>\n");
-            html.append("    <p class=\"subtitle\">Stock-Flow Consistent Transaction Flows</p>\n");
-            html.append("    <div class=\"chart-container\">\n");
-            html.append("      <div id=\"sankey-chart\"></div>\n");
-            html.append("    </div>\n");
-            html.append("    <div id=\"legend\" class=\"legend\"></div>\n");
-            html.append("    <div class=\"controls\">\n");
-            html.append("      <button onclick=\"downloadAsSVG()\">Download as SVG</button>\n");
-            html.append("    </div>\n");
-            html.append("    <div class=\"info\">\n");
-            html.append("      <strong>How to read this diagram:</strong> Money flows from left to right. ");
-            html.append("      Sectors on the left are <em>sources</em> (outflows/payments), transactions in the middle show the flow type, ");
-            html.append("      and sectors on the right are <em>targets</em> (inflows/receipts). ");
-            html.append("      Band width represents the amount of the flow.\n");
-            html.append("    </div>\n");
-            html.append("  </div>\n");
-        }
-        
-        // D3 Sankey script
-        html.append("  <script>\n");
-        html.append("    const d3RawData = ").append(jsonData).append(";\n");
-        html.append("    \n");
-        html.append("    // Convert our data format to D3 Sankey format\n");
-        html.append("    const d3Nodes = d3RawData.nodeLabels.map((name, i) => ({\n");
-        html.append("      name: name,\n");
-        html.append("      color: d3RawData.nodeColors[i]\n");
-        html.append("    }));\n");
-        html.append("    \n");
-        html.append("    // Filter out invalid links (zero, NaN, or negative values)\n");
-        html.append("    const d3Links = d3RawData.linkSources.map((source, i) => ({\n");
-        html.append("      source: source,\n");
-        html.append("      target: d3RawData.linkTargets[i],\n");
-        html.append("      value: Math.max(0.001, d3RawData.linkValues[i] || 0),\n");  // Minimum value to avoid NaN
-        html.append("      color: d3RawData.linkColors[i],\n");
-        html.append("      label: d3RawData.linkLabels[i]\n");
-        html.append("    })).filter(l => l.value > 0 && !isNaN(l.value) && isFinite(l.value));\n");
-        html.append("    \n");
-        html.append("    // Check if we have valid data\n");
-        html.append("    if (d3Links.length === 0) {\n");
-        html.append("      document.getElementById('sankey-chart').innerHTML = '<p style=\"text-align:center;color:#666;padding:50px;\">No flow data yet. Run simulation to see flows.</p>';\n");
-        html.append("    } else {\n");
-        html.append("    \n");
-        html.append("    const d3Data = { nodes: d3Nodes, links: d3Links };\n");
-        html.append("    \n");
-        html.append("    // Get chart dimensions\n");
-        html.append("    const container = document.getElementById('sankey-chart');\n");
-        html.append("    const width = container.clientWidth || 800;\n");
-        html.append("    const height = container.clientHeight || ").append(embedded ? "450" : "650").append(";\n");
-        html.append("    const margin = { top: 10, right: 10, bottom: 10, left: 10 };\n");
-        html.append("    \n");
-        html.append("    // Create SVG\n");
-        html.append("    const svg = d3.select('#sankey-chart')\n");
-        html.append("      .append('svg')\n");
-        html.append("      .attr('width', width)\n");
-        html.append("      .attr('height', height)\n");
-        html.append("      .attr('id', 'sankey-svg');\n");
-        html.append("    \n");
-        html.append("    // Create Sankey layout\n");
-        html.append("    const sankey = d3.sankey()\n");
-        html.append("      .nodeWidth(20)\n");
-        html.append("      .nodePadding(15)\n");
-        html.append("      .extent([[margin.left, margin.top], [width - margin.right, height - margin.bottom]]);\n");
-        html.append("    \n");
-        html.append("    // Generate the Sankey layout\n");
-        html.append("    const { nodes: sankeyNodes, links: sankeyLinks } = sankey({\n");
-        html.append("      nodes: d3Data.nodes.map(d => Object.assign({}, d)),\n");
-        html.append("      links: d3Data.links.map(d => Object.assign({}, d))\n");
-        html.append("    });\n");
-        html.append("    \n");
-        
-        // Add gradient definitions for links
-        html.append("    // Create gradient definitions for links\n");
-        html.append("    const defs = svg.append('defs');\n");
-        html.append("    sankeyLinks.forEach((link, i) => {\n");
-        html.append("      const gradient = defs.append('linearGradient')\n");
-        html.append("        .attr('id', 'gradient-' + i)\n");
-        html.append("        .attr('gradientUnits', 'userSpaceOnUse')\n");
-        html.append("        .attr('x1', link.source.x1)\n");
-        html.append("        .attr('x2', link.target.x0);\n");
-        html.append("      gradient.append('stop')\n");
-        html.append("        .attr('offset', '0%')\n");
-        html.append("        .attr('stop-color', link.source.color);\n");
-        html.append("      gradient.append('stop')\n");
-        html.append("        .attr('offset', '100%')\n");
-        html.append("        .attr('stop-color', link.target.color);\n");
-        html.append("    });\n");
-        html.append("    \n");
-        
-        // Add tooltip for both embedded and standalone
-        html.append("    // Create tooltip\n");
-        html.append("    const tooltip = d3.select('body').append('div')\n");
-        html.append("      .attr('class', 'tooltip')\n");
-        html.append("      .style('opacity', 0);\n");
-        html.append("    \n");
-        
-        html.append("    // Draw links\n");
-        html.append("    const link = svg.append('g')\n");
-        html.append("      .attr('class', 'links')\n");
-        html.append("      .selectAll('.link')\n");
-        html.append("      .data(sankeyLinks)\n");
-        html.append("      .enter()\n");
-        html.append("      .append('path')\n");
-        html.append("      .attr('class', 'link')\n");
-        html.append("      .attr('d', d3.sankeyLinkHorizontal())\n");
-        html.append("      .attr('stroke', (d, i) => 'url(#gradient-' + i + ')')\n");
-        html.append("      .attr('stroke-width', d => Math.max(1, d.width))\n");
-        html.append("      .on('mouseover', function(event, d, i) {\n");
-        html.append("        window.hoveredLinkIndex = Array.from(svg.selectAll('.link').nodes()).indexOf(this);\n");
-        html.append("        d3.select(this).style('stroke-opacity', 0.7);\n");
-        html.append("        tooltip.transition().duration(200).style('opacity', 0.9);\n");
-        html.append("        tooltip.html(d.label)\n");
-        html.append("          .style('left', (event.pageX + 10) + 'px')\n");
-        html.append("          .style('top', (event.pageY - 10) + 'px');\n");
-        html.append("      })\n");
-        html.append("      .on('mousemove', function(event) {\n");
-        html.append("        tooltip.style('left', (event.pageX + 10) + 'px')\n");
-        html.append("          .style('top', (event.pageY - 10) + 'px');\n");
-        html.append("      })\n");
-        html.append("      .on('mouseout', function() {\n");
-        html.append("        window.hoveredLinkIndex = -1;\n");
-        html.append("        d3.select(this).style('stroke-opacity', 0.4);\n");
-        html.append("        tooltip.transition().duration(500).style('opacity', 0);\n");
-        html.append("      });\n");
-        html.append("    \n");
-        html.append("    // Track hovered link for real-time tooltip updates\n");
-        html.append("    window.hoveredLinkIndex = -1;\n");
-        html.append("    \n");
-        
-        html.append("    // Draw nodes\n");
-        html.append("    const node = svg.append('g')\n");
-        html.append("      .attr('class', 'nodes')\n");
-        html.append("      .selectAll('.node')\n");
-        html.append("      .data(sankeyNodes)\n");
-        html.append("      .enter()\n");
-        html.append("      .append('g')\n");
-        html.append("      .attr('class', 'node');\n");
-        html.append("    \n");
-        html.append("    // Node rectangles\n");
-        html.append("    node.append('rect')\n");
-        html.append("      .attr('x', d => d.x0)\n");
-        html.append("      .attr('y', d => d.y0)\n");
-        html.append("      .attr('height', d => d.y1 - d.y0)\n");
-        html.append("      .attr('width', d => d.x1 - d.x0)\n");
-        html.append("      .attr('fill', d => d.color)\n");
-        html.append("      .attr('stroke', '#000');\n");
-        html.append("    \n");
-        html.append("    // Node labels\n");
-        html.append("    node.append('text')\n");
-        html.append("      .attr('x', d => d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6)\n");
-        html.append("      .attr('y', d => (d.y1 + d.y0) / 2)\n");
-        html.append("      .attr('dy', '0.35em')\n");
-        html.append("      .attr('text-anchor', d => d.x0 < width / 2 ? 'start' : 'end')\n");
-        html.append("      .text(d => d.name);\n");
-        
-        if (!embedded) {
-            // Legend and download for standalone
-            html.append("    \n");
-            html.append("    // Build legend from unique sectors\n");
-            html.append("    const legendDiv = document.getElementById('legend');\n");
-            html.append("    const numSectors = (d3RawData.nodeLabels.length - ").append(table.rows).append(") / 2;\n");
-            html.append("    const sectors = new Map();\n");
-            html.append("    for (let i = 0; i < numSectors; i++) {\n");
-            html.append("      sectors.set(d3RawData.nodeLabels[i], d3RawData.nodeColors[i]);\n");
-            html.append("    }\n");
-            html.append("    sectors.forEach((color, name) => {\n");
-            html.append("      const item = document.createElement('div');\n");
-            html.append("      item.className = 'legend-item';\n");
-            html.append("      item.innerHTML = `<div class=\"legend-color\" style=\"background: ${color}\"></div><span>${name}</span>`;\n");
-            html.append("      legendDiv.appendChild(item);\n");
-            html.append("    });\n");
-            html.append("    \n");
-            html.append("    function downloadAsSVG() {\n");
-            html.append("      const svgElement = document.getElementById('sankey-svg');\n");
-            html.append("      const serializer = new XMLSerializer();\n");
-            html.append("      const svgString = serializer.serializeToString(svgElement);\n");
-            html.append("      const blob = new Blob([svgString], { type: 'image/svg+xml' });\n");
-            html.append("      const link = document.createElement('a');\n");
-            html.append("      link.href = URL.createObjectURL(blob);\n");
-            html.append("      link.download = 'sankey-diagram.svg';\n");
-            html.append("      link.click();\n");
-            html.append("    }\n");
-        }
-        
-        // Add update function for real-time refresh (D3 version)
-        html.append("    \n");
-        html.append("    // Function to update chart with new data (called from parent window)\n");
-        html.append("    window.updateD3Sankey = function(newData) {\n");
-        html.append("      // Convert new data format to D3 Sankey format\n");
-        html.append("      const newNodes = newData.nodeLabels.map((name, i) => ({\n");
-        html.append("        name: name,\n");
-        html.append("        color: newData.nodeColors[i]\n");
-        html.append("      }));\n");
-        html.append("      const newLinks = newData.linkSources.map((source, i) => ({\n");
-        html.append("        source: source,\n");
-        html.append("        target: newData.linkTargets[i],\n");
-        html.append("        value: Math.max(0.001, newData.linkValues[i] || 0),\n");
-        html.append("        color: newData.linkColors[i],\n");
-        html.append("        label: newData.linkLabels[i]\n");
-        html.append("      })).filter(l => l.value > 0 && !isNaN(l.value) && isFinite(l.value));\n");
-        html.append("      \n");
-        html.append("      // Skip update if no valid links\n");
-        html.append("      if (newLinks.length === 0) return;\n");
-        html.append("      \n");
-        html.append("      // Re-run sankey layout with new data\n");
-        html.append("      try {\n");
-        html.append("        const newSankeyData = sankey({\n");
-        html.append("          nodes: newNodes.map(d => Object.assign({}, d)),\n");
-        html.append("          links: newLinks.map(d => Object.assign({}, d))\n");
-        html.append("        });\n");
-        html.append("        \n");
-        html.append("        // Update gradient definitions\n");
-        html.append("        newSankeyData.links.forEach((link, i) => {\n");
-        html.append("          const gradient = svg.select('defs').select('#gradient-' + i);\n");
-        html.append("          if (!gradient.empty()) {\n");
-        html.append("            gradient.attr('x1', link.source.x1).attr('x2', link.target.x0);\n");
-        html.append("            gradient.select('stop:first-child').attr('stop-color', link.source.color);\n");
-        html.append("            gradient.select('stop:last-child').attr('stop-color', link.target.color);\n");
-        html.append("          }\n");
-        html.append("        });\n");
-        html.append("        \n");
-        html.append("        // Update links with transition\n");
-        html.append("        const linkSelection = svg.selectAll('.link').data(newSankeyData.links);\n");
-        html.append("        linkSelection\n");
-        html.append("          .transition()\n");
-        html.append("          .duration(300)\n");
-        html.append("          .attr('d', d3.sankeyLinkHorizontal())\n");
-        html.append("          .attr('stroke-width', d => Math.max(1, d.width));\n");
-        html.append("        \n");
-        html.append("        // Update tooltip if hovering over a link\n");
-        html.append("        if (window.hoveredLinkIndex >= 0 && window.hoveredLinkIndex < newSankeyData.links.length) {\n");
-        html.append("          const hoveredLink = newSankeyData.links[window.hoveredLinkIndex];\n");
-        html.append("          tooltip.html(hoveredLink.label);\n");
-        html.append("        }\n");
-        html.append("        \n");
-        html.append("        // Update nodes with transition\n");
-        html.append("        const nodeGroups = svg.selectAll('.node').data(newSankeyData.nodes);\n");
-        html.append("        nodeGroups.select('rect')\n");
-        html.append("          .transition()\n");
-        html.append("          .duration(300)\n");
-        html.append("          .attr('y', d => d.y0)\n");
-        html.append("          .attr('height', d => d.y1 - d.y0);\n");
-        html.append("        nodeGroups.select('text')\n");
-        html.append("          .transition()\n");
-        html.append("          .duration(300)\n");
-        html.append("          .attr('y', d => (d.y1 + d.y0) / 2);\n");
-        html.append("      } catch(e) {\n");
-        html.append("        // Silently ignore update errors\n");
-        html.append("      }\n");
-        html.append("    };\n");
-        html.append("    } // End of if (d3Links.length > 0)\n");
-        
-        html.append("  </script>\n");
-        html.append("</body>\n");
-        html.append("</html>\n");
-        
-        return html.toString();
+        String template = embedded
+                ? SankeyViewerResources.INSTANCE.d3EmbeddedTemplate().getText()
+                : SankeyViewerResources.INSTANCE.d3StandaloneTemplate().getText();
+        return template
+                .replace("__TITLE__", escapeHtml(title))
+                .replace("__SANKEY_JSON__", jsonData)
+                .replace("__TABLE_ROWS__", Integer.toString(table.rows));
+    }
+
+    private String escapeHtml(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
     
     /**

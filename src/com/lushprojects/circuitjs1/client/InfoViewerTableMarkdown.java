@@ -15,6 +15,11 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 
 final class InfoViewerTableMarkdown {
 
+    private static final String NO_TABLES_COMMENT =
+        "<!-- No table elements found — replace the variable names below with your circuit's computed values -->\n\n";
+    private static final String SANKEY_COMMENT =
+        "<!-- Replace 'Transaction_Flow_Matrix' with the name of a table element in your circuit -->\n\n";
+
     private InfoViewerTableMarkdown() {
     }
 
@@ -177,7 +182,7 @@ final class InfoViewerTableMarkdown {
 
         md.append("## Tables\n\n");
         if (tableNames.isEmpty()) {
-            md.append("<!-- No table elements found — replace the variable names below with your circuit's computed values -->\n\n");
+            md.append(NO_TABLES_COMMENT);
             md.append("### Transaction Flow Matrix\n\n");
             // Build a compact example using whatever vars are available, or generic placeholders
             java.util.ArrayList<String> exVars = collectPrimaryComputedNames(8);
@@ -241,7 +246,7 @@ final class InfoViewerTableMarkdown {
 
         md.append("## Sankeys\n\n");
         if (sankeyTableNames.isEmpty()) {
-            md.append("<!-- Replace 'Transaction_Flow_Matrix' with the name of a table element in your circuit -->\n\n");
+            md.append(SANKEY_COMMENT);
             md.append("```{circuit}\n");
             md.append("sankey: Transaction_Flow_Matrix\n");
             md.append("title: Money Flows\n");
@@ -510,9 +515,7 @@ final class InfoViewerTableMarkdown {
                     cellEq = "0";
                 }
                 if (cellEq.trim().startsWith("-")) {
-                    md.append(" <span style='color:#cf222e'>")
-                        .append(formatWithGreekAndSubscripts(cellEq))
-                        .append("</span> |");
+                    md.append(" ").append(wrapNegativeEquation(formatWithGreekAndSubscripts(cellEq))).append(" |");
                 } else {
                     md.append(" ").append(formatWithGreekAndSubscripts(cellEq)).append(" |");
                 }
@@ -565,8 +568,7 @@ final class InfoViewerTableMarkdown {
             md.append("| ").append(formatWithGreekAndSubscripts(outputName)).append(" | ");
 
             if (equation.trim().startsWith("-")) {
-                md.append("<span style='color:#cf222e'>")
-                  .append(formatWithGreekAndSubscripts(equation)).append("</span>");
+            md.append(wrapNegativeEquation(formatWithGreekAndSubscripts(equation)));
             } else {
                 md.append(formatWithGreekAndSubscripts(equation));
             }
@@ -584,4 +586,8 @@ final class InfoViewerTableMarkdown {
         }
         return Locale.convertToHTML(text);
     }
+
+        private static String wrapNegativeEquation(String equationHtml) {
+    	return "<span style='color:#cf222e'>" + equationHtml + "</span>";
+        }
 }

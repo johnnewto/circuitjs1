@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CircuitJS1 Scope Viewer</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 { color: #333; margin-bottom: 10px; display: inline-block; }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .hamburger { cursor: pointer; padding: 10px; background: #007bff; color: white; border-radius: 4px; font-size: 20px; line-height: 1; user-select: none; }
+    .hamburger:hover { background: #0056b3; }
+    .help-popup { display: none; position: fixed; top: 60px; right: 20px; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 20px; max-width: 450px; z-index: 1000; }
+    .help-popup.show { display: block; }
+    .help-popup h3 { margin-top: 0; color: #007bff; }
+    .help-popup .close-btn { float: right; cursor: pointer; font-size: 24px; color: #999; line-height: 1; }
+    .help-popup .close-btn:hover { color: #333; }
+    .help-popup button { display: block; width: 100%; margin: 5px 0; }
+    .help-popup input[type=number] { padding: 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+    .help-popup label { color: #333; font-size: 14px; }
+    .scope-container { background: white; margin: 20px 0; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .scope-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #007bff; }
+    .plot { width: 100%; height: 600px; }
+    .controls { margin: 20px 0; }
+    button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+    button:hover { background: #0056b3; }
+    button.secondary { background: #6c757d; }
+    button.secondary:hover { background: #545b62; }
+    .metadata { font-size: 12px; color: #666; margin-top: 5px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>CircuitJS1 Scope Viewer</h1>
+      <div class="hamburger" onclick="toggleHelp()">☰</div>
+    </div>
+    <div id="help-popup" class="help-popup">
+      <span class="close-btn" onclick="toggleHelp()">&times;</span>
+      <h3>Interactive Scope Data Visualization</h3>
+      <p><strong>Mouse Controls:</strong></p>
+      <ul>
+        <li><strong>Zoom:</strong> Click and drag on the graph</li>
+        <li><strong>Pan:</strong> Shift + drag</li>
+        <li><strong>Reset:</strong> Double-click</li>
+        <li><strong>Hover:</strong> See exact values</li>
+      </ul>
+      <p><strong>Legend:</strong> Click items to show/hide traces</p>
+      <p><strong>Range Slider:</strong> Use the slider below each graph to quickly navigate through the entire time series</p>
+      <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+      <div style="margin-top: 15px;">
+        <label for="graphWidth" style="display: block; margin-bottom: 5px;"><strong>Graph Width:</strong></label>
+        <input type="number" id="graphWidth" value="100" min="50" max="100" style="width: 60px; margin-right: 5px;">%
+        <label for="graphHeight" style="display: block; margin-top: 10px; margin-bottom: 5px;"><strong>Graph Height:</strong></label>
+        <input type="number" id="graphHeight" value="600" min="300" max="1200" step="50" style="width: 80px; margin-right: 5px;">px
+        <button class="secondary" onclick="resizeGraphs()" style="margin-top: 10px;">Apply Size</button>
+      </div>
+      <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+      <div style="margin-top: 15px;">
+        <label style="display: block; margin-bottom: 5px;"><strong>Y-Axis Range (leave blank for auto):</strong></label>
+        <label for="yMin" style="display: inline-block; margin-right: 5px;">Min:</label>
+        <input type="number" id="yMin" placeholder="auto" step="any" style="width: 80px; margin-right: 10px;">
+        <label for="yMax" style="display: inline-block; margin-right: 5px;">Max:</label>
+        <input type="number" id="yMax" placeholder="auto" step="any" style="width: 80px;">
+        <button class="secondary" onclick="setYAxisRange()" style="margin-top: 10px;">Apply Y-Axis</button>
+        <button class="secondary" onclick="resetYAxisRange()" style="margin-top: 5px;">Reset to Auto</button>
+        <div style="margin-top: 10px;">
+          <label style="display: inline-block;"><input type="checkbox" id="autoScaleEnabled" checked style="margin-right: 5px;">Auto-Scale to Visible Range</label>
+        </div>
+      </div>
+      <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+      <div style="margin-top: 15px;">
+        <button onclick="downloadAllAsJSON(); toggleHelp();">Download All Data (JSON)</button>
+        <button onclick="downloadAllAsCSV(); toggleHelp();">Download All Data (CSV)</button>
+        <button class="secondary" onclick="toggleRangeSliders(); toggleHelp();">Toggle Range Sliders</button>
+      </div>
+    </div>
+    <div id="scopes"></div>
+  </div>
+  <script>
+    const scopeData = __SCOPE_DATA_JSON__;
+    const timeUnitSymbol = "__TIME_UNIT_SYMBOL__";
+    const plotIds = [];
+    let rangeSlidersVisible = true;
+
+    function toggleHelp() {
+      const popup = document.getElementById('help-popup');
+      popup.classList.toggle('show');
+    }
+
+    function resizeGraphs() {
+      const width = document.getElementById('graphWidth').value;
+      const height = document.getElementById('graphHeight').value;
+
+      plotIds.forEach(plotId => {
+        const plotDiv = document.getElementById(plotId);
+        if (plotDiv) {
+          plotDiv.style.width = width + '%';
+          plotDiv.style.height = height + 'px';
+          Plotly.Plots.resize(plotDiv);
+        }
+      });
+
+      toggleHelp();
+    }
+
+    function setYAxisRange() {
+      const yMin = document.getElementById('yMin').value;
+      const yMax = document.getElementById('yMax').value;
+
+      const update = { 'yaxis.autorange': false };
+
+      if (yMin !== '' && yMax !== '') {
+        update['yaxis.range'] = [parseFloat(yMin), parseFloat(yMax)];
+      } else if (yMin !== '') {
+        update['yaxis.range[0]'] = parseFloat(yMin);
+      } else if (yMax !== '') {
+        update['yaxis.range[1]'] = parseFloat(yMax);
+      }
+
+      plotIds.forEach(plotId => {
+        Plotly.relayout(plotId, update);
+      });
+
+      toggleHelp();
+    }
+
+    function resetYAxisRange() {
+      document.getElementById('yMin').value = '';
+      document.getElementById('yMax').value = '';
+
+      plotIds.forEach(plotId => {
+        Plotly.relayout(plotId, { 'yaxis.autorange': true });
+      });
+
+      toggleHelp();
+    }
+
+    function autoScaleToVisible() {
+      plotIds.forEach(plotId => {
+        const plotDiv = document.getElementById(plotId);
+        if (!plotDiv || !plotDiv.data || !plotDiv.layout) return;
+
+        const xaxis = plotDiv.layout.xaxis;
+        let xMin, xMax;
+
+        if (xaxis.range) {
+          xMin = xaxis.range[0];
+          xMax = xaxis.range[1];
+        } else {
+          xMin = Infinity;
+          xMax = -Infinity;
+          plotDiv.data.forEach(trace => {
+            if (trace.x) {
+              xMin = Math.min(xMin, ...trace.x);
+              xMax = Math.max(xMax, ...trace.x);
+            }
+          });
+        }
+
+        let yMin = Infinity;
+        let yMax = -Infinity;
+
+        plotDiv.data.forEach(trace => {
+          if (trace.x && trace.y) {
+            for (let i = 0; i < trace.x.length; i++) {
+              if (trace.x[i] >= xMin && trace.x[i] <= xMax) {
+                yMin = Math.min(yMin, trace.y[i]);
+                yMax = Math.max(yMax, trace.y[i]);
+              }
+            }
+          }
+        });
+
+        if (isFinite(yMin) && isFinite(yMax)) {
+          const yPadding = (yMax - yMin) * 0.05;
+          yMin -= yPadding;
+          yMax += yPadding;
+
+          Plotly.relayout(plotId, {
+            'yaxis.autorange': false,
+            'yaxis.range': [yMin, yMax]
+          });
+
+          document.getElementById('yMin').value = yMin.toFixed(3);
+          document.getElementById('yMax').value = yMax.toFixed(3);
+        }
+      });
+    }
+
+    function plotScope(scopeInfo, index) {
+      const container = document.getElementById('scopes');
+
+      const scopeDiv = document.createElement('div');
+      scopeDiv.className = 'scope-container';
+
+      const title = document.createElement('div');
+      title.className = 'scope-title';
+      title.textContent = scopeInfo.scopeName;
+      scopeDiv.appendChild(title);
+
+      const metadata = document.createElement('div');
+      metadata.className = 'metadata';
+      let metaText = 'Export Type: ' + scopeInfo.exportType;
+      if (scopeInfo.exportType === 'history') {
+        metaText += ' | Samples: ' + scopeInfo.historySize + ' | Interval: ' + scopeInfo.sampleInterval + timeUnitSymbol;
+      } else {
+        metaText += ' | Time: ' + scopeInfo.simulationTime + timeUnitSymbol + ' | Step: ' + scopeInfo.timeStep + timeUnitSymbol;
+      }
+      metadata.textContent = metaText;
+      scopeDiv.appendChild(metadata);
+
+      const plotDiv = document.createElement('div');
+      plotDiv.className = 'plot';
+      plotDiv.id = 'plot-' + index;
+      scopeDiv.appendChild(plotDiv);
+
+      container.appendChild(scopeDiv);
+
+      const traces = [];
+      scopeInfo.plots.forEach((plot) => {
+        const yValues = plot.values && plot.values.length > 0 ? plot.values : plot.maxValues;
+
+        traces.push({
+          x: plot.time,
+          y: yValues,
+          type: 'scatter',
+          mode: 'lines',
+          name: plot.name,
+          line: { color: plot.color, width: 2 },
+          legendgroup: plot.name
+        });
+      });
+
+      const layout = {
+        title: scopeInfo.scopeName,
+        xaxis: {
+          title: 'Time (' + timeUnitSymbol + ')',
+          gridcolor: '#ddd',
+          rangeslider: { visible: true },
+          type: 'linear'
+        },
+        yaxis: { title: 'Value', gridcolor: '#ddd' },
+        hovermode: 'closest',
+        showlegend: true,
+        legend: { x: 1.02, y: 1, xanchor: 'left' },
+        margin: { r: 150 },
+        shapes: scopeInfo.actionTimes ? scopeInfo.actionTimes.map(t => ({
+          type: 'line',
+          x0: t,
+          x1: t,
+          y0: 0,
+          y1: 1,
+          yref: 'paper',
+          line: { color: '#FF6B6B', width: 2 }
+        })) : [],
+        annotations: scopeInfo.actionTimes ? scopeInfo.actionTimes.map((t, i) => ({
+          x: t,
+          y: 1,
+          yref: 'paper',
+          text: scopeInfo.actionAnnotations[i],
+          showarrow: true,
+          arrowhead: 2,
+          arrowsize: 1,
+          arrowwidth: 2,
+          arrowcolor: '#FF6B6B',
+          ax: 0,
+          ay: -40,
+          bgcolor: 'rgba(255, 107, 107, 0.8)',
+          bordercolor: '#FF6B6B',
+          borderwidth: 2,
+          borderpad: 4,
+          font: { color: 'white', size: 12 }
+        })) : []
+      };
+
+      const config = {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false,
+        toImageButtonOptions: {
+          format: 'png',
+          filename: 'scope_' + index,
+          height: 600,
+          width: 1200,
+          scale: 2
+        }
+      };
+
+      Plotly.newPlot(plotDiv.id, traces, layout, config);
+      plotIds.push(plotDiv.id);
+
+      document.getElementById(plotDiv.id).on('plotly_relayout', function(eventData) {
+        if (document.getElementById('autoScaleEnabled').checked) {
+          if (eventData['xaxis.range[0]'] !== undefined || eventData['xaxis.range'] !== undefined) {
+            autoScaleToVisible();
+          }
+        }
+      });
+    }
+
+    function toggleRangeSliders() {
+      rangeSlidersVisible = !rangeSlidersVisible;
+      plotIds.forEach(plotId => {
+        Plotly.relayout(plotId, {
+          'xaxis.rangeslider.visible': rangeSlidersVisible
+        });
+      });
+    }
+
+    function downloadAllAsJSON() {
+      const dataStr = JSON.stringify(scopeData, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'all-scopes-data.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function downloadAllAsCSV() {
+      let csv = '';
+      scopeData.forEach((scope, scopeIdx) => {
+        csv += '# ' + scope.scopeName + '\n';
+        csv += 'Time (' + timeUnitSymbol + ')';
+        scope.plots.forEach(plot => {
+          csv += ',' + plot.name + ' Min,' + plot.name + ' Max';
+        });
+        csv += '\n';
+
+        const numPoints = scope.plots[0].time.length;
+        for (let i = 0; i < numPoints; i++) {
+          csv += scope.plots[0].time[i];
+          scope.plots.forEach(plot => {
+            csv += ',' + plot.minValues[i] + ',' + plot.maxValues[i];
+          });
+          csv += '\n';
+        }
+        csv += '\n';
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'all-scopes-data.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    scopeData.forEach((scope, index) => plotScope(scope, index));
+  </script>
+</body>
+</html>

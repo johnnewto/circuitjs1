@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sankey Diagram - __TITLE__</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 { color: #333; margin-bottom: 5px; }
+    .subtitle { color: #666; margin-bottom: 20px; font-size: 14px; }
+    .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    #sankey-chart { width: 100%; height: 700px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px; padding: 15px; background: #fafafa; border-radius: 4px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+    .legend-color { width: 20px; height: 20px; border-radius: 4px; }
+    .controls { margin-top: 20px; }
+    button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+    button:hover { background: #0056b3; }
+    .info { margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 4px; font-size: 14px; color: #0066cc; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Sankey Diagram: __TITLE__</h1>
+    <p class="subtitle">Stock-Flow Consistent Transaction Flows</p>
+    <div class="chart-container">
+      <div id="sankey-chart"></div>
+    </div>
+    <div id="legend" class="legend"></div>
+    <div class="controls">
+      <button id="arrowBtn" onclick="toggleArrows()">__ARROW_BUTTON_TEXT__</button>
+      <button onclick="downloadAsPNG()">Download as PNG</button>
+      <button onclick="downloadAsSVG()">Download as SVG</button>
+    </div>
+    <div class="info">
+      <strong>How to read this diagram:</strong> Money flows from left to right.
+      Sectors on the left are <em>sources</em> (outflows/payments), transactions in the middle show the flow type,
+      and sectors on the right are <em>targets</em> (inflows/receipts).
+      Band width represents the amount of the flow.
+    </div>
+  </div>
+  <script>
+    const data = __SANKEY_JSON__;
+
+    const trace = {
+      type: 'sankey',
+      orientation: 'h',
+      node: {
+        pad: 15,
+        thickness: 30,
+        line: { color: 'black', width: 0.5 },
+        label: data.nodeLabels,
+        color: data.nodeColors,
+        hovertemplate: '%{label}<extra></extra>'
+      },
+      link: {
+        source: data.linkSources,
+        target: data.linkTargets,
+        value: data.linkValues,
+        color: data.linkColors,
+        customdata: data.linkLabels,
+        hovertemplate: '%{customdata}<extra></extra>'
+      }
+    };
+
+    if (__SHOW_ARROWS_BOOL__) {
+      trace.link.arrowlen = 15;
+    }
+
+    const layout = {
+      title: '',
+      font: { size: 12 },
+      margin: { l: 20, r: 20, t: 20, b: 20 }
+    };
+
+    const config = {
+      responsive: true,
+      displayModeBar: true,
+      modeBarButtonsToRemove: ['lasso2d', 'select2d']
+    };
+
+    Plotly.newPlot('sankey-chart', [trace], layout, config);
+
+    const legendDiv = document.getElementById('legend');
+    const sectors = new Map();
+    const numSectors = (data.nodeLabels.length - __TABLE_ROWS__) / 2;
+    for (let i = 0; i < numSectors; i++) {
+      sectors.set(data.nodeLabels[i], data.nodeColors[i]);
+    }
+    sectors.forEach((color, name) => {
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      item.innerHTML = `<div class="legend-color" style="background: ${color}"></div><span>${name}</span>`;
+      legendDiv.appendChild(item);
+    });
+
+    function downloadAsPNG() {
+      Plotly.downloadImage('sankey-chart', { format: 'png', width: 1400, height: 700, filename: 'sankey-diagram' });
+    }
+
+    function downloadAsSVG() {
+      Plotly.downloadImage('sankey-chart', { format: 'svg', width: 1400, height: 700, filename: 'sankey-diagram' });
+    }
+
+    let showArrows = __SHOW_ARROWS_BOOL__;
+    function toggleArrows() {
+      showArrows = !showArrows;
+      document.getElementById('arrowBtn').textContent = showArrows ? 'Hide Arrows' : 'Show Arrows';
+      Plotly.restyle('sankey-chart', { 'link.arrowlen': showArrows ? 15 : 0 });
+    }
+  </script>
+</body>
+</html>

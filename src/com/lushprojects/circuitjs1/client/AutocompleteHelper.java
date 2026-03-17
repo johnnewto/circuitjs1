@@ -405,20 +405,8 @@ public class AutocompleteHelper {
             hintLabel.setVisible(false);
             return;
         }
-        
-        StringBuilder html = new StringBuilder();
-        html.append("<span style='color:#666'>");
-        for (int i = 0; i < matches.size(); i++) {
-            if (i > 0) html.append("  ");
-            if (i == highlightIndex) {
-                html.append("<b>[").append(matches.get(i)).append("]</b>");
-            } else {
-                html.append(matches.get(i));
-            }
-        }
-        html.append("</span>");
-        
-        hintLabel.getElement().setInnerHTML(html.toString());
+
+        hintLabel.getElement().setInnerHTML(buildMatchesHtml(matches, highlightIndex));
         hintLabel.setVisible(true);
     }
     
@@ -433,33 +421,12 @@ public class AutocompleteHelper {
             return;
         }
         
-        StringBuilder html = new StringBuilder();
-        
-        // Show matches with first one highlighted (primary display)
-        if (!matches.isEmpty()) {
-            html.append("<span style='color:#666'>");
-            for (int i = 0; i < matches.size(); i++) {
-                if (i > 0) html.append("  ");
-                if (i == 0) {
-                    html.append("<b>[").append(matches.get(i)).append("]</b>");
-                } else {
-                    html.append(matches.get(i));
-                }
-            }
-            html.append("</span>");
-        }
-        
-        // Show undefined symbols in red (only if no matches, to avoid clutter)
-        if (!undefinedSymbols.isEmpty() && matches.isEmpty()) {
-            html.append("<span style='color:#cc0000'>Undefined: ");
-            for (int i = 0; i < undefinedSymbols.size(); i++) {
-                if (i > 0) html.append(", ");
-                html.append(undefinedSymbols.get(i));
-            }
-            html.append("</span>");
-        }
-        
-        hintLabel.getElement().setInnerHTML(html.toString());
+        String matchesHtml = matches.isEmpty() ? "" : buildMatchesHtml(matches, 0);
+        String undefinedHtml = (!undefinedSymbols.isEmpty() && matches.isEmpty())
+                ? buildUndefinedSymbolsHtml(undefinedSymbols)
+                : "";
+
+        hintLabel.getElement().setInnerHTML(matchesHtml + undefinedHtml);
         hintLabel.setVisible(true);
     }
     
@@ -472,16 +439,41 @@ public class AutocompleteHelper {
             return;
         }
         
-        StringBuilder html = new StringBuilder();
-        html.append("<span style='color:#cc0000'>Undefined: ");
-        for (int i = 0; i < undefinedSymbols.size(); i++) {
-            if (i > 0) html.append(", ");
-            html.append(undefinedSymbols.get(i));
-        }
-        html.append("</span>");
-        
-        hintLabel.getElement().setInnerHTML(html.toString());
+        hintLabel.getElement().setInnerHTML(buildUndefinedSymbolsHtml(undefinedSymbols));
         hintLabel.setVisible(true);
+    }
+
+    private static String buildMatchesHtml(java.util.List<String> matches, int highlightIndex) {
+        java.util.List<String> rendered = new java.util.ArrayList<String>();
+        for (int i = 0; i < matches.size(); i++) {
+            String match = escapeHtml(matches.get(i));
+            if (i == highlightIndex) {
+                rendered.add("<b>[" + match + "]</b>");
+            } else {
+                rendered.add(match);
+            }
+        }
+        return "<span style='color:#666'>" + String.join("  ", rendered) + "</span>";
+    }
+
+    private static String buildUndefinedSymbolsHtml(java.util.List<String> undefinedSymbols) {
+        java.util.List<String> escaped = new java.util.ArrayList<String>();
+        for (int i = 0; i < undefinedSymbols.size(); i++) {
+            escaped.add(escapeHtml(undefinedSymbols.get(i)));
+        }
+        return "<span style='color:#cc0000'>Undefined: " + String.join(", ", escaped) + "</span>";
+    }
+
+    private static String escapeHtml(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
     
     /**

@@ -205,9 +205,9 @@ public class Locale {
                 
                 // Add HTML tag
                 String tag = isSubscript ? "sub" : "sup";
-                result.append("<").append(tag).append(">");
+                result.append('<').append(tag).append('>');
                 result.append(escapeHTML(scriptText));
-                result.append("</").append(tag).append(">");
+                result.append('<').append('/').append(tag).append('>');
                 
             } else {
                 // Regular character - escape HTML special chars

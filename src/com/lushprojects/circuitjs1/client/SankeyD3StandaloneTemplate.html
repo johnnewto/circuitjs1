@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sankey Diagram (D3) - __TITLE__</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 { color: #333; margin-bottom: 5px; }
+    .subtitle { color: #666; margin-bottom: 20px; font-size: 14px; }
+    .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    #sankey-chart { width: 100%; height: 700px; }
+    .node rect { fill-opacity: 0.9; shape-rendering: crispEdges; cursor: move; }
+    .node text { font-size: 12px; pointer-events: none; }
+    .link { fill: none; stroke-opacity: 0.4; }
+    .link:hover { stroke-opacity: 0.7; }
+    .legend { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px; padding: 15px; background: #fafafa; border-radius: 4px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+    .legend-color { width: 20px; height: 20px; border-radius: 4px; }
+    .controls { margin-top: 20px; }
+    button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+    button:hover { background: #0056b3; }
+    .info { margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 4px; font-size: 14px; color: #0066cc; }
+    .tooltip { position: absolute; background: rgba(0,0,0,0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Sankey Diagram (D3): __TITLE__</h1>
+    <p class="subtitle">Stock-Flow Consistent Transaction Flows</p>
+    <div class="chart-container">
+      <div id="sankey-chart"></div>
+    </div>
+    <div id="legend" class="legend"></div>
+    <div class="controls">
+      <button onclick="downloadAsSVG()">Download as SVG</button>
+    </div>
+    <div class="info">
+      <strong>How to read this diagram:</strong> Money flows from left to right.
+      Sectors on the left are <em>sources</em> (outflows/payments), transactions in the middle show the flow type,
+      and sectors on the right are <em>targets</em> (inflows/receipts).
+      Band width represents the amount of the flow.
+    </div>
+  </div>
+  <script>
+    const d3RawData = __SANKEY_JSON__;
+
+    const d3Nodes = d3RawData.nodeLabels.map((name, i) => ({
+      name: name,
+      color: d3RawData.nodeColors[i]
+    }));
+
+    const d3Links = d3RawData.linkSources.map((source, i) => ({
+      source: source,
+      target: d3RawData.linkTargets[i],
+      value: Math.max(0.001, d3RawData.linkValues[i] || 0),
+      color: d3RawData.linkColors[i],
+      label: d3RawData.linkLabels[i]
+    })).filter(l => l.value > 0 && !isNaN(l.value) && isFinite(l.value));
+
+    if (d3Links.length === 0) {
+      document.getElementById('sankey-chart').innerHTML = '<p style="text-align:center;color:#666;padding:50px;">No flow data yet. Run simulation to see flows.</p>';
+    } else {
+
+    const d3Data = { nodes: d3Nodes, links: d3Links };
+
+    const container = document.getElementById('sankey-chart');
+    const width = container.clientWidth || 800;
+    const height = container.clientHeight || 650;
+    const margin = { top: 10, right: 10, bottom: 10, left: 10 };
+
+    const svg = d3.select('#sankey-chart')
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .attr('id', 'sankey-svg');
+
+    const sankey = d3.sankey()
+      .nodeWidth(20)
+      .nodePadding(15)
+      .extent([[margin.left, margin.top], [width - margin.right, height - margin.bottom]]);
+
+    const { nodes: sankeyNodes, links: sankeyLinks } = sankey({
+      nodes: d3Data.nodes.map(d => Object.assign({}, d)),
+      links: d3Data.links.map(d => Object.assign({}, d))
+    });
+
+    const defs = svg.append('defs');
+    sankeyLinks.forEach((link, i) => {
+      const gradient = defs.append('linearGradient')
+        .attr('id', 'gradient-' + i)
+        .attr('gradientUnits', 'userSpaceOnUse')
+        .attr('x1', link.source.x1)
+        .attr('x2', link.target.x0);
+      gradient.append('stop')
+        .attr('offset', '0%')
+        .attr('stop-color', link.source.color);
+      gradient.append('stop')
+        .attr('offset', '100%')
+        .attr('stop-color', link.target.color);
+    });
+
+    const tooltip = d3.select('body').append('div')
+      .attr('class', 'tooltip')
+      .style('opacity', 0);
+
+    svg.append('g')
+      .attr('class', 'links')
+      .selectAll('.link')
+      .data(sankeyLinks)
+      .enter()
+      .append('path')
+      .attr('class', 'link')
+      .attr('d', d3.sankeyLinkHorizontal())
+      .attr('stroke', (d, i) => 'url(#gradient-' + i + ')')
+      .attr('stroke-width', d => Math.max(1, d.width))
+      .on('mouseover', function(event, d) {
+        window.hoveredLinkIndex = Array.from(svg.selectAll('.link').nodes()).indexOf(this);
+        d3.select(this).style('stroke-opacity', 0.7);
+        tooltip.transition().duration(200).style('opacity', 0.9);
+        tooltip.html(d.label)
+          .style('left', (event.pageX + 10) + 'px')
+          .style('top', (event.pageY - 10) + 'px');
+      })
+      .on('mousemove', function(event) {
+        tooltip.style('left', (event.pageX + 10) + 'px')
+          .style('top', (event.pageY - 10) + 'px');
+      })
+      .on('mouseout', function() {
+        window.hoveredLinkIndex = -1;
+        d3.select(this).style('stroke-opacity', 0.4);
+        tooltip.transition().duration(500).style('opacity', 0);
+      });
+
+    window.hoveredLinkIndex = -1;
+
+    const node = svg.append('g')
+      .attr('class', 'nodes')
+      .selectAll('.node')
+      .data(sankeyNodes)
+      .enter()
+      .append('g')
+      .attr('class', 'node');
+
+    node.append('rect')
+      .attr('x', d => d.x0)
+      .attr('y', d => d.y0)
+      .attr('height', d => d.y1 - d.y0)
+      .attr('width', d => d.x1 - d.x0)
+      .attr('fill', d => d.color)
+      .attr('stroke', '#000');
+
+    node.append('text')
+      .attr('x', d => d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6)
+      .attr('y', d => (d.y1 + d.y0) / 2)
+      .attr('dy', '0.35em')
+      .attr('text-anchor', d => d.x0 < width / 2 ? 'start' : 'end')
+      .text(d => d.name);
+
+    const legendDiv = document.getElementById('legend');
+    const numSectors = (d3RawData.nodeLabels.length - __TABLE_ROWS__) / 2;
+    const sectors = new Map();
+    for (let i = 0; i < numSectors; i++) {
+      sectors.set(d3RawData.nodeLabels[i], d3RawData.nodeColors[i]);
+    }
+    sectors.forEach((color, name) => {
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      item.innerHTML = `<div class="legend-color" style="background: ${color}"></div><span>${name}</span>`;
+      legendDiv.appendChild(item);
+    });
+
+    function downloadAsSVG() {
+      const svgElement = document.getElementById('sankey-svg');
+      const serializer = new XMLSerializer();
+      const svgString = serializer.serializeToString(svgElement);
+      const blob = new Blob([svgString], { type: 'image/svg+xml' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'sankey-diagram.svg';
+      link.click();
+    }
+
+    window.updateD3Sankey = function(newData) {
+      const newNodes = newData.nodeLabels.map((name, i) => ({
+        name: name,
+        color: newData.nodeColors[i]
+      }));
+      const newLinks = newData.linkSources.map((source, i) => ({
+        source: source,
+        target: newData.linkTargets[i],
+        value: Math.max(0.001, newData.linkValues[i] || 0),
+        color: newData.linkColors[i],
+        label: newData.linkLabels[i]
+      })).filter(l => l.value > 0 && !isNaN(l.value) && isFinite(l.value));
+
+      if (newLinks.length === 0) return;
+
+      try {
+        const newSankeyData = sankey({
+          nodes: newNodes.map(d => Object.assign({}, d)),
+          links: newLinks.map(d => Object.assign({}, d))
+        });
+
+        newSankeyData.links.forEach((link, i) => {
+          const gradient = svg.select('defs').select('#gradient-' + i);
+          if (!gradient.empty()) {
+            gradient.attr('x1', link.source.x1).attr('x2', link.target.x0);
+            gradient.select('stop:first-child').attr('stop-color', link.source.color);
+            gradient.select('stop:last-child').attr('stop-color', link.target.color);
+          }
+        });
+
+        const linkSelection = svg.selectAll('.link').data(newSankeyData.links);
+        linkSelection
+          .transition()
+          .duration(300)
+          .attr('d', d3.sankeyLinkHorizontal())
+          .attr('stroke-width', d => Math.max(1, d.width));
+
+        if (window.hoveredLinkIndex >= 0 && window.hoveredLinkIndex < newSankeyData.links.length) {
+          const hoveredLink = newSankeyData.links[window.hoveredLinkIndex];
+          tooltip.html(hoveredLink.label);
+        }
+
+        const nodeGroups = svg.selectAll('.node').data(newSankeyData.nodes);
+        nodeGroups.select('rect')
+          .transition()
+          .duration(300)
+          .attr('y', d => d.y0)
+          .attr('height', d => d.y1 - d.y0);
+        nodeGroups.select('text')
+          .transition()
+          .duration(300)
+          .attr('y', d => (d.y1 + d.y0) / 2);
+      } catch(e) {
+      }
+    };
+    }
+  </script>
+</body>
+</html>

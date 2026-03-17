@@ -941,21 +941,18 @@ public CirSim() {
 	Collections.sort(keys);
 
 	StringBuilder content = new StringBuilder();
-	content.append("<div><b>Source:</b> ").append(SafeHtmlUtils.htmlEscape(source != null ? source : "(none)")).append("</div>");
-	content.append("<div><b>Requested steps:</b> ").append(steps).append("</div>");
+	content.append(headlessDiv("<b>Source:</b> " + SafeHtmlUtils.htmlEscape(source != null ? source : "(none)")));
+	content.append(headlessDiv("<b>Requested steps:</b> " + steps));
 
 	if (stopMessage != null) {
-	    content.append("<div style='color:#c33; margin-top:8px;'><b>Analyze warning:</b> ")
-	      .append(SafeHtmlUtils.htmlEscape(stopMessage))
-	      .append("</div>");
+	    content.append(headlessStyledDiv("color:#c33; margin-top:8px;",
+		    "<b>Analyze warning:</b> " + SafeHtmlUtils.htmlEscape(stopMessage)));
 	}
 
-	content.append("<div style='margin-top:10px; max-height:70vh; overflow:auto;'>");
-	content.append("<table border='1' cellspacing='0' cellpadding='4'>");
-	content.append("<thead><tr><th>t</th>");
-	for (int i = 0; i < keys.size(); i++)
-	    content.append("<th>").append(SafeHtmlUtils.htmlEscape(keys.get(i))).append("</th>");
-	content.append("</tr></thead><tbody>");
+	content.append(headlessTableWrapperOpen());
+	content.append(headlessTableOpen());
+	content.append(headlessTableHeader(keys));
+	content.append(headlessTableBodyOpen());
 
 	boolean warnedNoTimeAdvance = false;
 	int completedSteps = 0;
@@ -964,13 +961,13 @@ public CirSim() {
 	    runCircuit(step == 0);
 	    ComputedValues.commitConvergedValues();
 
-	    content.append("<tr>");
-	    appendHeadlessCell(content, String.valueOf(t));
+	    List<String> cells = new ArrayList<String>();
+	    cells.add(headlessCell(String.valueOf(t)));
 	    for (int i = 0; i < keys.size(); i++) {
 		Double value = ComputedValues.getConvergedValue(keys.get(i));
-		appendHeadlessCell(content, value != null ? String.valueOf(value) : "");
+		cells.add(headlessCell(value != null ? String.valueOf(value) : ""));
 	    }
-	    content.append("</tr>");
+	    content.append(headlessRow(cells));
 
 	    completedSteps++;
 
@@ -980,25 +977,59 @@ public CirSim() {
 		break;
 	}
 
-	content.append("</tbody></table></div>");
-	content.append("<div style='margin-top:8px;'><b>Completed steps:</b> ").append(completedSteps).append("</div>");
+	content.append(headlessTableWrapperClose());
+	content.append(headlessStyledDiv("margin-top:8px;", "<b>Completed steps:</b> " + completedSteps));
 	if (warnedNoTimeAdvance) {
-	    content.append("<div style='color:#c77; margin-top:6px;'>Warning: simulation time did not advance in at least one step.</div>");
+	    content.append(headlessStyledDiv("color:#c77; margin-top:6px;",
+		    "Warning: simulation time did not advance in at least one step."));
 	}
 	if (stopMessage != null) {
-	    content.append("<div style='color:#c33; margin-top:6px;'><b>Simulation stopped:</b> ")
-	      .append(SafeHtmlUtils.htmlEscape(stopMessage))
-	      .append("</div>");
+	    content.append(headlessStyledDiv("color:#c33; margin-top:6px;",
+		    "<b>Simulation stopped:</b> " + SafeHtmlUtils.htmlEscape(stopMessage)));
 	}
 
 	RootPanel.get().getElement().setInnerHTML(buildHeadlessTabbedHtml("Output Table", content.toString()));
     }
 
-    private void appendHeadlessCell(StringBuilder sb, String value) {
-	sb.append("<td>")
-	  .append(SafeHtmlUtils.htmlEscape(value != null ? value : ""))
-	  .append("</td>");
+    private String headlessDiv(String innerHtml) {
+	return "<div>" + innerHtml + "</div>";
     }
+
+    private String headlessStyledDiv(String style, String innerHtml) {
+	return "<div style='" + style + "'>" + innerHtml + "</div>";
+    }
+
+    private String headlessCell(String value) {
+	return "<td>" + SafeHtmlUtils.htmlEscape(value != null ? value : "") + "</td>";
+    }
+
+    private String headlessRow(List<String> cells) {
+	return "<tr>" + String.join("", cells) + "</tr>";
+    }
+
+    private String headlessTableHeader(List<String> keys) {
+	List<String> headers = new ArrayList<String>();
+	headers.add("<th>t</th>");
+	for (int i = 0; i < keys.size(); i++)
+	    headers.add("<th>" + SafeHtmlUtils.htmlEscape(keys.get(i)) + "</th>");
+	return "<thead><tr>" + String.join("", headers) + "</tr></thead>";
+    }
+
+	private String headlessTableWrapperOpen() {
+	return "<div style='margin-top:10px; max-height:70vh; overflow:auto;'>";
+	}
+
+	private String headlessTableOpen() {
+	return "<table border='1' cellspacing='0' cellpadding='4'>";
+	}
+
+	private String headlessTableBodyOpen() {
+	return "<tbody>";
+	}
+
+	private String headlessTableWrapperClose() {
+	return "</tbody></table></div>";
+	}
 
     private void renderHeadlessStatus(String message) {
 	String content = "<div id='headless-status-message'>" + SafeHtmlUtils.htmlEscape(message) + "</div>";
@@ -1011,23 +1042,25 @@ public CirSim() {
     }
 
     private String buildHeadlessTabbedHtml(String primaryTabTitle, String primaryContentHtml) {
-	StringBuilder sb = new StringBuilder();
-	sb.append("<div style='padding:12px;'>");
-	sb.append("<h2>Headless Output</h2>");
-	sb.append("<div style='margin:8px 0;'>");
-	sb.append("<button onclick=\"document.getElementById('headless-primary-tab').style.display='block';document.getElementById('headless-stdout-tab').style.display='none';\">")
-	  .append(SafeHtmlUtils.htmlEscape(primaryTabTitle))
-	  .append("</button>");
-	sb.append("<button style='margin-left:8px;' onclick=\"document.getElementById('headless-primary-tab').style.display='none';document.getElementById('headless-stdout-tab').style.display='block';\">Standard Output</button>");
-	sb.append("</div>");
-	sb.append("<div id='headless-primary-tab' style='display:block;'>").append(primaryContentHtml).append("</div>");
-	sb.append("<div id='headless-stdout-tab' style='display:none;'>");
-	sb.append("<div id='headless-stdout-pre' style='white-space:pre-wrap; font-family:monospace; max-height:70vh; overflow:auto; border:1px solid #ccc; padding:8px;'>")
-	  .append(getHeadlessStdoutHtml())
-	  .append("</div>");
-	sb.append("</div>");
-	sb.append("</div>");
-	return sb.toString();
+	String escapedTitle = SafeHtmlUtils.htmlEscape(primaryTabTitle);
+	String stdoutHtml = getHeadlessStdoutHtml();
+	return "<div style='padding:12px;'>"
+	    + "<h2>Headless Output</h2>"
+	    + "<div style='margin:8px 0;'>"
+	    + "<button onclick=\"document.getElementById('headless-primary-tab').style.display='block';document.getElementById('headless-stdout-tab').style.display='none';\">"
+	    + escapedTitle
+	    + "</button>"
+	    + "<button style='margin-left:8px;' onclick=\"document.getElementById('headless-primary-tab').style.display='none';document.getElementById('headless-stdout-tab').style.display='block';\">Standard Output</button>"
+	    + "</div>"
+	    + "<div id='headless-primary-tab' style='display:block;'>"
+	    + primaryContentHtml
+	    + "</div>"
+	    + "<div id='headless-stdout-tab' style='display:none;'>"
+	    + "<div id='headless-stdout-pre' style='white-space:pre-wrap; font-family:monospace; max-height:70vh; overflow:auto; border:1px solid #ccc; padding:8px;'>"
+	    + stdoutHtml
+	    + "</div>"
+	    + "</div>"
+	    + "</div>";
     }
 
     static final int HEADLESS_STDOUT_MAX_LINES = 2000;
@@ -1050,13 +1083,11 @@ public CirSim() {
     static String getHeadlessStdoutHtml() {
 	if (headlessStdoutLines.isEmpty())
 	    return SafeHtmlUtils.htmlEscape("(no output yet)");
-	StringBuilder sb = new StringBuilder();
+	List<String> escapedLines = new ArrayList<String>();
 	for (int i = 0; i < headlessStdoutLines.size(); i++) {
-	    if (i > 0)
-		sb.append("<br/>");
-	    sb.append(SafeHtmlUtils.htmlEscape(headlessStdoutLines.get(i)));
+	    escapedLines.add(SafeHtmlUtils.htmlEscape(headlessStdoutLines.get(i)));
 	}
-	return sb.toString();
+	return String.join("<br/>", escapedLines);
     }
 
     static void appendHeadlessStdoutDomLine(String escapedLine) {

@@ -22,8 +22,8 @@ final class InfoViewerSimpleMarkdown {
             return "";
         }
 
-        StringBuilder html = new StringBuilder();
-        html.append("<div style='font-family: sans-serif; line-height: 1.6;'>");
+        StringBuilder out = new StringBuilder();
+        out.append(openDiv("font-family: sans-serif; line-height: 1.6;"));
 
         String[] lines = markdown.split("\\n");
         boolean inCodeBlock = false;
@@ -32,67 +32,91 @@ final class InfoViewerSimpleMarkdown {
         for (String line : lines) {
             if (line.trim().startsWith("```")) {
                 if (inCodeBlock) {
-                    html.append("</pre>");
+                    out.append(closeTag("pre"));
                     inCodeBlock = false;
                 } else {
-                    html.append("<pre style='background:#f4f4f4; padding:10px; overflow-x:auto;'>");
+                    out.append(openPre("background:#f4f4f4; padding:10px; overflow-x:auto;"));
                     inCodeBlock = true;
                 }
                 continue;
             }
 
             if (inCodeBlock) {
-                html.append(escapeHtml(line)).append("\\n");
+                out.append(escapeHtml(line)).append("\\n");
                 continue;
             }
 
             if (line.startsWith("### ")) {
-                html.append("<h3>").append(formatWithGreekAndSubscripts(line.substring(4))).append("</h3>");
+                out.append(wrapTag("h3", formatWithGreekAndSubscripts(line.substring(4))));
                 continue;
             }
             if (line.startsWith("## ")) {
-                html.append("<h2>").append(formatWithGreekAndSubscripts(line.substring(3))).append("</h2>");
+                out.append(wrapTag("h2", formatWithGreekAndSubscripts(line.substring(3))));
                 continue;
             }
             if (line.startsWith("# ")) {
-                html.append("<h1>").append(formatWithGreekAndSubscripts(line.substring(2))).append("</h1>");
+                out.append(wrapTag("h1", formatWithGreekAndSubscripts(line.substring(2))));
                 continue;
             }
 
             if (line.trim().matches("^[=]{3,}$") || line.trim().matches("^[-]{3,}$")) {
-                html.append("<hr>");
+                out.append(voidTag("hr"));
                 continue;
             }
 
             if (line.trim().startsWith("- ") || line.trim().startsWith("* ")) {
                 if (!inList) {
-                    html.append("<ul>");
+                    out.append(openTag("ul"));
                     inList = true;
                 }
-                html.append("<li>").append(formatInline(line.trim().substring(2))).append("</li>");
+                out.append(wrapTag("li", formatInline(line.trim().substring(2))));
                 continue;
             } else if (inList && !line.trim().isEmpty()) {
-                html.append("</ul>");
+                out.append(closeTag("ul"));
                 inList = false;
             }
 
             if (line.trim().isEmpty()) {
-                html.append("<br>");
+                out.append(voidTag("br"));
                 continue;
             }
 
-            html.append("<p>").append(formatInline(line)).append("</p>");
+            out.append(wrapTag("p", formatInline(line)));
         }
 
         if (inList) {
-            html.append("</ul>");
+            out.append(closeTag("ul"));
         }
         if (inCodeBlock) {
-            html.append("</pre>");
+            out.append(closeTag("pre"));
         }
 
-        html.append("</div>");
-        return html.toString();
+        out.append(closeTag("div"));
+        return out.toString();
+    }
+
+    private static String openTag(String tag) {
+        return "<" + tag + ">";
+    }
+
+    private static String closeTag(String tag) {
+        return "</" + tag + ">";
+    }
+
+    private static String wrapTag(String tag, String content) {
+        return openTag(tag) + content + closeTag(tag);
+    }
+
+    private static String voidTag(String tag) {
+        return "<" + tag + ">";
+    }
+
+    private static String openDiv(String style) {
+        return "<div style='" + style + "'>";
+    }
+
+    private static String openPre(String style) {
+        return "<pre style='" + style + "'>";
     }
 
     private static String formatInline(String text) {

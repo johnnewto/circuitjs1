@@ -4,9 +4,9 @@ public final class InfoViewerHtmlBuilder {
     private InfoViewerHtmlBuilder() {
     }
 
-    private static void appendLines(StringBuilder html, String... lines) {
+    private static void appendLines(StringBuilder out, String... lines) {
         for (int i = 0; i < lines.length; i++) {
-            html.append(lines[i]).append('\n');
+            out.append(lines[i]).append('\n');
         }
     }
 
@@ -1382,7 +1382,7 @@ public final class InfoViewerHtmlBuilder {
             "  <meta charset=\"UTF-8\">",
             "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
         );
-        html.append("  <title>").append(escapeHtml(title)).append("</title>\n");
+        appendLines(html, "  <title>" + escapeHtml(title) + "</title>");
         appendLines(html,
             "  <script src=\"https://cdn.jsdelivr.net/npm/marked/marked.min.js\"></script>",
             "  <script src=\"https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js\"></script>",
@@ -1408,7 +1408,8 @@ public final class InfoViewerHtmlBuilder {
             "      <button class=\"export-btn tertiary\" onclick=\"loadReferenceIndex()\">📚 Back to Index</button>"
         );
         if (editable) {
-            html.append("      <button id=\"toggleEditorBtn\" class=\"export-btn secondary\" onclick=\"toggleEditor()\">✏️ Edit Markdown</button>\n");
+            appendLines(html,
+                "      <button id=\"toggleEditorBtn\" class=\"export-btn secondary\" onclick=\"toggleEditor()\">✏️ Edit Markdown</button>");
         }
         appendLines(html,
             "      <button class=\"export-btn\" onclick=\"saveToPDF()\">📄 Save as PDF</button>",
@@ -1442,12 +1443,13 @@ public final class InfoViewerHtmlBuilder {
             String escapedMarkdown, String escapedSourceMarkdown,
             String escapedAutoTemplateMarkdown, boolean editable,
             boolean parseCodeFenceConstructs, boolean renderSfcrConstructTables) {
-        html.append("    var markdown = \"").append(escapedMarkdown).append("\";\n");
-        html.append("    var sourceMarkdown = \"").append(escapedSourceMarkdown).append("\";\n");
-        html.append("    var autoTemplateMarkdown = \"").append(escapedAutoTemplateMarkdown).append("\";\n");
-        html.append("    var editorEnabled = ").append(editable ? "true" : "false").append(";\n");
-        html.append("    var parseCodeFenceConstructs = ").append(parseCodeFenceConstructs ? "true" : "false").append(";\n");
-        html.append("    var renderSfcrConstructTables = ").append(renderSfcrConstructTables ? "true" : "false").append(";\n");
+        appendLines(html,
+            "    var markdown = \"" + escapedMarkdown + "\";",
+            "    var sourceMarkdown = \"" + escapedSourceMarkdown + "\";",
+            "    var autoTemplateMarkdown = \"" + escapedAutoTemplateMarkdown + "\";",
+            "    var editorEnabled = " + (editable ? "true" : "false") + ";",
+            "    var parseCodeFenceConstructs = " + (parseCodeFenceConstructs ? "true" : "false") + ";",
+            "    var renderSfcrConstructTables = " + (renderSfcrConstructTables ? "true" : "false") + ";");
     }
 
     private static String escapeForJS(String text) {
