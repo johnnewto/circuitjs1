@@ -1,45 +1,9 @@
 # CircuitJS1 TODOs
-increase equation table size
-headless cli use gslot mechanism
 
-## lookup table Canvas editing
+- investigate last()  when timestep is less that one
+- increase equation table size
 
-You’re right: this still needs a canvas-side editor path. Right now lookups are model-level data, not a dedicated editable canvas element.
-Next practical step is adding a minimal Lookup Table editor panel tied to EquationTable/Godly expressions using lookup(Name, x). Want me to implement that MVP next?
-here’s the compact purpose map for the pyworld2 lookup tables used in your World2 model.
 
-Birth-rate multipliers
-
-BRMM: birth multiplier vs material standard of living (MSL)
-BRCM: birth multiplier vs crowding (CR)
-BRFM: birth multiplier vs food ratio (FR)
-BRPM: birth multiplier vs pollution ratio (POLR)
-Death-rate multipliers
-
-DRMM: death multiplier vs MSL
-DRCM: death multiplier vs CR
-DRFM: death multiplier vs FR
-DRPM: death multiplier vs POLR
-Resources / capital / pollution
-
-NRMM: nonrenewable resource usage multiplier vs MSL (drives extraction pressure)
-CIM: capital investment generation multiplier vs MSL
-POLCM: pollution generation multiplier vs capital intensity (CIR)
-POLAT: pollution assimilation time/table vs POLR
-Food subsystem
-
-FCM: food coefficient multiplier vs CR
-FPCI: food productivity of capital investment vs CIRA
-FPM: food multiplier vs POLR
-CFIFR: capital-fraction-in-food response vs FR
-CIQR: capital-investment quality response vs ratio QLM/QLF
-Quality-of-life subsystem
-
-QLM: quality component vs MSL
-QLC: quality component vs CR
-QLF: quality component vs FR
-QLP: quality component vs POLR
-NREM: resource-extraction modifier vs remaining resource fraction NRFR
 ## add equation table prefix or suffix system
 so that equations can be not duplicated and  written without _UK, _US
 
