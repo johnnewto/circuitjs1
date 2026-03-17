@@ -9,65 +9,76 @@ import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("SFCRExporter lookup naming")
 class SFCRExporterLookupNamingTest {
 
     @Test
-    @DisplayName("uses preferred lookup name when available")
-    void usesPreferredLookupNameWhenAvailable() throws Exception {
+    @DisplayName("keeps pwlx expression unchanged and does not extract lookup spec")
+    void keepsPwlxUnchangedAndSkipsExtraction() throws Exception {
         SFCRExporter exporter = new SFCRExporter(null, SFCRExporter.ExportSyntax.R_STYLE);
         resetLookupState(exporter);
 
-        String rewritten = rewrite(exporter, "pwlx(QL_R, 0, 1.2, 1, 1.0)", "World2", "BRMM");
+        String rewritten = rewrite(exporter, "pwlx(QL_R, 0, 1.2, 1, 1.0)", "World2");
 
-        assertTrue(rewritten.contains("lookup(BRMM, QL_R)"), "Expression should use preferred lookup name");
+        assertEquals("pwlx(QL_R, 0, 1.2, 1, 1.0)", rewritten);
 
         ArrayList<?> specs = lookupSpecs(exporter);
-        assertEquals(1, specs.size(), "One lookup spec should be extracted");
+        assertEquals(0, specs.size(), "pwlx should not create @lookup export specs");
+    }
+
+    @Test
+    @DisplayName("native lookup call registers export spec from registry")
+    void nativeLookupRegistersExportSpec() throws Exception {
+        SFCRExporter exporter = new SFCRExporter(null, SFCRExporter.ExportSyntax.R_STYLE);
+        resetLookupState(exporter);
+
+        LookupTableRegistry.clear();
+        ArrayList<Double> xs = new ArrayList<Double>();
+        ArrayList<Double> ys = new ArrayList<Double>();
+        xs.add(0.0);
+        ys.add(1.2);
+        xs.add(1.0);
+        ys.add(1.0);
+        LookupTableRegistry.registerScoped("World2", "BRMM", xs, ys);
+
+        String rewritten = rewrite(exporter, "lookup(BRMM, QL_R)", "World2");
+        assertEquals("lookup(BRMM, QL_R)", rewritten);
+
+        ArrayList<?> specs = lookupSpecs(exporter);
+        assertEquals(1, specs.size(), "Native lookup should create one export spec");
         assertEquals("BRMM", getField(specs.get(0), "name"));
         assertEquals("World2", getField(specs.get(0), "scope"));
     }
 
     @Test
-    @DisplayName("adds numeric suffix for name collisions within same scope")
-    void addsSuffixForNameCollisionsInSameScope() throws Exception {
+    @DisplayName("does not duplicate spec for repeated native lookup reference")
+    void doesNotDuplicateSpecForRepeatedNativeLookup() throws Exception {
         SFCRExporter exporter = new SFCRExporter(null, SFCRExporter.ExportSyntax.R_STYLE);
         resetLookupState(exporter);
 
-        String first = rewrite(exporter, "pwlx(A, 0, 1, 1, 2)", "World2", "BRMM");
-        String second = rewrite(exporter, "pwlx(B, 0, 3, 1, 4)", "World2", "BRMM");
+        LookupTableRegistry.clear();
+        ArrayList<Double> xs = new ArrayList<Double>();
+        ArrayList<Double> ys = new ArrayList<Double>();
+        xs.add(0.0);
+        ys.add(1.2);
+        xs.add(1.0);
+        ys.add(1.0);
+        LookupTableRegistry.registerScoped("World2", "BRMM", xs, ys);
 
-        assertTrue(first.contains("lookup(BRMM, A)"));
-        assertTrue(second.contains("lookup(BRMM_2, B)"));
-
-        ArrayList<?> specs = lookupSpecs(exporter);
-        assertEquals(2, specs.size(), "Two unique lookup specs should exist");
-        assertEquals("BRMM", getField(specs.get(0), "name"));
-        assertEquals("BRMM_2", getField(specs.get(1), "name"));
-    }
-
-    @Test
-    @DisplayName("falls back to Lookup_N when preferred name is empty")
-    void fallsBackToLookupNWhenPreferredNameMissing() throws Exception {
-        SFCRExporter exporter = new SFCRExporter(null, SFCRExporter.ExportSyntax.R_STYLE);
-        resetLookupState(exporter);
-
-        String rewritten = rewrite(exporter, "pwlx(X, 0, 1, 1, 2)", "World2", "");
-
-        assertTrue(rewritten.contains("lookup(Lookup_1, X)"));
+        rewrite(exporter, "lookup(BRMM, A)", "World2");
+        rewrite(exporter, "lookup(BRMM, B)", "World2");
 
         ArrayList<?> specs = lookupSpecs(exporter);
         assertEquals(1, specs.size());
-        String name = (String) getField(specs.get(0), "name");
-        assertTrue(name.startsWith("Lookup_"));
-        assertFalse(name.isEmpty());
+        assertEquals("BRMM", getField(specs.get(0), "name"));
     }
 
     @Test
-    @DisplayName("reuses template lookup name for matching points and scope")
-    void reusesTemplateLookupNameForMatchingSignature() throws Exception {
+    @DisplayName("seeding template lookup names still works")
+    void seedLookupNamesFromTemplateStillWorks() throws Exception {
         SFCRExporter exporter = new SFCRExporter(null, SFCRExporter.ExportSyntax.R_STYLE);
         resetLookupState(exporter);
 
@@ -79,13 +90,79 @@ class SFCRExporterLookupNamingTest {
             "  1, 1.0\n" +
             "@end\n");
 
-        String rewritten = rewrite(exporter, "pwlx(QL_R, 0, 1.2, 1, 1.0)", "World2", "SomeOtherName");
-        assertTrue(rewritten.contains("lookup(BRMM, QL_R)"),
-            "Matching signature should reuse template lookup name");
-
         ArrayList<?> specs = lookupSpecs(exporter);
         assertEquals(1, specs.size());
         assertEquals("BRMM", getField(specs.get(0), "name"));
+    }
+
+    @Test
+    @DisplayName("template lookup comments are carried into exported lookup blocks")
+    void templateLookupCommentsArePreservedInExport() throws Exception {
+        SFCRExporter exporter = new SFCRExporter(null, SFCRExporter.ExportSyntax.R_STYLE);
+        resetLookupState(exporter);
+
+        Method seed = SFCRExporter.class.getDeclaredMethod("seedLookupNamesFromTemplate", String.class);
+        seed.setAccessible(true);
+        seed.invoke(exporter,
+            "@lookup BRMM scope=World2\n" +
+            "  # birth multiplier vs material standard of living (MSL)\n" +
+            "  0, 1.2\n" +
+            "  1, 1.0\n" +
+            "@end\n");
+
+        Method exportLookupBlocks = SFCRExporter.class.getDeclaredMethod("exportLookupBlocks");
+        exportLookupBlocks.setAccessible(true);
+        String text = (String) exportLookupBlocks.invoke(exporter);
+
+        assertNotNull(text);
+        assertTrue(text.contains("# birth multiplier vs material standard of living (MSL)"), text);
+    }
+
+    @Test
+    @DisplayName("template comments survive when lookup points come from registry")
+    void templateCommentsSurviveRegistryBackedSpec() throws Exception {
+        SFCRExporter exporter = new SFCRExporter(null, SFCRExporter.ExportSyntax.R_STYLE);
+        resetLookupState(exporter);
+
+        Method seed = SFCRExporter.class.getDeclaredMethod("seedLookupNamesFromTemplate", String.class);
+        seed.setAccessible(true);
+        seed.invoke(exporter,
+            "@lookup BRMM scope=World2\n" +
+            "  # birth multiplier vs material standard of living (MSL)\n" +
+            "  0, 9.0\n" +
+            "  1, 9.0\n" +
+            "@end\n");
+
+        LookupTableRegistry.clear();
+        ArrayList<Double> xs = new ArrayList<Double>();
+        ArrayList<Double> ys = new ArrayList<Double>();
+        xs.add(0.0);
+        ys.add(1.2);
+        xs.add(1.0);
+        ys.add(1.0);
+        LookupTableRegistry.registerScoped("World2", "BRMM", xs, ys);
+
+        rewrite(exporter, "lookup(BRMM, QL_R)", "World2");
+
+        Method exportLookupBlocks = SFCRExporter.class.getDeclaredMethod("exportLookupBlocks");
+        exportLookupBlocks.setAccessible(true);
+        String text = (String) exportLookupBlocks.invoke(exporter);
+
+        assertNotNull(text);
+        assertTrue(text.contains("# birth multiplier vs material standard of living (MSL)"), text);
+    }
+
+    @Test
+    @DisplayName("unknown native lookup name does not create export spec")
+    void unknownLookupDoesNotCreateSpec() throws Exception {
+        SFCRExporter exporter = new SFCRExporter(null, SFCRExporter.ExportSyntax.R_STYLE);
+        resetLookupState(exporter);
+
+        LookupTableRegistry.clear();
+        String rewritten = rewrite(exporter, "lookup(UnknownTable, X)", "World2");
+        assertEquals("lookup(UnknownTable, X)", rewritten);
+
+        assertTrue(lookupSpecs(exporter).isEmpty());
     }
 
     private static void resetLookupState(SFCRExporter exporter) throws Exception {
@@ -94,15 +171,14 @@ class SFCRExporterLookupNamingTest {
         reset.invoke(exporter);
     }
 
-    private static String rewrite(SFCRExporter exporter, String expr, String scope, String preferred) throws Exception {
+    private static String rewrite(SFCRExporter exporter, String expr, String scope) throws Exception {
         Method rewrite = SFCRExporter.class.getDeclaredMethod(
             "rewriteExpressionForLookupExport",
-            String.class,
             String.class,
             String.class
         );
         rewrite.setAccessible(true);
-        return (String) rewrite.invoke(exporter, expr, scope, preferred);
+        return (String) rewrite.invoke(exporter, expr, scope);
     }
 
     private static ArrayList<?> lookupSpecs(SFCRExporter exporter) throws Exception {

@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class SFCRLookupParserTest {
 
     @Test
-    @DisplayName("global @lookup rewrites lookup(Name, x) to pwlx(x, ...)")
+    @DisplayName("global @lookup keeps lookup(Name, x) expression unchanged")
     void testGlobalLookupFunctionRewrite() {
         String text =
                 "@lookup BRMM\n" +
@@ -29,7 +29,8 @@ class SFCRLookupParserTest {
 
         SFCRParseResult.BlockDump block = result.findBlock("equations", "World2");
         assertNotNull(block);
-        assertTrue(block.dumpString.contains("pwlx(QL_R,0.0,1.2,1.0,1.0,5.0,0.78)"));
+        assertTrue(block.dumpString.contains("lookup(BRMM,"), block.dumpString);
+        assertTrue(block.dumpString.contains("QL_R)"), block.dumpString);
     }
 
     @Test
@@ -53,8 +54,81 @@ class SFCRLookupParserTest {
 
         SFCRParseResult.BlockDump block = result.findBlock("equations", "World2");
         assertNotNull(block);
-        assertTrue(block.dumpString.contains("pwlx(FR,0.0,10.0,1.0,20.0)"));
-        assertFalse(block.dumpString.contains("pwlx(FR,0.0,1.0,1.0,2.0)"));
+        assertTrue(block.dumpString.contains("lookup(BRFM,"), block.dumpString);
+        assertTrue(block.dumpString.contains("FR)"), block.dumpString);
+        assertFalse(block.dumpString.contains("BRFM(FR)"), block.dumpString);
+    }
+
+    @Test
+    @DisplayName("@init lookupMode does not force parser-time rewrite")
+    void testLookupModeOverrideToPwlx() {
+        String text =
+                "@init\n" +
+                "  lookupMode: pwlx\n" +
+                "@end\n" +
+                "@lookup BRMM\n" +
+                "  0, 1.2\n" +
+                "  1, 1.0\n" +
+                "@end\n" +
+                "@equations World2\n" +
+                "  BRMM ~ lookup(BRMM, QL_R)\n" +
+                "@end\n";
+
+        SFCRParseResult result = SFCRParser.parseToResult(text);
+        assertNotNull(result);
+
+        SFCRParseResult.BlockDump block = result.findBlock("equations", "World2");
+        assertNotNull(block);
+        assertTrue(block.dumpString.contains("lookup(BRMM,"), block.dumpString);
+        assertTrue(block.dumpString.contains("QL_R)"), block.dumpString);
+    }
+
+    @Test
+    @DisplayName("@init lookupClamp alias does not force parser-time rewrite")
+    void testLookupClampAliasOverrideToPwlx() {
+        String text =
+                "@init\n" +
+                "  lookupClamp: false\n" +
+                "@end\n" +
+                "@lookup BRMM\n" +
+                "  0, 1.2\n" +
+                "  1, 1.0\n" +
+                "@end\n" +
+                "@equations World2\n" +
+                "  BRMM ~ lookup(BRMM, QL_R)\n" +
+                "@end\n";
+
+        SFCRParseResult result = SFCRParser.parseToResult(text);
+        assertNotNull(result);
+
+        SFCRParseResult.BlockDump block = result.findBlock("equations", "World2");
+        assertNotNull(block);
+        assertTrue(block.dumpString.contains("lookup(BRMM,"), block.dumpString);
+        assertTrue(block.dumpString.contains("QL_R)"), block.dumpString);
+    }
+
+    @Test
+    @DisplayName("lookup mode pre-scan preserves lookup(...) when @init appears after equations")
+    void testLookupModePrescanWhenInitAppearsAfterEquations() {
+        String text =
+                "@lookup BRMM\n" +
+                "  0, 1.2\n" +
+                "  1, 1.0\n" +
+                "@end\n" +
+                "@equations World2\n" +
+                "  BRMM ~ lookup(BRMM, QL_R)\n" +
+                "@end\n" +
+                "@init\n" +
+                "  lookupMode: pwlx\n" +
+                "@end\n";
+
+        SFCRParseResult result = SFCRParser.parseToResult(text);
+        assertNotNull(result);
+
+        SFCRParseResult.BlockDump block = result.findBlock("equations", "World2");
+        assertNotNull(block);
+        assertTrue(block.dumpString.contains("lookup(BRMM,"), block.dumpString);
+        assertTrue(block.dumpString.contains("QL_R)"), block.dumpString);
     }
 
     @Test

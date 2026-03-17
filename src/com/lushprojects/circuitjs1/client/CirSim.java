@@ -393,6 +393,7 @@ MouseOutHandler, MouseWheelHandler {
     MenuItem aboutItem;
     MenuItem importFromLocalFileItem, importFromTextItem, exportAsUrlItem, exportAsLocalFileItem, exportAsTextItem,
             printItem, recoverItem, saveFileItem;
+	MenuItem editLookupTablesItem;
     MenuItem importFromDropboxItem;
     MenuItem undoItem, redoItem, cutItem, copyItem, pasteItem, selectAllItem, optionsItem, flipXItem, flipYItem, flipXYItem;
     MenuBar optionsMenuBar;
@@ -562,6 +563,9 @@ MouseOutHandler, MouseWheelHandler {
 
 	// Global base convergence tolerance used by all EquationTableElm instances
 	double equationTableConvergenceTolerance = 0.001;
+
+	// Default SFCR lookup behavior: true=clamped endpoints (pwl), false=extrapolating (pwlx)
+	boolean sfcrLookupClampDefault = true;
 
 	// When true, include the electronics circuit library in the Circuits menu
 	boolean showElectronicsCircuits = false;
@@ -1246,6 +1250,8 @@ public CirSim() {
 	exportAsTextItem = iconMenuItem("export", "Export As Text...", new MyCommand("file","exportastext"));
 	fileMenuBar.addItem(exportAsTextItem);
 	fileMenuBar.addItem(iconMenuItem("export", "Export As SFCR...", new MyCommand("file","exportassfcr")));
+	editLookupTablesItem = iconMenuItem("table", "Edit Lookup Tables...", new MyCommand("file", "editlookuptables"));
+	fileMenuBar.addItem(editLookupTablesItem);
 	viewModelInfoItem = iconMenuItem("doc-text", "View Model Info...", new MyCommand("file","viewmodelinfo"));
 	viewModelInfoItem.setEnabled(false); // Enabled when info content is available
 	fileMenuBar.addItem(viewModelInfoItem);
@@ -5343,6 +5349,9 @@ public CirSim() {
     	if (item=="viewmodelinfo") {
     		doViewModelInfo();
     	}
+	if (item=="editlookuptables") {
+		doEditLookupTables();
+	}
     	if (item=="exportasimage")
 		doExportAsImage();
     	if (item=="copypng") {
@@ -5915,6 +5924,15 @@ public CirSim() {
     	}
     }
 
+    void doEditLookupTables()
+    {
+	if (noEditCheckItem != null && noEditCheckItem.getState()) {
+	    alertOrWarn(Locale.LS("Editing disabled.  Re-enable from the Options menu."));
+	    return;
+	}
+	dialogShowing = new LookupTablesEditorDialog(this);
+    }
+
     void doExportAsImage()
     {
     	dialogShowing = new ExportAsImageDialog(CAC_IMAGE);
@@ -6001,8 +6019,15 @@ public CirSim() {
 	dump += "% equationTableMnaMode " + (equationTableMnaMode ? "true" : "false") + "\n";
 	dump += "% equationTableNewtonJacobianEnabled " + (equationTableNewtonJacobianEnabled ? "true" : "false") + "\n";
 	dump += "% equationTableConvergenceTolerance " + equationTableConvergenceTolerance + "\n";
+	dump += "% sfcrLookupClampDefault " + (sfcrLookupClampDefault ? "true" : "false") + "\n";
 	dump += "% convergenceCheckThreshold " + convergenceCheckThreshold + "\n";
-	
+
+	// Dump lookup tables so they survive round-trip through Export As Text
+	String lookupDump = LookupTableRegistry.dumpAll();
+	if (lookupDump != null && !lookupDump.isEmpty()) {
+	    dump += lookupDump;
+	}
+
 	return dump;
     }
     
@@ -6528,6 +6553,7 @@ public CirSim() {
 	    
 	    // Clear all computed values when loading a new circuit to avoid stale state
 	    ComputedValues.clearComputedValues();
+	    LookupTableRegistry.clear();
 	    
 	    // Clear hints registry
 	    HintRegistry.clear();
@@ -6678,6 +6704,8 @@ public CirSim() {
 				} catch (Exception e) {
 				    // Ignore parse errors
 				}
+			    } else if (settingType.equals("sfcrLookupClampDefault") && st.hasMoreTokens()) {
+				sfcrLookupClampDefault = st.nextToken().equals("true");
 			    } else if (settingType.equals("convergenceCheckThreshold") && st.hasMoreTokens()) {
 				try {
 				    convergenceCheckThreshold = Integer.parseInt(st.nextToken());
@@ -6691,6 +6719,27 @@ public CirSim() {
 			    } else if (settingType.equals("Hint")) {
 				// Glossary hint entry: % Hint varname description
 				HintRegistry.parseHintLine(line);
+			    } else if (settingType.equals("lookup") && st.hasMoreTokens()) {
+				// Lookup table: % lookup name [scope=X] x1,y1 x2,y2 ...
+				LookupDefinition def = new LookupDefinition();
+				def.name = st.nextToken();
+				while (st.hasMoreTokens()) {
+				    String tok = st.nextToken();
+				    if (tok.startsWith("scope=")) {
+					def.scope = tok.substring(6).trim();
+				    } else {
+					int comma = tok.indexOf(',');
+					if (comma > 0) {
+					    try {
+						def.xs.add(Double.valueOf(Double.parseDouble(tok.substring(0, comma))));
+						def.ys.add(Double.valueOf(Double.parseDouble(tok.substring(comma + 1))));
+					    } catch (Exception e) { }
+					}
+				    }
+				}
+				if (def.name != null && !def.name.isEmpty() && def.xs.size() >= 2) {
+				    LookupTableRegistry.register(def);
+				}
 			    }
 			}
 			break;

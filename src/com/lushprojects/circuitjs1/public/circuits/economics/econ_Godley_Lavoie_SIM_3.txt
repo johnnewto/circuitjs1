@@ -1,140 +1,137 @@
 # CircuitJS1 SFCR Export
 # Generated from circuit simulation
 
-@info
-# SIM Model (Godley & Lavoie Chapter 3)
-## Voltage Source Equation Implementation
-
-This model demonstrates the **equation-based** approach to Stock-Flow Consistent modeling using EquationTableElm voltage sources.
-
-### Approach
-This model uses:
-- **Equation Tables** (EquationTableElm) — each output is a voltage source
-- **integrate() functions** — for stock accumulation over time
-- **Balance Sheet & Transaction Flow matrices** — for accounting verification
-
-### Stock-Flow Equations
-Stocks accumulate via integration of flows:
-$$H_h = \int (YD - C_d) \, dt$$
-$$H_s = \int (G_d - T_d) \, dt$$
-
-### Sectors
-| Sector | Stock Variable | Meaning |
-|--------|---------------|---------|
-| Households | $H_h$ | Money holdings (wealth) |
-| Firms | — | Pass-through (no retained earnings) |
-| Government | $H_s$ | Money supply (negative = debt) |
-
-### Transaction Flows
-| Flow | From → To | Equation |
-|------|-----------|----------|
-| G_d | Govt → Firms | $G = 20$ (exogenous) |
-| Wages | Firms → HH | $W \times N_s$ |
-| Taxes | HH → Govt | $\theta \times W \times N_s$ |
-| Consumption | HH → Firms | $\alpha_1 \times YD + \alpha_2 \times H_h$ |
-
-### Steady State Solution
-At steady state ($dH/dt = 0$):
-- $Y^* = G / (1 - \alpha_1(1-\theta)) = 38.46$
-- $H_h^* = 80$
-- $H_s^* = -80$ (government debt)
-
-### Reference
-Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
-@end
-
+```{r}
 @init
-  timestep: 0.1
+  timestep: 1
   voltageUnit: $
   timeUnit: yr
   showDots: true
   showVolts: true
   showValues: true
   showPower: false
+  autoAdjustTimestep: false
+  equationTableMnaMode: true
+  equationTableNewtonJacobianEnabled: true
+  equationTableTolerance: 0.0001
+  convergenceCheckThreshold: 100
+  infoViewerUpdateIntervalMs: 200
 @end
+```
 
-@equations equations_1 x=168 y=264
-  C_s ~ C_d ; mode=voltage ; slider=a ; sliderValue=0.5  # Consumption goods Supply/Demand
-  G_s ~ G_d ; mode=voltage ; slider=b ; sliderValue=0.5  # Services supplied to / demand by Govt
-  T_s ~ T_d ; mode=voltage ; slider=c ; sliderValue=0.5  # Tax
-  N_s ~ N_d ; mode=voltage ; slider=d ; sliderValue=0.5  # Supply/Demand for labour
-  YD ~ W * N_s - T_s ; mode=voltage ; slider=e ; sliderValue=0.5  # Disposable Income
-  T_d ~ \theta * W * N_s ; mode=voltage ; slider=f ; sliderValue=0.5  # Tax
-  C_d ~ \alpha_1*YD+ \alpha_2*H_h ; mode=voltage ; slider=g ; sliderValue=0.5  # Consumption goods Supply/Demand
-  H_s ~ integrate(G_d - T_d) ; mode=voltage ; slider=h ; sliderValue=0.5  # cash money, supplied by the central bank
-@end
+## Equation table
+first table 
 
-@equations equations_2 x=440 y=264
-  H_h ~ integrate(YD - C_d) ; mode=voltage ; slider=a ; sliderValue=0.5  # Cash money held by households
-  Y ~ C_s + G_s ; mode=voltage ; slider=b ; sliderValue=0.5  # Output
-  N_d ~ Y / W ; mode=voltage ; slider=c ; sliderValue=0.5  # Supply/Demand for labour
-@end
+```{r}
+equations_1A <- sfcr_set(
+  # [ x=168 y=264 ]
+  e1 = C_s ~ C_d,  # Consumption goods Supply/Demand  [mode=voltage, slider=a, sliderValue=0.5 ]
+  e2 = G_s ~ G_d,  # Services supplied to / demand by Govt  [mode=voltage, slider=b, sliderValue=0.5 ]
+  e3 = T_s ~ T_d,  # Tax  [mode=voltage, slider=c, sliderValue=0.5 ]
+  e4 = N_s ~ N_d,  # Supply/Demand for labour  [mode=voltage, slider=d, sliderValue=0.5 ]
+  e5 = YD ~ W * N_s - T_s,  # Disposable Income  [mode=voltage, slider=e, sliderValue=0.5 ]
+  e6 = T_d ~ \theta * W * N_s,  # Tax  [mode=voltage, slider=f, sliderValue=0.5 ]
+  e7 = C_d ~ \alpha_1*YD+ \alpha_2*H_h,  # Consumption goods Supply/Demand  [mode=voltage, slider=g, sliderValue=0.5 ]
+  e8 = H_s ~ integrate(G_d - T_d)  # cash money  [mode=voltage, sliderValue=0 ]
+)
+```
 
-@equations Parameters x=440 y=352
-  \alpha_1 ~ 0.6 ; mode=voltage ; slider=a ; sliderValue=0.5  # Propensity to Spend Income
-  \alpha_2 ~ 0.4 ; mode=voltage ; slider=b ; sliderValue=0.5  # Propensity to Spend Wealth
-  \theta ~ 0.2 ; mode=voltage ; slider=c ; sliderValue=0.5  # Tax Rate
-  G_d ~ 20 ; mode=voltage ; slider=d ; sliderValue=0.5  # Government demad for services
-  W ~ 1 ; mode=voltage ; slider=e ; sliderValue=0.5  # Nominal Wages Rate
-@end
+## Equation table
+second table 
 
-@matrix Balance_Sheet x=176 y=24
-  type: transaction_flow
+```{r}
+equations_2 <- sfcr_set(
+  # [ x=440 y=264 ]
+  e1 = H_h ~ integrate(YD - C_d),  # Cash money held by households  [mode=voltage, slider=a, sliderValue=0.5 ]
+  e2 = Y ~ C_s + G_s,  # Output  [mode=voltage, slider=b, sliderValue=0.5 ]
+  e3 = N_d ~ Y / W  # Supply/Demand for labour  [mode=voltage, sliderValue=0 ]
+)
+```
 
-| Transaction | Households_b | Production_b | Government_b |
-|-------------|------|------|------|
-| Money stock | H_h |  | -H_s |
-@end
+## Parameters
+parameter table !!
 
-@matrix Transaction_Flow_Matrix x=176 y=104
-  type: transaction_flow
+```{r}
+Parameters <- sfcr_set(
+  # [ x=440 y=352 ]
+  e1 = \alpha_1 ~ 0.6,  # Propensity to Spend Income  [mode=voltage, slider=a, sliderValue=0.5 ]
+  e2 = \alpha_2 ~ 0.4,  # Propensity to Spend Wealth  [mode=voltage, slider=b, sliderValue=0.5 ]
+  e3 = \theta ~ 0.2,  # Tax Rate  [mode=voltage, slider=c, sliderValue=0.5 ]
+  e4 = G_d ~ 20,  # Government demand for services  [mode=voltage, slider=d, sliderValue=0.5 ]
+  e5 = W ~ 1  # Nominal Wages Rate  [mode=voltage, sliderValue=0 ]
+)
+```
 
-| Transaction | Households | Production | Govt |
-|-------------|------|------|------|
-| Consumption | -C_d | C_s |  |
-| Govt Expenditures |  | G_s | -G_d |
-| Wages | W * N_s | -W * N_s |  |
-| Taxes | -T_s |  | T_d |
-| Money stock | -\DeltaH_h |  | \DeltaH_s |
-@end
+## Balance_Sheet
+balance !! 
 
+```{r}
+Balance_Sheet <- sfcr_matrix(
+  # [ x=176 y=24 type: transaction_flow ]
+  columns = c("Households_b", "Production_b", "Government_b"),
+  codes = c("Households_b", "Production_b", "Government_b"),
+  c("Money stock", Households_b = "H_h", Production_b = "", Government_b = "-H_s")
+)
+```
+
+## Transaction_Flow_Matrix
+TFM !!
+
+```{r}
+Transaction_Flow_Matrix <- sfcr_matrix(
+  # [ x=176 y=104 type: transaction_flow ]
+  columns = c("Households", "Production", "Govt"),
+  codes = c("Households", "Production", "Govt"),
+  c("Consumption", Households = "-C_d", Production = "C_s", Govt = ""),
+  c("Govt Expenditures", Households = "", Production = "G_s", Govt = "-G_d"),
+  c("Wages", Households = "W * N_s", Production = "-W * N_s", Govt = ""),
+  c("Taxes", Households = "-T_s", Production = "", Govt = "T_d"),
+  c("Money stock", Households = "-\\DeltaH_h", Production = "", Govt = "\\DeltaH_s")
+)
+```
+
+## Sankey Diagram
+sankey !! 
+
+```{r}
 @sankey x=672 y=-8
   source: Transaction Flow Matrix
   layout: linear
-  width: 400
-  height: 250
+  width: 600
+  height: 400
   showScaleBar: false
   useHighWaterMark: true
   showFlowValues: true
 @end
+```
 
-@hints
-  C_s: Consumption goods Supply/Demand
-  G_s: Services supplied to / demand by Govt
-  T_s: Tax
-  N_s: Supply/Demand for labour
-  YD: Disposable Income
-  T_d: Tax
-  C_d: Consumption goods Supply/Demand
-  H_s: cash money, supplied by the central bank
-  H_h: Cash money held by households
-  Y: Output
-  N_d: Supply/Demand for labour
-  \alpha_1: Propensity to Spend Income
-  \alpha_2: Propensity to Spend Wealth
-  \theta: Tax Rate
-  G_d: Government demad for services
-  W: Nominal Wages Rate
-@end
-
+```{r}
 @circuit
-x 168 -76 343 -73 4 24 SIM\sSFC\smodel 808080FF
-207 680 296 743 296 36 Y
-x 183 -51 539 -48 4 12 This\scode\sreplicates\sresults\sin\sthe\sbook\sMonetary\sEconomics: 808080FF
-x 180 -9 568 -6 4 12 \sby\sWynne\sGodley\sand\sMarc\sLavoie,\schapter\s3,\sfigures\s3.2\sand\s3.3. 808080FF
-x 183 -31 612 -28 4 12 \sAn\sIntegrated\sApproach\sto\sCredit,\sMoney,\sIncome,\sProduction\sand\sWealth 808080FF
-207 832 288 864 288 36 \\DeltaH_h
-207 832 272 864 272 4 \\DeltaH_s
-431 624 -48 688 0 0 50 true false
-403 672 320 928 496 0 7_2_0_4614_160_0.1_-1_2_7_3
+x 168 -76 337 -73 4 24 SIM\sSFC\smodel 808080FF U:_JS6um
+207 680 296 743 296 36 Y U:-6Q_F4
+x 183 -51 509 -48 4 12 This\scode\sreplicates\sresults\sin\sthe\sbook\sMonetary\sEconomics: 808080FF U:MpBpa6
+x 180 -9 536 -6 4 12 \sby\sWynne\sGodley\sand\sMarc\sLavoie,\schapter\s3,\sfigures\s3.2\sand\s3.3. 808080FF U:rCjs3e
+x 183 -31 577 -28 4 12 \sAn\sIntegrated\sApproach\sto\sCredit,\sMoney,\sIncome,\sProduction\sand\sWealth 808080FF U:cdBS8b
+207 832 288 864 288 36 \\DeltaH_h U:MeqIB3
+207 832 272 864 272 4 \\DeltaH_s U:5DBes4
+431 672 -80 688 -64 0 50 true false U:0AZ1rw
+r 824 -88 936 -88 0 1000 U:kSRwWr
+207 936 -88 967 -88 36 Y2 U:g5KXPD
+207 824 -88 783 -88 36 Y U:kU1zw1
 @end
+```
+
+```{r}
+@scope Embedded_Scope_1 position=-1
+  x1: 672
+  y1: 320
+  x2: 928
+  y2: 496
+  elmUid: 85xm31
+  speed: 2
+  flags: x2001206
+  source: uid:-6Q_F4 value:0
+  trace: uid:-6Q_F4 value:3
+@end
+```
+

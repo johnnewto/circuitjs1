@@ -874,6 +874,15 @@ class Expr {
 	    return pwl(es, children, context);
 	case E_PWLX:
 	    return pwlx(es, children, context);
+	case E_LOOKUP: {
+	    double x = left.eval(es, context);
+	    boolean clamp = (CirSim.theSim == null) ? true : CirSim.theSim.sfcrLookupClampDefault;
+	    if (children != null && children.size() >= 2) {
+		double clampArg = children.get(1).eval(es, context);
+		clamp = (clampArg != 0.0);
+	    }
+	    return LookupTableRegistry.evaluate(nodeName, x, clamp);
+	}
 	case E_PWR:
 	    return Math.pow(Math.abs(left.eval(es, context)), right.eval(es, context));
 	case E_PWRS: {
@@ -1326,7 +1335,8 @@ class Expr {
     static final int E_LAG = E_LAST+1;  // lag(x, delay) - returns value from 'delay' time units ago
 	static final int E_SMOOTH = E_LAG+1; // smooth(x, theta) - implicit Euler smoothing
 	static final int E_DELAY = E_SMOOTH+1; // delay(x, tau=1) - first-order lag y'=(x-y)/tau
-	static final int E_GSLOT = E_DELAY+10; // Circuit-global array slot (fast-path replacement for E_NODE_REF)
+	static final int E_LOOKUP = E_DELAY+1; // lookup(tableName, x)
+	static final int E_GSLOT = E_LOOKUP+10; // Circuit-global array slot (fast-path replacement for E_NODE_REF)
 };
 
 class ExprParser {
@@ -1612,6 +1622,30 @@ class ExprParser {
 	return e;
     }
 
+    // Parser for lookup(TableName, x[, clampFlag])
+    Expr parseLookup() {
+	skipOrError("(");
+	if (!isValidIdentifier(token)) {
+	    setError("lookup() first argument must be a lookup table name");
+	    return new Expr(Expr.E_VAL, 0);
+	}
+	String tableName = token;
+	getToken();
+	skipOrError(",");
+	Expr xExpr = parse();
+	Expr clampExpr = null;
+	if (skip(",")) {
+	    clampExpr = parse();
+	}
+	skipOrError(")");
+	Expr e = new Expr(xExpr, null, Expr.E_LOOKUP);
+	if (clampExpr != null) {
+	    e.children.add(clampExpr);
+	}
+	e.nodeName = tableName;
+	return e;
+    }
+
     /**
      * Parse postfix lag alias index after a variable name.
      * Accepts token-level forms equivalent to -1, including spaced variants
@@ -1756,6 +1790,8 @@ class ExprParser {
 			return parseFuncMulti(Expr.E_PWL, 2, 1000);
 		if (skipIgnoreCase("pwlx"))
 			return parseFuncMulti(Expr.E_PWLX, 5, 1000);
+		if (skipIgnoreCase("lookup"))
+			return parseLookup();
 		if (skipIgnoreCase("mod"))
 			return parseFuncMulti(Expr.E_MOD, 2, 2);
 		if (skipIgnoreCase("step"))

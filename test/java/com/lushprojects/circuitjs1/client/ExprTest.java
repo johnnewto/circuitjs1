@@ -130,6 +130,48 @@ class ExprTest {
     }
 
     @Test
+    @DisplayName("lookup(name, x) clamps to endpoints by default")
+    void testLookupClampsByDefault() {
+        LookupTableRegistry.clear();
+        java.util.ArrayList<Double> xs = new java.util.ArrayList<Double>();
+        java.util.ArrayList<Double> ys = new java.util.ArrayList<Double>();
+        xs.add(0.0); ys.add(0.0);
+        xs.add(1.0); ys.add(2.0);
+        xs.add(2.0); ys.add(4.0);
+        LookupTableRegistry.registerGlobal("BRMM", xs, ys);
+
+        Expr expr = parse("lookup(BRMM, _a)");
+        ExprState state = new ExprState(0);
+
+        state.values[0] = -1.0;
+        assertEquals(0.0, expr.evalFresh(state), 1e-12);
+
+        state.values[0] = 3.0;
+        assertEquals(4.0, expr.evalFresh(state), 1e-12);
+    }
+
+    @Test
+    @DisplayName("lookup(name, x) extrapolates when lookup mode is pwlx")
+    void testLookupExtrapolatesWhenModeIsPwlx() {
+        LookupTableRegistry.clear();
+        java.util.ArrayList<Double> xs = new java.util.ArrayList<Double>();
+        java.util.ArrayList<Double> ys = new java.util.ArrayList<Double>();
+        xs.add(0.0); ys.add(0.0);
+        xs.add(1.0); ys.add(2.0);
+        xs.add(2.0); ys.add(4.0);
+        LookupTableRegistry.registerGlobal("BRMM", xs, ys);
+
+        Expr expr = parse("lookup(BRMM, _a, 0)");
+        ExprState state = new ExprState(0);
+
+        state.values[0] = -1.0;
+        assertEquals(-2.0, expr.evalFresh(state), 1e-12);
+
+        state.values[0] = 3.0;
+        assertEquals(6.0, expr.evalFresh(state), 1e-12);
+    }
+
+    @Test
     @DisplayName("diff() uses committed previous input to compute derivative")
     void testDiffUsesCommittedPreviousInput() {
         Expr expr = parse("diff(_a)");

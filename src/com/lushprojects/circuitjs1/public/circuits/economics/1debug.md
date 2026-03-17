@@ -1,137 +1,431 @@
-# CircuitJS1 SFCR Export
-# Generated from circuit simulation
+# World2 SFCR Model
+
+## Init
 
 ```{r}
 @init
-  timestep: 1
-  voltageUnit: $
+  timestep: 0.2
   timeUnit: yr
-  showDots: true
-  showVolts: true
-  showValues: true
-  showPower: false
-  autoAdjustTimestep: false
-  equationTableMnaMode: true
-  equationTableNewtonJacobianEnabled: true
-  equationTableTolerance: 0.0001
-  convergenceCheckThreshold: 100
-  infoViewerUpdateIntervalMs: 200
+  equationTableMnaMode: false
+  equationTableTolerance: 0.001
+  lookupMode: pwl
+  convergenceCheckThreshold: 5000
+  showDots: false
+  showVolts: false
 @end
 ```
 
-## Equation table
-first table 
+## Equations
 
 ```{r}
-equations_1A <- sfcr_set(
-  # [ x=168 y=264 ]
-  e1 = C_s ~ C_d,  # Consumption goods Supply/Demand  [mode=voltage, slider=a, sliderValue=0.5 ]
-  e2 = G_s ~ G_d,  # Services supplied to / demand by Govt  [mode=voltage, slider=b, sliderValue=0.5 ]
-  e3 = T_s ~ T_d,  # Tax  [mode=voltage, slider=c, sliderValue=0.5 ]
-  e4 = N_s ~ N_d,  # Supply/Demand for labour  [mode=voltage, slider=d, sliderValue=0.5 ]
-  e5 = YD ~ W * N_s - T_s,  # Disposable Income  [mode=voltage, slider=e, sliderValue=0.5 ]
-  e6 = T_d ~ \theta * W * N_s,  # Tax  [mode=voltage, slider=f, sliderValue=0.5 ]
-  e7 = C_d ~ \alpha_1*YD+ \alpha_2*H_h,  # Consumption goods Supply/Demand  [mode=voltage, slider=g, sliderValue=0.5 ]
-  e8 = H_s ~ integrate(G_d - T_d)  # cash money  [mode=voltage, sliderValue=0 ]
+World2 <- sfcr_set(
+  # [ x=50 y=50 ]
+  e1 = BRN ~ 0.04,  # [mode=voltage, sliderValue=0 ]
+  e2 = DRN ~ 0.028,  # [mode=voltage, sliderValue=0 ]
+  e3 = CIDN ~ 0.025,  # [mode=voltage, sliderValue=0 ]
+  e4 = CIGN ~ 0.05,  # [mode=voltage, sliderValue=0 ]
+  e5 = NRUN ~ 1,  # [mode=voltage, sliderValue=0 ]
+  e6 = POLN ~ 1,  # [mode=voltage, sliderValue=0 ]
+  e7 = FC_COEFF ~ 1,  # [mode=voltage, sliderValue=0 ]
+  e8 = LA ~ 1.35e8,  # [mode=voltage, sliderValue=0 ]
+  e9 = PDN ~ 26.5,  # [mode=voltage, sliderValue=0 ]
+  e10 = CIAFN ~ 0.3,  # [mode=voltage, sliderValue=0 ]
+  e11 = ECIRN ~ 1,  # [mode=voltage, sliderValue=0 ]
+  e12 = CIAFT ~ 15,  # [mode=voltage, sliderValue=0 ]
+  e13 = POLS ~ 3.6e9,  # [mode=voltage, sliderValue=0 ]
+  e14 = FN ~ 1,  # [mode=voltage, sliderValue=0 ]
+  e15 = QLS ~ 1,  # [mode=voltage, sliderValue=0 ]
+  e16 = P_0 ~ 1.65e9,  # [mode=voltage, sliderValue=0 ]
+  e17 = NR_0 ~ 9e11,  # [mode=voltage, sliderValue=0 ]
+  e18 = CR ~ P / (LA * PDN),  # [mode=voltage, sliderValue=0 ]
+  e19 = CIR ~ CI / max(1, P),  # [mode=voltage, sliderValue=0 ]
+  e20 = NRFR ~ max(0, NR) / NR_0,  # [mode=voltage, sliderValue=0 ]
+  e21 = POLR ~ POL / POLS,  # Pollution ratio  [mode=voltage, sliderValue=0 ]
+  e22 = BR ~ P * BRN * lookup(BRMM, MSL) * lookup(BRCM, CR) * lookup(BRFM, FR) * lookup(BRPM, POLR),  # [mode=voltage, sliderValue=0 ]
+  e23 = DR ~ P * DRN * lookup(DRMM, MSL) * lookup(DRPM, POLR) * lookup(DRFM, FR) * lookup(DRCM, CR),  # [mode=voltage, sliderValue=0 ]
+  e24 = NRUR ~ P * NRUN * lookup(NRMM, MSL),  # [mode=voltage, sliderValue=0 ]
+  e25 = CID ~ CI * CIDN,  # [mode=voltage, sliderValue=0 ]
+  e26 = CIG ~ P * lookup(CIM, MSL) * CIGN,  # [mode=voltage, sliderValue=0 ]
+  e27 = POLG ~ P * POLN * lookup(POLCM, CIR),  # [mode=voltage, sliderValue=0 ]
+  e28 = POLA ~ POL / max(1e-9, lookup(POLAT, POLR)),  # [mode=voltage, sliderValue=0 ]
+  e29 = CFIFR ~ lookup(CFIFR, FR),  # [mode=voltage, sliderValue=0 ]
+  e30 = QLM ~ lookup(QLM, MSL),  # [mode=voltage, sliderValue=0 ]
+  e31 = QLP ~ lookup(QLP, POLR),  # [mode=voltage, sliderValue=0 ]
+  e32 = QLF ~ lookup(QLF, FR),  # [mode=voltage, sliderValue=0 ]
+  e33 = CIQR ~ lookup(CIQR, QLM / max(1e-9, QLF)),  # [mode=voltage, sliderValue=0 ]
+  e34 = CIAF_D ~ CFIFR * CIQR,  # [mode=voltage, sliderValue=0 ]
+  e35 = CIRA ~ CIR * CIAF / max(1e-9, CIAFN),  # [mode=voltage, sliderValue=0 ]
+  e36 = FCM ~ lookup(FCM, CR),  # [mode=voltage, sliderValue=0 ]
+  e37 = FPCI ~ lookup(FPCI, CIRA),  # [mode=voltage, sliderValue=0 ]
+  e38 = FPM ~ lookup(FPM, POLR),  # [mode=voltage, sliderValue=0 ]
+  e39 = FR ~ (FCM * FPCI * FPM * FC_COEFF) / FN,  # Food ratio  [mode=voltage, sliderValue=0 ]
+  e40 = NREM ~ lookup(NREM, NRFR),  # [mode=voltage, sliderValue=0 ]
+  e41 = ECIR ~ (CIR * (1 - CIAF) * NREM) / max(1e-9, (1 - CIAFN)),  # [mode=voltage, sliderValue=0 ]
+  e42 = MSL ~ ECIR / ECIRN,  # Material standard of living  [mode=voltage, sliderValue=0 ]
+  e43 = QLC ~ lookup(QLC, CR),  # [mode=voltage, sliderValue=0 ]
+  e44 = QL ~ QLS * QLM * QLC * QLF * QLP,  # Quality of life  [mode=voltage, sliderValue=0 ]
+  e45 = P_norm ~ P / P_0,  # [mode=voltage, sliderValue=0 ]
+  e46 = P ~ integrate(BR - DR),  # Population (people)  [mode=voltage, sliderValue=0, initial=1.65e9 ]
+  e47 = NR ~ integrate(-NRUR),  # Nonrenewable natural resources  [mode=voltage, sliderValue=0, initial=9e11 ]
+  e48 = CI ~ integrate(CIG - CID),  # Capital investment  [mode=voltage, sliderValue=0, initial=4e8 ]
+  e49 = POL ~ integrate(POLG - POLA),  # Pollution stock  [mode=voltage, sliderValue=0, initial=2e8 ]
+  e50 = CIAF ~ integrate((CIAF_D - CIAF) / CIAFT)  # Capital-investment-in-agriculture fraction  [mode=voltage, sliderValue=0, initial=0.2 ]
 )
 ```
 
-## Equation table
-second table 
+## Hints
 
 ```{r}
-equations_2 <- sfcr_set(
-  # [ x=440 y=264 ]
-  e1 = H_h ~ integrate(YD - C_d),  # Cash money held by households  [mode=voltage, slider=a, sliderValue=0.5 ]
-  e2 = Y ~ C_s + G_s,  # Output  [mode=voltage, slider=b, sliderValue=0.5 ]
-  e3 = N_d ~ Y / W  # Supply/Demand for labour  [mode=voltage, sliderValue=0 ]
-)
+@hints
+  P: Population (people)
+  NR: Nonrenewable natural resources
+  CI: Capital investment
+  POL: Pollution stock
+  CIAF: Capital-investment-in-agriculture fraction
+  FR: Food ratio
+  MSL: Material standard of living
+  QL: Quality of life
+  POLR: Pollution ratio
+@end
 ```
 
-## Parameters
-parameter table !!
+## Info
 
 ```{r}
-Parameters <- sfcr_set(
-  # [ x=440 y=352 ]
-  e1 = \alpha_1 ~ 0.6,  # Propensity to Spend Income  [mode=voltage, slider=a, sliderValue=0.5 ]
-  e2 = \alpha_2 ~ 0.4,  # Propensity to Spend Wealth  [mode=voltage, slider=b, sliderValue=0.5 ]
-  e3 = \theta ~ 0.2,  # Tax Rate  [mode=voltage, slider=c, sliderValue=0.5 ]
-  e4 = G_d ~ 20,  # Government demand for services  [mode=voltage, slider=d, sliderValue=0.5 ]
-  e5 = W ~ 1  # Nominal Wages Rate  [mode=voltage, sliderValue=0 ]
-)
+@info
+# World2 (pyworld2-aligned default run)
+
+This variant is tuned to match the default **pyworld2** standard run structure:
+
+- timestep: 0.2 years
+- default switch constants (BRN, DRN, CIDN, CIGN, FC, NRUN, POLN)
+- lookup tables copied from `functions_table_default.json`
+- equations follow the pyworld2 variable chain (`FR`, `MSL`, `NRMM`, `POLAT`, `CIAF` dynamics, etc.)
+
+Reference target from pyworld2 tests at year 2100:
+
+- QL ≈ 0.54940464789
+- POLR ≈ 2.58741372815
+- NR ≈ 278240023740
+- CI ≈ 6010240430.13
+@end
 ```
 
-## Balance_Sheet
-balance !! 
+## Lookup Tables (World2 Scoped)
 
 ```{r}
-Balance_Sheet <- sfcr_matrix(
-  # [ x=176 y=24 type: transaction_flow ]
-  columns = c("Households_b", "Production_b", "Government_b"),
-  codes = c("Households_b", "Production_b", "Government_b"),
-  c("Money stock", Households_b = "H_h", Production_b = "", Government_b = "-H_s")
-)
+@lookup BRMM scope=World2
+  # birth multiplier vs material standard of living (MSL)
+  0, 1.2
+  1, 1
+  2, 0.85
+  3, 0.75
+  4, 0.7
+  5, 0.7
+@end
 ```
 
-## Transaction_Flow_Matrix
-TFM !!
-
 ```{r}
-Transaction_Flow_Matrix <- sfcr_matrix(
-  # [ x=176 y=104 type: transaction_flow ]
-  columns = c("Households", "Production", "Govt"),
-  codes = c("Households", "Production", "Govt"),
-  c("Consumption", Households = "-C_d", Production = "C_s", Govt = ""),
-  c("Govt Expenditures", Households = "", Production = "G_s", Govt = "-G_d"),
-  c("Wages", Households = "W * N_s", Production = "-W * N_s", Govt = ""),
-  c("Taxes", Households = "-T_s", Production = "", Govt = "T_d"),
-  c("Money stock", Households = "-\\DeltaH_h", Production = "", Govt = "\\DeltaH_s")
-)
+@lookup BRCM scope=World2
+  # birth multiplier vs crowding (CR)
+  0, 1.05
+  1, 1
+  2, 0.9
+  3, 0.7
+  4, 0.6
+  5, 0.55
+@end
 ```
 
-## Sankey Diagram
-sankey !! 
+```{r}
+@lookup BRFM scope=World2
+  # birth multiplier vs food ratio (FR)
+  0, 0
+  1, 1
+  2, 1.6
+  3, 1.9
+  4, 2
+@end
+```
 
 ```{r}
-@sankey x=672 y=-8
-  source: Transaction Flow Matrix
-  layout: linear
-  width: 600
-  height: 400
-  showScaleBar: false
-  useHighWaterMark: true
-  showFlowValues: true
+@lookup BRPM scope=World2
+  # birth multiplier vs pollution ratio (POLR)
+  0, 1.02
+  10, 0.9
+  20, 0.7
+  30, 0.4
+  40, 0.25
+  50, 0.15
+  60, 0.1
+@end
+```
+
+```{r}
+@lookup DRMM scope=World2
+  # death multiplier vs material standard of living (MSL)
+  0, 3
+  0.5, 1.8
+  1, 1
+  1.5, 0.8
+  2, 0.7
+  2.5, 0.6
+  3, 0.53
+  3.5, 0.5
+  4, 0.5
+  4.5, 0.5
+  5, 0.5
+@end
+```
+
+```{r}
+@lookup DRPM scope=World2
+  # death multiplier vs pollution ratio (POLR)
+  0, 0.92
+  10, 1.3
+  20, 2
+  30, 3.2
+  40, 4.8
+  50, 6.8
+  60, 9.2
+@end
+```
+
+```{r}
+@lookup DRFM scope=World2
+  # death multiplier vs food ratio (FR)
+  0, 30
+  0.25, 3
+  0.5, 2
+  0.75, 1.4
+  1, 1
+  1.25, 0.7
+  1.5, 0.6
+  1.75, 0.5
+  2, 0.5
+@end
+```
+
+```{r}
+@lookup DRCM scope=World2
+  # death multiplier vs crowding (CR)
+  0, 0.9
+  1, 1
+  2, 1.2
+  3, 1.5
+  4, 1.9
+  5, 3
+@end
+```
+
+```{r}
+@lookup NRMM scope=World2
+  # nonrenewable resource usage multiplier vs material standard of living (MSL)
+  0, 0
+  1, 1
+  2, 1.8
+  3, 2.4
+  4, 2.9
+  5, 3.3
+  6, 3.6
+  7, 3.8
+  8, 3.9
+  9, 3.95
+  10, 4
+@end
+```
+
+```{r}
+@lookup CIM scope=World2
+  # capital investment generation multiplier vs material standard of living (MSL)
+  0, 0.1
+  1, 1
+  2, 1.8
+  3, 2.4
+  4, 2.8
+  5, 3
+@end
+```
+
+```{r}
+@lookup POLCM scope=World2
+  # pollution generation multiplier vs capital intensity ratio (CIR)
+  0, 0.05
+  1, 1
+  2, 3
+  3, 5.4
+  4, 7.4
+  5, 8
+@end
+```
+
+```{r}
+@lookup POLAT scope=World2
+  # pollution assimilation time lookup vs pollution ratio (POLR)
+  0, 0.6
+  10, 2.5
+  20, 5
+  30, 8
+  40, 11.5
+  50, 15.5
+  60, 20
+@end
+```
+
+```{r}
+@lookup CFIFR scope=World2
+  # capital-fraction-in-food response vs food ratio (FR)
+  0, 1
+  0.5, 0.6
+  1, 0.3
+  1.5, 0.15
+  2, 0.1
+@end
+```
+
+```{r}
+@lookup QLM scope=World2
+  # quality-of-life multiplier vs material standard of living (MSL)
+  0, 0.2
+  1, 1
+  2, 1.7
+  3, 2.3
+  4, 2.7
+  5, 2.9
+@end
+```
+
+```{r}
+@lookup QLP scope=World2
+  # quality-of-life multiplier vs pollution ratio (POLR)
+  0, 1.04
+  10, 0.85
+  20, 0.6
+  30, 0.3
+  40, 0.15
+  50, 0.05
+  60, 0.02
+@end
+```
+
+```{r}
+@lookup QLF scope=World2
+  # quality-of-life multiplier vs food ratio (FR)
+  0, 0
+  1, 1
+  2, 1.8
+  3, 2.4
+  4, 2.7
+@end
+```
+
+```{r}
+@lookup CIQR scope=World2
+  # capital-investment quality response vs quality ratio (QLM / QLF)
+  0, 0.7
+  0.5, 0.8
+  1, 1
+  1.5, 1.5
+  2, 2
+@end
+```
+
+```{r}
+@lookup FCM scope=World2
+  # food coefficient multiplier vs crowding (CR)
+  0, 2.4
+  1, 1
+  2, 0.6
+  3, 0.4
+  4, 0.3
+  5, 0.2
+@end
+```
+
+```{r}
+@lookup FPCI scope=World2
+  # food productivity of capital investment vs CIRA
+  0, 0.5
+  1, 1
+  2, 1.4
+  3, 1.7
+  4, 1.9
+  5, 2.05
+  6, 2.2
+@end
+```
+
+```{r}
+@lookup FPM scope=World2
+  # food multiplier vs pollution ratio (POLR)
+  0, 1.02
+  10, 0.9
+  20, 0.65
+  30, 0.35
+  40, 0.2
+  50, 0.1
+  60, 0.05
+@end
+```
+
+```{r}
+@lookup NREM scope=World2
+  # resource extraction modifier vs remaining resource fraction (NRFR)
+  0, 0
+  0.25, 0.15
+  0.5, 0.5
+  0.75, 0.85
+  1, 1
+@end
+```
+
+```{r}
+@lookup QLC scope=World2
+  # quality-of-life multiplier vs crowding (CR)
+  0, 2
+  0.5, 1.3
+  1, 1
+  1.5, 0.75
+  2, 0.55
+  2.5, 0.45
+  3, 0.38
+  3.5, 0.3
+  4, 0.25
+  4.5, 0.22
+  5, 0.2
+@end
+```
+
+```{r}
+@scope QL position=0
+  speed: 16
+  flags: x2001206
+  source: uid:xJHWxB value:0
+@end
+```
+
+```{r}
+@scope P position=1
+  speed: 16
+  flags: x2001206
+  source: uid:BaMGZo value:0
+@end
+```
+
+```{r}
+@scope POLR position=2
+  speed: 16
+  flags: x2001206
+  source: uid:PwVDmt value:0
 @end
 ```
 
 ```{r}
 @circuit
-x 168 -76 337 -73 4 24 SIM\sSFC\smodel 808080FF U:_JS6um
-207 680 296 743 296 36 Y U:-6Q_F4
-x 183 -51 509 -48 4 12 This\scode\sreplicates\sresults\sin\sthe\sbook\sMonetary\sEconomics: 808080FF U:MpBpa6
-x 180 -9 536 -6 4 12 \sby\sWynne\sGodley\sand\sMarc\sLavoie,\schapter\s3,\sfigures\s3.2\sand\s3.3. 808080FF U:rCjs3e
-x 183 -31 577 -28 4 12 \sAn\sIntegrated\sApproach\sto\sCredit,\sMoney,\sIncome,\sProduction\sand\sWealth 808080FF U:cdBS8b
-207 832 288 864 288 36 \\DeltaH_h U:MeqIB3
-207 832 272 864 272 4 \\DeltaH_s U:5DBes4
-431 672 -80 688 -64 0 50 true false U:0AZ1rw
-r 824 -88 936 -88 0 1000 U:kSRwWr
-207 936 -88 967 -88 36 Y2 U:g5KXPD
-207 824 -88 783 -88 36 Y U:kU1zw1
-@end
-```
-
-```{r}
-@scope Embedded_Scope_1 position=-1
-  x1: 672
-  y1: 320
-  x2: 928
-  y2: 496
-  elmUid: 85xm31
-  speed: 2
-  flags: x2001206
-  source: uid:-6Q_F4 value:0
-  trace: uid:-6Q_F4 value:3
+207 -208 192 -144 192 164 P U:BaMGZo
+207 -208 224 -144 224 164 POLR U:PwVDmt
+207 -208 144 -144 144 164 QL U:xJHWxB
+431 -144 352 -112 448 0 200 true false U:huagx4
 @end
 ```
 

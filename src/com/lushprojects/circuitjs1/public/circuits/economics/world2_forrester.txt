@@ -247,28 +247,28 @@
   CIR ~ CI / max(1, P)
   NRFR ~ max(0, NR) / NR_0
   POLR ~ POL / POLS
-  BR ~ last(P) * BRN * lookup(BRMM, clamp(last(MSL), 0, 5)) * lookup(BRCM, clamp(last(CR), 0, 5)) * lookup(BRFM, clamp(last(FR), 0, 4)) * lookup(BRPM, clamp(last(POLR), 0, 60))
-  DR ~ last(P) * DRN * lookup(DRMM, clamp(last(MSL), 0, 5)) * lookup(DRPM, clamp(last(POLR), 0, 60)) * lookup(DRFM, clamp(last(FR), 0, 2)) * lookup(DRCM, clamp(last(CR), 0, 5))
-  NRUR ~ last(P) * NRUN * lookup(NRMM, clamp(last(MSL), 0, 10))
+  BR ~ last(P) * BRN * lookup(BRMM, last(MSL)) * lookup(BRCM, last(CR)) * lookup(BRFM, last(FR)) * lookup(BRPM, last(POLR))
+  DR ~ last(P) * DRN * lookup(DRMM, last(MSL)) * lookup(DRPM, last(POLR)) * lookup(DRFM, last(FR)) * lookup(DRCM, last(CR))
+  NRUR ~ last(P) * NRUN * lookup(NRMM, last(MSL))
   CID ~ last(CI) * CIDN
-  CIG ~ last(P) * lookup(CIM, clamp(last(MSL), 0, 5)) * CIGN
-  POLG ~ last(P) * POLN * lookup(POLCM, clamp(last(CIR), 0, 5))
-  POLA ~ last(POL) / max(1e-9, lookup(POLAT, clamp(last(POLR), 0, 60)))
-  CFIFR ~ lookup(CFIFR, clamp(last(FR), 0, 2))
-    QLM ~ lookup(QLM, clamp(last(MSL), 0, 5))
-    QLP ~ lookup(QLP, clamp(POLR, 0, 60))
-    QLF ~ lookup(QLF, clamp(FR, 0, 4))
-    CIQR ~ lookup(CIQR, clamp(QLM / max(1e-9, QLF), 0, 2))
+  CIG ~ last(P) * lookup(CIM, last(MSL)) * CIGN
+  POLG ~ last(P) * POLN * lookup(POLCM, last(CIR))
+  POLA ~ last(POL) / max(1e-9, lookup(POLAT, last(POLR)))
+  CFIFR ~ lookup(CFIFR, last(FR))
+    QLM ~ lookup(QLM, last(MSL))
+    QLP ~ lookup(QLP, POLR)
+    QLF ~ lookup(QLF, FR)
+    CIQR ~ lookup(CIQR, QLM / max(1e-9, QLF))
   CIAF_D ~ CFIFR * CIQR
   CIRA ~ CIR * CIAF / max(1e-9, CIAFN)
-  FCM ~ lookup(FCM, clamp(CR, 0, 5))
-  FPCI ~ lookup(FPCI, clamp(CIRA, 0, 6))
-  FPM ~ lookup(FPM, clamp(POLR, 0, 60))
+  FCM ~ lookup(FCM, CR)
+  FPCI ~ lookup(FPCI, CIRA)
+  FPM ~ lookup(FPM, POLR)
   FR ~ (FCM * FPCI * FPM * FC_COEFF) / FN
-  NREM ~ lookup(NREM, clamp(NRFR, 0, 1))
+  NREM ~ lookup(NREM, NRFR)
   ECIR ~ (CIR * (1 - CIAF) * NREM) / max(1e-9, (1 - CIAFN))
   MSL ~ ECIR / ECIRN
-  QLC ~ lookup(QLC, clamp(CR, 0, 5))
+  QLC ~ lookup(QLC, CR)
   QL ~ QLS * QLM * QLC * QLF * QLP
   P_norm ~ P / P_0
   P ~ integrate(BR - DR) ; initial=1.65e9

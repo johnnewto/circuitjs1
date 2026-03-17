@@ -24,7 +24,7 @@ import java.util.Vector;
  *   @action     - Action Time schedule (timed target updates)
  *   (inline markdown) - Model documentation (no @info wrapper)
  *   @equations  - All equations (from EquationTableElm, GodlyTableElm)
- *   @lookup     - Named lookup tables extracted from pwlx() equations
+ *   @lookup     - Named lookup tables referenced by lookup(name, x[, clamp]) equations
  *   @matrix     - Transaction matrices (from SFCTableElm)
  *   @hints      - Variable documentation
  *   @circuit    - Non-SFCR elements (passthrough)
@@ -34,13 +34,6 @@ import java.util.Vector;
  * @see <a href="../dev_docs/SFCR_FORMAT_REFERENCE.md">SFCR Format Reference</a>
  */
 public class SFCRExporter {
-
-    static class LookupExportSpec {
-        String name;
-        String scope;
-        ArrayList<Double> xs = new ArrayList<Double>();
-        ArrayList<Double> ys = new ArrayList<Double>();
-    }
 
     public enum ExportSyntax {
         BLOCK_FORMAT,
@@ -60,8 +53,9 @@ public class SFCRExporter {
     private ArrayList<CircuitElm> otherElements = new ArrayList<CircuitElm>();
     private ActionTimeElm actionTimeElmForExport = null;
     private HashSet<CircuitElm> scopeElmsExportedAsBlocks = new HashSet<CircuitElm>();
-    private ArrayList<LookupExportSpec> lookupExportSpecs = new ArrayList<LookupExportSpec>();
-    private HashMap<String, LookupExportSpec> lookupExportBySignature = new HashMap<String, LookupExportSpec>();
+    private ArrayList<LookupDefinition> lookupExportSpecs = new ArrayList<LookupDefinition>();
+    private HashMap<String, LookupDefinition> lookupExportBySignature = new HashMap<String, LookupDefinition>();
+    private HashMap<String, ArrayList<String>> lookupCommentsByNameScope = new HashMap<String, ArrayList<String>>();
     
     // =========================================================================
     // Constructor & Public API
@@ -398,6 +392,7 @@ public class SFCRExporter {
 
             ArrayList<Double> xs = new ArrayList<Double>();
             ArrayList<Double> ys = new ArrayList<Double>();
+            ArrayList<String> comments = new ArrayList<String>();
 
             int end = i;
             for (int j = i + 1; j < lines.length; j++) {
@@ -406,7 +401,11 @@ public class SFCRExporter {
                 if (row.equals("@end")) {
                     break;
                 }
-                if (row.isEmpty() || row.startsWith("#")) {
+                if (row.startsWith("#")) {
+                    comments.add(row);
+                    continue;
+                }
+                if (row.isEmpty()) {
                     continue;
                 }
 
@@ -433,20 +432,28 @@ public class SFCRExporter {
                 continue;
             }
 
+            if (!comments.isEmpty()) {
+                lookupCommentsByNameScope.put(buildLookupNameScopeKey(lookupName, scopeName), new ArrayList<String>(comments));
+            }
+
             String signature = buildLookupSignatureFromPoints(scopeName, xs, ys);
-            LookupExportSpec existing = lookupExportBySignature.get(signature);
+            LookupDefinition existing = lookupExportBySignature.get(signature);
             if (existing != null) {
                 if (existing.name != null && existing.name.startsWith("Lookup_") && !lookupName.startsWith("Lookup_")) {
                     existing.name = makeLookupName(lookupName, scopeName);
                 }
+                if (existing.comments.isEmpty() && !comments.isEmpty()) {
+                    existing.comments.addAll(comments);
+                }
                 continue;
             }
 
-            LookupExportSpec spec = new LookupExportSpec();
+            LookupDefinition spec = new LookupDefinition();
             spec.scope = scopeName;
             spec.name = makeLookupName(lookupName, scopeName);
             spec.xs.addAll(xs);
             spec.ys.addAll(ys);
+            spec.comments.addAll(comments);
             lookupExportSpecs.add(spec);
             lookupExportBySignature.put(signature, spec);
         }
@@ -700,6 +707,7 @@ public class SFCRExporter {
     private void resetLookupExportState() {
         lookupExportSpecs.clear();
         lookupExportBySignature.clear();
+        lookupCommentsByNameScope.clear();
     }
 
     private String exportLookupBlocks() {
@@ -708,12 +716,26 @@ public class SFCRExporter {
         }
 
         StringBuilder sb = new StringBuilder();
-        for (LookupExportSpec spec : lookupExportSpecs) {
+        for (LookupDefinition spec : lookupExportSpecs) {
             sb.append("@lookup ").append(spec.name);
             if (spec.scope != null && !spec.scope.isEmpty()) {
                 sb.append(" scope=").append(spec.scope);
             }
             sb.append("\n");
+            for (int c = 0; c < spec.comments.size(); c++) {
+                String comment = spec.comments.get(c);
+                if (comment == null) {
+                    continue;
+                }
+                String trimmed = comment.trim();
+                if (trimmed.isEmpty()) {
+                    continue;
+                }
+                if (!trimmed.startsWith("#")) {
+                    trimmed = "# " + trimmed;
+                }
+                sb.append("  ").append(trimmed).append("\n");
+            }
             for (int i = 0; i < spec.xs.size(); i++) {
                 sb.append("  ")
                   .append(spec.xs.get(i).doubleValue())
@@ -726,70 +748,120 @@ public class SFCRExporter {
         return sb.toString().trim();
     }
 
-    private String rewriteExpressionForLookupExport(String expr, String scopeName, String preferredLookupName) {
+    private String rewriteExpressionForLookupExport(String expr, String scopeName) {
         if (expr == null || expr.trim().isEmpty()) {
             return expr;
         }
 
-        String out = expr;
+        // Keep expression text unchanged. Only native lookup(name, x[, clamp])
+        // contributes @lookup blocks in live export.
+        registerNativeLookupSpecs(expr, scopeName);
+        return expr;
+    }
+
+    private void registerNativeLookupSpecs(String expr, String scopeName) {
+        if (expr == null || expr.trim().isEmpty()) {
+            return;
+        }
+
         int search = 0;
         while (true) {
-            int fn = findFunctionCall(out, "pwlx", search);
+            int fn = findFunctionCall(expr, "lookup", search);
             if (fn < 0) {
                 break;
             }
 
-            int open = out.indexOf('(', fn);
+            int open = expr.indexOf('(', fn);
             if (open < 0) {
                 break;
             }
-            int close = findMatchingParenForExport(out, open);
+            int close = findMatchingParenForExport(expr, open);
             if (close < 0) {
                 break;
             }
 
-            String inside = out.substring(open + 1, close);
+            String inside = expr.substring(open + 1, close);
             ArrayList<String> args = splitTopLevelArgs(inside);
-            if (args.size() < 5 || ((args.size() - 1) % 2) != 0) {
-                search = close + 1;
-                continue;
+            if (args.size() >= 2) {
+                registerLookupFromNameArg(args.get(0), scopeName);
             }
 
-            String xExpr = args.get(0).trim();
-            String signature = buildLookupSignature(args, scopeName);
-            LookupExportSpec spec = lookupExportBySignature.get(signature);
-            if (spec == null) {
-                spec = new LookupExportSpec();
-                spec.scope = (scopeName == null || scopeName.isEmpty()) ? null : SFCRUtil.sanitizeName(scopeName);
-                spec.name = makeLookupName(preferredLookupName, spec.scope);
-                for (int i = 1; i + 1 < args.size(); i += 2) {
-                    try {
-                        spec.xs.add(Double.valueOf(Double.parseDouble(args.get(i).trim())));
-                        spec.ys.add(Double.valueOf(Double.parseDouble(args.get(i + 1).trim())));
-                    } catch (Exception e) {
-                        spec = null;
-                        break;
-                    }
-                }
-                if (spec == null || spec.xs.size() < 2) {
-                    search = close + 1;
-                    continue;
-                }
-                lookupExportSpecs.add(spec);
-                lookupExportBySignature.put(signature, spec);
-            } else if (preferredLookupName != null && !preferredLookupName.trim().isEmpty() && spec.name.startsWith("Lookup_")) {
-                String betterName = makeLookupName(preferredLookupName, spec.scope);
-                if (!betterName.startsWith("Lookup_")) {
-                    spec.name = betterName;
-                }
-            }
+            search = close + 1;
+        }
+    }
 
-            String replacement = "lookup(" + spec.name + ", " + xExpr + ")";
-            out = out.substring(0, fn) + replacement + out.substring(close + 1);
-            search = fn + replacement.length();
+    private void registerLookupFromNameArg(String nameArg, String scopeName) {
+        if (nameArg == null) {
+            return;
         }
 
-        return out;
+        String raw = nameArg.trim();
+        if (raw.isEmpty()) {
+            return;
+        }
+        if ((raw.startsWith("\"") && raw.endsWith("\"")) || (raw.startsWith("'") && raw.endsWith("'"))) {
+            if (raw.length() < 2) {
+                return;
+            }
+            raw = raw.substring(1, raw.length() - 1).trim();
+        }
+
+        String lookupName = SFCRUtil.sanitizeName(SFCRUtil.normalizeVariableName(raw));
+        if (lookupName.isEmpty()) {
+            return;
+        }
+
+        String normalizedScope = (scopeName == null || scopeName.isEmpty()) ? null : SFCRUtil.sanitizeName(scopeName);
+        if (findLookupSpecByNameAndScope(lookupName, normalizedScope) != null) {
+            return;
+        }
+
+        LookupTableRegistry.LookupTableSnapshot snapshot = LookupTableRegistry.getSnapshot(normalizedScope, lookupName);
+        if (snapshot == null || snapshot.xs == null || snapshot.ys == null || snapshot.xs.size() < 2 || snapshot.xs.size() != snapshot.ys.size()) {
+            return;
+        }
+
+        LookupDefinition spec = new LookupDefinition();
+        spec.name = lookupName;
+        spec.scope = (snapshot.resolvedScope == null || snapshot.resolvedScope.isEmpty()) ? null : snapshot.resolvedScope;
+        spec.xs.addAll(snapshot.xs);
+        spec.ys.addAll(snapshot.ys);
+        spec.comments.addAll(getLookupComments(spec.name, spec.scope));
+
+        lookupExportSpecs.add(spec);
+        String signature = buildLookupSignatureFromPoints(spec.scope, spec.xs, spec.ys);
+        lookupExportBySignature.put(signature, spec);
+    }
+
+    private String buildLookupNameScopeKey(String name, String scopeName) {
+        String normName = SFCRUtil.sanitizeName(SFCRUtil.normalizeVariableName(name));
+        String normScope = (scopeName == null || scopeName.isEmpty()) ? "" : SFCRUtil.sanitizeName(scopeName);
+        return normScope + "|" + normName;
+    }
+
+    private ArrayList<String> getLookupComments(String name, String scopeName) {
+        ArrayList<String> comments = lookupCommentsByNameScope.get(buildLookupNameScopeKey(name, scopeName));
+        if (comments == null) {
+            return new ArrayList<String>();
+        }
+        return new ArrayList<String>(comments);
+    }
+
+    private LookupDefinition findLookupSpecByNameAndScope(String name, String scopeName) {
+        String normName = SFCRUtil.sanitizeName(SFCRUtil.normalizeVariableName(name));
+        String normScope = (scopeName == null || scopeName.isEmpty()) ? "" : SFCRUtil.sanitizeName(scopeName);
+        for (int i = 0; i < lookupExportSpecs.size(); i++) {
+            LookupDefinition spec = lookupExportSpecs.get(i);
+            if (spec == null || spec.name == null) {
+                continue;
+            }
+            String specName = SFCRUtil.sanitizeName(SFCRUtil.normalizeVariableName(spec.name));
+            String specScope = (spec.scope == null || spec.scope.isEmpty()) ? "" : SFCRUtil.sanitizeName(spec.scope);
+            if (normName.equals(specName) && normScope.equals(specScope)) {
+                return spec;
+            }
+        }
+        return null;
     }
 
     private String makeLookupName(String preferredLookupName, String scopeName) {
@@ -866,7 +938,7 @@ public class SFCRExporter {
 
     private boolean isLookupNameTaken(String name, String scopeName) {
         for (int i = 0; i < lookupExportSpecs.size(); i++) {
-            LookupExportSpec existing = lookupExportSpecs.get(i);
+            LookupDefinition existing = lookupExportSpecs.get(i);
             if (existing == null) {
                 continue;
             }
@@ -877,26 +949,6 @@ public class SFCRExporter {
             }
         }
         return false;
-    }
-
-    private String buildLookupSignature(ArrayList<String> args, String scopeName) {
-        StringBuilder sb = new StringBuilder();
-        if (scopeName != null && !scopeName.isEmpty()) {
-            sb.append(SFCRUtil.sanitizeName(scopeName));
-        }
-        sb.append("|");
-        for (int i = 1; i < args.size(); i++) {
-            if (i > 1) {
-                sb.append(",");
-            }
-            String token = args.get(i).trim();
-            try {
-                sb.append(Double.parseDouble(token));
-            } catch (Exception e) {
-                sb.append(token);
-            }
-        }
-        return sb.toString();
     }
 
     private String buildLookupSignatureFromPoints(String scopeName, ArrayList<Double> xs, ArrayList<Double> ys) {
@@ -1183,6 +1235,8 @@ public class SFCRExporter {
         sb.append("  equationTableMnaMode: ").append(sim.equationTableMnaMode).append("\n");
         sb.append("  equationTableNewtonJacobianEnabled: ").append(sim.equationTableNewtonJacobianEnabled).append("\n");
         sb.append("  equationTableTolerance: ").append(Double.toString(sim.equationTableConvergenceTolerance)).append("\n");
+        sb.append("  lookupMode: ").append(sim.sfcrLookupClampDefault ? "pwl" : "pwlx").append("\n");
+        sb.append("  lookupClamp: ").append(sim.sfcrLookupClampDefault).append("\n");
         sb.append("  convergenceCheckThreshold: ").append(sim.convergenceCheckThreshold).append("\n");
         sb.append("  infoViewerUpdateIntervalMs: ").append(sim.infoViewerUpdateIntervalMs).append("\n");
         
@@ -1292,14 +1346,14 @@ public class SFCRExporter {
             
             if (name == null || name.isEmpty()) continue;
             if (expr == null) expr = "0";
-            expr = rewriteExpressionForLookupExport(expr, tableName, name);
+            expr = rewriteExpressionForLookupExport(expr, tableName);
 
             EquationTableElm.RowOutputMode mode = eqTable.getOutputMode(row);
             String sliderVar = eqTable.getSliderVarName(row);
             double sliderValue = eqTable.getSliderValue(row);
             String initialEq = eqTable.getInitialEquation(row);
             if (initialEq != null && !initialEq.trim().isEmpty()) {
-                initialEq = rewriteExpressionForLookupExport(initialEq, tableName, name + "_init");
+                initialEq = rewriteExpressionForLookupExport(initialEq, tableName);
             }
 
             String hint = sanitizeHintForRStyleExport(HintRegistry.getHint(sourceName));
@@ -1385,14 +1439,14 @@ public class SFCRExporter {
             if (expr == null) {
                 expr = "0";
             }
-            expr = rewriteExpressionForLookupExport(expr, tableName, name);
+            expr = rewriteExpressionForLookupExport(expr, tableName);
 
             EquationTableElm.RowOutputMode mode = eqTable.getOutputMode(row);
             String sliderVar = eqTable.getSliderVarName(row);
             double sliderValue = eqTable.getSliderValue(row);
             String initialEq = eqTable.getInitialEquation(row);
             if (initialEq != null && !initialEq.trim().isEmpty()) {
-                initialEq = rewriteExpressionForLookupExport(initialEq, tableName, name + "_init");
+                initialEq = rewriteExpressionForLookupExport(initialEq, tableName);
             }
 
             emitted++;
@@ -1438,7 +1492,7 @@ public class SFCRExporter {
             }
 
             String flowExpr = buildColumnFlowExpression(godlyTable, col);
-            flowExpr = rewriteExpressionForLookupExport(flowExpr, tableName, stockName);
+            flowExpr = rewriteExpressionForLookupExport(flowExpr, tableName);
             equationLines.add("  e" + (equationLines.size() + 1) + " = "
                 + stockName + " ~ " + stockName + "_init + integrate(" + flowExpr + ")");
         }
@@ -1520,7 +1574,7 @@ public class SFCRExporter {
                 if (cellExpr == null) {
                     cellExpr = "";
                 }
-                                cellExpr = rewriteExpressionForLookupExport(cellExpr, tableName, rowDesc);
+                                cellExpr = rewriteExpressionForLookupExport(cellExpr, tableName);
                 sb.append(", ")
                   .append(stockCodes.get(dataColIndex))
                   .append(" = \"")
@@ -1564,7 +1618,7 @@ public class SFCRExporter {
             
             // Build the flow sum expression
             String flowExpr = buildColumnFlowExpression(godlyTable, col);
-            flowExpr = rewriteExpressionForLookupExport(flowExpr, tableName, stockName);
+            flowExpr = rewriteExpressionForLookupExport(flowExpr, tableName);
             String hint = HintRegistry.getHint(stockName);
             
             // GodlyTable uses integration: stock = integrate(sum of flows)
@@ -1677,7 +1731,7 @@ public class SFCRExporter {
                 if (column != null && !column.isALE()) {
                     String cellExpr = column.getCellEquation(row);
                     if (cellExpr == null) cellExpr = "";
-                    cellExpr = rewriteExpressionForLookupExport(cellExpr, tableName, rowDesc);
+                    cellExpr = rewriteExpressionForLookupExport(cellExpr, tableName);
                     sb.append(" ").append(cellExpr).append(" |");
                 }
             }

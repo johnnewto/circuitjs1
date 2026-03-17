@@ -94,13 +94,6 @@ public class SFCRParser {
         }
     }
 
-    /** Parsed lookup table with x/y control points. */
-    private static class LookupTableSpec {
-        String name;
-        ArrayList<Double> xs = new ArrayList<Double>();
-        ArrayList<Double> ys = new ArrayList<Double>();
-    }
-    
     // =========================================================================
     // Fields
     // =========================================================================
@@ -116,9 +109,10 @@ public class SFCRParser {
     private ArrayList<ScopeBlockSpec> scopeBlocks = new ArrayList<ScopeBlockSpec>();
     private HashMap<String, String> initSettings = new HashMap<String, String>();
     private ArrayList<String> rawCircuitLines = new ArrayList<String>();
-    private HashMap<String, LookupTableSpec> globalLookupTables = new HashMap<String, LookupTableSpec>();
-    private HashMap<String, HashMap<String, LookupTableSpec>> scopedLookupTables =
-        new HashMap<String, HashMap<String, LookupTableSpec>>();
+    private HashMap<String, LookupDefinition> globalLookupTables = new HashMap<String, LookupDefinition>();
+    private HashMap<String, HashMap<String, LookupDefinition>> scopedLookupTables =
+        new HashMap<String, HashMap<String, LookupDefinition>>();
+    private boolean lookupClampDefault = true;
     private String infoContent = null;
     private boolean actionElementFromActionBlock = false;
 
@@ -180,6 +174,7 @@ public class SFCRParser {
     /** Create a new SFCR parser. */
     public SFCRParser(CirSim sim) {
         this.sim = sim;
+        lookupClampDefault = (sim == null) ? true : sim.sfcrLookupClampDefault;
     }
 
     public static class ParseException extends RuntimeException {
@@ -400,23 +395,22 @@ public class SFCRParser {
         if (text == null || text.trim().isEmpty()) {
             return false;
         }
-        
-        String trimmed = text.trim();
-        
-        // Check for SFCR block markers
-        if (trimmed.contains("@matrix") || 
-            trimmed.contains("@equations") || 
-            trimmed.contains("@parameters") ||
-            trimmed.contains("@init") || trimmed.contains("@action") || trimmed.contains("@hints") ||
-            trimmed.contains("@scope") || trimmed.contains("@circuit") ||
-            trimmed.contains("@info") || trimmed.contains("@sankey") ||
-            trimmed.contains("@lookup") )
-            {
-            return true;
+
+        String[] lines = text.split("\n");
+        for (String line : lines) {
+            String l = line == null ? "" : line.trim();
+            if (l.startsWith("@matrix") ||
+                l.startsWith("@equations") ||
+                l.startsWith("@parameters") ||
+                l.startsWith("@init") || l.startsWith("@action") || l.startsWith("@hints") ||
+                l.startsWith("@scope") || l.startsWith("@circuit") ||
+                l.startsWith("@info") || l.startsWith("@sankey") ||
+                l.startsWith("@lookup")) {
+                return true;
+            }
         }
-        
-        // Check for sfcr-style definitions at start
-        String[] lines = trimmed.split("\n");
+
+        // Check for R-style sfcr definitions near the top (ignoring comments).
         for (String line : lines) {
             String l = line.trim();
             // Skip comments and empty lines
@@ -448,12 +442,15 @@ public class SFCRParser {
         rawCircuitLines.clear();
         globalLookupTables.clear();
         scopedLookupTables.clear();
+        LookupTableRegistry.clear();
+        lookupClampDefault = (sim == null) ? true : sim.sfcrLookupClampDefault;
         actionElementFromActionBlock = false;
         if (sim != null) sim.getSFCRDocumentState().clearBlockComments();
         currentY = 24;
         
         try {
             String[] lines = text.split("\n");
+            preScanInitLookupSettings(lines);
             preScanLookupTables(lines);
             int i = 0;
             Vector<String> pendingBlockComments = new Vector<String>();
@@ -592,39 +589,11 @@ public class SFCRParser {
                 continue;
             }
 
-            String header = headerLine.substring("@lookup".length()).trim();
-            if (header.isEmpty()) {
+            LookupDefinition table = parseLookupHeader(headerLine);
+            if (table == null) {
                 i++;
                 continue;
             }
-
-            String lookupName = null;
-            String scopeName = null;
-            String[] tokens = header.split("\\s+");
-            for (int t = 0; t < tokens.length; t++) {
-                String token = tokens[t].trim();
-                if (token.isEmpty()) {
-                    continue;
-                }
-                int eq = token.indexOf('=');
-                if (eq > 0) {
-                    String key = token.substring(0, eq).trim().toLowerCase();
-                    String val = token.substring(eq + 1).trim();
-                    if ("scope".equals(key) || "local".equals(key) || "equations".equals(key) || "table".equals(key)) {
-                        scopeName = SFCRUtil.normalizeVariableName(val);
-                    }
-                } else if (lookupName == null) {
-                    lookupName = SFCRUtil.normalizeVariableName(token);
-                }
-            }
-
-            if (lookupName == null || lookupName.isEmpty()) {
-                i++;
-                continue;
-            }
-
-            LookupTableSpec table = new LookupTableSpec();
-            table.name = lookupName;
 
             int j = i + 1;
             while (j < lines.length) {
@@ -632,7 +601,9 @@ public class SFCRParser {
                 if (row.startsWith("@end")) {
                     break;
                 }
-                if (!row.isEmpty() && !row.startsWith("#") && !row.startsWith("%")) {
+                if (row.startsWith("#")) {
+                    table.comments.add(row);
+                } else if (!row.isEmpty() && !row.startsWith("%")) {
                     LookupPoint point = parseLookupPoint(row);
                     if (point != null) {
                         table.xs.add(Double.valueOf(point.x));
@@ -643,16 +614,18 @@ public class SFCRParser {
             }
 
             if (table.xs.size() >= 2 && isStrictlyIncreasing(table.xs)) {
+                String scopeName = table.scope;
                 if (scopeName == null || scopeName.isEmpty()) {
                     globalLookupTables.put(table.name, table);
                 } else {
-                    HashMap<String, LookupTableSpec> byScope = scopedLookupTables.get(scopeName);
+                    HashMap<String, LookupDefinition> byScope = scopedLookupTables.get(scopeName);
                     if (byScope == null) {
-                        byScope = new HashMap<String, LookupTableSpec>();
+                        byScope = new HashMap<String, LookupDefinition>();
                         scopedLookupTables.put(scopeName, byScope);
                     }
                     byScope.put(table.name, table);
                 }
+                LookupTableRegistry.register(table);
             }
 
             i = (j < lines.length) ? (j + 1) : j;
@@ -716,7 +689,7 @@ public class SFCRParser {
                 if (commentIdx >= 0) {
                     value = value.substring(0, commentIdx).trim();
                 }
-                initSettings.put(key, value);
+                registerInitSetting(key, value);
             }
             
             i++;
@@ -740,9 +713,112 @@ public class SFCRParser {
             if (idx > 0) {
                 String key = part.substring(0, idx).trim();
                 String value = part.substring(idx + 1).trim();
-                initSettings.put(key, value);
+                registerInitSetting(key, value);
             }
         }
+    }
+
+    private void registerInitSetting(String key, String value) {
+        if (key == null || key.isEmpty()) {
+            return;
+        }
+        initSettings.put(key, value);
+        applyLookupInitAlias(key, value, true);
+    }
+
+    private void preScanInitLookupSettings(String[] lines) {
+        if (lines == null || lines.length == 0) {
+            return;
+        }
+
+        int i = 0;
+        while (i < lines.length) {
+            String line = (lines[i] == null) ? "" : lines[i].trim();
+            if (!line.startsWith("@init")) {
+                i++;
+                continue;
+            }
+
+            String inlineParams = line.substring(5).trim();
+            if (!inlineParams.isEmpty()) {
+                String[] parts = inlineParams.split("\\s+");
+                for (String part : parts) {
+                    int idx = part.indexOf('=');
+                    if (idx < 0) idx = part.indexOf(':');
+                    if (idx > 0) {
+                        String key = part.substring(0, idx).trim();
+                        String value = part.substring(idx + 1).trim();
+                        applyLookupInitAlias(key, value, false);
+                    }
+                }
+                i++;
+                continue;
+            }
+
+            i++;
+            while (i < lines.length) {
+                String initLine = (lines[i] == null) ? "" : lines[i].trim();
+                if (initLine.startsWith("@end") || (initLine.startsWith("@") && !initLine.startsWith("@end"))) {
+                    break;
+                }
+                if (initLine.isEmpty() || initLine.startsWith("#")) {
+                    i++;
+                    continue;
+                }
+
+                int colonIdx = initLine.indexOf(':');
+                int eqIdx = initLine.indexOf('=');
+                int sepIdx = colonIdx >= 0 ? colonIdx : eqIdx;
+                if (sepIdx > 0) {
+                    String key = initLine.substring(0, sepIdx).trim();
+                    String value = initLine.substring(sepIdx + 1).trim();
+                    int commentIdx = value.indexOf('#');
+                    if (commentIdx >= 0) {
+                        value = value.substring(0, commentIdx).trim();
+                    }
+                    applyLookupInitAlias(key, value, false);
+                }
+                i++;
+            }
+
+            if (i < lines.length && lines[i].trim().startsWith("@end")) {
+                i++;
+            }
+        }
+    }
+
+    private void applyLookupInitAlias(String key, String value, boolean storeCanonicalMode) {
+        if (key == null || value == null) {
+            return;
+        }
+
+        if (key.equals("lookupClamp")) {
+            boolean clamp = parseBoolean(value, lookupClampDefault);
+            lookupClampDefault = clamp;
+            if (storeCanonicalMode) {
+                initSettings.put("lookupMode", clamp ? "pwl" : "pwlx");
+            }
+            return;
+        }
+
+        if (key.equals("lookupMode")) {
+            String mode = normalizeLookupMode(value);
+            lookupClampDefault = mode.equals("pwl");
+            if (storeCanonicalMode) {
+                initSettings.put("lookupMode", mode);
+            }
+        }
+    }
+
+    private String normalizeLookupMode(String rawMode) {
+        String mode = (rawMode == null) ? "" : rawMode.trim().toLowerCase();
+        if (mode.equals("pwl") || mode.equals("clamp") || mode.equals("clamped") || mode.equals("bounded")) {
+            return "pwl";
+        }
+        if (mode.equals("pwlx") || mode.equals("extrapolate") || mode.equals("extrapolating") || mode.equals("linear")) {
+            return "pwlx";
+        }
+        return lookupClampDefault ? "pwl" : "pwlx";
     }
     
     /** Apply parsed init settings to the simulator. */
@@ -801,6 +877,15 @@ public class SFCRParser {
                     case "autoAdjustTimestep":
                     case "adjustTimeStep":
                         sim.adjustTimeStep = parseBoolean(value, sim.adjustTimeStep);
+                        break;
+                    case "lookupClamp":
+                        // Alias accepted for SFCR import; canonical value is stored in lookupMode.
+                        break;
+                    case "lookupMode":
+                        {
+                            String mode = normalizeLookupMode(value);
+                            sim.sfcrLookupClampDefault = mode.equals("pwl");
+                        }
                         break;
                     case "equationTableMnaMode":
                     case "eqnTableMnaMode":
@@ -1343,14 +1428,16 @@ public class SFCRParser {
         return parseEquationsBlock(lines, startIndex);
     }
 
-    /** Parse @lookup block and register global/scoped lookup table points. */
-    private int parseLookupBlock(String[] lines, int startIndex) {
-        String headerLine = lines[startIndex].trim();
-        String header = headerLine.substring("@lookup".length()).trim();
+    /**
+     * Parse the {@code @lookup} header line and return a {@link LookupDefinition} with
+     * {@code name} and {@code scope} populated, or {@code null} if the header carries no name.
+     */
+    private LookupDefinition parseLookupHeader(String headerLine) {
+        String header = (headerLine == null ? "" : headerLine.trim())
+            .substring("@lookup".length()).trim();
         if (header.isEmpty()) {
-            return startIndex + 1;
+            return null;
         }
-
         String lookupName = null;
         String scopeName = null;
         String[] tokens = header.split("\\s+");
@@ -1370,13 +1457,21 @@ public class SFCRParser {
                 lookupName = SFCRUtil.normalizeVariableName(token);
             }
         }
-
         if (lookupName == null || lookupName.isEmpty()) {
+            return null;
+        }
+        LookupDefinition def = new LookupDefinition();
+        def.name = lookupName;
+        def.scope = (scopeName == null || scopeName.isEmpty()) ? null : scopeName;
+        return def;
+    }
+
+    /** Parse @lookup block and register global/scoped lookup table points. */
+    private int parseLookupBlock(String[] lines, int startIndex) {
+        LookupDefinition table = parseLookupHeader(lines[startIndex].trim());
+        if (table == null) {
             return startIndex + 1;
         }
-
-        LookupTableSpec table = new LookupTableSpec();
-        table.name = lookupName;
 
         int i = startIndex + 1;
         while (i < lines.length) {
@@ -1385,15 +1480,14 @@ public class SFCRParser {
                 i++;
                 break;
             }
-            if (line.isEmpty() || line.startsWith("#") || line.startsWith("%")) {
-                i++;
-                continue;
-            }
-
-            LookupPoint point = parseLookupPoint(line);
-            if (point != null) {
-                table.xs.add(Double.valueOf(point.x));
-                table.ys.add(Double.valueOf(point.y));
+            if (line.startsWith("#")) {
+                table.comments.add(line);
+            } else if (!line.isEmpty() && !line.startsWith("%")) {
+                LookupPoint point = parseLookupPoint(line);
+                if (point != null) {
+                    table.xs.add(Double.valueOf(point.x));
+                    table.ys.add(Double.valueOf(point.y));
+                }
             }
             i++;
         }
@@ -1405,16 +1499,18 @@ public class SFCRParser {
             return i;
         }
 
+        String scopeName = table.scope;
         if (scopeName == null || scopeName.isEmpty()) {
             globalLookupTables.put(table.name, table);
         } else {
-            HashMap<String, LookupTableSpec> byScope = scopedLookupTables.get(scopeName);
+            HashMap<String, LookupDefinition> byScope = scopedLookupTables.get(scopeName);
             if (byScope == null) {
-                byScope = new HashMap<String, LookupTableSpec>();
+                byScope = new HashMap<String, LookupDefinition>();
                 scopedLookupTables.put(scopeName, byScope);
             }
             byScope.put(table.name, table);
         }
+        LookupTableRegistry.register(table);
 
         if (pendingResult != null) {
             String blockName = (scopeName == null || scopeName.isEmpty()) ? table.name : (scopeName + ":" + table.name);
@@ -1497,15 +1593,15 @@ public class SFCRParser {
         return true;
     }
 
-    private LookupTableSpec findLookupTable(String equationScope, String lookupName) {
+    private LookupDefinition findLookupTable(String equationScope, String lookupName) {
         if (lookupName == null || lookupName.isEmpty()) {
             return null;
         }
         String normalizedName = SFCRUtil.normalizeVariableName(lookupName);
         if (equationScope != null && !equationScope.isEmpty()) {
-            HashMap<String, LookupTableSpec> local = scopedLookupTables.get(equationScope);
+            HashMap<String, LookupDefinition> local = scopedLookupTables.get(equationScope);
             if (local != null) {
-                LookupTableSpec t = local.get(normalizedName);
+                LookupDefinition t = local.get(normalizedName);
                 if (t != null) {
                     return t;
                 }
@@ -1524,39 +1620,7 @@ public class SFCRParser {
     }
 
     private String rewriteLookupFunctionCalls(String expr, String equationScope) {
-        String out = expr;
-        int search = 0;
-        while (true) {
-            int fn = findFunctionCall(out, "lookup", search);
-            if (fn < 0) {
-                break;
-            }
-            int open = out.indexOf('(', fn);
-            if (open < 0) {
-                break;
-            }
-            int close = findMatchingParenForLookup(out, open);
-            if (close < 0) {
-                break;
-            }
-            String inside = out.substring(open + 1, close);
-            int comma = findTopLevelComma(inside);
-            if (comma < 0) {
-                search = close + 1;
-                continue;
-            }
-            String lookupName = inside.substring(0, comma).trim();
-            String argExpr = inside.substring(comma + 1).trim();
-            LookupTableSpec table = findLookupTable(equationScope, lookupName);
-            if (table == null) {
-                search = close + 1;
-                continue;
-            }
-            String replacement = buildPwlxExpression(argExpr, table);
-            out = out.substring(0, fn) + replacement + out.substring(close + 1);
-            search = fn + replacement.length();
-        }
-        return out;
+        return expr;
     }
 
     private String rewriteNamedLookupCalls(String expr, String equationScope) {
@@ -1575,7 +1639,7 @@ public class SFCRParser {
                 i++;
             }
             String identifier = out.substring(start, i);
-            LookupTableSpec table = findLookupTable(equationScope, identifier);
+            LookupDefinition table = findLookupTable(equationScope, identifier);
             if (table == null || "lookup".equalsIgnoreCase(identifier)) {
                 continue;
             }
@@ -1593,22 +1657,11 @@ public class SFCRParser {
                 break;
             }
             String argExpr = out.substring(j + 1, close).trim();
-            String replacement = buildPwlxExpression(argExpr, table);
+            String replacement = "lookup(" + identifier + ", " + argExpr + ")";
             out = out.substring(0, start) + replacement + out.substring(close + 1);
             i = start + replacement.length();
         }
         return out;
-    }
-
-    private String buildPwlxExpression(String argExpr, LookupTableSpec table) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("pwlx(").append(argExpr);
-        for (int i = 0; i < table.xs.size(); i++) {
-            sb.append(",").append(table.xs.get(i).doubleValue());
-            sb.append(",").append(table.ys.get(i).doubleValue());
-        }
-        sb.append(")");
-        return sb.toString();
     }
 
     private int findFunctionCall(String expr, String name, int fromIndex) {
@@ -2035,7 +2088,7 @@ public class SFCRParser {
         }
 
         String scopeName = null;
-        LookupTableSpec table = new LookupTableSpec();
+        LookupDefinition table = new LookupDefinition();
         table.name = lookupName;
 
         for (int j = 2; j < tokens.length; j++) {
@@ -2073,15 +2126,18 @@ public class SFCRParser {
 
         if (scopeName == null || scopeName.isEmpty()) {
             globalLookupTables.put(table.name, table);
+            LookupTableRegistry.register(table);
             return table.name;
         }
 
-        HashMap<String, LookupTableSpec> byScope = scopedLookupTables.get(scopeName);
+        table.scope = scopeName;
+        HashMap<String, LookupDefinition> byScope = scopedLookupTables.get(scopeName);
         if (byScope == null) {
-            byScope = new HashMap<String, LookupTableSpec>();
+            byScope = new HashMap<String, LookupDefinition>();
             scopedLookupTables.put(scopeName, byScope);
         }
         byScope.put(table.name, table);
+        LookupTableRegistry.register(table);
         return scopeName + ":" + table.name;
     }
 
