@@ -97,7 +97,7 @@ fi
 # Test GWT setup and compilation
 echo ""
 echo "Checking GWT setup..."
-if [ -d "../gwt-2.8.2" ]; then
+if [ -d "../gwt-2.13.0" ]; then
     echo "✅ GWT found in expected location"
 elif [ -d "../gwt-"* ]; then
     echo "✅ GWT found: $(ls -d ../gwt-* | head -1)"

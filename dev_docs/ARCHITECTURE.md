@@ -592,8 +592,8 @@ build.gradle                     # Gradle build config
 
 ## Technology Stack
 
-- **Language**: Java 8 (client-side only)
-- **Framework**: Google Web Toolkit (GWT) 2.9.0
+- **Language**: Java 11 (client-side only)
+- **Framework**: Google Web Toolkit (GWT) 2.13.0
 - **Build**: Gradle + Ant (legacy)
 - **Graphics**: HTML5 Canvas API
 - **Storage**: Browser LocalStorage

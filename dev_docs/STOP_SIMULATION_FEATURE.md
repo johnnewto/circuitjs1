@@ -184,7 +184,7 @@ Example:
 ### GWT Compatibility
 - Uses standard GWT widgets (CheckBox)
 - CSS styling via Element.getStyle().setProperty()
-- No Java 8+ features that GWT doesn't support
+- Avoid Java APIs/features that are not supported by GWT transpilation
 
 ### Design Decisions
 1. **Mutually Exclusive Behavior**: An action either stops simulation OR modifies a slider (not both)

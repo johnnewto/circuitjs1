@@ -4,7 +4,7 @@
 GitHub Actions was failing with:
 ```
 BUILD FAILED
-Could not find file /home/john/repos/gwt-2.8.2/gwt-servlet.jar to copy.
+Could not find file /home/john/repos/gwt-2.13.0/gwt-servlet.jar to copy.
 ```
 
 ## Root Cause
@@ -26,11 +26,11 @@ The `build.xml` file contained hardcoded paths to GWT (Google Web Toolkit) that 
 
 ### 2. How dev.sh setup Works
 The `./dev.sh setup` command:
-- Downloads GWT 2.8.2 automatically
-- Installs it in `../gwt-2.8.2` (relative to repo)
+- Downloads GWT 2.13.0 automatically
+- Installs it in `../gwt-2.13.0` (relative to repo)
 - **Generates a new build.xml** with correct GWT paths
 - Backs up the original build.xml
-- Configures Java 1.8 compatibility
+- Configures Java 11 compatibility
 
 ### 3. Updated Both Workflows
 - **build-and-deploy**: Runs setup then compile for deployment

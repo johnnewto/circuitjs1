@@ -110,15 +110,20 @@ class EditOptions implements Editable {
 		    ei.checkbox = new Checkbox("Enable Table Render Cache", sim.tableRenderCacheEnabled);
 		    return ei;
 		}
+		if (n == 21) {
+		    EditInfo ei = new EditInfo("", 0, -1, -1);
+		    ei.checkbox = new Checkbox("Auto-Open Model Info on Load", sim.autoOpenModelInfoOnLoad);
+		    return ei;
+		}
 		// Conditional items must be last. When the condition is false,
 		// getEditInfo() returns null which terminates the dialog loop,
 		// hiding any items that would follow.
-		if (n == 21) {
+		if (n == 22) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
 		    ei.checkbox = new Checkbox("Auto-Adjust Timestep", sim.adjustTimeStep);
 		    return ei;
 		}
-		if (n == 22 && sim.adjustTimeStep)
+		if (n == 23 && sim.adjustTimeStep)
 		    return new EditInfo("Minimum time step size (s)", sim.minTimeStep, 0, 0);
 
 		return null;
@@ -238,10 +243,14 @@ class EditOptions implements Editable {
 		    sim.setOptionInStorage("tableRenderCacheEnabled", sim.tableRenderCacheEnabled);
 		}
 		if (n == 21) {
+		    sim.autoOpenModelInfoOnLoad = ei.checkbox.getState();
+		    sim.setOptionInStorage("autoOpenModelInfoOnLoad", sim.autoOpenModelInfoOnLoad);
+		}
+		if (n == 22) {
 		    sim.adjustTimeStep = ei.checkbox.getState();
 		    ei.newDialog = true;
 		}
-		if (n == 22 && ei.value > 0)
+		if (n == 23 && ei.value > 0)
 		    sim.minTimeStep = ei.value;
 	}
 
@@ -256,7 +265,7 @@ class EditOptions implements Editable {
 	    String keys[] = {
 		"crossHair", "euroResistors", "euroGates", "whiteBackground", "conventionalCurrent",
 		"mouseWheelEdit", "weightedPriority", "showElectronicsCircuits", "alternativeColor",
-		"enableCacheBustedUrls", "tableRenderCacheEnabled", "equationTableConvergenceTolerance", "equationTableNewtonJacobianEnabled",
+		"enableCacheBustedUrls", "tableRenderCacheEnabled", "autoOpenModelInfoOnLoad", "equationTableConvergenceTolerance", "equationTableNewtonJacobianEnabled",
 		"positiveColor", "negativeColor", "neutralColor", "selectColor", "currentColor",
 		"language", "wheelSensitivity", "graphicsUpdateInterval", "voltageUnitSymbol",
 		"scopeDefaults", "shortcuts"

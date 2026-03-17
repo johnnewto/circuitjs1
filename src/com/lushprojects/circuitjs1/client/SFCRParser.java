@@ -674,7 +674,8 @@ public class SFCRParser {
     * showDots, showVolts, showValues, showPower, autoAdjustTimestep,
     * equationTableMnaMode, equationTableNewtonJacobianEnabled,
     * equationTableTolerance/equationTableConvergenceTolerance,
-    * convergenceCheckThreshold, infoViewerUpdateIntervalMs.
+    * convergenceCheckThreshold, infoViewerUpdateIntervalMs,
+    * autoOpenModelInfoOnLoad.
      */
     private int parseInitBlock(String[] lines, int startIndex) {
         String headerLine = lines[startIndex].trim();
@@ -835,6 +836,11 @@ public class SFCRParser {
                                 sim.infoViewerUpdateIntervalMs = interval;
                             }
                         }
+                        break;
+                    case "autoOpenModelInfoOnLoad":
+                    case "autoOpenModelInfo":
+                    case "openModelInfoOnLoad":
+                        sim.autoOpenModelInfoOnLoad = parseBoolean(value, sim.autoOpenModelInfoOnLoad);
                         break;
                     default:
                         CirSim.console("SFCRParser: Unknown init setting: " + key);

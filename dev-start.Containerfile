@@ -2,7 +2,7 @@ FROM docker.io/library/ubuntu:24.04
 
 
 RUN apt update && apt upgrade -y &&\
-    apt install -y openjdk-8-jdk-headless ant wget unzip python3 python-is-python3 &&\
+    apt install -y openjdk-11-jdk-headless ant wget unzip python3 python-is-python3 &&\
     apt clean
 
 COPY . /src

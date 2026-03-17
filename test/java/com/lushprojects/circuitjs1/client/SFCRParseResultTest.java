@@ -90,6 +90,15 @@ class SFCRParseResultTest {
             "@init showDots must be 'true'");
     }
 
+    @Test
+    @DisplayName("@init autoOpenModelInfoOnLoad is parsed")
+    void testAutoOpenModelInfoOnLoadParsed() {
+        SFCRParseResult parsed = SFCRParser.parseToResult("@init autoOpenModelInfoOnLoad=false");
+        assertNotNull(parsed, "parseToResult() should return a result for inline @init input");
+        assertEquals("false", parsed.initSettings.get("autoOpenModelInfoOnLoad"),
+            "@init autoOpenModelInfoOnLoad must be 'false'");
+    }
+
     // -------------------------------------------------------------------------
     // Equation blocks
     // -------------------------------------------------------------------------

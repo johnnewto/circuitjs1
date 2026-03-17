@@ -571,6 +571,9 @@ MouseOutHandler, MouseWheelHandler {
 
 	// Global toggle for offscreen table blit caching
 	boolean tableRenderCacheEnabled = true;
+
+	// When true, auto-open model info viewer after loading SFCR with info content
+	boolean autoOpenModelInfoOnLoad = true;
 	
 	// Circuit hint types - show helpful formulas when related elements are present
 	static final int HINT_LC = 1;      // LC resonant frequency hint
@@ -1185,6 +1188,7 @@ public CirSim() {
 	    showElectronicsCircuits = getOptionFromStorage("showElectronicsCircuits", false);
 	    enableCacheBustedUrls = getOptionFromStorage("enableCacheBustedUrls", true);
 	    tableRenderCacheEnabled = getOptionFromStorage("tableRenderCacheEnabled", true);
+	    autoOpenModelInfoOnLoad = getOptionFromStorage("autoOpenModelInfoOnLoad", true);
 	    equationTableNewtonJacobianEnabled = getOptionFromStorage("equationTableNewtonJacobianEnabled", false);
 	    positiveColor = qp.getValue("positiveColor");
 	    negativeColor = qp.getValue("negativeColor");
@@ -6244,10 +6248,9 @@ public CirSim() {
 		if (RuntimeMode.isGwt() && helpViewModelInfoItem != null) {
 		    helpViewModelInfoItem.setEnabled(editorContent != null && !editorContent.isEmpty());
 		}
-		
-		// Keep model info available via the menu item, but do not auto-open a viewer
-		// during load. Auto-open currently triggers fragile runtime callbacks in some
-		// GWT permutations and can surface non-fatal ReferenceErrors.
+
+		if (RuntimeMode.isGwt() && autoOpenModelInfoOnLoad && editorContent != null && !editorContent.isEmpty())
+		    doViewModelInfo();
 		
 		// Process any raw circuit lines from @circuit blocks
 		java.util.ArrayList<String> rawLines = parser.getRawCircuitLines();

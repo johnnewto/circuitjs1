@@ -9,7 +9,7 @@ toc: true
 
 CircuitJS1 is a Java application compiled to JavaScript using Google Web Toolkit (GWT). You'll need:
 
-- **Java 8 JDK** or later
+- **Java 11 JDK**
 - **Apache Ant** for building
 - **GWT SDK** (automatically downloaded by dev scripts)
 
@@ -48,12 +48,12 @@ This will start:
 On Ubuntu/Debian:
 ```bash
 sudo apt-get update
-sudo apt-get install openjdk-8-jdk-headless ant
+sudo apt-get install openjdk-11-jdk-headless ant
 ```
 
 On macOS:
 ```bash
-brew install openjdk@8 ant
+brew install openjdk@11 ant
 ```
 
 ### Build with Gradle

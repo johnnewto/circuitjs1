@@ -22,10 +22,10 @@ Install the required development tools:
 
 ```bash
 sudo apt-get update
-sudo apt-get install openjdk-8-jdk-headless
+sudo apt-get install openjdk-11-jdk-headless
 ```
 
-- **Java 8 JDK** - Required for GWT compilation
+- **Java 11 JDK** - Required for GWT compilation
 
 Optional dependencies:
 ```bash
@@ -47,7 +47,7 @@ sudo apt-get install ant php-cli php-curl
    ```bash
    ./dev.sh setup
    ```
-   This downloads GWT 2.10.0 and creates the necessary build configuration.
+   This downloads GWT 2.13.0 and creates the necessary build configuration.
 
 ### Development Workflow
 
