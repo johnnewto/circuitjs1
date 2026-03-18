@@ -264,7 +264,24 @@ input.locked-column[readonly] {
     <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-	navigator.serviceWorker.register('service-worker.js').then(registration => {
+	const qp = new URLSearchParams(window.location.search);
+	const isHeadlessRequest =
+	  window.location.pathname.endsWith('/headless.html') ||
+	  qp.has('headless') ||
+	  qp.has('world2Scenario') ||
+	  qp.has('world2Csv') ||
+	  qp.has('world2Api');
+
+	if (isHeadlessRequest) {
+	  navigator.serviceWorker.getRegistrations().then(registrations => {
+	    registrations.forEach(registration => registration.unregister());
+	  }).catch(error => {
+	    console.warn('Service Worker cleanup failed:', error);
+	  });
+	  return;
+	}
+
+	navigator.serviceWorker.register('service-worker.js?v=2').then(registration => {
 	  console.log('Service Worker registered with scope:', registration.scope);
 	}).catch(error => {
 	  console.error('Service Worker registration failed:', error);

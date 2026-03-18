@@ -1,7 +1,7 @@
 # CircuitJS1 TODOs
 
 - investigate last()  when timestep is less that one
-- increase equation table size
+- [x] increase equation table size
 
 
 ## add equation table prefix or suffix system

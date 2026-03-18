@@ -3523,7 +3523,7 @@ public class SFCRParser {
                                      ArrayList<String> initialEquations) {
         int rows = outputNames.size();
         if (rows == 0) return;
-        if (rows > 64) rows = 64;  // EquationTableElm.MAX_ROWS
+        if (rows > EquationTableElm.MAX_ROWS) rows = EquationTableElm.MAX_ROWS;
         
         StringBuilder dump = new StringBuilder();
         

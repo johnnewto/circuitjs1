@@ -1,0 +1,28 @@
+plugins {
+    id 'application'
+}
+
+group = 'johnnewto.world2'
+version = '0.1.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':world2-core')
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+}
+
+application {
+    mainClass = 'johnnewto.world2.server.World2Server'
+}
+
+tasks.withType(Test) {
+    useJUnitPlatform()
+}

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'circuitjs1-app-cache-v1';
+const CACHE_NAME = 'circuitjs1-app-cache-v2';
 const urlsToCache = [
     'about.html',
     'canvas2svg.js',
@@ -30,7 +30,26 @@ self.addEventListener('install', event => {
   );
 });
 
+function shouldBypassCache(request) {
+    if (request.method !== 'GET')
+        return true;
+    const url = new URL(request.url);
+    const p = url.searchParams;
+    if (p.has('headless') || p.has('world2Scenario') || p.has('world2Csv') || p.has('world2Api'))
+        return true;
+    if (url.pathname.endsWith('/headless.html'))
+        return true;
+    if (url.pathname.endsWith('/run') || url.pathname.endsWith('/run.csv') || url.pathname.endsWith('/scenarios'))
+        return true;
+    return false;
+}
+
 self.addEventListener('fetch', (event) => {
+    if (shouldBypassCache(event.request)) {
+        event.respondWith(fetch(event.request, { cache: 'no-store' }));
+        return;
+    }
+
     event.respondWith(
         caches.match(event.request).then((cachedResponse) => {
             if (cachedResponse) {

@@ -1,0 +1,4 @@
+rootProject.name = 'circuitjs1'
+
+include 'world2-core'
+include 'world2-server'

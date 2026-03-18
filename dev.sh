@@ -145,6 +145,73 @@ test() {
     "$SCRIPT_DIR/tools/run-tests-and-open-report.sh"
 }
 
+world2() {
+    local scenario="${1:-1}"
+    local steps="${2:-1000}"
+    local dt="${3:-0.2}"
+    local world2_port="${WORLD2_PORT:-18082}"
+
+    if ! curl -fsS --max-time 2 "http://${WEB_BINDADDRESS}:${WEB_PORT}/headless.html" >/dev/null 2>&1; then
+        echo "Starting web server http://${WEB_BINDADDRESS}:${WEB_PORT}"
+        webserver >"webserver.log" 2>&1 &
+        sleep 0.5
+    fi
+
+    echo "Starting World2 headless flow (scenario=${scenario}, steps=${steps}, dt=${dt}, port=${world2_port})"
+    "$SCRIPT_DIR/tools/run-world2-headless.sh" \
+        --scenario "${scenario}" \
+        --steps "${steps}" \
+        --dt "${dt}" \
+        --port "${world2_port}" \
+        --open
+}
+
+stopworld2() {
+    local world2_port="${1:-${WORLD2_PORT:-18082}}"
+    local pid_file="$SCRIPT_DIR/build/world2-server-${world2_port}.pid"
+    local stopped="0"
+    local was_running="0"
+
+    if curl -fsS --max-time 2 "http://127.0.0.1:${world2_port}/health" >/dev/null 2>&1; then
+        was_running="1"
+    fi
+
+    if [[ -f "$pid_file" ]]; then
+        local pid
+        pid="$(cat "$pid_file" 2>/dev/null || true)"
+        if [[ -n "$pid" ]] && kill -0 "$pid" >/dev/null 2>&1; then
+            echo "Stopping World2 server PID ${pid} (port ${world2_port})"
+            kill "$pid" >/dev/null 2>&1 || true
+            sleep 0.5
+            stopped="1"
+        fi
+        rm -f "$pid_file"
+    fi
+
+    pkill -f ":world2-server:run --args=${world2_port}" 2>/dev/null || true
+    pkill -f "johnnewto.world2.server.World2Server ${world2_port}" 2>/dev/null || true
+
+    if curl -fsS --max-time 2 "http://127.0.0.1:${world2_port}/health" >/dev/null 2>&1; then
+        echo "World2 server still appears to be running on port ${world2_port}."
+        return 1
+    fi
+
+    if [[ "$stopped" == "1" || "$was_running" == "1" ]]; then
+        echo "World2 server stopped."
+    else
+        echo "No running World2 server found on port ${world2_port}."
+    fi
+}
+
+restartworld2() {
+    local scenario="${1:-1}"
+    local steps="${2:-1000}"
+    local dt="${3:-0.2}"
+
+    stopworld2 >/dev/null 2>&1 || true
+    world2 "$scenario" "$steps" "$dt"
+}
+
 
 for func in $(compgen -A function); do
     if [[ $func == "$1" ]]; then

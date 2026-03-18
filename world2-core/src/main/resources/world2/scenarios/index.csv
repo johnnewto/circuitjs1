@@ -1,0 +1,16 @@
+# id,name,yearMin,yearMax,policyYear,resourceUsageMultiplier,pollutionMultiplier,capitalMultiplier,foodMultiplier,birthControlStrength
+1,Standard run,1900,2100,2100,1.00,1.00,1.00,1.00,0.00
+2,Pollution crisis,1900,2100,1970,1.00,1.15,1.00,1.00,0.00
+3,Crowding,1900,2300,1970,1.10,1.05,1.10,0.95,0.00
+4,Food shortage,1900,2300,1970,1.05,1.05,1.00,0.80,0.00
+5,Boost capital investment,1900,2100,1970,1.05,1.10,1.25,1.00,0.00
+6.1,Birth control,1900,2100,1970,1.00,1.00,1.00,1.00,0.35
+6.2,Birth control + lower resources,1900,2100,1970,0.75,1.00,1.00,1.00,0.35
+6.3,Birth control + lower resources + lower pollution,1900,2100,1970,0.75,0.70,1.00,1.00,0.35
+6.4,Strong birth control + lower resources + lower pollution,1900,2100,1970,0.70,0.65,1.00,1.00,0.50
+7,Less pollution,1900,2100,1970,1.00,0.70,1.00,1.00,0.00
+8.1,More food,1900,2100,1970,1.00,1.00,1.00,1.20,0.00
+8.2,More food + less resources + less pollution,1900,2100,1970,0.80,0.75,1.00,1.20,0.00
+8.3,More food + less resources + less pollution + more capital,1900,2100,1970,0.80,0.75,1.15,1.20,0.00
+9,Towards stability by reduced resources and pollution,1900,2100,1970,0.70,0.65,1.00,1.00,0.20
+10,Towards stability mixed controls,1900,2100,1970,0.70,0.65,1.05,1.10,0.30
