@@ -266,11 +266,11 @@ input.locked-column[readonly] {
       window.addEventListener('load', () => {
 	const qp = new URLSearchParams(window.location.search);
 	const isHeadlessRequest =
+	  window.location.pathname.endsWith('/world2.html') ||
 	  window.location.pathname.endsWith('/headless.html') ||
 	  qp.has('headless') ||
 	  qp.has('world2Scenario') ||
-	  qp.has('world2Csv') ||
-	  qp.has('world2Api');
+	  qp.has('world2Csv');
 
 	if (isHeadlessRequest) {
 	  navigator.serviceWorker.getRegistrations().then(registrations => {

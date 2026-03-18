@@ -5,7 +5,7 @@ SCENARIO="1"
 STEPS="1000"
 DT="0.2"
 SERVER_PORT="18082"
-UI_BASE="http://127.0.0.1:8000/headless.html"
+UI_BASE="http://127.0.0.1:8000/world2.html"
 OPEN_BROWSER="0"
 START_SERVER="1"
 
@@ -13,14 +13,14 @@ usage() {
   cat <<EOF
 Usage: $(basename "$0") [options]
 
-Starts the World2 JVM server (optional) and prints/opens a headless UI URL.
+Starts the World2 JVM server (optional) and prints/opens a World2 UI URL.
 
 Options:
   -s, --scenario ID       Scenario id (default: 1)
   -n, --steps N           Number of steps (default: 1000)
   -d, --dt VALUE          Timestep dt (default: 0.2)
   -p, --port PORT         World2 server port (default: 18082)
-  -u, --ui-base URL       Base UI URL (default: http://127.0.0.1:8000/headless.html)
+  -u, --ui-base URL       Base UI URL (default: http://127.0.0.1:8000/world2.html)
       --open              Open URL in browser (uses xdg-open)
       --no-start-server   Do not start server; assume it is already running
   -h, --help              Show this help
@@ -30,7 +30,6 @@ Examples:
   $(basename "$0") -s 10 -n 1500 -d 0.1 --no-start-server
 EOF
 }
-
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -s|--scenario)
@@ -119,10 +118,12 @@ if [[ "$START_SERVER" == "1" ]]; then
   fi
 fi
 
-HEADLESS_URL="${UI_BASE}?world2Scenario=${SCENARIO}&steps=${STEPS}&dt=${DT}&world2Api=${SERVER_URL}&v=$(date +%s)"
+WORLD2_CSV_URL="${SERVER_URL}/run.csv?scenario=${SCENARIO}&steps=${STEPS}&dt=${DT}"
+WORLD2_CSV_ENCODED="$(python3 -c 'import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1], safe=""))' "${WORLD2_CSV_URL}")"
+WORLD2_UI_URL="${UI_BASE}?world2Csv=${WORLD2_CSV_ENCODED}&v=$(date +%s)"
 
 echo
-printf 'Headless URL:\n%s\n' "$HEADLESS_URL"
+printf 'World2 UI URL:\n%s\n' "$WORLD2_UI_URL"
 
 echo
 echo "Quick API check:"
@@ -131,7 +132,7 @@ echo
 
 if [[ "$OPEN_BROWSER" == "1" ]]; then
   if command -v xdg-open >/dev/null 2>&1; then
-    xdg-open "$HEADLESS_URL" >/dev/null 2>&1 || true
+    xdg-open "$WORLD2_UI_URL" >/dev/null 2>&1 || true
     echo "Opened in browser."
   else
     echo "xdg-open not found; copy URL manually."

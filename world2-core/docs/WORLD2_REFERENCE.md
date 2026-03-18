@@ -24,17 +24,17 @@ Located in `world2-core/src/main/resources/world2/`:
 ## Dev Script Shortcuts
 
 ```bash
-# Start/reuse World2 API + open headless page
+# Start/reuse World2 API + open World2 UI page
 ./dev.sh world2 1 1000 0.2
 
 # Stop API server (uses PID file + fallback process match)
 ./dev.sh stopworld2
 
-# Restart API server + relaunch headless page
+# Restart API server + relaunch World2 UI page
 ./dev.sh restartworld2 1 1000 0.2
 ```
 
-When `tools/run-world2-headless.sh` starts a new API process, it records the PID at:
+When `tools/run-world2-ui.sh` starts a new API process, it records the PID at:
 
 ```text
 build/world2-server-<port>.pid
@@ -47,34 +47,26 @@ build/world2-server-<port>.pid
 - `GET /run?scenario=1&steps=1000&dt=0.2`
 - `GET /run.csv?scenario=1&steps=1000&dt=0.2`
 
-## Headless UI
+## World2 UI
 
 Use:
 
 ```text
-http://127.0.0.1:8000/headless.html?world2Scenario=1&steps=1000&dt=0.2&world2Api=http://127.0.0.1:18082
-
-http://127.0.0.1:8000/headless.html?world2Api=http://127.0.0.1:18082
+http://127.0.0.1:8000/world2.html?world2Csv=http%3A%2F%2F127.0.0.1%3A18082%2Frun.csv%3Fscenario%3D1%26steps%3D1000%26dt%3D0.2
 ```
 
-### `world2Csv` vs `world2Scenario`
+### `world2Csv`
 
-The headless page needs a data source. The message:
+The World2 UI page needs a data source. The message:
 
-`Use world2Csv=... or world2Scenario=...`
+`Use world2Csv=...`
 
-means you must provide one of these query parameters:
-
-- `world2Scenario=<id>`
-	- Tells the UI to call the World2 API (`/run.csv`) and generate data for the selected scenario.
-	- Also supports `steps` and `dt`.
-	- Example:
-		- `http://127.0.0.1:8000/headless.html?world2Scenario=1&steps=1000&dt=0.2&world2Api=http://127.0.0.1:18082`
+means you must provide this query parameter:
 
 - `world2Csv=<path-or-url>`
 	- Tells the UI to load an existing CSV directly (local relative path or full `http(s)` URL).
 	- Useful when plotting pre-generated runs.
-	- Example (absolute URL):
-		- `http://127.0.0.1:8000/headless.html?world2Csv=http://127.0.0.1:18082/run.csv?scenario=1%26steps=1000%26dt=0.2`
+	- Example (absolute URL, URL-encoded):
+		- `http://127.0.0.1:8000/world2.html?world2Csv=http%3A%2F%2F127.0.0.1%3A18082%2Frun.csv%3Fscenario%3D1%26steps%3D1000%26dt%3D0.2`
 
-If both are provided, `world2Csv` takes priority.
+`./dev.sh world2 ...` now emits the `world2Csv=...` URL form by default.

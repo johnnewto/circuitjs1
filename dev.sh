@@ -151,14 +151,14 @@ world2() {
     local dt="${3:-0.2}"
     local world2_port="${WORLD2_PORT:-18082}"
 
-    if ! curl -fsS --max-time 2 "http://${WEB_BINDADDRESS}:${WEB_PORT}/headless.html" >/dev/null 2>&1; then
+    if ! curl -fsS --max-time 2 "http://${WEB_BINDADDRESS}:${WEB_PORT}/world2.html" >/dev/null 2>&1; then
         echo "Starting web server http://${WEB_BINDADDRESS}:${WEB_PORT}"
         webserver >"webserver.log" 2>&1 &
         sleep 0.5
     fi
 
-    echo "Starting World2 headless flow (scenario=${scenario}, steps=${steps}, dt=${dt}, port=${world2_port})"
-    "$SCRIPT_DIR/tools/run-world2-headless.sh" \
+    echo "Starting World2 UI flow (scenario=${scenario}, steps=${steps}, dt=${dt}, port=${world2_port})"
+    "$SCRIPT_DIR/tools/run-world2-ui.sh" \
         --scenario "${scenario}" \
         --steps "${steps}" \
         --dt "${dt}" \

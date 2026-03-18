@@ -824,47 +824,45 @@ public CirSim() {
 	String ctz = normalizeOptionalQueryValue(qp.getValue("ctz"));
 	if (ctz != null)
 	    startCircuitText = decompress(ctz);
+	String headlessDumpKey = normalizeOptionalQueryValue(qp.getValue("headlessDumpKey"));
+	if (startCircuitText == null && headlessDumpKey != null) {
+	    startCircuitText = getHeadlessDumpFromStorage(headlessDumpKey);
+	    if (startCircuitText == null)
+		console("Headless dump key not found in localStorage: " + headlessDumpKey);
+	}
 	startCircuit = normalizeOptionalQueryValue(qp.getValue("startCircuit"));
 	startLabel = normalizeOptionalQueryValue(qp.getValue("startLabel"));
-	int steps = parsePositiveInt(qp.getValue("steps"), 1000);
-	String world2Scenario = normalizeOptionalQueryValue(qp.getValue("world2Scenario"));
-	String world2Api = normalizeOptionalQueryValue(qp.getValue("world2Api"));
-	String world2Csv = normalizeOptionalQueryValue(qp.getValue("world2Csv"));
-	double world2Dt = parsePositiveDouble(qp.getValue("dt"), 0.2);
+	String stepsValue = normalizeOptionalQueryValue(qp.getValue("steps"));
+	int defaultSteps = HeadlessLaunchDecision.resolveDefaultSteps(headlessDumpKey, stepsValue);
+	int steps = parsePositiveInt(stepsValue, defaultSteps);
 	console("Headless params: startCircuit=" + startCircuit + ", steps=" + steps +
 	    ", hasCct=" + (startCircuitText != null && startCircuitText.length() > 0));
 
 	renderHeadlessStatus("Loading circuit...");
 
+	HeadlessLaunchDecision.ImmediateRoute immediateRoute =
+		HeadlessLaunchDecision.resolveImmediateRoute(startCircuitText, headlessDumpKey);
+	if (immediateRoute == HeadlessLaunchDecision.ImmediateRoute.EMBEDDED_TEXT) {
+	    runHeadlessTableFromText(startCircuitText, steps, "embedded");
+	    return;
+	}
+	if (immediateRoute == HeadlessLaunchDecision.ImmediateRoute.MISSING_DUMP_KEY) {
+	    renderHeadlessError("Headless dump not found for key '" + headlessDumpKey + "'. Re-open Headless Output from the simulator tab to generate a fresh key.");
+	    return;
+	}
+
 	// Defer async dispatches until after onModuleLoad() returns so the
 	// browser event loop is pumping and XHR callbacks can fire.
-	final String _world2Csv = world2Csv;
-	final String _world2Scenario = world2Scenario;
-	final String _world2Api = world2Api;
-	final String _startCircuitText = startCircuitText;
 	final String _startCircuit = startCircuit;
 	final String _startLabel = startLabel;
 	final int _steps = steps;
-	final double _world2Dt = world2Dt;
 	Scheduler.get().scheduleDeferred(new Scheduler.ScheduledCommand() {
 	    public void execute() {
-		if (_world2Csv != null && _world2Csv.length() > 0) {
-		    runHeadlessWorld2Csv(_world2Csv);
-		    return;
-		}
-		if (_world2Scenario != null && _world2Scenario.length() > 0) {
-		    runHeadlessWorld2Scenario(_world2Scenario, _steps, _world2Dt, _world2Api);
-		    return;
-		}
-		if (_startCircuitText != null && _startCircuitText.length() > 0) {
-		    runHeadlessTableFromText(_startCircuitText, _steps, "embedded");
-		    return;
-		}
 		if (_startCircuit != null && _startCircuit.length() > 0) {
 		    loadHeadlessSetupFile(_startCircuit, _startLabel, _steps);
 		    return;
 		}
-		renderHeadlessError("No data source specified. Use world2Csv=..., world2Scenario=..., startCircuit=..., cct=..., or ctz=...");
+		renderHeadlessError("No data source specified. Use startCircuit=..., cct=..., or ctz=...");
 	    }
 	});
     }
@@ -898,15 +896,6 @@ public CirSim() {
 	} catch (Exception e) {
 	    return defaultValue;
 	}
-    }
-
-    private String normalizeWorld2ApiBase(String world2Api) {
-	if (world2Api == null || world2Api.trim().isEmpty())
-	    return "http://127.0.0.1:18082";
-	String trimmed = world2Api.trim();
-	while (trimmed.endsWith("/"))
-	    trimmed = trimmed.substring(0, trimmed.length()-1);
-	return trimmed;
     }
 
     private void loadHeadlessSetupFile(String str, String title, final int steps) {
@@ -986,209 +975,11 @@ public CirSim() {
 	}
     }
 
-    private interface HeadlessTextSuccessCallback {
-	void onSuccess(String text);
-    }
-
-    void loadTextFromURLHeadless(String url, final HeadlessTextSuccessCallback successCallback, final Command failureCallback) {
-	final String loadUrl = getLoadUrl(url);
-	console("loadTextFromURLHeadless request: " + loadUrl);
-	final XMLHttpRequest xhr = XMLHttpRequest.create();
-	xhr.open("GET", loadUrl);
-	xhr.setOnReadyStateChange(new ReadyStateChangeHandler() {
-	    public void onReadyStateChange(XMLHttpRequest x) {
-		if (x.getReadyState() != XMLHttpRequest.DONE)
-		    return;
-		int status = x.getStatus();
-		console("loadTextFromURLHeadless done: status=" + status + " url=" + loadUrl);
-		if (status >= 200 && status < 300) {
-		    if (successCallback != null)
-			successCallback.onSuccess(x.getResponseText());
-		} else {
-		    if (failureCallback != null)
-			failureCallback.execute();
-		}
-	    }
-	});
-	xhr.send();
-    }
-
     private void runHeadlessTableFromText(String circuitText, int steps, String source) {
 	console("Headless loading embedded circuit text source=" + source + ", length=" + circuitText.length());
 	readCircuit(circuitText, 0);
 	currentCircuitFile = source;
 	runHeadlessTableSimulation(steps, source);
-    }
-
-    private void runHeadlessWorld2Scenario(String scenarioId, int steps, double dt, String world2Api) {
-	String apiBase = normalizeWorld2ApiBase(world2Api);
-	String requestUrl = apiBase + "/run.csv?scenario=" + URL.encodeQueryString(scenarioId)
-		+ "&steps=" + steps + "&dt=" + dt;
-	console("Headless World2 request: " + requestUrl);
-	updateHeadlessStatusMessage("Loading World2 scenario " + scenarioId + " ...");
-
-	final boolean[] completed = new boolean[] { false };
-	final Timer watchdog = new Timer() {
-	    @Override
-	    public void run() {
-		if (completed[0])
-		    return;
-		completed[0] = true;
-		console("Headless World2 request timeout/no callback: " + requestUrl);
-		renderHeadlessError("World2 request timed out (no callback). Check browser CORS/mixed-content policy and server URL.");
-	    }
-	};
-	watchdog.schedule(25000);
-
-	try {
-	    RequestBuilder builder = new RequestBuilder(RequestBuilder.GET, requestUrl);
-	    builder.setTimeoutMillis(20000);
-	    builder.sendRequest(null, new RequestCallback() {
-		public void onResponseReceived(Request request, Response response) {
-		    if (completed[0])
-			return;
-		    completed[0] = true;
-		    watchdog.cancel();
-		    int status = response.getStatusCode();
-		    if (status >= 200 && status < 300) {
-			try {
-			    renderHeadlessCsvTable(response.getText(), "World2 scenario " + scenarioId + " via " + apiBase);
-			} catch (Throwable t) {
-			    console("Headless World2 render failure: " + t);
-			    renderHeadlessError("World2 render failure: " + t);
-			}
-			return;
-		    }
-		    renderHeadlessError("World2 server HTTP error " + status + ": " + response.getStatusText());
-		}
-
-		public void onError(Request request, Throwable exception) {
-		    if (completed[0])
-			return;
-		    completed[0] = true;
-		    watchdog.cancel();
-		    console("Headless World2 onError: " + exception);
-		    renderHeadlessError("World2 request failed: " + exception);
-		}
-	    });
-	} catch (Throwable e) {
-	    if (!completed[0]) {
-		completed[0] = true;
-		watchdog.cancel();
-	    }
-	    console("Headless World2 request exception before/at send: " + e);
-	    renderHeadlessError("World2 request exception: " + e);
-	}
-    }
-
-    private void runHeadlessWorld2Csv(String csvPath) {
-	String loadUrl = resolveHeadlessResourceUrl(csvPath);
-	console("Headless World2 CSV request: " + loadUrl);
-	updateHeadlessStatusMessage("Loading World2 CSV from " + loadUrl + " ...");
-	loadTextFromURLHeadless(loadUrl, new HeadlessTextSuccessCallback() {
-	    public void onSuccess(String text) {
-		try {
-		    renderHeadlessCsvTable(text, loadUrl);
-		} catch (Throwable t) {
-		    console("Headless World2 CSV render failure: " + t);
-		    renderHeadlessError("World2 CSV render failure: " + t);
-		}
-	    }
-	}, new Command() {
-	    public void execute() {
-		renderHeadlessError("Failed to load World2 CSV from " + loadUrl + ". See Standard Output tab for details.");
-	    }
-	});
-    }
-
-    private String resolveHeadlessResourceUrl(String csvPath) {
-	if (csvPath == null)
-	    return "";
-	String decodedPath = csvPath;
-	try {
-	    decodedPath = URL.decodeQueryString(csvPath);
-	} catch (Throwable t) {
-	    // keep original path if decoding fails
-	}
-	if (decodedPath.startsWith("http://") || decodedPath.startsWith("https://"))
-	    return decodedPath;
-
-	String relative = decodedPath.startsWith("/") ? decodedPath.substring(1) : decodedPath;
-	String[] start = Window.Location.getHref().split("\\?");
-	String pageUrl = start[0];
-	int lastSlash = pageUrl.lastIndexOf('/');
-	String pageBase = (lastSlash >= 0) ? pageUrl.substring(0, lastSlash + 1) : pageUrl + "/";
-	return pageBase + relative;
-    }
-
-    private void renderHeadlessCsvTable(String csv, String source) {
-	if (csv == null || csv.trim().isEmpty()) {
-	    renderHeadlessError("World2 server returned empty CSV response.");
-	    return;
-	}
-	String[] lines = csv.split("\\r?\\n");
-	if (lines.length < 2) {
-	    renderHeadlessError("World2 server returned no data rows.");
-	    return;
-	}
-
-	List<String> headers = parseCsvLine(lines[0]);
-	if (headers.isEmpty()) {
-	    renderHeadlessError("World2 server returned invalid CSV header.");
-	    return;
-	}
-
-	StringBuilder content = new StringBuilder();
-	content.append(headlessDiv("<b>Source:</b> " + SafeHtmlUtils.htmlEscape(source)));
-	content.append(headlessTableWrapperOpen());
-	content.append(headlessTableOpen());
-
-	List<String> headerHtml = new ArrayList<String>();
-	for (int i = 0; i < headers.size(); i++)
-	    headerHtml.add("<th>" + SafeHtmlUtils.htmlEscape(headers.get(i)) + "</th>");
-	content.append("<thead><tr>").append(String.join("", headerHtml)).append("</tr></thead>");
-	content.append(headlessTableBodyOpen());
-
-	int rowCount = 0;
-	for (int lineIndex = 1; lineIndex < lines.length; lineIndex++) {
-	    String line = lines[lineIndex].trim();
-	    if (line.isEmpty())
-		continue;
-	    List<String> values = parseCsvLine(line);
-	    List<String> cells = new ArrayList<String>();
-	    for (int valueIndex = 0; valueIndex < values.size(); valueIndex++)
-		cells.add(headlessCell(values.get(valueIndex)));
-	    content.append(headlessRow(cells));
-	    rowCount++;
-	}
-
-	content.append(headlessTableWrapperClose());
-	content.append(headlessStyledDiv("margin-top:8px;", "<b>Completed steps:</b> " + rowCount));
-	RootPanel.get().getElement().setInnerHTML(buildHeadlessTabbedHtml("Output Table", content.toString()));
-    }
-
-    private List<String> parseCsvLine(String line) {
-	List<String> values = new ArrayList<String>();
-	StringBuilder current = new StringBuilder();
-	boolean inQuotes = false;
-	for (int i = 0; i < line.length(); i++) {
-	    char ch = line.charAt(i);
-	    if (ch == '"') {
-		if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
-		    current.append('"');
-		    i++;
-		} else {
-		    inQuotes = !inQuotes;
-		}
-	    } else if (ch == ',' && !inQuotes) {
-		values.add(current.toString());
-		current.setLength(0);
-	    } else {
-		current.append(ch);
-	    }
-	}
-	values.add(current.toString());
-	return values;
     }
 
     private void runHeadlessTableSimulation(int steps, String source) {

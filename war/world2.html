@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>World2 Output</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 12px; background: #fff; }
+    h2 { margin: 0 0 8px 0; }
+    .tabs { margin-bottom: 8px; }
+    .tabs button {
+      padding: 4px 12px; cursor: pointer; background: #eee;
+      border: 1px solid #ccc; border-radius: 3px 3px 0 0; margin-right: 4px;
+    }
+    .tabs button.active { background: #fff; border-bottom-color: #fff; font-weight: bold; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    #status { color: #555; margin-bottom: 8px; }
+    #error { color: #c33; font-weight: bold; }
+    #quick-fix {
+      display: none;
+      margin: 8px 0;
+      padding: 8px;
+      border: 1px solid #ddd;
+      background: #fafafa;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    #quick-fix a {
+      color: #0645ad;
+      text-decoration: none;
+      word-break: break-all;
+    }
+    #quick-fix a:hover {
+      text-decoration: underline;
+    }
+    table { border-collapse: collapse; font-size: 13px; }
+    th, td { border: 1px solid #ccc; padding: 3px 10px; text-align: right; white-space: nowrap; }
+    th { background: #f0f0f0; text-align: center; font-weight: 600; }
+    td:first-child, th:first-child { text-align: left; }
+    tr:nth-child(even) td { background: #fafafa; }
+    #stdout-pre {
+      white-space: pre-wrap; font-family: monospace; font-size: 12px;
+      max-height: 70vh; overflow: auto; border: 1px solid #ccc; padding: 8px;
+      background: #fafafa;
+    }
+    #plots-container {
+      width: 80%;
+      max-width: 80%;
+      aspect-ratio: 5 / 3;
+      height: auto;
+      min-height: 0;
+      box-sizing: border-box;
+      margin: 12px auto 0 auto;
+      background: #fff;
+    }
+    #plots-title {
+      width: 80%;
+      max-width: 80%;
+      margin: 6px auto 0 auto;
+      font-size: 13px;
+      font-weight: 600;
+      color: #222;
+      text-align: left;
+    }
+    .scenario-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin: 0 0 8px 0;
+      font-size: 13px;
+    }
+    .scenario-controls select,
+    .scenario-controls button {
+      padding: 4px 8px;
+      font-size: 12px;
+      border: 1px solid #bbb;
+      border-radius: 3px;
+      background: #fff;
+    }
+    .scenario-controls button {
+      background: #f2f2f2;
+      cursor: pointer;
+    }
+    #api-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      align-items: center;
+      margin: 0 0 10px 0;
+      font-size: 13px;
+    }
+    #api-controls input {
+      padding: 3px 6px;
+      font-size: 13px;
+      border: 1px solid #bbb;
+      border-radius: 3px;
+    }
+    #api-controls button {
+      padding: 4px 8px;
+      font-size: 12px;
+      border: 1px solid #bbb;
+      border-radius: 3px;
+      background: #f2f2f2;
+      cursor: pointer;
+    }
+    #api-response {
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 60vh;
+      overflow: auto;
+      border: 1px solid #ccc;
+      padding: 8px;
+      background: #fafafa;
+    }
+  </style>
+</head>
+<body>
+  <h2>World2 Output</h2>
+  <div class="tabs">
+    <button class="active" onclick="showTab('table')">Output Table</button>
+    <button onclick="showTab('plots')">Plots</button>
+    <button onclick="showTab('api')">API GET</button>
+    <button onclick="showTab('stdout')">Standard Output</button>
+  </div>
+
+  <div id="tab-table" class="tab-content active">
+    <div class="scenario-controls">
+      <label for="table-scenario-select">Scenario:</label>
+      <select id="table-scenario-select" onchange="onScenarioSelectorChanged('table')"></select>
+      <button onclick="reloadScenarioFromTab('table')">Reload</button>
+    </div>
+    <div id="status">Loading...</div>
+    <div id="error"></div>
+    <div id="quick-fix"></div>
+    <div id="table-container"></div>
+  </div>
+
+  <div id="tab-plots" class="tab-content">
+    <div class="scenario-controls">
+      <label for="plot-scenario-select">Scenario:</label>
+      <select id="plot-scenario-select" onchange="onScenarioSelectorChanged('plot')"></select>
+      <button onclick="reloadScenarioFromTab('plot')">Reload</button>
+    </div>
+    <div style="margin:0 0 8px 0; font-size:13px;">
+      <label for="plot-mode-select" style="margin-right:6px;">Plot mode:</label>
+      <select id="plot-mode-select" onchange="onPlotModeChanged()">
+        <option value="stacked" selected>Stacked (5 panels)</option>
+        <option value="single-lhs">Single plot (5 LHS scales)</option>
+      </select>
+    </div>
+    <div id="plots-title"></div>
+    <div id="plots-container"></div>
+  </div>
+
+  <div id="tab-api" class="tab-content">
+    <div id="api-controls">
+      <label>scenario <input id="api-scenario" size="6" value="1"></label>
+      <label>steps <input id="api-steps" size="6" value="1000"></label>
+      <label>dt <input id="api-dt" size="6" value="0.2"></label>
+      <button onclick="apiGetHealth()">GET /health</button>
+      <button onclick="apiGetScenarios()">GET /scenarios</button>
+      <button onclick="apiGetRunJson()">GET /run</button>
+      <button onclick="apiGetRunCsv()">GET /run.csv</button>
+    </div>
+    <div id="api-response">(no API response yet)</div>
+  </div>
+
+  <div id="tab-stdout" class="tab-content">
+    <div id="stdout-pre">(no output yet)</div>
+  </div>
+
+  <script>
+    var stdoutLines = [];
+    var latestPlotRows = null;
+    var latestPlotSource = '';
+    var scenarioList = [];
+
+    function log(msg) {
+      stdoutLines.push(msg);
+      var pre = document.getElementById('stdout-pre');
+      if (pre) {
+        pre.textContent = stdoutLines.join('\n');
+        pre.scrollTop = pre.scrollHeight;
+      }
+    }
+
+    function setStatus(msg) {
+      var el = document.getElementById('status');
+      if (el) el.textContent = msg;
+      log('[status] ' + msg);
+    }
+
+    function showError(msg) {
+      document.getElementById('status').textContent = '';
+      document.getElementById('error').textContent = msg;
+      log('[error] ' + msg);
+    }
+
+    function showQuickFix(html) {
+      var el = document.getElementById('quick-fix');
+      if (!el) return;
+      el.innerHTML = html || '';
+      el.style.display = html ? 'block' : 'none';
+    }
+
+    function showTab(name) {
+      ['table', 'plots', 'api', 'stdout'].forEach(function(t) {
+        document.getElementById('tab-' + t).classList.toggle('active', t === name);
+      });
+      document.querySelectorAll('.tabs button').forEach(function(b, i) {
+        b.classList.toggle('active', ['table', 'plots', 'api', 'stdout'][i] === name);
+      });
+    }
+
+    function getApiBase() {
+      return 'http://127.0.0.1:18082';
+    }
+
+    function getApiScenario() {
+      var el = document.getElementById('api-scenario');
+      return (el && el.value ? el.value : '1').trim() || '1';
+    }
+
+    function getApiSteps() {
+      var el = document.getElementById('api-steps');
+      var n = parseInt(el && el.value ? el.value : '1000', 10);
+      return isNaN(n) || n <= 0 ? 1000 : n;
+    }
+
+    function getApiDt() {
+      var el = document.getElementById('api-dt');
+      var n = parseFloat(el && el.value ? el.value : '0.2');
+      return isNaN(n) || n <= 0 ? 0.2 : n;
+    }
+
+    function setApiResponse(text) {
+      var out = document.getElementById('api-response');
+      if (out) out.textContent = text;
+    }
+
+    function parseScenarioArray(text) {
+      try {
+        var parsed = JSON.parse(text);
+        if (parsed && parsed.scenarios && parsed.scenarios.length)
+          return parsed.scenarios;
+      } catch (e) {
+        // ignore parse error
+      }
+      return [];
+    }
+
+    function getSelectedScenarioFromSelectors() {
+      var tableSelect = document.getElementById('table-scenario-select');
+      if (tableSelect && tableSelect.value)
+        return tableSelect.value;
+      return getApiScenario();
+    }
+
+    function setScenarioSelectorsValue(id) {
+      var tableSelect = document.getElementById('table-scenario-select');
+      var plotSelect = document.getElementById('plot-scenario-select');
+      if (tableSelect) tableSelect.value = id;
+      if (plotSelect) plotSelect.value = id;
+      var apiScenario = document.getElementById('api-scenario');
+      if (apiScenario) apiScenario.value = id;
+    }
+
+    function populateScenarioSelectors(scenarios, preferredId) {
+      scenarioList = scenarios || [];
+      var tableSelect = document.getElementById('table-scenario-select');
+      var plotSelect = document.getElementById('plot-scenario-select');
+      if (!tableSelect || !plotSelect)
+        return;
+
+      tableSelect.innerHTML = '';
+      plotSelect.innerHTML = '';
+
+      var selectedId = preferredId;
+      if (!selectedId && scenarioList.length)
+        selectedId = scenarioList[0].id;
+
+      scenarioList.forEach(function(s) {
+        var label = s.id + (s.name ? (' — ' + s.name) : '');
+        var opt1 = document.createElement('option');
+        opt1.value = s.id;
+        opt1.textContent = label;
+        tableSelect.appendChild(opt1);
+
+        var opt2 = document.createElement('option');
+        opt2.value = s.id;
+        opt2.textContent = label;
+        plotSelect.appendChild(opt2);
+      });
+
+      if (selectedId)
+        setScenarioSelectorsValue(selectedId);
+    }
+
+    function scenarioRunCsvUrl(scenarioId) {
+      return getApiBase() + '/run.csv?scenario=' + encodeURIComponent(scenarioId) +
+        '&steps=' + encodeURIComponent(getApiSteps()) +
+        '&dt=' + encodeURIComponent(getApiDt());
+    }
+
+    function loadScenarioById(scenarioId, sourceLabel) {
+      if (!scenarioId)
+        return;
+      setScenarioSelectorsValue(scenarioId);
+      var url = scenarioRunCsvUrl(scenarioId);
+      fetchAndRender(url, 'scenario ' + scenarioId + ' (' + sourceLabel + ') via ' + getApiBase());
+    }
+
+    function onScenarioSelectorChanged(fromTab) {
+      var select = document.getElementById(fromTab === 'plot' ? 'plot-scenario-select' : 'table-scenario-select');
+      if (!select)
+        return;
+      loadScenarioById(select.value, fromTab + ' selector');
+    }
+
+    function reloadScenarioFromTab(fromTab) {
+      var select = document.getElementById(fromTab === 'plot' ? 'plot-scenario-select' : 'table-scenario-select');
+      if (!select)
+        return;
+      loadScenarioById(select.value, fromTab + ' reload');
+    }
+
+    function initScenarioSelectors(preferredScenarioId, autoLoad) {
+      var listUrl = getApiBase() + '/scenarios';
+      fetch(listUrl)
+        .then(function(r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.text();
+        })
+        .then(function(text) {
+          var scenarios = parseScenarioArray(text);
+          if (!scenarios.length)
+            scenarios = [{ id: preferredScenarioId || getApiScenario(), name: 'Scenario' }];
+          populateScenarioSelectors(scenarios, preferredScenarioId || getApiScenario());
+          if (autoLoad)
+            loadScenarioById(getSelectedScenarioFromSelectors(), 'auto default');
+        })
+        .catch(function(err) {
+          log('[scenario] failed to load /scenarios: ' + err);
+          var fallbackId = preferredScenarioId || getApiScenario() || '1';
+          populateScenarioSelectors([{ id: fallbackId, name: 'Scenario' }], fallbackId);
+          if (autoLoad)
+            loadScenarioById(fallbackId, 'auto fallback');
+        });
+    }
+
+    function fetchApi(path, asCsv) {
+      var url = getApiBase() + path;
+      setApiResponse('Loading ' + url + ' ...');
+      log('[api] GET ' + url);
+      fetch(url)
+        .then(function(r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + (r.statusText || ''));
+          return r.text();
+        })
+        .then(function(text) {
+          if (!asCsv) {
+            try {
+              var pretty = JSON.stringify(JSON.parse(text), null, 2);
+              setApiResponse(pretty);
+            } catch (e) {
+              setApiResponse(text);
+            }
+            return;
+          }
+          setApiResponse(text);
+          renderTable(text, path + ' via ' + getApiBase());
+          showTab('table');
+        })
+        .catch(function(err) {
+          setApiResponse('Request failed: ' + err);
+          log('[api] error ' + err);
+        });
+    }
+
+    function apiGetHealth() {
+      fetchApi('/health', false);
+    }
+
+    function apiGetScenarios() {
+      fetchApi('/scenarios', false);
+    }
+
+    function apiGetRunJson() {
+      var path = '/run?scenario=' + encodeURIComponent(getApiScenario()) +
+        '&steps=' + encodeURIComponent(getApiSteps()) +
+        '&dt=' + encodeURIComponent(getApiDt());
+      fetchApi(path, false);
+    }
+
+    function apiGetRunCsv() {
+      var path = '/run.csv?scenario=' + encodeURIComponent(getApiScenario()) +
+        '&steps=' + encodeURIComponent(getApiSteps()) +
+        '&dt=' + encodeURIComponent(getApiDt());
+      fetchApi(path, true);
+    }
+
+    function parseCSV(text) {
+      var lines = text.trim().split(/\r?\n/);
+      return lines.map(function(l) { return l.split(','); });
+    }
+
+    var COL_CONFIG = {
+      't':    { label: 'Year',               fmt: function(v) { return fmtFixed(v, 1); } },
+      'P':    { label: 'Population',         fmt: function(v) { return fmtSI(v); } },
+      'POLR': { label: 'Pollution Ratio',    fmt: function(v) { return fmtFixed(v, 4); } },
+      'CI':   { label: 'Capital Investment', fmt: function(v) { return fmtSI(v); } },
+      'QL':   { label: 'Quality of Life',    fmt: function(v) { return fmtFixed(v, 4); } },
+      'NR':   { label: 'Natural Resources',  fmt: function(v) { return fmtSI(v); } }
+    };
+
+    function fmtFixed(v, dp) {
+      var n = parseFloat(v);
+      return isNaN(n) ? v : n.toFixed(dp);
+    }
+
+    function fmtSI(v) {
+      var n = parseFloat(v);
+      if (isNaN(n)) return v;
+      var abs = Math.abs(n);
+      if (abs >= 1e12) return (n / 1e12).toFixed(3) + ' T';
+      if (abs >= 1e9)  return (n / 1e9).toFixed(3)  + ' B';
+      if (abs >= 1e6)  return (n / 1e6).toFixed(3)  + ' M';
+      if (abs >= 1e3)  return (n / 1e3).toFixed(3)  + ' K';
+      return n.toFixed(4);
+    }
+
+    function renderTable(csvText, source) {
+      var rows = parseCSV(csvText);
+      if (rows.length < 2) {
+        showError('CSV has no data rows.');
+        return;
+      }
+
+      var headers = rows[0].map(function(h) { return h.trim(); });
+      var configs = headers.map(function(h) {
+        return COL_CONFIG[h] || { label: h, fmt: function(v) { return v.trim(); } };
+      });
+
+      var html = '<p style="color:#777;font-size:11px;margin:0 0 4px 0">Source: ' +
+        source.replace(/&/g, '&amp;').replace(/</g, '&lt;') +
+        ' &mdash; ' + (rows.length - 1) + ' rows</p>' +
+        '<table><thead><tr>';
+
+      headers.forEach(function(h, i) {
+        html += '<th title="' + h + '">' + configs[i].label + '</th>';
+      });
+
+      html += '</tr></thead><tbody>';
+      for (var i = 1; i < rows.length; i++) {
+        html += '<tr>';
+        rows[i].forEach(function(c, ci) {
+          html += '<td>' + configs[ci].fmt(c) + '</td>';
+        });
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+
+      document.getElementById('status').textContent = '';
+      document.getElementById('table-container').innerHTML = html;
+      log('[done] ' + (rows.length - 1) + ' rows rendered from ' + source);
+
+      latestPlotRows = rows;
+      latestPlotSource = source;
+      renderPlots(rows, source);
+    }
+
+    function onPlotModeChanged() {
+      if (latestPlotRows && latestPlotRows.length > 1) {
+        renderPlots(latestPlotRows, latestPlotSource);
+      }
+    }
+
+    function toNum(v) {
+      var n = parseFloat(v);
+      return isNaN(n) ? null : n;
+    }
+
+    function buildSeriesByHeader(rows) {
+      var headers = rows[0].map(function(h) { return h.trim(); });
+      var idx = {};
+      headers.forEach(function(h, i) { idx[h] = i; });
+
+      function series(name) {
+        if (idx[name] == null) return [];
+        var out = [];
+        for (var r = 1; r < rows.length; r++) out.push(toNum(rows[r][idx[name]]));
+        return out;
+      }
+
+      return {
+        t: series('t'),
+        P: series('P'),
+        POLR: series('POLR'),
+        CI: series('CI'),
+        QL: series('QL'),
+        NR: series('NR')
+      };
+    }
+
+    function renderPlots(rows, source) {
+      var container = document.getElementById('plots-container');
+      var titleEl = document.getElementById('plots-title');
+      if (!container) return;
+
+      if (typeof Plotly === 'undefined') {
+        container.innerHTML = '<div style="padding:10px;color:#c33;">Plotly failed to load.</div>';
+        log('[plot] Plotly not available');
+        return;
+      }
+
+      var s = buildSeriesByHeader(rows);
+      if (!s.t.length) {
+        container.innerHTML = '<div style="padding:10px;color:#c33;">No plot data available.</div>';
+        return;
+      }
+
+      var modeSelect = document.getElementById('plot-mode-select');
+      var plotMode = modeSelect ? modeSelect.value : 'stacked';
+      if (titleEl) {
+        titleEl.textContent = plotMode === 'single-lhs'
+          ? ('World2  — ' + source)
+          : ('World2  — ' + source);
+      }
+      if (plotMode === 'single-lhs')
+        renderPlotsSingleLhs(container, s, source);
+      else
+        renderPlotsStacked(container, s, source);
+    }
+
+    function renderPlotsStacked(container, s, source) {
+      var colors = {
+        P: '#000000',
+        POLR: '#e7298a',
+        CI: '#d95f02',
+        QL: '#7570b3',
+        NR: '#1b9e77'
+      };
+      var traces = [
+        { x: s.t, y: s.P, mode: 'lines', name: 'P', line: { width: 3, color: colors.P }, opacity: 0.7, xaxis: 'x', yaxis: 'y' },
+        { x: s.t, y: s.POLR, mode: 'lines', name: 'POLR', line: { width: 3, color: colors.POLR }, opacity: 0.7, xaxis: 'x2', yaxis: 'y2' },
+        { x: s.t, y: s.CI, mode: 'lines', name: 'CI', line: { width: 3, color: colors.CI }, opacity: 0.7, xaxis: 'x3', yaxis: 'y3' },
+        { x: s.t, y: s.QL, mode: 'lines', name: 'QL', line: { width: 3, color: colors.QL }, opacity: 0.7, xaxis: 'x4', yaxis: 'y4' },
+        { x: s.t, y: s.NR, mode: 'lines', name: 'NR', line: { width: 3, color: colors.NR }, opacity: 0.7, xaxis: 'x5', yaxis: 'y5' }
+      ];
+
+      var layout = {
+        showlegend: false,
+        margin: { l: 70, r: 20, t: 20, b: 35 },
+        plot_bgcolor: '#fff',
+        paper_bgcolor: '#fff',
+        grid: { rows: 5, columns: 1, pattern: 'independent', roworder: 'top to bottom' },
+        xaxis:  { title: '', showgrid: true, ticklen: 4, tickwidth: 1.5, showline: true, linecolor: '#222', linewidth: 1.5 },
+        xaxis2: { title: '', showgrid: true, ticklen: 4, tickwidth: 1.5, showline: true, linecolor: '#222', linewidth: 1.5 },
+        xaxis3: { title: '', showgrid: true, ticklen: 4, tickwidth: 1.5, showline: true, linecolor: '#222', linewidth: 1.5 },
+        xaxis4: { title: '', showgrid: true, ticklen: 4, tickwidth: 1.5, showline: true, linecolor: '#222', linewidth: 1.5 },
+        xaxis5: { title: 'time [years]', showgrid: true, ticklen: 4, tickwidth: 1.5, showline: true, linecolor: '#222', linewidth: 1.5 },
+        yaxis:  { title: { text: '<b>P</b>', font: { color: colors.P } }, range: [0, 8e9], showgrid: true, tickfont: { color: colors.P }, nticks: 5, tickformat: '.0s', tickangle: 90, showline: true, linecolor: '#222', linewidth: 1.5 },
+        yaxis2: { title: { text: '<b>POLR</b>', font: { color: colors.POLR } }, range: [0, 40], showgrid: true, tickfont: { color: colors.POLR }, nticks: 5, tickformat: '.0s', tickangle: 90, showline: true, linecolor: '#222', linewidth: 1.5 },
+        yaxis3: { title: { text: '<b>CI</b>', font: { color: colors.CI } }, range: [0, 20e9], showgrid: true, tickfont: { color: colors.CI }, nticks: 5, tickformat: '.0s', tickangle: 90, showline: true, linecolor: '#222', linewidth: 1.5 },
+        yaxis4: { title: { text: '<b>QL</b>', font: { color: colors.QL } }, range: [0, 2], showgrid: true, tickfont: { color: colors.QL }, nticks: 5, tickformat: '.0s', tickangle: 90, showline: true, linecolor: '#222', linewidth: 1.5 },
+        yaxis5: { title: { text: '<b>NR</b>', font: { color: colors.NR } }, range: [0, 1000e9], showgrid: true, tickfont: { color: colors.NR }, nticks: 5, tickformat: '.0s', tickangle: 90, showline: true, linecolor: '#222', linewidth: 1.5 }
+      };
+
+      Plotly.newPlot(container, traces, layout, {
+        responsive: true,
+        displaylogo: false,
+        toImageButtonOptions: { format: 'png', filename: 'world2-plots' }
+      });
+      log('[plot] rendered 5-panel plot');
+    }
+
+    function renderPlotsSingleLhs(container, s, source) {
+      var distSpines = 0.09;
+      var xDomainStart = 0.32;
+      var xDomainEnd = 0.98;
+      var xDomainWidth = xDomainEnd - xDomainStart;
+      var colors = {
+        P: '#000000',
+        POLR: '#e7298a',
+        CI: '#d95f02',
+        QL: '#7570b3',
+        NR: '#1b9e77'
+      };
+      var names = ['P', 'POLR', 'CI', 'QL', 'NR'];
+      var limits = {
+        P: [0, 8e9],
+        POLR: [0, 40],
+        CI: [0, 20e9],
+        QL: [0, 2],
+        NR: [0, 1000e9]
+      };
+
+      var traces = [
+        { x: s.t, y: s.P, mode: 'lines', name: 'P', line: { width: 3, color: colors.P }, opacity: 0.7, yaxis: 'y' },
+        { x: s.t, y: s.POLR, mode: 'lines', name: 'POLR', line: { width: 3, color: colors.POLR }, opacity: 0.7, yaxis: 'y2' },
+        { x: s.t, y: s.CI, mode: 'lines', name: 'CI', line: { width: 3, color: colors.CI }, opacity: 0.7, yaxis: 'y3' },
+        { x: s.t, y: s.QL, mode: 'lines', name: 'QL', line: { width: 3, color: colors.QL }, opacity: 0.7, yaxis: 'y4' },
+        { x: s.t, y: s.NR, mode: 'lines', name: 'NR', line: { width: 3, color: colors.NR }, opacity: 0.7, yaxis: 'y5' }
+      ];
+
+      var axisConfig = {};
+      for (var i = 0; i < names.length; i++) {
+        var axisName = names[i];
+        var axisKey = i === 0 ? 'yaxis' : 'yaxis' + (i + 1);
+        var plotAxisId = i === 0 ? 'y' : 'y' + (i + 1);
+        var axisPos = xDomainStart - (i * distSpines * xDomainWidth);
+
+        axisConfig[axisKey] = {
+          title: { text: '' },
+          range: limits[axisName],
+          side: 'left',
+          anchor: 'free',
+          position: axisPos,
+          overlaying: i === 0 ? undefined : 'y',
+          showgrid: i === 0,
+          zeroline: false,
+          showline: true,
+          linecolor: '#222',
+          linewidth: 1.5,
+          tickfont: { color: colors[axisName] },
+          ticklen: 4,
+          tickwidth: 1.5,
+          nticks: 5,
+          tickformat: '.0s',
+          tickangle: 90,
+          automargin: true
+        };
+
+        traces[i].yaxis = plotAxisId;
+      }
+
+      var layout = {
+        showlegend: false,
+        margin: { l: 34, r: 16, t: 20, b: 42 },
+        plot_bgcolor: '#fff',
+        paper_bgcolor: '#fff',
+        xaxis: {
+          title: 'time [years]',
+          domain: [xDomainStart, xDomainEnd],
+          showgrid: true,
+          showline: true,
+          linecolor: '#222',
+          linewidth: 1.5,
+          ticklen: 4,
+          tickwidth: 1.5,
+          range: [s.t[0], s.t[s.t.length - 1]]
+        },
+        annotations: names.map(function(name, i) {
+          var axisPos = xDomainStart - (i * distSpines * xDomainWidth);
+          return {
+            xref: 'paper',
+            yref: 'paper',
+            x: axisPos,
+            y: 1.01,
+            xanchor: 'center',
+            yanchor: 'bottom',
+            text: '<b>' + name + '</b>',
+            showarrow: false,
+            font: { color: colors[name], size: 12 }
+          };
+        })
+      };
+
+      Object.keys(axisConfig).forEach(function(k) { layout[k] = axisConfig[k]; });
+
+      Plotly.newPlot(container, traces, layout, {
+        responsive: true,
+        displaylogo: false,
+        toImageButtonOptions: { format: 'png', filename: 'world2-plots-single' }
+      });
+      log('[plot] rendered single-plot mode with 5 LHS scales');
+    }
+
+    function fetchAndRender(url, source) {
+      setStatus('Loading from ' + url + ' ...');
+      fetch(url)
+        .then(function(r) {
+          log('[xhr] status=' + r.status + ' url=' + url);
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.text();
+        })
+        .then(function(text) { renderTable(text, source); })
+        .catch(function(err) { showError('Failed to load: ' + err); });
+    }
+
+    (function main() {
+      var params = new URLSearchParams(window.location.search || '');
+      var world2Csv      = params.get('world2Csv');
+      var steps          = parseInt(params.get('steps') || '1000', 10) || 1000;
+      var dt             = parseFloat(params.get('dt') || '0.2') || 0.2;
+
+        log('world2.html params: world2Csv=' + world2Csv +
+          ' steps=' + steps + ' dt=' + dt);
+
+        var stepsInput = document.getElementById('api-steps');
+        if (stepsInput) stepsInput.value = String(steps);
+        var dtInput = document.getElementById('api-dt');
+        if (dtInput) dtInput.value = String(dt);
+
+      initScenarioSelectors(getApiScenario(), false);
+
+      if (world2Csv) {
+        var base = window.location.href.split('?')[0].replace(/[^/]*$/, '');
+        var url = /^https?:\/\//.test(world2Csv) ? world2Csv : base + world2Csv;
+        url += (url.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
+        fetchAndRender(url, world2Csv);
+        return;
+      }
+
+      var csvUrl = window.location.origin + window.location.pathname +
+        '?world2Csv=' + encodeURIComponent(scenarioRunCsvUrl(1));
+
+      showQuickFix(
+        '<b>Quick fix:</b> open this link:<br>' +
+        '<a href="' + csvUrl + '">Use world2Csv=.../run.csv</a>'
+      );
+      showError('No data source specified. Use world2Csv=...');
+    })();
+  </script>
+</body>
+</html>

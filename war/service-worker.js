@@ -35,9 +35,9 @@ function shouldBypassCache(request) {
         return true;
     const url = new URL(request.url);
     const p = url.searchParams;
-    if (p.has('headless') || p.has('world2Scenario') || p.has('world2Csv') || p.has('world2Api'))
+    if (p.has('headless'))
         return true;
-    if (url.pathname.endsWith('/headless.html'))
+    if (url.pathname.endsWith('/world2.html') || url.pathname.endsWith('/headless.html'))
         return true;
     if (url.pathname.endsWith('/run') || url.pathname.endsWith('/run.csv') || url.pathname.endsWith('/scenarios'))
         return true;
