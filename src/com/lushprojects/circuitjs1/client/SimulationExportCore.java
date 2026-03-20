@@ -72,6 +72,31 @@ public final class SimulationExportCore {
     private static final NumFmt.Formatter FIXED_4_FMT = NumFmt.forPattern("0.0000");
     private static final NumFmt.Formatter PARAM_FMT = NumFmt.forPattern("0.###############");
 
+    // Cache formatters by decimal places to avoid creating new ones repeatedly
+    private static final java.util.Map<Integer, NumFmt.Formatter> FIXED_FMT_CACHE = new java.util.HashMap<Integer, NumFmt.Formatter>();
+
+    // Parameter field definitions: {displayName, fieldKey}
+    private static final String[][] RUN_PARAM_FIELDS = {
+        {"circuitPath", "circuitPath"},
+        {"outputPath", "outputPath"},
+        {"htmlPath", "htmlPath"},
+        {"stepsRequested", "stepsRequested"},
+        {"outputFormat", "outputFormat"},
+        {"timestep", "timestep"},
+        {"currentTimeStep", "currentTimeStep"},
+        {"timeUnit", "timeUnit"},
+        {"MnaMode", "mnaMode"},
+        {"equationTableTolerance", "equationTableTolerance"},
+        {"lookupMode", "lookupMode"},
+        {"convergenceCheckThreshold", "convergenceCheckThreshold"},
+        {"EqnTable Newton Jacobian", "eqnTableNewtonJacobian"},
+        {"Auto-Adjust Timestep", "autoAdjustTimestep"},
+        {"minTimeStep", "minTimeStep"},
+        {"maxTimeStep", "maxTimeStep"},
+        {"lookupClamp", "lookupClamp"},
+        {"computedValuesRegistered", "computedValueCount"},
+    };
+
     private SimulationExportCore() {
     }
 
@@ -257,24 +282,9 @@ public final class SimulationExportCore {
         html.append("  <table style=\"margin:0 0 10px 0;\">\n");
         html.append("    <thead><tr><th style=\"text-align:left\">Parameter</th><th style=\"text-align:left\">Value</th></tr></thead>\n");
         html.append("    <tbody>\n");
-        appendRunParameterRow(html, "circuitPath", p.circuitPath);
-        appendRunParameterRow(html, "outputPath", valueOrStdout(p.outputPath));
-        appendRunParameterRow(html, "htmlPath", valueOrNone(p.htmlPath));
-        appendRunParameterRow(html, "stepsRequested", Integer.toString(p.stepsRequested));
-        appendRunParameterRow(html, "outputFormat", p.outputFormat + (p.world2Format ? " (world2)" : ""));
-        appendRunParameterRow(html, "timestep", fmtParamNumber(p.timestep));
-        appendRunParameterRow(html, "currentTimeStep", fmtParamNumber(p.currentTimeStep));
-        appendRunParameterRow(html, "timeUnit", valueOrNone(p.timeUnit));
-        appendRunParameterRow(html, "MnaMode", Boolean.toString(p.mnaMode));
-        appendRunParameterRow(html, "equationTableTolerance", fmtParamNumber(p.equationTableTolerance));
-        appendRunParameterRow(html, "lookupMode", p.lookupMode);
-        appendRunParameterRow(html, "convergenceCheckThreshold", Integer.toString(p.convergenceCheckThreshold));
-        appendRunParameterRow(html, "EqnTable Newton Jacobian", Boolean.toString(p.eqnTableNewtonJacobian));
-        appendRunParameterRow(html, "Auto-Adjust Timestep", Boolean.toString(p.autoAdjustTimestep));
-        appendRunParameterRow(html, "minTimeStep", fmtParamNumber(p.minTimeStep));
-        appendRunParameterRow(html, "maxTimeStep", fmtParamNumber(p.maxTimeStep));
-        appendRunParameterRow(html, "lookupClamp", Boolean.toString(p.lookupClamp));
-        appendRunParameterRow(html, "computedValuesRegistered", Integer.toString(p.computedValueCount));
+        for (String[] field : RUN_PARAM_FIELDS) {
+            appendRunParameterRow(html, field[0], getRunParameterValue(p, field[1]));
+        }
         html.append("    </tbody>\n");
         html.append("  </table>\n");
     }
@@ -313,24 +323,33 @@ public final class SimulationExportCore {
 
     private static void printRunParameters(Diagnostics diagnostics, RunParameters p) {
         log(diagnostics, "CircuitJavaRunner: circuit parameters used");
-        log(diagnostics, "  circuitPath: " + p.circuitPath);
-        log(diagnostics, "  outputPath: " + valueOrStdout(p.outputPath));
-        log(diagnostics, "  htmlPath: " + valueOrNone(p.htmlPath));
-        log(diagnostics, "  stepsRequested: " + p.stepsRequested);
-        log(diagnostics, "  outputFormat: " + p.outputFormat + (p.world2Format ? " (world2)" : ""));
-        log(diagnostics, "  timestep: " + fmtParamNumber(p.timestep));
-        log(diagnostics, "  currentTimeStep: " + fmtParamNumber(p.currentTimeStep));
-        log(diagnostics, "  timeUnit: " + valueOrNone(p.timeUnit));
-        log(diagnostics, "  MnaMode: " + p.mnaMode);
-        log(diagnostics, "  equationTableTolerance: " + fmtParamNumber(p.equationTableTolerance));
-        log(diagnostics, "  lookupMode: " + p.lookupMode);
-        log(diagnostics, "  convergenceCheckThreshold: " + p.convergenceCheckThreshold);
-        log(diagnostics, "  EqnTable Newton Jacobian: " + p.eqnTableNewtonJacobian);
-        log(diagnostics, "  Auto-Adjust Timestep: " + p.autoAdjustTimestep);
-        log(diagnostics, "  minTimeStep: " + fmtParamNumber(p.minTimeStep));
-        log(diagnostics, "  maxTimeStep: " + fmtParamNumber(p.maxTimeStep));
-        log(diagnostics, "  lookupClamp: " + p.lookupClamp);
-        log(diagnostics, "  computedValuesRegistered: " + p.computedValueCount);
+        for (String[] field : RUN_PARAM_FIELDS) {
+            log(diagnostics, "  " + field[0] + ": " + getRunParameterValue(p, field[1]));
+        }
+    }
+
+    private static String getRunParameterValue(RunParameters p, String fieldName) {
+        switch (fieldName) {
+            case "circuitPath": return p.circuitPath != null ? p.circuitPath : "";
+            case "outputPath": return valueOrStdout(p.outputPath);
+            case "htmlPath": return valueOrNone(p.htmlPath);
+            case "stepsRequested": return Integer.toString(p.stepsRequested);
+            case "outputFormat": return p.outputFormat + (p.world2Format ? " (world2)" : "");
+            case "timestep": return fmtParamNumber(p.timestep);
+            case "currentTimeStep": return fmtParamNumber(p.currentTimeStep);
+            case "timeUnit": return valueOrNone(p.timeUnit);
+            case "mnaMode": return Boolean.toString(p.mnaMode);
+            case "equationTableTolerance": return fmtParamNumber(p.equationTableTolerance);
+            case "lookupMode": return p.lookupMode != null ? p.lookupMode : "";
+            case "convergenceCheckThreshold": return Integer.toString(p.convergenceCheckThreshold);
+            case "eqnTableNewtonJacobian": return Boolean.toString(p.eqnTableNewtonJacobian);
+            case "autoAdjustTimestep": return Boolean.toString(p.autoAdjustTimestep);
+            case "minTimeStep": return fmtParamNumber(p.minTimeStep);
+            case "maxTimeStep": return fmtParamNumber(p.maxTimeStep);
+            case "lookupClamp": return Boolean.toString(p.lookupClamp);
+            case "computedValueCount": return Integer.toString(p.computedValueCount);
+            default: return "";
+        }
     }
 
     private static void log(Diagnostics diagnostics, String message) {
@@ -388,29 +407,22 @@ public final class SimulationExportCore {
     }
 
     static String fmtFixed(Double value, int decimalPlaces) {
-        if (value == null || value.isNaN() || value.isInfinite()) {
+        if (value == null) {
             return "";
         }
-        if (decimalPlaces == 1) {
-            return FIXED_1_FMT.format(value.doubleValue());
-        }
-        if (decimalPlaces == 4) {
-            return FIXED_4_FMT.format(value.doubleValue());
-        }
-        return formatFixed(value.doubleValue(), decimalPlaces);
+        return fmtFixedPrimitive(value.doubleValue(), decimalPlaces);
     }
 
     static String fmtFixedPrimitive(double value, int decimalPlaces) {
         if (Double.isNaN(value) || Double.isInfinite(value)) {
             return "";
         }
-        if (decimalPlaces == 1) {
-            return FIXED_1_FMT.format(value);
+        switch (decimalPlaces) {
+            case 1: return FIXED_1_FMT.format(value);
+            case 3: return FIXED_3_FMT.format(value);
+            case 4: return FIXED_4_FMT.format(value);
+            default: return getCachedFormatter(decimalPlaces).format(value);
         }
-        if (decimalPlaces == 4) {
-            return FIXED_4_FMT.format(value);
-        }
-        return formatFixed(value, decimalPlaces);
     }
 
     static String fmtSI(Double value) {
@@ -434,19 +446,318 @@ public final class SimulationExportCore {
         return FIXED_4_FMT.format(n);
     }
 
-    private static String formatFixed(double value, int decimalPlaces) {
-        NumFmt.Formatter formatter = NumFmt.forPattern(buildFixedPattern(decimalPlaces));
-        return formatter.format(value);
+    private static NumFmt.Formatter getCachedFormatter(int decimalPlaces) {
+        NumFmt.Formatter formatter = FIXED_FMT_CACHE.get(decimalPlaces);
+        if (formatter == null) {
+            formatter = NumFmt.forPattern(buildFixedPattern(decimalPlaces));
+            FIXED_FMT_CACHE.put(decimalPlaces, formatter);
+        }
+        return formatter;
     }
 
     private static String buildFixedPattern(int decimalPlaces) {
-        StringBuilder pattern = new StringBuilder("0");
-        if (decimalPlaces > 0) {
-            pattern.append('.');
-            for (int i = 0; i < decimalPlaces; i++) {
-                pattern.append('0');
-            }
+        if (decimalPlaces <= 0) {
+            return "0";
+        }
+        StringBuilder pattern = new StringBuilder("0.");
+        for (int i = 0; i < decimalPlaces; i++) {
+            pattern.append('0');
         }
         return pattern.toString();
+    }
+
+    // ========== Runner HTML builders ==========
+
+    static String buildDelimitedHtmlReport(String outputText, char separator, String source, int steps) {
+        StringBuilder content = new StringBuilder();
+        content.append("<div style='margin-top:10px; font-weight:600;'>Output Table</div>");
+        content.append(buildDelimitedOutputTableHtml(outputText, separator));
+        content.append("<details style='margin-top:10px;'><summary>Raw Output</summary>");
+        content.append("<pre style='white-space:pre; font-family:monospace; max-height:70vh; overflow:auto; border:1px solid #ccc; padding:8px; margin-top:6px;'>");
+        content.append(escapeHtml(outputText != null ? outputText : ""));
+        content.append("</pre></details>");
+
+        String plotHtml = buildDelimitedPlotReportHtml(outputText, separator, source, steps);
+        String escapedPlotHtml = escapeHtmlAttribute(plotHtml);
+
+        return "<div style='padding:12px;'>"
+            + "<div style='margin:8px 0;'>"
+            + "<button onclick=\"document.getElementById('runner-table-tab').style.display='block';document.getElementById('runner-plot-tab').style.display='none';\">Output Table</button>"
+            + "<button style='margin-left:8px;' onclick=\"document.getElementById('runner-table-tab').style.display='none';document.getElementById('runner-plot-tab').style.display='block';\">Plot</button>"
+            + "</div>"
+            + "<div id='runner-table-tab' style='display:block;'>"
+            + content.toString()
+            + "</div>"
+            + "<div id='runner-plot-tab' style='display:none; margin-top:8px;'>"
+            + "<iframe style='width:100%; height:78vh; border:1px solid #ccc;' srcdoc=\""
+            + escapedPlotHtml
+            + "\"></iframe></div>"
+            + "</div>";
+    }
+
+    private static String buildDelimitedOutputTableHtml(String outputText, char separator) {
+        if (outputText == null || outputText.isEmpty()) {
+            return "<div style='margin-top:6px; color:#777;'>(no output)</div>";
+        }
+        String[] lines = outputText.split("\\r?\\n");
+        if (lines.length == 0 || lines[0].isEmpty()) {
+            return "<div style='margin-top:6px; color:#777;'>(no output)</div>";
+        }
+        String splitRegex = (separator == '\t') ? "\\t" : ",";
+        StringBuilder html = new StringBuilder();
+        html.append("<div style='margin-top:6px; max-width:100%; max-height:70vh; overflow:auto; border:1px solid #ccc;'>");
+        html.append("<table style='border-collapse:collapse; min-width:max-content; font-family:monospace; font-size:12px;'>");
+
+        String[] headers = lines[0].split(splitRegex, -1);
+        html.append("<thead><tr>");
+        for (int i = 0; i < headers.length; i++) {
+            html.append("<th style='text-align:left; white-space:nowrap; border:1px solid #ddd; padding:4px 8px; background:#f6f6f6; position:sticky; top:0; z-index:1;'>");
+            html.append(escapeHtml(headers[i]));
+            html.append("</th>");
+        }
+        html.append("</tr></thead><tbody>");
+
+        for (int lineIdx = 1; lineIdx < lines.length; lineIdx++) {
+            String line = lines[lineIdx];
+            if (line == null || line.isEmpty()) {
+                continue;
+            }
+            String[] cols = line.split(splitRegex, -1);
+            html.append("<tr>");
+            for (int colIdx = 0; colIdx < headers.length; colIdx++) {
+                String value = colIdx < cols.length ? cols[colIdx] : "";
+                html.append("<td style='white-space:nowrap; border:1px solid #eee; padding:3px 8px;'>");
+                html.append(escapeHtml(value));
+                html.append("</td>");
+            }
+            html.append("</tr>");
+        }
+
+        html.append("</tbody></table></div>");
+        return html.toString();
+    }
+
+    private static String buildDelimitedPlotReportHtml(String outputText, char separator, String source, int steps) {
+        String sepLiteral = separator == '\t' ? "\\t" : ",";
+        String escapedData = escapeHtml(outputText != null ? outputText : "");
+        String escapedSource = escapeHtml(source != null ? source : "(none)");
+        StringBuilder html = new StringBuilder();
+        html.append("<!doctype html><html><head><meta charset='utf-8'>");
+        html.append("<meta name='viewport' content='width=device-width, initial-scale=1'>");
+        html.append("<title>Runner Plot</title>");
+        html.append("<script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>");
+        appendDelimitedPlotStyles(html);
+        html.append("<div style='font-weight:600;margin-bottom:4px;'>Runner Plot</div>");
+        html.append("<div class='meta'>Source: ").append(escapedSource).append(" &mdash; Steps: ").append(steps).append("</div>");
+        html.append("<textarea id='runner-data' style='display:none;'>").append(escapedData).append("</textarea>");
+        appendDelimitedPlotControls(html);
+        html.append("<div id='plot-container'></div>");
+        appendDelimitedPlotScript(html, sepLiteral);
+        return html.toString();
+    }
+
+    private static void appendDelimitedPlotStyles(StringBuilder html) {
+        html.append("<style>");
+        html.append("body{font-family:Arial,sans-serif;margin:0;padding:12px;background:#fff;color:#111;}");
+        html.append(".meta{color:#666;margin-bottom:10px;font-size:12px;}");
+        html.append(".controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;}");
+        html.append("label{font-size:12px;color:#333;}");
+        html.append("select{font-size:12px;padding:2px 4px;}");
+        html.append("#plot-container{min-height:320px;border:1px solid #ddd;padding:8px;}");
+        html.append(".stack-plot{height:180px;margin-bottom:10px;}");
+        html.append("</style></head><body>");
+    }
+
+    private static void appendDelimitedPlotControls(StringBuilder html) {
+        html.append("<div class='controls'>");
+        html.append("<label for='plot-mode-select'>Plot mode:</label>");
+        html.append("<select id='plot-mode-select'><option value='stacked'>Stacked (panels)</option><option value='single-lhs' selected>Single plot (LHS scales)</option></select>");
+        html.append("<label for='y1'>Y1:</label><select id='y1'></select>");
+        html.append("<label for='y2'>Y2:</label><select id='y2'></select>");
+        html.append("<label for='y3'>Y3:</label><select id='y3'></select>");
+        html.append("<label for='y4'>Y4:</label><select id='y4'></select>");
+        html.append("<label for='y5'>Y5:</label><select id='y5'></select>");
+        html.append("</div>");
+    }
+
+    private static void appendDelimitedPlotScript(StringBuilder html, String sepLiteral) {
+        html.append("<script>");
+        html.append("(function(){");
+        html.append("var raw=document.getElementById('runner-data').value||'';");
+        html.append("var sep='").append(sepLiteral).append("';");
+        html.append("var lines=raw.split(/\\r?\\n/).filter(function(l){return l.length>0;});");
+        html.append("var container=document.getElementById('plot-container');");
+        html.append("if(typeof Plotly==='undefined'){container.innerHTML='<div style=\"color:#c33;padding:8px;\">Plotly failed to load.</div>';return;}");
+        html.append("if(lines.length<2){container.innerHTML='<div style=\"color:#777;padding:8px;\">Not enough data to plot.</div>';return;}");
+        html.append("var headers=lines[0].split(sep);");
+        html.append("var rows=lines.slice(1).map(function(line){return line.split(sep);});");
+        html.append("var tIndex=headers.indexOf('t'); if(tIndex<0) tIndex=0;");
+        html.append("var candidates=[]; for(var i=0;i<headers.length;i++){ if(i!==tIndex) candidates.push(headers[i]); }");
+        html.append("if(candidates.length===0){container.innerHTML='<div style=\"color:#777;padding:8px;\">No Y variables available.</div>';return;}");
+        html.append("var series={}; headers.forEach(function(h){series[h]=rows.map(function(r){var v=parseFloat((r[headers.indexOf(h)]||'').trim()); return isFinite(v)?v:null;});});");
+        html.append("var tValues=series[headers[tIndex]];");
+        html.append("var selects=['y1','y2','y3','y4','y5'].map(function(id){return document.getElementById(id);});");
+        html.append("function fillSelect(sel, def){var opts=['']; for(var i=0;i<candidates.length;i++) opts.push(candidates[i]); sel.innerHTML=opts.map(function(v){var lbl=v||'(none)'; var s=(v===def)?' selected':''; return '<option value=\\\"'+v+'\\\"'+s+'>'+lbl+'</option>';}).join('');}");
+        html.append("for(var i=0;i<selects.length;i++){fillSelect(selects[i], candidates[i]||'');}");
+        html.append("var palette=['#1f77b4','#d62728','#2ca02c','#9467bd','#ff7f0e','#17becf','#8c564b'];");
+        html.append("function selectedNames(){var seen={}; var out=[]; for(var i=0;i<selects.length;i++){var n=selects[i].value; if(n && !seen[n]){seen[n]=true; out.push(n);} } return out;}");
+        html.append("function buildXAxis(title){return {title:title||'',showgrid:true,automargin:true};}");
+        html.append("function renderStacked(names){container.innerHTML=''; if(names.length===0){container.innerHTML='<div style=\"color:#777;padding:8px;\">Select at least one Y variable.</div>'; return;} for(var i=0;i<names.length;i++){var name=names[i]; var div=document.createElement('div'); div.className='stack-plot'; container.appendChild(div); Plotly.newPlot(div,[{x:tValues,y:series[name],mode:'lines',name:name,line:{width:2,color:palette[i%palette.length]}}],{margin:{l:50,r:20,t:20,b:35},xaxis:buildXAxis(i===names.length-1?'t':''),yaxis:{title:name},showlegend:false},{responsive:true,displaylogo:false});}}");
+        html.append("function renderSingleLhs(names){container.innerHTML=''; if(names.length===0){container.innerHTML='<div style=\"color:#777;padding:8px;\">Select at least one Y variable.</div>'; return;} var div=document.createElement('div'); div.style.height='520px'; container.appendChild(div); var traces=[]; var layout={margin:{l:90,r:30,t:20,b:45},xaxis:buildXAxis('t'),legend:{orientation:'h'}}; var xDomainStart=Math.min(0.55,0.18+(names.length-1)*0.08); var dist=0.08; layout.xaxis.domain=[xDomainStart,1]; for(var i=0;i<names.length;i++){var axisRef=i===0?'y':'y'+(i+1); traces.push({x:tValues,y:series[names[i]],mode:'lines',name:names[i],line:{width:2,color:palette[i%palette.length]},yaxis:axisRef}); var axisName='yaxis'+(i===0?'':(i+1)); var axis={title:names[i],tickfont:{color:palette[i%palette.length]},titlefont:{color:palette[i%palette.length]},showline:true,linecolor:palette[i%palette.length],linewidth:1.2}; if(i===0){axis.domain=[0,1]; axis.showgrid=true;} else {axis.overlaying='y'; axis.side='left'; axis.anchor='free'; axis.position=Math.max(0.02,xDomainStart-i*dist);} layout[axisName]=axis;} Plotly.newPlot(div,traces,layout,{responsive:true,displaylogo:false});}");
+        html.append("function render(){var names=selectedNames(); var mode=document.getElementById('plot-mode-select').value; if(mode==='single-lhs') renderSingleLhs(names); else renderStacked(names);}");
+        html.append("document.getElementById('plot-mode-select').addEventListener('change',render);");
+        html.append("selects.forEach(function(s){s.addEventListener('change',render);});");
+        html.append("render();");
+        html.append("})();");
+        html.append("</script></body></html>");
+    }
+
+    static String buildRunnerStatusContentHtml(String message) {
+        return "<div id='headless-status-message'>" + escapeHtml(message != null ? message : "") + "</div>"
+            + "<div style='color:#666; margin-top:6px;'>Format hint: default is <b>tsv</b> when omitted (use format=csv or format=world2 to override).</div>";
+    }
+
+    static String buildRunnerErrorContentHtml(String message) {
+        return "<div style='color:#c33;'>" + escapeHtml(message != null ? message : "") + "</div>";
+    }
+
+    static String buildRunnerSummaryContentHtml(String source, int requestedSteps, String format, int completedSteps) {
+        StringBuilder content = new StringBuilder();
+        content.append("<div><b>Source:</b> ").append(escapeHtml(source != null ? source : "(none)")).append("</div>");
+        content.append("<div><b>Requested steps:</b> ").append(requestedSteps).append("</div>");
+        content.append("<div><b>Output format:</b> ").append(escapeHtml(format != null ? format : "")).append("</div>");
+        content.append("<div style='color:#666; margin-top:4px;'>Format hint: default is <b>tsv</b> when omitted (use format=csv or format=world2 to override).</div>");
+        content.append("<div><b>Completed steps:</b> ").append(completedSteps).append("</div>");
+        return content.toString();
+    }
+
+    static String buildRunnerWorld2RawOutputHtml(String outputText) {
+        return "<div style='margin-top:10px;'><pre style='white-space:pre; font-family:monospace; max-height:70vh; overflow:auto; border:1px solid #ccc; padding:8px;'>"
+            + escapeHtml(outputText != null ? outputText : "")
+            + "</pre></div>";
+    }
+
+    static String buildRunnerWorld2ReportTabHtml(String htmlReport) {
+        if (htmlReport == null) {
+            return "";
+        }
+        return "<div id='runner-report-tab' style='display:none; margin-top:8px;'>"
+            + "<iframe style='width:100%; height:78vh; border:1px solid #ccc;' srcdoc=\""
+            + escapeHtmlAttribute(htmlReport)
+            + "\"></iframe></div>";
+    }
+
+    static String buildRunnerTabbedHtml(String primaryTabTitle, String primaryContentHtml,
+            boolean includeReportTab, String reportTabTitle, String reportTabContentHtml,
+            String stdoutHtml) {
+        String escapedTitle = escapeHtml(primaryTabTitle);
+        String escapedReportTitle = escapeHtml(reportTabTitle != null ? reportTabTitle : "Report");
+        String safeStdoutHtml = stdoutHtml != null ? stdoutHtml : escapeHtml("(no output yet)");
+        String reportButton = includeReportTab
+            ? "<button style='margin-left:8px;' onclick=\"document.getElementById('runner-primary-tab').style.display='none';document.getElementById('runner-report-tab').style.display='block';document.getElementById('runner-stdout-tab').style.display='none';\">" + escapedReportTitle + "</button>"
+            : "";
+        return "<div style='padding:12px;'>"
+            + "<h2>Browser Runner Output</h2>"
+            + "<div style='margin:8px 0;'>"
+            + "<button onclick=\"document.getElementById('runner-primary-tab').style.display='block';"
+                + (includeReportTab ? "document.getElementById('runner-report-tab').style.display='none';" : "")
+                + "document.getElementById('runner-stdout-tab').style.display='none';\">"
+            + escapedTitle
+            + "</button>"
+            + reportButton
+            + "<button style='margin-left:8px;' onclick=\"document.getElementById('runner-primary-tab').style.display='none';"
+                + (includeReportTab ? "document.getElementById('runner-report-tab').style.display='none';" : "")
+                + "document.getElementById('runner-stdout-tab').style.display='block';\">Standard Output</button>"
+            + "</div>"
+            + "<div id='runner-primary-tab' style='display:block;'>"
+            + primaryContentHtml
+            + "</div>"
+            + reportTabContentHtml
+            + "<div id='runner-stdout-tab' style='display:none;'>"
+            + "<div id='headless-stdout-pre' style='white-space:pre-wrap; font-family:monospace; max-height:70vh; overflow:auto; border:1px solid #ccc; padding:8px;'>"
+            + safeStdoutHtml
+            + "</div>"
+            + "</div>"
+            + "</div>";
+    }
+
+    private static String escapeHtmlAttribute(String input) {
+        if (input == null) {
+            return "";
+        }
+        return escapeHtml(input);
+    }
+
+    // ========== Headless/Non-interactive HTML builders ==========
+
+    static String buildHeadlessDiv(String innerHtml) {
+        return "<div>" + (innerHtml != null ? innerHtml : "") + "</div>";
+    }
+
+    static String buildHeadlessStyledDiv(String style, String innerHtml) {
+        return "<div style='" + (style != null ? style : "") + "'>" + (innerHtml != null ? innerHtml : "") + "</div>";
+    }
+
+    static String buildHeadlessCell(String value) {
+        return "<td>" + escapeHtml(value != null ? value : "") + "</td>";
+    }
+
+    static String buildHeadlessRow(List<String> cells) {
+        return "<tr>" + String.join("", cells) + "</tr>";
+    }
+
+    static String buildHeadlessTableHeader(List<String> keys) {
+        List<String> headers = new ArrayList<String>();
+        headers.add("<th>t</th>");
+        for (int i = 0; i < keys.size(); i++) {
+            headers.add("<th>" + escapeHtml(keys.get(i)) + "</th>");
+        }
+        return "<thead><tr>" + String.join("", headers) + "</tr></thead>";
+    }
+
+    static String buildHeadlessTableWrapperOpen() {
+        return "<div style='margin-top:10px; max-height:70vh; overflow:auto;'>";
+    }
+
+    static String buildHeadlessTableOpen() {
+        return "<table border='1' cellspacing='0' cellpadding='4'>";
+    }
+
+    static String buildHeadlessTableBodyOpen() {
+        return "<tbody>";
+    }
+
+    static String buildHeadlessTableWrapperClose() {
+        return "</tbody></table></div>";
+    }
+
+    static String buildHeadlessStatusContentHtml(String message) {
+        return "<div id='headless-status-message'>" + escapeHtml(message != null ? message : "") + "</div>";
+    }
+
+    static String buildHeadlessErrorContentHtml(String message) {
+        return "<div style='color:#c33;'>" + escapeHtml(message != null ? message : "") + "</div>";
+    }
+
+    static String buildHeadlessTabbedHtml(String primaryTabTitle, String primaryContentHtml, String stdoutHtml) {
+        String escapedTitle = escapeHtml(primaryTabTitle != null ? primaryTabTitle : "");
+        String safeStdoutHtml = stdoutHtml != null ? stdoutHtml : escapeHtml("(no output yet)");
+        return "<div style='padding:12px;'>"
+            + "<h2>nonInteractive Output</h2>"
+            + "<div style='margin:8px 0;'>"
+            + "<button onclick=\"document.getElementById('headless-primary-tab').style.display='block';document.getElementById('headless-stdout-tab').style.display='none';\">"
+            + escapedTitle
+            + "</button>"
+            + "<button style='margin-left:8px;' onclick=\"document.getElementById('headless-primary-tab').style.display='none';document.getElementById('headless-stdout-tab').style.display='block';\">Standard Output</button>"
+            + "</div>"
+            + "<div id='headless-primary-tab' style='display:block;'>"
+            + (primaryContentHtml != null ? primaryContentHtml : "")
+            + "</div>"
+            + "<div id='headless-stdout-tab' style='display:none;'>"
+            + "<div id='headless-stdout-pre' style='white-space:pre-wrap; font-family:monospace; max-height:70vh; overflow:auto; border:1px solid #ccc; padding:8px;'>"
+            + safeStdoutHtml
+            + "</div>"
+            + "</div>"
+            + "</div>";
     }
 }

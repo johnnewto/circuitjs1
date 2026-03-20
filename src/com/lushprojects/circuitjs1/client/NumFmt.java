@@ -10,8 +10,11 @@ public final class NumFmt {
 
     public static Formatter forPattern(String pattern) {
         if (RuntimeMode.isGwt()) {
-            com.google.gwt.i18n.client.NumberFormat gwtFmt = com.google.gwt.i18n.client.NumberFormat.getFormat(pattern);
-            return gwtFmt::format;
+            try {
+                com.google.gwt.i18n.client.NumberFormat gwtFmt = com.google.gwt.i18n.client.NumberFormat.getFormat(pattern);
+                return gwtFmt::format;
+            } catch (Throwable ignored) {
+            }
         }
         return new NonInteractiveFormatter(pattern);
     }

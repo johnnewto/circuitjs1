@@ -64,4 +64,82 @@ class SimulationExportCoreParityTest {
         assertTrue(html.contains("\"CI\":400000000"), "Expected unscaled CI value in embedded JSON");
         assertTrue(html.contains("\"NR\":900000000000"), "Expected unscaled NR value in embedded JSON");
     }
+
+    @Test
+    @DisplayName("runner status content escapes message and includes format hint")
+    void runnerStatusContentEscapesMessageAndIncludesFormatHint() {
+        String html = SimulationExportCore.buildRunnerStatusContentHtml("loading <model> & \"params\"");
+
+        assertTrue(html.contains("headless-status-message"), "Expected status message container id");
+        assertTrue(html.contains("loading &lt;model&gt; &amp; &quot;params&quot;"), "Expected escaped status message");
+        assertTrue(html.contains("default is <b>tsv</b>"), "Expected format hint text");
+    }
+
+    @Test
+    @DisplayName("runner error content escapes message and applies error style")
+    void runnerErrorContentEscapesMessageAndAppliesErrorStyle() {
+        String html = SimulationExportCore.buildRunnerErrorContentHtml("bad <input> & \"format\"");
+
+        assertTrue(html.contains("color:#c33"), "Expected error color style");
+        assertTrue(html.contains("bad &lt;input&gt; &amp; &quot;format&quot;"), "Expected escaped error message");
+    }
+
+    @Test
+    @DisplayName("runner summary content includes key metadata and escaped values")
+    void runnerSummaryContentIncludesMetadataAndEscapesValues() {
+        String html = SimulationExportCore.buildRunnerSummaryContentHtml("embedded <src>", 25, "tsv", 24);
+
+        assertTrue(html.contains("<b>Source:</b> embedded &lt;src&gt;"), "Expected escaped source value");
+        assertTrue(html.contains("<b>Requested steps:</b> 25"), "Expected requested steps value");
+        assertTrue(html.contains("<b>Output format:</b> tsv"), "Expected output format value");
+        assertTrue(html.contains("<b>Completed steps:</b> 24"), "Expected completed steps value");
+        assertTrue(html.contains("default is <b>tsv</b>"), "Expected format hint text");
+    }
+
+    @Test
+    @DisplayName("runner world2 raw output wraps escaped preformatted text")
+    void runnerWorld2RawOutputWrapsEscapedPreformattedText() {
+        String html = SimulationExportCore.buildRunnerWorld2RawOutputHtml("x<y & \"z\"");
+
+        assertTrue(html.contains("<pre"), "Expected preformatted block");
+        assertTrue(html.contains("x&lt;y &amp; &quot;z&quot;"), "Expected escaped output text");
+    }
+
+    @Test
+    @DisplayName("runner world2 report tab escapes iframe srcdoc")
+    void runnerWorld2ReportTabEscapesIframeSrcdoc() {
+        String html = SimulationExportCore.buildRunnerWorld2ReportTabHtml("<html><body>\"x\" & y</body></html>");
+
+        assertTrue(html.contains("runner-report-tab"), "Expected report tab container id");
+        assertTrue(html.contains("&lt;html&gt;&lt;body&gt;&quot;x&quot; &amp; y&lt;/body&gt;&lt;/html&gt;"), "Expected escaped srcdoc content");
+    }
+
+    @Test
+    @DisplayName("headless table helpers escape cells and render header")
+    void headlessTableHelpersEscapeCellsAndRenderHeader() {
+        List<String> keys = new ArrayList<String>();
+        keys.add("A<B>");
+        keys.add("C&D");
+
+        String cell = SimulationExportCore.buildHeadlessCell("x<y & \"z\"");
+        String header = SimulationExportCore.buildHeadlessTableHeader(keys);
+
+        assertTrue(cell.contains("x&lt;y &amp; &quot;z&quot;"), "Expected escaped table cell value");
+        assertTrue(header.contains("<th>t</th>"), "Expected time column in header");
+        assertTrue(header.contains("A&lt;B&gt;"), "Expected escaped header key A<B>");
+        assertTrue(header.contains("C&amp;D"), "Expected escaped header key C&D");
+    }
+
+    @Test
+    @DisplayName("headless status and tab shell render escaped content")
+    void headlessStatusAndTabShellRenderEscapedContent() {
+        String status = SimulationExportCore.buildHeadlessStatusContentHtml("loading <table> & \"data\"");
+        String tabbed = SimulationExportCore.buildHeadlessTabbedHtml("Output <Table>", status, "line1<br/>line2");
+
+        assertTrue(status.contains("headless-status-message"), "Expected status message id");
+        assertTrue(status.contains("loading &lt;table&gt; &amp; &quot;data&quot;"), "Expected escaped status text");
+        assertTrue(tabbed.contains("nonInteractive Output"), "Expected headless title");
+        assertTrue(tabbed.contains("Output &lt;Table&gt;"), "Expected escaped tab title");
+        assertTrue(tabbed.contains("line1<br/>line2"), "Expected provided stdout html");
+    }
 }
