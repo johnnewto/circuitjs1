@@ -811,75 +811,6 @@ public CirSim() {
 	CircuitElm.initClass(this);
     }
 
-    public void initHeadlessPanel(QueryParameters qp) {
-	RuntimeMode.setNonInteractiveRuntime(true);
-	clearHeadlessStdout();
-	headlessStdoutEnabled = true;
-	installHeadlessGlobalErrorHooks();
-	GWT.setUncaughtExceptionHandler(new GWT.UncaughtExceptionHandler() {
-	    public void onUncaughtException(Throwable e) {
-		console("GWT uncaught exception: " + e);
-	    }
-	});
-	ComputedValues.resetForTesting();
-	initHeadless();
-	console("nonInteractive panel mode enabled");
-
-	String cct = normalizeOptionalQueryValue(qp.getValue("cct"));
-	if (cct != null)
-	    startCircuitText = cct.replace("%24", "$");
-	if (startCircuitText == null)
-	    startCircuitText = getElectronStartCircuitText();
-	String ctz = normalizeOptionalQueryValue(qp.getValue("ctz"));
-	if (ctz != null)
-	    startCircuitText = decompress(ctz);
-	String nonInteractiveDumpKey = normalizeOptionalQueryValue(qp.getValue("nonInteractiveDumpKey"));
-	if (nonInteractiveDumpKey == null)
-	    nonInteractiveDumpKey = normalizeOptionalQueryValue(qp.getValue("headlessDumpKey"));
-	if (startCircuitText == null && nonInteractiveDumpKey != null) {
-	    startCircuitText = getHeadlessDumpFromStorage(nonInteractiveDumpKey);
-	    if (startCircuitText == null)
-		console("nonInteractive dump key not found in localStorage: " + nonInteractiveDumpKey);
-	}
-	startCircuit = normalizeOptionalQueryValue(qp.getValue("startCircuit"));
-	startLabel = normalizeOptionalQueryValue(qp.getValue("startLabel"));
-	String stepsValue = normalizeOptionalQueryValue(qp.getValue("steps"));
-	int defaultSteps = RunnerLaunchDecision.resolveDefaultSteps(nonInteractiveDumpKey, stepsValue);
-	int steps = parsePositiveInt(stepsValue, defaultSteps);
-	console("nonInteractive params: startCircuit=" + startCircuit + ", steps=" + steps +
-	    ", hasCct=" + (startCircuitText != null && startCircuitText.length() > 0));
-
-	renderHeadlessStatus("Loading circuit...");
-
-	RunnerLaunchDecision.ImmediateRoute immediateRoute =
-		RunnerLaunchDecision.resolveImmediateRoute(startCircuitText, nonInteractiveDumpKey);
-	if (immediateRoute == RunnerLaunchDecision.ImmediateRoute.EMBEDDED_TEXT) {
-	    runHeadlessTableFromText(startCircuitText, steps, "embedded");
-	    return;
-	}
-	if (immediateRoute == RunnerLaunchDecision.ImmediateRoute.MISSING_DUMP_KEY) {
-	    renderHeadlessError("nonInteractive dump not found for key '" + nonInteractiveDumpKey + "'. Re-open nonInteractive Output from the simulator tab to generate a fresh key.");
-	    return;
-	}
-	if (immediateRoute == RunnerLaunchDecision.ImmediateRoute.NONE &&
-	    (startCircuit == null || startCircuit.length() == 0)) {
-	    renderHeadlessError("No data source specified. Use startCircuit=..., cct=..., or ctz=...");
-	    return;
-	}
-
-	try {
-	    if (startCircuit != null && startCircuit.length() > 0) {
-		console("nonInteractive dispatching load for startCircuit=" + startCircuit);
-		loadHeadlessSetupFile(startCircuit, startLabel, steps);
-		return;
-	    }
-	    renderHeadlessError("No data source specified. Use startCircuit=..., cct=..., or ctz=...");
-	} catch (Throwable t) {
-	    console("nonInteractive launch dispatch exception: " + t);
-	    renderHeadlessError("nonInteractive launch failed: " + t);
-	}
-    }
-
     public void initRunnerPanel(QueryParameters qp) {
 	RuntimeMode.setNonInteractiveRuntime(true);
 	clearHeadlessStdout();
@@ -987,11 +918,12 @@ public CirSim() {
     }
 
     private void loadHeadlessSetupFile(String str, String title, final int steps) {
+	String normalized = normalizeStartCircuitPath(str);
 	String[] candidates;
-	if (str.indexOf('/') >= 0)
-	    candidates = new String[] { str };
+	if (normalized.indexOf('/') >= 0)
+	    candidates = new String[] { normalized };
 	else
-	    candidates = new String[] { str, "economics/" + str, "electronics/" + str };
+	    candidates = new String[] { normalized, "economics/" + normalized, "electronics/" + normalized };
 	loadHeadlessSetupFileCandidates(candidates, 0, title, steps);
     }
 
@@ -1025,12 +957,28 @@ public CirSim() {
     }
 
     private void loadRunnerSetupFile(String str, String title, final int steps, final String format) {
+	String normalized = normalizeStartCircuitPath(str);
 	String[] candidates;
-	if (str.indexOf('/') >= 0)
-	    candidates = new String[] { str };
+	if (normalized.indexOf('/') >= 0)
+	    candidates = new String[] { normalized };
 	else
-	    candidates = new String[] { str, "economics/" + str, "electronics/" + str };
+	    candidates = new String[] { normalized, "economics/" + normalized, "electronics/" + normalized };
 	loadRunnerSetupFileCandidates(candidates, 0, title, steps, format);
+    }
+
+    private String normalizeStartCircuitPath(String path) {
+	if (path == null)
+	    return "";
+	String normalized = path.trim();
+	while (normalized.startsWith("/"))
+	    normalized = normalized.substring(1);
+	if (normalized.startsWith("war/"))
+	    normalized = normalized.substring(4);
+	if (normalized.startsWith("circuitjs1/"))
+	    normalized = normalized.substring(11);
+	if (normalized.startsWith("circuits/"))
+	    normalized = normalized.substring(9);
+	return normalized;
     }
 
     private void loadRunnerSetupFileCandidates(final String[] candidates, final int index,
