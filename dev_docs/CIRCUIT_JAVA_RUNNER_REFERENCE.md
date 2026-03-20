@@ -2,7 +2,9 @@
 
 ## Purpose
 
-This is a quick operational reference for running CircuitJS1 simulations on the JVM (no browser/GWT UI) and validating behavior with automated tests.
+This is a quick operational reference for running CircuitJS1 simulations mostly on the JVM (no browser/GWT UI) and validating behavior with automated tests.
+
+There is also a browser-based runner mode (for example: `circuitjs.html?runner=1...`, with `nonInteractive=1` also supported).
 
 ---
 
@@ -209,6 +211,8 @@ Use it from the normal app URL:
 
 ```text
 http://127.0.0.1:8000/circuitjs.html?runner=1&startCircuit=economics/1debug.md&steps=50
+
+http://127.0.0.1:8000/circuitjs.html?runner=1&startCircuit=economics/1debug.md&steps=1000&format=world2
 ```
 
 ### Supported query parameters
