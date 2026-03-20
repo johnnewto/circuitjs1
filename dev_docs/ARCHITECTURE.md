@@ -655,7 +655,7 @@ drawDynamicContent(g);  // text only
 - [INTERNALS.md](../INTERNALS.md) - Detailed simulation theory
 - [EQUATION_TABLE_REFERENCE.md](EQUATION_TABLE_REFERENCE.md) - EquationTableElm row modes, convergence, serialization
 - [PURE_COMPUTATIONAL_TABLES.md](PURE_COMPUTATIONAL_TABLES.md) - Pure computational element architecture
-- [HEADLESS_RUNNER_TESTING_REFERENCE.md](HEADLESS_RUNNER_TESTING_REFERENCE.md) - JVM headless runner usage, CLI contract, and test workflow
+- [CIRCUIT_JAVA_RUNNER_TESTING_REFERENCE.md](CIRCUIT_JAVA_RUNNER_TESTING_REFERENCE.md) - JVM circuit-runner usage, CLI contract, and test workflow
 - [CircuitJS1 Original](https://www.falstad.com/circuit/) - Paul Falstad's original
 - GWT Documentation: https://www.gwtproject.org/
 - Modified Nodal Analysis: Pillage et al. (1999)

@@ -36,30 +36,62 @@ final class EquationTableSemantics {
         return true;
     }
 
+    /**
+     * Calculate the convergence tolerance for equation table row values.
+     * 
+     * Uses combined absolute + relative tolerance:
+     *   tolerance = max(absTol, relTol * maxMagnitude)
+     * 
+     * This ensures from the world2 model that:
+     * - Small values (e.g., CIAF ~0.2): absolute tolerance dominates
+     * - Large values (e.g., NR ~9e11): relative tolerance dominates
+     * 
+     * Adaptive relaxation is applied when convergence is slow to prevent
+     * infinite iteration loops.
+     * 
+     * @param baseTolerance      Base tolerance from @init (e.g., 1e-8)
+     * @param subIterations      Current subiteration count
+     * @param hasDiffExpr        Whether the expression contains diff()
+     * @param outputValue        Current computed value
+     * @param lastOutputValue    Previous iteration's value
+     * @return Combined tolerance threshold
+     */
     static double convergenceLimit(double baseTolerance,
                                    int subIterations,
                                    boolean hasDiffExpr,
                                    double outputValue,
                                    double lastOutputValue) {
-        double relativeTolerance;
-        if (subIterations < 3) {
-            relativeTolerance = baseTolerance;
-        } else if (subIterations < 10) {
-            relativeTolerance = baseTolerance * 10;
-        } else if (subIterations < 50) {
-            relativeTolerance = baseTolerance * 50;
-        } else {
-            relativeTolerance = baseTolerance * 100;
+        // Absolute tolerance - floor for near-zero values
+        double absTol = baseTolerance;
+        
+        // Relative tolerance - scales with value magnitude
+        double relTol = baseTolerance;
+        
+        // Adaptive relaxation for slow convergence
+        if (subIterations >= 50) {
+            relTol *= 100;
+            absTol *= 100;
+        } else if (subIterations >= 10) {
+            relTol *= 10;
+            absTol *= 10;
+        } else if (subIterations >= 5) {
+            relTol *= 2;
+            absTol *= 2;
         }
-
+        
+        // diff() expressions need looser tolerance due to numerical sensitivity
         if (hasDiffExpr) {
-            relativeTolerance *= 10;
+            relTol *= 10;
+            absTol *= 10;
         }
-
-        double maxMagnitude = Math.max(1.0, Math.abs(outputValue));
-        maxMagnitude = Math.max(maxMagnitude, Math.abs(lastOutputValue));
-
-        return maxMagnitude * relativeTolerance;
+        
+        // Maximum magnitude of current and previous values
+        double maxMagnitude = Math.max(Math.abs(outputValue), Math.abs(lastOutputValue));
+        
+        // Combined criterion: max(absTol, relTol * magnitude)
+        // - For small values: absTol dominates (prevents div-by-zero issues)
+        // - For large values: relTol * magnitude dominates (scales appropriately)
+        return Math.max(absTol, relTol * maxMagnitude);
     }
 
     static boolean shouldSkipConvergenceCheck(boolean hasDiffExpr, int subIterations) {

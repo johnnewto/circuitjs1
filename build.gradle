@@ -231,16 +231,23 @@ tasks.withType(JavaCompile) {
     ]
 }
 
-task headlessCli(type: JavaExec, dependsOn: classes) {
+task runCircuitJava(type: JavaExec, dependsOn: classes) {
     group = 'circuitjs1'
-    description = 'Run a circuit headlessly and emit CSV output'
+    description = 'Run a circuit on the JVM and emit CSV/world2 output'
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'com.lushprojects.circuitjs1.client.HeadlessRunner'
+    mainClass = 'com.lushprojects.circuitjs1.client.CircuitJavaRunner'
     args = [
         project.findProperty('circuit') ?: 'tests/sfcr-sim-model.txt',
         project.findProperty('output') ?: '',
-        project.findProperty('steps') ?: '500'
+        project.findProperty('steps') ?: '500',
+        project.findProperty('format') ?: 'csv',
+        project.findProperty('html') ?: ''
     ]
+}
+
+task headlessCli(dependsOn: runCircuitJava) {
+    group = 'circuitjs1'
+    description = 'Deprecated alias for runCircuitJava'
 }
 
 //=====================================================================

@@ -1,4 +1,4 @@
-# Headless Runner & Testing Reference
+# Circuit Java Runner & Testing Reference
 
 ## Purpose
 
@@ -8,42 +8,74 @@ This is a quick operational reference for running CircuitJS1 simulations on the 
 
 ## What exists today
 
-- CLI entry point: `com.lushprojects.circuitjs1.client.HeadlessRunner`
-- Gradle task: `headlessCli`
+- CLI entry point: `com.lushprojects.circuitjs1.client.CircuitJavaRunner`
+- Gradle task: `runCircuitJava` (preferred), `headlessCli` (deprecated alias)
 - Browser headless table mode: `circuitjs.html?headless=1...`
 - End-to-end tests:
-  - `HeadlessRunnerE2ETest`
-  - `HeadlessSimTest` (base class for headless simulation tests)
+  - `CircuitJavaRunnerE2ETest`
+  - `CircuitJavaSimTestBase` (base class for JVM simulation tests)
 
 ---
 
 ## Quick commands
 
-### Run headless with defaults
+### Run with defaults
 
 ```bash
-./gradlew headlessCli
+./gradlew runCircuitJava
 ```
 
 Defaults from `build.gradle`:
 - circuit: `tests/sfcr-sim-model.txt`
 - output: stdout (when no output file provided)
 - steps: `500`
+- format: `csv`
 
-### Run headless with custom circuit and step count
+### Run with custom circuit and step count
 
 ```bash
-./gradlew -q headlessCli -Pcircuit="tests/sfcr-sim-model.txt" -Psteps=10
+./gradlew -q runCircuitJava -Pcircuit="tests/sfcr-sim-model.txt" -Psteps=10
 ```
 
 ### Write CSV to a file
 
 ```bash
-./gradlew -q headlessCli \
+./gradlew -q runCircuitJava \
   -Pcircuit="test/resources/sfcr_debug_reference.md" \
   -Poutput="/tmp/headless.csv" \
   -Psteps=20
 ```
+
+### Emit World2 formatted table (t, P, POLR, CI, QL, NR only)
+
+```bash
+./gradlew -q runCircuitJava \
+  -Pcircuit="src/com/lushprojects/circuitjs1/public/circuits/economics/1debug.md" \
+  -Poutput="/tmp/world2.tsv" \
+  -Psteps=20 \
+  -Pformat="world2"
+```
+
+### Emit World2 table and HTML Plot report
+
+```bash
+./gradlew -q runCircuitJava \
+  -Pcircuit="src/com/lushprojects/circuitjs1/public/circuits/economics/1debug.md" \
+  -Poutput="/tmp/world2.tsv" \
+  -Psteps=1000 \
+  -Pformat="world2" \
+  -Phtml="/tmp/world2-headless.html"
+```
+
+Plotting options in the generated HTML report:
+- `stacked` (default): five vertically stacked panels (`P`, `POLR`, `CI`, `QL`, `NR`)
+- `single-lhs`: one combined plot with five left-side y-axes
+
+These are selected in the report UI via the **Plot mode** dropdown (not via a CLI flag).
+
+Run metadata is also included in two places:
+- Terminal/stderr: `CircuitJavaRunner: circuit parameters used` block (timestep, MNA mode, equation tolerance, lookup mode, convergence threshold, EqnTable Newton Jacobian, Auto-Adjust Timestep, and related runtime settings)
+- HTML report: **Circuit Parameters Used** table near the top of the page
 
 ### Use project test wrapper
 
@@ -84,19 +116,20 @@ This opens a new tab with `headless=1&ctz=...` for the current unsaved circuit s
 
 ## CLI contract
 
-`HeadlessRunner` arguments:
+`CircuitJavaRunner` arguments:
 
 1. `circuitPath` (required)
 2. `outputPath` (optional, blank means stdout)
 3. `steps` (optional, default `1000` in direct `main`, `500` via Gradle task default)
+4. `format` (optional: `csv` or `world2`, default `csv`)
 
 Direct usage:
 
 ```bash
-java com.lushprojects.circuitjs1.client.HeadlessRunner <circuit.txt> [output.csv] [steps]
+java com.lushprojects.circuitjs1.client.CircuitJavaRunner <circuit.txt> [output.csv] [steps] [format]
 ```
 
-Recommended in this repo: use `./gradlew headlessCli` rather than direct `java`.
+Recommended in this repo: use `./gradlew runCircuitJava` rather than direct `java`.
 
 ---
 
@@ -115,20 +148,26 @@ Example header:
 t,G_d,Y,YD
 ```
 
+World2 format (`format=world2`) output:
+
+- Fixed columns only: `Year`, `Population`, `Pollution Ratio`, `Capital Investment`, `Quality of Life`, `Natural Resources`
+- Values are tab-separated
+- Number formatting follows `war/world2.html` table display conventions
+
 ---
 
 ## Testing workflow
 
-### Targeted headless E2E tests first
+### Targeted runner E2E tests first
 
 ```bash
-./gradlew test --tests "*HeadlessRunnerE2ETest*"
+./gradlew :test --tests "*CircuitJavaRunnerE2ETest*"
 ```
 
-### Targeted helper/base behavior (if needed)
+### Targeted base fixture consumers (if needed)
 
 ```bash
-./gradlew test --tests "*HeadlessSimTest*"
+./gradlew :test --tests "*SFCRSIMModelTest*" --tests "*LookupTextImportTest*"
 ```
 
 ### Full JVM test suite
@@ -141,7 +180,7 @@ t,G_d,Y,YD
 
 ```bash
 for f in tests/*.txt; do
-  if ./gradlew -q headlessCli -Pcircuit="$f" -Psteps=1 >/tmp/headless.out 2>/tmp/headless.err; then
+  if ./gradlew -q runCircuitJava -Pcircuit="$f" -Psteps=1 >/tmp/headless.out 2>/tmp/headless.err; then
     echo "PASS $f"
   else
     echo "FAIL $f"
@@ -155,8 +194,8 @@ done
 
 When changing solver/runtime/economic model behavior:
 
-1. Run `HeadlessRunnerE2ETest`
-2. Run one or more `headlessCli` commands against representative circuits
+1. Run `CircuitJavaRunnerE2ETest`
+2. Run one or more `runCircuitJava` commands against representative circuits
 3. Inspect CSV for monotonic time and expected key values
 4. Run full `./gradlew test`
 
@@ -164,13 +203,13 @@ When changing solver/runtime/economic model behavior:
 
 ## Common failure signals
 
-- `HeadlessRunner: no circuit elements available after load`
+- `CircuitJavaRunner: no circuit elements available after load`
   - Circuit file did not parse into elements.
-- `HeadlessRunner: circuit matrix is null after analyze`
+- `CircuitJavaRunner: circuit matrix is null after analyze`
   - No solvable electrical network formed.
-- `HeadlessRunner: simulation stopped during analyze: ...`
+- `CircuitJavaRunner: simulation stopped during analyze: ...`
   - Analyze phase raised a stop condition.
-- `HeadlessRunner: time did not advance at step ...`
+- `CircuitJavaRunner: time did not advance at step ...`
   - Simulation did not advance time; inspect stop conditions and circuit validity.
 
 Browser mode (`Standard Output` tab):
@@ -188,6 +227,6 @@ Browser mode (`Standard Output` tab):
 
 ## Notes
 
-- Headless mode is enabled by `RuntimeMode.setHeadless(true)`.
+- JVM runner mode is enabled by `RuntimeMode.setHeadless(true)`.
 - Tests that touch `ComputedValues` should isolate/reset shared state (`@ResourceLock("ComputedValues")`, `ComputedValues.resetForTesting()`).
 - For iterative debugging, prefer small `-Psteps` values first (e.g. `1`, `5`, `10`) and scale up after sanity checks.

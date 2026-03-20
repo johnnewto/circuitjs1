@@ -155,7 +155,14 @@ public final class NumFmt {
         }
 
         private static double round(double value, int decimals) {
+            if (decimals <= 0) {
+                return Math.round(value);
+            }
             double factor = Math.pow(10, decimals);
+            double maxSafeBeforeScale = Long.MAX_VALUE / factor;
+            if (value > maxSafeBeforeScale) {
+                return value;
+            }
             return Math.round(value * factor) / factor;
         }
     }

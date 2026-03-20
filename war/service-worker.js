@@ -1,4 +1,4 @@
-const CACHE_NAME = 'circuitjs1-app-cache-v2';
+const CACHE_NAME = 'circuitjs1-app-cache-v3';
 const urlsToCache = [
     'about.html',
     'canvas2svg.js',
@@ -36,6 +36,12 @@ function shouldBypassCache(request) {
     const url = new URL(request.url);
     const p = url.searchParams;
     if (p.has('headless'))
+        return true;
+    if (p.has('runner'))
+        return true;
+    if (url.pathname.indexOf('/circuitjs1/circuits/') >= 0)
+        return true;
+    if (url.pathname.endsWith('.md') || url.pathname.endsWith('.txt'))
         return true;
     if (url.pathname.endsWith('/world2.html') || url.pathname.endsWith('/headless.html'))
         return true;

@@ -342,6 +342,15 @@ MouseOutHandler, MouseWheelHandler {
 		JsArray<JavaScriptObject> call();
 	}
 
+	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "XMLHttpRequest")
+	private static class NativeXhr {
+	    public NativeXhr() {}
+	    @JsMethod native void open(String method, String url, boolean async);
+	    @JsMethod native void send();
+	    @JsProperty native int getStatus();
+	    @JsProperty native String getResponseText();
+	}
+
 	@JsFunction
 	private interface ApiHook {
 		void call(CircuitJsApi api);
@@ -850,21 +859,96 @@ public CirSim() {
 	    renderHeadlessError("Headless dump not found for key '" + headlessDumpKey + "'. Re-open Headless Output from the simulator tab to generate a fresh key.");
 	    return;
 	}
+	if (immediateRoute == HeadlessLaunchDecision.ImmediateRoute.NONE &&
+	    (startCircuit == null || startCircuit.length() == 0)) {
+	    renderHeadlessError("No data source specified. Use startCircuit=..., cct=..., or ctz=...");
+	    return;
+	}
 
-	// Defer async dispatches until after onModuleLoad() returns so the
-	// browser event loop is pumping and XHR callbacks can fire.
-	final String _startCircuit = startCircuit;
-	final String _startLabel = startLabel;
-	final int _steps = steps;
-	Scheduler.get().scheduleDeferred(new Scheduler.ScheduledCommand() {
-	    public void execute() {
-		if (_startCircuit != null && _startCircuit.length() > 0) {
-		    loadHeadlessSetupFile(_startCircuit, _startLabel, _steps);
-		    return;
-		}
-		renderHeadlessError("No data source specified. Use startCircuit=..., cct=..., or ctz=...");
+	try {
+	    if (startCircuit != null && startCircuit.length() > 0) {
+		console("Headless dispatching load for startCircuit=" + startCircuit);
+		loadHeadlessSetupFile(startCircuit, startLabel, steps);
+		return;
+	    }
+	    renderHeadlessError("No data source specified. Use startCircuit=..., cct=..., or ctz=...");
+	} catch (Throwable t) {
+	    console("Headless launch dispatch exception: " + t);
+	    renderHeadlessError("Headless launch failed: " + t);
+	}
+    }
+
+    public void initRunnerPanel(QueryParameters qp) {
+	RuntimeMode.setHeadless(true);
+	clearHeadlessStdout();
+	headlessStdoutEnabled = true;
+	installHeadlessGlobalErrorHooks();
+	GWT.setUncaughtExceptionHandler(new GWT.UncaughtExceptionHandler() {
+	    public void onUncaughtException(Throwable e) {
+		console("GWT uncaught exception: " + e);
 	    }
 	});
+	ComputedValues.resetForTesting();
+	initHeadless();
+	console("Runner panel mode enabled");
+
+	String cct = normalizeOptionalQueryValue(qp.getValue("cct"));
+	if (cct != null)
+	    startCircuitText = cct.replace("%24", "$");
+	if (startCircuitText == null)
+	    startCircuitText = getElectronStartCircuitText();
+	String ctz = normalizeOptionalQueryValue(qp.getValue("ctz"));
+	if (ctz != null)
+	    startCircuitText = decompress(ctz);
+	String headlessDumpKey = normalizeOptionalQueryValue(qp.getValue("headlessDumpKey"));
+	if (startCircuitText == null && headlessDumpKey != null) {
+	    startCircuitText = getHeadlessDumpFromStorage(headlessDumpKey);
+	    if (startCircuitText == null)
+		console("Runner dump key not found in localStorage: " + headlessDumpKey);
+	}
+	startCircuit = normalizeOptionalQueryValue(qp.getValue("startCircuit"));
+	startLabel = normalizeOptionalQueryValue(qp.getValue("startLabel"));
+	String stepsValue = normalizeOptionalQueryValue(qp.getValue("steps"));
+	int defaultSteps = HeadlessLaunchDecision.resolveDefaultSteps(headlessDumpKey, stepsValue);
+	int steps = parsePositiveInt(stepsValue, defaultSteps);
+	String format = normalizeOptionalQueryValue(qp.getValue("format"));
+	if (format == null)
+	    format = "csv";
+	format = format.toLowerCase();
+	if (!("csv".equals(format) || "world2".equals(format)))
+	    format = "csv";
+	console("Runner params: startCircuit=" + startCircuit + ", steps=" + steps + ", format=" + format +
+	    ", hasCct=" + (startCircuitText != null && startCircuitText.length() > 0));
+
+	renderRunnerStatus("Loading circuit...");
+
+	HeadlessLaunchDecision.ImmediateRoute immediateRoute =
+		HeadlessLaunchDecision.resolveImmediateRoute(startCircuitText, headlessDumpKey);
+	if (immediateRoute == HeadlessLaunchDecision.ImmediateRoute.EMBEDDED_TEXT) {
+	    runRunnerFromText(startCircuitText, steps, "embedded", format);
+	    return;
+	}
+	if (immediateRoute == HeadlessLaunchDecision.ImmediateRoute.MISSING_DUMP_KEY) {
+	    renderRunnerError("Runner dump not found for key '" + headlessDumpKey + "'. Re-open Headless Output from the simulator tab to generate a fresh key.");
+	    return;
+	}
+	if (immediateRoute == HeadlessLaunchDecision.ImmediateRoute.NONE &&
+	    (startCircuit == null || startCircuit.length() == 0)) {
+	    renderRunnerError("No data source specified. Use startCircuit=..., cct=..., or ctz=...");
+	    return;
+	}
+
+	try {
+	    if (startCircuit != null && startCircuit.length() > 0) {
+		console("Runner dispatching load for startCircuit=" + startCircuit);
+		loadRunnerSetupFile(startCircuit, startLabel, steps, format);
+		return;
+	    }
+	    renderRunnerError("No data source specified. Use startCircuit=..., cct=..., or ctz=...");
+	} catch (Throwable t) {
+	    console("Runner launch dispatch exception: " + t);
+	    renderRunnerError("Runner launch failed: " + t);
+	}
     }
 
     private String normalizeOptionalQueryValue(String value) {
@@ -936,6 +1020,45 @@ public CirSim() {
 	});
     }
 
+    private void loadRunnerSetupFile(String str, String title, final int steps, final String format) {
+	String[] candidates;
+	if (str.indexOf('/') >= 0)
+	    candidates = new String[] { str };
+	else
+	    candidates = new String[] { str, "economics/" + str, "electronics/" + str };
+	loadRunnerSetupFileCandidates(candidates, 0, title, steps, format);
+    }
+
+    private void loadRunnerSetupFileCandidates(final String[] candidates, final int index,
+	    final String title, final int steps, final String format) {
+	if (index >= candidates.length) {
+	    console("Runner load failed for all candidates of startCircuit=" + startCircuit);
+	    renderRunnerError("Can't load circuit file: " + startCircuit);
+	    return;
+	}
+
+	final String circuitPath = candidates[index];
+	String url = GWT.getModuleBaseURL() + "circuits/" + circuitPath;
+	console("Runner trying circuit path: circuits/" + circuitPath);
+	updateHeadlessStatusMessage("Loading circuits/" + circuitPath + " ...");
+	loadFileFromURLHeadless(url, new Command() {
+	    public void execute() {
+		console("Runner loaded circuit path: circuits/" + circuitPath);
+		updateHeadlessStatusMessage("Loaded circuits/" + circuitPath);
+		if (title != null)
+		    setCircuitTitle(title);
+		currentCircuitFile = "circuits/" + circuitPath;
+		runRunnerSimulation(steps, currentCircuitFile, format);
+	    }
+	}, new Command() {
+	    public void execute() {
+		console("Runner failed circuit path: circuits/" + circuitPath + " (trying next)");
+		updateHeadlessStatusMessage("Failed circuits/" + circuitPath + ", trying next...");
+		loadRunnerSetupFileCandidates(candidates, index + 1, title, steps, format);
+	    }
+	});
+    }
+
     void onHeadlessLoadFileSuccess(String text, Command successCallback) {
 	readCircuit(text, RC_KEEP_TITLE);
 	unsavedChanges = false;
@@ -946,32 +1069,22 @@ public CirSim() {
     void loadFileFromURLHeadless(String url, final Command successCallback, final Command failureCallback) {
 	final String loadUrl = getLoadUrl(url);
 	console("loadFileFromURLHeadless request: " + loadUrl);
-	RequestBuilder builder = new RequestBuilder(RequestBuilder.GET, loadUrl);
-	builder.setTimeoutMillis(15000);
+	final NativeXhr xhr = new NativeXhr();
 	try {
-	    builder.sendRequest(null, new RequestCallback() {
-		public void onResponseReceived(Request request, Response response) {
-		    int status = response.getStatusCode();
-		    if (status >= 200 && status < 300) {
-			console("loadFileFromURLHeadless success: " + loadUrl + " status=" + status);
-			onHeadlessLoadFileSuccess(response.getText(), successCallback);
-			return;
-		    }
-		    console("loadFileFromURLHeadless HTTP failure: " + loadUrl + " status=" + status + " text=" + response.getStatusText());
-		    if (failureCallback != null)
-			failureCallback.execute();
-		}
-
-		public void onError(Request request, Throwable exception) {
-		    console("loadFileFromURLHeadless onError: " + loadUrl + " err=" + exception);
-		    if (failureCallback != null)
-			failureCallback.execute();
-		}
-	    });
-	} catch (RequestException e) {
-	    console("loadFileFromURLHeadless exception before/at send: " + e);
+	    xhr.open("GET", loadUrl, false);
+	    xhr.send();
+	    int status = xhr.getStatus();
+	    if (status >= 200 && status < 300) {
+		console("loadFileFromURLHeadless success: " + loadUrl + " status=" + status);
+		onHeadlessLoadFileSuccess(xhr.getResponseText(), successCallback);
+		return;
+	    }
+	    console("loadFileFromURLHeadless HTTP failure: " + loadUrl + " status=" + status);
 	    if (failureCallback != null)
 		failureCallback.execute();
+	} catch (Throwable t) {
+	    console("loadFileFromURLHeadless xhr exception: " + t + " (falling back to RequestBuilder)");
+	    loadFileFromURL(url, successCallback, failureCallback);
 	}
     }
 
@@ -980,6 +1093,56 @@ public CirSim() {
 	readCircuit(circuitText, 0);
 	currentCircuitFile = source;
 	runHeadlessTableSimulation(steps, source);
+    }
+
+    private void runRunnerFromText(String circuitText, int steps, String source, String format) {
+	console("Runner loading embedded circuit text source=" + source + ", length=" + circuitText.length());
+	readCircuit(circuitText, 0);
+	currentCircuitFile = source;
+	runRunnerSimulation(steps, source, format);
+    }
+
+    private void runRunnerSimulation(int steps, String source, String format) {
+	console("Runner simulation start: source=" + source + ", steps=" + steps + ", format=" + format);
+	analyzeCircuit();
+	preStampAndStampCircuit();
+
+	if (stopMessage != null) {
+	    renderRunnerError("Analyze warning: " + stopMessage);
+	    return;
+	}
+
+	SimulationExportCore.RunRequest request = new SimulationExportCore.RunRequest();
+	request.circuitPath = source;
+	request.outputPath = "(browser)";
+	request.htmlPath = "(browser)";
+	request.steps = steps;
+	request.format = format;
+	SimulationExportCore.RunResult runResult = SimulationExportCore.run(this, request, new SimulationExportCore.Diagnostics() {
+	    public void log(String message) {
+		console(message);
+	    }
+	});
+
+	StringBuilder content = new StringBuilder();
+	content.append(headlessDiv("<b>Source:</b> " + SafeHtmlUtils.htmlEscape(source != null ? source : "(none)")));
+	content.append(headlessDiv("<b>Requested steps:</b> " + steps));
+	content.append(headlessDiv("<b>Output format:</b> " + SafeHtmlUtils.htmlEscape(format)));
+	content.append(headlessDiv("<b>Completed steps:</b> " + runResult.rowsWritten));
+	content.append("<div style='margin-top:10px;'><pre style='white-space:pre-wrap; font-family:monospace; max-height:70vh; overflow:auto; border:1px solid #ccc; padding:8px;'>");
+	content.append(SafeHtmlUtils.htmlEscape(runResult.outputText != null ? runResult.outputText : ""));
+	content.append("</pre></div>");
+
+	String extraHtml = "";
+	if (runResult.world2Format && runResult.htmlReport != null) {
+	    extraHtml = "<div id='runner-report-tab' style='display:none; margin-top:8px;'>"
+		+ "<iframe style='width:100%; height:78vh; border:1px solid #ccc;' srcdoc=\""
+		+ escapeHtmlAttribute(runResult.htmlReport)
+		+ "\"></iframe></div>";
+	}
+
+	RootPanel.get().getElement().setInnerHTML(buildRunnerTabbedHtml("Runner Output", content.toString(),
+	    runResult.world2Format && runResult.htmlReport != null, "World2 Report", extraHtml));
     }
 
     private void runHeadlessTableSimulation(int steps, String source) {
@@ -1087,9 +1250,19 @@ public CirSim() {
 	RootPanel.get().getElement().setInnerHTML(buildHeadlessTabbedHtml("Output Table", content));
     }
 
+    private void renderRunnerStatus(String message) {
+	String content = "<div id='headless-status-message'>" + SafeHtmlUtils.htmlEscape(message) + "</div>";
+	RootPanel.get().getElement().setInnerHTML(buildRunnerTabbedHtml("Runner Output", content, false, "", ""));
+    }
+
     private void renderHeadlessError(String message) {
 	String content = "<div style='color:#c33;'>" + SafeHtmlUtils.htmlEscape(message) + "</div>";
 	RootPanel.get().getElement().setInnerHTML(buildHeadlessTabbedHtml("Output Table", content));
+    }
+
+    private void renderRunnerError(String message) {
+	String content = "<div style='color:#c33;'>" + SafeHtmlUtils.htmlEscape(message) + "</div>";
+	RootPanel.get().getElement().setInnerHTML(buildRunnerTabbedHtml("Runner Output", content, false, "", ""));
     }
 
     private String buildHeadlessTabbedHtml(String primaryTabTitle, String primaryContentHtml) {
@@ -1112,6 +1285,50 @@ public CirSim() {
 	    + "</div>"
 	    + "</div>"
 	    + "</div>";
+    }
+
+    private String buildRunnerTabbedHtml(String primaryTabTitle, String primaryContentHtml,
+	    boolean includeReportTab, String reportTabTitle, String reportTabContentHtml) {
+	String escapedTitle = SafeHtmlUtils.htmlEscape(primaryTabTitle);
+	String escapedReportTitle = SafeHtmlUtils.htmlEscape(reportTabTitle != null ? reportTabTitle : "Report");
+	String stdoutHtml = getHeadlessStdoutHtml();
+	String reportButton = includeReportTab
+	    ? "<button style='margin-left:8px;' onclick=\"document.getElementById('runner-primary-tab').style.display='none';document.getElementById('runner-report-tab').style.display='block';document.getElementById('runner-stdout-tab').style.display='none';\">" + escapedReportTitle + "</button>"
+	    : "";
+	return "<div style='padding:12px;'>"
+	    + "<h2>Browser Runner Output</h2>"
+	    + "<div style='margin:8px 0;'>"
+	    + "<button onclick=\"document.getElementById('runner-primary-tab').style.display='block';"
+		+ (includeReportTab ? "document.getElementById('runner-report-tab').style.display='none';" : "")
+		+ "document.getElementById('runner-stdout-tab').style.display='none';\">"
+	    + escapedTitle
+	    + "</button>"
+	    + reportButton
+	    + "<button style='margin-left:8px;' onclick=\"document.getElementById('runner-primary-tab').style.display='none';"
+		+ (includeReportTab ? "document.getElementById('runner-report-tab').style.display='none';" : "")
+		+ "document.getElementById('runner-stdout-tab').style.display='block';\">Standard Output</button>"
+	    + "</div>"
+	    + "<div id='runner-primary-tab' style='display:block;'>"
+	    + primaryContentHtml
+	    + "</div>"
+	    + reportTabContentHtml
+	    + "<div id='runner-stdout-tab' style='display:none;'>"
+	    + "<div id='headless-stdout-pre' style='white-space:pre-wrap; font-family:monospace; max-height:70vh; overflow:auto; border:1px solid #ccc; padding:8px;'>"
+	    + stdoutHtml
+	    + "</div>"
+	    + "</div>"
+	    + "</div>";
+    }
+
+    private String escapeHtmlAttribute(String input) {
+	if (input == null)
+	    return "";
+	String escaped = input;
+	escaped = escaped.replace("&", "&amp;");
+	escaped = escaped.replace("\"", "&quot;");
+	escaped = escaped.replace("<", "&lt;");
+	escaped = escaped.replace(">", "&gt;");
+	return escaped;
     }
 
     static final int HEADLESS_STDOUT_MAX_LINES = 2000;
@@ -6597,9 +6814,12 @@ public CirSim() {
 	}
 
 	String getLoadUrl(String url) {
+	    String result = url;
+	    if (RuntimeMode.isHeadless())
+		result = result + (result.indexOf('?') >= 0 ? "&" : "?") + "headless=1";
 	    if (!enableCacheBustedUrls)
-		return url;
-	    return url + (url.indexOf('?') >= 0 ? "&" : "?") + "v=" + System.currentTimeMillis();
+		return result;
+	    return result + (result.indexOf('?') >= 0 ? "&" : "?") + "v=" + System.currentTimeMillis();
 	}
 
     static final int RC_RETAIN = 1;

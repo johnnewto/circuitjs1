@@ -9,7 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("Standard text lookup import")
-class LookupTextImportTest extends HeadlessSimTest {
+class LookupTextImportTest extends CircuitJavaSimTestBase {
 
     @Test
     @DisplayName("imports % lookup lines in standard circuit text")

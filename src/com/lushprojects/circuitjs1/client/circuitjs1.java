@@ -202,9 +202,14 @@ public class circuitjs1 implements EntryPoint {
         Locale.localizationMap = localizationMap;
         QueryParameters qp = new QueryParameters();
         boolean headlessPanel = qp.getBooleanValue("headless", false);
+        boolean runnerPanel = qp.getBooleanValue("runner", false);
         mysim = new CirSim();
         if (headlessPanel) {
             mysim.initHeadlessPanel(qp);
+            return;
+        }
+        if (runnerPanel) {
+            mysim.initRunnerPanel(qp);
             return;
         }
 

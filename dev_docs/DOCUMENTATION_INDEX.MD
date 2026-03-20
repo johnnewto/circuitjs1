@@ -71,12 +71,12 @@ This index reflects the current mixed architecture in the codebase:
 - `ComputedValues` double-buffering lifecycle
 - Circuit-global expression slot system (`E_GSLOT`) and reset-safe registration flow
 
-### HEADLESS_RUNNER_TESTING_REFERENCE.md
-**Purpose:** Operational reference for JVM headless simulation and regression testing  
+### CIRCUIT_JAVA_RUNNER_TESTING_REFERENCE.md
+**Purpose:** Operational reference for JVM circuit-runner simulation and regression testing  
 **Key Points:**
-- `headlessCli` usage with `-Pcircuit`, `-Poutput`, and `-Psteps`
+- `runCircuitJava` usage with `-Pcircuit`, `-Poutput`, and `-Psteps`
 - CSV output contract (`t` + sorted `ComputedValues` keys)
-- Recommended test order (`HeadlessRunnerE2ETest` → full `./gradlew test`) and smoke-loop commands
+- Recommended test order (`CircuitJavaRunnerE2ETest` → full `./gradlew test`) and smoke-loop commands
 
 ### STOCK_MASTER_ELM_REFERENCE.md
 **Purpose:** Reference for the Master Stocks display element  

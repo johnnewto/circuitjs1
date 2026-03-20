@@ -6,10 +6,9 @@
 @init
   timestep: 0.2
   timeUnit: yr
-  equationTableMnaMode: false
+  equationTableMnaMode: yes
   equationTableTolerance: 0.001
-  lookupMode: pwl
-  convergenceCheckThreshold: 5000
+  convergenceCheckThreshold: 199
   showDots: false
   showVolts: false
 @end
@@ -115,7 +114,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup BRMM scope=World2
-  # birth multiplier vs material standard of living (MSL)
   0, 1.2
   1, 1
   2, 0.85
@@ -127,7 +125,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup BRCM scope=World2
-  # birth multiplier vs crowding (CR)
   0, 1.05
   1, 1
   2, 0.9
@@ -139,7 +136,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup BRFM scope=World2
-  # birth multiplier vs food ratio (FR)
   0, 0
   1, 1
   2, 1.6
@@ -150,7 +146,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup BRPM scope=World2
-  # birth multiplier vs pollution ratio (POLR)
   0, 1.02
   10, 0.9
   20, 0.7
@@ -163,7 +158,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup DRMM scope=World2
-  # death multiplier vs material standard of living (MSL)
   0, 3
   0.5, 1.8
   1, 1
@@ -180,7 +174,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup DRPM scope=World2
-  # death multiplier vs pollution ratio (POLR)
   0, 0.92
   10, 1.3
   20, 2
@@ -193,7 +186,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup DRFM scope=World2
-  # death multiplier vs food ratio (FR)
   0, 30
   0.25, 3
   0.5, 2
@@ -208,7 +200,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup DRCM scope=World2
-  # death multiplier vs crowding (CR)
   0, 0.9
   1, 1
   2, 1.2
@@ -220,7 +211,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup NRMM scope=World2
-  # nonrenewable resource usage multiplier vs material standard of living (MSL)
   0, 0
   1, 1
   2, 1.8
@@ -237,7 +227,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup CIM scope=World2
-  # capital investment generation multiplier vs material standard of living (MSL)
   0, 0.1
   1, 1
   2, 1.8
@@ -249,7 +238,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup POLCM scope=World2
-  # pollution generation multiplier vs capital intensity ratio (CIR)
   0, 0.05
   1, 1
   2, 3
@@ -261,7 +249,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup POLAT scope=World2
-  # pollution assimilation time lookup vs pollution ratio (POLR)
   0, 0.6
   10, 2.5
   20, 5
@@ -274,7 +261,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup CFIFR scope=World2
-  # capital-fraction-in-food response vs food ratio (FR)
   0, 1
   0.5, 0.6
   1, 0.3
@@ -285,7 +271,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup QLM scope=World2
-  # quality-of-life multiplier vs material standard of living (MSL)
   0, 0.2
   1, 1
   2, 1.7
@@ -297,7 +282,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup QLP scope=World2
-  # quality-of-life multiplier vs pollution ratio (POLR)
   0, 1.04
   10, 0.85
   20, 0.6
@@ -310,7 +294,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup QLF scope=World2
-  # quality-of-life multiplier vs food ratio (FR)
   0, 0
   1, 1
   2, 1.8
@@ -321,7 +304,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup CIQR scope=World2
-  # capital-investment quality response vs quality ratio (QLM / QLF)
   0, 0.7
   0.5, 0.8
   1, 1
@@ -332,7 +314,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup FCM scope=World2
-  # food coefficient multiplier vs crowding (CR)
   0, 2.4
   1, 1
   2, 0.6
@@ -344,7 +325,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup FPCI scope=World2
-  # food productivity of capital investment vs CIRA
   0, 0.5
   1, 1
   2, 1.4
@@ -357,7 +337,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup FPM scope=World2
-  # food multiplier vs pollution ratio (POLR)
   0, 1.02
   10, 0.9
   20, 0.65
@@ -370,7 +349,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup NREM scope=World2
-  # resource extraction modifier vs remaining resource fraction (NRFR)
   0, 0
   0.25, 0.15
   0.5, 0.5
@@ -381,7 +359,6 @@ Reference target from pyworld2 tests at year 2100:
 
 ```{r}
 @lookup QLC scope=World2
-  # quality-of-life multiplier vs crowding (CR)
   0, 2
   0.5, 1.3
   1, 1

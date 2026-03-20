@@ -7,23 +7,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-@DisplayName("Headless SFCR simulation regression")
-class SFCRSIMModelTest extends HeadlessSimTest {
+@DisplayName("Circuit Java SFCR simulation regression")
+class SFCRSIMModelTest extends CircuitJavaSimTestBase {
 
     private void loadMixedModesFixture() throws Exception {
         loadCircuitText(TestFixtures.loadSfcr("mixed_modes_fixture.md"));
     }
 
     @Test
-    @DisplayName("loads mixed-modes fixture and runs headless")
-    void sfcrModelLoadsAndRunsHeadless() throws Exception {
+    @DisplayName("loads mixed-modes fixture and runs on circuit java runner")
+    void sfcrModelLoadsAndRunsCircuitJava() throws Exception {
         loadMixedModesFixture();
 
         assertTrue(sim.elmList.size() > 0, "Fixture should create elements");
         runSteps(5);
 
         assertNotNull(sim, "Simulator must remain available after stepping");
-        assertNull(sim.stopMessage, "Headless stepping should not stop with an error");
+        assertNull(sim.stopMessage, "Circuit Java stepping should not stop with an error");
     }
 
     @Test
@@ -54,14 +54,14 @@ class SFCRSIMModelTest extends HeadlessSimTest {
     }
 
     @Test
-    @DisplayName("headless stepping keeps simulation time monotonic")
-    void headlessRunAdvancesSimulationTime() throws Exception {
+    @DisplayName("circuit java stepping keeps simulation time monotonic")
+    void circuitJavaRunAdvancesSimulationTime() throws Exception {
         loadMixedModesFixture();
 
         double startTime = sim.t;
         runSteps(5);
 
-        assertTrue(sim.t >= startTime, "Simulation time should not go backwards in headless mode");
+        assertTrue(sim.t >= startTime, "Simulation time should not go backwards in circuit java mode");
         assertNull(sim.stopMessage, "Simulation should not stop while advancing time");
     }
 }

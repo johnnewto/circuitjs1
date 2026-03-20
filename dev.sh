@@ -212,6 +212,145 @@ restartworld2() {
     world2 "$scenario" "$steps" "$dt"
 }
 
+runcircuitjava() {
+    local circuit="${1:-src/com/lushprojects/circuitjs1/public/circuits/economics/1debug.md}"
+    local steps="${2:-1000}"
+    local output="${3:-/tmp/world2.tsv}"
+    local format="${4:-world2}"
+    local html="${5:-/tmp/world2-headless.html}"
+
+    echo "Running runCircuitJava with circuit=${circuit}, steps=${steps}, output=${output}, format=${format}, html=${html}"
+
+    "$SCRIPT_DIR/gradlew" -q runCircuitJava \
+        -Pcircuit="$circuit" \
+        -Psteps="$steps" \
+        -Poutput="$output" \
+        -Pformat="$format" \
+        -Phtml="$html"
+}
+
+completion() {
+    if [[ "${1:-}" == "install" ]]; then
+        local bashrc="${HOME}/.bashrc"
+        local line="source <(${SCRIPT_DIR}/dev.sh completion)"
+
+        touch "$bashrc"
+
+        if grep -Fqx "$line" "$bashrc"; then
+            echo "Bash completion is already installed in ${bashrc}"
+            echo "Run: source ${bashrc}"
+            return 0
+        fi
+
+        {
+            echo ""
+            echo "# circuitjs1 dev.sh tab completion"
+            echo "$line"
+        } >> "$bashrc"
+
+        echo "Installed bash completion in ${bashrc}"
+        echo "Run: source ${bashrc}"
+        return 0
+    fi
+
+    cat <<'EOF'
+_circuitjs1_dev_completion() {
+    local cur prev commands
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    commands="help setup compile package start stop restart startprod codeserver webserver test world2 stopworld2 restartworld2 runcircuitjava completion install_completion"
+
+    if [[ $COMP_CWORD -eq 1 ]]; then
+        COMPREPLY=( $(compgen -W "$commands" -- "$cur") )
+        return 0
+    fi
+
+    if [[ "${COMP_WORDS[1]}" == "completion" && $COMP_CWORD -eq 2 ]]; then
+        COMPREPLY=( $(compgen -W "install" -- "$cur") )
+        return 0
+    fi
+
+    case "${COMP_WORDS[1]}" in
+        runcircuitjava)
+            case "$prev" in
+                runcircuitjava)
+                    COMPREPLY=( $(compgen -f -- "$cur") )
+                    ;;
+                world2|csv)
+                    COMPREPLY=( $(compgen -f -- "$cur") )
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            ;;
+        stopworld2)
+            COMPREPLY=()
+            ;;
+        world2|restartworld2)
+            COMPREPLY=()
+            ;;
+        *)
+            COMPREPLY=()
+            ;;
+    esac
+}
+
+complete -F _circuitjs1_dev_completion ./dev.sh
+complete -F _circuitjs1_dev_completion dev.sh
+complete -F _circuitjs1_dev_completion dev
+EOF
+}
+
+install_completion() {
+    completion install
+}
+
+print_commands() {
+    cat <<'EOF'
+Available commands:
+  help            Show this help
+  setup           Install prerequisites and generate build.xml
+  compile         Build with Ant
+  package         Build and create circuitjs1.tar.gz
+  start           Start dev webserver + GWT codeserver
+  stop            Stop dev webserver + GWT codeserver
+  restart         Restart dev webserver + GWT codeserver
+  webserver       Start only dev webserver
+  codeserver      Start only GWT codeserver
+  startprod       Compile optimized build and start webserver
+  test            Run tests and open report
+  world2          Run World2 UI flow (scenario [steps [dt]])
+  stopworld2      Stop World2 server (port)
+  restartworld2   Restart World2 flow (scenario [steps [dt]])
+  runcircuitjava  Run JVM circuit runner locally
+    completion      Print bash completion script
+    install_completion  Alias for 'completion install', install bash completions for dev.sh
+
+runcircuitjava defaults:
+  circuit=src/com/lushprojects/circuitjs1/public/circuits/economics/1debug.md
+  steps=1000
+  output=/tmp/world2.tsv
+  format=world2
+  html=/tmp/world2-headless.html
+
+runcircuitjava examples:
+    ./dev.sh runcircuitjava
+    ./dev.sh runcircuitjava <circuit> [steps] [output] [format] [html]
+    ./dev.sh runcircuitjava src/com/lushprojects/circuitjs1/public/circuits/economics/1debug.md 1000 /tmp/world2.tsv world2 /tmp/world2-headless.html
+
+EOF
+}
+
+help() {
+    print_commands
+}
+
+
+if [[ $# -eq 0 ]]; then
+    help
+    exit 0
+fi
 
 for func in $(compgen -A function); do
     if [[ $func == "$1" ]]; then
@@ -221,6 +360,7 @@ for func in $(compgen -A function); do
     fi
 done
 
-echo "Unknown command '$1'. Try one of the following:"
-compgen -A function
+echo "Unknown command '$1'"
+echo
+help
 exit 1

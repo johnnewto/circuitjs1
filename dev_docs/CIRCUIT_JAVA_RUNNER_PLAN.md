@@ -205,9 +205,9 @@ Gate each with `if (RuntimeMode.isGwt())`.  The SFCR parse path itself (`SFCRPar
 
 ---
 
-## Phase 5 — `HeadlessRunner` CLI entry point (1–2 days)
+## Phase 5 — `CircuitJavaRunner` CLI entry point (1–2 days)
 
-### New file: `src/.../client/HeadlessRunner.java`
+### New file: `src/.../client/CircuitJavaRunner.java`
 
 ```java
 package com.lushprojects.circuitjs1.client;
@@ -222,13 +222,13 @@ import java.util.*;
  * or a specified output file.
  *
  * Usage:
- *   java HeadlessRunner <circuit.txt> [output.csv] [steps=1000] [dt=0.01]
+ *   java CircuitJavaRunner <circuit.txt> [output.csv] [steps=1000] [dt=0.01]
  */
-public class HeadlessRunner {
+public class CircuitJavaRunner {
 
     public static void main(String[] args) throws Exception {
         if (args.length < 1) {
-            System.err.println("Usage: HeadlessRunner <circuit.txt> [output.csv] [steps=1000]");
+            System.err.println("Usage: CircuitJavaRunner <circuit.txt> [output.csv] [steps=1000]");
             System.exit(1);
         }
 
@@ -286,29 +286,34 @@ public class HeadlessRunner {
 ### Add to `build.gradle`
 
 ```groovy
-task headlessCli(type: JavaExec, dependsOn: classes) {
+task runCircuitJava(type: JavaExec, dependsOn: classes) {
     group = 'circuitjs1'
-    description = 'Run a circuit headlessly and emit CSV output'
+    description = 'Run a circuit on the JVM and emit CSV/world2 output'
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'com.lushprojects.circuitjs1.client.HeadlessRunner'
+    mainClass = 'com.lushprojects.circuitjs1.client.CircuitJavaRunner'
     args = [
         project.findProperty('circuit') ?: 'tests/sfcr-sim-model.txt',
         project.findProperty('output')  ?: '',
         project.findProperty('steps')   ?: '500'
     ]
 }
+
+task headlessCli(dependsOn: runCircuitJava) {
+    group = 'circuitjs1'
+    description = 'Deprecated alias for runCircuitJava'
+}
 ```
 
 Run with:
 ```
-./gradlew headlessCli -Pcircuit=tests/sfcr-sim-model.txt -Poutput=out.csv -Psteps=1000
+./gradlew runCircuitJava -Pcircuit=tests/sfcr-sim-model.txt -Poutput=out.csv -Psteps=1000
 ```
 
-### New JUnit5 base class: `test/java/.../HeadlessSimTest.java`
+### New JUnit5 base class: `test/java/.../CircuitJavaSimTestBase.java`
 
 ```java
 /** Base fixture for headless simulation regression tests. */
-abstract class HeadlessSimTest {
+abstract class CircuitJavaSimTestBase {
     protected CirSim sim;
 
     @BeforeEach
@@ -343,7 +348,7 @@ abstract class HeadlessSimTest {
 ### Example regression test
 
 ```java
-class SFCRSIMModelTest extends HeadlessSimTest {
+class SFCRSIMModelTest extends CircuitJavaSimTestBase {
 
     @Test
     void balanceSheetRemainsBalancedAfter500Steps() throws Exception {
@@ -387,14 +392,14 @@ class SFCRSIMModelTest extends HeadlessSimTest {
 | `Timer`-driven loop: `runCircuit()` assumes wall-clock throttling | `getIterCount()` returns constant 1.0 in headless (Phase 1) |
 | `SFCRParser` calls `InfoViewerDialog` indirectly | Gate in `readCircuit()` (Phase 4) |
 | `NumberFormat` GWT type leaks via field type change | Use `NumFmt.Formatter` interface everywhere showFormat is referenced (Phase 2) |
-| GWT compilation breaks if new non-GWT types are referenced | `NumFmt` and `HeadlessRunner` must be excluded from the GWT module XML, or guarded with `@GwtIncompatible` |
+| GWT compilation breaks if new non-GWT types are referenced | `NumFmt` and `CircuitJavaRunner` must be excluded from the GWT module XML, or guarded with `@GwtIncompatible` |
 
-### GWT module exclusion for `HeadlessRunner`
+### GWT module exclusion for `CircuitJavaRunner`
 
 Add to `src/com/lushprojects/circuitjs1/circuitjs1.gwt.xml`:
 ```xml
 <source path="client">
-    <exclude name="HeadlessRunner.java"/>
+    <exclude name="CircuitJavaRunner.java"/>
     <exclude name="NumFmt.java"/>
 </source>
 ```
@@ -411,8 +416,8 @@ Or annotate with `@GwtIncompatible` if keeping in the same source root.
 | 2 | `NumFmt`, headless-safe `initClass()` | 1–2 days |
 | 3 | `CirSim.initHeadless()` | 1 day |
 | 4 | Gate `readCircuit` UI side-effects | 1 day |
-| 5 | `HeadlessRunner` CLI | 1–2 days |
-| 6 | Gradle task + `HeadlessSimTest` base + first regression test | 1 day |
+| 5 | `CircuitJavaRunner` CLI | 1–2 days |
+| 6 | Gradle task + `CircuitJavaSimTestBase` base + first regression test | 1 day |
 | **Total** | | **~1.5–2 weeks** |
 
 Phases 1–3 are mechanical and low-risk.  Phase 4 is where SFCR loading lives — test carefully after each gate.  Phase 6 produces the golden-output fixture that makes all future work verifiable automatically.
