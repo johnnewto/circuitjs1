@@ -17,7 +17,7 @@ abstract class CircuitJavaSimTestBase {
 
     @BeforeEach
     void setUpSim() throws Exception {
-        RuntimeMode.setHeadless(true);
+        RuntimeMode.setNonInteractiveRuntime(true);
         ComputedValues.resetForTesting();
         sim = new CirSim();
         sim.initHeadless();
@@ -25,7 +25,7 @@ abstract class CircuitJavaSimTestBase {
 
     @AfterEach
     void tearDownSim() {
-        RuntimeMode.setHeadless(false);
+        RuntimeMode.setNonInteractiveRuntime(false);
     }
 
     protected void loadCircuit(String relativePath) throws Exception {

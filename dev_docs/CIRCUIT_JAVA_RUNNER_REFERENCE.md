@@ -9,14 +9,127 @@ This is a quick operational reference for running CircuitJS1 simulations on the 
 ## What exists today
 
 - CLI entry point: `com.lushprojects.circuitjs1.client.CircuitJavaRunner`
-- Gradle task: `runCircuitJava` (preferred), `headlessCli` (deprecated alias)
-- Browser headless table mode: `circuitjs.html?headless=1...`
+- Gradle task: `runCircuitJava` (preferred)
+- Browser runner mode: `circuitjs.html?runner=1...`
 - End-to-end tests:
   - `CircuitJavaRunnerE2ETest`
   - `CircuitJavaSimTestBase` (base class for JVM simulation tests)
 
 ---
 
+## Browser Startup Modes Architecture
+
+```mermaid
+flowchart TD
+    A[onModuleLoad] --> B[loadLocale]
+    B --> C[loadSimulator localizationMap]
+    C --> D[Create CirSim instance]
+    D --> E{runner query param}
+
+    E -- No --> U1[Standard UI Mode init]
+    U1 --> U2[UI setup and resize handlers]
+    U2 --> U3[updateCircuit loop]
+
+    E -- Yes --> R1[Runner Panel Mode initRunnerPanel]
+    R1 --> R2[NonInteractive runtime setup]
+    R2 --> R3[Resolve cct ctz startCircuit storage key]
+    R3 --> R4[Load and read circuit]
+    R4 --> R5[runRunnerSimulation]
+
+    subgraph S[Intersection: Shared Simulation Core]
+      S1[analyzeCircuit]
+      S2[preStampAndStampCircuit]
+      S3[runCircuit solver]
+      S4[ComputedValues and circuit state]
+    end
+
+    U3 --> S1
+    R5 --> S1
+    S1 --> S2 --> S3 --> S4
+
+    S4 --> U4[Canvas/UI rendering output]
+    S4 --> R6[Runner export/table output]
+  ```
+
+## Class-Level Subsystem Touchpoints
+
+```mermaid
+flowchart LR
+    C1[circuitjs1 EntryPoint] --> C2[loadSimulator]
+    C2 --> C3[CirSim]
+
+    C3 --> M{Mode}
+
+    M -- Standard UI --> U1[CirSim init]
+    U1 --> U2[UI and Canvas subsystem]
+    U1 --> U3[Menu and Options subsystem]
+    U1 --> U4[Resize and Event handlers]
+    U4 --> U5[updateCircuit scheduler]
+
+    M -- Runner Panel --> R1[CirSim initRunnerPanel]
+    R1 --> R2[RuntimeMode and nonInteractive flags]
+    R1 --> R3[RunnerLaunchDecision]
+    R1 --> R4[Circuit load pipeline]
+    R4 --> R5[runRunnerSimulation]
+    R5 --> R6[SimulationExportCore]
+    R6 --> R7[Runner output rendering]
+
+    subgraph X[Shared CirSim Core touched by both modes]
+      X1[readCircuit]
+      X2[analyzeCircuit]
+      X3[preStampAndStampCircuit]
+      X4[runCircuit]
+      X5[ComputedValues]
+    end
+
+    U5 --> X2
+    R5 --> X2
+    R4 --> X1
+    X2 --> X3 --> X4 --> X5
+    X5 --> U2
+    X5 --> R7
+```
+
+## Unified Architecture Including JVM Runner
+
+```mermaid
+flowchart LR
+    B0[Browser entry onModuleLoad] --> B1[circuitjs1 loadSimulator]
+    B1 --> B2[CirSim instance]
+    B2 --> BM{Browser mode}
+
+    BM -- Standard UI --> B3[CirSim init]
+    B3 --> B4[updateCircuit loop]
+
+    BM -- Runner Panel --> B5[CirSim initRunnerPanel]
+    B5 --> B6[runRunnerSimulation]
+
+    J0[JVM entry CircuitJavaRunner main] --> J1[RuntimeMode nonInteractive]
+    J1 --> J2[CirSim nonInteractive setup]
+    J2 --> J3[SimulationExportCore run]
+
+    subgraph CORE[Shared CirSim simulation core]
+      C1[readCircuit]
+      C2[analyzeCircuit]
+      C3[preStampAndStampCircuit]
+      C4[runCircuit]
+      C5[ComputedValues commit]
+    end
+
+    B4 --> C2
+    B6 --> C2
+    J3 --> C2
+
+    B6 --> C1
+    J3 --> C1
+
+    C2 --> C3 --> C4 --> C5
+
+    C5 --> O1[Browser UI canvas output]
+    C5 --> O2[Browser runner table output]
+    C5 --> O3[JVM csv tsv world2 output]
+```
+    
 ## Quick commands
 
 ### Run with defaults
@@ -42,7 +155,7 @@ Defaults from `build.gradle`:
 ```bash
 ./gradlew -q runCircuitJava \
   -Pcircuit="test/resources/sfcr_debug_reference.md" \
-  -Poutput="/tmp/headless.csv" \
+  -Poutput="/tmp/runner.csv" \
   -Psteps=20
 ```
 
@@ -64,7 +177,7 @@ Defaults from `build.gradle`:
   -Poutput="/tmp/world2.tsv" \
   -Psteps=1000 \
   -Pformat="world2" \
-  -Phtml="/tmp/world2-headless.html"
+  -Phtml="/tmp/world2-runner.html"
 ```
 
 Plotting options in the generated HTML report:
@@ -85,7 +198,7 @@ Run metadata is also included in two places:
 
 ---
 
-## Browser headless table mode
+## Browser runner mode
 
 This mode runs simulation in the browser, without normal simulator UI, and renders:
 
@@ -95,12 +208,12 @@ This mode runs simulation in the browser, without normal simulator UI, and rende
 Use it from the normal app URL:
 
 ```text
-http://127.0.0.1:8000/circuitjs.html?headless=1&startCircuit=economics/1debug.md&steps=50
+http://127.0.0.1:8000/circuitjs.html?runner=1&startCircuit=economics/1debug.md&steps=50
 ```
 
 ### Supported query parameters
 
-- `headless=1` (required to enable this mode)
+- `runner=1` (required to enable this mode)
 - `startCircuit=<path>` (e.g. `economics/1debug.md`)
 - `steps=<n>` (default `1000`)
 - `cct=<inline circuit text>` (optional alternative)
@@ -108,9 +221,9 @@ http://127.0.0.1:8000/circuitjs.html?headless=1&startCircuit=economics/1debug.md
 
 ### Open current in-memory circuit in this mode
 
-From **File → Open Headless Output Table...**.
+From **File → Open Runner Output Table...**.
 
-This opens a new tab with `headless=1&ctz=...` for the current unsaved circuit state.
+This opens a new tab with `runner=1&ctz=...` for the current unsaved circuit state.
 
 ---
 
@@ -180,7 +293,7 @@ World2 format (`format=world2`) output:
 
 ```bash
 for f in tests/*.txt; do
-  if ./gradlew -q runCircuitJava -Pcircuit="$f" -Psteps=1 >/tmp/headless.out 2>/tmp/headless.err; then
+  if ./gradlew -q runCircuitJava -Pcircuit="$f" -Psteps=1 >/tmp/runner.out 2>/tmp/runner.err; then
     echo "PASS $f"
   else
     echo "FAIL $f"
@@ -214,11 +327,11 @@ When changing solver/runtime/economic model behavior:
 
 Browser mode (`Standard Output` tab):
 
-- `Headless load failed for all candidates of startCircuit=...`
+- `Runner load failed for all candidates of startCircuit=...`
   - The `startCircuit` path could not be resolved.
-- `loadFileFromURLHeadless HTTP failure: ... status=...`
+- `loadFileFromURLRunner HTTP failure: ... status=...`
   - URL returned non-2xx response.
-- `loadFileFromURLHeadless timeout after 15s: ...`
+- `loadFileFromURLRunner timeout after 15s: ...`
   - Circuit file request stalled.
 - `window.onerror: ...` or `GWT uncaught exception: ...`
   - Runtime exception occurred during load/simulation.
@@ -227,6 +340,6 @@ Browser mode (`Standard Output` tab):
 
 ## Notes
 
-- JVM runner mode is enabled by `RuntimeMode.setHeadless(true)`.
+- JVM runner mode is enabled by `RuntimeMode.setNonInteractiveRuntime(true)`.
 - Tests that touch `ComputedValues` should isolate/reset shared state (`@ResourceLock("ComputedValues")`, `ComputedValues.resetForTesting()`).
 - For iterative debugging, prefer small `-Psteps` values first (e.g. `1`, `5`, `10`) and scale up after sanity checks.

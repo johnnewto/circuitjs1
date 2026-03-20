@@ -265,15 +265,16 @@ input.locked-column[readonly] {
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
 	const qp = new URLSearchParams(window.location.search);
-	const isHeadlessRequest =
+	const isNonInteractiveRequest =
 	  window.location.pathname.endsWith('/world2.html') ||
 	  window.location.pathname.endsWith('/headless.html') ||
+	  qp.has('nonInteractive') ||
 	  qp.has('headless') ||
 	  qp.has('runner') ||
 	  qp.has('world2Scenario') ||
 	  qp.has('world2Csv');
 
-	if (isHeadlessRequest) {
+	if (isNonInteractiveRequest) {
 	  navigator.serviceWorker.getRegistrations().then(registrations => {
 	    registrations.forEach(registration => registration.unregister());
 	  }).catch(error => {

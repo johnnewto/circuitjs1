@@ -46,10 +46,10 @@ class SFCRWorld2ExportImportSimulationParityTest {
 
         String liveExportedText;
         try {
-            CirSim sourceSim = createHeadlessSim(world2Text);
+            CirSim sourceSim = createRunnerSim(world2Text);
             liveExportedText = new SFCRExporter(sourceSim, SFCRExporter.ExportSyntax.R_STYLE).export();
         } finally {
-            RuntimeMode.setHeadless(false);
+            RuntimeMode.setNonInteractiveRuntime(false);
         }
 
         assertNotNull(liveExportedText, "Live exported text should not be null");
@@ -67,7 +67,7 @@ class SFCRWorld2ExportImportSimulationParityTest {
 
     private SimulationSnapshot runToYears(String circuitText, double years) throws Exception {
         try {
-            CirSim sim = createHeadlessSim(circuitText);
+            CirSim sim = createRunnerSim(circuitText);
 
             int step = 0;
             int maxSteps = 200000;
@@ -93,12 +93,12 @@ class SFCRWorld2ExportImportSimulationParityTest {
 
             return new SimulationSnapshot(sim.t, values);
         } finally {
-            RuntimeMode.setHeadless(false);
+            RuntimeMode.setNonInteractiveRuntime(false);
         }
     }
 
-    private CirSim createHeadlessSim(String circuitText) throws Exception {
-        RuntimeMode.setHeadless(true);
+    private CirSim createRunnerSim(String circuitText) throws Exception {
+        RuntimeMode.setNonInteractiveRuntime(true);
         ComputedValues.resetForTesting();
 
         CirSim sim = new CirSim();

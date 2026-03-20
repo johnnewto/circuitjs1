@@ -812,7 +812,7 @@ public CirSim() {
     }
 
     public void initHeadlessPanel(QueryParameters qp) {
-	RuntimeMode.setHeadless(true);
+	RuntimeMode.setNonInteractiveRuntime(true);
 	clearHeadlessStdout();
 	headlessStdoutEnabled = true;
 	installHeadlessGlobalErrorHooks();
@@ -823,7 +823,7 @@ public CirSim() {
 	});
 	ComputedValues.resetForTesting();
 	initHeadless();
-	console("Headless panel mode enabled");
+	console("nonInteractive panel mode enabled");
 
 	String cct = normalizeOptionalQueryValue(qp.getValue("cct"));
 	if (cct != null)
@@ -833,33 +833,35 @@ public CirSim() {
 	String ctz = normalizeOptionalQueryValue(qp.getValue("ctz"));
 	if (ctz != null)
 	    startCircuitText = decompress(ctz);
-	String headlessDumpKey = normalizeOptionalQueryValue(qp.getValue("headlessDumpKey"));
-	if (startCircuitText == null && headlessDumpKey != null) {
-	    startCircuitText = getHeadlessDumpFromStorage(headlessDumpKey);
+	String nonInteractiveDumpKey = normalizeOptionalQueryValue(qp.getValue("nonInteractiveDumpKey"));
+	if (nonInteractiveDumpKey == null)
+	    nonInteractiveDumpKey = normalizeOptionalQueryValue(qp.getValue("headlessDumpKey"));
+	if (startCircuitText == null && nonInteractiveDumpKey != null) {
+	    startCircuitText = getHeadlessDumpFromStorage(nonInteractiveDumpKey);
 	    if (startCircuitText == null)
-		console("Headless dump key not found in localStorage: " + headlessDumpKey);
+		console("nonInteractive dump key not found in localStorage: " + nonInteractiveDumpKey);
 	}
 	startCircuit = normalizeOptionalQueryValue(qp.getValue("startCircuit"));
 	startLabel = normalizeOptionalQueryValue(qp.getValue("startLabel"));
 	String stepsValue = normalizeOptionalQueryValue(qp.getValue("steps"));
-	int defaultSteps = HeadlessLaunchDecision.resolveDefaultSteps(headlessDumpKey, stepsValue);
+	int defaultSteps = RunnerLaunchDecision.resolveDefaultSteps(nonInteractiveDumpKey, stepsValue);
 	int steps = parsePositiveInt(stepsValue, defaultSteps);
-	console("Headless params: startCircuit=" + startCircuit + ", steps=" + steps +
+	console("nonInteractive params: startCircuit=" + startCircuit + ", steps=" + steps +
 	    ", hasCct=" + (startCircuitText != null && startCircuitText.length() > 0));
 
 	renderHeadlessStatus("Loading circuit...");
 
-	HeadlessLaunchDecision.ImmediateRoute immediateRoute =
-		HeadlessLaunchDecision.resolveImmediateRoute(startCircuitText, headlessDumpKey);
-	if (immediateRoute == HeadlessLaunchDecision.ImmediateRoute.EMBEDDED_TEXT) {
+	RunnerLaunchDecision.ImmediateRoute immediateRoute =
+		RunnerLaunchDecision.resolveImmediateRoute(startCircuitText, nonInteractiveDumpKey);
+	if (immediateRoute == RunnerLaunchDecision.ImmediateRoute.EMBEDDED_TEXT) {
 	    runHeadlessTableFromText(startCircuitText, steps, "embedded");
 	    return;
 	}
-	if (immediateRoute == HeadlessLaunchDecision.ImmediateRoute.MISSING_DUMP_KEY) {
-	    renderHeadlessError("Headless dump not found for key '" + headlessDumpKey + "'. Re-open Headless Output from the simulator tab to generate a fresh key.");
+	if (immediateRoute == RunnerLaunchDecision.ImmediateRoute.MISSING_DUMP_KEY) {
+	    renderHeadlessError("nonInteractive dump not found for key '" + nonInteractiveDumpKey + "'. Re-open nonInteractive Output from the simulator tab to generate a fresh key.");
 	    return;
 	}
-	if (immediateRoute == HeadlessLaunchDecision.ImmediateRoute.NONE &&
+	if (immediateRoute == RunnerLaunchDecision.ImmediateRoute.NONE &&
 	    (startCircuit == null || startCircuit.length() == 0)) {
 	    renderHeadlessError("No data source specified. Use startCircuit=..., cct=..., or ctz=...");
 	    return;
@@ -867,19 +869,19 @@ public CirSim() {
 
 	try {
 	    if (startCircuit != null && startCircuit.length() > 0) {
-		console("Headless dispatching load for startCircuit=" + startCircuit);
+		console("nonInteractive dispatching load for startCircuit=" + startCircuit);
 		loadHeadlessSetupFile(startCircuit, startLabel, steps);
 		return;
 	    }
 	    renderHeadlessError("No data source specified. Use startCircuit=..., cct=..., or ctz=...");
 	} catch (Throwable t) {
-	    console("Headless launch dispatch exception: " + t);
-	    renderHeadlessError("Headless launch failed: " + t);
+	    console("nonInteractive launch dispatch exception: " + t);
+	    renderHeadlessError("nonInteractive launch failed: " + t);
 	}
     }
 
     public void initRunnerPanel(QueryParameters qp) {
-	RuntimeMode.setHeadless(true);
+	RuntimeMode.setNonInteractiveRuntime(true);
 	clearHeadlessStdout();
 	headlessStdoutEnabled = true;
 	installHeadlessGlobalErrorHooks();
@@ -900,39 +902,41 @@ public CirSim() {
 	String ctz = normalizeOptionalQueryValue(qp.getValue("ctz"));
 	if (ctz != null)
 	    startCircuitText = decompress(ctz);
-	String headlessDumpKey = normalizeOptionalQueryValue(qp.getValue("headlessDumpKey"));
-	if (startCircuitText == null && headlessDumpKey != null) {
-	    startCircuitText = getHeadlessDumpFromStorage(headlessDumpKey);
+	String nonInteractiveDumpKey = normalizeOptionalQueryValue(qp.getValue("nonInteractiveDumpKey"));
+	if (nonInteractiveDumpKey == null)
+	    nonInteractiveDumpKey = normalizeOptionalQueryValue(qp.getValue("headlessDumpKey"));
+	if (startCircuitText == null && nonInteractiveDumpKey != null) {
+	    startCircuitText = getHeadlessDumpFromStorage(nonInteractiveDumpKey);
 	    if (startCircuitText == null)
-		console("Runner dump key not found in localStorage: " + headlessDumpKey);
+		console("Runner dump key not found in localStorage: " + nonInteractiveDumpKey);
 	}
 	startCircuit = normalizeOptionalQueryValue(qp.getValue("startCircuit"));
 	startLabel = normalizeOptionalQueryValue(qp.getValue("startLabel"));
 	String stepsValue = normalizeOptionalQueryValue(qp.getValue("steps"));
-	int defaultSteps = HeadlessLaunchDecision.resolveDefaultSteps(headlessDumpKey, stepsValue);
+	int defaultSteps = RunnerLaunchDecision.resolveDefaultSteps(nonInteractiveDumpKey, stepsValue);
 	int steps = parsePositiveInt(stepsValue, defaultSteps);
 	String format = normalizeOptionalQueryValue(qp.getValue("format"));
 	if (format == null)
-	    format = "csv";
+	    format = "tsv";
 	format = format.toLowerCase();
-	if (!("csv".equals(format) || "world2".equals(format)))
-	    format = "csv";
+	if (!("csv".equals(format) || "tsv".equals(format) || "world2".equals(format)))
+	    format = "tsv";
 	console("Runner params: startCircuit=" + startCircuit + ", steps=" + steps + ", format=" + format +
 	    ", hasCct=" + (startCircuitText != null && startCircuitText.length() > 0));
 
 	renderRunnerStatus("Loading circuit...");
 
-	HeadlessLaunchDecision.ImmediateRoute immediateRoute =
-		HeadlessLaunchDecision.resolveImmediateRoute(startCircuitText, headlessDumpKey);
-	if (immediateRoute == HeadlessLaunchDecision.ImmediateRoute.EMBEDDED_TEXT) {
+	RunnerLaunchDecision.ImmediateRoute immediateRoute =
+		RunnerLaunchDecision.resolveImmediateRoute(startCircuitText, nonInteractiveDumpKey);
+	if (immediateRoute == RunnerLaunchDecision.ImmediateRoute.EMBEDDED_TEXT) {
 	    runRunnerFromText(startCircuitText, steps, "embedded", format);
 	    return;
 	}
-	if (immediateRoute == HeadlessLaunchDecision.ImmediateRoute.MISSING_DUMP_KEY) {
-	    renderRunnerError("Runner dump not found for key '" + headlessDumpKey + "'. Re-open Headless Output from the simulator tab to generate a fresh key.");
+	if (immediateRoute == RunnerLaunchDecision.ImmediateRoute.MISSING_DUMP_KEY) {
+	    renderRunnerError("Runner dump not found for key '" + nonInteractiveDumpKey + "'. Re-open nonInteractive Output from the simulator tab to generate a fresh key.");
 	    return;
 	}
-	if (immediateRoute == HeadlessLaunchDecision.ImmediateRoute.NONE &&
+	if (immediateRoute == RunnerLaunchDecision.ImmediateRoute.NONE &&
 	    (startCircuit == null || startCircuit.length() == 0)) {
 	    renderRunnerError("No data source specified. Use startCircuit=..., cct=..., or ctz=...");
 	    return;
@@ -993,18 +997,18 @@ public CirSim() {
 
     private void loadHeadlessSetupFileCandidates(final String[] candidates, final int index, final String title, final int steps) {
 	if (index >= candidates.length) {
-	    console("Headless load failed for all candidates of startCircuit=" + startCircuit);
+	    console("nonInteractive load failed for all candidates of startCircuit=" + startCircuit);
 	    renderHeadlessError("Can't load circuit file: " + startCircuit);
 	    return;
 	}
 
 	final String circuitPath = candidates[index];
 	String url = GWT.getModuleBaseURL() + "circuits/" + circuitPath;
-	console("Headless trying circuit path: circuits/" + circuitPath);
+	console("nonInteractive trying circuit path: circuits/" + circuitPath);
 	updateHeadlessStatusMessage("Loading circuits/" + circuitPath + " ...");
 	loadFileFromURLHeadless(url, new Command() {
 	    public void execute() {
-		console("Headless loaded circuit path: circuits/" + circuitPath);
+		console("nonInteractive loaded circuit path: circuits/" + circuitPath);
 		updateHeadlessStatusMessage("Loaded circuits/" + circuitPath);
 		if (title != null)
 		    setCircuitTitle(title);
@@ -1013,7 +1017,7 @@ public CirSim() {
 	    }
 	}, new Command() {
 	    public void execute() {
-		console("Headless failed circuit path: circuits/" + circuitPath + " (trying next)");
+		console("nonInteractive failed circuit path: circuits/" + circuitPath + " (trying next)");
 		updateHeadlessStatusMessage("Failed circuits/" + circuitPath + ", trying next...");
 		loadHeadlessSetupFileCandidates(candidates, index + 1, title, steps);
 	    }
@@ -1068,28 +1072,28 @@ public CirSim() {
 
     void loadFileFromURLHeadless(String url, final Command successCallback, final Command failureCallback) {
 	final String loadUrl = getLoadUrl(url);
-	console("loadFileFromURLHeadless request: " + loadUrl);
+	console("loadFileFromURLnonInteractive request: " + loadUrl);
 	final NativeXhr xhr = new NativeXhr();
 	try {
 	    xhr.open("GET", loadUrl, false);
 	    xhr.send();
 	    int status = xhr.getStatus();
 	    if (status >= 200 && status < 300) {
-		console("loadFileFromURLHeadless success: " + loadUrl + " status=" + status);
+		console("loadFileFromURLnonInteractive success: " + loadUrl + " status=" + status);
 		onHeadlessLoadFileSuccess(xhr.getResponseText(), successCallback);
 		return;
 	    }
-	    console("loadFileFromURLHeadless HTTP failure: " + loadUrl + " status=" + status);
+	    console("loadFileFromURLnonInteractive HTTP failure: " + loadUrl + " status=" + status);
 	    if (failureCallback != null)
 		failureCallback.execute();
 	} catch (Throwable t) {
-	    console("loadFileFromURLHeadless xhr exception: " + t + " (falling back to RequestBuilder)");
+	    console("loadFileFromURLnonInteractive xhr exception: " + t + " (falling back to RequestBuilder)");
 	    loadFileFromURL(url, successCallback, failureCallback);
 	}
     }
 
     private void runHeadlessTableFromText(String circuitText, int steps, String source) {
-	console("Headless loading embedded circuit text source=" + source + ", length=" + circuitText.length());
+	console("nonInteractive loading embedded circuit text source=" + source + ", length=" + circuitText.length());
 	readCircuit(circuitText, 0);
 	currentCircuitFile = source;
 	runHeadlessTableSimulation(steps, source);
@@ -1123,15 +1127,26 @@ public CirSim() {
 		console(message);
 	    }
 	});
+	String outputText = runResult.outputText != null ? runResult.outputText : "";
 
 	StringBuilder content = new StringBuilder();
 	content.append(headlessDiv("<b>Source:</b> " + SafeHtmlUtils.htmlEscape(source != null ? source : "(none)")));
 	content.append(headlessDiv("<b>Requested steps:</b> " + steps));
 	content.append(headlessDiv("<b>Output format:</b> " + SafeHtmlUtils.htmlEscape(format)));
+	content.append(headlessStyledDiv("color:#666; margin-top:4px;", "Format hint: default is <b>tsv</b> when omitted (use format=csv or format=world2 to override)."));
 	content.append(headlessDiv("<b>Completed steps:</b> " + runResult.rowsWritten));
-	content.append("<div style='margin-top:10px;'><pre style='white-space:pre-wrap; font-family:monospace; max-height:70vh; overflow:auto; border:1px solid #ccc; padding:8px;'>");
-	content.append(SafeHtmlUtils.htmlEscape(runResult.outputText != null ? runResult.outputText : ""));
-	content.append("</pre></div>");
+	if (!runResult.world2Format) {
+	    content.append("<div style='margin-top:10px; font-weight:600;'>Output Table</div>");
+	    content.append(buildDelimitedOutputTableHtml(outputText, "tsv".equals(format) ? '\t' : ','));
+	    content.append("<details style='margin-top:10px;'><summary>Raw Output</summary>");
+	    content.append("<pre style='white-space:pre; font-family:monospace; max-height:70vh; overflow:auto; border:1px solid #ccc; padding:8px; margin-top:6px;'>");
+	    content.append(SafeHtmlUtils.htmlEscape(outputText));
+	    content.append("</pre></details>");
+	} else {
+	    content.append("<div style='margin-top:10px;'><pre style='white-space:pre; font-family:monospace; max-height:70vh; overflow:auto; border:1px solid #ccc; padding:8px;'>");
+	    content.append(SafeHtmlUtils.htmlEscape(outputText));
+	    content.append("</pre></div>");
+	}
 
 	String extraHtml = "";
 	if (runResult.world2Format && runResult.htmlReport != null) {
@@ -1146,7 +1161,7 @@ public CirSim() {
     }
 
     private void runHeadlessTableSimulation(int steps, String source) {
-	console("Headless simulation start: source=" + source + ", steps=" + steps);
+	console("nonInteractive simulation start: source=" + source + ", steps=" + steps);
 	analyzeCircuit();
 	preStampAndStampCircuit();
 
@@ -1251,7 +1266,8 @@ public CirSim() {
     }
 
     private void renderRunnerStatus(String message) {
-	String content = "<div id='headless-status-message'>" + SafeHtmlUtils.htmlEscape(message) + "</div>";
+	String content = "<div id='headless-status-message'>" + SafeHtmlUtils.htmlEscape(message) + "</div>"
+	    + "<div style='color:#666; margin-top:6px;'>Format hint: default is <b>tsv</b> when omitted (use format=csv or format=world2 to override).</div>";
 	RootPanel.get().getElement().setInnerHTML(buildRunnerTabbedHtml("Runner Output", content, false, "", ""));
     }
 
@@ -1269,7 +1285,7 @@ public CirSim() {
 	String escapedTitle = SafeHtmlUtils.htmlEscape(primaryTabTitle);
 	String stdoutHtml = getHeadlessStdoutHtml();
 	return "<div style='padding:12px;'>"
-	    + "<h2>Headless Output</h2>"
+	    + "<h2>nonInteractive Output</h2>"
 	    + "<div style='margin:8px 0;'>"
 	    + "<button onclick=\"document.getElementById('headless-primary-tab').style.display='block';document.getElementById('headless-stdout-tab').style.display='none';\">"
 	    + escapedTitle
@@ -1329,6 +1345,45 @@ public CirSim() {
 	escaped = escaped.replace("<", "&lt;");
 	escaped = escaped.replace(">", "&gt;");
 	return escaped;
+    }
+
+    private String buildDelimitedOutputTableHtml(String outputText, char separator) {
+	if (outputText == null || outputText.isEmpty())
+	    return "<div style='margin-top:6px; color:#777;'>(no output)</div>";
+	String[] lines = outputText.split("\\r?\\n");
+	if (lines.length == 0 || lines[0].isEmpty())
+	    return "<div style='margin-top:6px; color:#777;'>(no output)</div>";
+	String splitRegex = (separator == '\t') ? "\\t" : ",";
+	StringBuilder html = new StringBuilder();
+	html.append("<div style='margin-top:6px; max-width:100%; overflow:auto; border:1px solid #ccc;'>");
+	html.append("<table style='border-collapse:collapse; min-width:max-content; font-family:monospace; font-size:12px;'>");
+
+	String[] headers = lines[0].split(splitRegex, -1);
+	html.append("<thead><tr>");
+	for (int i = 0; i < headers.length; i++) {
+	    html.append("<th style='text-align:left; white-space:nowrap; border:1px solid #ddd; padding:4px 8px; background:#f6f6f6;'>");
+	    html.append(SafeHtmlUtils.htmlEscape(headers[i]));
+	    html.append("</th>");
+	}
+	html.append("</tr></thead><tbody>");
+
+	for (int lineIdx = 1; lineIdx < lines.length; lineIdx++) {
+	    String line = lines[lineIdx];
+	    if (line == null || line.isEmpty())
+		continue;
+	    String[] cols = line.split(splitRegex, -1);
+	    html.append("<tr>");
+	    for (int colIdx = 0; colIdx < headers.length; colIdx++) {
+		String value = colIdx < cols.length ? cols[colIdx] : "";
+		html.append("<td style='white-space:nowrap; border:1px solid #eee; padding:3px 8px;'>");
+		html.append(SafeHtmlUtils.htmlEscape(value));
+		html.append("</td>");
+	    }
+	    html.append("</tr>");
+	}
+
+	html.append("</tbody></table></div>");
+	return html.toString();
     }
 
     static final int HEADLESS_STDOUT_MAX_LINES = 2000;
@@ -1435,9 +1490,11 @@ public CirSim() {
 	    String ctz=qp.getValue("ctz");
 	    if (ctz!= null)
 		startCircuitText = decompress(ctz);
-	    String headlessDumpKey = qp.getValue("headlessDumpKey");
-	    if (startCircuitText == null && headlessDumpKey != null)
-		startCircuitText = getHeadlessDumpFromStorage(headlessDumpKey);
+	    String nonInteractiveDumpKey = qp.getValue("nonInteractiveDumpKey");
+	    if (nonInteractiveDumpKey == null)
+		nonInteractiveDumpKey = qp.getValue("headlessDumpKey");
+	    if (startCircuitText == null && nonInteractiveDumpKey != null)
+		startCircuitText = getHeadlessDumpFromStorage(nonInteractiveDumpKey);
 	    startCircuit = qp.getValue("startCircuit");
 	    startLabel   = qp.getValue("startLabel");
 	    startCircuitLink = qp.getValue("startCircuitLink");
@@ -1510,7 +1567,7 @@ public CirSim() {
 	}
 	exportAsUrlItem = iconMenuItem("export", "Export As Link...", new MyCommand("file","exportasurl"));
 	fileMenuBar.addItem(exportAsUrlItem);
-	fileMenuBar.addItem(iconMenuItem("line-chart", "Open Headless Output Table...", new MyCommand("file", "openheadlesstable")));
+	fileMenuBar.addItem(iconMenuItem("line-chart", "Open nonInteractive Output Table...", new MyCommand("file", "openheadlesstable")));
 	exportAsTextItem = iconMenuItem("export", "Export As Text...", new MyCommand("file","exportastext"));
 	fileMenuBar.addItem(exportAsTextItem);
 	fileMenuBar.addItem(iconMenuItem("export", "Export As SFCR...", new MyCommand("file","exportassfcr")));
@@ -2789,7 +2846,7 @@ public CirSim() {
 
     
     public void setSimRunning(boolean s) {
-	if (RuntimeMode.isHeadless()) {
+	if (RuntimeMode.isNonInteractiveRuntime()) {
 	    simRunning = s;
 	    return;
 	}
@@ -2856,7 +2913,7 @@ public CirSim() {
     boolean needsRepaint;
     
     void repaint() {
-	if (RuntimeMode.isHeadless())
+	if (RuntimeMode.isNonInteractiveRuntime())
 	    return;
 	if (!needsRepaint) {
 	    needsRepaint = true;
@@ -5082,7 +5139,7 @@ public CirSim() {
     }
 
     double getIterCount() {
-	if (RuntimeMode.isHeadless())
+	if (RuntimeMode.isNonInteractiveRuntime())
 	    return 1.0;
     	// IES - remove interaction
 	int val = speedBar.getValue();
@@ -5116,7 +5173,7 @@ public CirSim() {
             circuitMatrix = null;
             return;
         }
-		boolean headless = RuntimeMode.isHeadless();
+		boolean nonInteractive = RuntimeMode.isNonInteractiveRuntime();
         
         //int maxIter = getIterCount();
         boolean debugprint = dumpMatrix;
@@ -5126,13 +5183,13 @@ public CirSim() {
         long lit = lastIterTime;
         if (lit == 0) {
             lastIterTime = tm;
-			if (!headless)
+			if (!nonInteractive)
 		return;
         }
 
         // Check if we don't need to run simulation (for very slow simulation speeds).
         // If the circuit changed, do at least one iteration to make sure everything is consistent.
-		if (!headless && 1000 >= steprate*(tm-lastIterTime) && !didAnalyze)
+		if (!nonInteractive && 1000 >= steprate*(tm-lastIterTime) && !didAnalyze)
             return;
 
         boolean delayWireProcessing = canDelayWireProcessing();
@@ -5350,7 +5407,7 @@ public CirSim() {
             lit = tm;
             // Check whether enough time has elapsed to perform an *additional* iteration after
             // those we have already completed.  But limit total computation time to 50ms (20fps) by default
-			if (headless)
+			if (nonInteractive)
 		break;
 	    if ((timeStepCount-timeStepCountAtFrameStart)*1000 >= steprate*(tm-lastIterTime) || (tm-lastFrameTime > frameTimeLimit))
                 break;
@@ -6151,11 +6208,11 @@ public CirSim() {
 	String query;
 	Storage stor = Storage.getLocalStorageIfSupported();
 	if (stor != null) {
-	    String key = "headlessDump-" + System.currentTimeMillis();
+	    String key = "nonInteractiveDump-" + System.currentTimeMillis();
 	    stor.setItem(key, dump);
-	    query = "?headless=1&headlessDumpKey=" + URL.encodeQueryString(key);
+	    query = "?runner=1&nonInteractive=1&nonInteractiveDumpKey=" + URL.encodeQueryString(key);
 	} else {
-	    query = "?headless=1&ctz=" + compressForUrl(dump);
+	    query = "?runner=1&nonInteractive=1&ctz=" + compressForUrl(dump);
 	}
 	Window.open(start[0] + query, "_blank", "");
 	}
@@ -6575,7 +6632,7 @@ public CirSim() {
 		}
 
 		// Create scopes after all elements are present so UID trace refs resolve.
-		// In headless mode, Scope/ScopeElm trigger GWT UI initialization, so skip them.
+		// In nonInteractive mode, Scope/ScopeElm trigger GWT UI initialization, so skip them.
 		if (RuntimeMode.isGwt())
 		    parser.applyParsedScopes();
 
@@ -6815,8 +6872,8 @@ public CirSim() {
 
 	String getLoadUrl(String url) {
 	    String result = url;
-	    if (RuntimeMode.isHeadless())
-		result = result + (result.indexOf('?') >= 0 ? "&" : "?") + "headless=1";
+	    if (RuntimeMode.isNonInteractiveRuntime())
+		result = result + (result.indexOf('?') >= 0 ? "&" : "?") + "nonInteractive=1";
 	    if (!enableCacheBustedUrls)
 		return result;
 	    return result + (result.indexOf('?') >= 0 ? "&" : "?") + "v=" + System.currentTimeMillis();
@@ -9144,7 +9201,7 @@ public CirSim() {
     }
 
     void addWidgetToVerticalPanel(Widget w) {
-	if (RuntimeMode.isHeadless() || w == null || verticalPanel == null)
+	if (RuntimeMode.isNonInteractiveRuntime() || w == null || verticalPanel == null)
 	    return;
     	if (iFrame!=null) {
     		int i=verticalPanel.getWidgetIndex(iFrame);
@@ -9156,7 +9213,7 @@ public CirSim() {
     }
     
     void removeWidgetFromVerticalPanel(Widget w){
-	if (RuntimeMode.isHeadless() || w == null || verticalPanel == null)
+	if (RuntimeMode.isNonInteractiveRuntime() || w == null || verticalPanel == null)
 	    return;
     	verticalPanel.remove(w);
     	if (iFrame!=null)

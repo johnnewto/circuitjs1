@@ -7,18 +7,18 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-@DisplayName("NumFmt headless formatting")
-class NumFmtHeadlessTest {
+@DisplayName("NumFmt non-interactive formatting")
+class NumFmtNonInteractiveTest {
 
     @AfterEach
     void resetRuntimeMode() {
-        RuntimeMode.setHeadless(false);
+        RuntimeMode.setNonInteractiveRuntime(false);
     }
 
     @Test
     @DisplayName("formats large values without overflow clamp")
     void formatsLargeValuesWithoutOverflowClamp() {
-        RuntimeMode.setHeadless(true);
+        RuntimeMode.setNonInteractiveRuntime(true);
         NumFmt.Formatter formatter = NumFmt.forPattern("0.###############");
 
         String formatted = formatter.format(1_650_000_000d);

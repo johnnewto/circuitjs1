@@ -88,7 +88,7 @@ public abstract class CircuitElm implements Editable {
 	static NumFmt.Formatter showFormat, shortFormat, fixedFormat;
     static final double pi = 3.14159265358979323846;
     static CircuitElm mouseElmRef = null;
-	static java.util.Random headlessRandom = new java.util.Random();
+	static java.util.Random nonInteractiveRandom = new java.util.Random();
 
     static final int SCALE_AUTO = 0;
     static final int SCALE_1 = 1;
@@ -276,7 +276,7 @@ public abstract class CircuitElm implements Editable {
 	final String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 	StringBuilder sb = new StringBuilder(6);
 	for (int i = 0; i < 6; i++) {
-	    int next = RuntimeMode.isHeadless() ? headlessRandom.nextInt(chars.length()) : Random.nextInt(chars.length());
+	    int next = RuntimeMode.isNonInteractiveRuntime() ? nonInteractiveRandom.nextInt(chars.length()) : Random.nextInt(chars.length());
 	    sb.append(chars.charAt(next));
 	}
 	return sb.toString();

@@ -111,7 +111,7 @@ public class EquationTableRenderer {
      * Initialize the cached canvas for static parts.
      */
     private void initCache() {
-    if (RuntimeMode.isHeadless()) {
+    if (RuntimeMode.isNonInteractiveRuntime()) {
         backgroundLayerCanvas = null;
         backgroundLayerCtx = null;
         contentLayerCanvas = null;

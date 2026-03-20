@@ -9,8 +9,7 @@ This is a quick operational reference for running CircuitJS1 simulations on the 
 ## What exists today
 
 - CLI entry point: `com.lushprojects.circuitjs1.client.CircuitJavaRunner`
-- Gradle task: `runCircuitJava` (preferred), `headlessCli` (deprecated alias)
-- Browser headless table mode: `circuitjs.html?headless=1...`
+- Gradle task: `runCircuitJava` (preferred)
 - Browser runner mode: `circuitjs.html?runner=1...`
 - End-to-end tests:
   - `CircuitJavaRunnerE2ETest`
@@ -43,7 +42,7 @@ Defaults from `build.gradle`:
 ```bash
 ./gradlew -q runCircuitJava \
   -Pcircuit="test/resources/sfcr_debug_reference.md" \
-  -Poutput="/tmp/headless.csv" \
+  -Poutput="/tmp/runner.csv" \
   -Psteps=20
 ```
 
@@ -65,7 +64,7 @@ Defaults from `build.gradle`:
   -Poutput="/tmp/world2.tsv" \
   -Psteps=1000 \
   -Pformat="world2" \
-  -Phtml="/tmp/world2-headless.html"
+  -Phtml="/tmp/world2-runner.html"
 ```
 
 Plotting options in the generated HTML report:
@@ -86,61 +85,38 @@ Run metadata is also included in two places:
 
 ---
 
-## Browser headless table mode
-
-This mode runs simulation in the browser, without normal simulator UI, and renders:
-
-- **Output Table** tab (time + computed values)
-- **Standard Output** tab (diagnostic logs)
-
-Implementation note:
-- Browser headless/runner startup now loads `startCircuit` using a deterministic synchronous browser XHR path before simulation starts. This avoids callback stalls observed in some dev/browser setups and ensures load success/failure is surfaced immediately in **Standard Output**.
-
-Use it from the normal app URL:
-
-```text
-http://127.0.0.1:8000/circuitjs.html?headless=1&startCircuit=economics/1debug.md&steps=50
-```
-
-### Supported query parameters
-
-- `headless=1` (required to enable this mode)
-- `startCircuit=<path>` (e.g. `economics/1debug.md`)
-- `steps=<n>` (default `1000`)
-- `cct=<inline circuit text>` (optional alternative)
-- `ctz=<compressed circuit text>` (optional alternative)
-
-### Open current in-memory circuit in this mode
-
-From **File → Open Headless Output Table...**.
-
-This opens a new tab with `headless=1&ctz=...` for the current unsaved circuit state.
-
----
-
 ## Browser runner mode
 
-This mode uses the runner-oriented browser flow and renders:
+This mode runs simulation in the browser, without normal simulator UI, and renders:
 
 - **Runner Output** tab (text output from the same `SimulationExportCore` path used by JVM runner)
 - **World2 Report** tab (only when `format=world2`, embedded interactive report)
 - **Standard Output** tab (diagnostic logs)
 
+Implementation note:
+- Browser runner startup now loads `startCircuit` using a deterministic synchronous browser XHR path before simulation starts. This avoids callback stalls observed in some dev/browser setups and ensures load success/failure is surfaced immediately in **Standard Output**.
+
 Use it from the normal app URL:
 
 ```text
-http://127.0.0.1:8000/circuitjs.html?runner=1&startCircuit=economics/1debug.md&steps=50&format=world2
+http://127.0.0.1:8000/circuitjs.html?runner=1&startCircuit=economics/1debug.md&steps=50
 ```
 
 ### Supported query parameters
 
 - `runner=1` (required to enable this mode)
-- `format=<csv|world2>` (optional, default `csv`)
 - `startCircuit=<path>` (e.g. `economics/1debug.md`)
 - `steps=<n>` (default `1000`)
+- `format=<tsv|csv|world2>` (optional, default `tsv` in browser runner mode)
 - `cct=<inline circuit text>` (optional alternative)
 - `ctz=<compressed circuit text>` (optional alternative)
-- `headlessDumpKey=<localStorage key>` (optional alternative)
+- `runnerDumpKey=<localStorage key>` (in browser circuit)
+
+### Open current in-memory circuit in this mode
+
+From **File → Open Runner Output Table...**.
+
+This opens a new tab with `runner=1&ctz=...` for the current unsaved circuit state.
 
 ### Quick smoke checklist (browser runner)
 
@@ -227,7 +203,7 @@ World2 format (`format=world2`) output:
 
 ```bash
 for f in tests/*.txt; do
-  if ./gradlew -q runCircuitJava -Pcircuit="$f" -Psteps=1 >/tmp/headless.out 2>/tmp/headless.err; then
+  if ./gradlew -q runCircuitJava -Pcircuit="$f" -Psteps=1 >/tmp/runner.out 2>/tmp/runner.err; then
     echo "PASS $f"
   else
     echo "FAIL $f"
@@ -261,11 +237,11 @@ When changing solver/runtime/economic model behavior:
 
 Browser mode (`Standard Output` tab):
 
-- `Headless load failed for all candidates of startCircuit=...`
+- `Runner load failed for all candidates of startCircuit=...`
   - The `startCircuit` path could not be resolved.
-- `loadFileFromURLHeadless HTTP failure: ... status=...`
+- `loadFileFromURLRunner HTTP failure: ... status=...`
   - URL returned non-2xx response.
-- `loadFileFromURLHeadless timeout after 15s: ...`
+- `loadFileFromURLRunner timeout after 15s: ...`
   - Circuit file request stalled.
 - `window.onerror: ...` or `GWT uncaught exception: ...`
   - Runtime exception occurred during load/simulation.
@@ -274,6 +250,6 @@ Browser mode (`Standard Output` tab):
 
 ## Notes
 
-- JVM runner mode is enabled by `RuntimeMode.setHeadless(true)`.
+- JVM runner mode is enabled by `RuntimeMode.setNonInteractiveRuntime(true)`.
 - Tests that touch `ComputedValues` should isolate/reset shared state (`@ResourceLock("ComputedValues")`, `ComputedValues.resetForTesting()`).
 - For iterative debugging, prefer small `-Psteps` values first (e.g. `1`, `5`, `10`) and scale up after sanity checks.

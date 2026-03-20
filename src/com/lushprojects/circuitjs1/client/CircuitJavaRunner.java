@@ -12,14 +12,13 @@ import java.util.Locale;
 /**
  * Command-line interface for running CircuitJS1 simulations on the JVM / terminal, i.e. no GWT, not in the browser.
  * 
- * <p>This class enables headless simulation execution for automated testing, batch processing,
+ * <p>This class enables non-interactive simulation execution for automated testing, batch processing,
  * and data export. It bypasses the GWT/browser UI and runs the circuit simulation engine
  * directly on the JVM.
  * 
  * <h2>Usage</h2>
  * <pre>
  * ./gradlew runCircuitJava -Pcircuit="path/to/circuit.txt" -Psteps=1000 -Pformat=csv -Phtml="/tmp/world2.html"
- * # legacy alias: ./gradlew headlessCli ...
  * </pre>
  * 
  * <h2>Arguments</h2>
@@ -42,18 +41,17 @@ import java.util.Locale;
  * <ul>
  *   <li>This file is <b>excluded from GWT compilation</b> (see circuitjs1.gwt.xml)</li>
  *   <li>Uses JVM-only APIs: {@code String.format()}, {@code java.nio.file}, etc.</li>
- *   <li>Sets {@code RuntimeMode.setHeadless(true)} so elements skip drawing code</li>
+ *   <li>Sets {@code RuntimeMode.setNonInteractiveRuntime(true)} so elements skip drawing code</li>
  *   <li>Outputs values from {@link ComputedValues} registry (populated by table elements)</li>
  * </ul>
  * 
  * @see ComputedValues
- * @see RuntimeMode#setHeadless(boolean)
- * @see CirSim#initHeadless()
+ * @see RuntimeMode#setNonInteractiveRuntime(boolean)
  */
 public class CircuitJavaRunner {
 
     /**
-     * Main entry point for headless circuit simulation.
+     * Main entry point for non-interactive circuit simulation.
      * 
      * <p>Loads a circuit file, runs the simulation for the specified number of steps,
      * and outputs computed values in the requested format.
@@ -67,7 +65,7 @@ public class CircuitJavaRunner {
             System.exit(1);
         }
 
-        RuntimeMode.setHeadless(true);
+        RuntimeMode.setNonInteractiveRuntime(true);
         ComputedValues.resetForTesting();
 
         String circuitPath = args[0];
@@ -82,7 +80,7 @@ public class CircuitJavaRunner {
         String circuitText = new String(Files.readAllBytes(circuitFilePath), StandardCharsets.UTF_8);
 
         CirSim sim = new CirSim();
-        sim.initHeadless();
+    sim.initHeadless();
         sim.readCircuit(circuitText, 0);
         sim.analyzeCircuit();
         sim.preStampAndStampCircuit();

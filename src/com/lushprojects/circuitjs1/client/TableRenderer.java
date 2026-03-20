@@ -99,7 +99,7 @@ public class TableRenderer {
      * Initialize the cached canvas for static parts.
      */
     private void initCache() {
-        if (RuntimeMode.isHeadless()) {
+        if (RuntimeMode.isNonInteractiveRuntime()) {
             return;
         }
         backgroundLayerCanvas = Canvas.createIfSupported();

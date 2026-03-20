@@ -13,17 +13,17 @@ public final class NumFmt {
             com.google.gwt.i18n.client.NumberFormat gwtFmt = com.google.gwt.i18n.client.NumberFormat.getFormat(pattern);
             return gwtFmt::format;
         }
-        return new HeadlessFormatter(pattern);
+        return new NonInteractiveFormatter(pattern);
     }
 
-    private static final class HeadlessFormatter implements Formatter {
+    private static final class NonInteractiveFormatter implements Formatter {
         private final int decimalDigits;
         private final int minFractionDigits;
         private final boolean grouping;
         private final boolean scientific;
         private final int scientificExponentDigits;
 
-        private HeadlessFormatter(String pattern) {
+        private NonInteractiveFormatter(String pattern) {
             int eIndex = pattern.indexOf('E');
             scientific = eIndex >= 0;
             scientificExponentDigits = scientific ? pattern.length() - eIndex - 1 : 0;

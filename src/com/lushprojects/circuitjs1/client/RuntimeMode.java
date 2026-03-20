@@ -1,20 +1,20 @@
 package com.lushprojects.circuitjs1.client;
 
 public final class RuntimeMode {
-    private static boolean headless;
+    private static boolean nonInteractiveRuntime;
 
     private RuntimeMode() {
     }
 
-    public static void setHeadless(boolean value) {
-        headless = value;
+    public static void setNonInteractiveRuntime(boolean value) {
+        nonInteractiveRuntime = value;
     }
 
-    public static boolean isHeadless() {
-        return headless;
+    public static boolean isNonInteractiveRuntime() {
+        return nonInteractiveRuntime;
     }
 
     public static boolean isGwt() {
-        return !headless;
+        return !nonInteractiveRuntime;
     }
 }

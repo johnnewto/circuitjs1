@@ -217,7 +217,7 @@ runcircuitjava() {
     local steps="${2:-1000}"
     local output="${3:-/tmp/world2.tsv}"
     local format="${4:-world2}"
-    local html="${5:-/tmp/world2-headless.html}"
+    local html="${5:-/tmp/world2-runner.html}"
 
     echo "Running runCircuitJava with circuit=${circuit}, steps=${steps}, output=${output}, format=${format}, html=${html}"
 
@@ -332,12 +332,12 @@ runcircuitjava defaults:
   steps=1000
   output=/tmp/world2.tsv
   format=world2
-  html=/tmp/world2-headless.html
+    html=/tmp/world2-runner.html
 
 runcircuitjava examples:
     ./dev.sh runcircuitjava
     ./dev.sh runcircuitjava <circuit> [steps] [output] [format] [html]
-    ./dev.sh runcircuitjava src/com/lushprojects/circuitjs1/public/circuits/economics/1debug.md 1000 /tmp/world2.tsv world2 /tmp/world2-headless.html
+    ./dev.sh runcircuitjava src/com/lushprojects/circuitjs1/public/circuits/economics/1debug.md 1000 /tmp/world2.tsv world2 /tmp/world2-runner.html
 
 EOF
 }

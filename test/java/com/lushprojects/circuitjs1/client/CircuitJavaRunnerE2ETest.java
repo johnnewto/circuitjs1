@@ -24,13 +24,13 @@ class CircuitJavaRunnerE2ETest {
 
     @AfterEach
     void resetRuntimeMode() {
-        RuntimeMode.setHeadless(false);
+        RuntimeMode.setNonInteractiveRuntime(false);
     }
 
     @Test
     @DisplayName("runs mixed-modes fixture and emits advancing CSV time")
     void runsMixedModesFixtureAndEmitsAdvancingCsvTime() throws Exception {
-        Path outputCsv = Files.createTempFile("headless-runner-e2e-", ".csv");
+        Path outputCsv = Files.createTempFile("runner-e2e-", ".csv");
         try {
             CircuitJavaRunner.main(new String[] {
                     getMixedModesFixturePath().toString(),
@@ -55,7 +55,7 @@ class CircuitJavaRunnerE2ETest {
     @Test
     @DisplayName("produces stable key values at step 5 for reference model")
     void producesStableKeyValuesAtStepFiveForReferenceModel() throws Exception {
-        Path outputCsv = Files.createTempFile("headless-runner-e2e-values-", ".csv");
+        Path outputCsv = Files.createTempFile("runner-e2e-values-", ".csv");
         try {
             CircuitJavaRunner.main(new String[] {
                     getReferenceCircuitPath().toString(),
@@ -95,7 +95,7 @@ class CircuitJavaRunnerE2ETest {
     @Test
     @DisplayName("emits world2 formatted six-column table when format is world2")
     void emitsWorld2FormattedSixColumnTableWhenFormatIsWorld2() throws Exception {
-        Path outputTable = Files.createTempFile("headless-runner-world2-", ".tsv");
+        Path outputTable = Files.createTempFile("runner-world2-", ".tsv");
         try {
             CircuitJavaRunner.main(new String[] {
                     getWorld2CircuitPath().toString(),
@@ -127,8 +127,8 @@ class CircuitJavaRunnerE2ETest {
     @Test
     @DisplayName("embeds circuit parameter summary in world2 HTML report")
     void embedsCircuitParameterSummaryInWorld2HtmlReport() throws Exception {
-        Path outputTable = Files.createTempFile("headless-runner-world2-html-", ".tsv");
-        Path outputHtml = Files.createTempFile("headless-runner-world2-html-", ".html");
+        Path outputTable = Files.createTempFile("runner-world2-html-", ".tsv");
+        Path outputHtml = Files.createTempFile("runner-world2-html-", ".html");
         try {
             CircuitJavaRunner.main(new String[] {
                     getWorld2CircuitPath().toString(),

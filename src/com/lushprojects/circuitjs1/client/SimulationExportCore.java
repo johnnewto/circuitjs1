@@ -88,12 +88,13 @@ public final class SimulationExportCore {
         Collections.sort(keys);
 
         boolean world2Format = "world2".equals(request.format);
+        boolean tsvFormat = "tsv".equals(request.format);
         List<World2Row> world2Rows = world2Format ? new ArrayList<World2Row>() : Collections.<World2Row>emptyList();
         RunParameters runParameters = collectRunParameters(sim, request, world2Format, keys.size());
         printRunParameters(diagnostics, runParameters);
 
         StringBuilder output = new StringBuilder();
-        appendHeader(output, keys, world2Format);
+        appendHeader(output, keys, world2Format, tsvFormat);
 
         boolean warnedNoTimeAdvance = false;
         int rowsWritten = 0;
@@ -119,7 +120,7 @@ public final class SimulationExportCore {
                 appendWorld2Row(output, sim.t, p, polr, ci, ql, nr);
                 world2Rows.add(new World2Row(sim.t, p, polr, ci, ql, nr));
             } else {
-                appendCsvRow(output, sim.t, keys);
+                appendDelimitedRow(output, sim.t, keys, tsvFormat ? '\t' : ',', tsvFormat);
             }
             rowsWritten++;
 
@@ -139,25 +140,26 @@ public final class SimulationExportCore {
         return result;
     }
 
-    private static void appendHeader(StringBuilder out, List<String> keys, boolean world2Format) {
+    private static void appendHeader(StringBuilder out, List<String> keys, boolean world2Format, boolean tsvFormat) {
         if (world2Format) {
             out.append("Year\tPopulation\tPollution Ratio\tCapital Investment\tQuality of Life\tNatural Resources\n");
             return;
         }
+        char separator = tsvFormat ? '\t' : ',';
         out.append("t");
         for (String key : keys) {
-            out.append(",").append(key);
+            out.append(separator).append(key);
         }
         out.append('\n');
     }
 
-    private static void appendCsvRow(StringBuilder out, double time, List<String> keys) {
+    private static void appendDelimitedRow(StringBuilder out, double time, List<String> keys, char separator, boolean formatWithSI) {
         out.append(time);
         for (String key : keys) {
             Double value = ComputedValues.getConvergedValue(key);
-            out.append(",");
+            out.append(separator);
             if (value != null) {
-                out.append(value);
+                out.append(formatWithSI ? fmtSI(value) : value);
             }
         }
         out.append('\n');
