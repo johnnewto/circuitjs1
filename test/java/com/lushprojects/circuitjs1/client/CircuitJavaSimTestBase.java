@@ -20,7 +20,7 @@ abstract class CircuitJavaSimTestBase {
         RuntimeMode.setNonInteractiveRuntime(true);
         ComputedValues.resetForTesting();
         sim = new CirSim();
-        sim.initHeadless();
+        sim.initRunner();
     }
 
     @AfterEach

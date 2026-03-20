@@ -222,6 +222,8 @@ http://127.0.0.1:8000/circuitjs.html?runner=1&startCircuit=economics/1debug.md&s
 - `steps=<n>` (default `1000`)
 - `cct=<inline circuit text>` (optional alternative)
 - `ctz=<compressed circuit text>` (optional alternative)
+- `nonInteractiveDumpKey=<localStorage key>` (preferred key name)
+
 
 ### Open current in-memory circuit in this mode
 

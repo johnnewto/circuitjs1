@@ -613,7 +613,7 @@ public final class SimulationExportCore {
     }
 
     static String buildRunnerStatusContentHtml(String message) {
-        return "<div id='headless-status-message'>" + escapeHtml(message != null ? message : "") + "</div>"
+        return "<div id='runner-status-message'>" + escapeHtml(message != null ? message : "") + "</div>"
             + "<div style='color:#666; margin-top:6px;'>Format hint: default is <b>tsv</b> when omitted (use format=csv or format=world2 to override).</div>";
     }
 
@@ -674,7 +674,7 @@ public final class SimulationExportCore {
             + "</div>"
             + reportTabContentHtml
             + "<div id='runner-stdout-tab' style='display:none;'>"
-            + "<div id='headless-stdout-pre' style='white-space:pre-wrap; font-family:monospace; max-height:70vh; overflow:auto; border:1px solid #ccc; padding:8px;'>"
+            + "<div id='runner-stdout-pre' style='white-space:pre-wrap; font-family:monospace; max-height:70vh; overflow:auto; border:1px solid #ccc; padding:8px;'>"
             + safeStdoutHtml
             + "</div>"
             + "</div>"
@@ -688,25 +688,25 @@ public final class SimulationExportCore {
         return escapeHtml(input);
     }
 
-    // ========== Headless/Non-interactive HTML builders ==========
+    // ========== Runner table / non-interactive HTML builders ==========
 
-    static String buildHeadlessDiv(String innerHtml) {
+    static String buildRunnerTableDiv(String innerHtml) {
         return "<div>" + (innerHtml != null ? innerHtml : "") + "</div>";
     }
 
-    static String buildHeadlessStyledDiv(String style, String innerHtml) {
+    static String buildRunnerTableStyledDiv(String style, String innerHtml) {
         return "<div style='" + (style != null ? style : "") + "'>" + (innerHtml != null ? innerHtml : "") + "</div>";
     }
 
-    static String buildHeadlessCell(String value) {
+    static String buildRunnerTableCell(String value) {
         return "<td>" + escapeHtml(value != null ? value : "") + "</td>";
     }
 
-    static String buildHeadlessRow(List<String> cells) {
+    static String buildRunnerTableRow(List<String> cells) {
         return "<tr>" + String.join("", cells) + "</tr>";
     }
 
-    static String buildHeadlessTableHeader(List<String> keys) {
+    static String buildRunnerTableHeader(List<String> keys) {
         List<String> headers = new ArrayList<String>();
         headers.add("<th>t</th>");
         for (int i = 0; i < keys.size(); i++) {
@@ -715,46 +715,46 @@ public final class SimulationExportCore {
         return "<thead><tr>" + String.join("", headers) + "</tr></thead>";
     }
 
-    static String buildHeadlessTableWrapperOpen() {
+    static String buildRunnerTableWrapperOpen() {
         return "<div style='margin-top:10px; max-height:70vh; overflow:auto;'>";
     }
 
-    static String buildHeadlessTableOpen() {
+    static String buildRunnerTableOpen() {
         return "<table border='1' cellspacing='0' cellpadding='4'>";
     }
 
-    static String buildHeadlessTableBodyOpen() {
+    static String buildRunnerTableBodyOpen() {
         return "<tbody>";
     }
 
-    static String buildHeadlessTableWrapperClose() {
+    static String buildRunnerTableWrapperClose() {
         return "</tbody></table></div>";
     }
 
-    static String buildHeadlessStatusContentHtml(String message) {
-        return "<div id='headless-status-message'>" + escapeHtml(message != null ? message : "") + "</div>";
+    static String buildRunnerTableStatusContentHtml(String message) {
+        return "<div id='runner-status-message'>" + escapeHtml(message != null ? message : "") + "</div>";
     }
 
-    static String buildHeadlessErrorContentHtml(String message) {
+    static String buildRunnerTableErrorContentHtml(String message) {
         return "<div style='color:#c33;'>" + escapeHtml(message != null ? message : "") + "</div>";
     }
 
-    static String buildHeadlessTabbedHtml(String primaryTabTitle, String primaryContentHtml, String stdoutHtml) {
+    static String buildRunnerTableTabbedHtml(String primaryTabTitle, String primaryContentHtml, String stdoutHtml) {
         String escapedTitle = escapeHtml(primaryTabTitle != null ? primaryTabTitle : "");
         String safeStdoutHtml = stdoutHtml != null ? stdoutHtml : escapeHtml("(no output yet)");
         return "<div style='padding:12px;'>"
-            + "<h2>nonInteractive Output</h2>"
+            + "<h2>Runner Output Table</h2>"
             + "<div style='margin:8px 0;'>"
-            + "<button onclick=\"document.getElementById('headless-primary-tab').style.display='block';document.getElementById('headless-stdout-tab').style.display='none';\">"
+            + "<button onclick=\"document.getElementById('runner-table-primary-tab').style.display='block';document.getElementById('runner-table-stdout-tab').style.display='none';\">"
             + escapedTitle
             + "</button>"
-            + "<button style='margin-left:8px;' onclick=\"document.getElementById('headless-primary-tab').style.display='none';document.getElementById('headless-stdout-tab').style.display='block';\">Standard Output</button>"
+            + "<button style='margin-left:8px;' onclick=\"document.getElementById('runner-table-primary-tab').style.display='none';document.getElementById('runner-table-stdout-tab').style.display='block';\">Standard Output</button>"
             + "</div>"
-            + "<div id='headless-primary-tab' style='display:block;'>"
+            + "<div id='runner-table-primary-tab' style='display:block;'>"
             + (primaryContentHtml != null ? primaryContentHtml : "")
             + "</div>"
-            + "<div id='headless-stdout-tab' style='display:none;'>"
-            + "<div id='headless-stdout-pre' style='white-space:pre-wrap; font-family:monospace; max-height:70vh; overflow:auto; border:1px solid #ccc; padding:8px;'>"
+            + "<div id='runner-table-stdout-tab' style='display:none;'>"
+            + "<div id='runner-stdout-pre' style='white-space:pre-wrap; font-family:monospace; max-height:70vh; overflow:auto; border:1px solid #ccc; padding:8px;'>"
             + safeStdoutHtml
             + "</div>"
             + "</div>"

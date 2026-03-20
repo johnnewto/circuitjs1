@@ -80,7 +80,7 @@ public class CircuitJavaRunner {
         String circuitText = new String(Files.readAllBytes(circuitFilePath), StandardCharsets.UTF_8);
 
         CirSim sim = new CirSim();
-    sim.initHeadless();
+        sim.initRunner();
         sim.readCircuit(circuitText, 0);
         sim.analyzeCircuit();
         sim.preStampAndStampCircuit();

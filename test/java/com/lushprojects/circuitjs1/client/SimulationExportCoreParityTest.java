@@ -70,7 +70,7 @@ class SimulationExportCoreParityTest {
     void runnerStatusContentEscapesMessageAndIncludesFormatHint() {
         String html = SimulationExportCore.buildRunnerStatusContentHtml("loading <model> & \"params\"");
 
-        assertTrue(html.contains("headless-status-message"), "Expected status message container id");
+        assertTrue(html.contains("runner-status-message"), "Expected status message container id");
         assertTrue(html.contains("loading &lt;model&gt; &amp; &quot;params&quot;"), "Expected escaped status message");
         assertTrue(html.contains("default is <b>tsv</b>"), "Expected format hint text");
     }
@@ -115,14 +115,14 @@ class SimulationExportCoreParityTest {
     }
 
     @Test
-    @DisplayName("headless table helpers escape cells and render header")
-    void headlessTableHelpersEscapeCellsAndRenderHeader() {
+    @DisplayName("runner table helpers escape cells and render header")
+    void runnerTableHelpersEscapeCellsAndRenderHeader() {
         List<String> keys = new ArrayList<String>();
         keys.add("A<B>");
         keys.add("C&D");
 
-        String cell = SimulationExportCore.buildHeadlessCell("x<y & \"z\"");
-        String header = SimulationExportCore.buildHeadlessTableHeader(keys);
+        String cell = SimulationExportCore.buildRunnerTableCell("x<y & \"z\"");
+        String header = SimulationExportCore.buildRunnerTableHeader(keys);
 
         assertTrue(cell.contains("x&lt;y &amp; &quot;z&quot;"), "Expected escaped table cell value");
         assertTrue(header.contains("<th>t</th>"), "Expected time column in header");
@@ -131,14 +131,14 @@ class SimulationExportCoreParityTest {
     }
 
     @Test
-    @DisplayName("headless status and tab shell render escaped content")
-    void headlessStatusAndTabShellRenderEscapedContent() {
-        String status = SimulationExportCore.buildHeadlessStatusContentHtml("loading <table> & \"data\"");
-        String tabbed = SimulationExportCore.buildHeadlessTabbedHtml("Output <Table>", status, "line1<br/>line2");
+    @DisplayName("runner table status and tab shell render escaped content")
+    void runnerTableStatusAndTabShellRenderEscapedContent() {
+        String status = SimulationExportCore.buildRunnerTableStatusContentHtml("loading <table> & \"data\"");
+        String tabbed = SimulationExportCore.buildRunnerTableTabbedHtml("Output <Table>", status, "line1<br/>line2");
 
-        assertTrue(status.contains("headless-status-message"), "Expected status message id");
+        assertTrue(status.contains("runner-status-message"), "Expected status message id");
         assertTrue(status.contains("loading &lt;table&gt; &amp; &quot;data&quot;"), "Expected escaped status text");
-        assertTrue(tabbed.contains("nonInteractive Output"), "Expected headless title");
+        assertTrue(tabbed.contains("Runner Output Table"), "Expected runner table title");
         assertTrue(tabbed.contains("Output &lt;Table&gt;"), "Expected escaped tab title");
         assertTrue(tabbed.contains("line1<br/>line2"), "Expected provided stdout html");
     }
