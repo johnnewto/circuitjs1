@@ -231,6 +231,9 @@ Rules:
 - `x` values must be strictly increasing
 - `scope=<equationsName>` creates a local table for one `@equations` block; otherwise table is global
 - Local scoped tables override global tables with the same name
+- Export may reconcile lookup aliases that differ only by `_lookup` suffix (for example `CFIFR` vs `CFIFR_lookup`) when table points are identical
+- When a lookup is referenced from equations as `lookup(Name, x)`, export prefers the equation-referenced name (`Name`) and avoids emitting a duplicate alias block
+- Dedupe is signature-based (scope + point pairs), so identical tables are emitted once even if discovered via both template seeding and expression scanning
 
 Equation-call syntax supported:
 

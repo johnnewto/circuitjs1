@@ -19,56 +19,56 @@
 ```{r}
 World2 <- sfcr_set(
   # [ x=50 y=50 ]
-  e1 = BRN ~ 0.04,  # [mode=voltage, sliderValue=0 ]
-  e2 = DRN ~ 0.028,  # [mode=voltage, sliderValue=0 ]
-  e3 = CIDN ~ 0.025,  # [mode=voltage, sliderValue=0 ]
-  e4 = CIGN ~ 0.05,  # [mode=voltage, sliderValue=0 ]
-  e5 = NRUN ~ 1,  # [mode=voltage, sliderValue=0 ]
-  e6 = POLN ~ 1,  # [mode=voltage, sliderValue=0 ]
-  e7 = FC_COEFF ~ 1,  # [mode=voltage, sliderValue=0 ]
-  e8 = LA ~ 1.35e8,  # [mode=voltage, sliderValue=0 ]
-  e9 = PDN ~ 26.5,  # [mode=voltage, sliderValue=0 ]
-  e10 = CIAFN ~ 0.3,  # [mode=voltage, sliderValue=0 ]
-  e11 = ECIRN ~ 1,  # [mode=voltage, sliderValue=0 ]
-  e12 = CIAFT ~ 15,  # [mode=voltage, sliderValue=0 ]
-  e13 = POLS ~ 3.6e9,  # [mode=voltage, sliderValue=0 ]
-  e14 = FN ~ 1,  # [mode=voltage, sliderValue=0 ]
-  e15 = QLS ~ 1,  # [mode=voltage, sliderValue=0 ]
-  e16 = P_0 ~ 1.65e9,  # [mode=voltage, sliderValue=0 ]
-  e17 = NR_0 ~ 9e11,  # [mode=voltage, sliderValue=0 ]
-  e18 = CR ~ P / (LA * PDN),  # [mode=voltage, sliderValue=0 ]
-  e19 = CIR ~ CI / max(1, P),  # [mode=voltage, sliderValue=0 ]
-  e20 = NRFR ~ max(0, NR) / NR_0,  # [mode=voltage, sliderValue=0 ]
-  e21 = POLR ~ POL / POLS,  # Pollution ratio  [mode=voltage, sliderValue=0 ]
-  e22 = BR ~ P * BRN * lookup(BRMM, MSL) * lookup(BRCM, CR) * lookup(BRFM, FR) * lookup(BRPM, POLR),  # [mode=voltage, sliderValue=0 ]
-  e23 = DR ~ P * DRN * lookup(DRMM, MSL) * lookup(DRPM, POLR) * lookup(DRFM, FR) * lookup(DRCM, CR),  # [mode=voltage, sliderValue=0 ]
-  e24 = NRUR ~ P * NRUN * lookup(NRMM, MSL),  # [mode=voltage, sliderValue=0 ]
-  e25 = CID ~ CI * CIDN,  # [mode=voltage, sliderValue=0 ]
-  e26 = CIG ~ P * lookup(CIM, MSL) * CIGN,  # [mode=voltage, sliderValue=0 ]
-  e27 = POLG ~ P * POLN * lookup(POLCM, CIR),  # [mode=voltage, sliderValue=0 ]
-  e28 = POLA ~ POL / max(1e-9, lookup(POLAT, POLR)),  # [mode=voltage, sliderValue=0 ]
-  e29 = CFIFR ~ lookup(CFIFR, FR),  # [mode=voltage, sliderValue=0 ]
-  e30 = QLM ~ lookup(QLM, MSL),  # [mode=voltage, sliderValue=0 ]
-  e31 = QLP ~ lookup(QLP, POLR),  # [mode=voltage, sliderValue=0 ]
-  e32 = QLF ~ lookup(QLF, FR),  # [mode=voltage, sliderValue=0 ]
-  e33 = CIQR ~ lookup(CIQR, QLM / max(1e-9, QLF)),  # [mode=voltage, sliderValue=0 ]
-  e34 = CIAF_D ~ CFIFR * CIQR,  # [mode=voltage, sliderValue=0 ]
-  e35 = CIRA ~ CIR * CIAF / max(1e-9, CIAFN),  # [mode=voltage, sliderValue=0 ]
-  e36 = FCM ~ lookup(FCM, CR),  # [mode=voltage, sliderValue=0 ]
-  e37 = FPCI ~ lookup(FPCI, CIRA),  # [mode=voltage, sliderValue=0 ]
-  e38 = FPM ~ lookup(FPM, POLR),  # [mode=voltage, sliderValue=0 ]
-  e39 = FR ~ (FCM * FPCI * FPM * FC_COEFF) / FN,  # Food ratio  [mode=voltage, sliderValue=0 ]
-  e40 = NREM ~ lookup(NREM, NRFR),  # [mode=voltage, sliderValue=0 ]
-  e41 = ECIR ~ (CIR * (1 - CIAF) * NREM) / max(1e-9, (1 - CIAFN)),  # [mode=voltage, sliderValue=0 ]
-  e42 = MSL ~ ECIR / ECIRN,  # Material standard of living  [mode=voltage, sliderValue=0 ]
-  e43 = QLC ~ lookup(QLC, CR),  # [mode=voltage, sliderValue=0 ]
-  e44 = QL ~ QLS * QLM * QLC * QLF * QLP,  # Quality of life  [mode=voltage, sliderValue=0 ]
-  e45 = P_norm ~ P / P_0,  # [mode=voltage, sliderValue=0 ]
-  e46 = P ~ integrate(BR - DR),  # Population (people)  [mode=voltage, sliderValue=0, initial=1.65e9 ]
-  e47 = NR ~ integrate(-NRUR),  # Nonrenewable natural resources  [mode=voltage, sliderValue=0, initial=9e11 ]
-  e48 = CI ~ integrate(CIG - CID),  # Capital investment  [mode=voltage, sliderValue=0, initial=4e8 ]
-  e49 = POL ~ integrate(POLG - POLA),  # Pollution stock  [mode=voltage, sliderValue=0, initial=2e8 ]
-  e50 = CIAF ~ integrate((CIAF_D - CIAF) / CIAFT)  # Capital-investment-in-agriculture fraction  [mode=voltage, sliderValue=0, initial=0.2 ]
+  e1 = BRN ~ 0.04,  # [mode=param, sliderValue=0 ]
+  e2 = DRN ~ 0.028,  # [mode=param, sliderValue=0 ]
+  e3 = CIDN ~ 0.025,  # [mode=param, sliderValue=0 ]
+  e4 = CIGN ~ 0.05,  # [mode=param, sliderValue=0 ]
+  e5 = NRUN ~ 1,  # [mode=param, sliderValue=0 ]
+  e6 = POLN ~ 1,  # [mode=param, sliderValue=0 ]
+  e7 = FC_COEFF ~ 1,  # [mode=param, sliderValue=0 ]
+  e8 = LA ~ 1.35e8,  # [mode=param, sliderValue=0 ]
+  e9 = PDN ~ 26.5,  # [mode=param, sliderValue=0 ]
+  e10 = CIAFN ~ 0.3,  # [mode=param, sliderValue=0 ]
+  e11 = ECIRN ~ 1,  # [mode=param, sliderValue=0 ]
+  e12 = CIAFT ~ 15,  # [mode=param, sliderValue=0 ]
+  e13 = POLS ~ 3.6e9,  # [mode=param, sliderValue=0 ]
+  e14 = FN ~ 1,  # [mode=param, sliderValue=0 ]
+  e15 = QLS ~ 1,  # [mode=param, sliderValue=0 ]
+  e16 = P_0 ~ 1.65e9,  # [mode=param, sliderValue=0 ]
+  e17 = NR_0 ~ 9e11,  # [mode=param, sliderValue=0 ]
+  e18 = CR ~ P / (LA * PDN),  # [mode=param, sliderValue=0 ]
+  e19 = CIR ~ CI / max(1, P),  # [mode=param, sliderValue=0 ]
+  e20 = NRFR ~ max(0, NR) / NR_0,  # [mode=param, sliderValue=0 ]
+  e21 = POLR ~ POL / POLS,  # Pollution ratio  [mode=param, sliderValue=0 ]
+  e22 = BR ~ P * BRN * lookup(BRMM, MSL) * lookup(BRCM, CR) * lookup(BRFM, FR) * lookup(BRPM, POLR),  # [mode=param, sliderValue=0 ]
+  e23 = DR ~ P * DRN * lookup(DRMM, MSL) * lookup(DRPM, POLR) * lookup(DRFM, FR) * lookup(DRCM, CR),  # [mode=param, sliderValue=0 ]
+  e24 = NRUR ~ P * NRUN * lookup(NRMM, MSL),  # [mode=param, sliderValue=0 ]
+  e25 = CID ~ CI * CIDN,  # [mode=param, sliderValue=0 ]
+  e26 = CIG ~ P * lookup(CIM, MSL) * CIGN,  # [mode=param, sliderValue=0 ]
+  e27 = POLG ~ P * POLN * lookup(POLCM, CIR),  # [mode=param, sliderValue=0 ]
+  e28 = POLA ~ POL / max(1e-9, lookup(POLAT, POLR)),  # [mode=param, sliderValue=0 ]
+  e29 = CFIFR ~ lookup(CFIFR, FR),  # [mode=param, sliderValue=0 ]
+  e30 = QLM ~ lookup(QLM, MSL),  # [mode=param, sliderValue=0 ]
+  e31 = QLP ~ lookup(QLP, POLR),  # [mode=param, sliderValue=0 ]
+  e32 = QLF ~ lookup(QLF, FR),  # [mode=param, sliderValue=0 ]
+  e33 = CIQR ~ lookup(CIQR, QLM / max(1e-9, QLF)),  # [mode=param, sliderValue=0 ]
+  e34 = CIAF_D ~ CFIFR * CIQR,  # [mode=param, sliderValue=0 ]
+  e35 = CIRA ~ CIR * CIAF / max(1e-9, CIAFN),  # [mode=param, sliderValue=0 ]
+  e36 = FCM ~ lookup(FCM, CR),  # [mode=param, sliderValue=0 ]
+  e37 = FPCI ~ lookup(FPCI, CIRA),  # [mode=param, sliderValue=0 ]
+  e38 = FPM ~ lookup(FPM, POLR),  # [mode=param, sliderValue=0 ]
+  e39 = FR ~ (FCM * FPCI * FPM * FC_COEFF) / FN,  # Food ratio  [mode=param, sliderValue=0 ]
+  e40 = NREM ~ lookup(NREM, NRFR),  # [mode=param, sliderValue=0 ]
+  e41 = ECIR ~ (CIR * (1 - CIAF) * NREM) / max(1e-9, (1 - CIAFN)),  # [mode=param, sliderValue=0 ]
+  e42 = MSL ~ ECIR / ECIRN,  # Material standard of living  [mode=param, sliderValue=0 ]
+  e43 = QLC ~ lookup(QLC, CR),  # [mode=param, sliderValue=0 ]
+  e44 = QL ~ QLS * QLM * QLC * QLF * QLP,  # Quality of life  [mode=param, sliderValue=0 ]
+  e45 = P_norm ~ P / P_0,  # [mode=param, sliderValue=0 ]
+  e46 = P ~ integrate(BR - DR),  # Population (people)  [mode=param, sliderValue=0, initial=1.65e9 ]
+  e47 = NR ~ integrate(-NRUR),  # Nonrenewable natural resources  [mode=param, sliderValue=0, initial=9e11 ]
+  e48 = CI ~ integrate(CIG - CID),  # Capital investment  [mode=param, sliderValue=0, initial=4e8 ]
+  e49 = POL ~ integrate(POLG - POLA),  # Pollution stock  [mode=param, sliderValue=0, initial=2e8 ]
+  e50 = CIAF ~ integrate((CIAF_D - CIAF) / CIAFT)  # Capital-investment-in-agriculture fraction  [mode=param, sliderValue=0, initial=0.2 ]
 )
 ```
 
@@ -260,6 +260,30 @@ Reference target from pyworld2 tests at year 2100:
 ```
 
 ```{r}
+@scope QL position=0
+  speed: 16
+  flags: x2001206
+  source: uid:xJHWxB value:0
+@end
+```
+
+```{r}
+@scope P position=1
+  speed: 16
+  flags: x2001206
+  source: uid:BaMGZo value:0
+@end
+```
+
+```{r}
+@scope POLR position=2
+  speed: 16
+  flags: x2001206
+  source: uid:PwVDmt value:0
+@end
+```
+
+```{r}
 @lookup CFIFR scope=World2
   0, 1
   0.5, 0.6
@@ -370,30 +394,6 @@ Reference target from pyworld2 tests at year 2100:
   4, 0.25
   4.5, 0.22
   5, 0.2
-@end
-```
-
-```{r}
-@scope QL position=0
-  speed: 16
-  flags: x2001206
-  source: uid:xJHWxB value:0
-@end
-```
-
-```{r}
-@scope P position=1
-  speed: 16
-  flags: x2001206
-  source: uid:BaMGZo value:0
-@end
-```
-
-```{r}
-@scope POLR position=2
-  speed: 16
-  flags: x2001206
-  source: uid:PwVDmt value:0
 @end
 ```
 

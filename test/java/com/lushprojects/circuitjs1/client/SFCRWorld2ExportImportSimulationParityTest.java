@@ -8,10 +8,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ResourceLock("ComputedValues")
@@ -37,6 +43,8 @@ class SFCRWorld2ExportImportSimulationParityTest {
         assertRelativeNear("CI", baseline.values.get("CI"), roundTrip.values.get("CI"), 1e-8);
         assertRelativeNear("NR", baseline.values.get("NR"), roundTrip.values.get("NR"), 1e-8);
         assertRelativeNear("POLR", baseline.values.get("POLR"), roundTrip.values.get("POLR"), 1e-8);
+
+        assertRoundTripBlockInventory("parse-result exporter", world2Text, exportedText);
     }
 
     @Test
@@ -63,6 +71,8 @@ class SFCRWorld2ExportImportSimulationParityTest {
         assertRelativeNear("CI", baseline.values.get("CI"), roundTrip.values.get("CI"), 1e-8);
         assertRelativeNear("NR", baseline.values.get("NR"), roundTrip.values.get("NR"), 1e-8);
         assertRelativeNear("POLR", baseline.values.get("POLR"), roundTrip.values.get("POLR"), 1e-8);
+
+        assertRoundTripBlockInventory("live exporter", world2Text, liveExportedText);
     }
 
     private SimulationSnapshot runToYears(String circuitText, double years) throws Exception {
@@ -131,6 +141,130 @@ class SFCRWorld2ExportImportSimulationParityTest {
         double diff = Math.abs(expected - actual);
         assertTrue(diff <= tol,
                 label + " differs: expected=" + expected + ", actual=" + actual + ", diff=" + diff + ", tol=" + tol);
+    }
+
+    private void assertRoundTripBlockInventory(String label, String originalText, String exportedText) {
+        SFCRParseResult original = SFCRParser.parseToResult(originalText);
+        SFCRParseResult roundTrip = SFCRParser.parseToResult(exportedText);
+
+        assertNotNull(original, label + " original parse should not be null");
+        assertNotNull(roundTrip, label + " round-trip parse should not be null");
+
+        Map<String, Integer> originalByType = countBlocksByType(original);
+        Map<String, Integer> roundTripByType = countBlocksByType(roundTrip);
+        assertEquals(originalByType, roundTripByType,
+                label + " block count-by-type changed (possible omission/duplication)");
+
+        assertNoDuplicateNamedBlocks(label + " original", original,
+                Arrays.asList("lookup", "equations", "parameters", "matrix", "sankey", "scope"));
+        assertNoDuplicateNamedBlocks(label + " round-trip", roundTrip,
+                Arrays.asList("lookup", "equations", "parameters", "matrix", "sankey", "scope"));
+
+        Set<String> originalLookupKeys = collectNamedBlockKeysForType(original, "lookup");
+        Set<String> roundTripLookupKeys = collectNamedBlockKeysForType(roundTrip, "lookup");
+        assertEquals(originalLookupKeys, roundTripLookupKeys,
+                label + " lookup block key set changed (possible missing or extra lookup tables)");
+    }
+
+    private Map<String, Integer> countBlocksByType(SFCRParseResult result) {
+        HashMap<String, Integer> counts = new HashMap<String, Integer>();
+        if (result == null || result.blockDumps == null) {
+            return counts;
+        }
+        for (SFCRParseResult.BlockDump block : result.blockDumps) {
+            if (block == null || block.blockType == null) {
+                continue;
+            }
+            String type = block.blockType.trim().toLowerCase();
+            if (type.isEmpty()) {
+                continue;
+            }
+            Integer current = counts.get(type);
+            counts.put(type, Integer.valueOf(current == null ? 1 : current.intValue() + 1));
+        }
+        return counts;
+    }
+
+    private void assertNoDuplicateNamedBlocks(String label, SFCRParseResult result, List<String> types) {
+        HashMap<String, Integer> keyCounts = countNamedBlockKeys(result, types);
+        for (Map.Entry<String, Integer> entry : keyCounts.entrySet()) {
+            assertTrue(entry.getValue().intValue() <= 1,
+                    label + " has duplicated named block: " + entry.getKey() + " count=" + entry.getValue());
+        }
+    }
+
+    private HashMap<String, Integer> countNamedBlockKeys(SFCRParseResult result, List<String> types) {
+        HashSet<String> allowed = new HashSet<String>();
+        for (int i = 0; i < types.size(); i++) {
+            String type = types.get(i);
+            if (type != null) {
+                allowed.add(type.trim().toLowerCase());
+            }
+        }
+
+        HashMap<String, Integer> keyCounts = new HashMap<String, Integer>();
+        if (result == null || result.blockDumps == null) {
+            return keyCounts;
+        }
+
+        for (SFCRParseResult.BlockDump block : result.blockDumps) {
+            if (block == null || block.blockType == null || block.blockName == null) {
+                continue;
+            }
+            String type = block.blockType.trim().toLowerCase();
+            String name = canonicalizeBlockName(type, block.blockName.trim());
+            if (!allowed.contains(type) || name.isEmpty()) {
+                continue;
+            }
+            String key = type + "|" + name;
+            Integer current = keyCounts.get(key);
+            keyCounts.put(key, Integer.valueOf(current == null ? 1 : current.intValue() + 1));
+        }
+
+        return keyCounts;
+    }
+
+    private Set<String> collectNamedBlockKeysForType(SFCRParseResult result, String wantedType) {
+        HashSet<String> keys = new HashSet<String>();
+        if (result == null || result.blockDumps == null || wantedType == null) {
+            return keys;
+        }
+        String normalizedType = wantedType.trim().toLowerCase();
+        for (SFCRParseResult.BlockDump block : result.blockDumps) {
+            if (block == null || block.blockType == null || block.blockName == null) {
+                continue;
+            }
+            String type = block.blockType.trim().toLowerCase();
+            String name = canonicalizeBlockName(type, block.blockName.trim());
+            if (normalizedType.equals(type) && !name.isEmpty()) {
+                keys.add(type + "|" + name);
+            }
+        }
+        return keys;
+    }
+
+    private String canonicalizeBlockName(String type, String rawName) {
+        if (rawName == null) {
+            return "";
+        }
+        String name = rawName.trim();
+        if (name.isEmpty()) {
+            return name;
+        }
+        if ("lookup".equals(type)) {
+            int scopeSep = name.indexOf(':');
+            String scope = "";
+            String local = name;
+            if (scopeSep >= 0) {
+                scope = name.substring(0, scopeSep + 1);
+                local = name.substring(scopeSep + 1);
+            }
+            if (local.endsWith("_lookup") && local.length() > "_lookup".length()) {
+                local = local.substring(0, local.length() - "_lookup".length());
+            }
+            return scope + local;
+        }
+        return name;
     }
 
     private static class SimulationSnapshot {

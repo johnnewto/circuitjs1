@@ -821,15 +821,37 @@ public class SFCRExporter {
             return;
         }
 
+        String resolvedScope = (snapshot.resolvedScope == null || snapshot.resolvedScope.isEmpty())
+            ? null
+            : snapshot.resolvedScope;
+        String signature = buildLookupSignatureFromPoints(resolvedScope, snapshot.xs, snapshot.ys);
+        LookupDefinition existingBySignature = lookupExportBySignature.get(signature);
+        if (existingBySignature != null) {
+            // For identical lookup point signatures, prefer the equation-referenced base
+            // name over a template-seeded *_lookup alias to keep lookup(Name, x) stable.
+            if (existingBySignature.name != null
+                    && existingBySignature.name.endsWith("_lookup")
+                    && !lookupName.endsWith("_lookup")
+                    && !isLookupNameTaken(lookupName, resolvedScope)) {
+                existingBySignature.name = lookupName;
+            }
+            if (existingBySignature.comments.isEmpty()) {
+                existingBySignature.comments.addAll(getLookupComments(lookupName, resolvedScope));
+            }
+            return;
+        }
+
         LookupDefinition spec = new LookupDefinition();
         spec.name = lookupName;
-        spec.scope = (snapshot.resolvedScope == null || snapshot.resolvedScope.isEmpty()) ? null : snapshot.resolvedScope;
+        spec.scope = resolvedScope;
         spec.xs.addAll(snapshot.xs);
         spec.ys.addAll(snapshot.ys);
         spec.comments.addAll(getLookupComments(spec.name, spec.scope));
+        if (spec.comments.isEmpty()) {
+            spec.comments.addAll(getLookupComments(lookupName, resolvedScope));
+        }
 
         lookupExportSpecs.add(spec);
-        String signature = buildLookupSignatureFromPoints(spec.scope, spec.xs, spec.ys);
         lookupExportBySignature.put(signature, spec);
     }
 
