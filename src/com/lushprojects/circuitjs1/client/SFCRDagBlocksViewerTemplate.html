@@ -104,7 +104,7 @@ function compactLabel(s){if(!s) return ''; return s.length>22 ? s.substring(0,21
 function toElements(g){
   const elements=[];
   const useHints = !!(document.getElementById('useHints') && document.getElementById('useHints').checked);
-  for(let i=0;i<g.nodes.length;i++){const n=g.nodes[i];const raw=(useHints && n.hint && String(n.hint).trim().length>0)?n.hint:n.name;const fmt=formatMathLabel(raw);const hintEq=formatMathLabel(n.hintEq||'');elements.push({data:{id:'n'+i,labelFull:fmt,labelDisplay:compactLabel(fmt),hintEq:hintEq,block:n.block,cyclical:n.cyclical?1:0,color:colorForBlock(n.block)}});}
+  for(let i=0;i<g.nodes.length;i++){const n=g.nodes[i];const raw=(useHints && n.hint && String(n.hint).trim().length>0)?n.hint:n.name;const prefix=n.stock?'∫ ':'';const fmt=formatMathLabel(prefix+raw);const hintEq=formatMathLabel(n.hintEq||'');elements.push({data:{id:'n'+i,labelFull:fmt,labelDisplay:compactLabel(fmt),hintEq:hintEq,block:n.block,stock:n.stock?1:0,cyclical:n.cyclical?1:0,color:colorForBlock(n.block)}});}
   for(let i=0;i<g.edges.length;i++){const e=g.edges[i];const cyc=(g.nodes[e.from]&&g.nodes[e.from].block===g.nodes[e.to].block)?1:0;elements.push({data:{id:'e'+i,source:'n'+e.from,target:'n'+e.to,weight:cyc?1:3}});}
   return elements;
 }
@@ -154,6 +154,7 @@ function updateStatusBadges(){
 function buildLegend(){
   const legend = document.getElementById('legend');
   let html = '<div style="font-weight:600;margin-bottom:4px;">Legend</div>';
+  html += '<div class="legendRow"><span style="display:inline-block;width:14px;text-align:center;color:#1e8c50;font-weight:700;">∫</span><span>Stock row (top-level integrate, highlighted shape + glow)</span></div>';
   html += '<div class="legendRow"><span class="shapeKey" style="border-radius:2px;"></span><span>Cyclical</span><span class="shapeKey" style="border-radius:6px;"></span><span>Non-cyclical</span></div>';
   legend.innerHTML = html;
 }
@@ -211,6 +212,7 @@ function renderGraph(mode){
     elements: toElements(g),
     style: [
       {selector:'node',style:{'label':'data(labelDisplay)','font-size':10,'text-wrap':'wrap','text-max-width':140,'text-valign':'center','text-halign':'center','width':'label','height':26,'padding-left':8,'padding-right':8,'background-color':'data(color)','border-width':1,'border-color':'#333','shape':'round-rectangle'}},
+      {selector:'node[stock = 1]',style:{'shape':'hexagon','border-style':'solid','border-width':3,'border-color':'#1e8c50','shadow-blur':14,'shadow-opacity':0.55,'shadow-color':'#1e8c50','shadow-offset-x':0,'shadow-offset-y':0}},
       {selector:'node[cyclical = 1]',style:{'shape':'rectangle','border-width':2}},
       {selector:'edge',style:{'curve-style':'bezier','width':1.2,'line-color':'#999','target-arrow-color':'#999','target-arrow-shape':'triangle','arrow-scale':0.9,'opacity':0.65}},
       {selector:'.faded',style:{'opacity':0.14}},

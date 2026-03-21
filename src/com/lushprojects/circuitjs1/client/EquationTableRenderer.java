@@ -38,6 +38,7 @@ import com.lushprojects.circuitjs1.client.EquationTableElm.RowOutputMode;
  * <ul>
  *   <li><b>↕ (adjustable)</b>: row equation is a plain number; mouse-wheel adjusts it.</li>
  *   <li><b>I→ / P (mode)</b>: FLOW / PARAM mode indicator.</li>
+ *   <li><b>∫ (stock)</b>: top-level {@code integrate(...)} stock-style equation.</li>
  *   <li><b>⟳ (classification)</b>: cyclic row (member of a graph cycle).</li>
  * </ul>
  *
@@ -715,6 +716,19 @@ public class EquationTableRenderer {
             g.setFont(valueFont);  // Restore to valueFont
             iconX += modeIconWidth;
         }
+
+        // Draw stock icon for top-level integrate(...) equations
+        if (table.isStockRow(row)) {
+            String stockIcon = "∫";
+            Color stockColor = new Color(30, 140, 80);  // Green for stock/state equations
+            int iconSize = table.getOpsize() == 1 ? 11 : 13;
+            g.setFont(new Font("SansSerif", Font.BOLD, iconSize));
+            g.setColor(stockColor);
+            g.drawString(stockIcon, iconX, rowY + rowHeight - cellPadding - 1);
+            int stockIconWidth = (int) g.context.measureText(stockIcon + " ").getWidth();
+            g.setFont(valueFont);  // Restore to valueFont
+            iconX += stockIconWidth;
+        }
         
         // Draw row classification icon (cyclic rows only)
         String classification = table.getRowClassification(row);
@@ -787,6 +801,7 @@ public class EquationTableRenderer {
     private int getRowIconReservedWidth(Graphics g) {
         int adjustableSize = table.getOpsize() == 1 ? 12 : 16;
         int modeIconSize = table.getOpsize() == 1 ? 9 : 11;
+        int stockIconSize = table.getOpsize() == 1 ? 11 : 13;
         int classIconSize = table.getOpsize() == 1 ? 10 : 12;
 
         g.setFont(new Font("SansSerif", Font.BOLD, adjustableSize));
@@ -797,12 +812,15 @@ public class EquationTableRenderer {
         int paramWidth = (int) g.context.measureText("P ").getWidth();
         int modeWidth = Math.max(flowWidth, paramWidth);
 
+        g.setFont(new Font("SansSerif", Font.BOLD, stockIconSize));
+        int stockWidth = (int) g.context.measureText("∫ ").getWidth();
+
         g.setFont(new Font("SansSerif", 0, classIconSize));
         int classWidth = (int) g.context.measureText("⟳ ").getWidth();
 
         g.setFont(valueFont);
 
-        return adjustableWidth + modeWidth + classWidth + 2;
+        return adjustableWidth + modeWidth + stockWidth + classWidth + 2;
     }
     
     /**

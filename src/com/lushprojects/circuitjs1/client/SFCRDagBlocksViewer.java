@@ -75,6 +75,7 @@ class SFCRDagBlocksViewer {
     private static class EquationDef {
         String name;
         String equation;
+        boolean isStock;
         String hint;
         String hintEquation;
     }
@@ -93,6 +94,7 @@ class SFCRDagBlocksViewer {
     /** Fully assembled graph payload consumed by the HTML renderer. */
     private static class GraphData {
         ArrayList<String> nodes = new ArrayList<String>();
+        ArrayList<Boolean> nodeIsStock = new ArrayList<Boolean>();
         ArrayList<String> nodeHints = new ArrayList<String>();
         ArrayList<String> nodeHintEquations = new ArrayList<String>();
         ArrayList<EdgeDef> edges = new ArrayList<EdgeDef>();
@@ -256,6 +258,7 @@ class SFCRDagBlocksViewer {
             EquationDef eq = equations.get(i);
             nodeIndexByName.put(eq.name, Integer.valueOf(i));
             graph.nodes.add(eq.name);
+            graph.nodeIsStock.add(Boolean.valueOf(eq.isStock));
             graph.nodeHints.add(eq.hint);
             graph.nodeHintEquations.add(eq.hintEquation);
         }
@@ -339,6 +342,7 @@ class SFCRDagBlocksViewer {
                 EquationDef eq = new EquationDef();
                 eq.name = outputName;
                 eq.equation = equation;
+                eq.isStock = EquationTableElm.isStockEquation(outputName, equation);
                 eq.hint = safeTrim(HintRegistry.getHint(outputName));
                 eq.hintEquation = safeTrim(table.getHintExpandedEquationForDisplay(row));
                 out.add(eq);
@@ -614,6 +618,7 @@ class SFCRDagBlocksViewer {
             }
             sb.append("{");
             sb.append("\"name\":\"").append(escapeJson(graph.nodes.get(i))).append("\",");
+            sb.append("\"stock\":").append(graph.nodeIsStock != null && i < graph.nodeIsStock.size() && graph.nodeIsStock.get(i).booleanValue() ? "true" : "false").append(",");
             sb.append("\"hint\":\"").append(escapeJson(graph.nodeHints != null && i < graph.nodeHints.size() ? graph.nodeHints.get(i) : "")).append("\",");
             sb.append("\"hintEq\":\"").append(escapeJson(graph.nodeHintEquations != null && i < graph.nodeHintEquations.size() ? graph.nodeHintEquations.get(i) : "")).append("\",");
             sb.append("\"block\":").append(graph.blockByNode != null && i < graph.blockByNode.length ? graph.blockByNode[i] : 0).append(",");

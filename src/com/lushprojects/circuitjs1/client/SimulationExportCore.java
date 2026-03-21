@@ -469,15 +469,19 @@ public final class SimulationExportCore {
     // ========== Runner HTML builders ==========
 
     static String buildDelimitedHtmlReport(String outputText, char separator, String source, int steps) {
+        return buildDelimitedHtmlReport(outputText, separator, source, steps, null);
+    }
+
+    static String buildDelimitedHtmlReport(String outputText, char separator, String source, int steps, Set<String> stockNames) {
         StringBuilder content = new StringBuilder();
         content.append("<div style='margin-top:10px; font-weight:600;'>Output Table</div>");
-        content.append(buildDelimitedOutputTableHtml(outputText, separator));
+        content.append(buildDelimitedOutputTableHtml(outputText, separator, stockNames));
         content.append("<details style='margin-top:10px;'><summary>Raw Output</summary>");
         content.append("<pre style='white-space:pre; font-family:monospace; max-height:70vh; overflow:auto; border:1px solid #ccc; padding:8px; margin-top:6px;'>");
         content.append(escapeHtml(outputText != null ? outputText : ""));
         content.append("</pre></details>");
 
-        String plotHtml = buildDelimitedPlotReportHtml(outputText, separator, source, steps);
+        String plotHtml = buildDelimitedPlotReportHtml(outputText, separator, source, steps, stockNames);
         String escapedPlotHtml = escapeHtmlAttribute(plotHtml);
 
         return "<div style='padding:12px;'>"
@@ -495,7 +499,7 @@ public final class SimulationExportCore {
             + "</div>";
     }
 
-    private static String buildDelimitedOutputTableHtml(String outputText, char separator) {
+    private static String buildDelimitedOutputTableHtml(String outputText, char separator, Set<String> stockNames) {
         if (outputText == null || outputText.isEmpty()) {
             return "<div style='margin-top:6px; color:#777;'>(no output)</div>";
         }
@@ -504,14 +508,46 @@ public final class SimulationExportCore {
             return "<div style='margin-top:6px; color:#777;'>(no output)</div>";
         }
         String splitRegex = (separator == '\t') ? "\\t" : ",";
-        StringBuilder html = new StringBuilder();
-        html.append("<div style='margin-top:6px; max-width:100%; max-height:70vh; overflow:auto; border:1px solid #ccc;'>");
-        html.append("<table style='border-collapse:collapse; min-width:max-content; font-family:monospace; font-size:12px;'>");
-
         String[] headers = lines[0].split(splitRegex, -1);
+        StringBuilder html = new StringBuilder();
+        String tableId = "runner-output-table";
+        String checkboxId = "runner-filter-stocks";
+        String tableWrapId = "runner-stock-table-wrap";
+        String tableWrapClass = "runner-stock-table-wrap";
+        boolean hasStockFilterableColumns = false;
+        for (int i = 0; i < headers.length; i++) {
+            String header = headers[i] != null ? headers[i].trim() : "";
+            if ("t".equals(header)) {
+                continue;
+            }
+            if (stockNames != null && stockNames.contains(header)) {
+                hasStockFilterableColumns = true;
+                break;
+            }
+        }
+
+        if (hasStockFilterableColumns) {
+            html.append("<style>")
+                .append(".").append(tableWrapClass).append(".stocks-only th[data-stock='0'],")
+                .append(".").append(tableWrapClass).append(".stocks-only td[data-stock='0']")
+                .append("{display:none;}")
+                .append("</style>");
+            html.append("<div style='margin:6px 0 8px 0;'><label style='font-size:12px; user-select:none;'><input type='checkbox' id='")
+                .append(checkboxId)
+                .append("' onchange=\"var w=document.getElementById('")
+                .append(tableWrapId)
+                .append("');if(w){if(this.checked){w.classList.add('stocks-only');}else{w.classList.remove('stocks-only');}}\" /> Stocks only</label></div>");
+        }
+
+        html.append("<div id='").append(tableWrapId).append("' class='").append(tableWrapClass).append("' style='margin-top:6px; max-width:100%; max-height:70vh; overflow:auto; border:1px solid #ccc;'>");
+        html.append("<table id='").append(tableId).append("' style='border-collapse:collapse; min-width:max-content; font-family:monospace; font-size:12px;'>");
+
         html.append("<thead><tr>");
         for (int i = 0; i < headers.length; i++) {
-            html.append("<th style='text-align:left; white-space:nowrap; border:1px solid #ddd; padding:4px 8px; background:#f6f6f6; position:sticky; top:0; z-index:1;'>");
+            String header = headers[i] != null ? headers[i].trim() : "";
+            boolean isStockColumn = stockNames != null && stockNames.contains(header);
+            String stockAttr = ("t".equals(header) || isStockColumn) ? "1" : "0";
+            html.append("<th data-stock='").append(stockAttr).append("' style='text-align:left; white-space:nowrap; border:1px solid #ddd; padding:4px 8px; background:#f6f6f6; position:sticky; top:0; z-index:1;'>");
             html.append(escapeHtml(headers[i]));
             html.append("</th>");
         }
@@ -526,7 +562,12 @@ public final class SimulationExportCore {
             html.append("<tr>");
             for (int colIdx = 0; colIdx < headers.length; colIdx++) {
                 String value = colIdx < cols.length ? cols[colIdx] : "";
-                html.append("<td style='white-space:nowrap; border:1px solid #eee; padding:3px 8px;'>");
+                String header = headers[colIdx] != null ? headers[colIdx].trim() : "";
+                boolean isStockColumn = stockNames != null && stockNames.contains(header);
+                String stockAttr = ("t".equals(header) || isStockColumn) ? "1" : "0";
+                html.append("<td style='white-space:nowrap; border:1px solid #eee; padding:3px 8px;' data-stock='")
+                    .append(stockAttr)
+                    .append("'>");
                 html.append(escapeHtml(value));
                 html.append("</td>");
             }
@@ -537,10 +578,11 @@ public final class SimulationExportCore {
         return html.toString();
     }
 
-    private static String buildDelimitedPlotReportHtml(String outputText, char separator, String source, int steps) {
+    private static String buildDelimitedPlotReportHtml(String outputText, char separator, String source, int steps, Set<String> stockNames) {
         String sepLiteral = separator == '\t' ? "\\t" : ",";
         String escapedData = escapeHtml(outputText != null ? outputText : "");
         String escapedSource = escapeHtml(source != null ? source : "(none)");
+        String stockNamesJs = toJsStringArray(stockNames);
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html><html><head><meta charset='utf-8'>");
         html.append("<meta name='viewport' content='width=device-width, initial-scale=1'>");
@@ -552,7 +594,7 @@ public final class SimulationExportCore {
         html.append("<textarea id='runner-data' style='display:none;'>").append(escapedData).append("</textarea>");
         appendDelimitedPlotControls(html);
         html.append("<div id='plot-container'></div>");
-        appendDelimitedPlotScript(html, sepLiteral);
+        appendDelimitedPlotScript(html, sepLiteral, stockNamesJs);
         return html.toString();
     }
 
@@ -572,6 +614,7 @@ public final class SimulationExportCore {
         html.append("<div class='controls'>");
         html.append("<label for='plot-mode-select'>Plot mode:</label>");
         html.append("<select id='plot-mode-select'><option value='stacked'>Stacked (panels)</option><option value='single-lhs' selected>Single plot (5 LHS scales)</option></select>");
+        html.append("<label style='user-select:none;'><input id='plot-stocks-only' type='checkbox'/> Stocks only</label>");
         html.append("<label for='y1'>Y1:</label><select id='y1'></select>");
         html.append("<label for='y2'>Y2:</label><select id='y2'></select>");
         html.append("<label for='y3'>Y3:</label><select id='y3'></select>");
@@ -580,11 +623,12 @@ public final class SimulationExportCore {
         html.append("</div>");
     }
 
-    private static void appendDelimitedPlotScript(StringBuilder html, String sepLiteral) {
+    private static void appendDelimitedPlotScript(StringBuilder html, String sepLiteral, String stockNamesJs) {
         html.append("<script>");
         html.append("(function(){");
         html.append("var raw=document.getElementById('runner-data').value||'';");
         html.append("var sep='").append(sepLiteral).append("';");
+        html.append("var stockNames=").append(stockNamesJs).append(";");
         html.append("var lines=raw.split(/\\r?\\n/).filter(function(l){return l.length>0;});");
         html.append("var container=document.getElementById('plot-container');");
         html.append("if(typeof Plotly==='undefined'){container.innerHTML='<div style=\"color:#c33;padding:8px;\">Plotly failed to load.</div>';return;}");
@@ -592,13 +636,18 @@ public final class SimulationExportCore {
         html.append("var headers=lines[0].split(sep);");
         html.append("var rows=lines.slice(1).map(function(line){return line.split(sep);});");
         html.append("var tIndex=headers.indexOf('t'); if(tIndex<0) tIndex=0;");
-        html.append("var candidates=[]; for(var i=0;i<headers.length;i++){ if(i!==tIndex) candidates.push(headers[i]); }");
-        html.append("if(candidates.length===0){container.innerHTML='<div style=\"color:#777;padding:8px;\">No Y variables available.</div>';return;}");
+        html.append("var candidatesAll=[]; for(var i=0;i<headers.length;i++){ if(i!==tIndex) candidatesAll.push(headers[i]); }");
+        html.append("if(candidatesAll.length===0){container.innerHTML='<div style=\"color:#777;padding:8px;\">No Y variables available.</div>';return;}");
+        html.append("var stockSet={}; for(var i=0;i<stockNames.length;i++){stockSet[stockNames[i]]=true;}");
+        html.append("var stockCandidates=candidatesAll.filter(function(n){return !!stockSet[n];});");
         html.append("var series={}; headers.forEach(function(h){series[h]=rows.map(function(r){var v=parseFloat((r[headers.indexOf(h)]||'').trim()); return isFinite(v)?v:null;});});");
         html.append("var tValues=series[headers[tIndex]];");
         html.append("var selects=['y1','y2','y3','y4','y5'].map(function(id){return document.getElementById(id);});");
-        html.append("function fillSelect(sel, def){var opts=['']; for(var i=0;i<candidates.length;i++) opts.push(candidates[i]); sel.innerHTML=opts.map(function(v){var lbl=v||'(none)'; var s=(v===def)?' selected':''; return '<option value=\\\"'+v+'\\\"'+s+'>'+lbl+'</option>';}).join('');}");
-        html.append("for(var i=0;i<selects.length;i++){fillSelect(selects[i], candidates[i]||'');}");
+        html.append("var stocksOnlyEl=document.getElementById('plot-stocks-only');");
+        html.append("function activeCandidates(){if(stocksOnlyEl&&stocksOnlyEl.checked&&stockCandidates.length>0)return stockCandidates;return candidatesAll;}");
+        html.append("function fillSelect(sel, def, opts){var list=['']; for(var i=0;i<opts.length;i++) list.push(opts[i]); if(def&&list.indexOf(def)<0) def=''; sel.innerHTML=list.map(function(v){var lbl=v||'(none)'; var s=(v===def)?' selected':''; return '<option value=\\\"'+v+'\\\"'+s+'>'+lbl+'</option>';}).join('');}");
+        html.append("function refreshSelects(){var opts=activeCandidates(); for(var i=0;i<selects.length;i++){var current=selects[i].value||''; var def=current||(opts[i]||''); fillSelect(selects[i], def, opts);} }");
+        html.append("refreshSelects();");
         html.append("var palette=['#1f77b4','#d62728','#2ca02c','#9467bd','#ff7f0e','#17becf','#8c564b'];");
         html.append("function selectedNames(){var seen={}; var out=[]; for(var i=0;i<selects.length;i++){var n=selects[i].value; if(n && !seen[n]){seen[n]=true; out.push(n);} } return out;}");
         html.append("function buildXAxis(title){return {title:title||'',showgrid:true,automargin:true};}");
@@ -607,9 +656,34 @@ public final class SimulationExportCore {
         html.append("function render(){var names=selectedNames(); var mode=document.getElementById('plot-mode-select').value; if(mode==='single-lhs') renderSingleLhs(names); else renderStacked(names);}");
         html.append("document.getElementById('plot-mode-select').addEventListener('change',render);");
         html.append("selects.forEach(function(s){s.addEventListener('change',render);});");
+        html.append("if(stocksOnlyEl){stocksOnlyEl.addEventListener('change',function(){refreshSelects();render();});}");
         html.append("render();");
         html.append("})();");
         html.append("</script></body></html>");
+    }
+
+    private static String toJsStringArray(Set<String> values) {
+        if (values == null || values.isEmpty()) {
+            return "[]";
+        }
+        List<String> list = new ArrayList<String>(values);
+        Collections.sort(list);
+        StringBuilder js = new StringBuilder("[");
+        for (int i = 0; i < list.size(); i++) {
+            if (i > 0) {
+                js.append(',');
+            }
+            js.append('"').append(escapeJsString(list.get(i))).append('"');
+        }
+        js.append(']');
+        return js.toString();
+    }
+
+    private static String escapeJsString(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     static String buildRunnerStatusContentHtml(String message) {

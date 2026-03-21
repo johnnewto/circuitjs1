@@ -115,6 +115,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         double lastOutputValue;
         boolean initialValueApplied;
         boolean hasDiffExpr;
+        boolean isStock;
         boolean isCyclic;
         boolean lastNewtonJacobianApplied;
         String lastNewtonJacobianStatus;
@@ -153,6 +154,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             lastOutputValue = 0.0;
             initialValueApplied = false;
             flowValue = 0.0;
+            isStock = false;
             isCyclic = false;
             lastNewtonJacobianApplied = false;
             lastNewtonJacobianStatus = "not attempted";
@@ -1004,6 +1006,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 : null;
         for (int row = 0; row < rowCount; row++) {
             rows[row].hasDiffExpr = false;
+            rows[row].isStock = false;
             rows[row].isCyclic = false;
 
             if (isCommentRow(row)) continue;
@@ -1017,6 +1020,8 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             }
             
             if (rows[row].compiledExpr == null) continue;
+
+            rows[row].isStock = isTopLevelStockExpression(rows[row].compiledExpr);
             
             // Precompute diff() presence for convergence checks
             rows[row].hasDiffExpr = rows[row].equation.contains("diff");
@@ -1508,6 +1513,15 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * This keeps scope intentionally narrow and does not attempt full symbolic algebra.
      */
     private String normalizeEquationSyntaxForRow(int row, String equation) {
+        String outputName = rows[row].outputName == null ? "" : rows[row].outputName.trim();
+        return normalizeEquationSyntaxForOutput(outputName, equation);
+    }
+
+    /**
+     * Normalize user-friendly equation forms into expression form for a known output name.
+     * Shared by parser flow and public stock helpers.
+     */
+    private static String normalizeEquationSyntaxForOutput(String outputName, String equation) {
         if (equation == null) {
             return "";
         }
@@ -1528,17 +1542,17 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             return trimmed;
         }
 
-        String outputName = rows[row].outputName == null ? "" : rows[row].outputName.trim();
-        if (outputName.isEmpty()) {
+        String normalizedOutputName = outputName == null ? "" : outputName.trim();
+        if (normalizedOutputName.isEmpty()) {
             return trimmed;
         }
 
-        if (left.equals(outputName)) {
+        if (left.equals(normalizedOutputName)) {
             return right;
         }
 
-        if (left.startsWith(outputName)) {
-            String remainder = left.substring(outputName.length()).trim();
+        if (left.startsWith(normalizedOutputName)) {
+            String remainder = left.substring(normalizedOutputName.length()).trim();
             if (remainder.startsWith("-")) {
                 String offset = remainder.substring(1).trim();
                 if (!offset.isEmpty()) {
@@ -1548,6 +1562,32 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
 
         return trimmed;
+    }
+
+    /** Returns true when expression root is integrate(...), i.e. pure stock form. */
+    private static boolean isTopLevelStockExpression(Expr expr) {
+        return expr != null && expr.type == Expr.E_INTEGRATE;
+    }
+
+    /**
+     * Relaxed stock detection helper for cross-module use.
+     * A row is stock-like when its normalized equation's top-level operator is integrate(...).
+     */
+    public static boolean isStockEquation(String outputName, String equation) {
+        String normalized = normalizeEquationSyntaxForOutput(outputName, equation);
+        if (normalized == null || normalized.trim().isEmpty()) {
+            return false;
+        }
+        try {
+            ExprParser parser = new ExprParser(normalized);
+            Expr expr = parser.parseExpression();
+            if (parser.gotError() != null || expr == null) {
+                return false;
+            }
+            return isTopLevelStockExpression(expr);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**
@@ -2538,6 +2578,15 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         updateRowClassifications();
         if (isCommentRow(row)) return "comment";
         return rows[row].isCyclic ? "cyclic" : "other";
+    }
+
+    /** True when row equation is stock-like (top-level integrate(...)). */
+    public boolean isStockRow(int row) {
+        if (row < 0 || row >= MAX_ROWS || isCommentRow(row)) {
+            return false;
+        }
+        updateRowClassifications();
+        return rows[row].isStock;
     }
 
     /** Get per-row Newton Jacobian debug status for VOLTAGE_MODE MNA path. */

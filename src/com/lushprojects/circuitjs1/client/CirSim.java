@@ -1091,11 +1091,12 @@ public CirSim() {
 	});
 	String outputText = runResult.outputText != null ? runResult.outputText : "";
 	char separator = "tsv".equals(format) ? '\t' : ',';
+	Set<String> stockNames = collectRunnerStockNames();
 
 	StringBuilder content = new StringBuilder();
 	content.append(SimulationExportCore.buildRunnerSummaryContentHtml(source, steps, format, runResult.rowsWritten));
 	if (!runResult.world2Format) {
-	    content.append(SimulationExportCore.buildDelimitedHtmlReport(outputText, separator, source, steps));
+	    content.append(SimulationExportCore.buildDelimitedHtmlReport(outputText, separator, source, steps, stockNames));
 	} else {
 	    content.append(SimulationExportCore.buildRunnerWorld2RawOutputHtml(outputText));
 	}
@@ -1191,14 +1192,41 @@ public CirSim() {
 	GlobalWindowLike.setRunnerStepFn(null);
 	String outputText = asyncRunOutput.toString();
 	char finalSep = "tsv".equals(asyncRunFormat) ? '\t' : ',';
+	Set<String> stockNames = collectRunnerStockNames();
 	StringBuilder finalContent = new StringBuilder();
 	finalContent.append(SimulationExportCore.buildRunnerSummaryContentHtml(
 	    asyncRunSource, asyncRunTotalSteps, asyncRunFormat, asyncRunCompletedSteps));
 	finalContent.append(SimulationExportCore.buildDelimitedHtmlReport(
-	    outputText, finalSep, asyncRunSource, asyncRunTotalSteps));
+	    outputText, finalSep, asyncRunSource, asyncRunTotalSteps, stockNames));
 	RootPanel.get().getElement().setInnerHTML(SimulationExportCore.buildRunnerTabbedHtml(
 	    "Runner Output", finalContent.toString(), false, "", "", getRunnerStdoutHtml()));
     }
+
+	private Set<String> collectRunnerStockNames() {
+	    java.util.HashSet<String> stocks = new java.util.HashSet<String>();
+	    for (int i = 0; i < elmList.size(); i++) {
+		CircuitElm ce = getElm(i);
+		if (!(ce instanceof EquationTableElm)) {
+		    continue;
+		}
+		EquationTableElm table = (EquationTableElm) ce;
+		int rowCount = table.getRowCount();
+		for (int row = 0; row < rowCount; row++) {
+		    if (table.isCommentRow(row)) {
+			continue;
+		    }
+		    String outputName = table.getOutputName(row);
+		    String equation = table.getEquation(row);
+		    if (outputName == null || outputName.trim().isEmpty()) {
+			continue;
+		    }
+		    if (EquationTableElm.isStockEquation(outputName, equation)) {
+			stocks.add(outputName.trim());
+		    }
+		}
+	    }
+	    return stocks;
+	}
 
     // --- Async chunked runner (runnerLive=1) - table path ---
 
