@@ -1222,6 +1222,7 @@ public CirSim() {
 	m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Shortcuts..."), new MyCommand("options", "shortcuts")));
 	m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Subcircuits..."), new MyCommand("options", "subcircuits")));
 	m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Voltage Unit Symbol..."), new MyCommand("options", "voltageunit")));
+	m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Element Registry Inference Report"), new MyCommand("options", "elementregistryreport")));
 	m.addItem(optionsItem = new CheckboxAlignedMenuItem(Locale.LS("Other Options..."), new MyCommand("options","other")));
 	if (isElectron())
 	    m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Toggle Dev Tools"), new MyCommand("options","devtools")));
@@ -5134,6 +5135,9 @@ public CirSim() {
     	if (menu=="options" && item=="voltageunit") {
     	    	showVoltageUnitDialog();
     	}
+	if (menu=="options" && item=="elementregistryreport") {
+	    logElementRegistryInferenceReport();
+	}
     	if (menu=="options" && item=="toggleEdit") {
     	    	noEditCheckItem.setState(!noEditCheckItem.getState());
     	}
@@ -8649,6 +8653,13 @@ public CirSim() {
     }
     
     public static CircuitElm createCe(int tint, int x1, int y1, int x2, int y2, int f, StringTokenizer st) {
+	CircuitElm registryElement = ElementRegistry.createFromDumpType(tint, x1, y1, x2, y2, f, st);
+	if (registryElement != null)
+	    return registryElement;
+	return createCeLegacy(tint, x1, y1, x2, y2, f, st);
+    }
+
+    static CircuitElm createCeLegacy(int tint, int x1, int y1, int x2, int y2, int f, StringTokenizer st) {
 	switch (tint) {
     	case 'A': return new AntennaElm(x1, y1, x2, y2, f, st);
     	case 'I': return new InverterElm(x1, y1, x2, y2, f, st);
@@ -8806,6 +8817,20 @@ public CirSim() {
     }
 
     public static CircuitElm constructElement(String n, int x1, int y1){
+	ElementRegistry.NameLookupResult lookupResult = ElementRegistry.createFromClassKey(n, x1, y1);
+	if (lookupResult != null) {
+	    if (lookupResult.entry != null && lookupResult.entry.alias && lookupResult.entry.deprecationMessage != null) {
+		console(lookupResult.entry.deprecationMessage);
+	    }
+	    return lookupResult.element;
+	}
+	return constructElementLegacy(n, x1, y1);
+	}
+
+	static CircuitElm constructElementLegacy(String n, int x1, int y1){
+	if (n != null)
+	    n = n.intern();
+
     	if (n=="GroundElm")
     		return (CircuitElm) new GroundElm(x1, y1);
     	if (n=="ResistorElm")
@@ -9182,6 +9207,11 @@ public CirSim() {
 	}
     
     // For debugging
+	void logElementRegistryInferenceReport() {
+	console(ElementRegistry.buildInferredUsageReport());
+	}
+
+	// For debugging
     void dumpNodelist() {
 
 	CircuitNode nd;
