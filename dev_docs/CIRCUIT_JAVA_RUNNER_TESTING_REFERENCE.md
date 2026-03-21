@@ -107,6 +107,8 @@ http://127.0.0.1:8000/circuitjs.html?runner=1&startCircuit=economics/1debug.md&s
 - `runner=1` (required to enable this mode)
 - `startCircuit=<path>` (e.g. `economics/1debug.md`)
 - `steps=<n>` (default `1000`)
+- `runnerLive=<1|0>` (optional, default `1`; set `runnerLive=0` to force non-live/full-render mode)
+  - Note: `format=world2` automatically forces non-live mode (equivalent to `runnerLive=0`) and logs a runner note in Standard Output.
 - `format=<tsv|csv|world2>` (optional, default `tsv` in browser runner mode)
 - `cct=<inline circuit text>` (optional alternative)
 - `ctz=<compressed circuit text>` (optional alternative)
