@@ -188,6 +188,8 @@ MouseOutHandler, MouseWheelHandler {
 		@JsProperty(name = "CircuitJS1") static native CircuitJsApi getCircuitJS1();
 		@JsProperty(name = "CircuitJS1") static native void setCircuitJS1(CircuitJsApi api);
 		@JsProperty(name = "oncircuitjsloaded") static native OnCircuitLoadedHook getOnCircuitJsLoaded();
+		@JsProperty(name = "__runnerStepFn") static native void setRunnerStepFn(Hook0 fn);
+		@JsMethod(name = "postMessage") static native void postMessage(Object message, String targetOrigin);
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Navigator")
@@ -852,6 +854,7 @@ public CirSim() {
 	}
 	int defaultSteps = RunnerLaunchDecision.resolveDefaultSteps(nonInteractiveDumpKey, stepsValue);
 	int steps = parsePositiveInt(stepsValue, defaultSteps);
+	runnerLiveMode = qp.getBooleanValue("runnerLive", false);
 	String format = normalizeOptionalQueryValue(qp.getValue("format"));
 	if (format == null)
 	    format = "tsv";
@@ -911,6 +914,7 @@ public CirSim() {
 	    return defaultValue;
 	}
     }
+
 
     private double parsePositiveDouble(String value, double defaultValue) {
 	if (value == null || value.trim().isEmpty())
@@ -1062,6 +1066,10 @@ public CirSim() {
 
     private void runRunnerSimulation(int steps, String source, String format) {
 	console("Runner simulation start: source=" + source + ", steps=" + steps + ", format=" + format);
+	if (runnerLiveMode) {
+	    runRunnerSimulationAsync(steps, source, format);
+	    return;
+	}
 	analyzeCircuit();
 	preStampAndStampCircuit();
 
@@ -1104,8 +1112,179 @@ public CirSim() {
 	    "Runner Output", content.toString(), includeExtraTab, extraTabTitle, extraHtml, getRunnerStdoutHtml()));
     }
 
+    // --- Async chunked runner (runnerLive=1) - sim (tsv/csv) path ---
+
+    private void runRunnerSimulationAsync(int totalSteps, String source, String format) {
+	console("Runner async sim start: source=" + source + ", steps=" + totalSteps);
+	analyzeCircuit();
+	preStampAndStampCircuit();
+	if (stopMessage != null) {
+	    renderRunnerError("Analyze warning: " + stopMessage);
+	    return;
+	}
+	Set<String> registered = ComputedValues.getRegisteredComputedNames();
+	asyncRunKeys = new ArrayList<String>(registered != null ? registered : Collections.<String>emptySet());
+	Collections.sort(asyncRunKeys);
+	asyncRunStep = 0;
+	asyncRunTotalSteps = totalSteps;
+	asyncRunCompletedSteps = 0;
+	asyncRunSource = source;
+	asyncRunFormat = format;
+	asyncRunOutput = new StringBuilder();
+	asyncWarnedNoTimeAdvance = false;
+	char sep = "tsv".equals(format) ? '\t' : ',';
+	asyncRunOutput.append("t");
+	for (int i = 0; i < asyncRunKeys.size(); i++)
+	    asyncRunOutput.append(sep).append(asyncRunKeys.get(i));
+	asyncRunOutput.append('\n');
+	scheduleNextRunnerSimChunk();
+    }
+
+    private void scheduleNextRunnerSimChunk() {
+	renderRunnerStatus("Running step " + asyncRunStep + " / " + asyncRunTotalSteps + "...");
+	final CirSim self = this;
+	GlobalWindowLike.setRunnerStepFn(new Hook0() { public void call() { self.runRunnerSimChunk(); } });
+    }
+
+    private void scheduleNextRunnerTableChunk() {
+	final CirSim self = this;
+	GlobalWindowLike.setRunnerStepFn(new Hook0() { public void call() { self.runRunnerTableChunk(); } });
+    }
+
+    private void runRunnerSimChunk() {
+	try {
+	    runRunnerSimChunkInner();
+	} catch (Throwable ex) {
+	    console("runRunnerSimChunk exception: " + ex);
+	    try {
+		renderRunnerError("Async runner error at step " + asyncRunStep + ": " + ex);
+	    } catch (Throwable ex2) {
+		console("renderRunnerError also threw: " + ex2);
+	    }
+	}
+    }
+
+    private void runRunnerSimChunkInner() {
+	char sep = "tsv".equals(asyncRunFormat) ? '\t' : ',';
+	int batchEnd = Math.min(asyncRunStep + RUNNER_LIVE_BATCH_SIZE, asyncRunTotalSteps);
+	for (int step = asyncRunStep; step < batchEnd; step++) {
+	    double prevT = t;
+	    runCircuit(step == 0);
+	    ComputedValues.commitConvergedValues();
+	    asyncRunOutput.append(t);
+	    for (int i = 0; i < asyncRunKeys.size(); i++) {
+		Double v = ComputedValues.getConvergedValue(asyncRunKeys.get(i));
+		asyncRunOutput.append(sep).append(v != null ? String.valueOf(v) : "");
+	    }
+	    asyncRunOutput.append('\n');
+	    asyncRunCompletedSteps++;
+	    if (!asyncWarnedNoTimeAdvance && t == prevT)
+		asyncWarnedNoTimeAdvance = true;
+	    if (stopMessage != null)
+		break;
+	}
+	asyncRunStep = batchEnd;
+	if (asyncRunStep < asyncRunTotalSteps && stopMessage == null) {
+	    scheduleNextRunnerSimChunk();
+	    return;
+	}
+	GlobalWindowLike.setRunnerStepFn(null);
+	String outputText = asyncRunOutput.toString();
+	char finalSep = "tsv".equals(asyncRunFormat) ? '\t' : ',';
+	StringBuilder finalContent = new StringBuilder();
+	finalContent.append(SimulationExportCore.buildRunnerSummaryContentHtml(
+	    asyncRunSource, asyncRunTotalSteps, asyncRunFormat, asyncRunCompletedSteps));
+	finalContent.append(SimulationExportCore.buildDelimitedHtmlReport(
+	    outputText, finalSep, asyncRunSource, asyncRunTotalSteps));
+	RootPanel.get().getElement().setInnerHTML(SimulationExportCore.buildRunnerTabbedHtml(
+	    "Runner Output", finalContent.toString(), false, "", "", getRunnerStdoutHtml()));
+    }
+
+    // --- Async chunked runner (runnerLive=1) - table path ---
+
+    private void runRunnerTableSimulationAsync(int totalSteps, String source) {
+	console("Runner table async sim start: source=" + source + ", steps=" + totalSteps);
+	analyzeCircuit();
+	preStampAndStampCircuit();
+	Set<String> registered = ComputedValues.getRegisteredComputedNames();
+	asyncRunKeys = new ArrayList<String>(registered != null ? registered : Collections.<String>emptySet());
+	Collections.sort(asyncRunKeys);
+	asyncRunStep = 0;
+	asyncRunTotalSteps = totalSteps;
+	asyncRunCompletedSteps = 0;
+	asyncRunSource = source;
+	asyncWarnedNoTimeAdvance = false;
+	asyncRunTableContent = new StringBuilder();
+	asyncRunTableContent.append(SimulationExportCore.buildRunnerTableDiv(
+	    "<b>Source:</b> " + SafeHtmlUtils.htmlEscape(source != null ? source : "(none)")));
+	asyncRunTableContent.append(SimulationExportCore.buildRunnerTableDiv(
+	    "<b>Requested steps:</b> " + totalSteps));
+	if (stopMessage != null) {
+	    asyncRunTableContent.append(SimulationExportCore.buildRunnerTableStyledDiv(
+		"color:#c33; margin-top:8px;",
+		"<b>Analyze warning:</b> " + SafeHtmlUtils.htmlEscape(stopMessage)));
+	}
+	asyncRunTableContent.append(SimulationExportCore.buildRunnerTableWrapperOpen());
+	asyncRunTableContent.append(SimulationExportCore.buildRunnerTableOpen());
+	asyncRunTableContent.append(SimulationExportCore.buildRunnerTableHeader(asyncRunKeys));
+	asyncRunTableContent.append(SimulationExportCore.buildRunnerTableBodyOpen());
+	scheduleNextRunnerTableChunk();
+    }
+
+    private void runRunnerTableChunk() {
+	try {
+	    runRunnerTableChunkInner();
+	} catch (Throwable ex) {
+	    renderRunnerTableError("Async table runner error at step " + asyncRunStep + ": " + ex);
+	}
+    }
+
+    private void runRunnerTableChunkInner() {
+	int batchEnd = Math.min(asyncRunStep + RUNNER_LIVE_BATCH_SIZE, asyncRunTotalSteps);
+	for (int step = asyncRunStep; step < batchEnd; step++) {
+	    double prevT = t;
+	    runCircuit(step == 0);
+	    ComputedValues.commitConvergedValues();
+	    List<String> cells = new ArrayList<String>();
+	    cells.add(SimulationExportCore.buildRunnerTableCell(String.valueOf(t)));
+	    for (int i = 0; i < asyncRunKeys.size(); i++) {
+		Double v = ComputedValues.getConvergedValue(asyncRunKeys.get(i));
+		cells.add(SimulationExportCore.buildRunnerTableCell(v != null ? String.valueOf(v) : ""));
+	    }
+	    asyncRunTableContent.append(SimulationExportCore.buildRunnerTableRow(cells));
+	    asyncRunCompletedSteps++;
+	    if (!asyncWarnedNoTimeAdvance && t == prevT)
+		asyncWarnedNoTimeAdvance = true;
+	    if (stopMessage != null)
+		break;
+	}
+	asyncRunStep = batchEnd;
+	if (asyncRunStep < asyncRunTotalSteps && stopMessage == null) {
+	    scheduleNextRunnerTableChunk();
+	    return;
+	}
+	asyncRunTableContent.append(SimulationExportCore.buildRunnerTableWrapperClose());
+	asyncRunTableContent.append(SimulationExportCore.buildRunnerTableStyledDiv(
+	    "margin-top:8px;", "<b>Completed steps:</b> " + asyncRunCompletedSteps));
+	if (asyncWarnedNoTimeAdvance)
+	    asyncRunTableContent.append(SimulationExportCore.buildRunnerTableStyledDiv(
+		"color:#c77; margin-top:6px;",
+		"Warning: simulation time did not advance in at least one step."));
+	if (stopMessage != null)
+	    asyncRunTableContent.append(SimulationExportCore.buildRunnerTableStyledDiv(
+		"color:#c33; margin-top:6px;",
+		"<b>Simulation stopped:</b> " + SafeHtmlUtils.htmlEscape(stopMessage)));
+	GlobalWindowLike.setRunnerStepFn(null);
+	RootPanel.get().getElement().setInnerHTML(SimulationExportCore.buildRunnerTableTabbedHtml(
+	    "Output Table", asyncRunTableContent.toString(), getRunnerStdoutHtml()));
+    }
+
     private void runRunnerTableSimulation(int steps, String source) {
 	console("Runner table simulation start: source=" + source + ", steps=" + steps);
+	if (runnerLiveMode) {
+	    runRunnerTableSimulationAsync(steps, source);
+	    return;
+	}
 	analyzeCircuit();
 	preStampAndStampCircuit();
 
@@ -1188,6 +1367,19 @@ public CirSim() {
 	RootPanel.get().getElement().setInnerHTML(SimulationExportCore.buildRunnerTabbedHtml(
 	    "Runner Output", content, false, "", "", getRunnerStdoutHtml()));
     }
+
+    boolean runnerLiveMode = false;
+    // State for async chunked runner (used when runnerLiveMode=true)
+    private static final int RUNNER_LIVE_BATCH_SIZE = 5;
+    private int asyncRunStep;
+    private int asyncRunTotalSteps;
+    private int asyncRunCompletedSteps;
+    private String asyncRunSource;
+    private String asyncRunFormat;
+    private List<String> asyncRunKeys;
+    private StringBuilder asyncRunOutput;       // tsv/csv row buffer (sim path)
+    private StringBuilder asyncRunTableContent; // HTML row buffer (table path)
+    private boolean asyncWarnedNoTimeAdvance;
 
     static final int RUNNER_STDOUT_MAX_LINES = 2000;
     static boolean runnerStdoutEnabled = false;

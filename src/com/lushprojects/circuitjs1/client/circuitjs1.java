@@ -32,6 +32,7 @@ import com.google.gwt.http.client.RequestException;
 import com.google.gwt.http.client.Response;
 import com.google.gwt.storage.client.Storage;
 import com.google.gwt.user.client.Window;
+import com.google.gwt.user.client.Timer;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsPackage;
@@ -204,7 +205,11 @@ public class circuitjs1 implements EntryPoint {
         boolean runnerPanel = qp.getBooleanValue("runner", false);
         mysim = new CirSim();
         if (runnerPanel) {
-            mysim.initRunnerPanel(qp);
+            final CirSim sim = mysim;
+            final QueryParameters qpFinal = qp;
+            new Timer() {
+                public void run() { sim.initRunnerPanel(qpFinal); }
+            }.schedule(0);
             return;
         }
 

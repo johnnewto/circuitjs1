@@ -249,6 +249,20 @@ input.locked-column[readonly] {
   </script>
 
   <script language="javascript" src="lz-string.min.js"></script>
+
+	<script>
+		// Drive the async chunk loop for runner=1&runnerLive=1 mode.
+		// Java registers window.__runnerStepFn for each step; setInterval calls it.
+		(function() {
+			const qp = new URLSearchParams(window.location.search);
+			if (!qp.has('runner')) return;
+			setInterval(function() {
+				if (typeof window.__runnerStepFn === 'function') {
+					window.__runnerStepFn();
+				}
+			}, 0);
+		})();
+	</script>
   
 
     <!-- This script tag is what actually loads the GWT module.  The -->
