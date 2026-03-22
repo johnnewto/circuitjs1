@@ -38,7 +38,7 @@ final class RunnerController {
         if (cct != null)
             startCircuitText = cct.replace("%24", "$");
         if (startCircuitText == null)
-            startCircuitText = CirSim.getElectronStartCircuitText();
+            startCircuitText = sim.getPlatformInterop().getElectronStartCircuitText();
         String ctz = normalizeOptionalQueryValue(qp.getValue("ctz"));
         if (ctz != null)
             startCircuitText = sim.decompress(ctz);
@@ -318,7 +318,7 @@ final class RunnerController {
         int completedSteps = 0;
         for (int step = 0; step < steps; step++) {
             double prevT = sim.t;
-            sim.runCircuit(step == 0);
+            sim.getSimulationLoop().runCircuit(step == 0);
             ComputedValues.commitConvergedValues();
 
             List<String> cells = new ArrayList<String>();
@@ -413,7 +413,7 @@ final class RunnerController {
         int batchEnd = Math.min(asyncRunStep + RUNNER_LIVE_BATCH_SIZE, asyncRunTotalSteps);
         for (int step = asyncRunStep; step < batchEnd; step++) {
             double prevT = sim.t;
-            sim.runCircuit(step == 0);
+            sim.getSimulationLoop().runCircuit(step == 0);
             ComputedValues.commitConvergedValues();
             asyncRunOutput.append(sim.t);
             for (int i = 0; i < asyncRunKeys.size(); i++) {
@@ -512,7 +512,7 @@ final class RunnerController {
         int batchEnd = Math.min(asyncRunStep + RUNNER_LIVE_BATCH_SIZE, asyncRunTotalSteps);
         for (int step = asyncRunStep; step < batchEnd; step++) {
             double prevT = sim.t;
-            sim.runCircuit(step == 0);
+            sim.getSimulationLoop().runCircuit(step == 0);
             ComputedValues.commitConvergedValues();
             List<String> cells = new ArrayList<String>();
             cells.add(SimulationExportCore.buildRunnerTableCell(String.valueOf(sim.t)));

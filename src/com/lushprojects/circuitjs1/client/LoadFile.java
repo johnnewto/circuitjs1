@@ -95,7 +95,7 @@ public class LoadFile extends FileUpload implements  ChangeHandler {
 	
 	static public void doLoadCallback(String s, String t) {
 		CirSim.console("Loading local file: " + t);
-		sim.pushUndo();
+		sim.getUndoRedoManager().pushUndo();
 		sim.getCircuitIOService().readCircuit(s);
 		sim.getUiPanelManager().createNewLoadFile();
 		sim.setCircuitTitle(t);

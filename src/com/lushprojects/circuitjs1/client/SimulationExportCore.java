@@ -125,7 +125,7 @@ public final class SimulationExportCore {
         int rowsWritten = 0;
         for (int step = 0; step < request.steps; step++) {
             double prevT = sim.t;
-            sim.runCircuit(step == 0);
+            sim.getSimulationLoop().runCircuit(step == 0);
             ComputedValues.commitConvergedValues();
 
             if (sim.stopMessage != null) {

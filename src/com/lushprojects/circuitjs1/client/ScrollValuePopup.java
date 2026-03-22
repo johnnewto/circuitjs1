@@ -69,7 +69,7 @@ public class ScrollValuePopup extends PopupPanel implements MouseOutHandler, Mou
 		deltaY=0;
 		scrollGain = 2;
 		sim=s;
-		sim.pushUndo();
+		sim.getUndoRedoManager().pushUndo();
 		vp=new VerticalPanel();
 		setWidget(vp);
 		setupValues();

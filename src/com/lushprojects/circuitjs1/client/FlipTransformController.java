@@ -14,11 +14,11 @@ final class FlipTransformController {
     }
 
     private FlipInfo prepareFlip() {
-	sim.pushUndo();
-	sim.setMenuSelection();
+	sim.getUndoRedoManager().pushUndo();
+	sim.getClipboardManager().setMenuSelection();
 	int minx = 30000, maxx = -30000;
 	int miny = 30000, maxy = -30000;
-	int count = sim.countSelected();
+	int count = sim.getClipboardManager().countSelected();
 	for (int i = 0; i != sim.elmList.size(); i++) {
 	    CircuitElm ce = sim.getElm(i);
 	    if (ce.isSelected() || count == 0) {

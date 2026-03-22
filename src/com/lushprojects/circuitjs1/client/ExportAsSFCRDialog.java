@@ -122,7 +122,7 @@ public class ExportAsSFCRDialog extends Dialog {
         importButton.addClickHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
                 String s;
-                sim.pushUndo();
+                sim.getUndoRedoManager().pushUndo();
                 closeDialog();
                 s = textArea.getText();
                 if (s != null) {

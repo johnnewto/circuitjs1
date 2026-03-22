@@ -58,7 +58,7 @@ final class ViewportController {
 	    return;
 
 	Rectangle bounds = sim.getCircuitBounds();
-	sim.setCircuitArea();
+	setCircuitArea();
 
 	double scale = 1;
 	int cheight = sim.circuitArea.height;
@@ -91,7 +91,7 @@ final class ViewportController {
     }
 
     void applyViewportTransform(ViewportElm viewport) {
-	sim.setCircuitArea();
+	setCircuitArea();
 	Rectangle bounds = viewport.getViewportBounds();
 
 	int viewWidth = bounds.width;

@@ -348,7 +348,7 @@ public class VariableBrowserDialog extends DialogBox {
         sim.needAnalyze();
         
         // Select the new element so it's highlighted
-        sim.clearSelection();
+        sim.getClipboardManager().clearSelection();
         elm.setSelected(true);
         
         // Don't force drag mode - let user click and drag normally

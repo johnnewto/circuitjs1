@@ -75,18 +75,18 @@ final class JsApiBridge {
         });
         api.setGetNodeVoltage(new CirSim.HookStringToDouble() {
             public double call(String n) {
-                return that.getLabeledNodeVoltage(n);
+                return that.getCircuitValueSlotManager().getLabeledNodeVoltage(n);
             }
         });
         api.setSetExtVoltage(new CirSim.HookStringDouble() {
             public Object call(String n, double v) {
-                that.setExtVoltage(n, v);
+                that.getCircuitValueSlotManager().setExtVoltage(n, v);
                 return null;
             }
         });
         api.setGetElements(new CirSim.HookNoArgElements() {
             public JsArray<JavaScriptObject> call() {
-                return that.getJSElements();
+                return getJSElements();
             }
         });
         api.setGetCircuitAsSVG(new CirSim.HookNoArgString() {
@@ -111,47 +111,47 @@ final class JsApiBridge {
         });
         api.setGetSliderValue(new CirSim.HookStringToDouble() {
             public double call(String name) {
-                return that.getSliderValue(name);
+                return that.getCircuitValueSlotManager().getSliderValue(name);
             }
         });
         api.setSetSliderValue(new CirSim.HookStringDouble() {
             public Object call(String name, double value) {
-                return that.setSliderValue(name, value);
+                return that.getCircuitValueSlotManager().setSliderValue(name, value);
             }
         });
         api.setGetSliderNames(new CirSim.HookNoArgArrayString() {
             public JsArrayString call() {
-                return that.getSliderNames();
+                return that.getCircuitValueSlotManager().getSliderNames();
             }
         });
         api.setGetLabeledNodeNames(new CirSim.HookNoArgArrayString() {
             public JsArrayString call() {
-                return that.getLabeledNodeNames();
+                return that.getCircuitValueSlotManager().getLabeledNodeNames();
             }
         });
         api.setGetLabeledNodeValue(new CirSim.HookStringToDouble() {
             public double call(String name) {
-                return that.getLabeledNodeValue(name);
+                return that.getCircuitValueSlotManager().getLabeledNodeValue(name);
             }
         });
         api.setGetComputedValueNames(new CirSim.HookNoArgArrayString() {
             public JsArrayString call() {
-                return that.getComputedValueNames();
+                return that.getCircuitValueSlotManager().getComputedValueNames();
             }
         });
         api.setSetExprPerfProbeEnabled(new CirSim.HookBool() {
             public void call(boolean enabled) {
-                that.setExprPerfProbeEnabled(enabled);
+                Expr.setPerfProbeEnabled(enabled);
             }
         });
         api.setResetExprPerfProbe(new CirSim.Hook0() {
             public void call() {
-                that.resetExprPerfProbe();
+                Expr.resetPerfProbe();
             }
         });
         api.setGetExprPerfProbeReport(new CirSim.HookNoArgString() {
             public String call() {
-                return that.getExprPerfProbeReport();
+                return Expr.getPerfProbeReport();
             }
         });
 

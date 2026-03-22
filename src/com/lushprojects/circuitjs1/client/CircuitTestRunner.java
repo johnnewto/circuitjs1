@@ -246,7 +246,7 @@ public class CircuitTestRunner {
      * @throws RuntimeException if label not found
      */
     public double getNodeVoltage(String label) {
-        double voltage = sim.getLabeledNodeVoltage(label);
+        double voltage = sim.getCircuitValueSlotManager().getLabeledNodeVoltage(label);
         if (Double.isNaN(voltage)) {
             throw new RuntimeException("Node not found: " + label);
         }

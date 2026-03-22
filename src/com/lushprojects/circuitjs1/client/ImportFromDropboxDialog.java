@@ -43,7 +43,7 @@ public class ImportFromDropboxDialog extends Dialog {
 	
 	static public void doLoadCallback(String s, String link) {
 		CirSim.console("Loading from URL: " + link);
-		sim.pushUndo();
+		sim.getUndoRedoManager().pushUndo();
 		sim.getCircuitIOService().readCircuit(s);
 		sim.currentCircuitFile = "URL: " + link;
 		sim.getUiPanelManager().allowSave(false);

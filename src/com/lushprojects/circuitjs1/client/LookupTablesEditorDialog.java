@@ -74,7 +74,7 @@ public class LookupTablesEditorDialog extends Dialog {
             return;
         }
 
-        sim.pushUndo();
+        sim.getUndoRedoManager().pushUndo();
         sim.getImportExportHelper().importCircuitFromText(merged, false);
         closeDialog();
     }

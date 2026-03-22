@@ -188,7 +188,7 @@ final class StatusInfoRenderer {
             g.setLineWidth(1.0);
         }
         if (sim.scopeCount > 0)
-            sim.drawScopeMinMaxButton(g);
+            sim.getScopeManager().drawScopeMinMaxButton(g);
         g.setColor(CircuitElm.whiteColor);
 
         if (sim.stopMessage != null) {

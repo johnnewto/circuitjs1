@@ -13,7 +13,7 @@ class ClipboardManager {
 		if (sim.menuElm != null) {
 			if (sim.menuElm.selected)
 				return;
-			sim.clearSelection();
+			clearSelection();
 			sim.menuElm.setSelected(true);
 		}
 	}
@@ -28,13 +28,13 @@ class ClipboardManager {
 
 	void doCut() {
 		int i;
-		sim.pushUndo();
+		sim.getUndoRedoManager().pushUndo();
 		setMenuSelection();
 		sim.clipboard = "";
 		for (i = sim.elmList.size() - 1; i >= 0; i--) {
 			CircuitElm ce = sim.getElm(i);
 			if (willDelete(ce) && !(ce instanceof ScopeElm)) {
-				sim.clipboard += sim.getElementDumpWithUid(ce) + "\n";
+				sim.clipboard += sim.getImportExportHelper().getElementDumpWithUid(ce) + "\n";
 			}
 		}
 		writeClipboardToStorage();
@@ -59,7 +59,7 @@ class ClipboardManager {
 	void doDelete(boolean pushUndoFlag) {
 		int i;
 		if (pushUndoFlag)
-			sim.pushUndo();
+			sim.getUndoRedoManager().pushUndo();
 		boolean hasDeleted = false;
 
 		for (i = sim.elmList.size() - 1; i >= 0; i--) {
@@ -84,7 +84,7 @@ class ClipboardManager {
 	}
 
 	String copyOfSelectedElms() {
-		String r = sim.dumpOptions();
+		String r = sim.getImportExportHelper().dumpOptions();
 		CustomLogicModel.clearDumpedFlags();
 		CustomCompositeModel.clearDumpedFlags();
 		DiodeModel.clearDumpedFlags();
@@ -95,7 +95,7 @@ class ClipboardManager {
 			if (m != null && !m.isEmpty())
 				r += m + "\n";
 			if (ce.isSelected() && !(ce instanceof ScopeElm))
-				r += sim.getElementDumpWithUid(ce) + "\n";
+				r += sim.getImportExportHelper().getElementDumpWithUid(ce) + "\n";
 		}
 		return r;
 	}
@@ -127,7 +127,7 @@ class ClipboardManager {
 	}
 
 	void doPaste(String dump) {
-		sim.pushUndo();
+		sim.getUndoRedoManager().pushUndo();
 		clearSelection();
 		int i;
 		Rectangle oldbb = null;

@@ -70,7 +70,7 @@ final class ExportCompositeActions {
             return;
         }
         String svg = getCircuitAsSVG();
-        sim.callSVGRenderedHook(svg);
+        sim.getJsApiBridge().callSVGRenderedHook(svg);
     }
 
     public Canvas getCircuitAsCanvas(int type) {
@@ -201,7 +201,7 @@ final class ExportCompositeActions {
         }
 
         context.setTransform(1, 0, 0, 1, 0, 0);
-        sim.drawActionSchedulerMessage(g, context);
+        sim.getStatusInfoRenderer().drawActionSchedulerMessage(g, context);
 
         sim.printableCheckItem.setState(p);
         sim.dotsCheckItem.setState(c);

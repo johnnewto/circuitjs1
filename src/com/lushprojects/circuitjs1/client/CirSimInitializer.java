@@ -80,7 +80,7 @@ final class CirSimInitializer {
             if (cct != null)
                 sim.startCircuitText = cct.replace("%24", "$");
             if (sim.startCircuitText == null)
-                sim.startCircuitText = CirSim.getElectronStartCircuitText();
+                sim.startCircuitText = sim.getPlatformInterop().getElectronStartCircuitText();
             String ctz = qp.getValue("ctz");
             if (ctz != null)
                 sim.startCircuitText = sim.decompress(ctz);
@@ -134,7 +134,7 @@ final class CirSimInitializer {
         sim.layoutPanel = new DockLayoutPanel(Unit.PX);
 
         sim.fileMenuBar = new MenuBar(true);
-        if (CirSim.isElectron())
+        if (sim.getPlatformInterop().isElectron())
             sim.fileMenuBar.addItem(sim.menuItemWithShortcut("window", "New Window...", Locale.LS(sim.ctrlMetaKey + "N"),
                     new MyCommand("file", "newwindow")));
 
@@ -147,7 +147,7 @@ final class CirSimInitializer {
         sim.fileMenuBar.addItem(sim.importFromTextItem);
         sim.importFromDropboxItem = sim.iconMenuItem("dropbox", "Import From Dropbox...", new MyCommand("file", "importfromdropbox"));
         sim.fileMenuBar.addItem(sim.importFromDropboxItem);
-        if (CirSim.isElectron()) {
+        if (sim.getPlatformInterop().isElectron()) {
             sim.saveFileItem = sim.fileMenuBar.addItem(sim.menuItemWithShortcut("floppy", "Save", Locale.LS(sim.ctrlMetaKey + "S"),
                     new MyCommand("file", "save")));
             sim.fileMenuBar.addItem(sim.iconMenuItem("floppy", "Save As...", new MyCommand("file", "saveas")));
@@ -302,7 +302,7 @@ final class CirSimInitializer {
                             sim.electronicsModeCheckItem.setState(true);
                             return;
                         }
-                        sim.setElectronicsMode();
+                        sim.getToolbarModeManager().setElectronicsMode();
                     }
                 }));
         sim.electronicsModeCheckItem.setState(sim.currentToolbarType == CirSim.ToolbarType.ELECTRONICS);
@@ -314,7 +314,7 @@ final class CirSimInitializer {
                             sim.economicsModeCheckItem.setState(true);
                             return;
                         }
-                        sim.setEconomicsMode();
+                        sim.getToolbarModeManager().setEconomicsMode();
                     }
                 }));
         sim.economicsModeCheckItem.setState(sim.currentToolbarType == CirSim.ToolbarType.ECONOMICS);
@@ -392,7 +392,7 @@ final class CirSimInitializer {
         m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Voltage Unit Symbol..."), new MyCommand("options", "voltageunit")));
         m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Element Registry Inference Report"), new MyCommand("options", "elementregistryreport")));
         m.addItem(sim.optionsItem = new CheckboxAlignedMenuItem(Locale.LS("Other Options..."), new MyCommand("options", "other")));
-        if (CirSim.isElectron())
+        if (sim.getPlatformInterop().isElectron())
             m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Toggle Dev Tools"), new MyCommand("options", "devtools")));
 
         sim.mainMenuBar = new MenuBar(true);
@@ -542,31 +542,31 @@ final class CirSimInitializer {
 
         if (sim.startCircuitText != null) {
             CirSim.console("Loading embedded circuit from URL");
-            sim.getSetupList(false);
+            sim.getSetupListLoader().getSetupList(false);
             sim.getCircuitIOService().readCircuit(sim.startCircuitText);
             sim.currentCircuitFile = "embedded";
             sim.unsavedChanges = false;
         } else {
             if (sim.stopMessage == null && sim.startCircuitLink != null) {
                 sim.getCircuitIOService().readCircuit("");
-                sim.getSetupList(false);
+                sim.getSetupListLoader().getSetupList(false);
                 ImportFromDropboxDialog.setSim(sim);
                 ImportFromDropboxDialog.doImportDropboxLink(sim.startCircuitLink, false);
             } else {
                 sim.getCircuitIOService().readCircuit("");
                 if (sim.stopMessage == null && sim.startCircuit != null) {
-                    sim.getSetupList(false);
+                    sim.getSetupListLoader().getSetupList(false);
                     sim.getCircuitIOService().readSetupFile(sim.startCircuit, sim.startLabel);
                 } else
-                    sim.getSetupList(true);
+                    sim.getSetupListLoader().getSetupList(true);
             }
         }
 
         if (mouseModeReq != null)
 	    sim.getCommandRouter().menuPerformed("main", mouseModeReq);
 
-        sim.enableUndoRedo();
-        sim.enablePaste();
+        sim.getUndoRedoManager().enableUndoRedo();
+        sim.getClipboardManager().enablePaste();
         sim.enableDisableMenuItems();
         sim.getUiPanelManager().setiFrameHeight();
         sim.cv.addMouseDownHandler(sim.getMouseInputHandler());
@@ -575,7 +575,7 @@ final class CirSimInitializer {
         sim.cv.addMouseUpHandler(sim.getMouseInputHandler());
         sim.cv.addClickHandler(sim.getMouseInputHandler());
         sim.cv.addDoubleClickHandler(sim.getMouseInputHandler());
-        CirSim.doTouchHandlers(sim, (CanvasElement) sim.cv.getCanvasElement());
+        CirSimPlatformInterop.installTouchHandlers(sim, (CanvasElement) sim.cv.getCanvasElement());
         sim.cv.addDomHandler(sim.getMouseInputHandler(), ContextMenuEvent.getType());
         sim.menuBar.addDomHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
@@ -587,11 +587,11 @@ final class CirSimInitializer {
 
         Window.addWindowClosingHandler(new Window.ClosingHandler() {
             public void onWindowClosing(ClosingEvent event) {
-                if (sim.unsavedChanges && !CirSim.isElectron())
+                if (sim.unsavedChanges && !sim.getPlatformInterop().isElectron())
                     event.setMessage(Locale.LS("Are you sure?  There are unsaved changes."));
             }
         });
-        sim.setupJSInterface();
+        sim.getJsApiBridge().setupJSInterface();
 
         sim.setSimRunning(running);
 

@@ -25,7 +25,7 @@ final class CirSimBootstrap {
 	sim.scopeCount = 0;
 	sim.canvasWidth = 1200;
 	sim.canvasHeight = 800;
-	sim.setCircuitArea();
+	sim.getViewportController().setCircuitArea();
 	sim.timeStep = 5e-6;
 	sim.maxTimeStep = 5e-2;
 	sim.minTimeStep = 1e-12;
@@ -45,6 +45,6 @@ final class CirSimBootstrap {
 	ComputedValues.resetForTesting();
 	initRunner();
 	CirSim.console("Runner panel mode enabled");
-	sim.launchRunnerFromQuery(qp);
+	sim.getRunnerController().launchFromQuery(qp);
     }
 }

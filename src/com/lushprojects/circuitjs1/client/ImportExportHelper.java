@@ -32,7 +32,7 @@ class ImportExportHelper {
         f |= (sim.showValuesCheckItem.getState()) ? 0 : 16;
         f |= sim.adjustTimeStep ? 64 : 0;
         String dump = "$ " + f + " " +
-            sim.maxTimeStep + " " + sim.getIterCount() + " " +
+            sim.maxTimeStep + " " + sim.getSimulationLoop().getIterCount() + " " +
             sim.getCurrentBarValueForRouting() + " " + CircuitElm.voltageRange + " " +
             sim.getPowerBarValueForRouting() + " " + sim.minTimeStep + "\n";
 

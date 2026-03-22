@@ -83,7 +83,7 @@ class SFCRWorld2ExportImportSimulationParityTest {
             int maxSteps = 200000;
             double prevT = sim.t;
             while (sim.t < years && step < maxSteps) {
-                sim.runCircuit(step == 0);
+                sim.getSimulationLoop().runCircuit(step == 0);
                 ComputedValues.commitConvergedValues();
 
                 assertTrue(sim.stopMessage == null, "Simulation stopped unexpectedly: " + sim.stopMessage);

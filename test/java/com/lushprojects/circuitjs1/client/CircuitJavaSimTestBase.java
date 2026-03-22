@@ -41,7 +41,7 @@ abstract class CircuitJavaSimTestBase {
 
     protected void runSteps(int n) {
         for (int i = 0; i < n; i++) {
-            sim.runCircuit(i == 0);
+            sim.getSimulationLoop().runCircuit(i == 0);
             ComputedValues.commitConvergedValues();
         }
     }

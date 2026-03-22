@@ -350,7 +350,7 @@ class CircuitAnalyzer {
         int i, j;
         sim.nodeList = new Vector<CircuitNode>();
 
-        sim.updateEquationParameterCollisionWarning();
+        sim.getStatusInfoRenderer().updateEquationParameterCollisionWarning();
 
         calculateWireClosure();
         setGroundNode(subcircuit);
@@ -402,7 +402,7 @@ class CircuitAnalyzer {
         sim.needsStamp = true;
 
         if (RuntimeMode.isGwt()) {
-            sim.callAnalyzeHook();
+            sim.getJsApiBridge().callAnalyzeHook();
             VariableBrowserDialog.refreshIfOpen();
             ActionTimeDialog.refreshIfOpen();
         }
@@ -452,7 +452,7 @@ class CircuitAnalyzer {
             ce.stamp();
         }
 
-        sim.buildCircuitVariableSlots();
+        sim.getCircuitValueSlotManager().buildCircuitVariableSlots();
 
         for (i = 0; i != sim.elmList.size(); i++) {
             CircuitElm ce = sim.getElm(i);
@@ -468,7 +468,7 @@ class CircuitAnalyzer {
         if (!sim.circuitNonLinear) {
             int badRow = CirSim.lu_factor(sim.circuitMatrix, sim.circuitMatrixSize, sim.circuitPermute);
             if (badRow >= 0) {
-                sim.stop("Singular matrix! " + sim.getMatrixRowInfo(badRow), null);
+                sim.stop("Singular matrix! " + sim.getMatrixStamper().getMatrixRowInfo(badRow), null);
                 return;
             }
         }

@@ -445,7 +445,7 @@ public class EquationTableMarkdownDebugDialog {
                 Integer sourceNode = LabeledNodeElm.getByName(sourceName);
                 if (sourceNode != null && sourceNode >= 0) {
                     nodeInfo = "#" + sourceNode;
-                    voltageInfo = CircuitElm.getUnitText(sim.getLabeledNodeVoltage(sourceName), "V");
+                    voltageInfo = CircuitElm.getUnitText(sim.getCircuitValueSlotManager().getLabeledNodeVoltage(sourceName), "V");
                 }
 
                 if (sourceTable.getOutputMode(row) == RowOutputMode.FLOW_MODE) {
@@ -456,7 +456,7 @@ public class EquationTableMarkdownDebugDialog {
                         Integer targetNode = LabeledNodeElm.getByName(targetName.trim());
                         if (targetNode != null && targetNode >= 0) {
                             nodeInfo = nodeInfo + " → #" + targetNode;
-                            voltageInfo = voltageInfo + " / " + CircuitElm.getUnitText(sim.getLabeledNodeVoltage(targetName.trim()), "V");
+                            voltageInfo = voltageInfo + " / " + CircuitElm.getUnitText(sim.getCircuitValueSlotManager().getLabeledNodeVoltage(targetName.trim()), "V");
                         } else {
                             nodeInfo = nodeInfo + " → ?";
                         }
@@ -618,7 +618,7 @@ public class EquationTableMarkdownDebugDialog {
             Integer nodeNum = LabeledNodeElm.getByName(name);
             String nodeStr = (nodeNum != null && nodeNum >= 0) ? "#" + nodeNum : "*(none)*";
             String voltStr = (nodeNum != null && nodeNum >= 0) ? 
-                CircuitElm.getShortUnitText(sim.getLabeledNodeVoltage(name), "V") : "-";
+                CircuitElm.getShortUnitText(sim.getCircuitValueSlotManager().getLabeledNodeVoltage(name), "V") : "-";
             
             md.append("| ").append(wrapForKaTeX(name)).append(" | ").append(nodeStr)
               .append(" | ").append(voltStr)

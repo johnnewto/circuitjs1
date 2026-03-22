@@ -99,7 +99,7 @@ abstract class ChipElm extends CircuitElm {
 		p.curcount = updateDotCount(p.current, p.curcount);
 		drawDots(g, b, a, p.curcount);
 		if (p.bubble) {
-		    g.setColor(sim.getBackgroundColor());
+		    g.setColor(sim.getStatusInfoRenderer().getBackgroundColor());
 		    drawThickCircle(g, p.bubbleX, p.bubbleY, 1);
 		    g.setColor(lightGrayColor);
 		    drawThickCircle(g, p.bubbleX, p.bubbleY, 3);

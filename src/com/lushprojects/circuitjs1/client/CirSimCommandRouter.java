@@ -19,9 +19,9 @@ final class CirSimCommandRouter {
         if (item=="about")
             sim.aboutBox = new AboutBox(circuitjs1.versionString);
         if (item=="importfromlocalfile") {
-            sim.pushUndo();
-            if (sim.isElectron())
-                sim.electronOpenFile();
+            sim.getUndoRedoManager().pushUndo();
+            if (sim.getPlatformInterop().isElectron())
+                sim.getPlatformInterop().electronOpenFile();
             else
                 sim.loadFileInput.click();
         }
@@ -29,9 +29,9 @@ final class CirSimCommandRouter {
             Window.open(Document.get().getURL(), "_blank", "");
         }
         if (item=="save")
-            sim.electronSave(sim.getCircuitIOService().dumpCircuit());
+            sim.getPlatformInterop().electronSave(sim.getCircuitIOService().dumpCircuit());
         if (item=="saveas")
-            sim.electronSaveAs(sim.getCircuitIOService().dumpCircuit());
+            sim.getPlatformInterop().electronSaveAs(sim.getCircuitIOService().dumpCircuit());
         if (item=="importfromtext") {
             sim.dialogShowing = new ImportFromTextDialog(sim);
         }
@@ -79,7 +79,7 @@ final class CirSimCommandRouter {
         if (item=="print")
             sim.getExportCompositeActions().doPrint();
         if (item=="recover")
-            sim.doRecover();
+            sim.getUndoRedoManager().doRecover();
 
         if ((menu=="elm" || menu=="scopepop") && sim.contextPanel!=null)
             sim.contextPanel.hide();
@@ -114,10 +114,10 @@ final class CirSimCommandRouter {
             ActionTimeDialog.openDialog(sim);
         }
         if (item=="mathtestdialog") {
-            sim.openMathTestDialog();
+            sim.getInfoDialogActions().openMathTestDialog();
         }
         if (item=="tabletestdialog") {
-            sim.openTableTestDialog();
+            sim.getInfoDialogActions().openTableTestDialog();
         }
         if (item=="iframeviewer") {
             sim.getInfoDialogActions().openIframeViewer();
@@ -128,11 +128,11 @@ final class CirSimCommandRouter {
         if (menu=="options" && item=="other")
             sim.getEditDialogActions().doEdit(new EditOptions(sim));
         if (item=="devtools")
-            CirSim.toggleDevTools();
+            sim.getPlatformInterop().toggleDevTools();
         if (item=="undo")
-            sim.doUndo();
+            sim.getUndoRedoManager().doUndo();
         if (item=="redo")
-            sim.doRedo();
+            sim.getUndoRedoManager().doRedo();
 
         if (menu == "key" && sim.getMouseElmForRouting() != null) {
             sim.menuElm = sim.getMouseElmForRouting();
@@ -142,31 +142,31 @@ final class CirSimCommandRouter {
             sim.menuElm = null;
 
         if (item == "cut") {
-            sim.doCut();
+            sim.getClipboardManager().doCut();
         }
         if (item == "copy") {
-            sim.doCopy();
+            sim.getClipboardManager().doCopy();
         }
         if (item=="paste")
-            sim.doPaste(null);
+            sim.getClipboardManager().doPaste(null);
         if (item=="duplicate") {
-            sim.doDuplicate();
+            sim.getClipboardManager().doDuplicate();
         }
         if (item=="flip")
             sim.getMouseInputHandler().doFlip();
         if (item=="split")
             sim.doSplit(sim.menuElm);
         if (item=="selectAll")
-            sim.doSelectAll();
+            sim.getClipboardManager().doSelectAll();
 
         if (item=="centrecircuit") {
-            sim.pushUndo();
+            sim.getUndoRedoManager().pushUndo();
             sim.getViewportController().centreCircuit();
         }
         if (item=="zoomToViewport") {
             ViewportElm viewport = sim.getViewportController().findViewportElm();
             if (viewport != null) {
-                sim.pushUndo();
+                sim.getUndoRedoManager().pushUndo();
                 sim.getViewportController().applyViewportTransform(viewport);
             } else {
                 sim.getMouseInputHandler().setMouseMode(CirSim.MODE_ADD_ELM);
@@ -176,16 +176,16 @@ final class CirSimCommandRouter {
             }
         }
         if (item=="flipx") {
-            sim.pushUndo();
-            sim.flipX();
+            sim.getUndoRedoManager().pushUndo();
+            sim.getFlipTransformController().flipX();
         }
         if (item=="flipy") {
-            sim.pushUndo();
-            sim.flipY();
+            sim.getUndoRedoManager().pushUndo();
+            sim.getFlipTransformController().flipY();
         }
         if (item=="flipxy") {
-            sim.pushUndo();
-            sim.flipXY();
+            sim.getUndoRedoManager().pushUndo();
+            sim.getFlipTransformController().flipXY();
         }
         if (item=="stackAll")
             sim.getScopeManager().stackAll();
@@ -202,14 +202,14 @@ final class CirSimCommandRouter {
         if (item=="zoomout")
             sim.getViewportController().zoomCircuit(-20, true);
         if (item=="zoom100")
-            sim.setCircuitScale(1, true);
+            sim.getViewportController().setCircuitScale(1, true);
         if (menu=="elm" && item=="edit")
             sim.getEditDialogActions().doEdit(sim.menuElm);
         if (item=="delete") {
             if (menu!="elm")
                 sim.menuElm = null;
-            sim.pushUndo();
-            sim.doDelete(true);
+            sim.getUndoRedoManager().pushUndo();
+            sim.getClipboardManager().doDelete(true);
         }
         if (item=="sliders")
             sim.getEditDialogActions().doSliders(sim.menuElm);
@@ -271,7 +271,7 @@ final class CirSimCommandRouter {
         }
 
         if (menu=="scopepop") {
-            sim.pushUndo();
+            sim.getUndoRedoManager().pushUndo();
             Scope s;
             if (sim.menuScope != -1 )
                 s= sim.scopes[sim.menuScope];
@@ -285,7 +285,7 @@ final class CirSimCommandRouter {
                 ((ScopeElm)sim.getMouseElmForRouting()).clearElmScope();
                 sim.scopes[sim.scopeCount].position = sim.scopeCount;
                 sim.scopeCount++;
-                sim.doDelete(false);
+                sim.getClipboardManager().doDelete(false);
             }
             if (item=="undock") {
                 CircuitElm elm = s.getElm();
@@ -331,12 +331,12 @@ final class CirSimCommandRouter {
             sim.getScopeManager().deleteUnusedScopeElms();
         }
         if (menu=="circuits" && item.indexOf("setup ") ==0) {
-            sim.pushUndo();
+            sim.getUndoRedoManager().pushUndo();
             int sp = item.indexOf(' ', 6);
             sim.getCircuitIOService().readSetupFile(item.substring(6, sp), item.substring(sp+1));
         }
         if (item=="newblankcircuit") {
-            sim.pushUndo();
+            sim.getUndoRedoManager().pushUndo();
             sim.getCircuitIOService().readSetupFile("electronics/blank.txt", "Blank Circuit");
         }
 

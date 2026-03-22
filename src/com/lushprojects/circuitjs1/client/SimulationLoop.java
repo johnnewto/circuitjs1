@@ -17,7 +17,7 @@ class SimulationLoop {
         PerfMonitor perfmon = new PerfMonitor();
         perfmon.startContext("updateCircuit()");
 
-        sim.checkCanvasSize();
+        sim.getViewportController().checkCanvasSize();
 
         boolean didAnalyze = sim.analyzeFlag;
         if (sim.analyzeFlag || sim.dcAnalysisFlag) {
@@ -238,7 +238,7 @@ class SimulationLoop {
                         break;
                     int badRow = CirSim.lu_factor(sim.circuitMatrix, sim.circuitMatrixSize, sim.circuitPermute);
                     if (badRow >= 0) {
-                        sim.stop("Singular matrix! " + sim.getMatrixRowInfo(badRow), null);
+                        sim.stop("Singular matrix! " + sim.getMatrixStamper().getMatrixRowInfo(badRow), null);
                         return;
                     }
                 }
@@ -286,7 +286,7 @@ class SimulationLoop {
                 calcWireCurrents();
 
             ComputedValues.commitPendingToCurrentValues();
-            sim.syncAllSlots();
+            sim.getCircuitValueSlotManager().syncAllSlots();
 
             ComputedValues.commitConvergedValues();
 
@@ -300,7 +300,7 @@ class SimulationLoop {
             for (i = 0; i != sim.scopeElmArr.length; i++)
                 sim.scopeElmArr[i].stepScope();
             if (RuntimeMode.isGwt())
-                sim.callTimeStepHook();
+                sim.getJsApiBridge().callTimeStepHook();
             for (i = 0; i != sim.lastNodeVoltages.length; i++)
                 sim.lastNodeVoltages[i] = sim.nodeVoltages[i];
 
@@ -340,7 +340,7 @@ class SimulationLoop {
         }
 
         setNodeVoltages(sim.nodeVoltages);
-        sim.syncAllSlots();
+        sim.getCircuitValueSlotManager().syncAllSlots();
     }
 
     void setNodeVoltages(double nv[]) {

@@ -2903,7 +2903,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         if (currentValue == null) return;  // Not a simple number
         
         // Push undo state on first wheel movement
-        sim.pushUndo();
+        sim.getUndoRedoManager().pushUndo();
         
         // Calculate step size based on value magnitude
         double magnitude = Math.abs(currentValue);

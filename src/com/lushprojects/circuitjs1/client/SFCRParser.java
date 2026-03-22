@@ -1072,7 +1072,7 @@ public class SFCRParser {
             if (actionElm == null) {
                 actionElm = new ActionTimeElm(actionElmX1, actionElmY1, actionElmX2, actionElmY2, actionElmFlags, null);
                 actionElm.setPoints();
-                sim.assignPersistentUid(actionElm, null);
+                sim.getImportExportHelper().assignPersistentUid(actionElm, null);
                 sim.elmList.addElement(actionElm);
                 createdElements.add(actionElm);
             } else if (actionElmSpecified) {
@@ -2304,7 +2304,7 @@ public class SFCRParser {
             CirSim.console("SFCRParser: Error creating Sankey element: " + e.getMessage());
         }
         
-        sim.assignPersistentUid(sankeyElm, null);
+        sim.getImportExportHelper().assignPersistentUid(sankeyElm, null);
         sim.elmList.addElement(sankeyElm);
         createdElements.add(sankeyElm);
         
@@ -3475,7 +3475,7 @@ public class SFCRParser {
             CircuitElm ce = CirSim.createCe(type, xa, ya, xb, yb, flags, st);
             if (ce != null) {
                 ce.setPoints();  // Initialize geometry (required after construction)
-                sim.assignPersistentUid(ce, null);
+                sim.getImportExportHelper().assignPersistentUid(ce, null);
                 sim.elmList.addElement(ce);
                 createdElements.add(ce);
                 currentY = yb + elementSpacing;
@@ -3595,7 +3595,7 @@ public class SFCRParser {
             CircuitElm ce = CirSim.createCe(type, xa, ya, xb, yb, flags, st);
             if (ce != null) {
                 ce.setPoints();  // Initialize geometry (required after construction)
-                sim.assignPersistentUid(ce, null);
+                sim.getImportExportHelper().assignPersistentUid(ce, null);
                 sim.elmList.addElement(ce);
                 createdElements.add(ce);
                 currentY = yb + elementSpacing;
@@ -3623,7 +3623,7 @@ public class SFCRParser {
                 matchingScopeElm = new ScopeElm(block.x1, block.y1);
                 matchingScopeElm.x2 = block.x2;
                 matchingScopeElm.y2 = block.y2;
-                sim.assignPersistentUid(matchingScopeElm, block.elmUid);
+                sim.getImportExportHelper().assignPersistentUid(matchingScopeElm, block.elmUid);
                 sim.elmList.addElement(matchingScopeElm);
                 createdElements.add(matchingScopeElm);
             }
@@ -3634,7 +3634,7 @@ public class SFCRParser {
 
                 for (int i = 0; i < block.traces.size(); i++) {
                     ScopeTraceSpec trace = block.traces.get(i);
-                    CircuitElm elm = sim.findElmByUid(trace.uid);
+                    CircuitElm elm = sim.getImportExportHelper().findElmByUid(trace.uid);
                     if (elm == null) {
                         continue;
                     }
@@ -3677,7 +3677,7 @@ public class SFCRParser {
 
             for (int i = 0; i < block.traces.size(); i++) {
                 ScopeTraceSpec trace = block.traces.get(i);
-                CircuitElm elm = sim.findElmByUid(trace.uid);
+                CircuitElm elm = sim.getImportExportHelper().findElmByUid(trace.uid);
                 if (elm == null) {
                     continue;
                 }

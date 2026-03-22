@@ -1152,7 +1152,7 @@ class Expr {
 		    // MNA mode: labeled node voltage first (authoritative from matrix solver)
 		    Integer labeledNode = LabeledNodeElm.getByName(nodeName);
 		    if (labeledNode != null && labeledNode != 0) {
-			return returnNodeRefValue(CirSim.theSim.getLabeledNodeVoltage(nodeName), nodeRefStartNanos);
+			return returnNodeRefValue(CirSim.theSim.getCircuitValueSlotManager().getLabeledNodeVoltage(nodeName), nodeRefStartNanos);
 		    }
 		    // Fall back to ComputedValues for non-physical variables
 		    Double computedValue = getComputedByMode(nodeName, context);

@@ -276,7 +276,7 @@ final class EquationTableJacobianHelper {
             if (labeledNode == null || labeledNode.intValue() <= 0) continue;
             stats[0]++;
 
-            double baseValue = sim.resolveSlotValue(refName);
+            double baseValue = sim.getCircuitValueSlotManager().resolveSlotValue(refName);
             double dv = Math.abs(baseValue) * 1e-6;
             if (dv < 1e-6) dv = 1e-6;
 

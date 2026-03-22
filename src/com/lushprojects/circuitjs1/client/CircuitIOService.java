@@ -74,14 +74,14 @@ final class CircuitIOService {
         DiodeModel.clearDumpedFlags();
         TransistorModel.clearDumpedFlags();
 
-        String dump = sim.dumpOptions();
+        String dump = sim.getImportExportHelper().dumpOptions();
 
         for (i = 0; i != sim.elmList.size(); i++) {
             CircuitElm ce = sim.getElm(i);
             String m = ce.dumpModel();
             if (m != null && !m.isEmpty())
                 dump += m + "\n";
-            dump += sim.getElementDumpWithUid(ce) + "\n";
+            dump += sim.getImportExportHelper().getElementDumpWithUid(ce) + "\n";
         }
         for (i = 0; i != sim.scopeCount; i++) {
             String d = sim.scopes[i].dump();
@@ -212,7 +212,7 @@ final class CircuitIOService {
             int y2 = Integer.parseInt(st.nextToken());
             int f = Integer.parseInt(st.nextToken());
 
-            CirSim.ElementDumpParseResult parsed = sim.parseElementTokensWithUid(st);
+            CirSim.ElementDumpParseResult parsed = sim.getImportExportHelper().parseElementTokensWithUid(st);
             CircuitElm newce = sim.createCe(tint, x1, y1, x2, y2, f, parsed.tokenizer);
             if (newce == null) {
                 CirSim.console("Unrecognized element type: " + type);
@@ -220,7 +220,7 @@ final class CircuitIOService {
             }
 
             newce.setPoints();
-            sim.assignPersistentUid(newce, parsed.uid);
+            sim.getImportExportHelper().assignPersistentUid(newce, parsed.uid);
             sim.elmList.addElement(newce);
 
         } catch (Exception e) {
@@ -469,7 +469,7 @@ final class CircuitIOService {
                                     int viewMaxX = Integer.parseInt(st.nextToken());
                                     int viewMaxY = Integer.parseInt(st.nextToken());
 
-                                    sim.setCircuitArea();
+                                    sim.getViewportController().setCircuitArea();
                                     int viewWidth = viewMaxX - viewMinX;
                                     int viewHeight = viewMaxY - viewMinY;
 
@@ -580,14 +580,14 @@ final class CircuitIOService {
                     int x2 = Integer.parseInt(st.nextToken());
                     int y2 = Integer.parseInt(st.nextToken());
                     int f  = Integer.parseInt(st.nextToken());
-                    CirSim.ElementDumpParseResult parsed = sim.parseElementTokensWithUid(st);
+                    CirSim.ElementDumpParseResult parsed = sim.getImportExportHelper().parseElementTokensWithUid(st);
                     CircuitElm newce = sim.createCe(tint, x1, y1, x2, y2, f, parsed.tokenizer);
                     if (newce==null) {
                         System.out.println("unrecognized dump type: " + type);
                         break;
                     }
                     newce.setPoints();
-                    sim.assignPersistentUid(newce, parsed.uid);
+                    sim.getImportExportHelper().assignPersistentUid(newce, parsed.uid);
                     sim.elmList.addElement(newce);
                 } catch (Exception ee) {
                     ee.printStackTrace();

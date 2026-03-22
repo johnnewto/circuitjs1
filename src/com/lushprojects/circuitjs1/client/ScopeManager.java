@@ -185,7 +185,7 @@ final class ScopeManager {
 		s.setRect(r);
 	}
 	if (sim.oldScopeCount != sim.scopeCount) {
-	    sim.setCircuitArea();
+	    sim.getViewportController().setCircuitArea();
 	    sim.oldScopeCount = sim.scopeCount;
 	}
     }
@@ -240,7 +240,7 @@ final class ScopeManager {
 	} else {
 	    sim.scopeHeightFraction = sim.normalScopeHeightFraction;
 	}
-	sim.setCircuitArea();
+	sim.getViewportController().setCircuitArea();
 	sim.repaint();
     }
 }

@@ -801,6 +801,10 @@ public CirSim() {
 	    return importExportHelper;
 	}
 
+	CircuitValueSlotManager getCircuitValueSlotManager() {
+	    return circuitValueSlotManager;
+	}
+
 	CirSimCommandRouter getCommandRouter() {
 	    return commandRouter;
 	}
@@ -819,6 +823,50 @@ public CirSim() {
 
 	CirSimInitializer getInitializer() {
 	    return initializer;
+	}
+
+	ToolbarModeManager getToolbarModeManager() {
+	    return toolbarModeManager;
+	}
+
+	SetupListLoader getSetupListLoader() {
+	    return setupListLoader;
+	}
+
+	RunnerController getRunnerController() {
+	    return runnerController;
+	}
+
+	ClipboardManager getClipboardManager() {
+	    return clipboardManager;
+	}
+
+	FlipTransformController getFlipTransformController() {
+	    return flipTransformController;
+	}
+
+	StatusInfoRenderer getStatusInfoRenderer() {
+	    return statusInfoRenderer;
+	}
+
+	MatrixStamper getMatrixStamper() {
+	    return matrixStamper;
+	}
+
+	SimulationLoop getSimulationLoop() {
+	    return simulationLoop;
+	}
+
+	JsApiBridge getJsApiBridge() {
+	    return jsApiBridge;
+	}
+
+	CirSimPlatformInterop getPlatformInterop() {
+	    return platformInterop;
+	}
+
+	UndoRedoManager getUndoRedoManager() {
+	    return undoRedoManager;
 	}
 
     void launchRunnerFromQuery(QueryParameters qp) {
@@ -885,13 +933,6 @@ public CirSim() {
     MenuItem iconMenuItem(String icon, String text, Command cmd) {
         String icoStr = "<i class=\"cirjsicon-" + icon + "\"></i>&nbsp;" + Locale.LS(text); //<i class="cirjsicon-"></i>&nbsp;
         return new MenuItem(SafeHtmlUtils.fromTrustedString(icoStr), cmd);
-    }
-    
-    // install touch handlers
-    // don't feel like rewriting this in java.  Anyway, java doesn't let us create mouse
-    // events and dispatch them.
-    static void doTouchHandlers(final CirSim sim, CanvasElement cv) {
-	CirSimPlatformInterop.installTouchHandlers(sim, cv);
     }
     
     boolean shown = false;
@@ -1660,42 +1701,6 @@ public CirSim() {
 	}
     }
     
-    static void electronSaveAsCallback(String s) {
-	theSim.platformInterop.electronSaveAsCallback(s);
-    }
-
-    static void electronSaveCallback() {
-	theSim.platformInterop.electronSaveCallback();
-    }
-        
-	static void electronSaveAs(final String dump) {
-		theSim.platformInterop.electronSaveAs(dump);
-	}
-
-	static void electronSave(String dump) {
-		theSim.platformInterop.electronSave(dump);
-	}
-    
-    static void electronOpenFileCallback(String text, String name) {
-	theSim.platformInterop.electronOpenFileCallback(text, name);
-    }
-    
-	static void electronOpenFile() {
-		theSim.platformInterop.electronOpenFile();
-	}
-    
-	static void toggleDevTools() {
-		theSim.platformInterop.toggleDevTools();
-	}
-    
-	static boolean isElectron() {
-		return theSim.platformInterop.isElectron();
-	}
-
-	static String getElectronStartCircuitText() {
-	    return theSim.platformInterop.getElectronStartCircuitText();
-	}
-    
     /**
      * Open the Math Elements Test Dialog
      */
@@ -1740,14 +1745,6 @@ public CirSim() {
 	clipboardWriteImage(cv.getCanvasElement());
 	}
 
-    String dumpOptions() {
-	return importExportHelper.dumpOptions();
-    }
-    
-    String getElementDumpWithUid(CircuitElm ce) {
-	return importExportHelper.getElementDumpWithUid(ce);
-    }
-
     static class ElementDumpParseResult {
 	StringTokenizer tokenizer;
 	String uid;
@@ -1755,18 +1752,6 @@ public CirSim() {
 	    this.tokenizer = tokenizer;
 	    this.uid = uid;
 	}
-    }
-
-    ElementDumpParseResult parseElementTokensWithUid(StringTokenizer st) {
-	return importExportHelper.parseElementTokensWithUid(st);
-    }
-
-    CircuitElm findElmByUid(String uid) {
-	return importExportHelper.findElmByUid(uid);
-    }
-
-    void assignPersistentUid(CircuitElm ce, String uidFromFile) {
-	importExportHelper.assignPersistentUid(ce, uidFromFile);
     }
 
 	void getSetupList(final boolean openDefault) {
@@ -1930,7 +1915,7 @@ public CirSim() {
 	boolean canFlipX = true;
 	boolean canFlipY = true;
 	boolean canFlipXY = true;
-	int selCount = countSelected();
+	int selCount = clipboardManager.countSelected();
 	for (CircuitElm elm : elmList)
 	    if (elm.isSelected() || selCount == 0) {
 		if (!elm.canFlipX())
@@ -2095,76 +2080,11 @@ public CirSim() {
 	getViewportController().setCanvasSize();
     }
     
-    // Mode selector method - switches toolbar and sets appropriate voltage unit
-    void setMode(ToolbarType mode) {
-	toolbarModeManager.setMode(mode);
-    }
-    
-    void setElectronicsMode() {
-	toolbarModeManager.setElectronicsMode();
-    }
-    
-    void setEconomicsMode() {
-	toolbarModeManager.setEconomicsMode();
-    }
-
-    void pushUndo() {
-	undoRedoManager.pushUndo();
-    }
-
-    void doUndo() {
-	undoRedoManager.doUndo();
-    }
-
-    void doRedo() {
-	undoRedoManager.doRedo();
-    }
-
     void loadUndoItem(UndoItem ui) {
 	getCircuitIOService().readCircuit(ui.dump, RC_NO_CENTER);
 	transform[0] = transform[3] = ui.scale;
 	transform[4] = ui.transform4;
 	transform[5] = ui.transform5;
-    }
-    
-    void doRecover() {
-	undoRedoManager.doRecover();
-    }
-    
-    void enableUndoRedo() {
-	undoRedoManager.enableUndoRedo();
-    }
-
-    void setMenuSelection() {
-	clipboardManager.setMenuSelection();
-    }
-
-    int countSelected() {
-	return clipboardManager.countSelected();
-    }
-
-    void flipX() {
-	flipTransformController.flipX();
-    }
-
-    void flipY() {
-	flipTransformController.flipY();
-    }
-
-    void flipXY() {
-	flipTransformController.flipXY();
-    }
-
-    void doCut() {
-	clipboardManager.doCut();
-    }
-
-    void writeClipboardToStorage() {
-	clipboardManager.writeClipboardToStorage();
-    }
-    
-    void readClipboardFromStorage() {
-	clipboardManager.readClipboardFromStorage();
     }
 
     /**
@@ -2232,46 +2152,6 @@ public CirSim() {
 	CircuitRenderer getCircuitRendererForRouting() {
 	return circuitRenderer;
 	}
-    
-    void doDelete(boolean pushUndoFlag) {
-	clipboardManager.doDelete(pushUndoFlag);
-    }
-    
-    boolean willDelete( CircuitElm ce ) {
-	return clipboardManager.willDelete(ce);
-    }
-    
-    String copyOfSelectedElms() {
-	return clipboardManager.copyOfSelectedElms();
-    }
-    
-    void doCopy() {
-	clipboardManager.doCopy();
-    }
-
-    void enablePaste() {
-	clipboardManager.enablePaste();
-    }
-
-    void doDuplicate() {
-	clipboardManager.doDuplicate();
-    }
-    
-    void doPaste(String dump) {
-	clipboardManager.doPaste(dump);
-    }
-
-    void clearSelection() {
-	clipboardManager.clearSelection();
-    }
-    
-    void doSelectAll() {
-	clipboardManager.doSelectAll();
-    }
-    
-    boolean anySelectedButMouse() {
-	return clipboardManager.anySelectedButMouse();
-    }
 
 //    public void keyPressed(KeyEvent e) {}
 //    public void keyReleased(KeyEvent e) {}
@@ -2422,120 +2302,12 @@ public CirSim() {
     // E_GSLOT support: circuit-global variable array
     // -----------------------------------------------------------------------
 
-    /**
-     * Build nameToSlot and circuitVariables[] after all stamp() calls have run
-     * (so pre-registered computed names are fully populated in ComputedValues).
-     * Called from stampCircuit() between the first stamp pass and postStamp().
-     */
-    void buildCircuitVariableSlots() {
-	circuitValueSlotManager.buildCircuitVariableSlots();
-    }
-
-    /**
-     * Synchronise circuitVariables[] from the live simulation state
-     * (nodeVoltages[] + ComputedValues current buffer).  Replicates the
-     * same resolution-order waterfall as E_NODE_REF so that E_GSLOT eval
-     * returns exactly the same value without any HashMap lookups.
-     * <p>
-     * Called once per subiteration, after applySolvedRightSide() and
-     * commitPendingToCurrentValues() have both been applied.
-     */
-    void syncAllSlots() {
-	circuitValueSlotManager.syncAllSlots();
-    }
-
-    /**
-     * Resolve a single name to its current value using the same priority
-     * waterfall as Expr's E_NODE_REF case for CURRENT_CONTEXT.
-     */
-    double resolveSlotValue(String name) {
-	return circuitValueSlotManager.resolveSlotValue(name);
-    }
-
-    double getLabeledNodeVoltage(String name) {
-	return circuitValueSlotManager.getLabeledNodeVoltage(name);
-	}
-	
-	/**
-	 * Get a message listing all unresolved references from expression evaluation.
-	 * @return Message string, or null if no unresolved references
-	 */
-	String getUnresolvedReferencesMessage() {
-	    return circuitValueSlotManager.getUnresolvedReferencesMessage();
-	}
-	
-	void setExtVoltage(String name, double v) {
-	    circuitValueSlotManager.setExtVoltage(name, v);
-	}
-
-	// ========== SLIDER API METHODS ==========
-	
-	/**
-	 * Find an adjustable slider by its name
-	 */
-	Adjustable findAdjustableByName(String name) {
-	    return circuitValueSlotManager.findAdjustableByName(name);
-	}
-	
-	/**
-	 * Get the current value of a slider by name
-	 * @param name The slider name/label
-	 * @return The current value, or NaN if not found
-	 */
-	double getSliderValue(String name) {
-	    return circuitValueSlotManager.getSliderValue(name);
-	}
-	
-	/**
-	 * Set the value of a slider by name
-	 * @param name The slider name/label
-	 * @param value The new value to set
-	 * @return true if successful, false if slider not found
-	 */
-	boolean setSliderValue(String name, double value) {
-	    return circuitValueSlotManager.setSliderValue(name, value);
-	}
-	
 	/**
 	 * Get list of all slider names in the circuit
 	 * @return Array of slider names
 	 */
 	JsArrayString getJSArrayString() {
 	    return JavaScriptObject.createArray().cast();
-	}
-	
-	JsArrayString getSliderNames() {
-	    return circuitValueSlotManager.getSliderNames();
-	}
-	
-	// ========== END SLIDER API METHODS ==========
-
-	// ========== LABELED NODE & COMPUTED VALUE API METHODS ==========
-	
-	/**
-	 * Get list of all labeled node names in the circuit
-	 * @return Array of labeled node names
-	 */
-	JsArrayString getLabeledNodeNames() {
-	    return circuitValueSlotManager.getLabeledNodeNames();
-	}
-	
-	/**
-	 * Get a labeled node voltage value by name
-	 * This combines both regular labeled nodes and computed values
-	 * @param name The name of the labeled node or computed value
-	 * @return The voltage value, or 0 if not found
-	 */
-	double getLabeledNodeValue(String name) {
-	    return circuitValueSlotManager.getLabeledNodeValue(name);
-	}
-	
-	/**
-	 * Get list of all computed value names in the circuit
-	 * @return Array of computed value names
-	 */
-	JsArrayString getComputedValueNames() {
-	    return circuitValueSlotManager.getComputedValueNames();
 	}
 
 	void setExprPerfProbeEnabled(boolean enabled) {

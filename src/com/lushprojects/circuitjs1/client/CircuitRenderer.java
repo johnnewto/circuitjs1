@@ -135,7 +135,7 @@ class CircuitRenderer {
             sim.cvcontext.setTransform(scale, 0, 0, scale, 0, 0);
 
             perfmon.startContext("drawBottomArea()");
-            sim.drawBottomArea(g);
+            sim.getStatusInfoRenderer().drawBottomArea(g);
             perfmon.stopContext();
 
             g.setColor(Color.white);
@@ -168,7 +168,7 @@ class CircuitRenderer {
         g.drawString("Framerate: " + CircuitElm.showFormat.format(sim.framerate), 10, height += increment);
         g.drawString("subiter: " + sim.subIterations, 10, height += increment);
 
-        String unresolvedMsg = sim.getUnresolvedReferencesMessage();
+        String unresolvedMsg = sim.getCircuitValueSlotManager().getUnresolvedReferencesMessage();
         if (unresolvedMsg != null) {
             g.setColor(Color.red);
             g.drawString(unresolvedMsg, 10, height += increment);
@@ -205,14 +205,14 @@ class CircuitRenderer {
 
         sim.lastFrameTime = sim.lastTime;
 
-        sim.drawHintTooltip(g);
+        sim.getStatusInfoRenderer().drawHintTooltip(g);
 
-        sim.drawActionSchedulerMessage(g, sim.cvcontext);
+        sim.getStatusInfoRenderer().drawActionSchedulerMessage(g, sim.cvcontext);
 
         if (RuntimeMode.isGwt())
             InfoViewerDialog.pushLiveDataUpdate();
 
         if (RuntimeMode.isGwt())
-            sim.callUpdateHook();
+            sim.getJsApiBridge().callUpdateHook();
     }
 }

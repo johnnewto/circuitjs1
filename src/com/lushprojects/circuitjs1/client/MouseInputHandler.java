@@ -158,7 +158,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             sim.scopeHeightFraction = 0.1;
         if (sim.scopeHeightFraction > 0.9)
             sim.scopeHeightFraction = 0.9;
-        sim.setCircuitArea();
+        sim.getViewportController().setCircuitArea();
         sim.repaint();
     }
 
@@ -621,7 +621,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         sim.menuY = sim.menuClientY = e.getY();
         sim.mouseDownTime = System.currentTimeMillis();
 
-        sim.enablePaste();
+        sim.getClipboardManager().enablePaste();
 
         if (e.getNativeButton() != com.google.gwt.dom.client.NativeEvent.BUTTON_LEFT && e.getNativeButton() != com.google.gwt.dom.client.NativeEvent.BUTTON_MIDDLE)
             return;
@@ -634,7 +634,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         sim.simRunningBeforeDrag = sim.simRunning;
 
         if (sim.getScopeManager().mouseIsOverScopeMinMaxButton(e.getX(), e.getY())) {
-            sim.toggleScopePanelSize();
+            sim.getScopeManager().toggleScopePanelSize();
             sim.setMouseDraggingForRouting(false);
             return;
         }
@@ -673,7 +673,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             else
                 s = ((ScopeElm) mouseElm).elmScope;
             s.properties();
-            sim.clearSelection();
+            sim.getClipboardManager().clearSelection();
             sim.setMouseDraggingForRouting(false);
             return;
         }
@@ -709,13 +709,13 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
 
         if (sim.tempMouseMode == CirSim.MODE_SELECT && mouseElm != null && !sim.noEditCheckItem.getState() &&
             mouseElm.getHandleGrabbedClose(gx, gy, CirSim.POSTGRABSQ, CirSim.MINPOSTGRABSIZE) >= 0 &&
-            !sim.anySelectedButMouse())
+            !sim.getClipboardManager().anySelectedButMouse())
             sim.tempMouseMode = CirSim.MODE_DRAG_POST;
 
         if (sim.tempMouseMode != CirSim.MODE_SELECT && sim.tempMouseMode != CirSim.MODE_DRAG_SELECTED)
-            sim.clearSelection();
+            sim.getClipboardManager().clearSelection();
 
-        sim.pushUndo();
+        sim.getUndoRedoManager().pushUndo();
         sim.initDragGridX = gx;
         sim.initDragGridY = gy;
         sim.dragging = true;
@@ -761,7 +761,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         sim.setMouseDraggingForRouting(false);
 
         if (sim.tempMouseMode == CirSim.MODE_SELECT && sim.selectedArea == null)
-            sim.clearSelection();
+            sim.getClipboardManager().clearSelection();
 
         if (sim.tempMouseMode == CirSim.MODE_DRAG_POST && sim.draggingPost == -1)
             sim.doSplit(sim.getMouseElmForRouting());
@@ -786,7 +786,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             if (sim.dragElm.creationFailed()) {
                 sim.dragElm.delete();
                 if (sim.mouseMode == CirSim.MODE_SELECT || sim.mouseMode == CirSim.MODE_DRAG_SELECTED)
-                    sim.clearSelection();
+                    sim.getClipboardManager().clearSelection();
             }
             else {
                 sim.elmList.addElement(sim.dragElm);
@@ -803,7 +803,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         }
         if (circuitChanged) {
             sim.needAnalyze();
-            sim.pushUndo();
+            sim.getUndoRedoManager().pushUndo();
         }
         if (sim.needsRecoverySave) {
             sim.writeRecoveryToStorage();
@@ -909,8 +909,8 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
                     sim.scopeSelected = -1;
                 } else {
                     sim.menuElm = null;
-                    sim.pushUndo();
-                    sim.doDelete(true);
+                    sim.getUndoRedoManager().pushUndo();
+                    sim.getClipboardManager().doDelete(true);
                     e.cancel();
                 }
             }
@@ -955,13 +955,13 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
                     sim.getCommandRouter().menuPerformed("key", "print");
                     e.cancel();
                 }
-                if (code == KEY_N && CirSim.isElectron()) {
+                if (code == KEY_N && sim.getPlatformInterop().isElectron()) {
                     sim.getCommandRouter().menuPerformed("key", "newwindow");
                     e.cancel();
                 }
                 if (code == KEY_S) {
                     String cmd = "exportaslocalfile";
-                    if (CirSim.isElectron())
+                    if (sim.getPlatformInterop().isElectron())
                         cmd = sim.saveFileItem.isEnabled() ? "save" : "saveas";
                     sim.getCommandRouter().menuPerformed("key", cmd);
                     e.cancel();

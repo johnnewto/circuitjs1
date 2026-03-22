@@ -12,8 +12,8 @@ class EditDialogActions {
     }
 
     void doEdit(Editable eable) {
-        sim.clearSelection();
-        sim.pushUndo();
+        sim.getClipboardManager().clearSelection();
+        sim.getUndoRedoManager().pushUndo();
 
         EditInfo firstInfo = eable.getEditInfo(0);
         if (firstInfo == null) {
@@ -29,8 +29,8 @@ class EditDialogActions {
     }
 
     void doSliders(CircuitElm ce) {
-        sim.clearSelection();
-        sim.pushUndo();
+        sim.getClipboardManager().clearSelection();
+        sim.getUndoRedoManager().pushUndo();
         CirSim.dialogShowing = new SliderDialog(ce, sim);
         CirSim.dialogShowing.show();
     }

@@ -234,7 +234,7 @@ public class FloatingControlPanel {
         
         // Build the URL (same as ExportAsUrlDialog)
         String[] start = Location.getHref().split("\\?");
-        if (CirSim.isElectron())
+        if (sim.getPlatformInterop().isElectron())
             start[0] = "https://johnnewto.github.io/circuitjs1/circuitjs.html";
         String query = "?ctz=" + compress(dump) + "&editable=false";
         String requrl = URL.encodeQueryString(query);

@@ -1897,7 +1897,7 @@ public class SFCRExporter {
                     continue;
                 }
             }
-            String dump = sim.getElementDumpWithUid(elm);
+            String dump = sim.getImportExportHelper().getElementDumpWithUid(elm);
             if (dump != null && !dump.isEmpty()) {
                 sb.append(dump).append("\n");
             }

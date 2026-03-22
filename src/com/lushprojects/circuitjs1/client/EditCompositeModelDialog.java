@@ -133,7 +133,7 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 		canvas.setCoordinateSpaceWidth(400);
 		canvas.setCoordinateSpaceHeight(400);
 		vp.add(canvas);
-		CirSim.doTouchHandlers(null, canvas.getCanvasElement());
+		CirSimPlatformInterop.installTouchHandlers(null, canvas.getCanvasElement());
 		context = canvas.getContext2d();
 		
 		chip = new CustomCompositeChipElm(50, 50);
@@ -263,7 +263,7 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 	    double scalew = context.getCanvas().getWidth()  / (double)(chip.boundingBox.width + chip.boundingBox.x*2);
 	    double scaleh = context.getCanvas().getHeight() / (double)(chip.boundingBox.height + chip.boundingBox.y*2);
 	    scale = 1/Math.min(scalew, scaleh);
-	    context.setFillStyle(CirSim.theSim.getBackgroundColor().getHexValue());
+		context.setFillStyle(CirSim.theSim.getStatusInfoRenderer().getBackgroundColor().getHexValue());
 		context.setTransform(1, 0, 0, 1, 0, 0);
 	    context.fillRect(0, 0, context.getCanvas().getWidth(), context.getCanvas().getHeight());
 	    context.setTransform(1/scale, 0, 0, 1/scale, 0, 0);
