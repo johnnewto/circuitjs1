@@ -790,42 +790,27 @@ public CirSim() {
 	theSim = this;
 }
 
-    private final RunnerController runnerController = new RunnerController(this);
+	private final RunnerController runnerController = new RunnerController(this);
+
+	// Extracted CirSim helper delegates
+	private final CirSimCommandRouter commandRouter = new CirSimCommandRouter(this);
+	private final CircuitIOService circuitIOService = new CircuitIOService(this);
+	private final CirSimMenuBuilder menuBuilder = new CirSimMenuBuilder(this);
+	private final ScopeManager scopeManager = new ScopeManager(this);
+	private final ViewportController viewportController = new ViewportController(this);
+	private final FlipTransformController flipTransformController = new FlipTransformController(this);
+	private final CirSimBootstrap bootstrap = new CirSimBootstrap(this);
+	private final CirSimDiagnostics diagnostics = new CirSimDiagnostics(this);
 
     public void initRunner() {
-	random = new Random();
-	transform = new double[6];
-	transform[0] = transform[3] = 1;
-	transform[1] = transform[2] = transform[4] = transform[5] = 0;
-	elmList = new Vector<CircuitElm>();
-	adjustables = new Vector<Adjustable>();
-	undoStack = new Vector<UndoItem>();
-	redoStack = new Vector<UndoItem>();
-	scopes = new Scope[20];
-	scopeColCount = new int[20];
-	scopeCount = 0;
-	canvasWidth = 1200;
-	canvasHeight = 800;
-	setCircuitArea();
-	timeStep = 5e-6;
-	maxTimeStep = 5e-2;
-	minTimeStep = 1e-12;
-	t = 0;
-	CircuitElm.initClass(this);
+	bootstrap.initRunner();
     }
 
     public void initRunnerPanel(QueryParameters qp) {
-	RuntimeMode.setNonInteractiveRuntime(true);
-	RunnerPanelUi.clearRunnerStdout();
-	RunnerPanelUi.setRunnerStdoutEnabled(true);
-	GWT.setUncaughtExceptionHandler(new GWT.UncaughtExceptionHandler() {
-	    public void onUncaughtException(Throwable e) {
-		console("GWT uncaught exception: " + e);
-	    }
-	});
-	ComputedValues.resetForTesting();
-	initRunner();
-	console("Runner panel mode enabled");
+	bootstrap.initRunnerPanel(qp);
+    }
+
+    void launchRunnerFromQuery(QueryParameters qp) {
 	runnerController.launchFromQuery(qp);
     }
 
@@ -1760,301 +1745,17 @@ public CirSim() {
     
     // this is called twice, once for the Draw menu, once for the right mouse popup menu
     public void composeMainMenu(MenuBar mainMenuBar, int num) {
-	// Try to load from menu definition file first
-	if (menuDefinitionLoaded && menuDefinition != null) {
-	    composeMainMenuFromFile(mainMenuBar, num);
-	} else {
-	    // Fallback to hardcoded menu
-	    composeMainMenuHardcoded(mainMenuBar, num);
-	}
+	menuBuilder.composeMainMenu(mainMenuBar, num);
     }
     
-    // Load menu from menulist.txt file
+	// Delegated to CirSimMenuBuilder
     void composeMainMenuFromFile(MenuBar mainMenuBar, int num) {
-	String[] lines = menuDefinition.split("\n");
-	MenuBar currentMenuBar = mainMenuBar;
-	MenuBar[] menuStack = new MenuBar[10];
-	int stackPtr = 0;
-	menuStack[stackPtr++] = mainMenuBar;
-	
-	for (String line : lines) {
-	    line = line.trim();
-	    
-	    // Skip empty lines and comments
-	    if (line.isEmpty() || line.startsWith("#"))
-		continue;
-	    
-	    // Handle submenu start
-	    if (line.startsWith("+")) {
-		String menuTitle = line.substring(1).trim();
-		MenuBar subMenu = new MenuBar(true);
-		
-		// Special handling for Subcircuits menu
-		if (menuTitle.equals("Subcircuits")) {
-		    if (subcircuitMenuBar == null)
-			subcircuitMenuBar = new MenuBar[2];
-		    subcircuitMenuBar[num] = subMenu;
-		}
-		
-		currentMenuBar.addItem(SafeHtmlUtils.fromTrustedString(
-		    CheckboxMenuItem.checkBoxHtml + Locale.LS("&nbsp;</div>" + menuTitle)), subMenu);
-		currentMenuBar = subMenu;
-		menuStack[stackPtr++] = subMenu;
-		continue;
-	    }
-	    
-	    // Handle submenu end
-	    if (line.startsWith("-")) {
-		stackPtr--;
-		currentMenuBar = menuStack[stackPtr - 1];
-		continue;
-	    }
-	    
-	    // Parse menu item: ClassName|Display Name|Display Shortcut|Keyboard Shortcut
-	    String[] parts = line.split("\\|", -1);  // -1 to include empty trailing fields
-	    if (parts.length < 2)
-		continue;
-	    
-	    String className = parts[0].trim();
-	    String displayName = parts[1].trim();
-	    String displayShortcut = parts.length > 2 ? parts[2].trim() : "";
-	    String keyboardShortcut = parts.length > 3 ? parts[3].trim() : "";
-	    
-	    CheckboxMenuItem mi = getClassCheckItem(Locale.LS(displayName), className);
-	    currentMenuBar.addItem(mi);
-	    
-	    // Handle display shortcuts (shown in menu)
-	    if (displayShortcut != null && !displayShortcut.isEmpty()) {
-		// Process platform-specific shortcuts
-		if (displayShortcut.contains("(A-M-drag)") && isMac) {
-		    displayShortcut = displayShortcut.replace("(A-M-drag)", "(A-Cmd-drag)");
-		}
-		if (displayShortcut.contains("(Ctrl-drag)") && ctrlMetaKey != null) {
-		    displayShortcut = displayShortcut.replace("Ctrl", ctrlMetaKey);
-		}
-		mi.setShortcut(Locale.LS(displayShortcut));
-	    }
-	    
-	    // Handle keyboard shortcuts (actual key bindings)
-	    if (keyboardShortcut != null && !keyboardShortcut.isEmpty() && keyboardShortcut.length() == 1) {
-		char shortcutKey = keyboardShortcut.charAt(0);
-		if (shortcuts[shortcutKey] != null && !shortcuts[shortcutKey].equals(className)) {
-		    console("Warning: Keyboard shortcut '" + shortcutKey + "' already assigned to " + shortcuts[shortcutKey] + ", overriding with " + className);
-		}
-		shortcuts[shortcutKey] = className;
-		// Update the menu item to show the keyboard shortcut if no display shortcut was provided
-		if ((displayShortcut == null || displayShortcut.isEmpty()) && mi.getShortcut().isEmpty()) {
-		    mi.setShortcut(String.valueOf(shortcutKey));
-		}
-	    }
-	}
+	menuBuilder.composeMainMenuFromFile(mainMenuBar, num);
     }
     
-    // Original hardcoded menu (fallback)
+	// Delegated to CirSimMenuBuilder
     void composeMainMenuHardcoded(MenuBar mainMenuBar, int num) {
-    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Wire"), "WireElm"));
-    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Resistor"), "ResistorElm"));
-    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Multipler"), "MultiplyElm"));
-    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Multiply by Constant"), "MultiplyConstElm"));
-    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Divider"), "DividerElm"));
-    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Percent"), "PercentElm"));
-    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Divide by Constant"), "DivideConstElm"));
-    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Differentiator"), "DifferentiatorElm"));
-    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Integrator"), "IntegratorElm"));
-    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add ODE"), "ODEElm"));
-    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Equation"), "EquationElm"));
-    	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Equation Table"), "EquationTableElm"));
-		mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Adder"), "AdderElm"));
-	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Subtracter"), "SubtracterElm"));
-	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Table"), "TableElm"));
-	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Godly Table"), "GodlyTableElm"));
-	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add CV Source"), "ComputedValueSourceElm"));
-	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Master Stocks Table"), "StockMasterElm"));
-	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Flows Table"), "FlowsMasterElm"));
-	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Current Transactions Matrix"), "CurrentTransactionsMatrixElm"));
-	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Stop Time"), "StopTimeElm"));
-	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Action Time"), "ActionTimeElm"));
-	mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Scenario"), "ScenarioElm"));
-	// mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Spare"), "Spare"));
-    	MenuBar passMenuBar = new MenuBar(true);
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Capacitor"), "CapacitorElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Capacitor (polarized)"), "PolarCapacitorElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Inductor"), "InductorElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Switch"), "SwitchElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Push Switch"), "PushSwitchElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add SPDT Switch"), "Switch2Elm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add DPDT Switch"), "DPDTSwitchElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Make-Before-Break Switch"), "MBBSwitchElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Potentiometer"), "PotElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Transformer"), "TransformerElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Tapped Transformer"), "TappedTransformerElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Custom Transformer"), "CustomTransformerElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Transmission Line"), "TransLineElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Relay"), "RelayElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Relay Coil"), "RelayCoilElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Relay Contact"), "RelayContactElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Photoresistor"), "LDRElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Thermistor"), "ThermistorNTCElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Memristor"), "MemristorElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Spark Gap"), "SparkGapElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Fuse"), "FuseElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Crystal"), "CrystalElm"));
-    	passMenuBar.addItem(getClassCheckItem(Locale.LS("Add Cross Switch"), "CrossSwitchElm"));
-    	mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Passive Components")), passMenuBar);
-
-    	MenuBar inputMenuBar = new MenuBar(true);
-    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Ground"), "GroundElm"));
-    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Voltage Source (2-terminal)"), "DCVoltageElm"));
-    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add A/C Voltage Source (2-terminal)"), "ACVoltageElm"));
-    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Voltage Source (1-terminal)"), "RailElm"));
-    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add A/C Voltage Source (1-terminal)"), "ACRailElm"));
-    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Square Wave Source (1-terminal)"), "SquareRailElm"));
-    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Clock"), "ClockElm"));
-    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add A/C Sweep"), "SweepElm"));
-    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Variable Voltage"), "VarRailElm"));
-    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Antenna"), "AntennaElm"));
-    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add AM Source"), "AMElm"));
-    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add FM Source"), "FMElm"));
-    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Current Source"), "CurrentElm"));
-    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Noise Generator"), "NoiseElm"));
-    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Audio Input"), "AudioInputElm"));
-    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Data Input"), "DataInputElm"));
-    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add External Voltage (JavaScript)"), "ExtVoltageElm"));
-    	inputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Table Voltage Source"), "TableVoltageElm"));
-
-    	mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Inputs and Sources")), inputMenuBar);
-    	
-    	MenuBar outputMenuBar = new MenuBar(true);
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Analog Output"), "OutputElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add LED"), "LEDElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Lamp"), "LampElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Text"), "TextElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Box"), "BoxElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Line"), "LineElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Labeled Node"), "LabeledNodeElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Voltmeter/Scope Probe"), "ProbeElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Ohmmeter"), "OhmMeterElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Ammeter"), "AmmeterElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Wattmeter"), "WattmeterElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Pie Chart"), "PieChartElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Test Point"), "TestPointElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Decimal Display"), "DecimalDisplayElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add LED Array"), "LEDArrayElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Data Export"), "DataRecorderElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Audio Output"), "AudioOutputElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add Stop Trigger"), "StopTriggerElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add DC Motor"), "DCMotorElm"));
-    	outputMenuBar.addItem(getClassCheckItem(Locale.LS("Add 3-Phase Motor"), "ThreePhaseMotorElm"));
-    	mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Outputs and Labels")), outputMenuBar);
-    	
-    	MenuBar activeMenuBar = new MenuBar(true);
-    	activeMenuBar.addItem(getClassCheckItem(Locale.LS("Add Diode"), "DiodeElm"));
-    	activeMenuBar.addItem(getClassCheckItem(Locale.LS("Add Zener Diode"), "ZenerElm"));
-    	activeMenuBar.addItem(getClassCheckItem(Locale.LS("Add Transistor (bipolar, NPN)"), "NTransistorElm"));
-    	activeMenuBar.addItem(getClassCheckItem(Locale.LS("Add Transistor (bipolar, PNP)"), "PTransistorElm"));
-    	activeMenuBar.addItem(getClassCheckItem(Locale.LS("Add MOSFET (N-Channel)"), "NMosfetElm"));
-    	activeMenuBar.addItem(getClassCheckItem(Locale.LS("Add MOSFET (P-Channel)"), "PMosfetElm"));
-    	activeMenuBar.addItem(getClassCheckItem(Locale.LS("Add JFET (N-Channel)"), "NJfetElm"));
-    	activeMenuBar.addItem(getClassCheckItem(Locale.LS("Add JFET (P-Channel)"), "PJfetElm"));
-    	activeMenuBar.addItem(getClassCheckItem(Locale.LS("Add SCR"), "SCRElm"));
-    	activeMenuBar.addItem(getClassCheckItem(Locale.LS("Add DIAC"), "DiacElm"));
-    	activeMenuBar.addItem(getClassCheckItem(Locale.LS("Add TRIAC"), "TriacElm"));
-    	activeMenuBar.addItem(getClassCheckItem(Locale.LS("Add Darlington Pair (NPN)"), "NDarlingtonElm"));
-    	activeMenuBar.addItem(getClassCheckItem(Locale.LS("Add Darlington Pair (PNP)"), "PDarlingtonElm"));
-    	activeMenuBar.addItem(getClassCheckItem(Locale.LS("Add Varactor/Varicap"), "VaractorElm"));
-    	activeMenuBar.addItem(getClassCheckItem(Locale.LS("Add Tunnel Diode"), "TunnelDiodeElm"));
-    	activeMenuBar.addItem(getClassCheckItem(Locale.LS("Add Triode"), "TriodeElm"));
-    	activeMenuBar.addItem(getClassCheckItem(Locale.LS("Add Unijunction Transistor"), "UnijunctionElm"));
-    	mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Active Components")), activeMenuBar);
-
-    	MenuBar activeBlocMenuBar = new MenuBar(true);
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add Op Amp (ideal, - on top)"), "OpAmpElm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add Op Amp (ideal, + on top)"), "OpAmpSwapElm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add Op Amp (real)"), "OpAmpRealElm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add Analog Switch (SPST)"), "AnalogSwitchElm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add Analog Switch (SPDT)"), "AnalogSwitch2Elm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add Tristate Buffer"), "TriStateElm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add Schmitt Trigger"), "SchmittElm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add Schmitt Trigger (Inverting)"), "InvertingSchmittElm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add Delay Buffer"), "DelayBufferElm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add CCII+"), "CC2Elm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add CCII-"), "CC2NegElm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add Comparator (Hi-Z/GND output)"), "ComparatorElm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add OTA (LM13700 style)"), "OTAElm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add Voltage-Controlled Voltage Source (VCVS)"), "VCVSElm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add Voltage-Controlled Current Source (VCCS)"), "VCCSElm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add Current-Controlled Voltage Source (CCVS)"), "CCVSElm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add Current-Controlled Current Source (CCCS)"), "CCCSElm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add Optocoupler"), "OptocouplerElm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add Time Delay Relay"), "TimeDelayRelayElm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add LM317"), "CustomCompositeElm:~LM317-v2"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add TL431"), "CustomCompositeElm:~TL431"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add Motor Protection Switch"), "MotorProtectionSwitchElm"));
-    	activeBlocMenuBar.addItem(getClassCheckItem(Locale.LS("Add Subcircuit Instance"), "CustomCompositeElm"));
-    	mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Active Building Blocks")), activeBlocMenuBar);
-    	
-    	MenuBar gateMenuBar = new MenuBar(true);
-    	gateMenuBar.addItem(getClassCheckItem(Locale.LS("Add Logic Input"), "LogicInputElm"));
-    	gateMenuBar.addItem(getClassCheckItem(Locale.LS("Add Logic Output"), "LogicOutputElm"));
-    	gateMenuBar.addItem(getClassCheckItem(Locale.LS("Add Inverter"), "InverterElm"));
-    	gateMenuBar.addItem(getClassCheckItem(Locale.LS("Add NAND Gate"), "NandGateElm"));
-    	gateMenuBar.addItem(getClassCheckItem(Locale.LS("Add NOR Gate"), "NorGateElm"));
-    	gateMenuBar.addItem(getClassCheckItem(Locale.LS("Add AND Gate"), "AndGateElm"));
-    	gateMenuBar.addItem(getClassCheckItem(Locale.LS("Add OR Gate"), "OrGateElm"));
-    	gateMenuBar.addItem(getClassCheckItem(Locale.LS("Add XOR Gate"), "XorGateElm"));
-    	mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Logic Gates, Input and Output")), gateMenuBar);
-
-    	MenuBar chipMenuBar = new MenuBar(true);
-    	chipMenuBar.addItem(getClassCheckItem(Locale.LS("Add D Flip-Flop"), "DFlipFlopElm"));
-    	chipMenuBar.addItem(getClassCheckItem(Locale.LS("Add JK Flip-Flop"), "JKFlipFlopElm"));
-    	chipMenuBar.addItem(getClassCheckItem(Locale.LS("Add T Flip-Flop"), "TFlipFlopElm"));
-    	chipMenuBar.addItem(getClassCheckItem(Locale.LS("Add 7 Segment LED"), "SevenSegElm"));
-    	chipMenuBar.addItem(getClassCheckItem(Locale.LS("Add 7 Segment Decoder"), "SevenSegDecoderElm"));
-    	chipMenuBar.addItem(getClassCheckItem(Locale.LS("Add Multiplexer"), "MultiplexerElm"));
-    	chipMenuBar.addItem(getClassCheckItem(Locale.LS("Add Demultiplexer"), "DeMultiplexerElm"));
-    	chipMenuBar.addItem(getClassCheckItem(Locale.LS("Add SIPO shift register"), "SipoShiftElm"));
-    	chipMenuBar.addItem(getClassCheckItem(Locale.LS("Add PISO shift register"), "PisoShiftElm"));
-    	chipMenuBar.addItem(getClassCheckItem(Locale.LS("Add Counter"), "CounterElm"));
-    	chipMenuBar.addItem(getClassCheckItem(Locale.LS("Add Counter w/ Load"), "Counter2Elm"));
-    	chipMenuBar.addItem(getClassCheckItem(Locale.LS("Add Ring Counter"), "DecadeElm"));
-    	chipMenuBar.addItem(getClassCheckItem(Locale.LS("Add Latch"), "LatchElm"));
-    	chipMenuBar.addItem(getClassCheckItem(Locale.LS("Add Sequence generator"), "SeqGenElm"));
-    	chipMenuBar.addItem(getClassCheckItem(Locale.LS("Add Adder"), "FullAdderElm"));
-    	chipMenuBar.addItem(getClassCheckItem(Locale.LS("Add Half Adder"), "HalfAdderElm"));
-    	chipMenuBar.addItem(getClassCheckItem(Locale.LS("Add Custom Logic"), "UserDefinedLogicElm")); // don't change this, it will break people's saved shortcuts
-    	chipMenuBar.addItem(getClassCheckItem(Locale.LS("Add Static RAM"), "SRAMElm"));
-    	mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Digital Chips")), chipMenuBar);
-    	
-    	MenuBar achipMenuBar = new MenuBar(true);
-    	achipMenuBar.addItem(getClassCheckItem(Locale.LS("Add 555 Timer"), "TimerElm"));
-    	achipMenuBar.addItem(getClassCheckItem(Locale.LS("Add Phase Comparator"), "PhaseCompElm"));
-    	achipMenuBar.addItem(getClassCheckItem(Locale.LS("Add DAC"), "DACElm"));
-    	achipMenuBar.addItem(getClassCheckItem(Locale.LS("Add ADC"), "ADCElm"));
-    	achipMenuBar.addItem(getClassCheckItem(Locale.LS("Add VCO"), "VCOElm"));
-    	achipMenuBar.addItem(getClassCheckItem(Locale.LS("Add Monostable"), "MonostableElm"));
-    	mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Analog and Hybrid Chips")), achipMenuBar);
-    	
-    	if (subcircuitMenuBar == null)
-    	    subcircuitMenuBar = new MenuBar[2];
-    	subcircuitMenuBar[num] = new MenuBar(true);
-    	mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Subcircuits")), subcircuitMenuBar[num]);
-    	
-    	MenuBar otherMenuBar = new MenuBar(true);
-    	CheckboxMenuItem mi;
-    	otherMenuBar.addItem(mi=getClassCheckItem(Locale.LS("Drag All"), "DragAll"));
-    	mi.setShortcut(Locale.LS("(Alt-drag)"));
-    	otherMenuBar.addItem(mi=getClassCheckItem(Locale.LS("Drag Row"), "DragRow"));
-    	mi.setShortcut(Locale.LS("(A-S-drag)"));
-    	otherMenuBar.addItem(mi=getClassCheckItem(Locale.LS("Drag Column"), "DragColumn"));
-    	mi.setShortcut(isMac ? Locale.LS("(A-Cmd-drag)") : Locale.LS("(A-M-drag)"));
-    	otherMenuBar.addItem(getClassCheckItem(Locale.LS("Drag Selected"), "DragSelected"));
-    	otherMenuBar.addItem(mi=getClassCheckItem(Locale.LS("Drag Post"), "DragPost"));
-    	mi.setShortcut("(" + ctrlMetaKey + "drag)");
-
-    	mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Drag")), otherMenuBar);
-
-    	mainMenuBar.addItem(mi=getClassCheckItem(Locale.LS("Select/Drag Sel"), "Select"));
-	mi.setShortcut(Locale.LS("(space or Shift-drag)"));
+	menuBuilder.composeMainMenuHardcoded(mainMenuBar, num);
     }
     
     void composeSubcircuitMenu() {
@@ -2165,36 +1866,7 @@ public CirSim() {
 
     
     void centreCircuit() {
-	if (elmList == null)  // avoid exception if called during initialization
-	    return;
-	
-	Rectangle bounds = getCircuitBounds();
-    	setCircuitArea();
-	
-    	double scale = 1;
-    	int cheight = circuitArea.height;
-    	
-    	// if there's no scope, and the window isn't very wide, then don't use all of the circuit area when
-    	// centering, because the info in the corner might not get in the way.  We still want circuitArea to be the full
-    	// height though, to allow the user to put stuff there manually.
-    	if (scopeCount == 0 && circuitArea.width < 800) {
-    	    int h = (int) ((double)cheight * scopeHeightFraction);
-    	    cheight -= h;
-    	}
-    	
-    	if (bounds != null)
-    	    // add some space on edges because bounds calculation is not perfect
-    	    scale = Math.min(circuitArea.width /(double)(bounds.width+140),
-    			     cheight/(double)(bounds.height+100));
-    	scale = Math.min(scale, 1.5); // Limit scale so we don't create enormous circuits in big windows
-
-    	// calculate transform so circuit fills most of screen
-    	transform[0] = transform[3] = scale;
-    	transform[1] = transform[2] = transform[4] = transform[5] = 0;
-    	if (bounds != null) {
-    	    transform[4] = (circuitArea.width -bounds.width *scale)/2 - bounds.x*scale;
-    	    transform[5] = (cheight-bounds.height*scale)/2 - bounds.y*scale;
-    	}
+	viewportController.centreCircuit();
     }
 
     // get circuit bounds.  remember this doesn't use setBbox().  That is calculated when we draw
@@ -2218,45 +1890,14 @@ public CirSim() {
     	return new Rectangle(minx, miny, maxx-minx, maxy-miny);
     }
 
-    /**
-     * Find the first ViewportElm in the circuit.
-     * Used to determine initial view when loading a circuit.
-     */
+	// Delegated to ViewportController
     ViewportElm findViewportElm() {
-        for (int i = 0; i < elmList.size(); i++) {
-            CircuitElm ce = getElm(i);
-            if (ce instanceof ViewportElm)
-                return (ViewportElm) ce;
-        }
-        return null;
+	return viewportController.findViewportElm();
     }
     
-    /**
-     * Apply transform to show the area defined by a ViewportElm.
-     * Calculates scale and translation to fit the viewport into the current canvas.
-     */
+	// Delegated to ViewportController
     void applyViewportTransform(ViewportElm viewport) {
-        setCircuitArea();
-        Rectangle bounds = viewport.getViewportBounds();
-        
-        int viewWidth = bounds.width;
-        int viewHeight = bounds.height;
-        
-        if (viewWidth <= 0 || viewHeight <= 0)
-            return;
-            
-        // Calculate scale to fit viewport into canvas
-        double scaleX = (double)circuitArea.width / viewWidth;
-        double scaleY = (double)circuitArea.height / viewHeight;
-        double scale = Math.min(scaleX, scaleY);
-        
-        // Calculate translation to center the viewport
-        double translateX = (circuitArea.width - viewWidth * scale) / 2 - bounds.x * scale;
-        double translateY = (circuitArea.height - viewHeight * scale) / 2 - bounds.y * scale;
-        
-        transform[0] = transform[3] = scale;
-        transform[4] = translateX;
-        transform[5] = translateY;
+	viewportController.applyViewportTransform(viewport);
     }
 
     long lastTime = 0, lastFrameTime, lastIterTime, secTime = 0;
@@ -3105,66 +2746,7 @@ public CirSim() {
     }
     
     void setupScopes() {
-    	int i;
-
-    	// check scopes to make sure the elements still exist, and remove
-    	// unused scopes/columns
-    	int pos = -1;
-    	for (i = 0; i < scopeCount; i++) {
-    	    	if (scopes[i].needToRemove()) {
-    			int j;
-    			for (j = i; j != scopeCount; j++)
-    				scopes[j] = scopes[j+1];
-    			scopeCount--;
-    			i--;
-    			continue;
-    		}
-    		if (scopes[i].position > pos+1)
-    			scopes[i].position = pos+1;
-    		pos = scopes[i].position;
-    	}
-    	while (scopeCount > 0 && scopes[scopeCount-1].getElm() == null)
-    		scopeCount--;
-    	int h = canvasHeight - circuitArea.height;
-    	pos = 0;
-    	for (i = 0; i != scopeCount; i++)
-    		scopeColCount[i] = 0;
-    	for (i = 0; i != scopeCount; i++) {
-    		pos = max(scopes[i].position, pos);
-    		scopeColCount[scopes[i].position]++;
-    	}
-    	int colct = pos+1;
-    	int iw = infoWidth;
-    	int w = (canvasWidth-iw) / colct;
-    	int marg = 10;
-    	if (w < marg*2)
-    		w = marg*2;
-    	pos = -1;
-    	int colh = 0;
-    	int row = 0;
-    	int speed = 0;
-    	for (i = 0; i != scopeCount; i++) {
-    		Scope s = scopes[i];
-    		if (s.position > pos) {
-    			pos = s.position;
-    			colh = h / scopeColCount[pos];
-    			row = 0;
-    			speed = s.speed;
-    		}
-    		s.stackCount = scopeColCount[pos];
-    		if (s.speed != speed) {
-    			s.speed = speed;
-    			s.resetGraph();
-    		}
-    		Rectangle r = new Rectangle(pos*w, canvasHeight-h+colh*row, w-marg, colh);
-    		row++;
-    		if (!r.equals(s.rect))
-    			s.setRect(r);
-    	}
-    	if (oldScopeCount != scopeCount) {
-    	    setCircuitArea();
-    	    oldScopeCount = scopeCount;
-    	}
+	scopeManager.setupScopes();
     }
     
     String getHint() {
@@ -5053,398 +4635,7 @@ public CirSim() {
     }
     
     public void menuPerformed(String menu, String item) {
-	if ((menu=="edit" || menu=="main" || menu=="scopes") && noEditCheckItem.getState()) {
-	    alertOrWarn(Locale.LS("Editing disabled.  Re-enable from the Options menu."));
-	    return;
-	}
-    	if (item=="about")
-    		aboutBox = new AboutBox(circuitjs1.versionString);
-    	if (item=="importfromlocalfile") {
-    		pushUndo();
-    		if (isElectron())
-    		    electronOpenFile();
-    		else
-    		    loadFileInput.click();
-    	}
-    	if (item=="newwindow") {
-    	    Window.open(Document.get().getURL(), "_blank", "");
-    	}
-    	if (item=="save")
-    	    electronSave(dumpCircuit());
-    	if (item=="saveas")
-    	    electronSaveAs(dumpCircuit());
-    	if (item=="importfromtext") {
-    		dialogShowing = new ImportFromTextDialog(this);
-    	}
-    	if (item=="importfromdropbox") {
-    		dialogShowing = new ImportFromDropboxDialog(this);
-    	}
-    	if (item=="exportasurl") {
-    		doExportAsUrl();
-    		unsavedChanges = false;
-    	}
-	if (item=="openrunnertable") {
-		doOpenRunnerOutputTable();
-	}
-    	if (item=="exportaslocalfile") {
-    		doExportAsLocalFile();
-    		unsavedChanges = false;
-    	}
-    	if (item=="exportastext") {
-    		doExportAsText();
-    		unsavedChanges = false;
-    	}
-    	if (item=="exportassfcr") {
-    		doExportAsSFCR();
-    		unsavedChanges = false;
-    	}
-    	if (item=="viewmodelinfo") {
-    		doViewModelInfo();
-    	}
-	if (item=="editlookuptables") {
-		doEditLookupTables();
-	}
-    	if (item=="exportasimage")
-		doExportAsImage();
-    	if (item=="copypng") {
-		doImageToClipboard();
-    		if (contextPanel!=null)
-			contextPanel.hide();
-    	}
-    	if (item=="exportassvg")
-		doExportAsSVG();
-    	if (item=="createsubcircuit")
-		doCreateSubcircuit();
-    	if (item=="dcanalysis")
-    	    	doDCAnalysis();
-    	if (item=="print")
-    	    	doPrint();
-    	if (item=="recover")
-    	    	doRecover();
-
-    	if ((menu=="elm" || menu=="scopepop") && contextPanel!=null)
-    		contextPanel.hide();
-    	if (menu=="options" && item=="shortcuts") {
-    	    	dialogShowing = new ShortcutsDialog(this);
-    	    	dialogShowing.show();
-    	}
-    	if (menu=="options" && item=="subcircuits") {
-    	    	dialogShowing = new SubcircuitDialog(this);
-    	    	dialogShowing.show();
-    	}
-    	if (menu=="options" && item=="voltageunit") {
-    	    	showVoltageUnitDialog();
-    	}
-	if (menu=="options" && item=="elementregistryreport") {
-	    logElementRegistryInferenceReport();
-	}
-    	if (menu=="options" && item=="toggleEdit") {
-    	    	noEditCheckItem.setState(!noEditCheckItem.getState());
-    	}
-    	if (item=="search") {
-    	    	dialogShowing = new SearchDialog(this);
-    	    	dialogShowing.show();
-    	}
-    	if (item=="variablebrowser") {
-    	    	VariableBrowserDialog.openDialog(this);
-    	}
-    	if (item=="hinteditor") {
-    	    	HintEditorDialog.openDialog(this);
-    	}
-    	if (item=="actiontimedialog") {
-    	    	ActionTimeDialog.openDialog(this);
-    	}
-    	if (item=="mathtestdialog") {
-    	    	openMathTestDialog();
-    	}
-    	if (item=="tabletestdialog") {
-    	    	openTableTestDialog();
-    	}
-    	if (item=="iframeviewer") {
-    	    	openIframeViewer();
-    	}
-	if (item=="referencedocs") {
-	    	openReferenceDocsViewer();
-	}
-    	if (menu=="options" && item=="other")
-    		doEdit(new EditOptions(this));
-    	if (item=="devtools")
-    	    toggleDevTools();
-    	if (item=="undo")
-    		doUndo();
-    	if (item=="redo")
-    		doRedo();
-    	
-    	// if the mouse is hovering over an element, and a shortcut key is pressed, operate on that element (treat it like a context menu item selection)
-    	if (menu == "key" && mouseElm != null) {
-    	    menuElm = mouseElm;
-    	    menu = "elm";
-    	}
-	if (menu != "elm")
-		menuElm = null;
-
-    	if (item == "cut") {
-    		doCut();
-    	}
-    	if (item == "copy") {
-    		doCopy();
-    	}
-    	if (item=="paste")
-    		doPaste(null);
-    	if (item=="duplicate") {
-    	    	doDuplicate();
-    	}
-    	if (item=="flip")
-    	    doFlip();
-    	if (item=="split")
-    	    doSplit(menuElm);
-    	if (item=="selectAll")
-    		doSelectAll();
-    	//	if (e.getSource() == exitItem) {
-    	//	    destroyFrame();
-    	//	    return;
-    	//	}
-    	
-    	if (item=="centrecircuit") {
-    		pushUndo();
-    		centreCircuit();
-    	}
-    	if (item=="zoomToViewport") {
-    		// If viewport exists, zoom to it; otherwise create one
-    		ViewportElm viewport = findViewportElm();
-    		if (viewport != null) {
-    		    pushUndo();
-    		    applyViewportTransform(viewport);
-    		} else {
-    		    // No viewport exists, switch to add ViewportElm mode
-    		    setMouseMode(MODE_ADD_ELM);
-    		    mouseModeStr = "ViewportElm";
-    		    toolbar.setModeLabel("Viewport");
-    		    toolbar.highlightButton(mouseModeStr);
-    		}
-    	}
-    	if (item=="flipx") {
-	    pushUndo();
-	    flipX();
-    	}
-    	if (item=="flipy") {
-	    pushUndo();
-	    flipY();
-    	}
-    	if (item=="flipxy") {
-	    pushUndo();
-	    flipXY();
-    	}
-    	if (item=="stackAll")
-    		stackAll();
-    	if (item=="unstackAll")
-    		unstackAll();
-    	if (item=="combineAll")
-		combineAll();
-    	if (item=="separateAll")
-		separateAll();
-    	if (item=="viewAllPlotly")
-			new ScopeViewerDialog(this, null, true);
-    	if (item=="zoomin")
-    	    zoomCircuit(20, true);
-    	if (item=="zoomout")
-    	    zoomCircuit(-20, true);
-    	if (item=="zoom100")
-    	    setCircuitScale(1, true);
-    	if (menu=="elm" && item=="edit")
-    		doEdit(menuElm);
-    	if (item=="delete") {
-    		if (menu!="elm")
-    			menuElm = null;
-    		pushUndo();
-    		doDelete(true);
-    	}
-    	if (item=="sliders")
-    	    doSliders(menuElm);
-    	
-	    if (item=="viewSankey" && (menuElm instanceof SFCTableElm)) {
-	    	SFCSankeyViewer viewer = new SFCSankeyViewer((TableElm) menuElm);
-	    	viewer.openDialog();
-    	}
-
-	    if (item=="viewDagBlocks" && (menuElm instanceof EquationTableElm)) {
-		SFCRDagBlocksViewer viewer = new SFCRDagBlocksViewer(this);
-		viewer.openExternalWindow();
-	    }
-
-	    if (item=="viewEquationTableDebug" && (menuElm instanceof EquationTableElm)) {
-		new EquationTableMarkdownDebugDialog((EquationTableElm) menuElm).show();
-	    }
-
-	    if (item=="viewEquationTableReference" && (menuElm instanceof EquationTableElm)) {
-		ReferenceDocs.openMarkdownReference(
-		    "EquationTable Reference",
-		    "docs/reference/EquationTableReference.md");
-	    }
-
-    	if (item=="viewInScope" && menuElm != null) {
-    		int i;
-    		for (i = 0; i != scopeCount; i++)
-    			if (scopes[i].getElm() == null)
-    				break;
-    		if (i == scopeCount) {
-    			if (scopeCount == scopes.length)
-    				return;
-    			scopeCount++;
-    			scopes[i] = new Scope(this);
-    			scopes[i].position = i;
-    			//handleResize();
-    		}
-    		scopes[i].setElm(menuElm);
-    		if (i > 0)
-    		    scopes[i].speed = scopes[i-1].speed;
-    	}
-    	
-    	if (item=="viewInFloatScope" && menuElm != null) {
-    	    ScopeElm newScope = new ScopeElm(snapGrid(menuElm.x+50), snapGrid(menuElm.y+50));
-    	    elmList.addElement(newScope);
-    	    newScope.setScopeElm(menuElm);
-    	    
-    	    // need to rebuild scopeElmArr
-    	    needAnalyze();
-	}
-    	
-    	if (item.startsWith("addToScope") && menuElm != null) {
-    	    int n;
-    	    n = Integer.parseInt(item.substring(10));
-    	    if (n < scopeCount + countScopeElms()) {
-    		if (n < scopeCount )
-    		    scopes[n].addElm(menuElm);
-    		else
-    		    getNthScopeElm(n-scopeCount).elmScope.addElm(menuElm);
-    	    }
-    	    scopeMenuSelected = -1;
-    	}
-    	
-    	if (menu=="scopepop") {
-    		pushUndo();
-    		Scope s;
-		if (menuScope != -1 )
-		    	s= scopes[menuScope];
-		else
-		    	s= ((ScopeElm)mouseElm).elmScope;
-
-    		if (item=="dock") {
-            		if (scopeCount == scopes.length)
-            			return;
-            		scopes[scopeCount] = ((ScopeElm)mouseElm).elmScope;
-            		((ScopeElm)mouseElm).clearElmScope();
-            		scopes[scopeCount].position = scopeCount;
-            		scopeCount++;
-            		doDelete(false);
-    		}
-    		if (item=="undock") {
-		    CircuitElm elm = s.getElm();
-    	    	    ScopeElm newScope = new ScopeElm(snapGrid(elm.x+50), snapGrid(elm.y+50));
-    	    	    elmList.addElement(newScope);
-    	    	    newScope.setElmScope(scopes[menuScope]);
-    	    	    
-    	    	    int i;
-    	    	    // remove scope from list.  setupScopes() will fix the positions
-    	    	    for (i = menuScope; i < scopeCount; i++)
-    	    		scopes[i] = scopes[i+1];
-    	    	    scopeCount--;
-
-    	            needAnalyze();      // need to rebuild scopeElmArr
-    		}
-    		if (item=="remove")
-    		    	s.setElm(null);  // setupScopes() will clean this up
-    		if (item=="removeplot")
-			s.removePlot(menuPlot);
-    		if (item=="speed2")
-    			s.speedUp();
-    		if (item=="speed1/2")
-    			s.slowDown();
-//    		if (item=="scale")
-//    			scopes[menuScope].adjustScale(.5);
-    		if (item=="maxscale")
-    			s.maxScale();
-    		if (item=="stack")
-    			stackScope(menuScope);
-    		if (item=="unstack")
-    			unstackScope(menuScope);
-    		if (item=="combine")
-			combineScope(menuScope);
-    		if (item=="selecty")
-    			s.selectY();
-    		if (item=="reset")
-    			s.resetGraph(true);
-    		if (item=="properties")
-			s.properties();
-    		if (item=="exportdata")
-			new ExportScopeDataDialog(s);
-    		if (item=="viewplotly")
-				new ScopeViewerDialog(this, s, true);
-    		if (item=="drawfromzero")
-    			s.toggleDrawFromZero();
-    		deleteUnusedScopeElms();
-    	}
-    	if (menu=="circuits" && item.indexOf("setup ") ==0) {
-    		pushUndo();
-    		int sp = item.indexOf(' ', 6);
-    		readSetupFile(item.substring(6, sp), item.substring(sp+1));
-    	}
-    	if (item=="newblankcircuit") {
-    	    pushUndo();
-		    readSetupFile("electronics/blank.txt", "Blank Circuit");
-    	}
-    		
-    	//	if (ac.indexOf("setup ") == 0) {
-    	//	    pushUndo();
-    	//	    readSetupFile(ac.substring(6),
-    	//			  ((MenuItem) e.getSource()).getLabel());
-    	//	}
-
-    	// IES: Moved from itemStateChanged()
-    	if (menu=="main") {
-    		if (contextPanel!=null)
-    			contextPanel.hide();
-    		//	MenuItem mmi = (MenuItem) mi;
-    		//		int prevMouseMode = mouseMode;
-    		setMouseMode(MODE_ADD_ELM);
-    		String s = item;
-    		if (s.length() > 0)
-    			mouseModeStr = s;
-    		if (s.compareTo("DragAll") == 0)
-    			setMouseMode(MODE_DRAG_ALL);
-    		else if (s.compareTo("DragRow") == 0)
-    			setMouseMode(MODE_DRAG_ROW);
-    		else if (s.compareTo("DragColumn") == 0)
-    			setMouseMode(MODE_DRAG_COLUMN);
-    		else if (s.compareTo("DragSelected") == 0)
-    			setMouseMode(MODE_DRAG_SELECTED);
-    		else if (s.compareTo("DragPost") == 0)
-    			setMouseMode(MODE_DRAG_POST);
-    		else if (s.compareTo("Select") == 0)
-    			setMouseMode(MODE_SELECT);
-
-		updateToolbar();
-
-    		//		else if (s.length() > 0) {
-    		//			try {
-    		//				addingClass = Class.forName(s);
-    		//			} catch (Exception ee) {
-    		//				ee.printStackTrace();
-    		//			}
-    		//		}
-    		//		else
-    		//			setMouseMode(prevMouseMode);
-    		tempMouseMode = mouseMode;
-    	}
-    	if (item=="fullscreen") {
-    	    if (! Graphics.isFullScreen)
-    		Graphics.viewFullScreen();
-    	    else
-    		Graphics.exitFullScreen();
-    	    centreCircuit();
-    	}
-    
-	repaint();
+	commandRouter.menuPerformed(menu, item);
     }
     
     /**
@@ -5484,120 +4675,53 @@ public CirSim() {
 	}
     
     int countScopeElms() {
-	int c = 0;
-	for (int i = 0; i != elmList.size(); i++) {
-	    if ( elmList.get(i) instanceof ScopeElm)
-		c++;
-	}
-	return c;
+	return scopeManager.countScopeElms();
     }
     
     ScopeElm getNthScopeElm(int n) {
-	for (int i = 0; i != elmList.size(); i++) {
-	    if ( elmList.get(i) instanceof ScopeElm) {
-		n--;
-		if (n<0)
-		    return (ScopeElm) elmList.get(i);
-	    }
-	}
-	return (ScopeElm) null;
+	return scopeManager.getNthScopeElm(n);
     }
     
     
     boolean canStackScope(int s) {
-	if (scopeCount < 2) 
-	    return false;
-	if (s==0)
-	    s=1;
-    	if (scopes[s].position == scopes[s-1].position)
-    	    return false;
-	return true;
+	return scopeManager.canStackScope(s);
     }
     
     boolean canCombineScope(int s) {
-	return scopeCount >=2;
+	return scopeManager.canCombineScope(s);
     }
     
     boolean canUnstackScope(int s) {
-	if (scopeCount < 2) 
-	    return false;
-	if (s==0)
-	    s=1;
-    	if (scopes[s].position != scopes[s-1].position) {
-        	if ( s + 1 < scopeCount && scopes[s+1].position == scopes[s].position) // Allow you to unstack by selecting the top scope in the stack
-        	    return true;
-        	else
-        	    return false;
-    	}
-	return true;
+	return scopeManager.canUnstackScope(s);
     }
 
     void stackScope(int s) {
-	if (! canStackScope(s) )
-	    return;
-    	if (s == 0) {
-    		s = 1;
-    	}
-    	scopes[s].position = scopes[s-1].position;
-    	for (s++; s < scopeCount; s++)
-    		scopes[s].position--;
+	scopeManager.stackScope(s);
     }
 
     void unstackScope(int s) {
-	if (! canUnstackScope(s) )
-	    return;
-    	if (s == 0) {
-    		s = 1;
-    	}
-    	if (scopes[s].position != scopes[s-1].position) // Allow you to unstack by selecting the top scope in the stack
-    	    s++;
-    	for (; s < scopeCount; s++)
-    		scopes[s].position++;
+	scopeManager.unstackScope(s);
     }
 
     void combineScope(int s) {
-	if (! canCombineScope(s))
-	    return;
-    	if (s == 0) {
-    		s = 1;
-    	}
-    	scopes[s-1].combine(scopes[s]);
-    	scopes[s].setElm(null);
+	scopeManager.combineScope(s);
     }
     
 
     void stackAll() {
-    	int i;
-    	for (i = 0; i != scopeCount; i++) {
-    		scopes[i].position = 0;
-    		scopes[i].showMax = scopes[i].showMin = false;
-    	}
+	scopeManager.stackAll();
     }
 
     void unstackAll() {
-    	int i;
-    	for (i = 0; i != scopeCount; i++) {
-    		scopes[i].position = i;
-    		scopes[i].showMax = true;
-    	}
+	scopeManager.unstackAll();
     }
 
     void combineAll() {
-    	int i;
-    	for (i = scopeCount-2; i >= 0; i--) {
-    	    scopes[i].combine(scopes[i+1]);
-    	    scopes[i+1].setElm(null);
-    	}
+	scopeManager.combineAll();
     }
     
     void separateAll() {
-    	int i;
-	Scope newscopes[] = new Scope[20];
-	int ct = 0;
-    	for (i = 0; i < scopeCount; i++)
-    	    ct = scopes[i].separate(newscopes, ct);
-	scopes = newscopes;
-	scopeCount = ct;
+	scopeManager.separateAll();
     }
 
     void doEdit(Editable eable) {
@@ -5630,35 +4754,16 @@ public CirSim() {
 
     void doExportAsUrl()
     {
-    	String dump = dumpCircuit();
-		dialogShowing = new ExportAsUrlDialog(dump);
-		dialogShowing.show();
+	circuitIOService.doExportAsUrl();
     }
 
 	void doOpenRunnerOutputTable()
 	{
-	String dump = dumpCircuit();
-	String[] start = Window.Location.getHref().split("\\?");
-	String query;
-	Storage stor = Storage.getLocalStorageIfSupported();
-	if (stor != null) {
-	    String key = "nonInteractiveDump-" + System.currentTimeMillis();
-	    stor.setItem(key, dump);
-	    query = "?runner=1&nonInteractive=1&nonInteractiveDumpKey=" + URL.encodeQueryString(key);
-	} else {
-	    query = "?runner=1&nonInteractive=1&ctz=" + compressForUrl(dump);
-	}
-	Window.open(start[0] + query, "_blank", "");
+	circuitIOService.doOpenRunnerOutputTable();
 	}
 
 	String getRunnerDumpFromStorage(String key) {
-	if (key == null || key.length() == 0)
-	    return null;
-	Storage stor = Storage.getLocalStorageIfSupported();
-	if (stor == null)
-	    return null;
-	String dump = stor.getItem(key);
-	return dump;
+	return circuitIOService.getRunnerDumpFromStorage(key);
 	}
 
 	String compressForUrl(String dump) {
@@ -5667,15 +4772,12 @@ public CirSim() {
     
     void doExportAsText()
     {
-    	String dump = dumpCircuit();
-    	dialogShowing = new ExportAsTextDialog(this, dump);
-    	dialogShowing.show();
+	circuitIOService.doExportAsText();
     }
 
     void doExportAsSFCR()
     {
-		dialogShowing = new ExportAsSFCRDialog(this);
-    	dialogShowing.show();
+	circuitIOService.doExportAsSFCR();
     }
 
     void doViewModelInfo()
@@ -5736,9 +4838,7 @@ public CirSim() {
     }
     
     void doExportAsLocalFile() {
-    	String dump = dumpCircuit();
-    	dialogShowing = new ExportAsLocalFileDialog(dump);
-    	dialogShowing.show();
+	circuitIOService.doExportAsLocalFile();
     }
 
     public void importCircuitFromText(String circuitText, boolean subcircuitsOnly) {
@@ -5805,45 +4905,7 @@ public CirSim() {
     }
     
     String dumpCircuit() {
-		int i;
-		CustomLogicModel.clearDumpedFlags();
-		CustomCompositeModel.clearDumpedFlags();
-		DiodeModel.clearDumpedFlags();
-		TransistorModel.clearDumpedFlags();
-		
-		String dump = dumpOptions();
-			
-		for (i = 0; i != elmList.size(); i++) {
-			CircuitElm ce = getElm(i);
-			String m = ce.dumpModel();
-			if (m != null && !m.isEmpty())
-			dump += m + "\n";
-			dump += getElementDumpWithUid(ce) + "\n";
-		}
-		for (i = 0; i != scopeCount; i++) {
-			String d = scopes[i].dump();
-			if (d != null)
-			dump += d + "\n";
-		}
-		for (i = 0; i != adjustables.size(); i++) {
-			Adjustable adj = adjustables.get(i);
-			dump += "38 " + adj.dump() + "\n";
-		}
-		// Dump action scheduler
-		ActionScheduler scheduler = ActionScheduler.getInstance(this);
-		String schedulerDump = scheduler.dump();
-		if (schedulerDump != null && !schedulerDump.isEmpty()) {
-		    dump += schedulerDump;
-		}
-		// Dump hints from HintRegistry
-		String hintsDump = HintRegistry.dumpAll();
-		if (hintsDump != null && !hintsDump.isEmpty()) {
-		    dump += hintsDump;
-		}
-		if (hintType != -1)
-			dump += "h " + hintType + " " + hintItem1 + " " +
-			hintItem2 + "\n";
-		return dump;
+	return circuitIOService.dumpCircuit();
     }
 
     String getElementDumpWithUid(CircuitElm ce) {
@@ -6018,95 +5080,11 @@ public CirSim() {
 }
 
     void readCircuit(String text, int flags) {
-	// Debug: log first 200 chars of text to see what we're parsing
-	if (text != null && !text.trim().isEmpty()) {
-	    String preview = text.length() > 200 ? text.substring(0, 200) : text;
-	    console("readCircuit text preview: " + preview.replace("\n", "\\n"));
-	    console("isSFCRFormat result: " + SFCRParser.isSFCRFormat(text));
-	}
-	
-	// Check if this is SFCR format (human-readable SFC model definition)
-	if (SFCRParser.isSFCRFormat(text)) {
-	    console("Parsing mode: SFCRParser (SFCR format detected)" + (currentCircuitFile != null ? " - " + currentCircuitFile : ""));
-	    // Clear existing circuit first
-	    readCircuit(new byte[0], flags);
-	    
-	    // Parse SFCR format
-	    SFCRParser parser = new SFCRParser(this);
-	    if (parser.parse(text)) {
-		console("Loaded SFCR model with " + parser.getCreatedElements().size() + " elements");
-		modelInfoSourceText = text;
-		
-		// Store info content if available (compose inline markdown + @info block)
-		modelInfoContent = InfoViewerContentBuilder.buildModelInfoMarkdown(text, parser.getInfoContent());
-		String editorContent = getModelInfoEditorContent();
-		if (RuntimeMode.isGwt() && viewModelInfoItem != null) {
-		    viewModelInfoItem.setEnabled(editorContent != null && !editorContent.isEmpty());
-		}
-		if (RuntimeMode.isGwt() && helpViewModelInfoItem != null) {
-		    helpViewModelInfoItem.setEnabled(editorContent != null && !editorContent.isEmpty());
-		}
-
-		if (RuntimeMode.isGwt() && autoOpenModelInfoOnLoad && editorContent != null && !editorContent.isEmpty())
-		    doViewModelInfo();
-		
-		// Process any raw circuit lines from @circuit blocks
-		java.util.ArrayList<String> rawLines = parser.getRawCircuitLines();
-		if (!rawLines.isEmpty()) {
-		    console("Processing " + rawLines.size() + " raw circuit elements");
-		    for (String line : rawLines) {
-			try {
-			    processCircuitLine(line);
-			} catch (Exception e) {
-			    console("Error processing circuit line: " + line + " - " + e.getMessage());
-			}
-		    }
-		}
-
-		// Create scopes after all elements are present so UID trace refs resolve.
-		// In nonInteractive mode, Scope/ScopeElm trigger GWT UI initialization, so skip them.
-		if (RuntimeMode.isGwt())
-		    parser.applyParsedScopes();
-
-		// Match standard readCircuit(byte[]) behavior: apply explicit viewport if
-		// present, otherwise center the loaded circuit on screen.
-		if ((flags & RC_NO_CENTER) == 0) {
-		    ViewportElm viewportElm = findViewportElm();
-		    if (viewportElm != null) {
-			applyViewportTransform(viewportElm);
-		    } else {
-			centreCircuit();
-		    }
-		}
-		
-		needAnalyze();
-	    } else {
-		console("Failed to parse SFCR model");
-	    }
-	    if ((flags & RC_KEEP_TITLE) == 0 && titleLabel != null)
-		titleLabel.setText(null);
-	    return;
-	}
-	
-	// Only log parse mode when there's actual content (not empty init)
-	if (text != null && !text.trim().isEmpty()) {
-	    modelInfoSourceText = null;
-	    modelInfoContent = null;
-	    if (viewModelInfoItem != null) {
-		viewModelInfoItem.setEnabled(false);
-	    }
-	    if (helpViewModelInfoItem != null) {
-		helpViewModelInfoItem.setEnabled(false);
-	    }
-	    console("Parsing mode: Standard circuit format" + (currentCircuitFile != null ? " - " + currentCircuitFile : ""));
-	}
-	readCircuit(text.getBytes(), flags);
-	if ((flags & RC_KEEP_TITLE) == 0 && titleLabel != null)
-	    titleLabel.setText(null);
+	circuitIOService.readCircuit(text, flags);
     }
 
     void readCircuit(String text) {
-	readCircuit(text, 0);
+	circuitIOService.readCircuit(text);
     }
 
     /**
@@ -6116,199 +5094,42 @@ public CirSim() {
      * @param line The element definition line (e.g., "431 480 64 592 160 0 50 true false")
      */
     void processCircuitLine(String line) {
-	if (line == null || line.trim().isEmpty()) {
-	    return;
-	}
-	
-	line = line.trim();
-	
-	// Parse the element type and parameters
-	StringTokenizer st = new StringTokenizer(line);
-	String type = st.nextToken();
-	int tint = type.charAt(0);
-	if (tint > 127 && tint < 256)
-	    tint = type.charAt(0) - 256;  // Handle signed byte conversion
-	
-	try {
-	    // For numeric dump types
-	    if (type.length() > 1 || !Character.isLetter(type.charAt(0))) {
-		tint = Integer.parseInt(type);
-	    }
-	    
-	    int x1 = Integer.parseInt(st.nextToken());
-	    int y1 = Integer.parseInt(st.nextToken());
-	    int x2 = Integer.parseInt(st.nextToken());
-	    int y2 = Integer.parseInt(st.nextToken());
-	    int f = Integer.parseInt(st.nextToken());
-	    
-	    ElementDumpParseResult parsed = parseElementTokensWithUid(st);
-	    CircuitElm newce = createCe(tint, x1, y1, x2, y2, f, parsed.tokenizer);
-	    if (newce == null) {
-		console("Unrecognized element type: " + type);
-		return;
-	    }
-	    
-	    newce.setPoints();
-	    assignPersistentUid(newce, parsed.uid);
-	    elmList.addElement(newce);
-	    
-	} catch (Exception e) {
-	    console("Error parsing circuit line: " + line + " - " + e.getMessage());
-	}
+	circuitIOService.processCircuitLine(line);
     }
 
     void setCircuitTitle(String s) {
 	if (s != null && titleLabel != null)
 	    titleLabel.setText(s);
     }
+
+    void clearCircuitTitle() {
+	if (titleLabel != null)
+	    titleLabel.setText(null);
+    }
+
+    void setDefaultControlBars() {
+	if (speedBar != null)
+	    speedBar.setValue(117);
+	if (currentBar != null)
+	    currentBar.setValue(50);
+	if (powerBar != null)
+	    powerBar.setValue(50);
+    }
     
 	void readSetupFile(String str, String title) {
-		String[] candidates;
-		if (str.indexOf('/') >= 0)
-		    candidates = new String[] { str };
-		else
-		    candidates = new String[] { str, "economics/" + str, "electronics/" + str };
-		readSetupFileCandidates(candidates, 0, title);
+	    circuitIOService.readSetupFile(str, title);
 	}
 
 	void readSetupFileCandidates(final String[] candidates, final int index, final String title) {
-		if (index >= candidates.length) {
-		    alertOrWarn(Locale.LS("Can't load circuit!"));
-		    return;
-		}
-		final String circuitPath = candidates[index];
-		String url = GWT.getModuleBaseURL() + "circuits/" + circuitPath;
-		console("Loading circuit file: circuits/" + circuitPath);
-		loadFileFromURL(url, new Command() {
-		    public void execute() {
-			if (title != null)
-			    setCircuitTitle(title);
-			unsavedChanges = false;
-			currentCircuitFile = "circuits/" + circuitPath;
-		    }
-		}, new Command() {
-		    public void execute() {
-			readSetupFileCandidates(candidates, index + 1, title);
-		    }
-		});
+	    circuitIOService.readSetupFileCandidates(candidates, index, title);
 	}
 	
 	void loadFileFromURL(String url, final Command successCallback, final Command failureCallback) {
-	    final String loadUrl = getLoadUrl(url);
-	    console("loadFileFromURL request: " + loadUrl);
-	    final boolean[] completed = new boolean[] { false };
-	    final Timer watchdog5s = new Timer() {
-		@Override
-		public void run() {
-		    if (!completed[0])
-			console("loadFileFromURL still waiting after 5s: " + loadUrl);
-		}
-	    };
-	    final Timer watchdog15s = new Timer() {
-		@Override
-		public void run() {
-		    if (completed[0])
-			return;
-		    completed[0] = true;
-		    console("loadFileFromURL timeout after 15s: " + loadUrl);
-		    if (failureCallback != null)
-			failureCallback.execute();
-		}
-	    };
-	    watchdog5s.schedule(5000);
-	    watchdog15s.schedule(15000);
-	    RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, loadUrl);
-	    requestBuilder.setTimeoutMillis(15000);
-	    
-	    try {
-		Request activeRequest = requestBuilder.sendRequest(null, new RequestCallback() {
-		    public void onError(Request request, Throwable exception) {
-			try {
-			    if (completed[0])
-				return;
-			    completed[0] = true;
-			    watchdog5s.cancel();
-			    watchdog15s.cancel();
-			    String msg = "loadFileFromURL onError: " + loadUrl;
-			    if (exception != null && exception.getMessage() != null)
-				msg += " - " + exception.getMessage();
-			    console(msg);
-			    if (failureCallback != null)
-				failureCallback.execute();
-			} catch (Throwable t) {
-			    console("loadFileFromURL onError callback exception: " + t);
-			}
-		    }
-
-		    public void onResponseReceived(Request request, Response response) {
-			boolean circuitLoaded = false;
-			boolean httpSuccess = false;
-			try {
-			    if (completed[0])
-				return;
-			    completed[0] = true;
-			    watchdog5s.cancel();
-			    watchdog15s.cancel();
-			    if (response.getStatusCode()==Response.SC_OK) {
-				httpSuccess = true;
-				circuitLoaded = true;
-				console("loadFileFromURL success: " + loadUrl + " status=" + response.getStatusCode());
-				String text = response.getText();
-				try {
-				    readCircuit(text, RC_KEEP_TITLE);
-				} catch (Throwable readEx) {
-				    console("loadFileFromURL readCircuit exception: " + readEx);
-				}
-				if (RuntimeMode.isGwt())
-				    try {
-					allowSave(false);
-				    } catch (Throwable saveEx) {
-					console("loadFileFromURL allowSave exception: " + saveEx);
-				    }
-				unsavedChanges = false;
-				if (successCallback != null)
-				    try {
-					successCallback.execute();
-				    } catch (Throwable successEx) {
-					console("loadFileFromURL success callback exception: " + successEx);
-				    }
-			    }
-			    else {
-				console("loadFileFromURL HTTP failure: " + loadUrl +
-				    " status=" + response.getStatusCode() +
-				    " text=" + response.getStatusText());
-				if (failureCallback != null)
-				    failureCallback.execute();
-			    }
-			} catch (Throwable t) {
-			    console("loadFileFromURL onResponse callback exception: " + t);
-			    if (!circuitLoaded && !httpSuccess && failureCallback != null)
-				failureCallback.execute();
-			}
-		    }
-		});
-		console("loadFileFromURL sendRequest returned" + (activeRequest == null ? " (null request)" : ""));
-	    } catch (Throwable e) {
-		if (completed[0])
-		    return;
-		completed[0] = true;
-		watchdog5s.cancel();
-		watchdog15s.cancel();
-		console("loadFileFromURL request exception: " + loadUrl +
-		    (e.getMessage() != null ? " - " + e.getMessage() : ""));
-		if (failureCallback != null)
-		    failureCallback.execute();
-	    }
-
+	    circuitIOService.loadFileFromURL(url, successCallback, failureCallback);
 	}
 
 	String getLoadUrl(String url) {
-	    String result = url;
-	    if (RuntimeMode.isNonInteractiveRuntime())
-		result = result + (result.indexOf('?') >= 0 ? "&" : "?") + "nonInteractive=1";
-	    if (!enableCacheBustedUrls)
-		return result;
-	    return result + (result.indexOf('?') >= 0 ? "&" : "?") + "v=" + System.currentTimeMillis();
+	    return circuitIOService.getLoadUrl(url);
 	}
 
     static final int RC_RETAIN = 1;
@@ -6317,309 +5138,7 @@ public CirSim() {
     static final int RC_KEEP_TITLE = 8;
 
     void readCircuit(byte b[], int flags) {
-	int i;
-	int len = b.length;
-	boolean transformLoaded = false; // Track if transform was loaded from file
-	if ((flags & RC_RETAIN) == 0) {
-	    // Clear stock-flow synchronization registry when loading new circuit
-	    StockFlowRegistry.clearRegistry();
-	    
-	    // Clear master table registrations for computed values
-	    ComputedValues.clearMasterTables();
-	    
-	    // Clear all computed values when loading a new circuit to avoid stale state
-	    ComputedValues.clearComputedValues();
-	    LookupTableRegistry.clear();
-	    
-	    // Clear hints registry
-	    HintRegistry.clear();
-	    
-	    // Clear action scheduler
-	    ActionScheduler scheduler = ActionScheduler.getInstance(this);
-	    scheduler.clearAll();
-	    
-	    clearMouseElm();
-	    for (i = 0; i != elmList.size(); i++) {
-		CircuitElm ce = getElm(i);
-		ce.delete();
-	    }
-	    t = timeStepAccum = 0;
-	    elmList.removeAllElements();
-	    hintType = -1;
-	    maxTimeStep = (currentToolbarType == ToolbarType.ECONOMICS) ? 0.01 : 5e-6;
-	    minTimeStep = 50e-12;
-	    if (dotsCheckItem != null)
-		dotsCheckItem.setState(false);
-	    if (smallGridCheckItem != null)
-		smallGridCheckItem.setState(false);
-	    if (powerCheckItem != null)
-		powerCheckItem.setState(false);
-	    if (voltsCheckItem != null)
-		voltsCheckItem.setState(true);
-	    if (showValuesCheckItem != null)
-		showValuesCheckItem.setState(true);
-	    setGrid();
-	    if (speedBar != null)
-		speedBar.setValue(117); // 57
-	    if (currentBar != null)
-		currentBar.setValue(50);
-	    if (powerBar != null)
-		powerBar.setValue(50);
-	    CircuitElm.voltageRange = 5;
-	    scopeCount = 0;
-	    lastIterTime = 0;
-	    // Reset to appropriate unit based on current toolbar mode
-	    voltageUnitSymbol = (currentToolbarType == ToolbarType.ECONOMICS) ? "$" : "V";
-	    timeUnitSymbol = (currentToolbarType == ToolbarType.ECONOMICS) ? "yr" : "s";
-	}
-	boolean subs = (flags & RC_SUBCIRCUITS) != 0;
-	//cv.repaint();
-	int p;
-	for (p = 0; p < len; ) {
-	    int l;
-	    int linelen = len-p; // IES - changed to allow the last line to not end with a delim.
-	    for (l = 0; l != len-p; l++)
-		if (b[l+p] == '\n' || b[l+p] == '\r') {
-		    linelen = l++;
-		    if (l+p < b.length && b[l+p] == '\n')
-			l++;
-		    break;
-		}
-	    String line = new String(b, p, linelen);
-	    StringTokenizer st = new StringTokenizer(line, " +\t\n\r\f");
-	    while (st.hasMoreTokens()) {
-		String type = st.nextToken();
-		int tint = type.charAt(0);
-		try {
-		    if (subs && tint != '.')
-			continue;
-		    if (tint == 'o') {
-			Scope sc = new Scope(this);
-			sc.position = scopeCount;
-			sc.undump(st);
-			scopes[scopeCount++] = sc;
-			break;
-		    }
-		    if (tint == 'h') {
-			readHint(st);
-			break;
-		    }
-		    if (tint == '$') {
-			readOptions(st, flags);
-			break;
-		    }
-		    if (tint == '!') {
-			CustomLogicModel.undumpModel(st);
-			break;
-		    }
-		    if (tint == '%') {
-			// Parse custom settings
-			if (st.hasMoreTokens()) {
-			    String settingType = st.nextToken();
-			    if (settingType.equals("voltageUnit") && st.hasMoreTokens()) {
-				voltageUnitSymbol = CustomLogicModel.unescape(st.nextToken());
-			    } else if (settingType.equals("viewport") && st.hasMoreTokens()) {
-				// Parse viewport: minX minY maxX maxY (circuit coordinates)
-				// Calculate transform to fit this viewport into current canvas
-				try {
-				    int viewMinX = Integer.parseInt(st.nextToken());
-				    int viewMinY = Integer.parseInt(st.nextToken());
-				    int viewMaxX = Integer.parseInt(st.nextToken());
-				    int viewMaxY = Integer.parseInt(st.nextToken());
-				    
-				    // Calculate transform to show this viewport
-				    setCircuitArea();
-				    int viewWidth = viewMaxX - viewMinX;
-				    int viewHeight = viewMaxY - viewMinY;
-				    
-				    if (viewWidth > 0 && viewHeight > 0) {
-				        // Calculate scale to fit viewport into canvas
-				        double scaleX = (double)circuitArea.width / viewWidth;
-				        double scaleY = (double)circuitArea.height / viewHeight;
-				        double scale = Math.min(scaleX, scaleY);
-				        
-				        // Calculate translation to center the viewport
-				        double translateX = (circuitArea.width - viewWidth * scale) / 2 - viewMinX * scale;
-				        double translateY = (circuitArea.height - viewHeight * scale) / 2 - viewMinY * scale;
-				        
-				        transform[0] = transform[3] = scale;
-				        transform[4] = translateX;
-				        transform[5] = translateY;
-				        transformLoaded = true;
-				    }
-				} catch (Exception e) {
-				    // Ignore parse errors
-				}
-			    } else if (settingType.equals("transform") && st.hasMoreTokens()) {
-				// Legacy support: Parse canvas transform: scale translateX translateY
-				try {
-				    double scale = Double.parseDouble(st.nextToken());
-				    double translateX = Double.parseDouble(st.nextToken());
-				    double translateY = Double.parseDouble(st.nextToken());
-				    // Apply transform and mark as loaded
-				    transform[0] = transform[3] = scale;
-				    transform[4] = translateX;
-				    transform[5] = translateY;
-				    transformLoaded = true;
-				} catch (Exception e) {
-				    // Ignore parse errors
-				}
-			    } else if (settingType.equals("showToolbar") && st.hasMoreTokens()) {
-				String value = st.nextToken();
-				if (toolbarCheckItem != null) {
-				    toolbarCheckItem.setState(value.equals("true"));
-				    setToolbar();
-				}
-			    } else if (settingType.equals("equationTableMnaMode") && st.hasMoreTokens()) {
-				equationTableMnaMode = st.nextToken().equals("true");
-			    } else if (settingType.equals("equationTableNewtonJacobianEnabled") && st.hasMoreTokens()) {
-				equationTableNewtonJacobianEnabled = st.nextToken().equals("true");
-			    } else if (settingType.equals("equationTableConvergenceTolerance") && st.hasMoreTokens()) {
-				try {
-				    equationTableConvergenceTolerance = Double.parseDouble(st.nextToken());
-				} catch (Exception e) {
-				    // Ignore parse errors
-				}
-			    } else if (settingType.equals("sfcrLookupClampDefault") && st.hasMoreTokens()) {
-				sfcrLookupClampDefault = st.nextToken().equals("true");
-			    } else if (settingType.equals("convergenceCheckThreshold") && st.hasMoreTokens()) {
-				try {
-				    convergenceCheckThreshold = Integer.parseInt(st.nextToken());
-				} catch (Exception e) {
-				    // Ignore parse errors
-				}
-			    } else if (settingType.equals("AS") || settingType.equals("AST")) {
-				// Action Schedule entry (AS), Action Schedule Times, pause and animation (AST)
-				ActionScheduler scheduler = ActionScheduler.getInstance(this);
-				scheduler.load(line);
-			    } else if (settingType.equals("Hint")) {
-				// Glossary hint entry: % Hint varname description
-				HintRegistry.parseHintLine(line);
-			    } else if (settingType.equals("lookup") && st.hasMoreTokens()) {
-				// Lookup table: % lookup name [scope=X] x1,y1 x2,y2 ...
-				LookupDefinition def = new LookupDefinition();
-				def.name = st.nextToken();
-				while (st.hasMoreTokens()) {
-				    String tok = st.nextToken();
-				    if (tok.startsWith("scope=")) {
-					def.scope = tok.substring(6).trim();
-				    } else {
-					int comma = tok.indexOf(',');
-					if (comma > 0) {
-					    try {
-						def.xs.add(Double.valueOf(Double.parseDouble(tok.substring(0, comma))));
-						def.ys.add(Double.valueOf(Double.parseDouble(tok.substring(comma + 1))));
-					    } catch (Exception e) { }
-					}
-				    }
-				}
-				if (def.name != null && !def.name.isEmpty() && def.xs.size() >= 2) {
-				    LookupTableRegistry.register(def);
-				}
-			    }
-			}
-			break;
-		    }
-		    if (tint == '?' || tint == 'B') {
-			// ignore afilter-specific stuff
-			break;
-		    }
-		    // do not add new symbols here without testing export as link
-		    
-		    // if first character is a digit then parse the type as a number
-		    if (tint >= '0' && tint <= '9')
-			tint = Integer.parseInt(type);
-		    
-		    if (tint == 34) {
-			DiodeModel.undumpModel(st);
-			break;
-		    }
-		    if (tint == 32) {
-			TransistorModel.undumpModel(st);
-			break;
-		    }
-		    if (tint == 38) {
-			Adjustable adj = new Adjustable(st, this);
-			if (adj.elm != null)
-			    adjustables.add(adj);
-			break;
-		    }
-		    if (tint == '.') {
-			CustomCompositeModel.undumpModel(st);
-			break;
-		    }
-		    int x1 = Integer.parseInt(st.nextToken());
-		    int y1 = Integer.parseInt(st.nextToken());
-		    int x2 = Integer.parseInt(st.nextToken());
-		    int y2 = Integer.parseInt(st.nextToken());
-		    int f  = Integer.parseInt(st.nextToken());
-		    ElementDumpParseResult parsed = parseElementTokensWithUid(st);
-		    CircuitElm newce = createCe(tint, x1, y1, x2, y2, f, parsed.tokenizer);
-		    if (newce==null) {
-			System.out.println("unrecognized dump type: " + type);
-			break;
-		    }
-		    /*
-		     * debug code to check if allocNodes() is called in constructor.  It gets called in
-		     * setPoints() but that doesn't get called for subcircuits.
-		    double vv[] = newce.volts;
-		    int vc = newce.getPostCount() + newce.getInternalNodeCount();
-		    if (vv.length != vc)
-			console("allocnodes not called! " + tint);
-		     */
-		    newce.setPoints();
-		    assignPersistentUid(newce, parsed.uid);
-		    elmList.addElement(newce);
-		} catch (Exception ee) {
-		    ee.printStackTrace();
-		    console("exception while undumping " + ee);
-		    break;
-		}
-		break;
-	    }
-	    p += l;
-	    
-	}
-	if (RuntimeMode.isGwt()) {
-	    setPowerBarEnable();
-	    enableItems();
-	}
-	if ((flags & RC_RETAIN) == 0) {
-	    // create sliders as needed
-	    if (RuntimeMode.isGwt()) {
-		for (i = 0; i < adjustables.size(); i++) {
-		    if (!adjustables.get(i).createSlider(this))
-			adjustables.remove(i--);
-		}
-	    }
-	}
-//	if (!retain)
-	//    handleResize(); // for scopes
-	needAnalyze();
-	
-	// Look for ViewportElm to determine initial view
-	if ((flags & RC_NO_CENTER) == 0 && !transformLoaded) {
-	    ViewportElm viewportElm = findViewportElm();
-	    if (viewportElm != null) {
-	        applyViewportTransform(viewportElm);
-	    } else {
-	        centreCircuit();
-	    }
-	}
-	if ((flags & RC_SUBCIRCUITS) != 0)
-	    updateModels();
-	
-	// Reset all elements to ensure proper initialization (especially for tables)
-	// This ensures CTM and other elements are fully populated before simulation starts
-	if ((flags & RC_RETAIN) == 0) {
-	    resetAction();
-	}
-	
-	// Synchronize all table elements that share stocks
-	StockFlowRegistry.synchronizeAllTables();   // Todo-JN   prob needs to be removed, place elsewhere
-	
-	AudioInputElm.clearCache();  // to save memory
-	DataInputElm.clearCache();  // to save memory
+	circuitIOService.readCircuit(b, flags);
     }
 
     // delete sliders for an element
@@ -7809,28 +6328,14 @@ public CirSim() {
 		return deltaY;
 	    }
 
-    void zoomCircuit(double dy) { zoomCircuit(dy, false); }
+	void zoomCircuit(double dy) { viewportController.zoomCircuit(dy); }
 
     void zoomCircuit(double dy, boolean menu) {
-	double newScale;
-    	double oldScale = transform[0];
-    	double val = dy*.01;
-    	newScale = Math.max(oldScale+val, .2);
-    	newScale = Math.min(newScale, 2.5);
-    	setCircuitScale(newScale, menu);
+	viewportController.zoomCircuit(dy, menu);
     }
     
     void setCircuitScale(double newScale, boolean menu) {
-	int constX = !menu ? mouseCursorX : circuitArea.width/2;
-	int constY = !menu ? mouseCursorY : circuitArea.height/2;
-	int cx = inverseTransformX(constX);
-	int cy = inverseTransformY(constY);
-	transform[0] = transform[3] = newScale;
-
-	// adjust translation to keep center of screen constant
-	// inverse transform = (x-t4)/t0
-	transform[4] = constX - cx*newScale;
-	transform[5] = constY - cy*newScale;
+	viewportController.setCircuitScale(newScale, menu);
     }
     
     void setPowerBarEnable() {
@@ -8068,60 +6573,16 @@ public CirSim() {
 	return count;
     }
 
-    class FlipInfo { public int cx, cy, count; }
-
-    FlipInfo prepareFlip() {
-    	int i;
-    	pushUndo();
-    	setMenuSelection();
-    	int minx = 30000, maxx = -30000;
-    	int miny = 30000, maxy = -30000;
-	int count = countSelected();
-    	for (i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
-	    if (ce.isSelected() || count == 0) {
-		minx = min(ce.x, min(ce.x2, minx));
-		maxx = max(ce.x, max(ce.x2, maxx));
-		miny = min(ce.y, min(ce.y2, miny));
-		maxy = max(ce.y, max(ce.y2, maxy));
-	    }
-    	}
-	FlipInfo fi = new FlipInfo();
-	fi.cx = (minx+maxx)/2;
-	fi.cy = (miny+maxy)/2;
-	fi.count = count;	
-	return fi;
-    }
-
     void flipX() {
-	FlipInfo fi = prepareFlip();
-	int center2 = fi.cx*2;
-	for (CircuitElm ce : elmList) {
-	    if (ce.isSelected() || fi.count == 0)
-		ce.flipX(center2, fi.count);
-    	}
-	needAnalyze();
+	flipTransformController.flipX();
     }
 
     void flipY() {
-	FlipInfo fi = prepareFlip();
-	int center2 = fi.cy*2;
-	for (CircuitElm ce : elmList) {
-	    if (ce.isSelected() || fi.count == 0)
-		ce.flipY(center2, fi.count);
-    	}
-	needAnalyze();
+	flipTransformController.flipY();
     }
 
     void flipXY() {
-	FlipInfo fi = prepareFlip();
-	int xmy = snapGrid(fi.cx-fi.cy);
-	console("xmy " + xmy + " grid " + gridSize + " " + fi.cx + " " + fi.cy);
-	for (CircuitElm ce : elmList) {
-	    if (ce.isSelected() || fi.count == 0)
-		ce.flipXY(xmy, fi.count);
-    	}
-	needAnalyze();
+	flipTransformController.flipXY();
     }
 
     void doCut() {
@@ -8190,19 +6651,12 @@ public CirSim() {
 
 
     void deleteUnusedScopeElms() {
-	// Remove any scopeElms for elements that no longer exist
-	for (int i = elmList.size()-1; i >= 0; i--) {
-    		CircuitElm ce = getElm(i);
-    		if (ce instanceof ScopeElm && (((ScopeElm) ce).elmScope.needToRemove() )) {
-    			ce.delete();
-    			elmList.removeElementAt(i);
-    			
-    			// need to rebuild scopeElmArr
-    			needAnalyze();
-    		}
-    	}
-	
+	scopeManager.deleteUnusedScopeElms();
     }
+
+	CircuitElm getMouseElmForRouting() {
+	return mouseElm;
+	}
     
     void doDelete(boolean pushUndoFlag) {
     	int i;
@@ -8716,7 +7170,7 @@ public CirSim() {
     
     // For debugging
 	void logElementRegistryInferenceReport() {
-	console(ElementRegistry.buildInferredUsageReport());
+	diagnostics.logElementRegistryInferenceReport();
 	}
 
 	// For debugging
