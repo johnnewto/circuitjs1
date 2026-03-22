@@ -1,7 +1,11 @@
 package com.lushprojects.circuitjs1.client;
 
+import java.util.HashMap;
+import java.util.Vector;
+
 import com.google.gwt.safehtml.shared.SafeHtmlUtils;
 import com.google.gwt.user.client.ui.MenuBar;
+import com.google.gwt.user.client.ui.MenuItem;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 final class CirSimMenuBuilder {
@@ -293,5 +297,79 @@ final class CirSimMenuBuilder {
 
     mainMenuBar.addItem(mi=sim.getClassCheckItem(Locale.LS("Select/Drag Sel"), "Select"));
     mi.setShortcut(Locale.LS("(space or Shift-drag)"));
+    }
+
+    void composeSubcircuitMenu() {
+    if (sim.subcircuitMenuBar == null)
+        return;
+
+    for (int mi = 0; mi != 2; mi++) {
+        MenuBar menu = sim.subcircuitMenuBar[mi];
+        menu.clearItems();
+        Vector<CustomCompositeModel> list = CustomCompositeModel.getModelList();
+        for (int i = 0; i != list.size(); i++) {
+        String name = list.get(i).name;
+        menu.addItem(getClassCheckItem(Locale.LS("Add ") + name, "CustomCompositeElm:" + name));
+        }
+    }
+    sim.lastSubcircuitMenuUpdate = CustomCompositeModel.sequenceNumber;
+    }
+
+    void composeSelectScopeMenu(MenuBar sb) {
+    sb.clearItems();
+    sim.selectScopeMenuItems = new Vector<MenuItem>();
+    for (int i = 0; i < sim.scopeCount; i++) {
+        String s;
+        String l;
+        s = Locale.LS("Scope") + " " + Integer.toString(i + 1);
+        l = sim.scopes[i].getScopeMenuName();
+        if (l != "")
+        s += " (" + SafeHtmlUtils.htmlEscape(l) + ")";
+        sim.selectScopeMenuItems.add(new MenuItem(s, new MyCommand("elm", "addToScope" + Integer.toString(i))));
+    }
+    int c = sim.countScopeElms();
+    for (int j = 0; j < c; j++) {
+        String s;
+        String l;
+        s = Locale.LS("Undocked Scope") + " " + Integer.toString(j + 1);
+        l = sim.getNthScopeElm(j).elmScope.getScopeMenuName();
+        if (l != "")
+        s += " (" + SafeHtmlUtils.htmlEscape(l) + ")";
+        sim.selectScopeMenuItems
+            .add(new MenuItem(s, new MyCommand("elm", "addToScope" + Integer.toString(sim.scopeCount + j))));
+    }
+    for (MenuItem mi : sim.selectScopeMenuItems)
+        sb.addItem(mi);
+    }
+
+    CheckboxMenuItem getClassCheckItem(String s, String t) {
+    if (sim.classToLabelMap == null)
+        sim.classToLabelMap = new HashMap<String, String>();
+    sim.classToLabelMap.put(t, s);
+
+    String shortcut = "";
+    CircuitElm elm = null;
+    try {
+        elm = CirSim.constructElement(t, 0, 0);
+    } catch (Exception e) {
+    }
+    CheckboxMenuItem mi;
+    if (elm != null) {
+        if (elm.needsShortcut()) {
+        shortcut += (char) elm.getShortcut();
+        if (sim.shortcuts[elm.getShortcut()] != null && !sim.shortcuts[elm.getShortcut()].equals(t))
+            CirSim.console("already have shortcut for " + (char) elm.getShortcut() + " " + elm);
+        sim.shortcuts[elm.getShortcut()] = t;
+        }
+        elm.delete();
+    }
+    if (shortcut == "")
+        mi = new CheckboxMenuItem(s);
+    else
+        mi = new CheckboxMenuItem(s, shortcut);
+    mi.setScheduledCommand(new MyCommand("main", t));
+    sim.mainMenuItems.add(mi);
+    sim.mainMenuItemNames.add(t);
+    return mi;
     }
 }

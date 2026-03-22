@@ -189,4 +189,58 @@ final class ScopeManager {
 	    sim.oldScopeCount = sim.scopeCount;
 	}
     }
+
+    void drawScopeMinMaxButton(Graphics g) {
+	int minHeightY = (int) (sim.canvasHeight * (1.0 - 0.1));
+	int buttonX = sim.circuitArea.width - CirSim.SCOPE_MIN_MAX_BUTTON_SIZE - 10;
+	int buttonY = minHeightY - CirSim.SCOPE_MIN_MAX_BUTTON_SIZE / 2;
+
+	boolean hover = mouseIsOverScopeMinMaxButton(sim.mouseCursorX, sim.mouseCursorY);
+	g.setColor(hover ? CircuitElm.selectColor : Color.gray);
+
+	g.context.save();
+	g.context.setLineWidth(1.5);
+	g.context.strokeRect(buttonX, buttonY, CirSim.SCOPE_MIN_MAX_BUTTON_SIZE, CirSim.SCOPE_MIN_MAX_BUTTON_SIZE);
+
+	int centerX = buttonX + CirSim.SCOPE_MIN_MAX_BUTTON_SIZE / 2;
+	int centerY = buttonY + CirSim.SCOPE_MIN_MAX_BUTTON_SIZE / 2;
+	int arrowSize = 6;
+
+	g.context.beginPath();
+	if (!sim.scopePanelMinimized) {
+	    g.context.moveTo(centerX, centerY - arrowSize / 2);
+	    g.context.lineTo(centerX - arrowSize, centerY + arrowSize / 2);
+	    g.context.moveTo(centerX, centerY - arrowSize / 2);
+	    g.context.lineTo(centerX + arrowSize, centerY + arrowSize / 2);
+	} else {
+	    g.context.moveTo(centerX, centerY + arrowSize / 2);
+	    g.context.lineTo(centerX - arrowSize, centerY - arrowSize / 2);
+	    g.context.moveTo(centerX, centerY + arrowSize / 2);
+	    g.context.lineTo(centerX + arrowSize, centerY - arrowSize / 2);
+	}
+	g.context.stroke();
+	g.context.restore();
+    }
+
+    boolean mouseIsOverScopeMinMaxButton(int x, int y) {
+	if (sim.scopeCount == 0)
+	    return false;
+	int minHeightY = (int) (sim.canvasHeight * (1.0 - 0.1));
+	int buttonX = sim.circuitArea.width - CirSim.SCOPE_MIN_MAX_BUTTON_SIZE - 10;
+	int buttonY = minHeightY - CirSim.SCOPE_MIN_MAX_BUTTON_SIZE / 2;
+	return x >= buttonX && x <= buttonX + CirSim.SCOPE_MIN_MAX_BUTTON_SIZE && y >= buttonY
+		&& y <= buttonY + CirSim.SCOPE_MIN_MAX_BUTTON_SIZE;
+    }
+
+    void toggleScopePanelSize() {
+	sim.scopePanelMinimized = !sim.scopePanelMinimized;
+	if (sim.scopePanelMinimized) {
+	    sim.normalScopeHeightFraction = sim.scopeHeightFraction;
+	    sim.scopeHeightFraction = 0.1;
+	} else {
+	    sim.scopeHeightFraction = sim.normalScopeHeightFraction;
+	}
+	sim.setCircuitArea();
+	sim.repaint();
+    }
 }

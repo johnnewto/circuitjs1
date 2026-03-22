@@ -146,17 +146,17 @@ ClickHandler, DoubleClickHandler, ContextMenuHandler, NativePreviewHandler,
 MouseOutHandler, MouseWheelHandler {
 
 	@JsFunction
-	private interface SaveDialogSuccessCallback {
+	interface SaveDialogSuccessCallback {
 		Object onSuccess(SaveDialogResult result);
 	}
 
 	@JsFunction
-	private interface SaveDialogFailureCallback {
+	interface SaveDialogFailureCallback {
 		Object onFailure(Object error);
 	}
 
 	@JsFunction
-	private interface OpenFileCallback {
+	interface OpenFileCallback {
 		void onOpen(String text, String name);
 	}
 
@@ -166,18 +166,18 @@ MouseOutHandler, MouseWheelHandler {
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
-	private static class SaveDialogResult {
+	static class SaveDialogResult {
 		@JsProperty(name = "canceled") native boolean isCanceled();
 		@JsProperty(name = "filePath") native Object getFilePath();
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Promise")
-	private static class PromiseLike {
+	static class PromiseLike {
 		@JsMethod(name = "then") native void then(SaveDialogSuccessCallback success, SaveDialogFailureCallback failure);
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "window")
-	private static class GlobalWindowLike {
+	static class GlobalWindowLike {
 		@JsProperty(name = "devicePixelRatio") static native double getDevicePixelRatio();
 		@JsProperty(name = "openFile") static native Object getOpenFileFunction();
 		@JsProperty(name = "startCircuitText") static native String getStartCircuitText();
@@ -189,7 +189,7 @@ MouseOutHandler, MouseWheelHandler {
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Navigator")
-	private static class NavigatorLike {
+	static class NavigatorLike {
 		@JsProperty(name = "language") native String getLanguage();
 		@JsProperty(name = "userLanguage") native String getUserLanguage();
 	}
@@ -204,16 +204,16 @@ MouseOutHandler, MouseWheelHandler {
 	private static native String compressUri(String value);
 
 	@JsMethod(namespace = JsPackage.GLOBAL, name = "showSaveDialog")
-	private static native PromiseLike showSaveDialog();
+	static native PromiseLike showSaveDialog();
 
 	@JsMethod(namespace = JsPackage.GLOBAL, name = "saveFile")
-	private static native void saveFile(Object file, String dump);
+	static native void saveFile(Object file, String dump);
 
 	@JsMethod(namespace = JsPackage.GLOBAL, name = "openFile")
-	private static native void openFile(OpenFileCallback callback);
+	static native void openFile(OpenFileCallback callback);
 
 	@JsMethod(namespace = JsPackage.GLOBAL, name = "toggleDevTools")
-	private static native void toggleDevToolsNative();
+	static native void toggleDevToolsNative();
 
 	@JsMethod(namespace = JsPackage.GLOBAL, name = "C2S")
 	private static native JavaScriptObject createC2SContext(int w, int h);
@@ -224,119 +224,119 @@ MouseOutHandler, MouseWheelHandler {
 	}
 
 	@JsFunction
-	private interface TouchEventHandler {
+	interface TouchEventHandler {
 		void handle(TouchEventLike event);
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "DOMRect")
-	private static class DomRectLike {
+	static class DomRectLike {
 		@JsProperty(name = "left") native double getLeft();
 		@JsProperty(name = "top") native double getTop();
 		@JsProperty(name = "y") native double getY();
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Touch")
-	private static class TouchLike {
+	static class TouchLike {
 		@JsProperty(name = "clientX") native double getClientX();
 		@JsProperty(name = "clientY") native double getClientY();
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "TouchList")
-	private static class TouchListLike {
+	static class TouchListLike {
 		@JsProperty(name = "length") native int getLength();
 		@JsMethod(name = "item") native TouchLike item(int index);
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "TouchEvent")
-	private static class TouchEventLike {
+	static class TouchEventLike {
 		@JsProperty(name = "touches") native TouchListLike getTouches();
 		@JsProperty(name = "timeStamp") native double getTimeStamp();
 		@JsMethod native void preventDefault();
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
-	private static class MouseEventInitLike {
+	static class MouseEventInitLike {
 		@JsProperty(name = "clientX") native void setClientX(double x);
 		@JsProperty(name = "clientY") native void setClientY(double y);
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "MouseEvent")
-	private static class MouseEventLike {
+	static class MouseEventLike {
 		public MouseEventLike(String type, MouseEventInitLike init) {}
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "HTMLCanvasElement")
-	private static class CanvasElementLike {
+	static class CanvasElementLike {
 		@JsMethod(name = "addEventListener") native void addEventListener(String type, TouchEventHandler handler, boolean useCapture);
 		@JsMethod(name = "dispatchEvent") native void dispatchEvent(MouseEventLike event);
 		@JsMethod(name = "getBoundingClientRect") native DomRectLike getBoundingClientRect();
 	}
 
 	@JsMethod(namespace = JsPackage.GLOBAL, name = "Object")
-	private static native MouseEventInitLike newMouseEventInit();
+	static native MouseEventInitLike newMouseEventInit();
 
 	@JsFunction
-	private interface OnCircuitLoadedHook {
+	interface OnCircuitLoadedHook {
 		void call(CircuitJsApi api);
 	}
 
 	@JsFunction
-	private interface Hook0 {
+	interface Hook0 {
 		void call();
 	}
 
 	@JsFunction
-	private interface HookBool {
+	interface HookBool {
 		void call(boolean value);
 	}
 
 	@JsFunction
-	private interface HookDouble {
+	interface HookDouble {
 		void call(double value);
 	}
 
 	@JsFunction
-	private interface HookStringBool {
+	interface HookStringBool {
 		void call(String value, boolean flag);
 	}
 
 	@JsFunction
-	private interface HookStringDouble {
+	interface HookStringDouble {
 		Object call(String value, double n);
 	}
 
 	@JsFunction
-	private interface HookStringToDouble {
+	interface HookStringToDouble {
 		double call(String value);
 	}
 
 	@JsFunction
-	private interface HookStringToString {
+	interface HookStringToString {
 		String call(String value);
 	}
 
 	@JsFunction
-	private interface HookNoArgDouble {
+	interface HookNoArgDouble {
 		double call();
 	}
 
 	@JsFunction
-	private interface HookNoArgBoolean {
+	interface HookNoArgBoolean {
 		boolean call();
 	}
 
 	@JsFunction
-	private interface HookNoArgString {
+	interface HookNoArgString {
 		String call();
 	}
 
 	@JsFunction
-	private interface HookNoArgArrayString {
+	interface HookNoArgArrayString {
 		JsArrayString call();
 	}
 
 	@JsFunction
-	private interface HookNoArgElements {
+	interface HookNoArgElements {
 		JsArray<JavaScriptObject> call();
 	}
 
@@ -350,17 +350,17 @@ MouseOutHandler, MouseWheelHandler {
 	}
 
 	@JsFunction
-	private interface ApiHook {
+	interface ApiHook {
 		void call(CircuitJsApi api);
 	}
 
 	@JsFunction
-	private interface SvgHook {
+	interface SvgHook {
 		void call(CircuitJsApi api, String svgData);
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
-	private static class CircuitJsApi {
+	static class CircuitJsApi {
 		@JsProperty(name = "setSimRunning") native void setSetSimRunning(HookBool hook);
 		@JsProperty(name = "reset") native void setReset(Hook0 hook);
 		@JsProperty(name = "step") native void setStep(Hook0 hook);
@@ -719,8 +719,7 @@ MouseOutHandler, MouseWheelHandler {
 	}
 
     void checkCanvasSize() {
-        if (cv.getCoordinateSpaceWidth() != (int) (canvasWidth * devicePixelRatio()))
-            setCanvasSize();
+	viewportController.checkCanvasSize();
     }
 
     boolean isMobile(Element element) {
@@ -731,46 +730,11 @@ MouseOutHandler, MouseWheelHandler {
     }
     
     public void setCanvasSize(){
-    	int width, height;
-    	width=(int)RootLayoutPanel.get().getOffsetWidth();
-    	height=(int)RootLayoutPanel.get().getOffsetHeight();
-    	height=height-(hideMenu?0:MENUBARHEIGHT);
-
-    	//not needed on mobile since the width of the canvas' container div is set to 100% in ths CSS file
-    	if (!isMobile(sidePanelCheckboxLabel))
-    	    width=width-VERTICALPANELWIDTH;
-	if (toolbarCheckItem.getState())
-	    height -= TOOLBARHEIGHT;
-
-    	width = Math.max(width, 0);   // avoid exception when setting negative width
-    	height = Math.max(height, 0);
-    	
-		if (cv != null) {
-			cv.setWidth(width + "PX");
-			cv.setHeight(height + "PX");
-			canvasWidth = width;
-			canvasHeight = height;
-			float scale = devicePixelRatio();
-			cv.setCoordinateSpaceWidth((int)(width*scale));
-			cv.setCoordinateSpaceHeight((int)(height*scale));
-		}
-
-    	setCircuitArea();
-
-	// recenter circuit in case canvas was hidden at startup
-    	if (transform[0] == 0)
-    	    centreCircuit();
+	viewportController.setCanvasSize();
     }
     
     void setCircuitArea() {
-    	int height = canvasHeight;
-    	int width = canvasWidth;
-    	int h = (int) ((double)height * scopeHeightFraction);
-    	/*if (h < 128 && winSize.height > 300)
-		  h = 128;*/
-    	if (scopeCount == 0)
-    	    h = 0;
-    	circuitArea = new Rectangle(0, 0, width, height-h);
+	viewportController.setCircuitArea();
     }
     
 	String decompress(String dump) {
@@ -808,6 +772,15 @@ public CirSim() {
 	private final ImportExportHelper importExportHelper = new ImportExportHelper(this);
 	private final UndoRedoManager undoRedoManager = new UndoRedoManager(this);
 	private final ToolbarModeManager toolbarModeManager = new ToolbarModeManager(this);
+	private final CirSimInitializer initializer = new CirSimInitializer(this);
+	private final StatusInfoRenderer statusInfoRenderer = new StatusInfoRenderer(this);
+	private final ExportCompositeActions exportCompositeActions = new ExportCompositeActions(this);
+	private final CircuitValueSlotManager circuitValueSlotManager = new CircuitValueSlotManager(this);
+	private final JsApiBridge jsApiBridge = new JsApiBridge(this);
+	private final CirSimPreferencesManager preferencesManager = new CirSimPreferencesManager(this);
+	private final TableMasterRegistryManager tableMasterRegistryManager = new TableMasterRegistryManager(this);
+	private final CirSimUiPanelManager uiPanelManager = new CirSimUiPanelManager(this);
+	private final CirSimPlatformInterop platformInterop = new CirSimPlatformInterop(this);
 	private final CirSimBootstrap bootstrap = new CirSimBootstrap(this);
 	private final CirSimDiagnostics diagnostics = new CirSimDiagnostics(this);
 
@@ -873,691 +846,25 @@ public CirSim() {
 //    String baseURL = "http://www.falstad.com/circuit/";
     
     public void init() {
-
-	//sets the meta tag to allow the css media queries to work
-	MetaElement meta = Document.get().createMetaElement();
-	meta.setName("viewport");
-	meta.setContent("width=device-width");
-	NodeList<com.google.gwt.dom.client.Element> node = Document.get().getElementsByTagName("head");
-	node.getItem(0).appendChild(meta);
-
-	
-	boolean printable = false;
-	boolean convention = true;
-	boolean euroRes = false;
-	boolean usRes = false;
-	boolean running = true;
-	boolean hideSidebar = false;
-	boolean noEditing = false;
-	boolean mouseWheelEdit = false;
-	MenuBar m;
-
-	CircuitElm.initClass(this);
-	readRecovery();
-
-	QueryParameters qp = new QueryParameters();
-	String positiveColor = null;
-	String negativeColor = null;
-	String neutralColor = null;
-	String selectColor = null;
-	String currentColor = null;
-	String mouseModeReq = null;
-	boolean euroGates = false;
-
-	try {
-	    //baseURL = applet.getDocumentBase().getFile();
-	    // look for circuit embedded in URL
-	    //		String doc = applet.getDocumentBase().toString();
-	    String cct=qp.getValue("cct");
-	    if (cct!=null)
-		startCircuitText = cct.replace("%24", "$");
-	    if (startCircuitText == null)
-		startCircuitText = getElectronStartCircuitText();
-	    String ctz=qp.getValue("ctz");
-	    if (ctz!= null)
-		startCircuitText = decompress(ctz);
-	    String nonInteractiveDumpKey = qp.getValue("nonInteractiveDumpKey");
-	    if (startCircuitText == null && nonInteractiveDumpKey != null)
-		startCircuitText = getRunnerDumpFromStorage(nonInteractiveDumpKey);
-	    startCircuit = qp.getValue("startCircuit");
-	    startLabel   = qp.getValue("startLabel");
-	    startCircuitLink = qp.getValue("startCircuitLink");
-	    euroRes = qp.getBooleanValue("euroResistors", false);
-	    euroGates = qp.getBooleanValue("IECGates", getOptionFromStorage("euroGates", weAreInGermany()));
-	    usRes = qp.getBooleanValue("usResistors",  false);
-	    running = qp.getBooleanValue("running", true);
-	    hideSidebar = qp.getBooleanValue("hideSidebar", false);
-	    hideMenu = qp.getBooleanValue("hideMenu", false);
-	    printable = qp.getBooleanValue("whiteBackground", getOptionFromStorage("whiteBackground", true));
-	    convention = qp.getBooleanValue("conventionalCurrent",
-		    getOptionFromStorage("conventionalCurrent", true));
-	    noEditing = !qp.getBooleanValue("editable", true);
-	    mouseWheelEdit = qp.getBooleanValue("mouseWheelEdit", getOptionFromStorage("mouseWheelEdit", true));
-	    useWeightedPriority = getOptionFromStorage("weightedPriority", false);
-	    showElectronicsCircuits = getOptionFromStorage("showElectronicsCircuits", false);
-	    enableCacheBustedUrls = getOptionFromStorage("enableCacheBustedUrls", true);
-	    tableRenderCacheEnabled = getOptionFromStorage("tableRenderCacheEnabled", true);
-	    autoOpenModelInfoOnLoad = getOptionFromStorage("autoOpenModelInfoOnLoad", true);
-	    equationTableNewtonJacobianEnabled = getOptionFromStorage("equationTableNewtonJacobianEnabled", false);
-	    positiveColor = qp.getValue("positiveColor");
-	    negativeColor = qp.getValue("negativeColor");
-	    neutralColor = qp.getValue("neutralColor");
-	    selectColor = qp.getValue("selectColor");
-	    currentColor = qp.getValue("currentColor");
-	    mouseModeReq = qp.getValue("mouseMode");
-	    hideInfoBox = qp.getBooleanValue("hideInfoBox", false);
-	} catch (Exception e) { }
-
-	boolean euroSetting = false;
-	if (euroRes)
-	    euroSetting = true;
-	else if (usRes)
-	    euroSetting = false;
-	else
-	    euroSetting = getOptionFromStorage("euroResistors", !weAreInUS(true));
-
-	transform = new double[6];
-	String os = Navigator.getPlatform();
-	isMac = (os.toLowerCase().contains("mac"));
-	ctrlMetaKey = (isMac) ? Locale.LS("Cmd-") : Locale.LS("Ctrl-");
-
-	shortcuts = new String[127];
-
-	layoutPanel = new DockLayoutPanel(Unit.PX);
-
-	fileMenuBar = new MenuBar(true);
-	if (isElectron())
-	    fileMenuBar.addItem(menuItemWithShortcut("window", "New Window...", Locale.LS(ctrlMetaKey + "N"),
-		    new MyCommand("file", "newwindow")));
-	
-	fileMenuBar.addItem(iconMenuItem("doc-new", "New Blank Circuit", new MyCommand("file", "newblankcircuit")));
-	importFromLocalFileItem = menuItemWithShortcut("folder", "Open File...", Locale.LS(ctrlMetaKey + "O"),
-		new MyCommand("file","importfromlocalfile"));
-	importFromLocalFileItem.setEnabled(LoadFile.isSupported());
-	fileMenuBar.addItem(importFromLocalFileItem);
-	importFromTextItem = iconMenuItem("doc-text", "Import From Text...", new MyCommand("file","importfromtext"));
-	fileMenuBar.addItem(importFromTextItem);
-	importFromDropboxItem = iconMenuItem("dropbox", "Import From Dropbox...", new MyCommand("file", "importfromdropbox"));
-	fileMenuBar.addItem(importFromDropboxItem);
-	if (isElectron()) {
-	    saveFileItem = fileMenuBar.addItem(menuItemWithShortcut("floppy", "Save", Locale.LS(ctrlMetaKey + "S"),
-		    new MyCommand("file", "save")));
-	    fileMenuBar.addItem(iconMenuItem("floppy", "Save As...", new MyCommand("file", "saveas")));
-	} else {
-	    exportAsLocalFileItem = menuItemWithShortcut("floppy", "Save As...", Locale.LS(ctrlMetaKey + "S"),
-		    new MyCommand("file","exportaslocalfile"));
-	    exportAsLocalFileItem.setEnabled(ExportAsLocalFileDialog.downloadIsSupported());
-	    fileMenuBar.addItem(exportAsLocalFileItem);
-	}
-	exportAsUrlItem = iconMenuItem("export", "Export As Link...", new MyCommand("file","exportasurl"));
-	fileMenuBar.addItem(exportAsUrlItem);
-	fileMenuBar.addItem(iconMenuItem("line-chart", "Open Runner Output Table...", new MyCommand("file", "openrunnertable")));
-	exportAsTextItem = iconMenuItem("export", "Export As Text...", new MyCommand("file","exportastext"));
-	fileMenuBar.addItem(exportAsTextItem);
-	fileMenuBar.addItem(iconMenuItem("export", "Export As SFCR...", new MyCommand("file","exportassfcr")));
-	editLookupTablesItem = iconMenuItem("table", "Edit Lookup Tables...", new MyCommand("file", "editlookuptables"));
-	fileMenuBar.addItem(editLookupTablesItem);
-	viewModelInfoItem = iconMenuItem("doc-text", "View Model Info...", new MyCommand("file","viewmodelinfo"));
-	viewModelInfoItem.setEnabled(false); // Enabled when info content is available
-	fileMenuBar.addItem(viewModelInfoItem);
-	fileMenuBar.addItem(iconMenuItem("image", "Export As Image...", new MyCommand("file","exportasimage")));
-	fileMenuBar.addItem(iconMenuItem("image", "Copy Circuit Image to Clipboard", new MyCommand("file","copypng")));
-	fileMenuBar.addItem(iconMenuItem("image", "Export As SVG...", new MyCommand("file","exportassvg")));    	
-	fileMenuBar.addItem(iconMenuItem("microchip", "Create Subcircuit...", new MyCommand("file","createsubcircuit")));
-	fileMenuBar.addItem(iconMenuItem("magic", "Find DC Operating Point", new MyCommand("file", "dcanalysis")));
-	recoverItem = iconMenuItem("back-in-time", "Recover Auto-Save", new MyCommand("file","recover"));
-	recoverItem.setEnabled(recovery != null);
-	fileMenuBar.addItem(recoverItem);
-	printItem = menuItemWithShortcut("print", "Print...", Locale.LS(ctrlMetaKey + "P"), new MyCommand("file","print"));
-	fileMenuBar.addItem(printItem);
-	fileMenuBar.addSeparator();
-	fileMenuBar.addItem(iconMenuItem("resize-full-alt", "Toggle Full Screen", new MyCommand("view", "fullscreen")));
-	fileMenuBar.addSeparator();
-	aboutItem = iconMenuItem("info-circled", "About...", (Command)null);
-	fileMenuBar.addItem(aboutItem);
-	aboutItem.setScheduledCommand(new MyCommand("file","about"));
-
-	int width=(int)RootLayoutPanel.get().getOffsetWidth();
-	VERTICALPANELWIDTH = width/5;
-	if (VERTICALPANELWIDTH > 166)
-	    VERTICALPANELWIDTH = 166;
-	if (VERTICALPANELWIDTH < 128)
-	    VERTICALPANELWIDTH = 128;
-
-	menuBar = new MenuBar();
-	menuBar.addItem(Locale.LS("File"), fileMenuBar);
-	verticalPanel=new VerticalPanel();
-
-	verticalPanel.getElement().addClassName("verticalPanel");
-	verticalPanel.getElement().setId("painel");
-	InputElement sidePanelCheckbox = Document.get().createCheckInputElement();
-	sidePanelCheckboxLabel = Document.get().createLabelElement();
-	sidePanelCheckboxLabel.addClassName("triggerLabel");
-	sidePanelCheckbox.setId("trigger");
-	sidePanelCheckboxLabel.setAttribute("for", "trigger" );
-	sidePanelCheckbox.addClassName("trigger");
-	InputElement topPanelCheckbox = Document.get().createCheckInputElement(); 
-	LabelElement topPanelCheckboxLabel = Document.get().createLabelElement();
-	topPanelCheckbox.setId("toptrigger");
-	topPanelCheckbox.addClassName("toptrigger");
-	topPanelCheckboxLabel.addClassName("toptriggerlabel");
-	topPanelCheckboxLabel.setAttribute("for", "toptrigger");
-
-	// make buttons side by side if there's room
-	buttonPanel=(VERTICALPANELWIDTH == 166) ? new HorizontalPanel() : new VerticalPanel();
-
-	m = new MenuBar(true);
-	m.addItem(undoItem = menuItemWithShortcut("ccw", "Undo", Locale.LS(ctrlMetaKey + "Z"), new MyCommand("edit","undo")));
-	m.addItem(redoItem = menuItemWithShortcut("cw", "Redo", Locale.LS(ctrlMetaKey + "Y"), new MyCommand("edit","redo")));
-	m.addSeparator();
-	m.addItem(cutItem = menuItemWithShortcut("scissors", "Cut", Locale.LS(ctrlMetaKey + "X"), new MyCommand("edit","cut")));
-	m.addItem(copyItem = menuItemWithShortcut("copy", "Copy", Locale.LS(ctrlMetaKey + "C"), new MyCommand("edit","copy")));
-	m.addItem(pasteItem = menuItemWithShortcut("paste", "Paste", Locale.LS(ctrlMetaKey + "V"), new MyCommand("edit","paste")));
-	pasteItem.setEnabled(false);
-
-	m.addItem(menuItemWithShortcut("clone", "Duplicate", Locale.LS(ctrlMetaKey + "D"), new MyCommand("edit","duplicate")));
-
-	m.addSeparator();
-	m.addItem(selectAllItem = menuItemWithShortcut("select-all", "Select All", Locale.LS(ctrlMetaKey + "A"), new MyCommand("edit","selectAll")));
-	m.addSeparator();
-	m.addItem(menuItemWithShortcut("search", "Find Component...", "/", new MyCommand("edit", "search")));
-	m.addItem(iconMenuItem("target", weAreInUS(false) ? "Center Circuit" : "Centre Circuit", new MyCommand("edit", "centrecircuit")));
-	// m.addItem(menuItemWithShortcut("target", "Center Circuit", "c", new MyCommand("edit", "centrecircuit")));
-	m.addItem(menuItemWithShortcut("zoom-11", "Zoom 100%", "0", new MyCommand("zoom", "zoom100")));
-	m.addItem(menuItemWithShortcut("zoom-in", "Zoom In", "+", new MyCommand("zoom", "zoomin")));
-	m.addItem(menuItemWithShortcut("zoom-out", "Zoom Out", "-", new MyCommand("zoom", "zoomout")));
-	m.addItem(flipXItem = iconMenuItem("flip-x", "Flip X", new MyCommand("edit", "flipx")));
-	m.addItem(flipYItem = iconMenuItem("flip-y", "Flip Y", new MyCommand("edit", "flipy")));
-	m.addItem(flipXYItem = iconMenuItem("flip-x-y", "Flip XY", new MyCommand("edit", "flipxy")));
-	menuBar.addItem(Locale.LS("Edit"),m);
-
-	drawMenuBar = new MenuBar(true);
-	drawMenuBar.setAutoOpen(true);
-
-	menuBar.addItem(Locale.LS("Draw"), drawMenuBar);
-
-	m = new MenuBar(true);
-	m.addItem(stackAllItem = iconMenuItem("lines", "Stack All", new MyCommand("scopes", "stackAll")));
-	m.addItem(unstackAllItem = iconMenuItem("columns", "Unstack All", new MyCommand("scopes", "unstackAll")));
-	m.addItem(combineAllItem = iconMenuItem("object-group", "Combine All", new MyCommand("scopes", "combineAll")));
-	m.addItem(separateAllItem = iconMenuItem("object-ungroup", "Separate All", new MyCommand("scopes", "separateAll")));
-	m.addSeparator();
-	m.addItem(iconMenuItem("line-chart", "View All Scopes in Plotly...", new MyCommand("scopes", "viewAllPlotly")));
-	menuBar.addItem(Locale.LS("Scopes"), m);
-
-	optionsMenuBar = m = new MenuBar(true );
-	menuBar.addItem(Locale.LS("Options"), optionsMenuBar);
-	m.addItem(dotsCheckItem = new CheckboxMenuItem(Locale.LS("Show Current")));
-	dotsCheckItem.setState(true);
-	m.addItem(voltsCheckItem = new CheckboxMenuItem(Locale.LS("Show Voltage"),
-		new Command() { public void execute(){
-		    if (voltsCheckItem.getState())
-			powerCheckItem.setState(false);
-		    setPowerBarEnable();
-		}
-	}));
-	voltsCheckItem.setState(true);
-	m.addItem(powerCheckItem = new CheckboxMenuItem(Locale.LS("Show Power"),
-		new Command() { public void execute(){
-		    if (powerCheckItem.getState())
-			voltsCheckItem.setState(false);
-		    setPowerBarEnable();
-		}
-	}));
-	m.addItem(showValuesCheckItem = new CheckboxMenuItem(Locale.LS("Show Values")));
-	showValuesCheckItem.setState(true);
-
-	helpMenuBar = new MenuBar(true);
-	helpViewModelInfoItem = menuItemWithShortcut("doc-text", "View Model Info...", "", new MyCommand("help", "viewmodelinfo"));
-	helpViewModelInfoItem.setEnabled(false);
-	helpMenuBar.addItem(helpViewModelInfoItem);
-	helpMenuBar.addItem(menuItemWithShortcut("folder", "Reference Docs...", "", new MyCommand("help", "referencedocs")));
-
-	//m.add(conductanceCheckItem = getCheckItem(LS("Show Conductance")));
-	m.addItem(smallGridCheckItem = new CheckboxMenuItem(Locale.LS("Small Grid"),
-		new Command() { public void execute(){
-		    setGrid();
-		}
-	}));
-	m.addItem(toolbarCheckItem = new CheckboxMenuItem(Locale.LS("Toolbar"),
-		new Command() { public void execute(){
-		    setToolbar();
-		}
-	}));
-	toolbarCheckItem.setState(!hideMenu && !noEditing && !hideSidebar);
-	
-	m.addItem(electronicsModeCheckItem = new CheckboxMenuItem(Locale.LS("Electronics Mode"),
-		new Command() { public void execute(){
-		    if (!electronicsModeCheckItem.getState()) {
-			// Don't allow unchecking - must have one selected
-			electronicsModeCheckItem.setState(true);
-			return;
-		    }
-		    switchToElectronicsToolbar();
-		}
-	}));
-	electronicsModeCheckItem.setState(currentToolbarType == ToolbarType.ELECTRONICS);
-	
-	m.addItem(economicsModeCheckItem = new CheckboxMenuItem(Locale.LS("Economics Mode"),
-		new Command() { public void execute(){
-		    if (!economicsModeCheckItem.getState()) {
-			// Don't allow unchecking - must have one selected
-			economicsModeCheckItem.setState(true);
-			return;
-		    }
-		    switchToEconomicsToolbar();
-		}
-	}));
-	economicsModeCheckItem.setState(currentToolbarType == ToolbarType.ECONOMICS);
-	m.addItem(crossHairCheckItem = new CheckboxMenuItem(Locale.LS("Show Cursor Cross Hairs"),
-		new Command() { public void execute(){
-		    setOptionInStorage("crossHair", crossHairCheckItem.getState());
-		}
-	}));
-	crossHairCheckItem.setState(getOptionFromStorage("crossHair", false));
-	m.addItem(euroResistorCheckItem = new CheckboxMenuItem(Locale.LS("European Resistors"),
-		new Command() { public void execute(){
-		    setOptionInStorage("euroResistors", euroResistorCheckItem.getState());
-		    toolbar.setEuroResistors(euroResistorCheckItem.getState());
-		}
-	}));
-	euroResistorCheckItem.setState(euroSetting);
-	m.addItem(euroGatesCheckItem = new CheckboxMenuItem(Locale.LS("IEC Gates"),
-		new Command() { public void execute(){
-		    setOptionInStorage("euroGates", euroGatesCheckItem.getState());
-		    int i;
-		    for (i = 0; i != elmList.size(); i++)
-			getElm(i).setPoints();
-		}
-	}));
-	euroGatesCheckItem.setState(euroGates);
-	m.addItem(printableCheckItem = new CheckboxMenuItem(Locale.LS("White Background"),
-		new Command() { public void execute(){
-		    int i;
-		    for (i=0;i<scopeCount;i++)
-			scopes[i].setRect(scopes[i].rect);
-		    setOptionInStorage("whiteBackground", printableCheckItem.getState());
-		}
-	}));
-	printableCheckItem.setState(printable);
-
-	m.addItem(conventionCheckItem = new CheckboxMenuItem(Locale.LS("Conventional Current Motion"),
-		new Command() { public void execute(){
-		    setOptionInStorage("conventionalCurrent", conventionCheckItem.getState());
-		    String cc = CircuitElm.currentColor.getHexValue();
-		    // change the current color if it hasn't changed from the default
-		    if (cc.equals("#ffff00") || cc.equals("#00ffff"))
-			CircuitElm.currentColor = conventionCheckItem.getState() ? Color.yellow : Color.cyan;
-		}
-	}));
-	conventionCheckItem.setState(convention);
-	m.addItem(noEditCheckItem = new CheckboxMenuItem(Locale.LS("Disable Editing")));
-	noEditCheckItem.setState(noEditing);
-
-	m.addItem(mouseWheelEditCheckItem = new CheckboxMenuItem(Locale.LS("Edit Values With Mouse Wheel"),
-		new Command() { public void execute(){
-		    setOptionInStorage("mouseWheelEdit", mouseWheelEditCheckItem.getState());
-		}
-	}));
-	mouseWheelEditCheckItem.setState(mouseWheelEdit);
-
-	m.addItem(weightedPriorityCheckItem = new CheckboxMenuItem(Locale.LS("Weighted Priority by Type (Asset/Equity +10)"),
-		new Command() { public void execute(){
-		    useWeightedPriority = weightedPriorityCheckItem.getState();
-		    setOptionInStorage("weightedPriority", useWeightedPriority);
-		    // Clear and re-register all masters with new weighted priorities
-		    ComputedValues.clearMasterTables();
-		    ComputedValues.clearComputedValues();
-		    needAnalyze();
-		}
-	}));
-	weightedPriorityCheckItem.setState(useWeightedPriority);
-
-	m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Shortcuts..."), new MyCommand("options", "shortcuts")));
-	m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Subcircuits..."), new MyCommand("options", "subcircuits")));
-	m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Voltage Unit Symbol..."), new MyCommand("options", "voltageunit")));
-	m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Element Registry Inference Report"), new MyCommand("options", "elementregistryreport")));
-	m.addItem(optionsItem = new CheckboxAlignedMenuItem(Locale.LS("Other Options..."), new MyCommand("options","other")));
-	if (isElectron())
-	    m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Toggle Dev Tools"), new MyCommand("options","devtools")));
-
-	mainMenuBar = new MenuBar(true);
-	mainMenuBar.setAutoOpen(true);
-	composeMainMenu(mainMenuBar, 0);
-	composeMainMenu(drawMenuBar, 1);
-	loadShortcuts();
-
-	layoutPanel.getElement().appendChild(topPanelCheckbox);
-	layoutPanel.getElement().appendChild(topPanelCheckboxLabel);	
-
-	toolbar = new EconomicsToolbar();
-	toolbar.setEuroResistors(euroSetting);
-	if (!hideMenu)
-	    layoutPanel.addNorth(menuBar, MENUBARHEIGHT);
-
-	if (hideSidebar)
-	    VERTICALPANELWIDTH = 0;
-	else {
-		layoutPanel.getElement().appendChild(sidePanelCheckbox);
-		layoutPanel.getElement().appendChild(sidePanelCheckboxLabel);
-	    layoutPanel.addEast(verticalPanel, VERTICALPANELWIDTH);
-	}
-	layoutPanel.addNorth(toolbar, TOOLBARHEIGHT);
-	menuBar.getElement().insertFirst(menuBar.getElement().getChild(1));
-	menuBar.getElement().getFirstChildElement().setAttribute("onclick", "document.getElementsByClassName('toptrigger')[0].checked = false");
-	RootLayoutPanel.get().add(layoutPanel);
-
-	cv =Canvas.createIfSupported();
-	if (cv==null) {
-	    RootPanel.get().add(new Label("Not working. You need a browser that supports the CANVAS element."));
-	    return;
-	}
-
-	Window.addResizeHandler(new ResizeHandler() {
-	    public void onResize(ResizeEvent event) {
-		repaint();
-	    }
-	});
-
-	cvcontext=cv.getContext2d();
-	setToolbar(); // calls setCanvasSize()
-	layoutPanel.add(cv);
-	verticalPanel.add(buttonPanel);
-	
-	// Create floating control panel with Run/Stop, Reset, Step, Lock and Fullscreen buttons
-	floatingControlPanel = new FloatingControlPanel(this);
-	
-/*
-	dumpMatrixButton = new Button("Dump Matrix");
-	dumpMatrixButton.addClickHandler(new ClickHandler() {
-	    public void onClick(ClickEvent event) { dumpMatrix = true; }});
-	verticalPanel.add(dumpMatrixButton);// IES for debugging
-*/
-	
-
-	if (LoadFile.isSupported())
-	    verticalPanel.add(loadFileInput = new LoadFile(this));
-
-	Label l;
-	verticalPanel.add(l = new Label(Locale.LS("Simulation Speed")));
-	l.addStyleName("topSpace");
-
-	// was max of 140
-	verticalPanel.add( speedBar = new Scrollbar(Scrollbar.HORIZONTAL, 3, 1, 0, 260));
-
-	verticalPanel.add( l = new Label(Locale.LS("Current Speed")));
-	l.addStyleName("topSpace");
-	currentBar = new Scrollbar(Scrollbar.HORIZONTAL, 50, 1, 1, 100);
-	verticalPanel.add(currentBar);
-	verticalPanel.add(powerLabel = new Label (Locale.LS("Power Brightness")));
-	powerLabel.addStyleName("topSpace");
-	verticalPanel.add(powerBar = new Scrollbar(Scrollbar.HORIZONTAL,
-		50, 1, 1, 100));
-	setPowerBarEnable();
-
-	//	verticalPanel.add(new Label(""));
-	//        Font f = new Font("SansSerif", 0, 10);
-	l = new Label(Locale.LS("Current Circuit:"));
-	l.addStyleName("topSpace");
-	//        l.setFont(f);
-	titleLabel = new Label("Label");
-	//        titleLabel.setFont(f);
-	verticalPanel.add(l);
-	verticalPanel.add(titleLabel);
-
-	verticalPanel.add(iFrame = new Frame("iframe.html"));
-	iFrame.setWidth(VERTICALPANELWIDTH+"px");
-	iFrame.setHeight("100 px");
-	iFrame.getElement().setAttribute("scrolling", "no");
-
-	setGrid();
-	elmList = new Vector<CircuitElm>();
-	adjustables = new Vector<Adjustable>();
-	//	setupList = new Vector();
-	undoStack = new Vector<UndoItem>();
-	redoStack = new Vector<UndoItem>();
-
-
-	scopes = new Scope[20];
-	scopeColCount = new int[20];
-	scopeCount = 0;
-
-	random = new Random();
-	//	cv.setBackground(Color.black);
-	//	cv.setForeground(Color.lightGray);
-
-	elmMenuBar = new MenuBar(true);
-	elmMenuBar.setAutoOpen(true);
-	selectScopeMenuBar = new MenuBar(true) {
-	    @Override
-	    
-	    // when mousing over scope menu item, select associated scope
-	    public void onBrowserEvent(Event event) {
-		int currentItem = -1;
-		EventTarget eventTarget = event.getEventTarget();
-		Element targetElement = Element.is(eventTarget) ? Element.as(eventTarget) : null;
-		int i;
-		for (i = 0; i != selectScopeMenuItems.size(); i++) {
-		    MenuItem item = selectScopeMenuItems.get(i);
-		    if (targetElement != null && item.getElement().isOrHasChild(targetElement)) {
-			//MenuItem found here
-			currentItem = i;
-		    }
-		}
-		switch (event.getTypeInt()) {
-		case Event.ONMOUSEOVER:
-		    scopeMenuSelected = currentItem; 
-		    break;              
-		case Event.ONMOUSEOUT:
-		    scopeMenuSelected = -1;
-		    break;              
-		}
-		super.onBrowserEvent(event);
-	    }
-	};
-	
-	elmMenuBar.addItem(elmEditMenuItem = new MenuItem(Locale.LS("Edit..."),new MyCommand("elm","edit")));
-	elmMenuBar.addItem(elmScopeMenuItem = new MenuItem(Locale.LS("View in New Scope"), new MyCommand("elm","viewInScope")));
-	elmMenuBar.addItem(elmFloatScopeMenuItem  = new MenuItem(Locale.LS("View in New Undocked Scope"), new MyCommand("elm","viewInFloatScope")));
-	elmMenuBar.addItem(elmAddScopeMenuItem = new MenuItem(Locale.LS("Add to Existing Scope"), new MyCommand("elm", "addToScope0")));
-	elmMenuBar.addItem(elmCutMenuItem = new MenuItem(Locale.LS("Cut"),new MyCommand("elm","cut")));
-	elmMenuBar.addItem(elmCopyMenuItem = new MenuItem(Locale.LS("Copy"),new MyCommand("elm","copy")));
-	elmMenuBar.addItem(elmDeleteMenuItem = new MenuItem(Locale.LS("Delete"),new MyCommand("elm","delete")));
-	elmMenuBar.addItem(                    new MenuItem(Locale.LS("Duplicate"),new MyCommand("elm","duplicate")));
-	elmMenuBar.addItem(elmSwapMenuItem = new MenuItem(Locale.LS("Swap Terminals"),new MyCommand("elm","flip")));
-	elmMenuBar.addItem(elmFlipXMenuItem =  new MenuItem(Locale.LS("Flip X"),new MyCommand("elm","flipx")));
-	elmMenuBar.addItem(elmFlipYMenuItem =  new MenuItem(Locale.LS("Flip Y"),new MyCommand("elm","flipy")));
-	elmMenuBar.addItem(elmFlipXYMenuItem =  new MenuItem(Locale.LS("Flip XY"),new MyCommand("elm","flipxy")));
-	elmMenuBar.addItem(elmSplitMenuItem = menuItemWithShortcut("", "Split Wire", Locale.LS(ctrlMetaKey + "click"), new MyCommand("elm","split")));
-	elmMenuBar.addItem(elmSliderMenuItem = new MenuItem(Locale.LS("Sliders..."),new MyCommand("elm","sliders")));
-	elmMenuBar.addItem(elmSankeyMenuItem = new MenuItem(Locale.LS("View Sankey Diagram..."),new MyCommand("elm","viewSankey")));
-	elmMenuBar.addItem(elmDagBlocksMenuItem = new MenuItem(Locale.LS("View DAG Blocks Plot..."),new MyCommand("elm","viewDagBlocks")));
-	elmMenuBar.addItem(elmEquationTableDebugMenuItem = new MenuItem(Locale.LS("View EquationTable Debug Info..."),new MyCommand("elm","viewEquationTableDebug")));
-	elmMenuBar.addItem(elmEquationTableReferenceMenuItem = new MenuItem(Locale.LS("View EquationTable Reference..."),new MyCommand("elm","viewEquationTableReference")));
-
-	scopePopupMenu = new ScopePopupMenu();
-
-	setColors(positiveColor, negativeColor, neutralColor, selectColor, currentColor);
-	setWheelSensitivity();
-
-	if (startCircuitText != null) {
-	    console("Loading embedded circuit from URL");
-	    getSetupList(false);
-	    readCircuit(startCircuitText);
-	    currentCircuitFile = "embedded";
-	    unsavedChanges = false;
-	} else {
-	    if (stopMessage == null && startCircuitLink!=null) {
-		readCircuit("");
-		getSetupList(false);
-		ImportFromDropboxDialog.setSim(this);
-		ImportFromDropboxDialog.doImportDropboxLink(startCircuitLink, false);
-		// currentCircuitFile set by ImportFromDropboxDialog
-	    } else {
-		readCircuit("");
-		if (stopMessage == null && startCircuit != null) {
-		    getSetupList(false);
-		    readSetupFile(startCircuit, startLabel);
-		    // currentCircuitFile set by readSetupFile
-		}
-		else
-		    getSetupList(true);
-	    }
-	}
-
-	if (mouseModeReq != null)
-	    menuPerformed("main", mouseModeReq);
-
-	enableUndoRedo();
-	enablePaste();
-	enableDisableMenuItems();
-	setiFrameHeight();
-	cv.addMouseDownHandler(this);
-	cv.addMouseMoveHandler(this);
-	cv.addMouseOutHandler(this);
-	cv.addMouseUpHandler(this);
-	cv.addClickHandler(this);
-	cv.addDoubleClickHandler(this);
-	doTouchHandlers(this, cv.getCanvasElement());
-	cv.addDomHandler(this, ContextMenuEvent.getType());	
-	menuBar.addDomHandler(new ClickHandler() {
-	    public void onClick(ClickEvent event) {
-		doMainMenuChecks();
-	    }
-	}, ClickEvent.getType());	
-	Event.addNativePreviewHandler(this);
-	cv.addMouseWheelHandler(this);
-
-	Window.addWindowClosingHandler(new Window.ClosingHandler() {
-	    public void onWindowClosing(ClosingEvent event) {
-		// there is a bug in electron that makes it impossible to close the app if this warning is given
-		if (unsavedChanges && !isElectron())
-		    event.setMessage(Locale.LS("Are you sure?  There are unsaved changes."));
-	    }
-	});
-	setupJSInterface();
-	
-	setSimRunning(running);
-	
-	// Load menu definition
-	loadMenuDefinition();
+	initializer.init();
     }
     
     // Load menu definition from menulist.txt
     void loadMenuDefinition() {
-	String url = GWT.getModuleBaseURL() + "menulist.txt";
-	RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, getLoadUrl(url));
-	try {
-	    requestBuilder.sendRequest(null, new RequestCallback() {
-		public void onError(Request request, Throwable exception) {
-		    console("Warning: Can't load menu definition, using hardcoded menu");
-		    GWT.log("Menu definition file error", exception);
-		    menuDefinitionLoaded = false;
-		}
-
-		public void onResponseReceived(Request request, Response response) {
-		    if (response.getStatusCode() == Response.SC_OK) {
-			menuDefinition = response.getText();
-			menuDefinitionLoaded = true;
-			console("Menu definition loaded successfully");
-			// Rebuild menus now that definition is loaded
-			rebuildMenusFromDefinition();
-		    } else {
-			console("Warning: Can't load menu definition, using hardcoded menu");
-			GWT.log("Bad menu definition response: " + response.getStatusText());
-			menuDefinitionLoaded = false;
-		    }
-		}
-	    });
-	} catch (RequestException e) {
-	    console("Warning: Can't load menu definition, using hardcoded menu");
-	    GWT.log("Failed loading menu definition", e);
-	    menuDefinitionLoaded = false;
-	}
+	initializer.loadMenuDefinition();
     }
     
     // Rebuild menus after menu definition is loaded
     void rebuildMenusFromDefinition() {
-	// Clear existing menu items
-	mainMenuBar.clearItems();
-	drawMenuBar.clearItems();
-	
-	// Rebuild both menus with new definition
-	composeMainMenu(mainMenuBar, 0);
-	composeMainMenu(drawMenuBar, 1);
-	
-	// Recompose subcircuit menus if needed
-	composeSubcircuitMenu();
-	
-	console("Menus rebuilt from definition");
+	initializer.rebuildMenusFromDefinition();
     }
 
     void setColors(String positiveColor, String negativeColor, String neutralColor, String selectColor, String currentColor) {
-        Storage stor = Storage.getLocalStorageIfSupported();
-        if (stor != null) {
-            if (positiveColor == null)
-        	positiveColor = stor.getItem("positiveColor");
-            if (negativeColor == null)
-        	negativeColor = stor.getItem("negativeColor");
-            if (neutralColor == null)
-        	neutralColor = stor.getItem("neutralColor");
-            if (selectColor == null)
-        	selectColor = stor.getItem("selectColor");
-            if (currentColor == null)
-        	currentColor = stor.getItem("currentColor");
-            
-            // Load custom voltage unit symbol
-            String customUnit = stor.getItem("voltageUnitSymbol");
-            if (customUnit != null && !customUnit.isEmpty())
-                voltageUnitSymbol = customUnit;
-        }
-        
-	if (positiveColor != null)
-	    CircuitElm.positiveColor = new Color(URL.decodeQueryString(positiveColor));
-	else if (getOptionFromStorage("alternativeColor", false))
-	    CircuitElm.positiveColor = Color.blue;
-	
-	if (negativeColor != null)
-	    CircuitElm.negativeColor = new Color(URL.decodeQueryString(negativeColor));
-	if (neutralColor != null)
-	    CircuitElm.neutralColor = new Color(URL.decodeQueryString(neutralColor));
-
-	if (selectColor != null)
-	    CircuitElm.selectColor = new Color(URL.decodeQueryString(selectColor));
-	else
-	    CircuitElm.selectColor = Color.cyan;
-	// Connected-node highlight: darker cyan to distinguish from direct selection
-	CircuitElm.connectedColor = new Color(0, 140, 140);
-	
-	if (currentColor != null)
-	    CircuitElm.currentColor = new Color(URL.decodeQueryString(currentColor));
-	else
-	    CircuitElm.currentColor = conventionCheckItem.getState() ? Color.yellow : Color.cyan;
-	    
-	CircuitElm.setColorScale();
+	preferencesManager.setColors(positiveColor, negativeColor, neutralColor, selectColor, currentColor);
     }
     
     void setWheelSensitivity() {
-	wheelSensitivity = 1;
-	try {
-	    Storage stor = Storage.getLocalStorageIfSupported();
-	    wheelSensitivity = Double.parseDouble(stor.getItem("wheelSensitivity"));
-	    
-	    // Load graphics update interval setting
-	    String guiStr = stor.getItem("graphicsUpdateInterval");
-	    if (guiStr != null) {
-		int gui = Integer.parseInt(guiStr);
-		if (gui >= 1 && gui <= 10)
-		    graphicsUpdateInterval = gui;
-	    }
-
-	    String eqTolStr = stor.getItem("equationTableConvergenceTolerance");
-	    if (eqTolStr != null) {
-		double eqTol = Double.parseDouble(eqTolStr);
-		if (eqTol > 0)
-		    equationTableConvergenceTolerance = eqTol;
-	    }
-	} catch (Exception e) {}
+	preferencesManager.setWheelSensitivity();
     }
 
     MenuItem menuItemWithShortcut(String icon, String text, String shortcut, MyCommand cmd) {
@@ -1574,180 +881,32 @@ public CirSim() {
     }
     
     boolean getOptionFromStorage(String key, boolean val) {
-        Storage stor = Storage.getLocalStorageIfSupported();
-        if (stor == null)
-            return val;
-        String s = stor.getItem(key);
-        if (s == null)
-            return val;
-        return s == "true";
+	return preferencesManager.getOptionFromStorage(key, val);
     }
 
     void setOptionInStorage(String key, boolean val) {
-        Storage stor = Storage.getLocalStorageIfSupported();
-        if (stor == null)
-            return;
-        stor.setItem(key,  val ? "true" : "false");
+	preferencesManager.setOptionInStorage(key, val);
     }
     
     void showVoltageUnitDialog() {
-        String newSymbol = Window.prompt("Enter voltage unit symbol (e.g., V, $, €, or leave blank for no unit):", voltageUnitSymbol);
-        if (newSymbol != null) {
-            newSymbol = newSymbol.trim();
-            if (newSymbol.isEmpty())
-                newSymbol = "V"; // Default back to V if empty
-            voltageUnitSymbol = newSymbol;
-            Storage stor = Storage.getLocalStorageIfSupported();
-            if (stor != null)
-                stor.setItem("voltageUnitSymbol", voltageUnitSymbol);
-            repaint();
-        }
+	preferencesManager.showVoltageUnitDialog();
     }
     
     // save shortcuts to local storage
     void saveShortcuts() {
-        Storage stor = Storage.getLocalStorageIfSupported();
-        if (stor == null)
-            return;
-        String str = "1";
-        int i;
-        // format: version;code1=ClassName;code2=ClassName;etc
-        for (i = 0; i != shortcuts.length; i++) {
-            String sh = shortcuts[i];
-            if (sh == null)
-        		continue;
-            str += ";" + i + "=" + sh;
-        }
-        stor.setItem("shortcuts", str);
+	preferencesManager.saveShortcuts();
     }
     
     // load shortcuts from local storage
     void loadShortcuts() {
-        Storage stor = Storage.getLocalStorageIfSupported();
-        if (stor == null)
-            return;
-        String str = stor.getItem("shortcuts");
-        if (str == null)
-            return;
-        String keys[] = str.split(";");
-        
-        // clear existing shortcuts
-        int i;
-        for (i = 0; i != shortcuts.length; i++)
-            shortcuts[i] = null;
-        
-        // clear shortcuts from menu
-        for (i = 0; i != mainMenuItems.size(); i++) {
-            CheckboxMenuItem item = mainMenuItems.get(i);
-            // stop when we get to drag menu items
-            if (item.getShortcut().length() > 1)
-        		break;
-            item.setShortcut("");
-        }
-        
-        // go through keys (skipping version at start)
-        for (i = 1; i < keys.length; i++) {
-            String arr[] = keys[i].split("=");
-            if (arr.length != 2)
-        	continue;
-            int c = Integer.parseInt(arr[0]);
-            String className = arr[1];
-            shortcuts[c] = className;
-            
-            // find menu item and fix it
-            int j;
-            for (j = 0; j != mainMenuItems.size(); j++) {
-        		if (mainMenuItemNames.get(j) == className) {
-        		    CheckboxMenuItem item = mainMenuItems.get(j);
-        		    item.setShortcut(Character.toString((char)c));
-        		    break;
-        		}
-            }
-        }
+	preferencesManager.loadShortcuts();
     }
     
     // install touch handlers
     // don't feel like rewriting this in java.  Anyway, java doesn't let us create mouse
     // events and dispatch them.
     static void doTouchHandlers(final CirSim sim, CanvasElement cv) {
-	final CanvasElementLike canvas = (CanvasElementLike) (Object) cv;
-	final double[] lastTap = new double[] { 0 };
-	final double[] lastScale = new double[] { 1 };
-	final Timer[] longPressTimer = new Timer[] { null };
-
-	canvas.addEventListener("touchstart", new TouchEventHandler() {
-	    public void handle(TouchEventLike e) {
-		TouchListLike touches = e.getTouches();
-		if (touches == null || touches.getLength() < 1)
-		    return;
-		e.preventDefault();
-		if (longPressTimer[0] != null)
-		    longPressTimer[0].cancel();
-
-		double ts = e.getTimeStamp();
-		boolean isDoubleTap = (ts - lastTap[0] < 300);
-		if (!isDoubleTap) {
-		    longPressTimer[0] = new Timer() {
-			public void run() {
-			    sim.longPress();
-			}
-		    };
-		    longPressTimer[0].schedule(500);
-		}
-		lastTap[0] = ts;
-
-		TouchLike touch1 = touches.item(0);
-		TouchLike touch2 = touches.item(touches.getLength()-1);
-		lastScale[0] = Math.hypot(touch1.getClientX()-touch2.getClientX(), touch1.getClientY()-touch2.getClientY());
-
-		double cx = .5 * (touch1.getClientX() + touch2.getClientX());
-		double cy = .5 * (touch1.getClientY() + touch2.getClientY());
-		MouseEventInitLike init = newMouseEventInit();
-		init.setClientX(cx);
-		init.setClientY(cy);
-		MouseEventLike mouseEvent = new MouseEventLike(isDoubleTap ? "dblclick" : "mousedown", init);
-		canvas.dispatchEvent(mouseEvent);
-		if (touches.getLength() > 1)
-		    sim.twoFingerTouch((int) cx, (int) (cy - canvas.getBoundingClientRect().getY()));
-	    }
-	}, false);
-
-	canvas.addEventListener("touchend", new TouchEventHandler() {
-	    public void handle(TouchEventLike e) {
-		e.preventDefault();
-		if (longPressTimer[0] != null)
-		    longPressTimer[0].cancel();
-		MouseEventInitLike init = newMouseEventInit();
-		canvas.dispatchEvent(new MouseEventLike("mouseup", init));
-	    }
-	}, false);
-
-	canvas.addEventListener("touchmove", new TouchEventHandler() {
-	    public void handle(TouchEventLike e) {
-		TouchListLike touches = e.getTouches();
-		if (touches == null || touches.getLength() < 1)
-		    return;
-		e.preventDefault();
-		if (longPressTimer[0] != null)
-		    longPressTimer[0].cancel();
-
-		TouchLike touch1 = touches.item(0);
-		TouchLike touch2 = touches.item(touches.getLength()-1);
-		if (touches.getLength() > 1) {
-		    double newScale = Math.hypot(touch1.getClientX()-touch2.getClientX(), touch1.getClientY()-touch2.getClientY());
-		    if (lastScale[0] > 0)
-			sim.zoomCircuit(40*(Math.log(newScale)-Math.log(lastScale[0])));
-		    lastScale[0] = newScale;
-		}
-
-		double cx = .5 * (touch1.getClientX() + touch2.getClientX());
-		double cy = .5 * (touch1.getClientY() + touch2.getClientY());
-		MouseEventInitLike init = newMouseEventInit();
-		init.setClientX(cx);
-		init.setClientY(cy);
-		canvas.dispatchEvent(new MouseEventLike("mousemove", init));
-	    }
-	}, false);
+	CirSimPlatformInterop.installTouchHandlers(sim, cv);
     }
     
     boolean shown = false;
@@ -1768,64 +927,15 @@ public CirSim() {
     }
     
     void composeSubcircuitMenu() {
-	if (subcircuitMenuBar == null)
-	    return;
-	int mi;
-	
-	// there are two menus to update: the one in the Draw menu, and the one in the right mouse menu
-	for (mi = 0; mi != 2; mi++) {
-	    MenuBar menu = subcircuitMenuBar[mi];
-	    menu.clearItems();
-	    Vector<CustomCompositeModel> list = CustomCompositeModel.getModelList();
-	    int i;
-	    for (i = 0; i != list.size(); i++) {
-		String name = list.get(i).name;
-		menu.addItem(getClassCheckItem(Locale.LS("Add ") + name, "CustomCompositeElm:" + name));
-	    }
-	}
-	lastSubcircuitMenuUpdate = CustomCompositeModel.sequenceNumber;
+	menuBuilder.composeSubcircuitMenu();
     }
     
     public void composeSelectScopeMenu(MenuBar sb) {
-	sb.clearItems();
-	selectScopeMenuItems = new Vector<MenuItem>();
-	for( int i = 0; i < scopeCount; i++) {
-	    String s, l;
-	    s = Locale.LS("Scope")+" "+ Integer.toString(i+1);
-	    l=scopes[i].getScopeMenuName();
-	    if (l!="")
-		s+=" ("+SafeHtmlUtils.htmlEscape(l)+")";
-	    selectScopeMenuItems.add(new MenuItem(s ,new MyCommand("elm", "addToScope"+Integer.toString(i))));
-	}
-	int c = countScopeElms();
-	for (int j = 0; j < c; j++) {
-	    String s,l;
-	    s = Locale.LS("Undocked Scope")+" "+ Integer.toString(j+1);
-	    l = getNthScopeElm(j).elmScope.getScopeMenuName();
-	    if (l!="")
-		s += " ("+SafeHtmlUtils.htmlEscape(l)+")";
-	    selectScopeMenuItems.add(new MenuItem(s, new MyCommand("elm", "addToScope"+Integer.toString(scopeCount+j))));
-	}
-	for (MenuItem mi : selectScopeMenuItems)
-	    sb.addItem(mi);
+	menuBuilder.composeSelectScopeMenu(sb);
     }
     
     public void setiFrameHeight() {
-    	if (iFrame==null)
-    		return;
-    	int i;
-    	int cumheight=0;
-    	for (i=0; i < verticalPanel.getWidgetIndex(iFrame); i++) {
-    		if (verticalPanel.getWidget(i) !=loadFileInput) {
-    			cumheight=cumheight+verticalPanel.getWidget(i).getOffsetHeight();
-    			if (verticalPanel.getWidget(i).getStyleName().contains("topSpace"))
-    					cumheight+=12;
-    		}
-    	}
-    	int ih=RootLayoutPanel.get().getOffsetHeight()-(hideMenu?0:MENUBARHEIGHT)-cumheight;
-    	if (ih<0)
-    		ih=0;
-    	iFrame.setHeight(ih+"px");
+	uiPanelManager.setiFrameHeight();
     }
     
 
@@ -1834,41 +944,7 @@ public CirSim() {
 
 
     CheckboxMenuItem getClassCheckItem(String s, String t) {
-	if (classToLabelMap == null)
-	    classToLabelMap = new HashMap<String, String>();
-	classToLabelMap.put(t, s);
-
-    	// try {
-    	//   Class c = Class.forName(t);
-    	String shortcut="";
-    	CircuitElm elm = null;
-    	try {
-    	    elm = constructElement(t, 0, 0);
-    	} catch (Exception e) {}
-    	CheckboxMenuItem mi;
-    	//  register(c, elm);
-    	if ( elm!=null ) {
-    		if (elm.needsShortcut() ) {
-    			shortcut += (char)elm.getShortcut();
-    			if (shortcuts[elm.getShortcut()] != null && !shortcuts[elm.getShortcut()].equals(t))
-    			    console("already have shortcut for " + (char)elm.getShortcut() + " " + elm);
-    			shortcuts[elm.getShortcut()]=t;
-    		}
-    		elm.delete();
-    	}
-//    	else
-//    		GWT.log("Coudn't create class: "+t);
-    	//	} catch (Exception ee) {
-    	//	    ee.printStackTrace();
-    	//	}
-    	if (shortcut=="")
-    		mi= new CheckboxMenuItem(s);
-    	else
-    		mi = new CheckboxMenuItem(s, shortcut);
-    	mi.setScheduledCommand(new MyCommand("main", t) );
-    	mainMenuItems.add(mi);
-    	mainMenuItemNames.add(t);
-    	return mi;
+	return menuBuilder.getClassCheckItem(s, t);
     }
     
     
@@ -2055,303 +1131,19 @@ public CirSim() {
      * This is called after all elements are drawn so tooltips appear on top.
      */
     void drawHintTooltip(Graphics g) {
-        if (mouseElm == null) return;
-        
-        String hint = null;
-        String valueStr = null;
-        String label = null;
-		java.util.ArrayList<String> tooltipLines = new java.util.ArrayList<String>();
-        boolean isInScope = false;
-        
-        // Check if it's a LabeledNodeElm
-        if (mouseElm instanceof LabeledNodeElm) {
-            LabeledNodeElm lne = (LabeledNodeElm) mouseElm;
-            hint = HintRegistry.getHint(lne.text);
-            label = lne.text;
-            valueStr = CircuitElm.showFormat.format(lne.volts[0]);
-        }
-        // Check if it's an EquationTableElm with a hovered row
-        else if (mouseElm instanceof EquationTableElm) {
-            EquationTableElm ete = (EquationTableElm) mouseElm;
-            int hoveredRow = ete.getHoveredRow();
-            if (hoveredRow >= 0 && hoveredRow < ete.getRowCount()) {
-				hint = "Equation";
-				String hintExpandedEquation = ete.getHintExpandedEquationForDisplay(hoveredRow);
-				if (hintExpandedEquation != null && !hintExpandedEquation.trim().isEmpty()) {
-					tooltipLines.add(hintExpandedEquation);
-				}
-            }
-        }
-        // Check if it's a ScopeElm (undocked scope) with a selected plot
-        else if (mouseElm instanceof ScopeElm) {
-            ScopeElm se = (ScopeElm) mouseElm;
-            CircuitElm plotElm = se.elmScope.getElm();
-            if (plotElm instanceof LabeledNodeElm) {
-                LabeledNodeElm lne = (LabeledNodeElm) plotElm;
-                hint = HintRegistry.getHint(lne.text);
-                label = lne.text;
-                isInScope = true;  // Don't show value for scope
-            }
-        }
-        
-        // Draw the tooltip if we have one
-        if (hint != null && !hint.trim().isEmpty()) {
-			if (tooltipLines.isEmpty()) {
-				// Build display text: "Hint Description: Label = Value" or just "Hint Description: Label" if in scope area
-				String displayText;
-				if (scopeSelected != -1 || isInScope) {
-					// Mouse is over scope area - don't show value
-					displayText = hint + ":   " + label;
-				} else {
-					// Mouse is over circuit area - show value
-					displayText = hint + ":   " + label + " = " + valueStr;
-				}
-				tooltipLines.add(displayText);
-            }
-            
-            g.context.setFont("500 12px system-ui, -apple-system, sans-serif");
-			int hintWidth = 0;
-			for (String line : tooltipLines) {
-				int lineWidth = (int) g.context.measureText(line).getWidth() + 16;
-				if (lineWidth > hintWidth) {
-					hintWidth = lineWidth;
-				}
-			}
-			if (hintWidth <= 0) {
-				return;
-			}
-
-			int lineHeight = 16;
-			int verticalPadding = 8;
-			int hintHeight = verticalPadding * 2 + tooltipLines.size() * lineHeight;
-            int radius = 6;
-            
-            // Position above the mouse cursor in screen coordinates
-            int tooltipX = mouseCursorX - hintWidth / 2;
-            int tooltipY = mouseCursorY - hintHeight - 10;
-            
-            // Keep on screen
-            if (tooltipX < 8) tooltipX = 8;
-            if (tooltipX + hintWidth > canvasWidth - 8) tooltipX = canvasWidth - hintWidth - 8;
-            if (tooltipY < 8) tooltipY = mouseCursorY + 20; // Below cursor if too high
-            
-            // Draw shadow
-            g.context.setShadowColor("rgba(0, 0, 0, 0.25)");
-            g.context.setShadowBlur(8);
-            g.context.setShadowOffsetX(0);
-            g.context.setShadowOffsetY(2);
-            
-            // Draw rounded rectangle background
-            g.context.beginPath();
-            g.context.moveTo(tooltipX + radius, tooltipY);
-            g.context.lineTo(tooltipX + hintWidth - radius, tooltipY);
-            g.context.quadraticCurveTo(tooltipX + hintWidth, tooltipY, tooltipX + hintWidth, tooltipY + radius);
-            g.context.lineTo(tooltipX + hintWidth, tooltipY + hintHeight - radius);
-            g.context.quadraticCurveTo(tooltipX + hintWidth, tooltipY + hintHeight, tooltipX + hintWidth - radius, tooltipY + hintHeight);
-            g.context.lineTo(tooltipX + radius, tooltipY + hintHeight);
-            g.context.quadraticCurveTo(tooltipX, tooltipY + hintHeight, tooltipX, tooltipY + hintHeight - radius);
-            g.context.lineTo(tooltipX, tooltipY + radius);
-            g.context.quadraticCurveTo(tooltipX, tooltipY, tooltipX + radius, tooltipY);
-            g.context.closePath();
-            
-            // Fill with modern dark color
-            g.context.setFillStyle("#1e1e2e");
-            g.context.fill();
-            
-            // Reset shadow before drawing border and text
-            g.context.setShadowColor("transparent");
-            g.context.setShadowBlur(0);
-            g.context.setShadowOffsetX(0);
-            g.context.setShadowOffsetY(0);
-            
-            // Draw accent border
-            g.context.setStrokeStyle("#6c7086");
-            g.context.setLineWidth(1);
-            g.context.stroke();
-            
-            // Draw tooltip text
-            g.context.setFillStyle("#cdd6f4");
-			int textY = tooltipY + verticalPadding + 12;
-			for (int i = 0; i < tooltipLines.size(); i++) {
-				g.context.fillText(tooltipLines.get(i), tooltipX + 8, textY + i * lineHeight);
-			}
-        }
+		statusInfoRenderer.drawHintTooltip(g);
     }
 
     void drawActionSchedulerMessage(Graphics g, Context2d context) {
-        ActionScheduler scheduler = ActionScheduler.getInstance();
-        if (scheduler != null && scheduler.hasDisplayMessage()) {
-            String message = scheduler.getDisplayMessage();
-            
-            // Save graphics state
-            g.save();
-            
-            // Set color based on background (white on black, black on white)
-            if (printableCheckItem.getState()) {
-                g.context.setFillStyle("#000000"); // Black text on white background
-            } else {
-                g.context.setFillStyle("#FFFFFF"); // White text on black background
-            }
-            
-            // Draw the message text centered at top
-            g.context.setFont("bold 24px sans-serif");
-            g.context.setTextAlign("center");
-            g.context.setTextBaseline("top");
-            
-            // Center horizontally - use canvas width / 2
-            int centerX = (context == cvcontext) ? circuitArea.width / 2 : 
-                         (int) (context.getCanvas().getWidth() / 2);
-            int topY = 15;
-            
-            g.context.fillText(message, centerX, topY);
-            
-            g.restore();
-        }
+		statusInfoRenderer.drawActionSchedulerMessage(g, context);
     }
     
     void drawBottomArea(Graphics g) {
-	int leftX = 0;
-	int h = 0;
-	if (stopMessage == null && scopeCount == 0) {
-	    leftX = max(canvasWidth-infoWidth, 0);
-	    int h0 = (int) (canvasHeight * scopeHeightFraction);
-	    h = (mouseElm == null) ? 70 : h0;
-	    if (hideInfoBox)
-		h = 0;
-	}
-	if (stopMessage != null && circuitArea.height > canvasHeight-30)
-	    h = 30;
-	g.setColor(printableCheckItem.getState() ? "#eee" : "#202020");  // Dark gray - same as undocked scopes
-	g.fillRect(leftX, circuitArea.height-h, circuitArea.width, canvasHeight-circuitArea.height+h);
-	g.setFont(CircuitElm.unitsFont);
-	int ct = scopeCount;
-	if (stopMessage != null)
-	    ct = 0;
-	int i;
-	Scope.clearCursorInfo();
-	for (i = 0; i != ct; i++)
-	    scopes[i].selectScope(mouseCursorX, mouseCursorY, dragging);
-	if (scopeElmArr != null)
-	    for (i=0; i != scopeElmArr.length; i++)
-		scopeElmArr[i].selectScope(mouseCursorX, mouseCursorY, dragging);
-	for (i = 0; i != ct; i++)
-	    scopes[i].draw(g);
-	if (mouseWasOverSplitter) {
-		g.setColor(CircuitElm.selectColor);
-		g.setLineWidth(4.0);
-		g.drawLine(0, circuitArea.height-2, circuitArea.width, circuitArea.height-2);
-		g.setLineWidth(1.0);
-	}
-	// Highlight the actual splitter line when hovering over minimize/maximize button
-	if (scopeCount > 0 && mouseIsOverScopeMinMaxButton(mouseCursorX, mouseCursorY)) {
-	    // Draw line but stop before the button area (with some padding)
-	    int lineEndX = circuitArea.width - SCOPE_MIN_MAX_BUTTON_SIZE - 20;
-	    g.setColor(CircuitElm.selectColor);
-	    g.setLineWidth(3.0);
-	    g.drawLine(0, circuitArea.height-2, lineEndX, circuitArea.height-2);
-	    g.setLineWidth(1.0);
-	}
-	// Draw minimize/maximize button on the splitter line
-	if (scopeCount > 0) {
-	    drawScopeMinMaxButton(g);
-	}
-	g.setColor(CircuitElm.whiteColor);
-
-	if (stopMessage != null) {
-	    g.drawString(stopMessage, 10, canvasHeight-10);
-	} else if (!hideInfoBox) {
-	    // in JS it doesn't matter how big this is, there's no out-of-bounds exception
-	    String info[] = new String[10];
-	    int infoIdx = 0;
-	    
-	    // Time is now shown in top left, so start with element info
-	    if (mouseElm != null) {
-		if (mousePost == -1) {
-		    // Show element info
-		    String[] elmInfo = new String[10];
-		    mouseElm.getInfo(elmInfo);
-		    for (int idx = 0; idx < elmInfo.length && elmInfo[idx] != null; idx++) {
-		        info[infoIdx++] = Locale.LS(elmInfo[idx]);
-		    }
-		} else {
-		    info[infoIdx++] = "V = " + CircuitElm.getUnitText(mouseElm.getPostVoltage(mousePost), "V");
-		    // Add node name if available
-		    String nodeName = LabeledNodeElm.getNameByNode(mouseElm.nodes[mousePost]);
-		    if (nodeName != null)
-			info[infoIdx++] = "Node: " + nodeName;
-		}
-
-            
-//		/* //shownodes
-//		for (i = 0; i != mouseElm.getPostCount(); i++)
-//		    info[0] += " " + mouseElm.nodes[i];
-//		if (mouseElm.getVoltageSourceCount() > 0)
-//		    info[0] += ";" + (mouseElm.getVoltageSource()+nodeList.size());
-//		*/
-		
-	    } else {
-	    	// When no element is selected, show timestep info
-	    	info[0] = Locale.LS("time step = ") + CircuitElm.getUnitText(timeStep, "s");
-	    }
-	    if (hintType != -1) {
-		for (i = 0; info[i] != null; i++)
-		    ;
-		String s = getHint();
-		if (s == null)
-		    hintType = -1;
-		else
-		    info[i] = s;
-	    }
-	    int x = leftX + 5;
-	    if (ct != 0)
-		x = scopes[ct-1].rightEdge();
-//	    x = max(x, canvasWidth*2/3);
-	  //  x=cv.getCoordinateSpaceWidth()*2/3;
-	    
-	    // count lines of data
-	    int lineCount = 0;
-	    for (lineCount = 0; info[lineCount] != null; lineCount++)
-		;
-	    int badnodes = badConnectionList.size();
-	    if (badnodes > 0)
-		info[lineCount++] = badnodes + ((badnodes == 1) ?
-					Locale.LS(" bad connection") : Locale.LS(" bad connections"));
-	    if (savedFlag)
-		info[lineCount++] = "(saved)";
-	    
-	    // Show cursor position (grid-snapped coordinates)
-	    int snapX = snapGrid(inverseTransformX(mouseCursorX));
-	    int snapY = snapGrid(inverseTransformY(mouseCursorY));
-	    info[lineCount++] = "cursor: (" + snapX + ", " + snapY + ")";
-	    
-	    // Show equation table mode
-	    info[lineCount++] = "EqnTable: " + (equationTableMnaMode ? "MNA" : "Computed");
-
-	    // Calculate required height for all lines (15 pixels per line plus initial offset)
-	    int requiredHeight = 15 * (lineCount + 1);
-	    int availableHeight = canvasHeight - (circuitArea.height - h);
-	    
-	    // Adjust ybase upward if not enough space
-	    int ybase = circuitArea.height - h;
-	    if (requiredHeight > availableHeight) {
-		ybase = canvasHeight - requiredHeight;
-	    }
-		// int ybase = circuitArea.y+10;
-
-	    for (i = 0; info[i] != null; i++)
-		g.drawString(info[i], x, ybase+15*(i+1));
-	}
-	if (stopMessage == null && warningMessage != null && !warningMessage.isEmpty()) {
-	    g.setColor(Color.red);
-	    g.drawString(warningMessage, 10, canvasHeight-10);
-	    g.setColor(CircuitElm.whiteColor);
-	}
+	statusInfoRenderer.drawBottomArea(g);
     }
     
     Color getBackgroundColor() {
-	if (printableCheckItem.getState())
-	    return Color.white;
-	return Color.black;
+	return statusInfoRenderer.getBackgroundColor();
     }
 
     /**
@@ -2359,70 +1151,7 @@ public CirSim() {
      * names. These collisions can change name-resolution behavior in MNA mode.
      */
 	void updateEquationParameterCollisionWarning() {
-	if (elmList == null || elmList.isEmpty()) {
-	    warningMessage = null;
-	    return;
-	}
-
-	java.util.HashSet<String> labeledNames = new java.util.HashSet<String>();
-	for (int i = 0; i < elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
-	    if (ce instanceof LabeledNodeElm) {
-		LabeledNodeElm lne = (LabeledNodeElm) ce;
-		if (lne.text != null) {
-		    String name = lne.text.trim();
-		    if (!name.isEmpty()) {
-			labeledNames.add(name);
-		    }
-		}
-	    }
-	}
-
-	if (labeledNames.isEmpty()) {
-	    warningMessage = null;
-	    return;
-	}
-
-	java.util.HashSet<String> collisions = new java.util.HashSet<String>();
-	for (int i = 0; i < elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
-	    if (!(ce instanceof EquationTableElm)) {
-		continue;
-	    }
-
-	    EquationTableElm table = (EquationTableElm) ce;
-	    int rows = table.getRowCount();
-	    for (int row = 0; row < rows; row++) {
-		if (table.getOutputMode(row) != EquationTableElm.RowOutputMode.PARAM_MODE) {
-		    continue;
-		}
-		String outputName = table.getOutputName(row);
-		if (outputName == null) {
-		    continue;
-		}
-		String paramName = outputName.trim();
-		if (!paramName.isEmpty() && labeledNames.contains(paramName)) {
-		    collisions.add(paramName);
-		}
-	    }
-	}
-
-	if (collisions.isEmpty()) {
-	    warningMessage = null;
-	    return;
-	}
-
-	java.util.ArrayList<String> sorted = new java.util.ArrayList<String>(collisions);
-	java.util.Collections.sort(sorted);
-	StringBuilder sb = new StringBuilder();
-	sb.append("Warning: PARAM/LabeledNode name collision: ");
-	for (int i = 0; i < sorted.size(); i++) {
-	    if (i > 0) {
-		sb.append(", ");
-	    }
-	    sb.append(sorted.get(i));
-	}
-	warningMessage = sb.toString();
+	statusInfoRenderer.updateEquationParameterCollisionWarning();
     }
     
     int oldScopeCount = -1;
@@ -2440,61 +1169,7 @@ public CirSim() {
     }
     
     String getHint() {
-	CircuitElm c1 = getElm(hintItem1);
-	CircuitElm c2 = getElm(hintItem2);
-	if (c1 == null || c2 == null)
-	    return null;
-	if (hintType == HINT_LC) {
-	    if (!(c1 instanceof InductorElm))
-		return null;
-	    if (!(c2 instanceof CapacitorElm))
-		return null;
-	    InductorElm ie = (InductorElm) c1;
-	    CapacitorElm ce = (CapacitorElm) c2;
-	    return Locale.LS("res.f = ") + CircuitElm.getUnitText(1/(2*pi*Math.sqrt(ie.inductance*
-						    ce.capacitance)), "Hz");
-	}
-	if (hintType == HINT_RC) {
-	    if (!(c1 instanceof ResistorElm))
-		return null;
-	    if (!(c2 instanceof CapacitorElm))
-		return null;
-	    ResistorElm re = (ResistorElm) c1;
-	    CapacitorElm ce = (CapacitorElm) c2;
-	    return "RC = " + CircuitElm.getUnitText(re.resistance*ce.capacitance,
-					 "s");
-	}
-	if (hintType == HINT_3DB_C) {
-	    if (!(c1 instanceof ResistorElm))
-		return null;
-	    if (!(c2 instanceof CapacitorElm))
-		return null;
-	    ResistorElm re = (ResistorElm) c1;
-	    CapacitorElm ce = (CapacitorElm) c2;
-	    return Locale.LS("f.3db = ") +
-		CircuitElm.getUnitText(1/(2*pi*re.resistance*ce.capacitance), "Hz");
-	}
-	if (hintType == HINT_3DB_L) {
-	    if (!(c1 instanceof ResistorElm))
-		return null;
-	    if (!(c2 instanceof InductorElm))
-		return null;
-	    ResistorElm re = (ResistorElm) c1;
-	    InductorElm ie = (InductorElm) c2;
-	    return Locale.LS("f.3db = ") +
-		CircuitElm.getUnitText(re.resistance/(2*pi*ie.inductance), "Hz");
-	}
-	if (hintType == HINT_TWINT) {
-	    if (!(c1 instanceof ResistorElm))
-		return null;
-	    if (!(c2 instanceof CapacitorElm))
-		return null;
-	    ResistorElm re = (ResistorElm) c1;
-	    CapacitorElm ce = (CapacitorElm) c2;
-	    return Locale.LS("fc = ") +
-		CircuitElm.getUnitText(1/(2*pi*re.resistance*ce.capacitance), "Hz");
-	}
-	return null;
+	return statusInfoRenderer.getHint();
     }
 
 //    public void toggleSwitch(int n) {
@@ -2662,53 +1337,7 @@ public CirSim() {
      * @see ComputedValues
      */
     public void registerTableMastersInPriorityOrder() {
-	// Collect all tables
-	java.util.ArrayList<TableElm> tables = new java.util.ArrayList<TableElm>();
-	for (int i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
-	    if (ce instanceof TableElm) {
-		TableElm te = (TableElm)ce;
-		tables.add(te);
-		// console("[PRIORITY_ORDER] Found table '" + te.getTableTitle() + "' with priority=" + te.getPriority());
-	    }
-	}
-	
-	// console("[PRIORITY_ORDER] Collected " + tables.size() + " tables, now sorting...");
-	
-	// Sort by priority (highest first)
-	// Using simple bubble sort since table count is typically small (<10)
-	for (int i = 0; i < tables.size(); i++) {
-	    for (int j = i + 1; j < tables.size(); j++) {
-		if (tables.get(j).getPriority() > tables.get(i).getPriority()) {
-		    // Swap
-		    TableElm temp = tables.get(i);
-		    tables.set(i, tables.get(j));
-		    tables.set(j, temp);
-		}
-	    }
-	}
-	
-	// console("[PRIORITY_ORDER] After sorting:");
-	for (int i = 0; i < tables.size(); i++) {
-	    TableElm table = tables.get(i);
-	    // console("[PRIORITY_ORDER]   " + i + ": '" + table.getTableTitle() + "' (priority=" + table.getPriority() + ")");
-	}
-	
-	// Register in priority order
-	for (int i = 0; i < tables.size(); i++) {
-	    TableElm table = tables.get(i);
-	    // console("[PRIORITY_ORDER] Processing table '" + table.getTableTitle() + "' (priority=" + table.getPriority() + ")");
-	    table.registerAsMasterOnly();
-	}
-	
-	// Update pin output flags to match new master status
-	// console("[PRIORITY_ORDER] Updating pin output flags to match new master assignments...");
-	for (int i = 0; i < tables.size(); i++) {
-	    TableElm table = tables.get(i);
-	    table.updatePinOutputFlags();
-	}
-	
-	// console("[PRIORITY_ORDER] Table master registration completed");
+	tableMasterRegistryManager.registerTableMastersInPriorityOrder();
     }
     
     // make list of nodes
@@ -3097,71 +1726,43 @@ public CirSim() {
     }
     
     static void electronSaveAsCallback(String s) {
-	s = s.substring(s.lastIndexOf('/')+1);
-	s = s.substring(s.lastIndexOf('\\')+1);
-	theSim.setCircuitTitle(s);
-	theSim.allowSave(true);
-	theSim.savedFlag = true;
-	theSim.repaint();
+	theSim.platformInterop.electronSaveAsCallback(s);
     }
 
     static void electronSaveCallback() {
-	theSim.savedFlag = true;
-	theSim.repaint();
+	theSim.platformInterop.electronSaveCallback();
     }
         
 	static void electronSaveAs(final String dump) {
-		showSaveDialog().then(new SaveDialogSuccessCallback() {
-			public Object onSuccess(SaveDialogResult file) {
-				if (file == null || file.isCanceled())
-					return null;
-				saveFile(file, dump);
-				Object path = file.getFilePath();
-				if (path != null)
-					electronSaveAsCallback(path.toString());
-				return null;
-			}
-		}, new SaveDialogFailureCallback() {
-			public Object onFailure(Object error) {
-				console("electronSaveAs failed: " + error);
-				return null;
-			}
-		});
+		theSim.platformInterop.electronSaveAs(dump);
 	}
 
 	static void electronSave(String dump) {
-		saveFile(null, dump);
-		electronSaveCallback();
+		theSim.platformInterop.electronSave(dump);
 	}
     
     static void electronOpenFileCallback(String text, String name) {
-	LoadFile.doLoadCallback(text, name);
-	theSim.allowSave(true);
+	theSim.platformInterop.electronOpenFileCallback(text, name);
     }
     
 	static void electronOpenFile() {
-		openFile(new OpenFileCallback() {
-			public void onOpen(String text, String name) {
-				electronOpenFileCallback(text, name);
-			}
-		});
+		theSim.platformInterop.electronOpenFile();
 	}
     
 	static void toggleDevTools() {
-		toggleDevToolsNative();
+		theSim.platformInterop.toggleDevTools();
 	}
     
 	static boolean isElectron() {
-		return GlobalWindowLike.getOpenFileFunction() != null;
+		return theSim.platformInterop.isElectron();
 	}
 
 	static String getElectronStartCircuitText() {
-	    return GlobalWindowLike.getStartCircuitText();
+	    return theSim.platformInterop.getElectronStartCircuitText();
 	}
     
     void allowSave(boolean b) {
-	if (saveFileItem != null)
-	    saveFileItem.setEnabled(b);
+	uiPanelManager.allowSave(b);
     }
     
     public void menuPerformed(String menu, String item) {
@@ -3437,6 +2038,26 @@ public CirSim() {
 	if (powerBar != null)
 	    powerBar.setValue(50);
     }
+
+	void setSpeedBarForInit(Scrollbar bar) {
+	speedBar = bar;
+	}
+
+	void setCurrentBarForInit(Scrollbar bar) {
+	currentBar = bar;
+	}
+
+	void setPowerBarForInit(Scrollbar bar) {
+	powerBar = bar;
+	}
+
+	void setPowerLabelForInit(Label label) {
+	powerLabel = label;
+	}
+
+	void setTitleLabelForInit(Label label) {
+	titleLabel = label;
+	}
     
 	void readSetupFile(String str, String title) {
 	    circuitIOService.readSetupFile(str, title);
@@ -3689,41 +2310,7 @@ public CirSim() {
      * Draws the minimize/maximize button at the 0.1 fraction line (fixed position).
      */
     void drawScopeMinMaxButton(Graphics g) {
-	// Position button at the 0.1 (10%) fraction line, not at current splitter position
-	int minHeightY = (int)(canvasHeight * (1.0 - 0.1)); // Y position for 0.1 fraction
-	int buttonX = circuitArea.width - SCOPE_MIN_MAX_BUTTON_SIZE - 10;
-	int buttonY = minHeightY - SCOPE_MIN_MAX_BUTTON_SIZE / 2;
-	
-	// Set color based on cursor position
-	boolean hover = mouseIsOverScopeMinMaxButton(mouseCursorX, mouseCursorY);
-	g.setColor(hover ? CircuitElm.selectColor : Color.gray);
-	
-	// Draw button background (rounded rectangle)
-	g.context.save();
-	g.context.setLineWidth(1.5);
-	g.context.strokeRect(buttonX, buttonY, SCOPE_MIN_MAX_BUTTON_SIZE, SCOPE_MIN_MAX_BUTTON_SIZE);
-	
-	// Draw arrow (up for minimize, down for maximize)
-	int centerX = buttonX + SCOPE_MIN_MAX_BUTTON_SIZE / 2;
-	int centerY = buttonY + SCOPE_MIN_MAX_BUTTON_SIZE / 2;
-	int arrowSize = 6;
-	
-	g.context.beginPath();
-	if (!scopePanelMinimized) {
-	    // Draw upward arrow (minimize)
-	    g.context.moveTo(centerX, centerY - arrowSize/2);
-	    g.context.lineTo(centerX - arrowSize, centerY + arrowSize/2);
-	    g.context.moveTo(centerX, centerY - arrowSize/2);
-	    g.context.lineTo(centerX + arrowSize, centerY + arrowSize/2);
-	} else {
-	    // Draw downward arrow (maximize)
-	    g.context.moveTo(centerX, centerY + arrowSize/2);
-	    g.context.lineTo(centerX - arrowSize, centerY - arrowSize/2);
-	    g.context.moveTo(centerX, centerY + arrowSize/2);
-	    g.context.lineTo(centerX + arrowSize, centerY - arrowSize/2);
-	}
-	g.context.stroke();
-	g.context.restore();
+	scopeManager.drawScopeMinMaxButton(g);
     }
     
     /**
@@ -3731,14 +2318,7 @@ public CirSim() {
      * Button is positioned at the 0.1 fraction line for consistency.
      */
     boolean mouseIsOverScopeMinMaxButton(int x, int y) {
-	if (scopeCount == 0)
-	    return false;
-	// Position button at the 0.1 (10%) fraction line, not at current splitter position
-	int minHeightY = (int)(canvasHeight * (1.0 - 0.1)); // Y position for 0.1 fraction
-	int buttonX = circuitArea.width - SCOPE_MIN_MAX_BUTTON_SIZE - 10;
-	int buttonY = minHeightY - SCOPE_MIN_MAX_BUTTON_SIZE / 2;
-	return x >= buttonX && x <= buttonX + SCOPE_MIN_MAX_BUTTON_SIZE &&
-	       y >= buttonY && y <= buttonY + SCOPE_MIN_MAX_BUTTON_SIZE;
+	return scopeManager.mouseIsOverScopeMinMaxButton(x, y);
     }
     
     /**
@@ -3746,17 +2326,7 @@ public CirSim() {
      * Uses the same minimum height (0.1) as the splitter dragging constraint.
      */
     void toggleScopePanelSize() {
-	scopePanelMinimized = !scopePanelMinimized;
-	if (scopePanelMinimized) {
-	    // Store current height and minimize to same minimum as splitter allows
-	    normalScopeHeightFraction = scopeHeightFraction;
-	    scopeHeightFraction = 0.1; // Minimize to 10% (same as splitter minimum)
-	} else {
-	    // Restore normal height
-	    scopeHeightFraction = normalScopeHeightFraction;
-	}
-	setCircuitArea();
-	repaint();
+	scopeManager.toggleScopePanelSize();
     }
     
     /**
@@ -3953,33 +2523,11 @@ public CirSim() {
     
     // Format time with fixed 2 decimal places and appropriate SI prefix
     String formatTimeFixed(double t) {
-	NumberFormat fixedFmt = NumberFormat.getFormat("0.00");
-	String u = timeUnitSymbol;
-	double va = Math.abs(t);
-	if (va < 1e-14)
-	    return "0.00 " + u;
-	if (va < 1e-9)
-	    return fixedFmt.format(t*1e12) + " p" + u;
-	if (va < 1e-6)
-	    return fixedFmt.format(t*1e9) + " n" + u;
-	if (va < 1e-3)
-	    return fixedFmt.format(t*1e6) + " μ" + u;
-	if (va < 1)
-	    return fixedFmt.format(t*1e3) + " m" + u;
-	if (va < 1e3)
-	    return fixedFmt.format(t) + " " + u;
-	if (va < 1e6)
-	    return fixedFmt.format(t*1e-3) + " k" + u;
-	return NumberFormat.getFormat("#.##E000").format(t) + " " + u;
+	return preferencesManager.formatTimeFixed(t);
     }
     
     void setGrid() {
-	if (smallGridCheckItem != null)
-	    gridSize = (smallGridCheckItem.getState()) ? 8 : 16;
-	else
-	    gridSize = 16;
-	gridMask = ~(gridSize-1);
-	gridRound = gridSize/2-1;
+	preferencesManager.setGrid();
     }
 
     void setToolbar() {
@@ -4262,34 +2810,15 @@ public CirSim() {
 
     
     void createNewLoadFile() {
-    	// This is a hack to fix what IMHO is a bug in the <INPUT FILE element
-    	// reloading the same file doesn't create a change event so importing the same file twice
-    	// doesn't work unless you destroy the original input element and replace it with a new one
-    	int idx=verticalPanel.getWidgetIndex(loadFileInput);
-    	LoadFile newlf=new LoadFile(this);
-    	verticalPanel.insert(newlf, idx);
-    	verticalPanel.remove(idx+1);
-    	loadFileInput=newlf;
+	uiPanelManager.createNewLoadFile();
     }
 
     void addWidgetToVerticalPanel(Widget w) {
-	if (RuntimeMode.isNonInteractiveRuntime() || w == null || verticalPanel == null)
-	    return;
-    	if (iFrame!=null) {
-    		int i=verticalPanel.getWidgetIndex(iFrame);
-    		verticalPanel.insert(w, i);
-    		setiFrameHeight();
-    	}
-    	else
-    		verticalPanel.add(w);
+	uiPanelManager.addWidgetToVerticalPanel(w);
     }
     
     void removeWidgetFromVerticalPanel(Widget w){
-	if (RuntimeMode.isNonInteractiveRuntime() || w == null || verticalPanel == null)
-	    return;
-    	verticalPanel.remove(w);
-    	if (iFrame!=null)
-    		setiFrameHeight();
+	uiPanelManager.removeWidgetFromVerticalPanel(w);
     }
     
     public static CircuitElm createCe(int tint, int x1, int y1, int x2, int y2, int f, StringTokenizer st) {
@@ -4328,30 +2857,11 @@ public CirSim() {
     
     
     boolean weAreInUS(boolean orCanada) {
-    try {
-	NavigatorLike nav = GlobalWindowLike.getNavigator();
-	String l = nav != null ? nav.getLanguage() : null;
-	if (l == null && nav != null)
-	    l = nav.getUserLanguage();
-	if (l == null || l.length() <= 2)
-	    return false;
-	String suffix = l.substring(l.length()-2).toUpperCase();
-	return ("US".equals(suffix) || ("CA".equals(suffix) && orCanada));
-    } catch (Exception e) {
-	return false;
-    }
+	return preferencesManager.weAreInUS(orCanada);
     }
 
 	boolean weAreInGermany() {
-	try {
-	NavigatorLike nav = GlobalWindowLike.getNavigator();
-	String l = nav != null ? nav.getLanguage() : null;
-	if (l == null && nav != null)
-	    l = nav.getUserLanguage();
-	return l != null && l.toUpperCase().startsWith("DE");
-	} catch (Exception e) {
-	return false;
-	}
+	return preferencesManager.weAreInGermany();
 	}
     
     // For debugging
@@ -4401,57 +2911,29 @@ public CirSim() {
     }
     
 	void printCanvas(CanvasElement cv) {
-	    String img = cv.toDataUrl("image/png");
-	    Window.open("data:text/html,<html><head><title>Print Circuit</title></head><body><img src='" + URL.encodeQueryString(img) + "'/></body></html>", "print", "height=500,width=500,status=yes,location=no");
+	    exportCompositeActions.printCanvas(cv);
 	}
 
 	void doDCAnalysis() {
-	    dcAnalysisFlag = true;
-	    resetAction();
+	    exportCompositeActions.doDCAnalysis();
 	}
 	
 	void doPrint() {
-	    Canvas cv = getCircuitAsCanvas(CAC_PRINT);
-	    printCanvas(cv.getCanvasElement());
+	    exportCompositeActions.doPrint();
 	}
 
 	boolean loadedCanvas2SVG = false;
 
 	boolean initializeSVGScriptIfNecessary(final String followupAction) {
-		// load canvas2svg if we haven't already
-		if (!loadedCanvas2SVG) {
-			ScriptInjector.fromUrl("canvas2svg.js").setCallback(new Callback<Void,Exception>() {
-				public void onFailure(Exception reason) {
-					alertOrWarn("Can't load canvas2svg.js.");
-				}
-				public void onSuccess(Void result) {
-					loadedCanvas2SVG = true;
-					if (followupAction.equals("doExportAsSVG")) {
-						doExportAsSVG();
-					} else if (followupAction.equals("doExportAsSVGFromAPI")) {
-						doExportAsSVGFromAPI();
-					}
-				}
-			}).inject();
-			return false;
-		}
-		return true;
+		return exportCompositeActions.initializeSVGScriptIfNecessary(followupAction);
 	}
 
 	void doExportAsSVG() {
-		if (!initializeSVGScriptIfNecessary("doExportAsSVG")) {
-			return;
-		}
-		dialogShowing = new ExportAsImageDialog(CAC_SVG);
-		dialogShowing.show();
+		exportCompositeActions.doExportAsSVG();
 	}
 
 	public void doExportAsSVGFromAPI() {
-		if (!initializeSVGScriptIfNecessary("doExportAsSVGFromAPI")) {
-			return;
-		}
-		String svg = getCircuitAsSVG();
-		callSVGRenderedHook(svg);
+		exportCompositeActions.doExportAsSVGFromAPI();
 	}
 
 	static final int CAC_PRINT = 0;
@@ -4459,80 +2941,12 @@ public CirSim() {
 	static final int CAC_SVG   = 2;
 	
 	public Canvas getCircuitAsCanvas(int type) {
-	    	// create canvas to draw circuit into
-	    	Canvas cv = Canvas.createIfSupported();
-	    	Rectangle bounds = getCircuitBounds();
-	    	
-		// add some space on edges because bounds calculation is not perfect
-	    	int wmargin = 140;
-	    	int hmargin = 100;
-	    	int w = (bounds.width*2+wmargin) ;
-	    	int h = (bounds.height*2+hmargin) ;
-	    	cv.setCoordinateSpaceWidth(w);
-	    	cv.setCoordinateSpaceHeight(h);
-	    
-		Context2d context = cv.getContext2d();
-		drawCircuitInContext(context, type, bounds, w, h);
-		return cv;
+		return exportCompositeActions.getCircuitAsCanvas(type);
 	}
 	
 	// Get all scopes rendered to a single canvas
 	public Canvas getScopesAsCanvas() {
-		if (scopeCount == 0)
-			return null;
-		
-		// Calculate bounding box for all scopes
-		int minX = Integer.MAX_VALUE;
-		int minY = Integer.MAX_VALUE;
-		int maxX = 0;
-		int maxY = 0;
-		int margin = 10;
-		
-		// Find the extents of all scopes
-		for (int i = 0; i < scopeCount; i++) {
-			Scope s = scopes[i];
-			if (s.rect.x < minX) minX = s.rect.x;
-			if (s.rect.y < minY) minY = s.rect.y;
-			int right = s.rect.x + s.rect.width;
-			int bottom = s.rect.y + s.rect.height;
-			if (right > maxX) maxX = right;
-			if (bottom > maxY) maxY = bottom;
-		}
-		
-		// Calculate canvas size (only the scope area, not the full canvas)
-		int canvasWidth = maxX - minX + margin * 2;
-		int canvasHeight = maxY - minY + margin * 2;
-		
-		// Create canvas
-		Canvas cv = Canvas.createIfSupported();
-		cv.setCoordinateSpaceWidth(canvasWidth);
-		cv.setCoordinateSpaceHeight(canvasHeight);
-		
-		Context2d context = cv.getContext2d();
-		Graphics g = new Graphics(context);
-		
-		// Set background color based on printable setting
-		if (printableCheckItem.getState()) {
-			CircuitElm.whiteColor = Color.black;
-			CircuitElm.lightGrayColor = Color.black;
-			g.setColor(Color.white);
-		} else {
-			CircuitElm.whiteColor = Color.white;
-			CircuitElm.lightGrayColor = Color.lightGray;
-			g.setColor(Color.black);
-		}
-		g.fillRect(0, 0, canvasWidth, canvasHeight);
-		
-		// Translate the context so scopes are drawn at the correct position
-		// (offset by -minX, -minY to move them to origin, then add margin)
-		context.translate(margin - minX, margin - minY);
-		
-		// Draw each scope
-		for (int i = 0; i < scopeCount; i++) {
-			scopes[i].draw(g);
-		}
-		
-		return cv;
+		return exportCompositeActions.getScopesAsCanvas();
 	}
 	
 	// create SVG context using canvas2svg
@@ -4545,215 +2959,19 @@ public CirSim() {
 	}
 	
 	public String getCircuitAsSVG() {
-	    Rectangle bounds = getCircuitBounds();
-
-	    // add some space on edges because bounds calculation is not perfect
-	    int wmargin = 140;
-	    int hmargin = 100;
-	    int w = (bounds.width+wmargin) ;
-	    int h = (bounds.height+hmargin) ;
-	    Context2d context = createSVGContext(w, h);
-	    drawCircuitInContext(context, CAC_SVG, bounds, w, h);
-	    return getSerializedSVG(context);
+	    return exportCompositeActions.getCircuitAsSVG();
 	}
 	
 	void drawCircuitInContext(Context2d context, int type, Rectangle bounds, int w, int h) {
-		Graphics g = new Graphics(context);
-		context.setTransform(1, 0, 0, 1, 0, 0);
-	    	double oldTransform[] = Arrays.copyOf(transform, 6);
-	        
-	        double scale = 1;
-	        
-		// Set flag to indicate we're exporting
-		isExporting = true;
-		
-		// turn on white background, turn off current display
-		boolean p = printableCheckItem.getState();
-		boolean c = dotsCheckItem.getState();
-		boolean print = (type == CAC_PRINT);
-		if (print)
-		    printableCheckItem.setState(true);
-	        if (printableCheckItem.getState()) {
-	            CircuitElm.whiteColor = Color.black;
-	            CircuitElm.lightGrayColor = Color.black;
-	            g.setColor(Color.white);
-	        } else {
-	            CircuitElm.whiteColor = Color.white;
-	            CircuitElm.lightGrayColor = Color.lightGray;
-	            g.setColor(Color.black);
-	        }
-	        g.fillRect(0, 0, w, h);
-		dotsCheckItem.setState(false);
-
-	    	int wmargin = 140;
-	    	int hmargin = 100;
-	        if (bounds != null)
-	            scale = Math.min(w /(double)(bounds.width+wmargin),
-	                             h/(double)(bounds.height+hmargin));
-	        
-	        // ScopeElms need the transform array to be updated
-		transform[0] = transform[3] = scale;
-		transform[4] = -(bounds.x-wmargin/2);
-		transform[5] = -(bounds.y-hmargin/2);
-		context.scale(scale, scale);
-		context.translate(transform[4], transform[5]);
-		context.setLineCap(Context2d.LineCap.ROUND);
-		
-		// draw elements
-		int i;
-		for (i = 0; i != elmList.size(); i++) {
-		    getElm(i).draw(g);
-		}
-		for (i = 0; i != postDrawList.size(); i++) {
-		    CircuitElm.drawPost(g, postDrawList.get(i));
-		}
-		
-		// Draw action scheduler display message if present
-		context.setTransform(1, 0, 0, 1, 0, 0);
-		drawActionSchedulerMessage(g, context);
-
-		// restore everything
-		printableCheckItem.setState(p);
-		dotsCheckItem.setState(c);
-		transform = oldTransform;
-		isExporting = false;
+		exportCompositeActions.drawCircuitInContext(context, type, bounds, w, h);
 	}
 	
 	boolean isSelection() {
-	    for (int i = 0; i != elmList.size(); i++)
-		if (getElm(i).isSelected())
-		    return true;
-	    return false;
+	    return exportCompositeActions.isSelection();
 	}
 	
 	public CustomCompositeModel getCircuitAsComposite() {
-	    int i;
-	    String nodeDump = "";
-	    String dump = "";
-//	    String models = "";
-	    CustomLogicModel.clearDumpedFlags();
-	    DiodeModel.clearDumpedFlags();
-	    TransistorModel.clearDumpedFlags();
-            Vector<LabeledNodeElm> sideLabels[] = new Vector[] {
-                new Vector<LabeledNodeElm>(), new Vector<LabeledNodeElm>(),
-                new Vector<LabeledNodeElm>(), new Vector<LabeledNodeElm>()
-            };
-	    Vector<ExtListEntry> extList = new Vector<ExtListEntry>();
-	    boolean sel = isSelection();
-	    
-	    boolean used[] = new boolean[nodeList.size()];
-	    boolean extnodes[] = new boolean[nodeList.size()];
-	    
-	    // redo node allocation to avoid auto-assigning ground
-	    if (!preStampCircuit(true))
-		return null;
-
-	    // find all the labeled nodes, get a list of them, and create a node number map
-	    for (i = 0; i != elmList.size(); i++) {
-		CircuitElm ce = getElm(i);
-		if (sel && !ce.isSelected())
-		    continue;
-		if (ce instanceof LabeledNodeElm) {
-		    LabeledNodeElm lne = (LabeledNodeElm) ce;
-		    String label = lne.text;
-		    if (lne.isInternal())
-			continue;
-		    
-		    // already added to list?
-		    if (extnodes[ce.getNode(0)])
-			continue;
-		    
-                    int side = ChipElm.SIDE_W;
-                    if (Math.abs(ce.dx) >= Math.abs(ce.dy) && ce.dx > 0) side = ChipElm.SIDE_E;
-                    if (Math.abs(ce.dx) <= Math.abs(ce.dy) && ce.dy < 0) side = ChipElm.SIDE_N;
-                    if (Math.abs(ce.dx) <= Math.abs(ce.dy) && ce.dy > 0) side = ChipElm.SIDE_S;
-                    
-		    // create ext list entry for external nodes
-                    sideLabels[side].add(lne);
-		    extnodes[ce.getNode(0)] = true;
-		    if (ce.getNode(0) == 0) {
-		        alertOrWarn("Node \"" + lne.text + "\" can't be connected to ground");
-			return null;
-		    }
-		}
-	    }
-	    
-            Collections.sort(sideLabels[ChipElm.SIDE_W], (LabeledNodeElm a, LabeledNodeElm b) -> Integer.signum(a.y - b.y));
-            Collections.sort(sideLabels[ChipElm.SIDE_E], (LabeledNodeElm a, LabeledNodeElm b) -> Integer.signum(a.y - b.y));
-            Collections.sort(sideLabels[ChipElm.SIDE_N], (LabeledNodeElm a, LabeledNodeElm b) -> Integer.signum(a.x - b.x));
-            Collections.sort(sideLabels[ChipElm.SIDE_S], (LabeledNodeElm a, LabeledNodeElm b) -> Integer.signum(a.x - b.x));
-
-            for (int side = 0; side < sideLabels.length; side++) {
-                for (int pos = 0; pos < sideLabels[side].size(); pos++) {
-                    LabeledNodeElm lne = sideLabels[side].get(pos);
-                    ExtListEntry ent = new ExtListEntry(lne.text, lne.getNode(0), pos, side);
-                    extList.add(ent);
-                }
-            }
-
-	    // output all the elements
-	    for (i = 0; i != elmList.size(); i++) {
-		CircuitElm ce = getElm(i);
-		if (sel && !ce.isSelected())
-		    continue;
-		// don't need these elements dumped
-		if (ce instanceof WireElm || ce instanceof LabeledNodeElm || ce instanceof ScopeElm)
-		    continue;
-		if (ce instanceof GraphicElm || ce instanceof GroundElm)
-		    continue;
-		int j;
-		if (nodeDump.length() > 0)
-		    nodeDump += "\r";
-		nodeDump += ce.getClass().getSimpleName();
-		for (j = 0; j != ce.getPostCount(); j++) {
-		    int n = ce.getNode(j);
-		    used[n] = true;
-		    nodeDump += " " + n;
-		}
-		
-	        // save positions
-                int x1 = ce.x;  int y1 = ce.y;
-                int x2 = ce.x2; int y2 = ce.y2;
-                
-                // set them to 0 so they're easy to remove
-                ce.x = ce.y = ce.x2 = ce.y2 = 0;
-
-                String tstring = ce.dump();
-                tstring = tstring.replaceFirst("[A-Za-z0-9]+ 0 0 0 0 ", ""); // remove unused tint_x1 y1 x2 y2 coords for internal components
-                
-                // restore positions
-                ce.x = x1; ce.y = y1; ce.x2 = x2; ce.y2 = y2;
-                if (dump.length() > 0)
-                    dump += " ";
-                dump += CustomLogicModel.escape(tstring);
-	    }
-	    
-	    for (i = 0; i != extList.size(); i++) {
-		ExtListEntry ent = extList.get(i);
-		if (!used[ent.node]) {
-		    alertOrWarn("Node \"" + ent.name + "\" is not used!");
-		    return null;
-		}
-	    }
-	
-	    boolean first = true;
-	    for (i = 0; i != unconnectedNodes.size(); i++) {
-		int q = unconnectedNodes.get(i);
-		if (!extnodes[q] && used[q]) {
-		    if (nodesWithGroundConnectionCount == 0 && first) {
-			first = false;
-			continue;
-		    }
-		    alertOrWarn("Some nodes are unconnected!");
-		    return null;
-		}
-	    }	    
-
-	    CustomCompositeModel ccm = new CustomCompositeModel();
-	    ccm.nodeList = nodeDump;
-	    ccm.elmDump = dump;
-	    ccm.extList = extList;
-	    return ccm;
+	    return exportCompositeActions.getCircuitAsComposite();
 	}
 	
 	static void invertMatrix(double a[][], int n) {
@@ -4789,46 +3007,7 @@ public CirSim() {
      * Called from stampCircuit() between the first stamp pass and postStamp().
      */
     void buildCircuitVariableSlots() {
-	nameToSlot = new java.util.HashMap<String, Integer>();
-	int slot = 0;
-
-	// Labeled nodes first so expression trees can reference physical node voltages
-	String[] labeledNames = LabeledNodeElm.getSortedLabeledNodeNames();
-	if (labeledNames != null) {
-	    for (String name : labeledNames) {
-		if (name != null && !nameToSlot.containsKey(name))
-		    nameToSlot.put(name, slot++);
-	    }
-	}
-
-	// All pre-registered and runtime computed names
-	java.util.Set<String> allComputedNames = ComputedValues.getAllNames();
-	if (allComputedNames != null) {
-	    for (String name : allComputedNames) {
-		if (name != null && !nameToSlot.containsKey(name))
-		    nameToSlot.put(name, slot++);
-	    }
-	}
-
-	// Parameter names (sliders, PARAM rows) — stored in a separate registry
-	// in ComputedValues; getAllNames() does not include them.
-	java.util.Set<String> allParamNames = ComputedValues.getAllParameterNames();
-	console("[buildSlots] paramNames=" + (allParamNames != null ? allParamNames.toString() : "NULL"));
-	if (allParamNames != null) {
-	    for (String name : allParamNames) {
-		if (name != null && !nameToSlot.containsKey(name))
-		    nameToSlot.put(name, slot++);
-	    }
-	}
-
-	// Build the parallel plain array: slotNames[i] = name at index i.
-	// This lets syncAllSlots() iterate a simple array instead of HashMap.entrySet().
-	circuitVariables = new double[slot];
-	slotNames = new String[slot];
-	for (java.util.Map.Entry<String, Integer> e : nameToSlot.entrySet())
-	    slotNames[e.getValue()] = e.getKey();
-
-	syncAllSlots();
+	circuitValueSlotManager.buildCircuitVariableSlots();
     }
 
     /**
@@ -4841,14 +3020,7 @@ public CirSim() {
      * commitPendingToCurrentValues() have both been applied.
      */
     void syncAllSlots() {
-	if (circuitVariables == null || slotNames == null)
-	    return;
-	// Plain array loop — no HashMap overhead, no iterator allocation.
-	for (int s = 0; s < slotNames.length; s++) {
-	    String name = slotNames[s];
-	    if (name != null)
-		circuitVariables[s] = resolveSlotValue(name);
-	}
+	circuitValueSlotManager.syncAllSlots();
     }
 
     /**
@@ -4856,36 +3028,11 @@ public CirSim() {
      * waterfall as Expr's E_NODE_REF case for CURRENT_CONTEXT.
      */
     double resolveSlotValue(String name) {
-	if (equationTableMnaMode) {
-	    // Priority 1: PARAM override (parameter names shadow physical nodes)
-	    if (ComputedValues.isParameterName(name)) {
-		Double v = ComputedValues.getComputedValue(name);
-		if (v != null) return v;
-	    }
-	    // Priority 2: Flow value
-	    Double flowVal = ComputedValues.getComputedFlowValue(name);
-	    if (flowVal != null) return flowVal;
-	    // Priority 3: Labeled node voltage
-	    Integer node = LabeledNodeElm.getByName(name);
-	    if (node != null && node != 0
-		    && nodeVoltages != null && (node - 1) < nodeVoltages.length)
-		return nodeVoltages[node - 1];
-	    // Priority 4: Generic computed value
-	    Double cv = ComputedValues.getComputedValue(name);
-	    return cv != null ? cv : 0.0;
-	} else {
-	    // Pure-computational mode
-	    Double cv = ComputedValues.getComputedFlowOrValue(name);
-	    return cv != null ? cv : 0.0;
-	}
+	return circuitValueSlotManager.resolveSlotValue(name);
     }
 
     double getLabeledNodeVoltage(String name) {
-	    Integer node = LabeledNodeElm.getByName(name);
-	    if (node == null || node == 0)
-		return 0;
-	    // subtract one because ground is not included in nodeVoltages[]
-	    return nodeVoltages[node.intValue()-1];
+	return circuitValueSlotManager.getLabeledNodeVoltage(name);
 	}
 	
 	/**
@@ -4893,26 +3040,11 @@ public CirSim() {
 	 * @return Message string, or null if no unresolved references
 	 */
 	String getUnresolvedReferencesMessage() {
-	    java.util.Vector<String> unresolved = Expr.getUnresolvedReferences();
-	    if (unresolved.size() == 0) return null;
-	    StringBuilder sb = new StringBuilder("Not found: ");
-	    for (int i = 0; i < unresolved.size(); i++) {
-		if (i > 0) sb.append(", ");
-		sb.append(unresolved.get(i));
-	    }
-	    return sb.toString();
+	    return circuitValueSlotManager.getUnresolvedReferencesMessage();
 	}
 	
 	void setExtVoltage(String name, double v) {
-	    int i;
-	    for (i = 0; i != elmList.size(); i++) {
-		CircuitElm ce = getElm(i);
-		if (ce instanceof ExtVoltageElm) {
-		    ExtVoltageElm eve = (ExtVoltageElm) ce;
-		    if (eve.getName().equals(name))
-			eve.setVoltage(v);
-		}
-	    }
+	    circuitValueSlotManager.setExtVoltage(name, v);
 	}
 
 	// ========== SLIDER API METHODS ==========
@@ -4921,13 +3053,7 @@ public CirSim() {
 	 * Find an adjustable slider by its name
 	 */
 	Adjustable findAdjustableByName(String name) {
-	    for (int i = 0; i < adjustables.size(); i++) {
-	        Adjustable adj = adjustables.get(i);
-	        if (adj.sliderText != null && adj.sliderText.equals(name)) {
-	            return adj;
-	        }
-	    }
-	    return null;
+	    return circuitValueSlotManager.findAdjustableByName(name);
 	}
 	
 	/**
@@ -4936,14 +3062,7 @@ public CirSim() {
 	 * @return The current value, or NaN if not found
 	 */
 	double getSliderValue(String name) {
-	    Adjustable adj = findAdjustableByName(name);
-	    if (adj != null) {
-	        EditInfo ei = adj.elm.getEditInfo(adj.editItem);
-	        if (ei != null) {
-	            return ei.value;
-	        }
-	    }
-	    return Double.NaN;
+	    return circuitValueSlotManager.getSliderValue(name);
 	}
 	
 	/**
@@ -4953,24 +3072,7 @@ public CirSim() {
 	 * @return true if successful, false if slider not found
 	 */
 	boolean setSliderValue(String name, double value) {
-	    Adjustable adj = findAdjustableByName(name);
-	    if (adj != null) {
-	        adj.setSliderValue(value);
-	        EditInfo ei = adj.elm.getEditInfo(adj.editItem);
-	        if (ei != null) {
-	            ei.value = value;
-	            adj.elm.setEditValue(adj.editItem, ei);
-	            analyzeFlag = true;
-	            
-	            // Update the slider label to show current value
-	            if (adj.label != null) {
-	                String valueStr = adj.getFormattedValue(ei, value);
-	                adj.updateLabelHTML(adj.sliderText, valueStr);
-	            }
-	            return true;
-	        }
-	    }
-	    return false;
+	    return circuitValueSlotManager.setSliderValue(name, value);
 	}
 	
 	/**
@@ -4982,14 +3084,7 @@ public CirSim() {
 	}
 	
 	JsArrayString getSliderNames() {
-	    JsArrayString names = getJSArrayString();
-	    for (int i = 0; i < adjustables.size(); i++) {
-	        Adjustable adj = adjustables.get(i);
-	        if (adj.sliderText != null) {
-	            names.push(adj.sliderText);
-	        }
-	    }
-	    return names;
+	    return circuitValueSlotManager.getSliderNames();
 	}
 	
 	// ========== END SLIDER API METHODS ==========
@@ -5001,14 +3096,7 @@ public CirSim() {
 	 * @return Array of labeled node names
 	 */
 	JsArrayString getLabeledNodeNames() {
-	    JsArrayString names = getJSArrayString();
-	    java.util.Set<String> nodeNames = LabeledNodeElm.getAllNodeNames();
-	    if (nodeNames != null) {
-	        for (String name : nodeNames) {
-	            names.push(name);
-	        }
-	    }
-	    return names;
+	    return circuitValueSlotManager.getLabeledNodeNames();
 	}
 	
 	/**
@@ -5018,13 +3106,7 @@ public CirSim() {
 	 * @return The voltage value, or 0 if not found
 	 */
 	double getLabeledNodeValue(String name) {
-	    // First try computed values (from tables, etc.)
-	    Double computed = ComputedValues.getComputedValue(name);
-	    if (computed != null) {
-	        return computed;
-	    }
-	    // Fall back to regular labeled node voltage
-	    return getLabeledNodeVoltage(name);
+	    return circuitValueSlotManager.getLabeledNodeValue(name);
 	}
 	
 	/**
@@ -5032,14 +3114,7 @@ public CirSim() {
 	 * @return Array of computed value names
 	 */
 	JsArrayString getComputedValueNames() {
-	    JsArrayString names = getJSArrayString();
-	    java.util.Set<String> valueNames = ComputedValues.getAllNames();
-	    if (valueNames != null) {
-	        for (String name : valueNames) {
-	            names.push(name);
-	        }
-	    }
-	    return names;
+	    return circuitValueSlotManager.getComputedValueNames();
 	}
 
 	void setExprPerfProbeEnabled(boolean enabled) {
@@ -5057,90 +3132,32 @@ public CirSim() {
 	// ========== END LABELED NODE & COMPUTED VALUE API METHODS ==========
 
 	JsArray<JavaScriptObject> getJSArray() {
-	    return JavaScriptObject.createArray().cast();
+	    return jsApiBridge.getJSArray();
 	}
 	
 	JsArray<JavaScriptObject> getJSElements() {
-	    int i;
-	    JsArray<JavaScriptObject> arr = getJSArray();
-	    for (i = 0; i != elmList.size(); i++) {
-		CircuitElm ce = getElm(i);
-		ce.addJSMethods();
-		arr.push(ce.getJavaScriptObject());
-	    }
-	    return arr;
+	    return jsApiBridge.getJSElements();
 	}
 	
 	void setupJSInterface() {
-	    final CirSim that = this;
-	    CircuitJsApi api = (CircuitJsApi) (Object) JavaScriptObject.createObject();
-	    api.setSetSimRunning(new HookBool() { public void call(boolean run) { that.setSimRunning(run); } });
-	    api.setReset(new Hook0() { public void call() { that.resetAction(); } });
-	    api.setStep(new Hook0() { public void call() { that.stepCircuit(); } });
-	    api.setGetTime(new HookNoArgDouble() { public double call() { return that.t; } });
-	    api.setGetTimeStep(new HookNoArgDouble() { public double call() { return that.timeStep; } });
-	    api.setSetTimeStep(new HookDouble() { public void call(double ts) { that.timeStep = ts; } });
-	    api.setGetMaxTimeStep(new HookNoArgDouble() { public double call() { return that.maxTimeStep; } });
-	    api.setSetMaxTimeStep(new HookDouble() { public void call(double ts) { that.maxTimeStep = that.timeStep = ts; } });
-	    api.setIsRunning(new HookNoArgBoolean() { public boolean call() { return that.simIsRunning(); } });
-	    api.setGetNodeVoltage(new HookStringToDouble() { public double call(String n) { return that.getLabeledNodeVoltage(n); } });
-	    api.setSetExtVoltage(new HookStringDouble() { public Object call(String n, double v) { that.setExtVoltage(n, v); return null; } });
-	    api.setGetElements(new HookNoArgElements() { public JsArray<JavaScriptObject> call() { return that.getJSElements(); } });
-	    api.setGetCircuitAsSVG(new HookNoArgString() { public String call() { return that.getCircuitAsSVG(); } });
-	    api.setExportCircuit(new HookNoArgString() { public String call() { return that.dumpCircuit(); } });
-	    api.setImportCircuit(new HookStringBool() { public void call(String c, boolean s) { that.importCircuitFromText(c, s); } });
-	    api.setImportCircuitFromCTZ(new HookStringBool() { public void call(String ctz, boolean s) { that.importCircuitFromCTZ(ctz, s); } });
-	    api.setGetSliderValue(new HookStringToDouble() { public double call(String name) { return that.getSliderValue(name); } });
-	    api.setSetSliderValue(new HookStringDouble() { public Object call(String name, double value) { return that.setSliderValue(name, value); } });
-	    api.setGetSliderNames(new HookNoArgArrayString() { public JsArrayString call() { return that.getSliderNames(); } });
-	    api.setGetLabeledNodeNames(new HookNoArgArrayString() { public JsArrayString call() { return that.getLabeledNodeNames(); } });
-	    api.setGetLabeledNodeValue(new HookStringToDouble() { public double call(String name) { return that.getLabeledNodeValue(name); } });
-	    api.setGetComputedValueNames(new HookNoArgArrayString() { public JsArrayString call() { return that.getComputedValueNames(); } });
-	    api.setSetExprPerfProbeEnabled(new HookBool() { public void call(boolean enabled) { that.setExprPerfProbeEnabled(enabled); } });
-	    api.setResetExprPerfProbe(new Hook0() { public void call() { that.resetExprPerfProbe(); } });
-	    api.setGetExprPerfProbeReport(new HookNoArgString() { public String call() { return that.getExprPerfProbeReport(); } });
-
-	    GlobalWindowLike.setCircuitJS1(api);
-	    OnCircuitLoadedHook hook = GlobalWindowLike.getOnCircuitJsLoaded();
-	    if (hook != null)
-		hook.call(api);
+	    jsApiBridge.setupJSInterface();
 	}
 	
 	void callUpdateHook() {
-	    CircuitJsApi api = GlobalWindowLike.getCircuitJS1();
-	    if (api == null)
-		return;
-	    ApiHook hook = api.getOnUpdate();
-	    if (hook != null)
-		hook.call(api);
+	    jsApiBridge.callUpdateHook();
 	}
 	
-		void callAnalyzeHook() {
-			CircuitJsApi api = GlobalWindowLike.getCircuitJS1();
-			if (api == null)
-				return;
-			ApiHook hook = api.getOnAnalyze();
-			if (hook != null)
-				hook.call(api);
+	void callAnalyzeHook() {
+	    jsApiBridge.callAnalyzeHook();
 	}
     
 
 	void callTimeStepHook() {
-	    CircuitJsApi api = GlobalWindowLike.getCircuitJS1();
-	    if (api == null)
-		return;
-	    ApiHook hook = api.getOnTimeStep();
-	    if (hook != null)
-		hook.call(api);
+	    jsApiBridge.callTimeStepHook();
 	}
 	
 	void callSVGRenderedHook(String svgData) {
-		CircuitJsApi api = GlobalWindowLike.getCircuitJS1();
-		if (api == null)
-			return;
-		SvgHook hook = api.getOnSvgRendered();
-		if (hook != null)
-			hook.call(api, svgData);
+		jsApiBridge.callSVGRenderedHook(svgData);
 	}
 
 	class UndoItem {

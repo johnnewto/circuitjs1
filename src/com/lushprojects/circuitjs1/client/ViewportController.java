@@ -1,10 +1,56 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.google.gwt.user.client.ui.RootLayoutPanel;
+
 final class ViewportController {
     private final CirSim sim;
 
     ViewportController(CirSim sim) {
         this.sim = sim;
+    }
+
+    void checkCanvasSize() {
+	if (sim.cv.getCoordinateSpaceWidth() != (int) (sim.canvasWidth * CirSim.devicePixelRatio()))
+	    setCanvasSize();
+    }
+
+    void setCanvasSize() {
+	int width, height;
+	width = (int) RootLayoutPanel.get().getOffsetWidth();
+	height = (int) RootLayoutPanel.get().getOffsetHeight();
+	height = height - (sim.hideMenu ? 0 : CirSim.MENUBARHEIGHT);
+
+	if (!sim.isMobile(sim.sidePanelCheckboxLabel))
+	    width = width - CirSim.VERTICALPANELWIDTH;
+	if (sim.toolbarCheckItem.getState())
+	    height -= CirSim.TOOLBARHEIGHT;
+
+	width = Math.max(width, 0);
+	height = Math.max(height, 0);
+
+	if (sim.cv != null) {
+	    sim.cv.setWidth(width + "PX");
+	    sim.cv.setHeight(height + "PX");
+	    sim.canvasWidth = width;
+	    sim.canvasHeight = height;
+	    float scale = CirSim.devicePixelRatio();
+	    sim.cv.setCoordinateSpaceWidth((int) (width * scale));
+	    sim.cv.setCoordinateSpaceHeight((int) (height * scale));
+	}
+
+	setCircuitArea();
+
+	if (sim.transform[0] == 0)
+	    centreCircuit();
+    }
+
+    void setCircuitArea() {
+	int height = sim.canvasHeight;
+	int width = sim.canvasWidth;
+	int h = (int) ((double) height * sim.scopeHeightFraction);
+	if (sim.scopeCount == 0)
+	    h = 0;
+	sim.circuitArea = new Rectangle(0, 0, width, height - h);
     }
 
     void centreCircuit() {
