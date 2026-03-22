@@ -89,7 +89,7 @@ public class ImportFromDropbox {
 	
 	static public void doLoadCallback(String s) {
 		sim.pushUndo();
-		sim.readCircuit(s);
+		sim.getCircuitIOService().readCircuit(s);
 	}
 	
 	

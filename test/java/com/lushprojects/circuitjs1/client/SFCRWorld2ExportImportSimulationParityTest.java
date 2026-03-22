@@ -112,8 +112,8 @@ class SFCRWorld2ExportImportSimulationParityTest {
         ComputedValues.resetForTesting();
 
         CirSim sim = new CirSim();
-        sim.initRunner();
-        sim.readCircuit(circuitText, 0);
+        sim.getBootstrap().initRunner();
+        sim.getCircuitIOService().readCircuit(circuitText, 0);
         sim.analyzeCircuit();
         sim.preStampAndStampCircuit();
         return sim;

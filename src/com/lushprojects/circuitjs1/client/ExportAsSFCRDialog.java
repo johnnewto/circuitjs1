@@ -126,8 +126,8 @@ public class ExportAsSFCRDialog extends Dialog {
                 closeDialog();
                 s = textArea.getText();
                 if (s != null) {
-                    sim.readCircuit(s);
-                    sim.allowSave(false);
+                    sim.getCircuitIOService().readCircuit(s);
+                    sim.getUiPanelManager().allowSave(false);
                 }
             }
         });

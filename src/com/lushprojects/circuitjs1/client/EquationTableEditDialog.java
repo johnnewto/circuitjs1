@@ -278,7 +278,7 @@ public class EquationTableEditDialog extends Dialog {
             public void onClick(ClickEvent event) {
                 applyChanges();
                 closeDialog();
-                sim.doEdit(tableElement);
+                sim.getEditDialogActions().doEdit(tableElement);
             }
         });
         buttonPanel.add(propertiesButton);

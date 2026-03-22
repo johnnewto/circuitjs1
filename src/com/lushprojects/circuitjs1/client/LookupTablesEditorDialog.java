@@ -75,7 +75,7 @@ public class LookupTablesEditorDialog extends Dialog {
         }
 
         sim.pushUndo();
-        sim.importCircuitFromText(merged, false);
+        sim.getImportExportHelper().importCircuitFromText(merged, false);
         closeDialog();
     }
 }

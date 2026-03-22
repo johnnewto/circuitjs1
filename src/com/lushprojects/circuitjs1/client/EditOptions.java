@@ -223,28 +223,28 @@ class EditOptions implements Editable {
 		}
 		if (n == 17) {
 		    sim.equationTableNewtonJacobianEnabled = ei.checkbox.getState();
-		    sim.setOptionInStorage("equationTableNewtonJacobianEnabled", sim.equationTableNewtonJacobianEnabled);
+		    sim.getPreferencesManager().setOptionInStorage("equationTableNewtonJacobianEnabled", sim.equationTableNewtonJacobianEnabled);
 		}
 		if (n == 18) {
 		    boolean newValue = ei.checkbox.getState();
 		    if (sim.showElectronicsCircuits != newValue) {
 			sim.showElectronicsCircuits = newValue;
-			sim.setOptionInStorage("showElectronicsCircuits", sim.showElectronicsCircuits);
+			sim.getPreferencesManager().setOptionInStorage("showElectronicsCircuits", sim.showElectronicsCircuits);
 			if (Window.confirm(Locale.LS("Must restart to reload circuit menu. Restart now?")))
 			    Window.Location.reload();
 		    }
 		}
 		if (n == 19) {
 		    sim.enableCacheBustedUrls = ei.checkbox.getState();
-		    sim.setOptionInStorage("enableCacheBustedUrls", sim.enableCacheBustedUrls);
+		    sim.getPreferencesManager().setOptionInStorage("enableCacheBustedUrls", sim.enableCacheBustedUrls);
 		}
 		if (n == 20) {
 		    sim.tableRenderCacheEnabled = ei.checkbox.getState();
-		    sim.setOptionInStorage("tableRenderCacheEnabled", sim.tableRenderCacheEnabled);
+		    sim.getPreferencesManager().setOptionInStorage("tableRenderCacheEnabled", sim.tableRenderCacheEnabled);
 		}
 		if (n == 21) {
 		    sim.autoOpenModelInfoOnLoad = ei.checkbox.getState();
-		    sim.setOptionInStorage("autoOpenModelInfoOnLoad", sim.autoOpenModelInfoOnLoad);
+		    sim.getPreferencesManager().setOptionInStorage("autoOpenModelInfoOnLoad", sim.autoOpenModelInfoOnLoad);
 		}
 		if (n == 22) {
 		    sim.adjustTimeStep = ei.checkbox.getState();

@@ -44,21 +44,8 @@ import com.google.gwt.user.client.ui.RootLayoutPanel;
 import com.google.gwt.user.client.ui.RootPanel;
 import com.google.gwt.canvas.dom.client.Context2d;
 import com.google.gwt.canvas.dom.client.Context2d.LineCap;
-import com.google.gwt.event.dom.client.MouseDownEvent;
-import com.google.gwt.event.dom.client.MouseDownHandler;
 import com.google.gwt.event.dom.client.MouseEvent;
 import com.google.gwt.event.dom.client.MouseMoveEvent;
-import com.google.gwt.event.dom.client.MouseMoveHandler;
-import com.google.gwt.event.dom.client.MouseUpHandler;
-import com.google.gwt.event.dom.client.MouseUpEvent;
-import com.google.gwt.event.dom.client.MouseOutEvent;
-import com.google.gwt.event.dom.client.MouseOutHandler;
-import com.google.gwt.event.dom.client.ContextMenuEvent;
-import com.google.gwt.event.dom.client.ContextMenuHandler;
-import com.google.gwt.user.client.Event.NativePreviewEvent;
-import com.google.gwt.user.client.Event.NativePreviewHandler;
-import com.google.gwt.event.dom.client.MouseWheelEvent;
-import com.google.gwt.event.dom.client.MouseWheelHandler;
 import com.google.gwt.core.client.Callback;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.core.client.JavaScriptObject;
@@ -81,10 +68,6 @@ import com.google.gwt.user.client.Timer;
 import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.HorizontalPanel;
-import com.google.gwt.event.dom.client.ClickHandler;
-import com.google.gwt.event.dom.client.ClickEvent;
-import com.google.gwt.event.dom.client.DoubleClickHandler;
-import com.google.gwt.event.dom.client.DoubleClickEvent;
 import com.google.gwt.dom.client.CanvasElement;
 import com.google.gwt.dom.client.Document;
 import com.google.gwt.dom.client.Element;
@@ -141,9 +124,7 @@ import jsinterop.annotations.JsType;
  * @author Paul Falstad, Iain Sharp
  * @see https://github.com/sharpie7/circuitjs1/blob/master/INTERNALS.md
  */
-public class CirSim implements MouseDownHandler, MouseMoveHandler, MouseUpHandler,
-ClickHandler, DoubleClickHandler, ContextMenuHandler, NativePreviewHandler,
-MouseOutHandler, MouseWheelHandler {
+public class CirSim {
 
 	@JsFunction
 	interface SaveDialogSuccessCallback {
@@ -729,10 +710,6 @@ MouseOutHandler, MouseWheelHandler {
 	return style != null && !"none".equals(style.getDisplay());
     }
     
-    public void setCanvasSize(){
-	viewportController.setCanvasSize();
-    }
-    
     void setCircuitArea() {
 	viewportController.setCircuitArea();
     }
@@ -784,27 +761,79 @@ public CirSim() {
 	private final CirSimBootstrap bootstrap = new CirSimBootstrap(this);
 	private final CirSimDiagnostics diagnostics = new CirSimDiagnostics(this);
 
-    public void initRunner() {
-	bootstrap.initRunner();
-    }
+	MouseInputHandler getMouseInputHandler() {
+	    return mouseInputHandler;
+	}
 
-    public void initRunnerPanel(QueryParameters qp) {
-	bootstrap.initRunnerPanel(qp);
-    }
+	ScopeManager getScopeManager() {
+	    return scopeManager;
+	}
+
+	ViewportController getViewportController() {
+	    return viewportController;
+	}
+
+	CirSimPreferencesManager getPreferencesManager() {
+	    return preferencesManager;
+	}
+
+	CirSimUiPanelManager getUiPanelManager() {
+	    return uiPanelManager;
+	}
+
+	InfoDialogActions getInfoDialogActions() {
+	    return infoDialogActions;
+	}
+
+	EditDialogActions getEditDialogActions() {
+	    return editDialogActions;
+	}
+
+	CircuitIOService getCircuitIOService() {
+	    return circuitIOService;
+	}
+
+	ExportCompositeActions getExportCompositeActions() {
+	    return exportCompositeActions;
+	}
+
+	ImportExportHelper getImportExportHelper() {
+	    return importExportHelper;
+	}
+
+	CirSimCommandRouter getCommandRouter() {
+	    return commandRouter;
+	}
+
+	CirSimMenuBuilder getMenuBuilder() {
+	    return menuBuilder;
+	}
+
+	TableMasterRegistryManager getTableMasterRegistryManager() {
+	    return tableMasterRegistryManager;
+	}
+
+	CirSimBootstrap getBootstrap() {
+	    return bootstrap;
+	}
+
+	CirSimInitializer getInitializer() {
+	    return initializer;
+	}
 
     void launchRunnerFromQuery(QueryParameters qp) {
 	runnerController.launchFromQuery(qp);
     }
 
     void onRunnerLoadFileSuccess(String text, Command successCallback) {
-	readCircuit(text, RC_KEEP_TITLE);
+	getCircuitIOService().readCircuit(text, RC_KEEP_TITLE);
 	unsavedChanges = false;
 	if (successCallback != null)
 	    successCallback.execute();
     }
 
     void loadFileFromURLRunner(String url, final Command successCallback, final Command failureCallback) {
-	final String loadUrl = getLoadUrl(url);
+	final String loadUrl = getCircuitIOService().getLoadUrl(url);
 	console("loadFileFromURLRunner request: " + loadUrl);
 	final NativeXhr xhr = new NativeXhr();
 	try {
@@ -821,7 +850,7 @@ public CirSim() {
 		failureCallback.execute();
 	} catch (Throwable t) {
 	    console("loadFileFromURLRunner xhr exception: " + t + " (falling back to RequestBuilder)");
-	    loadFileFromURL(url, successCallback, failureCallback);
+	    getCircuitIOService().loadFileFromURL(url, successCallback, failureCallback);
 	}
     }
 
@@ -845,28 +874,6 @@ public CirSim() {
     String startCircuitLink = null;
 //    String baseURL = "http://www.falstad.com/circuit/";
     
-    public void init() {
-	initializer.init();
-    }
-    
-    // Load menu definition from menulist.txt
-    void loadMenuDefinition() {
-	initializer.loadMenuDefinition();
-    }
-    
-    // Rebuild menus after menu definition is loaded
-    void rebuildMenusFromDefinition() {
-	initializer.rebuildMenusFromDefinition();
-    }
-
-    void setColors(String positiveColor, String negativeColor, String neutralColor, String selectColor, String currentColor) {
-	preferencesManager.setColors(positiveColor, negativeColor, neutralColor, selectColor, currentColor);
-    }
-    
-    void setWheelSensitivity() {
-	preferencesManager.setWheelSensitivity();
-    }
-
     MenuItem menuItemWithShortcut(String icon, String text, String shortcut, MyCommand cmd) {
 	final String edithtml="<div style=\"white-space:nowrap\"><div style=\"display:inline-block;width:100%;\"><i class=\"cirjsicon-";
 	String nbsp = "&nbsp;";
@@ -880,28 +887,6 @@ public CirSim() {
         return new MenuItem(SafeHtmlUtils.fromTrustedString(icoStr), cmd);
     }
     
-    boolean getOptionFromStorage(String key, boolean val) {
-	return preferencesManager.getOptionFromStorage(key, val);
-    }
-
-    void setOptionInStorage(String key, boolean val) {
-	preferencesManager.setOptionInStorage(key, val);
-    }
-    
-    void showVoltageUnitDialog() {
-	preferencesManager.showVoltageUnitDialog();
-    }
-    
-    // save shortcuts to local storage
-    void saveShortcuts() {
-	preferencesManager.saveShortcuts();
-    }
-    
-    // load shortcuts from local storage
-    void loadShortcuts() {
-	preferencesManager.loadShortcuts();
-    }
-    
     // install touch handlers
     // don't feel like rewriting this in java.  Anyway, java doesn't let us create mouse
     // events and dispatch them.
@@ -911,49 +896,16 @@ public CirSim() {
     
     boolean shown = false;
     
-    // this is called twice, once for the Draw menu, once for the right mouse popup menu
-    public void composeMainMenu(MenuBar mainMenuBar, int num) {
-	menuBuilder.composeMainMenu(mainMenuBar, num);
-    }
-    
-	// Delegated to CirSimMenuBuilder
-    void composeMainMenuFromFile(MenuBar mainMenuBar, int num) {
-	menuBuilder.composeMainMenuFromFile(mainMenuBar, num);
-    }
-    
-	// Delegated to CirSimMenuBuilder
-    void composeMainMenuHardcoded(MenuBar mainMenuBar, int num) {
-	menuBuilder.composeMainMenuHardcoded(mainMenuBar, num);
-    }
-    
     void composeSubcircuitMenu() {
 	menuBuilder.composeSubcircuitMenu();
     }
     
-    public void composeSelectScopeMenu(MenuBar sb) {
-	menuBuilder.composeSelectScopeMenu(sb);
-    }
-    
-    public void setiFrameHeight() {
-	uiPanelManager.setiFrameHeight();
-    }
-    
-
-
-    
-
 
     CheckboxMenuItem getClassCheckItem(String s, String t) {
 	return menuBuilder.getClassCheckItem(s, t);
     }
     
     
-
-    
-    void centreCircuit() {
-	viewportController.centreCircuit();
-    }
-
     // get circuit bounds.  remember this doesn't use setBbox().  That is calculated when we draw
     // the circuit, but this needs to be ready before we first draw it, so we use this crude method
     Rectangle getCircuitBounds() {
@@ -973,16 +925,6 @@ public CirSim() {
     	if (minx > maxx)
     	    return null;
     	return new Rectangle(minx, miny, maxx-minx, maxy-miny);
-    }
-
-	// Delegated to ViewportController
-    ViewportElm findViewportElm() {
-	return viewportController.findViewportElm();
-    }
-    
-	// Delegated to ViewportController
-    void applyViewportTransform(ViewportElm viewport) {
-	viewportController.applyViewportTransform(viewport);
     }
 
     long lastTime = 0, lastFrameTime, lastIterTime, secTime = 0;
@@ -1161,11 +1103,7 @@ public CirSim() {
 	    return false;
 	if (scopeMenuSelected < scopeCount)
 	    return scopes[scopeMenuSelected] == s;
-	return getNthScopeElm(scopeMenuSelected-scopeCount).elmScope == s; 
-    }
-    
-    void setupScopes() {
-	scopeManager.setupScopes();
+	return scopeManager.getNthScopeElm(scopeMenuSelected-scopeCount).elmScope == s; 
     }
     
     String getHint() {
@@ -1336,10 +1274,7 @@ public CirSim() {
      * @see TableElm#registerAsMasterOnly()
      * @see ComputedValues
      */
-    public void registerTableMastersInPriorityOrder() {
-	tableMasterRegistryManager.registerTableMastersInPriorityOrder();
-    }
-    
+
     // make list of nodes
     void makeNodeList() {
 	circuitAnalyzer.makeNodeList();
@@ -1761,14 +1696,6 @@ public CirSim() {
 	    return theSim.platformInterop.getElectronStartCircuitText();
 	}
     
-    void allowSave(boolean b) {
-	uiPanelManager.allowSave(b);
-    }
-    
-    public void menuPerformed(String menu, String item) {
-	commandRouter.menuPerformed(menu, item);
-    }
-    
     /**
      * Open the Math Elements Test Dialog
      */
@@ -1797,119 +1724,9 @@ public CirSim() {
 	tableTestDialog.show();
 	}
 
-    /**
-     * Open the iframe viewer dialog with external documentation
-     * Uses CSS selector to show only the split-right content panel
-     */
-    void openIframeViewer() {
-	infoDialogActions.openIframeViewer();
-    }
-
-	void openReferenceDocsViewer() {
-	infoDialogActions.openReferenceDocsViewer();
-	}
-    
-    int countScopeElms() {
-	return scopeManager.countScopeElms();
-    }
-    
-    ScopeElm getNthScopeElm(int n) {
-	return scopeManager.getNthScopeElm(n);
-    }
-    
-    
-    boolean canStackScope(int s) {
-	return scopeManager.canStackScope(s);
-    }
-    
-    boolean canCombineScope(int s) {
-	return scopeManager.canCombineScope(s);
-    }
-    
-    boolean canUnstackScope(int s) {
-	return scopeManager.canUnstackScope(s);
-    }
-
-    void stackScope(int s) {
-	scopeManager.stackScope(s);
-    }
-
-    void unstackScope(int s) {
-	scopeManager.unstackScope(s);
-    }
-
-    void combineScope(int s) {
-	scopeManager.combineScope(s);
-    }
-    
-
-    void stackAll() {
-	scopeManager.stackAll();
-    }
-
-    void unstackAll() {
-	scopeManager.unstackAll();
-    }
-
-    void combineAll() {
-	scopeManager.combineAll();
-    }
-    
-    void separateAll() {
-	scopeManager.separateAll();
-    }
-
-    void doEdit(Editable eable) {
-	editDialogActions.doEdit(eable);
-    }
-    
-    void doSliders(CircuitElm ce) {
-	editDialogActions.doSliders(ce);
-    }
-
-
-    void doExportAsUrl()
-    {
-	circuitIOService.doExportAsUrl();
-    }
-
-	void doOpenRunnerOutputTable()
-	{
-	circuitIOService.doOpenRunnerOutputTable();
-	}
-
-	String getRunnerDumpFromStorage(String key) {
-	return circuitIOService.getRunnerDumpFromStorage(key);
-	}
-
 	String compressForUrl(String dump) {
 	return compressUri(dump);
 	}
-    
-    void doExportAsText()
-    {
-	circuitIOService.doExportAsText();
-    }
-
-    void doExportAsSFCR()
-    {
-	circuitIOService.doExportAsSFCR();
-    }
-
-    void doViewModelInfo()
-    {
-	infoDialogActions.doViewModelInfo();
-    }
-
-    void doEditLookupTables()
-    {
-	editDialogActions.doEditLookupTables();
-    }
-
-    void doExportAsImage()
-    {
-	editDialogActions.doExportAsImage();
-    }
 
     private static void clipboardWriteImage(CanvasElement cv) {
 	try {
@@ -1919,47 +1736,14 @@ public CirSim() {
     }
 
 	void doImageToClipboardCore() {
-	Canvas cv = CirSim.theSim.getCircuitAsCanvas(CAC_IMAGE);
+	Canvas cv = CirSim.theSim.getExportCompositeActions().getCircuitAsCanvas(CAC_IMAGE);
 	clipboardWriteImage(cv.getCanvasElement());
 	}
-
-    void doImageToClipboard()
-    {
-	editDialogActions.doImageToClipboard();
-    }
-    
-    void doCreateSubcircuit()
-    {
-	editDialogActions.doCreateSubcircuit();
-    }
-    
-    void doExportAsLocalFile() {
-	circuitIOService.doExportAsLocalFile();
-    }
-
-    public void importCircuitFromText(String circuitText, boolean subcircuitsOnly) {
-	importExportHelper.importCircuitFromText(circuitText, subcircuitsOnly);
-    }
-    
-    /**
-     * Import circuit from compressed CTZ format (used in URL parameters).
-     * This allows loading circuits via JS API without reloading the entire app.
-     * 
-     * @param ctzData The LZString compressed circuit data (from ctz= URL parameter)
-     * @param subcircuitsOnly If true, only import subcircuits (keep existing elements)
-     */
-    public void importCircuitFromCTZ(String ctzData, boolean subcircuitsOnly) {
-        importExportHelper.importCircuitFromCTZ(ctzData, subcircuitsOnly);
-    }
 
     String dumpOptions() {
 	return importExportHelper.dumpOptions();
     }
     
-    String dumpCircuit() {
-	return circuitIOService.dumpCircuit();
-    }
-
     String getElementDumpWithUid(CircuitElm ce) {
 	return importExportHelper.getElementDumpWithUid(ce);
     }
@@ -2002,24 +1786,6 @@ public CirSim() {
 	    setupListLoader.processSetupList(b, openDefault, circuitsMenu, circuitPrefix);
 }
 
-    void readCircuit(String text, int flags) {
-	circuitIOService.readCircuit(text, flags);
-    }
-
-    void readCircuit(String text) {
-	circuitIOService.readCircuit(text);
-    }
-
-    /**
-     * Process a single circuit element definition line.
-     * Used by SFCRParser to add raw circuit elements from @circuit blocks.
-     * 
-     * @param line The element definition line (e.g., "431 480 64 592 160 0 50 true false")
-     */
-    void processCircuitLine(String line) {
-	circuitIOService.processCircuitLine(line);
-    }
-
     void setCircuitTitle(String s) {
 	if (s != null && titleLabel != null)
 	    titleLabel.setText(s);
@@ -2059,30 +1825,10 @@ public CirSim() {
 	titleLabel = label;
 	}
     
-	void readSetupFile(String str, String title) {
-	    circuitIOService.readSetupFile(str, title);
-	}
-
-	void readSetupFileCandidates(final String[] candidates, final int index, final String title) {
-	    circuitIOService.readSetupFileCandidates(candidates, index, title);
-	}
-	
-	void loadFileFromURL(String url, final Command successCallback, final Command failureCallback) {
-	    circuitIOService.loadFileFromURL(url, successCallback, failureCallback);
-	}
-
-	String getLoadUrl(String url) {
-	    return circuitIOService.getLoadUrl(url);
-	}
-
     static final int RC_RETAIN = 1;
     static final int RC_NO_CENTER = 2;
     static final int RC_SUBCIRCUITS = 4;
     static final int RC_KEEP_TITLE = 8;
-
-    void readCircuit(byte b[], int flags) {
-	circuitIOService.readCircuit(b, flags);
-    }
 
     // delete sliders for an element
     void deleteSliders(CircuitElm elm) {
@@ -2144,20 +1890,12 @@ public CirSim() {
 	    minTimeStep = Double.parseDouble(st.nextToken());
 	} catch (Exception e) {
 	}
-	setGrid();
+	preferencesManager.setGrid();
     }
     
     int snapGrid(int x) {
 	return (x+gridRound) & gridMask;
     }
-
-	boolean doSwitch(int x, int y) {
-		return mouseInputHandler.doSwitch(x, y);
-	}
-
-	boolean doTableCollapseToggle(int x, int y) {
-		return mouseInputHandler.doTableCollapseToggle(x, y);
-	}
 
     int locateElm(CircuitElm elm) {
 	int i;
@@ -2166,43 +1904,7 @@ public CirSim() {
 		return i;
 	return -1;
     }
-    
-    public void mouseDragged(MouseMoveEvent e) {
-	mouseInputHandler.mouseDragged(e);
-    }
-    
-    void dragSplitter(int x, int y) {
-	mouseInputHandler.dragSplitter(x, y);
-    }
 
-    void dragAll(int x, int y) {
-	mouseInputHandler.dragAll(x, y);
-    }
-
-    void dragRow(int x, int y) {
-	mouseInputHandler.dragRow(x, y);
-    }
-
-    void dragColumn(int x, int y) {
-	mouseInputHandler.dragColumn(x, y);
-    }
-
-    boolean onlyGraphicsElmsSelected() {
-	return mouseInputHandler.onlyGraphicsElmsSelected();
-    }
-    
-    boolean dragSelected(int x, int y) {
-	return mouseInputHandler.dragSelected(x, y);
-    }
-
-    void dragPost(int x, int y, boolean all) {
-	mouseInputHandler.dragPost(x, y, all);
-    }
-
-    void doFlip() {
-	mouseInputHandler.doFlip();
-    }
-    
     void doSplit(CircuitElm ce) {
 	int x = snapGrid(inverseTransformX(menuX));
 	int y = snapGrid(inverseTransformY(menuY));
@@ -2224,20 +1926,6 @@ public CirSim() {
 	needAnalyze();
     }
     
-    /**
-     * Select elements within a rectangular area (rubber-band selection).
-     * 
-     * Called when user drags to create a selection rectangle.
-     * Elements partially or fully within the rectangle are selected.
-     * 
-     * @param x Current drag position X
-     * @param y Current drag position Y
-     * @param add If true, add to existing selection; if false, replace selection
-     */
-    void selectArea(int x, int y, boolean add) {
-	mouseInputHandler.selectArea(x, y, add);
-    }
-
     void enableDisableMenuItems() {
 	boolean canFlipX = true;
 	boolean canFlipY = true;
@@ -2302,10 +1990,6 @@ public CirSim() {
     	needAnalyze();
     }
     
-    boolean mouseIsOverSplitter(int x, int y) {
-	return mouseInputHandler.mouseIsOverSplitter(x, y);
-    }
-    
     /**
      * Draws the minimize/maximize button at the 0.1 fraction line (fixed position).
      */
@@ -2314,30 +1998,11 @@ public CirSim() {
     }
     
     /**
-     * Checks if mouse is over the scope minimize/maximize button.
-     * Button is positioned at the 0.1 fraction line for consistency.
-     */
-    boolean mouseIsOverScopeMinMaxButton(int x, int y) {
-	return scopeManager.mouseIsOverScopeMinMaxButton(x, y);
-    }
-    
-    /**
      * Toggles the scope panel between minimized and normal height.
      * Uses the same minimum height (0.1) as the splitter dragging constraint.
      */
     void toggleScopePanelSize() {
 	scopeManager.toggleScopePanelSize();
-    }
-    
-    /**
-     * Update hover state for ActionTimeElm play/pause icons
-     */
-    void updateActionTimeElmIconHover(int gx, int gy) {
-	mouseInputHandler.updateActionTimeElmIconHover(gx, gy);
-    }
-
-    public void onMouseMove(MouseMoveEvent e) {
-	mouseInputHandler.onMouseMove(e);
     }
     
     /**
@@ -2384,101 +2049,11 @@ public CirSim() {
 	return (int) ((y*transform[3]) + transform[5]);
     }
     
-    
-
-    /**
-     * Handle mouse selection and hover detection.
-     * Called on mouse move events to determine which element is under the cursor.
-     * 
-     * SELECTION PRIORITY:
-     * 1. Scope panel splitter (if hovering over it)
-     * 2. Current mouseElm's handles (if close to a handle)
-     * 3. Elements whose bounding box contains cursor (closest one wins)
-     * 4. Scope panels (if cursor inside scope rectangle)
-     * 5. Element posts (if within 26 pixel radius)
-     * 
-     * SETS:
-     * - mouseElm: Element under cursor (or null)
-     * - mousePost: Terminal/post number if hovering over post (or -1)
-     * - draggingPost: Post being dragged (or -1)
-     * - scopeSelected: Scope index if hovering over scope (or -1)
-     * - plotXElm, plotYElm: For XY plot scopes
-     */
-    public void mouseSelect(MouseEvent<?> e) {
-	mouseInputHandler.mouseSelect(e);
-    }
-
-
-
-    public void onContextMenu(ContextMenuEvent e) {
-	mouseInputHandler.onContextMenu(e);
-    }
-    
-    void doPopupMenu() {
-	mouseInputHandler.doPopupMenu();
-    }
-
-    boolean canSplit(CircuitElm ce) {
-	return mouseInputHandler.canSplit(ce);
-    }
-    
-    // check if the user can create sliders for this element
-    boolean sliderItemEnabled(CircuitElm elm) {
-	return mouseInputHandler.sliderItemEnabled(elm);
-    }
-
-    void longPress() {
-	mouseInputHandler.longPress();
-    }
-    
-    void twoFingerTouch(int x, int y) {
-	mouseInputHandler.twoFingerTouch(x, y);
-    }
-    
-//    public void mouseClicked(MouseEvent e) {
-    public void onClick(ClickEvent e) {
-	mouseInputHandler.onClick(e);
-    }
-    
-    public void onDoubleClick(DoubleClickEvent e){
-	mouseInputHandler.onDoubleClick(e);
-    }
-    
-//    public void mouseEntered(MouseEvent e) {
-//    }
-    
-    public void onMouseOut(MouseOutEvent e) {
-	mouseInputHandler.onMouseOut(e);
-    }
-
-    void clearMouseElm() {
-	mouseInputHandler.clearMouseElm();
-    }
-    
     int menuClientX, menuClientY;
     int menuX, menuY;
     
-    public void onMouseDown(MouseDownEvent e) {
-	mouseInputHandler.onMouseDown(e);
-    }
-
     static int lastSubcircuitMenuUpdate;
     
-    // check/uncheck/enable/disable menu items as appropriate when menu bar clicked on, or when
-    // right mouse menu accessed.  also displays shortcuts as a side effect
-    void doMainMenuChecks() {
-	mouseInputHandler.doMainMenuChecks();
-    }
-    
- 
-    public void onMouseUp(MouseUpEvent e) {
-	mouseInputHandler.onMouseUp(e);
-    }
-    
-    public void onMouseWheel(MouseWheelEvent e) {
-	mouseInputHandler.onMouseWheel(e);
-    }
-
 	    static final int MAX_NORMALIZED_WHEEL_DELTA = 150;
 
 	    // Modern browsers can report large pixel deltas from high-resolution
@@ -2491,12 +2066,6 @@ public CirSim() {
 		return deltaY;
 	    }
 
-	void zoomCircuit(double dy) { viewportController.zoomCircuit(dy); }
-
-    void zoomCircuit(double dy, boolean menu) {
-	viewportController.zoomCircuit(dy, menu);
-    }
-    
     void setCircuitScale(double newScale, boolean menu) {
 	viewportController.setCircuitScale(newScale, menu);
     }
@@ -2521,28 +2090,11 @@ public CirSim() {
     void enableItems() {
     }
     
-    // Format time with fixed 2 decimal places and appropriate SI prefix
-    String formatTimeFixed(double t) {
-	return preferencesManager.formatTimeFixed(t);
-    }
-    
-    void setGrid() {
-	preferencesManager.setGrid();
-    }
-
     void setToolbar() {
 	layoutPanel.setWidgetHidden(toolbar, !toolbarCheckItem.getState());
-	setCanvasSize();
+	getViewportController().setCanvasSize();
     }
     
-    void switchToElectronicsToolbar() {
-	toolbarModeManager.switchToElectronicsToolbar();
-    }
-    
-    void switchToEconomicsToolbar() {
-	toolbarModeManager.switchToEconomicsToolbar();
-    }
-
     // Mode selector method - switches toolbar and sets appropriate voltage unit
     void setMode(ToolbarType mode) {
 	toolbarModeManager.setMode(mode);
@@ -2569,7 +2121,7 @@ public CirSim() {
     }
 
     void loadUndoItem(UndoItem ui) {
-	readCircuit(ui.dump, RC_NO_CENTER);
+	getCircuitIOService().readCircuit(ui.dump, RC_NO_CENTER);
 	transform[0] = transform[3] = ui.scale;
 	transform[4] = ui.transform4;
 	transform[5] = ui.transform5;
@@ -2582,17 +2134,6 @@ public CirSim() {
     void enableUndoRedo() {
 	undoRedoManager.enableUndoRedo();
     }
-
-    void setMouseMode(int mode)
-    {
-	mouseInputHandler.setMouseMode(mode);
-    }
-    
-    void setCursorStyle(String s) {
-	mouseInputHandler.setCursorStyle(s);
-    }
-    
-
 
     void setMenuSelection() {
 	clipboardManager.setMenuSelection();
@@ -2646,7 +2187,7 @@ public CirSim() {
     	Storage stor = Storage.getLocalStorageIfSupported();
     	if (stor == null)
     		return;
-    	String s = dumpCircuit();
+		String s = getCircuitIOService().dumpCircuit();
     	stor.setItem("circuitRecovery", s);
     }
 
@@ -2656,12 +2197,6 @@ public CirSim() {
 		return;
 	recovery = stor.getItem("circuitRecovery");
     }
-
-
-    void deleteUnusedScopeElms() {
-	scopeManager.deleteUnusedScopeElms();
-    }
-
 	CircuitElm getMouseElmForRouting() {
 	return mouseElm;
 	}
@@ -2763,10 +2298,6 @@ public CirSim() {
     	return false;
     }
     
-    public void onPreviewNativeEvent(NativePreviewEvent e) {
-	mouseInputHandler.onPreviewNativeEvent(e);
-    }
-    
     void updateToolbar() {
 	toolbar.setModeLabel(classToLabelMap.get(mouseModeStr));
 	toolbar.highlightButton(mouseModeStr);
@@ -2809,18 +2340,6 @@ public CirSim() {
     }
 
     
-    void createNewLoadFile() {
-	uiPanelManager.createNewLoadFile();
-    }
-
-    void addWidgetToVerticalPanel(Widget w) {
-	uiPanelManager.addWidgetToVerticalPanel(w);
-    }
-    
-    void removeWidgetFromVerticalPanel(Widget w){
-	uiPanelManager.removeWidgetFromVerticalPanel(w);
-    }
-    
     public static CircuitElm createCe(int tint, int x1, int y1, int x2, int y2, int f, StringTokenizer st) {
 	CircuitElm registryElement = ElementRegistry.createFromDumpType(tint, x1, y1, x2, y2, f, st);
 	if (registryElement != null)
@@ -2855,99 +2374,16 @@ public CirSim() {
     
 
     
-    
-    boolean weAreInUS(boolean orCanada) {
-	return preferencesManager.weAreInUS(orCanada);
-    }
-
-	boolean weAreInGermany() {
-	return preferencesManager.weAreInGermany();
-	}
-    
     // For debugging
 	void logElementRegistryInferenceReport() {
 	diagnostics.logElementRegistryInferenceReport();
 	}
 
-	// For debugging
-    void dumpNodelist() {
-
-	CircuitNode nd;
-	CircuitElm e;
-	int i,j;
-	String s;
-	String cs;
-//
-//	for(i=0; i<nodeList.size(); i++) {
-//	    s="Node "+i;
-//	    nd=nodeList.get(i);
-//	    for(j=0; j<nd.links.size();j++) {
-//		s=s+" " + nd.links.get(j).num + " " +nd.links.get(j).elm.getDumpType();
-//	    }
-//	    console(s);
-//	}
-	console("Elm list Dump");
-	for (i=0;i<elmList.size(); i++) {
-	    e=elmList.get(i);
-	    cs = e.getDumpClass().toString();
-	    int p = cs.lastIndexOf('.');
-	    cs = cs.substring(p+1);
-	    if (cs=="WireElm") 
-		continue;
-	    if (cs=="LabeledNodeElm")
-		cs = cs+" "+((LabeledNodeElm)e).text;
-	    if (cs=="TransistorElm") {
-		if (((TransistorElm)e).pnp == -1)
-		    cs= "PTransistorElm";
-		else
-		    cs = "NTransistorElm";
-	    }
-	    s=cs;
-	    for(j=0; j<e.getPostCount(); j++) {
-		s=s+" "+e.nodes[j];
-	    }
-	    console(s);
-	}
-    }
-    
-	void printCanvas(CanvasElement cv) {
-	    exportCompositeActions.printCanvas(cv);
-	}
-
-	void doDCAnalysis() {
-	    exportCompositeActions.doDCAnalysis();
-	}
-	
-	void doPrint() {
-	    exportCompositeActions.doPrint();
-	}
-
 	boolean loadedCanvas2SVG = false;
-
-	boolean initializeSVGScriptIfNecessary(final String followupAction) {
-		return exportCompositeActions.initializeSVGScriptIfNecessary(followupAction);
-	}
-
-	void doExportAsSVG() {
-		exportCompositeActions.doExportAsSVG();
-	}
-
-	public void doExportAsSVGFromAPI() {
-		exportCompositeActions.doExportAsSVGFromAPI();
-	}
 
 	static final int CAC_PRINT = 0;
 	static final int CAC_IMAGE = 1;
 	static final int CAC_SVG   = 2;
-	
-	public Canvas getCircuitAsCanvas(int type) {
-		return exportCompositeActions.getCircuitAsCanvas(type);
-	}
-	
-	// Get all scopes rendered to a single canvas
-	public Canvas getScopesAsCanvas() {
-		return exportCompositeActions.getScopesAsCanvas();
-	}
 	
 	// create SVG context using canvas2svg
 	static Context2d createSVGContext(int w, int h) {
@@ -2958,21 +2394,6 @@ public CirSim() {
 	    return ((SvgContextLike) (Object) context).getSerializedSvg();
 	}
 	
-	public String getCircuitAsSVG() {
-	    return exportCompositeActions.getCircuitAsSVG();
-	}
-	
-	void drawCircuitInContext(Context2d context, int type, Rectangle bounds, int w, int h) {
-		exportCompositeActions.drawCircuitInContext(context, type, bounds, w, h);
-	}
-	
-	boolean isSelection() {
-	    return exportCompositeActions.isSelection();
-	}
-	
-	public CustomCompositeModel getCircuitAsComposite() {
-	    return exportCompositeActions.getCircuitAsComposite();
-	}
 	
 	static void invertMatrix(double a[][], int n) {
 	    int ipvt[] = new int[n];

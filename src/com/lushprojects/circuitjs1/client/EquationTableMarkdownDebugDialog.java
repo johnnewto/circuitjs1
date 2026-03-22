@@ -693,7 +693,7 @@ public class EquationTableMarkdownDebugDialog {
     private void appendCircuitDump(StringBuilder md) {
         md.append("## Circuit Dump\n\n");
         md.append("```\n");
-        md.append(sim.dumpCircuit());
+        md.append(sim.getCircuitIOService().dumpCircuit());
         md.append("```\n\n");
     }
 

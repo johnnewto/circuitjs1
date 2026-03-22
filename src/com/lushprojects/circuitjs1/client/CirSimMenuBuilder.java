@@ -327,12 +327,12 @@ final class CirSimMenuBuilder {
         s += " (" + SafeHtmlUtils.htmlEscape(l) + ")";
         sim.selectScopeMenuItems.add(new MenuItem(s, new MyCommand("elm", "addToScope" + Integer.toString(i))));
     }
-    int c = sim.countScopeElms();
+    int c = sim.getScopeManager().countScopeElms();
     for (int j = 0; j < c; j++) {
         String s;
         String l;
         s = Locale.LS("Undocked Scope") + " " + Integer.toString(j + 1);
-        l = sim.getNthScopeElm(j).elmScope.getScopeMenuName();
+        l = sim.getScopeManager().getNthScopeElm(j).elmScope.getScopeMenuName();
         if (l != "")
         s += " (" + SafeHtmlUtils.htmlEscape(l) + ")";
         sim.selectScopeMenuItems

@@ -9,7 +9,7 @@ class UndoRedoManager {
 
     void pushUndo() {
         sim.redoStack.removeAllElements();
-        String s = sim.dumpCircuit();
+        String s = sim.getCircuitIOService().dumpCircuit();
         if (sim.undoStack.size() > 0 &&
                 s.compareTo(sim.undoStack.lastElement().dump) == 0)
             return;
@@ -21,7 +21,7 @@ class UndoRedoManager {
     void doUndo() {
         if (sim.undoStack.size() == 0)
             return;
-        sim.redoStack.add(sim.new UndoItem(sim.dumpCircuit()));
+        sim.redoStack.add(sim.new UndoItem(sim.getCircuitIOService().dumpCircuit()));
         CirSim.UndoItem ui = sim.undoStack.remove(sim.undoStack.size() - 1);
         sim.loadUndoItem(ui);
         enableUndoRedo();
@@ -30,7 +30,7 @@ class UndoRedoManager {
     void doRedo() {
         if (sim.redoStack.size() == 0)
             return;
-        sim.undoStack.add(sim.new UndoItem(sim.dumpCircuit()));
+        sim.undoStack.add(sim.new UndoItem(sim.getCircuitIOService().dumpCircuit()));
         CirSim.UndoItem ui = sim.redoStack.remove(sim.redoStack.size() - 1);
         sim.loadUndoItem(ui);
         enableUndoRedo();
@@ -38,8 +38,8 @@ class UndoRedoManager {
 
     void doRecover() {
         pushUndo();
-        sim.readCircuit(sim.recovery);
-        sim.allowSave(false);
+        sim.getCircuitIOService().readCircuit(sim.recovery);
+        sim.getUiPanelManager().allowSave(false);
         sim.recoverItem.setEnabled(false);
     }
 

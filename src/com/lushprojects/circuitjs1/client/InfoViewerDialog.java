@@ -321,7 +321,7 @@ public class InfoViewerDialog extends DialogBox {
 
         if (CirSim.theSim != null && isModelInfoTitle(currentTitle)) {
             if (SFCRParser.isSFCRFormat(normalized)) {
-                CirSim.theSim.importCircuitFromText(normalized, false);
+                CirSim.theSim.getImportExportHelper().importCircuitFromText(normalized, false);
                 return;
             }
             CirSim.theSim.modelInfoContent = normalized;

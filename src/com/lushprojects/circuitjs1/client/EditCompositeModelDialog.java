@@ -63,7 +63,7 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 	
         boolean createModel() {
             HashSet<Integer> nodeSet = new HashSet<Integer>();
-            model = CirSim.theSim.getCircuitAsComposite();
+			model = CirSim.theSim.getExportCompositeActions().getCircuitAsComposite();
             if (model == null)
         	return false;
             if (model.extList.size() == 0) {
@@ -105,7 +105,7 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
             model.sizeX = Math.max(minWidth, pinsNS + xOffsetLeft + xOffsetRight);
             model.sizeY = Math.max(minHeight, pinsWE);
 
-            model.modelCircuit = CirSim.theSim.dumpCircuit();
+			model.modelCircuit = CirSim.theSim.getCircuitIOService().dumpCircuit();
             return true;
         }
         

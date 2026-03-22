@@ -18,20 +18,31 @@ import static com.google.gwt.event.dom.client.KeyCodes.KEY_Y;
 import static com.google.gwt.event.dom.client.KeyCodes.KEY_Z;
 
 import com.google.gwt.event.dom.client.ClickEvent;
+import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ContextMenuEvent;
+import com.google.gwt.event.dom.client.ContextMenuHandler;
 import com.google.gwt.event.dom.client.DoubleClickEvent;
+import com.google.gwt.event.dom.client.DoubleClickHandler;
 import com.google.gwt.event.dom.client.MouseDownEvent;
+import com.google.gwt.event.dom.client.MouseDownHandler;
 import com.google.gwt.event.dom.client.MouseEvent;
 import com.google.gwt.event.dom.client.MouseMoveEvent;
+import com.google.gwt.event.dom.client.MouseMoveHandler;
 import com.google.gwt.event.dom.client.MouseOutEvent;
+import com.google.gwt.event.dom.client.MouseOutHandler;
 import com.google.gwt.event.dom.client.MouseUpEvent;
+import com.google.gwt.event.dom.client.MouseUpHandler;
 import com.google.gwt.event.dom.client.MouseWheelEvent;
+import com.google.gwt.event.dom.client.MouseWheelHandler;
 import com.google.gwt.user.client.Event;
 import com.google.gwt.user.client.Event.NativePreviewEvent;
+import com.google.gwt.user.client.Event.NativePreviewHandler;
 import com.google.gwt.user.client.ui.MenuItem;
 import com.google.gwt.user.client.ui.PopupPanel;
 
-class MouseInputHandler {
+class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHandler,
+    ClickHandler, DoubleClickHandler, ContextMenuHandler, NativePreviewHandler,
+    MouseOutHandler, MouseWheelHandler {
     private final CirSim sim;
 
     MouseInputHandler(CirSim sim) {
@@ -326,7 +337,8 @@ class MouseInputHandler {
         }
     }
 
-    void onMouseMove(MouseMoveEvent e) {
+    @Override
+    public void onMouseMove(MouseMoveEvent e) {
         e.preventDefault();
         sim.mouseCursorX = e.getX();
         sim.mouseCursorY = e.getY();
@@ -425,7 +437,8 @@ class MouseInputHandler {
         updateActionTimeElmIconHover(gx, gy);
     }
 
-    void onContextMenu(ContextMenuEvent e) {
+    @Override
+    public void onContextMenu(ContextMenuEvent e) {
         e.preventDefault();
         if (!sim.dialogIsShowing()) {
             sim.menuClientX = e.getNativeEvent().getClientX();
@@ -445,8 +458,8 @@ class MouseInputHandler {
             if (sim.scopes[sim.scopeSelected].canMenu()) {
                 sim.menuScope = sim.scopeSelected;
                 sim.menuPlot = sim.scopes[sim.scopeSelected].selectedPlot;
-                sim.scopePopupMenu.doScopePopupChecks(false, sim.canStackScope(sim.scopeSelected), sim.canCombineScope(sim.scopeSelected),
-                                                      sim.canUnstackScope(sim.scopeSelected), sim.scopes[sim.scopeSelected]);
+                sim.scopePopupMenu.doScopePopupChecks(false, sim.getScopeManager().canStackScope(sim.scopeSelected), sim.getScopeManager().canCombineScope(sim.scopeSelected),
+                                                      sim.getScopeManager().canUnstackScope(sim.scopeSelected), sim.scopes[sim.scopeSelected]);
                 sim.contextPanel = new PopupPanel(true);
                 sim.contextPanel.add(sim.scopePopupMenu.getMenuBar());
                 y = Math.max(0, Math.min(sim.menuClientY, sim.canvasHeight - 160));
@@ -458,12 +471,12 @@ class MouseInputHandler {
             if (!(mouseElm instanceof ScopeElm)) {
                 sim.elmScopeMenuItem.setEnabled(mouseElm.canViewInScope());
                 sim.elmFloatScopeMenuItem.setEnabled(mouseElm.canViewInScope());
-                if ((sim.scopeCount + sim.countScopeElms()) <= 1) {
+                if ((sim.scopeCount + sim.getScopeManager().countScopeElms()) <= 1) {
                     sim.elmAddScopeMenuItem.setCommand(new MyCommand("elm", "addToScope0"));
                     sim.elmAddScopeMenuItem.setSubMenu(null);
-                    sim.elmAddScopeMenuItem.setEnabled(mouseElm.canViewInScope() && (sim.scopeCount + sim.countScopeElms()) > 0);
+                    sim.elmAddScopeMenuItem.setEnabled(mouseElm.canViewInScope() && (sim.scopeCount + sim.getScopeManager().countScopeElms()) > 0);
                 } else {
-                    sim.composeSelectScopeMenu(sim.selectScopeMenuBar);
+                    sim.getMenuBuilder().composeSelectScopeMenu(sim.selectScopeMenuBar);
                     sim.elmAddScopeMenuItem.setCommand(null);
                     sim.elmAddScopeMenuItem.setSubMenu(sim.selectScopeMenuBar);
                     sim.elmAddScopeMenuItem.setEnabled(mouseElm.canViewInScope());
@@ -551,13 +564,15 @@ class MouseInputHandler {
         sim.dragScreenY = y;
     }
 
-    void onClick(ClickEvent e) {
+    @Override
+    public void onClick(ClickEvent e) {
         e.preventDefault();
         if ((e.getNativeButton() == com.google.gwt.dom.client.NativeEvent.BUTTON_MIDDLE))
             sim.scrollValues(e.getNativeEvent().getClientX(), e.getNativeEvent().getClientY(), 0);
     }
 
-    void onDoubleClick(DoubleClickEvent e) {
+    @Override
+    public void onDoubleClick(DoubleClickEvent e) {
         e.preventDefault();
         CircuitElm mouseElm = sim.getMouseElmForRouting();
         if (mouseElm != null && !(mouseElm instanceof SwitchElm) && !sim.noEditCheckItem.getState()) {
@@ -579,12 +594,13 @@ class MouseInputHandler {
             } else if (mouseElm instanceof ActionTimeElm) {
                 ActionTimeDialog.openDialog(sim);
             } else {
-                sim.doEdit(mouseElm);
+                sim.getEditDialogActions().doEdit(mouseElm);
             }
         }
     }
 
-    void onMouseOut(MouseOutEvent e) {
+    @Override
+    public void onMouseOut(MouseOutEvent e) {
         sim.mouseCursorX = -1;
     }
 
@@ -594,7 +610,8 @@ class MouseInputHandler {
         sim.plotXElm = sim.plotYElm = null;
     }
 
-    void onMouseDown(MouseDownEvent e) {
+    @Override
+    public void onMouseDown(MouseDownEvent e) {
         e.preventDefault();
 
         sim.cv.setFocus(true);
@@ -616,7 +633,7 @@ class MouseInputHandler {
 
         sim.simRunningBeforeDrag = sim.simRunning;
 
-        if (sim.mouseIsOverScopeMinMaxButton(e.getX(), e.getY())) {
+        if (sim.getScopeManager().mouseIsOverScopeMinMaxButton(e.getX(), e.getY())) {
             sim.toggleScopePanelSize();
             sim.setMouseDraggingForRouting(false);
             return;
@@ -738,7 +755,8 @@ class MouseInputHandler {
             sim.composeSubcircuitMenu();
     }
 
-    void onMouseUp(MouseUpEvent e) {
+    @Override
+    public void onMouseUp(MouseUpEvent e) {
         e.preventDefault();
         sim.setMouseDraggingForRouting(false);
 
@@ -797,7 +815,8 @@ class MouseInputHandler {
         sim.repaint();
     }
 
-    void onMouseWheel(MouseWheelEvent e) {
+    @Override
+    public void onMouseWheel(MouseWheelEvent e) {
         e.preventDefault();
         int wheelDelta = CirSim.normalizeWheelDelta(e.getDeltaY());
         if (wheelDelta == 0)
@@ -819,13 +838,14 @@ class MouseInputHandler {
         else if (!sim.dialogIsShowing()) {
             sim.mouseCursorX = e.getX();
             sim.mouseCursorY = e.getY();
-            sim.zoomCircuit(-wheelDelta * sim.wheelSensitivity, false);
+            sim.getViewportController().zoomCircuit(-wheelDelta * sim.wheelSensitivity, false);
             sim.zoomTime = System.currentTimeMillis();
         }
         sim.repaint();
     }
 
-    void onPreviewNativeEvent(NativePreviewEvent e) {
+    @Override
+    public void onPreviewNativeEvent(NativePreviewEvent e) {
         int cc = e.getNativeEvent().getCharCode();
         int t = e.getTypeInt();
         int code = e.getNativeEvent().getKeyCode();
@@ -862,19 +882,19 @@ class MouseInputHandler {
 
         if ((t & Event.ONKEYPRESS) != 0) {
             if (cc == '-') {
-                sim.menuPerformed("key", "zoomout");
+                sim.getCommandRouter().menuPerformed("key", "zoomout");
                 e.cancel();
             }
             if (cc == '+' || cc == '=') {
-                sim.menuPerformed("key", "zoomin");
+                sim.getCommandRouter().menuPerformed("key", "zoomin");
                 e.cancel();
             }
             if (cc == '0') {
-                sim.menuPerformed("key", "zoom100");
+                sim.getCommandRouter().menuPerformed("key", "zoom100");
                 e.cancel();
             }
             if (cc == '/' && sim.shortcuts['/'] == null) {
-                sim.menuPerformed("key", "search");
+                sim.getCommandRouter().menuPerformed("key", "search");
                 e.cancel();
             }
         }
@@ -904,50 +924,50 @@ class MouseInputHandler {
 
             if (e.getNativeEvent().getCtrlKey() || e.getNativeEvent().getMetaKey()) {
                 if (code == KEY_C) {
-                    sim.menuPerformed("key", "copy");
+                    sim.getCommandRouter().menuPerformed("key", "copy");
                     e.cancel();
                 }
                 if (code == KEY_X) {
-                    sim.menuPerformed("key", "cut");
+                    sim.getCommandRouter().menuPerformed("key", "cut");
                     e.cancel();
                 }
                 if (code == KEY_V) {
-                    sim.menuPerformed("key", "paste");
+                    sim.getCommandRouter().menuPerformed("key", "paste");
                     e.cancel();
                 }
                 if (code == KEY_Z) {
-                    sim.menuPerformed("key", "undo");
+                    sim.getCommandRouter().menuPerformed("key", "undo");
                     e.cancel();
                 }
                 if (code == KEY_Y) {
-                    sim.menuPerformed("key", "redo");
+                    sim.getCommandRouter().menuPerformed("key", "redo");
                     e.cancel();
                 }
                 if (code == KEY_D) {
-                    sim.menuPerformed("key", "duplicate");
+                    sim.getCommandRouter().menuPerformed("key", "duplicate");
                     e.cancel();
                 }
                 if (code == KEY_A) {
-                    sim.menuPerformed("key", "selectAll");
+                    sim.getCommandRouter().menuPerformed("key", "selectAll");
                     e.cancel();
                 }
                 if (code == KEY_P) {
-                    sim.menuPerformed("key", "print");
+                    sim.getCommandRouter().menuPerformed("key", "print");
                     e.cancel();
                 }
                 if (code == KEY_N && CirSim.isElectron()) {
-                    sim.menuPerformed("key", "newwindow");
+                    sim.getCommandRouter().menuPerformed("key", "newwindow");
                     e.cancel();
                 }
                 if (code == KEY_S) {
                     String cmd = "exportaslocalfile";
                     if (CirSim.isElectron())
                         cmd = sim.saveFileItem.isEnabled() ? "save" : "saveas";
-                    sim.menuPerformed("key", cmd);
+                    sim.getCommandRouter().menuPerformed("key", cmd);
                     e.cancel();
                 }
                 if (code == KEY_O) {
-                    sim.menuPerformed("key", "importfromlocalfile");
+                    sim.getCommandRouter().menuPerformed("key", "importfromlocalfile");
                     e.cancel();
                 }
             }

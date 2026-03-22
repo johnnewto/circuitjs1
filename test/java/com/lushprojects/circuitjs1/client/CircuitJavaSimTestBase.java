@@ -20,7 +20,7 @@ abstract class CircuitJavaSimTestBase {
         RuntimeMode.setNonInteractiveRuntime(true);
         ComputedValues.resetForTesting();
         sim = new CirSim();
-        sim.initRunner();
+	    sim.getBootstrap().initRunner();
     }
 
     @AfterEach
@@ -35,7 +35,7 @@ abstract class CircuitJavaSimTestBase {
     }
 
     protected void loadCircuitText(String text) throws Exception {
-        sim.readCircuit(text, 0);
+        sim.getCircuitIOService().readCircuit(text, 0);
         sim.analyzeCircuit();
     }
 

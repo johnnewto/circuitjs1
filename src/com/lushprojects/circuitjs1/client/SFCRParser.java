@@ -3721,7 +3721,7 @@ public class SFCRParser {
         }
 
         if (addedAny) {
-            sim.setupScopes();
+            sim.getScopeManager().setupScopes();
         }
     }
 

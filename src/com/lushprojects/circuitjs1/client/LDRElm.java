@@ -58,11 +58,11 @@ class LDRElm extends CircuitElm implements Command, MouseWheelHandler {
     }
 
     void createSlider() {
-	sim.addWidgetToVerticalPanel(label = new Label());
+	sim.getUiPanelManager().addWidgetToVerticalPanel(label = new Label());
 	label.getElement().setInnerHTML(Locale.convertToHTML(Locale.LS(sliderText)));
 	label.addStyleName("topSpace");
 	int value = (int) (position*100);
-	sim.addWidgetToVerticalPanel(slider = new Scrollbar(Scrollbar.HORIZONTAL, value, 1, 0, 101, this, this));
+	sim.getUiPanelManager().addWidgetToVerticalPanel(slider = new Scrollbar(Scrollbar.HORIZONTAL, value, 1, 0, 101, this, this));
     }
 
     public void execute() {
@@ -71,8 +71,8 @@ class LDRElm extends CircuitElm implements Command, MouseWheelHandler {
     }
 
     void delete() {
-	sim.removeWidgetFromVerticalPanel(label);
-	sim.removeWidgetFromVerticalPanel(slider);
+	sim.getUiPanelManager().removeWidgetFromVerticalPanel(label);
+	sim.getUiPanelManager().removeWidgetFromVerticalPanel(slider);
     }
     Point ps3, ps4;   
 
@@ -175,7 +175,7 @@ class LDRElm extends CircuitElm implements Command, MouseWheelHandler {
 	if (n == 0) {
 	    sliderText = ei.textf.getText();
 	    label.setText(sliderText);
-	    sim.setiFrameHeight();
+	    sim.getUiPanelManager().setiFrameHeight();
 	}
 	lux = LuxFromSliderPos();
 	resistance = calcResistance(lux); 

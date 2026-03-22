@@ -114,7 +114,7 @@ public class ShortcutsDialog extends Dialog {
 		    sim.shortcuts[str.charAt(0)] = sim.mainMenuItemNames.get(i);
 	    }
 	    // save to local storage
-	    sim.saveShortcuts();
+	    sim.getPreferencesManager().saveShortcuts();
 	    closeDialog();
 	}
 	

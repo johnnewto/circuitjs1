@@ -251,7 +251,7 @@ class PercentElm extends CircuitElm {
             boolean small = (flags & FLAG_SMALL) != 0;
             setSize(small ? 1 : 2);
             sim.smallGridCheckItem.setState(small);
-            sim.setGrid();
+            sim.getPreferencesManager().setGrid();
             setPoints();
         }
     }

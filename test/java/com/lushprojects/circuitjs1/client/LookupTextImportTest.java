@@ -18,7 +18,7 @@ class LookupTextImportTest extends CircuitJavaSimTestBase {
             "$ 0 5.0E-6 50 50 5 50 5.0E-11\n" +
             "% lookup BRMM scope=World2 0,1.2 1,1.0\n";
 
-        sim.readCircuit(text, 0);
+        sim.getCircuitIOService().readCircuit(text, 0);
 
         LookupTableRegistry.LookupTableSnapshot snap = LookupTableRegistry.getSnapshot("World2", "BRMM");
         assertNotNull(snap, "Expected lookup table to be registered from % lookup line");
@@ -47,7 +47,7 @@ class LookupTextImportTest extends CircuitJavaSimTestBase {
             "% lookup BRMM 0,10 1,10\n" +
             "% lookup BRMM scope=World2 0,20 1,20\n";
 
-        sim.readCircuit(text, 0);
+        sim.getCircuitIOService().readCircuit(text, 0);
 
         double world2Value = LookupTableRegistry.evaluate("World2:BRMM", 0.5, true);
         double globalValue = LookupTableRegistry.evaluate("BRMM", 0.5, true);
@@ -65,7 +65,7 @@ class LookupTextImportTest extends CircuitJavaSimTestBase {
             "$ 0 5.0E-6 50 50 5 50 5.0E-11\n" +
             "% lookup BRMM 0,7 1,7\n";
 
-        sim.readCircuit(text, 0);
+        sim.getCircuitIOService().readCircuit(text, 0);
 
         double fallbackValue = LookupTableRegistry.evaluate("World2:BRMM", 0.5, true);
         double globalValue = LookupTableRegistry.evaluate("BRMM", 0.5, true);

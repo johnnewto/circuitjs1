@@ -229,7 +229,7 @@ public class CustomCompositeElm extends CompositeElm {
             return;
         }
         if (n == 2) {
-            sim.readCircuit(model.modelCircuit);
+		    sim.getCircuitIOService().readCircuit(model.modelCircuit);
             CirSim.editDialog.closeDialog();
         }
     }

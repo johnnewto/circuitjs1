@@ -62,7 +62,7 @@ TextArea textArea;
 //				s=textBox.getHTML();
 //				s=s.replace("<br>", "\r");
 				s=textArea.getText();
-				sim.importCircuitFromText(s, subCheck.getState());
+				sim.getImportExportHelper().importCircuitFromText(s, subCheck.getState());
 			}
 		});
 		hp.add(cancelButton = new Button(Locale.LS("Cancel")));

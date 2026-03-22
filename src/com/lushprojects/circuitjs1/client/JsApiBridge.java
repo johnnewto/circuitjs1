@@ -91,22 +91,22 @@ final class JsApiBridge {
         });
         api.setGetCircuitAsSVG(new CirSim.HookNoArgString() {
             public String call() {
-                return that.getCircuitAsSVG();
+                return that.getExportCompositeActions().getCircuitAsSVG();
             }
         });
         api.setExportCircuit(new CirSim.HookNoArgString() {
             public String call() {
-                return that.dumpCircuit();
+                return that.getCircuitIOService().dumpCircuit();
             }
         });
         api.setImportCircuit(new CirSim.HookStringBool() {
             public void call(String c, boolean s) {
-                that.importCircuitFromText(c, s);
+                that.getImportExportHelper().importCircuitFromText(c, s);
             }
         });
         api.setImportCircuitFromCTZ(new CirSim.HookStringBool() {
             public void call(String ctz, boolean s) {
-                that.importCircuitFromCTZ(ctz, s);
+                that.getImportExportHelper().importCircuitFromCTZ(ctz, s);
             }
         });
         api.setGetSliderValue(new CirSim.HookStringToDouble() {

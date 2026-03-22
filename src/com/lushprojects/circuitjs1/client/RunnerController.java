@@ -44,7 +44,7 @@ final class RunnerController {
             startCircuitText = sim.decompress(ctz);
         String nonInteractiveDumpKey = normalizeOptionalQueryValue(qp.getValue("nonInteractiveDumpKey"));
         if (startCircuitText == null && nonInteractiveDumpKey != null) {
-            startCircuitText = sim.getRunnerDumpFromStorage(nonInteractiveDumpKey);
+            startCircuitText = sim.getCircuitIOService().getRunnerDumpFromStorage(nonInteractiveDumpKey);
             if (startCircuitText == null)
                 CirSim.console("Runner dump key not found in localStorage: " + nonInteractiveDumpKey);
         }
@@ -206,14 +206,14 @@ final class RunnerController {
 
     void runRunnerTableFromText(String circuitText, int steps, String source) {
         CirSim.console("Runner table loading embedded circuit text source=" + source + ", length=" + circuitText.length());
-        sim.readCircuit(circuitText, 0);
+        sim.getCircuitIOService().readCircuit(circuitText, 0);
         sim.currentCircuitFile = source;
         runRunnerTableSimulation(steps, source);
     }
 
     void runRunnerFromText(String circuitText, int steps, String source, String format) {
         CirSim.console("Runner loading embedded circuit text source=" + source + ", length=" + circuitText.length());
-        sim.readCircuit(circuitText, 0);
+        sim.getCircuitIOService().readCircuit(circuitText, 0);
         sim.currentCircuitFile = source;
         runRunnerSimulation(steps, source, format);
     }

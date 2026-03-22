@@ -668,7 +668,7 @@ import jsinterop.annotations.JsType;
                 closeDialog();
                 
                 // Open standard properties dialog directly
-                sim.doEdit(tableElement);
+                sim.getEditDialogActions().doEdit(tableElement);
             }
         });
         buttonPanel.add(propertiesButton);
@@ -2574,7 +2574,7 @@ import jsinterop.annotations.JsType;
         
         // Re-register all tables in priority order
         if (sim != null) {
-            sim.registerTableMastersInPriorityOrder();
+            sim.getTableMasterRegistryManager().registerTableMastersInPriorityOrder();
         }
         
         // Refresh the grid to update lock status

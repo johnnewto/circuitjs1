@@ -156,7 +156,7 @@ class CircuitRenderer {
             height += increment;
         }
 
-        String timeStr = "t = " + sim.formatTimeFixed(sim.t);
+        String timeStr = "t = " + sim.getPreferencesManager().formatTimeFixed(sim.t);
         double timerate = 160 * iterCount * sim.timeStep;
         if (timerate >= .1)
             timeStr += " (" + CircuitElm.showFormat.format(timerate) + "x)";

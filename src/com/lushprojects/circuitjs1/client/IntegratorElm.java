@@ -333,7 +333,7 @@ class IntegratorElm extends CircuitElm {
             setSize(small ? 1 : 2);
             if (small) {
                 sim.smallGridCheckItem.setState(true);
-                sim.setGrid();
+                sim.getPreferencesManager().setGrid();
             }
             setPoints();
         }

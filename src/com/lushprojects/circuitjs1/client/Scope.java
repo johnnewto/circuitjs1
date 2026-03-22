@@ -2525,8 +2525,8 @@ class Scope {
 		} else if (plots.size() == 0 || cursorX < rect.x || cursorX >= rect.x + getDisplaySampleWidth(plots.get(0)) * getHorizontalPixelStride())
             return;
         
-    if (visiblePlots.size() > 0)
-        info[ct++] = sim.formatTimeFixed(cursorTime);
+	if (visiblePlots.size() > 0)
+		info[ct++] = sim.getPreferencesManager().formatTimeFixed(cursorTime);
     
     if (cursorScope != this) {
         // don't show cursor info if not enough room, or stacked with selected one

@@ -73,7 +73,7 @@ class ClipboardManager {
 			}
 		}
 		if (hasDeleted) {
-			sim.deleteUnusedScopeElms();
+			sim.getScopeManager().deleteUnusedScopeElms();
 			sim.needAnalyze();
 			sim.writeRecoveryToStorage();
 		}
@@ -148,10 +148,10 @@ class ClipboardManager {
 			flags |= CirSim.RC_NO_CENTER;
 
 		if (dump != null)
-			sim.readCircuit(dump, flags);
+			sim.getCircuitIOService().readCircuit(dump, flags);
 		else {
 			readClipboardFromStorage();
-			sim.readCircuit(sim.clipboard, flags);
+			sim.getCircuitIOService().readCircuit(sim.clipboard, flags);
 		}
 
 		Rectangle newbb = null;

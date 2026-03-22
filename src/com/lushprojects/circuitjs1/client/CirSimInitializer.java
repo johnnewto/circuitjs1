@@ -86,26 +86,26 @@ final class CirSimInitializer {
                 sim.startCircuitText = sim.decompress(ctz);
             String nonInteractiveDumpKey = qp.getValue("nonInteractiveDumpKey");
             if (sim.startCircuitText == null && nonInteractiveDumpKey != null)
-                sim.startCircuitText = sim.getRunnerDumpFromStorage(nonInteractiveDumpKey);
+                sim.startCircuitText = sim.getCircuitIOService().getRunnerDumpFromStorage(nonInteractiveDumpKey);
             sim.startCircuit = qp.getValue("startCircuit");
             sim.startLabel = qp.getValue("startLabel");
             sim.startCircuitLink = qp.getValue("startCircuitLink");
             euroRes = qp.getBooleanValue("euroResistors", false);
-            euroGates = qp.getBooleanValue("IECGates", sim.getOptionFromStorage("euroGates", sim.weAreInGermany()));
+            euroGates = qp.getBooleanValue("IECGates", sim.getPreferencesManager().getOptionFromStorage("euroGates", sim.getPreferencesManager().weAreInGermany()));
             usRes = qp.getBooleanValue("usResistors", false);
             running = qp.getBooleanValue("running", true);
             hideSidebar = qp.getBooleanValue("hideSidebar", false);
             sim.hideMenu = qp.getBooleanValue("hideMenu", false);
-            printable = qp.getBooleanValue("whiteBackground", sim.getOptionFromStorage("whiteBackground", true));
-            convention = qp.getBooleanValue("conventionalCurrent", sim.getOptionFromStorage("conventionalCurrent", true));
+            printable = qp.getBooleanValue("whiteBackground", sim.getPreferencesManager().getOptionFromStorage("whiteBackground", true));
+            convention = qp.getBooleanValue("conventionalCurrent", sim.getPreferencesManager().getOptionFromStorage("conventionalCurrent", true));
             noEditing = !qp.getBooleanValue("editable", true);
-            mouseWheelEdit = qp.getBooleanValue("mouseWheelEdit", sim.getOptionFromStorage("mouseWheelEdit", true));
-            sim.useWeightedPriority = sim.getOptionFromStorage("weightedPriority", false);
-            sim.showElectronicsCircuits = sim.getOptionFromStorage("showElectronicsCircuits", false);
-            sim.enableCacheBustedUrls = sim.getOptionFromStorage("enableCacheBustedUrls", true);
-            sim.tableRenderCacheEnabled = sim.getOptionFromStorage("tableRenderCacheEnabled", true);
-            sim.autoOpenModelInfoOnLoad = sim.getOptionFromStorage("autoOpenModelInfoOnLoad", true);
-            sim.equationTableNewtonJacobianEnabled = sim.getOptionFromStorage("equationTableNewtonJacobianEnabled", false);
+            mouseWheelEdit = qp.getBooleanValue("mouseWheelEdit", sim.getPreferencesManager().getOptionFromStorage("mouseWheelEdit", true));
+            sim.useWeightedPriority = sim.getPreferencesManager().getOptionFromStorage("weightedPriority", false);
+            sim.showElectronicsCircuits = sim.getPreferencesManager().getOptionFromStorage("showElectronicsCircuits", false);
+            sim.enableCacheBustedUrls = sim.getPreferencesManager().getOptionFromStorage("enableCacheBustedUrls", true);
+            sim.tableRenderCacheEnabled = sim.getPreferencesManager().getOptionFromStorage("tableRenderCacheEnabled", true);
+            sim.autoOpenModelInfoOnLoad = sim.getPreferencesManager().getOptionFromStorage("autoOpenModelInfoOnLoad", true);
+            sim.equationTableNewtonJacobianEnabled = sim.getPreferencesManager().getOptionFromStorage("equationTableNewtonJacobianEnabled", false);
             positiveColor = qp.getValue("positiveColor");
             negativeColor = qp.getValue("negativeColor");
             neutralColor = qp.getValue("neutralColor");
@@ -122,7 +122,7 @@ final class CirSimInitializer {
         else if (usRes)
             euroSetting = false;
         else
-            euroSetting = sim.getOptionFromStorage("euroResistors", !sim.weAreInUS(true));
+            euroSetting = sim.getPreferencesManager().getOptionFromStorage("euroResistors", !sim.getPreferencesManager().weAreInUS(true));
 
         sim.transform = new double[6];
         String os = Window.Navigator.getPlatform();
@@ -228,7 +228,7 @@ final class CirSimInitializer {
         m.addItem(sim.selectAllItem = sim.menuItemWithShortcut("select-all", "Select All", Locale.LS(sim.ctrlMetaKey + "A"), new MyCommand("edit", "selectAll")));
         m.addSeparator();
         m.addItem(sim.menuItemWithShortcut("search", "Find Component...", "/", new MyCommand("edit", "search")));
-        m.addItem(sim.iconMenuItem("target", sim.weAreInUS(false) ? "Center Circuit" : "Centre Circuit", new MyCommand("edit", "centrecircuit")));
+        m.addItem(sim.iconMenuItem("target", sim.getPreferencesManager().weAreInUS(false) ? "Center Circuit" : "Centre Circuit", new MyCommand("edit", "centrecircuit")));
         m.addItem(sim.menuItemWithShortcut("zoom-11", "Zoom 100%", "0", new MyCommand("zoom", "zoom100")));
         m.addItem(sim.menuItemWithShortcut("zoom-in", "Zoom In", "+", new MyCommand("zoom", "zoomin")));
         m.addItem(sim.menuItemWithShortcut("zoom-out", "Zoom Out", "-", new MyCommand("zoom", "zoomout")));
@@ -284,7 +284,7 @@ final class CirSimInitializer {
         m.addItem(sim.smallGridCheckItem = new CheckboxMenuItem(Locale.LS("Small Grid"),
                 new Command() {
                     public void execute() {
-                        sim.setGrid();
+                        sim.getPreferencesManager().setGrid();
                     }
                 }));
         m.addItem(sim.toolbarCheckItem = new CheckboxMenuItem(Locale.LS("Toolbar"),
@@ -302,7 +302,7 @@ final class CirSimInitializer {
                             sim.electronicsModeCheckItem.setState(true);
                             return;
                         }
-                        sim.switchToElectronicsToolbar();
+                        sim.setElectronicsMode();
                     }
                 }));
         sim.electronicsModeCheckItem.setState(sim.currentToolbarType == CirSim.ToolbarType.ELECTRONICS);
@@ -314,21 +314,21 @@ final class CirSimInitializer {
                             sim.economicsModeCheckItem.setState(true);
                             return;
                         }
-                        sim.switchToEconomicsToolbar();
+                        sim.setEconomicsMode();
                     }
                 }));
         sim.economicsModeCheckItem.setState(sim.currentToolbarType == CirSim.ToolbarType.ECONOMICS);
         m.addItem(sim.crossHairCheckItem = new CheckboxMenuItem(Locale.LS("Show Cursor Cross Hairs"),
                 new Command() {
                     public void execute() {
-                        sim.setOptionInStorage("crossHair", sim.crossHairCheckItem.getState());
+                        sim.getPreferencesManager().setOptionInStorage("crossHair", sim.crossHairCheckItem.getState());
                     }
                 }));
-        sim.crossHairCheckItem.setState(sim.getOptionFromStorage("crossHair", false));
+        sim.crossHairCheckItem.setState(sim.getPreferencesManager().getOptionFromStorage("crossHair", false));
         m.addItem(sim.euroResistorCheckItem = new CheckboxMenuItem(Locale.LS("European Resistors"),
                 new Command() {
                     public void execute() {
-                        sim.setOptionInStorage("euroResistors", sim.euroResistorCheckItem.getState());
+                        sim.getPreferencesManager().setOptionInStorage("euroResistors", sim.euroResistorCheckItem.getState());
                         sim.toolbar.setEuroResistors(sim.euroResistorCheckItem.getState());
                     }
                 }));
@@ -336,7 +336,7 @@ final class CirSimInitializer {
         m.addItem(sim.euroGatesCheckItem = new CheckboxMenuItem(Locale.LS("IEC Gates"),
                 new Command() {
                     public void execute() {
-                        sim.setOptionInStorage("euroGates", sim.euroGatesCheckItem.getState());
+                        sim.getPreferencesManager().setOptionInStorage("euroGates", sim.euroGatesCheckItem.getState());
                         int i;
                         for (i = 0; i != sim.elmList.size(); i++)
                             sim.getElm(i).setPoints();
@@ -349,7 +349,7 @@ final class CirSimInitializer {
                         int i;
                         for (i = 0; i < sim.scopeCount; i++)
                             sim.scopes[i].setRect(sim.scopes[i].rect);
-                        sim.setOptionInStorage("whiteBackground", sim.printableCheckItem.getState());
+                        sim.getPreferencesManager().setOptionInStorage("whiteBackground", sim.printableCheckItem.getState());
                     }
                 }));
         sim.printableCheckItem.setState(printable);
@@ -357,7 +357,7 @@ final class CirSimInitializer {
         m.addItem(sim.conventionCheckItem = new CheckboxMenuItem(Locale.LS("Conventional Current Motion"),
                 new Command() {
                     public void execute() {
-                        sim.setOptionInStorage("conventionalCurrent", sim.conventionCheckItem.getState());
+                        sim.getPreferencesManager().setOptionInStorage("conventionalCurrent", sim.conventionCheckItem.getState());
                         String cc = CircuitElm.currentColor.getHexValue();
                         if (cc.equals("#ffff00") || cc.equals("#00ffff"))
                             CircuitElm.currentColor = sim.conventionCheckItem.getState() ? Color.yellow : Color.cyan;
@@ -370,7 +370,7 @@ final class CirSimInitializer {
         m.addItem(sim.mouseWheelEditCheckItem = new CheckboxMenuItem(Locale.LS("Edit Values With Mouse Wheel"),
                 new Command() {
                     public void execute() {
-                        sim.setOptionInStorage("mouseWheelEdit", sim.mouseWheelEditCheckItem.getState());
+                        sim.getPreferencesManager().setOptionInStorage("mouseWheelEdit", sim.mouseWheelEditCheckItem.getState());
                     }
                 }));
         sim.mouseWheelEditCheckItem.setState(mouseWheelEdit);
@@ -379,7 +379,7 @@ final class CirSimInitializer {
                 new Command() {
                     public void execute() {
                         sim.useWeightedPriority = sim.weightedPriorityCheckItem.getState();
-                        sim.setOptionInStorage("weightedPriority", sim.useWeightedPriority);
+                        sim.getPreferencesManager().setOptionInStorage("weightedPriority", sim.useWeightedPriority);
                         ComputedValues.clearMasterTables();
                         ComputedValues.clearComputedValues();
                         sim.needAnalyze();
@@ -397,9 +397,9 @@ final class CirSimInitializer {
 
         sim.mainMenuBar = new MenuBar(true);
         sim.mainMenuBar.setAutoOpen(true);
-        sim.composeMainMenu(sim.mainMenuBar, 0);
-        sim.composeMainMenu(sim.drawMenuBar, 1);
-        sim.loadShortcuts();
+        sim.getMenuBuilder().composeMainMenu(sim.mainMenuBar, 0);
+        sim.getMenuBuilder().composeMainMenu(sim.drawMenuBar, 1);
+        sim.getPreferencesManager().loadShortcuts();
 
         sim.layoutPanel.getElement().appendChild(topPanelCheckbox);
         sim.layoutPanel.getElement().appendChild(topPanelCheckboxLabel);
@@ -477,7 +477,7 @@ final class CirSimInitializer {
         sim.iFrame.setHeight("100 px");
         sim.iFrame.getElement().setAttribute("scrolling", "no");
 
-        sim.setGrid();
+        sim.getPreferencesManager().setGrid();
         sim.elmList = new Vector<CircuitElm>();
         sim.adjustables = new Vector<Adjustable>();
         sim.undoStack = new Vector<CirSim.UndoItem>();
@@ -537,53 +537,53 @@ final class CirSimInitializer {
 
         sim.scopePopupMenu = new ScopePopupMenu();
 
-        sim.setColors(positiveColor, negativeColor, neutralColor, selectColor, currentColor);
-        sim.setWheelSensitivity();
+        sim.getPreferencesManager().setColors(positiveColor, negativeColor, neutralColor, selectColor, currentColor);
+        sim.getPreferencesManager().setWheelSensitivity();
 
         if (sim.startCircuitText != null) {
             CirSim.console("Loading embedded circuit from URL");
             sim.getSetupList(false);
-            sim.readCircuit(sim.startCircuitText);
+            sim.getCircuitIOService().readCircuit(sim.startCircuitText);
             sim.currentCircuitFile = "embedded";
             sim.unsavedChanges = false;
         } else {
             if (sim.stopMessage == null && sim.startCircuitLink != null) {
-                sim.readCircuit("");
+                sim.getCircuitIOService().readCircuit("");
                 sim.getSetupList(false);
                 ImportFromDropboxDialog.setSim(sim);
                 ImportFromDropboxDialog.doImportDropboxLink(sim.startCircuitLink, false);
             } else {
-                sim.readCircuit("");
+                sim.getCircuitIOService().readCircuit("");
                 if (sim.stopMessage == null && sim.startCircuit != null) {
                     sim.getSetupList(false);
-                    sim.readSetupFile(sim.startCircuit, sim.startLabel);
+                    sim.getCircuitIOService().readSetupFile(sim.startCircuit, sim.startLabel);
                 } else
                     sim.getSetupList(true);
             }
         }
 
         if (mouseModeReq != null)
-            sim.menuPerformed("main", mouseModeReq);
+	    sim.getCommandRouter().menuPerformed("main", mouseModeReq);
 
         sim.enableUndoRedo();
         sim.enablePaste();
         sim.enableDisableMenuItems();
-        sim.setiFrameHeight();
-        sim.cv.addMouseDownHandler(sim);
-        sim.cv.addMouseMoveHandler(sim);
-        sim.cv.addMouseOutHandler(sim);
-        sim.cv.addMouseUpHandler(sim);
-        sim.cv.addClickHandler(sim);
-        sim.cv.addDoubleClickHandler(sim);
+        sim.getUiPanelManager().setiFrameHeight();
+        sim.cv.addMouseDownHandler(sim.getMouseInputHandler());
+        sim.cv.addMouseMoveHandler(sim.getMouseInputHandler());
+        sim.cv.addMouseOutHandler(sim.getMouseInputHandler());
+        sim.cv.addMouseUpHandler(sim.getMouseInputHandler());
+        sim.cv.addClickHandler(sim.getMouseInputHandler());
+        sim.cv.addDoubleClickHandler(sim.getMouseInputHandler());
         CirSim.doTouchHandlers(sim, (CanvasElement) sim.cv.getCanvasElement());
-        sim.cv.addDomHandler(sim, ContextMenuEvent.getType());
+        sim.cv.addDomHandler(sim.getMouseInputHandler(), ContextMenuEvent.getType());
         sim.menuBar.addDomHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
-                sim.doMainMenuChecks();
+                sim.getMouseInputHandler().doMainMenuChecks();
             }
         }, ClickEvent.getType());
-        Event.addNativePreviewHandler(sim);
-        sim.cv.addMouseWheelHandler(sim);
+        Event.addNativePreviewHandler(sim.getMouseInputHandler());
+        sim.cv.addMouseWheelHandler(sim.getMouseInputHandler());
 
         Window.addWindowClosingHandler(new Window.ClosingHandler() {
             public void onWindowClosing(ClosingEvent event) {
@@ -600,7 +600,7 @@ final class CirSimInitializer {
 
     void loadMenuDefinition() {
         String url = com.google.gwt.core.client.GWT.getModuleBaseURL() + "menulist.txt";
-        RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, sim.getLoadUrl(url));
+        RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, sim.getCircuitIOService().getLoadUrl(url));
         try {
             requestBuilder.sendRequest(null, new RequestCallback() {
                 public void onError(Request request, Throwable exception) {
@@ -633,8 +633,8 @@ final class CirSimInitializer {
         sim.mainMenuBar.clearItems();
         sim.drawMenuBar.clearItems();
 
-        sim.composeMainMenu(sim.mainMenuBar, 0);
-        sim.composeMainMenu(sim.drawMenuBar, 1);
+        sim.getMenuBuilder().composeMainMenu(sim.mainMenuBar, 0);
+        sim.getMenuBuilder().composeMainMenu(sim.drawMenuBar, 1);
 
         sim.composeSubcircuitMenu();
 

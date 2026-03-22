@@ -208,17 +208,17 @@ public class circuitjs1 implements EntryPoint {
             final CirSim sim = mysim;
             final QueryParameters qpFinal = qp;
             new Timer() {
-                public void run() { sim.initRunnerPanel(qpFinal); }
+                public void run() { sim.getBootstrap().initRunnerPanel(qpFinal); }
             }.schedule(0);
             return;
         }
 
-        mysim.init();
+        mysim.getInitializer().init();
 
         Window.addResizeHandler(new ResizeHandler() {
             public void onResize(ResizeEvent event) {
-                mysim.setCanvasSize();
-                mysim.setiFrameHeight();
+                mysim.getViewportController().setCanvasSize();
+                mysim.getUiPanelManager().setiFrameHeight();
             }
         });
 

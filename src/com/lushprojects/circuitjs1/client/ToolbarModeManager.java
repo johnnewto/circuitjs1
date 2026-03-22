@@ -35,7 +35,7 @@ class ToolbarModeManager {
         sim.economicsModeCheckItem.setState(false);
 
         sim.layoutPanel.setWidgetHidden(sim.toolbar, !toolbarVisible);
-        sim.setCanvasSize();
+        sim.getViewportController().setCanvasSize();
     }
 
     void switchToEconomicsToolbar() {
@@ -66,7 +66,7 @@ class ToolbarModeManager {
         sim.economicsModeCheckItem.setState(true);
 
         sim.layoutPanel.setWidgetHidden(sim.toolbar, !toolbarVisible);
-        sim.setCanvasSize();
+        sim.getViewportController().setCanvasSize();
     }
 
     void setMode(CirSim.ToolbarType mode) {

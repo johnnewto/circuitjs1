@@ -10,8 +10,8 @@ class ImportExportHelper {
     void importCircuitFromText(String circuitText, boolean subcircuitsOnly) {
         int flags = subcircuitsOnly ? (CirSim.RC_SUBCIRCUITS | CirSim.RC_RETAIN) : 0;
         if (circuitText != null) {
-            sim.readCircuit(circuitText, flags);
-            sim.allowSave(false);
+            sim.getCircuitIOService().readCircuit(circuitText, flags);
+            sim.getUiPanelManager().allowSave(false);
         }
     }
 

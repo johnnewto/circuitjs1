@@ -180,7 +180,7 @@ final class StatusInfoRenderer {
             g.drawLine(0, sim.circuitArea.height - 2, sim.circuitArea.width, sim.circuitArea.height - 2);
             g.setLineWidth(1.0);
         }
-        if (sim.scopeCount > 0 && sim.mouseIsOverScopeMinMaxButton(sim.mouseCursorX, sim.mouseCursorY)) {
+        if (sim.scopeCount > 0 && sim.getScopeManager().mouseIsOverScopeMinMaxButton(sim.mouseCursorX, sim.mouseCursorY)) {
             int lineEndX = sim.circuitArea.width - CirSim.SCOPE_MIN_MAX_BUTTON_SIZE - 20;
             g.setColor(CircuitElm.selectColor);
             g.setLineWidth(3.0);

@@ -95,11 +95,11 @@ public class Adjustable implements Command {
     void createSlider(CirSim sim, double value) {
         EditInfo ei = elm.getEditInfo(editItem);
         String valueStr = getFormattedValue(ei, value);
-        sim.addWidgetToVerticalPanel(label = new Label());
+		sim.getUiPanelManager().addWidgetToVerticalPanel(label = new Label());
         updateLabelHTML(sliderText, valueStr);
         label.addStyleName("topSpace");
         int intValue = (int) ((value-minValue)*100/(maxValue-minValue));
-        sim.addWidgetToVerticalPanel(slider = new Scrollbar(Scrollbar.HORIZONTAL, intValue, 1, 0, 101, this, elm));
+		sim.getUiPanelManager().addWidgetToVerticalPanel(slider = new Scrollbar(Scrollbar.HORIZONTAL, intValue, 1, 0, 101, this, elm));
     }
 
     void setSliderValue(double value) {
@@ -207,8 +207,8 @@ public class Adjustable implements Command {
     
     void deleteSlider(CirSim sim) {
 	try {
-	    sim.removeWidgetFromVerticalPanel(label);
-	    sim.removeWidgetFromVerticalPanel(slider);
+	    sim.getUiPanelManager().removeWidgetFromVerticalPanel(label);
+	    sim.getUiPanelManager().removeWidgetFromVerticalPanel(slider);
 	} catch (Exception e) {}
     }
     

@@ -32,7 +32,7 @@ final class ExportCompositeActions {
     }
 
     void doPrint() {
-        Canvas cv = sim.getCircuitAsCanvas(CirSim.CAC_PRINT);
+        Canvas cv = getCircuitAsCanvas(CirSim.CAC_PRINT);
         printCanvas(cv.getCanvasElement());
     }
 
@@ -46,9 +46,9 @@ final class ExportCompositeActions {
                 public void onSuccess(Void result) {
                     sim.loadedCanvas2SVG = true;
                     if (followupAction.equals("doExportAsSVG")) {
-                        sim.doExportAsSVG();
+                        doExportAsSVG();
                     } else if (followupAction.equals("doExportAsSVGFromAPI")) {
-                        sim.doExportAsSVGFromAPI();
+                        doExportAsSVGFromAPI();
                     }
                 }
             }).inject();
@@ -69,7 +69,7 @@ final class ExportCompositeActions {
         if (!initializeSVGScriptIfNecessary("doExportAsSVGFromAPI")) {
             return;
         }
-        String svg = sim.getCircuitAsSVG();
+        String svg = getCircuitAsSVG();
         sim.callSVGRenderedHook(svg);
     }
 

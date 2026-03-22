@@ -177,9 +177,9 @@ public class ScopeViewerDialog extends DialogBox {
             }
 
             // Export all undocked (floating) ScopeElm scopes
-            int floatingCount = sim.countScopeElms();
+            int floatingCount = sim.getScopeManager().countScopeElms();
             for (int i = 0; i < floatingCount; i++) {
-                ScopeElm scopeElm = sim.getNthScopeElm(i);
+                ScopeElm scopeElm = sim.getScopeManager().getNthScopeElm(i);
                 if (scopeElm == null)
                     continue;
 

@@ -30,7 +30,7 @@ final class CirSimPlatformInterop {
                 if (!isDoubleTap) {
                     longPressTimer[0] = new Timer() {
                         public void run() {
-                            sim.longPress();
+                            sim.getMouseInputHandler().longPress();
                         }
                     };
                     longPressTimer[0].schedule(500);
@@ -49,7 +49,7 @@ final class CirSimPlatformInterop {
                 CirSim.MouseEventLike mouseEvent = new CirSim.MouseEventLike(isDoubleTap ? "dblclick" : "mousedown", init);
                 canvas.dispatchEvent(mouseEvent);
                 if (touches.getLength() > 1)
-                    sim.twoFingerTouch((int) cx, (int) (cy - canvas.getBoundingClientRect().getY()));
+                    sim.getMouseInputHandler().twoFingerTouch((int) cx, (int) (cy - canvas.getBoundingClientRect().getY()));
             }
         }, false);
 
@@ -77,7 +77,7 @@ final class CirSimPlatformInterop {
                 if (touches.getLength() > 1) {
                     double newScale = Math.hypot(touch1.getClientX() - touch2.getClientX(), touch1.getClientY() - touch2.getClientY());
                     if (lastScale[0] > 0)
-                        sim.zoomCircuit(40 * (Math.log(newScale) - Math.log(lastScale[0])));
+                        sim.getViewportController().zoomCircuit(40 * (Math.log(newScale) - Math.log(lastScale[0])));
                     lastScale[0] = newScale;
                 }
 
@@ -95,7 +95,7 @@ final class CirSimPlatformInterop {
         s = s.substring(s.lastIndexOf('/') + 1);
         s = s.substring(s.lastIndexOf('\\') + 1);
         sim.setCircuitTitle(s);
-        sim.allowSave(true);
+        sim.getUiPanelManager().allowSave(true);
         sim.savedFlag = true;
         sim.repaint();
     }
@@ -131,7 +131,7 @@ final class CirSimPlatformInterop {
 
     void electronOpenFileCallback(String text, String name) {
         LoadFile.doLoadCallback(text, name);
-        sim.allowSave(true);
+        sim.getUiPanelManager().allowSave(true);
     }
 
     void electronOpenFile() {

@@ -2229,7 +2229,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             setSize(small ? 1 : 2);
             if (small) {
                 sim.smallGridCheckItem.setState(true);
-                sim.setGrid();
+                sim.getPreferencesManager().setGrid();
             }
             setPoints();
         }
@@ -2539,10 +2539,10 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         hoveredRow = row;
         // Update cursor based on whether row is adjustable
         if (row >= 0 && isAdjustableRow(row)) {
-            sim.setCursorStyle("cursorAdjust");
+            sim.getMouseInputHandler().setCursorStyle("cursorAdjust");
         } else {
             // Reset cursor to default based on mouse mode
-            sim.setCursorStyle(sim.mouseMode == CirSim.MODE_ADD_ELM ? "cursorCross" : "cursorPointer");
+            sim.getMouseInputHandler().setCursorStyle(sim.mouseMode == CirSim.MODE_ADD_ELM ? "cursorCross" : "cursorPointer");
         }
     }
     

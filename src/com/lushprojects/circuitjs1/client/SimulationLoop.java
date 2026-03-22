@@ -42,7 +42,7 @@ class SimulationLoop {
         if (sim.stopElm != null && sim.stopElm != mouseElm)
             sim.stopElm.setMouseElm(true);
 
-        sim.setupScopes();
+        sim.getScopeManager().setupScopes();
 
         Graphics g = new Graphics(sim.cvcontext);
 

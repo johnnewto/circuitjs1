@@ -356,7 +356,7 @@ class CircuitAnalyzer {
         setGroundNode(subcircuit);
 
         ComputedValues.clearMasterTables();
-        sim.registerTableMastersInPriorityOrder();
+        sim.getTableMasterRegistryManager().registerTableMastersInPriorityOrder();
 
         makeNodeList();
 

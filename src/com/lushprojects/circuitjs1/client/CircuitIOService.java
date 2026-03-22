@@ -20,13 +20,13 @@ final class CircuitIOService {
     }
 
     void doExportAsUrl() {
-        String dump = sim.dumpCircuit();
+        String dump = dumpCircuit();
         sim.dialogShowing = new ExportAsUrlDialog(dump);
         sim.dialogShowing.show();
     }
 
     void doOpenRunnerOutputTable() {
-        String dump = sim.dumpCircuit();
+        String dump = dumpCircuit();
         String[] start = Window.Location.getHref().split("\\?");
         String query;
         Storage stor = Storage.getLocalStorageIfSupported();
@@ -51,7 +51,7 @@ final class CircuitIOService {
     }
 
     void doExportAsText() {
-        String dump = sim.dumpCircuit();
+        String dump = dumpCircuit();
         sim.dialogShowing = new ExportAsTextDialog(sim, dump);
         sim.dialogShowing.show();
     }
@@ -62,7 +62,7 @@ final class CircuitIOService {
     }
 
     void doExportAsLocalFile() {
-        String dump = sim.dumpCircuit();
+        String dump = dumpCircuit();
         sim.dialogShowing = new ExportAsLocalFileDialog(dump);
         sim.dialogShowing.show();
     }
@@ -133,7 +133,7 @@ final class CircuitIOService {
                 }
 
                 if (RuntimeMode.isGwt() && sim.autoOpenModelInfoOnLoad && editorContent != null && !editorContent.isEmpty())
-                    sim.doViewModelInfo();
+                    sim.getInfoDialogActions().doViewModelInfo();
 
                 java.util.ArrayList<String> rawLines = parser.getRawCircuitLines();
                 if (!rawLines.isEmpty()) {
@@ -151,11 +151,11 @@ final class CircuitIOService {
                     parser.applyParsedScopes();
 
                 if ((flags & CirSim.RC_NO_CENTER) == 0) {
-                    ViewportElm viewportElm = sim.findViewportElm();
+                    ViewportElm viewportElm = sim.getViewportController().findViewportElm();
                     if (viewportElm != null) {
-                        sim.applyViewportTransform(viewportElm);
+                        sim.getViewportController().applyViewportTransform(viewportElm);
                     } else {
-                        sim.centreCircuit();
+                        sim.getViewportController().centreCircuit();
                     }
                 }
 
@@ -327,7 +327,7 @@ final class CircuitIOService {
                             }
                             if (RuntimeMode.isGwt())
                                 try {
-                                    sim.allowSave(false);
+                                    sim.getUiPanelManager().allowSave(false);
                                 } catch (Throwable saveEx) {
                                     CirSim.console("loadFileFromURL allowSave exception: " + saveEx);
                                 }
@@ -390,7 +390,7 @@ final class CircuitIOService {
             ActionScheduler scheduler = ActionScheduler.getInstance(sim);
             scheduler.clearAll();
 
-            sim.clearMouseElm();
+            sim.getMouseInputHandler().clearMouseElm();
             for (i = 0; i != sim.elmList.size(); i++) {
                 CircuitElm ce = sim.getElm(i);
                 ce.delete();
@@ -410,7 +410,7 @@ final class CircuitIOService {
                 sim.voltsCheckItem.setState(true);
             if (sim.showValuesCheckItem != null)
                 sim.showValuesCheckItem.setState(true);
-            sim.setGrid();
+            sim.getPreferencesManager().setGrid();
             sim.setDefaultControlBars();
             CircuitElm.voltageRange = 5;
             sim.scopeCount = 0;
@@ -614,11 +614,11 @@ final class CircuitIOService {
         sim.needAnalyze();
 
         if ((flags & CirSim.RC_NO_CENTER) == 0 && !transformLoaded) {
-            ViewportElm viewportElm = sim.findViewportElm();
+            ViewportElm viewportElm = sim.getViewportController().findViewportElm();
             if (viewportElm != null) {
-                sim.applyViewportTransform(viewportElm);
+                sim.getViewportController().applyViewportTransform(viewportElm);
             } else {
-                sim.centreCircuit();
+                sim.getViewportController().centreCircuit();
             }
         }
         if ((flags & CirSim.RC_SUBCIRCUITS) != 0)

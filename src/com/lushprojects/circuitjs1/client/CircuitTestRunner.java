@@ -105,7 +105,7 @@ public class CircuitTestRunner {
      * @param circuitText Circuit dump in CircuitJS1 format
      */
     public void loadCircuitFromText(String circuitText) {
-        sim.readCircuit(circuitText);
+        sim.getCircuitIOService().readCircuit(circuitText);
         sim.needAnalyze();
         // Force immediate analysis to set up node arrays
         sim.analyzeCircuit();

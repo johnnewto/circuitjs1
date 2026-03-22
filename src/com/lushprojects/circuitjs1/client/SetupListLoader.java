@@ -47,7 +47,7 @@ class SetupListLoader {
         final String circuitPrefix = setupListPath.equals("setuplist_economics.txt") ? "economics/" :
                 (setupListPath.equals("setuplist_electronics.txt") ? "electronics/" : "");
         String url = GWT.getModuleBaseURL() + setupListPath;
-        String cacheBustedUrl = sim.getLoadUrl(url);
+        String cacheBustedUrl = sim.getCircuitIOService().getLoadUrl(url);
         RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, cacheBustedUrl);
         try {
             requestBuilder.sendRequest(null, new RequestCallback() {
@@ -120,7 +120,7 @@ class SetupListLoader {
                         sim.startCircuit = prefixedFile;
                         sim.startLabel = title;
                         if (openDefault && sim.stopMessage == null)
-                            sim.readSetupFile(sim.startCircuit, sim.startLabel);
+                            sim.getCircuitIOService().readSetupFile(sim.startCircuit, sim.startLabel);
                     }
                 }
             }
