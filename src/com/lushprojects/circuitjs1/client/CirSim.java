@@ -698,20 +698,11 @@ public class CirSim {
 		double ratio = GlobalWindowLike.getDevicePixelRatio();
 		return (float) (ratio > 0 ? ratio : 1.0);
 	}
-
-    void checkCanvasSize() {
-	viewportController.checkCanvasSize();
-    }
-
     boolean isMobile(Element element) {
 	if (element == null)
 	    return false;
 	StyleLike style = getComputedStyle(element);
 	return style != null && !"none".equals(style.getDisplay());
-    }
-    
-    void setCircuitArea() {
-	viewportController.setCircuitArea();
     }
     
 	String decompress(String dump) {
@@ -935,18 +926,6 @@ public CirSim() {
         return new MenuItem(SafeHtmlUtils.fromTrustedString(icoStr), cmd);
     }
     
-    boolean shown = false;
-    
-    void composeSubcircuitMenu() {
-	menuBuilder.composeSubcircuitMenu();
-    }
-    
-
-    CheckboxMenuItem getClassCheckItem(String s, String t) {
-	return menuBuilder.getClassCheckItem(s, t);
-    }
-    
-    
     // get circuit bounds.  remember this doesn't use setBbox().  That is calculated when we draw
     // the circuit, but this needs to be ready before we first draw it, so we use this crude method
     Rectangle getCircuitBounds() {
@@ -1109,34 +1088,6 @@ public CirSim() {
 	simulationLoop.updateCircuit();
     }
 
-    /**
-     * Draw hint tooltip for the currently hovered element.
-     * This is called after all elements are drawn so tooltips appear on top.
-     */
-    void drawHintTooltip(Graphics g) {
-		statusInfoRenderer.drawHintTooltip(g);
-    }
-
-    void drawActionSchedulerMessage(Graphics g, Context2d context) {
-		statusInfoRenderer.drawActionSchedulerMessage(g, context);
-    }
-    
-    void drawBottomArea(Graphics g) {
-	statusInfoRenderer.drawBottomArea(g);
-    }
-    
-    Color getBackgroundColor() {
-	return statusInfoRenderer.getBackgroundColor();
-    }
-
-    /**
-     * Detect collisions where EquationTable PARAM names match physical LabeledNode
-     * names. These collisions can change name-resolution behavior in MNA mode.
-     */
-	void updateEquationParameterCollisionWarning() {
-	statusInfoRenderer.updateEquationParameterCollisionWarning();
-    }
-    
     int oldScopeCount = -1;
     
     boolean scopeMenuIsSelected(Scope s) {
@@ -1147,10 +1098,6 @@ public CirSim() {
 	return scopeManager.getNthScopeElm(scopeMenuSelected-scopeCount).elmScope == s; 
     }
     
-    String getHint() {
-	return statusInfoRenderer.getHint();
-    }
-
 //    public void toggleSwitch(int n) {
 //	int i;
 //	for (i = 0; i != elmList.size(); i++) {
@@ -1754,23 +1701,6 @@ public CirSim() {
 	}
     }
 
-	void getSetupList(final boolean openDefault) {
-	    setupListLoader.getSetupList(openDefault);
-	}
-
-	void addDialogsMenu() {
-	    setupListLoader.addDialogsMenu();
-	}
-
-	void loadSetupListIntoMenu(final String setupListPath, final MenuBar circuitsMenu,
-			final boolean openDefault, final boolean loadElectronicsAfter) {
-	    setupListLoader.loadSetupListIntoMenu(setupListPath, circuitsMenu, openDefault, loadElectronicsAfter);
-	}
-		
-	void processSetupList(byte b[], final boolean openDefault, MenuBar circuitsMenu, String circuitPrefix) {
-	    setupListLoader.processSetupList(b, openDefault, circuitsMenu, circuitPrefix);
-}
-
     void setCircuitTitle(String s) {
 	if (s != null && titleLabel != null)
 	    titleLabel.setText(s);
@@ -1976,21 +1906,6 @@ public CirSim() {
     }
     
     /**
-     * Draws the minimize/maximize button at the 0.1 fraction line (fixed position).
-     */
-    void drawScopeMinMaxButton(Graphics g) {
-	scopeManager.drawScopeMinMaxButton(g);
-    }
-    
-    /**
-     * Toggles the scope panel between minimized and normal height.
-     * Uses the same minimum height (0.1) as the splitter dragging constraint.
-     */
-    void toggleScopePanelSize() {
-	scopeManager.toggleScopePanelSize();
-    }
-    
-    /**
      * Convert screen coordinates to circuit grid coordinates.
      * Inverts the circuit transform (zoom and pan).
      * 
@@ -2050,11 +1965,6 @@ public CirSim() {
 		    return -MAX_NORMALIZED_WHEEL_DELTA;
 		return deltaY;
 	    }
-
-    void setCircuitScale(double newScale, boolean menu) {
-	viewportController.setCircuitScale(newScale, menu);
-    }
-    
     void setPowerBarEnable() {
     	if (powerCheckItem.getState()) {
     	    powerLabel.setStyleName("disabled", false);
@@ -2323,35 +2233,6 @@ public CirSim() {
 	}
 	
 	// ========== END LABELED NODE & COMPUTED VALUE API METHODS ==========
-
-	JsArray<JavaScriptObject> getJSArray() {
-	    return jsApiBridge.getJSArray();
-	}
-	
-	JsArray<JavaScriptObject> getJSElements() {
-	    return jsApiBridge.getJSElements();
-	}
-	
-	void setupJSInterface() {
-	    jsApiBridge.setupJSInterface();
-	}
-	
-	void callUpdateHook() {
-	    jsApiBridge.callUpdateHook();
-	}
-	
-	void callAnalyzeHook() {
-	    jsApiBridge.callAnalyzeHook();
-	}
-    
-
-	void callTimeStepHook() {
-	    jsApiBridge.callTimeStepHook();
-	}
-	
-	void callSVGRenderedHook(String svgData) {
-		jsApiBridge.callSVGRenderedHook(svgData);
-	}
 
 	class UndoItem {
 	    public String dump;

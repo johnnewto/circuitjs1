@@ -752,7 +752,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         sim.separateAllItem.setEnabled(sim.scopeCount > 0);
 
         if (CirSim.lastSubcircuitMenuUpdate != CustomCompositeModel.sequenceNumber)
-            sim.composeSubcircuitMenu();
+            sim.getMenuBuilder().composeSubcircuitMenu();
     }
 
     @Override

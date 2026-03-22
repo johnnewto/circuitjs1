@@ -636,7 +636,7 @@ final class CirSimInitializer {
         sim.getMenuBuilder().composeMainMenu(sim.mainMenuBar, 0);
         sim.getMenuBuilder().composeMainMenu(sim.drawMenuBar, 1);
 
-        sim.composeSubcircuitMenu();
+        sim.getMenuBuilder().composeSubcircuitMenu();
 
         CirSim.console("Menus rebuilt from definition");
     }
