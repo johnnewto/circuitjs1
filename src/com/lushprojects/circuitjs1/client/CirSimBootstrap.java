@@ -18,8 +18,6 @@ final class CirSimBootstrap {
 	sim.transform[1] = sim.transform[2] = sim.transform[4] = sim.transform[5] = 0;
 	sim.elmList = new java.util.Vector<CircuitElm>();
 	sim.adjustables = new java.util.Vector<Adjustable>();
-	sim.undoStack = new java.util.Vector<CirSim.UndoItem>();
-	sim.redoStack = new java.util.Vector<CirSim.UndoItem>();
 	sim.scopes = new Scope[20];
 	sim.scopeColCount = new int[20];
 	sim.scopeCount = 0;

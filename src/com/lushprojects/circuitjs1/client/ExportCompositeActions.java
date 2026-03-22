@@ -7,12 +7,32 @@ import java.util.Vector;
 import com.google.gwt.canvas.client.Canvas;
 import com.google.gwt.canvas.dom.client.Context2d;
 import com.google.gwt.core.client.Callback;
+import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.core.client.ScriptInjector;
 import com.google.gwt.http.client.URL;
 import com.google.gwt.user.client.Window;
+import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsType;
 
 final class ExportCompositeActions {
     private final CirSim sim;
+
+    @JsMethod(namespace = JsPackage.GLOBAL, name = "C2S")
+    private static native JavaScriptObject createC2SContext(int w, int h);
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+    private static class SvgContextLike {
+        @JsMethod(name = "getSerializedSvg") native String getSerializedSvg();
+    }
+
+    private static Context2d createSVGContext(int w, int h) {
+        return createC2SContext(w, h).cast();
+    }
+
+    private static String getSerializedSVG(Context2d context) {
+        return ((SvgContextLike) (Object) context).getSerializedSvg();
+    }
 
     ExportCompositeActions(CirSim sim) {
         this.sim = sim;
@@ -150,9 +170,9 @@ final class ExportCompositeActions {
         int hmargin = 100;
         int w = (bounds.width + wmargin);
         int h = (bounds.height + hmargin);
-        Context2d context = CirSim.createSVGContext(w, h);
+        Context2d context = createSVGContext(w, h);
         drawCircuitInContext(context, CirSim.CAC_SVG, bounds, w, h);
-        return CirSim.getSerializedSVG(context);
+        return getSerializedSVG(context);
     }
 
     void drawCircuitInContext(Context2d context, int type, Rectangle bounds, int w, int h) {
@@ -232,7 +252,7 @@ final class ExportCompositeActions {
         boolean used[] = new boolean[sim.nodeList.size()];
         boolean extnodes[] = new boolean[sim.nodeList.size()];
 
-        if (!sim.preStampCircuit(true))
+        if (!sim.preStampCircuit())
             return null;
 
         for (i = 0; i != sim.elmList.size(); i++) {

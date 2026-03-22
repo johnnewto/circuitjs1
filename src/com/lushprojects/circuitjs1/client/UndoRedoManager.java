@@ -1,38 +1,67 @@
 package com.lushprojects.circuitjs1.client;
 
+import java.util.Vector;
+
 class UndoRedoManager {
     private final CirSim sim;
+    private final Vector<UndoItem> undoStack = new Vector<UndoItem>();
+    private final Vector<UndoItem> redoStack = new Vector<UndoItem>();
+
+    static class UndoItem {
+        public final String dump;
+        public final double scale;
+        public final double transform4;
+        public final double transform5;
+
+        UndoItem(String dump, double[] transform) {
+            this.dump = dump;
+            this.scale = transform[0];
+            this.transform4 = transform[4];
+            this.transform5 = transform[5];
+        }
+    }
 
     UndoRedoManager(CirSim sim) {
         this.sim = sim;
     }
 
+    private UndoItem createUndoItem(String dump) {
+        return new UndoItem(dump, sim.transform);
+    }
+
+    private void applyUndoItem(UndoItem ui) {
+        sim.getCircuitIOService().readCircuit(ui.dump, CirSim.RC_NO_CENTER);
+        sim.transform[0] = sim.transform[3] = ui.scale;
+        sim.transform[4] = ui.transform4;
+        sim.transform[5] = ui.transform5;
+    }
+
     void pushUndo() {
-        sim.redoStack.removeAllElements();
+        redoStack.removeAllElements();
         String s = sim.getCircuitIOService().dumpCircuit();
-        if (sim.undoStack.size() > 0 &&
-                s.compareTo(sim.undoStack.lastElement().dump) == 0)
+        if (undoStack.size() > 0 &&
+                s.compareTo(undoStack.lastElement().dump) == 0)
             return;
-        sim.undoStack.add(sim.new UndoItem(s));
+        undoStack.add(createUndoItem(s));
         enableUndoRedo();
         sim.savedFlag = false;
     }
 
     void doUndo() {
-        if (sim.undoStack.size() == 0)
+        if (undoStack.size() == 0)
             return;
-        sim.redoStack.add(sim.new UndoItem(sim.getCircuitIOService().dumpCircuit()));
-        CirSim.UndoItem ui = sim.undoStack.remove(sim.undoStack.size() - 1);
-        sim.loadUndoItem(ui);
+        redoStack.add(createUndoItem(sim.getCircuitIOService().dumpCircuit()));
+        UndoItem ui = undoStack.remove(undoStack.size() - 1);
+        applyUndoItem(ui);
         enableUndoRedo();
     }
 
     void doRedo() {
-        if (sim.redoStack.size() == 0)
+        if (redoStack.size() == 0)
             return;
-        sim.undoStack.add(sim.new UndoItem(sim.getCircuitIOService().dumpCircuit()));
-        CirSim.UndoItem ui = sim.redoStack.remove(sim.redoStack.size() - 1);
-        sim.loadUndoItem(ui);
+        undoStack.add(createUndoItem(sim.getCircuitIOService().dumpCircuit()));
+        UndoItem ui = redoStack.remove(redoStack.size() - 1);
+        applyUndoItem(ui);
         enableUndoRedo();
     }
 
@@ -44,7 +73,7 @@ class UndoRedoManager {
     }
 
     void enableUndoRedo() {
-        sim.redoItem.setEnabled(sim.redoStack.size() > 0);
-        sim.undoItem.setEnabled(sim.undoStack.size() > 0);
+        sim.redoItem.setEnabled(redoStack.size() > 0);
+        sim.undoItem.setEnabled(undoStack.size() > 0);
     }
 }

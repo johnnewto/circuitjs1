@@ -25,70 +25,33 @@ package com.lushprojects.circuitjs1.client;
 // or https://github.com/sharpie7/circuitjs1/blob/master/INTERNALS.md
 
 import java.util.Vector;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.lang.Math;
 
 import com.google.gwt.canvas.client.Canvas;
-import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.CellPanel;
 import com.google.gwt.user.client.ui.DockLayoutPanel;
 import com.google.gwt.user.client.ui.Label;
-import com.google.gwt.user.client.ui.RootLayoutPanel;
-import com.google.gwt.user.client.ui.RootPanel;
 import com.google.gwt.canvas.dom.client.Context2d;
-import com.google.gwt.canvas.dom.client.Context2d.LineCap;
-import com.google.gwt.event.dom.client.MouseEvent;
-import com.google.gwt.event.dom.client.MouseMoveEvent;
-import com.google.gwt.core.client.Callback;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.core.client.JsArray;
 import com.google.gwt.core.client.JsArrayString;
 import com.google.gwt.core.client.Scheduler;
-import com.google.gwt.core.client.ScriptInjector;
-import com.google.gwt.dom.client.Style.Unit;
-import com.google.gwt.http.client.Request;
-import com.google.gwt.http.client.RequestException;
-import com.google.gwt.http.client.Response;
-import com.google.gwt.http.client.URL;
-import com.google.gwt.http.client.RequestBuilder;
-import com.google.gwt.http.client.RequestCallback;
-import com.google.gwt.xhr.client.XMLHttpRequest;
 import com.google.gwt.user.client.ui.MenuBar;
 import com.google.gwt.user.client.Command;
-import com.google.gwt.user.client.Event;
 import com.google.gwt.user.client.Timer;
 import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.VerticalPanel;
-import com.google.gwt.user.client.ui.HorizontalPanel;
 import com.google.gwt.dom.client.CanvasElement;
-import com.google.gwt.dom.client.Document;
 import com.google.gwt.dom.client.Element;
-import com.google.gwt.dom.client.EventTarget;
-import com.google.gwt.dom.client.InputElement;
-import com.google.gwt.dom.client.LabelElement;
-import com.google.gwt.dom.client.MetaElement;
-import com.google.gwt.dom.client.NodeList;
 import com.google.gwt.user.client.ui.MenuItem;
 import com.google.gwt.safehtml.shared.SafeHtmlUtils;
 import com.google.gwt.storage.client.Storage;
 import com.google.gwt.user.client.ui.PopupPanel;
-import static com.google.gwt.event.dom.client.KeyCodes.*;
 import com.google.gwt.user.client.ui.Frame;
-import com.google.gwt.user.client.ui.Widget;
 import com.lushprojects.circuitjs1.client.util.Locale;
-import com.google.gwt.user.client.Window.ClosingEvent;
-import com.google.gwt.user.client.Window.Navigator;
-import com.google.gwt.event.logical.shared.ResizeEvent;
-import com.google.gwt.event.logical.shared.ResizeHandler;
-import com.google.gwt.i18n.client.NumberFormat;
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsPackage;
@@ -97,32 +60,32 @@ import jsinterop.annotations.JsType;
 
 /**
  * CirSim - Main Circuit Simulator Class
- * 
+
  * This is the central controller for CircuitJS1, an electronic circuit simulator
  * that runs in web browsers. It implements Modified Nodal Analysis (MNA) based on
  * "Electronic Circuit and System Simulation Methods" by Pillage, Rohrer, & Visweswariah.
- * 
+
  * ARCHITECTURE:
  * - Circuit simulation uses MNA matrix equation: X = A⁻¹B
  *   where A is admittance matrix, B is right-hand side, X is solution (node voltages + source currents)
  * - Linear elements (R, L, C) are stamped once during analysis
  * - Nonlinear elements (diodes, transistors) require iterative solving
  * - Time integration uses Backward Euler (stable) or Trapezoidal (accurate) methods
- * 
+
  * MAIN LOOP (updateCircuit):
  * 1. Analyze circuit structure (if needed) - build node list, validate connections
  * 2. Stamp circuit matrix (if needed) - populate MNA matrices
  * 3. Run simulation iterations - solve matrix, update element states
  * 4. Draw graphics - render circuit visualization and scopes
- * 
+
  * PERFORMANCE OPTIMIZATIONS:
  * - Matrix simplification removes trivial rows (reduces O(n³) LU decomposition cost)
  * - Wire closure calculation groups connected wires to same node (smaller matrix)
  * - Element arrays cached to avoid type checks in inner loops
  * - Adaptive timestep reduces iterations when convergence is difficult
- * 
+ *
  * @author Paul Falstad, Iain Sharp
- * @see https://github.com/sharpie7/circuitjs1/blob/master/INTERNALS.md
+ * @see <a href="https://github.com/sharpie7/circuitjs1/blob/master/INTERNALS.md">...</a>
  */
 public class CirSim {
 
@@ -166,7 +129,6 @@ public class CirSim {
 		@JsProperty(name = "CircuitJS1") static native CircuitJsApi getCircuitJS1();
 		@JsProperty(name = "CircuitJS1") static native void setCircuitJS1(CircuitJsApi api);
 		@JsProperty(name = "oncircuitjsloaded") static native OnCircuitLoadedHook getOnCircuitJsLoaded();
-		@JsMethod(name = "postMessage") static native void postMessage(Object message, String targetOrigin);
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Navigator")
@@ -196,14 +158,6 @@ public class CirSim {
 	@JsMethod(namespace = JsPackage.GLOBAL, name = "toggleDevTools")
 	static native void toggleDevToolsNative();
 
-	@JsMethod(namespace = JsPackage.GLOBAL, name = "C2S")
-	private static native JavaScriptObject createC2SContext(int w, int h);
-
-	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
-	private static class SvgContextLike {
-		@JsMethod(name = "getSerializedSvg") native String getSerializedSvg();
-	}
-
 	@JsFunction
 	interface TouchEventHandler {
 		void handle(TouchEventLike event);
@@ -211,8 +165,6 @@ public class CirSim {
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "DOMRect")
 	static class DomRectLike {
-		@JsProperty(name = "left") native double getLeft();
-		@JsProperty(name = "top") native double getTop();
 		@JsProperty(name = "y") native double getY();
 	}
 
@@ -289,11 +241,6 @@ public class CirSim {
 	@JsFunction
 	interface HookStringToDouble {
 		double call(String value);
-	}
-
-	@JsFunction
-	interface HookStringToString {
-		String call(String value);
 	}
 
 	@JsFunction
@@ -378,7 +325,6 @@ public class CirSim {
 	private static native void clipboardWriteText(String text);
 
     Random random;
-    Button dumpMatrixButton;
     FloatingControlPanel floatingControlPanel;
     MenuItem aboutItem;
     MenuItem importFromLocalFileItem, importFromTextItem, exportAsUrlItem, exportAsLocalFileItem, exportAsTextItem,
@@ -393,7 +339,6 @@ public class CirSim {
     CheckboxMenuItem smallGridCheckItem;
     CheckboxMenuItem crossHairCheckItem;
     CheckboxMenuItem showValuesCheckItem;
-    CheckboxMenuItem conductanceCheckItem;
     CheckboxMenuItem euroResistorCheckItem;
     CheckboxMenuItem euroGatesCheckItem;
     CheckboxMenuItem printableCheckItem;
@@ -413,7 +358,7 @@ public class CirSim {
     boolean useWeightedPriority = false; // Weighted priority for Asset/Equity columns
     String modelInfoContent = null; // Markdown info content from @info block in SFCR files
 	String modelInfoSourceText = null; // Full SFCR source for editing in InfoViewer
-	private SFCRDocumentState sfcrDocumentState = new SFCRDocumentState();
+	private final SFCRDocumentState sfcrDocumentState = new SFCRDocumentState();
     MenuItem viewModelInfoItem; // Menu item for viewing model info
 	MenuItem helpViewModelInfoItem; // Help menu item for viewing model info
     String currentCircuitFile = null; // Current circuit file name and location for display
@@ -460,8 +405,6 @@ public class CirSim {
     MenuBar selectScopeMenuBar;
     Vector<MenuItem> selectScopeMenuItems;
     MenuBar subcircuitMenuBar[];
-    MenuItem scopeRemovePlotMenuItem;
-    MenuItem scopeSelectYMenuItem;
     ScopePopupMenu scopePopupMenu;
     Element sidePanelCheckboxLabel;
    
@@ -508,8 +451,7 @@ public class CirSim {
     // Simulation time control
     double t;                      // Current simulation time (seconds)
     long realTimeStart;            // Real wall-clock time when simulation started (ms)
-    int pause = 10;                // Milliseconds between frames (lower = faster)
-    
+
     // Scope and menu selection
     int scopeSelected = -1;        // Currently selected scope panel index
     int scopeMenuSelected = -1;    // Scope selected via menu
@@ -602,7 +544,7 @@ public class CirSim {
     double circuitMatrix[][];             // [A] Admittance/conductance matrix (after simplification)
     double circuitRightSide[];            // [B] Known values (current sources, voltage sources)
     double nodeVoltages[];                // [X] Solution vector (node voltages + voltage source currents)
-    double lastNodeVoltages[];            // Previous solution for convergence checking
+    double[] lastNodeVoltages;            // Previous solution for convergence checking
 
     // Circuit-global value array for E_GSLOT fast expression evaluation path.
     // Filled once per subiteration (after applySolvedRightSide + commitPendingToCurrentValues).
@@ -641,7 +583,6 @@ public class CirSim {
     String clipboard;
     String recovery;
     Rectangle circuitArea;
-    Vector<UndoItem> undoStack, redoStack;
     double transform[];
     boolean unsavedChanges;
     HashMap<String, String> classToLabelMap;
@@ -899,11 +840,7 @@ public CirSim() {
 		successCallback.run();
 	    }
 	};
-	Command failureCommand = (failureCallback == null) ? null : new Command() {
-	    public void execute() {
-		failureCallback.run();
-	    }
-	};
+	Command failureCommand = (failureCallback == null) ? null : failureCallback::run;
 	loadFileFromURLRunner(url, successCommand, failureCommand);
     }
 
@@ -1122,8 +1059,8 @@ public CirSim() {
     }
     
     Vector<CircuitNode> nodeList;
-    Vector<Point> postDrawList = new Vector<Point>();
-    Vector<Point> badConnectionList = new Vector<Point>();
+    Vector<Point> postDrawList = new Vector<>();
+    Vector<Point> badConnectionList = new Vector<>();
     CircuitElm voltageSources[];
 
     public CircuitNode getCircuitNode(int n) {
@@ -1167,7 +1104,7 @@ public CirSim() {
 	public static void debugger() {
 	}
     
-    class NodeMapEntry {
+    static class NodeMapEntry {
 	int node;
 	NodeMapEntry() { node = -1; }
 	NodeMapEntry(int n) { node = n; }
@@ -1175,7 +1112,7 @@ public CirSim() {
     // map points to node numbers
     HashMap<Point,NodeMapEntry> nodeMap;
     
-    class WireInfo {
+    static class WireInfo {
 	CircuitElm wire;
 	Vector<CircuitElm> neighbors;
 	int post;
@@ -1186,59 +1123,7 @@ public CirSim() {
     
     // info about each wire and its neighbors, used to calculate wire currents
     Vector<WireInfo> wireInfoList;
-    
-    /**
-     * Calculate wire closure - group connected wire equivalents to same node.
-     * 
-     * PERFORMANCE OPTIMIZATION: This dramatically speeds up simulation by reducing
-     * matrix size. Without this, each wire adds 2+ rows to the matrix.
-     * 
-     * Groups the following into single nodes:
-     * - Wire elements (direct connections)
-     * - LabeledNodeElm with matching labels (virtual wires)
-     * - GroundElm elements (all ground nodes merge to node 0)
-     * 
-     * ALGORITHM:
-     * - Build nodeMap: Point → NodeMapEntry (shared for connected points)
-     * - Merge entries when wires connect different node groups
-     * - Result: All connected points map to same NodeMapEntry
-     * 
-     * Note: Actual node numbers assigned later in makeNodeList()
-     */
-    void calculateWireClosure() {
-	circuitAnalyzer.calculateWireClosure();
-    }
-    
-    /**
-     * Generate wire info for current calculation.
-     * 
-     * PROBLEM: Wire elements have same voltage at both terminals, so we can't
-     * use voltage differences to calculate current (like resistors do).
-     * 
-     * OLD SOLUTION: Treat wires as zero-voltage sources → adds 2 matrix rows per wire
-     * 
-     * NEW SOLUTION: Calculate wire current from neighbor currents instead.
-     * By Kirchhoff's Current Law (KCL): wire current = -sum of neighbor currents
-     * 
-     * This method builds WireInfo objects containing:
-     * - wire: The wire element
-     * - post: Which terminal (0 or 1) to use for calculation
-     * - neighbors: List of elements connected to that terminal
-     * 
-     * DEPENDENCY ORDERING: Wires are reordered so each wire's neighbors are
-     * processed before it. This ensures all neighbor currents are available.
-     * If circular dependency detected → error (wire loop)
-     * 
-     * @return true if successful, false if wire loop detected
-     */
-    boolean calcWireInfo() {
-	return circuitAnalyzer.calcWireInfo();
-    }
 
-    // find or allocate ground node
-    void setGroundNode(boolean subcircuit) {
-	circuitAnalyzer.setGroundNode(subcircuit);
-    }
 
     /**
      * Register table masters in priority order (highest priority first).
@@ -1263,30 +1148,11 @@ public CirSim() {
      * @see ComputedValues
      */
 
-    // make list of nodes
-    void makeNodeList() {
-	circuitAnalyzer.makeNodeList();
-    }
-    
+
     Vector<Integer> unconnectedNodes;
     Vector<CircuitElm> nodesWithGroundConnection;
     int nodesWithGroundConnectionCount;
-    
-    void findUnconnectedNodes() {
-	circuitAnalyzer.findUnconnectedNodes();
-    }
-    
-    // take list of unconnected nodes, which we identified earlier, and connect them to ground
-    // with a big resistor.  otherwise we will get matrix errors.  The resistor has to be big,
-    // otherwise circuits like 555 Square Wave will break
-    void connectUnconnectedNodes() {
-	circuitAnalyzer.connectUnconnectedNodes();
-    }
-    
-    boolean validateCircuit() {
-	return circuitAnalyzer.validateCircuit();
-    }
-    
+
     // analyze the circuit when something changes, so it can be simulated.
     // Most of this has been moved to preStampCircuit() so it can be avoided if the simulation is stopped.
     void analyzeCircuit() {
@@ -1294,8 +1160,8 @@ public CirSim() {
     }
 
     // do the rest of the pre-stamp circuit analysis
-    boolean preStampCircuit(boolean subcircuit) {
-	return circuitAnalyzer.preStampCircuit(subcircuit);
+    boolean preStampCircuit() {
+	return circuitAnalyzer.preStampCircuit(true);
     }
 
     // do pre-stamping and then stamp circuit
@@ -1309,146 +1175,7 @@ public CirSim() {
 	circuitAnalyzer.stampCircuit();
     }
 
-    // simplify the matrix; this speeds things up quite a bit, especially for digital circuits.
-    // or at least it did before we added wire removal
-    boolean simplifyMatrix(int matrixSize) {
-	return circuitAnalyzer.simplifyMatrix(matrixSize);
-    }
-    
-    /**
-     * Build list of circuit posts (connection points) that need to be drawn.
-     * 
-     * DRAWING RULES:
-     * - Posts shared by exactly 2 elements: HIDDEN (clean connection)
-     * - Posts with 1 or 3+ connections: VISIBLE (junction indicator)
-     * - Posts with 1 connection inside another element's bbox: BAD CONNECTION (red dot)
-     * 
-     * Note: TableElm posts are always hidden but remain electrically functional.
-     * 
-     * We can't use node list for this because wires have same node at both ends.
-     */
-    void makePostDrawList() {
-	circuitAnalyzer.makePostDrawList();
-    }
-
-    /**
-     * State object to find paths in circuit for validation.
-     * 
-     * Used to detect problematic circuit configurations:
-     * - INDUCT: Find current path for inductors (needs path without current sources)
-     * - VOLTAGE: Find voltage source loops (voltage sources + wires only)
-     * - SHORT: Find shorted capacitors (wires only)
-     * - CAP_V: Find capacitor/voltage loops (ideal caps + voltage sources + wires)
-     * 
-     * Uses depth-first search from source node to destination node,
-     * respecting connection rules based on path type.
-     */
-    class FindPathInfo {
-	static final int INDUCT  = 1;
-	static final int VOLTAGE = 2;
-	static final int SHORT   = 3;
-	static final int CAP_V   = 4;
-	boolean visited[];
-	int dest;
-	CircuitElm firstElm;
-	int type;
-
-	// State object to help find loops in circuit subject to various conditions (depending on type_)
-	// elm_ = source and destination element.  dest_ = destination node.
-	FindPathInfo(int type_, CircuitElm elm_, int dest_) {
-	    dest = dest_;
-	    type = type_;
-	    firstElm = elm_;
-	    visited  = new boolean[nodeList.size()];
-	}
-
-	// look through circuit for loop starting at node n1 of firstElm, for a path back to
-	// dest node of firstElm
-	boolean findPath(int n1) {
-	    if (n1 == dest)
-		return true;
-
-	    // depth first search, don't need to revisit already visited nodes!
-	    if (visited[n1])
-		return false;
-
-	    visited[n1] = true;
-	    CircuitNode cn = getCircuitNode(n1);
-	    int i;
-	    if (cn == null)
-		return false;
-	    for (i = 0; i != cn.links.size(); i++) {
-		CircuitNodeLink cnl = cn.links.get(i);
-		CircuitElm ce = cnl.elm;
-		if (checkElm(n1, ce))
-		    return true;
-	    }
-	    if (n1 == 0) {
-		for (i = 0; i != nodesWithGroundConnection.size(); i++)
-		    if (checkElm(0, nodesWithGroundConnection.get(i)))
-			return true;
-	    }
-	    return false;
-	}
-	
-	boolean checkElm(int n1, CircuitElm ce) {
-		if (ce == firstElm)
-		    return false;
-		if (type == INDUCT) {
-		    // inductors need a path free of current sources
-		    if (ce instanceof CurrentElm)
-			return false;
-		}
-		if (type == VOLTAGE) {
-		    // when checking for voltage loops, we only care about voltage sources/wires/ground
-		    if (!(ce.isWireEquivalent() || ce instanceof VoltageElm || ce instanceof GroundElm))
-			return false;
-		}
-		// when checking for shorts, just check wires
-		if (type == SHORT && !ce.isWireEquivalent())
-		    return false;
-		if (type == CAP_V) {
-		    // checking for capacitor/voltage source loops
-		    if (!(ce.isWireEquivalent() || ce.isIdealCapacitor() || ce instanceof VoltageElm))
-			return false;
-		}
-		if (n1 == 0) {
-		    // look for posts which have a ground connection;
-		    // our path can go through ground
-		    int j;
-		    for (j = 0; j != ce.getConnectionNodeCount(); j++)
-			if (ce.hasGroundConnection(j) && findPath(ce.getConnectionNode(j)))
-			    return true;
-		}
-		int j;
-		for (j = 0; j != ce.getConnectionNodeCount(); j++) {
-		    if (ce.getConnectionNode(j) == n1) {
-			if (ce.hasGroundConnection(j) && findPath(0))
-			    return true;
-			if (type == INDUCT && ce instanceof InductorElm) {
-			    // inductors can use paths with other inductors of matching current
-			    double c = ce.getCurrent();
-			    if (j == 0)
-				c = -c;
-			    if (Math.abs(c-firstElm.getCurrent()) > 1e-10)
-				continue;
-			}
-			int k;
-			for (k = 0; k != ce.getConnectionNodeCount(); k++) {
-			    if (j == k)
-				continue;
-			    if (ce.getConnection(j, k) && findPath(ce.getConnectionNode(k))) {
-				//System.out.println("got findpath " + n1);
-				return true;
-			    }
-			}
-		    }
-		}
-	    return false;
-	}
-    }
-
-    void stop(String s, CircuitElm ce) {
+	void stop(String s, CircuitElm ce) {
 	stopMessage = Locale.LS(s);
 	circuitMatrix = null;  // causes an exception
 	stopElm = ce;
@@ -1552,50 +1279,13 @@ public CirSim() {
     void stampNonLinear(int i) {
 	matrixStamper.stampNonLinear(i);
     }
-    
-    // Get information about what element/node is associated with a matrix row
-    // Used for debugging singular matrix errors
-    // The 'row' parameter is the simplified matrix row; we need to map back to original
-    String getMatrixRowInfo(int row) {
-	return matrixStamper.getMatrixRowInfo(row);
-    }
 
-    double getIterCount() {
-	return simulationLoop.getIterCount();
-    }
-
-    // we need to calculate wire currents for every iteration if someone is viewing a wire in the
-    // scope.  Otherwise we can do it only once per frame.
-    boolean canDelayWireProcessing() {
-	return simulationLoop.canDelayWireProcessing();
-    }
-    
-    boolean converged;
+	boolean converged;
     int subIterations;
     int periodicInterval = 100; // process every 100 timesteps
 	int nextPeriodicTime = 0;
 
-    void runCircuit(boolean didAnalyze) {
-	simulationLoop.runCircuit(didAnalyze);
-	}
-
-    // set node voltages given right side found by solving matrix
-    void applySolvedRightSide(double rs[]) {
-	simulationLoop.applySolvedRightSide(rs);
-    }
-    
-    // set node voltages in each element given an array of node voltages
-    void setNodeVoltages(double nv[]) {
-	simulationLoop.setNodeVoltages(nv);
-    }
-    
-    // we removed wires from the matrix to speed things up.  in order to display wire currents,
-    // we need to calculate them now.
-    void calcWireCurrents() {
-	simulationLoop.calcWireCurrents();
-    }
-    
-    int min(int a, int b) { return (a < b) ? a : b; }
+	int min(int a, int b) { return (a < b) ? a : b; }
     int max(int a, int b) { return (a > b) ? a : b; }
     
     public void resetAction(){
@@ -1646,20 +1336,6 @@ public CirSim() {
 	if (openPlotlyViewer) {
 	    new ScopeViewerDialog(this, null, true);
 	}
-    }
-    
-    /**
-     * Open the Math Elements Test Dialog
-     */
-    void openMathTestDialog() {
-	infoDialogActions.openMathTestDialog();
-    }
-    
-    /**
-     * Open the table elements test dialog
-     */
-    void openTableTestDialog() {
-	infoDialogActions.openTableTestDialog();
     }
 
 	void openMathTestDialogCore() {
@@ -1990,13 +1666,6 @@ public CirSim() {
 	getViewportController().setCanvasSize();
     }
     
-    void loadUndoItem(UndoItem ui) {
-	getCircuitIOService().readCircuit(ui.dump, RC_NO_CENTER);
-	transform[0] = transform[3] = ui.scale;
-	transform[4] = ui.transform4;
-	transform[5] = ui.transform5;
-    }
-
     /**
      * Write circuit state to browser localStorage for crash recovery.
      * 
@@ -2125,7 +1794,7 @@ public CirSim() {
     // Solves the set of n linear equations using a LU factorization
     // previously performed by lu_factor.  On input, b[0..n-1] is the right
     // hand side of the equations, and on output, contains the solution.
-    static void lu_solve(double a[][], int n, int ipvt[], double b[]) {
+    static void lu_solve(double[][] a, int n, int[] ipvt, double[] b) {
 	LUSolver.solve(a, n, ipvt, b);
     }
 
@@ -2134,10 +1803,6 @@ public CirSim() {
 	CircuitElm registryElement = ElementRegistry.createFromDumpType(tint, x1, y1, x2, y2, f, st);
 	if (registryElement != null)
 	    return registryElement;
-	return createCeLegacy(tint, x1, y1, x2, y2, f, st);
-    }
-
-    static CircuitElm createCeLegacy(int tint, int x1, int y1, int x2, int y2, int f, StringTokenizer st) {
 	return ElementLegacyFactory.createCeLegacy(tint, x1, y1, x2, y2, f, st);
     }
 
@@ -2149,10 +1814,6 @@ public CirSim() {
 	    }
 	    return lookupResult.element;
 	}
-	return constructElementLegacy(n, x1, y1);
-	}
-
-	static CircuitElm constructElementLegacy(String n, int x1, int y1){
 	return ElementLegacyFactory.constructElementLegacy(n, x1, y1);
     }
     
@@ -2174,16 +1835,6 @@ public CirSim() {
 	static final int CAC_PRINT = 0;
 	static final int CAC_IMAGE = 1;
 	static final int CAC_SVG   = 2;
-	
-	// create SVG context using canvas2svg
-	static Context2d createSVGContext(int w, int h) {
-	    return createC2SContext(w, h).cast();
-	}
-	
-	static String getSerializedSVG(Context2d context) {
-	    return ((SvgContextLike) (Object) context).getSerializedSvg();
-	}
-	
 	
 	static void invertMatrix(double a[][], int n) {
 	    int ipvt[] = new int[n];
@@ -2207,43 +1858,4 @@ public CirSim() {
 		for (j = 0; j != n; j++)
 		    a[i][j] = inva[i][j];
 	}
-	
-    // -----------------------------------------------------------------------
-    // E_GSLOT support: circuit-global variable array
-    // -----------------------------------------------------------------------
-
-	/**
-	 * Get list of all slider names in the circuit
-	 * @return Array of slider names
-	 */
-	JsArrayString getJSArrayString() {
-	    return JavaScriptObject.createArray().cast();
-	}
-
-	void setExprPerfProbeEnabled(boolean enabled) {
-	    Expr.setPerfProbeEnabled(enabled);
-	}
-
-	void resetExprPerfProbe() {
-	    Expr.resetPerfProbe();
-	}
-
-	String getExprPerfProbeReport() {
-	    return Expr.getPerfProbeReport();
-	}
-	
-	// ========== END LABELED NODE & COMPUTED VALUE API METHODS ==========
-
-	class UndoItem {
-	    public String dump;
-	    public double scale, transform4, transform5;
-	    UndoItem(String d) {
-		dump = d;
-		scale = transform[0];
-		transform4 = transform[4];
-		transform5 = transform[5];
-	    }
-	}
-
 }
-

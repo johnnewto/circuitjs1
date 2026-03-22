@@ -480,8 +480,6 @@ final class CirSimInitializer {
         sim.getPreferencesManager().setGrid();
         sim.elmList = new Vector<CircuitElm>();
         sim.adjustables = new Vector<Adjustable>();
-        sim.undoStack = new Vector<CirSim.UndoItem>();
-        sim.redoStack = new Vector<CirSim.UndoItem>();
 
         sim.scopes = new Scope[20];
         sim.scopeColCount = new int[20];

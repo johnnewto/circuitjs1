@@ -109,7 +109,7 @@ final class ElementRegistry {
             return entry.dumpFactory.create(x1, y1, x2, y2, f, st);
         }
 
-        CircuitElm legacyElement = CirSim.createCeLegacy(dumpType, x1, y1, x2, y2, f, st);
+        CircuitElm legacyElement = ElementLegacyFactory.createCeLegacy(dumpType, x1, y1, x2, y2, f, st);
         if (legacyElement == null) {
             return null;
         }
@@ -125,7 +125,7 @@ final class ElementRegistry {
                         new DumpFactory() {
                             @Override
                             public CircuitElm create(int lx1, int ly1, int lx2, int ly2, int lf, StringTokenizer lst) {
-                                return CirSim.createCeLegacy(capturedDumpType, lx1, ly1, lx2, ly2, lf, lst);
+                                return ElementLegacyFactory.createCeLegacy(capturedDumpType, lx1, ly1, lx2, ly2, lf, lst);
                             }
                         });
                 dumpTypeMap.put(dumpType, dynamic);
@@ -155,7 +155,7 @@ final class ElementRegistry {
             return new NameLookupResult(entry.nameFactory.create(x1, y1), entry);
         }
 
-        CircuitElm legacyElement = CirSim.constructElementLegacy(classKey, x1, y1);
+        CircuitElm legacyElement = ElementLegacyFactory.constructElementLegacy(classKey, x1, y1);
         if (legacyElement == null) {
             return null;
         }
@@ -170,7 +170,7 @@ final class ElementRegistry {
                         new NameFactory() {
                             @Override
                             public CircuitElm create(int lx1, int ly1) {
-                                return CirSim.constructElementLegacy(capturedKey, lx1, ly1);
+                                return ElementLegacyFactory.constructElementLegacy(capturedKey, lx1, ly1);
                             }
                         },
                         null);

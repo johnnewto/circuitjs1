@@ -26,14 +26,14 @@ class CircuitAnalyzer {
             if (!ce.isRemovableWire())
                 continue;
             ce.hasWireInfo = false;
-            sim.wireInfoList.add(sim.new WireInfo(ce));
+            sim.wireInfoList.add(new CirSim.WireInfo(ce));
             Point p0 = ce.getPost(0);
             CirSim.NodeMapEntry cn = sim.nodeMap.get(p0);
 
             Point p1 = ce.getConnectedPost();
             if (p1 == null) {
                 if (cn == null) {
-                    cn = sim.new NodeMapEntry();
+                    cn = new CirSim.NodeMapEntry();
                     sim.nodeMap.put(p0, cn);
                 }
                 continue;
@@ -54,7 +54,7 @@ class CircuitAnalyzer {
                 sim.nodeMap.put(p0, cn2);
                 continue;
             }
-            cn = sim.new NodeMapEntry();
+            cn = new CirSim.NodeMapEntry();
             sim.nodeMap.put(p0, cn);
             sim.nodeMap.put(p1, cn);
         }
@@ -154,7 +154,7 @@ class CircuitAnalyzer {
             if (cln != null)
                 cln.node = 0;
             else
-                sim.nodeMap.put(pt, sim.new NodeMapEntry(0));
+                sim.nodeMap.put(pt, new CirSim.NodeMapEntry(0));
         } else {
             CircuitNode cn = new CircuitNode();
             sim.nodeList.addElement(cn);
@@ -183,7 +183,7 @@ class CircuitAnalyzer {
                     if (cln != null)
                         cln.node = sim.nodeList.size();
                     else
-                        sim.nodeMap.put(pt, sim.new NodeMapEntry(sim.nodeList.size()));
+                        sim.nodeMap.put(pt, new CirSim.NodeMapEntry(sim.nodeList.size()));
                     sim.nodeList.addElement(cn);
                 } else {
                     int n = cln.node;
