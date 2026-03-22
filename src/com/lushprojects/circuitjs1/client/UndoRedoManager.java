@@ -67,7 +67,7 @@ class UndoRedoManager {
 
     void doRecover() {
         pushUndo();
-        sim.getCircuitIOService().readCircuit(sim.recovery);
+        sim.getCircuitIOService().readCircuit(sim.getCircuitIOService().getRecovery());
         sim.getUiPanelManager().allowSave(false);
         sim.recoverItem.setEnabled(false);
     }

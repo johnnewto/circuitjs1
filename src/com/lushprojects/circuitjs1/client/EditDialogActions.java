@@ -20,19 +20,19 @@ class EditDialogActions {
             return;
         }
 
-        if (CirSim.editDialog != null) {
-            CirSim.editDialog.setVisible(false);
-            CirSim.editDialog = null;
+        if (CirSimDialogCoordinator.getEditDialog() != null) {
+            CirSimDialogCoordinator.getEditDialog().setVisible(false);
+            CirSimDialogCoordinator.setEditDialog(null);
         }
-        CirSim.editDialog = new EditDialog(eable, sim);
-        CirSim.editDialog.show();
+        CirSimDialogCoordinator.setEditDialog(new EditDialog(eable, sim));
+        CirSimDialogCoordinator.getEditDialog().show();
     }
 
     void doSliders(CircuitElm ce) {
         sim.getClipboardManager().clearSelection();
         sim.getUndoRedoManager().pushUndo();
-        CirSim.dialogShowing = new SliderDialog(ce, sim);
-        CirSim.dialogShowing.show();
+        CirSimDialogCoordinator.setDialogShowing(new SliderDialog(ce, sim));
+        CirSimDialogCoordinator.getDialogShowing().show();
     }
 
     void doEditLookupTables() {
@@ -40,12 +40,12 @@ class EditDialogActions {
             sim.alertOrWarn(Locale.LS("Editing disabled.  Re-enable from the Options menu."));
             return;
         }
-        CirSim.dialogShowing = new LookupTablesEditorDialog(sim);
+        CirSimDialogCoordinator.setDialogShowing(new LookupTablesEditorDialog(sim));
     }
 
     void doExportAsImage() {
-        CirSim.dialogShowing = new ExportAsImageDialog(CirSim.CAC_IMAGE);
-        CirSim.dialogShowing.show();
+        CirSimDialogCoordinator.setDialogShowing(new ExportAsImageDialog(CirSim.CAC_IMAGE));
+        CirSimDialogCoordinator.getDialogShowing().show();
     }
 
     void doImageToClipboard() {
@@ -57,7 +57,7 @@ class EditDialogActions {
         if (!dlg.createModel())
             return;
         dlg.createDialog();
-        CirSim.dialogShowing = dlg;
-        CirSim.dialogShowing.show();
+        CirSimDialogCoordinator.setDialogShowing(dlg);
+        CirSimDialogCoordinator.getDialogShowing().show();
     }
 }

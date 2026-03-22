@@ -81,8 +81,8 @@ final class ExportCompositeActions {
         if (!initializeSVGScriptIfNecessary("doExportAsSVG")) {
             return;
         }
-        CirSim.dialogShowing = new ExportAsImageDialog(CirSim.CAC_SVG);
-        CirSim.dialogShowing.show();
+        CirSimDialogCoordinator.setDialogShowing(new ExportAsImageDialog(CirSim.CAC_SVG));
+        CirSimDialogCoordinator.getDialogShowing().show();
     }
 
     public void doExportAsSVGFromAPI() {

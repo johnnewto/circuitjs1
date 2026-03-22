@@ -224,13 +224,13 @@ public class CustomCompositeElm extends CompositeElm {
             EditCompositeModelDialog dlg = new EditCompositeModelDialog();
             dlg.setModel(model);
             dlg.createDialog();
-            CirSim.dialogShowing = dlg;
+            CirSimDialogCoordinator.setDialogShowing(dlg);
             dlg.show();
             return;
         }
         if (n == 2) {
 		    sim.getCircuitIOService().readCircuit(model.modelCircuit);
-            CirSim.editDialog.closeDialog();
+            CirSimDialogCoordinator.getEditDialog().closeDialog();
         }
     }
     

@@ -733,7 +733,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             return;
 
         try {
-            sim.dragElm = CirSim.constructElement(sim.mouseModeStr, x0, y0);
+            sim.dragElm = ElementFactoryFacade.constructFromClassKey(sim.mouseModeStr, x0, y0);
         } catch (Exception ex) {
             CirSim.debugger();
         }
@@ -806,7 +806,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             sim.getUndoRedoManager().pushUndo();
         }
         if (sim.needsRecoverySave) {
-            sim.writeRecoveryToStorage();
+            sim.getCircuitIOService().writeRecoveryToStorage();
             sim.needsRecoverySave = false;
         }
         if (sim.dragElm != null)
@@ -850,21 +850,21 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         int t = e.getTypeInt();
         int code = e.getNativeEvent().getKeyCode();
         if (sim.dialogIsShowing()) {
-            if (CirSim.scrollValuePopup != null && CirSim.scrollValuePopup.isShowing() &&
+            if (CirSimDialogCoordinator.getScrollValuePopup() != null && CirSimDialogCoordinator.getScrollValuePopup().isShowing() &&
                 (t & Event.ONKEYDOWN) != 0) {
                 if (code == KEY_ESCAPE || code == KEY_SPACE)
-                    CirSim.scrollValuePopup.close(false);
+                    CirSimDialogCoordinator.getScrollValuePopup().close(false);
                 if (code == KEY_ENTER)
-                    CirSim.scrollValuePopup.close(true);
+                    CirSimDialogCoordinator.getScrollValuePopup().close(true);
             }
 
-            Dialog dlg = CirSim.editDialog;
-            if (CirSim.diodeModelEditDialog != null)
-                dlg = CirSim.diodeModelEditDialog;
-            if (CirSim.customLogicEditDialog != null)
-                dlg = CirSim.customLogicEditDialog;
-            if (CirSim.dialogShowing != null)
-                dlg = CirSim.dialogShowing;
+            Dialog dlg = CirSimDialogCoordinator.getEditDialog();
+            if (CirSimDialogCoordinator.getDiodeModelEditDialog() != null)
+                dlg = CirSimDialogCoordinator.getDiodeModelEditDialog();
+            if (CirSimDialogCoordinator.getCustomLogicEditDialog() != null)
+                dlg = CirSimDialogCoordinator.getCustomLogicEditDialog();
+            if (CirSimDialogCoordinator.getDialogShowing() != null)
+                dlg = CirSimDialogCoordinator.getDialogShowing();
 
 
             if (dlg != null && dlg.isShowing()) {

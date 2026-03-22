@@ -20,7 +20,7 @@ import java.util.Map;
  *
  * <p>Each element block (equations, matrix) is captured as a
  * {@link BlockDump} whose {@code dumpString} is the CircuitJS serialization
- * format that would normally be fed to {@code CirSim.createCe()}.
+ * format that would normally be fed to {@code ElementFactoryFacade.createFromDumpType(...)}.
  */
 public class SFCRParseResult {
 
@@ -34,7 +34,7 @@ public class SFCRParseResult {
         public final String blockType;
         /** Block name as it appeared in the SFCR source (spaces replaced by underscores). */
         public final String blockName;
-        /** CircuitJS element serialization string, ready for {@code CirSim.createCe()}. */
+        /** CircuitJS element serialization string, ready for {@code ElementFactoryFacade.createFromDumpType(...)}. */
         public final String dumpString;
 
         public BlockDump(String blockType, String blockName, String dumpString) {

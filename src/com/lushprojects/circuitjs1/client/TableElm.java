@@ -897,7 +897,7 @@ public class TableElm extends ChipElm implements TableContentView {
         if (sim != null) {
             try {
                 TableEditDialog dialog = new TableEditDialog(this, sim);
-                CirSim.dialogShowing = dialog;
+                CirSimDialogCoordinator.setDialogShowing(dialog);
                 dialog.show();
             } catch (Exception e) {
                 // CirSim.console("Error opening table edit dialog: " + e.getMessage());

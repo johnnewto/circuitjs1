@@ -16,7 +16,7 @@ view-source:http://www.giangrandi.ch/electronics/ntc/ntc.shtml
 http://www.giangrandi.ch/electronics/ntc/ntcparam.html
 no heating effects
 ID = 350
-add id to CirSim.constructElement and part to CirSim.createCe and to CirSimcomposeMainMenu
+add id to element factories and CirSimcomposeMainMenu
  */
 class ThermistorNTCElm extends CircuitElm implements Command, MouseWheelHandler {
     double position; //of the slider 0.005 to 0.995
@@ -244,4 +244,3 @@ class ThermistorNTCElm extends CircuitElm implements Command, MouseWheelHandler 
 
     }
 }
-

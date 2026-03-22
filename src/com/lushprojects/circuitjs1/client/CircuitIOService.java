@@ -14,15 +14,36 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 
 final class CircuitIOService {
     private final CirSim sim;
+    private String recovery;
 
     CircuitIOService(CirSim sim) {
         this.sim = sim;
     }
 
+    String getRecovery() {
+        return recovery;
+    }
+
+    void writeRecoveryToStorage() {
+        CirSim.console("write recovery");
+        Storage stor = Storage.getLocalStorageIfSupported();
+        if (stor == null)
+            return;
+        String s = dumpCircuit();
+        stor.setItem("circuitRecovery", s);
+    }
+
+    void readRecoveryFromStorage() {
+        Storage stor = Storage.getLocalStorageIfSupported();
+        if (stor == null)
+            return;
+        recovery = stor.getItem("circuitRecovery");
+    }
+
     void doExportAsUrl() {
         String dump = dumpCircuit();
-        sim.dialogShowing = new ExportAsUrlDialog(dump);
-        sim.dialogShowing.show();
+        CirSimDialogCoordinator.setDialogShowing(new ExportAsUrlDialog(dump));
+        CirSimDialogCoordinator.getDialogShowing().show();
     }
 
     void doOpenRunnerOutputTable() {
@@ -52,19 +73,19 @@ final class CircuitIOService {
 
     void doExportAsText() {
         String dump = dumpCircuit();
-        sim.dialogShowing = new ExportAsTextDialog(sim, dump);
-        sim.dialogShowing.show();
+        CirSimDialogCoordinator.setDialogShowing(new ExportAsTextDialog(sim, dump));
+        CirSimDialogCoordinator.getDialogShowing().show();
     }
 
     void doExportAsSFCR() {
-        sim.dialogShowing = new ExportAsSFCRDialog(sim);
-        sim.dialogShowing.show();
+        CirSimDialogCoordinator.setDialogShowing(new ExportAsSFCRDialog(sim));
+        CirSimDialogCoordinator.getDialogShowing().show();
     }
 
     void doExportAsLocalFile() {
         String dump = dumpCircuit();
-        sim.dialogShowing = new ExportAsLocalFileDialog(dump);
-        sim.dialogShowing.show();
+        CirSimDialogCoordinator.setDialogShowing(new ExportAsLocalFileDialog(dump));
+        CirSimDialogCoordinator.getDialogShowing().show();
     }
 
     String dumpCircuit() {
@@ -213,7 +234,7 @@ final class CircuitIOService {
             int f = Integer.parseInt(st.nextToken());
 
             CirSim.ElementDumpParseResult parsed = sim.getImportExportHelper().parseElementTokensWithUid(st);
-            CircuitElm newce = sim.createCe(tint, x1, y1, x2, y2, f, parsed.tokenizer);
+            CircuitElm newce = ElementFactoryFacade.createFromDumpType(tint, x1, y1, x2, y2, f, parsed.tokenizer);
             if (newce == null) {
                 CirSim.console("Unrecognized element type: " + type);
                 return;
@@ -581,7 +602,7 @@ final class CircuitIOService {
                     int y2 = Integer.parseInt(st.nextToken());
                     int f  = Integer.parseInt(st.nextToken());
                     CirSim.ElementDumpParseResult parsed = sim.getImportExportHelper().parseElementTokensWithUid(st);
-                    CircuitElm newce = sim.createCe(tint, x1, y1, x2, y2, f, parsed.tokenizer);
+                    CircuitElm newce = ElementFactoryFacade.createFromDumpType(tint, x1, y1, x2, y2, f, parsed.tokenizer);
                     if (newce==null) {
                         System.out.println("unrecognized dump type: " + type);
                         break;

@@ -17,7 +17,7 @@ final class CirSimCommandRouter {
             return;
         }
         if (item=="about")
-            sim.aboutBox = new AboutBox(circuitjs1.versionString);
+            CirSimDialogCoordinator.setAboutBox(new AboutBox(circuitjs1.versionString));
         if (item=="importfromlocalfile") {
             sim.getUndoRedoManager().pushUndo();
             if (sim.getPlatformInterop().isElectron())
@@ -33,10 +33,10 @@ final class CirSimCommandRouter {
         if (item=="saveas")
             sim.getPlatformInterop().electronSaveAs(sim.getCircuitIOService().dumpCircuit());
         if (item=="importfromtext") {
-            sim.dialogShowing = new ImportFromTextDialog(sim);
+            CirSimDialogCoordinator.setDialogShowing(new ImportFromTextDialog(sim));
         }
         if (item=="importfromdropbox") {
-            sim.dialogShowing = new ImportFromDropboxDialog(sim);
+            CirSimDialogCoordinator.setDialogShowing(new ImportFromDropboxDialog(sim));
         }
         if (item=="exportasurl") {
             sim.getCircuitIOService().doExportAsUrl();
@@ -84,12 +84,12 @@ final class CirSimCommandRouter {
         if ((menu=="elm" || menu=="scopepop") && sim.contextPanel!=null)
             sim.contextPanel.hide();
         if (menu=="options" && item=="shortcuts") {
-            sim.dialogShowing = new ShortcutsDialog(sim);
-            sim.dialogShowing.show();
+            CirSimDialogCoordinator.setDialogShowing(new ShortcutsDialog(sim));
+            CirSimDialogCoordinator.getDialogShowing().show();
         }
         if (menu=="options" && item=="subcircuits") {
-            sim.dialogShowing = new SubcircuitDialog(sim);
-            sim.dialogShowing.show();
+            CirSimDialogCoordinator.setDialogShowing(new SubcircuitDialog(sim));
+            CirSimDialogCoordinator.getDialogShowing().show();
         }
         if (menu=="options" && item=="voltageunit") {
             sim.getPreferencesManager().showVoltageUnitDialog();
@@ -101,8 +101,8 @@ final class CirSimCommandRouter {
             sim.noEditCheckItem.setState(!sim.noEditCheckItem.getState());
         }
         if (item=="search") {
-            sim.dialogShowing = new SearchDialog(sim);
-            sim.dialogShowing.show();
+            CirSimDialogCoordinator.setDialogShowing(new SearchDialog(sim));
+            CirSimDialogCoordinator.getDialogShowing().show();
         }
         if (item=="variablebrowser") {
             VariableBrowserDialog.openDialog(sim);

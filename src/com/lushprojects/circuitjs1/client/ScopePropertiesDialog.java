@@ -267,7 +267,7 @@ boolean maxScaleTextBoxHasFocus = false;
 		setText(Locale.LS("Scope Properties"));
 		
 		// Register this dialog so keyboard shortcuts are disabled
-		CirSim.dialogShowing = this;
+		CirSimDialogCoordinator.setDialogShowing(this);
 
 // *************** VERTICAL SCALE ***********************************************************
 		Grid vSLG = new Grid(1,1); // Stupid grid to force labels to align without diving deep in to table CSS

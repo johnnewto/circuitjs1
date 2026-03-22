@@ -511,7 +511,7 @@ class TransistorElm extends CircuitElm {
 	    if (n == 4) {
 		TransistorModel newModel = new TransistorModel(model);
 		EditDialog editDialog = new EditTransistorModelDialog(newModel, sim, this);
-		CirSim.diodeModelEditDialog = editDialog;
+		CirSimDialogCoordinator.setDiodeModelEditDialog(editDialog);
 		editDialog.show();
 		return;
 	    }
@@ -522,7 +522,7 @@ class TransistorElm extends CircuitElm {
 		    return;
 		}
 		EditDialog editDialog = new EditTransistorModelDialog(model, sim, null);
-		CirSim.diodeModelEditDialog = editDialog;
+		CirSimDialogCoordinator.setDiodeModelEditDialog(editDialog);
 		editDialog.show();
 		return;
 	    }

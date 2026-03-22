@@ -1613,6 +1613,6 @@ public class EquationTableEditDialog extends Dialog {
      */
     public void closeDialog() {
         hide();
-        CirSim.dialogShowing = null;
+        CirSimDialogCoordinator.clearDialogShowingIf(this);
     }
 }

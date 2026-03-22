@@ -75,7 +75,7 @@ class ClipboardManager {
 		if (hasDeleted) {
 			sim.getScopeManager().deleteUnusedScopeElms();
 			sim.needAnalyze();
-			sim.writeRecoveryToStorage();
+			sim.getCircuitIOService().writeRecoveryToStorage();
 		}
 	}
 
@@ -202,7 +202,7 @@ class ClipboardManager {
 			}
 		}
 		sim.needAnalyze();
-		sim.writeRecoveryToStorage();
+		sim.getCircuitIOService().writeRecoveryToStorage();
 	}
 
 	void clearSelection() {

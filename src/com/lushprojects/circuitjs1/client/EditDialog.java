@@ -476,10 +476,9 @@ class EditDialog extends Dialog {
 	public void closeDialog()
 	{
 		super.closeDialog();
-		if (CirSim.editDialog == this)
-		    CirSim.editDialog = null;
-		if (CirSim.customLogicEditDialog == this)
-		    CirSim.customLogicEditDialog = null;
+		if (CirSimDialogCoordinator.getEditDialog() == this)
+		    CirSimDialogCoordinator.setEditDialog(null);
+		if (CirSimDialogCoordinator.getCustomLogicEditDialog() == this)
+		    CirSimDialogCoordinator.setCustomLogicEditDialog(null);
 	}
 }
-

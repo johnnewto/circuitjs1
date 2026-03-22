@@ -48,7 +48,6 @@ import com.google.gwt.dom.client.CanvasElement;
 import com.google.gwt.dom.client.Element;
 import com.google.gwt.user.client.ui.MenuItem;
 import com.google.gwt.safehtml.shared.SafeHtmlUtils;
-import com.google.gwt.storage.client.Storage;
 import com.google.gwt.user.client.ui.PopupPanel;
 import com.google.gwt.user.client.ui.Frame;
 import com.lushprojects.circuitjs1.client.util.Locale;
@@ -574,14 +573,9 @@ public class CirSim {
     boolean hideInfoBox;
     int scopeColCount[];
     boolean isExporting; // flag to indicate we're exporting an image
-    static EditDialog editDialog, customLogicEditDialog, diodeModelEditDialog;
-    static ScrollValuePopup scrollValuePopup;
-    static Dialog dialogShowing;
-    static AboutBox aboutBox;
     // Class dumpTypes[], shortcuts[];
     String shortcuts[];
     String clipboard;
-    String recovery;
     Rectangle circuitArea;
     double transform[];
     boolean unsavedChanges;
@@ -1654,7 +1648,7 @@ public CirSim() {
     void scrollValues(int x, int y, int deltay) {
     	if (mouseElm!=null && !dialogIsShowing() && scopeSelected == -1)
     		if (mouseElm instanceof ResistorElm || mouseElm instanceof CapacitorElm ||  mouseElm instanceof InductorElm) {
-    			scrollValuePopup = new ScrollValuePopup(x, y, deltay, mouseElm, this);
+    			CirSimDialogCoordinator.setScrollValuePopup(new ScrollValuePopup(x, y, deltay, mouseElm, this));
     		}
     }
     
@@ -1666,36 +1660,6 @@ public CirSim() {
 	getViewportController().setCanvasSize();
     }
     
-    /**
-     * Write circuit state to browser localStorage for crash recovery.
-     * 
-     * PERFORMANCE NOTE: This is relatively expensive for large circuits:
-     * - dumpCircuit() serializes entire circuit to string (~1-10ms)
-     * - localStorage.setItem() writes to disk (~1-5ms)
-     * 
-     * Should be called sparingly:
-     * - After drag completes (not during every mouse move)
-     * - After adding/deleting elements
-     * - After major circuit changes
-     * 
-     * Previously called on every mouse move during drag, causing lag.
-     * Now deferred via needsRecoverySave flag until drag completes.
-     */
-    void writeRecoveryToStorage() {
-	console("write recovery");
-    	Storage stor = Storage.getLocalStorageIfSupported();
-    	if (stor == null)
-    		return;
-		String s = getCircuitIOService().dumpCircuit();
-    	stor.setItem("circuitRecovery", s);
-    }
-
-    void readRecovery() {
-	Storage stor = Storage.getLocalStorageIfSupported();
-	if (stor == null)
-		return;
-	recovery = stor.getItem("circuitRecovery");
-    }
 	CircuitElm getMouseElmForRouting() {
 	return mouseElm;
 	}
@@ -1736,25 +1700,7 @@ public CirSim() {
 //    public void keyReleased(KeyEvent e) {}
     
     boolean dialogIsShowing() {
-    	if (editDialog!=null && editDialog.isShowing())
-    		return true;
-        if (customLogicEditDialog!=null && customLogicEditDialog.isShowing())
-                return true;
-        if (diodeModelEditDialog!=null && diodeModelEditDialog.isShowing())
-                return true;
-       	if (dialogShowing != null && dialogShowing.isShowing())
-       		return true;
-    	if (contextPanel!=null && contextPanel.isShowing())
-    		return true;
-    	if (scrollValuePopup != null && scrollValuePopup.isShowing())
-    		return true;
-    	if (aboutBox !=null && aboutBox.isShowing())
-    		return true;
-    	if (VariableBrowserDialog.isOpen())
-    		return true;
-    	if (ActionTimeDialog.isOpen())
-    		return true;
-    	return false;
+	return CirSimDialogCoordinator.isAnyDialogShowing(contextPanel);
     }
     
     void updateToolbar() {
@@ -1798,25 +1744,6 @@ public CirSim() {
 	LUSolver.solve(a, n, ipvt, b);
     }
 
-    
-    public static CircuitElm createCe(int tint, int x1, int y1, int x2, int y2, int f, StringTokenizer st) {
-	CircuitElm registryElement = ElementRegistry.createFromDumpType(tint, x1, y1, x2, y2, f, st);
-	if (registryElement != null)
-	    return registryElement;
-	return ElementLegacyFactory.createCeLegacy(tint, x1, y1, x2, y2, f, st);
-    }
-
-    public static CircuitElm constructElement(String n, int x1, int y1){
-	ElementRegistry.NameLookupResult lookupResult = ElementRegistry.createFromClassKey(n, x1, y1);
-	if (lookupResult != null) {
-	    if (lookupResult.entry != null && lookupResult.entry.alias && lookupResult.entry.deprecationMessage != null) {
-		console(lookupResult.entry.deprecationMessage);
-	    }
-	    return lookupResult.element;
-	}
-	return ElementLegacyFactory.constructElementLegacy(n, x1, y1);
-    }
-    
     public void updateModels() {
 	int i;
 	for (i = 0; i != elmList.size(); i++)

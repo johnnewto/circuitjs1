@@ -64,7 +64,7 @@ final class CirSimInitializer {
         MenuBar m;
 
         CircuitElm.initClass(sim);
-        sim.readRecovery();
+        sim.getCircuitIOService().readRecoveryFromStorage();
 
         QueryParameters qp = new QueryParameters();
         String positiveColor = null;
@@ -174,7 +174,7 @@ final class CirSimInitializer {
         sim.fileMenuBar.addItem(sim.iconMenuItem("microchip", "Create Subcircuit...", new MyCommand("file", "createsubcircuit")));
         sim.fileMenuBar.addItem(sim.iconMenuItem("magic", "Find DC Operating Point", new MyCommand("file", "dcanalysis")));
         sim.recoverItem = sim.iconMenuItem("back-in-time", "Recover Auto-Save", new MyCommand("file", "recover"));
-        sim.recoverItem.setEnabled(sim.recovery != null);
+        sim.recoverItem.setEnabled(sim.getCircuitIOService().getRecovery() != null);
         sim.fileMenuBar.addItem(sim.recoverItem);
         sim.printItem = sim.menuItemWithShortcut("print", "Print...", Locale.LS(sim.ctrlMetaKey + "P"), new MyCommand("file", "print"));
         sim.fileMenuBar.addItem(sim.printItem);

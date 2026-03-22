@@ -82,8 +82,7 @@ class Dialog extends DialogBox  {
 	public void closeDialog()
 	{
 		hide();
-		if (CirSim.dialogShowing == this)
-		    CirSim.dialogShowing = null;
+		CirSimDialogCoordinator.clearDialogShowingIf(this);
 	}
 	
 	
@@ -97,4 +96,3 @@ class Dialog extends DialogBox  {
 	void apply() {
 	}
 }
-

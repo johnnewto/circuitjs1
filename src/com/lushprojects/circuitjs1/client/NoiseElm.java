@@ -27,7 +27,7 @@ package com.lushprojects.circuitjs1.client;
 	    waveform = WF_NOISE;
 	}
 	
-	// dump this class as a RailElm.  The 'n' dump type is still used in CirSim.createCe to read old files
+	// dump this class as a RailElm.  The 'n' dump type is still used in ElementFactoryFacade to read old files
 //	int getDumpType() { return 'n'; }
 	int getShortcut() { return 0; }
     }

@@ -188,7 +188,7 @@ public class SFCRParser {
      *
      * <p>Safe to call from plain-Java unit tests running on a standard JVM.
      * Element instantiation is skipped; the dump strings that would normally be
-     * fed to {@code CirSim.createCe()} are collected in the returned
+     * fed to {@code ElementFactoryFacade.createFromDumpType(...)} are collected in the returned
      * {@link SFCRParseResult} instead.
      *
      * @param text SFCR-format source text
@@ -3472,7 +3472,7 @@ public class SFCRParser {
             int yb = Integer.parseInt(st.nextToken());
             int flags = Integer.parseInt(st.nextToken());
             
-            CircuitElm ce = CirSim.createCe(type, xa, ya, xb, yb, flags, st);
+            CircuitElm ce = ElementFactoryFacade.createFromDumpType(type, xa, ya, xb, yb, flags, st);
             if (ce != null) {
                 ce.setPoints();  // Initialize geometry (required after construction)
                 sim.getImportExportHelper().assignPersistentUid(ce, null);
@@ -3592,7 +3592,7 @@ public class SFCRParser {
             int yb = Integer.parseInt(st.nextToken());
             int flags = Integer.parseInt(st.nextToken());
             
-            CircuitElm ce = CirSim.createCe(type, xa, ya, xb, yb, flags, st);
+            CircuitElm ce = ElementFactoryFacade.createFromDumpType(type, xa, ya, xb, yb, flags, st);
             if (ce != null) {
                 ce.setPoints();  // Initialize geometry (required after construction)
                 sim.getImportExportHelper().assignPersistentUid(ce, null);

@@ -350,7 +350,7 @@ final class CirSimMenuBuilder {
     String shortcut = "";
     CircuitElm elm = null;
     try {
-        elm = CirSim.constructElement(t, 0, 0);
+        elm = ElementFactoryFacade.constructFromClassKey(t, 0, 0);
     } catch (Exception e) {
     }
     CheckboxMenuItem mi;

@@ -2877,7 +2877,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         if (sim != null) {
             try {
                 EquationTableEditDialog dialog = new EquationTableEditDialog(this, sim);
-                CirSim.dialogShowing = dialog;
+                CirSimDialogCoordinator.setDialogShowing(dialog);
                 dialog.show();
             } catch (Exception e) {
                 e.printStackTrace();
