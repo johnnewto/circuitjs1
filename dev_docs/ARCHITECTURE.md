@@ -160,13 +160,33 @@ graph TB
 
 **File**: `src/com/lushprojects/circuitjs1/client/CirSim.java`
 
-The central controller class that manages:
-- UI components (menus, toolbar, canvas)
-- Circuit model (`elmList` vector of elements)
-- Simulation loop
-- User interactions (mouse, keyboard)
-- File import/export
-- Settings persistence
+`CirSim` is the central controller that owns all shared state (element list, matrices, UI widgets, settings). Behaviour is split into **delegate classes**, each holding a `final CirSim sim` reference and operating on the shared fields:
+
+| Delegate class | Responsibility |
+|---|---|
+| `SimulationLoop` | `updateCircuit()` main frame loop, `runCircuit()`, solver |
+| `CircuitAnalyzer` | Wire-closure, node-list, unconnected-node detection, validation |
+| `MatrixStamper` | MNA matrix / right-side stamping primitives (`stampMatrix`, `stampResistor`, …) |
+| `CircuitRenderer` | Canvas drawing: element draw loop, status overlay, frame finalization |
+| `MouseInputHandler` | Mouse, touch, and keyboard event handling; cursor management |
+| `ClipboardManager` | Cut / copy / paste / duplicate / select-all |
+| `UndoRedoManager` | Undo / redo stack push and pop |
+| `ImportExportHelper` | Circuit serialization (`dumpOptions`), UID tracking, CTZ import |
+| `EditDialogActions` | Element edit dialog, subcircuit, image-export actions |
+| `InfoDialogActions` | Model-info viewer, reference docs viewer |
+| `SetupListLoader` | Loads circuit menu from `setuplist_*.txt` files |
+| `ToolbarModeManager` | Switches between Electronics and Economics toolbars |
+| `CirSimMenuBuilder` | Builds Draw / right-click popup menus from `menulist.txt` |
+| `CirSimCommandRouter` | Dispatches `menuPerformed()` command strings |
+| `CircuitIOService` | Higher-level file import/export (open, save, Dropbox, SFCR) |
+| `ScopeManager` | Scope panel layout, stack/unstack/combine/separate |
+| `ViewportController` | Pan, zoom, centre-circuit transforms |
+| `FlipTransformController` | Flip-X / Flip-Y / Flip-XY element transforms |
+| `CirSimBootstrap` | `init()` / `initRunner()` startup and JS-API wiring |
+| `CirSimDiagnostics` | Developer diagnostics (element registry report, perf probe) |
+| `RunnerController` | Non-interactive runner (headless circuit execution) |
+
+All delegates are instantiated as `private final` fields of `CirSim` and are non-null for the lifetime of the application. Public-facing GWT event handler methods (`onMouseDown`, etc.) thin-delegate to `MouseInputHandler`.
 
 ### 3. Circuit Elements
 
@@ -192,30 +212,30 @@ All circuit components extend this abstract class and implement:
 
 ### 4. Simulation Engine - The Main Loop
 
-**Method**: `updateCircuit()` in `CirSim.java`
+**Entry point**: `SimulationLoop.updateCircuit()` (called by `CirSim.timer`)
 
 ```
 Loop continuously:
-  1. analyzeCircuit()    - Setup and validation
-  2. stampCircuit()      - Build MNA matrices  
-  3. runCircuit()        - Solve equations
-  4. Draw graphics       - Render visualization (inline)
+  1. CircuitAnalyzer.analyzeCircuit()           - Setup and validation
+  2. CircuitAnalyzer.preStampAndStampCircuit()  - Build MNA matrices  
+  3. SimulationLoop.runCircuit()                - Solve equations
+  4. CircuitRenderer.drawGraphicsIfNeeded()     - Render visualization
 ```
 
-#### Phase 1: Analysis (`analyzeCircuit()`)
+#### Phase 1: Analysis (`CircuitAnalyzer.analyzeCircuit()` → `preStampCircuit()`)
 - Calculate wire closure (which nodes are connected)
 - Set ground node reference
 - Detect unconnected nodes
 - Validate circuit structure
 - Allocate matrices
 
-#### Phase 2: Stamping (`stampCircuit()`)
+#### Phase 2: Stamping (`CircuitAnalyzer.stampCircuit()` via `MatrixStamper`)
 - Connect isolated nodes to ground via large resistors
 - Matrix simplification for performance
 - Call `stamp()` on linear elements (once)
 - Perform LU factorization for linear circuits
 
-#### Phase 3: Simulation (`runCircuit()`)
+#### Phase 3: Simulation (`SimulationLoop.runCircuit()`)
 - **Outer Loop**: Full simulation timesteps
 - **Inner Loop**: Convergence iterations for nonlinear elements
   - Call `doStep()` on nonlinear elements
@@ -224,7 +244,7 @@ Loop continuously:
   - Check convergence
 - Update element states
 
-#### Phase 4: Drawing (inline in `updateCircuit()`)
+#### Phase 4: Drawing (`CircuitRenderer.drawGraphicsIfNeeded()`)
 - Render each element via `draw()`
 - Draw current flow dots
 - Render scopes
@@ -566,11 +586,35 @@ gradle compileGwt
 ```
 src/com/lushprojects/circuitjs1/client/
 ├── circuitjs1.java              # GWT EntryPoint
-├── CirSim.java                  # Main simulator
+├── CirSim.java                  # Main simulator (state + delegation)
 ├── CircuitElm.java              # Element base class
 ├── [Component]Elm.java          # Element implementations
 ├── Scope.java                   # Oscilloscope
 ├── Graphics.java                # Canvas wrapper
+│
+│   ── CirSim delegate classes ──────────────────────────────────
+├── SimulationLoop.java          # Main loop, runCircuit, solver
+├── CircuitAnalyzer.java         # Wire closure, node list, validation
+├── MatrixStamper.java           # MNA matrix/RHS stamping primitives
+├── CircuitRenderer.java         # Canvas rendering, status, frame end
+├── MouseInputHandler.java       # Mouse/touch/keyboard events
+├── ClipboardManager.java        # Cut/copy/paste/select
+├── UndoRedoManager.java         # Undo/redo stack
+├── ImportExportHelper.java      # Circuit serialization, UIDs, CTZ
+├── EditDialogActions.java       # Edit/subcircuit dialog actions
+├── InfoDialogActions.java       # Model-info viewer actions
+├── SetupListLoader.java         # Loads circuit menu from setuplist_*.txt
+├── ToolbarModeManager.java      # Electronics/Economics toolbar switch
+├── CirSimMenuBuilder.java       # Draw / popup menu construction
+├── CirSimCommandRouter.java     # menuPerformed() command dispatch
+├── CircuitIOService.java        # File open/save/Dropbox/SFCR I/O
+├── ScopeManager.java            # Scope panel management
+├── ViewportController.java      # Pan/zoom transforms
+├── FlipTransformController.java # Flip-X/Y/XY element transforms
+├── CirSimBootstrap.java         # init() / initRunner() startup
+├── CirSimDiagnostics.java       # Developer diagnostics
+├── RunnerController.java        # Non-interactive runner
+│
 └── util/
     ├── Locale.java              # Internationalization
     └── PerfMonitor.java         # Performance monitoring

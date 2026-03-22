@@ -74,7 +74,6 @@ import com.google.gwt.http.client.URL;
 import com.google.gwt.http.client.RequestBuilder;
 import com.google.gwt.http.client.RequestCallback;
 import com.google.gwt.xhr.client.XMLHttpRequest;
-import com.google.gwt.xhr.client.ReadyStateChangeHandler;
 import com.google.gwt.user.client.ui.MenuBar;
 import com.google.gwt.user.client.Command;
 import com.google.gwt.user.client.Event;
@@ -93,7 +92,6 @@ import com.google.gwt.dom.client.EventTarget;
 import com.google.gwt.dom.client.InputElement;
 import com.google.gwt.dom.client.LabelElement;
 import com.google.gwt.dom.client.MetaElement;
-import com.google.gwt.dom.client.NativeEvent;
 import com.google.gwt.dom.client.NodeList;
 import com.google.gwt.user.client.ui.MenuItem;
 import com.google.gwt.safehtml.shared.SafeHtmlUtils;
@@ -103,7 +101,6 @@ import static com.google.gwt.event.dom.client.KeyCodes.*;
 import com.google.gwt.user.client.ui.Frame;
 import com.google.gwt.user.client.ui.Widget;
 import com.lushprojects.circuitjs1.client.util.Locale;
-import com.lushprojects.circuitjs1.client.util.PerfMonitor;
 import com.google.gwt.user.client.Window.ClosingEvent;
 import com.google.gwt.user.client.Window.Navigator;
 import com.google.gwt.event.logical.shared.ResizeEvent;
@@ -799,6 +796,18 @@ public CirSim() {
 	private final ScopeManager scopeManager = new ScopeManager(this);
 	private final ViewportController viewportController = new ViewportController(this);
 	private final FlipTransformController flipTransformController = new FlipTransformController(this);
+	private final ClipboardManager clipboardManager = new ClipboardManager(this);
+	private final MouseInputHandler mouseInputHandler = new MouseInputHandler(this);
+	private final CircuitAnalyzer circuitAnalyzer = new CircuitAnalyzer(this);
+	private final MatrixStamper matrixStamper = new MatrixStamper(this);
+	private final CircuitRenderer circuitRenderer = new CircuitRenderer(this);
+	private final SimulationLoop simulationLoop = new SimulationLoop(this);
+	private final SetupListLoader setupListLoader = new SetupListLoader(this);
+	private final EditDialogActions editDialogActions = new EditDialogActions(this);
+	private final InfoDialogActions infoDialogActions = new InfoDialogActions(this);
+	private final ImportExportHelper importExportHelper = new ImportExportHelper(this);
+	private final UndoRedoManager undoRedoManager = new UndoRedoManager(this);
+	private final ToolbarModeManager toolbarModeManager = new ToolbarModeManager(this);
 	private final CirSimBootstrap bootstrap = new CirSimBootstrap(this);
 	private final CirSimDiagnostics diagnostics = new CirSimDiagnostics(this);
 
@@ -2038,326 +2047,7 @@ public CirSim() {
      *                    dragging even for large circuits (200+ elements).
      */
     public void updateCircuit() {
-        PerfMonitor perfmon = new PerfMonitor();
-        perfmon.startContext("updateCircuit()");
-
-        checkCanvasSize();
-        
-        // Analyze circuit
-        boolean didAnalyze = analyzeFlag;
-        if (analyzeFlag || dcAnalysisFlag) {
-            perfmon.startContext("analyzeCircuit()");
-            analyzeCircuit();
-            analyzeFlag = false;
-            perfmon.stopContext();
-        }
-        
-        // Stamp circuit
-        if (needsStamp && simRunning) {
-            perfmon.startContext("stampCircuit()");
-            try {
-                preStampAndStampCircuit();
-            } catch (Exception e) {
-                stop("Exception in stampCircuit()", null);
-		GWT.log("Exception in stampCircuit", e);
-            }
-            perfmon.stopContext();
-        }
-        
-        if (stopElm != null && stopElm != mouseElm)
-            stopElm.setMouseElm(true);
-        
-        setupScopes();
-
-        Graphics g = new Graphics(cvcontext);
-
-        // Run circuit
-        if (simRunning) {
-            if (needsStamp)
-                console("needsStamp while simRunning?");
-
-            perfmon.startContext("runCircuit()");
-            try {                
-                runCircuit(didAnalyze);
-            } catch (Exception e) {
-                debugger();
-                console("exception in runCircuit " + e);
-                e.printStackTrace();
-            }
-            perfmon.stopContext();
-        }
-
-        long sysTime = System.currentTimeMillis();
-        if (simRunning) {
-            if (lastTime != 0) {
-                int inc = (int) (sysTime - lastTime);
-                double c = currentBar.getValue();
-                c = java.lang.Math.exp(c / 3.5 - 14.2);
-                CircuitElm.currentMult = 1.7 * inc * c;
-                if (!conventionCheckItem.getState())
-                    CircuitElm.currentMult = -CircuitElm.currentMult;
-            }
-            lastTime = sysTime;
-        } else {
-            lastTime = 0;
-        }
-
-        if (sysTime - secTime >= 1000) {
-            framerate = frames;
-            steprate = steps;
-            frames = 0;
-            steps = 0;
-            secTime = sysTime;
-		}
-        if (sysTime - secTime >= 500) {            
-            // Call every500msec() for display-only computations (like A-L-E columns and table text)
-            // This happens twice per second, not per frame or simulation step
-            for (int i = 0; i != elmList.size(); i++) {
-                getElm(i).every500msec();
-            }
-        }
-
-        CircuitElm.powerMult = Math.exp(powerBar.getValue() / 4.762 - 7);
-
-        // Increment frame counter
-        graphicsFrameCounter++;
-        
-        // Only redraw graphics every graphicsUpdateInterval frames, unless:
-        // - We're dragging (need smooth visual feedback)
-        // - We're not running (need to show changes immediately)
-        // - Analysis just completed (need to show new circuit state)
-        boolean shouldDrawGraphics = dragging || 
-                                     !simRunning || 
-                                     didAnalyze ||
-                                     (graphicsFrameCounter >= graphicsUpdateInterval);
-        
-        if (shouldDrawGraphics) {
-            graphicsFrameCounter = 0; // Reset counter
-            
-            perfmon.startContext("graphics");
-
-            // Set background colors and clear canvas
-            if (printableCheckItem.getState()) {
-                CircuitElm.whiteColor = Color.black;
-                CircuitElm.lightGrayColor = Color.black;
-                g.setColor(new Color(245, 245, 245));
-                cv.getElement().getStyle().setBackgroundColor("#f5f5f5");
-            } else {
-                CircuitElm.whiteColor = Color.white;
-                CircuitElm.lightGrayColor = Color.lightGray;
-                g.setColor(Color.black);
-                cv.getElement().getStyle().setBackgroundColor("#000");
-            }
-
-            g.fillRect(0, 0, canvasWidth, canvasHeight);
-
-            g.setFont(CircuitElm.unitsFont);
-
-        g.context.setLineCap(LineCap.ROUND);
-
-        if (noEditCheckItem.getState())
-            g.drawLock(20, 30);
-        
-        g.setColor(Color.white);
-        
-        // Set the graphics transform to deal with zoom and offset
-        double scale = devicePixelRatio();
-        cvcontext.setTransform(transform[0] * scale, 0, 0, transform[3] * scale, transform[4] * scale, transform[5] * scale);
-
-        // Draw each element
-        // Optimization: Set power mode color once before loop instead of for each element
-        perfmon.startContext("elm.draw()");
-        
-        // Temporarily reorder elements to draw last interacted table on top
-        int tableOriginalIndex = -1;
-        if (lastInteractedTable != null && elmList.contains(lastInteractedTable)) {
-            tableOriginalIndex = elmList.indexOf(lastInteractedTable);
-            if (tableOriginalIndex != elmList.size() - 1) {
-                // Move table to end for drawing (draws last = on top)
-                elmList.remove(tableOriginalIndex);
-                elmList.add(lastInteractedTable);
-            }
-        }
-        
-        if (powerCheckItem.getState()) {
-            g.setColor(Color.gray);
-            for (int i = 0; i != elmList.size(); i++) {
-                getElm(i).draw(g);
-            }
-        } else {
-            for (int i = 0; i != elmList.size(); i++) {
-                getElm(i).draw(g);
-            }
-        }
-        
-        // Restore original order if we moved the table
-        if (tableOriginalIndex >= 0 && tableOriginalIndex != elmList.size() - 1) {
-            elmList.remove(lastInteractedTable);
-            elmList.insertElementAt(lastInteractedTable, tableOriginalIndex);
-        }
-        
-        perfmon.stopContext();
-
-        // Draw posts normally
-        if (mouseMode != CirSim.MODE_DRAG_ROW && mouseMode != CirSim.MODE_DRAG_COLUMN) {
-            for (int i = 0; i != postDrawList.size(); i++)
-                CircuitElm.drawPost(g, postDrawList.get(i));
-        }
-
-        // for some mouse modes, what matters is not the posts but the endpoints (which
-        // are only the same for 2-terminal elements). We draw those now if needed
-        if (tempMouseMode == MODE_DRAG_ROW || 
-            tempMouseMode == MODE_DRAG_COLUMN || 
-            tempMouseMode == MODE_DRAG_POST || 
-            tempMouseMode == MODE_DRAG_SELECTED) {
-            for (int i = 0; i != elmList.size(); i++) {
-
-                CircuitElm ce = getElm(i);
-                // ce.drawPost(g, ce.x , ce.y );
-                // ce.drawPost(g, ce.x2, ce.y2);
-                if (ce != mouseElm || tempMouseMode != MODE_DRAG_POST) {
-                    g.setColor(Color.gray);
-                    g.fillOval(ce.x - 3, ce.y - 3, 7, 7);
-                    g.fillOval(ce.x2 - 3, ce.y2 - 3, 7, 7);
-                } else {
-                    ce.drawHandles(g, CircuitElm.selectColor);
-                }
-            }
-        }
-        
-        // draw handles for elm we're creating
-        if (tempMouseMode == MODE_SELECT && mouseElm != null) {
-            mouseElm.drawHandles(g, CircuitElm.selectColor);
-        }
-
-        // draw handles for elm we're dragging
-        if (dragElm != null && (dragElm.x != dragElm.x2 || dragElm.y != dragElm.y2)) {
-            dragElm.draw(g);
-            dragElm.drawHandles(g, CircuitElm.selectColor);
-        }
-
-        // draw bad connections. do this last so they will not be overdrawn.
-        for (int i = 0; i != badConnectionList.size(); i++) {
-            Point cn = badConnectionList.get(i);
-            g.setColor(Color.red);
-            g.fillOval(cn.x - 3, cn.y - 3, 7, 7);
-            // // Log bad connection location to help identify the problem
-            // if (i == 0)
-            //     console("Bad connections at:");
-            // console("  (" + cn.x + ", " + cn.y + ")");
-        }
-
-        // draw the selection rect
-        if (selectedArea != null) {
-            g.setColor(CircuitElm.selectColor);
-            g.drawRect(selectedArea.x, selectedArea.y, selectedArea.width, selectedArea.height);
-        }
-
-        // draw the crosshair cursor
-        if (crossHairCheckItem.getState() && mouseCursorX >= 0
-                && mouseCursorX <= circuitArea.width && mouseCursorY <= circuitArea.height) {
-            g.setColor(Color.gray);
-            int x = snapGrid(inverseTransformX(mouseCursorX));
-            int y = snapGrid(inverseTransformY(mouseCursorY));
-            g.drawLine(x, inverseTransformY(0), x, inverseTransformY(circuitArea.height));
-            g.drawLine(inverseTransformX(0), y, inverseTransformX(circuitArea.width), y);
-        }
-
-        // reset the graphics scale and translation
-        cvcontext.setTransform(scale, 0, 0, scale, 0, 0);
-
-        // draw the bottom area i.e. the scope and info section
-        perfmon.startContext("drawBottomArea()");
-        drawBottomArea(g);
-        perfmon.stopContext();
-
-        g.setColor(Color.white);
-        
-        perfmon.stopContext(); // graphics
-        } // end if (shouldDrawGraphics)
-
-        perfmon.stopContext(); // updateCircuit
-        
-        // Always show time and framerate in top left
-        g.setColor(CircuitElm.whiteColor);
-        int height = 15;
-        int increment = 15;
-        
-        // Show circuit file name and location first
-        if (currentCircuitFile != null) {
-            g.drawString("File: " + currentCircuitFile, 10, height);
-            height += increment;
-        }
-        
-        // Show simulation time
-        String timeStr = "t = " + formatTimeFixed(t);
-        double timerate = 160*getIterCount()*timeStep;
-        if (timerate >= .1)
-            timeStr += " (" + CircuitElm.showFormat.format(timerate) + "x)";
-        g.drawString(timeStr, 10, height);
-        
-        // Show real elapsed time
-        double realElapsed = (System.currentTimeMillis() - realTimeStart) / 1000.0;
-        g.drawString("real = " + CircuitElm.showFormat.format(realElapsed) + "s", 10, height += increment);
-        
-        g.drawString("Framerate: " + CircuitElm.showFormat.format(framerate), 10, height += increment);
-        g.drawString("subiter: " + subIterations, 10, height += increment);
-        
-        // Show any unresolved references from EquationTableElm elements
-        String unresolvedMsg = getUnresolvedReferencesMessage();
-        if (unresolvedMsg != null) {
-            g.setColor(Color.red);
-            g.drawString(unresolvedMsg, 10, height += increment);
-            g.setColor(CircuitElm.whiteColor);
-        }
-        
-        if (shouldDrawGraphics && developerMode) {
-            g.drawString("Steprate: " + CircuitElm.showFormat.format(steprate), 10, height += increment);
-            g.drawString("Steprate/iter: " + CircuitElm.showFormat.format(steprate / getIterCount()), 10, height += increment);
-            g.drawString("iterc: " + CircuitElm.showFormat.format(getIterCount()), 10, height += increment);
-            
-            g.drawString("Frames: " + frames, 10, height += increment);
-            
-            height += (increment * 2);
-            
-            String perfmonResult = PerfMonitor.buildString(perfmon).toString();
-            String[] splits = perfmonResult.split("\n");
-            for (int x = 0; x < splits.length; x++) {
-                g.drawString(splits[x], 10, height + (increment * x));
-            }
-        }
-        
-
-        
-        if (stopElm != null && stopElm != mouseElm)
-            stopElm.setMouseElm(false);
-        
-        frames++;
-
-        // if we did DC analysis, we need to re-analyze the circuit with that flag
-        // cleared.
-        if (dcAnalysisFlag) {
-            dcAnalysisFlag = false;
-            analyzeFlag = true;
-        }
-
-        lastFrameTime = lastTime;
-
-        // Draw hint tooltips for hovered elements (after all other graphics so they're on top)
-        drawHintTooltip(g);
-
-        // Draw action scheduler display message if present (after all other graphics)
-        drawActionSchedulerMessage(g, cvcontext);
-
-		// Push throttled live values to InfoViewer (popup and embedded iframe) if open
-		if (RuntimeMode.isGwt())
-		    InfoViewerDialog.pushLiveDataUpdate();
-
-        
-        // This should always be the last 
-        // thing called by updateCircuit();
-		if (RuntimeMode.isGwt())
-		    callUpdateHook();
+	simulationLoop.updateCircuit();
     }
 
     /**
@@ -2668,7 +2358,7 @@ public CirSim() {
      * Detect collisions where EquationTable PARAM names match physical LabeledNode
      * names. These collisions can change name-resolution behavior in MNA mode.
      */
-    private void updateEquationParameterCollisionWarning() {
+	void updateEquationParameterCollisionWarning() {
 	if (elmList == null || elmList.isEmpty()) {
 	    warningMessage = null;
 	    return;
@@ -2915,63 +2605,7 @@ public CirSim() {
      * Note: Actual node numbers assigned later in makeNodeList()
      */
     void calculateWireClosure() {
-	int i;
-	LabeledNodeElm.resetNodeList();
-	GroundElm.resetNodeList();
-	nodeMap = new HashMap<Point,NodeMapEntry>();
-//	int mergeCount = 0;
-	
-	// Pre-register labels from elements that have named posts (e.g. SFCStockElm).
-	// This seeds the labelList so that LabeledNodeElm.getConnectedPost() can find
-	// these points during wire closure and merge them into the same node.
-	for (i = 0; i != elmList.size(); i++)
-	    getElm(i).registerLabels();
-	
-	wireInfoList = new Vector<WireInfo>();
-	for (i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
-	    if (!ce.isRemovableWire())
-		continue;
-	    ce.hasWireInfo = false;
-	    wireInfoList.add(new WireInfo(ce));
-	    Point p0 = ce.getPost(0);
-	    NodeMapEntry cn  = nodeMap.get(p0);
-	    
-	    // what post are we connected to
-	    Point p1 = ce.getConnectedPost();
-	    if (p1 == null) {
-		// no connected post (true for labeled node the first time it's encountered, or ground)
-		if (cn == null) {
-		    cn = new NodeMapEntry();
-		    nodeMap.put(p0, cn);
-		}
-		continue;
-	    }
-	    NodeMapEntry cn2 = nodeMap.get(p1);
-	    if (cn != null && cn2 != null) {
-		// merge nodes; go through map and change all keys pointing to cn2 to point to cn
-		for (Map.Entry<Point, NodeMapEntry> entry : nodeMap.entrySet()) {
-		    if (entry.getValue() == cn2)
-			entry.setValue(cn);
-		}
-//		mergeCount++;
-		continue;
-	    }
-	    if (cn != null) {
-		nodeMap.put(p1, cn);
-		continue;
-	    }
-	    if (cn2 != null) {
-		nodeMap.put(p0, cn2);
-		continue;
-	    }
-	    // new entry
-	    cn = new NodeMapEntry();
-	    nodeMap.put(p0, cn);
-	    nodeMap.put(p1, cn);
-	}
-	
-//	console("got " + (groupCount-mergeCount) + " groups with " + nodeMap.size() + " nodes " + mergeCount);
+	circuitAnalyzer.calculateWireClosure();
     }
     
     /**
@@ -2997,121 +2631,12 @@ public CirSim() {
      * @return true if successful, false if wire loop detected
      */
     boolean calcWireInfo() {
-	int i;
-	int moved = 0;
-	
-	for (i = 0; i != wireInfoList.size(); i++) {
-	    WireInfo wi = wireInfoList.get(i);
-	    CircuitElm wire = wi.wire;
-	    CircuitNode cn1 = nodeList.get(wire.getNode(0));  // both ends of wire have same node #
-	    int j;
-
-	    Vector<CircuitElm> neighbors0 = new Vector<CircuitElm>();
-	    Vector<CircuitElm> neighbors1 = new Vector<CircuitElm>();
-	    
-	    // assume each end is ready (except ground nodes which have one end)
-	    // labeled nodes are treated as having 2 terminals, see below
-	    boolean isReady0 = true, isReady1 = !(wire instanceof GroundElm);
-
-	    // go through elements sharing a node with this wire (may be connected indirectly
-	    // by other wires, but at least it's faster than going through all elements)
-	    for (j = 0; j != cn1.links.size(); j++) {
-		CircuitNodeLink cnl = cn1.links.get(j);
-		CircuitElm ce = cnl.elm;
-		if (ce == wire)
-		    continue;
-		Point pt = ce.getPost(cnl.num);
-		
-		// is this a wire that doesn't have wire info yet?  If so we can't use it yet.
-		// That would create a circular dependency.  So that side isn't ready.
-		boolean notReady = (ce.isRemovableWire() && !ce.hasWireInfo);
-		
-		// which post does this element connect to, if any?
-		if (pt.x == wire.x && pt.y == wire.y) {
-		    neighbors0.add(ce);
-		    if (notReady) isReady0 = false;
-		} else if (wire.getPostCount() > 1) {
-		    Point p2 = wire.getConnectedPost();
-		    if (pt.x == p2.x && pt.y == p2.y) { 
-			neighbors1.add(ce);
-			if (notReady) isReady1 = false;
-		    }
-		} else if (ce instanceof LabeledNodeElm && wire instanceof LabeledNodeElm &&
-			((LabeledNodeElm) ce).text == ((LabeledNodeElm) wire).text) {
-		    // ce and wire are both labeled nodes with matching labels.  treat them as neighbors
-		    neighbors1.add(ce);
-		    if (notReady) isReady1 = false;
-		}
-	    }
-
-	    // does one of the posts have all information necessary to calculate current?
-	    if (isReady0) {
-		wi.neighbors = neighbors0;
-		wi.post = 0;
-		wire.hasWireInfo = true;
-		moved = 0;
-	    } else if (isReady1) {
-		wi.neighbors = neighbors1;
-		wi.post = 1;
-		wire.hasWireInfo = true;
-		moved = 0;
-	    } else {
-		// no, so move to the end of the list and try again later
-		wireInfoList.add(wireInfoList.remove(i--));
-		moved++;
-		if (moved > wireInfoList.size() * 2) {
-		    stop("wire loop detected", wire);
-		    return false;
-		}
-	    }
-	}
-	
-	return true;
+	return circuitAnalyzer.calcWireInfo();
     }
 
     // find or allocate ground node
     void setGroundNode(boolean subcircuit) {
-	int i;
-	boolean gotGround = false;
-	boolean gotRail = false;
-	CircuitElm volt = null;
-	    
-	//System.out.println("ac1");
-	// look for voltage or ground element
-	for (i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
-	    if (ce instanceof GroundElm) {
-		gotGround = true;
-		
-		// set ground node to 0
-		NodeMapEntry nme = nodeMap.get(ce.getPost(0));
-		nme.node = 0;
-		break;
-	    }
-	    if (ce instanceof RailElm)
-	    	gotRail = true;
-	    if (volt == null && ce instanceof VoltageElm)
-	    	volt = ce;
-	}
-
-	// if no ground, and no rails, then the voltage elm's first terminal
-	// is ground (but not for subcircuits)
-	if (!subcircuit && !gotGround && volt != null && !gotRail) {
-	    CircuitNode cn = new CircuitNode();
-	    Point pt = volt.getPost(0);
-	    nodeList.addElement(cn);
-
-	    // update node map
-	    NodeMapEntry cln = nodeMap.get(pt);
-	    if (cln != null)
-		cln.node = 0;
-	    else
-		nodeMap.put(pt, new NodeMapEntry(0));
-	} else {
-	    // otherwise allocate extra node for ground
-	    CircuitNode cn = new CircuitNode();
-	    nodeList.addElement(cn);
-	}
+	circuitAnalyzer.setGroundNode(subcircuit);
     }
 
     /**
@@ -3188,64 +2713,7 @@ public CirSim() {
     
     // make list of nodes
     void makeNodeList() {
-	int i, j;
-	int vscount = 0;
-	for (i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
-	    int inodes = ce.getInternalNodeCount();
-	    int ivs = ce.getVoltageSourceCount();
-	    int posts = ce.getPostCount();
-	    
-	    // allocate a node for each post and match posts to nodes
-	    for (j = 0; j != posts; j++) {
-		Point pt = ce.getPost(j);
-		NodeMapEntry cln = nodeMap.get(pt);
-		
-		// is this node not in map yet?  or is the node number unallocated?
-		// (we don't allocate nodes before this because changing the allocation order
-		// of nodes changes circuit behavior and breaks backward compatibility;
-		// the code below to connect unconnected nodes may connect a different node to ground) 
-		if (cln == null || cln.node == -1) {
-		    CircuitNode cn = new CircuitNode();
-		    CircuitNodeLink cnl = new CircuitNodeLink();
-		    cnl.num = j;
-		    cnl.elm = ce;
-		    cn.links.addElement(cnl);
-		    ce.setNode(j, nodeList.size());
-		    if (cln != null)
-			cln.node = nodeList.size();
-		    else
-			nodeMap.put(pt, new NodeMapEntry(nodeList.size()));
-		    nodeList.addElement(cn);
-		} else {
-		    int n = cln.node;
-		    CircuitNodeLink cnl = new CircuitNodeLink();
-		    cnl.num = j;
-		    cnl.elm = ce;
-		    getCircuitNode(n).links.addElement(cnl);
-		    ce.setNode(j, n);
-		    // if it's the ground node, make sure the node voltage is 0,
-		    // cause it may not get set later
-		    if (n == 0)
-			ce.setNodeVoltage(j, 0);
-		}
-	    }
-	    for (j = 0; j != inodes; j++) {
-		CircuitNode cn = new CircuitNode();
-		cn.internal = true;
-		CircuitNodeLink cnl = new CircuitNodeLink();
-		cnl.num = j+posts;
-		cnl.elm = ce;
-		cn.links.addElement(cnl);
-		ce.setNode(cnl.num, nodeList.size());
-		nodeList.addElement(cn);
-	    }
-	    
-	    // also count voltage sources so we can allocate array
-	    vscount += ivs;
-	}
-	
-        voltageSources = new CircuitElm[vscount];
+	circuitAnalyzer.makeNodeList();
     }
     
     Vector<Integer> unconnectedNodes;
@@ -3253,482 +2721,46 @@ public CirSim() {
     int nodesWithGroundConnectionCount;
     
     void findUnconnectedNodes() {
-	int i, j;
-	
-	// determine nodes that are not connected indirectly to ground.
-	// all nodes must be connected to ground somehow, or else we
-	// will get a matrix error.
-	boolean closure[] = new boolean[nodeList.size()];
-	boolean changed = true;
-	unconnectedNodes = new Vector<Integer>();
-	nodesWithGroundConnection = new Vector<CircuitElm>();
-	closure[0] = true;
-	while (changed) {
-	    changed = false;
-	    for (i = 0; i != elmList.size(); i++) {
-		CircuitElm ce = getElm(i);
-		if (ce instanceof WireElm)
-		    continue;
-		// loop through all ce's nodes to see if they are connected
-		// to other nodes not in closure
-		boolean hasGround = false;
-		for (j = 0; j < ce.getConnectionNodeCount(); j++) {
-		    boolean hg = ce.hasGroundConnection(j);
-		    if (hg)
-			hasGround = true;
-		    if (!closure[ce.getConnectionNode(j)]) {
-			if (hg)
-			    closure[ce.getConnectionNode(j)] = changed = true;
-			continue;
-		    }
-		    int k;
-		    for (k = 0; k != ce.getConnectionNodeCount(); k++) {
-			if (j == k)
-			    continue;
-			int kn = ce.getConnectionNode(k);
-			if (ce.getConnection(j, k) && !closure[kn]) {
-			    closure[kn] = true;
-			    changed = true;
-			}
-		    }
-		}
-		if (hasGround)
-		    nodesWithGroundConnection.add(ce);
-	    }
-	    if (changed)
-		continue;
-
-	    // connect one of the unconnected nodes to ground with a big resistor, then try again
-	    for (i = 0; i != nodeList.size(); i++)
-		if (!closure[i] && !getCircuitNode(i).internal) {
-		    unconnectedNodes.add(i);
-		    // console("node " + i + " unconnected");
-//		    stampResistor(0, i, 1e8);   // do this later in connectUnconnectedNodes()
-		    closure[i] = true;
-		    changed = true;
-		    break;
-		}
-	}
+	circuitAnalyzer.findUnconnectedNodes();
     }
     
     // take list of unconnected nodes, which we identified earlier, and connect them to ground
     // with a big resistor.  otherwise we will get matrix errors.  The resistor has to be big,
     // otherwise circuits like 555 Square Wave will break
     void connectUnconnectedNodes() {
-	int i;
-	console("Number of unconnected nodes: " + unconnectedNodes.size());
-	for (i = 0; i != unconnectedNodes.size(); i++) {
-	    int n = unconnectedNodes.get(i);
-	    // console("  Connecting unconnected node " + n + " to ground with 1e8 ohm resistor");
-	    stampResistor(0, n, 1e8);
-	}
+	circuitAnalyzer.connectUnconnectedNodes();
     }
     
     boolean validateCircuit() {
-	int i, j;
-	
-	for (i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
-	    // look for inductors with no current path
-	    if (ce instanceof InductorElm) {
-		FindPathInfo fpi = new FindPathInfo(FindPathInfo.INDUCT, ce,
-						    ce.getNode(1));
-		if (!fpi.findPath(ce.getNode(0))) {
-//		    console(ce + " no path");
-		    ce.reset();
-		}
-	    }
-	    // look for current sources with no current path
-	    if (ce instanceof CurrentElm) {
-		CurrentElm cur = (CurrentElm) ce;
-		FindPathInfo fpi = new FindPathInfo(FindPathInfo.INDUCT, ce,
-						    ce.getNode(1));
-		cur.setBroken(!fpi.findPath(ce.getNode(0)));
-	    }
-	    if (ce instanceof VCCSElm) {
-		VCCSElm cur = (VCCSElm) ce;
-		FindPathInfo fpi = new FindPathInfo(FindPathInfo.INDUCT, ce,
-						    cur.getOutputNode(0));
-		if (cur.hasCurrentOutput() && !fpi.findPath(cur.getOutputNode(1))) {
-		    cur.broken = true;
-		} else
-		    cur.broken = false;
-	    }
-	    
-	    // look for voltage source or wire loops.  we do this for voltage sources
-	    if (ce.getPostCount() == 2) {
-		if (ce instanceof VoltageElm) {
-		    FindPathInfo fpi = new FindPathInfo(FindPathInfo.VOLTAGE, ce,
-						    ce.getNode(1));
-		    if (fpi.findPath(ce.getNode(0))) {
-			stop("Voltage source/wire loop with no resistance!", ce);
-			return false;
-		    }
-		}
-	    }
-
-	    // look for path from rail to ground
-	    if (ce instanceof RailElm || ce instanceof LogicInputElm) {
-		FindPathInfo fpi = new FindPathInfo(FindPathInfo.VOLTAGE, ce, ce.getNode(0));
-		if (fpi.findPath(0)) {
-		    stop("Path to ground with no resistance!", ce);
-		    return false;
-		}
-	    }
-	    
-	    // look for shorted caps, or caps w/ voltage but no R
-	    if (ce.isIdealCapacitor()) {
-		FindPathInfo fpi = new FindPathInfo(FindPathInfo.SHORT, ce,
-						    ce.getNode(1));
-		if (fpi.findPath(ce.getNode(0))) {
-		    console(ce + " shorted");
-		    ((CapacitorElm) ce).shorted();
-		} else {
-		    fpi = new FindPathInfo(FindPathInfo.CAP_V, ce, ce.getNode(1));
-		    if (fpi.findPath(ce.getNode(0))) {
-			// loop of ideal capacitors; set a small series resistance to avoid
-			// oscillation in case one of them has voltage on it
-			((CapacitorElm) ce).setSeriesResistance(.1);
-
-			// return false to re-stamp the circuit
-			return false;
-		    }
-		}
-	    }
-	}
-	return true;
+	return circuitAnalyzer.validateCircuit();
     }
     
     // analyze the circuit when something changes, so it can be simulated.
     // Most of this has been moved to preStampCircuit() so it can be avoided if the simulation is stopped.
     void analyzeCircuit() {
-	stopMessage = null;
-	warningMessage = null;
-	stopElm = null;
-	
-	if (elmList.isEmpty()) {
-	    postDrawList = new Vector<Point>();
-	    badConnectionList = new Vector<Point>();
-	    return;
-	}
-	makePostDrawList();
-
-	needsStamp = true;
+	circuitAnalyzer.analyzeCircuit();
     }
 
     // do the rest of the pre-stamp circuit analysis
     boolean preStampCircuit(boolean subcircuit) {
-	int i, j;
-	nodeList = new Vector<CircuitNode>();
-
-	// Surface non-fatal equation-name hazards in the bottom status area.
-	updateEquationParameterCollisionWarning();
-
-	calculateWireClosure();
-	setGroundNode(subcircuit);
-
-	// CRITICAL: Register table masters in PRIORITY ORDER (highest priority first)
-	// This prevents replacements - higher priority tables register first and win.
-	// Without this, tables register in circuit order, causing lower priority tables
-	// to temporarily become masters, create output pins, then get replaced by
-	// higher priority tables, leaving duplicate voltage sources.
-	// console("[PRIORITY_ORDER] Clearing any existing master registrations...");
-	ComputedValues.clearMasterTables();
-	// console("[PRIORITY_ORDER] Registering table masters in priority order...");
-	registerTableMastersInPriorityOrder();
-	// console("[PRIORITY_ORDER] Table master registration completed");
-
-	// allocate nodes and voltage sources
-	makeNodeList();
-	
-	if (!calcWireInfo())
-	    return false;
-	nodeMap = null; // done with this
-	
-	int vscount = 0;
-	circuitNonLinear = false;
-
-	// determine if circuit is nonlinear.  also set voltage sources
-	for (i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
-	    if (ce.nonLinear())
-		circuitNonLinear = true;
-	    int ivs = ce.getVoltageSourceCount();
-	    for (j = 0; j != ivs; j++) {
-		voltageSources[vscount] = ce;
-		ce.setVoltageSource(j, vscount++);
-	    }
-	}
-	voltageSourceCount = vscount;
-
-	// show resistance in voltage sources if there's only one.
-	// can't use voltageSourceCount here since that counts internal voltage sources, like the one in GroundElm
-	boolean gotVoltageSource = false;
-	showResistanceInVoltageSources = true;
-	for (i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
-	    if (ce instanceof VoltageElm) {
-		if (gotVoltageSource)
-		    showResistanceInVoltageSources = false;
-		else
-		    gotVoltageSource = true;
-	    }
-	}
-
-	findUnconnectedNodes();
-	if (!validateCircuit())
-	    return false;
-	
-	nodesWithGroundConnectionCount = nodesWithGroundConnection.size();
-	// only need this for validation
-	nodesWithGroundConnection = null;
-	
-	timeStep = maxTimeStep;
-	needsStamp = true;
-	
-	if (RuntimeMode.isGwt()) {
-	    callAnalyzeHook();
-	
-	    // Refresh Variable Browser dialog if it's open
-	    VariableBrowserDialog.refreshIfOpen();
-	    // Refresh Action Time Dialog if it's open
-	    ActionTimeDialog.refreshIfOpen();
-	}
-	
-	return true;
+	return circuitAnalyzer.preStampCircuit(subcircuit);
     }
 
     // do pre-stamping and then stamp circuit
     void preStampAndStampCircuit() {
-	int i;
-
-	// preStampCircuit returns false if there's an error.  It can return false if we have capacitor loops
-	// but we just need to try again in that case.  Try again 10 times to avoid infinite loop.
-	for (i = 0; i != 10; i++)
-	    if (preStampCircuit(false) || stopMessage != null)
-		break;
-	if (stopMessage != null)
-	    return;
-	if (i == 10) {
-	    stop("failed to stamp circuit", null);
-	    return;
-	}
-
-	stampCircuit();
+	circuitAnalyzer.preStampAndStampCircuit();
     }
 
     // stamp the matrix, meaning populate the matrix as required to simulate the circuit (for all linear elements, at least).
     // this gets called after something changes in the circuit, and also when auto-adjusting timestep
     void stampCircuit() {
-	int i;
-	int matrixSize = nodeList.size()-1 + voltageSourceCount;
-	circuitMatrix = new double[matrixSize][matrixSize];
-	circuitRightSide = new double[matrixSize];
-	nodeVoltages = new double[nodeList.size()-1];
-	if (lastNodeVoltages == null || lastNodeVoltages.length != nodeVoltages.length)
-	    lastNodeVoltages = new double[nodeList.size()-1];
-	origMatrix = new double[matrixSize][matrixSize];
-	origRightSide = new double[matrixSize];
-	circuitMatrixSize = circuitMatrixFullSize = matrixSize;
-	circuitRowInfo = new RowInfo[matrixSize];
-	circuitPermute = new int[matrixSize];
-	for (i = 0; i != matrixSize; i++)
-	    circuitRowInfo[i] = new RowInfo();
-	circuitNeedsMap = false;
-	
-	connectUnconnectedNodes();
-
-	// Lightweight EquationTable coordination: first register all non-FLOW outputs,
-	// then validate FLOW endpoints before per-element stamp() calls.
-	EquationTableElm.coordinateLabelsForStamp(elmList);
-
-	// stamp linear circuit elements
-	for (i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
-	    ce.setParentList(elmList);
-	    ce.stamp();
-	}
-	
-	// Build slot table for E_GSLOT fast lookup, now that all stamp() calls
-	// (and their refreshComputedNameRegistry() side-effects) have completed.
-	buildCircuitVariableSlots();
-
-	// second pass: allow elements to stamp deferred items (e.g., VCVS that depend on
-	// nodes registered by other elements during their stamp() calls)
-	for (i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
-	    ce.postStamp();
-	}
-
-	if (!simplifyMatrix(matrixSize))
-	    return;
-	
-	// check if we called stop()
-	if (circuitMatrix == null)
-	    return;
-	
-	// if a matrix is linear, we can do the lu_factor here instead of
-	// needing to do it every frame
-	if (!circuitNonLinear) {
-	    int badRow = lu_factor(circuitMatrix, circuitMatrixSize, circuitPermute);
-	    if (badRow >= 0) {
-		stop("Singular matrix! " + getMatrixRowInfo(badRow), null);
-		return;
-	    }
-	}
-	
-	// copy elmList to an array to avoid a bunch of calls to canCast() when doing simulation
-	elmArr = new CircuitElm[elmList.size()];
-	int scopeElmCount = 0;
-	for (i = 0; i != elmList.size(); i++) {
-	    elmArr[i] = elmList.get(i);
-	    if (elmArr[i] instanceof ScopeElm)
-		scopeElmCount++;
-	}
-	
-	// copy ScopeElms to an array to avoid a second pass over entire list of elms during simulation
-	scopeElmArr = new ScopeElm[scopeElmCount];
-	int j = 0;
-	for (i = 0; i != elmList.size(); i++) {
-	    if (elmArr[i] instanceof ScopeElm)
-		scopeElmArr[j++] = (ScopeElm) elmArr[i];
-	}	
-
-	needsStamp = false;
+	circuitAnalyzer.stampCircuit();
     }
 
     // simplify the matrix; this speeds things up quite a bit, especially for digital circuits.
     // or at least it did before we added wire removal
     boolean simplifyMatrix(int matrixSize) {
-	int i, j;
-	
-	// Debug: show lsChanges/rsChanges state for each row
-	// console("[simplifyMatrix] matrixSize=" + matrixSize);
-	for (i = 0; i != matrixSize; i++) {
-	    RowInfo re = circuitRowInfo[i];
-	    // console("[simplifyMatrix] row " + i + ": lsChanges=" + re.lsChanges + " rsChanges=" + re.rsChanges + " dropRow=" + re.dropRow);
-	}
-	
-	for (i = 0; i != matrixSize; i++) {
-	    int qp = -1;
-	    double qv = 0;
-	    RowInfo re = circuitRowInfo[i];
-	    /*System.out.println("row " + i + " " + re.lsChanges + " " + re.rsChanges + " " +
-			       re.dropRow);*/
-	    
-	    // if (qp != -100) continue;   // uncomment this line to disable matrix simplification for debugging purposes
-	    
-	    if (re.lsChanges || re.dropRow || re.rsChanges)
-		continue;
-	    double rsadd = 0;
-
-	    // see if this row can be removed
-	    for (j = 0; j != matrixSize; j++) {
-		double q = circuitMatrix[i][j];
-		if (circuitRowInfo[j].type == RowInfo.ROW_CONST) {
-		    // keep a running total of const values that have been
-		    // removed already
-		    rsadd -= circuitRowInfo[j].value*q;
-		    continue;
-		}
-		// ignore zeroes
-		if (q == 0)
-		    continue;
-		// keep track of first nonzero element that is not ROW_CONST
-		if (qp == -1) {
-		    qp = j;
-		    qv = q;
-		    continue;
-		}
-		// more than one nonzero element?  give up
-		break;
-	    }
-	    if (j == matrixSize) {
-		if (qp == -1) {
-		    // probably a singular matrix, try disabling matrix simplification above to check this
-		    stop("Matrix error", null);
-		    return false;
-		}
-		RowInfo elt = circuitRowInfo[qp];
-		// we found a row with only one nonzero nonconst entry; that value
-		// is a constant
-		if (elt.type != RowInfo.ROW_NORMAL) {
-		    System.out.println("type already " + elt.type + " for " + qp + "!");
-		    continue;
-		}
-		// Don't mark as constant if column's row has lsChanges or rsChanges 
-		// (its values will change in doStep)
-		if (elt.lsChanges || elt.rsChanges) {
-		    console("[simplifyMatrix] Skipping ROW_CONST for col " + qp + " (lsChanges=" + elt.lsChanges + " rsChanges=" + elt.rsChanges + ")");
-		    continue;
-		}
-		// console("[simplifyMatrix] Marking col " + qp + " as ROW_CONST from row " + i);
-		elt.type = RowInfo.ROW_CONST;
-//		console("ROW_CONST " + i + " " + rsadd);
-		elt.value = (circuitRightSide[i]+rsadd)/qv;
-		circuitRowInfo[i].dropRow = true;
-		// find first row that referenced the element we just deleted
-		for (j = 0; j != i; j++)
-		    if (circuitMatrix[j][qp] != 0)
-			break;
-		// start over just before that
-		i = j-1;
-	    }
-	}
-	//System.out.println("ac7");
-
-	// find size of new matrix
-	int nn = 0;
-	for (i = 0; i != matrixSize; i++) {
-	    RowInfo elt = circuitRowInfo[i];
-	    if (elt.type == RowInfo.ROW_NORMAL) {
-		elt.mapCol = nn++;
-		//System.out.println("col " + i + " maps to " + elt.mapCol);
-		continue;
-	    }
-	    if (elt.type == RowInfo.ROW_CONST)
-		elt.mapCol = -1;
-	}
-
-	// make the new, simplified matrix
-	int newsize = nn;
-	double newmatx[][] = new double[newsize][newsize];
-	double newrs  []   = new double[newsize];
-	int ii = 0;
-	for (i = 0; i != matrixSize; i++) {
-	    RowInfo rri = circuitRowInfo[i];
-	    if (rri.dropRow) {
-		rri.mapRow = -1;
-		continue;
-	    }
-	    newrs[ii] = circuitRightSide[i];
-	    rri.mapRow = ii;
-	    //System.out.println("Row " + i + " maps to " + ii);
-	    for (j = 0; j != matrixSize; j++) {
-		RowInfo ri = circuitRowInfo[j];
-		if (ri.type == RowInfo.ROW_CONST)
-		    newrs[ii] -= ri.value*circuitMatrix[i][j];
-		else
-		    newmatx[ii][ri.mapCol] += circuitMatrix[i][j];
-	    }
-	    ii++;
-	}
-
-	int rowsSaved = matrixSize - newsize;
-	if (rowsSaved > 0)
-	    console("Matrix simplification: " + matrixSize + " -> " + newsize + " (" + rowsSaved + " rows eliminated, " + 
-	            (100 * rowsSaved / matrixSize) + "% reduction)");
-	
-	circuitMatrix = newmatx;
-	circuitRightSide = newrs;
-	matrixSize = circuitMatrixSize = newsize;
-	for (i = 0; i != matrixSize; i++)
-	    origRightSide[i] = circuitRightSide[i];
-	for (i = 0; i != matrixSize; i++)
-	    for (j = 0; j != matrixSize; j++)
-		origMatrix[i][j] = circuitMatrix[i][j];
-	circuitNeedsMap = true;
-	return true;
+	return circuitAnalyzer.simplifyMatrix(matrixSize);
     }
     
     /**
@@ -3744,65 +2776,7 @@ public CirSim() {
      * We can't use node list for this because wires have same node at both ends.
      */
     void makePostDrawList() {
-        HashMap<Point,Integer> postCountMap = new HashMap<Point,Integer>();
-		int i, j;
-		for (i = 0; i != elmList.size(); i++) {
-			CircuitElm ce = getElm(i);
-			// Skip TableElm and EquationTableElm posts - they are hidden but remain electrically functional
-			if (ce instanceof TableElm || ce instanceof EquationTableElm)
-			continue;
-			int posts = ce.getPostCount();
-			for (j = 0; j != posts; j++) {
-			Point pt = ce.getPost(j);
-			Integer g = postCountMap.get(pt);
-			postCountMap.put(pt, g == null ? 1 : g+1);
-			}
-		}
-
-		postDrawList = new Vector<Point>();
-		badConnectionList = new Vector<Point>();
-		for (Map.Entry<Point, Integer> entry : postCountMap.entrySet()) {
-			if (entry.getValue() != 2)
-			postDrawList.add(entry.getKey());
-			
-			// look for bad connections, posts not connected to other elements which intersect
-			// other elements' bounding boxes
-			if (entry.getValue() == 1) {
-			boolean bad = false;
-			Point cn = entry.getKey();
-			
-			// Posts connected via named labels (e.g. SFCStockElm) are not bad —
-			// they have a logical connection even without a physical wire
-			boolean hasLabelConnection = false;
-			for (j = 0; j != elmList.size(); j++) {
-				CircuitElm ce = getElm(j);
-				if (ce.getPostCount() > 0 && ce.getPost(0).equals(cn)) {
-				if (ce instanceof SFCStockElm || ce instanceof LabeledNodeElm)
-					hasLabelConnection = true;
-				}
-			}
-			if (hasLabelConnection) continue;
-			
-			for (j = 0; j != elmList.size() && !bad; j++) {
-				CircuitElm ce = getElm(j);
-				if ( ce instanceof GraphicElm || ce instanceof TableElm || ce instanceof EquationTableElm)
-				continue;
-				// does this post intersect elm's bounding box?
-				if (!ce.boundingBox.contains(cn.x, cn.y))
-				continue;
-				int k;
-				// does this post belong to the elm?
-				int pc = ce.getPostCount();
-				for (k = 0; k != pc; k++)
-				if (ce.getPost(k).equals(cn))
-					break;
-				if (k == pc)
-				bad = true;
-			}
-			if (bad)
-				badConnectionList.add(cn);
-			}
-		}
+	circuitAnalyzer.makePostDrawList();
     }
 
     /**
@@ -3945,9 +2919,7 @@ public CirSim() {
      * @param vs Voltage source index to control
      */
     void stampVCVS(int n1, int n2, double coef, int vs) {
-	int vn = nodeList.size()+vs;
-	stampMatrix(vn, n1, coef);
-	stampMatrix(vn, n2, -coef);
+	matrixStamper.stampVCVS(n1, n2, coef, vs);
     }
     
     /**
@@ -3971,209 +2943,79 @@ public CirSim() {
      * @param v Voltage value
      */
     void stampVoltageSource(int n1, int n2, int vs, double v) {
-	int vn = nodeList.size()+vs;
-	stampMatrix(vn, n1, -1);
-	stampMatrix(vn, n2, 1);
-	stampRightSide(vn, v);
-	stampMatrix(n1, vn, 1);
-	stampMatrix(n2, vn, -1);
+	matrixStamper.stampVoltageSource(n1, n2, vs, v);
     }
 
     // use this if the amount of voltage is going to be updated in doStep(), by updateVoltageSource()
     void stampVoltageSource(int n1, int n2, int vs) {
-	int vn = nodeList.size()+vs;
-	stampMatrix(vn, n1, -1);
-	stampMatrix(vn, n2, 1);
-	stampRightSide(vn);
-	stampMatrix(n1, vn, 1);
-	stampMatrix(n2, vn, -1);
+	matrixStamper.stampVoltageSource(n1, n2, vs);
     }
     
     // update voltage source in doStep()
     void updateVoltageSource(int n1, int n2, int vs, double v) {
-	int vn = nodeList.size()+vs;
-	stampRightSide(vn, v);
+	matrixStamper.updateVoltageSource(n1, n2, vs, v);
     }
     
     void stampResistor(int n1, int n2, double r) {
-	double r0 = 1/r;
-	if (Double.isNaN(r0) || Double.isInfinite(r0)) {
-	    System.out.print("bad resistance " + r + " " + r0 + "\n");
-	    int a = 0;
-	    a /= a;
-	}
-	stampMatrix(n1, n1, r0);
-	stampMatrix(n2, n2, r0);
-	stampMatrix(n1, n2, -r0);
-	stampMatrix(n2, n1, -r0);
+	matrixStamper.stampResistor(n1, n2, r);
     }
 
     void stampConductance(int n1, int n2, double r0) {
-	stampMatrix(n1, n1, r0);
-	stampMatrix(n2, n2, r0);
-	stampMatrix(n1, n2, -r0);
-	stampMatrix(n2, n1, -r0);
+	matrixStamper.stampConductance(n1, n2, r0);
     }
 
     // specify that current from cn1 to cn2 is equal to voltage from vn1 to 2, divided by g
     void stampVCCurrentSource(int cn1, int cn2, int vn1, int vn2, double g) {
-	stampMatrix(cn1, vn1, g);
-	stampMatrix(cn2, vn2, g);
-	stampMatrix(cn1, vn2, -g);
-	stampMatrix(cn2, vn1, -g);
+	matrixStamper.stampVCCurrentSource(cn1, cn2, vn1, vn2, g);
     }
 
     void stampCurrentSource(int n1, int n2, double i) {
-	stampRightSide(n1, -i);
-	stampRightSide(n2, i);
+	matrixStamper.stampCurrentSource(n1, n2, i);
     }
 
     // stamp a current source from n1 to n2 depending on current through vs
     void stampCCCS(int n1, int n2, int vs, double gain) {
-	int vn = nodeList.size()+vs;
-	stampMatrix(n1, vn, gain);
-	stampMatrix(n2, vn, -gain);
+	matrixStamper.stampCCCS(n1, n2, vs, gain);
     }
 
     // stamp value x in row i, column j, meaning that a voltage change
     // of dv in node j will increase the current into node i by x dv.
     // (Unless i or j is a voltage source node.)
     void stampMatrix(int i, int j, double x) {
-	if (Double.isInfinite(x))
-	    debugger();
-	if (Double.isNaN(x)) {
-	    console("stampMatrix: NaN at i=" + i + " j=" + j);
-	    debugger();
-	}
-	if (i > 0 && j > 0) {
-	    if (circuitNeedsMap) {
-		i = circuitRowInfo[i-1].mapRow;
-		RowInfo ri = circuitRowInfo[j-1];
-		if (ri.type == RowInfo.ROW_CONST) {
-		    //System.out.println("Stamping constant " + i + " " + j + " " + x);
-		    circuitRightSide[i] -= x*ri.value;
-		    return;
-		}
-		j = ri.mapCol;
-		//System.out.println("stamping " + i + " " + j + " " + x);
-	    } else {
-		i--;
-		j--;
-	    }
-	    circuitMatrix[i][j] += x;
-	}
+	matrixStamper.stampMatrix(i, j, x);
     }
 
     // stamp value x on the right side of row i, representing an
     // independent current source flowing into node i
     void stampRightSide(int i, double x) {
-	if (i > 0) {
-	    if (circuitNeedsMap) {
-		i = circuitRowInfo[i-1].mapRow;
-		//System.out.println("stamping " + i + " " + x);
-	    } else
-		i--;
-	    circuitRightSide[i] += x;
-	}
+	matrixStamper.stampRightSide(i, x);
     }
 
     // indicate that the value on the right side of row i changes in doStep()
     void stampRightSide(int i) {
-	//System.out.println("rschanges true " + (i-1));
-	if (i > 0)
-	    circuitRowInfo[i-1].rsChanges = true;
+	matrixStamper.stampRightSide(i);
     }
     
     // indicate that the values on the left side of row i change in doStep()
     void stampNonLinear(int i) {
-	if (i > 0) {
-	    // console("[stampNonLinear] node=" + i + " -> rowInfo[" + (i-1) + "].lsChanges = true");
-	    circuitRowInfo[i-1].lsChanges = true;
-	}
+	matrixStamper.stampNonLinear(i);
     }
     
     // Get information about what element/node is associated with a matrix row
     // Used for debugging singular matrix errors
     // The 'row' parameter is the simplified matrix row; we need to map back to original
     String getMatrixRowInfo(int row) {
-	int nodeCount = nodeList.size();
-	
-	// Map simplified row back to original row
-	int origRow = row;
-	if (circuitRowInfo != null) {
-	    for (int i = 0; i < circuitRowInfo.length; i++) {
-		if (circuitRowInfo[i].mapRow == row) {
-		    origRow = i;
-		    break;
-		}
-	    }
-	}
-	
-	console("getMatrixRowInfo: simplifiedRow=" + row + " origRow=" + origRow + " nodeCount=" + nodeCount);
-	
-	if (origRow < nodeCount - 1) {
-	    // This is a node row (row 0 = node 1, since node 0 is ground)
-	    int nodeNum = origRow + 1;
-	    CircuitNode cn = getCircuitNode(nodeNum);
-	    if (cn != null && cn.links.size() > 0) {
-		String info = "Row " + row + " (origRow " + origRow + ", node " + nodeNum + ") connected to:";
-		for (int i = 0; i < cn.links.size(); i++) {
-		    CircuitElm elm = cn.links.get(i).elm;
-		    int elmNode = cn.links.get(i).num;
-		    info += " " + elm.getClass().getSimpleName() + "[node " + elmNode + "]";
-		}
-		console(info);
-		return info;
-	    }
-	    String info = "Row " + row + " (origRow " + origRow + ", node " + nodeNum + ")";
-	    console(info);
-	    return info;
-	} else {
-	    // This is a voltage source row
-	    int vsNum = origRow - (nodeCount - 1);
-	    console("Looking for voltage source " + vsNum);
-	    // Find which element owns this voltage source
-	    for (int i = 0; i < elmList.size(); i++) {
-		CircuitElm elm = getElm(i);
-		int vsCount = elm.getVoltageSourceCount();
-		if (vsCount > 0) {
-		    console("  Element " + elm.getClass().getSimpleName() + " voltSource=" + elm.voltSource + " count=" + vsCount);
-		    if (elm.voltSource <= vsNum && elm.voltSource + vsCount > vsNum) {
-			String info = "Row " + row + " (origRow " + origRow + ", voltage source " + vsNum + " of " + elm.getClass().getSimpleName() + ")";
-			console(info);
-			return info;
-		    }
-		}
-	    }
-	    String info = "Row " + row + " (origRow " + origRow + ", voltage source " + vsNum + " - owner not found)";
-	    console(info);
-	    return info;
-	}
+	return matrixStamper.getMatrixRowInfo(row);
     }
 
     double getIterCount() {
-	if (RuntimeMode.isNonInteractiveRuntime())
-	    return 1.0;
-    	// IES - remove interaction
-	int val = speedBar.getValue();
-	if (val == 0)
-	   return 0;
-
-	 return .1*Math.exp((val-61)/24.);
-
+	return simulationLoop.getIterCount();
     }
 
     // we need to calculate wire currents for every iteration if someone is viewing a wire in the
     // scope.  Otherwise we can do it only once per frame.
     boolean canDelayWireProcessing() {
-	int i;
-	for (i = 0; i != scopeCount; i++)
-	    if (scopes[i].viewingWire())
-		return false;
-	for (i=0; i != elmList.size(); i++)
-	    if (getElm(i) instanceof ScopeElm && ((ScopeElm)getElm(i)).elmScope.viewingWire())
-		return false;
-	return true;
+	return simulationLoop.canDelayWireProcessing();
     }
     
     boolean converged;
@@ -4182,335 +3024,23 @@ public CirSim() {
 	int nextPeriodicTime = 0;
 
     void runCircuit(boolean didAnalyze) {
-        if (circuitMatrix == null || elmList.size() == 0) {
-            circuitMatrix = null;
-            return;
-        }
-		boolean nonInteractive = RuntimeMode.isNonInteractiveRuntime();
-        
-        //int maxIter = getIterCount();
-        boolean debugprint = dumpMatrix;
-        dumpMatrix = false;
-        long steprate = (long) (160*getIterCount());
-        long tm = System.currentTimeMillis();
-        long lit = lastIterTime;
-        if (lit == 0) {
-            lastIterTime = tm;
-			if (!nonInteractive)
-		return;
-        }
-
-        // Check if we don't need to run simulation (for very slow simulation speeds).
-        // If the circuit changed, do at least one iteration to make sure everything is consistent.
-		if (!nonInteractive && 1000 >= steprate*(tm-lastIterTime) && !didAnalyze)
-            return;
-
-        boolean delayWireProcessing = canDelayWireProcessing();
-
-        int timeStepCountAtFrameStart = timeStepCount;
-
-
-        // keep track of iterations completed without convergence issues
-        int goodIterations = 100;
-
-        int frameTimeLimit = (int) (1000/minFrameRate);
-
-
-
-		if (timeStepCount >= nextPeriodicTime) {
-			// Do your periodic processing here
-			//doPeriodicProcessing();
-			// console("nextPeriodicTime " + nextPeriodicTime);
-			// Reset non-convergence flags for all elements at a low rate every processInterval = 100  so that the user will see it.
-			for (int i = 0; i != elmArr.length; i++) {
-				elmArr[i].nonConverged = false;
-			}
-			// Schedule next processing time
-			nextPeriodicTime = timeStepCount + periodicInterval;
-		}
-
-        for (int iter = 1; ; iter++) {
-
-            if (goodIterations >= 3 && timeStep < maxTimeStep) {
-                // things are going well, double the time step
-                timeStep = Math.min(timeStep*2, maxTimeStep);
-                console("timestep up = " + timeStep + " at " + t);
-                stampCircuit();
-                goodIterations = 0;
-            }
-
-            int i, j, subiter;
-            for (i = 0; i != elmArr.length; i++)
-                elmArr[i].startIteration();
-
-            // Clear pending computed values at start of new timestep
-            // (values from previous timestep are already in current buffer)
-            ComputedValues.clearPendingValues();
-
-            // Clear unresolved references tracking at start of each timestep
-            Expr.clearUnresolvedReferences();
-
-			steps++;
-			
-            int subiterCount = (adjustTimeStep && timeStep/2 > minTimeStep) ? 100 : 200;
-            for (subiter = 0; subiter != subiterCount; subiter++) {
-                converged = true;
-                subIterations = subiter;
-
-
-
-        //		if (t % .030 < .002 && timeStep > 1e-6)  // force nonconvergence for debugging
-        //		    converged = false;
-                for (i = 0; i != circuitMatrixSize; i++)
-                    circuitRightSide[i] = origRightSide[i];
-                if (circuitNonLinear) {
-                    for (i = 0; i != circuitMatrixSize; i++)
-                       for (j = 0; j != circuitMatrixSize; j++)
-                           circuitMatrix[i][j] = origMatrix[i][j];
-                }
-
-                // Reset computed value flags for this simulation step
-                ComputedValues.resetComputedFlags();
-
-                for (i = 0; i != elmArr.length; i++) {
-                    boolean preConverged = converged;
-                    elmArr[i].doStep();
-
-                    // Mark element as non-converged if it caused convergence failure
-                    if (preConverged && !converged) {
-
-
-                        // Quick debug: identify element that just failed convergence
-                        if (subiter > convergenceCheckThreshold) {
-                            elmArr[i].nonConverged = true;
-                            // EquationTableElm prints its own detailed message, so skip generic message
-                            if (!(elmArr[i] instanceof EquationTableElm)) {
-                                String text = "CirSim: t=" + t + " dt=" + timeStep + " Element causing convergence failure: " +
-                                        elmArr[i].getClass().getSimpleName() + " at (" +
-                                        elmArr[i].x + "," + elmArr[i].y + ")";
-                                console(text);
-                            }
-                        }
-                    }
-                }
-
-                // Commit pending computed values to current buffer after ALL doStep() calls complete.
-                // This enables order-independent evaluation - all elements see the same values
-                // regardless of their position in the element array.
-                ComputedValues.commitPendingToCurrentValues();
-                // Note: circuitVariables sync happens after applySolvedRightSide() below.
-                
-                if (stopMessage != null)
-                    return;
-                boolean printit = debugprint;
-                debugprint = false;
-                if (circuitMatrixSize < 8) {
-                    // we only need this for debugging purposes, so skip it for large matrices
-                    for (j = 0; j != circuitMatrixSize; j++) {
-                        for (i = 0; i != circuitMatrixSize; i++) {
-                            double x = circuitMatrix[i][j];
-                            if (Double.isNaN(x) || Double.isInfinite(x)) {
-                                stop("nan/infinite matrix!", null);
-                                console("circuitMatrix " + i + " " + j + " is " + x);
-                                return;
-                            }
-                        }
-                    }
-                }
-                if (printit) {
-                    for (j = 0; j != circuitMatrixSize; j++) {
-                    String x = "";
-                    for (i = 0; i != circuitMatrixSize; i++)
-                        x += circuitMatrix[j][i] + ",";
-                    x += "\n";
-                    console(x);
-                    }
-                    console("done");
-                }
-                if (circuitNonLinear) {
-                    // stop if converged (elements check for convergence in doStep())
-                    if (converged && subiter > 0)
-                    break;
-					int badRow = lu_factor(circuitMatrix, circuitMatrixSize, circuitPermute);
-                    if (badRow >= 0) {
-                        stop("Singular matrix! " + getMatrixRowInfo(badRow), null);
-                        return;
-                    }
-                }
-                // // Debug: show matrix before solve for 1x1 matrix
-                // if (circuitMatrixSize == 1) {
-                //     console("[lu_solve] BEFORE: A[0][0]=" + circuitMatrix[0][0] + " b[0]=" + circuitRightSide[0]);
-                // }
-				lu_solve(circuitMatrix, circuitMatrixSize, circuitPermute,
-                     circuitRightSide);
-                // // Debug: show solution for 1x1 matrix
-                // if (circuitMatrixSize == 1) {
-                //     console("[lu_solve] AFTER: rs[0]=" + circuitRightSide[0]);
-                // }
-                applySolvedRightSide(circuitRightSide);
-                if (!circuitNonLinear) {
-                    if (circuitMatrixSize == 1) {
-                        console("[runCircuit] circuitNonLinear=false, exiting after first iteration");
-                    }
-                    break;
-                }
-            }
-            if (subiter == subiterCount) {
-                // convergence failed
-                goodIterations = 0;
-                if (adjustTimeStep) {
-                    timeStep /= 2;
-                    console("timestep down to " + timeStep + " at " + t);
-                }
-                if (timeStep < minTimeStep || !adjustTimeStep) {
-                    console("convergence failed after " + subiter + " iterations");
-                    stop("Convergence failed!", null);
-                    break;
-                }
-                // we reduced the timestep.  reset circuit state to the way it was at start of iteration
-                setNodeVoltages(lastNodeVoltages);
-                stampCircuit();
-                continue;
-            }
-            if (subiter > 20 || timeStep < maxTimeStep)
-                console("converged after " + subiter + " iterations, timeStep = " + timeStep);
-            if (subiter < 3)
-                goodIterations++;
-            else
-                goodIterations = 0;
-                t += timeStep;
-                timeStepAccum += timeStep;
-                if (timeStepAccum >= maxTimeStep) {
-                timeStepAccum -= maxTimeStep;
-                timeStepCount++;
-            }
-
-            for (i = 0; i != elmArr.length; i++)
-                elmArr[i].stepFinished();
-            if (!delayWireProcessing)
-                calcWireCurrents();
-            
-            // Commit pending values from stepFinished() to current buffer
-            // (stepFinished() uses setComputedValue which writes to pendingValues)
-            ComputedValues.commitPendingToCurrentValues();
-            syncAllSlots(); // keep circuitVariables current for E_GSLOT reads
-            
-            // Commit converged values AFTER stepFinished() so elements can update their outputs first
-            // This makes stable values available for display elements
-            ComputedValues.commitConvergedValues();
-            
-            // Execute scheduled actions after circuit state is fully settled
-            ActionScheduler scheduler = ActionScheduler.getInstance(this);
-            if (scheduler != null) {
-                scheduler.stepFinished(t);
-            }
-            
-            for (i = 0; i != scopeCount; i++)
-                scopes[i].timeStep();
-            for (i=0; i != scopeElmArr.length; i++)
-                scopeElmArr[i].stepScope();
-		    if (RuntimeMode.isGwt())
-			callTimeStepHook();
-            // save last node voltages so we can restart the next iteration if necessary
-            for (i = 0; i != lastNodeVoltages.length; i++)
-                lastNodeVoltages[i] = nodeVoltages[i];
-    //	    console("set lastrightside at " + t + " " + lastNodeVoltages);
-
-            tm = System.currentTimeMillis();
-            lit = tm;
-            // Check whether enough time has elapsed to perform an *additional* iteration after
-            // those we have already completed.  But limit total computation time to 50ms (20fps) by default
-			if (nonInteractive)
-		break;
-	    if ((timeStepCount-timeStepCountAtFrameStart)*1000 >= steprate*(tm-lastIterTime) || (tm-lastFrameTime > frameTimeLimit))
-                break;
-            if (!simRunning)
-                break;
-        } // for (iter = 1; ; iter++)
-        lastIterTime = lit;
-        if (delayWireProcessing)
-            calcWireCurrents();
-        //	System.out.println((System.currentTimeMillis()-lastFrameTime)/(double) iter);
-    }   // runCircuit()
+	simulationLoop.runCircuit(didAnalyze);
+	}
 
     // set node voltages given right side found by solving matrix
     void applySolvedRightSide(double rs[]) {
-//	console("setvoltages " + rs);
-	int j;
-	// // Debug: show the mapping and values being applied
-	// if (circuitMatrixSize == 1) {
-	//     console("[applySolvedRightSide] 1x1 matrix: rs[0]=" + rs[0]);
-	//     for (j = 0; j != circuitMatrixFullSize; j++) {
-	// 	RowInfo ri = circuitRowInfo[j];
-	// 	console("[applySolvedRightSide] row " + j + ": type=" + ri.type + " mapRow=" + ri.mapRow + " mapCol=" + ri.mapCol + " value=" + ri.value);
-	//     }
-	// }
-	for (j = 0; j != circuitMatrixFullSize; j++) {
-	    RowInfo ri = circuitRowInfo[j];
-	    double res = 0;
-	    if (ri.type == RowInfo.ROW_CONST)
-		res = ri.value;
-	    else
-		res = rs[ri.mapCol];
-	    if (Double.isNaN(res)) {
-		converged = false;
-		break;
-	    }
-	    if (j < nodeList.size()-1) {
-		// if (circuitMatrixSize == 1) {
-		//     console("[applySolvedRightSide] nodeVoltages[" + j + "] = " + res);
-		// }
-		nodeVoltages[j] = res;
-	    } else {
-		int ji = j-(nodeList.size()-1);
-		voltageSources[ji].setCurrent(ji, res);
-	    }
-	}
-	
-	setNodeVoltages(nodeVoltages);
-	syncAllSlots();
+	simulationLoop.applySolvedRightSide(rs);
     }
     
     // set node voltages in each element given an array of node voltages
     void setNodeVoltages(double nv[]) {
-	int j, k;
-	for (j = 0; j != nv.length; j++) {
-	    double res = nv[j];
-	    
-	    CircuitNode cn = getCircuitNode(j+1);
-	    for (k = 0; k != cn.links.size(); k++) {
-		CircuitNodeLink cnl = cn.links.elementAt(k);
-		cnl.elm.setNodeVoltage(cnl.num, res);
-	    }
-	}
+	simulationLoop.setNodeVoltages(nv);
     }
     
     // we removed wires from the matrix to speed things up.  in order to display wire currents,
     // we need to calculate them now.
     void calcWireCurrents() {
-	int i;
-	
-	// for debugging
-	//for (i = 0; i != wireInfoList.size(); i++)
-	 //   wireInfoList.get(i).wire.setCurrent(-1, 1.23);
-	
-	for (i = 0; i != wireInfoList.size(); i++) {
-	    WireInfo wi = wireInfoList.get(i);
-	    double cur = 0;
-	    int j;
-	    Point p = wi.wire.getPost(wi.post);
-	    for (j = 0; j != wi.neighbors.size(); j++) {
-		CircuitElm ce = wi.neighbors.get(j);
-		int n = ce.getNodeAtPoint(p.x, p.y);
-		cur += ce.getCurrentIntoNode(n);
-	    }
-	    // get correct current polarity
-	    // (LabeledNodes may have wi.post == 1, in which case we flip the current sign)
-	    if (wi.post == 0 || (wi.wire instanceof LabeledNodeElm))
-		wi.wire.setCurrent(-1, cur);
-	    else
-		wi.wire.setCurrent(-1, -cur);
-	}
+	simulationLoop.calcWireCurrents();
     }
     
     int min(int a, int b) { return (a < b) ? a : b; }
@@ -4642,36 +3172,40 @@ public CirSim() {
      * Open the Math Elements Test Dialog
      */
     void openMathTestDialog() {
-    	if (mathTestDialog == null) {
-    	    mathTestDialog = new MathElementsTestDialog();
-    	}
-    	mathTestDialog.show();
+	infoDialogActions.openMathTestDialog();
     }
     
     /**
      * Open the table elements test dialog
      */
     void openTableTestDialog() {
-    	if (tableTestDialog == null) {
-    	    tableTestDialog = new TableElementsTestDialog();
-    	}
-    	tableTestDialog.show();
+	infoDialogActions.openTableTestDialog();
     }
+
+	void openMathTestDialogCore() {
+	if (mathTestDialog == null) {
+	    mathTestDialog = new MathElementsTestDialog();
+	}
+	mathTestDialog.show();
+	}
+
+	void openTableTestDialogCore() {
+	if (tableTestDialog == null) {
+	    tableTestDialog = new TableElementsTestDialog();
+	}
+	tableTestDialog.show();
+	}
 
     /**
      * Open the iframe viewer dialog with external documentation
      * Uses CSS selector to show only the split-right content panel
      */
     void openIframeViewer() {
-    	IframeViewerDialog.openUrlWithSelector("Documentation", 
-    	    "../docs/money/index.html", "");
+	infoDialogActions.openIframeViewer();
     }
 
 	void openReferenceDocsViewer() {
-	    String viewerUrl = GWT.getModuleBaseURL() +
-	        "docs/markdown-viewer.html?doc=reference/ReferenceIndex.md";
-	    IframeViewerDialog.openDialog("Reference Docs",
-	        viewerUrl, 900, 700);
+	infoDialogActions.openReferenceDocsViewer();
 	}
     
     int countScopeElms() {
@@ -4725,30 +3259,11 @@ public CirSim() {
     }
 
     void doEdit(Editable eable) {
-    	clearSelection();
-    	pushUndo();
-    	
-    	// Check if element has any editable properties
-    	// If getEditInfo(0) returns null, don't show dialog
-    	EditInfo firstInfo = eable.getEditInfo(0);
-    	if (firstInfo == null) {
-    		return; // No properties to edit
-    	}
-    	
-    	if (editDialog != null) {
-    //		requestFocus();
-    		editDialog.setVisible(false);
-    		editDialog = null;
-    	}
-    	editDialog = new EditDialog(eable, this);
-    	editDialog.show();
+	editDialogActions.doEdit(eable);
     }
     
     void doSliders(CircuitElm ce) {
-	clearSelection();
-	pushUndo();
-	dialogShowing = new SliderDialog(ce, this);
-	dialogShowing.show();
+	editDialogActions.doSliders(ce);
     }
 
 
@@ -4782,36 +3297,17 @@ public CirSim() {
 
     void doViewModelInfo()
     {
-	String editorContent = getModelInfoEditorContent();
-	if (editorContent != null && !editorContent.isEmpty()) {
-	    // Prefer full window viewer, but gracefully degrade if interop fails
-	    try {
-		InfoViewerDialog.showInfoInWindow("Model Information", editorContent);
-	    } catch (Throwable t1) {
-		console("View Model Info window mode failed: " + t1);
-		try {
-		    InfoViewerDialog.showInfoInIframe("Model Information", editorContent, false);
-		} catch (Throwable t2) {
-		    console("View Model Info iframe mode failed: " + t2);
-		    InfoViewerDialog.showInfo("Model Information", editorContent);
-		}
-	    }
-    	}
+	infoDialogActions.doViewModelInfo();
     }
 
     void doEditLookupTables()
     {
-	if (noEditCheckItem != null && noEditCheckItem.getState()) {
-	    alertOrWarn(Locale.LS("Editing disabled.  Re-enable from the Options menu."));
-	    return;
-	}
-	dialogShowing = new LookupTablesEditorDialog(this);
+	editDialogActions.doEditLookupTables();
     }
 
     void doExportAsImage()
     {
-    	dialogShowing = new ExportAsImageDialog(CAC_IMAGE);
-    	dialogShowing.show();
+	editDialogActions.doExportAsImage();
     }
 
     private static void clipboardWriteImage(CanvasElement cv) {
@@ -4821,20 +3317,19 @@ public CirSim() {
 	}
     }
 
-    void doImageToClipboard()
-    {
+	void doImageToClipboardCore() {
 	Canvas cv = CirSim.theSim.getCircuitAsCanvas(CAC_IMAGE);
 	clipboardWriteImage(cv.getCanvasElement());
+	}
+
+    void doImageToClipboard()
+    {
+	editDialogActions.doImageToClipboard();
     }
     
     void doCreateSubcircuit()
     {
-    	EditCompositeModelDialog dlg = new EditCompositeModelDialog();
-    	if (!dlg.createModel())
-    	    return;
-    	dlg.createDialog();
-    	dialogShowing = dlg;
-    	dialogShowing.show();
+	editDialogActions.doCreateSubcircuit();
     }
     
     void doExportAsLocalFile() {
@@ -4842,11 +3337,7 @@ public CirSim() {
     }
 
     public void importCircuitFromText(String circuitText, boolean subcircuitsOnly) {
-		int flags = subcircuitsOnly ? (CirSim.RC_SUBCIRCUITS | CirSim.RC_RETAIN) : 0;
-		if (circuitText != null) {
-			readCircuit(circuitText, flags);
-			allowSave(false);
-		}
+	importExportHelper.importCircuitFromText(circuitText, subcircuitsOnly);
     }
     
     /**
@@ -4857,51 +3348,11 @@ public CirSim() {
      * @param subcircuitsOnly If true, only import subcircuits (keep existing elements)
      */
     public void importCircuitFromCTZ(String ctzData, boolean subcircuitsOnly) {
-        if (ctzData != null && !ctzData.isEmpty()) {
-            String circuitText = decompress(ctzData);
-            if (circuitText != null) {
-                importCircuitFromText(circuitText, subcircuitsOnly);
-            }
-        }
+        importExportHelper.importCircuitFromCTZ(ctzData, subcircuitsOnly);
     }
 
     String dumpOptions() {
-	int f = (dotsCheckItem.getState()) ? 1 : 0;
-	f |= (smallGridCheckItem.getState()) ? 2 : 0;
-	f |= (voltsCheckItem.getState()) ? 0 : 4;
-	f |= (powerCheckItem.getState()) ? 8 : 0;
-	f |= (showValuesCheckItem.getState()) ? 0 : 16;
-	// 32 = linear scale in afilter
-	f |= adjustTimeStep ? 64 : 0;
-	String dump = "$ " + f + " " +
-	    maxTimeStep + " " + getIterCount() + " " +
-	    currentBar.getValue() + " " + CircuitElm.voltageRange + " " +
-	    powerBar.getValue() + " " + minTimeStep + "\n";
-	
-	// Add voltage unit symbol if it's not the default "V"
-	if (!voltageUnitSymbol.equals("V")) {
-	    dump += "% voltageUnit " + CustomLogicModel.escape(voltageUnitSymbol) + "\n";
-	}
-	
-	// Add toolbar visibility state
-	if (toolbarCheckItem != null) {
-	    dump += "% showToolbar " + (toolbarCheckItem.getState() ? "true" : "false") + "\n";
-	}
-
-	// Persist equation-table global controls and convergence tuning in circuit file
-	dump += "% equationTableMnaMode " + (equationTableMnaMode ? "true" : "false") + "\n";
-	dump += "% equationTableNewtonJacobianEnabled " + (equationTableNewtonJacobianEnabled ? "true" : "false") + "\n";
-	dump += "% equationTableConvergenceTolerance " + equationTableConvergenceTolerance + "\n";
-	dump += "% sfcrLookupClampDefault " + (sfcrLookupClampDefault ? "true" : "false") + "\n";
-	dump += "% convergenceCheckThreshold " + convergenceCheckThreshold + "\n";
-
-	// Dump lookup tables so they survive round-trip through Export As Text
-	String lookupDump = LookupTableRegistry.dumpAll();
-	if (lookupDump != null && !lookupDump.isEmpty()) {
-	    dump += lookupDump;
-	}
-
-	return dump;
+	return importExportHelper.dumpOptions();
     }
     
     String dumpCircuit() {
@@ -4909,10 +3360,7 @@ public CirSim() {
     }
 
     String getElementDumpWithUid(CircuitElm ce) {
-	String d = ce.dump();
-	if (d == null)
-	    return null;
-	return d + " U:" + CustomLogicModel.escape(ce.getPersistentUid());
+	return importExportHelper.getElementDumpWithUid(ce);
     }
 
     static class ElementDumpParseResult {
@@ -4925,158 +3373,32 @@ public CirSim() {
     }
 
     ElementDumpParseResult parseElementTokensWithUid(StringTokenizer st) {
-	java.util.ArrayList<String> tokens = new java.util.ArrayList<String>();
-	String uid = null;
-	while (st.hasMoreTokens()) {
-	    String tok = st.nextToken();
-	    if (uid == null && tok.startsWith("U:")) {
-		uid = CustomLogicModel.unescape(tok.substring(2));
-		continue;
-	    }
-	    tokens.add(tok);
-	}
-	String remaining = "";
-	for (int i = 0; i < tokens.size(); i++) {
-	    if (i > 0)
-		remaining += " ";
-	    remaining += tokens.get(i);
-	}
-	return new ElementDumpParseResult(new StringTokenizer(remaining, " "), uid);
+	return importExportHelper.parseElementTokensWithUid(st);
     }
 
     CircuitElm findElmByUid(String uid) {
-	if (uid == null || uid.isEmpty())
-	    return null;
-	for (int i = 0; i < elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
-	    if (uid.equals(ce.getPersistentUid()))
-		return ce;
-	}
-	return null;
+	return importExportHelper.findElmByUid(uid);
     }
 
     void assignPersistentUid(CircuitElm ce, String uidFromFile) {
-	String uid = uidFromFile;
-	if (uid == null || uid.isEmpty())
-	    uid = ce.getPersistentUid();
-	if (!uid.equals(ce.getPersistentUid()))
-	    ce.setPersistentUid(uid);
-	while (findElmByUid(uid) != null) {
-	    uid = CircuitElm.generatePersistentUid();
-	    ce.setPersistentUid(uid);
-	}
+	importExportHelper.assignPersistentUid(ce, uidFromFile);
     }
 
 	void getSetupList(final boolean openDefault) {
-	    MenuBar circuitsMenu = new MenuBar(true);
-	    circuitsMenu.setAutoOpen(true);
-	    menuBar.addItem(Locale.LS("Circuits"), circuitsMenu);
-	    addDialogsMenu();
-
-	    loadSetupListIntoMenu("setuplist_economics.txt", circuitsMenu, openDefault, showElectronicsCircuits);
+	    setupListLoader.getSetupList(openDefault);
 	}
 
 	void addDialogsMenu() {
-	    MenuBar varBrowserMenu = new MenuBar(true);
-	    varBrowserMenu.setAutoOpen(true);
-	    varBrowserMenu.addItem(menuItemWithShortcut("list-ul", "Variable Browser...", "\\", new MyCommand("edit", "variablebrowser")));
-	    varBrowserMenu.addItem(menuItemWithShortcut("doc-text", "Glossary Editor...", "", new MyCommand("edit", "hinteditor")));
-	    varBrowserMenu.addItem(menuItemWithShortcut("clock-o", "Action Time Schedule...", "", new MyCommand("edit", "actiontimedialog")));
-	    varBrowserMenu.addItem(menuItemWithShortcut("code", "Embedded Viewer...", "", new MyCommand("edit", "iframeviewer")));
-	    varBrowserMenu.addItem(menuItemWithShortcut("check-square-o", "Math Elements Test Suite...", "", new MyCommand("edit", "mathtestdialog")));
-	    varBrowserMenu.addItem(menuItemWithShortcut("table", "Table Elements Test Suite...", "", new MyCommand("edit", "tabletestdialog")));
-	    menuBar.addItem(Locale.LS("Dialogs"), varBrowserMenu);
-	    if (helpMenuBar != null && helpMenuBar.getParent() == null) {
-		menuBar.addItem(Locale.LS("Help"), helpMenuBar);
-	    }
+	    setupListLoader.addDialogsMenu();
 	}
 
 	void loadSetupListIntoMenu(final String setupListPath, final MenuBar circuitsMenu,
 			final boolean openDefault, final boolean loadElectronicsAfter) {
-	    final String circuitPrefix = setupListPath.equals("setuplist_economics.txt") ? "economics/" :
-			(setupListPath.equals("setuplist_electronics.txt") ? "electronics/" : "");
-	    String url = GWT.getModuleBaseURL() + setupListPath;
-	    String cacheBustedUrl = getLoadUrl(url);
-	    RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, cacheBustedUrl);
-	    try {
-		requestBuilder.sendRequest(null, new RequestCallback() {
-		    public void onError(Request request, Throwable exception) {
-			if (!hideMenu)
-			    alertOrWarn(Locale.LS("Can't load circuit list!"));
-			GWT.log("File Error Response", exception);
-		    }
-
-		    public void onResponseReceived(Request request, Response response) {
-			if (response.getStatusCode() == Response.SC_OK) {
-			    String text = response.getText();
-			    processSetupList(text.getBytes(), openDefault, circuitsMenu, circuitPrefix);
-			    if (loadElectronicsAfter)
-				loadSetupListIntoMenu("setuplist_electronics.txt", circuitsMenu, false, false);
-			} else {
-			    if (!hideMenu)
-				alertOrWarn(Locale.LS("Can't load circuit list!"));
-			    GWT.log("Bad file server response:" + response.getStatusText());
-			}
-		    }
-		});
-	    } catch (RequestException e) {
-		GWT.log("failed file reading", e);
-	    }
+	    setupListLoader.loadSetupListIntoMenu(setupListPath, circuitsMenu, openDefault, loadElectronicsAfter);
 	}
 		
 	void processSetupList(byte b[], final boolean openDefault, MenuBar circuitsMenu, String circuitPrefix) {
-	int len = b.length;
-    	MenuBar currentMenuBar;
-    	MenuBar stack[] = new MenuBar[6];
-    	int stackptr = 0;
-	currentMenuBar = circuitsMenu;
-    	stack[stackptr++] = currentMenuBar;
-    	int p;
-    	for (p = 0; p < len; ) {
-    		int l;
-    		for (l = 0; l != len-p; l++)
-    			if (b[l+p] == '\n' || b[l+p] == '\r') {
-    				l++;
-    				break;
-    			}
-    		String line = new String(b, p, l-1);
-    		if (line.isEmpty() || line.charAt(0) == '#')
-    			;
-    		else if (line.charAt(0) == '+') {
-    		//	MenuBar n = new Menu(line.substring(1));
-    			MenuBar n = new MenuBar(true);
-    			n.setAutoOpen(true);
-    			currentMenuBar.addItem(Locale.LS(line.substring(1)),n);
-    			currentMenuBar = stack[stackptr++] = n;
-    		} else if (line.charAt(0) == '-') {
-			if (stackptr > 1)
-			    currentMenuBar = stack[--stackptr-1];
-    		} else {
-    			int i = line.indexOf(' ');
-    			if (i > 0) {
-    				String title = Locale.LS(line.substring(i+1));
-    				boolean first = false;
-    				if (line.charAt(0) == '>')
-    					first = true;
-    				String file = line.substring(first ? 1 : 0, i);
-				    String prefixedFile = circuitPrefix + file;
-    				currentMenuBar.addItem(new MenuItem(title,
-					new MyCommand("circuits", "setup "+prefixedFile+" " + title)));
-    				if (file.equals(startCircuit) && startLabel == null) {
-    				    startLabel = title;
-					    if (titleLabel != null)
-						titleLabel.setText(title);
-    				}
-    				if (first && startCircuit == null) {
-					startCircuit = prefixedFile;
-    					startLabel = title;
-    					if (openDefault && stopMessage == null)
-    						readSetupFile(startCircuit, startLabel);
-    				}
-    			}
-    		}
-    		p += l;
-    	}
+	    setupListLoader.processSetupList(b, openDefault, circuitsMenu, circuitPrefix);
 }
 
     void readCircuit(String text, int flags) {
@@ -5209,30 +3531,11 @@ public CirSim() {
     }
 
 	boolean doSwitch(int x, int y) {
-		if (mouseElm == null || !(mouseElm instanceof SwitchElm))
-			return false;
-		SwitchElm se = (SwitchElm) mouseElm;
-		if (!se.getSwitchRect().contains(x, y))
-		    return false;
-		se.toggle();
-		if (se.momentary)
-		    heldSwitchElm = se;
-		if (!(se instanceof LogicInputElm))
-		    needAnalyze();
-		return true;
+		return mouseInputHandler.doSwitch(x, y);
 	}
 
 	boolean doTableCollapseToggle(int x, int y) {
-		if (mouseElm == null || !(mouseElm instanceof TableElm))
-			return false;
-		TableElm te = (TableElm) mouseElm;
-		if (!te.isCollapseArrowClicked(x, y))
-		    return false;
-		te.toggleCollapsedMode();
-		// Track this table for draw order - bring to front
-		lastInteractedTable = te;
-		repaint();
-		return true;
+		return mouseInputHandler.doTableCollapseToggle(x, y);
 	}
 
     int locateElm(CircuitElm elm) {
@@ -5244,229 +3547,39 @@ public CirSim() {
     }
     
     public void mouseDragged(MouseMoveEvent e) {
-    	// ignore right mouse button with no modifiers (needed on PC)
-    	if (e.getNativeButton()==NativeEvent.BUTTON_RIGHT) {
-    		if (!(e.isMetaKeyDown() ||
-    				e.isShiftKeyDown() ||
-    				e.isControlKeyDown() ||
-    				e.isAltKeyDown()))
-    			return;
-    	}
-    	
-    	if (tempMouseMode==MODE_DRAG_SPLITTER) {
-    		dragSplitter(e.getX(), e.getY());
-    		return;
-    	}
-    	int gx = inverseTransformX(e.getX());
-    	int gy = inverseTransformY(e.getY());
-    	if (!circuitArea.contains(e.getX(), e.getY()))
-    	    return;
-    	boolean changed = false;
-    	if (dragElm != null)
-    	    dragElm.drag(gx, gy);
-    	boolean success = true;
-    	switch (tempMouseMode) {
-    	case MODE_DRAG_ALL:
-    		dragAll(e.getX(), e.getY());
-    		break;
-    	case MODE_DRAG_ROW:
-    		dragRow(snapGrid(gx), snapGrid(gy));
-    		changed = true;
-    		break;
-    	case MODE_DRAG_COLUMN:
-		dragColumn(snapGrid(gx), snapGrid(gy));
-    		changed = true;
-    		break;
-    	case MODE_DRAG_POST:
-    		if (mouseElm != null) {
-    		    dragPost(snapGrid(gx), snapGrid(gy), e.isShiftKeyDown());
-    		    changed = true;
-    		}
-    		break;
-    	case MODE_SELECT:
-    		if (mouseElm == null)
-    		    selectArea(gx, gy, e.isShiftKeyDown());
-    		else if (!noEditCheckItem.getState()) {
-    		    // wait short delay before dragging.  This is to fix problem where switches were accidentally getting
-    		    // dragged when tapped on mobile devices
-    		    if (System.currentTimeMillis()-mouseDownTime < 150)
-    			return;
-    		
-    		    tempMouseMode = MODE_DRAG_SELECTED;
-    		    changed = success = dragSelected(gx, gy);
-    		}
-    		break;
-    	case MODE_DRAG_SELECTED:
-    		changed = success = dragSelected(gx, gy);
-    		break;
-
-    	}
-    	dragging = true;
-    	if (success) {
-    	    dragScreenX = e.getX();
-    	    dragScreenY = e.getY();
-    //	    console("setting dragGridx in mousedragged");
-    	    dragGridX = inverseTransformX(dragScreenX);
-    	    dragGridY = inverseTransformY(dragScreenY);
-    	    if (!(tempMouseMode == MODE_DRAG_SELECTED && onlyGraphicsElmsSelected())) {
-    		dragGridX = snapGrid(dragGridX);
-    		dragGridY = snapGrid(dragGridY);
-    	    }
-   	}
-    	// Defer recovery save until drag completes to avoid excessive localStorage writes
-    	if (changed) {
-    	    needsRecoverySave = true;
-    	}
-    	repaint();
+	mouseInputHandler.mouseDragged(e);
     }
     
     void dragSplitter(int x, int y) {
-    	double h = (double) canvasHeight;
-    	if (h<1)
-    		h=1;
-    	scopeHeightFraction=1.0-(((double)y)/h);
-    	if (scopeHeightFraction<0.1)
-    		scopeHeightFraction=0.1;
-    	if (scopeHeightFraction>0.9)
-    		scopeHeightFraction=0.9;
-    	setCircuitArea();
-    	repaint();
+	mouseInputHandler.dragSplitter(x, y);
     }
 
     void dragAll(int x, int y) {
-    	int dx = x-dragScreenX;
-    	int dy = y-dragScreenY;
-    	if (dx == 0 && dy == 0)
-    		return;
-    	transform[4] += dx;
-    	transform[5] += dy;
-    	dragScreenX = x;
-    	dragScreenY = y;
+	mouseInputHandler.dragAll(x, y);
     }
 
     void dragRow(int x, int y) {
-    	int dy = y-dragGridY;
-    	if (dy == 0)
-    		return;
-    	int i;
-    	for (i = 0; i != elmList.size(); i++) {
-    		CircuitElm ce = getElm(i);
-    		if (ce.y  == dragGridY)
-    			ce.movePoint(0, 0, dy);
-    		if (ce.y2 == dragGridY)
-    			ce.movePoint(1, 0, dy);
-    	}
-    	removeZeroLengthElements();
+	mouseInputHandler.dragRow(x, y);
     }
 
     void dragColumn(int x, int y) {
-    	int dx = x-dragGridX;
-    	if (dx == 0)
-    		return;
-    	int i;
-    	for (i = 0; i != elmList.size(); i++) {
-    		CircuitElm ce = getElm(i);
-    		if (ce.x  == dragGridX)
-    			ce.movePoint(0, dx, 0);
-    		if (ce.x2 == dragGridX)
-    			ce.movePoint(1, dx, 0);
-    	}
-    	removeZeroLengthElements();
+	mouseInputHandler.dragColumn(x, y);
     }
 
     boolean onlyGraphicsElmsSelected() {
-	if (mouseElm!=null && !(mouseElm instanceof GraphicElm))
-	    return false;
-    	int i;
-    	for (i = 0; i != elmList.size(); i++) {
-    	    CircuitElm ce = getElm(i);
-    	    if ( ce.isSelected() && !(ce instanceof GraphicElm) )
-    		return false;
-    	}
-    	return true;
+	return mouseInputHandler.onlyGraphicsElmsSelected();
     }
     
     boolean dragSelected(int x, int y) {
-    	boolean me = false;
-    	int i;
-    	if (mouseElm != null && !mouseElm.isSelected())
-    	    mouseElm.setSelected(me = true);
-
-    	if (! onlyGraphicsElmsSelected()) {
-    //	    console("Snapping x and y");
-    	    x = snapGrid(x);
-    	    y = snapGrid(y);
-    	}
-
-    	int dx = x-dragGridX;
-  //  	console("dx="+dx+"dragGridx="+dragGridX);
-    	int dy = y-dragGridY;
-    	if (dx == 0 && dy == 0) {
-    	    // don't leave mouseElm selected if we selected it above
-    	    if (me)
-    		mouseElm.setSelected(false);
-    	    return false;
-    	}
-    	boolean allowed = true;
-
-    	// check if moves are allowed
-    	for (i = 0; allowed && i != elmList.size(); i++) {
-    	    CircuitElm ce = getElm(i);
-    	    if (ce.isSelected() && !ce.allowMove(dx, dy))
-    		allowed = false;
-    	}
-
-    	if (allowed) {
-    	    for (i = 0; i != elmList.size(); i++) {
-    		CircuitElm ce = getElm(i);
-    		if (ce.isSelected())
-    		    ce.move(dx, dy);
-    	    }
-    	    needAnalyze();
-    	}
-
-    	// don't leave mouseElm selected if we selected it above
-    	if (me)
-    		mouseElm.setSelected(false);
-
-    	return allowed;
+	return mouseInputHandler.dragSelected(x, y);
     }
 
     void dragPost(int x, int y, boolean all) {
-    	if (draggingPost == -1) {
-    		draggingPost =
-    				(Graphics.distanceSq(mouseElm.x , mouseElm.y , x, y) >
-    				Graphics.distanceSq(mouseElm.x2, mouseElm.y2, x, y)) ? 1 : 0;
-    	}
-    	int dx = x-dragGridX;
-    	int dy = y-dragGridY;
-    	if (dx == 0 && dy == 0)
-    		return;
-    	
-    	if (all) {
-    	    // go through all elms
-    	    int i;
-    	    for (i = 0; i != elmList.size(); i++) {
-    		CircuitElm e = elmList.get(i);
-    		
-    		// which post do we move?
-    		int p = 0;
-    		if (e.x == dragGridX && e.y == dragGridY)
-    		    p = 0;
-    		else if (e.x2 == dragGridX && e.y2 == dragGridY)
-    		    p = 1;
-    		else
-    		    continue;
-    		e.movePoint(p, dx, dy);
-    	    }
-    	} else
-    	    mouseElm.movePoint(draggingPost, dx, dy);
-    	needAnalyze();
+	mouseInputHandler.dragPost(x, y, all);
     }
 
     void doFlip() {
-	menuElm.flipPosts();
-    	needAnalyze();
+	mouseInputHandler.doFlip();
     }
     
     void doSplit(CircuitElm ce) {
@@ -5501,17 +3614,7 @@ public CirSim() {
      * @param add If true, add to existing selection; if false, replace selection
      */
     void selectArea(int x, int y, boolean add) {
-    	int x1 = min(x, initDragGridX);
-    	int x2 = max(x, initDragGridX);
-    	int y1 = min(y, initDragGridY);
-    	int y2 = max(y, initDragGridY);
-    	selectedArea = new Rectangle(x1, y1, x2-x1, y2-y1);
-    	int i;
-    	for (i = 0; i != elmList.size(); i++) {
-    		CircuitElm ce = getElm(i);
-    		ce.selectRect(selectedArea, add);
-    	}
-	enableDisableMenuItems();
+	mouseInputHandler.selectArea(x, y, add);
     }
 
     void enableDisableMenuItems() {
@@ -5579,19 +3682,7 @@ public CirSim() {
     }
     
     boolean mouseIsOverSplitter(int x, int y) {
-    	boolean isOverSplitter;
-    	if (scopeCount == 0)
-    	    return false;
-    	isOverSplitter =((x>=0) && (x<circuitArea.width) && 
-    			(y>=circuitArea.height-5) && (y<circuitArea.height));
-    	if (isOverSplitter!=mouseWasOverSplitter){
-    		if (isOverSplitter)
-    			setCursorStyle("cursorSplitter");
-    		else
-    			setMouseMode(mouseMode);
-    	}
-    	mouseWasOverSplitter=isOverSplitter;
-    	return isOverSplitter;
+	return mouseInputHandler.mouseIsOverSplitter(x, y);
     }
     
     /**
@@ -5672,26 +3763,11 @@ public CirSim() {
      * Update hover state for ActionTimeElm play/pause icons
      */
     void updateActionTimeElmIconHover(int gx, int gy) {
-	for (int i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
-	    if (ce instanceof ActionTimeElm) {
-		ActionTimeElm ate = (ActionTimeElm) ce;
-		boolean hovered = ate.isPointInPlayPauseIcon(gx, gy);
-		ate.setPlayPauseIconHovered(hovered);
-	    }
-	}
+	mouseInputHandler.updateActionTimeElmIconHover(gx, gy);
     }
 
     public void onMouseMove(MouseMoveEvent e) {
-    	e.preventDefault();
-    	mouseCursorX=e.getX();
-    	mouseCursorY=e.getY();
-    	if (mouseDragging) {
-    		mouseDragged(e);
-    		return;
-    	}
-    	mouseSelect(e);
-    	scopeMenuSelected = -1;
+	mouseInputHandler.onMouseMove(e);
     }
     
     /**
@@ -5759,438 +3835,61 @@ public CirSim() {
      * - plotXElm, plotYElm: For XY plot scopes
      */
     public void mouseSelect(MouseEvent<?> e) {
-    	//	The following is in the original, but seems not to work/be needed for GWT
-    	//    	if (e.getNativeButton()==NativeEvent.BUTTON_LEFT)
-    	//	    return;
-    	CircuitElm newMouseElm=null;
-    	mouseCursorX=e.getX();
-    	mouseCursorY=e.getY();
-    	int sx = e.getX();
-    	int sy = e.getY();
-    	int gx = inverseTransformX(sx);
-    	int gy = inverseTransformY(sy);
-   // 	console("Settingd draggridx in mouseEvent");
-    	dragGridX = snapGrid(gx);
-    	dragGridY = snapGrid(gy);
-    	dragScreenX = sx;
-    	dragScreenY = sy;
-    	draggingPost = -1;
-    	int i;
-    	//	CircuitElm origMouse = mouseElm;
-
-    	mousePost = -1;
-    	plotXElm = plotYElm = null;
-    	
-    	if (mouseIsOverSplitter(sx, sy)) {
-    		setMouseElm(null);
-    		return;
-    	}
-    	
-    	if (circuitArea.contains(sx, sy)) {
-    	    if (mouseElm!=null && ( mouseElm.getHandleGrabbedClose(gx, gy, POSTGRABSQ, MINPOSTGRABSIZE)>=0)) {
-    		newMouseElm=mouseElm;
-    	    } else {
-    		int bestDist = 100000000;
-    		for (i = 0; i != elmList.size(); i++) {
-		    CircuitElm ce = getElm(i);
-		    if (ce.boundingBox.contains(gx, gy)) {
-			int dist = ce.getMouseDistance(gx, gy);
-			if (dist >= 0 && dist < bestDist) {
-			    bestDist = dist;
-			    newMouseElm = ce;
-			}
-		    }
-    		} // for
-    	    }
-    	}
-    	scopeSelected = -1;
-    	if (newMouseElm == null) {
-    	    for (i = 0; i != scopeCount; i++) {
-    		Scope s = scopes[i];
-    		if (s.rect.contains(sx, sy)) {
-    		    newMouseElm=s.getElm();
-    		    if (s.plotXY) {
-    			plotXElm = s.getXElm();
-    			plotYElm = s.getYElm();
-    		    }
-    		    scopeSelected = i;
-    		}
-    	    }
-    		//	    // the mouse pointer was not in any of the bounding boxes, but we
-    		//	    // might still be close to a post
-    		for (i = 0; i != elmList.size(); i++) {
-    			CircuitElm ce = getElm(i);
-    			if (mouseMode==MODE_DRAG_POST ) {
-    				if (ce.getHandleGrabbedClose(gx, gy, POSTGRABSQ, 0)> 0)
-    				{
-    					newMouseElm = ce;
-    					break;
-    				}
-    			}
-    			int j;
-    			int jn = ce.getPostCount();
-    			for (j = 0; j != jn; j++) {
-    				Point pt = ce.getPost(j);
-    				//   int dist = Graphics.distanceSq(x, y, pt.x, pt.y);
-    				if (Graphics.distanceSq(pt.x, pt.y, gx, gy) < 26) {
-    					newMouseElm = ce;
-    					mousePost = j;
-    					break;
-    				}
-    			}
-    		}
-    	} else {
-    		mousePost = -1;
-    		// look for post close to the mouse pointer
-    		for (i = 0; i != newMouseElm.getPostCount(); i++) {
-    			Point pt = newMouseElm.getPost(i);
-    			if (Graphics.distanceSq(pt.x, pt.y, gx, gy) < 26)
-    				mousePost = i;
-    		}
-    	}
-    	repaint();
-    	setMouseElm(newMouseElm);
-    	
-    	// Check hover state for ActionTimeElm play/pause icon
-    	updateActionTimeElmIconHover(gx, gy);
+	mouseInputHandler.mouseSelect(e);
     }
 
 
 
     public void onContextMenu(ContextMenuEvent e) {
-    	e.preventDefault();
-    	if (!dialogIsShowing()) {
-        	menuClientX = e.getNativeEvent().getClientX();
-        	menuClientY = e.getNativeEvent().getClientY();
-        	doPopupMenu();
-    	}
+	mouseInputHandler.onContextMenu(e);
     }
     
     void doPopupMenu() {
-	if (noEditCheckItem.getState() || dialogIsShowing())
-	    return;
-    	menuElm = mouseElm;
-    	menuScope=-1;
-    	menuPlot=-1;
-    	int x, y;
-    	if (scopeSelected!=-1) {
-    	    	if (scopes[scopeSelected].canMenu()) {
-    	    	    menuScope=scopeSelected;
-    	    	    menuPlot=scopes[scopeSelected].selectedPlot;
-    	    	    scopePopupMenu.doScopePopupChecks(false, canStackScope(scopeSelected), canCombineScope(scopeSelected), 
-    	    		    canUnstackScope(scopeSelected), scopes[scopeSelected]);
-    	    	    contextPanel=new PopupPanel(true);
-    	    	    contextPanel.add(scopePopupMenu.getMenuBar());
-    	    	    y=Math.max(0, Math.min(menuClientY,canvasHeight-160));
-    	    	    contextPanel.setPopupPosition(menuClientX, y);
-    	    	    contextPanel.show();
-    		}
-    	} else if (mouseElm != null) {
-    	    	if (! (mouseElm instanceof ScopeElm)) {
-    	    	    elmScopeMenuItem.setEnabled(mouseElm.canViewInScope());
-    	    	    elmFloatScopeMenuItem.setEnabled(mouseElm.canViewInScope());
-    	    	    if ((scopeCount + countScopeElms()) <= 1) {
-    	    		elmAddScopeMenuItem.setCommand(new MyCommand("elm", "addToScope0"));
-    	    		elmAddScopeMenuItem.setSubMenu(null);
-    	    	    	elmAddScopeMenuItem.setEnabled(mouseElm.canViewInScope() && (scopeCount + countScopeElms())> 0);
-    	    	    }
-    	    	    else {
-    	    		composeSelectScopeMenu(selectScopeMenuBar);
-    	    		elmAddScopeMenuItem.setCommand(null);
-    	    		elmAddScopeMenuItem.setSubMenu(selectScopeMenuBar);
-    	    	    	elmAddScopeMenuItem.setEnabled(mouseElm.canViewInScope() );
-    	    	    }
-    	    	    elmEditMenuItem .setEnabled(mouseElm.getEditInfo(0) != null);
-		    elmSwapMenuItem .setEnabled(mouseElm.getPostCount() == 2);
-    	    	    elmSplitMenuItem.setEnabled(canSplit(mouseElm));
-    	    	    elmSliderMenuItem.setEnabled(sliderItemEnabled(mouseElm));
-		    	    elmSankeyMenuItem.setEnabled(mouseElm instanceof SFCTableElm);
-				    elmDagBlocksMenuItem.setEnabled(mouseElm instanceof EquationTableElm);
-					    elmEquationTableDebugMenuItem.setEnabled(mouseElm instanceof EquationTableElm);
-					    elmEquationTableReferenceMenuItem.setEnabled(mouseElm instanceof EquationTableElm);
-		    boolean canFlipX = mouseElm.canFlipX();
-		    boolean canFlipY = mouseElm.canFlipY();
-		    boolean canFlipXY = mouseElm.canFlipXY();
-		    for (CircuitElm elm : elmList)
-			if (elm.isSelected()) {
-			    if (!elm.canFlipX())
-				canFlipX = false;
-			    if (!elm.canFlipY())
-				canFlipY = false;
-			    if (!elm.canFlipXY())
-				canFlipXY = false;
-			}
-    	    	    elmFlipXMenuItem.setEnabled(canFlipX);
-    	    	    elmFlipYMenuItem.setEnabled(canFlipY);
-    	    	    elmFlipXYMenuItem.setEnabled(canFlipXY);
-    	    	    contextPanel=new PopupPanel(true);
-    	    	    contextPanel.add(elmMenuBar);
-    	    	    contextPanel.setPopupPosition(menuClientX, menuClientY);
-    	    	    contextPanel.show();
-    	    	} else {
-    	    	    ScopeElm s = (ScopeElm) mouseElm;
-    	    	    if (s.elmScope.canMenu()) {
-    	    		menuPlot = s.elmScope.selectedPlot;
-    	    		scopePopupMenu.doScopePopupChecks(true, false, false, false, s.elmScope);
-    			contextPanel=new PopupPanel(true);
-    			contextPanel.add(scopePopupMenu.getMenuBar());
-    			contextPanel.setPopupPosition(menuClientX, menuClientY);
-    			contextPanel.show();
-    	    	    }
-    	    	}
-    	} else {
-    		doMainMenuChecks();
-    		contextPanel=new PopupPanel(true);
-    		contextPanel.add(mainMenuBar);
-    		x=Math.max(0, Math.min(menuClientX, canvasWidth-400));
-    		y=Math.max(0, Math.min(menuClientY, canvasHeight-450));
-    		contextPanel.setPopupPosition(x,y);
-    		contextPanel.show();
-    	}
+	mouseInputHandler.doPopupMenu();
     }
 
     boolean canSplit(CircuitElm ce) {
-	if (!(ce instanceof WireElm))
-	    return false;
-	WireElm we = (WireElm) ce;
-	if (we.x == we.x2 || we.y == we.y2)
-	    return true;
-	return false;
+	return mouseInputHandler.canSplit(ce);
     }
     
     // check if the user can create sliders for this element
     boolean sliderItemEnabled(CircuitElm elm) {
-	int i;
-	
-	// prevent confusion
-	if (elm instanceof VarRailElm || elm instanceof PotElm)
-	    return false;
-	
-	for (i = 0; ; i++) {
-	    EditInfo ei = elm.getEditInfo(i);
-	    if (ei == null)
-		return false;
-	    if (ei.canCreateAdjustable())
-		return true;
-	}
+	return mouseInputHandler.sliderItemEnabled(elm);
     }
 
     void longPress() {
-	doPopupMenu();
+	mouseInputHandler.longPress();
     }
     
     void twoFingerTouch(int x, int y) {
-	tempMouseMode = MODE_DRAG_ALL;
-	dragScreenX = x;
-	dragScreenY = y;
+	mouseInputHandler.twoFingerTouch(x, y);
     }
     
 //    public void mouseClicked(MouseEvent e) {
     public void onClick(ClickEvent e) {
-    	e.preventDefault();
-//    	//IES - remove inteaction
-////	if ( e.getClickCount() == 2 && !didSwitch )
-////	    doEditMenu(e);
-//	if (e.getNativeButton() == NativeEvent.BUTTON_LEFT) {
-//	    if (mouseMode == MODE_SELECT || mouseMode == MODE_DRAG_SELECTED)
-//		clearSelection();
-//	}	
-    	if ((e.getNativeButton() == NativeEvent.BUTTON_MIDDLE))
-    		scrollValues(e.getNativeEvent().getClientX(), e.getNativeEvent().getClientY(), 0);
+	mouseInputHandler.onClick(e);
     }
     
     public void onDoubleClick(DoubleClickEvent e){
-    	e.preventDefault();
- //   	if (!didSwitch && mouseElm != null)
-    	if (mouseElm != null && !(mouseElm instanceof SwitchElm) && !noEditCheckItem.getState()) {
-    		// Special handling for TextElm hyperlinks [[...]]
-    		if (mouseElm instanceof TextElm) {
-    			TextElm te = (TextElm) mouseElm;
-    			if (te.isHyperlink() && te.handleLinkClick()) {
-    				// Link was handled, don't open edit dialog
-    				return;
-    			}
-    			// Not a hyperlink or not handled, fall through to edit
-    		}
-    		// Special handling for TableElm - open TableEditDialog instead of standard properties
-    		if (mouseElm instanceof TableElm) {
-    			// Don't open dialog if double-click is on the collapse arrow
-    			TableElm te = (TableElm) mouseElm;
-    			int gx = inverseTransformX(e.getX());
-    			int gy = inverseTransformY(e.getY());
-    			if (!te.isCollapseArrowClicked(gx, gy)) {
-    				te.openTableEditDialog();
-    			}
-    		} else if (mouseElm instanceof EquationTableElm) {
-    			// Special handling for EquationTableElm - open EquationTableEditDialog
-    			((EquationTableElm) mouseElm).openEditDialog();
-    		} else if (mouseElm instanceof ActionTimeElm) {
-    			// Special handling for ActionTimeElm - open ActionTimeDialog
-    			ActionTimeDialog.openDialog(this);
-    		} else {
-    			doEdit(mouseElm);
-    		}
-    	}
+	mouseInputHandler.onDoubleClick(e);
     }
     
 //    public void mouseEntered(MouseEvent e) {
 //    }
     
     public void onMouseOut(MouseOutEvent e) {
-    	mouseCursorX=-1;
+	mouseInputHandler.onMouseOut(e);
     }
 
     void clearMouseElm() {
-    	scopeSelected = -1;
-    	setMouseElm(null);
-    	plotXElm = plotYElm = null;
+	mouseInputHandler.clearMouseElm();
     }
     
     int menuClientX, menuClientY;
     int menuX, menuY;
     
     public void onMouseDown(MouseDownEvent e) {
-//    public void mousePressed(MouseEvent e) {
-    	e.preventDefault();
-    	
-    	// make sure canvas has focus, not stop button or something else, so all shortcuts work
-    	cv.setFocus(true);
-    	
-	stopElm = null; // if stopped, allow user to select other elements to fix circuit 
-    	menuX = menuClientX = e.getX();
-    	menuY = menuClientY = e.getY();
-    	mouseDownTime = System.currentTimeMillis();
-    	
-    	// maybe someone did copy in another window?  should really do this when
-    	// window receives focus
-    	enablePaste();
-    	
-    	if (e.getNativeButton() != NativeEvent.BUTTON_LEFT && e.getNativeButton() != NativeEvent.BUTTON_MIDDLE)
-    		return;
-    	
-    	// set mouseElm in case we are on mobile
-    	mouseSelect(e);
-    	
-    	mouseDragging=true;
-    	didSwitch = false;
-    	
-    	// PERFORMANCE: Save simulation state and pause during drag
-    	// This prevents expensive analyzeCircuit() + stampCircuit() on every mouse move
-    	simRunningBeforeDrag = simRunning;
-	
-	// Check if clicked on scope minimize/maximize button
-	if (mouseIsOverScopeMinMaxButton(e.getX(), e.getY())) {
-	    toggleScopePanelSize();
-	    mouseDragging = false;
-	    return;
-	}
-	
-    	if (mouseWasOverSplitter) {
-    		tempMouseMode = MODE_DRAG_SPLITTER;
-    		return;
-    	}
-	if (e.getNativeButton() == NativeEvent.BUTTON_LEFT) {
-//	    // left mouse
-	    tempMouseMode = mouseMode;
-	    if (e.isAltKeyDown() && e.isMetaKeyDown())
-		tempMouseMode = MODE_DRAG_COLUMN;
-	    else if (e.isAltKeyDown() && e.isShiftKeyDown())
-		tempMouseMode = MODE_DRAG_ROW;
-	    else if (e.isShiftKeyDown())
-		tempMouseMode = MODE_SELECT;
-	    else if (e.isAltKeyDown())
-		tempMouseMode = MODE_DRAG_ALL;
-	    else if (e.isControlKeyDown() || e.isMetaKeyDown())
-		tempMouseMode = MODE_DRAG_POST;
-	} else
-	    tempMouseMode = MODE_DRAG_ALL;
-	
-
-	if (noEditCheckItem.getState())
-	    tempMouseMode = MODE_SELECT;
-	
-	if (!(dialogIsShowing()) && ((scopeSelected != -1 && scopes[scopeSelected].cursorInSettingsWheel()) ||
-		( scopeSelected == -1 && mouseElm instanceof ScopeElm && ((ScopeElm)mouseElm).elmScope.cursorInSettingsWheel()))){
-	    if (noEditCheckItem.getState())
-		return;
-	    Scope s;
-	    if (scopeSelected != -1)
-		s=scopes[scopeSelected];
-	    else 
-		s=((ScopeElm)mouseElm).elmScope;
-	    s.properties();
-	    clearSelection();
-	    mouseDragging=false;
-	    return;
-	}
-
-	int gx = inverseTransformX(e.getX());
-	int gy = inverseTransformY(e.getY());
-	
-	// Check if clicked on ActionTimeElm play/pause icon
-	for (int i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
-	    if (ce instanceof ActionTimeElm) {
-		ActionTimeElm ate = (ActionTimeElm) ce;
-		if (ate.isPointInPlayPauseIcon(gx, gy)) {
-		    ate.handlePlayPauseIconClick();
-		    mouseDragging = false;
-		    return;
-		}
-	    }
-	}
-	
-	if (doSwitch(gx, gy)) {
-	    // do this BEFORE we change the mouse mode to MODE_DRAG_POST!  Or else logic inputs
-	    // will add dots to the whole circuit when we click on them!
-            didSwitch = true;
-	    return;
-	}
-	
-	// Check for TableElm collapse arrow click
-	if (doTableCollapseToggle(gx, gy)) {
-	    didSwitch = true;
-	    return;
-	}
-	
-	// Track any click on a table element to bring it to front
-	if (mouseElm instanceof TableElm) {
-	    lastInteractedTable = (TableElm) mouseElm;
-	}
-	
-	// IES - Grab resize handles in select mode if they are far enough apart and you are on top of them
-	if (tempMouseMode == MODE_SELECT && mouseElm!=null && !noEditCheckItem.getState() &&
-		mouseElm.getHandleGrabbedClose(gx, gy, POSTGRABSQ, MINPOSTGRABSIZE) >=0 &&
-		!anySelectedButMouse())
-	    tempMouseMode = MODE_DRAG_POST;
-	
-	if (tempMouseMode != MODE_SELECT && tempMouseMode != MODE_DRAG_SELECTED)
-	    clearSelection();
-
-	pushUndo();
-	initDragGridX = gx;
-	initDragGridY = gy;
-	dragging = true;
-	
-	// PERFORMANCE: Pause simulation during drag to prevent expensive operations
-	// Simulation will resume in onMouseUp after drag completes
-	if (simRunning) {
-	    simRunning = false;
-	}
-	
-	if (tempMouseMode !=MODE_ADD_ELM)
-		return;
-//	
-	int x0 = snapGrid(gx);
-	int y0 = snapGrid(gy);
-	if (!circuitArea.contains(e.getX(), e.getY()))
-	    return;
-
-	try {
-	    dragElm = constructElement(mouseModeStr, x0, y0);
-	} catch (Exception ex) {
-	    debugger();
-	}
+	mouseInputHandler.onMouseDown(e);
     }
 
     static int lastSubcircuitMenuUpdate;
@@ -6198,122 +3897,16 @@ public CirSim() {
     // check/uncheck/enable/disable menu items as appropriate when menu bar clicked on, or when
     // right mouse menu accessed.  also displays shortcuts as a side effect
     void doMainMenuChecks() {
-    	int c = mainMenuItems.size();
-    	int i;
-    	for (i=0; i<c ; i++) {
-    	    	String s = mainMenuItemNames.get(i);
-    		mainMenuItems.get(i).setState(s==mouseModeStr);
-
-	        // Code to disable draw menu items when cct is not editable, but no used in this version as it
-	        // puts up a dialog box instead (see menuPerformed).
-    		//if (s.length() > 3 && s.substring(s.length()-3)=="Elm")
-    		    //mainMenuItems.get(i).setEnabled(!noEditCheckItem.getState());
-    	}
-    	stackAllItem.setEnabled(scopeCount > 1 && scopes[scopeCount-1].position > 0);
-    	unstackAllItem.setEnabled(scopeCount > 1 && scopes[scopeCount-1].position != scopeCount -1);
-    	combineAllItem.setEnabled(scopeCount > 1);
-    	separateAllItem.setEnabled(scopeCount > 0);
-    	
-    	// also update the subcircuit menu if necessary
-    	if (lastSubcircuitMenuUpdate != CustomCompositeModel.sequenceNumber)
-    	    composeSubcircuitMenu();
+	mouseInputHandler.doMainMenuChecks();
     }
     
  
     public void onMouseUp(MouseUpEvent e) {
-    	e.preventDefault();
-    	mouseDragging=false;
-    	
-    	// click to clear selection
-    	if (tempMouseMode == MODE_SELECT && selectedArea == null)
-    	    clearSelection();
-
-    	// cmd-click = split wire
-    	if (tempMouseMode == MODE_DRAG_POST && draggingPost == -1)
-    	    doSplit(mouseElm);
-    	
-    	tempMouseMode = mouseMode;
-    	selectedArea = null;
-    	
-    	// PERFORMANCE: Resume simulation after drag completes
-    	// Circuit re-analyzes once with final position instead of every frame
-    	if (dragging && simRunningBeforeDrag && !simRunning) {
-    	    simRunning = true;
-    	}
-    	
-    	dragging = false;
-    	mouseDragging = false;
-    	
-    	boolean circuitChanged = false;
-    	if (heldSwitchElm != null) {
-    		heldSwitchElm.mouseUp();
-    		heldSwitchElm = null;
-    		circuitChanged = true;
-    	}
-    	if (dragElm != null) {
-    		// if the element is zero size then don't create it
-    		// IES - and disable any previous selection
-    	    	if (dragElm.creationFailed()) {
-    			dragElm.delete();
-    			if (mouseMode == MODE_SELECT || mouseMode == MODE_DRAG_SELECTED)
-    				clearSelection();
-    		}
-    		else {
-    			elmList.addElement(dragElm);
-    			dragElm.draggingDone();
-    			circuitChanged = true;
-    			needsRecoverySave = true;  // Will save after drag completes
-    			unsavedChanges = true;
-    			// Auto-deselect after placing element
-    			if (mouseMode == MODE_ADD_ELM) {
-    			    setMouseMode(MODE_SELECT);
-    			    tempMouseMode = MODE_SELECT;
-    			}
-    		}
-    		dragElm = null;
-    	}
-    	if (circuitChanged) {
-    	    needAnalyze();
-    	    pushUndo();
-    	}
-    	// Write recovery save once after drag completes (deferred from mouseDragged)
-    	if (needsRecoverySave) {
-    	    writeRecoveryToStorage();
-    	    needsRecoverySave = false;
-    	}
-    	if (dragElm != null)
-    		dragElm.delete();
-    	dragElm = null;
-    	repaint();
+	mouseInputHandler.onMouseUp(e);
     }
     
     public void onMouseWheel(MouseWheelEvent e) {
-    	e.preventDefault();
-	int wheelDelta = normalizeWheelDelta(e.getDeltaY());
-	if (wheelDelta == 0)
-	    return;
-    	
-    	// once we start zooming, don't allow other uses of mouse wheel for a while
-    	// so we don't accidentally edit a resistor value while zooming
-    	boolean zoomOnly = System.currentTimeMillis() < zoomTime+1000;
-    	
-    	if (!mouseWheelEditCheckItem.getState())
-    	    zoomOnly = true;
-    	
-    	if (!zoomOnly)
-		    scrollValues(e.getNativeEvent().getClientX(), e.getNativeEvent().getClientY(), wheelDelta);
-    	
-    	if (mouseElm instanceof MouseWheelHandler && !zoomOnly)
-    		((MouseWheelHandler) mouseElm).onMouseWheel(e);
-    	else if (scopeSelected != -1 && !zoomOnly)
-    	    scopes[scopeSelected].onMouseWheel(e);
-    	else if (!dialogIsShowing()) {
-    	    mouseCursorX=e.getX();
-    	    mouseCursorY=e.getY();
-		    zoomCircuit(-wheelDelta*wheelSensitivity, false);
-    	    zoomTime = System.currentTimeMillis();
-   	}
-    	repaint();
+	mouseInputHandler.onMouseWheel(e);
     }
 
 	    static final int MAX_NORMALIZED_WHEEL_DELTA = 150;
@@ -6395,127 +3988,36 @@ public CirSim() {
     }
     
     void switchToElectronicsToolbar() {
-	if (currentToolbarType == ToolbarType.ELECTRONICS) {
-	    electronicsModeCheckItem.setState(true);
-	    economicsModeCheckItem.setState(false);
-	    return;
-	}
-	
-	// Set voltage unit to V for electronics mode
-	voltageUnitSymbol = "V";
-	timeUnitSymbol = "s";
-	
-	// Store current toolbar visibility
-	boolean toolbarVisible = toolbarCheckItem.getState();
-	
-	// Remove old toolbar
-	layoutPanel.remove(toolbar);
-	
-	// Create new toolbar
-	currentToolbarType = ToolbarType.ELECTRONICS;
-	toolbar = new ElectronicsToolbar();
-	toolbar.setEuroResistors(euroResistorCheckItem.getState());
-	
-	// Add toolbar back - insertNorth after menu bar (or at top if no menu)
-	if (!hideMenu && menuBar.getParent() == layoutPanel) {
-	    layoutPanel.insertNorth(toolbar, TOOLBARHEIGHT, menuBar);
-	} else {
-	    // Fallback: add to top
-	    layoutPanel.addNorth(toolbar, TOOLBARHEIGHT);
-	}
-	
-	// Update menu states  
-	electronicsModeCheckItem.setState(true);
-	economicsModeCheckItem.setState(false);
-	
-	// Restore toolbar visibility
-	layoutPanel.setWidgetHidden(toolbar, !toolbarVisible);
-	setCanvasSize();
+	toolbarModeManager.switchToElectronicsToolbar();
     }
     
     void switchToEconomicsToolbar() {
-	if (currentToolbarType == ToolbarType.ECONOMICS) {
-	    electronicsModeCheckItem.setState(false);
-	    economicsModeCheckItem.setState(true);
-	    return;
-	}
-	
-	// Set voltage unit to $ for economics mode
-	voltageUnitSymbol = "$";
-	timeUnitSymbol = "yr";
-	
-	// Store current toolbar visibility
-	boolean toolbarVisible = toolbarCheckItem.getState();
-	
-	// Remove old toolbar
-	layoutPanel.remove(toolbar);
-	
-	// Create new toolbar
-	currentToolbarType = ToolbarType.ECONOMICS;
-	toolbar = new EconomicsToolbar();
-	toolbar.setEuroResistors(euroResistorCheckItem.getState());
-	
-	// Add toolbar back - insertNorth after menu bar (or at top if no menu)
-	if (!hideMenu && menuBar.getParent() == layoutPanel) {
-	    layoutPanel.insertNorth(toolbar, TOOLBARHEIGHT, menuBar);
-	} else {
-	    // Fallback: add to top
-	    layoutPanel.addNorth(toolbar, TOOLBARHEIGHT);
-	}
-	
-	// Update menu states
-	electronicsModeCheckItem.setState(false);
-	economicsModeCheckItem.setState(true);
-	
-	// Restore toolbar visibility
-	layoutPanel.setWidgetHidden(toolbar, !toolbarVisible);
-	setCanvasSize();
+	toolbarModeManager.switchToEconomicsToolbar();
     }
 
     // Mode selector method - switches toolbar and sets appropriate voltage unit
     void setMode(ToolbarType mode) {
-	if (mode == ToolbarType.ELECTRONICS) {
-	    switchToElectronicsToolbar();
-	} else {
-	    switchToEconomicsToolbar();
-	}
+	toolbarModeManager.setMode(mode);
     }
     
     void setElectronicsMode() {
-	setMode(ToolbarType.ELECTRONICS);
+	toolbarModeManager.setElectronicsMode();
     }
     
     void setEconomicsMode() {
-	setMode(ToolbarType.ECONOMICS);
+	toolbarModeManager.setEconomicsMode();
     }
 
     void pushUndo() {
-    	redoStack.removeAllElements();
-    	String s = dumpCircuit();
-    	if (undoStack.size() > 0 &&
-    			s.compareTo(undoStack.lastElement().dump) == 0)
-    	    return;
-    	undoStack.add(new UndoItem(s));
-    	enableUndoRedo();
-    	savedFlag = false;
+	undoRedoManager.pushUndo();
     }
 
     void doUndo() {
-    	if (undoStack.size() == 0)
-    		return;
-    	redoStack.add(new UndoItem(dumpCircuit()));
-    	UndoItem ui = undoStack.remove(undoStack.size()-1);
-    	loadUndoItem(ui);
-    	enableUndoRedo();
+	undoRedoManager.doUndo();
     }
 
     void doRedo() {
-    	if (redoStack.size() == 0)
-    		return;
-    	undoStack.add(new UndoItem(dumpCircuit()));
-    	UndoItem ui = redoStack.remove(redoStack.size()-1);
-    	loadUndoItem(ui);
-    	enableUndoRedo();
+	undoRedoManager.doRedo();
     }
 
     void loadUndoItem(UndoItem ui) {
@@ -6526,51 +4028,30 @@ public CirSim() {
     }
     
     void doRecover() {
-	pushUndo();
-	readCircuit(recovery);
-	allowSave(false);
-	recoverItem.setEnabled(false);
+	undoRedoManager.doRecover();
     }
     
     void enableUndoRedo() {
-    	redoItem.setEnabled(redoStack.size() > 0);
-    	undoItem.setEnabled(undoStack.size() > 0);
+	undoRedoManager.enableUndoRedo();
     }
 
     void setMouseMode(int mode)
     {
-    	mouseMode = mode;
-    	if ( mode == MODE_ADD_ELM ) {
-    		setCursorStyle("cursorCross");
-    	} else {
-    		setCursorStyle("cursorPointer");
-    	}
+	mouseInputHandler.setMouseMode(mode);
     }
     
     void setCursorStyle(String s) {
-    	if (lastCursorStyle!=null)
-    		cv.removeStyleName(lastCursorStyle);
-    	cv.addStyleName(s);
-    	lastCursorStyle=s;
+	mouseInputHandler.setCursorStyle(s);
     }
     
 
 
     void setMenuSelection() {
-    	if (menuElm != null) {
-    		if (menuElm.selected)
-    			return;
-    		clearSelection();
-    		menuElm.setSelected(true);
-    	}
+	clipboardManager.setMenuSelection();
     }
 
     int countSelected() {
-	int count = 0;
-	for (CircuitElm ce: elmList)
-	    if (ce.isSelected())
-		count++;
-	return count;
+	return clipboardManager.countSelected();
     }
 
     void flipX() {
@@ -6586,36 +4067,15 @@ public CirSim() {
     }
 
     void doCut() {
-    	int i;
-    	pushUndo();
-    	setMenuSelection();
-    	clipboard = "";
-    	for (i = elmList.size()-1; i >= 0; i--) {
-    		CircuitElm ce = getElm(i);
-    		// ScopeElms don't cut-paste well because their reference to a parent
-    		// elm by number get's messed up in the dump. For now we will just ignore them
-    		// until I can be bothered to come up with something better
-    		if (willDelete(ce) && !(ce instanceof ScopeElm) ) {
-				clipboard += getElementDumpWithUid(ce) + "\n";
-    		}
-    	}
-    	writeClipboardToStorage();
-    	doDelete(true);
-    	enablePaste();
+	clipboardManager.doCut();
     }
 
     void writeClipboardToStorage() {
-    	Storage stor = Storage.getLocalStorageIfSupported();
-    	if (stor == null)
-    		return;
-    	stor.setItem("circuitClipboard", clipboard);
+	clipboardManager.writeClipboardToStorage();
     }
     
     void readClipboardFromStorage() {
-    	Storage stor = Storage.getLocalStorageIfSupported();
-    	if (stor == null)
-    		return;
-    	clipboard = stor.getItem("circuitClipboard");
+	clipboardManager.readClipboardFromStorage();
     }
 
     /**
@@ -6657,202 +4117,77 @@ public CirSim() {
 	CircuitElm getMouseElmForRouting() {
 	return mouseElm;
 	}
+
+	boolean isMouseDraggingForRouting() {
+	return mouseDragging;
+	}
+
+	void setMouseDraggingForRouting(boolean value) {
+	mouseDragging = value;
+	}
+
+	void setLastInteractedTableForRouting(TableElm table) {
+	lastInteractedTable = table;
+	}
+
+	TableElm getLastInteractedTableForRouting() {
+	return lastInteractedTable;
+	}
+
+	int getCurrentBarValueForRouting() {
+	return currentBar.getValue();
+	}
+
+	int getPowerBarValueForRouting() {
+	return powerBar.getValue();
+	}
+
+	int getSpeedBarValueForRouting() {
+	return speedBar.getValue();
+	}
+
+	CircuitRenderer getCircuitRendererForRouting() {
+	return circuitRenderer;
+	}
     
     void doDelete(boolean pushUndoFlag) {
-    	int i;
-    	if (pushUndoFlag)
-    	    pushUndo();
-    	boolean hasDeleted = false;
-
-    	for (i = elmList.size()-1; i >= 0; i--) {
-    		CircuitElm ce = getElm(i);
-    		if (willDelete(ce)) {
-    		    	if (ce.isMouseElm())
-    		    	    setMouseElm(null);
-    			ce.delete();
-    			elmList.removeElementAt(i);
-    			hasDeleted = true;
-    		}
-    	}
-    	if ( hasDeleted ) {
-    	    deleteUnusedScopeElms();
-    	    needAnalyze();
-    	    writeRecoveryToStorage();
-    	}    
+	clipboardManager.doDelete(pushUndoFlag);
     }
     
     boolean willDelete( CircuitElm ce ) {
-	// Is this element in the list to be deleted.
-	// This changes the logic from the previous version which would initially only
-	// delete selected elements (which could include the mouseElm) and then delete the 
-	// mouseElm if there were no selected elements. Not really sure this added anything useful
-	// to the user experience.
-	//
-	// BTW, the old logic could also leave mouseElm pointing to a deleted element.
-	return ce.isSelected() || ce.isMouseElm();
+	return clipboardManager.willDelete(ce);
     }
     
     String copyOfSelectedElms() {
-	String r = dumpOptions();
-	CustomLogicModel.clearDumpedFlags();
-	CustomCompositeModel.clearDumpedFlags();
-	DiodeModel.clearDumpedFlags();
-	TransistorModel.clearDumpedFlags();
-	for (int i = elmList.size()-1; i >= 0; i--) {
-	    CircuitElm ce = getElm(i);
-	    String m = ce.dumpModel();
-	    if (m != null && !m.isEmpty())
-		r += m + "\n";
-	    // See notes on do cut why we don't copy ScopeElms.
-	    if (ce.isSelected() && !(ce instanceof ScopeElm))
-		r += getElementDumpWithUid(ce) + "\n";
-	}
-	return r;
+	return clipboardManager.copyOfSelectedElms();
     }
     
     void doCopy() {
-    	// clear selection when we're done if we're copying a single element using the context menu
-    	boolean clearSel = (menuElm != null && !menuElm.selected);
-    	
-    	setMenuSelection();
-    	clipboard=copyOfSelectedElms();
-    	
-    	if (clearSel)
-    	    clearSelection();
-    	
-    	writeClipboardToStorage();
-    	enablePaste();
+	clipboardManager.doCopy();
     }
 
     void enablePaste() {
-    	if (clipboard == null || clipboard.length() == 0)
-    		readClipboardFromStorage();
-    	pasteItem.setEnabled(clipboard != null && clipboard.length() > 0);
+	clipboardManager.enablePaste();
     }
 
     void doDuplicate() {
-    	String s;
-    	setMenuSelection();
-    	s=copyOfSelectedElms();
-    	doPaste(s);
+	clipboardManager.doDuplicate();
     }
     
     void doPaste(String dump) {
-    	pushUndo();
-    	clearSelection();
-    	int i;
-    	Rectangle oldbb = null;
-    	
-    	// get old bounding box
-    	for (i = 0; i != elmList.size(); i++) {
-    		CircuitElm ce = getElm(i);
-    		Rectangle bb = ce.getBoundingBox();
-    		if (oldbb != null)
-    			oldbb = oldbb.union(bb);
-    		else
-    			oldbb = bb;
-    	}
-    	
-    	// add new items
-    	int oldsz = elmList.size();
-    	int flags = RC_RETAIN;
-    	
-    	// don't recenter circuit if we're going to paste in place because that will change the transform
-//	if (mouseCursorX > 0 && circuitArea.contains(mouseCursorX, mouseCursorY))
-    	
-    	// in fact, don't ever recenter circuit, unless old circuit was empty
-    	if (oldsz > 0)
-    	    flags |= RC_NO_CENTER;
-	
-    	if (dump != null)
-    	    readCircuit(dump, flags);
-    	else {
-    	    readClipboardFromStorage();
-    	    readCircuit(clipboard, flags);
-    	}
-
-    	// select new items and get their bounding box
-    	Rectangle newbb = null;
-    	for (i = oldsz; i != elmList.size(); i++) {
-    		CircuitElm ce = getElm(i);
-    		ce.setSelected(true);
-    		Rectangle bb = ce.getBoundingBox();
-    		if (newbb != null)
-    			newbb = newbb.union(bb);
-    		else
-    			newbb = bb;
-    	}
-    	
-    	if (oldbb != null && newbb != null /*&& oldbb.intersects(newbb)*/) {
-    		// find a place on the edge for new items
-    		int dx = 0, dy = 0;
-    		int spacew = circuitArea.width - oldbb.width - newbb.width;
-    		int spaceh = circuitArea.height - oldbb.height - newbb.height;
-    		
-    		if (!oldbb.intersects(newbb)) {
-    		    // old coordinates may be really far away so move them to same origin as current circuit
-    		    dx = snapGrid(oldbb.x - newbb.x);
-    		    dy = snapGrid(oldbb.y - newbb.y);
-    		}
-    		
-    		if (spacew > spaceh) {
-    			dx = snapGrid(oldbb.x + oldbb.width  - newbb.x + gridSize);
-    		} else {
-    			dy = snapGrid(oldbb.y + oldbb.height - newbb.y + gridSize);
-    		}
-    		
-    		// move new items near the mouse if possible
-    		if (mouseCursorX > 0 && circuitArea.contains(mouseCursorX, mouseCursorY)) {
-    	    	    int gx = inverseTransformX(mouseCursorX);
-    	    	    int gy = inverseTransformY(mouseCursorY);
-    	    	    int mdx = snapGrid(gx-(newbb.x+newbb.width/2));
-    	    	    int mdy = snapGrid(gy-(newbb.y+newbb.height/2));
-    	    	    for (i = oldsz; i != elmList.size(); i++) {
-    	    		if (!getElm(i).allowMove(mdx, mdy))
-    	    		    break;
-    	    	    }
-    	    	    if (i == elmList.size()) {
-    	    		dx = mdx;
-    	    		dy = mdy;
-    	    	    }
-    		}
-    		
-    		// move the new items
-    		for (i = oldsz; i != elmList.size(); i++) {
-    			CircuitElm ce = getElm(i);
-    			ce.move(dx, dy);
-    		}
-    		
-    		// center circuit
-    	//	handleResize();
-    	}
-    	needAnalyze();
-    	writeRecoveryToStorage();
+	clipboardManager.doPaste(dump);
     }
 
     void clearSelection() {
-	int i;
-	for (i = 0; i != elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
-	    ce.setSelected(false);
-	}
-	enableDisableMenuItems();
+	clipboardManager.clearSelection();
     }
     
     void doSelectAll() {
-    	int i;
-    	for (i = 0; i != elmList.size(); i++) {
-    		CircuitElm ce = getElm(i);
-    		ce.setSelected(true);
-    	}
-	enableDisableMenuItems();
+	clipboardManager.doSelectAll();
     }
     
     boolean anySelectedButMouse() {
-    	for (int i=0; i != elmList.size(); i++)
-    		if (getElm(i)!= mouseElm && getElm(i).selected)
-    			return true;
-    	return false;
+	return clipboardManager.anySelectedButMouse();
     }
 
 //    public void keyPressed(KeyEvent e) {}
@@ -6881,156 +4216,7 @@ public CirSim() {
     }
     
     public void onPreviewNativeEvent(NativePreviewEvent e) {
-    	int cc=e.getNativeEvent().getCharCode();
-    	int t=e.getTypeInt();
-    	int code=e.getNativeEvent().getKeyCode();
-    	if (dialogIsShowing()) {
-    		if (scrollValuePopup != null && scrollValuePopup.isShowing() &&
-    				(t & Event.ONKEYDOWN)!=0) {
-    			if (code==KEY_ESCAPE || code==KEY_SPACE)
-    				scrollValuePopup.close(false);
-    			if (code==KEY_ENTER)
-    				scrollValuePopup.close(true);
-    		}
-    		
-    		// process escape/enter for dialogs
-    		// multiple edit dialogs could be displayed at once, pick the one in front
-    		Dialog dlg = editDialog;
-    		if (diodeModelEditDialog != null)
-    		    dlg = diodeModelEditDialog;
-    		if (customLogicEditDialog != null)
-    		    dlg = customLogicEditDialog;
-    		if (dialogShowing != null)
-    		    dlg = dialogShowing;
-    		
-    		
-    		if (dlg!=null && dlg.isShowing()) {
-    			if ((t & Event.ONKEYDOWN)!=0) {
-    				if (code==KEY_ESCAPE) {
-    					dlg.closeDialog();
-    				}
-    				if (code==KEY_ENTER) {
-    					dlg.enterPressed();
-    				}
-    			}
-    			// Prevent all keyboard events from affecting the circuit when a dialog is open
-    			return;
-    		}
-    	}
-    	
-    	if ((t&Event.ONKEYPRESS)!=0) {
-		if (cc=='-') {
-    		    menuPerformed("key", "zoomout");
-    		    e.cancel();
-    		}
-    		if (cc=='+' || cc == '=') {
-    		    menuPerformed("key", "zoomin");
-    		    e.cancel();
-    		}
-		if (cc=='0') {
-    		    menuPerformed("key", "zoom100");
-    		    e.cancel();
-		}
-		if (cc=='/' && shortcuts['/'] == null) {
-		    menuPerformed("key", "search");
-		    e.cancel();
-		}
-    	}
-    	
-    	// all other shortcuts are ignored when editing disabled
-    	if (noEditCheckItem.getState())
-    	    return;
-
-    	if ((t & Event.ONKEYDOWN)!=0) {
-    		if (code==KEY_BACKSPACE || code==KEY_DELETE) {
-    		    if (scopeSelected != -1) {
-    			// Treat DELETE key with scope selected as "remove scope", not delete
-    			scopes[scopeSelected].setElm(null);
-    			scopeSelected = -1;
-    		    } else {
-    		    	menuElm = null;
-    		    	pushUndo();
-    			doDelete(true);
-    			e.cancel();
-    		    }
-    		}
-    		if (code==KEY_ESCAPE){
-    			setMouseMode(MODE_SELECT);
-    			mouseModeStr = "Select";
-			updateToolbar();
-    			tempMouseMode = mouseMode;
-    			e.cancel();
-    		}
-
-    		if (e.getNativeEvent().getCtrlKey() || e.getNativeEvent().getMetaKey()) {
-    			if (code==KEY_C) {
-    				menuPerformed("key", "copy");
-    				e.cancel();
-    			}
-    			if (code==KEY_X) {
-    				menuPerformed("key", "cut");
-    				e.cancel();
-    			}
-    			if (code==KEY_V) {
-    				menuPerformed("key", "paste");
-    				e.cancel();
-    			}
-    			if (code==KEY_Z) {
-    				menuPerformed("key", "undo");
-    				e.cancel();
-    			}
-    			if (code==KEY_Y) {
-    				menuPerformed("key", "redo");
-    				e.cancel();
-    			}
-    			if (code==KEY_D) {
-    			    	menuPerformed("key", "duplicate");
-    			    	e.cancel();
-    			}
-    			if (code==KEY_A) {
-    				menuPerformed("key", "selectAll");
-    				e.cancel();
-    			}
-    			if (code==KEY_P) {
-				menuPerformed("key", "print");
-				e.cancel();
-			}
-    			if (code==KEY_N && isElectron()) {
-				menuPerformed("key", "newwindow");
-				e.cancel();
-			}
-    			if (code==KEY_S) {
-    			    	String cmd = "exportaslocalfile";
-    			    	if (isElectron())
-    			    	    cmd = saveFileItem.isEnabled() ? "save" : "saveas";
-				menuPerformed("key", cmd);
-				e.cancel();
-			}
-    			if (code==KEY_O) {
-				menuPerformed("key", "importfromlocalfile");
-				e.cancel();
-			}    			
-    		}
-    	}
-    	if ((t&Event.ONKEYPRESS)!=0) {
-    		if (cc>32 && cc<127){
-    			String c=shortcuts[cc];
-    			e.cancel();
-    			if (c==null)
-    				return;
-    			setMouseMode(MODE_ADD_ELM);
-    			mouseModeStr=c;
-			updateToolbar();
-    			tempMouseMode = mouseMode;
-    		}
-    		if (cc==32) {
-		    setMouseMode(MODE_SELECT);
-		    mouseModeStr = "Select";
-		    updateToolbar();
-		    tempMouseMode = mouseMode;
-		    e.cancel();
-    		}
-    	}
+	mouseInputHandler.onPreviewNativeEvent(e);
     }
     
     void updateToolbar() {
