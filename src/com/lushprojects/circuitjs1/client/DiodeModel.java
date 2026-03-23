@@ -46,7 +46,7 @@ public class DiodeModel implements Editable, Comparable<DiodeModel> {
 	updateModel();
     }
     
-    static DiodeModel getModelWithName(String name) {
+    public static DiodeModel getModelWithName(String name) {
 	createModelMap();
 	DiodeModel lm = modelMap.get(name);
 	if (lm != null)

@@ -456,11 +456,11 @@ protected void startIteration() {
 		parseDescription();
 	    }
 	}
-	void flipX(int c2, int count) {
+	protected void flipX(int c2, int count) {
 	    flags ^= FLAG_FLIP;
 	    super.flipX(c2, count);
 	}
-	void flipY(int c2, int count) {
+	protected void flipY(int c2, int count) {
 	    flags ^= FLAG_FLIP;
 	    super.flipY(c2, count);
 	}

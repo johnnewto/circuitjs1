@@ -23,11 +23,11 @@ public final class CirSimDialogCoordinator {
         editDialog = value;
     }
 
-    static EditDialog getCustomLogicEditDialog() {
+    public static EditDialog getCustomLogicEditDialog() {
         return customLogicEditDialog;
     }
 
-    static void setCustomLogicEditDialog(EditDialog value) {
+    public static void setCustomLogicEditDialog(EditDialog value) {
         customLogicEditDialog = value;
     }
 

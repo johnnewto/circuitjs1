@@ -105,7 +105,7 @@ package com.lushprojects.circuitjs1.client;
 	    return 0;
 	}
 
-	Rectangle getSwitchRect() {
+	protected Rectangle getSwitchRect() {
 	    return new Rectangle(lead1).union(new Rectangle(swpoles[0])).union(new Rectangle(swpoles[throwCount-1]));
 	}	
 
@@ -197,17 +197,17 @@ package com.lushprojects.circuitjs1.client;
 	
 	protected int getShortcut() { return 'S'; }
 
-	void flipX(int c2, int count) {
+	protected void flipX(int c2, int count) {
 	    super.flipX(c2, count);
 	    position = posCount-1-position;
 	}   
 		 
-	void flipY(int c2, int count) { 
+	protected void flipY(int c2, int count) { 
 	    super.flipY(c2, count);
 	    position = posCount-1-position;
 	}
 
-	void flipXY(int c2, int count) {
+	protected void flipXY(int c2, int count) {
 	    super.flipXY(c2, count);
 	    position = posCount-1-position;
 	}       

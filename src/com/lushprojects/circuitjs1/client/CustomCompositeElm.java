@@ -117,7 +117,7 @@ public class CustomCompositeElm extends CompositeElm {
 	updateModels(null);
     }
     
-    void flipX(int center2, int count) {
+    protected void flipX(int center2, int count) {
 	flags ^= ChipElm.FLAG_FLIP_X;
 	if (count != 1) {
 	    int xs = (chip.flippedSizeX+1)*chip.cspc2;
@@ -127,7 +127,7 @@ public class CustomCompositeElm extends CompositeElm {
 	setPoints();
     }
 
-    void flipY(int center2, int count) {
+    protected void flipY(int center2, int count) {
 	flags ^= ChipElm.FLAG_FLIP_Y;
 	if (count != 1) {
 	    int xs = (chip.flippedSizeY-1)*chip.cspc2;
@@ -140,7 +140,7 @@ public class CustomCompositeElm extends CompositeElm {
     boolean isFlippedX() { return (flags & ChipElm.FLAG_FLIP_X) != 0; }
     boolean isFlippedY() { return (flags & ChipElm.FLAG_FLIP_Y) != 0; }
 
-    void flipXY(int xmy, int count) {
+    protected void flipXY(int xmy, int count) {
 	flags ^= ChipElm.FLAG_FLIP_XY;
 
         // FLAG_FLIP_XY is applied first.  So need to swap X and Y

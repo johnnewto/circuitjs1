@@ -110,7 +110,7 @@ package com.lushprojects.circuitjs1.client;
 	    return currents[n-1];
 	}
 
-	Rectangle getSwitchRect() {
+	protected Rectangle getSwitchRect() {
 	    return new Rectangle(lead1).union(new Rectangle(swpoles[0])).union(new Rectangle(swpoles[1]));
 	}	
 

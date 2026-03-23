@@ -136,7 +136,7 @@ protected void setCurrent(int vn, double c) {
 		if (vn == voltageSources[i])
 		    currents[i] = c;
 	}
-	Rectangle getSwitchRect() {
+	protected Rectangle getSwitchRect() {
 	    return new Rectangle(poleLeads[0]).union(new Rectangle(throwLeads[1])).union(new Rectangle(throwLeads[poleCount*4-4]));
 	}	
 
@@ -210,17 +210,17 @@ protected void setCurrent(int vn, double c) {
 	    position = 1-position;
 	}
 
-	void flipX(int c2, int count) {
+	protected void flipX(int c2, int count) {
 	    flip();
 	    super.flipX(c2, count);
 	}
 
-	void flipY(int c2, int count) {
+	protected void flipY(int c2, int count) {
 	    flip();
 	    super.flipY(c2, count);
 	}
 
-	void flipXY(int c2, int count) {
+	protected void flipXY(int c2, int count) {
 	    flip();
 	    super.flipXY(c2, count);
 	}

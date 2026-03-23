@@ -153,7 +153,7 @@ public abstract class CircuitElm implements Editable {
     // leftover from java, doesn't do anything anymore. 
     protected Class getDumpClass() { return getClass(); }
     
-    int getDefaultFlags() { return 0; }
+    protected int getDefaultFlags() { return 0; }
 
     protected boolean hasFlag(int f) { return (flags & f) != 0; }
     
@@ -385,7 +385,7 @@ public abstract class CircuitElm implements Editable {
     }
 
     // adjust leads so that the point exactly between them is a grid point (so we can place a terminal there)
-    void adjustLeadsToGrid(boolean flipX, boolean flipY) {
+    protected void adjustLeadsToGrid(boolean flipX, boolean flipY) {
         int cx = (point1.x+point2.x)/2;
         int cy = (point1.y+point2.y)/2;
 
@@ -639,21 +639,21 @@ public abstract class CircuitElm implements Editable {
     	setPoints();
     }
     
-    void flipX(int center2, int count) {
+    protected void flipX(int center2, int count) {
 	x =  center2-x;
 	x2 = center2-x2;
 	initBoundingBox();
 	setPoints();
     }
 
-    void flipY(int center2, int count) {
+    protected void flipY(int center2, int count) {
 	y =  center2-y;
 	y2 = center2-y2;
 	initBoundingBox();
 	setPoints();
     }
 
-    void flipXY(int xmy, int count) {
+    protected void flipXY(int xmy, int count) {
 	int nx = y+xmy;
 	int ny = x-xmy;
 	int nx2 = y2+xmy;

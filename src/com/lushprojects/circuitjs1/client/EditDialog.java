@@ -45,11 +45,6 @@ import com.google.gwt.event.dom.client.KeyPressEvent;
 import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsPackage;
 
-interface Editable {
-    EditInfo getEditInfo(int n);
-    void setEditValue(int n, EditInfo ei);
-}
-
 public class EditDialog extends Dialog {
 	Editable elm;
 	CirSim cframe;
@@ -65,7 +60,7 @@ public class EditDialog extends Dialog {
 	private java.util.Map<TextBox, AutocompleteHelper.AutocompleteState> autocompleteStates = 
 		new java.util.HashMap<TextBox, AutocompleteHelper.AutocompleteState>();
 
-	EditDialog(Editable ce, CirSim f) {
+	public EditDialog(Editable ce, CirSim f) {
 //		super(f, "Edit Component", false);
 		super(); // Do we need this?
 		setText(Locale.LS("Edit Component"));

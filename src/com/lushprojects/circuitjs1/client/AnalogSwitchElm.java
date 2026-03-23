@@ -75,17 +75,17 @@ class AnalogSwitchElm extends CircuitElm {
     boolean isFlippedY() { return hasFlag(FLAG_FLIPPED_Y); }
     boolean isFlipped () { return hasFlag(FLAG_FLIPPED  ); }
 
-    void flipX(int c2, int count) {
+    protected void flipX(int c2, int count) {
 	flags ^= FLAG_FLIPPED_X;
 	super.flipX(c2, count);
     }
 
-    void flipY(int c2, int count) {
+    protected void flipY(int c2, int count) {
 	flags ^= FLAG_FLIPPED_Y;
 	super.flipY(c2, count);
     }
 
-    void flipXY(int c2, int count) {
+    protected void flipXY(int c2, int count) {
 	flags ^= FLAG_FLIPPED;
 	super.flipXY(c2, count);
     }

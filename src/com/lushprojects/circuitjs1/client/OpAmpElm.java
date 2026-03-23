@@ -213,19 +213,19 @@ package com.lushprojects.circuitjs1.client;
 	   return 0;
 	}
 
-	void flipX(int c2, int count) {
+	protected void flipX(int c2, int count) {
 	    if (dx == 0)
 		flags ^= FLAG_SWAP;
 	    super.flipX(c2, count);
 	}
 
-	void flipY(int c2, int count) {
+	protected void flipY(int c2, int count) {
 	    if (dy == 0)
 		flags ^= FLAG_SWAP;
 	    super.flipY(c2, count);
 	}
 
-	void flipXY(int xmy, int count) {
+	protected void flipXY(int xmy, int count) {
 	    flags ^= FLAG_SWAP;
 	    super.flipXY(xmy, count);
 	}

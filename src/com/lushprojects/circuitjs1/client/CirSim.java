@@ -1955,7 +1955,7 @@ public CirSim() {
 	preferencesManager.setGrid();
     }
     
-    int snapGrid(int x) {
+    public int snapGrid(int x) {
 	return (x+gridRound) & gridMask;
     }
 

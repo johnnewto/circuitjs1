@@ -294,18 +294,18 @@ protected void startIteration() {
 	}
 	protected int getShortcut() { return 'T'; }
 
-       void flipX(int c2, int count) {
+       protected void flipX(int c2, int count) {
 	   if (hasFlag(FLAG_VERTICAL))
 	       flags ^= FLAG_FLIP;
            super.flipX(c2, count);
        }
-       void flipY(int c2, int count) {
+       protected void flipY(int c2, int count) {
 	   if (!hasFlag(FLAG_VERTICAL))
 	       flags ^= FLAG_FLIP;
            super.flipY(c2, count);
        }
 
-       void flipXY(int xmy, int count) {
+       protected void flipXY(int xmy, int count) {
            flags ^= FLAG_VERTICAL;
            width *= -1;
            super.flipXY(xmy, count);

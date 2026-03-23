@@ -262,15 +262,15 @@ class SCRElm extends CircuitElm {
 	x2 = pt.x; y2 = pt.y;
     }
 
-    void flipX(int c2, int count) {
+    protected void flipX(int c2, int count) {
 	fixEnds();
 	super.flipX(c2, count);
     }
-    void flipY(int c2, int count) {
+    protected void flipY(int c2, int count) {
 	fixEnds();
 	super.flipY(c2, count);
     }
-    void flipXY(int c2, int count) {
+    protected void flipXY(int c2, int count) {
 	fixEnds();
 	super.flipXY(c2, count);
     }

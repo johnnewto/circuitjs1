@@ -162,7 +162,7 @@ protected void setCurrent(int vn, double c) {
 		currents[1] = c;
 	}
 	
-	Rectangle getSwitchRect() {
+	protected Rectangle getSwitchRect() {
 	    return new Rectangle(poleLeads[0]).union(new Rectangle(throwLeads[1])).union(new Rectangle(throwLeads[poleCount*4-4]));
 	}	
 

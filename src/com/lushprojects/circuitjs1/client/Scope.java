@@ -21,6 +21,7 @@ package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.event.dom.client.MouseWheelEvent;
 import com.google.gwt.storage.client.Storage;
+import com.lushprojects.circuitjs1.client.electronics.digital.LogicOutputElm;
 import com.lushprojects.circuitjs1.client.electronics.semiconductors.TransistorElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 

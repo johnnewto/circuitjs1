@@ -60,12 +60,12 @@ public abstract class ChipElm extends CircuitElm {
 		}
 	    }
 	}
-	boolean needsBits() { return false; }
-	boolean hasCustomVoltage() { return (flags & FLAG_CUSTOM_VOLTAGE) != 0; }
+	protected boolean needsBits() { return false; }
+	protected boolean hasCustomVoltage() { return (flags & FLAG_CUSTOM_VOLTAGE) != 0; }
 	protected boolean isDigitalChip() { return true; }
 	protected double getThreshold() { return highVoltage/2; }
 	
-	int defaultBitCount() { return 4; }
+	protected int defaultBitCount() { return 4; }
 	protected void setSize(int s) {
 	    csize = s;
 	    cspc = 8*s;
@@ -77,7 +77,7 @@ public abstract class ChipElm extends CircuitElm {
 	protected void draw(Graphics g) {
 	    drawChip(g);
 	}
-	void drawChip(Graphics g) {
+	protected void drawChip(Graphics g) {
 	    int i;
 	    g.save();
 	    Font f = new Font("normal", 0, 10*csize);
@@ -152,7 +152,7 @@ public abstract class ChipElm extends CircuitElm {
 	protected int rectPointsX[], rectPointsY[];
 	public Pin pins[];
 	public int sizeX, sizeY, flippedSizeX, flippedSizeY;
-	boolean lastClock;
+	protected boolean lastClock;
 	protected void drag(int xx, int yy) {
 	    yy = sim.snapGrid(yy);
 	    if (xx < x) {
@@ -202,7 +202,7 @@ public abstract class ChipElm extends CircuitElm {
 	}
 	
 	// see if we can move pin to position xp, yp, and return the new position
-	boolean getPinPos(int xp, int yp, int pin, int pos[]) {
+	protected boolean getPinPos(int xp, int yp, int pin, int pos[]) {
 	    int x0 = x+cspc2; int y0 = y;
 	    int xr = x0-cspc;
 	    int yr = y0-cspc;
@@ -232,7 +232,7 @@ public abstract class ChipElm extends CircuitElm {
 	    return true;
 	}
 	
-	int getOverlappingPin(int p1, int p2, int pin) {
+	protected int getOverlappingPin(int p1, int p2, int pin) {
 	    for (int i = 0; i != getPostCount(); i++) {
 		if (pin == i)
 		    continue;
@@ -270,7 +270,7 @@ public abstract class ChipElm extends CircuitElm {
 	    if (vsc != getVoltageSourceCount())
 		CirSim.console("voltage source count does not match number of outputs");
 	}
-	void execute() {}
+	protected void execute() {}
 	protected void doStep() {
 	    int i;
 	    for (i = 0; i != getPostCount(); i++) {
@@ -316,7 +316,7 @@ public abstract class ChipElm extends CircuitElm {
 	    return s;
 	}
 	
-	void writeOutput(int n, boolean value) {
+	protected void writeOutput(int n, boolean value) {
 	    if (!pins[n].output)
 		CirSim.console("pin " + n + " is not an output!");
 	    pins[n].value = value;
@@ -357,9 +357,9 @@ protected void setCurrent(int x, double c) {
 	    return pins[n].current;
 	}
 	
-	boolean isFlippedX () { return hasFlag(FLAG_FLIP_X ); }
-	boolean isFlippedY () { return hasFlag(FLAG_FLIP_Y ); }
-	boolean isFlippedXY() { return hasFlag(FLAG_FLIP_XY); }
+	protected boolean isFlippedX () { return hasFlag(FLAG_FLIP_X ); }
+	protected boolean isFlippedY () { return hasFlag(FLAG_FLIP_Y ); }
+	protected boolean isFlippedXY() { return hasFlag(FLAG_FLIP_XY); }
 	
 	public EditInfo getEditInfo(int n) {
 	    if (!isDigitalChip())
@@ -386,7 +386,7 @@ protected void setCurrent(int x, double c) {
 	public EditInfo getChipEditInfo(int n) { return null; }
 	public void setChipEditValue(int n, EditInfo ei) { }
 	
-	static String writeBits(boolean[] data) {
+	protected static String writeBits(boolean[] data) {
 		StringBuilder sb = new StringBuilder();
 		int integer = 0;
 		int bitIndex = 0;
@@ -408,7 +408,7 @@ protected void setCurrent(int x, double c) {
 		}
 		return sb.toString();
 	}
-	static void readBits(StringTokenizer st, boolean[] output) {
+	protected static void readBits(StringTokenizer st, boolean[] output) {
 		int integer = 0;
 		int bitIndex = Integer.MAX_VALUE;
 		for (int i = 0; i < output.length; i++) {
@@ -424,14 +424,14 @@ protected void setCurrent(int x, double c) {
 		}
 	}
 
-	static final int SIDE_N = 0;
+	public static final int SIDE_N = 0;
 	public static final int SIDE_S = 1;
-	static final int SIDE_W = 2;
-	static final int SIDE_E = 3;
+	public static final int SIDE_W = 2;
+	public static final int SIDE_E = 3;
 	
-	static final int sideFlipXY[] = { SIDE_W, SIDE_E, SIDE_N, SIDE_S };
+	protected static final int sideFlipXY[] = { SIDE_W, SIDE_E, SIDE_N, SIDE_S };
 
-	int flippedXSide(int s) {
+	protected int flippedXSide(int s) {
 	    if (!isFlippedX())
 		return s;
 	    if (s == SIDE_W)
@@ -441,7 +441,7 @@ protected void setCurrent(int x, double c) {
 	    return s;
 	}
 	
-	void flipX(int center2, int count) {
+	protected void flipX(int center2, int count) {
 	    flags ^= FLAG_FLIP_X;
 	    if (count != 1) {
 		int xs = (flippedSizeX+1)*cspc2;
@@ -451,7 +451,7 @@ protected void setCurrent(int x, double c) {
 	    setPoints();
 	}
 
-	void flipY(int center2, int count) {
+	protected void flipY(int center2, int count) {
 	    flags ^= FLAG_FLIP_Y;
 	    if (count != 1) {
 		int ys = (flippedSizeY-1)*cspc2;
@@ -461,7 +461,7 @@ protected void setCurrent(int x, double c) {
 	    setPoints();
 	}
 
-	void flipXY(int xmy, int count) {
+	protected void flipXY(int xmy, int count) {
 	    flags ^= FLAG_FLIP_XY;
 
 	    // FLAG_FLIP_XY is applied first.  So need to swap X and Y
@@ -487,7 +487,7 @@ protected void setCurrent(int x, double c) {
 	    public boolean lineOver, bubble, clock, output, value, state, selected;
 	    public double curcount, current;
             public int clockPointsX[], clockPointsY[];
-	    void setPoint(int px, int py, int dx, int dy, int dax, int day, int sx, int sy) {
+	    protected void setPoint(int px, int py, int dx, int dy, int dax, int day, int sx, int sy) {
 		if (isFlippedX()) {
 		    dx = -dx;
 		    dax = -dax;
@@ -535,7 +535,7 @@ protected void setCurrent(int x, double c) {
 	    }
 
 	    // convert position, side to a grid position (0=top left) so we can detect overlaps
-	    int toGrid(int p, int s) {
+	    protected int toGrid(int p, int s) {
 		if (s == SIDE_N)
 		    return p;
 		if (s == SIDE_S)
@@ -547,14 +547,14 @@ protected void setCurrent(int x, double c) {
 		return -1;
 	    }
 	    
-	    boolean overlaps(int p, int s) {
+	    protected boolean overlaps(int p, int s) {
 		int g = toGrid(p, s);
 		if (g == -1)
 		    return true;
 		return toGrid(pos, side) == g;
 	    }
 	    
-	    void fixName() {
+	    public void fixName() {
 		if (text.startsWith("/")) {
 		    text = text.substring(1);
 		    lineOver = true;

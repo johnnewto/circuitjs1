@@ -28,7 +28,7 @@ package com.lushprojects.circuitjs1.client;
 	    super(xx, yy);
 	    setSize(2);
 	}
-	boolean needsBits() { return false; }
+	protected boolean needsBits() { return false; }
 	protected void setupPins() { }
 	protected int getVoltageSourceCount() { return 0; }
 	void setPins(Pin p[]) {

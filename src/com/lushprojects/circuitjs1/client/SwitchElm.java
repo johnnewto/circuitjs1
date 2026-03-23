@@ -19,14 +19,16 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.electronics.digital.LogicInputElm;
+
 // SPST switch
-class SwitchElm extends CircuitElm {
-    boolean momentary;
+public class SwitchElm extends CircuitElm {
+    protected boolean momentary;
     // position 0 == closed, position 1 == open
-    int position, posCount;
-    final int FLAG_IEC = 2;
-    final int FLAG_LABEL = 4;
-    String label;
+    protected int position, posCount;
+    protected final int FLAG_IEC = 2;
+    protected final int FLAG_LABEL = 4;
+    protected String label;
     
     public SwitchElm(int xx, int yy) {
 	super(xx, yy);
@@ -35,7 +37,7 @@ class SwitchElm extends CircuitElm {
 	posCount = 2;
 	label = null;
     }
-    SwitchElm(int xx, int yy, boolean mm) {
+    protected SwitchElm(int xx, int yy, boolean mm) {
 	super(xx, yy);
 	position = (mm) ? 1 : 0;
 	momentary = mm;
@@ -138,7 +140,7 @@ class SwitchElm extends CircuitElm {
 	drawPosts(g);
     }
     
-    Rectangle getSwitchRect() {
+    protected Rectangle getSwitchRect() {
 	interpPoint(lead1, lead2, ps,  0, openhs);
 	return new Rectangle(lead1).union(new Rectangle(lead2)).union(new Rectangle(ps));
     }
@@ -187,7 +189,7 @@ class SwitchElm extends CircuitElm {
     protected boolean getConnection(int n1, int n2) { return position == 0; }
     protected boolean isWireEquivalent() { return position == 0; }
     protected boolean isRemovableWire() { return position == 0; }
-    boolean useIECSymbol() { return (flags & FLAG_IEC) != 0; }
+    protected boolean useIECSymbol() { return (flags & FLAG_IEC) != 0; }
     
     public EditInfo getEditInfo(int n) {
 	if (n == 0) {
