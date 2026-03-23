@@ -76,7 +76,7 @@ class TimerElm extends ChipElm {
 	if (hasGroundPin())
 	    sim.stampNonLinear(nodes[N_GND]);
     }
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	// need current for V, discharge, control, ground; output current is
 	// calculated for us, and other pins have no current.
 	pins[N_VCC].current = (volts[N_CTL]-volts[N_VCC])/5000;
@@ -94,8 +94,7 @@ class TimerElm extends ChipElm {
     }
     boolean out;
     boolean triggerSuppressed;
-    
-    void startIteration() {
+protected void startIteration() {
 	double groundVolts = hasGroundPin() ? volts[N_GND] : 0;	
 	out = volts[N_OUT] > (volts[N_VCC]+groundVolts)/2;
 	// check comparators

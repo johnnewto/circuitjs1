@@ -75,7 +75,7 @@ class SparkGapElm extends CircuitElm {
 	drawPosts(g);
     }
     
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	double vd = volts[0] - volts[1];
 	current = vd/resistance;
     }
@@ -84,8 +84,7 @@ class SparkGapElm extends CircuitElm {
 	super.reset();
 	state = false;
     }
-
-    void startIteration() {
+protected void startIteration() {
 	if (Math.abs(current) < holdcurrent)
 	    state = false;
 	double vd = volts[0] - volts[1];

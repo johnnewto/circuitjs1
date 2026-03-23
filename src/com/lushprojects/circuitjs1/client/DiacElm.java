@@ -104,11 +104,11 @@ class DiacElm extends CircuitElm {
 	drawPosts(g);
     }
     
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	double r = (state) ? onresistance : offresistance;
 	current = (volts[0]-volts[2])/r + (volts[0]-volts[3])/r;
     }
-    void startIteration() {
+protected void startIteration() {
 	double vd = volts[0] - volts[1];
 	if(Math.abs(current) < holdcurrent) state = false;	
 	if(Math.abs(vd) > breakdown) state = true;
@@ -126,7 +126,7 @@ class DiacElm extends CircuitElm {
 	diode1.stamp(nodes[2], nodes[1]);
 	diode2.stamp(nodes[1], nodes[3]);
     }
-    int getInternalNodeCount() { return 2; }
+    protected int getInternalNodeCount() { return 2; }
     protected void getInfo(String arr[]) {
 	arr[0] = "DIAC";
 	getBasicInfo(arr);

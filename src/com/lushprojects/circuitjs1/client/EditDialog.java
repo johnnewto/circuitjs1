@@ -49,7 +49,7 @@ interface Editable {
     void setEditValue(int n, EditInfo ei);
 }
 
-class EditDialog extends Dialog {
+public class EditDialog extends Dialog {
 	Editable elm;
 	CirSim cframe;
 	Button applyButton, okButton, cancelButton;
@@ -291,7 +291,7 @@ class EditDialog extends Dialog {
 		return parseUnits(s);
 	}
 	
-	static double parseUnits(String s) throws java.text.ParseException {
+	public static double parseUnits(String s) throws java.text.ParseException {
 		s = s.trim();
 		double rmsMult = 1;
 		if (s.endsWith("rms")) {

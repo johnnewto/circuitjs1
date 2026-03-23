@@ -273,7 +273,7 @@ class ProbeElm extends CircuitElm {
         }
     }
 
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	current = (resistance == 0) ? 0 : (volts[0]-volts[1])/resistance;
     }
 

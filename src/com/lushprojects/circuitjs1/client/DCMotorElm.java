@@ -65,7 +65,7 @@ class DCMotorElm extends CircuitElm {
 	allocNodes();
     }
     protected int getPostCount() { return 2; }
-    int getInternalNodeCount() { return 4; }
+    protected int getInternalNodeCount() { return 4; }
     protected int getVoltageSourceCount() { return 2; }
     protected void setVoltageSource(int n, int v) { voltSources[n] = v; }
     protected void reset() {
@@ -99,7 +99,7 @@ class DCMotorElm extends CircuitElm {
 	sim.stampVoltageSource(nodes[4], 0, voltSources[1]); 
 	//System.out.println("doing stamp voltage "+voltSource);
     }
-    void startIteration() {
+protected void startIteration() {
 	ind.startIteration(volts[0]-volts[2]);
 	indInertia.startIteration(volts[4]-volts[5]);
 	// update angle:
@@ -126,15 +126,14 @@ class DCMotorElm extends CircuitElm {
 	ind.doStep(volts[0]-volts[2]);
 	indInertia.doStep(volts[4]-volts[5]);
     }
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	coilCurrent = ind.calculateCurrent(volts[0]-volts[2]);
 	inertiaCurrent = indInertia.calculateCurrent(volts[4]-volts[5]);
 //	current = (volts[2]-volts[3])/resistance;
 	speed=inertiaCurrent;
     }
 //    public double getCurrent() { current = (volts[2]-volts[3])/resistance; return current; }
-
-    void setCurrent(int vn, double c) {
+protected void setCurrent(int vn, double c) {
 	if (vn == voltSources[0])
 	    current = c;
     }

@@ -112,7 +112,7 @@ class TriStateElm extends CircuitElm {
 	drawPosts(g);
     }
 
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	// current from node 3 to node 1
 	double current31 = (volts[3]-volts[1])/resistance;
 	
@@ -159,7 +159,7 @@ class TriStateElm extends CircuitElm {
 	sim.updateVoltageSource(0, nodes[3], voltSource, volts[0] > highVoltage*.5 ? highVoltage : 0);
     }
 
-    void drag(int xx, int yy) {
+    protected void drag(int xx, int yy) {
 	// use mouse to select which side the buffer enable should be on
 	boolean flip = (xx < x) == (yy < y);
 	
@@ -179,7 +179,7 @@ class TriStateElm extends CircuitElm {
 	return 3;
     }
     
-    int getInternalNodeCount() {
+    protected int getInternalNodeCount() {
 	return 1;
     }
 
@@ -205,7 +205,7 @@ class TriStateElm extends CircuitElm {
 	return false;
     }
 
-    boolean hasGroundConnection(int n1) {
+    protected boolean hasGroundConnection(int n1) {
 	return (n1 == 1);
     }
 
@@ -248,4 +248,3 @@ class TriStateElm extends CircuitElm {
 	super.flipXY(c2, count);
     }
 }
-

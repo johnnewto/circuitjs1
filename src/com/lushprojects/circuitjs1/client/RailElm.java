@@ -108,7 +108,7 @@ class RailElm extends VoltageElm {
 	drawLabeledNode(g, s, point1, lead1);
     }
     
-    double getVoltageDiff() { return volts[0]; }
+    protected double getVoltageDiff() { return volts[0]; }
     protected void stamp() {
 	if (waveform == WF_DC)
 	    sim.stampVoltageSource(0, nodes[0], voltSource, getVoltage());
@@ -119,7 +119,7 @@ class RailElm extends VoltageElm {
 	if (waveform != WF_DC)
 	    sim.updateVoltageSource(0, nodes[0], voltSource, getVoltage());
     }
-    boolean hasGroundConnection(int n1) { return true; }
+    protected boolean hasGroundConnection(int n1) { return true; }
     int getShortcut() { return 'V'; }
     
 //    void drawHandles(Graphics g, Color c) {

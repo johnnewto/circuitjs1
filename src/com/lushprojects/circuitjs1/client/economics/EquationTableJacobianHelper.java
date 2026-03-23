@@ -1,5 +1,6 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.economics;
 
+import com.lushprojects.circuitjs1.client.*;
 import java.util.LinkedHashSet;
 
 /**
@@ -115,7 +116,7 @@ final class EquationTableJacobianHelper {
      * @return {@code null} if eligible; a non-null reason string if ineligible.
      */
     static String getVoltageModeIneligibilityReason(EquationTableElm table, EquationTableElm.EquationRow rowData) {
-        CirSim sim = CircuitElm.sim;
+        CirSim sim = CirSim.getInstance();
         if (!table.isMnaMode()) {
             return "ineligible: table not in mna mode";
         }
@@ -156,7 +157,7 @@ final class EquationTableJacobianHelper {
      */
     static String getFlowModeIneligibilityReason(EquationTableElm table, EquationTableElm.EquationRow rowData,
             int sourceNode, int targetNode) {
-        CirSim sim = CircuitElm.sim;
+        CirSim sim = CirSim.getInstance();
         if (!table.isMnaMode()) {
             return "ineligible: table not in mna mode";
         }
@@ -262,7 +263,7 @@ final class EquationTableJacobianHelper {
      */
     static int stampSingleNodeJacobian(EquationTableElm table, Expr expr, ExprState state,
             LinkedHashSet<String> refs, double fVal, int nodeNumber, double matrixSign, int[] stats) {
-        CirSim sim = CircuitElm.sim;
+        CirSim sim = CirSim.getInstance();
         if (sim == null) return 0;
         if (nodeNumber <= 0) return 0;
         double rhs = -matrixSign * fVal;
@@ -276,7 +277,7 @@ final class EquationTableJacobianHelper {
             if (labeledNode == null || labeledNode.intValue() <= 0) continue;
             stats[0]++;
 
-            double baseValue = sim.getCircuitValueSlotManager().resolveSlotValue(refName);
+            double baseValue = sim.resolveSlotValueForUi(refName);
             double dv = Math.abs(baseValue) * 1e-6;
             if (dv < 1e-6) dv = 1e-6;
 

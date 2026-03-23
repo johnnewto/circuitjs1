@@ -56,7 +56,7 @@ package com.lushprojects.circuitjs1.client;
 	    // Z current = gain * X current
 	    sim.stampCCCS(0, nodes[2], pins[0].voltSource, gain);
 	}
-	void calculateCurrent() {
+	protected void calculateCurrent() {
 	    super.calculateCurrent();
 	    pins[2].current = pins[0].current * gain;
 	}

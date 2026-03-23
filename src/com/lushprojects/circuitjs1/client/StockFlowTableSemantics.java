@@ -9,12 +9,12 @@ package com.lushprojects.circuitjs1.client;
 /**
  * Pure-Java helpers for stock-flow integration and convergence semantics.
  */
-final class StockFlowTableSemantics {
+public final class StockFlowTableSemantics {
 
     private StockFlowTableSemantics() {
     }
 
-    static double convergenceLimit(int subIterations, double[] integratedValues, double[] lastColumnSums) {
+    public static double convergenceLimit(int subIterations, double[] integratedValues, double[] lastColumnSums) {
         double relativeTolerance;
         if (subIterations < 10) {
             relativeTolerance = 0.001;
@@ -39,18 +39,18 @@ final class StockFlowTableSemantics {
         return maxMagnitude * relativeTolerance;
     }
 
-    static boolean shouldMarkUnconverged(double newColumnSum, double oldColumnSum, double convergeLimit) {
+    public static boolean shouldMarkUnconverged(double newColumnSum, double oldColumnSum, double convergeLimit) {
         return Math.abs(newColumnSum - oldColumnSum) > convergeLimit;
     }
 
-    static double integratedValue(double t, double initialValue, double lastOutput, double timestep, double columnSum) {
+    public static double integratedValue(double t, double initialValue, double lastOutput, double timestep, double columnSum) {
         if (t == 0.0) {
             return initialValue;
         }
         return lastOutput + timestep * columnSum;
     }
 
-    static double committedIntegrationState(double integratedValue) {
+    public static double committedIntegrationState(double integratedValue) {
         return integratedValue;
     }
 }

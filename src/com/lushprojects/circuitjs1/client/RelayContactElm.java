@@ -202,7 +202,7 @@ class RelayContactElm extends CircuitElm {
     protected void doStep() {
 	sim.stampResistor(nodes[nSwitch0], nodes[nSwitch1], i_position == 0 ? r_on : r_off);
     }
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	// actually this isn't correct, since there is a small amount
 	// of current through the switch when off
 	if (i_position == 1)

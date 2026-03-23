@@ -176,7 +176,7 @@ public class PieChartElm extends GraphicElm {
     }
     
     @Override
-    void drag(int xx, int yy) {
+    protected void drag(int xx, int yy) {
         // Default drag behavior from CircuitElm handles resizing
         x = xx;
         y = yy;

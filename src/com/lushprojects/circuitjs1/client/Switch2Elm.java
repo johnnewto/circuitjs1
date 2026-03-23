@@ -113,7 +113,7 @@ package com.lushprojects.circuitjs1.client;
 	    return (n == 0) ? point1 : swposts[n-1];
 	}
 	protected int getPostCount() { return 1+throwCount; }
-	void calculateCurrent() {
+	protected void calculateCurrent() {
 	    if (position == 2 && hasCenterOff())
 		current = 0;
 	}

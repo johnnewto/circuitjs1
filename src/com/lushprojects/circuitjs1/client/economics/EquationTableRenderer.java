@@ -4,15 +4,14 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
-
-import com.lushprojects.circuitjs1.client.economics.*;
+package com.lushprojects.circuitjs1.client.economics;
 
 import com.google.gwt.canvas.client.Canvas;
 import com.google.gwt.canvas.dom.client.Context2d;
 import com.google.gwt.core.client.Duration;
+import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.economics.EquationTableElm.RowOutputMode;
 import com.lushprojects.circuitjs1.client.util.Locale;
-import com.lushprojects.circuitjs1.client.EquationTableElm.RowOutputMode;
 
 /**
  * EquationTableRenderer — All drawing operations for {@link EquationTableElm}.
@@ -624,8 +623,8 @@ public class EquationTableRenderer {
      */
     private void updateHoveredRow(int tableX, int tableY) {
         int newHoveredRow = -1;
-        int mouseCircuitX = table.sim.inverseTransformX(table.sim.getMouseCursorX());
-        int mouseCircuitY = table.sim.inverseTransformY(table.sim.getMouseCursorY());
+        int mouseCircuitX = table.getMouseCircuitX();
+        int mouseCircuitY = table.getMouseCircuitY();
         
         if (mouseCircuitX >= tableX && mouseCircuitX <= tableX + table.getTableWidth() &&
             mouseCircuitY >= tableY && mouseCircuitY <= tableY + table.getTableHeight()) {

@@ -128,7 +128,7 @@ class TriodeElm extends CircuitElm {
     }
     protected int getPostCount() { return 3; }
     double getPower() { return (volts[0]-volts[2])*currentc + (volts[gridN]-volts[cathN])*currentg; }
-    double getCurrent() { return currentc; } // for scope
+    protected double getCurrent() { return currentc; } // for scope
 
     final int gridN = 1;
     final int cathN = 2;
@@ -226,8 +226,8 @@ class TriodeElm extends CircuitElm {
 	if (n == 1 && ei.value > 0)
 	    kg1 = ei.value;
     }
-    boolean canViewInScope() { return true; }
-    double getVoltageDiff() { return volts[plateN] - volts[cathN]; }    
+    protected boolean canViewInScope() { return true; }
+    protected double getVoltageDiff() { return volts[plateN] - volts[cathN]; }    
     boolean canFlipX() { return false; }
     boolean canFlipY() { return false; }
 }

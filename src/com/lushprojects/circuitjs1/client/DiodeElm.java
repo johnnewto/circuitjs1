@@ -76,7 +76,7 @@ class DiodeElm extends CircuitElm {
 	allocNodes();
     }
     
-    int getInternalNodeCount() { return hasResistance ? 1 : 0; }
+    protected int getInternalNodeCount() { return hasResistance ? 1 : 0; }
     
     public void updateModels() {
 	setup();
@@ -157,7 +157,7 @@ class DiodeElm extends CircuitElm {
     protected void doStep() {
 	diode.doStep(volts[0]-volts[diodeEndNode]);
     }
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	current = diode.calculateCurrent(volts[0]-volts[diodeEndNode]);
     }
     protected void getInfo(String arr[]) {

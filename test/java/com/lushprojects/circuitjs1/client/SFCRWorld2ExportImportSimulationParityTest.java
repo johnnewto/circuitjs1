@@ -1,5 +1,6 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.economics.ComputedValues;
 import com.lushprojects.circuitjs1.client.io.SFCRParseResult;
 import com.lushprojects.circuitjs1.client.io.SFCRParseResultExporter;
 import com.lushprojects.circuitjs1.client.io.SFCRExporter;

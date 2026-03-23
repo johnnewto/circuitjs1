@@ -332,7 +332,7 @@ class TestPointElm extends CircuitElm {
         return selectedValue;
     }
     
-    double getVoltageDiff() { return volts[0]; }
+    protected double getVoltageDiff() { return volts[0]; }
     
     protected void getInfo(String arr[]) {
         arr[0] = label;

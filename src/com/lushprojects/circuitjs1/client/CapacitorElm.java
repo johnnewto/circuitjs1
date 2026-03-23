@@ -151,7 +151,7 @@ class CapacitorElm extends CircuitElm {
 	    if (seriesResistance > 0)
 		sim.stampResistor(nodes[1], nodes[2], seriesResistance);
 	}
-	void startIteration() {
+protected void startIteration() {
 	    if (isTrapezoidal())
 		curSourceValue = -voltdiff/compResistance-current;
 	    else
@@ -163,14 +163,14 @@ class CapacitorElm extends CircuitElm {
 	    calculateCurrent();
 	}
 	
-	void setNodeVoltage(int n, double c) {
+	protected void setNodeVoltage(int n, double c) {
 	    // do not calculate current, that only gets done in stepFinished().  otherwise calculateCurrent() may get
 	    // called while stamping the circuit, which might discharge the cap (since we use that current to calculate
 	    // curSourceValue in startIteration)
 	    volts[n] = c;
 	}	
 	
-	void calculateCurrent() {
+	protected void calculateCurrent() {
 	    double voltdiff = volts[0] - volts[capNode2];
 	    if (sim.dcAnalysisFlag) {
 		current = voltdiff/1e8;
@@ -188,7 +188,7 @@ class CapacitorElm extends CircuitElm {
 		return;
 	    sim.stampCurrentSource(nodes[0], nodes[capNode2], curSourceValue);
  	}
-	int getInternalNodeCount() { return (!sim.dcAnalysisFlag && seriesResistance > 0) ? 1 : 0; }
+	protected int getInternalNodeCount() { return (!sim.dcAnalysisFlag && seriesResistance > 0) ? 1 : 0; }
 	protected void getInfo(String arr[]) {
 	    arr[0] = "capacitor";
 	    getBasicInfo(arr);

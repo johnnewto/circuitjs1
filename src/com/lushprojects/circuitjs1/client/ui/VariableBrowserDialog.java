@@ -40,7 +40,6 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 import com.google.gwt.user.client.Event;
 import com.google.gwt.user.client.Event.NativePreviewHandler;
 import com.google.gwt.user.client.Event.NativePreviewEvent;
-import com.lushprojects.circuitjs1.client.StockFlowRegistry;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;

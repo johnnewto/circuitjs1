@@ -119,15 +119,14 @@ package com.lushprojects.circuitjs1.client;
 	}
 	
 	protected int getPostCount() { return 3; }
-	
-	void setCurrent(int vn, double c) {
+protected void setCurrent(int vn, double c) {
 	    // set current for voltage source vn to c
 	    if (vn == voltSources[0])
 		currents[both ? 0 : position/2] = c;
 	    else if (vn == voltSources[1])
 		currents[1] = c;
 	}
-	void calculateCurrent() {
+	protected void calculateCurrent() {
 	    // make sure current of unconnected pole is zero
 	    if (!both)
 		currents[1-(position/2)] = 0;

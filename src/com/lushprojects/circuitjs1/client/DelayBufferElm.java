@@ -104,7 +104,7 @@ class DelayBufferElm extends CircuitElm {
 		delayEndTime = context.getTime() + delay;
 	    sim.updateVoltageSource(0, nodes[1], voltSource, outState ? highVoltage : 0);
 	}
-	double getVoltageDiff() { return volts[0]; }
+	protected double getVoltageDiff() { return volts[0]; }
 	protected void getInfo(String arr[]) {
 	    arr[0] = Locale.LS("buffer");
 	    arr[1] = Locale.LS("delay = " )+ getUnitText(delay, "s");
@@ -131,7 +131,7 @@ class DelayBufferElm extends CircuitElm {
 	// there is no current path through the inverter input, but there
 	// is an indirect path through the output to ground.
 	protected boolean getConnection(int n1, int n2) { return false; }
-	boolean hasGroundConnection(int n1) {
+	protected boolean hasGroundConnection(int n1) {
 	    return (n1 == 1);
 	}
 	

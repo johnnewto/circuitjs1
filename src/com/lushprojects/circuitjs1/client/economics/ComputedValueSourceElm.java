@@ -4,7 +4,9 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.economics;
+
+import com.lushprojects.circuitjs1.client.*;
 
 /**
  * ComputedValueSourceElm - Bridge element from ComputedValues to circuit
@@ -21,7 +23,7 @@ package com.lushprojects.circuitjs1.client;
  * The element has one output post that drives a voltage equal to the
  * named computed value.
  */
-class ComputedValueSourceElm extends CircuitElm {
+public class ComputedValueSourceElm extends CircuitElm {
     
     /** Name of the value to read from ComputedValues */
     private String valueName = "";
@@ -97,9 +99,12 @@ class ComputedValueSourceElm extends CircuitElm {
         int textY = Math.min(point1.y, point2.y) - 8;
         textPos = new Point(textX, textY);
         
-        // Set bounding box
-        setBbox(point1, point2, BODY_LEN);
-        adjustBbox(textPos.x - 20, textPos.y - 10, textPos.x + 20, textPos.y + 5);
+        // Set bounding box including both element body and label text.
+        int minX = Math.min(Math.min(point1.x, point2.x), textPos.x - 20);
+        int minY = Math.min(Math.min(point1.y, point2.y), textPos.y - 10);
+        int maxX = Math.max(Math.max(point1.x, point2.x), textPos.x + 20);
+        int maxY = Math.max(Math.max(point1.y, point2.y), textPos.y + 5);
+        setBbox(minX, minY, maxX, maxY);
     }
     
     @Override
@@ -159,7 +164,7 @@ class ComputedValueSourceElm extends CircuitElm {
         
         // Draw value name above
         g.setColor(needsHighlight() ? selectColor : whiteColor);
-        g.setFont(unitsFont);
+        g.setFont(new Font("SansSerif", 0, 10));
         String displayName = valueName.length() > 12 ? valueName.substring(0, 12) + "…" : valueName;
         drawCenteredText(g, displayName, circleX, circleY - radius - 4, true);
         
@@ -187,7 +192,7 @@ class ComputedValueSourceElm extends CircuitElm {
     }
     
     @Override
-    double getVoltageDiff() {
+    protected double getVoltageDiff() {
         return volts[0];
     }
     

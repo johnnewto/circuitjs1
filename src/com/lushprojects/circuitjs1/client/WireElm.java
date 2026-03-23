@@ -59,7 +59,7 @@ package com.lushprojects.circuitjs1.client;
 	}
 	protected int getDumpType() { return 'w'; }
 	double getPower() { return 0; }
-	double getVoltageDiff() { return volts[0]; }
+	protected double getVoltageDiff() { return volts[0]; }
 	protected boolean isWireEquivalent() { return true; }
 	protected boolean isRemovableWire() { return true; }
 	public EditInfo getEditInfo(int n) {

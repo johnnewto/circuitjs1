@@ -90,7 +90,7 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 	    drawPosts(g);
 	}
 
-	void calculateCurrent() {
+	protected void calculateCurrent() {
 	    current = (volts[0]-volts[1])/resistance;
 	    //System.out.print(this + " res current set to " + current + "\n");
 	}

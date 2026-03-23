@@ -253,7 +253,7 @@ package com.lushprojects.circuitjs1.client;
 	    }
 	}
 	
-	void calculateCurrent() {
+	protected void calculateCurrent() {
 	    if (diodeDirection == 0 || diodes == null) {
 		// no current
 		int i;

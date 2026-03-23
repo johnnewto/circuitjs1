@@ -102,7 +102,7 @@ package com.lushprojects.circuitjs1.client;
 	    int i = getBasicInfo(arr);
             arr[i++] = "P = " + getUnitText(getPower(), "W");
 	}
-	double getVoltageDiff() {
+	protected double getVoltageDiff() {
 	    return volts[1] - volts[0];
 	}
 	double getPower() { return -getVoltageDiff()*current; }

@@ -294,7 +294,7 @@ class VoltageElm extends CircuitElm {
 	return 1;
     }
     double getPower() { return -getVoltageDiff()*current; }
-    double getVoltageDiff() { return volts[1] - volts[0]; }
+    protected double getVoltageDiff() { return volts[1] - volts[0]; }
     protected void getInfo(String arr[]) {
 	String baseType;
 	switch (waveform) {

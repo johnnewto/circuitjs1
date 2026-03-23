@@ -93,13 +93,13 @@ class MemristorElm extends CircuitElm {
     }
     
     protected boolean nonLinear() { return true; }
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	current = (volts[0]-volts[1])/resistance;
     }
     protected void reset() {
 	dopeWidth = 0;
     }
-    void startIteration() {
+protected void startIteration() {
 	double wd = dopeWidth/totalWidth;
 	dopeWidth += getSimulationContext().getTimeStep()*mobility*r_on*current/totalWidth;
 	if (dopeWidth < 0)

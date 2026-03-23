@@ -260,7 +260,7 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	// there is no current path through the gate inputs, but there
 	// is an indirect path through the output to ground.
 	protected boolean getConnection(int n1, int n2) { return false; }
-	boolean hasGroundConnection(int n1) {
+	protected boolean hasGroundConnection(int n1) {
 	    return (n1 == inputCount);
 	}
 	

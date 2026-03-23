@@ -183,7 +183,7 @@ class MotorProtectionSwitchElm extends CircuitElm {
 	    drawPosts(g);
 	}
 
-	void calculateCurrent() {
+	protected void calculateCurrent() {
 	    int i;
 	    for (i = 0; i != 3; i++)
 		currents[i] = (volts[i*2]-volts[i*2+1])/(blown ? blownResistance : resistance);
@@ -198,8 +198,7 @@ class MotorProtectionSwitchElm extends CircuitElm {
 	protected boolean getConnection(int n1, int n2) {
 	    return n1/2 == n2/2;
 	}
-	
-	void startIteration() {
+protected void startIteration() {
 	    int j;
 	    boolean wasBlown = blown;
 	    for (j = 0; j != 3; j++) {

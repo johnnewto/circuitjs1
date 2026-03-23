@@ -113,7 +113,7 @@ public class ScopeElm extends CircuitElm {
     }
     
     @Override
-    boolean canViewInScope() { 
+    protected boolean canViewInScope() { 
 	return false; 
     }
     

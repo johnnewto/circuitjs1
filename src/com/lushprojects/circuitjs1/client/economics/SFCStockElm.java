@@ -4,7 +4,9 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.economics;
+
+import com.lushprojects.circuitjs1.client.*;
 
 /**
  * SFCStockElm - Stock-Flow Consistent Stock Element
@@ -138,7 +140,7 @@ public class SFCStockElm extends CircuitElm {
     protected int getPostCount() { return 1; }  // Single node representing the stock
     
     @Override
-    void registerLabels() {
+    protected void registerLabels() {
         // Pre-register stock name in the labeled node system BEFORE wire closure.
         // This allows LabeledNodeElm elements with the same name to merge their
         // post with this element's post, so they share the same MNA node.
@@ -148,7 +150,7 @@ public class SFCStockElm extends CircuitElm {
     }
     
     @Override
-    void setNode(int p, int n) {
+    protected void setNode(int p, int n) {
         super.setNode(p, n);
         
         // Update the labeled node entry with the assigned MNA node number.
@@ -200,7 +202,7 @@ public class SFCStockElm extends CircuitElm {
             compResistance = dt / stockCapacitance;
         }
         
-        if (sim.dcAnalysisFlag) {
+        if (sim.isDcAnalysisForUi()) {
             // For DC analysis, treat as open circuit with initial voltage
             // Stamp high resistance to maintain voltage
             sim.stampResistor(nodes[0], 0, 1e8);
@@ -215,7 +217,7 @@ public class SFCStockElm extends CircuitElm {
     }
     
     @Override
-    void startIteration() {
+protected void startIteration() {
         // Guard against division by zero before first stamp()
         if (compResistance <= 0) {
             curSourceValue = 0;
@@ -234,7 +236,7 @@ public class SFCStockElm extends CircuitElm {
     
     @Override
     protected void doStep() {
-        if (sim.dcAnalysisFlag) {
+        if (sim.isDcAnalysisForUi()) {
             return;
         }
         
@@ -256,7 +258,7 @@ public class SFCStockElm extends CircuitElm {
     }
     
     @Override
-    void calculateCurrent() {
+    protected void calculateCurrent() {
         if (compResistance > 0) {
             // Current through companion resistor
             netCurrent = volts[0] / compResistance + curSourceValue;
@@ -264,7 +266,7 @@ public class SFCStockElm extends CircuitElm {
     }
     
     @Override
-    double getCurrent() {
+    protected double getCurrent() {
         return netCurrent;
     }
     
@@ -275,7 +277,7 @@ public class SFCStockElm extends CircuitElm {
     }
     
     @Override
-    double getVoltageDiff() {
+    protected double getVoltageDiff() {
         // Single-post element - voltage relative to ground
         return volts[0];
     }

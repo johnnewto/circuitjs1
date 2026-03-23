@@ -62,14 +62,14 @@ public class LabeledNodeElm extends CircuitElm {
 
     public String text;
     
-    static class LabelEntry {
-	Point point;
-	int node;
+    public static class LabelEntry {
+	public Point point;
+	public int node;
 	
-	LabelEntry() {
+	public LabelEntry() {
 	}
 	
-	LabelEntry(Point point, int node) {
+	public LabelEntry(Point point, int node) {
 	    this.point = point;
 	    this.node = node;
 	}
@@ -94,7 +94,7 @@ public class LabeledNodeElm extends CircuitElm {
 	@JsMethod(namespace = JsPackage.GLOBAL, name = "console.log")
 	public static native void console(String text);
 
-    static void resetNodeList() {
+    public static void resetNodeList() {
 		labelList = new HashMap<String,LabelEntry>();
 		invalidateCache();
     }
@@ -222,7 +222,7 @@ public class LabeledNodeElm extends CircuitElm {
 		return null;
     }
     
-    void setNode(int p, int n) {
+    protected void setNode(int p, int n) {
 		super.setNode(p, n);
 		
 		// save node number so we can return it in getByName()
@@ -243,7 +243,7 @@ public class LabeledNodeElm extends CircuitElm {
     //     sim.stampResistor(nodes[0], 0, 1e8);
     // }
     
-    void drag(int xx, int yy) {
+    protected void drag(int xx, int yy) {
 	xx = sim.snapGrid(xx);
 	yy = sim.snapGrid(yy);
 	// Check if a specific handle was grabbed
@@ -273,7 +273,7 @@ public class LabeledNodeElm extends CircuitElm {
     protected boolean isWireEquivalent() { return true; }
     protected boolean isRemovableWire() { return true; }
     
-    static Integer getByName(String n) {
+    public static Integer getByName(String n) {
 		if (labelList == null)
 			return null;
 		LabelEntry le = labelList.get(n);
@@ -353,8 +353,8 @@ public class LabeledNodeElm extends CircuitElm {
 		// Hint tooltip is drawn by CirSim.drawHintTooltip() after all elements
     }
     protected double getCurrentIntoNode(int n) { return -current; }
-    void setCurrent(int x, double c) { current = c; }
-    double getVoltageDiff() { 
+protected void setCurrent(int x, double c) { current = c; }
+    protected double getVoltageDiff() { 
         return volts[0]; 
     }
     

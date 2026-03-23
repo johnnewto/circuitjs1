@@ -121,7 +121,7 @@ class FuseElm extends CircuitElm {
 	    drawPosts(g);
 	}
 
-	void calculateCurrent() {
+	protected void calculateCurrent() {
 	    current = (volts[0]-volts[1])/(blown ? blownResistance : resistance);
 	}
 	protected void stamp() {
@@ -129,7 +129,7 @@ class FuseElm extends CircuitElm {
 	    sim.stampNonLinear(nodes[1]);
 	}
 	protected boolean nonLinear() { return true; }
-	void startIteration() {
+protected void startIteration() {
 	    SimulationContext context = getSimulationContext();
 	    double i = getCurrent();
 	    

@@ -344,6 +344,12 @@ public interface ConsoleLogger {
 - `StockMasterElm.java`, `FlowsMasterElm.java`
 - `ComputedValues.java`, `ComputedValueSourceElm.java`
 - `StockFlowRegistry.java`
+- `EquationElm.java`
+- `SFCSankeyElm.java`
+
+### PR6 Scope Note
+- `TableVoltageElm.java` is intentionally **excluded** from PR6 economics batches.
+- Treat `TableVoltageElm` as an electronics source element and migrate it with PR7 Sources.
 
 ### Economics-Coupled Dialogs
 - Move economics-specific dialogs together with economics elements, same package/directory:
@@ -365,7 +371,7 @@ public interface ConsoleLogger {
 **Largest batch — split into sub-PRs:**
 
 1. **Passives**: ResistorElm, CapacitorElm, InductorElm, PotElm
-2. **Sources**: VoltageElm, CurrentElm, RailElm variants, NoiseElm
+2. **Sources**: VoltageElm, CurrentElm, RailElm variants, NoiseElm, TableVoltageElm
 3. **Semiconductors**: DiodeElm, TransistorElm, MosfetElm, JfetElm, etc.
 4. **Digital**: GateElm subclasses, ChipElm, FlipFlops, etc.
 5. **Misc**: Switches, Relays, Transformers, etc.

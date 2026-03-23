@@ -4,10 +4,9 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.economics;
 
-import com.lushprojects.circuitjs1.client.economics.*;
-
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.economics.TableColumn.ColumnType;
 import com.lushprojects.circuitjs1.client.SFCSankeyRenderer.SankeyLayout;
 import java.util.ArrayList;
@@ -321,7 +320,7 @@ public class SFCTableElm extends TableElm {
      * Pure computational element - no MNA participation.
      */
     @Override
-    int getInternalNodeCount() {
+    protected int getInternalNodeCount() {
         return 0;
     }
     

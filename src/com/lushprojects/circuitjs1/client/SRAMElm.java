@@ -201,7 +201,7 @@ import com.google.gwt.user.client.ui.TextArea;
 	    }
 	}
 	protected int getVoltageSourceCount() { return dataBits; }
-	int getInternalNodeCount() { return dataBits; }
+	protected int getInternalNodeCount() { return dataBits; }
 	
 	int address;
 	

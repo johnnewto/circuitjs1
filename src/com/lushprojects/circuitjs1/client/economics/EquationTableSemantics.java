@@ -4,29 +4,30 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.economics;
 
+import com.lushprojects.circuitjs1.client.*;
 /**
  * Pure-Java semantics helpers for EquationTable row modes and convergence checks.
  */
-final class EquationTableSemantics {
+public final class EquationTableSemantics {
 
     private EquationTableSemantics() {
     }
 
-    static boolean usesVoltageSource(EquationTableElm.RowOutputMode mode) {
+    public static boolean usesVoltageSource(EquationTableElm.RowOutputMode mode) {
         return mode == EquationTableElm.RowOutputMode.VOLTAGE_MODE;
     }
 
-    static boolean isFlowMode(EquationTableElm.RowOutputMode mode) {
+    public static boolean isFlowMode(EquationTableElm.RowOutputMode mode) {
         return mode == EquationTableElm.RowOutputMode.FLOW_MODE;
     }
 
-    static boolean isParamMode(EquationTableElm.RowOutputMode mode) {
+    public static boolean isParamMode(EquationTableElm.RowOutputMode mode) {
         return mode == EquationTableElm.RowOutputMode.PARAM_MODE;
     }
 
-    static boolean rowForcesNonLinear(EquationTableElm.RowOutputMode mode, boolean isCommentRow) {
+    public static boolean rowForcesNonLinear(EquationTableElm.RowOutputMode mode, boolean isCommentRow) {
         if (isCommentRow) {
             return false;
         }
@@ -56,7 +57,7 @@ final class EquationTableSemantics {
      * @param lastOutputValue    Previous iteration's value
      * @return Combined tolerance threshold
      */
-    static double convergenceLimit(double baseTolerance,
+    public static double convergenceLimit(double baseTolerance,
                                    int subIterations,
                                    boolean hasDiffExpr,
                                    double outputValue,
@@ -94,11 +95,11 @@ final class EquationTableSemantics {
         return Math.max(absTol, relTol * maxMagnitude);
     }
 
-    static boolean shouldSkipConvergenceCheck(boolean hasDiffExpr, int subIterations) {
+    public static boolean shouldSkipConvergenceCheck(boolean hasDiffExpr, int subIterations) {
         return hasDiffExpr && subIterations < 5;
     }
 
-    static boolean shouldMarkUnconverged(double newValue,
+    public static boolean shouldMarkUnconverged(double newValue,
                                          double lastValue,
                                          double convergeLimit,
                                          boolean hasDiffExpr,
@@ -109,14 +110,14 @@ final class EquationTableSemantics {
         return Math.abs(newValue - lastValue) > convergeLimit;
     }
 
-    static double computeVoltageRowValue(Expr compiledExpr, ExprState state) {
+    public static double computeVoltageRowValue(Expr compiledExpr, ExprState state) {
         if (compiledExpr == null) {
             return 0;
         }
         return compiledExpr.eval(state);
     }
 
-    static double computeFlowRowValue(Expr compiledExpr,
+    public static double computeFlowRowValue(Expr compiledExpr,
                                       ExprState state,
                                       double[] volts,
                                       int sourceNodeIdx,
@@ -128,7 +129,7 @@ final class EquationTableSemantics {
         return compiledExpr.eval(state);
     }
 
-    static double computeParamRowValue(Expr compiledExpr, ExprState state) {
+    public static double computeParamRowValue(Expr compiledExpr, ExprState state) {
         if (compiledExpr == null) {
             return 0;
         }

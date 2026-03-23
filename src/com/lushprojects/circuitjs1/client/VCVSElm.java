@@ -111,8 +111,7 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	protected int getVoltageSourceCount() { return 1; }
 	protected int getDumpType() { return 212; }
         boolean hasCurrentOutput() { return false; }
-
-        void setCurrent(int vn, double c) {
+protected void setCurrent(int vn, double c) {
             if (pins[inputCount].voltSource == vn) {
                 pins[inputCount].current = c;
                 pins[inputCount+1].current = -c;

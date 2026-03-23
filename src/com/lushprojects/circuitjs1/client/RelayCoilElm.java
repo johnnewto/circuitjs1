@@ -222,7 +222,7 @@ class RelayCoilElm extends CircuitElm {
 	return coilPosts[n];
     }
     protected int getPostCount() { return 2; }
-    int getInternalNodeCount() { return 1; }
+    protected int getInternalNodeCount() { return 1; }
     protected void reset() {
 	super.reset();
 	ind.reset();
@@ -251,8 +251,7 @@ class RelayCoilElm extends CircuitElm {
 	}
 	setSwitchPositions();
     }
-    
-    void startIteration() {
+protected void startIteration() {
 	ind.startIteration(volts[nCoil1]-volts[nCoil3]);
 	double absCurrent = Math.abs(coilCurrent);
 	double a = Math.exp(-getSimulationContext().getTimeStep()*1e3);
@@ -312,7 +311,7 @@ class RelayCoilElm extends CircuitElm {
 	double voltdiff = volts[nCoil1]-volts[nCoil3];
 	ind.doStep(voltdiff);
     }
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	double voltdiff = volts[nCoil1]-volts[nCoil3];
 	coilCurrent = ind.calculateCurrent(voltdiff);
     }

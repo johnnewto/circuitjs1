@@ -18,6 +18,7 @@
 */
 
 package com.lushprojects.circuitjs1.client.ui;
+import com.lushprojects.circuitjs1.client.economics.*;
 import com.lushprojects.circuitjs1.client.*;
 
 import com.google.gwt.user.client.ui.DialogBox;
@@ -37,7 +38,6 @@ import com.google.gwt.event.dom.client.KeyUpEvent;
 import com.google.gwt.dom.client.Style.Unit;
 import com.lushprojects.circuitjs1.client.CirSim;
 import com.lushprojects.circuitjs1.client.HintRegistry;
-import com.lushprojects.circuitjs1.client.StockFlowRegistry;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import java.util.List;
 import java.util.ArrayList;

@@ -96,8 +96,7 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	}
 	
 	double lastOutputVoltage;
-	
-	void startIteration() {
+protected void startIteration() {
 	    lastOutputVoltage = volts[1];
 	}
 	protected void doStep() {
@@ -107,7 +106,7 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	    out = Math.max(Math.min(lastOutputVoltage+maxStep, out), lastOutputVoltage-maxStep);
 	    sim.updateVoltageSource(0, nodes[1], voltSource, out);
 	}
-	double getVoltageDiff() { return volts[0]; }
+	protected double getVoltageDiff() { return volts[0]; }
 	protected void getInfo(String arr[]) {
 	    arr[0] = "inverter";
 	    arr[1] = "Vi = " + getVoltageText(volts[0]);
@@ -129,7 +128,7 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	// there is no current path through the inverter input, but there
 	// is an indirect path through the output to ground.
 	protected boolean getConnection(int n1, int n2) { return false; }
-	boolean hasGroundConnection(int n1) {
+	protected boolean hasGroundConnection(int n1) {
 	    return (n1 == 1);
 	}
 	int getShortcut() { return '1'; }

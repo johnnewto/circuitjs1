@@ -17,9 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.economics;
 
-import com.lushprojects.circuitjs1.client.economics.*;
+import com.lushprojects.circuitjs1.client.*;
 
 
 /**
@@ -247,7 +247,7 @@ public class GodlyTableElm extends TableElm {
      * Columns with existing LabeledNodes will use those nodes instead.
      */
     @Override
-    int getInternalNodeCount() {
+    protected int getInternalNodeCount() {
         if (columns == null) return 0;
         
         int cols = getCols();

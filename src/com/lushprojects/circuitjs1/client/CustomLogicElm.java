@@ -105,7 +105,7 @@ public class CustomLogicElm extends ChipElm {
     
     protected boolean nonLinear() { return hasTriState(); }
     
-    int getInternalNodeCount() {
+    protected int getInternalNodeCount() {
 	// for tri-state outputs, we need an internal node to connect a voltage source to, and then connect a resistor from there to the output.
 	// we do this for all outputs if any of them are tri-state
 	return (hasTriState()) ? outputCount : 0; 

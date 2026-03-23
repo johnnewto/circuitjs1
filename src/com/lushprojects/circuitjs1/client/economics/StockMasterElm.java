@@ -4,10 +4,9 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.economics;
 
-import com.lushprojects.circuitjs1.client.economics.*;
-
+import com.lushprojects.circuitjs1.client.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -74,7 +73,7 @@ public class StockMasterElm extends ChipElm {
     }
     
     @Override
-    void drag(int xx, int yy) {
+    protected void drag(int xx, int yy) {
         // Allow free diagonal resizing like BoxElm
         x2 = xx;
         y2 = yy;

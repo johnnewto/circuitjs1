@@ -59,7 +59,7 @@ package com.lushprojects.circuitjs1.client;
 	    noDiagonal = true;
 	    polarity = (hasFlag(FLAG_REVERSE)) ? -1 : 1; 
 	}
-	void drag(int xx, int yy) {
+	protected void drag(int xx, int yy) {
 	    xx = sim.snapGrid(xx);
 	    yy = sim.snapGrid(yy);
 	    if (abs(xx-x) > abs(yy-y)) {
@@ -205,7 +205,7 @@ package com.lushprojects.circuitjs1.client;
 	    sim.stampRightSide(nodes[2]);
 	    sim.stampRightSide(nodes[3]);
 	}
-	void startIteration() {
+protected void startIteration() {
 	    double voltdiff1 = volts[0]-volts[2];
 	    double voltdiff2 = volts[1]-volts[3];
 	    if (isTrapezoidal()) {
@@ -221,7 +221,7 @@ package com.lushprojects.circuitjs1.client;
 	    sim.stampCurrentSource(nodes[0], nodes[2], curSourceValue1);
 	    sim.stampCurrentSource(nodes[1], nodes[3], curSourceValue2);
  	}
-	void calculateCurrent() {
+	protected void calculateCurrent() {
 	    double voltdiff1 = volts[0]-volts[2];
 	    double voltdiff2 = volts[1]-volts[3];
 	    current[0] = voltdiff1*a1 + voltdiff2*a2 + curSourceValue1;

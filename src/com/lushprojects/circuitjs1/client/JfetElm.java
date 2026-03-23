@@ -121,7 +121,7 @@ class JfetElm extends MosfetElm {
 	    diode.doStep(pnp*(volts[0]-volts[1]));
 	}
 	
-	void calculateCurrent() {
+	protected void calculateCurrent() {
 	    gateCurrent = pnp*diode.calculateCurrent(pnp*(volts[0]-volts[1]));
 	}
 

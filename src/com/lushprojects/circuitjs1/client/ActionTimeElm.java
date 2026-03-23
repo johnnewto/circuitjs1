@@ -465,7 +465,7 @@ public class ActionTimeElm extends CircuitElm {
     }
     
     // Override to prevent trying to find voltages (no posts)
-    void setNodeVoltage(int n, double c) {
+    protected void setNodeVoltage(int n, double c) {
     }
     
     protected void stamp() {

@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.economics.*;
 
 /**
  * Test suite for table-based circuit elements

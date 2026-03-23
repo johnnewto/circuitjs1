@@ -107,7 +107,7 @@ class AnalogSwitchElm extends CircuitElm {
 	    doDots(g);
 	drawPosts(g);
     }
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	if (needsPulldown() && open)
 	    current = 0;
 	else
@@ -160,7 +160,7 @@ class AnalogSwitchElm extends CircuitElm {
 	return true;
     }
 
-    boolean hasGroundConnection(int n1) { 
+    protected boolean hasGroundConnection(int n1) { 
 	return needsPulldown() && (n1 < 2);
     }
 

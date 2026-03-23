@@ -161,7 +161,7 @@ public class AudioOutputElm extends CircuitElm {
 	    drawPosts(g);
 	    g.restore();
 	}
-	double getVoltageDiff() { return volts[0]; }
+	protected double getVoltageDiff() { return volts[0]; }
 	protected void getInfo(String arr[]) {
 	    SimulationContext context = getSimulationContext();
 	    arr[0] = "audio output";

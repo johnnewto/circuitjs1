@@ -74,9 +74,8 @@ package com.lushprojects.circuitjs1.client;
 	Rectangle getSwitchRect() {
 	    return new Rectangle(x2-10, y2-10, 20, 20);
 	}	
-
-	void setCurrent(int vs, double c) { current = c; }
-	void calculateCurrent() {}
+protected void setCurrent(int vs, double c) { current = c; }
+	protected void calculateCurrent() {}
 	protected void stamp() {
 	    sim.stampVoltageSource(0, nodes[0], voltSource);
 	}
@@ -91,7 +90,7 @@ package com.lushprojects.circuitjs1.client;
 	    sim.updateVoltageSource(0, nodes[0], voltSource, v);
 	}
 	protected int getVoltageSourceCount() { return 1; }
-	double getVoltageDiff() { return volts[0]; }
+	protected double getVoltageDiff() { return volts[0]; }
 	protected void getInfo(String arr[]) {
 	    arr[0] = "logic input";
 	    arr[1] = (position == 0) ? "low" : "high";
@@ -100,7 +99,7 @@ package com.lushprojects.circuitjs1.client;
 	    arr[1] += " (" + getVoltageText(volts[0]) + ")";
 	    arr[2] = "I = " + getCurrentText(getCurrent());
 	} 
-	boolean hasGroundConnection(int n1) { return true; }
+	protected boolean hasGroundConnection(int n1) { return true; }
 	public EditInfo getEditInfo(int n) {
 	    if (n == 0) {
 		EditInfo ei = new EditInfo("", 0, 0, 0);

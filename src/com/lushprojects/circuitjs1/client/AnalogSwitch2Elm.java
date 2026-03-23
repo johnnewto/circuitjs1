@@ -72,7 +72,7 @@ class AnalogSwitch2Elm extends AnalogSwitchElm {
     }
     protected int getDumpType() { return 160; }
 
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	if (open)
 	    current = (volts[0]-volts[2])/r_on;
 	else
@@ -111,7 +111,7 @@ class AnalogSwitch2Elm extends AnalogSwitchElm {
 	return true;
     }
 
-    boolean hasGroundConnection(int n) {
+    protected boolean hasGroundConnection(int n) {
 	return needsPulldown() && n != 3;
     }
 

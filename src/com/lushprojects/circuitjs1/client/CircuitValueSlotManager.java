@@ -6,6 +6,7 @@ import java.util.Vector;
 
 import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.core.client.JsArrayString;
+import com.lushprojects.circuitjs1.client.economics.ComputedValues;
 
 final class CircuitValueSlotManager {
     private final CirSim sim;

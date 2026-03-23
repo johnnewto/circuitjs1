@@ -70,11 +70,11 @@ package com.lushprojects.circuitjs1.client;
 	    ind.resetTo(initialCurrent);
 	}
 	protected void stamp() { ind.stamp(nodes[0], nodes[1]); }
-	void startIteration() {
+protected void startIteration() {
 	    ind.startIteration(volts[0]-volts[1]);
 	}
 	protected boolean nonLinear() { return ind.nonLinear(); }
-	void calculateCurrent() {
+	protected void calculateCurrent() {
 	    double voltdiff = volts[0]-volts[1];
 	    current = ind.calculateCurrent(voltdiff);
 	}

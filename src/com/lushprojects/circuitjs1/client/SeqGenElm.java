@@ -87,7 +87,7 @@ class SeqGenElm extends ChipElm {
 		if (hasReset())
 		    pins[2] = new Pin(1, SIDE_W, "R");
 	}
-	double getVoltageDiff() {
+	protected double getVoltageDiff() {
 		return volts[1];
 	}
 	protected int getPostCount() { return hasReset() ? 3 : 2; }

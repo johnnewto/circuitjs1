@@ -153,7 +153,7 @@ public abstract class ChipElm extends CircuitElm {
 	public Pin pins[];
 	public int sizeX, sizeY, flippedSizeX, flippedSizeY;
 	boolean lastClock;
-	void drag(int xx, int yy) {
+	protected void drag(int xx, int yy) {
 	    yy = sim.snapGrid(yy);
 	    if (xx < x) {
 		xx = x; yy = y;
@@ -341,7 +341,7 @@ public abstract class ChipElm extends CircuitElm {
 		    a++;
 	    }
 	}
-	void setCurrent(int x, double c) {
+protected void setCurrent(int x, double c) {
 	    int i;
 	    for (i = 0; i != getPostCount(); i++)
 		if (pins[i].output && pins[i].voltSource == x)
@@ -349,7 +349,7 @@ public abstract class ChipElm extends CircuitElm {
 	}
 	protected String getChipName() { return "chip"; }
 	protected boolean getConnection(int n1, int n2) { return false; }
-	boolean hasGroundConnection(int n1) {
+	protected boolean hasGroundConnection(int n1) {
 	    return pins[n1].output;
 	}
 	

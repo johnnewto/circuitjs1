@@ -167,8 +167,7 @@ class CCCSElm extends VCCSElm {
 	}
         boolean hasCurrentOutput() { return true; }
         boolean isSpiceStyle() { return (flags & FLAG_SPICE) != 0; }
-
-        void setCurrent(int vn, double c) {
+protected void setCurrent(int vn, double c) {
             int i;
             for (i = 0; i != inputCount; i += 2)
                 if (pins[i+1].voltSource == vn) {

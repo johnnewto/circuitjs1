@@ -133,7 +133,7 @@ package com.lushprojects.circuitjs1.client;
 	    out = Math.max(Math.min(v0+maxStep, out), v0-maxStep);
 	    sim.updateVoltageSource(0, nodes[1], voltSource, out);
 	}
-	double getVoltageDiff() { return volts[0]; }
+	protected double getVoltageDiff() { return volts[0]; }
 
 	protected void getInfo(String arr[]) {
 	    arr[0] = "inverting Schmitt trigger";
@@ -190,7 +190,7 @@ package com.lushprojects.circuitjs1.client;
 	// there is no current path through the InvertingSchmitt input, but there
 	// is an indirect path through the output to ground.
 	protected boolean getConnection(int n1, int n2) { return false; }
-	boolean hasGroundConnection(int n1) {
+	protected boolean hasGroundConnection(int n1) {
 	    return (n1 == 1);
 	}
 	

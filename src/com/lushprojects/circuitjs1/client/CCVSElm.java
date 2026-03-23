@@ -160,8 +160,7 @@ class CCVSElm extends VCCSElm {
 	}
         boolean hasCurrentOutput() { return false; }
         boolean isSpiceStyle() { return (flags & FLAG_SPICE) != 0; }
-	
-        void setCurrent(int vn, double c) {
+protected void setCurrent(int vn, double c) {
             int i = 0;
             if (!isSpiceStyle()) {
         	for (i = 0; i != inputCount; i += 2)

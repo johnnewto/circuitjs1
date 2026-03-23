@@ -74,7 +74,7 @@ public class DataRecorderElm extends CircuitElm {
 	    drawPosts(g);
 	    g.restore();
 	}
-	double getVoltageDiff() { return volts[0]; }
+	protected double getVoltageDiff() { return volts[0]; }
 	protected void getInfo(String arr[]) {
 	    arr[0] = "data export";
 	    arr[1] = "V = " + getVoltageText(volts[0]);

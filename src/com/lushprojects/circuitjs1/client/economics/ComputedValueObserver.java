@@ -4,7 +4,9 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.economics;
+
+import com.lushprojects.circuitjs1.client.CircuitElm;
 
 /**
  * Interface for elements that want to observe computed values from other elements

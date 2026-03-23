@@ -6,7 +6,7 @@
 
 package com.lushprojects.circuitjs1.client.io;
 
-import com.lushprojects.circuitjs1.client.EquationTableElm;
+import com.lushprojects.circuitjs1.client.economics.EquationTableElm;
 
 /**
  * Shared utility methods for SFCR format parsing and exporting.

@@ -143,7 +143,7 @@ class SwitchElm extends CircuitElm {
 	return new Rectangle(lead1).union(new Rectangle(lead2)).union(new Rectangle(ps));
     }
     
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	if (position == 1)
 	    current = 0;
     }

@@ -17,10 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.economics;
 
-import com.lushprojects.circuitjs1.client.economics.*;
-
+import com.lushprojects.circuitjs1.client.*;
 import java.util.*;
 
 /**
@@ -564,7 +563,7 @@ public class StockFlowRegistry {
         return true;
     }
 
-    static List<SyncPatch> computeSyncPatches(TableContentView sourceTable, TableContentView targetTable) {
+    public static List<SyncPatch> computeSyncPatches(TableContentView sourceTable, TableContentView targetTable) {
         List<SyncPatch> patches = new ArrayList<SyncPatch>();
         if (sourceTable == null || targetTable == null) {
             return patches;
@@ -664,7 +663,7 @@ public class StockFlowRegistry {
         return patches;
     }
 
-    static void applySyncPatches(List<SyncPatch> patches, TableElm targetTable) {
+    public static void applySyncPatches(List<SyncPatch> patches, TableElm targetTable) {
         if (patches == null || patches.isEmpty() || targetTable == null) {
             return;
         }
@@ -1046,8 +1045,8 @@ public class StockFlowRegistry {
         return deletedCount;
     }
 
-    static class TestSupport {
-        static void seedStockEntries(String stockName, int entries) {
+    public static class TestSupport {
+        public static void seedStockEntries(String stockName, int entries) {
             ArrayList<StockTableView> tables = new ArrayList<StockTableView>();
             for (int i = 0; i < entries; i++) {
                 tables.add(null);
@@ -1055,11 +1054,11 @@ public class StockFlowRegistry {
             stockToTables.put(stockName, tables);
         }
 
-        static void seedMergedRowsCache(String stockName, LinkedHashSet<String> rows) {
+        public static void seedMergedRowsCache(String stockName, LinkedHashSet<String> rows) {
             mergedRowsCache.put(stockName, rows);
         }
 
-        static boolean isMergedRowsCached(String stockName) {
+        public static boolean isMergedRowsCached(String stockName) {
             return mergedRowsCache.containsKey(stockName);
         }
     }

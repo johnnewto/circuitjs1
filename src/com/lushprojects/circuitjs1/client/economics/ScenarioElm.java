@@ -4,15 +4,16 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.economics;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
-class ScenarioElm extends CircuitElm {
-    static final int MODE_ADD = 0;
-    static final int MODE_MULTIPLY = 1;
-    static final int MODE_REPLACE = 2;
+public class ScenarioElm extends CircuitElm {
+    public static final int MODE_ADD = 0;
+    public static final int MODE_MULTIPLY = 1;
+    public static final int MODE_REPLACE = 2;
 
     String targetName;
     int mode;
@@ -258,6 +259,6 @@ class ScenarioElm extends CircuitElm {
     }
 
     @Override
-    void setNodeVoltage(int n, double c) {
+    protected void setNodeVoltage(int n, double c) {
     }
 }

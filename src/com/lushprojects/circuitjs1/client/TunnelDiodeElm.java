@@ -118,7 +118,7 @@ class TunnelDiodeElm extends CircuitElm {
 	sim.stampConductance(nodes[0], nodes[1], geq);
 	sim.stampCurrentSource(nodes[0], nodes[1], nc);
     }
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	double voltdiff = volts[0] - volts[1];
 	double i0 = piv*Math.exp(-pvv);
 	current = pip*Math.exp(-pvpp/pvt)*(Math.exp(voltdiff/pvt)-1) +

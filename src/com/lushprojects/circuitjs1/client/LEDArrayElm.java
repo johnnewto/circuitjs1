@@ -96,7 +96,7 @@ package com.lushprojects.circuitjs1.client;
 		}
 	}
 	
-	void calculateCurrent() {
+	protected void calculateCurrent() {
 	    // calculate diode currents
 	    int ix, iy, i = 0;
 	    for (ix = 0; ix != sizeX; ix++)

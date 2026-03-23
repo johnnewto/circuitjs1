@@ -3,6 +3,7 @@ package com.lushprojects.circuitjs1.client;
 import java.util.Random;
 
 import com.google.gwt.core.client.GWT;
+import com.lushprojects.circuitjs1.client.economics.ComputedValues;
 
 final class CirSimBootstrap {
     private final CirSim sim;

@@ -568,7 +568,7 @@ class TransistorElm extends CircuitElm {
 		flags ^= FLAG_FLIP;
 	}
 
-	boolean canViewInScope() { return true; }
+	protected boolean canViewInScope() { return true; }
 	
 	protected double getCurrentIntoNode(int n) {
 	    if (n==0)

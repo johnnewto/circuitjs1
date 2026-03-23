@@ -209,7 +209,7 @@ public class DifferentiatorElm extends CircuitElm {
     
     // No current path through input, but output connects to ground
     protected boolean getConnection(int n1, int n2) { return false; }
-    boolean hasGroundConnection(int n1) { return n1 == 1; }
+    protected boolean hasGroundConnection(int n1) { return n1 == 1; }
     
     protected double getCurrentIntoNode(int n) {
         if (n == 1)

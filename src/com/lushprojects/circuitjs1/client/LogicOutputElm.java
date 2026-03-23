@@ -79,7 +79,7 @@ package com.lushprojects.circuitjs1.client;
 	    if (needsPullDown())
 		sim.stampResistor(nodes[0], 0, 1e6);
 	}
-	double getVoltageDiff() { return volts[0]; }
+	protected double getVoltageDiff() { return volts[0]; }
 	protected void getInfo(String arr[]) {
 	    arr[0] = "logic output";
 	    arr[1] = (volts[0] < threshold) ? "low" : "high";

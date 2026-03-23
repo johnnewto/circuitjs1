@@ -188,7 +188,7 @@ class SCRElm extends CircuitElm {
     }
 	
     protected int getPostCount() { return 3; }
-    int getInternalNodeCount() { return 1; }
+    protected int getInternalNodeCount() { return 1; }
     double getPower() {
 	return (volts[anode]-volts[gnode])*ia + (volts[cnode]-volts[gnode])*ic;
     }
@@ -231,7 +231,7 @@ class SCRElm extends CircuitElm {
 	arr[5] = "Vgc = " + getVoltageText(vgc);
         arr[6] = "P = " + getUnitText(getPower(), "W");
     }
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	ig = (volts[gnode]-volts[cnode])/gresistance;
 	ia = (volts[anode]-volts[inode])/aresistance;
 	ic = -ig-ia;

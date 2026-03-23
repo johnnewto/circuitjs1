@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import com.lushprojects.circuitjs1.client.economics.*;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.resources.client.ClientBundle;
 import com.google.gwt.resources.client.TextResource;
@@ -22,7 +23,7 @@ import jsinterop.annotations.JsType;
  * all EquationTableElm elements in the circuit, computes dependency edges,
  * identifies SCC blocks/cycles, and renders an interactive graph in Cytoscape.
  */
-class SFCRDagBlocksViewer {
+public class SFCRDagBlocksViewer {
     private static final String WINDOW_KEY = "sfcrDagBlocksWindow";
     private static final String POPUP_FEATURES = "width=1400,height=900";
 
@@ -189,7 +190,7 @@ class SFCRDagBlocksViewer {
      * Package-visible so debug tooling (e.g. EquationTableMarkdownDebugDialog)
      * can surface cyclical membership without duplicating SCC logic.
      */
-    static java.util.Set<String> getCyclicalNodeNames(CirSim sim, boolean includeHistoricalRefs,
+    public static java.util.Set<String> getCyclicalNodeNames(CirSim sim, boolean includeHistoricalRefs,
             boolean ignoreExternalSections) {
         java.util.LinkedHashSet<String> cyclical = new java.util.LinkedHashSet<String>();
         if (sim == null) {

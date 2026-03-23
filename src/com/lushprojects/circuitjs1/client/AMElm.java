@@ -107,9 +107,9 @@ class AMElm extends CircuitElm {
 	lead1 = interpPoint(point1, point2, 1-circleSize/dn);
     }
     
-    double getVoltageDiff() { return volts[0]; }
+    protected double getVoltageDiff() { return volts[0]; }
    
-    boolean hasGroundConnection(int n1) { return true; }
+    protected boolean hasGroundConnection(int n1) { return true; }
 	
     protected int getVoltageSourceCount() {
 	return 1;

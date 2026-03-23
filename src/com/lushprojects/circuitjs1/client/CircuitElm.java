@@ -309,17 +309,17 @@ public abstract class CircuitElm implements Editable {
     protected void draw(Graphics g) {}
     
     // set current for voltage source vn to c.  vn will be the same value as in a previous call to setVoltageSource(n, vn) 
-    void setCurrent(int vn, double c) { current = c; }
+    protected void setCurrent(int vn, double c) { current = c; }
     
     // get current for one- or two-terminal elements
-    double getCurrent() { return current; }
+    protected double getCurrent() { return current; }
 
     void setParentList(Vector<CircuitElm> elmList) {}
     
     // called during calculateWireClosure() to let elements pre-register their
     // names in the labeled node system before wire closure merges nodes.
     // Override in elements that have named posts (e.g. SFCStockElm).
-    void registerLabels() {}
+    protected void registerLabels() {}
     
     // stamp matrix values for linear elements.
     // for non-linear elements, use this to stamp values that don't change each iteration, and call stampRightSide() or stampNonLinear() as needed
@@ -342,7 +342,7 @@ public abstract class CircuitElm implements Editable {
 	    mouseElmRef=null;
 	sim.deleteSliders(this);
     }
-    void startIteration() {}
+    protected void startIteration() {}
     
     // get voltage of x'th node
     double getPostVoltage(int x) {
@@ -350,13 +350,13 @@ public abstract class CircuitElm implements Editable {
     }
     
     // set voltage of x'th node, called by simulator logic
-    void setNodeVoltage(int n, double c) {
+    protected void setNodeVoltage(int n, double c) {
 		volts[n] = c;
 		calculateCurrent();
     }
     
     // calculate current in response to node voltages changing
-    void calculateCurrent() {}
+    protected void calculateCurrent() {}
     
     // calculate post locations and other convenience values used for drawing.  Called when element is moved 
     protected void setPoints() {
@@ -521,7 +521,7 @@ public abstract class CircuitElm implements Editable {
 	return c+a;
     }
     
-    Polygon calcArrow(Point a, Point b, double al, double aw) {
+    protected Polygon calcArrow(Point a, Point b, double al, double aw) {
 	Polygon poly = new Polygon();
 	Point p1 = new Point();
 	Point p2 = new Point();
@@ -558,7 +558,7 @@ public abstract class CircuitElm implements Editable {
     }
     
     // draw second point to xx, yy
-    void drag(int xx, int yy) {
+    protected void drag(int xx, int yy) {
 	xx = sim.snapGrid(xx);
 	yy = sim.snapGrid(yy);
 	if (noDiagonal) {
@@ -718,10 +718,10 @@ public abstract class CircuitElm implements Editable {
     protected int getVoltageSourceCount() { return 0; }
     
     // number of internal nodes (nodes not visible in UI that are needed for implementation)
-    int getInternalNodeCount() { return 0; }
+    protected int getInternalNodeCount() { return 0; }
     
     // notify this element that its pth node is n.  This value n can be passed to stampMatrix()
-    void setNode(int p, int n) { nodes[p] = n; }
+    protected void setNode(int p, int n) { nodes[p] = n; }
     
     // notify this element that its nth voltage source is v.  This value v can be passed to stampVoltageSource(), etc and will be passed back in calls to setCurrent()
     protected void setVoltageSource(int n, int v) {
@@ -731,7 +731,7 @@ public abstract class CircuitElm implements Editable {
     
 //    int getVoltageSource() { return voltSource; } // Never used except for debug code which is commented out
     
-    double getVoltageDiff() {
+    protected double getVoltageDiff() {
 	return volts[0] - volts[1];
     }
     protected boolean nonLinear() { return false; }
@@ -761,7 +761,7 @@ public abstract class CircuitElm implements Editable {
     }
     
     /*
-    void drawPost(Graphics g, int x0, int y0, int n) {
+    protected void drawPost(Graphics g, int x0, int y0, int n) {
 	if (sim.dragElm == null && !needsHighlight() &&
 	    sim.getCircuitNode(n).links.size() == 2)
 	    return;
@@ -771,7 +771,7 @@ public abstract class CircuitElm implements Editable {
 	drawPost(g, x0, y0);
     }
     */
-    static void drawPost(Graphics g, Point pt) {
+    protected static void drawPost(Graphics g, Point pt) {
 	g.setColor(whiteColor);
 	g.fillOval(pt.x-3, pt.y-3, 7, 7);
     }
@@ -1093,7 +1093,7 @@ public abstract class CircuitElm implements Editable {
     }
 
     // update dot positions (curcount) for drawing current (simple case for single current)
-    void updateDotCount() {
+    protected void updateDotCount() {
 	curcount = updateDotCount(current, curcount);
     }
 
@@ -1241,7 +1241,7 @@ public abstract class CircuitElm implements Editable {
     protected boolean getConnection(int n1, int n2) { return true; }
     
     // is n1 connected to ground somehow?
-    boolean hasGroundConnection(int n1) { return false; }
+    protected boolean hasGroundConnection(int n1) { return false; }
     
     // is this a wire or equivalent to a wire?  (used for circuit validation)
     protected boolean isWireEquivalent() { return false; }
@@ -1257,7 +1257,7 @@ public abstract class CircuitElm implements Editable {
     
     boolean isIdealCapacitor() { return false; }
 
-    boolean canViewInScope() { return getPostCount() <= 2; }
+    protected boolean canViewInScope() { return getPostCount() <= 2; }
     boolean canFlipX() { return true; }
     boolean canFlipY() { return true; }
     boolean canFlipXY() { return canFlipX() || canFlipY(); }
@@ -1306,7 +1306,7 @@ public abstract class CircuitElm implements Editable {
     
     // Get the color to use for highlighting
     // red for non-convergence, connectedColor for shared-node, selectColor for direct selection
-    Color getHighlightColor() {
+    protected Color getHighlightColor() {
 	if (nonConverged)
 	    return Color.red;
 	if (isConnectedHighlight())

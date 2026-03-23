@@ -4,9 +4,9 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.economics;
 
-import com.lushprojects.circuitjs1.client.economics.*;
+import com.lushprojects.circuitjs1.client.*;
 
 import com.lushprojects.circuitjs1.client.SFCSankeyRenderer.SankeyLayout;
 
@@ -119,12 +119,13 @@ public class SFCSankeyElm extends CircuitElm {
     }
     
     private void setupSize() {
-        sizeX = (width + sim.gridSize - 1) / sim.gridSize;
-        sizeY = (height + sim.gridSize - 1) / sim.gridSize;
+        int gridSize = sim.getGridSize();
+        sizeX = (width + gridSize - 1) / gridSize;
+        sizeY = (height + gridSize - 1) / gridSize;
         
         // Adjust x2, y2 based on size
-        x2 = x + sizeX * sim.gridSize;
-        y2 = y + sizeY * sim.gridSize;
+        x2 = x + sizeX * gridSize;
+        y2 = y + sizeY * gridSize;
     }
     
     @Override
@@ -201,8 +202,9 @@ public class SFCSankeyElm extends CircuitElm {
         sankeyRenderer.setShowFlowValues(showFlowValues);
         
         // Draw the Sankey diagram
-        int drawWidth = sizeX * sim.gridSize;
-        int drawHeight = sizeY * sim.gridSize;
+        int gridSize = sim.getGridSize();
+        int drawWidth = sizeX * gridSize;
+        int drawHeight = sizeY * gridSize;
         
         // Draw background
         g.setColor("#ffffff");
@@ -227,8 +229,9 @@ public class SFCSankeyElm extends CircuitElm {
      * Draw placeholder when no source table is found
      */
     private void drawPlaceholder(Graphics g) {
-        int drawWidth = sizeX * sim.gridSize;
-        int drawHeight = sizeY * sim.gridSize;
+        int gridSize = sim.getGridSize();
+        int drawWidth = sizeX * gridSize;
+        int drawHeight = sizeY * gridSize;
         
         // Draw background
         g.setColor("#ffffff");
@@ -367,7 +370,7 @@ public class SFCSankeyElm extends CircuitElm {
     }
     
     @Override
-    boolean canViewInScope() {
+    protected boolean canViewInScope() {
         return false;
     }
     

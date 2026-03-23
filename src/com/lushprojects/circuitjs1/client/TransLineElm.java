@@ -46,11 +46,11 @@ class TransLineElm extends CircuitElm {
     }
     protected int getDumpType() { return 171; }
     protected int getPostCount() { return 4; }
-    int getInternalNodeCount() { return 2; }
+    protected int getInternalNodeCount() { return 2; }
     protected String dump() {
 	return super.dump() + " " + delay + " " + imped + " " + width + " " + 0.;
     }
-    void drag(int xx, int yy) {
+    protected void drag(int xx, int yy) {
 	xx = sim.snapGrid(xx);
 	yy = sim.snapGrid(yy);
 	int w1 = max(sim.gridSize, abs(yy-y));
@@ -149,7 +149,7 @@ class TransLineElm extends CircuitElm {
 	else
 	    voltSource2 = v;
     }
-    void setCurrent(int v, double c) {
+protected void setCurrent(int v, double c) {
 	if (v == voltSource1)
 	    current1 = c;
 	else
@@ -162,8 +162,7 @@ class TransLineElm extends CircuitElm {
 	sim.stampResistor(nodes[2], nodes[4], imped);
 	sim.stampResistor(nodes[3], nodes[5], imped);
     }
-
-    void startIteration() {
+protected void startIteration() {
 	// calculate voltages, currents sent over wire
 	if (voltageL == null) {
 	    sim.stop("Transmission line delay too large!", this);
@@ -203,7 +202,7 @@ class TransLineElm extends CircuitElm {
 	
     //double getVoltageDiff() { return volts[0]; }
     protected int getVoltageSourceCount() { return 2; }
-    boolean hasGroundConnection(int n1) { return false; }
+    protected boolean hasGroundConnection(int n1) { return false; }
     protected boolean getConnection(int n1, int n2) {
 	return false;
 	/*if (comparePair(n1, n2, 0, 1))

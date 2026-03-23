@@ -42,7 +42,7 @@ class BoxElm extends GraphicElm {
 
     protected int getDumpType() { return 'b'; }
 
-    void drag(int xx, int yy) {
+    protected void drag(int xx, int yy) {
 	x2 = xx;
 	y2 = yy;
     }
@@ -104,4 +104,3 @@ class BoxElm extends GraphicElm {
             selected = false;
     }
 }
-

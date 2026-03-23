@@ -4,9 +4,7 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
-
-import com.lushprojects.circuitjs1.client.economics.*;
+package com.lushprojects.circuitjs1.client.economics;
 
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.VerticalPanel;
@@ -32,9 +30,10 @@ import com.google.gwt.event.dom.client.KeyCodes;
 import com.google.gwt.event.dom.client.ChangeHandler;
 import com.google.gwt.event.dom.client.ChangeEvent;
 import com.google.gwt.user.client.ui.ListBox;
+import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.economics.EquationTableElm.RowOutputMode;
 import com.lushprojects.circuitjs1.client.ui.ReferenceDocs;
 import com.lushprojects.circuitjs1.client.util.Locale;
-import com.lushprojects.circuitjs1.client.EquationTableElm.RowOutputMode;
 
 /**
  * EquationTableEditDialog - Grid-based editor for EquationTableElm
@@ -1568,7 +1567,7 @@ public class EquationTableEditDialog extends Dialog {
         
         // Trigger reparse and node reallocation
         tableElement.parseAllEquationsPublic();
-        tableElement.allocNodes();
+        tableElement.allocNodesPublic();
         tableElement.setPoints();
         
         hasChanges = false;

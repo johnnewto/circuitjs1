@@ -55,7 +55,7 @@ public final class CirSimDialogCoordinator {
         dialogShowing = value;
     }
 
-    static void clearDialogShowingIf(Dialog value) {
+    public static void clearDialogShowingIf(Dialog value) {
         if (dialogShowing == value) {
             dialogShowing = null;
         }

@@ -4,8 +4,10 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.economics;
 
+import com.lushprojects.circuitjs1.client.CirSim;
+import com.lushprojects.circuitjs1.client.CircuitElm;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

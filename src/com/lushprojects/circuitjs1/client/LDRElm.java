@@ -146,7 +146,7 @@ class LDRElm extends CircuitElm implements Command, MouseWheelHandler {
 	drawPosts(g);
     }
 
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	current = (volts[0]-volts[1])/resistance;
     }
     protected void stamp() {

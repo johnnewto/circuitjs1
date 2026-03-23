@@ -30,7 +30,7 @@ class VaractorElm extends DiodeElm {
 	capvoltdiff = volts[0]-volts[1];
     }
     
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	super.calculateCurrent();
 	current += capCurrent;
     }
@@ -82,7 +82,7 @@ class VaractorElm extends DiodeElm {
 	sim.stampVoltageSource(nodes[0], nodes[2], voltSource);
 	sim.stampNonLinear(nodes[2]);
     }
-    void startIteration() {
+protected void startIteration() {
 	super.startIteration();
 	// capacitor companion model using trapezoidal approximation
 	// (Thevenin equivalent) consists of a voltage source in
@@ -116,9 +116,9 @@ class VaractorElm extends DiodeElm {
     }
 
     int getShortcut() { return 0; }
-    void setCurrent(int x, double c) { capCurrent = c; }
+protected void setCurrent(int x, double c) { capCurrent = c; }
     double voltSourceValue;
     protected int getVoltageSourceCount() { return 1; }
-    int getInternalNodeCount() { return 1; }
+    protected int getInternalNodeCount() { return 1; }
 }
     

@@ -128,7 +128,7 @@ class SweepElm extends CircuitElm {
 	setParams();
     }
     double v;
-    void startIteration() {
+protected void startIteration() {
 	SimulationContext context = getSimulationContext();
 	// has timestep been changed?
 	if (context.getTimeStep() != savedTimeStep)
@@ -154,9 +154,9 @@ class SweepElm extends CircuitElm {
 	sim.updateVoltageSource(0, nodes[0], voltSource, v);
     }
 	
-    double getVoltageDiff() { return volts[0]; }
+    protected double getVoltageDiff() { return volts[0]; }
     protected int getVoltageSourceCount() { return 1; }
-    boolean hasGroundConnection(int n1) { return true; }
+    protected boolean hasGroundConnection(int n1) { return true; }
     protected void getInfo(String arr[]) {
 	arr[0] = "sweep " + (((flags & FLAG_LOG) == 0) ? "(linear)" : "(log)");
 	arr[1] = "I = " + getCurrentDText(getCurrent());

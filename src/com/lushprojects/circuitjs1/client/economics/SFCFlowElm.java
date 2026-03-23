@@ -4,8 +4,9 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.economics;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
 /**
@@ -344,7 +345,7 @@ public class SFCFlowElm extends CircuitElm {
     }
     
     @Override
-    double getCurrent() {
+    protected double getCurrent() {
         return flowValue;
     }
     

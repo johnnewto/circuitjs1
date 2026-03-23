@@ -1,6 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.lushprojects.circuitjs1.client.io.LookupTableRegistry;
+import com.lushprojects.circuitjs1.client.economics.ComputedValues;
 import java.util.Vector;
 
 import jsinterop.annotations.JsMethod;
@@ -1042,7 +1043,7 @@ public class Expr {
     Vector<Expr> children;
     double value;
     String nodeName; // For E_NODE_REF expressions
-    int type;
+    public int type;
     int lagIndex = -1; // Buffer index for E_LAG expressions, assigned at parse time
 	int smoothIndex = -1; // State index for E_SMOOTH expressions, assigned at parse time
     static final int E_ADD = 1;
@@ -1075,7 +1076,7 @@ public class Expr {
     static final int E_PWRS = 29;
     static final int E_LASTOUTPUT = 30;
     static final int E_TIMESTEP = 31;
-    static final int E_INTEGRATE = 32;
+    public static final int E_INTEGRATE = 32;
     static final int E_TERNARY = 33;
     static final int E_OR = 34;
     static final int E_AND = 35;
@@ -1106,4 +1107,3 @@ public class Expr {
 	static final int E_LOOKUP = E_DELAY+1; // lookup(tableName, x)
 	static final int E_GSLOT = E_LOOKUP+10; // Circuit-global array slot (fast-path replacement for E_NODE_REF)
 };
-

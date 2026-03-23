@@ -48,7 +48,7 @@ class WattmeterElm extends CircuitElm {
     protected int getDumpType() { return 420; }
     protected int getPostCount() { return 4; }
 
-    void drag(int xx, int yy) {
+    protected void drag(int xx, int yy) {
 	xx = sim.snapGrid(xx);
 	yy = sim.snapGrid(yy);
 	int w1 = max(sim.gridSize, abs(yy-y));
@@ -156,8 +156,7 @@ class WattmeterElm extends CircuitElm {
     }
 
     double getPower() { return getVoltageDiff()*getCurrent(); }
-
-    void setCurrent(int vn, double c) {
+protected void setCurrent(int vn, double c) {
 	currents[vn == voltSources[0] ? 0 : 1] = c;
     }
     protected double getCurrentIntoNode(int n) {
@@ -168,16 +167,16 @@ class WattmeterElm extends CircuitElm {
     }
 
     protected boolean getConnection(int n1, int n2) { return (n1/2) == (n2/2); }
-    boolean hasGroundConnection(int n1) { return false; }
+    protected boolean hasGroundConnection(int n1) { return false; }
 
     protected void getInfo(String arr[]) {
 	arr[0] = "wattmeter";
 	getBasicInfo(arr);
 	arr[3] = "P = " + getUnitText(getPower(), "W");
     }
-    boolean canViewInScope() { return true; }
-    double getCurrent() { return currents[1]; }
-    double getVoltageDiff() { return volts[2]-volts[0]; }
+    protected boolean canViewInScope() { return true; }
+    protected double getCurrent() { return currents[1]; }
+    protected double getVoltageDiff() { return volts[2]-volts[0]; }
     boolean canFlipX() { return false; }
     boolean canFlipY() { return false; }
 }

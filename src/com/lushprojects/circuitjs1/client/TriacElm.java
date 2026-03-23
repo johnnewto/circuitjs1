@@ -191,7 +191,7 @@ class TriacElm extends CircuitElm {
     }
     
     protected int getPostCount() { return 3; }
-    int getInternalNodeCount() { return 1; }
+    protected int getInternalNodeCount() { return 1; }
 
     double aresistance;
     
@@ -204,8 +204,7 @@ class TriacElm extends CircuitElm {
 	diode03.stamp(nodes[mt2node], nodes[mtinode]);
 	diode30.stamp(nodes[mtinode], nodes[mt2node]);
     }
-
-    void startIteration() {
+protected void startIteration() {
 	if (Math.abs(i2) < holdingI)
 	    state = false;
 	if (Math.abs(ig) > triggerI)
@@ -227,7 +226,7 @@ class TriacElm extends CircuitElm {
 	arr[5] = "Ig = " + getCurrentText(ig);
         arr[6] = "P = " + getUnitText(getPower(), "W");
     }
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	// aresistance can be 0 on startup
 	if (aresistance == 0)
 	    i2 = 0;
@@ -256,8 +255,7 @@ class TriacElm extends CircuitElm {
         if (n == 2 && ei.value > 0)
             cresistance = ei.value;
     }
-    boolean canViewInScope() { return true; }
-    double getVoltageDiff() { return volts[mt2node] - volts[mt1node]; }
-    double getCurrent() { return i2; } // for scope
+    protected boolean canViewInScope() { return true; }
+    protected double getVoltageDiff() { return volts[mt2node] - volts[mt1node]; }
+    protected double getCurrent() { return i2; } // for scope
 }
-

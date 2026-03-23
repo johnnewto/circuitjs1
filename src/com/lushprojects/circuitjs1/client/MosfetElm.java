@@ -213,7 +213,7 @@ class MosfetElm extends CircuitElm {
 		(n == 2) ? drn[0] : body[0];
 	}
 	
-	double getCurrent() { return ids; }
+	protected double getCurrent() { return ids; }
 	double getPower() {
 	    return ids*(volts[2]-volts[1]) - diodeCurrent1*(volts[1]-volts[bodyTerminal]) - diodeCurrent2*(volts[2]-volts[bodyTerminal]);
 	    }
@@ -455,8 +455,8 @@ class MosfetElm extends CircuitElm {
 	@Override String getScopeText(int v) { 
 	    return Locale.LS(((pnp == -1) ? "p-" : "n-") + "MOSFET");
 	}
-	boolean canViewInScope() { return true; }
-	double getVoltageDiff() { return volts[2] - volts[1]; }
+	protected boolean canViewInScope() { return true; }
+	protected double getVoltageDiff() { return volts[2] - volts[1]; }
 	protected boolean getConnection(int n1, int n2) {
 	    return !(n1 == 0 || n2 == 0);
 	}

@@ -19,8 +19,6 @@
 
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.economics.*;
-
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.HorizontalPanel;
 import com.google.gwt.user.client.ui.TextArea;
@@ -28,7 +26,8 @@ import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.DialogBox;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
-import com.lushprojects.circuitjs1.client.EquationTableElm.RowOutputMode;
+import com.lushprojects.circuitjs1.client.economics.*;
+import com.lushprojects.circuitjs1.client.economics.EquationTableElm.RowOutputMode;
 import com.lushprojects.circuitjs1.client.ui.InfoViewerDialog;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -448,7 +447,7 @@ public class EquationTableMarkdownDebugDialog {
                 Integer sourceNode = LabeledNodeElm.getByName(sourceName);
                 if (sourceNode != null && sourceNode >= 0) {
                     nodeInfo = "#" + sourceNode;
-                    voltageInfo = CircuitElm.getUnitText(sim.getCircuitValueSlotManager().getLabeledNodeVoltage(sourceName), "V");
+                    voltageInfo = CircuitElm.getUnitText(sim.getLabeledNodeVoltageForUi(sourceName), "V");
                 }
 
                 if (sourceTable.getOutputMode(row) == RowOutputMode.FLOW_MODE) {
@@ -459,7 +458,7 @@ public class EquationTableMarkdownDebugDialog {
                         Integer targetNode = LabeledNodeElm.getByName(targetName.trim());
                         if (targetNode != null && targetNode >= 0) {
                             nodeInfo = nodeInfo + " → #" + targetNode;
-                            voltageInfo = voltageInfo + " / " + CircuitElm.getUnitText(sim.getCircuitValueSlotManager().getLabeledNodeVoltage(targetName.trim()), "V");
+                            voltageInfo = voltageInfo + " / " + CircuitElm.getUnitText(sim.getLabeledNodeVoltageForUi(targetName.trim()), "V");
                         } else {
                             nodeInfo = nodeInfo + " → ?";
                         }
@@ -621,7 +620,7 @@ public class EquationTableMarkdownDebugDialog {
             Integer nodeNum = LabeledNodeElm.getByName(name);
             String nodeStr = (nodeNum != null && nodeNum >= 0) ? "#" + nodeNum : "*(none)*";
             String voltStr = (nodeNum != null && nodeNum >= 0) ? 
-                CircuitElm.getShortUnitText(sim.getCircuitValueSlotManager().getLabeledNodeVoltage(name), "V") : "-";
+                CircuitElm.getShortUnitText(sim.getLabeledNodeVoltageForUi(name), "V") : "-";
             
             md.append("| ").append(wrapForKaTeX(name)).append(" | ").append(nodeStr)
               .append(" | ").append(voltStr)
@@ -696,7 +695,7 @@ public class EquationTableMarkdownDebugDialog {
     private void appendCircuitDump(StringBuilder md) {
         md.append("## Circuit Dump\n\n");
         md.append("```\n");
-        md.append(sim.getCircuitIOService().dumpCircuit());
+        md.append(sim.dumpCircuitForUi());
         md.append("```\n\n");
     }
 
@@ -773,12 +772,10 @@ public class EquationTableMarkdownDebugDialog {
                 int vsNum = i - (nodeCount - 1);
                 String desc = "vs" + vsNum;
                 // Find which element owns this voltage source and get its name
-                if (sim.voltageSources != null && vsNum < vsCount) {
-                    CircuitElm owner = sim.voltageSources[vsNum];
-                    if (owner != null) {
-                        String ownerName = getElementOutputName(owner, vsNum);
-                        desc += " (" + wrapForKaTeX(ownerName) + ")";
-                    }
+                CircuitElm owner = sim.getVoltageSourceElementForUi(vsNum);
+                if (owner != null) {
+                    String ownerName = getElementOutputName(owner, vsNum);
+                    desc += " (" + wrapForKaTeX(ownerName) + ")";
                 }
                 labels[i] = desc;
             }
@@ -1024,11 +1021,9 @@ public class EquationTableMarkdownDebugDialog {
             } else {
                 // Voltage source row: read current from the VS owner element
                 int vsIdx = j - (nodeCount - 1);
-                if (sim.voltageSources != null && vsIdx < sim.voltageSourceCount) {
-                    CircuitElm owner = sim.voltageSources[vsIdx];
-                    if (owner != null)
-                        val = owner.getCurrent();
-                }
+                CircuitElm owner = sim.getVoltageSourceElementForUi(vsIdx);
+                if (owner != null)
+                    val = owner.getCurrent();
             }
             
             xVec[mappedIdx] = val;

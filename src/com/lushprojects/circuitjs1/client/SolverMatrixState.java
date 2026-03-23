@@ -4,7 +4,7 @@ public final class SolverMatrixState {
     // The circuit is solved by: circuitMatrix x nodeVoltages = circuitRightSide
     double[][] circuitMatrix;
     double[] circuitRightSide;
-    double[] nodeVoltages;
+    public double[] nodeVoltages;
     double[] lastNodeVoltages;
 
     // Matrix snapshots and row metadata used for simplification and nonlinear iterations.

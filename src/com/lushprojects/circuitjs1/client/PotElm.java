@@ -259,7 +259,7 @@ class PotElm extends CircuitElm implements Command, MouseWheelHandler {
 	curcount1 = curcount2 = curcount3 = 0;
 	super.reset();
     }
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	if (resistance1 == 0)
 	    return; // avoid NaN
 	current1 = (volts[0]-volts[2])/resistance1;

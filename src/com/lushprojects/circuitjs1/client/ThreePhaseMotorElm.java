@@ -78,7 +78,7 @@ class ThreePhaseMotorElm extends CircuitElm {
     }
     protected int getPostCount() { return 6; }
     protected Point getPost(int n) { return posts[n]; }
-    int getInternalNodeCount() { return 7; }
+    protected int getInternalNodeCount() { return 7; }
     protected int getVoltageSourceCount() { return 2; }
     protected void reset() {
 	super.reset();
@@ -181,8 +181,7 @@ class ThreePhaseMotorElm extends CircuitElm {
     protected void setVoltageSource(int n, int v) { voltSources[n] = v; }
     
     double vs1value, vs2value;
-
-    void startIteration() {
+protected void startIteration() {
         SimulationContext context = getSimulationContext();
         int i;
         for (i = 0; i != coilCount; i++) {
@@ -211,7 +210,7 @@ class ThreePhaseMotorElm extends CircuitElm {
         sim.updateVoltageSource(n006, 0, voltSources[1], -vs2value);
     }
     
-    void calculateCurrent() {
+    protected void calculateCurrent() {
         int i;
         int nodeCount = getPostCount() + getInternalNodeCount();
         if (nodeCurrents == null)
@@ -236,7 +235,7 @@ class ThreePhaseMotorElm extends CircuitElm {
         }
     }
 
-    boolean hasGroundConnection(int n1) {
+    protected boolean hasGroundConnection(int n1) {
 	return false;
     }
     

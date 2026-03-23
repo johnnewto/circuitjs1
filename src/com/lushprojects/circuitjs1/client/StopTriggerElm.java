@@ -80,7 +80,7 @@ class StopTriggerElm extends CircuitElm {
 	    }
 	}
 	
-	double getVoltageDiff() { return volts[0]; }
+	protected double getVoltageDiff() { return volts[0]; }
 	protected void getInfo(String arr[]) {
 	    arr[0] = "stop trigger";
 	    arr[1] = "V = " + getVoltageText(volts[0]);

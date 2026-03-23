@@ -35,8 +35,7 @@ class SchmittElm extends InvertingSchmittElm{
 	protected int getDumpType() { return 182; }
 
 	double lastOutputVoltage;
-
-	void startIteration() {
+protected void startIteration() {
 	    lastOutputVoltage = volts[1];
 	}
 	protected void doStep() {

@@ -68,7 +68,7 @@ class CustomTransformerElm extends CircuitElm {
 	    noDiagonal = true;
 	    parseDescription(description);
 	}
-	void drag(int xx, int yy) {
+	protected void drag(int xx, int yy) {
 	    xx = sim.snapGrid(xx);
 	    yy = sim.snapGrid(yy);
 //	    width = max(32, abs(yy-y));
@@ -338,8 +338,7 @@ class CustomTransformerElm extends CircuitElm {
 	    for (i = 0; i != nodeCount; i++)
 		sim.stampRightSide(nodes[i]);
 	}
-	
-	void startIteration() {
+protected void startIteration() {
 	    int i;
 	    for (i = 0; i != coilCount; i++) {
 		double val = coilCurrents[i];
@@ -363,7 +362,7 @@ class CustomTransformerElm extends CircuitElm {
 	    }
  	}
 	
-	void calculateCurrent() {
+	protected void calculateCurrent() {
 	    int i;
 	    for (i = 0; i != nodeCount; i++)
 		nodeCurrents[i] = 0;

@@ -158,7 +158,7 @@ public class SubtracterElm extends CircuitElm {
     
     // No current path through inputs, but output connects to ground
     protected boolean getConnection(int n1, int n2) { return false; }
-    boolean hasGroundConnection(int n1) { return n1 == inputCount; }
+    protected boolean hasGroundConnection(int n1) { return n1 == inputCount; }
     
     protected double getCurrentIntoNode(int n) {
         if (n == inputCount)

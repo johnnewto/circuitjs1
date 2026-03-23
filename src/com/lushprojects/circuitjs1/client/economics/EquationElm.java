@@ -4,9 +4,9 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.economics;
 
-import com.lushprojects.circuitjs1.client.economics.*;
+import com.lushprojects.circuitjs1.client.*;
 
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
@@ -33,7 +33,7 @@ import com.lushprojects.circuitjs1.client.util.Locale;
  * - Equation: "sin(t)" -> outputs sine wave
  * - Equation: "Predator*a" with parameter 'a' -> adjustable multiplier
  */
-class EquationElm extends CircuitElm {
+public class EquationElm extends CircuitElm {
     final int FLAG_SMALL = 1;
     
     private String elementName = "Eqn";     // User-defined name for this element
@@ -172,7 +172,7 @@ class EquationElm extends CircuitElm {
     
     // No current path through input, but output connects to ground
     protected boolean getConnection(int n1, int n2) { return false; }
-    boolean hasGroundConnection(int n1) { return n1 == 0; }
+    protected boolean hasGroundConnection(int n1) { return n1 == 0; }
     
     protected double getCurrentIntoNode(int n) {
         if (n == 0)

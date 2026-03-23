@@ -6,7 +6,7 @@ public class ExprState {
     public double lastValues[];
     public double lastOutput;
     double lastDiffInput;  // For diff() function - committed value from last timestep
-    double lastIntOutput;  // For integrate() function - committed value from last timestep
+    public double lastIntOutput;  // For integrate() function - committed value from last timestep
     double lastIntTime;    // Last time integrate() was committed
     double pendingIntInput; // Current input value for integrate (updated each subiteration)
     double pendingDiffInput; // Current input value for diff (to be committed at stepFinished)
@@ -107,7 +107,7 @@ public class ExprState {
     }
     
     // Call this at the end of each timestep to commit the integration and differentiation
-    void commitIntegration(double timeStep) {
+    public void commitIntegration(double timeStep) {
 	if (t != lastIntTime) {
 	    lastIntOutput = lastIntOutput + timeStep * pendingIntInput;
 	    lastIntTime = t;

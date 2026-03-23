@@ -416,7 +416,7 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
     static final double pi = 3.14159265358979323846;
     
     // Mouse interaction modes - determine how mouse events are interpreted
-    static final int MODE_ADD_ELM = 0;        // Adding new circuit element
+    public static final int MODE_ADD_ELM = 0;        // Adding new circuit element
     static final int MODE_DRAG_ALL = 1;       // Dragging entire circuit
     static final int MODE_DRAG_ROW = 2;       // Dragging table row
     static final int MODE_DRAG_COLUMN = 3;    // Dragging table column
@@ -516,7 +516,7 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
     // Circuit-global value array for E_GSLOT fast expression evaluation path.
     // Filled once per subiteration (after applySolvedRightSide + commitPendingToCurrentValues).
     // Indexed by slot number stored inside each E_GSLOT Expr node.
-    double[] circuitVariables;           // Flat value array: node voltages + computed values
+    public double[] circuitVariables;           // Flat value array: node voltages + computed values
     String[] slotNames;                  // Parallel name array: slotNames[i] is the name for circuitVariables[i]
     public java.util.HashMap<String, Integer> nameToSlot; // name → circuitVariables[] slot index (used at analysis time only)
     
@@ -555,7 +555,7 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
     Frame iFrame;
 
     Canvas cv;
-    Context2d cvcontext;
+    public Context2d cvcontext;
 
     // canvas width/height in px (before device pixel ratio scaling)
     int canvasWidth, canvasHeight;
@@ -669,8 +669,12 @@ public CirSim() {
 	void setTempMouseMode(int value) { mouseInputHandler.setTempMouseMode(value); }
 	String getMouseModeStr() { return mouseInputHandler.getMouseModeStr(); }
 	void setMouseModeStr(String value) { mouseInputHandler.setMouseModeStr(value); }
-	public int getMouseCursorX() { return mouseInputHandler.getMouseCursorX(); }
-	public int getMouseCursorY() { return mouseInputHandler.getMouseCursorY(); }
+    public int getMouseCursorX() { return mouseInputHandler.getMouseCursorX(); }
+    public int getMouseCursorY() { return mouseInputHandler.getMouseCursorY(); }
+    public boolean isAddElementModeForUi() { return mouseInputHandler.getMouseMode() == MODE_ADD_ELM; }
+    public void setCursorStyleForUi(String cursorStyle) { mouseInputHandler.setCursorStyle(cursorStyle); }
+    public double getWheelSensitivity() { return wheelSensitivity; }
+    public boolean isDcAnalysisForUi() { return dcAnalysisFlag; }
 	Rectangle getSelectedArea() { return mouseInputHandler.getSelectedArea(); }
 	boolean isDragging() { return mouseInputHandler.isDragging(); }
 	int getMousePost() { return mouseInputHandler.getMousePost(); }
@@ -701,6 +705,10 @@ public CirSim() {
 
 	CircuitIOService getCircuitIOService() {
 	    return circuitIOService;
+	}
+
+	public String dumpCircuitForUi() {
+	    return circuitIOService.dumpCircuit();
 	}
 
 	ExportCompositeActions getExportCompositeActions() {
@@ -978,6 +986,14 @@ public CirSim() {
 	    return circuitValueSlotManager;
 	}
 
+	public double getLabeledNodeVoltageForUi(String name) {
+	    return circuitValueSlotManager.getLabeledNodeVoltage(name);
+	}
+
+	public double resolveSlotValueForUi(String name) {
+	    return circuitValueSlotManager.resolveSlotValue(name);
+	}
+
 	CirSimCommandRouter getCommandRouter() {
 	    return commandRouter;
 	}
@@ -1048,6 +1064,10 @@ public CirSim() {
 
 	UndoRedoManager getUndoRedoManager() {
 	    return undoRedoManager;
+	}
+
+	public void pushUndoForUi() {
+	    undoRedoManager.pushUndo();
 	}
 
     void launchRunnerFromQuery(QueryParameters qp) {
@@ -1314,6 +1334,13 @@ public CirSim() {
     Vector<Point> postDrawList = new Vector<>();
     Vector<Point> badConnectionList = new Vector<>();
     CircuitElm voltageSources[];
+
+    public CircuitElm getVoltageSourceElementForUi(int index) {
+	if (voltageSources == null || index < 0 || index >= voltageSourceCount) {
+	    return null;
+	}
+	return voltageSources[index];
+    }
 
     public CircuitNode getCircuitNode(int n) {
 	return circuitAnalyzer.getCircuitNode(n);
@@ -1615,7 +1642,7 @@ public CirSim() {
 	matrixStamper.stampVCCurrentSource(cn1, cn2, vn1, vn2, g);
     }
 
-    void stampCurrentSource(int n1, int n2, double i) {
+    public void stampCurrentSource(int n1, int n2, double i) {
 	matrixStamper.stampCurrentSource(n1, n2, i);
     }
 
@@ -1627,7 +1654,7 @@ public CirSim() {
     // stamp value x in row i, column j, meaning that a voltage change
     // of dv in node j will increase the current into node i by x dv.
     // (Unless i or j is a voltage source node.)
-    void stampMatrix(int i, int j, double x) {
+    public void stampMatrix(int i, int j, double x) {
 	matrixStamper.stampMatrix(i, j, x);
     }
 
@@ -1761,7 +1788,7 @@ public CirSim() {
 	    values[i] = 0.0;
     }
 
-    void onScenarioActivated(boolean resetPlots, boolean openPlotlyViewer) {
+    public void onScenarioActivated(boolean resetPlots, boolean openPlotlyViewer) {
 	if (resetPlots) {
 	    for (int i = 0; i != scopeCount; i++)
 		scopes[i].resetGraph(true);

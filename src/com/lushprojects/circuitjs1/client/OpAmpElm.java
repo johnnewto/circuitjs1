@@ -183,10 +183,10 @@ package com.lushprojects.circuitjs1.client;
 	// there is no current path through the op-amp inputs, but there
 	// is an indirect path through the output to ground.
 	protected boolean getConnection(int n1, int n2) { return false; }
-	boolean hasGroundConnection(int n1) {
+	protected boolean hasGroundConnection(int n1) {
 	    return (n1 == 2);
 	}
-	double getVoltageDiff() { return volts[2] - volts[1]; }
+	protected double getVoltageDiff() { return volts[2] - volts[1]; }
 	protected int getDumpType() { return 'a'; }
 	public EditInfo getEditInfo(int n) {
 	    if (n == 0)

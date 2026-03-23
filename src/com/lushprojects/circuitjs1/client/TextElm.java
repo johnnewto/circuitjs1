@@ -92,7 +92,7 @@ class TextElm extends GraphicElm {
 	//return super.dump() + " " + size + " " + text;
     }
     protected int getDumpType() { return 'x'; }
-    void drag(int xx, int yy) {
+    protected void drag(int xx, int yy) {
 	x = xx;
 	y = yy;
 	x2 = xx+16;

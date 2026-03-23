@@ -91,7 +91,7 @@ package com.lushprojects.circuitjs1.client;
 	    if (isOldStyle())
 		sim.stampVoltageSource(0, nodes[0], voltSource, 0);
 	}
-	void setCurrent(int x, double c) { current = isOldStyle() ? -c : c; }
+protected void setCurrent(int x, double c) { current = isOldStyle() ? -c : c; }
 
 	protected boolean isWireEquivalent() { return true; }
 	protected boolean isRemovableWire() { return true; }
@@ -107,12 +107,12 @@ package com.lushprojects.circuitjs1.client;
 	}
 	
 //	void setCurrent(int x, double c) { current = -c; }
-	double getVoltageDiff() { return 0; }
+	protected double getVoltageDiff() { return 0; }
 	protected void getInfo(String arr[]) {
 	    arr[0] = "ground";
 	    arr[1] = "I = " + getCurrentText(getCurrent());
 	}
-	boolean hasGroundConnection(int n1) { return true; }
+	protected boolean hasGroundConnection(int n1) { return true; }
 	int getShortcut() { return 'g'; }
 	
 	public EditInfo getEditInfo(int n) {

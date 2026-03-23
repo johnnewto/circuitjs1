@@ -313,7 +313,7 @@ public abstract class CompositeElm extends CircuitElm {
 	return numPosts;
     }
 
-    int getInternalNodeCount() {
+    protected int getInternalNodeCount() {
 	return numNodes - numPosts;
     }
 

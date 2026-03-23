@@ -4,9 +4,9 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.economics;
 
-import com.lushprojects.circuitjs1.client.economics.*;
+import com.lushprojects.circuitjs1.client.*;
 
 import com.google.gwt.event.dom.client.MouseWheelEvent;
 import com.google.gwt.event.dom.client.MouseWheelHandler;
@@ -900,10 +900,10 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     protected int getDumpType() { return 266; }
     
     /** @return true if in MNA (electrical) mode, false for pure computational */
-    boolean isMnaMode() { return sim != null && sim.isEquationTableMnaMode(); }
+    public boolean isMnaMode() { return sim != null && sim.isEquationTableMnaMode(); }
     
     /** @return Number of electrical posts - always 0 (no visible posts) */
-    protected int getPostCount() { return 0; }
+    public int getPostCount() { return 0; }
     
     /**
      * Get the position of a post.
@@ -922,7 +922,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     * FLOW_MODE and PARAM_MODE don't use voltage sources.
      * This counts voltage sources before findLabeledNodes() runs, so we count all valid rows.
      */
-    protected int getVoltageSourceCount() { 
+    public int getVoltageSourceCount() { 
         if (!isMnaMode()) return 0;
         
         updateRowClassifications();
@@ -945,7 +945,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * these are auto-created during global coordination pass 2.
     * PARAM_MODE is computation-only and never needs nodes.
      */
-    int getInternalNodeCount() {
+    public int getInternalNodeCount() {
         if (!isMnaMode()) return 0;
         
         updateRowClassifications();
@@ -983,7 +983,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /** @return true if any row has an expression requiring iterative solving,
      *  or if any row uses FLOW_MODE output mode (which always requires doStep) */
-    protected boolean nonLinear() {
+    public boolean nonLinear() {
         updateRowClassifications();
         for (int row = 0; row < rowCount; row++) {
             // FLOW_MODE always requires doStep() evaluation
@@ -1385,7 +1385,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * Check if a post has a direct ground connection.
      * Outputs don't connect to ground - they create independent voltage nodes.
      */
-    boolean hasGroundConnection(int n) { return false; }
+    protected boolean hasGroundConnection(int n) { return false; }
     
     /**
      * Get current flowing into a node.
@@ -1408,7 +1408,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * @param c Current value
      */
     @Override
-    void setCurrent(int vs, double c) {
+    protected void setCurrent(int vs, double c) {
         if (vs < rowCount) {
             current[vs] = c;
         }
@@ -2535,16 +2535,22 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /** Get the hovered row index (-1 if none) */
     public int getHoveredRow() { return hoveredRow; }
+
+    /** Convert current mouse X from screen space to circuit space. */
+    public int getMouseCircuitX() { return sim.inverseTransformX(sim.getMouseCursorX()); }
+
+    /** Convert current mouse Y from screen space to circuit space. */
+    public int getMouseCircuitY() { return sim.inverseTransformY(sim.getMouseCursorY()); }
     
     /** Set the hovered row index and update cursor for adjustable rows */
     public void setHoveredRow(int row) {
         hoveredRow = row;
         // Update cursor based on whether row is adjustable
         if (row >= 0 && isAdjustableRow(row)) {
-            sim.getMouseInputHandler().setCursorStyle("cursorAdjust");
+            sim.setCursorStyleForUi("cursorAdjust");
         } else {
             // Reset cursor to default based on mouse mode
-            sim.getMouseInputHandler().setCursorStyle(sim.getMouseMode() == CirSim.MODE_ADD_ELM ? "cursorCross" : "cursorPointer");
+            sim.setCursorStyleForUi(sim.isAddElementModeForUi() ? "cursorCross" : "cursorPointer");
         }
     }
     
@@ -2866,6 +2872,11 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     public void parseAllEquationsPublic() {
         parseAllEquations();
     }
+
+    /** Public bridge for cross-package dialog editing flow. */
+    public void allocNodesPublic() {
+        allocNodes();
+    }
     
     //=============================================================================
     // EDIT DIALOG LAUNCHER
@@ -2905,7 +2916,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         if (currentValue == null) return;  // Not a simple number
         
         // Push undo state on first wheel movement
-        sim.getUndoRedoManager().pushUndo();
+        sim.pushUndoForUi();
         
         // Calculate step size based on value magnitude
         double magnitude = Math.abs(currentValue);
@@ -2921,7 +2932,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
         
         // Apply change based on wheel direction (negative deltaY = scroll up = increase)
-        double delta = e.getDeltaY() * sim.wheelSensitivity;
+        double delta = e.getDeltaY() * sim.getWheelSensitivity();
         int direction = (delta > 0) ? -1 : 1;  // scroll down = decrease, scroll up = increase
         double newValue = currentValue + direction * scale;
         

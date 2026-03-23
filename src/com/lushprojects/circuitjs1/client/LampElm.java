@@ -134,7 +134,7 @@ class LampElm extends CircuitElm {
 	    drawPosts(g);
 	}
 
-	void calculateCurrent() {
+	protected void calculateCurrent() {
 	    current = (volts[0]-volts[1])/resistance;
 	    if (resistance == 0)
 		current = 0;
@@ -145,7 +145,7 @@ class LampElm extends CircuitElm {
 	    sim.stampNonLinear(nodes[1]);
 	}
 	protected boolean nonLinear() { return true; }
-	void startIteration() {
+protected void startIteration() {
 	    SimulationContext context = getSimulationContext();
 	    // based on http://www.intusoft.com/nlpdf/nl11.pdf
 	    double nom_r = nom_v*nom_v/nom_pow;

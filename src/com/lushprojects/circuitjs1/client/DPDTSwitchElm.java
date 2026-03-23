@@ -130,8 +130,7 @@ package com.lushprojects.circuitjs1.client;
 		return currents[t];
 	    return 0;
 	}
-
-	void setCurrent(int vn, double c) {
+protected void setCurrent(int vn, double c) {
 	    int i;
 	    for (i = 0; i != poleCount; i++)
 		if (vn == voltageSources[i])
@@ -149,7 +148,7 @@ package com.lushprojects.circuitjs1.client;
 	    return throwPosts[t*2+n3-1];
 	}
 	protected int getPostCount() { return 3*poleCount; }
-	void calculateCurrent() {
+	protected void calculateCurrent() {
 	}
 	
         protected void setVoltageSource(int j, int vs) {

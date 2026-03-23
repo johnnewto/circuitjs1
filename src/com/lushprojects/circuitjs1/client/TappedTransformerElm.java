@@ -195,7 +195,7 @@ package com.lushprojects.circuitjs1.client;
 		sim.stampRightSide(nodes[i]);
 	}
 	boolean isTrapezoidal() { return (flags & Inductor.FLAG_BACK_EULER) == 0; }
-	void startIteration() {
+protected void startIteration() {
 	    voltdiff[0] = volts[0]-volts[1];
 	    voltdiff[1] = volts[2]-volts[3];
 	    voltdiff[2] = volts[3]-volts[4];
@@ -213,7 +213,7 @@ package com.lushprojects.circuitjs1.client;
 	    sim.stampCurrentSource(nodes[2], nodes[3], curSourceValue[1]);
 	    sim.stampCurrentSource(nodes[3], nodes[4], curSourceValue[2]);
  	}
-	void calculateCurrent() {
+	protected void calculateCurrent() {
 	    voltdiff[0] = volts[0]-volts[1];
 	    voltdiff[1] = volts[2]-volts[3];
 	    voltdiff[2] = volts[3]-volts[4];

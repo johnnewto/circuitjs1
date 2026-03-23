@@ -281,7 +281,7 @@ class RelayElm extends CircuitElm {
 	return coilPosts[n-3*poleCount];
     }
     protected int getPostCount() { return 2+poleCount*3; }
-    int getInternalNodeCount() { return 1; }
+    protected int getInternalNodeCount() { return 1; }
     protected void reset() {
 	super.reset();
 	ind.reset();
@@ -305,8 +305,7 @@ class RelayElm extends CircuitElm {
 	for (i = 0; i != poleCount*3; i++)
 	    sim.stampNonLinear(nodes[nSwitch0+i]);
     }
-    
-    void startIteration() {
+protected void startIteration() {
 	// using old model?
 	if (switchingTime == 0) {
 	    startIterationOld();
@@ -377,7 +376,7 @@ class RelayElm extends CircuitElm {
 			      i_position == 1 ? r_on : r_off);
 	}
     }
-    void calculateCurrent() {
+    protected void calculateCurrent() {
 	double voltdiff = volts[nCoil1]-volts[nCoil3];
 	coilCurrent = ind.calculateCurrent(voltdiff);
 
