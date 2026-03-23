@@ -17,7 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
+
+import com.lushprojects.circuitjs1.client.*;
 
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
 import com.google.gwt.user.client.ui.HorizontalPanel;
@@ -95,15 +97,10 @@ public class ExportAsTextDialog extends Dialog {
 		});
 		importButton.addClickHandler(new ClickHandler() {
 			public void onClick(ClickEvent event) {
-				String s;
-				sim.getUndoRedoManager().pushUndo();
 				closeDialog();
-//				s=textBox.getHTML();
-//				s=s.replace("<br>", "\r");
-				s=textArea.getText();
-				if (s!=null) {
-					sim.getCircuitIOService().readCircuit(s);
-					sim.getUiPanelManager().allowSave(false);
+				String s = textArea.getText();
+				if (s != null) {
+					sim.reimportCircuitTextFromDialog(s);
 				}
 			}
 		});

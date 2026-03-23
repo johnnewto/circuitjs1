@@ -22,6 +22,7 @@ package com.lushprojects.circuitjs1.client;
 import com.google.gwt.user.client.ui.FileUpload;
 import com.google.gwt.event.dom.client.ChangeEvent;
 import com.google.gwt.event.dom.client.ChangeHandler;
+import com.lushprojects.circuitjs1.client.ui.ExportAsLocalFileDialog;
 
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsMethod;

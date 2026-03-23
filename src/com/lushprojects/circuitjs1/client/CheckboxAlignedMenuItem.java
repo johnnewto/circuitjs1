@@ -22,6 +22,7 @@ package com.lushprojects.circuitjs1.client;
 import com.google.gwt.user.client.Command;
 import com.google.gwt.user.client.ui.MenuItem;
 import com.google.gwt.safehtml.shared.SafeHtmlUtils;
+import com.lushprojects.circuitjs1.client.ui.CheckboxMenuItem;
 
 public class CheckboxAlignedMenuItem extends MenuItem {
 	

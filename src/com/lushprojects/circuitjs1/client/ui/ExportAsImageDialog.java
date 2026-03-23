@@ -17,7 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
+
+import com.lushprojects.circuitjs1.client.*;
 
 import java.util.Date;
 import com.google.gwt.canvas.client.Canvas;
@@ -63,10 +65,10 @@ public class ExportAsImageDialog extends Dialog {
 		String ext = ".png";
 		
 		// Export circuit
-		if (type == CirSim.CAC_IMAGE) {
-		    dataURL = CirSim.getInstance().getExportCompositeActions().getCircuitAsCanvas(type).toDataUrl();
+		if (type == CirSim.getCacImageType()) {
+		    dataURL = CirSim.getInstance().getCircuitAsCanvasForExport(type).toDataUrl();
 		} else {
-		    String data = CirSim.getInstance().getExportCompositeActions().getCircuitAsSVG();
+		    String data = CirSim.getInstance().getCircuitAsSvgForExport();
 		    dataURL = "data:text/plain;base64," + b64encode(data);
 		    ext = ".svg";
 		}
@@ -76,7 +78,7 @@ public class ExportAsImageDialog extends Dialog {
 		vp.add(a);
 		
 		// Export scopes if any exist
-		Canvas scopesCanvas = CirSim.getInstance().getExportCompositeActions().getScopesAsCanvas();
+		Canvas scopesCanvas = CirSim.getInstance().getScopesAsCanvasForExport();
 		if (scopesCanvas != null) {
 			String scopesDataURL = scopesCanvas.toDataUrl();
 			Anchor scopesAnchor = new Anchor("Scopes " + ext, scopesDataURL);

@@ -17,8 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.HorizontalPanel;
@@ -130,7 +131,7 @@ public class PieChartDialog extends Dialog {
         nodeNameBoxes = new Vector<SuggestBox>();
         colorChoices = new Vector<Choice>();
         
-        int sliceCount = pieChart.nodeNames.length;
+        int sliceCount = pieChart.getSliceCount();
         
         // Grid: header row + slice rows
         sliceGrid = new Grid(sliceCount + 1, 3);
@@ -146,7 +147,7 @@ public class PieChartDialog extends Dialog {
             sliceGrid.setText(i + 1, 0, String.valueOf(i + 1));
             
             // Node name SuggestBox with autocomplete for labeled nodes
-            SuggestBox nameBox = createNodeSuggestBox(pieChart.nodeNames[i]);
+            SuggestBox nameBox = createNodeSuggestBox(pieChart.getNodeName(i));
             sliceGrid.setWidget(i + 1, 1, nameBox);
             nodeNameBoxes.add(nameBox);
             
@@ -154,7 +155,7 @@ public class PieChartDialog extends Dialog {
             Choice colorChoice = new Choice();
             for (int j = 0; j < colors.length; j++) {
                 colorChoice.add(colorNames[j]);
-                if (pieChart.nodeColors[i].equalsIgnoreCase(colors[j])) {
+                if (pieChart.getNodeColor(i).equalsIgnoreCase(colors[j])) {
                     colorChoice.select(j);
                 }
             }
@@ -173,7 +174,7 @@ public class PieChartDialog extends Dialog {
         MultiWordSuggestOracle oracle = new MultiWordSuggestOracle();
         
         // Add existing labeled node names
-        java.util.Set<String> nodeNames = LabeledNodeElm.getAllNodeNames();
+        java.util.Set<String> nodeNames = sim.getAllLabeledNodeNamesForPieChart();
         if (nodeNames != null && !nodeNames.isEmpty()) {
             for (String labelName : nodeNames) {
                 oracle.add(labelName);
@@ -204,42 +205,14 @@ public class PieChartDialog extends Dialog {
     }
     
     void addSlice() {
-        // Add a new slice with default values
-        String[] newNodeNames = new String[pieChart.nodeNames.length + 1];
-        String[] newNodeColors = new String[pieChart.nodeColors.length + 1];
-        
-        // Copy existing
-        for (int i = 0; i < pieChart.nodeNames.length; i++) {
-            newNodeNames[i] = pieChart.nodeNames[i];
-            newNodeColors[i] = pieChart.nodeColors[i];
-        }
-        
-        // Add new
-        newNodeNames[pieChart.nodeNames.length] = "node" + (pieChart.nodeNames.length + 1);
-        newNodeColors[pieChart.nodeColors.length] = colors[(pieChart.nodeColors.length % colors.length)];
-        
-        pieChart.nodeNames = newNodeNames;
-        pieChart.nodeColors = newNodeColors;
-        pieChart.nodeValues = new double[newNodeNames.length];
+        int count = pieChart.getSliceCount();
+        pieChart.addSlice("node" + (count + 1), colors[count % colors.length]);
         
         rebuildSliceGrid();
     }
     
     void removeLastSlice() {
-        if (pieChart.nodeNames.length <= 1)
-            return; // Keep at least one slice
-        
-        String[] newNodeNames = new String[pieChart.nodeNames.length - 1];
-        String[] newNodeColors = new String[pieChart.nodeColors.length - 1];
-        
-        for (int i = 0; i < newNodeNames.length; i++) {
-            newNodeNames[i] = pieChart.nodeNames[i];
-            newNodeColors[i] = pieChart.nodeColors[i];
-        }
-        
-        pieChart.nodeNames = newNodeNames;
-        pieChart.nodeColors = newNodeColors;
-        pieChart.nodeValues = new double[newNodeNames.length];
+        pieChart.removeLastSlice();
         
         rebuildSliceGrid();
     }
@@ -247,15 +220,15 @@ public class PieChartDialog extends Dialog {
     void apply() {
         // Update node names from text boxes
         for (int i = 0; i < nodeNameBoxes.size(); i++) {
-            pieChart.nodeNames[i] = nodeNameBoxes.get(i).getText().trim();
+            pieChart.setNodeName(i, nodeNameBoxes.get(i).getText().trim());
         }
         
         // Update colors from choices
         for (int i = 0; i < colorChoices.size(); i++) {
             int colorIndex = colorChoices.get(i).getSelectedIndex();
-            pieChart.nodeColors[i] = colors[colorIndex];
+            pieChart.setNodeColor(i, colors[colorIndex]);
         }
         
-        sim.needAnalyze();
+        sim.requestAnalyzeFromDialog();
     }
 }

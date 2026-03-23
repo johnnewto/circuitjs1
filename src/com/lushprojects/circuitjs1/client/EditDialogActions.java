@@ -2,6 +2,8 @@ package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.canvas.client.Canvas;
 import com.google.gwt.dom.client.CanvasElement;
+import com.lushprojects.circuitjs1.client.ui.ExportAsImageDialog;
+import com.lushprojects.circuitjs1.client.ui.LookupTablesEditorDialog;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 class EditDialogActions {

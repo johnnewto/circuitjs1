@@ -145,15 +145,71 @@ Expected updates:
 ## PR 4: `client.ui` Package
 
 ### Files to Move (partial list)
-- All `*Dialog.java` files
+- Only cross-cutting/global `*Dialog.java` files (import/export/search/shortcuts/viewer shells)
 - `Toolbar.java`, `EconomicsToolbar.java`, `ElectronicsToolbar.java`
 - `ScopeManager.java`, `ScopePopupMenu.java`
 - `FloatingControlPanel.java`
 - `ScrollValuePopup.java`
 
+### Placement Rule (Dialogs)
+- If a dialog is tightly coupled to a specific `*Elm`, keep/move it with that element domain package.
+- For this migration, colocate element-coupled dialogs in the **same directory/package** as their element classes (no `electronics/ui` or `economics/ui` subdir requirement).
+- `client.ui` is for shared/global UI, not element-internal editors.
+
 ### Acceptance Criteria
 - [ ] All dialogs open correctly
 - [ ] Toolbar switching works
+
+### PR 4 Follow-up: Temporary `CirSim` Bridge Cleanup
+
+**Why this exists:** During dialog moves from `client` → `client.ui`, package-private access breaks.  
+Temporary `CirSim` bridge methods are allowed to keep PR4 incremental and compile-safe.
+
+**Bridge inventory (to review/remove later):**
+- [ ] `isElectron()`
+- [ ] `getCircuitAsCanvasForExport(int)`
+- [ ] `getCircuitAsSvgForExport()`
+- [ ] `getScopesAsCanvasForExport()`
+- [ ] `getCacImageType()`
+- [ ] `repaintFromUi()`
+- [ ] `reimportCircuitTextFromDialog(String)`
+- [ ] `importCircuitTextFromDialog(String, boolean)`
+- [ ] `loadCircuitFromExternalText(String, String)`
+- [ ] `openDropboxChooserFromDialog()`
+- [ ] `getSearchableMainMenuItemNames()`
+- [ ] `executeMainMenuItemByName(String)`
+- [ ] `getShortcutMenuItemCount()`
+- [ ] `getShortcutMenuItemName(int)`
+- [ ] `getShortcutMenuItemValue(int)`
+- [ ] `applyShortcutMenuItemValues(Vector<String>)`
+- [ ] `alertOrWarnFromDialog(String)`
+- [ ] `getUserSubcircuitNames()`
+- [ ] `removeSubcircuitByName(String)`
+- [ ] `getFloatingScopeCountForViewer()`
+- [ ] `getFloatingScopeForViewer(int)`
+- [ ] `getAllLabeledNodeNamesForPieChart()`
+- [ ] `requestAnalyzeFromDialog()`
+- [ ] `getSortedLabeledNodeNames()`
+- [ ] `getCircuitAreaHeight()`
+- [ ] `getGridSize()`
+- [ ] `inverseTransformXForUi(double)`
+- [ ] `inverseTransformYForUi(double)`
+- [ ] `snapGridForUi(int)`
+- [ ] `createLabeledNodeElementForUi(int, int, String, int)`
+- [ ] `addElementForUi(CircuitElm)`
+- [ ] `clearSelectionForUi()`
+- [ ] `selectElementForUi(CircuitElm, boolean)`
+- [ ] `needAnalyzeForUi()`
+- [ ] `repaintForUi()`
+- [ ] `findCanvasTestLabelForUi(String[])`
+- [ ] `getInstance()`
+- [ ] `isCacheBustedUrlsEnabled()`
+
+**Cleanup rules (PR5/PR8):**
+1. If a bridge only forwards to one manager call, replace with a dedicated UI/service interface and remove the bridge.
+2. If multiple dialogs need the same operation, move it to a stable service API (not `CirSim`), then remove dialog-specific bridge names.
+3. Keep only bridges that are intentionally part of public JS/app API surface; rename to non-dialog-specific names.
+4. No new bridge methods after PR4 unless added to this list with explicit removal plan.
 
 ---
 
@@ -238,6 +294,15 @@ public interface ConsoleLogger {
 - `ComputedValues.java`, `ComputedValueSourceElm.java`
 - `StockFlowRegistry.java`
 
+### Economics-Coupled Dialogs
+- Move economics-specific dialogs together with economics elements, same package/directory:
+  - `TableEditDialog.java`
+  - `TableMarkdownDebugDialog.java`
+  - `EquationTableEditDialog.java`
+  - `EquationTableMarkdownDebugDialog.java`
+  - `ActionTimeDialog.java`
+  - `PieChartDialog.java` (if kept economics-coupled)
+
 ### Visibility Promotions Expected
 - Many package-private methods become public
 - Consider `@VisibleForTesting` annotations
@@ -253,6 +318,12 @@ public interface ConsoleLogger {
 3. **Semiconductors**: DiodeElm, TransistorElm, MosfetElm, JfetElm, etc.
 4. **Digital**: GateElm subclasses, ChipElm, FlipFlops, etc.
 5. **Misc**: Switches, Relays, Transformers, etc.
+
+### Electronics-Coupled Dialogs
+- Move electronics-specific dialogs together with electronics elements, same package/directory:
+  - `ScopePropertiesDialog.java`
+  - `SliderDialog.java`
+  - Other element editor dialogs that primarily serve electronics elements
 
 ---
 
@@ -272,6 +343,7 @@ public interface ConsoleLogger {
 - Remove temporary compatibility shims
 - Finalize interface implementations
 - Update all imports
+- Reconcile any PR4 temporary dialog moves so element-coupled dialogs end in their domain packages
 
 ---
 

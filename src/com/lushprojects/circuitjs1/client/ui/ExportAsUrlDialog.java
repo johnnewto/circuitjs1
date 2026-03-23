@@ -17,7 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
+
+import com.lushprojects.circuitjs1.client.*;
 
 import com.google.gwt.user.client.ui.TextArea;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
@@ -72,7 +74,7 @@ public class ExportAsUrlDialog extends Dialog {
 	String requrl;
 	
 	public boolean shortIsSupported() {
-		if (CirSim.getInstance().getPlatformInterop().isElectron())
+		if (CirSim.getInstance().isElectron())
 		    return false;
 		// Check if shortRelayUrl is configured in circuitjs.html
 		return getShortRelayUrl() != null;
@@ -141,7 +143,7 @@ public class ExportAsUrlDialog extends Dialog {
 		super();
 		closeOnEnter = false;
 		String start[] = Location.getHref().split("\\?");
-		if (CirSim.getInstance().getPlatformInterop().isElectron())
+		if (CirSim.getInstance().isElectron())
 		    start[0] = "https://johnnewto.github.io/circuitjs1/circuitjs.html";
 		String query="?ctz=" + compress(dump);
 		dump = start[0] + query;

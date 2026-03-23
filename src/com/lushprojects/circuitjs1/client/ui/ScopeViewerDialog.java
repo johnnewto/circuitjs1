@@ -17,8 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.resources.client.ClientBundle;
 import com.google.gwt.resources.client.TextResource;
@@ -177,13 +178,9 @@ public class ScopeViewerDialog extends DialogBox {
             }
 
             // Export all undocked (floating) ScopeElm scopes
-            int floatingCount = sim.getScopeManager().countScopeElms();
+            int floatingCount = sim.getFloatingScopeCountForViewer();
             for (int i = 0; i < floatingCount; i++) {
-                ScopeElm scopeElm = sim.getScopeManager().getNthScopeElm(i);
-                if (scopeElm == null)
-                    continue;
-
-                Scope scope = scopeElm.elmScope;
+                Scope scope = sim.getFloatingScopeForViewer(i);
                 if (scope == null || scope.visiblePlots.size() == 0)
                     continue;
 
@@ -254,13 +251,8 @@ public class ScopeViewerDialog extends DialogBox {
         }
         
         // Use history if available, otherwise circular buffer
-        boolean useHistory = scope.drawFromZero && scope.historySize > 0;
-        String dataJson;
-        if (useHistory) {
-            dataJson = scope.exportHistoryAsJSON();
-        } else {
-            dataJson = scope.exportCircularBufferAsJSON();
-        }
+        boolean useHistory = scope.hasHistoryForExport();
+        String dataJson = scope.exportDataAsJSON(useHistory);
         
         // Strip outer braces and merge
         int startIdx = dataJson.indexOf('{') + 1;

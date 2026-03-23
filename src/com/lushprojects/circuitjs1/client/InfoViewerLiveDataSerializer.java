@@ -6,12 +6,12 @@
 
 package com.lushprojects.circuitjs1.client;
 
-final class InfoViewerLiveDataSerializer {
+public final class InfoViewerLiveDataSerializer {
 
     private InfoViewerLiveDataSerializer() {
     }
 
-    static String buildLiveDataJson(CirSim sim) {
+    public static String buildLiveDataJson(CirSim sim) {
         if (sim == null) {
             return null;
         }

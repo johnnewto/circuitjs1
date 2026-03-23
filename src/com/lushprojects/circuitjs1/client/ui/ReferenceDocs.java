@@ -1,4 +1,5 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
+import com.lushprojects.circuitjs1.client.*;
 
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.http.client.Request;
@@ -7,7 +8,6 @@ import com.google.gwt.http.client.RequestCallback;
 import com.google.gwt.http.client.RequestException;
 import com.google.gwt.http.client.Response;
 import com.google.gwt.http.client.URL;
-
 /**
  * Helper for opening project reference markdown files in rendered form.
  *

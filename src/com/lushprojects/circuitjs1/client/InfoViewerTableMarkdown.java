@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Set;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
-final class InfoViewerTableMarkdown {
+public final class InfoViewerTableMarkdown {
 
     private static final String NO_TABLES_COMMENT =
         "<!-- No table elements found — replace the variable names below with your circuit's computed values -->\n\n";
@@ -28,7 +28,7 @@ final class InfoViewerTableMarkdown {
      * Includes balance sheets (GodlyTableElm), transaction matrices (CurrentTransactionsMatrixElm),
      * SFC tables (SFCTableElm), regular tables (TableElm), and equation tables (EquationTableElm).
      */
-    static String generateCircuitTablesMarkdown() {
+    public static String generateCircuitTablesMarkdown() {
         if (CirSim.getInstance() == null || CirSim.getInstance().elmList == null) {
             return "No circuit loaded.";
         }
@@ -109,7 +109,7 @@ final class InfoViewerTableMarkdown {
     /**
      * Generate fenced circuit blocks for each table so the info viewer can mount live table widgets.
      */
-    static String generateCircuitTableBlocksMarkdown() {
+    public static String generateCircuitTableBlocksMarkdown() {
         if (CirSim.getInstance() == null || CirSim.getInstance().elmList == null) {
             return "No circuit loaded.";
         }
@@ -145,7 +145,7 @@ final class InfoViewerTableMarkdown {
     /**
      * Generate a starter @info markdown template using current circuit tables and scope plots.
      */
-    static String generateAutoInfoTemplateMarkdown() {
+    public static String generateAutoInfoTemplateMarkdown() {
         CirSim sim = CirSim.getInstance();
         if (sim == null) {
             return "# Model Information\n\nNo circuit loaded.";

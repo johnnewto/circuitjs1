@@ -27,6 +27,7 @@ import com.google.gwt.user.client.ui.DialogBox;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.lushprojects.circuitjs1.client.EquationTableElm.RowOutputMode;
+import com.lushprojects.circuitjs1.client.ui.InfoViewerDialog;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;

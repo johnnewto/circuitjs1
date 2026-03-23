@@ -1,5 +1,6 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.user.client.ui.Button;
@@ -73,12 +74,11 @@ public class LookupTablesEditorDialog extends Dialog {
         try {
             SFCRParser.parseToResult(merged, true);
         } catch (Throwable t) {
-            sim.alertOrWarn(Locale.LS("Lookup text is not valid SFCR: ") + t.getMessage());
+            sim.alertOrWarnFromDialog(Locale.LS("Lookup text is not valid SFCR: ") + t.getMessage());
             return;
         }
 
-        sim.getUndoRedoManager().pushUndo();
-        sim.getImportExportHelper().importCircuitFromText(merged, false);
+        sim.importCircuitTextFromDialog(merged, false);
         closeDialog();
     }
 }

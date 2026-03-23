@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.ui.ExportAsUrlDialog;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 import com.google.gwt.core.client.GWT;

@@ -1,5 +1,8 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.ui.EconomicsToolbar;
+import com.lushprojects.circuitjs1.client.ui.ElectronicsToolbar;
+
 class ToolbarModeManager {
     private final CirSim sim;
 

@@ -1,14 +1,10 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
-import com.google.gwt.core.client.GWT;
+import com.lushprojects.circuitjs1.client.*;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.*;
-import com.google.gwt.user.client.ui.DialogBox;
-
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Vector;
 
 public class SubcircuitDialog extends Dialog {
@@ -18,9 +14,11 @@ public class SubcircuitDialog extends Dialog {
     private Button deleteButton;
     private Button doneButton;
 
-    private Vector<CustomCompositeModel> subcircuits;
+    private final CirSim sim;
+    private Vector<String> subcircuits;
 
     public SubcircuitDialog(CirSim sim) {
+        this.sim = sim;
         setText("Subcircuit Manager");
         //setAnimationEnabled(true);
         setGlassEnabled(true);
@@ -37,11 +35,10 @@ public class SubcircuitDialog extends Dialog {
         subcircuitListBox.setVisibleItemCount(5);
         subcircuitListBox.setWidth("100%");
 
-	subcircuits = CustomCompositeModel.getModelList();
-	subcircuits.removeIf(CustomCompositeModel::isBuiltin);
+	subcircuits = sim.getUserSubcircuitNames();
 	int i;
 	for (i = 0; i != subcircuits.size(); i++) {
-	    String name = subcircuits.get(i).name;
+	    String name = subcircuits.get(i);
 	    subcircuitListBox.addItem(name);
 	}
 
@@ -69,7 +66,7 @@ public class SubcircuitDialog extends Dialog {
 	this.center();
     }
 
-    private void handleDelete() {
+	private void handleDelete() {
         int selectedIndex = subcircuitListBox.getSelectedIndex();
         if (selectedIndex == -1) {
             Window.alert("Please select a subcircuit to delete.");
@@ -80,11 +77,10 @@ public class SubcircuitDialog extends Dialog {
         boolean confirm = Window.confirm("Are you sure you want to delete " + selectedSubcircuit + "?");
 
         if (confirm) {
-	    CustomCompositeModel model = subcircuits.get(selectedIndex);
-            subcircuits.remove(model);
-	    model.remove();
+	    String modelName = subcircuits.get(selectedIndex);
+            subcircuits.remove(selectedIndex);
+	    sim.removeSubcircuitByName(modelName);
             subcircuitListBox.removeItem(selectedIndex);
         }
     }
 }
-

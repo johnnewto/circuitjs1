@@ -1,13 +1,16 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
+import com.lushprojects.circuitjs1.client.*;
 
-class InfoDialogActions {
+import com.lushprojects.circuitjs1.client.CirSim;
+
+public class InfoDialogActions {
     private final CirSim sim;
 
-    InfoDialogActions(CirSim sim) {
+    public InfoDialogActions(CirSim sim) {
         this.sim = sim;
     }
 
-    void doViewModelInfo() {
+    public void doViewModelInfo() {
         String editorContent = sim.getModelInfoEditorContent();
         if (editorContent != null && !editorContent.isEmpty()) {
             try {
@@ -24,20 +27,20 @@ class InfoDialogActions {
         }
     }
 
-    void openMathTestDialog() {
+    public void openMathTestDialog() {
         sim.openMathTestDialogCore();
     }
 
-    void openTableTestDialog() {
+    public void openTableTestDialog() {
         sim.openTableTestDialogCore();
     }
 
-    void openIframeViewer() {
+    public void openIframeViewer() {
         IframeViewerDialog.openUrlWithSelector("Documentation",
             "../docs/money/index.html", "");
     }
 
-    void openReferenceDocsViewer() {
+    public void openReferenceDocsViewer() {
         String viewerUrl = com.google.gwt.core.client.GWT.getModuleBaseURL() +
             "docs/markdown-viewer.html?doc=reference/ReferenceIndex.md";
         IframeViewerDialog.openDialog("Reference Docs",

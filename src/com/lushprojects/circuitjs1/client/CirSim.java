@@ -51,6 +51,12 @@ import com.google.gwt.safehtml.shared.SafeHtmlUtils;
 import com.google.gwt.user.client.ui.PopupPanel;
 import com.google.gwt.user.client.ui.Frame;
 import com.lushprojects.circuitjs1.client.io.ImportExportHelper;
+import com.lushprojects.circuitjs1.client.ui.CheckboxMenuItem;
+import com.lushprojects.circuitjs1.client.ui.Toolbar;
+import com.lushprojects.circuitjs1.client.ui.InfoDialogActions;
+import com.lushprojects.circuitjs1.client.ui.MathElementsTestDialog;
+import com.lushprojects.circuitjs1.client.ui.ScopeViewerDialog;
+import com.lushprojects.circuitjs1.client.ui.TableElementsTestDialog;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsMethod;
@@ -157,6 +163,12 @@ public class CirSim {
 
 	@JsMethod(namespace = JsPackage.GLOBAL, name = "toggleDevTools")
 	static native void toggleDevToolsNative();
+
+	public static void repaintFromUi() {
+		if (CircuitElm.sim != null) {
+			CircuitElm.sim.repaint();
+		}
+	}
 
 	@JsFunction
 	interface TouchEventHandler {
@@ -684,6 +696,18 @@ public CirSim() {
 	    return exportCompositeActions;
 	}
 
+	public Canvas getCircuitAsCanvasForExport(int type) {
+		return exportCompositeActions.getCircuitAsCanvas(type);
+	}
+
+	public String getCircuitAsSvgForExport() {
+		return exportCompositeActions.getCircuitAsSVG();
+	}
+
+	public Canvas getScopesAsCanvasForExport() {
+		return exportCompositeActions.getScopesAsCanvas();
+	}
+
 	public ImportExportHelper getImportExportHelper() {
 	    return importExportHelper;
 	}
@@ -694,6 +718,129 @@ public CirSim() {
 
 	public void setAllowSaveFromImportHelper(boolean allowSave) {
 	    getUiPanelManager().allowSave(allowSave);
+	}
+
+	public void reimportCircuitTextFromDialog(String circuitText) {
+		getUndoRedoManager().pushUndo();
+		getCircuitIOService().readCircuit(circuitText);
+		getUiPanelManager().allowSave(false);
+	}
+
+	public void importCircuitTextFromDialog(String circuitText, boolean subcircuitsOnly) {
+		getUndoRedoManager().pushUndo();
+		getImportExportHelper().importCircuitFromText(circuitText, subcircuitsOnly);
+	}
+
+	public void loadCircuitFromExternalText(String circuitText, String sourceLabel) {
+		getUndoRedoManager().pushUndo();
+		getCircuitIOService().readCircuit(circuitText);
+		getSFCRDocumentManager().setCurrentCircuitFile(sourceLabel);
+		getUiPanelManager().allowSave(false);
+	}
+
+	public void openDropboxChooserFromDialog() {
+		new ImportFromDropbox(this);
+	}
+
+	public Vector<String> getSearchableMainMenuItemNames() {
+		Vector<String> items = new Vector<String>();
+		for (int i = 0; i != getMenuUiState().mainMenuItems.size(); i++) {
+			CheckboxMenuItem item = getMenuUiState().mainMenuItems.get(i);
+			if (item.getShortcut().length() > 1)
+				break;
+			items.add(item.getName());
+		}
+		return items;
+	}
+
+	public void executeMainMenuItemByName(String itemName) {
+		if (itemName == null)
+			return;
+		for (int i = 0; i != getMenuUiState().mainMenuItems.size(); i++) {
+			CheckboxMenuItem item = getMenuUiState().mainMenuItems.get(i);
+			if (itemName.equals(item.getName())) {
+				item.getScheduledCommand().execute();
+				return;
+			}
+		}
+	}
+
+	public int getShortcutMenuItemCount() {
+		int count = 0;
+		for (int i = 0; i != getMenuUiState().mainMenuItems.size(); i++) {
+			CheckboxMenuItem item = getMenuUiState().mainMenuItems.get(i);
+			if (item.getShortcut().length() > 1)
+				break;
+			count++;
+		}
+		return count;
+	}
+
+	public String getShortcutMenuItemName(int index) {
+		return getMenuUiState().mainMenuItems.get(index).getName();
+	}
+
+	public String getShortcutMenuItemValue(int index) {
+		return getMenuUiState().mainMenuItems.get(index).getShortcut();
+	}
+
+	public void applyShortcutMenuItemValues(Vector<String> shortcutValues) {
+		for (int i = 0; i != shortcuts.length; i++)
+			shortcuts[i] = null;
+		int count = Math.min(shortcutValues.size(), getShortcutMenuItemCount());
+		for (int i = 0; i < count; i++) {
+			String str = shortcutValues.get(i);
+			CheckboxMenuItem item = getMenuUiState().mainMenuItems.get(i);
+			item.setShortcut(str);
+			if (str != null && str.length() > 0)
+				shortcuts[str.charAt(0)] = getMenuUiState().mainMenuItemNames.get(i);
+		}
+		getPreferencesManager().saveShortcuts();
+	}
+
+	public void alertOrWarnFromDialog(String message) {
+		alertOrWarn(message);
+	}
+
+	public Vector<String> getUserSubcircuitNames() {
+		Vector<String> names = new Vector<String>();
+		Vector<CustomCompositeModel> list = CustomCompositeModel.getModelList();
+		for (int i = 0; i != list.size(); i++) {
+			CustomCompositeModel model = list.get(i);
+			if (!model.isBuiltin())
+				names.add(model.name);
+		}
+		return names;
+	}
+
+	public void removeSubcircuitByName(String subcircuitName) {
+		if (subcircuitName == null)
+			return;
+		Vector<CustomCompositeModel> list = CustomCompositeModel.getModelList();
+		for (int i = 0; i != list.size(); i++) {
+			CustomCompositeModel model = list.get(i);
+			if (!model.isBuiltin() && subcircuitName.equals(model.name)) {
+				model.remove();
+				return;
+			}
+		}
+	}
+
+	public int getFloatingScopeCountForViewer() {
+		return getScopeManager().countScopeElms();
+	}
+
+	public Scope getFloatingScopeForViewer(int index) {
+		ScopeElm scopeElm = getScopeManager().getNthScopeElm(index);
+		return scopeElm == null ? null : scopeElm.elmScope;
+	}
+
+	public java.util.Set<String> getAllLabeledNodeNamesForPieChart() {
+		return LabeledNodeElm.getAllNodeNames();
+	}
+
+	public void requestAnalyzeFromDialog() {
+		needAnalyze();
 	}
 
 	public boolean isDotsEnabledForExport() {
@@ -881,7 +1028,11 @@ public CirSim() {
 	}
 
 	CirSimPlatformInterop getPlatformInterop() {
-	    return platformInterop;
+		return platformInterop;
+	}
+
+	public boolean isElectron() {
+		return platformInterop.isElectron();
 	}
 
 	UndoRedoManager getUndoRedoManager() {
@@ -975,8 +1126,12 @@ public CirSim() {
     int framerate = 0, steprate = 0;
     private static CirSim theSim;
 
-    static CirSim getInstance() {
+    public static CirSim getInstance() {
 	return theSim;
+    }
+
+    public boolean isCacheBustedUrlsEnabled() {
+	return enableCacheBustedUrls;
     }
     
     // Test dialog for mathematical elements
@@ -1157,6 +1312,128 @@ public CirSim() {
 	if (n >= elmList.size())
 	    return null;
 	return elmList.elementAt(n);
+    }
+
+    public String[] getSortedLabeledNodeNames() {
+	return LabeledNodeElm.getSortedLabeledNodeNames();
+    }
+
+    public int getCircuitAreaHeight() {
+	return circuitArea.height;
+    }
+
+    public int getGridSize() {
+	return gridSize;
+    }
+
+    public int getElementCount() {
+	return elmList.size();
+    }
+
+    public int inverseTransformXForUi(double x) {
+	return inverseTransformX(x);
+    }
+
+    public int inverseTransformYForUi(double y) {
+	return inverseTransformY(y);
+    }
+
+    public int snapGridForUi(int x) {
+	return snapGrid(x);
+    }
+
+    public CircuitElm createLabeledNodeElementForUi(int gx, int gy, String varName, int shaftLength) {
+	LabeledNodeElm elm = new LabeledNodeElm(gx, gy);
+	elm.text = varName;
+	elm.x2 = gx + shaftLength;
+	elm.y2 = gy;
+	elm.setPoints();
+	return elm;
+    }
+
+    public void addElementForUi(CircuitElm elm) {
+	elmList.addElement(elm);
+    }
+
+    public void clearSelectionForUi() {
+	getClipboardManager().clearSelection();
+    }
+
+    public void selectElementForUi(CircuitElm elm, boolean selected) {
+	elm.setSelected(selected);
+    }
+
+    public boolean isPositionClearForVariablePlacement(int gx, int gy) {
+	int minDistance = gridSize * 3;
+	for (int i = 0; i < elmList.size(); i++) {
+	    CircuitElm ce = getElm(i);
+	    Rectangle bbox = ce.getBoundingBox();
+	    if (bbox != null) {
+		int margin = minDistance;
+		if (ce instanceof TableElm || ce instanceof GodlyTableElm) {
+		    margin = gridSize * 2;
+		}
+		if (gx >= bbox.x - margin && gx <= bbox.x + bbox.width + margin &&
+		    gy >= bbox.y - margin && gy <= bbox.y + bbox.height + margin) {
+		    return false;
+		}
+	    } else {
+		int dx1 = ce.x - gx;
+		int dy1 = ce.y - gy;
+		double dist1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+		if (dist1 < minDistance)
+		    return false;
+
+		int dx2 = ce.x2 - gx;
+		int dy2 = ce.y2 - gy;
+		double dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+		if (dist2 < minDistance)
+		    return false;
+
+		if (ce.x != ce.x2 || ce.y != ce.y2) {
+		    double lineLength = Math.sqrt((ce.x2 - ce.x) * (ce.x2 - ce.x) +
+						 (ce.y2 - ce.y) * (ce.y2 - ce.y));
+		    if (lineLength > 0) {
+			double distToLine = Math.abs((ce.y2 - ce.y) * gx - (ce.x2 - ce.x) * gy +
+						     ce.x2 * ce.y - ce.y2 * ce.x) / lineLength;
+			double t = ((gx - ce.x) * (ce.x2 - ce.x) + (gy - ce.y) * (ce.y2 - ce.y)) /
+				   (lineLength * lineLength);
+			if (t >= 0 && t <= 1 && distToLine < minDistance)
+			    return false;
+		    }
+		}
+	    }
+	}
+	return true;
+    }
+
+    public void needAnalyzeForUi() {
+	needAnalyze();
+    }
+
+    public void repaintForUi() {
+	repaint();
+    }
+
+    public String findCanvasTestLabelForUi(String[] testNames) {
+	if (testNames == null || testNames.length == 0) {
+	    return null;
+	}
+	for (int i = 0; i < elmList.size(); i++) {
+	    CircuitElm ce = getElm(i);
+	    if (ce instanceof TextElm) {
+		String text = ((TextElm) ce).text;
+		if (text == null) {
+		    continue;
+		}
+		for (String testName : testNames) {
+		    if (text.equals(testName)) {
+			return testName;
+		    }
+		}
+	    }
+	}
+	return null;
     }
     
     public Adjustable findAdjustable(CircuitElm elm, int item) {
@@ -1413,14 +1690,14 @@ public CirSim() {
 	}
     }
 
-	void openMathTestDialogCore() {
+	public void openMathTestDialogCore() {
 	if (mathTestDialog == null) {
 	    mathTestDialog = new MathElementsTestDialog();
 	}
 	mathTestDialog.show();
 	}
 
-	void openTableTestDialogCore() {
+	public void openTableTestDialogCore() {
 	if (tableTestDialog == null) {
 	    tableTestDialog = new TableElementsTestDialog();
 	}
@@ -1823,7 +2100,7 @@ public CirSim() {
 	toolbar.highlightButton(getMouseModeStr());
     }
 
-    String getLabelTextForClass(String cls) {
+    public String getLabelTextForClass(String cls) {
 	return classToLabelMap.get(cls);
     }
 
@@ -1845,5 +2122,9 @@ public CirSim() {
 	static final int CAC_PRINT = 0;
 	static final int CAC_IMAGE = 1;
 	static final int CAC_SVG   = 2;
+
+	public static int getCacImageType() {
+		return CAC_IMAGE;
+	}
 	
 }

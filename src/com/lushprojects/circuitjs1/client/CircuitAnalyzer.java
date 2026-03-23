@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.ui.VariableBrowserDialog;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;

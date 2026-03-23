@@ -7,6 +7,7 @@ import com.google.gwt.safehtml.shared.SafeHtmlUtils;
 import com.google.gwt.user.client.ui.MenuBar;
 import com.google.gwt.user.client.ui.MenuItem;
 import com.lushprojects.circuitjs1.client.registry.ElementFactoryFacade;
+import com.lushprojects.circuitjs1.client.ui.CheckboxMenuItem;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 final class CirSimMenuBuilder {

@@ -1,6 +1,8 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.user.client.ui.PopupPanel;
+import com.lushprojects.circuitjs1.client.ui.AboutBox;
+import com.lushprojects.circuitjs1.client.ui.VariableBrowserDialog;
 
 final class CirSimDialogCoordinator {
     private static EditDialog editDialog;

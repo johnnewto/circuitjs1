@@ -17,8 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.google.gwt.user.client.ui.FlexTable;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
 import com.google.gwt.user.client.ui.HorizontalPanel;
@@ -59,14 +60,11 @@ public class ShortcutsDialog extends Dialog {
 		
 		FlexTable table = new FlexTable();
 		sp.add(table);
-		int i;
-		for (i = 0; i != asim.getMenuUiState().mainMenuItems.size(); i++) {
-		    CheckboxMenuItem item = sim.getMenuUiState().mainMenuItems.get(i);
-	    if (item.getShortcut().length() > 1)
-		break;
-	    table.setText(i, 0, item.getName());
+		int count = asim.getShortcutMenuItemCount();
+		for (int i = 0; i != count; i++) {
+	    table.setText(i, 0, sim.getShortcutMenuItemName(i));
 	    TextBox text = new TextBox();
-	    text.setText(item.getShortcut());
+	    text.setText(sim.getShortcutMenuItemValue(i));
 	    text.setMaxLength(1);
 	    // Prevent keyboard events from propagating to circuit editor
 	    preventKeyboardPropagation(text);
@@ -99,22 +97,14 @@ public class ShortcutsDialog extends Dialog {
 	}
 	
 	public void enterPressed() {
-	    int i;
 	    if (checkForDuplicates())
 		return;
-	    // clear existing shortcuts
-	    for (i = 0; i != sim.shortcuts.length; i++)
-		sim.shortcuts[i] = null;
-	    // load new ones
-	    for (i = 0; i != textBoxes.size(); i++) {
+	    Vector<String> shortcuts = new Vector<String>();
+	    for (int i = 0; i != textBoxes.size(); i++) {
 		String str = textBoxes.get(i).getText();
-		CheckboxMenuItem item = sim.getMenuUiState().mainMenuItems.get(i);
-		item.setShortcut(str);
-		if (str.length() > 0)
-		    sim.shortcuts[str.charAt(0)] = sim.getMenuUiState().mainMenuItemNames.get(i);
+		shortcuts.add(str);
 	    }
-	    // save to local storage
-	    sim.getPreferencesManager().saveShortcuts();
+	    sim.applyShortcutMenuItemValues(shortcuts);
 	    closeDialog();
 	}
 	

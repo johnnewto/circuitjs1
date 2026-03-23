@@ -5,6 +5,8 @@ import java.util.Vector;
 import com.google.gwt.user.client.ui.MenuBar;
 import com.google.gwt.user.client.ui.MenuItem;
 import com.google.gwt.user.client.ui.PopupPanel;
+import com.lushprojects.circuitjs1.client.ui.CheckboxMenuItem;
+import com.lushprojects.circuitjs1.client.ui.ScopePopupMenu;
 
 final class MenuUiState {
     CircuitElm menuElm;

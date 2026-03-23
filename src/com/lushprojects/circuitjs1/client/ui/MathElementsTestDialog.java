@@ -17,7 +17,8 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
+import com.lushprojects.circuitjs1.client.*;
 
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.HorizontalPanel;
@@ -28,24 +29,28 @@ import com.google.gwt.user.client.ui.ListBox;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
+import com.lushprojects.circuitjs1.client.CirSim;
+import com.lushprojects.circuitjs1.client.MathElementsTest;
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 
 /**
- * TableElementsTestDialog - Dialog for running table element tests
+ * MathElementsTestDialog - Always-on-top dialog for running mathematical element tests
  * 
- * This dialog provides a UI for running the complete test suite for table-based
- * circuit elements (GodleyTableElm, CTMElm, etc.)
+ * This dialog provides a UI for running the complete test suite for mathematical
+ * circuit elements (AdderElm, SubtracterElm, MultiplyElm, etc.) without interfering
+ * with the main CircuitJS1 interface.
  * 
  * Features:
  * - Non-modal dialog that stays on top
  * - Run all tests or individual test methods
  * - Live console output showing test progress
  * - Color-coded pass/fail indicators
+ * - Resizable text area for viewing detailed results
  */
-public class TableElementsTestDialog {
+public class MathElementsTestDialog {
 
     @JsFunction
     private interface ConsoleMethod {
@@ -72,7 +77,7 @@ public class TableElementsTestDialog {
     private DialogBox dialog;
     private TextArea outputArea;
     private CirSim sim;
-    private TableElementsTest testSuite;
+    private MathElementsTest testSuite;
     private Button runButton;
     private Button runCanvasTestButton;
     private Button runSelectedTestButton;
@@ -85,9 +90,9 @@ public class TableElementsTestDialog {
     /**
      * Create the test dialog
      */
-    public TableElementsTestDialog() {
+    public MathElementsTestDialog() {
         this.sim = CirSim.getInstance();
-        this.testSuite = new TableElementsTest();
+        this.testSuite = new MathElementsTest();
         createDialog();
     }
     
@@ -96,9 +101,9 @@ public class TableElementsTestDialog {
      */
     private void createDialog() {
         dialog = new DialogBox();
-        dialog.setText("Table Elements Test Suite");
-        dialog.setModal(false);
-        dialog.setGlassEnabled(false);
+        dialog.setText("Math Elements Test Suite");
+        dialog.setModal(false);  // Non-modal so it doesn't block interaction
+        dialog.setGlassEnabled(false);  // No glass pane background
         
         VerticalPanel panel = new VerticalPanel();
         panel.setWidth("600px");
@@ -109,8 +114,8 @@ public class TableElementsTestDialog {
         infoPanel.getElement().getStyle().setProperty("backgroundColor", "#f0f0f0");
         infoPanel.getElement().getStyle().setProperty("borderBottom", "2px solid #ccc");
         
-        addInfoText(infoPanel, "Test Coverage: Table-based circuit elements");
-        addInfoText(infoPanel, "Elements: GodleyTableElm, CTMElm, Stock-Flow models");
+        addInfoText(infoPanel, "Test Coverage: 16 test methods covering 10 mathematical element types");
+        addInfoText(infoPanel, "Elements: AdderElm, SubtracterElm, MultiplyElm, MultiplyConstElm, DividerElm, DifferentiatorElm, IntegratorElm, ODEElm, EquationElm, PercentElm");
         
         panel.add(infoPanel);
         
@@ -237,59 +242,86 @@ public class TableElementsTestDialog {
         dialog.setWidget(panel);
     }
     
+    /**
+     * Add info text to panel
+     */
     private void addInfoText(VerticalPanel panel, String text) {
-        Label label = new Label(text);
+        com.google.gwt.user.client.ui.Label label = new com.google.gwt.user.client.ui.Label(text);
         label.getElement().getStyle().setProperty("fontSize", "12px");
         label.getElement().getStyle().setProperty("marginBottom", "5px");
         panel.add(label);
     }
     
+    /**
+     * Show the dialog
+     */
     public void show() {
         dialog.show();
+        
+        // Position in center-right instead of centering
         dialog.setPopupPosition(
-            com.google.gwt.user.client.Window.getClientWidth() - 620,
-            50
+            com.google.gwt.user.client.Window.getClientWidth() - 920,  // 180px width + 20px margin
+            50  // 50px from top
         );
     }
     
+    /**
+     * Hide the dialog
+     */
     public void hide() {
         dialog.hide();
     }
     
+    /**
+     * Check if dialog is currently showing
+     */
     public boolean isShowing() {
         return dialog.isShowing();
     }
     
+    /**
+     * Clear output area
+     */
     public void clearOutput() {
         outputArea.setText("");
         passCount = 0;
         failCount = 0;
     }
     
+    /**
+     * Append text to output
+     */
     private void appendOutput(String text) {
         String current = outputArea.getText();
         outputArea.setText(current + text + "\n");
+        
+        // Auto-scroll to bottom
         outputArea.getElement().setScrollTop(outputArea.getElement().getScrollHeight());
     }
     
+    /**
+     * Run all tests
+     */
     public void runAllTests() {
         clearOutput();
         runButton.setEnabled(false);
         runButton.setText("⏳ Running...");
         
         appendOutput("========================================");
-        appendOutput("CircuitJS1 Table Elements Test Suite");
+        appendOutput("CircuitJS1 Math Elements Test Suite");
         appendOutput("========================================");
         appendOutput("");
-        appendOutput("Running " + testSuite.getTestNames().length + " tests...");
+        appendOutput("Running 16 tests...");
         appendOutput("");
         
         passCount = 0;
         failCount = 0;
         
+        // Override console output to capture test results
         redirectConsoleOutput();
         
         try {
+            // Run the test suite
             testSuite.runAllTests();
             
             appendOutput("");
@@ -327,23 +359,16 @@ public class TableElementsTestDialog {
         }
     }
     
+    /**
+     * Detect which test circuit is currently on the canvas
+     */
     private String detectCanvasTest() {
-        for (int i = 0; i != sim.elmList.size(); i++) {
-            CircuitElm ce = sim.getElm(i);
-            if (ce instanceof TextElm) {
-                TextElm te = (TextElm) ce;
-                String text = te.text;
-                String[] testNames = testSuite.getTestNames();
-                for (String testName : testNames) {
-                    if (text != null && text.equals(testName)) {
-                        return testName;
-                    }
-                }
-            }
-        }
-        return null;
+        return sim.findCanvasTestLabelForUi(testSuite.getTestNames());
     }
     
+    /**
+     * Run the selected test from the dropdown
+     */
     public void runSelectedTest() {
         int selectedIndex = testSelector.getSelectedIndex();
         if (selectedIndex < 0) {
@@ -366,9 +391,11 @@ public class TableElementsTestDialog {
         passCount = 0;
         failCount = 0;
         
+        // Override console output to capture test results
         redirectConsoleOutput();
         
         try {
+            // Run the specific test
             testSuite.runTest(testName);
             
             appendOutput("");
@@ -399,6 +426,9 @@ public class TableElementsTestDialog {
         }
     }
     
+    /**
+     * Run the test that's currently loaded on the canvas
+     */
     public void runCanvasTest() {
         String testName = detectCanvasTest();
         
@@ -407,8 +437,10 @@ public class TableElementsTestDialog {
             appendOutput("❌ No test circuit detected on canvas");
             appendOutput("");
             appendOutput("To run a canvas test:");
-            appendOutput("1. Load a test circuit with a label matching a test name");
-            appendOutput("2. Click 'Run Test on Canvas'");
+            appendOutput("1. Load a test circuit (it will have a label like 'testAdderElm')");
+            appendOutput("2. Click 'Run Test on Canvas' to test that specific circuit");
+            appendOutput("");
+            appendOutput("Or click 'Run All Tests' to run the complete test suite.");
             return;
         }
         
@@ -424,9 +456,11 @@ public class TableElementsTestDialog {
         passCount = 0;
         failCount = 0;
         
+        // Override console output to capture test results
         redirectConsoleOutput();
         
         try {
+            // Run the specific test
             testSuite.runTest(testName);
             
             appendOutput("");
@@ -457,6 +491,7 @@ public class TableElementsTestDialog {
         }
     }
     
+    // Store original console methods
     private void redirectConsoleOutput() {
         final ConsoleLike console = GlobalWindowLike.getConsole();
         final ConsoleMethod oldLog = console.getLog();
@@ -492,9 +527,13 @@ public class TableElementsTestDialog {
             console.setError(oldError);
     }
     
+    /**
+     * Handle console.log output
+     */
     private void handleConsoleLog(String msg) {
         appendOutput(msg);
         
+        // Count pass/fail
         if (msg.indexOf("PASS:") >= 0 || msg.indexOf("✓") >= 0) {
             passCount++;
         } else if (msg.indexOf("FAIL:") >= 0 || msg.indexOf("ERROR:") >= 0) {
@@ -502,6 +541,9 @@ public class TableElementsTestDialog {
         }
     }
     
+    /**
+     * Handle console.error output
+     */
     private void handleConsoleError(String msg) {
         appendOutput("ERROR: " + msg);
         if (msg.indexOf("FAIL:") >= 0 || msg.indexOf("✗") >= 0 || msg.indexOf("AssertionError") >= 0) {

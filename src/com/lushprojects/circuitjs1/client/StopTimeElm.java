@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.ui.ScopeViewerDialog;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsPackage;

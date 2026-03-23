@@ -20,12 +20,13 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.user.client.ui.Button;
+import com.lushprojects.circuitjs1.client.ui.PieChartDialog;
 
 /**
  * PieChartElm - Displays a pie chart of voltage values from multiple labeled nodes.
  * Each slice represents the proportional value of a node, with customizable colors.
  */
-class PieChartElm extends GraphicElm {
+public class PieChartElm extends GraphicElm {
     
     // Color palette (same as Scope)
     static final String colors[] = {
@@ -39,6 +40,54 @@ class PieChartElm extends GraphicElm {
     double[] nodeValues;    // Current values of each node
     int radius = 40;        // Radius of pie chart
     Point center;           // Center of pie chart
+
+    public int getSliceCount() {
+        return nodeNames.length;
+    }
+
+    public String getNodeName(int index) {
+        return nodeNames[index];
+    }
+
+    public String getNodeColor(int index) {
+        return nodeColors[index];
+    }
+
+    public void setNodeName(int index, String name) {
+        nodeNames[index] = name;
+    }
+
+    public void setNodeColor(int index, String color) {
+        nodeColors[index] = color;
+    }
+
+    public void addSlice(String defaultName, String defaultColor) {
+        String[] newNodeNames = new String[nodeNames.length + 1];
+        String[] newNodeColors = new String[nodeColors.length + 1];
+        for (int i = 0; i < nodeNames.length; i++) {
+            newNodeNames[i] = nodeNames[i];
+            newNodeColors[i] = nodeColors[i];
+        }
+        newNodeNames[nodeNames.length] = defaultName;
+        newNodeColors[nodeColors.length] = defaultColor;
+        nodeNames = newNodeNames;
+        nodeColors = newNodeColors;
+        nodeValues = new double[newNodeNames.length];
+    }
+
+    public void removeLastSlice() {
+        if (nodeNames.length <= 1)
+            return;
+        String[] newNodeNames = new String[nodeNames.length - 1];
+        String[] newNodeColors = new String[nodeColors.length - 1];
+        for (int i = 0; i < newNodeNames.length; i++) {
+            newNodeNames[i] = nodeNames[i];
+            newNodeColors[i] = nodeColors[i];
+        }
+        nodeNames = newNodeNames;
+        nodeColors = newNodeColors;
+        nodeValues = new double[newNodeNames.length];
+    }
     
     /**
      * Creates a new pie chart element at the given position.

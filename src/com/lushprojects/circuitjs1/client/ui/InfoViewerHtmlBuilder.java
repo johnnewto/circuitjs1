@@ -1,4 +1,7 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
+import com.lushprojects.circuitjs1.client.*;
+
+import com.lushprojects.circuitjs1.client.InfoViewerTableMarkdown;
 
 public final class InfoViewerHtmlBuilder {
     private InfoViewerHtmlBuilder() {
@@ -14,15 +17,15 @@ public final class InfoViewerHtmlBuilder {
         return generateMarkdownViewerHTML(title, markdown);
     }
 
-    static String generateMarkdownViewerHTML(String title, String markdown) {
+    public static String generateMarkdownViewerHTML(String title, String markdown) {
         return generateMarkdownViewerHTML(title, markdown, markdown, false, true, true);
     }
 
-    static String generateMarkdownViewerHTML(String title, String markdown, String sourceMarkdown, boolean editable) {
+    public static String generateMarkdownViewerHTML(String title, String markdown, String sourceMarkdown, boolean editable) {
         return generateMarkdownViewerHTML(title, markdown, sourceMarkdown, editable, true, true);
     }
 
-    static String generateMarkdownViewerHTML(String title, String markdown, String sourceMarkdown,
+    public static String generateMarkdownViewerHTML(String title, String markdown, String sourceMarkdown,
             boolean editable, boolean parseCodeFenceConstructs, boolean renderSfcrConstructTables) {
 
         StringBuilder html = new StringBuilder();

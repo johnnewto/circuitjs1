@@ -1,5 +1,6 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.user.client.ui.Button;
@@ -33,7 +34,6 @@ public class ImportFromDropboxDialog extends Dialog {
 	TextArea ta;
 	Label la;
 	HorizontalPanel hp;
-	ImportFromDropbox importFromDropbox;
 	static CirSim sim;
 	
 	
@@ -43,10 +43,7 @@ public class ImportFromDropboxDialog extends Dialog {
 	
 	static public void doLoadCallback(String s, String link) {
 		CirSim.console("Loading from URL: " + link);
-		sim.getUndoRedoManager().pushUndo();
-		sim.getCircuitIOService().readCircuit(s);
-		sim.getSFCRDocumentManager().setCurrentCircuitFile("URL: " + link);
-		sim.getUiPanelManager().allowSave(false);
+		sim.loadCircuitFromExternalText(s, "URL: " + link);
 	}
 	
 	
@@ -88,7 +85,7 @@ public class ImportFromDropboxDialog extends Dialog {
 			chooserButton.addClickHandler(new ClickHandler() {
 				public void onClick(ClickEvent event) {
 					closeDialog();
-					importFromDropbox= new ImportFromDropbox(sim);
+					sim.openDropboxChooserFromDialog();
 				}
 			});
 			la = new Label(Locale.LS("To open a shared Dropbox file from a Dropbox link paste the link below..."));

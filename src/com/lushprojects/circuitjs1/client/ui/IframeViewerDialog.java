@@ -17,8 +17,10 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
+import com.lushprojects.circuitjs1.client.*;
 
+import com.lushprojects.circuitjs1.client.CirSim;
 import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.DialogBox;
 import com.google.gwt.user.client.ui.HTML;
@@ -457,7 +459,7 @@ public class IframeViewerDialog extends DialogBox {
     private static String addCacheBustParamIfEnabled(String url) {
         if (url == null)
             return null;
-        if (CirSim.getInstance() == null || !CirSim.getInstance().enableCacheBustedUrls)
+        if (CirSim.getInstance() == null || !CirSim.getInstance().isCacheBustedUrlsEnabled())
             return url;
         return url + (url.indexOf('?') >= 0 ? "&" : "?") + "v=" + System.currentTimeMillis();
     }

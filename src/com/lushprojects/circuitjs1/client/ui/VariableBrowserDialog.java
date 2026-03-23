@@ -17,7 +17,8 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
+import com.lushprojects.circuitjs1.client.*;
 
 import com.google.gwt.user.client.ui.DialogBox;
 import com.google.gwt.user.client.ui.VerticalPanel;
@@ -31,10 +32,13 @@ import com.google.gwt.user.client.ui.HasHorizontalAlignment;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.dom.client.Style.Unit;
+import com.lushprojects.circuitjs1.client.CirSim;
+import com.lushprojects.circuitjs1.client.CircuitElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.google.gwt.user.client.Event;
 import com.google.gwt.user.client.Event.NativePreviewHandler;
 import com.google.gwt.user.client.Event.NativePreviewEvent;
+import com.lushprojects.circuitjs1.client.StockFlowRegistry;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -202,7 +206,7 @@ public class VariableBrowserDialog extends DialogBox {
         }
         
         // Add labeled node names (third priority)
-        String[] labeledNodes = LabeledNodeElm.getSortedLabeledNodeNames();
+        String[] labeledNodes = sim.getSortedLabeledNodeNames();
         if (labeledNodes != null && labeledNodes.length > 0) {
             for (String nodeName : labeledNodes) {
                 if (!addedNames.contains(nodeName)) {
@@ -281,15 +285,15 @@ public class VariableBrowserDialog extends DialogBox {
         int placementScreenX = dialogScreenX - PLACEMENT_OFFSET;
         
         // Convert dialog edge from screen to grid coordinates
-        int dialogLeftGx = sim.inverseTransformX(placementScreenX);
+        int dialogLeftGx = sim.inverseTransformXForUi(placementScreenX);
         
         // Use vertical center of canvas as starting point
-        int centerY = sim.circuitArea.height / 2;
-        int startGy = sim.inverseTransformY(centerY);
+        int centerY = sim.getCircuitAreaHeight() / 2;
+        int startGy = sim.inverseTransformYForUi(centerY);
         
         // Vertical zig-zag pattern: start near dialog, work left
-        int verticalSpacing = sim.gridSize * 6;   // Spacing between vertical positions
-        int horizontalStep = sim.gridSize * 10;   // How far left to move each column
+        int verticalSpacing = sim.getGridSize() * 6;   // Spacing between vertical positions
+        int horizontalStep = sim.getGridSize() * 10;   // How far left to move each column
         int maxColumns = 10;                      // Maximum number of columns to try
         int positionsPerColumn = 15;              // How many vertical positions per column
         
@@ -314,11 +318,11 @@ public class VariableBrowserDialog extends DialogBox {
                     verticalOffset = (pos / 2) * verticalSpacing;  // Down
                 }
                 
-                int testGx = sim.snapGrid(columnGx);
-                int testGy = sim.snapGrid(startGy + verticalOffset);
+                int testGx = sim.snapGridForUi(columnGx);
+                int testGy = sim.snapGridForUi(startGy + verticalOffset);
                 
                 // Check if this position is clear
-                if (isPositionClear(testGx, testGy)) {
+                if (sim.isPositionClearForVariablePlacement(testGx, testGy)) {
                     gx = testGx;
                     gy = testGy;
                     foundSpot = true;
@@ -328,97 +332,24 @@ public class VariableBrowserDialog extends DialogBox {
         
         // If no clear spot found, just use near the dialog
         if (!foundSpot) {
-            gx = sim.snapGrid(dialogLeftGx);
-            gy = sim.snapGrid(startGy);
+            gx = sim.snapGridForUi(dialogLeftGx);
+            gy = sim.snapGridForUi(startGy);
         }
         
         // Create a labeled node element at the found position
-        LabeledNodeElm elm = new LabeledNodeElm(gx, gy);
-        elm.text = varName;  // Set the label text (not 'name')
-        
-        // Set a proper shaft length - extend to the right and slightly down for visibility
-        // This creates the line from the connection point (x,y) to the label (x2,y2)
-        int shaftLength = sim.gridSize * 4;  // Make shaft visible
-        elm.x2 = gx + shaftLength;
-        elm.y2 = gy;
-        elm.setPoints();  // Update internal geometry
+        int shaftLength = sim.getGridSize() * 4;  // Make shaft visible
+        CircuitElm elm = sim.createLabeledNodeElementForUi(gx, gy, varName, shaftLength);
         
         // Add to circuit
-        sim.elmList.addElement(elm);
-        sim.needAnalyze();
+        sim.addElementForUi(elm);
+        sim.needAnalyzeForUi();
         
         // Select the new element so it's highlighted
-        sim.getClipboardManager().clearSelection();
-        elm.setSelected(true);
+        sim.clearSelectionForUi();
+        sim.selectElementForUi(elm, true);
         
         // Don't force drag mode - let user click and drag normally
-        sim.repaint();
-    }
-    
-    // Check if a position is clear of other elements
-    private boolean isPositionClear(int gx, int gy) {
-        // Define a minimum safe distance (in grid units)
-        int minDistance = sim.gridSize * 3;
-        
-        // Check against all existing elements
-        for (int i = 0; i < sim.elmList.size(); i++) {
-            CircuitElm ce = sim.getElm(i);
-            
-            // Use bounding box for all elements - most accurate collision detection
-            Rectangle bbox = ce.getBoundingBox();
-            if (bbox != null) {
-                // Add extra margin around all elements
-                // Use larger margin for tables and other large elements
-                int margin = minDistance;
-                if (ce instanceof TableElm || ce instanceof GodlyTableElm) {
-                    margin = sim.gridSize * 2;  // Extra space around tables
-                }
-                
-                // Check if position is within or near the element's bounding box
-                if (gx >= bbox.x - margin && gx <= bbox.x + bbox.width + margin &&
-                    gy >= bbox.y - margin && gy <= bbox.y + bbox.height + margin) {
-                    return false;  // Position overlaps with or is too close to element
-                }
-            } else {
-                // Fallback for elements without bounding box - use point-based checks
-                
-                // Check distance to first point
-                int dx1 = ce.x - gx;
-                int dy1 = ce.y - gy;
-                double dist1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
-                
-                if (dist1 < minDistance)
-                    return false;
-                
-                // Check distance to second point (for two-terminal elements)
-                int dx2 = ce.x2 - gx;
-                int dy2 = ce.y2 - gy;
-                double dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-                
-                if (dist2 < minDistance)
-                    return false;
-                
-                // Check if point is near the line between element endpoints
-                if (ce.x != ce.x2 || ce.y != ce.y2) {
-                    double lineLength = Math.sqrt((ce.x2 - ce.x) * (ce.x2 - ce.x) + 
-                                                 (ce.y2 - ce.y) * (ce.y2 - ce.y));
-                    if (lineLength > 0) {
-                        // Calculate perpendicular distance to line
-                        double distToLine = Math.abs((ce.y2 - ce.y) * gx - (ce.x2 - ce.x) * gy + 
-                                                     ce.x2 * ce.y - ce.y2 * ce.x) / lineLength;
-                        
-                        // Check if point projects onto the line segment
-                        double t = ((gx - ce.x) * (ce.x2 - ce.x) + (gy - ce.y) * (ce.y2 - ce.y)) / 
-                                   (lineLength * lineLength);
-                        
-                        if (t >= 0 && t <= 1 && distToLine < minDistance)
-                            return false;
-                    }
-                }
-            }
-        }
-        
-        return true;
+        sim.repaintForUi();
     }
     
     // Helper class to store variable information

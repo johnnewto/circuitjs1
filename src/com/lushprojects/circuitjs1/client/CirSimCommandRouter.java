@@ -2,6 +2,17 @@ package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.dom.client.Document;
 import com.google.gwt.user.client.Window;
+import com.lushprojects.circuitjs1.client.ui.AboutBox;
+import com.lushprojects.circuitjs1.client.ui.HintEditorDialog;
+import com.lushprojects.circuitjs1.client.ui.ImportFromDropboxDialog;
+import com.lushprojects.circuitjs1.client.ui.ImportFromTextDialog;
+import com.lushprojects.circuitjs1.client.ui.ReferenceDocs;
+import com.lushprojects.circuitjs1.client.ui.ExportScopeDataDialog;
+import com.lushprojects.circuitjs1.client.ui.SearchDialog;
+import com.lushprojects.circuitjs1.client.ui.ShortcutsDialog;
+import com.lushprojects.circuitjs1.client.ui.ScopeViewerDialog;
+import com.lushprojects.circuitjs1.client.ui.SubcircuitDialog;
+import com.lushprojects.circuitjs1.client.ui.VariableBrowserDialog;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 final class CirSimCommandRouter {

@@ -17,8 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
+import com.lushprojects.circuitjs1.client.CirSim;
 import com.google.gwt.user.client.ui.MenuItem;
 import com.google.gwt.user.client.Command;
 
@@ -27,7 +28,7 @@ public class CheckboxMenuItem extends MenuItem implements Command {
 	private String name="";
 	private String shortcut="";
 	private Command extcmd=null;
-	static String checkBoxHtml="<div style=\"display:inline-block;width:15px;\">";
+	public static String checkBoxHtml="<div style=\"display:inline-block;width:15px;\">";
 
 	public String getName() { return name; }
 	public String getShortcut() { return shortcut; }
@@ -65,7 +66,7 @@ public class CheckboxMenuItem extends MenuItem implements Command {
 		setState(!on);
 		if (extcmd!=null) {
 		    extcmd.execute();
-		    CircuitElm.sim.repaint();
+		    CirSim.repaintFromUi();
 		}
       }
 

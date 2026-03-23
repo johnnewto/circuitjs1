@@ -4,8 +4,11 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
+import com.lushprojects.circuitjs1.client.*;
 
+import com.lushprojects.circuitjs1.client.CirSim;
+import com.lushprojects.circuitjs1.client.InfoViewerLiveDataSerializer;
 import com.google.gwt.user.client.ui.DialogBox;
 import com.google.gwt.user.client.ui.HTML;
 import com.google.gwt.user.client.ui.VerticalPanel;
@@ -13,6 +16,7 @@ import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.ScrollPanel;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
+import com.lushprojects.circuitjs1.client.InfoViewerTableMarkdown;
 import com.lushprojects.circuitjs1.client.io.InfoViewerContentBuilder;
 import com.lushprojects.circuitjs1.client.io.SFCRParser;
 import com.lushprojects.circuitjs1.client.util.Locale;

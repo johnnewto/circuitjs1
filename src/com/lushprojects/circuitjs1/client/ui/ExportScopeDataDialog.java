@@ -17,8 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
 import com.google.gwt.user.client.ui.HorizontalPanel;
 import com.google.gwt.user.client.ui.VerticalPanel;
@@ -68,7 +69,7 @@ public class ExportScopeDataDialog extends Dialog {
 		dataPanel.add(circularButton);
 		
 		// Only show history option if drawFromZero is enabled and history exists
-		if (scope.drawFromZero && scope.historySize > 0) {
+		if (scope.hasHistoryForExport()) {
 			dataPanel.add(historyButton);
 		} else {
 			historyButton.setEnabled(false);
@@ -105,16 +106,16 @@ public class ExportScopeDataDialog extends Dialog {
 	
 	void doExport() {
 		boolean useCSV = csvButton.getValue();
-		boolean useHistory = historyButton.getValue() && scope.drawFromZero && scope.historySize > 0;
+		boolean useHistory = historyButton.getValue() && scope.hasHistoryForExport();
 		
 		String data;
 		String filename;
 		
 		if (useCSV) {
-			data = useHistory ? scope.exportHistoryAsCSV() : scope.exportCircularBufferAsCSV();
+			data = scope.exportDataAsCSV(useHistory);
 			filename = "scope-data.csv";
 		} else {
-			data = useHistory ? scope.exportHistoryAsJSON() : scope.exportCircularBufferAsJSON();
+			data = scope.exportDataAsJSON(useHistory);
 			filename = "scope-data.json";
 		}
 		
@@ -126,7 +127,7 @@ public class ExportScopeDataDialog extends Dialog {
 			};
 		} else {
 			// Fallback: show in text dialog
-			new ExportAsTextDialog(scope.sim, data);
+			new ExportAsTextDialog(scope.getSimForDialogs(), data);
 		}
 	}
 }

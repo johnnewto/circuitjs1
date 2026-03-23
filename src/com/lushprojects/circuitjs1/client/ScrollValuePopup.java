@@ -18,7 +18,6 @@
 */
 
 package com.lushprojects.circuitjs1.client;
-
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
 import com.google.gwt.dom.client.NativeEvent;
 import com.google.gwt.event.dom.client.MouseDownEvent;
@@ -63,7 +62,7 @@ public class ScrollValuePopup extends PopupPanel implements MouseOutHandler, Mou
 	CirSim sim;
 	
 	
-	ScrollValuePopup(final int x, final int y, int dy, CircuitElm e, CirSim s) {
+	public ScrollValuePopup(final int x, final int y, int dy, CircuitElm e, CirSim s) {
 		super();
 		myElm=e;
 		deltaY=0;

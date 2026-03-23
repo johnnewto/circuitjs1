@@ -18,17 +18,15 @@
 */
 
 package com.lushprojects.circuitjs1.client;
-
-
 import com.google.gwt.user.client.ui.DialogBox;
 import com.google.gwt.user.client.ui.TextBox;
 import com.google.gwt.user.client.ui.ValueBoxBase;
 
-class Dialog extends DialogBox  {
+public class Dialog extends DialogBox  {
 
-	boolean closeOnEnter;
+	protected boolean closeOnEnter;
 
-	Dialog() {
+	protected Dialog() {
 		closeOnEnter = true;
 	}
 	

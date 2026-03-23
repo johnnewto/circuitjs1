@@ -1,4 +1,4 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
 import com.google.gwt.user.client.ui.*;
 

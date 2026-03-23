@@ -17,7 +17,8 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
+import com.lushprojects.circuitjs1.client.*;
 
 import com.google.gwt.user.client.ui.DialogBox;
 import com.google.gwt.user.client.ui.VerticalPanel;
@@ -34,6 +35,9 @@ import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.KeyUpHandler;
 import com.google.gwt.event.dom.client.KeyUpEvent;
 import com.google.gwt.dom.client.Style.Unit;
+import com.lushprojects.circuitjs1.client.CirSim;
+import com.lushprojects.circuitjs1.client.HintRegistry;
+import com.lushprojects.circuitjs1.client.StockFlowRegistry;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import java.util.List;
 import java.util.ArrayList;
@@ -323,7 +327,7 @@ public class HintEditorDialog extends DialogBox {
         }
         
         // Import labeled node names
-        String[] labeledNodes = LabeledNodeElm.getSortedLabeledNodeNames();
+        String[] labeledNodes = sim.getSortedLabeledNodeNames();
         if (labeledNodes != null) {
             for (String name : labeledNodes) {
                 if (!HintRegistry.hasHint(name)) {

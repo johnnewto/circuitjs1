@@ -30,6 +30,7 @@ import com.google.gwt.event.dom.client.KeyCodes;
 import com.google.gwt.event.dom.client.ChangeHandler;
 import com.google.gwt.event.dom.client.ChangeEvent;
 import com.google.gwt.user.client.ui.ListBox;
+import com.lushprojects.circuitjs1.client.ui.ReferenceDocs;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.lushprojects.circuitjs1.client.EquationTableElm.RowOutputMode;
 

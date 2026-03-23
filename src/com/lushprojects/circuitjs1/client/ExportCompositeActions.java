@@ -12,6 +12,7 @@ import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.core.client.ScriptInjector;
 import com.google.gwt.http.client.URL;
 import com.google.gwt.user.client.Window;
+import com.lushprojects.circuitjs1.client.ui.ExportAsImageDialog;
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsPackage;

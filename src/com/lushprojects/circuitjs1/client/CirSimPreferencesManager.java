@@ -4,6 +4,7 @@ import com.google.gwt.http.client.URL;
 import com.google.gwt.i18n.client.NumberFormat;
 import com.google.gwt.storage.client.Storage;
 import com.google.gwt.user.client.Window;
+import com.lushprojects.circuitjs1.client.ui.CheckboxMenuItem;
 
 class CirSimPreferencesManager {
     private final CirSim sim;

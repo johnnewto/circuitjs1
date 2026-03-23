@@ -17,8 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.google.gwt.user.client.ui.MenuBar;
 import com.google.gwt.user.client.ui.MenuItem;
 import com.lushprojects.circuitjs1.client.util.Locale;
@@ -40,7 +41,7 @@ public class ScopePopupMenu {
     private MenuItem exportDataItem;
     private MenuItem viewPlotlyItem;
     
-    ScopePopupMenu() {
+    public ScopePopupMenu() {
 	 m = new MenuBar(true);
 	 m.addItem(removeScopeItem = new CheckboxAlignedMenuItem(Locale.LS("Remove Scope"),new MyCommand("scopepop", "remove")));
 	 m.addItem(dockItem = new CheckboxAlignedMenuItem(Locale.LS("Dock Scope"),new MyCommand("scopepop", "dock")));
@@ -59,9 +60,9 @@ public class ScopePopupMenu {
 	 m.addItem(propertiesItem = new CheckboxAlignedMenuItem(Locale.LS("Properties..."), new MyCommand("scopepop", "properties")));
     }
     
-    void doScopePopupChecks( boolean floating, boolean canstack, boolean cancombine, boolean canunstack, Scope s) {
-	maxScaleItem.setState(s.maxScale);
-	drawFromZeroItem.setState(s.drawFromZero);
+    public void doScopePopupChecks( boolean floating, boolean canstack, boolean cancombine, boolean canunstack, Scope s) {
+	maxScaleItem.setState(s.isMaxScaleEnabledForUi());
+	drawFromZeroItem.setState(s.isDrawFromZeroEnabledForUi());
 	stackItem.setVisible(!floating);
 	stackItem.setEnabled(canstack);
 	unstackItem.setVisible(!floating);

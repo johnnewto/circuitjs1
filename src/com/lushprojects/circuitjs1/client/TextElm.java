@@ -21,6 +21,7 @@ package com.lushprojects.circuitjs1.client;
 
 import java.util.Vector;
 
+import com.lushprojects.circuitjs1.client.ui.InfoViewerDialog;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.google.gwt.event.dom.client.KeyUpHandler;
 import com.google.gwt.event.dom.client.KeyUpEvent;

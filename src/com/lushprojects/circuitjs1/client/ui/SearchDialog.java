@@ -17,8 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
 import com.google.gwt.user.client.ui.HorizontalPanel;
 import com.google.gwt.user.client.ui.TextArea;
@@ -75,13 +76,9 @@ public class SearchDialog extends Dialog {
 		});
 		listBox.setVisibleItemCount(10);
 		vp.add(listBox);
-		int i;
-		for (i = 0; i != asim.getMenuUiState().mainMenuItems.size(); i++) {
-		    CheckboxMenuItem item = sim.getMenuUiState().mainMenuItems.get(i);
-		    if (item.getShortcut().length() > 1)
-			break;
-		    listBox.addItem(item.getName());
-		}
+		Vector<String> items = sim.getSearchableMainMenuItemNames();
+		for (int i = 0; i != items.size(); i++)
+			listBox.addItem(items.get(i));
 
 		HorizontalPanel hp = new HorizontalPanel();
 		hp.setWidth("100%");
@@ -107,29 +104,20 @@ public class SearchDialog extends Dialog {
 	
 	void apply() {
 	    String s = listBox.getSelectedItemText();
-	    
-	    int i;
-	    for (i = 0; i != sim.getMenuUiState().mainMenuItems.size(); i++) {
-		CheckboxMenuItem item = sim.getMenuUiState().mainMenuItems.get(i);
-		if (item.getName().equals(s)) {
-		    item.getScheduledCommand().execute();
-		    break;
-		}
-	    }
-	    
+	    sim.executeMainMenuItemByName(s);
 	    closeDialog();
 	}
 	
 	void search() {
 	    String str = textBox.getText().toLowerCase();
-	    int i;
 	    listBox.clear();
 	    Vector<String> items = new Vector<String>();
-	    for (i = 0; i != sim.getMenuUiState().mainMenuItems.size(); i++) {
-		CheckboxMenuItem item = sim.getMenuUiState().mainMenuItems.get(i);
-		if (item.getName().toLowerCase().contains(str)) {
-		    if (!items.contains(item.getName()))
-			items.add(item.getName());
+	    Vector<String> allItems = sim.getSearchableMainMenuItemNames();
+	    for (int i = 0; i != allItems.size(); i++) {
+		String itemName = allItems.get(i);
+		if (itemName.toLowerCase().contains(str)) {
+		    if (!items.contains(itemName))
+			items.add(itemName);
 		}
 	    }
             Collections.sort(items, new Comparator<String>() {
@@ -137,7 +125,7 @@ public class SearchDialog extends Dialog {
                     return a.compareTo(b);
                 }
             });
-            for (i = 0; i != items.size(); i++)
+            for (int i = 0; i != items.size(); i++)
         	listBox.addItem(items.get(i));
             if (items.size() > 0)
 		listBox.setItemSelected(0, true);

@@ -17,8 +17,10 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
+import com.google.gwt.user.client.ui.CheckBox;
+import com.lushprojects.circuitjs1.client.*;
 import com.google.gwt.user.client.ui.TextArea;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.VerticalPanel;
@@ -41,7 +43,7 @@ TextArea textArea;
 		sim=asim;
 		closeOnEnter = false;
 		Button okButton, cancelButton;
-		final Checkbox subCheck;
+		final CheckBox subCheck;
 		vp=new VerticalPanel();
 		setWidget(vp);
 		setText(Locale.LS("Import from Text"));
@@ -50,19 +52,15 @@ TextArea textArea;
 		vp.add(textArea = new TextArea());
 		textArea.setWidth("300px");
 		textArea.setHeight("200px");
-		vp.add(subCheck = new Checkbox(Locale.LS("Load Subcircuits Only")));
+		vp.add(subCheck = new CheckBox(Locale.LS("Load Subcircuits Only")));
 		hp = new HorizontalPanel();
 		vp.add(hp);
 		hp.add(okButton = new Button(Locale.LS("OK")));
 		okButton.addClickHandler(new ClickHandler() {
 			public void onClick(ClickEvent event) {
-				String s;
-				sim.getUndoRedoManager().pushUndo();
 				closeDialog();
-//				s=textBox.getHTML();
-//				s=s.replace("<br>", "\r");
-				s=textArea.getText();
-				sim.getImportExportHelper().importCircuitFromText(s, subCheck.getState());
+				String s = textArea.getText();
+				sim.importCircuitTextFromDialog(s, Boolean.TRUE.equals(subCheck.getValue()));
 			}
 		});
 		hp.add(cancelButton = new Button(Locale.LS("Cancel")));

@@ -4,11 +4,12 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
+import com.lushprojects.circuitjs1.client.*;
 
 import com.lushprojects.circuitjs1.client.util.Locale;
 
-final class InfoViewerSimpleMarkdown {
+public final class InfoViewerSimpleMarkdown {
 
     private InfoViewerSimpleMarkdown() {
     }
@@ -17,7 +18,7 @@ final class InfoViewerSimpleMarkdown {
      * Convert simple markdown to HTML without external libraries.
      * Supports basic formatting for fallback display.
      */
-    static String convert(String markdown) {
+    public static String convert(String markdown) {
         if (markdown == null) {
             return "";
         }

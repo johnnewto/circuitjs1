@@ -42,6 +42,7 @@ import com.google.gwt.event.dom.client.FocusEvent;
 import com.google.gwt.event.dom.client.BlurHandler;
 import com.google.gwt.event.dom.client.BlurEvent;
 import com.google.gwt.event.dom.client.KeyCodes;
+import com.lushprojects.circuitjs1.client.ui.ReferenceDocs;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import java.util.HashMap;
 import java.util.Map;

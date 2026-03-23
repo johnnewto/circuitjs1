@@ -3926,6 +3926,30 @@ public class Scope {
 	sb.append("}\n");
 	return sb.toString();
     }
+
+    public boolean hasHistoryForExport() {
+        return drawFromZero && historySize > 0;
+    }
+
+    public String exportDataAsCSV(boolean useHistory) {
+        return useHistory ? exportHistoryAsCSV() : exportCircularBufferAsCSV();
+    }
+
+    public String exportDataAsJSON(boolean useHistory) {
+        return useHistory ? exportHistoryAsJSON() : exportCircularBufferAsJSON();
+    }
+
+    public CirSim getSimForDialogs() {
+        return sim;
+    }
+
+    public boolean isMaxScaleEnabledForUi() {
+        return maxScale;
+    }
+
+    public boolean isDrawFromZeroEnabledForUi() {
+        return drawFromZero;
+    }
     
     /**
      * Escapes a string for safe inclusion in JSON.

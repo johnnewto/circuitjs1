@@ -17,7 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
+
+import com.lushprojects.circuitjs1.client.*;
 
 import java.util.Date;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
@@ -100,7 +102,7 @@ public class ExportAsLocalFileDialog extends Dialog {
 		return url;
 	}
 	
-	TextBox textBox;
+	protected TextBox textBox;
 	static String lastFileName;
 	String url;
 	
