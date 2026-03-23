@@ -196,13 +196,13 @@ protected void startIteration() {
 		coolTime = ei.value;
 	}
 	
-	double getScopeValue(int x) {
+	protected double getScopeValue(int x) {
 	    return (x == Scope.VAL_R) ? resistance : super.getScopeValue(x);
 	}
-	int getScopeUnits(int x) {
+	protected int getScopeUnits(int x) {
 	    return (x == Scope.VAL_R) ? Scope.UNITS_OHMS : super.getScopeUnits(x);
 	}
-	boolean canShowValueInScope(int x) {
+	protected boolean canShowValueInScope(int x) {
 	    return x == Scope.VAL_R;
 	}
 

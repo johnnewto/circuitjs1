@@ -17,11 +17,12 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.sources;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
-class ExtVoltageElm extends RailElm {
+public class ExtVoltageElm extends RailElm {
 	public ExtVoltageElm(int xx, int yy) { super(xx, yy, WF_AC); name = "ext"; }
 	public ExtVoltageElm(int xa, int ya, int xb, int yb, int f,
 		       StringTokenizer st) {
@@ -35,18 +36,18 @@ class ExtVoltageElm extends RailElm {
 
         protected String dump() { return super.dump() + " " + CustomLogicModel.escape(name); }
         
-	void drawRail(Graphics g) {
+	protected void drawRail(Graphics g) {
 	    drawRailText(g, name);
 	}
-	void setVoltage(double v) { if (!Double.isNaN(v)) voltage = v; }
-	String getName() { return name; }
+	public void setVoltage(double v) { if (!Double.isNaN(v)) voltage = v; }
+	public String getName() { return name; }
 	
-	double getVoltage() {
+	protected double getVoltage() {
             return voltage;
 	}
 
 	protected int getDumpType() { return 418; }
-	int getShortcut() { return 0; }
+	protected int getShortcut() { return 0; }
 
 	public EditInfo getEditInfo(int n) {
 	    if (n == 0) {

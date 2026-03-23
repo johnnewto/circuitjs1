@@ -17,11 +17,12 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.sources;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
-class SweepElm extends CircuitElm {
+public class SweepElm extends CircuitElm {
     double maxV, maxF, minF, sweepTime, frequency;
     final int FLAG_LOG = 1;
     final int FLAG_BIDIR = 2;
@@ -105,7 +106,7 @@ class SweepElm extends CircuitElm {
     }
     double fadd, fmul, freqTime, savedTimeStep;
     int dir = 1;
-    void setParams() {
+    protected void setParams() {
 	SimulationContext context = getSimulationContext();
 	if (frequency < minF || frequency > maxF) {
 	    frequency = minF;
@@ -128,7 +129,7 @@ class SweepElm extends CircuitElm {
 	setParams();
     }
     double v;
-protected void startIteration() {
+    protected void startIteration() {
 	SimulationContext context = getSimulationContext();
 	// has timestep been changed?
 	if (context.getTimeStep() != savedTimeStep)
@@ -215,6 +216,6 @@ protected void startIteration() {
 	}
 	setParams();
     }
-    double getPower() { return -getVoltageDiff()*current; }
+    protected double getPower() { return -getVoltageDiff()*current; }
 }
     

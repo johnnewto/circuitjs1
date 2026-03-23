@@ -19,6 +19,7 @@
 
 
 package com.lushprojects.circuitjs1.client;
+import com.lushprojects.circuitjs1.client.electronics.sources.VoltageElm;
 import com.google.gwt.user.client.ui.HTML;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.VerticalPanel;

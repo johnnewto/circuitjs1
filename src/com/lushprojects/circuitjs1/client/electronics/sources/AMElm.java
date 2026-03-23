@@ -17,13 +17,14 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.sources;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
 // contributed by Edward Calver
 
-class AMElm extends CircuitElm {
+public class AMElm extends CircuitElm {
     static final int FLAG_COS = 2;
     double carrierfreq,signalfreq, maxVoltage, freqTimeZero;
     public AMElm(int xx, int yy) {
@@ -65,7 +66,7 @@ class AMElm extends CircuitElm {
     protected void doStep() {
 	    sim.updateVoltageSource(0, nodes[0], voltSource, getVoltage());
     }
-    double getVoltage() {
+    protected double getVoltage() {
 	SimulationContext context = getSimulationContext();
 	double w = 2*pi*(context.getTime()-freqTimeZero);
 	return ((Math.sin(w*signalfreq)+1)/2)*Math.sin(w*carrierfreq)*maxVoltage;	
@@ -114,7 +115,7 @@ class AMElm extends CircuitElm {
     protected int getVoltageSourceCount() {
 	return 1;
     }
-    double getPower() { return -getVoltageDiff()*current; }
+    protected double getPower() { return -getVoltageDiff()*current; }
     protected void getInfo(String arr[]) {
 	
 	arr[0] = "AM Source";

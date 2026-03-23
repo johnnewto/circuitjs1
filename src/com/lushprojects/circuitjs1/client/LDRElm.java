@@ -180,7 +180,7 @@ class LDRElm extends CircuitElm implements Command, MouseWheelHandler {
 	lux = LuxFromSliderPos();
 	resistance = calcResistance(lux); 
     }
-    void setMouseElm(boolean v) {
+    protected void setMouseElm(boolean v) {
 	super.setMouseElm(v);
 	if (slider!=null)
 	    slider.draw();
@@ -210,4 +210,3 @@ class LDRElm extends CircuitElm implements Command, MouseWheelHandler {
     }
 
 }
-

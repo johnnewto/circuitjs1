@@ -156,7 +156,7 @@ class TransistorElm extends CircuitElm {
 	}
 	
 	protected int getPostCount() { return 3; }
-	double getPower() {
+	protected double getPower() {
 	    return (volts[0]-volts[2])*ib + (volts[1]-volts[2])*ic;
 	}
 
@@ -413,7 +413,7 @@ class TransistorElm extends CircuitElm {
 	    arr[7] = "P = " + getUnitText(getPower(), "W");
 	}
 	
-	double getScopeValue(int x) {
+	protected double getScopeValue(int x) {
 	    switch (x) {
 	    case Scope.VAL_IB: return ib;
 	    case Scope.VAL_IC: return ic;
@@ -426,7 +426,7 @@ class TransistorElm extends CircuitElm {
 	    return 0;
 	}
 	
-	int getScopeUnits(int x) {
+	protected int getScopeUnits(int x) {
 	    switch (x) {
 	    case Scope.VAL_IB: case Scope.VAL_IC:
 	    case Scope.VAL_IE: return Scope.UNITS_A;

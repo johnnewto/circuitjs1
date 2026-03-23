@@ -28,5 +28,5 @@ package com.lushprojects.circuitjs1.client;
 	String getGateName() { return "NOR gate"; }
 	boolean isInverting() { return true; }
 	protected int getDumpType() { return 153; }
-	int getShortcut() { return '#'; }
+	protected int getShortcut() { return '#'; }
     }

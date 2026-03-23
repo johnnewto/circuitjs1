@@ -246,7 +246,7 @@ class DiodeElm extends CircuitElm {
             return;
         }
     }
-    int getShortcut() { return 'd'; }
+    protected int getShortcut() { return 'd'; }
     
     void setLastModelName(String n) {
 	lastModelName = n;

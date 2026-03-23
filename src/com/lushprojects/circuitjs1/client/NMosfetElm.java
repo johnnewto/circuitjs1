@@ -21,6 +21,6 @@ package com.lushprojects.circuitjs1.client;
 
 class NMosfetElm extends MosfetElm {
 	public NMosfetElm(int xx, int yy) { super(xx, yy, false); }
-	Class getDumpClass() { return MosfetElm.class; }
-	 int getShortcut() { return 'N'; }
+	protected Class getDumpClass() { return MosfetElm.class; }
+	 protected int getShortcut() { return 'N'; }
     }

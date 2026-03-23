@@ -17,14 +17,16 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.sources;
 
-class RailElm extends VoltageElm {
+import com.lushprojects.circuitjs1.client.*;
+
+public class RailElm extends VoltageElm {
 	public RailElm(int xx, int yy) { 
 		super(xx, yy, WF_DC); 
 
 	}
-	RailElm(int xx, int yy, int wf) {
+	protected RailElm(int xx, int yy, int wf) {
 		super(xx, yy, wf); 
 	}
 
@@ -34,7 +36,7 @@ class RailElm extends VoltageElm {
 	}
 
     
-    final int FLAG_CLOCK = 1;
+    protected final int FLAG_CLOCK = 1;
     protected int getDumpType() { return 'R'; }
     protected int getPostCount() { return 1; }
 	
@@ -43,7 +45,7 @@ class RailElm extends VoltageElm {
 	lead1 = interpPoint(point1, point2, 1-circleSize/dn);
     }
     
-    String getRailText() {
+    protected String getRailText() {
 	return null;
     }
     
@@ -63,7 +65,7 @@ class RailElm extends VoltageElm {
 	    drawDots(g, point1, lead1, curcount);
     }
 
-    void drawRail(Graphics g) {
+    protected void drawRail(Graphics g) {
 	if (waveform == WF_SQUARE && (flags & FLAG_CLOCK) != 0)
 	    drawRailText(g, "CLK");
 	else if (waveform == WF_DC || waveform == WF_VAR) {
@@ -100,7 +102,7 @@ class RailElm extends VoltageElm {
 	}
     }
     
-    void drawRailText(Graphics g, String s) {
+    protected void drawRailText(Graphics g, String s) {
 	g.setColor(needsHighlight() ? selectColor : whiteColor);
 	setPowerColor(g, false);
 	// Set consistent font before drawing label
@@ -120,7 +122,7 @@ class RailElm extends VoltageElm {
 	    sim.updateVoltageSource(0, nodes[0], voltSource, getVoltage());
     }
     protected boolean hasGroundConnection(int n1) { return true; }
-    int getShortcut() { return 'V'; }
+    protected int getShortcut() { return 'V'; }
     
 //    void drawHandles(Graphics g, Color c) {
 //    	g.setColor(c);

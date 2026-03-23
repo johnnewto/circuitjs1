@@ -21,6 +21,7 @@ package com.lushprojects.circuitjs1.client;
 
 import java.util.Vector;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
+import com.lushprojects.circuitjs1.client.electronics.sources.VoltageElm;
 
 class CCCSElm extends VCCSElm {
 	static int FLAG_SPICE = 2;

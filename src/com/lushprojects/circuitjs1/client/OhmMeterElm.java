@@ -1,5 +1,6 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.electronics.sources.CurrentElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class OhmMeterElm extends CurrentElm {
@@ -34,13 +35,13 @@ public class OhmMeterElm extends CurrentElm {
 	    }
 	    drawPosts(g);
 	}
-	    double getScopeValue(int x) {
+	    protected double getScopeValue(int x) {
 		return (x == Scope.VAL_R) ? getVoltageDiff()/current : super.getScopeValue(x);
 	    }
-	    int getScopeUnits(int x) {
+	    protected int getScopeUnits(int x) {
 		return (x == Scope.VAL_R) ? Scope.UNITS_OHMS : super.getScopeUnits(x);
 	    }
-	    boolean canShowValueInScope(int x) {
+	    protected boolean canShowValueInScope(int x) {
 		return x == Scope.VAL_R;
 	    }
 

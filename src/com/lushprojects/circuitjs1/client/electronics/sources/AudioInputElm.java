@@ -17,7 +17,7 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.sources;
 
 import com.google.gwt.core.client.JsArrayNumber;
 import java.util.HashMap;
@@ -25,6 +25,7 @@ import com.google.gwt.dom.client.Element;
 import com.google.gwt.event.dom.client.ChangeEvent;
 import com.google.gwt.event.dom.client.ChangeHandler;
 import com.google.gwt.user.client.ui.FileUpload;
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import jsinterop.annotations.JsFunction;
@@ -38,7 +39,7 @@ class AudioFileEntry {
     JsArrayNumber data;
 }
 
-class AudioInputElm extends RailElm {
+public class AudioInputElm extends RailElm {
 
 	@JsFunction
 	private interface LoadCallback {
@@ -151,11 +152,11 @@ class AudioInputElm extends RailElm {
 	    timeOffset = startPosition;
 	}
 	
-	void drawRail(Graphics g) {
+	protected void drawRail(Graphics g) {
 	    drawRailText(g, fileName == null ? Locale.LS("No file") : fileName);
 	}
 	
-	String getRailText() {
+	protected String getRailText() {
 	    return fileName == null ? Locale.LS("No file") : fileName;
 	}
 	
@@ -163,7 +164,7 @@ class AudioInputElm extends RailElm {
 	    samplingRate = sr;
 	}
 	
-	double getVoltage() {
+	protected double getVoltage() {
 	    if (data == null)
 		return 0;
 	    if (timeOffset < startPosition)
@@ -184,7 +185,7 @@ class AudioInputElm extends RailElm {
 	}
 	
 	protected int getDumpType() { return 411; }
-	int getShortcut() { return 0; }
+	protected int getShortcut() { return 0; }
 	
 	public EditInfo getEditInfo(int n) {
             if (n == 0) {

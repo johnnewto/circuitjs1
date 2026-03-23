@@ -376,7 +376,7 @@ class TextElm extends GraphicElm {
 	arr[0] = text;
     }
     @Override
-    int getShortcut() { return 't'; }
+    protected int getShortcut() { return 't'; }
     
     /**
      * Check if this text element contains a hyperlink pattern [[...]]

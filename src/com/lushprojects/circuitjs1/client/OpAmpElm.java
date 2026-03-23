@@ -89,7 +89,7 @@ package com.lushprojects.circuitjs1.client;
 	    drawDots(g, point2, lead2, curcount);
 	    drawPosts(g);
 	}
-	double getPower() { return volts[2]*current; }
+	protected double getPower() { return volts[2]*current; }
 	Point in1p[], in2p[], textp[];
 	Polygon triangle;
 	Font plusFont;
@@ -205,7 +205,7 @@ package com.lushprojects.circuitjs1.client;
 	    if (n == 2 && ei.value > 0)
 		gain = ei.value;
 	}
-	int getShortcut() { return 'a'; }
+	protected int getShortcut() { return 'a'; }
 	
 	@Override protected double getCurrentIntoNode(int n) { 
 	    if (n==2)

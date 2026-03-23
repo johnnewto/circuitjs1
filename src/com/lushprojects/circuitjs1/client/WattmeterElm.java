@@ -155,7 +155,7 @@ class WattmeterElm extends CircuitElm {
 	g.restore();
     }
 
-    double getPower() { return getVoltageDiff()*getCurrent(); }
+    protected double getPower() { return getVoltageDiff()*getCurrent(); }
 protected void setCurrent(int vn, double c) {
 	currents[vn == voltSources[0] ? 0 : 1] = c;
     }

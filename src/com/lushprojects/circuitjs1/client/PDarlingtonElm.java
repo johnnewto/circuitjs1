@@ -10,8 +10,7 @@ public class PDarlingtonElm extends DarlingtonElm {
     }
 
 
-    Class getDumpClass() {
+    protected Class getDumpClass() {
 	return DarlingtonElm.class;
     }
 }
-

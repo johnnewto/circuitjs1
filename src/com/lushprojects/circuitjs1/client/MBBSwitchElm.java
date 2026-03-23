@@ -188,5 +188,5 @@ protected void setCurrent(int vn, double c) {
 	    } else
 	    	super.setEditValue(n, ei);
 	}
-	int getShortcut() { return 0; }
+	protected int getShortcut() { return 0; }
     }

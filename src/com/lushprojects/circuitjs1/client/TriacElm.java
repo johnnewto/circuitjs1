@@ -235,7 +235,7 @@ protected void startIteration() {
 	ig = -(volts[mt1node]-volts[gnode])/cresistance;
 	i1 = -i2-ig;
     }
-    double getPower() {
+    protected double getPower() {
 	return (volts[mt2node]-volts[mt1node])*i2 + (volts[gnode]-volts[mt1node])*ig;
     }
     public EditInfo getEditInfo(int n) {

@@ -95,5 +95,5 @@ import jsinterop.annotations.JsType;
 	    return f;
 	}
 	protected int getDumpType() { return 150; }
-	int getShortcut() { return '2'; }
+	protected int getShortcut() { return '2'; }
     }

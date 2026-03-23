@@ -17,14 +17,15 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.sources;
 
 import com.google.gwt.user.client.ui.Label;
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.google.gwt.event.dom.client.MouseWheelEvent;
 import com.google.gwt.event.dom.client.MouseWheelHandler;
 
-    class VarRailElm extends RailElm implements MouseWheelHandler {
+    public class VarRailElm extends RailElm implements MouseWheelHandler {
 	Scrollbar slider;
 	Label label;
 	String sliderText;
@@ -56,7 +57,7 @@ import com.google.gwt.event.dom.client.MouseWheelHandler;
 	    		null, this));
 //	    sim.verticalPanel.validate();
 	}
-	double getVoltage() {
+	protected double getVoltage() {
 	    frequency = slider.getValue() * (maxVoltage-bias) / 100. + bias;
 	    return frequency;
 	}
@@ -88,9 +89,9 @@ import com.google.gwt.event.dom.client.MouseWheelHandler;
 		sim.getUiPanelManager().setiFrameHeight();
 	    }
 	}
-	int getShortcut() { return 0; }
+	protected int getShortcut() { return 0; }
 	
-    void setMouseElm(boolean v) {
+    protected void setMouseElm(boolean v) {
     	super.setMouseElm(v);
     	if (slider!=null)
     		slider.draw();

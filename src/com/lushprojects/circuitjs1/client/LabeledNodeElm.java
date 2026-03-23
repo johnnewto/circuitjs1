@@ -363,7 +363,7 @@ protected void setCurrent(int x, double c) { current = c; }
      * For voltage, use converged computed value if available for stable display.
      */
     @Override
-    double getScopeValue(int x) {
+    protected double getScopeValue(int x) {
         if (x == Scope.VAL_CURRENT) {
             return getCurrent();
         } else if (x == Scope.VAL_POWER) {

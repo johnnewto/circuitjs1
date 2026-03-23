@@ -81,7 +81,7 @@ class LineElm extends GraphicElm {
     }
 
     @Override
-    int getShortcut() { return 0; }
+    protected int getShortcut() { return 0; }
 
     int getMouseDistance(int gx, int gy) {
 	int thresh = 10;

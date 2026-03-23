@@ -17,10 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.sources;
 
-class ACRailElm extends RailElm {
-	public ACRailElm(int xx, int yy) { super(xx, yy, WF_AC); }
-	Class getDumpClass() { return RailElm.class; }
-	int getShortcut() { return 0; }
+public class ACVoltageElm extends VoltageElm {
+	public ACVoltageElm(int xx, int yy) { super(xx, yy, WF_AC); }
+	protected Class getDumpClass() { return VoltageElm.class; }
     }

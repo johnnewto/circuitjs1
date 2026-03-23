@@ -115,7 +115,7 @@ protected void startIteration() {
 	super.setEditValue(n,  ei);
     }
 
-    int getShortcut() { return 0; }
+    protected int getShortcut() { return 0; }
 protected void setCurrent(int x, double c) { capCurrent = c; }
     double voltSourceValue;
     protected int getVoltageSourceCount() { return 1; }

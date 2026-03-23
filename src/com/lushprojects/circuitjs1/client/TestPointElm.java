@@ -328,7 +328,7 @@ class TestPointElm extends CircuitElm {
         @JsMethod(namespace = JsPackage.GLOBAL, name = "alert")
         public static native void alert(String msg);
     
-    double getScopeValue(int x){
+    protected double getScopeValue(int x){
         return selectedValue;
     }
     

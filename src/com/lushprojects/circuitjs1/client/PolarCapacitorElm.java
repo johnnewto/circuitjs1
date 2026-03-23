@@ -64,5 +64,5 @@ public class PolarCapacitorElm extends CapacitorElm {
 		sim.stop("capacitor exceeded max reverse voltage", this);
 	    super.stepFinished();
 	}
-	int getShortcut() { return 'C'; }
+	protected int getShortcut() { return 'C'; }
 }

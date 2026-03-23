@@ -116,7 +116,7 @@ protected void startIteration() {
 	    ind.setup(inductance, current, flags);
 	}
 	
-	int getShortcut() { return 'L'; }
+	protected int getShortcut() { return 'L'; }
 	public double getInductance() { return inductance; }
 	void setInductance(double l) {
 	    inductance = l;

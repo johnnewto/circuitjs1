@@ -131,7 +131,7 @@ protected void startIteration() {
 	protected boolean hasGroundConnection(int n1) {
 	    return (n1 == 1);
 	}
-	int getShortcut() { return '1'; }
+	protected int getShortcut() { return '1'; }
 	
 	@Override protected double getCurrentIntoNode(int n) {
 	    if (n == 1)

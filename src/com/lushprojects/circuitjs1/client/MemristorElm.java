@@ -121,13 +121,13 @@ protected void startIteration() {
 	arr[3] = "R = " + getUnitText(resistance, Locale.ohmString);
 	arr[4] = "P = " + getUnitText(getPower(), "W");
     }
-    double getScopeValue(int x) {
+    protected double getScopeValue(int x) {
 	return (x == Scope.VAL_R) ? resistance : super.getScopeValue(x);
     }
-    int getScopeUnits(int x) {
+    protected int getScopeUnits(int x) {
 	return (x == Scope.VAL_R) ? Scope.UNITS_OHMS : super.getScopeUnits(x);
     }
-    boolean canShowValueInScope(int x) {
+    protected boolean canShowValueInScope(int x) {
 	return x == Scope.VAL_R;
     }
     public EditInfo getEditInfo(int n) {

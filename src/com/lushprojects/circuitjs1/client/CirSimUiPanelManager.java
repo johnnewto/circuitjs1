@@ -3,14 +3,14 @@ package com.lushprojects.circuitjs1.client;
 import com.google.gwt.user.client.ui.RootLayoutPanel;
 import com.google.gwt.user.client.ui.Widget;
 
-class CirSimUiPanelManager {
+public class CirSimUiPanelManager {
     private final CirSim sim;
 
     CirSimUiPanelManager(CirSim sim) {
         this.sim = sim;
     }
 
-    void setiFrameHeight() {
+    public void setiFrameHeight() {
         if (sim.iFrame == null)
             return;
         int cumheight = 0;
@@ -35,7 +35,7 @@ class CirSimUiPanelManager {
         sim.loadFileInput = newlf;
     }
 
-    void addWidgetToVerticalPanel(Widget w) {
+    public void addWidgetToVerticalPanel(Widget w) {
         if (RuntimeMode.isNonInteractiveRuntime() || w == null || sim.verticalPanel == null)
             return;
         if (sim.iFrame != null) {
@@ -46,7 +46,7 @@ class CirSimUiPanelManager {
             sim.verticalPanel.add(w);
     }
 
-    void removeWidgetFromVerticalPanel(Widget w) {
+    public void removeWidgetFromVerticalPanel(Widget w) {
         if (RuntimeMode.isNonInteractiveRuntime() || w == null || sim.verticalPanel == null)
             return;
         sim.verticalPanel.remove(w);

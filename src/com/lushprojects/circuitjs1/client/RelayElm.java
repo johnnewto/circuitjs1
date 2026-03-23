@@ -500,7 +500,7 @@ protected void startIteration() {
 	return (n1 / 3 == n2 / 3);
     }
     
-    int getShortcut() { return 'R'; }
+    protected int getShortcut() { return 'R'; }
 
     void flipX(int c2, int count) {
 	if (dx == 0)

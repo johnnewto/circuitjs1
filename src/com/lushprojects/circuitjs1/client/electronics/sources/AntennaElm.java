@@ -17,11 +17,12 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.sources;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
-    class AntennaElm extends RailElm {
+    public class AntennaElm extends RailElm {
 	public AntennaElm(int xx, int yy) { super(xx, yy, WF_AC); }
 	public AntennaElm(int xa, int ya, int xb, int yb, int f,
 		       StringTokenizer st) {
@@ -30,11 +31,11 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	}
 	double fmphase;
 	
-	void drawRail(Graphics g) {
+	protected void drawRail(Graphics g) {
 	    drawRailText(g, "Ant");
 	}
 	
-	double getVoltage() {
+	protected double getVoltage() {
 	    SimulationContext context = getSimulationContext();
 	    double t = context.getTime();
 	    double fm = 3*Math.sin(fmphase);
@@ -49,7 +50,7 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	}
 
 	protected int getDumpType() { return 'A'; }
-	int getShortcut() { return 0; }
+	protected int getShortcut() { return 0; }
 	
 	protected void getInfo(String arr[]) {
 	    super.getInfo(arr);

@@ -127,7 +127,7 @@ class TriodeElm extends CircuitElm {
 	return (n == 0) ? plate[0] : (n == 1) ? grid[0] : cath[0];
     }
     protected int getPostCount() { return 3; }
-    double getPower() { return (volts[0]-volts[2])*currentc + (volts[gridN]-volts[cathN])*currentg; }
+    protected double getPower() { return (volts[0]-volts[2])*currentc + (volts[gridN]-volts[cathN])*currentg; }
     protected double getCurrent() { return currentc; } // for scope
 
     final int gridN = 1;

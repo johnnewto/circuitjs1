@@ -17,9 +17,11 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.sources;
 
-    class CurrentElm extends CircuitElm {
+import com.lushprojects.circuitjs1.client.*;
+
+    public class CurrentElm extends CircuitElm {
 	double currentValue;
 	boolean broken;
 	public CurrentElm(int xx, int yy) {
@@ -41,7 +43,8 @@ package com.lushprojects.circuitjs1.client;
 	protected int getDumpType() { return 'i'; }
 	
 	Polygon arrow;
-	Point ashaft1, ashaft2, center;
+	Point ashaft1, ashaft2;
+	protected Point center;
 	protected void setPoints() {
 	    super.setPoints();
 	    calcLeads(26);
@@ -72,7 +75,7 @@ package com.lushprojects.circuitjs1.client;
 	}
 	
 	// analyzeCircuit determines if current source has a path or if it's broken
-	void setBroken(boolean b) {
+	public void setBroken(boolean b) {
 	    broken = b;
 	}
 	
@@ -105,5 +108,5 @@ package com.lushprojects.circuitjs1.client;
 	protected double getVoltageDiff() {
 	    return volts[1] - volts[0];
 	}
-	double getPower() { return -getVoltageDiff()*current; }
+	protected double getPower() { return -getVoltageDiff()*current; }
     }

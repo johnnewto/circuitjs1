@@ -115,7 +115,7 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 	public void setEditValue(int n, EditInfo ei) {
 	    resistance = (ei.value <= 0) ? 1e-9 : ei.value;
 	}
-	int getShortcut() { return 'r'; }
+	protected int getShortcut() { return 'r'; }
 	double getResistance() { return resistance; }
 	void setResistance(double r) { resistance = r; }
     }

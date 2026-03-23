@@ -230,7 +230,7 @@ protected void startIteration() {
 	    if (n == 3)
 		seriesResistance = ei.value;
 	}
-	int getShortcut() { return 'c'; }
+	protected int getShortcut() { return 'c'; }
 	public double getCapacitance() { return capacitance; }
 	public double getSeriesResistance() { return seriesResistance; }
 	public void setCapacitance(double c) { capacitance = c; }

@@ -218,5 +218,5 @@ class SwitchElm extends CircuitElm {
         }
     }
 
-    int getShortcut() { return 's'; }
+    protected int getShortcut() { return 's'; }
 }

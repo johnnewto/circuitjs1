@@ -93,7 +93,7 @@ class ZenerElm extends DiodeElm {
 	arr[5] = "Vz = " + getVoltageText(model.breakdownVoltage);
     }
     
-    int getShortcut() { return 'z'; }
+    protected int getShortcut() { return 'z'; }
     
     void setLastModelName(String n) {
 	lastZenerModelName = n;

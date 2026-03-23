@@ -130,7 +130,7 @@ class LEDElm extends DiodeElm {
 		maxBrightnessCurrent = ei.value;
 	    super.setEditValue(n-4, ei);
 	}
-	int getShortcut() { return 'l'; }
+	protected int getShortcut() { return 'l'; }
 	
 	void setLastModelName(String n) {
 	    lastLEDModelName = n;

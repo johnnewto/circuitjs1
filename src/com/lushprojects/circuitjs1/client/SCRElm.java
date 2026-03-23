@@ -189,7 +189,7 @@ class SCRElm extends CircuitElm {
 	
     protected int getPostCount() { return 3; }
     protected int getInternalNodeCount() { return 1; }
-    double getPower() {
+    protected double getPower() {
 	return (volts[anode]-volts[gnode])*ia + (volts[cnode]-volts[gnode])*ic;
     }
 

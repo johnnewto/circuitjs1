@@ -284,15 +284,16 @@ public interface ConsoleLogger {
    - Move one coherent batch at a time (`math` or `economics` subset).
    - In the same batch, update package declarations and all imports/usages.
 3. Gate each batch before continuing:
+   - `./gradlew compileJava`
    - `./gradlew test`
-   - `./gradlew compile`
+   - `./gradlew compileGwt`
    - smoke test load/save
 
 ### Staging Rule
 - Path-only moves are not allowed as an intermediate state for PR6.
 - A batch is only complete when visibility + package + imports are all updated and gates pass.
 
-### Execution Guidelines (from PR6a/PR6b)
+### Package Move Execution Guidelines (applies to PR6/PR7/PR8 element moves)
 1. Do a visibility inventory before moving files:
    - List package-private classes/constructors/methods/fields touched by target elements.
    - Promote only what cross-package compilation actually requires, then re-run gates.
@@ -301,6 +302,7 @@ public interface ConsoleLogger {
    - Do not land temporary states with moved paths but old package declarations.
 3. Treat inheritance hooks as a migration hotspot:
    - When subclasses move packages, overridden methods in `CircuitElm`/`ChipElm` hierarchies often need protected/public visibility alignment.
+   - Hotspot signatures to pre-check before any move: `drag`, `setNodeVoltage`, `canViewInScope`, plus common draw/stamp hooks.
    - Prefer systematic signature checks over ad-hoc fixes.
 4. Avoid blind bulk regex edits for method signatures:
    - Restrict replacements to explicit symbols/files, then compile immediately.
@@ -308,16 +310,20 @@ public interface ConsoleLogger {
 5. Update registry/bootstrap/tests in the same batch:
    - Keep `ElementLegacyFactory`, `ElementRegistryBootstrap`, and package-specific tests aligned with new imports before running full builds.
 6. Use explicit Gradle gates for this project:
-   - Run `./gradlew test`, `./gradlew compileJava`, and occasionally  `./gradlew compileGwt`.
+   - Run `./gradlew compileJava`, then `./gradlew test`, then `./gradlew compileGwt`.
  7. Keep PR6 bridge/API growth intentional:
    - If visibility promotion broadens API surface, document why in the PR description and mark candidates for later tightening after package migration stabilizes.
+8. Use a strict batch fallback rule:
+   - If a proposed move requires broad visibility expansion into solver/node/core internals, split the batch immediately and ship only the low-coupling subset.
+9. Follow domain ownership over current package location:
+   - If an element is conceptually in another domain (for example a source element), defer it to that domain PR even if currently under `client` or economics-adjacent code.
 
-### PR6 Batch Checklist (Repeat For Each Batch)
+### Batch Checklist (Repeat For Each Migration Batch)
 - [ ] Run pre-move visibility inventory for touched classes and base hooks.
 - [ ] Apply move atomically: `git mv` + package declaration + imports/usages in the same change.
 - [ ] Verify inheritance hooks compile (`draw/stamp/doStep/reset/setPoints/getInfo/getPost` families).
 - [ ] Update registry/bootstrap/tests references in the same batch.
-- [ ] Run gates: `./gradlew test`, `./gradlew compileJava`, `./gradlew compileGwt`.
+- [ ] Run gates: `./gradlew compileJava`, `./gradlew test`, `./gradlew compileGwt`.
 - [ ] Run smoke test: load/save for at least one migrated element in the batch.
 - [ ] Record any temporary visibility expansions with follow-up tightening notes.
 
@@ -360,6 +366,10 @@ public interface ConsoleLogger {
   - `ActionTimeDialog.java`
   - `PieChartDialog.java` (if kept economics-coupled)
 
+### Debug Tooling Policy
+- Keep heavy debug dialogs/tools in `client` unless there is a dedicated cross-package debug/service API.
+- Do not move debug tooling in element batches by default; migrate them in a dedicated bridge/API batch once required internals are intentionally exposed.
+
 ### Visibility Promotions Expected
 - Many package-private methods become public
 - Consider `@VisibleForTesting` annotations
@@ -370,11 +380,32 @@ public interface ConsoleLogger {
 
 **Largest batch — split into sub-PRs:**
 
+Use the **Package Move Execution Guidelines** and **Batch Checklist** above in PR6 for each PR7 sub-batch.
+
 1. **Passives**: ResistorElm, CapacitorElm, InductorElm, PotElm
 2. **Sources**: VoltageElm, CurrentElm, RailElm variants, NoiseElm, TableVoltageElm
 3. **Semiconductors**: DiodeElm, TransistorElm, MosfetElm, JfetElm, etc.
 4. **Digital**: GateElm subclasses, ChipElm, FlipFlops, etc.
 5. **Misc**: Switches, Relays, Transformers, etc.
+
+### PR7a Sources Target Package Map
+- Use subpackage: `com.lushprojects.circuitjs1.client.electronics.sources`
+- Move:
+  - `VoltageElm.java`
+  - `RailElm.java`
+  - `VarRailElm.java`
+  - `CurrentElm.java`
+  - `NoiseElm.java`
+  - `AMElm.java`
+  - `FMElm.java`
+  - `SweepElm.java`
+  - `AntennaElm.java`
+  - `TableVoltageElm.java` (deferred from PR6 by design)
+- Update compile-time consumers in the same batch:
+  - `ElementLegacyFactory.java`
+  - `ElementRegistryBootstrap.java`
+  - `CirSimMenuBuilder.java`
+  - any parser/exporter classes that directly instantiate source elements
 
 ### Electronics-Coupled Dialogs
 - Move electronics-specific dialogs together with electronics elements, same package/directory:

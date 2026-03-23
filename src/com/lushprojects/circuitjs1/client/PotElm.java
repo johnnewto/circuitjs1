@@ -316,7 +316,7 @@ class PotElm extends CircuitElm implements Command, MouseWheelHandler {
 	if (n == 2)
 	    flags = ei.changeFlag(flags, FLAG_SHOW_VALUES);
     }
-    void setMouseElm(boolean v) {
+    protected void setMouseElm(boolean v) {
     	super.setMouseElm(v);
     	if (slider!=null)
     		slider.draw();
@@ -342,4 +342,3 @@ class PotElm extends CircuitElm implements Command, MouseWheelHandler {
 	super.flipXY(xmy, count);
     }
 }
-

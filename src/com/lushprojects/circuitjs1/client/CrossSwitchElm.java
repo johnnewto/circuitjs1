@@ -215,7 +215,7 @@ protected void setCurrent(int vn, double c) {
 		arr[i+1] = "I" + (i+1) + " = " + getCurrentDText(currents[i]);
 	}
 	
-	int getShortcut() { return 0; }
+	protected int getShortcut() { return 0; }
 
 	public EditInfo getEditInfo(int n) {
 	    if (n == 0)

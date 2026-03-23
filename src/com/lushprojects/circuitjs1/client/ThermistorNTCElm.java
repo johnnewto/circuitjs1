@@ -216,7 +216,7 @@ class ThermistorNTCElm extends CircuitElm implements Command, MouseWheelHandler 
 	temperature = temprFromSliderPos();
 	resistance = calcResistance(temperature); 
     }
-    void setMouseElm(boolean v) {
+    protected void setMouseElm(boolean v) {
 	super.setMouseElm(v);
 	if (slider!=null)
 	    slider.draw();

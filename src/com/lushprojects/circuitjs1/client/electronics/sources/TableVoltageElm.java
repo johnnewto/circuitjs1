@@ -17,11 +17,10 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.sources;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.economics.*;
-
-import com.gargoylesoftware.htmlunit.javascript.host.Console;
 
 /**
  * TableVoltageElm - A single-terminal voltage rail that gets its voltage from computed values
@@ -36,7 +35,7 @@ import com.gargoylesoftware.htmlunit.javascript.host.Console;
  * - Optional DC bias offset
  * - Simplified configuration (just computed value name + bias)
  */
-class TableVoltageElm extends RailElm {
+public class TableVoltageElm extends RailElm {
     protected String computedValueName = "Col1"; // Name of computed value to reference
     
     // Constructor for new element
@@ -70,7 +69,7 @@ class TableVoltageElm extends RailElm {
     }
     
     // Override getVoltage to use computed value instead of maxVoltage
-    double getVoltage() {
+    protected double getVoltage() {
         // Always return computed value voltage plus bias
         Double computedVoltage = ComputedValues.getComputedValue(computedValueName);
         if (computedVoltage != null) {
@@ -98,7 +97,7 @@ class TableVoltageElm extends RailElm {
     }
     
     // Override drawRail to show computed value name instead of voltage
-    void drawRail(Graphics g) {
+    protected void drawRail(Graphics g) {
         g.setColor(needsHighlight() ? selectColor : whiteColor);
         setPowerColor(g, false);
         
@@ -169,5 +168,5 @@ class TableVoltageElm extends RailElm {
         }
     }
     @Override
-    int getShortcut() { return 0; }
+    protected int getShortcut() { return 0; }
 }

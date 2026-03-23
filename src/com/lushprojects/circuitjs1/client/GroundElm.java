@@ -113,7 +113,7 @@ protected void setCurrent(int x, double c) { current = isOldStyle() ? -c : c; }
 	    arr[1] = "I = " + getCurrentText(getCurrent());
 	}
 	protected boolean hasGroundConnection(int n1) { return true; }
-	int getShortcut() { return 'g'; }
+	protected int getShortcut() { return 'g'; }
 	
 	public EditInfo getEditInfo(int n) {
 	    if (n == 0) {

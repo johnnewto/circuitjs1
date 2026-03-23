@@ -17,13 +17,14 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.sources;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
 // contributed by Edward Calver
 
-class FMElm extends CircuitElm {
+public class FMElm extends CircuitElm {
     static final int FLAG_COS = 2;
     double carrierfreq,signalfreq, maxVoltage, freqTimeZero,deviation;
     double lasttime=0;
@@ -69,7 +70,7 @@ class FMElm extends CircuitElm {
     protected void doStep() {
 	    sim.updateVoltageSource(0, nodes[0], voltSource, getVoltage());
     }
-    double getVoltage() {
+    protected double getVoltage() {
 	SimulationContext context = getSimulationContext();
 	double t = context.getTime();
 	double deltaT=t-lasttime;
@@ -123,7 +124,7 @@ class FMElm extends CircuitElm {
     protected int getVoltageSourceCount() {
 	return 1;
     }
-    double getPower() { return -getVoltageDiff()*current; }
+    protected double getPower() { return -getVoltageDiff()*current; }
     protected void getInfo(String arr[]) {
 	
 	arr[0] = "FM Source";

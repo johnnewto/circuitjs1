@@ -29,6 +29,9 @@ import com.google.gwt.core.client.JsArrayString;
 import com.google.gwt.storage.client.Storage;
 import com.google.gwt.user.client.Random;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
+import com.lushprojects.circuitjs1.client.electronics.sources.RailElm;
+import com.lushprojects.circuitjs1.client.electronics.sources.SweepElm;
+import com.lushprojects.circuitjs1.client.electronics.sources.VoltageElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsPackage;
@@ -79,15 +82,15 @@ public abstract class CircuitElm implements Editable {
     static double currentMult, powerMult;
     
     // scratch points for convenience
-    static Point ps1, ps2;
+    protected static Point ps1, ps2;
     
     protected static CirSim sim;
     static public Color whiteColor, lightGrayColor, selectColor, connectedColor;
     static public Color positiveColor, negativeColor, neutralColor, currentColor;
-    static Font unitsFont;
+    protected static Font unitsFont;
 
 	public static NumFmt.Formatter showFormat, shortFormat, fixedFormat;
-    static final double pi = 3.14159265358979323846;
+    protected static final double pi = 3.14159265358979323846;
     static CircuitElm mouseElmRef = null;
 	static java.util.Random nonInteractiveRandom = new java.util.Random();
 
@@ -148,7 +151,7 @@ public abstract class CircuitElm implements Editable {
  }
     
     // leftover from java, doesn't do anything anymore. 
-    Class getDumpClass() { return getClass(); }
+    protected Class getDumpClass() { return getClass(); }
     
     int getDefaultFlags() { return 0; }
 
@@ -461,7 +464,7 @@ public abstract class CircuitElm implements Editable {
 	d.y = (int) Math.floor(a.y*(1-f)+b.y*f-g*gy+.48);
     }
     
-    void draw2Leads(Graphics g) {
+    protected void draw2Leads(Graphics g) {
 	// draw first lead
 	setVoltageColor(g, volts[0]);
 	drawThickLine(g, point1, lead1);
@@ -792,7 +795,7 @@ public abstract class CircuitElm implements Editable {
     }
 
     // enlarge bbox to contain an additional rectangle
-    void adjustBbox(int x1, int y1, int x2, int y2) {
+    protected void adjustBbox(int x1, int y1, int x2, int y2) {
 	if (x1 > x2) { int q = x1; x1 = x2; x2 = q; }
 	if (y1 > y2) { int q = y1; y1 = y2; y2 = q; }
 	x1 = min(boundingBox.x, x1);
@@ -801,7 +804,7 @@ public abstract class CircuitElm implements Editable {
 	y2 = max(boundingBox.y+boundingBox.height, y2);
 	boundingBox.setBounds(x1, y1, x2-x1, y2-y1);
     }
-    void adjustBbox(Point p1, Point p2) {
+    protected void adjustBbox(Point p1, Point p2) {
 	adjustBbox(p1.x, p1.y, p2.x, p2.y);
     }
     
@@ -835,7 +838,7 @@ public abstract class CircuitElm implements Editable {
     }
     
     // draw component values (number of resistor ohms, etc).  hs = offset
-    void drawValues(Graphics g, String s, double hs) {
+    protected void drawValues(Graphics g, String s, double hs) {
 	if (s == null)
 	    return;
 	g.setFont(unitsFont);
@@ -863,7 +866,7 @@ public abstract class CircuitElm implements Editable {
 	}
     }
     
-    void drawLabeledNode(Graphics g, String str, Point pt1, Point pt2) {
+    protected void drawLabeledNode(Graphics g, String str, Point pt1, Point pt2) {
 	boolean lineOver = false;
 	if (str.startsWith("/")) {
 	    lineOver = true;
@@ -962,7 +965,7 @@ public abstract class CircuitElm implements Editable {
 	g.drawLine(xs[i], ys[i], xs[0], ys[0]);*/
     }
     
-    static void drawThickCircle(Graphics g, int cx, int cy, int ri) {
+    protected static void drawThickCircle(Graphics g, int cx, int cy, int ri) {
     	g.setLineWidth(3.0);
     	g.context.beginPath();
     	g.context.arc(cx, cy, ri*.98, 0, 2*Math.PI);
@@ -1073,7 +1076,7 @@ public abstract class CircuitElm implements Editable {
     public static String getCurrentText(double i) {
 	return getUnitText(i, "A");
     }
-    static String getCurrentDText(double i) {
+    protected static String getCurrentDText(double i) {
 	return getUnitText(Math.abs(i), "A");
     }
 
@@ -1114,7 +1117,7 @@ public abstract class CircuitElm implements Editable {
     }
     
     // update and draw current for simple two-terminal element
-    void doDots(Graphics g) {
+    protected void doDots(Graphics g) {
 	updateDotCount();
 	if (sim.dragElm != this)
 	    drawDots(g, point1, point2, curcount);
@@ -1127,7 +1130,7 @@ public abstract class CircuitElm implements Editable {
     protected void getInfo(String arr[]) {
     }
     
-    int getBasicInfo(String arr[]) {
+    protected int getBasicInfo(String arr[]) {
 	arr[1] = "I = " + getCurrentDText(getCurrent());
 	arr[2] = "Vd = " + getVoltageDText(getVoltageDiff());
 	return 3;
@@ -1167,7 +1170,7 @@ public abstract class CircuitElm implements Editable {
     }
     
     // yellow argument is unused, can't remember why it was there
-    void setPowerColor(Graphics g, boolean yellow) {
+    protected void setPowerColor(Graphics g, boolean yellow) {
 
 		/*if (conductanceCheckItem.getState()) {
 		setConductanceColor(g, current/getVoltageDiff());
@@ -1178,7 +1181,7 @@ public abstract class CircuitElm implements Editable {
 		setPowerColor(g, getPower());
     }
     
-    void setPowerColor(Graphics g, double w0) {
+    protected void setPowerColor(Graphics g, double w0) {
 
 		if (!sim.powerCheckItem.getState() )
 			return;
@@ -1205,12 +1208,12 @@ public abstract class CircuitElm implements Editable {
 	int rg = (int) (w*255);
 	g.setColor(new Color(rg, rg, rg));
     }
-    double getPower() { return getVoltageDiff()*current; }
-    double getScopeValue(int x) {
+    protected double getPower() { return getVoltageDiff()*current; }
+    protected double getScopeValue(int x) {
 	return (x == Scope.VAL_CURRENT) ? getCurrent() :
 	    (x == Scope.VAL_POWER) ? getPower() : getVoltageDiff();
     }
-    int getScopeUnits(int x) {
+    protected int getScopeUnits(int x) {
 	return (x == Scope.VAL_CURRENT) ? Scope.UNITS_A :
 	    (x == Scope.VAL_POWER) ? Scope.UNITS_W : Scope.UNITS_V;
     }
@@ -1323,7 +1326,7 @@ public abstract class CircuitElm implements Editable {
     }
     
     boolean isSelected() { return selected; }
-    boolean canShowValueInScope(int v) { return false; }
+    protected boolean canShowValueInScope(int v) { return false; }
     void setSelected(boolean x) { selected = x; }
     void selectRect(Rectangle r, boolean add) {
 	if (r.intersects(boundingBox))
@@ -1331,10 +1334,10 @@ public abstract class CircuitElm implements Editable {
 	else if (!add)
 	    selected = false;
     }
-    static int abs(int x) { return x < 0 ? -x : x; }
-    static int sign(int x) { return (x < 0) ? -1 : (x == 0) ? 0 : 1; }
-    static int min(int a, int b) { return (a < b) ? a : b; }
-    static int max(int a, int b) { return (a > b) ? a : b; }
+    protected static int abs(int x) { return x < 0 ? -x : x; }
+    protected static int sign(int x) { return (x < 0) ? -1 : (x == 0) ? 0 : 1; }
+    protected static int min(int a, int b) { return (a < b) ? a : b; }
+    protected static int max(int a, int b) { return (a > b) ? a : b; }
     static double distance(Point p1, Point p2) {
 	double x = p1.x-p2.x;
 	double y = p1.y-p2.y;
@@ -1342,11 +1345,11 @@ public abstract class CircuitElm implements Editable {
     }
     Rectangle getBoundingBox() { return boundingBox; }
     boolean needsShortcut() { return getShortcut() > 0; }
-    int getShortcut() { return 0; }
+    protected int getShortcut() { return 0; }
 
     boolean isGraphicElmt() { return false; }
     
-    void setMouseElm(boolean v) {
+    protected void setMouseElm(boolean v) {
 	if (v)
 	    mouseElmRef=this;
 	else if (mouseElmRef==this)

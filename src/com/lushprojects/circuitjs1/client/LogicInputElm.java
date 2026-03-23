@@ -143,7 +143,7 @@ protected void setCurrent(int vs, double c) { current = c; }
 		posCount = (isTernary()) ? 3 : 2;
 	    }
 	}
-	int getShortcut() { return 'i'; }
+	protected int getShortcut() { return 'i'; }
 	
 	protected double getCurrentIntoNode(int n) {
 	    return current;

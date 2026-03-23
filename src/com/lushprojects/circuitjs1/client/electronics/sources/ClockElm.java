@@ -17,11 +17,16 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.sources;
 
-
-class DCVoltageElm extends VoltageElm {
-	public DCVoltageElm(int xx, int yy) { super(xx, yy, WF_DC); }
-	Class getDumpClass() { return VoltageElm.class; }
-	int getShortcut() { return 'v'; }
+public class ClockElm extends RailElm {
+	public ClockElm(int xx, int yy) {
+	    super(xx, yy, WF_SQUARE);
+	    maxVoltage = 2.5;
+	    bias = 2.5;
+	    frequency = 100;
+	    flags |= FLAG_CLOCK;
+	}
+	protected Class getDumpClass() { return RailElm.class; }
+	protected int getShortcut() { return 0; }
     }

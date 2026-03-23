@@ -17,31 +17,35 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.sources;
 
 import com.google.gwt.user.client.Window;
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
-class VoltageElm extends CircuitElm {
-    static final int FLAG_COS = 2;
-    static final int FLAG_PULSE_DUTY = 4;
-    int waveform;
-    static final int WF_DC = 0;
-    static final int WF_AC = 1;
-    static final int WF_SQUARE = 2;
-    static final int WF_TRIANGLE = 3;
-    static final int WF_SAWTOOTH = 4;
-    static final int WF_PULSE = 5;
-    static final int WF_NOISE = 6;
-    static final int WF_VAR = 7;
-    double frequency, maxVoltage, freqTimeZero, bias,
+public class VoltageElm extends CircuitElm {
+    protected static final int FLAG_COS = 2;
+    protected static final int FLAG_PULSE_DUTY = 4;
+    protected int waveform;
+    protected static final int WF_DC = 0;
+    protected static final int WF_AC = 1;
+    protected static final int WF_SQUARE = 2;
+    protected static final int WF_TRIANGLE = 3;
+    protected static final int WF_SAWTOOTH = 4;
+    protected static final int WF_PULSE = 5;
+    protected static final int WF_NOISE = 6;
+    protected static final int WF_VAR = 7;
+    protected double frequency, maxVoltage, freqTimeZero, bias,
 	phaseShift, dutyCycle, noiseValue;
-    String name;
+    protected String name;
     
-    static final double defaultPulseDuty = 1/(2*Math.PI);
+    protected static final double defaultPulseDuty = 1/(2*Math.PI);
+
+    public double getMaxVoltage() { return maxVoltage; }
+    public void setMaxVoltage(double maxVoltage) { this.maxVoltage = maxVoltage; }
     
-    VoltageElm(int xx, int yy, int wf) {
+    protected VoltageElm(int xx, int yy, int wf) {
 	super(xx, yy);
 	waveform = wf;
 	maxVoltage = 5;
@@ -107,7 +111,7 @@ class VoltageElm extends CircuitElm {
 	    return x*(2/pi)-1;
 	return 1-(x-pi)*(2/pi);
     }
-    int getVoltageSource() { return voltSource; }
+    public int getVoltageSource() { return voltSource; }
     protected void stamp() {
 	if (waveform == WF_DC)
 	    sim.stampVoltageSource(nodes[0], nodes[1], voltSource,
@@ -122,11 +126,11 @@ class VoltageElm extends CircuitElm {
     }
     protected void stepFinished() {
 	if (waveform == WF_NOISE)
-	    noiseValue = (sim.random.nextDouble()*2-1) * maxVoltage + bias;
+	    noiseValue = (sim.getRandom().nextDouble()*2-1) * maxVoltage + bias;
     }
-    double getVoltage() {
+    protected double getVoltage() {
 	SimulationContext context = getSimulationContext();
-	if (waveform != WF_DC && sim.dcAnalysisFlag)
+	if (waveform != WF_DC && sim.isDcAnalysisForUi())
 	    return bias;
 	
 	double w = 2*pi*(context.getTime()-freqTimeZero)*frequency + phaseShift;
@@ -293,7 +297,7 @@ class VoltageElm extends CircuitElm {
     protected int getVoltageSourceCount() {
 	return 1;
     }
-    double getPower() { return -getVoltageDiff()*current; }
+    protected double getPower() { return -getVoltageDiff()*current; }
     protected double getVoltageDiff() { return volts[1] - volts[0]; }
     protected void getInfo(String arr[]) {
 	String baseType;
@@ -324,7 +328,7 @@ class VoltageElm extends CircuitElm {
 		arr[i++] = "wavelength = " +
 		    getUnitText(2.9979e8/frequency, "m");
 	}
-	if (waveform == WF_DC && current != 0 && sim.showResistanceInVoltageSources)
+	if (waveform == WF_DC && current != 0 && sim.isShowResistanceInVoltageSources())
 	    arr[i++] = "(R = " + getUnitText(maxVoltage/current, Locale.ohmString) + ")";
 	arr[i++] = "P = " + getUnitText(getPower(), "W");
     }

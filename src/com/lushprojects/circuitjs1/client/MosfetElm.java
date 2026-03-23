@@ -214,7 +214,7 @@ class MosfetElm extends CircuitElm {
 	}
 	
 	protected double getCurrent() { return ids; }
-	double getPower() {
+	protected double getPower() {
 	    return ids*(volts[2]-volts[1]) - diodeCurrent1*(volts[1]-volts[bodyTerminal]) - diodeCurrent2*(volts[2]-volts[bodyTerminal]);
 	    }
 	protected int getPostCount() { return hasBodyTerminal() ? 4 : 3; }

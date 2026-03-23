@@ -213,7 +213,7 @@ class AmmeterElm extends CircuitElm {
                 break;
         }    
     }
-    double getPower() { return 0; }
+    protected double getPower() { return 0; }
     protected double getVoltageDiff() { return volts[0]; }
     
     // do not optimize out, even though isWireEquivalent() is true

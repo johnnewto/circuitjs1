@@ -195,7 +195,7 @@ package com.lushprojects.circuitjs1.client;
 	// this is for backwards compatibility only.  we only support it if throwCount = 2
 	boolean hasCenterOff() { return (flags & FLAG_CENTER_OFF) != 0 && throwCount == 2; }
 	
-	int getShortcut() { return 'S'; }
+	protected int getShortcut() { return 'S'; }
 
 	void flipX(int c2, int count) {
 	    super.flipX(c2, count);

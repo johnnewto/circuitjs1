@@ -80,7 +80,7 @@ public class AudioOutputElm extends CircuitElm {
     double duration;
     double sampleStep;
     double dataStart;
-    static int lastSamplingRate = 8000;
+    public static int lastSamplingRate = 8000;
     static boolean okToChangeTimeStep;
     
 	public AudioOutputElm(int xx, int yy) {

@@ -675,6 +675,8 @@ public CirSim() {
     public void setCursorStyleForUi(String cursorStyle) { mouseInputHandler.setCursorStyle(cursorStyle); }
     public double getWheelSensitivity() { return wheelSensitivity; }
     public boolean isDcAnalysisForUi() { return dcAnalysisFlag; }
+    public java.util.Random getRandom() { return random; }
+    public boolean isShowResistanceInVoltageSources() { return showResistanceInVoltageSources; }
 	Rectangle getSelectedArea() { return mouseInputHandler.getSelectedArea(); }
 	boolean isDragging() { return mouseInputHandler.isDragging(); }
 	int getMousePost() { return mouseInputHandler.getMousePost(); }
@@ -691,7 +693,7 @@ public CirSim() {
 	    return preferencesManager;
 	}
 
-	CirSimUiPanelManager getUiPanelManager() {
+	public CirSimUiPanelManager getUiPanelManager() {
 	    return uiPanelManager;
 	}
 
@@ -1625,7 +1627,7 @@ public CirSim() {
     }
     
     // update voltage source in doStep()
-    void updateVoltageSource(int n1, int n2, int vs, double v) {
+    public void updateVoltageSource(int n1, int n2, int vs, double v) {
 	matrixStamper.updateVoltageSource(n1, n2, vs, v);
     }
     

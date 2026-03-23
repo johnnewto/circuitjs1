@@ -292,7 +292,7 @@ protected void startIteration() {
 		setPoints();
 	    }
 	}
-	int getShortcut() { return 'T'; }
+	protected int getShortcut() { return 'T'; }
 
        void flipX(int c2, int count) {
 	   if (hasFlag(FLAG_VERTICAL))

@@ -58,7 +58,7 @@ package com.lushprojects.circuitjs1.client;
 	    arr[2] = "V = " + getVoltageText(volts[0]);
 	}
 	protected int getDumpType() { return 'w'; }
-	double getPower() { return 0; }
+	protected double getPower() { return 0; }
 	protected double getVoltageDiff() { return volts[0]; }
 	protected boolean isWireEquivalent() { return true; }
 	protected boolean isRemovableWire() { return true; }
@@ -89,7 +89,7 @@ package com.lushprojects.circuitjs1.client;
 		    flags &= ~FLAG_SHOWVOLTAGE;
 	    }
 	}
-        int getShortcut() { return 'w'; }
+        protected int getShortcut() { return 'w'; }
 
 	int getMouseDistance(int gx, int gy) {
 	    int thresh = 10;

@@ -65,7 +65,7 @@ public class Scrollbar extends  Composite implements
 		@JsProperty int getButtons();
 	}
 	
-	static int HORIZONTAL =1;
+	public static final int HORIZONTAL =1;
 	static int HMARGIN=2;
 	static int SCROLLHEIGHT=14;
 	static int BARWIDTH=3;
@@ -126,7 +126,7 @@ public class Scrollbar extends  Composite implements
 		this.command=cmd;
 	}
 	
-	void draw() {
+	public void draw() {
 		if (enabled)
 			g.setStrokeStyle("#000000");
 		else

@@ -200,7 +200,7 @@ protected void setCurrent(int vn, double c) {
 	    }
 	}
 	
-	int getShortcut() { return 0; }
+	protected int getShortcut() { return 0; }
 
 	void flip() {
 	    if (dx == 0)

@@ -17,7 +17,7 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.sources;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,6 +25,7 @@ import com.google.gwt.dom.client.Element;
 import com.google.gwt.event.dom.client.ChangeEvent;
 import com.google.gwt.event.dom.client.ChangeHandler;
 import com.google.gwt.user.client.ui.FileUpload;
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import jsinterop.annotations.JsFunction;
@@ -38,7 +39,7 @@ class DataFileEntry {
     ArrayList<Double> data;
 }
 
-class DataInputElm extends RailElm {
+public class DataInputElm extends RailElm {
 
 	@JsFunction
 	private interface LoadCallback {
@@ -122,17 +123,17 @@ class DataInputElm extends RailElm {
 	    timeOffset = 0;
 	}
 	
-	void drawRail(Graphics g) {
+	protected void drawRail(Graphics g) {
 	    drawRailText(g, fileName == null ? Locale.LS("No file") : fileName);
 	}
 	
-	String getRailText() {
+	protected String getRailText() {
 	    return fileName == null ? Locale.LS("No file") : fileName;
 	}
 	
 	boolean doesRepeat() { return (flags & FLAG_REPEAT) != 0; }
 	
-	double getVoltage() {
+	protected double getVoltage() {
 	    if (data == null)
 		return 0;
 	    int ptr = (int) (timeOffset / sampleLength);
@@ -152,7 +153,7 @@ class DataInputElm extends RailElm {
 	}
 	
 	protected int getDumpType() { return 424; }
-	int getShortcut() { return 0; }
+	protected int getShortcut() { return 0; }
 	
 	public EditInfo getEditInfo(int n) {
             if (n == 0) {

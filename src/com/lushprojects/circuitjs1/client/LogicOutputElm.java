@@ -129,7 +129,7 @@ package com.lushprojects.circuitjs1.client;
 		    flags &= ~FLAG_TERNARY;
 	    }
 	}
-	int getShortcut() { return 'o'; }
+	protected int getShortcut() { return 'o'; }
 	
 //    void drawHandles(Graphics g, Color c) {
 //    	g.setColor(c);
