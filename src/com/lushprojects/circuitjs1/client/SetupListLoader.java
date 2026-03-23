@@ -21,7 +21,7 @@ class SetupListLoader {
     void getSetupList(final boolean openDefault) {
         MenuBar circuitsMenu = new MenuBar(true);
         circuitsMenu.setAutoOpen(true);
-        sim.menuBar.addItem(Locale.LS("Circuits"), circuitsMenu);
+        sim.getMenuUiState().menuBar.addItem(Locale.LS("Circuits"), circuitsMenu);
         addDialogsMenu();
 
         loadSetupListIntoMenu("setuplist_economics.txt", circuitsMenu, openDefault, sim.showElectronicsCircuits);
@@ -36,9 +36,9 @@ class SetupListLoader {
         varBrowserMenu.addItem(sim.menuItemWithShortcut("code", "Embedded Viewer...", "", new MyCommand("edit", "iframeviewer")));
         varBrowserMenu.addItem(sim.menuItemWithShortcut("check-square-o", "Math Elements Test Suite...", "", new MyCommand("edit", "mathtestdialog")));
         varBrowserMenu.addItem(sim.menuItemWithShortcut("table", "Table Elements Test Suite...", "", new MyCommand("edit", "tabletestdialog")));
-        sim.menuBar.addItem(Locale.LS("Dialogs"), varBrowserMenu);
-        if (sim.helpMenuBar != null && sim.helpMenuBar.getParent() == null) {
-            sim.menuBar.addItem(Locale.LS("Help"), sim.helpMenuBar);
+        sim.getMenuUiState().menuBar.addItem(Locale.LS("Dialogs"), varBrowserMenu);
+        if (sim.getMenuUiState().helpMenuBar != null && sim.getMenuUiState().helpMenuBar.getParent() == null) {
+            sim.getMenuUiState().menuBar.addItem(Locale.LS("Help"), sim.getMenuUiState().helpMenuBar);
         }
     }
 

@@ -142,7 +142,7 @@ package com.lushprojects.circuitjs1.client;
 	double lastvd;
 
 	void stamp() {
-	    int vn = sim.nodeList.size()+voltSource;
+	    int vn = sim.getCircuitAnalyzer().getNodeList().size()+voltSource;
 	    sim.stampNonLinear(vn);
 	    sim.stampMatrix(nodes[2], vn, 1);
 	}
@@ -154,7 +154,7 @@ package com.lushprojects.circuitjs1.client;
 	    else if (volts[2] > maxOut+.1 || volts[2] < minOut-.1)
 		sim.converged = false;
 	    double x = 0;
-	    int vn = sim.nodeList.size()+voltSource;
+	    int vn = sim.getCircuitAnalyzer().getNodeList().size()+voltSource;
 	    double dx = 0;
 	    double maxAdj = maxOut-midpoint;
 	    double minAdj = minOut-midpoint;

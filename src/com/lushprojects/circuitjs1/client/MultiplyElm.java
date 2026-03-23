@@ -133,13 +133,13 @@ class MultiplyElm extends CircuitElm {
     
     void stamp() {
         // Nonlinear voltage source for output
-        int vn = sim.nodeList.size() + voltSource;
+        int vn = sim.getCircuitAnalyzer().getNodeList().size() + voltSource;
         sim.stampNonLinear(vn);
         sim.stampVoltageSource(0, nodes[inputCount], voltSource);
     }
     
     void doStep() {
-        int vn = sim.nodeList.size() + voltSource;
+        int vn = sim.getCircuitAnalyzer().getNodeList().size() + voltSource;
         
         // Calculate output: V1 * V2 * ...
         double v0 = 1;

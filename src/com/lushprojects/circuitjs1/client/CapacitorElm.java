@@ -140,9 +140,9 @@ class CapacitorElm extends CircuitElm {
 	    // than backward euler but can cause oscillatory behavior
 	    // if RC is small relative to the timestep.
 	    if (isTrapezoidal())
-		compResistance = sim.timeStep/(2*capacitance);
+		compResistance = sim.getTimingState().timeStep/(2*capacitance);
 	    else
-		compResistance = sim.timeStep/capacitance;
+		compResistance = sim.getTimingState().timeStep/capacitance;
 	    sim.stampResistor(nodes[0], nodes[capNode2], compResistance);
 	    sim.stampRightSide(nodes[0]);
 	    sim.stampRightSide(nodes[capNode2]);

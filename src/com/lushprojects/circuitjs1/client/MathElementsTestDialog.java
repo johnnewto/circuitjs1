@@ -88,7 +88,7 @@ public class MathElementsTestDialog {
      * Create the test dialog
      */
     public MathElementsTestDialog() {
-        this.sim = CirSim.theSim;
+        this.sim = CirSim.getInstance();
         this.testSuite = new MathElementsTest();
         createDialog();
     }

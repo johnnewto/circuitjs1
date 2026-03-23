@@ -81,10 +81,10 @@ public class DataRecorderElm extends CircuitElm {
 	    arr[2] = (dataFull ? dataCount : dataPtr) + "/" + dataCount;
 	}
 	void stepFinished() {
-	    if (lastTimeStepCount == sim.timeStepCount)
+	    if (lastTimeStepCount == sim.getTimingState().timeStepCount)
 		return;
 	    data[dataPtr++] = volts[0];
-	    lastTimeStepCount = sim.timeStepCount;
+	    lastTimeStepCount = sim.getTimingState().timeStepCount;
 	    if (dataPtr >= dataCount) {
 		dataPtr = 0;
 		dataFull = true;
@@ -117,7 +117,7 @@ public class DataRecorderElm extends CircuitElm {
 	    }
 	    if (n == 1) {
 		EditInfo ei = new EditInfo("", 0, -1, -1);
-		String dataStr = "# time step = " + sim.timeStep + " sec\n";
+		String dataStr = "# time step = " + sim.getTimingState().timeStep + " sec\n";
 		int i;
 		if (dataFull) {
 		    for (i = 0; i != dataCount; i++)

@@ -534,8 +534,8 @@ public class TableElm extends ChipElm implements TableContentView {
         if (sim == null) {
             return false;
         }
-        int gx = sim.inverseTransformX(sim.mouseCursorX);
-        int gy = sim.inverseTransformY(sim.mouseCursorY);
+        int gx = sim.inverseTransformX(sim.getMouseCursorX());
+        int gy = sim.inverseTransformY(sim.getMouseCursorY());
         return isCollapseArrowClicked(gx, gy);
     }
 
@@ -636,7 +636,7 @@ public class TableElm extends ChipElm implements TableContentView {
      * Stamp a column's computed value to the circuit matrix
      */
     private void stampColumnValue(int col, double columnSum) {
-        int vn = pins[col].voltSource + sim.nodeList.size();
+        int vn = pins[col].voltSource + sim.getCircuitAnalyzer().getNodeList().size();
         
         // Check output voltage convergence
         if (Math.abs(volts[col] - columnSum) > Math.abs(columnSum) * 0.01 && 
@@ -709,7 +709,7 @@ public class TableElm extends ChipElm implements TableContentView {
     @Override
     void postStamp() {
         super.postStamp();
-        CirSim csim = CirSim.theSim;
+        CirSim csim = CirSim.getInstance();
         if (csim == null || csim.nameToSlot == null) return;
         equationManager.resolveAllGSlots(csim.nameToSlot);
     }
@@ -720,7 +720,7 @@ public class TableElm extends ChipElm implements TableContentView {
     protected void stampMasterColumn(int col, Pin p) {
         int outputNode = nodes[col];
         String stockName = (columns != null && col < columns.size()) ? columns.get(col).getStockName() : "?";
-        int vn = p.voltSource + sim.nodeList.size();
+        int vn = p.voltSource + sim.getCircuitAnalyzer().getNodeList().size();
         // CirSim.console("TableElm.stampMasterColumn: col=" + col + " stock='" + stockName + "' node=" + outputNode + " voltSource=" + p.voltSource + " matrixRow=" + (vn-1));
         
         // Can't stamp voltage source to ground node (would be ground-to-ground)
@@ -788,7 +788,7 @@ public class TableElm extends ChipElm implements TableContentView {
      * Check if a node number is valid for stamping
      */
     protected boolean isValidNode(int nodeNum) {
-        return nodeNum >= 0 && sim.nodeList != null && nodeNum < sim.nodeList.size();
+        return nodeNum >= 0 && sim.getCircuitAnalyzer().getNodeList() != null && nodeNum < sim.getCircuitAnalyzer().getNodeList().size();
     }
 
     public String dump() {
@@ -1028,7 +1028,7 @@ public class TableElm extends ChipElm implements TableContentView {
         // For A-L-E columns, get from renderer cache
         // At t=0, return the initial value
         if (column.isALE()) {
-            if (sim.t == 0.0) {
+            if (sim.getTimingState().t == 0.0) {
                 return getInitialValue(col);
             }
             return renderer.getCachedSumValue(col);

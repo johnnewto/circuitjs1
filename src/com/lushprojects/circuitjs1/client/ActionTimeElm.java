@@ -167,7 +167,7 @@ class ActionTimeElm extends CircuitElm {
         // Draw current time
         f = new Font("SansSerif", 0, 11);
         g.setFont(f);
-        String timeText = "t=" + getUnitText(sim.t, "s");
+        String timeText = "t=" + getUnitText(sim.getTimingState().t, "s");
         textWidth = (int)g.context.measureText(timeText).getWidth();
         g.drawString(timeText, cx - width/2 + 10, cy - height/2 + headerHeight + 5);
         
@@ -310,7 +310,7 @@ class ActionTimeElm extends CircuitElm {
     void getInfo(String arr[]) {
         arr[0] = ((title == null || title.isEmpty()) ? "Action Schedule" : title) + " Display";
         arr[1] = "element enabled = " + (enabled ? "yes" : "no");
-        arr[2] = "current time = " + getUnitText(sim.t, "s");
+        arr[2] = "current time = " + getUnitText(sim.getTimingState().t, "s");
         
         ActionScheduler scheduler = ActionScheduler.getInstance(sim);
         List<ScheduledAction> actions = scheduler.getAllActions();

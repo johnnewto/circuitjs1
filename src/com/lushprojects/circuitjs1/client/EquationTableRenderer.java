@@ -130,7 +130,7 @@ public class EquationTableRenderer {
     }
 
     private float getRenderScale() {
-        if (CirSim.theSim == null) {
+        if (CirSim.getInstance() == null) {
             return 1;
         }
         return Math.max(1, CirSim.devicePixelRatio());
@@ -147,7 +147,7 @@ public class EquationTableRenderer {
     }
 
     private boolean isVoltsVisible() {
-        return CirSim.theSim != null && CirSim.theSim.voltsCheckItem != null && CirSim.theSim.voltsCheckItem.getState();
+        return CirSim.getInstance() != null && CirSim.getInstance().voltsCheckItem != null && CirSim.getInstance().voltsCheckItem.getState();
     }
 
     private void clearRowTextCaches() {
@@ -181,7 +181,7 @@ public class EquationTableRenderer {
         if (backgroundLayerCanvas == null || backgroundLayerCtx == null) {
             return false;
         }
-        if (CirSim.theSim != null && !CirSim.theSim.tableRenderCacheEnabled) {
+        if (CirSim.getInstance() != null && !CirSim.getInstance().tableRenderCacheEnabled) {
             return false;
         }
         
@@ -223,7 +223,7 @@ public class EquationTableRenderer {
         if (contentLayerCanvas == null || contentLayerCtx == null) {
             return false;
         }
-        if (CirSim.theSim != null && !CirSim.theSim.tableRenderCacheEnabled) {
+        if (CirSim.getInstance() != null && !CirSim.getInstance().tableRenderCacheEnabled) {
             return false;
         }
 
@@ -359,7 +359,7 @@ public class EquationTableRenderer {
 
     // Helper methods for theme-aware colors
     private boolean isPrintable() {
-        return CirSim.theSim.printableCheckItem.getState();
+        return CirSim.getInstance().printableCheckItem.getState();
     }
     
     private Color getHeaderBgColor() {
@@ -399,7 +399,7 @@ public class EquationTableRenderer {
      * @return Color from the voltage color scale.
      */
     private Color getVoltageColor(double volts) {
-        if (!CirSim.theSim.voltsCheckItem.getState()) {
+        if (!CirSim.getInstance().voltsCheckItem.getState()) {
             return CircuitElm.whiteColor;
         }
         int c = (int) ((volts + CircuitElm.voltageRange) * (CircuitElm.colorScaleCount - 1) /
@@ -510,7 +510,7 @@ public class EquationTableRenderer {
     }
 
     private void drawRenderTimingOverlay(Graphics g, int tableX, int tableY, boolean selected, boolean usingCache, double renderMs) {
-        if (CirSim.theSim == null || !CirSim.theSim.developerMode || !selected) {
+        if (CirSim.getInstance() == null || !CirSim.getInstance().developerMode || !selected) {
             return;
         }
         String timingText = (usingCache ? "C " : "N ") +
@@ -622,8 +622,8 @@ public class EquationTableRenderer {
      */
     private void updateHoveredRow(int tableX, int tableY) {
         int newHoveredRow = -1;
-        int mouseCircuitX = table.sim.inverseTransformX(table.sim.mouseCursorX);
-        int mouseCircuitY = table.sim.inverseTransformY(table.sim.mouseCursorY);
+        int mouseCircuitX = table.sim.inverseTransformX(table.sim.getMouseCursorX());
+        int mouseCircuitY = table.sim.inverseTransformY(table.sim.getMouseCursorY());
         
         if (mouseCircuitX >= tableX && mouseCircuitX <= tableX + table.getTableWidth() &&
             mouseCircuitY >= tableY && mouseCircuitY <= tableY + table.getTableHeight()) {

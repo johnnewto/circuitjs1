@@ -379,7 +379,7 @@ public class Scrollbar extends  Composite implements
 	    
 	    // Open slider dialog if we have an attached element
 	    if (attachedElm != null) {
-		CirSimDialogCoordinator.setDialogShowing(new SliderDialog(attachedElm, CirSim.theSim));
+		CirSimDialogCoordinator.setDialogShowing(new SliderDialog(attachedElm, CirSim.getInstance()));
 		CirSimDialogCoordinator.getDialogShowing().show();
 	    }
 	}

@@ -197,7 +197,7 @@ class IntegratorElm extends CircuitElm {
     }
     
     void stamp() {
-        int vn = sim.nodeList.size() + voltSource;
+        int vn = sim.getCircuitAnalyzer().getNodeList().size() + voltSource;
         sim.stampNonLinear(vn);
         sim.stampVoltageSource(0, nodes[inputCount], voltSource);
     }
@@ -206,7 +206,7 @@ class IntegratorElm extends CircuitElm {
         int i;
         
         // On first timestep, set initial value
-        if (sim.timeStepCount == 0) {
+        if (sim.getTimingState().timeStepCount == 0) {
             for (i = 0; i != inputCount; i++) {
                 lastVolts[i] = volts[i];
             }
@@ -224,11 +224,11 @@ class IntegratorElm extends CircuitElm {
         // Get input voltage to integrate (input 0)
         double inputVoltage = volts[0];
         
-        int vn = sim.nodeList.size() + voltSource;
+        int vn = sim.getCircuitAnalyzer().getNodeList().size() + voltSource;
         if (integrationExpr != null) {
             // Set up integration state
             integrationState.values[0] = inputVoltage;
-            integrationState.t = sim.t;
+            integrationState.t = sim.getTimingState().t;
             
             // Evaluate integration expression: lastoutput + timestep * a
             integratedValue = integrationExpr.eval(integrationState);

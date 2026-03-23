@@ -104,7 +104,7 @@ class ComputedValueSourceElm extends CircuitElm {
     
     @Override
     void stamp() {
-        int vn = voltSource + sim.nodeList.size();
+        int vn = voltSource + sim.getCircuitAnalyzer().getNodeList().size();
         
         // Mark as nonlinear since value changes each step
         sim.stampNonLinear(vn);
@@ -135,7 +135,7 @@ class ComputedValueSourceElm extends CircuitElm {
         }
         
         // Stamp the value to drive output voltage
-        int vn = voltSource + sim.nodeList.size();
+        int vn = voltSource + sim.getCircuitAnalyzer().getNodeList().size();
         sim.stampRightSide(vn, lastValue);
     }
     

@@ -145,13 +145,13 @@ class PercentElm extends CircuitElm {
     
     void stamp() {
         // Nonlinear voltage source for output - use same pattern as VCVSElm
-        int vn = sim.nodeList.size() + voltSource;
+        int vn = sim.getCircuitAnalyzer().getNodeList().size() + voltSource;
         sim.stampNonLinear(vn);
         sim.stampVoltageSource(0, nodes[inputCount], voltSource);
      }
     
     void doStep() {
-        int vn = sim.nodeList.size() + voltSource;
+        int vn = sim.getCircuitAnalyzer().getNodeList().size() + voltSource;
         
         // Check for divide by zero on denominators (inputs 1+)
         boolean divByZero = false;

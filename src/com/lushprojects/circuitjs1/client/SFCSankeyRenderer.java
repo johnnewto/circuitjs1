@@ -1164,10 +1164,10 @@ public class SFCSankeyRenderer {
         hoveredNode = null;
         hoveredLink = null;
         
-        if (CirSim.theSim.mouseCursorX < 0) return;
+        if (CirSim.getInstance().getMouseCursorX() < 0) return;
         
-        int mouseX = CirSim.theSim.inverseTransformX(CirSim.theSim.mouseCursorX);
-        int mouseY = CirSim.theSim.inverseTransformY(CirSim.theSim.mouseCursorY);
+        int mouseX = CirSim.getInstance().inverseTransformX(CirSim.getInstance().getMouseCursorX());
+        int mouseY = CirSim.getInstance().inverseTransformY(CirSim.getInstance().getMouseCursorY());
         lastMouseX = mouseX;
         lastMouseY = mouseY;
         

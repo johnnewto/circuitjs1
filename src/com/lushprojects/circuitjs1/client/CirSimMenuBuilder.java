@@ -41,9 +41,9 @@ final class CirSimMenuBuilder {
                 MenuBar subMenu = new MenuBar(true);
 
                 if (menuTitle.equals("Subcircuits")) {
-                    if (sim.subcircuitMenuBar == null)
-                        sim.subcircuitMenuBar = new MenuBar[2];
-                    sim.subcircuitMenuBar[num] = subMenu;
+                    if (sim.getMenuUiState().subcircuitMenuBar == null)
+                        sim.getMenuUiState().subcircuitMenuBar = new MenuBar[2];
+                    sim.getMenuUiState().subcircuitMenuBar[num] = subMenu;
                 }
 
                 currentMenuBar.addItem(SafeHtmlUtils.fromTrustedString(
@@ -276,10 +276,10 @@ final class CirSimMenuBuilder {
     achipMenuBar.addItem(getClassCheckItem(Locale.LS("Add Monostable"), "MonostableElm"));
     mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Analog and Hybrid Chips")), achipMenuBar);
 
-    if (sim.subcircuitMenuBar == null)
-        sim.subcircuitMenuBar = new MenuBar[2];
-    sim.subcircuitMenuBar[num] = new MenuBar(true);
-    mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Subcircuits")), sim.subcircuitMenuBar[num]);
+    if (sim.getMenuUiState().subcircuitMenuBar == null)
+        sim.getMenuUiState().subcircuitMenuBar = new MenuBar[2];
+    sim.getMenuUiState().subcircuitMenuBar[num] = new MenuBar(true);
+    mainMenuBar.addItem(SafeHtmlUtils.fromTrustedString(CheckboxMenuItem.checkBoxHtml+Locale.LS("&nbsp;</div>Subcircuits")), sim.getMenuUiState().subcircuitMenuBar[num]);
 
     MenuBar otherMenuBar = new MenuBar(true);
     CheckboxMenuItem mi;
@@ -300,11 +300,11 @@ final class CirSimMenuBuilder {
     }
 
     void composeSubcircuitMenu() {
-    if (sim.subcircuitMenuBar == null)
+    if (sim.getMenuUiState().subcircuitMenuBar == null)
         return;
 
     for (int mi = 0; mi != 2; mi++) {
-        MenuBar menu = sim.subcircuitMenuBar[mi];
+        MenuBar menu = sim.getMenuUiState().subcircuitMenuBar[mi];
         menu.clearItems();
         Vector<CustomCompositeModel> list = CustomCompositeModel.getModelList();
         for (int i = 0; i != list.size(); i++) {
@@ -317,7 +317,7 @@ final class CirSimMenuBuilder {
 
     void composeSelectScopeMenu(MenuBar sb) {
     sb.clearItems();
-    sim.selectScopeMenuItems = new Vector<MenuItem>();
+    sim.getMenuUiState().selectScopeMenuItems = new Vector<MenuItem>();
     for (int i = 0; i < sim.scopeCount; i++) {
         String s;
         String l;
@@ -325,7 +325,7 @@ final class CirSimMenuBuilder {
         l = sim.scopes[i].getScopeMenuName();
         if (l != "")
         s += " (" + SafeHtmlUtils.htmlEscape(l) + ")";
-        sim.selectScopeMenuItems.add(new MenuItem(s, new MyCommand("elm", "addToScope" + Integer.toString(i))));
+        sim.getMenuUiState().selectScopeMenuItems.add(new MenuItem(s, new MyCommand("elm", "addToScope" + Integer.toString(i))));
     }
     int c = sim.getScopeManager().countScopeElms();
     for (int j = 0; j < c; j++) {
@@ -335,10 +335,10 @@ final class CirSimMenuBuilder {
         l = sim.getScopeManager().getNthScopeElm(j).elmScope.getScopeMenuName();
         if (l != "")
         s += " (" + SafeHtmlUtils.htmlEscape(l) + ")";
-        sim.selectScopeMenuItems
+        sim.getMenuUiState().selectScopeMenuItems
             .add(new MenuItem(s, new MyCommand("elm", "addToScope" + Integer.toString(sim.scopeCount + j))));
     }
-    for (MenuItem mi : sim.selectScopeMenuItems)
+    for (MenuItem mi : sim.getMenuUiState().selectScopeMenuItems)
         sb.addItem(mi);
     }
 
@@ -368,8 +368,8 @@ final class CirSimMenuBuilder {
     else
         mi = new CheckboxMenuItem(s, shortcut);
     mi.setScheduledCommand(new MyCommand("main", t));
-    sim.mainMenuItems.add(mi);
-    sim.mainMenuItemNames.add(t);
+    sim.getMenuUiState().mainMenuItems.add(mi);
+    sim.getMenuUiState().mainMenuItemNames.add(t);
     return mi;
     }
 }

@@ -203,7 +203,7 @@ public class FlowsMasterElm extends ChipElm {
         setBbox(tableX, tableY, tableX + tableWidth, tableY + tableHeight);
         
         // Draw background
-        Color bgColor = CirSim.theSim.printableCheckItem.getState() ? 
+        Color bgColor = CirSim.getInstance().printableCheckItem.getState() ? 
             new Color(240, 240, 240) : new Color(30, 30, 30);
         g.setColor(bgColor);
         g.fillRect(tableX, tableY, tableWidth, tableHeight);

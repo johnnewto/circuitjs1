@@ -124,7 +124,7 @@ final class CirSimInitializer {
         else
             euroSetting = sim.getPreferencesManager().getOptionFromStorage("euroResistors", !sim.getPreferencesManager().weAreInUS(true));
 
-        sim.transform = new double[6];
+        sim.getViewportController().setTransformRaw(new double[] {1, 0, 0, 1, 0, 0});
         String os = Window.Navigator.getPlatform();
         sim.isMac = (os.toLowerCase().contains("mac"));
         sim.ctrlMetaKey = (sim.isMac) ? Locale.LS("Cmd-") : Locale.LS("Ctrl-");
@@ -133,56 +133,56 @@ final class CirSimInitializer {
 
         sim.layoutPanel = new DockLayoutPanel(Unit.PX);
 
-        sim.fileMenuBar = new MenuBar(true);
+        sim.getMenuUiState().fileMenuBar = new MenuBar(true);
         if (sim.getPlatformInterop().isElectron())
-            sim.fileMenuBar.addItem(sim.menuItemWithShortcut("window", "New Window...", Locale.LS(sim.ctrlMetaKey + "N"),
+            sim.getMenuUiState().fileMenuBar.addItem(sim.menuItemWithShortcut("window", "New Window...", Locale.LS(sim.ctrlMetaKey + "N"),
                     new MyCommand("file", "newwindow")));
 
-        sim.fileMenuBar.addItem(sim.iconMenuItem("doc-new", "New Blank Circuit", new MyCommand("file", "newblankcircuit")));
+        sim.getMenuUiState().fileMenuBar.addItem(sim.iconMenuItem("doc-new", "New Blank Circuit", new MyCommand("file", "newblankcircuit")));
         sim.importFromLocalFileItem = sim.menuItemWithShortcut("folder", "Open File...", Locale.LS(sim.ctrlMetaKey + "O"),
                 new MyCommand("file", "importfromlocalfile"));
         sim.importFromLocalFileItem.setEnabled(LoadFile.isSupported());
-        sim.fileMenuBar.addItem(sim.importFromLocalFileItem);
+        sim.getMenuUiState().fileMenuBar.addItem(sim.importFromLocalFileItem);
         sim.importFromTextItem = sim.iconMenuItem("doc-text", "Import From Text...", new MyCommand("file", "importfromtext"));
-        sim.fileMenuBar.addItem(sim.importFromTextItem);
+        sim.getMenuUiState().fileMenuBar.addItem(sim.importFromTextItem);
         sim.importFromDropboxItem = sim.iconMenuItem("dropbox", "Import From Dropbox...", new MyCommand("file", "importfromdropbox"));
-        sim.fileMenuBar.addItem(sim.importFromDropboxItem);
+        sim.getMenuUiState().fileMenuBar.addItem(sim.importFromDropboxItem);
         if (sim.getPlatformInterop().isElectron()) {
-            sim.saveFileItem = sim.fileMenuBar.addItem(sim.menuItemWithShortcut("floppy", "Save", Locale.LS(sim.ctrlMetaKey + "S"),
+            sim.saveFileItem = sim.getMenuUiState().fileMenuBar.addItem(sim.menuItemWithShortcut("floppy", "Save", Locale.LS(sim.ctrlMetaKey + "S"),
                     new MyCommand("file", "save")));
-            sim.fileMenuBar.addItem(sim.iconMenuItem("floppy", "Save As...", new MyCommand("file", "saveas")));
+            sim.getMenuUiState().fileMenuBar.addItem(sim.iconMenuItem("floppy", "Save As...", new MyCommand("file", "saveas")));
         } else {
             sim.exportAsLocalFileItem = sim.menuItemWithShortcut("floppy", "Save As...", Locale.LS(sim.ctrlMetaKey + "S"),
                     new MyCommand("file", "exportaslocalfile"));
             sim.exportAsLocalFileItem.setEnabled(ExportAsLocalFileDialog.downloadIsSupported());
-            sim.fileMenuBar.addItem(sim.exportAsLocalFileItem);
+            sim.getMenuUiState().fileMenuBar.addItem(sim.exportAsLocalFileItem);
         }
         sim.exportAsUrlItem = sim.iconMenuItem("export", "Export As Link...", new MyCommand("file", "exportasurl"));
-        sim.fileMenuBar.addItem(sim.exportAsUrlItem);
-        sim.fileMenuBar.addItem(sim.iconMenuItem("line-chart", "Open Runner Output Table...", new MyCommand("file", "openrunnertable")));
+        sim.getMenuUiState().fileMenuBar.addItem(sim.exportAsUrlItem);
+        sim.getMenuUiState().fileMenuBar.addItem(sim.iconMenuItem("line-chart", "Open Runner Output Table...", new MyCommand("file", "openrunnertable")));
         sim.exportAsTextItem = sim.iconMenuItem("export", "Export As Text...", new MyCommand("file", "exportastext"));
-        sim.fileMenuBar.addItem(sim.exportAsTextItem);
-        sim.fileMenuBar.addItem(sim.iconMenuItem("export", "Export As SFCR...", new MyCommand("file", "exportassfcr")));
+        sim.getMenuUiState().fileMenuBar.addItem(sim.exportAsTextItem);
+        sim.getMenuUiState().fileMenuBar.addItem(sim.iconMenuItem("export", "Export As SFCR...", new MyCommand("file", "exportassfcr")));
         sim.editLookupTablesItem = sim.iconMenuItem("table", "Edit Lookup Tables...", new MyCommand("file", "editlookuptables"));
-        sim.fileMenuBar.addItem(sim.editLookupTablesItem);
-        sim.viewModelInfoItem = sim.iconMenuItem("doc-text", "View Model Info...", new MyCommand("file", "viewmodelinfo"));
-        sim.viewModelInfoItem.setEnabled(false);
-        sim.fileMenuBar.addItem(sim.viewModelInfoItem);
-        sim.fileMenuBar.addItem(sim.iconMenuItem("image", "Export As Image...", new MyCommand("file", "exportasimage")));
-        sim.fileMenuBar.addItem(sim.iconMenuItem("image", "Copy Circuit Image to Clipboard", new MyCommand("file", "copypng")));
-        sim.fileMenuBar.addItem(sim.iconMenuItem("image", "Export As SVG...", new MyCommand("file", "exportassvg")));
-        sim.fileMenuBar.addItem(sim.iconMenuItem("microchip", "Create Subcircuit...", new MyCommand("file", "createsubcircuit")));
-        sim.fileMenuBar.addItem(sim.iconMenuItem("magic", "Find DC Operating Point", new MyCommand("file", "dcanalysis")));
+        sim.getMenuUiState().fileMenuBar.addItem(sim.editLookupTablesItem);
+        MenuItem viewModelInfoItem = sim.iconMenuItem("doc-text", "View Model Info...", new MyCommand("file", "viewmodelinfo"));
+        viewModelInfoItem.setEnabled(false);
+        sim.getMenuUiState().fileMenuBar.addItem(viewModelInfoItem);
+        sim.getMenuUiState().fileMenuBar.addItem(sim.iconMenuItem("image", "Export As Image...", new MyCommand("file", "exportasimage")));
+        sim.getMenuUiState().fileMenuBar.addItem(sim.iconMenuItem("image", "Copy Circuit Image to Clipboard", new MyCommand("file", "copypng")));
+        sim.getMenuUiState().fileMenuBar.addItem(sim.iconMenuItem("image", "Export As SVG...", new MyCommand("file", "exportassvg")));
+        sim.getMenuUiState().fileMenuBar.addItem(sim.iconMenuItem("microchip", "Create Subcircuit...", new MyCommand("file", "createsubcircuit")));
+        sim.getMenuUiState().fileMenuBar.addItem(sim.iconMenuItem("magic", "Find DC Operating Point", new MyCommand("file", "dcanalysis")));
         sim.recoverItem = sim.iconMenuItem("back-in-time", "Recover Auto-Save", new MyCommand("file", "recover"));
         sim.recoverItem.setEnabled(sim.getCircuitIOService().getRecovery() != null);
-        sim.fileMenuBar.addItem(sim.recoverItem);
+        sim.getMenuUiState().fileMenuBar.addItem(sim.recoverItem);
         sim.printItem = sim.menuItemWithShortcut("print", "Print...", Locale.LS(sim.ctrlMetaKey + "P"), new MyCommand("file", "print"));
-        sim.fileMenuBar.addItem(sim.printItem);
-        sim.fileMenuBar.addSeparator();
-        sim.fileMenuBar.addItem(sim.iconMenuItem("resize-full-alt", "Toggle Full Screen", new MyCommand("view", "fullscreen")));
-        sim.fileMenuBar.addSeparator();
+        sim.getMenuUiState().fileMenuBar.addItem(sim.printItem);
+        sim.getMenuUiState().fileMenuBar.addSeparator();
+        sim.getMenuUiState().fileMenuBar.addItem(sim.iconMenuItem("resize-full-alt", "Toggle Full Screen", new MyCommand("view", "fullscreen")));
+        sim.getMenuUiState().fileMenuBar.addSeparator();
         sim.aboutItem = sim.iconMenuItem("info-circled", "About...", (Command) null);
-        sim.fileMenuBar.addItem(sim.aboutItem);
+        sim.getMenuUiState().fileMenuBar.addItem(sim.aboutItem);
         sim.aboutItem.setScheduledCommand(new MyCommand("file", "about"));
 
         int width = (int) RootLayoutPanel.get().getOffsetWidth();
@@ -192,8 +192,8 @@ final class CirSimInitializer {
         if (CirSim.VERTICALPANELWIDTH < 128)
             CirSim.VERTICALPANELWIDTH = 128;
 
-        sim.menuBar = new MenuBar();
-        sim.menuBar.addItem(Locale.LS("File"), sim.fileMenuBar);
+        sim.getMenuUiState().menuBar = new MenuBar();
+        sim.getMenuUiState().menuBar.addItem(Locale.LS("File"), sim.getMenuUiState().fileMenuBar);
         sim.verticalPanel = new VerticalPanel();
 
         sim.verticalPanel.getElement().addClassName("verticalPanel");
@@ -235,12 +235,12 @@ final class CirSimInitializer {
         m.addItem(sim.flipXItem = sim.iconMenuItem("flip-x", "Flip X", new MyCommand("edit", "flipx")));
         m.addItem(sim.flipYItem = sim.iconMenuItem("flip-y", "Flip Y", new MyCommand("edit", "flipy")));
         m.addItem(sim.flipXYItem = sim.iconMenuItem("flip-x-y", "Flip XY", new MyCommand("edit", "flipxy")));
-        sim.menuBar.addItem(Locale.LS("Edit"), m);
+        sim.getMenuUiState().menuBar.addItem(Locale.LS("Edit"), m);
 
-        sim.drawMenuBar = new MenuBar(true);
-        sim.drawMenuBar.setAutoOpen(true);
+        sim.getMenuUiState().drawMenuBar = new MenuBar(true);
+        sim.getMenuUiState().drawMenuBar.setAutoOpen(true);
 
-        sim.menuBar.addItem(Locale.LS("Draw"), sim.drawMenuBar);
+        sim.getMenuUiState().menuBar.addItem(Locale.LS("Draw"), sim.getMenuUiState().drawMenuBar);
 
         m = new MenuBar(true);
         m.addItem(sim.stackAllItem = sim.iconMenuItem("lines", "Stack All", new MyCommand("scopes", "stackAll")));
@@ -249,10 +249,10 @@ final class CirSimInitializer {
         m.addItem(sim.separateAllItem = sim.iconMenuItem("object-ungroup", "Separate All", new MyCommand("scopes", "separateAll")));
         m.addSeparator();
         m.addItem(sim.iconMenuItem("line-chart", "View All Scopes in Plotly...", new MyCommand("scopes", "viewAllPlotly")));
-        sim.menuBar.addItem(Locale.LS("Scopes"), m);
+        sim.getMenuUiState().menuBar.addItem(Locale.LS("Scopes"), m);
 
         sim.optionsMenuBar = m = new MenuBar(true);
-        sim.menuBar.addItem(Locale.LS("Options"), sim.optionsMenuBar);
+        sim.getMenuUiState().menuBar.addItem(Locale.LS("Options"), sim.optionsMenuBar);
         m.addItem(sim.dotsCheckItem = new CheckboxMenuItem(Locale.LS("Show Current")));
         sim.dotsCheckItem.setState(true);
         m.addItem(sim.voltsCheckItem = new CheckboxMenuItem(Locale.LS("Show Voltage"),
@@ -275,11 +275,12 @@ final class CirSimInitializer {
         m.addItem(sim.showValuesCheckItem = new CheckboxMenuItem(Locale.LS("Show Values")));
         sim.showValuesCheckItem.setState(true);
 
-        sim.helpMenuBar = new MenuBar(true);
-        sim.helpViewModelInfoItem = sim.menuItemWithShortcut("doc-text", "View Model Info...", "", new MyCommand("help", "viewmodelinfo"));
-        sim.helpViewModelInfoItem.setEnabled(false);
-        sim.helpMenuBar.addItem(sim.helpViewModelInfoItem);
-        sim.helpMenuBar.addItem(sim.menuItemWithShortcut("folder", "Reference Docs...", "", new MyCommand("help", "referencedocs")));
+        sim.getMenuUiState().helpMenuBar = new MenuBar(true);
+        MenuItem helpViewModelInfoItem = sim.menuItemWithShortcut("doc-text", "View Model Info...", "", new MyCommand("help", "viewmodelinfo"));
+        helpViewModelInfoItem.setEnabled(false);
+        sim.getMenuUiState().helpMenuBar.addItem(helpViewModelInfoItem);
+        sim.getSFCRDocumentManager().bindModelInfoMenuItems(viewModelInfoItem, helpViewModelInfoItem);
+        sim.getMenuUiState().helpMenuBar.addItem(sim.menuItemWithShortcut("folder", "Reference Docs...", "", new MyCommand("help", "referencedocs")));
 
         m.addItem(sim.smallGridCheckItem = new CheckboxMenuItem(Locale.LS("Small Grid"),
                 new Command() {
@@ -395,10 +396,10 @@ final class CirSimInitializer {
         if (sim.getPlatformInterop().isElectron())
             m.addItem(new CheckboxAlignedMenuItem(Locale.LS("Toggle Dev Tools"), new MyCommand("options", "devtools")));
 
-        sim.mainMenuBar = new MenuBar(true);
-        sim.mainMenuBar.setAutoOpen(true);
-        sim.getMenuBuilder().composeMainMenu(sim.mainMenuBar, 0);
-        sim.getMenuBuilder().composeMainMenu(sim.drawMenuBar, 1);
+        sim.getMenuUiState().mainMenuBar = new MenuBar(true);
+        sim.getMenuUiState().mainMenuBar.setAutoOpen(true);
+        sim.getMenuBuilder().composeMainMenu(sim.getMenuUiState().mainMenuBar, 0);
+        sim.getMenuBuilder().composeMainMenu(sim.getMenuUiState().drawMenuBar, 1);
         sim.getPreferencesManager().loadShortcuts();
 
         sim.layoutPanel.getElement().appendChild(topPanelCheckbox);
@@ -407,7 +408,7 @@ final class CirSimInitializer {
         sim.toolbar = new EconomicsToolbar();
         sim.toolbar.setEuroResistors(euroSetting);
         if (!sim.hideMenu)
-            sim.layoutPanel.addNorth(sim.menuBar, CirSim.MENUBARHEIGHT);
+            sim.layoutPanel.addNorth(sim.getMenuUiState().menuBar, CirSim.MENUBARHEIGHT);
 
         if (hideSidebar)
             CirSim.VERTICALPANELWIDTH = 0;
@@ -417,8 +418,8 @@ final class CirSimInitializer {
             sim.layoutPanel.addEast(sim.verticalPanel, CirSim.VERTICALPANELWIDTH);
         }
         sim.layoutPanel.addNorth(sim.toolbar, CirSim.TOOLBARHEIGHT);
-        sim.menuBar.getElement().insertFirst(sim.menuBar.getElement().getChild(1));
-        sim.menuBar.getElement().getFirstChildElement().setAttribute("onclick", "document.getElementsByClassName('toptrigger')[0].checked = false");
+        sim.getMenuUiState().menuBar.getElement().insertFirst(sim.getMenuUiState().menuBar.getElement().getChild(1));
+        sim.getMenuUiState().menuBar.getElement().getFirstChildElement().setAttribute("onclick", "document.getElementsByClassName('toptrigger')[0].checked = false");
         RootLayoutPanel.get().add(sim.layoutPanel);
 
         sim.cv = Canvas.createIfSupported();
@@ -487,53 +488,53 @@ final class CirSimInitializer {
 
         sim.random = new Random();
 
-        sim.elmMenuBar = new MenuBar(true);
-        sim.elmMenuBar.setAutoOpen(true);
-        sim.selectScopeMenuBar = new MenuBar(true) {
+        sim.getMenuUiState().elmMenuBar = new MenuBar(true);
+        sim.getMenuUiState().elmMenuBar.setAutoOpen(true);
+        sim.getMenuUiState().selectScopeMenuBar = new MenuBar(true) {
             @Override
             public void onBrowserEvent(Event event) {
                 int currentItem = -1;
                 EventTarget eventTarget = event.getEventTarget();
                 Element targetElement = Element.is(eventTarget) ? Element.as(eventTarget) : null;
                 int i;
-                for (i = 0; i != sim.selectScopeMenuItems.size(); i++) {
-                    MenuItem item = sim.selectScopeMenuItems.get(i);
+                for (i = 0; i != sim.getMenuUiState().selectScopeMenuItems.size(); i++) {
+                    MenuItem item = sim.getMenuUiState().selectScopeMenuItems.get(i);
                     if (targetElement != null && item.getElement().isOrHasChild(targetElement)) {
                         currentItem = i;
                     }
                 }
                 switch (event.getTypeInt()) {
                 case Event.ONMOUSEOVER:
-                    sim.scopeMenuSelected = currentItem;
+                    sim.getScopeManager().setScopeMenuSelected(currentItem);
                     break;
                 case Event.ONMOUSEOUT:
-                    sim.scopeMenuSelected = -1;
+                    sim.getScopeManager().setScopeMenuSelected(-1);
                     break;
                 }
                 super.onBrowserEvent(event);
             }
         };
 
-        sim.elmMenuBar.addItem(sim.elmEditMenuItem = new MenuItem(Locale.LS("Edit..."), new MyCommand("elm", "edit")));
-        sim.elmMenuBar.addItem(sim.elmScopeMenuItem = new MenuItem(Locale.LS("View in New Scope"), new MyCommand("elm", "viewInScope")));
-        sim.elmMenuBar.addItem(sim.elmFloatScopeMenuItem = new MenuItem(Locale.LS("View in New Undocked Scope"), new MyCommand("elm", "viewInFloatScope")));
-        sim.elmMenuBar.addItem(sim.elmAddScopeMenuItem = new MenuItem(Locale.LS("Add to Existing Scope"), new MyCommand("elm", "addToScope0")));
-        sim.elmMenuBar.addItem(sim.elmCutMenuItem = new MenuItem(Locale.LS("Cut"), new MyCommand("elm", "cut")));
-        sim.elmMenuBar.addItem(sim.elmCopyMenuItem = new MenuItem(Locale.LS("Copy"), new MyCommand("elm", "copy")));
-        sim.elmMenuBar.addItem(sim.elmDeleteMenuItem = new MenuItem(Locale.LS("Delete"), new MyCommand("elm", "delete")));
-        sim.elmMenuBar.addItem(new MenuItem(Locale.LS("Duplicate"), new MyCommand("elm", "duplicate")));
-        sim.elmMenuBar.addItem(sim.elmSwapMenuItem = new MenuItem(Locale.LS("Swap Terminals"), new MyCommand("elm", "flip")));
-        sim.elmMenuBar.addItem(sim.elmFlipXMenuItem = new MenuItem(Locale.LS("Flip X"), new MyCommand("elm", "flipx")));
-        sim.elmMenuBar.addItem(sim.elmFlipYMenuItem = new MenuItem(Locale.LS("Flip Y"), new MyCommand("elm", "flipy")));
-        sim.elmMenuBar.addItem(sim.elmFlipXYMenuItem = new MenuItem(Locale.LS("Flip XY"), new MyCommand("elm", "flipxy")));
-        sim.elmMenuBar.addItem(sim.elmSplitMenuItem = sim.menuItemWithShortcut("", "Split Wire", Locale.LS(sim.ctrlMetaKey + "click"), new MyCommand("elm", "split")));
-        sim.elmMenuBar.addItem(sim.elmSliderMenuItem = new MenuItem(Locale.LS("Sliders..."), new MyCommand("elm", "sliders")));
-        sim.elmMenuBar.addItem(sim.elmSankeyMenuItem = new MenuItem(Locale.LS("View Sankey Diagram..."), new MyCommand("elm", "viewSankey")));
-        sim.elmMenuBar.addItem(sim.elmDagBlocksMenuItem = new MenuItem(Locale.LS("View DAG Blocks Plot..."), new MyCommand("elm", "viewDagBlocks")));
-        sim.elmMenuBar.addItem(sim.elmEquationTableDebugMenuItem = new MenuItem(Locale.LS("View EquationTable Debug Info..."), new MyCommand("elm", "viewEquationTableDebug")));
-        sim.elmMenuBar.addItem(sim.elmEquationTableReferenceMenuItem = new MenuItem(Locale.LS("View EquationTable Reference..."), new MyCommand("elm", "viewEquationTableReference")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmEditMenuItem = new MenuItem(Locale.LS("Edit..."), new MyCommand("elm", "edit")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmScopeMenuItem = new MenuItem(Locale.LS("View in New Scope"), new MyCommand("elm", "viewInScope")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmFloatScopeMenuItem = new MenuItem(Locale.LS("View in New Undocked Scope"), new MyCommand("elm", "viewInFloatScope")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmAddScopeMenuItem = new MenuItem(Locale.LS("Add to Existing Scope"), new MyCommand("elm", "addToScope0")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmCutMenuItem = new MenuItem(Locale.LS("Cut"), new MyCommand("elm", "cut")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmCopyMenuItem = new MenuItem(Locale.LS("Copy"), new MyCommand("elm", "copy")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmDeleteMenuItem = new MenuItem(Locale.LS("Delete"), new MyCommand("elm", "delete")));
+        sim.getMenuUiState().elmMenuBar.addItem(new MenuItem(Locale.LS("Duplicate"), new MyCommand("elm", "duplicate")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmSwapMenuItem = new MenuItem(Locale.LS("Swap Terminals"), new MyCommand("elm", "flip")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmFlipXMenuItem = new MenuItem(Locale.LS("Flip X"), new MyCommand("elm", "flipx")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmFlipYMenuItem = new MenuItem(Locale.LS("Flip Y"), new MyCommand("elm", "flipy")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmFlipXYMenuItem = new MenuItem(Locale.LS("Flip XY"), new MyCommand("elm", "flipxy")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmSplitMenuItem = sim.menuItemWithShortcut("", "Split Wire", Locale.LS(sim.ctrlMetaKey + "click"), new MyCommand("elm", "split")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmSliderMenuItem = new MenuItem(Locale.LS("Sliders..."), new MyCommand("elm", "sliders")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmSankeyMenuItem = new MenuItem(Locale.LS("View Sankey Diagram..."), new MyCommand("elm", "viewSankey")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmDagBlocksMenuItem = new MenuItem(Locale.LS("View DAG Blocks Plot..."), new MyCommand("elm", "viewDagBlocks")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmEquationTableDebugMenuItem = new MenuItem(Locale.LS("View EquationTable Debug Info..."), new MyCommand("elm", "viewEquationTableDebug")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmEquationTableReferenceMenuItem = new MenuItem(Locale.LS("View EquationTable Reference..."), new MyCommand("elm", "viewEquationTableReference")));
 
-        sim.scopePopupMenu = new ScopePopupMenu();
+        sim.getMenuUiState().scopePopupMenu = new ScopePopupMenu();
 
         sim.getPreferencesManager().setColors(positiveColor, negativeColor, neutralColor, selectColor, currentColor);
         sim.getPreferencesManager().setWheelSensitivity();
@@ -542,7 +543,7 @@ final class CirSimInitializer {
             CirSim.console("Loading embedded circuit from URL");
             sim.getSetupListLoader().getSetupList(false);
             sim.getCircuitIOService().readCircuit(sim.startCircuitText);
-            sim.currentCircuitFile = "embedded";
+            sim.getSFCRDocumentManager().setCurrentCircuitFile("embedded");
             sim.unsavedChanges = false;
         } else {
             if (sim.stopMessage == null && sim.startCircuitLink != null) {
@@ -575,7 +576,7 @@ final class CirSimInitializer {
         sim.cv.addDoubleClickHandler(sim.getMouseInputHandler());
         CirSimPlatformInterop.installTouchHandlers(sim, (CanvasElement) sim.cv.getCanvasElement());
         sim.cv.addDomHandler(sim.getMouseInputHandler(), ContextMenuEvent.getType());
-        sim.menuBar.addDomHandler(new ClickHandler() {
+        sim.getMenuUiState().menuBar.addDomHandler(new ClickHandler() {
             public void onClick(ClickEvent event) {
                 sim.getMouseInputHandler().doMainMenuChecks();
             }
@@ -628,11 +629,11 @@ final class CirSimInitializer {
     }
 
     void rebuildMenusFromDefinition() {
-        sim.mainMenuBar.clearItems();
-        sim.drawMenuBar.clearItems();
+        sim.getMenuUiState().mainMenuBar.clearItems();
+        sim.getMenuUiState().drawMenuBar.clearItems();
 
-        sim.getMenuBuilder().composeMainMenu(sim.mainMenuBar, 0);
-        sim.getMenuBuilder().composeMainMenu(sim.drawMenuBar, 1);
+        sim.getMenuBuilder().composeMainMenu(sim.getMenuUiState().mainMenuBar, 0);
+        sim.getMenuBuilder().composeMainMenu(sim.getMenuUiState().drawMenuBar, 1);
 
         sim.getMenuBuilder().composeSubcircuitMenu();
 

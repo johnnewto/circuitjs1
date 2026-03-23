@@ -320,9 +320,9 @@ class CustomTransformerElm extends CircuitElm {
 		for (j = 0; j != i; j++)
 		    xformMatrix[i][j] = xformMatrix[j][i] = couplingCoef*Math.sqrt(coilInductances[i]*coilInductances[j])*coilPolarities[i]*coilPolarities[j];
 
-	    CirSim.invertMatrix(xformMatrix, coilCount);
+	    CircuitMatrixOps.invertMatrix(xformMatrix, coilCount);
 	    
-	    double ts = isTrapezoidal() ? sim.timeStep/2 : sim.timeStep;
+	    double ts = isTrapezoidal() ? sim.getTimingState().timeStep/2 : sim.getTimingState().timeStep;
 	    for (i = 0; i != coilCount; i++)
 		for (j = 0; j != coilCount; j++) {
 		    // multiply in dt/2 (or dt for backward euler)

@@ -6,57 +6,89 @@ import java.util.Vector;
 
 class CircuitAnalyzer {
     private final CirSim sim;
+    private Vector<CircuitNode> nodeList;
+    private HashMap<Point, CirSim.NodeMapEntry> nodeMap;
+    private Vector<CirSim.WireInfo> wireInfoList;
+    private Vector<Integer> unconnectedNodes;
+    private Vector<CircuitElm> nodesWithGroundConnection;
+    private int nodesWithGroundConnectionCount;
 
     CircuitAnalyzer(CirSim sim) {
         this.sim = sim;
+    }
+
+    Vector<CircuitNode> getNodeList() {
+        return nodeList;
+    }
+
+    Vector<CirSim.WireInfo> getWireInfoList() {
+        return wireInfoList;
+    }
+
+    Vector<Integer> getUnconnectedNodes() {
+        return unconnectedNodes;
+    }
+
+    Vector<CircuitElm> getNodesWithGroundConnection() {
+        return nodesWithGroundConnection;
+    }
+
+    int getNodesWithGroundConnectionCount() {
+        return nodesWithGroundConnectionCount;
+    }
+
+    CircuitNode getCircuitNode(int n) {
+        if (nodeList == null || n >= nodeList.size())
+            return null;
+        return nodeList.elementAt(n);
     }
 
     void calculateWireClosure() {
         int i;
         LabeledNodeElm.resetNodeList();
         GroundElm.resetNodeList();
-        sim.nodeMap = new HashMap<Point, CirSim.NodeMapEntry>();
+        nodeMap = new HashMap<Point, CirSim.NodeMapEntry>();
 
         for (i = 0; i != sim.elmList.size(); i++)
             sim.getElm(i).registerLabels();
 
-        sim.wireInfoList = new Vector<CirSim.WireInfo>();
+        wireInfoList = new Vector<CirSim.WireInfo>();
         for (i = 0; i != sim.elmList.size(); i++) {
             CircuitElm ce = sim.getElm(i);
             if (!ce.isRemovableWire())
                 continue;
             ce.hasWireInfo = false;
-            sim.wireInfoList.add(new CirSim.WireInfo(ce));
+            wireInfoList.add(new CirSim.WireInfo(ce));
             Point p0 = ce.getPost(0);
-            CirSim.NodeMapEntry cn = sim.nodeMap.get(p0);
+            CirSim.NodeMapEntry cn = nodeMap.get(p0);
 
             Point p1 = ce.getConnectedPost();
             if (p1 == null) {
                 if (cn == null) {
                     cn = new CirSim.NodeMapEntry();
-                    sim.nodeMap.put(p0, cn);
+                    nodeMap.put(p0, cn);
                 }
                 continue;
             }
-            CirSim.NodeMapEntry cn2 = sim.nodeMap.get(p1);
+            CirSim.NodeMapEntry cn2 = nodeMap.get(p1);
             if (cn != null && cn2 != null) {
-                for (Map.Entry<Point, CirSim.NodeMapEntry> entry : sim.nodeMap.entrySet()) {
+                for (Map.Entry<Point, CirSim.NodeMapEntry> entry : nodeMap.entrySet()) {
                     if (entry.getValue() == cn2)
                         entry.setValue(cn);
                 }
                 continue;
             }
             if (cn != null) {
-                sim.nodeMap.put(p1, cn);
+                nodeMap.put(p1, cn);
                 continue;
             }
             if (cn2 != null) {
-                sim.nodeMap.put(p0, cn2);
+                nodeMap.put(p0, cn2);
                 continue;
             }
             cn = new CirSim.NodeMapEntry();
-            sim.nodeMap.put(p0, cn);
-            sim.nodeMap.put(p1, cn);
+            nodeMap.put(p0, cn);
+            nodeMap.put(p1, cn);
         }
     }
 
@@ -64,10 +96,10 @@ class CircuitAnalyzer {
         int i;
         int moved = 0;
 
-        for (i = 0; i != sim.wireInfoList.size(); i++) {
-            CirSim.WireInfo wi = sim.wireInfoList.get(i);
+        for (i = 0; i != wireInfoList.size(); i++) {
+            CirSim.WireInfo wi = wireInfoList.get(i);
             CircuitElm wire = wi.wire;
-            CircuitNode cn1 = sim.nodeList.get(wire.getNode(0));
+            CircuitNode cn1 = nodeList.get(wire.getNode(0));
             int j;
 
             Vector<CircuitElm> neighbors0 = new Vector<CircuitElm>();
@@ -113,9 +145,9 @@ class CircuitAnalyzer {
                 wire.hasWireInfo = true;
                 moved = 0;
             } else {
-                sim.wireInfoList.add(sim.wireInfoList.remove(i--));
+                wireInfoList.add(wireInfoList.remove(i--));
                 moved++;
-                if (moved > sim.wireInfoList.size() * 2) {
+                if (moved > wireInfoList.size() * 2) {
                     sim.stop("wire loop detected", wire);
                     return false;
                 }
@@ -135,7 +167,7 @@ class CircuitAnalyzer {
             CircuitElm ce = sim.getElm(i);
             if (ce instanceof GroundElm) {
                 gotGround = true;
-                CirSim.NodeMapEntry nme = sim.nodeMap.get(ce.getPost(0));
+                CirSim.NodeMapEntry nme = nodeMap.get(ce.getPost(0));
                 nme.node = 0;
                 break;
             }
@@ -148,16 +180,16 @@ class CircuitAnalyzer {
         if (!subcircuit && !gotGround && volt != null && !gotRail) {
             CircuitNode cn = new CircuitNode();
             Point pt = volt.getPost(0);
-            sim.nodeList.addElement(cn);
+            nodeList.addElement(cn);
 
-            CirSim.NodeMapEntry cln = sim.nodeMap.get(pt);
+            CirSim.NodeMapEntry cln = nodeMap.get(pt);
             if (cln != null)
                 cln.node = 0;
             else
-                sim.nodeMap.put(pt, new CirSim.NodeMapEntry(0));
+                nodeMap.put(pt, new CirSim.NodeMapEntry(0));
         } else {
             CircuitNode cn = new CircuitNode();
-            sim.nodeList.addElement(cn);
+            nodeList.addElement(cn);
         }
     }
 
@@ -172,19 +204,19 @@ class CircuitAnalyzer {
 
             for (j = 0; j != posts; j++) {
                 Point pt = ce.getPost(j);
-                CirSim.NodeMapEntry cln = sim.nodeMap.get(pt);
+                CirSim.NodeMapEntry cln = nodeMap.get(pt);
                 if (cln == null || cln.node == -1) {
                     CircuitNode cn = new CircuitNode();
                     CircuitNodeLink cnl = new CircuitNodeLink();
                     cnl.num = j;
                     cnl.elm = ce;
                     cn.links.addElement(cnl);
-                    ce.setNode(j, sim.nodeList.size());
+                    ce.setNode(j, nodeList.size());
                     if (cln != null)
-                        cln.node = sim.nodeList.size();
+                        cln.node = nodeList.size();
                     else
-                        sim.nodeMap.put(pt, new CirSim.NodeMapEntry(sim.nodeList.size()));
-                    sim.nodeList.addElement(cn);
+                        nodeMap.put(pt, new CirSim.NodeMapEntry(nodeList.size()));
+                    nodeList.addElement(cn);
                 } else {
                     int n = cln.node;
                     CircuitNodeLink cnl = new CircuitNodeLink();
@@ -203,8 +235,8 @@ class CircuitAnalyzer {
                 cnl.num = j + posts;
                 cnl.elm = ce;
                 cn.links.addElement(cnl);
-                ce.setNode(cnl.num, sim.nodeList.size());
-                sim.nodeList.addElement(cn);
+                ce.setNode(cnl.num, nodeList.size());
+                nodeList.addElement(cn);
             }
 
             vscount += ivs;
@@ -215,10 +247,10 @@ class CircuitAnalyzer {
 
     void findUnconnectedNodes() {
         int i, j;
-        boolean closure[] = new boolean[sim.nodeList.size()];
+        boolean closure[] = new boolean[nodeList.size()];
         boolean changed = true;
-        sim.unconnectedNodes = new Vector<Integer>();
-        sim.nodesWithGroundConnection = new Vector<CircuitElm>();
+        unconnectedNodes = new Vector<Integer>();
+        nodesWithGroundConnection = new Vector<CircuitElm>();
         closure[0] = true;
         while (changed) {
             changed = false;
@@ -248,14 +280,14 @@ class CircuitAnalyzer {
                     }
                 }
                 if (hasGround)
-                    sim.nodesWithGroundConnection.add(ce);
+                    nodesWithGroundConnection.add(ce);
             }
             if (changed)
                 continue;
 
-            for (i = 0; i != sim.nodeList.size(); i++)
+            for (i = 0; i != nodeList.size(); i++)
                 if (!closure[i] && !sim.getCircuitNode(i).internal) {
-                    sim.unconnectedNodes.add(i);
+                    unconnectedNodes.add(i);
                     closure[i] = true;
                     changed = true;
                     break;
@@ -265,9 +297,9 @@ class CircuitAnalyzer {
 
     void connectUnconnectedNodes() {
         int i;
-        CirSim.console("Number of unconnected nodes: " + sim.unconnectedNodes.size());
-        for (i = 0; i != sim.unconnectedNodes.size(); i++) {
-            int n = sim.unconnectedNodes.get(i);
+        CirSim.console("Number of unconnected nodes: " + unconnectedNodes.size());
+        for (i = 0; i != unconnectedNodes.size(); i++) {
+            int n = unconnectedNodes.get(i);
             sim.stampResistor(0, n, 1e8);
         }
     }
@@ -348,7 +380,7 @@ class CircuitAnalyzer {
 
     boolean preStampCircuit(boolean subcircuit) {
         int i, j;
-        sim.nodeList = new Vector<CircuitNode>();
+        nodeList = new Vector<CircuitNode>();
 
         sim.getStatusInfoRenderer().updateEquationParameterCollisionWarning();
 
@@ -362,15 +394,15 @@ class CircuitAnalyzer {
 
         if (!calcWireInfo())
             return false;
-        sim.nodeMap = null;
+        nodeMap = null;
 
         int vscount = 0;
-        sim.circuitNonLinear = false;
+        sim.getSolverMatrixState().circuitNonLinear = false;
 
         for (i = 0; i != sim.elmList.size(); i++) {
             CircuitElm ce = sim.getElm(i);
             if (ce.nonLinear())
-                sim.circuitNonLinear = true;
+                sim.getSolverMatrixState().circuitNonLinear = true;
             int ivs = ce.getVoltageSourceCount();
             for (j = 0; j != ivs; j++) {
                 sim.voltageSources[vscount] = ce;
@@ -395,10 +427,10 @@ class CircuitAnalyzer {
         if (!validateCircuit())
             return false;
 
-        sim.nodesWithGroundConnectionCount = sim.nodesWithGroundConnection.size();
-        sim.nodesWithGroundConnection = null;
+        nodesWithGroundConnectionCount = nodesWithGroundConnection.size();
+        nodesWithGroundConnection = null;
 
-        sim.timeStep = sim.maxTimeStep;
+        sim.getTimingState().timeStep = sim.getTimingState().maxTimeStep;
         sim.needsStamp = true;
 
         if (RuntimeMode.isGwt()) {
@@ -427,20 +459,20 @@ class CircuitAnalyzer {
 
     void stampCircuit() {
         int i;
-        int matrixSize = sim.nodeList.size() - 1 + sim.voltageSourceCount;
-        sim.circuitMatrix = new double[matrixSize][matrixSize];
-        sim.circuitRightSide = new double[matrixSize];
-        sim.nodeVoltages = new double[sim.nodeList.size() - 1];
-        if (sim.lastNodeVoltages == null || sim.lastNodeVoltages.length != sim.nodeVoltages.length)
-            sim.lastNodeVoltages = new double[sim.nodeList.size() - 1];
-        sim.origMatrix = new double[matrixSize][matrixSize];
-        sim.origRightSide = new double[matrixSize];
-        sim.circuitMatrixSize = sim.circuitMatrixFullSize = matrixSize;
-        sim.circuitRowInfo = new RowInfo[matrixSize];
-        sim.circuitPermute = new int[matrixSize];
+        int matrixSize = nodeList.size() - 1 + sim.voltageSourceCount;
+        sim.getSolverMatrixState().circuitMatrix = new double[matrixSize][matrixSize];
+        sim.getSolverMatrixState().circuitRightSide = new double[matrixSize];
+        sim.getSolverMatrixState().nodeVoltages = new double[nodeList.size() - 1];
+        if (sim.getSolverMatrixState().lastNodeVoltages == null || sim.getSolverMatrixState().lastNodeVoltages.length != sim.getSolverMatrixState().nodeVoltages.length)
+            sim.getSolverMatrixState().lastNodeVoltages = new double[nodeList.size() - 1];
+        sim.getSolverMatrixState().origMatrix = new double[matrixSize][matrixSize];
+        sim.getSolverMatrixState().origRightSide = new double[matrixSize];
+        sim.getSolverMatrixState().circuitMatrixSize = sim.getSolverMatrixState().circuitMatrixFullSize = matrixSize;
+        sim.getSolverMatrixState().circuitRowInfo = new RowInfo[matrixSize];
+        sim.getSolverMatrixState().circuitPermute = new int[matrixSize];
         for (i = 0; i != matrixSize; i++)
-            sim.circuitRowInfo[i] = new RowInfo();
-        sim.circuitNeedsMap = false;
+            sim.getSolverMatrixState().circuitRowInfo[i] = new RowInfo();
+        sim.getSolverMatrixState().circuitNeedsMap = false;
 
         connectUnconnectedNodes();
 
@@ -462,11 +494,11 @@ class CircuitAnalyzer {
         if (!simplifyMatrix(matrixSize))
             return;
 
-        if (sim.circuitMatrix == null)
+        if (sim.getSolverMatrixState().circuitMatrix == null)
             return;
 
-        if (!sim.circuitNonLinear) {
-            int badRow = CirSim.lu_factor(sim.circuitMatrix, sim.circuitMatrixSize, sim.circuitPermute);
+        if (!sim.getSolverMatrixState().circuitNonLinear) {
+            int badRow = CircuitMatrixOps.luFactor(sim.getSolverMatrixState().circuitMatrix, sim.getSolverMatrixState().circuitMatrixSize, sim.getSolverMatrixState().circuitPermute);
             if (badRow >= 0) {
                 sim.stop("Singular matrix! " + sim.getMatrixStamper().getMatrixRowInfo(badRow), null);
                 return;
@@ -496,15 +528,15 @@ class CircuitAnalyzer {
         for (i = 0; i != matrixSize; i++) {
             int qp = -1;
             double qv = 0;
-            RowInfo re = sim.circuitRowInfo[i];
+            RowInfo re = sim.getSolverMatrixState().circuitRowInfo[i];
             if (re.lsChanges || re.dropRow || re.rsChanges)
                 continue;
             double rsadd = 0;
 
             for (j = 0; j != matrixSize; j++) {
-                double q = sim.circuitMatrix[i][j];
-                if (sim.circuitRowInfo[j].type == RowInfo.ROW_CONST) {
-                    rsadd -= sim.circuitRowInfo[j].value * q;
+                double q = sim.getSolverMatrixState().circuitMatrix[i][j];
+                if (sim.getSolverMatrixState().circuitRowInfo[j].type == RowInfo.ROW_CONST) {
+                    rsadd -= sim.getSolverMatrixState().circuitRowInfo[j].value * q;
                     continue;
                 }
                 if (q == 0)
@@ -521,7 +553,7 @@ class CircuitAnalyzer {
                     sim.stop("Matrix error", null);
                     return false;
                 }
-                RowInfo elt = sim.circuitRowInfo[qp];
+                RowInfo elt = sim.getSolverMatrixState().circuitRowInfo[qp];
                 if (elt.type != RowInfo.ROW_NORMAL) {
                     System.out.println("type already " + elt.type + " for " + qp + "!");
                     continue;
@@ -531,10 +563,10 @@ class CircuitAnalyzer {
                     continue;
                 }
                 elt.type = RowInfo.ROW_CONST;
-                elt.value = (sim.circuitRightSide[i] + rsadd) / qv;
-                sim.circuitRowInfo[i].dropRow = true;
+                elt.value = (sim.getSolverMatrixState().circuitRightSide[i] + rsadd) / qv;
+                sim.getSolverMatrixState().circuitRowInfo[i].dropRow = true;
                 for (j = 0; j != i; j++)
-                    if (sim.circuitMatrix[j][qp] != 0)
+                    if (sim.getSolverMatrixState().circuitMatrix[j][qp] != 0)
                         break;
                 i = j - 1;
             }
@@ -542,7 +574,7 @@ class CircuitAnalyzer {
 
         int nn = 0;
         for (i = 0; i != matrixSize; i++) {
-            RowInfo elt = sim.circuitRowInfo[i];
+            RowInfo elt = sim.getSolverMatrixState().circuitRowInfo[i];
             if (elt.type == RowInfo.ROW_NORMAL) {
                 elt.mapCol = nn++;
                 continue;
@@ -556,19 +588,19 @@ class CircuitAnalyzer {
         double newrs[] = new double[newsize];
         int ii = 0;
         for (i = 0; i != matrixSize; i++) {
-            RowInfo rri = sim.circuitRowInfo[i];
+            RowInfo rri = sim.getSolverMatrixState().circuitRowInfo[i];
             if (rri.dropRow) {
                 rri.mapRow = -1;
                 continue;
             }
-            newrs[ii] = sim.circuitRightSide[i];
+            newrs[ii] = sim.getSolverMatrixState().circuitRightSide[i];
             rri.mapRow = ii;
             for (j = 0; j != matrixSize; j++) {
-                RowInfo ri = sim.circuitRowInfo[j];
+                RowInfo ri = sim.getSolverMatrixState().circuitRowInfo[j];
                 if (ri.type == RowInfo.ROW_CONST)
-                    newrs[ii] -= ri.value * sim.circuitMatrix[i][j];
+                    newrs[ii] -= ri.value * sim.getSolverMatrixState().circuitMatrix[i][j];
                 else
-                    newmatx[ii][ri.mapCol] += sim.circuitMatrix[i][j];
+                    newmatx[ii][ri.mapCol] += sim.getSolverMatrixState().circuitMatrix[i][j];
             }
             ii++;
         }
@@ -578,15 +610,15 @@ class CircuitAnalyzer {
             CirSim.console("Matrix simplification: " + matrixSize + " -> " + newsize + " (" + rowsSaved + " rows eliminated, " +
                            (100 * rowsSaved / matrixSize) + "% reduction)");
 
-        sim.circuitMatrix = newmatx;
-        sim.circuitRightSide = newrs;
-        matrixSize = sim.circuitMatrixSize = newsize;
+        sim.getSolverMatrixState().circuitMatrix = newmatx;
+        sim.getSolverMatrixState().circuitRightSide = newrs;
+        matrixSize = sim.getSolverMatrixState().circuitMatrixSize = newsize;
         for (i = 0; i != matrixSize; i++)
-            sim.origRightSide[i] = sim.circuitRightSide[i];
+            sim.getSolverMatrixState().origRightSide[i] = sim.getSolverMatrixState().circuitRightSide[i];
         for (i = 0; i != matrixSize; i++)
             for (j = 0; j != matrixSize; j++)
-                sim.origMatrix[i][j] = sim.circuitMatrix[i][j];
-        sim.circuitNeedsMap = true;
+                sim.getSolverMatrixState().origMatrix[i][j] = sim.getSolverMatrixState().circuitMatrix[i][j];
+        sim.getSolverMatrixState().circuitNeedsMap = true;
         return true;
     }
 
@@ -659,7 +691,7 @@ class CircuitAnalyzer {
             dest = dest_;
             type = type_;
             firstElm = elm_;
-            visited = new boolean[sim.nodeList.size()];
+            visited = new boolean[nodeList.size()];
         }
 
         boolean findPath(int n1) {
@@ -680,8 +712,8 @@ class CircuitAnalyzer {
                     return true;
             }
             if (n1 == 0) {
-                for (i = 0; i != sim.nodesWithGroundConnection.size(); i++)
-                    if (checkElm(0, sim.nodesWithGroundConnection.get(i)))
+                for (i = 0; i != nodesWithGroundConnection.size(); i++)
+                    if (checkElm(0, nodesWithGroundConnection.get(i)))
                         return true;
             }
             return false;

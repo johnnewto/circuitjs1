@@ -837,7 +837,7 @@ public class SFCRParser {
                 switch (key) {
                     case "timestep":
                     case "timeStep":
-                        sim.maxTimeStep = sim.timeStep = Double.parseDouble(value);
+                        sim.getTimingState().maxTimeStep = sim.getTimingState().timeStep = Double.parseDouble(value);
                         break;
                     case "voltageRange":
                         CircuitElm.voltageRange = Double.parseDouble(value);

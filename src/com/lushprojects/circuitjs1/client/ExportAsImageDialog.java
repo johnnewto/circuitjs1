@@ -64,9 +64,9 @@ public class ExportAsImageDialog extends Dialog {
 		
 		// Export circuit
 		if (type == CirSim.CAC_IMAGE) {
-		    dataURL = CirSim.theSim.getExportCompositeActions().getCircuitAsCanvas(type).toDataUrl();
+		    dataURL = CirSim.getInstance().getExportCompositeActions().getCircuitAsCanvas(type).toDataUrl();
 		} else {
-		    String data = CirSim.theSim.getExportCompositeActions().getCircuitAsSVG();
+		    String data = CirSim.getInstance().getExportCompositeActions().getCircuitAsSVG();
 		    dataURL = "data:text/plain;base64," + b64encode(data);
 		    ext = ".svg";
 		}
@@ -76,7 +76,7 @@ public class ExportAsImageDialog extends Dialog {
 		vp.add(a);
 		
 		// Export scopes if any exist
-		Canvas scopesCanvas = CirSim.theSim.getExportCompositeActions().getScopesAsCanvas();
+		Canvas scopesCanvas = CirSim.getInstance().getExportCompositeActions().getScopesAsCanvas();
 		if (scopesCanvas != null) {
 			String scopesDataURL = scopesCanvas.toDataUrl();
 			Anchor scopesAnchor = new Anchor("Scopes " + ext, scopesDataURL);

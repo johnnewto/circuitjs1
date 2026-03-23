@@ -215,7 +215,7 @@ class EquationElm extends CircuitElm {
     }
     
     void stamp() {
-        int vn = voltSource + sim.nodeList.size();
+        int vn = voltSource + sim.getCircuitAnalyzer().getNodeList().size();
         sim.stampNonLinear(vn);
         sim.stampVoltageSource(0, nodes[0], voltSource);
     }
@@ -223,14 +223,14 @@ class EquationElm extends CircuitElm {
     @Override
     void postStamp() {
         super.postStamp();
-        CirSim csim = CirSim.theSim;
+        CirSim csim = CirSim.getInstance();
         if (csim == null || csim.nameToSlot == null) return;
         if (compiledExpr != null)
             compiledExpr.resolveGSlot(csim.nameToSlot);
     }
 
     void doStep() {
-        int vn = voltSource + sim.nodeList.size();
+        int vn = voltSource + sim.getCircuitAnalyzer().getNodeList().size();
         
         if (compiledExpr != null) {
             // Set all parameter values in expression (a, b, c, d, e, f, g, h)
@@ -239,7 +239,7 @@ class EquationElm extends CircuitElm {
             }
             
             // Evaluate equation to get output value
-            exprState.t = sim.t;
+            exprState.t = sim.getTimingState().t;
             double equationValue = compiledExpr.eval(exprState);
             
             // Check equation convergence
@@ -519,7 +519,7 @@ class EquationElm extends CircuitElm {
         if (idx < arr.length)
             arr[idx++] = "Current Output: " + getVoltageText(currentValue);
         if (idx < arr.length)
-            arr[idx] = "Time: " + getUnitText(sim.t, "s");
+            arr[idx] = "Time: " + getUnitText(sim.getTimingState().t, "s");
     }
     
     // Custom formatting for parameter sliders

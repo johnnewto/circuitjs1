@@ -260,10 +260,10 @@ public class SFCSankeyElm extends CircuitElm {
     @Override
     public void getInfo(String[] arr) {
         // Check if mouse is over a specific node or link
-        if (sankeyRenderer != null && CirSim.theSim.mouseCursorX >= 0) {
+        if (sankeyRenderer != null && CirSim.getInstance().getMouseCursorX() >= 0) {
             // Get mouse position in grid coords
-            int mouseX = CirSim.theSim.inverseTransformX(CirSim.theSim.mouseCursorX);
-            int mouseY = CirSim.theSim.inverseTransformY(CirSim.theSim.mouseCursorY);
+            int mouseX = CirSim.getInstance().inverseTransformX(CirSim.getInstance().getMouseCursorX());
+            int mouseY = CirSim.getInstance().inverseTransformY(CirSim.getInstance().getMouseCursorY());
             
             String[] hoverInfo = sankeyRenderer.getHoverInfo(mouseX, mouseY);
             if (hoverInfo != null) {

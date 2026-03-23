@@ -58,10 +58,10 @@ class SFCRSIMModelTest extends CircuitJavaSimTestBase {
     void circuitJavaRunAdvancesSimulationTime() throws Exception {
         loadMixedModesFixture();
 
-        double startTime = sim.t;
+        double startTime = sim.getTimingState().t;
         runSteps(5);
 
-        assertTrue(sim.t >= startTime, "Simulation time should not go backwards in circuit java mode");
+        assertTrue(sim.getTimingState().t >= startTime, "Simulation time should not go backwards in circuit java mode");
         assertNull(sim.stopMessage, "Simulation should not stop while advancing time");
     }
 }

@@ -239,7 +239,7 @@ final class EquationTableJacobianHelper {
      * This linearizes the equation around the current operating point, reducing
      * the number of Newton subiterations required for convergence.
      *
-     * <p>The reference value is temporarily perturbed in both {@code sim.nodeVoltages[]}
+     * <p>The reference value is temporarily perturbed in both {@code sim.getSolverMatrixState().nodeVoltages[]}
      * and {@code sim.circuitVariables[]} via {@link #perturbReferenceValue}, then
      * restored via {@link #restoreReferenceValue} after each evaluation.
      *
@@ -336,7 +336,7 @@ final class EquationTableJacobianHelper {
      *
      * Two parallel data structures are patched:
      * <ul>
-     *   <li>{@code sim.nodeVoltages[labeledNode - 1]} — the MNA solved-voltage array used
+     *   <li>{@code sim.getSolverMatrixState().nodeVoltages[labeledNode - 1]} — the MNA solved-voltage array used
      *       by direct node lookups.</li>
      *   <li>{@code sim.circuitVariables[slot]} — the fast global-slot array used by
      *       expressions after {@code resolveGSlot()} has been called.</li>
@@ -355,9 +355,9 @@ final class EquationTableJacobianHelper {
      */
     private static double[] perturbReferenceValue(CirSim sim, String refName, int labeledNode, double newValue) {
         double oldNodeVoltage = 0.0;
-        if (sim.nodeVoltages != null && labeledNode > 0 && labeledNode - 1 < sim.nodeVoltages.length) {
-            oldNodeVoltage = sim.nodeVoltages[labeledNode - 1];
-            sim.nodeVoltages[labeledNode - 1] = newValue;
+        if (sim.getSolverMatrixState().nodeVoltages != null && labeledNode > 0 && labeledNode - 1 < sim.getSolverMatrixState().nodeVoltages.length) {
+            oldNodeVoltage = sim.getSolverMatrixState().nodeVoltages[labeledNode - 1];
+            sim.getSolverMatrixState().nodeVoltages[labeledNode - 1] = newValue;
         }
 
         double oldSlotValue = Double.NaN;
@@ -379,7 +379,7 @@ final class EquationTableJacobianHelper {
      * Restore simulator state after a finite-difference perturbation.
      *
      * Reverses the changes made by {@link #perturbReferenceValue}, reinstating the original
-     * values in both {@code sim.nodeVoltages} and {@code sim.circuitVariables}.
+     * values in both {@code sim.getSolverMatrixState().nodeVoltages} and {@code sim.circuitVariables}.
      *
      * @param sim         Active circuit simulator.
      * @param labeledNode MNA node number that was perturbed (1-based).
@@ -390,8 +390,8 @@ final class EquationTableJacobianHelper {
             return;
         }
 
-        if (sim.nodeVoltages != null && labeledNode > 0 && labeledNode - 1 < sim.nodeVoltages.length) {
-            sim.nodeVoltages[labeledNode - 1] = restore[0];
+        if (sim.getSolverMatrixState().nodeVoltages != null && labeledNode > 0 && labeledNode - 1 < sim.getSolverMatrixState().nodeVoltages.length) {
+            sim.getSolverMatrixState().nodeVoltages[labeledNode - 1] = restore[0];
         }
 
         if (!Double.isNaN(restore[2]) && sim.circuitVariables != null) {

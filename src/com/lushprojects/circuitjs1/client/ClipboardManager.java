@@ -10,11 +10,11 @@ class ClipboardManager {
 	}
 
 	void setMenuSelection() {
-		if (sim.menuElm != null) {
-			if (sim.menuElm.selected)
+		if (sim.getMenuUiState().menuElm != null) {
+			if (sim.getMenuUiState().menuElm.selected)
 				return;
 			clearSelection();
-			sim.menuElm.setSelected(true);
+			sim.getMenuUiState().menuElm.setSelected(true);
 		}
 	}
 
@@ -101,7 +101,7 @@ class ClipboardManager {
 	}
 
 	void doCopy() {
-		boolean clearSel = (sim.menuElm != null && !sim.menuElm.selected);
+		boolean clearSel = (sim.getMenuUiState().menuElm != null && !sim.getMenuUiState().menuElm.selected);
 
 		setMenuSelection();
 		sim.clipboard = copyOfSelectedElms();
@@ -181,9 +181,9 @@ class ClipboardManager {
 				dy = sim.snapGrid(oldbb.y + oldbb.height - newbb.y + sim.gridSize);
 			}
 
-			if (sim.mouseCursorX > 0 && sim.circuitArea.contains(sim.mouseCursorX, sim.mouseCursorY)) {
-				int gx = sim.inverseTransformX(sim.mouseCursorX);
-				int gy = sim.inverseTransformY(sim.mouseCursorY);
+			if (sim.getMouseCursorX() > 0 && sim.circuitArea.contains(sim.getMouseCursorX(), sim.getMouseCursorY())) {
+				int gx = sim.inverseTransformX(sim.getMouseCursorX());
+				int gy = sim.inverseTransformY(sim.getMouseCursorY());
 				int mdx = sim.snapGrid(gx - (newbb.x + newbb.width / 2));
 				int mdy = sim.snapGrid(gy - (newbb.y + newbb.height / 2));
 				for (i = oldsz; i != sim.elmList.size(); i++) {

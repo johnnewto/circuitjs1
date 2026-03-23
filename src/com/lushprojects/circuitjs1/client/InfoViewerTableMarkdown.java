@@ -29,7 +29,7 @@ final class InfoViewerTableMarkdown {
      * SFC tables (SFCTableElm), regular tables (TableElm), and equation tables (EquationTableElm).
      */
     static String generateCircuitTablesMarkdown() {
-        if (CirSim.theSim == null || CirSim.theSim.elmList == null) {
+        if (CirSim.getInstance() == null || CirSim.getInstance().elmList == null) {
             return "No circuit loaded.";
         }
 
@@ -42,8 +42,8 @@ final class InfoViewerTableMarkdown {
         ArrayList<CurrentTransactionsMatrixElm> ctmTables = new ArrayList<CurrentTransactionsMatrixElm>();
         ArrayList<TableElm> otherTables = new ArrayList<TableElm>();
 
-        for (int i = 0; i < CirSim.theSim.elmList.size(); i++) {
-            CircuitElm elm = CirSim.theSim.elmList.get(i);
+        for (int i = 0; i < CirSim.getInstance().elmList.size(); i++) {
+            CircuitElm elm = CirSim.getInstance().elmList.get(i);
 
             if (elm instanceof EquationTableElm) {
                 equationTables.add((EquationTableElm) elm);
@@ -110,13 +110,13 @@ final class InfoViewerTableMarkdown {
      * Generate fenced circuit blocks for each table so the info viewer can mount live table widgets.
      */
     static String generateCircuitTableBlocksMarkdown() {
-        if (CirSim.theSim == null || CirSim.theSim.elmList == null) {
+        if (CirSim.getInstance() == null || CirSim.getInstance().elmList == null) {
             return "No circuit loaded.";
         }
 
         LinkedHashSet<String> tableTitles = new LinkedHashSet<String>();
-        for (int i = 0; i < CirSim.theSim.elmList.size(); i++) {
-            CircuitElm elm = CirSim.theSim.elmList.get(i);
+        for (int i = 0; i < CirSim.getInstance().elmList.size(); i++) {
+            CircuitElm elm = CirSim.getInstance().elmList.get(i);
             if (elm instanceof TableElm) {
                 TableElm table = (TableElm) elm;
                 addNonEmptyTitle(tableTitles, table.getTableTitle());
@@ -146,7 +146,7 @@ final class InfoViewerTableMarkdown {
      * Generate a starter @info markdown template using current circuit tables and scope plots.
      */
     static String generateAutoInfoTemplateMarkdown() {
-        CirSim sim = CirSim.theSim;
+        CirSim sim = CirSim.getInstance();
         if (sim == null) {
             return "# Model Information\n\nNo circuit loaded.";
         }

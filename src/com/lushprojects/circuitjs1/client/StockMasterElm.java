@@ -186,7 +186,7 @@ public class StockMasterElm extends ChipElm {
         setBbox(tableX, tableY, tableX + tableWidth, tableY + tableHeight);
         
         // Draw background
-        Color bgColor = CirSim.theSim.printableCheckItem.getState() ? 
+        Color bgColor = CirSim.getInstance().printableCheckItem.getState() ? 
             new Color(240, 240, 240) : new Color(30, 30, 30);
         g.setColor(bgColor);
         g.fillRect(tableX, tableY, tableWidth, tableHeight);
@@ -256,7 +256,7 @@ public class StockMasterElm extends ChipElm {
      * Get voltage color for text display
      */
     private Color getTextVoltageColor(double volts) {
-        if (!CirSim.theSim.voltsCheckItem.getState()) {
+        if (!CirSim.getInstance().voltsCheckItem.getState()) {
             return CircuitElm.whiteColor;
         }
         int c = (int) ((volts + CircuitElm.voltageRange) * (CircuitElm.colorScaleCount - 1) /

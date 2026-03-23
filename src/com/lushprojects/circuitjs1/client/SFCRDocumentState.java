@@ -5,6 +5,9 @@ import java.util.Vector;
 
 class SFCRDocumentState {
     private final HashMap<String, Vector<String>> blockComments = new HashMap<String, Vector<String>>();
+    private String modelInfoContent;
+    private String modelInfoSourceText;
+    private String currentCircuitFile;
 
     void clearBlockComments() {
         blockComments.clear();
@@ -38,5 +41,41 @@ class SFCRDocumentState {
             copy.add(comments.get(i));
         }
         return copy;
+    }
+
+    void setModelInfoContent(String value) {
+        modelInfoContent = value;
+    }
+
+    String getModelInfoContent() {
+        return modelInfoContent;
+    }
+
+    void setModelInfoSourceText(String value) {
+        modelInfoSourceText = value;
+    }
+
+    String getModelInfoSourceText() {
+        return modelInfoSourceText;
+    }
+
+    String getModelInfoEditorContent() {
+        if (modelInfoSourceText != null && !modelInfoSourceText.isEmpty()) {
+            return modelInfoSourceText;
+        }
+        return modelInfoContent;
+    }
+
+    void clearModelInfo() {
+        modelInfoSourceText = null;
+        modelInfoContent = null;
+    }
+
+    void setCurrentCircuitFile(String value) {
+        currentCircuitFile = value;
+    }
+
+    String getCurrentCircuitFile() {
+        return currentCircuitFile;
     }
 }

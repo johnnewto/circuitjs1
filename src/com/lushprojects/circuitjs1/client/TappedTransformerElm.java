@@ -177,7 +177,7 @@ package com.lushprojects.circuitjs1.client;
 	    int i;
 	    double det = l1*(l2+m2)-2*m1*m1;
 	    for (i = 0; i != 9; i++)
-		a[i] *= (isTrapezoidal() ? sim.timeStep/2 : sim.timeStep)/det;
+		a[i] *= (isTrapezoidal() ? sim.getTimingState().timeStep/2 : sim.getTimingState().timeStep)/det;
 	    sim.stampConductance(nodes[0], nodes[1], a[0]);
 	    sim.stampVCCurrentSource(nodes[0], nodes[1], nodes[2], nodes[3], a[1]);
 	    sim.stampVCCurrentSource(nodes[0], nodes[1], nodes[3], nodes[4], a[2]);

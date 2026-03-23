@@ -67,8 +67,8 @@ final class CirSimCommandRouter {
             sim.getEditDialogActions().doExportAsImage();
         if (item=="copypng") {
             sim.getEditDialogActions().doImageToClipboard();
-            if (sim.contextPanel!=null)
-                sim.contextPanel.hide();
+            if (sim.getMenuUiState().contextPanel!=null)
+                sim.getMenuUiState().contextPanel.hide();
         }
         if (item=="exportassvg")
             sim.getExportCompositeActions().doExportAsSVG();
@@ -81,8 +81,8 @@ final class CirSimCommandRouter {
         if (item=="recover")
             sim.getUndoRedoManager().doRecover();
 
-        if ((menu=="elm" || menu=="scopepop") && sim.contextPanel!=null)
-            sim.contextPanel.hide();
+        if ((menu=="elm" || menu=="scopepop") && sim.getMenuUiState().contextPanel!=null)
+            sim.getMenuUiState().contextPanel.hide();
         if (menu=="options" && item=="shortcuts") {
             CirSimDialogCoordinator.setDialogShowing(new ShortcutsDialog(sim));
             CirSimDialogCoordinator.getDialogShowing().show();
@@ -135,11 +135,11 @@ final class CirSimCommandRouter {
             sim.getUndoRedoManager().doRedo();
 
         if (menu == "key" && sim.getMouseElmForRouting() != null) {
-            sim.menuElm = sim.getMouseElmForRouting();
+            sim.getMenuUiState().menuElm = sim.getMouseElmForRouting();
             menu = "elm";
         }
         if (menu != "elm")
-            sim.menuElm = null;
+            sim.getMenuUiState().menuElm = null;
 
         if (item == "cut") {
             sim.getClipboardManager().doCut();
@@ -155,7 +155,7 @@ final class CirSimCommandRouter {
         if (item=="flip")
             sim.getMouseInputHandler().doFlip();
         if (item=="split")
-            sim.doSplit(sim.menuElm);
+            sim.doSplit(sim.getMenuUiState().menuElm);
         if (item=="selectAll")
             sim.getClipboardManager().doSelectAll();
 
@@ -170,9 +170,9 @@ final class CirSimCommandRouter {
                 sim.getViewportController().applyViewportTransform(viewport);
             } else {
                 sim.getMouseInputHandler().setMouseMode(CirSim.MODE_ADD_ELM);
-                sim.mouseModeStr = "ViewportElm";
+                sim.setMouseModeStr("ViewportElm");
                 sim.toolbar.setModeLabel("Viewport");
-                sim.toolbar.highlightButton(sim.mouseModeStr);
+                sim.toolbar.highlightButton(sim.getMouseModeStr());
             }
         }
         if (item=="flipx") {
@@ -204,37 +204,37 @@ final class CirSimCommandRouter {
         if (item=="zoom100")
             sim.getViewportController().setCircuitScale(1, true);
         if (menu=="elm" && item=="edit")
-            sim.getEditDialogActions().doEdit(sim.menuElm);
+            sim.getEditDialogActions().doEdit(sim.getMenuUiState().menuElm);
         if (item=="delete") {
             if (menu!="elm")
-                sim.menuElm = null;
+                sim.getMenuUiState().menuElm = null;
             sim.getUndoRedoManager().pushUndo();
             sim.getClipboardManager().doDelete(true);
         }
         if (item=="sliders")
-            sim.getEditDialogActions().doSliders(sim.menuElm);
+            sim.getEditDialogActions().doSliders(sim.getMenuUiState().menuElm);
 
-        if (item=="viewSankey" && (sim.menuElm instanceof SFCTableElm)) {
-            SFCSankeyViewer viewer = new SFCSankeyViewer((TableElm) sim.menuElm);
+        if (item=="viewSankey" && (sim.getMenuUiState().menuElm instanceof SFCTableElm)) {
+            SFCSankeyViewer viewer = new SFCSankeyViewer((TableElm) sim.getMenuUiState().menuElm);
             viewer.openDialog();
         }
 
-        if (item=="viewDagBlocks" && (sim.menuElm instanceof EquationTableElm)) {
+        if (item=="viewDagBlocks" && (sim.getMenuUiState().menuElm instanceof EquationTableElm)) {
             SFCRDagBlocksViewer viewer = new SFCRDagBlocksViewer(sim);
             viewer.openExternalWindow();
         }
 
-        if (item=="viewEquationTableDebug" && (sim.menuElm instanceof EquationTableElm)) {
-            new EquationTableMarkdownDebugDialog((EquationTableElm) sim.menuElm).show();
+        if (item=="viewEquationTableDebug" && (sim.getMenuUiState().menuElm instanceof EquationTableElm)) {
+            new EquationTableMarkdownDebugDialog((EquationTableElm) sim.getMenuUiState().menuElm).show();
         }
 
-        if (item=="viewEquationTableReference" && (sim.menuElm instanceof EquationTableElm)) {
+        if (item=="viewEquationTableReference" && (sim.getMenuUiState().menuElm instanceof EquationTableElm)) {
             ReferenceDocs.openMarkdownReference(
                 "EquationTable Reference",
                 "docs/reference/EquationTableReference.md");
         }
 
-        if (item=="viewInScope" && sim.menuElm != null) {
+        if (item=="viewInScope" && sim.getMenuUiState().menuElm != null) {
             int i;
             for (i = 0; i != sim.scopeCount; i++)
                 if (sim.scopes[i].getElm() == null)
@@ -246,35 +246,35 @@ final class CirSimCommandRouter {
                 sim.scopes[i] = new Scope(sim);
                 sim.scopes[i].position = i;
             }
-            sim.scopes[i].setElm(sim.menuElm);
+            sim.scopes[i].setElm(sim.getMenuUiState().menuElm);
             if (i > 0)
                 sim.scopes[i].speed = sim.scopes[i-1].speed;
         }
 
-        if (item=="viewInFloatScope" && sim.menuElm != null) {
-            ScopeElm newScope = new ScopeElm(sim.snapGrid(sim.menuElm.x+50), sim.snapGrid(sim.menuElm.y+50));
+        if (item=="viewInFloatScope" && sim.getMenuUiState().menuElm != null) {
+            ScopeElm newScope = new ScopeElm(sim.snapGrid(sim.getMenuUiState().menuElm.x+50), sim.snapGrid(sim.getMenuUiState().menuElm.y+50));
             sim.elmList.addElement(newScope);
-            newScope.setScopeElm(sim.menuElm);
+            newScope.setScopeElm(sim.getMenuUiState().menuElm);
             sim.needAnalyze();
         }
 
-        if (item.startsWith("addToScope") && sim.menuElm != null) {
+        if (item.startsWith("addToScope") && sim.getMenuUiState().menuElm != null) {
             int n;
             n = Integer.parseInt(item.substring(10));
             if (n < sim.scopeCount + sim.getScopeManager().countScopeElms()) {
                 if (n < sim.scopeCount )
-                    sim.scopes[n].addElm(sim.menuElm);
+                    sim.scopes[n].addElm(sim.getMenuUiState().menuElm);
                 else
-                    sim.getScopeManager().getNthScopeElm(n-sim.scopeCount).elmScope.addElm(sim.menuElm);
+                    sim.getScopeManager().getNthScopeElm(n-sim.scopeCount).elmScope.addElm(sim.getMenuUiState().menuElm);
             }
-            sim.scopeMenuSelected = -1;
+            sim.getScopeManager().setScopeMenuSelected(-1);
         }
 
         if (menu=="scopepop") {
             sim.getUndoRedoManager().pushUndo();
             Scope s;
-            if (sim.menuScope != -1 )
-                s= sim.scopes[sim.menuScope];
+            if (sim.getScopeManager().getMenuScope() != -1 )
+                s= sim.scopes[sim.getScopeManager().getMenuScope()];
             else
                 s= ((ScopeElm)sim.getMouseElmForRouting()).elmScope;
 
@@ -291,10 +291,10 @@ final class CirSimCommandRouter {
                 CircuitElm elm = s.getElm();
                 ScopeElm newScope = new ScopeElm(sim.snapGrid(elm.x+50), sim.snapGrid(elm.y+50));
                 sim.elmList.addElement(newScope);
-                newScope.setElmScope(sim.scopes[sim.menuScope]);
+                newScope.setElmScope(sim.scopes[sim.getScopeManager().getMenuScope()]);
 
                 int i;
-                for (i = sim.menuScope; i < sim.scopeCount; i++)
+                for (i = sim.getScopeManager().getMenuScope(); i < sim.scopeCount; i++)
                     sim.scopes[i] = sim.scopes[i+1];
                 sim.scopeCount--;
 
@@ -303,7 +303,7 @@ final class CirSimCommandRouter {
             if (item=="remove")
                 s.setElm(null);
             if (item=="removeplot")
-                s.removePlot(sim.menuPlot);
+                s.removePlot(sim.getScopeManager().getMenuPlot());
             if (item=="speed2")
                 s.speedUp();
             if (item=="speed1/2")
@@ -311,11 +311,11 @@ final class CirSimCommandRouter {
             if (item=="maxscale")
                 s.maxScale();
             if (item=="stack")
-                sim.getScopeManager().stackScope(sim.menuScope);
+                sim.getScopeManager().stackScope(sim.getScopeManager().getMenuScope());
             if (item=="unstack")
-                sim.getScopeManager().unstackScope(sim.menuScope);
+                sim.getScopeManager().unstackScope(sim.getScopeManager().getMenuScope());
             if (item=="combine")
-                sim.getScopeManager().combineScope(sim.menuScope);
+                sim.getScopeManager().combineScope(sim.getScopeManager().getMenuScope());
             if (item=="selecty")
                 s.selectY();
             if (item=="reset")
@@ -341,12 +341,12 @@ final class CirSimCommandRouter {
         }
 
         if (menu=="main") {
-            if (sim.contextPanel!=null)
-                sim.contextPanel.hide();
+            if (sim.getMenuUiState().contextPanel!=null)
+                sim.getMenuUiState().contextPanel.hide();
             sim.getMouseInputHandler().setMouseMode(CirSim.MODE_ADD_ELM);
             String s = item;
             if (s.length() > 0)
-                sim.mouseModeStr = s;
+                sim.setMouseModeStr(s);
             if (s.compareTo("DragAll") == 0)
                 sim.getMouseInputHandler().setMouseMode(CirSim.MODE_DRAG_ALL);
             else if (s.compareTo("DragRow") == 0)
@@ -361,7 +361,7 @@ final class CirSimCommandRouter {
                 sim.getMouseInputHandler().setMouseMode(CirSim.MODE_SELECT);
 
             sim.updateToolbar();
-            sim.tempMouseMode = sim.mouseMode;
+            sim.setTempMouseMode(sim.getMouseMode());
         }
         if (item=="fullscreen") {
             if (! Graphics.isFullScreen)

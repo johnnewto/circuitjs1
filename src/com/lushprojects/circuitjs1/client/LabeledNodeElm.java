@@ -440,7 +440,7 @@ class LabeledNodeElm extends CircuitElm {
 
 		
 		// Show all circuit nodes if flag is set
-		// if (showAllCircuitNodes() && sim != null && sim.nodeVoltages != null) {
+		// if (showAllCircuitNodes() && sim != null && sim.getSolverMatrixState().nodeVoltages != null) {
 		// 	int idx = (showLabelNodes() && labelList != null && !labelList.isEmpty()) ? 
 		// 			4 + Math.min(labelList.size() + 1, arr.length - 4) : 4;
 		if (showAllCircuitNodes()) {
@@ -450,8 +450,8 @@ class LabeledNodeElm extends CircuitElm {
 			String groundLabelText = groundLabel != null ? " (" + groundLabel + ")" : "";
 			arr[idx++] = "  Node 0: 0.00V (Ground)" + groundLabelText;
 			// Show other nodes with their voltages
-			for (int nodeNum = 1; nodeNum <= sim.nodeVoltages.length && idx < 30; nodeNum++) {
-				double voltage = sim.nodeVoltages[nodeNum - 1]; // nodeVoltages is 0-indexed but excludes ground
+			for (int nodeNum = 1; nodeNum <= sim.getSolverMatrixState().nodeVoltages.length && idx < 30; nodeNum++) {
+				double voltage = sim.getSolverMatrixState().nodeVoltages[nodeNum - 1]; // nodeVoltages is 0-indexed but excludes ground
 				String labelName = getNameByNode(nodeNum);
 				String nodeLabel = labelName != null ? " (" + labelName + ")" : "";
 				arr[idx++] = "  Node " + nodeNum + ": " + getVoltageText(voltage) + nodeLabel;

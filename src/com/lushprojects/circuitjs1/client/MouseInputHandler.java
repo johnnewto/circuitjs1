@@ -44,10 +44,71 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
     ClickHandler, DoubleClickHandler, ContextMenuHandler, NativePreviewHandler,
     MouseOutHandler, MouseWheelHandler {
     private final CirSim sim;
+    private String lastCursorStyle;
+    private boolean mouseWasOverSplitter;
+    private int mouseMode = CirSim.MODE_SELECT;
+    private int tempMouseMode = CirSim.MODE_SELECT;
+    private String mouseModeStr = "Select";
+    private int dragGridX;
+    private int dragGridY;
+    private int dragScreenX;
+    private int dragScreenY;
+    private int initDragGridX;
+    private int initDragGridY;
+    private long mouseDownTime;
+    private long zoomTime;
+    private int mouseCursorX = -1;
+    private int mouseCursorY = -1;
+    private Rectangle selectedArea;
+    private boolean dragging;
+    private int mousePost = -1;
+    private int draggingPost;
+    private boolean mouseDragging;
 
     MouseInputHandler(CirSim sim) {
         this.sim = sim;
     }
+
+    String getLastCursorStyle() { return lastCursorStyle; }
+    void setLastCursorStyle(String value) { lastCursorStyle = value; }
+    boolean isMouseWasOverSplitter() { return mouseWasOverSplitter; }
+    void setMouseWasOverSplitter(boolean value) { mouseWasOverSplitter = value; }
+    int getMouseMode() { return mouseMode; }
+    void setMouseModeValue(int value) { mouseMode = value; }
+    int getTempMouseMode() { return tempMouseMode; }
+    void setTempMouseMode(int value) { tempMouseMode = value; }
+    String getMouseModeStr() { return mouseModeStr; }
+    void setMouseModeStr(String value) { mouseModeStr = value; }
+    int getDragGridX() { return dragGridX; }
+    void setDragGridX(int value) { dragGridX = value; }
+    int getDragGridY() { return dragGridY; }
+    void setDragGridY(int value) { dragGridY = value; }
+    int getDragScreenX() { return dragScreenX; }
+    void setDragScreenX(int value) { dragScreenX = value; }
+    int getDragScreenY() { return dragScreenY; }
+    void setDragScreenY(int value) { dragScreenY = value; }
+    int getInitDragGridX() { return initDragGridX; }
+    void setInitDragGridX(int value) { initDragGridX = value; }
+    int getInitDragGridY() { return initDragGridY; }
+    void setInitDragGridY(int value) { initDragGridY = value; }
+    long getMouseDownTime() { return mouseDownTime; }
+    void setMouseDownTime(long value) { mouseDownTime = value; }
+    long getZoomTime() { return zoomTime; }
+    void setZoomTime(long value) { zoomTime = value; }
+    int getMouseCursorX() { return mouseCursorX; }
+    void setMouseCursorX(int value) { mouseCursorX = value; }
+    int getMouseCursorY() { return mouseCursorY; }
+    void setMouseCursorY(int value) { mouseCursorY = value; }
+    Rectangle getSelectedArea() { return selectedArea; }
+    void setSelectedArea(Rectangle value) { selectedArea = value; }
+    boolean isDragging() { return dragging; }
+    void setDragging(boolean value) { dragging = value; }
+    int getMousePost() { return mousePost; }
+    void setMousePost(int value) { mousePost = value; }
+    int getDraggingPost() { return draggingPost; }
+    void setDraggingPost(int value) { draggingPost = value; }
+    boolean isMouseDragging() { return mouseDragging; }
+    void setMouseDragging(boolean value) { mouseDragging = value; }
 
     boolean doSwitch(int x, int y) {
         CircuitElm mouseElm = sim.getMouseElmForRouting();
@@ -86,7 +147,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
                 return;
         }
 
-        if (sim.tempMouseMode == CirSim.MODE_DRAG_SPLITTER) {
+        if (tempMouseMode == CirSim.MODE_DRAG_SPLITTER) {
             dragSplitter(e.getX(), e.getY());
             return;
         }
@@ -98,7 +159,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         if (sim.dragElm != null)
             sim.dragElm.drag(gx, gy);
         boolean success = true;
-        switch (sim.tempMouseMode) {
+        switch (tempMouseMode) {
         case CirSim.MODE_DRAG_ALL:
             dragAll(e.getX(), e.getY());
             break;
@@ -120,10 +181,10 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             if (sim.getMouseElmForRouting() == null)
                 selectArea(gx, gy, e.isShiftKeyDown());
             else if (!sim.noEditCheckItem.getState()) {
-                if (System.currentTimeMillis() - sim.mouseDownTime < 150)
+                if (System.currentTimeMillis() - mouseDownTime < 150)
                     return;
 
-                sim.tempMouseMode = CirSim.MODE_DRAG_SELECTED;
+                tempMouseMode = CirSim.MODE_DRAG_SELECTED;
                 changed = success = dragSelected(gx, gy);
             }
             break;
@@ -132,15 +193,15 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             break;
 
         }
-        sim.dragging = true;
+        dragging = true;
         if (success) {
-            sim.dragScreenX = e.getX();
-            sim.dragScreenY = e.getY();
-            sim.dragGridX = sim.inverseTransformX(sim.dragScreenX);
-            sim.dragGridY = sim.inverseTransformY(sim.dragScreenY);
-            if (!(sim.tempMouseMode == CirSim.MODE_DRAG_SELECTED && onlyGraphicsElmsSelected())) {
-                sim.dragGridX = sim.snapGrid(sim.dragGridX);
-                sim.dragGridY = sim.snapGrid(sim.dragGridY);
+            dragScreenX = e.getX();
+            dragScreenY = e.getY();
+            dragGridX = sim.inverseTransformX(dragScreenX);
+            dragGridY = sim.inverseTransformY(dragScreenY);
+            if (!(tempMouseMode == CirSim.MODE_DRAG_SELECTED && onlyGraphicsElmsSelected())) {
+                dragGridX = sim.snapGrid(dragGridX);
+                dragGridY = sim.snapGrid(dragGridY);
             }
         }
         if (changed) {
@@ -153,51 +214,50 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         double h = (double) sim.canvasHeight;
         if (h < 1)
             h = 1;
-        sim.scopeHeightFraction = 1.0 - (((double) y) / h);
-        if (sim.scopeHeightFraction < 0.1)
-            sim.scopeHeightFraction = 0.1;
-        if (sim.scopeHeightFraction > 0.9)
-            sim.scopeHeightFraction = 0.9;
+        sim.getScopeManager().setScopeHeightFraction(1.0 - (((double) y) / h));
+        if (sim.getScopeManager().getScopeHeightFraction() < 0.1)
+            sim.getScopeManager().setScopeHeightFraction(0.1);
+        if (sim.getScopeManager().getScopeHeightFraction() > 0.9)
+            sim.getScopeManager().setScopeHeightFraction(0.9);
         sim.getViewportController().setCircuitArea();
         sim.repaint();
     }
 
     void dragAll(int x, int y) {
-        int dx = x - sim.dragScreenX;
-        int dy = y - sim.dragScreenY;
+        int dx = x - dragScreenX;
+        int dy = y - dragScreenY;
         if (dx == 0 && dy == 0)
             return;
-        sim.transform[4] += dx;
-        sim.transform[5] += dy;
-        sim.dragScreenX = x;
-        sim.dragScreenY = y;
+        sim.getViewportController().translate(dx, dy);
+        dragScreenX = x;
+        dragScreenY = y;
     }
 
     void dragRow(int x, int y) {
-        int dy = y - sim.dragGridY;
+        int dy = y - dragGridY;
         if (dy == 0)
             return;
         int i;
         for (i = 0; i != sim.elmList.size(); i++) {
             CircuitElm ce = sim.getElm(i);
-            if (ce.y == sim.dragGridY)
+            if (ce.y == dragGridY)
                 ce.movePoint(0, 0, dy);
-            if (ce.y2 == sim.dragGridY)
+            if (ce.y2 == dragGridY)
                 ce.movePoint(1, 0, dy);
         }
         sim.removeZeroLengthElements();
     }
 
     void dragColumn(int x, int y) {
-        int dx = x - sim.dragGridX;
+        int dx = x - dragGridX;
         if (dx == 0)
             return;
         int i;
         for (i = 0; i != sim.elmList.size(); i++) {
             CircuitElm ce = sim.getElm(i);
-            if (ce.x == sim.dragGridX)
+            if (ce.x == dragGridX)
                 ce.movePoint(0, dx, 0);
-            if (ce.x2 == sim.dragGridX)
+            if (ce.x2 == dragGridX)
                 ce.movePoint(1, dx, 0);
         }
         sim.removeZeroLengthElements();
@@ -228,8 +288,8 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             y = sim.snapGrid(y);
         }
 
-        int dx = x - sim.dragGridX;
-        int dy = y - sim.dragGridY;
+        int dx = x - dragGridX;
+        int dy = y - dragGridY;
         if (dx == 0 && dy == 0) {
             if (me && mouseElm != null)
                 mouseElm.setSelected(false);
@@ -262,13 +322,13 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         CircuitElm mouseElm = sim.getMouseElmForRouting();
         if (mouseElm == null)
             return;
-        if (sim.draggingPost == -1) {
-            sim.draggingPost =
+        if (draggingPost == -1) {
+            draggingPost =
                 (Graphics.distanceSq(mouseElm.x, mouseElm.y, x, y) >
                  Graphics.distanceSq(mouseElm.x2, mouseElm.y2, x, y)) ? 1 : 0;
         }
-        int dx = x - sim.dragGridX;
-        int dy = y - sim.dragGridY;
+        int dx = x - dragGridX;
+        int dy = y - dragGridY;
         if (dx == 0 && dy == 0)
             return;
 
@@ -278,34 +338,34 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
                 CircuitElm e = sim.elmList.get(i);
 
                 int p = 0;
-                if (e.x == sim.dragGridX && e.y == sim.dragGridY)
+                if (e.x == dragGridX && e.y == dragGridY)
                     p = 0;
-                else if (e.x2 == sim.dragGridX && e.y2 == sim.dragGridY)
+                else if (e.x2 == dragGridX && e.y2 == dragGridY)
                     p = 1;
                 else
                     continue;
                 e.movePoint(p, dx, dy);
             }
         } else
-            mouseElm.movePoint(sim.draggingPost, dx, dy);
+            mouseElm.movePoint(draggingPost, dx, dy);
         sim.needAnalyze();
     }
 
     void doFlip() {
-        sim.menuElm.flipPosts();
+        sim.getMenuUiState().menuElm.flipPosts();
         sim.needAnalyze();
     }
 
     void selectArea(int x, int y, boolean add) {
-        int x1 = sim.min(x, sim.initDragGridX);
-        int x2 = sim.max(x, sim.initDragGridX);
-        int y1 = sim.min(y, sim.initDragGridY);
-        int y2 = sim.max(y, sim.initDragGridY);
-        sim.selectedArea = new Rectangle(x1, y1, x2 - x1, y2 - y1);
+        int x1 = sim.min(x, initDragGridX);
+        int x2 = sim.max(x, initDragGridX);
+        int y1 = sim.min(y, initDragGridY);
+        int y2 = sim.max(y, initDragGridY);
+        selectedArea = new Rectangle(x1, y1, x2 - x1, y2 - y1);
         int i;
         for (i = 0; i != sim.elmList.size(); i++) {
             CircuitElm ce = sim.getElm(i);
-            ce.selectRect(sim.selectedArea, add);
+            ce.selectRect(selectedArea, add);
         }
         sim.enableDisableMenuItems();
     }
@@ -316,13 +376,13 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             return false;
         isOverSplitter = ((x >= 0) && (x < sim.circuitArea.width) &&
                           (y >= sim.circuitArea.height - 5) && (y < sim.circuitArea.height));
-        if (isOverSplitter != sim.mouseWasOverSplitter) {
+        if (isOverSplitter != mouseWasOverSplitter) {
             if (isOverSplitter)
                 setCursorStyle("cursorSplitter");
             else
-                setMouseMode(sim.mouseMode);
+                setMouseMode(mouseMode);
         }
-        sim.mouseWasOverSplitter = isOverSplitter;
+        mouseWasOverSplitter = isOverSplitter;
         return isOverSplitter;
     }
 
@@ -340,32 +400,32 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
     @Override
     public void onMouseMove(MouseMoveEvent e) {
         e.preventDefault();
-        sim.mouseCursorX = e.getX();
-        sim.mouseCursorY = e.getY();
-        if (sim.isMouseDraggingForRouting()) {
+        mouseCursorX = e.getX();
+        mouseCursorY = e.getY();
+        if (isMouseDragging()) {
             mouseDragged(e);
             return;
         }
         mouseSelect(e);
-        sim.scopeMenuSelected = -1;
+        sim.getScopeManager().setScopeMenuSelected(-1);
     }
 
     void mouseSelect(MouseEvent<?> e) {
         CircuitElm newMouseElm = null;
-        sim.mouseCursorX = e.getX();
-        sim.mouseCursorY = e.getY();
+        mouseCursorX = e.getX();
+        mouseCursorY = e.getY();
         int sx = e.getX();
         int sy = e.getY();
         int gx = sim.inverseTransformX(sx);
         int gy = sim.inverseTransformY(sy);
-        sim.dragGridX = sim.snapGrid(gx);
-        sim.dragGridY = sim.snapGrid(gy);
-        sim.dragScreenX = sx;
-        sim.dragScreenY = sy;
-        sim.draggingPost = -1;
+        dragGridX = sim.snapGrid(gx);
+        dragGridY = sim.snapGrid(gy);
+        dragScreenX = sx;
+        dragScreenY = sy;
+        draggingPost = -1;
         int i;
 
-        sim.mousePost = -1;
+        mousePost = -1;
         sim.plotXElm = sim.plotYElm = null;
 
         if (mouseIsOverSplitter(sx, sy)) {
@@ -391,7 +451,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
                 }
             }
         }
-        sim.scopeSelected = -1;
+        sim.getScopeManager().setScopeSelected(-1);
         if (newMouseElm == null) {
             for (i = 0; i != sim.scopeCount; i++) {
                 Scope s = sim.scopes[i];
@@ -401,12 +461,12 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
                         sim.plotXElm = s.getXElm();
                         sim.plotYElm = s.getYElm();
                     }
-                    sim.scopeSelected = i;
+                    sim.getScopeManager().setScopeSelected(i);
                 }
             }
             for (i = 0; i != sim.elmList.size(); i++) {
                 CircuitElm ce = sim.getElm(i);
-                if (sim.mouseMode == CirSim.MODE_DRAG_POST) {
+                if (mouseMode == CirSim.MODE_DRAG_POST) {
                     if (ce.getHandleGrabbedClose(gx, gy, CirSim.POSTGRABSQ, 0) > 0) {
                         newMouseElm = ce;
                         break;
@@ -418,17 +478,17 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
                     Point pt = ce.getPost(j);
                     if (Graphics.distanceSq(pt.x, pt.y, gx, gy) < 26) {
                         newMouseElm = ce;
-                        sim.mousePost = j;
+                        mousePost = j;
                         break;
                     }
                 }
             }
         } else {
-            sim.mousePost = -1;
+            mousePost = -1;
             for (i = 0; i != newMouseElm.getPostCount(); i++) {
                 Point pt = newMouseElm.getPost(i);
                 if (Graphics.distanceSq(pt.x, pt.y, gx, gy) < 26)
-                    sim.mousePost = i;
+                    mousePost = i;
             }
         }
         sim.repaint();
@@ -441,8 +501,8 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
     public void onContextMenu(ContextMenuEvent e) {
         e.preventDefault();
         if (!sim.dialogIsShowing()) {
-            sim.menuClientX = e.getNativeEvent().getClientX();
-            sim.menuClientY = e.getNativeEvent().getClientY();
+            sim.setMenuClientX(e.getNativeEvent().getClientX());
+            sim.setMenuClientY(e.getNativeEvent().getClientY());
             doPopupMenu();
         }
     }
@@ -450,21 +510,21 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
     void doPopupMenu() {
         if (sim.noEditCheckItem.getState() || sim.dialogIsShowing())
             return;
-        sim.menuElm = sim.getMouseElmForRouting();
-        sim.menuScope = -1;
-        sim.menuPlot = -1;
+        sim.getMenuUiState().menuElm = sim.getMouseElmForRouting();
+        sim.getScopeManager().setMenuScope(-1);
+        sim.getScopeManager().setMenuPlot(-1);
         int x, y;
-        if (sim.scopeSelected != -1) {
-            if (sim.scopes[sim.scopeSelected].canMenu()) {
-                sim.menuScope = sim.scopeSelected;
-                sim.menuPlot = sim.scopes[sim.scopeSelected].selectedPlot;
-                sim.scopePopupMenu.doScopePopupChecks(false, sim.getScopeManager().canStackScope(sim.scopeSelected), sim.getScopeManager().canCombineScope(sim.scopeSelected),
-                                                      sim.getScopeManager().canUnstackScope(sim.scopeSelected), sim.scopes[sim.scopeSelected]);
-                sim.contextPanel = new PopupPanel(true);
-                sim.contextPanel.add(sim.scopePopupMenu.getMenuBar());
-                y = Math.max(0, Math.min(sim.menuClientY, sim.canvasHeight - 160));
-                sim.contextPanel.setPopupPosition(sim.menuClientX, y);
-                sim.contextPanel.show();
+        if (sim.getScopeManager().getScopeSelected() != -1) {
+            if (sim.scopes[sim.getScopeManager().getScopeSelected()].canMenu()) {
+                sim.getScopeManager().setMenuScope(sim.getScopeManager().getScopeSelected());
+                sim.getScopeManager().setMenuPlot(sim.scopes[sim.getScopeManager().getScopeSelected()].selectedPlot);
+                sim.getMenuUiState().scopePopupMenu.doScopePopupChecks(false, sim.getScopeManager().canStackScope(sim.getScopeManager().getScopeSelected()), sim.getScopeManager().canCombineScope(sim.getScopeManager().getScopeSelected()),
+                                                      sim.getScopeManager().canUnstackScope(sim.getScopeManager().getScopeSelected()), sim.scopes[sim.getScopeManager().getScopeSelected()]);
+                sim.getMenuUiState().contextPanel = new PopupPanel(true);
+                sim.getMenuUiState().contextPanel.add(sim.getMenuUiState().scopePopupMenu.getMenuBar());
+                y = Math.max(0, Math.min(sim.getMenuClientY(), sim.canvasHeight - 160));
+                sim.getMenuUiState().contextPanel.setPopupPosition(sim.getMenuClientX(), y);
+                sim.getMenuUiState().contextPanel.show();
             }
         } else if (sim.getMouseElmForRouting() != null) {
             CircuitElm mouseElm = sim.getMouseElmForRouting();
@@ -476,9 +536,9 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
                     sim.elmAddScopeMenuItem.setSubMenu(null);
                     sim.elmAddScopeMenuItem.setEnabled(mouseElm.canViewInScope() && (sim.scopeCount + sim.getScopeManager().countScopeElms()) > 0);
                 } else {
-                    sim.getMenuBuilder().composeSelectScopeMenu(sim.selectScopeMenuBar);
+                    sim.getMenuBuilder().composeSelectScopeMenu(sim.getMenuUiState().selectScopeMenuBar);
                     sim.elmAddScopeMenuItem.setCommand(null);
-                    sim.elmAddScopeMenuItem.setSubMenu(sim.selectScopeMenuBar);
+                    sim.elmAddScopeMenuItem.setSubMenu(sim.getMenuUiState().selectScopeMenuBar);
                     sim.elmAddScopeMenuItem.setEnabled(mouseElm.canViewInScope());
                 }
                 sim.elmEditMenuItem.setEnabled(mouseElm.getEditInfo(0) != null);
@@ -504,29 +564,29 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
                 sim.elmFlipXMenuItem.setEnabled(canFlipX);
                 sim.elmFlipYMenuItem.setEnabled(canFlipY);
                 sim.elmFlipXYMenuItem.setEnabled(canFlipXY);
-                sim.contextPanel = new PopupPanel(true);
-                sim.contextPanel.add(sim.elmMenuBar);
-                sim.contextPanel.setPopupPosition(sim.menuClientX, sim.menuClientY);
-                sim.contextPanel.show();
+                sim.getMenuUiState().contextPanel = new PopupPanel(true);
+                sim.getMenuUiState().contextPanel.add(sim.getMenuUiState().elmMenuBar);
+                sim.getMenuUiState().contextPanel.setPopupPosition(sim.getMenuClientX(), sim.getMenuClientY());
+                sim.getMenuUiState().contextPanel.show();
             } else {
                 ScopeElm s = (ScopeElm) mouseElm;
                 if (s.elmScope.canMenu()) {
-                    sim.menuPlot = s.elmScope.selectedPlot;
-                    sim.scopePopupMenu.doScopePopupChecks(true, false, false, false, s.elmScope);
-                    sim.contextPanel = new PopupPanel(true);
-                    sim.contextPanel.add(sim.scopePopupMenu.getMenuBar());
-                    sim.contextPanel.setPopupPosition(sim.menuClientX, sim.menuClientY);
-                    sim.contextPanel.show();
+                    sim.getScopeManager().setMenuPlot(s.elmScope.selectedPlot);
+                    sim.getMenuUiState().scopePopupMenu.doScopePopupChecks(true, false, false, false, s.elmScope);
+                    sim.getMenuUiState().contextPanel = new PopupPanel(true);
+                    sim.getMenuUiState().contextPanel.add(sim.getMenuUiState().scopePopupMenu.getMenuBar());
+                    sim.getMenuUiState().contextPanel.setPopupPosition(sim.getMenuClientX(), sim.getMenuClientY());
+                    sim.getMenuUiState().contextPanel.show();
                 }
             }
         } else {
             doMainMenuChecks();
-            sim.contextPanel = new PopupPanel(true);
-            sim.contextPanel.add(sim.mainMenuBar);
-            x = Math.max(0, Math.min(sim.menuClientX, sim.canvasWidth - 400));
-            y = Math.max(0, Math.min(sim.menuClientY, sim.canvasHeight - 450));
-            sim.contextPanel.setPopupPosition(x, y);
-            sim.contextPanel.show();
+            sim.getMenuUiState().contextPanel = new PopupPanel(true);
+            sim.getMenuUiState().contextPanel.add(sim.getMenuUiState().mainMenuBar);
+            x = Math.max(0, Math.min(sim.getMenuClientX(), sim.canvasWidth - 400));
+            y = Math.max(0, Math.min(sim.getMenuClientY(), sim.canvasHeight - 450));
+            sim.getMenuUiState().contextPanel.setPopupPosition(x, y);
+            sim.getMenuUiState().contextPanel.show();
         }
     }
 
@@ -559,9 +619,9 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
     }
 
     void twoFingerTouch(int x, int y) {
-        sim.tempMouseMode = CirSim.MODE_DRAG_ALL;
-        sim.dragScreenX = x;
-        sim.dragScreenY = y;
+        tempMouseMode = CirSim.MODE_DRAG_ALL;
+        dragScreenX = x;
+        dragScreenY = y;
     }
 
     @Override
@@ -601,11 +661,11 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
 
     @Override
     public void onMouseOut(MouseOutEvent e) {
-        sim.mouseCursorX = -1;
+        mouseCursorX = -1;
     }
 
     void clearMouseElm() {
-        sim.scopeSelected = -1;
+        sim.getScopeManager().setScopeSelected(-1);
         sim.setMouseElm(null);
         sim.plotXElm = sim.plotYElm = null;
     }
@@ -617,9 +677,11 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         sim.cv.setFocus(true);
 
         sim.stopElm = null;
-        sim.menuX = sim.menuClientX = e.getX();
-        sim.menuY = sim.menuClientY = e.getY();
-        sim.mouseDownTime = System.currentTimeMillis();
+        sim.setMenuX(e.getX());
+        sim.setMenuClientX(e.getX());
+        sim.setMenuY(e.getY());
+        sim.setMenuClientY(e.getY());
+        mouseDownTime = System.currentTimeMillis();
 
         sim.getClipboardManager().enablePaste();
 
@@ -628,53 +690,53 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
 
         mouseSelect(e);
 
-        sim.setMouseDraggingForRouting(true);
+        setMouseDragging(true);
         sim.didSwitch = false;
 
         sim.simRunningBeforeDrag = sim.simRunning;
 
         if (sim.getScopeManager().mouseIsOverScopeMinMaxButton(e.getX(), e.getY())) {
             sim.getScopeManager().toggleScopePanelSize();
-            sim.setMouseDraggingForRouting(false);
+            setMouseDragging(false);
             return;
         }
 
-        if (sim.mouseWasOverSplitter) {
-            sim.tempMouseMode = CirSim.MODE_DRAG_SPLITTER;
+        if (mouseWasOverSplitter) {
+            tempMouseMode = CirSim.MODE_DRAG_SPLITTER;
             return;
         }
         if (e.getNativeButton() == com.google.gwt.dom.client.NativeEvent.BUTTON_LEFT) {
-            sim.tempMouseMode = sim.mouseMode;
+            tempMouseMode = mouseMode;
             if (e.isAltKeyDown() && e.isMetaKeyDown())
-                sim.tempMouseMode = CirSim.MODE_DRAG_COLUMN;
+                tempMouseMode = CirSim.MODE_DRAG_COLUMN;
             else if (e.isAltKeyDown() && e.isShiftKeyDown())
-                sim.tempMouseMode = CirSim.MODE_DRAG_ROW;
+                tempMouseMode = CirSim.MODE_DRAG_ROW;
             else if (e.isShiftKeyDown())
-                sim.tempMouseMode = CirSim.MODE_SELECT;
+                tempMouseMode = CirSim.MODE_SELECT;
             else if (e.isAltKeyDown())
-                sim.tempMouseMode = CirSim.MODE_DRAG_ALL;
+                tempMouseMode = CirSim.MODE_DRAG_ALL;
             else if (e.isControlKeyDown() || e.isMetaKeyDown())
-                sim.tempMouseMode = CirSim.MODE_DRAG_POST;
+                tempMouseMode = CirSim.MODE_DRAG_POST;
         } else
-            sim.tempMouseMode = CirSim.MODE_DRAG_ALL;
+            tempMouseMode = CirSim.MODE_DRAG_ALL;
 
 
         if (sim.noEditCheckItem.getState())
-            sim.tempMouseMode = CirSim.MODE_SELECT;
+            tempMouseMode = CirSim.MODE_SELECT;
 
         CircuitElm mouseElm = sim.getMouseElmForRouting();
-        if (!(sim.dialogIsShowing()) && ((sim.scopeSelected != -1 && sim.scopes[sim.scopeSelected].cursorInSettingsWheel()) ||
-                                         (sim.scopeSelected == -1 && mouseElm instanceof ScopeElm && ((ScopeElm) mouseElm).elmScope.cursorInSettingsWheel()))) {
+        if (!(sim.dialogIsShowing()) && ((sim.getScopeManager().getScopeSelected() != -1 && sim.scopes[sim.getScopeManager().getScopeSelected()].cursorInSettingsWheel()) ||
+                                         (sim.getScopeManager().getScopeSelected() == -1 && mouseElm instanceof ScopeElm && ((ScopeElm) mouseElm).elmScope.cursorInSettingsWheel()))) {
             if (sim.noEditCheckItem.getState())
                 return;
             Scope s;
-            if (sim.scopeSelected != -1)
-                s = sim.scopes[sim.scopeSelected];
+            if (sim.getScopeManager().getScopeSelected() != -1)
+                s = sim.scopes[sim.getScopeManager().getScopeSelected()];
             else
                 s = ((ScopeElm) mouseElm).elmScope;
             s.properties();
             sim.getClipboardManager().clearSelection();
-            sim.setMouseDraggingForRouting(false);
+            setMouseDragging(false);
             return;
         }
 
@@ -687,7 +749,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
                 ActionTimeElm ate = (ActionTimeElm) ce;
                 if (ate.isPointInPlayPauseIcon(gx, gy)) {
                     ate.handlePlayPauseIconClick();
-                    sim.setMouseDraggingForRouting(false);
+                    setMouseDragging(false);
                     return;
                 }
             }
@@ -707,24 +769,24 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             sim.setLastInteractedTableForRouting((TableElm) mouseElm);
         }
 
-        if (sim.tempMouseMode == CirSim.MODE_SELECT && mouseElm != null && !sim.noEditCheckItem.getState() &&
+        if (tempMouseMode == CirSim.MODE_SELECT && mouseElm != null && !sim.noEditCheckItem.getState() &&
             mouseElm.getHandleGrabbedClose(gx, gy, CirSim.POSTGRABSQ, CirSim.MINPOSTGRABSIZE) >= 0 &&
             !sim.getClipboardManager().anySelectedButMouse())
-            sim.tempMouseMode = CirSim.MODE_DRAG_POST;
+            tempMouseMode = CirSim.MODE_DRAG_POST;
 
-        if (sim.tempMouseMode != CirSim.MODE_SELECT && sim.tempMouseMode != CirSim.MODE_DRAG_SELECTED)
+        if (tempMouseMode != CirSim.MODE_SELECT && tempMouseMode != CirSim.MODE_DRAG_SELECTED)
             sim.getClipboardManager().clearSelection();
 
         sim.getUndoRedoManager().pushUndo();
-        sim.initDragGridX = gx;
-        sim.initDragGridY = gy;
-        sim.dragging = true;
+        initDragGridX = gx;
+        initDragGridY = gy;
+        dragging = true;
 
         if (sim.simRunning) {
             sim.simRunning = false;
         }
 
-        if (sim.tempMouseMode != CirSim.MODE_ADD_ELM)
+        if (tempMouseMode != CirSim.MODE_ADD_ELM)
             return;
 
         int x0 = sim.snapGrid(gx);
@@ -733,18 +795,18 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             return;
 
         try {
-            sim.dragElm = ElementFactoryFacade.constructFromClassKey(sim.mouseModeStr, x0, y0);
+            sim.dragElm = ElementFactoryFacade.constructFromClassKey(mouseModeStr, x0, y0);
         } catch (Exception ex) {
             CirSim.debugger();
         }
     }
 
     void doMainMenuChecks() {
-        int c = sim.mainMenuItems.size();
+        int c = sim.getMenuUiState().mainMenuItems.size();
         int i;
         for (i = 0; i < c; i++) {
-            String s = sim.mainMenuItemNames.get(i);
-            sim.mainMenuItems.get(i).setState(s == sim.mouseModeStr);
+            String s = sim.getMenuUiState().mainMenuItemNames.get(i);
+            sim.getMenuUiState().mainMenuItems.get(i).setState(s == mouseModeStr);
         }
         sim.stackAllItem.setEnabled(sim.scopeCount > 1 && sim.scopes[sim.scopeCount - 1].position > 0);
         sim.unstackAllItem.setEnabled(sim.scopeCount > 1 && sim.scopes[sim.scopeCount - 1].position != sim.scopeCount - 1);
@@ -758,23 +820,23 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
     @Override
     public void onMouseUp(MouseUpEvent e) {
         e.preventDefault();
-        sim.setMouseDraggingForRouting(false);
+        setMouseDragging(false);
 
-        if (sim.tempMouseMode == CirSim.MODE_SELECT && sim.selectedArea == null)
+        if (tempMouseMode == CirSim.MODE_SELECT && selectedArea == null)
             sim.getClipboardManager().clearSelection();
 
-        if (sim.tempMouseMode == CirSim.MODE_DRAG_POST && sim.draggingPost == -1)
+        if (tempMouseMode == CirSim.MODE_DRAG_POST && draggingPost == -1)
             sim.doSplit(sim.getMouseElmForRouting());
 
-        sim.tempMouseMode = sim.mouseMode;
-        sim.selectedArea = null;
+        tempMouseMode = mouseMode;
+        selectedArea = null;
 
-        if (sim.dragging && sim.simRunningBeforeDrag && !sim.simRunning) {
+        if (dragging && sim.simRunningBeforeDrag && !sim.simRunning) {
             sim.simRunning = true;
         }
 
-        sim.dragging = false;
-        sim.setMouseDraggingForRouting(false);
+        dragging = false;
+        setMouseDragging(false);
 
         boolean circuitChanged = false;
         if (sim.heldSwitchElm != null) {
@@ -785,7 +847,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         if (sim.dragElm != null) {
             if (sim.dragElm.creationFailed()) {
                 sim.dragElm.delete();
-                if (sim.mouseMode == CirSim.MODE_SELECT || sim.mouseMode == CirSim.MODE_DRAG_SELECTED)
+                if (mouseMode == CirSim.MODE_SELECT || mouseMode == CirSim.MODE_DRAG_SELECTED)
                     sim.getClipboardManager().clearSelection();
             }
             else {
@@ -794,9 +856,9 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
                 circuitChanged = true;
                 sim.needsRecoverySave = true;
                 sim.unsavedChanges = true;
-                if (sim.mouseMode == CirSim.MODE_ADD_ELM) {
+                if (mouseMode == CirSim.MODE_ADD_ELM) {
                     setMouseMode(CirSim.MODE_SELECT);
-                    sim.tempMouseMode = CirSim.MODE_SELECT;
+                    tempMouseMode = CirSim.MODE_SELECT;
                 }
             }
             sim.dragElm = null;
@@ -822,7 +884,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         if (wheelDelta == 0)
             return;
 
-        boolean zoomOnly = System.currentTimeMillis() < sim.zoomTime + 1000;
+        boolean zoomOnly = System.currentTimeMillis() < zoomTime + 1000;
 
         if (!sim.mouseWheelEditCheckItem.getState())
             zoomOnly = true;
@@ -833,13 +895,13 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         CircuitElm mouseElm = sim.getMouseElmForRouting();
         if (mouseElm instanceof com.google.gwt.event.dom.client.MouseWheelHandler && !zoomOnly)
             ((com.google.gwt.event.dom.client.MouseWheelHandler) mouseElm).onMouseWheel(e);
-        else if (sim.scopeSelected != -1 && !zoomOnly)
-            sim.scopes[sim.scopeSelected].onMouseWheel(e);
+        else if (sim.getScopeManager().getScopeSelected() != -1 && !zoomOnly)
+            sim.scopes[sim.getScopeManager().getScopeSelected()].onMouseWheel(e);
         else if (!sim.dialogIsShowing()) {
-            sim.mouseCursorX = e.getX();
-            sim.mouseCursorY = e.getY();
+            mouseCursorX = e.getX();
+            mouseCursorY = e.getY();
             sim.getViewportController().zoomCircuit(-wheelDelta * sim.wheelSensitivity, false);
-            sim.zoomTime = System.currentTimeMillis();
+            zoomTime = System.currentTimeMillis();
         }
         sim.repaint();
     }
@@ -904,11 +966,11 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
 
         if ((t & Event.ONKEYDOWN) != 0) {
             if (code == KEY_BACKSPACE || code == KEY_DELETE) {
-                if (sim.scopeSelected != -1) {
-                    sim.scopes[sim.scopeSelected].setElm(null);
-                    sim.scopeSelected = -1;
+                if (sim.getScopeManager().getScopeSelected() != -1) {
+                    sim.scopes[sim.getScopeManager().getScopeSelected()].setElm(null);
+                    sim.getScopeManager().setScopeSelected(-1);
                 } else {
-                    sim.menuElm = null;
+                    sim.getMenuUiState().menuElm = null;
                     sim.getUndoRedoManager().pushUndo();
                     sim.getClipboardManager().doDelete(true);
                     e.cancel();
@@ -916,9 +978,9 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             }
             if (code == KEY_ESCAPE) {
                 setMouseMode(CirSim.MODE_SELECT);
-                sim.mouseModeStr = "Select";
+                mouseModeStr = "Select";
                 sim.updateToolbar();
-                sim.tempMouseMode = sim.mouseMode;
+                tempMouseMode = mouseMode;
                 e.cancel();
             }
 
@@ -979,22 +1041,22 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
                 if (c == null)
                     return;
                 setMouseMode(CirSim.MODE_ADD_ELM);
-                sim.mouseModeStr = c;
+                mouseModeStr = c;
                 sim.updateToolbar();
-                sim.tempMouseMode = sim.mouseMode;
+                tempMouseMode = mouseMode;
             }
             if (cc == 32) {
                 setMouseMode(CirSim.MODE_SELECT);
-                sim.mouseModeStr = "Select";
+                mouseModeStr = "Select";
                 sim.updateToolbar();
-                sim.tempMouseMode = sim.mouseMode;
+                tempMouseMode = mouseMode;
                 e.cancel();
             }
         }
     }
 
     void setMouseMode(int mode) {
-        sim.mouseMode = mode;
+        mouseMode = mode;
         if (mode == CirSim.MODE_ADD_ELM) {
             setCursorStyle("cursorCross");
         } else {
@@ -1003,9 +1065,9 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
     }
 
     void setCursorStyle(String s) {
-        if (sim.lastCursorStyle != null)
-            sim.cv.removeStyleName(sim.lastCursorStyle);
+        if (lastCursorStyle != null)
+            sim.cv.removeStyleName(lastCursorStyle);
         sim.cv.addStyleName(s);
-        sim.lastCursorStyle = s;
+        lastCursorStyle = s;
     }
 }

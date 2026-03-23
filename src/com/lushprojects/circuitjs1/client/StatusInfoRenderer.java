@@ -54,7 +54,7 @@ final class StatusInfoRenderer {
         if (hint != null && !hint.trim().isEmpty()) {
             if (tooltipLines.isEmpty()) {
                 String displayText;
-                if (sim.scopeSelected != -1 || isInScope)
+                if (sim.getScopeManager().getScopeSelected() != -1 || isInScope)
                     displayText = hint + ":   " + label;
                 else
                     displayText = hint + ":   " + label + " = " + valueStr;
@@ -76,15 +76,15 @@ final class StatusInfoRenderer {
             int hintHeight = verticalPadding * 2 + tooltipLines.size() * lineHeight;
             int radius = 6;
 
-            int tooltipX = sim.mouseCursorX - hintWidth / 2;
-            int tooltipY = sim.mouseCursorY - hintHeight - 10;
+            int tooltipX = sim.getMouseCursorX() - hintWidth / 2;
+            int tooltipY = sim.getMouseCursorY() - hintHeight - 10;
 
             if (tooltipX < 8)
                 tooltipX = 8;
             if (tooltipX + hintWidth > sim.canvasWidth - 8)
                 tooltipX = sim.canvasWidth - hintWidth - 8;
             if (tooltipY < 8)
-                tooltipY = sim.mouseCursorY + 20;
+                tooltipY = sim.getMouseCursorY() + 20;
 
             g.context.setShadowColor("rgba(0, 0, 0, 0.25)");
             g.context.setShadowBlur(8);
@@ -152,7 +152,7 @@ final class StatusInfoRenderer {
         CircuitElm mouseElm = sim.getMouseElmForRouting();
         if (sim.stopMessage == null && sim.scopeCount == 0) {
             leftX = sim.max(sim.canvasWidth - CirSim.infoWidth, 0);
-            int h0 = (int) (sim.canvasHeight * sim.scopeHeightFraction);
+            int h0 = (int) (sim.canvasHeight * sim.getScopeManager().getScopeHeightFraction());
             h = (mouseElm == null) ? 70 : h0;
             if (sim.hideInfoBox)
                 h = 0;
@@ -168,19 +168,19 @@ final class StatusInfoRenderer {
         int i;
         Scope.clearCursorInfo();
         for (i = 0; i != ct; i++)
-            sim.scopes[i].selectScope(sim.mouseCursorX, sim.mouseCursorY, sim.dragging);
+            sim.scopes[i].selectScope(sim.getMouseCursorX(), sim.getMouseCursorY(), sim.isDragging());
         if (sim.scopeElmArr != null)
             for (i = 0; i != sim.scopeElmArr.length; i++)
-                sim.scopeElmArr[i].selectScope(sim.mouseCursorX, sim.mouseCursorY, sim.dragging);
+                sim.scopeElmArr[i].selectScope(sim.getMouseCursorX(), sim.getMouseCursorY(), sim.isDragging());
         for (i = 0; i != ct; i++)
             sim.scopes[i].draw(g);
-        if (sim.mouseWasOverSplitter) {
+        if (sim.isMouseWasOverSplitter()) {
             g.setColor(CircuitElm.selectColor);
             g.setLineWidth(4.0);
             g.drawLine(0, sim.circuitArea.height - 2, sim.circuitArea.width, sim.circuitArea.height - 2);
             g.setLineWidth(1.0);
         }
-        if (sim.scopeCount > 0 && sim.getScopeManager().mouseIsOverScopeMinMaxButton(sim.mouseCursorX, sim.mouseCursorY)) {
+        if (sim.scopeCount > 0 && sim.getScopeManager().mouseIsOverScopeMinMaxButton(sim.getMouseCursorX(), sim.getMouseCursorY())) {
             int lineEndX = sim.circuitArea.width - CirSim.SCOPE_MIN_MAX_BUTTON_SIZE - 20;
             g.setColor(CircuitElm.selectColor);
             g.setLineWidth(3.0);
@@ -198,19 +198,19 @@ final class StatusInfoRenderer {
             int infoIdx = 0;
 
             if (mouseElm != null) {
-                if (sim.mousePost == -1) {
+                if (sim.getMousePost() == -1) {
                     String[] elmInfo = new String[10];
                     mouseElm.getInfo(elmInfo);
                     for (int idx = 0; idx < elmInfo.length && elmInfo[idx] != null; idx++)
                         info[infoIdx++] = Locale.LS(elmInfo[idx]);
                 } else {
-                    info[infoIdx++] = "V = " + CircuitElm.getUnitText(mouseElm.getPostVoltage(sim.mousePost), "V");
-                    String nodeName = LabeledNodeElm.getNameByNode(mouseElm.nodes[sim.mousePost]);
+                    info[infoIdx++] = "V = " + CircuitElm.getUnitText(mouseElm.getPostVoltage(sim.getMousePost()), "V");
+                    String nodeName = LabeledNodeElm.getNameByNode(mouseElm.nodes[sim.getMousePost()]);
                     if (nodeName != null)
                         info[infoIdx++] = "Node: " + nodeName;
                 }
             } else {
-                info[0] = Locale.LS("time step = ") + CircuitElm.getUnitText(sim.timeStep, "s");
+                info[0] = Locale.LS("time step = ") + CircuitElm.getUnitText(sim.getTimingState().timeStep, "s");
             }
             if (sim.hintType != -1) {
                 for (i = 0; info[i] != null; i++)
@@ -235,8 +235,8 @@ final class StatusInfoRenderer {
             if (sim.savedFlag)
                 info[lineCount++] = "(saved)";
 
-            int snapX = sim.snapGrid(sim.inverseTransformX(sim.mouseCursorX));
-            int snapY = sim.snapGrid(sim.inverseTransformY(sim.mouseCursorY));
+            int snapX = sim.snapGrid(sim.inverseTransformX(sim.getMouseCursorX()));
+            int snapY = sim.snapGrid(sim.inverseTransformY(sim.getMouseCursorY()));
             info[lineCount++] = "cursor: (" + snapX + ", " + snapY + ")";
 
             info[lineCount++] = "EqnTable: " + (sim.equationTableMnaMode ? "MNA" : "Computed");

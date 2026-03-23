@@ -44,7 +44,7 @@ package com.lushprojects.circuitjs1.client;
 	}
 	String getChipName() { return "VCVS"; } 
 	void stamp() {
-            int vn = pins[inputCount].voltSource + sim.nodeList.size();
+            int vn = pins[inputCount].voltSource + sim.getCircuitAnalyzer().getNodeList().size();
             sim.stampNonLinear(vn);
             sim.stampVoltageSource(nodes[inputCount+1], nodes[inputCount], pins[inputCount].voltSource);
 	}
@@ -59,13 +59,13 @@ package com.lushprojects.circuitjs1.client;
 //        	if (Double.isNaN(volts[i]))
 //        	    volts[i] = 0;
 		}
-		int vn = pins[inputCount].voltSource + sim.nodeList.size();
+		int vn = pins[inputCount].voltSource + sim.getCircuitAnalyzer().getNodeList().size();
 		if (expr != null) {
 			// calculate output
 			for (i = 0; i != inputCount; i++)
 				exprState.values[i] = volts[i];
 				
-			exprState.t = sim.t;
+			exprState.t = sim.getTimingState().t;
 			double v0 = expr.eval(exprState);
 			if (Math.abs(volts[inputCount]-volts[inputCount+1]-v0) > Math.abs(v0)*.01 && sim.subIterations < 100)
 				sim.converged = false;
@@ -85,7 +85,7 @@ package com.lushprojects.circuitjs1.client;
 				if (Math.abs(dx) < 1e-6)
 					dx = sign(dx, 1e-6);
 	//        	    if (sim.subIterations > 1)
-	//        		sim.console("ccedx " + i + " " + dx + " v " + v + " v2 " + v2 + " dv " + dv + " lv " + lastVolts[i] + " " + volts[i] + " " + sim.subIterations + " " + sim.t);
+	//        		sim.console("ccedx " + i + " " + dx + " v " + v + " v2 " + v2 + " dv " + dv + " lv " + lastVolts[i] + " " + volts[i] + " " + sim.subIterations + " " + sim.getTimingState().t);
 
 				sim.stampMatrix(vn,  nodes[i], -dx); // stamp Jacobian entry into global MNA matrix
 				

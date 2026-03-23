@@ -166,7 +166,7 @@ public class AudioOutputElm extends CircuitElm {
 	    arr[1] = "V = " + getVoltageText(volts[0]);
 	    int ct = (dataFull ? dataCount : dataPtr);
 	    double dur = sampleStep * ct;
-	    arr[2] = "start = " + getUnitText(dataFull ? sim.t-duration : dataStart, "s");
+	    arr[2] = "start = " + getUnitText(dataFull ? sim.getTimingState().t-duration : dataStart, "s");
 	    arr[3] = "dur = " + getUnitText(dur, "s");
 	    arr[4] = "samples = " + ct + (dataFull ? "" : "/" + dataCount);
 	}
@@ -178,7 +178,7 @@ public class AudioOutputElm extends CircuitElm {
 	void stepFinished() {
 	    dataSample += volts[0];
 	    dataSampleCount++;
-	    if (sim.t >= nextDataSample) {
+	    if (sim.getTimingState().t >= nextDataSample) {
 		nextDataSample += sampleStep;
 		data[dataPtr++] = dataSample/dataSampleCount;
 		dataSampleCount = 0;
@@ -193,11 +193,11 @@ public class AudioOutputElm extends CircuitElm {
 	void setDataCount() {
 	    dataCount = (int) (samplingRate * duration);
 	    data = new double[dataCount];
-	    dataStart = sim.t;
+	    dataStart = sim.getTimingState().t;
 	    dataPtr = 0;
 	    dataFull = false;
 	    sampleStep = 1./samplingRate;
-	    nextDataSample = sim.t+sampleStep;
+	    nextDataSample = sim.getTimingState().t+sampleStep;
 	}
 	
 	int samplingRateChoices[] = { 8000, 11025, 16000, 22050, 44100, 48000 };
@@ -253,23 +253,23 @@ public class AudioOutputElm extends CircuitElm {
 	void setTimeStep() {
 	    /*
 	    // timestep must be smaller than 1/sampleRate
-	    if (sim.timeStep > sampleStep)
-		sim.timeStep = sampleStep;
+	    if (sim.getTimingState().timeStep > sampleStep)
+		sim.getTimingState().timeStep = sampleStep;
 	    else {
 		// make sure sampleStep/timeStep is an integer.  otherwise we get distortion
-//		int frac = (int)Math.round(sampleStep/sim.timeStep);
-//		sim.timeStep = sampleStep / frac;
+//		int frac = (int)Math.round(sampleStep/sim.getTimingState().timeStep);
+//		sim.getTimingState().timeStep = sampleStep / frac;
 		
 		// actually, just make timestep = 1/sampleRate
-		sim.timeStep = sampleStep;
+		sim.getTimingState().timeStep = sampleStep;
 	    }
 	    */
 	    
 //	    int frac = (int)Math.round(Math.max(sampleStep*33000, 1));
 	    double target = sampleStep/8;
-	    if (sim.maxTimeStep != target) {
+	    if (sim.getTimingState().maxTimeStep != target) {
                 if (okToChangeTimeStep || Window.confirm(Locale.LS("Adjust timestep for best audio quality and performance?"))) {
-                    sim.maxTimeStep = target;
+                    sim.getTimingState().maxTimeStep = target;
                     okToChangeTimeStep = true;
                 }
 	    }

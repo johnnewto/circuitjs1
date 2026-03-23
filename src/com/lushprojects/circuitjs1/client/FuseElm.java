@@ -132,10 +132,10 @@ class FuseElm extends CircuitElm {
 	    double i = getCurrent();
 	    
 	    // accumulate heat
-	    heat += i*i*sim.timeStep;
+	    heat += i*i*sim.getTimingState().timeStep;
 
 	    // dissipate heat.  we assume the fuse can dissipate its entire i2t in 3 seconds
-	    heat -= sim.timeStep*i2t/3;
+	    heat -= sim.getTimingState().timeStep*i2t/3;
 	    
 	    if (heat < 0)
 		heat = 0;

@@ -8,13 +8,13 @@ class MatrixStamper {
     }
 
     void stampVCVS(int n1, int n2, double coef, int vs) {
-        int vn = sim.nodeList.size() + vs;
+        int vn = sim.getCircuitAnalyzer().getNodeList().size() + vs;
         stampMatrix(vn, n1, coef);
         stampMatrix(vn, n2, -coef);
     }
 
     void stampVoltageSource(int n1, int n2, int vs, double v) {
-        int vn = sim.nodeList.size() + vs;
+        int vn = sim.getCircuitAnalyzer().getNodeList().size() + vs;
         stampMatrix(vn, n1, -1);
         stampMatrix(vn, n2, 1);
         stampRightSide(vn, v);
@@ -23,7 +23,7 @@ class MatrixStamper {
     }
 
     void stampVoltageSource(int n1, int n2, int vs) {
-        int vn = sim.nodeList.size() + vs;
+        int vn = sim.getCircuitAnalyzer().getNodeList().size() + vs;
         stampMatrix(vn, n1, -1);
         stampMatrix(vn, n2, 1);
         stampRightSide(vn);
@@ -32,7 +32,7 @@ class MatrixStamper {
     }
 
     void updateVoltageSource(int n1, int n2, int vs, double v) {
-        int vn = sim.nodeList.size() + vs;
+        int vn = sim.getCircuitAnalyzer().getNodeList().size() + vs;
         stampRightSide(vn, v);
     }
 
@@ -69,7 +69,7 @@ class MatrixStamper {
     }
 
     void stampCCCS(int n1, int n2, int vs, double gain) {
-        int vn = sim.nodeList.size() + vs;
+        int vn = sim.getCircuitAnalyzer().getNodeList().size() + vs;
         stampMatrix(n1, vn, gain);
         stampMatrix(n2, vn, -gain);
     }
@@ -82,11 +82,11 @@ class MatrixStamper {
             CirSim.debugger();
         }
         if (i > 0 && j > 0) {
-            if (sim.circuitNeedsMap) {
-                i = sim.circuitRowInfo[i - 1].mapRow;
-                RowInfo ri = sim.circuitRowInfo[j - 1];
+            if (sim.getSolverMatrixState().circuitNeedsMap) {
+                i = sim.getSolverMatrixState().circuitRowInfo[i - 1].mapRow;
+                RowInfo ri = sim.getSolverMatrixState().circuitRowInfo[j - 1];
                 if (ri.type == RowInfo.ROW_CONST) {
-                    sim.circuitRightSide[i] -= x * ri.value;
+                    sim.getSolverMatrixState().circuitRightSide[i] -= x * ri.value;
                     return;
                 }
                 j = ri.mapCol;
@@ -94,38 +94,38 @@ class MatrixStamper {
                 i--;
                 j--;
             }
-            sim.circuitMatrix[i][j] += x;
+            sim.getSolverMatrixState().circuitMatrix[i][j] += x;
         }
     }
 
     void stampRightSide(int i, double x) {
         if (i > 0) {
-            if (sim.circuitNeedsMap) {
-                i = sim.circuitRowInfo[i - 1].mapRow;
+            if (sim.getSolverMatrixState().circuitNeedsMap) {
+                i = sim.getSolverMatrixState().circuitRowInfo[i - 1].mapRow;
             } else
                 i--;
-            sim.circuitRightSide[i] += x;
+            sim.getSolverMatrixState().circuitRightSide[i] += x;
         }
     }
 
     void stampRightSide(int i) {
         if (i > 0)
-            sim.circuitRowInfo[i - 1].rsChanges = true;
+            sim.getSolverMatrixState().circuitRowInfo[i - 1].rsChanges = true;
     }
 
     void stampNonLinear(int i) {
         if (i > 0) {
-            sim.circuitRowInfo[i - 1].lsChanges = true;
+            sim.getSolverMatrixState().circuitRowInfo[i - 1].lsChanges = true;
         }
     }
 
     String getMatrixRowInfo(int row) {
-        int nodeCount = sim.nodeList.size();
+        int nodeCount = sim.getCircuitAnalyzer().getNodeList().size();
 
         int origRow = row;
-        if (sim.circuitRowInfo != null) {
-            for (int i = 0; i < sim.circuitRowInfo.length; i++) {
-                if (sim.circuitRowInfo[i].mapRow == row) {
+        if (sim.getSolverMatrixState().circuitRowInfo != null) {
+            for (int i = 0; i < sim.getSolverMatrixState().circuitRowInfo.length; i++) {
+                if (sim.getSolverMatrixState().circuitRowInfo[i].mapRow == row) {
                     origRow = i;
                     break;
                 }

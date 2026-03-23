@@ -140,8 +140,9 @@ class ScopeElm extends CircuitElm {
 	
 	// Apply inverse transform for proper rendering
 	// Note: setTransform() doesn't work in the version of canvas2svg we are using
-	g.context.scale(1 / sim.transform[0], 1 / sim.transform[3]);
-	g.context.translate(-sim.transform[4], -sim.transform[5]);
+	double[] transform = sim.getTransform();
+	g.context.scale(1 / transform[0], 1 / transform[3]);
+	g.context.translate(-transform[4], -transform[5]);
 
 	if (sim.isExporting) {
 	    drawForExport(g);
@@ -163,7 +164,8 @@ class ScopeElm extends CircuitElm {
 	setScopeRect();
 	
 	// Set zoom scale for text sizing - use average of X and Y scale factors
-	double zoomScale = (sim.transform[0] + sim.transform[3]) / 2.0;
+	double[] transform = sim.getTransform();
+	double zoomScale = (transform[0] + transform[3]) / 2.0;
 	elmScope.setZoomScale(zoomScale);
 	
 	// Draw shadow box around the scope to separate it from background

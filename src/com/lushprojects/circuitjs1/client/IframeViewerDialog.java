@@ -457,7 +457,7 @@ public class IframeViewerDialog extends DialogBox {
     private static String addCacheBustParamIfEnabled(String url) {
         if (url == null)
             return null;
-        if (CirSim.theSim == null || !CirSim.theSim.enableCacheBustedUrls)
+        if (CirSim.getInstance() == null || !CirSim.getInstance().enableCacheBustedUrls)
             return url;
         return url + (url.indexOf('?') >= 0 ? "&" : "?") + "v=" + System.currentTimeMillis();
     }

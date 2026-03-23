@@ -99,7 +99,7 @@ public class LoadFile extends FileUpload implements  ChangeHandler {
 		sim.getCircuitIOService().readCircuit(s);
 		sim.getUiPanelManager().createNewLoadFile();
 		sim.setCircuitTitle(t);
-		sim.currentCircuitFile = "local: " + t;
+		sim.getSFCRDocumentManager().setCurrentCircuitFile("local: " + t);
 		ExportAsLocalFileDialog.setLastFileName(t);
 		sim.unsavedChanges = false;
 	}

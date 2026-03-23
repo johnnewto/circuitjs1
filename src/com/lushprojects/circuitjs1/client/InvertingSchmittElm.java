@@ -129,7 +129,7 @@ package com.lushprojects.circuitjs1.client;
 			}
 		}
 	    
-	    double maxStep = slewRate * sim.timeStep * 1e9;
+	    double maxStep = slewRate * sim.getTimingState().timeStep * 1e9;
 	    out = Math.max(Math.min(v0+maxStep, out), v0-maxStep);
 	    sim.updateVoltageSource(0, nodes[1], voltSource, out);
 	}

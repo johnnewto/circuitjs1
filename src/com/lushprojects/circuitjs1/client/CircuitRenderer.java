@@ -15,7 +15,7 @@ class CircuitRenderer {
 
         sim.graphicsFrameCounter++;
 
-        boolean shouldDrawGraphics = sim.dragging ||
+        boolean shouldDrawGraphics = sim.isDragging() ||
                                      !sim.simRunning ||
                                      didAnalyze ||
                                      (sim.graphicsFrameCounter >= sim.graphicsUpdateInterval);
@@ -50,7 +50,8 @@ class CircuitRenderer {
             g.setColor(Color.white);
 
             double scale = CirSim.devicePixelRatio();
-            sim.cvcontext.setTransform(sim.transform[0] * scale, 0, 0, sim.transform[3] * scale, sim.transform[4] * scale, sim.transform[5] * scale);
+            double[] transform = sim.getTransform();
+            sim.cvcontext.setTransform(transform[0] * scale, 0, 0, transform[3] * scale, transform[4] * scale, transform[5] * scale);
 
             perfmon.startContext("elm.draw()");
 
@@ -82,18 +83,18 @@ class CircuitRenderer {
 
             perfmon.stopContext();
 
-            if (sim.mouseMode != CirSim.MODE_DRAG_ROW && sim.mouseMode != CirSim.MODE_DRAG_COLUMN) {
+            if (sim.getMouseMode() != CirSim.MODE_DRAG_ROW && sim.getMouseMode() != CirSim.MODE_DRAG_COLUMN) {
                 for (int i = 0; i != sim.postDrawList.size(); i++)
                     CircuitElm.drawPost(g, sim.postDrawList.get(i));
             }
 
-            if (sim.tempMouseMode == CirSim.MODE_DRAG_ROW ||
-                sim.tempMouseMode == CirSim.MODE_DRAG_COLUMN ||
-                sim.tempMouseMode == CirSim.MODE_DRAG_POST ||
-                sim.tempMouseMode == CirSim.MODE_DRAG_SELECTED) {
+            if (sim.getTempMouseMode() == CirSim.MODE_DRAG_ROW ||
+                sim.getTempMouseMode() == CirSim.MODE_DRAG_COLUMN ||
+                sim.getTempMouseMode() == CirSim.MODE_DRAG_POST ||
+                sim.getTempMouseMode() == CirSim.MODE_DRAG_SELECTED) {
                 for (int i = 0; i != sim.elmList.size(); i++) {
                     CircuitElm ce = sim.getElm(i);
-                    if (ce != mouseElm || sim.tempMouseMode != CirSim.MODE_DRAG_POST) {
+                    if (ce != mouseElm || sim.getTempMouseMode() != CirSim.MODE_DRAG_POST) {
                         g.setColor(Color.gray);
                         g.fillOval(ce.x - 3, ce.y - 3, 7, 7);
                         g.fillOval(ce.x2 - 3, ce.y2 - 3, 7, 7);
@@ -103,7 +104,7 @@ class CircuitRenderer {
                 }
             }
 
-            if (sim.tempMouseMode == CirSim.MODE_SELECT && mouseElm != null) {
+            if (sim.getTempMouseMode() == CirSim.MODE_SELECT && mouseElm != null) {
                 mouseElm.drawHandles(g, CircuitElm.selectColor);
             }
 
@@ -118,16 +119,17 @@ class CircuitRenderer {
                 g.fillOval(cn.x - 3, cn.y - 3, 7, 7);
             }
 
-            if (sim.selectedArea != null) {
+            Rectangle selectedArea = sim.getSelectedArea();
+            if (selectedArea != null) {
                 g.setColor(CircuitElm.selectColor);
-                g.drawRect(sim.selectedArea.x, sim.selectedArea.y, sim.selectedArea.width, sim.selectedArea.height);
+                g.drawRect(selectedArea.x, selectedArea.y, selectedArea.width, selectedArea.height);
             }
 
-            if (sim.crossHairCheckItem.getState() && sim.mouseCursorX >= 0
-                && sim.mouseCursorX <= sim.circuitArea.width && sim.mouseCursorY <= sim.circuitArea.height) {
+            if (sim.crossHairCheckItem.getState() && sim.getMouseCursorX() >= 0
+                && sim.getMouseCursorX() <= sim.circuitArea.width && sim.getMouseCursorY() <= sim.circuitArea.height) {
                 g.setColor(Color.gray);
-                int x = sim.snapGrid(sim.inverseTransformX(sim.mouseCursorX));
-                int y = sim.snapGrid(sim.inverseTransformY(sim.mouseCursorY));
+                int x = sim.snapGrid(sim.inverseTransformX(sim.getMouseCursorX()));
+                int y = sim.snapGrid(sim.inverseTransformY(sim.getMouseCursorY()));
                 g.drawLine(x, sim.inverseTransformY(0), x, sim.inverseTransformY(sim.circuitArea.height));
                 g.drawLine(sim.inverseTransformX(0), y, sim.inverseTransformX(sim.circuitArea.width), y);
             }
@@ -151,18 +153,19 @@ class CircuitRenderer {
         int height = 15;
         int increment = 15;
 
-        if (sim.currentCircuitFile != null) {
-            g.drawString("File: " + sim.currentCircuitFile, 10, height);
+        String currentCircuitFile = sim.getSFCRDocumentManager().getCurrentCircuitFile();
+        if (currentCircuitFile != null) {
+            g.drawString("File: " + currentCircuitFile, 10, height);
             height += increment;
         }
 
-        String timeStr = "t = " + sim.getPreferencesManager().formatTimeFixed(sim.t);
-        double timerate = 160 * iterCount * sim.timeStep;
+        String timeStr = "t = " + sim.getPreferencesManager().formatTimeFixed(sim.getTimingState().t);
+        double timerate = 160 * iterCount * sim.getTimingState().timeStep;
         if (timerate >= .1)
             timeStr += " (" + CircuitElm.showFormat.format(timerate) + "x)";
         g.drawString(timeStr, 10, height);
 
-        double realElapsed = (System.currentTimeMillis() - sim.realTimeStart) / 1000.0;
+        double realElapsed = (System.currentTimeMillis() - sim.getTimingState().realTimeStart) / 1000.0;
         g.drawString("real = " + CircuitElm.showFormat.format(realElapsed) + "s", 10, height += increment);
 
         g.drawString("Framerate: " + CircuitElm.showFormat.format(sim.framerate), 10, height += increment);

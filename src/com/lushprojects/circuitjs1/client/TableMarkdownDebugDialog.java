@@ -75,7 +75,7 @@ public class TableMarkdownDebugDialog {
      */
     public TableMarkdownDebugDialog(TableElm sourceTable) {
         this.sourceTable = sourceTable;
-        this.sim = CirSim.theSim;
+        this.sim = CirSim.getInstance();
         createDialog();
     }
     
@@ -464,10 +464,10 @@ public class TableMarkdownDebugDialog {
     private void appendCircuitMatrixInfo(StringBuilder md) {
         md.append("**Circuit Matrix Info:**\n");
         if (sim != null) {
-            md.append("- Matrix size: ").append(sim.circuitMatrixSize)
-              .append(" × ").append(sim.circuitMatrixSize).append("\n");
+            md.append("- Matrix size: ").append(sim.getSolverMatrixState().circuitMatrixSize)
+              .append(" × ").append(sim.getSolverMatrixState().circuitMatrixSize).append("\n");
             md.append("- Nodes: ")
-              .append(sim.nodeList != null ? sim.nodeList.size() : 0)
+              .append(sim.getCircuitAnalyzer().getNodeList() != null ? sim.getCircuitAnalyzer().getNodeList().size() : 0)
               .append(" (including ground)\n");
             md.append("- Voltage sources: ").append(sim.voltageSourceCount).append("\n");
         } else {

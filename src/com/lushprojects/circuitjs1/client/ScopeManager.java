@@ -2,9 +2,73 @@ package com.lushprojects.circuitjs1.client;
 
 final class ScopeManager {
     private final CirSim sim;
+    private int scopeSelected = -1;
+    private int scopeMenuSelected = -1;
+    private int menuScope = -1;
+    private int menuPlot = -1;
+    private double scopeHeightFraction = 0.2;
+    private boolean scopePanelMinimized;
+    private double normalScopeHeightFraction = 0.2;
+    private int oldScopeCount = -1;
 
     ScopeManager(CirSim sim) {
         this.sim = sim;
+    }
+
+    int getScopeSelected() {
+        return scopeSelected;
+    }
+
+    void setScopeSelected(int value) {
+        scopeSelected = value;
+    }
+
+    int getScopeMenuSelected() {
+        return scopeMenuSelected;
+    }
+
+    void setScopeMenuSelected(int value) {
+        scopeMenuSelected = value;
+    }
+
+    int getMenuScope() {
+        return menuScope;
+    }
+
+    void setMenuScope(int value) {
+        menuScope = value;
+    }
+
+    int getMenuPlot() {
+        return menuPlot;
+    }
+
+    void setMenuPlot(int value) {
+        menuPlot = value;
+    }
+
+    double getScopeHeightFraction() {
+        return scopeHeightFraction;
+    }
+
+    void setScopeHeightFraction(double value) {
+        scopeHeightFraction = value;
+    }
+
+    boolean isScopePanelMinimized() {
+        return scopePanelMinimized;
+    }
+
+    void setScopePanelMinimized(boolean value) {
+        scopePanelMinimized = value;
+    }
+
+    double getNormalScopeHeightFraction() {
+        return normalScopeHeightFraction;
+    }
+
+    void setNormalScopeHeightFraction(double value) {
+        normalScopeHeightFraction = value;
     }
 
     int countScopeElms() {
@@ -184,9 +248,9 @@ final class ScopeManager {
 	    if (!r.equals(s.rect))
 		s.setRect(r);
 	}
-	if (sim.oldScopeCount != sim.scopeCount) {
+	if (oldScopeCount != sim.scopeCount) {
 	    sim.getViewportController().setCircuitArea();
-	    sim.oldScopeCount = sim.scopeCount;
+	    oldScopeCount = sim.scopeCount;
 	}
     }
 
@@ -195,7 +259,7 @@ final class ScopeManager {
 	int buttonX = sim.circuitArea.width - CirSim.SCOPE_MIN_MAX_BUTTON_SIZE - 10;
 	int buttonY = minHeightY - CirSim.SCOPE_MIN_MAX_BUTTON_SIZE / 2;
 
-	boolean hover = mouseIsOverScopeMinMaxButton(sim.mouseCursorX, sim.mouseCursorY);
+	boolean hover = mouseIsOverScopeMinMaxButton(sim.getMouseCursorX(), sim.getMouseCursorY());
 	g.setColor(hover ? CircuitElm.selectColor : Color.gray);
 
 	g.context.save();
@@ -207,7 +271,7 @@ final class ScopeManager {
 	int arrowSize = 6;
 
 	g.context.beginPath();
-	if (!sim.scopePanelMinimized) {
+	if (!scopePanelMinimized) {
 	    g.context.moveTo(centerX, centerY - arrowSize / 2);
 	    g.context.lineTo(centerX - arrowSize, centerY + arrowSize / 2);
 	    g.context.moveTo(centerX, centerY - arrowSize / 2);
@@ -233,12 +297,12 @@ final class ScopeManager {
     }
 
     void toggleScopePanelSize() {
-	sim.scopePanelMinimized = !sim.scopePanelMinimized;
-	if (sim.scopePanelMinimized) {
-	    sim.normalScopeHeightFraction = sim.scopeHeightFraction;
-	    sim.scopeHeightFraction = 0.1;
+	scopePanelMinimized = !scopePanelMinimized;
+	if (scopePanelMinimized) {
+	    normalScopeHeightFraction = scopeHeightFraction;
+	    scopeHeightFraction = 0.1;
 	} else {
-	    sim.scopeHeightFraction = sim.normalScopeHeightFraction;
+	    scopeHeightFraction = normalScopeHeightFraction;
 	}
 	sim.getViewportController().setCircuitArea();
 	sim.repaint();

@@ -188,7 +188,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             int vs = rows[row].rowVoltSource;
             
             if (nodeNum >= 0 && vs >= 0) {
-                int vn = voltSource + vs + sim.nodeList.size();
+                int vn = voltSource + vs + sim.getCircuitAnalyzer().getNodeList().size();
                 sim.stampNonLinear(vn);
                 sim.stampVoltageSource(0, nodeNum, voltSource + vs);
                 
@@ -218,7 +218,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             
             // MNA mode: stamp to matrix
             if (isMnaMode() && rows[row].rowVoltSource >= 0) {
-                int vn = voltSource + rows[row].rowVoltSource + sim.nodeList.size();
+                int vn = voltSource + rows[row].rowVoltSource + sim.getCircuitAnalyzer().getNodeList().size();
                 if (!stampVoltageModeNewtonJacobian(row, state, equationValue, vn)) {
                     if ("not attempted".equals(rows[row].lastNewtonJacobianStatus)) {
                         rows[row].lastNewtonJacobianStatus = "fallback: direct rhs";
@@ -1186,7 +1186,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     private ExprState prepareEvalState(int row) {
         ExprState state = getOrCreateExprState(row);
         state.values[0] = rows[row].sliderValue;
-        state.t = sim.t;
+        state.t = sim.getTimingState().t;
         
         String sliderVar = rows[row].sliderVarName;
         if (sliderVar != null && !sliderVar.isEmpty()) {
@@ -1773,7 +1773,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * converting E_NODE_REF nodes to E_GSLOT where the name has a slot assignment.
      */
     void resolveExprSlots() {
-        CirSim sim = CirSim.theSim;
+        CirSim sim = CirSim.getInstance();
         if (sim == null || sim.nameToSlot == null) return;
         for (int row = 0; row < rowCount; row++) {
             if (rows[row].compiledExpr != null)
@@ -1821,7 +1821,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      */
     void doStep() {
         if (DEBUG && sim.subIterations == 0) {
-            CirSim.console("[EquationTableElm." + tableName + "] doStep() at t=" + sim.t + " mnaMode=" + isMnaMode());
+            CirSim.console("[EquationTableElm." + tableName + "] doStep() at t=" + sim.getTimingState().t + " mnaMode=" + isMnaMode());
         }
         
         for (int row = 0; row < rowCount; row++) {
@@ -1851,7 +1851,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      *         normal equation evaluation for this subiteration).
      */
     private boolean handleInitialValueRowAtT0(int row) {
-        if (sim.t != 0 || rows[row].compiledInitialExpr == null) {
+        if (sim.getTimingState().t != 0 || rows[row].compiledInitialExpr == null) {
             return false;
         }
 
@@ -1883,7 +1883,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     private void stampInitialPlaceholder(int row) {
         rows[row].outputValue = 0;
         if (isMnaMode() && rows[row].rowVoltSource >= 0) {
-            int vn = voltSource + rows[row].rowVoltSource + sim.nodeList.size();
+            int vn = voltSource + rows[row].rowVoltSource + sim.getCircuitAnalyzer().getNodeList().size();
             sim.stampRightSide(vn, 0);
         }
     }
@@ -1916,7 +1916,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         RowOutputMode mode = rows[row].outputMode;
         if (isMnaMode() && rows[row].rowVoltSource >= 0) {
             // VOLTAGE mode in MNA: stamp the initial value via stampRightSide
-            int vn = voltSource + rows[row].rowVoltSource + sim.nodeList.size();
+            int vn = voltSource + rows[row].rowVoltSource + sim.getCircuitAnalyzer().getNodeList().size();
             sim.stampRightSide(vn, initialValue);
         }
         
@@ -1944,7 +1944,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         double initialValue = rows[row].outputValue;
 
         if (isMnaMode() && rows[row].rowVoltSource >= 0) {
-            int vn = voltSource + rows[row].rowVoltSource + sim.nodeList.size();
+            int vn = voltSource + rows[row].rowVoltSource + sim.getCircuitAnalyzer().getNodeList().size();
             sim.stampRightSide(vn, initialValue);
         }
 
@@ -2034,7 +2034,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      */
     private void logConvergenceFailureIfThresholdExceeded() {
         if (sim.subIterations > sim.convergenceCheckThreshold) {
-            CirSim.console("[" + tableName + "] t=" + sim.t + " dt=" + sim.timeStep
+            CirSim.console("[" + tableName + "] t=" + sim.getTimingState().t + " dt=" + sim.getTimingState().timeStep
                     + " Convergence failure: " + convergenceFailureInfo);
         }
     }
@@ -2085,7 +2085,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             
             // Commit any pending integration
             if (rows[row].exprState != null) {
-                rows[row].exprState.commitIntegration(sim.timeStep);
+                rows[row].exprState.commitIntegration(sim.getTimingState().timeStep);
             }
             
             // Update state for next timestep
@@ -2542,7 +2542,7 @@ class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             sim.getMouseInputHandler().setCursorStyle("cursorAdjust");
         } else {
             // Reset cursor to default based on mouse mode
-            sim.getMouseInputHandler().setCursorStyle(sim.mouseMode == CirSim.MODE_ADD_ELM ? "cursorCross" : "cursorPointer");
+            sim.getMouseInputHandler().setCursorStyle(sim.getMouseMode() == CirSim.MODE_ADD_ELM ? "cursorCross" : "cursorPointer");
         }
     }
     

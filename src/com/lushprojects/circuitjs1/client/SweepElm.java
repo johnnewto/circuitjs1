@@ -110,13 +110,13 @@ class SweepElm extends CircuitElm {
 	    dir = 1;
 	}
 	if ((flags & FLAG_LOG) == 0) {
-	    fadd = dir*sim.timeStep*(maxF-minF)/sweepTime;
+	    fadd = dir*sim.getTimingState().timeStep*(maxF-minF)/sweepTime;
 	    fmul = 1;
 	} else {
 	    fadd = 0;
-	    fmul = Math.pow(maxF/minF, dir*sim.timeStep/sweepTime);
+	    fmul = Math.pow(maxF/minF, dir*sim.getTimingState().timeStep/sweepTime);
 	}
-	savedTimeStep = sim.timeStep;
+	savedTimeStep = sim.getTimingState().timeStep;
     }
     void reset() {
 	frequency = minF;
@@ -127,10 +127,10 @@ class SweepElm extends CircuitElm {
     double v;
     void startIteration() {
 	// has timestep been changed?
-	if (sim.timeStep != savedTimeStep)
+	if (sim.getTimingState().timeStep != savedTimeStep)
 	    setParams();
 	v = Math.sin(freqTime)*maxV;
-	freqTime += frequency*2*pi*sim.timeStep;
+	freqTime += frequency*2*pi*sim.getTimingState().timeStep;
 	frequency = frequency*fmul+fadd;
 	if (frequency >= maxF && dir == 1) {
 	    if ((flags & FLAG_BIDIR) != 0) {
@@ -184,7 +184,7 @@ class SweepElm extends CircuitElm {
 	return null;
     }
     public void setEditValue(int n, EditInfo ei) {
-	double maxfreq = 1/(8*sim.timeStep);
+	double maxfreq = 1/(8*sim.getTimingState().timeStep);
 	if (n == 0) {
 	    minF = ei.value;
 	    if (minF > maxfreq)

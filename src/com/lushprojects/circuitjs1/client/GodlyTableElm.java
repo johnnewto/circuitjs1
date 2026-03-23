@@ -97,15 +97,15 @@ public class GodlyTableElm extends TableElm {
         ExprState state = integrationStates[col];
         
         // On first step, use the initial condition
-        if (sim.t == 0.0) {
+        if (sim.getTimingState().t == 0.0) {
             double initialValue = getInitialValue(col);
             state.lastOutput = initialValue;
-            return StockFlowTableSemantics.integratedValue(sim.t, initialValue, state.lastOutput, sim.timeStep, columnSum);
+            return StockFlowTableSemantics.integratedValue(sim.getTimingState().t, initialValue, state.lastOutput, sim.getTimingState().timeStep, columnSum);
         }
         
         // Set up expression state
         state.values[0] = columnSum; // 'a' = columnSum
-        state.t = sim.t;
+        state.t = sim.getTimingState().t;
         
         double lastOut = state.lastOutput;
         
@@ -113,7 +113,7 @@ public class GodlyTableElm extends TableElm {
         // Each column has its own Expr instance to avoid state sharing/caching issues
         Expr expr = (integrationExprs != null && col < integrationExprs.length) ? integrationExprs[col] : null;
         if (expr == null) {
-            return StockFlowTableSemantics.integratedValue(sim.t, getInitialValue(col), lastOut, sim.timeStep, columnSum);
+            return StockFlowTableSemantics.integratedValue(sim.getTimingState().t, getInitialValue(col), lastOut, sim.getTimingState().timeStep, columnSum);
         }
         double result = expr.eval(state);
         
@@ -422,7 +422,7 @@ public class GodlyTableElm extends TableElm {
             if (nodeNum >= 0 && vs >= 0) {
                 // Stamp voltage source from ground (0) to the LabeledNode's node
                 // This drives the LabeledNode to the integrated value
-                int vn = voltSource + vs + sim.nodeList.size();
+                int vn = voltSource + vs + sim.getCircuitAnalyzer().getNodeList().size();
                 sim.stampNonLinear(vn);
                 sim.stampVoltageSource(0, nodeNum, voltSource + vs);
                 
@@ -438,7 +438,7 @@ public class GodlyTableElm extends TableElm {
     @Override
     void postStamp() {
         super.postStamp();
-        CirSim csim = CirSim.theSim;
+        CirSim csim = CirSim.getInstance();
         if (csim == null || csim.nameToSlot == null) return;
         if (integrationExprs != null) {
             for (int i = 0; i < integrationExprs.length; i++) {
@@ -547,7 +547,7 @@ public class GodlyTableElm extends TableElm {
                                  " sum convergence failed: diff=" + Math.abs(columnSum - lastColumnSums[col]) + 
                                  " limit=" + convergeLimit +
                                  " (new=" + columnSum + ", old=" + lastColumnSums[col] + 
-                                 ") at t=" + sim.t + " subiter=" + sim.subIterations);
+                                 ") at t=" + sim.getTimingState().t + " subiter=" + sim.subIterations);
                 }
             }
             lastColumnSums[col] = columnSum;
@@ -563,7 +563,7 @@ public class GodlyTableElm extends TableElm {
             if (labeledNodeNumbers != null && col < labeledNodeNumbers.length &&
                 labeledNodeNumbers[col] >= 0 && colVoltSources[col] >= 0) {
                 
-                int vn = voltSource + colVoltSources[col] + sim.nodeList.size();
+                int vn = voltSource + colVoltSources[col] + sim.getCircuitAnalyzer().getNodeList().size();
                 
                 // Stamp the right side with the integrated value
                 sim.stampRightSide(vn, integratedValue);
@@ -620,7 +620,7 @@ public class GodlyTableElm extends TableElm {
         }
         
         // At t=0 or before first step, return initial value
-        if (sim.t == 0.0 || integratedValues == null) {
+        if (sim.getTimingState().t == 0.0 || integratedValues == null) {
             return getInitialValue(col);
         }
         
@@ -700,7 +700,7 @@ public class GodlyTableElm extends TableElm {
         CirSim.console("=== GodlyTable Debug State ===");
         CirSim.console("Position: (" + x + "," + y + ")");
         CirSim.console("Size: " + rows + "x" + getCols());
-        CirSim.console("Time: t=" + sim.t + ", timeStep=" + sim.timeStep);
+        CirSim.console("Time: t=" + sim.getTimingState().t + ", timeStep=" + sim.getTimingState().timeStep);
         CirSim.console("Integration Expressions: " + (integrationExprs != null ? integrationExprs.length + " columns" : "NULL"));
         
         int colLimit = (getCols() >= 4) ? (getCols() - 1) : getCols();

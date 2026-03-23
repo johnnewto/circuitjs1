@@ -348,6 +348,7 @@ public class CirSim {
     CheckboxMenuItem electronicsModeCheckItem;
     CheckboxMenuItem economicsModeCheckItem;
     CheckboxMenuItem weightedPriorityCheckItem;
+    private final MenuUiState menuUiState = new MenuUiState();
     
     enum ToolbarType { ELECTRONICS, ECONOMICS }
     ToolbarType currentToolbarType = ToolbarType.ECONOMICS;
@@ -355,22 +356,14 @@ public class CirSim {
     String timeUnitSymbol = "yr"; // Custom time unit symbol (yr for economics default)
 	int infoViewerUpdateIntervalMs = 100; // InfoViewer live update throttling interval
     boolean useWeightedPriority = false; // Weighted priority for Asset/Equity columns
-    String modelInfoContent = null; // Markdown info content from @info block in SFCR files
-	String modelInfoSourceText = null; // Full SFCR source for editing in InfoViewer
-	private final SFCRDocumentState sfcrDocumentState = new SFCRDocumentState();
-    MenuItem viewModelInfoItem; // Menu item for viewing model info
-	MenuItem helpViewModelInfoItem; // Help menu item for viewing model info
-    String currentCircuitFile = null; // Current circuit file name and location for display
+	private final SFCRDocumentManager sfcrDocumentManager = new SFCRDocumentManager();
 
 	SFCRDocumentState getSFCRDocumentState() {
-	return sfcrDocumentState;
+	return sfcrDocumentManager.getState();
 	}
 
 	String getModelInfoEditorContent() {
-	    if (modelInfoSourceText != null && !modelInfoSourceText.isEmpty()) {
-		return modelInfoSourceText;
-	    }
-	    return modelInfoContent;
+	    return sfcrDocumentManager.getModelInfoEditorContent();
 	}
 
     private Label powerLabel;
@@ -378,8 +371,6 @@ public class CirSim {
     private Scrollbar speedBar;
     private Scrollbar currentBar;
     private Scrollbar powerBar;
-    MenuBar elmMenuBar;
-	MenuBar helpMenuBar;
     MenuItem elmEditMenuItem;
     MenuItem elmCutMenuItem;
     MenuItem elmCopyMenuItem;
@@ -399,22 +390,10 @@ public class CirSim {
     MenuItem unstackAllItem;
     MenuItem combineAllItem;
     MenuItem separateAllItem;
-    MenuBar mainMenuBar;
     boolean hideMenu = false;
-    MenuBar selectScopeMenuBar;
-    Vector<MenuItem> selectScopeMenuItems;
-    MenuBar subcircuitMenuBar[];
-    ScopePopupMenu scopePopupMenu;
     Element sidePanelCheckboxLabel;
    
-    String lastCursorStyle;
-    boolean mouseWasOverSplitter = false;
-
     // Class addingClass;
-    PopupPanel contextPanel = null;
-    int mouseMode = MODE_SELECT;
-    int tempMouseMode = MODE_SELECT;
-    String mouseModeStr = "Select";
     // Mathematical constants
     static final double pi = 3.14159265358979323846;
     
@@ -431,14 +410,7 @@ public class CirSim {
     // UI layout constants
     static final int infoWidth = 200;         // Width of info panel in pixels
     
-    int dragGridX, dragGridY, dragScreenX, dragScreenY, initDragGridX, initDragGridY;
-    long mouseDownTime;
-    long zoomTime;
-    int mouseCursorX = -1;
-    int mouseCursorY = -1;
-    Rectangle selectedArea;
     int gridSize, gridMask, gridRound;
-    boolean dragging;
     boolean analyzeFlag, needsStamp, savedFlag;
     boolean dumpMatrix;
     boolean needsRecoverySave;  // Defer recovery save until drag completes
@@ -447,16 +419,9 @@ public class CirSim {
     boolean isMac;
     String ctrlMetaKey;
     
-    // Simulation time control
-    double t;                      // Current simulation time (seconds)
-    long realTimeStart;            // Real wall-clock time when simulation started (ms)
+    // Simulation timing state
+    private final SimulationTimingState timingState = new SimulationTimingState();
 
-    // Scope and menu selection
-    int scopeSelected = -1;        // Currently selected scope panel index
-    int scopeMenuSelected = -1;    // Scope selected via menu
-    int menuScope = -1;            // Scope for context menu
-    int menuPlot = -1;             // Plot for context menu
-    
     // Hint system (shows helpful formulas)
     int hintType = -1;             // Type of hint to display (HINT_LC, HINT_RC, etc.)
     int hintItem1, hintItem2;      // Elements involved in hint
@@ -464,13 +429,6 @@ public class CirSim {
     // Error/stop handling
     String stopMessage;            // Error message when simulation stops
 	String warningMessage;         // Non-fatal warning shown in bottom-left status area
-    
-    // Timestep control
-    double timeStep;               // Current timestep (time between iterations)
-    double maxTimeStep;            // Maximum timestep (reduced when convergence is difficult)
-    double minTimeStep;            // Minimum allowed timestep
-    double timeStepAccum;          // Accumulated time since timeStepCount increment
-    int timeStepCount;             // Counter incremented each maxTimeStep advance
     
     // Mouse wheel sensitivity
     double wheelSensitivity = 1;
@@ -526,46 +484,29 @@ public class CirSim {
     
     // Element references for UI interaction
     CircuitElm dragElm;                   // Element currently being dragged
-    CircuitElm menuElm;                   // Element with context menu open
     CircuitElm stopElm;                   // Element that caused simulation to stop
     private CircuitElm mouseElm = null;
     private TableElm lastInteractedTable = null; // Track last table clicked for draw order
     boolean didSwitch = false;
-    int mousePost = -1;
+    private final SolverMatrixState solverMatrixState = new SolverMatrixState();
     
     // MNA node number currently highlighted (from hovering a LabeledNodeElm), or -1
     int highlightedNode = -1;
     CircuitElm plotXElm, plotYElm;
-    int draggingPost;
     SwitchElm heldSwitchElm;
-    // Modified Nodal Analysis (MNA) matrix data structures
-    // The circuit is solved by: circuitMatrix × nodeVoltages = circuitRightSide
-    double circuitMatrix[][];             // [A] Admittance/conductance matrix (after simplification)
-    double circuitRightSide[];            // [B] Known values (current sources, voltage sources)
-    double nodeVoltages[];                // [X] Solution vector (node voltages + voltage source currents)
-    double[] lastNodeVoltages;            // Previous solution for convergence checking
-
     // Circuit-global value array for E_GSLOT fast expression evaluation path.
     // Filled once per subiteration (after applySolvedRightSide + commitPendingToCurrentValues).
     // Indexed by slot number stored inside each E_GSLOT Expr node.
     double[] circuitVariables;           // Flat value array: node voltages + computed values
     String[] slotNames;                  // Parallel name array: slotNames[i] is the name for circuitVariables[i]
     java.util.HashMap<String, Integer> nameToSlot; // name → circuitVariables[] slot index (used at analysis time only)
-    double origMatrix[][];                // Original matrix before simplification
-    double origRightSide[];               // Original right side before simplification
-    RowInfo circuitRowInfo[];             // Metadata for each matrix row (optimization info)
-    int circuitPermute[];                 // Row permutation for LU decomposition
     
     // Circuit state flags
     boolean simRunning;                   // True when simulation is actively running
     boolean simRunningBeforeDrag;         // Saved state: was simulation running before drag started?
-    boolean circuitNonLinear;             // True if circuit has nonlinear elements (diodes, transistors)
-    boolean circuitNeedsMap;              // True if matrix simplification created row mapping
     
     // Circuit dimensions
     int voltageSourceCount;               // Number of voltage sources (adds rows to matrix)
-    int circuitMatrixSize;                // Size of matrix after simplification
-    int circuitMatrixFullSize;            // Size of matrix before simplification
     // public boolean useFrame;
     int scopeCount;
     Scope scopes[];
@@ -577,25 +518,15 @@ public class CirSim {
     String shortcuts[];
     String clipboard;
     Rectangle circuitArea;
-    double transform[];
     boolean unsavedChanges;
     HashMap<String, String> classToLabelMap;
     Toolbar toolbar;
 
     DockLayoutPanel layoutPanel;
-    MenuBar menuBar;
-    MenuBar drawMenuBar;
-    MenuBar fileMenuBar;
     VerticalPanel verticalPanel;
     CellPanel buttonPanel;
-    private boolean mouseDragging;
-    double scopeHeightFraction = 0.2;
-    boolean scopePanelMinimized = false;
-    double normalScopeHeightFraction = 0.2;
     static final int SCOPE_MIN_MAX_BUTTON_SIZE = 24;
 
-    Vector<CheckboxMenuItem> mainMenuItems = new Vector<CheckboxMenuItem>();
-    Vector<String> mainMenuItemNames = new Vector<String>();
     
     // Menu definition loaded from menulist.txt
     String menuDefinition = null;
@@ -691,6 +622,35 @@ public CirSim() {
 	    return mouseInputHandler;
 	}
 
+	MenuUiState getMenuUiState() {
+	    return menuUiState;
+	}
+
+	CircuitAnalyzer getCircuitAnalyzer() {
+	    return circuitAnalyzer;
+	}
+
+	SimulationTimingState getTimingState() {
+	    return timingState;
+	}
+
+	SolverMatrixState getSolverMatrixState() {
+	    return solverMatrixState;
+	}
+
+
+	boolean isMouseWasOverSplitter() { return mouseInputHandler.isMouseWasOverSplitter(); }
+	int getMouseMode() { return mouseInputHandler.getMouseMode(); }
+	int getTempMouseMode() { return mouseInputHandler.getTempMouseMode(); }
+	void setTempMouseMode(int value) { mouseInputHandler.setTempMouseMode(value); }
+	String getMouseModeStr() { return mouseInputHandler.getMouseModeStr(); }
+	void setMouseModeStr(String value) { mouseInputHandler.setMouseModeStr(value); }
+	int getMouseCursorX() { return mouseInputHandler.getMouseCursorX(); }
+	int getMouseCursorY() { return mouseInputHandler.getMouseCursorY(); }
+	Rectangle getSelectedArea() { return mouseInputHandler.getSelectedArea(); }
+	boolean isDragging() { return mouseInputHandler.isDragging(); }
+	int getMousePost() { return mouseInputHandler.getMousePost(); }
+
 	ScopeManager getScopeManager() {
 	    return scopeManager;
 	}
@@ -741,6 +701,10 @@ public CirSim() {
 
 	TableMasterRegistryManager getTableMasterRegistryManager() {
 	    return tableMasterRegistryManager;
+	}
+
+	SFCRDocumentManager getSFCRDocumentManager() {
+	    return sfcrDocumentManager;
 	}
 
 	CirSimBootstrap getBootstrap() {
@@ -882,7 +846,11 @@ public CirSim() {
     int frames = 0;
     int steps = 0;
     int framerate = 0, steprate = 0;
-    static CirSim theSim;
+    private static CirSim theSim;
+
+    static CirSim getInstance() {
+	return theSim;
+    }
     
     // Test dialog for mathematical elements
     private static MathElementsTestDialog mathTestDialog = null;
@@ -997,7 +965,7 @@ public CirSim() {
      * 2. STAMP (if needed) - Populate MNA matrices
      *    - stamp(): Each element contributes to matrix (linear elements)
      *    - simplifyMatrix(): Remove trivial rows for performance
-     *    - lu_factor(): Decompose matrix (for linear circuits only)
+     *    - CircuitMatrixOps.luFactor(): Decompose matrix (for linear circuits only)
      *    Cost: ~5-20ms including O(n³) LU factorization (SKIPPED during drag)
      *    
      * 3. SIMULATE (if running) - Solve circuit for current timestep
@@ -1019,14 +987,12 @@ public CirSim() {
 	simulationLoop.updateCircuit();
     }
 
-    int oldScopeCount = -1;
-    
     boolean scopeMenuIsSelected(Scope s) {
-	if (scopeMenuSelected < 0)
+	if (getScopeManager().getScopeMenuSelected() < 0)
 	    return false;
-	if (scopeMenuSelected < scopeCount)
-	    return scopes[scopeMenuSelected] == s;
-	return scopeManager.getNthScopeElm(scopeMenuSelected-scopeCount).elmScope == s; 
+	if (getScopeManager().getScopeMenuSelected() < scopeCount)
+	    return scopes[getScopeManager().getScopeMenuSelected()] == s;
+	return scopeManager.getNthScopeElm(getScopeManager().getScopeMenuSelected()-scopeCount).elmScope == s; 
     }
     
 //    public void toggleSwitch(int n) {
@@ -1052,15 +1018,12 @@ public CirSim() {
 	    enableDisableMenuItems();
     }
     
-    Vector<CircuitNode> nodeList;
     Vector<Point> postDrawList = new Vector<>();
     Vector<Point> badConnectionList = new Vector<>();
     CircuitElm voltageSources[];
 
     public CircuitNode getCircuitNode(int n) {
-	if (n >= nodeList.size())
-	    return null;
-	return nodeList.elementAt(n);
+	return circuitAnalyzer.getCircuitNode(n);
     }
 
     public CircuitElm getElm(int n) {
@@ -1103,8 +1066,6 @@ public CirSim() {
 	NodeMapEntry() { node = -1; }
 	NodeMapEntry(int n) { node = n; }
     }
-    // map points to node numbers
-    HashMap<Point,NodeMapEntry> nodeMap;
     
     static class WireInfo {
 	CircuitElm wire;
@@ -1115,8 +1076,6 @@ public CirSim() {
 	}
     }
     
-    // info about each wire and its neighbors, used to calculate wire currents
-    Vector<WireInfo> wireInfoList;
 
 
     /**
@@ -1141,12 +1100,6 @@ public CirSim() {
      * @see TableElm#registerAsMasterOnly()
      * @see ComputedValues
      */
-
-
-    Vector<Integer> unconnectedNodes;
-    Vector<CircuitElm> nodesWithGroundConnection;
-    int nodesWithGroundConnectionCount;
-
     // analyze the circuit when something changes, so it can be simulated.
     // Most of this has been moved to preStampCircuit() so it can be avoided if the simulation is stopped.
     void analyzeCircuit() {
@@ -1171,7 +1124,7 @@ public CirSim() {
 
 	void stop(String s, CircuitElm ce) {
 	stopMessage = Locale.LS(s);
-	circuitMatrix = null;  // causes an exception
+	solverMatrixState.circuitMatrix = null;  // causes an exception
 	stopElm = ce;
 	setSimRunning(false);
 	analyzeFlag = false;
@@ -1285,11 +1238,11 @@ public CirSim() {
     public void resetAction(){
     	int i;
     	analyzeFlag = true;
-    	if (t == 0)
+    	if (timingState.t == 0)
     	    setSimRunning(true);
-    	t = timeStepAccum = 0;
-    	timeStepCount = 0;
-    	realTimeStart = System.currentTimeMillis();
+    	timingState.t = timingState.timeStepAccum = 0;
+    	timingState.timeStepCount = 0;
+    	timingState.realTimeStart = System.currentTimeMillis();
     	
     	// Clear computed values before resetting elements to prevent stale values
     	ComputedValues.clearComputedValues();
@@ -1298,14 +1251,14 @@ public CirSim() {
     	ComputedValues.clearMasterTables();
 		    	
     	// Clear node voltages to ensure clean start
-    	if (nodeVoltages != null) {
-    	    for (i = 0; i < nodeVoltages.length; i++) {
-    	        nodeVoltages[i] = 0.0;
+    	if (solverMatrixState.nodeVoltages != null) {
+    	    for (i = 0; i < solverMatrixState.nodeVoltages.length; i++) {
+    	        solverMatrixState.nodeVoltages[i] = 0.0;
     	    }
     	}
-    	if (lastNodeVoltages != null) {
-    	    for (i = 0; i < lastNodeVoltages.length; i++) {
-    	        lastNodeVoltages[i] = 0.0;
+    	if (solverMatrixState.lastNodeVoltages != null) {
+    	    for (i = 0; i < solverMatrixState.lastNodeVoltages.length; i++) {
+    	        solverMatrixState.lastNodeVoltages[i] = 0.0;
     	    }
     	}
  
@@ -1358,7 +1311,7 @@ public CirSim() {
     }
 
 	void doImageToClipboardCore() {
-	Canvas cv = CirSim.theSim.getExportCompositeActions().getCircuitAsCanvas(CAC_IMAGE);
+	Canvas cv = CirSim.getInstance().getExportCompositeActions().getCircuitAsCanvas(CAC_IMAGE);
 	clipboardWriteImage(cv.getCanvasElement());
 	}
 
@@ -1456,7 +1409,7 @@ public CirSim() {
 	if (showValuesCheckItem != null)
 	    showValuesCheckItem.setState((flags & 16) == 0);
 	adjustTimeStep = (flags & 64) != 0;
-	maxTimeStep = timeStep = new Double (st.nextToken()).doubleValue();
+	timingState.maxTimeStep = timingState.timeStep = new Double (st.nextToken()).doubleValue();
 	double sp = Double.parseDouble(st.nextToken());
 	int sp2 = (int) (Math.log(10*sp)*24+61.5);
 	//int sp2 = (int) (Math.log(sp)*24+1.5);
@@ -1472,7 +1425,7 @@ public CirSim() {
 	    int pbv = Integer.parseInt(st.nextToken());
 	    if (powerBar != null)
 		powerBar.setValue(pbv);
-	    minTimeStep = Double.parseDouble(st.nextToken());
+	    timingState.minTimeStep = Double.parseDouble(st.nextToken());
 	} catch (Exception e) {
 	}
 	preferencesManager.setGrid();
@@ -1491,8 +1444,8 @@ public CirSim() {
     }
 
     void doSplit(CircuitElm ce) {
-	int x = snapGrid(inverseTransformX(menuX));
-	int y = snapGrid(inverseTransformY(menuY));
+	int x = snapGrid(inverseTransformX(getMenuX()));
+	int y = snapGrid(inverseTransformY(getMenuY()));
 	if (ce == null || !(ce instanceof WireElm))
 	    return;
 	if (ce.x == ce.x2)
@@ -1583,7 +1536,7 @@ public CirSim() {
      * @return Grid X coordinate in circuit space
      */
     int inverseTransformX(double x) {
-	return (int) ((x-transform[4])/transform[0]);
+	return getViewportController().inverseTransformX(x);
     }
 
     /**
@@ -1594,7 +1547,7 @@ public CirSim() {
      * @return Grid Y coordinate in circuit space
      */
     int inverseTransformY(double y) {
-	return (int) ((y-transform[5])/transform[3]);
+	return getViewportController().inverseTransformY(y);
     }
     
     /**
@@ -1605,7 +1558,7 @@ public CirSim() {
      * @return Screen X coordinate (pixels)
      */
     int transformX(double x) {
-	return (int) ((x*transform[0]) + transform[4]);
+	return getViewportController().transformX(x);
     }
     
     /**
@@ -1616,12 +1569,45 @@ public CirSim() {
      * @return Screen Y coordinate (pixels)
      */
     int transformY(double y) {
-	return (int) ((y*transform[3]) + transform[5]);
+	return getViewportController().transformY(y);
     }
-    
-    int menuClientX, menuClientY;
-    int menuX, menuY;
-    
+
+    double[] getTransform() {
+	return getViewportController().getTransform();
+    }
+
+    int getMenuClientX() {
+	return getViewportController().getMenuClientX();
+    }
+
+    void setMenuClientX(int value) {
+	getViewportController().setMenuClientX(value);
+    }
+
+    int getMenuClientY() {
+	return getViewportController().getMenuClientY();
+    }
+
+    void setMenuClientY(int value) {
+	getViewportController().setMenuClientY(value);
+    }
+
+    int getMenuX() {
+	return getViewportController().getMenuX();
+    }
+
+    void setMenuX(int value) {
+	getViewportController().setMenuX(value);
+    }
+
+    int getMenuY() {
+	return getViewportController().getMenuY();
+    }
+
+    void setMenuY(int value) {
+	getViewportController().setMenuY(value);
+    }
+
     static int lastSubcircuitMenuUpdate;
     
 	    static final int MAX_NORMALIZED_WHEEL_DELTA = 150;
@@ -1646,7 +1632,7 @@ public CirSim() {
     }
 
     void scrollValues(int x, int y, int deltay) {
-    	if (mouseElm!=null && !dialogIsShowing() && scopeSelected == -1)
+    	if (mouseElm!=null && !dialogIsShowing() && getScopeManager().getScopeSelected() == -1)
     		if (mouseElm instanceof ResistorElm || mouseElm instanceof CapacitorElm ||  mouseElm instanceof InductorElm) {
     			CirSimDialogCoordinator.setScrollValuePopup(new ScrollValuePopup(x, y, deltay, mouseElm, this));
     		}
@@ -1662,14 +1648,6 @@ public CirSim() {
     
 	CircuitElm getMouseElmForRouting() {
 	return mouseElm;
-	}
-
-	boolean isMouseDraggingForRouting() {
-	return mouseDragging;
-	}
-
-	void setMouseDraggingForRouting(boolean value) {
-	mouseDragging = value;
 	}
 
 	void setLastInteractedTableForRouting(TableElm table) {
@@ -1699,49 +1677,17 @@ public CirSim() {
 //    public void keyPressed(KeyEvent e) {}
 //    public void keyReleased(KeyEvent e) {}
     
-    boolean dialogIsShowing() {
-	return CirSimDialogCoordinator.isAnyDialogShowing(contextPanel);
+	boolean dialogIsShowing() {
+	return CirSimDialogCoordinator.isAnyDialogShowing(menuUiState.contextPanel);
     }
     
     void updateToolbar() {
-	toolbar.setModeLabel(classToLabelMap.get(mouseModeStr));
-	toolbar.highlightButton(mouseModeStr);
+	toolbar.setModeLabel(classToLabelMap.get(getMouseModeStr()));
+	toolbar.highlightButton(getMouseModeStr());
     }
 
     String getLabelTextForClass(String cls) {
 	return classToLabelMap.get(cls);
-    }
-
-    // factors a matrix into upper and lower triangular matrices by
-    // gaussian elimination.  On entry, a[0..n-1][0..n-1] is the
-    // matrix to be factored.  ipvt[] returns an integer vector of pivot
-    // indices, used in the lu_solve() routine.
-    // Returns -1 on success, or the problematic row index on failure (singular matrix)
-    static int lu_factor(double a[][], int n, int ipvt[]) {
-	int badRow = LUSolver.factor(a, n, ipvt);
-	if (badRow >= 0) {
-	    console("didn't avoid zero at row " + badRow);
-	    console("  Non-zero entries in column " + badRow + ":");
-	    for (int dbg = 0; dbg < n; dbg++) {
-		if (a[dbg][badRow] != 0.0) {
-		    console("    row " + dbg + ": " + a[dbg][badRow]);
-		}
-	    }
-	    console("  Non-zero entries in row " + badRow + ":");
-	    for (int dbg = 0; dbg < n; dbg++) {
-		if (a[badRow][dbg] != 0.0) {
-		    console("    col " + dbg + ": " + a[badRow][dbg]);
-		}
-	    }
-	}
-	return badRow;
-    }
-
-    // Solves the set of n linear equations using a LU factorization
-    // previously performed by lu_factor.  On input, b[0..n-1] is the right
-    // hand side of the equations, and on output, contains the solution.
-    static void lu_solve(double[][] a, int n, int[] ipvt, double[] b) {
-	LUSolver.solve(a, n, ipvt, b);
     }
 
     public void updateModels() {
@@ -1763,26 +1709,4 @@ public CirSim() {
 	static final int CAC_IMAGE = 1;
 	static final int CAC_SVG   = 2;
 	
-	static void invertMatrix(double a[][], int n) {
-	    int ipvt[] = new int[n];
-	    lu_factor(a, n, ipvt);
-	    int i, j;
-	    double b[] = new double[n];
-	    double inva[][] = new double[n][n];
-	    
-	    // solve for each column of identity matrix
-	    for (i = 0; i != n; i++) {
-		for (j = 0; j != n; j++)
-		    b[j] = 0;
-		b[i] = 1;
-		lu_solve(a, n, ipvt, b);
-		for (j = 0; j != n; j++)
-		    inva[j][i] = b[j];
-	    }
-	    
-	    // return in original matrix
-	    for (i = 0; i != n; i++)
-		for (j = 0; j != n; j++)
-		    a[i][j] = inva[i][j];
-	}
 }

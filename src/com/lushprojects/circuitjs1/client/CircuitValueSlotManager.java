@@ -72,8 +72,8 @@ final class CircuitValueSlotManager {
             if (flowVal != null)
                 return flowVal;
             Integer node = LabeledNodeElm.getByName(name);
-            if (node != null && node != 0 && sim.nodeVoltages != null && (node - 1) < sim.nodeVoltages.length)
-                return sim.nodeVoltages[node - 1];
+            if (node != null && node != 0 && sim.getSolverMatrixState().nodeVoltages != null && (node - 1) < sim.getSolverMatrixState().nodeVoltages.length)
+                return sim.getSolverMatrixState().nodeVoltages[node - 1];
             Double cv = ComputedValues.getComputedValue(name);
             return cv != null ? cv : 0.0;
         } else {
@@ -86,7 +86,7 @@ final class CircuitValueSlotManager {
         Integer node = LabeledNodeElm.getByName(name);
         if (node == null || node == 0)
             return 0;
-        return sim.nodeVoltages[node.intValue() - 1];
+        return sim.getSolverMatrixState().nodeVoltages[node.intValue() - 1];
     }
 
     String getUnresolvedReferencesMessage() {

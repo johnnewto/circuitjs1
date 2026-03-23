@@ -194,9 +194,9 @@ public class SFCStockElm extends CircuitElm {
         // Trapezoidal: compResistance = dt/(2*C)
         // Backward Euler: compResistance = dt/C
         if (isTrapezoidal()) {
-            compResistance = sim.timeStep / (2 * stockCapacitance);
+            compResistance = sim.getTimingState().timeStep / (2 * stockCapacitance);
         } else {
-            compResistance = sim.timeStep / stockCapacitance;
+            compResistance = sim.getTimingState().timeStep / stockCapacitance;
         }
         
         if (sim.dcAnalysisFlag) {

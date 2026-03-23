@@ -102,7 +102,7 @@ public class EquationTableMarkdownDebugDialog {
      */
     public EquationTableMarkdownDebugDialog(EquationTableElm sourceTable) {
         this.sourceTable = sourceTable;
-        this.sim = CirSim.theSim;
+        this.sim = CirSim.getInstance();
         createDialog();
     }
     
@@ -325,14 +325,14 @@ public class EquationTableMarkdownDebugDialog {
         if (sim != null) {
             md.append("| Property | Value |\n");
             md.append("|----------|-------|\n");
-            md.append("| Matrix Size | ").append(sim.circuitMatrixSize)
-              .append(" x ").append(sim.circuitMatrixSize).append(" |\n");
+            md.append("| Matrix Size | ").append(sim.getSolverMatrixState().circuitMatrixSize)
+              .append(" x ").append(sim.getSolverMatrixState().circuitMatrixSize).append(" |\n");
             md.append("| Nodes | ")
-              .append(sim.nodeList != null ? sim.nodeList.size() : 0)
+              .append(sim.getCircuitAnalyzer().getNodeList() != null ? sim.getCircuitAnalyzer().getNodeList().size() : 0)
               .append(" (including ground) |\n");
             md.append("| Voltage Sources | ").append(sim.voltageSourceCount).append(" |\n");
-            md.append("| Time | ").append(sim.t).append(" |\n");
-            md.append("| Time Step | ").append(sim.timeStep).append(" |\n");
+            md.append("| Time | ").append(sim.getTimingState().t).append(" |\n");
+            md.append("| Time Step | ").append(sim.getTimingState().timeStep).append(" |\n");
             md.append("| Sub-iterations | ").append(sim.subIterations).append(" |\n");
             md.append("| EqnTable MNA Mode (global) | ").append(sim.equationTableMnaMode).append(" |\n");
             md.append("| EqnTable Newton Jacobian (global) | ").append(sim.equationTableNewtonJacobianEnabled).append(" |\n");
@@ -714,14 +714,14 @@ public class EquationTableMarkdownDebugDialog {
     private void appendMatrixEquationSummary(StringBuilder md) {
         md.append("## Matrix Equation: X = A\u207B\u00B9 B\n\n");
         
-        if (sim == null || sim.circuitMatrix == null) {
+        if (sim == null || sim.getSolverMatrixState().circuitMatrix == null) {
             md.append("*(Matrix not available — circuit may not be analyzed yet)*\n\n");
             return;
         }
         
-        int matSize = sim.circuitMatrixSize;
-        int fullSize = sim.circuitMatrixFullSize;
-        int nodeCount = (sim.nodeList != null) ? sim.nodeList.size() : 0;
+        int matSize = sim.getSolverMatrixState().circuitMatrixSize;
+        int fullSize = sim.getSolverMatrixState().circuitMatrixFullSize;
+        int nodeCount = (sim.getCircuitAnalyzer().getNodeList() != null) ? sim.getCircuitAnalyzer().getNodeList().size() : 0;
         int vsCount = sim.voltageSourceCount;
         
         md.append("Matrix dimensions: **").append(matSize).append(" x ").append(matSize).append("**");
@@ -757,7 +757,7 @@ public class EquationTableMarkdownDebugDialog {
                 if (nodeName != null) {
                     desc += " (" + wrapForKaTeX(nodeName);
                     // Check if internal
-                    if (sim.nodeList != null && nodeNum < sim.nodeList.size()) {
+                    if (sim.getCircuitAnalyzer().getNodeList() != null && nodeNum < sim.getCircuitAnalyzer().getNodeList().size()) {
                         CircuitNode cn = sim.getCircuitNode(nodeNum);
                         if (cn != null && cn.internal)
                             desc += ",int";
@@ -816,7 +816,7 @@ public class EquationTableMarkdownDebugDialog {
         }
         
         // Otherwise, look at what's connected and try to get a name
-        if (sim.nodeList == null || nodeNum >= sim.nodeList.size()) {
+        if (sim.getCircuitAnalyzer().getNodeList() == null || nodeNum >= sim.getCircuitAnalyzer().getNodeList().size()) {
             return null;
         }
         
@@ -909,7 +909,7 @@ public class EquationTableMarkdownDebugDialog {
         }
         
         // Use circuitMatrix so we display the latest stamped A snapshot.
-        double[][] matrix = sim.circuitMatrix;
+        double[][] matrix = sim.getSolverMatrixState().circuitMatrix;
         
         // If matrix was simplified, we show the simplified matrix with mapped labels
         int displaySize = matSize;
@@ -961,7 +961,7 @@ public class EquationTableMarkdownDebugDialog {
         
         // B vector: circuitRightSide holds the full B (origRightSide + doStep stamps)
         // after convergence, because the subiteration loop breaks BEFORE lu_solve.
-        double[] bVec = sim.circuitRightSide;
+        double[] bVec = sim.getSolverMatrixState().circuitRightSide;
         
         // Build X from authoritative sources: nodeVoltages[] and VS element currents
         // (circuitRightSide is NOT the solution — it holds B after convergence break)
@@ -1002,12 +1002,12 @@ public class EquationTableMarkdownDebugDialog {
     private double[] buildSolutionVector(int matSize, int fullSize, int nodeCount) {
         double[] xVec = new double[matSize];
         
-        if (sim.circuitRowInfo == null)
+        if (sim.getSolverMatrixState().circuitRowInfo == null)
             return xVec;
         
-        for (int j = 0; j < fullSize && j < sim.circuitRowInfo.length; j++) {
-            RowInfo ri = sim.circuitRowInfo[j];
-            int mappedIdx = sim.circuitNeedsMap ? ri.mapCol : j;
+        for (int j = 0; j < fullSize && j < sim.getSolverMatrixState().circuitRowInfo.length; j++) {
+            RowInfo ri = sim.getSolverMatrixState().circuitRowInfo[j];
+            int mappedIdx = sim.getSolverMatrixState().circuitNeedsMap ? ri.mapCol : j;
             if (mappedIdx < 0 || mappedIdx >= matSize)
                 continue;
             
@@ -1016,8 +1016,8 @@ public class EquationTableMarkdownDebugDialog {
                 val = ri.value;
             } else if (j < nodeCount - 1) {
                 // Node row: read from nodeVoltages[]
-                if (sim.nodeVoltages != null && j < sim.nodeVoltages.length)
-                    val = sim.nodeVoltages[j];
+                if (sim.getSolverMatrixState().nodeVoltages != null && j < sim.getSolverMatrixState().nodeVoltages.length)
+                    val = sim.getSolverMatrixState().nodeVoltages[j];
             } else {
                 // Voltage source row: read current from the VS owner element
                 int vsIdx = j - (nodeCount - 1);
@@ -1038,10 +1038,10 @@ public class EquationTableMarkdownDebugDialog {
      * Get a label for a simplified-matrix row, mapping back through circuitRowInfo if needed.
      */
     private String getSimplifiedLabel(int simplifiedIdx, int fullSize, String[] rowLabels) {
-        if (sim.circuitRowInfo != null && sim.circuitNeedsMap) {
+        if (sim.getSolverMatrixState().circuitRowInfo != null && sim.getSolverMatrixState().circuitNeedsMap) {
             // Map simplified row back to original row
-            for (int i = 0; i < fullSize && i < sim.circuitRowInfo.length; i++) {
-                if (sim.circuitRowInfo[i].mapRow == simplifiedIdx) {
+            for (int i = 0; i < fullSize && i < sim.getSolverMatrixState().circuitRowInfo.length; i++) {
+                if (sim.getSolverMatrixState().circuitRowInfo[i].mapRow == simplifiedIdx) {
                     return (i < rowLabels.length) ? rowLabels[i] : ("r" + i);
                 }
             }
@@ -1056,9 +1056,9 @@ public class EquationTableMarkdownDebugDialog {
     private String getRowMeaning(int simplifiedIdx, int fullSize, int nodeCount) {
         // Map back to original row
         int origRow = simplifiedIdx;
-        if (sim.circuitRowInfo != null && sim.circuitNeedsMap) {
-            for (int i = 0; i < fullSize && i < sim.circuitRowInfo.length; i++) {
-                if (sim.circuitRowInfo[i].mapRow == simplifiedIdx) {
+        if (sim.getSolverMatrixState().circuitRowInfo != null && sim.getSolverMatrixState().circuitNeedsMap) {
+            for (int i = 0; i < fullSize && i < sim.getSolverMatrixState().circuitRowInfo.length; i++) {
+                if (sim.getSolverMatrixState().circuitRowInfo[i].mapRow == simplifiedIdx) {
                     origRow = i;
                     break;
                 }

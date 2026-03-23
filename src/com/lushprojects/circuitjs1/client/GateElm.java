@@ -200,7 +200,7 @@ package com.lushprojects.circuitjs1.client;
 	    if (isInverting())
 		f = !f;
 	    
-	    if (lastTime != sim.t) {
+	    if (lastTime != sim.getTimingState().t) {
 		// detect oscillation (using same strategy as Atanua)
 		if (lastOutput == !f) {
 		    if (oscillationCount++ > 50) {
@@ -213,7 +213,7 @@ package com.lushprojects.circuitjs1.client;
 		    oscillationCount = 0;
 	    
 		lastOutput = f;
-		lastTime = sim.t;
+		lastTime = sim.getTimingState().t;
 	    }
 	    
 	    double res = f ? highVoltage : 0;

@@ -13,9 +13,7 @@ final class CirSimBootstrap {
 
     void initRunner() {
 	sim.random = new Random();
-	sim.transform = new double[6];
-	sim.transform[0] = sim.transform[3] = 1;
-	sim.transform[1] = sim.transform[2] = sim.transform[4] = sim.transform[5] = 0;
+	sim.getViewportController().setTransformRaw(new double[] {1, 0, 0, 1, 0, 0});
 	sim.elmList = new java.util.Vector<CircuitElm>();
 	sim.adjustables = new java.util.Vector<Adjustable>();
 	sim.scopes = new Scope[20];
@@ -24,10 +22,10 @@ final class CirSimBootstrap {
 	sim.canvasWidth = 1200;
 	sim.canvasHeight = 800;
 	sim.getViewportController().setCircuitArea();
-	sim.timeStep = 5e-6;
-	sim.maxTimeStep = 5e-2;
-	sim.minTimeStep = 1e-12;
-	sim.t = 0;
+	sim.getTimingState().timeStep = 5e-6;
+	sim.getTimingState().maxTimeStep = 5e-2;
+	sim.getTimingState().minTimeStep = 1e-12;
+	sim.getTimingState().t = 0;
 	CircuitElm.initClass(sim);
     }
 

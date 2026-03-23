@@ -86,7 +86,7 @@ public class TableElementsTestDialog {
      * Create the test dialog
      */
     public TableElementsTestDialog() {
-        this.sim = CirSim.theSim;
+        this.sim = CirSim.getInstance();
         this.testSuite = new TableElementsTest();
         createDialog();
     }

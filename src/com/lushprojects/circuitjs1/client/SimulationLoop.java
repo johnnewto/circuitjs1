@@ -120,8 +120,8 @@ class SimulationLoop {
     }
 
     void runCircuit(boolean didAnalyze) {
-        if (sim.circuitMatrix == null || sim.elmList.size() == 0) {
-            sim.circuitMatrix = null;
+        if (sim.getSolverMatrixState().circuitMatrix == null || sim.elmList.size() == 0) {
+            sim.getSolverMatrixState().circuitMatrix = null;
             return;
         }
         boolean nonInteractive = RuntimeMode.isNonInteractiveRuntime();
@@ -142,24 +142,24 @@ class SimulationLoop {
 
         boolean delayWireProcessing = canDelayWireProcessing();
 
-        int timeStepCountAtFrameStart = sim.timeStepCount;
+        int timeStepCountAtFrameStart = sim.getTimingState().timeStepCount;
 
         int goodIterations = 100;
 
         int frameTimeLimit = (int) (1000 / sim.minFrameRate);
 
-        if (sim.timeStepCount >= sim.nextPeriodicTime) {
+        if (sim.getTimingState().timeStepCount >= sim.nextPeriodicTime) {
             for (int i = 0; i != sim.elmArr.length; i++) {
                 sim.elmArr[i].nonConverged = false;
             }
-            sim.nextPeriodicTime = sim.timeStepCount + sim.periodicInterval;
+            sim.nextPeriodicTime = sim.getTimingState().timeStepCount + sim.periodicInterval;
         }
 
         for (int iter = 1; ; iter++) {
 
-            if (goodIterations >= 3 && sim.timeStep < sim.maxTimeStep) {
-                sim.timeStep = Math.min(sim.timeStep * 2, sim.maxTimeStep);
-                CirSim.console("timestep up = " + sim.timeStep + " at " + sim.t);
+            if (goodIterations >= 3 && sim.getTimingState().timeStep < sim.getTimingState().maxTimeStep) {
+                sim.getTimingState().timeStep = Math.min(sim.getTimingState().timeStep * 2, sim.getTimingState().maxTimeStep);
+                CirSim.console("timestep up = " + sim.getTimingState().timeStep + " at " + sim.getTimingState().t);
                 sim.stampCircuit();
                 goodIterations = 0;
             }
@@ -173,17 +173,17 @@ class SimulationLoop {
 
             sim.steps++;
 
-            int subiterCount = (sim.adjustTimeStep && sim.timeStep / 2 > sim.minTimeStep) ? 100 : 200;
+            int subiterCount = (sim.adjustTimeStep && sim.getTimingState().timeStep / 2 > sim.getTimingState().minTimeStep) ? 100 : 200;
             for (subiter = 0; subiter != subiterCount; subiter++) {
                 sim.converged = true;
                 sim.subIterations = subiter;
 
-                for (i = 0; i != sim.circuitMatrixSize; i++)
-                    sim.circuitRightSide[i] = sim.origRightSide[i];
-                if (sim.circuitNonLinear) {
-                    for (i = 0; i != sim.circuitMatrixSize; i++)
-                        for (j = 0; j != sim.circuitMatrixSize; j++)
-                            sim.circuitMatrix[i][j] = sim.origMatrix[i][j];
+                for (i = 0; i != sim.getSolverMatrixState().circuitMatrixSize; i++)
+                    sim.getSolverMatrixState().circuitRightSide[i] = sim.getSolverMatrixState().origRightSide[i];
+                if (sim.getSolverMatrixState().circuitNonLinear) {
+                    for (i = 0; i != sim.getSolverMatrixState().circuitMatrixSize; i++)
+                        for (j = 0; j != sim.getSolverMatrixState().circuitMatrixSize; j++)
+                            sim.getSolverMatrixState().circuitMatrix[i][j] = sim.getSolverMatrixState().origMatrix[i][j];
                 }
 
                 ComputedValues.resetComputedFlags();
@@ -196,7 +196,7 @@ class SimulationLoop {
                         if (subiter > sim.convergenceCheckThreshold) {
                             sim.elmArr[i].nonConverged = true;
                             if (!(sim.elmArr[i] instanceof EquationTableElm)) {
-                                String text = "CirSim: t=" + sim.t + " dt=" + sim.timeStep + " Element causing convergence failure: " +
+                                String text = "CirSim: t=" + sim.getTimingState().t + " dt=" + sim.getTimingState().timeStep + " Element causing convergence failure: " +
                                               sim.elmArr[i].getClass().getSimpleName() + " at (" +
                                               sim.elmArr[i].x + "," + sim.elmArr[i].y + ")";
                                 CirSim.console(text);
@@ -211,10 +211,10 @@ class SimulationLoop {
                     return;
                 boolean printit = debugprint;
                 debugprint = false;
-                if (sim.circuitMatrixSize < 8) {
-                    for (j = 0; j != sim.circuitMatrixSize; j++) {
-                        for (i = 0; i != sim.circuitMatrixSize; i++) {
-                            double x = sim.circuitMatrix[i][j];
+                if (sim.getSolverMatrixState().circuitMatrixSize < 8) {
+                    for (j = 0; j != sim.getSolverMatrixState().circuitMatrixSize; j++) {
+                        for (i = 0; i != sim.getSolverMatrixState().circuitMatrixSize; i++) {
+                            double x = sim.getSolverMatrixState().circuitMatrix[i][j];
                             if (Double.isNaN(x) || Double.isInfinite(x)) {
                                 sim.stop("nan/infinite matrix!", null);
                                 CirSim.console("circuitMatrix " + i + " " + j + " is " + x);
@@ -224,29 +224,29 @@ class SimulationLoop {
                     }
                 }
                 if (printit) {
-                    for (j = 0; j != sim.circuitMatrixSize; j++) {
+                    for (j = 0; j != sim.getSolverMatrixState().circuitMatrixSize; j++) {
                         String x = "";
-                        for (i = 0; i != sim.circuitMatrixSize; i++)
-                            x += sim.circuitMatrix[j][i] + ",";
+                        for (i = 0; i != sim.getSolverMatrixState().circuitMatrixSize; i++)
+                            x += sim.getSolverMatrixState().circuitMatrix[j][i] + ",";
                         x += "\n";
                         CirSim.console(x);
                     }
                     CirSim.console("done");
                 }
-                if (sim.circuitNonLinear) {
+                if (sim.getSolverMatrixState().circuitNonLinear) {
                     if (sim.converged && subiter > 0)
                         break;
-                    int badRow = CirSim.lu_factor(sim.circuitMatrix, sim.circuitMatrixSize, sim.circuitPermute);
+                    int badRow = CircuitMatrixOps.luFactor(sim.getSolverMatrixState().circuitMatrix, sim.getSolverMatrixState().circuitMatrixSize, sim.getSolverMatrixState().circuitPermute);
                     if (badRow >= 0) {
                         sim.stop("Singular matrix! " + sim.getMatrixStamper().getMatrixRowInfo(badRow), null);
                         return;
                     }
                 }
-                CirSim.lu_solve(sim.circuitMatrix, sim.circuitMatrixSize, sim.circuitPermute,
-                                sim.circuitRightSide);
-                applySolvedRightSide(sim.circuitRightSide);
-                if (!sim.circuitNonLinear) {
-                    if (sim.circuitMatrixSize == 1) {
+                CircuitMatrixOps.luSolve(sim.getSolverMatrixState().circuitMatrix, sim.getSolverMatrixState().circuitMatrixSize, sim.getSolverMatrixState().circuitPermute,
+                        sim.getSolverMatrixState().circuitRightSide);
+                applySolvedRightSide(sim.getSolverMatrixState().circuitRightSide);
+                if (!sim.getSolverMatrixState().circuitNonLinear) {
+                    if (sim.getSolverMatrixState().circuitMatrixSize == 1) {
                         CirSim.console("[runCircuit] circuitNonLinear=false, exiting after first iteration");
                     }
                     break;
@@ -255,29 +255,29 @@ class SimulationLoop {
             if (subiter == subiterCount) {
                 goodIterations = 0;
                 if (sim.adjustTimeStep) {
-                    sim.timeStep /= 2;
-                    CirSim.console("timestep down to " + sim.timeStep + " at " + sim.t);
+                    sim.getTimingState().timeStep /= 2;
+                    CirSim.console("timestep down to " + sim.getTimingState().timeStep + " at " + sim.getTimingState().t);
                 }
-                if (sim.timeStep < sim.minTimeStep || !sim.adjustTimeStep) {
+                if (sim.getTimingState().timeStep < sim.getTimingState().minTimeStep || !sim.adjustTimeStep) {
                     CirSim.console("convergence failed after " + subiter + " iterations");
                     sim.stop("Convergence failed!", null);
                     break;
                 }
-                setNodeVoltages(sim.lastNodeVoltages);
+                setNodeVoltages(sim.getSolverMatrixState().lastNodeVoltages);
                 sim.stampCircuit();
                 continue;
             }
-            if (subiter > 20 || sim.timeStep < sim.maxTimeStep)
-                CirSim.console("converged after " + subiter + " iterations, timeStep = " + sim.timeStep);
+            if (subiter > 20 || sim.getTimingState().timeStep < sim.getTimingState().maxTimeStep)
+                CirSim.console("converged after " + subiter + " iterations, timeStep = " + sim.getTimingState().timeStep);
             if (subiter < 3)
                 goodIterations++;
             else
                 goodIterations = 0;
-            sim.t += sim.timeStep;
-            sim.timeStepAccum += sim.timeStep;
-            if (sim.timeStepAccum >= sim.maxTimeStep) {
-                sim.timeStepAccum -= sim.maxTimeStep;
-                sim.timeStepCount++;
+            sim.getTimingState().t += sim.getTimingState().timeStep;
+            sim.getTimingState().timeStepAccum += sim.getTimingState().timeStep;
+            if (sim.getTimingState().timeStepAccum >= sim.getTimingState().maxTimeStep) {
+                sim.getTimingState().timeStepAccum -= sim.getTimingState().maxTimeStep;
+                sim.getTimingState().timeStepCount++;
             }
 
             for (i = 0; i != sim.elmArr.length; i++)
@@ -292,7 +292,7 @@ class SimulationLoop {
 
             ActionScheduler scheduler = ActionScheduler.getInstance(sim);
             if (scheduler != null) {
-                scheduler.stepFinished(sim.t);
+                scheduler.stepFinished(sim.getTimingState().t);
             }
 
             for (i = 0; i != sim.scopeCount; i++)
@@ -301,14 +301,14 @@ class SimulationLoop {
                 sim.scopeElmArr[i].stepScope();
             if (RuntimeMode.isGwt())
                 sim.getJsApiBridge().callTimeStepHook();
-            for (i = 0; i != sim.lastNodeVoltages.length; i++)
-                sim.lastNodeVoltages[i] = sim.nodeVoltages[i];
+            for (i = 0; i != sim.getSolverMatrixState().lastNodeVoltages.length; i++)
+                sim.getSolverMatrixState().lastNodeVoltages[i] = sim.getSolverMatrixState().nodeVoltages[i];
 
             tm = System.currentTimeMillis();
             lit = tm;
             if (nonInteractive)
                 break;
-            if ((sim.timeStepCount - timeStepCountAtFrameStart) * 1000 >= steprate * (tm - sim.lastIterTime) || (tm - sim.lastFrameTime > frameTimeLimit))
+            if ((sim.getTimingState().timeStepCount - timeStepCountAtFrameStart) * 1000 >= steprate * (tm - sim.lastIterTime) || (tm - sim.lastFrameTime > frameTimeLimit))
                 break;
             if (!sim.simRunning)
                 break;
@@ -320,8 +320,8 @@ class SimulationLoop {
 
     void applySolvedRightSide(double rs[]) {
         int j;
-        for (j = 0; j != sim.circuitMatrixFullSize; j++) {
-            RowInfo ri = sim.circuitRowInfo[j];
+        for (j = 0; j != sim.getSolverMatrixState().circuitMatrixFullSize; j++) {
+            RowInfo ri = sim.getSolverMatrixState().circuitRowInfo[j];
             double res = 0;
             if (ri.type == RowInfo.ROW_CONST)
                 res = ri.value;
@@ -331,15 +331,15 @@ class SimulationLoop {
                 sim.converged = false;
                 break;
             }
-            if (j < sim.nodeList.size() - 1) {
-                sim.nodeVoltages[j] = res;
+            if (j < sim.getCircuitAnalyzer().getNodeList().size() - 1) {
+                sim.getSolverMatrixState().nodeVoltages[j] = res;
             } else {
-                int ji = j - (sim.nodeList.size() - 1);
+                int ji = j - (sim.getCircuitAnalyzer().getNodeList().size() - 1);
                 sim.voltageSources[ji].setCurrent(ji, res);
             }
         }
 
-        setNodeVoltages(sim.nodeVoltages);
+        setNodeVoltages(sim.getSolverMatrixState().nodeVoltages);
         sim.getCircuitValueSlotManager().syncAllSlots();
     }
 
@@ -359,8 +359,8 @@ class SimulationLoop {
     void calcWireCurrents() {
         int i;
 
-        for (i = 0; i != sim.wireInfoList.size(); i++) {
-            CirSim.WireInfo wi = sim.wireInfoList.get(i);
+        for (i = 0; i != sim.getCircuitAnalyzer().getWireInfoList().size(); i++) {
+            CirSim.WireInfo wi = sim.getCircuitAnalyzer().getWireInfoList().get(i);
             double cur = 0;
             int j;
             Point p = wi.wire.getPost(wi.post);

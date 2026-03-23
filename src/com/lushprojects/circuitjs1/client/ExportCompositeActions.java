@@ -7,19 +7,94 @@ import java.util.Vector;
 import com.google.gwt.canvas.client.Canvas;
 import com.google.gwt.canvas.dom.client.Context2d;
 import com.google.gwt.core.client.Callback;
+import com.google.gwt.core.client.GWT;
 import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.core.client.ScriptInjector;
 import com.google.gwt.http.client.URL;
 import com.google.gwt.user.client.Window;
+import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 
 final class ExportCompositeActions {
     private final CirSim sim;
 
-    @JsMethod(namespace = JsPackage.GLOBAL, name = "C2S")
-    private static native JavaScriptObject createC2SContext(int w, int h);
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "window")
+    private static class JsWindow {
+        @JsProperty(name = "C2S") static native Object getC2S();
+        @JsProperty(name = "canvas2svg") static native Object getCanvas2svg();
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+    private static class JsAnyObject {
+        @JsProperty(name = "default") native Object getDefaultExport();
+        @JsProperty(name = "C2S") native Object getC2SExport();
+    }
+
+    @JsFunction
+    private interface C2SFactory {
+        JavaScriptObject create(int w, int h);
+    }
+
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Function")
+    private static class JsFunctionLike {
+        @JsMethod(name = "call") native JavaScriptObject call(Object thisArg, int w, int h);
+    }
+
+    @JsProperty(namespace = JsPackage.GLOBAL, name = "C2S")
+    private static native Object getGlobalC2S();
+
+    @JsProperty(namespace = JsPackage.GLOBAL, name = "canvas2svg")
+    private static native Object getGlobalCanvas2svg();
+
+    private static JavaScriptObject tryCreateContext(Object candidate, int w, int h) {
+        if (candidate == null) {
+            return null;
+        }
+        try {
+            return ((JsFunctionLike) candidate).call(null, w, h);
+        } catch (Throwable ignored) {
+            try {
+                return ((C2SFactory) candidate).create(w, h);
+            } catch (Throwable ignoredToo) {
+                return null;
+            }
+        }
+    }
+
+    private static JavaScriptObject createC2SContext(int w, int h) {
+        Object[] roots = new Object[] {
+                JsWindow.getC2S(),
+                JsWindow.getCanvas2svg(),
+                getGlobalC2S(),
+                getGlobalCanvas2svg()
+        };
+        for (int i = 0; i < roots.length; i++) {
+            Object root = roots[i];
+            JavaScriptObject context = tryCreateContext(root, w, h);
+            if (context != null) {
+                return context;
+            }
+
+            if (root == null) {
+                continue;
+            }
+            JsAnyObject wrapper = (JsAnyObject) root;
+
+            context = tryCreateContext(wrapper.getDefaultExport(), w, h);
+            if (context != null) {
+                return context;
+            }
+
+            context = tryCreateContext(wrapper.getC2SExport(), w, h);
+            if (context != null) {
+                return context;
+            }
+        }
+        return null;
+    }
 
     @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
     private static class SvgContextLike {
@@ -27,7 +102,11 @@ final class ExportCompositeActions {
     }
 
     private static Context2d createSVGContext(int w, int h) {
-        return createC2SContext(w, h).cast();
+        JavaScriptObject context = createC2SContext(w, h);
+        if (context == null) {
+            return null;
+        }
+        return context.cast();
     }
 
     private static String getSerializedSVG(Context2d context) {
@@ -36,6 +115,37 @@ final class ExportCompositeActions {
 
     ExportCompositeActions(CirSim sim) {
         this.sim = sim;
+    }
+
+    private String[] getCanvas2SvgCandidateUrls() {
+        return new String[] {
+                "canvas2svg.js",
+                GWT.getHostPageBaseURL() + "canvas2svg.js",
+                GWT.getModuleBaseURL() + "canvas2svg.js",
+                GWT.getModuleBaseURL() + "../canvas2svg.js",
+                "circuitjs1/canvas2svg.js"
+        };
+    }
+
+    private void tryLoadCanvas2SvgAt(final String[] urls, final int index, final String followupAction) {
+        if (index >= urls.length) {
+            sim.alertOrWarn("Can't load canvas2svg.js.");
+            return;
+        }
+        ScriptInjector.fromUrl(urls[index]).setWindow(ScriptInjector.TOP_WINDOW).setCallback(new Callback<Void, Exception>() {
+            public void onFailure(Exception reason) {
+                tryLoadCanvas2SvgAt(urls, index + 1, followupAction);
+            }
+
+            public void onSuccess(Void result) {
+                sim.loadedCanvas2SVG = true;
+                if (followupAction.equals("doExportAsSVG")) {
+                    doExportAsSVG();
+                } else if (followupAction.equals("doExportAsSVGFromAPI")) {
+                    doExportAsSVGFromAPI();
+                }
+            }
+        }).inject();
     }
 
     void printCanvas(com.google.gwt.dom.client.CanvasElement cv) {
@@ -58,20 +168,7 @@ final class ExportCompositeActions {
 
     boolean initializeSVGScriptIfNecessary(final String followupAction) {
         if (!sim.loadedCanvas2SVG) {
-            ScriptInjector.fromUrl("canvas2svg.js").setCallback(new Callback<Void, Exception>() {
-                public void onFailure(Exception reason) {
-                    sim.alertOrWarn("Can't load canvas2svg.js.");
-                }
-
-                public void onSuccess(Void result) {
-                    sim.loadedCanvas2SVG = true;
-                    if (followupAction.equals("doExportAsSVG")) {
-                        doExportAsSVG();
-                    } else if (followupAction.equals("doExportAsSVGFromAPI")) {
-                        doExportAsSVGFromAPI();
-                    }
-                }
-            }).inject();
+            tryLoadCanvas2SvgAt(getCanvas2SvgCandidateUrls(), 0, followupAction);
             return false;
         }
         return true;
@@ -171,6 +268,10 @@ final class ExportCompositeActions {
         int w = (bounds.width + wmargin);
         int h = (bounds.height + hmargin);
         Context2d context = createSVGContext(w, h);
+        if (context == null) {
+            sim.alertOrWarn("canvas2svg.js loaded but C2S is unavailable.");
+            return "";
+        }
         drawCircuitInContext(context, CirSim.CAC_SVG, bounds, w, h);
         return getSerializedSVG(context);
     }
@@ -178,7 +279,7 @@ final class ExportCompositeActions {
     void drawCircuitInContext(Context2d context, int type, Rectangle bounds, int w, int h) {
         Graphics g = new Graphics(context);
         context.setTransform(1, 0, 0, 1, 0, 0);
-        double oldTransform[] = Arrays.copyOf(sim.transform, 6);
+        double oldTransform[] = Arrays.copyOf(sim.getTransform(), 6);
 
         double scale = 1;
 
@@ -206,11 +307,10 @@ final class ExportCompositeActions {
         if (bounds != null)
             scale = Math.min(w / (double) (bounds.width + wmargin), h / (double) (bounds.height + hmargin));
 
-        sim.transform[0] = sim.transform[3] = scale;
-        sim.transform[4] = -(bounds.x - wmargin / 2);
-        sim.transform[5] = -(bounds.y - hmargin / 2);
+        sim.getViewportController().setTransform(scale, -(bounds.x - wmargin / 2), -(bounds.y - hmargin / 2));
+        double[] transform = sim.getTransform();
         context.scale(scale, scale);
-        context.translate(sim.transform[4], sim.transform[5]);
+        context.translate(transform[4], transform[5]);
         context.setLineCap(Context2d.LineCap.ROUND);
 
         for (int i = 0; i != sim.elmList.size(); i++) {
@@ -225,7 +325,7 @@ final class ExportCompositeActions {
 
         sim.printableCheckItem.setState(p);
         sim.dotsCheckItem.setState(c);
-        sim.transform = oldTransform;
+        sim.getViewportController().setTransformRaw(oldTransform);
         sim.isExporting = false;
     }
 
@@ -249,8 +349,8 @@ final class ExportCompositeActions {
         Vector<ExtListEntry> extList = new Vector<ExtListEntry>();
         boolean sel = isSelection();
 
-        boolean used[] = new boolean[sim.nodeList.size()];
-        boolean extnodes[] = new boolean[sim.nodeList.size()];
+        boolean used[] = new boolean[sim.getCircuitAnalyzer().getNodeList().size()];
+        boolean extnodes[] = new boolean[sim.getCircuitAnalyzer().getNodeList().size()];
 
         if (!sim.preStampCircuit())
             return null;
@@ -343,10 +443,10 @@ final class ExportCompositeActions {
         }
 
         boolean first = true;
-        for (i = 0; i != sim.unconnectedNodes.size(); i++) {
-            int q = sim.unconnectedNodes.get(i);
+        for (i = 0; i != sim.getCircuitAnalyzer().getUnconnectedNodes().size(); i++) {
+            int q = sim.getCircuitAnalyzer().getUnconnectedNodes().get(i);
             if (!extnodes[q] && used[q]) {
-                if (sim.nodesWithGroundConnectionCount == 0 && first) {
+                if (sim.getCircuitAnalyzer().getNodesWithGroundConnectionCount() == 0 && first) {
                     first = false;
                     continue;
                 }

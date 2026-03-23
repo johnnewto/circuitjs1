@@ -138,8 +138,8 @@ class CirSimPreferencesManager {
         for (i = 0; i != sim.shortcuts.length; i++)
             sim.shortcuts[i] = null;
 
-        for (i = 0; i != sim.mainMenuItems.size(); i++) {
-            CheckboxMenuItem item = sim.mainMenuItems.get(i);
+        for (i = 0; i != sim.getMenuUiState().mainMenuItems.size(); i++) {
+            CheckboxMenuItem item = sim.getMenuUiState().mainMenuItems.get(i);
             if (item.getShortcut().length() > 1)
                 break;
             item.setShortcut("");
@@ -154,9 +154,9 @@ class CirSimPreferencesManager {
             sim.shortcuts[c] = className;
 
             int j;
-            for (j = 0; j != sim.mainMenuItems.size(); j++) {
-                if (sim.mainMenuItemNames.get(j) == className) {
-                    CheckboxMenuItem item = sim.mainMenuItems.get(j);
+            for (j = 0; j != sim.getMenuUiState().mainMenuItems.size(); j++) {
+                if (sim.getMenuUiState().mainMenuItemNames.get(j) == className) {
+                    CheckboxMenuItem item = sim.getMenuUiState().mainMenuItems.get(j);
                     item.setShortcut(Character.toString((char) c));
                     break;
                 }

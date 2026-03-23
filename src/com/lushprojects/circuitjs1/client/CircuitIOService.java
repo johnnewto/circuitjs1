@@ -136,22 +136,17 @@ final class CircuitIOService {
         }
 
         if (SFCRParser.isSFCRFormat(text)) {
-            CirSim.console("Parsing mode: SFCRParser (SFCR format detected)" + (sim.currentCircuitFile != null ? " - " + sim.currentCircuitFile : ""));
+            String currentFile = sim.getSFCRDocumentManager().getCurrentCircuitFile();
+            CirSim.console("Parsing mode: SFCRParser (SFCR format detected)" + (currentFile != null ? " - " + currentFile : ""));
             readCircuit(new byte[0], flags);
 
             SFCRParser parser = new SFCRParser(sim);
             if (parser.parse(text)) {
                 CirSim.console("Loaded SFCR model with " + parser.getCreatedElements().size() + " elements");
-                sim.modelInfoSourceText = text;
-
-                sim.modelInfoContent = InfoViewerContentBuilder.buildModelInfoMarkdown(text, parser.getInfoContent());
+                sim.getSFCRDocumentManager().setModelInfoSourceText(text);
+                sim.getSFCRDocumentManager().setModelInfoContent(InfoViewerContentBuilder.buildModelInfoMarkdown(text, parser.getInfoContent()));
                 String editorContent = sim.getModelInfoEditorContent();
-                if (RuntimeMode.isGwt() && sim.viewModelInfoItem != null) {
-                    sim.viewModelInfoItem.setEnabled(editorContent != null && !editorContent.isEmpty());
-                }
-                if (RuntimeMode.isGwt() && sim.helpViewModelInfoItem != null) {
-                    sim.helpViewModelInfoItem.setEnabled(editorContent != null && !editorContent.isEmpty());
-                }
+                sim.getSFCRDocumentManager().refreshModelInfoMenuItems();
 
                 if (RuntimeMode.isGwt() && sim.autoOpenModelInfoOnLoad && editorContent != null && !editorContent.isEmpty())
                     sim.getInfoDialogActions().doViewModelInfo();
@@ -190,15 +185,9 @@ final class CircuitIOService {
         }
 
         if (text != null && !text.trim().isEmpty()) {
-            sim.modelInfoSourceText = null;
-            sim.modelInfoContent = null;
-            if (sim.viewModelInfoItem != null) {
-                sim.viewModelInfoItem.setEnabled(false);
-            }
-            if (sim.helpViewModelInfoItem != null) {
-                sim.helpViewModelInfoItem.setEnabled(false);
-            }
-            CirSim.console("Parsing mode: Standard circuit format" + (sim.currentCircuitFile != null ? " - " + sim.currentCircuitFile : ""));
+            sim.getSFCRDocumentManager().clearModelInfo();
+            String currentFile = sim.getSFCRDocumentManager().getCurrentCircuitFile();
+            CirSim.console("Parsing mode: Standard circuit format" + (currentFile != null ? " - " + currentFile : ""));
         }
         readCircuit(text.getBytes(), flags);
         if ((flags & CirSim.RC_KEEP_TITLE) == 0)
@@ -271,7 +260,7 @@ final class CircuitIOService {
                 if (title != null)
                     sim.setCircuitTitle(title);
                 sim.unsavedChanges = false;
-                sim.currentCircuitFile = "circuits/" + circuitPath;
+                sim.getSFCRDocumentManager().setCurrentCircuitFile("circuits/" + circuitPath);
             }
         }, new Command() {
             public void execute() {
@@ -416,11 +405,11 @@ final class CircuitIOService {
                 CircuitElm ce = sim.getElm(i);
                 ce.delete();
             }
-            sim.t = sim.timeStepAccum = 0;
+            sim.getTimingState().t = sim.getTimingState().timeStepAccum = 0;
             sim.elmList.removeAllElements();
             sim.hintType = -1;
-            sim.maxTimeStep = (sim.currentToolbarType == CirSim.ToolbarType.ECONOMICS) ? 0.01 : 5e-6;
-            sim.minTimeStep = 50e-12;
+            sim.getTimingState().maxTimeStep = (sim.currentToolbarType == CirSim.ToolbarType.ECONOMICS) ? 0.01 : 5e-6;
+            sim.getTimingState().minTimeStep = 50e-12;
             if (sim.dotsCheckItem != null)
                 sim.dotsCheckItem.setState(false);
             if (sim.smallGridCheckItem != null)
@@ -502,9 +491,7 @@ final class CircuitIOService {
                                         double translateX = (sim.circuitArea.width - viewWidth * scale) / 2 - viewMinX * scale;
                                         double translateY = (sim.circuitArea.height - viewHeight * scale) / 2 - viewMinY * scale;
 
-                                        sim.transform[0] = sim.transform[3] = scale;
-                                        sim.transform[4] = translateX;
-                                        sim.transform[5] = translateY;
+                                        sim.getViewportController().setTransform(scale, translateX, translateY);
                                         transformLoaded = true;
                                     }
                                 } catch (Exception e) {
@@ -514,9 +501,7 @@ final class CircuitIOService {
                                     double scale = Double.parseDouble(st.nextToken());
                                     double translateX = Double.parseDouble(st.nextToken());
                                     double translateY = Double.parseDouble(st.nextToken());
-                                    sim.transform[0] = sim.transform[3] = scale;
-                                    sim.transform[4] = translateX;
-                                    sim.transform[5] = translateY;
+                                    sim.getViewportController().setTransform(scale, translateX, translateY);
                                     transformLoaded = true;
                                 } catch (Exception e) {
                                 }

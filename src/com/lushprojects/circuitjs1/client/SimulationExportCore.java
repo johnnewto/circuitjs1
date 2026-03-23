@@ -124,16 +124,16 @@ public final class SimulationExportCore {
         boolean warnedNoTimeAdvance = false;
         int rowsWritten = 0;
         for (int step = 0; step < request.steps; step++) {
-            double prevT = sim.t;
+            double prevT = sim.getTimingState().t;
             sim.getSimulationLoop().runCircuit(step == 0);
             ComputedValues.commitConvergedValues();
 
             if (sim.stopMessage != null) {
                 log(diagnostics, "CircuitJavaRunner: simulation stopped at step " + step + ": " + sim.stopMessage);
             }
-            if (!warnedNoTimeAdvance && sim.t == prevT) {
+            if (!warnedNoTimeAdvance && sim.getTimingState().t == prevT) {
                 warnedNoTimeAdvance = true;
-                log(diagnostics, "CircuitJavaRunner: time did not advance at step " + step + " (t=" + sim.t + ")");
+                log(diagnostics, "CircuitJavaRunner: time did not advance at step " + step + " (t=" + sim.getTimingState().t + ")");
             }
 
             if (world2Format) {
@@ -142,10 +142,10 @@ public final class SimulationExportCore {
                 Double ci = ComputedValues.getConvergedValue("CI");
                 Double ql = ComputedValues.getConvergedValue("QL");
                 Double nr = getNaturalResourcesValue();
-                appendWorld2Row(output, sim.t, p, polr, ci, ql, nr);
-                world2Rows.add(new World2Row(sim.t, p, polr, ci, ql, nr));
+                appendWorld2Row(output, sim.getTimingState().t, p, polr, ci, ql, nr);
+                world2Rows.add(new World2Row(sim.getTimingState().t, p, polr, ci, ql, nr));
             } else {
-                appendDelimitedRow(output, sim.t, keys, tsvFormat ? '\t' : ',', tsvFormat);
+                appendDelimitedRow(output, sim.getTimingState().t, keys, tsvFormat ? '\t' : ',', tsvFormat);
             }
             rowsWritten++;
 
@@ -305,8 +305,8 @@ public final class SimulationExportCore {
         parameters.stepsRequested = request.steps;
         parameters.outputFormat = request.format;
         parameters.world2Format = world2Format;
-        parameters.timestep = sim.maxTimeStep;
-        parameters.currentTimeStep = sim.timeStep;
+        parameters.timestep = sim.getTimingState().maxTimeStep;
+        parameters.currentTimeStep = sim.getTimingState().timeStep;
         parameters.timeUnit = sim.timeUnitSymbol;
         parameters.mnaMode = sim.equationTableMnaMode;
         parameters.equationTableTolerance = sim.equationTableConvergenceTolerance;
@@ -315,8 +315,8 @@ public final class SimulationExportCore {
         parameters.convergenceCheckThreshold = sim.convergenceCheckThreshold;
         parameters.eqnTableNewtonJacobian = sim.equationTableNewtonJacobianEnabled;
         parameters.autoAdjustTimestep = sim.adjustTimeStep;
-        parameters.minTimeStep = sim.minTimeStep;
-        parameters.maxTimeStep = sim.maxTimeStep;
+        parameters.minTimeStep = sim.getTimingState().minTimeStep;
+        parameters.maxTimeStep = sim.getTimingState().maxTimeStep;
         parameters.computedValueCount = computedValueCount;
         return parameters;
     }

@@ -134,13 +134,13 @@ class DividerElm extends CircuitElm {
     
     void stamp() {
         // Nonlinear voltage source for output
-        int vn = sim.nodeList.size() + voltSource;
+        int vn = sim.getCircuitAnalyzer().getNodeList().size() + voltSource;
         sim.stampNonLinear(vn);
         sim.stampVoltageSource(0, nodes[inputCount], voltSource);
     }
     
     void doStep() {
-        int vn = sim.nodeList.size() + voltSource;
+        int vn = sim.getCircuitAnalyzer().getNodeList().size() + voltSource;
         
         // Check for divide by zero on denominators (inputs 1+)
         for (int i = 1; i < inputCount; i++) {

@@ -75,7 +75,7 @@ class VCCSElm extends ChipElm {
 	@Override
 	void postStamp() {
 	    super.postStamp();
-	    CirSim csim = CirSim.theSim;
+	    CirSim csim = CirSim.getInstance();
 	    if (csim == null || csim.nameToSlot == null) return;
 	    if (expr != null)
 		expr.resolveGSlot(csim.nameToSlot);
@@ -125,7 +125,7 @@ class VCCSElm extends ChipElm {
         	// calculate output
         	for (i = 0; i != inputCount; i++)
         	    exprState.values[i] = volts[i];
-        	exprState.t = sim.t;
+        	exprState.t = sim.getTimingState().t;
         	double v0 = -expr.eval(exprState);
 //        	if (Math.abs(volts[inputCount]-v0) > Math.abs(v0)*.01 && sim.subIterations < 100)
 //        	    sim.converged = false;
@@ -145,7 +145,7 @@ class VCCSElm extends ChipElm {
         		dx = sign(dx, 1e-6);
         	    sim.stampVCCurrentSource(nodes[inputCount], nodes[inputCount+1], nodes[i], 0, dx);
         	    //if (sim.subIterations > 1)
-        		//sim.console("ccedx " + i + " " + dx + " " + sim.subIterations + " " + sim.t);
+        		//sim.console("ccedx " + i + " " + dx + " " + sim.subIterations + " " + sim.getTimingState().t);
         	    // adjust right side
         	    rs -= dx*volts[i];
         	    exprState.values[i] = volts[i];

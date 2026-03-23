@@ -127,7 +127,7 @@ class ScenarioElm extends CircuitElm {
     void doStep() {
         boolean active = false;
         if (enabled) {
-            double t = sim.t;
+            double t = sim.getTimingState().t;
             boolean inStart = (t >= startTime);
             boolean inEnd = (endTime < 0 || t <= endTime);
             active = inStart && inEnd;

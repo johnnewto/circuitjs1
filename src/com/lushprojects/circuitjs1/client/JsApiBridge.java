@@ -45,27 +45,27 @@ final class JsApiBridge {
         });
         api.setGetTime(new CirSim.HookNoArgDouble() {
             public double call() {
-                return that.t;
+                return that.getTimingState().t;
             }
         });
         api.setGetTimeStep(new CirSim.HookNoArgDouble() {
             public double call() {
-                return that.timeStep;
+                return that.getTimingState().timeStep;
             }
         });
         api.setSetTimeStep(new CirSim.HookDouble() {
             public void call(double ts) {
-                that.timeStep = ts;
+                that.getTimingState().timeStep = ts;
             }
         });
         api.setGetMaxTimeStep(new CirSim.HookNoArgDouble() {
             public double call() {
-                return that.maxTimeStep;
+                return that.getTimingState().maxTimeStep;
             }
         });
         api.setSetMaxTimeStep(new CirSim.HookDouble() {
             public void call(double ts) {
-                that.maxTimeStep = that.timeStep = ts;
+                that.getTimingState().maxTimeStep = that.getTimingState().timeStep = ts;
             }
         });
         api.setIsRunning(new CirSim.HookNoArgBoolean() {

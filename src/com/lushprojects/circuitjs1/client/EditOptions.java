@@ -30,7 +30,7 @@ class EditOptions implements Editable {
 	
 	public EditInfo getEditInfo(int n) {
 		if (n == 0)
-			return new EditInfo("Time step size (s)", sim.maxTimeStep, 0, 0);
+			return new EditInfo("Time step size (s)", sim.getTimingState().maxTimeStep, 0, 0);
 		if (n == 1)
 			return new EditInfo("Range for voltage color (V)",
 					CircuitElm.voltageRange, 0, 0);
@@ -124,14 +124,14 @@ class EditOptions implements Editable {
 		    return ei;
 		}
 		if (n == 23 && sim.adjustTimeStep)
-		    return new EditInfo("Minimum time step size (s)", sim.minTimeStep, 0, 0);
+		    return new EditInfo("Minimum time step size (s)", sim.getTimingState().minTimeStep, 0, 0);
 
 		return null;
 	}
 	
 	public void setEditValue(int n, EditInfo ei) {
 		if (n == 0 && ei.value > 0) {
-			sim.maxTimeStep = ei.value;
+			sim.getTimingState().maxTimeStep = ei.value;
 
 			// if timestep changed manually, prompt before changing it again
 			AudioOutputElm.okToChangeTimeStep = false;
@@ -251,7 +251,7 @@ class EditOptions implements Editable {
 		    ei.newDialog = true;
 		}
 		if (n == 23 && ei.value > 0)
-		    sim.minTimeStep = ei.value;
+		    sim.getTimingState().minTimeStep = ei.value;
 	}
 
 	void resetPreferences() {

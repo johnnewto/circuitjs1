@@ -66,12 +66,12 @@ public class CircuitTestRunner {
      * More efficient than creating a new simulator for each test
      */
     public CircuitTestRunner() {
-        sim = CirSim.theSim;
+        sim = CirSim.getInstance();
         
         // Configure for deterministic testing
-        sim.maxTimeStep = STANDARD_TIMESTEP;
-        sim.minTimeStep = STANDARD_TIMESTEP;
-        sim.timeStep = STANDARD_TIMESTEP;
+        sim.getTimingState().maxTimeStep = STANDARD_TIMESTEP;
+        sim.getTimingState().minTimeStep = STANDARD_TIMESTEP;
+        sim.getTimingState().timeStep = STANDARD_TIMESTEP;
         sim.adjustTimeStep = false; // Fixed timestep for consistency
         sim.simRunning = false; // Start paused
     }
@@ -123,10 +123,10 @@ public class CircuitTestRunner {
         sim.simRunning = true;
         
         // Use actual timestep from circuit, not STANDARD_TIMESTEP
-        int maxSteps = (int) (targetTime / sim.timeStep) + 1000; // Safety margin
+        int maxSteps = (int) (targetTime / sim.getTimingState().timeStep) + 1000; // Safety margin
         int steps = 0;
-        double endTime = targetTime+sim.timeStep;
-        while (sim.t <= endTime && steps < maxSteps) {  // Run until target time reached
+        double endTime = targetTime+sim.getTimingState().timeStep;
+        while (sim.getTimingState().t <= endTime && steps < maxSteps) {  // Run until target time reached
             sim.updateCircuit();
             steps++;
             
@@ -180,7 +180,7 @@ public class CircuitTestRunner {
         int requiredStableSteps = 100; // Must be stable for 100 consecutive steps
         
         // Use actual timestep from circuit, not STANDARD_TIMESTEP
-        int maxSteps = (int) (timeout / sim.timeStep);
+        int maxSteps = (int) (timeout / sim.getTimingState().timeStep);
         int steps = 0;
         
         while (steps < maxSteps) {
@@ -192,10 +192,10 @@ public class CircuitTestRunner {
             }
             
             // Check stability
-            if (lastVoltages != null && sim.nodeVoltages != null) {
+            if (lastVoltages != null && sim.getSolverMatrixState().nodeVoltages != null) {
                 boolean stable = true;
-                for (int i = 0; i < Math.min(lastVoltages.length, sim.nodeVoltages.length); i++) {
-                    if (Math.abs(sim.nodeVoltages[i] - lastVoltages[i]) > stabilityThreshold) {
+                for (int i = 0; i < Math.min(lastVoltages.length, sim.getSolverMatrixState().nodeVoltages.length); i++) {
+                    if (Math.abs(sim.getSolverMatrixState().nodeVoltages[i] - lastVoltages[i]) > stabilityThreshold) {
                         stable = false;
                         break;
                     }
@@ -213,10 +213,10 @@ public class CircuitTestRunner {
             }
             
             // Save current voltages
-            if (sim.nodeVoltages != null) {
-                lastVoltages = new double[sim.nodeVoltages.length];
-                for (int i = 0; i < sim.nodeVoltages.length; i++) {
-                    lastVoltages[i] = sim.nodeVoltages[i];
+            if (sim.getSolverMatrixState().nodeVoltages != null) {
+                lastVoltages = new double[sim.getSolverMatrixState().nodeVoltages.length];
+                for (int i = 0; i < sim.getSolverMatrixState().nodeVoltages.length; i++) {
+                    lastVoltages[i] = sim.getSolverMatrixState().nodeVoltages[i];
                 }
             }
         }
@@ -265,10 +265,10 @@ public class CircuitTestRunner {
             throw new RuntimeException("Element is null");
         }
         int node = elm.getNode(post);
-        if (node < 0 || node >= sim.nodeVoltages.length) {
+        if (node < 0 || node >= sim.getSolverMatrixState().nodeVoltages.length) {
             throw new RuntimeException("Invalid node: " + node);
         }
-        return sim.nodeVoltages[node];
+        return sim.getSolverMatrixState().nodeVoltages[node];
     }
     
     /**
@@ -339,7 +339,7 @@ public class CircuitTestRunner {
      * @return Time in seconds
      */
     public double getTime() {
-        return sim.t;
+        return sim.getTimingState().t;
     }
     
     /**
@@ -455,7 +455,7 @@ public class CircuitTestRunner {
     public String dumpState() {
         StringBuilder sb = new StringBuilder();
         sb.append("Circuit State at t=");
-        sb.append(sim.t);
+        sb.append(sim.getTimingState().t);
         sb.append("s\n");
         sb.append("Converged: ");
         sb.append(sim.converged);
@@ -464,21 +464,21 @@ public class CircuitTestRunner {
         sb.append(sim.elmList.size());
         sb.append("\n");
         sb.append("Nodes: ");
-        sb.append(sim.nodeList != null ? sim.nodeList.size() : 0);
+        sb.append(sim.getCircuitAnalyzer().getNodeList() != null ? sim.getCircuitAnalyzer().getNodeList().size() : 0);
         sb.append("\n");
         
-        if (sim.nodeVoltages != null) {
+        if (sim.getSolverMatrixState().nodeVoltages != null) {
             sb.append("\nNode Voltages:\n");
-            for (int i = 0; i < Math.min(10, sim.nodeVoltages.length); i++) {
+            for (int i = 0; i < Math.min(10, sim.getSolverMatrixState().nodeVoltages.length); i++) {
                 sb.append("  Node ");
                 sb.append(i);
                 sb.append(": ");
-                sb.append(formatNumber(sim.nodeVoltages[i]));
+                sb.append(formatNumber(sim.getSolverMatrixState().nodeVoltages[i]));
                 sb.append(" V\n");
             }
-            if (sim.nodeVoltages.length > 10) {
+            if (sim.getSolverMatrixState().nodeVoltages.length > 10) {
                 sb.append("  ... (");
-                sb.append(sim.nodeVoltages.length - 10);
+                sb.append(sim.getSolverMatrixState().nodeVoltages.length - 10);
                 sb.append(" more)\n");
             }
         }

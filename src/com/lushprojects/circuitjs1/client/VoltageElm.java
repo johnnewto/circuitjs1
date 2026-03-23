@@ -127,7 +127,7 @@ class VoltageElm extends CircuitElm {
 	if (waveform != WF_DC && sim.dcAnalysisFlag)
 	    return bias;
 	
-	double w = 2*pi*(sim.t-freqTimeZero)*frequency + phaseShift;
+	double w = 2*pi*(sim.getTimingState().t-freqTimeZero)*frequency + phaseShift;
 	switch (waveform) {
 	case WF_DC: return maxVoltage+bias;
 	case WF_AC: return Math.sin(w)*maxVoltage+bias;
@@ -374,14 +374,14 @@ class VoltageElm extends CircuitElm {
 	    // even though the frequency has changed.
 	    double oldfreq = frequency;
 	    frequency = ei.value;
-	    double maxfreq = 1/(8*sim.maxTimeStep);
+	    double maxfreq = 1/(8*sim.getTimingState().maxTimeStep);
 	    if (frequency > maxfreq) {
 		if (Window.confirm(Locale.LS("Adjust timestep to allow for higher frequencies?")))
-		    sim.maxTimeStep = 1/(32*frequency);
+		    sim.getTimingState().maxTimeStep = 1/(32*frequency);
 		else
 		    frequency = maxfreq;
 	    }
-	    freqTimeZero = (frequency == 0) ? 0 : sim.t-oldfreq*(sim.t-freqTimeZero)/frequency;
+	    freqTimeZero = (frequency == 0) ? 0 : sim.getTimingState().t-oldfreq*(sim.getTimingState().t-freqTimeZero)/frequency;
 	}
 	if (n == 2) {
 	    int ow = waveform;

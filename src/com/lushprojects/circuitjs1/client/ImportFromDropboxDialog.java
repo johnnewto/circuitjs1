@@ -45,7 +45,7 @@ public class ImportFromDropboxDialog extends Dialog {
 		CirSim.console("Loading from URL: " + link);
 		sim.getUndoRedoManager().pushUndo();
 		sim.getCircuitIOService().readCircuit(s);
-		sim.currentCircuitFile = "URL: " + link;
+		sim.getSFCRDocumentManager().setCurrentCircuitFile("URL: " + link);
 		sim.getUiPanelManager().allowSave(false);
 	}
 	
@@ -126,4 +126,3 @@ public class ImportFromDropboxDialog extends Dialog {
 		this.center();
 	}
 }
-

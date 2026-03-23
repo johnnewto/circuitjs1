@@ -162,7 +162,7 @@ class ProbeElm extends CircuitElm {
 	                s = getUnitText(frequency, "Hz");
 	                break;
 	            case TP_PER:
-//	                s = "percent:"+period + " " + sim.timeStep + " " + sim.simTime + " " + sim.getIterCount();
+//	                s = "percent:"+period + " " + sim.getTimingState().timeStep + " " + sim.simTime + " " + sim.getIterCount();
 	                break;
 	            case TP_PWI:
 	                s = getUnitText(pulseWidth, "S");

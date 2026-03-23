@@ -74,8 +74,9 @@ public class SFCRExporter {
     
     /** Export the current circuit in SFCR format. */
     public String export() {
-        if (sim != null && sim.modelInfoSourceText != null && !sim.modelInfoSourceText.trim().isEmpty()) {
-            String merged = exportWithTemplateMerge(sim.modelInfoSourceText);
+        if (sim != null && sim.getSFCRDocumentManager().getModelInfoSourceText() != null
+                && !sim.getSFCRDocumentManager().getModelInfoSourceText().trim().isEmpty()) {
+            String merged = exportWithTemplateMerge(sim.getSFCRDocumentManager().getModelInfoSourceText());
             if (merged != null && !merged.trim().isEmpty()) {
                 return normalizeBlankLinesOutsideFences(merged);
             }
@@ -1109,11 +1110,12 @@ public class SFCRExporter {
     
     /** Export model documentation as inline markdown (no @info wrapper). */
     private String exportInlineDocumentation() {
-        if (sim.modelInfoContent == null || sim.modelInfoContent.isEmpty()) {
+        String modelInfoContent = sim.getSFCRDocumentManager().getModelInfoContent();
+        if (modelInfoContent == null || modelInfoContent.isEmpty()) {
             return "";
         }
 
-        String sanitized = sanitizeInlineDocumentation(sim.modelInfoContent);
+        String sanitized = sanitizeInlineDocumentation(modelInfoContent);
         if (sanitized.isEmpty()) {
             return "";
         }
@@ -1236,7 +1238,7 @@ public class SFCRExporter {
         sb.append("@init\n");
         
         // Timestep
-        sb.append("  timestep: ").append(sim.maxTimeStep).append("\n");
+        sb.append("  timestep: ").append(sim.getTimingState().maxTimeStep).append("\n");
         
         // Voltage unit (if customized)
         if (sim.voltageUnitSymbol != null && !sim.voltageUnitSymbol.equals("V")) {

@@ -78,8 +78,8 @@ package com.lushprojects.circuitjs1.client;
 	    boolean oldState = poweredState;
 	    poweredState = (volts[0]-volts[1] > 2.5);
 	    if (oldState != poweredState)
-		lastTransition = sim.t;
-	    if (sim.t > lastTransition + (poweredState ? onDelay : offDelay))
+		lastTransition = sim.getTimingState().t;
+	    if (sim.getTimingState().t > lastTransition + (poweredState ? onDelay : offDelay))
 		onState = poweredState;
 	}
 	

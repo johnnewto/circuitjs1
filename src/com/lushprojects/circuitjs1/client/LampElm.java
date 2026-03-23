@@ -156,9 +156,9 @@ class LampElm extends CircuitElm {
 	    double capw = cap * warmTime/.4;
 	    double capc = cap * coolTime/.4;
 	    //System.out.println(nom_r + " " + (resistance/nom_r));
-	    temp += getPower()*sim.timeStep/capw;
+	    temp += getPower()*sim.getTimingState().timeStep/capw;
 	    double cr = 2600/nom_pow;
-	    temp -= sim.timeStep*(temp-roomTemp)/(capc*cr);
+	    temp -= sim.getTimingState().timeStep*(temp-roomTemp)/(capc*cr);
 //	    sim.console("lampsi " + temp + " " + capc + " " + nom_pow);
 	}
 	void doStep() {

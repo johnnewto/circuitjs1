@@ -110,7 +110,7 @@ class CCCSElm extends VCCSElm {
                 // calculate output
                 for (i = 0; i != inputPairCount; i++)
                     setCurrentExprValue(i, pins[i*2+1].current);
-                exprState.t = sim.t;
+                exprState.t = sim.getTimingState().t;
         	double v0 = expr.eval(exprState);
         	double rs = v0;
 
@@ -134,7 +134,7 @@ class CCCSElm extends VCCSElm {
                     // adjust right side
                     rs -= dx*cur;
 //                    if (sim.subIterations > 1)
-//                        sim.console("ccedx " + i + " " + cur + " " + dx + " " + rs + " " + sim.subIterations + " " + sim.t);
+//                        sim.console("ccedx " + i + " " + cur + " " + dx + " " + rs + " " + sim.subIterations + " " + sim.getTimingState().t);
                     setCurrentExprValue(i, cur);
                 }
 

@@ -402,7 +402,7 @@ Reference target from pyworld2 tests at year 2100:
 207 -208 192 -144 192 164 P U:BaMGZo
 207 -208 224 -144 224 164 POLR U:PwVDmt
 207 -208 144 -144 144 164 QL U:xJHWxB
-431 -144 352 -112 448 0 200 true false U:huagx4
+431 -144 352 -112 448 0 10 true false U:huagx4
 @end
 ```
 

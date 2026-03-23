@@ -38,7 +38,7 @@ class PhaseCompElm extends ChipElm {
     }
     boolean nonLinear() { return true; }
     void stamp() {
-	int vn = sim.nodeList.size()+pins[2].voltSource;
+	int vn = sim.getCircuitAnalyzer().getNodeList().size()+pins[2].voltSource;
 	sim.stampNonLinear(vn);
 	sim.stampNonLinear(0);
 	sim.stampNonLinear(nodes[2]);
@@ -59,7 +59,7 @@ class PhaseCompElm extends ChipElm {
 	    sim.stampVoltageSource(0, nodes[2], pins[2].voltSource, out);
 	else {
 	    // tie current through output pin to 0
-	    int vn = sim.nodeList.size()+pins[2].voltSource;
+	    int vn = sim.getCircuitAnalyzer().getNodeList().size()+pins[2].voltSource;
 	    sim.stampMatrix(vn, vn, 1);
 	}
 	pins[0].value = v1;

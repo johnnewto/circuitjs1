@@ -137,8 +137,8 @@ final class RunnerController {
                 RunnerPanelUi.updateRunnerStatusMessage("Loaded circuits/" + circuitPath);
                 if (title != null)
                     sim.setCircuitTitle(title);
-                sim.currentCircuitFile = "circuits/" + circuitPath;
-                runRunnerTableSimulation(steps, sim.currentCircuitFile);
+                sim.getSFCRDocumentManager().setCurrentCircuitFile("circuits/" + circuitPath);
+                runRunnerTableSimulation(steps, sim.getSFCRDocumentManager().getCurrentCircuitFile());
             }
         }, new Runnable() {
             public void run() {
@@ -192,8 +192,8 @@ final class RunnerController {
                 RunnerPanelUi.updateRunnerStatusMessage("Loaded circuits/" + circuitPath);
                 if (title != null)
                     sim.setCircuitTitle(title);
-                sim.currentCircuitFile = "circuits/" + circuitPath;
-                runRunnerSimulation(steps, sim.currentCircuitFile, format);
+                sim.getSFCRDocumentManager().setCurrentCircuitFile("circuits/" + circuitPath);
+                runRunnerSimulation(steps, sim.getSFCRDocumentManager().getCurrentCircuitFile(), format);
             }
         }, new Runnable() {
             public void run() {
@@ -207,14 +207,14 @@ final class RunnerController {
     void runRunnerTableFromText(String circuitText, int steps, String source) {
         CirSim.console("Runner table loading embedded circuit text source=" + source + ", length=" + circuitText.length());
         sim.getCircuitIOService().readCircuit(circuitText, 0);
-        sim.currentCircuitFile = source;
+        sim.getSFCRDocumentManager().setCurrentCircuitFile(source);
         runRunnerTableSimulation(steps, source);
     }
 
     void runRunnerFromText(String circuitText, int steps, String source, String format) {
         CirSim.console("Runner loading embedded circuit text source=" + source + ", length=" + circuitText.length());
         sim.getCircuitIOService().readCircuit(circuitText, 0);
-        sim.currentCircuitFile = source;
+        sim.getSFCRDocumentManager().setCurrentCircuitFile(source);
         runRunnerSimulation(steps, source, format);
     }
 
@@ -317,12 +317,12 @@ final class RunnerController {
         boolean warnedNoTimeAdvance = false;
         int completedSteps = 0;
         for (int step = 0; step < steps; step++) {
-            double prevT = sim.t;
+            double prevT = sim.getTimingState().t;
             sim.getSimulationLoop().runCircuit(step == 0);
             ComputedValues.commitConvergedValues();
 
             List<String> cells = new ArrayList<String>();
-            cells.add(SimulationExportCore.buildRunnerTableCell(String.valueOf(sim.t)));
+            cells.add(SimulationExportCore.buildRunnerTableCell(String.valueOf(sim.getTimingState().t)));
             for (int i = 0; i < keys.size(); i++) {
                 Double value = ComputedValues.getConvergedValue(keys.get(i));
                 cells.add(SimulationExportCore.buildRunnerTableCell(value != null ? String.valueOf(value) : ""));
@@ -331,7 +331,7 @@ final class RunnerController {
 
             completedSteps++;
 
-            if (!warnedNoTimeAdvance && sim.t == prevT)
+            if (!warnedNoTimeAdvance && sim.getTimingState().t == prevT)
                 warnedNoTimeAdvance = true;
             if (sim.stopMessage != null)
                 break;
@@ -412,17 +412,17 @@ final class RunnerController {
         char sep = "tsv".equals(asyncRunFormat) ? '\t' : ',';
         int batchEnd = Math.min(asyncRunStep + RUNNER_LIVE_BATCH_SIZE, asyncRunTotalSteps);
         for (int step = asyncRunStep; step < batchEnd; step++) {
-            double prevT = sim.t;
+            double prevT = sim.getTimingState().t;
             sim.getSimulationLoop().runCircuit(step == 0);
             ComputedValues.commitConvergedValues();
-            asyncRunOutput.append(sim.t);
+            asyncRunOutput.append(sim.getTimingState().t);
             for (int i = 0; i < asyncRunKeys.size(); i++) {
                 Double v = ComputedValues.getConvergedValue(asyncRunKeys.get(i));
                 asyncRunOutput.append(sep).append(v != null ? String.valueOf(v) : "");
             }
             asyncRunOutput.append('\n');
             asyncRunCompletedSteps++;
-            if (!asyncWarnedNoTimeAdvance && sim.t == prevT)
+            if (!asyncWarnedNoTimeAdvance && sim.getTimingState().t == prevT)
                 asyncWarnedNoTimeAdvance = true;
             if (sim.stopMessage != null)
                 break;
@@ -511,18 +511,18 @@ final class RunnerController {
     private void runRunnerTableChunkInner() {
         int batchEnd = Math.min(asyncRunStep + RUNNER_LIVE_BATCH_SIZE, asyncRunTotalSteps);
         for (int step = asyncRunStep; step < batchEnd; step++) {
-            double prevT = sim.t;
+            double prevT = sim.getTimingState().t;
             sim.getSimulationLoop().runCircuit(step == 0);
             ComputedValues.commitConvergedValues();
             List<String> cells = new ArrayList<String>();
-            cells.add(SimulationExportCore.buildRunnerTableCell(String.valueOf(sim.t)));
+            cells.add(SimulationExportCore.buildRunnerTableCell(String.valueOf(sim.getTimingState().t)));
             for (int i = 0; i < asyncRunKeys.size(); i++) {
                 Double v = ComputedValues.getConvergedValue(asyncRunKeys.get(i));
                 cells.add(SimulationExportCore.buildRunnerTableCell(v != null ? String.valueOf(v) : ""));
             }
             asyncRunTableContent.append(SimulationExportCore.buildRunnerTableRow(cells));
             asyncRunCompletedSteps++;
-            if (!asyncWarnedNoTimeAdvance && sim.t == prevT)
+            if (!asyncWarnedNoTimeAdvance && sim.getTimingState().t == prevT)
                 asyncWarnedNoTimeAdvance = true;
             if (sim.stopMessage != null)
                 break;

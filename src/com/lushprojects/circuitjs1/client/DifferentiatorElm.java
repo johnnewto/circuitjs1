@@ -132,7 +132,7 @@ class DifferentiatorElm extends CircuitElm {
     boolean nonLinear() { return true; }
     
     void stamp() {
-        int vn = voltSource + sim.nodeList.size();
+        int vn = voltSource + sim.getCircuitAnalyzer().getNodeList().size();
         sim.stampNonLinear(vn);
         sim.stampVoltageSource(0, nodes[1], voltSource);
     }
@@ -140,25 +140,25 @@ class DifferentiatorElm extends CircuitElm {
     @Override
     void postStamp() {
         super.postStamp();
-        CirSim csim = CirSim.theSim;
+        CirSim csim = CirSim.getInstance();
         if (csim == null || csim.nameToSlot == null) return;
         if (expr != null)
             expr.resolveGSlot(csim.nameToSlot);
     }
 
     void doStep() {
-        int vn = voltSource + sim.nodeList.size();
+        int vn = voltSource + sim.getCircuitAnalyzer().getNodeList().size();
         
         // Settling logic: wait for one full timestep to let circuit stabilize
         // before computing derivatives
         if (needsSettle) {
             if (settleTimeStep < 0) {
                 // First call - record the starting timestep
-                settleTimeStep = sim.timeStepCount;
+                settleTimeStep = sim.getTimingState().timeStepCount;
             }
             
             // Keep settling until we've moved past the initial timestep
-            if (sim.timeStepCount <= settleTimeStep) {
+            if (sim.getTimingState().timeStepCount <= settleTimeStep) {
                 // Still in settling phase - update lastVolts and output 0
                 lastVolts[0] = volts[0];
                 exprState.lastValues[0] = volts[0];
@@ -174,7 +174,7 @@ class DifferentiatorElm extends CircuitElm {
         if (expr != null) {
             // Calculate output using expression (computes dadt)
             exprState.values[0] = volts[0];
-            exprState.t = sim.t;
+            exprState.t = sim.getTimingState().t;
             double v0 = expr.eval(exprState);
             
             // Check convergence

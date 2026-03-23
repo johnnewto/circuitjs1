@@ -319,34 +319,28 @@ public class InfoViewerDialog extends DialogBox {
         currentRawMarkdown = normalized;
         currentMarkdown = deriveDisplayMarkdown(currentTitle, normalized, currentAppendCircuitTables);
 
-        if (CirSim.theSim != null && isModelInfoTitle(currentTitle)) {
+        if (CirSim.getInstance() != null && isModelInfoTitle(currentTitle)) {
             if (SFCRParser.isSFCRFormat(normalized)) {
-                CirSim.theSim.getImportExportHelper().importCircuitFromText(normalized, false);
+                CirSim.getInstance().getImportExportHelper().importCircuitFromText(normalized, false);
                 return;
             }
-            CirSim.theSim.modelInfoContent = normalized;
-            CirSim.theSim.modelInfoSourceText = null;
-            if (CirSim.theSim.viewModelInfoItem != null) {
-                CirSim.theSim.viewModelInfoItem.setEnabled(!normalized.isEmpty());
-            }
-            if (CirSim.theSim.helpViewModelInfoItem != null) {
-                CirSim.theSim.helpViewModelInfoItem.setEnabled(!normalized.isEmpty());
-            }
+            CirSim.getInstance().getSFCRDocumentManager().setModelInfoContent(normalized);
+            CirSim.getInstance().getSFCRDocumentManager().setModelInfoSourceText(null);
         }
     }
 
     public static void handleSimulationCommand(String command) {
-        if (CirSim.theSim == null || command == null) {
+        if (CirSim.getInstance() == null || command == null) {
             return;
         }
         if ("run".equals(command)) {
-            CirSim.theSim.setSimRunning(true);
+            CirSim.getInstance().setSimRunning(true);
         } else if ("stop".equals(command)) {
-            CirSim.theSim.setSimRunning(false);
+            CirSim.getInstance().setSimRunning(false);
         } else if ("reset".equals(command)) {
-            CirSim.theSim.resetAction();
+            CirSim.getInstance().resetAction();
         } else if ("step".equals(command)) {
-            CirSim.theSim.stepCircuit();
+            CirSim.getInstance().stepCircuit();
         }
     }
 
@@ -366,8 +360,8 @@ public class InfoViewerDialog extends DialogBox {
     public static void pushLiveDataUpdate() {
         long now = System.currentTimeMillis();
         int intervalMs = DEFAULT_LIVE_UPDATE_INTERVAL_MS;
-        if (CirSim.theSim != null && CirSim.theSim.infoViewerUpdateIntervalMs > 0) {
-            intervalMs = CirSim.theSim.infoViewerUpdateIntervalMs;
+        if (CirSim.getInstance() != null && CirSim.getInstance().infoViewerUpdateIntervalMs > 0) {
+            intervalMs = CirSim.getInstance().infoViewerUpdateIntervalMs;
         }
         if (now - lastLiveUpdateMs < intervalMs) {
             return;
@@ -376,7 +370,7 @@ public class InfoViewerDialog extends DialogBox {
             return;
         }
 
-        String json = InfoViewerLiveDataSerializer.buildLiveDataJson(CirSim.theSim);
+        String json = InfoViewerLiveDataSerializer.buildLiveDataJson(CirSim.getInstance());
         if (json == null || json.isEmpty()) {
             return;
         }

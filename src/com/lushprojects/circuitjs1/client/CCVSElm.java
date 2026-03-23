@@ -80,7 +80,7 @@ class CCVSElm extends VCCSElm {
 	    // voltage source for outputs
 	    int vn2 = pins[inputCount].voltSource;
             outputVS = vn2;
-            sim.stampNonLinear(vn2 + sim.nodeList.size());
+            sim.stampNonLinear(vn2 + sim.getCircuitAnalyzer().getNodeList().size());
             sim.stampVoltageSource(nodes[inputCount+1], nodes[inputCount], vn2);
 	}
 
@@ -102,19 +102,19 @@ class CCVSElm extends VCCSElm {
         	    sim.converged = false;
             }
             
-            int vno = outputVS + sim.nodeList.size();
+            int vno = outputVS + sim.getCircuitAnalyzer().getNodeList().size();
             if (expr != null) {
         	// calculate output
         	for (i = 0; i != inputPairCount; i++)
         	    setCurrentExprValue(i, pins[i*2+1].current);
-        	exprState.t = sim.t;
+        	exprState.t = sim.getTimingState().t;
         	double v0 = expr.eval(exprState);
         	double rs = v0;
         	
         	for (i = 0; i != inputPairCount; i++) {
         	    double cur = pins[i*2+1].current;
         	    double dv = cur-lastCurrents[i];
-                    int vni = pins[i*2+1].voltSource + sim.nodeList.size();
+                    int vni = pins[i*2+1].voltSource + sim.getCircuitAnalyzer().getNodeList().size();
         	    if (Math.abs(dv) < 1e-6)
         		dv = 1e-6;
         	    setCurrentExprValue(i, cur);
@@ -128,7 +128,7 @@ class CCVSElm extends VCCSElm {
         	    // adjust right side
         	    rs -= dx*cur;
         	    //if (sim.subIterations > 1)
-        	        //sim.console("ccedx " + i + " " + cur + " " + dx + " " + rs + " " + sim.subIterations + " " + sim.t);
+        	        //sim.console("ccedx " + i + " " + cur + " " + dx + " " + rs + " " + sim.subIterations + " " + sim.getTimingState().t);
         	    setCurrentExprValue(i, cur);
         	}
         	sim.stampRightSide(vno, rs);

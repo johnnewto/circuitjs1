@@ -81,19 +81,19 @@ class SFCRWorld2ExportImportSimulationParityTest {
 
             int step = 0;
             int maxSteps = 200000;
-            double prevT = sim.t;
-            while (sim.t < years && step < maxSteps) {
+            double prevT = sim.getTimingState().t;
+            while (sim.getTimingState().t < years && step < maxSteps) {
                 sim.getSimulationLoop().runCircuit(step == 0);
                 ComputedValues.commitConvergedValues();
 
                 assertTrue(sim.stopMessage == null, "Simulation stopped unexpectedly: " + sim.stopMessage);
-                assertTrue(sim.t >= prevT, "Simulation time moved backwards");
+                assertTrue(sim.getTimingState().t >= prevT, "Simulation time moved backwards");
 
-                prevT = sim.t;
+                prevT = sim.getTimingState().t;
                 step++;
             }
 
-            assertTrue(sim.t >= years, "Simulation did not reach target year " + years + " (t=" + sim.t + ")");
+            assertTrue(sim.getTimingState().t >= years, "Simulation did not reach target year " + years + " (t=" + sim.getTimingState().t + ")");
 
             LinkedHashMap<String, Double> values = new LinkedHashMap<String, Double>();
             values.put("P", getConverged("P"));
@@ -101,7 +101,7 @@ class SFCRWorld2ExportImportSimulationParityTest {
             values.put("NR", getConverged("NR"));
             values.put("POLR", getConverged("POLR"));
 
-            return new SimulationSnapshot(sim.t, values);
+            return new SimulationSnapshot(sim.getTimingState().t, values);
         } finally {
             RuntimeMode.setNonInteractiveRuntime(false);
         }

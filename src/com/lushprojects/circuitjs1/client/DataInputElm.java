@@ -146,7 +146,7 @@ class DataInputElm extends RailElm {
 	}
 	
 	void stepFinished() {
-	    timeOffset += sim.timeStep;
+	    timeOffset += sim.getTimingState().timeStep;
 	}
 	
 	int getDumpType() { return 424; }

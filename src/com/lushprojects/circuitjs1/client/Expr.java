@@ -288,8 +288,8 @@ class Expr {
 	if (context != null && context.explicitTimeStep != null) {
 	    return context.explicitTimeStep.doubleValue();
 	}
-	if (CirSim.theSim != null) {
-	    return CirSim.theSim.timeStep;
+	if (CirSim.getInstance() != null) {
+	    return CirSim.getInstance().getTimingState().timeStep;
 	}
 	return 0;
 	}
@@ -876,7 +876,7 @@ class Expr {
 	    return pwlx(es, children, context);
 	case E_LOOKUP: {
 	    double x = left.eval(es, context);
-	    boolean clamp = (CirSim.theSim == null) ? true : CirSim.theSim.sfcrLookupClampDefault;
+	    boolean clamp = (CirSim.getInstance() == null) ? true : CirSim.getInstance().sfcrLookupClampDefault;
 	    if (children != null && children.size() >= 2) {
 		double clampArg = children.get(1).eval(es, context);
 		clamp = (clampArg != 0.0);
@@ -1061,7 +1061,7 @@ class Expr {
 		es.smoothPendingOutput[idx] = es.lastOutput;
 		es.smoothLastCommitTime[idx] = -1;
 	    }
-	    double dt = CirSim.theSim.timeStep;
+	    double dt = CirSim.getInstance().getTimingState().timeStep;
 	    double denom = 1 + theta * dt;
 	    if (Math.abs(denom) < 1e-12) {
 		es.smoothPendingOutput[idx] = es.smoothLastOutput[idx];
@@ -1089,7 +1089,7 @@ class Expr {
 		es.smoothPendingOutput[idx] = es.lastOutput;
 		es.smoothLastCommitTime[idx] = -1;
 	    }
-	    double dt = CirSim.theSim.timeStep;
+	    double dt = CirSim.getInstance().getTimingState().timeStep;
 	    if (Math.abs(tau) < 1e-12) {
 		es.smoothPendingOutput[idx] = inputVal;
 		return inputVal;
@@ -1108,7 +1108,7 @@ class Expr {
 	    // value holds the slot index. nodeName is preserved for re-resolution after re-analyze.
 	    // Perf probe: count only — per-call timing of a ~1 ns array read is dominated by
 	    // JS timestamp overhead (~500 ns/call) and produces meaningless avgNs numbers.
-	    CirSim gslotSim = CirSim.theSim;
+	    CirSim gslotSim = CirSim.getInstance();
 	    if (gslotSim != null && gslotSim.circuitVariables != null) {
 		int gslot = (int) value;
 		if (gslot >= 0 && gslot < gslotSim.circuitVariables.length) {
@@ -1132,8 +1132,8 @@ class Expr {
 	    // 4) NAME exact match from ComputedValues (non-physical fallback)
 	    //
 	    // In pure-computational mode (no MNA): NAME.flow first, then NAME.
-	    if (CirSim.theSim != null && nodeName != null) {
-		if (CirSim.theSim.equationTableMnaMode) {
+	    if (CirSim.getInstance() != null && nodeName != null) {
+		if (CirSim.getInstance().equationTableMnaMode) {
 			    // PARAM names in MNA mode must resolve from ComputedValues first,
 			    // even when a same-named labeled node exists.
 			    if (ComputedValues.isParameterName(nodeName)) {
@@ -1152,7 +1152,7 @@ class Expr {
 		    // MNA mode: labeled node voltage first (authoritative from matrix solver)
 		    Integer labeledNode = LabeledNodeElm.getByName(nodeName);
 		    if (labeledNode != null && labeledNode != 0) {
-			return returnNodeRefValue(CirSim.theSim.getCircuitValueSlotManager().getLabeledNodeVoltage(nodeName), nodeRefStartNanos);
+			return returnNodeRefValue(CirSim.getInstance().getCircuitValueSlotManager().getLabeledNodeVoltage(nodeName), nodeRefStartNanos);
 		    }
 		    // Fall back to ComputedValues for non-physical variables
 		    Double computedValue = getComputedByMode(nodeName, context);
@@ -1183,9 +1183,9 @@ class Expr {
 	    }
 	    if (type >= E_DADT) {
 		if (!perfProbeEnabled)
-		    return (es.values[type-E_DADT]-es.lastValues[type-E_DADT])/CirSim.theSim.timeStep;
+		    return (es.values[type-E_DADT]-es.lastValues[type-E_DADT])/CirSim.getInstance().getTimingState().timeStep;
 		long slotStartNanos = getPerfNowNanos();
-		double slotValue = (es.values[type-E_DADT]-es.lastValues[type-E_DADT])/CirSim.theSim.timeStep;
+		double slotValue = (es.values[type-E_DADT]-es.lastValues[type-E_DADT])/CirSim.getInstance().getTimingState().timeStep;
 		recordLocalSlotTiming(slotStartNanos);
 		return slotValue;
 	    }

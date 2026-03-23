@@ -193,7 +193,7 @@ class TestPointElm extends CircuitElm {
                 value = getUnitText(frequency, "Hz");
                 break;
             case TP_PER:
-//                value = "percent:"+period + " " + sim.timeStep + " " + sim.simTime + " " + sim.getIterCount();
+//                value = "percent:"+period + " " + sim.getTimingState().timeStep + " " + sim.simTime + " " + sim.getIterCount();
                 break;
             case TP_PWI:
                 value = getUnitText(pulseWidth, "S");
@@ -215,9 +215,9 @@ class TestPointElm extends CircuitElm {
     
     
     void stepFinished(){
-	if (sim.timeStepCount == lastStepCount)
+	if (sim.getTimingState().timeStepCount == lastStepCount)
 	    return;
-	lastStepCount = sim.timeStepCount;
+	lastStepCount = sim.getTimingState().timeStepCount;
         count++;//how many counts are in a cycle    
         total += volts[0]*volts[0]; //sum of squares
 
@@ -359,10 +359,10 @@ class TestPointElm extends CircuitElm {
                 arr[1] = "Freq = " + getUnitText(frequency, "Hz");
                 break;
             case TP_PER:
-                arr[1] = "Period = " + getUnitText(period*sim.maxTimeStep/sim.getSimulationLoop().getIterCount(), "S");
+                arr[1] = "Period = " + getUnitText(period*sim.getTimingState().maxTimeStep/sim.getSimulationLoop().getIterCount(), "S");
                 break;
             case TP_PWI:
-                arr[1] = "Pulse width = " + getUnitText(pulseWidth*sim.maxTimeStep*sim.getSimulationLoop().getIterCount(), "S");
+                arr[1] = "Pulse width = " + getUnitText(pulseWidth*sim.getTimingState().maxTimeStep*sim.getSimulationLoop().getIterCount(), "S");
                 break;
             case TP_DUT:
                 arr[1] = "Duty cycle = " + showFormat.format(dutyCycle);

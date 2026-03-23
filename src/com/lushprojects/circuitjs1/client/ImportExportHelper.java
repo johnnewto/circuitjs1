@@ -32,9 +32,9 @@ class ImportExportHelper {
         f |= (sim.showValuesCheckItem.getState()) ? 0 : 16;
         f |= sim.adjustTimeStep ? 64 : 0;
         String dump = "$ " + f + " " +
-            sim.maxTimeStep + " " + sim.getSimulationLoop().getIterCount() + " " +
+            sim.getTimingState().maxTimeStep + " " + sim.getSimulationLoop().getIterCount() + " " +
             sim.getCurrentBarValueForRouting() + " " + CircuitElm.voltageRange + " " +
-            sim.getPowerBarValueForRouting() + " " + sim.minTimeStep + "\n";
+            sim.getPowerBarValueForRouting() + " " + sim.getTimingState().minTimeStep + "\n";
 
         if (!sim.voltageUnitSymbol.equals("V")) {
             dump += "% voltageUnit " + CustomLogicModel.escape(sim.voltageUnitSymbol) + "\n";

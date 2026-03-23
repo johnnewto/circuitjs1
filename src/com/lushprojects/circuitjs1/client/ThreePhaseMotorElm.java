@@ -141,9 +141,9 @@ class ThreePhaseMotorElm extends CircuitElm {
             for (j = 0; j != i; j++)
                 xformMatrix[i][j] = xformMatrix[j][i] = couplingCoefs[i][j]*Math.sqrt(coilInductances[i]*coilInductances[j]);
 	
-        CirSim.invertMatrix(xformMatrix, coilCount);
+        CircuitMatrixOps.invertMatrix(xformMatrix, coilCount);
 
-        double ts = sim.timeStep;
+        double ts = sim.getTimingState().timeStep;
         for (i = 0; i != coilCount; i++)
             for (j = 0; j != coilCount; j++) {
                 // multiply in dt/2 (or dt for backward euler)
@@ -189,8 +189,8 @@ class ThreePhaseMotorElm extends CircuitElm {
         }
         
         double torque = Zp * Math.sqrt(3)/2 * Lm * ((coilCurrents[1]-coilCurrents[2]) * coilCurrents[3] - Math.sqrt(3) * coilCurrents[0] * coilCurrents[4]);
-	speed += sim.timeStep * (torque - b * speed)/J;
-        angle = angle + speed*sim.timeStep;
+	speed += sim.getTimingState().timeStep * (torque - b * speed)/J;
+        angle = angle + speed*sim.getTimingState().timeStep;
 
         vs1value = -Zp*speed*(Lm*Math.sqrt(3)/2 * (coilCurrents[1]-coilCurrents[2]) + 1.5*Lr*coilCurrents[4]);
         vs2value = Zp*speed*(3/2.*Lm*coilCurrents[0] + 1.5*Lr*coilCurrents[3]);

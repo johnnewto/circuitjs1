@@ -226,7 +226,7 @@ class ODEElm extends CircuitElm {
     }
     
     void stamp() {
-        int vn = voltSource + sim.nodeList.size();
+        int vn = voltSource + sim.getCircuitAnalyzer().getNodeList().size();
         sim.stampNonLinear(vn);
         sim.stampVoltageSource(0, nodes[0], voltSource);
     }
@@ -234,7 +234,7 @@ class ODEElm extends CircuitElm {
     @Override
     void postStamp() {
         super.postStamp();
-        CirSim csim = CirSim.theSim;
+        CirSim csim = CirSim.getInstance();
         if (csim == null || csim.nameToSlot == null) return;
         if (compiledExpr != null)
             compiledExpr.resolveGSlot(csim.nameToSlot);
@@ -242,12 +242,12 @@ class ODEElm extends CircuitElm {
 
     void doStep() {
         // On first timestep, set initial value
-        if (sim.timeStepCount == 0) {
+        if (sim.getTimingState().timeStepCount == 0) {
             exprState.lastOutput = initialValue;
             integratedValue = initialValue;
         }
         
-        int vn = voltSource + sim.nodeList.size();
+        int vn = voltSource + sim.getCircuitAnalyzer().getNodeList().size();
         
         if (compiledExpr != null) {
             // Set all parameter values in expression (a, b, c, d, e, f, g, h)
@@ -256,7 +256,7 @@ class ODEElm extends CircuitElm {
             }
             
             // Evaluate equation to get derivative f(t, labeled_nodes, a, b, c...)
-            exprState.t = sim.t;
+            exprState.t = sim.getTimingState().t;
             double equationValue = compiledExpr.eval(exprState);
             
             // Check equation convergence
@@ -267,7 +267,7 @@ class ODEElm extends CircuitElm {
             lastEquationValue = equationValue;
             
             // Perform integration: y[n+1] = y[n] + dt * f(t)
-            integratedValue = exprState.lastOutput + sim.timeStep * equationValue;
+            integratedValue = exprState.lastOutput + sim.getTimingState().timeStep * equationValue;
             
             // Check output voltage convergence
             double outputVoltage = volts[0];
@@ -578,7 +578,7 @@ class ODEElm extends CircuitElm {
         if (idx < arr.length)
             arr[idx++] = "Current Output: " + getVoltageText(integratedValue);
         if (idx < arr.length)
-            arr[idx] = "Time: " + getUnitText(sim.t, "s");
+            arr[idx] = "Time: " + getUnitText(sim.getTimingState().t, "s");
     }
     
     // Custom formatting for parameter sliders

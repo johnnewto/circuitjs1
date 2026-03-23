@@ -169,7 +169,7 @@ class StopTimeElm extends CircuitElm {
     
     void stepFinished() {
         stopped = false;
-        if (enabled && sim.t >= stopTime) {
+        if (enabled && sim.getTimingState().t >= stopTime) {
             stopped = true;
             sim.setSimRunning(false);
             
@@ -184,13 +184,13 @@ class StopTimeElm extends CircuitElm {
         arr[0] = "stop time";
         arr[1] = "enabled = " + (enabled ? "yes" : "no");
         arr[2] = "open Plotly = " + (openPlotlyOnStop ? "yes" : "no");
-        arr[3] = "current time = " + getUnitText(sim.t, "s");
+        arr[3] = "current time = " + getUnitText(sim.getTimingState().t, "s");
         arr[4] = "stop time = " + getUnitText(stopTime, "s");
         if (enabled) {
-            if (sim.t >= stopTime) {
+            if (sim.getTimingState().t >= stopTime) {
                 arr[5] = "stopped";
             } else {
-                arr[5] = "stopping in " + getUnitText(stopTime - sim.t, "s");
+                arr[5] = "stopping in " + getUnitText(stopTime - sim.getTimingState().t, "s");
             }
         } else {
             arr[5] = "disabled";

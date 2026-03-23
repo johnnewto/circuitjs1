@@ -76,7 +76,7 @@ public class EconomicsToolbar extends Toolbar {
     public void setModeLabel(String text) { modeLabel.setText(Locale.LS("Mode: ") + text); }
 
     private Label createIconButton(String icon, String cls) {
-	CirSim sim = CirSim.theSim;
+	CirSim sim = CirSim.getInstance();
 	return createIconButton(icon, sim.getLabelTextForClass(cls), new MyCommand("main", cls));
     }
 
@@ -134,7 +134,7 @@ public class EconomicsToolbar extends Toolbar {
     // New method for creating variant buttons
     private Label createButtonSet(String info[]) {
 	MyCommand mainCommand = new MyCommand("main", info[1]);
-	CirSim sim = CirSim.theSim;
+	CirSim sim = CirSim.getInstance();
 	Label iconLabel = createIconButton(info[0], sim.getLabelTextForClass(info[1]), mainCommand);
 	
 	FlowPanel paletteContainer = new FlowPanel();

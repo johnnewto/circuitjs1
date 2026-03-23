@@ -255,19 +255,19 @@ class RelayCoilElm extends CircuitElm {
     void startIteration() {
 	ind.startIteration(volts[nCoil1]-volts[nCoil3]);
 	double absCurrent = Math.abs(coilCurrent);
-	double a = Math.exp(-sim.timeStep*1e3);
+	double a = Math.exp(-sim.getTimingState().timeStep*1e3);
 	avgCurrent = a*avgCurrent + (1-a)*absCurrent;
 	int oldSwitchPosition = switchPosition;
 	
 	if (state == 0) {
 	    if (avgCurrent > onCurrent) {
-		lastTransition = sim.t;
+		lastTransition = sim.getTimingState().t;
 		state = 1;
 	    }
 	} else if (state == 1) {
 	    if (avgCurrent < offCurrent)
 		state = 0;
-	    else if (sim.t-lastTransition > switchingTimeOn) {
+	    else if (sim.getTimingState().t-lastTransition > switchingTimeOn) {
 		state = 2;
 		if (type == TYPE_LATCHING)
 		    switchPosition = 1-switchPosition;
@@ -276,13 +276,13 @@ class RelayCoilElm extends CircuitElm {
 	    }
 	} else if (state == 2) {
 	    if (avgCurrent < offCurrent) {
-		lastTransition = sim.t;
+		lastTransition = sim.getTimingState().t;
 		state = 3;
 	    }
 	} else if (state == 3) {
 	    if (avgCurrent > onCurrent) 
 		state = 2;
-	    else if (sim.t-lastTransition > switchingTimeOff) {
+	    else if (sim.getTimingState().t-lastTransition > switchingTimeOff) {
 		state = 0;
 		if (type != TYPE_LATCHING)
 		    switchPosition = 0;

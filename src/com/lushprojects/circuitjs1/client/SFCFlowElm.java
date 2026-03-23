@@ -230,7 +230,7 @@ public class SFCFlowElm extends CircuitElm {
     @Override
     void postStamp() {
         super.postStamp();
-        CirSim csim = CirSim.theSim;
+        CirSim csim = CirSim.getInstance();
         if (csim == null || csim.nameToSlot == null) return;
         if (compiledExpr != null)
             compiledExpr.resolveGSlot(csim.nameToSlot);
@@ -272,7 +272,7 @@ public class SFCFlowElm extends CircuitElm {
         exprState.values[0] = vs;              // Vs
         exprState.values[1] = vd;              // Vd  
         exprState.values[2] = sliderValue;    // slider parameter
-        exprState.t = sim.t;
+        exprState.t = sim.getTimingState().t;
         
         // Evaluate flow equation
         flowValue = compiledExpr.eval(exprState);

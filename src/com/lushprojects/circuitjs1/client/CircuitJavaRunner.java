@@ -88,7 +88,7 @@ public class CircuitJavaRunner {
         if (sim.elmList == null || sim.elmList.size() == 0) {
             System.err.println("CircuitJavaRunner: no circuit elements available after load");
         }
-        if (sim.circuitMatrix == null) {
+        if (sim.getSolverMatrixState().circuitMatrix == null) {
             System.err.println("CircuitJavaRunner: circuit matrix is null after analyze (no solvable electrical network)");
         }
 

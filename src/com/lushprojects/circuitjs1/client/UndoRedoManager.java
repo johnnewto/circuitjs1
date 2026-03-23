@@ -26,14 +26,12 @@ class UndoRedoManager {
     }
 
     private UndoItem createUndoItem(String dump) {
-        return new UndoItem(dump, sim.transform);
+        return new UndoItem(dump, sim.getTransform());
     }
 
     private void applyUndoItem(UndoItem ui) {
         sim.getCircuitIOService().readCircuit(ui.dump, CirSim.RC_NO_CENTER);
-        sim.transform[0] = sim.transform[3] = ui.scale;
-        sim.transform[4] = ui.transform4;
-        sim.transform[5] = ui.transform5;
+        sim.getViewportController().setTransform(ui.scale, ui.transform4, ui.transform5);
     }
 
     void pushUndo() {

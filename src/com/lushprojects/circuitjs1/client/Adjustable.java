@@ -132,7 +132,7 @@ public class Adjustable implements Command {
 	if (settingValue)
 	    return;
 	int i;
-	CirSim sim = CirSim.theSim;
+	CirSim sim = CirSim.getInstance();
 	for (i = 0; i != sim.adjustables.size(); i++) {
 	    Adjustable adj = sim.adjustables.get(i);
 	    if (adj == this || adj.sharedSlider == this)
@@ -219,8 +219,8 @@ public class Adjustable implements Command {
     
     boolean sliderBeingShared() {
 	int i;
-	for (i = 0; i != CirSim.theSim.adjustables.size(); i++) {
-	    Adjustable adj = CirSim.theSim.adjustables.get(i);
+	for (i = 0; i != CirSim.getInstance().adjustables.size(); i++) {
+	    Adjustable adj = CirSim.getInstance().adjustables.get(i);
 	    if (adj.sharedSlider == this)
 		return true;
 	}
@@ -230,7 +230,7 @@ public class Adjustable implements Command {
     String dump() {
 	int ano = -1;
 	if (sharedSlider != null)
-	    ano = CirSim.theSim.adjustables.indexOf(sharedSlider);
+	    ano = CirSim.getInstance().adjustables.indexOf(sharedSlider);
 	
 	return elm.sim.locateElm(elm) + " F1 " + editItem + " " + minValue + " " + maxValue + " " + ano + " " +
 			CustomLogicModel.escape(sliderText) + " " + stepIncrement;
@@ -258,7 +258,7 @@ public class Adjustable implements Command {
     // always be undumping the adjustables with sliders first, then the adjustables that reference them.
     static void reorderAdjustables() {
 	Vector<Adjustable> newList = new Vector<Adjustable>();
-	Vector<Adjustable> oldList = CirSim.theSim.adjustables;
+	Vector<Adjustable> oldList = CirSim.getInstance().adjustables;
 	int i;
 	for (i = 0; i != oldList.size(); i++) {
 	    Adjustable adj = oldList.get(i);
@@ -270,6 +270,6 @@ public class Adjustable implements Command {
 	    if (adj.sharedSlider != null)
 		newList.add(adj);
 	}
-	CirSim.theSim.adjustables = newList;
+	CirSim.getInstance().adjustables = newList;
     }
 }

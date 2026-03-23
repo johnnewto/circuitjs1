@@ -661,8 +661,8 @@ public abstract class CircuitElm implements Editable {
 	// this element is selected or is being created
 	if (sim.dragElm == null && !needsHighlight())
 	    return;
-	if (sim.mouseMode == CirSim.MODE_DRAG_ROW ||
-	    sim.mouseMode == CirSim.MODE_DRAG_COLUMN)
+	if (sim.getMouseMode() == CirSim.MODE_DRAG_ROW ||
+	    sim.getMouseMode() == CirSim.MODE_DRAG_COLUMN)
 	    return;
 	int i;
 	for (i = 0; i != getPostCount(); i++) {
@@ -760,8 +760,8 @@ public abstract class CircuitElm implements Editable {
 	if (sim.dragElm == null && !needsHighlight() &&
 	    sim.getCircuitNode(n).links.size() == 2)
 	    return;
-	if (sim.mouseMode == CirSim.MODE_DRAG_ROW ||
-	    sim.mouseMode == CirSim.MODE_DRAG_COLUMN)
+	if (sim.getMouseMode() == CirSim.MODE_DRAG_ROW ||
+	    sim.getMouseMode() == CirSim.MODE_DRAG_COLUMN)
 	    return;
 	drawPost(g, x0, y0);
     }

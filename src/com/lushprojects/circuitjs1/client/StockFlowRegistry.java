@@ -168,7 +168,7 @@ public class StockFlowRegistry {
      */
     public static Set<String> getAllEquationOutputNames() {
         Set<String> outputs = new HashSet<String>();
-        CirSim sim = CirSim.theSim;
+        CirSim sim = CirSim.getInstance();
         if (sim == null || sim.elmList == null) return outputs;
         
         for (int i = 0; i < sim.elmList.size(); i++) {
@@ -197,7 +197,7 @@ public class StockFlowRegistry {
         Set<String> variables = new HashSet<String>();
         
         // Get all tables from circuit via CirSim
-        CirSim sim = CirSim.theSim;
+        CirSim sim = CirSim.getInstance();
         if (sim == null || sim.elmList == null) {
             return variables;
         }

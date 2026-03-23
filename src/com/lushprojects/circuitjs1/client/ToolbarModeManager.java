@@ -25,8 +25,8 @@ class ToolbarModeManager {
         sim.toolbar = new ElectronicsToolbar();
         sim.toolbar.setEuroResistors(sim.euroResistorCheckItem.getState());
 
-        if (!sim.hideMenu && sim.menuBar.getParent() == sim.layoutPanel) {
-            sim.layoutPanel.insertNorth(sim.toolbar, CirSim.TOOLBARHEIGHT, sim.menuBar);
+        if (!sim.hideMenu && sim.getMenuUiState().menuBar.getParent() == sim.layoutPanel) {
+            sim.layoutPanel.insertNorth(sim.toolbar, CirSim.TOOLBARHEIGHT, sim.getMenuUiState().menuBar);
         } else {
             sim.layoutPanel.addNorth(sim.toolbar, CirSim.TOOLBARHEIGHT);
         }
@@ -56,8 +56,8 @@ class ToolbarModeManager {
         sim.toolbar = new EconomicsToolbar();
         sim.toolbar.setEuroResistors(sim.euroResistorCheckItem.getState());
 
-        if (!sim.hideMenu && sim.menuBar.getParent() == sim.layoutPanel) {
-            sim.layoutPanel.insertNorth(sim.toolbar, CirSim.TOOLBARHEIGHT, sim.menuBar);
+        if (!sim.hideMenu && sim.getMenuUiState().menuBar.getParent() == sim.layoutPanel) {
+            sim.layoutPanel.insertNorth(sim.toolbar, CirSim.TOOLBARHEIGHT, sim.getMenuUiState().menuBar);
         } else {
             sim.layoutPanel.addNorth(sim.toolbar, CirSim.TOOLBARHEIGHT);
         }

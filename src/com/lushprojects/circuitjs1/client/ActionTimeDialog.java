@@ -280,7 +280,7 @@ public class ActionTimeDialog extends DialogBox {
         setText(Locale.LS("Action Time Schedule") + " " + icon);
         
         // Update current time display
-        String timeText = "Current Time: " + CircuitElm.getUnitText(sim.t, "s");
+        String timeText = "Current Time: " + CircuitElm.getUnitText(sim.getTimingState().t, "s");
         currentTimeLabel.setText(timeText);
         
         // Clear existing rows (except header)
@@ -375,7 +375,7 @@ public class ActionTimeDialog extends DialogBox {
             
             // Display Text column (show current text)
             String displayText;
-            if (sim.t >= action.actionTime) {
+            if (sim.getTimingState().t >= action.actionTime) {
                 displayText = action.postText;
             } else {
                 displayText = action.preText;
@@ -408,7 +408,7 @@ public class ActionTimeDialog extends DialogBox {
                     statusColor = new Color(0, 200, 0);
                     break;
                 case PENDING:
-                    double timeToAction = action.actionTime - sim.t;
+                    double timeToAction = action.actionTime - sim.getTimingState().t;
                     status = "⏱ " + CircuitElm.getUnitText(timeToAction, "s");
                     statusColor = new Color(150, 150, 0);
                     break;
@@ -536,7 +536,7 @@ public class ActionTimeDialog extends DialogBox {
         // Create form fields
         final TextBox timeBox = new TextBox();
         timeBox.setWidth("200px");
-        timeBox.setValue(existingAction == null ? CircuitElm.getUnitText(sim.t, "") : String.valueOf(existingAction.actionTime));
+        timeBox.setValue(existingAction == null ? CircuitElm.getUnitText(sim.getTimingState().t, "") : String.valueOf(existingAction.actionTime));
         
         final ListBox targetBox = new ListBox();
         targetBox.setWidth("200px");

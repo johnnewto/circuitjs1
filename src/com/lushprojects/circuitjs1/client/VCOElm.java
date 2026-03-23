@@ -76,8 +76,8 @@ package com.lushprojects.circuitjs1.client;
 	    // now we set the current through the cap to be equal to the
 	    // current through R1 and R2, so we can measure the voltage
 	    // across the cap
-	    int cur1 = sim.nodeList.size() + pins[4].voltSource;
-	    int cur2 = sim.nodeList.size() + pins[5].voltSource;
+	    int cur1 = sim.getCircuitAnalyzer().getNodeList().size() + pins[4].voltSource;
+	    int cur2 = sim.getCircuitAnalyzer().getNodeList().size() + pins[5].voltSource;
 	    sim.stampMatrix(nodes[2], cur1, dir);
 	    sim.stampMatrix(nodes[2], cur2, dir);
 	    sim.stampMatrix(nodes[3], cur1, -dir);
