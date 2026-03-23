@@ -1,4 +1,6 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.passives;
+
+import com.lushprojects.circuitjs1.client.*;
 
 public class PolarCapacitorElm extends CapacitorElm {
     	double maxNegativeVoltage;

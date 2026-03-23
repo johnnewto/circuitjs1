@@ -12,15 +12,15 @@ public class TransistorModel implements Editable, Comparable<TransistorModel> {
 
     static HashMap<String, TransistorModel> modelMap;
 
-    int flags;
-    String name, description;
-    double satCur, invRollOffF, BEleakCur, leakBEemissionCoeff, invRollOffR, BCleakCur, leakBCemissionCoeff;
-    double emissionCoeffF, emissionCoeffR, invEarlyVoltF, invEarlyVoltR, betaR;
+    public int flags;
+    public String name, description;
+    public double satCur, invRollOffF, BEleakCur, leakBEemissionCoeff, invRollOffR, BCleakCur, leakBCemissionCoeff;
+    public double emissionCoeffF, emissionCoeffR, invEarlyVoltF, invEarlyVoltR, betaR;
 
-    boolean dumped;
-    boolean readOnly;
-    boolean builtIn;
-    boolean internal;
+    public boolean dumped;
+    public boolean readOnly;
+    public boolean builtIn;
+    public boolean internal;
 
     TransistorModel(String d, double sc) {
 	description = d;
@@ -43,7 +43,7 @@ public class TransistorModel implements Editable, Comparable<TransistorModel> {
 	return lm;
     }
 
-    static TransistorModel getModelWithNameOrCopy(String name, TransistorModel oldmodel) {
+    public static TransistorModel getModelWithNameOrCopy(String name, TransistorModel oldmodel) {
 	createModelMap();
 	TransistorModel lm = modelMap.get(name);
 	if (lm != null)
@@ -111,7 +111,7 @@ public class TransistorModel implements Editable, Comparable<TransistorModel> {
 	}
     }
 
-    static Vector<TransistorModel> getModelList() {
+    public static Vector<TransistorModel> getModelList() {
 	Vector<TransistorModel> vector = new Vector<TransistorModel>();
 	Iterator it = modelMap.entrySet().iterator();
 	while (it.hasNext()) {
@@ -130,7 +130,7 @@ public class TransistorModel implements Editable, Comparable<TransistorModel> {
 	return name.compareTo(dm.name);
     }
 
-    String getDescription() {
+    public String getDescription() {
 	if (description == null || description.equals(name))
 	    return name;
 	return name + " (" + Locale.LS(description) + ")";
@@ -140,7 +140,7 @@ public class TransistorModel implements Editable, Comparable<TransistorModel> {
 	updateModel();
     }
 
-    TransistorModel(TransistorModel copy) {
+    public TransistorModel(TransistorModel copy) {
 	flags = copy.flags;
 	satCur = copy.satCur;
 	invRollOffF = copy.invRollOffF;
@@ -235,7 +235,7 @@ public class TransistorModel implements Editable, Comparable<TransistorModel> {
     void updateModel() {
     }
 
-    protected String dump() {
+    public String dump() {
 	dumped = true;
 	return "32 " + CustomLogicModel.escape(name) + " " + flags + " " +
 		satCur + " " + invRollOffF + " " + BEleakCur + " " + leakBEemissionCoeff + " " + invRollOffR + " " +

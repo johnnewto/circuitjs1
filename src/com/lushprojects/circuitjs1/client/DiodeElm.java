@@ -92,7 +92,7 @@ class DiodeElm extends CircuitElm {
 		return super.dump() + " " + CustomLogicModel.escape(modelName);
     }
     
-    String dumpModel() {
+    protected String dumpModel() {
 	if (model.builtIn || model.dumped)
 	    return null;
 	return model.dump();

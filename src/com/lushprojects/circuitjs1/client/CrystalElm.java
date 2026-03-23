@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.electronics.passives.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 class CrystalElm extends CompositeElm {

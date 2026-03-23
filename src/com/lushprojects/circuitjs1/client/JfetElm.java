@@ -145,7 +145,7 @@ class JfetElm extends MosfetElm {
 	    return true;
 	}
 
-	@Override String getScopeText(int v) { 
+	@Override protected String getScopeText(int v) { 
 	    return Locale.LS(((pnp == -1) ? "p-" : "n-") + "JFET");
 	}
     }

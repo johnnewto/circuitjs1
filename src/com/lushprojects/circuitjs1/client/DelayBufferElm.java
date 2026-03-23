@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
+import com.lushprojects.circuitjs1.client.electronics.digital.GateElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 class DelayBufferElm extends CircuitElm {

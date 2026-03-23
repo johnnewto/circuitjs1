@@ -26,7 +26,7 @@ public abstract class CompositeElm extends CircuitElm {
     final int FLAG_ESCAPE = 1;
     
     // list of elements contained in this subcircuit
-    Vector<CircuitElm> compElmList;
+    protected Vector<CircuitElm> compElmList;
     
     // list of nodes, mapping each one to a list of elements that reference that node
     protected Vector<CircuitNode> compNodeList;
@@ -36,7 +36,7 @@ public abstract class CompositeElm extends CircuitElm {
     protected Point posts[];
     protected Vector<VoltageSourceRecord> voltageSources;
 
-    CompositeElm(int xx, int yy) {
+    protected CompositeElm(int xx, int yy) {
 	super(xx, yy);
     }
     
@@ -44,7 +44,7 @@ public abstract class CompositeElm extends CircuitElm {
 	super(xa, ya, xb, yb, f);
     }
     
-    CompositeElm(int xx, int yy, String s, int externalNodes[]) {
+    protected CompositeElm(int xx, int yy, String s, int externalNodes[]) {
 	super(xx, yy);
 	loadComposite(null, s, externalNodes);
 	allocNodes();
@@ -321,11 +321,11 @@ public abstract class CompositeElm extends CircuitElm {
 	return posts[n];
     }
 
-    void setPost(int n, Point p) {
+    protected void setPost(int n, Point p) {
 	posts[n] = p;
     }
 
-    void setPost(int n, int x, int y) {
+    protected void setPost(int n, int x, int y) {
 	posts[n].x = x;
 	posts[n].y = y;
     }

@@ -54,7 +54,7 @@ public class CustomCompositeElm extends CompositeElm {
 	return s;
     }
     
-    String dumpModel() {
+    protected String dumpModel() {
 	String modelStr = "";
 	
 	// dump models of all children

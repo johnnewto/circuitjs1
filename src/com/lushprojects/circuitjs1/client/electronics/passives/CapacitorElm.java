@@ -17,12 +17,13 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.passives;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
-class CapacitorElm extends CircuitElm {
+public class CapacitorElm extends CircuitElm {
 	double capacitance;
 	double compResistance, voltdiff, seriesResistance;
 	double initialVoltage;
@@ -58,7 +59,7 @@ class CapacitorElm extends CircuitElm {
 	    // put small charge on caps when reset to start oscillators
 	    voltdiff = initialVoltage;
 	}
-	void shorted() {
+	public void shorted() {
 	    super.reset();
 	    voltdiff = current = curcount = curSourceValue = 0;
 	}
@@ -122,7 +123,7 @@ class CapacitorElm extends CircuitElm {
 	}
 	protected void stamp() {
 	    SimulationContext context = getSimulationContext();
-	    if (sim.dcAnalysisFlag) {
+	    if (sim.isDcAnalysisForUi()) {
 		// when finding DC operating point, replace cap with a 100M resistor
 		sim.stampResistor(nodes[0], nodes[1], 1e8);
 		curSourceValue = 0;
@@ -172,7 +173,7 @@ protected void startIteration() {
 	
 	protected void calculateCurrent() {
 	    double voltdiff = volts[0] - volts[capNode2];
-	    if (sim.dcAnalysisFlag) {
+	    if (sim.isDcAnalysisForUi()) {
 		current = voltdiff/1e8;
 		return;
 	    }
@@ -184,11 +185,11 @@ protected void startIteration() {
 	}
 	double curSourceValue;
 	protected void doStep() {
-	    if (sim.dcAnalysisFlag)
+	    if (sim.isDcAnalysisForUi())
 		return;
 	    sim.stampCurrentSource(nodes[0], nodes[capNode2], curSourceValue);
  	}
-	protected int getInternalNodeCount() { return (!sim.dcAnalysisFlag && seriesResistance > 0) ? 1 : 0; }
+	protected int getInternalNodeCount() { return (!sim.isDcAnalysisForUi() && seriesResistance > 0) ? 1 : 0; }
 	protected void getInfo(String arr[]) {
 	    arr[0] = "capacitor";
 	    getBasicInfo(arr);
@@ -198,7 +199,7 @@ protected void startIteration() {
 	    //arr[4] = "U = " + getUnitText(.5*capacitance*v*v, "J");
 	}
 	@Override
-	String getScopeText(int v) {
+	protected String getScopeText(int v) {
 	    return Locale.LS("capacitor") + ", " + getUnitText(capacitance, "F");
 	}
 	public EditInfo getEditInfo(int n) {
@@ -233,7 +234,9 @@ protected void startIteration() {
 	protected int getShortcut() { return 'c'; }
 	public double getCapacitance() { return capacitance; }
 	public double getSeriesResistance() { return seriesResistance; }
+	public double getVoltDiff() { return voltdiff; }
 	public void setCapacitance(double c) { capacitance = c; }
 	public void setSeriesResistance(double c) { seriesResistance = c; }
+	public void setVoltDiff(double v) { voltdiff = v; }
 	public boolean isIdealCapacitor() { return (seriesResistance == 0); }
     }

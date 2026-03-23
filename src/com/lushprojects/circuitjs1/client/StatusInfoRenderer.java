@@ -6,6 +6,7 @@ import java.util.HashSet;
 
 import com.google.gwt.canvas.dom.client.Context2d;
 import com.lushprojects.circuitjs1.client.economics.*;
+import com.lushprojects.circuitjs1.client.electronics.passives.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 final class StatusInfoRenderer {
@@ -339,7 +340,7 @@ final class StatusInfoRenderer {
             InductorElm ie = (InductorElm) c1;
             CapacitorElm ce = (CapacitorElm) c2;
             return Locale.LS("res.f = ")
-                    + CircuitElm.getUnitText(1 / (2 * CirSim.pi * Math.sqrt(ie.inductance * ce.capacitance)), "Hz");
+                    + CircuitElm.getUnitText(1 / (2 * CirSim.pi * Math.sqrt(ie.getInductance() * ce.getCapacitance())), "Hz");
         }
         if (sim.hintType == CirSim.HINT_RC) {
             if (!(c1 instanceof ResistorElm))
@@ -348,7 +349,7 @@ final class StatusInfoRenderer {
                 return null;
             ResistorElm re = (ResistorElm) c1;
             CapacitorElm ce = (CapacitorElm) c2;
-            return "RC = " + CircuitElm.getUnitText(re.resistance * ce.capacitance, "s");
+            return "RC = " + CircuitElm.getUnitText(re.getResistance() * ce.getCapacitance(), "s");
         }
         if (sim.hintType == CirSim.HINT_3DB_C) {
             if (!(c1 instanceof ResistorElm))
@@ -358,7 +359,7 @@ final class StatusInfoRenderer {
             ResistorElm re = (ResistorElm) c1;
             CapacitorElm ce = (CapacitorElm) c2;
             return Locale.LS("f.3db = ")
-                    + CircuitElm.getUnitText(1 / (2 * CirSim.pi * re.resistance * ce.capacitance), "Hz");
+                    + CircuitElm.getUnitText(1 / (2 * CirSim.pi * re.getResistance() * ce.getCapacitance()), "Hz");
         }
         if (sim.hintType == CirSim.HINT_3DB_L) {
             if (!(c1 instanceof ResistorElm))
@@ -368,7 +369,7 @@ final class StatusInfoRenderer {
             ResistorElm re = (ResistorElm) c1;
             InductorElm ie = (InductorElm) c2;
             return Locale.LS("f.3db = ")
-                    + CircuitElm.getUnitText(re.resistance / (2 * CirSim.pi * ie.inductance), "Hz");
+                    + CircuitElm.getUnitText(re.getResistance() / (2 * CirSim.pi * ie.getInductance()), "Hz");
         }
         if (sim.hintType == CirSim.HINT_TWINT) {
             if (!(c1 instanceof ResistorElm))
@@ -378,7 +379,7 @@ final class StatusInfoRenderer {
             ResistorElm re = (ResistorElm) c1;
             CapacitorElm ce = (CapacitorElm) c2;
             return Locale.LS("fc = ")
-                    + CircuitElm.getUnitText(1 / (2 * CirSim.pi * re.resistance * ce.capacitance), "Hz");
+                    + CircuitElm.getUnitText(1 / (2 * CirSim.pi * re.getResistance() * ce.getCapacitance()), "Hz");
         }
         return null;
     }

@@ -1,5 +1,6 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.semiconductors;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 // Test element to evaluate if constructing compound elements from individual transistors is feasible
@@ -18,7 +19,7 @@ public class DarlingtonElm extends CompositeElm {
     private static String modelString = "NTransistorElm 1 2 4\rNTransistorElm 4 2 3";
     private static int[] modelExternalNodes = {1, 2, 3};
     
-    DarlingtonElm(int xx, int yy, boolean pnpflag) {
+    protected DarlingtonElm(int xx, int yy, boolean pnpflag) {
 	super(xx, yy, modelString, modelExternalNodes);
 	pnp = (pnpflag) ? -1 : 1;
 	((TransistorElm) compElmList.get(0)).pnp=pnp;
@@ -144,6 +145,6 @@ public class DarlingtonElm extends CompositeElm {
 
     }
 
-    boolean canFlipY() { return false; }
+    protected boolean canFlipY() { return false; }
 
 }

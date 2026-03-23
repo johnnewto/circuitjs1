@@ -554,7 +554,7 @@ protected void setCurrent(int x, double c) { current = c; }
 	if (n == 6)
 	    flags = ei.changeFlag(flags, FLAG_SHOW_FLOW);
     }
-    @Override String getScopeText(int v) {
+    @Override protected String getScopeText(int v) {
 	return text;
     }
     

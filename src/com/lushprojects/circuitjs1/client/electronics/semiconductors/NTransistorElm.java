@@ -17,16 +17,12 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.semiconductors;
 
-    class NandGateElm extends AndGateElm {
-	public NandGateElm(int xx, int yy) { super(xx, yy); }
-	public NandGateElm(int xa, int ya, int xb, int yb, int f,
-			   StringTokenizer st) {
-	    super(xa, ya, xb, yb, f, st);
-	}
-	boolean isInverting() { return true; }
-	String getGateName() { return "NAND gate"; }
-	protected int getDumpType() { return 151; }
-	protected int getShortcut() { return '@'; }
+public class NTransistorElm extends TransistorElm {
+	public NTransistorElm(int xx, int yy) { super(xx, yy, false); }
+	protected Class getDumpClass() { return TransistorElm.class; }
+	
+	 protected int getShortcut() { return 'n'; }
+	
     }

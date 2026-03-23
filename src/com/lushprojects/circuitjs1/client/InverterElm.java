@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
+import com.lushprojects.circuitjs1.client.electronics.digital.GateElm;
 
     class InverterElm extends CircuitElm {
 	double slewRate; // V/ns

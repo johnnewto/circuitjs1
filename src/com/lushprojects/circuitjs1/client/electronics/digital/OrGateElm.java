@@ -17,9 +17,11 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.digital;
 
-    class OrGateElm extends GateElm {
+import com.lushprojects.circuitjs1.client.*;
+
+public class OrGateElm extends GateElm {
 	public OrGateElm(int xx, int yy) { super(xx, yy); }
 	public OrGateElm(int xa, int ya, int xb, int yb, int f,
 			  StringTokenizer st) {

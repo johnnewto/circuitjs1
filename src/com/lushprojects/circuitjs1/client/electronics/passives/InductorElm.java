@@ -17,9 +17,11 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.passives;
 
-    class InductorElm extends CircuitElm {
+import com.lushprojects.circuitjs1.client.*;
+
+public class InductorElm extends CircuitElm {
 	Inductor ind;
 	double inductance;
 	double initialCurrent;
@@ -118,7 +120,7 @@ protected void startIteration() {
 	
 	protected int getShortcut() { return 'L'; }
 	public double getInductance() { return inductance; }
-	void setInductance(double l) {
+	public void setInductance(double l) {
 	    inductance = l;
 	    ind.setup(inductance, current, flags);
 	}

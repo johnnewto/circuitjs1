@@ -48,7 +48,7 @@ public class CustomLogicElm extends ChipElm {
 	return s;
     }
     
-    String dumpModel() {
+    protected String dumpModel() {
 	if (model.dumped)
 	    return "";
 	return model.dump();

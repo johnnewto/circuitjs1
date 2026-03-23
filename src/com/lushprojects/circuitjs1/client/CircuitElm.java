@@ -155,7 +155,7 @@ public abstract class CircuitElm implements Editable {
     
     int getDefaultFlags() { return 0; }
 
-    boolean hasFlag(int f) { return (flags & f) != 0; }
+    protected boolean hasFlag(int f) { return (flags & f) != 0; }
     
     static void initClass(CirSim s) {
 	unitsFont = new Font("SansSerif", 0, 12);
@@ -518,7 +518,7 @@ public abstract class CircuitElm implements Editable {
 	}
     }
 
-    double addCurCount(double c, double a) {
+    protected double addCurCount(double c, double a) {
 	if (c == CURRENT_TOO_FAST || c == -CURRENT_TOO_FAST)
 	    return c;
 	return c+a;
@@ -587,7 +587,7 @@ public abstract class CircuitElm implements Editable {
     }
 
     // this is used to set the position of an internal element so we can draw it inside the parent
-    void setPosition(int x_, int y_, int x2_, int y2_) {
+    protected void setPosition(int x_, int y_, int x2_, int y2_) {
 	x = x_;
 	y = y_;
 	x2 = x2_;
@@ -895,7 +895,7 @@ public abstract class CircuitElm implements Editable {
 	}	
     }    
     
-    void drawCoil(Graphics g, int hs, Point p1, Point p2,
+    protected void drawCoil(Graphics g, int hs, Point p1, Point p2,
 		  double v1, double v2) {
 	double len = distance(p1, p2);
 
@@ -953,7 +953,7 @@ public abstract class CircuitElm implements Editable {
 	drawThickPolygon(g, p.xpoints, p.ypoints, p.npoints);
     }
     
-    static void drawPolygon(Graphics g, Polygon p) {
+    protected static void drawPolygon(Graphics g, Polygon p) {
     	g.drawPolyline(p.xpoints, p.ypoints, p.npoints);
 /*	int i;
 	int xs[] = p.xpoints;
@@ -973,7 +973,7 @@ public abstract class CircuitElm implements Editable {
     	g.setLineWidth(1.0);
     }
     
-    Polygon getSchmittPolygon(float gsize, float ctr) {
+    protected Polygon getSchmittPolygon(float gsize, float ctr) {
 	Point pts[] = newPointArray(6);
 	float hs = 3*gsize;
 	float h1 = 3*gsize;
@@ -988,7 +988,7 @@ public abstract class CircuitElm implements Editable {
 	return createPolygon(pts); 
     }
 
-    static String getVoltageDText(double v) {
+    protected static String getVoltageDText(double v) {
 	return getUnitText(Math.abs(v), "V");
     }
     public static String getVoltageText(double v) {
@@ -1135,13 +1135,13 @@ public abstract class CircuitElm implements Editable {
 	arr[2] = "Vd = " + getVoltageDText(getVoltageDiff());
 	return 3;
     }
-    String getScopeText(int v) {
+    protected String getScopeText(int v) {
         String info[] = new String[10];
         getInfo(info);
         return info[0];
     }
     
-    Color getVoltageColor(Graphics g, double volts) {
+    protected Color getVoltageColor(Graphics g, double volts) {
     	// Check for non-convergence first - always red
     	if (nonConverged) {
     	    return Color.red;
@@ -1338,7 +1338,7 @@ public abstract class CircuitElm implements Editable {
     protected static int sign(int x) { return (x < 0) ? -1 : (x == 0) ? 0 : 1; }
     protected static int min(int a, int b) { return (a < b) ? a : b; }
     protected static int max(int a, int b) { return (a > b) ? a : b; }
-    static double distance(Point p1, Point p2) {
+    protected static double distance(Point p1, Point p2) {
 	double x = p1.x-p2.x;
 	double y = p1.y-p2.y;
 	return Math.sqrt(x*x+y*y);
@@ -1369,13 +1369,13 @@ public abstract class CircuitElm implements Editable {
 	return lineDistanceSq(x, y, x2, y2, gx, gy);
     }
 
-    String dumpModel() { return null; }
+    protected String dumpModel() { return null; }
     
     boolean isMouseElm() {
 	return mouseElmRef==this; 
     }
     
-    void updateModels() {}
+    protected void updateModels() {}
     protected void stepFinished() {}
     
     // get current flowing into node n out of this element

@@ -17,15 +17,16 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.digital;
 
 import com.google.gwt.canvas.dom.client.Context2d;
+import com.lushprojects.circuitjs1.client.*;
 
 import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsType;
 
-    class AndGateElm extends GateElm {
+public class AndGateElm extends GateElm {
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
 	private interface Context2dNative {
 	    @JsMethod(name = "ellipse")

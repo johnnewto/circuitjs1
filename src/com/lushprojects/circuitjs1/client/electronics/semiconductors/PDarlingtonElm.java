@@ -1,4 +1,4 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.semiconductors;
 
 
 public class PDarlingtonElm extends DarlingtonElm {

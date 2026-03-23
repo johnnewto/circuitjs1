@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.electronics.semiconductors.TransistorElm;
+
 public class OptocouplerElm extends CompositeElm {
     int csize, cspc, cspc2;
     int rectPointsX[], rectPointsY[];

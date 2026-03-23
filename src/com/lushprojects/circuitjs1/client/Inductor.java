@@ -21,7 +21,7 @@ package com.lushprojects.circuitjs1.client;
 
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
-class Inductor {
+public class Inductor {
     public static final int FLAG_BACK_EULER = 2;
     int nodes[];
     int flags;
@@ -30,27 +30,27 @@ class Inductor {
     double inductance;
     double compResistance, current;
     double curSourceValue;
-    Inductor(CirSim s) {
+    public Inductor(CirSim s) {
 	this(s.getSimulationContext());
     }
-    Inductor(SimulationContext sim) {
+    public Inductor(SimulationContext sim) {
 	nodes = new int[2];
 	this.sim = sim;
     }
-    void setup(double ic, double cr, int f) {
+    public void setup(double ic, double cr, int f) {
 	inductance = ic;
 	current = cr;
 	flags = f;
     }
-    boolean isTrapezoidal() { return (flags & FLAG_BACK_EULER) == 0; }
+    public boolean isTrapezoidal() { return (flags & FLAG_BACK_EULER) == 0; }
     protected void reset() { resetTo(0); }
-    void resetTo(double c) {
+    public void resetTo(double c) {
 	// need to set curSourceValue here in case one of inductor nodes is node 0.  In that case
 	// calculateCurrent() may get called (from setNodeVoltage()) when analyzing circuit, before
 	// startIteration() gets called
 	curSourceValue = current = c;
     }
-    void stamp(int n0, int n1) {
+    public void stamp(int n0, int n1) {
 	// inductor companion model using trapezoidal or backward euler
 	// approximations (Norton equivalent) consists of a current
 	// source in parallel with a resistor.  Trapezoidal is more
@@ -66,16 +66,16 @@ class Inductor {
 	sim.stampRightSide(nodes[0]);
 	sim.stampRightSide(nodes[1]);
     }
-    protected boolean nonLinear() { return false; }
+    public boolean nonLinear() { return false; }
 
-    void startIteration(double voltdiff) {
+    public void startIteration(double voltdiff) {
 	if (isTrapezoidal())
 	    curSourceValue = voltdiff/compResistance+current;
 	else // backward euler
 	    curSourceValue = current;
     }
     
-    double calculateCurrent(double voltdiff) {
+    public double calculateCurrent(double voltdiff) {
 	// we check compResistance because this might get called
 	// before stamp(), which sets compResistance, causing
 	// infinite current
@@ -83,7 +83,7 @@ class Inductor {
 	    current = voltdiff/compResistance + curSourceValue;
 	return current;
     }
-    void doStep(double voltdiff) {
+    public void doStep(double voltdiff) {
 	sim.stampCurrentSource(nodes[0], nodes[1], curSourceValue);
     }
 }

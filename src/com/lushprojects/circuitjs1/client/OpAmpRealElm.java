@@ -1,5 +1,9 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.electronics.passives.CapacitorElm;
+import com.lushprojects.circuitjs1.client.electronics.passives.ResistorElm;
+import com.lushprojects.circuitjs1.client.electronics.semiconductors.TransistorElm;
+
 public class OpAmpRealElm extends CompositeElm {
 
     // from https://commons.wikimedia.org/wiki/File:OpAmpTransistorLevel_Colored_Labeled.svg
@@ -99,18 +103,20 @@ public class OpAmpRealElm extends CompositeElm {
 	loadComposite(null, model741String, model741ExternalNodes);
 	
 	// adjust capacitor value to get desired slew rate
-	getCapacitor().capacitance = 30e-12 / (slewRate/.6);
-	getCapacitor().voltdiff = capValue;
+	getCapacitor().setCapacitance(30e-12 / (slewRate/.6));
+	getCapacitor().setVoltDiff(capValue);
 	
 	// set resistor values
 	int i;
 	for (i = 0; i != 11; i++)
-	    ((ResistorElm) compElmList.get(21+i)).resistance = model741resistances[i];
+	    ((ResistorElm) compElmList.get(21+i)).setResistance(model741resistances[i]);
 	
 	// adjust output stage resistor values and transistor betas to increase current if desired
 	double currentMult = currentLimit / defaultCurrentLimit;
-	((ResistorElm) compElmList.get(21)).resistance /= currentMult;
-	((ResistorElm) compElmList.get(22)).resistance /= currentMult;
+	ResistorElm outputStageR1 = (ResistorElm) compElmList.get(21);
+	outputStageR1.setResistance(outputStageR1.getResistance() / currentMult);
+	ResistorElm outputStageR2 = (ResistorElm) compElmList.get(22);
+	outputStageR2.setResistance(outputStageR2.getResistance() / currentMult);
 	((TransistorElm) compElmList.get(13)).setBeta(currentMult * 100); // Q14
 	((TransistorElm) compElmList.get(18)).setBeta(currentMult * 100); // Q20
 	
@@ -121,12 +127,13 @@ public class OpAmpRealElm extends CompositeElm {
 	loadComposite(st, lm324ModelString, lm324ExternalNodes);
 	
 	// adjust capacitor value to get desired slew rate
-	getCapacitor().capacitance = 10e-12 / (slewRate/.55);
-	getCapacitor().voltdiff = capValue;
+	getCapacitor().setCapacitance(10e-12 / (slewRate/.55));
+	getCapacitor().setVoltDiff(capValue);
 	
 	// adjust output stage resistor values and transistor betas to increase current if desired
 	double currentMult = currentLimit / defaultCurrentLimit;
-	((ResistorElm) compElmList.get(11)).resistance /= currentMult;
+	ResistorElm outputStageR = (ResistorElm) compElmList.get(11);
+	outputStageR.setResistance(outputStageR.getResistance() / currentMult);
 	((TransistorElm) compElmList.get(9)).setBeta(currentMult * 100);
 	((TransistorElm) compElmList.get(10)).setBeta(currentMult * 100);
 	((TransistorElm) compElmList.get(12)).setBeta(currentMult * 100);
@@ -151,7 +158,7 @@ public class OpAmpRealElm extends CompositeElm {
     
     public String dump() {
 	CapacitorElm elm = getCapacitor();
-	double voltdiff = (elm == null) ? 0 : elm.voltdiff;
+	double voltdiff = (elm == null) ? 0 : elm.getVoltDiff();
 	return super.dumpWithMask(0) + " " + slewRate + " " + voltdiff + " " + currentLimit + " " + modelType;
     }
     

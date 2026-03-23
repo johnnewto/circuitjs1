@@ -17,9 +17,11 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.digital;
 
-    class NorGateElm extends OrGateElm {
+import com.lushprojects.circuitjs1.client.StringTokenizer;
+
+public class NorGateElm extends OrGateElm {
 	public NorGateElm(int xx, int yy) { super(xx, yy); }
 	public NorGateElm(int xa, int ya, int xb, int yb, int f,
 			   StringTokenizer st) {

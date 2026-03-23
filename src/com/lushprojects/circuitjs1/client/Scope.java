@@ -21,6 +21,7 @@ package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.event.dom.client.MouseWheelEvent;
 import com.google.gwt.storage.client.Storage;
+import com.lushprojects.circuitjs1.client.electronics.semiconductors.TransistorElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 import java.util.Vector;
@@ -309,26 +310,26 @@ public class Scope {
     // VALUE TYPE CONSTANTS
     // ====================
     public static final int VAL_VOLTAGE = 0;
-    static final int VAL_POWER_OLD = 1; // Legacy power value (conflicts with VAL_IB)
-    static final int VAL_R = 2; // Resistance
-    static final int VAL_CURRENT = 3;
-    static final int VAL_POWER = 7;
+    public static final int VAL_POWER_OLD = 1; // Legacy power value (conflicts with VAL_IB)
+    public static final int VAL_R = 2; // Resistance
+    public static final int VAL_CURRENT = 3;
+    public static final int VAL_POWER = 7;
     // Transistor-specific values
-    static final int VAL_IB = 1;
-    static final int VAL_IC = 2;
-    static final int VAL_IE = 3;
-    static final int VAL_VBE = 4;
-    static final int VAL_VBC = 5;
-    static final int VAL_VCE = 6;
+    public static final int VAL_IB = 1;
+    public static final int VAL_IC = 2;
+    public static final int VAL_IE = 3;
+    public static final int VAL_VBE = 4;
+    public static final int VAL_VBC = 5;
+    public static final int VAL_VCE = 6;
     
     // ====================
     // UNIT CONSTANTS
     // ====================
-    static final int UNITS_V = 0; // Volts
-    static final int UNITS_A = 1; // Amperes
-    static final int UNITS_W = 2; // Watts
-    static final int UNITS_OHMS = 3; // Ohms
-    static final int UNITS_COUNT = 4;
+    public static final int UNITS_V = 0; // Volts
+    public static final int UNITS_A = 1; // Amperes
+    public static final int UNITS_W = 2; // Watts
+    public static final int UNITS_OHMS = 3; // Ohms
+    public static final int UNITS_COUNT = 4;
     
     // ====================
     // DISPLAY CONSTANTS

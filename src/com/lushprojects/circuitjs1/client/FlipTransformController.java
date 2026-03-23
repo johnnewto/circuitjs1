@@ -1,5 +1,8 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.electronics.passives.PotElm;
+import com.lushprojects.circuitjs1.client.electronics.semiconductors.TransistorElm;
+
 final class FlipTransformController {
     private final CirSim sim;
 
@@ -39,8 +42,14 @@ final class FlipTransformController {
 	FlipInfo fi = prepareFlip();
 	int center2 = fi.cx*2;
 	for (CircuitElm ce : sim.elmList) {
-	    if (ce.isSelected() || fi.count == 0)
-		ce.flipX(center2, fi.count);
+	    if (ce.isSelected() || fi.count == 0) {
+		if (ce instanceof TransistorElm)
+		    ((TransistorElm) ce).flipX(center2, fi.count);
+		else if (ce instanceof PotElm)
+		    ((PotElm) ce).flipX(center2, fi.count);
+		else
+		    ce.flipX(center2, fi.count);
+	    }
 	}
 	sim.needAnalyze();
     }
@@ -49,8 +58,14 @@ final class FlipTransformController {
 	FlipInfo fi = prepareFlip();
 	int center2 = fi.cy*2;
 	for (CircuitElm ce : sim.elmList) {
-	    if (ce.isSelected() || fi.count == 0)
-		ce.flipY(center2, fi.count);
+	    if (ce.isSelected() || fi.count == 0) {
+		if (ce instanceof TransistorElm)
+		    ((TransistorElm) ce).flipY(center2, fi.count);
+		else if (ce instanceof PotElm)
+		    ((PotElm) ce).flipY(center2, fi.count);
+		else
+		    ce.flipY(center2, fi.count);
+	    }
 	}
 	sim.needAnalyze();
     }
@@ -60,8 +75,14 @@ final class FlipTransformController {
 	int xmy = sim.snapGrid(fi.cx-fi.cy);
 	CirSim.console("xmy " + xmy + " grid " + sim.gridSize + " " + fi.cx + " " + fi.cy);
 	for (CircuitElm ce : sim.elmList) {
-	    if (ce.isSelected() || fi.count == 0)
-		ce.flipXY(xmy, fi.count);
+	    if (ce.isSelected() || fi.count == 0) {
+		if (ce instanceof TransistorElm)
+		    ((TransistorElm) ce).flipXY(xmy, fi.count);
+		else if (ce instanceof PotElm)
+		    ((PotElm) ce).flipXY(xmy, fi.count);
+		else
+		    ce.flipXY(xmy, fi.count);
+	    }
 	}
 	sim.needAnalyze();
     }

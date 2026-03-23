@@ -35,7 +35,7 @@ public final class CirSimDialogCoordinator {
         return diodeModelEditDialog;
     }
 
-    static void setDiodeModelEditDialog(EditDialog value) {
+    public static void setDiodeModelEditDialog(EditDialog value) {
         diodeModelEditDialog = value;
     }
 

@@ -17,12 +17,13 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.passives;
 
 import com.google.gwt.canvas.dom.client.CanvasGradient;
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
-    class ResistorElm extends CircuitElm {
+public class ResistorElm extends CircuitElm {
 	double resistance;
 	public ResistorElm(int xx, int yy) { super(xx, yy); resistance = 1000; }
 	public ResistorElm(int xa, int ya, int xb, int yb, int f,
@@ -68,7 +69,7 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 		setPowerColor(g, true);
 	    if (dn < 30)
 		hs = 2;
-	    if (!sim.euroResistorCheckItem.getState()) {
+	    if (!sim.isEuroResistorForUi()) {
 		g.context.beginPath();
 		g.context.moveTo(0,0);
 		for (i=0;i<4;i++){
@@ -103,7 +104,7 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 	    arr[3] = "R = " + getUnitText(resistance, Locale.ohmString);
 	    arr[4] = "P = " + getUnitText(getPower(), "W");
 	}
-	@Override String getScopeText(int v) {
+	@Override protected String getScopeText(int v) {
 	    return Locale.LS("resistor") + ", " + getUnitText(resistance, Locale.ohmString);
 	}
 	public EditInfo getEditInfo(int n) {
@@ -116,6 +117,6 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 	    resistance = (ei.value <= 0) ? 1e-9 : ei.value;
 	}
 	protected int getShortcut() { return 'r'; }
-	double getResistance() { return resistance; }
-	void setResistance(double r) { resistance = r; }
+	public double getResistance() { return resistance; }
+	public void setResistance(double r) { resistance = r; }
     }

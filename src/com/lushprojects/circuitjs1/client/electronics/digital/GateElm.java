@@ -17,11 +17,12 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.digital;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
-    abstract class GateElm extends CircuitElm {
+public abstract class GateElm extends CircuitElm {
 	final int FLAG_SMALL = 1<<0;
 	final int FLAG_SCHMITT = 1<<1;
 	final int FLAG_INVERT_INPUTS = 1<<2;
@@ -128,7 +129,7 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	}
 
 	String getGateText() { return null; }
-	static boolean useEuroGates() { return sim.euroGatesCheckItem.getState(); }
+	public static boolean useEuroGates() { return sim.isEuroGatesForUi(); }
 
 	void drawGatePolygon(Graphics g) {
 	    drawThickPolygon(g, gatePoly);

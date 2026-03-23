@@ -17,15 +17,16 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.passives;
 
 import com.google.gwt.user.client.ui.Label;
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.google.gwt.user.client.Command;
 import com.google.gwt.event.dom.client.MouseWheelEvent;
 import com.google.gwt.event.dom.client.MouseWheelHandler;
 
-class PotElm extends CircuitElm implements Command, MouseWheelHandler {
+public class PotElm extends CircuitElm implements Command, MouseWheelHandler {
     final int FLAG_SHOW_VALUES = 1;
     final int FLAG_FLIP = 2;
     final int FLAG_FLIP_OFFSET = 4;
@@ -97,15 +98,16 @@ class PotElm extends CircuitElm implements Command, MouseWheelHandler {
     
     protected void setPoints() {
 	super.setPoints();
+	int gridSize = sim.getGridSize();
 	int offset = 0;
 	int myLen =0;
 	if (abs(dx) > abs(dy) != hasFlag(FLAG_FLIP)) {
-	    myLen =  2 * sim.gridSize * Integer.signum(dx) * ((((int)Math.abs(dx))+ 2 * sim.gridSize -1) / (2 * sim.gridSize));
+	    myLen =  2 * gridSize * Integer.signum(dx) * ((((int)Math.abs(dx))+ 2 * gridSize -1) / (2 * gridSize));
 	    point2.x =  point1.x + myLen;
 	    offset = (dx < 0) ? dy : -dy;
 	    point2.y = point1.y;
 	} else {
-	    myLen =  2 * sim.gridSize * Integer.signum(dy) * ((((int)Math.abs(dy))+ 2 * sim.gridSize -1) / (2 * sim.gridSize));
+	    myLen =  2 * gridSize * Integer.signum(dy) * ((((int)Math.abs(dy))+ 2 * gridSize -1) / (2 * gridSize));
 	    if (dy != 0) {
 		point2.y = point1.y + myLen;
 		offset = (dy > 0) ? dx : -dx;
@@ -113,7 +115,7 @@ class PotElm extends CircuitElm implements Command, MouseWheelHandler {
 	    }
 	}
 	if (offset == 0)
-	    offset = (hasFlag(FLAG_FLIP_OFFSET)) ? -sim.gridSize : sim.gridSize;
+	    offset = (hasFlag(FLAG_FLIP_OFFSET)) ? -gridSize : gridSize;
 	dn = distance(point1, point2);
 	int bodyLen = 32;
 	calcLeads(bodyLen);
@@ -137,7 +139,7 @@ class PotElm extends CircuitElm implements Command, MouseWheelHandler {
 	int segments = 16;
 	int i;
 	int ox = 0;
-	int hs = sim.euroResistorCheckItem.getState() ? 6 : 8;
+	int hs = sim.isEuroResistorForUi() ? 6 : 8;
 	double v1 = volts[0];
 	double v2 = volts[1];
 	double v3 = volts[2];
@@ -147,7 +149,7 @@ class PotElm extends CircuitElm implements Command, MouseWheelHandler {
 	setPowerColor(g, true);
 	double segf = 1./segments;
 	int divide = (int) (segments*position);
-	if (!sim.euroResistorCheckItem.getState()) {
+	if (!sim.isEuroResistorForUi()) {
 	    // draw zigzag
 	    for (i = 0; i != segments; i++) {
 		int nx = 0;
@@ -326,19 +328,31 @@ class PotElm extends CircuitElm implements Command, MouseWheelHandler {
     	if (slider!=null)
     		slider.onMouseWheel(e);
     }
-    void flipX(int c2, int count) {
+    public void flipX(int c2, int count) {
 	// this is only needed / only has an effect if point1 and point2 are on same grid line
 	flags ^= FLAG_FLIP_OFFSET;
-	super.flipX(c2, count);
+	x = c2-x;
+	x2 = c2-x2;
+	setPoints();
     }
-    void flipY(int c2, int count) {
+    public void flipY(int c2, int count) {
 	flags ^= FLAG_FLIP_OFFSET;
-	super.flipY(c2, count);
+	y = c2-y;
+	y2 = c2-y2;
+	setPoints();
     }
-    void flipXY(int xmy, int count) {
+    public void flipXY(int xmy, int count) {
 	if (abs(dx) == abs(dy))
 	    flags ^= FLAG_FLIP;
 	flags ^= FLAG_FLIP_OFFSET;
-	super.flipXY(xmy, count);
+	int nx = y+xmy;
+	int ny = x-xmy;
+	int nx2 = y2+xmy;
+	int ny2 = x2-xmy;
+	x = nx;
+	y = ny;
+	x2 = nx2;
+	y2 = ny2;
+	setPoints();
     }
 }

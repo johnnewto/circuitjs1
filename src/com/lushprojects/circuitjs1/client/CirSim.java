@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.lushprojects.circuitjs1.client.economics.*;
+import com.lushprojects.circuitjs1.client.electronics.passives.*;
 
 // GWT conversion (c) 2015 by Iain Sharp
 
@@ -572,7 +573,7 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
     };
     final int FASTTIMER = 16;
 
-    int getrand(int x) {
+    public int getrand(int x) {
         int q = random.nextInt();
         if (q < 0)
             q = -q;
@@ -1366,6 +1367,14 @@ public CirSim() {
 	return gridSize;
     }
 
+    public boolean isEuroResistorForUi() {
+	return euroResistorCheckItem.getState();
+    }
+
+    public boolean isEuroGatesForUi() {
+	return euroGatesCheckItem.getState();
+    }
+
     public int getElementCount() {
 	return elmList.size();
     }
@@ -1571,7 +1580,7 @@ public CirSim() {
 	circuitAnalyzer.stampCircuit();
     }
 
-	void stop(String s, CircuitElm ce) {
+	public void stop(String s, CircuitElm ce) {
 	stopMessage = Locale.LS(s);
 	solverMatrixState.circuitMatrix = null;  // causes an exception
 	stopElm = ce;

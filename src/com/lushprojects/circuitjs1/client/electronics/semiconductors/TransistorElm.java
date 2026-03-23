@@ -17,15 +17,16 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.semiconductors;
 
 import java.util.Vector;
 
 import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.Button;
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
-class TransistorElm extends CircuitElm {
+public class TransistorElm extends CircuitElm {
 	// node 0 = base
 	// node 1 = collector
 	// node 2 = emitter
@@ -42,7 +43,7 @@ class TransistorElm extends CircuitElm {
 	static int globalFlags;
 	int badIters;
 	
-	TransistorElm(int xx, int yy, boolean pnpflag) {
+	protected TransistorElm(int xx, int yy, boolean pnpflag) {
 	    super(xx, yy);
 	    pnp = (pnpflag) ? -1 : 1;
 	    beta = 100;
@@ -67,7 +68,7 @@ class TransistorElm extends CircuitElm {
             globalFlags = flags & (FLAGS_GLOBAL);
 	    setup();
 	}
-	void setup() {
+	protected void setup() {
 	    model = TransistorModel.getModelWithNameOrCopy(modelName, model);
 	    modelName = model.name;   // in case we couldn't find that model    
 	    vcrit = vt * Math.log(vt/(Math.sqrt(2)*model.satCur));
@@ -85,15 +86,15 @@ class TransistorElm extends CircuitElm {
 		(volts[0]-volts[2]) + " " + beta + " " + CustomLogicModel.escape(modelName);
 	}
 	
-	    public void updateModels() {
-	        setup();
-	    }
+	public void updateModels() {
+	    setup();
+	}
 
-	    String dumpModel() {
-	        if (model.builtIn || model.dumped)
-	            return null;
-	        return model.dump();
-	    }
+	protected String dumpModel() {
+	    if (model.builtIn || model.dumped)
+		return null;
+	    return model.dump();
+	}
 	    
 	
 	double ic, ie, ib, curcount_c, curcount_e, curcount_b;
@@ -103,7 +104,7 @@ class TransistorElm extends CircuitElm {
 	
 	boolean hasCircle() { return (globalFlags & FLAG_CIRCLE) != 0; }
 	
-	protected void draw(Graphics g) {
+	public void draw(Graphics g) {
             // pick up global flags changes
             if ((flags & FLAGS_GLOBAL) != globalFlags)
                 setPoints();
@@ -151,7 +152,7 @@ class TransistorElm extends CircuitElm {
 	    }
 	    drawPosts(g);
 	}
-	protected Point getPost(int n) {
+	public Point getPost(int n) {
 	    return (n == 0) ? point1 : (n == 1) ? coll[0] : emit[0];
 	}
 	
@@ -381,7 +382,7 @@ class TransistorElm extends CircuitElm {
 
 	}
 	
-	@Override String getScopeText(int x) {
+	@Override protected String getScopeText(int x) {
 	    String t ="";
 	    switch (x) {
 	    case Scope.VAL_IB: t = "Ib"; break; 
@@ -528,7 +529,7 @@ class TransistorElm extends CircuitElm {
 	    }
 	}
 	
-	void setBeta(double b) {
+	public void setBeta(double b) {
 	    beta = b;
 	    setup();
 	}
@@ -546,24 +547,36 @@ class TransistorElm extends CircuitElm {
 		badIters = 0;
         }
 
-	void flipX(int c2, int count) {
+	public void flipX(int c2, int count) {
 	    if (x == x2)
 		flags ^= FLAG_FLIP;
-	    super.flipX(c2, count);
+	    x = c2-x;
+	    x2 = c2-x2;
+	    setPoints();
 	}
 
-	void flipY(int c2, int count) {
+	public void flipY(int c2, int count) {
 	    if (y == y2)
 		flags ^= FLAG_FLIP;
-	    super.flipY(c2, count);
+	    y = c2-y;
+	    y2 = c2-y2;
+	    setPoints();
 	}
 
-	void flipXY(int xmy, int count) {
+	public void flipXY(int xmy, int count) {
 	    flags ^= FLAG_FLIP;
-	    super.flipXY(xmy, count);
+	    int nx = y+xmy;
+	    int ny = x-xmy;
+	    int nx2 = y2+xmy;
+	    int ny2 = x2-xmy;
+	    x = nx;
+	    y = ny;
+	    x2 = nx2;
+	    y2 = ny2;
+	    setPoints();
 	}
 
-	void setFlipped(boolean flip) {
+	public void setFlipped(boolean flip) {
 	    if (((flags & FLAG_FLIP) != 0) != flip)
 		flags ^= FLAG_FLIP;
 	}

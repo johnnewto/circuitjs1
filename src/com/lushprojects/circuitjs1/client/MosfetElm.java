@@ -452,7 +452,7 @@ class MosfetElm extends CircuitElm {
 	protected void getInfo(String arr[]) {
 	    getFetInfo(arr, "MOSFET");
 	}
-	@Override String getScopeText(int v) { 
+	@Override protected String getScopeText(int v) { 
 	    return Locale.LS(((pnp == -1) ? "p-" : "n-") + "MOSFET");
 	}
 	protected boolean canViewInScope() { return true; }

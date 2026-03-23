@@ -17,9 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.electronics.semiconductors;
 
-class PTransistorElm extends TransistorElm {
+public class PTransistorElm extends TransistorElm {
 	public PTransistorElm(int xx, int yy) { super(xx, yy, true); }
 	protected Class getDumpClass() { return TransistorElm.class; }
 	
