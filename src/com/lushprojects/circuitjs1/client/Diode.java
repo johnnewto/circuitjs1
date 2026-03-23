@@ -19,13 +19,18 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
+
 // diode that can be embedded in other elements.  series resistance is handled in DiodeElm, not here.
 class Diode {
     int nodes[];
-    CirSim sim;
+    SimulationContext sim;
     
     Diode(CirSim s) {
-	sim = s;
+	this(s.getSimulationContext());
+    }
+    Diode(SimulationContext sim) {
+	this.sim = sim;
 	nodes = new int[2];
     }
     void setup(DiodeModel model) {
@@ -102,7 +107,7 @@ class Diode {
 		// (1/vscale = slope of load line)
 		vnew = vscale *Math.log(vnew/vscale);
 	    }
-	    sim.converged = false;
+	    sim.setConverged(false);
 	    //System.out.println(vnew + " " + oo + " " + vold);
 	} else if (vnew < 0 && zoffset != 0) {
 	    // for Zener breakdown, use the same logic but translate the values,
@@ -123,7 +128,7 @@ class Diode {
 		} else {
 		    vnew = vt *Math.log(vnew/vt);
 		}
-		sim.converged = false;
+		sim.setConverged(false);
 	    }
 	    vnew = -(vnew+zoffset);
 	}
@@ -140,17 +145,17 @@ class Diode {
     void doStep(double voltdiff) {
 	// used to have .1 here, but needed .01 for peak detector
 	if (Math.abs(voltdiff-lastvoltdiff) > .01)
-	    sim.converged = false;
+	    sim.setConverged(false);
 	voltdiff = limitStep(voltdiff, lastvoltdiff);
 	lastvoltdiff = voltdiff;
 
 	// To prevent a possible singular matrix or other numeric issues, put a tiny conductance
 	// in parallel with each P-N junction.
 	double gmin = leakage * 0.01;
-	if (sim.subIterations > 100) {
+	if (sim.getSubIterations() > 100) {
 	    // if we have trouble converging, put a conductance in parallel with the diode.
 	    // Gradually increase the conductance value for each iteration.
-	    gmin = Math.exp(-9*Math.log(10)*(1-sim.subIterations/3000.));
+	    gmin = Math.exp(-9*Math.log(10)*(1-sim.getSubIterations()/3000.));
 	    if (gmin > .1)
 		gmin = .1;
 	}

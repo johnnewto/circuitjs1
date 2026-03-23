@@ -150,9 +150,9 @@ package com.lushprojects.circuitjs1.client;
 	    double vd = volts[1] - volts[0];
 	    double midpoint = (maxOut+minOut)*.5;
 	    if (Math.abs(lastvd-vd) > .1)
-		sim.converged = false;
+		sim.setConverged(false);
 	    else if (volts[2] > maxOut+.1 || volts[2] < minOut-.1)
-		sim.converged = false;
+		sim.setConverged(false);
 	    double x = 0;
 	    int vn = sim.getCircuitAnalyzer().getNodeList().size()+voltSource;
 	    double dx = 0;

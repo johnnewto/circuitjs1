@@ -6,6 +6,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
+
 // Differentiator element - computes da/dt (derivative of input)
 class DifferentiatorElm extends CircuitElm {
     final int FLAG_SMALL = 1;
@@ -147,6 +149,7 @@ class DifferentiatorElm extends CircuitElm {
     }
 
     void doStep() {
+        SimulationContext context = getSimulationContext();
         int vn = voltSource + sim.getCircuitAnalyzer().getNodeList().size();
         
         // Settling logic: wait for one full timestep to let circuit stabilize
@@ -174,14 +177,14 @@ class DifferentiatorElm extends CircuitElm {
         if (expr != null) {
             // Calculate output using expression (computes dadt)
             exprState.values[0] = volts[0];
-            exprState.t = sim.getTimingState().t;
+            exprState.t = context.getTime();
             double v0 = expr.eval(exprState);
             
             // Check convergence
             double outputDelta = Math.abs(volts[1] - v0);
             double tolerance = Math.max(Math.abs(v0) * 0.001, MIN_VALUE);
-            if (outputDelta > tolerance && sim.subIterations < 100)
-                sim.converged = false;
+            if (outputDelta > tolerance && sim.getSubIterations() < 100)
+                sim.setConverged(false);
             
             // Stamp the output directly - high-impedance input doesn't need derivative linearization
             sim.stampRightSide(vn, v0);

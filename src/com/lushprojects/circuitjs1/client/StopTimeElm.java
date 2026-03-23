@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.ui.ScopeViewerDialog;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import jsinterop.annotations.JsMethod;
@@ -169,8 +170,9 @@ class StopTimeElm extends CircuitElm {
     }
     
     void stepFinished() {
+        SimulationContext context = getSimulationContext();
         stopped = false;
-        if (enabled && sim.getTimingState().t >= stopTime) {
+        if (enabled && context.getTime() >= stopTime) {
             stopped = true;
             sim.setSimRunning(false);
             
@@ -182,16 +184,17 @@ class StopTimeElm extends CircuitElm {
     }
     
     void getInfo(String arr[]) {
+        SimulationContext context = getSimulationContext();
         arr[0] = "stop time";
         arr[1] = "enabled = " + (enabled ? "yes" : "no");
         arr[2] = "open Plotly = " + (openPlotlyOnStop ? "yes" : "no");
-        arr[3] = "current time = " + getUnitText(sim.getTimingState().t, "s");
+        arr[3] = "current time = " + getUnitText(context.getTime(), "s");
         arr[4] = "stop time = " + getUnitText(stopTime, "s");
         if (enabled) {
-            if (sim.getTimingState().t >= stopTime) {
+            if (context.getTime() >= stopTime) {
                 arr[5] = "stopped";
             } else {
-                arr[5] = "stopping in " + getUnitText(stopTime - sim.getTimingState().t, "s");
+                arr[5] = "stopping in " + getUnitText(stopTime - context.getTime(), "s");
             }
         } else {
             arr[5] = "disabled";

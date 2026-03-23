@@ -62,7 +62,7 @@ final class CircuitValueSlotManager {
     }
 
     double resolveSlotValue(String name) {
-        if (sim.equationTableMnaMode) {
+        if (sim.isEquationTableMnaMode()) {
             if (ComputedValues.isParameterName(name)) {
                 Double v = ComputedValues.getComputedValue(name);
                 if (v != null)

@@ -19,13 +19,13 @@ public final class InfoViewerLiveDataSerializer {
         StringBuilder sb = new StringBuilder();
         sb.append("{\"type\":\"circuit-live\"");
         sb.append(",\"running\":").append(sim.simIsRunning());
-        sb.append(",\"t\":").append(sim.getTimingState().t);
-        sb.append(",\"dt\":").append(sim.getTimingState().timeStep);
+        sb.append(",\"t\":").append(sim.getTime());
+        sb.append(",\"dt\":").append(sim.getTimeStep());
         sb.append(",\"vars\":{");
 
         boolean first = true;
-        first = appendLiveVar(sb, "t", sim.getTimingState().t, first);
-        first = appendLiveVar(sb, "dt", sim.getTimingState().timeStep, first);
+        first = appendLiveVar(sb, "t", sim.getTime(), first);
+        first = appendLiveVar(sb, "dt", sim.getTimeStep(), first);
 
         String[] names = ComputedValues.getComputedValueNames();
         for (int i = 0; i < names.length; i++) {

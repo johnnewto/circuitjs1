@@ -22,10 +22,10 @@ final class CirSimBootstrap {
 	sim.canvasWidth = 1200;
 	sim.canvasHeight = 800;
 	sim.getViewportController().setCircuitArea();
-	sim.getTimingState().timeStep = 5e-6;
-	sim.getTimingState().maxTimeStep = 5e-2;
+	sim.setTimeStep(5e-6);
+	sim.setMaxTimeStep(5e-2);
 	sim.getTimingState().minTimeStep = 1e-12;
-	sim.getTimingState().t = 0;
+	sim.setTime(0);
 	CircuitElm.initClass(sim);
     }
 

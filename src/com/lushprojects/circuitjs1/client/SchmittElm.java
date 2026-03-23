@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
+
 // contributed by Edward Calver
 
 class SchmittElm extends InvertingSchmittElm{
@@ -38,6 +40,7 @@ class SchmittElm extends InvertingSchmittElm{
 	    lastOutputVoltage = volts[1];
 	}
 	void doStep() {
+	    SimulationContext context = getSimulationContext();
 	    double out;
 		if(state)
 		{//Output is high
@@ -64,7 +67,7 @@ class SchmittElm extends InvertingSchmittElm{
 			}
 		}
 	    
-	    double maxStep = slewRate * sim.getTimingState().timeStep * 1e9;
+	    double maxStep = slewRate * context.getTimeStep() * 1e9;
 	    out = Math.max(Math.min(lastOutputVoltage+maxStep, out), lastOutputVoltage-maxStep);
 	    sim.updateVoltageSource(0, nodes[1], voltSource, out);
 	}

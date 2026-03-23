@@ -30,7 +30,7 @@ class EditOptions implements Editable {
 	
 	public EditInfo getEditInfo(int n) {
 		if (n == 0)
-			return new EditInfo("Time step size (s)", sim.getTimingState().maxTimeStep, 0, 0);
+			return new EditInfo("Time step size (s)", sim.getMaxTimeStep(), 0, 0);
 		if (n == 1)
 			return new EditInfo("Range for voltage color (V)",
 					CircuitElm.voltageRange, 0, 0);
@@ -83,11 +83,11 @@ class EditOptions implements Editable {
 		if (n == 14)
 		    return new EditInfo("Convergence Check Threshold (subiterations)", sim.convergenceCheckThreshold, 0, 100).setDimensionless();
 		if (n == 15) {
-		    return new EditInfo("Equation Table Convergence Tolerance", sim.equationTableConvergenceTolerance, 0, 0).setDimensionless();
+		    return new EditInfo("Equation Table Convergence Tolerance", sim.getEquationTableConvergenceTolerance(), 0, 0).setDimensionless();
 		}
 		if (n == 16) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
-		    ei.checkbox = new Checkbox("MNA Mode", sim.equationTableMnaMode);
+		    ei.checkbox = new Checkbox("MNA Mode", sim.isEquationTableMnaMode());
 		    return ei;
 		}
 		if (n == 17) {
@@ -131,7 +131,7 @@ class EditOptions implements Editable {
 	
 	public void setEditValue(int n, EditInfo ei) {
 		if (n == 0 && ei.value > 0) {
-			sim.getTimingState().maxTimeStep = ei.value;
+			sim.setMaxTimeStep(ei.value);
 
 			// if timestep changed manually, prompt before changing it again
 			AudioOutputElm.okToChangeTimeStep = false;
@@ -211,14 +211,14 @@ class EditOptions implements Editable {
 		    sim.convergenceCheckThreshold = (int)ei.value;
 		if (n == 15) {
 		    if (ei.value > 0) {
-			sim.equationTableConvergenceTolerance = ei.value;
+			sim.setEquationTableConvergenceTolerance(ei.value);
 			Storage stor = Storage.getLocalStorageIfSupported();
 			if (stor != null)
-			    stor.setItem("equationTableConvergenceTolerance", Double.toString(sim.equationTableConvergenceTolerance));
+			    stor.setItem("equationTableConvergenceTolerance", Double.toString(sim.getEquationTableConvergenceTolerance()));
 		    }
 		}
 		if (n == 16) {
-		    sim.equationTableMnaMode = ei.checkbox.getState();
+		    sim.setEquationTableMnaMode(ei.checkbox.getState());
 		    sim.needAnalyze();
 		}
 		if (n == 17) {

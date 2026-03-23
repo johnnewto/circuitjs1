@@ -2,6 +2,7 @@ package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.i18n.client.NumberFormat;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 // based on https://ctms.engin.umich.edu/CTMS/index.php?example=MotorPosition&section=SystemModeling
@@ -143,7 +144,7 @@ class ThreePhaseMotorElm extends CircuitElm {
 	
         CircuitMatrixOps.invertMatrix(xformMatrix, coilCount);
 
-        double ts = sim.getTimingState().timeStep;
+        double ts = getSimulationContext().getTimeStep();
         for (i = 0; i != coilCount; i++)
             for (j = 0; j != coilCount; j++) {
                 // multiply in dt/2 (or dt for backward euler)
@@ -182,6 +183,7 @@ class ThreePhaseMotorElm extends CircuitElm {
     double vs1value, vs2value;
 
     void startIteration() {
+        SimulationContext context = getSimulationContext();
         int i;
         for (i = 0; i != coilCount; i++) {
             double val = coilCurrents[i];
@@ -189,8 +191,8 @@ class ThreePhaseMotorElm extends CircuitElm {
         }
         
         double torque = Zp * Math.sqrt(3)/2 * Lm * ((coilCurrents[1]-coilCurrents[2]) * coilCurrents[3] - Math.sqrt(3) * coilCurrents[0] * coilCurrents[4]);
-	speed += sim.getTimingState().timeStep * (torque - b * speed)/J;
-        angle = angle + speed*sim.getTimingState().timeStep;
+	speed += context.getTimeStep() * (torque - b * speed)/J;
+        angle = angle + speed*context.getTimeStep();
 
         vs1value = -Zp*speed*(Lm*Math.sqrt(3)/2 * (coilCurrents[1]-coilCurrents[2]) + 1.5*Lr*coilCurrents[4]);
         vs2value = Zp*speed*(3/2.*Lm*coilCurrents[0] + 1.5*Lr*coilCurrents[3]);

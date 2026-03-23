@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client;
 
 import java.util.Vector;
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
 class CCVSElm extends VCCSElm {
     	static int FLAG_SPICE = 2;
@@ -65,6 +66,7 @@ class CCVSElm extends VCCSElm {
 	String getChipName() { return "CCVS"; }
 	
 	void stamp() {
+	    SimulationContext context = getSimulationContext();
 	    int i;
 	    if (isSpiceStyle()) {
 		for (i = 0; i != inputCount; i += 2)
@@ -73,20 +75,21 @@ class CCVSElm extends VCCSElm {
 		// voltage source (0V) between C+ and C- so we can measure current
 		for (i = 0; i != inputCount; i += 2) {
 		    int vn1 = pins[i+1].voltSource;
-		    sim.stampVoltageSource(nodes[i], nodes[i+1], vn1, 0);
+		    context.stampVoltageSource(nodes[i], nodes[i+1], vn1, 0);
 		}
 	    }
 	    
 	    // voltage source for outputs
 	    int vn2 = pins[inputCount].voltSource;
             outputVS = vn2;
-            sim.stampNonLinear(vn2 + sim.getCircuitAnalyzer().getNodeList().size());
-            sim.stampVoltageSource(nodes[inputCount+1], nodes[inputCount], vn2);
+            context.stampNonLinear(vn2 + sim.getCircuitAnalyzer().getNodeList().size());
+            context.stampVoltageSource(nodes[inputCount+1], nodes[inputCount], vn2);
 	}
 
 	double lastCurrents[];
 	
         void doStep() {
+            SimulationContext context = getSimulationContext();
             // converged yet?
             double convergeLimit = getConvergeLimit()*.1;
             
@@ -99,7 +102,7 @@ class CCVSElm extends VCCSElm {
             for (i = 0; i != inputPairCount; i++) {
         	double cur = pins[i*2+1].current;
         	if (Math.abs(cur-lastCurrents[i]) > convergeLimit)
-        	    sim.converged = false;
+        	    context.setConverged(false);
             }
             
             int vno = outputVS + sim.getCircuitAnalyzer().getNodeList().size();
@@ -107,7 +110,7 @@ class CCVSElm extends VCCSElm {
         	// calculate output
         	for (i = 0; i != inputPairCount; i++)
         	    setCurrentExprValue(i, pins[i*2+1].current);
-        	exprState.t = sim.getTimingState().t;
+        	exprState.t = context.getTime();
         	double v0 = expr.eval(exprState);
         	double rs = v0;
         	
@@ -124,14 +127,14 @@ class CCVSElm extends VCCSElm {
         	    double dx = (v-v2)/dv;
         	    if (Math.abs(dx) < 1e-6)
         		dx = sign(dx, 1e-6);
-        	    sim.stampMatrix(vno, vni, -dx);
+        	    context.stampMatrix(vno, vni, -dx);
         	    // adjust right side
         	    rs -= dx*cur;
         	    //if (sim.subIterations > 1)
         	        //sim.console("ccedx " + i + " " + cur + " " + dx + " " + rs + " " + sim.subIterations + " " + sim.getTimingState().t);
         	    setCurrentExprValue(i, cur);
         	}
-        	sim.stampRightSide(vno, rs);
+        	context.stampRightSide(vno, rs);
             }
 
             for (i = 0; i != inputPairCount; i++)
@@ -226,4 +229,3 @@ class CCVSElm extends VCCSElm {
         }
 
     }
-

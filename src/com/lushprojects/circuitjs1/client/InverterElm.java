@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
+
     class InverterElm extends CircuitElm {
 	double slewRate; // V/ns
 	double highVoltage;
@@ -99,8 +101,9 @@ package com.lushprojects.circuitjs1.client;
 	    lastOutputVoltage = volts[1];
 	}
 	void doStep() {
+	    SimulationContext context = getSimulationContext();
 	    double out = volts[0] > highVoltage*.5 ? 0 : highVoltage;
-	    double maxStep = slewRate * sim.getTimingState().timeStep * 1e9;
+	    double maxStep = slewRate * context.getTimeStep() * 1e9;
 	    out = Math.max(Math.min(lastOutputVoltage+maxStep, out), lastOutputVoltage-maxStep);
 	    sim.updateVoltageSource(0, nodes[1], voltSource, out);
 	}

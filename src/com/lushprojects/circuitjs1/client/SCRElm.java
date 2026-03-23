@@ -208,7 +208,7 @@ class SCRElm extends CircuitElm {
 	double vag = volts[anode]-volts[gnode]; // typically positive
 	if (Math.abs(vac-lastvac) > .01 ||
 	    Math.abs(vag-lastvag) > .01)
-	    sim.converged = false;
+	    sim.setConverged(false);
 	lastvac = vac;
 	lastvag = vag;
 	diode.doStep(volts[inode]-volts[cnode]);
@@ -275,4 +275,3 @@ class SCRElm extends CircuitElm {
 	super.flipXY(c2, count);
     }
 }
-

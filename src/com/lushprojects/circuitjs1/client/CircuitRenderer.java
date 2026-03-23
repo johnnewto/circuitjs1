@@ -160,8 +160,8 @@ class CircuitRenderer {
             height += increment;
         }
 
-        String timeStr = "t = " + sim.getPreferencesManager().formatTimeFixed(sim.getTimingState().t);
-        double timerate = 160 * iterCount * sim.getTimingState().timeStep;
+        String timeStr = "t = " + sim.getPreferencesManager().formatTimeFixed(sim.getTime());
+        double timerate = 160 * iterCount * sim.getTimeStep();
         if (timerate >= .1)
             timeStr += " (" + CircuitElm.showFormat.format(timerate) + "x)";
         g.drawString(timeStr, 10, height);
@@ -170,7 +170,7 @@ class CircuitRenderer {
         g.drawString("real = " + CircuitElm.showFormat.format(realElapsed) + "s", 10, height += increment);
 
         g.drawString("Framerate: " + CircuitElm.showFormat.format(sim.framerate), 10, height += increment);
-        g.drawString("subiter: " + sim.subIterations, 10, height += increment);
+        g.drawString("subiter: " + sim.getSubIterations(), 10, height += increment);
 
         String unresolvedMsg = sim.getCircuitValueSlotManager().getUnresolvedReferencesMessage();
         if (unresolvedMsg != null) {

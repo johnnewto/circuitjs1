@@ -332,10 +332,10 @@ public class EquationTableMarkdownDebugDialog {
               .append(sim.getCircuitAnalyzer().getNodeList() != null ? sim.getCircuitAnalyzer().getNodeList().size() : 0)
               .append(" (including ground) |\n");
             md.append("| Voltage Sources | ").append(sim.voltageSourceCount).append(" |\n");
-            md.append("| Time | ").append(sim.getTimingState().t).append(" |\n");
-            md.append("| Time Step | ").append(sim.getTimingState().timeStep).append(" |\n");
-            md.append("| Sub-iterations | ").append(sim.subIterations).append(" |\n");
-            md.append("| EqnTable MNA Mode (global) | ").append(sim.equationTableMnaMode).append(" |\n");
+            md.append("| Time | ").append(sim.getTime()).append(" |\n");
+            md.append("| Time Step | ").append(sim.getTimeStep()).append(" |\n");
+            md.append("| Sub-iterations | ").append(sim.getSubIterations()).append(" |\n");
+            md.append("| EqnTable MNA Mode (global) | ").append(sim.isEquationTableMnaMode()).append(" |\n");
             md.append("| EqnTable Newton Jacobian (global) | ").append(sim.equationTableNewtonJacobianEnabled).append(" |\n");
         } else {
             md.append("*(Simulator not available)*\n");

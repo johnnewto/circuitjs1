@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
+
 // contributed by Edward Calver
 
 class AMElm extends CircuitElm {
@@ -64,7 +66,8 @@ class AMElm extends CircuitElm {
 	    sim.updateVoltageSource(0, nodes[0], voltSource, getVoltage());
     }
     double getVoltage() {
-	double w = 2*pi*(sim.getTimingState().t-freqTimeZero);
+	SimulationContext context = getSimulationContext();
+	double w = 2*pi*(context.getTime()-freqTimeZero);
 	return ((Math.sin(w*signalfreq)+1)/2)*Math.sin(w*carrierfreq)*maxVoltage;	
     }
     final int circleSize = 17;

@@ -69,9 +69,9 @@ public class CircuitTestRunner {
         sim = CirSim.getInstance();
         
         // Configure for deterministic testing
-        sim.getTimingState().maxTimeStep = STANDARD_TIMESTEP;
+        sim.setMaxTimeStep(STANDARD_TIMESTEP);
         sim.getTimingState().minTimeStep = STANDARD_TIMESTEP;
-        sim.getTimingState().timeStep = STANDARD_TIMESTEP;
+        sim.setTimeStep(STANDARD_TIMESTEP);
         sim.adjustTimeStep = false; // Fixed timestep for consistency
         sim.simRunning = false; // Start paused
     }
@@ -123,10 +123,10 @@ public class CircuitTestRunner {
         sim.simRunning = true;
         
         // Use actual timestep from circuit, not STANDARD_TIMESTEP
-        int maxSteps = (int) (targetTime / sim.getTimingState().timeStep) + 1000; // Safety margin
+        int maxSteps = (int) (targetTime / sim.getTimeStep()) + 1000; // Safety margin
         int steps = 0;
-        double endTime = targetTime+sim.getTimingState().timeStep;
-        while (sim.getTimingState().t <= endTime && steps < maxSteps) {  // Run until target time reached
+        double endTime = targetTime+sim.getTimeStep();
+        while (sim.getTime() <= endTime && steps < maxSteps) {  // Run until target time reached
             sim.updateCircuit();
             steps++;
             
@@ -180,7 +180,7 @@ public class CircuitTestRunner {
         int requiredStableSteps = 100; // Must be stable for 100 consecutive steps
         
         // Use actual timestep from circuit, not STANDARD_TIMESTEP
-        int maxSteps = (int) (timeout / sim.getTimingState().timeStep);
+        int maxSteps = (int) (timeout / sim.getTimeStep());
         int steps = 0;
         
         while (steps < maxSteps) {
@@ -330,7 +330,7 @@ public class CircuitTestRunner {
      * @return true if converged, false if failed to converge
      */
     public boolean isConverged() {
-        return sim.converged;
+        return sim.isConverged();
     }
     
     /**
@@ -339,7 +339,7 @@ public class CircuitTestRunner {
      * @return Time in seconds
      */
     public double getTime() {
-        return sim.getTimingState().t;
+        return sim.getTime();
     }
     
     /**
@@ -422,7 +422,7 @@ public class CircuitTestRunner {
      * @throws AssertionError if not converged
      */
     public void assertConverged() {
-        if (!sim.converged) {
+        if (!sim.isConverged()) {
             throw new AssertionError("Circuit failed to converge");
         }
     }
@@ -455,10 +455,10 @@ public class CircuitTestRunner {
     public String dumpState() {
         StringBuilder sb = new StringBuilder();
         sb.append("Circuit State at t=");
-        sb.append(sim.getTimingState().t);
+        sb.append(sim.getTime());
         sb.append("s\n");
         sb.append("Converged: ");
-        sb.append(sim.converged);
+        sb.append(sim.isConverged());
         sb.append("\n");
         sb.append("Elements: ");
         sb.append(sim.elmList.size());

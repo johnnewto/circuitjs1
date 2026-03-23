@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
+
     class MonostableElm extends ChipElm {
 
 	//Used to detect rising edge
@@ -64,15 +66,16 @@ package com.lushprojects.circuitjs1.client;
 	int getVoltageSourceCount() { return 2; }
 
 	void execute() {
+			SimulationContext context = getSimulationContext();
 
 			if(pins[0].value&&prevInputValue!=pins[0].value&&(retriggerable||!triggered)){
-			lastRisingEdge=sim.getTimingState().t;
+			lastRisingEdge=context.getTime();
 			pins[1].value=true;
 			pins[2].value=false;
 			triggered=true;
 			}
 
-			if(triggered&&sim.getTimingState().t>lastRisingEdge+delay)
+			if(triggered&&context.getTime()>lastRisingEdge+delay)
 			{
 			pins[1].value=false;
 			pins[2].value=true;

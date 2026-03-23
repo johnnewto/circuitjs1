@@ -28,6 +28,7 @@ import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.core.client.JsArrayString;
 import com.google.gwt.storage.client.Storage;
 import com.google.gwt.user.client.Random;
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsPackage;
@@ -178,6 +179,10 @@ public abstract class CircuitElm implements Editable {
 	}
 	setDecimalDigits(decimalDigits, false, false);
 	setDecimalDigits(shortDecimalDigits, true, false);
+    }
+
+    protected final SimulationContext getSimulationContext() {
+	return sim.getSimulationContext();
     }
 
     static void setDecimalDigits(int num, boolean sf, boolean save) {

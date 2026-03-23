@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
+
     class AntennaElm extends RailElm {
 	public AntennaElm(int xx, int yy) { super(xx, yy, WF_AC); }
 	public AntennaElm(int xa, int ya, int xb, int yb, int f,
@@ -33,14 +35,17 @@ package com.lushprojects.circuitjs1.client;
 	}
 	
 	double getVoltage() {
+	    SimulationContext context = getSimulationContext();
+	    double t = context.getTime();
 	    double fm = 3*Math.sin(fmphase);
-	    return Math.sin(2*pi*sim.getTimingState().t*3000)*(1.3+Math.sin(2*pi*sim.getTimingState().t*12))*3 +
-	           Math.sin(2*pi*sim.getTimingState().t*2710)*(1.3+Math.sin(2*pi*sim.getTimingState().t*13))*3 +
-		   Math.sin(2*pi*sim.getTimingState().t*2433)*(1.3+Math.sin(2*pi*sim.getTimingState().t*14))*3 + fm;
+	    return Math.sin(2*pi*t*3000)*(1.3+Math.sin(2*pi*t*12))*3 +
+	           Math.sin(2*pi*t*2710)*(1.3+Math.sin(2*pi*t*13))*3 +
+		   Math.sin(2*pi*t*2433)*(1.3+Math.sin(2*pi*t*14))*3 + fm;
 	}
 	
 	void stepFinished() {
-	    fmphase += 2*pi*(2200+Math.sin(2*pi*sim.getTimingState().t*13)*100)*sim.getTimingState().timeStep;
+	    SimulationContext context = getSimulationContext();
+	    fmphase += 2*pi*(2200+Math.sin(2*pi*context.getTime()*13)*100)*context.getTimeStep();
 	}
 
 	int getDumpType() { return 'A'; }

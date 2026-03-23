@@ -6,6 +6,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
+
 /**
  * ODEElm - Simple ODE Calculator with Integration
  * 
@@ -211,9 +213,9 @@ class ODEElm extends CircuitElm {
     // Get convergence limit (similar to GodlyTableElm)
     double getConvergeLimit() {
         double relativeTolerance;
-        if (sim.subIterations < 10)
+        if (sim.getSubIterations() < 10)
             relativeTolerance = 0.001;  // 0.1% for early iterations
-        else if (sim.subIterations < 100)
+        else if (sim.getSubIterations() < 100)
             relativeTolerance = 0.01;   // 1% for mid iterations
         else
             relativeTolerance = 0.1;    // 10% for late iterations
@@ -241,6 +243,7 @@ class ODEElm extends CircuitElm {
     }
 
     void doStep() {
+        SimulationContext context = getSimulationContext();
         // On first timestep, set initial value
         if (sim.getTimingState().timeStepCount == 0) {
             exprState.lastOutput = initialValue;
@@ -256,25 +259,25 @@ class ODEElm extends CircuitElm {
             }
             
             // Evaluate equation to get derivative f(t, labeled_nodes, a, b, c...)
-            exprState.t = sim.getTimingState().t;
+            exprState.t = context.getTime();
             double equationValue = compiledExpr.eval(exprState);
             
             // Check equation convergence
             double convergeLimit = getConvergeLimit();
             if (Math.abs(equationValue - lastEquationValue) > convergeLimit) {
-                sim.converged = false;
+                sim.setConverged(false);
             }
             lastEquationValue = equationValue;
             
             // Perform integration: y[n+1] = y[n] + dt * f(t)
-            integratedValue = exprState.lastOutput + sim.getTimingState().timeStep * equationValue;
+            integratedValue = exprState.lastOutput + context.getTimeStep() * equationValue;
             
             // Check output voltage convergence
             double outputVoltage = volts[0];
             double voltageDiff = Math.abs(outputVoltage - integratedValue);
             double threshold = Math.max(Math.abs(integratedValue) * 0.01, 1e-6);
-            if (voltageDiff > threshold && sim.subIterations < 100) {
-                sim.converged = false;
+            if (voltageDiff > threshold && sim.getSubIterations() < 100) {
+                sim.setConverged(false);
             }
             
             // Stamp the right side with the integrated value
@@ -578,7 +581,7 @@ class ODEElm extends CircuitElm {
         if (idx < arr.length)
             arr[idx++] = "Current Output: " + getVoltageText(integratedValue);
         if (idx < arr.length)
-            arr[idx] = "Time: " + getUnitText(sim.getTimingState().t, "s");
+            arr[idx] = "Time: " + getUnitText(getSimulationContext().getTime(), "s");
     }
     
     // Custom formatting for parameter sliders

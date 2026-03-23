@@ -50,6 +50,9 @@ import com.google.gwt.user.client.ui.MenuItem;
 import com.google.gwt.safehtml.shared.SafeHtmlUtils;
 import com.google.gwt.user.client.ui.PopupPanel;
 import com.google.gwt.user.client.ui.Frame;
+import com.lushprojects.circuitjs1.client.core.ConfigProvider;
+import com.lushprojects.circuitjs1.client.core.ConsoleLogger;
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.io.ImportExportHelper;
 import com.lushprojects.circuitjs1.client.ui.CheckboxMenuItem;
 import com.lushprojects.circuitjs1.client.ui.Toolbar;
@@ -93,7 +96,7 @@ import jsinterop.annotations.JsType;
  * @author Paul Falstad, Iain Sharp
  * @see <a href="https://github.com/sharpie7/circuitjs1/blob/master/INTERNALS.md">...</a>
  */
-public class CirSim {
+public class CirSim implements ConfigProvider, ConsoleLogger {
 
 	@JsFunction
 	interface SaveDialogSuccessCallback {
@@ -592,11 +595,11 @@ public class CirSim {
 
 
 public CirSim() {
-	//	super("Circuit Simulator v1.6d");
-	//	applet = a;
-	//	useFrame = false;
-	theSim = this;
-}
+		//	super("Circuit Simulator v1.6d");
+		//	applet = a;
+		//	useFrame = false;
+		theSim = this;
+	}
 
 	private final RunnerController runnerController = new RunnerController(this);
 
@@ -610,6 +613,7 @@ public CirSim() {
 	private final ClipboardManager clipboardManager = new ClipboardManager(this);
 	private final MouseInputHandler mouseInputHandler = new MouseInputHandler(this);
 	private final CircuitAnalyzer circuitAnalyzer = new CircuitAnalyzer(this);
+	private final SimulationContextAdapter simulationContext = new SimulationContextAdapter(this);
 	private final MatrixStamper matrixStamper = new MatrixStamper(this);
 	private final CircuitRenderer circuitRenderer = new CircuitRenderer(this);
 	private final SimulationLoop simulationLoop = new SimulationLoop(this);
@@ -641,6 +645,10 @@ public CirSim() {
 
 	CircuitAnalyzer getCircuitAnalyzer() {
 	    return circuitAnalyzer;
+	}
+
+	public SimulationContext getSimulationContext() {
+	    return simulationContext;
 	}
 
 	public SimulationTimingState getTimingState() {
@@ -868,7 +876,7 @@ public CirSim() {
 	}
 
 	public double getMaxTimeStepForExport() {
-	    return getTimingState().maxTimeStep;
+	    return getMaxTimeStep();
 	}
 
 	public double getIterCountForExport() {
@@ -1455,6 +1463,11 @@ public CirSim() {
 	    System.err.println(text);
     }
 
+    @Override
+    public void log(String message) {
+	console(message);
+    }
+
     void alertOrWarn(String message) {
 	if (RuntimeMode.isGwt())
 	    Window.alert(message);
@@ -1632,6 +1645,71 @@ public CirSim() {
     }
 
 	boolean converged;
+
+    public double getTimeStep() {
+	return getTimingState().timeStep;
+    }
+
+    public void setTimeStep(double timeStep) {
+	getTimingState().timeStep = timeStep;
+    }
+
+    public double getTime() {
+	return getTimingState().t;
+    }
+
+    public void setTime(double time) {
+	getTimingState().t = time;
+    }
+
+    public double getMaxTimeStep() {
+	return getTimingState().maxTimeStep;
+    }
+
+    public void setMaxTimeStep(double maxTimeStep) {
+	getTimingState().maxTimeStep = maxTimeStep;
+    }
+
+    public int getSubIterations() {
+	return subIterations;
+    }
+
+    public boolean isConverged() {
+	return converged;
+    }
+
+    public void setConverged(boolean converged) {
+	this.converged = converged;
+    }
+
+    @Override
+    public boolean isEquationTableMnaMode() {
+	return equationTableMnaMode;
+    }
+
+    public void setEquationTableMnaMode(boolean equationTableMnaMode) {
+	this.equationTableMnaMode = equationTableMnaMode;
+    }
+
+    @Override
+    public boolean isSfcrLookupClampDefault() {
+	return sfcrLookupClampDefault;
+    }
+
+    public void setSfcrLookupClampDefault(boolean sfcrLookupClampDefault) {
+	this.sfcrLookupClampDefault = sfcrLookupClampDefault;
+    }
+
+    @Override
+    public double getEquationTableConvergenceTolerance() {
+	return equationTableConvergenceTolerance;
+    }
+
+    public void setEquationTableConvergenceTolerance(double equationTableConvergenceTolerance) {
+	if (equationTableConvergenceTolerance > 0) {
+	    this.equationTableConvergenceTolerance = equationTableConvergenceTolerance;
+	}
+    }
     int subIterations;
     int periodicInterval = 100; // process every 100 timesteps
 	int nextPeriodicTime = 0;

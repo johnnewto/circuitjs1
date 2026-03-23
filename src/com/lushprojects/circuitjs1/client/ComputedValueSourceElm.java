@@ -130,8 +130,8 @@ class ComputedValueSourceElm extends CircuitElm {
         // Check convergence
         double voltageDiff = Math.abs(volts[0] - lastValue);
         double threshold = Math.max(Math.abs(lastValue) * 0.001, 1e-6);
-        if (voltageDiff > threshold && sim.subIterations < 100) {
-            sim.converged = false;
+        if (voltageDiff > threshold && sim.getSubIterations() < 100) {
+            sim.setConverged(false);
         }
         
         // Stamp the value to drive output voltage

@@ -1240,7 +1240,7 @@ public class SFCRExporter {
         sb.append("@init\n");
         
         // Timestep
-        sb.append("  timestep: ").append(sim.getTimingState().maxTimeStep).append("\n");
+        sb.append("  timestep: ").append(sim.getMaxTimeStep()).append("\n");
         
         // Voltage unit (if customized)
         if (sim.voltageUnitSymbol != null && !sim.voltageUnitSymbol.equals("V")) {
@@ -1258,11 +1258,11 @@ public class SFCRExporter {
         sb.append("  showValues: ").append(sim.showValuesCheckItem.getState()).append("\n");
         sb.append("  showPower: ").append(sim.powerCheckItem.getState()).append("\n");
         sb.append("  autoAdjustTimestep: ").append(sim.adjustTimeStep).append("\n");
-        sb.append("  equationTableMnaMode: ").append(sim.equationTableMnaMode).append("\n");
+        sb.append("  equationTableMnaMode: ").append(sim.isEquationTableMnaMode()).append("\n");
         sb.append("  equationTableNewtonJacobianEnabled: ").append(sim.equationTableNewtonJacobianEnabled).append("\n");
-        sb.append("  equationTableTolerance: ").append(Double.toString(sim.equationTableConvergenceTolerance)).append("\n");
-        sb.append("  lookupMode: ").append(sim.sfcrLookupClampDefault ? "pwl" : "pwlx").append("\n");
-        sb.append("  lookupClamp: ").append(sim.sfcrLookupClampDefault).append("\n");
+        sb.append("  equationTableTolerance: ").append(Double.toString(sim.getEquationTableConvergenceTolerance())).append("\n");
+        sb.append("  lookupMode: ").append(sim.isSfcrLookupClampDefault() ? "pwl" : "pwlx").append("\n");
+        sb.append("  lookupClamp: ").append(sim.isSfcrLookupClampDefault()).append("\n");
         sb.append("  convergenceCheckThreshold: ").append(sim.convergenceCheckThreshold).append("\n");
         sb.append("  infoViewerUpdateIntervalMs: ").append(sim.infoViewerUpdateIntervalMs).append("\n");
         

@@ -210,7 +210,7 @@ final class StatusInfoRenderer {
                         info[infoIdx++] = "Node: " + nodeName;
                 }
             } else {
-                info[0] = Locale.LS("time step = ") + CircuitElm.getUnitText(sim.getTimingState().timeStep, "s");
+                info[0] = Locale.LS("time step = ") + CircuitElm.getUnitText(sim.getTimeStep(), "s");
             }
             if (sim.hintType != -1) {
                 for (i = 0; info[i] != null; i++)
@@ -239,7 +239,7 @@ final class StatusInfoRenderer {
             int snapY = sim.snapGrid(sim.inverseTransformY(sim.getMouseCursorY()));
             info[lineCount++] = "cursor: (" + snapX + ", " + snapY + ")";
 
-            info[lineCount++] = "EqnTable: " + (sim.equationTableMnaMode ? "MNA" : "Computed");
+            info[lineCount++] = "EqnTable: " + (sim.isEquationTableMnaMode() ? "MNA" : "Computed");
 
             int requiredHeight = 15 * (lineCount + 1);
             int availableHeight = sim.canvasHeight - (sim.circuitArea.height - h);

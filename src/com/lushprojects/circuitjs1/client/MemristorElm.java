@@ -101,7 +101,7 @@ class MemristorElm extends CircuitElm {
     }
     void startIteration() {
 	double wd = dopeWidth/totalWidth;
-	dopeWidth += sim.getTimingState().timeStep*mobility*r_on*current/totalWidth;
+	dopeWidth += getSimulationContext().getTimeStep()*mobility*r_on*current/totalWidth;
 	if (dopeWidth < 0)
 	    dopeWidth = 0;
 	if (dopeWidth > totalWidth)
@@ -156,4 +156,3 @@ class MemristorElm extends CircuitElm {
 	    mobility = ei.value*1e-12;
     }
 }
-

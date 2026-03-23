@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client;
 
 import java.util.Vector;
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
 class CCCSElm extends VCCSElm {
 	static int FLAG_SPICE = 2;
@@ -62,6 +63,7 @@ class CCCSElm extends VCCSElm {
       	}
 	String getChipName() { return "CCCS"; } 
 	void stamp() {
+            SimulationContext context = getSimulationContext();
             int i;
             if (isSpiceStyle()) {
         	for (i = 0; i != inputCount; i += 2)
@@ -70,23 +72,24 @@ class CCCSElm extends VCCSElm {
                 // voltage sources (0V) between C+ and C- so we can measure current
         	for (i = 0; i != inputCount; i += 2) {
         	    int vn1 = pins[i+1].voltSource;
-        	    sim.stampVoltageSource(nodes[i], nodes[i+1], vn1, 0);
+        	    context.stampVoltageSource(nodes[i], nodes[i+1], vn1, 0);
         	}
             }
 	    
-            sim.stampNonLinear(nodes[inputCount]);
-            sim.stampNonLinear(nodes[inputCount+1]);
+            context.stampNonLinear(nodes[inputCount]);
+            context.stampNonLinear(nodes[inputCount+1]);
 	}
 
 	double lastCurrents[];
 	
         void doStep() {
+            SimulationContext context = getSimulationContext();
             // no current path?  give up
             if (broken) {
         	pins[inputCount].current = 0;
         	pins[inputCount+1].current = 0;
         	// avoid singular matrix errors
-        	sim.stampResistor(nodes[inputCount], nodes[inputCount+1], 1e8);
+        	context.stampResistor(nodes[inputCount], nodes[inputCount+1], 1e8);
         	return;
             }
 
@@ -102,15 +105,15 @@ class CCCSElm extends VCCSElm {
             
             for (i = 0; i != inputPairCount; i++) {
                 double cur = pins[i*2+1].current;
-                if (Math.abs(cur-lastCurrents[i]) > convergeLimit)
-                    sim.converged = false;
+        	if (Math.abs(cur-lastCurrents[i]) > convergeLimit)
+        	    context.setConverged(false);
             }
 
             if (expr != null) {
                 // calculate output
                 for (i = 0; i != inputPairCount; i++)
                     setCurrentExprValue(i, pins[i*2+1].current);
-                exprState.t = sim.getTimingState().t;
+                exprState.t = context.getTime();
         	double v0 = expr.eval(exprState);
         	double rs = v0;
 
@@ -129,7 +132,7 @@ class CCCSElm extends VCCSElm {
                     double dx = (v-v2)/dv;
                     if (Math.abs(dx) < 1e-6)
                         dx = sign(dx, 1e-6);
-                    sim.stampCCCS(nodes[inputCount+1], nodes[inputCount], pins[i*2+1].voltSource, dx);
+                    context.stampCCCS(nodes[inputCount+1], nodes[inputCount], pins[i*2+1].voltSource, dx);
                     
                     // adjust right side
                     rs -= dx*cur;
@@ -138,7 +141,7 @@ class CCCSElm extends VCCSElm {
                     setCurrentExprValue(i, cur);
                 }
 
-        	sim.stampCurrentSource(nodes[inputCount+1], nodes[inputCount], rs);
+        	context.stampCurrentSource(nodes[inputCount+1], nodes[inputCount], rs);
             }
 
             for (i = 0; i != inputPairCount; i++)
@@ -226,4 +229,3 @@ class CCCSElm extends VCCSElm {
         }
         
     }
-

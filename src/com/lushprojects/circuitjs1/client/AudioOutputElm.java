@@ -8,6 +8,7 @@ import com.google.gwt.i18n.client.DateTimeFormat;
 import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.Anchor;
 import com.google.gwt.user.client.ui.Button;
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsPackage;
@@ -162,11 +163,12 @@ public class AudioOutputElm extends CircuitElm {
 	}
 	double getVoltageDiff() { return volts[0]; }
 	void getInfo(String arr[]) {
+	    SimulationContext context = getSimulationContext();
 	    arr[0] = "audio output";
 	    arr[1] = "V = " + getVoltageText(volts[0]);
 	    int ct = (dataFull ? dataCount : dataPtr);
 	    double dur = sampleStep * ct;
-	    arr[2] = "start = " + getUnitText(dataFull ? sim.getTimingState().t-duration : dataStart, "s");
+	    arr[2] = "start = " + getUnitText(dataFull ? context.getTime()-duration : dataStart, "s");
 	    arr[3] = "dur = " + getUnitText(dur, "s");
 	    arr[4] = "samples = " + ct + (dataFull ? "" : "/" + dataCount);
 	}
@@ -176,9 +178,10 @@ public class AudioOutputElm extends CircuitElm {
 	double dataSample;
 	
 	void stepFinished() {
+	    SimulationContext context = getSimulationContext();
 	    dataSample += volts[0];
 	    dataSampleCount++;
-	    if (sim.getTimingState().t >= nextDataSample) {
+	    if (context.getTime() >= nextDataSample) {
 		nextDataSample += sampleStep;
 		data[dataPtr++] = dataSample/dataSampleCount;
 		dataSampleCount = 0;
@@ -191,13 +194,14 @@ public class AudioOutputElm extends CircuitElm {
 	}
 	
 	void setDataCount() {
+	    SimulationContext context = getSimulationContext();
 	    dataCount = (int) (samplingRate * duration);
 	    data = new double[dataCount];
-	    dataStart = sim.getTimingState().t;
+	    dataStart = context.getTime();
 	    dataPtr = 0;
 	    dataFull = false;
 	    sampleStep = 1./samplingRate;
-	    nextDataSample = sim.getTimingState().t+sampleStep;
+	    nextDataSample = context.getTime()+sampleStep;
 	}
 	
 	int samplingRateChoices[] = { 8000, 11025, 16000, 22050, 44100, 48000 };
@@ -253,23 +257,23 @@ public class AudioOutputElm extends CircuitElm {
 	void setTimeStep() {
 	    /*
 	    // timestep must be smaller than 1/sampleRate
-	    if (sim.getTimingState().timeStep > sampleStep)
-		sim.getTimingState().timeStep = sampleStep;
+	    if (sim.getTimeStep() > sampleStep)
+		sim.setTimeStep(sampleStep);
 	    else {
 		// make sure sampleStep/timeStep is an integer.  otherwise we get distortion
-//		int frac = (int)Math.round(sampleStep/sim.getTimingState().timeStep);
-//		sim.getTimingState().timeStep = sampleStep / frac;
+//		int frac = (int)Math.round(sampleStep/sim.getTimeStep());
+//		sim.setTimeStep(sampleStep / frac);
 		
 		// actually, just make timestep = 1/sampleRate
-		sim.getTimingState().timeStep = sampleStep;
+		sim.setTimeStep(sampleStep);
 	    }
 	    */
 	    
 //	    int frac = (int)Math.round(Math.max(sampleStep*33000, 1));
 	    double target = sampleStep/8;
-	    if (sim.getTimingState().maxTimeStep != target) {
+	    if (sim.getMaxTimeStep() != target) {
                 if (okToChangeTimeStep || Window.confirm(Locale.LS("Adjust timestep for best audio quality and performance?"))) {
-                    sim.getTimingState().maxTimeStep = target;
+                    sim.setMaxTimeStep(target);
                     okToChangeTimeStep = true;
                 }
 	    }

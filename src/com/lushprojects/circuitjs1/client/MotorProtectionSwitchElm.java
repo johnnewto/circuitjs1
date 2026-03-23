@@ -207,10 +207,10 @@ class MotorProtectionSwitchElm extends CircuitElm {
 	    
 		// accumulate heat
 		double heat = heats[j];
-		heat += i*i*sim.getTimingState().timeStep;
+		heat += i*i*getSimulationContext().getTimeStep();
 
 		// dissipate heat.  we assume the fuse can dissipate its entire i2t in 3 seconds
-		heat -= sim.getTimingState().timeStep*i2t/3;
+		heat -= getSimulationContext().getTimeStep()*i2t/3;
 	    
 		if (heat < 0)
 		    heat = 0;

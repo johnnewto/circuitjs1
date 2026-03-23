@@ -6,6 +6,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
+
 /**
  * IntegratorElm - Integrator with optional initial value input
  * Can have 1 or 2 inputs based on useInitialValueInput flag:
@@ -180,9 +182,9 @@ class IntegratorElm extends CircuitElm {
     // Get convergence limit - more lenient over time to help convergence
     double getConvergeLimit() {
         double relativeTolerance;
-        if (sim.subIterations < 10)
+        if (sim.getSubIterations() < 10)
             relativeTolerance = 0.001;  // 0.1% for early iterations
-        else if (sim.subIterations < 100)
+        else if (sim.getSubIterations() < 100)
             relativeTolerance = 0.01;   // 1% for mid iterations
         else
             relativeTolerance = 0.1;    // 10% for late iterations
@@ -203,6 +205,7 @@ class IntegratorElm extends CircuitElm {
     }
     
     void doStep() {
+        SimulationContext context = getSimulationContext();
         int i;
         
         // On first timestep, set initial value
@@ -228,7 +231,7 @@ class IntegratorElm extends CircuitElm {
         if (integrationExpr != null) {
             // Set up integration state
             integrationState.values[0] = inputVoltage;
-            integrationState.t = sim.getTimingState().t;
+            integrationState.t = context.getTime();
             
             // Evaluate integration expression: lastoutput + timestep * a
             integratedValue = integrationExpr.eval(integrationState);
@@ -237,8 +240,8 @@ class IntegratorElm extends CircuitElm {
             double outputVoltage = volts[inputCount];
             double voltageDiff = Math.abs(outputVoltage - integratedValue);
             double threshold = Math.max(Math.abs(integratedValue) * 0.01, 1e-6);
-            if (voltageDiff > threshold && sim.subIterations < 100) {
-                sim.converged = false;
+            if (voltageDiff > threshold && sim.getSubIterations() < 100) {
+                sim.setConverged(false);
             }
             
             // Stamp the right side with the integrated value

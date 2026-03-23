@@ -898,7 +898,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     int getDumpType() { return 266; }
     
     /** @return true if in MNA (electrical) mode, false for pure computational */
-    boolean isMnaMode() { return sim.equationTableMnaMode; }
+    boolean isMnaMode() { return sim != null && sim.isEquationTableMnaMode(); }
     
     /** @return Number of electrical posts - always 0 (no visible posts) */
     int getPostCount() { return 0; }
@@ -1186,7 +1186,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     private ExprState prepareEvalState(int row) {
         ExprState state = getOrCreateExprState(row);
         state.values[0] = rows[row].sliderValue;
-        state.t = sim.getTimingState().t;
+        state.t = sim.getTime();
         
         String sliderVar = rows[row].sliderVarName;
         if (sliderVar != null && !sliderVar.isEmpty()) {
@@ -1625,7 +1625,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     double getConvergeLimit(int row) {
         return EquationTableSemantics.convergenceLimit(
             getConvergenceTolerance(),
-            sim.subIterations,
+            sim.getSubIterations(),
             rows[row].hasDiffExpr,
             rows[row].outputValue,
             rows[row].lastOutputValue
@@ -1820,8 +1820,8 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * Convergence is checked inside each mode handler via {@link #checkEquationConvergence}.
      */
     void doStep() {
-        if (DEBUG && sim.subIterations == 0) {
-            CirSim.console("[EquationTableElm." + tableName + "] doStep() at t=" + sim.getTimingState().t + " mnaMode=" + isMnaMode());
+        if (DEBUG && sim.getSubIterations() == 0) {
+            CirSim.console("[EquationTableElm." + tableName + "] doStep() at t=" + sim.getTime() + " mnaMode=" + isMnaMode());
         }
         
         for (int row = 0; row < rowCount; row++) {
@@ -1851,11 +1851,11 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      *         normal equation evaluation for this subiteration).
      */
     private boolean handleInitialValueRowAtT0(int row) {
-        if (sim.getTimingState().t != 0 || rows[row].compiledInitialExpr == null) {
+        if (sim.getTime() != 0 || rows[row].compiledInitialExpr == null) {
             return false;
         }
 
-        if (sim.subIterations == 0 && !rows[row].initialValueApplied) {
+        if (sim.getSubIterations() == 0 && !rows[row].initialValueApplied) {
             stampInitialPlaceholder(row);
             return true;
         }
@@ -1980,8 +1980,8 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 rows[row].lastOutputValue,
                 convergeLimit,
                 rows[row].hasDiffExpr,
-                sim.subIterations)) {
-            sim.converged = false;
+                sim.getSubIterations())) {
+            sim.setConverged(false);
             failedConvergenceRow = row;
             convergenceFailureInfo = buildConvergenceFailureInfo(row, diff, convergeLimit, equationValue);
             logConvergenceFailureIfThresholdExceeded();
@@ -2003,7 +2003,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * @return {@code true} if convergence checking should be bypassed.
      */
     private boolean shouldSkipConvergenceCheck(int row) {
-        return EquationTableSemantics.shouldSkipConvergenceCheck(rows[row].hasDiffExpr, sim.subIterations);
+        return EquationTableSemantics.shouldSkipConvergenceCheck(rows[row].hasDiffExpr, sim.getSubIterations());
     }
 
     /**
@@ -2033,8 +2033,8 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * the solver is genuinely struggling (too many iterations).
      */
     private void logConvergenceFailureIfThresholdExceeded() {
-        if (sim.subIterations > sim.convergenceCheckThreshold) {
-            CirSim.console("[" + tableName + "] t=" + sim.getTimingState().t + " dt=" + sim.getTimingState().timeStep
+        if (sim.getSubIterations() > sim.convergenceCheckThreshold) {
+            CirSim.console("[" + tableName + "] t=" + sim.getTime() + " dt=" + sim.getTimeStep()
                     + " Convergence failure: " + convergenceFailureInfo);
         }
     }
@@ -2085,7 +2085,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             
             // Commit any pending integration
             if (rows[row].exprState != null) {
-                rows[row].exprState.commitIntegration(sim.getTimingState().timeStep);
+                rows[row].exprState.commitIntegration(sim.getTimeStep());
             }
             
             // Update state for next timestep
@@ -2503,8 +2503,8 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
 
     /** Get global base convergence tolerance used by equation tables. */
     public double getConvergenceTolerance() {
-        if (sim != null && sim.equationTableConvergenceTolerance > 0) {
-            return sim.equationTableConvergenceTolerance;
+        if (sim != null && sim.getEquationTableConvergenceTolerance() > 0) {
+            return sim.getEquationTableConvergenceTolerance();
         }
         return DEFAULT_CONVERGENCE_TOLERANCE;
     }
@@ -2512,7 +2512,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** Set global base convergence tolerance used by equation tables. Must be positive. */
     public void setConvergenceTolerance(double tolerance) {
         if (sim != null) {
-            sim.equationTableConvergenceTolerance = (tolerance > 0) ? tolerance : DEFAULT_CONVERGENCE_TOLERANCE;
+            sim.setEquationTableConvergenceTolerance((tolerance > 0) ? tolerance : DEFAULT_CONVERGENCE_TOLERANCE);
         }
     }
     

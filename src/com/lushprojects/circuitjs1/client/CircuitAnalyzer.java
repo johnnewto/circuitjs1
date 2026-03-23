@@ -432,7 +432,7 @@ class CircuitAnalyzer {
         nodesWithGroundConnectionCount = nodesWithGroundConnection.size();
         nodesWithGroundConnection = null;
 
-        sim.getTimingState().timeStep = sim.getTimingState().maxTimeStep;
+        sim.setTimeStep(sim.getMaxTimeStep());
         sim.needsStamp = true;
 
         if (RuntimeMode.isGwt()) {

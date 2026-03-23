@@ -103,7 +103,7 @@ class DCMotorElm extends CircuitElm {
 	ind.startIteration(volts[0]-volts[2]);
 	indInertia.startIteration(volts[4]-volts[5]);
 	// update angle:
-	angle= angle + speed*sim.getTimingState().timeStep;
+	angle= angle + speed*getSimulationContext().getTimeStep();
     }
 
     /*  boolean hasGroundConnection(int n1) {

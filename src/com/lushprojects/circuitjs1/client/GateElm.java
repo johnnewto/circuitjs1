@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
+
     abstract class GateElm extends CircuitElm {
 	final int FLAG_SMALL = 1<<0;
 	final int FLAG_SCHMITT = 1<<1;
@@ -196,11 +198,12 @@ package com.lushprojects.circuitjs1.client;
 	double lastTime;
 	
 	void doStep() {
+	    SimulationContext context = getSimulationContext();
 	    boolean f = calcFunction();
 	    if (isInverting())
 		f = !f;
 	    
-	    if (lastTime != sim.getTimingState().t) {
+	    if (lastTime != context.getTime()) {
 		// detect oscillation (using same strategy as Atanua)
 		if (lastOutput == !f) {
 		    if (oscillationCount++ > 50) {
@@ -213,7 +216,7 @@ package com.lushprojects.circuitjs1.client;
 		    oscillationCount = 0;
 	    
 		lastOutput = f;
-		lastTime = sim.getTimingState().t;
+		lastTime = context.getTime();
 	    }
 	    
 	    double res = f ? highVoltage : 0;
@@ -267,4 +270,3 @@ package com.lushprojects.circuitjs1.client;
 	    return 0;
 	}
     }
-

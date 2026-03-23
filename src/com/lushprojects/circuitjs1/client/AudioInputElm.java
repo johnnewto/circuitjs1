@@ -25,6 +25,7 @@ import com.google.gwt.dom.client.Element;
 import com.google.gwt.event.dom.client.ChangeEvent;
 import com.google.gwt.event.dom.client.ChangeHandler;
 import com.google.gwt.user.client.ui.FileUpload;
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsMethod;
@@ -178,7 +179,8 @@ class AudioInputElm extends RailElm {
 	}
 	
 	void stepFinished() {
-	    timeOffset += sim.getTimingState().timeStep;
+	    SimulationContext context = getSimulationContext();
+	    timeOffset += context.getTimeStep();
 	}
 	
 	int getDumpType() { return 411; }

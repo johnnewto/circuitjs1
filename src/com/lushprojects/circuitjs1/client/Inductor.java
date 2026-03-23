@@ -19,18 +19,23 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
+
 class Inductor {
     public static final int FLAG_BACK_EULER = 2;
     int nodes[];
     int flags;
-    CirSim sim;
+    SimulationContext sim;
     
     double inductance;
     double compResistance, current;
     double curSourceValue;
     Inductor(CirSim s) {
-	sim = s;
+	this(s.getSimulationContext());
+    }
+    Inductor(SimulationContext sim) {
 	nodes = new int[2];
+	this.sim = sim;
     }
     void setup(double ic, double cr, int f) {
 	inductance = ic;
@@ -54,9 +59,9 @@ class Inductor {
 	nodes[0] = n0;
 	nodes[1] = n1;
 	if (isTrapezoidal())
-	    compResistance = 2*inductance/sim.getTimingState().timeStep;
+	    compResistance = 2*inductance/sim.getTimeStep();
 	else // backward euler
-	    compResistance = inductance/sim.getTimingState().timeStep;
+	    compResistance = inductance/sim.getTimeStep();
 	sim.stampResistor(nodes[0], nodes[1], compResistance);
 	sim.stampRightSide(nodes[0]);
 	sim.stampRightSide(nodes[1]);

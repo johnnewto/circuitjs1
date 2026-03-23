@@ -236,7 +236,7 @@ public class ActionScheduler {
             }
             
             // EXECUTING → COMPLETED
-            transitionToCompleted(action, sim.getTimingState().t);
+            transitionToCompleted(action, sim.getTime());
             action.resolvedValueSet = false;
         }
 
@@ -343,7 +343,7 @@ public class ActionScheduler {
             // Find next untriggered action and advance time to it
             ScheduledAction nextAction = getNextAction();
             if (nextAction != null) {
-                sim.getTimingState().t = nextAction.actionTime;
+                sim.setTime(nextAction.actionTime);
                 isPaused = false;
                 sim.setSimRunning(true);
                 CirSim.console("Advanced to action #" + nextAction.id + " [t=" + 

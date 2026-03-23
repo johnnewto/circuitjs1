@@ -92,7 +92,7 @@ class VaractorElm extends DiodeElm {
 	    capacitance = c0;
 	else
 	    capacitance = c0/Math.pow(1-capvoltdiff/model.fwdrop, .5);
-	compResistance = sim.getTimingState().timeStep/(2*capacitance);
+	compResistance = getSimulationContext().getTimeStep()/(2*capacitance);
 	voltSourceValue = -capvoltdiff-capCurrent*compResistance;
     }
     void doStep() {

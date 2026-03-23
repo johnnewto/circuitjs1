@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
+
     class VCVSElm extends VCCSElm {
 	public VCVSElm(int xa, int ya, int xb, int yb, int f,
 		      StringTokenizer st) {
@@ -44,18 +46,20 @@ package com.lushprojects.circuitjs1.client;
 	}
 	String getChipName() { return "VCVS"; } 
 	void stamp() {
+            SimulationContext context = getSimulationContext();
             int vn = pins[inputCount].voltSource + sim.getCircuitAnalyzer().getNodeList().size();
-            sim.stampNonLinear(vn);
-            sim.stampVoltageSource(nodes[inputCount+1], nodes[inputCount], pins[inputCount].voltSource);
+            context.stampNonLinear(vn);
+            context.stampVoltageSource(nodes[inputCount+1], nodes[inputCount], pins[inputCount].voltSource);
 	}
 
 	void doStep() {
+		SimulationContext context = getSimulationContext();
 		int i;
 		// converged yet?
 		double convergeLimit = getConvergeLimit();
 		for (i = 0; i != inputCount; i++) {
 		if (Math.abs(volts[i]-lastVolts[i]) > convergeLimit)
-			sim.converged = false;
+			context.setConverged(false);
 //        	if (Double.isNaN(volts[i]))
 //        	    volts[i] = 0;
 		}
@@ -65,10 +69,10 @@ package com.lushprojects.circuitjs1.client;
 			for (i = 0; i != inputCount; i++)
 				exprState.values[i] = volts[i];
 				
-			exprState.t = sim.getTimingState().t;
+			exprState.t = context.getTime();
 			double v0 = expr.eval(exprState);
-			if (Math.abs(volts[inputCount]-volts[inputCount+1]-v0) > Math.abs(v0)*.01 && sim.subIterations < 100)
-				sim.converged = false;
+			if (Math.abs(volts[inputCount]-volts[inputCount+1]-v0) > Math.abs(v0)*.01 && context.getSubIterations() < 100)
+				context.setConverged(false);
 			double rs = v0;
 			
 			// calculate and stamp output derivatives
@@ -87,12 +91,12 @@ package com.lushprojects.circuitjs1.client;
 	//        	    if (sim.subIterations > 1)
 	//        		sim.console("ccedx " + i + " " + dx + " v " + v + " v2 " + v2 + " dv " + dv + " lv " + lastVolts[i] + " " + volts[i] + " " + sim.subIterations + " " + sim.getTimingState().t);
 
-				sim.stampMatrix(vn,  nodes[i], -dx); // stamp Jacobian entry into global MNA matrix
+				context.stampMatrix(vn,  nodes[i], -dx); // stamp Jacobian entry into global MNA matrix
 				
 				rs -= dx*volts[i]; // adjust RHS: constant term of linearization = f(x0) - J·x0
 				exprState.values[i] = volts[i];
 			}
-			sim.stampRightSide(vn, rs);
+			context.stampRightSide(vn, rs);
 		}
 
 		for (i = 0; i != inputCount; i++)
@@ -116,4 +120,3 @@ package com.lushprojects.circuitjs1.client;
         }
 
     }
-

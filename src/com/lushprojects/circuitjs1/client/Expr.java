@@ -290,7 +290,7 @@ class Expr {
 	    return context.explicitTimeStep.doubleValue();
 	}
 	if (CirSim.getInstance() != null) {
-	    return CirSim.getInstance().getTimingState().timeStep;
+	    return CirSim.getInstance().getTimeStep();
 	}
 	return 0;
 	}
@@ -877,7 +877,7 @@ class Expr {
 	    return pwlx(es, children, context);
 	case E_LOOKUP: {
 	    double x = left.eval(es, context);
-	    boolean clamp = (CirSim.getInstance() == null) ? true : CirSim.getInstance().sfcrLookupClampDefault;
+	    boolean clamp = (CirSim.getInstance() == null) ? true : CirSim.getInstance().isSfcrLookupClampDefault();
 	    if (children != null && children.size() >= 2) {
 		double clampArg = children.get(1).eval(es, context);
 		clamp = (clampArg != 0.0);
@@ -1062,7 +1062,7 @@ class Expr {
 		es.smoothPendingOutput[idx] = es.lastOutput;
 		es.smoothLastCommitTime[idx] = -1;
 	    }
-	    double dt = CirSim.getInstance().getTimingState().timeStep;
+	    double dt = CirSim.getInstance().getTimeStep();
 	    double denom = 1 + theta * dt;
 	    if (Math.abs(denom) < 1e-12) {
 		es.smoothPendingOutput[idx] = es.smoothLastOutput[idx];
@@ -1090,7 +1090,7 @@ class Expr {
 		es.smoothPendingOutput[idx] = es.lastOutput;
 		es.smoothLastCommitTime[idx] = -1;
 	    }
-	    double dt = CirSim.getInstance().getTimingState().timeStep;
+	    double dt = CirSim.getInstance().getTimeStep();
 	    if (Math.abs(tau) < 1e-12) {
 		es.smoothPendingOutput[idx] = inputVal;
 		return inputVal;
@@ -1134,7 +1134,7 @@ class Expr {
 	    //
 	    // In pure-computational mode (no MNA): NAME.flow first, then NAME.
 	    if (CirSim.getInstance() != null && nodeName != null) {
-		if (CirSim.getInstance().equationTableMnaMode) {
+		if (CirSim.getInstance().isEquationTableMnaMode()) {
 			    // PARAM names in MNA mode must resolve from ComputedValues first,
 			    // even when a same-named labeled node exists.
 			    if (ComputedValues.isParameterName(nodeName)) {
@@ -1184,9 +1184,9 @@ class Expr {
 	    }
 	    if (type >= E_DADT) {
 		if (!perfProbeEnabled)
-		    return (es.values[type-E_DADT]-es.lastValues[type-E_DADT])/CirSim.getInstance().getTimingState().timeStep;
+		    return (es.values[type-E_DADT]-es.lastValues[type-E_DADT])/CirSim.getInstance().getTimeStep();
 		long slotStartNanos = getPerfNowNanos();
-		double slotValue = (es.values[type-E_DADT]-es.lastValues[type-E_DADT])/CirSim.getInstance().getTimingState().timeStep;
+		double slotValue = (es.values[type-E_DADT]-es.lastValues[type-E_DADT])/CirSim.getInstance().getTimeStep();
 		recordLocalSlotTiming(slotStartNanos);
 		return slotValue;
 	    }

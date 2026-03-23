@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
+
 class SweepElm extends CircuitElm {
     double maxV, maxF, minF, sweepTime, frequency;
     final int FLAG_LOG = 1;
@@ -104,19 +106,20 @@ class SweepElm extends CircuitElm {
     double fadd, fmul, freqTime, savedTimeStep;
     int dir = 1;
     void setParams() {
+	SimulationContext context = getSimulationContext();
 	if (frequency < minF || frequency > maxF) {
 	    frequency = minF;
 	    freqTime = 0;
 	    dir = 1;
 	}
 	if ((flags & FLAG_LOG) == 0) {
-	    fadd = dir*sim.getTimingState().timeStep*(maxF-minF)/sweepTime;
+	    fadd = dir*context.getTimeStep()*(maxF-minF)/sweepTime;
 	    fmul = 1;
 	} else {
 	    fadd = 0;
-	    fmul = Math.pow(maxF/minF, dir*sim.getTimingState().timeStep/sweepTime);
+	    fmul = Math.pow(maxF/minF, dir*context.getTimeStep()/sweepTime);
 	}
-	savedTimeStep = sim.getTimingState().timeStep;
+	savedTimeStep = context.getTimeStep();
     }
     void reset() {
 	frequency = minF;
@@ -126,11 +129,12 @@ class SweepElm extends CircuitElm {
     }
     double v;
     void startIteration() {
+	SimulationContext context = getSimulationContext();
 	// has timestep been changed?
-	if (sim.getTimingState().timeStep != savedTimeStep)
+	if (context.getTimeStep() != savedTimeStep)
 	    setParams();
 	v = Math.sin(freqTime)*maxV;
-	freqTime += frequency*2*pi*sim.getTimingState().timeStep;
+	freqTime += frequency*2*pi*context.getTimeStep();
 	frequency = frequency*fmul+fadd;
 	if (frequency >= maxF && dir == 1) {
 	    if ((flags & FLAG_BIDIR) != 0) {
@@ -184,7 +188,7 @@ class SweepElm extends CircuitElm {
 	return null;
     }
     public void setEditValue(int n, EditInfo ei) {
-	double maxfreq = 1/(8*sim.getTimingState().timeStep);
+	double maxfreq = 1/(8*getSimulationContext().getTimeStep());
 	if (n == 0) {
 	    minF = ei.value;
 	    if (minF > maxfreq)

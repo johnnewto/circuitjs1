@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.user.client.Window;
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 class VoltageElm extends CircuitElm {
@@ -124,10 +125,11 @@ class VoltageElm extends CircuitElm {
 	    noiseValue = (sim.random.nextDouble()*2-1) * maxVoltage + bias;
     }
     double getVoltage() {
+	SimulationContext context = getSimulationContext();
 	if (waveform != WF_DC && sim.dcAnalysisFlag)
 	    return bias;
 	
-	double w = 2*pi*(sim.getTimingState().t-freqTimeZero)*frequency + phaseShift;
+	double w = 2*pi*(context.getTime()-freqTimeZero)*frequency + phaseShift;
 	switch (waveform) {
 	case WF_DC: return maxVoltage+bias;
 	case WF_AC: return Math.sin(w)*maxVoltage+bias;
@@ -374,14 +376,15 @@ class VoltageElm extends CircuitElm {
 	    // even though the frequency has changed.
 	    double oldfreq = frequency;
 	    frequency = ei.value;
-	    double maxfreq = 1/(8*sim.getTimingState().maxTimeStep);
+	    double maxfreq = 1/(8*sim.getMaxTimeStep());
 	    if (frequency > maxfreq) {
 		if (Window.confirm(Locale.LS("Adjust timestep to allow for higher frequencies?")))
-		    sim.getTimingState().maxTimeStep = 1/(32*frequency);
+		    sim.setMaxTimeStep(1/(32*frequency));
 		else
 		    frequency = maxfreq;
 	    }
-	    freqTimeZero = (frequency == 0) ? 0 : sim.getTimingState().t-oldfreq*(sim.getTimingState().t-freqTimeZero)/frequency;
+	    double currentTime = getSimulationContext().getTime();
+	    freqTimeZero = (frequency == 0) ? 0 : currentTime-oldfreq*(currentTime-freqTimeZero)/frequency;
 	}
 	if (n == 2) {
 	    int ow = waveform;

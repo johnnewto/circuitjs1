@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
+
     class TimeDelayRelayElm extends ChipElm {
 	double lastTransition;
 	boolean poweredState;
@@ -75,11 +77,12 @@ package com.lushprojects.circuitjs1.client;
 	}
 	
 	void stepFinished() {
+	    SimulationContext context = getSimulationContext();
 	    boolean oldState = poweredState;
 	    poweredState = (volts[0]-volts[1] > 2.5);
 	    if (oldState != poweredState)
-		lastTransition = sim.getTimingState().t;
-	    if (sim.getTimingState().t > lastTransition + (poweredState ? onDelay : offDelay))
+		lastTransition = context.getTime();
+	    if (context.getTime() > lastTransition + (poweredState ? onDelay : offDelay))
 		onState = poweredState;
 	}
 	
@@ -117,4 +120,3 @@ package com.lushprojects.circuitjs1.client;
 	            offResistance = ei.value;
 	    }
     }
-

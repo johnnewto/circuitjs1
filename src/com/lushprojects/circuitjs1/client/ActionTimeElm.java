@@ -21,6 +21,7 @@ package com.lushprojects.circuitjs1.client;
 
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.lushprojects.circuitjs1.client.ActionScheduler.ScheduledAction;
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import java.util.List;
 
 /**
@@ -167,7 +168,7 @@ public class ActionTimeElm extends CircuitElm {
         // Draw current time
         f = new Font("SansSerif", 0, 11);
         g.setFont(f);
-        String timeText = "t=" + getUnitText(sim.getTimingState().t, "s");
+        String timeText = "t=" + getUnitText(getSimulationContext().getTime(), "s");
         textWidth = (int)g.context.measureText(timeText).getWidth();
         g.drawString(timeText, cx - width/2 + 10, cy - height/2 + headerHeight + 5);
         
@@ -308,9 +309,10 @@ public class ActionTimeElm extends CircuitElm {
     }
     
     void getInfo(String arr[]) {
+        SimulationContext context = getSimulationContext();
         arr[0] = ((title == null || title.isEmpty()) ? "Action Schedule" : title) + " Display";
         arr[1] = "element enabled = " + (enabled ? "yes" : "no");
-        arr[2] = "current time = " + getUnitText(sim.getTimingState().t, "s");
+        arr[2] = "current time = " + getUnitText(context.getTime(), "s");
         
         ActionScheduler scheduler = ActionScheduler.getInstance(sim);
         List<ScheduledAction> actions = scheduler.getAllActions();

@@ -159,8 +159,8 @@ class DividerElm extends CircuitElm {
         // Check convergence
         double outputDelta = Math.abs(volts[inputCount] - v0);
         double tolerance = Math.max(Math.abs(v0) * 0.001, 1e-9);
-        if (outputDelta > tolerance && sim.subIterations < 100)
-            sim.converged = false;
+        if (outputDelta > tolerance && sim.getSubIterations() < 100)
+            sim.setConverged(false);
         
         // Stamp the output directly - high-impedance inputs don't need derivative linearization
         sim.stampRightSide(vn, v0);

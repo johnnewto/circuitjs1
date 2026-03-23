@@ -1,4 +1,4 @@
-const CACHE_NAME = 'circuitjs1-app-cache-v3';
+const CACHE_NAME = 'circuitjs1-app-cache-v4';
 const urlsToCache = [
     'about.html',
     'canvas2svg.js',
@@ -16,7 +16,6 @@ const urlsToCache = [
     'mexle.html',
     'mosfet-beta.html',
     'opampreal.html',
-    'split.js',
     'subcircuits.html',
   // put everything else here
 ];
@@ -46,6 +45,13 @@ function shouldBypassCache(request) {
     if (url.pathname.endsWith('/world2.html') || url.pathname.endsWith('/headless.html'))
         return true;
     if (url.pathname.endsWith('/run') || url.pathname.endsWith('/run.csv') || url.pathname.endsWith('/scenarios'))
+        return true;
+    // Avoid stale/mixed GWT bundles after deploy; always fetch loader/chunks fresh.
+    if (url.pathname.endsWith('/split.js'))
+        return true;
+    if (url.pathname.endsWith('/circuitjs1/circuitjs1.nocache.js'))
+        return true;
+    if (url.pathname.includes('/circuitjs1/') && url.pathname.endsWith('.cache.js'))
         return true;
     return false;
 }

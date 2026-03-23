@@ -153,7 +153,7 @@ class TriodeElm extends CircuitElm {
 	if (Math.abs(lastv0-vs[0]) > .01 ||
 	    Math.abs(lastv1-vs[1]) > .01 ||
 	    Math.abs(lastv2-vs[2]) > .01)
-	    sim.converged = false;
+	    sim.setConverged(false);
 	lastv0 = vs[0];
 	lastv1 = vs[1];
 	lastv2 = vs[2];
@@ -231,4 +231,3 @@ class TriodeElm extends CircuitElm {
     boolean canFlipX() { return false; }
     boolean canFlipY() { return false; }
 }
-

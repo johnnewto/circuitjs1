@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 class StopTriggerElm extends CircuitElm {
@@ -66,12 +67,13 @@ class StopTriggerElm extends CircuitElm {
 	    g.restore();
 	}
 	void stepFinished() {
+	    SimulationContext context = getSimulationContext();
 	    stopped = false;
 	    if (!triggered && ((type == 0 && volts[0] >= triggerVoltage) || (type == 1 && volts[0] <= triggerVoltage))) {
 		triggered = true;
-		triggerTime = sim.getTimingState().t;
+		triggerTime = context.getTime();
 	    }
-	    if (triggered && sim.getTimingState().t >= triggerTime+delay) {
+	    if (triggered && context.getTime() >= triggerTime+delay) {
 		triggered = false;
 		stopped = true;
 		sim.setSimRunning(false);
@@ -83,7 +85,7 @@ class StopTriggerElm extends CircuitElm {
 	    arr[0] = "stop trigger";
 	    arr[1] = "V = " + getVoltageText(volts[0]);
 	    arr[2] = "Vtrigger = " + getVoltageText(triggerVoltage);
-	    arr[3] = (triggered) ? ("stopping in " + getUnitText(triggerTime+delay-sim.getTimingState().t, "s")) : (stopped) ? "stopped" : "waiting";
+	    arr[3] = (triggered) ? ("stopping in " + getUnitText(triggerTime+delay-getSimulationContext().getTime(), "s")) : (stopped) ? "stopped" : "waiting";
 	}
 	public EditInfo getEditInfo(int n) {
 	    if (n == 0) {

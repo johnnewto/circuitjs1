@@ -322,7 +322,8 @@ class CustomTransformerElm extends CircuitElm {
 
 	    CircuitMatrixOps.invertMatrix(xformMatrix, coilCount);
 	    
-	    double ts = isTrapezoidal() ? sim.getTimingState().timeStep/2 : sim.getTimingState().timeStep;
+	    double dt = getSimulationContext().getTimeStep();
+	    double ts = isTrapezoidal() ? dt/2 : dt;
 	    for (i = 0; i != coilCount; i++)
 		for (j = 0; j != coilCount; j++) {
 		    // multiply in dt/2 (or dt for backward euler)

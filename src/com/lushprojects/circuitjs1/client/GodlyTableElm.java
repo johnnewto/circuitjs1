@@ -56,7 +56,7 @@ public class GodlyTableElm extends TableElm {
     // Get convergence limit (same as VCVSElm/VCCSElm)
     // More lenient over time to help convergence
     double getConvergeLimit() {
-        return StockFlowTableSemantics.convergenceLimit(sim.subIterations, integratedValues, lastColumnSums);
+        return StockFlowTableSemantics.convergenceLimit(sim.getSubIterations(), integratedValues, lastColumnSums);
     }
     
     // File loading constructor  
@@ -97,15 +97,15 @@ public class GodlyTableElm extends TableElm {
         ExprState state = integrationStates[col];
         
         // On first step, use the initial condition
-        if (sim.getTimingState().t == 0.0) {
+        if (sim.getTime() == 0.0) {
             double initialValue = getInitialValue(col);
             state.lastOutput = initialValue;
-            return StockFlowTableSemantics.integratedValue(sim.getTimingState().t, initialValue, state.lastOutput, sim.getTimingState().timeStep, columnSum);
+            return StockFlowTableSemantics.integratedValue(sim.getTime(), initialValue, state.lastOutput, sim.getTimeStep(), columnSum);
         }
         
         // Set up expression state
         state.values[0] = columnSum; // 'a' = columnSum
-        state.t = sim.getTimingState().t;
+        state.t = sim.getTime();
         
         double lastOut = state.lastOutput;
         
@@ -113,7 +113,7 @@ public class GodlyTableElm extends TableElm {
         // Each column has its own Expr instance to avoid state sharing/caching issues
         Expr expr = (integrationExprs != null && col < integrationExprs.length) ? integrationExprs[col] : null;
         if (expr == null) {
-            return StockFlowTableSemantics.integratedValue(sim.getTimingState().t, getInitialValue(col), lastOut, sim.getTimingState().timeStep, columnSum);
+            return StockFlowTableSemantics.integratedValue(sim.getTime(), getInitialValue(col), lastOut, sim.getTimeStep(), columnSum);
         }
         double result = expr.eval(state);
         
@@ -492,7 +492,7 @@ public class GodlyTableElm extends TableElm {
     @Override
     public void doStep() {
         // Track if this element caused convergence failure
-        boolean wasConverged = sim.converged;
+        boolean wasConverged = sim.isConverged();
         
         // No input pins in this alternative approach (getPostCount() returns 0)
 
@@ -539,15 +539,15 @@ public class GodlyTableElm extends TableElm {
             // Like VCVSElm: check input convergence using dynamic threshold
             // Check if column sum (our "input") has converged
             if (StockFlowTableSemantics.shouldMarkUnconverged(columnSum, lastColumnSums[col], convergeLimit)) {
-                sim.converged = false;
+                sim.setConverged(false);
 
                 // Debug: log convergence failure details
-                if (sim.subIterations > 20) {
+                if (sim.getSubIterations() > 20) {
                     CirSim.console("GodlyTable[" + columns.get(col).getStockName() + "] col " + col + 
                                  " sum convergence failed: diff=" + Math.abs(columnSum - lastColumnSums[col]) + 
                                  " limit=" + convergeLimit +
                                  " (new=" + columnSum + ", old=" + lastColumnSums[col] + 
-                                 ") at t=" + sim.getTimingState().t + " subiter=" + sim.subIterations);
+                                 ") at t=" + sim.getTime() + " subiter=" + sim.getSubIterations());
                 }
             }
             lastColumnSums[col] = columnSum;
@@ -571,9 +571,9 @@ public class GodlyTableElm extends TableElm {
         }
         
         // Debug: overall convergence status for this element
-        if (wasConverged && !sim.converged && sim.subIterations > 20) {
+        if (wasConverged && !sim.isConverged() && sim.getSubIterations() > 20) {
             CirSim.console("GodlyTable (" + rows + "x" + getCols() + ") at (" + x + "," + y + 
-                         ") caused convergence failure at subiter=" + sim.subIterations);
+                         ") caused convergence failure at subiter=" + sim.getSubIterations());
         }
     }
     
@@ -620,7 +620,7 @@ public class GodlyTableElm extends TableElm {
         }
         
         // At t=0 or before first step, return initial value
-        if (sim.getTimingState().t == 0.0 || integratedValues == null) {
+        if (sim.getTime() == 0.0 || integratedValues == null) {
             return getInitialValue(col);
         }
         
@@ -700,7 +700,7 @@ public class GodlyTableElm extends TableElm {
         CirSim.console("=== GodlyTable Debug State ===");
         CirSim.console("Position: (" + x + "," + y + ")");
         CirSim.console("Size: " + rows + "x" + getCols());
-        CirSim.console("Time: t=" + sim.getTimingState().t + ", timeStep=" + sim.getTimingState().timeStep);
+        CirSim.console("Time: t=" + sim.getTime() + ", timeStep=" + sim.getTimeStep());
         CirSim.console("Integration Expressions: " + (integrationExprs != null ? integrationExprs.length + " columns" : "NULL"));
         
         int colLimit = (getCols() >= 4) ? (getCols() - 1) : getCols();

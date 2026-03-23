@@ -619,7 +619,7 @@ public class TableElm extends ChipElm implements TableContentView {
 
             // Check convergence
             if (Math.abs(columnSum - column.getLastSum()) > 1e-6) {
-                sim.converged = false;
+                sim.setConverged(false);
             }
 
             // Stamp matrix if we are master for this column
@@ -640,8 +640,8 @@ public class TableElm extends ChipElm implements TableContentView {
         
         // Check output voltage convergence
         if (Math.abs(volts[col] - columnSum) > Math.abs(columnSum) * 0.01 && 
-            sim.subIterations < 100) {
-            sim.converged = false;
+            sim.getSubIterations() < 100) {
+            sim.setConverged(false);
         }
         
         sim.stampRightSide(vn, columnSum);
@@ -1028,7 +1028,7 @@ public class TableElm extends ChipElm implements TableContentView {
         // For A-L-E columns, get from renderer cache
         // At t=0, return the initial value
         if (column.isALE()) {
-            if (sim.getTimingState().t == 0.0) {
+            if (sim.getTime() == 0.0) {
                 return getInitialValue(col);
             }
             return renderer.getCachedSumValue(col);

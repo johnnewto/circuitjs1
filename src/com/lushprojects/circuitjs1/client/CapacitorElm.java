@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 class CapacitorElm extends CircuitElm {
@@ -120,6 +121,7 @@ class CapacitorElm extends CircuitElm {
 	    }
 	}
 	void stamp() {
+	    SimulationContext context = getSimulationContext();
 	    if (sim.dcAnalysisFlag) {
 		// when finding DC operating point, replace cap with a 100M resistor
 		sim.stampResistor(nodes[0], nodes[1], 1e8);
@@ -140,9 +142,9 @@ class CapacitorElm extends CircuitElm {
 	    // than backward euler but can cause oscillatory behavior
 	    // if RC is small relative to the timestep.
 	    if (isTrapezoidal())
-		compResistance = sim.getTimingState().timeStep/(2*capacitance);
+		compResistance = context.getTimeStep()/(2*capacitance);
 	    else
-		compResistance = sim.getTimingState().timeStep/capacitance;
+		compResistance = context.getTimeStep()/capacitance;
 	    sim.stampResistor(nodes[0], nodes[capNode2], compResistance);
 	    sim.stampRightSide(nodes[0]);
 	    sim.stampRightSide(nodes[capNode2]);

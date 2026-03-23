@@ -6,6 +6,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 /**
@@ -200,9 +201,9 @@ class EquationElm extends CircuitElm {
     // Get convergence limit
     double getConvergeLimit() {
         double relativeTolerance;
-        if (sim.subIterations < 10)
+        if (sim.getSubIterations() < 10)
             relativeTolerance = 0.001;  // 0.1% for early iterations
-        else if (sim.subIterations < 100)
+        else if (sim.getSubIterations() < 100)
             relativeTolerance = 0.01;   // 1% for mid iterations
         else
             relativeTolerance = 0.1;    // 10% for late iterations
@@ -230,6 +231,7 @@ class EquationElm extends CircuitElm {
     }
 
     void doStep() {
+        SimulationContext context = getSimulationContext();
         int vn = voltSource + sim.getCircuitAnalyzer().getNodeList().size();
         
         if (compiledExpr != null) {
@@ -239,13 +241,13 @@ class EquationElm extends CircuitElm {
             }
             
             // Evaluate equation to get output value
-            exprState.t = sim.getTimingState().t;
+            exprState.t = context.getTime();
             double equationValue = compiledExpr.eval(exprState);
             
             // Check equation convergence
             double convergeLimit = getConvergeLimit();
             if (Math.abs(equationValue - lastEquationValue) > convergeLimit) {
-                sim.converged = false;
+                sim.setConverged(false);
             }
             lastEquationValue = equationValue;
             
@@ -256,8 +258,8 @@ class EquationElm extends CircuitElm {
             double outputVoltage = volts[0];
             double voltageDiff = Math.abs(outputVoltage - currentValue);
             double threshold = Math.max(Math.abs(currentValue) * 0.01, 1e-6);
-            if (voltageDiff > threshold && sim.subIterations < 100) {
-                sim.converged = false;
+            if (voltageDiff > threshold && sim.getSubIterations() < 100) {
+                sim.setConverged(false);
             }
             
             // Stamp the right side with the equation value
@@ -519,7 +521,7 @@ class EquationElm extends CircuitElm {
         if (idx < arr.length)
             arr[idx++] = "Current Output: " + getVoltageText(currentValue);
         if (idx < arr.length)
-            arr[idx] = "Time: " + getUnitText(sim.getTimingState().t, "s");
+            arr[idx] = "Time: " + getUnitText(getSimulationContext().getTime(), "s");
     }
     
     // Custom formatting for parameter sliders

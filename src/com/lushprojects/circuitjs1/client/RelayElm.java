@@ -322,7 +322,7 @@ class RelayElm extends CircuitElm {
 		onState = false;
 		i_position = 2;
 	    } else {
-		d_position += sim.getTimingState().timeStep/switchingTime;
+		d_position += getSimulationContext().getTimeStep()/switchingTime;
 		if (d_position >= 1)
 		    d_position = i_position = 1;
 	    }
@@ -333,7 +333,7 @@ class RelayElm extends CircuitElm {
 		onState = true;
 		i_position = 2;
 	    } else {
-		d_position -= sim.getTimingState().timeStep/switchingTime;
+		d_position -= getSimulationContext().getTimeStep()/switchingTime;
 		if (d_position <= 0)
 		    d_position = i_position = 0;
 	    }

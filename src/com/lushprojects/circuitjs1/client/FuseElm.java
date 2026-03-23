@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 class FuseElm extends CircuitElm {
@@ -129,13 +130,14 @@ class FuseElm extends CircuitElm {
 	}
 	boolean nonLinear() { return true; }
 	void startIteration() {
+	    SimulationContext context = getSimulationContext();
 	    double i = getCurrent();
 	    
 	    // accumulate heat
-	    heat += i*i*sim.getTimingState().timeStep;
+	    heat += i*i*context.getTimeStep();
 
 	    // dissipate heat.  we assume the fuse can dissipate its entire i2t in 3 seconds
-	    heat -= sim.getTimingState().timeStep*i2t/3;
+	    heat -= context.getTimeStep()*i2t/3;
 	    
 	    if (heat < 0)
 		heat = 0;

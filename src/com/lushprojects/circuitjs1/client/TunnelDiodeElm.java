@@ -99,7 +99,7 @@ class TunnelDiodeElm extends CircuitElm {
     void doStep() {
 	double voltdiff = volts[0] - volts[1];
 	if (Math.abs(voltdiff-lastvoltdiff) > .01)
-	    sim.converged = false;
+	    sim.setConverged(false);
 	//System.out.println(voltdiff + " " + lastvoltdiff + " " + Math.abs(voltdiff-lastvoltdiff));
 	voltdiff = limitStep(voltdiff, lastvoltdiff);
 	lastvoltdiff = voltdiff;

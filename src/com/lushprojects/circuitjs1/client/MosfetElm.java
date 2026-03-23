@@ -314,10 +314,10 @@ class MosfetElm extends CircuitElm {
 	    if (diff < .01)
 		return false;
 	    // larger differences are fine if value is large
-	    if (sim.subIterations > 10 && diff < Math.abs(now)*.001)
+	    if (sim.getSubIterations() > 10 && diff < Math.abs(now)*.001)
 		return false;
 	    // if we're having trouble converging, get more lenient
-	    if (sim.subIterations > 100 && diff < .01+(sim.subIterations-100)*.0001)
+	    if (sim.getSubIterations() > 100 && diff < .01+(sim.getSubIterations()-100)*.0001)
 		return false;
 	    return true;
 	}
@@ -372,7 +372,7 @@ class MosfetElm extends CircuitElm {
 	    double vgs = vs[gate ]-vs[source];
 	    double vds = vs[drain]-vs[source];
 	    if (!finished && (nonConvergence(lastv1, vs[1]) || nonConvergence(lastv2, vs[2]) || nonConvergence(lastv0, vs[0])))
-		sim.converged = false;
+		sim.setConverged(false);
 	    lastv0 = vs[0];
 	    lastv1 = vs[1];
 	    lastv2 = vs[2];

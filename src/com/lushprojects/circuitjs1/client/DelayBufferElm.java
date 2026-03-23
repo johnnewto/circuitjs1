@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 class DelayBufferElm extends CircuitElm {
@@ -93,13 +94,14 @@ class DelayBufferElm extends CircuitElm {
 	double delayEndTime;
 	
 	void doStep() {
+	    SimulationContext context = getSimulationContext();
 	    boolean inState = volts[0] > threshold;
 	    boolean outState = volts[1] > threshold;
 	    if (inState != outState) {
-		if (sim.getTimingState().t >= delayEndTime)
+		if (context.getTime() >= delayEndTime)
 		    outState = inState;
 	    } else
-		delayEndTime = sim.getTimingState().t + delay;
+		delayEndTime = context.getTime() + delay;
 	    sim.updateVoltageSource(0, nodes[1], voltSource, outState ? highVoltage : 0);
 	}
 	double getVoltageDiff() { return volts[0]; }

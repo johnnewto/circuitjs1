@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.user.client.Window;
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 class VCCSElm extends ChipElm {
@@ -68,8 +69,9 @@ class VCCSElm extends ChipElm {
 	@Override boolean isDigitalChip() { return false; }
 
 	void stamp() {
-            sim.stampNonLinear(nodes[inputCount]);
-            sim.stampNonLinear(nodes[inputCount+1]);
+            SimulationContext context = getSimulationContext();
+            context.stampNonLinear(nodes[inputCount]);
+            context.stampNonLinear(nodes[inputCount+1]);
 	}
 
 	@Override
@@ -87,9 +89,9 @@ class VCCSElm extends ChipElm {
 
         double getConvergeLimit() {
             // get maximum change in voltage per step when testing for convergence.  be more lenient over time
-            if (sim.subIterations < 10)
+            if (sim.getSubIterations() < 10)
         	return .001;
-            if (sim.subIterations < 200)
+            if (sim.getSubIterations() < 200)
         	return .01;
             return .1;
         }
@@ -100,6 +102,7 @@ class VCCSElm extends ChipElm {
         }
         
         void doStep() {
+            SimulationContext context = getSimulationContext();
             int i;
             
             // no current path?  give up
@@ -107,7 +110,7 @@ class VCCSElm extends ChipElm {
         	pins[inputCount].current = 0;
         	pins[inputCount+1].current = 0;
         	// avoid singular matrix errors
-        	sim.stampResistor(nodes[inputCount], nodes[inputCount+1], 1e8);
+        	context.stampResistor(nodes[inputCount], nodes[inputCount+1], 1e8);
         	return;
             }
             
@@ -115,7 +118,7 @@ class VCCSElm extends ChipElm {
             double convergeLimit = getConvergeLimit();
             for (i = 0; i != inputCount; i++) {
         	if (Math.abs(volts[i]-lastVolts[i]) > convergeLimit) {
-        	    sim.converged = false;
+        	    context.setConverged(false);
 //        	    sim.console("vcvs " + nodes + " " + i + " " + volts[i] + " " + lastVolts[i] + " " + sim.subIterations);
         	}
 //        	if (Double.isNaN(volts[i]))
@@ -125,7 +128,7 @@ class VCCSElm extends ChipElm {
         	// calculate output
         	for (i = 0; i != inputCount; i++)
         	    exprState.values[i] = volts[i];
-        	exprState.t = sim.getTimingState().t;
+        	exprState.t = context.getTime();
         	double v0 = -expr.eval(exprState);
 //        	if (Math.abs(volts[inputCount]-v0) > Math.abs(v0)*.01 && sim.subIterations < 100)
 //        	    sim.converged = false;
@@ -143,7 +146,7 @@ class VCCSElm extends ChipElm {
         	    double dx = (v-v2)/dv;
         	    if (Math.abs(dx) < 1e-6)
         		dx = sign(dx, 1e-6);
-        	    sim.stampVCCurrentSource(nodes[inputCount], nodes[inputCount+1], nodes[i], 0, dx);
+        	    context.stampVCCurrentSource(nodes[inputCount], nodes[inputCount+1], nodes[i], 0, dx);
         	    //if (sim.subIterations > 1)
         		//sim.console("ccedx " + i + " " + dx + " " + sim.subIterations + " " + sim.getTimingState().t);
         	    // adjust right side
@@ -151,7 +154,7 @@ class VCCSElm extends ChipElm {
         	    exprState.values[i] = volts[i];
         	}
 //        	sim.console("ccers " + rs);
-        	sim.stampCurrentSource(nodes[inputCount], nodes[inputCount+1], rs);
+        	context.stampCurrentSource(nodes[inputCount], nodes[inputCount+1], rs);
         	pins[inputCount].current = -v0;
         	pins[inputCount+1].current = v0;
             }
@@ -230,4 +233,3 @@ class VCCSElm extends ChipElm {
             exprState.reset();
         }
     }
-

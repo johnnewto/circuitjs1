@@ -218,7 +218,7 @@ class TransistorElm extends CircuitElm {
 		} else {
 		    vnew = vt *Math.log(vnew/vt);
 		}
-		sim.converged = false;
+		sim.setConverged(false);
 		//System.out.println(vnew + " " + oo + " " + vold);
 	    }
 	    return(vnew);
@@ -233,17 +233,17 @@ class TransistorElm extends CircuitElm {
 	    double vbe = pnp*(volts[0]-volts[2]); // typically positive
 	    if (Math.abs(vbc-lastvbc) > .01 || // .01
 		Math.abs(vbe-lastvbe) > .01)
-		sim.converged = false;
+		sim.setConverged(false);
 
 	    // To prevent a possible singular matrix, put a tiny conductance in parallel
 	    // with each P-N junction.
 //	    gmin = leakage * 0.01;
 	    gmin = 1e-12;
 	    
-	    if (sim.subIterations > 100 && badIters < 5) {
+	    if (sim.getSubIterations() > 100 && badIters < 5) {
 		// if we have trouble converging, put a conductance in parallel with all P-N junctions.
 		// Gradually increase the conductance value for each iteration.
-		gmin = Math.exp(-9*Math.log(10)*(1-sim.subIterations/300.));
+		gmin = Math.exp(-9*Math.log(10)*(1-sim.getSubIterations()/300.));
 		if (gmin > .1)
 		    gmin = .1;
 	    }
@@ -540,7 +540,7 @@ class TransistorElm extends CircuitElm {
 
             // if we needed to add a conductance to all junctions, this was a bad iteration.
             // If we have 5 of those in a row, give up
-	    if (sim.subIterations > 100)
+	    if (sim.getSubIterations() > 100)
 		badIters++;
 	    else
 		badIters = 0;

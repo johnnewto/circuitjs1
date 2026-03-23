@@ -190,13 +190,14 @@ public class SFCStockElm extends CircuitElm {
     
     @Override
     void stamp() {
+        double dt = getSimulationContext().getTimeStep();
         // Capacitor companion model
         // Trapezoidal: compResistance = dt/(2*C)
         // Backward Euler: compResistance = dt/C
         if (isTrapezoidal()) {
-            compResistance = sim.getTimingState().timeStep / (2 * stockCapacitance);
+            compResistance = dt / (2 * stockCapacitance);
         } else {
-            compResistance = sim.getTimingState().timeStep / stockCapacitance;
+            compResistance = dt / stockCapacitance;
         }
         
         if (sim.dcAnalysisFlag) {

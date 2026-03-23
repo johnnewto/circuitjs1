@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
+
 // contributed by Edward Calver
 
 class FMElm extends CircuitElm {
@@ -68,9 +70,11 @@ class FMElm extends CircuitElm {
 	    sim.updateVoltageSource(0, nodes[0], voltSource, getVoltage());
     }
     double getVoltage() {
-	double deltaT=sim.getTimingState().t-lasttime;
-	lasttime=sim.getTimingState().t;
-	double signalamplitude=Math.sin((2*pi*(sim.getTimingState().t-freqTimeZero))*signalfreq);
+	SimulationContext context = getSimulationContext();
+	double t = context.getTime();
+	double deltaT=t-lasttime;
+	lasttime=t;
+	double signalamplitude=Math.sin((2*pi*(t-freqTimeZero))*signalfreq);
 	funcx+=deltaT*(carrierfreq+(signalamplitude*deviation));
 	double w = 2*pi*funcx;
 	return Math.sin(w)*maxVoltage;	

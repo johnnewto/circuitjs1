@@ -117,7 +117,7 @@ public class DataRecorderElm extends CircuitElm {
 	    }
 	    if (n == 1) {
 		EditInfo ei = new EditInfo("", 0, -1, -1);
-		String dataStr = "# time step = " + sim.getTimingState().timeStep + " sec\n";
+		String dataStr = "# time step = " + sim.getTimeStep() + " sec\n";
 		int i;
 		if (dataFull) {
 		    for (i = 0; i != dataCount; i++)

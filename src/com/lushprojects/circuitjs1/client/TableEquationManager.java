@@ -109,7 +109,7 @@ public class TableEquationManager {
      */
     public void updateExpressionState(ExprState state) {
         // Only update time - direct node resolution handles everything else
-        state.t = sim != null ? sim.getTimingState().t : 0.0;
+        state.t = sim != null ? sim.getTime() : 0.0;
         
         // All node references are resolved directly in Expr.eval() via E_NODE_REF
     }

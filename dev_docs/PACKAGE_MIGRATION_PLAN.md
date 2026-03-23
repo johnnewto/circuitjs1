@@ -266,6 +266,12 @@ public interface ConsoleLogger {
 2. Elements receive interface references instead of CirSim
 3. Gradual migration — not all at once
 
+### PR5 Completion Status
+- [x] `SimulationContext`, `ConfigProvider`, and `ConsoleLogger` introduced under `client/core`
+- [x] `CirSim` exposes stable time/config/convergence accessors used by migrated code paths
+- [x] Major element/helper stamp + timing + convergence paths migrated off direct `sim.getTimingState().t/timeStep` and direct `sim.converged` field use
+- [x] Remaining direct timing-state usage is intentional and scoped to core timestep bookkeeping (`timeStepCount`, `timeStepAccum`) and `CirSim` timing accessor internals
+
 ---
 
 ## PR 6: `client.math` + `client.economics`

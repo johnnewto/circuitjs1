@@ -159,7 +159,7 @@ class ScopePlot {
     		maxValues[i1] = oldMax[i2];
     	    }
     	} else
-    	    lastUpdateTime = CirSim.getInstance().getTimingState().t;
+	    lastUpdateTime = CirSim.getInstance().getTime();
     	ptr = 0;
 		if (oldMin != null && !full && oldSpc > 0)
 		    samplesCaptured = Math.max(1, Math.min(scopePointCount, Math.min(oldSpc, oldSamplesCaptured)));
@@ -194,12 +194,12 @@ class ScopePlot {
 		maxValues[ptr] = v;
 	
 	// Advance to next sample point if enough time has elapsed
-	if (CirSim.getInstance().getTimingState().t - lastUpdateTime >= CirSim.getInstance().getTimingState().maxTimeStep * scopePlotSpeed) {
+	if (CirSim.getInstance().getTime() - lastUpdateTime >= CirSim.getInstance().getMaxTimeStep() * scopePlotSpeed) {
 	    ptr = (ptr + 1) & (scopePointCount - 1);
 	    minValues[ptr] = maxValues[ptr] = v;
 	    if (samplesCaptured < scopePointCount)
 		samplesCaptured++;
-	    lastUpdateTime += CirSim.getInstance().getTimingState().maxTimeStep * scopePlotSpeed;
+	    lastUpdateTime += CirSim.getInstance().getMaxTimeStep() * scopePlotSpeed;
 	}
     }
     
@@ -557,7 +557,7 @@ public class Scope {
     	for (i = 0; i != plots.size(); i++)
     	    plots.get(i).reset(scopePointCount, speed, full);
 		calcVisiblePlots();
-    	scopeTimeStep = sim.getTimingState().maxTimeStep;
+	scopeTimeStep = sim.getMaxTimeStep();
     	
     	// Clear action annotation persistence on reset
     	if (clearHistory) {
@@ -573,10 +573,10 @@ public class Scope {
     	    // When clearing history (reset or first load), start from current simulation time
     	    // When preserving history (zoom/resize), keep the existing startTime
     	    if (clearHistory) {
-    	        startTime = sim.getTimingState().t;  // Start from current simulation time
+    	        startTime = sim.getTime();  // Start from current simulation time
     	        historySize = 0;
     	        historyCapacity = scopePointCount * 4; // Start with 4x the display size
-    	        historySampleInterval = sim.getTimingState().maxTimeStep * speed;
+    	        historySampleInterval = sim.getMaxTimeStep() * speed;
     	        
     	        // Initialize history buffers for each plot
     	        for (i = 0; i != plots.size(); i++) {
@@ -586,7 +586,7 @@ public class Scope {
     	        }
     	    } else {
     	        // Preserve history, just update sample interval
-    	        historySampleInterval = sim.getTimingState().maxTimeStep * speed;
+    	        historySampleInterval = sim.getMaxTimeStep() * speed;
     	        
     	        // Check if buffers need to be allocated (e.g., after loading from file)
     	        boolean needsAllocation = false;
@@ -601,7 +601,7 @@ public class Scope {
     	        if (needsAllocation) {
     	            // Allocating buffers for first time after load - start from current time
     	            // Use current scopePointCount (based on updated rect.width) for capacity calculation
-    	            startTime = sim.getTimingState().t;
+    	            startTime = sim.getTime();
     	            historySize = 0;
     	            historyCapacity = scopePointCount * 4;  // Based on CURRENT scopePointCount, not old one
     	            for (i = 0; i != plots.size(); i++) {
@@ -1011,7 +1011,7 @@ public class Scope {
 	// Only capture at the defined sample interval
 	if (historySize > 0) {
 	    double lastSampleTime = startTime + (historySize - 1) * historySampleInterval;
-	    if (sim.getTimingState().t < lastSampleTime + historySampleInterval * 0.9)
+	    if (sim.getTime() < lastSampleTime + historySampleInterval * 0.9)
 		return; // Too soon for next sample
 	}
 	
@@ -1200,7 +1200,7 @@ public class Scope {
       // Draw x-grid lines and label the frequencies in the FFT that they point to.
       int prevEnd = 0;
       int divs = 20;
-      double maxFrequency = 1 / (sim.getTimingState().maxTimeStep * speed * divs * 2);
+      double maxFrequency = 1 / (sim.getMaxTimeStep() * speed * divs * 2);
       for (int i = 0; i < divs; i++) {
         int x = rect.width * i / divs;
         if (x < prevEnd) continue;
@@ -1489,7 +1489,7 @@ public class Scope {
 	
 	for (int i = 0; i < enabledActions.size(); i++) {
 	    ActionScheduler.ScheduledAction action = enabledActions.get(i);
-	    if (action.actionTime > sim.getTimingState().t)
+	    if (action.actionTime > sim.getTime())
 		continue;
 	    double timeFromStart = action.actionTime - startTime;
 	    if (timeFromStart < 0 || timeFromStart > displayTimeSpan)
@@ -1530,7 +1530,7 @@ public class Scope {
 	for (ActionScheduler.ScheduledAction action : enabledActions) {
 	    if (action.postText == null || action.postText.trim().isEmpty())
 		continue;
-	    if (action.actionTime <= 0 || action.actionTime > sim.getTimingState().t)
+	    if (action.actionTime <= 0 || action.actionTime > sim.getTime())
 		continue;
 	    if (action.state == ActionScheduler.ActionState.PENDING ||
 		action.state == ActionScheduler.ActionState.READY)
@@ -1724,8 +1724,8 @@ public class Scope {
 	    return;
     	
     	// reset if timestep changed
-    	if (scopeTimeStep != sim.getTimingState().maxTimeStep) {
-    	    scopeTimeStep = sim.getTimingState().maxTimeStep;
+    	if (scopeTimeStep != sim.getMaxTimeStep()) {
+    	    scopeTimeStep = sim.getMaxTimeStep();
     	    resetGraph();
     	}
     	
@@ -1932,11 +1932,11 @@ public class Scope {
      */
     int getBufferIndexForTime(double time, ScopePlot plot) {
 	// Calculate how many timesteps from start
-	double timePerStep = sim.getTimingState().maxTimeStep * speed;
+	double timePerStep = sim.getMaxTimeStep() * speed;
 	int stepsFromStart = (int)((time - startTime) / timePerStep);
 	
 	// Map to circular buffer, accounting for wraparound
-	int totalSteps = (int)((sim.getTimingState().t - startTime) / timePerStep);
+	int totalSteps = (int)((sim.getTime() - startTime) / timePerStep);
 	int offset = totalSteps - stepsFromStart;
 	
 	// Get current pointer position and subtract offset
@@ -1953,7 +1953,7 @@ public class Scope {
     }
 
     double getTimePerPixel() {
-	return sim.getTimingState().maxTimeStep * speed / getHorizontalPixelStride();
+	return sim.getMaxTimeStep() * speed / getHorizontalPixelStride();
     }
 
     int getDisplaySampleWidth(ScopePlot plot) {
@@ -2059,7 +2059,7 @@ public class Scope {
     	    // vertical gridlines (time axis)
     	    if (drawFromZero && !plot2d) {
     		// Draw from zero mode: gridlines start at t=0 on left
-    		double elapsedTime = sim.getTimingState().t - startTime;
+    		double elapsedTime = sim.getTime() - startTime;
     		double displayTimeSpan;
     		
     		if (autoScaleTime && elapsedTime > 0) {
@@ -2131,8 +2131,8 @@ public class Scope {
 			    drawActionTimeMarkers(g, actionStartTime, actionDisplayTimeSpan);
 			} else {
 			    // Normal scrolling mode: gridlines scroll with time
-			    double tstart = sim.getTimingState().t-ts*rect.width;
-			    double tx = sim.getTimingState().t-(sim.getTimingState().t % gridStepX);
+			    double tstart = sim.getTime()-ts*rect.width;
+			    double tx = sim.getTime()-(sim.getTime() % gridStepX);
 
 			    for (int ll = 0; ; ll++) {
 				double tl = tx-gridStepX*ll;
@@ -2219,8 +2219,8 @@ public class Scope {
                 }
             } else {
                 // Fixed scale: show most recent data that fits
-                double elapsedTime = sim.getTimingState().t - startTime;
-                double timePerPixel = sim.getTimingState().maxTimeStep * speed;
+                double elapsedTime = sim.getTime() - startTime;
+                double timePerPixel = sim.getMaxTimeStep() * speed;
                 int pixelsNeeded = (int)(elapsedTime / timePerPixel);
                 int pixelsUsed = Math.min(pixelsNeeded, rect.width);
                 
@@ -2362,7 +2362,7 @@ public class Scope {
 	else {
 	    if (drawFromZero) {
 		// Time is proportional to x position from left
-		double elapsedTime = sim.getTimingState().t - startTime;
+		double elapsedTime = sim.getTime() - startTime;
 		double relativeX = (mouseX - rect.x) / (double)rect.width;
 		
 		if (autoScaleTime && elapsedTime > 0) {
@@ -2385,7 +2385,7 @@ public class Scope {
 		    } else {
 			int sampleX = localX / stride;
 			int ageSamples = (displayWidth - 1) - sampleX;
-			cursorTime = sim.getTimingState().t - sim.getTimingState().maxTimeStep * speed * ageSamples;
+			cursorTime = sim.getTime() - sim.getMaxTimeStep() * speed * ageSamples;
 		    }
 		}
 	    }
@@ -2455,7 +2455,7 @@ public class Scope {
         // Calculate cursor X position from cursorTime
         if (drawFromZero && !plot2d) {
             // Draw from zero mode: calculate position based on time from start
-            double elapsedTime = sim.getTimingState().t - startTime;
+            double elapsedTime = sim.getTime() - startTime;
             double displayTimeSpan;
             
             if (autoScaleTime && elapsedTime > 0) {
@@ -2472,7 +2472,7 @@ public class Scope {
 		if (displayWidth <= 0) {
 		    cursorX = -1;
 		} else {
-		    int ageSamples = (int) ((sim.getTimingState().t-cursorTime)/(sim.getTimingState().maxTimeStep*speed));
+		    int ageSamples = (int) ((sim.getTime()-cursorTime)/(sim.getMaxTimeStep()*speed));
 		    cursorX = rect.x + (displayWidth - 1 - ageSamples) * stride;
 		}
         }
@@ -2518,7 +2518,7 @@ public class Scope {
     
     // show FFT even if there's no plots (in which case cursorTime/cursorX will be invalid)
         if (showFFT && cursorScope == this) {
-            double maxFrequency = 1 / (sim.getTimingState().maxTimeStep * speed * 2);
+            double maxFrequency = 1 / (sim.getMaxTimeStep() * speed * 2);
             if (cursorX < 0)
             cursorX = sim.getMouseCursorX();
             info[ct++] = CircuitElm.getUnitText(maxFrequency*(sim.getMouseCursorX()-rect.x)/rect.width, "Hz");
@@ -2847,7 +2847,7 @@ public class Scope {
 	avperiod /= periodct;
 	avperiod2 /= periodct;
 	double periodstd = Math.sqrt(avperiod2-avperiod*avperiod);
-	double freq = 1/(avperiod*sim.getTimingState().maxTimeStep*speed);
+	double freq = 1/(avperiod*sim.getMaxTimeStep()*speed);
 	// don't show freq if standard deviation is too great
 	if (periodct < 1 || periodstd > 2)
 	    freq = 0;
@@ -3547,7 +3547,7 @@ public class Scope {
     	if (mi == "drawfromzero") {
     		drawFromZero = state;
     		if (state) {
-    		    startTime = sim.getTimingState().t;
+    		    startTime = sim.getTime();
     		}
     		resetGraph();
     	}
@@ -3706,7 +3706,7 @@ public class Scope {
 	
 	for (int x = 0; x < width; x++) {
 	    // Calculate time for this sample
-	    double time = sim.getTimingState().t - (width - 1 - x) * sim.getTimingState().maxTimeStep * speed;
+	    double time = sim.getTime() - (width - 1 - x) * sim.getMaxTimeStep() * speed;
 	    sb.append(time);
 	    
 	    for (int i = 0; i < visiblePlots.size(); i++) {
@@ -3731,8 +3731,8 @@ public class Scope {
 	sb.append("{\n");
 	sb.append("  \"source\": \"CircuitJS1 Scope\",\n");
 	sb.append("  \"exportType\": \"circularBuffer\",\n");
-	sb.append("  \"simulationTime\": ").append(sim.getTimingState().t).append(",\n");
-	sb.append("  \"timeStep\": ").append(sim.getTimingState().maxTimeStep * speed).append(",\n");
+	sb.append("  \"simulationTime\": ").append(sim.getTime()).append(",\n");
+	sb.append("  \"timeStep\": ").append(sim.getMaxTimeStep() * speed).append(",\n");
 	sb.append("  \"plots\": [\n");
 	
 	int width = rect.width;
@@ -3761,7 +3761,7 @@ public class Scope {
 	    // Time array
 	    for (int x = 0; x < width; x++) {
 		if (x > 0) sb.append(", ");
-		double time = sim.getTimingState().t - (width - 1 - x) * sim.getTimingState().maxTimeStep * speed;
+		double time = sim.getTime() - (width - 1 - x) * sim.getMaxTimeStep() * speed;
 		sb.append(time);
 	    }
 	    sb.append("],\n");

@@ -28,7 +28,7 @@ class TransLineElm extends CircuitElm {
     int lastStepCount;
     public TransLineElm(int xx, int yy) {
 	super(xx, yy);
-	delay = 1000*sim.getTimingState().maxTimeStep;
+	delay = 1000*sim.getMaxTimeStep();
 	imped = 75;
 	noDiagonal = true;
 	reset();
@@ -69,9 +69,9 @@ class TransLineElm extends CircuitElm {
     Point posts[], inner[];
 	
     void reset() {
-	if (sim.getTimingState().maxTimeStep == 0)
+	if (sim.getMaxTimeStep() == 0)
 	    return;
-	lenSteps = (int) (delay/sim.getTimingState().maxTimeStep);
+	lenSteps = (int) (delay/sim.getMaxTimeStep());
 	System.out.println(lenSteps + " steps");
 	if (lenSteps > 100000)
 	    voltageL = voltageR = null;
@@ -250,4 +250,3 @@ class TransLineElm extends CircuitElm {
     boolean canFlipX() { return dy == 0; }
     boolean canFlipY() { return dx == 0; }
 }
-

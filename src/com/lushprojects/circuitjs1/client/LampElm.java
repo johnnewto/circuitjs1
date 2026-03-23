@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 class LampElm extends CircuitElm {
@@ -145,6 +146,7 @@ class LampElm extends CircuitElm {
 	}
 	boolean nonLinear() { return true; }
 	void startIteration() {
+	    SimulationContext context = getSimulationContext();
 	    // based on http://www.intusoft.com/nlpdf/nl11.pdf
 	    double nom_r = nom_v*nom_v/nom_pow;
 	    // this formula doesn't work for values over 5390
@@ -156,9 +158,9 @@ class LampElm extends CircuitElm {
 	    double capw = cap * warmTime/.4;
 	    double capc = cap * coolTime/.4;
 	    //System.out.println(nom_r + " " + (resistance/nom_r));
-	    temp += getPower()*sim.getTimingState().timeStep/capw;
+	    temp += getPower()*context.getTimeStep()/capw;
 	    double cr = 2600/nom_pow;
-	    temp -= sim.getTimingState().timeStep*(temp-roomTemp)/(capc*cr);
+	    temp -= context.getTimeStep()*(temp-roomTemp)/(capc*cr);
 //	    sim.console("lampsi " + temp + " " + capc + " " + nom_pow);
 	}
 	void doStep() {

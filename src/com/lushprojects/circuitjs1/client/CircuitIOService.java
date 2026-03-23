@@ -415,10 +415,11 @@ final class CircuitIOService {
                 CircuitElm ce = sim.getElm(i);
                 ce.delete();
             }
-            sim.getTimingState().t = sim.getTimingState().timeStepAccum = 0;
+            sim.setTime(0);
+            sim.getTimingState().timeStepAccum = 0;
             sim.elmList.removeAllElements();
             sim.hintType = -1;
-            sim.getTimingState().maxTimeStep = (sim.currentToolbarType == CirSim.ToolbarType.ECONOMICS) ? 0.01 : 5e-6;
+            sim.setMaxTimeStep((sim.currentToolbarType == CirSim.ToolbarType.ECONOMICS) ? 0.01 : 5e-6);
             sim.getTimingState().minTimeStep = 50e-12;
             if (sim.dotsCheckItem != null)
                 sim.dotsCheckItem.setState(false);
@@ -522,16 +523,16 @@ final class CircuitIOService {
                                     sim.setToolbar();
                                 }
                             } else if (settingType.equals("equationTableMnaMode") && st.hasMoreTokens()) {
-                                sim.equationTableMnaMode = st.nextToken().equals("true");
+                                sim.setEquationTableMnaMode(st.nextToken().equals("true"));
                             } else if (settingType.equals("equationTableNewtonJacobianEnabled") && st.hasMoreTokens()) {
                                 sim.equationTableNewtonJacobianEnabled = st.nextToken().equals("true");
                             } else if (settingType.equals("equationTableConvergenceTolerance") && st.hasMoreTokens()) {
                                 try {
-                                    sim.equationTableConvergenceTolerance = Double.parseDouble(st.nextToken());
+                                    sim.setEquationTableConvergenceTolerance(Double.parseDouble(st.nextToken()));
                                 } catch (Exception e) {
                                 }
                             } else if (settingType.equals("sfcrLookupClampDefault") && st.hasMoreTokens()) {
-                                sim.sfcrLookupClampDefault = st.nextToken().equals("true");
+                                sim.setSfcrLookupClampDefault(st.nextToken().equals("true"));
                             } else if (settingType.equals("convergenceCheckThreshold") && st.hasMoreTokens()) {
                                 try {
                                     sim.convergenceCheckThreshold = Integer.parseInt(st.nextToken());

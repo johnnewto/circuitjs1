@@ -142,24 +142,25 @@ class SimulationLoop {
 
         boolean delayWireProcessing = canDelayWireProcessing();
 
-        int timeStepCountAtFrameStart = sim.getTimingState().timeStepCount;
+        SimulationTimingState timingState = sim.getTimingState();
+        int timeStepCountAtFrameStart = timingState.timeStepCount;
 
         int goodIterations = 100;
 
         int frameTimeLimit = (int) (1000 / sim.minFrameRate);
 
-        if (sim.getTimingState().timeStepCount >= sim.nextPeriodicTime) {
+        if (timingState.timeStepCount >= sim.nextPeriodicTime) {
             for (int i = 0; i != sim.elmArr.length; i++) {
                 sim.elmArr[i].nonConverged = false;
             }
-            sim.nextPeriodicTime = sim.getTimingState().timeStepCount + sim.periodicInterval;
+            sim.nextPeriodicTime = timingState.timeStepCount + sim.periodicInterval;
         }
 
         for (int iter = 1; ; iter++) {
 
-            if (goodIterations >= 3 && sim.getTimingState().timeStep < sim.getTimingState().maxTimeStep) {
-                sim.getTimingState().timeStep = Math.min(sim.getTimingState().timeStep * 2, sim.getTimingState().maxTimeStep);
-                CirSim.console("timestep up = " + sim.getTimingState().timeStep + " at " + sim.getTimingState().t);
+            if (goodIterations >= 3 && timingState.timeStep < timingState.maxTimeStep) {
+                timingState.timeStep = Math.min(timingState.timeStep * 2, timingState.maxTimeStep);
+                CirSim.console("timestep up = " + timingState.timeStep + " at " + timingState.t);
                 sim.stampCircuit();
                 goodIterations = 0;
             }
@@ -173,9 +174,9 @@ class SimulationLoop {
 
             sim.steps++;
 
-            int subiterCount = (sim.adjustTimeStep && sim.getTimingState().timeStep / 2 > sim.getTimingState().minTimeStep) ? 100 : 200;
+            int subiterCount = (sim.adjustTimeStep && timingState.timeStep / 2 > timingState.minTimeStep) ? 100 : 200;
             for (subiter = 0; subiter != subiterCount; subiter++) {
-                sim.converged = true;
+                sim.setConverged(true);
                 sim.subIterations = subiter;
 
                 for (i = 0; i != sim.getSolverMatrixState().circuitMatrixSize; i++)
@@ -189,14 +190,14 @@ class SimulationLoop {
                 ComputedValues.resetComputedFlags();
 
                 for (i = 0; i != sim.elmArr.length; i++) {
-                    boolean preConverged = sim.converged;
+                    boolean preConverged = sim.isConverged();
                     sim.elmArr[i].doStep();
 
-                    if (preConverged && !sim.converged) {
+                    if (preConverged && !sim.isConverged()) {
                         if (subiter > sim.convergenceCheckThreshold) {
                             sim.elmArr[i].nonConverged = true;
                             if (!(sim.elmArr[i] instanceof EquationTableElm)) {
-                                String text = "CirSim: t=" + sim.getTimingState().t + " dt=" + sim.getTimingState().timeStep + " Element causing convergence failure: " +
+                                String text = "CirSim: t=" + timingState.t + " dt=" + timingState.timeStep + " Element causing convergence failure: " +
                                               sim.elmArr[i].getClass().getSimpleName() + " at (" +
                                               sim.elmArr[i].x + "," + sim.elmArr[i].y + ")";
                                 CirSim.console(text);
@@ -234,7 +235,7 @@ class SimulationLoop {
                     CirSim.console("done");
                 }
                 if (sim.getSolverMatrixState().circuitNonLinear) {
-                    if (sim.converged && subiter > 0)
+                    if (sim.isConverged() && subiter > 0)
                         break;
                     int badRow = CircuitMatrixOps.luFactor(sim.getSolverMatrixState().circuitMatrix, sim.getSolverMatrixState().circuitMatrixSize, sim.getSolverMatrixState().circuitPermute);
                     if (badRow >= 0) {
@@ -255,10 +256,10 @@ class SimulationLoop {
             if (subiter == subiterCount) {
                 goodIterations = 0;
                 if (sim.adjustTimeStep) {
-                    sim.getTimingState().timeStep /= 2;
-                    CirSim.console("timestep down to " + sim.getTimingState().timeStep + " at " + sim.getTimingState().t);
+                    timingState.timeStep /= 2;
+                    CirSim.console("timestep down to " + timingState.timeStep + " at " + timingState.t);
                 }
-                if (sim.getTimingState().timeStep < sim.getTimingState().minTimeStep || !sim.adjustTimeStep) {
+                if (timingState.timeStep < timingState.minTimeStep || !sim.adjustTimeStep) {
                     CirSim.console("convergence failed after " + subiter + " iterations");
                     sim.stop("Convergence failed!", null);
                     break;
@@ -267,17 +268,17 @@ class SimulationLoop {
                 sim.stampCircuit();
                 continue;
             }
-            if (subiter > 20 || sim.getTimingState().timeStep < sim.getTimingState().maxTimeStep)
-                CirSim.console("converged after " + subiter + " iterations, timeStep = " + sim.getTimingState().timeStep);
+            if (subiter > 20 || timingState.timeStep < timingState.maxTimeStep)
+                CirSim.console("converged after " + subiter + " iterations, timeStep = " + timingState.timeStep);
             if (subiter < 3)
                 goodIterations++;
             else
                 goodIterations = 0;
-            sim.getTimingState().t += sim.getTimingState().timeStep;
-            sim.getTimingState().timeStepAccum += sim.getTimingState().timeStep;
-            if (sim.getTimingState().timeStepAccum >= sim.getTimingState().maxTimeStep) {
-                sim.getTimingState().timeStepAccum -= sim.getTimingState().maxTimeStep;
-                sim.getTimingState().timeStepCount++;
+            timingState.t += timingState.timeStep;
+            timingState.timeStepAccum += timingState.timeStep;
+            if (timingState.timeStepAccum >= timingState.maxTimeStep) {
+                timingState.timeStepAccum -= timingState.maxTimeStep;
+                timingState.timeStepCount++;
             }
 
             for (i = 0; i != sim.elmArr.length; i++)
@@ -292,7 +293,7 @@ class SimulationLoop {
 
             ActionScheduler scheduler = ActionScheduler.getInstance(sim);
             if (scheduler != null) {
-                scheduler.stepFinished(sim.getTimingState().t);
+                scheduler.stepFinished(timingState.t);
             }
 
             for (i = 0; i != sim.scopeCount; i++)
@@ -308,7 +309,7 @@ class SimulationLoop {
             lit = tm;
             if (nonInteractive)
                 break;
-            if ((sim.getTimingState().timeStepCount - timeStepCountAtFrameStart) * 1000 >= steprate * (tm - sim.lastIterTime) || (tm - sim.lastFrameTime > frameTimeLimit))
+            if ((timingState.timeStepCount - timeStepCountAtFrameStart) * 1000 >= steprate * (tm - sim.lastIterTime) || (tm - sim.lastFrameTime > frameTimeLimit))
                 break;
             if (!sim.simRunning)
                 break;
@@ -328,7 +329,7 @@ class SimulationLoop {
             else
                 res = rs[ri.mapCol];
             if (Double.isNaN(res)) {
-                sim.converged = false;
+                sim.setConverged(false);
                 break;
             }
             if (j < sim.getCircuitAnalyzer().getNodeList().size() - 1) {

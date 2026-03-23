@@ -1,16 +1,242 @@
-# World2 SFCR Model
-
-## Init
+# CircuitJS1 SFCR Export
+# Generated from circuit simulation
 
 ```{r}
 @init
   timestep: 0.2
+  voltageUnit: $
   timeUnit: yr
-  equationTableMnaMode: yes
-  equationTableTolerance: 0.001
-  convergenceCheckThreshold: 199
   showDots: false
   showVolts: false
+  showValues: true
+  showPower: false
+  autoAdjustTimestep: false
+  equationTableMnaMode: true
+  equationTableNewtonJacobianEnabled: false
+  equationTableTolerance: 0.001
+  lookupMode: pwl
+  lookupClamp: true
+  convergenceCheckThreshold: 199
+  infoViewerUpdateIntervalMs: 100
+@end
+```
+
+```{r}
+@lookup BRMM scope=World2
+  0, 1.2
+  1, 1
+  2, 0.85
+  3, 0.75
+  4, 0.7
+  5, 0.7
+@end
+
+@lookup BRCM scope=World2
+  0, 1.05
+  1, 1
+  2, 0.9
+  3, 0.7
+  4, 0.6
+  5, 0.55
+@end
+
+@lookup BRFM scope=World2
+  0, 0
+  1, 1
+  2, 1.6
+  3, 1.9
+  4, 2
+@end
+
+@lookup BRPM scope=World2
+  0, 1.02
+  10, 0.9
+  20, 0.7
+  30, 0.4
+  40, 0.25
+  50, 0.15
+  60, 0.1
+@end
+
+@lookup DRMM scope=World2
+  0, 3
+  0.5, 1.8
+  1, 1
+  1.5, 0.8
+  2, 0.7
+  2.5, 0.6
+  3, 0.53
+  3.5, 0.5
+  4, 0.5
+  4.5, 0.5
+  5, 0.5
+@end
+
+@lookup DRPM scope=World2
+  0, 0.92
+  10, 1.3
+  20, 2
+  30, 3.2
+  40, 4.8
+  50, 6.8
+  60, 9.2
+@end
+
+@lookup DRFM scope=World2
+  0, 30
+  0.25, 3
+  0.5, 2
+  0.75, 1.4
+  1, 1
+  1.25, 0.7
+  1.5, 0.6
+  1.75, 0.5
+  2, 0.5
+@end
+
+@lookup DRCM scope=World2
+  0, 0.9
+  1, 1
+  2, 1.2
+  3, 1.5
+  4, 1.9
+  5, 3
+@end
+
+@lookup NRMM scope=World2
+  0, 0
+  1, 1
+  2, 1.8
+  3, 2.4
+  4, 2.9
+  5, 3.3
+  6, 3.6
+  7, 3.8
+  8, 3.9
+  9, 3.95
+  10, 4
+@end
+
+@lookup CIM scope=World2
+  0, 0.1
+  1, 1
+  2, 1.8
+  3, 2.4
+  4, 2.8
+  5, 3
+@end
+
+@lookup POLCM scope=World2
+  0, 0.05
+  1, 1
+  2, 3
+  3, 5.4
+  4, 7.4
+  5, 8
+@end
+
+@lookup POLAT scope=World2
+  0, 0.6
+  10, 2.5
+  20, 5
+  30, 8
+  40, 11.5
+  50, 15.5
+  60, 20
+@end
+
+@lookup CFIFR scope=World2
+  0, 1
+  0.5, 0.6
+  1, 0.3
+  1.5, 0.15
+  2, 0.1
+@end
+
+@lookup QLM scope=World2
+  0, 0.2
+  1, 1
+  2, 1.7
+  3, 2.3
+  4, 2.7
+  5, 2.9
+@end
+
+@lookup QLP scope=World2
+  0, 1.04
+  10, 0.85
+  20, 0.6
+  30, 0.3
+  40, 0.15
+  50, 0.05
+  60, 0.02
+@end
+
+@lookup QLF scope=World2
+  0, 0
+  1, 1
+  2, 1.8
+  3, 2.4
+  4, 2.7
+@end
+
+@lookup CIQR scope=World2
+  0, 0.7
+  0.5, 0.8
+  1, 1
+  1.5, 1.5
+  2, 2
+@end
+
+@lookup FCM scope=World2
+  0, 2.4
+  1, 1
+  2, 0.6
+  3, 0.4
+  4, 0.3
+  5, 0.2
+@end
+
+@lookup FPCI scope=World2
+  0, 0.5
+  1, 1
+  2, 1.4
+  3, 1.7
+  4, 1.9
+  5, 2.05
+  6, 2.2
+@end
+
+@lookup FPM scope=World2
+  0, 1.02
+  10, 0.9
+  20, 0.65
+  30, 0.35
+  40, 0.2
+  50, 0.1
+  60, 0.05
+@end
+
+@lookup NREM scope=World2
+  0, 0
+  0.25, 0.15
+  0.5, 0.5
+  0.75, 0.85
+  1, 1
+@end
+
+@lookup QLC scope=World2
+  0, 2
+  0.5, 1.3
+  1, 1
+  1.5, 0.75
+  2, 0.55
+  2.5, 0.45
+  3, 0.38
+  3.5, 0.3
+  4, 0.25
+  4.5, 0.22
+  5, 0.2
 @end
 ```
 
@@ -72,190 +298,20 @@ World2 <- sfcr_set(
 )
 ```
 
-## Hints
-
 ```{r}
-@hints
-  P: Population (people)
-  NR: Nonrenewable natural resources
-  CI: Capital investment
-  POL: Pollution stock
-  CIAF: Capital-investment-in-agriculture fraction
-  FR: Food ratio
-  MSL: Material standard of living
-  QL: Quality of life
-  POLR: Pollution ratio
-@end
-```
-
-## Info
-
-```{r}
-@info
-# World2 (pyworld2-aligned default run)
-
-This variant is tuned to match the default **pyworld2** standard run structure:
-
-- timestep: 0.2 years
-- default switch constants (BRN, DRN, CIDN, CIGN, FC, NRUN, POLN)
-- lookup tables copied from `functions_table_default.json`
-- equations follow the pyworld2 variable chain (`FR`, `MSL`, `NRMM`, `POLAT`, `CIAF` dynamics, etc.)
-
-Reference target from pyworld2 tests at year 2100:
-
-- QL ≈ 0.54940464789
-- POLR ≈ 2.58741372815
-- NR ≈ 278240023740
-- CI ≈ 6010240430.13
-@end
-```
-
-## Lookup Tables (World2 Scoped)
-
-```{r}
-@lookup BRMM scope=World2
-  0, 1.2
-  1, 1
-  2, 0.85
-  3, 0.75
-  4, 0.7
-  5, 0.7
-@end
-```
-
-```{r}
-@lookup BRCM scope=World2
-  0, 1.05
-  1, 1
-  2, 0.9
-  3, 0.7
-  4, 0.6
-  5, 0.55
-@end
-```
-
-```{r}
-@lookup BRFM scope=World2
-  0, 0
-  1, 1
-  2, 1.6
-  3, 1.9
-  4, 2
-@end
-```
-
-```{r}
-@lookup BRPM scope=World2
-  0, 1.02
-  10, 0.9
-  20, 0.7
-  30, 0.4
-  40, 0.25
-  50, 0.15
-  60, 0.1
-@end
-```
-
-```{r}
-@lookup DRMM scope=World2
-  0, 3
-  0.5, 1.8
-  1, 1
-  1.5, 0.8
-  2, 0.7
-  2.5, 0.6
-  3, 0.53
-  3.5, 0.5
-  4, 0.5
-  4.5, 0.5
-  5, 0.5
-@end
-```
-
-```{r}
-@lookup DRPM scope=World2
-  0, 0.92
-  10, 1.3
-  20, 2
-  30, 3.2
-  40, 4.8
-  50, 6.8
-  60, 9.2
-@end
-```
-
-```{r}
-@lookup DRFM scope=World2
-  0, 30
-  0.25, 3
-  0.5, 2
-  0.75, 1.4
-  1, 1
-  1.25, 0.7
-  1.5, 0.6
-  1.75, 0.5
-  2, 0.5
-@end
-```
-
-```{r}
-@lookup DRCM scope=World2
-  0, 0.9
-  1, 1
-  2, 1.2
-  3, 1.5
-  4, 1.9
-  5, 3
-@end
-```
-
-```{r}
-@lookup NRMM scope=World2
-  0, 0
-  1, 1
-  2, 1.8
-  3, 2.4
-  4, 2.9
-  5, 3.3
-  6, 3.6
-  7, 3.8
-  8, 3.9
-  9, 3.95
-  10, 4
-@end
-```
-
-```{r}
-@lookup CIM scope=World2
-  0, 0.1
-  1, 1
-  2, 1.8
-  3, 2.4
-  4, 2.8
-  5, 3
-@end
-```
-
-```{r}
-@lookup POLCM scope=World2
-  0, 0.05
-  1, 1
-  2, 3
-  3, 5.4
-  4, 7.4
-  5, 8
-@end
-```
-
-```{r}
-@lookup POLAT scope=World2
-  0, 0.6
-  10, 2.5
-  20, 5
-  30, 8
-  40, 11.5
-  50, 15.5
-  60, 20
+@circuit
+207 -208 192 -144 192 164 P U:BaMGZo
+207 -208 224 -144 224 164 POLR U:PwVDmt
+207 -208 144 -144 144 164 QL U:xJHWxB
+431 -144 352 -112 448 0 10 true false U:huagx4
+w -464 384 -416 384 0 U:sfuGs4
+w -416 384 -368 384 0 U:nuMe0n
+g -368 544 -368 560 0 0 U:KWQ50O
+w -368 512 -368 544 1 U:yjz-Aj
+r -368 384 -368 512 0 1000 U:A_-Dqs
+w -464 512 -464 544 1 U:ewym6B
+g -464 544 -464 560 0 0 U:d--0QY
+r -464 384 -464 512 0 100 U:Z7jyYq
 @end
 ```
 
@@ -265,144 +321,15 @@ Reference target from pyworld2 tests at year 2100:
   flags: x2001206
   source: uid:xJHWxB value:0
 @end
-```
-
-```{r}
 @scope P position=1
   speed: 16
   flags: x2001206
   source: uid:BaMGZo value:0
 @end
-```
-
-```{r}
 @scope POLR position=2
   speed: 16
   flags: x2001206
   source: uid:PwVDmt value:0
-@end
-```
-
-```{r}
-@lookup CFIFR scope=World2
-  0, 1
-  0.5, 0.6
-  1, 0.3
-  1.5, 0.15
-  2, 0.1
-@end
-```
-
-```{r}
-@lookup QLM scope=World2
-  0, 0.2
-  1, 1
-  2, 1.7
-  3, 2.3
-  4, 2.7
-  5, 2.9
-@end
-```
-
-```{r}
-@lookup QLP scope=World2
-  0, 1.04
-  10, 0.85
-  20, 0.6
-  30, 0.3
-  40, 0.15
-  50, 0.05
-  60, 0.02
-@end
-```
-
-```{r}
-@lookup QLF scope=World2
-  0, 0
-  1, 1
-  2, 1.8
-  3, 2.4
-  4, 2.7
-@end
-```
-
-```{r}
-@lookup CIQR scope=World2
-  0, 0.7
-  0.5, 0.8
-  1, 1
-  1.5, 1.5
-  2, 2
-@end
-```
-
-```{r}
-@lookup FCM scope=World2
-  0, 2.4
-  1, 1
-  2, 0.6
-  3, 0.4
-  4, 0.3
-  5, 0.2
-@end
-```
-
-```{r}
-@lookup FPCI scope=World2
-  0, 0.5
-  1, 1
-  2, 1.4
-  3, 1.7
-  4, 1.9
-  5, 2.05
-  6, 2.2
-@end
-```
-
-```{r}
-@lookup FPM scope=World2
-  0, 1.02
-  10, 0.9
-  20, 0.65
-  30, 0.35
-  40, 0.2
-  50, 0.1
-  60, 0.05
-@end
-```
-
-```{r}
-@lookup NREM scope=World2
-  0, 0
-  0.25, 0.15
-  0.5, 0.5
-  0.75, 0.85
-  1, 1
-@end
-```
-
-```{r}
-@lookup QLC scope=World2
-  0, 2
-  0.5, 1.3
-  1, 1
-  1.5, 0.75
-  2, 0.55
-  2.5, 0.45
-  3, 0.38
-  3.5, 0.3
-  4, 0.25
-  4.5, 0.22
-  5, 0.2
-@end
-```
-
-```{r}
-@circuit
-207 -208 192 -144 192 164 P U:BaMGZo
-207 -208 224 -144 224 164 POLR U:PwVDmt
-207 -208 144 -144 144 164 QL U:xJHWxB
-431 -144 352 -112 448 0 10 true false U:huagx4
 @end
 ```
 

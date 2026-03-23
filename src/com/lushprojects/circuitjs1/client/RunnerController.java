@@ -317,12 +317,12 @@ final class RunnerController {
         boolean warnedNoTimeAdvance = false;
         int completedSteps = 0;
         for (int step = 0; step < steps; step++) {
-            double prevT = sim.getTimingState().t;
+            double prevT = sim.getTime();
             sim.getSimulationLoop().runCircuit(step == 0);
             ComputedValues.commitConvergedValues();
 
             List<String> cells = new ArrayList<String>();
-            cells.add(SimulationExportCore.buildRunnerTableCell(String.valueOf(sim.getTimingState().t)));
+            cells.add(SimulationExportCore.buildRunnerTableCell(String.valueOf(sim.getTime())));
             for (int i = 0; i < keys.size(); i++) {
                 Double value = ComputedValues.getConvergedValue(keys.get(i));
                 cells.add(SimulationExportCore.buildRunnerTableCell(value != null ? String.valueOf(value) : ""));
@@ -331,7 +331,7 @@ final class RunnerController {
 
             completedSteps++;
 
-            if (!warnedNoTimeAdvance && sim.getTimingState().t == prevT)
+            if (!warnedNoTimeAdvance && sim.getTime() == prevT)
                 warnedNoTimeAdvance = true;
             if (sim.stopMessage != null)
                 break;
@@ -412,17 +412,17 @@ final class RunnerController {
         char sep = "tsv".equals(asyncRunFormat) ? '\t' : ',';
         int batchEnd = Math.min(asyncRunStep + RUNNER_LIVE_BATCH_SIZE, asyncRunTotalSteps);
         for (int step = asyncRunStep; step < batchEnd; step++) {
-            double prevT = sim.getTimingState().t;
+            double prevT = sim.getTime();
             sim.getSimulationLoop().runCircuit(step == 0);
             ComputedValues.commitConvergedValues();
-            asyncRunOutput.append(sim.getTimingState().t);
+            asyncRunOutput.append(sim.getTime());
             for (int i = 0; i < asyncRunKeys.size(); i++) {
                 Double v = ComputedValues.getConvergedValue(asyncRunKeys.get(i));
                 asyncRunOutput.append(sep).append(v != null ? String.valueOf(v) : "");
             }
             asyncRunOutput.append('\n');
             asyncRunCompletedSteps++;
-            if (!asyncWarnedNoTimeAdvance && sim.getTimingState().t == prevT)
+            if (!asyncWarnedNoTimeAdvance && sim.getTime() == prevT)
                 asyncWarnedNoTimeAdvance = true;
             if (sim.stopMessage != null)
                 break;
@@ -511,18 +511,18 @@ final class RunnerController {
     private void runRunnerTableChunkInner() {
         int batchEnd = Math.min(asyncRunStep + RUNNER_LIVE_BATCH_SIZE, asyncRunTotalSteps);
         for (int step = asyncRunStep; step < batchEnd; step++) {
-            double prevT = sim.getTimingState().t;
+            double prevT = sim.getTime();
             sim.getSimulationLoop().runCircuit(step == 0);
             ComputedValues.commitConvergedValues();
             List<String> cells = new ArrayList<String>();
-            cells.add(SimulationExportCore.buildRunnerTableCell(String.valueOf(sim.getTimingState().t)));
+            cells.add(SimulationExportCore.buildRunnerTableCell(String.valueOf(sim.getTime())));
             for (int i = 0; i < asyncRunKeys.size(); i++) {
                 Double v = ComputedValues.getConvergedValue(asyncRunKeys.get(i));
                 cells.add(SimulationExportCore.buildRunnerTableCell(v != null ? String.valueOf(v) : ""));
             }
             asyncRunTableContent.append(SimulationExportCore.buildRunnerTableRow(cells));
             asyncRunCompletedSteps++;
-            if (!asyncWarnedNoTimeAdvance && sim.getTimingState().t == prevT)
+            if (!asyncWarnedNoTimeAdvance && sim.getTime() == prevT)
                 asyncWarnedNoTimeAdvance = true;
             if (sim.stopMessage != null)
                 break;

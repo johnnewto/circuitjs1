@@ -190,7 +190,8 @@ package com.lushprojects.circuitjs1.client;
 	    double m = couplingCoef*Math.sqrt(l1*l2);
 	    // build inverted matrix
 	    double deti = 1/(l1*l2-m*m);
-	    double ts = isTrapezoidal() ? sim.getTimingState().timeStep/2 : sim.getTimingState().timeStep;
+	    double dt = getSimulationContext().getTimeStep();
+	    double ts = isTrapezoidal() ? dt/2 : dt;
 	    a1 = l2*deti*ts; // we multiply dt/2 into a1..a4 here
 	    a2 = -m*deti*ts;
 	    a3 = -m*deti*ts;

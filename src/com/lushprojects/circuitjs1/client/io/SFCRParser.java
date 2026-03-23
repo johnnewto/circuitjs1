@@ -177,7 +177,7 @@ public class SFCRParser {
     /** Create a new SFCR parser. */
     public SFCRParser(CirSim sim) {
         this.sim = sim;
-        lookupClampDefault = (sim == null) ? true : sim.sfcrLookupClampDefault;
+        lookupClampDefault = (sim == null) ? true : sim.isSfcrLookupClampDefault();
     }
 
     public static class ParseException extends RuntimeException {
@@ -446,7 +446,7 @@ public class SFCRParser {
         globalLookupTables.clear();
         scopedLookupTables.clear();
         LookupTableRegistry.clear();
-        lookupClampDefault = (sim == null) ? true : sim.sfcrLookupClampDefault;
+        lookupClampDefault = (sim == null) ? true : sim.isSfcrLookupClampDefault();
         actionElementFromActionBlock = false;
         if (sim != null) sim.getSFCRDocumentState().clearBlockComments();
         currentY = 24;
@@ -840,7 +840,9 @@ public class SFCRParser {
                 switch (key) {
                     case "timestep":
                     case "timeStep":
-                        sim.getTimingState().maxTimeStep = sim.getTimingState().timeStep = Double.parseDouble(value);
+                        double ts = Double.parseDouble(value);
+                        sim.setMaxTimeStep(ts);
+                        sim.setTimeStep(ts);
                         break;
                     case "voltageRange":
                         CircuitElm.voltageRange = Double.parseDouble(value);
@@ -887,12 +889,12 @@ public class SFCRParser {
                     case "lookupMode":
                         {
                             String mode = normalizeLookupMode(value);
-                            sim.sfcrLookupClampDefault = mode.equals("pwl");
+                            sim.setSfcrLookupClampDefault(mode.equals("pwl"));
                         }
                         break;
                     case "equationTableMnaMode":
                     case "eqnTableMnaMode":
-                        sim.equationTableMnaMode = parseBoolean(value, sim.equationTableMnaMode);
+                        sim.setEquationTableMnaMode(parseBoolean(value, sim.isEquationTableMnaMode()));
                         break;
                     case "equationTableNewtonJacobianEnabled":
                     case "eqnTableNewtonJacobian":
@@ -904,7 +906,7 @@ public class SFCRParser {
                         {
                             double tol = Double.parseDouble(value);
                             if (tol > 0) {
-                                sim.equationTableConvergenceTolerance = tol;
+                                sim.setEquationTableConvergenceTolerance(tol);
                             }
                         }
                         break;

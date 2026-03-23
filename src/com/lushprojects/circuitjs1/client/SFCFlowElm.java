@@ -6,6 +6,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
+
 /**
  * SFCFlowElm - Stock-Flow Consistent Transaction Flow Element
  * 
@@ -241,15 +243,16 @@ public class SFCFlowElm extends CircuitElm {
      * More lenient over time to help convergence.
      */
     double getConvergeLimit() {
-        if (sim.subIterations < 10)
+        if (sim.getSubIterations() < 10)
             return 0.001;
-        if (sim.subIterations < 100)
+        if (sim.getSubIterations() < 100)
             return 0.01;
         return 0.1;
     }
     
     @Override
     void doStep() {
+        SimulationContext context = getSimulationContext();
         if (compiledExpr == null) {
             // No valid expression, stamp small resistor to avoid singular matrix
             sim.stampResistor(nodes[0], nodes[1], 1e8);
@@ -265,14 +268,14 @@ public class SFCFlowElm extends CircuitElm {
         
         if (Math.abs(vs - lastVs) > convergeLimit || 
             Math.abs(vd - lastVd) > convergeLimit) {
-            sim.converged = false;
+            sim.setConverged(false);
         }
         
         // Set up expression state
         exprState.values[0] = vs;              // Vs
         exprState.values[1] = vd;              // Vd  
         exprState.values[2] = sliderValue;    // slider parameter
-        exprState.t = sim.getTimingState().t;
+        exprState.t = context.getTime();
         
         // Evaluate flow equation
         flowValue = compiledExpr.eval(exprState);

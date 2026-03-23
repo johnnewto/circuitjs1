@@ -6,6 +6,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 class ScenarioElm extends CircuitElm {
@@ -125,9 +126,10 @@ class ScenarioElm extends CircuitElm {
 
     @Override
     void doStep() {
+        SimulationContext context = getSimulationContext();
         boolean active = false;
         if (enabled) {
-            double t = sim.getTimingState().t;
+            double t = context.getTime();
             boolean inStart = (t >= startTime);
             boolean inEnd = (endTime < 0 || t <= endTime);
             active = inStart && inEnd;

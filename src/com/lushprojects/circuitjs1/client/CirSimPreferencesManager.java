@@ -74,7 +74,7 @@ class CirSimPreferencesManager {
             if (eqTolStr != null) {
                 double eqTol = Double.parseDouble(eqTolStr);
                 if (eqTol > 0)
-                    sim.equationTableConvergenceTolerance = eqTol;
+                    sim.setEquationTableConvergenceTolerance(eqTol);
             }
         } catch (Exception e) {
         }
