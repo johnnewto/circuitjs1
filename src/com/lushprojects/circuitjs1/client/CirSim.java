@@ -824,18 +824,16 @@ public CirSim() {
     // get circuit bounds.  remember this doesn't use setBbox().  That is calculated when we draw
     // the circuit, but this needs to be ready before we first draw it, so we use this crude method
     Rectangle getCircuitBounds() {
-    	int i;
     	int minx = 30000, maxx = -30000, miny = 30000, maxy = -30000;
-    	for (i = 0; i != elmList.size(); i++) {
-    		CircuitElm ce = getElm(i);
+    	for (CircuitElm ce : elmList) {
     		// centered text causes problems when trying to center the circuit,
     		// so we special-case it here
     		if (!ce.isCenteredText()) {
-    			minx = min(ce.x, min(ce.x2, minx));
-    			maxx = max(ce.x, max(ce.x2, maxx));
+    			minx = Math.min(ce.x, Math.min(ce.x2, minx));
+    			maxx = Math.max(ce.x, Math.max(ce.x2, maxx));
     		}
-    		miny = min(ce.y, min(ce.y2, miny));
-    		maxy = max(ce.y, max(ce.y2, maxy));
+    		miny = Math.min(ce.y, Math.min(ce.y2, miny));
+    		maxy = Math.max(ce.y, Math.max(ce.y2, maxy));
     	}
     	if (minx > maxx)
     	    return null;
@@ -1232,9 +1230,10 @@ public CirSim() {
     int periodicInterval = 100; // process every 100 timesteps
 	int nextPeriodicTime = 0;
 
-	int min(int a, int b) { return (a < b) ? a : b; }
-    int max(int a, int b) { return (a > b) ? a : b; }
-    
+	// Kept as package-visible wrappers because other controllers call sim.min/max.
+	int min(int a, int b) { return Math.min(a, b); }
+    int max(int a, int b) { return Math.max(a, b); }
+
     public void resetAction(){
     	int i;
     	analyzeFlag = true;
@@ -1251,16 +1250,8 @@ public CirSim() {
     	ComputedValues.clearMasterTables();
 		    	
     	// Clear node voltages to ensure clean start
-    	if (solverMatrixState.nodeVoltages != null) {
-    	    for (i = 0; i < solverMatrixState.nodeVoltages.length; i++) {
-    	        solverMatrixState.nodeVoltages[i] = 0.0;
-    	    }
-    	}
-    	if (solverMatrixState.lastNodeVoltages != null) {
-    	    for (i = 0; i < solverMatrixState.lastNodeVoltages.length; i++) {
-    	        solverMatrixState.lastNodeVoltages[i] = 0.0;
-    	    }
-    	}
+    	zeroVoltages(solverMatrixState.nodeVoltages);
+    	zeroVoltages(solverMatrixState.lastNodeVoltages);
  
     	
     	for (i = 0; i != elmList.size(); i++)
@@ -1273,6 +1264,14 @@ public CirSim() {
 	scheduler.reset();
 	
     	repaint();
+    }
+
+    // Avoid duplicated loops when resetting solver state arrays.
+    private void zeroVoltages(double[] values) {
+	if (values == null)
+	    return;
+	for (int i = 0; i < values.length; i++)
+	    values[i] = 0.0;
     }
 
     void onScenarioActivated(boolean resetPlots, boolean openPlotlyViewer) {
@@ -1469,7 +1468,7 @@ public CirSim() {
 	boolean canFlipY = true;
 	boolean canFlipXY = true;
 	int selCount = clipboardManager.countSelected();
-	for (CircuitElm elm : elmList)
+	for (CircuitElm elm : elmList) {
 	    if (elm.isSelected() || selCount == 0) {
 		if (!elm.canFlipX())
 		    canFlipX = false;
@@ -1477,7 +1476,11 @@ public CirSim() {
 		    canFlipY = false;
 		if (!elm.canFlipXY())
 		    canFlipXY = false;
+		// If there is at least one selected element, we can stop once all options are disabled.
+		if (selCount > 0 && !canFlipX && !canFlipY && !canFlipXY)
+		    break;
 	    }
+	}
 	cutItem.setEnabled(selCount > 0);
 	copyItem.setEnabled(selCount > 0);
 	flipXItem.setEnabled(canFlipX);
@@ -1494,24 +1497,27 @@ public CirSim() {
      * @param ce Element to set as mouse element (or null)
      */
     void setMouseElm(CircuitElm ce) {
-    	if (ce!=mouseElm) {
-    		if (mouseElm!=null)
-    			mouseElm.setMouseElm(false);
-    		if (ce!=null)
-    			ce.setMouseElm(true);
-    		mouseElm=ce;
-    		int i;
-    		for (i = 0; i < adjustables.size(); i++)
-    		    adjustables.get(i).setMouseElm(ce);
-    		
-			// Track highlighted MNA node for cross-element highlighting.
-			// Use labelList node when available, then fall back to physical nodes[0].
-    		if (ce instanceof LabeledNodeElm) {
-    		    Integer labelNode = LabeledNodeElm.getByName(((LabeledNodeElm) ce).getName());
-    		    highlightedNode = (labelNode != null) ? labelNode : ce.nodes[0];
-    		} else
-    		    highlightedNode = -1;
-    	}
+	if (ce == mouseElm)
+	    return;
+	if (mouseElm != null)
+	    mouseElm.setMouseElm(false);
+	if (ce != null)
+	    ce.setMouseElm(true);
+	mouseElm = ce;
+	for (int i = 0; i < adjustables.size(); i++)
+	    adjustables.get(i).setMouseElm(ce);
+	updateHighlightedNode(ce);
+    }
+
+    private void updateHighlightedNode(CircuitElm ce) {
+	// Track highlighted MNA node for cross-element highlighting.
+	// Use labeled node mapping when available, then fall back to the first physical node.
+	if (ce instanceof LabeledNodeElm) {
+	    Integer labelNode = LabeledNodeElm.getByName(((LabeledNodeElm) ce).getName());
+	    highlightedNode = (labelNode != null) ? labelNode : ce.nodes[0];
+	    return;
+	}
+	highlightedNode = -1;
     }
 
     void removeZeroLengthElements() {
@@ -1525,7 +1531,9 @@ public CirSim() {
     			changed = true;
     		}
     	}
-    	needAnalyze();
+    	// Re-analysis is expensive; skip it if nothing was removed.
+    	if (changed)
+    	    needAnalyze();
     }
     
     /**
