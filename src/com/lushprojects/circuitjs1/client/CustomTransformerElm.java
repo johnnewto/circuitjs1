@@ -77,8 +77,8 @@ class CustomTransformerElm extends CircuitElm {
 	    x2 = xx; y2 = yy;
 	    setPoints();
 	}
-	int getDumpType() { return 406; }
-	String dump() {
+	protected int getDumpType() { return 406; }
+	protected String dump() {
 	    String s = super.dump() + " " + inductance + " " + couplingCoef + " " + CustomLogicModel.escape(description) + " " + coilCount + " ";
 	    int i;
 	    for (i = 0; i != coilCount; i++) {
@@ -176,7 +176,7 @@ class CustomTransformerElm extends CircuitElm {
 	}
 	
 	boolean isTrapezoidal() { return (flags & Inductor.FLAG_BACK_EULER) == 0; }
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    int i;
 	    
 	    // draw taps
@@ -221,7 +221,7 @@ class CustomTransformerElm extends CircuitElm {
 	    adjustBbox(ptCore[0], ptCore[3]);
 	}
 	
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    point2.y = point1.y;
 	    flip = hasFlag(FLAG_FLIP) ? -1 : 1;
@@ -273,11 +273,11 @@ class CustomTransformerElm extends CircuitElm {
 	    } else
 		dots = null;
 	}
-	Point getPost(int n) {
+	protected Point getPost(int n) {
 	    return nodePoints[n];
 	}
-	int getPostCount() { return nodeCount; }
-	void reset() {
+	protected int getPostCount() { return nodeCount; }
+	protected void reset() {
 	    int i;
 	    for (i = 0; i != coilCount; i++)
 		coilCurrents[i] = coilCurSourceValues[i] = coilCurCounts[i] = 0;
@@ -286,7 +286,7 @@ class CustomTransformerElm extends CircuitElm {
 	}
 	double xformMatrix[][];
 	
-	void stamp() {
+	protected void stamp() {
 	    // equations for transformer:
 	    //   v1 = L1  di1/dt + M12  di2/dt + M13 di3/dt + ...
 	    //   v2 = M21 di1/dt + L2 di2/dt   + M23 di3/dt + ...
@@ -355,7 +355,7 @@ class CustomTransformerElm extends CircuitElm {
 	    }
 	}
 	
-	void doStep() {
+	protected void doStep() {
 	    int i;
 	    for (i = 0; i != coilCount; i++) {
 		int n = coilNodes[i];
@@ -384,11 +384,11 @@ class CustomTransformerElm extends CircuitElm {
 	    }
 	}
 	
-	@Override double getCurrentIntoNode(int n) {
+	@Override protected double getCurrentIntoNode(int n) {
 	    return -nodeCurrents[n];
 	}
 	
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "transformer (custom)";
 	    arr[1] = "L = " + getUnitText(inductance, "H");
 	    int i;
@@ -401,7 +401,7 @@ class CustomTransformerElm extends CircuitElm {
 	    }
 	}
 	
-	boolean getConnection(int n1, int n2) {
+	protected boolean getConnection(int n1, int n2) {
 	    int i;
 	    for (i = 0; i != coilCount; i++)
 		if (comparePair(n1, n2, coilNodes[i], coilNodes[i]+1))

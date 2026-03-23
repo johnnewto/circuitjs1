@@ -40,15 +40,15 @@ package com.lushprojects.circuitjs1.client;
 	    } catch (Exception e) {}
 	    ind.setup(inductance, current, flags);
 	}
-	int getDumpType() { return 'l'; }
-	String dump() {
+	protected int getDumpType() { return 'l'; }
+	protected String dump() {
 	    return super.dump() + " " + inductance + " " + current + " " + initialCurrent;
 	}
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    calcLeads(32);
 	}
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    double v1 = volts[0];
 	    double v2 = volts[1];
 	    int i;
@@ -64,25 +64,25 @@ package com.lushprojects.circuitjs1.client;
 	    doDots(g);
 	    drawPosts(g);
 	}
-	void reset() {
+	protected void reset() {
 	    volts[0] = volts[1] = curcount = 0;
 	    current = initialCurrent;
 	    ind.resetTo(initialCurrent);
 	}
-	void stamp() { ind.stamp(nodes[0], nodes[1]); }
+	protected void stamp() { ind.stamp(nodes[0], nodes[1]); }
 	void startIteration() {
 	    ind.startIteration(volts[0]-volts[1]);
 	}
-	boolean nonLinear() { return ind.nonLinear(); }
+	protected boolean nonLinear() { return ind.nonLinear(); }
 	void calculateCurrent() {
 	    double voltdiff = volts[0]-volts[1];
 	    current = ind.calculateCurrent(voltdiff);
 	}
-	void doStep() {
+	protected void doStep() {
 	    double voltdiff = volts[0]-volts[1];
 	    ind.doStep(voltdiff);
 	}
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "inductor";
 	    getBasicInfo(arr);
 	    arr[3] = "L = " + getUnitText(inductance, "H");

@@ -71,7 +71,7 @@ package com.lushprojects.circuitjs1.client;
 	    return 0;
 	}
 
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 
 	    if (useEuroGates()) {
@@ -113,6 +113,6 @@ package com.lushprojects.circuitjs1.client;
 		f |= getInput(i);
 	    return f;
 	}
-	int getDumpType() { return 152; }
+	protected int getDumpType() { return 152; }
 	int getShortcut() { return '3'; }
     }

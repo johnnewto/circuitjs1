@@ -36,11 +36,11 @@ class LineElm extends GraphicElm {
 	setBbox(x, y, x2, y2);
     }
 
-    String dump() {
+    protected String dump() {
 	return super.dump();
     }
 
-    int getDumpType() { return 423; }
+    protected int getDumpType() { return 423; }
 
     void drag(int xx, int yy) {
 	// Check if a specific handle was grabbed
@@ -63,7 +63,7 @@ class LineElm extends GraphicElm {
 	return Math.hypot(x-x2, y-y2) < 16;
     }
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	//g.setColor(needsHighlight() ? selectColor : lightGrayColor);
 	g.setColor(needsHighlight() ? selectColor : Color.GRAY);
 	setBbox(x, y, x2, y2);
@@ -77,7 +77,7 @@ class LineElm extends GraphicElm {
     public void setEditValue(int n, EditInfo ei) {
     }
 
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
     }
 
     @Override

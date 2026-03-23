@@ -39,20 +39,20 @@ class SipoShiftElm extends ChipElm {
 			pins[DATA_PIN_INDEX + i].value = data[i];
 	}
 	
-	String dump() {
+	protected String dump() {
 		boolean[] data = new boolean[bits];
 		for (int i = 0; i < bits; i++)
 			data[i] = pins[DATA_PIN_INDEX + i].value;
 		
 		return super.dump() + writeBits(data);
 	}
-	int getDumpType() { return 189; }
-	String getChipName() { return "SIPO shift register"; }
+	protected int getDumpType() { return 189; }
+	protected String getChipName() { return "SIPO shift register"; }
 	
 	boolean needsBits() { return true; }
 	int defaultBitCount() { return 8; }
 	
-	void setupPins() {
+	protected void setupPins() {
 		sizeX = bits + 1;
 		sizeY = 3;
 		pins = new Pin[getPostCount()];
@@ -69,8 +69,8 @@ class SipoShiftElm extends ChipElm {
 		}
 		allocNodes();
 	}
-	int getPostCount() { return 2 + bits; }
-	int getVoltageSourceCount() { return bits; }
+	protected int getPostCount() { return 2 + bits; }
+	protected int getVoltageSourceCount() { return bits; }
 	
 	void execute() {
 		if (pins[1].value != clockstate) {

@@ -169,10 +169,10 @@ public class SFCFlowElm extends CircuitElm {
     // =========================================================================
     
     @Override
-    int getDumpType() { return 269; }  // Unique element type
+    protected int getDumpType() { return 269; }  // Unique element type
     
     @Override
-    String dump() {
+    protected String dump() {
         return super.dump() + " " + 
                CustomLogicModel.escape(flowName) + " " + 
                CustomLogicModel.escape(flowEquation) + " " +
@@ -185,10 +185,10 @@ public class SFCFlowElm extends CircuitElm {
     // =========================================================================
     
     @Override
-    int getPostCount() { return 2; }  // Source and destination nodes
+    protected int getPostCount() { return 2; }  // Source and destination nodes
     
     @Override
-    void setPoints() {
+    protected void setPoints() {
         super.setPoints();
         calcLeads(24);
         
@@ -206,12 +206,12 @@ public class SFCFlowElm extends CircuitElm {
     // =========================================================================
     
     @Override
-    boolean nonLinear() { 
+    protected boolean nonLinear() { 
         return true;  // Flow equation may depend on voltages
     }
     
     @Override
-    void reset() {
+    protected void reset() {
         super.reset();
         flowValue = 0;
         lastFlowValue = 0;
@@ -223,14 +223,14 @@ public class SFCFlowElm extends CircuitElm {
     }
     
     @Override
-    void stamp() {
+    protected void stamp() {
         // Mark as nonlinear (equation depends on voltages)
         sim.stampNonLinear(nodes[0]);
         sim.stampNonLinear(nodes[1]);
     }
 
     @Override
-    void postStamp() {
+    protected void postStamp() {
         super.postStamp();
         CirSim csim = CirSim.getInstance();
         if (csim == null || csim.nameToSlot == null) return;
@@ -251,7 +251,7 @@ public class SFCFlowElm extends CircuitElm {
     }
     
     @Override
-    void doStep() {
+    protected void doStep() {
         SimulationContext context = getSimulationContext();
         if (compiledExpr == null) {
             // No valid expression, stamp small resistor to avoid singular matrix
@@ -332,7 +332,7 @@ public class SFCFlowElm extends CircuitElm {
     }
     
     @Override
-    void stepFinished() {
+    protected void stepFinished() {
         // Register flow value for use by other elements
         ComputedValues.setComputedValue(flowName, flowValue, this);
         ComputedValues.markComputedThisStep(flowName);
@@ -349,7 +349,7 @@ public class SFCFlowElm extends CircuitElm {
     }
     
     @Override
-    double getCurrentIntoNode(int n) {
+    protected double getCurrentIntoNode(int n) {
         // Flow is from node[0] to node[1]
         // Current into node[0] = -flow (flow leaves source)
         // Current into node[1] = +flow (flow enters destination)
@@ -358,7 +358,7 @@ public class SFCFlowElm extends CircuitElm {
     }
     
     @Override
-    boolean getConnection(int n1, int n2) {
+    protected boolean getConnection(int n1, int n2) {
         // Current source has no direct connection between nodes
         // (current flows through it, but it's not a conductor)
         return false;
@@ -369,7 +369,7 @@ public class SFCFlowElm extends CircuitElm {
     // =========================================================================
     
     @Override
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
         setBbox(point1, point2, 6);
         
         // Draw leads
@@ -422,7 +422,7 @@ public class SFCFlowElm extends CircuitElm {
     // =========================================================================
     
     @Override
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
         arr[0] = "SFC Flow: " + flowName;
         arr[1] = "Flow = " + getCurrentText(flowValue);
         arr[2] = "Equation: " + flowEquation;

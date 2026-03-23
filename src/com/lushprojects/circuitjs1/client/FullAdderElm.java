@@ -35,10 +35,10 @@ package com.lushprojects.circuitjs1.client;
 	}
 	static final int FLAG_BITS = 2;
 	
-	String getChipName() { return "Adder"; }
+	protected String getChipName() { return "Adder"; }
 	int carryIn, carryOut;
 
-	void setupPins() {
+	protected void setupPins() {
 	    sizeX=2;
 	    sizeY=bits*2+1;
 	    pins=new Pin[getPostCount()];
@@ -57,10 +57,10 @@ package com.lushprojects.circuitjs1.client;
 	    pins[carryIn] = new Pin(bits*2, SIDE_W, "Cin");
 	    allocNodes();
 	}
-	int getPostCount() {
+	protected int getPostCount() {
 	    return bits*3+2;
 	}
-	int getVoltageSourceCount() { return bits+1; }
+	protected int getVoltageSourceCount() { return bits+1; }
 
 	void execute() {
 	    int i;
@@ -72,7 +72,7 @@ package com.lushprojects.circuitjs1.client;
 	    }
 	    writeOutput(carryOut, (c == 1));
 	}
-	int getDumpType() { return 196; }
+	protected int getDumpType() { return 196; }
 	boolean needsBits() { return (flags & FLAG_BITS) != 0; }
 
         public EditInfo getChipEditInfo(int n) {

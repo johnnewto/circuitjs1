@@ -42,19 +42,19 @@ class SweepElm extends CircuitElm {
 	sweepTime = Double.parseDouble(st.nextToken());
 	reset();
     }
-    int getDumpType() { return 170; }
-    int getPostCount() { return 1; }
+    protected int getDumpType() { return 170; }
+    protected int getPostCount() { return 1; }
     final int circleSize = 17;
 
-    String dump() {
+    protected String dump() {
 	return super.dump() + " " + minF + " " + maxF + " " + maxV + " " +
 	    sweepTime;
     }
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	lead1 = interpPoint(point1, point2, 1-circleSize/dn);
     }
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	setBbox(point1, point2, circleSize);
 	setVoltageColor(g, volts[0]);
 	drawThickLine(g, point1, lead1);
@@ -100,7 +100,7 @@ class SweepElm extends CircuitElm {
 	    drawDots(g, point1, lead1, curcount);
     }
 	
-    void stamp() {
+    protected void stamp() {
 	sim.stampVoltageSource(0, nodes[0], voltSource);
     }
     double fadd, fmul, freqTime, savedTimeStep;
@@ -121,7 +121,7 @@ class SweepElm extends CircuitElm {
 	}
 	savedTimeStep = context.getTimeStep();
     }
-    void reset() {
+    protected void reset() {
 	frequency = minF;
 	freqTime = 0;
 	dir = 1;
@@ -150,14 +150,14 @@ class SweepElm extends CircuitElm {
 	    dir = 1;
 	}
     }
-    void doStep() {
+    protected void doStep() {
 	sim.updateVoltageSource(0, nodes[0], voltSource, v);
     }
 	
     double getVoltageDiff() { return volts[0]; }
-    int getVoltageSourceCount() { return 1; }
+    protected int getVoltageSourceCount() { return 1; }
     boolean hasGroundConnection(int n1) { return true; }
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = "sweep " + (((flags & FLAG_LOG) == 0) ? "(linear)" : "(log)");
 	arr[1] = "I = " + getCurrentDText(getCurrent());
 	arr[2] = "V = " + getVoltageText(volts[0]);

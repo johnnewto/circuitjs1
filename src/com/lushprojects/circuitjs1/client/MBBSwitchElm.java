@@ -45,14 +45,14 @@ package com.lushprojects.circuitjs1.client;
 	    setup();
 	}
 	
-	int getDumpType() { return 416; }
-	String dump() {
+	protected int getDumpType() { return 416; }
+	protected String dump() {
 	    return super.dump() + " " + link;
 	}
 
 	final int openhs = 16;
 	Point swposts[], swpoles[];
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    calcLeads(32);
 	    swposts = newPointArray(2);
@@ -70,7 +70,7 @@ package com.lushprojects.circuitjs1.client;
 	    posCount = 4;
 	}
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    
 	    setBbox(point1, point2, openhs);
 	    adjustBbox(swposts[0], swposts[1]);
@@ -104,7 +104,7 @@ package com.lushprojects.circuitjs1.client;
 	    drawPosts(g);
 	}
 	
-	double getCurrentIntoNode(int n) {
+	protected double getCurrentIntoNode(int n) {
 	    if (n == 0)
 		return -currents[0]-currents[1];
 	    return currents[n-1];
@@ -114,11 +114,11 @@ package com.lushprojects.circuitjs1.client;
 	    return new Rectangle(lead1).union(new Rectangle(swpoles[0])).union(new Rectangle(swpoles[1]));
 	}	
 
-	Point getPost(int n) {
+	protected Point getPost(int n) {
 	    return (n == 0) ? point1 : swposts[n-1];
 	}
 	
-	int getPostCount() { return 3; }
+	protected int getPostCount() { return 3; }
 	
 	void setCurrent(int vn, double c) {
 	    // set current for voltage source vn to c
@@ -132,10 +132,10 @@ package com.lushprojects.circuitjs1.client;
 	    if (!both)
 		currents[1-(position/2)] = 0;
 	}
-	void setVoltageSource(int n, int v) {
+	protected void setVoltageSource(int n, int v) {
 	    voltSources[n] = v;
 	}
-	void stamp() {
+	protected void stamp() {
 	    int vs = 0;
 	    if (both || position == 0)
 		sim.stampVoltageSource(nodes[0], nodes[1], voltSources[vs++], 0);
@@ -145,7 +145,7 @@ package com.lushprojects.circuitjs1.client;
 	
 	// connection is implemented by voltage source with voltage = 0.
 	// need two for both loads connected, otherwise one.
-	int getVoltageSourceCount() {
+	protected int getVoltageSourceCount() {
 	    both = (position == 1 || position == 3);
 	    return (both) ? 2 : 1;
 	}
@@ -163,7 +163,7 @@ package com.lushprojects.circuitjs1.client;
 		}
 	    }
 	}
-	boolean getConnection(int n1, int n2) {
+	protected boolean getConnection(int n1, int n2) {
 	    if (both)
 		return true;
 	    return comparePair(n1, n2, 0, 1+position/2);
@@ -171,10 +171,10 @@ package com.lushprojects.circuitjs1.client;
 	
 	// do not optimize out, even though isWireEquivalent() is true (because it may have 3 nodes to merge
 	// and calcWireClosure() doesn't handle that case)
-	boolean isRemovableWire() { return false; }
-	boolean isWireEquivalent() { return true; }
+	protected boolean isRemovableWire() { return false; }
+	protected boolean isWireEquivalent() { return true; }
 	
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "switch (" + (link == 0 ? "S" : "D") + "PDT, MBB)";
 	    arr[1] = "I = " + getCurrentDText(getCurrent());
 	}

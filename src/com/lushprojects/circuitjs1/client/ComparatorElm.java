@@ -40,7 +40,7 @@ public class ComparatorElm extends CompositeElm {
 	
 	public boolean getConnection(int n1, int n2) { return false; }
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    setBbox(point1, point2, opheight*2);
 	    setVoltageColor(g, volts[0]);
 	    drawThickLine(g, in1p[0], in1p[1]);
@@ -60,7 +60,7 @@ public class ComparatorElm extends CompositeElm {
 	    drawPosts(g);
 	}
 
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    if (dn > 150 && this == sim.dragElm)
 		setSize(2);
@@ -88,7 +88,7 @@ public class ComparatorElm extends CompositeElm {
 		setPost(2,point2);
 	}
 	
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	 arr[0] = "Comparator";
 	    arr[1] = "V+ = " + getVoltageText(volts[1]);
 	    arr[2] = "V- = " + getVoltageText(volts[0]);

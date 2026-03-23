@@ -39,19 +39,19 @@ class TriodeElm extends CircuitElm {
     void setup() {
 	noDiagonal = true;
     }
-    boolean nonLinear() { return true; }
-    void reset() {
+    protected boolean nonLinear() { return true; }
+    protected void reset() {
 	volts[0] = volts[1] = volts[2] = 0;
 	curcount = 0;
     }
-    String dump() {
+    protected String dump() {
 	return super.dump() + " " + mu + " " + kg1;
     }
-    int getDumpType() { return 173; }
+    protected int getDumpType() { return 173; }
 	
     Point plate[], grid[], cath[], midgrid, midcath;
     int circler;
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	plate = newPointArray(4);
 	grid  = newPointArray(8);
@@ -80,7 +80,7 @@ class TriodeElm extends CircuitElm {
 	interpPoint(point2, plate[1], cath[0], -farw/(double) nearw, cathw);
     }
 	
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	g.setColor(Color.gray);
 	drawThickCircle(g, point2.x, point2.y, circler);
 	setBbox(point1, plate[0], 16);
@@ -115,7 +115,7 @@ class TriodeElm extends CircuitElm {
 	drawPosts(g);
     }
     
-    double getCurrentIntoNode(int n) {
+    protected double getCurrentIntoNode(int n) {
 	if (n == 2)
 	    return currentc;
 	if (n == 0)
@@ -123,10 +123,10 @@ class TriodeElm extends CircuitElm {
 	return -currentg;
     }
 
-    Point getPost(int n) {
+    protected Point getPost(int n) {
 	return (n == 0) ? plate[0] : (n == 1) ? grid[0] : cath[0];
     }
-    int getPostCount() { return 3; }
+    protected int getPostCount() { return 3; }
     double getPower() { return (volts[0]-volts[2])*currentc + (volts[gridN]-volts[cathN])*currentg; }
     double getCurrent() { return currentc; } // for scope
 
@@ -135,7 +135,7 @@ class TriodeElm extends CircuitElm {
     final int plateN = 0;
 
     double lastv0, lastv1, lastv2;
-    void doStep() {
+    protected void doStep() {
 	double vs[] = new double[3];
 	vs[0] = volts[0];
 	vs[1] = volts[1];
@@ -195,12 +195,12 @@ class TriodeElm extends CircuitElm {
 	sim.stampRightSide(nodes[cathN ], -rs);
     }
 
-    void stamp() {
+    protected void stamp() {
 	sim.stampNonLinear(nodes[0]);
 	sim.stampNonLinear(nodes[1]);
 	sim.stampNonLinear(nodes[2]);
     }
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = "triode";
 	double vac = volts[plateN]-volts[cathN];
 	double vgc = volts[gridN ]-volts[cathN];
@@ -212,7 +212,7 @@ class TriodeElm extends CircuitElm {
 	arr[5] = "Ig = " + getUnitText(currentg, "A");
     }
     // grid not connected to other terminals
-    boolean getConnection(int n1, int n2) { return !(n1 == 1 || n2 == 1); }
+    protected boolean getConnection(int n1, int n2) { return !(n1 == 1 || n2 == 1); }
     public EditInfo getEditInfo(int n) {
 	if (n == 0)
 	    return new EditInfo("mu", mu, 0, 0).setDimensionless();

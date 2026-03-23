@@ -33,7 +33,7 @@ class ExtVoltageElm extends RailElm {
         String name;
         double voltage;
 
-        String dump() { return super.dump() + " " + CustomLogicModel.escape(name); }
+        protected String dump() { return super.dump() + " " + CustomLogicModel.escape(name); }
         
 	void drawRail(Graphics g) {
 	    drawRailText(g, name);
@@ -45,7 +45,7 @@ class ExtVoltageElm extends RailElm {
             return voltage;
 	}
 
-	int getDumpType() { return 418; }
+	protected int getDumpType() { return 418; }
 	int getShortcut() { return 0; }
 
 	public EditInfo getEditInfo(int n) {
@@ -61,7 +61,7 @@ class ExtVoltageElm extends RailElm {
 		name = ei.textf.getText();
 	}
 
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    super.getInfo(arr);
 	    arr[0] = Locale.LS("ext. voltage") + " (" + name + ")";
 	}

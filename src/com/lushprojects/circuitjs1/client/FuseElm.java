@@ -43,19 +43,19 @@ class FuseElm extends CircuitElm {
 	    heat = Double.parseDouble(st.nextToken());
 	    blown = Boolean.parseBoolean(st.nextToken());
 	}
-	String dump() {
+	protected String dump() {
 	    return super.dump() + " " + resistance + " " + i2t + " " + heat + " " + blown;
 	}
-	int getDumpType() { return 404; }
+	protected int getDumpType() { return 404; }
 
 	boolean isIECSymbol() { return (flags & FLAG_IEC_SYMBOL) != 0; }
 	
-	void reset() {
+	protected void reset() {
 	    super.reset();
 	    heat = 0;
 	    blown = false;
 	}
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    int llen = isIECSymbol() ? 32 : 16;
 	    calcLeads(llen);
@@ -86,7 +86,7 @@ class FuseElm extends CircuitElm {
 	    return Color.white;
 	}
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    int segments = 16;
 	    int i;
 	    int hs=6;
@@ -124,11 +124,11 @@ class FuseElm extends CircuitElm {
 	void calculateCurrent() {
 	    current = (volts[0]-volts[1])/(blown ? blownResistance : resistance);
 	}
-	void stamp() {
+	protected void stamp() {
 	    sim.stampNonLinear(nodes[0]);
 	    sim.stampNonLinear(nodes[1]);
 	}
-	boolean nonLinear() { return true; }
+	protected boolean nonLinear() { return true; }
 	void startIteration() {
 	    SimulationContext context = getSimulationContext();
 	    double i = getCurrent();
@@ -144,10 +144,10 @@ class FuseElm extends CircuitElm {
 	    if (heat > i2t)
 		blown = true;
 	}
-	void doStep() {
+	protected void doStep() {
 	    sim.stampResistor(nodes[0], nodes[1], blown ? blownResistance : resistance);
 	}
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = blown ? "fuse (blown)" : "fuse";
 	    getBasicInfo(arr);
 	    arr[3] = "R = " + getUnitText(resistance, Locale.ohmString);

@@ -40,8 +40,8 @@ package com.lushprojects.circuitjs1.client;
 	    } catch (Exception e) { }
 	    noDiagonal = true;
 	}
-	int getDumpType() { return 429; }
-	String dump() {
+	protected int getDumpType() { return 429; }
+	protected String dump() {
 	    return super.dump() + " " + poleCount;
 	}
 
@@ -51,7 +51,7 @@ package com.lushprojects.circuitjs1.client;
         int voltageSources[];
         double currents[], curcounts[];
 
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    calcLeads(32);
 	    voltageSources = new int[poleCount];
@@ -79,7 +79,7 @@ package com.lushprojects.circuitjs1.client;
 	    }
 	}
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    setBbox(point1, point2, 1);
 	    adjustBbox(throwPosts[1], throwPosts[poleCount*2-2]);
 
@@ -121,7 +121,7 @@ package com.lushprojects.circuitjs1.client;
 	    drawPosts(g);
 	}
 	
-	double getCurrentIntoNode(int n) {
+	protected double getCurrentIntoNode(int n) {
 	    int t = n/3;
 	    int n3 = n % 3;
 	    if (n3 == 0)
@@ -141,41 +141,41 @@ package com.lushprojects.circuitjs1.client;
 	    return new Rectangle(poleLeads[0]).union(new Rectangle(throwLeads[1])).union(new Rectangle(throwLeads[poleCount*4-4]));
 	}	
 
-	Point getPost(int n) {
+	protected Point getPost(int n) {
 	    int t = n/3;
 	    int n3 = n % 3;
 	    if (n3 == 0)
 		return polePosts[t];
 	    return throwPosts[t*2+n3-1];
 	}
-	int getPostCount() { return 3*poleCount; }
+	protected int getPostCount() { return 3*poleCount; }
 	void calculateCurrent() {
 	}
 	
-        void setVoltageSource(int j, int vs) {
+        protected void setVoltageSource(int j, int vs) {
             voltageSources[j] = vs;
         }
 
-	void stamp() {
+	protected void stamp() {
 	    int i;
 	    for (i = 0; i != poleCount; i++)
 		sim.stampVoltageSource(nodes[i*3], nodes[position+1+i*3], voltageSources[i], 0);
 	}
 		
-	int getVoltageSourceCount() {
+	protected int getVoltageSourceCount() {
 	    return poleCount;
 	}
 	
-	boolean getConnection(int n1, int n2) {
+	protected boolean getConnection(int n1, int n2) {
 	    return comparePair(n1, n2, 0, 1+position) || comparePair(n1, n2, 3, 4+position);
 	}
 	
-	boolean isWireEquivalent() { return true; }
+	protected boolean isWireEquivalent() { return true; }
 	
 	// optimizing out this element is too complicated to be worth it (see #646)
-	boolean isRemovableWire() { return false; }
+	protected boolean isRemovableWire() { return false; }
 
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = (poleCount == 2) ? "switch (DPDT)" : "switch (" + poleCount + "PDT)";
 	    int i;
 	    for (i = 0; i != poleCount; i++)

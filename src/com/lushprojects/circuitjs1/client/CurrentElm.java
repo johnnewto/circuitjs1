@@ -35,14 +35,14 @@ package com.lushprojects.circuitjs1.client;
 		currentValue = .01;
 	    }
 	}
-	String dump() {
+	protected String dump() {
 	    return super.dump() + " " + currentValue;
 	}
-	int getDumpType() { return 'i'; }
+	protected int getDumpType() { return 'i'; }
 	
 	Polygon arrow;
 	Point ashaft1, ashaft2, center;
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    calcLeads(26);
 	    ashaft1 = interpPoint(lead1, lead2, .25);
@@ -51,7 +51,7 @@ package com.lushprojects.circuitjs1.client;
 	    Point p2 = interpPoint(lead1, lead2, .75);
 	    arrow = calcArrow(center, p2, 4, 4);
 	}
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    int cr = 12;
 	    draw2Leads(g);
 	    setVoltageColor(g, (volts[0]+volts[1])/2);
@@ -77,7 +77,7 @@ package com.lushprojects.circuitjs1.client;
 	}
 	
 	// we defer stamping current sources until we can tell if they have a current path or not
-	void stamp() {
+	protected void stamp() {
 	    if (broken) {
 		// no current path; stamping a current source would cause a matrix error.
 		sim.stampResistor(nodes[0], nodes[1], 1e8);
@@ -97,7 +97,7 @@ package com.lushprojects.circuitjs1.client;
 	public void setEditValue(int n, EditInfo ei) {
 	    currentValue = ei.value;
 	}
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "current source";
 	    int i = getBasicInfo(arr);
             arr[i++] = "P = " + getUnitText(getPower(), "W");

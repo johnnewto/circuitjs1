@@ -67,7 +67,7 @@ import jsinterop.annotations.JsType;
 	    g.setLineWidth(1.0);
 	}
 	
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	 
 	    if (useEuroGates()) {
@@ -94,6 +94,6 @@ import jsinterop.annotations.JsType;
 		f &= getInput(i);
 	    return f;
 	}
-	int getDumpType() { return 150; }
+	protected int getDumpType() { return 150; }
 	int getShortcut() { return '2'; }
     }

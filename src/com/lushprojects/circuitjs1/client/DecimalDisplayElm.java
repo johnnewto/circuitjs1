@@ -36,9 +36,9 @@ class DecimalDisplayElm extends ChipElm {
 	} catch (Exception e) {}
 	setupPins();
     }
-    String getChipName() { return "decimal display"; }
+    protected String getChipName() { return "decimal display"; }
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
         drawChip(g);
         int xl = x+cspc + flippedSizeX*cspc;
         int yl = y-cspc + flippedSizeY*cspc;
@@ -59,9 +59,9 @@ class DecimalDisplayElm extends ChipElm {
         g.restore();
     }
     
-    String dump() { return super.dump() + " " + bitCount; }
+    protected String dump() { return super.dump() + " " + bitCount; }
     
-    void setupPins() {
+    protected void setupPins() {
 	sizeX = 3;
 	sizeY = bitCount;
 	pins = new Pin[bitCount];
@@ -70,9 +70,9 @@ class DecimalDisplayElm extends ChipElm {
 	    pins[i] = new Pin(bitCount-1-i, SIDE_W, "I" + i);
 	allocNodes();
     }
-    int getPostCount() { return bitCount; }
-    int getDumpType() { return 419; }
-    int getVoltageSourceCount() { return 0; }
+    protected int getPostCount() { return bitCount; }
+    protected int getDumpType() { return 419; }
+    protected int getVoltageSourceCount() { return 0; }
     public EditInfo getChipEditInfo(int n) {
         if (n == 0)
             return new EditInfo("# of Bits", bitCount, 1, 8).

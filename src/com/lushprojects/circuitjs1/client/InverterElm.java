@@ -44,15 +44,15 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	    } catch (Exception e) {
 	    }
 	}
-	String dump() {
+	protected String dump() {
 	    return super.dump() + " " + slewRate + " " + highVoltage;
 	}
 	
-	int getDumpType() { return 'I'; }
+	protected int getDumpType() { return 'I'; }
 	
 	Point center;
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    drawPosts(g);
 	    draw2Leads(g);
 	    g.setColor(needsHighlight() ? selectColor : lightGrayColor);
@@ -65,7 +65,7 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	}
 	Polygon gatePoly;
 	Point pcircle;
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    int hs = 16;
 	    int ww = 16;
@@ -90,8 +90,8 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	    }
 	    setBbox(point1, point2, hs);
 	}
-	int getVoltageSourceCount() { return 1; }
-	void stamp() {
+	protected int getVoltageSourceCount() { return 1; }
+	protected void stamp() {
 	    sim.stampVoltageSource(0, nodes[1], voltSource);
 	}
 	
@@ -100,7 +100,7 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	void startIteration() {
 	    lastOutputVoltage = volts[1];
 	}
-	void doStep() {
+	protected void doStep() {
 	    SimulationContext context = getSimulationContext();
 	    double out = volts[0] > highVoltage*.5 ? 0 : highVoltage;
 	    double maxStep = slewRate * context.getTimeStep() * 1e9;
@@ -108,7 +108,7 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	    sim.updateVoltageSource(0, nodes[1], voltSource, out);
 	}
 	double getVoltageDiff() { return volts[0]; }
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "inverter";
 	    arr[1] = "Vi = " + getVoltageText(volts[0]);
 	    arr[2] = "Vo = " + getVoltageText(volts[1]);
@@ -128,13 +128,13 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	}
 	// there is no current path through the inverter input, but there
 	// is an indirect path through the output to ground.
-	boolean getConnection(int n1, int n2) { return false; }
+	protected boolean getConnection(int n1, int n2) { return false; }
 	boolean hasGroundConnection(int n1) {
 	    return (n1 == 1);
 	}
 	int getShortcut() { return '1'; }
 	
-	@Override double getCurrentIntoNode(int n) {
+	@Override protected double getCurrentIntoNode(int n) {
 	    if (n == 1)
 		return current;
 	    return 0;

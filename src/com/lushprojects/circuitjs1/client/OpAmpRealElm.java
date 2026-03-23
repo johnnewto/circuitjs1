@@ -159,7 +159,7 @@ public class OpAmpRealElm extends CompositeElm {
 	return true;
     }
 
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
         setBbox(point1, point2, opheight*2);
         setVoltageColor(g, volts[0]);
         drawThickLine(g, in1p[0], in1p[1]);
@@ -193,7 +193,7 @@ public class OpAmpRealElm extends CompositeElm {
     Polygon triangle;
     Font plusFont;
 
-    void setPoints() {
+    protected void setPoints() {
         super.setPoints();
         int ww = opwidth;
         if (ww > dn/2)
@@ -234,7 +234,7 @@ public class OpAmpRealElm extends CompositeElm {
 	return 409;
     }
 
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	String type = (modelType == MODEL_741) ? "LM741" : "LM324";
         arr[0] = "op-amp (" + type + ")";
         arr[1] = "V+ = " + getVoltageText(volts[1]);

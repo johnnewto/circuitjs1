@@ -6,14 +6,12 @@ import com.lushprojects.circuitjs1.client.ui.ExportAsImageDialog;
 import com.lushprojects.circuitjs1.client.ui.LookupTablesEditorDialog;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
-class EditDialogActions {
+public class EditDialogActions {
     private final CirSim sim;
-
-    EditDialogActions(CirSim sim) {
+    public EditDialogActions(CirSim sim) {
         this.sim = sim;
     }
-
-    void doEdit(Editable eable) {
+    public void doEdit(Editable eable) {
         sim.getClipboardManager().clearSelection();
         sim.getUndoRedoManager().pushUndo();
 

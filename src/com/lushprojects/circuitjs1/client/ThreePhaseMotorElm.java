@@ -52,8 +52,8 @@ class ThreePhaseMotorElm extends CircuitElm {
         curcounts = new double[3];
         coilCurrents = new double[coilCount];
     }
-    int getDumpType() { return 427; }
-    String dump() {
+    protected int getDumpType() { return 427; }
+    protected String dump() {
 	// dump: inductance; resistance, K, Kb, J, b, gearRatio, tau
 	return super.dump() + " " +  Rs + " " + Rr + " " + Ls + " " +  Lr + " " + Lm + " " + b + " " + J;
     }
@@ -61,7 +61,7 @@ class ThreePhaseMotorElm extends CircuitElm {
 
     Point motorCenter;
 
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	posts = newPointArray(6);
 	leads = newPointArray(6);
@@ -76,11 +76,11 @@ class ThreePhaseMotorElm extends CircuitElm {
 	motorCenter = interpPoint(point1, point2, .5);
 	allocNodes();
     }
-    int getPostCount() { return 6; }
-    Point getPost(int n) { return posts[n]; }
+    protected int getPostCount() { return 6; }
+    protected Point getPost(int n) { return posts[n]; }
     int getInternalNodeCount() { return 7; }
-    int getVoltageSourceCount() { return 2; }
-    void reset() {
+    protected int getVoltageSourceCount() { return 2; }
+    protected void reset() {
 	super.reset();
 	filteredSpeed = speed = 0;
         coilCurSourceValues = new double[coilCount];
@@ -101,7 +101,7 @@ class ThreePhaseMotorElm extends CircuitElm {
     
     // based on https://forum.kicad.info/t/ac-motors-simulation-1-phase-3-phase/14188/3
     
-    void stamp() {
+    protected void stamp() {
 	int i;
 	
 	int n001 = nodes[n001_ind];
@@ -178,7 +178,7 @@ class ThreePhaseMotorElm extends CircuitElm {
     double nodeCurrents[];
     int voltSources[];
     
-    void setVoltageSource(int n, int v) { voltSources[n] = v; }
+    protected void setVoltageSource(int n, int v) { voltSources[n] = v; }
     
     double vs1value, vs2value;
 
@@ -198,7 +198,7 @@ class ThreePhaseMotorElm extends CircuitElm {
         vs2value = Zp*speed*(3/2.*Lm*coilCurrents[0] + 1.5*Lr*coilCurrents[3]);
     }
     
-    void doStep() {
+    protected void doStep() {
         int i;
         for (i = 0; i != coilCount; i++) {
             int n1 = coilNodes[i*2];
@@ -240,14 +240,14 @@ class ThreePhaseMotorElm extends CircuitElm {
 	return false;
     }
     
-    boolean getConnection(int n1, int n2) {
+    protected boolean getConnection(int n1, int n2) {
     	return true;
     }
     
     int cr = 37;
     double filteredSpeed;
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 
 	int hs = 8;
 	setBbox(point1, point2, cr);
@@ -328,7 +328,7 @@ class ThreePhaseMotorElm extends CircuitElm {
     }
 
 
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = "3-Phase Motor";
 	getBasicInfo(arr);
 	arr[3] = Locale.LS("speed") + " = " + getUnitTextRPM(60*Math.abs(filteredSpeed)/(2*Math.PI), Locale.LS("RPM"));
@@ -360,7 +360,7 @@ class ThreePhaseMotorElm extends CircuitElm {
         return NumberFormat.getFormat("#.##E000").format(v) + sp + u;
     }
 
-    double getCurrentIntoNode(int n) {
+    protected double getCurrentIntoNode(int n) {
 	if (n % 2 == 1)
 	    return coilCurrents[n/2];
 	return -coilCurrents[n/2];

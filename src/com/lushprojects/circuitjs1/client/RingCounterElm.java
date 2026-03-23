@@ -34,7 +34,7 @@ package com.lushprojects.circuitjs1.client;
 	    super(xa, ya, xb, yb, f, st);
 	    justLoaded = true;
 	}
-	String getChipName() { return "ring counter"; }
+	protected String getChipName() { return "ring counter"; }
 	boolean needsBits() { return true; }
 	int defaultBitCount() { return 10; }
 	boolean hasClockInhibit() { return (flags & FLAG_CLOCK_INHIBIT) != 0 && bits >= 3; }
@@ -42,7 +42,7 @@ package com.lushprojects.circuitjs1.client;
 	
 	int clockInhibit;
 	
-	void setupPins() {
+	protected void setupPins() {
 	    sizeX = bits > 2 ? bits : 2;
 	    sizeY = 2;
 	    pins = new Pin[getPostCount()];
@@ -64,8 +64,8 @@ package com.lushprojects.circuitjs1.client;
 		clockInhibit = -1;
 	    allocNodes();
 	}
-	int getPostCount() { return hasClockInhibit() ? bits+3 : bits+2; }
-	int getVoltageSourceCount() { return bits; }
+	protected int getPostCount() { return hasClockInhibit() ? bits+3 : bits+2; }
+	protected int getVoltageSourceCount() { return bits; }
 	void execute() {
 	    int i;
 	    
@@ -126,5 +126,5 @@ package com.lushprojects.circuitjs1.client;
 	    }
 	}
 	
-	int getDumpType() { return 163; }
+	protected int getDumpType() { return 163; }
     }

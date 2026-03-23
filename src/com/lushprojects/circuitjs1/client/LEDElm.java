@@ -50,14 +50,14 @@ class LEDElm extends DiodeElm {
 		maxBrightnessCurrent = Double.parseDouble(st.nextToken());
 	    } catch (Exception e) { }
 	}
-	int getDumpType() { return 162; }
-	String dump() {
+	protected int getDumpType() { return 162; }
+	protected String dump() {
 	    return super.dump() + " " + colorR + " " + colorG + " " + colorB + " " +
 		    maxBrightnessCurrent;
 	}
 
 	Point ledLead1, ledLead2, ledCenter;
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    int cr = 12;
 	    ledLead1  = interpPoint(point1, point2, .5-cr/dn);
@@ -65,7 +65,7 @@ class LEDElm extends DiodeElm {
 	    ledCenter = interpPoint(point1, point2, .5);
 	}
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    if (needsHighlight() || this == sim.dragElm) {
 		super.draw(g);
 		return;
@@ -97,7 +97,7 @@ class LEDElm extends DiodeElm {
 	    drawPosts(g);
 	}
 
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    super.getInfo(arr);
 	    if (model.oldStyle)
 		arr[0] = "LED";

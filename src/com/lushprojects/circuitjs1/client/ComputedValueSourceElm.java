@@ -64,24 +64,24 @@ class ComputedValueSourceElm extends CircuitElm {
     }
     
     @Override
-    int getDumpType() { return 267; }
+    protected int getDumpType() { return 267; }
     
     @Override
-    String dump() {
+    protected String dump() {
         return super.dump() + " " + CustomLogicModel.escape(valueName) + " " + defaultValue;
     }
     
     @Override
-    int getPostCount() { return 1; }
+    protected int getPostCount() { return 1; }
     
     @Override
-    int getVoltageSourceCount() { return 1; }
+    protected int getVoltageSourceCount() { return 1; }
     
     @Override
-    boolean nonLinear() { return true; }
+    protected boolean nonLinear() { return true; }
     
     @Override
-    void setVoltageSource(int j, int vs) {
+    protected void setVoltageSource(int j, int vs) {
         voltSource = vs;
     }
     
@@ -89,7 +89,7 @@ class ComputedValueSourceElm extends CircuitElm {
     Point textPos;
     
     @Override
-    void setPoints() {
+    protected void setPoints() {
         super.setPoints();
         
         // Calculate text position (above the element)
@@ -103,7 +103,7 @@ class ComputedValueSourceElm extends CircuitElm {
     }
     
     @Override
-    void stamp() {
+    protected void stamp() {
         int vn = voltSource + sim.getCircuitAnalyzer().getNodeList().size();
         
         // Mark as nonlinear since value changes each step
@@ -117,7 +117,7 @@ class ComputedValueSourceElm extends CircuitElm {
     }
     
     @Override
-    void doStep() {
+    protected void doStep() {
         // Read value from ComputedValues registry
         Double value = ComputedValues.getComputedValue(valueName);
         
@@ -140,7 +140,7 @@ class ComputedValueSourceElm extends CircuitElm {
     }
     
     @Override
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
         int hs = 10;
         setBbox(point1, point2, hs);
         
@@ -173,7 +173,7 @@ class ComputedValueSourceElm extends CircuitElm {
     }
     
     @Override
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
         arr[0] = "Computed Value Source";
         arr[1] = "Name: " + valueName;
         arr[2] = "V = " + getVoltageText(lastValue);

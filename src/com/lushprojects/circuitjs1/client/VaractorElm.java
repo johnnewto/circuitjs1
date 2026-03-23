@@ -13,8 +13,8 @@ class VaractorElm extends DiodeElm {
 	capvoltdiff = Double.parseDouble(st.nextToken());
 	baseCapacitance = Double.parseDouble(st.nextToken());
     }
-    int getDumpType() { return 176; }
-    void getInfo(String arr[]) {
+    protected int getDumpType() { return 176; }
+    protected void getInfo(String arr[]) {
 	super.getInfo(arr);
 	arr[0] = "varactor";
 	arr[5] = "C = " + getUnitText(capacitance, "F");
@@ -26,7 +26,7 @@ class VaractorElm extends DiodeElm {
     double compResistance, capvoltdiff;
     Point plate1[], plate2[];
     
-    void stepFinished() {
+    protected void stepFinished() {
 	capvoltdiff = volts[0]-volts[1];
     }
     
@@ -34,14 +34,14 @@ class VaractorElm extends DiodeElm {
 	super.calculateCurrent();
 	current += capCurrent;
     }
-    void reset() {
+    protected void reset() {
 	super.reset();
 	capvoltdiff = 0;
     }
-    String dump() {
+    protected String dump() {
 	return super.dump() + " " + capvoltdiff + " " + baseCapacitance;
     }
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	double platef = .6;
 	Point pa[] = newPointArray(2);
@@ -57,7 +57,7 @@ class VaractorElm extends DiodeElm {
     }
 	
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	// draw leads and diode arrow
 	drawDiode(g);
 	    
@@ -77,7 +77,7 @@ class VaractorElm extends DiodeElm {
 	drawPosts(g);
     }
     
-    void stamp() {
+    protected void stamp() {
 	super.stamp();
 	sim.stampVoltageSource(nodes[0], nodes[2], voltSource);
 	sim.stampNonLinear(nodes[2]);
@@ -95,7 +95,7 @@ class VaractorElm extends DiodeElm {
 	compResistance = getSimulationContext().getTimeStep()/(2*capacitance);
 	voltSourceValue = -capvoltdiff-capCurrent*compResistance;
     }
-    void doStep() {
+    protected void doStep() {
 	super.doStep();
 	sim.stampResistor(nodes[2], nodes[1], compResistance);
 	sim.updateVoltageSource(nodes[0], nodes[2], voltSource,
@@ -118,7 +118,7 @@ class VaractorElm extends DiodeElm {
     int getShortcut() { return 0; }
     void setCurrent(int x, double c) { capCurrent = c; }
     double voltSourceValue;
-    int getVoltageSourceCount() { return 1; }
+    protected int getVoltageSourceCount() { return 1; }
     int getInternalNodeCount() { return 1; }
 }
     

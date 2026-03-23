@@ -58,12 +58,12 @@ package com.lushprojects.circuitjs1.client;
 	    noDiagonal = true;
 	    a = new double[9];
 	}
-	int getDumpType() { return 169; }
-	String dump() {
+	protected int getDumpType() { return 169; }
+	protected String dump() {
 	    return super.dump() + " " + inductance + " " + ratio + " " +
 		current[0] + " " + current[1] + " " + current[2] + " " + couplingCoef;
 	}
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    int i;
 	    for (i = 0; i != 5; i++) {
 		setVoltageColor(g, volts[i]);
@@ -99,7 +99,7 @@ package com.lushprojects.circuitjs1.client;
 	    setBbox(ptEnds[0], ptEnds[4], 0);
 	}
 	
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    flip = hasFlag(FLAG_FLIP) ? -1 : 1;
 	    int hs = 32*flip;
@@ -125,11 +125,11 @@ package com.lushprojects.circuitjs1.client;
 		interpPoint(ptEnds[0], ptEnds[2], ptCore[i+2], 1-cd, b);
 	    }
 	}
-	Point getPost(int n) {
+	protected Point getPost(int n) {
 	    return ptEnds[n];
 	}
-	int getPostCount() { return 5; }
-	void reset() {
+	protected int getPostCount() { return 5; }
+	protected void reset() {
 	    current[0] = current[1] = current[2] = current[3] = volts[0] = volts[1] = volts[2] =
 		volts[3] = volts[4] = curcount[0] = curcount[1] = curcount[2] = 0;
 	    // need to set current-source values here in case one of the nodes is node 0.  In that case
@@ -138,7 +138,7 @@ package com.lushprojects.circuitjs1.client;
 	    curSourceValue[0] = curSourceValue[1] = curSourceValue[2] = 0;
 	}
 	double a[];
-	void stamp() {
+	protected void stamp() {
 	    // equations for transformer:
 	    //   v1 = L1 di1/dt + M1 di2/dt + M1 di3/dt
 	    //   v2 = M1 di1/dt + L2 di2/dt + M2 di3/dt
@@ -208,7 +208,7 @@ package com.lushprojects.circuitjs1.client;
 	    }
 	}
 	double curSourceValue[], voltdiff[];
-	void doStep() {
+	protected void doStep() {
 	    sim.stampCurrentSource(nodes[0], nodes[1], curSourceValue[0]);
 	    sim.stampCurrentSource(nodes[2], nodes[3], curSourceValue[1]);
 	    sim.stampCurrentSource(nodes[3], nodes[4], curSourceValue[2]);
@@ -226,7 +226,7 @@ package com.lushprojects.circuitjs1.client;
 	    // calc current of tap wire
 	    current[3] = current[1]-current[2];
 	}
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "transformer";
 	    arr[1] = "L = " + getUnitText(inductance, "H");
 	    arr[2] = "Ratio = 1:" + ratio;
@@ -235,7 +235,7 @@ package com.lushprojects.circuitjs1.client;
 	    //arr[5] = "I2 = " + getCurrentText(current2);
 	    arr[4] = "Vd2 = " + getVoltageText(volts[1]-volts[3]);
 	}
-	@Override double getCurrentIntoNode(int n) {
+	@Override protected double getCurrentIntoNode(int n) {
 	    if (n == 0)
 		return -current[0];
 	    if (n == 1)
@@ -246,7 +246,7 @@ package com.lushprojects.circuitjs1.client;
 		return current[3];
 	    return current[2];
 	}
-	boolean getConnection(int n1, int n2) {
+	protected boolean getConnection(int n1, int n2) {
 	    if (comparePair(n1, n2, 0, 1))
 		return true;
 	    if (comparePair(n1, n2, 2, 3))

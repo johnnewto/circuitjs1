@@ -68,13 +68,13 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	    flags &= ~FLAG_SMALL;
 	    flags |= (s == 1) ? FLAG_SMALL : 0;
 	}
-	String dump() {
+	protected String dump() {
 	    return super.dump() + " " + inputCount + " " + volts[inputCount] + " " + highVoltage;
 	}
 	Point inPosts[], inGates[];
 	boolean inputStates[];
 	int ww;
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    inputStates = new boolean[inputCount];
 	    if (dn > 150 && this == sim.dragElm)
@@ -134,7 +134,7 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	    drawThickPolygon(g, gatePoly);
 	}
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    int i;
 	    for (i = 0; i != inputCount; i++) {
 		setVoltageColor(g, volts[i]);
@@ -167,20 +167,20 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	}
 	Polygon gatePoly, schmittPoly;
 	Point pcircle, linePoints[], icircles[];
-	int getPostCount() { return inputCount+1; }
-	Point getPost(int n) {
+	protected int getPostCount() { return inputCount+1; }
+	protected Point getPost(int n) {
 	    if (n == inputCount)
 		return point2;
 	    return inPosts[n];
 	}
-	int getVoltageSourceCount() { return 1; }
+	protected int getVoltageSourceCount() { return 1; }
 	abstract String getGateName();
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = getGateName();
 	    arr[1] = "Vout = " + getVoltageText(volts[inputCount]);
 	    arr[2] = "Iout = " + getCurrentText(getCurrent());
 	}
-	void stamp() {
+	protected void stamp() {
 	    sim.stampVoltageSource(0, nodes[inputCount], voltSource);
 	}
 	boolean hasSchmittInputs() { return (flags & FLAG_SCHMITT) != 0; }
@@ -197,7 +197,7 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	int oscillationCount;
 	double lastTime;
 	
-	void doStep() {
+	protected void doStep() {
 	    SimulationContext context = getSimulationContext();
 	    boolean f = calcFunction();
 	    if (isInverting())
@@ -259,12 +259,12 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	}
 	// there is no current path through the gate inputs, but there
 	// is an indirect path through the output to ground.
-	boolean getConnection(int n1, int n2) { return false; }
+	protected boolean getConnection(int n1, int n2) { return false; }
 	boolean hasGroundConnection(int n1) {
 	    return (n1 == inputCount);
 	}
 	
-	double getCurrentIntoNode(int n) {
+	protected double getCurrentIntoNode(int n) {
 	    if (n == inputCount)
 		return current;
 	    return 0;

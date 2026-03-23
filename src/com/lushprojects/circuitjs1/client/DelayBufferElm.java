@@ -43,15 +43,15 @@ class DelayBufferElm extends CircuitElm {
 		highVoltage = Double.parseDouble(st.nextToken());
 	    } catch (Exception e) {}
 	}
-	String dump() {
+	protected String dump() {
 	    return super.dump() + " " + delay + " " + threshold + " " + highVoltage;
 	}
 	
-	int getDumpType() { return 422; }
+	protected int getDumpType() { return 422; }
 	
 	Point center;
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    drawPosts(g);
 	    draw2Leads(g);
 	    g.setColor(needsHighlight() ? selectColor : lightGrayColor);
@@ -62,7 +62,7 @@ class DelayBufferElm extends CircuitElm {
 	    drawDots(g, lead2, point2, curcount);
 	}
 	Polygon gatePoly;
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    int hs = 16;
 	    int ww = 16-2;
@@ -86,14 +86,14 @@ class DelayBufferElm extends CircuitElm {
 	    }
 	    setBbox(point1, point2, hs);
 	}
-	int getVoltageSourceCount() { return 1; }
-	void stamp() {
+	protected int getVoltageSourceCount() { return 1; }
+	protected void stamp() {
 	    sim.stampVoltageSource(0, nodes[1], voltSource);
 	}
 	
 	double delayEndTime;
 	
-	void doStep() {
+	protected void doStep() {
 	    SimulationContext context = getSimulationContext();
 	    boolean inState = volts[0] > threshold;
 	    boolean outState = volts[1] > threshold;
@@ -105,7 +105,7 @@ class DelayBufferElm extends CircuitElm {
 	    sim.updateVoltageSource(0, nodes[1], voltSource, outState ? highVoltage : 0);
 	}
 	double getVoltageDiff() { return volts[0]; }
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = Locale.LS("buffer");
 	    arr[1] = Locale.LS("delay = " )+ getUnitText(delay, "s");
 	    arr[2] = "Vi = " + getVoltageText(volts[0]);
@@ -130,12 +130,12 @@ class DelayBufferElm extends CircuitElm {
 	}
 	// there is no current path through the inverter input, but there
 	// is an indirect path through the output to ground.
-	boolean getConnection(int n1, int n2) { return false; }
+	protected boolean getConnection(int n1, int n2) { return false; }
 	boolean hasGroundConnection(int n1) {
 	    return (n1 == 1);
 	}
 	
-	@Override double getCurrentIntoNode(int n) {
+	@Override protected double getCurrentIntoNode(int n) {
 	    if (n == 1)
 		return current;
 	    return 0;

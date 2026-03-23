@@ -42,17 +42,17 @@ class CounterElm extends ChipElm {
 	    pins[1].bubble = invertreset;
 	}
 
-	String dump() {
+	protected String dump() {
 	    return super.dump() + " " + invertreset + " " + modulus;
 	}
 
 	boolean needsBits() { return true; }
-	String getChipName() {
+	protected String getChipName() {
 	    if (modulus == 0)
 		return "Counter";
 	    return Locale.LS("Counter") + Locale.LS(" (mod ") + modulus + ")";
 	}
-	void setupPins() {
+	protected void setupPins() {
 	    sizeX = 2;
 	    sizeY = bits > 2 ? bits : 2;
 	    pins = new Pin[getPostCount()];
@@ -71,7 +71,7 @@ class CounterElm extends ChipElm {
 	        pins[bits+2] = new Pin(sizeY-2, SIDE_W, "U/D");
 	    allocNodes();
 	}
-	int getPostCount() {
+	protected int getPostCount() {
 	    return (hasUpDown()) ? bits+3 : bits+2;
 	}
 	public EditInfo getChipEditInfo(int n) {
@@ -122,7 +122,7 @@ class CounterElm extends ChipElm {
 	}
 	boolean hasUpDown() { return (flags & FLAG_UP_DOWN) != 0; }
 	boolean negativeEdgeTriggered() { return (flags & FLAG_NEGATIVE_EDGE) != 0; }
-	int getVoltageSourceCount() { return bits; }
+	protected int getVoltageSourceCount() { return bits; }
 	void execute() {
 	    boolean neg = negativeEdgeTriggered();
 	    if (pins[0].value != neg && lastClock == neg) {
@@ -156,5 +156,5 @@ class CounterElm extends ChipElm {
 	    }
 	    lastClock = pins[0].value;
 	}
-	int getDumpType() { return 164; }
+	protected int getDumpType() { return 164; }
     }

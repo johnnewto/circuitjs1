@@ -60,14 +60,14 @@ class PotElm extends CircuitElm implements Command, MouseWheelHandler {
     void setup() {
     }
     
-    int getPostCount() { return 3; }
-    int getDumpType() { return 174; }
+    protected int getPostCount() { return 3; }
+    protected int getDumpType() { return 174; }
     
-    Point getPost(int n) {
+    protected Point getPost(int n) {
 	return (n == 0) ? point1 : (n == 1) ? point2 : post3;
     }
     
-    String dump() { return super.dump() + " " + maxResistance + " " +
+    protected String dump() { return super.dump() + " " + maxResistance + " " +
     		position + " " + sliderText; }
     
     void createSlider() {
@@ -85,7 +85,7 @@ class PotElm extends CircuitElm implements Command, MouseWheelHandler {
 	setPoints();
     }
     
-    void delete() {
+    protected void delete() {
 	sim.getUiPanelManager().removeWidgetFromVerticalPanel(label);
 	sim.getUiPanelManager().removeWidgetFromVerticalPanel(slider);
         super.delete();
@@ -95,7 +95,7 @@ class PotElm extends CircuitElm implements Command, MouseWheelHandler {
     Point ps3, ps4;
     int bodyLen;
     
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	int offset = 0;
 	int myLen =0;
@@ -133,7 +133,7 @@ class PotElm extends CircuitElm implements Command, MouseWheelHandler {
     }
     
 	
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	int segments = 16;
 	int i;
 	int ox = 0;
@@ -255,7 +255,7 @@ class PotElm extends CircuitElm implements Command, MouseWheelHandler {
 	}
     }
     
-    void reset() {
+    protected void reset() {
 	curcount1 = curcount2 = curcount3 = 0;
 	super.reset();
     }
@@ -267,7 +267,7 @@ class PotElm extends CircuitElm implements Command, MouseWheelHandler {
 	current3 = -current1-current2;
     }
     
-    @Override double getCurrentIntoNode(int n) {
+    @Override protected double getCurrentIntoNode(int n) {
 	if (n == 0)
 	    return -current1;
 	if (n == 1)
@@ -275,13 +275,13 @@ class PotElm extends CircuitElm implements Command, MouseWheelHandler {
 	return -current3;
     }
     
-    void stamp() {
+    protected void stamp() {
 	resistance1 = maxResistance*position;
 	resistance2 = maxResistance*(1-position);
 	sim.stampResistor(nodes[0], nodes[2], resistance1);
 	sim.stampResistor(nodes[2], nodes[1], resistance2);
     }
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = "potentiometer";
 	arr[1] = "Vd = " + getVoltageDText(getVoltageDiff());
 	arr[2] = "R1 = " + getUnitText(resistance1, Locale.ohmString);

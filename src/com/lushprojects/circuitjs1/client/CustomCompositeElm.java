@@ -78,7 +78,7 @@ public class CustomCompositeElm extends CompositeElm {
 	return modelStr;
     }
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	int i;
 	for (i = 0; i != postCount; i++) {
 	    chip.volts[i] = volts[i];
@@ -89,7 +89,7 @@ public class CustomCompositeElm extends CompositeElm {
 	boundingBox = chip.boundingBox;
     }
 
-    void setPoints() {
+    protected void setPoints() {
 	chip = new CustomCompositeChipElm(x, y);
 	chip.x2 = x2;
 	chip.y2 = y2;
@@ -171,7 +171,7 @@ public class CustomCompositeElm extends CompositeElm {
 	setPoints();
     }
     
-    int getPostCount() { return postCount; }
+    protected int getPostCount() { return postCount; }
     
     Vector<CustomCompositeModel> models;
     
@@ -234,9 +234,9 @@ public class CustomCompositeElm extends CompositeElm {
         }
     }
     
-    int getDumpType() { return 410; }
+    protected int getDumpType() { return 410; }
 
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	super.getInfo(arr);
 	if (model.builtin)
 	    arr[0] = model.name.substring(1);

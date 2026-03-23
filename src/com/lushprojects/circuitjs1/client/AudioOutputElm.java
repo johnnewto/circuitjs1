@@ -100,7 +100,7 @@ public class AudioOutputElm extends CircuitElm {
 	    setDataCount();
 	    createButton();
 	}
-	String dump() { 
+	protected String dump() { 
 	    return super.dump() + " " + duration + " " + samplingRate + " " + labelNum;
 	}
 	
@@ -125,20 +125,20 @@ public class AudioOutputElm extends CircuitElm {
 	    return num;
 	}
 	
-	int getDumpType() { return 211; }
-	int getPostCount() { return 1; }
-	void reset() {
+	protected int getDumpType() { return 211; }
+	protected int getPostCount() { return 1; }
+	protected void reset() {
 	    dataPtr = 0;
 	    dataFull = false;
 	    dataSampleCount = 0;
 	    nextDataSample = 0;
 	    dataSample = 0;
 	}
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    lead1 = new Point();
 	}
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    g.save();
 	    boolean selected = (needsHighlight());
 	    Font f = new Font("SansSerif", selected ? Font.BOLD : 0, 14);
@@ -162,7 +162,7 @@ public class AudioOutputElm extends CircuitElm {
 	    g.restore();
 	}
 	double getVoltageDiff() { return volts[0]; }
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    SimulationContext context = getSimulationContext();
 	    arr[0] = "audio output";
 	    arr[1] = "V = " + getVoltageText(volts[0]);
@@ -177,7 +177,7 @@ public class AudioOutputElm extends CircuitElm {
 	double nextDataSample = 0;
 	double dataSample;
 	
-	void stepFinished() {
+	protected void stepFinished() {
 	    SimulationContext context = getSimulationContext();
 	    dataSample += volts[0];
 	    dataSampleCount++;
@@ -292,7 +292,7 @@ public class AudioOutputElm extends CircuitElm {
             });
             
         }
-        void delete() {
+        protected void delete() {
 			sim.getUiPanelManager().removeWidgetFromVerticalPanel(button);
             super.delete();
         }

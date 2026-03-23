@@ -133,7 +133,7 @@ class ScopePlot {
      * @param sp New speed (timestep units per pixel)
      * @param full If true, discard all old data; if false, preserve what fits
      */
-    void reset(int spc, int sp, boolean full) {
+    protected void reset(int spc, int sp, boolean full) {
 	int oldSpc = scopePointCount;
 	int oldSamplesCaptured = samplesCaptured;
 	scopePointCount = spc;
@@ -1719,7 +1719,7 @@ public class Scope {
 	g.context.restore();
     }
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	if (plots.size() == 0)
 	    return;
     	
@@ -3188,7 +3188,7 @@ public class Scope {
     
 
     
-    String dump() {
+    protected String dump() {
 	ScopePlot vPlot = plots.get(0);
 	
 	CircuitElm elm = vPlot.elm;

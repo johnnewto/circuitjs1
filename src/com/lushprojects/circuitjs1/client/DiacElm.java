@@ -53,9 +53,9 @@ class DiacElm extends CircuitElm {
 	diode1.setupForDefaultModel();
 	diode2.setupForDefaultModel();
     }
-    boolean nonLinear() {return true;}
-    int getDumpType() { return 203; }
-    String dump() {
+    protected boolean nonLinear() {return true;}
+    protected int getDumpType() { return 203; }
+    protected String dump() {
 	return super.dump() + " " + onresistance + " " + offresistance + " "
 	    + breakdown + " " + holdcurrent;
     }
@@ -63,7 +63,7 @@ class DiacElm extends CircuitElm {
     Polygon arrows[];
     Point plate1[], plate2[];
     
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	calcLeads(16);
 	
@@ -84,7 +84,7 @@ class DiacElm extends CircuitElm {
 	}
     }
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	double v1 = volts[0];
 	double v2 = volts[1];
 	setBbox(point1, point2, 6);
@@ -113,21 +113,21 @@ class DiacElm extends CircuitElm {
 	if(Math.abs(current) < holdcurrent) state = false;	
 	if(Math.abs(vd) > breakdown) state = true;
     }
-    void doStep() {
+    protected void doStep() {
 	double r = (state) ? onresistance : offresistance;
 	sim.stampResistor(nodes[0], nodes[2], r);
 	sim.stampResistor(nodes[0], nodes[3], r);
 	diode1.doStep(volts[2]-volts[1]);
 	diode2.doStep(volts[1]-volts[3]);
     }
-    void stamp() {
+    protected void stamp() {
 	sim.stampNonLinear(nodes[0]);
 	sim.stampNonLinear(nodes[1]);
 	diode1.stamp(nodes[2], nodes[1]);
 	diode2.stamp(nodes[1], nodes[3]);
     }
     int getInternalNodeCount() { return 2; }
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = "DIAC";
 	getBasicInfo(arr);
 	arr[3] = state ? "on" : "off";

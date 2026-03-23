@@ -72,11 +72,11 @@ class ThermistorNTCElm extends CircuitElm implements Command, MouseWheelHandler 
     //void setup() {
     //}
 
-    int getPostCount() { return 2; }
-    int getDumpType() { return 350; } //NTC thermistor
+    protected int getPostCount() { return 2; }
+    protected int getDumpType() { return 350; } //NTC thermistor
 
     //data for file saving - make sure it matches order of items in file input constructor
-    String dump() { 
+    protected String dump() { 
 	return super.dump() + " " + r25 + " " + r50 + " " + minTempr + " " + maxTempr +" " + position  + " " + CustomLogicModel.escape(sliderText); 
     }
 
@@ -93,14 +93,14 @@ class ThermistorNTCElm extends CircuitElm implements Command, MouseWheelHandler 
 	setPoints();
     }
 
-    void delete() {
+    protected void delete() {
 	sim.getUiPanelManager().removeWidgetFromVerticalPanel(label);
 	sim.getUiPanelManager().removeWidgetFromVerticalPanel(slider);
     }
     Point ps3, ps4;   
 
     //called straight after constructor when txt file is loaded
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	calcLeads(32);
 	position = slider.getValue()*.0099+.005;
@@ -110,7 +110,7 @@ class ThermistorNTCElm extends CircuitElm implements Command, MouseWheelHandler 
 	ps4 = new Point();
     }
 
-    void draw(Graphics g) { //used Resistor draw
+    protected void draw(Graphics g) { //used Resistor draw
 	//int segments = 16;
 	int i;
 	//int ox = 0;
@@ -165,13 +165,13 @@ class ThermistorNTCElm extends CircuitElm implements Command, MouseWheelHandler 
     void calculateCurrent() {
 	current = (volts[0]-volts[1])/resistance;
     }
-    void stamp() {
+    protected void stamp() {
 	temperature = temprFromSliderPos(); //e.g. 190 - 40 for range -40 to +150
 	resistance = calcResistance(temperature); 
 	sim.stampResistor(nodes[0], nodes[1], resistance); //show temperature as well??
     }
 
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = "thermistor";
 	arr[1] = "I = "+ getCurrentDText(current); //getBasicInfo(arr);
 	arr[2] = "Vd = "+ getVoltageDText(getVoltageDiff());

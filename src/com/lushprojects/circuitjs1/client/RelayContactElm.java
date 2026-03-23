@@ -73,15 +73,15 @@ class RelayContactElm extends CircuitElm {
         allocNodes();
     }
     
-    int getDumpType() { return 426; }
+    protected int getDumpType() { return 426; }
     boolean useIECSymbol() { return (flags & FLAG_IEC) != 0; }
 
-    String dump() {
+    protected String dump() {
 	// escape label
 	return super.dump() + " " + CustomLogicModel.escape(label) + " " + r_on + " " + r_off + " " + i_position;
     }
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	int i;
 	for (i = 0; i != 2; i++) {
 	    // draw lead
@@ -133,7 +133,7 @@ class RelayContactElm extends CircuitElm {
 	setBbox(point1, point2, openhs);
     }
 	
-    double getCurrentIntoNode(int n) {
+    protected double getCurrentIntoNode(int n) {
 	if (n == 0)
 	    return -switchCurrent;
 	if (n == 1+i_position)
@@ -141,7 +141,7 @@ class RelayContactElm extends CircuitElm {
 	return 0;
     }
 
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	allocNodes();
 	openhs = dsign*16;
@@ -178,11 +178,11 @@ class RelayContactElm extends CircuitElm {
 
     boolean isNormallyClosed() { return (flags & FLAG_NORMALLY_CLOSED) != 0; }
     
-    Point getPost(int n) {
+    protected Point getPost(int n) {
 	return swposts[n];
     }
-    int getPostCount() { return 2; }
-    void reset() {
+    protected int getPostCount() { return 2; }
+    protected void reset() {
 	super.reset();
 	switchCurrent = switchCurCount = 0;
 	i_position = 0;
@@ -191,15 +191,15 @@ class RelayContactElm extends CircuitElm {
 	// onState = false;
     }
 
-    void stamp() {
+    protected void stamp() {
 	sim.stampNonLinear(nodes[nSwitch0]);
 	sim.stampNonLinear(nodes[nSwitch1]);
     }
     
     // we need this to be able to change the matrix for each step
-    boolean nonLinear() { return true; }
+    protected boolean nonLinear() { return true; }
 
-    void doStep() {
+    protected void doStep() {
 	sim.stampResistor(nodes[nSwitch0], nodes[nSwitch1], i_position == 0 ? r_on : r_off);
     }
     void calculateCurrent() {
@@ -210,7 +210,7 @@ class RelayContactElm extends CircuitElm {
 	else
 	    switchCurrent = (volts[nSwitch0]-volts[nSwitch1+i_position])/r_on;
     }
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = Locale.LS("relay");
 	if (i_position == 0)
 	    arr[0] += " (" + Locale.LS("off") + ")";
@@ -249,7 +249,7 @@ class RelayContactElm extends CircuitElm {
 	}
     }
     
-    boolean getConnection(int n1, int n2) {
+    protected boolean getConnection(int n1, int n2) {
 	return true;
     }
 }

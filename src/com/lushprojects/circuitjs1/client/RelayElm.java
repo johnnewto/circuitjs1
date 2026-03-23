@@ -120,15 +120,15 @@ class RelayElm extends CircuitElm {
 	}
     }
     
-    int getDumpType() { return 178; }
+    protected int getDumpType() { return 178; }
     
-    String dump() {
+    protected String dump() {
 	return super.dump() + " " + poleCount + " " +
 	    inductance + " " + coilCurrent + " " +
 	    r_on + " " + r_off + " " + onCurrent + " " + coilR + " " + offCurrent + " " + switchingTime + " " + i_position;
     }
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	int i, p;
 	for (i = 0; i != 2; i++) {
 	    setVoltageColor(g, volts[nCoil1+i]);
@@ -200,7 +200,7 @@ class RelayElm extends CircuitElm {
 	adjustBbox(swposts[0][0], swposts[0][1]);
     }
 	
-    double getCurrentIntoNode(int n) {
+    protected double getCurrentIntoNode(int n) {
 	if (n < 3*poleCount) {
 	    int p = n/3;
 	    int k = n%3;
@@ -215,7 +215,7 @@ class RelayElm extends CircuitElm {
 	return coilCurrent;
     }
 
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	setupPoles();
 	allocNodes();
@@ -275,14 +275,14 @@ class RelayElm extends CircuitElm {
 	currentOffset2 = currentOffset1 + distance(coilLeads[0], coilLeads[1]);
     }
     
-    Point getPost(int n) {
+    protected Point getPost(int n) {
 	if (n < 3*poleCount)
 	    return swposts[n / 3][n % 3];
 	return coilPosts[n-3*poleCount];
     }
-    int getPostCount() { return 2+poleCount*3; }
+    protected int getPostCount() { return 2+poleCount*3; }
     int getInternalNodeCount() { return 1; }
-    void reset() {
+    protected void reset() {
 	super.reset();
 	ind.reset();
 	coilCurrent = coilCurCount = 0;
@@ -295,7 +295,7 @@ class RelayElm extends CircuitElm {
 	// onState = false;
     }
     double a1, a2, a3, a4;
-    void stamp() {
+    protected void stamp() {
 	// inductor from coil post 1 to internal node
 	ind.stamp(nodes[nCoil1], nodes[nCoil3]);
 	// resistor from internal node to coil post 2
@@ -364,9 +364,9 @@ class RelayElm extends CircuitElm {
     }
     	
     // we need this to be able to change the matrix for each step
-    boolean nonLinear() { return true; }
+    protected boolean nonLinear() { return true; }
 
-    void doStep() {
+    protected void doStep() {
 	double voltdiff = volts[nCoil1]-volts[nCoil3];
 	ind.doStep(voltdiff);
 	int p;
@@ -392,7 +392,7 @@ class RelayElm extends CircuitElm {
 		    (volts[nSwitch0+p*3]-volts[nSwitch1+p*3+i_position])/r_on;
 	}
     }
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = Locale.LS("relay");
 	if (i_position == 0)
 	    arr[0] += " (" + Locale.LS("off") + ")";
@@ -497,7 +497,7 @@ class RelayElm extends CircuitElm {
 	    switchingTime = ei.value;
     }
     
-    boolean getConnection(int n1, int n2) {
+    protected boolean getConnection(int n1, int n2) {
 	return (n1 / 3 == n2 / 3);
     }
     

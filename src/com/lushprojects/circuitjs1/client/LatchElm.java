@@ -37,11 +37,11 @@ class LatchElm extends ChipElm {
 	    setupPins();
 	}
     }
-    String getChipName() { return "Latch"; }
+    protected String getChipName() { return "Latch"; }
     boolean needsBits() { return true; }
     boolean isEdgeTriggered() { return (flags & FLAG_NO_EDGE) == 0; }
     int loadPin;
-    void setupPins() {
+    protected void setupPins() {
 	sizeX = 2;
 	sizeY = bits+1;
 	pins = new Pin[getPostCount()];
@@ -64,9 +64,9 @@ class LatchElm extends ChipElm {
 		pins[i+bits].value = pins[i].value;
 	lastLoad = pins[loadPin].value;
     }
-    int getVoltageSourceCount() { return bits; }
-    int getPostCount() { return bits*2+1; }
-    int getDumpType() { return 168; }
+    protected int getVoltageSourceCount() { return bits; }
+    protected int getPostCount() { return bits*2+1; }
+    protected int getDumpType() { return 168; }
     public EditInfo getChipEditInfo(int n) {
 	if (n == 0)
 	    return new EditInfo("# of Bits", bits, 1, 1).setDimensionless();

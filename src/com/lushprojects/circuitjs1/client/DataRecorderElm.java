@@ -44,21 +44,21 @@ public class DataRecorderElm extends CircuitElm {
 	    super(xa, ya, xb, yb, f);
 	    setDataCount(Integer.parseInt(st.nextToken()));
 	}
-	String dump() { 
+	protected String dump() { 
 	    return super.dump() + " " + dataCount;
 	}
-	int getDumpType() { return 210; }
-	int getPostCount() { return 1; }
-	void reset() {
+	protected int getDumpType() { return 210; }
+	protected int getPostCount() { return 1; }
+	protected void reset() {
 	    dataPtr = 0;
 	    dataFull = false;
 	    lastTimeStepCount = 0;
 	}
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    lead1 = interpPoint(point1, point2, 1-8/dn);
 	}
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    g.save();
 	    boolean selected = (needsHighlight());
 	    Font f = new Font("SansSerif", selected ? Font.BOLD : 0, 14);
@@ -75,12 +75,12 @@ public class DataRecorderElm extends CircuitElm {
 	    g.restore();
 	}
 	double getVoltageDiff() { return volts[0]; }
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "data export";
 	    arr[1] = "V = " + getVoltageText(volts[0]);
 	    arr[2] = (dataFull ? dataCount : dataPtr) + "/" + dataCount;
 	}
-	void stepFinished() {
+	protected void stepFinished() {
 	    if (lastTimeStepCount == sim.getTimingState().timeStepCount)
 		return;
 	    data[dataPtr++] = volts[0];

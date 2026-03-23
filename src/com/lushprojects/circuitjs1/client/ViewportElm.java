@@ -47,13 +47,13 @@ class ViewportElm extends BoxElm {
         }
     }
 
-    String dump() {
+    protected String dump() {
         return super.dump() + " " + CustomLogicModel.escape(name);
     }
 
-    int getDumpType() { return 263; }
+    protected int getDumpType() { return 263; }
 
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
         // Draw a blue dashed rectangle to distinguish from regular boxes
         // Use 30% alpha for a fainter outline (unless highlighted)
         if (!needsHighlight()) {
@@ -102,7 +102,7 @@ class ViewportElm extends BoxElm {
             name = ei.textf.getText();
     }
 
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
         arr[0] = "viewport";
         arr[1] = "name: " + name;
         int minX = Math.min(x, x2);

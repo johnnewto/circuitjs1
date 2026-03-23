@@ -36,11 +36,11 @@ class BoxElm extends GraphicElm {
 	setBbox(x, y, x2, y2);
     }
 
-    String dump() {
+    protected String dump() {
 	return super.dump();
     }
 
-    int getDumpType() { return 'b'; }
+    protected int getDumpType() { return 'b'; }
 
     void drag(int xx, int yy) {
 	x2 = xx;
@@ -51,7 +51,7 @@ class BoxElm extends GraphicElm {
 	return Math.abs(x2-x) < 32 || Math.abs(y2-y) < 32;
     }
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	//g.setColor(needsHighlight() ? selectColor : lightGrayColor);
 	g.setColor(needsHighlight() ? selectColor : Color.GRAY);
 	setBbox(x, y, x2, y2);
@@ -74,7 +74,7 @@ class BoxElm extends GraphicElm {
     public void setEditValue(int n, EditInfo ei) {
     }
 
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
     }
 
     @Override

@@ -219,7 +219,7 @@ public class CustomLogicModel implements Editable {
 	}
     }
     
-    String dump() {
+    protected String dump() {
 	dumped = true;
 	if (rules.length() > 0 && !rules.endsWith("\n"))
 	    rules += "\n";

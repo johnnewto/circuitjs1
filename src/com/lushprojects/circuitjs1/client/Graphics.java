@@ -35,7 +35,7 @@ public class Graphics {
 	private static class ContextLike {
 		@JsProperty(name = "textAlign") native String getTextAlign();
 		@JsMethod(name = "setLineDash") native void setLineDashNative(double[] pattern);
-		@JsProperty(name = "letterSpacing") native void setLetterSpacing(String spacing);
+		@JsProperty(name = "letterSpacing") native public void setLetterSpacing(String spacing);
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Element")
@@ -58,8 +58,8 @@ public class Graphics {
 	@JsProperty(namespace = JsPackage.GLOBAL, name = "document")
 	private static native DocumentLike getDocument();
 	
-	Context2d context;
-	int currentFontSize;
+	public Context2d context;
+	public int currentFontSize;
 	Color lastColor;
 	int savedFontSize;
 	static boolean isFullScreen=false;
@@ -497,7 +497,7 @@ public class Graphics {
 	           ctx.setLineDashNative(new double[] { a, b });
 	   }
 	   
-	   void setLetterSpacing(String spacing) {
+	   public void setLetterSpacing(String spacing) {
 	       setLetterSpacingNative(context, spacing);
 	   }
 	   

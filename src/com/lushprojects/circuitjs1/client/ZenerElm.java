@@ -40,14 +40,14 @@ class ZenerElm extends DiodeElm {
 	}
 	setup();
     }
-    int getDumpType() { return 'z'; }
+    protected int getDumpType() { return 'z'; }
     
     final int hs = 8;
     Polygon poly;
     Point cathode[];
     Point wing[];
 	
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	calcLeads(16);
 	cathode = newPointArray(2);
@@ -60,7 +60,7 @@ class ZenerElm extends DiodeElm {
 	poly = createPolygon(pa[0], pa[1], lead2);
     }
 	
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	setBbox(point1, point2, hs);
 
 	double v1 = volts[0];
@@ -87,7 +87,7 @@ class ZenerElm extends DiodeElm {
 	
     final double default_zvoltage = 5.6;
 
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	super.getInfo(arr);
 	arr[0] = "Zener diode";
 	arr[5] = "Vz = " + getVoltageText(model.breakdownVoltage);

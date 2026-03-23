@@ -45,21 +45,21 @@ class MemristorElm extends CircuitElm {
 	} catch (Exception e) {}
 	resistance = 100;
     }
-    int getDumpType() { return 'm'; }
-    String dump() {
+    protected int getDumpType() { return 'm'; }
+    protected String dump() {
 	return super.dump() + " " + r_on + " " + r_off + " " + dopeWidth + " " +
 	    totalWidth + " " + mobility + " " + current;
     }
 
     Point ps3, ps4;
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	calcLeads(32);
 	ps3 = new Point();
 	ps4 = new Point();
     }
 	
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	int segments = 6;
 	int i;
 	int ox = 0;
@@ -92,11 +92,11 @@ class MemristorElm extends CircuitElm {
 	drawPosts(g);
     }
     
-    boolean nonLinear() { return true; }
+    protected boolean nonLinear() { return true; }
     void calculateCurrent() {
 	current = (volts[0]-volts[1])/resistance;
     }
-    void reset() {
+    protected void reset() {
 	dopeWidth = 0;
     }
     void startIteration() {
@@ -108,14 +108,14 @@ class MemristorElm extends CircuitElm {
 	    dopeWidth = totalWidth;
 	resistance = r_on * wd + r_off * (1-wd);
     }
-    void stamp() {
+    protected void stamp() {
 	sim.stampNonLinear(nodes[0]);
 	sim.stampNonLinear(nodes[1]);
     }
-    void doStep() {
+    protected void doStep() {
 	sim.stampResistor(nodes[0], nodes[1], resistance);
     }
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = "memristor";
 	getBasicInfo(arr);
 	arr[3] = "R = " + getUnitText(resistance, Locale.ohmString);

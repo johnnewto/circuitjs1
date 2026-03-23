@@ -36,12 +36,12 @@ class Counter2Elm extends ChipElm {
 	    } catch (Exception e) {}
 	}
 
-	String dump() {
+	protected String dump() {
 	    return super.dump() + " " + modulus;
 	}
 
 	boolean needsBits() { return true; }
-	String getChipName() {
+	protected String getChipName() {
 	    if (modulus == 0)
 		return "Counter";
 	    return Locale.LS("Counter") + Locale.LS(" (mod ") + modulus + ")";
@@ -49,7 +49,7 @@ class Counter2Elm extends ChipElm {
 	
 	int clk, clr, enp, ent, rco, load;
 	
-	void setupPins() {
+	protected void setupPins() {
 	    sizeX = 2;
 	    sizeY = bits+3;
 	    pins = new Pin[getPostCount()];
@@ -80,7 +80,7 @@ class Counter2Elm extends ChipElm {
 	    pins[load].bubble = true;
 	    pins[ent] = new Pin(bits+2, SIDE_E, "EnT");
 	}
-	int getPostCount() {
+	protected int getPostCount() {
 	    return bits*2+6;
 	}
 	public EditInfo getChipEditInfo(int n) {
@@ -100,7 +100,7 @@ class Counter2Elm extends ChipElm {
 	    if (n == 1)
 		modulus = (int)ei.value;
 	}
-	int getVoltageSourceCount() { return bits+1; }
+	protected int getVoltageSourceCount() { return bits+1; }
 	
 	boolean carry;
 	
@@ -156,5 +156,5 @@ class Counter2Elm extends ChipElm {
 	    lastClock = pins[clk].value;
 	    writeOutput(rco, carry && pins[ent].value);
 	}
-	int getDumpType() { return 421; }
+	protected int getDumpType() { return 421; }
     }

@@ -309,7 +309,7 @@ public class DiodeModel implements Editable, Comparable<DiodeModel> {
 	fwdrop = Math.log(1/saturationCurrent + 1) * emissionCoefficient * vt;
     }
     
-    String dump() {
+    protected String dump() {
 	dumped = true;
 	return "34 " + CustomLogicModel.escape(name) + " " + flags + " " + saturationCurrent + " " + seriesResistance + " " + emissionCoefficient + " " + breakdownVoltage + " " + forwardCurrent;
     }

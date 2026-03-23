@@ -61,11 +61,11 @@ class TriStateElm extends CircuitElm {
 
     }
 
-    String dump() {
+    protected String dump() {
 	return super.dump() + " " + r_on + " " + r_off + " " + r_off_ground + " " + highVoltage;
     }
 
-    int getDumpType() {
+    protected int getDumpType() {
 	return 180;
     }
 
@@ -75,7 +75,7 @@ class TriStateElm extends CircuitElm {
 
     Polygon gatePoly;
 
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	int len = 32;
 	calcLeads(len);
@@ -97,7 +97,7 @@ class TriStateElm extends CircuitElm {
 	lead3 = interpPoint(lead1, lead2, .5, sign*hs/2);
     }
 
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	int hs = 16;
 	setBbox(point1, point2, hs);
 
@@ -123,14 +123,14 @@ class TriStateElm extends CircuitElm {
 	current = current31-current10;
     }
 
-    double getCurrentIntoNode(int n) {
+    protected double getCurrentIntoNode(int n) {
 	if (n == 1)
 	    return current;
 	return 0;
     }
 
     // we need this to be able to change the matrix for each step
-    boolean nonLinear() {
+    protected boolean nonLinear() {
 	return true;
     }
 
@@ -140,13 +140,13 @@ class TriStateElm extends CircuitElm {
     // node 3: internal node
     // there is a voltage source connected to node 3, and a resistor (r_off or r_on) from node 3 to 1.
     // then there is a pulldown resistor from node 1 to ground.
-    void stamp() {
+    protected void stamp() {
 	sim.stampVoltageSource(0, nodes[3], voltSource);
 	sim.stampNonLinear(nodes[3]);
 	sim.stampNonLinear(nodes[1]);
     }
 
-    void doStep() {
+    protected void doStep() {
 	open = (volts[2] < highVoltage*.5);
 	resistance = (open) ? r_off : r_on;
 	sim.stampResistor(nodes[3], nodes[1], resistance);
@@ -175,7 +175,7 @@ class TriStateElm extends CircuitElm {
 	super.drag(xx, yy);
     }
 
-    int getPostCount() {
+    protected int getPostCount() {
 	return 3;
     }
     
@@ -183,15 +183,15 @@ class TriStateElm extends CircuitElm {
 	return 1;
     }
 
-    int getVoltageSourceCount() {
+    protected int getVoltageSourceCount() {
 	return 1;
     }
 
-    Point getPost(int n) {
+    protected Point getPost(int n) {
 	return (n == 0) ? point1 : (n == 1) ? point2 : point3;
     }
 
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = "tri-state buffer";
 	arr[1] = open ? "open" : "closed";
 	arr[2] = "Vd = " + getVoltageDText(getVoltageDiff());
@@ -201,7 +201,7 @@ class TriStateElm extends CircuitElm {
 
     // there is no current path through the input, but there
     // is an indirect path through the output to ground.
-    boolean getConnection(int n1, int n2) {
+    protected boolean getConnection(int n1, int n2) {
 	return false;
     }
 

@@ -74,28 +74,28 @@ public class ActionTimeElm extends CircuitElm {
         }
     }
     
-    String dump() { 
+    protected String dump() { 
         // Save enabled state
         return super.dump() + " " + enabled + " " + CustomLogicModel.escape(title); 
     }
     
-    void reset() {
+    protected void reset() {
         // Nothing to reset - display element only
     }
     
-    int getDumpType() { 
+    protected int getDumpType() { 
         return 432; 
     }
     
-    int getPostCount() { 
+    protected int getPostCount() { 
         return 0; // No electrical connections
     }
     
-    void setPoints() {
+    protected void setPoints() {
         super.setPoints();
     }
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
         g.save();
         boolean selected = needsHighlight();
         
@@ -304,11 +304,11 @@ public class ActionTimeElm extends CircuitElm {
         g.restore();
     }
     
-    void stepFinished() {
+    protected void stepFinished() {
         // No action needed - scheduler handles execution
     }
     
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
         SimulationContext context = getSimulationContext();
         arr[0] = ((title == null || title.isEmpty()) ? "Action Schedule" : title) + " Display";
         arr[1] = "element enabled = " + (enabled ? "yes" : "no");
@@ -468,7 +468,7 @@ public class ActionTimeElm extends CircuitElm {
     void setNodeVoltage(int n, double c) {
     }
     
-    void stamp() {
+    protected void stamp() {
         // No electrical connections
     }
 }

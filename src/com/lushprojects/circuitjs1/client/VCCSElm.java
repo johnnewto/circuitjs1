@@ -46,13 +46,13 @@ class VCCSElm extends ChipElm {
 	    setupPins();
 	}
 	
-	String dump() {
+	protected String dump() {
 	    return super.dump() + " " + inputCount + " " + CustomLogicModel.escape(exprString);
 	}
 	
 	double lastVolts[];
 	
-	void setupPins() {
+	protected void setupPins() {
 	    sizeX = 2;
 	    sizeY = inputCount > 2 ? inputCount : 2;
 	    pins = new Pin[inputCount+2];
@@ -64,18 +64,18 @@ class VCCSElm extends ChipElm {
 	    lastVolts = new double[inputCount];
 	    exprState = new ExprState(inputCount);
 	}
-	String getChipName() { return "VCCS~"; } // ~ is for localization 
-	boolean nonLinear() { return true; }
-	@Override boolean isDigitalChip() { return false; }
+	protected String getChipName() { return "VCCS~"; } // ~ is for localization 
+	protected boolean nonLinear() { return true; }
+	@Override protected boolean isDigitalChip() { return false; }
 
-	void stamp() {
+	protected void stamp() {
             SimulationContext context = getSimulationContext();
             context.stampNonLinear(nodes[inputCount]);
             context.stampNonLinear(nodes[inputCount+1]);
 	}
 
 	@Override
-	void postStamp() {
+	protected void postStamp() {
 	    super.postStamp();
 	    CirSim csim = CirSim.getInstance();
 	    if (csim == null || csim.nameToSlot == null) return;
@@ -101,7 +101,7 @@ class VCCSElm extends ChipElm {
             return nodes[n+inputCount];
         }
         
-        void doStep() {
+        protected void doStep() {
             SimulationContext context = getSimulationContext();
             int i;
             
@@ -162,18 +162,18 @@ class VCCSElm extends ChipElm {
             for (i = 0; i != inputCount; i++)
         	lastVolts[i] = volts[i];
         }
-        void stepFinished() {
+        protected void stepFinished() {
             exprState.updateLastValues(pins[inputCount].current);
         }
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    drawChip(g);
 	}
 	
-	int getPostCount() { return inputCount+2; }
-	int getVoltageSourceCount() { return 0; }
-	int getDumpType() { return 213; }
+	protected int getPostCount() { return inputCount+2; }
+	protected int getVoltageSourceCount() { return 0; }
+	protected int getDumpType() { return 213; }
 	
-	boolean getConnection(int n1, int n2) {
+	protected boolean getConnection(int n1, int n2) {
 	    return comparePair(inputCount, inputCount+1, n1, n2);
 	}
 	boolean hasGroundConnection(int n1) {
@@ -221,14 +221,14 @@ class VCCSElm extends ChipElm {
         	Window.alert(Locale.LS("Parse error in expression") + ": " + exprString + ": " + err);
         }
         
-        void getInfo(String arr[]) {
+        protected void getInfo(String arr[]) {
             super.getInfo(arr);
             int i;
             for (i = 0; arr[i] != null; i++) ;
             arr[i] = "I = " + getCurrentText(pins[inputCount].current);
         }
         
-        void reset() {
+        protected void reset() {
             super.reset();
             exprState.reset();
         }

@@ -4,7 +4,7 @@ import com.google.gwt.user.client.ui.PopupPanel;
 import com.lushprojects.circuitjs1.client.ui.AboutBox;
 import com.lushprojects.circuitjs1.client.ui.VariableBrowserDialog;
 
-final class CirSimDialogCoordinator {
+public final class CirSimDialogCoordinator {
     private static EditDialog editDialog;
     private static EditDialog customLogicEditDialog;
     private static EditDialog diodeModelEditDialog;
@@ -51,7 +51,7 @@ final class CirSimDialogCoordinator {
         return dialogShowing;
     }
 
-    static void setDialogShowing(Dialog value) {
+    public static void setDialogShowing(Dialog value) {
         dialogShowing = value;
     }
 

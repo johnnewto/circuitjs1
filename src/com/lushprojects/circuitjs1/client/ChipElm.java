@@ -19,16 +19,16 @@
 
 package com.lushprojects.circuitjs1.client;
 
-abstract class ChipElm extends CircuitElm {
-	int csize, cspc, cspc2;
-	int bits;
-	double highVoltage;
+public abstract class ChipElm extends CircuitElm {
+	public int csize, cspc, cspc2;
+	protected int bits;
+	protected double highVoltage;
 	
-	static final int FLAG_SMALL = 1;
-	static final int FLAG_FLIP_X = 1<<10;
-	static final int FLAG_FLIP_Y = 1<<11;
-	static final int FLAG_FLIP_XY = 1<<12;
-	static final int FLAG_CUSTOM_VOLTAGE = 1<<13;
+	public static final int FLAG_SMALL = 1;
+	public static final int FLAG_FLIP_X = 1<<10;
+	public static final int FLAG_FLIP_Y = 1<<11;
+	public static final int FLAG_FLIP_XY = 1<<12;
+	public static final int FLAG_CUSTOM_VOLTAGE = 1<<13;
 	public ChipElm(int xx, int yy) {
 	    super(xx, yy);
 	    if (needsBits())
@@ -62,19 +62,19 @@ abstract class ChipElm extends CircuitElm {
 	}
 	boolean needsBits() { return false; }
 	boolean hasCustomVoltage() { return (flags & FLAG_CUSTOM_VOLTAGE) != 0; }
-	boolean isDigitalChip() { return true; }
-	double getThreshold() { return highVoltage/2; }
+	protected boolean isDigitalChip() { return true; }
+	protected double getThreshold() { return highVoltage/2; }
 	
 	int defaultBitCount() { return 4; }
-	void setSize(int s) {
+	protected void setSize(int s) {
 	    csize = s;
 	    cspc = 8*s;
 	    cspc2 = cspc*2;
 	    flags &= ~FLAG_SMALL;
 	    flags |= (s == 1) ? FLAG_SMALL : 0;
 	}
-	abstract void setupPins();
-	void draw(Graphics g) {
+	protected abstract void setupPins();
+	protected void draw(Graphics g) {
 	    drawChip(g);
 	}
 	void drawChip(Graphics g) {
@@ -149,9 +149,9 @@ abstract class ChipElm extends CircuitElm {
 	    drawPosts(g);
 	    g.restore();
 	}
-	int rectPointsX[], rectPointsY[];
-	Pin pins[];
-	int sizeX, sizeY, flippedSizeX, flippedSizeY;
+	protected int rectPointsX[], rectPointsY[];
+	public Pin pins[];
+	public int sizeX, sizeY, flippedSizeX, flippedSizeY;
 	boolean lastClock;
 	void drag(int xx, int yy) {
 	    yy = sim.snapGrid(yy);
@@ -167,7 +167,7 @@ abstract class ChipElm extends CircuitElm {
 	void drawLabel(Graphics g, int x, int y) {}
 	int labelX, labelY;
 		
-	void setPoints() {
+	protected void setPoints() {
 	    if (x2-x >= sizeX*cspc2 && this == sim.dragElm)
 		setSize(2);
 	    int x0 = x+cspc2; int y0 = y;
@@ -242,11 +242,11 @@ abstract class ChipElm extends CircuitElm {
 	    return -1;
 	}
 	
-	Point getPost(int n) {
+	protected Point getPost(int n) {
 	    return pins[n].post;
 	}
-	abstract int getVoltageSourceCount(); // output count
-	void setVoltageSource(int j, int vs) {
+	abstract protected int getVoltageSourceCount(); // output count
+	protected void setVoltageSource(int j, int vs) {
 	    int i;
 	    for (i = 0; i != getPostCount(); i++) {
 		Pin p = pins[i];
@@ -257,7 +257,7 @@ abstract class ChipElm extends CircuitElm {
 	    }
 	    System.out.println("setVoltageSource failed for " + this);
 	}
-	void stamp() {
+	protected void stamp() {
 	    int i;
 	    int vsc = 0;
 	    for (i = 0; i != getPostCount(); i++) {
@@ -271,7 +271,7 @@ abstract class ChipElm extends CircuitElm {
 		CirSim.console("voltage source count does not match number of outputs");
 	}
 	void execute() {}
-	void doStep() {
+	protected void doStep() {
 	    int i;
 	    for (i = 0; i != getPostCount(); i++) {
 		Pin p = pins[i];
@@ -286,7 +286,7 @@ abstract class ChipElm extends CircuitElm {
 					p.value ? highVoltage : 0);
 	    }
 	}
-	void reset() {
+	protected void reset() {
 	    int i;
 	    for (i = 0; i != getPostCount(); i++) {
 		pins[i].value = false;
@@ -297,7 +297,7 @@ abstract class ChipElm extends CircuitElm {
 	    super.reset();
 	}
 	
-	String dump() {
+	protected String dump() {
 	    if (highVoltage == 5)
 		flags &= ~FLAG_CUSTOM_VOLTAGE;
 	    else
@@ -322,7 +322,7 @@ abstract class ChipElm extends CircuitElm {
 	    pins[n].value = value;
 	}
 	
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = getChipName();
 	    int i, a = 1;
 	    for (i = 0; i != getPostCount(); i++) {
@@ -347,13 +347,13 @@ abstract class ChipElm extends CircuitElm {
 		if (pins[i].output && pins[i].voltSource == x)
 		    pins[i].current = c;
 	}
-	String getChipName() { return "chip"; }
-	boolean getConnection(int n1, int n2) { return false; }
+	protected String getChipName() { return "chip"; }
+	protected boolean getConnection(int n1, int n2) { return false; }
 	boolean hasGroundConnection(int n1) {
 	    return pins[n1].output;
 	}
 	
-	double getCurrentIntoNode(int n) {
+	protected double getCurrentIntoNode(int n) {
 	    return pins[n].current;
 	}
 	
@@ -425,7 +425,7 @@ abstract class ChipElm extends CircuitElm {
 	}
 
 	static final int SIDE_N = 0;
-	static final int SIDE_S = 1;
+	public static final int SIDE_S = 1;
 	static final int SIDE_W = 2;
 	static final int SIDE_E = 3;
 	
@@ -476,17 +476,17 @@ abstract class ChipElm extends CircuitElm {
 	    setPoints();
 	}
 
-	class Pin {
-	    Pin(int p, int s, String t) {
+	public class Pin {
+	    public Pin(int p, int s, String t) {
 		pos = p; side0 = side = s; text = t;
 	    }
-	    Point post, stub;
-	    Point textloc;
-	    int pos, side, side0, voltSource, bubbleX, bubbleY;
-	    String text;
-	    boolean lineOver, bubble, clock, output, value, state, selected;
-	    double curcount, current;
-            int clockPointsX[], clockPointsY[];
+	    public Point post, stub;
+	    public Point textloc;
+	    public int pos, side, side0, voltSource, bubbleX, bubbleY;
+	    public String text;
+	    public boolean lineOver, bubble, clock, output, value, state, selected;
+	    public double curcount, current;
+            public int clockPointsX[], clockPointsY[];
 	    void setPoint(int px, int py, int dx, int dy, int dax, int day, int sx, int sy) {
 		if (isFlippedX()) {
 		    dx = -dx;
@@ -584,4 +584,3 @@ abstract class ChipElm extends CircuitElm {
 
 	}
     }
-

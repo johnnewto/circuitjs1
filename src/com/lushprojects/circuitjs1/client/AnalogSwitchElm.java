@@ -52,16 +52,16 @@ class AnalogSwitchElm extends CircuitElm {
 	    threshold = Double.parseDouble(st.nextToken());
 	} catch (Exception e) { }
     }
-    String dump() {
+    protected String dump() {
 	return super.dump() + " " + r_on + " " + r_off + " " + threshold;
     }
     
-    int getDumpType() { return 159; }
+    protected int getDumpType() { return 159; }
     boolean open;
     int openhs;
 	
     Point ps, point3, lead3;
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	calcLeads(32);
 	adjustLeadsToGrid(isFlippedX(), isFlippedY());
@@ -90,7 +90,7 @@ class AnalogSwitchElm extends CircuitElm {
 	super.flipXY(c2, count);
     }
 
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	int hs = (open) ? openhs : 0;
 	setBbox(point1, point2, openhs);
 
@@ -115,11 +115,11 @@ class AnalogSwitchElm extends CircuitElm {
     }
 	
     // we need this to be able to change the matrix for each step
-    boolean nonLinear() { return true; }
+    protected boolean nonLinear() { return true; }
 
     boolean needsPulldown() { return hasFlag(FLAG_PULLDOWN); }
 
-    void stamp() {
+    protected void stamp() {
 	sim.stampNonLinear(nodes[0]);
 	sim.stampNonLinear(nodes[1]);
 	if (needsPulldown()) {
@@ -128,7 +128,7 @@ class AnalogSwitchElm extends CircuitElm {
 	    sim.stampResistor(nodes[1], 0, r_off);
 	}
     }
-    void doStep() {
+    protected void doStep() {
 	open = (volts[2] < threshold);
 	if (hasFlag(FLAG_INVERT))
 	    open = !open;
@@ -140,11 +140,11 @@ class AnalogSwitchElm extends CircuitElm {
 	    sim.stampResistor(nodes[0], nodes[1], resistance);
 	}
     }
-    int getPostCount() { return 3; }
-    Point getPost(int n) {
+    protected int getPostCount() { return 3; }
+    protected Point getPost(int n) {
 	return (n == 0) ? point1 : (n == 1) ? point2 : point3;
     }
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = "analog switch";
 	arr[1] = open ? "open" : "closed";
 	arr[2] = "Vd = " + getVoltageDText(getVoltageDiff());
@@ -154,7 +154,7 @@ class AnalogSwitchElm extends CircuitElm {
 
     // we have to just assume current will flow either way, even though that
     // might cause singular matrix errors
-    boolean getConnection(int n1, int n2) {
+    protected boolean getConnection(int n1, int n2) {
 	if (n1 == 2 || n2 == 2)
 	    return false;
 	return true;
@@ -196,7 +196,7 @@ class AnalogSwitchElm extends CircuitElm {
 	    threshold = ei.value;
     }
     
-    double getCurrentIntoNode(int n) {
+    protected double getCurrentIntoNode(int n) {
 	if (n==2)
 	    return 0;
 	if (n==0)

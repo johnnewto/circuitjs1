@@ -52,7 +52,7 @@ class CapacitorElm extends CircuitElm {
 	}
 	boolean isTrapezoidal() { return (flags & FLAG_BACK_EULER) == 0; }
 	
-	void reset() {
+	protected void reset() {
 	    super.reset();
 	    current = curcount = curSourceValue = 0;
 	    // put small charge on caps when reset to start oscillators
@@ -62,9 +62,9 @@ class CapacitorElm extends CircuitElm {
 	    super.reset();
 	    voltdiff = current = curcount = curSourceValue = 0;
 	}
-	int getDumpType() { return 'c'; }
+	protected int getDumpType() { return 'c'; }
 
-	String dump() {
+	protected String dump() {
 	    flags |= FLAG_RESISTANCE;
 	    return super.dump() + " " + capacitance + " " + voltdiff + " " + initialVoltage + " " + seriesResistance;
 	}
@@ -72,7 +72,7 @@ class CapacitorElm extends CircuitElm {
 	// used for PolarCapacitorElm
 	Point platePoints[];
 	
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    double f = (dn/2-4)/dn;
 	    // calc leads
@@ -85,7 +85,7 @@ class CapacitorElm extends CircuitElm {
 	    interpPoint2(point1, point2, plate2[0], plate2[1], 1-f, 12);
 	}
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    int hs = 12;
 	    setBbox(point1, point2, hs);
 	    
@@ -120,7 +120,7 @@ class CapacitorElm extends CircuitElm {
 		drawValues(g, s, hs);
 	    }
 	}
-	void stamp() {
+	protected void stamp() {
 	    SimulationContext context = getSimulationContext();
 	    if (sim.dcAnalysisFlag) {
 		// when finding DC operating point, replace cap with a 100M resistor
@@ -158,7 +158,7 @@ class CapacitorElm extends CircuitElm {
 		curSourceValue = -voltdiff/compResistance;
 	}
 	
-	void stepFinished() {
+	protected void stepFinished() {
 	    voltdiff = volts[0]-volts[capNode2];
 	    calculateCurrent();
 	}
@@ -183,13 +183,13 @@ class CapacitorElm extends CircuitElm {
 		current = voltdiff/compResistance + curSourceValue;
 	}
 	double curSourceValue;
-	void doStep() {
+	protected void doStep() {
 	    if (sim.dcAnalysisFlag)
 		return;
 	    sim.stampCurrentSource(nodes[0], nodes[capNode2], curSourceValue);
  	}
 	int getInternalNodeCount() { return (!sim.dcAnalysisFlag && seriesResistance > 0) ? 1 : 0; }
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "capacitor";
 	    getBasicInfo(arr);
 	    arr[3] = "C = " + getUnitText(capacitance, "F");

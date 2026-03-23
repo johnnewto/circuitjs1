@@ -120,10 +120,10 @@ public class SFCStockElm extends CircuitElm {
     // =========================================================================
     
     @Override
-    int getDumpType() { return 268; }  // Unique element type
+    protected int getDumpType() { return 268; }  // Unique element type
     
     @Override
-    String dump() {
+    protected String dump() {
         return super.dump() + " " + 
                CustomLogicModel.escape(stockName) + " " + 
                initialStock + " " + 
@@ -135,7 +135,7 @@ public class SFCStockElm extends CircuitElm {
     // =========================================================================
     
     @Override
-    int getPostCount() { return 1; }  // Single node representing the stock
+    protected int getPostCount() { return 1; }  // Single node representing the stock
     
     @Override
     void registerLabels() {
@@ -160,7 +160,7 @@ public class SFCStockElm extends CircuitElm {
     }
     
     @Override
-    void setPoints() {
+    protected void setPoints() {
         super.setPoints();
         // Set up label position above the post
         labelPoint = new Point(x, y - 20);
@@ -179,7 +179,7 @@ public class SFCStockElm extends CircuitElm {
     }
     
     @Override
-    void reset() {
+    protected void reset() {
         super.reset();
         stockValue = initialStock;
         volts[0] = initialStock;
@@ -189,7 +189,7 @@ public class SFCStockElm extends CircuitElm {
     }
     
     @Override
-    void stamp() {
+    protected void stamp() {
         double dt = getSimulationContext().getTimeStep();
         // Capacitor companion model
         // Trapezoidal: compResistance = dt/(2*C)
@@ -233,7 +233,7 @@ public class SFCStockElm extends CircuitElm {
     }
     
     @Override
-    void doStep() {
+    protected void doStep() {
         if (sim.dcAnalysisFlag) {
             return;
         }
@@ -243,7 +243,7 @@ public class SFCStockElm extends CircuitElm {
     }
     
     @Override
-    void stepFinished() {
+    protected void stepFinished() {
         // Update stock value from solved voltage
         stockValue = volts[0];
         
@@ -269,7 +269,7 @@ public class SFCStockElm extends CircuitElm {
     }
     
     @Override
-    double getCurrentIntoNode(int n) {
+    protected double getCurrentIntoNode(int n) {
         // Current into the stock node (positive = inflow)
         return -netCurrent;
     }
@@ -285,7 +285,7 @@ public class SFCStockElm extends CircuitElm {
     // =========================================================================
     
     @Override
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
         // Set color based on stock value
         setVoltageColor(g, volts[0]);
         
@@ -336,7 +336,7 @@ public class SFCStockElm extends CircuitElm {
     // =========================================================================
     
     @Override
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
         arr[0] = "SFC Stock: " + stockName;
         arr[1] = "Stock = " + getVoltageText(stockValue);
         arr[2] = "Net Flow = " + getCurrentText(netCurrent);

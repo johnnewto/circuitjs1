@@ -29,7 +29,7 @@ class AnalogSwitch2Elm extends AnalogSwitchElm {
     }
 
     Point swposts[], swpoles[], ctlPoint;
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	calcLeads(32);
 	adjustLeadsToGrid(isFlippedX(), isFlippedY());
@@ -39,9 +39,9 @@ class AnalogSwitch2Elm extends AnalogSwitchElm {
 	interpPoint2(point1, point2, swposts[0], swposts[1], 1, openhs);
 	ctlPoint = interpPoint(lead1, lead2, .5, openhs);
     }
-    int getPostCount() { return 4; }
+    protected int getPostCount() { return 4; }
 
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	setBbox(point1, point2, openhs);
 
 	// draw first lead
@@ -67,10 +67,10 @@ class AnalogSwitch2Elm extends AnalogSwitchElm {
 	drawPosts(g);
     }
 	
-    Point getPost(int n) {
+    protected Point getPost(int n) {
 	return (n == 0) ? point1 : (n == 3) ? ctlPoint : swposts[n-1];
     }
-    int getDumpType() { return 160; }
+    protected int getDumpType() { return 160; }
 
     void calculateCurrent() {
 	if (open)
@@ -79,7 +79,7 @@ class AnalogSwitch2Elm extends AnalogSwitchElm {
 	    current = (volts[0]-volts[1])/r_on;
     }
 	
-    void stamp() {
+    protected void stamp() {
 	sim.stampNonLinear(nodes[0]);
 	sim.stampNonLinear(nodes[1]);
 	sim.stampNonLinear(nodes[2]);
@@ -88,7 +88,7 @@ class AnalogSwitch2Elm extends AnalogSwitchElm {
 	    sim.stampResistor(nodes[2], 0, r_off);
 	}
     }
-    void doStep() {
+    protected void doStep() {
 	open = (volts[3] < threshold);
 	if (hasFlag(FLAG_INVERT))
 	    open = !open;
@@ -103,7 +103,7 @@ class AnalogSwitch2Elm extends AnalogSwitchElm {
 	}
     }
 	
-    boolean getConnection(int n1, int n2) {
+    protected boolean getConnection(int n1, int n2) {
 	if (n1 == 3 || n2 == 3)
 	    return false;
 	if (needsPulldown())
@@ -115,12 +115,12 @@ class AnalogSwitch2Elm extends AnalogSwitchElm {
 	return needsPulldown() && n != 3;
     }
 
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = "analog switch (SPDT)";
 	arr[1] = "I = " + getCurrentDText(getCurrent());
     }
     
-    double getCurrentIntoNode(int n) {
+    protected double getCurrentIntoNode(int n) {
 	if (n == 0)
 	    return -current;
 	int position = (open) ? 1 : 0;

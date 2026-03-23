@@ -64,7 +64,7 @@ class DiodeElm extends CircuitElm {
 	}
 	setup();
     }
-    boolean nonLinear() { return true; }
+    protected boolean nonLinear() { return true; }
         
     void setup() {
 //	CirSim.console("setting up for model " + modelName + " " + model);
@@ -82,8 +82,8 @@ class DiodeElm extends CircuitElm {
 	setup();
     }
 
-    int getDumpType() { return 'd'; }
-		String dump() {
+    protected int getDumpType() { return 'd'; }
+		protected String dump() {
 		flags |= FLAG_MODEL;
 		if (modelName == null) {
 			CirSim.console("model name is null??");
@@ -102,7 +102,7 @@ class DiodeElm extends CircuitElm {
     Polygon poly;
     Point cathode[];
 	
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	calcLeads(16);
 	cathode = newPointArray(2);
@@ -112,13 +112,13 @@ class DiodeElm extends CircuitElm {
 	poly = createPolygon(pa[0], pa[1], lead2);
     }
 	
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	drawDiode(g);
 	doDots(g);
 	drawPosts(g);
     }
 	
-    void reset() {
+    protected void reset() {
 	diode.reset();
 	volts[0] = volts[1] = curcount = 0;
 	if (hasResistance)
@@ -144,7 +144,7 @@ class DiodeElm extends CircuitElm {
 	drawThickLine(g, cathode[0], cathode[1]);
     }
 	
-    void stamp() {
+    protected void stamp() {
 	if (hasResistance) {
 	    // create diode from node 0 to internal node
 	    diode.stamp(nodes[0], nodes[2]);
@@ -154,13 +154,13 @@ class DiodeElm extends CircuitElm {
 	    // don't need any internal nodes if no series resistance
 	    diode.stamp(nodes[0], nodes[1]);
     }
-    void doStep() {
+    protected void doStep() {
 	diode.doStep(volts[0]-volts[diodeEndNode]);
     }
     void calculateCurrent() {
 	current = diode.calculateCurrent(volts[0]-volts[diodeEndNode]);
     }
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	if (model.oldStyle)
 	    arr[0] = "diode";
 	else
@@ -252,7 +252,7 @@ class DiodeElm extends CircuitElm {
 	lastModelName = n;
     }
     
-    void stepFinished() {
+    protected void stepFinished() {
         // stop for huge currents that make simulator act weird
         if (Math.abs(current) > 1e12)
             sim.stop("max current exceeded", this);

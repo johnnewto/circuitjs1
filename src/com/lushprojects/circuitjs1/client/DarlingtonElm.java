@@ -48,7 +48,7 @@ public class DarlingtonElm extends CompositeElm {
     }
 
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	setBbox(point1, point2, 16);
 	setPowerColor(g, true);
 	// draw collector
@@ -97,7 +97,7 @@ public class DarlingtonElm extends CompositeElm {
 
 
 
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = Locale.LS("darlington pair") + " (" + ((pnp == -1) ? "PNP)" : "NPN)");
 	double vbc = volts[0] - volts[1];
 	double vbe = volts[0] - volts[2];
@@ -109,7 +109,7 @@ public class DarlingtonElm extends CompositeElm {
 	arr[5] = "Vce = " + getVoltageText(vce);
     }
 
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	int hs = 16;
 	int hs2 = hs * dsign * pnp;

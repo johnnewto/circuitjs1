@@ -66,17 +66,17 @@ class TriacElm extends CircuitElm {
 	diode30.setupForDefaultModel();
     }
     
-    boolean nonLinear() { return true; }
+    protected boolean nonLinear() { return true; }
     
-    void reset() {
+    protected void reset() {
 	volts[mt1node] = volts[mt2node] = volts[gnode] = 0;
 	diode03.reset();
 	diode30.reset();
 	curcount_1 = curcount_2 = curcount_g = 0;
     }
     
-    int getDumpType() { return 206; }
-    String dump() {
+    protected int getDumpType() { return 206; }
+    protected String dump() {
 	return super.dump() + " " + triggerI + " " + holdingI + " " + cresistance + " " + state;
     }
     double i1, i2, ig, curcount_1, curcount_2, curcount_g;
@@ -89,7 +89,7 @@ class TriacElm extends CircuitElm {
     Polygon arrows[];
     Point plate1[], plate2[];
     
-    void setPoints() {
+    protected void setPoints() {
         super.setPoints();
         int dir = 0;
         if (abs(dx) > abs(dy)) {
@@ -135,7 +135,7 @@ class TriacElm extends CircuitElm {
 	
     }
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	double v1 = volts[0];
 	double v2 = volts[1];
 	setBbox(point1, point2, 6);
@@ -178,11 +178,11 @@ class TriacElm extends CircuitElm {
 	drawPosts(g);
     }
 
-    Point getPost(int n) {
+    protected Point getPost(int n) {
 	return (n == 0) ? point1 : (n == 1) ? point2 : gate[1];
     }
 	
-    @Override double getCurrentIntoNode(int n) {
+    @Override protected double getCurrentIntoNode(int n) {
 	if (n == 0)
             return -i2;
 	if (n == 1)
@@ -190,12 +190,12 @@ class TriacElm extends CircuitElm {
         return -ig;
     }
     
-    int getPostCount() { return 3; }
+    protected int getPostCount() { return 3; }
     int getInternalNodeCount() { return 1; }
 
     double aresistance;
     
-    void stamp() {
+    protected void stamp() {
 	sim.stampNonLinear(nodes[mt1node]);
 	sim.stampNonLinear(nodes[mt2node]);
 	sim.stampNonLinear(nodes[gnode]);
@@ -213,12 +213,12 @@ class TriacElm extends CircuitElm {
 	aresistance = (state) ? .01 : 10e5;
     }
     
-    void doStep() {
+    protected void doStep() {
 	diode03.doStep(volts[mt2node]-volts[mtinode]);
 	diode30.doStep(volts[mtinode]-volts[mt2node]);
 	sim.stampResistor(nodes[mtinode], nodes[mt1node], aresistance);
     }
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = "TRIAC";
 	arr[1] = (state) ? "on" : "off";
 	arr[2] = "Vmt2mt1 = " + getVoltageText(volts[mt2node]-volts[mt1node]);

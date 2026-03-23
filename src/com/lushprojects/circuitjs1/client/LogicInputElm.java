@@ -44,16 +44,16 @@ package com.lushprojects.circuitjs1.client;
 	}
 	boolean isTernary() { return (flags & FLAG_TERNARY) != 0; }
 	boolean isNumeric() { return (flags & (FLAG_TERNARY|FLAG_NUMERIC)) != 0; }
-	int getDumpType() { return 'L'; }
-	String dump() {
+	protected int getDumpType() { return 'L'; }
+	protected String dump() {
 	    return super.dump() + " " + hiV + " " + loV;
 	}
-	int getPostCount() { return 1; }
-	void setPoints() {
+	protected int getPostCount() { return 1; }
+	protected void setPoints() {
 	    super.setPoints();
 	    lead1 = interpPoint(point1, point2, 1-12/dn);
 	}
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    g.save();
 	    Font f = new Font("SansSerif", Font.BOLD, 20);
 	    g.setFont(f);
@@ -77,22 +77,22 @@ package com.lushprojects.circuitjs1.client;
 
 	void setCurrent(int vs, double c) { current = c; }
 	void calculateCurrent() {}
-	void stamp() {
+	protected void stamp() {
 	    sim.stampVoltageSource(0, nodes[0], voltSource);
 	}
 	
-	boolean isWireEquivalent() { return false; }
-	boolean isRemovableWire() { return false; }
+	protected boolean isWireEquivalent() { return false; }
+	protected boolean isRemovableWire() { return false; }
 
-	void doStep() {
+	protected void doStep() {
 	    double v = (position == 0) ? loV : hiV;
 	    if (isTernary())
 		v = loV + position * (hiV-loV) * .5;
 	    sim.updateVoltageSource(0, nodes[0], voltSource, v);
 	}
-	int getVoltageSourceCount() { return 1; }
+	protected int getVoltageSourceCount() { return 1; }
 	double getVoltageDiff() { return volts[0]; }
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "logic input";
 	    arr[1] = (position == 0) ? "low" : "high";
 	    if (isNumeric())
@@ -146,7 +146,7 @@ package com.lushprojects.circuitjs1.client;
 	}
 	int getShortcut() { return 'i'; }
 	
-	double getCurrentIntoNode(int n) {
+	protected double getCurrentIntoNode(int n) {
 	    return current;
 	}
     }

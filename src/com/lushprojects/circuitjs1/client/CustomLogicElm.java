@@ -33,7 +33,7 @@ public class CustomLogicElm extends ChipElm {
 	}
     }
     
-    String dump() {
+    protected String dump() {
 	String s = super.dump();
 	s += " " + CustomLogicModel.escape(modelName);
 
@@ -62,7 +62,7 @@ public class CustomLogicElm extends ChipElm {
     }
     
     @Override
-    void setupPins() {
+    protected void setupPins() {
 	if (modelName == null) {
 	    postCount = bits;
 	    allocNodes();
@@ -93,17 +93,17 @@ public class CustomLogicElm extends ChipElm {
 	highImpedance = new boolean[postCount];
     }
 
-    int getPostCount() { return postCount; }
+    protected int getPostCount() { return postCount; }
     
     @Override
-    int getVoltageSourceCount() {
+    protected int getVoltageSourceCount() {
 	return outputCount;
     }
 
     // keep track of whether we have any tri-state outputs.  if not, then we can simplify things quite a bit, making the simulation faster
     boolean hasTriState() { return model == null ? false : model.triState; }
     
-    boolean nonLinear() { return hasTriState(); }
+    protected boolean nonLinear() { return hasTriState(); }
     
     int getInternalNodeCount() {
 	// for tri-state outputs, we need an internal node to connect a voltage source to, and then connect a resistor from there to the output.
@@ -111,7 +111,7 @@ public class CustomLogicElm extends ChipElm {
 	return (hasTriState()) ? outputCount : 0; 
     }
     
-    void stamp() {
+    protected void stamp() {
 	int i;
 	int add = (hasTriState()) ? outputCount : 0;
 	for (i = 0; i != getPostCount(); i++) {
@@ -126,7 +126,7 @@ public class CustomLogicElm extends ChipElm {
 	}
     }
     
-    void doStep() {
+    protected void doStep() {
 	int i;
 	for (i = 0; i != getPostCount(); i++) {
 	    Pin p = pins[i];
@@ -252,9 +252,9 @@ public class CustomLogicElm extends ChipElm {
 	}
     }
     
-    int getDumpType() { return 208; }
+    protected int getDumpType() { return 208; }
 
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	super.getInfo(arr);
 	arr[0] = model.infoText;
     }

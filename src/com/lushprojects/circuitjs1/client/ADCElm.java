@@ -25,9 +25,9 @@ class ADCElm extends ChipElm {
 		  StringTokenizer st) {
 	super(xa, ya, xb, yb, f, st);
     }
-    String getChipName() { return "ADC"; }
+    protected String getChipName() { return "ADC"; }
     boolean needsBits() { return true; }
-    void setupPins() {
+    protected void setupPins() {
 	sizeX = 2;
 	sizeY = bits > 2 ? bits : 2;
 	pins = new Pin[getPostCount()];
@@ -50,12 +50,12 @@ class ADCElm extends ChipElm {
 	for (i = 0; i != bits; i++)
 	    pins[i].value = ((ival & (1<<i)) != 0);
     }
-    int getVoltageSourceCount() { return bits; }
-    int getPostCount() { return bits+2; }
-    int getDumpType() { return 167; }
+    protected int getVoltageSourceCount() { return bits; }
+    protected int getPostCount() { return bits+2; }
+    protected int getDumpType() { return 167; }
 
     // there's already a V+ pin, how does that relate to high logic voltage?  figure out later
-    @Override boolean isDigitalChip() { return false; }
+    @Override protected boolean isDigitalChip() { return false; }
     public EditInfo getChipEditInfo(int n) {
         if (n == 0)
             return new EditInfo("# of Bits", bits, 1, 1).setDimensionless();

@@ -235,7 +235,7 @@ public class TransistorModel implements Editable, Comparable<TransistorModel> {
     void updateModel() {
     }
 
-    String dump() {
+    protected String dump() {
 	dumped = true;
 	return "32 " + CustomLogicModel.escape(name) + " " + flags + " " +
 		satCur + " " + invRollOffF + " " + BEleakCur + " " + leakBEemissionCoeff + " " + invRollOffR + " " +

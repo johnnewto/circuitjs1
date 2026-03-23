@@ -43,7 +43,7 @@ class CCCSElm extends VCCSElm {
 	
 	int inputPairCount;
 	
-	void setupPins() {
+	protected void setupPins() {
             sizeX = 2;
             sizeY = inputCount > 2 ? inputCount : 2;
             pins = new Pin[inputCount+2];
@@ -61,8 +61,8 @@ class CCCSElm extends VCCSElm {
             lastCurrents = new double[inputPairCount];
             allocNodes();
       	}
-	String getChipName() { return "CCCS"; } 
-	void stamp() {
+	protected String getChipName() { return "CCCS"; } 
+	protected void stamp() {
             SimulationContext context = getSimulationContext();
             int i;
             if (isSpiceStyle()) {
@@ -82,7 +82,7 @@ class CCCSElm extends VCCSElm {
 
 	double lastCurrents[];
 	
-        void doStep() {
+        protected void doStep() {
             SimulationContext context = getSimulationContext();
             // no current path?  give up
             if (broken) {
@@ -148,7 +148,7 @@ class CCCSElm extends VCCSElm {
                 lastCurrents[i] = pins[i*2+1].current;
         }
 	
-        void stepFinished() {
+        protected void stepFinished() {
             exprState.updateLastValues(pins[inputCount].current);
         }
         
@@ -159,10 +159,10 @@ class CCCSElm extends VCCSElm {
             exprState.values[n] = cur;
         }
         
-	int getPostCount() { return inputCount+2; }
-	int getVoltageSourceCount() { return isSpiceStyle() ? 0 : inputPairCount; }
-	int getDumpType() { return 215; }
-	boolean getConnection(int n1, int n2) {
+	protected int getPostCount() { return inputCount+2; }
+	protected int getVoltageSourceCount() { return isSpiceStyle() ? 0 : inputPairCount; }
+	protected int getDumpType() { return 215; }
+	protected boolean getConnection(int n1, int n2) {
             return (n1/2 == n2/2);
 	}
         boolean hasCurrentOutput() { return true; }
@@ -210,14 +210,14 @@ class CCCSElm extends VCCSElm {
             }
         }
         
-        void setVoltageSource(int j, int vs) {
+        protected void setVoltageSource(int j, int vs) {
             if (isSpiceStyle())
                 pins[inputCount].voltSource = vs;
             else
                 super.setVoltageSource(j, vs);
         }
         
-        void getInfo(String arr[]) {
+        protected void getInfo(String arr[]) {
             super.getInfo(arr);
             int i = 1;
             int j;

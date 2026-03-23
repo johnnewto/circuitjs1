@@ -26,9 +26,9 @@ import com.google.gwt.user.client.ui.TextArea;
 import com.google.gwt.user.client.ui.SuggestBox;
 import com.google.gwt.event.dom.client.KeyUpHandler;
 
-class EditInfo {
+public class EditInfo {
     
-	EditInfo(String n, double val, double mn, double mx) {
+	public EditInfo(String n, double val, double mn, double mx) {
 		name = n;
 		value = val;
 		dimensionless = false;
@@ -36,64 +36,64 @@ class EditInfo {
 		maxVal = mx;
 	}
 	
-	EditInfo(String n, double val) {
+	public EditInfo(String n, double val) {
 		name = n;
 		value = val;
 		dimensionless = false;
 	}
 	
-	EditInfo(String n, String txt) {
+	public EditInfo(String n, String txt) {
 	    name = n;
 	    text = txt;
 	    dimensionless = noSliders = true;
 	}
 
-	static EditInfo createCheckbox(String name, boolean flag) {
+	public static EditInfo createCheckbox(String name, boolean flag) {
 	    EditInfo ei = new EditInfo("", 0, -1, -1);
 	    ei.checkbox = new Checkbox(name, flag);
 	    return ei;
 	}
 	
-	EditInfo setDimensionless() { dimensionless = true; return this; }
-	EditInfo disallowSliders() { noSliders = true; return this; }
-	int changeFlag(int flags, int bit) {
+	public EditInfo setDimensionless() { dimensionless = true; return this; }
+	public EditInfo disallowSliders() { noSliders = true; return this; }
+	public int changeFlag(int flags, int bit) {
 	    if (checkbox.getState())
 		return flags | bit;
 	    return flags & ~bit;
 	}
-	int changeFlagInverted(int flags, int bit) {
+	public int changeFlagInverted(int flags, int bit) {
 	    if (!checkbox.getState())
 		return flags | bit;
 	    return flags & ~bit;
 	}
 	
-	String name, text;
-	double value;
-	TextBox textf;
-	Choice choice;
-	Checkbox checkbox;
-	Checkbox checkboxInline;  // Optional checkbox displayed to the right of a value field
-	Button button;
-	EditDialogLoadFile loadFile = null; //if non-null, the button will open a file dialog
-	TextArea textArea;
-	SuggestBox suggestBox;  // Autocomplete text box
-	Widget widget;
-	boolean newDialog;
-	boolean dimensionless;
-	boolean noSliders;
-	double minVal, maxVal;
-	KeyUpHandler keyUpHandler; // Optional handler for immediate text changes
-	java.util.List<String> completionList;  // List of completion items for bash-style autocomplete
+	public String name, text;
+	public double value;
+	public TextBox textf;
+	public Choice choice;
+	public Checkbox checkbox;
+	public Checkbox checkboxInline;  // Optional checkbox displayed to the right of a value field
+	public Button button;
+	public EditDialogLoadFile loadFile = null; //if non-null, the button will open a file dialog
+	public TextArea textArea;
+	public SuggestBox suggestBox;  // Autocomplete text box
+	public Widget widget;
+	public boolean newDialog;
+	public boolean dimensionless;
+	public boolean noSliders;
+	public double minVal, maxVal;
+	public KeyUpHandler keyUpHandler; // Optional handler for immediate text changes
+	public java.util.List<String> completionList;  // List of completion items for bash-style autocomplete
 	
 	// for slider dialog
-	TextBox minBox, maxBox, labelBox, stepsBox;
+	public TextBox minBox, maxBox, labelBox, stepsBox;
 	
-	boolean canCreateAdjustable() {
+	public boolean canCreateAdjustable() {
 	    return choice == null && checkbox == null && button == null && textArea == null &&
 			widget == null && !noSliders;
 	}
 
-	static String makeLink(String file, String text) {
+	public static String makeLink(String file, String text) {
             return "<a href=\"" + file + "\" target=\"_blank\">" + Locale.LS(text) + "</a>";
 	}
 }

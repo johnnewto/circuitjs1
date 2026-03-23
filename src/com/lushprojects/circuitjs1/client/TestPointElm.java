@@ -69,13 +69,13 @@ class TestPointElm extends CircuitElm {
 	else
 	    label = "TP";
     }
-    int getDumpType() { return 368; }
-    int getPostCount() { return 1; }
-    void setPoints() {
+    protected int getDumpType() { return 368; }
+    protected int getPostCount() { return 1; }
+    protected void setPoints() {
         super.setPoints();
         lead1 = new Point();
     }
-    String dump() {
+    protected String dump() {
 	boolean writeLabel = (!label.equals("TP"));
 	flags = (writeLabel) ? (flags | FLAG_LABEL) : (flags & ~FLAG_LABEL);
         String str = super.dump() + " " + meter;
@@ -156,7 +156,7 @@ class TestPointElm extends CircuitElm {
     }    
     
 
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	g.save();
         boolean selected = needsHighlight();
         Font f = new Font("SansSerif", selected ? Font.BOLD : 0, 14);
@@ -214,7 +214,7 @@ class TestPointElm extends CircuitElm {
     }
     
     
-    void stepFinished(){
+    protected void stepFinished(){
 	if (sim.getTimingState().timeStepCount == lastStepCount)
 	    return;
 	lastStepCount = sim.getTimingState().timeStepCount;
@@ -334,7 +334,7 @@ class TestPointElm extends CircuitElm {
     
     double getVoltageDiff() { return volts[0]; }
     
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
         arr[0] = label;
         switch (meter) {
             case TP_VOL:

@@ -227,7 +227,7 @@ public class Adjustable implements Command {
 	return false;
     }
     
-    String dump() {
+    protected String dump() {
 	int ano = -1;
 	if (sharedSlider != null)
 	    ano = CirSim.getInstance().adjustables.indexOf(sharedSlider);

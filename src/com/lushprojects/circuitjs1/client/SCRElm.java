@@ -68,14 +68,14 @@ class SCRElm extends CircuitElm {
 	diode.setupForDefaultModel();
 	aresistance = 1; // to avoid divide by zero
     }
-    boolean nonLinear() { return true; }
-    void reset() {
+    protected boolean nonLinear() { return true; }
+    protected void reset() {
 	volts[anode] = volts[cnode] = volts[gnode] = 0;
 	diode.reset();
 	lastvag = lastvac = curcount_a = curcount_c = curcount_g = 0;
     }
-    int getDumpType() { return 177; }
-    String dump() {
+    protected int getDumpType() { return 177; }
+    protected String dump() {
 	return super.dump() + " " + (volts[anode]-volts[cnode]) + " " +
 	    (volts[anode]-volts[gnode]) + " " + triggerI + " "+  holdingI + " " +
 	    gresistance;
@@ -90,7 +90,7 @@ class SCRElm extends CircuitElm {
 	
     boolean applyGateFix() { return (flags & FLAG_GATE_FIX) != 0; }
     
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	dir = 0;
 	if (abs(dx) > abs(dy)) {
@@ -130,7 +130,7 @@ class SCRElm extends CircuitElm {
 	gate[1].y = sim.snapGrid(gate[1].y);
     }
 	
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	setBbox(point1, point2, hs);
 	adjustBbox(gate[0], gate[1]);
 
@@ -174,7 +174,7 @@ class SCRElm extends CircuitElm {
 	drawPosts(g);
     }
 	
-    double getCurrentIntoNode(int n) {
+    protected double getCurrentIntoNode(int n) {
 	if (n == anode)
 	    return -ia;
 	if (n == cnode)
@@ -183,18 +183,18 @@ class SCRElm extends CircuitElm {
     }
 
     
-    Point getPost(int n) {
+    protected Point getPost(int n) {
 	return (n == 0) ? point1 : (n == 1) ? point2 : gate[1];
     }
 	
-    int getPostCount() { return 3; }
+    protected int getPostCount() { return 3; }
     int getInternalNodeCount() { return 1; }
     double getPower() {
 	return (volts[anode]-volts[gnode])*ia + (volts[cnode]-volts[gnode])*ic;
     }
 
     double aresistance;
-    void stamp() {
+    protected void stamp() {
 	sim.stampNonLinear(nodes[anode]);
 	sim.stampNonLinear(nodes[cnode]);
 	sim.stampNonLinear(nodes[gnode]);
@@ -203,7 +203,7 @@ class SCRElm extends CircuitElm {
 	diode.stamp(nodes[inode], nodes[cnode]);
     }
 
-    void doStep() {
+    protected void doStep() {
 	double vac = volts[anode]-volts[cnode]; // typically negative
 	double vag = volts[anode]-volts[gnode]; // typically positive
 	if (Math.abs(vac-lastvac) > .01 ||
@@ -219,7 +219,7 @@ class SCRElm extends CircuitElm {
 	//System.out.println(vac + " " + vag + " " + sim.converged + " " + ic + " " + ia + " " + aresistance + " " + volts[inode] + " " + volts[gnode] + " " + volts[anode]);
 	sim.stampResistor(nodes[anode], nodes[inode], aresistance);
     }
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = "SCR";
 	double vac = volts[anode]-volts[cnode];
 	double vag = volts[anode]-volts[gnode];

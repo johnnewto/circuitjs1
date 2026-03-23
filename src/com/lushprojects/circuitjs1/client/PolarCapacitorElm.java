@@ -12,14 +12,14 @@ public class PolarCapacitorElm extends CapacitorElm {
 	    super(xa, ya, xb, yb, f, st);
 	    maxNegativeVoltage = Double.parseDouble(st.nextToken());
 	}
-	int getDumpType() { return 209; }
-	String dump() {
+	protected int getDumpType() { return 209; }
+	protected String dump() {
 	    return super.dump() + " " + maxNegativeVoltage;
 	}
 	
 	Point plusPoint;
 	
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    double f = (dn/2-4)/dn;
 	    int i;
@@ -37,14 +37,14 @@ public class PolarCapacitorElm extends CapacitorElm {
 		plusPoint.y += 3;
 	}
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    super.draw(g);
             g.setColor(whiteColor);
             g.setFont(unitsFont);
             int w = (int)g.context.measureText("+").getWidth();;
             g.drawString("+", plusPoint.x-w/2, plusPoint.y);
 	}
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    super.getInfo(arr);
 	    arr[0] = "capacitor (polarized)";
 	}
@@ -59,7 +59,7 @@ public class PolarCapacitorElm extends CapacitorElm {
 	    super.setEditValue(n, ei);
 	}
 	
-	void stepFinished() {
+	protected void stepFinished() {
 	    if (getVoltageDiff() < 0 && getVoltageDiff() < -maxNegativeVoltage)
 		sim.stop("capacitor exceeded max reverse voltage", this);
 	    super.stepFinished();

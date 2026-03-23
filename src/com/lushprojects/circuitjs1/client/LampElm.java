@@ -47,23 +47,23 @@ class LampElm extends CircuitElm {
 	    coolTime = Double.parseDouble(st.nextToken());
 	    startIteration(); // set resistance
 	}
-	String dump() {
+	protected String dump() {
 	    return super.dump() + " " + temp + " " + nom_pow + " " + nom_v +
 		" " + warmTime + " " + coolTime;
 	}
-	int getDumpType() { return 181; }
+	protected int getDumpType() { return 181; }
 
 	Point bulbLead[], filament[], bulb;
 	int bulbR;
 
-	void reset() {
+	protected void reset() {
 	    super.reset();
 	    temp = roomTemp;
 	    
 	    startIteration(); // set resistance
 	}
 	final int filament_len = 24;
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    int llen = 16;
 	    calcLeads(llen);
@@ -100,7 +100,7 @@ class LampElm extends CircuitElm {
 	    return Color.white;
 	}
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    double v1 = volts[0];
 	    double v2 = volts[1];
 	    setBbox(point1, point2, 4);
@@ -140,11 +140,11 @@ class LampElm extends CircuitElm {
 		current = 0;
 //	    sim.console("lampcc " + current + " " + resistance);
 	}
-	void stamp() {
+	protected void stamp() {
 	    sim.stampNonLinear(nodes[0]);
 	    sim.stampNonLinear(nodes[1]);
 	}
-	boolean nonLinear() { return true; }
+	protected boolean nonLinear() { return true; }
 	void startIteration() {
 	    SimulationContext context = getSimulationContext();
 	    // based on http://www.intusoft.com/nlpdf/nl11.pdf
@@ -163,10 +163,10 @@ class LampElm extends CircuitElm {
 	    temp -= context.getTimeStep()*(temp-roomTemp)/(capc*cr);
 //	    sim.console("lampsi " + temp + " " + capc + " " + nom_pow);
 	}
-	void doStep() {
+	protected void doStep() {
 	    sim.stampResistor(nodes[0], nodes[1], resistance);
 	}
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "lamp";
 	    getBasicInfo(arr);
 	    arr[3] = "R = " + getUnitText(resistance, Locale.ohmString);

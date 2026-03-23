@@ -1,12 +1,14 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.economics.*;
+
 import com.lushprojects.circuitjs1.client.ui.VariableBrowserDialog;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
 
-class CircuitAnalyzer {
+public class CircuitAnalyzer {
     private final CirSim sim;
     private Vector<CircuitNode> nodeList;
     private HashMap<Point, CirSim.NodeMapEntry> nodeMap;
@@ -19,7 +21,7 @@ class CircuitAnalyzer {
         this.sim = sim;
     }
 
-    Vector<CircuitNode> getNodeList() {
+    public Vector<CircuitNode> getNodeList() {
         return nodeList;
     }
 

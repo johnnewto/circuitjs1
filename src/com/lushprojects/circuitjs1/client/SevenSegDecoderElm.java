@@ -47,9 +47,9 @@ package com.lushprojects.circuitjs1.client;
 			    StringTokenizer st) {
 	    super(xa, ya, xb, yb, f, st);
 	}
-	String getChipName() { return "7-Segment Decoder"; }
+	protected String getChipName() { return "7-Segment Decoder"; }
 
-	void setupPins() {
+	protected void setupPins() {
 	    sizeX = 3;
 	    sizeY = 7;
 	    pins = new Pin[getPostCount()];
@@ -84,10 +84,10 @@ package com.lushprojects.circuitjs1.client;
 	boolean hasBlank() { return (flags & FLAG_ENABLE) != 0; }
 	boolean blankOnF() { return (flags & FLAG_BLANK_F) != 0; }
 	
-	int getPostCount() {
+	protected int getPostCount() {
 	    return hasBlank() ? 12 : 11;
 	}
-	int getVoltageSourceCount() {return 7;}
+	protected int getVoltageSourceCount() {return 7;}
 
 	void execute() {
 	    int input=0;
@@ -132,6 +132,6 @@ package com.lushprojects.circuitjs1.client;
             super.setChipEditValue(n, ei);
         }
 
-	int getDumpType() { return 197; }
+	protected int getDumpType() { return 197; }
 
     }

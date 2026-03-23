@@ -73,14 +73,14 @@ class TransistorElm extends CircuitElm {
 	    vcrit = vt * Math.log(vt/(Math.sqrt(2)*model.satCur));
 	    noDiagonal = true;
 	}
-	boolean nonLinear() { return true; }
-	void reset() {
+	protected boolean nonLinear() { return true; }
+	protected void reset() {
 	    volts[0] = volts[1] = volts[2] = 0;
 	    lastvbc = lastvbe = curcount_c = curcount_e = curcount_b = 0;
 	    badIters = 0;
 	}
-	int getDumpType() { return 't'; }
-	String dump() {
+	protected int getDumpType() { return 't'; }
+	protected String dump() {
 	    return super.dump() + " " + pnp + " " + (volts[0]-volts[1]) + " " +
 		(volts[0]-volts[2]) + " " + beta + " " + CustomLogicModel.escape(modelName);
 	}
@@ -103,7 +103,7 @@ class TransistorElm extends CircuitElm {
 	
 	boolean hasCircle() { return (globalFlags & FLAG_CIRCLE) != 0; }
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
             // pick up global flags changes
             if ((flags & FLAGS_GLOBAL) != globalFlags)
                 setPoints();
@@ -151,17 +151,17 @@ class TransistorElm extends CircuitElm {
 	    }
 	    drawPosts(g);
 	}
-	Point getPost(int n) {
+	protected Point getPost(int n) {
 	    return (n == 0) ? point1 : (n == 1) ? coll[0] : emit[0];
 	}
 	
-	int getPostCount() { return 3; }
+	protected int getPostCount() { return 3; }
 	double getPower() {
 	    return (volts[0]-volts[2])*ib + (volts[1]-volts[2])*ic;
 	}
 
 	Point rect[], coll[], emit[], base;
-	void setPoints() {
+	protected void setPoints() {
             // these flags apply to all transistors
             flags &= ~FLAGS_GLOBAL;
             flags |= globalFlags;
@@ -223,12 +223,12 @@ class TransistorElm extends CircuitElm {
 	    }
 	    return(vnew);
 	}
-	void stamp() {
+	protected void stamp() {
 	    sim.stampNonLinear(nodes[0]);
 	    sim.stampNonLinear(nodes[1]);
 	    sim.stampNonLinear(nodes[2]);
 	}
-	void doStep() {
+	protected void doStep() {
 	    double vbc = pnp*(volts[0]-volts[1]); // typically negative
 	    double vbe = pnp*(volts[0]-volts[2]); // typically positive
 	    if (Math.abs(vbc-lastvbc) > .01 || // .01
@@ -395,7 +395,7 @@ class TransistorElm extends CircuitElm {
 	    return Locale.LS("transistor") + ", " + t;
 	}
 	
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = Locale.LS("transistor") + " (" + ((pnp == -1) ? "PNP" : "NPN") + ", " + model.name + ", \u03b2=" + showFormat.format(beta) + ")";
 	    double vbc = volts[0]-volts[1];
 	    double vbe = volts[0]-volts[2];
@@ -533,7 +533,7 @@ class TransistorElm extends CircuitElm {
 	    setup();
 	}
 	
-        void stepFinished() {
+        protected void stepFinished() {
             // stop for huge currents that make simulator act weird
             if (Math.abs(ic) > 1e12 || Math.abs(ib) > 1e12)
                 sim.stop("max current exceeded", this);
@@ -570,7 +570,7 @@ class TransistorElm extends CircuitElm {
 
 	boolean canViewInScope() { return true; }
 	
-	double getCurrentIntoNode(int n) {
+	protected double getCurrentIntoNode(int n) {
 	    if (n==0)
 		return -ib;
 	    if (n==1)

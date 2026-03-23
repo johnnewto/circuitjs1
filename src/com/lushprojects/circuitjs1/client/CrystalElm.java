@@ -62,11 +62,11 @@ class CrystalElm extends CompositeElm {
 	}
 
 
-	int getDumpType() { return 412; }
+	protected int getDumpType() { return 412; }
 	
 	Point sandwichPoints[];
 	
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    double f = (dn/2-10)/dn;
 	    // calc leads
@@ -88,7 +88,7 @@ class CrystalElm extends CompositeElm {
 	    setPost(1, point2);
 	}
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    int hs = 12;
 	    setBbox(point1, point2, hs);
 	    
@@ -124,7 +124,7 @@ class CrystalElm extends CompositeElm {
 	    current = getCurrentIntoNode(1);
 	}
 	
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "crystal";
 	    getBasicInfo(arr);
 	    arr[3] = "fs = " + getUnitText(1/(Math.sqrt(inductance*seriesCapacitance)*Math.PI*2), "Hz");

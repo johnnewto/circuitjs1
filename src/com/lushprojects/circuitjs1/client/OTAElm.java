@@ -53,7 +53,7 @@ public class OTAElm extends CompositeElm {
 	return false;
     }
 
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	setBbox(point1, point2, 3 * opheight / 2);
 	setVoltageColor(g, volts[0]);
 	drawThickLine(g, in1p[0], in1p[1]);
@@ -88,7 +88,7 @@ public class OTAElm extends CompositeElm {
 	drawPosts(g);
     }
 
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	int ww = opwidth;
 	int wtot = ww * 2 + 2 * circDiam - circOverlap;
@@ -150,7 +150,7 @@ public class OTAElm extends CompositeElm {
 	return 402;
     }
 
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = "OTA (LM13700 style)";
 	arr[1] = "Iabc = " + getCurrentText(-getCurrentIntoNode(3));
 	arr[2] = "V+ - V- = " + getVoltageText(volts[0] - volts[1]);

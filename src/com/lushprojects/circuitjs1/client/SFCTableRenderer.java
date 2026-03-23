@@ -6,7 +6,9 @@
 
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.TableColumn.ColumnType;
+import com.lushprojects.circuitjs1.client.economics.*;
+
+import com.lushprojects.circuitjs1.client.economics.TableColumn.ColumnType;
 
 /**
  * SFCTableRenderer - Custom renderer for SFC (Stock-Flow Consistent) tables.

@@ -6,7 +6,7 @@ import com.google.gwt.storage.client.Storage;
 import com.google.gwt.user.client.Window;
 import com.lushprojects.circuitjs1.client.ui.CheckboxMenuItem;
 
-class CirSimPreferencesManager {
+public class CirSimPreferencesManager {
     private final CirSim sim;
 
     CirSimPreferencesManager(CirSim sim) {
@@ -186,7 +186,7 @@ class CirSimPreferencesManager {
         return NumberFormat.getFormat("#.##E000").format(t) + " " + u;
     }
 
-    void setGrid() {
+    public void setGrid() {
         if (sim.smallGridCheckItem != null)
             sim.gridSize = (sim.smallGridCheckItem.getState()) ? 8 : 16;
         else

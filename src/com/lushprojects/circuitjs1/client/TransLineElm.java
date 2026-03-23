@@ -44,10 +44,10 @@ class TransLineElm extends CircuitElm {
 	noDiagonal = true;
 	reset();
     }
-    int getDumpType() { return 171; }
-    int getPostCount() { return 4; }
+    protected int getDumpType() { return 171; }
+    protected int getPostCount() { return 4; }
     int getInternalNodeCount() { return 2; }
-    String dump() {
+    protected String dump() {
 	return super.dump() + " " + delay + " " + imped + " " + width + " " + 0.;
     }
     void drag(int xx, int yy) {
@@ -68,7 +68,7 @@ class TransLineElm extends CircuitElm {
 	
     Point posts[], inner[];
 	
-    void reset() {
+    protected void reset() {
 	if (sim.getMaxTimeStep() == 0)
 	    return;
 	lenSteps = (int) (delay/sim.getMaxTimeStep());
@@ -83,7 +83,7 @@ class TransLineElm extends CircuitElm {
 	super.reset();
 	lastStepCount = 0;
     }
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	int ds = (dy == 0) ? sign(dx) : -sign(dy);
 	Point p3 = interpPoint(point1, point2, 0, -width*ds);
@@ -101,7 +101,7 @@ class TransLineElm extends CircuitElm {
 	posts = new Point[] { p3, p4, point1, point2 };
 	inner = new Point[] { p7, p8, p5, p6 };
     }
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	setBbox(posts[0], posts[3], 0);
 	int segments = (int) (dn/2);
 	int ix0 = ptr-1+lenSteps;
@@ -143,7 +143,7 @@ class TransLineElm extends CircuitElm {
 
     int voltSource1, voltSource2;
     double current1, current2, curCount1, curCount2;
-    void setVoltageSource(int n, int v) {
+    protected void setVoltageSource(int n, int v) {
 	if (n == 0)
 	    voltSource1 = v;
 	else
@@ -156,7 +156,7 @@ class TransLineElm extends CircuitElm {
 	    current2 = c;
     }
 	
-    void stamp() {
+    protected void stamp() {
 	sim.stampVoltageSource(nodes[4], nodes[0], voltSource1);
 	sim.stampVoltageSource(nodes[5], nodes[1], voltSource2);
 	sim.stampResistor(nodes[2], nodes[4], imped);
@@ -176,7 +176,7 @@ class TransLineElm extends CircuitElm {
 	  System.out.println("sending back " + currentR[ptr] + " " + current2);*/
 	//System.out.println("sending back " + voltageR[ptr]);
     }
-    void doStep() {
+    protected void doStep() {
 	if (voltageL == null) {
 	    sim.stop("Transmission line delay too large!", this);
 	    return;
@@ -190,21 +190,21 @@ class TransLineElm extends CircuitElm {
 	}
     }
 
-    void stepFinished() {
+    protected void stepFinished() {
 	if (sim.getTimingState().timeStepCount == lastStepCount)
 	    return;
 	lastStepCount = sim.getTimingState().timeStepCount;
 	ptr = (ptr+1) % lenSteps;	
     }
     
-    Point getPost(int n) {
+    protected Point getPost(int n) {
 	return posts[n];
     }
 	
     //double getVoltageDiff() { return volts[0]; }
-    int getVoltageSourceCount() { return 2; }
+    protected int getVoltageSourceCount() { return 2; }
     boolean hasGroundConnection(int n1) { return false; }
-    boolean getConnection(int n1, int n2) {
+    protected boolean getConnection(int n1, int n2) {
 	return false;
 	/*if (comparePair(n1, n2, 0, 1))
 	  return true;
@@ -212,7 +212,7 @@ class TransLineElm extends CircuitElm {
 	  return true;
 	  return false;*/
     }
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = "transmission line";
 	arr[1] = getUnitText(imped, Locale.ohmString);
 	// use velocity factor for RG-58 cable (65%)
@@ -237,7 +237,7 @@ class TransLineElm extends CircuitElm {
 	}
     }
     
-    double getCurrentIntoNode(int n) {
+    protected double getCurrentIntoNode(int n) {
 	if (n == 0)
 	    return current1;
 	if (n == 2)

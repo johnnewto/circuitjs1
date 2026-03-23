@@ -86,19 +86,19 @@ class TextElm extends GraphicElm {
 	}
 	lines.add(sb.toString());
     }
-    String dump() {
+    protected String dump() {
 	flags |= FLAG_ESCAPE;
 	return super.dump() + " " + size + " " + CustomLogicModel.escape(text) + " " + colorRGBA;
 	//return super.dump() + " " + size + " " + text;
     }
-    int getDumpType() { return 'x'; }
+    protected int getDumpType() { return 'x'; }
     void drag(int xx, int yy) {
 	x = xx;
 	y = yy;
 	x2 = xx+16;
 	y2 = yy;
     }
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	//Graphics2D g2 = (Graphics2D)g;
 	//g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
 	//	RenderingHints.VALUE_ANTIALIAS_ON);
@@ -372,7 +372,7 @@ class TextElm extends GraphicElm {
     }
     
 //    boolean isCenteredText() { return (flags & FLAG_CENTER) != 0; }
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = text;
     }
     @Override

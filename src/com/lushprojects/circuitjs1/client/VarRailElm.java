@@ -43,10 +43,10 @@ import com.google.gwt.event.dom.client.MouseWheelHandler;
 	    sliderText=sliderText.replaceAll("%2[bB]", "+");
 	    createSlider();
 	}
-	String dump() {
+	protected String dump() {
 	    return super.dump() + " " + sliderText.replaceAll("\\+","%2B");
 	}
-	int getDumpType() { return 172; }
+	protected int getDumpType() { return 172; }
 	void createSlider() {
 	    waveform = WF_VAR;
 	    sim.getUiPanelManager().addWidgetToVerticalPanel(label = new Label(Locale.LS(sliderText)));
@@ -60,7 +60,7 @@ import com.google.gwt.event.dom.client.MouseWheelHandler;
 	    frequency = slider.getValue() * (maxVoltage-bias) / 100. + bias;
 	    return frequency;
 	}
-	void delete() {
+	protected void delete() {
 	    sim.getUiPanelManager().removeWidgetFromVerticalPanel(label);
 	    sim.getUiPanelManager().removeWidgetFromVerticalPanel(slider);
             super.delete();

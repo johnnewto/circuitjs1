@@ -53,7 +53,7 @@ class AmmeterElm extends CircuitElm {
             scale = Integer.parseInt(st.nextToken());
         } catch (Exception e) {}
     }
-    String dump() {
+    protected String dump() {
             return super.dump() + " " + meter + " " + scale;
     }
     String getMeter(){
@@ -65,7 +65,7 @@ class AmmeterElm extends CircuitElm {
         }
         return "";
     }
-    void setPoints(){
+    protected void setPoints(){
         super.setPoints();
         mid = interpPoint(point1,point2,0.6);
         center = interpPoint(point1,point2,0.5);
@@ -76,7 +76,7 @@ class AmmeterElm extends CircuitElm {
     static final int FLAG_SHOWCURRENT = 1;
     static final int FLAG_CIRCLE = 2;  // Add this line
 
-    void stepFinished(){
+    protected void stepFinished(){
         count++;//how many counts are in a cycle    
         total += current*current; //sum of squares
         if (current>maxI && increasingI){
@@ -146,7 +146,7 @@ class AmmeterElm extends CircuitElm {
     }
     
     Polygon arrowPoly;
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
         super.draw(g);//BC required for highlighting
         setVoltageColor(g, volts[0]);
 	double width = 4;
@@ -194,15 +194,15 @@ class AmmeterElm extends CircuitElm {
 
     final int circleSize = 12;
 
-    int getDumpType() { return 370; }
-    void stamp() {
+    protected int getDumpType() { return 370; }
+    protected void stamp() {
         sim.stampVoltageSource(nodes[0], nodes[1], voltSource, 0);
     }
     boolean mustShowCurrent() {
         return (flags & FLAG_SHOWCURRENT) != 0;
     }
-    int getVoltageSourceCount() { return 1; }
-    void getInfo(String arr[]) {
+    protected int getVoltageSourceCount() { return 1; }
+    protected void getInfo(String arr[]) {
         arr[0] = "Ammeter";
         switch (meter) {
             case AM_VOL:
@@ -218,7 +218,7 @@ class AmmeterElm extends CircuitElm {
     
     // do not optimize out, even though isWireEquivalent() is true
     // (because we need current calculated every timestep)    
-    boolean isWireEquivalent() { return true; }
+    protected boolean isWireEquivalent() { return true; }
     
     boolean drawAsCircle() {
         return (flags & FLAG_CIRCLE) != 0;

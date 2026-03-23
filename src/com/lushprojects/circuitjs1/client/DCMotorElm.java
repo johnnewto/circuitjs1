@@ -49,8 +49,8 @@ class DCMotorElm extends CircuitElm {
 	ind.setup(inductance, 0, Inductor.FLAG_BACK_EULER);
 	indInertia.setup(J, 0, Inductor.FLAG_BACK_EULER);
     }
-    int getDumpType() { return 415; }
-    String dump() {
+    protected int getDumpType() { return 415; }
+    protected String dump() {
 	// dump: inductance; resistance, K, Kb, J, b, gearRatio, tau
 	return super.dump() + " " +  inductance + " " + resistance + " " + K + " " +  Kb + " " + J + " " + b + " " + gearRatio + " " + tau;
     }
@@ -58,17 +58,17 @@ class DCMotorElm extends CircuitElm {
 
     Point motorCenter;
 
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	calcLeads(36);
 	motorCenter = interpPoint(point1, point2, .5);
 	allocNodes();
     }
-    int getPostCount() { return 2; }
+    protected int getPostCount() { return 2; }
     int getInternalNodeCount() { return 4; }
-    int getVoltageSourceCount() { return 2; }
-    void setVoltageSource(int n, int v) { voltSources[n] = v; }
-    void reset() {
+    protected int getVoltageSourceCount() { return 2; }
+    protected void setVoltageSource(int n, int v) { voltSources[n] = v; }
+    protected void reset() {
 	super.reset();
 	ind.reset();
 	indInertia.reset();
@@ -76,7 +76,7 @@ class DCMotorElm extends CircuitElm {
 	inertiaCurrent = 0;
     }
 
-    void stamp() {
+    protected void stamp() {
 	// stamp a bunch of internal parts to help us simulate the motor.  It would be better to simulate this mini-circuit in code to reduce
 	// the size of the matrix.
 	
@@ -110,7 +110,7 @@ class DCMotorElm extends CircuitElm {
 	if (n1==4|n1==5) return true;
 	else return false;
     }
-    boolean getConnection(int n1, int n2) { 
+    protected boolean getConnection(int n1, int n2) { 
 	if((n1==0&n2==2)|(n1==2&n2==3)|(n1==1&n2==3)|(n1==4&n2==5))
 	    return true;
 	else
@@ -118,7 +118,7 @@ class DCMotorElm extends CircuitElm {
     }
      */
 
-    void doStep() {
+    protected void doStep() {
 	sim.updateVoltageSource(nodes[4],0, voltSources[1],
 		coilCurrent*K);
 	sim.updateVoltageSource(nodes[3],nodes[1], voltSources[0],
@@ -139,7 +139,7 @@ class DCMotorElm extends CircuitElm {
 	    current = c;
     }
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 
 	int cr = 18;
 	int hs = 8;
@@ -188,7 +188,7 @@ class DCMotorElm extends CircuitElm {
     }
 
 
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = "DC Motor";
 	getBasicInfo(arr);
 	arr[3] = Locale.LS("speed") + " = " + getUnitText(60*Math.abs(speed)/(2*Math.PI), Locale.LS("RPM"));

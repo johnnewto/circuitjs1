@@ -41,8 +41,8 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	    delay=Double.parseDouble(st.nextToken());
 	    reset();
 	}
-	String getChipName() { return "Monostable"; }
-	void setupPins() {
+	protected String getChipName() { return "Monostable"; }
+	protected void setupPins() {
 	    sizeX = 2;
 	    sizeY = 2;
 	    pins = new Pin[getPostCount()];
@@ -55,15 +55,15 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	    pins[2].lineOver=true;
 	}
 	
-	void reset() {
+	protected void reset() {
 	    super.reset();
 	    pins[2].value = true;
 	    triggered = prevInputValue = false;
 	}
-	int getPostCount() {
+	protected int getPostCount() {
 	return 3;
 	}
-	int getVoltageSourceCount() { return 2; }
+	protected int getVoltageSourceCount() { return 2; }
 
 	void execute() {
 			SimulationContext context = getSimulationContext();
@@ -83,10 +83,10 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 			}
 		prevInputValue=pins[0].value;
 	   	}
-	String dump(){
+	protected String dump(){
 	   return super.dump() + " " + retriggerable + " " + delay;
 	}
-	int getDumpType() { return 194; }
+	protected int getDumpType() { return 194; }
 	public EditInfo getChipEditInfo(int n) {
 	    if (n == 0) {
 		EditInfo ei = new EditInfo("", 0, -1, -1);

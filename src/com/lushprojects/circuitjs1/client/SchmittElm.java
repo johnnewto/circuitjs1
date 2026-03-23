@@ -32,14 +32,14 @@ class SchmittElm extends InvertingSchmittElm{
 	super(xa,ya,xb,yb,f,st);
 	}
 
-	int getDumpType() { return 182; }
+	protected int getDumpType() { return 182; }
 
 	double lastOutputVoltage;
 
 	void startIteration() {
 	    lastOutputVoltage = volts[1];
 	}
-	void doStep() {
+	protected void doStep() {
 	    SimulationContext context = getSimulationContext();
 	    double out;
 		if(state)
@@ -72,7 +72,7 @@ class SchmittElm extends InvertingSchmittElm{
 	    sim.updateVoltageSource(0, nodes[1], voltSource, out);
 	}
 
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    drawPosts(g);
 	    draw2Leads(g);
 	    g.setColor(needsHighlight() ? selectColor : lightGrayColor);
@@ -83,7 +83,7 @@ class SchmittElm extends InvertingSchmittElm{
 	    curcount = updateDotCount(current, curcount);
 	    drawDots(g, lead2, point2, curcount);
 	}
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    int hs = 16;
 	    int ww = 16;
@@ -96,11 +96,11 @@ class SchmittElm extends InvertingSchmittElm{
 	    triPoints[2] = interpPoint(point1, point2, .5+(ww-5)/dn);
 	    gatePoly = createPolygon(triPoints);
 	}
-        void getInfo(String arr[]) {
+        protected void getInfo(String arr[]) {
             arr[0] = "Schmitt Trigger~"; // ~ is for localization
         }
 
-	@Override double getCurrentIntoNode(int n) {
+	@Override protected double getCurrentIntoNode(int n) {
 	    if (n == 1)
 		return current;
 	    return 0;

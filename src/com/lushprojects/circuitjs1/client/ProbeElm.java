@@ -61,8 +61,8 @@ class ProbeElm extends CircuitElm {
 	    resistance = Double.parseDouble(st.nextToken());
 	} catch (Exception e) {}
     }
-    int getDumpType() { return 'p'; }
-    String dump() {
+    protected int getDumpType() { return 'p'; }
+    protected String dump() {
         return super.dump() + " " + meter + " " + scale + " " + resistance;
     }
     String getMeter(){
@@ -107,14 +107,14 @@ class ProbeElm extends CircuitElm {
 
     Point center;
 	
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    center = interpPoint(point1, point2, .5);
 	}
 	
 	
 
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	g.save();
 	int hs = (drawAsCircle()) ? circleSize : 8;
 	setBbox(point1, point2, hs);
@@ -198,7 +198,7 @@ class ProbeElm extends CircuitElm {
     }
     boolean drawAsCircle() { return (flags & FLAG_CIRCLE) != 0; }
     
-    void stepFinished(){
+    protected void stepFinished(){
         count++;//how many counts are in a cycle
         double v = getVoltageDiff();
         total += v*v; //sum of squares
@@ -277,16 +277,16 @@ class ProbeElm extends CircuitElm {
 	current = (resistance == 0) ? 0 : (volts[0]-volts[1])/resistance;
     }
 
-    void stamp() {
+    protected void stamp() {
 	if (resistance != 0)
 	    sim.stampResistor(nodes[0], nodes[1], resistance);
     }
 
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = "voltmeter";
 	arr[1] = "Vd = " + getVoltageText(getVoltageDiff());
     }
-    boolean getConnection(int n1, int n2) { return (resistance != 0); }
+    protected boolean getConnection(int n1, int n2) { return (resistance != 0); }
 
     public EditInfo getEditInfo(int n) {
 	if (n == 0) {

@@ -6,6 +6,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.economics.*;
+
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
@@ -135,7 +137,7 @@ class EquationElm extends CircuitElm {
         flags = (flags & ~FLAG_SMALL) | ((s == 1) ? FLAG_SMALL : 0);
     }
     
-    void setPoints() {
+    protected void setPoints() {
         super.setPoints();
         if (dn > 150 && this == sim.dragElm)
             setSize(2);
@@ -156,23 +158,23 @@ class EquationElm extends CircuitElm {
         labelFont = new Font("SansSerif", 0, opsize == 2 ? 14 : 10);
     }
     
-    int getDumpType() { return 262; } // Unique dump type
+    protected int getDumpType() { return 262; } // Unique dump type
     
-    int getPostCount() { return 1; } // Single output post
+    protected int getPostCount() { return 1; } // Single output post
     
-    Point getPost(int n) {
+    protected Point getPost(int n) {
         return point2;
     }
     
-    int getVoltageSourceCount() { return 1; } // One voltage source for output
+    protected int getVoltageSourceCount() { return 1; } // One voltage source for output
     
-    boolean nonLinear() { return true; }
+    protected boolean nonLinear() { return true; }
     
     // No current path through input, but output connects to ground
-    boolean getConnection(int n1, int n2) { return false; }
+    protected boolean getConnection(int n1, int n2) { return false; }
     boolean hasGroundConnection(int n1) { return n1 == 0; }
     
-    double getCurrentIntoNode(int n) {
+    protected double getCurrentIntoNode(int n) {
         if (n == 0)
             return -current;
         return 0;
@@ -215,14 +217,14 @@ class EquationElm extends CircuitElm {
         return maxMagnitude * relativeTolerance;
     }
     
-    void stamp() {
+    protected void stamp() {
         int vn = voltSource + sim.getCircuitAnalyzer().getNodeList().size();
         sim.stampNonLinear(vn);
         sim.stampVoltageSource(0, nodes[0], voltSource);
     }
 
     @Override
-    void postStamp() {
+    protected void postStamp() {
         super.postStamp();
         CirSim csim = CirSim.getInstance();
         if (csim == null || csim.nameToSlot == null) return;
@@ -230,7 +232,7 @@ class EquationElm extends CircuitElm {
             compiledExpr.resolveGSlot(csim.nameToSlot);
     }
 
-    void doStep() {
+    protected void doStep() {
         SimulationContext context = getSimulationContext();
         int vn = voltSource + sim.getCircuitAnalyzer().getNodeList().size();
         
@@ -305,7 +307,7 @@ class EquationElm extends CircuitElm {
         return sb.toString();
     }
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
         setBbox(point1, point2, opheight);
         
         // Draw output lead
@@ -508,7 +510,7 @@ class EquationElm extends CircuitElm {
     }
     
     @Override
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
         arr[0] = "Equation";
         arr[1] = "Equation: y = " + equationString;
         

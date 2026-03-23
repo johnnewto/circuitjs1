@@ -74,8 +74,8 @@ class SeqGenElm extends ChipElm {
 			bitCount = data.length * Integer.SIZE;
 	}
 	
-	String getChipName() { return "sequence generator"; }
-	void setupPins() {
+	protected String getChipName() { return "sequence generator"; }
+	protected void setupPins() {
 		sizeX = 2;
 		sizeY = 2;
 		pins = new Pin[getPostCount()];
@@ -90,12 +90,12 @@ class SeqGenElm extends ChipElm {
 	double getVoltageDiff() {
 		return volts[1];
 	}
-	int getPostCount() { return hasReset() ? 3 : 2; }
-	int getVoltageSourceCount() { return 1; }
+	protected int getPostCount() { return hasReset() ? 3 : 2; }
+	protected int getVoltageSourceCount() { return 1; }
 	boolean hasPlayOnce() { return (flags & FLAG_PLAY_ONCE) != 0; }
 	boolean hasReset() { return (flags & FLAG_HAS_RESET) != 0; }
 	
-	void reset() {
+	protected void reset() {
 	    super.reset();
 	    bitPosition = 0;
 	}
@@ -132,9 +132,9 @@ class SeqGenElm extends ChipElm {
 			}
 		}
 	}
-	int getDumpType() { return 188; }
+	protected int getDumpType() { return 188; }
 	
-	String dump(){
+	protected String dump(){
 		StringBuilder sb = new StringBuilder();
 		sb.append(super.dump());
 		sb.append(' ');

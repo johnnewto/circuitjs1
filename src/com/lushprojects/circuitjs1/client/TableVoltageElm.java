@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.economics.*;
+
 import com.gargoylesoftware.htmlunit.javascript.host.Console;
 
 /**
@@ -59,11 +61,11 @@ class TableVoltageElm extends RailElm {
         }
     }
     
-    int getDumpType() { 
+    protected int getDumpType() { 
         return 256; // Choose unused dump type
     }
     
-    String dump() {
+    protected String dump() {
         return super.dump() + " " + CustomLogicModel.escape(computedValueName);
     }
     
@@ -79,19 +81,19 @@ class TableVoltageElm extends RailElm {
         }
         return bias; // Return just bias if computed value not found
     }
-    void stamp() {
+    protected void stamp() {
 
         sim.stampVoltageSource(0, nodes[0], voltSource);
     }
     // Override doStep to update voltage source with current computed value
-    void doStep() {
+    protected void doStep() {
         // RailElm.doStep() handles the voltage source update for non-DC waveforms
         // Since we always want updates (computed values can change), call it directly
         sim.updateVoltageSource(0, nodes[0], voltSource, getVoltage());
     }
     
     // Make this element nonlinear so doStep() gets called every iteration
-    boolean nonLinear() { 
+    protected boolean nonLinear() { 
         return true; 
     }
     
@@ -111,7 +113,7 @@ class TableVoltageElm extends RailElm {
         drawLabeledNode(g, s, point1, lead1);
     }
     
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
         arr[0] = computedValueName + " (table voltage rail)";
         arr[1] = "I = " + getCurrentText(getCurrent());
         arr[2] = "V = " + getVoltageText(getVoltageDiff());

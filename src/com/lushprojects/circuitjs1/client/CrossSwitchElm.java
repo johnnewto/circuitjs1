@@ -35,7 +35,7 @@ package com.lushprojects.circuitjs1.client;
 	    super(xa, ya, xb, yb, f, st);
 	    noDiagonal = true;
 	}
-	int getDumpType() { return 430; }
+	protected int getDumpType() { return 430; }
 
 	final int openhs = 16;
 	final int posCount = 2;
@@ -44,7 +44,7 @@ package com.lushprojects.circuitjs1.client;
         int voltageSources[];
         double currents[], curcounts[];
 
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    calcLeads(32);
 	    voltageSources = new int[poleCount];
@@ -80,7 +80,7 @@ package com.lushprojects.circuitjs1.client;
 	    interpPoint(point1, point2, crossPoints[5], 1+dp*3, -openhs*4);
 	}
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    setBbox(point1, point2, 1);
 	    adjustBbox(crossPoints[2], crossPoints[5]);
 
@@ -148,7 +148,7 @@ package com.lushprojects.circuitjs1.client;
 	    drawPost(g, crossPoints[4]);
 	}
 	
-	double getCurrentIntoNode(int n) {
+	protected double getCurrentIntoNode(int n) {
 	    if (n == 0 || n == 2)
 		return -currents[n/2];
 	    if (position == 0)
@@ -167,22 +167,22 @@ package com.lushprojects.circuitjs1.client;
 	    return new Rectangle(poleLeads[0]).union(new Rectangle(throwLeads[1])).union(new Rectangle(throwLeads[poleCount*4-4]));
 	}	
 
-	Point getPost(int n) {
+	protected Point getPost(int n) {
 	    if (n == 0 || n == 2)
 		return polePosts[n/2];
 	    if (n == 1)
 		return crossPoints[2];
 	    return crossPoints[5];
 	}
-	int getPostCount() { return 2*poleCount; }
+	protected int getPostCount() { return 2*poleCount; }
 	void calculateCurrent() {
 	}
 	
-        void setVoltageSource(int j, int vs) {
+        protected void setVoltageSource(int j, int vs) {
             voltageSources[j] = vs;
         }
 
-	void stamp() {
+	protected void stamp() {
 	    int i;
 	    if (position == 0) {
 		for (i = 0; i != poleCount; i++)
@@ -193,23 +193,23 @@ package com.lushprojects.circuitjs1.client;
 	    }
 	}
 		
-	int getVoltageSourceCount() {
+	protected int getVoltageSourceCount() {
 	    return poleCount;
 	}
 	
-	boolean getConnection(int n1, int n2) {
+	protected boolean getConnection(int n1, int n2) {
 	    if (position == 0)
 		return comparePair(n1, n2, 0, 1) || comparePair(n1, n2, 2, 3);
 	    else
 		return comparePair(n1, n2, 0, 3) || comparePair(n1, n2, 2, 1);
 	}
 	
-	boolean isWireEquivalent() { return true; }
+	protected boolean isWireEquivalent() { return true; }
 	
 	// optimizing out this element is too complicated to be worth it (see #646)
-	boolean isRemovableWire() { return false; }
+	protected boolean isRemovableWire() { return false; }
 
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "cross switch";
 	    int i;
 	    for (i = 0; i != poleCount; i++)

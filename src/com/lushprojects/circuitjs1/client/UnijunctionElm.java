@@ -55,7 +55,7 @@ class UnijunctionElm extends CompositeElm {
 	    super.reset();
 	    curcountb1 = curcountb2 = curcounte = 0;
 	}
-	int getDumpType() { return 417; }
+	protected int getDumpType() { return 417; }
 	
 	Point b1[], b2[];
         Polygon emitterPoly;
@@ -66,7 +66,7 @@ class UnijunctionElm extends CompositeElm {
 	        double gateCurrent;
 	        final int hs = 16;
 	        
-	        void draw(Graphics g) {
+	        protected void draw(Graphics g) {
 	            setBbox(point1, b1[0], 0);
 	            setVoltageColor(g, volts[1]);
 	            drawThickLine(g, b1[0], b1[1]);
@@ -96,7 +96,7 @@ class UnijunctionElm extends CompositeElm {
 	            drawPosts(g);
 	        }
 	        
-	        void setPoints() {
+	        protected void setPoints() {
 	            super.setPoints();
 
 	            // find the coordinates of the various points we need to draw it
@@ -123,13 +123,13 @@ class UnijunctionElm extends CompositeElm {
 	        }
 	        
 
-	        Point getPost(int n) {
+	        protected Point getPost(int n) {
 	            return (n == 0) ? emitter[0] : (n == 1) ? b1[0] : b2[0];
 	        }
 	
-	int getPostCount() { return 3; }
+	protected int getPostCount() { return 3; }
 	
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "unijunction transistor";
 	    arr[1] = "Ie = " + getCurrentText(-getCurrentIntoNode(0));
 	    arr[2] = "Ib2 = " + getCurrentText(-getCurrentIntoNode(2));

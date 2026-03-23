@@ -309,7 +309,7 @@ public abstract class CompositeElm extends CircuitElm {
 	    compElmList.get(i).reset();
     } 
 
-    int getPostCount() {
+    protected int getPostCount() {
 	return numPosts;
     }
 
@@ -317,7 +317,7 @@ public abstract class CompositeElm extends CircuitElm {
 	return numNodes - numPosts;
     }
 
-    Point getPost(int n) {
+    protected Point getPost(int n) {
 	return posts[n];
     }
 
@@ -403,7 +403,7 @@ public abstract class CompositeElm extends CircuitElm {
     // Find the component with the nth voltage
     // and set the
     // appropriate source in that component
-    void setVoltageSource(int n, int v) {
+    protected void setVoltageSource(int n, int v) {
 	// voltSource(n) = v;
 	VoltageSourceRecord vsr;
 	vsr=voltageSources.get(n);
@@ -420,7 +420,7 @@ public abstract class CompositeElm extends CircuitElm {
 	
     }
 
-    double getCurrentIntoNode(int n) {
+    protected double getCurrentIntoNode(int n) {
 	double c=0;
 	Vector<CircuitNodeLink> cnLinks;
 	cnLinks = compNodeList.get(n).links;

@@ -39,12 +39,12 @@ package com.lushprojects.circuitjs1.client;
 		} catch (Exception e) {}
 	    }
 	}
-	String dump() {
+	protected String dump() {
 	    return super.dump() + " " + symbolType;
 	}
-	int getDumpType() { return 'g'; }
-	int getPostCount() { return 1; }
-	void draw(Graphics g) {
+	protected int getDumpType() { return 'g'; }
+	protected int getPostCount() { return 1; }
+	protected void draw(Graphics g) {
 	    setVoltageColor(g, 0);
 	    drawThickLine(g, point1, point2);
 	    if (symbolType == 0) {
@@ -84,17 +84,17 @@ package com.lushprojects.circuitjs1.client;
 	    flags |= FLAG_OLD_STYLE;
 	}
 	boolean isOldStyle() { return (flags & FLAG_OLD_STYLE) != 0; }
-	int getVoltageSourceCount() {
+	protected int getVoltageSourceCount() {
 	    return (isOldStyle()) ? 1 : 0; 
 	}
-	void stamp() {
+	protected void stamp() {
 	    if (isOldStyle())
 		sim.stampVoltageSource(0, nodes[0], voltSource, 0);
 	}
 	void setCurrent(int x, double c) { current = isOldStyle() ? -c : c; }
 
-	boolean isWireEquivalent() { return true; }
-	boolean isRemovableWire() { return true; }
+	protected boolean isWireEquivalent() { return true; }
+	protected boolean isRemovableWire() { return true; }
 	static Point firstGround;
 	static void resetNodeList() {
 	    firstGround = null;
@@ -108,7 +108,7 @@ package com.lushprojects.circuitjs1.client;
 	
 //	void setCurrent(int x, double c) { current = -c; }
 	double getVoltageDiff() { return 0; }
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "ground";
 	    arr[1] = "I = " + getCurrentText(getCurrent());
 	}
@@ -134,5 +134,5 @@ package com.lushprojects.circuitjs1.client;
 		lastSymbolType = symbolType = ei.choice.getSelectedIndex();
 	}
 	
-	@Override double getCurrentIntoNode(int n) { return -current; }
+	@Override protected double getCurrentIntoNode(int n) { return -current; }
     }

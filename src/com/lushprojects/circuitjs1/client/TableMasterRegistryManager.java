@@ -1,15 +1,15 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.economics.*;
+
 import java.util.ArrayList;
 
-class TableMasterRegistryManager {
+public class TableMasterRegistryManager {
     private final CirSim sim;
-
-    TableMasterRegistryManager(CirSim sim) {
+    public TableMasterRegistryManager(CirSim sim) {
         this.sim = sim;
     }
-
-    void registerTableMastersInPriorityOrder() {
+    public void registerTableMastersInPriorityOrder() {
         ArrayList<TableElm> tables = new ArrayList<TableElm>();
         for (int i = 0; i != sim.elmList.size(); i++) {
             CircuitElm ce = sim.getElm(i);

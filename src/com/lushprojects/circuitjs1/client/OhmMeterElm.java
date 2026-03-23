@@ -10,13 +10,13 @@ public class OhmMeterElm extends CurrentElm {
 		   StringTokenizer st) {
 	    super(xa, ya, xb, yb, f, st);
 	}
-	int getDumpType() { return 216; }
+	protected int getDumpType() { return 216; }
 
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    calcLeads(26);
 	}
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    int cr = 12;
 	    draw2Leads(g);
 	    setVoltageColor(g, (volts[0]+volts[1])/2);
@@ -54,7 +54,7 @@ public class OhmMeterElm extends CurrentElm {
 	    currentValue = ei.value;
 	}
 	*/
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "ohmmeter";
 	    if (current == 0)
 		arr[1] = "R = \u221e";

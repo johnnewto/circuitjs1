@@ -104,7 +104,7 @@ class DataInputElm extends RailElm {
 	
 	double fmphase;
 	
-	String dump() {
+	protected String dump() {
 	    // add a file number to the dump so we can preserve the data when doing cut and paste, or undo/redo.
 	    // we don't save the entire file in the dump because it would be huge.
 	    if (data != null) {
@@ -118,7 +118,7 @@ class DataInputElm extends RailElm {
 	    return super.dump() + " " + sampleLength + " " + scaleFactor + " " + fileNum;
 	}
 	
-	void reset() {
+	protected void reset() {
 	    timeOffset = 0;
 	}
 	
@@ -146,12 +146,12 @@ class DataInputElm extends RailElm {
 	    return data.get(ptr) * scaleFactor;
 	}
 	
-	void stepFinished() {
+	protected void stepFinished() {
 	    SimulationContext context = getSimulationContext();
 	    timeOffset += context.getTimeStep();
 	}
 	
-	int getDumpType() { return 424; }
+	protected int getDumpType() { return 424; }
 	int getShortcut() { return 0; }
 	
 	public EditInfo getEditInfo(int n) {
@@ -226,7 +226,7 @@ class DataInputElm extends RailElm {
             }
 	}
 
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "data input";
 	    if (data == null) {
 		arr[1] = "no file loaded";

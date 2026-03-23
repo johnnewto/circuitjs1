@@ -32,6 +32,6 @@ class GraphicElm extends CircuitElm
 	super(xa, ya, xb, yb, flags);
     }
 
-    int getPostCount() { return 0; }
+    protected int getPostCount() { return 0; }
 }
 

@@ -26,9 +26,9 @@ package com.lushprojects.circuitjs1.client;
 			    StringTokenizer st) {
 	    super(xa, ya, xb, yb, f, st);
 	}
-	String getChipName() { return "Half Adder"; }
+	protected String getChipName() { return "Half Adder"; }
 
-	void setupPins() {
+	protected void setupPins() {
 	    sizeX=2;
 	    sizeY=2;
 	    pins=new Pin[getPostCount()];
@@ -41,16 +41,16 @@ package com.lushprojects.circuitjs1.client;
 	    pins[3] = new Pin(1, SIDE_W, "B");
 
 	}
-	int getPostCount() {
+	protected int getPostCount() {
 	    return 4;
 	}
-	int getVoltageSourceCount() {return 2;}
+	protected int getVoltageSourceCount() {return 2;}
 
 	void execute() {
 	
 	pins[0].value=pins[2].value^pins[3].value;
 	pins[1].value=pins[2].value&&pins[3].value;
 	}
-	int getDumpType() { return 195; }
+	protected int getDumpType() { return 195; }
 
     }

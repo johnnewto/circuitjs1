@@ -43,7 +43,7 @@ class PisoShiftElm extends ChipElm {
 		setupPins();
 	}
 	
-	String dump() {
+	protected String dump() {
 		//Normalize the circular array before exporting
 		boolean[] newData = new boolean[data.length];
 		for (int i = 0; i < data.length; i++)
@@ -53,20 +53,20 @@ class PisoShiftElm extends ChipElm {
 		
 		return super.dump() + writeBits(data);
 	}
-	int getDumpType() { return 186; }
-	String getChipName() { return "PISO shift register"; }
+	protected int getDumpType() { return 186; }
+	protected String getChipName() { return "PISO shift register"; }
 	
 	boolean needsBits() { return true; }
 	int defaultBitCount() { return 8; }
 	
 	boolean hasNewBhvr() { return (flags & FLAG_NEW_BEHAVIOR) != 0; }
 	
-	void reset() {
+	protected void reset() {
 		super.reset();
 		data = new boolean[bits];
 	}
 
-	void setupPins() {
+	protected void setupPins() {
 		sizeX = bits + 2;
 		sizeY = 3;
 		pins = new Pin[getPostCount()];
@@ -92,8 +92,8 @@ class PisoShiftElm extends ChipElm {
 		
 		allocNodes();
 	}
-	int getPostCount() { return (hasNewBhvr() ? 4 : 3) + bits; }
-	int getVoltageSourceCount() { return 1; }
+	protected int getPostCount() { return (hasNewBhvr() ? 4 : 3) + bits; }
+	protected int getVoltageSourceCount() { return 1; }
 	
 	void execute() {
 		//LOAD raised

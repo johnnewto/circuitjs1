@@ -39,7 +39,7 @@ class JfetElm extends MosfetElm {
 	    diode.setupForDefaultModel();
 	}
 	
-	void reset() {
+	protected void reset() {
 	    super.reset();
 	    diode.reset();
 	}
@@ -49,7 +49,7 @@ class JfetElm extends MosfetElm {
 	Point gatePt;
 	double curcountg, curcounts, curcountd;
 
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    setBbox(point1, point2, hs);
 	    setVoltageColor(g, volts[1]);
 	    drawThickLine(g, src[0], src[1]);
@@ -75,7 +75,7 @@ class JfetElm extends MosfetElm {
 	    drawPosts(g);
 	}
 	
-        double getCurrentIntoNode(int n) {
+        protected double getCurrentIntoNode(int n) {
             if (n == 0)
                 return -gateCurrent;
             if (n == 1)
@@ -83,7 +83,7 @@ class JfetElm extends MosfetElm {
             return -ids;
         }
 	
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 
 	    // find the coordinates of the various points we need to draw
@@ -108,7 +108,7 @@ class JfetElm extends MosfetElm {
 		arrowPoly = calcArrow(point1, gatePt, 8, 3);
 	}
 	
-	void stamp() {
+	protected void stamp() {
 	    super.stamp();
 	    if (pnp < 0)
 		diode.stamp(nodes[1], nodes[0]);
@@ -116,7 +116,7 @@ class JfetElm extends MosfetElm {
 		diode.stamp(nodes[0], nodes[1]);
 	}
 	
-	void doStep() {
+	protected void doStep() {
 	    super.doStep();
 	    diode.doStep(pnp*(volts[0]-volts[1]));
 	}
@@ -127,12 +127,12 @@ class JfetElm extends MosfetElm {
 
 	boolean showBulk() { return false; }
 
-	int getDumpType() { return 'j'; }
+	protected int getDumpType() { return 'j'; }
 	// these values are taken from Hayes+Horowitz p155
 	double getDefaultThreshold() { return -4; }
 	double getDefaultBeta() { return .00125; }
 	double getBackwardCompatibilityBeta() { return getDefaultBeta(); }
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    getFetInfo(arr, "JFET");
 	}
         public EditInfo getEditInfo(int n) {
@@ -141,7 +141,7 @@ class JfetElm extends MosfetElm {
             return null;
         }
 	
-	boolean getConnection(int n1, int n2) {
+	protected boolean getConnection(int n1, int n2) {
 	    return true;
 	}
 

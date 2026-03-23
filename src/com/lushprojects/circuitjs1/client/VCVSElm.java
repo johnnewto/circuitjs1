@@ -30,7 +30,7 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	    super(xx, yy);
 	}
 	
-	void setupPins() {
+	protected void setupPins() {
 	    sizeX = 2;
             sizeY = inputCount > 2 ? inputCount : 2;
             pins = new Pin[inputCount+2];
@@ -44,15 +44,15 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	    exprState = new ExprState(inputCount);
 	    allocNodes();
 	}
-	String getChipName() { return "VCVS"; } 
-	void stamp() {
+	protected String getChipName() { return "VCVS"; } 
+	protected void stamp() {
             SimulationContext context = getSimulationContext();
             int vn = pins[inputCount].voltSource + sim.getCircuitAnalyzer().getNodeList().size();
             context.stampNonLinear(vn);
             context.stampVoltageSource(nodes[inputCount+1], nodes[inputCount], pins[inputCount].voltSource);
 	}
 
-	void doStep() {
+	protected void doStep() {
 		SimulationContext context = getSimulationContext();
 		int i;
 		// converged yet?
@@ -103,13 +103,13 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 			lastVolts[i] = volts[i];
 	}
 
-	void stepFinished() {
+	protected void stepFinished() {
 		exprState.updateLastValues(volts[inputCount]-volts[inputCount+1]);
 	}
 
-	int getPostCount() { return inputCount+2; }
-	int getVoltageSourceCount() { return 1; }
-	int getDumpType() { return 212; }
+	protected int getPostCount() { return inputCount+2; }
+	protected int getVoltageSourceCount() { return 1; }
+	protected int getDumpType() { return 212; }
         boolean hasCurrentOutput() { return false; }
 
         void setCurrent(int vn, double c) {

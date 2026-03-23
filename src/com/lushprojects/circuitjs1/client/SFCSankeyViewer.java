@@ -6,7 +6,9 @@
 
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.TableColumn.ColumnType;
+import com.lushprojects.circuitjs1.client.economics.*;
+
+import com.lushprojects.circuitjs1.client.economics.TableColumn.ColumnType;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.resources.client.ClientBundle;
 import com.google.gwt.resources.client.TextResource;

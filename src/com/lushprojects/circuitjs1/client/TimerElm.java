@@ -39,8 +39,8 @@ class TimerElm extends ChipElm {
 		    StringTokenizer st) {
 	super(xa, ya, xb, yb, f, st);
     }
-    String getChipName() { return "555 Timer"; }
-    void setupPins() {
+    protected String getChipName() { return "555 Timer"; }
+    protected void setupPins() {
 	sizeX = 3;
 	sizeY = 5;
 	pins = new Pin[8];
@@ -58,13 +58,13 @@ class TimerElm extends ChipElm {
 	    pins[N_RST].lineOver = true;
 	pins[N_GND] = new Pin(2, SIDE_S, usePinNames() ? "gnd" : "1");
     }
-    boolean nonLinear() { return true; }
+    protected boolean nonLinear() { return true; }
     boolean hasReset() { return (flags & FLAG_RESET) != 0 || hasGroundPin(); }
     boolean hasGroundPin() { return (flags & FLAG_GROUND) != 0; }
     boolean usePinNumbers() { return (flags & FLAG_NUMBERS) != 0; }
     boolean usePinNames() { return (flags & FLAG_NUMBERS) == 0; }
-    @Override boolean isDigitalChip() { return false; }
-    void stamp() {
+    @Override protected boolean isDigitalChip() { return false; }
+    protected void stamp() {
 	ground = hasGroundPin() ? nodes[N_GND] : 0;
 	// stamp voltage divider to put ctl pin at 2/3 V
 	sim.stampResistor(nodes[N_VCC], nodes[N_CTL],  5000);
@@ -116,7 +116,7 @@ class TimerElm extends ChipElm {
 	} else
 	    triggerSuppressed = false;
     }
-    void doStep() {
+    protected void doStep() {
 	// if output is low, discharge pin 0.  we use a small
 	// resistor because it's easier, and sometimes people tie
 	// the discharge pin to the trigger and threshold pins.
@@ -126,9 +126,9 @@ class TimerElm extends ChipElm {
 	// if output is high, connect Vcc to output with a small resistor.  Otherwise connect output to ground.
 	sim.stampResistor(out ? nodes[N_VCC] : ground, nodes[N_OUT], 1); 
     }
-    int getPostCount() { return hasGroundPin() ? 8 : hasReset() ? 7 : 6; }
-    int getVoltageSourceCount() { return 0; }
-    int getDumpType() { return 165; }
+    protected int getPostCount() { return hasGroundPin() ? 8 : hasReset() ? 7 : 6; }
+    protected int getVoltageSourceCount() { return 0; }
+    protected int getDumpType() { return 165; }
     public EditInfo getChipEditInfo(int n) {
         if (n == 0) {
             EditInfo ei = new EditInfo("", 0, 0, 0);

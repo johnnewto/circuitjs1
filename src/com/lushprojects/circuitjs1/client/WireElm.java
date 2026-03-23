@@ -27,7 +27,7 @@ package com.lushprojects.circuitjs1.client;
 	}
 	static final int FLAG_SHOWCURRENT = 1;
 	static final int FLAG_SHOWVOLTAGE = 2;
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    setVoltageColor(g, volts[0]);
 	    drawThickLine(g, point1, point2);
 	    doDots(g);
@@ -42,7 +42,7 @@ package com.lushprojects.circuitjs1.client;
 	    drawValues(g, s, 4);
 	    drawPosts(g);
 	}
-	void stamp() {
+	protected void stamp() {
 //	    sim.stampVoltageSource(nodes[0], nodes[1], voltSource, 0);
 	}
 	boolean mustShowCurrent() {
@@ -52,16 +52,16 @@ package com.lushprojects.circuitjs1.client;
 	    return (flags & FLAG_SHOWVOLTAGE) != 0;
 	}
 //	int getVoltageSourceCount() { return 1; }
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "wire";
 	    arr[1] = "I = " + getCurrentDText(getCurrent());
 	    arr[2] = "V = " + getVoltageText(volts[0]);
 	}
-	int getDumpType() { return 'w'; }
+	protected int getDumpType() { return 'w'; }
 	double getPower() { return 0; }
 	double getVoltageDiff() { return volts[0]; }
-	boolean isWireEquivalent() { return true; }
-	boolean isRemovableWire() { return true; }
+	protected boolean isWireEquivalent() { return true; }
+	protected boolean isRemovableWire() { return true; }
 	public EditInfo getEditInfo(int n) {
 	    if (n == 0) {
 		EditInfo ei = new EditInfo("", 0, -1, -1);

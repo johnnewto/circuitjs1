@@ -133,7 +133,7 @@ class AudioInputElm extends RailElm {
 	
 	double fmphase;
 	
-	String dump() {
+	protected String dump() {
 	    // add a file number to the dump so we can preserve the audio file data when doing cut and paste, or undo/redo.
 	    // we don't save the entire file in the dump because it would be huge.
 	    if (data != null) {
@@ -147,7 +147,7 @@ class AudioInputElm extends RailElm {
 	    return super.dump() + " " + maxVoltage + " " + startPosition + " " + fileNum;
 	}
 	
-	void reset() {
+	protected void reset() {
 	    timeOffset = startPosition;
 	}
 	
@@ -178,12 +178,12 @@ class AudioInputElm extends RailElm {
 	    return (value1*(1-frac)+value2*frac) * maxVoltage;
 	}
 	
-	void stepFinished() {
+	protected void stepFinished() {
 	    SimulationContext context = getSimulationContext();
 	    timeOffset += context.getTimeStep();
 	}
 	
-	int getDumpType() { return 411; }
+	protected int getDumpType() { return 411; }
 	int getShortcut() { return 0; }
 	
 	public EditInfo getEditInfo(int n) {
@@ -256,7 +256,7 @@ class AudioInputElm extends RailElm {
 	    AudioOutputElm.lastSamplingRate = samplingRate;
 	}
 
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "audio input";
 	    if (data == null) {
 		arr[1] = "no file loaded";

@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.economics.*;
+
 import com.google.gwt.user.client.ui.Button;
 import com.lushprojects.circuitjs1.client.ui.PieChartDialog;
 
@@ -149,12 +151,12 @@ public class PieChartElm extends GraphicElm {
     }
     
     @Override
-    int getDumpType() {
+    protected int getDumpType() {
         return 217;
     }
     
     @Override
-    String dump() {
+    protected String dump() {
         StringBuilder sb = new StringBuilder(super.dump());
         
         // Save node count
@@ -182,7 +184,7 @@ public class PieChartElm extends GraphicElm {
     }
     
     @Override
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
         // Update values from labeled nodes
         updateNodeValues();
         
@@ -305,7 +307,7 @@ public class PieChartElm extends GraphicElm {
     }
     
     @Override
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
         arr[0] = "Pie Chart";
         
         // Calculate total

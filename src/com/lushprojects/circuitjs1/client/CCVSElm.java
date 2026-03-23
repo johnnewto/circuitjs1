@@ -44,7 +44,7 @@ class CCVSElm extends VCCSElm {
 	
 	int inputPairCount;
 	
-	void setupPins() {
+	protected void setupPins() {
 	    sizeX = 2;
 	    sizeY = inputCount > 2 ? inputCount : 2;
 	    inputPairCount = inputCount/2;
@@ -63,9 +63,9 @@ class CCVSElm extends VCCSElm {
 	    allocNodes();
 	}
 	
-	String getChipName() { return "CCVS"; }
+	protected String getChipName() { return "CCVS"; }
 	
-	void stamp() {
+	protected void stamp() {
 	    SimulationContext context = getSimulationContext();
 	    int i;
 	    if (isSpiceStyle()) {
@@ -88,7 +88,7 @@ class CCVSElm extends VCCSElm {
 
 	double lastCurrents[];
 	
-        void doStep() {
+        protected void doStep() {
             SimulationContext context = getSimulationContext();
             // converged yet?
             double convergeLimit = getConvergeLimit()*.1;
@@ -141,7 +141,7 @@ class CCVSElm extends VCCSElm {
         	lastCurrents[i] = pins[i*2+1].current;
         }
 	
-        void stepFinished() {
+        protected void stepFinished() {
             exprState.updateLastValues(volts[inputCount]-volts[inputCount+1]);
         }
 
@@ -152,10 +152,10 @@ class CCVSElm extends VCCSElm {
             exprState.values[n] = cur;
         }
         
-	int getPostCount() { return inputCount+2; }
-	int getVoltageSourceCount() { return isSpiceStyle() ? 1 : 1+inputPairCount; }
-	int getDumpType() { return 214; }
-	boolean getConnection(int n1, int n2) {
+	protected int getPostCount() { return inputCount+2; }
+	protected int getVoltageSourceCount() { return isSpiceStyle() ? 1 : 1+inputPairCount; }
+	protected int getDumpType() { return 214; }
+	protected boolean getConnection(int n1, int n2) {
 	    return (n1/2 == n2/2);
 	}
         boolean hasCurrentOutput() { return false; }
@@ -210,14 +210,14 @@ class CCVSElm extends VCCSElm {
             }
         }
         
-	void setVoltageSource(int j, int vs) {
+	protected void setVoltageSource(int j, int vs) {
 	    if (isSpiceStyle())
 		pins[inputCount].voltSource = vs;
 	    else
 		super.setVoltageSource(j, vs);
 	}
 
-        void getInfo(String arr[]) {
+        protected void getInfo(String arr[]) {
             super.getInfo(arr);
             int i = 1;
             int j;

@@ -48,8 +48,8 @@ class FMElm extends CircuitElm {
 	}
 	reset();
     }
-    int getDumpType() { return 201; }
-    String dump() {
+    protected int getDumpType() { return 201; }
+    protected String dump() {
 	return super.dump() + " " +carrierfreq+" " + signalfreq + " " +maxVoltage + " " +deviation;
     }
     /*void setCurrent(double c) {
@@ -57,16 +57,16 @@ class FMElm extends CircuitElm {
       System.out.print("v current set to " + c + "\n");
       }*/
 
-    void reset() {
+    protected void reset() {
 	freqTimeZero = 0;
 	curcount = 0;
     }
-      int getPostCount() { return 1; }
+      protected int getPostCount() { return 1; }
 	
-     void stamp() {
+     protected void stamp() {
 	    sim.stampVoltageSource(0, nodes[0], voltSource);
     }
-    void doStep() {
+    protected void doStep() {
 	    sim.updateVoltageSource(0, nodes[0], voltSource, getVoltage());
     }
     double getVoltage() {
@@ -81,7 +81,7 @@ class FMElm extends CircuitElm {
     }
     final int circleSize = 17;
 
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	setBbox(point1, point2, circleSize);
 	setVoltageColor(g, volts[0]);
 	drawThickLine(g, point1, lead1);
@@ -111,7 +111,7 @@ class FMElm extends CircuitElm {
     }
 
 
-  void setPoints() {
+  protected void setPoints() {
 	super.setPoints();
 	lead1 = interpPoint(point1, point2, 1-circleSize/dn);
     }
@@ -120,11 +120,11 @@ class FMElm extends CircuitElm {
    
     boolean hasGroundConnection(int n1) { return true; }
 	
-    int getVoltageSourceCount() {
+    protected int getVoltageSourceCount() {
 	return 1;
     }
     double getPower() { return -getVoltageDiff()*current; }
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	
 	arr[0] = "FM Source";
 	arr[1] = "I = " + getCurrentText(getCurrent());

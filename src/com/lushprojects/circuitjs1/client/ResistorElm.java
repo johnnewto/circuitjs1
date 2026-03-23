@@ -30,20 +30,20 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 	    super(xa, ya, xb, yb, f);
 	    resistance = Double.parseDouble(st.nextToken());
 	}
-	int getDumpType() { return 'r'; }
-	String dump() {
+	protected int getDumpType() { return 'r'; }
+	protected String dump() {
 	    return super.dump() + " " + resistance;
 	}
 
 	Point ps3, ps4;
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    calcLeads(32);
 	    ps3 = new Point();
 	    ps4 = new Point();
 	}
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    int segments = 16;
 	    int i;
 	    int ox = 0;
@@ -94,10 +94,10 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 	    current = (volts[0]-volts[1])/resistance;
 	    //System.out.print(this + " res current set to " + current + "\n");
 	}
-	void stamp() {
+	protected void stamp() {
 	    sim.stampResistor(nodes[0], nodes[1], resistance);
 	}
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "resistor";
 	    getBasicInfo(arr);
 	    arr[3] = "R = " + getUnitText(resistance, Locale.ohmString);

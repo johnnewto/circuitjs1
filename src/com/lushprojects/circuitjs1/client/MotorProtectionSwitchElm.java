@@ -56,19 +56,19 @@ class MotorProtectionSwitchElm extends CircuitElm {
 	    currents = new double[3];
 	    curcounts = new double[3];
 	}
-	String dump() {
+	protected String dump() {
 	    return super.dump() + " " + resistance + " " + i2t + " " + blown + " " + CustomLogicModel.escape(label);
 	}
-	int getDumpType() { return 428; }
+	protected int getDumpType() { return 428; }
 
-	void reset() {
+	protected void reset() {
 	    super.reset();
 	    heats = new double[3];
 	    currents = new double[3];
 	    blown = false;
 	    setSwitchPositions();
 	}
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    posts = new Point[6];
 	    leads = new Point[6];
@@ -80,8 +80,8 @@ class MotorProtectionSwitchElm extends CircuitElm {
 		leads[i*2+1] = new Point(x+i*48, y+176);
 	    }
 	}
-	int getPostCount() { return 6; }
-	Point getPost(int n) { return posts[n]; }
+	protected int getPostCount() { return 6; }
+	protected Point getPost(int n) { return posts[n]; }
 
 	Color getTempColor(Graphics g, int num) {
 	    Color c = getVoltageColor(g, volts[num*2]);
@@ -108,7 +108,7 @@ class MotorProtectionSwitchElm extends CircuitElm {
 	    return Color.white;
 	}
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    int i;
 	    int hs=6;
 	    setBbox(posts[0], posts[5], hs);
@@ -188,14 +188,14 @@ class MotorProtectionSwitchElm extends CircuitElm {
 	    for (i = 0; i != 3; i++)
 		currents[i] = (volts[i*2]-volts[i*2+1])/(blown ? blownResistance : resistance);
 	}
-	void stamp() {
+	protected void stamp() {
 	    int i;
 	    for (i = 0; i != 6; i++)
 		sim.stampNonLinear(nodes[i]);
 	}
-	boolean nonLinear() { return true; }
+	protected boolean nonLinear() { return true; }
 	
-	boolean getConnection(int n1, int n2) {
+	protected boolean getConnection(int n1, int n2) {
 	    return n1/2 == n2/2;
 	}
 	
@@ -236,12 +236,12 @@ class MotorProtectionSwitchElm extends CircuitElm {
 	    }
 	}
 
-	void doStep() {
+	protected void doStep() {
 	    int i;
 	    for (i = 0; i != 3; i++)
 		sim.stampResistor(nodes[i*2], nodes[i*2+1], blown ? blownResistance : resistance);
 	}
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "motor protection switch";
 	    getBasicInfo(arr);
 	    arr[3] = "R = " + getUnitText(resistance, Locale.ohmString);
@@ -265,7 +265,7 @@ class MotorProtectionSwitchElm extends CircuitElm {
 	        label = ei.textf.getText();
 	}
 	
-	double getCurrentIntoNode(int n) {
+	protected double getCurrentIntoNode(int n) {
 	    if ((n % 2) == 1)
 		return currents[n/2];
 	    return -currents[n/2];

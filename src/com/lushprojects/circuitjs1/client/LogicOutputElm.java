@@ -38,19 +38,19 @@ package com.lushprojects.circuitjs1.client;
 		threshold = 2.5;
 	    }
 	}
-	String dump() {
+	protected String dump() {
 	    return super.dump() + " " + threshold;
 	}
-	int getDumpType() { return 'M'; }
-	int getPostCount() { return 1; }
+	protected int getDumpType() { return 'M'; }
+	protected int getPostCount() { return 1; }
 	boolean isTernary() { return (flags & FLAG_TERNARY) != 0; }
 	boolean isNumeric() { return (flags & (FLAG_TERNARY|FLAG_NUMERIC)) != 0; }
 	boolean needsPullDown() { return (flags & FLAG_PULLDOWN) != 0; }
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    lead1 = interpPoint(point1, point2, 1-12/dn);
 	}
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    g.save();
 	    Font f = new Font("SansSerif", Font.BOLD, 20);
 	    g.setFont(f);
@@ -75,12 +75,12 @@ package com.lushprojects.circuitjs1.client;
 	    drawPosts(g);
 	    g.restore();
 	}
-	void stamp() {
+	protected void stamp() {
 	    if (needsPullDown())
 		sim.stampResistor(nodes[0], 0, 1e6);
 	}
 	double getVoltageDiff() { return volts[0]; }
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "logic output";
 	    arr[1] = (volts[0] < threshold) ? "low" : "high";
 	    if (isNumeric())

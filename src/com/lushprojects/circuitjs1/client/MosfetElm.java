@@ -88,12 +88,12 @@ class MosfetElm extends CircuitElm {
 	// Not sure where this value came from, but the ZVP3306A has a beta of about .027.  Power MOSFETs have much higher betas (like 80 or more)
 	double getBackwardCompatibilityBeta() { return .02; }
 	
-	boolean nonLinear() { return true; }
+	protected boolean nonLinear() { return true; }
 	boolean drawDigital() { return (flags & FLAG_DIGITAL) != 0; }
 	boolean showBulk() { return (flags & (FLAG_DIGITAL|FLAG_HIDE_BULK)) == 0; }
 	boolean hasBodyTerminal() { return (flags & FLAG_BODY_TERMINAL) != 0 && doBodyDiode(); }
 	boolean doBodyDiode() { return (flags & FLAG_BODY_DIODE) != 0 && showBulk(); }
-	void reset() {
+	protected void reset() {
 	    lastv1 = lastv2 = volts[0] = volts[1] = volts[2] = curcount = 0;
 	    curcount_body1 = curcount_body2 = 0;
 	    diodeB1.reset();
@@ -101,13 +101,13 @@ class MosfetElm extends CircuitElm {
 	    if (doBodyDiode())
 		volts[bodyTerminal] = 0;
 	}
-	String dump() {
+	protected String dump() {
 	    return super.dump() + " " + vt + " " + beta;
 	}
-	int getDumpType() { return 'f'; }
+	protected int getDumpType() { return 'f'; }
 	final int hs = 16;
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    // pick up global flags changes
 	    if ((flags & FLAGS_GLOBAL) != globalFlags)
 		setPoints();
@@ -208,7 +208,7 @@ class MosfetElm extends CircuitElm {
 	
 	// post 0 = gate, 1 = source for NPN, 2 = drain for NPN, 3 = body (if present)
 	// for PNP, 1 is drain, 2 is source
-	Point getPost(int n) {
+	protected Point getPost(int n) {
 	    return (n == 0) ? point1 : (n == 1) ? src[0] :
 		(n == 2) ? drn[0] : body[0];
 	}
@@ -217,7 +217,7 @@ class MosfetElm extends CircuitElm {
 	double getPower() {
 	    return ids*(volts[2]-volts[1]) - diodeCurrent1*(volts[1]-volts[bodyTerminal]) - diodeCurrent2*(volts[2]-volts[bodyTerminal]);
 	    }
-	int getPostCount() { return hasBodyTerminal() ? 4 : 3; }
+	protected int getPostCount() { return hasBodyTerminal() ? 4 : 3; }
 
 	int pcircler;
 	
@@ -228,7 +228,7 @@ class MosfetElm extends CircuitElm {
 	Point gate[], body[], pcircle;
 	Polygon arrowPoly;
 	
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 
 	    // these two flags apply to all mosfets
@@ -281,7 +281,7 @@ class MosfetElm extends CircuitElm {
 	int mode = 0;
 	double gm = 0;
 	
-	void stamp() {
+	protected void stamp() {
 	    sim.stampNonLinear(nodes[1]);
 	    sim.stampNonLinear(nodes[2]);
 	    
@@ -322,7 +322,7 @@ class MosfetElm extends CircuitElm {
 	    return true;
 	}
 	
-	void stepFinished() {
+	protected void stepFinished() {
 	    calculate(true);
 	    
 	    // fix current if body is connected to source or drain
@@ -332,7 +332,7 @@ class MosfetElm extends CircuitElm {
 		diodeCurrent2 = -diodeCurrent1;
 	}
 
-	void doStep() {
+	protected void doStep() {
 	    calculate(false);
 	}
 	
@@ -449,7 +449,7 @@ class MosfetElm extends CircuitElm {
 	    if (showBulk())
 		arr[7] = "Ib = " + getUnitText(bodyTerminal == 1 ? -diodeCurrent1 : bodyTerminal == 2 ? diodeCurrent2 : -pnp*(diodeCurrent1+diodeCurrent2), "A");
 	}
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    getFetInfo(arr, "MOSFET");
 	}
 	@Override String getScopeText(int v) { 
@@ -457,7 +457,7 @@ class MosfetElm extends CircuitElm {
 	}
 	boolean canViewInScope() { return true; }
 	double getVoltageDiff() { return volts[2] - volts[1]; }
-	boolean getConnection(int n1, int n2) {
+	protected boolean getConnection(int n1, int n2) {
 	    return !(n1 == 0 || n2 == 0);
 	}
 	public EditInfo getEditInfo(int n) {
@@ -526,7 +526,7 @@ class MosfetElm extends CircuitElm {
 		allocNodes();
 		setPoints();
 	}
-	double getCurrentIntoNode(int n) {
+	protected double getCurrentIntoNode(int n) {
 	    if (n == 0)
 		return 0;
 	    if (n == 3)

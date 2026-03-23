@@ -72,29 +72,29 @@ class StopTimeElm extends CircuitElm {
         }
     }
     
-    String dump() { 
+    protected String dump() { 
         return super.dump() + " " + stopTime + " " + enabled + " " + openPlotlyOnStop; 
     }
     
-    void reset() {
+    protected void reset() {
         stopped = false;
         // Close any open Plotly windows
         closePlotlyWindows();
     }
     
-    int getDumpType() { 
+    protected int getDumpType() { 
         return 431; 
     }
     
-    int getPostCount() { 
+    protected int getPostCount() { 
         return 0; // No electrical connections
     }
     
-    void setPoints() {
+    protected void setPoints() {
         super.setPoints();
     }
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
         g.save();
         boolean selected = needsHighlight() || stopped;
         
@@ -169,7 +169,7 @@ class StopTimeElm extends CircuitElm {
         g.restore();
     }
     
-    void stepFinished() {
+    protected void stepFinished() {
         SimulationContext context = getSimulationContext();
         stopped = false;
         if (enabled && context.getTime() >= stopTime) {
@@ -183,7 +183,7 @@ class StopTimeElm extends CircuitElm {
         }
     }
     
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
         SimulationContext context = getSimulationContext();
         arr[0] = "stop time";
         arr[1] = "enabled = " + (enabled ? "yes" : "no");
@@ -250,7 +250,7 @@ class StopTimeElm extends CircuitElm {
     void setNodeVoltage(int n, double c) {
     }
     
-    void stamp() {
+    protected void stamp() {
         // No electrical connections
     }
 }

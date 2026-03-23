@@ -29,8 +29,8 @@ package com.lushprojects.circuitjs1.client;
 	    setSize(2);
 	}
 	boolean needsBits() { return false; }
-	void setupPins() { }
-	int getVoltageSourceCount() { return 0; }
+	protected void setupPins() { }
+	protected int getVoltageSourceCount() { return 0; }
 	void setPins(Pin p[]) {
 	    pins = p;
 	}
@@ -56,6 +56,6 @@ package com.lushprojects.circuitjs1.client;
 	    g.restore();
 	}
 
-	int getPostCount() { return pins == null ? 1 : pins.length; }
+	protected int getPostCount() { return pins == null ? 1 : pins.length; }
     }
 

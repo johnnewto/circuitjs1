@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.economics.*;
+
 
 /**
  * GodlyTableElm - Table with Integration Capabilities
@@ -157,7 +159,7 @@ public class GodlyTableElm extends TableElm {
     }
     
     @Override
-    int getDumpType() { 
+    protected int getDumpType() { 
         return 255; // Choose unused dump type (different from TableElm's 253)
     }
     
@@ -194,7 +196,7 @@ public class GodlyTableElm extends TableElm {
     }
     
     @Override
-    void setupPins() {
+    protected void setupPins() {
         // Don't call super.setupPins() - we don't use pins for output
         // super.setupPins();
         
@@ -225,7 +227,7 @@ public class GodlyTableElm extends TableElm {
      * We stamp directly to LabeledNode nodes instead.
      */
     @Override
-    int getPostCount() {
+    protected int getPostCount() {
         return 0;  // No visible posts
     }
     
@@ -234,7 +236,7 @@ public class GodlyTableElm extends TableElm {
      * each master column. One voltage source per master column.
      */
     @Override
-    int getVoltageSourceCount() {
+    protected int getVoltageSourceCount() {
         // Same count as internal nodes - one per master column
         return countMasterColumns();
     }
@@ -405,7 +407,7 @@ public class GodlyTableElm extends TableElm {
      * Called once during analyzeCircuit(), after setupPins() and after voltage sources are allocated.
      */
     @Override
-    void stamp() {
+    protected void stamp() {
         // Refresh LabeledNode lookup (in case nodes changed since setupPins)
         findLabeledNodes();
         
@@ -436,7 +438,7 @@ public class GodlyTableElm extends TableElm {
     }
 
     @Override
-    void postStamp() {
+    protected void postStamp() {
         super.postStamp();
         CirSim csim = CirSim.getInstance();
         if (csim == null || csim.nameToSlot == null) return;
@@ -469,7 +471,7 @@ public class GodlyTableElm extends TableElm {
      * Unlike TableElm which uses pins, we track voltage sources in colVoltSources[].
      */
     @Override
-    void setVoltageSource(int j, int vs) {
+    protected void setVoltageSource(int j, int vs) {
         // Store base voltage source for compatibility
         if (j == 0) {
             voltSource = vs;
@@ -635,7 +637,7 @@ public class GodlyTableElm extends TableElm {
     // Current flows through voltage sources connected to LabeledNode nodes
 
     @Override
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
         arr[0] = "Godly Table (" + rows + "x" + getCols() + ") with Integration";
         arr[1] = "Equation: y[n+1] = y[n] + dt * columnSum";
 

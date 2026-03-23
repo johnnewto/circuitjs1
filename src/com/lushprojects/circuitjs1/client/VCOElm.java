@@ -25,8 +25,8 @@ package com.lushprojects.circuitjs1.client;
 		      StringTokenizer st) {
 	    super(xa, ya, xb, yb, f, st);
 	}
-	String getChipName() { return "VCO"; }
-	void setupPins() {
+	protected String getChipName() { return "VCO"; }
+	protected void setupPins() {
 	    sizeX = 2;
 	    sizeY = 4;
 	    pins = new Pin[6];
@@ -40,8 +40,8 @@ package com.lushprojects.circuitjs1.client;
 	    pins[5] = new Pin(3, SIDE_E, "R2");
 	    pins[5].output = true;
 	}
-	boolean nonLinear() { return true; }
-	void stamp() {
+	protected boolean nonLinear() { return true; }
+	protected void stamp() {
 	    // output pin
 	    sim.stampVoltageSource(0, nodes[1], pins[1].voltSource);
 	    // attach Vi to R1 pin so its current is proportional to Vi
@@ -57,7 +57,7 @@ package com.lushprojects.circuitjs1.client;
 	final double cResistance = 1e6;
 	double cCurrent;
 	int cDir;
-	void doStep() {
+	protected void doStep() {
 	    double vc = volts[3]-volts[2];
 	    double vo = volts[1];
 	    int dir = (vo < 2.5) ? 1 : -1;
@@ -95,12 +95,12 @@ package com.lushprojects.circuitjs1.client;
 	    pins[3].current = c;
 	    pins[0].current = -pins[4].current;
 	}
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    computeCurrent();
 	    drawChip(g);
 	}
-	int getPostCount() { return 6; }
-	int getVoltageSourceCount() { return 3; }
-	int getDumpType() { return 158; }
-	@Override boolean isDigitalChip() { return false; }
+	protected int getPostCount() { return 6; }
+	protected int getVoltageSourceCount() { return 3; }
+	protected int getDumpType() { return 158; }
+	@Override protected boolean isDigitalChip() { return false; }
     }

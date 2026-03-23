@@ -58,8 +58,8 @@ class SwitchElm extends CircuitElm {
 	if ((flags & FLAG_LABEL) != 0)
 	    label = CustomLogicModel.unescape(st.nextToken());
     }
-    int getDumpType() { return 's'; }
-    String dump() {
+    protected int getDumpType() { return 's'; }
+    protected String dump() {
 	String s = super.dump() + " " + position + " " + momentary;
 	if ((flags & FLAG_LABEL) != 0)
 	    s += " " + CustomLogicModel.escape(label);
@@ -69,7 +69,7 @@ class SwitchElm extends CircuitElm {
     Point ps, ps2;
     Point extraPoints[];
     
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	calcLeads(32);
 	ps  = new Point();
@@ -89,7 +89,7 @@ class SwitchElm extends CircuitElm {
     
     final int openhs = 16;
 	
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	int hs1 = (position == 1) ? 0 : 2;
 	int hs2 = (position == 1) ? openhs : 2;
 	setBbox(point1, point2, openhs);
@@ -173,7 +173,7 @@ class SwitchElm extends CircuitElm {
             }
         }
     }
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = (momentary) ? "push switch (SPST)" : "switch (SPST)";
 	if (position == 1) {
 	    arr[1] = "open";
@@ -184,9 +184,9 @@ class SwitchElm extends CircuitElm {
 	    arr[3] = "I = " + getCurrentDText(getCurrent());
 	}
     }
-    boolean getConnection(int n1, int n2) { return position == 0; }
-    boolean isWireEquivalent() { return position == 0; }
-    boolean isRemovableWire() { return position == 0; }
+    protected boolean getConnection(int n1, int n2) { return position == 0; }
+    protected boolean isWireEquivalent() { return position == 0; }
+    protected boolean isRemovableWire() { return position == 0; }
     boolean useIECSymbol() { return (flags & FLAG_IEC) != 0; }
     
     public EditInfo getEditInfo(int n) {

@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.economics.*;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -683,7 +685,7 @@ public class ComputedValues {
         }
     }
 
-    static void resetForTesting() {
+    public static void resetForTesting() {
         if (computedValues != null) {
             computedValues.clear();
         }

@@ -1,6 +1,6 @@
 package com.lushprojects.circuitjs1.client;
 
-final class SolverMatrixState {
+public final class SolverMatrixState {
     // The circuit is solved by: circuitMatrix x nodeVoltages = circuitRightSide
     double[][] circuitMatrix;
     double[] circuitRightSide;
@@ -15,6 +15,6 @@ final class SolverMatrixState {
 
     boolean circuitNonLinear;
     boolean circuitNeedsMap;
-    int circuitMatrixSize;
+    public int circuitMatrixSize;
     int circuitMatrixFullSize;
 }

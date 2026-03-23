@@ -45,15 +45,15 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	    onResistance = Double.parseDouble(st.nextToken());
 	    offResistance = resistance = Double.parseDouble(st.nextToken());
 	}
-	void reset() {
+	protected void reset() {
 	    lastTransition = 0;
 	    poweredState = onState = false;
 	}
-	String dump() {
+	protected String dump() {
 	    return super.dump() + " " + onDelay + " " + offDelay + " " + onResistance + " " + offResistance;
 	}
-	String getChipName() { return "time delay relay"; }
-	void setupPins() {
+	protected String getChipName() { return "time delay relay"; }
+	protected void setupPins() {
 	    sizeX = 2;
 	    sizeY = 2;
 	    pins = new Pin[4];
@@ -63,20 +63,20 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	    pins[3] = new Pin(0, SIDE_E, "out");
 	}
 	
-	boolean nonLinear() { return true; }
-	void stamp() {
+	protected boolean nonLinear() { return true; }
+	protected void stamp() {
 	    resistance = (onState) ? onResistance : offResistance;
 	    sim.stampResistor(nodes[0], nodes[1], vinResistance);
 	    sim.stampNonLinear(nodes[2]);
 	    sim.stampNonLinear(nodes[3]);
 	}
 	
-	void doStep() {
+	protected void doStep() {
 	    resistance = (onState) ? onResistance : offResistance;
 	    sim.stampResistor(nodes[2], nodes[3], resistance);
 	}
 	
-	void stepFinished() {
+	protected void stepFinished() {
 	    SimulationContext context = getSimulationContext();
 	    boolean oldState = poweredState;
 	    poweredState = (volts[0]-volts[1] > 2.5);
@@ -86,17 +86,17 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 		onState = poweredState;
 	}
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    pins[0].current = -(volts[0]-volts[1])/vinResistance;
 	    pins[2].current = -(volts[2]-volts[3])/resistance;
 	    pins[1].current = -pins[0].current;
 	    pins[3].current = -pins[2].current;
 	    drawChip(g);
 	}
-	@Override boolean isDigitalChip() { return false; }
-	int getPostCount() { return 4; }
-	int getVoltageSourceCount() { return 0; }
-	int getDumpType() { return 414; }
+	@Override protected boolean isDigitalChip() { return false; }
+	protected int getPostCount() { return 4; }
+	protected int getVoltageSourceCount() { return 0; }
+	protected int getDumpType() { return 414; }
 	
 	    public EditInfo getChipEditInfo(int n) {
 	        if (n == 0)

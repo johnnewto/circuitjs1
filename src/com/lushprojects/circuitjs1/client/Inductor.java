@@ -43,7 +43,7 @@ class Inductor {
 	flags = f;
     }
     boolean isTrapezoidal() { return (flags & FLAG_BACK_EULER) == 0; }
-    void reset() { resetTo(0); }
+    protected void reset() { resetTo(0); }
     void resetTo(double c) {
 	// need to set curSourceValue here in case one of inductor nodes is node 0.  In that case
 	// calculateCurrent() may get called (from setNodeVoltage()) when analyzing circuit, before
@@ -66,7 +66,7 @@ class Inductor {
 	sim.stampRightSide(nodes[0]);
 	sim.stampRightSide(nodes[1]);
     }
-    boolean nonLinear() { return false; }
+    protected boolean nonLinear() { return false; }
 
     void startIteration(double voltdiff) {
 	if (isTrapezoidal())

@@ -109,14 +109,14 @@ class RelayCoilElm extends CircuitElm {
 	nCoil3 = nCoil1+2;
     }
     
-    int getDumpType() { return 425; }
+    protected int getDumpType() { return 425; }
     
-    String dump() {
+    protected String dump() {
 	return super.dump() + " " + CustomLogicModel.escape(label) + " " +
 	    inductance + " " + coilCurrent + " " + onCurrent + " " + coilR + " " + offCurrent + " " + switchingTime + " " + type + " " + state + " " + switchPosition;
     }
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	int i, p;
 	for (i = 0; i != 2; i++) {
 	    setVoltageColor(g, volts[nCoil1+i]);
@@ -168,13 +168,13 @@ class RelayCoilElm extends CircuitElm {
 	//setSwitchPositions();
     }
 	
-    double getCurrentIntoNode(int n) {
+    protected double getCurrentIntoNode(int n) {
 	if (n == 0)
 	    return -coilCurrent;
 	return coilCurrent;
     }
 
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	setupPoles();
 	allocNodes();
@@ -218,12 +218,12 @@ class RelayCoilElm extends CircuitElm {
 	}
     }
     
-    Point getPost(int n) {
+    protected Point getPost(int n) {
 	return coilPosts[n];
     }
-    int getPostCount() { return 2; }
+    protected int getPostCount() { return 2; }
     int getInternalNodeCount() { return 1; }
-    void reset() {
+    protected void reset() {
 	super.reset();
 	ind.reset();
 	coilCurrent = coilCurCount = 0;
@@ -234,7 +234,7 @@ class RelayCoilElm extends CircuitElm {
 	// onState = false;
     }
     double a1, a2, a3, a4;
-    void stamp() {
+    protected void stamp() {
 	// inductor from coil post 1 to internal node
 	ind.stamp(nodes[nCoil1], nodes[nCoil3]);
 	// resistor from internal node to coil post 2
@@ -308,7 +308,7 @@ class RelayCoilElm extends CircuitElm {
 	}
     }
     
-    void doStep() {
+    protected void doStep() {
 	double voltdiff = volts[nCoil1]-volts[nCoil3];
 	ind.doStep(voltdiff);
     }
@@ -316,7 +316,7 @@ class RelayCoilElm extends CircuitElm {
 	double voltdiff = volts[nCoil1]-volts[nCoil3];
 	coilCurrent = ind.calculateCurrent(voltdiff);
     }
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = Locale.LS("relay");
 	if (i_position == 0)
 	    arr[0] += " (" + Locale.LS("off") + ")";
@@ -375,7 +375,7 @@ class RelayCoilElm extends CircuitElm {
 	    label = ei.textf.getText();
     }
     
-    boolean getConnection(int n1, int n2) {
+    protected boolean getConnection(int n1, int n2) {
 	return true;
     }
 }

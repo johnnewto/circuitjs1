@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.economics.*;
+
 import java.util.HashMap;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.google.gwt.user.client.ui.SuggestBox;
@@ -26,7 +28,7 @@ import com.google.gwt.user.client.ui.MultiWordSuggestOracle;
 import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsPackage;
 
-class LabeledNodeElm extends CircuitElm {
+public class LabeledNodeElm extends CircuitElm {
     final int FLAG_ESCAPE = 4;
     final int FLAG_INTERNAL = 1;
     final int FLAG_SHOW_ALL_NODES = 8;
@@ -53,12 +55,12 @@ class LabeledNodeElm extends CircuitElm {
 	    text = CustomLogicModel.unescape(text); 
 	}
     }
-    String dump() {
+    protected String dump() {
 	flags |= FLAG_ESCAPE;
 	return super.dump() + " " + CustomLogicModel.escape(text);
     }
 
-    String text;
+    public String text;
     
     static class LabelEntry {
 	Point point;
@@ -73,7 +75,7 @@ class LabeledNodeElm extends CircuitElm {
 	}
     }
     
-    static HashMap<String,LabelEntry> labelList;
+    public static HashMap<String,LabelEntry> labelList;
     
     // Cache for sorted node names to avoid repeated sorting
     private static String[] cachedSortedNodes;
@@ -198,7 +200,7 @@ class LabeledNodeElm extends CircuitElm {
         }
     }
     final int circleSize = 17;
-    void setPoints() {
+    protected void setPoints() {
 		super.setPoints();
 		// No circle gap needed — text is drawn to the side by drawLabeledNode()
 		lead1 = interpPoint(point1, point2, 1);
@@ -232,8 +234,8 @@ class LabeledNodeElm extends CircuitElm {
 		}
     }
     
-    int getDumpType() { return 207; }
-    int getPostCount() { return 1; }
+    protected int getDumpType() { return 207; }
+    protected int getPostCount() { return 1; }
     
     // Add high-value resistor to ground to prevent singular matrix when
     // the labeled node is only connected to high-impedance inputs
@@ -268,8 +270,8 @@ class LabeledNodeElm extends CircuitElm {
     }
     
     // this is basically a wire, since it just connects two or more nodes together
-    boolean isWireEquivalent() { return true; }
-    boolean isRemovableWire() { return true; }
+    protected boolean isWireEquivalent() { return true; }
+    protected boolean isRemovableWire() { return true; }
     
     static Integer getByName(String n) {
 		if (labelList == null)
@@ -301,7 +303,7 @@ class LabeledNodeElm extends CircuitElm {
 		return null;
     }
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 		setVoltageColor(g, volts[0]);
 		drawThickLine(g, point1, lead1);
 		g.setColor(needsHighlight() ? getHighlightColor() : whiteColor);
@@ -350,7 +352,7 @@ class LabeledNodeElm extends CircuitElm {
 		drawPosts(g);
 		// Hint tooltip is drawn by CirSim.drawHintTooltip() after all elements
     }
-    double getCurrentIntoNode(int n) { return -current; }
+    protected double getCurrentIntoNode(int n) { return -current; }
     void setCurrent(int x, double c) { current = c; }
     double getVoltageDiff() { 
         return volts[0]; 
@@ -375,7 +377,7 @@ class LabeledNodeElm extends CircuitElm {
         return volts[0];
     }
 	
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 		// Add stock indicator prefix if applicable
 		String displayName = text;
 		if (StockFlowRegistry.isStock(text)) {

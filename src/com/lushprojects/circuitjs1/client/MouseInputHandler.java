@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.economics.*;
+
 import static com.google.gwt.event.dom.client.KeyCodes.KEY_A;
 import static com.google.gwt.event.dom.client.KeyCodes.KEY_BACKSPACE;
 import static com.google.gwt.event.dom.client.KeyCodes.KEY_C;

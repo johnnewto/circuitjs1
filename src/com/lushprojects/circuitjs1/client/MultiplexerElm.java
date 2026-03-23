@@ -44,9 +44,9 @@ package com.lushprojects.circuitjs1.client;
 	    } catch (Exception e) {}
 	    setupPins();
 	}
-	String getChipName() { return "Multiplexer"; }
-	String dump() { return super.dump() + " " + selectBitCount; }
-	void setupPins() {
+	protected String getChipName() { return "Multiplexer"; }
+	protected String dump() { return super.dump() + " " + selectBitCount; }
+	protected void setupPins() {
 	    sizeX = selectBitCount+1;
 	    outputCount = 1;
 	    int i;
@@ -83,10 +83,10 @@ package com.lushprojects.circuitjs1.client;
 	    allocNodes();
 
 	}
-	int getPostCount() {
+	protected int getPostCount() {
 	    return outputCount + selectBitCount + 1 + (hasFlag(FLAG_INVERTED_OUTPUT) ? 1 : 0) + (hasFlag(FLAG_STROBE) ? 1 : 0);
 	}
-	int getVoltageSourceCount() {return hasFlag(FLAG_INVERTED_OUTPUT) ? 2 : 1;}
+	protected int getVoltageSourceCount() {return hasFlag(FLAG_INVERTED_OUTPUT) ? 2 : 1;}
 
 	void execute() {
 	    int selectedValue=0;
@@ -102,7 +102,7 @@ package com.lushprojects.circuitjs1.client;
 		pins[outputPin+1].value = !val;	
 	}
 	
-	int getDumpType() { return 184; }
+	protected int getDumpType() { return 184; }
 
         public EditInfo getChipEditInfo(int n) {
             if (n == 0)

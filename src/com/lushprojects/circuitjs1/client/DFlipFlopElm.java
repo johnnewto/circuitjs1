@@ -39,8 +39,8 @@ package com.lushprojects.circuitjs1.client;
 	    pins[2].value = !pins[1].value;
 	    justLoaded = true;
 	}
-	String getChipName() { return "D flip-flop"; }
-	void setupPins() {
+	protected String getChipName() { return "D flip-flop"; }
+	protected void setupPins() {
 	    sizeX = 2;
 	    sizeY = 3;
 	    pins = new Pin[getPostCount()];
@@ -63,11 +63,11 @@ package com.lushprojects.circuitjs1.client;
                pins[4].bubble = pins[5].bubble = invertSetReset();
             }
 	}
-	int getPostCount() {
+	protected int getPostCount() {
 	    return 4 + (hasReset() ? 1 : 0) + (hasSet() ? 1 : 0);
 	}
-	int getVoltageSourceCount() { return 2; }
-        void reset() {
+	protected int getVoltageSourceCount() { return 2; }
+        protected void reset() {
             super.reset();
 	    volts[2] = highVoltage;
 	    pins[2].value = true;
@@ -103,7 +103,7 @@ package com.lushprojects.circuitjs1.client;
 
 	    lastClock = pins[3].value;
 	}
-	int getDumpType() { return 155; }
+	protected int getDumpType() { return 155; }
 	public EditInfo getChipEditInfo(int n) {
 	    if (n == 0) {
 		EditInfo ei = new EditInfo("", 0, -1, -1);

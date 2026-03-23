@@ -35,11 +35,11 @@ package com.lushprojects.circuitjs1.client;
             setPoints();
 	}
 	
-	String dump() { return super.dump() + " " + sizeX + " " + sizeY ; }
+	protected String dump() { return super.dump() + " " + sizeX + " " + sizeY ; }
 	
-	String getChipName() { return "LED array"; }
+	protected String getChipName() { return "LED array"; }
 	
-	void setupPins() {
+	protected void setupPins() {
 	    if (sizeX == 0 || sizeY == 0) {
 		sizeX = sizeY = 8;
 		allocNodes();
@@ -57,7 +57,7 @@ package com.lushprojects.circuitjs1.client;
 	double currents[];
 	double brightness[];
 	
-	void stamp() {
+	protected void stamp() {
 	    super.stamp();
 	    
 	    // create grid of diodes
@@ -71,7 +71,7 @@ package com.lushprojects.circuitjs1.client;
 	    }
 	    currents = new double[diodes.length];
 	} 
-	void doStep() {
+	protected void doStep() {
 	    super.doStep();
 	    
 	    int ix, iy, i = 0;
@@ -79,10 +79,10 @@ package com.lushprojects.circuitjs1.client;
 		for (ix = 0; ix != sizeX; ix++, i++)
 		    diodes[i].doStep(volts[sizeX+iy]-volts[ix]);
 	}
-        boolean nonLinear() { return true; }
-        @Override boolean isDigitalChip() { return false; }
+        protected boolean nonLinear() { return true; }
+        @Override protected boolean isDigitalChip() { return false; }
 
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    drawChip(g);
 	    int ix, iy;
 	    for (ix = 0; ix != sizeX; ix++)
@@ -117,7 +117,7 @@ package com.lushprojects.circuitjs1.client;
 	    }
 	}
 
-	void stepFinished() {
+	protected void stepFinished() {
 	    // stop for huge currents that make simulator act weird
 	    int i;
 	    for (i = 0; i != currents.length; i++)
@@ -146,9 +146,9 @@ package com.lushprojects.circuitjs1.client;
             Color cc = new Color((int) w, 0, 0);
             g.setColor(cc);
 	}
-	int getPostCount() { return sizeX+sizeY; }
-	int getVoltageSourceCount() { return 0; }
-	int getDumpType() { return 405; }
+	protected int getPostCount() { return sizeX+sizeY; }
+	protected int getVoltageSourceCount() { return 0; }
+	protected int getDumpType() { return 405; }
 	
 	// this is true but it causes strange behavior with unconnected pins so we don't do it
 //	boolean getConnection(int n1, int n2) { return true; }
@@ -179,7 +179,7 @@ package com.lushprojects.circuitjs1.client;
 	}
 	
 	// default getInfo doesn't work because the pins are unlabeled
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = getChipName();
 	    return;
 	}

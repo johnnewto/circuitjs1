@@ -25,9 +25,9 @@ class DACElm extends ChipElm {
 		  StringTokenizer st) {
 	super(xa, ya, xb, yb, f, st);
     }
-    String getChipName() { return "DAC"; }
+    protected String getChipName() { return "DAC"; }
     boolean needsBits() { return true; }
-    void setupPins() {
+    protected void setupPins() {
 	sizeX = 2;
 	sizeY = bits > 2 ? bits : 2;
 	pins = new Pin[getPostCount()];
@@ -39,7 +39,7 @@ class DACElm extends ChipElm {
 	pins[bits+1] = new Pin(sizeY-1, SIDE_E, "V+");
 	allocNodes();
     }
-    void doStep() {
+    protected void doStep() {
 	int ival = 0;
 	int i;
 	for (i = 0; i != bits; i++)
@@ -49,12 +49,12 @@ class DACElm extends ChipElm {
 	double v = ival*volts[bits+1]/ivalmax;
 	sim.updateVoltageSource(0, nodes[bits], pins[bits].voltSource, v);
     }
-    int getVoltageSourceCount() { return 1; }
-    int getPostCount() { return bits+2; }
-    int getDumpType() { return 166; }
+    protected int getVoltageSourceCount() { return 1; }
+    protected int getPostCount() { return bits+2; }
+    protected int getDumpType() { return 166; }
 
     // there's already a V+ pin, how does that relate to high logic voltage?  figure out later
-    @Override boolean isDigitalChip() { return false; }
+    @Override protected boolean isDigitalChip() { return false; }
 
     public EditInfo getChipEditInfo(int n) {
         if (n == 0)

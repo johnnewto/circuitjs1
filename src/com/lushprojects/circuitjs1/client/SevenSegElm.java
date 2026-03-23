@@ -59,12 +59,12 @@ package com.lushprojects.circuitjs1.client;
 	    diodeDirection = 0;
 	}
 	
-	String dump() { return super.dump() + " " + baseSegmentCount + " " + extraSegment + " " + diodeDirection; }
+	protected String dump() { return super.dump() + " " + baseSegmentCount + " " + extraSegment + " " + diodeDirection; }
 	
-	String getChipName() { return segmentCount + "-segment display"; }
+	protected String getChipName() { return segmentCount + "-segment display"; }
 	Color darkred, lightgray;
 	
-	void setupPins() {
+	protected void setupPins() {
 	    if (pinCount == 0)
 		return;
 	    darkred = new Color(30, 0, 0);
@@ -181,7 +181,7 @@ package com.lushprojects.circuitjs1.client;
 	};
 	
 	Diode diodes[];
-	void stamp() {
+	protected void stamp() {
 	    super.stamp();
 	    
 	    if (diodeDirection == 0)
@@ -198,7 +198,7 @@ package com.lushprojects.circuitjs1.client;
 		    diodes[i].stamp(nodes[commonPin], nodes[i]);
 	    }
 	} 
-	void doStep() {
+	protected void doStep() {
 	    super.doStep();
 	    
 	    if (diodeDirection == 0)
@@ -208,8 +208,8 @@ package com.lushprojects.circuitjs1.client;
 	    for (i = 0; i != segmentCount; i++)
 		diodes[i].doStep(diodeDirection*(volts[i]-volts[commonPin]));
 	}
-        boolean nonLinear() { return diodeDirection != 0; }
-	void draw(Graphics g) {
+        protected boolean nonLinear() { return diodeDirection != 0; }
+	protected void draw(Graphics g) {
 	    drawChip(g);
 	    g.setColor(Color.red);
 	    int spx = cspc*2;
@@ -271,7 +271,7 @@ package com.lushprojects.circuitjs1.client;
 	    }
 	}
 	
-	void stepFinished() {
+	protected void stepFinished() {
 	    // stop for huge currents that make simulator act weird
 	    if (commonPin > 0 && Math.abs(pins[commonPin].current) > 1e12)
 		sim.stop("max current exceeded", this);
@@ -297,9 +297,9 @@ package com.lushprojects.circuitjs1.client;
             Color cc = whiteBkg ? new Color(255, 255-wi, 255-wi) : new Color(wi, 0, 0);
             g.setColor(cc);
 	}
-	int getPostCount() { return pinCount; }
-	int getVoltageSourceCount() { return 0; }
-	int getDumpType() { return 157; }
+	protected int getPostCount() { return pinCount; }
+	protected int getVoltageSourceCount() { return 0; }
+	protected int getDumpType() { return 157; }
 	
 	public EditInfo getChipEditInfo(int n) {
 	        if (n == 0) {
@@ -369,5 +369,5 @@ package com.lushprojects.circuitjs1.client;
 	    setPoints();
 	}
 
-	@Override boolean isDigitalChip() { return false; }
+	@Override protected boolean isDigitalChip() { return false; }
     }

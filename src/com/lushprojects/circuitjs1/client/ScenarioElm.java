@@ -75,12 +75,12 @@ class ScenarioElm extends CircuitElm {
     }
 
     @Override
-    int getDumpType() {
+    protected int getDumpType() {
         return 236;
     }
 
     @Override
-    String dump() {
+    protected String dump() {
         return super.dump() + " " +
             CustomLogicModel.escape(targetName) + " " +
             mode + " " +
@@ -93,27 +93,27 @@ class ScenarioElm extends CircuitElm {
     }
 
     @Override
-    int getPostCount() {
+    protected int getPostCount() {
         return 0;
     }
 
     @Override
-    boolean nonLinear() {
+    protected boolean nonLinear() {
         return true;
     }
 
     @Override
-    void stamp() {
+    protected void stamp() {
     }
 
     @Override
-    void reset() {
+    protected void reset() {
         wasActive = false;
         clearOverride();
     }
 
     @Override
-    void delete() {
+    protected void delete() {
         clearOverride();
         super.delete();
     }
@@ -125,7 +125,7 @@ class ScenarioElm extends CircuitElm {
     }
 
     @Override
-    void doStep() {
+    protected void doStep() {
         SimulationContext context = getSimulationContext();
         boolean active = false;
         if (enabled) {
@@ -147,7 +147,7 @@ class ScenarioElm extends CircuitElm {
     }
 
     @Override
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
         g.save();
         boolean selected = needsHighlight();
         int cx = (x + x2) / 2;
@@ -195,7 +195,7 @@ class ScenarioElm extends CircuitElm {
     }
 
     @Override
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
         arr[0] = "scenario";
         arr[1] = "enabled = " + (enabled ? "yes" : "no");
         arr[2] = "target = " + targetName;

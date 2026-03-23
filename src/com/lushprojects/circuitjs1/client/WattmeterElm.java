@@ -42,11 +42,11 @@ class WattmeterElm extends CircuitElm {
 	curcounts = new double[2];
     }
 
-    String dump() { return super.dump() + " " + width; }
+    protected String dump() { return super.dump() + " " + width; }
 
-    int getVoltageSourceCount() { return 2; }
-    int getDumpType() { return 420; }
-    int getPostCount() { return 4; }
+    protected int getVoltageSourceCount() { return 2; }
+    protected int getDumpType() { return 420; }
+    protected int getPostCount() { return 4; }
 
     void drag(int xx, int yy) {
 	xx = sim.snapGrid(xx);
@@ -68,7 +68,7 @@ class WattmeterElm extends CircuitElm {
     Point inner[];
     int maxTextLen;
 
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	int ds = (dy == 0) ? sign(dx) : -sign(dy);
 	
@@ -105,21 +105,21 @@ class WattmeterElm extends CircuitElm {
     int rectPointsX[], rectPointsY[];
     Point center;
 
-    Point getPost(int n) {
+    protected Point getPost(int n) {
 	return posts[n];
     }
 
-    void stamp() {
+    protected void stamp() {
 	// zero-valued voltage sources from 0 to 1 and 2 to 3, so we can measure current
 	sim.stampVoltageSource(nodes[0], nodes[1], voltSources[0], 0);
 	sim.stampVoltageSource(nodes[2], nodes[3], voltSources[1], 0);
     }
 
-    void setVoltageSource(int j, int vs) {
+    protected void setVoltageSource(int j, int vs) {
 	voltSources[j] = vs;
     }
 
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	int i;
 	for (i = 0; i != 2; i++)
 	    curcounts[i] = updateDotCount(currents[i], curcounts[i]);
@@ -160,17 +160,17 @@ class WattmeterElm extends CircuitElm {
     void setCurrent(int vn, double c) {
 	currents[vn == voltSources[0] ? 0 : 1] = c;
     }
-    double getCurrentIntoNode(int n) {
+    protected double getCurrentIntoNode(int n) {
 	if (n % 2 == 0)
 	    return -currents[n/2];
 	else
 	    return currents[n/2];
     }
 
-    boolean getConnection(int n1, int n2) { return (n1/2) == (n2/2); }
+    protected boolean getConnection(int n1, int n2) { return (n1/2) == (n2/2); }
     boolean hasGroundConnection(int n1) { return false; }
 
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	arr[0] = "wattmeter";
 	getBasicInfo(arr);
 	arr[3] = "P = " + getUnitText(getPower(), "W");

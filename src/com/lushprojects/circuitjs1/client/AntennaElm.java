@@ -43,15 +43,15 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 		   Math.sin(2*pi*t*2433)*(1.3+Math.sin(2*pi*t*14))*3 + fm;
 	}
 	
-	void stepFinished() {
+	protected void stepFinished() {
 	    SimulationContext context = getSimulationContext();
 	    fmphase += 2*pi*(2200+Math.sin(2*pi*context.getTime()*13)*100)*context.getTimeStep();
 	}
 
-	int getDumpType() { return 'A'; }
+	protected int getDumpType() { return 'A'; }
 	int getShortcut() { return 0; }
 	
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    super.getInfo(arr);
 	    arr[0] = "Antenna (amplified)";
 	}

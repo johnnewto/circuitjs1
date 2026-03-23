@@ -46,14 +46,14 @@ package com.lushprojects.circuitjs1.client;
 	    } catch (Exception e) { }
 	    noDiagonal = true;
 	}
-	int getDumpType() { return 'S'; }
-	String dump() {
+	protected int getDumpType() { return 'S'; }
+	protected String dump() {
 	    return super.dump() + " " + link + " " + throwCount;
 	}
 
 	final int openhs = 16;
 	Point swposts[], swpoles[];
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    calcLeads(32);
 	    swposts = newPointArray(throwCount);
@@ -70,7 +70,7 @@ package com.lushprojects.circuitjs1.client;
 	    posCount = hasCenterOff() ? 3 : throwCount;
 	}
 	
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    setBbox(point1, point2, openhs);
 	    adjustBbox(swposts[0], swposts[throwCount-1]);
 
@@ -97,7 +97,7 @@ package com.lushprojects.circuitjs1.client;
 	    drawPosts(g);
 	}
 	
-	double getCurrentIntoNode(int n) {
+	protected double getCurrentIntoNode(int n) {
 	    if (n == 0)
 		return -current;
 	    if (n == position+1)
@@ -109,22 +109,22 @@ package com.lushprojects.circuitjs1.client;
 	    return new Rectangle(lead1).union(new Rectangle(swpoles[0])).union(new Rectangle(swpoles[throwCount-1]));
 	}	
 
-	Point getPost(int n) {
+	protected Point getPost(int n) {
 	    return (n == 0) ? point1 : swposts[n-1];
 	}
-	int getPostCount() { return 1+throwCount; }
+	protected int getPostCount() { return 1+throwCount; }
 	void calculateCurrent() {
 	    if (position == 2 && hasCenterOff())
 		current = 0;
 	}
 	
-	void stamp() {
+	protected void stamp() {
 	    if (position == 2 && hasCenterOff()) // in center?
 		return;
 	    sim.stampVoltageSource(nodes[0], nodes[position+1], voltSource, 0);
 	}
 		
-	int getVoltageSourceCount() {
+	protected int getVoltageSourceCount() {
 	    return (position == 2 && hasCenterOff()) ? 0 : 1; 	    
 	}
 	
@@ -142,18 +142,18 @@ package com.lushprojects.circuitjs1.client;
 		}
 	    }
 	}
-	boolean getConnection(int n1, int n2) {
+	protected boolean getConnection(int n1, int n2) {
 	    if (position == 2 && hasCenterOff())
 		return false;
 	    return comparePair(n1, n2, 0, 1+position);
 	}
 	
-	boolean isWireEquivalent() { return true; }
+	protected boolean isWireEquivalent() { return true; }
 	
 	// optimizing out this element is too complicated to be worth it (see #646)
-	boolean isRemovableWire() { return false; }
+	protected boolean isRemovableWire() { return false; }
 	
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "switch (" + (link == 0 ? "S" : "D") + "P" +
 		    ((throwCount > 2) ? throwCount+"T)" : "DT)");
 	    arr[1] = "I = " + getCurrentDText(getCurrent());

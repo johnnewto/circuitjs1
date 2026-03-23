@@ -206,7 +206,7 @@ public class CustomCompositeModel implements Comparable<CustomCompositeModel> {
 	return arr.split(",");
     }
     
-    String dump() {
+    protected String dump() {
 	if (internal)
 	    return "";
 	dumped = true;

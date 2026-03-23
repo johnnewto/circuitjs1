@@ -83,9 +83,9 @@ class VoltageElm extends CircuitElm {
 	
 	reset();
     }
-    int getDumpType() { return 'v'; }
+    protected int getDumpType() { return 'v'; }
     
-    String dump() {
+    protected String dump() {
 	// set flag so we know if duty cycle is correct for pulse waveforms
 	if (waveform == WF_PULSE)
 	    flags |= FLAG_PULSE_DUTY;
@@ -98,7 +98,7 @@ class VoltageElm extends CircuitElm {
 	// VarRailElm adds text at the end
     }
 
-    void reset() {
+    protected void reset() {
 	freqTimeZero = 0;
 	curcount = 0;
     }
@@ -108,19 +108,19 @@ class VoltageElm extends CircuitElm {
 	return 1-(x-pi)*(2/pi);
     }
     int getVoltageSource() { return voltSource; }
-    void stamp() {
+    protected void stamp() {
 	if (waveform == WF_DC)
 	    sim.stampVoltageSource(nodes[0], nodes[1], voltSource,
 			       getVoltage());
 	else
 	    sim.stampVoltageSource(nodes[0], nodes[1], voltSource);
     }
-    void doStep() {
+    protected void doStep() {
 	if (waveform != WF_DC)
 	    sim.updateVoltageSource(nodes[0], nodes[1], voltSource,
 				getVoltage());
     }
-    void stepFinished() {
+    protected void stepFinished() {
 	if (waveform == WF_NOISE)
 	    noiseValue = (sim.random.nextDouble()*2-1) * maxVoltage + bias;
     }
@@ -148,11 +148,11 @@ class VoltageElm extends CircuitElm {
 	}
     }
     final int circleSize = 17;
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	calcLeads((waveform == WF_DC || waveform == WF_VAR) ? 8 : circleSize*2);
     }
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	setBbox(x, y, x2, y2);
 	draw2Leads(g);
 	if (waveform == WF_DC) {
@@ -290,12 +290,12 @@ class VoltageElm extends CircuitElm {
 	}
     }
 	
-    int getVoltageSourceCount() {
+    protected int getVoltageSourceCount() {
 	return 1;
     }
     double getPower() { return -getVoltageDiff()*current; }
     double getVoltageDiff() { return volts[1] - volts[0]; }
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
 	String baseType;
 	switch (waveform) {
 	case WF_DC: case WF_VAR:

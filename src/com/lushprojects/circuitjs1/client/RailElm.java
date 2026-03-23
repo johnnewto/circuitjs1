@@ -35,10 +35,10 @@ class RailElm extends VoltageElm {
 
     
     final int FLAG_CLOCK = 1;
-    int getDumpType() { return 'R'; }
-    int getPostCount() { return 1; }
+    protected int getDumpType() { return 'R'; }
+    protected int getPostCount() { return 1; }
 	
-    void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	lead1 = interpPoint(point1, point2, 1-circleSize/dn);
     }
@@ -47,7 +47,7 @@ class RailElm extends VoltageElm {
 	return null;
     }
     
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	String rt = getRailText();
         double w = rt == null ? circleSize : g.context.measureText(rt).getWidth()/2;
         if (w > dn*.8)
@@ -109,13 +109,13 @@ class RailElm extends VoltageElm {
     }
     
     double getVoltageDiff() { return volts[0]; }
-    void stamp() {
+    protected void stamp() {
 	if (waveform == WF_DC)
 	    sim.stampVoltageSource(0, nodes[0], voltSource, getVoltage());
 	else
 	    sim.stampVoltageSource(0, nodes[0], voltSource);
     }
-    void doStep() {
+    protected void doStep() {
 	if (waveform != WF_DC)
 	    sim.updateVoltageSource(0, nodes[0], voltSource, getVoltage());
     }

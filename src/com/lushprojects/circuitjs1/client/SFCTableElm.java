@@ -6,7 +6,9 @@
 
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.TableColumn.ColumnType;
+import com.lushprojects.circuitjs1.client.economics.*;
+
+import com.lushprojects.circuitjs1.client.economics.TableColumn.ColumnType;
 import com.lushprojects.circuitjs1.client.SFCSankeyRenderer.SankeyLayout;
 import java.util.ArrayList;
 
@@ -207,7 +209,7 @@ public class SFCTableElm extends TableElm {
     }
     
     @Override
-    int getDumpType() { 
+    protected int getDumpType() { 
         return 265;  // Unique dump type for SFC tables
     }
     
@@ -230,7 +232,7 @@ public class SFCTableElm extends TableElm {
      * SFC table is display-only - no circuit connections
      */
     @Override
-    void setupPins() {
+    protected void setupPins() {
         int grid = (cspc2 > 0) ? cspc2 : 16;
         if (showSankeyView && sankeyRenderer != null) {
             // Use user-specified Sankey size
@@ -301,7 +303,7 @@ public class SFCTableElm extends TableElm {
      * Pure computational element - no MNA participation.
      */
     @Override
-    void stamp() {
+    protected void stamp() {
         // Pure computational - no circuit connections
     }
     
@@ -310,7 +312,7 @@ public class SFCTableElm extends TableElm {
      * Pure computational element - no MNA participation.
      */
     @Override
-    int getVoltageSourceCount() {
+    protected int getVoltageSourceCount() {
         return 0;
     }
     
@@ -459,7 +461,7 @@ public class SFCTableElm extends TableElm {
     }
     
     @Override
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
         if (showSankeyView && sankeyRenderer != null) {
             lastDrawWasSankeyView = true;
 
@@ -486,12 +488,12 @@ public class SFCTableElm extends TableElm {
     }
     
     @Override
-    String getChipName() {
+    protected String getChipName() {
         return "SFC Table";
     }
     
     @Override
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
         arr[0] = "SFC Table (" + rows + " transactions × " + getSectorColumnCount() + " sectors)";
         arr[1] = isFullyBalanced() ? "✓ Fully Balanced" : "⚠ Imbalanced";
         

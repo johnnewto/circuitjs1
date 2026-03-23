@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.economics.*;
+
 // GWT conversion (c) 2015 by Iain Sharp
 
 // For information about the theory behind this, see Electronic Circuit & System Simulation Methods by Pillage
@@ -351,12 +353,12 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
     public CheckboxMenuItem dotsCheckItem;
     public CheckboxMenuItem voltsCheckItem;
     public CheckboxMenuItem powerCheckItem;
-    CheckboxMenuItem smallGridCheckItem;
+    public CheckboxMenuItem smallGridCheckItem;
     CheckboxMenuItem crossHairCheckItem;
     public CheckboxMenuItem showValuesCheckItem;
     CheckboxMenuItem euroResistorCheckItem;
     CheckboxMenuItem euroGatesCheckItem;
-    CheckboxMenuItem printableCheckItem;
+    public CheckboxMenuItem printableCheckItem;
     CheckboxMenuItem conventionCheckItem;
     CheckboxMenuItem noEditCheckItem;
     CheckboxMenuItem mouseWheelEditCheckItem;
@@ -371,7 +373,7 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
     public String voltageUnitSymbol = "$"; // Custom voltage unit symbol ($ for economics default)
     public String timeUnitSymbol = "yr"; // Custom time unit symbol (yr for economics default)
 	public int infoViewerUpdateIntervalMs = 100; // InfoViewer live update throttling interval
-    boolean useWeightedPriority = false; // Weighted priority for Asset/Equity columns
+    public boolean useWeightedPriority = false; // Weighted priority for Asset/Equity columns
 	private final SFCRDocumentManager sfcrDocumentManager = new SFCRDocumentManager();
 
 	public SFCRDocumentState getSFCRDocumentState() {
@@ -427,7 +429,8 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
     static final int infoWidth = 200;         // Width of info panel in pixels
     
     int gridSize, gridMask, gridRound;
-    boolean analyzeFlag, needsStamp, savedFlag;
+    public boolean analyzeFlag;
+    boolean needsStamp, savedFlag;
     boolean dumpMatrix;
     boolean needsRecoverySave;  // Defer recovery save until drag completes
     boolean dcAnalysisFlag;
@@ -458,7 +461,7 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
 	public int convergenceCheckThreshold = 100;
 	
 	// Developer mode - shows additional debug info (framerate, steprate, performance metrics)
-	boolean developerMode = false;
+	public boolean developerMode = false;
 	
 	// Equation table MNA mode - when true, equation tables create electrical outputs
 	public boolean equationTableMnaMode = true;
@@ -479,7 +482,7 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
 	boolean enableCacheBustedUrls = true;
 
 	// Global toggle for offscreen table blit caching
-	boolean tableRenderCacheEnabled = true;
+	public boolean tableRenderCacheEnabled = true;
 
 	// When true, auto-open model info viewer after loading SFCR with info content
 	public boolean autoOpenModelInfoOnLoad = true;
@@ -499,7 +502,7 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
     ScopeElm scopeElmArr[];               // Cached array of scope elements only
     
     // Element references for UI interaction
-    CircuitElm dragElm;                   // Element currently being dragged
+    public CircuitElm dragElm;                   // Element currently being dragged
     CircuitElm stopElm;                   // Element that caused simulation to stop
     private CircuitElm mouseElm = null;
     private TableElm lastInteractedTable = null; // Track last table clicked for draw order
@@ -515,14 +518,14 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
     // Indexed by slot number stored inside each E_GSLOT Expr node.
     double[] circuitVariables;           // Flat value array: node voltages + computed values
     String[] slotNames;                  // Parallel name array: slotNames[i] is the name for circuitVariables[i]
-    java.util.HashMap<String, Integer> nameToSlot; // name → circuitVariables[] slot index (used at analysis time only)
+    public java.util.HashMap<String, Integer> nameToSlot; // name → circuitVariables[] slot index (used at analysis time only)
     
     // Circuit state flags
     boolean simRunning;                   // True when simulation is actively running
     boolean simRunningBeforeDrag;         // Saved state: was simulation running before drag started?
     
     // Circuit dimensions
-    int voltageSourceCount;               // Number of voltage sources (adds rows to matrix)
+    public int voltageSourceCount;               // Number of voltage sources (adds rows to matrix)
     // public boolean useFrame;
     public int scopeCount;
     public Scope scopes[];
@@ -576,7 +579,7 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
         return q % x;
     }
 
-	static float devicePixelRatio() {
+	public static float devicePixelRatio() {
 		double ratio = GlobalWindowLike.getDevicePixelRatio();
 		return (float) (ratio > 0 ? ratio : 1.0);
 	}
@@ -643,7 +646,7 @@ public CirSim() {
 	    return menuUiState;
 	}
 
-	CircuitAnalyzer getCircuitAnalyzer() {
+	public CircuitAnalyzer getCircuitAnalyzer() {
 	    return circuitAnalyzer;
 	}
 
@@ -655,7 +658,7 @@ public CirSim() {
 	    return timingState;
 	}
 
-	SolverMatrixState getSolverMatrixState() {
+	public SolverMatrixState getSolverMatrixState() {
 	    return solverMatrixState;
 	}
 
@@ -666,8 +669,8 @@ public CirSim() {
 	void setTempMouseMode(int value) { mouseInputHandler.setTempMouseMode(value); }
 	String getMouseModeStr() { return mouseInputHandler.getMouseModeStr(); }
 	void setMouseModeStr(String value) { mouseInputHandler.setMouseModeStr(value); }
-	int getMouseCursorX() { return mouseInputHandler.getMouseCursorX(); }
-	int getMouseCursorY() { return mouseInputHandler.getMouseCursorY(); }
+	public int getMouseCursorX() { return mouseInputHandler.getMouseCursorX(); }
+	public int getMouseCursorY() { return mouseInputHandler.getMouseCursorY(); }
 	Rectangle getSelectedArea() { return mouseInputHandler.getSelectedArea(); }
 	boolean isDragging() { return mouseInputHandler.isDragging(); }
 	int getMousePost() { return mouseInputHandler.getMousePost(); }
@@ -680,7 +683,7 @@ public CirSim() {
 	    return viewportController;
 	}
 
-	CirSimPreferencesManager getPreferencesManager() {
+	public CirSimPreferencesManager getPreferencesManager() {
 	    return preferencesManager;
 	}
 
@@ -692,7 +695,7 @@ public CirSim() {
 	    return infoDialogActions;
 	}
 
-	EditDialogActions getEditDialogActions() {
+	public EditDialogActions getEditDialogActions() {
 	    return editDialogActions;
 	}
 
@@ -983,7 +986,7 @@ public CirSim() {
 	    return menuBuilder;
 	}
 
-	TableMasterRegistryManager getTableMasterRegistryManager() {
+	public TableMasterRegistryManager getTableMasterRegistryManager() {
 	    return tableMasterRegistryManager;
 	}
 
@@ -1220,7 +1223,7 @@ public CirSim() {
     
     boolean needsRepaint;
     
-    void repaint() {
+    public void repaint() {
 	if (RuntimeMode.isNonInteractiveRuntime())
 	    return;
 	if (!needsRepaint) {
@@ -1301,7 +1304,7 @@ public CirSim() {
 //	}
 //    }
     
-    void needAnalyze() {
+    public void needAnalyze() {
 	analyzeFlag = true;
     	repaint();
 	if (RuntimeMode.isGwt())
@@ -1561,7 +1564,7 @@ public CirSim() {
      * @param coef Voltage gain coefficient
      * @param vs Voltage source index to control
      */
-    void stampVCVS(int n1, int n2, double coef, int vs) {
+    public void stampVCVS(int n1, int n2, double coef, int vs) {
 	matrixStamper.stampVCVS(n1, n2, coef, vs);
     }
     
@@ -1585,12 +1588,12 @@ public CirSim() {
      * @param vs Voltage source index
      * @param v Voltage value
      */
-    void stampVoltageSource(int n1, int n2, int vs, double v) {
+    public void stampVoltageSource(int n1, int n2, int vs, double v) {
 	matrixStamper.stampVoltageSource(n1, n2, vs, v);
     }
 
     // use this if the amount of voltage is going to be updated in doStep(), by updateVoltageSource()
-    void stampVoltageSource(int n1, int n2, int vs) {
+    public void stampVoltageSource(int n1, int n2, int vs) {
 	matrixStamper.stampVoltageSource(n1, n2, vs);
     }
     
@@ -1599,7 +1602,7 @@ public CirSim() {
 	matrixStamper.updateVoltageSource(n1, n2, vs, v);
     }
     
-    void stampResistor(int n1, int n2, double r) {
+    public void stampResistor(int n1, int n2, double r) {
 	matrixStamper.stampResistor(n1, n2, r);
     }
 
@@ -1630,17 +1633,17 @@ public CirSim() {
 
     // stamp value x on the right side of row i, representing an
     // independent current source flowing into node i
-    void stampRightSide(int i, double x) {
+    public void stampRightSide(int i, double x) {
 	matrixStamper.stampRightSide(i, x);
     }
 
     // indicate that the value on the right side of row i changes in doStep()
-    void stampRightSide(int i) {
+    public void stampRightSide(int i) {
 	matrixStamper.stampRightSide(i);
     }
     
     // indicate that the values on the left side of row i change in doStep()
-    void stampNonLinear(int i) {
+    public void stampNonLinear(int i) {
 	matrixStamper.stampNonLinear(i);
     }
 
@@ -2027,7 +2030,7 @@ public CirSim() {
      * @param x Screen X coordinate (pixels from left edge)
      * @return Grid X coordinate in circuit space
      */
-    int inverseTransformX(double x) {
+    public int inverseTransformX(double x) {
 	return getViewportController().inverseTransformX(x);
     }
 
@@ -2038,7 +2041,7 @@ public CirSim() {
      * @param y Screen Y coordinate (pixels from top edge)
      * @return Grid Y coordinate in circuit space
      */
-    int inverseTransformY(double y) {
+    public int inverseTransformY(double y) {
 	return getViewportController().inverseTransformY(y);
     }
     

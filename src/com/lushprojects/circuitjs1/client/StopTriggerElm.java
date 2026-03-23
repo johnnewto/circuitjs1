@@ -39,18 +39,18 @@ class StopTriggerElm extends CircuitElm {
 	    type = Integer.parseInt(st.nextToken());
 	    delay = Double.parseDouble(st.nextToken());
 	}
-	String dump() { return super.dump() + " " + triggerVoltage + " " + type + " " + delay; }
-	void reset() {
+	protected String dump() { return super.dump() + " " + triggerVoltage + " " + type + " " + delay; }
+	protected void reset() {
 	    triggered = false;
 	}
-	int getDumpType() { return 408; }
-	int getPostCount() { return 1; }
-	void setPoints() {
+	protected int getDumpType() { return 408; }
+	protected int getPostCount() { return 1; }
+	protected void setPoints() {
 	    super.setPoints();
 	    lead1 = interpPoint(point1, point2, 1-8/dn);
 	}
 		
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    g.save();
 	    boolean selected = needsHighlight() || stopped;
 	    Font f = new Font("SansSerif", selected ? Font.BOLD : 0, 14);
@@ -66,7 +66,7 @@ class StopTriggerElm extends CircuitElm {
 	    drawPosts(g);
 	    g.restore();
 	}
-	void stepFinished() {
+	protected void stepFinished() {
 	    SimulationContext context = getSimulationContext();
 	    stopped = false;
 	    if (!triggered && ((type == 0 && volts[0] >= triggerVoltage) || (type == 1 && volts[0] <= triggerVoltage))) {
@@ -81,7 +81,7 @@ class StopTriggerElm extends CircuitElm {
 	}
 	
 	double getVoltageDiff() { return volts[0]; }
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "stop trigger";
 	    arr[1] = "V = " + getVoltageText(volts[0]);
 	    arr[2] = "Vtrigger = " + getVoltageText(triggerVoltage);

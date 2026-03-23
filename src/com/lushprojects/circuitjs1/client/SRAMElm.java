@@ -63,7 +63,7 @@ import com.google.gwt.user.client.ui.TextArea;
 	    } catch (Exception e) {}
 	}
 
-	String dump() {
+	protected String dump() {
 	    String s = super.dump() + " " + addressBits + " " + dataBits;
 	    
 	    // dump contents
@@ -86,9 +86,9 @@ import com.google.gwt.user.client.ui.TextArea;
 	    return s;
 	}
 
-	boolean nonLinear() { return true; }
-	String getChipName() { return "Static RAM"; }
-	void setupPins() {
+	protected boolean nonLinear() { return true; }
+	protected String getChipName() { return "Static RAM"; }
+	protected void setupPins() {
 	    sizeX = 2;
 	    sizeY = max(addressBits, dataBits) + 1;
 	    pins = new Pin[getPostCount()];
@@ -111,7 +111,7 @@ import com.google.gwt.user.client.ui.TextArea;
 	    }
 	    allocNodes();
 	}
-	int getPostCount() {
+	protected int getPostCount() {
 	    return 2 + addressBits + dataBits;
 	}
 	public EditInfo getChipEditInfo(int n) {
@@ -200,12 +200,12 @@ import com.google.gwt.user.client.ui.TextArea;
 		}
 	    }
 	}
-	int getVoltageSourceCount() { return dataBits; }
+	protected int getVoltageSourceCount() { return dataBits; }
 	int getInternalNodeCount() { return dataBits; }
 	
 	int address;
 	
-	void stamp() {
+	protected void stamp() {
 	    int i;
 	    for (i = 0; i != dataBits; i++) {
 		Pin p = pins[i+dataNodes];
@@ -215,7 +215,7 @@ import com.google.gwt.user.client.ui.TextArea;
 	    }
 	}
 	
-	void doStep() {
+	protected void doStep() {
 	    int i;
 	    boolean writeEnabled = volts[0] < getThreshold();
 	    boolean outputEnabled = (volts[1] < getThreshold()) && !writeEnabled;
@@ -238,7 +238,7 @@ import com.google.gwt.user.client.ui.TextArea;
 	    }
 	}
 	
-	void stepFinished() {
+	protected void stepFinished() {
 	    int i;
 	    int data = 0;
 	    boolean writeEnabled = volts[0] < getThreshold();
@@ -251,5 +251,5 @@ import com.google.gwt.user.client.ui.TextArea;
 	    }
 	    map.put(address, data);	    
 	}
-	int getDumpType() { return 413; }
+	protected int getDumpType() { return 413; }
     }

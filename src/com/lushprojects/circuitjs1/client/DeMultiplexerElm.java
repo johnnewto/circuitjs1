@@ -36,10 +36,10 @@ package com.lushprojects.circuitjs1.client;
 		allocNodes();
 	    } catch (Exception e) {}
 	}
-	String getChipName() { return "demultiplexer"; }
-	String dump() { return super.dump() + " " + selectBitCount; }
+	protected String getChipName() { return "demultiplexer"; }
+	protected String dump() { return super.dump() + " " + selectBitCount; }
 
-	void setupPins() {
+	protected void setupPins() {
 	    if (selectBitCount == 0)
 		selectBitCount = 2;
 	    outputCount = 1 << selectBitCount;
@@ -58,10 +58,10 @@ package com.lushprojects.circuitjs1.client;
 	    qPin = outputCount+selectBitCount;
 	    pins[qPin] = new Pin(0, SIDE_W, "Q");
 	}
-	int getPostCount() {
+	protected int getPostCount() {
 	    return qPin+1;
 	}
-	int getVoltageSourceCount() { return outputCount; }
+	protected int getVoltageSourceCount() { return outputCount; }
 
 	void execute() {
 	    int val = 0;
@@ -87,6 +87,6 @@ package com.lushprojects.circuitjs1.client;
             }
         }
 
-	int getDumpType() { return 185; }
+	protected int getDumpType() { return 185; }
 
     }

@@ -38,16 +38,16 @@ class OutputElm extends CircuitElm {
 	    } catch (Exception e) {}
 	}
 	
-	String dump() {
+	protected String dump() {
 	    return super.dump() + " " + scale;
 	}
-	int getDumpType() { return 'O'; }
-	int getPostCount() { return 1; }
-	void setPoints() {
+	protected int getDumpType() { return 'O'; }
+	protected int getPostCount() { return 1; }
+	protected void setPoints() {
 	    super.setPoints();
 	    lead1 = new Point();
 	}
-	void draw(Graphics g) {
+	protected void draw(Graphics g) {
 	    g.save();
 	    boolean selected = needsHighlight();
 	    Font f = new Font("SansSerif", selected ? Font.BOLD : 0, 14);
@@ -70,7 +70,7 @@ class OutputElm extends CircuitElm {
 	    g.restore();
 	}
 	double getVoltageDiff() { return volts[0]; }
-	void getInfo(String arr[]) {
+	protected void getInfo(String arr[]) {
 	    arr[0] = "output";
 	    arr[1] = "V = " + getVoltageText(volts[0]);
 	}

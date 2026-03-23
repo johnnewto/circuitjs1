@@ -6,6 +6,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.economics.*;
+
 import com.google.gwt.event.dom.client.MouseWheelEvent;
 import com.google.gwt.event.dom.client.MouseWheelHandler;
 
@@ -148,7 +150,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
         
         /** Reset runtime state for simulation restart */
-        void reset() {
+        protected void reset() {
             if (exprState != null) exprState.reset();
             outputValue = 0.0;
             lastOutputValue = 0.0;
@@ -823,7 +825,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * Calculate table dimensions and set up geometry.
      * Called when the element is created or modified.
      */
-    void setPoints() {
+    protected void setPoints() {
         super.setPoints();
         
         // Use canvas context for accurate text measurement when available
@@ -895,13 +897,13 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     //=============================================================================
     
     /** @return Dump type identifier for serialization (266) */
-    int getDumpType() { return 266; }
+    protected int getDumpType() { return 266; }
     
     /** @return true if in MNA (electrical) mode, false for pure computational */
     boolean isMnaMode() { return sim != null && sim.isEquationTableMnaMode(); }
     
     /** @return Number of electrical posts - always 0 (no visible posts) */
-    int getPostCount() { return 0; }
+    protected int getPostCount() { return 0; }
     
     /**
      * Get the position of a post.
@@ -910,7 +912,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * @param n Post index (0 to rowCount-1)
      * @return Point location of the post
      */
-    Point getPost(int n) {
+    protected Point getPost(int n) {
         int postY = y + rowHeight + cellPadding + n * rowHeight + rowHeight / 2;
         return new Point(x + tableWidth, postY);
     }
@@ -920,7 +922,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     * FLOW_MODE and PARAM_MODE don't use voltage sources.
      * This counts voltage sources before findLabeledNodes() runs, so we count all valid rows.
      */
-    int getVoltageSourceCount() { 
+    protected int getVoltageSourceCount() { 
         if (!isMnaMode()) return 0;
         
         updateRowClassifications();
@@ -981,7 +983,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /** @return true if any row has an expression requiring iterative solving,
      *  or if any row uses FLOW_MODE output mode (which always requires doStep) */
-    boolean nonLinear() {
+    protected boolean nonLinear() {
         updateRowClassifications();
         for (int row = 0; row < rowCount; row++) {
             // FLOW_MODE always requires doStep() evaluation
@@ -1052,7 +1054,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * Called from CirSim.stampCircuit() after node allocation and before per-element
      * stamp() calls.
      */
-    static void coordinateLabelsForStamp(java.util.Vector<CircuitElm> elmList) {
+    public static void coordinateLabelsForStamp(java.util.Vector<CircuitElm> elmList) {
         if (elmList == null || elmList.isEmpty()) {
             return;
         }
@@ -1377,7 +1379,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * Check if two posts are electrically connected.
      * High-impedance design: no current path exists between any posts.
      */
-    boolean getConnection(int n1, int n2) { return false; }
+    protected boolean getConnection(int n1, int n2) { return false; }
     
     /**
      * Check if a post has a direct ground connection.
@@ -1390,7 +1392,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * In MNA mode, returns the current from the voltage source for that row.
      * In pure computational mode, returns 0 (no posts, no current).
      */
-    double getCurrentIntoNode(int n) {
+    protected double getCurrentIntoNode(int n) {
         if (isMnaMode() && n < rowCount) {
             return current[n];
         }
@@ -1643,7 +1645,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * @param vs Voltage source index assigned by simulator
      */
     @Override
-    void setVoltageSource(int j, int vs) {
+    protected void setVoltageSource(int j, int vs) {
         if (j == 0) {
             voltSource = vs;
         }
@@ -1731,7 +1733,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * In MNA mode, stamps voltage sources for each row output using hybrid approach.
      * In pure computational mode, does nothing.
      */
-    void stamp() {
+    protected void stamp() {
         // Update row classifications
         updateRowClassifications();
 
@@ -1763,7 +1765,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * bypass the HashMap waterfall and read directly from circuitVariables[].
      */
     @Override
-    void postStamp() {
+    protected void postStamp() {
         super.postStamp();
         resolveExprSlots();
     }
@@ -1819,7 +1821,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * </ol>
      * Convergence is checked inside each mode handler via {@link #checkEquationConvergence}.
      */
-    void doStep() {
+    protected void doStep() {
         if (DEBUG && sim.getSubIterations() == 0) {
             CirSim.console("[EquationTableElm." + tableName + "] doStep() at t=" + sim.getTime() + " mnaMode=" + isMnaMode());
         }
@@ -2131,7 +2133,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     }
 
     @Override
-    void delete() {
+    protected void delete() {
         unregisterNameRegistries();
         super.delete();
     }
@@ -2186,7 +2188,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * In MNA mode, draw posts normally. In pure computational mode, hide them.
      */
     @Override
-    void drawPosts(Graphics g) {
+    protected void drawPosts(Graphics g) {
         if (isMnaMode()) {
             // MNA mode: draw posts for electrical connections
             for (int i = 0; i < getPostCount(); i++) {
@@ -2201,7 +2203,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * Draw the table element.
      * Delegates to EquationTableRenderer for actual drawing.
      */
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
         renderer.draw(g);
     }
     
@@ -2243,7 +2245,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * Get information strings for mouse-over display.
      */
     @Override
-    void getInfo(String arr[]) {
+    protected void getInfo(String arr[]) {
         arr[0] = "Equation Table: " + tableName + (isMnaMode() ? " (Electrical)" : " (Computed)");
         
         // Show convergence failure info if applicable
@@ -2338,7 +2340,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * when available in {@link HintRegistry}. Function names (tokens followed by '(') are
      * intentionally left unchanged.
      */
-    String getHintExpandedEquationForDisplay(int row) {
+    public String getHintExpandedEquationForDisplay(int row) {
         if (row < 0 || row >= rowCount) return "";
 
         String equationText = rows[row].equation;

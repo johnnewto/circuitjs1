@@ -118,7 +118,7 @@ public class ScopeElm extends CircuitElm {
     }
     
     @Override
-    int getDumpType() { 
+    protected int getDumpType() { 
 	return 403; 
     }
 
@@ -134,7 +134,7 @@ public class ScopeElm extends CircuitElm {
     }
     
     @Override
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
 	g.setColor(needsHighlight() ? selectColor : whiteColor);
 	g.context.save();
 	
@@ -278,7 +278,7 @@ public class ScopeElm extends CircuitElm {
     }
     
     @Override
-    int getPostCount() { 
+    protected int getPostCount() { 
 	return 0; 
     }
     

@@ -66,12 +66,12 @@ package com.lushprojects.circuitjs1.client;
 	    // gain was 1000, but it broke amp-schmitt.txt
 	    gain = ((flags & FLAG_LOWGAIN) != 0) ? 1000 : 100000;
 	}
-	String dump() {
+	protected String dump() {
 	    flags |= FLAG_GAIN;
 	    return super.dump() + " " + maxOut + " " + minOut + " " + gbw + " " + volts[0] + " " + volts[1] + " " + gain;
 	}
-	boolean nonLinear() { return true; }
-	void draw(Graphics g) {
+	protected boolean nonLinear() { return true; }
+	protected void draw(Graphics g) {
 	    setBbox(point1, point2, opheight*2);
 	    setVoltageColor(g, volts[0]);
 	    drawThickLine(g, in1p[0], in1p[1]);
@@ -99,7 +99,7 @@ package com.lushprojects.circuitjs1.client;
 	    opwidth = 13*s;
 	    flags = (flags & ~FLAG_SMALL) | ((s == 1) ? FLAG_SMALL : 0);
 	}
-	void setPoints() {
+	protected void setPoints() {
 	    super.setPoints();
 	    if (dn > 150 && this == sim.dragElm)
 		setSize(2);
@@ -121,12 +121,12 @@ package com.lushprojects.circuitjs1.client;
 	    triangle = createPolygon(tris[0], tris[1], lead2);
 	    plusFont = new Font("SansSerif", 0, opsize == 2 ? 14 : 10);
 	}
-	int getPostCount() { return 3; }
-	Point getPost(int n) {
+	protected int getPostCount() { return 3; }
+	protected Point getPost(int n) {
 	    return (n == 0) ? in1p[0] : (n == 1) ? in2p[0] : point2;
 	}
-	int getVoltageSourceCount() { return 1; }
-	void getInfo(String arr[]) {
+	protected int getVoltageSourceCount() { return 1; }
+	protected void getInfo(String arr[]) {
 	    arr[0] = "op-amp";
 	    arr[1] = "V+ = " + getVoltageText(volts[1]);
 	    arr[2] = "V- = " + getVoltageText(volts[0]);
@@ -141,12 +141,12 @@ package com.lushprojects.circuitjs1.client;
 
 	double lastvd;
 
-	void stamp() {
+	protected void stamp() {
 	    int vn = sim.getCircuitAnalyzer().getNodeList().size()+voltSource;
 	    sim.stampNonLinear(vn);
 	    sim.stampMatrix(nodes[2], vn, 1);
 	}
-	void doStep() {
+	protected void doStep() {
 	    double vd = volts[1] - volts[0];
 	    double midpoint = (maxOut+minOut)*.5;
 	    if (Math.abs(lastvd-vd) > .1)
@@ -182,12 +182,12 @@ package com.lushprojects.circuitjs1.client;
 	}
 	// there is no current path through the op-amp inputs, but there
 	// is an indirect path through the output to ground.
-	boolean getConnection(int n1, int n2) { return false; }
+	protected boolean getConnection(int n1, int n2) { return false; }
 	boolean hasGroundConnection(int n1) {
 	    return (n1 == 2);
 	}
 	double getVoltageDiff() { return volts[2] - volts[1]; }
-	int getDumpType() { return 'a'; }
+	protected int getDumpType() { return 'a'; }
 	public EditInfo getEditInfo(int n) {
 	    if (n == 0)
 		return new EditInfo("Max Output (V)", maxOut, 1, 20);
@@ -207,7 +207,7 @@ package com.lushprojects.circuitjs1.client;
 	}
 	int getShortcut() { return 'a'; }
 	
-	@Override double getCurrentIntoNode(int n) { 
+	@Override protected double getCurrentIntoNode(int n) { 
 	    if (n==2)
 		return -current;
 	   return 0;

@@ -6,6 +6,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.economics.*;
+
 import com.lushprojects.circuitjs1.client.SFCSankeyRenderer.SankeyLayout;
 
 /**
@@ -126,7 +128,7 @@ public class SFCSankeyElm extends CircuitElm {
     }
     
     @Override
-    int getDumpType() {
+    protected int getDumpType() {
         return 466;  // Unique dump type for SFC Sankey element
     }
     
@@ -144,7 +146,7 @@ public class SFCSankeyElm extends CircuitElm {
     }
     
     @Override
-    void setPoints() {
+    protected void setPoints() {
         super.setPoints();
         setupSize();
     }
@@ -178,7 +180,7 @@ public class SFCSankeyElm extends CircuitElm {
     }
     
     @Override
-    void draw(Graphics g) {
+    protected void draw(Graphics g) {
         // Find source table if needed
         sourceTable = findSourceTable();
         
