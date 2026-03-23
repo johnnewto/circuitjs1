@@ -1,4 +1,4 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.io;
 
 public final class InfoViewerContentBuilder {
     private InfoViewerContentBuilder() {

@@ -30,6 +30,7 @@ import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.event.logical.shared.ValueChangeHandler;
 import com.google.gwt.event.logical.shared.ValueChangeEvent;
+import com.lushprojects.circuitjs1.client.io.SFCRExporter;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsPackage;

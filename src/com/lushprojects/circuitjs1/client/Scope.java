@@ -49,7 +49,7 @@ class ScopePlot {
 	int samplesCaptured; // Number of valid samples currently stored (up to scopePointCount)
     
     // Plot configuration
-    int value; // The property being shown (e.g., VAL_CURRENT, VAL_VOLTAGE)
+    public int value; // The property being shown (e.g., VAL_CURRENT, VAL_VOLTAGE)
     int scopePlotSpeed; // In sim timestep units per pixel
     int units; // Display units (UNITS_V, UNITS_A, UNITS_W, UNITS_OHMS)
     
@@ -57,7 +57,7 @@ class ScopePlot {
     double lastUpdateTime;
     double lastValue;
     String color;
-    CircuitElm elm;
+    public CircuitElm elm;
     
     // History buffers for drawFromZero mode (not circular, grows linearly)
     double historyMinValues[], historyMaxValues[];
@@ -83,7 +83,7 @@ class ScopePlot {
      * @param e The circuit element to monitor
      * @param u The units for display (UNITS_V, UNITS_A, etc.)
      */
-    ScopePlot(CircuitElm e, int u) {
+    public ScopePlot(CircuitElm e, int u) {
 	elm = e;
 	units = u;
     }
@@ -95,7 +95,7 @@ class ScopePlot {
      * @param v The value type to display (VAL_VOLTAGE, VAL_CURRENT, etc.)
      * @param manS Manual scale value (units per division)
      */
-    ScopePlot(CircuitElm e, int u, int v, double manS) {
+    public ScopePlot(CircuitElm e, int u, int v, double manS) {
 	elm = e;
 	units = u;
 	value = v;
@@ -288,7 +288,7 @@ class ScopePlot {
  * Scope class - displays time-series waveforms and XY plots of circuit values.
  * Supports multiple modes: standard scrolling view, draw-from-zero mode, 2D plots, FFT analysis.
  */
-class Scope {
+public class Scope {
     // ====================
     // FLAG CONSTANTS
     // ====================
@@ -296,7 +296,7 @@ class Scope {
     final int FLAG_YELM = 32;
     final int FLAG_IVALUE = 2048;
     final int FLAG_PLOTS = 4096; // New-style dump with multiple plots
-    final int FLAG_PERPLOTFLAGS = 1<<18; // Per-plot flags in dump
+    public final int FLAG_PERPLOTFLAGS = 1<<18; // Per-plot flags in dump
     final int FLAG_PERPLOT_MAN_SCALE = 1<<19; // Manual scale included in each plot
     final int FLAG_MAN_SCALE = 16;
     final int FLAG_DIVISIONS = 1<<21; // Dump manDivisions
@@ -308,7 +308,7 @@ class Scope {
     // ====================
     // VALUE TYPE CONSTANTS
     // ====================
-    static final int VAL_VOLTAGE = 0;
+    public static final int VAL_VOLTAGE = 0;
     static final int VAL_POWER_OLD = 1; // Legacy power value (conflicts with VAL_IB)
     static final int VAL_R = 2; // Resistance
     static final int VAL_CURRENT = 3;
@@ -347,8 +347,8 @@ class Scope {
     // ====================
     int scopePointCount = 128; // Size of circular buffer (power of 2)
     FFT fft;
-    int position; // Position in scope stack
-    int speed; // Sim timestep units per pixel
+    public int position; // Position in scope stack
+    public int speed; // Sim timestep units per pixel
     int stackCount; // Number of scopes in this column
     String text; // Custom label text
     String title; // Custom title text (displayed at top center)
@@ -379,7 +379,7 @@ class Scope {
     // ====================
     // INSTANCE VARIABLES - Working Data
     // ====================
-    Vector<ScopePlot> plots, visiblePlots;
+    public Vector<ScopePlot> plots, visiblePlots;
     int draw_ox, draw_oy; // 2D plot drawing coordinates
     CirSim sim;
     Canvas imageCanvas; // Canvas for 2D plots
@@ -430,7 +430,7 @@ class Scope {
      * Creates a new Scope instance.
      * @param s The simulator instance
      */
-    Scope(CirSim s) {
+    public Scope(CirSim s) {
     	sim = s;
     	scale = new double[UNITS_COUNT];
     	reduceRange = new boolean[UNITS_COUNT];
@@ -719,7 +719,7 @@ class Scope {
      * Initializes the scope with default settings.
      * Sets up default scales, speeds, and display options.
      */
-    void initialize() {
+    public void initialize() {
     	resetGraph();
     	// Set default scales for each unit type
     	scale[UNITS_W] = scale[UNITS_OHMS] = scale[UNITS_V] = 5;
@@ -756,7 +756,7 @@ class Scope {
      * In normal mode, filters by showV/showI flags and assigns colors.
      * In 2D mode, shows only the first two plots.
      */
-    void calcVisiblePlots() {
+    public void calcVisiblePlots() {
 	visiblePlots = new Vector<ScopePlot>();
 	int i;
 	int voltCount = 0, currentCount = 0, otherCount = 0;
@@ -872,19 +872,19 @@ class Scope {
 	setValue(val);
     }
     
-    void setText(String s) {
+    public void setText(String s) {
 	text = s;
     }
     
-    String getText() {
+    public String getText() {
 	return text;
     }
     
-    void setTitle(String s) {
+    public void setTitle(String s) {
 	title = s;
     }
     
-    String getTitle() {
+    public String getTitle() {
 	return title;
     }
     
@@ -3004,13 +3004,13 @@ class Scope {
      * Prioritizes title over label text.
      * @return Display name (title if available, otherwise label text, or empty string)
      */
-    String getScopeMenuName() {
+    public String getScopeMenuName() {
 	if (title != null && !title.isEmpty())
 	    return title;
 	return getScopeLabelOrText();
     }
     
-    void setSpeed(int sp) {
+    public void setSpeed(int sp) {
 	if (sp < 1)
 	    sp = 1;
 	if (sp > 1024)
@@ -3073,7 +3073,7 @@ class Scope {
 	return plot2d && plots.size() == 2 && plots.get(0).value == VAL_VCE && plots.get(1).value == VAL_IC;
     }
 
-    int getFlags() {
+    public int getFlags() {
     	int flags = (showI ? 1 : 0) | (showV ? 2 : 0) |
 			(showMax ? 0 : 4) |   // showMax used to be always on
 			(showFreq ? 8 : 0) |
@@ -3116,6 +3116,34 @@ class Scope {
 	flags |= FLAG_PLOT_REFS;
 	
 	return flags;
+    }
+
+    public int getPlotCount() {
+	return (plots == null) ? 0 : plots.size();
+    }
+
+    public CircuitElm getPlotElement(int index) {
+	if (plots == null || index < 0 || index >= plots.size())
+	    return null;
+	ScopePlot sp = plots.get(index);
+	return (sp == null) ? null : sp.elm;
+    }
+
+    public int getPlotValue(int index) {
+	if (plots == null || index < 0 || index >= plots.size())
+	    return VAL_VOLTAGE;
+	ScopePlot sp = plots.get(index);
+	return (sp == null) ? VAL_VOLTAGE : sp.value;
+    }
+
+    public void resetPlots() {
+	plots = new Vector<ScopePlot>();
+    }
+
+    public void addPlot(CircuitElm elm, int units, int value, double manualScale) {
+	if (plots == null)
+	    plots = new Vector<ScopePlot>();
+	plots.add(new ScopePlot(elm, units, value, manualScale));
     }
 
     String getElementRefToken(CircuitElm elm) {
@@ -3393,7 +3421,7 @@ class Scope {
     	// If we call it here, the rect is still default size and historyCapacity will be too small
     }
     
-    void setFlags(int flags) {
+    public void setFlags(int flags) {
     	showI = (flags & 1) != 0;
     	showV = (flags & 2) != 0;
     	showMax = (flags & 4) == 0;
@@ -3632,7 +3660,7 @@ class Scope {
 	    return (2*s)/(double)(manDivisions);
     }
     
-    static String exportAsDecOrHex(int v, int thresh) {
+    public static String exportAsDecOrHex(int v, int thresh) {
 	// If v>=thresh then export as hex value prefixed by "x", else export as decimal
 	// Allows flags to be exported as dec if in an old value (for compatibility) or in hex if new value
 	if (v>=thresh)
@@ -3641,7 +3669,7 @@ class Scope {
 	    return Integer.toString(v);
     }
     
-    static int importDecOrHex(String s) {
+    public static int importDecOrHex(String s) {
 	if (s.charAt(0) == 'x')
 	    return Integer.parseInt(s.substring(1), 16);
 	else

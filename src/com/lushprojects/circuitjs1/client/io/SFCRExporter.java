@@ -4,7 +4,7 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.io;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,6 +12,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
+
+import com.lushprojects.circuitjs1.client.*;
 
 /**
  * Exports circuit in SFCR-compatible text format.
@@ -1938,13 +1940,13 @@ public class SFCRExporter {
     }
 
     private boolean canExportScopeAsBlock(Scope s) {
-        if (s == null || s.plots == null || s.plots.size() == 0) {
+        if (s == null || s.getPlotCount() == 0) {
             return false;
         }
-        for (int p = 0; p < s.plots.size(); p++) {
-            ScopePlot sp = s.plots.get(p);
-            if (sp != null && sp.elm != null) {
-                String uid = sp.elm.getPersistentUid();
+        for (int p = 0; p < s.getPlotCount(); p++) {
+            CircuitElm elm = s.getPlotElement(p);
+            if (elm != null) {
+                String uid = elm.getPersistentUid();
                 if (uid != null && !uid.isEmpty()) {
                     return true;
                 }
@@ -1954,14 +1956,14 @@ public class SFCRExporter {
     }
 
     private boolean appendScopeBlock(StringBuilder sb, Scope s, int defaultIndex, String defaultPrefix, ScopeElm scopeElm) {
-        if (s == null || s.plots == null || s.plots.size() == 0) {
+        if (s == null || s.getPlotCount() == 0) {
             return false;
         }
 
         int validPlots = 0;
-        for (int p = 0; p < s.plots.size(); p++) {
-            ScopePlot sp = s.plots.get(p);
-            if (sp != null && sp.elm != null && sp.elm.getPersistentUid() != null && !sp.elm.getPersistentUid().isEmpty()) {
+        for (int p = 0; p < s.getPlotCount(); p++) {
+            CircuitElm elm = s.getPlotElement(p);
+            if (elm != null && elm.getPersistentUid() != null && !elm.getPersistentUid().isEmpty()) {
                 validPlots++;
             }
         }
@@ -2002,20 +2004,20 @@ public class SFCRExporter {
         }
 
         boolean wroteSource = false;
-        for (int p = 0; p < s.plots.size(); p++) {
-            ScopePlot sp = s.plots.get(p);
-            if (sp == null || sp.elm == null) {
+        for (int p = 0; p < s.getPlotCount(); p++) {
+            CircuitElm elm = s.getPlotElement(p);
+            if (elm == null) {
                 continue;
             }
-            String uid = sp.elm.getPersistentUid();
+            String uid = elm.getPersistentUid();
             if (uid == null || uid.isEmpty()) {
                 continue;
             }
             if (!wroteSource) {
-                sb.append("  source: uid:").append(uid).append(" value:").append(sp.value).append("\n");
+                sb.append("  source: uid:").append(uid).append(" value:").append(s.getPlotValue(p)).append("\n");
                 wroteSource = true;
             } else {
-                sb.append("  trace: uid:").append(uid).append(" value:").append(sp.value).append("\n");
+                sb.append("  trace: uid:").append(uid).append(" value:").append(s.getPlotValue(p)).append("\n");
             }
         }
 

@@ -24,9 +24,9 @@ package com.lushprojects.circuitjs1.client;
  * This element doesn't affect the circuit electrically but displays waveforms
  * from connected or selected circuit elements.
  */
-class ScopeElm extends CircuitElm {
+public class ScopeElm extends CircuitElm {
     
-    Scope elmScope;
+    public Scope elmScope;
 
     /**
      * Creates a new scope element at the given position.

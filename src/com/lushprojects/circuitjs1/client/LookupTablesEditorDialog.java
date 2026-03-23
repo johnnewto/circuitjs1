@@ -7,6 +7,9 @@ import com.google.gwt.user.client.ui.HorizontalPanel;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.TextArea;
 import com.google.gwt.user.client.ui.VerticalPanel;
+import com.lushprojects.circuitjs1.client.io.LookupBlocksTextUtil;
+import com.lushprojects.circuitjs1.client.io.SFCRExporter;
+import com.lushprojects.circuitjs1.client.io.SFCRParser;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class LookupTablesEditorDialog extends Dialog {

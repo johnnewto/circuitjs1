@@ -4,6 +4,8 @@ import java.util.Vector;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
+import com.lushprojects.circuitjs1.client.registry.ElementFactoryFacade;
+
 // Circuit element made up of a composition of other circuit elements
 // Using this will be (relatively) inefficient in terms of simulation performance because
 // all the internal workings of the element are simulated from the individual components.

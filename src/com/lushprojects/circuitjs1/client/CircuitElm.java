@@ -72,7 +72,7 @@ public abstract class CircuitElm implements Editable {
 		@JsProperty(name = "getLabelName") native void setGetLabelName(StringSupplier fn);
 		@JsProperty(name = "getPostCount") native void setGetPostCount(IntSupplier fn);
 	}
-    static double voltageRange = 5;
+    public static double voltageRange = 5;
     static int colorScaleCount = 201; // odd so ground = gray 
     static Color colorScale[];
     static double currentMult, powerMult;
@@ -98,12 +98,12 @@ public abstract class CircuitElm implements Editable {
     static int decimalDigits, shortDecimalDigits;
  
     // initial point where user created element.  For simple two-terminal elements, this is the first node/post.
-    int x, y;
+    public int x, y;
     
     // point to which user dragged out element.  For simple two-terminal elements, this is the second node/post
-    int x2, y2;
+    public int x2, y2;
     
-    int flags, nodes[], voltSource;
+    public int flags, nodes[], voltSource;
 	String persistentUid;
     
     // length along x and y axes, and sign of difference
@@ -282,13 +282,13 @@ public abstract class CircuitElm implements Editable {
 	return sb.toString();
     }
 
-    String getPersistentUid() {
+    public String getPersistentUid() {
 	if (persistentUid == null || persistentUid.isEmpty())
 	    persistentUid = generatePersistentUid();
 	return persistentUid;
     }
 
-    void setPersistentUid(String uid) {
+    public void setPersistentUid(String uid) {
 	persistentUid = uid;
     }
     
@@ -1209,6 +1209,14 @@ public abstract class CircuitElm implements Editable {
 	return (x == Scope.VAL_CURRENT) ? Scope.UNITS_A :
 	    (x == Scope.VAL_POWER) ? Scope.UNITS_W : Scope.UNITS_V;
     }
+
+    public void setPointsForImportExport() {
+	setPoints();
+    }
+
+    public int getScopeUnitsForImportExport(int x) {
+	return getScopeUnits(x);
+    }
     public EditInfo getEditInfo(int n) { return null; }
     public void setEditValue(int n, EditInfo ei) {}
     
@@ -1381,7 +1389,11 @@ public abstract class CircuitElm implements Editable {
 	setPoints();
     }
     
-    String getClassName() { return getClass().getName().replace("com.lushprojects.circuitjs1.client.", ""); }
+    String getClassName() {
+        String name = getClass().getName();
+        int idx = name.lastIndexOf('.');
+        return idx >= 0 ? name.substring(idx + 1) : name;
+    }
     
 	JsArrayString getJsArrayString() {
 		return JavaScriptObject.createArray().cast();

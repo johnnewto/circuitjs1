@@ -38,6 +38,7 @@ import com.google.gwt.user.client.Event;
 import com.google.gwt.user.client.Event.NativePreviewEvent;
 import com.google.gwt.user.client.Event.NativePreviewHandler;
 import com.google.gwt.user.client.ui.MenuItem;
+import com.lushprojects.circuitjs1.client.registry.ElementFactoryFacade;
 import com.google.gwt.user.client.ui.PopupPanel;
 
 class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHandler,

@@ -2,57 +2,57 @@ package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.user.client.ui.MenuItem;
 
-final class SFCRDocumentManager {
+public final class SFCRDocumentManager {
     private final SFCRDocumentState state = new SFCRDocumentState();
     private MenuItem fileModelInfoMenuItem;
     private MenuItem helpModelInfoMenuItem;
 
-    SFCRDocumentState getState() {
+    public SFCRDocumentState getState() {
         return state;
     }
 
-    void bindModelInfoMenuItems(MenuItem fileItem, MenuItem helpItem) {
+    public void bindModelInfoMenuItems(MenuItem fileItem, MenuItem helpItem) {
         fileModelInfoMenuItem = fileItem;
         helpModelInfoMenuItem = helpItem;
         refreshModelInfoMenuItems();
     }
 
-    void setModelInfoContent(String value) {
+    public void setModelInfoContent(String value) {
         state.setModelInfoContent(value);
         refreshModelInfoMenuItems();
     }
 
-    String getModelInfoContent() {
+    public String getModelInfoContent() {
         return state.getModelInfoContent();
     }
 
-    void setModelInfoSourceText(String value) {
+    public void setModelInfoSourceText(String value) {
         state.setModelInfoSourceText(value);
         refreshModelInfoMenuItems();
     }
 
-    String getModelInfoSourceText() {
+    public String getModelInfoSourceText() {
         return state.getModelInfoSourceText();
     }
 
-    String getModelInfoEditorContent() {
+    public String getModelInfoEditorContent() {
         return state.getModelInfoEditorContent();
     }
 
-    void clearModelInfo() {
+    public void clearModelInfo() {
         state.clearModelInfo();
         refreshModelInfoMenuItems();
     }
 
-    void setCurrentCircuitFile(String value) {
+    public void setCurrentCircuitFile(String value) {
         state.setCurrentCircuitFile(value);
     }
 
-    String getCurrentCircuitFile() {
+    public String getCurrentCircuitFile() {
         return state.getCurrentCircuitFile();
     }
 
-    void refreshModelInfoMenuItems() {
+    public void refreshModelInfoMenuItems() {
         String editorContent = state.getModelInfoEditorContent();
         boolean enabled = editorContent != null && !editorContent.isEmpty();
         if (RuntimeMode.isGwt() && fileModelInfoMenuItem != null) {

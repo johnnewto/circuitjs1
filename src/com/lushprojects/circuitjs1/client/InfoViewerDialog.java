@@ -13,6 +13,8 @@ import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.ScrollPanel;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
+import com.lushprojects.circuitjs1.client.io.InfoViewerContentBuilder;
+import com.lushprojects.circuitjs1.client.io.SFCRParser;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.google.gwt.user.client.Window;
 import jsinterop.annotations.JsFunction;

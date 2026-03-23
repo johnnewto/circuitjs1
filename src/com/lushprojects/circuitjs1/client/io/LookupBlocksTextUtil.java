@@ -1,9 +1,9 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.io;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 
-class LookupBlocksTextUtil {
+public final class LookupBlocksTextUtil {
 
     private static class LookupBlock {
         String key;
@@ -12,7 +12,10 @@ class LookupBlocksTextUtil {
         int endLine;
     }
 
-    static String extractLookupBlocks(String source) {
+    private LookupBlocksTextUtil() {
+    }
+
+    public static String extractLookupBlocks(String source) {
         if (source == null || source.trim().isEmpty()) {
             return "";
         }
@@ -27,7 +30,7 @@ class LookupBlocksTextUtil {
         return out.toString().trim();
     }
 
-    static String mergeLookupBlocks(String source, String lookupBlocks) {
+    public static String mergeLookupBlocks(String source, String lookupBlocks) {
         String base = (source == null) ? "" : source;
         String[] lines = base.split("\\n", -1);
         ArrayList<LookupBlock> sourceBlocks = parseLookupBlocks(base);

@@ -1,10 +1,10 @@
 package com.lushprojects.circuitjs1.client;
 
-final class ElementLegacyFactory {
+public final class ElementLegacyFactory {
     private ElementLegacyFactory() {
     }
 
-    static CircuitElm createCeLegacy(int tint, int x1, int y1, int x2, int y2, int f, StringTokenizer st) {
+    public static CircuitElm createCeLegacy(int tint, int x1, int y1, int x2, int y2, int f, StringTokenizer st) {
         switch (tint) {
             case 'A': return new AntennaElm(x1, y1, x2, y2, f, st);
             case 'I': return new InverterElm(x1, y1, x2, y2, f, st);
@@ -160,7 +160,7 @@ final class ElementLegacyFactory {
         return null;
     }
 
-    static CircuitElm constructElementLegacy(String n, int x1, int y1) {
+    public static CircuitElm constructElementLegacy(String n, int x1, int y1) {
         if (n != null)
             n = n.intern();
 

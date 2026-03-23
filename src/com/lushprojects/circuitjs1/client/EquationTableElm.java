@@ -45,7 +45,7 @@ import com.google.gwt.event.dom.client.MouseWheelHandler;
  * @see EquationTableRenderer Rendering logic
  * @see EquationTableEditDialog Edit UI
  */
-class EquationTableElm extends CircuitElm implements MouseWheelHandler {
+public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     //=============================================================================
     // CONSTANTS

@@ -4,11 +4,14 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.io;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Vector;
+
+import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.registry.ElementFactoryFacade;
 
 /**
  * Parser for SFCR-compatible text format.
@@ -127,7 +130,7 @@ public class SFCRParser {
      * Map an SFCR mode keyword to its EquationTableElm dump ordinal.
      * Mirrors SFCRUtil.parseEquationRowMode without loading EquationTableElm.
      */
-    static int parseModeOrdinal(String mode) {
+    public static int parseModeOrdinal(String mode) {
         if (mode == null) return 0;
         String m = mode.toLowerCase().trim();
         if (m.equals("flow") || m.equals("flow_mode") || m.equals("stock") || m.equals("stock_mode")) return 1;
@@ -139,7 +142,7 @@ public class SFCRParser {
      * Escape a token for the CircuitJS dump format.
      * Mirrors CustomLogicModel.escape() without loading that class.
      */
-    static String escapeToken(String s) {
+    public static String escapeToken(String s) {
         if (s.length() == 0) return "\\0";
         return s.replace("\\", "\\\\").replace("\n", "\\n").replace(" ", "\\s")
                 .replace("+", "\\p").replace("=", "\\q").replace("#", "\\h")
@@ -150,7 +153,7 @@ public class SFCRParser {
      * Parse a combined "name-&gt;target" notation.
      * Mirrors EquationTableElm.parseCombinedName() without loading that class.
      */
-    static String[] parseCombinedNameLocal(String combined) {
+    public static String[] parseCombinedNameLocal(String combined) {
         if (combined == null) return new String[]{"", ""};
         int arrowIdx = combined.indexOf("->");
         int sepLen = 2;
@@ -1071,7 +1074,7 @@ public class SFCRParser {
             ActionTimeElm actionElm = findActionTimeElm();
             if (actionElm == null) {
                 actionElm = new ActionTimeElm(actionElmX1, actionElmY1, actionElmX2, actionElmY2, actionElmFlags, null);
-                actionElm.setPoints();
+                actionElm.setPointsForImportExport();
                 sim.getImportExportHelper().assignPersistentUid(actionElm, null);
                 sim.elmList.addElement(actionElm);
                 createdElements.add(actionElm);
@@ -1081,7 +1084,7 @@ public class SFCRParser {
                 actionElm.x2 = actionElmX2;
                 actionElm.y2 = actionElmY2;
                 actionElm.flags = actionElmFlags;
-                actionElm.setPoints();
+                actionElm.setPointsForImportExport();
             }
 
             actionElm.title = actionElmTitle;
@@ -3474,7 +3477,7 @@ public class SFCRParser {
             
             CircuitElm ce = ElementFactoryFacade.createFromDumpType(type, xa, ya, xb, yb, flags, st);
             if (ce != null) {
-                ce.setPoints();  // Initialize geometry (required after construction)
+                ce.setPointsForImportExport();  // Initialize geometry (required after construction)
                 sim.getImportExportHelper().assignPersistentUid(ce, null);
                 sim.elmList.addElement(ce);
                 createdElements.add(ce);
@@ -3594,7 +3597,7 @@ public class SFCRParser {
             
             CircuitElm ce = ElementFactoryFacade.createFromDumpType(type, xa, ya, xb, yb, flags, st);
             if (ce != null) {
-                ce.setPoints();  // Initialize geometry (required after construction)
+                ce.setPointsForImportExport();  // Initialize geometry (required after construction)
                 sim.getImportExportHelper().assignPersistentUid(ce, null);
                 sim.elmList.addElement(ce);
                 createdElements.add(ce);
@@ -3630,7 +3633,7 @@ public class SFCRParser {
 
             if (matchingScopeElm != null && matchingScopeElm.elmScope != null) {
                 Scope embedded = matchingScopeElm.elmScope;
-                embedded.plots = new Vector<ScopePlot>();
+                embedded.resetPlots();
 
                 for (int i = 0; i < block.traces.size(); i++) {
                     ScopeTraceSpec trace = block.traces.get(i);
@@ -3638,12 +3641,12 @@ public class SFCRParser {
                     if (elm == null) {
                         continue;
                     }
-                    int units = elm.getScopeUnits(trace.value);
+                    int units = elm.getScopeUnitsForImportExport(trace.value);
                     double manScale = embedded.getManScaleFromMaxScale(units, false);
-                    embedded.plots.add(new ScopePlot(elm, units, trace.value, manScale));
+                    embedded.addPlot(elm, units, trace.value, manScale);
                 }
 
-                if (embedded.plots.size() > 0) {
+                if (embedded.getPlotCount() > 0) {
                     embedded.initialize();
 
                     // Apply parsed properties AFTER initialize() which resets speed to 64
@@ -3661,7 +3664,7 @@ public class SFCRParser {
                     }
 
                     embedded.calcVisiblePlots();
-                    matchingScopeElm.setPoints();
+                    matchingScopeElm.setPointsForImportExport();
                     addedAny = true;
                     continue;
                 }
@@ -3673,7 +3676,7 @@ public class SFCRParser {
             }
 
             Scope scope = new Scope(sim);
-            scope.plots = new Vector<ScopePlot>();
+            scope.resetPlots();
 
             for (int i = 0; i < block.traces.size(); i++) {
                 ScopeTraceSpec trace = block.traces.get(i);
@@ -3681,12 +3684,12 @@ public class SFCRParser {
                 if (elm == null) {
                     continue;
                 }
-                int units = elm.getScopeUnits(trace.value);
+                int units = elm.getScopeUnitsForImportExport(trace.value);
                 double manScale = scope.getManScaleFromMaxScale(units, false);
-                scope.plots.add(new ScopePlot(elm, units, trace.value, manScale));
+                scope.addPlot(elm, units, trace.value, manScale);
             }
 
-            if (scope.plots.isEmpty()) {
+            if (scope.getPlotCount() == 0) {
                 continue;
             }
 
@@ -3721,7 +3724,7 @@ public class SFCRParser {
         }
 
         if (addedAny) {
-            sim.getScopeManager().setupScopes();
+            sim.setupScopesForImportExport();
         }
     }
 
@@ -3735,14 +3738,14 @@ public class SFCRParser {
                 continue;
             }
             ScopeElm se = (ScopeElm) ce;
-            if (se.elmScope == null || se.elmScope.plots == null || se.elmScope.plots.size() == 0) {
+            if (se.elmScope == null || se.elmScope.getPlotCount() == 0) {
                 continue;
             }
-            ScopePlot firstPlot = se.elmScope.plots.get(0);
-            if (firstPlot == null || firstPlot.elm == null) {
+            CircuitElm firstElm = se.elmScope.getPlotElement(0);
+            if (firstElm == null) {
                 continue;
             }
-            String firstUid = firstPlot.elm.getPersistentUid();
+            String firstUid = firstElm.getPersistentUid();
             if (uid.equals(firstUid)) {
                 return se;
             }

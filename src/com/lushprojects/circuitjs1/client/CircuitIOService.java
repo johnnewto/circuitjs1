@@ -10,6 +10,12 @@ import com.google.gwt.user.client.Command;
 import com.google.gwt.user.client.Timer;
 import com.google.gwt.user.client.Window;
 import com.google.gwt.http.client.URL;
+import com.lushprojects.circuitjs1.client.io.InfoViewerContentBuilder;
+import com.lushprojects.circuitjs1.client.io.ImportExportHelper;
+import com.lushprojects.circuitjs1.client.io.LookupDefinition;
+import com.lushprojects.circuitjs1.client.io.LookupTableRegistry;
+import com.lushprojects.circuitjs1.client.io.SFCRParser;
+import com.lushprojects.circuitjs1.client.registry.ElementFactoryFacade;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 final class CircuitIOService {
@@ -222,7 +228,7 @@ final class CircuitIOService {
             int y2 = Integer.parseInt(st.nextToken());
             int f = Integer.parseInt(st.nextToken());
 
-            CirSim.ElementDumpParseResult parsed = sim.getImportExportHelper().parseElementTokensWithUid(st);
+            ImportExportHelper.ElementDumpParseResult parsed = sim.getImportExportHelper().parseElementTokensWithUid(st);
             CircuitElm newce = ElementFactoryFacade.createFromDumpType(tint, x1, y1, x2, y2, f, parsed.tokenizer);
             if (newce == null) {
                 CirSim.console("Unrecognized element type: " + type);
@@ -586,7 +592,7 @@ final class CircuitIOService {
                     int x2 = Integer.parseInt(st.nextToken());
                     int y2 = Integer.parseInt(st.nextToken());
                     int f  = Integer.parseInt(st.nextToken());
-                    CirSim.ElementDumpParseResult parsed = sim.getImportExportHelper().parseElementTokensWithUid(st);
+                    ImportExportHelper.ElementDumpParseResult parsed = sim.getImportExportHelper().parseElementTokensWithUid(st);
                     CircuitElm newce = ElementFactoryFacade.createFromDumpType(tint, x1, y1, x2, y2, f, parsed.tokenizer);
                     if (newce==null) {
                         System.out.println("unrecognized dump type: " + type);

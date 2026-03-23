@@ -1,10 +1,13 @@
 package com.lushprojects.circuitjs1.client;
 
-final class ElementRegistryBootstrap {
+import com.lushprojects.circuitjs1.client.registry.ElementCategory;
+import com.lushprojects.circuitjs1.client.registry.ElementRegistry;
+
+public final class ElementRegistryBootstrap {
     private ElementRegistryBootstrap() {
     }
 
-    static void registerAll() {
+    public static void registerAll() {
         registerElectronics();
         registerEconomics();
         registerMath();

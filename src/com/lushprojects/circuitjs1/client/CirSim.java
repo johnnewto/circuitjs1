@@ -50,6 +50,7 @@ import com.google.gwt.user.client.ui.MenuItem;
 import com.google.gwt.safehtml.shared.SafeHtmlUtils;
 import com.google.gwt.user.client.ui.PopupPanel;
 import com.google.gwt.user.client.ui.Frame;
+import com.lushprojects.circuitjs1.client.io.ImportExportHelper;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsMethod;
@@ -332,19 +333,19 @@ public class CirSim {
     MenuItem importFromDropboxItem;
     MenuItem undoItem, redoItem, cutItem, copyItem, pasteItem, selectAllItem, optionsItem, flipXItem, flipYItem, flipXYItem;
     MenuBar optionsMenuBar;
-    CheckboxMenuItem dotsCheckItem;
-    CheckboxMenuItem voltsCheckItem;
-    CheckboxMenuItem powerCheckItem;
+    public CheckboxMenuItem dotsCheckItem;
+    public CheckboxMenuItem voltsCheckItem;
+    public CheckboxMenuItem powerCheckItem;
     CheckboxMenuItem smallGridCheckItem;
     CheckboxMenuItem crossHairCheckItem;
-    CheckboxMenuItem showValuesCheckItem;
+    public CheckboxMenuItem showValuesCheckItem;
     CheckboxMenuItem euroResistorCheckItem;
     CheckboxMenuItem euroGatesCheckItem;
     CheckboxMenuItem printableCheckItem;
     CheckboxMenuItem conventionCheckItem;
     CheckboxMenuItem noEditCheckItem;
     CheckboxMenuItem mouseWheelEditCheckItem;
-    CheckboxMenuItem toolbarCheckItem;
+    public CheckboxMenuItem toolbarCheckItem;
     CheckboxMenuItem electronicsModeCheckItem;
     CheckboxMenuItem economicsModeCheckItem;
     CheckboxMenuItem weightedPriorityCheckItem;
@@ -352,17 +353,17 @@ public class CirSim {
     
     enum ToolbarType { ELECTRONICS, ECONOMICS }
     ToolbarType currentToolbarType = ToolbarType.ECONOMICS;
-    String voltageUnitSymbol = "$"; // Custom voltage unit symbol ($ for economics default)
-    String timeUnitSymbol = "yr"; // Custom time unit symbol (yr for economics default)
-	int infoViewerUpdateIntervalMs = 100; // InfoViewer live update throttling interval
+    public String voltageUnitSymbol = "$"; // Custom voltage unit symbol ($ for economics default)
+    public String timeUnitSymbol = "yr"; // Custom time unit symbol (yr for economics default)
+	public int infoViewerUpdateIntervalMs = 100; // InfoViewer live update throttling interval
     boolean useWeightedPriority = false; // Weighted priority for Asset/Equity columns
 	private final SFCRDocumentManager sfcrDocumentManager = new SFCRDocumentManager();
 
-	SFCRDocumentState getSFCRDocumentState() {
+	public SFCRDocumentState getSFCRDocumentState() {
 	return sfcrDocumentManager.getState();
 	}
 
-	String getModelInfoEditorContent() {
+	public String getModelInfoEditorContent() {
 	    return sfcrDocumentManager.getModelInfoEditorContent();
 	}
 
@@ -436,25 +437,25 @@ public class CirSim {
     // Frame rate control
     double minFrameRate = 20;      // Target minimum frame rate (FPS)
 	// Adaptive timestep control - reduces timestep when convergence is difficult
-	boolean adjustTimeStep = false;
+	public boolean adjustTimeStep = false;
 	
 	// Convergence check threshold - subiterations before marking element as non-converged
-	int convergenceCheckThreshold = 100;
+	public int convergenceCheckThreshold = 100;
 	
 	// Developer mode - shows additional debug info (framerate, steprate, performance metrics)
 	boolean developerMode = false;
 	
 	// Equation table MNA mode - when true, equation tables create electrical outputs
-	boolean equationTableMnaMode = true;
+	public boolean equationTableMnaMode = true;
 
 	// Experimental: Newton Jacobian stamping for EquationTable VOLTAGE_MODE MNA rows.
-	boolean equationTableNewtonJacobianEnabled = false;
+	public boolean equationTableNewtonJacobianEnabled = false;
 
 	// Global base convergence tolerance used by all EquationTableElm instances
-	double equationTableConvergenceTolerance = 0.001;
+	public double equationTableConvergenceTolerance = 0.001;
 
 	// Default SFCR lookup behavior: true=clamped endpoints (pwl), false=extrapolating (pwlx)
-	boolean sfcrLookupClampDefault = true;
+	public boolean sfcrLookupClampDefault = true;
 
 	// When true, include the electronics circuit library in the Circuits menu
 	boolean showElectronicsCircuits = false;
@@ -466,7 +467,7 @@ public class CirSim {
 	boolean tableRenderCacheEnabled = true;
 
 	// When true, auto-open model info viewer after loading SFCR with info content
-	boolean autoOpenModelInfoOnLoad = true;
+	public boolean autoOpenModelInfoOnLoad = true;
 	
 	// Circuit hint types - show helpful formulas when related elements are present
 	static final int HINT_LC = 1;      // LC resonant frequency hint
@@ -475,7 +476,7 @@ public class CirSim {
     static final int HINT_TWINT = 4;   // Twin-T notch filter hint
     static final int HINT_3DB_L = 5;   // RL cutoff frequency hint (inductor)
     // Circuit element storage
-    Vector<CircuitElm> elmList;           // Dynamic list of all circuit elements
+    public Vector<CircuitElm> elmList;           // Dynamic list of all circuit elements
     Vector<Adjustable> adjustables;       // Elements with adjustable sliders
     
     // Cached arrays for performance - avoid type checks in simulation loop
@@ -508,8 +509,8 @@ public class CirSim {
     // Circuit dimensions
     int voltageSourceCount;               // Number of voltage sources (adds rows to matrix)
     // public boolean useFrame;
-    int scopeCount;
-    Scope scopes[];
+    public int scopeCount;
+    public Scope scopes[];
     boolean showResistanceInVoltageSources;
     boolean hideInfoBox;
     int scopeColCount[];
@@ -630,7 +631,7 @@ public CirSim() {
 	    return circuitAnalyzer;
 	}
 
-	SimulationTimingState getTimingState() {
+	public SimulationTimingState getTimingState() {
 	    return timingState;
 	}
 
@@ -683,8 +684,136 @@ public CirSim() {
 	    return exportCompositeActions;
 	}
 
-	ImportExportHelper getImportExportHelper() {
+	public ImportExportHelper getImportExportHelper() {
 	    return importExportHelper;
+	}
+
+	public void readCircuitFromImportHelper(String circuitText, int flags) {
+	    getCircuitIOService().readCircuit(circuitText, flags);
+	}
+
+	public void setAllowSaveFromImportHelper(boolean allowSave) {
+	    getUiPanelManager().allowSave(allowSave);
+	}
+
+	public boolean isDotsEnabledForExport() {
+	    return dotsCheckItem != null && dotsCheckItem.getState();
+	}
+
+	public boolean isSmallGridEnabledForExport() {
+	    return smallGridCheckItem != null && smallGridCheckItem.getState();
+	}
+
+	public boolean isVoltsEnabledForExport() {
+	    return voltsCheckItem != null && voltsCheckItem.getState();
+	}
+
+	public boolean isPowerEnabledForExport() {
+	    return powerCheckItem != null && powerCheckItem.getState();
+	}
+
+	public boolean isShowValuesEnabledForExport() {
+	    return showValuesCheckItem != null && showValuesCheckItem.getState();
+	}
+
+	public boolean isAdjustTimeStepEnabledForExport() {
+	    return adjustTimeStep;
+	}
+
+	public double getMaxTimeStepForExport() {
+	    return getTimingState().maxTimeStep;
+	}
+
+	public double getIterCountForExport() {
+	    return getSimulationLoop().getIterCount();
+	}
+
+	public double getVoltageRangeForExport() {
+	    return CircuitElm.voltageRange;
+	}
+
+	public double getMinTimeStepForExport() {
+	    return getTimingState().minTimeStep;
+	}
+
+	public String getVoltageUnitSymbolForExport() {
+	    return voltageUnitSymbol;
+	}
+
+	public boolean hasToolbarStateForExport() {
+	    return toolbarCheckItem != null;
+	}
+
+	public boolean isToolbarVisibleForExport() {
+	    return toolbarCheckItem != null && toolbarCheckItem.getState();
+	}
+
+	public boolean isEquationTableMnaModeForExport() {
+	    return equationTableMnaMode;
+	}
+
+	public boolean isEquationTableNewtonJacobianEnabledForExport() {
+	    return equationTableNewtonJacobianEnabled;
+	}
+
+	public double getEquationTableConvergenceToleranceForExport() {
+	    return equationTableConvergenceTolerance;
+	}
+
+	public boolean isSfcrLookupClampDefaultForExport() {
+	    return sfcrLookupClampDefault;
+	}
+
+	public int getConvergenceCheckThresholdForExport() {
+	    return convergenceCheckThreshold;
+	}
+
+	public int getElementCountForImportExport() {
+	    return elmList.size();
+	}
+
+	public int getImportSubcircuitsFlagForImportExport() {
+	    return RC_SUBCIRCUITS;
+	}
+
+	public int getImportRetainFlagForImportExport() {
+	    return RC_RETAIN;
+	}
+
+	public String decompressForImportHelper(String ctzData) {
+	    return decompress(ctzData);
+	}
+
+	public String escapeTokenForImportExport(String text) {
+	    return CustomLogicModel.escape(text);
+	}
+
+	public String unescapeTokenForImportExport(String text) {
+	    return CustomLogicModel.unescape(text);
+	}
+
+	public String getElementDumpWithUidForImportExport(CircuitElm ce) {
+	    String d = ce.dump();
+	    if (d == null) {
+	        return null;
+	    }
+	    return d + " U:" + CustomLogicModel.escape(ce.getPersistentUid());
+	}
+
+	public String getElementUidForImportExport(CircuitElm ce) {
+	    return ce.getPersistentUid();
+	}
+
+	public void setElementUidForImportExport(CircuitElm ce, String uid) {
+	    ce.setPersistentUid(uid);
+	}
+
+	public void setupScopesForImportExport() {
+	    getScopeManager().setupScopes();
+	}
+
+	public String generatePersistentUidForImportExport() {
+	    return CircuitElm.generatePersistentUid();
 	}
 
 	CircuitValueSlotManager getCircuitValueSlotManager() {
@@ -703,7 +832,7 @@ public CirSim() {
 	    return tableMasterRegistryManager;
 	}
 
-	SFCRDocumentManager getSFCRDocumentManager() {
+	public SFCRDocumentManager getSFCRDocumentManager() {
 	    return sfcrDocumentManager;
 	}
 
@@ -1649,7 +1778,7 @@ public CirSim() {
     void enableItems() {
     }
     
-    void setToolbar() {
+    public void setToolbar() {
 	layoutPanel.setWidgetHidden(toolbar, !toolbarCheckItem.getState());
 	getViewportController().setCanvasSize();
     }
@@ -1666,11 +1795,11 @@ public CirSim() {
 	return lastInteractedTable;
 	}
 
-	int getCurrentBarValueForRouting() {
+	public int getCurrentBarValueForRouting() {
 	return currentBar.getValue();
 	}
 
-	int getPowerBarValueForRouting() {
+	public int getPowerBarValueForRouting() {
 	return powerBar.getValue();
 	}
 

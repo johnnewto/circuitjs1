@@ -1,5 +1,6 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.io.LookupBlocksTextUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

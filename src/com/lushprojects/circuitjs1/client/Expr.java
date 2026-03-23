@@ -1,5 +1,6 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.io.LookupTableRegistry;
 import java.util.Vector;
 
 import jsinterop.annotations.JsMethod;

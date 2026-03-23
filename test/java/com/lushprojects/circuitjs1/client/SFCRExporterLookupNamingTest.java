@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.io.LookupTableRegistry;
+import com.lushprojects.circuitjs1.client.io.SFCRExporter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

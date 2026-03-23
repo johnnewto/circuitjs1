@@ -1,5 +1,8 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.io.SFCRParseResult;
+import com.lushprojects.circuitjs1.client.io.SFCRParseResultExporter;
+import com.lushprojects.circuitjs1.client.io.SFCRParser;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;

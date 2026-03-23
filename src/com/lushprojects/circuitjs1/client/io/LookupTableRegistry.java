@@ -1,4 +1,4 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.io;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -6,12 +6,12 @@ import java.util.HashMap;
 /**
  * Runtime registry for SFCR lookup tables used by Expr.lookup(...).
  */
-class LookupTableRegistry {
+public final class LookupTableRegistry {
 
-    static class LookupTableSnapshot {
-        ArrayList<Double> xs = new ArrayList<Double>();
-        ArrayList<Double> ys = new ArrayList<Double>();
-        String resolvedScope;
+    public static class LookupTableSnapshot {
+        public ArrayList<Double> xs = new ArrayList<Double>();
+        public ArrayList<Double> ys = new ArrayList<Double>();
+        public String resolvedScope;
     }
 
     private static HashMap<String, LookupDefinition> globalTables;
@@ -30,7 +30,7 @@ class LookupTableRegistry {
         }
     }
 
-    static void clear() {
+    public static void clear() {
         ensureInitialized();
         globalTables.clear();
         scopedTables.clear();
@@ -41,7 +41,7 @@ class LookupTableRegistry {
      * Register a lookup table from a LookupDefinition. If def.scope is null/empty, the table is
      * treated as global; otherwise it is registered under the given scope.
      */
-    static void register(LookupDefinition def) {
+    public static void register(LookupDefinition def) {
         if (def == null || def.name == null || def.xs == null || def.ys == null
                 || def.xs.size() != def.ys.size() || def.xs.isEmpty()) {
             return;
@@ -70,7 +70,7 @@ class LookupTableRegistry {
     }
 
     /** Convenience wrapper — prefer {@link #register(LookupDefinition)} for new code. */
-    static void registerGlobal(String tableName, ArrayList<Double> xs, ArrayList<Double> ys) {
+    public static void registerGlobal(String tableName, ArrayList<Double> xs, ArrayList<Double> ys) {
         LookupDefinition def = new LookupDefinition();
         def.name = tableName;
         def.xs.addAll(xs);
@@ -79,7 +79,7 @@ class LookupTableRegistry {
     }
 
     /** Convenience wrapper — prefer {@link #register(LookupDefinition)} for new code. */
-    static void registerScoped(String scopeName, String tableName, ArrayList<Double> xs, ArrayList<Double> ys) {
+    public static void registerScoped(String scopeName, String tableName, ArrayList<Double> xs, ArrayList<Double> ys) {
         LookupDefinition def = new LookupDefinition();
         def.name = tableName;
         def.scope = scopeName;
@@ -88,7 +88,7 @@ class LookupTableRegistry {
         register(def);
     }
 
-    static double evaluate(String lookupName, double x, boolean clamp) {
+    public static double evaluate(String lookupName, double x, boolean clamp) {
         LookupDefinition table = getTable(lookupName);
         if (table == null || table.xs.isEmpty()) {
             return 0.0;
@@ -96,7 +96,7 @@ class LookupTableRegistry {
         return interpolate(table, x, clamp);
     }
 
-    static LookupTableSnapshot getSnapshot(String scopeName, String tableName) {
+    public static LookupTableSnapshot getSnapshot(String scopeName, String tableName) {
         if (tableName == null) {
             return null;
         }
@@ -179,7 +179,7 @@ class LookupTableRegistry {
      * embedding in a classic circuit dump. Each line has the form:
      * {@code % lookup name [scope=X] x1,y1 x2,y2 ...}
      */
-    static String dumpAll() {
+    public static String dumpAll() {
         ensureInitialized();
         StringBuilder sb = new StringBuilder();
         for (LookupDefinition table : globalTables.values()) {

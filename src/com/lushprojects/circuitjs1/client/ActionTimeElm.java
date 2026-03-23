@@ -28,9 +28,9 @@ import java.util.List;
  * It's a visual indicator element that shows current actions and their states.
  * Double-click to open the Action Time Dialog for full management.
  */
-class ActionTimeElm extends CircuitElm {
-    boolean enabled;
-    String title;
+public class ActionTimeElm extends CircuitElm {
+    public boolean enabled;
+    public String title;
     private boolean playPauseIconHovered = false;
     private Rectangle playPauseIconRect = null;
     
