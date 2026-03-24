@@ -28,6 +28,8 @@ import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.DialogBox;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
+import com.lushprojects.circuitjs1.client.core.CircuitNode;
+import com.lushprojects.circuitjs1.client.core.RowInfo;
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.elements.economics.EquationTableElm.RowOutputMode;
 import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNodeElm;

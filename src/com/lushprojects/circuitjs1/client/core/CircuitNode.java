@@ -17,15 +17,16 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.core;
 
 
 import java.util.Vector;
+import com.lushprojects.circuitjs1.client.CircuitElm;
 
 public class CircuitNode {
-    Vector<CircuitNodeLink> links;
-    boolean internal;
-    CircuitNode() { links = new Vector<CircuitNodeLink>(); }
+    public Vector<CircuitNodeLink> links;
+    public boolean internal;
+    public CircuitNode() { links = new Vector<CircuitNodeLink>(); }
 
     public int getLinkCount() {
         return links.size();

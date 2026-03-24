@@ -10,6 +10,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.lushprojects.circuitjs1.client.elements.electronics.DiodeModel;
+import com.lushprojects.circuitjs1.client.elements.electronics.TransistorModel;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 

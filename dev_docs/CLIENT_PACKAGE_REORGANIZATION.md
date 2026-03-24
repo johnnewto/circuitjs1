@@ -21,9 +21,9 @@ Simulation engine internals (matrix operations, analysis).
 
 | File | Rationale |
 |------|-----------|
-| - [ ] `CircuitNode.java` | Node representation |
-| - [ ] `CircuitNodeLink.java` | Node connection data |
-| - [ ] `RowInfo.java` | Matrix row information |
+| - [x] `CircuitNode.java` | Node representation |
+| - [x] `CircuitNodeLink.java` | Node connection data |
+| - [x] `RowInfo.java` | Matrix row information |
 
 ### Move to `elements/electronics/`
 
@@ -31,10 +31,10 @@ Device models used by electronics elements. Keep models close to the elements th
 
 | File | Rationale |
 |------|-----------|
-| - [ ] `Inductor.java` | Inductor device model (used by `InductorElm`) |
-| - [ ] `Diode.java` | Diode device model (used by `DiodeElm`, `LEDElm`, etc.) |
-| - [ ] `DiodeModel.java` | Diode model parameters |
-| - [ ] `TransistorModel.java` | Transistor model parameters |
+| - [x] `Inductor.java` | Inductor device model (used by `InductorElm`) |
+| - [x] `Diode.java` | Diode device model (used by `DiodeElm`, `LEDElm`, etc.) |
+| - [x] `DiodeModel.java` | Diode model parameters |
+| - [x] `TransistorModel.java` | Transistor model parameters |
 
 ### Move to `ui/`
 

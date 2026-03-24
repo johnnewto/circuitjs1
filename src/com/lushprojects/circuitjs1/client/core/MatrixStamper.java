@@ -2,8 +2,8 @@ package com.lushprojects.circuitjs1.client.core;
 
 import com.lushprojects.circuitjs1.client.CirSim;
 import com.lushprojects.circuitjs1.client.CircuitElm;
-import com.lushprojects.circuitjs1.client.CircuitNode;
-import com.lushprojects.circuitjs1.client.RowInfo;
+import com.lushprojects.circuitjs1.client.core.CircuitNode;
+import com.lushprojects.circuitjs1.client.core.RowInfo;
 
 public class MatrixStamper {
     private final CirSim sim;

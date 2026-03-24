@@ -6,6 +6,8 @@ import java.util.Vector;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
+import com.lushprojects.circuitjs1.client.core.CircuitNode;
+import com.lushprojects.circuitjs1.client.core.CircuitNodeLink;
 import com.lushprojects.circuitjs1.client.elements.electronics.wiring.GroundElm;
 import com.lushprojects.circuitjs1.client.registry.ElementFactoryFacade;
 

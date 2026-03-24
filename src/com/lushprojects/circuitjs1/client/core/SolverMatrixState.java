@@ -1,6 +1,6 @@
 package com.lushprojects.circuitjs1.client.core;
 
-import com.lushprojects.circuitjs1.client.RowInfo;
+import com.lushprojects.circuitjs1.client.core.RowInfo;
 
 public final class SolverMatrixState {
     // The circuit is solved by: circuitMatrix x nodeVoltages = circuitRightSide

@@ -5,6 +5,8 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.elements.ActionScheduler;
 
 import com.lushprojects.circuitjs1.client.elements.economics.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.DiodeModel;
+import com.lushprojects.circuitjs1.client.elements.electronics.TransistorModel;
 import com.lushprojects.circuitjs1.client.elements.electronics.sources.AudioInputElm;
 import com.lushprojects.circuitjs1.client.elements.electronics.sources.DataInputElm;
 import com.google.gwt.core.client.GWT;

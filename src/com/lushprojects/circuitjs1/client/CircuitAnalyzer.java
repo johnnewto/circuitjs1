@@ -5,6 +5,9 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.elements.ActionTimeDialog;
 
 import com.lushprojects.circuitjs1.client.core.CircuitMatrixOps;
+import com.lushprojects.circuitjs1.client.core.CircuitNode;
+import com.lushprojects.circuitjs1.client.core.CircuitNodeLink;
+import com.lushprojects.circuitjs1.client.core.RowInfo;
 import com.lushprojects.circuitjs1.client.elements.annotation.GraphicElm;
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.elements.electronics.analog.VCCSElm;

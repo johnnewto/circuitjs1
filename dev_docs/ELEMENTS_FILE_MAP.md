@@ -39,8 +39,8 @@ Use the 7 connection columns and move to as architectural signal (not hard rule)
 | `CircuitElm.java` | Base/legacy element class in root package. | Base element type; parent/peer relationship to nearly all *Elm classes. | `elements` | 0 | 1 | 5 | 0 | 0 | 0 | 1 |
 | `CircuitIOService.java` | Client runtime/support class. | Connects root runtime to io package parser/exporter/lookup services. | `io` | 0 | 0 | 4 | 5 | 1 | 4 | 1 |
 | `CircuitJavaRunner.java` | Runner/execution integration class. | Runner subsystem family for headless/automation execution. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
-| `CircuitNode.java` | Client runtime/support class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| `CircuitNodeLink.java` | Client runtime/support class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `CircuitNode.java` | Client runtime/support class. | Core simulation node graph primitive. | `core` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `CircuitNodeLink.java` | Client runtime/support class. | Core simulation node-edge link primitive. | `core` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `CircuitRenderer.java` | Client rendering helper class. | Rendering/geometry subsystem family. | `Keep` | 0 | 0 | 1 | 0 | 0 | 1 | 1 |
 | `CircuitTestRunner.java` | Runner/execution integration class. | Runner subsystem family for headless/automation execution. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `CircuitValueSlotManager.java` | Client manager/coordinator class. | Close to package peers and shared base classes. | `elements` | 0 | 0 | 3 | 0 | 0 | 0 | 0 |
@@ -50,8 +50,8 @@ Use the 7 connection columns and move to as architectural signal (not hard rule)
 | `CustomCompositeModel.java` | Client runtime/support class. | Composite-element tooling; tied to electronics/misc CustomComposite* elements. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `CustomLogicModel.java` | Client runtime/support class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `Dialog.java` | Client dialog/controller class. | Close to package peers and shared base classes. | `ui` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| `Diode.java` | Client runtime/support class. | Diode model/editing family. | `Keep` | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
-| `DiodeModel.java` | Client runtime/support class. | Diode model/editing family. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
+| `Diode.java` | Client runtime/support class. | Diode device primitive used by semiconductor elements. | `elements/electronics` | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+| `DiodeModel.java` | Client runtime/support class. | Diode model/editing family. | `elements/electronics` | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
 | `EditCompositeModelDialog.java` | Client dialog/controller class. | Composite-element tooling; tied to electronics/misc CustomComposite* elements. | `elements` | 1 | 0 | 2 | 0 | 0 | 0 | 1 |
 | `EditDialog.java` | Client dialog/controller class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
 | `EditDialogActions.java` | Client runtime/support class. | Close to package peers and shared base classes. | `ui` | 0 | 0 | 0 | 0 | 0 | 2 | 1 |
@@ -74,7 +74,7 @@ Use the 7 connection columns and move to as architectural signal (not hard rule)
 | `Graphics.java` | Client runtime/support class. | Rendering/geometry subsystem family. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
 | `HintRegistry.java` | Client registry class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
 | `ImportFromDropbox.java` | Client runtime/support class. | Load/import path helpers. | `io` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| `Inductor.java` | Client runtime/support class. | Close to package peers and shared base classes. | `Keep` | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+| `Inductor.java` | Client runtime/support class. | Inductor device primitive used by passive and electromechanical elements. | `elements/electronics` | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
 | `InfoViewerLiveDataSerializer.java` | Client runtime/support class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 | `InfoViewerTableMarkdown.java` | Client runtime/support class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
 | `IntPair.java` | Client runtime/support class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
@@ -89,7 +89,7 @@ Use the 7 connection columns and move to as architectural signal (not hard rule)
 | `Polygon.java` | Client runtime/support class. | Rendering/geometry subsystem family. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `QueryParameters.java` | Client runtime/support class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `Rectangle.java` | Client runtime/support class. | Rendering/geometry subsystem family. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| `RowInfo.java` | Client runtime/support class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `RowInfo.java` | Client runtime/support class. | Matrix row metadata used by solver simplification. | `core` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `RunnerController.java` | Client controller class. | Runner subsystem family for headless/automation execution. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 | `RunnerJsBridge.java` | Bridge/interop integration class. | Runner subsystem family for headless/automation execution. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `RunnerLaunchDecision.java` | Runner/execution integration class. | Runner subsystem family for headless/automation execution. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
@@ -122,7 +122,7 @@ Use the 7 connection columns and move to as architectural signal (not hard rule)
 | `TableElementsTest.java` | Client runtime/support class. | Table/economics test/debug helpers; close to elements/economics and elements/math. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 | `TableMasterRegistryManager.java` | Client manager/coordinator class. | Table/economics test/debug helpers; close to elements/economics and elements/math. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 | `ToolbarModeManager.java` | Client manager/coordinator class. | Close to package peers and shared base classes. | `ui` | 0 | 0 | 0 | 0 | 0 | 2 | 0 |
-| `TransistorModel.java` | Client runtime/support class. | Transistor model/editing family. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
+| `TransistorModel.java` | Client runtime/support class. | Transistor model/editing family. | `elements/electronics` | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
 | `UndoRedoManager.java` | Client manager/coordinator class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `ViewportController.java` | Client controller class. | Viewport/camera handling; linked with elements/misc ViewportElm. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 | `circuitjs1.java` | Client runtime/support class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 1 |

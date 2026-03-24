@@ -3,7 +3,7 @@ package com.lushprojects.circuitjs1.client.ui;
 import com.lushprojects.circuitjs1.client.CirSim;
 import com.lushprojects.circuitjs1.client.CirSimDialogCoordinator;
 import com.lushprojects.circuitjs1.client.ui.EditDialog;
-import com.lushprojects.circuitjs1.client.TransistorModel;
+import com.lushprojects.circuitjs1.client.elements.electronics.TransistorModel;
 import com.lushprojects.circuitjs1.client.elements.electronics.semiconductors.TransistorElm;
 
 public class EditTransistorModelDialog extends EditDialog {

@@ -67,6 +67,7 @@ import com.google.gwt.user.client.ui.Frame;
 import com.lushprojects.circuitjs1.client.core.ConfigProvider;
 import com.lushprojects.circuitjs1.client.core.ConsoleLogger;
 import com.lushprojects.circuitjs1.client.core.MatrixStamper;
+import com.lushprojects.circuitjs1.client.core.CircuitNode;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.core.SimulationTimingState;
 import com.lushprojects.circuitjs1.client.core.SolverMatrixState;

@@ -24,6 +24,8 @@ import com.lushprojects.circuitjs1.client.ui.EditInfo;
 import com.lushprojects.circuitjs1.client.elements.ChipElm;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.Diode;
+import com.lushprojects.circuitjs1.client.elements.electronics.DiodeModel;
 import com.lushprojects.circuitjs1.client.util.*;
 
 public class LEDArrayElm extends ChipElm {

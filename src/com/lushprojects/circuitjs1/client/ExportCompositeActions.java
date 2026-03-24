@@ -17,6 +17,8 @@ import com.google.gwt.core.client.ScriptInjector;
 import com.google.gwt.http.client.URL;
 import com.google.gwt.user.client.Window;
 import com.lushprojects.circuitjs1.client.elements.annotation.GraphicElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.DiodeModel;
+import com.lushprojects.circuitjs1.client.elements.electronics.TransistorModel;
 import com.lushprojects.circuitjs1.client.elements.electronics.wiring.*;
 import com.lushprojects.circuitjs1.client.elements.misc.ScopeElm;
 import com.lushprojects.circuitjs1.client.ui.ExportAsImageDialog;

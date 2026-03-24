@@ -17,9 +17,11 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.elements.electronics;
 
 
+import com.lushprojects.circuitjs1.client.CirSim;
+import com.lushprojects.circuitjs1.client.elements.electronics.DiodeModel;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
 // diode that can be embedded in other elements.  series resistance is handled in DiodeElm, not here.

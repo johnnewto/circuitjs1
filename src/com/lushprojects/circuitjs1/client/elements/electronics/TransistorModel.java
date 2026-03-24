@@ -1,5 +1,8 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.elements.electronics;
 
+import com.lushprojects.circuitjs1.client.CirSim;
+import com.lushprojects.circuitjs1.client.CustomLogicModel;
+import com.lushprojects.circuitjs1.client.Editable;
 import com.lushprojects.circuitjs1.client.ui.EditInfo;
 
 
@@ -106,7 +109,7 @@ public class TransistorModel implements Editable, Comparable<TransistorModel> {
 	return getModelWithName("default");
     }
 
-    static void clearDumpedFlags() {
+    public static void clearDumpedFlags() {
 	if (modelMap == null)
 	    return;
 	Iterator it = modelMap.entrySet().iterator();
@@ -168,7 +171,7 @@ public class TransistorModel implements Editable, Comparable<TransistorModel> {
 	tm.builtIn = tm.internal = true;
     }
     
-    static TransistorModel undumpModel(StringTokenizer st) {
+    public static TransistorModel undumpModel(StringTokenizer st) {
 	String name = CustomLogicModel.unescape(st.nextToken());
 	TransistorModel dm = TransistorModel.getModelWithName(name);
 	dm.undump(st);
