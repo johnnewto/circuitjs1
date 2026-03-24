@@ -111,8 +111,10 @@ public final class SimulationExportCore {
             throw new IllegalArgumentException("sim must not be null");
         }
 
-        Set<String> registered = ComputedValues.getRegisteredComputedNames();
-        List<String> keys = new ArrayList<String>(registered != null ? registered : Collections.<String>emptySet());
+        // Use getAllNames() to include both registered names AND actual computed values
+        // GodlyTableElm stores values via setComputedValue() but doesn't call registerComputedName()
+        Set<String> allNames = ComputedValues.getAllNames();
+        List<String> keys = new ArrayList<String>(allNames != null ? allNames : Collections.<String>emptySet());
         Collections.sort(keys);
 
         boolean world2Format = "world2".equals(request.format);
@@ -164,6 +166,10 @@ public final class SimulationExportCore {
         result.rowsWritten = rowsWritten;
         if (world2Format) {
             result.htmlReport = buildWorld2HtmlReport(request.circuitPath, request.steps, world2Rows, runParameters);
+        } else if (request.htmlPath != null && !request.htmlPath.isEmpty()) {
+            // Generate HTML report for csv/tsv formats with all variables
+            char separator = tsvFormat ? '\t' : ',';
+            result.htmlReport = buildDelimitedHtmlReport(output.toString(), separator, request.circuitPath, request.steps);
         }
         return result;
     }

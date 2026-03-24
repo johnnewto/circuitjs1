@@ -292,6 +292,8 @@ public abstract class ChipElm extends CircuitElm {
 	    }
 	}
 	protected void reset() {
+	    // Keep volts/nodes sized to current pin/internal-node counts before pin reset.
+	    allocNodes();
 	    int i;
 	    for (i = 0; i != getPostCount(); i++) {
 		pins[i].value = false;

@@ -215,9 +215,23 @@ restartworld2() {
 runcircuitjava() {
     local circuit="${1:-src/com/lushprojects/circuitjs1/public/circuits/economics/1debug.md}"
     local steps="${2:-1000}"
-    local output="${3:-/tmp/world2.tsv}"
-    local format="${4:-world2}"
-    local html="${5:-/tmp/world2-runner.html}"
+    local output="${3:-}"
+    local format="${4:-}"
+    local html="${5:-}"
+
+    # If only circuit is given, derive output names from circuit basename
+    if [[ -n "${1:-}" && -z "$output" ]]; then
+        local basename
+        basename=$(basename "$circuit")
+        basename="${basename%.*}"  # Remove extension
+        output="/tmp/${basename}.tsv"
+        format="${format:-tsv}"
+        html="/tmp/${basename}.html"
+    else
+        output="${output:-/tmp/world2.tsv}"
+        format="${format:-world2}"
+        html="${html:-/tmp/world2-runner.html}"
+    fi
 
     echo "Running runCircuitJava with circuit=${circuit}, steps=${steps}, output=${output}, format=${format}, html=${html}"
 
@@ -227,6 +241,14 @@ runcircuitjava() {
         -Poutput="$output" \
         -Pformat="$format" \
         -Phtml="$html"
+
+    # Print generated file paths
+    if [[ -f "$output" ]]; then
+        echo "Output: $output"
+    fi
+    if [[ -f "$html" ]]; then
+        echo "HTML:   $html"
+    fi
 }
 
 completion() {
@@ -338,6 +360,7 @@ runcircuitjava examples:
     ./dev.sh runcircuitjava
     ./dev.sh runcircuitjava <circuit> [steps] [output] [format] [html]
     ./dev.sh runcircuitjava src/com/lushprojects/circuitjs1/public/circuits/economics/1debug.md 1000 /tmp/world2.tsv world2 /tmp/world2-runner.html
+    ./dev.sh runcircuitjava src/com/lushprojects/circuitjs1/public/circuits/economics/econ_BOMD.txt 10 /tmp/bomd.tsv tsv /tmp/bomd.html
 
 EOF
 }

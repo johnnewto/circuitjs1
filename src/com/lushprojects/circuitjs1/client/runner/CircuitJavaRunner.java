@@ -65,7 +65,7 @@ public class CircuitJavaRunner {
      */
     public static void main(String[] args) throws Exception {
         if (args.length < 1) {
-                System.err.println("Usage: CircuitJavaRunner <circuit.txt> [output.csv] [steps=1000] [format=csv|world2] [output.html]");
+                System.err.println("Usage: CircuitJavaRunner <circuit.txt> [output.csv] [steps=1000] [format=csv|tsv|world2] [output.html]");
             System.exit(1);
         }
 
@@ -118,11 +118,11 @@ public class CircuitJavaRunner {
         }
 
         if (htmlPath != null) {
-            if (!runResult.world2Format) {
-                System.err.println("CircuitJavaRunner: HTML report generation currently supports format=world2 only");
-            } else {
+            if (runResult.htmlReport != null && !runResult.htmlReport.isEmpty()) {
                 Files.write(Paths.get(htmlPath), runResult.htmlReport.getBytes(StandardCharsets.UTF_8));
                 System.err.println("CircuitJavaRunner: wrote HTML report to " + htmlPath);
+            } else {
+                System.err.println("CircuitJavaRunner: no HTML report generated");
             }
         }
     }

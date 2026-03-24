@@ -23,6 +23,7 @@ package com.lushprojects.circuitjs1.client;
 import com.lushprojects.circuitjs1.client.util.*;
 
 import com.lushprojects.circuitjs1.client.elements.ActionScheduler;
+import com.lushprojects.circuitjs1.client.runner.RuntimeMode;
 
 import com.google.gwt.event.dom.client.MouseWheelEvent;
 import com.google.gwt.storage.client.Storage;
@@ -448,8 +449,13 @@ public class Scope {
 	manDivisions = lastManDivisions;
     	
     	rect = new Rectangle(0, 0, 1, 1);
-   	imageCanvas = Canvas.createIfSupported();
-   	imageContext = imageCanvas.getContext2d();
+        if (RuntimeMode.isNonInteractiveRuntime()) {
+            imageCanvas = null;
+            imageContext = null;
+        } else {
+   	    imageCanvas = Canvas.createIfSupported();
+   	    imageContext = imageCanvas != null ? imageCanvas.getContext2d() : null;
+        }
 	allocImage();
     	initialize();
     }
@@ -3534,6 +3540,8 @@ public class Scope {
     }
     
     void saveAsDefault() {
+        if (RuntimeMode.isNonInteractiveRuntime())
+            return;
         Storage stor = Storage.getLocalStorageIfSupported();
         if (stor == null)
             return;
@@ -3546,6 +3554,8 @@ public class Scope {
     }
 
     boolean loadDefaults() {
+        if (RuntimeMode.isNonInteractiveRuntime())
+            return false;
         Storage stor = Storage.getLocalStorageIfSupported();
         if (stor == null)
             return false;

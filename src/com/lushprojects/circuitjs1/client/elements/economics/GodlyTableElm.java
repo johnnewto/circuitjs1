@@ -216,6 +216,8 @@ public class GodlyTableElm extends TableElm {
                     String name = column.getStockName();
                     // Use base priority (weighted priority is handled in parent class)
                     ComputedValues.registerMasterTable(name.trim(), this, priority);
+                    // Note: registerComputedName() is called in stamp() instead, because
+                    // resetAction() clears registrations after setupPins() runs
                 }
             }
         }
@@ -416,6 +418,18 @@ public class GodlyTableElm extends TableElm {
      */
     @Override
     protected void stamp() {
+        // Register column names for export (must be done in stamp() because resetAction()
+        // clears registrations after setupPins() but before stamp())
+        if (columns != null) {
+            for (int col = 0; col < columns.size(); col++) {
+                TableColumn column = columns.get(col);
+                if (!column.isALE() && !column.isEmpty()) {
+                    String name = column.getStockName();
+                    ComputedValues.registerComputedName(name.trim());
+                }
+            }
+        }
+        
         // Refresh LabeledNode lookup (in case nodes changed since setupPins)
         findLabeledNodes();
         

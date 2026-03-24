@@ -79,6 +79,7 @@ public class TableElm extends ChipElm implements TableContentView {
         
         initTable();
         setupPins();
+        allocNodes();
         setSize(sim.smallGridCheckItem.getState() ? 1 : 2);
     }
 
@@ -100,6 +101,7 @@ public class TableElm extends ChipElm implements TableContentView {
         
         initTable();
         setupPins();
+        allocNodes();
         setSize((f & FLAG_SMALL) != 0 ? 1 : 2);
     }
     
@@ -1165,6 +1167,8 @@ public class TableElm extends ChipElm implements TableContentView {
         // Re-register as master for stock columns when circuit is reset
         // This ensures voltage sources are properly stamped after reset
         registerAsMasterForStockNames();
+        // Pin/internal-node counts are data-driven; keep nodes/volts arrays in sync.
+        allocNodes();
         // Note: No cache to update - isMasterForColumn() does direct lookup
         
         // Reset renderer cache so values are recomputed from scratch

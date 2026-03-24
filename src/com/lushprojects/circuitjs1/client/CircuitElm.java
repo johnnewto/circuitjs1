@@ -326,6 +326,9 @@ public abstract class CircuitElm implements Editable {
     
     // handle reset button
     protected void reset() {
+	// Some elements change post/internal-node counts after construction.
+	// Ensure node/voltage storage matches current topology before clearing state.
+	allocNodes();
 	int i;
 	for (i = 0; i != getPostCount()+getInternalNodeCount(); i++)
 	    volts[i] = 0;

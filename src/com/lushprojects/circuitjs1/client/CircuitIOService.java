@@ -471,11 +471,14 @@ final class CircuitIOService {
                 try {
                     if (subs && tint != '.')
                         continue;
-                    if (tint == 'o') {
-                        Scope sc = new Scope(sim);
-                        sc.position = sim.scopeCount;
-                        sc.undump(st);
-                        sim.scopes[sim.scopeCount++] = sc;
+	                    if (tint == 'o') {
+	                        if (RuntimeMode.isNonInteractiveRuntime()) {
+	                            break;
+	                        }
+	                        Scope sc = new Scope(sim);
+	                        sc.position = sim.scopeCount;
+	                        sc.undump(st);
+	                        sim.scopes[sim.scopeCount++] = sc;
                         break;
                     }
                     if (tint == 'h') {
