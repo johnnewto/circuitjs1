@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.ui.EditInfo;
+
 
 import com.lushprojects.circuitjs1.client.util.*;
 
@@ -9,6 +11,8 @@ import java.util.Vector;
 
 import com.google.gwt.user.client.Command;
 import com.google.gwt.user.client.ui.Label;
+import com.lushprojects.circuitjs1.client.ui.EditDialog;
+import com.lushprojects.circuitjs1.client.ui.Scrollbar;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 // values with sliders
@@ -43,6 +47,10 @@ public class Adjustable implements Command {
             minValue = ei.minVal;
             maxValue = ei.maxVal;
         }
+    }
+
+    public static Adjustable createForUi(CircuitElm ce, int item) {
+	return new Adjustable(ce, item);
     }
 
     // undump
@@ -107,7 +115,11 @@ public class Adjustable implements Command {
 		sim.getUiPanelManager().addWidgetToVerticalPanel(slider = new Scrollbar(Scrollbar.HORIZONTAL, intValue, 1, 0, 101, this, elm));
     }
 
-    void setSliderValue(double value) {
+    public void createSliderForUi(CirSim sim, double value) {
+	createSlider(sim, value);
+    }
+
+    public void setSliderValue(double value) {
 	if (sharedSlider != null) {
 	    sharedSlider.setSliderValue(value);
 	    return;
@@ -178,6 +190,10 @@ public class Adjustable implements Command {
         String htmlText = Locale.convertToHTML(Locale.LS(sliderText)) + ": " + valueStr;
         label.getElement().setInnerHTML(htmlText);
     }
+
+    public void updateLabelHTMLForUi(String sliderText, String valueStr) {
+	updateLabelHTML(sliderText, valueStr);
+    }
     
     // Helper method to get formatted value, checking for custom formatting from element
     String getFormattedValue(EditInfo ei, double value) {
@@ -195,6 +211,10 @@ public class Adjustable implements Command {
         
         // Use default formatting
         return EditDialog.unitString(ei, value);
+    }
+
+    public String getFormattedValueForUi(EditInfo ei, double value) {
+	return getFormattedValue(ei, value);
     }
     
     double getSliderValue() {
@@ -216,6 +236,10 @@ public class Adjustable implements Command {
 	    sim.getUiPanelManager().removeWidgetFromVerticalPanel(slider);
 	} catch (Exception e) {}
     }
+
+    public void deleteSliderForUi(CirSim sim) {
+	deleteSlider(sim);
+    }
     
     void setMouseElm(CircuitElm e) {
 	if (slider != null)
@@ -230,6 +254,10 @@ public class Adjustable implements Command {
 		return true;
 	}
 	return false;
+    }
+
+    public boolean sliderBeingSharedForUi() {
+	return sliderBeingShared();
     }
     
     protected String dump() {
@@ -276,5 +304,57 @@ public class Adjustable implements Command {
 		newList.add(adj);
 	}
 	CirSim.getInstance().adjustables = newList;
+    }
+
+    public static void reorderAdjustablesForUi() {
+	reorderAdjustables();
+    }
+
+    public Adjustable getSharedSliderForUi() {
+	return sharedSlider;
+    }
+
+    public void setSharedSliderForUi(Adjustable sharedSlider) {
+	this.sharedSlider = sharedSlider;
+    }
+
+    public String getSliderTextForUi() {
+	return sliderText;
+    }
+
+    public void setSliderTextForUi(String sliderText) {
+	this.sliderText = sliderText;
+    }
+
+    public double getStepIncrementForUi() {
+	return stepIncrement;
+    }
+
+    public void setStepIncrementForUi(double stepIncrement) {
+	this.stepIncrement = stepIncrement;
+    }
+
+    public double getMinValueForUi() {
+	return minValue;
+    }
+
+    public void setMinValueForUi(double minValue) {
+	this.minValue = minValue;
+    }
+
+    public double getMaxValueForUi() {
+	return maxValue;
+    }
+
+    public void setMaxValueForUi(double maxValue) {
+	this.maxValue = maxValue;
+    }
+
+    public boolean hasLabelForUi() {
+	return label != null;
+    }
+
+    public EditInfo getEditInfoForUi() {
+	return elm.getEditInfo(editItem);
     }
 }

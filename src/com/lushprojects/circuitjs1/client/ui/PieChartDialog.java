@@ -221,7 +221,7 @@ public class PieChartDialog extends Dialog {
         rebuildSliceGrid();
     }
     
-    void apply() {
+    public void apply() {
         // Update node names from text boxes
         for (int i = 0; i < nodeNameBoxes.size(); i++) {
             pieChart.setNodeName(i, nodeNameBoxes.get(i).getText().trim());

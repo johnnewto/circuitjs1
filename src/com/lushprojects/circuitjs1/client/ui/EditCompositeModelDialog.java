@@ -17,27 +17,13 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
-import com.lushprojects.circuitjs1.client.*;
-
-import com.lushprojects.circuitjs1.client.util.*;
-
-import com.lushprojects.circuitjs1.client.elements.ChipElm;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
 import java.util.HashSet;
-import com.google.gwt.user.client.ui.HasHorizontalAlignment;
-import com.google.gwt.user.client.ui.HorizontalPanel;
-import com.google.gwt.user.client.Window;
-import com.google.gwt.user.client.ui.Anchor;
-import com.google.gwt.user.client.ui.Button;
-import com.google.gwt.user.client.ui.VerticalPanel;
-import com.lushprojects.circuitjs1.client.elements.ChipElm.Pin;
-import com.lushprojects.circuitjs1.client.elements.electronics.misc.CustomCompositeChipElm;
-import com.lushprojects.circuitjs1.client.elements.electronics.misc.CustomCompositeElm;
-import com.lushprojects.circuitjs1.client.util.Locale;
+
+import com.google.gwt.canvas.client.Canvas;
+import com.google.gwt.canvas.dom.client.Context2d;
+import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.MouseDownEvent;
 import com.google.gwt.event.dom.client.MouseDownHandler;
@@ -51,11 +37,22 @@ import com.google.gwt.event.dom.client.MouseUpEvent;
 import com.google.gwt.event.dom.client.MouseUpHandler;
 import com.google.gwt.event.logical.shared.ValueChangeEvent;
 import com.google.gwt.event.logical.shared.ValueChangeHandler;
-import com.google.gwt.canvas.client.Canvas;
-import com.google.gwt.canvas.dom.client.Context2d;
-import com.google.gwt.event.dom.client.ClickEvent;
+import com.google.gwt.user.client.Window;
+import com.google.gwt.user.client.ui.Button;
+import com.google.gwt.user.client.ui.HasHorizontalAlignment;
+import com.google.gwt.user.client.ui.HorizontalPanel;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.TextBox;
+import com.google.gwt.user.client.ui.VerticalPanel;
+import com.lushprojects.circuitjs1.client.CirSim;
+import com.lushprojects.circuitjs1.client.CustomCompositeModel;
+import com.lushprojects.circuitjs1.client.elements.ChipElm;
+import com.lushprojects.circuitjs1.client.elements.ChipElm.Pin;
+import com.lushprojects.circuitjs1.client.elements.electronics.misc.CustomCompositeChipElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.misc.CustomCompositeElm;
+import com.lushprojects.circuitjs1.client.util.Graphics;
+import com.lushprojects.circuitjs1.client.util.Locale;
+import com.lushprojects.circuitjs1.client.util.Rectangle;
 
 public class EditCompositeModelDialog extends Dialog implements MouseDownHandler, MouseMoveHandler, MouseUpHandler, MouseOutHandler, MouseOverHandler {
 	
@@ -68,40 +65,37 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 	
 	public void setModel(CustomCompositeModel m) { model = m; }
 	
-        boolean createModel() {
+        public boolean createModel() {
             HashSet<Integer> nodeSet = new HashSet<Integer>();
-			model = CirSim.getInstance().getExportCompositeActions().getCircuitAsComposite();
+			model = CirSim.getInstance().getCircuitAsCompositeForUi();
             if (model == null)
         	return false;
-            if (model.extList.size() == 0) {
+            if (model.getExternalPinCount() == 0) {
         	Window.alert(Locale.LS("Device has no external inputs/outputs!"));
         	return false;
             }
-            Collections.sort(model.extList, new Comparator<ExtListEntry>() {
-        	public int compare(ExtListEntry a, ExtListEntry b) {
-        	    return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-        	}
-            });
+            model.sortExternalPinsByNameForUi();
             int i;
-            int postCount = model.extList.size();
+            int postCount = model.getExternalPinCount();
             int sideCounts[] = new int[] { 0, 0, 0, 0 };
             for (i = 0; i != postCount; i++) {
-        	ExtListEntry pin = model.extList.get(i);
-                sideCounts[pin.side] += 1;
+                int side = model.getExternalPinSide(i);
+                sideCounts[side] += 1;
 
-        	if (nodeSet.contains(pin.node)) {
+        	int node = model.getExternalPinNode(i);
+        	if (nodeSet.contains(node)) {
         	    Window.alert(Locale.LS("Can't have two input/output nodes connected!"));
         	    return false;
         	}
-        	nodeSet.add(pin.node);
+        	nodeSet.add(node);
             }
 
             int xOffsetLeft = (sideCounts[ChipElm.SIDE_W] > 0) ? 1 : 0;
             int xOffsetRight = (sideCounts[ChipElm.SIDE_E] > 0) ? 1 : 0;
             for (i = 0; i != postCount; i++) {
-                ExtListEntry pin = model.extList.get(i);
-                if (pin.side == ChipElm.SIDE_N || pin.side == ChipElm.SIDE_S) {
-                    pin.pos += xOffsetLeft;
+                int side = model.getExternalPinSide(i);
+                if (side == ChipElm.SIDE_N || side == ChipElm.SIDE_S) {
+                    model.offsetExternalPinPosForUi(i, xOffsetLeft);
                 }
             }
 
@@ -109,10 +103,12 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
             int minWidth = 2;
             int pinsNS = Math.max(sideCounts[ChipElm.SIDE_N], sideCounts[ChipElm.SIDE_S]);
             int pinsWE = Math.max(sideCounts[ChipElm.SIDE_W], sideCounts[ChipElm.SIDE_E]);
-            model.sizeX = Math.max(minWidth, pinsNS + xOffsetLeft + xOffsetRight);
-            model.sizeY = Math.max(minHeight, pinsWE);
+            model.setSizeForUi(
+		Math.max(minWidth, pinsNS + xOffsetLeft + xOffsetRight),
+		Math.max(minHeight, pinsWE)
+            );
 
-			model.modelCircuit = CirSim.getInstance().getCircuitIOService().dumpCircuit();
+			model.setModelCircuitForUi(CirSim.getInstance().dumpCircuitForUi());
             return true;
         }
         
@@ -127,12 +123,10 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 
 	public void createDialog() {
 		Button okButton;
-		Anchor a;
 		vp=new VerticalPanel();
 		setWidget(vp);
 		setText(Locale.LS("Edit Subcircuit Pin Layout"));
 		vp.add(new Label(Locale.LS("Drag the pins to the desired position")));
-		Date date = new Date();
 
 		Canvas canvas = Canvas.createIfSupported();
 		canvas.setWidth("400 px");
@@ -140,7 +134,7 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 		canvas.setCoordinateSpaceWidth(400);
 		canvas.setCoordinateSpaceHeight(400);
 		vp.add(canvas);
-		CirSimPlatformInterop.installTouchHandlers(null, canvas.getCanvasElement());
+		CirSim.getInstance().installTouchHandlersForUi(canvas.getCanvasElement());
 		context = canvas.getContext2d();
 		
 		chip = new CustomCompositeChipElm(50, 50);
@@ -149,7 +143,7 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 		selectedPin = -1;
 		createPinsFromModel();
 		
-		if (model.name == null) {
+		if (!model.hasNameForUi()) {
 		    vp.add(new Label(Locale.LS("Model Name")));
 		    modelNameTextBox = new TextBox();
 		    vp.add(modelNameTextBox);
@@ -196,12 +190,12 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 		labelCheck.setState(model.showLabel());
 		labelCheck.addClickHandler(new ClickHandler() {
 		    public void onClick(ClickEvent event) {
-			model.setShowLabel(labelCheck.getValue());
+			model.setShowLabelForUi(labelCheck.getValue());
 			drawChip();
 		    }
 		});
 		vp.add(saveCheck = new Checkbox(Locale.LS("Save Across Sessions")));
-		saveCheck.setState(model.isSaved());
+		saveCheck.setState(model.isSavedForUi());
 	
                 canvas.addMouseDownHandler(this);
                 canvas.addMouseUpHandler(this);
@@ -217,7 +211,7 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
                 hp.add(okButton = new Button(Locale.LS("OK")));
                 hp.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_RIGHT);
                 Button cancelButton;
-		if (model.name == null) {
+		if (!model.hasNameForUi()) {
 		    hp.add(cancelButton = new Button(Locale.LS("Cancel")));
 		    cancelButton.addClickHandler(new ClickHandler() {
 			public void onClick(ClickEvent event) {
@@ -234,14 +228,13 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 	}
 	
 	void createPinsFromModel() {
-	    postCount = model.extList.size();
+	    postCount = model.getExternalPinCount();
 	    chip.allocPins(postCount);
-	    chip.sizeX = model.sizeX;
-	    chip.sizeY = model.sizeY;
+	    chip.sizeX = model.getSizeX();
+	    chip.sizeY = model.getSizeY();
 	    for (int i = 0; i != postCount; i++) {
-		ExtListEntry pin = model.extList.get(i);
-		chip.setPin(i, pin.pos, pin.side, pin.name);
-		chip.volts[i] = 0;
+		chip.setPin(i, model.getExternalPinPos(i), model.getExternalPinSide(i), model.getExternalPinName(i));
+		chip.setPinVoltage(i, 0);
 		if (i == selectedPin)
 		    chip.pins[i].selected = true;
 	    }
@@ -255,9 +248,9 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 		    Window.alert(Locale.LS("Please enter a model name."));
 		    return;
 		}
-		model.setName(CustomCompositeElm.lastModelName = name);
+		model.setNameForUi(CustomCompositeElm.lastModelName = name);
 	    }
-	    model.setSaved(saveCheck.getState());
+	    model.setSavedForUi(saveCheck.getState());
 	    CirSim.getInstance().updateModels();
 	    CirSim.getInstance().needAnalyze(); // will get singular matrix if we don't do this
 	    closeDialog();
@@ -271,11 +264,11 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 	    double scalew = context.getCanvas().getWidth()  / (double)(chipBounds.width + chipBounds.x*2);
 	    double scaleh = context.getCanvas().getHeight() / (double)(chipBounds.height + chipBounds.y*2);
 	    scale = 1/Math.min(scalew, scaleh);
-		context.setFillStyle(CirSim.getInstance().getStatusInfoRenderer().getBackgroundColor().getHexValue());
+		context.setFillStyle(CirSim.getInstance().getStatusBackgroundColorHexForUi());
 		context.setTransform(1, 0, 0, 1, 0, 0);
 	    context.fillRect(0, 0, context.getCanvas().getWidth(), context.getCanvas().getHeight());
 	    context.setTransform(1/scale, 0, 0, 1/scale, 0, 0);
-	    chip.setLabel(!labelCheck.getValue() ? null : (modelNameTextBox != null) ? modelNameTextBox.getText() : model.name);
+	    chip.setLabel(!labelCheck.getValue() ? null : (modelNameTextBox != null) ? modelNameTextBox.getText() : model.getName());
 	    chip.drawChipForComposite(g);
 	}
 	
@@ -291,8 +284,7 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 	    }
 	    if (chip.sizeX + dx < 1 || chip.sizeY + dy < 1)
 		return;
-	    model.sizeX += dx;
-	    model.sizeY += dy;
+	    model.adjustSizeForUi(dx, dy);
 	    createPinsFromModel();
 	    drawChip();
 	}
@@ -324,16 +316,13 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 		int pos[] = new int[2];
 		if (!chip.getPinPosForLayout((int)(x*scale), (int)(y*scale), selectedPin, pos))
 		    return;
-		ExtListEntry p = model.extList.get(selectedPin);
+		int currentPos = model.getExternalPinPos(selectedPin);
+		int currentSide = model.getExternalPinSide(selectedPin);
 		int pn = chip.getOverlappingPinForLayout(pos[0], pos[1], selectedPin);
 		if (pn != -1) {
-		    // swap positions with overlapping pin
-		    ExtListEntry p2 = model.extList.get(pn);
-		    p2.pos = p.pos;
-		    p2.side = p.side;
+		    model.setExternalPinPosAndSideForUi(pn, currentPos, currentSide);
 		}
-		p.pos  = pos[0];
-		p.side = pos[1];
+		model.setExternalPinPosAndSideForUi(selectedPin, pos[0], pos[1]);
 		createPinsFromModel();
 		drawChip();
 	    } else {

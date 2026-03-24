@@ -17,15 +17,13 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
 import com.lushprojects.circuitjs1.client.*;
 
 import com.lushprojects.circuitjs1.client.util.*;
 
 import com.lushprojects.circuitjs1.client.elements.ActionScheduler;
-import com.lushprojects.circuitjs1.client.ui.ExportAsUrlDialog;
-
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 import com.google.gwt.core.client.GWT;
@@ -206,8 +204,8 @@ public class FloatingControlPanel {
         
         // Lock button - toggle edit lock
         createIconButton("cirjsicon-lock-open", "Toggle Edit Lock", e -> {
-            boolean locked = !sim.noEditCheckItem.getState();
-            sim.noEditCheckItem.setState(locked);
+            boolean locked = !sim.isEditingLocked();
+            sim.setEditingLocked(locked);
             ((Button) e.getSource()).setHTML(locked 
                 ? "<i class=\"cirjsicon-lock\"></i>" 
                 : "<i class=\"cirjsicon-lock-open\"></i>");
@@ -237,11 +235,11 @@ public class FloatingControlPanel {
     /** Share the circuit by creating a short URL and copying to clipboard */
     private void shareCircuit(Button shareButton) {
         // Get the circuit dump
-        String dump = sim.getCircuitIOService().dumpCircuit();
+        String dump = sim.dumpCircuitForUi();
         
         // Build the URL (same as ExportAsUrlDialog)
         String[] start = Location.getHref().split("\\?");
-        if (sim.getPlatformInterop().isElectron())
+        if (sim.isElectron())
             start[0] = "https://johnnewto.github.io/circuitjs1/circuitjs.html";
         String query = "?ctz=" + compress(dump) + "&editable=false";
         String requrl = URL.encodeQueryString(query);

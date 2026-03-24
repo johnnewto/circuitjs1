@@ -6,6 +6,10 @@
 
 package com.lushprojects.circuitjs1.client.elements.math;
 
+import com.lushprojects.circuitjs1.client.ui.EditInfo;
+
+import com.lushprojects.circuitjs1.client.ui.Checkbox;
+
 import com.lushprojects.circuitjs1.client.elements.Expr;
 import com.lushprojects.circuitjs1.client.elements.ExprParser;
 import com.lushprojects.circuitjs1.client.elements.ExprState;

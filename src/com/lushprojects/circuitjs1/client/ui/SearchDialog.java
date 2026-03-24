@@ -103,7 +103,7 @@ public class SearchDialog extends Dialog {
 		textBox.setFocus(true);
 	}
 	
-	void apply() {
+	public void apply() {
 	    String s = listBox.getSelectedItemText();
 	    sim.executeMainMenuItemByName(s);
 	    closeDialog();

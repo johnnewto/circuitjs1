@@ -17,15 +17,13 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
-
-import com.lushprojects.circuitjs1.client.*;
-
+package com.lushprojects.circuitjs1.client.ui;
 
 import com.google.gwt.event.dom.client.ChangeEvent;
 import com.google.gwt.event.dom.client.ChangeHandler;
 import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.FileUpload;
+import com.lushprojects.circuitjs1.client.LoadFile;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 import jsinterop.annotations.JsMethod;

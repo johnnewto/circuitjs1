@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client.elements.electronics.passives;
 
+import com.lushprojects.circuitjs1.client.ui.EditInfo;
+
 import com.google.gwt.canvas.dom.client.CanvasGradient;
 import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;

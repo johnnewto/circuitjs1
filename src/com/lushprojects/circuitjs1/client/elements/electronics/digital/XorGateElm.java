@@ -19,7 +19,7 @@
 
 package com.lushprojects.circuitjs1.client.elements.electronics.digital;
 
-import com.lushprojects.circuitjs1.client.EditInfo;
+import com.lushprojects.circuitjs1.client.ui.EditInfo;
 import com.lushprojects.circuitjs1.client.util.StringTokenizer;
 
 public class XorGateElm extends OrGateElm {

@@ -43,8 +43,10 @@ import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
 import com.lushprojects.circuitjs1.client.ui.EconomicsToolbar;
 import com.lushprojects.circuitjs1.client.ui.CheckboxMenuItem;
 import com.lushprojects.circuitjs1.client.ui.ExportAsLocalFileDialog;
+import com.lushprojects.circuitjs1.client.ui.FloatingControlPanel;
 import com.lushprojects.circuitjs1.client.ui.ImportFromDropboxDialog;
 import com.lushprojects.circuitjs1.client.ui.ScopePopupMenu;
+import com.lushprojects.circuitjs1.client.ui.Scrollbar;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 final class CirSimInitializer {

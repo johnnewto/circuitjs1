@@ -18,7 +18,7 @@
 */
 
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
 import com.lushprojects.circuitjs1.client.*;
 
@@ -52,7 +52,8 @@ import jsinterop.annotations.JsPackage;
 public class EditDialog extends Dialog {
 	Editable elm;
 	CirSim cframe;
-	Button applyButton, okButton, cancelButton;
+	protected Button applyButton;
+	Button okButton, cancelButton;
 	EditInfo einfos[];
 	int einfocount;
 	final int barmax = 1000;

@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.ui.EditInfo;
+
 
 import com.lushprojects.circuitjs1.client.util.*;
 
@@ -70,10 +72,16 @@ import com.lushprojects.circuitjs1.client.core.SimulationTimingState;
 import com.lushprojects.circuitjs1.client.core.SolverMatrixState;
 import com.lushprojects.circuitjs1.client.io.ImportExportHelper;
 import com.lushprojects.circuitjs1.client.ui.CheckboxMenuItem;
+import com.lushprojects.circuitjs1.client.ui.EditDialog;
+import com.lushprojects.circuitjs1.client.ui.EditDialogActions;
+import com.lushprojects.circuitjs1.client.ui.FloatingControlPanel;
 import com.lushprojects.circuitjs1.client.ui.Toolbar;
 import com.lushprojects.circuitjs1.client.ui.InfoDialogActions;
 import com.lushprojects.circuitjs1.client.ui.MathElementsTestDialog;
+import com.lushprojects.circuitjs1.client.ui.MenuUiState;
 import com.lushprojects.circuitjs1.client.ui.ScopeViewerDialog;
+import com.lushprojects.circuitjs1.client.ui.Scrollbar;
+import com.lushprojects.circuitjs1.client.ui.ScrollValuePopup;
 import com.lushprojects.circuitjs1.client.ui.TableElementsTestDialog;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import jsinterop.annotations.JsFunction;
@@ -592,6 +600,10 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
         return q % x;
     }
 
+	public static int getVerticalPanelWidthForUi() {
+	    return VERTICALPANELWIDTH;
+	}
+
 	public static float devicePixelRatio() {
 		double ratio = GlobalWindowLike.getDevicePixelRatio();
 		return (float) (ratio > 0 ? ratio : 1.0);
@@ -687,6 +699,14 @@ public CirSim() {
     public boolean isAddElementModeForUi() { return mouseInputHandler.getMouseMode() == MODE_ADD_ELM; }
     public void setCursorStyleForUi(String cursorStyle) { mouseInputHandler.setCursorStyle(cursorStyle); }
     public double getWheelSensitivity() { return wheelSensitivity; }
+    public void setWheelSensitivityForUi(double wheelSensitivity) { this.wheelSensitivity = wheelSensitivity; }
+    public double getMinFrameRateForUi() { return minFrameRate; }
+    public void setMinFrameRateForUi(double minFrameRate) { this.minFrameRate = minFrameRate; }
+    public int getGraphicsUpdateIntervalForUi() { return graphicsUpdateInterval; }
+    public void setGraphicsUpdateIntervalForUi(int graphicsUpdateInterval) { this.graphicsUpdateInterval = graphicsUpdateInterval; }
+    public boolean isShowElectronicsCircuitsEnabledForUi() { return showElectronicsCircuits; }
+    public void setShowElectronicsCircuitsEnabledForUi(boolean showElectronicsCircuits) { this.showElectronicsCircuits = showElectronicsCircuits; }
+    public void setCacheBustedUrlsEnabledForUi(boolean enableCacheBustedUrls) { this.enableCacheBustedUrls = enableCacheBustedUrls; }
     public boolean isDcAnalysisForUi() { return dcAnalysisFlag; }
     public java.util.Random getRandom() { return random; }
     public boolean isShowResistanceInVoltageSources() { return showResistanceInVoltageSources; }
@@ -726,12 +746,24 @@ public CirSim() {
 	    circuitIOService.readCircuit(circuitText);
 	}
 
-	public String dumpCircuitForUi() {
+    public String dumpCircuitForUi() {
 	    return circuitIOService.dumpCircuit();
+	}
+
+	public void installTouchHandlersForUi(CanvasElement element) {
+	    CirSimPlatformInterop.installTouchHandlers(null, element);
+	}
+
+	public String getStatusBackgroundColorHexForUi() {
+	    return statusInfoRenderer.getBackgroundColor().getHexValue();
 	}
 
 	ExportCompositeActions getExportCompositeActions() {
 	    return exportCompositeActions;
+	}
+
+	public CustomCompositeModel getCircuitAsCompositeForUi() {
+	    return exportCompositeActions.getCircuitAsComposite();
 	}
 
 	public Canvas getCircuitAsCanvasForExport(int type) {
@@ -1135,12 +1167,37 @@ public CirSim() {
 		return platformInterop.isElectron();
 	}
 
+	public java.util.Vector<Adjustable> getAdjustablesForUi() {
+	    return adjustables;
+	}
+
 	UndoRedoManager getUndoRedoManager() {
 	    return undoRedoManager;
 	}
 
 	public void pushUndoForUi() {
 	    undoRedoManager.pushUndo();
+	}
+
+	public boolean isEditingLocked() {
+	    return noEditCheckItem != null && noEditCheckItem.getState();
+	}
+
+	public void setEditingLocked(boolean locked) {
+	    if (noEditCheckItem != null)
+		noEditCheckItem.setState(locked);
+	}
+
+	public void copyImageToClipboardForUi() {
+	    doImageToClipboardCore();
+	}
+
+	public void alertOrWarnForUi(String message) {
+	    alertOrWarn(message);
+	}
+
+	public static int cacImageTypeForUi() {
+	    return CAC_IMAGE;
 	}
 
     void launchRunnerFromQuery(QueryParameters qp) {
@@ -2115,6 +2172,10 @@ public CirSim() {
 	    adjustables.get(i).setMouseElm(ce);
 	updateHighlightedNode(ce);
     }
+
+	public void setMouseElmForUi(CircuitElm ce) {
+	    setMouseElm(ce);
+	}
 
     private void updateHighlightedNode(CircuitElm ce) {
 	// Track highlighted MNA node for cross-element highlighting.

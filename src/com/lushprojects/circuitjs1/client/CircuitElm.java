@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.ui.EditInfo;
+
 
 import com.lushprojects.circuitjs1.client.util.*;
 
@@ -244,6 +246,22 @@ public abstract class CircuitElm implements Editable {
 	    }
 	}
 
+    }
+
+    public static int getDecimalDigitsForUi() {
+	return decimalDigits;
+    }
+
+    public static int getShortDecimalDigitsForUi() {
+	return shortDecimalDigits;
+    }
+
+    public static void setDecimalDigitsForUi(int num, boolean shortFormat, boolean save) {
+	setDecimalDigits(num, shortFormat, save);
+    }
+
+    public static void setColorScaleForUi() {
+	setColorScale();
     }
     
     // create new element with one post at xx,yy, to be dragged out by user
@@ -1398,6 +1416,10 @@ public abstract class CircuitElm implements Editable {
     
     boolean isMouseElm() {
 	return mouseElmRef==this; 
+    }
+
+    public boolean isMouseElmForUi() {
+	return isMouseElm();
     }
     
     protected void updateModels() {}

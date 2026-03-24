@@ -1,6 +1,10 @@
 package com.lushprojects.circuitjs1.client.elements.electronics.misc;
 
-import com.lushprojects.circuitjs1.client.EditCompositeModelDialog;
+import com.lushprojects.circuitjs1.client.ui.EditInfo;
+
+import com.lushprojects.circuitjs1.client.ui.Choice;
+
+import com.lushprojects.circuitjs1.client.ui.EditCompositeModelDialog;
 
 import com.lushprojects.circuitjs1.client.elements.ChipElm;
 

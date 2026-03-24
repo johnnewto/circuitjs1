@@ -17,12 +17,13 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
-
-import com.lushprojects.circuitjs1.client.*;
+package com.lushprojects.circuitjs1.client.ui;
 
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.VerticalPanel;
+import com.lushprojects.circuitjs1.client.Adjustable;
+import com.lushprojects.circuitjs1.client.CirSim;
+import com.lushprojects.circuitjs1.client.CircuitElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.google.gwt.user.client.ui.HorizontalPanel;
 import com.google.gwt.event.dom.client.ClickHandler;
@@ -38,7 +39,7 @@ import com.google.gwt.event.shared.GwtEvent;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
 
 // class EditDialog extends Dialog implements AdjustmentListener, ActionListener, ItemListener {
-class SliderDialog extends Dialog  {
+public class SliderDialog extends Dialog  {
 	CircuitElm elm;
 	CirSim sim;
 	Button applyButton, okButton, cancelButton;
@@ -49,7 +50,7 @@ class SliderDialog extends Dialog  {
 	HorizontalPanel hp;
 	NumberFormat noCommaFormat;
 
-	SliderDialog(CircuitElm ce, CirSim f) {
+	public SliderDialog(CircuitElm ce, CirSim f) {
 		super(); // Do we need this?
 		setText(Locale.LS("Add Sliders"));
 		sim = f;
@@ -121,7 +122,7 @@ class SliderDialog extends Dialog  {
 			});
 
 			if (adj != null) {
-			    if (!adj.sliderBeingShared()) {
+			    if (!adj.sliderBeingSharedForUi()) {
 				// add popup to select which slider to share
 				Choice ch = ei.choice = new Choice();
 				ei.choice.addChangeHandler( new ChangeHandler() {
@@ -131,16 +132,16 @@ class SliderDialog extends Dialog  {
 				});
 				ch.add("New Slider");
 				int j;
-				for (j = 0; j != sim.adjustables.size(); j++) {
-				    Adjustable adji = sim.adjustables.get(j);
+				for (j = 0; j != sim.getAdjustablesForUi().size(); j++) {
+				    Adjustable adji = sim.getAdjustablesForUi().get(j);
 				    // don't share with an object sharing with someone else
-				    if (adji.sharedSlider != null)
+				    if (adji.getSharedSliderForUi() != null)
 					break;
 				    // don't share with ourselves
 				    if (adji == adj)
 					continue;
-				    ch.add("Share Slider: " + adji.sliderText);
-				    if (adji == adj.sharedSlider)
+				    ch.add("Share Slider: " + adji.getSliderTextForUi());
+				    if (adji == adj.getSharedSliderForUi())
 					ch.setSelectedIndex(ch.getItemCount()-1);
 				}
 				vp.insert(ch, idx++);
@@ -152,7 +153,7 @@ class SliderDialog extends Dialog  {
 			    ei.maxBox = new TextBox();
 
 			    vp.insert(ei.maxBox, idx++);
-			    if (adj.sharedSlider == null) {
+			    if (adj.getSharedSliderForUi() == null) {
 					// select label if this is a new slider
 					// add the element name if it exists
 					vp.insert(new Label(Locale.LS("Label")), idx++);
@@ -162,7 +163,7 @@ class SliderDialog extends Dialog  {
 
 //					String labelText = adj.sliderText;
 					if (labletext == null || labletext.equals("")) {
-                        labletext = adj.sliderText;
+                        labletext = adj.getSliderTextForUi();
 					}
                     ei.labelBox.setText(labletext);
 					vp.insert(ei.labelBox, idx++);
@@ -170,16 +171,16 @@ class SliderDialog extends Dialog  {
 					// Add step increment field
 					vp.insert(new Label(Locale.LS("Step Increment (0=continuous)")), idx++);
 					ei.stepsBox = new TextBox();
-					ei.stepsBox.setText(String.valueOf(adj.stepIncrement));
+					ei.stepsBox.setText(String.valueOf(adj.getStepIncrementForUi()));
 					vp.insert(ei.stepsBox, idx++);
 			    }
 			    // Calculate default min/max values for display
-			    double displayMinValue = adj.minValue;
-			    double displayMaxValue = adj.maxValue;
+			    double displayMinValue = adj.getMinValueForUi();
+			    double displayMaxValue = adj.getMaxValueForUi();
 			    
 			    // Only calculate new defaults if this is a newly created slider with default values
 			    // Check if we have the default 0 to 1 range that indicates a new slider
-			    if (adj.minValue == 0 && adj.maxValue == 1) {
+			    if (adj.getMinValueForUi() == 0 && adj.getMaxValueForUi() == 1) {
 				// If this is a newly created slider with default values (0 and 1),
 				// calculate better defaults based on current value
 				double currentValue = ei.value;
@@ -222,7 +223,7 @@ class SliderDialog extends Dialog  {
 	    return sim.findAdjustable(elm, item);
 	}
 
-	void apply() {
+	public void apply() {
 		int i;
 		for (i = 0; i != einfocount; i++) {
 		    Adjustable adj = findAdjustable(i);
@@ -232,12 +233,12 @@ class SliderDialog extends Dialog  {
 //		    if (ei.labelBox == null)  // haven't created UI yet?
 //			continue;
 		    try {
-			adj.sliderText = ei.labelBox == null ? "" : ei.labelBox.getText();
-			CirSim.console("slidertext " + adj.sliderText + " " + ei.labelBox);
-			if (adj.label != null) {
-			    EditInfo labelEi = adj.elm.getEditInfo(adj.editItem);
-			    String valueStr = labelEi != null ? adj.getFormattedValue(labelEi, labelEi.value) : "";
-			    adj.updateLabelHTML(adj.sliderText, valueStr);
+			adj.setSliderTextForUi(ei.labelBox == null ? "" : ei.labelBox.getText());
+			CirSim.console("slidertext " + adj.getSliderTextForUi() + " " + ei.labelBox);
+			if (adj.hasLabelForUi()) {
+			    EditInfo labelEi = adj.getEditInfoForUi();
+			    String valueStr = labelEi != null ? adj.getFormattedValueForUi(labelEi, labelEi.value) : "";
+			    adj.updateLabelHTMLForUi(adj.getSliderTextForUi(), valueStr);
 			}
 			
 			// Parse min value with validation
@@ -245,7 +246,7 @@ class SliderDialog extends Dialog  {
 			if (!minText.isEmpty()) {
 			    try {
 				double d = EditDialog.parseUnits(minText);
-				adj.minValue = d;
+				adj.setMinValueForUi(d);
 			    } catch (Exception e) {
 				CirSim.console("Invalid min value: " + minText);
 				// Keep existing minValue if parsing fails
@@ -257,7 +258,7 @@ class SliderDialog extends Dialog  {
 			if (!maxText.isEmpty()) {
 			    try {
 				double d = EditDialog.parseUnits(maxText);
-				adj.maxValue = d;
+				adj.setMaxValueForUi(d);
 			    } catch (Exception e) {
 				CirSim.console("Invalid max value: " + maxText);
 				// Keep existing maxValue if parsing fails
@@ -267,16 +268,16 @@ class SliderDialog extends Dialog  {
 			// Parse step increment
 			if (ei.stepsBox != null) {
 			    try {
-				adj.stepIncrement = Double.parseDouble(ei.stepsBox.getText());
-				if (adj.stepIncrement < 0)
-				    adj.stepIncrement = 0;
+				adj.setStepIncrementForUi(Double.parseDouble(ei.stepsBox.getText()));
+				if (adj.getStepIncrementForUi() < 0)
+				    adj.setStepIncrementForUi(0);
 			    } catch (Exception e) {
-				adj.stepIncrement = 0;
+				adj.setStepIncrementForUi(0);
 			    }
 			}
 			
 			// Only update slider value if min/max are valid
-			if (adj.minValue < adj.maxValue) {
+			if (adj.getMinValueForUi() < adj.getMaxValueForUi()) {
 			    adj.setSliderValue(ei.value);
 			} else {
 			    CirSim.console("Skipping slider update: invalid min/max range");
@@ -296,14 +297,14 @@ class SliderDialog extends Dialog  {
 		if (ei.checkbox == src) {
 		    apply();
 		    if (ei.checkbox.getState()) {
-			Adjustable adj = new Adjustable(elm, i);
-			adj.sliderText = ei.name.replaceAll(" \\(.*\\)$", "");
-			adj.createSlider(sim, ei.value);
-			sim.adjustables.add(adj);
+			Adjustable adj = Adjustable.createForUi(elm, i);
+			adj.setSliderTextForUi(ei.name.replaceAll(" \\(.*\\)$", ""));
+			adj.createSliderForUi(sim, ei.value);
+			sim.getAdjustablesForUi().add(adj);
 		    } else {
 			Adjustable adj = findAdjustable(i);
-			adj.deleteSlider(sim);
-			sim.adjustables.remove(adj);
+			adj.deleteSliderForUi(sim);
+			sim.getAdjustablesForUi().remove(adj);
 		    }
 		    changed = true;
 		}
@@ -312,22 +313,22 @@ class SliderDialog extends Dialog  {
 		    Adjustable adj = findAdjustable(i);
 		    if (ei.choice.getSelectedIndex() == 0) {
 			// new slider
-			adj.sharedSlider = null;
-			if (adj.sliderText == null || adj.sliderText.length() == 0)
-			    adj.sliderText = ei.name.replaceAll(" \\(.*\\)$", "");
-			adj.createSlider(sim, ei.value);
+			adj.setSharedSliderForUi(null);
+			if (adj.getSliderTextForUi() == null || adj.getSliderTextForUi().length() == 0)
+			    adj.setSliderTextForUi(ei.name.replaceAll(" \\(.*\\)$", ""));
+			adj.createSliderForUi(sim, ei.value);
 		    } else {
 			int j;
 			int ct = 0;
-			for (j = 0; j != sim.adjustables.size(); j++) {
-			    Adjustable adji = sim.adjustables.get(j);
-			    if (adji.sharedSlider != null)
+			for (j = 0; j != sim.getAdjustablesForUi().size(); j++) {
+			    Adjustable adji = sim.getAdjustablesForUi().get(j);
+			    if (adji.getSharedSliderForUi() != null)
 				break;
 			    if (adji == adj)
 				continue;
 			    if (++ct == ei.choice.getSelectedIndex()) {
-				adj.sharedSlider = adji;
-				adj.deleteSlider(sim);
+				adj.setSharedSliderForUi(adji);
+				adj.deleteSliderForUi(sim);
 			    }
 			}
 		    }
@@ -335,7 +336,7 @@ class SliderDialog extends Dialog  {
 		}
 	    }
 	    if (changed) {
-		Adjustable.reorderAdjustables();
+		Adjustable.reorderAdjustablesForUi();
 		clearDialog();
 		buildDialog();
 	    }

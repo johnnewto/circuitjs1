@@ -17,14 +17,14 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
-
-import com.lushprojects.circuitjs1.client.*;
-
-import com.lushprojects.circuitjs1.client.util.*;
+package com.lushprojects.circuitjs1.client.ui;
 
 import com.google.gwt.storage.client.Storage;
 import com.google.gwt.user.client.Window;
+import com.lushprojects.circuitjs1.client.CirSim;
+import com.lushprojects.circuitjs1.client.CircuitElm;
+import com.lushprojects.circuitjs1.client.Editable;
+import com.lushprojects.circuitjs1.client.util.Color;
 import com.lushprojects.circuitjs1.client.elements.electronics.measurement.AudioOutputElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
@@ -71,20 +71,20 @@ public class EditOptions implements Editable {
 		if (n == 7)
 		    return new EditInfo("Current Color", CircuitElm.currentColor.getHexValue());
 		if (n == 8)
-		    return new EditInfo("# of Decimal Digits (short format)", CircuitElm.shortDecimalDigits);
+		    return new EditInfo("# of Decimal Digits (short format)", CircuitElm.getShortDecimalDigitsForUi());
 		if (n == 9)
-		    return new EditInfo("# of Decimal Digits (long format)", CircuitElm.decimalDigits);
+		    return new EditInfo("# of Decimal Digits (long format)", CircuitElm.getDecimalDigitsForUi());
 		if (n == 10) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
 		    ei.checkbox = new Checkbox("Developer Mode", sim.developerMode);
 		    return ei;
 		}
 		if (n == 11)
-		    return new EditInfo("Minimum Target Frame Rate", sim.minFrameRate);
+		    return new EditInfo("Minimum Target Frame Rate", sim.getMinFrameRateForUi());
 		if (n == 12)
-		    return new EditInfo("Mouse Wheel Sensitivity", sim.wheelSensitivity);
+		    return new EditInfo("Mouse Wheel Sensitivity", sim.getWheelSensitivity());
 		if (n == 13)
-		    return new EditInfo("Graphics Update Interval (frames)", sim.graphicsUpdateInterval, 1, 10).setDimensionless();
+		    return new EditInfo("Graphics Update Interval (frames)", sim.getGraphicsUpdateIntervalForUi(), 1, 10).setDimensionless();
 		if (n == 14)
 		    return new EditInfo("Convergence Check Threshold (subiterations)", sim.convergenceCheckThreshold, 0, 100).setDimensionless();
 		if (n == 15) {
@@ -102,12 +102,12 @@ public class EditOptions implements Editable {
 		}
 		if (n == 18) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
-		    ei.checkbox = new Checkbox("Show Electronics Circuits", sim.showElectronicsCircuits);
+		    ei.checkbox = new Checkbox("Show Electronics Circuits", sim.isShowElectronicsCircuitsEnabledForUi());
 		    return ei;
 		}
 		if (n == 19) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
-		    ei.checkbox = new Checkbox("Enable Cache-Busted URLs", sim.enableCacheBustedUrls);
+		    ei.checkbox = new Checkbox("Enable Cache-Busted URLs", sim.isCacheBustedUrlsEnabled());
 		    return ei;
 		}
 		if (n == 20) {
@@ -178,39 +178,39 @@ public class EditOptions implements Editable {
 		}
 		if (n == 3) {
 		    CircuitElm.positiveColor = setColor("positiveColor", ei, new Color("#0eb053"));
-		    CircuitElm.setColorScale();
+		    CircuitElm.setColorScaleForUi();
 		}
 		if (n == 4) {
 		    CircuitElm.negativeColor = setColor("negativeColor", ei, Color.red);
-		    CircuitElm.setColorScale();
+		    CircuitElm.setColorScaleForUi();
 		}
 		if (n == 5) {
 		    CircuitElm.neutralColor = setColor("neutralColor", ei, Color.gray);
-		    CircuitElm.setColorScale();
+		    CircuitElm.setColorScaleForUi();
 		}
 		if (n == 6)
 		    CircuitElm.selectColor = setColor("selectColor", ei, Color.cyan);
 		if (n == 7)
 		    CircuitElm.currentColor = setColor("currentColor", ei, Color.yellow);
 		if (n == 8)
-		    CircuitElm.setDecimalDigits((int)ei.value, true, true);
+		    CircuitElm.setDecimalDigitsForUi((int)ei.value, true, true);
 		if (n == 9)
-		    CircuitElm.setDecimalDigits((int)ei.value, false, true);
+		    CircuitElm.setDecimalDigitsForUi((int)ei.value, false, true);
 		if (n == 10)
 	            sim.developerMode = ei.checkbox.getState();
 		if (n == 11 && ei.value > 0)
-		    sim.minFrameRate = ei.value;
+		    sim.setMinFrameRateForUi(ei.value);
 		if (n == 12 && ei.value > 0) {
-		    sim.wheelSensitivity = ei.value;
+		    sim.setWheelSensitivityForUi(ei.value);
 		    Storage stor = Storage.getLocalStorageIfSupported();
 		    if (stor != null)
-			stor.setItem("wheelSensitivity", Double.toString(sim.wheelSensitivity));
+			stor.setItem("wheelSensitivity", Double.toString(sim.getWheelSensitivity()));
 		}
 		if (n == 13 && ei.value >= 1 && ei.value <= 10) {
-		    sim.graphicsUpdateInterval = (int)ei.value;
+		    sim.setGraphicsUpdateIntervalForUi((int)ei.value);
 		    Storage stor = Storage.getLocalStorageIfSupported();
 		    if (stor != null)
-			stor.setItem("graphicsUpdateInterval", Integer.toString(sim.graphicsUpdateInterval));
+			stor.setItem("graphicsUpdateInterval", Integer.toString(sim.getGraphicsUpdateIntervalForUi()));
 		}
 		if (n == 14 && ei.value >= 0)
 		    sim.convergenceCheckThreshold = (int)ei.value;
@@ -228,28 +228,28 @@ public class EditOptions implements Editable {
 		}
 		if (n == 17) {
 		    sim.equationTableNewtonJacobianEnabled = ei.checkbox.getState();
-		    sim.getPreferencesManager().setOptionInStorage("equationTableNewtonJacobianEnabled", sim.equationTableNewtonJacobianEnabled);
+		    setOptionInStorage("equationTableNewtonJacobianEnabled", sim.equationTableNewtonJacobianEnabled);
 		}
 		if (n == 18) {
 		    boolean newValue = ei.checkbox.getState();
-		    if (sim.showElectronicsCircuits != newValue) {
-			sim.showElectronicsCircuits = newValue;
-			sim.getPreferencesManager().setOptionInStorage("showElectronicsCircuits", sim.showElectronicsCircuits);
+		    if (sim.isShowElectronicsCircuitsEnabledForUi() != newValue) {
+			sim.setShowElectronicsCircuitsEnabledForUi(newValue);
+			setOptionInStorage("showElectronicsCircuits", sim.isShowElectronicsCircuitsEnabledForUi());
 			if (Window.confirm(Locale.LS("Must restart to reload circuit menu. Restart now?")))
 			    Window.Location.reload();
 		    }
 		}
 		if (n == 19) {
-		    sim.enableCacheBustedUrls = ei.checkbox.getState();
-		    sim.getPreferencesManager().setOptionInStorage("enableCacheBustedUrls", sim.enableCacheBustedUrls);
+		    sim.setCacheBustedUrlsEnabledForUi(ei.checkbox.getState());
+		    setOptionInStorage("enableCacheBustedUrls", sim.isCacheBustedUrlsEnabled());
 		}
 		if (n == 20) {
 		    sim.tableRenderCacheEnabled = ei.checkbox.getState();
-		    sim.getPreferencesManager().setOptionInStorage("tableRenderCacheEnabled", sim.tableRenderCacheEnabled);
+		    setOptionInStorage("tableRenderCacheEnabled", sim.tableRenderCacheEnabled);
 		}
 		if (n == 21) {
 		    sim.autoOpenModelInfoOnLoad = ei.checkbox.getState();
-		    sim.getPreferencesManager().setOptionInStorage("autoOpenModelInfoOnLoad", sim.autoOpenModelInfoOnLoad);
+		    setOptionInStorage("autoOpenModelInfoOnLoad", sim.autoOpenModelInfoOnLoad);
 		}
 		if (n == 22) {
 		    sim.adjustTimeStep = ei.checkbox.getState();
@@ -259,7 +259,7 @@ public class EditOptions implements Editable {
 		    sim.getTimingState().minTimeStep = ei.value;
 	}
 
-	void resetPreferences() {
+	public void resetPreferences() {
 	    if (!Window.confirm(Locale.LS("Reset all saved preferences and reload?")))
 		return;
 	    Storage stor = Storage.getLocalStorageIfSupported();
@@ -288,5 +288,12 @@ public class EditOptions implements Editable {
 	    if (stor != null)
 		stor.setItem(name, val);
 	    return new Color(val);
+	}
+
+	void setOptionInStorage(String key, boolean value) {
+	    Storage stor = Storage.getLocalStorageIfSupported();
+	    if (stor != null) {
+		stor.setItem(key, value ? "true" : "false");
+	    }
 	}
 };

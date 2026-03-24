@@ -27,6 +27,9 @@ import com.lushprojects.circuitjs1.client.elements.electronics.semiconductors.Tr
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.google.gwt.user.client.ui.CheckBox;
 import com.google.gwt.user.client.ui.RadioButton;
+import com.lushprojects.circuitjs1.client.ui.Dialog;
+import com.lushprojects.circuitjs1.client.ui.EditDialog;
+import com.lushprojects.circuitjs1.client.ui.Scrollbar;
 
 import java.util.Vector;
 
@@ -47,7 +50,7 @@ class ScopeCheckBox extends CheckBox {
 
 
 
-public class ScopePropertiesDialog extends Dialog implements ValueChangeHandler<Boolean> {
+public class ScopePropertiesDialogCore extends Dialog implements ValueChangeHandler<Boolean> {
 
 	
 Panel fp, channelButtonsp, channelSettingsp;
@@ -240,7 +243,7 @@ boolean maxScaleTextBoxHasFocus = false;
 	
     }
 
-	public ScopePropertiesDialog ( CirSim asim, Scope s) {
+	public ScopePropertiesDialogCore(CirSim asim, Scope s) {
 		super();
 		// We are going to try and keep the panel below the target height (defined to give some space)
 		int allowedHeight = Window.getClientHeight()*4/5;
@@ -732,7 +735,7 @@ boolean maxScaleTextBoxHasFocus = false;
 	    setScopeSpeedLabel();
 	}
 	
-	void refreshDraw() {
+	public void refreshDraw() {
 	    // Redraw for every step of the simulation (the simulation may run in the background of this
 	    // dialog and the scope may automatically rescale
 	    // Only update if dialog is showing and not in manual scale mode

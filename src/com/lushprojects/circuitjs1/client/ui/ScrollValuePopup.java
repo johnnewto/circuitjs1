@@ -17,10 +17,11 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
-import com.lushprojects.circuitjs1.client.*;
-
+import com.lushprojects.circuitjs1.client.CirSim;
+import com.lushprojects.circuitjs1.client.CircuitElm;
+import com.lushprojects.circuitjs1.client.ui.EditInfo;
 import com.lushprojects.circuitjs1.client.elements.electronics.passives.*;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
 import com.google.gwt.dom.client.NativeEvent;
@@ -72,7 +73,7 @@ public class ScrollValuePopup extends PopupPanel implements MouseOutHandler, Mou
 		deltaY=0;
 		scrollGain = 2;
 		sim=s;
-		sim.getUndoRedoManager().pushUndo();
+		sim.pushUndoForUi();
 		vp=new VerticalPanel();
 		setWidget(vp);
 		setupValues();
@@ -236,7 +237,7 @@ public class ScrollValuePopup extends PopupPanel implements MouseOutHandler, Mou
 
     public int getSelIdx() {
     	int r;
-    	r = currentidx + (int)Math.round(sim.wheelSensitivity*deltaY/scale);
+    	r = currentidx + (int)Math.round(sim.getWheelSensitivity()*deltaY/scale);
     	if (r<0)
     		r=0;
     	if (r>=nvalues)

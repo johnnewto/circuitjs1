@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client.elements.electronics.sources;
 
+import com.lushprojects.circuitjs1.client.ui.EditInfo;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import com.google.gwt.dom.client.Element;

@@ -35,6 +35,8 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.elements.EquationTableMarkdownDebugDialog;
 import com.lushprojects.circuitjs1.client.elements.economics.EquationTableElm.RowOutputMode;
 import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNodeElm;
+import com.lushprojects.circuitjs1.client.ui.Dialog;
+import com.lushprojects.circuitjs1.client.ui.EditDialog;
 import com.lushprojects.circuitjs1.client.ui.ReferenceDocs;
 import com.lushprojects.circuitjs1.client.util.Locale;
 

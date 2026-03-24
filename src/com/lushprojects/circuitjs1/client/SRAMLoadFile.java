@@ -22,6 +22,7 @@ package com.lushprojects.circuitjs1.client;
 
 
 import com.lushprojects.circuitjs1.client.elements.electronics.digital.SRAMElm;
+import com.lushprojects.circuitjs1.client.ui.EditDialogLoadFile;
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsPackage;

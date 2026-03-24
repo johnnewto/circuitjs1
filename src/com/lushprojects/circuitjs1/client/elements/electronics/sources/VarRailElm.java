@@ -19,8 +19,11 @@
 
 package com.lushprojects.circuitjs1.client.elements.electronics.sources;
 
+import com.lushprojects.circuitjs1.client.ui.EditInfo;
+
 import com.google.gwt.user.client.ui.Label;
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.ui.Scrollbar;
 import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.google.gwt.event.dom.client.MouseWheelEvent;

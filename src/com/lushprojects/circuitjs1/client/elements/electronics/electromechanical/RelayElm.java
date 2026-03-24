@@ -19,6 +19,12 @@
 
 package com.lushprojects.circuitjs1.client.elements.electronics.electromechanical;
 
+import com.lushprojects.circuitjs1.client.ui.EditInfo;
+
+import com.lushprojects.circuitjs1.client.ui.Choice;
+
+import com.lushprojects.circuitjs1.client.ui.Checkbox;
+
 import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 

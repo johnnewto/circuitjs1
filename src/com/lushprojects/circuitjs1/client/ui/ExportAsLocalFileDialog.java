@@ -163,7 +163,7 @@ public class ExportAsLocalFileDialog extends Dialog {
 		((ElementLike) (Object) elem).click();
 	}
 	
-	void apply() {
+	public void apply() {
 	    String fname = textBox.getText();
 	    if (!fname.contains("."))
 		fname += ".txt";

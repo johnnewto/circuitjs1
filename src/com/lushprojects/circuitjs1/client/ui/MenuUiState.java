@@ -1,15 +1,12 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
-import com.lushprojects.circuitjs1.client.*;
-
-
+import com.lushprojects.circuitjs1.client.CircuitElm;
 import java.util.Vector;
 
 import com.google.gwt.user.client.ui.MenuBar;
 import com.google.gwt.user.client.ui.MenuItem;
 import com.google.gwt.user.client.ui.PopupPanel;
-import com.lushprojects.circuitjs1.client.ui.CheckboxMenuItem;
-import com.lushprojects.circuitjs1.client.ui.ScopePopupMenu;
+
 public final class MenuUiState {
     public CircuitElm menuElm;
     public PopupPanel contextPanel;

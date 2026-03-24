@@ -6,6 +6,9 @@ import com.lushprojects.circuitjs1.client.elements.ActionTimeDialog;
 
 import com.google.gwt.user.client.ui.PopupPanel;
 import com.lushprojects.circuitjs1.client.ui.AboutBox;
+import com.lushprojects.circuitjs1.client.ui.Dialog;
+import com.lushprojects.circuitjs1.client.ui.EditDialog;
+import com.lushprojects.circuitjs1.client.ui.ScrollValuePopup;
 import com.lushprojects.circuitjs1.client.ui.VariableBrowserDialog;
 
 public final class CirSimDialogCoordinator {
@@ -23,7 +26,7 @@ public final class CirSimDialogCoordinator {
         return editDialog;
     }
 
-    static void setEditDialog(EditDialog value) {
+    public static void setEditDialog(EditDialog value) {
         editDialog = value;
     }
 
@@ -51,7 +54,7 @@ public final class CirSimDialogCoordinator {
         scrollValuePopup = value;
     }
 
-    static Dialog getDialogShowing() {
+    public static Dialog getDialogShowing() {
         return dialogShowing;
     }
 

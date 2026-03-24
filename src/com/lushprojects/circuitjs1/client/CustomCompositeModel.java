@@ -5,6 +5,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.elements.ChipElm;
 
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -266,6 +267,35 @@ public class CustomCompositeModel implements Comparable<CustomCompositeModel> {
 	return extList.get(index).name;
     }
 
+    public void sortExternalPinsByNameForUi() {
+	Collections.sort(extList, new Comparator<ExtListEntry>() {
+	    public int compare(ExtListEntry a, ExtListEntry b) {
+		return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+	    }
+	});
+    }
+
+    public void offsetExternalPinPosForUi(int index, int delta) {
+	extList.get(index).pos += delta;
+    }
+
+    public void setExternalPinPosAndSideForUi(int index, int pos, int side) {
+	ExtListEntry pin = extList.get(index);
+	pin.pos = pos;
+	pin.side = side;
+    }
+
+    public void swapExternalPinLayoutForUi(int indexA, int indexB) {
+	ExtListEntry a = extList.get(indexA);
+	ExtListEntry b = extList.get(indexB);
+	int tempPos = a.pos;
+	int tempSide = a.side;
+	a.pos = b.pos;
+	a.side = b.side;
+	b.pos = tempPos;
+	b.side = tempSide;
+    }
+
     public String getNodeList() {
 	return nodeList;
     }
@@ -277,9 +307,43 @@ public class CustomCompositeModel implements Comparable<CustomCompositeModel> {
     public String getModelCircuit() {
 	return modelCircuit;
     }
+
+    public void setModelCircuitForUi(String modelCircuit) {
+	this.modelCircuit = modelCircuit;
+    }
     
     public boolean canLoadModelCircuit() {
 	return modelCircuit != null && modelCircuit.length() > 0;
+    }
+
+    public boolean hasNameForUi() {
+	return name != null;
+    }
+
+    public boolean isSavedForUi() {
+	return isSaved();
+    }
+
+    public void setSavedForUi(boolean saved) {
+	setSaved(saved);
+    }
+
+    public void setNameForUi(String name) {
+	setName(name);
+    }
+
+    public void setShowLabelForUi(boolean showLabel) {
+	setShowLabel(showLabel);
+    }
+
+    public void setSizeForUi(int sizeX, int sizeY) {
+	this.sizeX = sizeX;
+	this.sizeY = sizeY;
+    }
+
+    public void adjustSizeForUi(int dx, int dy) {
+	this.sizeX += dx;
+	this.sizeY += dy;
     }
     
     void remove() {

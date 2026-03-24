@@ -42,23 +42,23 @@ Dialog and UI components.
 
 | File | Rationale |
 |------|-----------|
-| - [ ] `Dialog.java` | Base dialog class |
-| - [ ] `EditDialog.java` | Element edit dialog |
-| - [ ] `EditDialogActions.java` | Edit dialog actions |
-| - [ ] `EditDialogLoadFile.java` | Edit dialog file loading |
-| - [ ] `EditInfo.java` | Edit field information |
-| - [ ] `EditOptions.java` | Options dialog |
-| - [ ] `EditCompositeModelDialog.java` | Composite model editor |
-| - [ ] `EditDiodeModelDialog.java` | Diode model editor |
-| - [ ] `EditTransistorModelDialog.java` | Transistor model editor |
-| - [ ] `ScopePropertiesDialog.java` | Scope properties |
-| - [ ] `SliderDialog.java` | Slider configuration |
-| - [ ] `Checkbox.java` | Custom checkbox widget |
-| - [ ] `Choice.java` | Custom dropdown widget |
-| - [ ] `Scrollbar.java` | Scrollbar widget |
-| - [ ] `ScrollValuePopup.java` | Value adjustment popup |
-| - [ ] `FloatingControlPanel.java` | Floating control UI |
-| - [ ] `MenuUiState.java` | Menu state management |
+| - [x] `Dialog.java` | Base dialog class |
+| - [x] `EditDialog.java` | Element edit dialog |
+| - [x] `EditDialogActions.java` | Edit dialog actions |
+| - [x] `EditDialogLoadFile.java` | Edit dialog file loading |
+| - [x] `EditInfo.java` | Edit field information |
+| - [x] `EditOptions.java` | Options dialog |
+| - [x] `EditCompositeModelDialog.java` | Composite model editor |
+| - [x] `EditDiodeModelDialog.java` | Diode model editor |
+| - [x] `EditTransistorModelDialog.java` | Transistor model editor |
+| - [x] `ScopePropertiesDialog.java` | Scope properties |
+| - [x] `SliderDialog.java` | Slider configuration |
+| - [x] `Checkbox.java` | Custom checkbox widget |
+| - [x] `Choice.java` | Custom dropdown widget |
+| - [x] `Scrollbar.java` | Scrollbar widget |
+| - [x] `ScrollValuePopup.java` | Value adjustment popup |
+| - [x] `FloatingControlPanel.java` | Floating control UI |
+| - [x] `MenuUiState.java` | Menu state management |
 
 ### Move to `io/`
 
@@ -112,9 +112,9 @@ In-browser GWT test infrastructure.
 
 | File | Rationale |
 |------|-----------|
-| - [x] `MathElementsTest.java` | Math element tests |
-| - [x] `TableElementsTest.java` | Table element tests |
-| - [x] `CircuitTestRunner.java` | Test runner infrastructure |
+| - [ ] `MathElementsTest.java` | Math element tests |
+| - [ ] `TableElementsTest.java` | Table element tests |
+| - [ ] `CircuitTestRunner.java` | Test runner infrastructure |
 
 ### New Package: `runner/`
 

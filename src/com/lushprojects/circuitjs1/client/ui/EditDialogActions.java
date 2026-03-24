@@ -1,11 +1,9 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
-import com.lushprojects.circuitjs1.client.*;
-
-import com.google.gwt.canvas.client.Canvas;
-import com.google.gwt.dom.client.CanvasElement;
-import com.lushprojects.circuitjs1.client.ui.ExportAsImageDialog;
-import com.lushprojects.circuitjs1.client.ui.LookupTablesEditorDialog;
+import com.lushprojects.circuitjs1.client.CirSim;
+import com.lushprojects.circuitjs1.client.CirSimDialogCoordinator;
+import com.lushprojects.circuitjs1.client.CircuitElm;
+import com.lushprojects.circuitjs1.client.Editable;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class EditDialogActions {
@@ -14,8 +12,8 @@ public class EditDialogActions {
         this.sim = sim;
     }
     public void doEdit(Editable eable) {
-        sim.getClipboardManager().clearSelection();
-        sim.getUndoRedoManager().pushUndo();
+        sim.clearSelectionForUi();
+        sim.pushUndoForUi();
 
         EditInfo firstInfo = eable.getEditInfo(0);
         if (firstInfo == null) {
@@ -31,27 +29,27 @@ public class EditDialogActions {
     }
 
     public void doSliders(CircuitElm ce) {
-        sim.getClipboardManager().clearSelection();
-        sim.getUndoRedoManager().pushUndo();
+        sim.clearSelectionForUi();
+        sim.pushUndoForUi();
         CirSimDialogCoordinator.setDialogShowing(new SliderDialog(ce, sim));
         CirSimDialogCoordinator.getDialogShowing().show();
     }
 
     public void doEditLookupTables() {
-        if (sim.noEditCheckItem != null && sim.noEditCheckItem.getState()) {
-            sim.alertOrWarn(Locale.LS("Editing disabled.  Re-enable from the Options menu."));
+        if (sim.isEditingLocked()) {
+            sim.alertOrWarnForUi(Locale.LS("Editing disabled.  Re-enable from the Options menu."));
             return;
         }
         CirSimDialogCoordinator.setDialogShowing(new LookupTablesEditorDialog(sim));
     }
 
     public void doExportAsImage() {
-        CirSimDialogCoordinator.setDialogShowing(new ExportAsImageDialog(CirSim.CAC_IMAGE));
+        CirSimDialogCoordinator.setDialogShowing(new ExportAsImageDialog(CirSim.cacImageTypeForUi()));
         CirSimDialogCoordinator.getDialogShowing().show();
     }
 
     public void doImageToClipboard() {
-        sim.doImageToClipboardCore();
+        sim.copyImageToClipboardForUi();
     }
 
     public void doCreateSubcircuit() {

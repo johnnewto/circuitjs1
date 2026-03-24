@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client.elements.electronics.misc;
 
+import com.lushprojects.circuitjs1.client.ui.EditInfo;
+
 import com.lushprojects.circuitjs1.client.elements.ChipElm;
 
 import com.lushprojects.circuitjs1.client.*;

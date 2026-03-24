@@ -13,6 +13,7 @@ import com.lushprojects.circuitjs1.client.elements.misc.*;
 import com.google.gwt.dom.client.Document;
 import com.google.gwt.user.client.Window;
 import com.lushprojects.circuitjs1.client.ui.AboutBox;
+import com.lushprojects.circuitjs1.client.ui.EditOptions;
 import com.lushprojects.circuitjs1.client.ui.HintEditorDialog;
 import com.lushprojects.circuitjs1.client.ui.ImportFromDropboxDialog;
 import com.lushprojects.circuitjs1.client.ui.ImportFromTextDialog;

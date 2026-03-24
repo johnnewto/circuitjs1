@@ -31,6 +31,7 @@ import com.lushprojects.circuitjs1.client.elements.electronics.measurement.*;
 import com.lushprojects.circuitjs1.client.elements.electronics.semiconductors.TransistorElm;
 import com.lushprojects.circuitjs1.client.elements.electronics.wiring.WireElm;
 import com.lushprojects.circuitjs1.client.elements.misc.ActionTimeElm;
+import com.lushprojects.circuitjs1.client.ui.ScopePropertiesDialog;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 import java.util.Vector;

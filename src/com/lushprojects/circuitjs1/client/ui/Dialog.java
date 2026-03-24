@@ -17,8 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.ui;
 
+import com.lushprojects.circuitjs1.client.CirSimDialogCoordinator;
 import com.google.gwt.user.client.ui.DialogBox;
 import com.google.gwt.user.client.ui.TextBox;
 import com.google.gwt.user.client.ui.ValueBoxBase;
@@ -92,6 +93,6 @@ public class Dialog extends DialogBox  {
 	    }
 	}
 
-	void apply() {
+	protected void apply() {
 	}
 }

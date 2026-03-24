@@ -17,10 +17,7 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
-
-import com.lushprojects.circuitjs1.client.*;
-
+package com.lushprojects.circuitjs1.client.ui;
 
 import com.google.gwt.canvas.client.Canvas;
 import com.google.gwt.user.client.ui.Composite;
@@ -54,6 +51,9 @@ import com.google.gwt.event.dom.client.TouchStartEvent;
 import com.google.gwt.event.dom.client.TouchStartHandler;
 import com.google.gwt.event.dom.client.ContextMenuEvent;
 import com.google.gwt.event.dom.client.ContextMenuHandler;
+import com.lushprojects.circuitjs1.client.CirSim;
+import com.lushprojects.circuitjs1.client.CirSimDialogCoordinator;
+import com.lushprojects.circuitjs1.client.CircuitElm;
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
@@ -91,9 +91,9 @@ public class Scrollbar extends  Composite implements
 		val=value;
 		 pan = new VerticalPanel();
 		can = Canvas.createIfSupported();
-		can.setWidth((CirSim.VERTICALPANELWIDTH)+" px");
+		can.setWidth((CirSim.getVerticalPanelWidthForUi())+" px");
 		can.setHeight("40 px");
-		can.setCoordinateSpaceWidth(CirSim.VERTICALPANELWIDTH);
+		can.setCoordinateSpaceWidth(CirSim.getVerticalPanelWidthForUi());
 		can.setCoordinateSpaceHeight(SCROLLHEIGHT);
 		pan.add(can);
 		g=can.getContext2d();
@@ -135,23 +135,23 @@ public class Scrollbar extends  Composite implements
 		else
 			g.setStrokeStyle("lightgrey");
 		g.setLineWidth(1.0);
-		g.fillRect(0,0,CirSim.VERTICALPANELWIDTH,SCROLLHEIGHT);
+		g.fillRect(0,0,CirSim.getVerticalPanelWidthForUi(),SCROLLHEIGHT);
 		g.beginPath();
 		g.moveTo(HMARGIN+SCROLLHEIGHT-3, 0);
 		g.lineTo(HMARGIN, SCROLLHEIGHT/2);
 		g.lineTo(HMARGIN+SCROLLHEIGHT-3, SCROLLHEIGHT);
-		g.moveTo(CirSim.VERTICALPANELWIDTH-HMARGIN-SCROLLHEIGHT+3, 0);
-		g.lineTo(CirSim.VERTICALPANELWIDTH-HMARGIN, SCROLLHEIGHT/2);
-		g.lineTo(CirSim.VERTICALPANELWIDTH-HMARGIN-SCROLLHEIGHT+3, SCROLLHEIGHT);
+		g.moveTo(CirSim.getVerticalPanelWidthForUi()-HMARGIN-SCROLLHEIGHT+3, 0);
+		g.lineTo(CirSim.getVerticalPanelWidthForUi()-HMARGIN, SCROLLHEIGHT/2);
+		g.lineTo(CirSim.getVerticalPanelWidthForUi()-HMARGIN-SCROLLHEIGHT+3, SCROLLHEIGHT);
 		g.stroke();
 		if (enabled)
 			g.setStrokeStyle("grey");
 		g.beginPath();
 		g.setLineWidth(5.0);
 		g.moveTo(HMARGIN+SCROLLHEIGHT+BARMARGIN, SCROLLHEIGHT/2);
-		g.lineTo(CirSim.VERTICALPANELWIDTH-HMARGIN-SCROLLHEIGHT-BARMARGIN, SCROLLHEIGHT/2);
+		g.lineTo(CirSim.getVerticalPanelWidthForUi()-HMARGIN-SCROLLHEIGHT-BARMARGIN, SCROLLHEIGHT/2);
 		g.stroke();
-		double p=HMARGIN+SCROLLHEIGHT+BARMARGIN+((CirSim.VERTICALPANELWIDTH-2*(HMARGIN+SCROLLHEIGHT+BARMARGIN))*((double)(val-min)))/(max-min);
+		double p=HMARGIN+SCROLLHEIGHT+BARMARGIN+((CirSim.getVerticalPanelWidthForUi()-2*(HMARGIN+SCROLLHEIGHT+BARMARGIN))*((double)(val-min)))/(max-min);
 		if (enabled) {
 			boolean highlighted = attachedElm!=null && attachedElm.needsHighlight();
 			if (highlighted)
@@ -162,7 +162,7 @@ public class Scrollbar extends  Composite implements
 			g.moveTo(HMARGIN+SCROLLHEIGHT+BARMARGIN, SCROLLHEIGHT/2);
 			// If highlighted, draw the entire bar, otherwise just draw up to current position
 			if (highlighted)
-				g.lineTo(CirSim.VERTICALPANELWIDTH-HMARGIN-SCROLLHEIGHT-BARMARGIN, SCROLLHEIGHT/2);
+				g.lineTo(CirSim.getVerticalPanelWidthForUi()-HMARGIN-SCROLLHEIGHT-BARMARGIN, SCROLLHEIGHT/2);
 			else
 				g.lineTo(p, SCROLLHEIGHT/2);
 			g.stroke();
@@ -182,7 +182,7 @@ public class Scrollbar extends  Composite implements
 	
 	int calcValueFromPos(int x){
 		int v;
-		v= min+(max-min)*(x-HMARGIN-SCROLLHEIGHT-BARMARGIN)/(CirSim.VERTICALPANELWIDTH-2*(HMARGIN+SCROLLHEIGHT+BARMARGIN));
+		v= min+(max-min)*(x-HMARGIN-SCROLLHEIGHT-BARMARGIN)/(CirSim.getVerticalPanelWidthForUi()-2*(HMARGIN+SCROLLHEIGHT+BARMARGIN));
 		if (v<min)
 			v=min;
 		if (v>max)
@@ -208,7 +208,7 @@ public class Scrollbar extends  Composite implements
 			val--;
 		}
 		else {
-		    if (x > CirSim.VERTICALPANELWIDTH-HMARGIN-SCROLLHEIGHT ) {
+		    if (x > CirSim.getVerticalPanelWidthForUi()-HMARGIN-SCROLLHEIGHT ) {
 			if (val<max)
 			    val++;
 		    }
@@ -274,19 +274,19 @@ public class Scrollbar extends  Composite implements
 //		e.preventDefault();
 	    	if (dragging)
 	    	    return;
-		if (enabled && attachedElm!=null && attachedElm.isMouseElm()) {
-			CircuitElm.sim.setMouseElm(null);
+		if (enabled && attachedElm!=null && attachedElm.isMouseElmForUi()) {
+			CirSim.getInstance().setMouseElmForUi(null);
 			draw(); // Redraw slider to remove highlight
-			CircuitElm.sim.repaint(); // Trigger canvas repaint to clear element info
+			CirSim.getInstance().repaintForUi(); // Trigger canvas repaint to clear element info
 		}
 	}
 	
 	public void onMouseOver(MouseOverEvent e){
 		
 		if (enabled && attachedElm!=null) {
-			CircuitElm.sim.setMouseElm(attachedElm);
+			CirSim.getInstance().setMouseElmForUi(attachedElm);
 			draw(); // Redraw slider to show highlight
-			CircuitElm.sim.repaint(); // Trigger canvas repaint to show element info
+			CirSim.getInstance().repaintForUi(); // Trigger canvas repaint to show element info
 		}
 	}
 	

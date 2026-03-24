@@ -19,6 +19,14 @@
 
 package com.lushprojects.circuitjs1.client.elements.electronics.semiconductors;
 
+import com.lushprojects.circuitjs1.client.ui.EditInfo;
+
+import com.lushprojects.circuitjs1.client.ui.Choice;
+
+import com.lushprojects.circuitjs1.client.ui.Checkbox;
+import com.lushprojects.circuitjs1.client.ui.EditDialog;
+import com.lushprojects.circuitjs1.client.ui.EditTransistorModelDialog;
+
 import java.util.Vector;
 
 import com.google.gwt.user.client.Window;

@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.ui.EditInfo;
+
 
 import com.lushprojects.circuitjs1.client.util.*;
 
@@ -54,6 +56,7 @@ import com.google.gwt.user.client.Event.NativePreviewHandler;
 import com.google.gwt.user.client.ui.MenuItem;
 import com.lushprojects.circuitjs1.client.registry.ElementFactoryFacade;
 import com.google.gwt.user.client.ui.PopupPanel;
+import com.lushprojects.circuitjs1.client.ui.Dialog;
 
 class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHandler,
     ClickHandler, DoubleClickHandler, ContextMenuHandler, NativePreviewHandler,
