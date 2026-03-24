@@ -200,12 +200,6 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
 	@JsMethod(namespace = JsPackage.GLOBAL, name = "toggleDevTools")
 	static native void toggleDevToolsNative();
 
-	public static void repaintFromUi() {
-		if (CircuitElm.sim != null) {
-			CircuitElm.sim.repaint();
-		}
-	}
-
 	@JsFunction
 	interface TouchEventHandler {
 		void handle(TouchEventLike event);
@@ -788,15 +782,15 @@ public CirSim() {
 	    return exportCompositeActions.getCircuitAsComposite();
 	}
 
-	public Canvas getCircuitAsCanvasForExport(int type) {
+	public Canvas getCircuitAsCanvas(int type) {
 		return exportCompositeActions.getCircuitAsCanvas(type);
 	}
 
-	public String getCircuitAsSvgForExport() {
+	public String getCircuitAsSvg() {
 		return exportCompositeActions.getCircuitAsSVG();
 	}
 
-	public Canvas getScopesAsCanvasForExport() {
+	public Canvas getScopesAsCanvas() {
 		return exportCompositeActions.getScopesAsCanvas();
 	}
 
@@ -2432,8 +2426,4 @@ public CirSim() {
 	static final int CAC_IMAGE = 1;
 	static final int CAC_SVG   = 2;
 
-	public static int getCacImageType() {
-		return CAC_IMAGE;
-	}
-	
 }

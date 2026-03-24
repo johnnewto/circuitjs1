@@ -66,10 +66,10 @@ public class ExportAsImageDialog extends Dialog {
 		String ext = ".png";
 		
 		// Export circuit
-		if (type == CirSim.getCacImageType()) {
-		    dataURL = CirSim.getInstance().getCircuitAsCanvasForExport(type).toDataUrl();
+		if (type == CirSim.cacImageTypeForUi()) {
+		    dataURL = CirSim.getInstance().getCircuitAsCanvas(type).toDataUrl();
 		} else {
-		    String data = CirSim.getInstance().getCircuitAsSvgForExport();
+		    String data = CirSim.getInstance().getCircuitAsSvg();
 		    dataURL = "data:text/plain;base64," + b64encode(data);
 		    ext = ".svg";
 		}
@@ -79,7 +79,7 @@ public class ExportAsImageDialog extends Dialog {
 		vp.add(a);
 		
 		// Export scopes if any exist
-		Canvas scopesCanvas = CirSim.getInstance().getScopesAsCanvasForExport();
+		Canvas scopesCanvas = CirSim.getInstance().getScopesAsCanvas();
 		if (scopesCanvas != null) {
 			String scopesDataURL = scopesCanvas.toDataUrl();
 			Anchor scopesAnchor = new Anchor("Scopes " + ext, scopesDataURL);

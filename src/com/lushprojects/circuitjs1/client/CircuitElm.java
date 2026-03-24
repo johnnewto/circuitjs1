@@ -790,7 +790,7 @@ public abstract class CircuitElm implements Editable {
     }
     
     // return post we're connected to (for wires, so we can optimize them out in calculateWireClosure())
-    Point getConnectedPost() {
+    protected Point getConnectedPost() {
 	return point2;
     }
     

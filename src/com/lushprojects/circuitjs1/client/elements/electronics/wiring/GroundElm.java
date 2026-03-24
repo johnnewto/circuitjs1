@@ -106,7 +106,8 @@ protected void setCurrent(int x, double c) { current = isOldStyle() ? -c : c; }
 	public static void resetNodeList() {
 	    firstGround = null;
 	}
-	Point getConnectedPost() {
+	@Override
+	protected Point getConnectedPost() {
 	    if (firstGround != null)
 		return firstGround;
 	    firstGround = point1;

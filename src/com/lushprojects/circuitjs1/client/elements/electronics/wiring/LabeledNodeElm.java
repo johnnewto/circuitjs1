@@ -215,7 +215,8 @@ public class LabeledNodeElm extends CircuitElm {
     }
     
     // get post we're connected to
-    Point getConnectedPost() {
+    @Override
+    protected Point getConnectedPost() {
 		LabelEntry le = labelList.get(text);
 		if (le != null)
 			return le.point;

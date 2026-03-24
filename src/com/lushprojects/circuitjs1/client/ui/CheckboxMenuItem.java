@@ -66,7 +66,10 @@ public class CheckboxMenuItem extends MenuItem implements Command {
 		setState(!on);
 		if (extcmd!=null) {
 		    extcmd.execute();
-		    CirSim.repaintFromUi();
+		    CirSim sim = CirSim.getInstance();
+		    if (sim != null) {
+			sim.repaint();
+		    }
 		}
       }
 
