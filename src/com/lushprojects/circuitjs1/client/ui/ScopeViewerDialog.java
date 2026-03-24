@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client.ui;
 
 import com.lushprojects.circuitjs1.client.elements.ActionScheduler;
+import com.lushprojects.circuitjs1.client.elements.misc.ScopeElm;
 
 import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
@@ -181,9 +182,11 @@ public class ScopeViewerDialog extends DialogBox {
             }
 
             // Export all undocked (floating) ScopeElm scopes
-            int floatingCount = sim.getFloatingScopeCountForViewer();
-            for (int i = 0; i < floatingCount; i++) {
-                Scope scope = sim.getFloatingScopeForViewer(i);
+            for (int i = 0; i < sim.elmList.size(); i++) {
+                if (!(sim.elmList.get(i) instanceof ScopeElm))
+                    continue;
+                ScopeElm scopeElm = (ScopeElm) sim.elmList.get(i);
+                Scope scope = scopeElm.elmScope;
                 if (scope == null || scope.visiblePlots.size() == 0)
                     continue;
 

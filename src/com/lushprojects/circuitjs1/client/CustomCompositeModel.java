@@ -332,6 +332,10 @@ public class CustomCompositeModel implements Comparable<CustomCompositeModel> {
 	setName(name);
     }
 
+    public String getNameForUi() {
+	return name;
+    }
+
     public void setShowLabelForUi(boolean showLabel) {
 	setShowLabel(showLabel);
     }
@@ -346,7 +350,7 @@ public class CustomCompositeModel implements Comparable<CustomCompositeModel> {
 	this.sizeY += dy;
     }
     
-    void remove() {
+    public void remove() {
 	setSaved(false);
 	modelMap.remove(name);
 	sequenceNumber++;

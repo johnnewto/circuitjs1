@@ -46,17 +46,17 @@ If any mini-batch causes broad instability:
 - [x] `repaintFromUi` (caller: `CheckboxMenuItem`)
 
 ### Batch A2: Dropbox/import wrappers
-- [ ] `loadCircuitFromExternalText` (caller: `ImportFromDropboxDialog`)
-- [ ] `openDropboxChooserFromDialog` (caller: `ImportFromDropboxDialog`)
+- [x] `loadCircuitFromExternalText` (caller: `ImportFromDropboxDialog`)
+- [x] `openDropboxChooserFromDialog` (caller: `ImportFromDropboxDialog`)
 
 ### Batch A3: Viewer/subcircuit/pie wrappers
-- [ ] `getFloatingScopeCountForViewer` (caller: `ScopeViewerDialog`)
-- [ ] `getFloatingScopeForViewer` (caller: `ScopeViewerDialog`)
-- [ ] `getUserSubcircuitNames` (caller: `SubcircuitDialog`)
-- [ ] `removeSubcircuitByName` (caller: `SubcircuitDialog`)
-- [ ] `getAllLabeledNodeNamesForPieChart` (caller: `PieChartDialog`)
-- [ ] `requestAnalyzeFromDialog` (caller: `PieChartDialog`)
-- [ ] `executeMainMenuItemByName` (caller: `SearchDialog`)
+- [x] `getFloatingScopeCountForViewer` (caller: `ScopeViewerDialog`)
+- [x] `getFloatingScopeForViewer` (caller: `ScopeViewerDialog`)
+- [x] `getUserSubcircuitNames` (caller: `SubcircuitDialog`)
+- [x] `removeSubcircuitByName` (caller: `SubcircuitDialog`)
+- [x] `getAllLabeledNodeNamesForPieChart` (caller: `PieChartDialog`)
+- [x] `requestAnalyzeFromDialog` (caller: `PieChartDialog`)
+- [x] `executeMainMenuItemByName` (caller: `SearchDialog`)
 
 ### Batch A4: Coordinate/placement wrappers
 - [ ] `getCircuitAreaHeight` (caller: `VariableBrowserDialog`)

@@ -15,11 +15,9 @@ public class SubcircuitDialog extends Dialog {
     private Button deleteButton;
     private Button doneButton;
 
-    private final CirSim sim;
-    private Vector<String> subcircuits;
+    private Vector<CustomCompositeModel> subcircuits;
 
     public SubcircuitDialog(CirSim sim) {
-        this.sim = sim;
         setText("Subcircuit Manager");
         //setAnimationEnabled(true);
         setGlassEnabled(true);
@@ -36,11 +34,15 @@ public class SubcircuitDialog extends Dialog {
         subcircuitListBox.setVisibleItemCount(5);
         subcircuitListBox.setWidth("100%");
 
-	subcircuits = sim.getUserSubcircuitNames();
+	subcircuits = new Vector<CustomCompositeModel>();
+	Vector<CustomCompositeModel> modelList = CustomCompositeModel.getModelList();
 	int i;
-	for (i = 0; i != subcircuits.size(); i++) {
-	    String name = subcircuits.get(i);
-	    subcircuitListBox.addItem(name);
+	for (i = 0; i != modelList.size(); i++) {
+	    CustomCompositeModel model = modelList.get(i);
+	    if (model.isBuiltin())
+		continue;
+	    subcircuits.add(model);
+	    subcircuitListBox.addItem(model.getNameForUi());
 	}
 
         mainPanel.add(subcircuitListBox);
@@ -74,13 +76,12 @@ public class SubcircuitDialog extends Dialog {
             return;
         }
 
-        String selectedSubcircuit = subcircuitListBox.getItemText(selectedIndex);
-        boolean confirm = Window.confirm("Are you sure you want to delete " + selectedSubcircuit + "?");
+        CustomCompositeModel selectedSubcircuit = subcircuits.get(selectedIndex);
+        boolean confirm = Window.confirm("Are you sure you want to delete " + selectedSubcircuit.getNameForUi() + "?");
 
         if (confirm) {
-	    String modelName = subcircuits.get(selectedIndex);
             subcircuits.remove(selectedIndex);
-	    sim.removeSubcircuitByName(modelName);
+	    selectedSubcircuit.remove();
             subcircuitListBox.removeItem(selectedIndex);
         }
     }

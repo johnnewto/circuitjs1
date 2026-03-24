@@ -71,7 +71,6 @@ import com.lushprojects.circuitjs1.client.core.CircuitNode;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.core.SimulationTimingState;
 import com.lushprojects.circuitjs1.client.core.SolverMatrixState;
-import com.lushprojects.circuitjs1.client.io.ImportFromDropbox;
 import com.lushprojects.circuitjs1.client.io.ImportExportHelper;
 import com.lushprojects.circuitjs1.client.io.LoadFile;
 import com.lushprojects.circuitjs1.client.io.ClipboardManager;
@@ -671,7 +670,7 @@ public CirSim() {
 	    return mouseInputHandler;
 	}
 
-	MenuUiState getMenuUiState() {
+	public MenuUiState getMenuUiState() {
 	    return menuUiState;
 	}
 
@@ -817,17 +816,6 @@ public CirSim() {
 		getImportExportHelper().importCircuitFromText(circuitText, subcircuitsOnly);
 	}
 
-	public void loadCircuitFromExternalText(String circuitText, String sourceLabel) {
-		getUndoRedoManager().pushUndo();
-		getCircuitIOService().readCircuit(circuitText);
-		getSFCRDocumentManager().setCurrentCircuitFile(sourceLabel);
-		getUiPanelManager().allowSave(false);
-	}
-
-	public void openDropboxChooserFromDialog() {
-		new ImportFromDropbox(this);
-	}
-
 	public Vector<String> getSearchableMainMenuItemNames() {
 		Vector<String> items = new Vector<String>();
 		for (int i = 0; i != getMenuUiState().mainMenuItems.size(); i++) {
@@ -837,18 +825,6 @@ public CirSim() {
 			items.add(item.getName());
 		}
 		return items;
-	}
-
-	public void executeMainMenuItemByName(String itemName) {
-		if (itemName == null)
-			return;
-		for (int i = 0; i != getMenuUiState().mainMenuItems.size(); i++) {
-			CheckboxMenuItem item = getMenuUiState().mainMenuItems.get(i);
-			if (itemName.equals(item.getName())) {
-				item.getScheduledCommand().execute();
-				return;
-			}
-		}
 	}
 
 	public int getShortcutMenuItemCount() {
@@ -886,47 +862,6 @@ public CirSim() {
 
 	public void alertOrWarnFromDialog(String message) {
 		alertOrWarn(message);
-	}
-
-	public Vector<String> getUserSubcircuitNames() {
-		Vector<String> names = new Vector<String>();
-		Vector<CustomCompositeModel> list = CustomCompositeModel.getModelList();
-		for (int i = 0; i != list.size(); i++) {
-			CustomCompositeModel model = list.get(i);
-			if (!model.isBuiltin())
-				names.add(model.name);
-		}
-		return names;
-	}
-
-	public void removeSubcircuitByName(String subcircuitName) {
-		if (subcircuitName == null)
-			return;
-		Vector<CustomCompositeModel> list = CustomCompositeModel.getModelList();
-		for (int i = 0; i != list.size(); i++) {
-			CustomCompositeModel model = list.get(i);
-			if (!model.isBuiltin() && subcircuitName.equals(model.name)) {
-				model.remove();
-				return;
-			}
-		}
-	}
-
-	public int getFloatingScopeCountForViewer() {
-		return getScopeManager().countScopeElms();
-	}
-
-	public Scope getFloatingScopeForViewer(int index) {
-		ScopeElm scopeElm = getScopeManager().getNthScopeElm(index);
-		return scopeElm == null ? null : scopeElm.elmScope;
-	}
-
-	public java.util.Set<String> getAllLabeledNodeNamesForPieChart() {
-		return LabeledNodeElm.getAllNodeNames();
-	}
-
-	public void requestAnalyzeFromDialog() {
-		needAnalyze();
 	}
 
 	public boolean isDotsEnabledForExport() {

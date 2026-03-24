@@ -105,7 +105,15 @@ public class SearchDialog extends Dialog {
 	
 	public void apply() {
 	    String s = listBox.getSelectedItemText();
-	    sim.executeMainMenuItemByName(s);
+	    if (s != null) {
+		for (int i = 0; i != sim.getMenuUiState().mainMenuItems.size(); i++) {
+		    CheckboxMenuItem item = sim.getMenuUiState().mainMenuItems.get(i);
+		    if (s.equals(item.getName())) {
+			item.getScheduledCommand().execute();
+			break;
+		    }
+		}
+	    }
 	    closeDialog();
 	}
 	

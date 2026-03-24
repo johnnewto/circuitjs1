@@ -24,6 +24,7 @@ import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.elements.misc.PieChartElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNodeElm;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.HorizontalPanel;
@@ -178,7 +179,7 @@ public class PieChartDialog extends Dialog {
         MultiWordSuggestOracle oracle = new MultiWordSuggestOracle();
         
         // Add existing labeled node names
-        java.util.Set<String> nodeNames = sim.getAllLabeledNodeNamesForPieChart();
+        java.util.Set<String> nodeNames = LabeledNodeElm.getAllNodeNames();
         if (nodeNames != null && !nodeNames.isEmpty()) {
             for (String labelName : nodeNames) {
                 oracle.add(labelName);
@@ -233,6 +234,6 @@ public class PieChartDialog extends Dialog {
             pieChart.setNodeColor(i, colors[colorIndex]);
         }
         
-        sim.requestAnalyzeFromDialog();
+        sim.needAnalyze();
     }
 }

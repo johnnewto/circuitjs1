@@ -45,7 +45,10 @@ public class ImportFromDropboxDialog extends Dialog {
 	
 	static public void doLoadCallback(String s, String link) {
 		CirSim.console("Loading from URL: " + link);
-		sim.loadCircuitFromExternalText(s, "URL: " + link);
+		sim.pushUndoForUi();
+		sim.readCircuitFromModel(s);
+		sim.getSFCRDocumentManager().setCurrentCircuitFile("URL: " + link);
+		sim.setAllowSaveFromImportHelper(false);
 	}
 	
 	
@@ -87,7 +90,7 @@ public class ImportFromDropboxDialog extends Dialog {
 			chooserButton.addClickHandler(new ClickHandler() {
 				public void onClick(ClickEvent event) {
 					closeDialog();
-					sim.openDropboxChooserFromDialog();
+					new ImportFromDropbox(sim);
 				}
 			});
 			la = new Label(Locale.LS("To open a shared Dropbox file from a Dropbox link paste the link below..."));
