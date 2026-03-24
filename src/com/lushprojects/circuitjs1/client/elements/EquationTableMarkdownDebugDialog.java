@@ -197,7 +197,7 @@ public class EquationTableMarkdownDebugDialog {
         );
     }
     
-    public void hide() {
+    private void hide() {
         dialog.hide();
     }
     
@@ -213,7 +213,7 @@ public class EquationTableMarkdownDebugDialog {
      * Show the markdown content rendered as HTML in a new browser window.
      * Always opens a fresh window to avoid stale content issues.
      */
-    public void showRenderedView() {
+    private void showRenderedView() {
         String markdown = generateMarkdownContent();
         String title = "Equation Table Debug: " + sourceTable.getTableName();
         String html = InfoViewerDialog.generateMarkdownViewerHTMLPublic(title, markdown);

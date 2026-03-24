@@ -159,7 +159,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
         
         /** Reset runtime state for simulation restart */
-        protected void reset() {
+        void reset() {
             if (exprState != null) exprState.reset();
             outputValue = 0.0;
             lastOutputValue = 0.0;
@@ -816,7 +816,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * 
      * @param s Size mode: 1 = small, 2 = normal
      */
-    void setSize(int s) {
+    private void setSize(int s) {
         opsize = s;
         flags = (flags & ~FLAG_SMALL) | ((s == 1) ? FLAG_SMALL : 0);
         rowHeight = (s == 1) ? 14 : 18;
@@ -1632,8 +1632,8 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * @param row Row index
      * @return Convergence threshold value
      */
- 
-    double getConvergeLimit(int row) {
+
+    private double getConvergeLimit(int row) {
         return EquationTableSemantics.convergenceLimit(
             getConvergenceTolerance(),
             sim.getSubIterations(),
@@ -1783,7 +1783,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * Walk all compiled expressions in this table and call resolveGSlot() on each,
      * converting E_NODE_REF nodes to E_GSLOT where the name has a slot assignment.
      */
-    void resolveExprSlots() {
+    private void resolveExprSlots() {
         CirSim sim = CirSim.getInstance();
         if (sim == null || sim.nameToSlot == null) return;
         for (int row = 0; row < rowCount; row++) {
@@ -2461,7 +2461,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * Single-node: "gnd \u2192 S3", two-node: "S1 \u2192 S2".
      * For non-FLOW rows, returns getUIDisplayOutputName().
      */
-    public String getFlowDisplayName(int row) {
+    private String getFlowDisplayName(int row) {
         if (rows[row].outputMode == RowOutputMode.FLOW_MODE) {
             String nodeName = rows[row].outputName;
             String targetName = rows[row].targetNodeName;
@@ -2513,7 +2513,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     public void setTableName(String name) { tableName = name; }
 
     /** Get global base convergence tolerance used by equation tables. */
-    public double getConvergenceTolerance() {
+    private double getConvergenceTolerance() {
         if (sim != null && sim.getEquationTableConvergenceTolerance() > 0) {
             return sim.getEquationTableConvergenceTolerance();
         }
@@ -2681,7 +2681,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     * Strips → (U+2192) and ⊣⊢ (U+22A3 U+22A2) that may have been
      * entered via font ligatures or user input.
      */
-    static String normalizeArrows(String s) {
+    private static String normalizeArrows(String s) {
         if (s == null) return s;
         return s.replace("\u2192", "->").replace("\u22A3\u22A2", "->"); 
     }

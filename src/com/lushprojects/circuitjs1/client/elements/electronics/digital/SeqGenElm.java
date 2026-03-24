@@ -34,14 +34,14 @@ import com.google.gwt.user.client.ui.TextArea;
 // contributed by Edward Calver
 
 public class SeqGenElm extends ChipElm {
-	final int FLAG_NEW_VERSION = 2;
-	final int FLAG_PLAY_ONCE = 4;
-	final int FLAG_HAS_RESET = 8;
+	private final int FLAG_NEW_VERSION = 2;
+	private final int FLAG_PLAY_ONCE = 4;
+	private final int FLAG_HAS_RESET = 8;
 	
-	int bitPosition = 0;
-	int bitCount = 0;
-	int data[];
-	boolean clockstate = false;
+	private int bitPosition = 0;
+	private int bitCount = 0;
+	private int[] data;
+	private boolean clockstate = false;
 	
 	public SeqGenElm(int xx, int yy) {
 		super(xx, yy);
@@ -101,15 +101,15 @@ public class SeqGenElm extends ChipElm {
 	}
 	protected int getPostCount() { return hasReset() ? 3 : 2; }
 	protected int getVoltageSourceCount() { return 1; }
-	boolean hasPlayOnce() { return (flags & FLAG_PLAY_ONCE) != 0; }
-	boolean hasReset() { return (flags & FLAG_HAS_RESET) != 0; }
+	private boolean hasPlayOnce() { return (flags & FLAG_PLAY_ONCE) != 0; }
+	private boolean hasReset() { return (flags & FLAG_HAS_RESET) != 0; }
 	
 	protected void reset() {
 	    super.reset();
 	    bitPosition = 0;
 	}
 	
-	void nextBit() {
+	private void nextBit() {
 		if (data.length > 0 && bitCount > 0) {
 			if (bitPosition >= bitCount) {
 				if (hasPlayOnce()) {

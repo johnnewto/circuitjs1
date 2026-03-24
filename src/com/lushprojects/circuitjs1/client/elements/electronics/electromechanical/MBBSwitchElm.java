@@ -25,18 +25,18 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
     public class MBBSwitchElm extends SwitchElm {
-	int link;
-	int voltSources[];
-	double currents[];
-	double curcounts[];
-	boolean both;
+	private int link;
+	private int[] voltSources;
+	private double[] currents;
+	private double[] curcounts;
+	private boolean both;
 	
 	public MBBSwitchElm(int xx, int yy) {
 	    super(xx, yy, false);
 	    setup();
 	}
 	
-	void setup() {
+	private void setup() {
 	    noDiagonal = true;
 	    voltSources = new int[2];
 	    currents = new double[2];
@@ -55,8 +55,9 @@ import com.lushprojects.circuitjs1.client.util.*;
 	    return super.dump() + " " + link;
 	}
 
-	final int openhs = 16;
-	Point swposts[], swpoles[];
+	private final int openhs = 16;
+	private Point[] swposts;
+        private Point[] swpoles;
 	protected void setPoints() {
 	    super.setPoints();
 	    calcLeads(32);

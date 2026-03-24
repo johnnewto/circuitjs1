@@ -11,7 +11,7 @@ class ToolbarModeManager {
         this.sim = sim;
     }
 
-    void switchToElectronicsToolbar() {
+    private void switchToElectronicsToolbar() {
         if (sim.currentToolbarType == CirSim.ToolbarType.ELECTRONICS) {
             sim.electronicsModeCheckItem.setState(true);
             sim.economicsModeCheckItem.setState(false);
@@ -42,7 +42,7 @@ class ToolbarModeManager {
         sim.getViewportController().setCanvasSize();
     }
 
-    void switchToEconomicsToolbar() {
+    private void switchToEconomicsToolbar() {
         if (sim.currentToolbarType == CirSim.ToolbarType.ECONOMICS) {
             sim.electronicsModeCheckItem.setState(false);
             sim.economicsModeCheckItem.setState(true);
@@ -73,7 +73,7 @@ class ToolbarModeManager {
         sim.getViewportController().setCanvasSize();
     }
 
-    void setMode(CirSim.ToolbarType mode) {
+    private void setMode(CirSim.ToolbarType mode) {
         if (mode == CirSim.ToolbarType.ELECTRONICS) {
             switchToElectronicsToolbar();
         } else {

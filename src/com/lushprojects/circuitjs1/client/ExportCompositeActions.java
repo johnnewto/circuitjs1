@@ -158,7 +158,7 @@ final class ExportCompositeActions {
         }).inject();
     }
 
-    void printCanvas(com.google.gwt.dom.client.CanvasElement cv) {
+    private void printCanvas(com.google.gwt.dom.client.CanvasElement cv) {
         String img = cv.toDataUrl("image/png");
         Window.open(
                 "data:text/html,<html><head><title>Print Circuit</title></head><body><img src='" + URL.encodeQueryString(img)
@@ -176,7 +176,7 @@ final class ExportCompositeActions {
         printCanvas(cv.getCanvasElement());
     }
 
-    boolean initializeSVGScriptIfNecessary(final String followupAction) {
+    private boolean initializeSVGScriptIfNecessary(final String followupAction) {
         if (!sim.loadedCanvas2SVG) {
             tryLoadCanvas2SvgAt(getCanvas2SvgCandidateUrls(), 0, followupAction);
             return false;
@@ -192,7 +192,7 @@ final class ExportCompositeActions {
         CirSimDialogCoordinator.getDialogShowing().show();
     }
 
-    public void doExportAsSVGFromAPI() {
+    private void doExportAsSVGFromAPI() {
         if (!initializeSVGScriptIfNecessary("doExportAsSVGFromAPI")) {
             return;
         }
@@ -286,7 +286,7 @@ final class ExportCompositeActions {
         return getSerializedSVG(context);
     }
 
-    void drawCircuitInContext(Context2d context, int type, Rectangle bounds, int w, int h) {
+    private void drawCircuitInContext(Context2d context, int type, Rectangle bounds, int w, int h) {
         Graphics g = new Graphics(context);
         context.setTransform(1, 0, 0, 1, 0, 0);
         double oldTransform[] = Arrays.copyOf(sim.getTransform(), 6);
@@ -339,7 +339,7 @@ final class ExportCompositeActions {
         sim.isExporting = false;
     }
 
-    boolean isSelection() {
+    private boolean isSelection() {
         for (int i = 0; i != sim.elmList.size(); i++)
             if (sim.getElm(i).isSelected())
                 return true;

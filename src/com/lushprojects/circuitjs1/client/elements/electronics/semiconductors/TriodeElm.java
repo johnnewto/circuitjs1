@@ -25,9 +25,15 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
 public class TriodeElm extends CircuitElm {
-    double mu, kg1;
-    double curcountp, curcountc, curcountg, currentp, currentg, currentc;
-    final double gridCurrentR = 6000;
+    private double mu;
+    private double kg1;
+    private double curcountp;
+    private double curcountc;
+    private double curcountg;
+    private double currentp;
+    private double currentg;
+    private double currentc;
+    private final double gridCurrentR = 6000;
     public TriodeElm(int xx, int yy) {
 	super(xx, yy);
 	mu = 93;
@@ -41,7 +47,7 @@ public class TriodeElm extends CircuitElm {
 	kg1 = Double.parseDouble(st.nextToken());
 	setup();
     }
-    void setup() {
+    private void setup() {
 	noDiagonal = true;
     }
     protected boolean nonLinear() { return true; }
@@ -54,8 +60,12 @@ public class TriodeElm extends CircuitElm {
     }
     protected int getDumpType() { return 173; }
 	
-    Point plate[], grid[], cath[], midgrid, midcath;
-    int circler;
+    private Point[] plate;
+    private Point[] grid;
+    private Point[] cath;
+    private Point midgrid;
+    private Point midcath;
+    private int circler;
     protected void setPoints() {
 	super.setPoints();
 	plate = newPointArray(4);
@@ -135,11 +145,13 @@ public class TriodeElm extends CircuitElm {
     protected double getPower() { return (volts[0]-volts[2])*currentc + (volts[gridN]-volts[cathN])*currentg; }
     protected double getCurrent() { return currentc; } // for scope
 
-    final int gridN = 1;
-    final int cathN = 2;
-    final int plateN = 0;
+    private final int gridN = 1;
+    private final int cathN = 2;
+    private final int plateN = 0;
 
-    double lastv0, lastv1, lastv2;
+    private double lastv0;
+    private double lastv1;
+    private double lastv2;
     protected void doStep() {
 	double vs[] = new double[3];
 	vs[0] = volts[0];

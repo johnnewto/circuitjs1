@@ -27,7 +27,7 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
 public class DecimalDisplayElm extends ChipElm {
-    int bitCount;
+    private int bitCount;
     
     public DecimalDisplayElm(int xx, int yy) {
 	super(xx, yy);

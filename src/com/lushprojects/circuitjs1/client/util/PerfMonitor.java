@@ -25,9 +25,9 @@ public class PerfMonitor {
     @JsMethod(namespace = JsPackage.GLOBAL, name = "Date.now")
     private static native double dateNow();
     
-    String rootCtxName;
-    PerfEntry rootCtx;
-    PerfEntry ctx;
+    private String rootCtxName;
+    private PerfEntry rootCtx;
+    private PerfEntry ctx;
     
     public PerfMonitor() {
     
@@ -94,19 +94,19 @@ public class PerfMonitor {
 
     class PerfEntry {
     
-        public PerfEntry parent;
-        public HashMap<String, PerfEntry> children;
+        PerfEntry parent;
+        HashMap<String, PerfEntry> children;
             
-        public float startTime;
-        public float endTime;
-        public float length;
+        float startTime;
+        float endTime;
+        float length;
         
-        public PerfEntry(PerfEntry p) {
+        PerfEntry(PerfEntry p) {
             parent = p;
             children = new HashMap<String, PerfEntry>();
         }
         
-        public boolean AddChild(String name, PerfEntry entry) {
+        boolean AddChild(String name, PerfEntry entry) {
             if (!children.containsKey(name)) {
                 children.put(name, entry);
                 return true;

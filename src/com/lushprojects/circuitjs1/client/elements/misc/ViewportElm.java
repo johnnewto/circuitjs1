@@ -36,10 +36,10 @@ import com.lushprojects.circuitjs1.client.elements.annotation.BoxElm;
  */
 public class ViewportElm extends BoxElm {
 
-    String name = "Main";  // Viewport name (for future multi-viewport support)
+    private String name = "Main";  // Viewport name (for future multi-viewport support)
     
     // Blue color for viewport display
-    static Color viewportColor = new Color(64, 128, 255);
+    private static Color viewportColor = new Color(64, 128, 255);
 
     public ViewportElm(int xx, int yy) {
         super(xx, yy);

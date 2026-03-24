@@ -26,13 +26,13 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
 // diode that can be embedded in other elements.  series resistance is handled in DiodeElm, not here.
 public class Diode {
-    int nodes[];
-    SimulationContext sim;
+    private int[] nodes;
+    private SimulationContext sim;
     
     public Diode(CirSim s) {
 	this(s.getSimulationContext());
     }
-    public Diode(SimulationContext sim) {
+    private Diode(SimulationContext sim) {
 	this.sim = sim;
 	nodes = new int[2];
     }
@@ -68,27 +68,29 @@ public class Diode {
     }
 	
     // Electron thermal voltage at SPICE's default temperature of 27 C (300.15 K):
-    static final double vt = 0.025865;
+    private static final double vt = 0.025865;
     // The diode's "scale voltage", the voltage increase which will raise current by a factor of e.
-    double vscale;
+    private double vscale;
     // The multiplicative equivalent of dividing by vscale (for speed).
-    double vdcoef;
+    private double vdcoef;
     // The Zener breakdown curve is represented by a steeper exponential, one like the ideal
     // Shockley curve, but flipped and translated. This curve removes the moderating influence
     // of emcoef, replacing vscale and vdcoef with vt and vzcoef.
     // vzcoef is the multiplicative equivalent of dividing by vt (for speed).
-    static final double vzcoef = 1 / vt;
+    private static final double vzcoef = 1 / vt;
     // User-specified diode parameters for forward voltage drop and Zener voltage.
-    double fwdrop, zvoltage;
+    double fwdrop;
+    private double zvoltage;
     // The diode current's scale factor, calculated from the user-specified forward voltage drop.
-    double leakage;
+    private double leakage;
     // Voltage offset for Zener breakdown exponential, calculated from user-specified Zener voltage.
-    double zoffset;
+    private double zoffset;
     // Critical voltages for limiting the normal diode and Zener breakdown exponentials.
-    double vcrit, vzcrit;
-    double lastvoltdiff;
+    private double vcrit;
+    private double vzcrit;
+    private double lastvoltdiff;
     
-    double limitStep(double vnew, double vold) {
+    private double limitStep(double vnew, double vold) {
 	double arg;
 	double oo = vnew;
 

@@ -6,7 +6,7 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
 public class VaractorElm extends DiodeElm {
-    double baseCapacitance;
+    private double baseCapacitance;
     
     public VaractorElm(int xx, int yy) {
 	super(xx, yy);
@@ -24,12 +24,15 @@ public class VaractorElm extends DiodeElm {
 	arr[0] = "varactor";
 	arr[5] = "C = " + getUnitText(capacitance, "F");
     }
-    double capacitance, capCurrent;
+    private double capacitance;
+    private double capCurrent;
     
     // DiodeElm.lastvoltdiff = volt diff from last iteration
     // capvoltdiff = volt diff from last timestep
-    double compResistance, capvoltdiff;
-    Point plate1[], plate2[];
+    private double compResistance;
+    private double capvoltdiff;
+    private Point[] plate1;
+    private Point[] plate2;
     
     protected void stepFinished() {
 	capvoltdiff = volts[0]-volts[1];
@@ -122,7 +125,7 @@ protected void startIteration() {
 
     protected int getShortcut() { return 0; }
 protected void setCurrent(int x, double c) { capCurrent = c; }
-    double voltSourceValue;
+    private double voltSourceValue;
     protected int getVoltageSourceCount() { return 1; }
     protected int getInternalNodeCount() { return 1; }
 }

@@ -91,7 +91,7 @@ public class ComputedValueSourceElm extends CircuitElm {
     }
     
     // Geometry
-    Point textPos;
+    private Point textPos;
     
     @Override
     protected void setPoints() {

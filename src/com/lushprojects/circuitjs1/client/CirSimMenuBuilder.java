@@ -29,7 +29,7 @@ final class CirSimMenuBuilder {
         }
     }
 
-    void composeMainMenuFromFile(MenuBar mainMenuBar, int num) {
+    private void composeMainMenuFromFile(MenuBar mainMenuBar, int num) {
         String[] lines = sim.menuDefinition.split("\n");
         MenuBar currentMenuBar = mainMenuBar;
         MenuBar[] menuStack = new MenuBar[10];
@@ -100,7 +100,7 @@ final class CirSimMenuBuilder {
         }
     }
 
-    void composeMainMenuHardcoded(MenuBar mainMenuBar, int num) {
+    private void composeMainMenuHardcoded(MenuBar mainMenuBar, int num) {
     mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Wire"), "WireElm"));
     mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Resistor"), "ResistorElm"));
     mainMenuBar.addItem(getClassCheckItem(Locale.LS("Add Multipler"), "MultiplyElm"));
@@ -348,7 +348,7 @@ final class CirSimMenuBuilder {
         sb.addItem(mi);
     }
 
-    CheckboxMenuItem getClassCheckItem(String s, String t) {
+    private CheckboxMenuItem getClassCheckItem(String s, String t) {
     if (sim.classToLabelMap == null)
         sim.classToLabelMap = new HashMap<String, String>();
     sim.classToLabelMap.put(t, s);

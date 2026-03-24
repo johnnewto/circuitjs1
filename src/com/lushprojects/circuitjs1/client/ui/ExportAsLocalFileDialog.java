@@ -61,13 +61,13 @@ public class ExportAsLocalFileDialog extends Dialog {
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
 	private static class BlobOptionsLike {
-		public BlobOptionsLike() {}
+		BlobOptionsLike() {}
 		@JsProperty(name = "type") native void setType(String type);
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Blob")
 	private static class BlobLike {
-		public BlobLike(Object parts, BlobOptionsLike options) {}
+		BlobLike(Object parts, BlobOptionsLike options) {}
 	}
 
 	@JsProperty(namespace = JsPackage.GLOBAL, name = "document")
@@ -81,7 +81,7 @@ public class ExportAsLocalFileDialog extends Dialog {
 
 	private static String lastExportBlobUrl;
 	
-	VerticalPanel vp;
+	private VerticalPanel vp;
 	
 	static public final boolean downloadIsSupported() {
 		DocumentLike document = getDocument();
@@ -91,7 +91,7 @@ public class ExportAsLocalFileDialog extends Dialog {
 		return anchor != null && anchor.getDownload() != null;
 	}
 	
-	static public final String getBlobUrl(String data) {
+	private static String getBlobUrl(String data) {
 		if (lastExportBlobUrl != null)
 			revokeObjectURL(lastExportBlobUrl);
 		String[] parts = new String[] { data };
@@ -103,9 +103,9 @@ public class ExportAsLocalFileDialog extends Dialog {
 		return url;
 	}
 	
-	protected TextBox textBox;
-	static String lastFileName;
-	String url;
+	TextBox textBox;
+	private static String lastFileName;
+	private String url;
 	
 	public static void setLastFileName(String s) {
 	    // remember filename for use when saving a new file.
@@ -159,11 +159,11 @@ public class ExportAsLocalFileDialog extends Dialog {
 		this.center();
 	}
 	
-	static void click(Element elem) {
+	private static void click(Element elem) {
 		((ElementLike) (Object) elem).click();
 	}
 	
-	public void apply() {
+	protected void apply() {
 	    String fname = textBox.getText();
 	    if (!fname.contains("."))
 		fname += ".txt";

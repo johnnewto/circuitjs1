@@ -46,7 +46,7 @@ import com.lushprojects.circuitjs1.client.util.Locale;
  * - Equation: "Predator*a" with parameter 'a' -> adjustable multiplier
  */
 public class EquationElm extends CircuitElm {
-    final int FLAG_SMALL = 1;
+    private final int FLAG_SMALL = 1;
     
     private String elementName = "Eqn";     // User-defined name for this element
     private String equationString = "0";    // User's equation string
@@ -62,12 +62,14 @@ public class EquationElm extends CircuitElm {
     private boolean[] showPercentage = new boolean[MAX_PARAMETERS]; // Show each parameter as percentage
     private static final String[] PARAM_NAMES = {"a", "b", "c", "d", "e", "f", "g", "h"};
     
-    static final int FLAG_SHOW_PERCENTAGE_BASE = 2;  // Flags for percentage display (bits 1-8, shifted to avoid FLAG_SMALL at bit 0)
+    private static final int FLAG_SHOW_PERCENTAGE_BASE = 2;  // Flags for percentage display (bits 1-8, shifted to avoid FLAG_SMALL at bit 0)
     
     // Geometry
-    int opsize, opheight, opwidth;
-    Polygon bodyPoly;
-    Font labelFont;
+    private int opsize;
+    private int opheight;
+    private int opwidth;
+    private Polygon bodyPoly;
+    private Font labelFont;
     
     // Constructor for menu creation
     public EquationElm(int xx, int yy) {
@@ -142,7 +144,7 @@ public class EquationElm extends CircuitElm {
         initState();
     }
     
-    void setSize(int s) {
+    private void setSize(int s) {
         opsize = s;
         opheight = 8 * s;
         opwidth = 13 * s;
@@ -213,7 +215,7 @@ public class EquationElm extends CircuitElm {
     }
     
     // Get convergence limit
-    double getConvergeLimit() {
+    private double getConvergeLimit() {
         double relativeTolerance;
         if (sim.getSubIterations() < 10)
             relativeTolerance = 0.001;  // 0.1% for early iterations

@@ -36,17 +36,17 @@ import com.lushprojects.circuitjs1.client.ui.PieChartDialog;
 public class PieChartElm extends GraphicElm {
     
     // Color palette (same as Scope)
-    static final String colors[] = {
+    private static final String[] colors = {
         "#FFFFFF", "#FFFF00", "#00FF00", "#00FFFF", "#FF00FF", "#FF0000",
         "#FFA500", "#90EE90", "#87CEEB", "#DDA0DD", "#FFB6C1"
     };
     
     // Configuration
-    String[] nodeNames;     // Names of labeled nodes to monitor
-    String[] nodeColors;    // Color for each slice
-    double[] nodeValues;    // Current values of each node
-    int radius = 40;        // Radius of pie chart
-    Point center;           // Center of pie chart
+    private String[] nodeNames;     // Names of labeled nodes to monitor
+    private String[] nodeColors;    // Color for each slice
+    private double[] nodeValues;    // Current values of each node
+    private int radius = 40;        // Radius of pie chart
+    private Point center;           // Center of pie chart
 
     public int getSliceCount() {
         return nodeNames.length;
@@ -140,7 +140,7 @@ public class PieChartElm extends GraphicElm {
     }
     
     @Override
-    public void setPoints() {
+    protected void setPoints() {
         super.setPoints();
         center = new Point((x + x2) / 2, (y + y2) / 2);
         
@@ -272,7 +272,7 @@ public class PieChartElm extends GraphicElm {
     /**
      * Gets a contrasting color (black or white) for text on the given background color.
      */
-    Color getContrastColor(String hexColor) {
+    private Color getContrastColor(String hexColor) {
         try {
             // Parse hex color (assuming format like "#RRGGBB")
             String hex = hexColor.replaceAll("#", "");
@@ -296,7 +296,7 @@ public class PieChartElm extends GraphicElm {
      * First checks ComputedValues (for TableElm stock columns), 
     * then falls back to LabeledNodeElm voltage via CircuitValueSlotManager.
      */
-    void updateNodeValues() {
+    private void updateNodeValues() {
         for (int i = 0; i < nodeNames.length; i++) {
             String nodeName = nodeNames[i];
             

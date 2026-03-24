@@ -25,15 +25,17 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
 public abstract class ChipElm extends CircuitElm {
-	public int csize, cspc, cspc2;
+	protected int csize;
+    public int cspc;
+    public int cspc2;
 	protected int bits;
 	protected double highVoltage;
 	
-	public static final int FLAG_SMALL = 1;
+	protected static final int FLAG_SMALL = 1;
 	public static final int FLAG_FLIP_X = 1<<10;
 	public static final int FLAG_FLIP_Y = 1<<11;
 	public static final int FLAG_FLIP_XY = 1<<12;
-	public static final int FLAG_CUSTOM_VOLTAGE = 1<<13;
+	private static final int FLAG_CUSTOM_VOLTAGE = 1<<13;
 	public ChipElm(int xx, int yy) {
 	    super(xx, yy);
 	    if (needsBits())
@@ -66,7 +68,7 @@ public abstract class ChipElm extends CircuitElm {
 	    }
 	}
 	protected boolean needsBits() { return false; }
-	protected boolean hasCustomVoltage() { return (flags & FLAG_CUSTOM_VOLTAGE) != 0; }
+	private boolean hasCustomVoltage() { return (flags & FLAG_CUSTOM_VOLTAGE) != 0; }
 	protected boolean isDigitalChip() { return true; }
 	protected double getThreshold() { return highVoltage/2; }
 	
@@ -154,7 +156,8 @@ public abstract class ChipElm extends CircuitElm {
 	    drawPosts(g);
 	    g.restore();
 	}
-	protected int rectPointsX[], rectPointsY[];
+	private int[] rectPointsX;
+    private int[] rectPointsY;
 	public Pin pins[];
 	public int sizeX, sizeY, flippedSizeX, flippedSizeY;
 	protected boolean lastClock;
@@ -169,8 +172,9 @@ public abstract class ChipElm extends CircuitElm {
 	    setPoints();
 	}
 	
-	void drawLabel(Graphics g, int x, int y) {}
-	int labelX, labelY;
+	private void drawLabel(Graphics g, int x, int y) {}
+	private int labelX;
+    private int labelY;
 		
 	protected void setPoints() {
 	    if (x2-x >= sizeX*cspc2 && this == sim.dragElm)
@@ -364,8 +368,8 @@ protected void setCurrent(int x, double c) {
 	    return pins[n].current;
 	}
 	
-	protected boolean isFlippedX () { return hasFlag(FLAG_FLIP_X ); }
-	protected boolean isFlippedY () { return hasFlag(FLAG_FLIP_Y ); }
+	private boolean isFlippedX() { return hasFlag(FLAG_FLIP_X ); }
+	private boolean isFlippedY() { return hasFlag(FLAG_FLIP_Y ); }
 	protected boolean isFlippedXY() { return hasFlag(FLAG_FLIP_XY); }
 	
 	public EditInfo getEditInfo(int n) {
@@ -436,9 +440,9 @@ protected void setCurrent(int x, double c) {
 	public static final int SIDE_W = 2;
 	public static final int SIDE_E = 3;
 	
-	protected static final int sideFlipXY[] = { SIDE_W, SIDE_E, SIDE_N, SIDE_S };
+	private static final int[] sideFlipXY = { SIDE_W, SIDE_E, SIDE_N, SIDE_S };
 
-	protected int flippedXSide(int s) {
+	private int flippedXSide(int s) {
 	    if (!isFlippedX())
 		return s;
 	    if (s == SIDE_W)
@@ -489,12 +493,18 @@ protected void setCurrent(int x, double c) {
 	    }
 	    public Point post, stub;
 	    public Point textloc;
-	    public int pos, side, side0, voltSource, bubbleX, bubbleY;
+	    public int pos;
+        public int side;
+        int side0;
+        public int voltSource;
+        int bubbleX;
+        int bubbleY;
 	    public String text;
 	    public boolean lineOver, bubble, clock, output, value, state, selected;
 	    public double curcount, current;
-            public int clockPointsX[], clockPointsY[];
-	    protected void setPoint(int px, int py, int dx, int dy, int dax, int day, int sx, int sy) {
+            int[] clockPointsX;
+        int[] clockPointsY;
+	    void setPoint(int px, int py, int dx, int dy, int dax, int day, int sx, int sy) {
 		if (isFlippedX()) {
 		    dx = -dx;
 		    dax = -dax;
@@ -542,7 +552,7 @@ protected void setCurrent(int x, double c) {
 	    }
 
 	    // convert position, side to a grid position (0=top left) so we can detect overlaps
-	    protected int toGrid(int p, int s) {
+        int toGrid(int p, int s) {
 		if (s == SIDE_N)
 		    return p;
 		if (s == SIDE_S)
@@ -554,7 +564,7 @@ protected void setCurrent(int x, double c) {
 		return -1;
 	    }
 	    
-	    protected boolean overlaps(int p, int s) {
+	    boolean overlaps(int p, int s) {
 		int g = toGrid(p, s);
 		if (g == -1)
 		    return true;

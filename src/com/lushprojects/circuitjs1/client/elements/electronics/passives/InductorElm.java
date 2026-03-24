@@ -28,9 +28,9 @@ import com.lushprojects.circuitjs1.client.elements.electronics.Inductor;
 import com.lushprojects.circuitjs1.client.util.*;
 
 public class InductorElm extends CircuitElm {
-	Inductor ind;
-	double inductance;
-	double initialCurrent;
+	private Inductor ind;
+	private double inductance;
+	private double initialCurrent;
 	public InductorElm(int xx, int yy) {
 	    super(xx, yy);
 	    ind = new Inductor(sim);

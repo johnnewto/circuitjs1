@@ -27,7 +27,7 @@ public class RailElm extends VoltageElm {
 		super(xx, yy, WF_DC); 
 
 	}
-	protected RailElm(int xx, int yy, int wf) {
+	RailElm(int xx, int yy, int wf) {
 		super(xx, yy, wf); 
 	}
 
@@ -37,7 +37,7 @@ public class RailElm extends VoltageElm {
 	}
 
     
-    protected final int FLAG_CLOCK = 1;
+    final int FLAG_CLOCK = 1;
     protected int getDumpType() { return 'R'; }
     protected int getPostCount() { return 1; }
 	
@@ -46,7 +46,7 @@ public class RailElm extends VoltageElm {
 	lead1 = interpPoint(point1, point2, 1-circleSize/dn);
     }
     
-    protected String getRailText() {
+    String getRailText() {
 	return null;
     }
     
@@ -66,7 +66,7 @@ public class RailElm extends VoltageElm {
 	    drawDots(g, point1, lead1, curcount);
     }
 
-    protected void drawRail(Graphics g) {
+    void drawRail(Graphics g) {
 	if (waveform == WF_SQUARE && (flags & FLAG_CLOCK) != 0)
 	    drawRailText(g, "CLK");
 	else if (waveform == WF_DC || waveform == WF_VAR) {
@@ -103,7 +103,7 @@ public class RailElm extends VoltageElm {
 	}
     }
     
-    protected void drawRailText(Graphics g, String s) {
+    void drawRailText(Graphics g, String s) {
 	g.setColor(needsHighlight() ? selectColor : whiteColor);
 	setPowerColor(g, false);
 	// Set consistent font before drawing label

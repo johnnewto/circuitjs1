@@ -172,8 +172,8 @@ public class InfoViewerDialog extends DialogBox {
     private static long lastLiveUpdateMs = 0;
     private static final int DEFAULT_LIVE_UPDATE_INTERVAL_MS = 200;
     
-    VerticalPanel vp;
-    String markdownContent;
+    private VerticalPanel vp;
+    private String markdownContent;
     
     /**
      * Show info in a modal dialog (simple HTML rendering).
@@ -197,7 +197,7 @@ public class InfoViewerDialog extends DialogBox {
     /**
      * Show info in a new browser window with optional table appendix.
      */
-    public static void showInfoInWindow(String title, String markdown, boolean appendCircuitTables) {
+    private static void showInfoInWindow(String title, String markdown, boolean appendCircuitTables) {
         String rawMarkdown = normalizeMarkdown(markdown);
         String displayMarkdown = deriveDisplayMarkdown(title, rawMarkdown, appendCircuitTables);
 
@@ -224,7 +224,7 @@ public class InfoViewerDialog extends DialogBox {
      * Good for embedded display with full markdown support.
      * Includes button to open in new window.
      */
-    public static void showInfoInIframe(String title, String markdown) {
+    private static void showInfoInIframe(String title, String markdown) {
         showInfoInIframe(title, markdown, false);
     }
     
@@ -266,7 +266,7 @@ public class InfoViewerDialog extends DialogBox {
     /**
      * Called from JavaScript to open current content in new window.
      */
-    public static void openCurrentInWindow() {
+    private static void openCurrentInWindow() {
         if (currentRawMarkdown != null && currentTitle != null) {
             showInfoInWindow(currentTitle, currentRawMarkdown, currentAppendCircuitTables);
         }
@@ -323,7 +323,7 @@ public class InfoViewerDialog extends DialogBox {
         appendCircuitTablesAsBlocks = enabled;
     }
 
-    public static void saveEditedMarkdown(String markdown) {
+    private static void saveEditedMarkdown(String markdown) {
         String normalized = normalizeMarkdown(markdown);
         currentRawMarkdown = normalized;
         currentMarkdown = deriveDisplayMarkdown(currentTitle, normalized, currentAppendCircuitTables);
@@ -338,7 +338,7 @@ public class InfoViewerDialog extends DialogBox {
         }
     }
 
-    public static void handleSimulationCommand(String command) {
+    private static void handleSimulationCommand(String command) {
         if (CirSim.getInstance() == null || command == null) {
             return;
         }
@@ -353,7 +353,7 @@ public class InfoViewerDialog extends DialogBox {
         }
     }
 
-    public static void handleViewerOptionChanged(String key, boolean enabled) {
+    private static void handleViewerOptionChanged(String key, boolean enabled) {
         if (key == null) {
             return;
         }
@@ -447,7 +447,7 @@ public class InfoViewerDialog extends DialogBox {
     /**
      * Called from JavaScript to open current content in new window and close the dialog.
      */
-    public static void openCurrentInWindowAndCloseDialog() {
+    private static void openCurrentInWindowAndCloseDialog() {
         openCurrentInWindow();
         IframeViewerDialog.closeDialog();
     }
@@ -629,14 +629,14 @@ public class InfoViewerDialog extends DialogBox {
      * Includes balance sheets (GodlyTableElm), transaction matrices (CurrentTransactionsMatrixElm),
      * SFC tables (SFCTableElm), regular tables (TableElm), and equation tables (EquationTableElm).
      */
-    public static String generateCircuitTablesMarkdown() {
+    private static String generateCircuitTablesMarkdown() {
         return InfoViewerTableMarkdown.generateCircuitTablesMarkdown();
     }
 
     /**
      * Generate fenced circuit blocks for each table so the info viewer can mount live table widgets.
      */
-    public static String generateCircuitTableBlocksMarkdown() {
+    private static String generateCircuitTableBlocksMarkdown() {
         return InfoViewerTableMarkdown.generateCircuitTableBlocksMarkdown();
     }
 

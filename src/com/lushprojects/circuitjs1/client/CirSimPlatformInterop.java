@@ -93,7 +93,7 @@ final class CirSimPlatformInterop {
         }, false);
     }
 
-    void electronSaveAsCallback(String s) {
+    private void electronSaveAsCallback(String s) {
         s = s.substring(s.lastIndexOf('/') + 1);
         s = s.substring(s.lastIndexOf('\\') + 1);
         sim.setCircuitTitle(s);
@@ -102,7 +102,7 @@ final class CirSimPlatformInterop {
         sim.repaint();
     }
 
-    void electronSaveCallback() {
+    private void electronSaveCallback() {
         sim.savedFlag = true;
         sim.repaint();
     }
@@ -131,7 +131,7 @@ final class CirSimPlatformInterop {
         electronSaveCallback();
     }
 
-    void electronOpenFileCallback(String text, String name) {
+    private void electronOpenFileCallback(String text, String name) {
         LoadFile.doLoadCallback(text, name);
         sim.getUiPanelManager().allowSave(true);
     }

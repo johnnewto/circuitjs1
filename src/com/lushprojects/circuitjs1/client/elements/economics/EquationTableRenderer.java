@@ -48,7 +48,7 @@ import com.lushprojects.circuitjs1.client.util.Locale;
  * @see EquationTableElm#draw(Graphics) Main entry point that delegates here
  * @see EquationTableElm#setPoints()   Causes cache invalidation on resize
  */
-public class EquationTableRenderer {
+class EquationTableRenderer {
     private final EquationTableElm table;
 
     private String[] cachedDisplayEquationByRow;

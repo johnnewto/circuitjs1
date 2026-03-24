@@ -58,21 +58,21 @@ public class OpAmpRealElm extends CompositeElm {
 	    "0 0 0 -0.00156/0 0.000005/0 450000/0 300/0 -1 0 0 100 xlm324v2-qpq/0 300/0 -1 0 0 100 xlm324v2-qpq/2 8e-12 0 0/2 1e-12 0 0/2 1e-13 0 0/0 300000/2 2.3e-13 0 0/2 7.9e-13 0 0/" +
 	    "2 7.9e-13 0 0/0 2 2*(a-b)/2 5e-14 0 0/0 25/0 1 0 0 100 xlm324v2-qnq/0 2 0.0003*(a-b)/0 0.001/0 0 0 -0.25/0 1000000/0 2 1*(a-b)/0 1000000/0 0 0 -0.55/0 1000000";	    
 
-    static final int MODEL_741 = 0;
-    static final int MODEL_324 = 1;
-    static final int MODEL_324v2 = 2;
+    private static final int MODEL_741 = 0;
+    private static final int MODEL_324 = 1;
+    private static final int MODEL_324v2 = 2;
     
     private static double[] model741resistances = { 50, 25, 1e3, 50e3, 1e3, 5e3, 50e3, 50, 39e3, 7500, 4500 }; 
 
-    int modelType;
-    final int opheight = 16;
-    final int opwidth = 32;
-    double curCounts[];
-    double slewRate;
-    double currentLimit;
-    double capValue;
-    final double defaultCurrentLimit = .0231;
-    final int FLAG_SWAP = 2;
+    private int modelType;
+    private final int opheight = 16;
+    private final int opwidth = 32;
+    private double[] curCounts;
+    private double slewRate;
+    private double currentLimit;
+    private double capValue;
+    private final double defaultCurrentLimit = .0231;
+    private final int FLAG_SWAP = 2;
 
     public OpAmpRealElm(int xx, int yy) {
 	super(xx, yy); // , model741String, model741ExternalNodes);
@@ -159,7 +159,7 @@ public class OpAmpRealElm extends CompositeElm {
 	curCounts = new double[5];
     }
 
-    CapacitorElm getCapacitor() {
+    private CapacitorElm getCapacitor() {
 	if (modelType == MODEL_324v2)
 	    return null;
 	return ((CapacitorElm) compElmList.get(modelType == MODEL_741 ? 20 : 4));
@@ -205,9 +205,13 @@ public class OpAmpRealElm extends CompositeElm {
         drawPosts(g);
     }
     
-    Point in1p[], in2p[], textp[], rail1p[], rail2p[];
-    Polygon triangle;
-    Font plusFont;
+    private Point[] in1p;
+    private Point[] in2p;
+    private Point[] textp;
+    private Point[] rail1p;
+    private Point[] rail2p;
+    private Polygon triangle;
+    private Font plusFont;
 
     protected void setPoints() {
         super.setPoints();

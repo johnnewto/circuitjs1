@@ -28,9 +28,10 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.elements.electronics.electromechanical.SwitchElm;
 
     public class LogicInputElm extends SwitchElm {
-	final int FLAG_TERNARY = 1;
-	final int FLAG_NUMERIC = 2;
-	double hiV, loV;
+	private final int FLAG_TERNARY = 1;
+	private final int FLAG_NUMERIC = 2;
+	private double hiV;
+        private double loV;
 	public LogicInputElm(int xx, int yy) {
 	    super(xx, yy, false);
 	    hiV = 5;
@@ -50,8 +51,8 @@ import com.lushprojects.circuitjs1.client.elements.electronics.electromechanical
 	    if (isTernary())
 		posCount = 3;
 	}
-	boolean isTernary() { return (flags & FLAG_TERNARY) != 0; }
-	boolean isNumeric() { return (flags & (FLAG_TERNARY|FLAG_NUMERIC)) != 0; }
+	private boolean isTernary() { return (flags & FLAG_TERNARY) != 0; }
+	private boolean isNumeric() { return (flags & (FLAG_TERNARY|FLAG_NUMERIC)) != 0; }
 	protected int getDumpType() { return 'L'; }
 	protected String dump() {
 	    return super.dump() + " " + hiV + " " + loV;

@@ -53,34 +53,77 @@ class ScopeCheckBox extends CheckBox {
 public class ScopePropertiesDialogCore extends Dialog implements ValueChangeHandler<Boolean> {
 
 	
-Panel fp, channelButtonsp, channelSettingsp;
-HorizontalPanel hp;
-HorizontalPanel vModep;
-CirSim sim;
+private Panel fp;
+    private Panel channelButtonsp;
+    private Panel channelSettingsp;
+private HorizontalPanel hp;
+private HorizontalPanel vModep;
+private CirSim sim;
 //RichTextArea textBox;
 TextArea textArea;
-RadioButton autoButton, maxButton, manualButton;
-RadioButton acButton, dcButton;
-CheckBox scaleBox, voltageBox, currentBox, powerBox, peakBox, negPeakBox, freqBox, spectrumBox, manualScaleBox;
-CheckBox rmsBox, dutyBox, viBox, xyBox, resistanceBox, ibBox, icBox, ieBox, vbeBox, vbcBox, vceBox, vceIcBox, logSpectrumBox, averageBox;
-CheckBox elmInfoBox;
-TextBox labelTextBox, titleTextBox, manualScaleTextBox, divisionsTextBox, maxScaleTextBox;
-Button applyButton, scaleUpButton, scaleDownButton;
-Scrollbar speedBar,positionBar;
-Scope scope;
-Grid grid, vScaleGrid, hScaleGrid;
-int nx, ny;
-Label scopeSpeedLabel, manualScaleLabel,vScaleList, manualScaleId, positionLabel, divisionsLabel, maxScaleLabel;
-expandingLabel vScaleLabel, hScaleLabel;
-Vector <Button> chanButtons = new Vector <Button>();
-int plotSelection = 0;
-labelledGridManager gridLabels;
-boolean maxScaleTextBoxHasFocus = false;
+private RadioButton autoButton;
+    private RadioButton maxButton;
+    private RadioButton manualButton;
+private RadioButton acButton;
+    private RadioButton dcButton;
+private CheckBox scaleBox;
+    private CheckBox voltageBox;
+    private CheckBox currentBox;
+    private CheckBox powerBox;
+    private CheckBox peakBox;
+    private CheckBox negPeakBox;
+    private CheckBox freqBox;
+    private CheckBox spectrumBox;
+    CheckBox manualScaleBox;
+private CheckBox rmsBox;
+    private CheckBox dutyBox;
+    private CheckBox viBox;
+    private CheckBox xyBox;
+    private CheckBox resistanceBox;
+    private CheckBox ibBox;
+    private CheckBox icBox;
+    private CheckBox ieBox;
+    private CheckBox vbeBox;
+    private CheckBox vbcBox;
+    private CheckBox vceBox;
+    private CheckBox vceIcBox;
+    private CheckBox logSpectrumBox;
+    private CheckBox averageBox;
+private CheckBox elmInfoBox;
+private TextBox labelTextBox;
+    private TextBox titleTextBox;
+    private TextBox manualScaleTextBox;
+    private TextBox divisionsTextBox;
+    private TextBox maxScaleTextBox;
+private Button applyButton;
+    private Button scaleUpButton;
+    private Button scaleDownButton;
+private Scrollbar speedBar;
+    private Scrollbar positionBar;
+private Scope scope;
+private Grid grid;
+    private Grid vScaleGrid;
+    private Grid hScaleGrid;
+private int nx;
+    private int ny;
+private Label scopeSpeedLabel;
+    private Label manualScaleLabel;
+    Label vScaleList;
+    private Label manualScaleId;
+    private Label positionLabel;
+    private Label divisionsLabel;
+    private Label maxScaleLabel;
+private expandingLabel vScaleLabel;
+    private expandingLabel hScaleLabel;
+private Vector <Button> chanButtons = new Vector <Button>();
+private int plotSelection = 0;
+private labelledGridManager gridLabels;
+private boolean maxScaleTextBoxHasFocus = false;
 	
     class PlotClickHandler implements ClickHandler {
 	int num;
 
-	public PlotClickHandler(int n) {
+	PlotClickHandler(int n) {
 	    num = n;
 	}
 
@@ -106,7 +149,7 @@ boolean maxScaleTextBoxHasFocus = false;
     }
     
     class downClickHandler implements ClickHandler{
-	public downClickHandler() {
+	downClickHandler() {
 	}
 	
 	public void onClick(ClickEvent event) {
@@ -131,7 +174,7 @@ boolean maxScaleTextBoxHasFocus = false;
 
     
     class upClickHandler implements ClickHandler{
-	public upClickHandler() {
+	upClickHandler() {
 	}
 	
 	public void onClick(ClickEvent event) {
@@ -158,14 +201,14 @@ boolean maxScaleTextBoxHasFocus = false;
 	    return s;
     }
     
-    void positionBarChanged() {
+    private void positionBarChanged() {
 	if (!scope.isManualScale() || plotSelection>scope.visiblePlots.size())
 	    return;
 	int p = positionBar.getValue();
 	scope.setPlotPosition(plotSelection, p);
     }
     
-    String getChannelButtonLabel(int i) {
+    private String getChannelButtonLabel(int i) {
 	    ScopePlot p = scope.visiblePlots.get(i);
 	    String l = "<span style=\"color: "+p.color+";\">&#x25CF;</span>&nbsp;CH "+String.valueOf(i+1);
 	    switch (p.units) {
@@ -186,7 +229,7 @@ boolean maxScaleTextBoxHasFocus = false;
 	
     }
     
-    void updateChannelButtons() {
+    private void updateChannelButtons() {
 	if (plotSelection >= scope.visiblePlots.size())
 	    plotSelection = 0;
 	// More buttons than plots - remove extra buttons
@@ -599,11 +642,11 @@ boolean maxScaleTextBoxHasFocus = false;
 	}
 	
 	
-	void setScopeSpeedLabel() {
+	private void setScopeSpeedLabel() {
 	    scopeSpeedLabel.setText(CircuitElm.getUnitText(scope.calcGridStepX(), "s")+"/div");
 	}
 	
-	void addItemToGrid(Grid g, FocusWidget scb) {
+	private void addItemToGrid(Grid g, FocusWidget scb) {
 	    g.setWidget(ny, nx, scb);
 	    if (++nx >= grid.getColumnCount()) {
 		nx = 0;
@@ -612,7 +655,7 @@ boolean maxScaleTextBoxHasFocus = false;
 	}
 	
 	
-	void scrollbarChanged() {
+	private void scrollbarChanged() {
 	    int newsp = (int)Math.pow(2,  10-speedBar.getValue());
 	    CirSim.console("changed " + scope.speed + " " + newsp + " " + speedBar.getValue());
 	    if (scope.speed != newsp)
@@ -620,7 +663,7 @@ boolean maxScaleTextBoxHasFocus = false;
 	    setScopeSpeedLabel();
 	}
 	
-	void updateUi() {
+	private void updateUi() {
 	    vModep.setVisible(vScaleLabel.expanded);
 	    gridLabels.updateRowVisibility();
 	    hScaleGrid.getRowFormatter().setVisible(1, hScaleLabel.expanded);
@@ -673,7 +716,7 @@ boolean maxScaleTextBoxHasFocus = false;
 	    // if you add more here, make sure it still works with transistor scopes
 	}
 	
-	void updateManualScaleUi() {
+	private void updateManualScaleUi() {
 	    updateChannelButtons();
 	    channelSettingsp.setVisible(scope.isManualScale() && vScaleLabel.expanded);
 	    vScaleGrid.setVisible(vScaleLabel.expanded);
@@ -749,7 +792,7 @@ boolean maxScaleTextBoxHasFocus = false;
 	    apply();
 	}
 	
-	double getManualScaleValue()
+	private double getManualScaleValue()
 	{
 	    try {
 		double d = EditDialog.parseUnits(manualScaleTextBox.getText());
@@ -761,7 +804,7 @@ boolean maxScaleTextBoxHasFocus = false;
 	    }
 	}
 	
-	int getDivisionsValue()
+	private int getDivisionsValue()
 	{
 	    try {
 		int n = Integer.parseInt(divisionsTextBox.getText());
@@ -771,7 +814,7 @@ boolean maxScaleTextBoxHasFocus = false;
 	    }
 	}
 	
-	public void apply() {
+	protected void apply() {
 	    String label = labelTextBox.getText();
 	    if (label.length() == 0)
 		label = null;

@@ -27,12 +27,15 @@ import com.lushprojects.circuitjs1.client.util.*;
 // Linear subtracter element - subtracts input voltages from first input
 // Vout = V1 - V2 - V3 - ... using VCVS (linear element, no iteration needed)
 public class SubtracterElm extends CircuitElm {
-    int inputCount;
-    int opsize, opheight, opwidth;
-    final int FLAG_SMALL = 2;
-    Point inPosts[], inLeads[];
-    Polygon bodyPoly;
-    Font labelFont;
+    private int inputCount;
+    private int opsize;
+    private int opheight;
+    private int opwidth;
+    private final int FLAG_SMALL = 2;
+    private Point[] inPosts;
+    private Point[] inLeads;
+    private Polygon bodyPoly;
+    private Font labelFont;
     
     public SubtracterElm(int xx, int yy) {
         super(xx, yy);
@@ -54,7 +57,7 @@ public class SubtracterElm extends CircuitElm {
     
     protected int getDumpType() { return 252; }
     
-    void setSize(int s) {
+    private void setSize(int s) {
         opsize = s;
         opheight = 8 * s;
         opwidth = 13 * s;

@@ -41,12 +41,12 @@ public class AudioOutputElm extends CircuitElm {
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "ArrayBuffer")
 	private static class ArrayBufferLike {
-		public ArrayBufferLike(int byteLength) {}
+		ArrayBufferLike(int byteLength) {}
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "DataView")
 	private static class DataViewLike {
-		public DataViewLike(ArrayBufferLike buffer) {}
+		DataViewLike(ArrayBufferLike buffer) {}
 		@JsMethod native void setUint8(int byteOffset, int value);
 		@JsMethod native void setUint32(int byteOffset, int value, boolean littleEndian);
 		@JsMethod native void setInt16(int byteOffset, int value, boolean littleEndian);
@@ -54,13 +54,13 @@ public class AudioOutputElm extends CircuitElm {
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "BlobPropertyBag")
 	private static class BlobPropertyBagLike {
-		public BlobPropertyBagLike() {}
+		BlobPropertyBagLike() {}
 		@JsProperty(name = "type") native void setType(String type);
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Blob")
 	private static class BlobLike {
-		public BlobLike(Object[] parts, BlobPropertyBagLike options) {}
+		BlobLike(Object[] parts, BlobPropertyBagLike options) {}
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "HTMLAudioElement")
@@ -78,15 +78,16 @@ public class AudioOutputElm extends CircuitElm {
 	@JsMethod(namespace = JsPackage.GLOBAL, name = "URL.revokeObjectURL")
 	private static native void revokeObjectURL(String url);
 
-    int dataCount, dataPtr;
-    double data[];
-    boolean dataFull;
-    Button button;
-    int samplingRate;
-    int labelNum;
-    double duration;
-    double sampleStep;
-    double dataStart;
+    private int dataCount;
+    private int dataPtr;
+    private double[] data;
+    private boolean dataFull;
+    private Button button;
+    private int samplingRate;
+    private int labelNum;
+    private double duration;
+    private double sampleStep;
+    private double dataStart;
     public static int lastSamplingRate = 8000;
     public static boolean okToChangeTimeStep;
     
@@ -116,7 +117,7 @@ public class AudioOutputElm extends CircuitElm {
 	}
 	
 	// get next unused labelNum value
-	int getNextLabelNum() {
+    private int getNextLabelNum() {
 	    int i;
 	    int num = 1;
 	    if (sim.elmList == null)
@@ -180,9 +181,9 @@ public class AudioOutputElm extends CircuitElm {
 	    arr[4] = "samples = " + ct + (dataFull ? "" : "/" + dataCount);
 	}
 	
-	int dataSampleCount = 0;
-	double nextDataSample = 0;
-	double dataSample;
+	private int dataSampleCount = 0;
+	private double nextDataSample = 0;
+	private double dataSample;
 	
 	protected void stepFinished() {
 	    SimulationContext context = getSimulationContext();
@@ -200,7 +201,7 @@ public class AudioOutputElm extends CircuitElm {
 	    }
 	}
 	
-	void setDataCount() {
+	private void setDataCount() {
 	    SimulationContext context = getSimulationContext();
 	    dataCount = (int) (samplingRate * duration);
 	    data = new double[dataCount];
@@ -211,7 +212,7 @@ public class AudioOutputElm extends CircuitElm {
 	    nextDataSample = context.getTime()+sampleStep;
 	}
 	
-	int samplingRateChoices[] = { 8000, 11025, 16000, 22050, 44100, 48000 };
+	private int[] samplingRateChoices = { 8000, 11025, 16000, 22050, 44100, 48000 };
 	
 	public EditInfo getEditInfo(int n) {
 	    if (n == 0) {
@@ -261,7 +262,7 @@ public class AudioOutputElm extends CircuitElm {
 	    }
 	}
 	
-	void setTimeStep() {
+	private void setTimeStep() {
 	    /*
 	    // timestep must be smaller than 1/sampleRate
 	    if (sim.getTimeStep() > sampleStep)
@@ -286,7 +287,7 @@ public class AudioOutputElm extends CircuitElm {
 	    }
 	}
 	
-        void createButton() {
+        private void createButton() {
             String label = "&#9654; " + Locale.LS("Play Audio");
             if (labelNum > 1)
         	label += " " + labelNum;
@@ -366,12 +367,12 @@ public class AudioOutputElm extends CircuitElm {
 		audio.play();
 	}
 
-		static String getLastBlob() {
+		private static String getLastBlob() {
 			DocumentLike document = getDocument();
 			return document == null ? null : document.getAudioBlob();
 		}
         
-        void play() {
+        private void play() {
             int i;
             int ct = dataPtr;
             int base = 0;

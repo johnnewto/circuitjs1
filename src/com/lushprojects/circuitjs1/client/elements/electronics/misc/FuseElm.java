@@ -28,12 +28,12 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class FuseElm extends CircuitElm {
-	double resistance;
-	double heat;
-	double i2t;
-	boolean blown;
-	final int FLAG_IEC_SYMBOL = 1;
-	final double blownResistance = 1e9;
+	private double resistance;
+	private double heat;
+	private double i2t;
+	private boolean blown;
+	private final int FLAG_IEC_SYMBOL = 1;
+	private final double blownResistance = 1e9;
 	public FuseElm(int xx, int yy) {
 	    super(xx, yy);
 	    // from https://m.littelfuse.com/~/media/electronics/datasheets/fuses/littelfuse_fuse_218_datasheet.pdf.pdf
@@ -53,7 +53,7 @@ public class FuseElm extends CircuitElm {
 	}
 	protected int getDumpType() { return 404; }
 
-	boolean isIECSymbol() { return (flags & FLAG_IEC_SYMBOL) != 0; }
+	private boolean isIECSymbol() { return (flags & FLAG_IEC_SYMBOL) != 0; }
 	
 	protected void reset() {
 	    super.reset();
@@ -66,7 +66,7 @@ public class FuseElm extends CircuitElm {
 	    calcLeads(llen);
 	}
 
-	Color getTempColor(Graphics g) {
+	private Color getTempColor(Graphics g) {
 	    Color c = getVoltageColor(g, volts[0]);
 	    double temp = heat/i2t;
 	    if (temp < .3333) {

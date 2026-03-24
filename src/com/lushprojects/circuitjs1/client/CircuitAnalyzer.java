@@ -63,7 +63,7 @@ public class CircuitAnalyzer {
         return nodeList.elementAt(n);
     }
 
-    void calculateWireClosure() {
+    private void calculateWireClosure() {
         int i;
         LabeledNodeElm.resetNodeList();
         GroundElm.resetNodeList();
@@ -112,7 +112,7 @@ public class CircuitAnalyzer {
         }
     }
 
-    boolean calcWireInfo() {
+    private boolean calcWireInfo() {
         int i;
         int moved = 0;
 
@@ -177,7 +177,7 @@ public class CircuitAnalyzer {
         return true;
     }
 
-    void setGroundNode(boolean subcircuit) {
+    private void setGroundNode(boolean subcircuit) {
         int i;
         boolean gotGround = false;
         boolean gotRail = false;
@@ -213,7 +213,7 @@ public class CircuitAnalyzer {
         }
     }
 
-    void makeNodeList() {
+    private void makeNodeList() {
         int i, j;
         int vscount = 0;
         for (i = 0; i != sim.elmList.size(); i++) {
@@ -265,7 +265,7 @@ public class CircuitAnalyzer {
         sim.voltageSources = new CircuitElm[vscount];
     }
 
-    void findUnconnectedNodes() {
+    private void findUnconnectedNodes() {
         int i, j;
         boolean closure[] = new boolean[nodeList.size()];
         boolean changed = true;
@@ -315,7 +315,7 @@ public class CircuitAnalyzer {
         }
     }
 
-    void connectUnconnectedNodes() {
+    private void connectUnconnectedNodes() {
         int i;
         CirSim.console("Number of unconnected nodes: " + unconnectedNodes.size());
         for (i = 0; i != unconnectedNodes.size(); i++) {
@@ -324,7 +324,7 @@ public class CircuitAnalyzer {
         }
     }
 
-    boolean validateCircuit() {
+    private boolean validateCircuit() {
         int i;
         for (i = 0; i != sim.elmList.size(); i++) {
             CircuitElm ce = sim.getElm(i);
@@ -543,7 +543,7 @@ public class CircuitAnalyzer {
         sim.needsStamp = false;
     }
 
-    boolean simplifyMatrix(int matrixSize) {
+    private boolean simplifyMatrix(int matrixSize) {
         int i, j;
         for (i = 0; i != matrixSize; i++) {
             int qp = -1;
@@ -642,7 +642,7 @@ public class CircuitAnalyzer {
         return true;
     }
 
-    void makePostDrawList() {
+    private void makePostDrawList() {
         HashMap<Point, Integer> postCountMap = new HashMap<Point, Integer>();
         int i, j;
         for (i = 0; i != sim.elmList.size(); i++) {

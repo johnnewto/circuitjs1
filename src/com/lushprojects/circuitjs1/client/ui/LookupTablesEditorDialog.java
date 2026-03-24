@@ -14,7 +14,7 @@ import com.lushprojects.circuitjs1.client.io.SFCRExporter;
 import com.lushprojects.circuitjs1.client.io.SFCRParser;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
-public class LookupTablesEditorDialog extends Dialog {
+class LookupTablesEditorDialog extends Dialog {
 
     private final CirSim sim;
     private final TextArea textArea;

@@ -18,13 +18,13 @@ import jsinterop.annotations.JsType;
 public class DataRecorderElm extends CircuitElm {
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
 	private static class BlobOptionsLike {
-		public BlobOptionsLike() {}
+		BlobOptionsLike() {}
 		@JsProperty(name = "type") native void setType(String type);
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Blob")
 	private static class BlobLike {
-		public BlobLike(Object parts, BlobOptionsLike options) {}
+		BlobLike(Object parts, BlobOptionsLike options) {}
 	}
 
 	@JsMethod(namespace = JsPackage.GLOBAL, name = "URL.createObjectURL")
@@ -35,10 +35,11 @@ public class DataRecorderElm extends CircuitElm {
 
 	private static String lastRecorderBlobUrl;
 
-    int dataCount, dataPtr;
-    int lastTimeStepCount;
-    double data[];
-    boolean dataFull;
+    private int dataCount;
+    private int dataPtr;
+    private int lastTimeStepCount;
+    private double[] data;
+    private boolean dataFull;
     
 	public DataRecorderElm(int xx, int yy) {
 	    super(xx, yy);
@@ -96,14 +97,14 @@ public class DataRecorderElm extends CircuitElm {
 	    }
 	}
 	
-	void setDataCount(int ct) {
+	private void setDataCount(int ct) {
 	    dataCount = ct;
 	    data = new double[dataCount];
 	    dataPtr = 0;
 	    dataFull = false;
 	}
 	
-	static public final String getBlobUrl(String data) {
+	private static String getBlobUrl(String data) {
 		if (lastRecorderBlobUrl != null)
 			revokeObjectURL(lastRecorderBlobUrl);
 		String[] parts = new String[] { data };

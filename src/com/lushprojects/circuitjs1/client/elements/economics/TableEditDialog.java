@@ -2710,12 +2710,12 @@ import jsinterop.annotations.JsType;
     }
     
     // Column operation permission checks
-    public boolean canMoveColumn(int col) {
+    private boolean canMoveColumn(int col) {
         if (col < 0 || col >= dataCols || columnTypes == null) return false;
         return !isALEColumn(col);
     }
     
-    public boolean canDeleteColumn(int col) {
+    private boolean canDeleteColumn(int col) {
         if (col < 0 || col >= dataCols || columnTypes == null) return false;
         
         // Cannot delete Computed (A_L_E) column
@@ -2725,7 +2725,7 @@ import jsinterop.annotations.JsType;
         return true;
     }
     
-    public boolean canAddColumnAfter(int col) {
+    private boolean canAddColumnAfter(int col) {
         if (col < 0 || col >= dataCols || columnTypes == null) return false;
         
         // Cannot add after Computed (A_L_E) column

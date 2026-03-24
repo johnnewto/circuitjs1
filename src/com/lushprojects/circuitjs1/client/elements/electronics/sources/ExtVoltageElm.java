@@ -34,8 +34,8 @@ public class ExtVoltageElm extends RailElm {
 	    waveform = WF_AC;
 	}
 	
-        String name;
-        double voltage;
+        private String name;
+        private double voltage;
 
         protected String dump() { return super.dump() + " " + CustomLogicModel.escape(name); }
         

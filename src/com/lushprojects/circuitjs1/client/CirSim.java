@@ -311,7 +311,7 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "XMLHttpRequest")
 	private static class NativeXhr {
-	    public NativeXhr() {}
+	    NativeXhr() {}
 	    @JsMethod native void open(String method, String url, boolean async);
 	    @JsMethod native void send();
 	    @JsProperty native int getStatus();
@@ -488,16 +488,16 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
 	public boolean developerMode = false;
 	
 	// Equation table MNA mode - when true, equation tables create electrical outputs
-	public boolean equationTableMnaMode = true;
+    private boolean equationTableMnaMode = true;
 
 	// Experimental: Newton Jacobian stamping for EquationTable VOLTAGE_MODE MNA rows.
 	public boolean equationTableNewtonJacobianEnabled = false;
 
 	// Global base convergence tolerance used by all EquationTableElm instances
-	public double equationTableConvergenceTolerance = 0.001;
+    private double equationTableConvergenceTolerance = 0.001;
 
 	// Default SFCR lookup behavior: true=clamped endpoints (pwl), false=extrapolating (pwlx)
-	public boolean sfcrLookupClampDefault = true;
+    private boolean sfcrLookupClampDefault = true;
 
 	// When true, include the electronics circuit library in the Circuits menu
 	boolean showElectronicsCircuits = false;
@@ -589,12 +589,12 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
     static int VERTICALPANELWIDTH = 166; // default
     static final int POSTGRABSQ = 25;
     static final int MINPOSTGRABSIZE = 256;
-    final Timer timer = new Timer() {
+    private final Timer timer = new Timer() {
         public void run() {
             updateCircuit();
         }
     };
-    final int FASTTIMER = 16;
+    private final int FASTTIMER = 16;
 
     public int getrand(int x) {
         int q = random.nextInt();
@@ -1101,14 +1101,14 @@ public CirSim() {
 	runnerController.launchFromQuery(qp);
     }
 
-    void onRunnerLoadFileSuccess(String text, Command successCallback) {
+    private void onRunnerLoadFileSuccess(String text, Command successCallback) {
 	getCircuitIOService().readCircuit(text, RC_KEEP_TITLE);
 	unsavedChanges = false;
 	if (successCallback != null)
 	    successCallback.execute();
     }
 
-    void loadFileFromURLRunner(String url, final Command successCallback, final Command failureCallback) {
+    private void loadFileFromURLRunner(String url, final Command successCallback, final Command failureCallback) {
 	final String loadUrl = getCircuitIOService().getLoadUrl(url);
 	console("loadFileFromURLRunner request: " + loadUrl);
 	final NativeXhr xhr = new NativeXhr();
@@ -1240,7 +1240,7 @@ public CirSim() {
      * Update the Run/Stop button appearance based on simulation state.
      * Delegates to FloatingControlPanel.
      */
-    void updateRunStopButton() {
+    private void updateRunStopButton() {
     	if (floatingControlPanel != null) {
     	    floatingControlPanel.updateRunStopButton();
     	}
@@ -1268,7 +1268,7 @@ public CirSim() {
     	return simRunning;
     }
     
-    boolean needsRepaint;
+    private boolean needsRepaint;
     
     public void repaint() {
 	if (RuntimeMode.isNonInteractiveRuntime())
@@ -1655,7 +1655,7 @@ public CirSim() {
 	matrixStamper.stampNonLinear(i);
     }
 
-	boolean converged;
+	private boolean converged;
 
     public double getTimeStep() {
 	return getTimingState().timeStep;
@@ -1808,7 +1808,7 @@ public CirSim() {
 	}
     }
 
-	void doImageToClipboardCore() {
+	private void doImageToClipboardCore() {
 	Canvas cv = CirSim.getInstance().getExportCompositeActions().getCircuitAsCanvas(CAC_IMAGE);
 	clipboardWriteImage(cv.getCanvasElement());
 	}
@@ -2068,7 +2068,7 @@ public CirSim() {
      * @param x Grid X coordinate in circuit space
      * @return Screen X coordinate (pixels)
      */
-    int transformX(double x) {
+    private int transformX(double x) {
 	return getViewportController().transformX(x);
     }
 
@@ -2083,7 +2083,7 @@ public CirSim() {
      * @param y Grid Y coordinate in circuit space
      * @return Screen Y coordinate (pixels)
      */
-    int transformY(double y) {
+    private int transformY(double y) {
 	return getViewportController().transformY(y);
     }
 
@@ -2119,7 +2119,7 @@ public CirSim() {
 	getViewportController().setMenuClientY(value);
     }
 
-    int getMenuX() {
+    private int getMenuX() {
 	return getViewportController().getMenuX();
     }
 
@@ -2127,7 +2127,7 @@ public CirSim() {
 	getViewportController().setMenuX(value);
     }
 
-    int getMenuY() {
+    private int getMenuY() {
 	return getViewportController().getMenuY();
     }
 
@@ -2137,7 +2137,7 @@ public CirSim() {
 
     static int lastSubcircuitMenuUpdate;
     
-	    static final int MAX_NORMALIZED_WHEEL_DELTA = 150;
+	    private static final int MAX_NORMALIZED_WHEEL_DELTA = 150;
 
 	    // Modern browsers can report large pixel deltas from high-resolution
 	    // trackpads. Clamp to keep zoom/edit interactions consistent.
@@ -2233,7 +2233,7 @@ public CirSim() {
 	boolean loadedCanvas2SVG = false;
 
 	static final int CAC_PRINT = 0;
-	static final int CAC_IMAGE = 1;
+	private static final int CAC_IMAGE = 1;
 	static final int CAC_SVG   = 2;
 
 }

@@ -30,27 +30,32 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class VoltageElm extends CircuitElm {
-    protected static final int FLAG_COS = 2;
-    protected static final int FLAG_PULSE_DUTY = 4;
-    protected int waveform;
-    protected static final int WF_DC = 0;
-    protected static final int WF_AC = 1;
-    protected static final int WF_SQUARE = 2;
-    protected static final int WF_TRIANGLE = 3;
-    protected static final int WF_SAWTOOTH = 4;
-    protected static final int WF_PULSE = 5;
-    protected static final int WF_NOISE = 6;
-    protected static final int WF_VAR = 7;
-    protected double frequency, maxVoltage, freqTimeZero, bias,
-	phaseShift, dutyCycle, noiseValue;
-    protected String name;
+    private static final int FLAG_COS = 2;
+    private static final int FLAG_PULSE_DUTY = 4;
+    int waveform;
+    static final int WF_DC = 0;
+    static final int WF_AC = 1;
+    static final int WF_SQUARE = 2;
+    private static final int WF_TRIANGLE = 3;
+    private static final int WF_SAWTOOTH = 4;
+    private static final int WF_PULSE = 5;
+    static final int WF_NOISE = 6;
+    static final int WF_VAR = 7;
+    double frequency;
+    double maxVoltage;
+    private double freqTimeZero;
+    double bias;
+    private double phaseShift;
+    private double dutyCycle;
+    private double noiseValue;
+    String name;
     
-    protected static final double defaultPulseDuty = 1/(2*Math.PI);
+    private static final double defaultPulseDuty = 1/(2*Math.PI);
 
     public double getMaxVoltage() { return maxVoltage; }
     public void setMaxVoltage(double maxVoltage) { this.maxVoltage = maxVoltage; }
     
-    protected VoltageElm(int xx, int yy, int wf) {
+    VoltageElm(int xx, int yy, int wf) {
 	super(xx, yy);
 	waveform = wf;
 	maxVoltage = 5;
@@ -111,7 +116,7 @@ public class VoltageElm extends CircuitElm {
 	freqTimeZero = 0;
 	curcount = 0;
     }
-    double triangleFunc(double x) {
+    private double triangleFunc(double x) {
 	if (x < pi)
 	    return x*(2/pi)-1;
 	return 1-(x-pi)*(2/pi);
@@ -133,7 +138,7 @@ public class VoltageElm extends CircuitElm {
 	if (waveform == WF_NOISE)
 	    noiseValue = (sim.getRandom().nextDouble()*2-1) * maxVoltage + bias;
     }
-    protected double getVoltage() {
+    double getVoltage() {
 	SimulationContext context = getSimulationContext();
 	if (waveform != WF_DC && sim.isDcAnalysisForUi())
 	    return bias;

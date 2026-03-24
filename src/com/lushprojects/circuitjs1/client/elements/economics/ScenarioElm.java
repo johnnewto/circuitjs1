@@ -16,18 +16,18 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class ScenarioElm extends CircuitElm {
-    public static final int MODE_ADD = 0;
+    private static final int MODE_ADD = 0;
     public static final int MODE_MULTIPLY = 1;
     public static final int MODE_REPLACE = 2;
 
-    String targetName;
-    int mode;
-    double startTime;
-    double endTime;
-    double magnitude;
-    boolean enabled;
-    boolean resetPlotsOnActivate;
-    boolean openPlotlyOnActivate;
+    private String targetName;
+    private int mode;
+    private double startTime;
+    private double endTime;
+    private double magnitude;
+    private boolean enabled;
+    private boolean resetPlotsOnActivate;
+    private boolean openPlotlyOnActivate;
 
     private boolean wasActive;
     private String sourceKey;

@@ -64,7 +64,7 @@ public class SRAMLoadFile extends EditDialogLoadFile {
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "FileReader")
 	private static class FileReaderLike {
-		public FileReaderLike() {}
+		FileReaderLike() {}
 		@JsProperty native void setOnload(FileReaderOnLoad onload);
 		@JsProperty native Object getResult();
 		@JsMethod native void readAsArrayBuffer(FileLike file);
@@ -77,7 +77,7 @@ public class SRAMLoadFile extends EditDialogLoadFile {
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "DataView")
 	private static class DataViewLike {
-		public DataViewLike(ArrayBufferLike buffer) {}
+		DataViewLike(ArrayBufferLike buffer) {}
 		@JsMethod native int getUint8(int byteOffset);
 	}
 
@@ -118,7 +118,7 @@ public class SRAMLoadFile extends EditDialogLoadFile {
 		reader.readAsArrayBuffer(file);
 	}
 	
-	static public void doLoadCallback(String data) {
+	private static void doLoadCallback(String data) {
 		SRAMElm.contentsOverride = data;
 		CirSimDialogCoordinator.getEditDialog().resetDialog();
 		SRAMElm.contentsOverride = null;

@@ -18,18 +18,18 @@ public final class ElementRegistry {
     }
 
     public static final class Entry {
-        public final String classKey;
+        final String classKey;
         public final String canonicalClassKey;
         public final ElementCategory category;
         public final boolean alias;
-        public final boolean inferred;
+        final boolean inferred;
         public final String deprecationMessage;
-        public final NameFactory nameFactory;
-        public final DumpFactory dumpFactory;
+        final NameFactory nameFactory;
+        final DumpFactory dumpFactory;
 
-        public Entry(String classKey, String canonicalClassKey, ElementCategory category,
-                            boolean alias, boolean inferred, String deprecationMessage,
-                            NameFactory nameFactory, DumpFactory dumpFactory) {
+        Entry(String classKey, String canonicalClassKey, ElementCategory category,
+              boolean alias, boolean inferred, String deprecationMessage,
+              NameFactory nameFactory, DumpFactory dumpFactory) {
             this.classKey = classKey;
             this.canonicalClassKey = canonicalClassKey;
             this.category = category;
@@ -45,7 +45,7 @@ public final class ElementRegistry {
         public final CircuitElm element;
         public final Entry entry;
 
-        public NameLookupResult(CircuitElm element, Entry entry) {
+        NameLookupResult(CircuitElm element, Entry entry) {
             this.element = element;
             this.entry = entry;
         }

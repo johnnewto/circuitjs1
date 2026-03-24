@@ -41,38 +41,52 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 // 3n+2 = end of coil resistor
 
 public class RelayElm extends CircuitElm {
-    final int FLAG_SWAP_COIL = 1;
-    final int FLAG_SHOW_BOX = 2;
-    final int FLAG_BOTH_SIDES_COIL = 4;
-    final int FLAG_FLIP = 8;
+    private final int FLAG_SWAP_COIL = 1;
+    private final int FLAG_SHOW_BOX = 2;
+    private final int FLAG_BOTH_SIDES_COIL = 4;
+    private final int FLAG_FLIP = 8;
 	
-    double inductance;
-    Inductor ind;
-    double r_on, r_off, onCurrent, offCurrent;
-    Point coilPosts[], coilLeads[], swposts[][], swpoles[][], ptSwitch[];
-    Point lines[];
-    Point outline[] = newPointArray(4);
-    double coilCurrent, switchCurrent[], coilCurCount, switchCurCount[];
+    private double inductance;
+    private Inductor ind;
+    private double r_on;
+    private double r_off;
+    private double onCurrent;
+    private double offCurrent;
+    private Point[] coilPosts;
+    private Point[] coilLeads;
+    private Point[][] swposts;
+    private Point[][] swpoles;
+    private Point[] ptSwitch;
+    private Point[] lines;
+    private Point[] outline = newPointArray(4);
+    private double coilCurrent;
+    private double[] switchCurrent;
+    private double coilCurCount;
+    private double[] switchCurCount;
     
     // fractional position, between 0 and 1 inclusive
-    double d_position;
+    private double d_position;
     
     // integer position, can be 0 (off), 1 (on), 2 (in between)
-    int i_position;
+    private int i_position;
     
-    double coilR;
+    private double coilR;
     
     // time to switch in seconds, or 0 for old model where switching time was not constant
-    double switchingTime;
+    private double switchingTime;
     
-    int poleCount;
-    int openhs, dflip;
-    boolean onState;
-    final int nSwitch0 = 0;
-    final int nSwitch1 = 1;
-    final int nSwitch2 = 2;
-    int nCoil1, nCoil2, nCoil3;
-    double currentOffset1, currentOffset2;
+    private int poleCount;
+    private int openhs;
+    private int dflip;
+    private boolean onState;
+    private final int nSwitch0 = 0;
+    private final int nSwitch1 = 1;
+    private final int nSwitch2 = 2;
+    private int nCoil1;
+    private int nCoil2;
+    private int nCoil3;
+    private double currentOffset1;
+    private double currentOffset2;
     
     public RelayElm(int xx, int yy) {
 	super(xx, yy);
@@ -120,7 +134,7 @@ public class RelayElm extends CircuitElm {
         allocNodes();
     }
     
-    void setupPoles() {
+    private void setupPoles() {
 	nCoil1 = 3*poleCount;
 	nCoil2 = nCoil1+1;
 	nCoil3 = nCoil1+2;
@@ -350,7 +364,7 @@ protected void startIteration() {
 	}
     }
     
-    void startIterationOld() {
+    private void startIterationOld() {
 	ind.startIteration(volts[nCoil1]-volts[nCoil3]);
 
 	// magic value to balance operate speed with reset speed not at all realistically

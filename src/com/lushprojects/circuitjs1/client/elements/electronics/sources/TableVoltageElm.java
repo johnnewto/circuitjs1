@@ -39,7 +39,7 @@ import com.lushprojects.circuitjs1.client.elements.economics.*;
  * - Simplified configuration (just computed value name + bias)
  */
 public class TableVoltageElm extends RailElm {
-    protected String computedValueName = "Col1"; // Name of computed value to reference
+    private String computedValueName = "Col1"; // Name of computed value to reference
     
     // Constructor for new element
     public TableVoltageElm(int xx, int yy) {

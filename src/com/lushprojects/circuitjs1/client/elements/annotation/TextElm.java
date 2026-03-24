@@ -35,14 +35,14 @@ import com.google.gwt.event.dom.client.KeyUpEvent;
 
 public class TextElm extends GraphicElm {
     public String text;
-    Vector<String> lines;
-    int size;
-    String colorRGBA; // RGBA format: red, green, blue, alpha (8 hex digits)
-    boolean isBeingEdited; // Flag to disable highlight during editing
+    private Vector<String> lines;
+    private int size;
+    private String colorRGBA; // RGBA format: red, green, blue, alpha (8 hex digits)
+    private boolean isBeingEdited; // Flag to disable highlight during editing
 //    final int FLAG_CENTER = 1;
-    final int FLAG_BAR = 2;
-    final int FLAG_ESCAPE = 4;
-    final int FLAG_OPPOSITE_BG = 8; // Use opposite background color
+    private final int FLAG_BAR = 2;
+    private final int FLAG_ESCAPE = 4;
+    private final int FLAG_OPPOSITE_BG = 8; // Use opposite background color
     public TextElm(int xx, int yy) {
 	super(xx, yy);
 	text = "hello";
@@ -74,7 +74,7 @@ public class TextElm extends GraphicElm {
 	}
 	split();
     }
-    void split() {
+    private void split() {
 	int i;
 	lines = new Vector<String>();
 	StringBuffer sb = new StringBuffer(text);
@@ -203,7 +203,7 @@ public class TextElm extends GraphicElm {
      * Draw opposite background color behind text
      * White background on black canvas, black background on white canvas
      */
-    void drawOppositeBackground(Graphics g) {
+    private void drawOppositeBackground(Graphics g) {
 	// Calculate text bounding box first
 	g.save();
 	Font f = new Font("SansSerif", 0, size);
@@ -235,7 +235,7 @@ public class TextElm extends GraphicElm {
      * Parse RGBA color string and apply to graphics context with alpha blending
      * Supports formats: "RRGGBBAA" or "RR GG BB AA"
      */
-    void applyColorWithAlpha(Graphics g) {
+    private void applyColorWithAlpha(Graphics g) {
 	try {
 	    // Remove spaces from input
 	    String colorHex = colorRGBA.replaceAll("\\s+", "");
@@ -266,7 +266,7 @@ public class TextElm extends GraphicElm {
     /**
      * Format RGBA string for display (adds spaces between components)
      */
-    String formatColorForDisplay() {
+    private String formatColorForDisplay() {
 	String hex = colorRGBA.replaceAll("\\s+", "");
 	if (hex.length() == 8) {
 	    return hex.substring(0, 2) + " " + hex.substring(2, 4) + " " + 
@@ -365,7 +365,7 @@ public class TextElm extends GraphicElm {
      * Normalize color input to RRGGBBAA format (no spaces)
      * Accepts "RRGGBBAA" or "RR GG BB AA" formats
      */
-    String normalizeColorInput(String input) {
+    private String normalizeColorInput(String input) {
 	// Remove all spaces
 	String normalized = input.replaceAll("\\s+", "");
 	
@@ -392,7 +392,7 @@ public class TextElm extends GraphicElm {
      *   [[info]] - opens model info dialog
      *   [[url:http://example.com]] - opens URL in new window
      */
-    String getLinkText() {
+    private String getLinkText() {
 	// Check for [[...]] pattern in any line
 	for (int i = 0; i < lines.size(); i++) {
 	    String line = lines.get(i);

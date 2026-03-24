@@ -70,7 +70,7 @@ public class circuitjs1 implements EntryPoint {
         loadLocale();
     }
 
-    String language() {
+    private String language() {
     NavigatorLike navigator = getNavigator();
     if (navigator == null)
         return "en-US";
@@ -89,7 +89,7 @@ public class circuitjs1 implements EntryPoint {
     return (userLang != null) ? userLang : "en-US";
     }
 
-    void loadLocale() {
+    private void loadLocale() {
         String url;
         QueryParameters qp = new QueryParameters();
         String lang = qp.getValue("lang");
@@ -144,7 +144,7 @@ public class circuitjs1 implements EntryPoint {
 
     }
 
-    static String convertUnicodeEscapes(String input) {
+    private static String convertUnicodeEscapes(String input) {
 	if (input.indexOf("\\u") < 0)
 	    return input;
         StringBuilder result = new StringBuilder();
@@ -174,7 +174,7 @@ public class circuitjs1 implements EntryPoint {
         return result.toString();
     }
 
-    HashMap<String, String> processLocale(String data) {
+    private HashMap<String, String> processLocale(String data) {
         HashMap<String, String> localizationMap = new HashMap<String, String>();
         String lines[] = data.split("\r?\n");
         for (int i = 0; i != lines.length; i++) {
@@ -201,7 +201,7 @@ public class circuitjs1 implements EntryPoint {
         return localizationMap;
     }
 
-    public void loadSimulator(HashMap<String, String> localizationMap) {
+    private void loadSimulator(HashMap<String, String> localizationMap) {
         Locale.localizationMap = localizationMap;
         QueryParameters qp = new QueryParameters();
         boolean runnerPanel = qp.getBooleanValue("runner", false);

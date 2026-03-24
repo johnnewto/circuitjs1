@@ -32,7 +32,7 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 	    super(xa, ya, xb, yb, f, st);
 	    waveform = WF_AC;
 	}
-	double fmphase;
+	private double fmphase;
 	
 	protected void drawRail(Graphics g) {
 	    drawRailText(g, "Ant");

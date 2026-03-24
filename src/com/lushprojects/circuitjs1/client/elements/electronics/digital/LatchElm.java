@@ -27,8 +27,8 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
 public class LatchElm extends ChipElm {
-    final int FLAG_STATE = 2;
-    final int FLAG_NO_EDGE = 4;
+    private final int FLAG_STATE = 2;
+    private final int FLAG_NO_EDGE = 4;
     public LatchElm(int xx, int yy) {
 	super(xx, yy);
 	flags |= FLAG_STATE;
@@ -46,8 +46,8 @@ public class LatchElm extends ChipElm {
     }
     protected String getChipName() { return "Latch"; }
     protected boolean needsBits() { return true; }
-    boolean isEdgeTriggered() { return (flags & FLAG_NO_EDGE) == 0; }
-    int loadPin;
+    private boolean isEdgeTriggered() { return (flags & FLAG_NO_EDGE) == 0; }
+    private int loadPin;
     protected void setupPins() {
 	sizeX = 2;
 	sizeY = bits+1;
@@ -63,7 +63,7 @@ public class LatchElm extends ChipElm {
 	pins[loadPin = bits*2] = new Pin(bits, SIDE_W, "Ld");
 	allocNodes();
     }
-    boolean lastLoad = false;
+    private boolean lastLoad = false;
     protected void execute() {
 	int i;
 	if (pins[loadPin].value && (!isEdgeTriggered() || !lastLoad))

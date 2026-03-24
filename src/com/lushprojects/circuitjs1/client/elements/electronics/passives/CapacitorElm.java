@@ -29,13 +29,16 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class CapacitorElm extends CircuitElm {
-	double capacitance;
-	double compResistance, voltdiff, seriesResistance;
-	double initialVoltage;
-	int capNode2;
-	Point plate1[], plate2[];
-	public static final int FLAG_BACK_EULER = 2;
-	public static final int FLAG_RESISTANCE = 4;
+	private double capacitance;
+	private double compResistance;
+    private double voltdiff;
+    private double seriesResistance;
+	private double initialVoltage;
+	private int capNode2;
+	private Point[] plate1;
+    Point plate2[];
+	private static final int FLAG_BACK_EULER = 2;
+	private static final int FLAG_RESISTANCE = 4;
 
 	public CapacitorElm(int xx, int yy) {
 	    super(xx, yy);
@@ -56,7 +59,7 @@ public class CapacitorElm extends CircuitElm {
 		// if you add more things here, check PolarCapacitorElm.  It loads more state after this
 	    } catch (Exception e) {}
 	}
-	boolean isTrapezoidal() { return (flags & FLAG_BACK_EULER) == 0; }
+	private boolean isTrapezoidal() { return (flags & FLAG_BACK_EULER) == 0; }
 	
 	protected void reset() {
 	    super.reset();
@@ -188,7 +191,7 @@ protected void startIteration() {
 	    if (compResistance > 0)
 		current = voltdiff/compResistance + curSourceValue;
 	}
-	double curSourceValue;
+	private double curSourceValue;
 	protected void doStep() {
 	    if (sim.isDcAnalysisForUi())
 		return;

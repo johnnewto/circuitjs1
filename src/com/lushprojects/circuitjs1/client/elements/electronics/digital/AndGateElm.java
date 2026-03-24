@@ -42,7 +42,7 @@ public class AndGateElm extends GateElm {
 	
 	String getGateText() { return "&"; }
 	
-	public final void ellipse(Context2d g, double x, double y, double rx, double ry, double ro, double sa, double ea, boolean ccw) {
+	private void ellipse(Context2d g, double x, double y, double rx, double ry, double ro, double sa, double ea, boolean ccw) {
 	    if (rx >= 0 && ry >= 0)
 		((Context2dNative) (Object) g).ellipse(x, y, rx, ry, ro, sa, ea, ccw);
 	}

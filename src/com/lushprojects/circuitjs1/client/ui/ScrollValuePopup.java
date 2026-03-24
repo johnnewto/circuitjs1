@@ -49,22 +49,22 @@ public class ScrollValuePopup extends PopupPanel implements MouseOutHandler, Mou
 	@JsProperty(namespace = JsPackage.GLOBAL, name = "window")
 	private static native WindowLike getWindow();
 	
-	static final double e12[] = {1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2};
-	static final int labMax=5;
-	double values[];
-	int minpow =0;
-	int maxpow=1;
-	int nvalues;
-	int currentidx;
-	int lastidx;
-	VerticalPanel vp;
-	CircuitElm myElm;
-	Label labels[];
-	double deltaY;
-	double scrollGain;
-	String name;
-	EditInfo inf;
-	CirSim sim;
+	private static final double[] e12 = {1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2};
+	private static final int labMax=5;
+	private double[] values;
+	private int minpow =0;
+	private int maxpow=1;
+	private int nvalues;
+	private int currentidx;
+	private int lastidx;
+	private VerticalPanel vp;
+	private CircuitElm myElm;
+	private Label[] labels;
+	private double deltaY;
+	private double scrollGain;
+	private String name;
+	private EditInfo inf;
+	private CirSim sim;
 	
 	
 	public ScrollValuePopup(final int x, final int y, int dy, CircuitElm e, CirSim s) {
@@ -204,21 +204,21 @@ public class ScrollValuePopup extends PopupPanel implements MouseOutHandler, Mou
 //    		close(true);
 //    }
     
-    static final int scale = 6;
+    private static final int scale = 6;
 
-    public void doDeltaY(int dy) {
+    private void doDeltaY(int dy) {
 	    deltaY += (dy * scrollGain / (double) getDevicePixelRatio());
     	setElmValue();
     	setupLabels();
     }
     
-    public void setElmValue() {
+    private void setElmValue() {
     	int idx=getSelIdx();
     	setElmValue(idx);
     }
 
     
-    public void setElmValue(int i) {
+    private void setElmValue(int i) {
     	if (i!=lastidx) {
     		lastidx=i;
     		inf.value=values[i];
@@ -227,7 +227,7 @@ public class ScrollValuePopup extends PopupPanel implements MouseOutHandler, Mou
     	}
     }
     
-    double getDevicePixelRatio() {
+    private double getDevicePixelRatio() {
 	WindowLike window = getWindow();
 	if (window == null)
 	    return 1;
@@ -235,7 +235,7 @@ public class ScrollValuePopup extends PopupPanel implements MouseOutHandler, Mou
 	return ratio > 0 ? ratio : 1;
     }
 
-    public int getSelIdx() {
+    private int getSelIdx() {
     	int r;
     	r = currentidx + (int)Math.round(sim.getWheelSensitivity()*deltaY/scale);
     	if (r<0)

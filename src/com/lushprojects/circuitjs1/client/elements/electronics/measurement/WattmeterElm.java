@@ -23,10 +23,10 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
 public class WattmeterElm extends CircuitElm {
-    int width;
-    int voltSources[];
-    double currents[];
-    double curcounts[];
+    private int width;
+    private int[] voltSources;
+    private double[] currents;
+    private double[] curcounts;
 
     public WattmeterElm(int xx, int yy) {
 	super(xx, yy);
@@ -39,7 +39,7 @@ public class WattmeterElm extends CircuitElm {
 	setup();
     }
 
-    void setup() {
+    private void setup() {
 	voltSources = new int[2];
 	currents = new double[2];
 	curcounts = new double[2];
@@ -68,9 +68,9 @@ public class WattmeterElm extends CircuitElm {
 	setPoints();
     }
 
-    Point posts[];
-    Point inner[];
-    int maxTextLen;
+    private Point[] posts;
+    private Point[] inner;
+    private int maxTextLen;
 
     protected void setPoints() {
 	super.setPoints();
@@ -106,8 +106,9 @@ public class WattmeterElm extends CircuitElm {
 	maxTextLen = max(abs(r1.x-r4.x)-5, 5);
     }
 
-    int rectPointsX[], rectPointsY[];
-    Point center;
+    private int[] rectPointsX;
+    private int[] rectPointsY;
+    private Point center;
 
     protected Point getPost(int n) {
 	return posts[n];

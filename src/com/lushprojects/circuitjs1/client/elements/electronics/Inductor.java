@@ -25,17 +25,18 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
 public class Inductor {
     public static final int FLAG_BACK_EULER = 2;
-    int nodes[];
-    int flags;
-    SimulationContext sim;
+    private int[] nodes;
+    private int flags;
+    private SimulationContext sim;
     
-    double inductance;
-    double compResistance, current;
-    double curSourceValue;
+    private double inductance;
+    private double compResistance;
+    private double current;
+    private double curSourceValue;
     public Inductor(CirSim s) {
 	this(s.getSimulationContext());
     }
-    public Inductor(SimulationContext sim) {
+    private Inductor(SimulationContext sim) {
 	nodes = new int[2];
 	this.sim = sim;
     }

@@ -27,21 +27,24 @@ import com.lushprojects.circuitjs1.client.util.*;
 // Percent element - computes (V1 / V2 / V3 / ...) * 100
 // Outputs the percentage value (nonlinear, requires iteration)
 public class PercentElm extends CircuitElm {
-    int inputCount;
-    int opsize, opheight, opwidth;
-    final int FLAG_SMALL = 2;
-    Point inPosts[], inLeads[];
-    Polygon bodyPoly;
-    Font labelFont;
+    private int inputCount;
+    private int opsize;
+    private int opheight;
+    private int opwidth;
+    private final int FLAG_SMALL = 2;
+    private Point[] inPosts;
+    private Point[] inLeads;
+    private Polygon bodyPoly;
+    private Font labelFont;
     
     // Minimum denominator value to prevent numerical instability
-    static final double MIN_DENOMINATOR = 1e-6;
+    private static final double MIN_DENOMINATOR = 1e-6;
     
     // Output clamp level (percentage), 0 = disabled
-    double clampLevel = 0;
+    private double clampLevel = 0;
     
     // Track if output is currently clamped (for visual feedback)
-    boolean isClamped = false;
+    private boolean isClamped = false;
     
     public PercentElm(int xx, int yy) {
         super(xx, yy);
@@ -65,7 +68,7 @@ public class PercentElm extends CircuitElm {
     
     protected int getDumpType() { return 'P'; }
     
-    void setSize(int s) {
+    private void setSize(int s) {
         opsize = s;
         opheight = 8 * s;
         opwidth = 13 * s;

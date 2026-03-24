@@ -62,9 +62,9 @@ public class LEDArrayElm extends ChipElm {
 	    brightness = new double[sizeX*sizeY];
 	}
 	
-	Diode diodes[];
-	double currents[];
-	double brightness[];
+	private Diode[] diodes;
+	private double[] currents;
+	private double[] brightness;
 	
 	protected void stamp() {
 	    super.stamp();
@@ -134,7 +134,7 @@ public class LEDArrayElm extends ChipElm {
 		    sim.stop("max current exceeded", this);
 	}
 
-	void setColor(Graphics g, int p) {
+	private void setColor(Graphics g, int p) {
 	    // 10mA current = max brightness
 	    if (currents == null) {
 		g.setColor(new Color(20, 0, 0));

@@ -25,8 +25,8 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
     public class CurrentElm extends CircuitElm {
-	double currentValue;
-	boolean broken;
+	private double currentValue;
+	private boolean broken;
 	public CurrentElm(int xx, int yy) {
 	    super(xx, yy);
 	    currentValue = .01;
@@ -45,8 +45,9 @@ import com.lushprojects.circuitjs1.client.util.*;
 	}
 	protected int getDumpType() { return 'i'; }
 	
-	Polygon arrow;
-	Point ashaft1, ashaft2;
+	private Polygon arrow;
+	private Point ashaft1;
+        private Point ashaft2;
 	protected Point center;
 	protected void setPoints() {
 	    super.setPoints();

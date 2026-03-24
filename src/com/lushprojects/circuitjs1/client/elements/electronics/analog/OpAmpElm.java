@@ -25,13 +25,19 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
 public class OpAmpElm extends CircuitElm {
-	int opsize, opheight, opwidth, opaddtext;
-	double maxOut, minOut, gain, gbw;
+	private int opsize;
+    private int opheight;
+    private int opwidth;
+    int opaddtext;
+	private double maxOut;
+    private double minOut;
+    private double gain;
+    private double gbw;
 	boolean reset;
 	final int FLAG_SWAP = 1;
-	final int FLAG_SMALL = 2;
-	final int FLAG_LOWGAIN = 4;
-	final int FLAG_GAIN = 8;
+	private final int FLAG_SMALL = 2;
+	private final int FLAG_LOWGAIN = 4;
+	private final int FLAG_GAIN = 8;
 	public OpAmpElm(int xx, int yy) {
 	    super(xx, yy);
 	    noDiagonal = true;
@@ -63,7 +69,7 @@ public class OpAmpElm extends CircuitElm {
 	    setSize((f & FLAG_SMALL) != 0 ? 1 : 2);
 	    setGain();
 	}
-	void setGain() {
+	private void setGain() {
 	    if ((flags & FLAG_GAIN) != 0)
 		return;
 		
@@ -95,10 +101,12 @@ public class OpAmpElm extends CircuitElm {
 	    drawPosts(g);
 	}
 	protected double getPower() { return volts[2]*current; }
-	Point in1p[], in2p[], textp[];
-	Polygon triangle;
-	Font plusFont;
-	void setSize(int s) {
+	private Point[] in1p;
+    private Point[] in2p;
+    private Point[] textp;
+	private Polygon triangle;
+	private Font plusFont;
+	private void setSize(int s) {
 	    opsize = s;
 	    opheight = 8*s;
 	    opwidth = 13*s;
@@ -144,7 +152,7 @@ public class OpAmpElm extends CircuitElm {
 		getVoltageText(maxOut);
 	}
 
-	double lastvd;
+	private double lastvd;
 
 	protected void stamp() {
 	    int vn = sim.getCircuitAnalyzer().getNodeList().size()+voltSource;

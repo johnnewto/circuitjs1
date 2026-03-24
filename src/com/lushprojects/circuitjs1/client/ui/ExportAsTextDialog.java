@@ -49,11 +49,11 @@ public class ExportAsTextDialog extends Dialog {
 	@JsProperty(namespace = JsPackage.GLOBAL, name = "document")
 	private static native DocumentLike getDocument();
 	
-	VerticalPanel vp;
-	CirSim sim;
-	TextArea textArea;
-	CheckBox javaLiteralCheckBox;
-	String originalText;
+	private VerticalPanel vp;
+	private CirSim sim;
+	private TextArea textArea;
+	private CheckBox javaLiteralCheckBox;
+	private String originalText;
 	
 	public ExportAsTextDialog(CirSim asim, String s) {
 		super();

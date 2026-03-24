@@ -53,10 +53,10 @@ public class StopTimeElm extends CircuitElm {
         @JsProperty(name = "plotlyWindows") static native void setPlotlyWindows(WindowArrayLike windows);
     }
 
-    double stopTime;
-    boolean stopped;
-    boolean enabled;
-    boolean openPlotlyOnStop;
+    private double stopTime;
+    private boolean stopped;
+    private boolean enabled;
+    private boolean openPlotlyOnStop;
     
     public StopTimeElm(int xx, int yy) {
         super(xx, yy);
@@ -234,12 +234,12 @@ public class StopTimeElm extends CircuitElm {
             openPlotlyOnStop = ei.checkbox.getState();
     }
     
-    void openPlotlyViewer() {
+    private void openPlotlyViewer() {
         // Open all scopes in Plotly viewer immediately (without showing dialog)
         new ScopeViewerDialog(sim, null, true);
     }
     
-    void closePlotlyWindows() {
+    private void closePlotlyWindows() {
         WindowArrayLike windows = GlobalWindowLike.getPlotlyWindows();
         if (windows == null)
             return;

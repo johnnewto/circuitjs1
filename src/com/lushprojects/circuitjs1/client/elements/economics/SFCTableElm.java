@@ -40,12 +40,12 @@ public class SFCTableElm extends TableElm {
     private static final String SFC_TITLE = "SFC Table";
     
     // SFC-specific properties
-    protected boolean highlightImbalances = true; // Red highlighting for non-zero Σ values
-    protected double balanceTolerance = 1e-6;   // Tolerance for balance checking
-    protected boolean showSankeyView = false;   // Toggle between table and Sankey view
-    protected SankeyLayout sankeyLayout = SankeyLayout.LINEAR; // Sankey diagram layout mode
-    protected int sankeyWidth = 300;  // Width of Sankey diagram in pixels
-    protected int sankeyHeight = 250; // Height of Sankey diagram in pixels
+    private boolean highlightImbalances = true; // Red highlighting for non-zero Σ values
+    private double balanceTolerance = 1e-6;   // Tolerance for balance checking
+    private boolean showSankeyView = false;   // Toggle between table and Sankey view
+    private SankeyLayout sankeyLayout = SankeyLayout.LINEAR; // Sankey diagram layout mode
+    private int sankeyWidth = 300;  // Width of Sankey diagram in pixels
+    private int sankeyHeight = 250; // Height of Sankey diagram in pixels
     
     // Custom renderer for SFC tables
     private SFCTableRenderer sfcRenderer;
@@ -373,7 +373,7 @@ public class SFCTableElm extends TableElm {
      * @param row Row index
      * @return Sum of all sector columns in this row
      */
-    public double getRowSum(int row) {
+    private double getRowSum(int row) {
         if (row < 0 || row >= rows || columns == null) {
             return 0.0;
         }
@@ -395,7 +395,7 @@ public class SFCTableElm extends TableElm {
      * @param col Column index
      * @return Sum of all rows in this column
      */
-    public double getColumnSum(int col) {
+    private double getColumnSum(int col) {
         if (col < 0 || col >= getCols() || columns == null) {
             return 0.0;
         }
@@ -418,7 +418,7 @@ public class SFCTableElm extends TableElm {
      * @param row Row index
      * @return true if row sum is within tolerance of 0
      */
-    public boolean isRowBalanced(int row) {
+    private boolean isRowBalanced(int row) {
         return Math.abs(getRowSum(row)) <= balanceTolerance;
     }
     
@@ -427,7 +427,7 @@ public class SFCTableElm extends TableElm {
      * @param col Column index
      * @return true if column sum is within tolerance of 0
      */
-    public boolean isColumnBalanced(int col) {
+    private boolean isColumnBalanced(int col) {
         return Math.abs(getColumnSum(col)) <= balanceTolerance;
     }
     
@@ -435,7 +435,7 @@ public class SFCTableElm extends TableElm {
      * Check if the entire table is balanced
      * @return true if all rows and columns sum to 0
      */
-    public boolean isFullyBalanced() {
+    private boolean isFullyBalanced() {
         // Check all rows
         for (int row = 0; row < rows; row++) {
             if (!isRowBalanced(row)) {
@@ -456,7 +456,7 @@ public class SFCTableElm extends TableElm {
     /**
      * Get the number of sector columns (excluding Σ column)
      */
-    public int getSectorColumnCount() {
+    private int getSectorColumnCount() {
         if (columns == null) return 0;
         int count = 0;
         for (TableColumn col : columns) {

@@ -81,7 +81,7 @@ public class EditInfo {
 	public Widget widget;
 	public boolean newDialog;
 	public boolean dimensionless;
-	public boolean noSliders;
+	private boolean noSliders;
 	public double minVal, maxVal;
 	public KeyUpHandler keyUpHandler; // Optional handler for immediate text changes
 	public java.util.List<String> completionList;  // List of completion items for bash-style autocomplete

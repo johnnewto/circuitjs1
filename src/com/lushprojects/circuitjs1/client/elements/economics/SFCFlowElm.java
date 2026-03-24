@@ -250,7 +250,7 @@ public class SFCFlowElm extends CircuitElm {
      * Get convergence limit based on iteration count.
      * More lenient over time to help convergence.
      */
-    double getConvergeLimit() {
+    private double getConvergeLimit() {
         if (sim.getSubIterations() < 10)
             return 0.001;
         if (sim.getSubIterations() < 100)

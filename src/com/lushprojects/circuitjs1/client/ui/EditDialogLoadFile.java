@@ -77,5 +77,5 @@ public abstract class EditDialogLoadFile extends FileUpload implements ChangeHan
 			element.click();
 	}
 	
-	public abstract void handle();
+	protected abstract void handle();
 }

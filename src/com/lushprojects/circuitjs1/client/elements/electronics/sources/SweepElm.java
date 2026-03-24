@@ -28,9 +28,13 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
 public class SweepElm extends CircuitElm {
-    double maxV, maxF, minF, sweepTime, frequency;
-    final int FLAG_LOG = 1;
-    final int FLAG_BIDIR = 2;
+    private double maxV;
+    private double maxF;
+    private double minF;
+    private double sweepTime;
+    private double frequency;
+    private final int FLAG_LOG = 1;
+    private final int FLAG_BIDIR = 2;
 	
     public SweepElm(int xx, int yy) {
 	super(xx, yy);
@@ -50,7 +54,7 @@ public class SweepElm extends CircuitElm {
     }
     protected int getDumpType() { return 170; }
     protected int getPostCount() { return 1; }
-    final int circleSize = 17;
+    private final int circleSize = 17;
 
     protected String dump() {
 	return super.dump() + " " + minF + " " + maxF + " " + maxV + " " +
@@ -109,9 +113,12 @@ public class SweepElm extends CircuitElm {
     protected void stamp() {
 	sim.stampVoltageSource(0, nodes[0], voltSource);
     }
-    double fadd, fmul, freqTime, savedTimeStep;
-    int dir = 1;
-    protected void setParams() {
+    private double fadd;
+    private double fmul;
+    private double freqTime;
+    private double savedTimeStep;
+    private int dir = 1;
+    private void setParams() {
 	SimulationContext context = getSimulationContext();
 	if (frequency < minF || frequency > maxF) {
 	    frequency = minF;
@@ -133,7 +140,7 @@ public class SweepElm extends CircuitElm {
 	dir = 1;
 	setParams();
     }
-    double v;
+    private double v;
     protected void startIteration() {
 	SimulationContext context = getSimulationContext();
 	// has timestep been changed?

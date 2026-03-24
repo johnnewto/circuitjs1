@@ -46,7 +46,7 @@ import jsinterop.annotations.JsType;
  * - Auto-refresh capability to update content on demand
  * - Positioned in top-right corner by default
  */
-public class TableMarkdownDebugDialog {
+class TableMarkdownDebugDialog {
 
     @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Element")
     private static class ElementLike {
@@ -170,7 +170,7 @@ public class TableMarkdownDebugDialog {
     /**
      * Hide the dialog
      */
-    public void hide() {
+    private void hide() {
         dialog.hide();
     }
     

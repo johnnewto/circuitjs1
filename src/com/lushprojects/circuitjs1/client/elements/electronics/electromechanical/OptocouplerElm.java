@@ -12,15 +12,18 @@ import com.lushprojects.circuitjs1.client.elements.electronics.semiconductors.Di
 import com.lushprojects.circuitjs1.client.elements.electronics.semiconductors.TransistorElm;
 
 public class OptocouplerElm extends CompositeElm {
-    int csize, cspc, cspc2;
-    int rectPointsX[], rectPointsY[];
-    double curCounts[];
+    private int csize;
+    private int cspc;
+    private int cspc2;
+    private int[] rectPointsX;
+    private int[] rectPointsY;
+    private double[] curCounts;
 
     private static String modelString = "DiodeElm 6 1\rCCCSElm 1 2 3 4\rNTransistorElm 3 4 5";
     private static int[] modelExternalNodes = { 6, 2, 4, 5 };
 
-    DiodeElm diode;
-    TransistorElm transistor;
+    private DiodeElm diode;
+    private TransistorElm transistor;
 
     public OptocouplerElm(int xx, int yy) {
 	super(xx, yy, modelString, modelExternalNodes);
@@ -98,7 +101,7 @@ public class OptocouplerElm extends CompositeElm {
         }
     }
 
-    Point stubs[];
+    private Point[] stubs;
     
     protected void setPoints() {
 	super.setPoints();
@@ -136,8 +139,8 @@ public class OptocouplerElm extends CompositeElm {
         stubs[3] = transistor.getElementPost(2);
     }
 
-    boolean isFlippedX() { return (flags & ChipElm.FLAG_FLIP_X) != 0; }
-    boolean isFlippedY() { return (flags & ChipElm.FLAG_FLIP_Y) != 0; }
+    private boolean isFlippedX() { return (flags & ChipElm.FLAG_FLIP_X) != 0; }
+    private boolean isFlippedY() { return (flags & ChipElm.FLAG_FLIP_Y) != 0; }
     boolean canFlipXY()  { return false; }
 
     protected void flipX(int center2, int count) {
@@ -160,7 +163,7 @@ public class OptocouplerElm extends CompositeElm {
 	setPoints();
     }
 
-    void setPin(int n, int px, int py, int dx, int dy, int dax, int day, int sx, int sy) {
+    private void setPin(int n, int px, int py, int dx, int dy, int dax, int day, int sx, int sy) {
 	int pos = n % 2; 
 	if (isFlippedX()) {
 	    dx = -dx;

@@ -27,11 +27,11 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
 public class GroundElm extends CircuitElm {
-	static int lastSymbolType = 0;
-	int symbolType;
+	private static int lastSymbolType = 0;
+	private int symbolType;
 	
 	// this is needed for old subcircuits which have GroundElm dumped
-	final int FLAG_OLD_STYLE = 1;
+	private final int FLAG_OLD_STYLE = 1;
 	
 	public GroundElm(int xx, int yy) {
 	    super(xx, yy);
@@ -90,7 +90,7 @@ public class GroundElm extends CircuitElm {
 	public void setOldStyle() {
 	    flags |= FLAG_OLD_STYLE;
 	}
-	boolean isOldStyle() { return (flags & FLAG_OLD_STYLE) != 0; }
+	private boolean isOldStyle() { return (flags & FLAG_OLD_STYLE) != 0; }
 	protected int getVoltageSourceCount() {
 	    return (isOldStyle()) ? 1 : 0; 
 	}
@@ -102,7 +102,7 @@ protected void setCurrent(int x, double c) { current = isOldStyle() ? -c : c; }
 
 	protected boolean isWireEquivalent() { return true; }
 	protected boolean isRemovableWire() { return true; }
-	static Point firstGround;
+	private static Point firstGround;
 	public static void resetNodeList() {
 	    firstGround = null;
 	}

@@ -27,7 +27,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class ResistorElm extends CircuitElm {
-	double resistance;
+	private double resistance;
 	public ResistorElm(int xx, int yy) { super(xx, yy); resistance = 1000; }
 	public ResistorElm(int xa, int ya, int xb, int yb, int f,
 		    StringTokenizer st) {
@@ -39,7 +39,8 @@ public class ResistorElm extends CircuitElm {
 	    return super.dump() + " " + resistance;
 	}
 
-	Point ps3, ps4;
+	private Point ps3;
+    private Point ps4;
 	protected void setPoints() {
 	    super.setPoints();
 	    calcLeads(32);

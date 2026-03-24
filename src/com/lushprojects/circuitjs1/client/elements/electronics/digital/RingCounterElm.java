@@ -29,9 +29,9 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
     public class RingCounterElm extends ChipElm {
-	boolean justLoaded;
-	final int FLAG_CLOCK_INHIBIT = 2;
-	final int FLAG_RESET_HIGH = 4;
+	private boolean justLoaded;
+	private final int FLAG_CLOCK_INHIBIT = 2;
+	private final int FLAG_RESET_HIGH = 4;
 	
 	public RingCounterElm(int xx, int yy) {
 	    super(xx, yy);
@@ -46,10 +46,10 @@ import com.lushprojects.circuitjs1.client.util.*;
 	protected String getChipName() { return "ring counter"; }
 	protected boolean needsBits() { return true; }
 	protected int defaultBitCount() { return 10; }
-	boolean hasClockInhibit() { return (flags & FLAG_CLOCK_INHIBIT) != 0 && bits >= 3; }
-	boolean hasInvertReset() { return (flags & FLAG_RESET_HIGH) == 0; }
+	private boolean hasClockInhibit() { return (flags & FLAG_CLOCK_INHIBIT) != 0 && bits >= 3; }
+	private boolean hasInvertReset() { return (flags & FLAG_RESET_HIGH) == 0; }
 	
-	int clockInhibit;
+	private int clockInhibit;
 	
 	protected void setupPins() {
 	    sizeX = bits > 2 ? bits : 2;

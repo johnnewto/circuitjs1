@@ -33,22 +33,22 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 // much of this was adapted from Bill Collis's code in TestPointElm.java
 
 public class ProbeElm extends CircuitElm {
-    static final int FLAG_SHOWVOLTAGE = 1;
-    static final int FLAG_CIRCLE = 2;
-    int meter;
+    private static final int FLAG_SHOWVOLTAGE = 1;
+    private static final int FLAG_CIRCLE = 2;
+    private int meter;
     int units;
-    int scale;
-    double resistance;
-    final int TP_VOL = 0;
-    final int TP_RMS = 1;
-    final int TP_MAX = 2;
-    final int TP_MIN = 3;
-    final int TP_P2P = 4;
-    final int TP_BIN = 5;
-    final int TP_FRQ = 6;
-    final int TP_PER = 7;
-    final int TP_PWI = 8;
-    final int TP_DUT = 9; //mark to space ratio
+    private int scale;
+    private double resistance;
+    private final int TP_VOL = 0;
+    private final int TP_RMS = 1;
+    private final int TP_MAX = 2;
+    private final int TP_MIN = 3;
+    private final int TP_P2P = 4;
+    private final int TP_BIN = 5;
+    private final int TP_FRQ = 6;
+    private final int TP_PER = 7;
+    private final int TP_PWI = 8;
+    private final int TP_DUT = 9; //mark to space ratio
     
     public ProbeElm(int xx, int yy) { super(xx, yy);
     	meter = TP_VOL;
@@ -100,21 +100,28 @@ public class ProbeElm extends CircuitElm {
         return "";
     }
     
-    double rmsV=0, total, count;
-    double binaryLevel=0;//0 or 1 - double because we only pass doubles back to the web page
-    int zerocount=0;
-    double maxV=0, lastMaxV;
-    double minV=0, lastMinV;
-    double frequency=0;
-    double period=0;
-    double pulseWidth=0;
-    double dutyCycle=0;
-    double selectedValue=0;
+    private double rmsV=0;
+    private double total;
+    private double count;
+    private double binaryLevel=0;//0 or 1 - double because we only pass doubles back to the web page
+    private int zerocount=0;
+    private double maxV=0;
+    private double lastMaxV;
+    private double minV=0;
+    private double lastMinV;
+    private double frequency=0;
+    private double period=0;
+    private double pulseWidth=0;
+    private double dutyCycle=0;
+    private double selectedValue=0;
 
-    boolean increasingV=true, decreasingV=true;
-    long periodStart, periodLength, pulseStart;//time between consecutive max values
+    private boolean increasingV=true;
+    private boolean decreasingV=true;
+    private long periodStart;
+    private long periodLength;
+    private long pulseStart;//time between consecutive max values
 
-    Point center;
+    private Point center;
 	
 	protected void setPoints() {
 	    super.setPoints();
@@ -200,12 +207,12 @@ public class ProbeElm extends CircuitElm {
 	g.restore();
     }
 
-    final int circleSize = 12;
+    private final int circleSize = 12;
     
-    boolean mustShowVoltage() {
+    private boolean mustShowVoltage() {
 	return (flags & FLAG_SHOWVOLTAGE) != 0;
     }
-    boolean drawAsCircle() { return (flags & FLAG_CIRCLE) != 0; }
+    private boolean drawAsCircle() { return (flags & FLAG_CIRCLE) != 0; }
     
     protected void stepFinished(){
         count++;//how many counts are in a cycle

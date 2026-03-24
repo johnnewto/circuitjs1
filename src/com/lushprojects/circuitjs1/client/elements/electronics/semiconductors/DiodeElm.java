@@ -37,14 +37,14 @@ import com.google.gwt.user.client.ui.Button;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class DiodeElm extends CircuitElm {
-    protected Diode diode;
+    private Diode diode;
     protected static final int FLAG_FWDROP = 1;
     protected static final int FLAG_MODEL = 2;
     protected String modelName;
     protected DiodeModel model;
-    protected static String lastModelName = "default";
-    protected boolean hasResistance;
-    protected int diodeEndNode;
+    private static String lastModelName = "default";
+    private boolean hasResistance;
+    private int diodeEndNode;
     
     public DiodeElm(int xx, int yy) {
 	super(xx, yy);
@@ -136,7 +136,7 @@ public class DiodeElm extends CircuitElm {
 	    volts[2] = 0;
     }
 	
-    protected void drawDiode(Graphics g) {
+    void drawDiode(Graphics g) {
 	setBbox(point1, point2, hs);
 
 	double v1 = volts[0];
@@ -183,7 +183,7 @@ public class DiodeElm extends CircuitElm {
 	    arr[4] = "Vf = " + getVoltageText(model.fwdrop);
     }
     
-    protected Vector<DiodeModel> models;
+    private Vector<DiodeModel> models;
     
     public EditInfo getEditInfo(int n) {
 	if (n == 0) {

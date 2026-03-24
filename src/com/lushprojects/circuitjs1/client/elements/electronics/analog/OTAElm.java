@@ -15,23 +15,31 @@ public class OTAElm extends CompositeElm {
     // 2 3\rNTransistorElm 1 3 4\rNTransistorElm 1 4 5";
     // private static int[] modelExternalNodes = { 1, 2, 3 , 4, 5};
 
-    Polygon arrowPoly1, arrowPoly2;
+    private Polygon arrowPoly1;
+    private Polygon arrowPoly2;
 
     int opsize;
-    final int opheight = 32;
-    final int opwidth = 32;
-    final int circDiam = 19;
-    final int circOverlap = 8;
-    Point in1p[], in2p[], in3p[], in4p[], textp[], bar1[], bar2[], circCent[];
-    Point point2bis;
-    Polygon triangle;
-    Font plusFont;
-    double curCount0 = 0;
-    double curCount1 = 0;
-    double curCount2 = 0;
-    double curCount3 = 0;
-    double posVolt = 9.0;
-    double negVolt = -9.0;
+    private final int opheight = 32;
+    private final int opwidth = 32;
+    private final int circDiam = 19;
+    private final int circOverlap = 8;
+    private Point[] in1p;
+    private Point[] in2p;
+    private Point[] in3p;
+    private Point[] in4p;
+    private Point[] textp;
+    private Point[] bar1;
+    private Point[] bar2;
+    private Point[] circCent;
+    private Point point2bis;
+    private Polygon triangle;
+    private Font plusFont;
+    private double curCount0 = 0;
+    private double curCount1 = 0;
+    private double curCount2 = 0;
+    private double curCount3 = 0;
+    private double posVolt = 9.0;
+    private double negVolt = -9.0;
 
     public OTAElm(int xx, int yy) {
 	super(xx, yy, modelString, modelExternalNodes);

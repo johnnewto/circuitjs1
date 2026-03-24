@@ -85,7 +85,7 @@ public class ActionScheduler {
         public boolean enabled;
         public boolean stopSimulation;
         public ActionState state;  // Current state of the action
-        public double resolvedValue;
+        double resolvedValue;
         public boolean resolvedValueSet;
         
         public ScheduledAction() {
@@ -120,7 +120,7 @@ public class ActionScheduler {
             this.resolvedValueSet = false;
         }
         
-        public ScheduledAction copy() {
+        ScheduledAction copy() {
             ScheduledAction copy = new ScheduledAction(id, actionTime, sliderName, 
                 sliderValue, preText, postText, enabled, stopSimulation);
             copy.state = this.state;
@@ -364,7 +364,7 @@ public class ActionScheduler {
     /**
      * Get the next non-completed enabled action
      */
-    public ScheduledAction getNextAction() {
+    private ScheduledAction getNextAction() {
         for (ScheduledAction action : actions) {
             if (action.state != ActionState.COMPLETED && action.enabled) {
                 return action;
@@ -414,7 +414,7 @@ public class ActionScheduler {
     /**
      * Get an action by ID
      */
-    public ScheduledAction getAction(int id) {
+    private ScheduledAction getAction(int id) {
         for (ScheduledAction action : actions) {
             if (action.id == id) {
                 return action;
@@ -931,7 +931,7 @@ public class ActionScheduler {
     /**
      * Get list of all available slider names in the circuit
      */
-    public List<String> getAvailableSliders() {
+    private List<String> getAvailableSliders() {
         return sim.getAdjustableNamesForElements();
     }
 
@@ -979,7 +979,7 @@ public class ActionScheduler {
      * Get current value of a slider by name
      * @return The current value, or NaN if not found
      */
-    public double getSliderValue(String name) {
+    private double getSliderValue(String name) {
         return sim.getAdjustableValueForElements(name);
     }
 

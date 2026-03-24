@@ -33,9 +33,9 @@ public class SwitchElm extends CircuitElm {
     protected boolean momentary;
     // position 0 == closed, position 1 == open
     protected int position, posCount;
-    protected final int FLAG_IEC = 2;
-    protected final int FLAG_LABEL = 4;
-    protected String label;
+    final int FLAG_IEC = 2;
+    private final int FLAG_LABEL = 4;
+    private String label;
     
     public SwitchElm(int xx, int yy) {
 	super(xx, yy);
@@ -75,8 +75,9 @@ public class SwitchElm extends CircuitElm {
 	return s;
     }
 
-    Point ps, ps2;
-    Point extraPoints[];
+    private Point ps;
+    private Point ps2;
+    private Point[] extraPoints;
     
     protected void setPoints() {
 	super.setPoints();
@@ -96,7 +97,7 @@ public class SwitchElm extends CircuitElm {
 	}
     }
     
-    final int openhs = 16;
+    private final int openhs = 16;
 	
     protected void draw(Graphics g) {
 	int hs1 = (position == 1) ? 0 : 2;
@@ -169,7 +170,7 @@ public class SwitchElm extends CircuitElm {
 	    toggle();
     }
     
-    void simpleToggle() {
+    private void simpleToggle() {
 	position++;
 	if (position >= posCount)
 	    position = 0;
@@ -202,7 +203,7 @@ public class SwitchElm extends CircuitElm {
     protected boolean getConnection(int n1, int n2) { return position == 0; }
     protected boolean isWireEquivalent() { return position == 0; }
     protected boolean isRemovableWire() { return position == 0; }
-    protected boolean useIECSymbol() { return (flags & FLAG_IEC) != 0; }
+    boolean useIECSymbol() { return (flags & FLAG_IEC) != 0; }
     
     public EditInfo getEditInfo(int n) {
 	if (n == 0) {

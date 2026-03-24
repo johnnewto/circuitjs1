@@ -29,7 +29,7 @@ import com.lushprojects.circuitjs1.client.elements.electronics.measurement.Audio
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class EditOptions implements Editable {
-	CirSim sim;
+	private CirSim sim;
 	
 	public EditOptions(CirSim s) { sim = s; }
 	
@@ -280,7 +280,7 @@ public class EditOptions implements Editable {
 	    Window.Location.reload();
 	}
 	
-	Color setColor(String name, EditInfo ei, Color def) {
+	private Color setColor(String name, EditInfo ei, Color def) {
 	    String val = ei.textf.getText();
 	    if (val.length() == 0)
 		val = def.getHexValue();
@@ -290,7 +290,7 @@ public class EditOptions implements Editable {
 	    return new Color(val);
 	}
 
-	void setOptionInStorage(String key, boolean value) {
+	private void setOptionInStorage(String key, boolean value) {
 	    Storage stor = Storage.getLocalStorageIfSupported();
 	    if (stor != null) {
 		stor.setItem(key, value ? "true" : "false");

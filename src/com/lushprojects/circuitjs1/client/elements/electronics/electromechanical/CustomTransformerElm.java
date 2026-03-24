@@ -31,26 +31,35 @@ import com.lushprojects.circuitjs1.client.core.CircuitMatrixOps;
 import com.google.gwt.user.client.Window;
 
 public class CustomTransformerElm extends CircuitElm {
-	double coilCurrents[], coilInductances[], coilCurCounts[], coilCurSourceValues[], coilPolarities[];
-	double nodeCurrents[], nodeCurCounts[];
-        public static final int FLAG_FLIP = 1;
-	int flip;
+	private double[] coilCurrents;
+    private double[] coilInductances;
+    private double[] coilCurCounts;
+    private double[] coilCurSourceValues;
+    private double[] coilPolarities;
+	private double[] nodeCurrents;
+    private double[] nodeCurCounts;
+        private static final int FLAG_FLIP = 1;
+	private int flip;
 	
 	// node number n of first node of each coil (second node = n+1)
-	int coilNodes[];
+    private int[] coilNodes;
 	
-	int coilCount, nodeCount;
+	private int coilCount;
+    private int nodeCount;
 	
 	// number of primary coils
-	int primaryCoils;
+    private int primaryCoils;
 	
-	Point nodePoints[], nodeTaps[], ptCore[];
-	String description;
-	double inductance, couplingCoef;
-	boolean needDots;
+	private Point[] nodePoints;
+    private Point[] nodeTaps;
+    private Point[] ptCore;
+	private String description;
+	private double inductance;
+    private double couplingCoef;
+	private boolean needDots;
 	
-	Point dots[];
-	int width;
+	private Point[] dots;
+	private int width;
 	
 	public CustomTransformerElm(int xx, int yy) {
 	    super(xx, yy);
@@ -96,11 +105,11 @@ public class CustomTransformerElm extends CircuitElm {
 	    return s;
 	}
 	
-	void parseDescription() {
+	private void parseDescription() {
 	    parseDescription(description);
 	}
 	
-	boolean parseDescription(String desc) {
+	private boolean parseDescription(String desc) {
 	    // a number indicates a coil (number = turns ratio to base inductance coil)
 	    // (negative number = reverse polarity)
 	    // : separates primary and secondary
@@ -184,7 +193,7 @@ public class CustomTransformerElm extends CircuitElm {
 	    return true;
 	}
 	
-	boolean isTrapezoidal() { return (flags & Inductor.FLAG_BACK_EULER) == 0; }
+	private boolean isTrapezoidal() { return (flags & Inductor.FLAG_BACK_EULER) == 0; }
 	protected void draw(Graphics g) {
 	    int i;
 	    
@@ -293,7 +302,7 @@ public class CustomTransformerElm extends CircuitElm {
 	    for (i = 0; i != nodeCount; i++)
 		volts[i] = nodeCurrents[i] = nodeCurCounts[i] = 0;
 	}
-	double xformMatrix[][];
+	private double[][] xformMatrix;
 	
 	protected void stamp() {
 	    // equations for transformer:

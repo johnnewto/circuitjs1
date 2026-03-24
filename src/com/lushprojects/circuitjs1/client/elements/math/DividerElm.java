@@ -27,15 +27,18 @@ import com.lushprojects.circuitjs1.client.util.*;
 // Divider element - divides input voltages
 // Vout = V1 / V2 / V3 / ... (nonlinear, requires iteration)
 public class DividerElm extends CircuitElm {
-    int inputCount;
-    int opsize, opheight, opwidth;
-    final int FLAG_SMALL = 2;
-    Point inPosts[], inLeads[];
-    Polygon bodyPoly;
-    Font labelFont;
+    private int inputCount;
+    private int opsize;
+    private int opheight;
+    private int opwidth;
+    private final int FLAG_SMALL = 2;
+    private Point[] inPosts;
+    private Point[] inLeads;
+    private Polygon bodyPoly;
+    private Font labelFont;
     
     // Minimum denominator value to prevent divide by zero
-    static final double MIN_DENOMINATOR = 1e-6;
+    private static final double MIN_DENOMINATOR = 1e-6;
     
     public DividerElm(int xx, int yy) {
         super(xx, yy);
@@ -57,7 +60,7 @@ public class DividerElm extends CircuitElm {
     
     protected int getDumpType() { return 257; }
     
-    void setSize(int s) {
+    private void setSize(int s) {
         opsize = s;
         opheight = 8 * s;
         opwidth = 13 * s;

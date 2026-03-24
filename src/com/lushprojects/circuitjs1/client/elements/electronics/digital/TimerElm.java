@@ -29,20 +29,20 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
 public class TimerElm extends ChipElm {
-    final int FLAG_RESET = 2;
-    final int FLAG_GROUND = 4;
-    final int FLAG_NUMBERS = 8;
+    private final int FLAG_RESET = 2;
+    private final int FLAG_GROUND = 4;
+    private final int FLAG_NUMBERS = 8;
     
-    final int N_DIS  = 0;
-    final int N_TRIG = 1;
-    final int N_THRES = 2;
-    final int N_VCC = 3;
-    final int N_CTL = 4;
-    final int N_OUT = 5;
-    final int N_RST = 6;
-    final int N_GND = 7;
+    private final int N_DIS  = 0;
+    private final int N_TRIG = 1;
+    private final int N_THRES = 2;
+    private final int N_VCC = 3;
+    private final int N_CTL = 4;
+    private final int N_OUT = 5;
+    private final int N_RST = 6;
+    private final int N_GND = 7;
     protected int getDefaultFlags() { return FLAG_RESET | FLAG_GROUND; }
-    int ground;
+    private int ground;
     public TimerElm(int xx, int yy) { super(xx, yy); }
     public TimerElm(int xa, int ya, int xb, int yb, int f,
 		    StringTokenizer st) {
@@ -68,10 +68,10 @@ public class TimerElm extends ChipElm {
 	pins[N_GND] = new Pin(2, SIDE_S, usePinNames() ? "gnd" : "1");
     }
     protected boolean nonLinear() { return true; }
-    boolean hasReset() { return (flags & FLAG_RESET) != 0 || hasGroundPin(); }
-    boolean hasGroundPin() { return (flags & FLAG_GROUND) != 0; }
-    boolean usePinNumbers() { return (flags & FLAG_NUMBERS) != 0; }
-    boolean usePinNames() { return (flags & FLAG_NUMBERS) == 0; }
+    private boolean hasReset() { return (flags & FLAG_RESET) != 0 || hasGroundPin(); }
+    private boolean hasGroundPin() { return (flags & FLAG_GROUND) != 0; }
+    private boolean usePinNumbers() { return (flags & FLAG_NUMBERS) != 0; }
+    private boolean usePinNames() { return (flags & FLAG_NUMBERS) == 0; }
     @Override protected boolean isDigitalChip() { return false; }
     protected void stamp() {
 	ground = hasGroundPin() ? nodes[N_GND] : 0;
@@ -101,8 +101,8 @@ public class TimerElm extends ChipElm {
 		pins[N_GND].current += (volts[N_DIS]-groundVolts)/10 + (volts[N_OUT]-groundVolts);
 	}
     }
-    boolean out;
-    boolean triggerSuppressed;
+    private boolean out;
+    private boolean triggerSuppressed;
 protected void startIteration() {
 	double groundVolts = hasGroundPin() ? volts[N_GND] : 0;	
 	out = volts[N_OUT] > (volts[N_VCC]+groundVolts)/2;

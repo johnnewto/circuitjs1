@@ -334,7 +334,7 @@ final class StatusInfoRenderer {
         sim.warningMessage = sb.toString();
     }
 
-    String getHint() {
+    private String getHint() {
         CircuitElm c1 = sim.getElm(sim.hintItem1);
         CircuitElm c2 = sim.getElm(sim.hintItem2);
         if (c1 == null || c2 == null)

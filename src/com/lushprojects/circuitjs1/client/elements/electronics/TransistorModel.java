@@ -18,19 +18,20 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class TransistorModel implements Editable, Comparable<TransistorModel> {
 
-    static HashMap<String, TransistorModel> modelMap;
+    private static HashMap<String, TransistorModel> modelMap;
 
-    public int flags;
-    public String name, description;
+    private int flags;
+    public String name;
+    private String description;
     public double satCur, invRollOffF, BEleakCur, leakBEemissionCoeff, invRollOffR, BCleakCur, leakBCemissionCoeff;
     public double emissionCoeffF, emissionCoeffR, invEarlyVoltF, invEarlyVoltR, betaR;
 
     public boolean dumped;
     public boolean readOnly;
     public boolean builtIn;
-    public boolean internal;
+    private boolean internal;
 
-    TransistorModel(String d, double sc) {
+    private TransistorModel(String d, double sc) {
 	description = d;
 	satCur = sc;
 	emissionCoeffF = emissionCoeffR = 1;
@@ -40,7 +41,7 @@ public class TransistorModel implements Editable, Comparable<TransistorModel> {
 	updateModel();
     }
 
-    static TransistorModel getModelWithName(String name) {
+    private static TransistorModel getModelWithName(String name) {
 	createModelMap();
 	TransistorModel lm = modelMap.get(name);
 	if (lm != null)
@@ -66,7 +67,7 @@ public class TransistorModel implements Editable, Comparable<TransistorModel> {
 	return lm;
     }
 
-    static void createModelMap() {
+    private static void createModelMap() {
 	if (modelMap != null)
 	    return;
 	modelMap = new HashMap<String,TransistorModel>();
@@ -99,13 +100,13 @@ public class TransistorModel implements Editable, Comparable<TransistorModel> {
 
     }
 
-    static void addDefaultModel(String name, TransistorModel dm) {
+    private static void addDefaultModel(String name, TransistorModel dm) {
 	modelMap.put(name, dm);
 	dm.readOnly = dm.builtIn = true;
 	dm.name = name;
     }
 
-    static TransistorModel getDefaultModel() {
+    private static TransistorModel getDefaultModel() {
 	return getModelWithName("default");
     }
 
@@ -144,7 +145,7 @@ public class TransistorModel implements Editable, Comparable<TransistorModel> {
 	return name + " (" + Locale.LS(description) + ")";
     }
 
-    TransistorModel() {
+    private TransistorModel() {
 	updateModel();
     }
 
@@ -165,7 +166,7 @@ public class TransistorModel implements Editable, Comparable<TransistorModel> {
 	updateModel();
     }
 
-    static void loadInternalModel(String s) {
+    private static void loadInternalModel(String s) {
 	StringTokenizer st = new StringTokenizer(s);
 	TransistorModel tm = undumpModel(st);
 	tm.builtIn = tm.internal = true;
@@ -178,7 +179,7 @@ public class TransistorModel implements Editable, Comparable<TransistorModel> {
 	return dm;
     }
 
-    void undump(StringTokenizer st) {
+    private void undump(StringTokenizer st) {
 	flags = Integer.parseInt(st.nextToken());
 
 	satCur = Double.parseDouble(st.nextToken());
@@ -240,7 +241,7 @@ public class TransistorModel implements Editable, Comparable<TransistorModel> {
 	CirSim.getInstance().updateModels();
     }
 
-    void updateModel() {
+    private void updateModel() {
     }
 
     public String dump() {

@@ -25,7 +25,7 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
     public class DPDTSwitchElm extends SwitchElm {
-	int poleCount;
+	private int poleCount;
 	
 	public DPDTSwitchElm(int xx, int yy) {
 	    super(xx, yy, false);
@@ -50,11 +50,16 @@ import com.lushprojects.circuitjs1.client.util.*;
 	    return super.dump() + " " + poleCount;
 	}
 
-	final int openhs = 16;
+	private final int openhs = 16;
 	final int posCount = 2;
-	Point poleLeads[], throwLeads[], polePosts[], throwPosts[], linePoints[];
-        int voltageSources[];
-        double currents[], curcounts[];
+	private Point[] poleLeads;
+        private Point[] throwLeads;
+        private Point[] polePosts;
+        private Point[] throwPosts;
+        private Point[] linePoints;
+        private int[] voltageSources;
+        private double[] currents;
+        private double[] curcounts;
 
 	protected void setPoints() {
 	    super.setPoints();
@@ -207,7 +212,7 @@ protected void setCurrent(int vn, double c) {
 	
 	protected int getShortcut() { return 0; }
 
-	void flip() {
+	private void flip() {
 	    if (dx == 0)
 		x = x2 = x - (int) (dpx1*openhs*3);
 	    if (dy == 0)

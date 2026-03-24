@@ -33,9 +33,12 @@ import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.TextArea;
 
     public class SRAMElm extends ChipElm {
-	int addressNodes, dataNodes, internalNodes;
-	int addressBits, dataBits;
-	HashMap<Integer, Integer> map;
+	private int addressNodes;
+        private int dataNodes;
+        private int internalNodes;
+	private int addressBits;
+        private int dataBits;
+	private HashMap<Integer, Integer> map;
 	public static String contentsOverride = null;
 
 	public SRAMElm(int xx, int yy) {
@@ -169,7 +172,7 @@ import com.google.gwt.user.client.ui.TextArea;
 	    return super.getChipEditInfo(n);
 	}
 	
-	int parseNumber(String str) {
+	private int parseNumber(String str) {
 	    if (str.startsWith("0x"))
 		return Integer.parseInt(str.substring(2), 16);
 	    if (str.startsWith("0b"))
@@ -211,7 +214,7 @@ import com.google.gwt.user.client.ui.TextArea;
 	protected int getVoltageSourceCount() { return dataBits; }
 	protected int getInternalNodeCount() { return dataBits; }
 	
-	int address;
+	private int address;
 	
 	protected void stamp() {
 	    int i;

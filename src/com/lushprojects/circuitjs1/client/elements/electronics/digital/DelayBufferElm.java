@@ -29,7 +29,9 @@ import com.lushprojects.circuitjs1.client.elements.electronics.digital.GateElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class DelayBufferElm extends CircuitElm {
-	double delay, threshold, highVoltage;
+	private double delay;
+    private double threshold;
+    private double highVoltage;
 	
 	public DelayBufferElm(int xx, int yy) {
 	    super(xx, yy);
@@ -55,7 +57,7 @@ public class DelayBufferElm extends CircuitElm {
 	
 	protected int getDumpType() { return 422; }
 	
-	Point center;
+	private Point center;
 	
 	protected void draw(Graphics g) {
 	    drawPosts(g);
@@ -67,7 +69,7 @@ public class DelayBufferElm extends CircuitElm {
 	    curcount = updateDotCount(current, curcount);
 	    drawDots(g, lead2, point2, curcount);
 	}
-	Polygon gatePoly;
+	private Polygon gatePoly;
 	protected void setPoints() {
 	    super.setPoints();
 	    int hs = 16;
@@ -97,7 +99,7 @@ public class DelayBufferElm extends CircuitElm {
 	    sim.stampVoltageSource(0, nodes[1], voltSource);
 	}
 	
-	double delayEndTime;
+	private double delayEndTime;
 	
 	protected void doStep() {
 	    SimulationContext context = getSimulationContext();

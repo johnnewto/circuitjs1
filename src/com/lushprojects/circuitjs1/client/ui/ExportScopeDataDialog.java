@@ -37,10 +37,12 @@ import com.lushprojects.circuitjs1.client.util.Locale;
  */
 public class ExportScopeDataDialog extends Dialog {
 	
-	VerticalPanel vp;
-	Scope scope;
-	RadioButton csvButton, jsonButton;
-	RadioButton circularButton, historyButton;
+	private VerticalPanel vp;
+	private Scope scope;
+	private RadioButton csvButton;
+    private RadioButton jsonButton;
+	private RadioButton circularButton;
+    private RadioButton historyButton;
 	
 	public ExportScopeDataDialog(Scope s) {
 		super();
@@ -105,7 +107,7 @@ public class ExportScopeDataDialog extends Dialog {
 		this.center();
 	}
 	
-	void doExport() {
+	private void doExport() {
 		boolean useCSV = csvButton.getValue();
 		boolean useHistory = historyButton.getValue() && scope.hasHistoryForExport();
 		

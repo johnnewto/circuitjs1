@@ -16,14 +16,15 @@ import com.google.gwt.event.dom.client.MouseWheelHandler;
 /*Bill Collis - June 2015 */
 
 public class LDRElm extends CircuitElm implements Command, MouseWheelHandler {
-    double position; //of the slider 0.005 to 0.995
-    double resistance; //based upon slider position
-    double minLux, maxLux;
-    double lux;
+    private double position; //of the slider 0.005 to 0.995
+    private double resistance; //based upon slider position
+    private double minLux;
+    private double maxLux;
+    private double lux;
 
-    Scrollbar slider; 
-    Label label;
-    String sliderText;
+    private Scrollbar slider;
+    private Label label;
+    private String sliderText;
 
     //constructor - when initially created
     public LDRElm(int xx, int yy) {
@@ -63,7 +64,7 @@ public class LDRElm extends CircuitElm implements Command, MouseWheelHandler {
 	return super.dump() + " " + position  + " " + CustomLogicModel.escape(sliderText); 
     }
 
-    void createSlider() {
+    private void createSlider() {
 	sim.getUiPanelManager().addWidgetToVerticalPanel(label = new Label());
 	label.getElement().setInnerHTML(Locale.convertToHTML(Locale.LS(sliderText)));
 	label.addStyleName("topSpace");
@@ -80,7 +81,8 @@ public class LDRElm extends CircuitElm implements Command, MouseWheelHandler {
 	sim.getUiPanelManager().removeWidgetFromVerticalPanel(label);
 	sim.getUiPanelManager().removeWidgetFromVerticalPanel(slider);
     }
-    Point ps3, ps4;   
+    private Point ps3;
+    private Point ps4;
 
     //called straight after constructor when txt file is loaded
     protected void setPoints() {
@@ -197,7 +199,7 @@ public class LDRElm extends CircuitElm implements Command, MouseWheelHandler {
 	    slider.onMouseWheel(e);
     }
 
-    double calcResistance(double lux) //knowing the lux
+    private double calcResistance(double lux) //knowing the lux
     {
 	//double loglux = Math.log10(lux);
 	//double slope = -1.4;
@@ -210,7 +212,7 @@ public class LDRElm extends CircuitElm implements Command, MouseWheelHandler {
 	r = Math.round(r);
 	return r;
     }
-    double LuxFromSliderPos() //knowing slider position etc
+    private double LuxFromSliderPos() //knowing slider position etc
     {
 	return maxLux * position + minLux ;
     }

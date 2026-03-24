@@ -258,7 +258,7 @@ public class TableElementsTestDialog {
         );
     }
     
-    public void hide() {
+    private void hide() {
         dialog.hide();
     }
     
@@ -266,7 +266,7 @@ public class TableElementsTestDialog {
         return dialog.isShowing();
     }
     
-    public void clearOutput() {
+    private void clearOutput() {
         outputArea.setText("");
         passCount = 0;
         failCount = 0;
@@ -278,7 +278,7 @@ public class TableElementsTestDialog {
         outputArea.getElement().setScrollTop(outputArea.getElement().getScrollHeight());
     }
     
-    public void runAllTests() {
+    private void runAllTests() {
         clearOutput();
         runButton.setEnabled(false);
         runButton.setText("⏳ Running...");
@@ -355,7 +355,7 @@ public class TableElementsTestDialog {
         return null;
     }
     
-    public void runSelectedTest() {
+    private void runSelectedTest() {
         int selectedIndex = testSelector.getSelectedIndex();
         if (selectedIndex < 0) {
             clearOutput();
@@ -410,7 +410,7 @@ public class TableElementsTestDialog {
         }
     }
     
-    public void runCanvasTest() {
+    private void runCanvasTest() {
         String testName = detectCanvasTest();
         
         if (testName == null) {

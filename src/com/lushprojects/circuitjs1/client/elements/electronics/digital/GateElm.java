@@ -26,16 +26,16 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
 public abstract class GateElm extends CircuitElm {
-	final int FLAG_SMALL = 1<<0;
-	final int FLAG_SCHMITT = 1<<1;
-	final int FLAG_INVERT_INPUTS = 1<<2;
+	private final int FLAG_SMALL = 1<<0;
+	private final int FLAG_SCHMITT = 1<<1;
+	private final int FLAG_INVERT_INPUTS = 1<<2;
 	int inputCount = 2;
-	boolean lastOutput;
-	double highVoltage;
+	private boolean lastOutput;
+	private double highVoltage;
 	public static double lastHighVoltage = 5;
-	static boolean lastSchmitt = false;
+	private static boolean lastSchmitt = false;
 	
-	public GateElm(int xx, int yy) {
+	GateElm(int xx, int yy) {
 	    super(xx, yy);
 	    noDiagonal = true;
 	    inputCount = 2;
@@ -47,8 +47,8 @@ public abstract class GateElm extends CircuitElm {
 	    
 	    setSize(sim.smallGridCheckItem.getState() ? 1 : 2);
 	}
-	public GateElm(int xa, int ya, int xb, int yb, int f,
-			StringTokenizer st) {
+	GateElm(int xa, int ya, int xb, int yb, int f,
+            StringTokenizer st) {
 	    super(xa, ya, xb, yb, f);
 	    inputCount = Integer.parseInt(st.nextToken());
 	    double lastOutputVoltage = Double.parseDouble(st.nextToken());
@@ -63,8 +63,12 @@ public abstract class GateElm extends CircuitElm {
 	    setupVolts();
 	}
 	boolean isInverting() { return false; }
-	int gsize, gwidth, gwidth2, gheight, hs2;
-	void setSize(int s) {
+	private int gsize;
+    private int gwidth;
+    private int gwidth2;
+    private int gheight;
+    int hs2;
+	private void setSize(int s) {
 	    gsize = s;
 	    gwidth = 7*s;
 	    gwidth2 = 14*s;
@@ -75,8 +79,9 @@ public abstract class GateElm extends CircuitElm {
 	protected String dump() {
 	    return super.dump() + " " + inputCount + " " + volts[inputCount] + " " + highVoltage;
 	}
-	Point inPosts[], inGates[];
-	boolean inputStates[];
+	private Point[] inPosts;
+    private Point[] inGates;
+	private boolean[] inputStates;
 	int ww;
 	protected void setPoints() {
 	    super.setPoints();
@@ -114,7 +119,7 @@ public abstract class GateElm extends CircuitElm {
 	}
 	
 	// Restore state if loading from file or volts is reallocated.
-	void setupVolts() {
+    private void setupVolts() {
 	    int i;
 	    // We don't remember all the inputs, just the last output.
 	    // Fill inputs with something that keeps output the same.
@@ -169,8 +174,11 @@ public abstract class GateElm extends CircuitElm {
 	    drawDots(g, lead2, point2, curcount);
 	    drawPosts(g);
 	}
-	Polygon gatePoly, schmittPoly;
-	Point pcircle, linePoints[], icircles[];
+	Polygon gatePoly;
+    private Polygon schmittPoly;
+	Point pcircle;
+    Point linePoints[];
+    private Point[] icircles;
 	protected int getPostCount() { return inputCount+1; }
 	protected Point getPost(int n) {
 	    if (n == inputCount)
@@ -187,7 +195,7 @@ public abstract class GateElm extends CircuitElm {
 	protected void stamp() {
 	    sim.stampVoltageSource(0, nodes[inputCount], voltSource);
 	}
-	boolean hasSchmittInputs() { return (flags & FLAG_SCHMITT) != 0; }
+	private boolean hasSchmittInputs() { return (flags & FLAG_SCHMITT) != 0; }
 	boolean getInput(int x) {
 	    boolean high = !hasFlag(FLAG_INVERT_INPUTS);
 	    if (!hasSchmittInputs())
@@ -198,8 +206,8 @@ public abstract class GateElm extends CircuitElm {
 	}
 	abstract boolean calcFunction();
 	
-	int oscillationCount;
-	double lastTime;
+	private int oscillationCount;
+	private double lastTime;
 	
 	protected void doStep() {
 	    SimulationContext context = getSimulationContext();

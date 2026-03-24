@@ -31,10 +31,10 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class CounterElm extends ChipElm {
-	boolean invertreset;
-	int modulus;
-	final int FLAG_UP_DOWN = 4;
-	final int FLAG_NEGATIVE_EDGE = 8;
+	private boolean invertreset;
+	private int modulus;
+	private final int FLAG_UP_DOWN = 4;
+	private final int FLAG_NEGATIVE_EDGE = 8;
 
 	public CounterElm(int xx, int yy) {
 	    super(xx, yy);
@@ -129,8 +129,8 @@ public class CounterElm extends ChipElm {
 		setPoints();
 	    }
 	}
-	boolean hasUpDown() { return (flags & FLAG_UP_DOWN) != 0; }
-	boolean negativeEdgeTriggered() { return (flags & FLAG_NEGATIVE_EDGE) != 0; }
+	private boolean hasUpDown() { return (flags & FLAG_UP_DOWN) != 0; }
+	private boolean negativeEdgeTriggered() { return (flags & FLAG_NEGATIVE_EDGE) != 0; }
 	protected int getVoltageSourceCount() { return bits; }
 	protected void execute() {
 	    boolean neg = negativeEdgeTriggered();

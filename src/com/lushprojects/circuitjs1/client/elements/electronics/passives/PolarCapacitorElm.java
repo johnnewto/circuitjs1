@@ -6,7 +6,7 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
 public class PolarCapacitorElm extends CapacitorElm {
-    	double maxNegativeVoltage;
+    	private double maxNegativeVoltage;
     	
 	public PolarCapacitorElm(int xx, int yy) {
 	    super(xx, yy);
@@ -22,7 +22,7 @@ public class PolarCapacitorElm extends CapacitorElm {
 	    return super.dump() + " " + maxNegativeVoltage;
 	}
 	
-	Point plusPoint;
+	private Point plusPoint;
 	
 	protected void setPoints() {
 	    super.setPoints();

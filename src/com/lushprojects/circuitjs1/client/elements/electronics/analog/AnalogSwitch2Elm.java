@@ -31,7 +31,9 @@ public class AnalogSwitch2Elm extends AnalogSwitchElm {
 	super(xa, ya, xb, yb, f, st);
     }
 
-    Point swposts[], swpoles[], ctlPoint;
+    private Point[] swposts;
+    private Point[] swpoles;
+    private Point ctlPoint;
     protected void setPoints() {
 	super.setPoints();
 	calcLeads(32);

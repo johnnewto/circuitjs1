@@ -8,8 +8,8 @@ import com.lushprojects.circuitjs1.client.elements.electronics.semiconductors.Tr
 
 public class EditTransistorModelDialog extends EditDialog {
 
-    TransistorModel model;
-    TransistorElm transistorElm;
+    private TransistorModel model;
+    private TransistorElm transistorElm;
     
     public EditTransistorModelDialog(TransistorModel dm, CirSim f, TransistorElm te) {
 	super(dm, f);

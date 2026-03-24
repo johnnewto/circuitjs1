@@ -41,19 +41,19 @@ public class TransistorElm extends CircuitElm {
 	// node 1 = collector
 	// node 2 = emitter
 	int pnp;
-	double beta;
+	private double beta;
 //	double fgain, inv_fgain;
-	double gmin;
-	String modelName;
-	TransistorModel model;
-	static String lastModelName = "default";
-	final int FLAG_FLIP = 1;
-	final int FLAG_CIRCLE = 2;
-	final int FLAGS_GLOBAL = FLAG_CIRCLE;
-	static int globalFlags;
-	int badIters;
+private double gmin;
+	private String modelName;
+	private TransistorModel model;
+	private static String lastModelName = "default";
+	private final int FLAG_FLIP = 1;
+	private final int FLAG_CIRCLE = 2;
+	private final int FLAGS_GLOBAL = FLAG_CIRCLE;
+	private static int globalFlags;
+	private int badIters;
 	
-	protected TransistorElm(int xx, int yy, boolean pnpflag) {
+	TransistorElm(int xx, int yy, boolean pnpflag) {
 	    super(xx, yy);
 	    pnp = (pnpflag) ? -1 : 1;
 	    beta = 100;
@@ -78,7 +78,7 @@ public class TransistorElm extends CircuitElm {
             globalFlags = flags & (FLAGS_GLOBAL);
 	    setup();
 	}
-	protected void setup() {
+	private void setup() {
 	    model = TransistorModel.getModelWithNameOrCopy(modelName, model);
 	    modelName = model.name;   // in case we couldn't find that model    
 	    vcrit = vt * Math.log(vt/(Math.sqrt(2)*model.satCur));
@@ -107,12 +107,18 @@ public class TransistorElm extends CircuitElm {
 	}
 	    
 	
-	double ic, ie, ib, curcount_c, curcount_e, curcount_b;
+	private double ic;
+    private double ie;
+    private double ib;
+    private double curcount_c;
+    private double curcount_e;
+    private double curcount_b;
 	
-	Polygon rectPoly, arrowPoly;
-	Point circleCenter;	
+	private Polygon rectPoly;
+    private Polygon arrowPoly;
+	private Point circleCenter;
 	
-	boolean hasCircle() { return (globalFlags & FLAG_CIRCLE) != 0; }
+	private boolean hasCircle() { return (globalFlags & FLAG_CIRCLE) != 0; }
 	
 	public void draw(Graphics g) {
             // pick up global flags changes
@@ -171,7 +177,10 @@ public class TransistorElm extends CircuitElm {
 	    return (volts[0]-volts[2])*ib + (volts[1]-volts[2])*ic;
 	}
 
-	Point rect[], coll[], emit[], base;
+	private Point[] rect;
+    private Point[] coll;
+    private Point[] emit;
+    private Point base;
 	protected void setPoints() {
             // these flags apply to all transistors
             flags &= ~FLAGS_GLOBAL;
@@ -211,10 +220,11 @@ public class TransistorElm extends CircuitElm {
 	
 	static final double leakage = 1e-13; // 1e-6;
 	// Electron thermal voltage at SPICE's default temperature of 27 C (300.15 K):
-	static final double vt = 0.025865;
-	double vcrit;
-	double lastvbc, lastvbe;
-	double limitStep(double vnew, double vold) {
+	private static final double vt = 0.025865;
+	private double vcrit;
+	private double lastvbc;
+    private double lastvbe;
+	private double limitStep(double vnew, double vold) {
 	    double arg;
 	    double oo = vnew;
 	    
@@ -446,7 +456,7 @@ public class TransistorElm extends CircuitElm {
 	    }
 	}
 	
-	    Vector<TransistorModel> models;
+	    private Vector<TransistorModel> models;
 
 	public EditInfo getEditInfo(int n) {
 	    if (n == 0)

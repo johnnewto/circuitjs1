@@ -50,11 +50,11 @@ public class ExportAsSFCRDialog extends Dialog {
     @JsProperty(namespace = JsPackage.GLOBAL, name = "document")
     private static native DocumentLike getDocument();
 
-    VerticalPanel vp;
-    CirSim sim;
-    TextArea textArea;
-    RadioButton blockFormatButton;
-    RadioButton rStyleButton;
+    private VerticalPanel vp;
+    private CirSim sim;
+    private TextArea textArea;
+    private RadioButton blockFormatButton;
+    private RadioButton rStyleButton;
 
     public ExportAsSFCRDialog(CirSim asim) {
         super();

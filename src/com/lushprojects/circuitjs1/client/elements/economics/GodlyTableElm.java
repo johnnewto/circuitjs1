@@ -65,7 +65,7 @@ public class GodlyTableElm extends TableElm {
     
     // Get convergence limit (same as VCVSElm/VCCSElm)
     // More lenient over time to help convergence
-    double getConvergeLimit() {
+    private double getConvergeLimit() {
         return StockFlowTableSemantics.convergenceLimit(sim.getSubIterations(), integratedValues, lastColumnSums);
     }
     

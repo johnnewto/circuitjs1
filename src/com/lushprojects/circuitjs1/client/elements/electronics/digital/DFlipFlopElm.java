@@ -29,14 +29,14 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
     public class DFlipFlopElm extends ChipElm {
-	final int FLAG_RESET = 2;
-	final int FLAG_SET = 4;
-	final int FLAG_INVERT_SET_RESET = 8;
-	boolean hasReset() { return (flags & FLAG_RESET) != 0 || hasSet(); }
-	boolean hasSet() { return (flags & FLAG_SET) != 0; }
-	boolean invertSetReset() { return (flags & FLAG_INVERT_SET_RESET) != 0; }
+	private final int FLAG_RESET = 2;
+	private final int FLAG_SET = 4;
+	private final int FLAG_INVERT_SET_RESET = 8;
+	private boolean hasReset() { return (flags & FLAG_RESET) != 0 || hasSet(); }
+	private boolean hasSet() { return (flags & FLAG_SET) != 0; }
+	private boolean invertSetReset() { return (flags & FLAG_INVERT_SET_RESET) != 0; }
 	
-	boolean justLoaded;
+	private boolean justLoaded;
 	
 	public DFlipFlopElm(int xx, int yy) {
             super(xx, yy);

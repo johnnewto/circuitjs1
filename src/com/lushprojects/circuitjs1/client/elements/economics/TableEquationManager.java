@@ -115,7 +115,7 @@ public class TableEquationManager {
     /**
      * Update expression state with current simulation time
      */
-    public void updateExpressionState(ExprState state) {
+    private void updateExpressionState(ExprState state) {
         // Only update time - direct node resolution handles everything else
         state.t = sim != null ? sim.getTime() : 0.0;
         

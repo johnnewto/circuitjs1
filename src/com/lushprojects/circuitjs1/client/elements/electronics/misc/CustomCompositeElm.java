@@ -21,13 +21,13 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 // instances of subcircuits
 
 public class CustomCompositeElm extends CompositeElm {
-    String modelName;
-    CustomCompositeChipElm chip;
-    int postCount;
+    private String modelName;
+    private CustomCompositeChipElm chip;
+    private int postCount;
     int inputCount, outputCount;
-    CustomCompositeModel model;
+    private CustomCompositeModel model;
     public static String lastModelName = "default";
-    static final int FLAG_SMALL = 2;
+    private static final int FLAG_SMALL = 2;
     
     public CustomCompositeElm(int xx, int yy) {
 	super(xx, yy);
@@ -124,7 +124,7 @@ public class CustomCompositeElm extends CompositeElm {
 	    setPost(i, chip.getChipPost(i));
     }
 
-    public void updateModels() {
+    protected void updateModels() {
 	updateModels(null);
     }
     
@@ -148,8 +148,8 @@ public class CustomCompositeElm extends CompositeElm {
 	setPoints();
     }
 
-    boolean isFlippedX() { return (flags & ChipElm.FLAG_FLIP_X) != 0; }
-    boolean isFlippedY() { return (flags & ChipElm.FLAG_FLIP_Y) != 0; }
+    private boolean isFlippedX() { return (flags & ChipElm.FLAG_FLIP_X) != 0; }
+    private boolean isFlippedY() { return (flags & ChipElm.FLAG_FLIP_Y) != 0; }
 
     protected void flipXY(int xmy, int count) {
 	flags ^= ChipElm.FLAG_FLIP_XY;
@@ -166,7 +166,7 @@ public class CustomCompositeElm extends CompositeElm {
 	setPoints();
     }
 
-    public void updateModels(StringTokenizer st) {
+    private void updateModels(StringTokenizer st) {
 	model = CustomCompositeModel.getModelWithName(modelName);
 	if (model == null)
 	    return;
@@ -184,7 +184,7 @@ public class CustomCompositeElm extends CompositeElm {
     
     protected int getPostCount() { return postCount; }
     
-    Vector<CustomCompositeModel> models;
+    private Vector<CustomCompositeModel> models;
     
     public EditInfo getEditInfo(int n) {
 	// if model is built in, don't allow it to be changed

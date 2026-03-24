@@ -52,7 +52,7 @@ public class ImportFromDropbox {
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "XMLHttpRequest")
 	private static class XMLHttpRequestLike {
-		public XMLHttpRequestLike() {}
+		XMLHttpRequestLike() {}
 		@JsMethod native void open(String method, String url, boolean async);
 		@JsMethod native void send();
 		@JsProperty native String getResponseText();
@@ -88,13 +88,13 @@ public class ImportFromDropbox {
 		}
 	}
 	
-	static public void doLoadCallback(String s) {
+	private static void doLoadCallback(String s) {
 		sim.pushUndoForUi();
 		sim.readCircuitFromModel(s);
 	}
 	
 	
-	public final void doDropboxImport() {
+	private void doDropboxImport() {
 		ChooseOptions options = new ChooseOptions();
 		options.setLinkType("direct");
 		options.setMultiselect(false);

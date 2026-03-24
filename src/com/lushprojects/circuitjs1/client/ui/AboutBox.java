@@ -29,8 +29,8 @@ import com.google.gwt.user.client.ui.Button;
 
 public class AboutBox extends PopupPanel {
 	
-	VerticalPanel vp;
-	Button okButton;
+	private VerticalPanel vp;
+	private Button okButton;
 	
 	public AboutBox(String version) {
 		super();
@@ -55,7 +55,7 @@ public class AboutBox extends PopupPanel {
 		show();
 	}
 
-	public void close() {
+	private void close() {
 		hide();
 	}
 }

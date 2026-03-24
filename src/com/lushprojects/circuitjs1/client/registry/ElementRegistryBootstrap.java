@@ -13,7 +13,7 @@ import com.lushprojects.circuitjs1.client.elements.math.*;
 import com.lushprojects.circuitjs1.client.registry.ElementCategory;
 import com.lushprojects.circuitjs1.client.registry.ElementRegistry;
 
-public final class ElementRegistryBootstrap {
+final class ElementRegistryBootstrap {
     private ElementRegistryBootstrap() {
     }
 

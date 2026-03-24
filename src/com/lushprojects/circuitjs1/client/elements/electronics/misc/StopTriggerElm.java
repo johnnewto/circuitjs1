@@ -30,10 +30,12 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class StopTriggerElm extends CircuitElm {
-	double triggerVoltage;
-	boolean triggered, stopped;
-	double delay, triggerTime;
-	int type;
+	private double triggerVoltage;
+	private boolean triggered;
+    private boolean stopped;
+	private double delay;
+    private double triggerTime;
+	private int type;
 	
 	public StopTriggerElm(int xx, int yy) {
 	    super(xx, yy);

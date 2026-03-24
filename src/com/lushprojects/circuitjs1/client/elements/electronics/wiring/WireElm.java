@@ -32,8 +32,8 @@ public class WireElm extends CircuitElm {
 		       StringTokenizer st) {
 	    super(xa, ya, xb, yb, f);
 	}
-	static final int FLAG_SHOWCURRENT = 1;
-	static final int FLAG_SHOWVOLTAGE = 2;
+	private static final int FLAG_SHOWCURRENT = 1;
+	private static final int FLAG_SHOWVOLTAGE = 2;
 	protected void draw(Graphics g) {
 	    setVoltageColor(g, volts[0]);
 	    drawThickLine(g, point1, point2);
@@ -52,10 +52,10 @@ public class WireElm extends CircuitElm {
 	protected void stamp() {
 //	    sim.stampVoltageSource(nodes[0], nodes[1], voltSource, 0);
 	}
-	boolean mustShowCurrent() {
+	private boolean mustShowCurrent() {
 	    return (flags & FLAG_SHOWCURRENT) != 0;
 	}
-	boolean mustShowVoltage() {
+	private boolean mustShowVoltage() {
 	    return (flags & FLAG_SHOWVOLTAGE) != 0;
 	}
 //	int getVoltageSourceCount() { return 1; }

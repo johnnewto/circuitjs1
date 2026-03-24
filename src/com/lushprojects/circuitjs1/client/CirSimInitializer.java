@@ -609,7 +609,7 @@ final class CirSimInitializer {
         loadMenuDefinition();
     }
 
-    void loadMenuDefinition() {
+    private void loadMenuDefinition() {
         String url = com.google.gwt.core.client.GWT.getModuleBaseURL() + "menulist.txt";
         RequestBuilder requestBuilder = new RequestBuilder(RequestBuilder.GET, sim.getCircuitIOService().getLoadUrl(url));
         try {
@@ -640,7 +640,7 @@ final class CirSimInitializer {
         }
     }
 
-    void rebuildMenusFromDefinition() {
+    private void rebuildMenusFromDefinition() {
         sim.getMenuUiState().mainMenuBar.clearItems();
         sim.getMenuUiState().drawMenuBar.clearItems();
 

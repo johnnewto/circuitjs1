@@ -3,13 +3,13 @@ package com.lushprojects.circuitjs1.client.elements;
 import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNodeElm;
 
 public class ExprParser {
-    String text;
-    String token;
-    int pos;
-    int tlen;
-    String err;
+    private String text;
+    private String token;
+    private int pos;
+    private int tlen;
+    private String err;
 
-    void getToken() {
+    private void getToken() {
 		while (pos < tlen && text.charAt(pos) == ' ')
 			pos++;
 		if (pos == tlen) {
@@ -54,7 +54,7 @@ public class ExprParser {
 		pos = i;
     }
 
-    boolean skip(String s) {
+    private boolean skip(String s) {
 	if (token.compareTo(s) != 0)
 	    return false;
 	getToken();
@@ -62,7 +62,7 @@ public class ExprParser {
     }
     
     // Case-insensitive version for function names
-    boolean skipIgnoreCase(String s) {
+    private boolean skipIgnoreCase(String s) {
 	if (!token.equalsIgnoreCase(s))
 	    return false;
 	getToken();
@@ -71,7 +71,7 @@ public class ExprParser {
     
     // Check if a token looks like a valid identifier (GWT-compatible)
     // Now supports Greek symbols like \beta, \omega and LaTeX scripts like Z_1, x^2
-    boolean isValidIdentifier(String token) {
+    private boolean isValidIdentifier(String token) {
 	if (token == null || token.length() == 0)
 	    return false;
 	
@@ -92,12 +92,12 @@ public class ExprParser {
 	return true;
     }
 
-    void setError(String s) {
+    private void setError(String s) {
 	if (err == null)
 	    err = s;
     }
     
-    void skipOrError(String s) {
+    private void skipOrError(String s) {
 	if (!skip(s)) {
 	    setError("expected " + s + ", got " + token);
 	}
@@ -112,7 +112,7 @@ public class ExprParser {
 	return e;
     }
 
-    Expr parse() {
+    private Expr parse() {
 	Expr e = parseOr();
 	Expr e2, e3;
 	if (skip("?")) {
@@ -126,7 +126,7 @@ public class ExprParser {
 	return e;
     }
     
-    Expr parseOr() {
+    private Expr parseOr() {
 	Expr e = parseAnd();
 	while (skip("||")) {
 	    e = new Expr(e, parseAnd(), Expr.E_OR);
@@ -134,7 +134,7 @@ public class ExprParser {
 	return e;
     }
     
-    Expr parseAnd() {
+    private Expr parseAnd() {
 	Expr e = parseEquals();
 	while (skip("&&")) {
 	    e = new Expr(e, parseEquals(), Expr.E_AND);
@@ -142,14 +142,14 @@ public class ExprParser {
 	return e;
     }
     
-    Expr parseEquals() {
+    private Expr parseEquals() {
 	Expr e = parseCompare();
 	if (skip("=="))
 	    return new Expr(e, parseCompare(), Expr.E_EQUALS);
 	return e;
     }
     
-    Expr parseCompare() {
+    private Expr parseCompare() {
 	Expr e = parseAdd();
 	if (skip("<="))
 	    return new Expr(e, parseAdd(), Expr.E_LEQ);
@@ -164,7 +164,7 @@ public class ExprParser {
 	return e;
     }
 
-    Expr parseAdd() {
+    private Expr parseAdd() {
 	Expr e = parseMult();
 	while (true) {
 	    if (skip("+"))
@@ -177,7 +177,7 @@ public class ExprParser {
 	return e;
     }
 
-    Expr parseMult() {
+    private Expr parseMult() {
 	Expr e = parseUminus();
 	while (true) {
 	    if (skip("*"))
@@ -190,7 +190,7 @@ public class ExprParser {
 	return e;
     }
 
-    Expr parseUminus() {
+    private Expr parseUminus() {
 	skip("+");
 	if (skip("!"))
 	    return new Expr(parseUminus(), null, Expr.E_NOT);
@@ -199,7 +199,7 @@ public class ExprParser {
 	return parsePow();
     }
 
-    Expr parsePow() {
+    private Expr parsePow() {
 	Expr e = parseTerm();
 	while (true) {
 	    if (skip("^"))
@@ -210,14 +210,14 @@ public class ExprParser {
 	return e;
     }
 
-    Expr parseFunc(int t) {
+    private Expr parseFunc(int t) {
 	skipOrError("(");
 	Expr e = parse();
 	skipOrError(")");
 	return new Expr(e, null, t);
     }
 
-    Expr parseFuncMulti(int t, int minArgs, int maxArgs) {
+    private Expr parseFuncMulti(int t, int minArgs, int maxArgs) {
 	int args = 1;
 	skipOrError("(");
 	Expr e1 = parse();
@@ -234,7 +234,7 @@ public class ExprParser {
     }
     
     // Special parser for lag() that assigns a unique buffer index at parse time
-    Expr parseLag() {
+    private Expr parseLag() {
 	skipOrError("(");
 	Expr e1 = parse();  // The value expression
 	skipOrError(",");
@@ -250,7 +250,7 @@ public class ExprParser {
     }
 
     // Special parser for smooth() that assigns a unique state index at parse time
-    Expr parseSmooth() {
+    private Expr parseSmooth() {
 	skipOrError("(");
 	Expr e1 = parse();  // The input expression
 	skipOrError(",");
@@ -267,7 +267,7 @@ public class ExprParser {
     }
 
     // Parser for delay(x[, tau]) where tau defaults to 1
-    Expr parseDelay() {
+    private Expr parseDelay() {
 	skipOrError("(");
 	Expr e1 = parse();  // The input expression
 	Expr e2 = new Expr(Expr.E_VAL, 1.0);  // Default tau
@@ -286,7 +286,7 @@ public class ExprParser {
     }
 
     // Parser for lookup(TableName, x[, clampFlag])
-    Expr parseLookup() {
+    private Expr parseLookup() {
 	skipOrError("(");
 	if (!isValidIdentifier(token)) {
 	    setError("lookup() first argument must be a lookup table name");
@@ -335,7 +335,7 @@ public class ExprParser {
 	return Math.abs(value + 1.0) < 1e-12;
     }
 
-    Expr parseTerm() {
+    private Expr parseTerm() {
 		if (skip("(")) {
 			Expr e = parse();
 			skipOrError(")");

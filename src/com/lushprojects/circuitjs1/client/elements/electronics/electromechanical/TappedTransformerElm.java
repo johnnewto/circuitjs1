@@ -28,11 +28,16 @@ import com.lushprojects.circuitjs1.client.elements.electronics.Inductor;
 import com.lushprojects.circuitjs1.client.util.*;
 
 public class TappedTransformerElm extends CircuitElm {
-	double inductance, ratio, couplingCoef;
-	int flip;
-	public static final int FLAG_FLIP = 1;
-	Point ptEnds[], ptCoil[], ptCore[];
-	double current[], curcount[];
+	private double inductance;
+    private double ratio;
+    private double couplingCoef;
+	private int flip;
+	private static final int FLAG_FLIP = 1;
+	private Point[] ptEnds;
+    private Point[] ptCoil;
+    private Point[] ptCore;
+	private double[] current;
+    private double[] curcount;
 	public TappedTransformerElm(int xx, int yy) {
 	    super(xx, yy);
 	    inductance = 4;
@@ -145,7 +150,7 @@ public class TappedTransformerElm extends CircuitElm {
 	    // startIteration() gets called
 	    curSourceValue[0] = curSourceValue[1] = curSourceValue[2] = 0;
 	}
-	double a[];
+	private double[] a;
 	protected void stamp() {
 	    // equations for transformer:
 	    //   v1 = L1 di1/dt + M1 di2/dt + M1 di3/dt
@@ -202,7 +207,7 @@ public class TappedTransformerElm extends CircuitElm {
 	    for (i = 0; i != 5; i++)
 		sim.stampRightSide(nodes[i]);
 	}
-	boolean isTrapezoidal() { return (flags & Inductor.FLAG_BACK_EULER) == 0; }
+	private boolean isTrapezoidal() { return (flags & Inductor.FLAG_BACK_EULER) == 0; }
 protected void startIteration() {
 	    voltdiff[0] = volts[0]-volts[1];
 	    voltdiff[1] = volts[2]-volts[3];
@@ -215,7 +220,8 @@ protected void startIteration() {
 			curSourceValue[i] += a[i*3+j]*voltdiff[j];
 	    }
 	}
-	double curSourceValue[], voltdiff[];
+	private double[] curSourceValue;
+    private double[] voltdiff;
 	protected void doStep() {
 	    sim.stampCurrentSource(nodes[0], nodes[1], curSourceValue[0]);
 	    sim.stampCurrentSource(nodes[2], nodes[3], curSourceValue[1]);

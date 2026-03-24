@@ -16,11 +16,11 @@ final class JsApiBridge {
         this.sim = sim;
     }
 
-    JsArray<JavaScriptObject> getJSArray() {
+    private JsArray<JavaScriptObject> getJSArray() {
         return JavaScriptObject.createArray().cast();
     }
 
-    JsArray<JavaScriptObject> getJSElements() {
+    private JsArray<JavaScriptObject> getJSElements() {
         JsArray<JavaScriptObject> arr = getJSArray();
         for (int i = 0; i != sim.elmList.size(); i++) {
             CircuitElm ce = sim.getElm(i);

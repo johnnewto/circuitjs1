@@ -36,26 +36,30 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 // 3n+2 = end of coil resistor
 
 public class RelayContactElm extends CircuitElm {
-    double r_on, r_off;
-    Point swposts[], swpoles[], ptSwitch;
-    double switchCurrent, switchCurCount;
+    private double r_on;
+    private double r_off;
+    private Point[] swposts;
+    private Point[] swpoles;
+    private Point ptSwitch;
+    private double switchCurrent;
+    private double switchCurCount;
     String label;
-    final int FLAG_NORMALLY_CLOSED = 2;
-    final int FLAG_IEC = 4;
-    int type;
+    private final int FLAG_NORMALLY_CLOSED = 2;
+    private final int FLAG_IEC = 4;
+    private int type;
 
     // fractional position, between 0 and 1 inclusive
 //    double d_position;
     
     // integer position, can be 0 (off), 1 (on), 2 (in between)
-    int i_position;
+    private int i_position;
     
     int poleCount;
-    int openhs;
-    final int nSwitch0 = 0;
-    final int nSwitch1 = 1;
+    private int openhs;
+    private final int nSwitch0 = 0;
+    private final int nSwitch1 = 1;
     double currentOffset1, currentOffset2;
-    Point extraPoints[];
+    private Point[] extraPoints;
 
     public RelayContactElm(int xx, int yy) {
 	super(xx, yy);
@@ -79,7 +83,7 @@ public class RelayContactElm extends CircuitElm {
     }
     
     protected int getDumpType() { return 426; }
-    boolean useIECSymbol() { return (flags & FLAG_IEC) != 0; }
+    private boolean useIECSymbol() { return (flags & FLAG_IEC) != 0; }
 
     protected String dump() {
 	// escape label
@@ -181,7 +185,7 @@ public class RelayContactElm extends CircuitElm {
 	type = type_;
     }
 
-    boolean isNormallyClosed() { return (flags & FLAG_NORMALLY_CLOSED) != 0; }
+    private boolean isNormallyClosed() { return (flags & FLAG_NORMALLY_CLOSED) != 0; }
     
     protected Point getPost(int n) {
 	return swposts[n];

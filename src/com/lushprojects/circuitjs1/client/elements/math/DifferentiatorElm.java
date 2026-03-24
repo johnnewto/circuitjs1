@@ -19,26 +19,29 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
 // Differentiator element - computes da/dt (derivative of input)
 public class DifferentiatorElm extends CircuitElm {
-    final int FLAG_SMALL = 1;
+    private final int FLAG_SMALL = 1;
     
     // Minimum value for convergence tolerance
-    static final double MIN_VALUE = 1e-9;
+    private static final double MIN_VALUE = 1e-9;
     
-    int opsize, opheight, opwidth;
-    Point inPost, inLead;
-    Polygon bodyPoly;
-    Font labelFont;
+    private int opsize;
+    private int opheight;
+    private int opwidth;
+    private Point inPost;
+    private Point inLead;
+    private Polygon bodyPoly;
+    private Font labelFont;
     
     // Expression evaluation state
-    Expr expr;
-    ExprState exprState;
-    String exprString;
-    double lastVolts[];
+    private Expr expr;
+    private ExprState exprState;
+    private String exprString;
+    private double[] lastVolts;
     
     // Startup settling to avoid initial spike from comparing to uninitialized values
     // settleTimeStep tracks which timestep we started settling; -1 means settled
-    int settleTimeStep = -1;
-    boolean needsSettle = true;
+    private int settleTimeStep = -1;
+    private boolean needsSettle = true;
     
     public DifferentiatorElm(int xx, int yy) {
         super(xx, yy);
@@ -60,7 +63,7 @@ public class DifferentiatorElm extends CircuitElm {
         setSize((f & FLAG_SMALL) != 0 ? 1 : 2);
     }
     
-    void parseExpr() {
+    private void parseExpr() {
         ExprParser ep = new ExprParser(exprString);
         expr = ep.parseExpression();
     }
@@ -71,7 +74,7 @@ public class DifferentiatorElm extends CircuitElm {
     
     protected int getDumpType() { return 259; }
     
-    void setSize(int s) {
+    private void setSize(int s) {
         opsize = s;
         opheight = 8 * s;
         opwidth = 13 * s;

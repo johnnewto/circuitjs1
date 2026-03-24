@@ -28,8 +28,11 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 // contributed by Edward Calver
 
 public class AMElm extends CircuitElm {
-    static final int FLAG_COS = 2;
-    double carrierfreq,signalfreq, maxVoltage, freqTimeZero;
+    private static final int FLAG_COS = 2;
+    private double carrierfreq;
+    private double signalfreq;
+    private double maxVoltage;
+    private double freqTimeZero;
     public AMElm(int xx, int yy) {
 	super(xx, yy);
 	maxVoltage = 5;
@@ -69,12 +72,12 @@ public class AMElm extends CircuitElm {
     protected void doStep() {
 	    sim.updateVoltageSource(0, nodes[0], voltSource, getVoltage());
     }
-    protected double getVoltage() {
+    private double getVoltage() {
 	SimulationContext context = getSimulationContext();
 	double w = 2*pi*(context.getTime()-freqTimeZero);
 	return ((Math.sin(w*signalfreq)+1)/2)*Math.sin(w*carrierfreq)*maxVoltage;	
     }
-    final int circleSize = 17;
+    private final int circleSize = 17;
 
     protected void draw(Graphics g) {
 	setBbox(point1, point2, circleSize);
@@ -95,7 +98,7 @@ public class AMElm extends CircuitElm {
 	    drawDots(g, point1, lead1, curcount);
     }
 	
-    void drawWaveform(Graphics g, Point center) {
+    private void drawWaveform(Graphics g, Point center) {
 	g.setColor(needsHighlight() ? selectColor : Color.gray);
 	setPowerColor(g, false);
 	int xc = center.x; int yc = center.y;

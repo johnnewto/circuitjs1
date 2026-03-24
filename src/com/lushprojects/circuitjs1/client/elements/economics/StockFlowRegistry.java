@@ -43,13 +43,13 @@ public class StockFlowRegistry {
      * For line numbers, manually include them in the message string
      * Example: log("methodName", "Starting sync"); 
      */
-    public static void log(String methodName, String message) {
+    private static void log(String methodName, String message) {
     }
     
-    public static void MRDlog(String message) {
+    private static void MRDlog(String message) {
     }
     
-    public static void SRTlog(String message) {
+    private static void SRTlog(String message) {
     }
     
     // ========== REGISTRY DATA STRUCTURES ==========
@@ -422,7 +422,7 @@ public class StockFlowRegistry {
      * @param stockName The stock name to collect rows for
      * @param priorityTable Optional table whose row order should be preserved (null for default)
      */
-    public static LinkedHashSet<String> getMergedRowDescriptions(String stockName, StockTableView priorityTable) {
+    private static LinkedHashSet<String> getMergedRowDescriptions(String stockName, StockTableView priorityTable) {
         // Can't use cache if we have a priority table (order matters)
         if (priorityTable == null && mergedRowsCache.containsKey(stockName)) {
             LinkedHashSet<String> cached = mergedRowsCache.get(stockName);
@@ -522,7 +522,7 @@ public class StockFlowRegistry {
      * @param priorityTable The table with equations to propagate (trigger table)
      * @return true if table was modified, false if already in sync
      */
-    public static boolean synchronizeTable(TableElm table, TableElm priorityTable) {
+    private static boolean synchronizeTable(TableElm table, TableElm priorityTable) {
         // Prevent recursive synchronization
         if (currentlySynchronizing.contains(table)) {
             return false;
@@ -664,7 +664,7 @@ public class StockFlowRegistry {
         return patches;
     }
 
-    public static void applySyncPatches(List<SyncPatch> patches, TableElm targetTable) {
+    private static void applySyncPatches(List<SyncPatch> patches, TableElm targetTable) {
         if (patches == null || patches.isEmpty() || targetTable == null) {
             return;
         }

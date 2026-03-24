@@ -124,7 +124,7 @@ final class CircuitValueSlotManager {
         }
     }
 
-    Adjustable findAdjustableByName(String name) {
+    private Adjustable findAdjustableByName(String name) {
         for (int i = 0; i < sim.adjustables.size(); i++) {
             Adjustable adj = sim.adjustables.get(i);
             if (adj.sliderText != null && adj.sliderText.equals(name)) {

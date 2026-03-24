@@ -126,7 +126,7 @@ public class SFCRParser {
     private boolean actionElementFromActionBlock = false;
 
     /** Non-null when in result-mode ({@link #parseToResult}). */
-    SFCRParseResult pendingResult = null;
+    private SFCRParseResult pendingResult = null;
 
     // =========================================================================
     // GWT-independent helpers (usable from plain-Java unit tests)

@@ -78,7 +78,7 @@ public class AudioInputElm extends RailElm {
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "FileReader")
 	private static class FileReaderLike {
-		public FileReaderLike() {}
+		FileReaderLike() {}
 		@JsProperty(name = "onload") native void setOnLoad(LoadCallback callback);
 		@JsProperty(name = "result") native Object getResult();
 		@JsMethod native void readAsArrayBuffer(FileLike file);
@@ -91,29 +91,29 @@ public class AudioInputElm extends RailElm {
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "AudioContext")
 	private static class AudioContextLike {
-		public AudioContextLike() {}
+		AudioContextLike() {}
 		@JsProperty(name = "sampleRate") native double getSampleRate();
 		@JsMethod native void decodeAudioData(Object audioData, AudioDecodeSuccessCallback successCallback, AudioDecodeErrorCallback errorCallback);
 	}
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "webkitAudioContext")
 	private static class WebkitAudioContextLike extends AudioContextLike {
-		public WebkitAudioContextLike() {}
+		WebkitAudioContextLike() {}
 	}
 
-    	JsArrayNumber data;
-    	double timeOffset;
-    	int samplingRate;
-    	int fileNum;
-    	String fileName;
-    	double maxVoltage;
-    	double startPosition;
+    	private JsArrayNumber data;
+    	private double timeOffset;
+    	private int samplingRate;
+    	private int fileNum;
+    	private String fileName;
+    	private double maxVoltage;
+    	private double startPosition;
     	
-    	static int lastSamplingRate;
+    	private static int lastSamplingRate;
     	
     	// cache to preserve audio data when doing cut/paste, or undo/redo
-    	static int fileNumCounter = 1;
-    	static HashMap<Integer, AudioFileEntry> audioFileMap = new HashMap<Integer, AudioFileEntry>();
+    	private static int fileNumCounter = 1;
+    	private static HashMap<Integer, AudioFileEntry> audioFileMap = new HashMap<Integer, AudioFileEntry>();
     	
 	public AudioInputElm(int xx, int yy) {
 	    super(xx, yy, WF_AC);
@@ -164,7 +164,7 @@ public class AudioInputElm extends RailElm {
 	    return fileName == null ? Locale.LS("No file") : fileName;
 	}
 	
-	void setSamplingRate(int sr) {
+	private void setSamplingRate(int sr) {
 	    samplingRate = sr;
 	}
 	
@@ -220,7 +220,7 @@ public class AudioInputElm extends RailElm {
 	}
 	
 	// fetch audio data for a selected file
-	static String fetchLoadFileData(final AudioInputElm elm, Element uploadElement) {
+	private static String fetchLoadFileData(final AudioInputElm elm, Element uploadElement) {
 	    final ElementLike element = (ElementLike) (Object) uploadElement;
 	    final FileListLike files = element.getFiles();
 	    if (files == null || files.getLength() < 1)
@@ -255,7 +255,7 @@ public class AudioInputElm extends RailElm {
 	    return null;
 	}
 	
-	void gotAudioData(JsArrayNumber d) {
+	private void gotAudioData(JsArrayNumber d) {
 	    data = d;
 	    lastSamplingRate = samplingRate;
 	    AudioOutputElm.lastSamplingRate = samplingRate;

@@ -11,7 +11,7 @@ public class ImportExportHelper {
         public final StringTokenizer tokenizer;
         public final String uid;
 
-        public ElementDumpParseResult(StringTokenizer tokenizer, String uid) {
+        ElementDumpParseResult(StringTokenizer tokenizer, String uid) {
             this.tokenizer = tokenizer;
             this.uid = uid;
         }

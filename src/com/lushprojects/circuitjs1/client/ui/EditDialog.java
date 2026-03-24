@@ -50,16 +50,17 @@ import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsPackage;
 
 public class EditDialog extends Dialog {
-	Editable elm;
-	CirSim cframe;
-	protected Button applyButton;
-	Button okButton, cancelButton;
-	EditInfo einfos[];
-	int einfocount;
+	private Editable elm;
+	private CirSim cframe;
+	Button applyButton;
+	private Button okButton;
+    private Button cancelButton;
+	private EditInfo[] einfos;
+	private int einfocount;
 	final int barmax = 1000;
-	VerticalPanel mainPanel;
-	HorizontalPanel bottomButtonPanel;
-	static NumberFormat noCommaFormat = NumberFormat.getFormat("####.##########");
+	private VerticalPanel mainPanel;
+	private HorizontalPanel bottomButtonPanel;
+	private static NumberFormat noCommaFormat = NumberFormat.getFormat("####.##########");
 	
 	// Autocomplete state tracking (per TextBox)
 	private java.util.Map<TextBox, AutocompleteHelper.AutocompleteState> autocompleteStates = 
@@ -117,7 +118,7 @@ public class EditDialog extends Dialog {
 		this.center();
 	}
 	
-	void buildDialog() {
+	private void buildDialog() {
 		int i;
 		HorizontalPanel hp = new HorizontalPanel();
 		VerticalPanel vp = new VerticalPanel();
@@ -246,13 +247,13 @@ public class EditDialog extends Dialog {
 		einfocount = i;
 	}
 
-	static final double ROOT2 = 1.41421356237309504880;
+	private static final double ROOT2 = 1.41421356237309504880;
 	
-	double diffFromInteger(double x) {
+	private double diffFromInteger(double x) {
 	    return Math.abs(x-Math.round(x));
 	}
 	
-	String unitString(EditInfo ei) {
+	private String unitString(EditInfo ei) {
 	    // for voltage elements, express values in rms if that would be shorter
 	    if (elm != null && elm instanceof VoltageElm &&
 		Math.abs(ei.value) > 1e-4 &&
@@ -287,7 +288,7 @@ public class EditDialog extends Dialog {
 		return noCommaFormat.format(v*1e-9) + "G";
 	}
 
-	double parseUnits(EditInfo ei) throws java.text.ParseException {
+	private double parseUnits(EditInfo ei) throws java.text.ParseException {
 		String s = ei.textf.getText();
 		return parseUnits(s);
 	}
@@ -324,7 +325,7 @@ public class EditDialog extends Dialog {
 		return noCommaFormat.parse(s) * mult * rmsMult;
 	}
 
-	public void apply() {
+	protected void apply() {
 		int i;
 		for (i = 0; i != einfocount; i++) {
 			EditInfo ei = einfos[i];
@@ -352,7 +353,7 @@ public class EditDialog extends Dialog {
 		cframe.needAnalyze();
 	}
 
-	public void itemStateChanged(GwtEvent e) {
+	private void itemStateChanged(GwtEvent e) {
 	    Object src = e.getSource();
 	    int i;
 	    boolean changed = false;
@@ -389,7 +390,7 @@ public class EditDialog extends Dialog {
 	    buildDialog();
 	}
 	
-	public void clearDialog() {
+	private void clearDialog() {
 		while (mainPanel.getWidget(0)!=bottomButtonPanel)
 			mainPanel.remove(0);
 	}

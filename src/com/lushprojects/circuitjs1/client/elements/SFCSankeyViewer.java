@@ -127,7 +127,7 @@ public class SFCSankeyViewer {
             this.displayName = displayName;
         }
         
-        public String getDisplayName() {
+        String getDisplayName() {
             return displayName;
         }
     }
@@ -188,14 +188,14 @@ public class SFCSankeyViewer {
     /**
      * Set the chart library to use.
      */
-    public void setChartLibrary(ChartLibrary library) {
+    private void setChartLibrary(ChartLibrary library) {
         this.chartLibrary = library;
     }
     
     /**
      * Get the current chart library.
      */
-    public ChartLibrary getChartLibrary() {
+    private ChartLibrary getChartLibrary() {
         return chartLibrary;
     }
     
@@ -223,7 +223,7 @@ public class SFCSankeyViewer {
     /**
      * Open the Sankey diagram in a new external browser window.
      */
-    public void openExternalWindow() {
+    private void openExternalWindow() {
         String html = generateHTML(false);  // Full standalone HTML
         if (!openWindowWithHTML(html)) {
             CirSim.console("Sankey viewer popup was blocked. Please allow popups for this site.");
@@ -469,7 +469,7 @@ public class SFCSankeyViewer {
      * Generate HTML for the current chart library.
      * @param embedded If true, generates minimal HTML suitable for iframe embedding
      */
-    String generateHTML(boolean embedded) {
+    private String generateHTML(boolean embedded) {
         switch (chartLibrary) {
             case D3:
                 return generateD3HTML(embedded);
@@ -483,7 +483,7 @@ public class SFCSankeyViewer {
      * Generate complete HTML document with Plotly.js Sankey diagram.
      * @param embedded If true, generates minimal HTML suitable for iframe embedding
      */
-    String generatePlotlyHTML(boolean embedded) {
+    private String generatePlotlyHTML(boolean embedded) {
         String jsonData = buildSankeyJSON();
         String title = table.tableTitle != null ? table.tableTitle : "SFC Table";
         String template = embedded
@@ -502,7 +502,7 @@ public class SFCSankeyViewer {
      * Uses d3-sankey plugin for the layout algorithm.
      * @param embedded If true, generates minimal HTML suitable for iframe embedding
      */
-    String generateD3HTML(boolean embedded) {
+    private String generateD3HTML(boolean embedded) {
         String jsonData = buildSankeyJSON();
         String title = table.tableTitle != null ? table.tableTitle : "SFC Table";
         String template = embedded
@@ -553,7 +553,7 @@ public class SFCSankeyViewer {
         private static final int DIALOG_HEIGHT = 550;
         private static final int REFRESH_INTERVAL_MS = 500;  // 0.5 second for smoother updates
         
-        public SankeyDialog(SFCSankeyViewer viewer) {
+        SankeyDialog(SFCSankeyViewer viewer) {
             super(false, false);  // Not auto-hide, not modal
             currentViewer = viewer;
             
@@ -659,7 +659,7 @@ public class SFCSankeyViewer {
          * Uses the current viewer's chart library setting.
          * Must be called after dialog is attached to DOM.
          */
-        public void loadContent() {
+        void loadContent() {
             String html = currentViewer.generateHTML(true);  // Embedded mode
             loadIframeContent(chartFrame.getElement(), html);
         }
@@ -668,7 +668,7 @@ public class SFCSankeyViewer {
          * Refresh D3 chart with updated data (real-time update).
          * Only works for D3 library.
          */
-        public void refreshD3Content() {
+        void refreshD3Content() {
             String jsonData = currentViewer.buildSankeyJSON();
             updateD3Chart(chartFrame.getElement(), jsonData);
         }
@@ -676,7 +676,7 @@ public class SFCSankeyViewer {
         /**
          * Update the dialog with new content from a different viewer.
          */
-        public void updateContent(SFCSankeyViewer viewer) {
+        void updateContent(SFCSankeyViewer viewer) {
             currentViewer = viewer;
             String title = viewer.table.tableTitle != null ? viewer.table.tableTitle : "SFC Table";
             setText(Locale.LS("Sankey Diagram") + ": " + title);

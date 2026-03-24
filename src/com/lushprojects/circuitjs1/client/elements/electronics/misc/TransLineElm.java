@@ -27,10 +27,14 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class TransLineElm extends CircuitElm {
-    double delay, imped;
-    double voltageL[], voltageR[];
-    int lenSteps, ptr, width;
-    int lastStepCount;
+    private double delay;
+    private double imped;
+    private double[] voltageL;
+    private double[] voltageR;
+    private int lenSteps;
+    private int ptr;
+    private int width;
+    private int lastStepCount;
     public TransLineElm(int xx, int yy) {
 	super(xx, yy);
 	delay = 1000*sim.getMaxTimeStep();
@@ -72,7 +76,8 @@ public class TransLineElm extends CircuitElm {
 	setPoints();
     }
 	
-    Point posts[], inner[];
+    private Point[] posts;
+    private Point[] inner;
 	
     protected void reset() {
 	if (sim.getMaxTimeStep() == 0)
@@ -147,8 +152,12 @@ public class TransLineElm extends CircuitElm {
 	}
     }
 
-    int voltSource1, voltSource2;
-    double current1, current2, curCount1, curCount2;
+    private int voltSource1;
+    private int voltSource2;
+    private double current1;
+    private double current2;
+    private double curCount1;
+    private double curCount2;
     protected void setVoltageSource(int n, int v) {
 	if (n == 0)
 	    voltSource1 = v;

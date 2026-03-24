@@ -1016,7 +1016,7 @@ public class CurrentTransactionsMatrixElm extends TableElm {
      * Find the row index in a master table that matches a flow name
      * Package-private for access by CurrentTransactionsMatrixRenderer
      */
-    int findRowByFlowName(TableElm masterTable, String flowName) {
+    private int findRowByFlowName(TableElm masterTable, String flowName) {
         if (flowName == null || flowName.trim().isEmpty()) {
             return -1;
         }

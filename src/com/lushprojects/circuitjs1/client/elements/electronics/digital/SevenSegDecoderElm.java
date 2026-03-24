@@ -48,8 +48,8 @@ import com.lushprojects.circuitjs1.client.util.*;
 		{true,false,false,true,true,true,true},//E
 		{true,false,false,false,true,true,true},//F
 	};
-	static final int FLAG_ENABLE = (1<<1);
-	static final int FLAG_BLANK_F = (1<<2);
+	private static final int FLAG_ENABLE = (1<<1);
+	private static final int FLAG_BLANK_F = (1<<2);
 
 	public SevenSegDecoderElm(int xx, int yy) { super(xx, yy); }
 	public SevenSegDecoderElm(int xa, int ya, int xb, int yb, int f,
@@ -90,8 +90,8 @@ import com.lushprojects.circuitjs1.client.util.*;
 	    allocNodes();
 	}
 
-	boolean hasBlank() { return (flags & FLAG_ENABLE) != 0; }
-	boolean blankOnF() { return (flags & FLAG_BLANK_F) != 0; }
+	private boolean hasBlank() { return (flags & FLAG_ENABLE) != 0; }
+	private boolean blankOnF() { return (flags & FLAG_BLANK_F) != 0; }
 	
 	protected int getPostCount() {
 	    return hasBlank() ? 12 : 11;

@@ -45,7 +45,7 @@ public class TableElementsTest {
      * Test basic GodleyTableElm functionality
      * Expected: Table loads and computes correctly
      */
-    public void testGodleyTableBasic() {
+    private void testGodleyTableBasic() {
         String circuit = 
             "$ 17 0.05 14.841315910257661 37 5 43 5e-11\n" +
             "R 720 336 672 336 0 0 40 10 0 0 0.5 V\n" +
@@ -76,7 +76,7 @@ public class TableElementsTest {
      * Test basic GodleyTableElm functionality
      * Expected: Table loads and computes correctly
      */
-    public void testGodleyTableComplex() {
+    private void testGodleyTableComplex() {
 String circuit = 
     "$ 67 0.05 7.010541234668786 44 5000 50 5e-11\n" +
     "% voltageUnit $\n" +
@@ -152,7 +152,7 @@ String circuit =
      * Test CTM (Custom Truth Table) element
      * Expected: Truth table logic evaluates correctly
      */
-    public void testCTMBasic() {
+    private void testCTMBasic() {
         String circuit = 
             "$ 17 0.05 15 37 5 43 5e-11\n" +
             "% transform 1.5 173 -191.5\n" +
@@ -184,7 +184,7 @@ String circuit =
      * Test stock-flow modeling basic circuit
      * Expected: Stock accumulates flow over time
      */
-    public void testCTM() {
+    private void testCTM() {
         String circuit = 
             "$ 17 0.05 14.841315910257661 37 5 43 5e-11\n" +
             "% transform 1.5 410 -137.75\n" +
@@ -212,7 +212,7 @@ String circuit =
      * Test SFC (Stock-Flow Consistent) Table element
      * Expected: Grand total (bottom-right cell) should equal 715
      */
-    public void testSFCTable() {
+    private void testSFCTable() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
             "% voltageUnit $\n" +
@@ -241,7 +241,7 @@ String circuit =
      * Test Equation Table element
      * Expected: Y1 integrates 1 (constant), Y2 integrates X (5V source)
      */
-    public void testEquationTable() {
+    private void testEquationTable() {
         String circuit = 
             "$ 3 0.01 19.867427341514983 50 5 50 5e-11\n" +
             "% voltageUnit $\n" +

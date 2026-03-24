@@ -29,13 +29,15 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
 public class TimeDelayRelayElm extends ChipElm {
-	double lastTransition;
-	boolean poweredState;
-	boolean onState;
-	final double vinResistance = 10e3;
-	double resistance;
-	double onDelay, offDelay;
-	double onResistance, offResistance;
+	private double lastTransition;
+	private boolean poweredState;
+	private boolean onState;
+	private final double vinResistance = 10e3;
+	private double resistance;
+	private double onDelay;
+    private double offDelay;
+	private double onResistance;
+    private double offResistance;
 	
 	public TimeDelayRelayElm(int xx, int yy) {
 	    super(xx, yy);

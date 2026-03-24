@@ -8,8 +8,8 @@ import com.lushprojects.circuitjs1.client.elements.electronics.semiconductors.Di
 
 public class EditDiodeModelDialog extends EditDialog {
 
-    DiodeModel model;
-    DiodeElm diodeElm;
+    private DiodeModel model;
+    private DiodeElm diodeElm;
     
     public EditDiodeModelDialog(DiodeModel dm, CirSim f, DiodeElm de) {
 	super(dm, f);

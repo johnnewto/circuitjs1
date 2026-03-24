@@ -33,13 +33,13 @@ import com.lushprojects.circuitjs1.client.util.*;
 // 2, 1 = 50 ohm resistor
 
 public class SCRElm extends CircuitElm {
-    final int anode = 0;
-    final int cnode = 1;
-    final int gnode = 2;
-    final int inode = 3;
-    final int FLAG_GATE_FIX = 1;
-    Diode diode;
-    int dir;
+    private final int anode = 0;
+    private final int cnode = 1;
+    private final int gnode = 2;
+    private final int inode = 3;
+    private final int FLAG_GATE_FIX = 1;
+    private Diode diode;
+    private int dir;
     
     public SCRElm(int xx, int yy) {
 	super(xx, yy);
@@ -64,12 +64,12 @@ public class SCRElm extends CircuitElm {
 	}
 	setup();
     }
-    void setDefaults() {
+    private void setDefaults() {
 	gresistance = 50;
 	holdingI = .0082;
 	triggerI = .01;
     }
-    void setup() {
+    private void setup() {
 	diode = new Diode(sim);
 	diode.setupForDefaultModel();
 	aresistance = 1; // to avoid divide by zero
@@ -86,15 +86,24 @@ public class SCRElm extends CircuitElm {
 	    (volts[anode]-volts[gnode]) + " " + triggerI + " "+  holdingI + " " +
 	    gresistance;
     }
-    double ia, ic, ig, curcount_a, curcount_c, curcount_g;
-    double lastvac, lastvag;
-    double gresistance, triggerI, holdingI;
+    private double ia;
+    private double ic;
+    private double ig;
+    private double curcount_a;
+    private double curcount_c;
+    private double curcount_g;
+    private double lastvac;
+    private double lastvag;
+    private double gresistance;
+    private double triggerI;
+    private double holdingI;
 
-    final int hs = 8;
-    Polygon poly;
-    Point cathode[], gate[];
+    private final int hs = 8;
+    private Polygon poly;
+    private Point[] cathode;
+    private Point[] gate;
 	
-    boolean applyGateFix() { return (flags & FLAG_GATE_FIX) != 0; }
+    private boolean applyGateFix() { return (flags & FLAG_GATE_FIX) != 0; }
     
     protected void setPoints() {
 	super.setPoints();
@@ -200,7 +209,7 @@ public class SCRElm extends CircuitElm {
 	return (volts[anode]-volts[gnode])*ia + (volts[cnode]-volts[gnode])*ic;
     }
 
-    double aresistance;
+    private double aresistance;
     protected void stamp() {
 	sim.stampNonLinear(nodes[anode]);
 	sim.stampNonLinear(nodes[cnode]);
@@ -263,7 +272,7 @@ public class SCRElm extends CircuitElm {
 
     // if point1 and point2 are in line, then we don't know which way the gate
     // is pointed and flip won't work.  fix this
-    void fixEnds() {
+    private void fixEnds() {
 	Point pt = new Point();
 	interpPoint(point1, point2, pt, 1, sim.getGridSize()*dir);
 	x2 = pt.x; y2 = pt.y;

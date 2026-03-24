@@ -67,23 +67,23 @@ public class DataInputElm extends RailElm {
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "FileReader")
 	private static class FileReaderLike {
-		public FileReaderLike() {}
+		FileReaderLike() {}
 		@JsProperty(name = "onload") native void setOnLoad(LoadCallback callback);
 		@JsProperty(name = "result") native String getResult();
 		@JsMethod native void readAsText(FileLike file);
 	}
 
-    	ArrayList<Double> data;
-    	double sampleLength;
-    	double scaleFactor;
-    	double timeOffset;
-    	int fileNum;
-    	String fileName;
-    	final int FLAG_REPEAT = 1<<8;
+    	private ArrayList<Double> data;
+    	private double sampleLength;
+    	private double scaleFactor;
+    	private double timeOffset;
+    	private int fileNum;
+    	private String fileName;
+    	private final int FLAG_REPEAT = 1<<8;
     	
     	// cache to preserve data when doing cut/paste, or undo/redo
-    	static int fileNumCounter = 1;
-    	static HashMap<Integer, DataFileEntry> dataFileMap = new HashMap<Integer, DataFileEntry>();
+    	private static int fileNumCounter = 1;
+    	private static HashMap<Integer, DataFileEntry> dataFileMap = new HashMap<Integer, DataFileEntry>();
     	
 	public DataInputElm(int xx, int yy) {
 	    super(xx, yy, WF_AC);
@@ -134,7 +134,7 @@ public class DataInputElm extends RailElm {
 	    return fileName == null ? Locale.LS("No file") : fileName;
 	}
 	
-	boolean doesRepeat() { return (flags & FLAG_REPEAT) != 0; }
+	private boolean doesRepeat() { return (flags & FLAG_REPEAT) != 0; }
 	
 	protected double getVoltage() {
 	    if (data == null)
@@ -191,7 +191,7 @@ public class DataInputElm extends RailElm {
 	}
 	
         // fetch data for a selected file
-		static String fetchLoadFileData(final DataInputElm elm, Element uploadElement) {
+		private static String fetchLoadFileData(final DataInputElm elm, Element uploadElement) {
 			ElementLike element = (ElementLike) (Object) uploadElement;
 			FileListLike files = element.getFiles();
 			if (files == null || files.getLength() < 1)
@@ -208,7 +208,7 @@ public class DataInputElm extends RailElm {
 			return null;
 		}
 
-        void doLoadCallback(String s, String t) {
+        private void doLoadCallback(String s, String t) {
             // parse data file.  each line contains a single voltage value
             String arr[] = s.split("\r*\n");
             data = new ArrayList<Double>();

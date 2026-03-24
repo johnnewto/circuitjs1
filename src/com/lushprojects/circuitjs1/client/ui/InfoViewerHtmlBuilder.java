@@ -4,7 +4,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 
 import com.lushprojects.circuitjs1.client.elements.economics.InfoViewerTableMarkdown;
 
-public final class InfoViewerHtmlBuilder {
+final class InfoViewerHtmlBuilder {
     private InfoViewerHtmlBuilder() {
     }
 
@@ -18,7 +18,7 @@ public final class InfoViewerHtmlBuilder {
         return generateMarkdownViewerHTML(title, markdown);
     }
 
-    public static String generateMarkdownViewerHTML(String title, String markdown) {
+    private static String generateMarkdownViewerHTML(String title, String markdown) {
         return generateMarkdownViewerHTML(title, markdown, markdown, false, true, true);
     }
 

@@ -43,20 +43,21 @@ import java.util.Vector;
  */
 public class PieChartDialog extends Dialog {
     
-    PieChartElm pieChart;
-    CirSim sim;
-    Vector<SuggestBox> nodeNameBoxes;
-    Vector<Choice> colorChoices;
-    Button addButton, removeButton;
-    Grid sliceGrid;
-    VerticalPanel mainPanel;
+    private PieChartElm pieChart;
+    private CirSim sim;
+    private Vector<SuggestBox> nodeNameBoxes;
+    private Vector<Choice> colorChoices;
+    private Button addButton;
+    private Button removeButton;
+    private Grid sliceGrid;
+    private VerticalPanel mainPanel;
     
     // Color palette (same as PieChartElm)
-    static final String colors[] = {
+    private static final String[] colors = {
         "#FFFFFF", "#FFFF00", "#00FF00", "#00FFFF", "#FF00FF", "#FF0000",
         "#FFA500", "#90EE90", "#87CEEB", "#DDA0DD", "#FFB6C1"
     };
-    static final String colorNames[] = {
+    private static final String[] colorNames = {
         "White", "Yellow", "Green", "Cyan", "Magenta", 
         "Red", "Orange", "Light Green", "Sky Blue", "Plum", "Pink"
     };
@@ -129,7 +130,7 @@ public class PieChartDialog extends Dialog {
         this.center();
     }
     
-    void rebuildSliceGrid() {
+    private void rebuildSliceGrid() {
         if (sliceGrid != null)
             mainPanel.remove(sliceGrid);
         
@@ -175,7 +176,7 @@ public class PieChartDialog extends Dialog {
      * Creates a SuggestBox with autocomplete suggestions for labeled node names.
      * Follows the same pattern as LabeledNodeElm.getEditInfo().
      */
-    SuggestBox createNodeSuggestBox(String initialText) {
+    private SuggestBox createNodeSuggestBox(String initialText) {
         MultiWordSuggestOracle oracle = new MultiWordSuggestOracle();
         
         // Add existing labeled node names
@@ -209,20 +210,20 @@ public class PieChartDialog extends Dialog {
         return suggestBox;
     }
     
-    void addSlice() {
+    private void addSlice() {
         int count = pieChart.getSliceCount();
         pieChart.addSlice("node" + (count + 1), colors[count % colors.length]);
         
         rebuildSliceGrid();
     }
     
-    void removeLastSlice() {
+    private void removeLastSlice() {
         pieChart.removeLastSlice();
         
         rebuildSliceGrid();
     }
     
-    public void apply() {
+    protected void apply() {
         // Update node names from text boxes
         for (int i = 0; i < nodeNameBoxes.size(); i++) {
             pieChart.setNodeName(i, nodeNameBoxes.get(i).getText().trim());

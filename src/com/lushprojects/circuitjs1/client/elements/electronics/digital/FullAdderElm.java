@@ -40,10 +40,11 @@ import com.lushprojects.circuitjs1.client.util.*;
 		bits = 1;
 	    setupPins();
 	}
-	static final int FLAG_BITS = 2;
+	private static final int FLAG_BITS = 2;
 	
 	protected String getChipName() { return "Adder"; }
-	int carryIn, carryOut;
+	private int carryIn;
+        private int carryOut;
 
 	protected void setupPins() {
 	    sizeX=2;

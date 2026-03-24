@@ -69,21 +69,21 @@ public class Scrollbar extends  Composite implements
 	}
 	
 	public static final int HORIZONTAL =1;
-	static int HMARGIN=2;
-	static int SCROLLHEIGHT=14;
+	private static int HMARGIN=2;
+	private static int SCROLLHEIGHT=14;
 	static int BARWIDTH=3;
-	static int BARMARGIN=3;
+	private static int BARMARGIN=3;
 
-	Canvas can;
-	VerticalPanel pan;
-	Context2d g;
-	int min;
-	int max;
-	int val;
-	boolean dragging=false;
-	boolean enabled=true;
-	Command command=null;
-	CircuitElm attachedElm=null;
+	private Canvas can;
+	private VerticalPanel pan;
+	private Context2d g;
+	private int min;
+	private int max;
+	private int val;
+	private boolean dragging=false;
+	private boolean enabled=true;
+	private Command command=null;
+	private CircuitElm attachedElm=null;
 	
 	public Scrollbar(int orientation, int value, int visible, int minimum, int maximum) {
 		min=minimum;
@@ -180,7 +180,7 @@ public class Scrollbar extends  Composite implements
 		
 	}
 	
-	int calcValueFromPos(int x){
+	private int calcValueFromPos(int x){
 		int v;
 		v= min+(max-min)*(x-HMARGIN-SCROLLHEIGHT-BARMARGIN)/(CirSim.getVerticalPanelWidthForUi()-2*(HMARGIN+SCROLLHEIGHT+BARMARGIN));
 		if (v<min)
@@ -201,7 +201,7 @@ public class Scrollbar extends  Composite implements
 		doMouseDown(e.getX(), true);
 	}
 	
-	void doMouseDown(int x, boolean mouse) {
+	private void doMouseDown(int x, boolean mouse) {
 	    if (enabled){
 		if (x < HMARGIN+SCROLLHEIGHT ) {
 		    if (val>min)
@@ -228,7 +228,7 @@ public class Scrollbar extends  Composite implements
 	    }
 	}
 	
-	boolean noButtonsDown(NativeEvent e) {
+	private boolean noButtonsDown(NativeEvent e) {
 	    return ((EventButtonsLike) (Object) e).getButtons() == 0;
 	}
 	
@@ -245,7 +245,7 @@ public class Scrollbar extends  Composite implements
 		doMouseMove(e.getX());
 	}
 	
-	void doMouseMove(int x) {
+	private void doMouseMove(int x) {
 	    if (enabled) {
 		if (dragging) {
 		    val=calcValueFromPos(x);	

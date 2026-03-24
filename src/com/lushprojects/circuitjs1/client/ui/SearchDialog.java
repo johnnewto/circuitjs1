@@ -43,12 +43,12 @@ import com.google.gwt.user.client.ui.ListBox;
 
 public class SearchDialog extends Dialog {
 	
-	VerticalPanel vp;
-	CirSim sim;
+	private VerticalPanel vp;
+	private CirSim sim;
 	TextArea textArea;
-	TextBox textBox;
-	Button okButton;
-	ListBox listBox;
+	private TextBox textBox;
+	private Button okButton;
+	private ListBox listBox;
 	
 	public SearchDialog(CirSim asim) {
 		super();
@@ -103,7 +103,7 @@ public class SearchDialog extends Dialog {
 		textBox.setFocus(true);
 	}
 	
-	public void apply() {
+	protected void apply() {
 	    String s = listBox.getSelectedItemText();
 	    if (s != null) {
 		for (int i = 0; i != sim.getMenuUiState().mainMenuItems.size(); i++) {
@@ -117,7 +117,7 @@ public class SearchDialog extends Dialog {
 	    closeDialog();
 	}
 	
-	void search() {
+	private void search() {
 	    String str = textBox.getText().toLowerCase();
 	    listBox.clear();
 	    Vector<String> items = new Vector<String>();
@@ -140,7 +140,7 @@ public class SearchDialog extends Dialog {
 		listBox.setItemSelected(0, true);
 	}
 
-	Vector<String> getSearchableMainMenuItemNames() {
+	private Vector<String> getSearchableMainMenuItemNames() {
 	    Vector<String> items = new Vector<String>();
 	    for (int i = 0; i != sim.getMenuUiState().mainMenuItems.size(); i++) {
 		CheckboxMenuItem item = sim.getMenuUiState().mainMenuItems.get(i);

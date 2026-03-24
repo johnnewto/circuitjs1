@@ -31,14 +31,18 @@ import com.lushprojects.circuitjs1.client.elements.electronics.digital.GateElm;
 // contributed by Edward Calver
 
 public class TriStateElm extends CircuitElm {
-    double resistance, r_on, r_off, r_off_ground, highVoltage;
+    private double resistance;
+    private double r_on;
+    private double r_off;
+    private double r_off_ground;
+    private double highVoltage;
 
     // Unfortunately we need all three flags to keep track of flipping.
     // FLAG_FLIP_X/Y affect the rounding direction if the elm is an odd grid length.
     // FLAG_FLIP does not.
-    final int FLAG_FLIP = 1;
-    final int FLAG_FLIP_X = 2;
-    final int FLAG_FLIP_Y = 4;
+    private final int FLAG_FLIP = 1;
+    private final int FLAG_FLIP_X = 2;
+    private final int FLAG_FLIP_Y = 4;
 
     public TriStateElm(int xx, int yy) {
 	super(xx, yy);
@@ -76,11 +80,13 @@ public class TriStateElm extends CircuitElm {
 	return 180;
     }
 
-    boolean open;
+    private boolean open;
 
-    Point ps, point3, lead3;
+    private Point ps;
+    private Point point3;
+    private Point lead3;
 
-    Polygon gatePoly;
+    private Polygon gatePoly;
 
     protected void setPoints() {
 	super.setPoints();

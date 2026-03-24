@@ -69,12 +69,12 @@ public class ExportAsUrlDialog extends Dialog {
 	@JsProperty(namespace = JsPackage.GLOBAL, name = "document")
 	private static native DocumentLike getDocument();
 	
-	VerticalPanel vp;
-	Button shortButton;
-	static TextArea textArea;
-	String requrl;
+	private VerticalPanel vp;
+	private Button shortButton;
+	private static TextArea textArea;
+	private String requrl;
 	
-	public boolean shortIsSupported() {
+	private boolean shortIsSupported() {
 		if (CirSim.getInstance().isElectron())
 		    return false;
 		// Check if shortRelayUrl is configured in circuitjs.html
@@ -99,7 +99,7 @@ public class ExportAsUrlDialog extends Dialog {
 //	
 
 	
-	static public void createShort(String urlin) 
+	private static void createShort(String urlin)
 	{
     	String url;
     	String relayUrl = getShortRelayUrl();
@@ -133,7 +133,7 @@ public class ExportAsUrlDialog extends Dialog {
 		}
     }
 	
-	String compress(String dump) {
+	private String compress(String dump) {
 	    WindowLike window = getWindow();
 	    if (window == null || window.getLZString() == null)
 		return dump;

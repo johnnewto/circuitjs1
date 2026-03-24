@@ -9,10 +9,10 @@ class UndoRedoManager {
     private final Vector<UndoItem> redoStack = new Vector<UndoItem>();
 
     static class UndoItem {
-        public final String dump;
-        public final double scale;
-        public final double transform4;
-        public final double transform5;
+        final String dump;
+        final double scale;
+        final double transform4;
+        final double transform5;
 
         UndoItem(String dump, double[] transform) {
             this.dump = dump;

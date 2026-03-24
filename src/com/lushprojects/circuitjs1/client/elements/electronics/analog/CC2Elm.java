@@ -25,9 +25,9 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
 public class CC2Elm extends ChipElm {
-	double gain;
+	private double gain;
 	public CC2Elm(int xx, int yy) { super(xx, yy); gain = 1; }
-	public CC2Elm(int xx, int yy, int g) { super(xx, yy); gain = g; }
+	CC2Elm(int xx, int yy, int g) { super(xx, yy); gain = g; }
 	public CC2Elm(int xa, int ya, int xb, int yb, int f,
 		      StringTokenizer st) {
 	    super(xa, ya, xb, yb, f, st);

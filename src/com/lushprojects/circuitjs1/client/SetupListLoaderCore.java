@@ -28,7 +28,7 @@ public class SetupListLoaderCore {
         loadSetupListIntoMenu("setuplist_economics.txt", circuitsMenu, openDefault, sim.showElectronicsCircuits);
     }
 
-    void addDialogsMenu() {
+    private void addDialogsMenu() {
         MenuBar varBrowserMenu = new MenuBar(true);
         varBrowserMenu.setAutoOpen(true);
         varBrowserMenu.addItem(sim.menuItemWithShortcut("list-ul", "Variable Browser...", "\\", new MyCommand("edit", "variablebrowser")));
@@ -43,8 +43,8 @@ public class SetupListLoaderCore {
         }
     }
 
-    void loadSetupListIntoMenu(final String setupListPath, final MenuBar circuitsMenu,
-                               final boolean openDefault, final boolean loadElectronicsAfter) {
+    private void loadSetupListIntoMenu(final String setupListPath, final MenuBar circuitsMenu,
+                                       final boolean openDefault, final boolean loadElectronicsAfter) {
         final String circuitPrefix = setupListPath.equals("setuplist_economics.txt") ? "economics/" :
                 (setupListPath.equals("setuplist_electronics.txt") ? "electronics/" : "");
         String url = GWT.getModuleBaseURL() + setupListPath;
@@ -76,7 +76,7 @@ public class SetupListLoaderCore {
         }
     }
 
-    void processSetupList(byte b[], final boolean openDefault, MenuBar circuitsMenu, String circuitPrefix) {
+    private void processSetupList(byte b[], final boolean openDefault, MenuBar circuitsMenu, String circuitPrefix) {
         int len = b.length;
         MenuBar currentMenuBar;
         MenuBar stack[] = new MenuBar[6];

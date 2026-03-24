@@ -27,7 +27,12 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class MemristorElm extends CircuitElm {
-    double r_on, r_off, dopeWidth, totalWidth, mobility, resistance;
+    private double r_on;
+    private double r_off;
+    private double dopeWidth;
+    private double totalWidth;
+    private double mobility;
+    private double resistance;
     public MemristorElm(int xx, int yy) {
 	super(xx, yy);
 	r_on = 100;
@@ -56,7 +61,8 @@ public class MemristorElm extends CircuitElm {
 	    totalWidth + " " + mobility + " " + current;
     }
 
-    Point ps3, ps4;
+    private Point ps3;
+    private Point ps4;
     protected void setPoints() {
 	super.setPoints();
 	calcLeads(32);

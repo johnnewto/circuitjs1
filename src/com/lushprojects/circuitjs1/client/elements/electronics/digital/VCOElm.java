@@ -59,9 +59,9 @@ import com.lushprojects.circuitjs1.client.util.*;
 	    sim.stampNonLinear(nodes[2]);
 	    sim.stampNonLinear(nodes[3]);
 	}
-	final double cResistance = 1e6;
+	private final double cResistance = 1e6;
 	double cCurrent;
-	int cDir;
+	private int cDir;
 	protected void doStep() {
 	    double vc = volts[3]-volts[2];
 	    double vo = volts[1];
@@ -91,7 +91,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 	}
 	// can't do this in calculateCurrent() because it's called before
         // we get pins[4].current and pins[5].current, which we need
-	void computeCurrent() {
+    private void computeCurrent() {
 	    if (cResistance == 0)
 		return;
 	    double c = cDir*(pins[4].current + pins[5].current) +

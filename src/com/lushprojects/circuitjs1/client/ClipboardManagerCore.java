@@ -47,14 +47,14 @@ public class ClipboardManagerCore {
 		enablePaste();
 	}
 
-	void writeClipboardToStorage() {
+	private void writeClipboardToStorage() {
 		Storage stor = Storage.getLocalStorageIfSupported();
 		if (stor == null)
 			return;
 		stor.setItem("circuitClipboard", sim.clipboard);
 	}
 
-	void readClipboardFromStorage() {
+	private void readClipboardFromStorage() {
 		Storage stor = Storage.getLocalStorageIfSupported();
 		if (stor == null)
 			return;
@@ -84,11 +84,11 @@ public class ClipboardManagerCore {
 		}
 	}
 
-	boolean willDelete(CircuitElm ce) {
+	private boolean willDelete(CircuitElm ce) {
 		return ce.isSelected() || ce.isMouseElm();
 	}
 
-	String copyOfSelectedElms() {
+	private String copyOfSelectedElms() {
 		String r = sim.getImportExportHelper().dumpOptions();
 		CustomLogicModel.clearDumpedFlags();
 		CustomCompositeModel.clearDumpedFlags();

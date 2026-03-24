@@ -15,7 +15,7 @@ import com.lushprojects.circuitjs1.client.util.*;
  * TableGeometryManager - Handles pin positioning and table geometry calculations
  * Manages the conversion between grid units and pixels, and calculates pin positions
  */
-public class TableGeometryManager {
+class TableGeometryManager {
     private final TableElm table;
     
     public TableGeometryManager(TableElm table) {

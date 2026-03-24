@@ -10,12 +10,16 @@ public class ComparatorElm extends CompositeElm {
     
     private static String modelString = "OpAmpElm 1 2 3\rAnalogSwitchElm 4 5 3\rGroundElm 5";
     private static int[] modelExternalNodes = {2, 1, 4};
-    final int FLAG_SMALL = 2;
-    final int FLAG_SWAP = 4;
-    int opsize, opheight, opwidth;
-	Point in1p[], in2p[], textp[];
-	Polygon triangle;
-	Font plusFont;
+    private final int FLAG_SMALL = 2;
+    private final int FLAG_SWAP = 4;
+    private int opsize;
+    private int opheight;
+    private int opwidth;
+	private Point[] in1p;
+    private Point[] in2p;
+    private Point[] textp;
+	private Polygon triangle;
+	private Font plusFont;
     
     public ComparatorElm(int xx, int yy) {
 	super(xx, yy, modelString, modelExternalNodes);
@@ -34,7 +38,7 @@ public class ComparatorElm extends CompositeElm {
 	return 401;
     }
     
-	void setSize(int s) {
+	private void setSize(int s) {
 	    opsize = s;
 	    opheight = 8*s;
 	    opwidth = 13*s;

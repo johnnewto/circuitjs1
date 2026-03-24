@@ -125,7 +125,7 @@ class SimulationLoop {
         return .1 * Math.exp((val - 61) / 24.);
     }
 
-    boolean canDelayWireProcessing() {
+    private boolean canDelayWireProcessing() {
         int i;
         for (i = 0; i != sim.scopeCount; i++)
             if (sim.scopes[i].viewingWire())
@@ -336,7 +336,7 @@ class SimulationLoop {
             calcWireCurrents();
     }
 
-    void applySolvedRightSide(double rs[]) {
+    private void applySolvedRightSide(double rs[]) {
         int j;
         for (j = 0; j != sim.getSolverMatrixState().circuitMatrixFullSize; j++) {
             RowInfo ri = sim.getSolverMatrixState().circuitRowInfo[j];
@@ -361,7 +361,7 @@ class SimulationLoop {
         sim.getCircuitValueSlotManager().syncAllSlots();
     }
 
-    void setNodeVoltages(double nv[]) {
+    private void setNodeVoltages(double nv[]) {
         int j, k;
         for (j = 0; j != nv.length; j++) {
             double res = nv[j];
@@ -374,7 +374,7 @@ class SimulationLoop {
         }
     }
 
-    void calcWireCurrents() {
+    private void calcWireCurrents() {
         int i;
 
         for (i = 0; i != sim.getCircuitAnalyzer().getWireInfoList().size(); i++) {

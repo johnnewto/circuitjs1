@@ -22,28 +22,28 @@ public class ImportFromDropboxDialog extends Dialog {
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "XMLHttpRequest")
 	private static class XMLHttpRequestLike {
-		public XMLHttpRequestLike() {}
+		XMLHttpRequestLike() {}
 		@JsMethod native void open(String method, String url, boolean async);
 		@JsMethod native void send();
 		@JsProperty native String getResponseText();
 	}
 	
 		
-	VerticalPanel vp;
-	Button cancelButton;
-	Button chooserButton;
-	Button importButton;
-	TextArea ta;
-	Label la;
-	HorizontalPanel hp;
-	static CirSim sim;
+	private VerticalPanel vp;
+	private Button cancelButton;
+	private Button chooserButton;
+	private Button importButton;
+	private TextArea ta;
+	private Label la;
+	private HorizontalPanel hp;
+	private static CirSim sim;
 	
 	
 	static public void setSim(CirSim csim) {
 		sim=csim;
 	}
 	
-	static public void doLoadCallback(String s, String link) {
+	private static void doLoadCallback(String s, String link) {
 		CirSim.console("Loading from URL: " + link);
 		sim.pushUndoForUi();
 		sim.readCircuitFromModel(s);
@@ -52,7 +52,7 @@ public class ImportFromDropboxDialog extends Dialog {
 	}
 	
 	
-	static public final void doDropboxImport(String link) {
+	private static void doDropboxImport(String link) {
 		try {
 			XMLHttpRequestLike xhr = new XMLHttpRequestLike();
 			xhr.open("GET", link, false);

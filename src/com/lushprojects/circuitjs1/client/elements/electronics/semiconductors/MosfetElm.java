@@ -31,24 +31,28 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class MosfetElm extends CircuitElm {
 	int pnp;
-	int FLAG_PNP = 1;
-	int FLAG_SHOWVT = 2;
-	int FLAG_DIGITAL = 4;
-	int FLAG_FLIP = 8;
-	int FLAG_HIDE_BULK = 16;
-	int FLAG_BODY_DIODE = 32;
-	int FLAG_BODY_TERMINAL = 64;
-	int FLAGS_GLOBAL = (FLAG_HIDE_BULK|FLAG_DIGITAL);
-	int bodyTerminal;
+	private int FLAG_PNP = 1;
+	private int FLAG_SHOWVT = 2;
+	private int FLAG_DIGITAL = 4;
+	private int FLAG_FLIP = 8;
+	private int FLAG_HIDE_BULK = 16;
+	private int FLAG_BODY_DIODE = 32;
+	private int FLAG_BODY_TERMINAL = 64;
+	private int FLAGS_GLOBAL = (FLAG_HIDE_BULK|FLAG_DIGITAL);
+	private int bodyTerminal;
 	
-	double vt;
+	private double vt;
 	// beta = 1/(RdsON*(Vgs-Vt))
-	double beta;
-	static int globalFlags;
-	Diode diodeB1, diodeB2;
-	double diodeCurrent1, diodeCurrent2, bodyCurrent;
-	double curcount_body1, curcount_body2;
-	static double lastBeta;
+    private double beta;
+	private static int globalFlags;
+	private Diode diodeB1;
+    private Diode diodeB2;
+	private double diodeCurrent1;
+    private double diodeCurrent2;
+    double bodyCurrent;
+	private double curcount_body1;
+    private double curcount_body2;
+	private static double lastBeta;
 	
 	MosfetElm(int xx, int yy, boolean pnpflag) {
 	    super(xx, yy);
@@ -78,7 +82,7 @@ public class MosfetElm extends CircuitElm {
 	}
 
 	// set up body diodes
-	void setupDiodes() {
+    private void setupDiodes() {
 	    // diode from node 1 to body terminal 
 	    diodeB1 = new Diode(sim);
 	    diodeB1.setupForDefaultModel();
@@ -97,10 +101,10 @@ public class MosfetElm extends CircuitElm {
 	double getBackwardCompatibilityBeta() { return .02; }
 	
 	protected boolean nonLinear() { return true; }
-	boolean drawDigital() { return (flags & FLAG_DIGITAL) != 0; }
+	private boolean drawDigital() { return (flags & FLAG_DIGITAL) != 0; }
 	boolean showBulk() { return (flags & (FLAG_DIGITAL|FLAG_HIDE_BULK)) == 0; }
-	boolean hasBodyTerminal() { return (flags & FLAG_BODY_TERMINAL) != 0 && doBodyDiode(); }
-	boolean doBodyDiode() { return (flags & FLAG_BODY_DIODE) != 0 && showBulk(); }
+	private boolean hasBodyTerminal() { return (flags & FLAG_BODY_TERMINAL) != 0 && doBodyDiode(); }
+	private boolean doBodyDiode() { return (flags & FLAG_BODY_DIODE) != 0 && showBulk(); }
 	protected void reset() {
 	    lastv1 = lastv2 = volts[0] = volts[1] = volts[2] = curcount = 0;
 	    curcount_body1 = curcount_body2 = 0;
@@ -227,14 +231,16 @@ public class MosfetElm extends CircuitElm {
 	    }
 	protected int getPostCount() { return hasBodyTerminal() ? 4 : 3; }
 
-	int pcircler;
+	private int pcircler;
 	
 	// points for source and drain (these are swapped on PNP mosfets)
 	Point src[], drn[];
 	
 	// points for gate, body, and the little circle on PNP mosfets
-	Point gate[], body[], pcircle;
-	Polygon arrowPoly;
+    private Point[] gate;
+    private Point[] body;
+    private Point pcircle;
+	private Polygon arrowPoly;
 	
 	protected void setPoints() {
 	    super.setPoints();
@@ -284,10 +290,11 @@ public class MosfetElm extends CircuitElm {
 	    }
 	}
 
-	double lastv1, lastv2;
+	private double lastv1;
+    private double lastv2;
 	double ids;
-	int mode = 0;
-	double gm = 0;
+	private int mode = 0;
+	private double gm = 0;
 	
 	protected void stamp() {
 	    sim.stampNonLinear(nodes[1]);
@@ -311,7 +318,7 @@ public class MosfetElm extends CircuitElm {
 	    }
 	}
 	
-	boolean nonConvergence(double last, double now) {
+	private boolean nonConvergence(double last, double now) {
 	    double diff = Math.abs(last-now);
 	    
 	    // high beta MOSFETs are more sensitive to small differences, so we are more strict about convergence testing
@@ -344,10 +351,10 @@ public class MosfetElm extends CircuitElm {
 	    calculate(false);
 	}
 	
-	double lastv0;
+	private double lastv0;
 	
 	// this is called in doStep to stamp the matrix, and also called in stepFinished() to calculate the current
-	void calculate(boolean finished) {
+    private void calculate(boolean finished) {
 	    double vs[];
 	    if (finished)
 		vs = volts;

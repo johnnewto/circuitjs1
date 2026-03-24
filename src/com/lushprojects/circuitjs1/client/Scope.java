@@ -56,7 +56,7 @@ class ScopePlot {
     
     // Data storage
     double minValues[], maxValues[];
-    int scopePointCount;
+    private int scopePointCount;
     int ptr; // Pointer to the current sample in circular buffer
 	int samplesCaptured; // Number of valid samples currently stored (up to scopePointCount)
     
@@ -66,7 +66,7 @@ class ScopePlot {
     int units; // Display units (UNITS_V, UNITS_A, UNITS_W, UNITS_OHMS)
     
     // State tracking
-    double lastUpdateTime;
+    private double lastUpdateTime;
     double lastValue;
     String color;
     public CircuitElm elm;
@@ -87,8 +87,8 @@ class ScopePlot {
     
     // AC coupling filter
     boolean acCoupled = false;
-    double acAlpha = DEFAULT_AC_ALPHA; // Filter coefficient for AC coupling (y[i] = alpha * (y[i-1] + x[i] - x[i-1]))
-    double acLastOut = 0; // Store y[i-1] term for AC coupling filter
+    private double acAlpha = DEFAULT_AC_ALPHA; // Filter coefficient for AC coupling (y[i] = alpha * (y[i-1] + x[i] - x[i-1]))
+    private double acLastOut = 0; // Store y[i-1] term for AC coupling filter
     
     /**
      * Creates a new ScopePlot for the given element and units.
@@ -145,7 +145,7 @@ class ScopePlot {
      * @param sp New speed (timestep units per pixel)
      * @param full If true, discard all old data; if false, preserve what fits
      */
-    protected void reset(int spc, int sp, boolean full) {
+    void reset(int spc, int sp, boolean full) {
 	int oldSpc = scopePointCount;
 	int oldSamplesCaptured = samplesCaptured;
 	scopePointCount = spc;
@@ -230,7 +230,7 @@ class ScopePlot {
     }
 
     // Color palette for multiple plots
-    static final String colors[] = {
+    private static final String[] colors = {
 	    "#FF0000", "#FF8000", "#FF00FF", "#7F00FF",
 	    "#0000FF", "#0080FF", "#FFFF00", "#00FFFF", 
     };
@@ -305,23 +305,23 @@ public class Scope {
     // FLAG CONSTANTS
     // ====================
     // Dump format flags (for serialization)
-    final int FLAG_YELM = 32;
-    final int FLAG_IVALUE = 2048;
-    final int FLAG_PLOTS = 4096; // New-style dump with multiple plots
+    private final int FLAG_YELM = 32;
+    private final int FLAG_IVALUE = 2048;
+    private final int FLAG_PLOTS = 4096; // New-style dump with multiple plots
     public final int FLAG_PERPLOTFLAGS = 1<<18; // Per-plot flags in dump
-    final int FLAG_PERPLOT_MAN_SCALE = 1<<19; // Manual scale included in each plot
-    final int FLAG_MAN_SCALE = 16;
-    final int FLAG_DIVISIONS = 1<<21; // Dump manDivisions
-    final int FLAG_DRAW_FROM_ZERO = 1<<22; // Draw from t=0 on left, growing right
-    final int FLAG_AUTO_SCALE_TIME = 1<<23; // Auto-adjust time scale when reaching edge
-    final int FLAG_MAX_SCALE_LIMITS = 1<<24; // Max scale limits present
-	final int FLAG_PLOT_REFS = 1<<25; // Per-plot stable element references present
+    private final int FLAG_PERPLOT_MAN_SCALE = 1<<19; // Manual scale included in each plot
+    private final int FLAG_MAN_SCALE = 16;
+    private final int FLAG_DIVISIONS = 1<<21; // Dump manDivisions
+    private final int FLAG_DRAW_FROM_ZERO = 1<<22; // Draw from t=0 on left, growing right
+    private final int FLAG_AUTO_SCALE_TIME = 1<<23; // Auto-adjust time scale when reaching edge
+    private final int FLAG_MAX_SCALE_LIMITS = 1<<24; // Max scale limits present
+	private final int FLAG_PLOT_REFS = 1<<25; // Per-plot stable element references present
     
     // ====================
     // VALUE TYPE CONSTANTS
     // ====================
     public static final int VAL_VOLTAGE = 0;
-    public static final int VAL_POWER_OLD = 1; // Legacy power value (conflicts with VAL_IB)
+    private static final int VAL_POWER_OLD = 1; // Legacy power value (conflicts with VAL_IB)
     public static final int VAL_R = 2; // Resistance
     public static final int VAL_CURRENT = 3;
     public static final int VAL_POWER = 7;
@@ -340,7 +340,7 @@ public class Scope {
     public static final int UNITS_A = 1; // Amperes
     public static final int UNITS_W = 2; // Watts
     public static final int UNITS_OHMS = 3; // Ohms
-    public static final int UNITS_COUNT = 4;
+    private static final int UNITS_COUNT = 4;
     
     // ====================
     // DISPLAY CONSTANTS
@@ -348,22 +348,22 @@ public class Scope {
     static final double multa[] = {2.0, 2.5, 2.0}; // Grid scaling multipliers
     static final int V_POSITION_STEPS = 200; // Vertical position adjustment range
     static final double MIN_MAN_SCALE = 1e-9; // Minimum manual scale value
-    static final int SETTINGS_WHEEL_SIZE = 36; // Size of settings wheel in pixels
-    static final int SETTINGS_WHEEL_MARGIN = 100; // Minimum size needed to show settings wheel
+    private static final int SETTINGS_WHEEL_SIZE = 36; // Size of settings wheel in pixels
+    private static final int SETTINGS_WHEEL_MARGIN = 100; // Minimum size needed to show settings wheel
     static final int SHADOW_OFFSET = 4; // Shadow offset in pixels
     static final int SHADOW_BLUR = 8; // Shadow blur radius
-    static final int MIN_PIXEL_SPACING = 20; // Minimum spacing between gridlines in pixels
+    private static final int MIN_PIXEL_SPACING = 20; // Minimum spacing between gridlines in pixels
     
     // ====================
     // INSTANCE VARIABLES - Data
     // ====================
-    int scopePointCount = 128; // Size of circular buffer (power of 2)
-    FFT fft;
+    private int scopePointCount = 128; // Size of circular buffer (power of 2)
+    private FFT fft;
     public int position; // Position in scope stack
     public int speed; // Sim timestep units per pixel
     int stackCount; // Number of scopes in this column
-    String text; // Custom label text
-    String title; // Custom title text (displayed at top center)
+    private String text; // Custom label text
+    private String title; // Custom title text (displayed at top center)
     Rectangle rect;
     
     // ====================
@@ -375,68 +375,80 @@ public class Scope {
     boolean plotXY; // XY plot mode
     boolean maxScale; // Auto-scale to maximum value
     boolean logSpectrum; // Logarithmic FFT display
-    boolean showFFT, showNegative, showRMS, showAverage, showDutyCycle, showElmInfo;
+    boolean showFFT;
+    private boolean showNegative;
+    boolean showRMS;
+    boolean showAverage;
+    boolean showDutyCycle;
+    boolean showElmInfo;
     
     // Maximum scale limits (null = no limit)
-    Double maxScaleLimit[] = new Double[UNITS_COUNT];
+    private Double[] maxScaleLimit = new Double[UNITS_COUNT];
     
     // Draw-from-zero mode variables
-    boolean drawFromZero; // Draw from t=0 on left, growing right
-    boolean autoScaleTime; // Auto-adjust time scale when reaching edge
-    double startTime; // Simulation time when scope was reset (for drawFromZero mode)
-    int historySize; // Current number of samples in history buffers
-    int historyCapacity; // Maximum capacity of history buffers before downsampling
-    double historySampleInterval; // Time interval between history samples (increases with downsampling)
+    private boolean drawFromZero; // Draw from t=0 on left, growing right
+    private boolean autoScaleTime; // Auto-adjust time scale when reaching edge
+    private double startTime; // Simulation time when scope was reset (for drawFromZero mode)
+    private int historySize; // Current number of samples in history buffers
+    private int historyCapacity; // Maximum capacity of history buffers before downsampling
+    private double historySampleInterval; // Time interval between history samples (increases with downsampling)
     
     // ====================
     // INSTANCE VARIABLES - Working Data
     // ====================
-    public Vector<ScopePlot> plots, visiblePlots;
-    int draw_ox, draw_oy; // 2D plot drawing coordinates
-    CirSim sim;
-    Canvas imageCanvas; // Canvas for 2D plots
-    Context2d imageContext;
-    int alphaCounter = 0; // Counter for 2D plot fade effect
-    double scopeTimeStep; // Check if sim timestep has changed
-    double scale[]; // Max value to scale the display - indexed by UNITS_*
-    boolean reduceRange[];
-    double scaleX, scaleY;  // For X-Y plots
-    double wheelDeltaY; // Mouse wheel accumulator
+    private Vector<ScopePlot> plots;
+    public Vector<ScopePlot> visiblePlots;
+    private int draw_ox;
+    private int draw_oy; // 2D plot drawing coordinates
+    private CirSim sim;
+    private Canvas imageCanvas; // Canvas for 2D plots
+    private Context2d imageContext;
+    private int alphaCounter = 0; // Counter for 2D plot fade effect
+    private double scopeTimeStep; // Check if sim timestep has changed
+    private double[] scale; // Max value to scale the display - indexed by UNITS_*
+    private boolean[] reduceRange;
+    private double scaleX;
+    private double scaleY;  // For X-Y plots
+    private double wheelDeltaY; // Mouse wheel accumulator
     int selectedPlot; // Currently selected plot index
-    ScopePropertiesDialog properties;
-    String curColor, voltColor; // Legacy color variables
-    double gridStepX, gridStepY; // Grid spacing
-    double displayGridStepX; // Grid spacing for display text (saved from first plot)
-    double maxValue, minValue; // Calculated from visible data
+    private ScopePropertiesDialog properties;
+    private String curColor;
+    String voltColor; // Legacy color variables
+    private double gridStepX;
+    private double gridStepY; // Grid spacing
+    private double displayGridStepX; // Grid spacing for display text (saved from first plot)
+    private double maxValue;
+    private double minValue; // Calculated from visible data
     int manDivisions; // Number of vertical divisions when in manual mode
-    static int lastManDivisions;
-    boolean drawGridLines; // Flag to draw gridlines once per frame
-    boolean somethingSelected; // Is one of our plots selected?
+    private static int lastManDivisions;
+    private boolean drawGridLines; // Flag to draw gridlines once per frame
+    private boolean somethingSelected; // Is one of our plots selected?
     
     // ====================
     // ACTION MARKER HOVER
     // ====================
-    int hoveredActionIndex = -1; // Index of currently hovered action marker (-1 if none)
-    int lastHoveredActionIndex = -1; // Previous hovered action index for detecting changes
-    int lastDisplayedActionIndex = -1; // Last action annotation displayed (persists)
-    String lastDisplayedActionText = null; // postText of last displayed action (to compare with triggered actions)
-    boolean lastDisplayedWasHover = false; // True if last displayed came from hover (not trigger)
-    int lastLoggedActionIndex = -1; // Last action we logged (to reduce logging frequency)
-    int mouseX = -1, mouseY = -1; // Last mouse position in scope coordinates
-    boolean mouseButtonDown = false; // Track if mouse button is pressed
-    java.util.HashMap<Integer, Integer> actionVerticalPositions = new java.util.HashMap<Integer, Integer>(); // Stored Y positions for each action ID
+    private int hoveredActionIndex = -1; // Index of currently hovered action marker (-1 if none)
+    private int lastHoveredActionIndex = -1; // Previous hovered action index for detecting changes
+    private int lastDisplayedActionIndex = -1; // Last action annotation displayed (persists)
+    private String lastDisplayedActionText = null; // postText of last displayed action (to compare with triggered actions)
+    private boolean lastDisplayedWasHover = false; // True if last displayed came from hover (not trigger)
+    private int lastLoggedActionIndex = -1; // Last action we logged (to reduce logging frequency)
+    private int mouseX = -1;
+    private int mouseY = -1; // Last mouse position in scope coordinates
+    private boolean mouseButtonDown = false; // Track if mouse button is pressed
+    private java.util.HashMap<Integer, Integer> actionVerticalPositions = new java.util.HashMap<Integer, Integer>(); // Stored Y positions for each action ID
     
     // ====================
     // ZOOM SCALE FOR UNDOCKED SCOPES
     // ====================
-    double zoomScale = 1.0; // Zoom scale factor for text sizing (1.0 = normal)
+    private double zoomScale = 1.0; // Zoom scale factor for text sizing (1.0 = normal)
     
     // ====================
     // STATIC VARIABLES - Cursor Tracking
     // ====================
-    static double cursorTime;
-    static int cursorUnits;
-    static Scope cursorScope;
+    private static double cursorTime;
+    private static int cursorUnits;
+    private static Scope cursorScope;
     
     /**
      * Creates a new Scope instance.
@@ -464,7 +476,7 @@ public class Scope {
      * Set the zoom scale factor for text sizing in undocked scopes.
      * @param scale The zoom scale factor (1.0 = normal)
      */
-    void setZoomScale(double scale) {
+    private void setZoomScale(double scale) {
 	zoomScale = scale;
     }
 
@@ -477,7 +489,7 @@ public class Scope {
      * @param baseSize The base font size in pixels
      * @return The scaled font size
      */
-    int getScaledFontSize(int baseSize) {
+    private int getScaledFontSize(int baseSize) {
 	return (int) Math.round(baseSize * zoomScale);
     }
     
@@ -487,7 +499,7 @@ public class Scope {
      * @param bold Whether the font should be bold
      * @return The font string (e.g., "bold 14px sans-serif")
      */
-    String getScaledFont(int baseSize, boolean bold) {
+    private String getScaledFont(int baseSize, boolean bold) {
 	int scaledSize = getScaledFontSize(baseSize);
 	return (bold ? "bold " : "") + scaledSize + "px sans-serif";
     }
@@ -496,7 +508,7 @@ public class Scope {
      * Show or hide current plots.
      * @param b true to show current plots
      */
-    void showCurrent(boolean b) {
+    private void showCurrent(boolean b) {
 	showI = b;
 	if (b && !showingVoltageAndMaybeCurrent())
 	    setValue(0);
@@ -507,23 +519,23 @@ public class Scope {
      * Show or hide voltage plots.
      * @param b true to show voltage plots
      */
-    void showVoltage(boolean b) {
+    private void showVoltage(boolean b) {
 	showV = b;
 	if (b && !showingVoltageAndMaybeCurrent())
 	    setValue(0);
 	calcVisiblePlots();
     }
 
-    void showMax(boolean b) { showMax = b; }
-    void showScale(boolean b) { showScale = b; }
-    void showMin(boolean b) { showMin = b; }
-    void showFreq(boolean b) { showFreq = b; }
+    private void showMax(boolean b) { showMax = b; }
+    private void showScale(boolean b) { showScale = b; }
+    private void showMin(boolean b) { showMin = b; }
+    private void showFreq(boolean b) { showFreq = b; }
     
     /**
      * Show or hide FFT display.
      * @param b true to show FFT
      */
-    void showFFT(boolean b) {
+    private void showFFT(boolean b) {
       showFFT = b;
       if (!showFFT)
     	  fft = null;
@@ -575,7 +587,7 @@ public class Scope {
      * @param full true to discard all old data from circular buffers
      * @param clearHistory true to clear history buffers (for drawFromZero mode)
      */
-    void resetGraph(boolean full, boolean clearHistory) {
+    private void resetGraph(boolean full, boolean clearHistory) {
     	scopePointCount = 1;
     	while (scopePointCount <= rect.width)
     		scopePointCount *= 2;
@@ -887,7 +899,7 @@ public class Scope {
     	    addValue(0, ce);
     }
 
-    void setValue(int val) {
+    private void setValue(int val) {
 	if (plots.size() > 2 || plots.size() == 0)
 	    return;
 	CircuitElm ce = plots.firstElement().elm;
@@ -897,7 +909,7 @@ public class Scope {
 	setValue(val, ce);
     }
     
-    void addValue(int val, CircuitElm ce) {
+    private void addValue(int val, CircuitElm ce) {
 	if (val == 0) {
 	    plots.add(new ScopePlot(ce, UNITS_V, VAL_VOLTAGE, getManScaleFromMaxScale(UNITS_V, false)));
 	    
@@ -922,13 +934,13 @@ public class Scope {
 	resetGraph();
     }
     
-    void setValue(int val, CircuitElm ce) {
+    private void setValue(int val, CircuitElm ce) {
 	plots = new Vector<ScopePlot>();
 	addValue(val, ce);
 //    	initialize();
     }
 
-    void setValues(int val, int ival, CircuitElm ce, CircuitElm yelm) {
+    private void setValues(int val, int ival, CircuitElm ce, CircuitElm yelm) {
 	if (ival > 0) {
 	    plots = new Vector<ScopePlot>();
 	    plots.add(new ScopePlot(ce, ce.getScopeUnits( val),  val, getManScaleFromMaxScale(ce.getScopeUnits( val), false)));
@@ -972,7 +984,7 @@ public class Scope {
 
     // returns true if we have a plot of voltage and nothing else (except current).
     // The default case is a plot of voltage and current, so we're basically checking if that case is true. 
-    boolean showingVoltageAndMaybeCurrent() {
+    private boolean showingVoltageAndMaybeCurrent() {
 	int i;
 	boolean gotv = false;
 	for (i = 0; i != plots.size(); i++) {
@@ -1083,7 +1095,7 @@ public class Scope {
      * Only captures at the defined sample interval to avoid excessive memory use.
      * Automatically downsamples if history capacity is reached.
      */
-    void captureToHistory() {
+    private void captureToHistory() {
 	// Only capture at the defined sample interval
 	if (historySize > 0) {
 	    double lastSampleTime = startTime + (historySize - 1) * historySampleInterval;
@@ -1138,7 +1150,7 @@ public class Scope {
      * Downsamples history by a factor of 2 to make room for more data.
      * Preserves peaks by keeping minimum of mins and maximum of maxs.
      */
-    void downsampleHistory() {
+    private void downsampleHistory() {
 	int newSize = historySize / 2;
 	historySampleInterval *= 2; // Double the time between samples
 	
@@ -1172,7 +1184,7 @@ public class Scope {
      * @param height Window height in pixels
      * @return Grid spacing in pixels
      */
-    double calc2dGridPx(int width, int height) {
+    private double calc2dGridPx(int width, int height) {
 	int minDimension = Math.min(width, height);
 	return ((double) minDimension / 2) / ((double) manDivisions / 2 + 0.05);
     }
@@ -1183,7 +1195,7 @@ public class Scope {
      * @param x2 New X coordinate
      * @param y2 New Y coordinate
      */
-    void drawTo(int x2, int y2) {
+    private void drawTo(int x2, int y2) {
     	if (draw_ox == -1) {
     		draw_ox = x2;
     		draw_oy = y2;
@@ -1204,7 +1216,7 @@ public class Scope {
     /**
      * Clears the 2D view canvas.
      */
-    void clear2dView() {
+    private void clear2dView() {
     	if (imageContext != null) {
     		// Set background color based on print mode
     		String bgColor = sim.printableCheckItem.getState() ? "#eee" : "#202020";
@@ -1272,7 +1284,7 @@ public class Scope {
 	sim.needAnalyze();
     }
 
-    void drawFFTVerticalGridLines(Graphics g) {
+    private void drawFFTVerticalGridLines(Graphics g) {
       // Draw x-grid lines and label the frequencies in the FFT that they point to.
       int prevEnd = 0;
       int divs = 20;
@@ -1292,7 +1304,7 @@ public class Scope {
       }
     }
 
-    void drawFFT(Graphics g) {
+    private void drawFFT(Graphics g) {
     	if (fft == null || fft.getSize() != scopePointCount)
     		fft = new FFT(scopePointCount);
       double[] real = new double[scopePointCount];
@@ -1354,7 +1366,7 @@ public class Scope {
      * Draws the settings wheel icon in the bottom-left corner of the scope.
      * @param g Graphics context
      */
-    void drawSettingsWheel(Graphics g) {
+    private void drawSettingsWheel(Graphics g) {
 	if (!showSettingsWheel())
 	    return;
 	
@@ -1392,7 +1404,7 @@ public class Scope {
 	g.context.restore();
     }
 
-    void draw2d(Graphics g) {
+    private void draw2d(Graphics g) {
     	if (imageContext==null)
     		return;
     	g.context.save();
@@ -1481,7 +1493,7 @@ public class Scope {
      * Determines if settings wheel should be shown based on scope size.
      * @return true if scope is large enough to display settings wheel
      */
-    boolean showSettingsWheel() {
+    private boolean showSettingsWheel() {
 	return rect.height > SETTINGS_WHEEL_MARGIN && rect.width > SETTINGS_WHEEL_MARGIN;
     }
     
@@ -1498,7 +1510,7 @@ public class Scope {
     }
     
     // does another scope have something selected?
-    void checkForSelectionElsewhere() {
+    private void checkForSelectionElsewhere() {
 	// if mouse is here, then selection is already set by checkForSelection()
 	if (cursorScope == this)
 	    return;
@@ -1525,7 +1537,7 @@ public class Scope {
     /**
      * Draw vertical marker lines at action times
      */
-    void drawActionTimeMarkers(Graphics g, double startTime, double displayTimeSpan) {
+    private void drawActionTimeMarkers(Graphics g, double startTime, double displayTimeSpan) {
 	ActionScheduler scheduler = ActionScheduler.getInstance();
 	if (scheduler == null)
 	    return;
@@ -1597,8 +1609,8 @@ public class Scope {
     /**
      * Draw annotations for all completed actions, positioned to avoid overlap
      */
-    void drawAllActionAnnotations(Graphics g, java.util.List<ActionScheduler.ScheduledAction> enabledActions,
-				   double startTime, double displayTimeSpan) {
+    private void drawAllActionAnnotations(Graphics g, java.util.List<ActionScheduler.ScheduledAction> enabledActions,
+                                          double startTime, double displayTimeSpan) {
 	// Collect completed actions, keeping only the last action at each unique time
 	java.util.List<ActionScheduler.ScheduledAction> completedActions = new java.util.ArrayList<ActionScheduler.ScheduledAction>();
 	java.util.HashMap<Double, ActionScheduler.ScheduledAction> actionsByTime = new java.util.HashMap<Double, ActionScheduler.ScheduledAction>();
@@ -1699,8 +1711,8 @@ public class Scope {
     /**
      * Update which action marker is being hovered
      */
-    void updateHoveredAction(java.util.List<ActionScheduler.ScheduledAction> enabledActions, 
-			      double startTime, double displayTimeSpan) {
+    private void updateHoveredAction(java.util.List<ActionScheduler.ScheduledAction> enabledActions,
+                                     double startTime, double displayTimeSpan) {
 	hoveredActionIndex = -1;
 	
 	if (mouseX < 0 || mouseY < 0)
@@ -1730,8 +1742,8 @@ public class Scope {
     /**
      * Draw annotation popup for action at specific Y position
      */
-    void drawActionAnnotationAtPosition(Graphics g, ActionScheduler.ScheduledAction action, 
-					 double startTime, double displayTimeSpan, int popupY) {
+    private void drawActionAnnotationAtPosition(Graphics g, ActionScheduler.ScheduledAction action,
+                                                double startTime, double displayTimeSpan, int popupY) {
 	double timeFromStart = action.actionTime - startTime;
 	if (timeFromStart < 0 || timeFromStart > displayTimeSpan)
 	    return;
@@ -1795,7 +1807,7 @@ public class Scope {
 	g.context.restore();
     }
     
-    protected void draw(Graphics g) {
+    void draw(Graphics g) {
 	if (plots.size() == 0)
 	    return;
     	
@@ -1920,7 +1932,7 @@ public class Scope {
 
     
     // calculate maximum and minimum values for all plots of given units
-    void calcMaxAndMin(int units) {
+    private void calcMaxAndMin(int units) {
 	maxValue = -1e8;
 	minValue = 1e8;
     	int i;
@@ -1946,7 +1958,7 @@ public class Scope {
     }
     
     // adjust scale of a plot
-    void calcPlotScale(ScopePlot plot) {
+    private void calcPlotScale(ScopePlot plot) {
 		if (manualScale)
 			return;
     	int i;
@@ -2000,7 +2012,7 @@ public class Scope {
      * @param plot The plot to calculate for
      * @return Maximum display value
      */
-    double getGridMaxFromManScale(ScopePlot plot) {
+    private double getGridMaxFromManScale(ScopePlot plot) {
 	return ((double)(manDivisions) / 2 + 0.05) * plot.manScale;
     }
     
@@ -2024,7 +2036,7 @@ public class Scope {
 	return (currentPos - offset) & (scopePointCount - 1);
     }
 
-    int getHorizontalPixelStride() {
+    private int getHorizontalPixelStride() {
 	if (!plot2d && speed <= 8)
 	    return 4;
 	if (!plot2d && speed <= 16)
@@ -2032,17 +2044,17 @@ public class Scope {
 	return 1;
     }
 
-    double getTimePerPixel() {
+    private double getTimePerPixel() {
 	return sim.getMaxTimeStep() * speed / getHorizontalPixelStride();
     }
 
-    int getDisplaySampleWidth(ScopePlot plot) {
+    private int getDisplaySampleWidth(ScopePlot plot) {
 	int stride = getHorizontalPixelStride();
 	int requiredSamples = (rect.width + stride - 1) / stride;
 	return plot.getDisplayWidth(requiredSamples);
     }
     
-    void drawPlot(Graphics g, ScopePlot plot, boolean allPlotsSameUnits, boolean selected, boolean allSelected) {
+    private void drawPlot(Graphics g, ScopePlot plot, boolean allPlotsSameUnits, boolean selected, boolean allSelected) {
 	if (plot.elm == null)
 	    return;
     	int i;
@@ -2479,7 +2491,7 @@ public class Scope {
     }
     
     // find selected plot
-    void checkForSelection(int mouseX, int mouseY) {
+    private void checkForSelection(int mouseX, int mouseY) {
 	if (sim.dialogIsShowing())
 	    return;
 	if (!rect.contains(mouseX, mouseY)) {
@@ -2520,7 +2532,7 @@ public class Scope {
     	    cursorUnits = visiblePlots.get(selectedPlot).units;
     }
     
-    void drawCursor(Graphics g) {
+    private void drawCursor(Graphics g) {
     if (sim.dialogIsShowing())
         return;
     if (cursorScope == null)
@@ -2623,7 +2635,7 @@ public class Scope {
     drawCursorInfo(g, info, ct, cursorX, false);
     }
     
-    void drawCursorInfo(Graphics g, String[] info, int ct, int x, Boolean drawY) {
+    private void drawCursorInfo(Graphics g, String[] info, int ct, int x, Boolean drawY) {
 	int szw = 0, szh = 15*ct;
 	int i;
 	for (i = 0; i != ct; i++) {
@@ -2657,7 +2669,7 @@ public class Scope {
     }
     
     // calc RMS and display it
-    void drawRMS(Graphics g) {
+    private void drawRMS(Graphics g) {
 	if (!canShowRMS()) {
 	    // needed for backward compatibility
 	    showRMS = false;
@@ -2726,7 +2738,7 @@ public class Scope {
 	}
     }
     
-    void drawScale(ScopePlot plot, Graphics g) {
+    private void drawScale(ScopePlot plot, Graphics g) {
 	if (!isManualScale()) {
 	    if (gridStepY != 0 && (!(showV && showI))) {
 		String vScaleText = " V=" + plot.getUnitText(gridStepY) + "/div";
@@ -2765,7 +2777,7 @@ public class Scope {
 	}
     }
     
-    void drawAverage(Graphics g) {
+    private void drawAverage(Graphics g) {
 	ScopePlot plot = visiblePlots.firstElement();
 	int i;
 	double avg = 0;
@@ -2826,7 +2838,7 @@ public class Scope {
 	}
     }
 
-    void drawDutyCycle(Graphics g) {
+    private void drawDutyCycle(Graphics g) {
 	ScopePlot plot = visiblePlots.firstElement();
 	int i;
     	int ipa = plot.ptr+scopePointCount-rect.width;
@@ -2885,7 +2897,7 @@ public class Scope {
     }
 
     // calc frequency if possible and display it
-    void drawFrequency(Graphics g) {
+    private void drawFrequency(Graphics g) {
 	// try to get frequency
 	// get average
 	double avg = 0;
@@ -2940,7 +2952,7 @@ public class Scope {
 	    drawInfoText(g, CircuitElm.getUnitText(freq, "Hz"));
     }
 
-    void drawElmInfo(Graphics g) {
+    private void drawElmInfo(Graphics g) {
 	String info[] = new String[1];
 	getElm().getInfo(info);
 	int i;
@@ -2948,9 +2960,9 @@ public class Scope {
 	    drawInfoText(g, info[i]);
     }
     
-    int textY;
+    private int textY;
     
-    void drawInfoText(Graphics g, String text) {
+    private void drawInfoText(Graphics g, String text) {
 	int scaledSpacing = getScaledFontSize(15);
 	if (rect.y + rect.height <= textY+5)
 	    return;
@@ -2962,7 +2974,7 @@ public class Scope {
      * Draws the scope title at the top right of the display.
      * @param g Graphics context
      */
-    void drawTitle(Graphics g) {
+    private void drawTitle(Graphics g) {
 	if (title == null || title.isEmpty())
 	    return;
 	
@@ -2981,7 +2993,7 @@ public class Scope {
 	g.context.restore();
     }
     
-    void drawInfoTexts(Graphics g) {
+    private void drawInfoTexts(Graphics g) {
     	g.setColor(CircuitElm.whiteColor);
     	textY = getScaledFontSize(10);
     	
@@ -3041,7 +3053,7 @@ public class Scope {
     	    drawElmInfo(g);
     }
 
-    String getScopeText() {
+    private String getScopeText() {
 	// stacked scopes?  don't show text
 	if (stackCount != 1)
 	    return null;
@@ -3063,11 +3075,11 @@ public class Scope {
 	    	return plot.elm.getScopeText(plot.value);
     }
 
-    String getScopeLabelOrText() {
+    private String getScopeLabelOrText() {
 	return getScopeLabelOrText(false);
     }
 
-    String getScopeLabelOrText(boolean forInfo) {
+    private String getScopeLabelOrText(boolean forInfo) {
     	String t = text;
     	if (t == null) {
     	    // if we're drawing the info and showElmInfo is true, return null so we don't print redundant info.
@@ -3230,13 +3242,13 @@ public class Scope {
 	plots.add(new ScopePlot(elm, units, value, manualScale));
     }
 
-    String getElementRefToken(CircuitElm elm) {
+    private String getElementRefToken(CircuitElm elm) {
 	if (elm == null)
 	    return "U:";
 	return "U:" + CustomLogicModel.escape(elm.getPersistentUid());
     }
 
-    CircuitElm resolveElementRef(String token, int fallbackIndex) {
+    private CircuitElm resolveElementRef(String token, int fallbackIndex) {
 	if (token != null && token.startsWith("U:")) {
 	    String target = CustomLogicModel.unescape(token.substring(2));
 	    if (!target.isEmpty()) {
@@ -3272,7 +3284,7 @@ public class Scope {
     
 
     
-    protected String dump() {
+    String dump() {
 	ScopePlot vPlot = plots.get(0);
 	
 	CircuitElm elm = vPlot.elm;
@@ -3553,7 +3565,7 @@ public class Scope {
     	CirSim.console("saved defaults " + flags);
     }
 
-    boolean loadDefaults() {
+    private boolean loadDefaults() {
         if (RuntimeMode.isNonInteractiveRuntime())
             return false;
         Storage stor = Storage.getLocalStorageIfSupported();
@@ -3569,7 +3581,7 @@ public class Scope {
         return true;
     }
     
-    void allocImage() {
+    private void allocImage() {
 	if (imageCanvas != null) {
 	    imageCanvas.setWidth(rect.width + "PX");
 	    imageCanvas.setHeight(rect.height + "PX");
@@ -3780,7 +3792,7 @@ public class Scope {
      * Exports circular buffer data as CSV format.
      * @return CSV string with time, plot values
      */
-    String exportCircularBufferAsCSV() {
+    private String exportCircularBufferAsCSV() {
 	StringBuilder sb = new StringBuilder();
 	
 	// Header row
@@ -3826,7 +3838,7 @@ public class Scope {
      * Exports circular buffer data as JSON format.
      * @return JSON string with metadata and data arrays
      */
-    String exportCircularBufferAsJSON() {
+    private String exportCircularBufferAsJSON() {
 	StringBuilder sb = new StringBuilder();
 	sb.append("{\n");
 	sb.append("  \"source\": \"CircuitJS1 Scope\",\n");
@@ -3909,7 +3921,7 @@ public class Scope {
      * Exports full history data as CSV format (for drawFromZero mode).
      * @return CSV string with time, plot values
      */
-    String exportHistoryAsCSV() {
+    private String exportHistoryAsCSV() {
 	if (!drawFromZero || historySize == 0)
 	    return "No history data available\n";
 	
@@ -3951,7 +3963,7 @@ public class Scope {
      * Exports full history data as JSON format (for drawFromZero mode).
      * @return JSON string with metadata and data arrays
      */
-    String exportHistoryAsJSON() {
+    private String exportHistoryAsJSON() {
 	if (!drawFromZero || historySize == 0)
 	    return "{\"error\": \"No history data available\"}\n";
 	

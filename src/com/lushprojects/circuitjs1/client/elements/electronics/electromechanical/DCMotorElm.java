@@ -13,19 +13,26 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class DCMotorElm extends CircuitElm {
 
-    Inductor ind, indInertia;
+    private Inductor ind;
+    private Inductor indInertia;
     // Electrical parameters
-    double resistance, inductance;
+    private double resistance;
+    private double inductance;
     // Electro-mechanical parameters
-    double K, Kb, J, b, gearRatio, tau; //tau reserved for static friction parameterization  
-    public double angle;
-    public double speed;
+    private double K;
+    private double Kb;
+    private double J;
+    private double b;
+    private double gearRatio;
+    private double tau; //tau reserved for static friction parameterization
+    private double angle;
+    private double speed;
 
 
 
-    double coilCurrent;
-    double inertiaCurrent;
-    int[] voltSources = new int[2];
+    private double coilCurrent;
+    private double inertiaCurrent;
+    private int[] voltSources = new int[2];
     public DCMotorElm(int xx, int yy) { 
 	super(xx, yy); 
 	ind = new Inductor(sim);
@@ -62,7 +69,7 @@ public class DCMotorElm extends CircuitElm {
     }
     public double getAngle(){ return(angle);}
 
-    Point motorCenter;
+    private Point motorCenter;
 
     protected void setPoints() {
 	super.setPoints();
@@ -179,13 +186,13 @@ protected void setCurrent(int vn, double c) {
 
 	drawPosts(g);
     }
-    static void drawThickerLine(Graphics g, Point pa, Point pb) {
+    private static void drawThickerLine(Graphics g, Point pa, Point pb) {
 	g.setLineWidth(6.0);
 	g.drawLine(pa.x, pa.y, pb.x, pb.y);
 	g.setLineWidth(1.0);
     }
 
-    void interpPointFix(Point a, Point b, Point c, double f, double g) {
+    private void interpPointFix(Point a, Point b, Point c, double f, double g) {
 	int gx = b.y-a.y;
 	int gy = a.x-b.x;
 	c.x = (int) Math.round(a.x*(1-f)+b.x*f+g*gx);

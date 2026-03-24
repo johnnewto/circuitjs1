@@ -114,7 +114,7 @@ public class CirSimPreferencesManager {
         }
     }
 
-    void saveShortcuts() {
+    private void saveShortcuts() {
         Storage stor = Storage.getLocalStorageIfSupported();
         if (stor == null)
             return;

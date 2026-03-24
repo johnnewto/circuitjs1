@@ -56,7 +56,7 @@ public class MathElementsTest {
      * Circuit: Two voltage sources (3V and 5V) connected to adder inputs
      * Expected: Output = 3V + 5V = 8V
      */
-    public void testAdderElm() {
+    private void testAdderElm() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
             "% voltageUnit $\n" +
@@ -88,7 +88,7 @@ public class MathElementsTest {
      * Test AdderElm with three inputs
      * Expected: Output = 2V + 3V + 4V = 9V
      */
-    public void testAdderElmThreeInputs() {
+    private void testAdderElmThreeInputs() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
             "% voltageUnit $\n" +
@@ -124,7 +124,7 @@ public class MathElementsTest {
      * Circuit: Two voltage sources (8V and 3V) connected to subtracter
      * Expected: Output = 8V - 3V = 5V
      */
-    public void testSubtracterElm() {
+    private void testSubtracterElm() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
             "% voltageUnit $\n" +
@@ -155,7 +155,7 @@ public class MathElementsTest {
      * Test SubtracterElm with three inputs
      * Expected: Output = 10V - 2V - 3V = 5V
      */
-    public void testSubtracterElmThreeInputs() {
+    private void testSubtracterElmThreeInputs() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
             "% voltageUnit $\n" +
@@ -192,7 +192,7 @@ public class MathElementsTest {
      * Circuit: 4V source multiplied by constant 2.5
      * Expected: Output = 4V × 2.5 = 10V
      */
-    public void testMultiplyConstElm() {
+    private void testMultiplyConstElm() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
             "% transform 1.5 482 224.5\n" +
@@ -221,7 +221,7 @@ public class MathElementsTest {
      * Test MultiplyConstElm with negative gain
      * Expected: Output = 5V × (-2.0) = -10V
      */
-    public void testMultiplyConstElmNegative() {
+    private void testMultiplyConstElmNegative() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
             "% transform 1.5 482 224.5\n" +
@@ -251,7 +251,7 @@ public class MathElementsTest {
      * Circuit: 3V × 4V
      * Expected: Output = 12V
      */
-    public void testMultiplyElm() {
+    private void testMultiplyElm() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
             "% voltageUnit $\n" +
@@ -285,7 +285,7 @@ public class MathElementsTest {
      * Circuit: 12V ÷ 3V
      * Expected: Output = 4V
      */
-    public void testDividerElm() {
+    private void testDividerElm() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
             "% voltageUnit $\n" +
@@ -319,7 +319,7 @@ public class MathElementsTest {
      * Circuit: 24V ÷ 2V ÷ 3V
      * Expected: Output = 4V
      */
-    public void testDividerElmThreeInputs() {
+    private void testDividerElmThreeInputs() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
             "% voltageUnit $\n" +
@@ -354,7 +354,7 @@ public class MathElementsTest {
      * Test DividerElm with divide by zero protection
      * Circuit: 10V ÷ 0V (should output 0 or safe value)
      */
-    public void testDividerElmZeroDenominator() {
+    private void testDividerElmZeroDenominator() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
             "% voltageUnit $\n" +
@@ -388,7 +388,7 @@ public class MathElementsTest {
      * Circuit: Constant 5V input (derivative = 0)
      * Expected: Output ≈ 0V
      */
-    public void testDifferentiatorElmConstant() {
+    private void testDifferentiatorElmConstant() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
             "% voltageUnit $\n" +
@@ -417,7 +417,7 @@ public class MathElementsTest {
      * Circuit: Constant 1V input (derivative = +-4)
      * Expected: Output ≈ +-4V
      */
-    public void testDifferentiatorElmTriangle() {
+    private void testDifferentiatorElmTriangle() {
         String circuit = 
             "$ 1 0.0001 10.20027730826997 50 5 50 5e-11\n" +
             "% voltageUnit $\n" +
@@ -448,7 +448,7 @@ public class MathElementsTest {
      * Expected: Output increases linearly (integral of constant = constant×t)
      * After 0.005s: integral ≈ 2V × 0.005s = 0.01 V·s
      */
-    public void testIntegratorElm() {
+    private void testIntegratorElm() {
         String circuit = 
             "$ 1 0.00005 10.20027730826997 50 5 50 5e-11\n" +
             "% voltageUnit $\n" +
@@ -490,7 +490,7 @@ public class MathElementsTest {
      * Expected: Ratio = 8/4 = 2.0 (or 200% if showing percentage)
      * Note: PercentElm is display-only and doesn't output voltage
      */
-    public void testPercentElm() {
+    private void testPercentElm() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
             "% voltageUnit $\n" +
@@ -527,7 +527,7 @@ public class MathElementsTest {
      * Circuit: Simple equation 'sin(30*pi/180) + v_{in}+a'
      * Expected: Output = 6V
      */
-    public void testEquationElmWithParameter() {
+    private void testEquationElmWithParameter() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
             "% voltageUnit $\n" +
@@ -557,7 +557,7 @@ public class MathElementsTest {
      * Circuit: Simple ODE d/dt (a*Prey)+(b*Predator), with a=0.1, b=0.2, initial Prey=10, Predator=5
      * Expected: Output remains at initial value
      */
-    public void testODEElmConstant() {
+    private void testODEElmConstant() {
         String circuit = 
             "$ 1 0.0001 10.20027730826997 50 5 50 5e-11\n" +
             "% voltageUnit $\n" +
@@ -592,7 +592,7 @@ public class MathElementsTest {
      * Integration test: Complex circuit using multiple math elements
      * Circuit: (5V + 3V) × 2 = 16V
      */
-    public void testComplexMathCircuit() {
+    private void testComplexMathCircuit() {
         String circuit = 
             "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
             "% voltageUnit $\n" +

@@ -7,7 +7,7 @@ public class ExprState {
     public double lastOutput;
     double lastDiffInput;  // For diff() function - committed value from last timestep
     public double lastIntOutput;  // For integrate() function - committed value from last timestep
-    double lastIntTime;    // Last time integrate() was committed
+    private double lastIntTime;    // Last time integrate() was committed
     double pendingIntInput; // Current input value for integrate (updated each subiteration)
     double pendingDiffInput; // Current input value for diff (to be committed at stepFinished)
     boolean diffInitialized; // True after first commit, so diff has valid lastDiffInput
@@ -15,16 +15,16 @@ public class ExprState {
     
     // For lag() function - circular buffer of historical values
     // Each lag() call in an expression gets its own buffer, indexed by lagIndex
-    static final int LAG_BUFFER_SIZE = 10000;  // Max history entries per lag
+    private static final int LAG_BUFFER_SIZE = 10000;  // Max history entries per lag
     public static final int MAX_LAG_BUFFERS = 10;     // Max number of lag() calls per expression
-    double[][] lagBufferValues;    // [lagIndex][bufferPos] = value
-    double[][] lagBufferTimes;     // [lagIndex][bufferPos] = time
-    int[] lagBufferHead;           // Write position for each buffer
-    int[] lagBufferCount;          // Number of valid entries in each buffer
+    private double[][] lagBufferValues;    // [lagIndex][bufferPos] = value
+    private double[][] lagBufferTimes;     // [lagIndex][bufferPos] = time
+    private int[] lagBufferHead;           // Write position for each buffer
+    private int[] lagBufferCount;          // Number of valid entries in each buffer
     double[] lagPendingValue;      // Current value to commit at stepFinished
     double[] lagLastCommitTime;    // Last time we committed to each buffer
-    int[] lagBufferTotalCount;     // Total entries ever added to each buffer (for debugging)
-    int lagBufferIndex;            // Current lag buffer being used during eval
+    private int[] lagBufferTotalCount;     // Total entries ever added to each buffer (for debugging)
+    private int lagBufferIndex;            // Current lag buffer being used during eval
 
 	// For smooth() function - per-call implicit-Euler state
     public static final int MAX_SMOOTH_STATES = 10;  // Max number of smooth() calls per expression

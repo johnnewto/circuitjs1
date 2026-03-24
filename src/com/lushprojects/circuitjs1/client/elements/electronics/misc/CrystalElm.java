@@ -28,9 +28,12 @@ import com.lushprojects.circuitjs1.client.elements.electronics.passives.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class CrystalElm extends CompositeElm {
-	double seriesCapacitance, parallelCapacitance;
-	double inductance, resistance;
-	Point plate1[], plate2[];
+	private double seriesCapacitance;
+    private double parallelCapacitance;
+	private double inductance;
+    private double resistance;
+	private Point[] plate1;
+    private Point[] plate2;
 	private static String modelString = "CapacitorElm 1 2\rCapacitorElm 1 3\rInductorElm 3 4\rResistorElm 4 2";
 	private static int[] modelExternalNodes = { 1, 2 };
 	
@@ -70,7 +73,7 @@ public class CrystalElm extends CompositeElm {
 
 	protected int getDumpType() { return 412; }
 	
-	Point sandwichPoints[];
+	private Point[] sandwichPoints;
 	
 	protected void setPoints() {
 	    super.setPoints();

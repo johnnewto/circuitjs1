@@ -59,8 +59,8 @@ public class Graphics {
 	
 	public Context2d context;
 	public int currentFontSize;
-	Color lastColor;
-	int savedFontSize;
+	private Color lastColor;
+	private int savedFontSize;
 	public static boolean isFullScreen=false;
 	
 	// Batch drawing optimization
@@ -370,7 +370,7 @@ public class Graphics {
 	  }
 	  
 	  // Clear the entire text width cache (call when font changes or for debugging)
-	  public static void clearTextCache() {
+	  private static void clearTextCache() {
 		  textWidthCache.clear();
 	  }
 	  
@@ -488,7 +488,7 @@ public class Graphics {
 	       setLineDash(context, a, b);
 	   }
 	   
-	   static void setLineDash(Context2d context, int a, int b) {
+	   private static void setLineDash(Context2d context, int a, int b) {
 	       ContextLike ctx = (ContextLike) (Object) context;
 	       if (a == 0)
 	           ctx.setLineDashNative(new double[0]);
@@ -500,7 +500,7 @@ public class Graphics {
 	       setLetterSpacingNative(context, spacing);
 	   }
 	   
-	   static void setLetterSpacingNative(Context2d context, String spacing) {
+	   private static void setLetterSpacingNative(Context2d context, String spacing) {
 	       ((ContextLike) (Object) context).setLetterSpacing(spacing);
 	   }
 	   

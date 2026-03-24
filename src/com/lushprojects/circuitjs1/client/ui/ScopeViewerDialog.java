@@ -68,7 +68,7 @@ public class ScopeViewerDialog extends DialogBox {
 
     @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Array")
     private static class WindowArrayLike {
-        public WindowArrayLike() {}
+        WindowArrayLike() {}
         @JsProperty(name = "length") native int getLength();
         @JsMethod(name = "push") native int push(WindowLike value);
         @JsMethod(name = "shift") native WindowLike shift();
@@ -81,15 +81,15 @@ public class ScopeViewerDialog extends DialogBox {
         @JsProperty(name = "plotlyWindows") static native void setPlotlyWindows(WindowArrayLike windows);
     }
     
-    CirSim sim;
-    Scope singleScope;  // If viewing just one scope
-    boolean isAutomatic;  // Track if this is an automatic open (for better error messages)
+    private CirSim sim;
+    private Scope singleScope;  // If viewing just one scope
+    private boolean isAutomatic;  // Track if this is an automatic open (for better error messages)
     
     public ScopeViewerDialog(CirSim s) {
         this(s, null);
     }
     
-    public ScopeViewerDialog(CirSim s, Scope scope) {
+    private ScopeViewerDialog(CirSim s, Scope scope) {
         this(s, scope, false);
     }
     
@@ -152,7 +152,7 @@ public class ScopeViewerDialog extends DialogBox {
     /**
      * Opens a new window with Plotly.js visualization of all scopes.
      */
-    void openViewer() {
+    private void openViewer() {
         // Collect all scope data
         StringBuilder allDataJson = new StringBuilder();
         allDataJson.append("[\n");
@@ -216,7 +216,7 @@ public class ScopeViewerDialog extends DialogBox {
     /**
      * Exports a single scope's data to JSON.
      */
-    void exportScope(StringBuilder allDataJson, Scope scope, int index, String scopeName) {
+    private void exportScope(StringBuilder allDataJson, Scope scope, int index, String scopeName) {
         allDataJson.append("{\n");
         allDataJson.append("  \"scopeName\": \"").append(escapeJSON(scopeName)).append("\",\n");
         allDataJson.append("  \"scopeIndex\": ").append(index).append(",\n");
@@ -270,14 +270,14 @@ public class ScopeViewerDialog extends DialogBox {
         allDataJson.append("\n}");
     }
     
-    String getScopeName(Scope scope, String fallbackPrefix, int fallbackIndex) {
+    private String getScopeName(Scope scope, String fallbackPrefix, int fallbackIndex) {
         String name = scope.getScopeMenuName();
         if (name == null || name.isEmpty())
             name = fallbackPrefix + " " + fallbackIndex;
         return name;
     }
     
-    String escapeJSON(String s) {
+    private String escapeJSON(String s) {
         if (s == null) return "";
         return s.replace("\\", "\\\\")
                 .replace("\"", "\\\"")
@@ -289,14 +289,14 @@ public class ScopeViewerDialog extends DialogBox {
     /**
      * Generates complete HTML document with Plotly.js and embedded scope data.
      */
-    String generatePlotlyHTML(String jsonData) {
+    private String generatePlotlyHTML(String jsonData) {
         String template = ScopeViewerResources.INSTANCE.scopeViewerTemplate().getText();
         return template
                 .replace("__SCOPE_DATA_JSON__", jsonData)
                 .replace("__TIME_UNIT_SYMBOL__", escapeJavaScriptString(sim.timeUnitSymbol));
     }
 
-    String escapeJavaScriptString(String s) {
+    private String escapeJavaScriptString(String s) {
         if (s == null) return "";
         return s.replace("\\", "\\\\")
                 .replace("\"", "\\\"")
@@ -311,7 +311,7 @@ public class ScopeViewerDialog extends DialogBox {
      * Tracks opened windows in a global array for cleanup.
      * @return true if window opened successfully, false if blocked
      */
-    boolean openWindowWithHTML(String html) {
+    private boolean openWindowWithHTML(String html) {
         WindowArrayLike windows = GlobalWindowLike.getPlotlyWindows();
         if (windows == null) {
             windows = new WindowArrayLike();

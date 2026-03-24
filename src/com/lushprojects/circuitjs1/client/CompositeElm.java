@@ -34,12 +34,12 @@ public abstract class CompositeElm extends CircuitElm {
     protected Vector<CircuitElm> compElmList;
     
     // list of nodes, mapping each one to a list of elements that reference that node
-    protected Vector<CircuitNode> compNodeList;
+    private Vector<CircuitNode> compNodeList;
     
-    protected int numPosts = 0;
-    protected int numNodes = 0;
+    private int numPosts = 0;
+    private int numNodes = 0;
     protected Point posts[];
-    protected Vector<VoltageSourceRecord> voltageSources;
+    private Vector<VoltageSourceRecord> voltageSources;
 
     protected CompositeElm(int xx, int yy) {
 	super(xx, yy);
@@ -61,9 +61,9 @@ public abstract class CompositeElm extends CircuitElm {
 	allocNodes();
     }
 
-    boolean useEscape() { return (flags & FLAG_ESCAPE) != 0; }
+    private boolean useEscape() { return (flags & FLAG_ESCAPE) != 0; }
     
-    public void loadComposite(StringTokenizer stIn, String model, int externalNodes[]) {
+    protected void loadComposite(StringTokenizer stIn, String model, int externalNodes[]) {
 	HashMap<Integer, CircuitNode> compNodeHash = new HashMap<Integer, CircuitNode>();
 	StringTokenizer modelLinet = new StringTokenizer(model, "\r");
 	CircuitNode cn;
@@ -188,7 +188,7 @@ public abstract class CompositeElm extends CircuitElm {
 	return dumpStr;
     }
 
-    public String dumpElements() {
+    protected String dumpElements() {
 	String dumpStr = "";
 	for (int i = 0; i < compElmList.size(); i++) {
 	    String tstring = compElmList.get(i).dump();
@@ -204,7 +204,7 @@ public abstract class CompositeElm extends CircuitElm {
 	return dumpStr + dumpElements(mask);
     }
 
-    public String dumpElements(int mask) {
+    private String dumpElements(int mask) {
 	String dumpStr = "";
 	for (int i = 0; i < compElmList.size(); i++) {
 	    if ((mask & (1<<i)) == 0)
@@ -217,7 +217,7 @@ public abstract class CompositeElm extends CircuitElm {
     }
 
     // are n1 and n2 connected internally somehow?
-    public boolean getConnectionSlow(int n1, int n2) {
+    private boolean getConnectionSlow(int n1, int n2) {
 	Vector<Integer> connectedNodes = new Vector<Integer>();
 
 	// keep list of nodes connected to n1
@@ -252,8 +252,8 @@ public abstract class CompositeElm extends CircuitElm {
 	return false;
     }
     
-    HashMap<IntPair, Boolean> connectionMap;
-    HashMap<Integer, Boolean> groundConnectionMap;
+    private HashMap<IntPair, Boolean> connectionMap;
+    private HashMap<Integer, Boolean> groundConnectionMap;
 
     public boolean getConnection(int n1, int n2) {
 	if (connectionMap == null)
@@ -280,7 +280,7 @@ public abstract class CompositeElm extends CircuitElm {
 	return result;
     }
 
-    public boolean hasGroundConnectionSlow(int n1) {
+    private boolean hasGroundConnectionSlow(int n1) {
 	Vector<Integer> connectedNodes = new Vector<Integer>();
 
 	// keep list of nodes connected to n1
@@ -338,7 +338,7 @@ public abstract class CompositeElm extends CircuitElm {
 	posts[n].y = y;
     }
 
-    public double getPower() {
+    protected double getPower() {
 	double power;
 	power = 0;
 	for (int i = 0; i < compElmList.size(); i++)

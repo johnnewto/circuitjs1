@@ -26,7 +26,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 // Zener code contributed by J. Mike Rollins
 // http://www.camotruck.net/rollins/simulator.html
 public class ZenerElm extends DiodeElm {
-    static String lastZenerModelName = "default-zener";
+    private static String lastZenerModelName = "default-zener";
     
     public ZenerElm(int xx, int yy) {
 	super(xx, yy);
@@ -46,10 +46,10 @@ public class ZenerElm extends DiodeElm {
     }
     protected int getDumpType() { return 'z'; }
     
-    final int hs = 8;
-    Polygon poly;
-    Point cathode[];
-    Point wing[];
+    private final int hs = 8;
+    private Polygon poly;
+    private Point[] cathode;
+    private Point[] wing;
 	
     protected void setPoints() {
 	super.setPoints();

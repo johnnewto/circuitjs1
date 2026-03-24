@@ -78,7 +78,7 @@ public class ScopeElm extends CircuitElm {
     /**
      * Updates the scope's display rectangle based on element position.
      */
-    public void setScopeRect() {
+    private void setScopeRect() {
 	int i1 = sim.transformXForUiElement(min(x, x2));
 	int i2 = sim.transformXForUiElement(max(x, x2));
 	int j1 = sim.transformYForUiElement(min(y, y2));
@@ -90,7 +90,7 @@ public class ScopeElm extends CircuitElm {
     }
     
     @Override
-    public void setPoints() {
+    protected void setPoints() {
 	super.setPoints();
 	setScopeRect();
     }

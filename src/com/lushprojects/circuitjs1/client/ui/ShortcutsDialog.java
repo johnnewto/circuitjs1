@@ -40,11 +40,11 @@ import com.google.gwt.user.client.ui.ScrollPanel;
 
 public class ShortcutsDialog extends Dialog {
 	
-	VerticalPanel vp;
-	CirSim sim;
+	private VerticalPanel vp;
+	private CirSim sim;
 	TextArea textArea;
-	Vector<TextBox> textBoxes;
-	Button okButton;
+	private Vector<TextBox> textBoxes;
+	private Button okButton;
 	
 	public ShortcutsDialog(CirSim asim) {
 		super();
@@ -109,7 +109,7 @@ public class ShortcutsDialog extends Dialog {
 	    closeDialog();
 	}
 
-	int getShortcutMenuItemCount() {
+	private int getShortcutMenuItemCount() {
 	    int count = 0;
 	    for (int i = 0; i != sim.getMenuUiState().mainMenuItems.size(); i++) {
 		CheckboxMenuItem item = sim.getMenuUiState().mainMenuItems.get(i);
@@ -120,7 +120,7 @@ public class ShortcutsDialog extends Dialog {
 	    return count;
 	}
 	
-	boolean checkForDuplicates() {
+	private boolean checkForDuplicates() {
 	    TextBox boxForShortcut[] = new TextBox[127];
 	    boolean result = false;
 	    int i;

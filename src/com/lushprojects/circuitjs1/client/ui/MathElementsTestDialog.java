@@ -271,7 +271,7 @@ public class MathElementsTestDialog {
     /**
      * Hide the dialog
      */
-    public void hide() {
+    private void hide() {
         dialog.hide();
     }
     
@@ -285,7 +285,7 @@ public class MathElementsTestDialog {
     /**
      * Clear output area
      */
-    public void clearOutput() {
+    private void clearOutput() {
         outputArea.setText("");
         passCount = 0;
         failCount = 0;
@@ -305,7 +305,7 @@ public class MathElementsTestDialog {
     /**
      * Run all tests
      */
-    public void runAllTests() {
+    private void runAllTests() {
         clearOutput();
         runButton.setEnabled(false);
         runButton.setText("⏳ Running...");
@@ -390,7 +390,7 @@ public class MathElementsTestDialog {
     /**
      * Run the selected test from the dropdown
      */
-    public void runSelectedTest() {
+    private void runSelectedTest() {
         int selectedIndex = testSelector.getSelectedIndex();
         if (selectedIndex < 0) {
             clearOutput();
@@ -450,7 +450,7 @@ public class MathElementsTestDialog {
     /**
      * Run the test that's currently loaded on the canvas
      */
-    public void runCanvasTest() {
+    private void runCanvasTest() {
         String testName = detectCanvasTest();
         
         if (testName == null) {

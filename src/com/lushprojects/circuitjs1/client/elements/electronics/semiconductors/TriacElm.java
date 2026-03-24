@@ -34,13 +34,14 @@ import com.lushprojects.circuitjs1.client.util.*;
 // MT1 and MT2 are nodes 1 and 0 (instead of 0 and 1) so that MT1 will be at the bottom when drawn bottom-to-top
 
 public class TriacElm extends CircuitElm {
-    final int mt1node = 1;
-    final int mt2node = 0;
-    final int gnode = 2;
-    final int mtinode = 3;
+    private final int mt1node = 1;
+    private final int mt2node = 0;
+    private final int gnode = 2;
+    private final int mtinode = 3;
     
-    Diode diode03, diode30;
-    boolean state;
+    private Diode diode03;
+    private Diode diode30;
+    private boolean state;
     
     public TriacElm(int xx, int yy) {
 	super(xx, yy);
@@ -59,13 +60,13 @@ public class TriacElm extends CircuitElm {
 	setup();
     }
     
-    void setDefaults() {
+    private void setDefaults() {
 	holdingI = .0082;
 	triggerI = .01;
 	cresistance = 100;
     }
     
-    void setup() {
+    private void setup() {
 	diode03 = new Diode(sim);
 	diode03.setupForDefaultModel();
 	diode30 = new Diode(sim);
@@ -85,15 +86,24 @@ public class TriacElm extends CircuitElm {
     protected String dump() {
 	return super.dump() + " " + triggerI + " " + holdingI + " " + cresistance + " " + state;
     }
-    double i1, i2, ig, curcount_1, curcount_2, curcount_g;
-    double cresistance, triggerI, holdingI;
+    private double i1;
+    private double i2;
+    private double ig;
+    private double curcount_1;
+    private double curcount_2;
+    private double curcount_g;
+    private double cresistance;
+    private double triggerI;
+    private double holdingI;
 
     final int hs = 8;
     Polygon poly;
-    Point cathode[], gate[];
+    Point cathode[];
+    private Point[] gate;
 	
-    Polygon arrows[];
-    Point plate1[], plate2[];
+    private Polygon[] arrows;
+    private Point[] plate1;
+    private Point[] plate2;
     
     protected void setPoints() {
         super.setPoints();
@@ -200,7 +210,7 @@ public class TriacElm extends CircuitElm {
     protected int getPostCount() { return 3; }
     protected int getInternalNodeCount() { return 1; }
 
-    double aresistance;
+    private double aresistance;
     
     protected void stamp() {
 	sim.stampNonLinear(nodes[mt1node]);

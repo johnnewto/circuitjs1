@@ -28,8 +28,8 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class JfetElm extends MosfetElm {
-	Diode diode;
-	double gateCurrent;
+	private Diode diode;
+	private double gateCurrent;
 	
 	JfetElm(int xx, int yy, boolean pnpflag) {
 	    super(xx, yy, pnpflag);
@@ -50,10 +50,12 @@ public class JfetElm extends MosfetElm {
 	    diode.reset();
 	}
 	
-	Polygon gatePoly;
-	Polygon arrowPoly;
-	Point gatePt;
-	double curcountg, curcounts, curcountd;
+	private Polygon gatePoly;
+	private Polygon arrowPoly;
+	private Point gatePt;
+	private double curcountg;
+    private double curcounts;
+    private double curcountd;
 
 	protected void draw(Graphics g) {
 	    setBbox(point1, point2, hs);

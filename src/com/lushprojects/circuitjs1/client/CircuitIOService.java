@@ -220,7 +220,7 @@ final class CircuitIOService {
         readCircuit(text, 0);
     }
 
-    void processCircuitLine(String line) {
+    private void processCircuitLine(String line) {
         if (line == null || line.trim().isEmpty()) {
             return;
         }
@@ -269,7 +269,7 @@ final class CircuitIOService {
         readSetupFileCandidates(candidates, 0, title);
     }
 
-    void readSetupFileCandidates(final String[] candidates, final int index, final String title) {
+    private void readSetupFileCandidates(final String[] candidates, final int index, final String title) {
         if (index >= candidates.length) {
             sim.alertOrWarn(Locale.LS("Can't load circuit!"));
             return;
@@ -409,7 +409,7 @@ final class CircuitIOService {
         return result + (result.indexOf('?') >= 0 ? "&" : "?") + "v=" + System.currentTimeMillis();
     }
 
-    void readCircuit(byte b[], int flags) {
+    private void readCircuit(byte b[], int flags) {
         int i;
         int len = b.length;
         boolean transformLoaded = false;

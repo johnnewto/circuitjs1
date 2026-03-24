@@ -14,12 +14,15 @@ import com.lushprojects.circuitjs1.client.util.*;
 // Linear adder element - adds multiple input voltages
 // Vout = V1 + V2 + V3 + ... using VCVS (linear element, no iteration needed)
 public class AdderElm extends CircuitElm {
-    int inputCount;
-    int opsize, opheight, opwidth;
-    final int FLAG_SMALL = 2;
-    Point inPosts[], inLeads[];
-    Polygon bodyPoly;
-    Font labelFont;
+    private int inputCount;
+    private int opsize;
+    private int opheight;
+    private int opwidth;
+    private final int FLAG_SMALL = 2;
+    private Point[] inPosts;
+    private Point[] inLeads;
+    private Polygon bodyPoly;
+    private Font labelFont;
     
     public AdderElm(int xx, int yy) {
         super(xx, yy);
@@ -41,7 +44,7 @@ public class AdderElm extends CircuitElm {
     
     protected int getDumpType() { return 251; }
     
-    void setSize(int s) {
+    private void setSize(int s) {
         opsize = s;
         opheight = 8 * s;
         opwidth = 13 * s;

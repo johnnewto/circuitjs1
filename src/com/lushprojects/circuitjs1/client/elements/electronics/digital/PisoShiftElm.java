@@ -29,13 +29,13 @@ import com.lushprojects.circuitjs1.client.util.*;
 // contributed by Edward Calver
 
 public class PisoShiftElm extends ChipElm {
-	final int FLAG_NEW_BEHAVIOR = 2; //SER and no extra output register
+	private final int FLAG_NEW_BEHAVIOR = 2; //SER and no extra output register
 	
-	boolean[] data = new boolean[0];
-	int dataIndex = 0;
-	boolean clockState = false;
-	boolean loadState = false;
-	int dataPinIndex; // the register pins' starting index
+	private boolean[] data = new boolean[0];
+	private int dataIndex = 0;
+	private boolean clockState = false;
+	private boolean loadState = false;
+	private int dataPinIndex; // the register pins' starting index
 	
 	public PisoShiftElm(int xx, int yy) {
 		super(xx, yy);
@@ -66,7 +66,7 @@ public class PisoShiftElm extends ChipElm {
 	protected boolean needsBits() { return true; }
 	protected int defaultBitCount() { return 8; }
 	
-	boolean hasNewBhvr() { return (flags & FLAG_NEW_BEHAVIOR) != 0; }
+	private boolean hasNewBhvr() { return (flags & FLAG_NEW_BEHAVIOR) != 0; }
 	
 	protected void reset() {
 		super.reset();

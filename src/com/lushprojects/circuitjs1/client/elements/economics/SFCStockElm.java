@@ -182,7 +182,7 @@ public class SFCStockElm extends CircuitElm {
     /**
      * Check if using trapezoidal integration (more accurate but can oscillate).
      */
-    boolean isTrapezoidal() { 
+    private boolean isTrapezoidal() {
         return (flags & FLAG_BACK_EULER) == 0; 
     }
     

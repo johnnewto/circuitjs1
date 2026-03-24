@@ -97,17 +97,20 @@ public abstract class CircuitElm implements Editable {
     static public Color positiveColor, negativeColor, neutralColor, currentColor;
     protected static Font unitsFont;
 
-	public static NumFmt.Formatter showFormat, shortFormat, fixedFormat;
+	public static NumFmt.Formatter showFormat;
+    private static NumFmt.Formatter shortFormat;
+    private static NumFmt.Formatter fixedFormat;
     protected static final double pi = 3.14159265358979323846;
-    static CircuitElm mouseElmRef = null;
-	static java.util.Random nonInteractiveRandom = new java.util.Random();
+    private static CircuitElm mouseElmRef = null;
+	private static java.util.Random nonInteractiveRandom = new java.util.Random();
 
     protected static final int SCALE_AUTO = 0;
-    protected static final int SCALE_1 = 1;
-    protected static final int SCALE_M = 2;
-    protected static final int SCALE_MU = 3;
+    private static final int SCALE_1 = 1;
+    private static final int SCALE_M = 2;
+    private static final int SCALE_MU = 3;
     
-    static int decimalDigits, shortDecimalDigits;
+    private static int decimalDigits;
+    private static int shortDecimalDigits;
  
     // initial point where user created element.  For simple two-terminal elements, this is the first node/post.
     public int x, y;
@@ -116,7 +119,7 @@ public abstract class CircuitElm implements Editable {
     public int x2, y2;
     
     public int flags, nodes[], voltSource;
-	String persistentUid;
+	private String persistentUid;
     
     // length along x and y axes, and sign of difference
     protected int dx, dy, dsign;
@@ -196,7 +199,7 @@ public abstract class CircuitElm implements Editable {
 	return sim.getSimulationContext();
     }
 
-    static void setDecimalDigits(int num, boolean sf, boolean save) {
+    private static void setDecimalDigits(int num, boolean sf, boolean save) {
 	if (sf)
 	    shortDecimalDigits = num;
 	else
@@ -281,7 +284,7 @@ public abstract class CircuitElm implements Editable {
 	initBoundingBox();
     }
     
-    void initBoundingBox() {
+    private void initBoundingBox() {
 	boundingBox = new Rectangle();
 	boundingBox.setBounds(min(x, x2), min(y, y2),
 			      abs(x2-x)+1, abs(y2-y)+1);
@@ -512,7 +515,7 @@ public abstract class CircuitElm implements Editable {
 	return a;
     }
 
-    final int CURRENT_TOO_FAST = 100;
+    private final int CURRENT_TOO_FAST = 100;
 
     // draw current dots from point a to b
     protected void drawDots(Graphics g, Point pa, Point pb, double pos) {
@@ -619,7 +622,7 @@ public abstract class CircuitElm implements Editable {
     }
 
     // this is used to set the position of an internal element so we can draw it inside the parent
-    protected void setPosition(int x_, int y_, int x2_, int y2_) {
+    private void setPosition(int x_, int y_, int x2_, int y2_) {
 	x = x_;
 	y = y_;
 	x2 = x2_;
@@ -719,7 +722,7 @@ public abstract class CircuitElm implements Editable {
 	}
     }
     
-    int getNumHandles() {
+    private int getNumHandles() {
 	return getPostCount();
     }
     
@@ -831,7 +834,7 @@ public abstract class CircuitElm implements Editable {
     }
     
     // set bounding box for an element from p1 to p2 with width w
-    public void setBbox(Point p1, Point p2, double w) {
+    protected void setBbox(Point p1, Point p2, double w) {
 	setBbox(p1.x, p1.y, p2.x, p2.y);
 	int dpx = (int) (dpx1*w);
 	int dpy = (int) (dpy1*w);
@@ -977,13 +980,13 @@ public abstract class CircuitElm implements Editable {
     	g.setLineWidth(1.0);
     }
 
-    public static void drawThickLine(Graphics g, Point pa, Point pb) {
+    protected static void drawThickLine(Graphics g, Point pa, Point pb) {
     	g.setLineWidth(3.0);
     	g.drawLine(pa.x, pa.y, pb.x, pb.y);
     	g.setLineWidth(1.0);
     }
 
-    public static void drawThickPolygon(Graphics g, int xs[], int ys[], int c) {
+    protected static void drawThickPolygon(Graphics g, int xs[], int ys[], int c) {
 //	int i;
 //	for (i = 0; i != c-1; i++)
 //	    drawThickLine(g, xs[i], ys[i], xs[i+1], ys[i+1]);
@@ -993,7 +996,7 @@ public abstract class CircuitElm implements Editable {
     	g.setLineWidth(1.0);
     }
     
-    public static void drawThickPolygon(Graphics g, Polygon p) {
+    protected static void drawThickPolygon(Graphics g, Polygon p) {
 	drawThickPolygon(g, p.xpoints, p.ypoints, p.npoints);
     }
     
@@ -1051,7 +1054,7 @@ public abstract class CircuitElm implements Editable {
 	return getUnitText(v, "s");
     }
     
-    static String format(double v, boolean sf) {
+    private static String format(double v, boolean sf) {
 //	if (sf && Math.abs(v) > 10)
 //	    return shortFormat.format(Math.round(v));
 	return (sf ? shortFormat : showFormat).format(v);
@@ -1066,7 +1069,7 @@ public abstract class CircuitElm implements Editable {
     }
     
     // Number format for economics mode (2 decimal places)
-	static NumFmt.Formatter economicsFormat = NumFmt.forPattern("#,##0.00");
+	private static NumFmt.Formatter economicsFormat = NumFmt.forPattern("#,##0.00");
     
     private static String getUnitText(double v, String u, boolean sf) {
 	// Check if this is a voltage unit and use custom symbol if set
@@ -1335,7 +1338,7 @@ public abstract class CircuitElm implements Editable {
     
     // Check if this element is highlighted only because it shares an MNA node
     // with a hovered LabeledNodeElm (not directly hovered/selected)
-    boolean isConnectedHighlight() {
+    private boolean isConnectedHighlight() {
 	if (mouseElmRef==this || selected || sim.plotYElm == this || nonConverged)
 	    return false;
 	if (sim.highlightedNode >= 0) {
@@ -1454,11 +1457,11 @@ public abstract class CircuitElm implements Editable {
         return idx >= 0 ? name.substring(idx + 1) : name;
     }
     
-	JsArrayString getJsArrayString() {
+	private JsArrayString getJsArrayString() {
 		return JavaScriptObject.createArray().cast();
 	}
     
-    JsArrayString getInfoJS() {
+    private JsArrayString getInfoJS() {
 	JsArrayString jsarr = getJsArrayString();
 	String arr[] = new String[20];
 	getInfo(arr);
@@ -1468,7 +1471,7 @@ public abstract class CircuitElm implements Editable {
 	return jsarr;
     }
     
-    double getVoltageJS(int n) {
+    private double getVoltageJS(int n) {
 	if (n >= volts.length)
 	    return 0;
 	return volts[n];

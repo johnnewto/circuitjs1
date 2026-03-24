@@ -18,24 +18,25 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 // values with sliders
 public class Adjustable implements Command {
     CircuitElm elm;
-    double minValue, maxValue;
-    int flags;
+    private double minValue;
+    private double maxValue;
+    private int flags;
     String sliderText;
-    double stepIncrement; // Amount to add for each step (0 = continuous)
+    private double stepIncrement; // Amount to add for each step (0 = continuous)
     
     // null if this Adjustable has its own slider, non-null if it's sharing another one.
-    Adjustable sharedSlider;
+    private Adjustable sharedSlider;
     
-    final int FLAG_SHARED = 1;
+    private final int FLAG_SHARED = 1;
     
     // index of value in getEditInfo() list that this slider controls
     int editItem;
     
     Label label;
-    Scrollbar slider;
-    boolean settingValue;
+    private Scrollbar slider;
+    private boolean settingValue;
     
-    Adjustable(CircuitElm ce, int item) {
+    private Adjustable(CircuitElm ce, int item) {
 	minValue = 0;
 	maxValue = 1;
 	flags = 0;
@@ -105,7 +106,7 @@ public class Adjustable implements Command {
 	return true;
     }
 
-    void createSlider(CirSim sim, double value) {
+    private void createSlider(CirSim sim, double value) {
         EditInfo ei = elm.getEditInfo(editItem);
         String valueStr = getFormattedValue(ei, value);
 		sim.getUiPanelManager().addWidgetToVerticalPanel(label = new Label());
@@ -157,7 +158,7 @@ public class Adjustable implements Command {
 	}
     }
     
-    void executeSlider() {
+    private void executeSlider() {
 	// For non-linear elements, trigger full circuit analysis
 	// For linear elements, skip analysis - matrix coefficients update on next stamp
 	// if (elm.nonLinear()) {
@@ -217,7 +218,7 @@ public class Adjustable implements Command {
 	return getFormattedValue(ei, value);
     }
     
-    double getSliderValue() {
+    private double getSliderValue() {
 	double val = sharedSlider == null ? slider.getValue() : sharedSlider.slider.getValue();
 	double rawValue = minValue + (maxValue-minValue)*val/100;
 	
@@ -246,7 +247,7 @@ public class Adjustable implements Command {
 	    slider.draw();
     }
     
-    boolean sliderBeingShared() {
+    private boolean sliderBeingShared() {
 	int i;
 	for (i = 0; i != CirSim.getInstance().adjustables.size(); i++) {
 	    Adjustable adj = CirSim.getInstance().adjustables.get(i);
@@ -260,7 +261,7 @@ public class Adjustable implements Command {
 	return sliderBeingShared();
     }
     
-    protected String dump() {
+    String dump() {
 	int ano = -1;
 	if (sharedSlider != null)
 	    ano = CirSim.getInstance().adjustables.indexOf(sharedSlider);
@@ -289,7 +290,7 @@ public class Adjustable implements Command {
     // reorder adjustables so that items with sliders come first in the list, followed by items that reference them.
     // this simplifies the UI code, and also makes it much easier to dump/undump the adjustables list, since we will
     // always be undumping the adjustables with sliders first, then the adjustables that reference them.
-    static void reorderAdjustables() {
+    private static void reorderAdjustables() {
 	Vector<Adjustable> newList = new Vector<Adjustable>();
 	Vector<Adjustable> oldList = CirSim.getInstance().adjustables;
 	int i;

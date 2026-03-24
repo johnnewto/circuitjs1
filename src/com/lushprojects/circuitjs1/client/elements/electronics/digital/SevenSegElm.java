@@ -32,21 +32,21 @@ import com.lushprojects.circuitjs1.client.util.*;
 
     public class SevenSegElm extends ChipElm {
 	// base segment count not including decimal point or colon
-	int baseSegmentCount;
+    private int baseSegmentCount;
 	
 	// segment count including decimal point or colon
-	int segmentCount;
+    private int segmentCount;
 
-	int extraSegment;
-	static final int ES_NONE = 0;
-	static final int ES_DP = 1;
-	static final int ES_COLON = 2;
+	private int extraSegment;
+	private static final int ES_NONE = 0;
+	private static final int ES_DP = 1;
+	private static final int ES_COLON = 2;
 	
-	int pinCount;
-	int commonPin;
+	private int pinCount;
+	private int commonPin;
 	
 	// 1 = common cathode, -1 = common anode, 0 = no diodes
-	int diodeDirection;
+    private int diodeDirection;
 	
 	public SevenSegElm(int xx, int yy) {
 	    super(xx, yy);
@@ -65,7 +65,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 	    setPinCount();
 	}
 	
-	void setDefaults() {
+	private void setDefaults() {
 	    baseSegmentCount = segmentCount = 7;
 	    diodeDirection = 0;
 	}
@@ -73,7 +73,8 @@ import com.lushprojects.circuitjs1.client.util.*;
 	protected String dump() { return super.dump() + " " + baseSegmentCount + " " + extraSegment + " " + diodeDirection; }
 	
 	protected String getChipName() { return segmentCount + "-segment display"; }
-	Color darkred, lightgray;
+	private Color darkred;
+        private Color lightgray;
 	
 	protected void setupPins() {
 	    if (pinCount == 0)
@@ -115,10 +116,10 @@ import com.lushprojects.circuitjs1.client.util.*;
 	    }
 	}
 	
-	void drawSegment(Graphics g, int x1, int y1, int x2, int y2, int thick) {
+	private void drawSegment(Graphics g, int x1, int y1, int x2, int y2, int thick) {
 	    drawSegment(g, new Point(x1, y1), new Point(x2, y2), thick);
 	}
-	void drawSegment(Graphics g, Point p1, Point p2, int thick) {
+	private void drawSegment(Graphics g, Point p1, Point p2, int thick) {
 	    g.context.beginPath();
 	    Point p3 = new Point();
 	    Point p4 = new Point();
@@ -137,7 +138,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 	    g.context.lineTo(p1.x, p1.y);
 	    g.context.fill();
 	}
-	void drawDecimal(Graphics g, int x, int y, int sp) {
+	private void drawDecimal(Graphics g, int x, int y, int sp) {
 	    g.context.beginPath();
 	    g.context.moveTo(x, y-sp);
 	    g.context.lineTo(x-sp, y);
@@ -146,7 +147,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 	    g.context.lineTo(x, y-sp);
 	    g.context.fill();
 	}
-	static int display7[] = {
+	private static int[] display7 = {
 		// x1, y1, x2, y2 for each segment
 		0, 0, 2, 0,
 		2, 0, 2, 1,
@@ -156,7 +157,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 		0, 0, 0, 1,
 		0, 1, 2, 1
 	};
-	static int display16[] = {
+	private static int[] display16 = {
 		0, 0, 1, 0,
 		1, 0, 2, 0,
 		2, 0, 2, 1,
@@ -174,7 +175,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 		1, 1, 0, 2,
 		0, 1, 1, 1
 	};
-	static int display14[] = {
+	private static int[] display14 = {
 		0, 0, 2, 0,
 		2, 0, 2, 1,
 		2, 1, 2, 2,
@@ -191,7 +192,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 		0, 1, 1, 1
 	};
 	
-	Diode diodes[];
+	private Diode[] diodes;
 	protected void stamp() {
 	    super.stamp();
 	    
@@ -288,7 +289,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 		sim.stop("max current exceeded", this);
 	}
 
-	void setColor(Graphics g, int p) {
+	private void setColor(Graphics g, int p) {
 	    boolean whiteBkg = sim.printableCheckItem.getState();
 	    if (diodeDirection == 0) {
 		g.setColor(pins[p].value ? Color.red :
@@ -364,7 +365,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 	    super.setChipEditValue(n, ei);
 	}
 	
-	void setPinCount() {
+	private void setPinCount() {
 	    segmentCount = baseSegmentCount;
 	    if (extraSegment > 0)
 		segmentCount++;

@@ -31,27 +31,27 @@ import java.util.ArrayList;
  */
 public class TableElm extends ChipElm implements TableContentView {
     public int rows = 0;  // Start with zero rows for new tables
-    protected int cellWidthInGrids = 6;  // Width of each cell in grid units (cspc)
+    int cellWidthInGrids = 6;  // Width of each cell in grid units (cspc)
     public int cellHeight = 16; // Height of each cell in pixels (for drawing)
     public int cellSpacing = 0;  // Spacing between cells in pixels (for drawing), zero for best appearance
-    protected boolean showInitialValues = false; // Control visibility of initial conditions row
+    boolean showInitialValues = false; // Control visibility of initial conditions row
     public String[] rowDescriptions; // Descriptions/labels for each row (left column in spreadsheet view)
     public String tableTitle = "Table"; // Title for the table (displayed in edit dialog and component)
     public String tableUnits = ""; // Units to display in table cells ("" , $ or V)
-    protected int decimalPlaces = 2; // Number of decimal places to show
-    protected int showCellValues = 0; // Cell display mode: 0=Equation, 1=Equation:Value, 2=Value
+    int decimalPlaces = 2; // Number of decimal places to show
+    int showCellValues = 0; // Cell display mode: 0=Equation, 1=Equation:Value, 2=Value
     public boolean collapsedMode = false; // Collapsed mode: show only title, headers, and computed row
-    protected int priority = 5; // Priority for master table selection (higher = evaluated first, becomes master)
-    protected int initMode = 0; // Initialization mode: 0=default, 1=all, 2=custom (set when manually edited)
-    protected boolean showALE = true; // Control whether to show A-L-E computed column (false for CTM)
+    int priority = 5; // Priority for master table selection (higher = evaluated first, becomes master)
+    int initMode = 0; // Initialization mode: 0=default, 1=all, 2=custom (set when manually edited)
+    boolean showALE = true; // Control whether to show A-L-E computed column (false for CTM)
     
     // Column data - encapsulates stockNames, columnTypes, initialValues, cellEquations, etc.
     public ArrayList<TableColumn> columns;
     
     // Helper class managers for separation of concerns
     private final TableRenderer renderer;
-    protected final TableEquationManager equationManager;
-    protected final TableDataManager dataManager;
+    final TableEquationManager equationManager;
+    private final TableDataManager dataManager;
     private final TableGeometryManager geometryManager;
     
     // Constructor for new table FROM MENU - receives auto-increment flag
@@ -133,7 +133,7 @@ public class TableElm extends ChipElm implements TableContentView {
      * @return true if this table is the master for the column, false otherwise
      * NOTE: Empty/blank column headers always return false (never masters)
      */
-    protected boolean isMasterForColumn(int col) {
+    boolean isMasterForColumn(int col) {
         if (columns == null || col < 0 || col >= columns.size()) {
             return false;
         }
@@ -180,7 +180,7 @@ public class TableElm extends ChipElm implements TableContentView {
      * Override in subclasses to disable registration (e.g., display-only tables).
      * @return true to register stocks, false to skip registration
      */
-    protected boolean shouldRegisterStocks() {
+    boolean shouldRegisterStocks() {
         return true;
     }
     
@@ -245,14 +245,14 @@ public class TableElm extends ChipElm implements TableContentView {
         return equationManager.getVoltageForCell(row, col);
     }
     
-    void compileEquation(int row, int col, String equation) {
+    private void compileEquation(int row, int col, String equation) {
         equationManager.compileEquation(row, col, equation);
     }
 
     /**
      * Find a LabeledNodeElm with matching text
      */
-    protected LabeledNodeElm findLabeledNode(String name) {
+    private LabeledNodeElm findLabeledNode(String name) {
         if (name == null || name.trim().isEmpty()) {
             return null;
         }
@@ -287,7 +287,7 @@ public class TableElm extends ChipElm implements TableContentView {
     }
     
    
-    protected void registerComputedValueAsLabeledNode(String labelName, double voltage) {
+    void registerComputedValueAsLabeledNode(String labelName, double voltage) {
         if (labelName == null || labelName.isEmpty()) {
             return;
         }
@@ -733,7 +733,7 @@ public class TableElm extends ChipElm implements TableContentView {
     /**
      * Stamp voltage source for a master column
      */
-    protected void stampMasterColumn(int col, Pin p) {
+    private void stampMasterColumn(int col, Pin p) {
         int outputNode = nodes[col];
         String stockName = (columns != null && col < columns.size()) ? columns.get(col).getStockName() : "?";
         int vn = p.voltSource + sim.getCircuitAnalyzer().getNodeList().size();
@@ -755,7 +755,7 @@ public class TableElm extends ChipElm implements TableContentView {
     /**
      * Connect non-master column output to ground to prevent unconnected nodes
      */
-    protected void stampNonMasterColumn(int col) {
+    private void stampNonMasterColumn(int col) {
         int outputNode = nodes[col];
         if (isValidNode(outputNode)) {
             sim.stampResistor(outputNode, 0, 1e7); // 10MΩ to ground
@@ -765,7 +765,7 @@ public class TableElm extends ChipElm implements TableContentView {
     /**
      * Connect master columns to their labeled nodes if they exist
      */
-    protected void connectToLabeledNodes() {
+    private void connectToLabeledNodes() {
         if (columns == null) return;
         
         for (int col = 0; col < columns.size(); col++) {
@@ -781,7 +781,7 @@ public class TableElm extends ChipElm implements TableContentView {
     /**
      * Connect a column to its labeled node, or to ground if no labeled node exists
      */
-    protected void connectColumnToLabeledNode(int col, TableColumn column) {
+    private void connectColumnToLabeledNode(int col, TableColumn column) {
         String outputName = column.getStockName();
         LabeledNodeElm labeledNode = findLabeledNode(outputName);
         int outputNode = nodes[col];
@@ -803,15 +803,15 @@ public class TableElm extends ChipElm implements TableContentView {
     /**
      * Check if a node number is valid for stamping
      */
-    protected boolean isValidNode(int nodeNum) {
+    private boolean isValidNode(int nodeNum) {
         return nodeNum >= 0 && sim.getCircuitAnalyzer().getNodeList() != null && nodeNum < sim.getCircuitAnalyzer().getNodeList().size();
     }
 
-    public String dump() {
+    protected String dump() {
         return super.dump() + dataManager.dump();
     }
 
-    protected void parseTableData(StringTokenizer st) {
+    private void parseTableData(StringTokenizer st) {
         dataManager.parseTableData(st);
     }
 
@@ -1147,7 +1147,7 @@ public class TableElm extends ChipElm implements TableContentView {
     }
 
     // Add method to update counter based on existing tables
-    public static void updateTableCounter(String title) {
+    private static void updateTableCounter(String title) {
         // Extract number from title like "Table 5"
         if (title != null && title.startsWith("Table ")) {
             try {
@@ -1163,7 +1163,7 @@ public class TableElm extends ChipElm implements TableContentView {
     }
     
     @Override
-    public void reset() {
+    protected void reset() {
         // Re-register as master for stock columns when circuit is reset
         // This ensures voltage sources are properly stamped after reset
         registerAsMasterForStockNames();

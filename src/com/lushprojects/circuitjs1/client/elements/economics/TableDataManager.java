@@ -94,7 +94,7 @@ public class TableDataManager {
     /**
      * Initialize with default values (error fallback)
      */
-    public void initializeDefaults() {
+    private void initializeDefaults() {
         int cols = table.getCols();
         
         // Initialize columns ArrayList

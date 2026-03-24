@@ -33,11 +33,11 @@ import com.google.gwt.user.client.ui.Label;
 
 public class ImportFromTextDialog extends Dialog {
 	
-VerticalPanel vp;
-HorizontalPanel hp;
-CirSim sim;
+private VerticalPanel vp;
+private HorizontalPanel hp;
+private CirSim sim;
 // RichTextArea textBox;
-TextArea textArea;
+private TextArea textArea;
 	
 	public ImportFromTextDialog( CirSim asim) {
 		super();

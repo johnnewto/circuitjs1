@@ -40,15 +40,17 @@ import com.google.gwt.user.client.ui.HasHorizontalAlignment;
 
 // class EditDialog extends Dialog implements AdjustmentListener, ActionListener, ItemListener {
 public class SliderDialog extends Dialog  {
-	CircuitElm elm;
-	CirSim sim;
-	Button applyButton, okButton, cancelButton;
-	EditInfo einfos[];
-	int einfocount;
+	private CircuitElm elm;
+	private CirSim sim;
+	private Button applyButton;
+    private Button okButton;
+    private Button cancelButton;
+	private EditInfo[] einfos;
+	private int einfocount;
 	final int barmax = 1000;
-	VerticalPanel vp;
-	HorizontalPanel hp;
-	NumberFormat noCommaFormat;
+	private VerticalPanel vp;
+	private HorizontalPanel hp;
+	private NumberFormat noCommaFormat;
 
 	public SliderDialog(CircuitElm ce, CirSim f) {
 		super(); // Do we need this?
@@ -88,7 +90,7 @@ public class SliderDialog extends Dialog  {
 		this.center();
 	}
 	
-	void buildDialog() {
+	private void buildDialog() {
 		int i;
 		int idx;
 		String labletext = null;
@@ -219,11 +221,11 @@ public class SliderDialog extends Dialog  {
 		einfocount = i;
 	}
 	
-	Adjustable findAdjustable(int item) {
+	private Adjustable findAdjustable(int item) {
 	    return sim.findAdjustable(elm, item);
 	}
 
-	public void apply() {
+	protected void apply() {
 		int i;
 		for (i = 0; i != einfocount; i++) {
 		    Adjustable adj = findAdjustable(i);
@@ -288,7 +290,7 @@ public class SliderDialog extends Dialog  {
 		}
 	}
 
-	public void itemStateChanged(GwtEvent e) {
+	private void itemStateChanged(GwtEvent e) {
 	    Object src = e.getSource();
 	    int i;
 	    boolean changed = false;
@@ -342,7 +344,7 @@ public class SliderDialog extends Dialog  {
 	    }
 	}
 	
-	public void clearDialog() {
+	private void clearDialog() {
 		while (vp.getWidget(0)!=hp)
 			vp.remove(0);
 	}

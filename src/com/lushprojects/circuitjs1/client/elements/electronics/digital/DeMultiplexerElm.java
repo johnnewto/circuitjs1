@@ -29,9 +29,9 @@ import com.lushprojects.circuitjs1.client.util.*;
 // contributed by Edward Calver
 
     public class DeMultiplexerElm extends ChipElm {
-	int selectBitCount;
-	int outputCount;
-	int qPin;
+	private int selectBitCount;
+	private int outputCount;
+	private int qPin;
 	boolean hasReset() {return false;}
 	public DeMultiplexerElm(int xx, int yy) { super(xx, yy); }
 	public DeMultiplexerElm(int xa, int ya, int xb, int yb, int f,

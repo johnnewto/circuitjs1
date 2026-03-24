@@ -33,16 +33,23 @@ import com.google.gwt.event.dom.client.MouseWheelEvent;
 import com.google.gwt.event.dom.client.MouseWheelHandler;
 
 public class PotElm extends CircuitElm implements Command, MouseWheelHandler {
-    final int FLAG_SHOW_VALUES = 1;
-    final int FLAG_FLIP = 2;
-    final int FLAG_FLIP_OFFSET = 4;
+    private final int FLAG_SHOW_VALUES = 1;
+    private final int FLAG_FLIP = 2;
+    private final int FLAG_FLIP_OFFSET = 4;
 
-	double position, maxResistance, resistance1, resistance2;
-	double current1, current2, current3;
-	double curcount1, curcount2, curcount3;
-	Scrollbar slider;
-	Label label;
-	String sliderText;
+	private double position;
+    private double maxResistance;
+    private double resistance1;
+    private double resistance2;
+	private double current1;
+    private double current2;
+    private double current3;
+	private double curcount1;
+    private double curcount2;
+    private double curcount3;
+	private Scrollbar slider;
+	private Label label;
+	private String sliderText;
 	public PotElm(int xx, int yy) {
 		super(xx, yy);
 		setup();
@@ -64,7 +71,7 @@ public class PotElm extends CircuitElm implements Command, MouseWheelHandler {
     	createSlider();
     }
     
-    void setup() {
+    private void setup() {
     }
     
     protected int getPostCount() { return 3; }
@@ -77,7 +84,7 @@ public class PotElm extends CircuitElm implements Command, MouseWheelHandler {
     protected String dump() { return super.dump() + " " + maxResistance + " " +
     		position + " " + sliderText; }
     
-    void createSlider() {
+    private void createSlider() {
 	    sim.getUiPanelManager().addWidgetToVerticalPanel(label = new Label());
     	label.getElement().setInnerHTML(Locale.convertToHTML(Locale.LS(sliderText)));
     	label.addStyleName("topSpace");
@@ -98,8 +105,14 @@ public class PotElm extends CircuitElm implements Command, MouseWheelHandler {
         super.delete();
     }
     
-    Point post3, corner2, arrowPoint, midpoint, arrow1, arrow2;
-    Point ps3, ps4;
+    private Point post3;
+    private Point corner2;
+    private Point arrowPoint;
+    private Point midpoint;
+    private Point arrow1;
+    private Point arrow2;
+    private Point ps3;
+    private Point ps4;
     int bodyLen;
     
     protected void setPoints() {

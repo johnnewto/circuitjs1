@@ -27,7 +27,7 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
  * Uses numerical integration: y[n+1] = y[n] + dt * f(t)
  */
 public class IntegratorElm extends CircuitElm {
-    final int FLAG_SMALL = 2;
+    private final int FLAG_SMALL = 2;
     private static final int FLAG_USE_INIT_INPUT = 4; // Flag for using init value input pin
     
     private Expr integrationExpr;           // Compiled integration expression
@@ -35,13 +35,16 @@ public class IntegratorElm extends CircuitElm {
     private double integratedValue;         // Current integration value
     private double initialValue = 0.0;      // Initial condition parameter
     private double lastVolts[];             // Last voltage values for convergence
-    int inputCount;
+    private int inputCount;
     
     // Geometry
-    int opsize, opheight, opwidth;
-    Point inPosts[], inLeads[];
-    Polygon bodyPoly;
-    Font labelFont;
+    private int opsize;
+    private int opheight;
+    private int opwidth;
+    private Point[] inPosts;
+    private Point[] inLeads;
+    private Polygon bodyPoly;
+    private Font labelFont;
     
     public IntegratorElm(int xx, int yy) {
         super(xx, yy);
@@ -110,7 +113,7 @@ public class IntegratorElm extends CircuitElm {
         }
     }
     
-    void setSize(int s) {
+    private void setSize(int s) {
         opsize = s;
         opheight = 8 * s;
         opwidth = 13 * s;

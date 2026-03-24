@@ -10,7 +10,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 
 import com.lushprojects.circuitjs1.client.util.Locale;
 
-public final class InfoViewerSimpleMarkdown {
+final class InfoViewerSimpleMarkdown {
 
     private InfoViewerSimpleMarkdown() {
     }

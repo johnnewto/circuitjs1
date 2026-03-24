@@ -74,7 +74,7 @@ public class LoadFile extends FileUpload implements  ChangeHandler {
 
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "FileReader")
 	private static class FileReaderLike {
-	    public FileReaderLike() {}
+	    FileReaderLike() {}
 	    @JsProperty native void setOnload(FileReaderOnLoad onload);
 	    @JsProperty native String getResult();
 	    @JsMethod native void readAsText(FileLike file);
@@ -138,7 +138,7 @@ public class LoadFile extends FileUpload implements  ChangeHandler {
 	    return document.getElementById("LoadFileElement");
 	}
 
-	static public final void doLoad() {
+	private static void doLoad() {
 	    InputElementLike input = getLoadFileInput();
 	    if (input == null) {
 		return;

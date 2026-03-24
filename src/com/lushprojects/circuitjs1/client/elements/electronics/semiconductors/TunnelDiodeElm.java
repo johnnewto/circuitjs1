@@ -33,13 +33,13 @@ public class TunnelDiodeElm extends CircuitElm {
 	setup();
     }
     protected boolean nonLinear() { return true; }
-    void setup() {
+    private void setup() {
     }
     protected int getDumpType() { return 175; }
 	
-    final int hs = 8;
-    Polygon poly;
-    Point cathode[];
+    private final int hs = 8;
+    private Polygon poly;
+    private Point[] cathode;
 	
     protected void setPoints() {
 	super.setPoints();
@@ -79,8 +79,8 @@ public class TunnelDiodeElm extends CircuitElm {
 	lastvoltdiff = volts[0] = volts[1] = curcount = 0;
     }
 	
-    double lastvoltdiff;
-    double limitStep(double vnew, double vold) {
+    private double lastvoltdiff;
+    private double limitStep(double vnew, double vold) {
 	// Prevent voltage changes of more than 1V when iterating.  Wow, I thought it would be
 	// much harder than this to prevent convergence problems.
 	if (vnew > vold+1)
@@ -93,12 +93,12 @@ public class TunnelDiodeElm extends CircuitElm {
 	sim.stampNonLinear(nodes[0]);
 	sim.stampNonLinear(nodes[1]);
     }
-    static final double pvp = .1;
-    static final double pip = 4.7e-3;
-    static final double pvv = .37;
-    static final double pvt = .026;
-    static final double pvpp = .525;
-    static final double piv = 370e-6;
+    private static final double pvp = .1;
+    private static final double pip = 4.7e-3;
+    private static final double pvv = .37;
+    private static final double pvt = .026;
+    private static final double pvpp = .525;
+    private static final double piv = 370e-6;
     protected void doStep() {
 	double voltdiff = volts[0] - volts[1];
 	if (Math.abs(voltdiff-lastvoltdiff) > .01)

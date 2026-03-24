@@ -32,49 +32,56 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 import java.util.Vector;
 
 public class RelayCoilElm extends CircuitElm {
-    double inductance;
-    Inductor ind;
-    String label;
-    double onCurrent, offCurrent;
-    Point coilPosts[], coilLeads[];
-    Point outline[] = newPointArray(4);
-    Point extraPoints[];
-    double coilCurrent, coilCurCount;
-    double avgCurrent;
+    private double inductance;
+    private Inductor ind;
+    private String label;
+    private double onCurrent;
+    private double offCurrent;
+    private Point[] coilPosts;
+    private Point[] coilLeads;
+    private Point[] outline = newPointArray(4);
+    private Point[] extraPoints;
+    private double coilCurrent;
+    private double coilCurCount;
+    private double avgCurrent;
     
     // fractional position, between 0 and 1 inclusive
-    double d_position;
+    private double d_position;
     
     // integer position, can be 0 (off), 1 (on), 2 (in between)
-    int i_position;
+    private int i_position;
     
-    double coilR;
+    private double coilR;
     
     // time to switch in seconds
-    double switchingTime;
-    double switchingTimeOn, switchingTimeOff;
-    double lastTransition;
+    private double switchingTime;
+    private double switchingTimeOn;
+    private double switchingTimeOff;
+    private double lastTransition;
     
-    int openhs;
+    private int openhs;
     
     // 0 = waiting for onCurrent
     // 1 = waiting to turn on
     // 2 = waiting for offCurrent
     // 3 = waiting to turn off
-    int state;
-    int switchPosition;
+    private int state;
+    private int switchPosition;
     
     public static final int TYPE_NORMAL = 0;
     public static final int TYPE_ON_DELAY = 1; 
     public static final int TYPE_OFF_DELAY = 2;
-    public static final int TYPE_LATCHING = 3;
-    int type;
+    private static final int TYPE_LATCHING = 3;
+    private int type;
     
     final int nSwitch0 = 0;
     final int nSwitch1 = 1;
     final int nSwitch2 = 2;
-    int nCoil1, nCoil2, nCoil3;
-    double currentOffset1, currentOffset2;
+    private int nCoil1;
+    private int nCoil2;
+    private int nCoil3;
+    private double currentOffset1;
+    private double currentOffset2;
     
     public RelayCoilElm(int xx, int yy) {
 	super(xx, yy);
@@ -111,7 +118,7 @@ public class RelayCoilElm extends CircuitElm {
         allocNodes();
     }
     
-    void setupPoles() {
+    private void setupPoles() {
 	nCoil1 = 0;
 	nCoil2 = nCoil1+1;
 	nCoil3 = nCoil1+2;
@@ -300,10 +307,10 @@ protected void startIteration() {
 	    setSwitchPositions();
     }
     
-    Vector<CircuitElm> elmList;
+    private Vector<CircuitElm> elmList;
     void setParentList(Vector<CircuitElm> list) { elmList = list; }
 
-    void setSwitchPositions() {
+    private void setSwitchPositions() {
 	int i;
 	for (i = 0; i != elmList.size(); i++) {
 	    Object o = elmList.elementAt(i);

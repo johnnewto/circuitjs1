@@ -26,7 +26,7 @@ public final class SimulationExportCore {
         public String outputText;
         public boolean world2Format;
         public String htmlReport;
-        public RunParameters runParameters;
+        RunParameters runParameters;
         public int rowsWritten;
     }
 
@@ -286,7 +286,7 @@ public final class SimulationExportCore {
         return html.toString();
     }
 
-    static void appendRunParametersHtml(StringBuilder html, RunParameters p) {
+    private static void appendRunParametersHtml(StringBuilder html, RunParameters p) {
         html.append("  <h3 style=\"margin:12px 0 6px 0;\">Circuit Parameters Used</h3>\n");
         html.append("  <table style=\"margin:0 0 10px 0;\">\n");
         html.append("    <thead><tr><th style=\"text-align:left\">Parameter</th><th style=\"text-align:left\">Value</th></tr></thead>\n");
@@ -390,7 +390,7 @@ public final class SimulationExportCore {
         out.append(PARAM_FMT.format(value.doubleValue()));
     }
 
-    static String escapeHtml(String input) {
+    private static String escapeHtml(String input) {
         String escaped = input;
         escaped = escaped.replace("&", "&amp;");
         escaped = escaped.replace("<", "&lt;");
@@ -415,14 +415,14 @@ public final class SimulationExportCore {
         return ComputedValues.getConvergedValue("NL");
     }
 
-    static String fmtFixed(Double value, int decimalPlaces) {
+    private static String fmtFixed(Double value, int decimalPlaces) {
         if (value == null) {
             return "";
         }
         return fmtFixedPrimitive(value.doubleValue(), decimalPlaces);
     }
 
-    static String fmtFixedPrimitive(double value, int decimalPlaces) {
+    private static String fmtFixedPrimitive(double value, int decimalPlaces) {
         if (Double.isNaN(value) || Double.isInfinite(value)) {
             return "";
         }
@@ -477,7 +477,7 @@ public final class SimulationExportCore {
 
     // ========== Runner HTML builders ==========
 
-    static String buildDelimitedHtmlReport(String outputText, char separator, String source, int steps) {
+    private static String buildDelimitedHtmlReport(String outputText, char separator, String source, int steps) {
         return buildDelimitedHtmlReport(outputText, separator, source, steps, null);
     }
 

@@ -28,9 +28,13 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class LampElm extends CircuitElm {
-	double resistance;
-	final double roomTemp = 300;
-	double temp, nom_pow, nom_v, warmTime, coolTime;
+	private double resistance;
+	private final double roomTemp = 300;
+	private double temp;
+    private double nom_pow;
+    private double nom_v;
+    private double warmTime;
+    private double coolTime;
 	public LampElm(int xx, int yy) {
 	    super(xx, yy);
 	    temp = roomTemp;
@@ -58,8 +62,10 @@ public class LampElm extends CircuitElm {
 	}
 	protected int getDumpType() { return 181; }
 
-	Point bulbLead[], filament[], bulb;
-	int bulbR;
+	private Point[] bulbLead;
+    private Point[] filament;
+    private Point bulb;
+	private int bulbR;
 
 	protected void reset() {
 	    super.reset();
@@ -67,7 +73,7 @@ public class LampElm extends CircuitElm {
 	    
 	    startIteration(); // set resistance
 	}
-	final int filament_len = 24;
+	private final int filament_len = 24;
 	protected void setPoints() {
 	    super.setPoints();
 	    int llen = 16;
@@ -83,7 +89,7 @@ public class LampElm extends CircuitElm {
 	    bulb = interpPoint(filament[0], filament[1], .5);
 	}
 
-	Color getTempColor() {
+	private Color getTempColor() {
 	    if (temp < 1200) {
 		int x = (int) (255*(temp-800)/400);
 		if (x < 0)

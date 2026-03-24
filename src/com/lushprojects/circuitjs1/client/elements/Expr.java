@@ -13,7 +13,7 @@ import jsinterop.annotations.JsType;
 
 public class Expr {
     // Global tracking of unresolved node references during evaluation
-    static Vector<String> unresolvedReferences = new Vector<String>();
+    private static Vector<String> unresolvedReferences = new Vector<String>();
     
     // Counter for assigning unique lag buffer indices at parse time
     static int nextLagIndex = 0;
@@ -51,7 +51,7 @@ public class Expr {
 	return useConvergedValues ? CONVERGED_CONTEXT : CURRENT_CONTEXT;
 	}
 
-	public static EvaluationContext getEvaluationContext(boolean useConvergedValues, double dt) {
+	private static EvaluationContext getEvaluationContext(boolean useConvergedValues, double dt) {
 	return new EvaluationContext(useConvergedValues, Double.valueOf(dt));
 	}
 
@@ -69,16 +69,16 @@ public class Expr {
     // - node ref path:    E_NODE_REF (label/computed-value HashMap lookup)
     // - local slot path:  E_A/E_DADT/E_LASTA (ExprState array index)
     // - global slot path: E_GSLOT (circuitVariables[] array index – fastest)
-    static boolean perfProbeEnabled = false;
-    static long perfNodeRefEvalCount = 0;
-    static long perfNodeRefEvalTimeNanos = 0;
-    static long perfLocalSlotEvalCount = 0;
-    static long perfLocalSlotEvalTimeNanos = 0;
-    static long perfGlobalSlotEvalCount = 0;
+    private static boolean perfProbeEnabled = false;
+    private static long perfNodeRefEvalCount = 0;
+    private static long perfNodeRefEvalTimeNanos = 0;
+    private static long perfLocalSlotEvalCount = 0;
+    private static long perfLocalSlotEvalTimeNanos = 0;
+    private static long perfGlobalSlotEvalCount = 0;
     // Note: no perfGlobalSlotEvalTimeNanos — E_GSLOT is count-only (per-call timing is dominated by JS timestamp overhead)
     // Captures the first N unique node names still going through E_NODE_REF (diagnostic)
-    static java.util.ArrayList<String> perfNodeRefNameSamples = new java.util.ArrayList<String>();
-    static final int PERF_SAMPLE_LIMIT = 30;
+    private static java.util.ArrayList<String> perfNodeRefNameSamples = new java.util.ArrayList<String>();
+    private static final int PERF_SAMPLE_LIMIT = 30;
 
     public static void setPerfProbeEnabled(boolean enabled) {
 	perfProbeEnabled = enabled;
@@ -238,7 +238,7 @@ public class Expr {
      * (e.g., parameter definitions like "rl ~ 0.025") as linear elements
      * that can be stamped once instead of recomputed every subiteration.
      */
-    boolean isConstant() {
+    private boolean isConstant() {
 	switch (type) {
 	case E_VAL:
 	    return true;
@@ -301,7 +301,7 @@ public class Expr {
      * Same as resolveGSlot but also counts outcomes.
      * Returns int[3]: [newly converted, already E_GSLOT, stayed E_NODE_REF].
      */
-    int[] resolveGSlotCounted(java.util.HashMap<String, Integer> nameToSlot) {
+    private int[] resolveGSlotCounted(java.util.HashMap<String, Integer> nameToSlot) {
 	int converted = 0, alreadySlot = 0, stayed = 0;
 	if (children != null) {
 	    for (int i = 0; i < children.size(); i++) {
@@ -438,7 +438,7 @@ public class Expr {
      * @param terms Map to populate with nodeName -> coefficient
      * @return The constant term, or null if expression is not linear
      */
-    Double getLinearTerms(java.util.HashMap<String, Double> terms) {
+    private Double getLinearTerms(java.util.HashMap<String, Double> terms) {
 	return getLinearTermsInternal(terms, 1.0);
     }
     
@@ -982,7 +982,7 @@ public class Expr {
 	return pwl(es, args, CURRENT_CONTEXT);
     }
 
-    double pwl(ExprState es, Vector<Expr> args, EvaluationContext context) {
+    private double pwl(ExprState es, Vector<Expr> args, EvaluationContext context) {
 	double x = args.get(0).eval(es, context);
 	double x0 = args.get(1).eval(es, context);
 	double y0 = args.get(2).eval(es, context);
@@ -1005,7 +1005,7 @@ public class Expr {
 	return y1;
     }
 
-    double pwlx(ExprState es, Vector<Expr> args, EvaluationContext context) {
+    private double pwlx(ExprState es, Vector<Expr> args, EvaluationContext context) {
 	double x = args.get(0).eval(es, context);
 	double x0 = args.get(1).eval(es, context);
 	double y0 = args.get(2).eval(es, context);
@@ -1042,16 +1042,16 @@ public class Expr {
 	return y0 + (x - x0) * (y1 - y0) / dx;
     }
 
-    double posmod(double x, double y) {
+    private double posmod(double x, double y) {
 	x %= y;
 	return (x >= 0) ? x : x+y;
     }
     
     Vector<Expr> children;
-    double value;
+    private double value;
     String nodeName; // For E_NODE_REF expressions
     public int type;
-    int lagIndex = -1; // Buffer index for E_LAG expressions, assigned at parse time
+    private int lagIndex = -1; // Buffer index for E_LAG expressions, assigned at parse time
 	int smoothIndex = -1; // State index for E_SMOOTH expressions, assigned at parse time
     static final int E_ADD = 1;
     static final int E_SUB = 2;
@@ -1112,5 +1112,5 @@ public class Expr {
 	static final int E_SMOOTH = E_LAG+1; // smooth(x, theta) - implicit Euler smoothing
 	static final int E_DELAY = E_SMOOTH+1; // delay(x, tau=1) - first-order lag y'=(x-y)/tau
 	static final int E_LOOKUP = E_DELAY+1; // lookup(tableName, x)
-	static final int E_GSLOT = E_LOOKUP+10; // Circuit-global array slot (fast-path replacement for E_NODE_REF)
+	private static final int E_GSLOT = E_LOOKUP+10; // Circuit-global array slot (fast-path replacement for E_NODE_REF)
 };

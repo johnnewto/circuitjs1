@@ -48,7 +48,8 @@ public class PhaseCompElm extends ChipElm {
 	sim.stampNonLinear(0);
 	sim.stampNonLinear(nodes[2]);
     }
-    boolean ff1, ff2;
+    private boolean ff1;
+    private boolean ff2;
     protected void doStep() {
 	boolean v1 = volts[0] > getThreshold();
 	boolean v2 = volts[1] > getThreshold();

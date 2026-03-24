@@ -33,18 +33,23 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class AmmeterElm extends CircuitElm {
         
-        int meter;
-	int scale;
-        final int AM_VOL = 0;
-        final int AM_RMS = 1;
-        int zerocount=0;
-        double rmsI=0, total, count;
-        double maxI=0, lastMaxI;
-        double minI=0, lastMinI;
-        double selectedValue=0;
+        private int meter;
+	private int scale;
+        private final int AM_VOL = 0;
+        private final int AM_RMS = 1;
+        private int zerocount=0;
+        private double rmsI=0;
+    private double total;
+    private double count;
+        private double maxI=0;
+    private double lastMaxI;
+        private double minI=0;
+    private double lastMinI;
+        private double selectedValue=0;
         
         double currents[];
-        boolean increasingI=true, decreasingI=true;
+        private boolean increasingI=true;
+    private boolean decreasingI=true;
 
     public AmmeterElm(int xx, int yy) { 
         super(xx, yy); 
@@ -78,10 +83,10 @@ public class AmmeterElm extends CircuitElm {
         center = interpPoint(point1,point2,0.5);
         arrowPoly = calcArrow(point1, mid, 14, 7);
     }
-    Point center;
-    Point mid;
-    static final int FLAG_SHOWCURRENT = 1;
-    static final int FLAG_CIRCLE = 2;  // Add this line
+    private Point center;
+    private Point mid;
+    private static final int FLAG_SHOWCURRENT = 1;
+    private static final int FLAG_CIRCLE = 2;  // Add this line
 
     protected void stepFinished(){
         count++;//how many counts are in a cycle    
@@ -152,7 +157,7 @@ public class AmmeterElm extends CircuitElm {
         }
     }
     
-    Polygon arrowPoly;
+    private Polygon arrowPoly;
     protected void draw(Graphics g) {
         super.draw(g);//BC required for highlighting
         setVoltageColor(g, volts[0]);
@@ -199,7 +204,7 @@ public class AmmeterElm extends CircuitElm {
         drawPosts(g);
     }
 
-    final int circleSize = 12;
+    private final int circleSize = 12;
 
     protected int getDumpType() { return 370; }
     protected void stamp() {
@@ -227,7 +232,7 @@ public class AmmeterElm extends CircuitElm {
     // (because we need current calculated every timestep)    
     protected boolean isWireEquivalent() { return true; }
     
-    boolean drawAsCircle() {
+    private boolean drawAsCircle() {
         return (flags & FLAG_CIRCLE) != 0;
     }
 

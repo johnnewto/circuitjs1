@@ -22,46 +22,46 @@ import com.lushprojects.circuitjs1.client.elements.economics.TableColumn.ColumnT
  * Separates rendering logic from circuit simulation logic
  */
 public class TableRenderer {
-    protected final TableElm table;  // Protected to allow subclass access
+    final TableElm table;  // Protected to allow subclass access
     private java.util.HashMap<String, String> truncatedTextCache = new java.util.HashMap<String, String>();
     private static final int TRUNCATED_TEXT_CACHE_LIMIT = 4000;
     
     // Cache for cell values to avoid recalculating every frame
-    protected double[][] cachedCellValues;
-    protected double[] cachedSumValues;
-    protected long lastUpdateTime = 0;  // Timestamp of last cache update
-    protected static final long UPDATE_INTERVAL_MS = 200; // Update 5 times per second
+    double[][] cachedCellValues;
+    double[] cachedSumValues;
+    private long lastUpdateTime = 0;  // Timestamp of last cache update
+    private static final long UPDATE_INTERVAL_MS = 200; // Update 5 times per second
     
     // Fonts for different parts of the table
     // Protected to allow subclasses (CurrentTransactionsMatrixRenderer) to use these constants
     private static final Font TITLE_FONT = new Font("SansSerif", Font.BOLD, 13);
-    protected static final Font HEADER_FONT = new Font("SansSerif", Font.BOLD, 11);
-    protected static final Font CELL_FONT = new Font("SansSerif", 0, 11);  // Non-bold like ActionTimeElm
+    static final Font HEADER_FONT = new Font("SansSerif", Font.BOLD, 11);
+    static final Font CELL_FONT = new Font("SansSerif", 0, 11);  // Non-bold like ActionTimeElm
     private static final Font PERF_FONT = new Font("SansSerif", 0, 9);
-    protected static final String LETTER_SPACING = "0.5px"; // For better readability
+    static final String LETTER_SPACING = "0.5px"; // For better readability
     
     // Modern styling configuration
-    protected static final boolean MODERN_STYLE = true; // Enable modern CSS-inspired styling
-    protected static final int CORNER_RADIUS = 8; // Rounded corner radius for modern look
+    private static final boolean MODERN_STYLE = true; // Enable modern CSS-inspired styling
+    private static final int CORNER_RADIUS = 8; // Rounded corner radius for modern look
     
     // Modern color scheme (inspired by Piccalilli's table styling)
     // Dark mode colors
-    protected static final Color HEADER_BG_DARK = new Color(55, 55, 75);     // Subtle blue-tinted header
-    protected static final Color FOOTER_BG_DARK = new Color(55, 55, 75);     // Match header
-    protected static final Color ROW_EVEN_BG_DARK = new Color(45, 45, 50);   // Slightly lighter alternate
-    protected static final Color ROW_ODD_BG_DARK = new Color(35, 35, 40);    // Base row color
-    protected static final Color TABLE_BG_DARK = new Color(30, 30, 35);      // Table background
-    protected static final Color GRID_LINE_DARK = new Color(60, 60, 65);     // Subtle grid lines
-    protected static final Color HEADER_BORDER_DARK = new Color(80, 80, 100); // Stronger header border
+    private static final Color HEADER_BG_DARK = new Color(55, 55, 75);     // Subtle blue-tinted header
+    private static final Color FOOTER_BG_DARK = new Color(55, 55, 75);     // Match header
+    private static final Color ROW_EVEN_BG_DARK = new Color(45, 45, 50);   // Slightly lighter alternate
+    private static final Color ROW_ODD_BG_DARK = new Color(35, 35, 40);    // Base row color
+    private static final Color TABLE_BG_DARK = new Color(30, 30, 35);      // Table background
+    private static final Color GRID_LINE_DARK = new Color(60, 60, 65);     // Subtle grid lines
+    private static final Color HEADER_BORDER_DARK = new Color(80, 80, 100); // Stronger header border
     
     // Light mode colors (printable)
-    protected static final Color HEADER_BG_LIGHT = new Color(235, 235, 245);   // Light purple-tinted
-    protected static final Color FOOTER_BG_LIGHT = new Color(235, 235, 245);   // Match header
-    protected static final Color ROW_EVEN_BG_LIGHT = new Color(248, 248, 252); // Very subtle alternate
-    protected static final Color ROW_ODD_BG_LIGHT = new Color(255, 255, 255);  // White base
-    protected static final Color TABLE_BG_LIGHT = new Color(255, 255, 255);    // White background
-    protected static final Color GRID_LINE_LIGHT = new Color(220, 220, 230);   // Subtle grid
-    protected static final Color HEADER_BORDER_LIGHT = new Color(180, 180, 200); // Stronger header border
+    private static final Color HEADER_BG_LIGHT = new Color(235, 235, 245);   // Light purple-tinted
+    private static final Color FOOTER_BG_LIGHT = new Color(235, 235, 245);   // Match header
+    private static final Color ROW_EVEN_BG_LIGHT = new Color(248, 248, 252); // Very subtle alternate
+    private static final Color ROW_ODD_BG_LIGHT = new Color(255, 255, 255);  // White base
+    private static final Color TABLE_BG_LIGHT = new Color(255, 255, 255);    // White background
+    private static final Color GRID_LINE_LIGHT = new Color(220, 220, 230);   // Subtle grid
+    private static final Color HEADER_BORDER_LIGHT = new Color(180, 180, 200); // Stronger header border
     
     // Cached canvas for static parts (backgrounds, grid lines, borders)
     // Only text is redrawn each frame - major performance win for tables
@@ -90,7 +90,7 @@ public class TableRenderer {
     private long contentCachedDataTime = -1;
     private int cacheRebuildCount = 0;
     private long lastCacheHitLogTime = 0;
-    protected static final long CACHE_HIT_LOG_INTERVAL_MS = 2000;
+    private static final long CACHE_HIT_LOG_INTERVAL_MS = 2000;
     private boolean skipDataRowGridLinesInDynamicPass = false;
     private boolean skipNonDataRowGridLinesInDynamicPass = false;
     private double renderTimeEmaMs = 0;
@@ -590,10 +590,10 @@ public class TableRenderer {
         }
     }
 
-    protected void onStaticCacheRebuilt() {
+    void onStaticCacheRebuilt() {
     }
 
-    protected void onCacheHit() {
+    private void onCacheHit() {
         long now = System.currentTimeMillis();
         if (now - lastCacheHitLogTime < CACHE_HIT_LOG_INTERVAL_MS) {
             return;
@@ -602,38 +602,38 @@ public class TableRenderer {
         onCacheHitThrottled();
     }
 
-    protected void onCacheHitThrottled() {
+    void onCacheHitThrottled() {
     }
 
     // Helper methods for modern styling colors based on theme
-    protected boolean isPrintable() {
+    private boolean isPrintable() {
         return CirSim.getInstance().printableCheckItem.getState();
     }
     
-    protected Color getHeaderBgColor() {
+    private Color getHeaderBgColor() {
         return isPrintable() ? HEADER_BG_LIGHT : HEADER_BG_DARK;
     }
     
-    protected Color getFooterBgColor() {
+    private Color getFooterBgColor() {
         return isPrintable() ? FOOTER_BG_LIGHT : FOOTER_BG_DARK;
     }
     
-    protected Color getRowBgColor(int row) {
+    private Color getRowBgColor(int row) {
         if (isPrintable()) {
             return (row % 2 == 0) ? ROW_EVEN_BG_LIGHT : ROW_ODD_BG_LIGHT;
         }
         return (row % 2 == 0) ? ROW_EVEN_BG_DARK : ROW_ODD_BG_DARK;
     }
     
-    protected Color getTableBgColor() {
+    private Color getTableBgColor() {
         return isPrintable() ? TABLE_BG_LIGHT : TABLE_BG_DARK;
     }
     
-    protected Color getGridLineColor() {
+    private Color getGridLineColor() {
         return isPrintable() ? GRID_LINE_LIGHT : GRID_LINE_DARK;
     }
     
-    protected Color getHeaderBorderColor() {
+    private Color getHeaderBorderColor() {
         return isPrintable() ? HEADER_BORDER_LIGHT : HEADER_BORDER_DARK;
     }
     
@@ -641,7 +641,7 @@ public class TableRenderer {
      * Get text color that's appropriate for the current theme.
      * Uses white for dark mode and dark gray for light/printable mode.
      */
-    protected Color getTextColor() {
+    Color getTextColor() {
         if (MODERN_STYLE && isPrintable()) {
             return new Color(30, 30, 30); // Dark text for light backgrounds
         }
@@ -654,7 +654,7 @@ public class TableRenderer {
      * @param units The unit suffix (e.g., "V", "$", "")
      * @return Formatted string
      */
-    protected String formatDisplayValue(double value, String units) {
+    String formatDisplayValue(double value, String units) {
         // Treat very small values as zero
         if (Math.abs(value) < 0.01) {
             value = 0.0;
@@ -742,7 +742,7 @@ public class TableRenderer {
      * so text stays readable even when table is highlighted
      * Protected to allow subclasses (CurrentTransactionsMatrixRenderer) to reuse this logic
      */
-    protected Color getTextVoltageColor(double volts) {
+    Color getTextVoltageColor(double volts) {
         if (!CirSim.getInstance().voltsCheckItem.getState()) {
             return CircuitElm.whiteColor;
         }
@@ -886,7 +886,7 @@ public class TableRenderer {
      * SFCTableRenderer overrides this to return false.
      * @return true to show type row, false to hide it
      */
-    protected boolean shouldShowTypeRow() {
+    boolean shouldShowTypeRow() {
         return true;
     }
     
@@ -895,7 +895,7 @@ public class TableRenderer {
      * CTM uses this to account for the table name row.
      * @return Height in pixels of extra rows (0 for base class)
      */
-    protected int getExtraRowsBeforeTypeRowHeight() {
+    int getExtraRowsBeforeTypeRowHeight() {
         return 0;
     }
     
@@ -1044,7 +1044,7 @@ public class TableRenderer {
      * @param currentY The current Y offset
      * @return The updated Y offset after drawing (if any)
      */
-    protected int drawExtraRowsBeforeTypeRow(Graphics g, int currentY) {
+    int drawExtraRowsBeforeTypeRow(Graphics g, int currentY) {
         // Base class does nothing, subclasses can override
         return currentY;
     }
@@ -1071,7 +1071,7 @@ public class TableRenderer {
      * This allows tables to have independent cell-level calculations while
      * showing synchronized stock totals in the "Computed" row.
      */
-    protected void updateCachedValues() {
+    void updateCachedValues() {
         initializeCacheArrays();
         updateRegularCellValues();
         updateColumnSums();
@@ -1226,7 +1226,7 @@ public class TableRenderer {
      * @return Cached cell value or 0.0 if out of bounds
      * Protected to allow subclasses (CurrentTransactionsMatrixRenderer) to reuse this logic
      */
-    protected double getCachedCellValue(int row, int col) {
+    double getCachedCellValue(int row, int col) {
         if (cachedCellValues != null && row >= 0 && row < cachedCellValues.length &&
             col >= 0 && col < cachedCellValues[row].length) {
             return cachedCellValues[row][col];
@@ -1239,7 +1239,7 @@ public class TableRenderer {
      * Master tables use their own computed values, non-master tables fetch from ComputedValues
      * Protected to allow subclasses to reuse this logic
      */
-    protected double getRegularColumnSum(int col) {
+    private double getRegularColumnSum(int col) {
         if (table.isMasterForColumn(col)) {
             // Master column: use our own computed value
             return table.getComputedValueForDisplay(col);
@@ -1262,7 +1262,7 @@ public class TableRenderer {
      * Subclasses (like CTM) can override for custom calculation.
      * Protected to allow subclasses to override.
      */
-    protected double getALEInitialValue() {
+    double getALEInitialValue() {
         if (!hasALEColumn()) {
             return 0.0;
         }
@@ -1286,7 +1286,7 @@ public class TableRenderer {
      * Subclasses (like CTM) can override for custom calculation.
      * Protected to allow subclasses to override.
      */
-    protected double getALESumValue() {
+    double getALESumValue() {
         if (!hasALEColumn()) {
             return 0.0;
         }
@@ -1315,7 +1315,7 @@ public class TableRenderer {
      * @param totalLiabilities Pre-calculated total liabilities for this row
      * @param totalEquity Pre-calculated total equity for this row
      */
-    protected double getALERowValue(int row, double totalAssets, double totalLiabilities, double totalEquity) {
+    double getALERowValue(int row, double totalAssets, double totalLiabilities, double totalEquity) {
         return totalAssets - totalLiabilities - totalEquity;
     }
     
@@ -1323,7 +1323,7 @@ public class TableRenderer {
      * Check if the table has an ALE column (controlled by showALE property)
      * Protected to allow subclasses to reuse this logic
      */
-    protected boolean hasALEColumn() {
+    boolean hasALEColumn() {
         if (!table.shouldShowALE()) {
             return false;
         }
@@ -1347,7 +1347,7 @@ public class TableRenderer {
      * Get the number of regular (non-ALE) columns
      * Protected to allow subclasses to reuse this logic
      */
-    protected int getRegularColumnCount() {
+    int getRegularColumnCount() {
         return hasALEColumn() ? (table.getCols() - 1) : table.getCols();
     }
     
@@ -1358,7 +1358,7 @@ public class TableRenderer {
      * @param cellWidthPixels Standard cell width in pixels
      * @return Width of the column in pixels
      */
-    protected int getColumnWidth(int col, int cellWidthPixels) {
+    int getColumnWidth(int col, int cellWidthPixels) {
         boolean isALECol = hasALEColumn() && col == table.getCols() - 1;
         return isALECol ? cellWidthPixels / 2 : cellWidthPixels;
     }
@@ -1372,7 +1372,7 @@ public class TableRenderer {
      * @param cellWidthPixels Standard cell width in pixels
      * @return X position of the column
      */
-    protected int getColumnX(int col, int tableX, int rowDescColWidth, int cellWidthPixels) {
+    int getColumnX(int col, int tableX, int rowDescColWidth, int cellWidthPixels) {
         int x = tableX + rowDescColWidth + table.cellSpacing * 2;
         for (int c = 0; c < col; c++) {
             x += getColumnWidth(c, cellWidthPixels) + table.cellSpacing;
@@ -1385,7 +1385,7 @@ public class TableRenderer {
      * @param cellWidthPixels Standard cell width in pixels
      * @return Total width of all data columns including spacing
      */
-    protected int getTotalDataColumnsWidth(int cellWidthPixels) {
+    private int getTotalDataColumnsWidth(int cellWidthPixels) {
         int totalWidth = 0;
         for (int c = 0; c < table.getCols(); c++) {
             totalWidth += getColumnWidth(c, cellWidthPixels) + table.cellSpacing;
@@ -1397,7 +1397,7 @@ public class TableRenderer {
      * Get the stock name for a column (null if none)
      * Protected to allow subclasses to reuse this logic
      */
-    protected String getColumnStockName(int col) {
+    private String getColumnStockName(int col) {
         if (col >= 0 && col < table.columns.size()) {
             String name = table.columns.get(col).getStockName();
             if (name != null && !name.trim().isEmpty()) {
@@ -1411,7 +1411,7 @@ public class TableRenderer {
      * Get the column type, handling null cases
      * Protected to allow subclasses (CurrentTransactionsMatrixRenderer) to reuse this logic
      */
-    protected ColumnType getColumnType(int col) {
+    private ColumnType getColumnType(int col) {
         if (col >= 0 && col < table.columns.size()) {
             return table.columns.get(col).getType();
         }
@@ -1427,7 +1427,7 @@ public class TableRenderer {
      * @param value Computed value for this column
      * @return true if column should be colored blue, false for normal voltage coloring
      */
-    protected boolean shouldColorComputedColumnBlue(int col, double value) {
+    boolean shouldColorComputedColumnBlue(int col, double value) {
         // Default: color blue if non-zero (indicates accounting discrepancy in A-L-E)
         return Math.abs(value) > 1e-6;
     }
@@ -1445,7 +1445,7 @@ public class TableRenderer {
         contentCachedDataTime = -1;
     }
     
-    protected void drawTitle(Graphics g, int offsetY) {
+    private void drawTitle(Graphics g, int offsetY) {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
@@ -1502,7 +1502,7 @@ public class TableRenderer {
         g.drawLine(tableX + inset, titleBottomY, tableX + tableWidth - inset, titleBottomY);
     }
 
-    protected void drawColumnHeaders(Graphics g, int offsetY) {
+    void drawColumnHeaders(Graphics g, int offsetY) {
         g.setFont(HEADER_FONT);
         g.setLetterSpacing(LETTER_SPACING);
         g.setColor(getTextColor());
@@ -1617,7 +1617,7 @@ public class TableRenderer {
         }
     }
     
-    protected void drawColumnTypeRow(Graphics g, int offsetY) {
+    void drawColumnTypeRow(Graphics g, int offsetY) {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
@@ -1684,7 +1684,7 @@ public class TableRenderer {
         }
     }
 
-    protected void drawInitialConditionsRow(Graphics g, int offsetY) {
+    private void drawInitialConditionsRow(Graphics g, int offsetY) {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
@@ -1736,7 +1736,7 @@ public class TableRenderer {
         }
     }
 
-    protected void drawTableCells(Graphics g, int offsetY) {
+    private void drawTableCells(Graphics g, int offsetY) {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
@@ -1900,7 +1900,7 @@ public class TableRenderer {
         int cellWidthPixels = table.getCellWidthPixels();
         int availableWidth = cellWidthPixels - 20;
         return truncateText(equation, g, availableWidth);
-    }    protected void drawSumRow(Graphics g, int offsetY) {
+    }    void drawSumRow(Graphics g, int offsetY) {
         int tableX = table.getTableX();
         int tableY = table.getTableY();
         int cellWidthPixels = table.getCellWidthPixels();
@@ -2029,7 +2029,7 @@ public class TableRenderer {
      * Protected to allow subclasses (CurrentTransactionsMatrixRenderer) to reuse this logic
      * @param isSumRow if true, draws a double line above the row
      */
-    protected void drawRowGridLine(Graphics g, int offsetY, int tableX, int rowDescColWidth, int cellWidthPixels, boolean isSumRow) {
+    void drawRowGridLine(Graphics g, int offsetY, int tableX, int rowDescColWidth, int cellWidthPixels, boolean isSumRow) {
         int tableY = table.getTableY();
         int rowY = tableY + offsetY;
         
@@ -2090,7 +2090,7 @@ public class TableRenderer {
         }
     }
     
-    protected void drawPins(Graphics g) {
+    private void drawPins(Graphics g) {
         // HIDDEN: Pins and posts are not drawn visually, but electrical connections remain functional
         // Update current counts for proper circuit simulation even though not displayed
         for (int i = 0; i < table.getPostCount(); i++) {

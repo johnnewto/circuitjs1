@@ -20,7 +20,7 @@ public class DarlingtonElm extends CompositeElm {
     private static String modelString = "NTransistorElm 1 2 4\rNTransistorElm 4 2 3";
     private static int[] modelExternalNodes = {1, 2, 3};
     
-    protected DarlingtonElm(int xx, int yy, boolean pnpflag) {
+    DarlingtonElm(int xx, int yy, boolean pnpflag) {
 	super(xx, yy, modelString, modelExternalNodes);
 	pnp = (pnpflag) ? -1 : 1;
 	((TransistorElm) compElmList.get(0)).pnp=pnp;

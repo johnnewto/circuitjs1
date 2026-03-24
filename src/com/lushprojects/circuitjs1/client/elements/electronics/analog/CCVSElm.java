@@ -33,9 +33,9 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.elements.electronics.sources.VoltageElm;
 
 public class CCVSElm extends VCCSElm {
-    	static int FLAG_SPICE = 2;
-    	VoltageElm voltageSources[];
-    	int outputVS;
+    	private static int FLAG_SPICE = 2;
+    	private VoltageElm[] voltageSources;
+    	private int outputVS;
     
 	public CCVSElm(int xa, int ya, int xb, int yb, int f,
 		      StringTokenizer st) {
@@ -52,7 +52,7 @@ public class CCVSElm extends VCCSElm {
 //	    setupPins();
 	}
 	
-	int inputPairCount;
+	private int inputPairCount;
 	
 	protected void setupPins() {
 	    sizeX = 2;
@@ -96,7 +96,7 @@ public class CCVSElm extends VCCSElm {
             context.stampVoltageSource(nodes[inputCount+1], nodes[inputCount], vn2);
 	}
 
-	double lastCurrents[];
+	private double[] lastCurrents;
 	
         protected void doStep() {
             SimulationContext context = getSimulationContext();
@@ -155,7 +155,7 @@ public class CCVSElm extends VCCSElm {
             exprState.updateLastValues(volts[inputCount]-volts[inputCount+1]);
         }
 
-        void setCurrentExprValue(int n, double cur) {
+        private void setCurrentExprValue(int n, double cur) {
             // set i to current for backward compatibility
             if (n == 0 && inputPairCount < 9)
         	exprState.values[8] = cur;
@@ -169,7 +169,7 @@ public class CCVSElm extends VCCSElm {
 	    return (n1/2 == n2/2);
 	}
         public boolean hasCurrentOutput() { return false; }
-        boolean isSpiceStyle() { return (flags & FLAG_SPICE) != 0; }
+        private boolean isSpiceStyle() { return (flags & FLAG_SPICE) != 0; }
 protected void setCurrent(int vn, double c) {
             int i = 0;
             if (!isSpiceStyle()) {

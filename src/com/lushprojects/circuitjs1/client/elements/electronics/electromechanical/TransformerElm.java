@@ -28,14 +28,21 @@ import com.lushprojects.circuitjs1.client.elements.electronics.Inductor;
 import com.lushprojects.circuitjs1.client.util.*;
 
 public class TransformerElm extends CircuitElm {
-	double inductance, ratio, couplingCoef;
-	Point ptEnds[], ptCoil[], ptCore[];
-	double current[], curcount[];
-	Point dots[];
-	int width, polarity, flip;
-	public static final int FLAG_REVERSE = 4;
-	public static final int FLAG_VERTICAL = 8;
-	public static final int FLAG_FLIP = 16;
+	private double inductance;
+    private double ratio;
+    private double couplingCoef;
+	private Point[] ptEnds;
+    private Point[] ptCoil;
+    private Point[] ptCore;
+	private double[] current;
+    private double[] curcount;
+	private Point[] dots;
+	private int width;
+    private int polarity;
+    private int flip;
+	private static final int FLAG_REVERSE = 4;
+	private static final int FLAG_VERTICAL = 8;
+	private static final int FLAG_FLIP = 16;
 	public TransformerElm(int xx, int yy) {
 	    super(xx, yy);
 	    inductance = 4;
@@ -88,7 +95,7 @@ public class TransformerElm extends CircuitElm {
 	    return super.dump() + " " + inductance + " " + ratio + " " +
 		current[0] + " " + current[1] + " " + couplingCoef;
 	}
-	boolean isTrapezoidal() { return (flags & Inductor.FLAG_BACK_EULER) == 0; }
+	private boolean isTrapezoidal() { return (flags & Inductor.FLAG_BACK_EULER) == 0; }
 	protected void draw(Graphics g) {
 	    int i;
 	    for (i = 0; i != 4; i++) {
@@ -164,7 +171,10 @@ public class TransformerElm extends CircuitElm {
 	    current[0] = current[1] = volts[0] = volts[1] = volts[2] =
 		volts[3] = curcount[0] = curcount[1] = curSourceValue1 = curSourceValue2 = 0;
 	}
-	double a1, a2, a3, a4;
+	private double a1;
+    private double a2;
+    private double a3;
+    private double a4;
 	protected void stamp() {
 	    // equations for transformer:
 	    //   v1 = L1 di1/dt + M  di2/dt
@@ -224,7 +234,8 @@ protected void startIteration() {
 		curSourceValue2 = current[1];
 	    } 
 	}
-	double curSourceValue1, curSourceValue2;
+	private double curSourceValue1;
+    private double curSourceValue2;
 	protected void doStep() {
 	    sim.stampCurrentSource(nodes[0], nodes[2], curSourceValue1);
 	    sim.stampCurrentSource(nodes[1], nodes[3], curSourceValue2);

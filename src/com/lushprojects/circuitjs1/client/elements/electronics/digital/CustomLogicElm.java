@@ -12,14 +12,15 @@ import com.google.gwt.user.client.ui.Button;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class CustomLogicElm extends ChipElm {
-    String modelName;
-    int postCount;
-    int inputCount, outputCount;
-    CustomLogicModel model;
-    boolean lastValues[];
-    boolean patternValues[];
-    boolean highImpedance[];
-    static String lastModelName = "default";
+    private String modelName;
+    private int postCount;
+    private int inputCount;
+    private int outputCount;
+    private CustomLogicModel model;
+    private boolean[] lastValues;
+    private boolean[] patternValues;
+    private boolean[] highImpedance;
+    private static String lastModelName = "default";
     
     public CustomLogicElm(int xx, int yy) {
 	super(xx, yy);
@@ -62,7 +63,7 @@ public class CustomLogicElm extends ChipElm {
 	return model.dump();
     }
     
-    public void updateModels() {
+    protected void updateModels() {
 	model = CustomLogicModel.getModelWithNameOrCopy(modelName, model);
 	setupPins();
 	allocNodes();
@@ -109,7 +110,7 @@ public class CustomLogicElm extends ChipElm {
     }
 
     // keep track of whether we have any tri-state outputs.  if not, then we can simplify things quite a bit, making the simulation faster
-    boolean hasTriState() { return model == null ? false : model.triState; }
+    private boolean hasTriState() { return model == null ? false : model.triState; }
     
     protected boolean nonLinear() { return hasTriState(); }
     

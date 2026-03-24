@@ -17,15 +17,15 @@ import com.google.gwt.user.client.ui.TextArea;
 
 public class CustomLogicModel implements Editable {
 
-    static int FLAG_SCHMITT = 1;
-    static HashMap<String, CustomLogicModel> modelMap;
+    private static int FLAG_SCHMITT = 1;
+    private static HashMap<String, CustomLogicModel> modelMap;
     
-    int flags;
-    String name;
+    private int flags;
+    private String name;
     public String[] inputs;
     public String[] outputs;
     public String infoText;
-    String rules;
+    private String rules;
     public Vector<String> rulesLeft, rulesRight;
     public boolean dumped;
     public boolean triState;
@@ -66,7 +66,7 @@ public class CustomLogicModel implements Editable {
 	}
     }
     
-    CustomLogicModel() {
+    private CustomLogicModel() {
 	inputs = listToArray("A,B");
 	outputs = listToArray("C,D");
 	rulesLeft = new Vector<String>();
@@ -74,7 +74,7 @@ public class CustomLogicModel implements Editable {
 	rules = "";
     }
     
-    CustomLogicModel(CustomLogicModel copy) {
+    private CustomLogicModel(CustomLogicModel copy) {
 	flags = copy.flags;
 	inputs = copy.inputs;
 	outputs = copy.outputs;
@@ -90,7 +90,7 @@ public class CustomLogicModel implements Editable {
 	model.undump(st);
     }
     
-    void undump(StringTokenizer st) {
+    private void undump(StringTokenizer st) {
 	flags = Integer.parseInt(st.nextToken());
 	inputs = listToArray(unescape(st.nextToken()));
 	outputs = listToArray(unescape(st.nextToken()));
@@ -99,7 +99,7 @@ public class CustomLogicModel implements Editable {
 	parseRules();
     }
     
-    String arrayToList(String arr[]) {
+    private String arrayToList(String arr[]) {
 	if (arr == null)
 	    return "";
 	if (arr.length == 0)
@@ -111,7 +111,7 @@ public class CustomLogicModel implements Editable {
 	return x;
     }
     
-    String [] listToArray(String arr) {
+    private String [] listToArray(String arr) {
 	return arr.split(",");
     }
     
@@ -169,7 +169,7 @@ public class CustomLogicModel implements Editable {
 	CirSim.getInstance().updateModels();
     }
 
-    void parseRules() {
+    private void parseRules() {
 	String lines[] = rules.split("\n");
 	int i;
 	rulesLeft = new Vector<String>();

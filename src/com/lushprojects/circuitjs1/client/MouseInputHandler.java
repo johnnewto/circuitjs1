@@ -125,10 +125,10 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
     void setMousePost(int value) { mousePost = value; }
     int getDraggingPost() { return draggingPost; }
     void setDraggingPost(int value) { draggingPost = value; }
-    boolean isMouseDragging() { return mouseDragging; }
-    void setMouseDragging(boolean value) { mouseDragging = value; }
+    private boolean isMouseDragging() { return mouseDragging; }
+    private void setMouseDragging(boolean value) { mouseDragging = value; }
 
-    boolean doSwitch(int x, int y) {
+    private boolean doSwitch(int x, int y) {
         CircuitElm mouseElm = sim.getMouseElmForRouting();
         if (mouseElm == null || !(mouseElm instanceof SwitchElm))
             return false;
@@ -143,7 +143,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         return true;
     }
 
-    boolean doTableCollapseToggle(int x, int y) {
+    private boolean doTableCollapseToggle(int x, int y) {
         CircuitElm mouseElm = sim.getMouseElmForRouting();
         if (mouseElm == null || !(mouseElm instanceof TableElm))
             return false;
@@ -156,7 +156,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         return true;
     }
 
-    void mouseDragged(MouseMoveEvent e) {
+    private void mouseDragged(MouseMoveEvent e) {
         if (e.getNativeButton() == com.google.gwt.dom.client.NativeEvent.BUTTON_RIGHT) {
             if (!(e.isMetaKeyDown() ||
                   e.isShiftKeyDown() ||
@@ -228,7 +228,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         sim.repaint();
     }
 
-    void dragSplitter(int x, int y) {
+    private void dragSplitter(int x, int y) {
         double h = (double) sim.canvasHeight;
         if (h < 1)
             h = 1;
@@ -241,7 +241,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         sim.repaint();
     }
 
-    void dragAll(int x, int y) {
+    private void dragAll(int x, int y) {
         int dx = x - dragScreenX;
         int dy = y - dragScreenY;
         if (dx == 0 && dy == 0)
@@ -251,7 +251,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         dragScreenY = y;
     }
 
-    void dragRow(int x, int y) {
+    private void dragRow(int x, int y) {
         int dy = y - dragGridY;
         if (dy == 0)
             return;
@@ -266,7 +266,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         sim.removeZeroLengthElements();
     }
 
-    void dragColumn(int x, int y) {
+    private void dragColumn(int x, int y) {
         int dx = x - dragGridX;
         if (dx == 0)
             return;
@@ -281,7 +281,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         sim.removeZeroLengthElements();
     }
 
-    boolean onlyGraphicsElmsSelected() {
+    private boolean onlyGraphicsElmsSelected() {
         CircuitElm mouseElm = sim.getMouseElmForRouting();
         if (mouseElm != null && !(mouseElm instanceof GraphicElm))
             return false;
@@ -294,7 +294,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         return true;
     }
 
-    boolean dragSelected(int x, int y) {
+    private boolean dragSelected(int x, int y) {
         boolean me = false;
         int i;
         CircuitElm mouseElm = sim.getMouseElmForRouting();
@@ -336,7 +336,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         return allowed;
     }
 
-    void dragPost(int x, int y, boolean all) {
+    private void dragPost(int x, int y, boolean all) {
         CircuitElm mouseElm = sim.getMouseElmForRouting();
         if (mouseElm == null)
             return;
@@ -374,7 +374,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         sim.needAnalyze();
     }
 
-    void selectArea(int x, int y, boolean add) {
+    private void selectArea(int x, int y, boolean add) {
         int x1 = sim.min(x, initDragGridX);
         int x2 = sim.max(x, initDragGridX);
         int y1 = sim.min(y, initDragGridY);
@@ -388,7 +388,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         sim.enableDisableMenuItems();
     }
 
-    boolean mouseIsOverSplitter(int x, int y) {
+    private boolean mouseIsOverSplitter(int x, int y) {
         boolean isOverSplitter;
         if (sim.scopeCount == 0)
             return false;
@@ -404,7 +404,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         return isOverSplitter;
     }
 
-    void updateActionTimeElmIconHover(int gx, int gy) {
+    private void updateActionTimeElmIconHover(int gx, int gy) {
         for (int i = 0; i != sim.elmList.size(); i++) {
             CircuitElm ce = sim.getElm(i);
             if (ce instanceof ActionTimeElm) {
@@ -428,7 +428,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         sim.getScopeManager().setScopeMenuSelected(-1);
     }
 
-    void mouseSelect(MouseEvent<?> e) {
+    private void mouseSelect(MouseEvent<?> e) {
         CircuitElm newMouseElm = null;
         mouseCursorX = e.getX();
         mouseCursorY = e.getY();
@@ -525,7 +525,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         }
     }
 
-    void doPopupMenu() {
+    private void doPopupMenu() {
         if (sim.noEditCheckItem.getState() || sim.dialogIsShowing())
             return;
         sim.getMenuUiState().menuElm = sim.getMouseElmForRouting();
@@ -608,7 +608,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         }
     }
 
-    boolean canSplit(CircuitElm ce) {
+    private boolean canSplit(CircuitElm ce) {
         if (!(ce instanceof WireElm))
             return false;
         WireElm we = (WireElm) ce;
@@ -617,7 +617,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         return false;
     }
 
-    boolean sliderItemEnabled(CircuitElm elm) {
+    private boolean sliderItemEnabled(CircuitElm elm) {
         int i;
 
         if (elm instanceof VarRailElm || elm instanceof PotElm)

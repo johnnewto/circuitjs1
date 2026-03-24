@@ -17,7 +17,7 @@ import java.util.Map;
  * Base class for circuit elements that can provide computed values to observers
  * This provides a cleaner alternative to the global LabeledNodeElm computed value system
  */
-public abstract class ComputedValueProvider extends CircuitElm {
+abstract class ComputedValueProvider extends CircuitElm {
     
     private Map<String, List<ComputedValueObserver>> observers = new HashMap<>();
     private Map<String, Double> computedValues = new HashMap<>();

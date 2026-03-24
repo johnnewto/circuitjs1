@@ -29,14 +29,16 @@ import com.google.gwt.canvas.dom.client.Context2d.TextBaseline;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class MotorProtectionSwitchElm extends CircuitElm {
-	double resistance;
-	double heats[];
-	double i2t;
-	Point posts[], leads[];
-	double currents[], curcounts[];
-	boolean blown;
-	String label;
-	final double blownResistance = 1e9;
+	private double resistance;
+	private double[] heats;
+	private double i2t;
+	private Point[] posts;
+    private Point[] leads;
+	private double[] currents;
+    private double[] curcounts;
+	private boolean blown;
+	private String label;
+	private final double blownResistance = 1e9;
 	public MotorProtectionSwitchElm(int xx, int yy) {
 	    super(xx, yy);
 	    // from https://m.littelfuse.com/~/media/electronics/datasheets/fuses/littelfuse_fuse_218_datasheet.pdf.pdf
@@ -88,7 +90,7 @@ public class MotorProtectionSwitchElm extends CircuitElm {
 	protected int getPostCount() { return 6; }
 	protected Point getPost(int n) { return posts[n]; }
 
-	Color getTempColor(Graphics g, int num) {
+	private Color getTempColor(Graphics g, int num) {
 	    Color c = getVoltageColor(g, volts[num*2]);
 	    double temp = heats[num]/i2t;
 	    if (temp < .3333) {
@@ -227,7 +229,7 @@ protected void startIteration() {
 		setSwitchPositions();
 	}
 	
-	void setSwitchPositions() {
+	private void setSwitchPositions() {
 	    int i;
 	    int switchPosition = (blown) ? 0 : 1;
 	    for (i = 0; i != sim.elmList.size(); i++) {

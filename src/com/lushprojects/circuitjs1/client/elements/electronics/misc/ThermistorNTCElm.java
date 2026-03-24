@@ -25,19 +25,21 @@ ID = 350
 add id to element factories and CirSimcomposeMainMenu
  */
 public class ThermistorNTCElm extends CircuitElm implements Command, MouseWheelHandler {
-    double position; //of the slider 0.005 to 0.995
-    double resistance; //based upon slider position
-    double minTempr, maxTempr; //Celsius - note min is -40, max is +150 degC
-    double temperature; //calculated from slider value (0.005 - 0.995) ratios of minTempr - maxTempr
-    double r25, r50; //the values that a user can input from a datsheet r 225 degc and r at 50degC
-    double rneg40; //maximum resistance - will be at -40 degC
-    double b25100; // constant based upon 2 values of R for 2 temperatures
-    double t0 = 273.15;
-    double t25 = t0 + 25;
+    private double position; //of the slider 0.005 to 0.995
+    private double resistance; //based upon slider position
+    private double minTempr;
+    private double maxTempr; //Celsius - note min is -40, max is +150 degC
+    private double temperature; //calculated from slider value (0.005 - 0.995) ratios of minTempr - maxTempr
+    private double r25;
+    private double r50; //the values that a user can input from a datsheet r 225 degc and r at 50degC
+    private double rneg40; //maximum resistance - will be at -40 degC
+    private double b25100; // constant based upon 2 values of R for 2 temperatures
+    private double t0 = 273.15;
+    private double t25 = t0 + 25;
 
-    Scrollbar slider; //from Pot
-    Label label;
-    String sliderText;
+    private Scrollbar slider; //from Pot
+    private Label label;
+    private String sliderText;
 
     //constructor - when initially created
     public ThermistorNTCElm(int xx, int yy) {
@@ -86,7 +88,7 @@ public class ThermistorNTCElm extends CircuitElm implements Command, MouseWheelH
 	return super.dump() + " " + r25 + " " + r50 + " " + minTempr + " " + maxTempr +" " + position  + " " + CustomLogicModel.escape(sliderText); 
     }
 
-    void createSlider() {
+    private void createSlider() {
 	sim.getUiPanelManager().addWidgetToVerticalPanel(label = new Label());
 	label.getElement().setInnerHTML(Locale.convertToHTML(Locale.LS(sliderText)));
 	label.addStyleName("topSpace");
@@ -103,7 +105,8 @@ public class ThermistorNTCElm extends CircuitElm implements Command, MouseWheelH
 	sim.getUiPanelManager().removeWidgetFromVerticalPanel(label);
 	sim.getUiPanelManager().removeWidgetFromVerticalPanel(slider);
     }
-    Point ps3, ps4;   
+    private Point ps3;
+    private Point ps4;
 
     //called straight after constructor when txt file is loaded
     protected void setPoints() {
@@ -233,16 +236,16 @@ public class ThermistorNTCElm extends CircuitElm implements Command, MouseWheelH
 	    slider.onMouseWheel(e);
     }
 
-    double calcResistance(double tempr) //knowing the temperature
+    private double calcResistance(double tempr) //knowing the temperature
     {
 	return Math.round(r25 * Math.exp(b25100 * ((1 / (tempr + t0)) - (1 / t25))));
     }
-    double temprFromSliderPos() //knowing slider position etc
+    private double temprFromSliderPos() //knowing slider position etc
     {
 	return Math.round( position * (maxTempr - minTempr) + minTempr);
     }
     //determine constant B25100 - when knowing two R values at two temperatures
-    double calcB25100() //given R25=10000 and R50=3605  B25100 will be 3932
+    private double calcB25100() //given R25=10000 and R50=3605  B25100 will be 3932
     {
 	double kelvin1 = t0 + 25;
 	double kelvin2 = t0 + 50;

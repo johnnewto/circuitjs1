@@ -30,9 +30,9 @@ import com.google.gwt.event.dom.client.MouseWheelEvent;
 import com.google.gwt.event.dom.client.MouseWheelHandler;
 
     public class VarRailElm extends RailElm implements MouseWheelHandler {
-	Scrollbar slider;
-	Label label;
-	String sliderText;
+	private Scrollbar slider;
+	private Label label;
+	private String sliderText;
 	public VarRailElm(int xx, int yy) {
 	    super(xx, yy, WF_VAR);
 	    sliderText = "Voltage";
@@ -52,7 +52,7 @@ import com.google.gwt.event.dom.client.MouseWheelHandler;
 	    return super.dump() + " " + sliderText.replaceAll("\\+","%2B");
 	}
 	protected int getDumpType() { return 172; }
-	void createSlider() {
+	private void createSlider() {
 	    waveform = WF_VAR;
 	    sim.getUiPanelManager().addWidgetToVerticalPanel(label = new Label(Locale.LS(sliderText)));
 	    label.addStyleName("topSpace");

@@ -84,7 +84,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 	}
 	Polygon gatePoly;
 	Polygon symbolPoly;
-	Point pcircle;
+	private Point pcircle;
 	protected void setPoints() {
 	    super.setPoints();
 	    int hs = 16;
@@ -165,8 +165,8 @@ import com.lushprojects.circuitjs1.client.util.*;
 	    
 	    return null;
 	}
-	double dlt;
-	double dut;
+	private double dlt;
+	private double dut;
 	public void setEditValue(int n, EditInfo ei) {
 		if (n == 0)
 		dlt=ei.value;

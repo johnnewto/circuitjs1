@@ -29,9 +29,9 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class OutputElm extends CircuitElm {
-	final int FLAG_VALUE = 1;
-	final int FLAG_FIXED = 2;
-        int scale;
+	private final int FLAG_VALUE = 1;
+	private final int FLAG_FIXED = 2;
+        private int scale;
 	public OutputElm(int xx, int yy) {
 	    super(xx, yy);
 	    scale = SCALE_AUTO;
@@ -102,8 +102,8 @@ public class OutputElm extends CircuitElm {
 		return EditInfo.createCheckbox("Fixed Precision", isFixed());
 	    return null;
 	}
-	boolean isFixed() { return (flags & FLAG_FIXED) != 0; }
-	boolean showVoltage() { return (flags & FLAG_VALUE) != 0; }
+	private boolean isFixed() { return (flags & FLAG_FIXED) != 0; }
+	private boolean showVoltage() { return (flags & FLAG_VALUE) != 0; }
 	public void setEditValue(int n, EditInfo ei) {
 	    if (n == 0) {
 		flags = ei.changeFlag(flags, FLAG_VALUE);

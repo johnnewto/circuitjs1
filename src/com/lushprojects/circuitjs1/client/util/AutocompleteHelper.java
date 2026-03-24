@@ -34,10 +34,10 @@ public class AutocompleteHelper {
      * State for bash-style autocomplete (per TextBox)
      */
     public static class AutocompleteState {
-        public java.util.List<String> currentMatches;
-        public int currentMatchIndex;
-        public int completionStartPos;
-        public String originalWord;
+        java.util.List<String> currentMatches;
+        int currentMatchIndex;
+        int completionStartPos;
+        String originalWord;
         
         public AutocompleteState() {
             reset();
@@ -50,7 +50,7 @@ public class AutocompleteHelper {
             originalWord = null;
         }
         
-        public boolean isActive() {
+        boolean isActive() {
             return currentMatches != null && !currentMatches.isEmpty();
         }
     }

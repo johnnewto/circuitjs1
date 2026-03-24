@@ -37,7 +37,7 @@ import jsinterop.annotations.JsPackage;
 
 public class ExportAsImageDialog extends Dialog {
 	
-	VerticalPanel vp;
+	private VerticalPanel vp;
 	
 	@JsMethod(namespace = JsPackage.GLOBAL, name = "encodeURIComponent")
 	private static native String encodeURIComponent(String value);

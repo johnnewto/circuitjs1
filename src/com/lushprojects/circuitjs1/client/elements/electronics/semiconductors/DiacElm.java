@@ -30,9 +30,13 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 public class DiacElm extends CircuitElm {
     // resistor from 0 to 2, 3
     // diodes from 2, 3 to 1
-    double onresistance, offresistance, breakdown, holdcurrent;
-    boolean state;
-    Diode diode1, diode2;
+    private double onresistance;
+    private double offresistance;
+    private double breakdown;
+    private double holdcurrent;
+    private boolean state;
+    private Diode diode1;
+    private Diode diode2;
     
     public DiacElm(int xx, int yy) {
 	super(xx, yy);
@@ -53,7 +57,7 @@ public class DiacElm extends CircuitElm {
 	createDiodes();
     }
     
-    void createDiodes() {
+    private void createDiodes() {
 	diode1 = new Diode(sim);
 	diode2 = new Diode(sim);
 	diode1.setupForDefaultModel();
@@ -66,8 +70,9 @@ public class DiacElm extends CircuitElm {
 	    + breakdown + " " + holdcurrent;
     }
     
-    Polygon arrows[];
-    Point plate1[], plate2[];
+    private Polygon[] arrows;
+    private Point[] plate1;
+    private Point[] plate2;
     
     protected void setPoints() {
 	super.setPoints();

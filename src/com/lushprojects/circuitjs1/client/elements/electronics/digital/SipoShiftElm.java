@@ -29,9 +29,9 @@ import com.lushprojects.circuitjs1.client.util.*;
 // contributed by Edward Calver
 
 public class SipoShiftElm extends ChipElm {
-	final int DATA_PIN_INDEX = 2; // the initial index of the register pins in the "pins" array
+	private final int DATA_PIN_INDEX = 2; // the initial index of the register pins in the "pins" array
 	
-	boolean clockstate = false;
+	private boolean clockstate = false;
 	
 	public SipoShiftElm(int xx, int yy) {
 		super(xx, yy);

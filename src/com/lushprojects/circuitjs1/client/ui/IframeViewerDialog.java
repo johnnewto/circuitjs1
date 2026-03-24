@@ -45,7 +45,7 @@ import jsinterop.annotations.JsType;
  *   IframeViewerDialog.openDialog("Tutorial", "circuitjs.html?startCircuit=demo.txt");
  *   IframeViewerDialog.openUrlWithSelector("Docs", "http://localhost:5217/page.html", ".split-right");
  */
-public class IframeViewerDialog extends DialogBox {
+class IframeViewerDialog extends DialogBox {
 
     @JsFunction
     private interface EventCallback {
@@ -137,7 +137,7 @@ public class IframeViewerDialog extends DialogBox {
 
     @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "ResizeObserver")
     private static class ResizeObserverLike {
-        public ResizeObserverLike(ResizeObserverCallback callback) {}
+        ResizeObserverLike(ResizeObserverCallback callback) {}
         @JsMethod native void observe(ElementLike target);
     }
 
@@ -155,11 +155,11 @@ public class IframeViewerDialog extends DialogBox {
     private static IframeViewerDialog instance = null;
     private static final String DIALOG_ID = "iframeViewerDialog";
     
-    VerticalPanel vp;
-    String iframeSrc;
-    String cssSelector;
-    int width;
-    int height;
+    private VerticalPanel vp;
+    private String iframeSrc;
+    private String cssSelector;
+    private int width;
+    private int height;
     
     /**
      * Open or show the iframe viewer dialog (singleton pattern).
@@ -167,7 +167,7 @@ public class IframeViewerDialog extends DialogBox {
      * @param title Dialog title
      * @param src URL for the iframe source
      */
-    public static void openDialog(String title, String src) {
+    private static void openDialog(String title, String src) {
         openDialog(title, src, 
                    (int)(Window.getClientWidth() * 0.3), 
                    (int)(Window.getClientHeight() * 0.6));
@@ -204,7 +204,7 @@ public class IframeViewerDialog extends DialogBox {
      * @param w Width in pixels
      * @param h Height in pixels
      */
-    public static void openDialogWithSelector(String title, String src, String selector, int w, int h) {
+    private static void openDialogWithSelector(String title, String src, String selector, int w, int h) {
         if (instance != null) {
             instance.hide();
             instance = null;
@@ -495,7 +495,7 @@ public class IframeViewerDialog extends DialogBox {
                 .replace("\"", "&quot;");
     }
     
-    public void close() {
+    private void close() {
         hide();
         instance = null;
     }

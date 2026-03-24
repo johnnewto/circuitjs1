@@ -33,34 +33,41 @@ import jsinterop.annotations.JsPackage;
 */
 
 public class TestPointElm extends CircuitElm {
-    int meter;
-    final int TP_VOL = 0;
-    final int TP_RMS = 1;
-    final int TP_MAX = 2;
-    final int TP_MIN = 3;
-    final int TP_P2P = 4;
-    final int TP_BIN = 5;
-    final int TP_FRQ = 6;
-    final int TP_PER = 7;
-    final int TP_PWI = 8;
-    final int TP_DUT = 9; //mark to space ratio
-    final int FLAG_LABEL = 1;
-    int zerocount=0;
-    double rmsV=0, total, count;
-    double maxV=0, lastMaxV;
-    double minV=0, lastMinV;
-    double frequency=0;
-    double period=0;
-    double binaryLevel=0;//0 or 1 - double because we only pass doubles back to the web page
-    double pulseWidth=0;
-    double dutyCycle=0;
-    double selectedValue=0;
-    int lastStepCount;
+    private int meter;
+    private final int TP_VOL = 0;
+    private final int TP_RMS = 1;
+    private final int TP_MAX = 2;
+    private final int TP_MIN = 3;
+    private final int TP_P2P = 4;
+    private final int TP_BIN = 5;
+    private final int TP_FRQ = 6;
+    private final int TP_PER = 7;
+    private final int TP_PWI = 8;
+    private final int TP_DUT = 9; //mark to space ratio
+    private final int FLAG_LABEL = 1;
+    private int zerocount=0;
+    private double rmsV=0;
+    private double total;
+    private double count;
+    private double maxV=0;
+    private double lastMaxV;
+    private double minV=0;
+    private double lastMinV;
+    private double frequency=0;
+    private double period=0;
+    private double binaryLevel=0;//0 or 1 - double because we only pass doubles back to the web page
+    private double pulseWidth=0;
+    private double dutyCycle=0;
+    private double selectedValue=0;
+    private int lastStepCount;
     
     double voltages[];
-    boolean increasingV=true, decreasingV=true;
-    long periodStart, periodLength, pulseStart;//time between consecutive max values
-    String label;
+    private boolean increasingV=true;
+    private boolean decreasingV=true;
+    private long periodStart;
+    private long periodLength;
+    private long pulseStart;//time between consecutive max values
+    private String label;
     
     public TestPointElm(int xx, int yy) { 
         super(xx, yy); 
@@ -142,7 +149,7 @@ public class TestPointElm extends CircuitElm {
         g.restore();
     }
     
-    void drawValue(Graphics g, String str, Point pt1, Point pt2) {
+    private void drawValue(Graphics g, String str, Point pt1, Point pt2) {
         int w = (int)g.context.measureText(str).getWidth();
         int h = (int)g.currentFontSize;
         g.save();

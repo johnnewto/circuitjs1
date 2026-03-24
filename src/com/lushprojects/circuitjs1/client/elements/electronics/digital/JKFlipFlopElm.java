@@ -29,12 +29,12 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
     public class JKFlipFlopElm extends ChipElm {
-    	final int FLAG_RESET = 2;
-    	final int FLAG_POSITIVE_EDGE = 4;
-    	final int FLAG_INVERT_RESET = 8;
-    	boolean hasReset(){return (flags & FLAG_RESET)!= 0;}
-    	boolean positiveEdgeTriggered() { return (flags & FLAG_POSITIVE_EDGE) != 0; }
-    	boolean invertReset() { return (flags & FLAG_INVERT_RESET) != 0; }
+    	private final int FLAG_RESET = 2;
+    	private final int FLAG_POSITIVE_EDGE = 4;
+    	private final int FLAG_INVERT_RESET = 8;
+    	private boolean hasReset(){return (flags & FLAG_RESET)!= 0;}
+    	private boolean positiveEdgeTriggered() { return (flags & FLAG_POSITIVE_EDGE) != 0; }
+    	private boolean invertReset() { return (flags & FLAG_INVERT_RESET) != 0; }
 	public JKFlipFlopElm(int xx, int yy) { super(xx, yy); }
 	public JKFlipFlopElm(int xa, int ya, int xb, int yb, int f,
 			    StringTokenizer st) {
@@ -66,7 +66,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 	protected int getPostCount() { return 5 + (hasReset() ? 1:0); }
 	protected int getVoltageSourceCount() { return 2; }
 	
-	boolean justLoaded;
+	private boolean justLoaded;
 	
 	protected void execute() {
             // if we just loaded then the volts[] array is likely to be all zeroes, which might force us to do a reset, so defer execution until the next iteration

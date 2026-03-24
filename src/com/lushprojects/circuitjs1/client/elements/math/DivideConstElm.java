@@ -28,15 +28,18 @@ import com.lushprojects.circuitjs1.client.util.*;
 
 // Divide input by a constant - this is a linear element (VCVS with fixed gain of 1/divisor)
 public class DivideConstElm extends CircuitElm {
-    static final int FLAG_SHOWPERCENT = 2;  // If set, show as percentage; otherwise show as divisor
-    final int FLAG_SMALL = 1;
+    private static final int FLAG_SHOWPERCENT = 2;  // If set, show as percentage; otherwise show as divisor
+    private final int FLAG_SMALL = 1;
     
-    double divisor;
-    String elmName;
-    int opsize, opheight, opwidth;
-    Point inPost, inLead;
-    Polygon bodyPoly;
-    Font labelFont;
+    private double divisor;
+    private String elmName;
+    private int opsize;
+    private int opheight;
+    private int opwidth;
+    private Point inPost;
+    private Point inLead;
+    private Polygon bodyPoly;
+    private Font labelFont;
     
     public DivideConstElm(int xx, int yy) {
         super(xx, yy);
@@ -60,7 +63,7 @@ public class DivideConstElm extends CircuitElm {
     
     protected int getDumpType() { return 264; }
     
-    void setSize(int s) {
+    private void setSize(int s) {
         opsize = s;
         opheight = 8 * s;
         opwidth = 13 * s;
@@ -170,7 +173,7 @@ public class DivideConstElm extends CircuitElm {
         sim.stampVCVS(nodes[0], 0, gain, voltSource);
     }
     
-    boolean showAsPercent() {
+    private boolean showAsPercent() {
         return (flags & FLAG_SHOWPERCENT) != 0;
     }
     

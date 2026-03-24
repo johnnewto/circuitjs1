@@ -27,11 +27,11 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
     public class LogicOutputElm extends CircuitElm {
-	final int FLAG_TERNARY = 1;
-	final int FLAG_NUMERIC = 2;
-	final int FLAG_PULLDOWN = 4;
-	double threshold;
-	String value;
+	private final int FLAG_TERNARY = 1;
+	private final int FLAG_NUMERIC = 2;
+	private final int FLAG_PULLDOWN = 4;
+	private double threshold;
+	private String value;
 	public LogicOutputElm(int xx, int yy) {
 	    super(xx, yy);
 	    threshold = 2.5;
@@ -50,9 +50,9 @@ import com.lushprojects.circuitjs1.client.util.*;
 	}
 	protected int getDumpType() { return 'M'; }
 	protected int getPostCount() { return 1; }
-	boolean isTernary() { return (flags & FLAG_TERNARY) != 0; }
-	boolean isNumeric() { return (flags & (FLAG_TERNARY|FLAG_NUMERIC)) != 0; }
-	boolean needsPullDown() { return (flags & FLAG_PULLDOWN) != 0; }
+	private boolean isTernary() { return (flags & FLAG_TERNARY) != 0; }
+	private boolean isNumeric() { return (flags & (FLAG_TERNARY|FLAG_NUMERIC)) != 0; }
+	private boolean needsPullDown() { return (flags & FLAG_PULLDOWN) != 0; }
 	protected void setPoints() {
 	    super.setPoints();
 	    lead1 = interpPoint(point1, point2, 1-12/dn);

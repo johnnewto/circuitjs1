@@ -29,12 +29,12 @@ import com.lushprojects.circuitjs1.client.util.*;
 // contributed by Edward Calver
 
     public class MultiplexerElm extends ChipElm {
-	final int FLAG_INVERTED_OUTPUT = 1<<1;
-	final int FLAG_STROBE = 1<<2;
-	int selectBitCount;
-	int outputCount;
-	int strobe;
-	int outputPin;
+	private final int FLAG_INVERTED_OUTPUT = 1<<1;
+	private final int FLAG_STROBE = 1<<2;
+	private int selectBitCount;
+	private int outputCount;
+	private int strobe;
+	private int outputPin;
 	
 	boolean hasReset() {return false;}
 	public MultiplexerElm(int xx, int yy) {

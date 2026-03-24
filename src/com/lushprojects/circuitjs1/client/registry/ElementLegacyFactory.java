@@ -18,7 +18,7 @@ import com.lushprojects.circuitjs1.client.elements.misc.*;
 
 import com.lushprojects.circuitjs1.client.elements.math.*;
 
-public final class ElementLegacyFactory {
+final class ElementLegacyFactory {
     private ElementLegacyFactory() {
     }
 

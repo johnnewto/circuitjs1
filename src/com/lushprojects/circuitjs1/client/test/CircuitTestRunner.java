@@ -49,19 +49,19 @@ import java.util.Vector;
  * runner.assertVoltage("output", 8.0, 0.01); // 1% tolerance
  * </pre>
  */
-public class CircuitTestRunner {
+class CircuitTestRunner {
     
     private CirSim sim;
     
     // Standard timestep for all tests: 0.1 millisecond
-    public static final double STANDARD_TIMESTEP = 1e-4;
+    private static final double STANDARD_TIMESTEP = 1e-4;
     
     // Standard convergence criteria
     public static final int MAX_ITERATIONS = 5000;
     public static final double CONVERGENCE_THRESHOLD = 1e-3; // 0.1% convergence
     
     // Default tolerance for voltage/current comparisons (1%)
-    public static final double DEFAULT_TOLERANCE = 0.01;
+    private static final double DEFAULT_TOLERANCE = 0.01;
     
     /**
      * Create a test runner using the existing simulator instance
@@ -176,7 +176,7 @@ public class CircuitTestRunner {
      * @param stabilityThreshold Maximum voltage change to consider stable (default 1e-6)
      * @throws RuntimeException if timeout reached
      */
-    public void runToSteadyState(double timeout, double stabilityThreshold) {
+    private void runToSteadyState(double timeout, double stabilityThreshold) {
         sim.setSimRunning(true);
         
         double[] lastVoltages = null;
@@ -282,7 +282,7 @@ public class CircuitTestRunner {
      * @param elm Element to measure
      * @return Current in amperes
      */
-    public double getElementCurrent(CircuitElm elm) {
+    private double getElementCurrent(CircuitElm elm) {
         return elm.getCurrentForTesting();
     }
     
@@ -292,7 +292,7 @@ public class CircuitTestRunner {
      * @param elm Element to measure
      * @return Power in watts
      */
-    public double getElementPower(CircuitElm elm) {
+    private double getElementPower(CircuitElm elm) {
         return elm.getPowerForTesting();
     }
     
@@ -355,7 +355,7 @@ public class CircuitTestRunner {
      * @param tolerance Relative tolerance (e.g., 0.01 for 1%)
      * @throws AssertionError if voltage doesn't match
      */
-    public void assertVoltage(String label, double expected, double tolerance) {
+    private void assertVoltage(String label, double expected, double tolerance) {
         double actual = getNodeVoltage(label);
         double error = Math.abs(actual - expected);
         double relativeError = expected != 0 ? error / Math.abs(expected) : error;
@@ -383,7 +383,7 @@ public class CircuitTestRunner {
      * @param expected Expected current
      * @param tolerance Relative tolerance
      */
-    public void assertCurrent(CircuitElm elm, double expected, double tolerance) {
+    private void assertCurrent(CircuitElm elm, double expected, double tolerance) {
         double actual = getElementCurrent(elm);
         double error = Math.abs(actual - expected);
         

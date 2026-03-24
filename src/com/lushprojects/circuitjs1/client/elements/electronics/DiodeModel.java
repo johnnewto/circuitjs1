@@ -19,24 +19,29 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class DiodeModel implements Editable, Comparable<DiodeModel> {
 
-    static HashMap<String, DiodeModel> modelMap;
+    private static HashMap<String, DiodeModel> modelMap;
     
-    public int flags;
-    public String name, description;
-    public double saturationCurrent, seriesResistance, emissionCoefficient, breakdownVoltage;
+    private int flags;
+    public String name;
+    private String description;
+    public double saturationCurrent;
+    public double seriesResistance;
+    private double emissionCoefficient;
+    public double breakdownVoltage;
     
     // used for UI code, not guaranteed to be set
-    public double forwardVoltage, forwardCurrent;
+    private double forwardVoltage;
+    private double forwardCurrent;
     
     public boolean dumped;
     public boolean readOnly;
     public boolean builtIn;
     public boolean oldStyle;
-    public boolean internal;
-    public static final int FLAGS_SIMPLE = 1; 
+    private boolean internal;
+    private static final int FLAGS_SIMPLE = 1;
     
     // Electron thermal voltage at SPICE's default temperature of 27 C (300.15 K):
-    static final double vt = 0.025865;
+    private static final double vt = 0.025865;
     // The diode's "scale voltage", the voltage increase which will raise current by a factor of e.
     public double vscale;
     // The multiplicative equivalent of dividing by vscale (for speed).
@@ -44,7 +49,7 @@ public class DiodeModel implements Editable, Comparable<DiodeModel> {
     // voltage drop @ 1A
     public double fwdrop;
     
-    protected DiodeModel(double sc, double sr, double ec, double bv, String d) {
+    private DiodeModel(double sc, double sr, double ec, double bv, String d) {
 	saturationCurrent = sc;
 	seriesResistance = sr;
 	emissionCoefficient = ec;
@@ -82,7 +87,7 @@ public class DiodeModel implements Editable, Comparable<DiodeModel> {
 	return lm;
     }
     
-    static void createModelMap() {
+    private static void createModelMap() {
 	if (modelMap != null)
 	    return;
 	modelMap = new HashMap<String,DiodeModel>();
@@ -117,13 +122,13 @@ public class DiodeModel implements Editable, Comparable<DiodeModel> {
 	loadInternalModel("~lm317-dz 0 1e-14 0 1 6.3 0");
     }
 
-    static void addDefaultModel(String name, DiodeModel dm) {
+    private static void addDefaultModel(String name, DiodeModel dm) {
 	modelMap.put(name, dm);
 	dm.readOnly = dm.builtIn = true;
 	dm.name = name;
     }
 
-    DiodeModel setInternal() {
+    private DiodeModel setInternal() {
 	internal = true;
 	return this;
     }
@@ -168,7 +173,7 @@ public class DiodeModel implements Editable, Comparable<DiodeModel> {
 	return getModelWithName("default");
     }
     
-    static void loadInternalModel(String s) {
+    private static void loadInternalModel(String s) {
         StringTokenizer st = new StringTokenizer(s);
         DiodeModel dm = undumpModel(st);
         dm.builtIn = dm.internal = true;
@@ -211,7 +216,7 @@ public class DiodeModel implements Editable, Comparable<DiodeModel> {
 	return name + " (" + Locale.LS(description) + ")";
     }
     
-    DiodeModel() {
+    private DiodeModel() {
 	saturationCurrent = 1e-14;
 	seriesResistance = 0;
 	emissionCoefficient = 1;
@@ -236,7 +241,7 @@ public class DiodeModel implements Editable, Comparable<DiodeModel> {
 	return dm;
     }
     
-    void undump(StringTokenizer st) {
+    private void undump(StringTokenizer st) {
 	flags = Integer.parseInt(st.nextToken());
 	saturationCurrent = Double.parseDouble(st.nextToken());
 	seriesResistance = Double.parseDouble(st.nextToken());
@@ -299,7 +304,7 @@ public class DiodeModel implements Editable, Comparable<DiodeModel> {
     }
 
     // set emission coefficient for simple mode if we have enough data  
-    void setEmissionCoefficient() {
+    private void setEmissionCoefficient() {
 	if (forwardCurrent > 0 && forwardVoltage > 0)
 	    emissionCoefficient = (forwardVoltage/Math.log(forwardCurrent/saturationCurrent+1)) / vt;
 
@@ -312,7 +317,7 @@ public class DiodeModel implements Editable, Comparable<DiodeModel> {
 	forwardVoltage = emissionCoefficient*vt * Math.log(forwardCurrent/saturationCurrent+1);
     }
     
-    void updateModel() {
+    private void updateModel() {
 	vscale = emissionCoefficient * vt;
 	vdcoef = 1/vscale;
 	fwdrop = Math.log(1/saturationCurrent + 1) * emissionCoefficient * vt;

@@ -35,7 +35,7 @@ final class RunnerController {
         this.sim = sim;
     }
 
-    void setRunnerLiveMode(boolean runnerLiveMode) {
+    private void setRunnerLiveMode(boolean runnerLiveMode) {
         this.runnerLiveMode = runnerLiveMode;
     }
 
@@ -156,7 +156,7 @@ final class RunnerController {
         });
     }
 
-    void loadRunnerSetupFile(String str, String title, final int steps, final String format) {
+    private void loadRunnerSetupFile(String str, String title, final int steps, final String format) {
         String normalized = normalizeStartCircuitPath(str);
         String[] candidates;
         if (normalized.indexOf('/') >= 0)
@@ -218,7 +218,7 @@ final class RunnerController {
         runRunnerTableSimulation(steps, source);
     }
 
-    void runRunnerFromText(String circuitText, int steps, String source, String format) {
+    private void runRunnerFromText(String circuitText, int steps, String source, String format) {
         CirSim.console("Runner loading embedded circuit text source=" + source + ", length=" + circuitText.length());
         sim.getCircuitIOService().readCircuit(circuitText, 0);
         sim.getSFCRDocumentManager().setCurrentCircuitFile(source);
@@ -245,7 +245,7 @@ final class RunnerController {
         }
     }
 
-    void runRunnerSimulation(int steps, String source, String format) {
+    private void runRunnerSimulation(int steps, String source, String format) {
         CirSim.console("Runner simulation start: source=" + source + ", steps=" + steps + ", format=" + format);
         if (runnerLiveMode) {
             runRunnerSimulationAsync(steps, source, format);
@@ -294,7 +294,7 @@ final class RunnerController {
             "Runner Output", content.toString(), includeExtraTab, extraTabTitle, extraHtml, RunnerPanelUi.getRunnerStdoutHtml()));
     }
 
-    void runRunnerTableSimulation(int steps, String source) {
+    private void runRunnerTableSimulation(int steps, String source) {
         CirSim.console("Runner table simulation start: source=" + source + ", steps=" + steps);
         if (runnerLiveMode) {
             runRunnerTableSimulationAsync(steps, source);

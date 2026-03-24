@@ -16,16 +16,21 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class ThreePhaseMotorElm extends CircuitElm {
 
-    double Rs, Rr, Ls, Lr, Lm;
-    double b;
-    public double angle;
-    public double speed;
+    private double Rs;
+    private double Rr;
+    private double Ls;
+    private double Lr;
+    private double Lm;
+    private double b;
+    private double angle;
+    private double speed;
 
     double coilCurrent;
     double inertiaCurrent;
-    double curcounts[];
-    double J;
-    Point posts[], leads[];
+    private double[] curcounts;
+    private double J;
+    private Point[] posts;
+    private Point[] leads;
     
     public ThreePhaseMotorElm(int xx, int yy) { 
 	super(xx, yy); 
@@ -65,7 +70,7 @@ public class ThreePhaseMotorElm extends CircuitElm {
     }
     public double getAngle(){ return(angle);}
 
-    Point motorCenter;
+    private Point motorCenter;
 
     protected void setPoints() {
 	super.setPoints();
@@ -93,17 +98,17 @@ public class ThreePhaseMotorElm extends CircuitElm {
         coilCurrents = new double[coilCount];
     }
 
-    final int n001_ind = 6;
-    final int n002_ind = 7;
-    final int n003_ind = 8;
-    final int n004_ind = 9;
-    final int n005_ind = 10;
-    final int n006_ind = 11;
-    final int n007_ind = 12;
+    private final int n001_ind = 6;
+    private final int n002_ind = 7;
+    private final int n003_ind = 8;
+    private final int n004_ind = 9;
+    private final int n005_ind = 10;
+    private final int n006_ind = 11;
+    private final int n007_ind = 12;
     
-    final double Zp = 2;
+    private final double Zp = 2;
     
-    final int coilCount = 5;
+    private final int coilCount = 5;
     
     // based on https://forum.kicad.info/t/ac-motors-simulation-1-phase-3-phase/14188/3
     
@@ -177,16 +182,17 @@ public class ThreePhaseMotorElm extends CircuitElm {
         nodeCurrents = new double[nodeCount];
     }
     
-    int coilNodes[] = { n001_ind, 1, n003_ind, 3, n005_ind, 5, n002_ind, n004_ind, n006_ind, n007_ind };
-    double coilCurrents[];
-    double coilCurSourceValues[];
-    double xformMatrix[][];
-    double nodeCurrents[];
-    int voltSources[];
+    private int[] coilNodes = { n001_ind, 1, n003_ind, 3, n005_ind, 5, n002_ind, n004_ind, n006_ind, n007_ind };
+    private double[] coilCurrents;
+    private double[] coilCurSourceValues;
+    private double[][] xformMatrix;
+    private double[] nodeCurrents;
+    private int[] voltSources;
     
     protected void setVoltageSource(int n, int v) { voltSources[n] = v; }
     
-    double vs1value, vs2value;
+    private double vs1value;
+    private double vs2value;
 protected void startIteration() {
         SimulationContext context = getSimulationContext();
         int i;
@@ -249,8 +255,8 @@ protected void startIteration() {
     	return true;
     }
     
-    int cr = 37;
-    double filteredSpeed;
+    private int cr = 37;
+    private double filteredSpeed;
     
     protected void draw(Graphics g) {
 
@@ -319,13 +325,13 @@ protected void startIteration() {
 	filteredSpeed = filteredSpeed*.98 + speed*.02;
     }
     
-    static void drawThickerLine(Graphics g, Point pa, Point pb) {
+    private static void drawThickerLine(Graphics g, Point pa, Point pb) {
 	g.setLineWidth(6.0);
 	g.drawLine(pa.x, pa.y, pb.x, pb.y);
 	g.setLineWidth(1.0);
     }
 
-    void interpPointFix(Point a, Point b, Point c, double f, double g) {
+    private void interpPointFix(Point a, Point b, Point c, double f, double g) {
 	int gx = b.y-a.y;
 	int gy = a.x-b.x;
 	c.x = (int) Math.round(a.x*(1-f)+b.x*f+g*gx);

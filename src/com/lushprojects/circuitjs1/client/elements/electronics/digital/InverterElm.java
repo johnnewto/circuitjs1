@@ -28,8 +28,8 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.elements.electronics.digital.GateElm;
 
     public class InverterElm extends CircuitElm {
-	double slewRate; // V/ns
-	double highVoltage;
+	private double slewRate; // V/ns
+	private double highVoltage;
 	public InverterElm(int xx, int yy) {
 	    super(xx, yy);
 	    noDiagonal = true;
@@ -56,7 +56,7 @@ import com.lushprojects.circuitjs1.client.elements.electronics.digital.GateElm;
 	
 	protected int getDumpType() { return 'I'; }
 	
-	Point center;
+	private Point center;
 	
 	protected void draw(Graphics g) {
 	    drawPosts(g);
@@ -69,8 +69,8 @@ import com.lushprojects.circuitjs1.client.elements.electronics.digital.GateElm;
 	    curcount = updateDotCount(current, curcount);
 	    drawDots(g, lead2, point2, curcount);
 	}
-	Polygon gatePoly;
-	Point pcircle;
+	private Polygon gatePoly;
+	private Point pcircle;
 	protected void setPoints() {
 	    super.setPoints();
 	    int hs = 16;
@@ -101,7 +101,7 @@ import com.lushprojects.circuitjs1.client.elements.electronics.digital.GateElm;
 	    sim.stampVoltageSource(0, nodes[1], voltSource);
 	}
 	
-	double lastOutputVoltage;
+	private double lastOutputVoltage;
 protected void startIteration() {
 	    lastOutputVoltage = volts[1];
 	}

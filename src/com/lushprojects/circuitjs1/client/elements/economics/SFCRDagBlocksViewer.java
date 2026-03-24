@@ -49,7 +49,7 @@ public class SFCRDagBlocksViewer {
 
     @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Array")
     private static class WindowArrayLike {
-        public WindowArrayLike() {}
+        WindowArrayLike() {}
         @JsProperty(name = "length") native int getLength();
         @JsMethod(name = "push") native int push(WindowLike value);
         @JsMethod(name = "shift") native WindowLike shift();

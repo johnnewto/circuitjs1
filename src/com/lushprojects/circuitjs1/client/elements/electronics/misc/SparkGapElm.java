@@ -27,8 +27,12 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class SparkGapElm extends CircuitElm {
-    double resistance, onresistance, offresistance, breakdown, holdcurrent;
-    boolean state;
+    private double resistance;
+    private double onresistance;
+    private double offresistance;
+    private double breakdown;
+    private double holdcurrent;
+    private boolean state;
     public SparkGapElm(int xx, int yy) {
 	super(xx, yy);
 	offresistance = 1e9;
@@ -51,7 +55,8 @@ public class SparkGapElm extends CircuitElm {
 	return super.dump() + " " + onresistance + " " + offresistance + " "
 	    + breakdown + " " + holdcurrent;
     }
-    Polygon arrow1, arrow2;
+    private Polygon arrow1;
+    private Polygon arrow2;
     protected void setPoints() {
 	super.setPoints();
 	int dist = 16;

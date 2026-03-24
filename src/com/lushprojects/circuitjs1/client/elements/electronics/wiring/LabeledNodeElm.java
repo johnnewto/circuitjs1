@@ -37,13 +37,13 @@ import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsPackage;
 
 public class LabeledNodeElm extends CircuitElm {
-    final int FLAG_ESCAPE = 4;
-    final int FLAG_INTERNAL = 1;
-    final int FLAG_SHOW_ALL_NODES = 8;
-    final int FLAG_SHOW_ALL_CIRCUIT_NODES = 16;
-    final int FLAG_SHOW_VOLTAGE = 32;
-    final int FLAG_SHOW_CURRENT = 64;
-	final int FLAG_SHOW_FLOW = 128;
+    private final int FLAG_ESCAPE = 4;
+    private final int FLAG_INTERNAL = 1;
+    private final int FLAG_SHOW_ALL_NODES = 8;
+    private final int FLAG_SHOW_ALL_CIRCUIT_NODES = 16;
+    private final int FLAG_SHOW_VOLTAGE = 32;
+    private final int FLAG_SHOW_CURRENT = 64;
+	private final int FLAG_SHOW_FLOW = 128;
     
     public LabeledNodeElm(int xx, int yy) {
 	super(xx, yy);
@@ -93,11 +93,11 @@ public class LabeledNodeElm extends CircuitElm {
     private static HashMap<Integer, String> nodeToLabelCache;
     
     public boolean isInternal() { return (flags & FLAG_INTERNAL) != 0; }
-    boolean showLabelNodes() { return (flags & FLAG_SHOW_ALL_NODES) != 0; }
-    boolean showAllCircuitNodes() { return (flags & FLAG_SHOW_ALL_CIRCUIT_NODES) != 0; }
-    boolean showVoltage() { return (flags & FLAG_SHOW_VOLTAGE) != 0; }
-    boolean showCurrent() { return (flags & FLAG_SHOW_CURRENT) != 0; }
-	boolean showFlow() { return (flags & FLAG_SHOW_FLOW) != 0; }
+    private boolean showLabelNodes() { return (flags & FLAG_SHOW_ALL_NODES) != 0; }
+    private boolean showAllCircuitNodes() { return (flags & FLAG_SHOW_ALL_CIRCUIT_NODES) != 0; }
+    private boolean showVoltage() { return (flags & FLAG_SHOW_VOLTAGE) != 0; }
+    private boolean showCurrent() { return (flags & FLAG_SHOW_CURRENT) != 0; }
+	private boolean showFlow() { return (flags & FLAG_SHOW_FLOW) != 0; }
 
 	@JsMethod(namespace = JsPackage.GLOBAL, name = "console.log")
 	public static native void console(String text);
@@ -207,7 +207,7 @@ public class LabeledNodeElm extends CircuitElm {
             }
         }
     }
-    final int circleSize = 17;
+    private final int circleSize = 17;
     protected void setPoints() {
 		super.setPoints();
 		// No circle gap needed — text is drawn to the side by drawLabeledNode()

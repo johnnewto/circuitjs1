@@ -25,7 +25,7 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
     public class CrossSwitchElm extends SwitchElm {
-	final int poleCount = 2;
+	private final int poleCount = 2;
 	
 	public CrossSwitchElm(int xx, int yy) {
 	    super(xx, yy, false);
@@ -42,12 +42,17 @@ import com.lushprojects.circuitjs1.client.util.*;
 	}
 	protected int getDumpType() { return 430; }
 
-	final int openhs = 16;
+	private final int openhs = 16;
 	final int posCount = 2;
-	Point poleLeads[], throwLeads[], polePosts[], throwPosts[], linePoints[];
-	Point crossPoints[];
-        int voltageSources[];
-        double currents[], curcounts[];
+	private Point[] poleLeads;
+        private Point[] throwLeads;
+        private Point[] polePosts;
+        private Point[] throwPosts;
+        private Point[] linePoints;
+	private Point[] crossPoints;
+        private int[] voltageSources;
+        private double[] currents;
+        private double[] curcounts;
 
 	protected void setPoints() {
 	    super.setPoints();

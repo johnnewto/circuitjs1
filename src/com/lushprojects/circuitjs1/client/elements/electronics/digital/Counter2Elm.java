@@ -29,7 +29,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class Counter2Elm extends ChipElm {
-	int modulus;
+	private int modulus;
 
 	public Counter2Elm(int xx, int yy) {
 	    super(xx, yy);
@@ -54,7 +54,12 @@ public class Counter2Elm extends ChipElm {
 	    return Locale.LS("Counter") + Locale.LS(" (mod ") + modulus + ")";
 	}
 	
-	int clk, clr, enp, ent, rco, load;
+	private int clk;
+    private int clr;
+    private int enp;
+    private int ent;
+    private int rco;
+    private int load;
 	
 	protected void setupPins() {
 	    sizeX = 2;
@@ -109,7 +114,7 @@ public class Counter2Elm extends ChipElm {
 	}
 	protected int getVoltageSourceCount() { return bits+1; }
 	
-	boolean carry;
+	private boolean carry;
 	
 	protected void execute() {
 	    if (pins[clk].value && !lastClock) {

@@ -29,8 +29,11 @@ import com.lushprojects.circuitjs1.client.elements.electronics.semiconductors.Di
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 public class LEDElm extends DiodeElm {
-	double colorR, colorG, colorB, maxBrightnessCurrent;
-	static String lastLEDModelName = "default-led";
+	private double colorR;
+    private double colorG;
+    private double colorB;
+    private double maxBrightnessCurrent;
+	private static String lastLEDModelName = "default-led";
 	
 	public LEDElm(int xx, int yy) {
 	    super(xx, yy);
@@ -63,7 +66,9 @@ public class LEDElm extends DiodeElm {
 		    maxBrightnessCurrent;
 	}
 
-	Point ledLead1, ledLead2, ledCenter;
+	private Point ledLead1;
+    private Point ledLead2;
+    private Point ledCenter;
 	protected void setPoints() {
 	    super.setPoints();
 	    int cr = 12;

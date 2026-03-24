@@ -29,9 +29,9 @@ import com.lushprojects.circuitjs1.client.util.*;
 // SPDT switch
 
     public class Switch2Elm extends SwitchElm {
-	int link;
-	int throwCount;
-	static final int FLAG_CENTER_OFF = 1;
+	private int link;
+	private int throwCount;
+	private static final int FLAG_CENTER_OFF = 1;
 	
 	public Switch2Elm(int xx, int yy) {
 	    super(xx, yy, false);
@@ -58,8 +58,9 @@ import com.lushprojects.circuitjs1.client.util.*;
 	    return super.dump() + " " + link + " " + throwCount;
 	}
 
-	final int openhs = 16;
-	Point swposts[], swpoles[];
+	private final int openhs = 16;
+	private Point[] swposts;
+        private Point[] swpoles;
 	protected void setPoints() {
 	    super.setPoints();
 	    calcLeads(32);
@@ -200,7 +201,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 	}
 	
 	// this is for backwards compatibility only.  we only support it if throwCount = 2
-	boolean hasCenterOff() { return (flags & FLAG_CENTER_OFF) != 0 && throwCount == 2; }
+    private boolean hasCenterOff() { return (flags & FLAG_CENTER_OFF) != 0 && throwCount == 2; }
 	
 	protected int getShortcut() { return 'S'; }
 

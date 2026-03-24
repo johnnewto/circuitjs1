@@ -56,12 +56,12 @@ import com.lushprojects.circuitjs1.client.util.Rectangle;
 
 public class EditCompositeModelDialog extends Dialog implements MouseDownHandler, MouseMoveHandler, MouseUpHandler, MouseOutHandler, MouseOverHandler {
 	
-	VerticalPanel vp;
+	private VerticalPanel vp;
 	boolean error;
-	CustomCompositeChipElm chip;
-	int postCount;
-	Context2d context;
-	CustomCompositeModel model;
+	private CustomCompositeChipElm chip;
+	private int postCount;
+	private Context2d context;
+	private CustomCompositeModel model;
 	
 	public void setModel(CustomCompositeModel m) { model = m; }
 	
@@ -117,9 +117,9 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 		closeOnEnter = true;
 	}
 	
-	TextBox modelNameTextBox = null;
-	Checkbox saveCheck = null;
-	Checkbox labelCheck = null;
+	private TextBox modelNameTextBox = null;
+	private Checkbox saveCheck = null;
+	private Checkbox labelCheck = null;
 
 	public void createDialog() {
 		Button okButton;
@@ -227,7 +227,7 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 		this.center();
 	}
 	
-	void createPinsFromModel() {
+	private void createPinsFromModel() {
 	    postCount = model.getExternalPinCount();
 	    chip.allocPins(postCount);
 	    chip.sizeX = model.getSizeX();
@@ -256,9 +256,9 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 	    closeDialog();
 	}
 
-	double scale;
+	private double scale;
 	
-	void drawChip() {
+	private void drawChip() {
 	    Graphics g = new Graphics(context);
 	    Rectangle chipBounds = chip.getChipBoundingBox();
 	    double scalew = context.getCanvas().getWidth()  / (double)(chipBounds.width + chipBounds.x*2);
@@ -272,7 +272,7 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 	    chip.drawChipForComposite(g);
 	}
 	
-	void adjustChipSize(int dx, int dy) {
+	private void adjustChipSize(int dx, int dy) {
 	    if (dx < 0 || dy < 0) {
 		for (int i = 0; i != postCount; i++) {
 		    Pin p = chip.pins[i];
@@ -289,7 +289,7 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 	    drawChip();
 	}
 	
-	boolean dragging;
+	private boolean dragging;
 	
 	public void onMouseOver(MouseOverEvent event) {
 	    
@@ -303,13 +303,13 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 	    dragging = false;
 	}
 
-	int selectedPin;
+	private int selectedPin;
 	
 	public void onMouseMove(MouseMoveEvent event) {
 	    mouseMoved(event.getX(), event.getY());
 	}
 	
-	void mouseMoved(int x, int y) {
+	private void mouseMoved(int x, int y) {
 	    if (dragging) {
 		if (selectedPin < 0)
 		    return;
