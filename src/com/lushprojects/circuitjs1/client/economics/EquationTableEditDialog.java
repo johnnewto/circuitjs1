@@ -32,6 +32,7 @@ import com.google.gwt.event.dom.client.ChangeEvent;
 import com.google.gwt.user.client.ui.ListBox;
 import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.economics.EquationTableElm.RowOutputMode;
+import com.lushprojects.circuitjs1.client.electronics.wiring.LabeledNodeElm;
 import com.lushprojects.circuitjs1.client.ui.ReferenceDocs;
 import com.lushprojects.circuitjs1.client.util.Locale;
 

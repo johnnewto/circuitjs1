@@ -43,7 +43,7 @@ public class Inductor {
 	flags = f;
     }
     public boolean isTrapezoidal() { return (flags & FLAG_BACK_EULER) == 0; }
-    protected void reset() { resetTo(0); }
+    public void reset() { resetTo(0); }
     public void resetTo(double c) {
 	// need to set curSourceValue here in case one of inductor nodes is node 0.  In that case
 	// calculateCurrent() may get called (from setNodeVoltage()) when analyzing circuit, before

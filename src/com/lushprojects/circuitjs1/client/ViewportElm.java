@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.annotation.BoxElm;
+
 /**
  * ViewportElm - Defines a visible viewport area for circuit loading.
  * 

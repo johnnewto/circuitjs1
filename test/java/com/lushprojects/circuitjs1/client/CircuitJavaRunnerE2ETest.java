@@ -169,7 +169,7 @@ class CircuitJavaRunnerE2ETest {
 
     private Path getWorld2CircuitPath() {
         String projectDir = System.getProperty("projectDir");
-        Path world2Circuit = Paths.get(projectDir, "src/com/lushprojects/circuitjs1/public/circuits/economics/1debug.md");
+        Path world2Circuit = Paths.get(projectDir, "test/resources/sfcr/world2_fixture.md");
         assertTrue(Files.exists(world2Circuit), "Expected world2 fixture to exist: " + world2Circuit);
         return world2Circuit;
     }

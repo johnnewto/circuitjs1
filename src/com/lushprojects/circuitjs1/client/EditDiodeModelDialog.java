@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.electronics.semiconductors.DiodeElm;
+
 public class EditDiodeModelDialog extends EditDialog {
 
     DiodeModel model;

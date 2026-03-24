@@ -1,6 +1,6 @@
 package com.lushprojects.circuitjs1.client;
 
-final class CircuitMatrixOps {
+public final class CircuitMatrixOps {
     private CircuitMatrixOps() {
     }
 
@@ -36,7 +36,7 @@ final class CircuitMatrixOps {
         LUSolver.solve(a, n, ipvt, b);
     }
 
-    static void invertMatrix(double[][] a, int n) {
+    public static void invertMatrix(double[][] a, int n) {
         int[] ipvt = new int[n];
         luFactor(a, n, ipvt);
         double[] b = new double[n];

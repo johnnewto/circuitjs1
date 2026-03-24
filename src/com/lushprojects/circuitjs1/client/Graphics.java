@@ -485,7 +485,7 @@ public class Graphics {
 	    	return x2*x2+y2*y2;
 	        }
 	  
-	   void setLineDash(int a, int b) {
+	   public void setLineDash(int a, int b) {
 	       setLineDash(context, a, b);
 	   }
 	   

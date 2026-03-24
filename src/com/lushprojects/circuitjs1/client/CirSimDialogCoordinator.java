@@ -15,7 +15,7 @@ public final class CirSimDialogCoordinator {
     private CirSimDialogCoordinator() {
     }
 
-    static EditDialog getEditDialog() {
+    public static EditDialog getEditDialog() {
         return editDialog;
     }
 

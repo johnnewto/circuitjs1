@@ -7,6 +7,7 @@
 package com.lushprojects.circuitjs1.client.economics;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.electronics.wiring.LabeledNodeElm;
 
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.util.Locale;

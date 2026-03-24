@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client.economics;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.electronics.wiring.LabeledNodeElm;
 
 
 /**

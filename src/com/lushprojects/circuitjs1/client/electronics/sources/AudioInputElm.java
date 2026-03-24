@@ -27,6 +27,7 @@ import com.google.gwt.event.dom.client.ChangeHandler;
 import com.google.gwt.user.client.ui.FileUpload;
 import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
+import com.lushprojects.circuitjs1.client.electronics.measurement.AudioOutputElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsMethod;

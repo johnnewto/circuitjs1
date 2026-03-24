@@ -32,6 +32,7 @@ import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.electronics.sources.RailElm;
 import com.lushprojects.circuitjs1.client.electronics.sources.SweepElm;
 import com.lushprojects.circuitjs1.client.electronics.sources.VoltageElm;
+import com.lushprojects.circuitjs1.client.electronics.wiring.LabeledNodeElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsPackage;
@@ -94,10 +95,10 @@ public abstract class CircuitElm implements Editable {
     static CircuitElm mouseElmRef = null;
 	static java.util.Random nonInteractiveRandom = new java.util.Random();
 
-    static final int SCALE_AUTO = 0;
-    static final int SCALE_1 = 1;
-    static final int SCALE_M = 2;
-    static final int SCALE_MU = 3;
+    protected static final int SCALE_AUTO = 0;
+    protected static final int SCALE_1 = 1;
+    protected static final int SCALE_M = 2;
+    protected static final int SCALE_MU = 3;
     
     static int decimalDigits, shortDecimalDigits;
  
@@ -113,12 +114,12 @@ public abstract class CircuitElm implements Editable {
     // length along x and y axes, and sign of difference
     protected int dx, dy, dsign;
 
-    int lastHandleGrabbed=-1;
+    protected int lastHandleGrabbed=-1;
     
     // length of element
     protected double dn;
     
-    double dpx1, dpy1;
+    protected double dpx1, dpy1;
     
     // (x,y) and (x2,y2) as Point objects
     protected Point point1, point2;
@@ -130,7 +131,7 @@ public abstract class CircuitElm implements Editable {
     protected double volts[];
     
     protected double current, curcount;
-    Rectangle boundingBox;
+    protected Rectangle boundingBox;
     
     // if subclasses set this to true, element will be horizontal or vertical only 
     protected boolean noDiagonal;
@@ -316,6 +317,10 @@ public abstract class CircuitElm implements Editable {
     
     // get current for one- or two-terminal elements
     protected double getCurrent() { return current; }
+
+    public double getCurrentForExternal() {
+        return getCurrent();
+    }
 
     void setParentList(Vector<CircuitElm> elmList) {}
     
@@ -594,6 +599,14 @@ public abstract class CircuitElm implements Editable {
 	y2 = y2_;
 	setPoints();
     }
+
+    public void refreshPoints() {
+        setPoints();
+    }
+
+    public void setElementPosition(int x_, int y_, int x2_, int y2_) {
+        setPosition(x_, y_, x2_, y2_);
+    }
     
     // determine if moving this element by (dx,dy) will put it on top of another element
     boolean allowMove(int dx, int dy) {
@@ -746,6 +759,10 @@ public abstract class CircuitElm implements Editable {
     // get position of nth node
     protected Point getPost(int n) {
 	return (n == 0) ? point1 : (n == 1) ? point2 : null;
+    }
+
+    public Point getElementPost(int n) {
+        return getPost(n);
     }
     
     // return post we're connected to (for wires, so we can optimize them out in calculateWireClosure())
@@ -1080,9 +1097,9 @@ public abstract class CircuitElm implements Editable {
 	return getUnitText(Math.abs(i), "A");
     }
 
-    static String getUnitTextWithScale(double val, String utext, int scale) { return getUnitTextWithScale(val, utext, scale, false); }
+    protected static String getUnitTextWithScale(double val, String utext, int scale) { return getUnitTextWithScale(val, utext, scale, false); }
 
-    static String getUnitTextWithScale(double val, String utext, int scale, boolean fixed) {
+    protected static String getUnitTextWithScale(double val, String utext, int scale, boolean fixed) {
 	if (Math.abs(val) > 1e12)
 	    return getUnitText(val, utext);
 	NumFmt.Formatter nf = fixed ? fixedFormat : showFormat;
@@ -1264,7 +1281,7 @@ public abstract class CircuitElm implements Editable {
     boolean canFlipX() { return true; }
     boolean canFlipY() { return true; }
     boolean canFlipXY() { return canFlipX() || canFlipY(); }
-    boolean comparePair(int x1, int x2, int y1, int y2) {
+    protected boolean comparePair(int x1, int x2, int y1, int y2) {
 	return ((x1 == y1 && x2 == y2) || (x1 == y2 && x2 == y1));
     }
     public boolean needsHighlight() { 
@@ -1327,7 +1344,7 @@ public abstract class CircuitElm implements Editable {
     
     boolean isSelected() { return selected; }
     protected boolean canShowValueInScope(int v) { return false; }
-    void setSelected(boolean x) { selected = x; }
+    public void setSelected(boolean x) { selected = x; }
     void selectRect(Rectangle r, boolean add) {
 	if (r.intersects(boundingBox))
 	    selected = true;
@@ -1343,7 +1360,7 @@ public abstract class CircuitElm implements Editable {
 	double y = p1.y-p2.y;
 	return Math.sqrt(x*x+y*y);
     }
-    Rectangle getBoundingBox() { return boundingBox; }
+    public Rectangle getBoundingBox() { return boundingBox; }
     boolean needsShortcut() { return getShortcut() > 0; }
     protected int getShortcut() { return 0; }
 
@@ -1357,7 +1374,7 @@ public abstract class CircuitElm implements Editable {
     }
     void draggingDone() {}
     
-    int lineDistanceSq(int xa, int ya, int xb, int yb, int gx, int gy) {
+    protected int lineDistanceSq(int xa, int ya, int xb, int yb, int gx, int gy) {
 	int dtop = (yb-ya)*gx - (xb-xa)*gy + xb*ya - yb*xa;
 	int dbot = (yb-ya)*(yb-ya) + (xb-xa)*(xb-xa);
 	return dtop*dtop/dbot;
@@ -1370,6 +1387,8 @@ public abstract class CircuitElm implements Editable {
     }
 
     protected String dumpModel() { return null; }
+
+    public String dumpModelForExternal() { return dumpModel(); }
     
     boolean isMouseElm() {
 	return mouseElmRef==this; 

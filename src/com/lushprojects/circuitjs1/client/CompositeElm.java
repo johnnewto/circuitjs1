@@ -4,6 +4,7 @@ import java.util.Vector;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
+import com.lushprojects.circuitjs1.client.electronics.wiring.GroundElm;
 import com.lushprojects.circuitjs1.client.registry.ElementFactoryFacade;
 
 // Circuit element made up of a composition of other circuit elements
@@ -23,7 +24,7 @@ import com.lushprojects.circuitjs1.client.registry.ElementFactoryFacade;
 public abstract class CompositeElm extends CircuitElm {
 
     // need to use escape() instead of converting spaces to _'s so composite elements can be nested
-    final int FLAG_ESCAPE = 1;
+    protected final int FLAG_ESCAPE = 1;
     
     // list of elements contained in this subcircuit
     protected Vector<CircuitElm> compElmList;

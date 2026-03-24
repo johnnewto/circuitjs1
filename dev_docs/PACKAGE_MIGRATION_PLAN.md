@@ -12,7 +12,17 @@ client/
 ├── io/          # SFCR parser/exporter, import/export helpers
 ├── ui/          # Dialogs, toolbar, scope UI
 ├── expr/        # Expression parser/evaluator
+├── annotation/  # Visual-only schematic elements (TextElm, LineElm, BoxElm, GraphicElm)
 ├── electronics/ # Electronic circuit elements
+│   ├── passives/
+│   ├── sources/
+│   ├── digital/
+│   ├── semiconductors/
+│   ├── analog/
+│   ├── electromechanical/
+│   ├── measurement/
+│   ├── wiring/
+│   └── misc/
 ├── economics/   # Stock-flow economic elements
 ├── math/        # Mathematical operation elements
 └── util/        # (already exists) Locale, PerfMonitor
@@ -382,11 +392,195 @@ public interface ConsoleLogger {
 
 Use the **Package Move Execution Guidelines** and **Batch Checklist** above in PR6 for each PR7 sub-batch.
 
-1. **Passives**: ResistorElm, CapacitorElm, InductorElm, PotElm
-2. **Sources**: VoltageElm, CurrentElm, RailElm variants, NoiseElm, TableVoltageElm
-3. **Semiconductors**: DiodeElm, TransistorElm, MosfetElm, JfetElm, etc.
-4. **Digital**: GateElm subclasses, ChipElm, FlipFlops, etc.
-5. **Misc**: Switches, Relays, Transformers, etc.
+### PR7 Migration Checklist (Live)
+
+Completed batches:
+- [x] **Passives** → `com.lushprojects.circuitjs1.client.electronics.passives`
+- [x] **Sources** → `com.lushprojects.circuitjs1.client.electronics.sources`
+- [x] **Digital** (gates/chips/hybrid digital family) → `com.lushprojects.circuitjs1.client.electronics.digital`
+- [x] **Electromechanical (switch family)** → `com.lushprojects.circuitjs1.client.electronics.electromechanical`
+  - `SwitchElm.java`
+  - `PushSwitchElm.java`
+  - `Switch2Elm.java`
+  - `DPDTSwitchElm.java`
+  - `MBBSwitchElm.java`
+  - `CrossSwitchElm.java`
+- [x] **Semiconductors (transistor family)** → `com.lushprojects.circuitjs1.client.electronics.semiconductors`
+  - `TransistorElm.java`
+  - `NTransistorElm.java`
+  - `PTransistorElm.java`
+  - `DarlingtonElm.java`
+  - `NDarlingtonElm.java`
+  - `PDarlingtonElm.java`
+- [x] **Semiconductors (diodes/FETs family)** → `com.lushprojects.circuitjs1.client.electronics.semiconductors`
+  - `DiodeElm.java`
+  - `ZenerElm.java`
+  - `MosfetElm.java`
+  - `NMosfetElm.java`
+  - `PMosfetElm.java`
+  - `JfetElm.java`
+  - `NJfetElm.java`
+  - `PJfetElm.java`
+  - `SCRElm.java`
+  - `DiacElm.java`
+  - `TriacElm.java`
+  - `TriodeElm.java`
+  - `UnijunctionElm.java`
+  - `TunnelDiodeElm.java`
+  - `VaractorElm.java`
+- [x] **Electromechanical (relay/motor/transformer family)** → `com.lushprojects.circuitjs1.client.electronics.electromechanical`
+  - `RelayElm.java`
+  - `RelayCoilElm.java`
+  - `RelayContactElm.java`
+  - `TimeDelayRelayElm.java`
+  - `MotorProtectionSwitchElm.java`
+  - `OptocouplerElm.java`
+  - `TransformerElm.java`
+  - `TappedTransformerElm.java`
+  - `CustomTransformerElm.java`
+  - `DCMotorElm.java`
+  - `ThreePhaseMotorElm.java`
+- [x] **Analog family** → `com.lushprojects.circuitjs1.client.electronics.analog`
+  - `OpAmpElm.java`
+  - `OpAmpSwapElm.java`
+  - `OpAmpRealElm.java`
+  - `OTAElm.java`
+  - `ComparatorElm.java`
+  - `AnalogSwitchElm.java`
+  - `AnalogSwitch2Elm.java`
+  - `VCVSElm.java`
+  - `VCCSElm.java`
+  - `CCVSElm.java`
+  - `CCCSElm.java`
+  - `CC2Elm.java`
+  - `CC2NegElm.java`
+- [x] **Measurement family** → `com.lushprojects.circuitjs1.client.electronics.measurement`
+  - `OutputElm.java`
+  - `ProbeElm.java`
+  - `OhmMeterElm.java`
+  - `AmmeterElm.java`
+  - `WattmeterElm.java`
+  - `AudioOutputElm.java`
+  - `DataRecorderElm.java`
+  - `TestPointElm.java`
+- [x] **Wiring family** → `com.lushprojects.circuitjs1.client.electronics.wiring`
+  - `WireElm.java`
+  - `GroundElm.java`
+  - `LabeledNodeElm.java`
+- [x] **Annotation family** → `com.lushprojects.circuitjs1.client.annotation`
+  - `TextElm.java`
+  - `LineElm.java`
+  - `BoxElm.java`
+  - `GraphicElm.java`
+- [x] **Misc family (low-coupling subset)** → `com.lushprojects.circuitjs1.client.electronics.misc`
+  - `TransLineElm.java`
+  - `CrystalElm.java`
+  - `FuseElm.java`
+  - `SparkGapElm.java`
+  - `MemristorElm.java`
+  - `ThermistorNTCElm.java`
+  - `LDRElm.java`
+  - `LampElm.java`
+  - `LEDElm.java`
+  - `LEDArrayElm.java`
+  - `StopTriggerElm.java`
+
+**Next recommended batch:** PR7 electronics migration complete; continue with deferred UI-support ownership batch as listed below.
+
+Remaining component moves (check off as completed):
+
+#### Semiconductors → `client.electronics.semiconductors`
+Diodes and FETs (transistors already completed above):
+- [x] `DiodeElm.java`
+- [x] `ZenerElm.java`
+- [x] `MosfetElm.java`
+- [x] `NMosfetElm.java`
+- [x] `PMosfetElm.java`
+- [x] `JfetElm.java`
+- [x] `NJfetElm.java`
+- [x] `SCRElm.java`
+- [x] `DiacElm.java`
+- [x] `TriacElm.java`
+- [x] `TriodeElm.java`
+- [x] `UnijunctionElm.java`
+- [x] `TunnelDiodeElm.java`
+- [x] `VaractorElm.java`
+
+#### Analog → `client.electronics.analog`
+Op-amps, controlled sources, and analog switches:
+- [x] `OpAmpElm.java`
+- [x] `OpAmpSwapElm.java`
+- [x] `OpAmpRealElm.java`
+- [x] `OTAElm.java`
+- [x] `ComparatorElm.java`
+- [x] `AnalogSwitchElm.java`
+- [x] `AnalogSwitch2Elm.java`
+- [x] `VCVSElm.java`
+- [x] `VCCSElm.java`
+- [x] `CCVSElm.java`
+- [x] `CCCSElm.java`
+- [x] `CC2Elm.java`
+
+#### Electromechanical → `client.electronics.electromechanical`
+Relays, transformers, motors, and isolation devices (switches already completed above):
+- [x] `RelayElm.java`
+- [x] `RelayCoilElm.java`
+- [x] `RelayContactElm.java`
+- [x] `TimeDelayRelayElm.java`
+- [x] `MotorProtectionSwitchElm.java`
+- [x] `OptocouplerElm.java`
+- [x] `TransformerElm.java`
+- [x] `TappedTransformerElm.java`
+- [x] `CustomTransformerElm.java`
+- [x] `DCMotorElm.java`
+- [x] `ThreePhaseMotorElm.java`
+
+#### Measurement → `client.electronics.measurement`
+Meters, probes, and data recording:
+- [x] `OutputElm.java`
+- [x] `ProbeElm.java`
+- [x] `OhmMeterElm.java`
+- [x] `AmmeterElm.java`
+- [x] `WattmeterElm.java`
+- [x] `AudioOutputElm.java`
+- [x] `DataRecorderElm.java`
+- [x] `TestPointElm.java`
+
+#### Wiring → `client.electronics.wiring`
+Basic connectivity elements:
+- [x] `WireElm.java`
+- [x] `GroundElm.java`
+- [x] `LabeledNodeElm.java`
+
+#### Annotation → `client.annotation` (top-level, no electrical behavior)
+Visual-only schematic elements:
+- [x] `TextElm.java`
+- [x] `LineElm.java`
+- [x] `BoxElm.java`
+- [x] `GraphicElm.java`
+
+#### Misc → `client.electronics.misc`
+Remaining specialized components:
+- [x] `TransLineElm.java`
+- [x] `CrystalElm.java`
+- [x] `FuseElm.java`
+- [x] `SparkGapElm.java`
+- [x] `MemristorElm.java`
+- [x] `ThermistorNTCElm.java`
+- [x] `LDRElm.java`
+- [x] `LampElm.java`
+- [x] `LEDElm.java`
+- [x] `LEDArrayElm.java`
+- [x] `CustomCompositeElm.java`
+- [x] `CustomCompositeChipElm.java`
+- [x] `StopTriggerElm.java`
+
+#### UI-Support Batch (defer from PR7)
+- [ ] `ScopeElm.java` → `client.ui`
+- [ ] `ViewportElm.java` → `client.ui`
+- [ ] `StopTimeElm.java` → `client.ui`
+- [ ] `ActionTimeElm.java` → `client.ui`
+- [ ] `PieChartElm.java` → economics/ui-support decision batch (defer until ownership finalized)
 
 ### PR7a Sources Target Package Map
 - Use subpackage: `com.lushprojects.circuitjs1.client.electronics.sources`
@@ -467,8 +661,64 @@ grep -rn "import.*ElementRegistry" src/
 ./gradlew test --tests "*ElementRegistry*"
 ```
 
----
+## Optional Migration Automation (Perl + git mv)
 
-## Next Action
+Use this only for **mechanical moves** (file path + package/import rewrites).  
+Do **not** rely on it for visibility/API fallout; those still require manual compile-fix loops.
 
-Implement **PR 1** — `getClassName()` fix with tests.
+### Good fit
+- Moving a coherent set of files from one package to another.
+- Rewriting well-known imports/usages with exact string replacements.
+
+### Not a good fit
+- Batches that require `public/protected` promotions.
+- Subclass override access alignment (`attempting to assign weaker access privileges` errors).
+- Core API boundary changes (`CircuitElm`, `ChipElm`, `CirSim`, dialogs/services).
+
+### Template script
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="src/com/lushprojects/circuitjs1/client/electronics"
+FROM="$ROOT/misc"
+TO="$ROOT/electromechanical"
+
+FILES=(
+  SwitchElm.java
+  PushSwitchElm.java
+  Switch2Elm.java
+  DPDTSwitchElm.java
+  MBBSwitchElm.java
+  CrossSwitchElm.java
+)
+
+mkdir -p "$TO"
+
+for f in "${FILES[@]}"; do
+  git mv "$FROM/$f" "$TO/$f"
+  perl -0pi -e \
+    's/package com\.lushprojects\.circuitjs1\.client\.electronics\.misc;/package com.lushprojects.circuitjs1.client.electronics.electromechanical;/' \
+    "$TO/$f"
+done
+
+# Example focused usage rewrites (edit list per batch)
+perl -0pi -e \
+  's/com\.lushprojects\.circuitjs1\.client\.electronics\.misc\.SwitchElm/com.lushprojects.circuitjs1.client.electronics.electromechanical.SwitchElm/g' \
+  src/com/lushprojects/circuitjs1/client/CirSim.java \
+  src/com/lushprojects/circuitjs1/client/MouseInputHandler.java \
+  src/com/lushprojects/circuitjs1/client/electronics/digital/LogicInputElm.java
+
+perl -0pi -e \
+  's/import com\.lushprojects\.circuitjs1\.client\.electronics\.misc\.\*;/import com.lushprojects.circuitjs1.client.electronics.electromechanical.*;/' \
+  src/com/lushprojects/circuitjs1/client/ElementLegacyFactory.java
+```
+
+### Mandatory gates after each automated batch
+1. `./gradlew compileJava`
+2. `./gradlew test`
+3. `./gradlew compileGwt`
+
+If any gate fails, stop and fix manually before continuing.
+
+-----

@@ -78,7 +78,7 @@ public class CustomCompositeModel implements Comparable<CustomCompositeModel> {
         loadInternalModels();
     }
     
-    static CustomCompositeModel getModelWithName(String name) {
+    public static CustomCompositeModel getModelWithName(String name) {
 	if (modelMap == null)
 	    initModelMap();
 	CustomCompositeModel lm = modelMap.get(name);
@@ -106,7 +106,7 @@ public class CustomCompositeModel implements Comparable<CustomCompositeModel> {
 	}
     }
 
-    static Vector<CustomCompositeModel> getModelList() {
+    public static Vector<CustomCompositeModel> getModelList() {
         Vector<CustomCompositeModel> vector = new Vector<CustomCompositeModel>();
         Iterator it = modelMap.entrySet().iterator();
         while (it.hasNext()) {
@@ -195,8 +195,8 @@ public class CustomCompositeModel implements Comparable<CustomCompositeModel> {
 	return x;
     }
     
-    boolean showLabel() { return (flags & FLAG_SHOW_LABEL) != 0; }
-    boolean isBuiltin() { return builtin; }
+    public boolean showLabel() { return (flags & FLAG_SHOW_LABEL) != 0; }
+    public boolean isBuiltin() { return builtin; }
     
     void setShowLabel(boolean sl) {
 	flags = (sl) ? (flags | FLAG_SHOW_LABEL) : (flags & ~FLAG_SHOW_LABEL);
@@ -221,8 +221,60 @@ public class CustomCompositeModel implements Comparable<CustomCompositeModel> {
         str += " " + CustomLogicModel.escape(nodeList) + " " + CustomLogicModel.escape(elmDump);
         return str;
     }
+
+    public String dumpForExternal() {
+	return dump();
+    }
+
+    public boolean isDumped() {
+	return dumped;
+    }
+
+    public int getSizeX() {
+	return sizeX;
+    }
+
+    public int getSizeY() {
+	return sizeY;
+    }
+
+    public String getName() {
+	return name;
+    }
+
+    public int getExternalPinCount() {
+	return extList.size();
+    }
+
+    public int getExternalPinNode(int index) {
+	return extList.get(index).node;
+    }
+
+    public int getExternalPinPos(int index) {
+	return extList.get(index).pos;
+    }
+
+    public int getExternalPinSide(int index) {
+	return extList.get(index).side;
+    }
+
+    public String getExternalPinName(int index) {
+	return extList.get(index).name;
+    }
+
+    public String getNodeList() {
+	return nodeList;
+    }
+
+    public String getElmDump() {
+	return elmDump;
+    }
+
+    public String getModelCircuit() {
+	return modelCircuit;
+    }
     
-    boolean canLoadModelCircuit() {
+    public boolean canLoadModelCircuit() {
 	return modelCircuit != null && modelCircuit.length() > 0;
     }
     

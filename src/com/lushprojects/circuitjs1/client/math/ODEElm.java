@@ -7,6 +7,7 @@
 package com.lushprojects.circuitjs1.client.math;
 
 import com.lushprojects.circuitjs1.client.economics.*;
+import com.lushprojects.circuitjs1.client.electronics.wiring.LabeledNodeElm;
 
 import com.lushprojects.circuitjs1.client.*;
 

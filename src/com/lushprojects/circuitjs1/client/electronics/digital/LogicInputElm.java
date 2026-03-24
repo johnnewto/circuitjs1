@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client.electronics.digital;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.electronics.electromechanical.SwitchElm;
 
     public class LogicInputElm extends SwitchElm {
 	final int FLAG_TERNARY = 1;

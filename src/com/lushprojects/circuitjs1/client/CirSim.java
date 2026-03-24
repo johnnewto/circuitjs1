@@ -19,8 +19,11 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.annotation.*;
 import com.lushprojects.circuitjs1.client.economics.*;
+import com.lushprojects.circuitjs1.client.electronics.electromechanical.SwitchElm;
 import com.lushprojects.circuitjs1.client.electronics.passives.*;
+import com.lushprojects.circuitjs1.client.electronics.wiring.*;
 
 // GWT conversion (c) 2015 by Iain Sharp
 
@@ -710,6 +713,10 @@ public CirSim() {
 	    return circuitIOService;
 	}
 
+	public void readCircuitFromModel(String circuitText) {
+	    circuitIOService.readCircuit(circuitText);
+	}
+
 	public String dumpCircuitForUi() {
 	    return circuitIOService.dumpCircuit();
 	}
@@ -1367,6 +1374,14 @@ public CirSim() {
 	return gridSize;
     }
 
+    public CircuitElm getPlotXElm() {
+        return plotXElm;
+    }
+
+    public CircuitElm getPlotYElm() {
+        return plotYElm;
+    }
+
     public boolean isEuroResistorForUi() {
 	return euroResistorCheckItem.getState();
     }
@@ -1396,7 +1411,7 @@ public CirSim() {
 	elm.text = varName;
 	elm.x2 = gx + shaftLength;
 	elm.y2 = gy;
-	elm.setPoints();
+	elm.refreshPoints();
 	return elm;
     }
 
@@ -1644,12 +1659,12 @@ public CirSim() {
 	matrixStamper.stampResistor(n1, n2, r);
     }
 
-    void stampConductance(int n1, int n2, double r0) {
+    public void stampConductance(int n1, int n2, double r0) {
 	matrixStamper.stampConductance(n1, n2, r0);
     }
 
     // specify that current from cn1 to cn2 is equal to voltage from vn1 to 2, divided by g
-    void stampVCCurrentSource(int cn1, int cn2, int vn1, int vn2, double g) {
+    public void stampVCCurrentSource(int cn1, int cn2, int vn1, int vn2, double g) {
 	matrixStamper.stampVCCurrentSource(cn1, cn2, vn1, vn2, g);
     }
 
@@ -1658,7 +1673,7 @@ public CirSim() {
     }
 
     // stamp a current source from n1 to n2 depending on current through vs
-    void stampCCCS(int n1, int n2, int vs, double gain) {
+    public void stampCCCS(int n1, int n2, int vs, double gain) {
 	matrixStamper.stampCCCS(n1, n2, vs, gain);
     }
 

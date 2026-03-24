@@ -7,6 +7,7 @@ import java.util.HashSet;
 import com.google.gwt.canvas.dom.client.Context2d;
 import com.lushprojects.circuitjs1.client.economics.*;
 import com.lushprojects.circuitjs1.client.electronics.passives.*;
+import com.lushprojects.circuitjs1.client.electronics.wiring.LabeledNodeElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 final class StatusInfoRenderer {

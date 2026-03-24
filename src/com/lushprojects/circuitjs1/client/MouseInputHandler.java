@@ -1,9 +1,12 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.annotation.*;
 import com.lushprojects.circuitjs1.client.economics.*;
 import com.lushprojects.circuitjs1.client.electronics.digital.LogicInputElm;
+import com.lushprojects.circuitjs1.client.electronics.electromechanical.SwitchElm;
 import com.lushprojects.circuitjs1.client.electronics.passives.PotElm;
 import com.lushprojects.circuitjs1.client.electronics.sources.VarRailElm;
+import com.lushprojects.circuitjs1.client.electronics.wiring.WireElm;
 
 import static com.google.gwt.event.dom.client.KeyCodes.KEY_A;
 import static com.google.gwt.event.dom.client.KeyCodes.KEY_BACKSPACE;
@@ -121,10 +124,10 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         if (mouseElm == null || !(mouseElm instanceof SwitchElm))
             return false;
         SwitchElm se = (SwitchElm) mouseElm;
-        if (!se.getSwitchRect().contains(x, y))
+        if (!se.containsSwitchRect(x, y))
             return false;
         se.toggle();
-        if (se.momentary)
+        if (se.isMomentarySwitch())
             sim.heldSwitchElm = se;
         if (!(se instanceof LogicInputElm))
             sim.needAnalyze();

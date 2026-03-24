@@ -30,6 +30,8 @@ import com.google.gwt.user.client.ui.Anchor;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.VerticalPanel;
 import com.lushprojects.circuitjs1.client.ChipElm.Pin;
+import com.lushprojects.circuitjs1.client.electronics.misc.CustomCompositeChipElm;
+import com.lushprojects.circuitjs1.client.electronics.misc.CustomCompositeElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.MouseDownEvent;
@@ -59,7 +61,7 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 	Context2d context;
 	CustomCompositeModel model;
 	
-	void setModel(CustomCompositeModel m) { model = m; }
+	public void setModel(CustomCompositeModel m) { model = m; }
 	
         boolean createModel() {
             HashSet<Integer> nodeSet = new HashSet<Integer>();
@@ -118,7 +120,7 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 	Checkbox saveCheck = null;
 	Checkbox labelCheck = null;
 
-	void createDialog() {
+	public void createDialog() {
 		Button okButton;
 		Anchor a;
 		vp=new VerticalPanel();
@@ -238,7 +240,7 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 		if (i == selectedPin)
 		    chip.pins[i].selected = true;
 	    }
-	    chip.setPoints();
+	    chip.updateChipPoints();
 	}
 	
 	public void enterPressed() {
@@ -260,15 +262,16 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 	
 	void drawChip() {
 	    Graphics g = new Graphics(context);
-	    double scalew = context.getCanvas().getWidth()  / (double)(chip.boundingBox.width + chip.boundingBox.x*2);
-	    double scaleh = context.getCanvas().getHeight() / (double)(chip.boundingBox.height + chip.boundingBox.y*2);
+	    Rectangle chipBounds = chip.getChipBoundingBox();
+	    double scalew = context.getCanvas().getWidth()  / (double)(chipBounds.width + chipBounds.x*2);
+	    double scaleh = context.getCanvas().getHeight() / (double)(chipBounds.height + chipBounds.y*2);
 	    scale = 1/Math.min(scalew, scaleh);
 		context.setFillStyle(CirSim.getInstance().getStatusInfoRenderer().getBackgroundColor().getHexValue());
 		context.setTransform(1, 0, 0, 1, 0, 0);
 	    context.fillRect(0, 0, context.getCanvas().getWidth(), context.getCanvas().getHeight());
 	    context.setTransform(1/scale, 0, 0, 1/scale, 0, 0);
 	    chip.setLabel(!labelCheck.getValue() ? null : (modelNameTextBox != null) ? modelNameTextBox.getText() : model.name);
-	    chip.draw(g);
+	    chip.drawChipForComposite(g);
 	}
 	
 	void adjustChipSize(int dx, int dy) {
@@ -314,10 +317,10 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 		if (selectedPin < 0)
 		    return;
 		int pos[] = new int[2];
-		if (!chip.getPinPos((int)(x*scale), (int)(y*scale), selectedPin, pos))
+		if (!chip.getPinPosForLayout((int)(x*scale), (int)(y*scale), selectedPin, pos))
 		    return;
 		ExtListEntry p = model.extList.get(selectedPin);
-		int pn = chip.getOverlappingPin(pos[0], pos[1], selectedPin);
+		int pn = chip.getOverlappingPinForLayout(pos[0], pos[1], selectedPin);
 		if (pn != -1) {
 		    // swap positions with overlapping pin
 		    ExtListEntry p2 = model.extList.get(pn);

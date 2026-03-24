@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.annotation.GraphicElm;
 import com.lushprojects.circuitjs1.client.economics.*;
 
 import com.google.gwt.user.client.ui.Button;

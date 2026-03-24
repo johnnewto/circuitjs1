@@ -7,6 +7,7 @@
 package com.lushprojects.circuitjs1.client.economics;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.electronics.wiring.LabeledNodeElm;
 
 import com.google.gwt.event.dom.client.MouseWheelEvent;
 import com.google.gwt.event.dom.client.MouseWheelHandler;
