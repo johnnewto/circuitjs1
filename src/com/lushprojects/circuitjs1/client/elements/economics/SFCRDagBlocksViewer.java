@@ -1,4 +1,8 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.elements.economics;
+
+import com.lushprojects.circuitjs1.client.elements.Expr;
+import com.lushprojects.circuitjs1.client.elements.ExprParser;
+import com.lushprojects.circuitjs1.client.elements.ExprState;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -6,7 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
-import com.lushprojects.circuitjs1.client.elements.economics.*;
+import com.lushprojects.circuitjs1.client.*;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.resources.client.ClientBundle;
 import com.google.gwt.resources.client.TextResource;
@@ -180,7 +184,7 @@ public class SFCRDagBlocksViewer {
         }
     }
 
-    SFCRDagBlocksViewer(CirSim sim) {
+    public SFCRDagBlocksViewer(CirSim sim) {
         this.sim = sim;
     }
 
@@ -218,7 +222,7 @@ public class SFCRDagBlocksViewer {
     /**
      * Build all graph variants and open/reuse the external viewer popup.
      */
-    void openExternalWindow() {
+    public void openExternalWindow() {
         GraphData samePeriodGraph = buildGraph(false, false, false);
         GraphData historicalGraph = buildGraph(true, false, false);
         GraphData samePeriodNoParamsGraph = buildGraph(false, true, false);

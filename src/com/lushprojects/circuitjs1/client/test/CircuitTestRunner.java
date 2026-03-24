@@ -17,8 +17,10 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.test;
 
+import com.lushprojects.circuitjs1.client.CirSim;
+import com.lushprojects.circuitjs1.client.CircuitElm;
 import java.util.Vector;
 
 /**
@@ -73,7 +75,7 @@ public class CircuitTestRunner {
         sim.getTimingState().minTimeStep = STANDARD_TIMESTEP;
         sim.setTimeStep(STANDARD_TIMESTEP);
         sim.adjustTimeStep = false; // Fixed timestep for consistency
-        sim.simRunning = false; // Start paused
+        sim.setSimRunning(false); // Start paused
     }
     
     /**
@@ -105,12 +107,12 @@ public class CircuitTestRunner {
      * @param circuitText Circuit dump in CircuitJS1 format
      */
     public void loadCircuitFromText(String circuitText) {
-        sim.getCircuitIOService().readCircuit(circuitText);
+        sim.readCircuitFromModel(circuitText);
         sim.needAnalyze();
         // Force immediate analysis to set up node arrays
-        sim.analyzeCircuit();
+        sim.updateCircuit();
         // Keep simulation paused to prevent automatic circuit switching
-        sim.simRunning = false;
+        sim.setSimRunning(false);
     }
     
     /**
@@ -120,7 +122,7 @@ public class CircuitTestRunner {
      * @throws RuntimeException if simulation fails or doesn't converge
      */
     public void runToTime(double targetTime) {
-        sim.simRunning = true;
+        sim.setSimRunning(true);
         
         // Use actual timestep from circuit, not STANDARD_TIMESTEP
         int maxSteps = (int) (targetTime / sim.getTimeStep()) + 1000; // Safety margin
@@ -130,8 +132,9 @@ public class CircuitTestRunner {
             sim.updateCircuit();
             steps++;
             
-            if (sim.stopMessage != null) {
-                throw new RuntimeException("Simulation stopped: " + sim.stopMessage);
+            String stopMessage = sim.getStopMessageForTesting();
+            if (stopMessage != null) {
+                throw new RuntimeException("Simulation stopped: " + stopMessage);
             }
         }
         
@@ -139,7 +142,7 @@ public class CircuitTestRunner {
             throw new RuntimeException("Simulation timeout: exceeded " + maxSteps + " steps");
         }
         // sim.updateCircuit();
-        sim.simRunning = false;
+        sim.setSimRunning(false);
 
     }
     
@@ -149,17 +152,18 @@ public class CircuitTestRunner {
      * @param iterations Number of timesteps to execute
      */
     public void runIterations(int iterations) {
-        sim.simRunning = true;
+        sim.setSimRunning(true);
         
         for (int i = 0; i < iterations; i++) {
             sim.updateCircuit();
             
-            if (sim.stopMessage != null) {
-                throw new RuntimeException("Simulation stopped at iteration " + i + ": " + sim.stopMessage);
+            String stopMessage = sim.getStopMessageForTesting();
+            if (stopMessage != null) {
+                throw new RuntimeException("Simulation stopped at iteration " + i + ": " + stopMessage);
             }
         }
         // sim.updateCircuit();
-        sim.simRunning = false;
+        sim.setSimRunning(false);
 
     }
     
@@ -173,7 +177,7 @@ public class CircuitTestRunner {
      * @throws RuntimeException if timeout reached
      */
     public void runToSteadyState(double timeout, double stabilityThreshold) {
-        sim.simRunning = true;
+        sim.setSimRunning(true);
         
         double[] lastVoltages = null;
         int stableCount = 0;
@@ -187,8 +191,9 @@ public class CircuitTestRunner {
             sim.updateCircuit();
             steps++;
             
-            if (sim.stopMessage != null) {
-                throw new RuntimeException("Simulation stopped: " + sim.stopMessage);
+            String stopMessage = sim.getStopMessageForTesting();
+            if (stopMessage != null) {
+                throw new RuntimeException("Simulation stopped: " + stopMessage);
             }
             
             // Check stability
@@ -204,7 +209,7 @@ public class CircuitTestRunner {
                 if (stable) {
                     stableCount++;
                     if (stableCount >= requiredStableSteps) {
-                        sim.simRunning = false;
+                        sim.setSimRunning(false);
                         return; // Steady state reached
                     }
                 } else {
@@ -246,7 +251,7 @@ public class CircuitTestRunner {
      * @throws RuntimeException if label not found
      */
     public double getNodeVoltage(String label) {
-        double voltage = sim.getCircuitValueSlotManager().getLabeledNodeVoltage(label);
+        double voltage = sim.getLabeledNodeVoltageForUi(label);
         if (Double.isNaN(voltage)) {
             throw new RuntimeException("Node not found: " + label);
         }
@@ -278,7 +283,7 @@ public class CircuitTestRunner {
      * @return Current in amperes
      */
     public double getElementCurrent(CircuitElm elm) {
-        return elm.getCurrent();
+        return elm.getCurrentForTesting();
     }
     
     /**
@@ -288,7 +293,7 @@ public class CircuitTestRunner {
      * @return Power in watts
      */
     public double getElementPower(CircuitElm elm) {
-        return elm.getPower();
+        return elm.getPowerForTesting();
     }
     
     /**
@@ -298,7 +303,7 @@ public class CircuitTestRunner {
      * @return First element of that type, or null if not found
      */
     public CircuitElm findElement(Class clazz) {
-        for (int i = 0; i < sim.elmList.size(); i++) {
+        for (int i = 0; i < sim.getElementCount(); i++) {
             CircuitElm elm = sim.getElm(i);
             if (clazz.equals(elm.getClass()) || elm.getClass().getName().equals(clazz.getName())) {
                 return elm;
@@ -315,7 +320,7 @@ public class CircuitTestRunner {
      */
     public Vector findElements(Class clazz) {
         Vector found = new Vector();
-        for (int i = 0; i < sim.elmList.size(); i++) {
+        for (int i = 0; i < sim.getElementCount(); i++) {
             CircuitElm elm = sim.getElm(i);
             if (clazz.equals(elm.getClass()) || elm.getClass().getName().equals(clazz.getName())) {
                 found.add(elm);
@@ -433,8 +438,9 @@ public class CircuitTestRunner {
      * @throws AssertionError if stopMessage is set
      */
     public void assertNoErrors() {
-        if (sim.stopMessage != null) {
-            throw new AssertionError("Simulation error: " + sim.stopMessage);
+        String stopMessage = sim.getStopMessageForTesting();
+        if (stopMessage != null) {
+            throw new AssertionError("Simulation error: " + stopMessage);
         }
     }
     
@@ -461,7 +467,7 @@ public class CircuitTestRunner {
         sb.append(sim.isConverged());
         sb.append("\n");
         sb.append("Elements: ");
-        sb.append(sim.elmList.size());
+        sb.append(sim.getElementCount());
         sb.append("\n");
         sb.append("Nodes: ");
         sb.append(sim.getCircuitAnalyzer().getNodeList() != null ? sim.getCircuitAnalyzer().getNodeList().size() : 0);

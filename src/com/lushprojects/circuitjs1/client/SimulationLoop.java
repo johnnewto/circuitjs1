@@ -1,5 +1,9 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.elements.Expr;
+import com.lushprojects.circuitjs1.client.elements.ExprParser;
+import com.lushprojects.circuitjs1.client.elements.ExprState;
+
 import com.lushprojects.circuitjs1.client.elements.ActionScheduler;
 
 import com.google.gwt.canvas.dom.client.Context2d.LineCap;

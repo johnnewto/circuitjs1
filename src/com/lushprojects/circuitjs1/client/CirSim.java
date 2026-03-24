@@ -1794,6 +1794,10 @@ public CirSim() {
 	return converged;
     }
 
+    public String getStopMessageForTesting() {
+	return stopMessage;
+    }
+
     public void setConverged(boolean converged) {
 	this.converged = converged;
     }

@@ -318,6 +318,7 @@ public abstract class CircuitElm implements Editable {
     
     // get current for one- or two-terminal elements
     protected double getCurrent() { return current; }
+    public double getCurrentForTesting() { return getCurrent(); }
 
     public double getCurrentForExternal() {
         return getCurrent();
@@ -1227,6 +1228,7 @@ public abstract class CircuitElm implements Editable {
 	g.setColor(new Color(rg, rg, rg));
     }
     protected double getPower() { return getVoltageDiff()*current; }
+    public double getPowerForTesting() { return getPower(); }
     protected double getScopeValue(int x) {
 	return (x == Scope.VAL_CURRENT) ? getCurrent() :
 	    (x == Scope.VAL_POWER) ? getPower() : getVoltageDiff();

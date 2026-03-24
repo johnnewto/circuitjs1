@@ -1,5 +1,6 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.elements;
 
+import com.lushprojects.circuitjs1.client.CirSim;
 import com.lushprojects.circuitjs1.client.io.LookupTableRegistry;
 import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
 import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNodeElm;
@@ -79,15 +80,15 @@ public class Expr {
     static java.util.ArrayList<String> perfNodeRefNameSamples = new java.util.ArrayList<String>();
     static final int PERF_SAMPLE_LIMIT = 30;
 
-    static void setPerfProbeEnabled(boolean enabled) {
+    public static void setPerfProbeEnabled(boolean enabled) {
 	perfProbeEnabled = enabled;
     }
 
-    static boolean isPerfProbeEnabled() {
+    public static boolean isPerfProbeEnabled() {
 	return perfProbeEnabled;
     }
 
-    static void resetPerfProbe() {
+    public static void resetPerfProbe() {
 	perfNodeRefEvalCount = 0;
 	perfNodeRefEvalTimeNanos = 0;
 	perfLocalSlotEvalCount = 0;
@@ -96,7 +97,7 @@ public class Expr {
 	perfNodeRefNameSamples.clear();
     }
 
-    static String getPerfProbeReport() {
+    public static String getPerfProbeReport() {
 	double nodeAvgNs = (perfNodeRefEvalCount > 0)
 	    ? (double) perfNodeRefEvalTimeNanos / (double) perfNodeRefEvalCount
 	    : 0;
@@ -189,12 +190,12 @@ public class Expr {
     }
 
     /** Clear the unresolved references list (call at start of each timestep) */
-    static void clearUnresolvedReferences() {
+    public static void clearUnresolvedReferences() {
 	unresolvedReferences.clear();
     }
     
     /** Get all unresolved references found during evaluation */
-    static Vector<String> getUnresolvedReferences() {
+    public static Vector<String> getUnresolvedReferences() {
 	return unresolvedReferences;
     }
     
@@ -357,7 +358,7 @@ public class Expr {
 	 *
 	 * @param out target set to populate with referenced names
 	 */
-	void collectAllRefs(java.util.Set<String> out) {
+	public void collectAllRefs(java.util.Set<String> out) {
 	collectAllRefsInternal(out);
 	}
 
@@ -922,7 +923,12 @@ public class Expr {
 		    // MNA mode: labeled node voltage first (authoritative from matrix solver)
 		    Integer labeledNode = LabeledNodeElm.getByName(nodeName);
 		    if (labeledNode != null && labeledNode != 0) {
-			return returnNodeRefValue(CirSim.getInstance().getCircuitValueSlotManager().getLabeledNodeVoltage(nodeName), nodeRefStartNanos);
+			int nodeIndex = labeledNode.intValue() - 1;
+			if (CirSim.getInstance().getSolverMatrixState().nodeVoltages != null
+				&& nodeIndex >= 0
+				&& nodeIndex < CirSim.getInstance().getSolverMatrixState().nodeVoltages.length) {
+			    return returnNodeRefValue(CirSim.getInstance().getSolverMatrixState().nodeVoltages[nodeIndex], nodeRefStartNanos);
+			}
 		    }
 		    // Fall back to ComputedValues for non-physical variables
 		    Double computedValue = getComputedByMode(nodeName, context);

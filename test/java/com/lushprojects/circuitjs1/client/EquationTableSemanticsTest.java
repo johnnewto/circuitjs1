@@ -1,5 +1,8 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.elements.Expr;
+import com.lushprojects.circuitjs1.client.elements.ExprParser;
+import com.lushprojects.circuitjs1.client.elements.ExprState;
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

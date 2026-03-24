@@ -1,4 +1,4 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.elements;
 
 import com.lushprojects.circuitjs1.client.io.LookupTableRegistry;
 import org.junit.jupiter.api.DisplayName;

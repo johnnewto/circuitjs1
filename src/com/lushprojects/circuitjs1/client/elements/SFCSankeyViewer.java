@@ -70,16 +70,16 @@ public class SFCSankeyViewer {
     interface SankeyViewerResources extends ClientBundle {
         SankeyViewerResources INSTANCE = GWT.create(SankeyViewerResources.class);
 
-        @Source("../SankeyPlotlyEmbeddedTemplate.html")
+        @Source("SankeyPlotlyEmbeddedTemplate.html")
         TextResource plotlyEmbeddedTemplate();
 
-        @Source("../SankeyPlotlyStandaloneTemplate.html")
+        @Source("SankeyPlotlyStandaloneTemplate.html")
         TextResource plotlyStandaloneTemplate();
 
-        @Source("../SankeyD3EmbeddedTemplate.html")
+        @Source("SankeyD3EmbeddedTemplate.html")
         TextResource d3EmbeddedTemplate();
 
-        @Source("../SankeyD3StandaloneTemplate.html")
+        @Source("SankeyD3StandaloneTemplate.html")
         TextResource d3StandaloneTemplate();
     }
 
