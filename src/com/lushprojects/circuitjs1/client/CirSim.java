@@ -761,7 +761,7 @@ public CirSim() {
 	    circuitIOService.readCircuit(circuitText);
 	}
 
-    public String dumpCircuitForUi() {
+    public String dumpCircuit() {
 	    return circuitIOService.dumpCircuit();
 	}
 
@@ -803,65 +803,6 @@ public CirSim() {
 
 	public void setAllowSaveFromImportHelper(boolean allowSave) {
 	    getUiPanelManager().allowSave(allowSave);
-	}
-
-	public void reimportCircuitTextFromDialog(String circuitText) {
-		getUndoRedoManager().pushUndo();
-		getCircuitIOService().readCircuit(circuitText);
-		getUiPanelManager().allowSave(false);
-	}
-
-	public void importCircuitTextFromDialog(String circuitText, boolean subcircuitsOnly) {
-		getUndoRedoManager().pushUndo();
-		getImportExportHelper().importCircuitFromText(circuitText, subcircuitsOnly);
-	}
-
-	public Vector<String> getSearchableMainMenuItemNames() {
-		Vector<String> items = new Vector<String>();
-		for (int i = 0; i != getMenuUiState().mainMenuItems.size(); i++) {
-			CheckboxMenuItem item = getMenuUiState().mainMenuItems.get(i);
-			if (item.getShortcut().length() > 1)
-				break;
-			items.add(item.getName());
-		}
-		return items;
-	}
-
-	public int getShortcutMenuItemCount() {
-		int count = 0;
-		for (int i = 0; i != getMenuUiState().mainMenuItems.size(); i++) {
-			CheckboxMenuItem item = getMenuUiState().mainMenuItems.get(i);
-			if (item.getShortcut().length() > 1)
-				break;
-			count++;
-		}
-		return count;
-	}
-
-	public String getShortcutMenuItemName(int index) {
-		return getMenuUiState().mainMenuItems.get(index).getName();
-	}
-
-	public String getShortcutMenuItemValue(int index) {
-		return getMenuUiState().mainMenuItems.get(index).getShortcut();
-	}
-
-	public void applyShortcutMenuItemValues(Vector<String> shortcutValues) {
-		for (int i = 0; i != shortcuts.length; i++)
-			shortcuts[i] = null;
-		int count = Math.min(shortcutValues.size(), getShortcutMenuItemCount());
-		for (int i = 0; i < count; i++) {
-			String str = shortcutValues.get(i);
-			CheckboxMenuItem item = getMenuUiState().mainMenuItems.get(i);
-			item.setShortcut(str);
-			if (str != null && str.length() > 0)
-				shortcuts[str.charAt(0)] = getMenuUiState().mainMenuItemNames.get(i);
-		}
-		getPreferencesManager().saveShortcuts();
-	}
-
-	public void alertOrWarnFromDialog(String message) {
-		alertOrWarn(message);
 	}
 
 	public boolean isDotsEnabledForExport() {
@@ -1091,7 +1032,7 @@ public CirSim() {
 	    return runnerController;
 	}
 
-	ClipboardManager getClipboardManager() {
+	public ClipboardManager getClipboardManager() {
 	    return clipboardManager;
 	}
 
@@ -1150,10 +1091,6 @@ public CirSim() {
 
 	public void copyImageToClipboardForUi() {
 	    doImageToClipboardCore();
-	}
-
-	public void alertOrWarnForUi(String message) {
-	    alertOrWarn(message);
 	}
 
 	public static int cacImageTypeForUi() {
@@ -1474,15 +1411,6 @@ public CirSim() {
 	return elmList.size();
     }
 
-    public int snapGridForUi(int x) {
-	return snapGrid(x);
-    }
-
-    public void clearSelectionForUi() {
-	getClipboardManager().clearSelection();
-    }
-
-
     public boolean isPositionClearForVariablePlacement(int gx, int gy) {
 	int minDistance = gridSize * 3;
 	for (int i = 0; i < elmList.size(); i++) {
@@ -1527,31 +1455,6 @@ public CirSim() {
 	return true;
     }
 
-    public void repaintForUi() {
-	repaint();
-    }
-
-    public String findCanvasTestLabelForUi(String[] testNames) {
-	if (testNames == null || testNames.length == 0) {
-	    return null;
-	}
-	for (int i = 0; i < elmList.size(); i++) {
-	    CircuitElm ce = getElm(i);
-	    if (ce instanceof TextElm) {
-		String text = ((TextElm) ce).text;
-		if (text == null) {
-		    continue;
-		}
-		for (String testName : testNames) {
-		    if (text.equals(testName)) {
-			return testName;
-		    }
-		}
-	    }
-	}
-	return null;
-    }
-    
     public Adjustable findAdjustable(CircuitElm elm, int item) {
 	int i;
 	for (i = 0; i != adjustables.size(); i++) {
@@ -1576,7 +1479,7 @@ public CirSim() {
 	console(message);
     }
 
-    void alertOrWarn(String message) {
+    public void alertOrWarn(String message) {
 	if (RuntimeMode.isGwt())
 	    Window.alert(message);
 	else

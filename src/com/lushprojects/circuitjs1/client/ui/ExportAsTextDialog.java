@@ -101,7 +101,9 @@ public class ExportAsTextDialog extends Dialog {
 				closeDialog();
 				String s = textArea.getText();
 				if (s != null) {
-					sim.reimportCircuitTextFromDialog(s);
+					sim.pushUndoForUi();
+					sim.readCircuitFromModel(s);
+					sim.setAllowSaveFromImportHelper(false);
 				}
 			}
 		});

@@ -12,7 +12,7 @@ public class EditDialogActions {
         this.sim = sim;
     }
     public void doEdit(Editable eable) {
-        sim.clearSelectionForUi();
+        sim.getClipboardManager().clearSelection();
         sim.pushUndoForUi();
 
         EditInfo firstInfo = eable.getEditInfo(0);
@@ -29,7 +29,7 @@ public class EditDialogActions {
     }
 
     public void doSliders(CircuitElm ce) {
-        sim.clearSelectionForUi();
+        sim.getClipboardManager().clearSelection();
         sim.pushUndoForUi();
         CirSimDialogCoordinator.setDialogShowing(new SliderDialog(ce, sim));
         CirSimDialogCoordinator.getDialogShowing().show();
@@ -37,7 +37,7 @@ public class EditDialogActions {
 
     public void doEditLookupTables() {
         if (sim.isEditingLocked()) {
-            sim.alertOrWarnForUi(Locale.LS("Editing disabled.  Re-enable from the Options menu."));
+            sim.alertOrWarn(Locale.LS("Editing disabled.  Re-enable from the Options menu."));
             return;
         }
         CirSimDialogCoordinator.setDialogShowing(new LookupTablesEditorDialog(sim));

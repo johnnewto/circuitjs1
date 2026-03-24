@@ -61,11 +61,11 @@ public class ShortcutsDialog extends Dialog {
 		
 		FlexTable table = new FlexTable();
 		sp.add(table);
-		int count = asim.getShortcutMenuItemCount();
+		int count = getShortcutMenuItemCount();
 		for (int i = 0; i != count; i++) {
-	    table.setText(i, 0, sim.getShortcutMenuItemName(i));
+	    table.setText(i, 0, sim.getMenuUiState().mainMenuItems.get(i).getName());
 	    TextBox text = new TextBox();
-	    text.setText(sim.getShortcutMenuItemValue(i));
+	    text.setText(sim.getMenuUiState().mainMenuItems.get(i).getShortcut());
 	    text.setMaxLength(1);
 	    // Prevent keyboard events from propagating to circuit editor
 	    preventKeyboardPropagation(text);
@@ -105,8 +105,19 @@ public class ShortcutsDialog extends Dialog {
 		String str = textBoxes.get(i).getText();
 		shortcuts.add(str);
 	    }
-	    sim.applyShortcutMenuItemValues(shortcuts);
+	    sim.getPreferencesManager().applyShortcutMenuItemValues(shortcuts);
 	    closeDialog();
+	}
+
+	int getShortcutMenuItemCount() {
+	    int count = 0;
+	    for (int i = 0; i != sim.getMenuUiState().mainMenuItems.size(); i++) {
+		CheckboxMenuItem item = sim.getMenuUiState().mainMenuItems.get(i);
+		if (item.getShortcut().length() > 1)
+		    break;
+		count++;
+	    }
+	    return count;
 	}
 	
 	boolean checkForDuplicates() {

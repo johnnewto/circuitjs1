@@ -61,7 +61,8 @@ TextArea textArea;
 			public void onClick(ClickEvent event) {
 				closeDialog();
 				String s = textArea.getText();
-				sim.importCircuitTextFromDialog(s, Boolean.TRUE.equals(subCheck.getValue()));
+				sim.pushUndoForUi();
+				sim.getImportExportHelper().importCircuitFromText(s, Boolean.TRUE.equals(subCheck.getValue()));
 			}
 		});
 		hp.add(cancelButton = new Button(Locale.LS("Cancel")));

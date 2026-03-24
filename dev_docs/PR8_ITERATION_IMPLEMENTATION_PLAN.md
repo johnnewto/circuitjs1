@@ -72,22 +72,22 @@ If any mini-batch causes broad instability:
 ## Category B Progress Checklist
 
 ### Consolidation (do first)
-- [ ] Merge `alertOrWarnFromDialog` + `alertOrWarnForUi` → `alertOrWarn()`
+- [x] Merge `alertOrWarnFromDialog` + `alertOrWarnForUi` → `alertOrWarn()`
 
 ### Import/export text wrappers
-- [ ] `reimportCircuitTextFromDialog` (callers: `ExportAsSFCRDialog`, `ExportAsTextDialog`)
-- [ ] `importCircuitTextFromDialog` (callers: `ImportFromTextDialog`, `LookupTablesEditorDialog`)
-- [ ] `dumpCircuitForUi` (callers: 3 dialogs)
+- [x] `reimportCircuitTextFromDialog` (callers: `ExportAsSFCRDialog`, `ExportAsTextDialog`)
+- [x] `importCircuitTextFromDialog` (callers: `ImportFromTextDialog`, `LookupTablesEditorDialog`)
+- [x] `dumpCircuitForUi` (callers: 3 dialogs)
 
 ### Search/shortcuts wrappers
-- [ ] `getSearchableMainMenuItemNames` (caller: `SearchDialog`)
-- [ ] `getShortcutMenuItemCount` (caller: `ShortcutsDialog`)
-- [ ] `getShortcutMenuItemName` (caller: `ShortcutsDialog`)
-- [ ] `getShortcutMenuItemValue` (caller: `ShortcutsDialog`)
-- [ ] `applyShortcutMenuItemValues` (caller: `ShortcutsDialog`)
+- [x] `getSearchableMainMenuItemNames` (caller: `SearchDialog`)
+- [x] `getShortcutMenuItemCount` (caller: `ShortcutsDialog`)
+- [x] `getShortcutMenuItemName` (caller: `ShortcutsDialog`)
+- [x] `getShortcutMenuItemValue` (caller: `ShortcutsDialog`)
+- [x] `applyShortcutMenuItemValues` (caller: `ShortcutsDialog`)
 
 ### UI mutation wrappers
-- [ ] `clearSelectionForUi` (callers: `EditDialogActions`, `VariableBrowserDialog`)
-- [ ] `repaintForUi` (callers: `Scrollbar`, `VariableBrowserDialog`)
-- [ ] `snapGridForUi` (caller: `VariableBrowserDialog`)
-- [ ] `findCanvasTestLabelForUi` (callers: `MathElementsTestDialog`, `TableElementsTestDialog`)
+- [x] `clearSelectionForUi` (callers: `EditDialogActions`, `VariableBrowserDialog`)
+- [x] `repaintForUi` (callers: `Scrollbar`, `VariableBrowserDialog`)
+- [x] `snapGridForUi` (caller: `VariableBrowserDialog`)
+- [x] `findCanvasTestLabelForUi` (callers: `MathElementsTestDialog`, `TableElementsTestDialog`)

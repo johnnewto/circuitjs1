@@ -235,7 +235,7 @@ public class FloatingControlPanel {
     /** Share the circuit by creating a short URL and copying to clipboard */
     private void shareCircuit(Button shareButton) {
         // Get the circuit dump
-        String dump = sim.dumpCircuitForUi();
+        String dump = sim.dumpCircuit();
         
         // Build the URL (same as ExportAsUrlDialog)
         String[] start = Location.getHref().split("\\?");

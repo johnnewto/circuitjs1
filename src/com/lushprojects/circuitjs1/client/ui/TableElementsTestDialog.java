@@ -31,6 +31,8 @@ import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.lushprojects.circuitjs1.client.CirSim;
+import com.lushprojects.circuitjs1.client.CircuitElm;
+import com.lushprojects.circuitjs1.client.elements.annotation.TextElm;
 import com.lushprojects.circuitjs1.client.test.TableElementsTest;
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsPackage;
@@ -332,7 +334,25 @@ public class TableElementsTestDialog {
     }
     
     private String detectCanvasTest() {
-        return sim.findCanvasTestLabelForUi(testSuite.getTestNames());
+        return findCanvasTestLabel(testSuite.getTestNames());
+    }
+
+    private String findCanvasTestLabel(String[] testNames) {
+        if (testNames == null || testNames.length == 0)
+            return null;
+        for (int i = 0; i < sim.elmList.size(); i++) {
+            CircuitElm ce = sim.getElm(i);
+            if (!(ce instanceof TextElm))
+                continue;
+            String text = ((TextElm) ce).text;
+            if (text == null)
+                continue;
+            for (String testName : testNames) {
+                if (text.equals(testName))
+                    return testName;
+            }
+        }
+        return null;
     }
     
     public void runSelectedTest() {

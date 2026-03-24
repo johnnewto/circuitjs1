@@ -75,11 +75,12 @@ public class LookupTablesEditorDialog extends Dialog {
         try {
             SFCRParser.parseToResult(merged, true);
         } catch (Throwable t) {
-            sim.alertOrWarnFromDialog(Locale.LS("Lookup text is not valid SFCR: ") + t.getMessage());
+            sim.alertOrWarn(Locale.LS("Lookup text is not valid SFCR: ") + t.getMessage());
             return;
         }
 
-        sim.importCircuitTextFromDialog(merged, false);
+        sim.pushUndoForUi();
+        sim.getImportExportHelper().importCircuitFromText(merged, false);
         closeDialog();
     }
 }

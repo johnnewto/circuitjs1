@@ -108,7 +108,7 @@ public class EditCompositeModelDialog extends Dialog implements MouseDownHandler
 		Math.max(minHeight, pinsWE)
             );
 
-			model.setModelCircuitForUi(CirSim.getInstance().dumpCircuitForUi());
+			model.setModelCircuitForUi(CirSim.getInstance().dumpCircuit());
             return true;
         }
         

@@ -277,7 +277,7 @@ public class Scrollbar extends  Composite implements
 		if (enabled && attachedElm!=null && attachedElm.isMouseElmForUi()) {
 			CirSim.getInstance().setMouseElmForUi(null);
 			draw(); // Redraw slider to remove highlight
-			CirSim.getInstance().repaintForUi(); // Trigger canvas repaint to clear element info
+			CirSim.getInstance().repaint(); // Trigger canvas repaint to clear element info
 		}
 	}
 	
@@ -286,7 +286,7 @@ public class Scrollbar extends  Composite implements
 		if (enabled && attachedElm!=null) {
 			CirSim.getInstance().setMouseElmForUi(attachedElm);
 			draw(); // Redraw slider to show highlight
-			CirSim.getInstance().repaintForUi(); // Trigger canvas repaint to show element info
+			CirSim.getInstance().repaint(); // Trigger canvas repaint to show element info
 		}
 	}
 	

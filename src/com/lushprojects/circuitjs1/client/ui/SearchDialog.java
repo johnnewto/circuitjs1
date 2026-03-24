@@ -77,7 +77,7 @@ public class SearchDialog extends Dialog {
 		});
 		listBox.setVisibleItemCount(10);
 		vp.add(listBox);
-		Vector<String> items = sim.getSearchableMainMenuItemNames();
+		Vector<String> items = getSearchableMainMenuItemNames();
 		for (int i = 0; i != items.size(); i++)
 			listBox.addItem(items.get(i));
 
@@ -121,7 +121,7 @@ public class SearchDialog extends Dialog {
 	    String str = textBox.getText().toLowerCase();
 	    listBox.clear();
 	    Vector<String> items = new Vector<String>();
-	    Vector<String> allItems = sim.getSearchableMainMenuItemNames();
+	    Vector<String> allItems = getSearchableMainMenuItemNames();
 	    for (int i = 0; i != allItems.size(); i++) {
 		String itemName = allItems.get(i);
 		if (itemName.toLowerCase().contains(str)) {
@@ -138,5 +138,16 @@ public class SearchDialog extends Dialog {
         	listBox.addItem(items.get(i));
             if (items.size() > 0)
 		listBox.setItemSelected(0, true);
+	}
+
+	Vector<String> getSearchableMainMenuItemNames() {
+	    Vector<String> items = new Vector<String>();
+	    for (int i = 0; i != sim.getMenuUiState().mainMenuItems.size(); i++) {
+		CheckboxMenuItem item = sim.getMenuUiState().mainMenuItems.get(i);
+		if (item.getShortcut().length() > 1)
+		    break;
+		items.add(item.getName());
+	    }
+	    return items;
 	}
 }

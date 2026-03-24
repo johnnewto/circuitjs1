@@ -321,8 +321,8 @@ public class VariableBrowserDialog extends DialogBox {
                     verticalOffset = (pos / 2) * verticalSpacing;  // Down
                 }
                 
-                int testGx = sim.snapGridForUi(columnGx);
-                int testGy = sim.snapGridForUi(startGy + verticalOffset);
+                int testGx = sim.snapGrid(columnGx);
+                int testGy = sim.snapGrid(startGy + verticalOffset);
                 
                 // Check if this position is clear
                 if (sim.isPositionClearForVariablePlacement(testGx, testGy)) {
@@ -335,8 +335,8 @@ public class VariableBrowserDialog extends DialogBox {
         
         // If no clear spot found, just use near the dialog
         if (!foundSpot) {
-            gx = sim.snapGridForUi(dialogLeftGx);
-            gy = sim.snapGridForUi(startGy);
+            gx = sim.snapGrid(dialogLeftGx);
+            gy = sim.snapGrid(startGy);
         }
         
         // Create a labeled node element at the found position
@@ -352,11 +352,11 @@ public class VariableBrowserDialog extends DialogBox {
         sim.needAnalyze();
         
         // Select the new element so it's highlighted
-        sim.clearSelectionForUi();
+        sim.getClipboardManager().clearSelection();
         elm.setSelected(true);
         
         // Don't force drag mode - let user click and drag normally
-        sim.repaintForUi();
+        sim.repaint();
     }
     
     // Helper class to store variable information

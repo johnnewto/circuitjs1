@@ -7,6 +7,7 @@ import com.google.gwt.i18n.client.NumberFormat;
 import com.google.gwt.storage.client.Storage;
 import com.google.gwt.user.client.Window;
 import com.lushprojects.circuitjs1.client.ui.CheckboxMenuItem;
+import java.util.Vector;
 
 public class CirSimPreferencesManager {
     private final CirSim sim;
@@ -126,6 +127,22 @@ public class CirSimPreferencesManager {
             str += ";" + i + "=" + sh;
         }
         stor.setItem("shortcuts", str);
+    }
+
+    public void applyShortcutMenuItemValues(Vector<String> shortcutValues) {
+        for (int i = 0; i != sim.shortcuts.length; i++)
+            sim.shortcuts[i] = null;
+        int count = Math.min(shortcutValues.size(), sim.getMenuUiState().mainMenuItems.size());
+        for (int i = 0; i < count; i++) {
+            CheckboxMenuItem item = sim.getMenuUiState().mainMenuItems.get(i);
+            if (item.getShortcut().length() > 1)
+                break;
+            String str = shortcutValues.get(i);
+            item.setShortcut(str);
+            if (str != null && str.length() > 0)
+                sim.shortcuts[str.charAt(0)] = sim.getMenuUiState().mainMenuItemNames.get(i);
+        }
+        saveShortcuts();
     }
 
     void loadShortcuts() {
