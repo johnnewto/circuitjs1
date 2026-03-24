@@ -59,13 +59,13 @@ If any mini-batch causes broad instability:
 - [x] `executeMainMenuItemByName` (caller: `SearchDialog`)
 
 ### Batch A4: Coordinate/placement wrappers
-- [ ] `getCircuitAreaHeight` (caller: `VariableBrowserDialog`)
-- [ ] `inverseTransformXForUi` (caller: `VariableBrowserDialog`)
-- [ ] `inverseTransformYForUi` (caller: `VariableBrowserDialog`)
-- [ ] `createLabeledNodeElementForUi` (caller: `VariableBrowserDialog`)
-- [ ] `addElementForUi` (caller: `VariableBrowserDialog`)
-- [ ] `needAnalyzeForUi` (caller: `VariableBrowserDialog`)
-- [ ] `selectElementForUi` (caller: `VariableBrowserDialog`)
+- [x] `getCircuitAreaHeight` (caller: `VariableBrowserDialog`)
+- [x] `inverseTransformXForUi` (caller: `VariableBrowserDialog`)
+- [x] `inverseTransformYForUi` (caller: `VariableBrowserDialog`)
+- [x] `createLabeledNodeElementForUi` (caller: `VariableBrowserDialog`)
+- [x] `addElementForUi` (caller: `VariableBrowserDialog`)
+- [x] `needAnalyzeForUi` (caller: `VariableBrowserDialog`)
+- [x] `selectElementForUi` (caller: `VariableBrowserDialog`)
 
 ---
 

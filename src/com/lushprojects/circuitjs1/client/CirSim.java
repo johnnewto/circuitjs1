@@ -1446,8 +1446,8 @@ public CirSim() {
 	return LabeledNodeElm.getSortedLabeledNodeNames();
     }
 
-    public int getCircuitAreaHeight() {
-	return circuitArea.height;
+    public Rectangle getCircuitArea() {
+	return new Rectangle(circuitArea);
     }
 
     public int getGridSize() {
@@ -1474,38 +1474,14 @@ public CirSim() {
 	return elmList.size();
     }
 
-    public int inverseTransformXForUi(double x) {
-	return inverseTransformX(x);
-    }
-
-    public int inverseTransformYForUi(double y) {
-	return inverseTransformY(y);
-    }
-
     public int snapGridForUi(int x) {
 	return snapGrid(x);
-    }
-
-    public CircuitElm createLabeledNodeElementForUi(int gx, int gy, String varName, int shaftLength) {
-	LabeledNodeElm elm = new LabeledNodeElm(gx, gy);
-	elm.text = varName;
-	elm.x2 = gx + shaftLength;
-	elm.y2 = gy;
-	elm.refreshPoints();
-	return elm;
-    }
-
-    public void addElementForUi(CircuitElm elm) {
-	elmList.addElement(elm);
     }
 
     public void clearSelectionForUi() {
 	getClipboardManager().clearSelection();
     }
 
-    public void selectElementForUi(CircuitElm elm, boolean selected) {
-	elm.setSelected(selected);
-    }
 
     public boolean isPositionClearForVariablePlacement(int gx, int gy) {
 	int minDistance = gridSize * 3;
@@ -1549,10 +1525,6 @@ public CirSim() {
 	    }
 	}
 	return true;
-    }
-
-    public void needAnalyzeForUi() {
-	needAnalyze();
     }
 
     public void repaintForUi() {

@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client.ui;
 
 import com.lushprojects.circuitjs1.client.elements.economics.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNodeElm;
 import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
@@ -287,11 +288,11 @@ public class VariableBrowserDialog extends DialogBox {
         int placementScreenX = dialogScreenX - PLACEMENT_OFFSET;
         
         // Convert dialog edge from screen to grid coordinates
-        int dialogLeftGx = sim.inverseTransformXForUi(placementScreenX);
+        int dialogLeftGx = sim.inverseTransformX(placementScreenX);
         
         // Use vertical center of canvas as starting point
-        int centerY = sim.getCircuitAreaHeight() / 2;
-        int startGy = sim.inverseTransformYForUi(centerY);
+        int centerY = sim.getCircuitArea().height / 2;
+        int startGy = sim.inverseTransformY(centerY);
         
         // Vertical zig-zag pattern: start near dialog, work left
         int verticalSpacing = sim.getGridSize() * 6;   // Spacing between vertical positions
@@ -340,15 +341,19 @@ public class VariableBrowserDialog extends DialogBox {
         
         // Create a labeled node element at the found position
         int shaftLength = sim.getGridSize() * 4;  // Make shaft visible
-        CircuitElm elm = sim.createLabeledNodeElementForUi(gx, gy, varName, shaftLength);
+        LabeledNodeElm elm = new LabeledNodeElm(gx, gy);
+        elm.text = varName;
+        elm.x2 = gx + shaftLength;
+        elm.y2 = gy;
+        elm.refreshPoints();
         
         // Add to circuit
-        sim.addElementForUi(elm);
-        sim.needAnalyzeForUi();
+        sim.elmList.addElement(elm);
+        sim.needAnalyze();
         
         // Select the new element so it's highlighted
         sim.clearSelectionForUi();
-        sim.selectElementForUi(elm, true);
+        elm.setSelected(true);
         
         // Don't force drag mode - let user click and drag normally
         sim.repaintForUi();
