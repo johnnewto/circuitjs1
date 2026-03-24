@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
+import com.lushprojects.circuitjs1.client.runner.CircuitJavaRunner;
+import com.lushprojects.circuitjs1.client.runner.RuntimeMode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

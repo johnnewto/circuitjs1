@@ -16,6 +16,7 @@ import com.lushprojects.circuitjs1.client.elements.electronics.passives.*;
 import com.lushprojects.circuitjs1.client.elements.electronics.sources.*;
 import com.lushprojects.circuitjs1.client.elements.electronics.wiring.*;
 import com.lushprojects.circuitjs1.client.elements.misc.ScopeElm;
+import com.lushprojects.circuitjs1.client.runner.RuntimeMode;
 
 import com.lushprojects.circuitjs1.client.ui.VariableBrowserDialog;
 

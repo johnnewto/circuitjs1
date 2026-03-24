@@ -91,8 +91,10 @@ import com.lushprojects.circuitjs1.client.ui.Scrollbar;
 import com.lushprojects.circuitjs1.client.ui.ScrollValuePopup;
 import com.lushprojects.circuitjs1.client.ui.TableElementsTestDialog;
 import com.lushprojects.circuitjs1.client.util.Locale;
+import com.lushprojects.circuitjs1.client.runner.RunnerPanelUi;
+import com.lushprojects.circuitjs1.client.runner.RuntimeMode;
 import jsinterop.annotations.JsFunction;
-import jsinterop.annotations.JsMethod;
+import jsinterop.annotations.JsMethod; 
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
@@ -1132,6 +1134,15 @@ public CirSim() {
 
 	CirSimBootstrap getBootstrap() {
 	    return bootstrap;
+	}
+
+	public void initializeRunnerForHeadlessExecution() {
+	    bootstrap.initRunner();
+	}
+
+	public void analyzeAndPreStampForHeadlessExecution() {
+	    analyzeCircuit();
+	    preStampAndStampCircuit();
 	}
 
 	CirSimInitializer getInitializer() {

@@ -38,7 +38,7 @@ Use the 7 connection columns and move to as architectural signal (not hard rule)
 | `CircuitAnalyzer.java` | Client runtime/support class. | Analysis pass over CircuitElm CircuitNode RowInfo and element graph. | `elements` | 0 | 1 | 8 | 0 | 0 | 1 | 0 |
 | `CircuitElm.java` | Base/legacy element class in root package. | Base element type; parent/peer relationship to nearly all *Elm classes. | `elements` | 0 | 1 | 5 | 0 | 0 | 0 | 1 |
 | `CircuitIOService.java` | Client runtime/support class. | Connects root runtime to io package parser/exporter/lookup services. | `io` | 0 | 0 | 4 | 5 | 1 | 4 | 1 |
-| `CircuitJavaRunner.java` | Runner/execution integration class. | Runner subsystem family for headless/automation execution. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
+| `CircuitJavaRunner.java` | Runner/execution integration class. | Runner subsystem family for headless/automation execution. | `runner` | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 | `CircuitNode.java` | Client runtime/support class. | Core simulation node graph primitive. | `core` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `CircuitNodeLink.java` | Client runtime/support class. | Core simulation node-edge link primitive. | `core` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `CircuitRenderer.java` | Client rendering helper class. | Rendering/geometry subsystem family. | `Keep` | 0 | 0 | 1 | 0 | 0 | 1 | 1 |
@@ -91,10 +91,10 @@ Use the 7 connection columns and move to as architectural signal (not hard rule)
 | `Rectangle.java` | Client runtime/support class. | Rendering/geometry subsystem family. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `RowInfo.java` | Client runtime/support class. | Matrix row metadata used by solver simplification. | `core` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `RunnerController.java` | Client controller class. | Runner subsystem family for headless/automation execution. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
-| `RunnerJsBridge.java` | Bridge/interop integration class. | Runner subsystem family for headless/automation execution. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| `RunnerLaunchDecision.java` | Runner/execution integration class. | Runner subsystem family for headless/automation execution. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| `RunnerPanelUi.java` | Runner/execution integration class. | Runner subsystem family for headless/automation execution. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| `RuntimeMode.java` | Client runtime/support class. | Runner subsystem family for headless/automation execution. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `RunnerJsBridge.java` | Bridge/interop integration class. | Runner subsystem family for headless/automation execution. | `runner` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `RunnerLaunchDecision.java` | Runner/execution integration class. | Runner subsystem family for headless/automation execution. | `runner` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `RunnerPanelUi.java` | Runner/execution integration class. | Runner subsystem family for headless/automation execution. | `runner` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `RuntimeMode.java` | Client runtime/support class. | Runner subsystem family for headless/automation execution. | `runner` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `SFCRDagBlocksViewer.java` | Client runtime/support class. | SFCR DAG visualization pair. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 | `SFCRDagBlocksViewerTemplate.html` | HTML template/resource used by client viewer/export UI. | SFCR DAG visualization pair. | `ui` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `SFCRDocumentManager.java` | Client manager/coordinator class. | Close to package peers and shared base classes. | `io` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |

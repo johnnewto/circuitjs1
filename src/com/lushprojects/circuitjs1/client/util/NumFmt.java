@@ -1,6 +1,6 @@
 package com.lushprojects.circuitjs1.client.util;
 
-import com.lushprojects.circuitjs1.client.RuntimeMode;
+import com.lushprojects.circuitjs1.client.runner.RuntimeMode;
 
 public final class NumFmt {
     public interface Formatter {

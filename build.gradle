@@ -235,7 +235,7 @@ task runCircuitJava(type: JavaExec, dependsOn: classes) {
     group = 'circuitjs1'
     description = 'Run a circuit on the JVM and emit CSV/world2 output'
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'com.lushprojects.circuitjs1.client.CircuitJavaRunner'
+    mainClass = 'com.lushprojects.circuitjs1.client.runner.CircuitJavaRunner'
     args = [
         project.findProperty('circuit') ?: 'tests/sfcr-sim-model.txt',
         project.findProperty('output') ?: '',

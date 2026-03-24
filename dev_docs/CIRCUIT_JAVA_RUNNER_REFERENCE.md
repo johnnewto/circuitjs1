@@ -10,7 +10,7 @@ There is also a browser-based runner mode (for example: `circuitjs.html?runner=1
 
 ## What exists today
 
-- CLI entry point: `com.lushprojects.circuitjs1.client.CircuitJavaRunner`
+- CLI entry point: `com.lushprojects.circuitjs1.client.runner.CircuitJavaRunner`
 - Gradle task: `runCircuitJava` (preferred)
 - Browser runner mode: `circuitjs.html?runner=1...`
 - End-to-end tests:
@@ -247,7 +247,7 @@ This opens a new tab with `runner=1&ctz=...` for the current unsaved circuit sta
 Direct usage:
 
 ```bash
-java com.lushprojects.circuitjs1.client.CircuitJavaRunner <circuit.txt> [output.csv] [steps] [format]
+java com.lushprojects.circuitjs1.client.runner.CircuitJavaRunner <circuit.txt> [output.csv] [steps] [format]
 ```
 
 Recommended in this repo: use `./gradlew runCircuitJava` rather than direct `java`.

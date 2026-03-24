@@ -15,7 +15,7 @@ public final class SimulationExportCore {
     }
 
     public static final class RunRequest {
-        public String circuitPath;
+        public String circuitPath; 
         public String outputPath;
         public String htmlPath;
         public int steps;
@@ -694,16 +694,16 @@ public final class SimulationExportCore {
         return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
-    static String buildRunnerStatusContentHtml(String message) {
+    public static String buildRunnerStatusContentHtml(String message) {
         return "<div id='runner-status-message'>" + escapeHtml(message != null ? message : "") + "</div>"
             + "<div style='color:#666; margin-top:6px;'>Format hint: default is <b>tsv</b> when omitted (use format=csv or format=world2 to override).</div>";
     }
 
-    static String buildRunnerErrorContentHtml(String message) {
+    public static String buildRunnerErrorContentHtml(String message) {
         return "<div style='color:#c33;'>" + escapeHtml(message != null ? message : "") + "</div>";
     }
 
-    static String buildRunnerSummaryContentHtml(String source, int requestedSteps, String format, int completedSteps) {
+    public static String buildRunnerSummaryContentHtml(String source, int requestedSteps, String format, int completedSteps) {
         StringBuilder content = new StringBuilder();
         content.append("<div><b>Source:</b> ").append(escapeHtml(source != null ? source : "(none)")).append("</div>");
         content.append("<div><b>Requested steps:</b> ").append(requestedSteps).append("</div>");
@@ -713,13 +713,13 @@ public final class SimulationExportCore {
         return content.toString();
     }
 
-    static String buildRunnerWorld2RawOutputHtml(String outputText) {
+    public static String buildRunnerWorld2RawOutputHtml(String outputText) {
         return "<div style='margin-top:10px;'><pre style='white-space:pre; font-family:monospace; max-height:70vh; overflow:auto; border:1px solid #ccc; padding:8px;'>"
             + escapeHtml(outputText != null ? outputText : "")
             + "</pre></div>";
     }
 
-    static String buildRunnerWorld2ReportTabHtml(String htmlReport) {
+    public static String buildRunnerWorld2ReportTabHtml(String htmlReport) {
         if (htmlReport == null) {
             return "";
         }
@@ -729,7 +729,7 @@ public final class SimulationExportCore {
             + "\"></iframe></div>";
     }
 
-    static String buildRunnerTabbedHtml(String primaryTabTitle, String primaryContentHtml,
+    public static String buildRunnerTabbedHtml(String primaryTabTitle, String primaryContentHtml,
             boolean includeReportTab, String reportTabTitle, String reportTabContentHtml,
             String stdoutHtml) {
         String escapedTitle = escapeHtml(primaryTabTitle);
@@ -772,23 +772,23 @@ public final class SimulationExportCore {
 
     // ========== Runner table / non-interactive HTML builders ==========
 
-    static String buildRunnerTableDiv(String innerHtml) {
+    public static String buildRunnerTableDiv(String innerHtml) {
         return "<div>" + (innerHtml != null ? innerHtml : "") + "</div>";
     }
 
-    static String buildRunnerTableStyledDiv(String style, String innerHtml) {
+    public static String buildRunnerTableStyledDiv(String style, String innerHtml) {
         return "<div style='" + (style != null ? style : "") + "'>" + (innerHtml != null ? innerHtml : "") + "</div>";
     }
 
-    static String buildRunnerTableCell(String value) {
+    public static String buildRunnerTableCell(String value) {
         return "<td>" + escapeHtml(value != null ? value : "") + "</td>";
     }
 
-    static String buildRunnerTableRow(List<String> cells) {
+    public static String buildRunnerTableRow(List<String> cells) {
         return "<tr>" + String.join("", cells) + "</tr>";
     }
 
-    static String buildRunnerTableHeader(List<String> keys) {
+    public static String buildRunnerTableHeader(List<String> keys) {
         List<String> headers = new ArrayList<String>();
         headers.add("<th>t</th>");
         for (int i = 0; i < keys.size(); i++) {
@@ -797,31 +797,31 @@ public final class SimulationExportCore {
         return "<thead><tr>" + String.join("", headers) + "</tr></thead>";
     }
 
-    static String buildRunnerTableWrapperOpen() {
+    public static String buildRunnerTableWrapperOpen() {
         return "<div style='margin-top:10px; max-height:70vh; overflow:auto;'>";
     }
 
-    static String buildRunnerTableOpen() {
+    public static String buildRunnerTableOpen() {
         return "<table border='1' cellspacing='0' cellpadding='4'>";
     }
 
-    static String buildRunnerTableBodyOpen() {
+    public static String buildRunnerTableBodyOpen() {
         return "<tbody>";
     }
 
-    static String buildRunnerTableWrapperClose() {
+    public static String buildRunnerTableWrapperClose() {
         return "</tbody></table></div>";
     }
 
-    static String buildRunnerTableStatusContentHtml(String message) {
+    public static String buildRunnerTableStatusContentHtml(String message) {
         return "<div id='runner-status-message'>" + escapeHtml(message != null ? message : "") + "</div>";
     }
 
-    static String buildRunnerTableErrorContentHtml(String message) {
+    public static String buildRunnerTableErrorContentHtml(String message) {
         return "<div style='color:#c33;'>" + escapeHtml(message != null ? message : "") + "</div>";
     }
 
-    static String buildRunnerTableTabbedHtml(String primaryTabTitle, String primaryContentHtml, String stdoutHtml) {
+    public static String buildRunnerTableTabbedHtml(String primaryTabTitle, String primaryContentHtml, String stdoutHtml) {
         String escapedTitle = escapeHtml(primaryTabTitle != null ? primaryTabTitle : "");
         String safeStdoutHtml = stdoutHtml != null ? stdoutHtml : escapeHtml("(no output yet)");
         return "<div style='padding:12px;'>"

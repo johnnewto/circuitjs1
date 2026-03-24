@@ -1,9 +1,9 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.runner;
 
 
-final class RunnerLaunchDecision {
+public final class RunnerLaunchDecision {
 
-    enum ImmediateRoute {
+    public enum ImmediateRoute {
         EMBEDDED_TEXT,
         MISSING_DUMP_KEY,
         NONE
@@ -12,11 +12,11 @@ final class RunnerLaunchDecision {
     private RunnerLaunchDecision() {
     }
 
-    static int resolveDefaultSteps(String runnerDumpKey, String stepsValue) {
+    public static int resolveDefaultSteps(String runnerDumpKey, String stepsValue) {
         return (runnerDumpKey != null && stepsValue == null) ? 200 : 1000;
     }
 
-    static ImmediateRoute resolveImmediateRoute(String startCircuitText, String runnerDumpKey) {
+    public static ImmediateRoute resolveImmediateRoute(String startCircuitText, String runnerDumpKey) {
         if (startCircuitText != null && !startCircuitText.isEmpty()) {
             return ImmediateRoute.EMBEDDED_TEXT;
         }

@@ -1,4 +1,4 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.runner;
 
 
 import java.io.FileWriter;
@@ -9,8 +9,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Locale;
-import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
+import com.lushprojects.circuitjs1.client.CirSim;
 import com.lushprojects.circuitjs1.client.SimulationExportCore;
+import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
 
 /**
  * Command-line interface for running CircuitJS1 simulations on the JVM / terminal, i.e. no GWT, not in the browser.
@@ -83,20 +84,20 @@ public class CircuitJavaRunner {
         String circuitText = new String(Files.readAllBytes(circuitFilePath), StandardCharsets.UTF_8);
 
         CirSim sim = new CirSim();
-    sim.getBootstrap().initRunner();
-        sim.getCircuitIOService().readCircuit(circuitText, 0);
-        sim.analyzeCircuit();
-        sim.preStampAndStampCircuit();
+        sim.initializeRunnerForHeadlessExecution();
+        sim.readCircuitFromModel(circuitText);
+        sim.analyzeAndPreStampForHeadlessExecution();
 
-        if (sim.elmList == null || sim.elmList.size() == 0) {
+        if (sim.getElementCountForImportExport() == 0) {
             System.err.println("CircuitJavaRunner: no circuit elements available after load");
         }
         if (sim.getSolverMatrixState().circuitMatrix == null) {
             System.err.println("CircuitJavaRunner: circuit matrix is null after analyze (no solvable electrical network)");
         }
 
-        if (sim.stopMessage != null) {
-            System.err.println("CircuitJavaRunner: simulation stopped during analyze: " + sim.stopMessage);
+        String stopMessage = sim.getStopMessageForTesting();
+        if (stopMessage != null) {
+            System.err.println("CircuitJavaRunner: simulation stopped during analyze: " + stopMessage);
         }
 
         SimulationExportCore.RunRequest runRequest = new SimulationExportCore.RunRequest();

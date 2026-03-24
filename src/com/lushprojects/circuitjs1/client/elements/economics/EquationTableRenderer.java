@@ -10,6 +10,7 @@ import com.google.gwt.canvas.client.Canvas;
 import com.google.gwt.canvas.dom.client.Context2d;
 import com.google.gwt.core.client.Duration;
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.runner.RuntimeMode;
 import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.elements.economics.EquationTableElm.RowOutputMode;
 import com.lushprojects.circuitjs1.client.util.Locale;

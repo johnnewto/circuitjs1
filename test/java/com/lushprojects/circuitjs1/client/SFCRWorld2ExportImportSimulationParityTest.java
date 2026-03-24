@@ -5,6 +5,7 @@ import com.lushprojects.circuitjs1.client.io.SFCRParseResult;
 import com.lushprojects.circuitjs1.client.io.SFCRParseResultExporter;
 import com.lushprojects.circuitjs1.client.io.SFCRExporter;
 import com.lushprojects.circuitjs1.client.io.SFCRParser;
+import com.lushprojects.circuitjs1.client.runner.RuntimeMode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;

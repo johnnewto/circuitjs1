@@ -9,6 +9,7 @@ package com.lushprojects.circuitjs1.client.elements.economics;
 import com.lushprojects.circuitjs1.client.elements.ChipElm;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.runner.RuntimeMode;
 import com.lushprojects.circuitjs1.client.util.*;
 
 import com.google.gwt.canvas.client.Canvas;

@@ -1,4 +1,4 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.runner;
 
 
 import jsinterop.annotations.JsFunction;
@@ -6,7 +6,7 @@ import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 
-final class RunnerJsBridge {
+public final class RunnerJsBridge {
 	@JsFunction
 	private interface Hook0 {
 		void call();
@@ -20,7 +20,7 @@ final class RunnerJsBridge {
 	private RunnerJsBridge() {
 	}
 
-	static void setRunnerStepFn(final Runnable stepFn) {
+	public static void setRunnerStepFn(final Runnable stepFn) {
 		if (stepFn == null) {
 			RunnerWindowLike.setRunnerStepFn(null);
 			return;

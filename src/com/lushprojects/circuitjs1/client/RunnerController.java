@@ -9,6 +9,9 @@ import java.util.Set;
 
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.SimulationExportCore;
+import com.lushprojects.circuitjs1.client.runner.RunnerJsBridge;
+import com.lushprojects.circuitjs1.client.runner.RunnerLaunchDecision;
+import com.lushprojects.circuitjs1.client.runner.RunnerPanelUi;
 import com.google.gwt.safehtml.shared.SafeHtmlUtils;
 import com.google.gwt.user.client.ui.RootPanel;
 

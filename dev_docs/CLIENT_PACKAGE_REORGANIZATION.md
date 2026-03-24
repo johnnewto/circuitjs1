@@ -120,12 +120,11 @@ Headless/automation runner subsystem.
 
 | File | Rationale |
 |------|-----------|
-| - [ ] `RunnerController.java` | Runner orchestration |
-| - [ ] `RunnerJsBridge.java` | JavaScript bridge |
-| - [ ] `RunnerLaunchDecision.java` | Launch mode detection |
-| - [ ] `RunnerPanelUi.java` | Runner panel UI |
-| - [ ] `CircuitJavaRunner.java` | Java runner interface |
-| - [ ] `RuntimeMode.java` | Runtime mode enum |
+| - [x] `RunnerJsBridge.java` | JavaScript bridge |
+| - [x] `RunnerLaunchDecision.java` | Launch mode detection |
+| - [x] `RunnerPanelUi.java` | Runner panel UI |
+| - [x] `CircuitJavaRunner.java` | Java runner interface |
+| - [x] `RuntimeMode.java` | Runtime mode enum |
 
 ### Move to `elements/economics/`
 
@@ -180,6 +179,7 @@ These are core entry points and base classes that should remain at the top level
 | - [ ] `CheckboxAlignedMenuItem.java` | Menu item widget |
 | - [ ] `CircuitIOService.java` | Circuit I/O abstraction |
 | - [ ] `ClipboardManager.java`     | Clipboard operations |
+| - [ ] `RunnerController.java` | Runner orchestration |
 
 ## Migration Strategy
 

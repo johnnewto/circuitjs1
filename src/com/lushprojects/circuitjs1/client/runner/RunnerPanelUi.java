@@ -1,4 +1,4 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.runner;
 
 
 import java.util.ArrayList;
@@ -9,7 +9,7 @@ import com.google.gwt.safehtml.shared.SafeHtmlUtils;
 import com.google.gwt.user.client.ui.RootPanel;
 import com.lushprojects.circuitjs1.client.SimulationExportCore;
 
-final class RunnerPanelUi {
+public final class RunnerPanelUi {
     private static final int RUNNER_STDOUT_MAX_LINES = 2000;
     private static boolean runnerStdoutEnabled = false;
     private static final ArrayList<String> runnerStdoutLines = new ArrayList<String>();
@@ -17,19 +17,19 @@ final class RunnerPanelUi {
     private RunnerPanelUi() {
     }
 
-    static boolean isRunnerStdoutEnabled() {
+    public static boolean isRunnerStdoutEnabled() {
         return runnerStdoutEnabled;
     }
 
-    static void setRunnerStdoutEnabled(boolean enabled) {
+    public static void setRunnerStdoutEnabled(boolean enabled) {
         runnerStdoutEnabled = enabled;
     }
 
-    static void clearRunnerStdout() {
+    public static void clearRunnerStdout() {
         runnerStdoutLines.clear();
     }
 
-    static void appendRunnerStdout(String text) {
+    public static void appendRunnerStdout(String text) {
         if (text == null)
             return;
         runnerStdoutLines.add(text);
@@ -38,7 +38,7 @@ final class RunnerPanelUi {
         appendRunnerStdoutDomLine(SafeHtmlUtils.htmlEscape(text));
     }
 
-    static String getRunnerStdoutHtml() {
+    public static String getRunnerStdoutHtml() {
         if (runnerStdoutLines.isEmpty())
             return SafeHtmlUtils.htmlEscape("(no output yet)");
         List<String> escapedLines = new ArrayList<String>();
@@ -62,31 +62,31 @@ final class RunnerPanelUi {
         pane.setScrollTop(pane.getScrollHeight());
     }
 
-    static void updateRunnerStatusMessage(String message) {
+    public static void updateRunnerStatusMessage(String message) {
         com.google.gwt.dom.client.Element el = Document.get().getElementById("runner-status-message");
         if (el != null)
             el.setInnerText(message != null ? message : "");
     }
 
-    static void renderRunnerTableStatus(String message) {
+    public static void renderRunnerTableStatus(String message) {
         String content = SimulationExportCore.buildRunnerTableStatusContentHtml(message);
         RootPanel.get().getElement().setInnerHTML(SimulationExportCore.buildRunnerTableTabbedHtml(
             "Output Table", content, getRunnerStdoutHtml()));
     }
 
-    static void renderRunnerStatus(String message) {
+    public static void renderRunnerStatus(String message) {
         String content = SimulationExportCore.buildRunnerStatusContentHtml(message);
         RootPanel.get().getElement().setInnerHTML(SimulationExportCore.buildRunnerTabbedHtml(
             "Runner Output", content, false, "", "", getRunnerStdoutHtml()));
     }
 
-    static void renderRunnerTableError(String message) {
+    public static void renderRunnerTableError(String message) {
         String content = SimulationExportCore.buildRunnerTableErrorContentHtml(message);
         RootPanel.get().getElement().setInnerHTML(SimulationExportCore.buildRunnerTableTabbedHtml(
             "Output Table", content, getRunnerStdoutHtml()));
     }
 
-    static void renderRunnerError(String message) {
+    public static void renderRunnerError(String message) {
         String content = SimulationExportCore.buildRunnerErrorContentHtml(message);
         RootPanel.get().getElement().setInnerHTML(SimulationExportCore.buildRunnerTabbedHtml(
             "Runner Output", content, false, "", "", getRunnerStdoutHtml()));

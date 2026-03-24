@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
+import com.lushprojects.circuitjs1.client.runner.RuntimeMode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.parallel.ResourceLock;
