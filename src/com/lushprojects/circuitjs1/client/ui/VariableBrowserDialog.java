@@ -19,7 +19,7 @@
 
 package com.lushprojects.circuitjs1.client.ui;
 
-import com.lushprojects.circuitjs1.client.economics.*;
+import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.*;
 
 import com.google.gwt.user.client.ui.DialogBox;

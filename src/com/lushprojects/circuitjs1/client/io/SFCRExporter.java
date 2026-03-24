@@ -6,7 +6,7 @@
 
 package com.lushprojects.circuitjs1.client.io;
 
-import com.lushprojects.circuitjs1.client.economics.*;
+import com.lushprojects.circuitjs1.client.elements.economics.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,7 +16,7 @@ import java.util.Set;
 import java.util.Vector;
 
 import com.lushprojects.circuitjs1.client.*;
-import com.lushprojects.circuitjs1.client.miscElm.*;
+import com.lushprojects.circuitjs1.client.elements.misc.*;
 
 /**
  * Exports circuit in SFCR-compatible text format.

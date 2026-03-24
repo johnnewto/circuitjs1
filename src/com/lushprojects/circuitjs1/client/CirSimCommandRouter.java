@@ -1,7 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.economics.*;
-import com.lushprojects.circuitjs1.client.miscElm.*;
+import com.lushprojects.circuitjs1.client.elements.economics.*;
+import com.lushprojects.circuitjs1.client.elements.misc.*;
 
 import com.google.gwt.dom.client.Document;
 import com.google.gwt.user.client.Window;

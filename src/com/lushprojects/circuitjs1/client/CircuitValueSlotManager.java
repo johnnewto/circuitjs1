@@ -6,9 +6,9 @@ import java.util.Vector;
 
 import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.core.client.JsArrayString;
-import com.lushprojects.circuitjs1.client.economics.ComputedValues;
-import com.lushprojects.circuitjs1.client.electronics.sources.ExtVoltageElm;
-import com.lushprojects.circuitjs1.client.electronics.wiring.LabeledNodeElm;
+import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
+import com.lushprojects.circuitjs1.client.elements.electronics.sources.ExtVoltageElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNodeElm;
 
 final class CircuitValueSlotManager {
     private final CirSim sim;

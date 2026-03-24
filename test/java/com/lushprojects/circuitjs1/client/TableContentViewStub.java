@@ -1,7 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.economics.TableContentView;
-import com.lushprojects.circuitjs1.client.economics.SyncPatch;
+import com.lushprojects.circuitjs1.client.elements.economics.TableContentView;
+import com.lushprojects.circuitjs1.client.elements.economics.SyncPatch;
 
 class TableContentViewStub implements TableContentView {
     private final String tableTitle;

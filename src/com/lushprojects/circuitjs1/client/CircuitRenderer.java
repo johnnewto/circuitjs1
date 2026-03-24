@@ -1,6 +1,6 @@
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.economics.*;
+import com.lushprojects.circuitjs1.client.elements.economics.*;
 
 import com.google.gwt.canvas.dom.client.Context2d.LineCap;
 import com.lushprojects.circuitjs1.client.ui.InfoViewerDialog;

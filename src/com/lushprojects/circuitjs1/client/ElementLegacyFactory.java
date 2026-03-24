@@ -1,19 +1,19 @@
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.annotation.*;
-import com.lushprojects.circuitjs1.client.economics.*;
-import com.lushprojects.circuitjs1.client.electronics.analog.*;
-import com.lushprojects.circuitjs1.client.electronics.digital.*;
-import com.lushprojects.circuitjs1.client.electronics.electromechanical.*;
-import com.lushprojects.circuitjs1.client.electronics.measurement.*;
-import com.lushprojects.circuitjs1.client.electronics.misc.*;
-import com.lushprojects.circuitjs1.client.electronics.passives.*;
-import com.lushprojects.circuitjs1.client.electronics.semiconductors.*;
-import com.lushprojects.circuitjs1.client.electronics.sources.*;
-import com.lushprojects.circuitjs1.client.electronics.wiring.*;
-import com.lushprojects.circuitjs1.client.miscElm.*;
+import com.lushprojects.circuitjs1.client.elements.annotation.*;
+import com.lushprojects.circuitjs1.client.elements.economics.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.analog.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.digital.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.electromechanical.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.measurement.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.misc.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.passives.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.semiconductors.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.sources.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.wiring.*;
+import com.lushprojects.circuitjs1.client.elements.misc.*;
 
-import com.lushprojects.circuitjs1.client.math.*;
+import com.lushprojects.circuitjs1.client.elements.math.*;
 
 public final class ElementLegacyFactory {
     private ElementLegacyFactory() {

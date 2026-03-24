@@ -6,9 +6,9 @@
 
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.economics.*;
+import com.lushprojects.circuitjs1.client.elements.economics.*;
 
-import com.lushprojects.circuitjs1.client.economics.TableColumn.ColumnType;
+import com.lushprojects.circuitjs1.client.elements.economics.TableColumn.ColumnType;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;

@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import com.lushprojects.circuitjs1.client.economics.ComputedValues;
+import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
 
 public final class SimulationExportCore {
 

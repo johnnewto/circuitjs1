@@ -1,8 +1,8 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.lushprojects.circuitjs1.client.io.LookupTableRegistry;
-import com.lushprojects.circuitjs1.client.economics.ComputedValues;
-import com.lushprojects.circuitjs1.client.electronics.wiring.LabeledNodeElm;
+import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
+import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNodeElm;
 import java.util.Vector;
 
 import jsinterop.annotations.JsMethod;

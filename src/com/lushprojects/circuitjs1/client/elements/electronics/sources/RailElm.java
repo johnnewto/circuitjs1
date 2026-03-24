@@ -1,0 +1,132 @@
+/*    
+    Copyright (C) Paul Falstad and Iain Sharp
+    
+    This file is part of CircuitJS1.
+
+    CircuitJS1 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    CircuitJS1 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+package com.lushprojects.circuitjs1.client.elements.electronics.sources;
+
+import com.lushprojects.circuitjs1.client.*;
+
+public class RailElm extends VoltageElm {
+	public RailElm(int xx, int yy) { 
+		super(xx, yy, WF_DC); 
+
+	}
+	protected RailElm(int xx, int yy, int wf) {
+		super(xx, yy, wf); 
+	}
+
+	public RailElm(int xa, int ya, int xb, int yb, int f,
+			StringTokenizer st) {
+		super(xa, ya, xb, yb, f, st);
+	}
+
+    
+    protected final int FLAG_CLOCK = 1;
+    protected int getDumpType() { return 'R'; }
+    protected int getPostCount() { return 1; }
+	
+    protected void setPoints() {
+	super.setPoints();
+	lead1 = interpPoint(point1, point2, 1-circleSize/dn);
+    }
+    
+    protected String getRailText() {
+	return null;
+    }
+    
+    protected void draw(Graphics g) {
+	String rt = getRailText();
+        double w = rt == null ? circleSize : g.context.measureText(rt).getWidth()/2;
+        if (w > dn*.8)
+            w = dn*.8;
+	lead1 = interpPoint(point1, point2, 1-w/dn);
+	setBbox(point1, point2, circleSize);
+	setVoltageColor(g, volts[0]);
+	drawThickLine(g, point1, lead1);
+	drawRail(g);
+	drawPosts(g);
+	curcount = updateDotCount(-current, curcount);
+	if (sim.dragElm != this)
+	    drawDots(g, point1, lead1, curcount);
+    }
+
+    protected void drawRail(Graphics g) {
+	if (waveform == WF_SQUARE && (flags & FLAG_CLOCK) != 0)
+	    drawRailText(g, "CLK");
+	else if (waveform == WF_DC || waveform == WF_VAR) {
+	    g.setColor(needsHighlight() ? selectColor : whiteColor);
+	    setPowerColor(g, false);
+	    double v = getVoltage();
+	    String voltageStr;
+	    if (Math.abs(v) < 1)
+	    	voltageStr = showFormat.format(v)+" V";
+	    else
+	    	voltageStr = getShortUnitText(v, "V");
+	    if (getVoltage() > 0)
+		voltageStr = "+" + voltageStr;
+	    
+	    // Set consistent font before drawing label
+	    g.setFont(unitsFont);
+	    
+	    // Display name and voltage in two rows if name is not default
+	    if (name != null && !name.equals("") && !name.equals("V")) {
+			// Create offset points for two-line display
+			Point p1 = new Point(point1.x, point1.y + g.currentFontSize - 2);
+			Point p2 = new Point(lead1.x, lead1.y + g.currentFontSize - 2);
+			// Draw name on first line (above)
+			drawLabeledNode(g, name, point1, lead1);
+			// Draw voltage on second line (below)
+			drawLabeledNode(g, voltageStr, p1, p2);
+
+	    } else {
+			// Just draw voltage if no custom name
+			drawLabeledNode(g, voltageStr, point1, lead1);
+	    }
+	} else {
+	    drawWaveform(g, point2);
+	}
+    }
+    
+    protected void drawRailText(Graphics g, String s) {
+	g.setColor(needsHighlight() ? selectColor : whiteColor);
+	setPowerColor(g, false);
+	// Set consistent font before drawing label
+	g.setFont(unitsFont);
+	drawLabeledNode(g, s, point1, lead1);
+    }
+    
+    protected double getVoltageDiff() { return volts[0]; }
+    protected void stamp() {
+	if (waveform == WF_DC)
+	    sim.stampVoltageSource(0, nodes[0], voltSource, getVoltage());
+	else
+	    sim.stampVoltageSource(0, nodes[0], voltSource);
+    }
+    protected void doStep() {
+	if (waveform != WF_DC)
+	    sim.updateVoltageSource(0, nodes[0], voltSource, getVoltage());
+    }
+    protected boolean hasGroundConnection(int n1) { return true; }
+    protected int getShortcut() { return 'V'; }
+    
+//    void drawHandles(Graphics g, Color c) {
+//    	g.setColor(c);
+//		g.fillRect(x-3, y-3, 7, 7);
+//    }
+    
+}

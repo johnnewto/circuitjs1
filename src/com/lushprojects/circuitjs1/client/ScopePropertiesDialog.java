@@ -19,7 +19,7 @@ import com.google.gwt.user.client.ui.Panel;
 import com.google.gwt.user.client.ui.TextArea;
 import com.google.gwt.user.client.ui.TextBox;
 import com.google.gwt.user.client.ui.VerticalPanel;
-import com.lushprojects.circuitjs1.client.electronics.semiconductors.TransistorElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.semiconductors.TransistorElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.google.gwt.user.client.ui.CheckBox;
 import com.google.gwt.user.client.ui.RadioButton;

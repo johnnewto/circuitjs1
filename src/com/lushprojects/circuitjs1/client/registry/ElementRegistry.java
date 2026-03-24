@@ -8,7 +8,7 @@ import com.lushprojects.circuitjs1.client.CircuitElm;
 import com.lushprojects.circuitjs1.client.ElementLegacyFactory;
 import com.lushprojects.circuitjs1.client.ElementRegistryBootstrap;
 import com.lushprojects.circuitjs1.client.StringTokenizer;
-import com.lushprojects.circuitjs1.client.electronics.misc.CustomCompositeElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.misc.CustomCompositeElm;
 
 public final class ElementRegistry {
     public interface DumpFactory {

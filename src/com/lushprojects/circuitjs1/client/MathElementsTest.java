@@ -19,7 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.math.*;
+import com.lushprojects.circuitjs1.client.elements.math.*;
 
 
 /**

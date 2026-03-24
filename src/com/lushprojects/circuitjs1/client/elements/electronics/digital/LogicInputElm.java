@@ -1,0 +1,154 @@
+/*    
+    Copyright (C) Paul Falstad and Iain Sharp
+    
+    This file is part of CircuitJS1.
+
+    CircuitJS1 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    CircuitJS1 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+package com.lushprojects.circuitjs1.client.elements.electronics.digital;
+
+import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.electromechanical.SwitchElm;
+
+    public class LogicInputElm extends SwitchElm {
+	final int FLAG_TERNARY = 1;
+	final int FLAG_NUMERIC = 2;
+	double hiV, loV;
+	public LogicInputElm(int xx, int yy) {
+	    super(xx, yy, false);
+	    hiV = 5;
+	    loV = 0;
+	    
+	}
+	public LogicInputElm(int xa, int ya, int xb, int yb, int f,
+			     StringTokenizer st) {
+	    super(xa, ya, xb, yb, f, st);
+	    try {
+		hiV = Double.parseDouble(st.nextToken());
+		loV = Double.parseDouble(st.nextToken());
+	    } catch (Exception e) {
+		hiV = 5;
+		loV = 0;
+	    }
+	    if (isTernary())
+		posCount = 3;
+	}
+	boolean isTernary() { return (flags & FLAG_TERNARY) != 0; }
+	boolean isNumeric() { return (flags & (FLAG_TERNARY|FLAG_NUMERIC)) != 0; }
+	protected int getDumpType() { return 'L'; }
+	protected String dump() {
+	    return super.dump() + " " + hiV + " " + loV;
+	}
+	protected int getPostCount() { return 1; }
+	protected void setPoints() {
+	    super.setPoints();
+	    lead1 = interpPoint(point1, point2, 1-12/dn);
+	}
+	protected void draw(Graphics g) {
+	    g.save();
+	    Font f = new Font("SansSerif", Font.BOLD, 20);
+	    g.setFont(f);
+	    g.setColor(needsHighlight() ? selectColor : whiteColor);
+	    String s = position == 0 ? "L" : "H";
+	    if (isNumeric())
+		s = "" + position;
+	    setBbox(point1, lead1, 0);
+	    drawCenteredText(g, s, x2, y2, true);
+	    setVoltageColor(g, volts[0]);
+	    drawThickLine(g, point1, lead1);
+	    updateDotCount();
+	    drawDots(g, point1, lead1, -curcount);
+	    drawPosts(g);
+	    g.restore();
+	}
+	
+	protected Rectangle getSwitchRect() {
+	    return new Rectangle(x2-10, y2-10, 20, 20);
+	}	
+protected void setCurrent(int vs, double c) { current = c; }
+	protected void calculateCurrent() {}
+	protected void stamp() {
+	    sim.stampVoltageSource(0, nodes[0], voltSource);
+	}
+	
+	protected boolean isWireEquivalent() { return false; }
+	protected boolean isRemovableWire() { return false; }
+
+	protected void doStep() {
+	    double v = (position == 0) ? loV : hiV;
+	    if (isTernary())
+		v = loV + position * (hiV-loV) * .5;
+	    sim.updateVoltageSource(0, nodes[0], voltSource, v);
+	}
+	protected int getVoltageSourceCount() { return 1; }
+	protected double getVoltageDiff() { return volts[0]; }
+	protected void getInfo(String arr[]) {
+	    arr[0] = "logic input";
+	    arr[1] = (position == 0) ? "low" : "high";
+	    if (isNumeric())
+		arr[1] = "" + position;
+	    arr[1] += " (" + getVoltageText(volts[0]) + ")";
+	    arr[2] = "I = " + getCurrentText(getCurrent());
+	} 
+	protected boolean hasGroundConnection(int n1) { return true; }
+	public EditInfo getEditInfo(int n) {
+	    if (n == 0) {
+		EditInfo ei = new EditInfo("", 0, 0, 0);
+		ei.checkbox = new Checkbox("Momentary Switch", momentary);
+		return ei;
+	    }
+	    if (n == 1)
+		return new EditInfo("High Logic Voltage", hiV, 10, -10);
+	    if (n == 2)
+		return new EditInfo("Low Voltage", loV, 10, -10);
+	    if (n == 3) {
+		EditInfo ei = new EditInfo("", 0, 0, 0);
+		ei.checkbox = new Checkbox("Numeric", isNumeric());
+		return ei;
+	    }
+	    if (n == 4) {
+		EditInfo ei = new EditInfo("", 0, 0, 0);
+		ei.checkbox = new Checkbox("Ternary", isTernary());
+		return ei;
+	    }
+	    return null;
+	}
+	public void setEditValue(int n, EditInfo ei) {
+	    if (n == 0)
+		momentary = ei.checkbox.getState();
+	    if (n == 1)
+		hiV = ei.value;
+	    if (n == 2)
+		loV = ei.value;
+	    if (n == 3) {
+		if (ei.checkbox.getState())
+		    flags |= FLAG_NUMERIC;
+		else
+		    flags &= ~FLAG_NUMERIC;
+	    }
+	    if (n == 4) {
+		if (ei.checkbox.getState())
+		    flags |= FLAG_TERNARY;
+		else
+		    flags &= ~FLAG_TERNARY;
+		posCount = (isTernary()) ? 3 : 2;
+	    }
+	}
+	protected int getShortcut() { return 'i'; }
+	
+	protected double getCurrentIntoNode(int n) {
+	    return current;
+	}
+    }

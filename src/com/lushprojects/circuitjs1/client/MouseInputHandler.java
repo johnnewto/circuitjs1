@@ -1,13 +1,13 @@
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.annotation.*;
-import com.lushprojects.circuitjs1.client.economics.*;
-import com.lushprojects.circuitjs1.client.electronics.digital.LogicInputElm;
-import com.lushprojects.circuitjs1.client.electronics.electromechanical.SwitchElm;
-import com.lushprojects.circuitjs1.client.electronics.passives.PotElm;
-import com.lushprojects.circuitjs1.client.electronics.sources.VarRailElm;
-import com.lushprojects.circuitjs1.client.electronics.wiring.WireElm;
-import com.lushprojects.circuitjs1.client.miscElm.*;
+import com.lushprojects.circuitjs1.client.elements.annotation.*;
+import com.lushprojects.circuitjs1.client.elements.economics.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.digital.LogicInputElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.electromechanical.SwitchElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.passives.PotElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.sources.VarRailElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.wiring.WireElm;
+import com.lushprojects.circuitjs1.client.elements.misc.*;
 
 import static com.google.gwt.event.dom.client.KeyCodes.KEY_A;
 import static com.google.gwt.event.dom.client.KeyCodes.KEY_BACKSPACE;

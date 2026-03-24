@@ -27,10 +27,10 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import com.google.gwt.user.client.Timer;
-import com.lushprojects.circuitjs1.client.economics.ComputedValues;
-import com.lushprojects.circuitjs1.client.economics.ScenarioElm;
-import com.lushprojects.circuitjs1.client.electronics.wiring.LabeledNodeElm;
-import com.lushprojects.circuitjs1.client.miscElm.ActionTimeElm;
+import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
+import com.lushprojects.circuitjs1.client.elements.economics.ScenarioElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNodeElm;
+import com.lushprojects.circuitjs1.client.elements.misc.ActionTimeElm;
 
 /**
  * Central scheduler for timed actions in the simulation.

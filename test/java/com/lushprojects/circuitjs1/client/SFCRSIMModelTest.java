@@ -1,6 +1,6 @@
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.economics.*;
+import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.io.SFCRParseResult;
 import com.lushprojects.circuitjs1.client.io.SFCRParser;
 import static org.junit.jupiter.api.Assertions.assertNotNull;

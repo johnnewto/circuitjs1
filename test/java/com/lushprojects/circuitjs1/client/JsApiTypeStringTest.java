@@ -1,7 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.economics.*;
-import com.lushprojects.circuitjs1.client.electronics.passives.ResistorElm;
+import com.lushprojects.circuitjs1.client.elements.economics.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.passives.ResistorElm;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

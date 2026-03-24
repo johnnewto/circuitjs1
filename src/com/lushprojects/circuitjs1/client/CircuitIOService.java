@@ -1,8 +1,8 @@
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.economics.*;
-import com.lushprojects.circuitjs1.client.electronics.sources.AudioInputElm;
-import com.lushprojects.circuitjs1.client.electronics.sources.DataInputElm;
+import com.lushprojects.circuitjs1.client.elements.economics.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.sources.AudioInputElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.sources.DataInputElm;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.http.client.Request;
 import com.google.gwt.http.client.RequestBuilder;
@@ -18,7 +18,7 @@ import com.lushprojects.circuitjs1.client.io.ImportExportHelper;
 import com.lushprojects.circuitjs1.client.io.LookupDefinition;
 import com.lushprojects.circuitjs1.client.io.LookupTableRegistry;
 import com.lushprojects.circuitjs1.client.io.SFCRParser;
-import com.lushprojects.circuitjs1.client.miscElm.ViewportElm;
+import com.lushprojects.circuitjs1.client.elements.misc.ViewportElm;
 import com.lushprojects.circuitjs1.client.registry.ElementFactoryFacade;
 import com.lushprojects.circuitjs1.client.ui.ExportAsLocalFileDialog;
 import com.lushprojects.circuitjs1.client.ui.ExportAsSFCRDialog;

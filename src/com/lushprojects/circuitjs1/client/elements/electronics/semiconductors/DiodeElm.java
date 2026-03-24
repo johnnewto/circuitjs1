@@ -1,0 +1,264 @@
+/*    
+    Copyright (C) Paul Falstad and Iain Sharp
+    
+    This file is part of CircuitJS1.
+
+    CircuitJS1 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    CircuitJS1 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+package com.lushprojects.circuitjs1.client.elements.electronics.semiconductors;
+
+import com.lushprojects.circuitjs1.client.*;
+
+import java.util.Vector;
+
+import com.google.gwt.user.client.Window;
+import com.google.gwt.user.client.ui.Button;
+import com.lushprojects.circuitjs1.client.util.Locale;
+
+public class DiodeElm extends CircuitElm {
+    protected Diode diode;
+    protected static final int FLAG_FWDROP = 1;
+    protected static final int FLAG_MODEL = 2;
+    protected String modelName;
+    protected DiodeModel model;
+    protected static String lastModelName = "default";
+    protected boolean hasResistance;
+    protected int diodeEndNode;
+    
+    public DiodeElm(int xx, int yy) {
+	super(xx, yy);
+	modelName = lastModelName;
+	diode = new Diode(sim);
+	setup();
+    }
+    
+    public DiodeElm(int xa, int ya, int xb, int yb, int f,
+		    StringTokenizer st) {
+	super(xa, ya, xb, yb, f);
+	final double defaultdrop = .805904783;
+	diode = new Diode(sim);
+	double fwdrop = defaultdrop;
+	double zvoltage = 0;
+	if ((f & FLAG_MODEL) != 0) {
+	    modelName = CustomLogicModel.unescape(st.nextToken());
+	} else {
+	    if ((f & FLAG_FWDROP) > 0) {
+		try {
+		    fwdrop = Double.parseDouble(st.nextToken());
+		} catch (Exception e) {
+		}
+	    }
+	    model = DiodeModel.getModelWithParameters(fwdrop, zvoltage);
+	    modelName = model.name;
+//	    CirSim.console("model name wparams = " + modelName);
+	}
+	setup();
+    }
+    protected boolean nonLinear() { return true; }
+        
+    protected void setup() {
+//	CirSim.console("setting up for model " + modelName + " " + model);
+        model = DiodeModel.getModelWithNameOrCopy(modelName, model);
+        modelName = model.name;   // in case we couldn't find that model
+	diode.setup(model);
+	hasResistance = (model.seriesResistance > 0);
+	diodeEndNode = (hasResistance) ? 2 : 1;
+	allocNodes();
+    }
+    
+    protected int getInternalNodeCount() { return hasResistance ? 1 : 0; }
+    
+    public void updateModels() {
+	setup();
+    }
+
+    protected int getDumpType() { return 'd'; }
+		protected String dump() {
+		flags |= FLAG_MODEL;
+		if (modelName == null) {
+			CirSim.console("model name is null??");
+			modelName = "default";
+		}
+		return super.dump() + " " + CustomLogicModel.escape(modelName);
+    }
+    
+    protected String dumpModel() {
+	if (model.builtIn || model.dumped)
+	    return null;
+	return model.dump();
+    }
+    
+    final int hs = 8;
+    Polygon poly;
+    Point cathode[];
+	
+    protected void setPoints() {
+	super.setPoints();
+	calcLeads(16);
+	cathode = newPointArray(2);
+	Point pa[] = newPointArray(2);
+	interpPoint2(lead1, lead2, pa[0], pa[1], 0, hs);
+	interpPoint2(lead1, lead2, cathode[0], cathode[1], 1, hs);
+	poly = createPolygon(pa[0], pa[1], lead2);
+    }
+	
+    public void draw(Graphics g) {
+	drawDiode(g);
+	doDots(g);
+	drawPosts(g);
+    }
+	
+    protected void reset() {
+	diode.reset();
+	volts[0] = volts[1] = curcount = 0;
+	if (hasResistance)
+	    volts[2] = 0;
+    }
+	
+    protected void drawDiode(Graphics g) {
+	setBbox(point1, point2, hs);
+
+	double v1 = volts[0];
+	double v2 = volts[1];
+
+	draw2Leads(g);
+
+	// draw arrow thingy
+	setVoltageColor(g, v1);
+	setPowerColor(g, true);
+	g.fillPolygon(poly);
+
+	// draw thing arrow is pointing to
+	setVoltageColor(g, v2);
+	setPowerColor(g, true);
+	drawThickLine(g, cathode[0], cathode[1]);
+    }
+	
+    protected void stamp() {
+	if (hasResistance) {
+	    // create diode from node 0 to internal node
+	    diode.stamp(nodes[0], nodes[2]);
+	    // create resistor from internal node to node 1
+	    sim.stampResistor(nodes[1], nodes[2], model.seriesResistance);
+	} else
+	    // don't need any internal nodes if no series resistance
+	    diode.stamp(nodes[0], nodes[1]);
+    }
+    protected void doStep() {
+	diode.doStep(volts[0]-volts[diodeEndNode]);
+    }
+    protected void calculateCurrent() {
+	current = diode.calculateCurrent(volts[0]-volts[diodeEndNode]);
+    }
+    protected void getInfo(String arr[]) {
+	if (model.oldStyle)
+	    arr[0] = "diode";
+	else
+	    arr[0] = Locale.LS("diode") + " (" + modelName + ")";
+	arr[1] = "I = " + getCurrentText(getCurrent());
+	arr[2] = "Vd = " + getVoltageText(getVoltageDiff());
+	arr[3] = "P = " + getUnitText(getPower(), "W");
+	if (model.oldStyle)
+	    arr[4] = "Vf = " + getVoltageText(model.fwdrop);
+    }
+    
+    protected Vector<DiodeModel> models;
+    
+    public EditInfo getEditInfo(int n) {
+	if (n == 0) {
+	    EditInfo ei =  new EditInfo("Model", 0, -1, -1);
+	    models = DiodeModel.getModelList(this instanceof ZenerElm);
+	    ei.choice = new Choice();
+	    int i;
+	    for (i = 0; i != models.size(); i++) {
+		DiodeModel dm = models.get(i);
+		ei.choice.add(dm.getDescription());
+		if (dm == model)
+		    ei.choice.select(i);
+	    }
+	    return ei;
+	}
+        if (n == 1) {
+            EditInfo ei = new EditInfo("", 0, -1, -1);
+            ei.button = new Button(Locale.LS("Create New Simple Model"));
+            return ei;
+        }
+        if (n == 2) {
+            EditInfo ei = new EditInfo("", 0, -1, -1);
+            ei.button = new Button(Locale.LS("Create New Advanced Model"));
+            return ei;
+        }
+        if (n == 3) {
+            if (model.readOnly)
+        	return null;
+            EditInfo ei = new EditInfo("", 0, -1, -1);
+            ei.button = new Button(Locale.LS("Edit Model"));
+            return ei;
+        }
+        return null;
+    }
+    
+    public void newModelCreated(DiodeModel dm) {
+	model = dm;
+	modelName = model.name;
+	setup();
+    }
+    
+    public void setEditValue(int n, EditInfo ei) {
+	if (n == 0) {
+	    model = models.get(ei.choice.getSelectedIndex());
+	    modelName = model.name;
+	    setup();
+	    ei.newDialog = true;
+	    return;
+	}
+        if (n == 1 || n == 2) {
+            DiodeModel newModel = new DiodeModel(model);
+            newModel.setSimple(n == 1);
+            if (newModel.isSimple())
+        	newModel.setForwardVoltage();
+            EditDialog editDialog = new EditDiodeModelDialog(newModel, sim, this);
+            CirSimDialogCoordinator.setDiodeModelEditDialog(editDialog);
+            editDialog.show();
+            return;
+        }
+        if (n == 3) {
+            if (model.readOnly) {
+        	// probably never reached
+        	Window.alert(Locale.LS("This model cannot be modified.  Change the model name to allow customization."));
+        	return;
+            }
+            if (model.isSimple())
+        	model.setForwardVoltage();            
+            EditDialog editDialog = new EditDiodeModelDialog(model, sim, null);
+            CirSimDialogCoordinator.setDiodeModelEditDialog(editDialog);
+            editDialog.show();
+            return;
+        }
+    }
+    protected int getShortcut() { return 'd'; }
+    
+    void setLastModelName(String n) {
+	lastModelName = n;
+    }
+    
+    protected void stepFinished() {
+        // stop for huge currents that make simulator act weird
+        if (Math.abs(current) > 1e12)
+            sim.stop("max current exceeded", this);
+    }
+
+
+}

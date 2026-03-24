@@ -1,13 +1,13 @@
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.annotation.GraphicElm;
-import com.lushprojects.circuitjs1.client.economics.*;
-import com.lushprojects.circuitjs1.client.electronics.analog.VCCSElm;
-import com.lushprojects.circuitjs1.client.electronics.digital.LogicInputElm;
-import com.lushprojects.circuitjs1.client.electronics.passives.*;
-import com.lushprojects.circuitjs1.client.electronics.sources.*;
-import com.lushprojects.circuitjs1.client.electronics.wiring.*;
-import com.lushprojects.circuitjs1.client.miscElm.ScopeElm;
+import com.lushprojects.circuitjs1.client.elements.annotation.GraphicElm;
+import com.lushprojects.circuitjs1.client.elements.economics.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.analog.VCCSElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.digital.LogicInputElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.passives.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.sources.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.wiring.*;
+import com.lushprojects.circuitjs1.client.elements.misc.ScopeElm;
 
 import com.lushprojects.circuitjs1.client.ui.VariableBrowserDialog;
 

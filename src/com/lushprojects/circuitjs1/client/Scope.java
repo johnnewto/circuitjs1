@@ -21,11 +21,11 @@ package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.event.dom.client.MouseWheelEvent;
 import com.google.gwt.storage.client.Storage;
-import com.lushprojects.circuitjs1.client.electronics.digital.LogicOutputElm;
-import com.lushprojects.circuitjs1.client.electronics.measurement.*;
-import com.lushprojects.circuitjs1.client.electronics.semiconductors.TransistorElm;
-import com.lushprojects.circuitjs1.client.electronics.wiring.WireElm;
-import com.lushprojects.circuitjs1.client.miscElm.ActionTimeElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.digital.LogicOutputElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.measurement.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.semiconductors.TransistorElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.wiring.WireElm;
+import com.lushprojects.circuitjs1.client.elements.misc.ActionTimeElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 import java.util.Vector;

@@ -19,12 +19,12 @@
 
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.annotation.*;
-import com.lushprojects.circuitjs1.client.economics.*;
-import com.lushprojects.circuitjs1.client.electronics.electromechanical.SwitchElm;
-import com.lushprojects.circuitjs1.client.electronics.passives.*;
-import com.lushprojects.circuitjs1.client.electronics.wiring.*;
-import com.lushprojects.circuitjs1.client.miscElm.*;
+import com.lushprojects.circuitjs1.client.elements.annotation.*;
+import com.lushprojects.circuitjs1.client.elements.economics.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.electromechanical.SwitchElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.passives.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.wiring.*;
+import com.lushprojects.circuitjs1.client.elements.misc.*;
 
 // GWT conversion (c) 2015 by Iain Sharp
 

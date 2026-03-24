@@ -6,7 +6,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
-import com.lushprojects.circuitjs1.client.economics.*;
+import com.lushprojects.circuitjs1.client.elements.economics.*;
 
 import java.util.ArrayList;
 import java.util.HashSet;

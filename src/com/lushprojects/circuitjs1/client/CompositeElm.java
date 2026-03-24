@@ -4,7 +4,7 @@ import java.util.Vector;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
-import com.lushprojects.circuitjs1.client.electronics.wiring.GroundElm;
+import com.lushprojects.circuitjs1.client.elements.electronics.wiring.GroundElm;
 import com.lushprojects.circuitjs1.client.registry.ElementFactoryFacade;
 
 // Circuit element made up of a composition of other circuit elements
@@ -152,6 +152,9 @@ public abstract class CompositeElm extends CircuitElm {
 //	}
 
 	posts = new Point[numPosts];
+	// loadComposite() can be called outside constructors that invoke allocNodes(),
+	// so ensure node/voltage arrays always match the loaded composite topology.
+	allocNodes();
 	
 	// Enumerate voltage sources
 	for (int i = 0; i < compElmList.size(); i++) {
