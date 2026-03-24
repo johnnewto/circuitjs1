@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.util.*;
+
 import java.util.HashMap;
 
 import com.google.gwt.core.client.EntryPoint;

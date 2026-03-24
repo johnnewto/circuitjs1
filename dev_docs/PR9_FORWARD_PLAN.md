@@ -31,8 +31,6 @@ Hold due complex/package-private/cross-cutting coupling:
 - [ ] `FlipTransformController.java`
 - [ ] `CircuitAnalyzer.java`
 - [ ] `StatusInfoRenderer.java`
-- [ ] `SFCRDocumentManager.java`
-- [ ] `SFCRDocumentState.java`
 
 ## Not PR9 Elements Targets
 
@@ -40,6 +38,8 @@ Route through architecture-specific track (not `elements`):
 
 - [ ] `ElementLegacyFactory.java` -> `client.registry`
 - [ ] `ElementRegistryBootstrap.java` -> `client.registry`
+- [ ] `SFCRDocumentManager.java` -> `client.io`
+- [ ] `SFCRDocumentState.java` -> `client.io`
 
 ## PR9b: More files to Move
 

@@ -17,19 +17,24 @@ This document outlines candidates for moving files from the flat `client/` packa
 
 ### Move to `core/`
 
-Simulation engine internals and device models.
+Simulation engine internals (matrix operations, analysis).
 
 | File | Rationale |
 |------|-----------|
-| `CircuitAnalyzer.java` | Circuit analysis logic |
-| `CircuitNode.java` | Node representation |
-| `CircuitNodeLink.java` | Node connection data |
-| `RowInfo.java` | Matrix row information |
-| `SimulationLoop.java` | Main simulation loop |
-| `Inductor.java` | Inductor device model (used by InductorElm) |
-| `Diode.java` | Diode device model (used by DiodeElm) |
-| `DiodeModel.java` | Diode model parameters |
-| `TransistorModel.java` | Transistor model parameters |
+| - [ ] `CircuitNode.java` | Node representation |
+| - [ ] `CircuitNodeLink.java` | Node connection data |
+| - [ ] `RowInfo.java` | Matrix row information |
+
+### Move to `elements/electronics/`
+
+Device models used by electronics elements. Keep models close to the elements that use them.
+
+| File | Rationale |
+|------|-----------|
+| - [ ] `Inductor.java` | Inductor device model (used by `InductorElm`) |
+| - [ ] `Diode.java` | Diode device model (used by `DiodeElm`, `LEDElm`, etc.) |
+| - [ ] `DiodeModel.java` | Diode model parameters |
+| - [ ] `TransistorModel.java` | Transistor model parameters |
 
 ### Move to `ui/`
 
@@ -37,23 +42,23 @@ Dialog and UI components.
 
 | File | Rationale |
 |------|-----------|
-| `Dialog.java` | Base dialog class |
-| `EditDialog.java` | Element edit dialog |
-| `EditDialogActions.java` | Edit dialog actions |
-| `EditDialogLoadFile.java` | Edit dialog file loading |
-| `EditInfo.java` | Edit field information |
-| `EditOptions.java` | Options dialog |
-| `EditCompositeModelDialog.java` | Composite model editor |
-| `EditDiodeModelDialog.java` | Diode model editor |
-| `EditTransistorModelDialog.java` | Transistor model editor |
-| `ScopePropertiesDialog.java` | Scope properties |
-| `SliderDialog.java` | Slider configuration |
-| `Checkbox.java` | Custom checkbox widget |
-| `Choice.java` | Custom dropdown widget |
-| `Scrollbar.java` | Scrollbar widget |
-| `ScrollValuePopup.java` | Value adjustment popup |
-| `FloatingControlPanel.java` | Floating control UI |
-| `MenuUiState.java` | Menu state management |
+| - [ ] `Dialog.java` | Base dialog class |
+| - [ ] `EditDialog.java` | Element edit dialog |
+| - [ ] `EditDialogActions.java` | Edit dialog actions |
+| - [ ] `EditDialogLoadFile.java` | Edit dialog file loading |
+| - [ ] `EditInfo.java` | Edit field information |
+| - [ ] `EditOptions.java` | Options dialog |
+| - [ ] `EditCompositeModelDialog.java` | Composite model editor |
+| - [ ] `EditDiodeModelDialog.java` | Diode model editor |
+| - [ ] `EditTransistorModelDialog.java` | Transistor model editor |
+| - [ ] `ScopePropertiesDialog.java` | Scope properties |
+| - [ ] `SliderDialog.java` | Slider configuration |
+| - [ ] `Checkbox.java` | Custom checkbox widget |
+| - [ ] `Choice.java` | Custom dropdown widget |
+| - [ ] `Scrollbar.java` | Scrollbar widget |
+| - [ ] `ScrollValuePopup.java` | Value adjustment popup |
+| - [ ] `FloatingControlPanel.java` | Floating control UI |
+| - [ ] `MenuUiState.java` | Menu state management |
 
 ### Move to `io/`
 
@@ -61,13 +66,15 @@ File handling, import/export, clipboard.
 
 | File | Rationale |
 |------|-----------|
-| `LoadFile.java` | Circuit file loading |
-| `SRAMLoadFile.java` | SRAM data loading |
-| `ImportFromDropbox.java` | Dropbox import logic |
-| `ClipboardManager.java` | Clipboard operations |
-| `SetupListLoader.java` | Setup list loading |
-| `SimulationExportCore.java` | Export functionality |
-| `CircuitIOService.java` | Circuit I/O abstraction |
+| - [ ] `LoadFile.java` | Circuit file loading |
+| - [ ] `SRAMLoadFile.java` | SRAM data loading |
+| - [ ] `ImportFromDropbox.java` | Dropbox import logic |
+| - [ ] `ClipboardManager.java` | Clipboard operations |
+| - [ ] `SetupListLoader.java` | Setup list loading |
+| - [ ] `SimulationExportCore.java` | Export functionality |
+| - [ ] `CircuitIOService.java` | Circuit I/O abstraction |
+| - [ ] `SFCRDocumentManager.java` | SFCR document state management |
+| - [ ] `SFCRDocumentState.java` | SFCR document state (pure state class) |
 
 ### Move to `util/`
 
@@ -75,18 +82,18 @@ Utilities and primitive types.
 
 | File | Rationale |
 |------|-----------|
-| `Color.java` | Color representation |
-| `Font.java` | Font abstraction |
-| `Point.java` | 2D point |
-| `Polygon.java` | Polygon shape |
-| `Rectangle.java` | Rectangle shape |
-| `Graphics.java` | Graphics context wrapper |
-| `FFT.java` | Fast Fourier Transform |
-| `NumFmt.java` | Number formatting |
-| `IntPair.java` | Integer pair utility |
-| `StringTokenizer.java` | String tokenization |
-| `QueryParameters.java` | URL query parsing |
-| `AutocompleteHelper.java` | Autocomplete utilities |
+| - [x] `Color.java` | Color representation |
+| - [x] `Font.java` | Font abstraction |
+| - [x] `Point.java` | 2D point |
+| - [x] `Polygon.java` | Polygon shape |
+| - [x] `Rectangle.java` | Rectangle shape |
+| - [x] `Graphics.java` | Graphics context wrapper |
+| - [x] `FFT.java` | Fast Fourier Transform |
+| - [x] `NumFmt.java` | Number formatting |
+| - [x] `IntPair.java` | Integer pair utility |
+| - [x] `StringTokenizer.java` | String tokenization |
+| - [x] `QueryParameters.java` | URL query parsing |
+| - [x] `AutocompleteHelper.java` | Autocomplete utilities |
 
 ### Move to `registry/`
 
@@ -94,10 +101,10 @@ Registry and factory classes.
 
 | File | Rationale |
 |------|-----------|
-| `ElementLegacyFactory.java` | Legacy element creation |
-| `ElementRegistryBootstrap.java` | Registry initialization |
-| `HintRegistry.java` | Hint message registry |
-| `TableMasterRegistryManager.java` | Table registry management |
+| - [ ] `ElementLegacyFactory.java` | Legacy element creation |
+| - [ ] `ElementRegistryBootstrap.java` | Registry initialization |
+| - [ ] `HintRegistry.java` | Hint message registry |
+| - [ ] `TableMasterRegistryManager.java` | Table registry management |
 
 ### New Package: `test/`
 
@@ -105,9 +112,9 @@ In-browser GWT test infrastructure.
 
 | File | Rationale |
 |------|-----------|
-| `MathElementsTest.java` | Math element tests |
-| `TableElementsTest.java` | Table element tests |
-| `CircuitTestRunner.java` | Test runner infrastructure |
+| - [ ] `MathElementsTest.java` | Math element tests |
+| - [ ] `TableElementsTest.java` | Table element tests |
+| - [ ] `CircuitTestRunner.java` | Test runner infrastructure |
 
 ### New Package: `runner/`
 
@@ -115,25 +122,23 @@ Headless/automation runner subsystem.
 
 | File | Rationale |
 |------|-----------|
-| `RunnerController.java` | Runner orchestration |
-| `RunnerJsBridge.java` | JavaScript bridge |
-| `RunnerLaunchDecision.java` | Launch mode detection |
-| `RunnerPanelUi.java` | Runner panel UI |
-| `CircuitJavaRunner.java` | Java runner interface |
-| `RuntimeMode.java` | Runtime mode enum |
+| - [ ] `RunnerController.java` | Runner orchestration |
+| - [ ] `RunnerJsBridge.java` | JavaScript bridge |
+| - [ ] `RunnerLaunchDecision.java` | Launch mode detection |
+| - [ ] `RunnerPanelUi.java` | Runner panel UI |
+| - [ ] `CircuitJavaRunner.java` | Java runner interface |
+| - [ ] `RuntimeMode.java` | Runtime mode enum |
 
-### New Package: `stockflow/` or merge into `elements/economics/`
+### Move to `elements/economics/`
 
 Stock-flow consistent modeling support.
 
 | File | Rationale |
 |------|-----------|
-| `StockFlowTableSemantics.java` | SFC table logic |
-| `StockTableView.java` | Stock table visualization |
-| `SFCRDocumentManager.java` | SFCR document management |
-| `SFCRDocumentState.java` | SFCR document state |
-| `InfoViewerTableMarkdown.java` | Table markdown generation |
-| `InfoViewerLiveDataSerializer.java` | Live data serialization |
+| - [ ] `StockFlowTableSemantics.java` | SFC table logic |
+| - [ ] `StockTableView.java` | Stock table visualization |
+| - [ ] `InfoViewerTableMarkdown.java` | Table markdown generation |
+| - [ ] `InfoViewerLiveDataSerializer.java` | Live data serialization |
 
 ## Files to Keep in `client/`
 
@@ -141,38 +146,40 @@ These are core entry points and base classes that should remain at the top level
 
 | File | Rationale |
 |------|-----------|
-| `CirSim.java` | Main simulator class |
-| `CirSimBootstrap.java` | Bootstrap initialization |
-| `CirSimCommandRouter.java` | Command routing |
-| `CirSimDiagnostics.java` | Diagnostics |
-| `CirSimDialogCoordinator.java` | Dialog coordination |
-| `CirSimInitializer.java` | Initialization |
-| `CirSimMenuBuilder.java` | Menu construction |
-| `CirSimPlatformInterop.java` | Platform interop |
-| `CirSimPreferencesManager.java` | Preferences |
-| `CirSimUiPanelManager.java` | UI panel management |
-| `circuitjs1.java` | GWT entry point |
-| `CircuitElm.java` | Base element class |
-| `CompositeElm.java` | Composite element base |
-| `CircuitRenderer.java` | Main renderer |
-| `Scope.java` | Oscilloscope |
-| `ScopeManager.java` | Scope management |
-| `Editable.java` | Editable interface |
-| `Adjustable.java` | Adjustable interface |
-| `CustomCompositeModel.java` | Composite models |
-| `CustomLogicModel.java` | Logic models |
-| `ExportCompositeActions.java` | Composite export |
-| `JsApiBridge.java` | JavaScript API |
-| `CircuitValueSlotManager.java` | Value slots |
-| `FlipTransformController.java` | Transform handling |
-| `MouseInputHandler.java` | Mouse input |
-| `StatusInfoRenderer.java` | Status display |
-| `ToolbarModeManager.java` | Toolbar modes |
-| `UndoRedoManager.java` | Undo/redo |
-| `ViewportController.java` | Viewport control |
-| `MyCommand.java` | Command interface |
-| `SimulationContextAdapter.java` | Context adapter |
-| `CheckboxAlignedMenuItem.java` | Menu item widget |
+| - [ ] `CirSim.java` | Main simulator class |
+| - [ ] `CirSimBootstrap.java` | Bootstrap initialization |
+| - [ ] `CirSimCommandRouter.java` | Command routing |
+| - [ ] `CirSimDiagnostics.java` | Diagnostics |
+| - [ ] `CirSimDialogCoordinator.java` | Dialog coordination |
+| - [ ] `CirSimInitializer.java` | Initialization |
+| - [ ] `CirSimMenuBuilder.java` | Menu construction |
+| - [ ] `CirSimPlatformInterop.java` | Platform interop |
+| - [ ] `CirSimPreferencesManager.java` | Preferences |
+| - [ ] `CirSimUiPanelManager.java` | UI panel management |
+| - [ ] `SimulationLoop.java` | Simulation orchestration (tightly coupled to CirSim) |
+| - [ ] `CircuitAnalyzer.java` | Analysis orchestration (imports many element types, uses CirSim inner classes) |
+| - [ ] `circuitjs1.java` | GWT entry point |
+| - [ ] `CircuitElm.java` | Base element class |
+| - [ ] `CompositeElm.java` | Composite element base |
+| - [ ] `CircuitRenderer.java` | Main renderer |
+| - [ ] `Scope.java` | Oscilloscope |
+| - [ ] `ScopeManager.java` | Scope management |
+| - [ ] `Editable.java` | Editable interface |
+| - [ ] `Adjustable.java` | Adjustable interface |
+| - [ ] `CustomCompositeModel.java` | Composite models |
+| - [ ] `CustomLogicModel.java` | Logic models |
+| - [ ] `ExportCompositeActions.java` | Composite export |
+| - [ ] `JsApiBridge.java` | JavaScript API |
+| - [ ] `CircuitValueSlotManager.java` | Value slots |
+| - [ ] `FlipTransformController.java` | Transform handling |
+| - [ ] `MouseInputHandler.java` | Mouse input |
+| - [ ] `StatusInfoRenderer.java` | Status display |
+| - [ ] `ToolbarModeManager.java` | Toolbar modes |
+| - [ ] `UndoRedoManager.java` | Undo/redo |
+| - [ ] `ViewportController.java` | Viewport control |
+| - [ ] `MyCommand.java` | Command interface |
+| - [ ] `SimulationContextAdapter.java` | Context adapter |
+| - [ ] `CheckboxAlignedMenuItem.java` | Menu item widget |
 
 ## Migration Strategy
 
@@ -188,7 +195,10 @@ These are core entry points and base classes that should remain at the top level
 
 1. Update the package declaration in the moved file
 2. Update all import statements in files that reference the moved class
-3. Run `./gradlew compileGwtDev` to verify compilation
+3. Run Gates Per Batch
+- [ ] `./gradlew compileJava`
+- [ ] `./gradlew test`
+- [ ] `./gradlew compileGwtDev`
 4. Update documentation references (e.g., `ELEMENTS_FILE_MAP.md`)
 
 ## Dependencies to Check

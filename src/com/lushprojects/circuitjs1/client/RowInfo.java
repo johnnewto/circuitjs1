@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+
 // info about each row/column of the matrix for simplification purposes
 public class RowInfo {
 	public static final int ROW_NORMAL = 0;  // ordinary value

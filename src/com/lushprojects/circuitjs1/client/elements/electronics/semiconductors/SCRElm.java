@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client.elements.electronics.semiconductors;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
 // Silicon-Controlled Rectifier
 // 3 nodes, 1 internal node

@@ -19,7 +19,7 @@
 
 package com.lushprojects.circuitjs1.client.elements.electronics.digital;
 
-import com.lushprojects.circuitjs1.client.StringTokenizer;
+import com.lushprojects.circuitjs1.client.util.StringTokenizer;
 
 public class NorGateElm extends OrGateElm {
 	public NorGateElm(int xx, int yy) { super(xx, yy); }

@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client.elements.misc;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
 /**
  * ScopeElm - Circuit element that provides an embedded oscilloscope display.

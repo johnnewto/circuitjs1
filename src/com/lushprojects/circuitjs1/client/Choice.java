@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+
 import com.google.gwt.user.client.ui.ListBox;
 import com.lushprojects.circuitjs1.client.util.Locale;
 

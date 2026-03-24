@@ -14,7 +14,7 @@
 //    You should have received a copy of the GNU General Public License
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.util;
 
 // via http://grepcode.com/file/repository.grepcode.com/java/root/jdk/openjdk/6-b14/java/awt/Polygon.java
 

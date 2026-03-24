@@ -1,5 +1,6 @@
 package com.lushprojects.circuitjs1.client;
 
+
 public final class RuntimeMode {
     private static boolean nonInteractiveRuntime;
 

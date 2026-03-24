@@ -22,6 +22,7 @@ package com.lushprojects.circuitjs1.client.elements.electronics.digital;
 import com.lushprojects.circuitjs1.client.elements.ChipElm;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
 import java.util.NoSuchElementException;
 import com.google.gwt.user.client.ui.TextArea;

@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.util.*;
+
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;

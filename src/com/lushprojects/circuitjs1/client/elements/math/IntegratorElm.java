@@ -11,6 +11,7 @@ import com.lushprojects.circuitjs1.client.elements.ExprParser;
 import com.lushprojects.circuitjs1.client.elements.ExprState;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 

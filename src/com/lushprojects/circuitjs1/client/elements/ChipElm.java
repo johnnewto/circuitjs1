@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client.elements;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
 public abstract class ChipElm extends CircuitElm {
 	public int csize, cspc, cspc2;

@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client.elements.math;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
 // Linear subtracter element - subtracts input voltages from first input
 // Vout = V1 - V2 - V3 - ... using VCVS (linear element, no iteration needed)

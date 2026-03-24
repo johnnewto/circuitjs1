@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client.elements.electronics.analog;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
 public class OpAmpElm extends CircuitElm {
 	int opsize, opheight, opwidth, opaddtext;

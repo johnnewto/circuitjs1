@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client.elements.electronics.sources;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
     public class NoiseElm extends RailElm {
 	public NoiseElm(int xx, int yy) { super(xx, yy, WF_NOISE); }

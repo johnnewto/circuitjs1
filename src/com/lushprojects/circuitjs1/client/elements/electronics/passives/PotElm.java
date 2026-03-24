@@ -21,6 +21,7 @@ package com.lushprojects.circuitjs1.client.elements.electronics.passives;
 
 import com.google.gwt.user.client.ui.Label;
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.google.gwt.user.client.Command;
 import com.google.gwt.event.dom.client.MouseWheelEvent;

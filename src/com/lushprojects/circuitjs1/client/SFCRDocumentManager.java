@@ -1,5 +1,6 @@
 package com.lushprojects.circuitjs1.client;
 
+
 import com.google.gwt.user.client.ui.MenuItem;
 
 public final class SFCRDocumentManager {

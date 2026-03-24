@@ -1,5 +1,6 @@
 package com.lushprojects.circuitjs1.client;
 
+
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
 final class SimulationContextAdapter implements SimulationContext {

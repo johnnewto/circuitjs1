@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client.elements.electronics.semiconductors;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
 // 3 nodes, 2 internal nodes
 // 1 = MT1, 0 = MT2, 2 = gate

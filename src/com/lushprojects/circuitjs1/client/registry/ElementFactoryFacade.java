@@ -3,7 +3,7 @@ package com.lushprojects.circuitjs1.client.registry;
 import com.lushprojects.circuitjs1.client.CirSim;
 import com.lushprojects.circuitjs1.client.CircuitElm;
 import com.lushprojects.circuitjs1.client.ElementLegacyFactory;
-import com.lushprojects.circuitjs1.client.StringTokenizer;
+import com.lushprojects.circuitjs1.client.util.StringTokenizer;
 
 public final class ElementFactoryFacade {
     private ElementFactoryFacade() {

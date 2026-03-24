@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client.elements.math;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
 // Percent element - computes (V1 / V2 / V3 / ...) * 100
 // Outputs the percentage value (nonlinear, requires iteration)

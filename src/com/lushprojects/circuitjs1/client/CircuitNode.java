@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+
 import java.util.Vector;
 
 public class CircuitNode {

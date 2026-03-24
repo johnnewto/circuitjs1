@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client.elements.math;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
 // Divider element - divides input voltages
 // Vout = V1 / V2 / V3 / ... (nonlinear, requires iteration)

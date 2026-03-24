@@ -17,7 +17,7 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.util;
 
 import java.util.HashMap;
 import com.google.gwt.http.client.URL;

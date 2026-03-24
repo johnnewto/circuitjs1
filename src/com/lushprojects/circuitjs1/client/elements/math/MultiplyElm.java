@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client.elements.math;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
 // Multiplier element - multiplies input voltages
 // Vout = V1 * V2 * ... (nonlinear, requires iteration)

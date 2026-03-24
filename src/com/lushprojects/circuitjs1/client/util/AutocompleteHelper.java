@@ -17,11 +17,10 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.util;
 
 import com.google.gwt.user.client.ui.TextBox;
 import com.google.gwt.user.client.ui.Label;
-import com.lushprojects.circuitjs1.client.util.Locale;
 
 /**
  * AutocompleteHelper - Shared bash-style Tab completion functionality

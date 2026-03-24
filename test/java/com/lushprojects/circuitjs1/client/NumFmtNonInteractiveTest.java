@@ -3,6 +3,7 @@ package com.lushprojects.circuitjs1.client;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.lushprojects.circuitjs1.client.util.NumFmt;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -2,7 +2,7 @@ package com.lushprojects.circuitjs1.client.io;
 
 import com.lushprojects.circuitjs1.client.CirSim;
 import com.lushprojects.circuitjs1.client.CircuitElm;
-import com.lushprojects.circuitjs1.client.StringTokenizer;
+import com.lushprojects.circuitjs1.client.util.StringTokenizer;
 
 public class ImportExportHelper {
     private final CirSim sim;

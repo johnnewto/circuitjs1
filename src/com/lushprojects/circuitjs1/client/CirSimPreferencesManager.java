@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.util.*;
+
 import com.google.gwt.http.client.URL;
 import com.google.gwt.i18n.client.NumberFormat;
 import com.google.gwt.storage.client.Storage;

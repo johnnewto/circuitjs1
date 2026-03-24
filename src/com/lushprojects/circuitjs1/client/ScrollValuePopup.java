@@ -18,6 +18,7 @@
 */
 
 package com.lushprojects.circuitjs1.client;
+
 import com.lushprojects.circuitjs1.client.elements.electronics.passives.*;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
 import com.google.gwt.dom.client.NativeEvent;

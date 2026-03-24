@@ -21,6 +21,7 @@ package com.lushprojects.circuitjs1.client.elements.electronics.digital;
 
 import com.google.gwt.canvas.dom.client.Context2d;
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
 import jsinterop.annotations.JsMethod;
 import jsinterop.annotations.JsPackage;

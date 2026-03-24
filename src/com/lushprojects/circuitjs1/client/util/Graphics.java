@@ -17,10 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.util;
 
 import com.google.gwt.canvas.dom.client.Context2d;
-import com.lushprojects.circuitjs1.client.util.Locale;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -62,7 +61,7 @@ public class Graphics {
 	public int currentFontSize;
 	Color lastColor;
 	int savedFontSize;
-	static boolean isFullScreen=false;
+	public static boolean isFullScreen=false;
 	
 	// Batch drawing optimization
 	private boolean batchMode = false;
@@ -479,7 +478,7 @@ public class Graphics {
 	      context.restore();
 	  }
 	  
-	   static int distanceSq(int x1, int y1, int x2, int y2) {
+	   public static int distanceSq(int x1, int y1, int x2, int y2) {
 	    	x2 -= x1;
 	    	y2 -= y1;
 	    	return x2*x2+y2*y2;

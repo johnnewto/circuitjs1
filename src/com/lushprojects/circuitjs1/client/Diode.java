@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
 // diode that can be embedded in other elements.  series resistance is handled in DiodeElm, not here.

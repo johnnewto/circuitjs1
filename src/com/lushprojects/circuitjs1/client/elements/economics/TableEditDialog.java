@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client.elements.economics;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNodeElm;
 
 import com.lushprojects.circuitjs1.client.elements.economics.TableColumn.ColumnType;

@@ -1,4 +1,4 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.util;
 
 import java.util.Objects;
 
@@ -37,4 +37,3 @@ public class IntPair {
         return "(" + first + ", " + second + ")";
     }
 }
-

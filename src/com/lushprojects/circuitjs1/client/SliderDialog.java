@@ -18,6 +18,7 @@
 */
 
 package com.lushprojects.circuitjs1.client;
+
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.VerticalPanel;
 import com.lushprojects.circuitjs1.client.util.Locale;

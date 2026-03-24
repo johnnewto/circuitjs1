@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client.elements.electronics.semiconductors;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
 // Zener code contributed by J. Mike Rollins
 // http://www.camotruck.net/rollins/simulator.html

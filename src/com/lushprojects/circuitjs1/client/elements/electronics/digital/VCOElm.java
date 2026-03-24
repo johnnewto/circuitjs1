@@ -22,6 +22,7 @@ package com.lushprojects.circuitjs1.client.elements.electronics.digital;
 import com.lushprojects.circuitjs1.client.elements.ChipElm;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
     public class VCOElm extends ChipElm {
 	public VCOElm(int xx, int yy) { super(xx, yy); }

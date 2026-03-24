@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+
 import com.google.gwt.user.client.Command;
 
 public class MyCommand implements Command {

@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client.elements.electronics.digital;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
 public abstract class GateElm extends CircuitElm {

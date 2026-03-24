@@ -1,5 +1,6 @@
 package com.lushprojects.circuitjs1.client;
 
+
 public interface StockTableView {
     String getTableTitle();
     int getRows();

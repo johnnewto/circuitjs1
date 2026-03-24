@@ -6,6 +6,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+
 /**
  * Pure-Java helpers for stock-flow integration and convergence semantics.
  */

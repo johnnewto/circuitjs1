@@ -20,6 +20,7 @@
 package com.lushprojects.circuitjs1.client.elements.math;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
 // Multiply input by a constant - this is a linear element (VCVS with fixed gain)
 public class MultiplyConstElm extends CircuitElm {

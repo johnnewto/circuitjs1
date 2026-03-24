@@ -1,5 +1,6 @@
 package com.lushprojects.circuitjs1.client;
 
+
 final class RunnerLaunchDecision {
 
     enum ImmediateRoute {

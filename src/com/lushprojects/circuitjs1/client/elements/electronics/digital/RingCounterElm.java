@@ -22,6 +22,7 @@ package com.lushprojects.circuitjs1.client.elements.electronics.digital;
 import com.lushprojects.circuitjs1.client.elements.ChipElm;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
     public class RingCounterElm extends ChipElm {
 	boolean justLoaded;

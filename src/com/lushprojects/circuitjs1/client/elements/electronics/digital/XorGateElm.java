@@ -20,7 +20,7 @@
 package com.lushprojects.circuitjs1.client.elements.electronics.digital;
 
 import com.lushprojects.circuitjs1.client.EditInfo;
-import com.lushprojects.circuitjs1.client.StringTokenizer;
+import com.lushprojects.circuitjs1.client.util.StringTokenizer;
 
 public class XorGateElm extends OrGateElm {
 	public XorGateElm(int xx, int yy) { super(xx, yy); }

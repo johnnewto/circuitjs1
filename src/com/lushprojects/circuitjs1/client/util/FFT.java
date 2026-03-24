@@ -17,16 +17,16 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.util;
 
-class FFT {
+public class FFT {
     private int size;
     private int bits;
     private double[] cosTable;
     private double[] sinTable;
     private double[] winTable;
 
-    FFT(int n) {
+    public FFT(int n) {
       size = n;
       bits = (int) (Math.log(size) / Math.log(2));
       cosTable = new double[size / 2];
@@ -56,7 +56,7 @@ class FFT {
      * January 19, 1992 
      * http://cnx.rice.edu/content/m12016/latest/
      */
-    void fft(double[] real, double[] imag, boolean windowed) {
+    public void fft(double[] real, double[] imag, boolean windowed) {
 	if (windowed) {
 	    for (int i = 0; i < real.length; i++) {
 	      real[i] *= winTable[i];
@@ -104,9 +104,9 @@ class FFT {
         }
     }
 
-    int getSize() { return size; }
+    public int getSize() { return size; }
     
-    double magnitude(double real, double imag) {
+    public double magnitude(double real, double imag) {
       return Math.sqrt(real * real + imag * imag) / size;
     }
 }

@@ -2,6 +2,7 @@
 package com.lushprojects.circuitjs1.client.elements.electronics.misc;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
 import com.google.gwt.user.client.ui.Label;
 import com.lushprojects.circuitjs1.client.util.Locale;

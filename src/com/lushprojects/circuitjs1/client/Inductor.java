@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 
 public class Inductor {

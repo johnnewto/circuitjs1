@@ -22,6 +22,7 @@ package com.lushprojects.circuitjs1.client.elements.electronics.digital;
 import com.lushprojects.circuitjs1.client.elements.ChipElm;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
 public class LatchElm extends ChipElm {
     final int FLAG_STATE = 2;

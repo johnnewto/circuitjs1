@@ -22,6 +22,7 @@ package com.lushprojects.circuitjs1.client.elements.electronics.misc;
 import com.lushprojects.circuitjs1.client.elements.ChipElm;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 
 
     // concrete subclass of ChipElm that can be used by other elements (like CustomCompositeElm) to draw chips.

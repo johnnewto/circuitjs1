@@ -1,6 +1,7 @@
 package com.lushprojects.circuitjs1.client.elements.electronics.semiconductors;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 // Test element to evaluate if constructing compound elements from individual transistors is feasible
