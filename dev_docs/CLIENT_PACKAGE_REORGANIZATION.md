@@ -112,9 +112,9 @@ In-browser GWT test infrastructure.
 
 | File | Rationale |
 |------|-----------|
-| - [ ] `MathElementsTest.java` | Math element tests |
-| - [ ] `TableElementsTest.java` | Table element tests |
-| - [ ] `CircuitTestRunner.java` | Test runner infrastructure |
+| - [x] `MathElementsTest.java` | Math element tests |
+| - [x] `TableElementsTest.java` | Table element tests |
+| - [x] `CircuitTestRunner.java` | Test runner infrastructure |
 
 ### New Package: `runner/`
 

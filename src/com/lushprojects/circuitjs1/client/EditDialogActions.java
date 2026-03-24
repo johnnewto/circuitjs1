@@ -1,7 +1,6 @@
 package com.lushprojects.circuitjs1.client;
 
-
-import com.lushprojects.circuitjs1.client.EditCompositeModelDialog;
+import com.lushprojects.circuitjs1.client.*;
 
 import com.google.gwt.canvas.client.Canvas;
 import com.google.gwt.dom.client.CanvasElement;
@@ -31,14 +30,14 @@ public class EditDialogActions {
         CirSimDialogCoordinator.getEditDialog().show();
     }
 
-    void doSliders(CircuitElm ce) {
+    public void doSliders(CircuitElm ce) {
         sim.getClipboardManager().clearSelection();
         sim.getUndoRedoManager().pushUndo();
         CirSimDialogCoordinator.setDialogShowing(new SliderDialog(ce, sim));
         CirSimDialogCoordinator.getDialogShowing().show();
     }
 
-    void doEditLookupTables() {
+    public void doEditLookupTables() {
         if (sim.noEditCheckItem != null && sim.noEditCheckItem.getState()) {
             sim.alertOrWarn(Locale.LS("Editing disabled.  Re-enable from the Options menu."));
             return;
@@ -46,16 +45,16 @@ public class EditDialogActions {
         CirSimDialogCoordinator.setDialogShowing(new LookupTablesEditorDialog(sim));
     }
 
-    void doExportAsImage() {
+    public void doExportAsImage() {
         CirSimDialogCoordinator.setDialogShowing(new ExportAsImageDialog(CirSim.CAC_IMAGE));
         CirSimDialogCoordinator.getDialogShowing().show();
     }
 
-    void doImageToClipboard() {
+    public void doImageToClipboard() {
         sim.doImageToClipboardCore();
     }
 
-    void doCreateSubcircuit() {
+    public void doCreateSubcircuit() {
         EditCompositeModelDialog dlg = new EditCompositeModelDialog();
         if (!dlg.createModel())
             return;

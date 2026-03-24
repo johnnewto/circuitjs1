@@ -20,6 +20,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.*;
+
 import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.elements.electronics.sources.VoltageElm;
 import com.google.gwt.user.client.ui.HTML;
@@ -258,7 +260,7 @@ public class EditDialog extends Dialog {
 	    return unitString(ei, ei.value);
 	}
 
-	static String unitString(EditInfo ei, double v) {
+	public static String unitString(EditInfo ei, double v) {
 		double va = Math.abs(v);
 		if (ei != null && ei.dimensionless)
 			return noCommaFormat.format(v);
@@ -321,7 +323,7 @@ public class EditDialog extends Dialog {
 		return noCommaFormat.parse(s) * mult * rmsMult;
 	}
 
-	void apply() {
+	public void apply() {
 		int i;
 		for (i = 0; i != einfocount; i++) {
 			EditInfo ei = einfos[i];

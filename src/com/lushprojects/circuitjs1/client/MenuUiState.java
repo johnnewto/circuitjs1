@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.*;
+
 
 import java.util.Vector;
 
@@ -8,23 +10,22 @@ import com.google.gwt.user.client.ui.MenuItem;
 import com.google.gwt.user.client.ui.PopupPanel;
 import com.lushprojects.circuitjs1.client.ui.CheckboxMenuItem;
 import com.lushprojects.circuitjs1.client.ui.ScopePopupMenu;
+public final class MenuUiState {
+    public CircuitElm menuElm;
+    public PopupPanel contextPanel;
 
-final class MenuUiState {
-    CircuitElm menuElm;
-    PopupPanel contextPanel;
+    public MenuBar menuBar;
+    public MenuBar drawMenuBar;
+    public MenuBar fileMenuBar;
+    public MenuBar elmMenuBar;
+    public MenuBar helpMenuBar;
+    public MenuBar mainMenuBar;
+    public MenuBar selectScopeMenuBar;
+    public MenuBar[] subcircuitMenuBar;
 
-    MenuBar menuBar;
-    MenuBar drawMenuBar;
-    MenuBar fileMenuBar;
-    MenuBar elmMenuBar;
-    MenuBar helpMenuBar;
-    MenuBar mainMenuBar;
-    MenuBar selectScopeMenuBar;
-    MenuBar[] subcircuitMenuBar;
+    public ScopePopupMenu scopePopupMenu;
 
-    ScopePopupMenu scopePopupMenu;
-
-    Vector<CheckboxMenuItem> mainMenuItems = new Vector<CheckboxMenuItem>();
-    Vector<String> mainMenuItemNames = new Vector<String>();
-    Vector<MenuItem> selectScopeMenuItems;
+    public Vector<CheckboxMenuItem> mainMenuItems = new Vector<CheckboxMenuItem>();
+    public Vector<String> mainMenuItemNames = new Vector<String>();
+    public Vector<MenuItem> selectScopeMenuItems;
 }

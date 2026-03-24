@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.*;
+
 
 import com.google.gwt.event.dom.client.ChangeEvent;
 import com.google.gwt.event.dom.client.ChangeHandler;
@@ -55,7 +57,7 @@ public abstract class EditDialogLoadFile extends FileUpload implements ChangeHan
 		Window.alert(Locale.LS(msg));
 	}
 	
-	EditDialogLoadFile() {
+	protected EditDialogLoadFile() {
 		super();
 		this.setName(Locale.LS("Load File"));
 		this.getElement().setId("EditDialogLoadFileElement");

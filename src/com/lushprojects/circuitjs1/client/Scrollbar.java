@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.*;
+
 
 import com.google.gwt.canvas.client.Canvas;
 import com.google.gwt.user.client.ui.Composite;

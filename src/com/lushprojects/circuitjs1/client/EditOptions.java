@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.*;
+
 import com.lushprojects.circuitjs1.client.util.*;
 
 import com.google.gwt.storage.client.Storage;
@@ -26,7 +28,7 @@ import com.google.gwt.user.client.Window;
 import com.lushprojects.circuitjs1.client.elements.electronics.measurement.AudioOutputElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
-class EditOptions implements Editable {
+public class EditOptions implements Editable {
 	CirSim sim;
 	
 	public EditOptions(CirSim s) { sim = s; }

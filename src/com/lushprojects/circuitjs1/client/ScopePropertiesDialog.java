@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.*;
+
 import com.lushprojects.circuitjs1.client.util.*;
 
 import com.google.gwt.dom.client.Style.FontWeight;
@@ -143,7 +145,7 @@ boolean maxScaleTextBoxHasFocus = false;
 	
     }
     
-    static double nextHighestScale(double d) {
+    public static double nextHighestScale(double d) {
 	    d=d*1.001; // Go just above last check point
 	    double s;
 	    s=Scope.MIN_MAN_SCALE;
@@ -766,7 +768,7 @@ boolean maxScaleTextBoxHasFocus = false;
 	    }
 	}
 	
-	void apply() {
+	public void apply() {
 	    String label = labelTextBox.getText();
 	    if (label.length() == 0)
 		label = null;

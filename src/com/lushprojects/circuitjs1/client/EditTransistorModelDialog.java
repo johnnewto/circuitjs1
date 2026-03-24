@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.*;
+
 
 import com.lushprojects.circuitjs1.client.elements.electronics.semiconductors.TransistorElm;
 
@@ -15,7 +17,7 @@ public class EditTransistorModelDialog extends EditDialog {
 	applyButton.removeFromParent();
     }
 
-    void apply() {
+    public void apply() {
 	super.apply();
 //	if (model.name == null || model.name.length() == 0)
 //	    model.pickName();
