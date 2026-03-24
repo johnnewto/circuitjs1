@@ -17,12 +17,13 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.io;
 
 
 import com.google.gwt.user.client.ui.FileUpload;
 import com.google.gwt.event.dom.client.ChangeEvent;
 import com.google.gwt.event.dom.client.ChangeHandler;
+import com.lushprojects.circuitjs1.client.CirSim;
 import com.lushprojects.circuitjs1.client.ui.ExportAsLocalFileDialog;
 
 import jsinterop.annotations.JsFunction;
@@ -88,7 +89,7 @@ public class LoadFile extends FileUpload implements  ChangeHandler {
 	@JsMethod(namespace = JsPackage.GLOBAL, name = "alert")
 	private static native void alert(String message);
 	
-	static CirSim sim;
+	private static CirSim sim;
 	
 	static public final boolean isSupported() {
 	    WindowLike window = getWindow();
@@ -97,16 +98,16 @@ public class LoadFile extends FileUpload implements  ChangeHandler {
 	
 	static public void doLoadCallback(String s, String t) {
 		CirSim.console("Loading local file: " + t);
-		sim.getUndoRedoManager().pushUndo();
-		sim.getCircuitIOService().readCircuit(s);
-		sim.getUiPanelManager().createNewLoadFile();
-		sim.setCircuitTitle(t);
+		sim.pushUndoForUi();
+		sim.readCircuitFromModel(s);
+		sim.createNewLoadFileInputForIo();
+		sim.setCircuitTitleForIo(t);
 		sim.getSFCRDocumentManager().setCurrentCircuitFile("local: " + t);
 		ExportAsLocalFileDialog.setLastFileName(t);
-		sim.unsavedChanges = false;
+		sim.setUnsavedChangesForIo(false);
 	}
 	
-	LoadFile(CirSim s) {
+	public LoadFile(CirSim s) {
 		super();
 		sim=s;
 		this.setName("Import");

@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Locale;
 import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
+import com.lushprojects.circuitjs1.client.SimulationExportCore;
 
 /**
  * Command-line interface for running CircuitJS1 simulations on the JVM / terminal, i.e. no GWT, not in the browser.

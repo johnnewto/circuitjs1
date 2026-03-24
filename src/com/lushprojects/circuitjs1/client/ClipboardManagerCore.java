@@ -5,14 +5,14 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.google.gwt.storage.client.Storage;
 import com.lushprojects.circuitjs1.client.elements.misc.ScopeElm;
 
-class ClipboardManager {
+public class ClipboardManagerCore {
 	private final CirSim sim;
 
-	ClipboardManager(CirSim sim) {
+	public ClipboardManagerCore(CirSim sim) {
 		this.sim = sim;
 	}
 
-	void setMenuSelection() {
+	public void setMenuSelection() {
 		if (sim.getMenuUiState().menuElm != null) {
 			if (sim.getMenuUiState().menuElm.selected)
 				return;
@@ -21,7 +21,7 @@ class ClipboardManager {
 		}
 	}
 
-	int countSelected() {
+	public int countSelected() {
 		int count = 0;
 		for (CircuitElm ce : sim.elmList)
 			if (ce.isSelected())
@@ -29,7 +29,7 @@ class ClipboardManager {
 		return count;
 	}
 
-	void doCut() {
+	public void doCut() {
 		int i;
 		sim.getUndoRedoManager().pushUndo();
 		setMenuSelection();
@@ -59,7 +59,7 @@ class ClipboardManager {
 		sim.clipboard = stor.getItem("circuitClipboard");
 	}
 
-	void doDelete(boolean pushUndoFlag) {
+	public void doDelete(boolean pushUndoFlag) {
 		int i;
 		if (pushUndoFlag)
 			sim.getUndoRedoManager().pushUndo();
@@ -103,7 +103,7 @@ class ClipboardManager {
 		return r;
 	}
 
-	void doCopy() {
+	public void doCopy() {
 		boolean clearSel = (sim.getMenuUiState().menuElm != null && !sim.getMenuUiState().menuElm.selected);
 
 		setMenuSelection();
@@ -116,20 +116,20 @@ class ClipboardManager {
 		enablePaste();
 	}
 
-	void enablePaste() {
+	public void enablePaste() {
 		if (sim.clipboard == null || sim.clipboard.length() == 0)
 			readClipboardFromStorage();
 		sim.pasteItem.setEnabled(sim.clipboard != null && sim.clipboard.length() > 0);
 	}
 
-	void doDuplicate() {
+	public void doDuplicate() {
 		String s;
 		setMenuSelection();
 		s = copyOfSelectedElms();
 		doPaste(s);
 	}
 
-	void doPaste(String dump) {
+	public void doPaste(String dump) {
 		sim.getUndoRedoManager().pushUndo();
 		clearSelection();
 		int i;
@@ -208,7 +208,7 @@ class ClipboardManager {
 		sim.getCircuitIOService().writeRecoveryToStorage();
 	}
 
-	void clearSelection() {
+	public void clearSelection() {
 		int i;
 		for (i = 0; i != sim.elmList.size(); i++) {
 			CircuitElm ce = sim.getElm(i);
@@ -217,7 +217,7 @@ class ClipboardManager {
 		sim.enableDisableMenuItems();
 	}
 
-	void doSelectAll() {
+	public void doSelectAll() {
 		int i;
 		for (i = 0; i != sim.elmList.size(); i++) {
 			CircuitElm ce = sim.getElm(i);
@@ -226,7 +226,7 @@ class ClipboardManager {
 		sim.enableDisableMenuItems();
 	}
 
-	boolean anySelectedButMouse() {
+	public boolean anySelectedButMouse() {
 		CircuitElm mouseElm = sim.getMouseElmForRouting();
 		for (int i = 0; i != sim.elmList.size(); i++)
 			if (sim.getElm(i) != mouseElm && sim.getElm(i).selected)

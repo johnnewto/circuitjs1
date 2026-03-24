@@ -1,9 +1,9 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.io;
 
 
+import com.lushprojects.circuitjs1.client.CirSim;
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsMethod;
-import jsinterop.annotations.JsOverlay;
 import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
@@ -65,9 +65,9 @@ public class ImportFromDropbox {
 	private static native NavigatorLike getNavigator();
 
 	
-	static CirSim sim;
+	private static CirSim sim;
 	
-	ImportFromDropbox( CirSim asim ){
+	public ImportFromDropbox(CirSim asim) {
 		sim=asim;
 //		CirSim.console("importing");
 		doDropboxImport();
@@ -89,8 +89,8 @@ public class ImportFromDropbox {
 	}
 	
 	static public void doLoadCallback(String s) {
-		sim.getUndoRedoManager().pushUndo();
-		sim.getCircuitIOService().readCircuit(s);
+		sim.pushUndoForUi();
+		sim.readCircuitFromModel(s);
 	}
 	
 	

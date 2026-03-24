@@ -3,6 +3,7 @@ package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.dom.client.CanvasElement;
 import com.google.gwt.user.client.Timer;
+import com.lushprojects.circuitjs1.client.io.LoadFile;
 
 final class CirSimPlatformInterop {
     private final CirSim sim;

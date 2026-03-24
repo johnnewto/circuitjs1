@@ -12,14 +12,14 @@ import com.google.gwt.user.client.ui.MenuBar;
 import com.google.gwt.user.client.ui.MenuItem;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
-class SetupListLoader {
+public class SetupListLoaderCore {
     private final CirSim sim;
 
-    SetupListLoader(CirSim sim) {
+    public SetupListLoaderCore(CirSim sim) {
         this.sim = sim;
     }
 
-    void getSetupList(final boolean openDefault) {
+    public void getSetupList(final boolean openDefault) {
         MenuBar circuitsMenu = new MenuBar(true);
         circuitsMenu.setAutoOpen(true);
         sim.getMenuUiState().menuBar.addItem(Locale.LS("Circuits"), circuitsMenu);

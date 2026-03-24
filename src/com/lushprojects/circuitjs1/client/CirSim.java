@@ -70,7 +70,13 @@ import com.lushprojects.circuitjs1.client.core.MatrixStamper;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.core.SimulationTimingState;
 import com.lushprojects.circuitjs1.client.core.SolverMatrixState;
+import com.lushprojects.circuitjs1.client.io.ImportFromDropbox;
 import com.lushprojects.circuitjs1.client.io.ImportExportHelper;
+import com.lushprojects.circuitjs1.client.io.LoadFile;
+import com.lushprojects.circuitjs1.client.io.ClipboardManager;
+import com.lushprojects.circuitjs1.client.io.SFCRDocumentManager;
+import com.lushprojects.circuitjs1.client.io.SFCRDocumentState;
+import com.lushprojects.circuitjs1.client.io.SetupListLoader;
 import com.lushprojects.circuitjs1.client.ui.CheckboxMenuItem;
 import com.lushprojects.circuitjs1.client.ui.EditDialog;
 import com.lushprojects.circuitjs1.client.ui.EditDialogActions;
@@ -728,6 +734,18 @@ public CirSim() {
 
 	public CirSimUiPanelManager getUiPanelManager() {
 	    return uiPanelManager;
+	}
+
+	public void createNewLoadFileInputForIo() {
+	    uiPanelManager.createNewLoadFile();
+	}
+
+	public void setCircuitTitleForIo(String title) {
+	    setCircuitTitle(title);
+	}
+
+	public void setUnsavedChangesForIo(boolean unsavedChanges) {
+	    this.unsavedChanges = unsavedChanges;
 	}
 
 	InfoDialogActions getInfoDialogActions() {

@@ -3,6 +3,7 @@ package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.user.client.ui.RootLayoutPanel;
 import com.google.gwt.user.client.ui.Widget;
+import com.lushprojects.circuitjs1.client.io.LoadFile;
 
 public class CirSimUiPanelManager {
     private final CirSim sim;

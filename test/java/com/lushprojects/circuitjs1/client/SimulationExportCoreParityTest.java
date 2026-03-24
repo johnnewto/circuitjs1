@@ -8,6 +8,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import com.lushprojects.circuitjs1.client.SimulationExportCore;
 
 @DisplayName("SimulationExportCore parity formatting")
 class SimulationExportCoreParityTest {

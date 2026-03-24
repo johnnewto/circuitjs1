@@ -64,17 +64,15 @@ Dialog and UI components.
 
 File handling, import/export, clipboard.
 
-| File | Rationale |
-|------|-----------|
-| - [ ] `LoadFile.java` | Circuit file loading |
-| - [ ] `SRAMLoadFile.java` | SRAM data loading |
-| - [ ] `ImportFromDropbox.java` | Dropbox import logic |
-| - [ ] `ClipboardManager.java` | Clipboard operations |
-| - [ ] `SetupListLoader.java` | Setup list loading |
-| - [ ] `SimulationExportCore.java` | Export functionality |
-| - [ ] `CircuitIOService.java` | Circuit I/O abstraction |
-| - [ ] `SFCRDocumentManager.java` | SFCR document state management |
-| - [ ] `SFCRDocumentState.java` | SFCR document state (pure state class) |
+| File                              | Rationale |
+|-----------------------------------|-----------|
+| - [x] `LoadFile.java`             | Circuit file loading |
+| - [x] `SRAMLoadFile.java`         | SRAM data loading |
+| - [x] `ImportFromDropbox.java`    | Dropbox import logic |
+| - [x] `SetupListLoader.java`      | Setup list loading |
+| - [x] `SimulationExportCore.java` | Export functionality |
+| - [x] `SFCRDocumentManager.java`  | SFCR document state management |
+| - [x] `SFCRDocumentState.java`    | SFCR document state (pure state class) |
 
 ### Move to `util/`
 
@@ -110,11 +108,11 @@ Registry and factory classes.
 
 In-browser GWT test infrastructure.
 
-| File | Rationale |
-|------|-----------|
-| - [ ] `MathElementsTest.java` | Math element tests |
-| - [ ] `TableElementsTest.java` | Table element tests |
-| - [ ] `CircuitTestRunner.java` | Test runner infrastructure |
+| File                           | Rationale |
+|--------------------------------|-----------|
+| - [x] `MathElementsTest.java`  | Math element tests |
+| - [x] `TableElementsTest.java` | Table element tests |
+| - [x] `CircuitTestRunner.java` | Test runner infrastructure |
 
 ### New Package: `runner/`
 
@@ -180,6 +178,8 @@ These are core entry points and base classes that should remain at the top level
 | - [ ] `MyCommand.java` | Command interface |
 | - [ ] `SimulationContextAdapter.java` | Context adapter |
 | - [ ] `CheckboxAlignedMenuItem.java` | Menu item widget |
+| - [ ] `CircuitIOService.java` | Circuit I/O abstraction |
+| - [ ] `ClipboardManager.java`     | Clipboard operations |
 
 ## Migration Strategy
 
@@ -189,17 +189,20 @@ These are core entry points and base classes that should remain at the top level
 4. **Phase 4: I/O classes** - Move file handling to `io/`
 5. **Phase 5: Core internals** - Move simulation internals to `core/`
 6. **Phase 6: Runner subsystem** - Create `runner/` package
-7. **Phase 7: Stock-flow** - Organize SFC support classes
+7. **Phase 7: Stock-flow** - Move to `elements/economics/`
 
-### For Each Move
+### For Each Files Moved
 
 1. Update the package declaration in the moved file
 2. Update all import statements in files that reference the moved class
-3. Run Gates Per Batch
-- [ ] `./gradlew compileJava`
-- [ ] `./gradlew test`
-- [ ] `./gradlew compileGwtDev`
-4. Update documentation references (e.g., `ELEMENTS_FILE_MAP.md`)
+3. Run Gates Per move
+- `./gradlew compileJava`
+- `./gradlew test`
+4. when test are passing move to next file
+5. when 5 files have been moved or a section is finished 
+- `./gradlew compileGwtDev`
+- Update documentation references (e.g., `ELEMENTS_FILE_MAP.md`)
+
 
 ## Dependencies to Check
 

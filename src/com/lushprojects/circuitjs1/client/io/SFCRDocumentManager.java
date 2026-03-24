@@ -1,7 +1,8 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.io;
 
 
 import com.google.gwt.user.client.ui.MenuItem;
+import com.lushprojects.circuitjs1.client.RuntimeMode;
 
 public final class SFCRDocumentManager {
     private final SFCRDocumentState state = new SFCRDocumentState();

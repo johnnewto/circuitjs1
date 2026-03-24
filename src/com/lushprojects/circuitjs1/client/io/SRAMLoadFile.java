@@ -17,10 +17,11 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.io;
 
 
 
+import com.lushprojects.circuitjs1.client.CirSimDialogCoordinator;
 import com.lushprojects.circuitjs1.client.elements.electronics.digital.SRAMElm;
 import com.lushprojects.circuitjs1.client.ui.EditDialogLoadFile;
 import jsinterop.annotations.JsFunction;

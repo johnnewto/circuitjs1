@@ -7,6 +7,7 @@ import java.util.List;
 import com.google.gwt.dom.client.Document;
 import com.google.gwt.safehtml.shared.SafeHtmlUtils;
 import com.google.gwt.user.client.ui.RootPanel;
+import com.lushprojects.circuitjs1.client.SimulationExportCore;
 
 final class RunnerPanelUi {
     private static final int RUNNER_STDOUT_MAX_LINES = 2000;
