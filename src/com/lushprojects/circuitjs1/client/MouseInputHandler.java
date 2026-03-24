@@ -7,6 +7,7 @@ import com.lushprojects.circuitjs1.client.electronics.electromechanical.SwitchEl
 import com.lushprojects.circuitjs1.client.electronics.passives.PotElm;
 import com.lushprojects.circuitjs1.client.electronics.sources.VarRailElm;
 import com.lushprojects.circuitjs1.client.electronics.wiring.WireElm;
+import com.lushprojects.circuitjs1.client.miscElm.*;
 
 import static com.google.gwt.event.dom.client.KeyCodes.KEY_A;
 import static com.google.gwt.event.dom.client.KeyCodes.KEY_BACKSPACE;

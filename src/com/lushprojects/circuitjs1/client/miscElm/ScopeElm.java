@@ -17,7 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.miscElm;
+
+import com.lushprojects.circuitjs1.client.*;
 
 /**
  * ScopeElm - Circuit element that provides an embedded oscilloscope display.
@@ -47,8 +49,8 @@ public class ScopeElm extends CircuitElm {
      * @param e The element to monitor
      */
     public void setScopeElm(CircuitElm e) {
-	elmScope.setElm(e);
-	elmScope.resetGraph();
+	elmScope.setElmForEmbedded(e);
+	elmScope.resetGraphForEmbedded();
     }
     
     /**
@@ -66,7 +68,7 @@ public class ScopeElm extends CircuitElm {
 	String sStr = st.nextToken();
 	StringTokenizer sst = new StringTokenizer(sStr, "_");
 	elmScope = new Scope(sim);
-	elmScope.undump(sst);
+	elmScope.undumpForEmbedded(sst);
 	setPoints();
 	// Don't call resetGraph() here - setPoints() -> setScopeRect() -> setRect() already did it
 	// Calling it again would clear history buffers that were just properly initialized
@@ -76,13 +78,14 @@ public class ScopeElm extends CircuitElm {
      * Updates the scope's display rectangle based on element position.
      */
     public void setScopeRect() {
-	int i1 = sim.transformX(min(x, x2));
-	int i2 = sim.transformX(max(x, x2));
-	int j1 = sim.transformY(min(y, y2));
-	int j2 = sim.transformY(max(y, y2));
+	int i1 = sim.transformXForUiElement(min(x, x2));
+	int i2 = sim.transformXForUiElement(max(x, x2));
+	int j1 = sim.transformYForUiElement(min(y, y2));
+	int j2 = sim.transformYForUiElement(max(y, y2));
 	Rectangle r = new Rectangle(i1, j1, i2 - i1, j2 - j1);
-	if (!r.equals(elmScope.rect))
-	    elmScope.setRect(r);
+	Rectangle scopeRect = elmScope.getRectForEmbedded();
+	if (!r.equals(scopeRect))
+	    elmScope.setRectForEmbedded(r);
     }
     
     @Override
@@ -99,13 +102,13 @@ public class ScopeElm extends CircuitElm {
      * Updates the scope data for one timestep.
      */
     public void stepScope() {
-	elmScope.timeStep();
+	elmScope.timeStepForEmbedded();
     }
     
     @Override
     public void reset() {
 	super.reset();
-	elmScope.resetGraph(true);
+	elmScope.resetGraphForEmbedded(true);
     }
     
     public void clearElmScope() {
@@ -125,7 +128,7 @@ public class ScopeElm extends CircuitElm {
     @Override
     public String dump() {
 	String dumpStr = super.dump();
-	String elmDump = elmScope.dump();
+	String elmDump = elmScope.dumpForEmbedded();
 	if (elmDump == null)
 	    return null;
 	String sStr = elmDump.replace(' ', '_');
@@ -140,11 +143,11 @@ public class ScopeElm extends CircuitElm {
 	
 	// Apply inverse transform for proper rendering
 	// Note: setTransform() doesn't work in the version of canvas2svg we are using
-	double[] transform = sim.getTransform();
+	double[] transform = sim.getTransformForUiElement();
 	g.context.scale(1 / transform[0], 1 / transform[3]);
 	g.context.translate(-transform[4], -transform[5]);
 
-	if (sim.isExporting) {
+	if (sim.isExportingImage()) {
 	    drawForExport(g);
 	} else {
 	    drawNormal(g);
@@ -164,15 +167,15 @@ public class ScopeElm extends CircuitElm {
 	setScopeRect();
 	
 	// Set zoom scale for text sizing - use average of X and Y scale factors
-	double[] transform = sim.getTransform();
+	double[] transform = sim.getTransformForUiElement();
 	double zoomScale = (transform[0] + transform[3]) / 2.0;
-	elmScope.setZoomScale(zoomScale);
+	elmScope.setZoomScaleForEmbedded(zoomScale);
 	
 	// Draw shadow box around the scope to separate it from background
 	drawShadowBox(g);
 	
-	elmScope.position = -1;
-	elmScope.draw(g);
+	elmScope.setPositionForEmbedded(-1);
+	elmScope.drawForEmbedded(g);
     }
     
     /**
@@ -182,21 +185,22 @@ public class ScopeElm extends CircuitElm {
     private void drawForExport(Graphics g) {
 	// Calculate where the scope should be drawn and its size
 	// based on current transform (this positions and scales it correctly in the export)
-	int i1 = sim.transformX(min(x, x2));
-	int i2 = sim.transformX(max(x, x2));
-	int j1 = sim.transformY(min(y, y2));
-	int j2 = sim.transformY(max(y, y2));
+	int i1 = sim.transformXForUiElement(min(x, x2));
+	int i2 = sim.transformXForUiElement(max(x, x2));
+	int j1 = sim.transformYForUiElement(min(y, y2));
+	int j2 = sim.transformYForUiElement(max(y, y2));
 	
 	// Save the original rectangle to restore after drawing
-	int savedX = elmScope.rect.x;
-	int savedY = elmScope.rect.y;
-	int savedWidth = elmScope.rect.width;
-	int savedHeight = elmScope.rect.height;
+	Rectangle scopeRect = elmScope.getRectForEmbedded();
+	int savedX = scopeRect.x;
+	int savedY = scopeRect.y;
+	int savedWidth = scopeRect.width;
+	int savedHeight = scopeRect.height;
 	
 	// Keep the rect at its original size for proper calculations
 	// but we'll transform the graphics context to scale everything up
-	elmScope.rect.x = i1;
-	elmScope.rect.y = j1;
+	scopeRect.x = i1;
+	scopeRect.y = j1;
 	
 	// Calculate the scale factor
 	double scaleX = (double)(i2 - i1) / savedWidth;
@@ -222,14 +226,14 @@ public class ScopeElm extends CircuitElm {
 	g.context.scale(scaleX, scaleY);
 	g.context.translate(-i1, -j1);
 	
-	elmScope.position = -1;
-	elmScope.draw(g);
+	elmScope.setPositionForEmbedded(-1);
+	elmScope.drawForEmbedded(g);
 	
 	g.context.restore();
 	
 	// Restore the original rectangle after drawing
-	elmScope.rect.x = savedX;
-	elmScope.rect.y = savedY;
+	scopeRect.x = savedX;
+	scopeRect.y = savedY;
     }
     
     /**
@@ -249,7 +253,8 @@ public class ScopeElm extends CircuitElm {
 	setBackgroundColor(g);
 	
 	// Draw a background rectangle for the shadow
-	g.fillRect(elmScope.rect.x, elmScope.rect.y, elmScope.rect.width, elmScope.rect.height);
+	Rectangle scopeRect = elmScope.getRectForEmbedded();
+	g.fillRect(scopeRect.x, scopeRect.y, scopeRect.width, scopeRect.height);
 	g.context.restore();
     }
     
@@ -282,12 +287,11 @@ public class ScopeElm extends CircuitElm {
 	return 0; 
     }
     
-    @Override
     int getNumHandles() { 
 	return 2; 
     }
     
-    void selectScope(int mx, int my, boolean mouseButtonDown) { 
-	elmScope.selectScope(mx, my, mouseButtonDown); 
+    public void selectScope(int mx, int my, boolean mouseButtonDown) {
+	elmScope.selectScopeForEmbedded(mx, my, mouseButtonDown);
     }
 }

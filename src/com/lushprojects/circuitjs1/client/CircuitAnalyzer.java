@@ -7,6 +7,7 @@ import com.lushprojects.circuitjs1.client.electronics.digital.LogicInputElm;
 import com.lushprojects.circuitjs1.client.electronics.passives.*;
 import com.lushprojects.circuitjs1.client.electronics.sources.*;
 import com.lushprojects.circuitjs1.client.electronics.wiring.*;
+import com.lushprojects.circuitjs1.client.miscElm.ScopeElm;
 
 import com.lushprojects.circuitjs1.client.ui.VariableBrowserDialog;
 

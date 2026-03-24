@@ -12,6 +12,7 @@ import java.util.Vector;
 
 import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.economics.*;
+import com.lushprojects.circuitjs1.client.miscElm.*;
 import com.lushprojects.circuitjs1.client.registry.ElementFactoryFacade;
 
 /**

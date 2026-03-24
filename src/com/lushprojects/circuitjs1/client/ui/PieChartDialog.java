@@ -22,6 +22,7 @@ package com.lushprojects.circuitjs1.client.ui;
 import com.lushprojects.circuitjs1.client.economics.*;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.miscElm.PieChartElm;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.HorizontalPanel;

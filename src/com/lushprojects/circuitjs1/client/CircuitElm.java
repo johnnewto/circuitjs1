@@ -33,6 +33,7 @@ import com.lushprojects.circuitjs1.client.electronics.sources.RailElm;
 import com.lushprojects.circuitjs1.client.electronics.sources.SweepElm;
 import com.lushprojects.circuitjs1.client.electronics.sources.VoltageElm;
 import com.lushprojects.circuitjs1.client.electronics.wiring.LabeledNodeElm;
+import com.lushprojects.circuitjs1.client.miscElm.ScopeElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import jsinterop.annotations.JsFunction;
 import jsinterop.annotations.JsPackage;

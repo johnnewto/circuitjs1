@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.miscElm.ScopeElm;
+
 final class ScopeManager {
     private final CirSim sim;
     private int scopeSelected = -1;

@@ -18,6 +18,7 @@ import com.lushprojects.circuitjs1.client.io.ImportExportHelper;
 import com.lushprojects.circuitjs1.client.io.LookupDefinition;
 import com.lushprojects.circuitjs1.client.io.LookupTableRegistry;
 import com.lushprojects.circuitjs1.client.io.SFCRParser;
+import com.lushprojects.circuitjs1.client.miscElm.ViewportElm;
 import com.lushprojects.circuitjs1.client.registry.ElementFactoryFacade;
 import com.lushprojects.circuitjs1.client.ui.ExportAsLocalFileDialog;
 import com.lushprojects.circuitjs1.client.ui.ExportAsSFCRDialog;

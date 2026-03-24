@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.Vector;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.miscElm.*;
 
 /**
  * Exports circuit in SFCR-compatible text format.

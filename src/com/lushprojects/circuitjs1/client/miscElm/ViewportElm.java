@@ -17,8 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.miscElm;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.annotation.BoxElm;
 
 /**
@@ -30,7 +31,7 @@ import com.lushprojects.circuitjs1.client.annotation.BoxElm;
  * 
  * Extends BoxElm to provide a dashed rectangle visualization.
  */
-class ViewportElm extends BoxElm {
+public class ViewportElm extends BoxElm {
 
     String name = "Main";  // Viewport name (for future multi-viewport support)
     

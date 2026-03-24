@@ -25,6 +25,7 @@ import com.lushprojects.circuitjs1.client.electronics.digital.LogicOutputElm;
 import com.lushprojects.circuitjs1.client.electronics.measurement.*;
 import com.lushprojects.circuitjs1.client.electronics.semiconductors.TransistorElm;
 import com.lushprojects.circuitjs1.client.electronics.wiring.WireElm;
+import com.lushprojects.circuitjs1.client.miscElm.ActionTimeElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 import java.util.Vector;
@@ -454,6 +455,10 @@ public class Scope {
     void setZoomScale(double scale) {
 	zoomScale = scale;
     }
+
+    public void setZoomScaleForEmbedded(double scale) {
+	setZoomScale(scale);
+    }
     
     /**
      * Get a scaled font size based on the current zoom scale.
@@ -536,6 +541,10 @@ public class Scope {
     void resetGraph() { 
 	resetGraph(false); 
     }
+
+    public void resetGraphForEmbedded() {
+	resetGraph();
+    }
     
     /**
      * Resets the scope graph.
@@ -543,6 +552,10 @@ public class Scope {
      */
     void resetGraph(boolean full) {
     	resetGraph(full, true);  // Default: clear history
+    }
+
+    public void resetGraphForEmbedded(boolean full) {
+	resetGraph(full);
     }
     
     /**
@@ -798,6 +811,14 @@ public class Scope {
 	if (this.rect.width != w)
 	    resetGraph(false, !drawFromZero);  // Preserve history when drawFromZero is enabled
     }
+
+    public void setRectForEmbedded(Rectangle r) {
+	setRect(r);
+    }
+
+    public Rectangle getRectForEmbedded() {
+	return rect;
+    }
     
     int getWidth() { return rect.width; }
     
@@ -810,6 +831,10 @@ public class Scope {
     	else
     	    setValue(0, ce);
     	initialize();
+    }
+
+    public void setElmForEmbedded(CircuitElm ce) {
+	setElm(ce);
     }
     
     void addElm(CircuitElm ce) {
@@ -1004,6 +1029,10 @@ public class Scope {
     	if (drawFromZero && !plot2d) {
     	    captureToHistory();
     	}
+    }
+
+    public void timeStepForEmbedded() {
+	timeStep();
     }
     
     /**
@@ -1842,6 +1871,10 @@ public class Scope {
 
     }
 
+    public void drawForEmbedded(Graphics g) {
+	draw(g);
+    }
+
     
     // calculate maximum and minimum values for all plots of given units
     void calcMaxAndMin(int units) {
@@ -2396,6 +2429,10 @@ public class Scope {
 	}
     	checkForSelection(mouseX, mouseY);
     	cursorScope = this;
+    }
+
+    public void selectScopeForEmbedded(int mouseX, int mouseY, boolean mouseButtonDown) {
+	selectScope(mouseX, mouseY, mouseButtonDown);
     }
     
     // find selected plot
@@ -3242,6 +3279,10 @@ public class Scope {
     	    	x += " T:" + CustomLogicModel.escape(title);
     	return x;
     }
+
+    public String dumpForEmbedded() {
+	return dump();
+    }
     
     void undump(StringTokenizer st) {
     	initialize();
@@ -3423,6 +3464,14 @@ public class Scope {
 
     	// Note: Don't call resetGraph here - it will be called by setRect() later with proper dimensions
     	// If we call it here, the rect is still default size and historyCapacity will be too small
+    }
+
+    public void undumpForEmbedded(StringTokenizer st) {
+	undump(st);
+    }
+
+    public void setPositionForEmbedded(int pos) {
+	position = pos;
     }
     
     public void setFlags(int flags) {

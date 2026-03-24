@@ -17,8 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.miscElm;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.annotation.GraphicElm;
 import com.lushprojects.circuitjs1.client.economics.*;
 
@@ -302,7 +303,7 @@ public class PieChartElm extends GraphicElm {
                 nodeValues[i] = computedValue;
             } else {
                 // Fall back to LabeledNodeElm voltage lookup (uses HashMap, not loop)
-                nodeValues[i] = sim.getCircuitValueSlotManager().getLabeledNodeVoltage(nodeName);
+                nodeValues[i] = sim.getLabeledNodeVoltageForUi(nodeName);
             }
         }
     }
@@ -350,7 +351,6 @@ public class PieChartElm extends GraphicElm {
         }
     }
     
-    @Override
     boolean needsShortcut() {
         return false;
     }

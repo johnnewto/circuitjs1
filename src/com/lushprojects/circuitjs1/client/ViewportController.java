@@ -1,6 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.google.gwt.user.client.ui.RootLayoutPanel;
+import com.lushprojects.circuitjs1.client.miscElm.ViewportElm;
 
 final class ViewportController {
     private final CirSim sim;

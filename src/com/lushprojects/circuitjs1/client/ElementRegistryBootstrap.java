@@ -6,6 +6,7 @@ import com.lushprojects.circuitjs1.client.electronics.passives.*;
 import com.lushprojects.circuitjs1.client.electronics.semiconductors.*;
 import com.lushprojects.circuitjs1.client.electronics.sources.*;
 import com.lushprojects.circuitjs1.client.electronics.wiring.*;
+import com.lushprojects.circuitjs1.client.miscElm.*;
 
 import com.lushprojects.circuitjs1.client.math.*;
 import com.lushprojects.circuitjs1.client.registry.ElementCategory;

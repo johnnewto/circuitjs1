@@ -17,8 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.miscElm;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.lushprojects.circuitjs1.client.ActionScheduler.ScheduledAction;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
@@ -391,28 +392,28 @@ public class ActionTimeElm extends CircuitElm {
     /**
      * Get the play/pause icon bounds for click detection
      */
-    Rectangle getPlayPauseIconRect() {
+    public Rectangle getPlayPauseIconRect() {
         return playPauseIconRect;
     }
     
     /**
      * Check if mouse is over the play/pause icon
      */
-    boolean isPlayPauseIconHovered() {
+    public boolean isPlayPauseIconHovered() {
         return playPauseIconHovered;
     }
     
     /**
      * Set the play/pause icon hover state
      */
-    void setPlayPauseIconHovered(boolean hovered) {
+    public void setPlayPauseIconHovered(boolean hovered) {
         playPauseIconHovered = hovered;
     }
     
     /**
      * Check if a point is inside the play/pause icon
      */
-    boolean isPointInPlayPauseIcon(int x, int y) {
+    public boolean isPointInPlayPauseIcon(int x, int y) {
         if (playPauseIconRect == null) return false;
         return x >= playPauseIconRect.x && x <= playPauseIconRect.x + playPauseIconRect.width &&
                y >= playPauseIconRect.y && y <= playPauseIconRect.y + playPauseIconRect.height;
@@ -422,33 +423,13 @@ public class ActionTimeElm extends CircuitElm {
      * Get formatted value for a slider/action, checking element for custom formatting
      */
     private String getFormattedSliderValue(String sliderName, double value) {
-        // Find the adjustable with this name
-        for (int i = 0; i < sim.adjustables.size(); i++) {
-            Adjustable adj = sim.adjustables.get(i);
-            if (adj.sliderText != null && adj.sliderText.equals(sliderName)) {
-                EditInfo ei = adj.elm.getEditInfo(adj.editItem);
-                if (ei != null) {
-                    // Check if element has custom slider text formatting
-                    try {
-                        String customText = adj.elm.getSliderUnitText(adj.editItem, ei, value);
-                        if (customText != null)
-                            return customText;
-                    } catch (Exception e) {
-                        // Element doesn't have custom formatting
-                    }
-                    // Use default formatting
-                    return EditDialog.unitString(ei, value);
-                }
-            }
-        }
-        // Fallback to simple format
-        return CircuitElm.showFormat.format(value);
+        return sim.formatAdjustableValueForUi(sliderName, value);
     }
     
     /**
      * Handle click on play/pause icon
      */
-    void handlePlayPauseIconClick() {
+    public void handlePlayPauseIconClick() {
         // Simply toggle simulation state, just like Run/Stop button
         if (sim.simIsRunning()) {
             // Currently running - stop it
@@ -460,7 +441,7 @@ public class ActionTimeElm extends CircuitElm {
     }
     
     // Handle right-click to open dialog
-    void doRightClick(int mx, int my) {
+    public void doRightClick(int mx, int my) {
         ActionTimeDialog.openDialog(sim);
     }
     

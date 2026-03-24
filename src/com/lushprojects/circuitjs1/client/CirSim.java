@@ -24,6 +24,7 @@ import com.lushprojects.circuitjs1.client.economics.*;
 import com.lushprojects.circuitjs1.client.electronics.electromechanical.SwitchElm;
 import com.lushprojects.circuitjs1.client.electronics.passives.*;
 import com.lushprojects.circuitjs1.client.electronics.wiring.*;
+import com.lushprojects.circuitjs1.client.miscElm.*;
 
 // GWT conversion (c) 2015 by Iain Sharp
 
@@ -1002,6 +1003,29 @@ public CirSim() {
 
 	public double resolveSlotValueForUi(String name) {
 	    return circuitValueSlotManager.resolveSlotValue(name);
+	}
+
+	public String formatAdjustableValueForUi(String sliderName, double value) {
+	    for (int i = 0; i < adjustables.size(); i++) {
+		Adjustable adj = adjustables.get(i);
+		if (adj.sliderText == null || !adj.sliderText.equals(sliderName)) {
+		    continue;
+		}
+		EditInfo ei = adj.elm.getEditInfo(adj.editItem);
+		if (ei == null) {
+		    continue;
+		}
+		try {
+		    String customText = adj.elm.getSliderUnitText(adj.editItem, ei, value);
+		    if (customText != null) {
+			return customText;
+		    }
+		} catch (Exception e) {
+		    // Fall through to default formatting when no custom formatter is available.
+		}
+		return EditDialog.unitString(ei, value);
+	    }
+	    return CircuitElm.showFormat.format(value);
 	}
 
 	CirSimCommandRouter getCommandRouter() {
@@ -2108,6 +2132,10 @@ public CirSim() {
     int transformX(double x) {
 	return getViewportController().transformX(x);
     }
+
+    public int transformXForUiElement(double x) {
+	return transformX(x);
+    }
     
     /**
      * Convert circuit grid coordinates to screen coordinates.
@@ -2120,8 +2148,20 @@ public CirSim() {
 	return getViewportController().transformY(y);
     }
 
+    public int transformYForUiElement(double y) {
+	return transformY(y);
+    }
+
     double[] getTransform() {
 	return getViewportController().getTransform();
+    }
+
+    public double[] getTransformForUiElement() {
+	return getTransform();
+    }
+
+    public boolean isExportingImage() {
+	return isExporting;
     }
 
     int getMenuClientX() {

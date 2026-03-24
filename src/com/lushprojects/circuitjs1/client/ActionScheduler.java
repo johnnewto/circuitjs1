@@ -30,6 +30,7 @@ import com.google.gwt.user.client.Timer;
 import com.lushprojects.circuitjs1.client.economics.ComputedValues;
 import com.lushprojects.circuitjs1.client.economics.ScenarioElm;
 import com.lushprojects.circuitjs1.client.electronics.wiring.LabeledNodeElm;
+import com.lushprojects.circuitjs1.client.miscElm.ActionTimeElm;
 
 /**
  * Central scheduler for timed actions in the simulation.

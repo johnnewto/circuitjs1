@@ -575,12 +575,12 @@ Remaining specialized components:
 - [x] `CustomCompositeChipElm.java`
 - [x] `StopTriggerElm.java`
 
-#### UI-Support Batch (defer from PR7)
-- [ ] `ScopeElm.java` → `client.ui`
-- [ ] `ViewportElm.java` → `client.ui`
-- [ ] `StopTimeElm.java` → `client.ui`
-- [ ] `ActionTimeElm.java` → `client.ui`
-- [ ] `PieChartElm.java` → economics/ui-support decision batch (defer until ownership finalized)
+#### UI-Support Batch (`client.miscElm`)
+- [x] `ScopeElm.java` → `client.miscElm`
+- [x] `ViewportElm.java` → `client.miscElm`
+- [x] `StopTimeElm.java` → `client.miscElm`
+- [x] `ActionTimeElm.java` → `client.miscElm`
+- [x] `PieChartElm.java` → `client.miscElm`
 
 ### PR7a Sources Target Package Map
 - Use subpackage: `com.lushprojects.circuitjs1.client.electronics.sources`

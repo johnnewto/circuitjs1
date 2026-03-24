@@ -17,8 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.miscElm;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
 import com.lushprojects.circuitjs1.client.ui.ScopeViewerDialog;
 import com.lushprojects.circuitjs1.client.util.Locale;
@@ -27,7 +28,7 @@ import jsinterop.annotations.JsPackage;
 import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 
-class StopTimeElm extends CircuitElm {
+public class StopTimeElm extends CircuitElm {
 
     @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Window")
     private static class WindowLike {
