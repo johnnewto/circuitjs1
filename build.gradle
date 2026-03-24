@@ -282,6 +282,39 @@ gwt {
     }
 }
 
+//---------------------------------------------------------------------
+// Fast Development Build
+//---------------------------------------------------------------------
+// Uses dev module (1 permutation, safari only) with minimal optimization
+// for faster compile times. Production compileGwt remains unchanged.
+//
+// Usage: ./gradlew compileGwtDev
+//---------------------------------------------------------------------
+task compileGwtDev(type: org.wisepersist.gradle.plugins.gwt.GwtCompile) {
+    description = 'Fast GWT compile for development (1 permutation, no optimization)'
+    group = 'gwt'
+    
+    // Use the dev module which restricts to safari only (1 permutation)
+    modules = ['com.lushprojects.circuitjs1.circuitjs1dev']
+    
+    // GWT compiler settings for speed
+    minHeapSize = '512M'
+    maxHeapSize = '1024M'
+    optimize = 0                        // Skip optimizations (0=none, 9=max)
+    logLevel = 'INFO'
+    
+    // Same settings as production
+    disableClassMetadata = true
+    disableCastChecking = true
+    strict = true
+    
+    // Optional: readable output for debugging
+    // style = 'PRETTY'
+    
+    // Output to same location as regular compileGwt
+    war = file('war')
+}
+
 /*
 buildScan {
     termsOfServiceUrl = 'https://gradle.com/terms-of-service'

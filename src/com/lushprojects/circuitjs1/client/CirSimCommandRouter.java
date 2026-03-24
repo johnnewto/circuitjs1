@@ -1,5 +1,9 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.elements.ActionTimeDialog;
+
+import com.lushprojects.circuitjs1.client.elements.EquationTableMarkdownDebugDialog;
+import com.lushprojects.circuitjs1.client.elements.SFCSankeyViewer;
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.elements.misc.*;
 

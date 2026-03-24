@@ -1,5 +1,8 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.elements.ActionTimeDialog;
+
+import com.lushprojects.circuitjs1.client.core.CircuitMatrixOps;
 import com.lushprojects.circuitjs1.client.elements.annotation.GraphicElm;
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.elements.electronics.analog.VCCSElm;

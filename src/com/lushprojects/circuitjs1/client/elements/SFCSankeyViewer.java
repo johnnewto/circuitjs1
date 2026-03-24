@@ -4,8 +4,9 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.elements;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 
 import com.lushprojects.circuitjs1.client.elements.economics.TableColumn.ColumnType;
@@ -69,16 +70,16 @@ public class SFCSankeyViewer {
     interface SankeyViewerResources extends ClientBundle {
         SankeyViewerResources INSTANCE = GWT.create(SankeyViewerResources.class);
 
-        @Source("SankeyPlotlyEmbeddedTemplate.html")
+        @Source("../SankeyPlotlyEmbeddedTemplate.html")
         TextResource plotlyEmbeddedTemplate();
 
-        @Source("SankeyPlotlyStandaloneTemplate.html")
+        @Source("../SankeyPlotlyStandaloneTemplate.html")
         TextResource plotlyStandaloneTemplate();
 
-        @Source("SankeyD3EmbeddedTemplate.html")
+        @Source("../SankeyD3EmbeddedTemplate.html")
         TextResource d3EmbeddedTemplate();
 
-        @Source("SankeyD3StandaloneTemplate.html")
+        @Source("../SankeyD3StandaloneTemplate.html")
         TextResource d3StandaloneTemplate();
     }
 
@@ -283,7 +284,7 @@ public class SFCSankeyViewer {
      * - Nodes: sectors (left), transactions (middle), sectors_out (right)
      * - Links: from sector→transaction (for negative values), transaction→sector_out (for positive values)
      */
-    String buildSankeyJSON() {
+    public String buildSankeyJSON() {
         ArrayList<TableColumn> columns = table.columns;
         int rows = table.rows;
         String[] rowDescriptions = table.rowDescriptions;

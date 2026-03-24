@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.elements.ActionTimeDialog;
+
 import com.lushprojects.circuitjs1.client.elements.annotation.*;
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.elements.electronics.digital.LogicInputElm;

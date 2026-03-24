@@ -6,6 +6,8 @@
 
 package com.lushprojects.circuitjs1.client.io;
 
+import com.lushprojects.circuitjs1.client.elements.ActionScheduler;
+
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 
 import java.util.ArrayList;

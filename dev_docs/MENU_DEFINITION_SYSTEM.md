@@ -161,8 +161,11 @@ String shortcut = parts[2].trim();       // Optional shortcut
 ### Build Commands
 
 ```bash
-# Compile GWT (includes copying public resources)
-gradle compileGwt
+# Fast dev compile (for testing menu changes)
+./gradlew compileGwtDev
+
+# Production compile (for deployment)
+./gradlew compileGwt
 
 # Development server (for testing)
 gradle gwtSuperDev

@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.elements.ChipElm;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Vector;

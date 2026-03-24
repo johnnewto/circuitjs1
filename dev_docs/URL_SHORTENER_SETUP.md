@@ -118,6 +118,7 @@ Edit `war/circuitjs.html` and update the Cloudflare Worker URL:
 Recompile and deploy to GitHub Pages:
 
 ```bash
+# Production build (required for deployment)
 ./gradlew compileGwt
 # Deploy war/ directory to GitHub Pages
 ```

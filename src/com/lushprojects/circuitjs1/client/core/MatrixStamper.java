@@ -1,19 +1,24 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.core;
 
-class MatrixStamper {
+import com.lushprojects.circuitjs1.client.CirSim;
+import com.lushprojects.circuitjs1.client.CircuitElm;
+import com.lushprojects.circuitjs1.client.CircuitNode;
+import com.lushprojects.circuitjs1.client.RowInfo;
+
+public class MatrixStamper {
     private final CirSim sim;
 
-    MatrixStamper(CirSim sim) {
+    public MatrixStamper(CirSim sim) {
         this.sim = sim;
     }
 
-    void stampVCVS(int n1, int n2, double coef, int vs) {
+    public void stampVCVS(int n1, int n2, double coef, int vs) {
         int vn = sim.getCircuitAnalyzer().getNodeList().size() + vs;
         stampMatrix(vn, n1, coef);
         stampMatrix(vn, n2, -coef);
     }
 
-    void stampVoltageSource(int n1, int n2, int vs, double v) {
+    public void stampVoltageSource(int n1, int n2, int vs, double v) {
         int vn = sim.getCircuitAnalyzer().getNodeList().size() + vs;
         stampMatrix(vn, n1, -1);
         stampMatrix(vn, n2, 1);
@@ -22,7 +27,7 @@ class MatrixStamper {
         stampMatrix(n2, vn, -1);
     }
 
-    void stampVoltageSource(int n1, int n2, int vs) {
+    public void stampVoltageSource(int n1, int n2, int vs) {
         int vn = sim.getCircuitAnalyzer().getNodeList().size() + vs;
         stampMatrix(vn, n1, -1);
         stampMatrix(vn, n2, 1);
@@ -31,12 +36,12 @@ class MatrixStamper {
         stampMatrix(n2, vn, -1);
     }
 
-    void updateVoltageSource(int n1, int n2, int vs, double v) {
+    public void updateVoltageSource(int n1, int n2, int vs, double v) {
         int vn = sim.getCircuitAnalyzer().getNodeList().size() + vs;
         stampRightSide(vn, v);
     }
 
-    void stampResistor(int n1, int n2, double r) {
+    public void stampResistor(int n1, int n2, double r) {
         double r0 = 1 / r;
         if (Double.isNaN(r0) || Double.isInfinite(r0)) {
             System.out.print("bad resistance " + r + " " + r0 + "\n");
@@ -49,32 +54,32 @@ class MatrixStamper {
         stampMatrix(n2, n1, -r0);
     }
 
-    void stampConductance(int n1, int n2, double r0) {
+    public void stampConductance(int n1, int n2, double r0) {
         stampMatrix(n1, n1, r0);
         stampMatrix(n2, n2, r0);
         stampMatrix(n1, n2, -r0);
         stampMatrix(n2, n1, -r0);
     }
 
-    void stampVCCurrentSource(int cn1, int cn2, int vn1, int vn2, double g) {
+    public void stampVCCurrentSource(int cn1, int cn2, int vn1, int vn2, double g) {
         stampMatrix(cn1, vn1, g);
         stampMatrix(cn2, vn2, g);
         stampMatrix(cn1, vn2, -g);
         stampMatrix(cn2, vn1, -g);
     }
 
-    void stampCurrentSource(int n1, int n2, double i) {
+    public void stampCurrentSource(int n1, int n2, double i) {
         stampRightSide(n1, -i);
         stampRightSide(n2, i);
     }
 
-    void stampCCCS(int n1, int n2, int vs, double gain) {
+    public void stampCCCS(int n1, int n2, int vs, double gain) {
         int vn = sim.getCircuitAnalyzer().getNodeList().size() + vs;
         stampMatrix(n1, vn, gain);
         stampMatrix(n2, vn, -gain);
     }
 
-    void stampMatrix(int i, int j, double x) {
+    public void stampMatrix(int i, int j, double x) {
         if (Double.isInfinite(x))
             CirSim.debugger();
         if (Double.isNaN(x)) {
@@ -98,7 +103,7 @@ class MatrixStamper {
         }
     }
 
-    void stampRightSide(int i, double x) {
+    public void stampRightSide(int i, double x) {
         if (i > 0) {
             if (sim.getSolverMatrixState().circuitNeedsMap) {
                 i = sim.getSolverMatrixState().circuitRowInfo[i - 1].mapRow;
@@ -108,18 +113,18 @@ class MatrixStamper {
         }
     }
 
-    void stampRightSide(int i) {
+    public void stampRightSide(int i) {
         if (i > 0)
             sim.getSolverMatrixState().circuitRowInfo[i - 1].rsChanges = true;
     }
 
-    void stampNonLinear(int i) {
+    public void stampNonLinear(int i) {
         if (i > 0) {
             sim.getSolverMatrixState().circuitRowInfo[i - 1].lsChanges = true;
         }
     }
 
-    String getMatrixRowInfo(int row) {
+    public String getMatrixRowInfo(int row) {
         int nodeCount = sim.getCircuitAnalyzer().getNodeList().size();
 
         int origRow = row;
@@ -137,11 +142,11 @@ class MatrixStamper {
         if (origRow < nodeCount - 1) {
             int nodeNum = origRow + 1;
             CircuitNode cn = sim.getCircuitNode(nodeNum);
-            if (cn != null && cn.links.size() > 0) {
+            if (cn != null && cn.getLinkCount() > 0) {
                 String info = "Row " + row + " (origRow " + origRow + ", node " + nodeNum + ") connected to:";
-                for (int i = 0; i < cn.links.size(); i++) {
-                    CircuitElm elm = cn.links.get(i).elm;
-                    int elmNode = cn.links.get(i).num;
+                for (int i = 0; i < cn.getLinkCount(); i++) {
+                    CircuitElm elm = cn.getLinkElm(i);
+                    int elmNode = cn.getLinkNum(i);
                     info += " " + elm.getClass().getSimpleName() + "[node " + elmNode + "]";
                 }
                 CirSim.console(info);
@@ -155,7 +160,7 @@ class MatrixStamper {
             CirSim.console("Looking for voltage source " + vsNum);
             for (int i = 0; i < sim.elmList.size(); i++) {
                 CircuitElm elm = sim.getElm(i);
-                int vsCount = elm.getVoltageSourceCount();
+                int vsCount = sim.getVoltageSourceCountForMatrix(elm);
                 if (vsCount > 0) {
                     CirSim.console("  Element " + elm.getClass().getSimpleName() + " voltSource=" + elm.voltSource + " count=" + vsCount);
                     if (elm.voltSource <= vsNum && elm.voltSource + vsCount > vsNum) {

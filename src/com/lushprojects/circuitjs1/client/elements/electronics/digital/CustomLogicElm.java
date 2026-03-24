@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client.elements.electronics.digital;
 
+import com.lushprojects.circuitjs1.client.elements.ChipElm;
+
 import com.lushprojects.circuitjs1.client.*;
 
 import com.google.gwt.user.client.ui.Button;

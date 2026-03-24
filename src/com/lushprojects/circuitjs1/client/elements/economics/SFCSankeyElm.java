@@ -7,8 +7,8 @@
 package com.lushprojects.circuitjs1.client.elements.economics;
 
 import com.lushprojects.circuitjs1.client.*;
-
-import com.lushprojects.circuitjs1.client.SFCSankeyRenderer.SankeyLayout;
+import com.lushprojects.circuitjs1.client.elements.SFCSankeyRenderer;
+import com.lushprojects.circuitjs1.client.elements.SFCSankeyRenderer.SankeyLayout;
 
 /**
  * SFCSankeyElm - Standalone Sankey diagram element for SFC tables

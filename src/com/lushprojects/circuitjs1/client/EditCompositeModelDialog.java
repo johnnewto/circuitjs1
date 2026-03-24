@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.elements.ChipElm;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -29,7 +30,7 @@ import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.Anchor;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.VerticalPanel;
-import com.lushprojects.circuitjs1.client.ChipElm.Pin;
+import com.lushprojects.circuitjs1.client.elements.ChipElm.Pin;
 import com.lushprojects.circuitjs1.client.elements.electronics.misc.CustomCompositeChipElm;
 import com.lushprojects.circuitjs1.client.elements.electronics.misc.CustomCompositeElm;
 import com.lushprojects.circuitjs1.client.util.Locale;

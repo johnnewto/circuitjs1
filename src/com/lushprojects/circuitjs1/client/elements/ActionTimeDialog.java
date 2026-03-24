@@ -17,8 +17,11 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.elements;
 
+import com.lushprojects.circuitjs1.client.elements.ActionScheduler;
+
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.elements.misc.ActionTimeElm;
 import com.google.gwt.user.client.ui.DialogBox;
@@ -45,7 +48,7 @@ import com.google.gwt.event.dom.client.MouseOverEvent;
 import com.google.gwt.dom.client.Style.Unit;
 import com.google.gwt.dom.client.Style.Cursor;
 import com.lushprojects.circuitjs1.client.util.Locale;
-import com.lushprojects.circuitjs1.client.ActionScheduler.ScheduledAction;
+import com.lushprojects.circuitjs1.client.elements.ActionScheduler.ScheduledAction;
 import com.google.gwt.user.client.Event;
 import com.google.gwt.user.client.Event.NativePreviewHandler;
 import com.google.gwt.user.client.Event.NativePreviewEvent;
@@ -678,27 +681,7 @@ public class ActionTimeDialog extends DialogBox {
      * Get formatted value for a slider/action, checking element for custom formatting
      */
     private String getFormattedSliderValue(String sliderName, double value) {
-        // Find the adjustable with this name
-        for (int i = 0; i < sim.adjustables.size(); i++) {
-            Adjustable adj = sim.adjustables.get(i);
-            if (adj.sliderText != null && adj.sliderText.equals(sliderName)) {
-                EditInfo ei = adj.elm.getEditInfo(adj.editItem);
-                if (ei != null) {
-                    // Check if element has custom slider text formatting
-                    try {
-                        String customText = adj.elm.getSliderUnitText(adj.editItem, ei, value);
-                        if (customText != null)
-                            return customText;
-                    } catch (Exception e) {
-                        // Element doesn't have custom formatting
-                    }
-                    // Use default formatting
-                    return EditDialog.unitString(ei, value);
-                }
-            }
-        }
-        // Fallback to simple format
-        return CircuitElm.showFormat.format(value);
+        return sim.formatAdjustableValueForUi(sliderName, value);
     }
     
     private HorizontalPanel createFormRow(String labelText, com.google.gwt.user.client.ui.Widget widget) {

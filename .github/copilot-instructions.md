@@ -47,7 +47,8 @@ websocket/                                # WebSocket server components
 
 ### Build & Development
 
-- **Primary Build**: Use Gradle (`./gradlew compileGwt`) for building
+- **Primary Build**: Use Gradle (`./gradlew compileGwt`) for production builds
+- **Fast Dev Build**: Use `./gradlew compileGwtDev` for faster compilation (1 permutation, no optimization)
 - **Development Mode**: use `./dev.sh start` to launch dev server (GWT Super Dev Mode)
 - **Output**: Compiled JavaScript goes to `war/circuitjs1/`
 - **Local Testing**: Use development server or open `war/circuitjs.html` directly
@@ -102,7 +103,7 @@ When adding a new element, add a line in the appropriate section of this file.
 
 - **Circuit Files**: Test circuits stored in `tests/` directory
 - **Manual Testing**: Load test circuits in browser to verify functionality
-- **Build Verification**: Ensure `gradle compileGwt` completes successfully
+- **Build Verification**: Use `./gradlew compileGwtDev` for fast gate checks; `./gradlew compileGwt` for production
 
 ### Test-First Changes
 

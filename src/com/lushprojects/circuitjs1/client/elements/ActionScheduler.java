@@ -17,8 +17,11 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.elements;
 
+import com.lushprojects.circuitjs1.client.elements.ActionTimeDialog;
+
+import com.lushprojects.circuitjs1.client.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -254,7 +257,7 @@ public class ActionScheduler {
         resumeTimer = null;
         
         // Update button to show green running state
-        sim.updateRunStopButton();
+        sim.updateRunStopButtonForElements();
         
         // Refresh dialog to show completed state
         refreshActionTimeDialogIfGwt();
@@ -305,7 +308,7 @@ public class ActionScheduler {
                 resumeTimer = null;
                 CirSim.console("Cleared pause: triggered pending action");
             }
-            sim.updateRunStopButton();  // Update button to show green running state
+            sim.updateRunStopButtonForElements();  // Update button to show green running state
         }
     }
     
@@ -321,7 +324,7 @@ public class ActionScheduler {
             resumeTimer = null;
             isPaused = false;  // Clear pause state
             
-            sim.updateRunStopButton();  // Update button to show normal stopped state
+            sim.updateRunStopButtonForElements();  // Update button to show normal stopped state
             refreshActionTimeDialogIfGwt();  // Refresh dialog to show updated states
         }
     }
@@ -653,7 +656,7 @@ public class ActionScheduler {
         setPaused(true);
         double delay = pauseTime > 0 ? pauseTime : 0.001;
         scheduleResume(delay, actions);
-        sim.updateRunStopButton();
+        sim.updateRunStopButtonForElements();
         CirSim.console("Paused: " + actions.size() + " action(s) queued [delay=" + delay + "s]");
     }
     
@@ -726,21 +729,8 @@ public class ActionScheduler {
             resolvedName = name;
         }
 
-        Adjustable adj = findAdjustableByName(resolvedName);
-        if (adj != null) {
-            adj.setSliderValue(value);
-            EditInfo ei = adj.elm.getEditInfo(adj.editItem);
-            if (ei != null) {
-                ei.value = value;
-                adj.elm.setEditValue(adj.editItem, ei);
-                sim.analyzeFlag = true;
-                
-                // Update the slider label to show current value
-                if (adj.label != null) {
-                    String valueStr = adj.getFormattedValue(ei, value);
-                    adj.updateLabelHTML(adj.sliderText, valueStr);
-                }
-            }
+        if (sim.setAdjustableValueForElements(resolvedName, value)) {
+            return;
         } else {
             ComputedValues.setComputedValueDirect(resolvedName, value);
             ComputedValues.setComputedValue(resolvedName, value);
@@ -753,14 +743,12 @@ public class ActionScheduler {
     /**
      * Find an adjustable by its slider name
      */
-    private Adjustable findAdjustableByName(String name) {
-        for (int i = 0; i < sim.adjustables.size(); i++) {
-            Adjustable adj = sim.adjustables.get(i);
-            if (adj.sliderText != null && adj.sliderText.equals(name)) {
-                return adj;
-            }
+    private boolean hasAdjustableTarget(String name) {
+        if (name == null || name.isEmpty()) {
+            return false;
         }
-        return null;
+        List<String> sliders = sim.getAdjustableNamesForElements();
+        return sliders.contains(name);
     }
 
     /**
@@ -942,14 +930,7 @@ public class ActionScheduler {
      * Get list of all available slider names in the circuit
      */
     public List<String> getAvailableSliders() {
-        List<String> sliders = new ArrayList<String>();
-        for (int i = 0; i < sim.adjustables.size(); i++) {
-            Adjustable adj = sim.adjustables.get(i);
-            if (adj.sliderText != null && !adj.sliderText.isEmpty()) {
-                sliders.add(adj.sliderText);
-            }
-        }
-        return sliders;
+        return sim.getAdjustableNamesForElements();
     }
 
     /**
@@ -997,14 +978,7 @@ public class ActionScheduler {
      * @return The current value, or NaN if not found
      */
     public double getSliderValue(String name) {
-        Adjustable adj = findAdjustableByName(name);
-        if (adj != null) {
-            EditInfo ei = adj.elm.getEditInfo(adj.editItem);
-            if (ei != null) {
-                return ei.value;
-            }
-        }
-        return Double.NaN;
+        return sim.getAdjustableValueForElements(name);
     }
 
     /**
@@ -1039,27 +1013,7 @@ public class ActionScheduler {
      * Get formatted value for a slider/action, checking element for custom formatting
      */
     private String getFormattedSliderValue(String sliderName, double value) {
-        Adjustable adj = findAdjustableByName(sliderName);
-        if (adj != null) {
-            EditInfo ei = adj.elm.getEditInfo(adj.editItem);
-            if (ei != null) {
-                // Try custom formatting first
-                try {
-                    String customText = adj.elm.getSliderUnitText(adj.editItem, ei, value);
-                    if (customText != null) {
-                        return customText;
-                    }
-                } catch (Exception e) {
-                    // Element doesn't have custom formatting
-                }
-                // Use default formatting
-                return EditDialog.unitString(ei, value);
-            }
-        }
-        // Fallback to fixed precision format (3 decimal places)
-        com.google.gwt.i18n.client.NumberFormat fixedFormat = 
-            com.google.gwt.i18n.client.NumberFormat.getFormat("0.000");
-        return fixedFormat.format(value);
+        return sim.formatAdjustableValueForUi(sliderName, value);
     }
 
     private String formatActionText(ScheduledAction action) {
@@ -1122,7 +1076,7 @@ public class ActionScheduler {
             if (candidate == null || candidate.isEmpty()) {
                 continue;
             }
-            if (findAdjustableByName(candidate) != null) {
+            if (hasAdjustableTarget(candidate)) {
                 return candidate;
             }
             if (ComputedValues.isParameterName(candidate) ||

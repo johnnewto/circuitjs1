@@ -6,6 +6,8 @@
 
 package com.lushprojects.circuitjs1.client.io;
 
+import com.lushprojects.circuitjs1.client.elements.ActionScheduler;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Vector;

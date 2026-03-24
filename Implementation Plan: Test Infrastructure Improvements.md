@@ -180,7 +180,7 @@ This unlocks writing `StockFlowRegistryTest` cases that test synchronisation log
 - `StockFlowRegistry` field type change
 - `TableElm implements StockTableView` (plus any removed `null` guards)
 - Updated `StockFlowRegistryTest` replacing `null` entries with inline anonymous implementations
-- Verify `./gradlew compileGwt` still succeeds
+- Verify `./gradlew compileGwtDev` still succeeds
 
 ---
 

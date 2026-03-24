@@ -17,7 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.elements;
+
+import com.lushprojects.circuitjs1.client.*;
 
 public abstract class ChipElm extends CircuitElm {
 	public int csize, cspc, cspc2;
@@ -99,7 +101,7 @@ public abstract class ChipElm extends CircuitElm {
 		p.curcount = updateDotCount(p.current, p.curcount);
 		drawDots(g, b, a, p.curcount);
 		if (p.bubble) {
-		    g.setColor(sim.getStatusInfoRenderer().getBackgroundColor());
+		    g.setColor(sim.getStatusBackgroundColorForElements());
 		    drawThickCircle(g, p.bubbleX, p.bubbleY, 1);
 		    g.setColor(lightGrayColor);
 		    drawThickCircle(g, p.bubbleX, p.bubbleY, 3);

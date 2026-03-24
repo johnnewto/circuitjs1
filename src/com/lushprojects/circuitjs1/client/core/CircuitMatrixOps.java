@@ -1,4 +1,6 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.core;
+
+import com.lushprojects.circuitjs1.client.CirSim;
 
 public final class CircuitMatrixOps {
     private CircuitMatrixOps() {
@@ -9,7 +11,7 @@ public final class CircuitMatrixOps {
     // matrix to be factored.  ipvt[] returns an integer vector of pivot
     // indices, used in the luSolve() routine.
     // Returns -1 on success, or the problematic row index on failure (singular matrix)
-    static int luFactor(double[][] a, int n, int[] ipvt) {
+    public static int luFactor(double[][] a, int n, int[] ipvt) {
         int badRow = LUSolver.factor(a, n, ipvt);
         if (badRow >= 0) {
             CirSim.console("didn't avoid zero at row " + badRow);
@@ -32,7 +34,7 @@ public final class CircuitMatrixOps {
     // Solves the set of n linear equations using a LU factorization
     // previously performed by luFactor().  On input, b[0..n-1] is the right
     // hand side of the equations, and on output, contains the solution.
-    static void luSolve(double[][] a, int n, int[] ipvt, double[] b) {
+    public static void luSolve(double[][] a, int n, int[] ipvt, double[] b) {
         LUSolver.solve(a, n, ipvt, b);
     }
 

@@ -25,4 +25,20 @@ public class CircuitNode {
     Vector<CircuitNodeLink> links;
     boolean internal;
     CircuitNode() { links = new Vector<CircuitNodeLink>(); }
+
+    public int getLinkCount() {
+        return links.size();
+    }
+
+    public CircuitElm getLinkElm(int index) {
+        return links.get(index).elm;
+    }
+
+    public int getLinkNum(int index) {
+        return links.get(index).num;
+    }
+
+    public boolean isInternal() {
+        return internal;
+    }
 }

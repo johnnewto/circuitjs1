@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.elements.ActionScheduler;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;

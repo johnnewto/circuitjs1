@@ -6,6 +6,8 @@
 
 package com.lushprojects.circuitjs1.client.elements.economics;
 
+import com.lushprojects.circuitjs1.client.elements.ChipElm;
+
 import com.lushprojects.circuitjs1.client.*;
 import java.util.ArrayList;
 import java.util.List;

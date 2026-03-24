@@ -78,6 +78,12 @@ Compile the application for deployment:
 ./gradlew compileGwt
 ```
 
+For faster development builds (1 permutation, no optimization):
+
+```bash
+./gradlew compileGwtDev
+```
+
 Or using Ant:
 
 ```bash

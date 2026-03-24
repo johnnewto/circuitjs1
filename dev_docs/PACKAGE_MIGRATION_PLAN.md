@@ -7,26 +7,45 @@ Restructure `com.lushprojects.circuitjs1.client` into coherent sub-packages to i
 **Target Structure:**
 ```
 client/
-├── core/        # CirSim, solver, matrix, simulation loop
-├── registry/    # Element registry, bootstrap, factories
-├── io/          # SFCR parser/exporter, import/export helpers
-├── ui/          # Dialogs, toolbar, scope UI
-├── expr/        # Expression parser/evaluator
-├── annotation/  # Visual-only schematic elements (TextElm, LineElm, BoxElm, GraphicElm)
-├── electronics/ # Electronic circuit elements
-│   ├── passives/
-│   ├── sources/
-│   ├── digital/
-│   ├── semiconductors/
-│   ├── analog/
-│   ├── electromechanical/
-│   ├── measurement/
-│   ├── wiring/
-│   └── misc/
-├── economics/   # Stock-flow economic elements
-├── math/        # Mathematical operation elements
-└── util/        # (already exists) Locale, PerfMonitor
+├── core/         # CirSim, solver, matrix, simulation loop
+├── registry/     # Element registry, bootstrap, factories
+├── io/           # SFCR parser/exporter, import/export helpers
+├── ui/           # Dialogs, toolbar, scope UI
+├── elements/     # All element domains consolidated here
+│   ├── annotation/   # Visual-only schematic elements
+│   ├── economics/    # Stock-flow economic elements
+│   ├── math/         # Mathematical operation elements
+│   ├── misc/         # Scope/viewport/time UI-support elements
+│   └── electronics/  # Electronic circuit elements
+│       ├── analog/
+│       ├── digital/
+│       ├── electromechanical/
+│       ├── measurement/
+│       ├── misc/
+│       ├── passives/
+│       ├── semiconductors/
+│       ├── sources/
+│       └── wiring/
+└── util/         # Locale, PerfMonitor
 ```
+
+---
+
+## Stage Status (2026-03-24)
+
+### Completed migration stages
+- [x] Stage 1: `miscElm` → `client.elements.misc` (`./tools/migrate-to-elements.sh --domain miscElm`)
+- [x] Stage 2: `economics` → `client.elements.economics`
+- [x] Stage 3: `math` → `client.elements.math`
+- [x] Stage 4: `annotation` → `client.elements.annotation`
+- [x] Stage 5: `electronics` → `client.elements.electronics`
+- [x] Gates passed after each stage: `./gradlew compileJava`, `./gradlew test`, `./gradlew compileGwtDev`
+- [x] Detailed grouped file inventory (all `client` files + dependency columns): `dev_docs/ELEMENTS_FILE_MAP.md`
+
+### Next stage to do
+1. Commit the completed elements consolidation batch.
+2. Run manual smoke validation (load/save representative circuits from each migrated domain).
+3. Continue with PR 8 (`client.core` finalization and cleanup).
 
 ---
 
@@ -66,7 +85,7 @@ String getClassName() {
 
 ### Acceptance Criteria
 - [ ] `./gradlew test` passes
-- [ ] `./gradlew compileGwt` succeeds
+- [ ] `./gradlew compileGwtDev` succeeds
 - [ ] Manual test: Export circuit, reload, verify identical
 
 ---
@@ -124,7 +143,7 @@ Expected updates:
 
 ### Acceptance Criteria
 - [ ] `./gradlew test` passes
-- [ ] `./gradlew compileGwt` succeeds
+- [ ] `./gradlew compileGwtDev` succeeds
 - [ ] `ElementRegistry.getEntryByClassKey("ResistorElm")` returns non-null
 - [ ] Element creation by dump type unchanged (regression test)
 - [ ] Element creation by class key unchanged (regression test)
@@ -296,7 +315,7 @@ public interface ConsoleLogger {
 3. Gate each batch before continuing:
    - `./gradlew compileJava`
    - `./gradlew test`
-   - `./gradlew compileGwt`
+   - `./gradlew compileGwtDev`
    - smoke test load/save
 
 ### Staging Rule
@@ -320,7 +339,7 @@ public interface ConsoleLogger {
 5. Update registry/bootstrap/tests in the same batch:
    - Keep `ElementLegacyFactory`, `ElementRegistryBootstrap`, and package-specific tests aligned with new imports before running full builds.
 6. Use explicit Gradle gates for this project:
-   - Run `./gradlew compileJava`, then `./gradlew test`, then `./gradlew compileGwt`.
+   - Run `./gradlew compileJava`, then `./gradlew test`, then `./gradlew compileGwtDev`.
  7. Keep PR6 bridge/API growth intentional:
    - If visibility promotion broadens API surface, document why in the PR description and mark candidates for later tightening after package migration stabilizes.
 8. Use a strict batch fallback rule:
@@ -333,7 +352,7 @@ public interface ConsoleLogger {
 - [ ] Apply move atomically: `git mv` + package declaration + imports/usages in the same change.
 - [ ] Verify inheritance hooks compile (`draw/stamp/doStep/reset/setPoints/getInfo/getPost` families).
 - [ ] Update registry/bootstrap/tests references in the same batch.
-- [ ] Run gates: `./gradlew compileJava`, `./gradlew test`, `./gradlew compileGwt`.
+- [ ] Run gates: `./gradlew compileJava`, `./gradlew test`, `./gradlew compileGwtDev`.
 - [ ] Run smoke test: load/save for at least one migrated element in the batch.
 - [ ] Record any temporary visibility expansions with follow-up tightening notes.
 
@@ -611,21 +630,93 @@ Remaining specialized components:
 
 ## PR 8: `client.core` Finalization
 
-### Files to Move
-- `CirSim.java` (stays as main coordinator)
-- `CircuitAnalyzer.java`
-- `CircuitMatrixOps.java`
-- `LUSolver.java`
-- `SimulationLoop.java`
-- `SimulationTimingState.java`
-- `SolverMatrixState.java`
-- `MatrixStamper.java`
+**Note:** `CirSim.java` stays in `client/` as the main coordinator — not moved.
 
-### Final Cleanup
+### Dependency Analysis (2026-03-24)
+
+| File | Referenced By | Coupling |
+|------|---------------|----------|
+| `LUSolver.java` | CircuitMatrixOps | None (pure solver) |
+| `SolverMatrixState.java` | CirSim | None (data holder) |
+| `SimulationTimingState.java` | CirSim, SimulationLoop | None (data holder) |
+| `MatrixStamper.java` | CirSim | None (pure stamper) |
+| `CircuitMatrixOps.java` | CirSim, SimulationLoop, CircuitAnalyzer, CustomTransformerElm, ThreePhaseMotorElm | Uses LUSolver |
+| `CircuitAnalyzer.java` | CirSim | Imports from `elements.*` packages |
+| `SimulationLoop.java` | CirSim | Imports from `elements.*` packages + util |
+
+### Batch 1: Zero-Dependency Files (Move First)
+These have no imports from other project files — cleanest moves:
+- [ ] `LUSolver.java`
+- [ ] `SolverMatrixState.java`
+- [ ] `SimulationTimingState.java`
+- [ ] `MatrixStamper.java`
+
+**Steps:**
+```bash
+git mv src/.../client/LUSolver.java src/.../client/core/
+git mv src/.../client/SolverMatrixState.java src/.../client/core/
+git mv src/.../client/SimulationTimingState.java src/.../client/core/
+git mv src/.../client/MatrixStamper.java src/.../client/core/
+# Update package declarations
+# Update imports in CirSim.java, SimulationLoop.java
+# Gate: ./gradlew compileJava && ./gradlew test && ./gradlew compileGwtDev
+```
+
+### Batch 2: Internal Dependency
+- [ ] `CircuitMatrixOps.java` — uses `LUSolver`; also referenced by 2 electromechanical elements
+
+**Steps:**
+```bash
+git mv src/.../client/CircuitMatrixOps.java src/.../client/core/
+# Update package declaration
+# Update imports in: CirSim, SimulationLoop, CircuitAnalyzer,
+#   CustomTransformerElm, ThreePhaseMotorElm
+# Gate
+```
+
+### Batch 3: External Element Dependencies (Optional — Can Defer)
+These import from `elements.*` packages — more coupling, defer if causing issues:
+- [ ] `CircuitAnalyzer.java` — imports economics, electronics, misc elements
+- [ ] `SimulationLoop.java` — imports economics, wiring, misc elements + util
+
+**Recommendation:** Move Batch 3 only after Batch 1+2 are stable. Can remain in `client/` indefinitely if causing visibility issues.
+
+### Deferred: Final Cleanup (Separate Follow-up PR)
 - Remove temporary compatibility shims
 - Finalize interface implementations
 - Update all imports
 - Reconcile any PR4 temporary dialog moves so element-coupled dialogs end in their domain packages
+
+---
+
+## PR 9: Root → `client.elements` Candidate Batch
+
+Source: `dev_docs/ELEMENTS_FILE_MAP.md` (`## (root)` rows with `move to = elements`).
+
+### Candidate Files
+- [ ] `ActionScheduler.java`
+- [ ] `ActionTimeDialog.java`
+- [ ] `ChipElm.java`
+- [ ] `CircuitAnalyzer.java`
+- [ ] `CircuitElm.java`
+- [ ] `CircuitValueSlotManager.java`
+- [ ] `EditCompositeModelDialog.java`
+- [ ] `ElementLegacyFactory.java`
+- [ ] `ElementRegistryBootstrap.java`
+- [ ] `EquationTableMarkdownDebugDialog.java`
+- [ ] `ExportCompositeActions.java`
+- [ ] `Expr.java`
+- [ ] `FlipTransformController.java`
+- [ ] `MouseInputHandler.java`
+- [ ] `SFCSankeyRenderer.java`
+- [ ] `SFCSankeyViewer.java`
+- [ ] `Scope.java`
+- [ ] `SimulationLoop.java`
+- [ ] `StatusInfoRenderer.java`
+
+### Notes
+- This is an inventory/planning batch only; actual moves should be split into low-coupling sub-batches and gated with `./gradlew compileJava`, `./gradlew test`, and `./gradlew compileGwtDev`.
+- Reconfirm target subpackage placement per file before move (`elements.misc`, `elements.economics`, or other domain package), not just top-level `elements`.
 
 ---
 
@@ -635,7 +726,7 @@ Remaining specialized components:
 2. **Preserve serialization** — dump format unchanged at every phase
 3. **Gate each phase:**
    - `./gradlew test` passes
-   - `./gradlew compileGwt` succeeds
+   - `./gradlew compileGwtDev` succeeds (fast: 1 permutation, no optimization)
    - Manual smoke test (circuit load/save)
 4. **If phase fails gate:** revert only that phase, split smaller
 5. **No `CirSim.console()` logging removal yet** — defer to final cleanup
@@ -654,7 +745,10 @@ grep -n "package-private\|default access" src/com/lushprojects/circuitjs1/client
 # Find all imports of a class
 grep -rn "import.*ElementRegistry" src/
 
-# Verify GWT compilation
+# Verify GWT compilation (fast dev build)
+./gradlew compileGwtDev
+
+# Full production GWT compilation (2 permutations, full optimization)
 ./gradlew compileGwt
 
 # Run specific test
@@ -717,7 +811,7 @@ perl -0pi -e \
 ### Mandatory gates after each automated batch
 1. `./gradlew compileJava`
 2. `./gradlew test`
-3. `./gradlew compileGwt`
+3. `./gradlew compileGwtDev`
 
 If any gate fails, stop and fix manually before continuing.
 

@@ -6,6 +6,7 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.elements.SFCSankeyViewer;
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 
 public final class InfoViewerLiveDataSerializer {

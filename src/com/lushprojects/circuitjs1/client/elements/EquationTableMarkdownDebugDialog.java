@@ -17,8 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.elements;
 
+import com.lushprojects.circuitjs1.client.*;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.HorizontalPanel;
 import com.google.gwt.user.client.ui.TextArea;
@@ -762,7 +763,7 @@ public class EquationTableMarkdownDebugDialog {
                     // Check if internal
                     if (sim.getCircuitAnalyzer().getNodeList() != null && nodeNum < sim.getCircuitAnalyzer().getNodeList().size()) {
                         CircuitNode cn = sim.getCircuitNode(nodeNum);
-                        if (cn != null && cn.internal)
+                        if (cn != null && cn.isInternal())
                             desc += ",int";
                     }
                     desc += ")";
@@ -822,13 +823,12 @@ public class EquationTableMarkdownDebugDialog {
         }
         
         CircuitNode cn = sim.getCircuitNode(nodeNum);
-        if (cn == null || cn.links.size() == 0) {
+        if (cn == null || cn.getLinkCount() == 0) {
             return null;
         }
         
         // Check first connected element for a name
-        CircuitNodeLink firstLink = cn.links.elementAt(0);
-        CircuitElm elm = firstLink.elm;
+        CircuitElm elm = cn.getLinkElm(0);
         
         if (elm instanceof EquationTableElm) {
             EquationTableElm eqt = (EquationTableElm) elm;
@@ -1024,7 +1024,7 @@ public class EquationTableMarkdownDebugDialog {
                 int vsIdx = j - (nodeCount - 1);
                 CircuitElm owner = sim.getVoltageSourceElementForUi(vsIdx);
                 if (owner != null)
-                    val = owner.getCurrent();
+                    val = owner.getCurrentForExternal();
             }
             
             xVec[mappedIdx] = val;

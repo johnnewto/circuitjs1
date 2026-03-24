@@ -191,8 +191,8 @@ g 64 240 64 272 0 0                           # Ground
 The test suite runs through an integrated dialog within CircuitJS1:
 
 ```bash
-# 1. Compile the GWT application (includes tests)
-./gradlew compileGwt
+# 1. Compile the GWT application (fast dev build)
+./gradlew compileGwtDev
 
 # 2. Copy compiled output to war directory
 cp -r build/gwt/out/circuitjs1/* war/circuitjs1/

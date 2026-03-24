@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.elements.ActionScheduler;
+
 import com.lushprojects.circuitjs1.client.elements.annotation.*;
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.elements.electronics.electromechanical.SwitchElm;
@@ -59,7 +61,10 @@ import com.google.gwt.user.client.ui.PopupPanel;
 import com.google.gwt.user.client.ui.Frame;
 import com.lushprojects.circuitjs1.client.core.ConfigProvider;
 import com.lushprojects.circuitjs1.client.core.ConsoleLogger;
+import com.lushprojects.circuitjs1.client.core.MatrixStamper;
 import com.lushprojects.circuitjs1.client.core.SimulationContext;
+import com.lushprojects.circuitjs1.client.core.SimulationTimingState;
+import com.lushprojects.circuitjs1.client.core.SolverMatrixState;
 import com.lushprojects.circuitjs1.client.io.ImportExportHelper;
 import com.lushprojects.circuitjs1.client.ui.CheckboxMenuItem;
 import com.lushprojects.circuitjs1.client.ui.Toolbar;
@@ -1028,6 +1033,33 @@ public CirSim() {
 	    return CircuitElm.showFormat.format(value);
 	}
 
+	public java.util.List<String> getAdjustableNamesForElements() {
+	    java.util.ArrayList<String> names = new java.util.ArrayList<String>();
+	    for (int i = 0; i < adjustables.size(); i++) {
+		Adjustable adj = adjustables.get(i);
+		if (adj.sliderText != null && !adj.sliderText.isEmpty()) {
+		    names.add(adj.sliderText);
+		}
+	    }
+	    return names;
+	}
+
+	public double getAdjustableValueForElements(String sliderName) {
+	    return circuitValueSlotManager.getSliderValue(sliderName);
+	}
+
+	public boolean setAdjustableValueForElements(String sliderName, double value) {
+	    return circuitValueSlotManager.setSliderValue(sliderName, value);
+	}
+
+	public Color getStatusBackgroundColorForElements() {
+	    return statusInfoRenderer.getBackgroundColor();
+	}
+
+	public void updateRunStopButtonForElements() {
+	    updateRunStopButton();
+	}
+
 	CirSimCommandRouter getCommandRouter() {
 	    return commandRouter;
 	}
@@ -1078,6 +1110,10 @@ public CirSim() {
 
 	MatrixStamper getMatrixStamper() {
 	    return matrixStamper;
+	}
+
+	public int getVoltageSourceCountForMatrix(CircuitElm elm) {
+	    return elm.getVoltageSourceCount();
 	}
 
 	SimulationLoop getSimulationLoop() {

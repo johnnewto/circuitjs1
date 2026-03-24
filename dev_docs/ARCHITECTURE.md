@@ -64,7 +64,7 @@ graph TB
     
     subgraph "Build & Deployment"
         JAVA[Java Source Code<br/>client/*.java]
-        GWT_COMPILER[GWT Compiler<br/>gradle compileGwt]
+        GWT_COMPILER[GWT Compiler<br/>compileGwt / compileGwtDev]
         JS_OUTPUT[JavaScript Output<br/>war/circuitjs1/]
     end
 
@@ -566,8 +566,13 @@ On the BMW debug model (`test/resources/sfcr_debug_reference.md`), the final beh
 
 **Compilation**:
 ```bash
+# Production build (2 permutations, full optimization)
 gradle compileGwt
-# or
+
+# Fast dev build (1 permutation, no optimization)
+gradle compileGwtDev
+
+# or using wrapper script
 ./dev.sh compile
 ```
 

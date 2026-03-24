@@ -1,4 +1,4 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.core;
 
 public final class SimulationTimingState {
     public double t;                      // Current simulation time (seconds)

@@ -7,8 +7,9 @@
 package com.lushprojects.circuitjs1.client.elements.economics;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.elements.SFCSankeyRenderer;
+import com.lushprojects.circuitjs1.client.elements.SFCSankeyRenderer.SankeyLayout;
 import com.lushprojects.circuitjs1.client.elements.economics.TableColumn.ColumnType;
-import com.lushprojects.circuitjs1.client.SFCSankeyRenderer.SankeyLayout;
 import java.util.ArrayList;
 
 /**
