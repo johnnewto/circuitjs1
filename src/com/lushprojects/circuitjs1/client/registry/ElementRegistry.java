@@ -5,8 +5,6 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import com.lushprojects.circuitjs1.client.CircuitElm;
-import com.lushprojects.circuitjs1.client.ElementLegacyFactory;
-import com.lushprojects.circuitjs1.client.ElementRegistryBootstrap;
 import com.lushprojects.circuitjs1.client.util.StringTokenizer;
 import com.lushprojects.circuitjs1.client.elements.electronics.misc.CustomCompositeElm;
 

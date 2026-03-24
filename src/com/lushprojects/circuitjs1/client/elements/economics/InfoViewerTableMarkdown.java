@@ -4,10 +4,11 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.elements.economics;
 
 
-import com.lushprojects.circuitjs1.client.elements.economics.*;
+import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.registry.HintRegistry;
 
 import java.util.ArrayList;
 import java.util.HashSet;

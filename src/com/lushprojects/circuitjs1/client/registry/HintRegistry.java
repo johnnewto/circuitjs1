@@ -4,13 +4,14 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.registry;
 
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import com.lushprojects.circuitjs1.client.CustomLogicModel;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 /**

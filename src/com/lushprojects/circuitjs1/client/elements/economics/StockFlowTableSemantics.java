@@ -4,7 +4,7 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.elements.economics;
 
 
 /**

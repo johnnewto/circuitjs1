@@ -78,6 +78,7 @@ import com.lushprojects.circuitjs1.client.io.ClipboardManager;
 import com.lushprojects.circuitjs1.client.io.SFCRDocumentManager;
 import com.lushprojects.circuitjs1.client.io.SFCRDocumentState;
 import com.lushprojects.circuitjs1.client.io.SetupListLoader;
+import com.lushprojects.circuitjs1.client.registry.TableMasterRegistryManager;
 import com.lushprojects.circuitjs1.client.ui.CheckboxMenuItem;
 import com.lushprojects.circuitjs1.client.ui.EditDialog;
 import com.lushprojects.circuitjs1.client.ui.EditDialogActions;

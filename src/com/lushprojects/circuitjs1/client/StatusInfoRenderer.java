@@ -13,6 +13,7 @@ import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.elements.electronics.passives.*;
 import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNodeElm;
 import com.lushprojects.circuitjs1.client.elements.misc.ScopeElm;
+import com.lushprojects.circuitjs1.client.registry.HintRegistry;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 final class StatusInfoRenderer {

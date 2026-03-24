@@ -1,4 +1,4 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.registry;
 
 
 import com.lushprojects.circuitjs1.client.elements.economics.*;

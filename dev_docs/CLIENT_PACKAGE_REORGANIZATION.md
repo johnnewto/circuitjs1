@@ -99,10 +99,10 @@ Registry and factory classes.
 
 | File | Rationale |
 |------|-----------|
-| - [ ] `ElementLegacyFactory.java` | Legacy element creation |
-| - [ ] `ElementRegistryBootstrap.java` | Registry initialization |
-| - [ ] `HintRegistry.java` | Hint message registry |
-| - [ ] `TableMasterRegistryManager.java` | Table registry management |
+| - [x] `ElementLegacyFactory.java` | Legacy element creation |
+| - [x] `ElementRegistryBootstrap.java` | Registry initialization |
+| - [x] `HintRegistry.java` | Hint message registry |
+| - [x] `TableMasterRegistryManager.java` | Table registry management |
 
 ### New Package: `test/`
 
@@ -132,10 +132,10 @@ Stock-flow consistent modeling support.
 
 | File | Rationale |
 |------|-----------|
-| - [ ] `StockFlowTableSemantics.java` | SFC table logic |
-| - [ ] `StockTableView.java` | Stock table visualization |
-| - [ ] `InfoViewerTableMarkdown.java` | Table markdown generation |
-| - [ ] `InfoViewerLiveDataSerializer.java` | Live data serialization |
+| - [x] `StockFlowTableSemantics.java` | SFC table logic |
+| - [x] `StockTableView.java` | Stock table visualization |
+| - [x] `InfoViewerTableMarkdown.java` | Table markdown generation |
+| - [x] `InfoViewerLiveDataSerializer.java` | Live data serialization |
 
 ## Files to Keep in `client/`
 

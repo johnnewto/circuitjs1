@@ -61,8 +61,6 @@ Use the 7 connection columns and move to as architectural signal (not hard rule)
 | `EditOptions.java` | Client runtime/support class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
 | `EditTransistorModelDialog.java` | Client dialog/controller class. | Transistor model/editing family. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 | `Editable.java` | Client runtime/support class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| `ElementLegacyFactory.java` | Client factory/helper class. | Close to package peers and shared base classes. | `elements` | 0 | 0 | 13 | 0 | 0 | 0 | 0 |
-| `ElementRegistryBootstrap.java` | Client runtime/support class. | Close to package peers and shared base classes. | `elements` | 0 | 0 | 8 | 0 | 2 | 0 | 0 |
 | `ExportCompositeActions.java` | Client runtime/support class. | Composite-element tooling; tied to electronics/misc CustomComposite* elements. | `elements` | 0 | 0 | 3 | 0 | 0 | 1 | 0 |
 | `Expr.java` | Client runtime/support class. | Expression parsing/evaluation family used by table/equation features. | `elements` | 0 | 0 | 2 | 1 | 0 | 0 | 0 |
 | `ExprParser.java` | Client runtime/support class. | Expression parsing/evaluation family used by table/equation features. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
@@ -72,11 +70,8 @@ Use the 7 connection columns and move to as architectural signal (not hard rule)
 | `FloatingControlPanel.java` | Client runtime/support class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 0 | 0 | 0 | 1 | 1 |
 | `Font.java` | Client runtime/support class. | Rendering/geometry subsystem family. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `Graphics.java` | Client runtime/support class. | Rendering/geometry subsystem family. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
-| `HintRegistry.java` | Client registry class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
 | `ImportFromDropbox.java` | Client runtime/support class. | Load/import path helpers. | `io` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `Inductor.java` | Client runtime/support class. | Inductor device primitive used by passive and electromechanical elements. | `elements/electronics` | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
-| `InfoViewerLiveDataSerializer.java` | Client runtime/support class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
-| `InfoViewerTableMarkdown.java` | Client runtime/support class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
 | `IntPair.java` | Client runtime/support class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `JsApiBridge.java` | Bridge/interop integration class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `LoadFile.java` | Client runtime/support class. | Load/import path helpers. | `Keep` | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
@@ -115,12 +110,9 @@ Use the 7 connection columns and move to as architectural signal (not hard rule)
 | `SimulationLoop.java` | Client runtime/support class. | Close to package peers and shared base classes. | `elements` | 0 | 2 | 3 | 0 | 0 | 0 | 1 |
 | `SliderDialog.java` | Client dialog/controller class. | Element parameter editing UI flow. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
 | `StatusInfoRenderer.java` | Client rendering helper class. | Close to package peers and shared base classes. | `elements` | 0 | 0 | 4 | 0 | 0 | 0 | 1 |
-| `StockFlowTableSemantics.java` | Client runtime/support class. | Table/economics test/debug helpers; close to elements/economics and elements/math. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| `StockTableView.java` | Client runtime/support class. | Table/economics test/debug helpers; close to elements/economics and elements/math. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `StringTokenizer.java` | Client runtime/support class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `TableEditDialog-old._java` | Client runtime/support class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `TableElementsTest.java` | Client runtime/support class. | Table/economics test/debug helpers; close to elements/economics and elements/math. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
-| `TableMasterRegistryManager.java` | Client manager/coordinator class. | Table/economics test/debug helpers; close to elements/economics and elements/math. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 | `ToolbarModeManager.java` | Client manager/coordinator class. | Close to package peers and shared base classes. | `ui` | 0 | 0 | 0 | 0 | 0 | 2 | 0 |
 | `TransistorModel.java` | Client runtime/support class. | Transistor model/editing family. | `elements/electronics` | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
 | `UndoRedoManager.java` | Client manager/coordinator class. | Close to package peers and shared base classes. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
@@ -178,6 +170,8 @@ Use the 7 connection columns and move to as architectural signal (not hard rule)
 | `EquationTableSemantics.java` | Supporting economics type for data/behavior orchestration. | EquationTableElm toolchain. | `Keep` | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `FlowsMasterElm.java` | Economics simulation element class. | Stock-flow runtime family. | `Keep` | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `GodlyTableElm.java` | Economics simulation element class. | Close to package peers and shared base classes. | `Keep` | 1 | 0 | 1 | 0 | 0 | 0 | 0 |
+| `InfoViewerLiveDataSerializer.java` | Economics runtime/support class. | Live data serialization for info viewer tables/scopes/sankeys. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
+| `InfoViewerTableMarkdown.java` | Economics runtime/support class. | Markdown generation for circuit table/plot info viewer templates. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
 | `SFCFlowElm.java` | Economics simulation element class. | Stock-flow runtime family. | `Keep` | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 | `SFCSankeyElm.java` | Economics simulation element class. | Consumed by Sankey viewer/renderer flows. | `Keep` | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `SFCStockElm.java` | Economics simulation element class. | Stock-flow runtime family. | `Keep` | 1 | 0 | 1 | 0 | 0 | 0 | 0 |
@@ -185,7 +179,9 @@ Use the 7 connection columns and move to as architectural signal (not hard rule)
 | `SFCTableRenderer.java` | Rendering helper for economics element UI. | SFCTable Elm/Renderer pair. | `Keep` | 1 | 0 | 1 | 0 | 0 | 0 | 0 |
 | `ScenarioElm.java` | Economics simulation element class. | Close to package peers and shared base classes. | `Keep` | 1 | 1 | 0 | 0 | 0 | 0 | 1 |
 | `StockFlowRegistry.java` | Supporting economics type for data/behavior orchestration. | Stock-flow runtime family. | `Keep` | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `StockFlowTableSemantics.java` | Supporting economics type for data/behavior orchestration. | Convergence/integration helpers used by stock-flow table elements. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `StockMasterElm.java` | Economics simulation element class. | Stock-flow runtime family. | `Keep` | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `StockTableView.java` | Supporting economics type for data/behavior orchestration. | Shared interface for stock table synchronization views. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `SyncPatch.java` | Supporting economics type for data/behavior orchestration. | Used with table content synchronization. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `TableColumn.java` | Supporting economics type for data/behavior orchestration. | TableElm toolchain. | `Keep` | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `TableContentView.java` | Supporting economics type for data/behavior orchestration. | TableElm toolchain. | `Keep` | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
@@ -425,7 +421,11 @@ Use the 7 connection columns and move to as architectural signal (not hard rule)
 |---|---|---|---|---:|---:|---:|---:|---:|---:|---:|
 | `ElementCategory.java` | Element registry/factory support type. | Element registry/factory family; used by bootstrap and runtime creation. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `ElementFactoryFacade.java` | Element factory/creation abstraction. | Element registry/factory family; used by bootstrap and runtime creation. | `root` | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `ElementLegacyFactory.java` | Element factory/creation abstraction. | Legacy fallback creation path for dump-type and class-key instantiation. | `Keep` | 0 | 0 | 13 | 0 | 0 | 0 | 0 |
 | `ElementRegistry.java` | Element registry and lookup implementation. | Element registry/factory family; used by bootstrap and runtime creation. | `root` | 4 | 0 | 1 | 0 | 0 | 0 | 0 |
+| `ElementRegistryBootstrap.java` | Element registry/factory support type. | Registry bootstrap wiring for canonical element registrations and aliases. | `Keep` | 0 | 0 | 8 | 0 | 2 | 0 | 0 |
+| `HintRegistry.java` | Element registry/factory support type. | Shared hints/glossary store used by exporters, parsers, and viewers. | `Keep` | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
+| `TableMasterRegistryManager.java` | Element registry/factory support type. | Registers table masters in priority order for synchronization behavior. | `Keep` | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 
 ## ui
 

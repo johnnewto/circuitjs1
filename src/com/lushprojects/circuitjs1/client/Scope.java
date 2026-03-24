@@ -734,8 +734,39 @@ public class Scope {
      * Checks if this scope is active (has plots with valid elements).
      * @return true if scope has at least one plot with a valid element
      */
-    boolean active() { 
+    public boolean active() { 
 	return plots.size() > 0 && plots.get(0).elm != null; 
+    }
+
+    public int getVisiblePlotCount() {
+	return visiblePlots != null ? visiblePlots.size() : 0;
+    }
+
+    public CircuitElm getVisiblePlotElement(int index) {
+	if (visiblePlots == null || index < 0 || index >= visiblePlots.size()) {
+	    return null;
+	}
+	ScopePlot plot = visiblePlots.get(index);
+	return plot != null ? plot.elm : null;
+    }
+
+    public String getVisiblePlotText(int index) {
+	if (visiblePlots == null || index < 0 || index >= visiblePlots.size()) {
+	    return null;
+	}
+	ScopePlot plot = visiblePlots.get(index);
+	if (plot == null || plot.elm == null) {
+	    return null;
+	}
+	return plot.elm.getScopeText(plot.value);
+    }
+
+    public double getVisiblePlotLastValue(int index) {
+	if (visiblePlots == null || index < 0 || index >= visiblePlots.size()) {
+	    return 0.0;
+	}
+	ScopePlot plot = visiblePlots.get(index);
+	return plot != null ? plot.lastValue : 0.0;
     }
     
     /**

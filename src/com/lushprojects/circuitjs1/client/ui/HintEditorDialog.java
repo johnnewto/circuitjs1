@@ -38,7 +38,7 @@ import com.google.gwt.event.dom.client.KeyUpHandler;
 import com.google.gwt.event.dom.client.KeyUpEvent;
 import com.google.gwt.dom.client.Style.Unit;
 import com.lushprojects.circuitjs1.client.CirSim;
-import com.lushprojects.circuitjs1.client.HintRegistry;
+import com.lushprojects.circuitjs1.client.registry.HintRegistry;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import java.util.List;
 import java.util.ArrayList;

@@ -4,11 +4,12 @@
     This file is part of CircuitJS1.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.elements.economics;
 
 
+import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.elements.SFCSankeyViewer;
-import com.lushprojects.circuitjs1.client.elements.economics.*;
+import com.lushprojects.circuitjs1.client.registry.HintRegistry;
 
 public final class InfoViewerLiveDataSerializer {
 
@@ -267,7 +268,8 @@ public final class InfoViewerLiveDataSerializer {
                 if (scope == null || !scope.active()) {
                     continue;
                 }
-                if (scope.visiblePlots == null || scope.visiblePlots.size() == 0) {
+                int visiblePlotCount = scope.getVisiblePlotCount();
+                if (visiblePlotCount == 0) {
                     continue;
                 }
 
@@ -284,9 +286,9 @@ public final class InfoViewerLiveDataSerializer {
                 sb.append("{\"name\":\"").append(escapeJson(scopeName)).append("\"");
                 sb.append(",\"traces\":[");
                 boolean firstTrace = true;
-                for (int p = 0; p < scope.visiblePlots.size(); p++) {
-                    ScopePlot plot = scope.visiblePlots.get(p);
-                    if (plot == null || plot.elm == null) {
+                for (int p = 0; p < visiblePlotCount; p++) {
+                    CircuitElm plotElm = scope.getVisiblePlotElement(p);
+                    if (plotElm == null) {
                         continue;
                     }
                     if (!firstTrace) {
@@ -294,11 +296,11 @@ public final class InfoViewerLiveDataSerializer {
                     }
                     firstTrace = false;
 
-                    String traceName = plot.elm.getScopeText(plot.value);
+                    String traceName = scope.getVisiblePlotText(p);
                     if (traceName == null || traceName.trim().isEmpty()) {
                         traceName = "Trace " + (p + 1);
                     }
-                    double value = plot.lastValue;
+                    double value = scope.getVisiblePlotLastValue(p);
                     if (Double.isNaN(value) || Double.isInfinite(value)) {
                         value = 0.0;
                     }

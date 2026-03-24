@@ -1,5 +1,6 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.registry;
 
+import com.lushprojects.circuitjs1.client.CircuitElm;
 import com.lushprojects.circuitjs1.client.util.*;
 
 import com.lushprojects.circuitjs1.client.elements.annotation.*;
