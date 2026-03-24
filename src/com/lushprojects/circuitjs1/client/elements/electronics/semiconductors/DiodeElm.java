@@ -22,7 +22,6 @@ package com.lushprojects.circuitjs1.client.elements.electronics.semiconductors;
 import com.lushprojects.circuitjs1.client.ui.EditInfo;
 
 import com.lushprojects.circuitjs1.client.ui.Choice;
-import com.lushprojects.circuitjs1.client.ui.EditDiodeModelDialog;
 import com.lushprojects.circuitjs1.client.ui.EditDialog;
 
 import com.lushprojects.circuitjs1.client.*;

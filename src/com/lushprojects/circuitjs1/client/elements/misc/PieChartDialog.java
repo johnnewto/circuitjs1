@@ -17,14 +17,15 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client.ui;
+package com.lushprojects.circuitjs1.client.elements.misc;
 
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 
 import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
-import com.lushprojects.circuitjs1.client.elements.misc.PieChartElm;
 import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNodeElm;
+import com.lushprojects.circuitjs1.client.ui.Choice;
+import com.lushprojects.circuitjs1.client.ui.Dialog;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.HorizontalPanel;

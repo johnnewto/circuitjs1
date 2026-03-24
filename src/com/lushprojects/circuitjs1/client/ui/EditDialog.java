@@ -52,7 +52,7 @@ import jsinterop.annotations.JsPackage;
 public class EditDialog extends Dialog {
 	private Editable elm;
 	private CirSim cframe;
-	Button applyButton;
+	protected Button applyButton;
 	private Button okButton;
     private Button cancelButton;
 	private EditInfo[] einfos;

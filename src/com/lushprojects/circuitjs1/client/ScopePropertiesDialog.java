@@ -1,8 +1,4 @@
-package com.lushprojects.circuitjs1.client.ui;
-
-import com.lushprojects.circuitjs1.client.CirSim;
-import com.lushprojects.circuitjs1.client.Scope;
-import com.lushprojects.circuitjs1.client.ScopePropertiesDialogCore;
+package com.lushprojects.circuitjs1.client;
 
 public class ScopePropertiesDialog extends ScopePropertiesDialogCore {
 

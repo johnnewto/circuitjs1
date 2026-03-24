@@ -27,7 +27,6 @@ import com.lushprojects.circuitjs1.client.elements.annotation.GraphicElm;
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 
 import com.google.gwt.user.client.ui.Button;
-import com.lushprojects.circuitjs1.client.ui.PieChartDialog;
 
 /**
  * PieChartElm - Displays a pie chart of voltage values from multiple labeled nodes.

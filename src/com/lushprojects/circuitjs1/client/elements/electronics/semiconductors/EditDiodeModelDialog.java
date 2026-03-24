@@ -1,10 +1,9 @@
-package com.lushprojects.circuitjs1.client.ui;
+package com.lushprojects.circuitjs1.client.elements.electronics.semiconductors;
 
 import com.lushprojects.circuitjs1.client.CirSim;
 import com.lushprojects.circuitjs1.client.CirSimDialogCoordinator;
 import com.lushprojects.circuitjs1.client.elements.electronics.DiodeModel;
 import com.lushprojects.circuitjs1.client.ui.EditDialog;
-import com.lushprojects.circuitjs1.client.elements.electronics.semiconductors.DiodeElm;
 
 public class EditDiodeModelDialog extends EditDialog {
 
