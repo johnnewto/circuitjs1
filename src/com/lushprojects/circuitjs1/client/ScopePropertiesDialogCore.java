@@ -89,6 +89,7 @@ private CheckBox rmsBox;
     private CheckBox vceIcBox;
     private CheckBox logSpectrumBox;
     private CheckBox averageBox;
+    private CheckBox multiLhsAxesBox;
 private CheckBox elmInfoBox;
 private TextBox labelTextBox;
     private TextBox titleTextBox;
@@ -486,7 +487,7 @@ private boolean maxScaleTextBoxHasFocus = false;
 	CircuitElm elm = scope.getSingleElm();
 	boolean transistor = elm != null && elm instanceof TransistorElm;
 	if (!transistor) {
-	    grid = new Grid(14, 3); // Increased from 11 to 14 to accommodate title and label fields
+	    grid = new Grid(15, 3); // Extra row for multi-LHS axis mode toggle
 	    gridLabels = new labelledGridManager(grid);
 	    gridLabels.addLabel(Locale.LS("Plots"), displayAll);
 	    addItemToGrid(grid, voltageBox = new ScopeCheckBox(Locale.LS("Show Voltage"), "showvoltage"));
@@ -494,7 +495,7 @@ private boolean maxScaleTextBoxHasFocus = false;
 	    addItemToGrid(grid, currentBox = new ScopeCheckBox(Locale.LS("Show Current"), "showcurrent"));
 	    currentBox.addValueChangeHandler(this);
 	} else {
-	    grid = new Grid(16, 3); // Increased from 13 to 16 to accommodate title and label fields
+	    grid = new Grid(17, 3); // Extra row for multi-LHS axis mode toggle
 		    gridLabels = new labelledGridManager(grid);
 		    gridLabels.addLabel(Locale.LS("Plots"), displayAll);
 		    addItemToGrid(grid, ibBox = new ScopeCheckBox(Locale.LS("Show Ib"), "showib"));
@@ -531,6 +532,8 @@ private boolean maxScaleTextBoxHasFocus = false;
 		gridLabels.addLabel(Locale.LS("Show Info"), displayAll);
 		addItemToGrid(grid, scaleBox = new ScopeCheckBox(Locale.LS("Show Scale"), "showscale"));
 		scaleBox.addValueChangeHandler(this); 
+		addItemToGrid(grid, multiLhsAxesBox = new ScopeCheckBox(Locale.LS("Multi-LHS Axes"), "multilhsaxes"));
+		multiLhsAxesBox.addValueChangeHandler(this);
 		addItemToGrid(grid, peakBox = new ScopeCheckBox(Locale.LS("Show Peak Value"), "showpeak"));
 		peakBox.addValueChangeHandler(this); 
 		addItemToGrid(grid, negPeakBox = new ScopeCheckBox(Locale.LS("Show Negative Peak Value"), "shownegpeak"));
@@ -674,6 +677,8 @@ private boolean maxScaleTextBoxHasFocus = false;
 		powerBox.setValue(scope.showingValue(Scope.VAL_POWER));
 	    }
 	    scaleBox.setValue(scope.showScale);
+        multiLhsAxesBox.setValue(scope.isMultiLhsAxesEnabledForUi());
+        multiLhsAxesBox.setEnabled(scope.getVisiblePlotCount() > 1 && !scope.showFFT && !scope.plot2d);
 	    peakBox.setValue(scope.showMax);
 	    negPeakBox.setValue(scope.showMin);
 	    freqBox.setValue(scope.showFreq);
