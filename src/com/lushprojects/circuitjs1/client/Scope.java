@@ -395,13 +395,11 @@ public class Scope {
     private boolean drawFromZero; // Draw from t=0 on left, growing right
     private boolean autoScaleTime; // Auto-adjust time scale when reaching edge
     private double startTime; // Simulation time when scope was reset (for drawFromZero mode)
-    private int historySize; // Current number of samples in history buffers
-    private int historyCapacity; // Maximum capacity of history buffers before downsampling
-    private double historySampleInterval; // Time interval between history samples (increases with downsampling)
     
     // ====================
     // INSTANCE VARIABLES - Working Data
     // ====================
+    private final ScopeModel model;
     private Vector<ScopePlot> plots;
     public Vector<ScopePlot> visiblePlots;
     private int draw_ox;
@@ -462,9 +460,12 @@ public class Scope {
      */
     public Scope(CirSim s) {
     	sim = s;
+        model = new ScopeModel();
     	scale = new double[UNITS_COUNT];
     	reduceRange = new boolean[UNITS_COUNT];
 	manDivisions = lastManDivisions;
+        plots = model.getPlots();
+        visiblePlots = model.getVisiblePlots();
     	
     	rect = new Rectangle(0, 0, 1, 1);
         if (RuntimeMode.isNonInteractiveRuntime()) {
@@ -476,6 +477,15 @@ public class Scope {
         }
 	allocImage();
     	initialize();
+    }
+
+    private void setPlots(Vector<ScopePlot> newPlots) {
+        model.setPlots(newPlots);
+        plots = model.getPlots();
+    }
+
+    private void syncVisiblePlotsFromModel() {
+        visiblePlots = model.getVisiblePlots();
     }
     
     /**
@@ -598,7 +608,7 @@ public class Scope {
     	while (scopePointCount <= rect.width)
     		scopePointCount *= 2;
     	if (plots == null)
-    	    plots = new Vector<ScopePlot>();
+    	    setPlots(new Vector<ScopePlot>());
     	showNegative = false;
     	int i;
     	for (i = 0; i != plots.size(); i++)
@@ -617,79 +627,36 @@ public class Scope {
     	
     	// Record start time and initialize history for drawFromZero mode
     	if (drawFromZero) {
+    	    double sampleInterval = sim.getMaxTimeStep() * speed;
     	    // When clearing history (reset or first load), start from current simulation time
     	    // When preserving history (zoom/resize), keep the existing startTime
     	    if (clearHistory) {
     	        startTime = sim.getTime();  // Start from current simulation time
-    	        historySize = 0;
-    	        historyCapacity = scopePointCount * 4; // Start with 4x the display size
-    	        historySampleInterval = sim.getMaxTimeStep() * speed;
-    	        
-    	        // Initialize history buffers for each plot
-    	        for (i = 0; i != plots.size(); i++) {
-    	            ScopePlot p = plots.get(i);
-    	            p.historyMinValues = new double[historyCapacity];
-    	            p.historyMaxValues = new double[historyCapacity];
-    	        }
+    	        model.initializeHistoryBuffers(scopePointCount, sampleInterval);
     	    } else {
     	        // Preserve history, just update sample interval
-    	        historySampleInterval = sim.getMaxTimeStep() * speed;
+    	        model.setHistorySampleInterval(sampleInterval);
     	        
     	        // Check if buffers need to be allocated (e.g., after loading from file)
-    	        boolean needsAllocation = false;
-    	        for (i = 0; i != plots.size(); i++) {
-    	            ScopePlot p = plots.get(i);
-    	            if (p.historyMinValues == null || p.historyMaxValues == null) {
-    	                needsAllocation = true;
-    	                break;
-    	            }
-    	        }
+    	        boolean needsAllocation = !model.areHistoryBuffersAllocated();
     	        
     	        if (needsAllocation) {
     	            // Allocating buffers for first time after load - start from current time
     	            // Use current scopePointCount (based on updated rect.width) for capacity calculation
     	            startTime = sim.getTime();
-    	            historySize = 0;
-    	            historyCapacity = scopePointCount * 4;  // Based on CURRENT scopePointCount, not old one
-    	            for (i = 0; i != plots.size(); i++) {
-    	                ScopePlot p = plots.get(i);
-    	                p.historyMinValues = new double[historyCapacity];
-    	                p.historyMaxValues = new double[historyCapacity];
-    	            }
+    	            model.initializeHistoryBuffers(scopePointCount, sampleInterval);
     	        } else {
     	            // Check if we need to resize buffers due to scope resize/zoom
     	            int newCapacity = scopePointCount * 4;
-    	            if (newCapacity != historyCapacity) {
-    	                historyCapacity = newCapacity;
-    	                // Reallocate buffers and copy existing data
-    	                for (i = 0; i != plots.size(); i++) {
-    	                    ScopePlot p = plots.get(i);
-    	                    double[] newMinValues = new double[historyCapacity];
-    	                    double[] newMaxValues = new double[historyCapacity];
-    	                    // Copy existing history data
-    	                    int copySize = Math.min(historySize, historyCapacity);
-    	                    for (int j = 0; j < copySize; j++) {
-    	                        newMinValues[j] = p.historyMinValues[j];
-    	                        newMaxValues[j] = p.historyMaxValues[j];
-    	                    }
-    	                    p.historyMinValues = newMinValues;
-    	                    p.historyMaxValues = newMaxValues;
-    	                    if (historySize > historyCapacity) {
-    	                        historySize = historyCapacity; // Truncate if new capacity is smaller
-    	                    }
-    	                }
+    	            if (newCapacity != model.getHistoryCapacity()) {
+    	                model.resizeHistoryBuffers(newCapacity);
     	            }
     	        }
     	    }
     	} else {
     	    //CirSim.console("resetGraph: drawFromZero=false, clearing history buffers");
     	    // Clear history buffers when not in drawFromZero mode
-    	    historySize = 0;
-    	    for (i = 0; i != plots.size(); i++) {
-    		ScopePlot p = plots.get(i);
-    		p.historyMinValues = null;
-    		p.historyMaxValues = null;
-    	    }
+    	    model.clearHistoryBuffers();
     	}
     	
     	allocImage();
@@ -836,35 +803,8 @@ public class Scope {
      * In 2D mode, shows only the first two plots.
      */
     public void calcVisiblePlots() {
-	visiblePlots = new Vector<ScopePlot>();
-	int i;
-	int voltCount = 0, currentCount = 0, otherCount = 0;
-	
-	if (!plot2d) {
-	    // Normal mode: filter by voltage/current/other and assign colors
-	    for (i = 0; i != plots.size(); i++) {
-		ScopePlot plot = plots.get(i);
-		if (plot.units == UNITS_V) {
-		    if (showV) {
-			visiblePlots.add(plot);
-			plot.assignColor(voltCount++);
-		    }
-		} else if (plot.units == UNITS_A) {
-		    if (showI) {
-			visiblePlots.add(plot);
-			plot.assignColor(currentCount++);
-		    }
-		} else {
-		    visiblePlots.add(plot);
-		    plot.assignColor(otherCount++);
-		}
-	    }
-	} else { 
-	    // 2D mode: show first two plots only
-	    for (i = 0; (i < 2) && (i < plots.size()); i++) {
-		visiblePlots.add(plots.get(i));
-	    }
-	}
+        model.rebuildVisiblePlots(plot2d, showV, showI);
+        syncVisiblePlotsFromModel();
     }
     
     void setRect(Rectangle r) {
@@ -887,7 +827,7 @@ public class Scope {
     int rightEdge() { return rect.x+rect.width; }
 	
     void setElm(CircuitElm ce) {
-	plots = new Vector<ScopePlot>();
+	setPlots(new Vector<ScopePlot>());
     	if (ce instanceof TransistorElm)
     	    setValue(VAL_VCE, ce);
     	else
@@ -942,20 +882,20 @@ public class Scope {
     }
     
     private void setValue(int val, CircuitElm ce) {
-	plots = new Vector<ScopePlot>();
+	setPlots(new Vector<ScopePlot>());
 	addValue(val, ce);
 //    	initialize();
     }
 
     private void setValues(int val, int ival, CircuitElm ce, CircuitElm yelm) {
 	if (ival > 0) {
-	    plots = new Vector<ScopePlot>();
+	    setPlots(new Vector<ScopePlot>());
 	    plots.add(new ScopePlot(ce, ce.getScopeUnits( val),  val, getManScaleFromMaxScale(ce.getScopeUnits( val), false)));
 	    plots.add(new ScopePlot(ce, ce.getScopeUnits(ival), ival, getManScaleFromMaxScale(ce.getScopeUnits(ival), false)));
 	    return;
 	}
 	if (yelm != null) {
-	    plots = new Vector<ScopePlot>();
+	    setPlots(new Vector<ScopePlot>());
 	    plots.add(new ScopePlot(ce,   ce.getScopeUnits( val), 0, getManScaleFromMaxScale(ce.getScopeUnits( val), false)));
 	    plots.add(new ScopePlot(yelm, ce.getScopeUnits(ival), 0, getManScaleFromMaxScale(ce.getScopeUnits( val), false)));
 	    return;
@@ -1014,9 +954,10 @@ public class Scope {
 	    plots.add(s.plots.get(0));
 	else
 	*/
-	plots = visiblePlots;
-	plots.addAll(s.visiblePlots);
-	s.plots.removeAllElements();
+	Vector<ScopePlot> combinedPlots = new Vector<ScopePlot>(visiblePlots);
+	combinedPlots.addAll(s.visiblePlots);
+	setPlots(combinedPlots);
+	s.model.clearPlots();
 	calcVisiblePlots();
     }
 
@@ -1090,7 +1031,10 @@ public class Scope {
     	
     	// Capture data to history for drawFromZero mode
     	if (config.isDrawFromZeroActive()) {
-    	    captureToHistory();
+    	    if (!model.captureToHistory(sim.getTime(), startTime, scopePointCount)) {
+    	        CirSim.console("captureToHistory: Not all history buffers allocated, skipping capture. " +
+    			"drawFromZero=" + drawFromZero + ", plots.size()=" + plots.size());
+    	    }
     	}
     }
 
@@ -1111,94 +1055,6 @@ public class Scope {
         return new ScopeFrameContext(displayConfig, plotLeft, plotWidth, stride, timePerPixel);
     }
     
-    /**
-     * Captures current scope data to history buffers for drawFromZero mode.
-     * Only captures at the defined sample interval to avoid excessive memory use.
-     * Automatically downsamples if history capacity is reached.
-     */
-    private void captureToHistory() {
-	// Only capture at the defined sample interval
-	if (historySize > 0) {
-	    double lastSampleTime = startTime + (historySize - 1) * historySampleInterval;
-	    if (sim.getTime() < lastSampleTime + historySampleInterval * 0.9)
-		return; // Too soon for next sample
-	}
-	
-	// Check if we need to downsample
-	if (historySize >= historyCapacity) {
-	    downsampleHistory();
-	}
-	
-	// Verify all history buffers are allocated
-	if (!areHistoryBuffersAllocated()) {
-	    CirSim.console("captureToHistory: Not all history buffers allocated, skipping capture. " +
-		"drawFromZero=" + drawFromZero + ", plots.size()=" + plots.size());
-	    return;
-	}
-	
-	// Capture current values from each plot's circular buffer
-	for (int i = 0; i < plots.size(); i++) {
-	    ScopePlot p = plots.get(i);
-	    if (p.historyMinValues != null && p.historyMaxValues != null) {
-		// Get the most recent value from the circular buffer
-		int idx = p.ptr & (scopePointCount - 1);
-		p.historyMinValues[historySize] = p.minValues[idx];
-		p.historyMaxValues[historySize] = p.maxValues[idx];
-	    }
-	}
-	
-	historySize++;
-    }
-    
-    /**
-     * Checks if all plots have their history buffers allocated.
-     * @return true if all buffers are allocated, false otherwise
-     */
-    private boolean areHistoryBuffersAllocated() {
-	for (int i = 0; i < plots.size(); i++) {
-	    ScopePlot p = plots.get(i);
-	    if (p.historyMinValues == null || p.historyMaxValues == null) {
-		// CirSim.console("captureToHistory: Plot " + i + " missing history buffers! " +
-		//     "historyMinValues=" + (p.historyMinValues == null ? "NULL" : "allocated") + 
-		//     ", historyMaxValues=" + (p.historyMaxValues == null ? "NULL" : "allocated"));
-		return false;
-	    }
-	}
-	return true;
-    }
-    
-    /**
-     * Downsamples history by a factor of 2 to make room for more data.
-     * Preserves peaks by keeping minimum of mins and maximum of maxs.
-     */
-    private void downsampleHistory() {
-	int newSize = historySize / 2;
-	historySampleInterval *= 2; // Double the time between samples
-	
-	// CirSim.console("Downsampling scope history: " + historySize + " -> " + newSize + 
-	//             " samples, interval: " + historySampleInterval + "x");
-	
-	for (int i = 0; i < plots.size(); i++) {
-	    ScopePlot p = plots.get(i);
-	    if (p.historyMinValues == null || p.historyMaxValues == null)
-		continue;
-	    
-	    // Downsample by taking min/max of pairs
-	    for (int j = 0; j < newSize; j++) {
-		int src1 = j * 2;
-		int src2 = j * 2 + 1;
-		
-		// Keep the minimum of mins and maximum of maxs to preserve peaks
-		p.historyMinValues[j] = Math.min(p.historyMinValues[src1], 
-		                                  src2 < historySize ? p.historyMinValues[src2] : p.historyMinValues[src1]);
-		p.historyMaxValues[j] = Math.max(p.historyMaxValues[src1],
-		                                  src2 < historySize ? p.historyMaxValues[src2] : p.historyMaxValues[src1]);
-	    }
-	}
-	
-	historySize = newSize;
-    }
-
     /**
      * Calculates 2D grid pixel spacing based on window dimensions.
      * @param width Window width in pixels
@@ -1744,23 +1600,8 @@ public class Scope {
     int plotWidth = getPlotAreaWidth();
     int plotLeft = getPlotAreaLeft();
     int mousePlotX = mouseX - plotLeft;
-    if (mousePlotX < 0 || mousePlotX >= plotWidth)
-        return;
-	
-	final int HOVER_THRESHOLD = 10; // pixels
-	
-	for (int i = 0; i < enabledActions.size(); i++) {
-	    ActionScheduler.ScheduledAction action = enabledActions.get(i);
-	    double timeFromStart = action.actionTime - startTime;
-	    if (timeFromStart < 0 || timeFromStart > displayTimeSpan)
-		continue;
-	    
-	    int gx = (int) (plotWidth * timeFromStart / displayTimeSpan);
-	    if (Math.abs(mousePlotX - gx) < HOVER_THRESHOLD) {
-		hoveredActionIndex = i;
-		break;
-	    }
-	}
+    hoveredActionIndex = ScopeInteractionController.findHoveredActionIndex(enabledActions, mousePlotX, plotWidth,
+            startTime, displayTimeSpan, 10);
 	
 	// Track last hovered index for detecting changes
 	if (hoveredActionIndex >= 0) {
@@ -1866,10 +1707,14 @@ public class Scope {
         g.context.translate(frame.plotLeft, 0);
         g.clipRect(0, 0, frame.plotWidth, rect.height);
 
-        if (config.isFFTMode()) {
-            drawFFTVerticalGridLines(g);
-            drawFFT(g);
-        }
+        // Render order contract:
+        // 1. Grid (background)
+        // 2. Waveforms (non-voltage units)
+        // 3. Waveforms (current)
+        // 4. Waveforms (voltage)
+        // 5. Selected plot (topmost)
+        // 6. Axes/overlays
+        ScopeGridRenderer.render(this, g, frame);
 
     	int i;
     	for (i = 0; i != UNITS_COUNT; i++) {
@@ -1905,57 +1750,16 @@ public class Scope {
     	if ((allPlotsSameUnits || showMax || showMin) && visiblePlots.size() > 0)
     	    calcMaxAndMin(visiblePlots.firstElement().units);
     	
-    	// Track if this is the first plot drawn to save gridStepX for display
-    	boolean firstPlotDrawn = false;
-    	
-    	// draw volt plots on top (last), then current plots underneath, then everything else
-    	for (i = 0; i != visiblePlots.size(); i++) {
-    	    if (visiblePlots.get(i).units > UNITS_A && i != selectedPlot) {
-	    		drawPlot(g, frame, visiblePlots.get(i), allPlotsSameUnits, false, sel);
-    		if (!firstPlotDrawn) {
-    		    displayGridStepX = gridStepX;
-    		    firstPlotDrawn = true;
-    		}
-    	    }
-    	}
-    	for (i = 0; i != visiblePlots.size(); i++) {
-    	    if (visiblePlots.get(i).units == UNITS_A && i != selectedPlot) {
-	    		drawPlot(g, frame, visiblePlots.get(i), allPlotsSameUnits, false, sel);
-    		if (!firstPlotDrawn) {
-    		    displayGridStepX = gridStepX;
-    		    firstPlotDrawn = true;
-    		}
-    	    }
-    	}
-    	for (i = 0; i != visiblePlots.size(); i++) {
-    	    if (visiblePlots.get(i).units == UNITS_V && i != selectedPlot) {
-	    		drawPlot(g, frame, visiblePlots.get(i), allPlotsSameUnits, false, sel);
-    		if (!firstPlotDrawn) {
-    		    displayGridStepX = gridStepX;
-    		    firstPlotDrawn = true;
-    		}
-    	    }
-    	}
-    	// draw selection on top.  only works if selection chosen from scope
-    	if (selectedPlot >= 0 && selectedPlot < visiblePlots.size()) {
-    	    drawPlot(g, frame, visiblePlots.get(selectedPlot), allPlotsSameUnits, true, sel);
-    	    if (!firstPlotDrawn) {
-    		displayGridStepX = gridStepX;
-    		firstPlotDrawn = true;
-    	    }
-    	}
+        ScopeWaveformRenderer.render(this, g, frame, allPlotsSameUnits, sel);
 
         g.context.restore();
 
-        drawMultiLhsGutter(g, frame);
-        drawMultiLhsAxes(g, frame);
-    	
-        drawInfoTexts(g);
-    	drawTitle(g);
+        ScopeAxisRenderer.render(this, g, frame);
+        ScopeOverlayRenderer.renderInScope(this, g, frame);
     	
     	g.restore();
     	
-    	drawCursor(g, frame);
+    	ScopeOverlayRenderer.renderCursor(this, g, frame);
     	
 		if (plots.get(0).samplesCaptured > 5 && !config.manualScale) {
     	    for (i = 0; i != UNITS_COUNT; i++)
@@ -1970,6 +1774,65 @@ public class Scope {
 
     public void drawForEmbedded(Graphics g) {
 	draw(g);
+    }
+
+    void renderGridLayer(Graphics g, ScopeFrameContext frame) {
+        if (frame.displayConfig.isFFTMode()) {
+            drawFFTVerticalGridLines(g);
+            drawFFT(g);
+        }
+    }
+
+    void renderWaveformLayers(Graphics g, ScopeFrameContext frame, boolean allPlotsSameUnits, boolean selected) {
+        boolean firstPlotDrawn = false;
+
+        for (int i = 0; i != visiblePlots.size(); i++) {
+            if (visiblePlots.get(i).units > UNITS_A && i != selectedPlot) {
+                drawPlot(g, frame, visiblePlots.get(i), allPlotsSameUnits, false, selected);
+                if (!firstPlotDrawn) {
+                    displayGridStepX = gridStepX;
+                    firstPlotDrawn = true;
+                }
+            }
+        }
+        for (int i = 0; i != visiblePlots.size(); i++) {
+            if (visiblePlots.get(i).units == UNITS_A && i != selectedPlot) {
+                drawPlot(g, frame, visiblePlots.get(i), allPlotsSameUnits, false, selected);
+                if (!firstPlotDrawn) {
+                    displayGridStepX = gridStepX;
+                    firstPlotDrawn = true;
+                }
+            }
+        }
+        for (int i = 0; i != visiblePlots.size(); i++) {
+            if (visiblePlots.get(i).units == UNITS_V && i != selectedPlot) {
+                drawPlot(g, frame, visiblePlots.get(i), allPlotsSameUnits, false, selected);
+                if (!firstPlotDrawn) {
+                    displayGridStepX = gridStepX;
+                    firstPlotDrawn = true;
+                }
+            }
+        }
+        if (selectedPlot >= 0 && selectedPlot < visiblePlots.size()) {
+            drawPlot(g, frame, visiblePlots.get(selectedPlot), allPlotsSameUnits, true, selected);
+            if (!firstPlotDrawn) {
+                displayGridStepX = gridStepX;
+            }
+        }
+    }
+
+    void renderAxisLayer(Graphics g, ScopeFrameContext frame) {
+        drawMultiLhsGutter(g, frame);
+        drawMultiLhsAxes(g, frame);
+    }
+
+    void renderOverlayLayer(Graphics g, ScopeFrameContext frame) {
+        drawInfoTexts(g);
+        drawTitle(g);
+    }
+
+    void renderCursorLayer(Graphics g, ScopeFrameContext frame) {
+        drawCursor(g, frame);
     }
 
     
@@ -2285,7 +2148,7 @@ public class Scope {
         
         if (config.isDrawFromZeroActive()) {
             // Draw from zero mode: use history buffers instead of circular buffer
-            if (plot.historyMinValues == null || historySize == 0) {
+            if (plot.historyMinValues == null || model.getHistorySize() == 0) {
         	// No history data yet
         	g.endBatch();
         	return;
@@ -2298,9 +2161,9 @@ public class Scope {
                 // Auto-scale: map entire history to window width
                 for (i = 0; i < plotWidth; i++) {
                     // Map pixel to history index
-                    int histIdx = (i * historySize) / plotWidth;
-                    if (histIdx >= historySize)
-                        histIdx = historySize - 1;
+                    int histIdx = (i * model.getHistorySize()) / plotWidth;
+                    if (histIdx >= model.getHistorySize())
+                        histIdx = model.getHistorySize() - 1;
                     
                     // Use midpoint (average) of min and max for smoother interpolation
                     double midVal = (histMinV[histIdx] + histMaxV[histIdx]) / 2.0;
@@ -2337,9 +2200,9 @@ public class Scope {
                     // Not enough data to fill screen yet, start from beginning
                     for (i = 0; i < pixelsUsed; i++) {
                         double time = i * timePerPixel;
-                        int histIdx = (int)(time / historySampleInterval);
-                        if (histIdx >= historySize)
-                            histIdx = historySize - 1;
+                        int histIdx = (int)(time / model.getHistorySampleInterval());
+                        if (histIdx >= model.getHistorySize())
+                            histIdx = model.getHistorySize() - 1;
                         
                         // Use midpoint (average) of min and max for smoother interpolation
                         double midVal = (histMinV[histIdx] + histMaxV[histIdx]) / 2.0;
@@ -2373,9 +2236,9 @@ public class Scope {
                     
                     for (i = startPixel; i < plotWidth; i++) {
                         double time = startTime + i * timePerPixel;
-                        int histIdx = (int)(time / historySampleInterval);
+                        int histIdx = (int)(time / model.getHistorySampleInterval());
                         if (histIdx < 0) histIdx = 0;
-                        if (histIdx >= historySize) histIdx = historySize - 1;
+                        if (histIdx >= model.getHistorySize()) histIdx = model.getHistorySize() - 1;
                         
                         // Use midpoint (average) of min and max for smoother interpolation
                         double midVal = (histMinV[histIdx] + histMaxV[histIdx]) / 2.0;
@@ -2474,29 +2337,17 @@ public class Scope {
 	if (config.is2DMode() || visiblePlots.size() == 0)
 	    cursorTime = -1;
 	else {
-        if (localPlotX < 0 || localPlotX >= plotWidth) {
+        if (!ScopeInteractionController.isWithinPlotX(localPlotX, plotWidth)) {
             cursorTime = -1;
         } else {
 	    if (config.isDrawFromZeroActive()) {
-		// Time is proportional to x position from left
-		double elapsedTime = sim.getTime() - startTime;
-		cursorTime = ScopeLayout.mapCursorXToTime(startTime, elapsedTime, localPlotX, plotWidth,
-		        config.autoScaleTime, frame.timePerPixel);
+		cursorTime = ScopeInteractionController.mapCursorTimeForDrawFromZero(
+		        startTime, sim.getTime(), localPlotX, plotWidth, config.autoScaleTime, frame.timePerPixel);
 	    } else {
 		int stride = frame.horizontalPixelStride;
 		int displayWidth = getDisplaySampleWidth(plots.get(0), frame);
-		if (displayWidth <= 0) {
-		    cursorTime = -1;
-		} else {
-		    int displayPixelWidth = displayWidth * stride;
-		    if (localPlotX < 0 || localPlotX >= displayPixelWidth) {
-			cursorTime = -1;
-		    } else {
-			int sampleX = localPlotX / stride;
-			int ageSamples = (displayWidth - 1) - sampleX;
-			cursorTime = sim.getTime() - sim.getMaxTimeStep() * speed * ageSamples;
-		    }
-		}
+		cursorTime = ScopeInteractionController.mapCursorTimeForScrolling(
+		        sim.getTime(), sim.getMaxTimeStep(), speed, localPlotX, stride, displayWidth);
 	    }
         }
 	}
@@ -2533,20 +2384,8 @@ public class Scope {
 	int ipa = plots.get(0).startIndex(displayWidth);
 	int ip = (sampleX+ipa) & (scopePointCount-1);
     	int maxy = (rect.height-1)/2;
-    	int y = maxy;
-    	int i;
-    	int bestdist = 10000;
-    	int best = -1;
-    	for (i = 0; i != visiblePlots.size(); i++) {
-    	    ScopePlot plot = visiblePlots.get(i);
-    	    int maxvy = (int) (plot.gridMult*(plot.maxValues[ip]+plot.plotOffset));
-    	    int dist = Math.abs(mouseY-(rect.y+y-maxvy));
-    	    if (dist < bestdist) {
-    		bestdist = dist;
-    		best = i;
-    	    }
-    	}
-    	selectedPlot = best;
+    	selectedPlot = ScopeInteractionController.findNearestPlotIndex(
+            visiblePlots, ip, scopePointCount, mouseY, rect.y, maxy);
     	if (selectedPlot >= 0)
     	    cursorUnits = visiblePlots.get(selectedPlot).units;
     }
@@ -2607,8 +2446,8 @@ public class Scope {
             if (config.isDrawFromZeroActive() && plot.historyMaxValues != null) {
                 // Get value from history buffer
                 double timeFromStart = cursorTime - startTime;
-                int historyIndex = (int)(timeFromStart / historySampleInterval);
-                if (historyIndex >= 0 && historyIndex < historySize) {
+                int historyIndex = (int)(timeFromStart / model.getHistorySampleInterval());
+                if (historyIndex >= 0 && historyIndex < model.getHistorySize()) {
                     value = plot.historyMaxValues[historyIndex];
                 } else {
                     value = 0;
@@ -3407,12 +3246,12 @@ public class Scope {
     }
 
     public void resetPlots() {
-	plots = new Vector<ScopePlot>();
+	setPlots(new Vector<ScopePlot>());
     }
 
     public void addPlot(CircuitElm elm, int units, int value, double manualScale) {
 	if (plots == null)
-	    plots = new Vector<ScopePlot>();
+	    setPlots(new Vector<ScopePlot>());
 	plots.add(new ScopePlot(elm, units, value, manualScale));
     }
 
@@ -3826,7 +3665,7 @@ public class Scope {
     	if (mi == "plotxy") {
     		plotXY = plot2d = state;
     		if (plot2d)
-    		    plots = visiblePlots;
+    		    setPlots(new Vector<ScopePlot>(visiblePlots));
     		if (plot2d && plots.size() == 1)
     		    selectY();
     		resetGraph();
@@ -4099,7 +3938,7 @@ public class Scope {
      * @return CSV string with time, plot values
      */
     private String exportHistoryAsCSV() {
-	if (!drawFromZero || historySize == 0)
+	if (!drawFromZero || model.getHistorySize() == 0)
 	    return "No history data available\n";
 	
 	StringBuilder sb = new StringBuilder();
@@ -4117,8 +3956,8 @@ public class Scope {
 	sb.append("\n");
 	
 	// Data rows
-	for (int x = 0; x < historySize; x++) {
-	    double time = x * historySampleInterval;
+	for (int x = 0; x < model.getHistorySize(); x++) {
+	    double time = x * model.getHistorySampleInterval();
 	    sb.append(time);
 	    
 	    for (int i = 0; i < visiblePlots.size(); i++) {
@@ -4141,7 +3980,7 @@ public class Scope {
      * @return JSON string with metadata and data arrays
      */
     private String exportHistoryAsJSON() {
-	if (!drawFromZero || historySize == 0)
+	if (!drawFromZero || model.getHistorySize() == 0)
 	    return "{\"error\": \"No history data available\"}\n";
 	
 	StringBuilder sb = new StringBuilder();
@@ -4150,8 +3989,8 @@ public class Scope {
 	sb.append("  \"exportType\": \"history\",\n");
 	sb.append("  \"startTime\": 0,\n");
 	sb.append("  \"absoluteStartTime\": ").append(startTime).append(",\n");
-	sb.append("  \"historySize\": ").append(historySize).append(",\n");
-	sb.append("  \"sampleInterval\": ").append(historySampleInterval).append(",\n");
+	sb.append("  \"historySize\": ").append(model.getHistorySize()).append(",\n");
+	sb.append("  \"sampleInterval\": ").append(model.getHistorySampleInterval()).append(",\n");
 	sb.append("  \"plots\": [\n");
 	
 	for (int i = 0; i < visiblePlots.size(); i++) {
@@ -4167,9 +4006,9 @@ public class Scope {
 	    
 	    // Time array
 	    sb.append("      \"time\": [");
-	    for (int x = 0; x < historySize; x++) {
+	    for (int x = 0; x < model.getHistorySize(); x++) {
 		if (x > 0) sb.append(", ");
-		double time = x * historySampleInterval;
+		double time = x * model.getHistorySampleInterval();
 		sb.append(time);
 	    }
 	    sb.append("],\n");
@@ -4177,7 +4016,7 @@ public class Scope {
 	    if (p.historyMinValues != null && p.historyMaxValues != null) {
 		// Interpolated midpoint values array (average of min and max)
 		sb.append("      \"values\": [");
-		for (int x = 0; x < historySize; x++) {
+		for (int x = 0; x < model.getHistorySize(); x++) {
 		    if (x > 0) sb.append(", ");
 		    double midpoint = (p.historyMinValues[x] + p.historyMaxValues[x]) / 2.0;
 		    sb.append(midpoint);
@@ -4186,7 +4025,7 @@ public class Scope {
 		
 		// Min values array (kept for CSV export compatibility)
 		sb.append("      \"minValues\": [");
-		for (int x = 0; x < historySize; x++) {
+		for (int x = 0; x < model.getHistorySize(); x++) {
 		    if (x > 0) sb.append(", ");
 		    sb.append(p.historyMinValues[x]);
 		}
@@ -4194,7 +4033,7 @@ public class Scope {
 		
 		// Max values array (kept for CSV export compatibility)
 		sb.append("      \"maxValues\": [");
-		for (int x = 0; x < historySize; x++) {
+		for (int x = 0; x < model.getHistorySize(); x++) {
 		    if (x > 0) sb.append(", ");
 		    sb.append(p.historyMaxValues[x]);
 		}
@@ -4217,7 +4056,7 @@ public class Scope {
     }
 
     public boolean hasHistoryForExport() {
-        return drawFromZero && historySize > 0;
+        return drawFromZero && model.getHistorySize() > 0;
     }
 
     public String exportDataAsCSV(boolean useHistory) {
