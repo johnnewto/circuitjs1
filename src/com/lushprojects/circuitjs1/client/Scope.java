@@ -3685,14 +3685,6 @@ public class Scope {
     	}
     }
 
-//    void select() {
-//    	sim.setMouseElm(elm);
-//    	if (plotXY) {
-//    		sim.plotXElm = elm;
-//    		sim.plotYElm = yElm;
-//    	}
-//    }
-
     void selectY() {
 	CircuitElm yElm = (plots.size() == 2) ? plots.get(1).elm : null;
     	int e = (yElm == null) ? -1 : sim.locateElm(yElm);
@@ -3809,45 +3801,7 @@ public class Scope {
      * @return CSV string with time, plot values
      */
     private String exportCircularBufferAsCSV() {
-	StringBuilder sb = new StringBuilder();
-	
-	// Header row
-	sb.append("Time (s)");
-	for (int i = 0; i < visiblePlots.size(); i++) {
-	    ScopePlot p = visiblePlots.get(i);
-	    String label = p.elm.getScopeText(p.value);
-	    if (label == null || label.isEmpty())
-		label = "Plot " + (i+1);
-	    sb.append(",").append(label).append(" Min");
-	    sb.append(",").append(label).append(" Max");
-	}
-	sb.append("\n");
-	
-	// Data rows
-	int width = rect.width;
-	if (width > scopePointCount)
-	    width = scopePointCount;
-	if (visiblePlots.size() > 0)
-	    width = visiblePlots.get(0).getDisplayWidth(width);
-	if (width <= 0)
-	    return "No circular buffer data available\n";
-	
-	for (int x = 0; x < width; x++) {
-	    // Calculate time for this sample
-	    double time = sim.getTime() - (width - 1 - x) * sim.getMaxTimeStep() * speed;
-	    sb.append(time);
-	    
-	    for (int i = 0; i < visiblePlots.size(); i++) {
-		ScopePlot p = visiblePlots.get(i);
-		int ipa = p.startIndex(width);
-		int ip = (x + ipa) & (scopePointCount - 1);
-		sb.append(",").append(p.minValues[ip]);
-		sb.append(",").append(p.maxValues[ip]);
-	    }
-	    sb.append("\n");
-	}
-	
-	return sb.toString();
+	return ScopeDataExporter.exportCircularBufferAsCSV(visiblePlots, rect, scopePointCount, sim, speed);
     }
     
     /**
@@ -3855,82 +3809,7 @@ public class Scope {
      * @return JSON string with metadata and data arrays
      */
     private String exportCircularBufferAsJSON() {
-	StringBuilder sb = new StringBuilder();
-	sb.append("{\n");
-	sb.append("  \"source\": \"CircuitJS1 Scope\",\n");
-	sb.append("  \"exportType\": \"circularBuffer\",\n");
-	sb.append("  \"simulationTime\": ").append(sim.getTime()).append(",\n");
-	sb.append("  \"timeStep\": ").append(sim.getMaxTimeStep() * speed).append(",\n");
-	sb.append("  \"plots\": [\n");
-	
-	int width = rect.width;
-	if (width > scopePointCount)
-	    width = scopePointCount;
-	if (visiblePlots.size() > 0)
-	    width = visiblePlots.get(0).getDisplayWidth(width);
-	if (width <= 0) {
-	    sb.append("  ]\n");
-	    sb.append("}\n");
-	    return sb.toString();
-	}
-	
-	for (int i = 0; i < visiblePlots.size(); i++) {
-	    ScopePlot p = visiblePlots.get(i);
-	    String label = p.elm.getScopeText(p.value);
-	    if (label == null || label.isEmpty())
-		label = "Plot " + (i+1);
-	    
-	    sb.append("    {\n");
-	    sb.append("      \"name\": \"").append(escapeJSON(label)).append("\",\n");
-	    sb.append("      \"units\": \"").append(Scope.getScaleUnitsText(p.units)).append("\",\n");
-	    sb.append("      \"color\": \"").append(p.color).append("\",\n");
-	    sb.append("      \"time\": [");
-	    
-	    // Time array
-	    for (int x = 0; x < width; x++) {
-		if (x > 0) sb.append(", ");
-		double time = sim.getTime() - (width - 1 - x) * sim.getMaxTimeStep() * speed;
-		sb.append(time);
-	    }
-	    sb.append("],\n");
-	    
-	    // Interpolated midpoint values array (average of min and max)
-	    sb.append("      \"values\": [");
-	    int ipa = p.startIndex(width);
-	    for (int x = 0; x < width; x++) {
-		if (x > 0) sb.append(", ");
-		int ip = (x + ipa) & (scopePointCount - 1);
-		double midpoint = (p.minValues[ip] + p.maxValues[ip]) / 2.0;
-		sb.append(midpoint);
-	    }
-	    sb.append("],\n");
-	    
-	    // Min values array (kept for CSV export compatibility)
-	    sb.append("      \"minValues\": [");
-	    for (int x = 0; x < width; x++) {
-		if (x > 0) sb.append(", ");
-		int ip = (x + ipa) & (scopePointCount - 1);
-		sb.append(p.minValues[ip]);
-	    }
-	    sb.append("],\n");
-	    
-	    // Max values array (kept for CSV export compatibility)
-	    sb.append("      \"maxValues\": [");
-	    for (int x = 0; x < width; x++) {
-		if (x > 0) sb.append(", ");
-		int ip = (x + ipa) & (scopePointCount - 1);
-		sb.append(p.maxValues[ip]);
-	    }
-	    sb.append("]\n");
-	    sb.append("    }");
-	    if (i < visiblePlots.size() - 1)
-		sb.append(",");
-	    sb.append("\n");
-	}
-	
-	sb.append("  ]\n");
-	sb.append("}\n");
-	return sb.toString();
+	return ScopeDataExporter.exportCircularBufferAsJSON(visiblePlots, rect, scopePointCount, sim, speed);
     }
     
     /**
@@ -3938,41 +3817,11 @@ public class Scope {
      * @return CSV string with time, plot values
      */
     private String exportHistoryAsCSV() {
-	if (!drawFromZero || model.getHistorySize() == 0)
-	    return "No history data available\n";
-	
-	StringBuilder sb = new StringBuilder();
-	
-	// Header row
-	sb.append("Time (s)");
-	for (int i = 0; i < visiblePlots.size(); i++) {
-	    ScopePlot p = visiblePlots.get(i);
-	    String label = p.elm.getScopeText(p.value);
-	    if (label == null || label.isEmpty())
-		label = "Plot " + (i+1);
-	    sb.append(",").append(label).append(" Min");
-	    sb.append(",").append(label).append(" Max");
-	}
-	sb.append("\n");
-	
-	// Data rows
-	for (int x = 0; x < model.getHistorySize(); x++) {
-	    double time = x * model.getHistorySampleInterval();
-	    sb.append(time);
-	    
-	    for (int i = 0; i < visiblePlots.size(); i++) {
-		ScopePlot p = visiblePlots.get(i);
-		if (p.historyMinValues != null && p.historyMaxValues != null) {
-		    sb.append(",").append(p.historyMinValues[x]);
-		    sb.append(",").append(p.historyMaxValues[x]);
-		} else {
-		    sb.append(",0,0");
-		}
-	    }
-	    sb.append("\n");
-	}
-	
-	return sb.toString();
+	return ScopeDataExporter.exportHistoryAsCSV(
+		visiblePlots,
+		drawFromZero,
+		model.getHistorySize(),
+		model.getHistorySampleInterval());
     }
     
     /**
@@ -3980,79 +3829,12 @@ public class Scope {
      * @return JSON string with metadata and data arrays
      */
     private String exportHistoryAsJSON() {
-	if (!drawFromZero || model.getHistorySize() == 0)
-	    return "{\"error\": \"No history data available\"}\n";
-	
-	StringBuilder sb = new StringBuilder();
-	sb.append("{\n");
-	sb.append("  \"source\": \"CircuitJS1 Scope\",\n");
-	sb.append("  \"exportType\": \"history\",\n");
-	sb.append("  \"startTime\": 0,\n");
-	sb.append("  \"absoluteStartTime\": ").append(startTime).append(",\n");
-	sb.append("  \"historySize\": ").append(model.getHistorySize()).append(",\n");
-	sb.append("  \"sampleInterval\": ").append(model.getHistorySampleInterval()).append(",\n");
-	sb.append("  \"plots\": [\n");
-	
-	for (int i = 0; i < visiblePlots.size(); i++) {
-	    ScopePlot p = visiblePlots.get(i);
-	    String label = p.elm.getScopeText(p.value);
-	    if (label == null || label.isEmpty())
-		label = "Plot " + (i+1);
-	    
-	    sb.append("    {\n");
-	    sb.append("      \"name\": \"").append(escapeJSON(label)).append("\",\n");
-	    sb.append("      \"units\": \"").append(Scope.getScaleUnitsText(p.units)).append("\",\n");
-	    sb.append("      \"color\": \"").append(p.color).append("\",\n");
-	    
-	    // Time array
-	    sb.append("      \"time\": [");
-	    for (int x = 0; x < model.getHistorySize(); x++) {
-		if (x > 0) sb.append(", ");
-		double time = x * model.getHistorySampleInterval();
-		sb.append(time);
-	    }
-	    sb.append("],\n");
-	    
-	    if (p.historyMinValues != null && p.historyMaxValues != null) {
-		// Interpolated midpoint values array (average of min and max)
-		sb.append("      \"values\": [");
-		for (int x = 0; x < model.getHistorySize(); x++) {
-		    if (x > 0) sb.append(", ");
-		    double midpoint = (p.historyMinValues[x] + p.historyMaxValues[x]) / 2.0;
-		    sb.append(midpoint);
-		}
-		sb.append("],\n");
-		
-		// Min values array (kept for CSV export compatibility)
-		sb.append("      \"minValues\": [");
-		for (int x = 0; x < model.getHistorySize(); x++) {
-		    if (x > 0) sb.append(", ");
-		    sb.append(p.historyMinValues[x]);
-		}
-		sb.append("],\n");
-		
-		// Max values array (kept for CSV export compatibility)
-		sb.append("      \"maxValues\": [");
-		for (int x = 0; x < model.getHistorySize(); x++) {
-		    if (x > 0) sb.append(", ");
-		    sb.append(p.historyMaxValues[x]);
-		}
-		sb.append("]\n");
-	    } else {
-		sb.append("      \"values\": [],\n");
-		sb.append("      \"minValues\": [],\n");
-		sb.append("      \"maxValues\": []\n");
-	    }
-	    
-	    sb.append("    }");
-	    if (i < visiblePlots.size() - 1)
-		sb.append(",");
-	    sb.append("\n");
-	}
-	
-	sb.append("  ]\n");
-	sb.append("}\n");
-	return sb.toString();
+	return ScopeDataExporter.exportHistoryAsJSON(
+		visiblePlots,
+		drawFromZero,
+		startTime,
+		model.getHistorySize(),
+		model.getHistorySampleInterval());
     }
 
     public boolean hasHistoryForExport() {
@@ -4083,16 +3865,4 @@ public class Scope {
         return multiLhsAxes;
     }
     
-    /**
-     * Escapes a string for safe inclusion in JSON.
-     * @param s String to escape
-     * @return Escaped string
-     */
-    private String escapeJSON(String s) {
-	return s.replace("\\", "\\\\")
-		.replace("\"", "\\\"")
-		.replace("\n", "\\n")
-		.replace("\r", "\\r")
-		.replace("\t", "\\t");
-    }
 }
