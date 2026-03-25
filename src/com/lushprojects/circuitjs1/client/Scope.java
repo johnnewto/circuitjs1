@@ -356,13 +356,7 @@ public class Scope {
     static final int SHADOW_OFFSET = 4; // Shadow offset in pixels
     static final int SHADOW_BLUR = 8; // Shadow blur radius
     private static final int MIN_PIXEL_SPACING = 20; // Minimum spacing between gridlines in pixels
-    private static final int MULTI_LHS_MAX_AXES = 5;
-    private static final int MULTI_LHS_AXIS_SPACING = 24;
-    private static final int MULTI_LHS_AXIS_START_X = 8;
     private static final int MULTI_LHS_TICK_COUNT = 5;
-    private static final int MULTI_LHS_TICK_LEN = 4;
-    private static final int MULTI_LHS_GUTTER_RIGHT_PADDING = 8;
-    private static final int MULTI_LHS_TICK_LABEL_OFFSET = 4;
     private static final double[] MULTI_LHS_NICE_STEP_MULTIPLIERS = {1.0, 2.0, 2.5, 5.0, 10.0};
     
     // ====================
@@ -1060,12 +1054,13 @@ public class Scope {
 	int i;
 	for (i = 0; i != plots.size(); i++)
 	    plots.get(i).timeStep();
+	ScopeDisplayConfig config = getDisplayConfig();
 
 	int x=0;
 	int y=0;
 	
 	// For 2d plots we draw here rather than in the drawing routine
-    	if (plot2d && imageContext!=null && plots.size()>=2) {
+    	if (config.is2DMode() && imageContext!=null && plots.size()>=2) {
     	    double v = plots.get(0).lastValue;
     	    double yval = plots.get(1).lastValue;
     	    if (!isManualScale()) {
@@ -1094,13 +1089,26 @@ public class Scope {
     	}
     	
     	// Capture data to history for drawFromZero mode
-    	if (drawFromZero && !plot2d) {
+    	if (config.isDrawFromZeroActive()) {
     	    captureToHistory();
     	}
     }
 
     public void timeStepForEmbedded() {
 	timeStep();
+    }
+
+    private ScopeDisplayConfig getDisplayConfig() {
+        return new ScopeDisplayConfig(manualScale, plot2d, showFFT, multiLhsAxes, drawFromZero, autoScaleTime);
+    }
+
+    private ScopeFrameContext buildFrameContext() {
+        ScopeDisplayConfig displayConfig = getDisplayConfig();
+        int plotLeft = getPlotAreaLeft();
+        int plotWidth = getPlotAreaWidth();
+        int stride = getHorizontalPixelStride(displayConfig);
+        double timePerPixel = sim.getMaxTimeStep() * speed / stride;
+        return new ScopeFrameContext(displayConfig, plotLeft, plotWidth, stride, timePerPixel);
     }
     
     /**
@@ -1833,6 +1841,8 @@ public class Scope {
     void draw(Graphics g) {
 	if (plots.size() == 0)
 	    return;
+	ScopeFrameContext frame = buildFrameContext();
+	ScopeDisplayConfig config = frame.displayConfig;
     	
     	// reset if timestep changed
     	if (scopeTimeStep != sim.getMaxTimeStep()) {
@@ -1841,7 +1851,7 @@ public class Scope {
     	}
     	
     	
-    	if (plot2d) {
+    	if (config.is2DMode()) {
     		draw2d(g);
     		return;
     	}
@@ -1852,13 +1862,11 @@ public class Scope {
     	g.context.translate(rect.x, rect.y);    	
     	g.clipRect(0, 0, rect.width, rect.height);
 
-        int plotLeft = getPlotAreaLeft();
-        int plotWidth = getPlotAreaWidth();
         g.context.save();
-        g.context.translate(plotLeft, 0);
-        g.clipRect(0, 0, plotWidth, rect.height);
+        g.context.translate(frame.plotLeft, 0);
+        g.clipRect(0, 0, frame.plotWidth, rect.height);
 
-        if (showFFT) {
+        if (config.isFFTMode()) {
             drawFFTVerticalGridLines(g);
             drawFFT(g);
         }
@@ -1866,7 +1874,7 @@ public class Scope {
     	int i;
     	for (i = 0; i != UNITS_COUNT; i++) {
     	    reduceRange[i] = false;
-    	    if (maxScale && !manualScale)
+    	    if (maxScale && !config.manualScale)
     		scale[i] = 1e-4;
     	}
     	
@@ -1903,7 +1911,7 @@ public class Scope {
     	// draw volt plots on top (last), then current plots underneath, then everything else
     	for (i = 0; i != visiblePlots.size(); i++) {
     	    if (visiblePlots.get(i).units > UNITS_A && i != selectedPlot) {
-    		drawPlot(g, visiblePlots.get(i), allPlotsSameUnits, false, sel);
+	    		drawPlot(g, frame, visiblePlots.get(i), allPlotsSameUnits, false, sel);
     		if (!firstPlotDrawn) {
     		    displayGridStepX = gridStepX;
     		    firstPlotDrawn = true;
@@ -1912,7 +1920,7 @@ public class Scope {
     	}
     	for (i = 0; i != visiblePlots.size(); i++) {
     	    if (visiblePlots.get(i).units == UNITS_A && i != selectedPlot) {
-    		drawPlot(g, visiblePlots.get(i), allPlotsSameUnits, false, sel);
+	    		drawPlot(g, frame, visiblePlots.get(i), allPlotsSameUnits, false, sel);
     		if (!firstPlotDrawn) {
     		    displayGridStepX = gridStepX;
     		    firstPlotDrawn = true;
@@ -1921,7 +1929,7 @@ public class Scope {
     	}
     	for (i = 0; i != visiblePlots.size(); i++) {
     	    if (visiblePlots.get(i).units == UNITS_V && i != selectedPlot) {
-    		drawPlot(g, visiblePlots.get(i), allPlotsSameUnits, false, sel);
+	    		drawPlot(g, frame, visiblePlots.get(i), allPlotsSameUnits, false, sel);
     		if (!firstPlotDrawn) {
     		    displayGridStepX = gridStepX;
     		    firstPlotDrawn = true;
@@ -1930,7 +1938,7 @@ public class Scope {
     	}
     	// draw selection on top.  only works if selection chosen from scope
     	if (selectedPlot >= 0 && selectedPlot < visiblePlots.size()) {
-    	    drawPlot(g, visiblePlots.get(selectedPlot), allPlotsSameUnits, true, sel);
+    	    drawPlot(g, frame, visiblePlots.get(selectedPlot), allPlotsSameUnits, true, sel);
     	    if (!firstPlotDrawn) {
     		displayGridStepX = gridStepX;
     		firstPlotDrawn = true;
@@ -1939,17 +1947,17 @@ public class Scope {
 
         g.context.restore();
 
-        drawMultiLhsGutter(g);
-        drawMultiLhsAxes(g);
+        drawMultiLhsGutter(g, frame);
+        drawMultiLhsAxes(g, frame);
     	
         drawInfoTexts(g);
     	drawTitle(g);
     	
     	g.restore();
     	
-    	drawCursor(g);
+    	drawCursor(g, frame);
     	
-		if (plots.get(0).samplesCaptured > 5 && !manualScale) {
+		if (plots.get(0).samplesCaptured > 5 && !config.manualScale) {
     	    for (i = 0; i != UNITS_COUNT; i++)
     		if (scale[i] > 1e-4 && reduceRange[i])
     		    scale[i] /= 2;
@@ -2011,19 +2019,7 @@ public class Scope {
     	    if (minV[ip] < -max)
     			max = -minV[ip];
     	}
-    	// scale fixed at maximum?
-    	if (maxScale)
-    	    gridMax = Math.max(max, gridMax);
-    	else
-    	    // adjust in powers of two
-    	    while (max > gridMax)
-    			gridMax *= 2;
-    	
-    	// Apply maximum scale limit if set
-    	if (maxScaleLimit[plot.units] != null && gridMax > maxScaleLimit[plot.units])
-    	    gridMax = maxScaleLimit[plot.units];
-    	
-    	scale[plot.units] = gridMax;
+    	scale[plot.units] = ScopeScaler.computeAutoScale(gridMax, max, maxScale, maxScaleLimit[plot.units]);
     }
     
     /**
@@ -2031,25 +2027,9 @@ public class Scope {
      * @return Grid step in simulation time units
      */
     double calcGridStepX() {
-	int multptr = 0;
-    	double gsx = 1e-15;
-	double ts = getTimePerPixel();
-    	
-    	while (gsx < ts * MIN_PIXEL_SPACING) {
-    	    gsx *= multa[(multptr++) % 3];
-    	}
-    	return gsx;
+	return ScopeScaler.calcGridStepX(getTimePerPixel(), MIN_PIXEL_SPACING, multa);
     }
 
-    /**
-     * Gets the maximum grid value from manual scale settings.
-     * @param plot The plot to calculate for
-     * @return Maximum display value
-     */
-    private double getGridMaxFromManScale(ScopePlot plot) {
-	return ((double)(manDivisions) / 2 + 0.05) * plot.manScale;
-    }
-    
     /**
      * Convert simulation time to circular buffer index for drawFromZero mode
      * @param time Absolute simulation time
@@ -2070,16 +2050,25 @@ public class Scope {
 	return (currentPos - offset) & (scopePointCount - 1);
     }
 
-    private int getHorizontalPixelStride() {
-	if (!plot2d && speed <= 8)
+    private int getHorizontalPixelStride(ScopeDisplayConfig config) {
+	if (!config.is2DMode() && speed <= 8)
 	    return 4;
-	if (!plot2d && speed <= 16)
+	if (!config.is2DMode() && speed <= 16)
 	    return 2;
 	return 1;
     }
 
+    private int getHorizontalPixelStride() {
+	return getHorizontalPixelStride(getDisplayConfig());
+    }
+
     private double getTimePerPixel() {
 	return sim.getMaxTimeStep() * speed / getHorizontalPixelStride();
+    }
+
+    private int getDisplaySampleWidth(ScopePlot plot, ScopeFrameContext frame) {
+	int requiredSamples = (frame.plotWidth + frame.horizontalPixelStride - 1) / frame.horizontalPixelStride;
+	return plot.getDisplayWidth(requiredSamples);
     }
 
     private int getDisplaySampleWidth(ScopePlot plot) {
@@ -2089,18 +2078,16 @@ public class Scope {
 	return plot.getDisplayWidth(requiredSamples);
     }
     
-    private void drawPlot(Graphics g, ScopePlot plot, boolean allPlotsSameUnits, boolean selected, boolean allSelected) {
+    private void drawPlot(Graphics g, ScopeFrameContext frame, ScopePlot plot, boolean allPlotsSameUnits, boolean selected, boolean allSelected) {
 	if (plot.elm == null)
 	    return;
     	int i;
     	String col;
     	
 	    double gridMid = 0;
-	    double positionOffset = 0;
-    	int multptr=0;
     	int x = 0;
     	final int maxy = (rect.height-1)/2;
-        int plotWidth = getPlotAreaWidth();
+        int plotWidth = frame.plotWidth;
 
     	String color = (somethingSelected) ? "#A0A0A0" : plot.color;
 	if (allSelected || (sim.getScopeManager().getScopeSelected() == -1  && plot.elm.isMouseElm()))
@@ -2109,78 +2096,42 @@ public class Scope {
 	    color = plot.color;
 	    double maxV[] = plot.maxValues;
 	    double minV[] = plot.minValues;
-	    double gridMax = Math.max(scale[plot.units], 1e-12);
-	    plot.lhsAxisMin = 0;
-	    plot.lhsAxisMax = 0;
-	    plot.lhsAxisStep = 0;
-	    
-	    
-	    // Calculate the max value (positive) to show and the value at the mid point of the grid
-	    boolean multiLhsAxisRangeApplied = false;
-	    if (!isManualScale()) {
-	        if (isMultiLhsAxesDrawEnabled()) {
-	            double[] axisRange = calcMultiLhsAxisRange(plot, minV, maxV);
-	            if (axisRange != null) {
-	                double axisMin = axisRange[0];
-	                double axisMax = axisRange[1];
-	                gridMid = (axisMax + axisMin) * .5;
-	                gridMax = Math.max((axisMax - axisMin) * .5, 1e-12);
-	                positionOffset = 0;
-	                plot.lhsAxisMin = axisMin;
-	                plot.lhsAxisMax = axisMax;
-	                plot.lhsAxisStep = axisRange[2];
-	                multiLhsAxisRangeApplied = true;
-	            }
-	        }
-	        if (!multiLhsAxisRangeApplied) {
-	    	    gridMax = scale[plot.units];
-	    	    gridMid = 0;
-	    	    positionOffset = 0;
-	            if (allPlotsSameUnits) {
-	        	// if we don't have overlapping scopes of different units, we can move zero around.
-	        	// Put it at the bottom if the scope is never negative.
-	        	double mx = gridMax;
-	        	double mn = 0;
-	        	if (maxScale) {
-	    		    // scale is maxed out, so fix boundaries of scope at maximum and minimum. 
-	    		    mx = maxValue;
-	    		    mn = minValue;
-	        	} else if (showNegative || minValue < (mx+mn)*.5 - (mx-mn)*.55) {
-	    		    mn = -gridMax;
-	    		    showNegative = true;
-	        	}
-	        	gridMid = (mx+mn)*.5;
-	        	gridMax = (mx-mn)*.55;  // leave space at top and bottom
-	            }
-	        }
-	    } else {
-	        gridMid =0;
-	        gridMax = getGridMaxFromManScale(plot);
-	        positionOffset = gridMax*2.0*(double)(plot.manVPosition)/(double)(V_POSITION_STEPS);
-    	}
-	    plot.plotOffset = -gridMid+positionOffset;
-	    
-	    plot.gridMult = maxy/gridMax;
-	    if (isMultiLhsAxesDrawEnabled() && plot.lhsAxisStep <= 0) {
-	        plot.lhsAxisMin = gridMid - gridMax;
-	        plot.lhsAxisMax = gridMid + gridMax;
-	        plot.lhsAxisStep = (plot.lhsAxisMax - plot.lhsAxisMin) / (MULTI_LHS_TICK_COUNT - 1);
+	    boolean multiLhsEnabled = frame.displayConfig.isMultiLhsActive(visiblePlots != null ? visiblePlots.size() : 0);
+            ScopeDisplayConfig config = frame.displayConfig;
+	    double[] axisRange = (!isManualScale() && multiLhsEnabled) ? calcMultiLhsAxisRange(plot, minV, maxV) : null;
+	    PlotScaleResult scaleResult = frame.plotScaleResults.get(plot);
+	    if (scaleResult == null) {
+	        scaleResult = ScopeScaler.buildPlotScaleResult(
+	                isManualScale(),
+	                multiLhsEnabled,
+	                allPlotsSameUnits,
+	                maxScale,
+	                showNegative,
+	                minValue,
+	                maxValue,
+	                scale[plot.units],
+	                maxy,
+	                manDivisions,
+	                plot.manScale,
+	                plot.manVPosition,
+	                V_POSITION_STEPS,
+	                MULTI_LHS_TICK_COUNT,
+	                multa,
+	                axisRange
+	        );
+	        frame.plotScaleResults.put(plot, scaleResult);
 	    }
-	    
+	    showNegative = scaleResult.showNegative;
+	    gridMid = scaleResult.gridMid;
+	    plot.plotOffset = scaleResult.plotOffset;
+	    plot.gridMult = scaleResult.gridMult;
+	    plot.lhsAxisMin = scaleResult.lhsAxisMin;
+	    plot.lhsAxisMax = scaleResult.lhsAxisMax;
+	    plot.lhsAxisStep = scaleResult.lhsAxisStep;
+	    gridStepY = scaleResult.gridStepY;
+	    double gridMax = scaleResult.gridMax;
 	    int minRangeLo = -10-(int) (gridMid*plot.gridMult);
 	    int minRangeHi =  10-(int) (gridMid*plot.gridMult);
-	    if (!isManualScale()) {
-	        if (isMultiLhsAxesDrawEnabled() && plot.lhsAxisStep > 0) {
-	            gridStepY = plot.lhsAxisStep;
-	        } else {
-	            gridStepY = 1e-8;
-	            while (gridStepY < 20*gridMax/maxy) {
-	                gridStepY *=multa[(multptr++)%3];
-	            }
-	        }
-	    } else {
-	        gridStepY = plot.manScale;
-	    }
 
     	String minorDiv = "#404040";
     	String majorDiv = "#A0A0A0";
@@ -2193,8 +2144,8 @@ public class Scope {
     	    majorDiv = CircuitElm.selectColor.getHexValue();
     	
     	// Vertical (T) gridlines
-	    double ts = getTimePerPixel();
-    	gridStepX = calcGridStepX();
+	    double ts = frame.timePerPixel;
+    	gridStepX = ScopeScaler.calcGridStepX(frame.timePerPixel, MIN_PIXEL_SPACING, multa);
 
     	boolean highlightCenter = !isManualScale();
     	
@@ -2215,12 +2166,12 @@ public class Scope {
     	    }
     	    
     	    // vertical gridlines (time axis)
-    	    if (drawFromZero && !plot2d) {
+    	    if (config.isDrawFromZeroActive()) {
     		// Draw from zero mode: gridlines start at t=0 on left
     		double elapsedTime = sim.getTime() - startTime;
     		double displayTimeSpan;
     		
-    		if (autoScaleTime && elapsedTime > 0) {
+    		if (config.autoScaleTime && elapsedTime > 0) {
     		    // Auto-scale: time span covers entire simulation from start
     		    displayTimeSpan = elapsedTime;
     		} else {
@@ -2271,8 +2222,8 @@ public class Scope {
     		// Draw action time markers
     		drawActionTimeMarkers(g, startTime, displayTimeSpan);
 		    } else {
-				int displayWidth = getDisplaySampleWidth(plot);
-				int displayPixelWidth = displayWidth * getHorizontalPixelStride();
+				int displayWidth = getDisplaySampleWidth(plot, frame);
+				int displayPixelWidth = displayWidth * frame.horizontalPixelStride;
 				if (displayPixelWidth < plotWidth) {
 				    double actionStartTime = 0;
 				    double actionDisplayTimeSpan = ts * plotWidth;
@@ -2332,7 +2283,7 @@ public class Scope {
         int ox = -1, oy = -1;
         int prevY = -1;  // Track previous Y point for connecting lines
         
-        if (drawFromZero && !plot2d) {
+        if (config.isDrawFromZeroActive()) {
             // Draw from zero mode: use history buffers instead of circular buffer
             if (plot.historyMinValues == null || historySize == 0) {
         	// No history data yet
@@ -2343,7 +2294,7 @@ public class Scope {
             double[] histMinV = plot.historyMinValues;
             double[] histMaxV = plot.historyMaxValues;
             
-            if (autoScaleTime) {
+            if (config.autoScaleTime) {
                 // Auto-scale: map entire history to window width
                 for (i = 0; i < plotWidth; i++) {
                     // Map pixel to history index
@@ -2454,8 +2405,8 @@ public class Scope {
             }
 		} else {
 		    // Normal mode: fill from left first, then scroll once full width is reached
-		    int stride = getHorizontalPixelStride();
-		    int displayWidth = getDisplaySampleWidth(plot);
+		    int stride = frame.horizontalPixelStride;
+		    int displayWidth = getDisplaySampleWidth(plot, frame);
 		    if (displayWidth <= 0) {
 			g.endBatch();
 			return;
@@ -2514,31 +2465,26 @@ public class Scope {
 	this.mouseX = mouseX - rect.x;
 	this.mouseY = mouseY - rect.y;
 	this.mouseButtonDown = mouseButtonDown;
-    int plotLeft = getPlotAreaLeft();
-    int plotWidth = getPlotAreaWidth();
+	ScopeFrameContext frame = buildFrameContext();
+	ScopeDisplayConfig config = frame.displayConfig;
+    int plotLeft = frame.plotLeft;
+    int plotWidth = frame.plotWidth;
     int localPlotX = this.mouseX - plotLeft;
 	
-	if (plot2d || visiblePlots.size() == 0)
+	if (config.is2DMode() || visiblePlots.size() == 0)
 	    cursorTime = -1;
 	else {
         if (localPlotX < 0 || localPlotX >= plotWidth) {
             cursorTime = -1;
         } else {
-	    if (drawFromZero) {
+	    if (config.isDrawFromZeroActive()) {
 		// Time is proportional to x position from left
 		double elapsedTime = sim.getTime() - startTime;
-		double relativeX = localPlotX / (double)plotWidth;
-		
-		if (autoScaleTime && elapsedTime > 0) {
-		    // Mouse position maps directly to elapsed time
-		    cursorTime = startTime + (relativeX * elapsedTime);
-		} else {
-		    // Mouse position maps to actual time with fixed scale
-		    cursorTime = startTime + (relativeX * plotWidth * getTimePerPixel());
-		}
+		cursorTime = ScopeLayout.mapCursorXToTime(startTime, elapsedTime, localPlotX, plotWidth,
+		        config.autoScaleTime, frame.timePerPixel);
 	    } else {
-		int stride = getHorizontalPixelStride();
-		int displayWidth = getDisplaySampleWidth(plots.get(0));
+		int stride = frame.horizontalPixelStride;
+		int displayWidth = getDisplaySampleWidth(plots.get(0), frame);
 		if (displayWidth <= 0) {
 		    cursorTime = -1;
 		} else {
@@ -2574,9 +2520,10 @@ public class Scope {
 	    selectedPlot = -1;
 	    return;
 	}
-	int stride = getHorizontalPixelStride();
-	int displayWidth = getDisplaySampleWidth(plots.get(0));
-    int localX = mouseX - rect.x - getPlotAreaLeft();
+	ScopeFrameContext frame = buildFrameContext();
+	int stride = frame.horizontalPixelStride;
+	int displayWidth = getDisplaySampleWidth(plots.get(0), frame);
+    int localX = mouseX - rect.x - frame.plotLeft;
 	int displayPixelWidth = displayWidth * stride;
 	if (displayWidth <= 0 || localX < 0 || localX >= displayPixelWidth) {
 	    selectedPlot = -1;
@@ -2604,11 +2551,12 @@ public class Scope {
     	    cursorUnits = visiblePlots.get(selectedPlot).units;
     }
     
-    private void drawCursor(Graphics g) {
+    private void drawCursor(Graphics g, ScopeFrameContext frame) {
     if (sim.dialogIsShowing())
         return;
     if (cursorScope == null)
         return;
+    ScopeDisplayConfig config = frame.displayConfig;
     String info[] = new String[5];  // Increased from 4 to 5
     int cursorX = -1;
     int ct = 0;
@@ -2620,25 +2568,25 @@ public class Scope {
     }
     
     if (cursorTime >= 0) {
-        int plotLeft = getPlotAreaLeft();
-        int plotWidth = getPlotAreaWidth();
+        int plotLeft = frame.plotLeft;
+        int plotWidth = frame.plotWidth;
         // Calculate cursor X position from cursorTime
-        if (drawFromZero && !plot2d) {
+        if (config.isDrawFromZeroActive()) {
             // Draw from zero mode: calculate position based on time from start
             double elapsedTime = sim.getTime() - startTime;
             double displayTimeSpan;
             
-            if (autoScaleTime && elapsedTime > 0) {
+            if (config.autoScaleTime && elapsedTime > 0) {
                 displayTimeSpan = elapsedTime;
             } else {
-			displayTimeSpan = getTimePerPixel() * plotWidth;
+			displayTimeSpan = frame.defaultDisplayTimeSpan;
             }
             
             double timeFromStart = cursorTime - startTime;
             cursorX = rect.x + plotLeft + (int)(plotWidth * timeFromStart / displayTimeSpan);
 	    } else {
-		int stride = getHorizontalPixelStride();
-		int displayWidth = getDisplaySampleWidth(plots.get(0));
+		int stride = frame.horizontalPixelStride;
+			int displayWidth = getDisplaySampleWidth(plots.get(0), frame);
 		if (displayWidth <= 0) {
 		    cursorX = -1;
 		} else {
@@ -2648,7 +2596,7 @@ public class Scope {
         }
         
 	    int cursorMinX = rect.x + plotLeft;
-	    int cursorMaxX = cursorMinX + getDisplaySampleWidth(plots.get(0)) * getHorizontalPixelStride();
+	    int cursorMaxX = cursorMinX + getDisplaySampleWidth(plots.get(0), frame) * frame.horizontalPixelStride;
 	    if (cursorX >= cursorMinX && cursorX < cursorMaxX) {
         int maxy = (rect.height-1)/2;
         int y = maxy;
@@ -2656,7 +2604,7 @@ public class Scope {
             ScopePlot plot = visiblePlots.get(selectedPlot >= 0 ? selectedPlot : 0);
             double value;
             
-            if (drawFromZero && !plot2d && plot.historyMaxValues != null) {
+            if (config.isDrawFromZeroActive() && plot.historyMaxValues != null) {
                 // Get value from history buffer
                 double timeFromStart = cursorTime - startTime;
                 int historyIndex = (int)(timeFromStart / historySampleInterval);
@@ -2667,8 +2615,8 @@ public class Scope {
                 }
             } else {
                 // Get value from circular buffer
-			    int stride = getHorizontalPixelStride();
-			    int displayWidth = getDisplaySampleWidth(plots.get(0));
+			    int stride = frame.horizontalPixelStride;
+				    int displayWidth = getDisplaySampleWidth(plots.get(0), frame);
 			    if (displayWidth > 0) {
 				int ipa = plots.get(0).startIndex(displayWidth);
 				int sampleX = (cursorX-rect.x-plotLeft) / stride;
@@ -2688,17 +2636,17 @@ public class Scope {
     }
     
     // show FFT even if there's no plots (in which case cursorTime/cursorX will be invalid)
-        if (showFFT && cursorScope == this) {
+        if (config.isFFTMode() && cursorScope == this) {
             double maxFrequency = 1 / (sim.getMaxTimeStep() * speed * 2);
             if (cursorX < 0)
             cursorX = sim.getMouseCursorX();
-            int mousePlotX = sim.getMouseCursorX() - rect.x - getPlotAreaLeft();
+            int mousePlotX = sim.getMouseCursorX() - rect.x - frame.plotLeft;
             if (mousePlotX < 0)
                 mousePlotX = 0;
-            if (mousePlotX > getPlotAreaWidth())
-                mousePlotX = getPlotAreaWidth();
-            info[ct++] = CircuitElm.getUnitText(maxFrequency * mousePlotX / getPlotAreaWidth(), "Hz");
-		} else if (plots.size() == 0 || cursorX < rect.x + getPlotAreaLeft() || cursorX >= rect.x + getPlotAreaLeft() + getDisplaySampleWidth(plots.get(0)) * getHorizontalPixelStride())
+            if (mousePlotX > frame.plotWidth)
+                mousePlotX = frame.plotWidth;
+            info[ct++] = CircuitElm.getUnitText(maxFrequency * mousePlotX / frame.plotWidth, "Hz");
+		} else if (plots.size() == 0 || cursorX < rect.x + frame.plotLeft || cursorX >= rect.x + frame.plotLeft + getDisplaySampleWidth(plots.get(0), frame) * frame.horizontalPixelStride)
             return;
         
 	if (visiblePlots.size() > 0)
@@ -2861,14 +2809,11 @@ public class Scope {
     }
 
     private boolean isMultiLhsAxesDrawEnabled() {
-        return multiLhsAxes && !plot2d && !showFFT && visiblePlots != null && visiblePlots.size() > 1;
+        return getDisplayConfig().isMultiLhsActive(visiblePlots != null ? visiblePlots.size() : 0);
     }
 
     private int getMultiLhsAxisCount() {
-        if (visiblePlots == null) {
-            return 0;
-        }
-        return Math.min(MULTI_LHS_MAX_AXES, visiblePlots.size());
+        return ScopeLayout.getMultiLhsAxisCount(visiblePlots == null ? 0 : visiblePlots.size());
     }
 
     private int getMultiLhsGutterWidth() {
@@ -2879,36 +2824,23 @@ public class Scope {
         if (axisCount <= 0) {
             return 0;
         }
-        return MULTI_LHS_AXIS_START_X
-                + (axisCount - 1) * MULTI_LHS_AXIS_SPACING
-                + MULTI_LHS_TICK_LEN
-                + 44
-                + MULTI_LHS_GUTTER_RIGHT_PADDING;
+        return ScopeLayout.getMultiLhsGutterWidth(true, axisCount);
     }
 
     private int getPlotAreaLeft() {
-        int left = getMultiLhsGutterWidth();
-        if (left < 0) {
-            return 0;
-        }
-        if (left > rect.width - 1) {
-            return Math.max(0, rect.width - 1);
-        }
-        return left;
+        return ScopeLayout.getPlotAreaLeft(rect.width, getMultiLhsGutterWidth());
     }
 
     private int getPlotAreaWidth() {
-        int width = rect.width - getPlotAreaLeft();
-        return Math.max(1, width);
+        return ScopeLayout.getPlotAreaWidth(rect.width, getPlotAreaLeft());
     }
 
     private int getInfoTextX() {
-        int left = getPlotAreaLeft();
-        return left > 0 ? left + 2 : 0;
+        return ScopeLayout.getInfoTextAnchorX(getPlotAreaLeft());
     }
 
-    private void drawMultiLhsGutter(Graphics g) {
-        int plotLeft = getPlotAreaLeft();
+    private void drawMultiLhsGutter(Graphics g, ScopeFrameContext frame) {
+        int plotLeft = frame.plotLeft;
         if (plotLeft <= 0) {
             return;
         }
@@ -2946,92 +2878,22 @@ public class Scope {
         }
     }
 
-    private double getMultiLhsNiceStep(double targetStep) {
-        if (!(targetStep > 0)) {
-            return 1.0;
-        }
-        double scaleFactor = Math.pow(10, Math.floor(Math.log10(targetStep)));
-        double normalized = targetStep / scaleFactor;
-        for (double m : MULTI_LHS_NICE_STEP_MULTIPLIERS) {
-            if (normalized <= m) {
-                return m * scaleFactor;
-            }
-        }
-        return 10 * scaleFactor;
-    }
-
     private double[] calcMultiLhsAxisRange(ScopePlot plot, double[] minV, double[] maxV) {
         int displayWidth = getDisplaySampleWidth(plot);
         if (displayWidth <= 0) {
             return null;
         }
         int ipa = plot.startIndex(displayWidth);
-        double dataMin = Double.POSITIVE_INFINITY;
-        double dataMax = Double.NEGATIVE_INFINITY;
-        for (int i = 0; i < displayWidth; i++) {
-            int ip = (i + ipa) & (scopePointCount - 1);
-            if (minV[ip] < dataMin) {
-                dataMin = minV[ip];
-            }
-            if (maxV[ip] > dataMax) {
-                dataMax = maxV[ip];
-            }
-        }
-        if (!(dataMax >= dataMin)) {
-            return null;
-        }
-
-        if (!showNegative && dataMin >= 0) {
-            dataMin = 0;
-        }
-
-        double range = dataMax - dataMin;
-        if (!(range > 0)) {
-            double magnitude = Math.max(Math.abs(dataMax), Math.abs(dataMin));
-            if (!(magnitude > 0)) {
-                magnitude = Math.max(scale[plot.units], 1e-6);
-            }
-            if (!showNegative && dataMax >= 0) {
-                dataMin = 0;
-                dataMax = magnitude;
-            } else {
-                dataMin = -magnitude;
-                dataMax = magnitude;
-            }
-            range = dataMax - dataMin;
-        }
-
-        double step = getMultiLhsNiceStep(range / (MULTI_LHS_TICK_COUNT - 1));
-        double axisMin = Math.floor(dataMin / step) * step;
-        double axisMax = axisMin + step * (MULTI_LHS_TICK_COUNT - 1);
-        for (int guard = 0; axisMax < dataMax - step * 1e-9 && guard < 8; guard++) {
-            step = getMultiLhsNiceStep((dataMax - axisMin) / (MULTI_LHS_TICK_COUNT - 1));
-            axisMin = Math.floor(dataMin / step) * step;
-            axisMax = axisMin + step * (MULTI_LHS_TICK_COUNT - 1);
-        }
-
-        if (!showNegative && dataMin >= 0 && axisMin < 0 && Math.abs(axisMin) <= step * 0.5) {
-            axisMin = 0;
-            axisMax = axisMin + step * (MULTI_LHS_TICK_COUNT - 1);
-        }
-
-        double epsilon = step * 1e-9;
-        if (Math.abs(axisMin) < epsilon) {
-            axisMin = 0;
-        }
-        if (Math.abs(axisMax) < epsilon) {
-            axisMax = 0;
-        }
-
-        return new double[] {axisMin, axisMax, step};
+        return ScopeScaler.calcMultiLhsAxisRange(minV, maxV, scopePointCount, ipa, displayWidth,
+                showNegative, scale[plot.units], MULTI_LHS_TICK_COUNT, MULTI_LHS_NICE_STEP_MULTIPLIERS);
     }
 
-    private void drawMultiLhsAxes(Graphics g) {
+    private void drawMultiLhsAxes(Graphics g, ScopeFrameContext frame) {
         if (!isMultiLhsAxesDrawEnabled()) {
             return;
         }
         int axisCount = getMultiLhsAxisCount();
-        int plotLeft = getPlotAreaLeft();
+        int plotLeft = frame.plotLeft;
         int maxy = (rect.height - 1) / 2;
 
         g.context.save();
@@ -3043,7 +2905,7 @@ public class Scope {
                 continue;
             }
 
-            int axisX = MULTI_LHS_AXIS_START_X + i * MULTI_LHS_AXIS_SPACING;
+            int axisX = ScopeLayout.getMultiLhsAxisX(i);
             if (axisX >= plotLeft - 2) {
                 break;
             }
@@ -3052,8 +2914,8 @@ public class Scope {
             g.drawLine(axisX, 0, axisX, rect.height - 1);
             for (int tick = 0; tick < MULTI_LHS_TICK_COUNT; tick++) {
                 int y = (rect.height - 1) * tick / (MULTI_LHS_TICK_COUNT - 1);
-                g.drawLine(axisX, y, axisX + MULTI_LHS_TICK_LEN, y);
-                int textX = axisX + MULTI_LHS_TICK_LEN + MULTI_LHS_TICK_LABEL_OFFSET;
+                g.drawLine(axisX, y, ScopeLayout.getMultiLhsTickEndX(axisX), y);
+                int textX = ScopeLayout.getMultiLhsTickLabelX(axisX);
                 if (textX >= plotLeft - 2) {
                     continue;
                 }

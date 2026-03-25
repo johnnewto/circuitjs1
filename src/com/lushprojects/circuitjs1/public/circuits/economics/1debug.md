@@ -3,7 +3,7 @@
 
 ```{r}
 @init
-  timestep: 0.05
+  timestep: 0.5
   voltageUnit: $
   timeUnit: yr
   showDots: false
@@ -347,8 +347,8 @@ World2 <- sfcr_set(
   x2: -208
   y2: 608
   elmUid: 61uaxG
-  speed: 16
-  flags: x6003206
+  speed: 2
+  flags: x6c03206
   source: uid:xJHWxB value:0
   trace: uid:BaMGZo value:0
   trace: uid:PwVDmt value:0
