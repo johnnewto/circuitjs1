@@ -89,14 +89,23 @@ Deliverable:
 Deliverable:
 - `SFCRExporter` becomes orchestration-focused with reduced surface area.
 
-### Phase 5: R-Style Consolidation
-- Introduce a normalization strategy to reduce duplicate parse/export code paths:
-  - normalize R-style parse input into internal block events/payloads
-  - reuse block handlers for semantic processing
-- Keep compatibility with existing R-style fixtures and metadata comments.
+### Phase 5: R-Style Consolidation ✅ COMPLETED
+- ✅ Introduced `SFCRSyntaxNormalizer` that pre-processes R-style input to block format
+- ✅ R-style `sfcr_set()` and `sfcr_matrix()` are converted to `@equations` and `@matrix` blocks
+- ✅ Parser now has single code path - only handles block format
+- ✅ Removed `RStyleBlockParseHandler` (no longer needed)
+- ✅ Removed inline R-style parsing methods from `SFCRParser` and `SFCRParseContext`
+- ✅ All existing R-style fixtures and metadata comments continue to work
+- ✅ All SFCR tests passing
 
 Deliverable:
-- one semantic path for both styles, minimizing divergence risk.
+- ✅ One semantic parsing path for both R-style and block-style inputs
+
+Implementation details:
+- `SFCRSyntaxNormalizer.normalize()` is called at start of `parse()` and `parseToResult()`
+- Uses existing `RStyleParseService` for the actual R-style → block conversion
+- Metadata comments (`# [ x=N y=N type: T ]`) are extracted and applied to block headers
+- Line-by-line processing preserves markdown fences and non-R-style content
 
 ### Phase 6: Utility Consolidation + Cleanup
 - Move shared pure helpers into `SFCRUtil` (or dedicated small utility classes).

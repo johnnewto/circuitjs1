@@ -24,7 +24,6 @@ import com.lushprojects.circuitjs1.client.io.sfcr.ParseResult;
 import com.lushprojects.circuitjs1.client.io.sfcr.ParseWarning;
 import com.lushprojects.circuitjs1.client.io.sfcr.SFCRBlockParseHandlerRegistry;
 import com.lushprojects.circuitjs1.client.io.sfcr.SFCRParseContext;
-import com.lushprojects.circuitjs1.client.io.sfcr.handlers.RStyleBlockParseHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.SFCRBlockParseHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.UnknownBlockParseHandler;
 
@@ -234,12 +233,14 @@ public class SFCRParser {
         if (text == null || text.trim().isEmpty()) {
             return null;
         }
+        // Normalize R-style syntax to block format before validation/parsing
+        String normalizedText = new SFCRSyntaxNormalizer().normalize(text);
         if (strict) {
-            validateStrictInput(text);
+            validateStrictInput(normalizedText);
         }
         SFCRParser parser = new SFCRParser(null);
         parser.pendingResult = new SFCRParseResult();
-        parser.parse(text);
+        parser.parse(normalizedText);
         // Copy hints collected during block parsing into the result.
         // (parse() also registers them with HintRegistry which is fine for tests.)
         parser.pendingResult.hints.putAll(parser.hints);
@@ -466,6 +467,10 @@ public class SFCRParser {
             return false;
         }
         
+        // Normalize R-style syntax to block format before parsing
+        // This consolidates both code paths into a single block-format parser
+        String normalizedText = new SFCRSyntaxNormalizer().normalize(text);
+        
         createdElements.clear();
         hints.clear();
         scopeVariables.clear();
@@ -482,7 +487,7 @@ public class SFCRParser {
         currentY = 24;
         
         try {
-            String[] lines = text.split("\n");
+            String[] lines = normalizedText.split("\n");
             preScanInitLookupSettings(lines);
             preScanLookupTables(lines);
             int i = 0;
@@ -530,14 +535,8 @@ public class SFCRParser {
                     continue;
                 }
                 
-                // Parse block markers
-                if (line.contains("sfcr_matrix") || line.contains("<-")) {
-                    // Try to parse R-style sfcr syntax
-                    if (inFence) pendingCommentsConsumedInFence = true;
-                    i = new RStyleBlockParseHandler()
-                        .parse(lines, i, parseContext, pendingBlockComments)
-                        .getNextIndex();
-                } else if (line.startsWith("@")) {
+                // Parse block markers (R-style already normalized to block format)
+                if (line.startsWith("@")) {
                     String directive = extractDirective(line);
                     if ("@end".equals(directive)) {
                         i++;
@@ -1580,37 +1579,8 @@ public class SFCRParser {
         return consumeRStyleMetadataFromComments(pendingComments);
     }
 
-    /** Parse R-style sfcr_matrix definition. */
-    private void parseRStyleMatrix(String block, RStyleBlockMetadata metadata) {
-        String[] normalized = rStyleParseService.normalizeMatrixBlock(this, block, metadata);
-        if (normalized == null || normalized.length == 0) {
-            return;
-        }
-        SFCRBlockParseHandler matrixHandler = SFCRBlockParseHandlerRegistry.getHandler("@matrix");
-        if (matrixHandler != null) {
-            matrixHandler.parse(normalized, 0, new SFCRParseContext(this));
-        }
-    }
-
-    public void parseRStyleMatrixForHandler(String block, RStyleBlockMetadata metadata) {
-        parseRStyleMatrix(block, metadata);
-    }
-    
-    /** Parse R-style sfcr_set for equations. */
-    private void parseRStyleEquations(String block, RStyleBlockMetadata metadata) {
-        String[] normalized = rStyleParseService.normalizeEquationsBlock(this, block, metadata);
-        if (normalized == null || normalized.length == 0) {
-            return;
-        }
-        SFCRBlockParseHandler equationsHandler = SFCRBlockParseHandlerRegistry.getHandler("@equations");
-        if (equationsHandler != null) {
-            equationsHandler.parse(normalized, 0, new SFCRParseContext(this));
-        }
-    }
-
-    public void parseRStyleEquationsForHandler(String block, RStyleBlockMetadata metadata) {
-        parseRStyleEquations(block, metadata);
-    }
+    // R-style parsing methods removed - normalization now happens via SFCRSyntaxNormalizer
+    // before the main parse() method runs, consolidating both code paths.
     
     // =========================================================================
     // Helper Methods

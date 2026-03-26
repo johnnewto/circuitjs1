@@ -184,13 +184,8 @@ public class SFCRParseContext {
         return parser.extractRStyleAssignmentNameForHandler(block, defaultName);
     }
 
-    public void parseRStyleMatrix(String block, SFCRParser.RStyleBlockMetadata metadata) {
-        parser.parseRStyleMatrixForHandler(block, metadata);
-    }
-
-    public void parseRStyleEquations(String block, SFCRParser.RStyleBlockMetadata metadata) {
-        parser.parseRStyleEquationsForHandler(block, metadata);
-    }
+    // parseRStyleMatrix and parseRStyleEquations removed - normalization now
+    // happens via SFCRSyntaxNormalizer before parse() runs.
 
     public void storePendingMatrixBlockComments(String blockName, Vector<String> pendingComments) {
         parser.storePendingMatrixBlockCommentsForHandler(blockName, pendingComments);
