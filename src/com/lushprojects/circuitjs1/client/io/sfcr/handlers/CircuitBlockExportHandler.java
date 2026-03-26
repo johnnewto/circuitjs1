@@ -16,6 +16,6 @@ public class CircuitBlockExportHandler implements SFCRBlockExportHandler {
 
     @Override
     public String export(SFCRExportContext ctx) {
-        return ctx.getExporter().exportCircuitElementsForHandler();
+        return ctx.exportCircuitElements();
     }
 }

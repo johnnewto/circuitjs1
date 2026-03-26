@@ -1,0 +1,141 @@
+package com.lushprojects.circuitjs1.client.io;
+
+import java.util.ArrayList;
+
+class SFCRTableDumpBuilderService {
+    static class DumpBuildResult {
+        final String dump;
+        final int y2;
+
+        DumpBuildResult(String dump, int y2) {
+            this.dump = dump;
+            this.y2 = y2;
+        }
+    }
+
+    DumpBuildResult buildMatrixDump(String name, int currentX, int currentY,
+                                    ArrayList<String> columnNames, ArrayList<String> rowNames,
+                                    ArrayList<String[]> tableRows, Boolean showInitialValuesOverride) {
+        int rows = rowNames.size();
+        if (rows <= 0 || columnNames == null || columnNames.isEmpty()) {
+            return null;
+        }
+
+        boolean hasSumColumn = false;
+        String lastCol = columnNames.get(columnNames.size() - 1).trim();
+        if (lastCol.equals("Σ") || lastCol.equalsIgnoreCase("Sigma")
+            || lastCol.equalsIgnoreCase("Sum") || lastCol.equalsIgnoreCase("Total")
+            || lastCol.equalsIgnoreCase("Row total") || lastCol.equals("∑")) {
+            hasSumColumn = true;
+        }
+
+        int cols = hasSumColumn ? columnNames.size() : columnNames.size() + 1;
+        if (cols <= 1) {
+            return null;
+        }
+
+        int x1 = currentX;
+        int y1 = currentY;
+        int x2 = currentX + 400;
+        int y2 = currentY + (rows + 3) * 16;
+
+        StringBuilder dump = new StringBuilder();
+        dump.append("265 ").append(x1).append(" ").append(y1).append(" ");
+        dump.append(x2).append(" ").append(y2).append(" 0 ");
+        dump.append(rows).append(" ");
+        dump.append(cols).append(" ");
+        dump.append("6 16 0 ");
+
+        boolean showInitial = (showInitialValuesOverride != null) ? showInitialValuesOverride.booleanValue() : false;
+        dump.append(showInitial ? "true 2 1 false 5 0 false " : "false 2 1 false 5 0 false ");
+        dump.append(SFCRParser.escapeToken(name.replace("_", " "))).append(" ");
+        dump.append("\\0 ");
+
+        if (hasSumColumn) {
+            for (int i = 0; i < columnNames.size() - 1; i++) {
+                dump.append(SFCRParser.escapeToken(columnNames.get(i))).append(" ");
+            }
+            dump.append("Σ ");
+        } else {
+            for (String col : columnNames) {
+                dump.append(SFCRParser.escapeToken(col)).append(" ");
+            }
+            dump.append("Σ ");
+        }
+
+        for (String row : rowNames) {
+            dump.append(SFCRParser.escapeToken(row)).append(" ");
+        }
+        for (int i = 0; i < cols; i++) {
+            dump.append("0 ");
+        }
+        for (int i = 0; i < cols - 1; i++) {
+            dump.append("SECTOR ");
+        }
+        dump.append("COMPUTED ");
+
+        int dataCols = cols - 1;
+        for (int r = 0; r < rows; r++) {
+            String[] rowData = tableRows.get(r);
+            for (int c = 0; c < dataCols; c++) {
+                String eq = (c < rowData.length) ? rowData[c] : "";
+                if (eq.equals("-") || eq.trim().isEmpty()) {
+                    eq = "";
+                }
+                dump.append(SFCRParser.escapeToken(eq)).append(" ");
+            }
+            dump.append("\\0 ");
+        }
+        dump.append("true 0.000001");
+        return new DumpBuildResult(dump.toString(), y2);
+    }
+
+    DumpBuildResult buildEquationDump(String name, int currentX, int currentY,
+                                      ArrayList<String> outputNames, ArrayList<String> equations,
+                                      ArrayList<Integer> outputModes, ArrayList<String> targetNodeNames,
+                                      ArrayList<String> sliderVarNames, ArrayList<Double> sliderValues,
+                                      ArrayList<String> initialEquations) {
+        int rows = outputNames.size();
+        if (rows == 0) {
+            return null;
+        }
+        if (rows > com.lushprojects.circuitjs1.client.elements.economics.EquationTableElm.MAX_ROWS) {
+            rows = com.lushprojects.circuitjs1.client.elements.economics.EquationTableElm.MAX_ROWS;
+        }
+
+        int x1 = currentX;
+        int y1 = currentY;
+        int x2 = currentX + 200;
+        int y2 = currentY + (rows + 2) * 16;
+
+        StringBuilder dump = new StringBuilder();
+        dump.append("266 ").append(x1).append(" ").append(y1).append(" ");
+        dump.append(x2).append(" ").append(y2).append(" 2 ");
+        dump.append(SFCRParser.escapeToken(name.replace("_", " "))).append(" ");
+        dump.append(rows).append(" ");
+
+        for (int i = 0; i < rows; i++) {
+            dump.append(SFCRParser.escapeToken(outputNames.get(i))).append(" ");
+            dump.append(SFCRParser.escapeToken(equations.get(i))).append(" ");
+            String initEq = (i < initialEquations.size() && initialEquations.get(i) != null)
+                ? initialEquations.get(i) : "";
+            dump.append(SFCRParser.escapeToken(initEq)).append(" ");
+            String sliderVar = (i < sliderVarNames.size() && sliderVarNames.get(i) != null)
+                ? sliderVarNames.get(i) : "";
+            dump.append(SFCRParser.escapeToken(sliderVar)).append(" ");
+            double sliderValue = (i < sliderValues.size() && sliderValues.get(i) != null)
+                ? sliderValues.get(i).doubleValue() : 0.5;
+            dump.append(sliderValue).append(" ");
+            int modeOrdinal = (i < outputModes.size() && outputModes.get(i) != null) ? outputModes.get(i) : 0;
+            dump.append(modeOrdinal).append(" ");
+            String target = (i < targetNodeNames.size() && targetNodeNames.get(i) != null)
+                ? targetNodeNames.get(i) : "";
+            dump.append(SFCRParser.escapeToken(target)).append(" ");
+            dump.append("1.0 ");
+            dump.append("1.0 ");
+            dump.append("0 ");
+        }
+
+        return new DumpBuildResult(dump.toString(), y2);
+    }
+}

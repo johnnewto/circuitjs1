@@ -150,6 +150,8 @@ public class SFCRParser {
     private boolean actionElementFromActionBlock = false;
     private ArrayList<ParseWarning> parseWarnings = new ArrayList<ParseWarning>();
     private final UnknownBlockParseHandler unknownBlockParseHandler = new UnknownBlockParseHandler();
+    private final RStyleParseService rStyleParseService = new RStyleParseService();
+    private final SFCRTableDumpBuilderService tableDumpBuilderService = new SFCRTableDumpBuilderService();
 
     /** Non-null when in result-mode ({@link #parseToResult}). */
     private SFCRParseResult pendingResult = null;
@@ -772,19 +774,6 @@ public class SFCRParser {
         // Could store these for export, for now just skip
     }
     
-    /**
-     * Parse @init block - simulation settings.
-    * Supports: timestep, voltageRange, voltageUnit, timeUnit, showToolbar,
-    * showDots, showVolts, showValues, showPower, autoAdjustTimestep,
-    * equationTableMnaMode, equationTableNewtonJacobianEnabled,
-    * equationTableTolerance/equationTableConvergenceTolerance,
-    * convergenceCheckThreshold, infoViewerUpdateIntervalMs,
-    * autoOpenModelInfoOnLoad.
-     */
-    private int parseInitBlock(String[] lines, int startIndex) {
-        return parseInitBlockForHandler(lines, startIndex);
-    }
-    
     /** Parse inline init parameters: @init key=value key=value */
     public void parseInitInlineForHandler(String params) {
         // Parse: key=value key=value or key:value
@@ -953,6 +942,15 @@ public class SFCRParser {
         createEquationTable(name, outputNames, equations, outputModes, targetNodeNames,
             sliderVarNames, sliderValues, initialEquations);
     }
+
+    public void createMatrixTableForHandler(String name, ArrayList<String> columnNames,
+                                            ArrayList<String> rowNames, ArrayList<String[]> tableRows,
+                                            String matrixType, Boolean showInitialValuesOverride,
+                                            Boolean showFlowValuesOverride,
+                                            Boolean useBackwardEulerOverride) {
+        createMatrixTable(name, columnNames, rowNames, tableRows, matrixType,
+            showInitialValuesOverride, showFlowValuesOverride, useBackwardEulerOverride);
+    }
     
     /** Apply parsed init settings to the simulator. */
     private void applyInitSettings() {
@@ -1069,11 +1067,6 @@ public class SFCRParser {
                 CirSim.console("SFCRParser: Invalid init value for " + key + ": " + value);
             }
         }
-    }
-
-    /** Parse @action block - timed target updates for ActionScheduler. */
-    private int parseActionBlock(String[] lines, int startIndex) {
-        return parseActionBlockForHandler(lines, startIndex);
     }
 
     private ActionTimeElm findActionTimeElm() {
@@ -1230,16 +1223,6 @@ public class SFCRParser {
         return i;
     }
     
-    /** Parse @equations block - creates EquationTableElm. Inline # comments become hints. */
-    private int parseEquationsBlock(String[] lines, int startIndex) {
-        return parseEquationsBlockForHandler(lines, startIndex);
-    }
-    
-    /** Parse @parameters block (constants - same as @equations). */
-    private int parseParametersBlock(String[] lines, int startIndex) {
-        return parseParametersBlockForHandler(lines, startIndex);
-    }
-
     /**
      * Parse the {@code @lookup} header line and return a {@link LookupDefinition} with
      * {@code name} and {@code scope} populated, or {@code null} if the header carries no name.
@@ -1276,11 +1259,6 @@ public class SFCRParser {
         def.name = lookupName;
         def.scope = (scopeName == null || scopeName.isEmpty()) ? null : scopeName;
         return def;
-    }
-
-    /** Parse @lookup block and register global/scoped lookup table points. */
-    private int parseLookupBlock(String[] lines, int startIndex) {
-        return parseLookupBlockForHandler(lines, startIndex);
     }
 
     public static class LookupPoint {
@@ -1577,11 +1555,6 @@ public class SFCRParser {
         }
 
         return true;
-    }
-    
-    /** Parse @hints block - overrides auto-generated hints from inline comments. */
-    private int parseHintsBlock(String[] lines, int startIndex) {
-        return parseHintsBlockForHandler(lines, startIndex);
     }
     
     /** Parse @scope line. */
@@ -2137,13 +2110,6 @@ public class SFCRParser {
     // R-Style sfcr Syntax Support
     // =========================================================================
     
-    /** Parse R-style sfcr_matrix() or sfcr_set() syntax. */
-    private int parseRStyleBlock(String[] lines, int startIndex, Vector<String> pendingBlockComments) {
-        return new RStyleBlockParseHandler()
-            .parse(lines, startIndex, new SFCRParseContext(this), pendingBlockComments)
-            .getNextIndex();
-    }
-
     /** Extract assignment name from R-style block: name <- sfcr_... */
     private String extractRStyleAssignmentName(String block, String defaultName) {
         if (block == null) {
@@ -2165,773 +2131,29 @@ public class SFCRParser {
 
     /** Consume and parse one or more metadata comments (# [ ... ]) from pending comments. */
     private RStyleBlockMetadata consumeRStyleMetadataFromComments(Vector<String> pendingComments) {
-        RStyleBlockMetadata metadata = new RStyleBlockMetadata();
-        if (pendingComments == null || pendingComments.size() == 0) {
-            return metadata;
-        }
-
-        Vector<String> preserved = new Vector<String>();
-        for (int i = 0; i < pendingComments.size(); i++) {
-            String raw = pendingComments.get(i);
-            if (!parseRStyleMetadataLine(raw, metadata)) {
-                preserved.add(raw);
-            }
-        }
-
-        pendingComments.clear();
-        for (int i = 0; i < preserved.size(); i++) {
-            pendingComments.add(preserved.get(i));
-        }
-        return metadata;
+        return rStyleParseService.consumeMetadataFromComments(pendingComments);
     }
 
     public RStyleBlockMetadata consumeRStyleMetadataFromCommentsForHandler(Vector<String> pendingComments) {
         return consumeRStyleMetadataFromComments(pendingComments);
     }
 
-    /** Parse one metadata line in # [ ... ] syntax. */
-    private boolean parseRStyleMetadataLine(String rawLine, RStyleBlockMetadata metadata) {
-        if (rawLine == null || metadata == null) {
-            return false;
-        }
-        String line = rawLine.trim();
-        if (line.startsWith("#")) {
-            line = line.substring(1).trim();
-        }
-        if (!line.startsWith("[") || !line.endsWith("]")) {
-            return false;
-        }
-
-        String inner = line.substring(1, line.length() - 1).trim();
-        if (inner.isEmpty()) {
-            return true;
-        }
-
-        String[] tokens = inner.split("\\s+");
-        for (int i = 0; i < tokens.length; i++) {
-            String token = tokens[i];
-            if (token.startsWith("x=")) {
-                Integer parsed = parseIntSafe(token.substring(2));
-                if (parsed != null) {
-                    metadata.x = parsed.intValue();
-                }
-                continue;
-            }
-            if (token.startsWith("y=")) {
-                Integer parsed = parseIntSafe(token.substring(2));
-                if (parsed != null) {
-                    metadata.y = parsed.intValue();
-                }
-                continue;
-            }
-            if (token.startsWith("type=")) {
-                String value = token.substring(5).trim();
-                if (!value.isEmpty()) {
-                    metadata.type = value;
-                }
-                continue;
-            }
-            if (token.equals("type:") && i + 1 < tokens.length) {
-                String value = tokens[++i].trim();
-                if (!value.isEmpty()) {
-                    metadata.type = value;
-                }
-                continue;
-            }
-            if (token.startsWith("type:")) {
-                String value = token.substring(5).trim();
-                if (!value.isEmpty()) {
-                    metadata.type = value;
-                }
-            }
-        }
-        return true;
-    }
-
-    private Integer parseIntSafe(String value) {
-        try {
-            return Integer.valueOf(Integer.parseInt(value.trim()));
-        } catch (Exception e) {
-            return null;
-        }
-    }
-    
     /** Parse R-style sfcr_matrix definition. */
     private void parseRStyleMatrix(String block, RStyleBlockMetadata metadata) {
-        // Extract matrix name from assignment
-        String matrixName = "Matrix";
-        int assignIdx = block.indexOf("<-");
-        if (assignIdx > 0) {
-            matrixName = block.substring(0, assignIdx).trim();
-        }
-        
-        // Extract columns
-        ArrayList<String> columnNames = extractRVector(block, "columns");
-        ArrayList<String> columnCodes = extractRVector(block, "codes");
-
-        RStyleBlockMetadata effectiveMetadata = new RStyleBlockMetadata();
-        if (metadata != null) {
-            effectiveMetadata.x = metadata.x;
-            effectiveMetadata.y = metadata.y;
-            effectiveMetadata.type = metadata.type;
-        }
-
-        int matrixStart = block.indexOf("sfcr_matrix(");
-        if (matrixStart >= 0) {
-            int contentStart = matrixStart + "sfcr_matrix(".length();
-            int contentEnd = findMatchingParen(block, contentStart - 1);
-            if (contentEnd > contentStart) {
-                String content = block.substring(contentStart, contentEnd);
-                String[] contentLines = content.split("\\r?\\n");
-                for (int li = 0; li < contentLines.length; li++) {
-                    String trimmed = contentLines[li].trim();
-                    if (trimmed.startsWith("#")) {
-                        parseRStyleMetadataLine(trimmed, effectiveMetadata);
-                    }
-                }
-            }
-        }
-        
-        // Extract rows: c("RowName", code = "expr", ...)
-        // Parse top-level sfcr_matrix(...) arguments so we don't treat
-        // columns=c(...) and codes=c(...) vectors as table rows.
-        ArrayList<String> rowNames = new ArrayList<String>();
-        ArrayList<String[]> tableRows = new ArrayList<String[]>();
-
-        if (matrixStart >= 0) {
-            int contentStart = matrixStart + "sfcr_matrix(".length();
-            int contentEnd = findMatchingParen(block, contentStart - 1);
-            if (contentEnd > contentStart) {
-                String content = block.substring(contentStart, contentEnd);
-                ArrayList<String> args = splitByTopLevelComma(content);
-                for (int ai = 0; ai < args.size(); ai++) {
-                    String arg = args.get(ai).trim();
-                    if (arg.startsWith("c(")) {
-                        int argEnd = arg.lastIndexOf(')');
-                        if (argEnd > 2) {
-                            String rowDef = arg.substring(2, argEnd);
-                            parseRStyleRow(rowDef, rowNames, tableRows, columnCodes);
-                        }
-                    }
-                }
-            }
-        }
-        
-        int savedX = currentX;
-        int savedY = currentY;
-        if (effectiveMetadata.hasPosition()) {
-            currentX = effectiveMetadata.x;
-            currentY = effectiveMetadata.y;
-        }
-
-        // Create table if we have data
-        if (!columnNames.isEmpty() && !tableRows.isEmpty()) {
-            String matrixType = (effectiveMetadata.type != null && !effectiveMetadata.type.trim().isEmpty())
-                ? effectiveMetadata.type.trim() : "transaction_flow";
-            createMatrixTable(matrixName, columnNames, rowNames, tableRows, matrixType,
-                              null, null, null);
-        }
-
-        if (effectiveMetadata.hasPosition()) {
-            currentX = savedX;
-            currentY = savedY;
-        }
+        rStyleParseService.parseMatrix(this, block, metadata);
     }
 
     public void parseRStyleMatrixForHandler(String block, RStyleBlockMetadata metadata) {
         parseRStyleMatrix(block, metadata);
     }
     
-    /** Parse a single R-style row: "RowName", code = "expr", ... */
-    private void parseRStyleRow(String rowDef, ArrayList<String> rowNames, 
-                                 ArrayList<String[]> tableRows, ArrayList<String> codes) {
-        int firstQuote = rowDef.indexOf('"');
-        int secondQuote = findClosingQuote(rowDef, firstQuote);
-        if (firstQuote < 0 || secondQuote < 0) return;
-        
-        String rowName = unescapeRString(rowDef.substring(firstQuote + 1, secondQuote));
-        rowNames.add(rowName);
-        
-        // Initialize row with empty values
-        String[] rowData = new String[codes.size()];
-        for (int i = 0; i < rowData.length; i++) {
-            rowData[i] = "";
-        }
-        
-        // Parse code = "expr" pairs
-        String rest = rowDef.substring(secondQuote + 1);
-        for (int i = 0; i < codes.size(); i++) {
-            String code = codes.get(i);
-            String exprValue = extractRQuotedAssignmentValue(rest, code);
-            if (exprValue != null) {
-                rowData[i] = SFCRUtil.normalizeExpression(exprValue);
-            }
-        }
-        
-        tableRows.add(rowData);
-    }
-
-    /** Extract quoted assignment value for code = "..." from a row definition tail. */
-    private String extractRQuotedAssignmentValue(String text, String code) {
-        if (text == null || code == null || code.length() == 0) {
-            return null;
-        }
-
-        String pattern1 = code + " = \"";
-        String pattern2 = code + "=\"";
-        int idx = text.indexOf(pattern1);
-        int patternLen = pattern1.length();
-        if (idx < 0) {
-            idx = text.indexOf(pattern2);
-            patternLen = pattern2.length();
-        }
-        if (idx < 0) {
-            return null;
-        }
-
-        int valueStart = idx + patternLen;
-        int valueEnd = findClosingQuote(text, valueStart - 1);
-        if (valueEnd <= valueStart) {
-            return null;
-        }
-
-        return unescapeRString(text.substring(valueStart, valueEnd));
-    }
-    
     /** Parse R-style sfcr_set for equations. */
     private void parseRStyleEquations(String block, RStyleBlockMetadata metadata) {
-        // Extract name from assignment
-        String blockName = extractRStyleAssignmentName(block, "Equations");
-        
-        ArrayList<String> outputNames = new ArrayList<String>();
-        ArrayList<String> equations = new ArrayList<String>();
-        ArrayList<Integer> outputModes = new ArrayList<Integer>();
-        ArrayList<String> targetNodeNames = new ArrayList<String>();
-        ArrayList<String> sliderVarNames = new ArrayList<String>();
-        ArrayList<Double> sliderValues = new ArrayList<Double>();
-        ArrayList<String> initialEquations = new ArrayList<String>();
-        
-        // Find content between sfcr_set( and final )
-        int start = block.indexOf("sfcr_set(");
-        if (start < 0) return;
-        start += 9;
-        
-        int end = findMatchingParen(block, start - 1);
-        if (end < 0) return;
-        
-        String content = block.substring(start, end);
-
-        RStyleBlockMetadata effectiveMetadata = new RStyleBlockMetadata();
-        if (metadata != null) {
-            effectiveMetadata.x = metadata.x;
-            effectiveMetadata.y = metadata.y;
-            effectiveMetadata.type = metadata.type;
-        }
-        int currentSectionMode = 0;  // VOLTAGE_MODE
-        
-        // Split by commas (but not commas inside parentheses)
-        ArrayList<String> parts = splitByTopLevelCommaIgnoringHashComments(content);
-        
-        for (String part : parts) {
-            part = part.trim();
-            if (part.isEmpty()) continue;
-
-            // Each comma-delimited token may contain multiple lines (metadata comments,
-            // section comments, and one equation line). We normalize into one equation
-            // string while preserving standalone comments as non-simulating rows.
-            String[] partLines = part.split("\\r?\\n");
-            StringBuilder cleanedPart = new StringBuilder();
-            for (int li = 0; li < partLines.length; li++) {
-                String line = partLines[li].trim();
-                if (line.isEmpty()) {
-                    continue;
-                }
-                if (line.startsWith("#")) {
-                    if (parseRStyleMetadataLine(line, effectiveMetadata)) {
-                        continue;
-                    }
-
-                    String sectionText = line.substring(1).trim().toLowerCase();
-                    if (isParametersSectionComment(sectionText)) {
-                        currentSectionMode = 3;  // PARAM_MODE
-                    }
-
-                    appendCommentRow(line,
-                        outputNames, equations, outputModes, targetNodeNames,
-                        sliderVarNames, sliderValues, initialEquations);
-                    continue;
-                }
-                if (cleanedPart.length() > 0) {
-                    cleanedPart.append(" ");
-                }
-                cleanedPart.append(line);
-            }
-
-            part = cleanedPart.toString().trim();
-            if (part.isEmpty()) {
-                continue;
-            }
-
-            int inlineCommentIdx = part.indexOf('#');
-            String inlineComment = null;
-            if (inlineCommentIdx >= 0) {
-                inlineComment = part.substring(inlineCommentIdx + 1).trim();
-                part = part.substring(0, inlineCommentIdx).trim();
-                if (part.isEmpty()) {
-                    continue;
-                }
-            }
-
-            // Defensive cleanup: a trailing delimiter comma may remain when the
-            // source used "...,  # hint [meta]" style. Remove it before parsing.
-            while (part.endsWith(",")) {
-                part = part.substring(0, part.length() - 1).trim();
-            }
-            if (part.isEmpty()) {
-                continue;
-            }
-
-            HashMap<String, String> inlineMeta = new HashMap<String, String>();
-            if (inlineComment != null && !inlineComment.isEmpty()) {
-                String parsedHint = stripTrailingRStyleInlineMetadata(inlineComment, inlineMeta);
-                inlineComment = (parsedHint == null) ? "" : parsedHint;
-            }
-            
-            // Strip named equation prefix: "e1 = TX_s ~ expr" -> "TX_s ~ expr"
-            // This handles sfcr-style named equations like e1 = ..., e2 = ..., etc.
-            int tildeIdx = part.indexOf('~');
-            if (tildeIdx >= 0) {
-                String beforeTilde = part.substring(0, tildeIdx).trim();
-                
-                // Check if there's an "=" before the "~" (indicating a named equation)
-                int eqIdx = beforeTilde.indexOf("=");
-                if (eqIdx > 0) {
-                    // Strip the "eN = " prefix, keep only the variable name after "="
-                    beforeTilde = beforeTilde.substring(eqIdx + 1).trim();
-                    part = beforeTilde + " ~ " + part.substring(tildeIdx + 1);
-                }
-            }
-            
-            // Parse: var ~ expr
-            tildeIdx = part.indexOf('~');
-            if (tildeIdx >= 0) {
-                String name = SFCRUtil.normalizeVariableName(part.substring(0, tildeIdx).trim());
-                String expr = SFCRUtil.normalizeExpression(part.substring(tildeIdx + 1).trim());
-                expr = rewriteLookupCalls(expr, blockName);
-                
-                // Keep lag notation exactly as imported (e.g. V[-1], V(-1), V [ - 1 ]).
-                
-                outputNames.add(name);
-                equations.add(expr);
-                int mode = currentSectionMode;
-                String inlineMode = inlineMeta.get("mode");
-                if (inlineMode != null && !inlineMode.isEmpty()) {
-                    mode = parseModeOrdinal(inlineMode);
-                }
-                outputModes.add(mode);
-                targetNodeNames.add("");
-
-                String sliderVar = inlineMeta.get("slider");
-                sliderVarNames.add((sliderVar != null) ? sliderVar : "");
-
-                double sliderValue = 0.0;
-                String sliderValueStr = inlineMeta.get("slidervalue");
-                if (sliderValueStr != null) {
-                    try {
-                        sliderValue = Double.parseDouble(sliderValueStr.trim());
-                    } catch (Exception e) {
-                    }
-                }
-                sliderValues.add(Double.valueOf(sliderValue));
-
-                String initialEq = inlineMeta.get("initial");
-                if (initialEq != null && !initialEq.trim().isEmpty()) {
-                    initialEq = rewriteLookupCalls(initialEq, blockName);
-                }
-                initialEquations.add((initialEq != null) ? initialEq : "");
-
-                if (inlineComment != null) {
-                    inlineComment = inlineComment.trim();
-                }
-                if (inlineComment != null && !inlineComment.isEmpty() && !hints.containsKey(name)) {
-                    hints.put(name, inlineComment);
-                }
-            }
-        }
-        
-        int savedX = currentX;
-        int savedY = currentY;
-        if (effectiveMetadata.hasPosition()) {
-            currentX = effectiveMetadata.x;
-            currentY = effectiveMetadata.y;
-        }
-
-        if (!outputNames.isEmpty()) {
-            createEquationTable(blockName, outputNames, equations, outputModes,
-                targetNodeNames, sliderVarNames, sliderValues, initialEquations);
-        }
-
-        if (effectiveMetadata.hasPosition()) {
-            currentX = savedX;
-            currentY = savedY;
-        }
+        rStyleParseService.parseEquations(this, block, metadata);
     }
 
     public void parseRStyleEquationsForHandler(String block, RStyleBlockMetadata metadata) {
         parseRStyleEquations(block, metadata);
-    }
-    
-    /** Extract a named vector from R code: name = c("a", "b", "c"). */
-    private ArrayList<String> extractRVector(String block, String name) {
-        ArrayList<String> result = new ArrayList<String>();
-        
-        String pattern = name + " = c(";
-        int idx = block.indexOf(pattern);
-        if (idx < 0) {
-            // Try without spaces
-            pattern = name + "=c(";
-            idx = block.indexOf(pattern);
-        }
-        if (idx < 0) return result;
-        
-        int start = idx + pattern.length();
-        int end = findMatchingParen(block, start - 1);
-        if (end < 0) return result;
-        
-        String content = block.substring(start, end);
-        
-        // Extract quoted strings
-        int pos = 0;
-        while (true) {
-            int q1 = content.indexOf('"', pos);
-            if (q1 < 0) break;
-            int q2 = findClosingQuote(content, q1);
-            if (q2 < 0) break;
-            
-            result.add(unescapeRString(content.substring(q1 + 1, q2)));
-            pos = q2 + 1;
-        }
-        
-        return result;
-    }
-
-    /** Find closing quote in a string, honoring escaped quotes (\"). */
-    private int findClosingQuote(String text, int openQuoteIdx) {
-        if (text == null || openQuoteIdx < 0 || openQuoteIdx >= text.length() || text.charAt(openQuoteIdx) != '"') {
-            return -1;
-        }
-        boolean escaped = false;
-        for (int i = openQuoteIdx + 1; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (escaped) {
-                escaped = false;
-                continue;
-            }
-            if (c == '\\') {
-                escaped = true;
-                continue;
-            }
-            if (c == '"') {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    /** Unescape R-style string content (\\, \", \n, \r, \t). */
-    private String unescapeRString(String text) {
-        if (text == null || text.length() == 0) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder();
-        boolean escaped = false;
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (!escaped) {
-                if (c == '\\') {
-                    escaped = true;
-                } else {
-                    sb.append(c);
-                }
-                continue;
-            }
-
-            switch (c) {
-                case '\\': sb.append('\\'); break;
-                case '"': sb.append('"'); break;
-                case 'n': sb.append('\n'); break;
-                case 'r': sb.append('\r'); break;
-                case 't': sb.append('\t'); break;
-                default:
-                    sb.append('\\').append(c);
-                    break;
-            }
-            escaped = false;
-        }
-        if (escaped) {
-            sb.append('\\');
-        }
-        return sb.toString();
-    }
-    
-    /** Find matching closing parenthesis. */
-    private int findMatchingParen(String text, int openIdx) {
-        int depth = 0;
-        for (int i = openIdx; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (c == '(') depth++;
-            if (c == ')') {
-                depth--;
-                if (depth == 0) return i;
-            }
-        }
-        return -1;
-    }
-    
-    /** Split string by top-level commas (not inside parentheses). */
-    private ArrayList<String> splitByTopLevelComma(String text) {
-        ArrayList<String> result = new ArrayList<String>();
-        int depth = 0;
-        int start = 0;
-        
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (c == '(') depth++;
-            if (c == ')') depth--;
-            if (c == ',' && depth == 0) {
-                int segmentEnd = i;
-                int nextStart = i + 1;
-
-                // Keep trailing inline comment with the current segment:
-                // e1 = x ~ y,  # hint
-                int j = skipHorizontalWhitespace(text, i + 1);
-                if (j < text.length() && text.charAt(j) == '#') {
-                    int k = skipToLineEnd(text, j);
-                    segmentEnd = k;
-                    nextStart = k;
-                    while (nextStart < text.length() && (text.charAt(nextStart) == '\n' || text.charAt(nextStart) == '\r')) {
-                        nextStart++;
-                    }
-                    i = nextStart - 1;
-                }
-
-                result.add(text.substring(start, segmentEnd));
-                start = nextStart;
-            }
-        }
-        
-        if (start < text.length()) {
-            result.add(text.substring(start));
-        }
-        
-        return result;
-    }
-
-    /** Returns true for section comment headings that imply PARAM rows. */
-    private boolean isParametersSectionComment(String sectionText) {
-        return sectionText.startsWith("parameters") || sectionText.startsWith("parameter");
-    }
-
-    /** Skip spaces/tabs only (not newlines) from the given index. */
-    private int skipHorizontalWhitespace(String text, int idx) {
-        int out = idx;
-        while (out < text.length()) {
-            char c = text.charAt(out);
-            if (c != ' ' && c != '\t') {
-                break;
-            }
-            out++;
-        }
-        return out;
-    }
-
-    /** Advance to line end (\n or \r) or end of text. */
-    private int skipToLineEnd(String text, int idx) {
-        int out = idx;
-        while (out < text.length()) {
-            char c = text.charAt(out);
-            if (c == '\n' || c == '\r') {
-                break;
-            }
-            out++;
-        }
-        return out;
-    }
-
-    /**
-     * Parse trailing inline metadata in brackets from R-style comments.
-     * Example: "Interest rate  [mode=param, sliderValue=0 ]"
-     * Returns comment text without metadata and fills outMeta with parsed key/value pairs.
-     */
-    private String stripTrailingRStyleInlineMetadata(String comment, HashMap<String, String> outMeta) {
-        if (comment == null) {
-            return "";
-        }
-        String trimmed = comment.trim();
-        if (trimmed.isEmpty()) {
-            return "";
-        }
-        if (outMeta == null) {
-            return trimmed;
-        }
-
-        String working = trimmed;
-        int parsedTotal = 0;
-
-        // Consume one or more trailing bracketed metadata chunks, e.g.
-        // "hint [mode=voltage] [sliderValue=0]".
-        while (true) {
-            int close = working.lastIndexOf(']');
-            if (close != working.length() - 1) {
-                break;
-            }
-            int open = working.lastIndexOf('[', close);
-            if (open < 0) {
-                break;
-            }
-
-            String metaChunk = working.substring(open + 1, close).trim();
-            int parsedThisChunk = parseRStyleInlineMetadataChunk(metaChunk, outMeta);
-            if (parsedThisChunk == 0) {
-                break;
-            }
-
-            parsedTotal += parsedThisChunk;
-            working = working.substring(0, open).trim();
-        }
-
-        // Also consume dangling unclosed trailing metadata prefixes such as
-        // "hint [mode=voltage" left behind by malformed repeated exports.
-        while (true) {
-            int open = working.lastIndexOf('[');
-            if (open < 0) {
-                break;
-            }
-
-            String tail = working.substring(open + 1).trim();
-            int parsedTail = parseRStyleInlineMetadataChunk(tail, outMeta);
-            if (parsedTail == 0) {
-                break;
-            }
-
-            parsedTotal += parsedTail;
-            working = working.substring(0, open).trim();
-        }
-
-        if (parsedTotal == 0) {
-            return trimmed;
-        }
-        return working;
-    }
-
-    private ArrayList<String> splitByTopLevelCommaIgnoringHashComments(String text) {
-        ArrayList<String> result = new ArrayList<String>();
-        int depth = 0;
-        int start = 0;
-        boolean inHashComment = false;
-
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-
-            if (inHashComment) {
-                if (c == '\n' || c == '\r') {
-                    inHashComment = false;
-                }
-                continue;
-            }
-
-            if (c == '#') {
-                inHashComment = true;
-                continue;
-            }
-
-            if (c == '(') {
-                depth++;
-                continue;
-            }
-            if (c == ')') {
-                depth--;
-                continue;
-            }
-            if (c == ',' && depth == 0) {
-                int commentStart = i + 1;
-                while (commentStart < text.length()) {
-                    char ws = text.charAt(commentStart);
-                    if (ws != ' ' && ws != '\t') {
-                        break;
-                    }
-                    commentStart++;
-                }
-
-                if (commentStart < text.length() && text.charAt(commentStart) == '#') {
-                    int lineEnd = commentStart;
-                    while (lineEnd < text.length()) {
-                        char lc = text.charAt(lineEnd);
-                        if (lc == '\n' || lc == '\r') {
-                            break;
-                        }
-                        lineEnd++;
-                    }
-                    String partWithComment = text.substring(start, lineEnd).trim();
-                    if (!partWithComment.isEmpty()) {
-                        result.add(partWithComment);
-                    }
-
-                    start = lineEnd;
-                    if (start < text.length() && text.charAt(start) == '\r') {
-                        start++;
-                    }
-                    if (start < text.length() && text.charAt(start) == '\n') {
-                        start++;
-                    }
-                    i = start - 1;
-                } else {
-                    String part = text.substring(start, i).trim();
-                    if (!part.isEmpty()) {
-                        result.add(part);
-                    }
-                    start = i + 1;
-                }
-            }
-        }
-
-        if (start < text.length()) {
-            String lastPart = text.substring(start).trim();
-            if (!lastPart.isEmpty()) {
-                result.add(lastPart);
-            }
-        }
-
-        return result;
-    }
-
-    /** Parse comma-separated key=value metadata tokens into outMeta. */
-    private int parseRStyleInlineMetadataChunk(String metaChunk, HashMap<String, String> outMeta) {
-        if (metaChunk == null || outMeta == null) {
-            return 0;
-        }
-
-        String chunk = metaChunk.trim();
-        if (chunk.isEmpty()) {
-            return 0;
-        }
-
-        String[] tokens = chunk.split(",");
-        int parsed = 0;
-        for (int i = 0; i < tokens.length; i++) {
-            String token = tokens[i].trim();
-            int eq = token.indexOf('=');
-            if (eq <= 0) {
-                continue;
-            }
-            String key = token.substring(0, eq).trim().toLowerCase();
-            String value = token.substring(eq + 1).trim();
-            if (!key.isEmpty()) {
-                outMeta.put(key, value);
-                parsed++;
-            }
-        }
-        return parsed;
     }
     
     // =========================================================================
@@ -3087,115 +2309,18 @@ public class SFCRParser {
                                    String matrixType, Boolean showInitialValuesOverride,
                                    Boolean showFlowValuesOverride,
                                    Boolean useBackwardEulerOverride) {
-        // Build the dump string for SFCTableElm (type 265)
-        int rows = rowNames.size();
-
-        if (rows <= 0) {
-            CirSim.console("SFCRParser: Skipping matrix table '" + name + "' because it has no rows");
+        SFCRTableDumpBuilderService.DumpBuildResult build = tableDumpBuilderService.buildMatrixDump(
+            name, currentX, currentY, columnNames, rowNames, tableRows, showInitialValuesOverride);
+        if (build == null) {
+            CirSim.console("SFCRParser: Skipping matrix table '" + name + "' because table shape is invalid");
             return;
         }
-        if (columnNames == null || columnNames.isEmpty()) {
-            CirSim.console("SFCRParser: Skipping matrix table '" + name + "' because it has no columns");
-            return;
-        }
-        
-        // Check if last column is already a sum column (Σ, Sigma, Total, Sum, etc.)
-        boolean hasSumColumn = false;
-        if (!columnNames.isEmpty()) {
-            String lastCol = columnNames.get(columnNames.size() - 1).trim();
-            if (lastCol.equals("Σ") || lastCol.equalsIgnoreCase("Sigma") || 
-                lastCol.equalsIgnoreCase("Sum") || lastCol.equalsIgnoreCase("Total") ||
-                lastCol.equalsIgnoreCase("Row total") || lastCol.equals("∑")) {
-                hasSumColumn = true;
-            }
-        }
-        
-        int cols = hasSumColumn ? columnNames.size() : columnNames.size() + 1; // +1 for Σ column if not present
-        if (cols <= 1) {
-            CirSim.console("SFCRParser: Skipping matrix table '" + name + "' because computed column count is invalid: " + cols);
-            return;
-        }
-        
-        StringBuilder dump = new StringBuilder();
-        
-        // Position: x1 y1 x2 y2 flags
-        int x1 = currentX;
-        int y1 = currentY;
-        int x2 = currentX + 400; // Approximate width
-        int y2 = currentY + (rows + 3) * 16; // Approximate height
-        
-        dump.append("265 ").append(x1).append(" ").append(y1).append(" ");
-        dump.append(x2).append(" ").append(y2).append(" 0 ");
-        
-        // Table data: rows cols cellWidthInGrids cellHeight cellSpacing
-        dump.append(rows).append(" ");
-        dump.append(cols).append(" ");
-        dump.append("6 16 0 ");  // cellWidthInGrids, cellHeight, cellSpacing
-        
-        // showInitialValues decimalPlaces showCellValues collapsedMode priority initMode showALE
-        boolean showInitial = (showInitialValuesOverride != null) ? showInitialValuesOverride.booleanValue() : false;
-        dump.append(showInitial ? "true 2 1 false 5 0 false " : "false 2 1 false 5 0 false ");
-        
-        // Table title (escaped)
-        dump.append(escapeToken(name.replace("_", " "))).append(" ");
-        
-        // Table units
-        dump.append("\\0 ");  // Empty units
-        
-        // Column headers
-        if (hasSumColumn) {
-            // Use provided column names as-is (last one is already sum column)
-            for (int i = 0; i < columnNames.size() - 1; i++) {
-                dump.append(escapeToken(columnNames.get(i))).append(" ");
-            }
-            dump.append("Σ ");  // Normalize the sum column name
-        } else {
-            // Add Σ column
-            for (String col : columnNames) {
-                dump.append(escapeToken(col)).append(" ");
-            }
-            dump.append("Σ ");
-        }
-        
-        // Row descriptions
-        for (String row : rowNames) {
-            dump.append(escapeToken(row)).append(" ");
-        }
-        
-        // Initial values (zeros)
-        for (int i = 0; i < cols; i++) {
-            dump.append("0 ");
-        }
-        
-        // Column types (SECTOR for data columns, COMPUTED for Σ)
-        for (int i = 0; i < cols - 1; i++) {
-            dump.append("SECTOR ");
-        }
-        dump.append("COMPUTED ");
-        
-        // Cell equations (row by row)
-        // Number of data columns (excluding the Σ column)
-        int dataCols = cols - 1;
-        for (int r = 0; r < rows; r++) {
-            String[] rowData = tableRows.get(r);
-            for (int c = 0; c < dataCols; c++) {
-                String eq = (c < rowData.length) ? rowData[c] : "";
-                // Convert "-" (empty cell marker) to empty string
-                if (eq.equals("-") || eq.trim().isEmpty()) {
-                    eq = "";
-                }
-                dump.append(escapeToken(eq)).append(" ");
-            }
-            dump.append("\\0 ");  // Empty equation for Σ column
-        }
-        
-        // SFC-specific fields.
-        // For SFCTableElm: highlightImbalances balanceTolerance
-        dump.append("true 0.000001");
+        String dumpString = build.dump;
+        int y2 = build.y2;
         
         // --- Result-mode: collect dump without instantiating elements ---
         if (pendingResult != null) {
-            pendingResult.blockDumps.add(new SFCRParseResult.BlockDump("matrix", name, dump.toString()));
+            pendingResult.blockDumps.add(new SFCRParseResult.BlockDump("matrix", name, dumpString));
             currentY = y2 + elementSpacing;
             return;
         }
@@ -3204,7 +2329,7 @@ public class SFCRParser {
         CirSim.console("Creating SFCTable: " + name);
         
         try {
-            StringTokenizer st = new StringTokenizer(dump.toString());
+            StringTokenizer st = new StringTokenizer(dumpString);
             int type = Integer.parseInt(st.nextToken());
             int xa = Integer.parseInt(st.nextToken());
             int ya = Integer.parseInt(st.nextToken());
@@ -3228,31 +2353,6 @@ public class SFCRParser {
         }
     }
 
-    /** Append a non-simulating comment row to an equation table payload. */
-    private void appendCommentRow(String comment,
-                                  ArrayList<String> outputNames,
-                                  ArrayList<String> equations,
-                                  ArrayList<Integer> outputModes,
-                                  ArrayList<String> targetNodeNames,
-                                  ArrayList<String> sliderVarNames,
-                                  ArrayList<Double> sliderValues,
-                                  ArrayList<String> initialEquations) {
-        if (comment == null) return;
-        String text = comment.trim();
-        if (text.startsWith("#")) {
-            text = text.substring(1).trim();
-        }
-        if (text.isEmpty()) return;
-
-        outputNames.add("# " + text);
-        equations.add("");
-        outputModes.add(3);  // PARAM_MODE
-        targetNodeNames.add("");
-        sliderVarNames.add("");
-        sliderValues.add(Double.valueOf(0));
-        initialEquations.add("");
-    }
-
     /** Create EquationTableElm from parsed equation data. */
     private void createEquationTable(String name, ArrayList<String> outputNames,
                                      ArrayList<String> equations,
@@ -3261,62 +2361,18 @@ public class SFCRParser {
                                      ArrayList<String> sliderVarNames,
                                      ArrayList<Double> sliderValues,
                                      ArrayList<String> initialEquations) {
-        int rows = outputNames.size();
-        if (rows == 0) return;
-        if (rows > EquationTableElm.MAX_ROWS) rows = EquationTableElm.MAX_ROWS;
-        
-        StringBuilder dump = new StringBuilder();
-        
-        // Position
-        int x1 = currentX;
-        int y1 = currentY;
-        int x2 = currentX + 200;
-        int y2 = currentY + (rows + 2) * 16;
-        
-        // Type 266 = EquationTableElm
-        // Flag 2 = FLAG_MNA_MODE (electrical outputs mode)
-        dump.append("266 ").append(x1).append(" ").append(y1).append(" ");
-        dump.append(x2).append(" ").append(y2).append(" 2 ");
-        
-        // Table name (escaped)
-        dump.append(escapeToken(name.replace("_", " "))).append(" ");
-        
-        // Row count
-        dump.append(rows).append(" ");
-        
-        // For each row: outputName equation initialEquation sliderVarName sliderValue
-        //               outputMode targetNode capacitance shuntResistance useBackwardEuler
-        for (int i = 0; i < rows; i++) {
-            dump.append(escapeToken(outputNames.get(i))).append(" ");
-            dump.append(escapeToken(equations.get(i))).append(" ");
-            String initEq = (i < initialEquations.size() && initialEquations.get(i) != null)
-                ? initialEquations.get(i) : "";
-            dump.append(escapeToken(initEq)).append(" ");
-
-            String sliderVar = (i < sliderVarNames.size() && sliderVarNames.get(i) != null)
-                ? sliderVarNames.get(i) : "";
-            dump.append(escapeToken(sliderVar)).append(" ");
-
-            double sliderValue = (i < sliderValues.size() && sliderValues.get(i) != null)
-                ? sliderValues.get(i).doubleValue() : 0.5;
-            dump.append(sliderValue).append(" ");
-
-            int modeOrdinal = (i < outputModes.size() && outputModes.get(i) != null)
-                ? outputModes.get(i) : 0;  // default VOLTAGE_MODE
-            dump.append(modeOrdinal).append(" ");
-
-            String target = (i < targetNodeNames.size() && targetNodeNames.get(i) != null)
-                ? targetNodeNames.get(i) : "";
-            dump.append(escapeToken(target)).append(" ");
-
-            dump.append("1.0 ");     // capacitance
-            dump.append("1.0 ");     // shuntResistance (DEFAULT_FLOW_SHUNT_RESISTANCE)
-            dump.append("0 ");       // useBackwardEuler
+        SFCRTableDumpBuilderService.DumpBuildResult build = tableDumpBuilderService.buildEquationDump(
+            name, currentX, currentY, outputNames, equations, outputModes, targetNodeNames,
+            sliderVarNames, sliderValues, initialEquations);
+        if (build == null) {
+            return;
         }
+        String dumpString = build.dump;
+        int y2 = build.y2;
         
         // --- Result-mode: collect dump without instantiating elements ---
         if (pendingResult != null) {
-            pendingResult.blockDumps.add(new SFCRParseResult.BlockDump("equations", name, dump.toString()));
+            pendingResult.blockDumps.add(new SFCRParseResult.BlockDump("equations", name, dumpString));
             currentY = y2 + elementSpacing;
             return;
         }
@@ -3324,7 +2380,7 @@ public class SFCRParser {
         // CirSim.console("Creating EquationTable: " + name + " with " + rows + " equations");
         
         try {
-            StringTokenizer st = new StringTokenizer(dump.toString());
+            StringTokenizer st = new StringTokenizer(dumpString);
             int type = Integer.parseInt(st.nextToken());
             int xa = Integer.parseInt(st.nextToken());
             int ya = Integer.parseInt(st.nextToken());

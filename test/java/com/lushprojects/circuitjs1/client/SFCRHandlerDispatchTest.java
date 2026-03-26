@@ -104,4 +104,62 @@ class SFCRHandlerDispatchTest {
         assertTrue(equationEmitIndex < lookupIndex,
                 "Current export policy should emit equations before lookup blocks");
     }
+
+    @Test
+    @DisplayName("R-style sfcr_set dispatch parses equations and attaches preceding comments")
+    void rStyleSfcrSetDispatchParsesAndAttachesComments() {
+        String text =
+                "# Heading for R block\n" +
+                "RBlock <- sfcr_set(\n" +
+                "  Y ~ 1\n" +
+                ")\n";
+
+        SFCRParseResult result = SFCRParser.parseToResult(text);
+        assertNotNull(result);
+        assertNotNull(result.findBlock("equations", "RBlock"),
+                "R-style sfcr_set assignment should parse as equations block");
+
+        List<String> comments = result.blockComments.get("equations|RBlock");
+        assertNotNull(comments, "Preceding markdown/comment lines should attach to R-style equations block");
+        assertTrue(comments.contains("# Heading for R block"));
+    }
+
+    @Test
+    @DisplayName("R-style sfcr_matrix metadata comment is consumed and matrix still parses")
+    void rStyleSfcrMatrixMetadataIsConsumedAndParses() {
+        String text =
+                "# Matrix heading\n" +
+                "# [ x=320 y=480 type: balance ]\n" +
+                "BS <- sfcr_matrix(\n" +
+                "  columns = c(\"Households\"),\n" +
+                "  codes = c(\"h\"),\n" +
+                "  c(\"Assets\", h = \"1\")\n" +
+                ")\n";
+
+        SFCRParseResult result = SFCRParser.parseToResult(text);
+        assertNotNull(result);
+        assertNotNull(result.findBlock("matrix", "BS"),
+                "R-style sfcr_matrix assignment should parse as matrix block");
+
+        List<String> comments = result.blockComments.get("matrix|BS");
+        assertNotNull(comments, "Non-metadata heading should still attach to matrix block");
+        assertTrue(comments.contains("# Matrix heading"));
+        assertFalse(comments.contains("# [ x=320 y=480 type: balance ]"),
+                "R-style metadata line should be consumed, not preserved as block comment");
+    }
+
+    @Test
+    @DisplayName("unknown R-style assignment is skipped without parse failure")
+    void unknownRStyleAssignmentSkipsWithoutFailure() {
+        String text =
+                "Foo <- list(\n" +
+                "  a = 1,\n" +
+                "  b = 2\n" +
+                ")\n";
+
+        SFCRParseResult result = SFCRParser.parseToResult(text);
+        assertNotNull(result, "Unknown R-style assignment should not crash parse-to-result");
+        assertTrue(result.blockDumps.isEmpty(),
+                "Unknown R-style assignment should not create parsed SFCR blocks");
+    }
 }
