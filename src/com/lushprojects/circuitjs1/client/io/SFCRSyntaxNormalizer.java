@@ -183,15 +183,12 @@ public class SFCRSyntaxNormalizer {
         // Extract metadata from pending comments
         SFCRParser.RStyleBlockMetadata metadata = extractMetadataFromComments(pendingComments);
 
-        // Use the existing RStyleParseService for the actual normalization
-        // We need a minimal parser reference for variable/expression normalization
-        NormalizerParserStub parserStub = new NormalizerParserStub();
-
+        // Use static methods that don't require parser
         String[] normalizedLines;
         if (block.contains("sfcr_matrix")) {
-            normalizedLines = rStyleService.normalizeMatrixBlock(parserStub, block, metadata);
+            normalizedLines = rStyleService.normalizeMatrixBlockStatic(block, metadata);
         } else if (block.contains("sfcr_set")) {
-            normalizedLines = rStyleService.normalizeEquationsBlock(parserStub, block, metadata);
+            normalizedLines = rStyleService.normalizeEquationsBlockStatic(block, metadata);
         } else {
             return null;
         }
@@ -281,56 +278,6 @@ public class SFCRSyntaxNormalizer {
             return Integer.valueOf(Integer.parseInt(value.trim()));
         } catch (Exception e) {
             return null;
-        }
-    }
-
-    /**
-     * Minimal parser stub that provides variable/expression normalization
-     * without requiring a full CirSim instance.
-     */
-    private static class NormalizerParserStub extends SFCRParser {
-        NormalizerParserStub() {
-            super(null);
-        }
-
-        @Override
-        public String normalizeVariableNameForHandler(String name) {
-            return SFCRUtil.normalizeVariableName(name);
-        }
-
-        @Override
-        public String normalizeExpressionForHandler(String expr) {
-            return SFCRUtil.normalizeExpression(expr);
-        }
-
-        @Override
-        public String rewriteLookupCallsForHandler(String expr, String scope) {
-            // During normalization, we preserve lookup calls as-is
-            // They will be rewritten during actual parsing
-            return expr;
-        }
-
-        @Override
-        public String extractRStyleAssignmentNameForHandler(String block, String defaultName) {
-            return extractAssignmentName(block, defaultName);
-        }
-
-        private static String extractAssignmentName(String block, String defaultName) {
-            if (block == null) {
-                return defaultName;
-            }
-            int arrowIdx = block.indexOf("<-");
-            if (arrowIdx < 0) {
-                return defaultName;
-            }
-            String before = block.substring(0, arrowIdx).trim();
-            // Get last word before arrow (handles multiline)
-            String[] words = before.split("\\s+");
-            if (words.length == 0) {
-                return defaultName;
-            }
-            String name = words[words.length - 1].trim();
-            return name.isEmpty() ? defaultName : name;
         }
     }
 }

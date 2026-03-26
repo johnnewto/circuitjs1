@@ -625,52 +625,6 @@ public class SFCRParser {
         return parseWarnings;
     }
 
-    public BlockHeaderInfo parseBlockHeaderForHandler(String line, String keyword) {
-        BlockPosition pos = parseBlockHeader(line, keyword);
-        BlockHeaderInfo info = new BlockHeaderInfo();
-        info.name = pos.name;
-        info.x = pos.x;
-        info.y = pos.y;
-        return info;
-    }
-
-    public String[] parseTableRowForHandler(String line) {
-        return parseTableRow(line);
-    }
-
-    public boolean parseBooleanForHandler(String text, boolean defaultValue) {
-        return parseBoolean(text, defaultValue);
-    }
-
-    public String unescapeTableCellForHandler(String text) {
-        return SFCRUtil.unescapeTableCell(text);
-    }
-
-    public ActionScheduler getActionSchedulerForHandler() {
-        if (sim == null) {
-            return null;
-        }
-        return ActionScheduler.getInstance(sim);
-    }
-
-    public ActionTimeElm findActionTimeElmForHandler() {
-        return findActionTimeElm();
-    }
-
-    public CirSim getSimForHandler() {
-        return sim;
-    }
-
-    public void addCreatedElementForHandler(CircuitElm elm) {
-        if (elm != null) {
-            createdElements.add(elm);
-        }
-    }
-
-    public void setActionElementFromActionBlockForHandler(boolean value) {
-        actionElementFromActionBlock = value;
-    }
-
     private void preScanLookupTables(String[] lines, SFCRParseContext ctx) {
         if (lines == null || lines.length == 0) {
             return;
@@ -723,29 +677,6 @@ public class SFCRParser {
     /** Parse metadata comment (% prefix - preserved on export). */
     private void parseMetadataComment(String line) {
         // Could store these for export, for now just skip
-    }
-    
-    /** Parse inline init parameters: @init key=value key=value */
-    public void parseInitInlineForHandler(String params) {
-        // Parse: key=value key=value or key:value
-        String[] parts = params.split("\\s+");
-        for (String part : parts) {
-            int idx = part.indexOf('=');
-            if (idx < 0) idx = part.indexOf(':');
-            if (idx > 0) {
-                String key = part.substring(0, idx).trim();
-                String value = part.substring(idx + 1).trim();
-                registerInitSettingForHandler(key, value);
-            }
-        }
-    }
-
-    public void registerInitSettingForHandler(String key, String value) {
-        if (key == null || key.isEmpty()) {
-            return;
-        }
-        initSettings.put(key, value);
-        applyLookupInitAlias(key, value, true);
     }
 
     private void preScanInitLookupSettings(String[] lines, SFCRParseContext ctx) {
@@ -832,123 +763,6 @@ public class SFCRParser {
             return "pwlx";
         }
         return lookupClampDefault ? "pwl" : "pwlx";
-    }
-
-    public void registerHintForHandler(String varName, String description) {
-        if (varName == null || varName.isEmpty()) {
-            return;
-        }
-        hints.put(varName, description);
-    }
-
-    public String normalizeVariableNameForHandler(String rawName) {
-        return SFCRUtil.normalizeVariableName(rawName);
-    }
-
-    public String normalizeExpressionForHandler(String rawExpr) {
-        return SFCRUtil.normalizeExpression(rawExpr);
-    }
-
-    public String rewriteLookupCallsForHandler(String expr, String equationScope) {
-        return rewriteLookupCalls(expr, equationScope);
-    }
-
-    public String[] splitDifferenceLeftAliasForHandler(String left) {
-        return splitDifferenceLeftAlias(left);
-    }
-
-    public int getCurrentXForHandler() {
-        return currentX;
-    }
-
-    public int getCurrentYForHandler() {
-        return currentY;
-    }
-
-    public void setCurrentPositionForHandler(int x, int y) {
-        currentX = x;
-        currentY = y;
-    }
-
-    public int getElementSpacingForHandler() {
-        return elementSpacing;
-    }
-
-    public boolean hasHintForHandler(String varName) {
-        return hints.containsKey(varName);
-    }
-
-    public boolean isActionElementFromActionBlockForHandler() {
-        return actionElementFromActionBlock;
-    }
-
-    public void addRawCircuitLineForHandler(String line) {
-        if (line != null) {
-            rawCircuitLines.add(line);
-        }
-    }
-
-    public boolean hasPendingResultForHandler() {
-        return pendingResult != null;
-    }
-
-    public void addBlockDumpForHandler(String blockType, String blockName, String dumpString) {
-        if (pendingResult == null || blockType == null || dumpString == null) {
-            return;
-        }
-        pendingResult.blockDumps.add(new SFCRParseResult.BlockDump(blockType, blockName, dumpString));
-    }
-
-    public String parseLookupDumpLineFromCircuitForHandler(String line) {
-        return parseLookupDumpLineFromCircuit(line);
-    }
-
-    public String inferBlockTypeFromCircuitDumpLineForHandler(String line) {
-        return inferBlockTypeFromCircuitDumpLine(line);
-    }
-
-    public boolean looksLikeScopeBlockForHandler(String[] lines, int startIndex) {
-        return looksLikeScopeBlock(lines, startIndex);
-    }
-
-    public void addScopeVariableForHandler(String varName) {
-        if (varName == null) {
-            return;
-        }
-        String normalized = SFCRUtil.normalizeVariableName(varName);
-        if (!normalized.isEmpty()) {
-            scopeVariables.add(normalized);
-        }
-    }
-
-    public void addScopeBlockForHandler(ScopeBlockSpec spec) {
-        if (spec != null && spec.traces != null && !spec.traces.isEmpty()) {
-            scopeBlocks.add(spec);
-        }
-    }
-
-    public void setInfoContentForHandler(String content) {
-        infoContent = content;
-    }
-
-    public void createEquationTableForHandler(String name, ArrayList<String> outputNames,
-                                              ArrayList<String> equations,
-                                              ArrayList<Integer> outputModes,
-                                              ArrayList<String> targetNodeNames,
-                                              ArrayList<String> sliderVarNames,
-                                              ArrayList<Double> sliderValues,
-                                              ArrayList<String> initialEquations) {
-        createEquationTable(name, outputNames, equations, outputModes, targetNodeNames,
-            sliderVarNames, sliderValues, initialEquations);
-    }
-
-    public void createMatrixTableForHandler(String name, ArrayList<String> columnNames,
-                                            ArrayList<String> rowNames, ArrayList<String[]> tableRows,
-                                            String matrixType, Boolean showInitialValuesOverride,
-                                            Boolean showFlowValuesOverride,
-                                            Boolean useBackwardEulerOverride) {
-        createMatrixTable(name, columnNames, rowNames, tableRows, matrixType,
-            showInitialValuesOverride, showFlowValuesOverride, useBackwardEulerOverride);
     }
     
     /** Apply parsed init settings to the simulator. */
@@ -1077,44 +891,6 @@ public class SFCRParser {
         }
         return null;
     }
-    
-    /**
-     * Parse the {@code @lookup} header line and return a {@link LookupDefinition} with
-     * {@code name} and {@code scope} populated, or {@code null} if the header carries no name.
-     */
-    public LookupDefinition parseLookupHeaderForHandler(String headerLine) {
-        String header = (headerLine == null ? "" : headerLine.trim())
-            .substring("@lookup".length()).trim();
-        if (header.isEmpty()) {
-            return null;
-        }
-        String lookupName = null;
-        String scopeName = null;
-        String[] tokens = header.split("\\s+");
-        for (int t = 0; t < tokens.length; t++) {
-            String token = tokens[t].trim();
-            if (token.isEmpty()) {
-                continue;
-            }
-            int eq = token.indexOf('=');
-            if (eq > 0) {
-                String key = token.substring(0, eq).trim().toLowerCase();
-                String val = token.substring(eq + 1).trim();
-                if ("scope".equals(key) || "local".equals(key) || "equations".equals(key) || "table".equals(key)) {
-                    scopeName = SFCRUtil.normalizeVariableName(val);
-                }
-            } else if (lookupName == null) {
-                lookupName = SFCRUtil.normalizeVariableName(token);
-            }
-        }
-        if (lookupName == null || lookupName.isEmpty()) {
-            return null;
-        }
-        LookupDefinition def = new LookupDefinition();
-        def.name = lookupName;
-        def.scope = (scopeName == null || scopeName.isEmpty()) ? null : scopeName;
-        return def;
-    }
 
     public static class LookupPoint {
         public double x;
@@ -1126,23 +902,19 @@ public class SFCRParser {
         }
     }
 
-    public LookupPoint parseLookupPointForHandler(String line) {
-        if (line == null) {
-            return null;
-        }
+    /** Parse a lookup data point from a line. */
+    private LookupPoint parseLookupPoint(String line) {
+        if (line == null) return null;
         String trimmed = line.trim();
-        if (trimmed.isEmpty()) {
-            return null;
-        }
+        if (trimmed.isEmpty()) return null;
 
         String[] parts;
         if (trimmed.startsWith("|")) {
             String[] cells = parseTableRow(trimmed);
-            if (cells.length < 2) {
-                return null;
-            }
+            if (cells.length < 2) return null;
             String c0 = cells[0].trim().toLowerCase();
             String c1 = cells[1].trim().toLowerCase();
+            // Skip header row
             if (("x".equals(c0) || "ratio".equals(c0)) &&
                 ("y".equals(c1) || "value".equals(c1) || "multiplier".equals(c1))) {
                 return null;
@@ -1152,14 +924,10 @@ public class SFCRParser {
             parts = trimmed.split(",", 2);
         } else {
             parts = trimmed.split("\\s+");
-            if (parts.length < 2) {
-                return null;
-            }
+            if (parts.length < 2) return null;
         }
 
-        if (parts.length < 2) {
-            return null;
-        }
+        if (parts.length < 2) return null;
         try {
             double x = Double.parseDouble(parts[0].trim());
             double y = Double.parseDouble(parts[1].trim());
@@ -1169,55 +937,15 @@ public class SFCRParser {
         }
     }
 
-    public void storePendingMatrixBlockCommentsForHandler(String blockName, Vector<String> pendingComments) {
-        storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_MATRIX, blockName, pendingComments);
-    }
-
-    public void storePendingEquationsBlockCommentsForHandler(String blockName, Vector<String> pendingComments) {
-        storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_EQUATIONS, blockName, pendingComments);
-    }
-
-    public boolean isStrictlyIncreasingForHandler(ArrayList<Double> xs) {
-        if (xs == null || xs.size() < 2) {
-            return false;
-        }
+    /** Check if x values are strictly increasing. */
+    private boolean isStrictlyIncreasing(ArrayList<Double> xs) {
+        if (xs == null || xs.size() < 2) return false;
         for (int i = 1; i < xs.size(); i++) {
             if (xs.get(i).doubleValue() <= xs.get(i - 1).doubleValue()) {
                 return false;
             }
         }
         return true;
-    }
-
-    public void registerLookupTableForHandler(LookupDefinition table) {
-        if (table == null || table.name == null || table.name.isEmpty()) {
-            return;
-        }
-        String scopeName = table.scope;
-        if (scopeName == null || scopeName.isEmpty()) {
-            globalLookupTables.put(table.name, table);
-        } else {
-            HashMap<String, LookupDefinition> byScope = scopedLookupTables.get(scopeName);
-            if (byScope == null) {
-                byScope = new HashMap<String, LookupDefinition>();
-                scopedLookupTables.put(scopeName, byScope);
-            }
-            byScope.put(table.name, table);
-        }
-        LookupTableRegistry.register(table);
-
-        if (pendingResult != null) {
-            String blockName = (scopeName == null || scopeName.isEmpty()) ? table.name : (scopeName + ":" + table.name);
-            StringBuilder dump = new StringBuilder();
-            dump.append("lookup ").append(table.name);
-            if (scopeName != null && !scopeName.isEmpty()) {
-                dump.append(" scope=").append(scopeName);
-            }
-            for (int p = 0; p < table.xs.size(); p++) {
-                dump.append(" ").append(table.xs.get(p).doubleValue()).append(",").append(table.ys.get(p).doubleValue());
-            }
-            pendingResult.blockDumps.add(new SFCRParseResult.BlockDump("lookup", blockName, dump.toString()));
-        }
     }
 
     private LookupDefinition findLookupTable(String equationScope, String lookupName) {
@@ -1476,7 +1204,7 @@ public class SFCRParser {
                 continue;
             }
 
-            LookupPoint point = parseLookupPointForHandler(part);
+            LookupPoint point = parseLookupPoint(part);
             if (point != null) {
                 table.xs.add(Double.valueOf(point.x));
                 table.ys.add(Double.valueOf(point.y));
@@ -1486,7 +1214,7 @@ public class SFCRParser {
         if (table.xs.size() < 2) {
             return null;
         }
-        if (!isStrictlyIncreasingForHandler(table.xs)) {
+        if (!isStrictlyIncreasing(table.xs)) {
             return null;
         }
 
@@ -1563,17 +1291,9 @@ public class SFCRParser {
         return defaultName;
     }
 
-    public String extractRStyleAssignmentNameForHandler(String block, String defaultName) {
-        return extractRStyleAssignmentName(block, defaultName);
-    }
-
     /** Consume and parse one or more metadata comments (# [ ... ]) from pending comments. */
     private RStyleBlockMetadata consumeRStyleMetadataFromComments(Vector<String> pendingComments) {
         return rStyleParseService.consumeMetadataFromComments(pendingComments);
-    }
-
-    public RStyleBlockMetadata consumeRStyleMetadataFromCommentsForHandler(Vector<String> pendingComments) {
-        return consumeRStyleMetadataFromComments(pendingComments);
     }
 
     // R-style parsing methods removed - normalization now happens via SFCRSyntaxNormalizer

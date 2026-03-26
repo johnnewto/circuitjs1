@@ -4,7 +4,28 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Vector;
 
+/**
+ * Service for parsing and normalizing R-style SFCR blocks.
+ * 
+ * This service can operate in two modes:
+ * <ul>
+ *   <li><b>Normalization mode</b>: Uses {@code normalizeMatrixBlockStatic()} and 
+ *       {@code normalizeEquationsBlockStatic()} which only require static utility methods.
+ *       Lookup calls are preserved as-is (no rewriting).</li>
+ *   <li><b>Full parsing mode</b>: Uses the instance methods with a {@link NormalizationCallback}
+ *       that provides lookup rewriting capability.</li>
+ * </ul>
+ */
 public class RStyleParseService {
+
+    /**
+     * Callback interface for normalization operations that may need 
+     * parser-specific behavior (e.g., lookup rewriting).
+     */
+    public interface NormalizationCallback {
+        /** Rewrite lookup calls in an expression for the given scope. */
+        String rewriteLookupCalls(String expr, String scope);
+    }
 
     public SFCRParser.RStyleBlockMetadata consumeMetadataFromComments(Vector<String> pendingComments) {
         SFCRParser.RStyleBlockMetadata metadata = new SFCRParser.RStyleBlockMetadata();
@@ -27,8 +48,13 @@ public class RStyleParseService {
         return metadata;
     }
 
-    public String[] normalizeMatrixBlock(SFCRParser parser, String block, SFCRParser.RStyleBlockMetadata metadata) {
-        String matrixName = parser.extractRStyleAssignmentNameForHandler(block, "Matrix");
+    /**
+     * Normalize a matrix block using only static utilities.
+     * Lookup calls are preserved as-is (no rewriting).
+     * Use this for pre-parse normalization.
+     */
+    public String[] normalizeMatrixBlockStatic(String block, SFCRParser.RStyleBlockMetadata metadata) {
+        String matrixName = extractAssignmentName(block, "Matrix");
         ArrayList<String> columnNames = extractRVector(block, "columns");
         ArrayList<String> columnCodes = extractRVector(block, "codes");
 
@@ -115,8 +141,25 @@ public class RStyleParseService {
         return normalized.toString().split("\\n");
     }
 
-    public String[] normalizeEquationsBlock(SFCRParser parser, String block, SFCRParser.RStyleBlockMetadata metadata) {
-        String blockName = parser.extractRStyleAssignmentNameForHandler(block, "Equations");
+    /**
+     * Normalize an equations block using only static utilities.
+     * Lookup calls are preserved as-is (no rewriting).
+     * Use this for pre-parse normalization.
+     */
+    public String[] normalizeEquationsBlockStatic(String block, SFCRParser.RStyleBlockMetadata metadata) {
+        return normalizeEquationsBlockInternal(block, metadata, null);
+    }
+
+    /**
+     * Normalize an equations block with optional lookup rewriting callback.
+     * 
+     * @param block the R-style block text
+     * @param metadata position/type metadata
+     * @param callback optional callback for lookup rewriting (null to preserve as-is)
+     */
+    public String[] normalizeEquationsBlockInternal(String block, SFCRParser.RStyleBlockMetadata metadata,
+                                                    NormalizationCallback callback) {
+        String blockName = extractAssignmentName(block, "Equations");
 
         int start = block.indexOf("sfcr_set(");
         if (start < 0) {
@@ -225,9 +268,11 @@ public class RStyleParseService {
                 continue;
             }
 
-            String name = parser.normalizeVariableNameForHandler(part.substring(0, tildeIdx).trim());
-            String expr = parser.normalizeExpressionForHandler(part.substring(tildeIdx + 1).trim());
-            expr = parser.rewriteLookupCallsForHandler(expr, blockName);
+            String name = SFCRUtil.normalizeVariableName(part.substring(0, tildeIdx).trim());
+            String expr = SFCRUtil.normalizeExpression(part.substring(tildeIdx + 1).trim());
+            if (callback != null) {
+                expr = callback.rewriteLookupCalls(expr, blockName);
+            }
             int mode = currentSectionMode;
             String inlineMode = inlineMeta.get("mode");
             if (inlineMode != null && !inlineMode.isEmpty()) {
@@ -236,7 +281,9 @@ public class RStyleParseService {
 
             String initialEq = inlineMeta.get("initial");
             if (initialEq != null && !initialEq.trim().isEmpty()) {
-                initialEq = parser.rewriteLookupCallsForHandler(initialEq, blockName);
+                if (callback != null) {
+                    initialEq = callback.rewriteLookupCalls(initialEq, blockName);
+                }
             }
 
             normalized.append("  ").append(name).append(" ~ ").append(expr)
@@ -244,7 +291,7 @@ public class RStyleParseService {
             String target = inlineMeta.get("target");
             if (target != null && !target.trim().isEmpty()) {
                 normalized.append(" ; target=")
-                    .append(parser.normalizeVariableNameForHandler(target.trim()));
+                    .append(SFCRUtil.normalizeVariableName(target.trim()));
             }
             String sliderVar = inlineMeta.get("slider");
             if (sliderVar != null && !sliderVar.trim().isEmpty()) {
@@ -272,6 +319,26 @@ public class RStyleParseService {
         }
         normalized.append("@end\n");
         return normalized.toString().split("\\n");
+    }
+
+    /**
+     * Extract assignment name from R-style block: name <- sfcr_...
+     */
+    private static String extractAssignmentName(String block, String defaultName) {
+        if (block == null) {
+            return defaultName;
+        }
+        int arrowIdx = block.indexOf("<-");
+        if (arrowIdx < 0) {
+            return defaultName;
+        }
+        String before = block.substring(0, arrowIdx).trim();
+        String[] words = before.split("\\s+");
+        if (words.length == 0) {
+            return defaultName;
+        }
+        String name = words[words.length - 1].trim();
+        return name.isEmpty() ? defaultName : name;
     }
 
     private boolean parseMetadataLine(String rawLine, SFCRParser.RStyleBlockMetadata metadata) {
