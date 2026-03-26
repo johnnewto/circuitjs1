@@ -23,6 +23,9 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.registry.HintRegistry;
 import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.elements.misc.*;
+import com.lushprojects.circuitjs1.client.io.sfcr.SFCRBlockExportHandlerRegistry;
+import com.lushprojects.circuitjs1.client.io.sfcr.SFCRExportContext;
+import com.lushprojects.circuitjs1.client.io.sfcr.handlers.SFCRBlockExportHandler;
 
 /**
  * Exports circuit in SFCR-compatible text format.
@@ -103,71 +106,13 @@ public class SFCRExporter {
         sb.append("# CircuitJS1 SFCR Export\n");
         sb.append("# Generated from circuit simulation\n");
         sb.append("\n");
-        
-        // Export @init block
-        appendExportBlock(sb, exportInitBlock());
-
-        // Export Action Time schedule as @action block
-        appendExportBlock(sb, exportActionBlock());
 
         // Reset lookup extraction state for this export pass.
         resetLookupExportState();
-
-        ArrayList<String> equationBlocks = new ArrayList<String>();
-        
-        // Export equation tables
-        for (EquationTableElm eqTable : equationTables) {
-            String block = (exportSyntax == ExportSyntax.R_STYLE)
-                ? exportEquationTableRStyle(eqTable)
-                : exportEquationTable(eqTable);
-            if (block != null && !block.trim().isEmpty()) {
-                equationBlocks.add(block);
-            }
+        SFCRExportContext exportContext = new SFCRExportContext(this);
+        for (SFCRBlockExportHandler handler : SFCRBlockExportHandlerRegistry.getOrderedHandlers()) {
+            appendExportBlock(sb, handler.export(exportContext));
         }
-        
-        // Export GodlyTableElm equations (integration-based stocks)
-        for (GodlyTableElm godlyTable : godlyTables) {
-            String block = (exportSyntax == ExportSyntax.R_STYLE)
-                ? exportGodlyTableRStyle(godlyTable)
-                : exportGodlyTable(godlyTable);
-            if (block != null && !block.trim().isEmpty()) {
-                equationBlocks.add(block);
-            }
-        }
-
-        // Export extracted lookup tables before equations that reference them.
-        appendExportBlock(sb, exportLookupBlocks());
-
-        for (String block : equationBlocks) {
-            appendExportBlock(sb, block);
-        }
-        
-        // Export SFC tables
-        for (SFCTableElm sfcTable : sfcTables) {
-            String block = (exportSyntax == ExportSyntax.R_STYLE)
-                ? exportSFCTableRStyle(sfcTable)
-                : exportSFCTable(sfcTable);
-            appendExportBlock(sb, block);
-        }
-
-        // Export Sankey diagrams as @sankey
-        for (SFCSankeyElm sankey : sankeyDiagrams) {
-            String block = exportSankeyDiagram(sankey);
-            appendExportBlock(sb, block);
-        }
-        
-        // Export hints
-        appendExportBlock(sb, exportHints());
-        
-        // Export other circuit elements in @circuit block
-        if (!otherElements.isEmpty()) {
-            String circuitBlock = exportCircuitElements();
-            appendExportBlock(sb, circuitBlock);
-        }
-
-        // Export scopes after @circuit so trace targets are defined earlier in file
-        String scopesBlock = exportScopes();
-        appendExportBlock(sb, scopesBlock);
 
         // Export model documentation last as inline markdown (no @info wrapper)
         String inlineDocs = exportInlineDocumentation();
@@ -180,6 +125,281 @@ public class SFCRExporter {
         }
         
         return normalizeBlankLinesOutsideFences(sb.toString());
+    }
+
+    public String exportInitBlockForHandler() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("@init\n");
+
+        sb.append("  timestep: ").append(sim.getMaxTimeStep()).append("\n");
+
+        if (sim.voltageUnitSymbol != null && !sim.voltageUnitSymbol.equals("V")) {
+            sb.append("  voltageUnit: ").append(sim.voltageUnitSymbol).append("\n");
+        }
+
+        if (sim.timeUnitSymbol != null && !sim.timeUnitSymbol.isEmpty()) {
+            sb.append("  timeUnit: ").append(sim.timeUnitSymbol).append("\n");
+        }
+
+        sb.append("  showDots: ").append(sim.dotsCheckItem.getState()).append("\n");
+        sb.append("  showVolts: ").append(sim.voltsCheckItem.getState()).append("\n");
+        sb.append("  showValues: ").append(sim.showValuesCheckItem.getState()).append("\n");
+        sb.append("  showPower: ").append(sim.powerCheckItem.getState()).append("\n");
+        sb.append("  autoAdjustTimestep: ").append(sim.adjustTimeStep).append("\n");
+        sb.append("  equationTableMnaMode: ").append(sim.isEquationTableMnaMode()).append("\n");
+        sb.append("  equationTableNewtonJacobianEnabled: ").append(sim.equationTableNewtonJacobianEnabled).append("\n");
+        sb.append("  equationTableTolerance: ").append(Double.toString(sim.getEquationTableConvergenceTolerance())).append("\n");
+        sb.append("  lookupMode: ").append(sim.isSfcrLookupClampDefault() ? "pwl" : "pwlx").append("\n");
+        sb.append("  lookupClamp: ").append(sim.isSfcrLookupClampDefault()).append("\n");
+        sb.append("  convergenceCheckThreshold: ").append(sim.convergenceCheckThreshold).append("\n");
+        sb.append("  infoViewerUpdateIntervalMs: ").append(sim.infoViewerUpdateIntervalMs).append("\n");
+
+        sb.append("@end\n");
+        return sb.toString();
+    }
+
+    public String exportActionBlockForHandler() {
+        ActionScheduler scheduler = ActionScheduler.getInstance(sim);
+        if (scheduler == null && actionTimeElmForExport == null) {
+            return "";
+        }
+
+        java.util.List<ActionScheduler.ScheduledAction> actions =
+            (scheduler == null) ? null : scheduler.getAllActions();
+        boolean hasActions = actions != null && !actions.isEmpty();
+        if (!hasActions && actionTimeElmForExport == null) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        if (actionTimeElmForExport != null) {
+            String actionName = SFCRUtil.sanitizeName(actionTimeElmForExport.title);
+            sb.append("@action ").append(actionName).append(formatPosition(actionTimeElmForExport)).append("\n");
+        } else {
+            sb.append("@action\n");
+        }
+
+        double pauseTime = (scheduler == null) ? 0 : scheduler.getPauseTime();
+        sb.append("  pauseTime: ").append(pauseTime).append("\n");
+
+        if (actionTimeElmForExport != null) {
+            sb.append("  enabled: ").append(actionTimeElmForExport.enabled).append("\n");
+            sb.append("  element: ")
+              .append(actionTimeElmForExport.x).append(" ")
+              .append(actionTimeElmForExport.y).append(" ")
+              .append(actionTimeElmForExport.x2).append(" ")
+              .append(actionTimeElmForExport.y2).append(" ")
+              .append(actionTimeElmForExport.flags)
+              .append("\n");
+        }
+
+        if (hasActions) {
+            sb.append("\n");
+            sb.append("| time | target | value | text | enabled | stop |\n");
+            sb.append("|------|--------|-------|------|---------|------|\n");
+
+            for (ActionScheduler.ScheduledAction action : actions) {
+                String target = (action.sliderName == null) ? "" : action.sliderName;
+                String valueExpr = (action.valueExpression == null) ? "" : action.valueExpression.trim();
+                String value = valueExpr.isEmpty() ? Double.toString(action.sliderValue) : valueExpr;
+                String text = (action.postText == null) ? "" : action.postText;
+
+                sb.append("| ")
+                  .append(action.actionTime)
+                  .append(" | ")
+                  .append(SFCRUtil.escapeTableCell(target))
+                  .append(" | ")
+                  .append(SFCRUtil.escapeTableCell(value))
+                  .append(" | ")
+                  .append(SFCRUtil.escapeTableCell(text))
+                  .append(" | ")
+                  .append(action.enabled)
+                  .append(" | ")
+                  .append(action.stopSimulation)
+                  .append(" |\n");
+            }
+        }
+
+        sb.append("@end\n");
+        return sb.toString();
+    }
+
+    public ArrayList<String> buildEquationBlocksForHandler() {
+        ArrayList<String> equationBlocks = new ArrayList<String>();
+        for (EquationTableElm eqTable : equationTables) {
+            String block = (exportSyntax == ExportSyntax.R_STYLE)
+                ? exportEquationTableRStyle(eqTable)
+                : exportEquationTable(eqTable);
+            if (block != null && !block.trim().isEmpty()) {
+                equationBlocks.add(block);
+            }
+        }
+        for (GodlyTableElm godlyTable : godlyTables) {
+            String block = (exportSyntax == ExportSyntax.R_STYLE)
+                ? exportGodlyTableRStyle(godlyTable)
+                : exportGodlyTable(godlyTable);
+            if (block != null && !block.trim().isEmpty()) {
+                equationBlocks.add(block);
+            }
+        }
+        return equationBlocks;
+    }
+
+    public String exportLookupBlocksForHandler() {
+        if (lookupExportSpecs.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (LookupDefinition spec : lookupExportSpecs) {
+            sb.append("@lookup ").append(spec.name);
+            if (spec.scope != null && !spec.scope.isEmpty()) {
+                sb.append(" scope=").append(spec.scope);
+            }
+            sb.append("\n");
+            for (int c = 0; c < spec.comments.size(); c++) {
+                String comment = spec.comments.get(c);
+                if (comment == null) {
+                    continue;
+                }
+                String trimmed = comment.trim();
+                if (trimmed.isEmpty()) {
+                    continue;
+                }
+                if (!trimmed.startsWith("#")) {
+                    trimmed = "# " + trimmed;
+                }
+                sb.append("  ").append(trimmed).append("\n");
+            }
+            for (int i = 0; i < spec.xs.size(); i++) {
+                sb.append("  ")
+                  .append(spec.xs.get(i).doubleValue())
+                  .append(", ")
+                  .append(spec.ys.get(i).doubleValue())
+                  .append("\n");
+            }
+            sb.append("@end\n\n");
+        }
+        return sb.toString().trim();
+    }
+
+    public String buildMatrixBlocksForHandler() {
+        StringBuilder sb = new StringBuilder();
+        for (SFCTableElm sfcTable : sfcTables) {
+            appendExportBlock(sb, exportMatrixBlockForHandler(sfcTable));
+        }
+        return sb.toString();
+    }
+
+    public String exportMatrixBlockForHandler(SFCTableElm sfcTable) {
+        return (exportSyntax == ExportSyntax.R_STYLE)
+            ? exportSFCTableRStyle(sfcTable)
+            : exportSFCTable(sfcTable);
+    }
+
+    public String buildSankeyBlocksForHandler() {
+        StringBuilder sb = new StringBuilder();
+        for (SFCSankeyElm sankey : sankeyDiagrams) {
+            appendExportBlock(sb, exportSankeyDiagramForHandler(sankey));
+        }
+        return sb.toString();
+    }
+
+    public String exportSankeyDiagramForHandler(SFCSankeyElm sankey) {
+        StringBuilder sb = new StringBuilder();
+
+        String sourceName = sankey.getSourceTableName();
+        String layout = sankey.getLayoutMode().name().toLowerCase();
+        int width = sankey.getWidth();
+        int height = sankey.getHeight();
+
+        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_SANKEY, "");
+
+        sb.append("@sankey");
+        sb.append(formatPosition(sankey)).append("\n");
+
+        if (sourceName != null && !sourceName.isEmpty()) {
+            sb.append("  source: ").append(sourceName).append("\n");
+        }
+        sb.append("  layout: ").append(layout).append("\n");
+        sb.append("  width: ").append(width).append("\n");
+        sb.append("  height: ").append(height).append("\n");
+
+        sb.append("  showScaleBar: ").append(sankey.getShowScaleBar()).append("\n");
+        if (sankey.getFixedMaxScale() > 0) {
+            sb.append("  fixedMaxScale: ").append(sankey.getFixedMaxScale()).append("\n");
+        }
+        sb.append("  useHighWaterMark: ").append(sankey.getUseHighWaterMark()).append("\n");
+        sb.append("  showFlowValues: ").append(sankey.getShowFlowValues()).append("\n");
+
+        sb.append("@end\n");
+        return sb.toString();
+    }
+
+    public String exportHintsForHandler() {
+        Set<String> names = HintRegistry.getAllNames();
+        if (names.isEmpty()) {
+            return "";
+        }
+
+        Set<String> namesCoveredByEquationBlocks = collectNamesCoveredByEquationBlocks();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("@hints\n");
+        int exportedCount = 0;
+
+        for (String name : names) {
+            if (name == null || name.trim().isEmpty()) {
+                continue;
+            }
+            if (namesCoveredByEquationBlocks.contains(name.trim())) {
+                continue;
+            }
+            String hint = HintRegistry.getHint(name);
+            if (hint != null && !hint.trim().isEmpty()) {
+                sb.append("  ").append(name.trim()).append(": ").append(hint).append("\n");
+                exportedCount++;
+            }
+        }
+
+        if (exportedCount == 0) {
+            return "";
+        }
+
+        sb.append("@end\n");
+        return sb.toString();
+    }
+
+    public String exportCircuitElementsForHandler() {
+        if (otherElements.isEmpty()) {
+            return "";
+        }
+        return exportCircuitElements();
+    }
+
+    public String exportScopesForHandler() {
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < sim.scopeCount; i++) {
+            Scope s = sim.scopes[i];
+            if (!appendScopeBlock(sb, s, i + 1, "Scope", null)) {
+                continue;
+            }
+        }
+
+        int embeddedIndex = 1;
+        for (int i = 0; i < sim.elmList.size(); i++) {
+            CircuitElm elm = sim.elmList.get(i);
+            if (!(elm instanceof ScopeElm)) {
+                continue;
+            }
+            ScopeElm scopeElm = (ScopeElm) elm;
+            if (appendScopeBlock(sb, scopeElm.elmScope, embeddedIndex++, "Embedded_Scope", scopeElm)) {
+                scopeElmsExportedAsBlocks.add(scopeElm);
+            }
+        }
+
+        return sb.toString();
     }
 
     private enum TemplateBlockType {
@@ -527,9 +747,7 @@ public class SFCRExporter {
     private ArrayList<String> buildCanonicalMatrixBlocks() {
         ArrayList<String> blocks = new ArrayList<String>();
         for (SFCTableElm sfcTable : sfcTables) {
-            String block = (exportSyntax == ExportSyntax.R_STYLE)
-                ? exportSFCTableRStyle(sfcTable)
-                : exportSFCTable(sfcTable);
+            String block = exportMatrixBlockForHandler(sfcTable);
             String payload = extractStructuralPayload(block);
             if (!payload.isEmpty()) {
                 blocks.add(payload);
@@ -541,7 +759,7 @@ public class SFCRExporter {
     private ArrayList<String> buildCanonicalSankeyBlocks() {
         ArrayList<String> blocks = new ArrayList<String>();
         for (SFCSankeyElm sankey : sankeyDiagrams) {
-            String payload = extractStructuralPayload(exportSankeyDiagram(sankey));
+            String payload = extractStructuralPayload(exportSankeyDiagramForHandler(sankey));
             if (!payload.isEmpty()) {
                 blocks.add(payload);
             }
@@ -551,7 +769,7 @@ public class SFCRExporter {
 
     private ArrayList<String> buildCanonicalScopeBlocks() {
         ArrayList<String> blocks = new ArrayList<String>();
-        String scopes = exportScopes();
+        String scopes = exportScopesForHandler();
         if (scopes == null || scopes.trim().isEmpty()) {
             return blocks;
         }
@@ -723,41 +941,7 @@ public class SFCRExporter {
     }
 
     private String exportLookupBlocks() {
-        if (lookupExportSpecs.isEmpty()) {
-            return "";
-        }
-
-        StringBuilder sb = new StringBuilder();
-        for (LookupDefinition spec : lookupExportSpecs) {
-            sb.append("@lookup ").append(spec.name);
-            if (spec.scope != null && !spec.scope.isEmpty()) {
-                sb.append(" scope=").append(spec.scope);
-            }
-            sb.append("\n");
-            for (int c = 0; c < spec.comments.size(); c++) {
-                String comment = spec.comments.get(c);
-                if (comment == null) {
-                    continue;
-                }
-                String trimmed = comment.trim();
-                if (trimmed.isEmpty()) {
-                    continue;
-                }
-                if (!trimmed.startsWith("#")) {
-                    trimmed = "# " + trimmed;
-                }
-                sb.append("  ").append(trimmed).append("\n");
-            }
-            for (int i = 0; i < spec.xs.size(); i++) {
-                sb.append("  ")
-                  .append(spec.xs.get(i).doubleValue())
-                  .append(", ")
-                  .append(spec.ys.get(i).doubleValue())
-                  .append("\n");
-            }
-            sb.append("@end\n\n");
-        }
-        return sb.toString().trim();
+        return exportLookupBlocksForHandler();
     }
 
     private String rewriteExpressionForLookupExport(String expr, String scopeName) {
@@ -1245,105 +1429,12 @@ public class SFCRExporter {
     
     /** Export @init block with simulation settings. */
     private String exportInitBlock() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("@init\n");
-        
-        // Timestep
-        sb.append("  timestep: ").append(sim.getMaxTimeStep()).append("\n");
-        
-        // Voltage unit (if customized)
-        if (sim.voltageUnitSymbol != null && !sim.voltageUnitSymbol.equals("V")) {
-            sb.append("  voltageUnit: ").append(sim.voltageUnitSymbol).append("\n");
-        }
-        
-        // Time unit (if customized)
-        if (sim.timeUnitSymbol != null && !sim.timeUnitSymbol.isEmpty()) {
-            sb.append("  timeUnit: ").append(sim.timeUnitSymbol).append("\n");
-        }
-        
-        // Display options - always export current state
-        sb.append("  showDots: ").append(sim.dotsCheckItem.getState()).append("\n");
-        sb.append("  showVolts: ").append(sim.voltsCheckItem.getState()).append("\n");
-        sb.append("  showValues: ").append(sim.showValuesCheckItem.getState()).append("\n");
-        sb.append("  showPower: ").append(sim.powerCheckItem.getState()).append("\n");
-        sb.append("  autoAdjustTimestep: ").append(sim.adjustTimeStep).append("\n");
-        sb.append("  equationTableMnaMode: ").append(sim.isEquationTableMnaMode()).append("\n");
-        sb.append("  equationTableNewtonJacobianEnabled: ").append(sim.equationTableNewtonJacobianEnabled).append("\n");
-        sb.append("  equationTableTolerance: ").append(Double.toString(sim.getEquationTableConvergenceTolerance())).append("\n");
-        sb.append("  lookupMode: ").append(sim.isSfcrLookupClampDefault() ? "pwl" : "pwlx").append("\n");
-        sb.append("  lookupClamp: ").append(sim.isSfcrLookupClampDefault()).append("\n");
-        sb.append("  convergenceCheckThreshold: ").append(sim.convergenceCheckThreshold).append("\n");
-        sb.append("  infoViewerUpdateIntervalMs: ").append(sim.infoViewerUpdateIntervalMs).append("\n");
-        
-        sb.append("@end\n");
-        return sb.toString();
+        return exportInitBlockForHandler();
     }
 
     /** Export ActionScheduler as @action block. */
     private String exportActionBlock() {
-        ActionScheduler scheduler = ActionScheduler.getInstance(sim);
-        if (scheduler == null && actionTimeElmForExport == null) {
-            return "";
-        }
-
-        java.util.List<ActionScheduler.ScheduledAction> actions =
-            (scheduler == null) ? null : scheduler.getAllActions();
-        boolean hasActions = actions != null && !actions.isEmpty();
-        if (!hasActions && actionTimeElmForExport == null) {
-            return "";
-        }
-
-        StringBuilder sb = new StringBuilder();
-        if (actionTimeElmForExport != null) {
-            String actionName = SFCRUtil.sanitizeName(actionTimeElmForExport.title);
-            sb.append("@action ").append(actionName).append(formatPosition(actionTimeElmForExport)).append("\n");
-        } else {
-            sb.append("@action\n");
-        }
-
-        double pauseTime = (scheduler == null) ? 0 : scheduler.getPauseTime();
-        sb.append("  pauseTime: ").append(pauseTime).append("\n");
-
-        if (actionTimeElmForExport != null) {
-            sb.append("  enabled: ").append(actionTimeElmForExport.enabled).append("\n");
-            sb.append("  element: ")
-              .append(actionTimeElmForExport.x).append(" ")
-              .append(actionTimeElmForExport.y).append(" ")
-              .append(actionTimeElmForExport.x2).append(" ")
-              .append(actionTimeElmForExport.y2).append(" ")
-              .append(actionTimeElmForExport.flags)
-              .append("\n");
-        }
-
-        if (hasActions) {
-        sb.append("\n");
-        sb.append("| time | target | value | text | enabled | stop |\n");
-        sb.append("|------|--------|-------|------|---------|------|\n");
-
-        for (ActionScheduler.ScheduledAction action : actions) {
-            String target = (action.sliderName == null) ? "" : action.sliderName;
-            String valueExpr = (action.valueExpression == null) ? "" : action.valueExpression.trim();
-            String value = valueExpr.isEmpty() ? Double.toString(action.sliderValue) : valueExpr;
-            String text = (action.postText == null) ? "" : action.postText;
-
-            sb.append("| ")
-              .append(action.actionTime)
-              .append(" | ")
-              .append(SFCRUtil.escapeTableCell(target))
-              .append(" | ")
-              .append(SFCRUtil.escapeTableCell(value))
-              .append(" | ")
-              .append(SFCRUtil.escapeTableCell(text))
-              .append(" | ")
-              .append(action.enabled)
-              .append(" | ")
-              .append(action.stopSimulation)
-              .append(" |\n");
-        }
-          }
-
-        sb.append("@end\n");
-        return sb.toString();
+        return exportActionBlockForHandler();
     }
     
     /** Export EquationTableElm as @equations block. */
@@ -1779,72 +1870,12 @@ public class SFCRExporter {
 
     /** Export SFCSankeyElm as @sankey block. */
     private String exportSankeyDiagram(SFCSankeyElm sankey) {
-        StringBuilder sb = new StringBuilder();
-        
-        String sourceName = sankey.getSourceTableName();
-        String layout = sankey.getLayoutMode().name().toLowerCase();
-        int width = sankey.getWidth();
-        int height = sankey.getHeight();
-
-        appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_SANKEY, "");
-        
-        // Header with position
-        sb.append("@sankey");
-        sb.append(formatPosition(sankey)).append("\n");
-        
-        // Properties
-        if (sourceName != null && !sourceName.isEmpty()) {
-            sb.append("  source: ").append(sourceName).append("\n");
-        }
-        sb.append("  layout: ").append(layout).append("\n");
-        sb.append("  width: ").append(width).append("\n");
-        sb.append("  height: ").append(height).append("\n");
-        
-        // Scale visualization options
-        sb.append("  showScaleBar: ").append(sankey.getShowScaleBar()).append("\n");
-        if (sankey.getFixedMaxScale() > 0) {
-            sb.append("  fixedMaxScale: ").append(sankey.getFixedMaxScale()).append("\n");
-        }
-        sb.append("  useHighWaterMark: ").append(sankey.getUseHighWaterMark()).append("\n");
-        sb.append("  showFlowValues: ").append(sankey.getShowFlowValues()).append("\n");
-        
-        sb.append("@end\n");
-        return sb.toString();
+        return exportSankeyDiagramForHandler(sankey);
     }
     
     /** Export hints as @hints block. */
     private String exportHints() {
-        Set<String> names = HintRegistry.getAllNames();
-        if (names.isEmpty()) {
-            return "";
-        }
-
-        Set<String> namesCoveredByEquationBlocks = collectNamesCoveredByEquationBlocks();
-        
-        StringBuilder sb = new StringBuilder();
-        sb.append("@hints\n");
-        int exportedCount = 0;
-        
-        for (String name : names) {
-            if (name == null || name.trim().isEmpty()) {
-                continue;
-            }
-            if (namesCoveredByEquationBlocks.contains(name.trim())) {
-                continue;
-            }
-            String hint = HintRegistry.getHint(name);
-            if (hint != null && !hint.trim().isEmpty()) {
-                sb.append("  ").append(name.trim()).append(": ").append(hint).append("\n");
-                exportedCount++;
-            }
-        }
-
-        if (exportedCount == 0) {
-            return "";
-        }
-        
-        sb.append("@end\n");
-        return sb.toString();
+        return exportHintsForHandler();
     }
 
     /** Collect names whose hints are already emitted inline in @equations blocks. */
@@ -1922,30 +1953,7 @@ public class SFCRExporter {
 
     /** Export docked scopes in @scope blocks using UID-based trace references. */
     private String exportScopes() {
-        StringBuilder sb = new StringBuilder();
-
-        // Export docked scopes (no geometry - they live in the scope dock)
-        for (int i = 0; i < sim.scopeCount; i++) {
-            Scope s = sim.scopes[i];
-            if (!appendScopeBlock(sb, s, i + 1, "Scope", null)) {
-                continue;
-            }
-        }
-
-        // Export embedded scope elements (ScopeElm) with geometry
-        int embeddedIndex = 1;
-        for (int i = 0; i < sim.elmList.size(); i++) {
-            CircuitElm elm = sim.elmList.get(i);
-            if (!(elm instanceof ScopeElm)) {
-                continue;
-            }
-            ScopeElm scopeElm = (ScopeElm) elm;
-            if (appendScopeBlock(sb, scopeElm.elmScope, embeddedIndex++, "Embedded_Scope", scopeElm)) {
-                scopeElmsExportedAsBlocks.add(scopeElm);
-            }
-        }
-
-        return sb.toString();
+        return exportScopesForHandler();
     }
 
     private boolean canExportScopeAsBlock(Scope s) {

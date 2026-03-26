@@ -20,6 +20,18 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.elements.misc.*;
 import com.lushprojects.circuitjs1.client.registry.ElementFactoryFacade;
+import com.lushprojects.circuitjs1.client.io.sfcr.ParseResult;
+import com.lushprojects.circuitjs1.client.io.sfcr.ParseWarning;
+import com.lushprojects.circuitjs1.client.io.sfcr.SFCRBlockParseHandlerRegistry;
+import com.lushprojects.circuitjs1.client.io.sfcr.SFCRParseContext;
+import com.lushprojects.circuitjs1.client.io.sfcr.handlers.ActionBlockParseHandler;
+import com.lushprojects.circuitjs1.client.io.sfcr.handlers.EquationsBlockParseHandler;
+import com.lushprojects.circuitjs1.client.io.sfcr.handlers.HintsBlockParseHandler;
+import com.lushprojects.circuitjs1.client.io.sfcr.handlers.InitBlockParseHandler;
+import com.lushprojects.circuitjs1.client.io.sfcr.handlers.LookupBlockParseHandler;
+import com.lushprojects.circuitjs1.client.io.sfcr.handlers.RStyleBlockParseHandler;
+import com.lushprojects.circuitjs1.client.io.sfcr.handlers.SFCRBlockParseHandler;
+import com.lushprojects.circuitjs1.client.io.sfcr.handlers.UnknownBlockParseHandler;
 
 /**
  * Parser for SFCR-compatible text format.
@@ -66,6 +78,16 @@ public class SFCRParser {
         }
     }
 
+    public static class BlockHeaderInfo {
+        public String name;
+        public int x = Integer.MIN_VALUE;
+        public int y = Integer.MIN_VALUE;
+
+        public boolean hasPosition() {
+            return x != Integer.MIN_VALUE && y != Integer.MIN_VALUE;
+        }
+    }
+
     /** Parsed scope trace reference. */
     private static class ScopeTraceSpec {
         String uid;
@@ -95,7 +117,7 @@ public class SFCRParser {
     }
 
     /** Parsed metadata from R-style comment: # [ x=.. y=.. type: .. ] */
-    private static class RStyleBlockMetadata {
+    public static class RStyleBlockMetadata {
         int x = Integer.MIN_VALUE;
         int y = Integer.MIN_VALUE;
         String type;
@@ -126,6 +148,8 @@ public class SFCRParser {
     private boolean lookupClampDefault = true;
     private String infoContent = null;
     private boolean actionElementFromActionBlock = false;
+    private ArrayList<ParseWarning> parseWarnings = new ArrayList<ParseWarning>();
+    private final UnknownBlockParseHandler unknownBlockParseHandler = new UnknownBlockParseHandler();
 
     /** Non-null when in result-mode ({@link #parseToResult}). */
     private SFCRParseResult pendingResult = null;
@@ -456,6 +480,7 @@ public class SFCRParser {
         LookupTableRegistry.clear();
         lookupClampDefault = (sim == null) ? true : sim.isSfcrLookupClampDefault();
         actionElementFromActionBlock = false;
+        parseWarnings.clear();
         if (sim != null) sim.getSFCRDocumentState().clearBlockComments();
         currentY = 24;
         
@@ -467,6 +492,7 @@ public class SFCRParser {
             Vector<String> pendingBlockComments = new Vector<String>();
             boolean inFence = false;
             boolean pendingCommentsConsumedInFence = false;
+            SFCRParseContext parseContext = new SFCRParseContext(this);
             
             while (i < lines.length) {
                 String line = lines[i].trim();
@@ -508,59 +534,56 @@ public class SFCRParser {
                 }
                 
                 // Parse block markers
-                if (line.startsWith("@init")) {
-                    pendingBlockComments.clear();
-                    i = parseInitBlock(lines, i);
-                } else if (line.startsWith("@action")) {
-                    pendingBlockComments.clear();
-                    i = parseActionBlock(lines, i);
-                } else if (line.startsWith("@matrix")) {
-                    if (inFence) pendingCommentsConsumedInFence = true;
-                    storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_MATRIX,
-                        extractBlockName(line, "@matrix"), pendingBlockComments);
-                    i = parseMatrixBlock(lines, i);
-                } else if (line.startsWith("@equations")) {
-                    if (inFence) pendingCommentsConsumedInFence = true;
-                    storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_EQUATIONS,
-                        extractBlockName(line, "@equations"), pendingBlockComments);
-                    i = parseEquationsBlock(lines, i);
-                } else if (line.startsWith("@parameters")) {
-                    if (inFence) pendingCommentsConsumedInFence = true;
-                    storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_EQUATIONS,
-                        extractBlockName(line, "@parameters"), pendingBlockComments);
-                    i = parseParametersBlock(lines, i);
-                } else if (line.startsWith("@lookup")) {
-                    pendingBlockComments.clear();
-                    i = parseLookupBlock(lines, i);
-                } else if (line.startsWith("@hints")) {
-                    pendingBlockComments.clear();
-                    i = parseHintsBlock(lines, i);
-                } else if (line.startsWith("@scope")) {
+                if (line.startsWith("@scope")) {
                     if (looksLikeScopeBlock(lines, i)) {
                         if (inFence) pendingCommentsConsumedInFence = true;
                         storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_SCOPE,
                             extractScopeBlockName(line), pendingBlockComments);
-                        i = parseScopeBlock(lines, i);
+                        SFCRBlockParseHandler scopeHandler = SFCRBlockParseHandlerRegistry.getHandler("@scope");
+                        i = (scopeHandler == null)
+                            ? parseScopeBlock(lines, i)
+                            : scopeHandler.parse(lines, i, parseContext).getNextIndex();
                     } else {
                         pendingBlockComments.clear();
                         parseScopeLine(line);
                         i++;
                     }
-                } else if (line.startsWith("@circuit")) {
-                    pendingBlockComments.clear();
-                    i = parseCircuitBlock(lines, i);
-                } else if (line.startsWith("@sankey")) {
-                    if (inFence) pendingCommentsConsumedInFence = true;
-                    storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_SANKEY,
-                        "", pendingBlockComments);
-                    i = parseSankeyBlock(lines, i);
-                } else if (line.startsWith("@info")) {
-                    pendingBlockComments.clear();
-                    i = parseInfoBlock(lines, i);
                 } else if (line.contains("sfcr_matrix") || line.contains("<-")) {
                     // Try to parse R-style sfcr syntax
                     if (inFence) pendingCommentsConsumedInFence = true;
-                    i = parseRStyleBlock(lines, i, pendingBlockComments);
+                    i = new RStyleBlockParseHandler()
+                        .parse(lines, i, parseContext, pendingBlockComments)
+                        .getNextIndex();
+                } else if (line.startsWith("@")) {
+                    String directive = extractDirective(line);
+                    if ("@end".equals(directive)) {
+                        i++;
+                        continue;
+                    }
+
+                    if ("@matrix".equals(directive)) {
+                        if (inFence) pendingCommentsConsumedInFence = true;
+                        storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_MATRIX,
+                            extractBlockName(line, "@matrix"), pendingBlockComments);
+                    } else if ("@equations".equals(directive) || "@parameters".equals(directive)) {
+                        if (inFence) pendingCommentsConsumedInFence = true;
+                        storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_EQUATIONS,
+                            extractBlockName(line, directive), pendingBlockComments);
+                    } else if ("@sankey".equals(directive)) {
+                        if (inFence) pendingCommentsConsumedInFence = true;
+                        storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_SANKEY, "", pendingBlockComments);
+                    } else {
+                        pendingBlockComments.clear();
+                    }
+
+                    SFCRBlockParseHandler handler = SFCRBlockParseHandlerRegistry.getHandler(directive);
+                    ParseResult result;
+                    if (handler != null) {
+                        result = handler.parse(lines, i, parseContext);
+                    } else {
+                        result = unknownBlockParseHandler.parse(lines, i, parseContext);
+                    }
+                    i = result.getNextIndex();
                 } else {
                     // Preserve non-block inline markdown context (headings/prose) so it
                     // can round-trip and remain associated with the next structural block.
@@ -570,6 +593,7 @@ public class SFCRParser {
                     i++;
                 }
             }
+            parseWarnings.addAll(parseContext.getWarnings());
 
             // Apply init settings first (timestep, units, etc.)
             applyInitSettings();
@@ -587,6 +611,102 @@ public class SFCRParser {
         }
     }
 
+    public ArrayList<ParseWarning> getParseWarnings() {
+        return parseWarnings;
+    }
+
+    public int parseInitBlockForHandler(String[] lines, int startIndex) {
+        return new InitBlockParseHandler().parse(lines, startIndex, new SFCRParseContext(this)).getNextIndex();
+    }
+
+    public int parseActionBlockForHandler(String[] lines, int startIndex) {
+        return new ActionBlockParseHandler().parse(lines, startIndex, new SFCRParseContext(this)).getNextIndex();
+    }
+
+    public int parseMatrixBlockForHandler(String[] lines, int startIndex) {
+        return parseMatrixBlock(lines, startIndex);
+    }
+
+    public int parseEquationsBlockForHandler(String[] lines, int startIndex) {
+        return new EquationsBlockParseHandler("@equations")
+            .parse(lines, startIndex, new SFCRParseContext(this)).getNextIndex();
+    }
+
+    public int parseParametersBlockForHandler(String[] lines, int startIndex) {
+        return new EquationsBlockParseHandler("@parameters")
+            .parse(lines, startIndex, new SFCRParseContext(this)).getNextIndex();
+    }
+
+    public int parseLookupBlockForHandler(String[] lines, int startIndex) {
+        return new LookupBlockParseHandler().parse(lines, startIndex, new SFCRParseContext(this)).getNextIndex();
+    }
+
+    public int parseHintsBlockForHandler(String[] lines, int startIndex) {
+        return new HintsBlockParseHandler().parse(lines, startIndex, new SFCRParseContext(this)).getNextIndex();
+    }
+
+    public int parseCircuitBlockForHandler(String[] lines, int startIndex) {
+        return parseCircuitBlock(lines, startIndex);
+    }
+
+    public int parseScopeBlockForHandler(String[] lines, int startIndex) {
+        return parseScopeBlock(lines, startIndex);
+    }
+
+    public int parseSankeyBlockForHandler(String[] lines, int startIndex) {
+        return parseSankeyBlock(lines, startIndex);
+    }
+
+    public int parseInfoBlockForHandler(String[] lines, int startIndex) {
+        return parseInfoBlock(lines, startIndex);
+    }
+
+    public BlockHeaderInfo parseBlockHeaderForHandler(String line, String keyword) {
+        BlockPosition pos = parseBlockHeader(line, keyword);
+        BlockHeaderInfo info = new BlockHeaderInfo();
+        info.name = pos.name;
+        info.x = pos.x;
+        info.y = pos.y;
+        return info;
+    }
+
+    public String[] parseTableRowForHandler(String line) {
+        return parseTableRow(line);
+    }
+
+    public boolean parseBooleanForHandler(String text, boolean defaultValue) {
+        return parseBoolean(text, defaultValue);
+    }
+
+    public String unescapeTableCellForHandler(String text) {
+        return SFCRUtil.unescapeTableCell(text);
+    }
+
+    public ActionScheduler getActionSchedulerForHandler() {
+        if (sim == null) {
+            return null;
+        }
+        return ActionScheduler.getInstance(sim);
+    }
+
+    public ActionTimeElm findActionTimeElmForHandler() {
+        return findActionTimeElm();
+    }
+
+    public CirSim getSimForHandler() {
+        return sim;
+    }
+
+    public void addCreatedElementForHandler(CircuitElm elm) {
+        if (elm != null) {
+            createdElements.add(elm);
+        }
+    }
+
+    public void setActionElementFromActionBlockForHandler(boolean value) {
+        actionElementFromActionBlock = value;
+    }
+
     private void preScanLookupTables(String[] lines) {
         if (lines == null || lines.length == 0) {
             return;
@@ -600,7 +720,7 @@ public class SFCRParser {
                 continue;
             }
 
-            LookupDefinition table = parseLookupHeader(headerLine);
+            LookupDefinition table = parseLookupHeaderForHandler(headerLine);
             if (table == null) {
                 i++;
                 continue;
@@ -615,7 +735,7 @@ public class SFCRParser {
                 if (row.startsWith("#")) {
                     table.comments.add(row);
                 } else if (!row.isEmpty() && !row.startsWith("%")) {
-                    LookupPoint point = parseLookupPoint(row);
+                    LookupPoint point = parseLookupPointForHandler(row);
                     if (point != null) {
                         table.xs.add(Double.valueOf(point.x));
                         table.ys.add(Double.valueOf(point.y));
@@ -624,7 +744,7 @@ public class SFCRParser {
                 j++;
             }
 
-            if (table.xs.size() >= 2 && isStrictlyIncreasing(table.xs)) {
+            if (table.xs.size() >= 2 && isStrictlyIncreasingForHandler(table.xs)) {
                 String scopeName = table.scope;
                 if (scopeName == null || scopeName.isEmpty()) {
                     globalLookupTables.put(table.name, table);
@@ -662,60 +782,11 @@ public class SFCRParser {
     * autoOpenModelInfoOnLoad.
      */
     private int parseInitBlock(String[] lines, int startIndex) {
-        String headerLine = lines[startIndex].trim();
-        
-        // Check for inline format: @init key=value key=value
-        String inlineParams = headerLine.substring(5).trim();
-        if (!inlineParams.isEmpty()) {
-            parseInitInline(inlineParams);
-            return startIndex + 1;
-        }
-        
-        // Block format
-        int i = startIndex + 1;
-        while (i < lines.length) {
-            String line = lines[i].trim();
-            
-            // End of block
-            if (line.startsWith("@end") || (line.startsWith("@") && !line.startsWith("@end"))) {
-                break;
-            }
-            
-            // Skip comments and empty lines
-            if (line.isEmpty() || line.startsWith("#")) {
-                i++;
-                continue;
-            }
-            
-            // Parse key: value or key=value
-            int colonIdx = line.indexOf(':');
-            int eqIdx = line.indexOf('=');
-            int sepIdx = colonIdx >= 0 ? colonIdx : eqIdx;
-            
-            if (sepIdx > 0) {
-                String key = line.substring(0, sepIdx).trim();
-                String value = line.substring(sepIdx + 1).trim();
-                // Remove trailing comment
-                int commentIdx = value.indexOf('#');
-                if (commentIdx >= 0) {
-                    value = value.substring(0, commentIdx).trim();
-                }
-                registerInitSetting(key, value);
-            }
-            
-            i++;
-        }
-        
-        // Skip @end if present
-        if (i < lines.length && lines[i].trim().startsWith("@end")) {
-            i++;
-        }
-        
-        return i;
+        return parseInitBlockForHandler(lines, startIndex);
     }
     
     /** Parse inline init parameters: @init key=value key=value */
-    private void parseInitInline(String params) {
+    public void parseInitInlineForHandler(String params) {
         // Parse: key=value key=value or key:value
         String[] parts = params.split("\\s+");
         for (String part : parts) {
@@ -724,12 +795,12 @@ public class SFCRParser {
             if (idx > 0) {
                 String key = part.substring(0, idx).trim();
                 String value = part.substring(idx + 1).trim();
-                registerInitSetting(key, value);
+                registerInitSettingForHandler(key, value);
             }
         }
     }
 
-    private void registerInitSetting(String key, String value) {
+    public void registerInitSettingForHandler(String key, String value) {
         if (key == null || key.isEmpty()) {
             return;
         }
@@ -830,6 +901,57 @@ public class SFCRParser {
             return "pwlx";
         }
         return lookupClampDefault ? "pwl" : "pwlx";
+    }
+
+    public void registerHintForHandler(String varName, String description) {
+        if (varName == null || varName.isEmpty()) {
+            return;
+        }
+        hints.put(varName, description);
+    }
+
+    public String normalizeVariableNameForHandler(String rawName) {
+        return SFCRUtil.normalizeVariableName(rawName);
+    }
+
+    public String normalizeExpressionForHandler(String rawExpr) {
+        return SFCRUtil.normalizeExpression(rawExpr);
+    }
+
+    public String rewriteLookupCallsForHandler(String expr, String equationScope) {
+        return rewriteLookupCalls(expr, equationScope);
+    }
+
+    public String[] splitDifferenceLeftAliasForHandler(String left) {
+        return splitDifferenceLeftAlias(left);
+    }
+
+    public int getCurrentXForHandler() {
+        return currentX;
+    }
+
+    public int getCurrentYForHandler() {
+        return currentY;
+    }
+
+    public void setCurrentPositionForHandler(int x, int y) {
+        currentX = x;
+        currentY = y;
+    }
+
+    public boolean hasHintForHandler(String varName) {
+        return hints.containsKey(varName);
+    }
+
+    public void createEquationTableForHandler(String name, ArrayList<String> outputNames,
+                                              ArrayList<String> equations,
+                                              ArrayList<Integer> outputModes,
+                                              ArrayList<String> targetNodeNames,
+                                              ArrayList<String> sliderVarNames,
+                                              ArrayList<Double> sliderValues,
+                                              ArrayList<String> initialEquations) {
+        createEquationTable(name, outputNames, equations, outputModes, targetNodeNames,
+            sliderVarNames, sliderValues, initialEquations);
     }
     
     /** Apply parsed init settings to the simulator. */
@@ -951,161 +1073,7 @@ public class SFCRParser {
 
     /** Parse @action block - timed target updates for ActionScheduler. */
     private int parseActionBlock(String[] lines, int startIndex) {
-        String headerLine = lines[startIndex].trim();
-        BlockPosition actionBlockPos = parseBlockHeader(headerLine, "@action");
-        ActionScheduler scheduler = ActionScheduler.getInstance(sim);
-        if (scheduler == null) {
-            return startIndex + 1;
-        }
-
-        // Replace existing schedule with block contents.
-        scheduler.clearAll();
-
-        boolean hasAnyActionRows = false;
-        boolean actionElmEnabled = true;
-        boolean actionElmEnabledSpecified = false;
-        boolean actionElmSpecified = false;
-        int actionElmX1 = 704;
-        int actionElmY1 = 416;
-        int actionElmX2 = 720;
-        int actionElmY2 = 432;
-        int actionElmFlags = 0;
-        String actionElmTitle = "Action Schedule";
-
-        if (actionBlockPos != null && actionBlockPos.name != null && !actionBlockPos.name.isEmpty() &&
-                !actionBlockPos.name.equalsIgnoreCase("action")) {
-            actionElmTitle = actionBlockPos.name.replace('_', ' ');
-        }
-        if (actionBlockPos != null && actionBlockPos.hasPosition()) {
-            actionElmX1 = actionBlockPos.x;
-            actionElmY1 = actionBlockPos.y;
-            actionElmX2 = actionElmX1 + 16;
-            actionElmY2 = actionElmY1 + 16;
-            actionElmSpecified = true;
-        }
-
-        int i = startIndex + 1;
-        while (i < lines.length) {
-            String line = lines[i].trim();
-
-            if (line.startsWith("@end")) {
-                i++;
-                break;
-            }
-
-            if (line.isEmpty() || line.startsWith("#")) {
-                i++;
-                continue;
-            }
-
-            int colonIdx = line.indexOf(':');
-            if (colonIdx > 0 && !line.startsWith("|")) {
-                String key = line.substring(0, colonIdx).trim().toLowerCase();
-                String value = line.substring(colonIdx + 1).trim();
-
-                try {
-                    if (key.equals("pausetime") || key.equals("pause_time")) {
-                        scheduler.setPauseTime(Double.parseDouble(value));
-                    } else if (key.equals("enabled") || key.equals("actionelementenabled") || key.equals("action_element_enabled")) {
-                        actionElmEnabled = parseBoolean(value, true);
-                        actionElmEnabledSpecified = true;
-                    } else if (key.equals("name") || key.equals("title")) {
-                        if (value != null && value.trim().length() > 0) {
-                            actionElmTitle = value.trim().replace('_', ' ');
-                        }
-                    } else if (key.equals("element") || key.equals("actionelement") || key.equals("action_element")) {
-                        String[] parts = value.trim().split("\\s+");
-                        if (parts.length >= 4) {
-                            actionElmX1 = Integer.parseInt(parts[0]);
-                            actionElmY1 = Integer.parseInt(parts[1]);
-                            actionElmX2 = Integer.parseInt(parts[2]);
-                            actionElmY2 = Integer.parseInt(parts[3]);
-                            if (parts.length >= 5) {
-                                actionElmFlags = Integer.parseInt(parts[4]);
-                            }
-                            actionElmSpecified = true;
-                        }
-                    } else if (key.equals("animationtime") || key.equals("animation_time")) {
-                        // legacy key: ignored
-                    }
-                } catch (Exception e) {
-                    CirSim.console("SFCRParser: Invalid @action setting " + key + "=" + value);
-                }
-
-                i++;
-                continue;
-            }
-
-            if (line.startsWith("|")) {
-                // Skip markdown header/separator rows.
-                if (line.contains("---") || line.toLowerCase().contains("time") && line.toLowerCase().contains("target")) {
-                    i++;
-                    continue;
-                }
-
-                String[] cells = parseTableRow(line);
-                if (cells.length >= 6) {
-                    try {
-                        double actionTime = Double.parseDouble(cells[0].trim());
-                        String target = SFCRUtil.unescapeTableCell(cells[1]);
-                        String valueSpec = SFCRUtil.unescapeTableCell(cells[2]);
-                        String postText = SFCRUtil.unescapeTableCell(cells[3]);
-                        boolean enabled = parseBoolean(cells[4], true);
-                        boolean stop = parseBoolean(cells[5], false);
-
-                        double numericValue = 0.0;
-                        String expression = "";
-                        String trimmedValue = valueSpec == null ? "" : valueSpec.trim();
-                        if (!trimmedValue.isEmpty()) {
-                            char lead = trimmedValue.charAt(0);
-                            if (lead == '+' || lead == '-' || lead == '*' || lead == '=') {
-                                expression = trimmedValue;
-                            } else {
-                                numericValue = Double.parseDouble(trimmedValue);
-                            }
-                        }
-
-                        ActionScheduler.ScheduledAction action =
-                            new ActionScheduler.ScheduledAction(0, actionTime, target,
-                                numericValue, "", postText, enabled, stop);
-                        action.valueExpression = expression;
-                        scheduler.addAction(action);
-                        hasAnyActionRows = true;
-                    } catch (Exception e) {
-                        CirSim.console("SFCRParser: Invalid @action row: " + line);
-                    }
-                }
-            }
-
-            i++;
-        }
-
-        if (hasAnyActionRows || actionElmEnabledSpecified || actionElmSpecified) {
-            ActionTimeElm actionElm = findActionTimeElm();
-            if (actionElm == null) {
-                actionElm = new ActionTimeElm(actionElmX1, actionElmY1, actionElmX2, actionElmY2, actionElmFlags, null);
-                actionElm.setPointsForImportExport();
-                sim.getImportExportHelper().assignPersistentUid(actionElm, null);
-                sim.elmList.addElement(actionElm);
-                createdElements.add(actionElm);
-            } else if (actionElmSpecified) {
-                actionElm.x = actionElmX1;
-                actionElm.y = actionElmY1;
-                actionElm.x2 = actionElmX2;
-                actionElm.y2 = actionElmY2;
-                actionElm.flags = actionElmFlags;
-                actionElm.setPointsForImportExport();
-            }
-
-            actionElm.title = actionElmTitle;
-
-            if (actionElmEnabledSpecified || actionElmSpecified || hasAnyActionRows) {
-                actionElm.enabled = actionElmEnabled;
-            }
-            actionElementFromActionBlock = true;
-        }
-
-        return i;
+        return parseActionBlockForHandler(lines, startIndex);
     }
 
     private ActionTimeElm findActionTimeElm() {
@@ -1264,188 +1232,19 @@ public class SFCRParser {
     
     /** Parse @equations block - creates EquationTableElm. Inline # comments become hints. */
     private int parseEquationsBlock(String[] lines, int startIndex) {
-        String headerLine = lines[startIndex].trim();
-        BlockPosition blockPos = parseBlockHeader(headerLine, "@equations");
-        String blockName = blockPos.name;
-        
-        // Store position for element creation
-        int savedX = currentX;
-        int savedY = currentY;
-        if (blockPos.hasPosition()) {
-            currentX = blockPos.x;
-            currentY = blockPos.y;
-        }
-        
-        ArrayList<String> outputNames = new ArrayList<String>();
-        ArrayList<String> equations = new ArrayList<String>();
-        ArrayList<Integer> outputModes = new ArrayList<Integer>();
-        ArrayList<String> targetNodeNames = new ArrayList<String>();
-        ArrayList<String> sliderVarNames = new ArrayList<String>();
-        ArrayList<Double> sliderValues = new ArrayList<Double>();
-        ArrayList<String> initialEquations = new ArrayList<String>();
-        
-        int i = startIndex + 1;
-        
-        while (i < lines.length) {
-            String line = lines[i].trim();
-            
-            // End of block
-            if (line.startsWith("@end")) {
-                i++;
-                break;
-            }
-            
-            // Keep full-line comments as dedicated non-simulating table rows
-            if (line.startsWith("#")) {
-                appendCommentRow(line,
-                    outputNames, equations, outputModes, targetNodeNames,
-                    sliderVarNames, sliderValues, initialEquations);
-                i++;
-                continue;
-            }
-
-            // Skip empty lines
-            if (line.isEmpty()) {
-                i++;
-                continue;
-            }
-
-            // Extract inline comment as hint BEFORE removing it
-            String inlineComment = null;
-            int commentIdx = line.indexOf('#');
-            if (commentIdx > 0) {
-                inlineComment = line.substring(commentIdx + 1).trim();
-                line = line.substring(0, commentIdx).trim();
-            }
-            
-            // Parse equation: "name ~ expression" or "name = expression"
-            String[] parts = null;
-            if (line.contains("~")) {
-                parts = line.split("~", 2);
-            } else if (line.contains("=")) {
-                parts = line.split("=", 2);
-            }
-            
-            if (parts != null && parts.length == 2) {
-                String leftPart = parts[0].trim();
-                String rightPart = parts[1].trim();
-
-                String exprText = rightPart;
-                HashMap<String, String> rowMeta = new HashMap<String, String>();
-                int metaIdx = rightPart.indexOf(';');
-                if (metaIdx >= 0) {
-                    exprText = rightPart.substring(0, metaIdx).trim();
-                    String metaText = rightPart.substring(metaIdx + 1).trim();
-                    String[] metaParts = metaText.split(";");
-                    for (int m = 0; m < metaParts.length; m++) {
-                        String token = metaParts[m].trim();
-                        int eq = token.indexOf('=');
-                        if (eq > 0) {
-                            String key = token.substring(0, eq).trim().toLowerCase();
-                            String val = token.substring(eq + 1).trim();
-                            rowMeta.put(key, val);
-                        }
-                    }
-                }
-
-                String[] lhsAliasParts = splitDifferenceLeftAlias(leftPart);
-                boolean hasDifferenceAlias = lhsAliasParts[1] != null && !lhsAliasParts[1].isEmpty();
-
-                String[] nameParts = parseCombinedNameLocal(lhsAliasParts[0]);
-                String name = SFCRUtil.normalizeVariableName(nameParts[0]);
-
-                String targetName = "";
-                if (nameParts[1] != null && !nameParts[1].trim().isEmpty()) {
-                    targetName = SFCRUtil.normalizeVariableName(nameParts[1].trim());
-                }
-
-                String expr = SFCRUtil.normalizeExpression(exprText);
-                expr = rewriteLookupCalls(expr, blockName);
-                
-                // Keep lag notation exactly as imported (e.g. X[-1], X(-1), X [ - 1 ]).
-                // Equation parsing/evaluation supports lag forms directly.
-                
-                outputNames.add(name);
-                if (hasDifferenceAlias) {
-                    String lhsDisplay = lhsAliasParts[0] + " - " + lhsAliasParts[1];
-                    equations.add(lhsDisplay + " = " + expr);
-                } else {
-                    equations.add(expr);
-                }
-
-                int mode = parseModeOrdinal(rowMeta.get("mode"));
-                if (mode == 0 && !targetName.isEmpty()) {
-                    mode = 1;  // FLOW_MODE (has a target but no explicit flow mode)
-                }
-                outputModes.add(mode);
-
-                if (targetName.isEmpty()) {
-                    String metaTarget = rowMeta.get("target");
-                    if (metaTarget != null && !metaTarget.trim().isEmpty()) {
-                        targetName = SFCRUtil.normalizeVariableName(metaTarget.trim());
-                    }
-                }
-                targetNodeNames.add(targetName);
-
-                String sliderVar = rowMeta.get("slider");
-                if (sliderVar == null) {
-                    sliderVar = "";
-                } else {
-                    sliderVar = sliderVar.trim();
-                }
-                sliderVarNames.add(sliderVar);
-
-                double sliderValue = 0.0;
-                String sliderValueStr = rowMeta.get("slidervalue");
-                if (sliderValueStr != null) {
-                    try {
-                        sliderValue = Double.parseDouble(sliderValueStr);
-                    } catch (Exception e) {
-                    }
-                }
-                sliderValues.add(Double.valueOf(sliderValue));
-
-                String initEq = rowMeta.get("initial");
-                if (initEq != null && !initEq.trim().isEmpty()) {
-                    initEq = rewriteLookupCalls(initEq, blockName);
-                }
-                initialEquations.add((initEq != null) ? initEq : "");
-                
-                // Store inline comment as auto-hint (only if not already set by @hints)
-                if (inlineComment != null && !inlineComment.isEmpty() && !hints.containsKey(name)) {
-                    hints.put(name, inlineComment);
-                }
-            }
-            
-            i++;
-        }
-        
-        // Create EquationTableElm from parsed data
-        if (!outputNames.isEmpty()) {
-            createEquationTable(blockName, outputNames, equations, outputModes,
-                targetNodeNames, sliderVarNames, sliderValues, initialEquations);
-        }
-        
-        // Restore position if we used explicit positioning
-        if (blockPos.hasPosition()) {
-            currentX = savedX;
-            // Keep currentY updated from element creation
-        }
-        
-        return i;
+        return parseEquationsBlockForHandler(lines, startIndex);
     }
     
     /** Parse @parameters block (constants - same as @equations). */
     private int parseParametersBlock(String[] lines, int startIndex) {
-        // Parameters are just equations with constant values
-        return parseEquationsBlock(lines, startIndex);
+        return parseParametersBlockForHandler(lines, startIndex);
     }
 
     /**
      * Parse the {@code @lookup} header line and return a {@link LookupDefinition} with
      * {@code name} and {@code scope} populated, or {@code null} if the header carries no name.
      */
-    private LookupDefinition parseLookupHeader(String headerLine) {
+    public LookupDefinition parseLookupHeaderForHandler(String headerLine) {
         String header = (headerLine == null ? "" : headerLine.trim())
             .substring("@lookup".length()).trim();
         if (header.isEmpty()) {
@@ -1481,69 +1280,12 @@ public class SFCRParser {
 
     /** Parse @lookup block and register global/scoped lookup table points. */
     private int parseLookupBlock(String[] lines, int startIndex) {
-        LookupDefinition table = parseLookupHeader(lines[startIndex].trim());
-        if (table == null) {
-            return startIndex + 1;
-        }
-
-        int i = startIndex + 1;
-        while (i < lines.length) {
-            String line = lines[i].trim();
-            if (line.startsWith("@end")) {
-                i++;
-                break;
-            }
-            if (line.startsWith("#")) {
-                table.comments.add(line);
-            } else if (!line.isEmpty() && !line.startsWith("%")) {
-                LookupPoint point = parseLookupPoint(line);
-                if (point != null) {
-                    table.xs.add(Double.valueOf(point.x));
-                    table.ys.add(Double.valueOf(point.y));
-                }
-            }
-            i++;
-        }
-
-        if (table.xs.size() < 2) {
-            return i;
-        }
-        if (!isStrictlyIncreasing(table.xs)) {
-            return i;
-        }
-
-        String scopeName = table.scope;
-        if (scopeName == null || scopeName.isEmpty()) {
-            globalLookupTables.put(table.name, table);
-        } else {
-            HashMap<String, LookupDefinition> byScope = scopedLookupTables.get(scopeName);
-            if (byScope == null) {
-                byScope = new HashMap<String, LookupDefinition>();
-                scopedLookupTables.put(scopeName, byScope);
-            }
-            byScope.put(table.name, table);
-        }
-        LookupTableRegistry.register(table);
-
-        if (pendingResult != null) {
-            String blockName = (scopeName == null || scopeName.isEmpty()) ? table.name : (scopeName + ":" + table.name);
-            StringBuilder dump = new StringBuilder();
-            dump.append("lookup ").append(table.name);
-            if (scopeName != null && !scopeName.isEmpty()) {
-                dump.append(" scope=").append(scopeName);
-            }
-            for (int p = 0; p < table.xs.size(); p++) {
-                dump.append(" ").append(table.xs.get(p).doubleValue()).append(",").append(table.ys.get(p).doubleValue());
-            }
-            pendingResult.blockDumps.add(new SFCRParseResult.BlockDump("lookup", blockName, dump.toString()));
-        }
-
-        return i;
+        return parseLookupBlockForHandler(lines, startIndex);
     }
 
-    private static class LookupPoint {
-        double x;
-        double y;
+    public static class LookupPoint {
+        public double x;
+        public double y;
 
         LookupPoint(double x, double y) {
             this.x = x;
@@ -1551,7 +1293,7 @@ public class SFCRParser {
         }
     }
 
-    private LookupPoint parseLookupPoint(String line) {
+    public LookupPoint parseLookupPointForHandler(String line) {
         if (line == null) {
             return null;
         }
@@ -1594,7 +1336,15 @@ public class SFCRParser {
         }
     }
 
-    private boolean isStrictlyIncreasing(ArrayList<Double> xs) {
+    public void storePendingMatrixBlockCommentsForHandler(String blockName, Vector<String> pendingComments) {
+        storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_MATRIX, blockName, pendingComments);
+    }
+
+    public void storePendingEquationsBlockCommentsForHandler(String blockName, Vector<String> pendingComments) {
+        storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_EQUATIONS, blockName, pendingComments);
+    }
+
+    public boolean isStrictlyIncreasingForHandler(ArrayList<Double> xs) {
         if (xs == null || xs.size() < 2) {
             return false;
         }
@@ -1604,6 +1354,37 @@ public class SFCRParser {
             }
         }
         return true;
+    }
+
+    public void registerLookupTableForHandler(LookupDefinition table) {
+        if (table == null || table.name == null || table.name.isEmpty()) {
+            return;
+        }
+        String scopeName = table.scope;
+        if (scopeName == null || scopeName.isEmpty()) {
+            globalLookupTables.put(table.name, table);
+        } else {
+            HashMap<String, LookupDefinition> byScope = scopedLookupTables.get(scopeName);
+            if (byScope == null) {
+                byScope = new HashMap<String, LookupDefinition>();
+                scopedLookupTables.put(scopeName, byScope);
+            }
+            byScope.put(table.name, table);
+        }
+        LookupTableRegistry.register(table);
+
+        if (pendingResult != null) {
+            String blockName = (scopeName == null || scopeName.isEmpty()) ? table.name : (scopeName + ":" + table.name);
+            StringBuilder dump = new StringBuilder();
+            dump.append("lookup ").append(table.name);
+            if (scopeName != null && !scopeName.isEmpty()) {
+                dump.append(" scope=").append(scopeName);
+            }
+            for (int p = 0; p < table.xs.size(); p++) {
+                dump.append(" ").append(table.xs.get(p).doubleValue()).append(",").append(table.ys.get(p).doubleValue());
+            }
+            pendingResult.blockDumps.add(new SFCRParseResult.BlockDump("lookup", blockName, dump.toString()));
+        }
     }
 
     private LookupDefinition findLookupTable(String equationScope, String lookupName) {
@@ -1800,35 +1581,7 @@ public class SFCRParser {
     
     /** Parse @hints block - overrides auto-generated hints from inline comments. */
     private int parseHintsBlock(String[] lines, int startIndex) {
-        int i = startIndex + 1;
-        
-        while (i < lines.length) {
-            String line = lines[i].trim();
-            
-            // End of block
-            if (line.startsWith("@end")) {
-                i++;
-                break;
-            }
-            
-            // Skip comments and empty lines
-            if (line.isEmpty() || line.startsWith("#")) {
-                i++;
-                continue;
-            }
-            
-            // Parse hint: "varname: description"
-            int colonIdx = line.indexOf(':');
-            if (colonIdx > 0) {
-                String varName = SFCRUtil.normalizeVariableName(line.substring(0, colonIdx).trim());
-                String description = line.substring(colonIdx + 1).trim();
-                hints.put(varName, description);
-            }
-            
-            i++;
-        }
-        
-        return i;
+        return parseHintsBlockForHandler(lines, startIndex);
     }
     
     /** Parse @scope line. */
@@ -2123,7 +1876,7 @@ public class SFCRParser {
                 continue;
             }
 
-            LookupPoint point = parseLookupPoint(part);
+            LookupPoint point = parseLookupPointForHandler(part);
             if (point != null) {
                 table.xs.add(Double.valueOf(point.x));
                 table.ys.add(Double.valueOf(point.y));
@@ -2133,7 +1886,7 @@ public class SFCRParser {
         if (table.xs.size() < 2) {
             return null;
         }
-        if (!isStrictlyIncreasing(table.xs)) {
+        if (!isStrictlyIncreasingForHandler(table.xs)) {
             return null;
         }
 
@@ -2386,51 +2139,9 @@ public class SFCRParser {
     
     /** Parse R-style sfcr_matrix() or sfcr_set() syntax. */
     private int parseRStyleBlock(String[] lines, int startIndex, Vector<String> pendingBlockComments) {
-        RStyleBlockMetadata metadata = consumeRStyleMetadataFromComments(pendingBlockComments);
-        StringBuilder blockText = new StringBuilder();
-        int i = startIndex;
-        int parenDepth = 0;
-        boolean inBlock = false;
-        
-        // Collect lines until parentheses are balanced
-        while (i < lines.length) {
-            String line = lines[i];
-            blockText.append(line).append("\n");
-            
-            for (char c : line.toCharArray()) {
-                if (c == '(') {
-                    parenDepth++;
-                    inBlock = true;
-                }
-                if (c == ')') {
-                    parenDepth--;
-                }
-            }
-            
-            i++;
-            
-            if (inBlock && parenDepth == 0) {
-                break;
-            }
-        }
-        
-        String block = blockText.toString();
-
-        String blockName = extractRStyleAssignmentName(block, "Equations");
-        
-        // Determine block type and parse
-        if (block.contains("sfcr_matrix")) {
-            blockName = extractRStyleAssignmentName(block, "Matrix");
-            storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_MATRIX, blockName, pendingBlockComments);
-            parseRStyleMatrix(block, metadata);
-        } else if (block.contains("sfcr_set")) {
-            storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_EQUATIONS, blockName, pendingBlockComments);
-            parseRStyleEquations(block, metadata);
-        } else if (pendingBlockComments != null) {
-            pendingBlockComments.clear();
-        }
-        
-        return i;
+        return new RStyleBlockParseHandler()
+            .parse(lines, startIndex, new SFCRParseContext(this), pendingBlockComments)
+            .getNextIndex();
     }
 
     /** Extract assignment name from R-style block: name <- sfcr_... */
@@ -2446,6 +2157,10 @@ public class SFCRParser {
             }
         }
         return defaultName;
+    }
+
+    public String extractRStyleAssignmentNameForHandler(String block, String defaultName) {
+        return extractRStyleAssignmentName(block, defaultName);
     }
 
     /** Consume and parse one or more metadata comments (# [ ... ]) from pending comments. */
@@ -2468,6 +2183,10 @@ public class SFCRParser {
             pendingComments.add(preserved.get(i));
         }
         return metadata;
+    }
+
+    public RStyleBlockMetadata consumeRStyleMetadataFromCommentsForHandler(Vector<String> pendingComments) {
+        return consumeRStyleMetadataFromComments(pendingComments);
     }
 
     /** Parse one metadata line in # [ ... ] syntax. */
@@ -2617,6 +2336,10 @@ public class SFCRParser {
             currentX = savedX;
             currentY = savedY;
         }
+    }
+
+    public void parseRStyleMatrixForHandler(String block, RStyleBlockMetadata metadata) {
+        parseRStyleMatrix(block, metadata);
     }
     
     /** Parse a single R-style row: "RowName", code = "expr", ... */
@@ -2852,6 +2575,10 @@ public class SFCRParser {
             currentX = savedX;
             currentY = savedY;
         }
+    }
+
+    public void parseRStyleEquationsForHandler(String block, RStyleBlockMetadata metadata) {
+        parseRStyleEquations(block, metadata);
     }
     
     /** Extract a named vector from R code: name = c("a", "b", "c"). */
