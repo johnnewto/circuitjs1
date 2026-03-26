@@ -139,55 +139,6 @@ public class SFCRExporter {
         return normalizeBlankLinesOutsideFences(sb.toString());
     }
 
-    public ArrayList<EquationTableElm> getEquationTablesForHandler() {
-        return equationTables;
-    }
-
-    public ArrayList<GodlyTableElm> getGodlyTablesForHandler() {
-        return godlyTables;
-    }
-
-    public ArrayList<SFCTableElm> getSfcTablesForHandler() {
-        return sfcTables;
-    }
-
-    public String exportEquationTableForHandler(EquationTableElm eqTable) {
-        return (exportSyntax == ExportSyntax.R_STYLE)
-            ? exportEquationTableRStyle(eqTable)
-            : exportEquationTable(eqTable);
-    }
-
-    public String exportGodlyTableForHandler(GodlyTableElm godlyTable) {
-        return (exportSyntax == ExportSyntax.R_STYLE)
-            ? exportGodlyTableRStyle(godlyTable)
-            : exportGodlyTable(godlyTable);
-    }
-
-    public String exportMatrixBlockForHandler(SFCTableElm sfcTable) {
-        return (exportSyntax == ExportSyntax.R_STYLE)
-            ? exportSFCTableRStyle(sfcTable)
-            : exportSFCTable(sfcTable);
-    }
-
-    public String exportCircuitElementsForHandler() {
-        if (otherElements.isEmpty()) {
-            return "";
-        }
-        return exportCircuitElements();
-    }
-
-    public CirSim getSimForHandler() {
-        return sim;
-    }
-
-    public ActionTimeElm getActionTimeElmForHandler() {
-        return actionTimeElmForExport;
-    }
-
-    public ArrayList<LookupDefinition> getLookupExportSpecsForHandler() {
-        return lookupExportSpecs;
-    }
-    
     /** Internal accessor for lookup export specs (used by context transition). */
     public ArrayList<LookupDefinition> getLookupExportSpecsInternal() {
         return lookupExportSpecs;
@@ -201,56 +152,6 @@ public class SFCRExporter {
     /** Internal accessor for lookup comments by name/scope (used by context transition). */
     public HashMap<String, ArrayList<String>> getLookupCommentsByNameScopeInternal() {
         return lookupCommentsByNameScope;
-    }
-
-    public ArrayList<SFCSankeyElm> getSankeyDiagramsForHandler() {
-        return sankeyDiagrams;
-    }
-
-    public int getScopeCountForHandler() {
-        return sim.scopeCount;
-    }
-
-    public Scope getScopeAtForHandler(int index) {
-        return sim.scopes[index];
-    }
-
-    public int getElmListSizeForHandler() {
-        return sim.elmList.size();
-    }
-
-    public CircuitElm getElmAtForHandler(int index) {
-        return sim.elmList.get(index);
-    }
-
-    public void markScopeElmExportedAsBlockForHandler(ScopeElm scopeElm) {
-        if (scopeElm != null) {
-            scopeElmsExportedAsBlocks.add(scopeElm);
-        }
-    }
-
-    public boolean appendScopeBlockForHandler(StringBuilder sb, Scope s, int defaultIndex, String defaultPrefix, ScopeElm scopeElm) {
-        return appendScopeBlock(sb, s, defaultIndex, defaultPrefix, scopeElm);
-    }
-
-    public String formatPositionForHandler(CircuitElm elm) {
-        return formatPosition(elm);
-    }
-
-    public String sanitizeNameForHandler(String text) {
-        return SFCRUtil.sanitizeName(text);
-    }
-
-    public String escapeTableCellForHandler(String text) {
-        return SFCRUtil.escapeTableCell(text);
-    }
-
-    public void appendLeadingBlockCommentsForHandler(StringBuilder sb, String blockType, String blockName) {
-        appendLeadingBlockComments(sb, blockType, blockName);
-    }
-
-    public void appendExportBlockForHandler(StringBuilder sb, String block) {
-        appendExportBlock(sb, block);
     }
 
     // =========================================================================
