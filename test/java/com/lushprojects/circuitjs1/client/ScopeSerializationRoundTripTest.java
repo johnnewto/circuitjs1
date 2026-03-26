@@ -1,9 +1,11 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.scope;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.lushprojects.circuitjs1.client.CircuitElm;
+import com.lushprojects.circuitjs1.client.CircuitJavaSimTestBase;
 import com.lushprojects.circuitjs1.client.util.Rectangle;
 import com.lushprojects.circuitjs1.client.util.StringTokenizer;
 import java.lang.reflect.Method;
@@ -18,11 +20,12 @@ class ScopeSerializationRoundTripTest extends CircuitJavaSimTestBase {
 
         Scope original = new Scope(sim);
         initializeScopeValue(original, Scope.VAL_CURRENT, sim.getElm(0));
+        int voltageUnits = Scope.UNITS_V;
         original.addPlot(
                 sim.getElm(1),
-                sim.getElm(1).getScopeUnits(Scope.VAL_VOLTAGE),
+                voltageUnits,
                 Scope.VAL_VOLTAGE,
-                original.getManScaleFromMaxScale(sim.getElm(1).getScopeUnits(Scope.VAL_VOLTAGE), false));
+                original.getManScaleFromMaxScale(voltageUnits, false));
         original.calcVisiblePlots();
         original.setRectForEmbedded(new Rectangle(0, 0, 240, 120));
         original.setText("Scope Label");

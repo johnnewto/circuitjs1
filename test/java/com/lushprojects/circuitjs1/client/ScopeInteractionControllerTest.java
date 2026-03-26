@@ -1,4 +1,4 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.scope;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -46,7 +46,9 @@ class ScopeInteractionControllerTest {
     void nearestPlotSelectionChoosesSmallestDistance() {
         ScopePlot p1 = new ScopePlot(null, Scope.UNITS_V);
         ScopePlot p2 = new ScopePlot(null, Scope.UNITS_V);
+        p1.minValues = new double[] {0.0, 0.0, 0.0, 0.0};
         p1.maxValues = new double[] {0.0, 0.0, 0.0, 0.0};
+        p2.minValues = new double[] {0.0, 0.0, 0.0, 0.0};
         p2.maxValues = new double[] {0.0, 0.0, 0.0, 0.0};
         p1.gridMult = 10;
         p2.gridMult = 10;
@@ -56,7 +58,7 @@ class ScopeInteractionControllerTest {
         visible.add(p1);
         visible.add(p2);
 
-        int idx = ScopeInteractionController.findNearestPlotIndex(visible, 0, 4, 20, 0, 50);
+        int idx = ScopeInteractionController.findNearestPlotIndexAtSampleX(visible, 0, 4, 4, 20, 0, 0, 50);
         assertEquals(1, idx);
     }
 }

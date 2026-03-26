@@ -14,7 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 @ResourceLock("ComputedValues")
-abstract class CircuitJavaSimTestBase {
+public abstract class CircuitJavaSimTestBase {
     protected CirSim sim;
 
     @BeforeEach

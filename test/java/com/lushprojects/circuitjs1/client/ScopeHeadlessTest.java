@@ -1,8 +1,10 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.scope;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.lushprojects.circuitjs1.client.CircuitElm;
+import com.lushprojects.circuitjs1.client.CircuitJavaSimTestBase;
 import com.lushprojects.circuitjs1.client.util.Rectangle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;

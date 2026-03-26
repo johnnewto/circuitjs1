@@ -1,8 +1,9 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.scope;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.lushprojects.circuitjs1.client.CircuitJavaSimTestBase;
 import com.lushprojects.circuitjs1.client.util.Rectangle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
