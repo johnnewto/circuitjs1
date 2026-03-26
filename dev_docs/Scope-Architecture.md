@@ -23,7 +23,10 @@ Implementation location: `src/com/lushprojects/circuitjs1/client/scope/`
   - `ScopeWaveformRenderer`
   - `ScopeAxisRenderer`
   - `ScopeOverlayRenderer`
+- `ScopeAxisRenderer` now owns multi-LHS axis/gutter/top-legend/bottom-time-axis draw implementations.
+- `ScopeOverlayRenderer` now owns cursor marker/readout rendering logic.
 - `ScopeInteractionController` centralizes hit-testing and cursor mapping.
+- `ScopeInteractionController` also owns draw-from-zero history index mapping and shared displayed-time-range mapping used by axis/cursor consumers.
 
 ## Export and Serialization
 - `ScopeDataExporter` now contains CSV/JSON export formatting for:

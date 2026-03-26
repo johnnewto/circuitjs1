@@ -63,8 +63,8 @@ Inventory for files under src/com/lushprojects/circuitjs1/client.
 | `scope/ScopeDataExporter.java` | Scope CSV/JSON export formatting for circular buffer and draw-from-zero history | Scope, ExportScopeDataDialog, ScopeViewerDialog |
 | `scope/ScopeGridRenderer.java` | Grid and background draw layer | Scope draw pipeline |
 | `scope/ScopeWaveformRenderer.java` | Waveform trace draw layer | ScopeFrameContext, ScopePlot |
-| `scope/ScopeAxisRenderer.java` | Axis labels/ticks/scales and multi-LHS axis rendering | ScopeScaler, PlotScaleResult |
-| `scope/ScopeOverlayRenderer.java` | Overlay layer (cursor, markers, annotations, active readouts) | Scope interaction/runtime state |
+| `scope/ScopeAxisRenderer.java` | Axis labels/ticks/scales, multi-LHS gutter+legend, and bottom time-axis rendering | ScopeScaler, ScopeInteractionController, PlotScaleResult |
+| `scope/ScopeOverlayRenderer.java` | Overlay layer including cursor marker/readout rendering and annotation overlays | Scope interaction/runtime state |
 
 ## core
 
