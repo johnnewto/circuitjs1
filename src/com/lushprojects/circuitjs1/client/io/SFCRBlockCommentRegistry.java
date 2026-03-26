@@ -1,6 +1,6 @@
 package com.lushprojects.circuitjs1.client.io;
 
-final class SFCRBlockCommentRegistry {
+public final class SFCRBlockCommentRegistry {
     public static final String TYPE_EQUATIONS = "equations";
     public static final String TYPE_MATRIX = "matrix";
     public static final String TYPE_SCOPE = "scope";

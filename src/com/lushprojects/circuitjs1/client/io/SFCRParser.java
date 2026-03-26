@@ -233,16 +233,16 @@ public class SFCRParser {
         if (text == null || text.trim().isEmpty()) {
             return null;
         }
-        // Normalize R-style syntax to block format before validation/parsing
-        String normalizedText = new SFCRSyntaxNormalizer().normalize(text);
+        // Normalize for validation only - parse() will normalize again
+        // (normalization is idempotent so this is safe)
         if (strict) {
+            String normalizedText = new SFCRSyntaxNormalizer().normalize(text);
             validateStrictInput(normalizedText);
         }
         SFCRParser parser = new SFCRParser(null);
         parser.pendingResult = new SFCRParseResult();
-        parser.parse(normalizedText);
+        parser.parse(text);  // parse() normalizes internally
         // Copy hints collected during block parsing into the result.
-        // (parse() also registers them with HintRegistry which is fine for tests.)
         parser.pendingResult.hints.putAll(parser.hints);
         return parser.pendingResult;
     }
@@ -471,30 +471,24 @@ public class SFCRParser {
         // This consolidates both code paths into a single block-format parser
         String normalizedText = new SFCRSyntaxNormalizer().normalize(text);
         
-        createdElements.clear();
-        hints.clear();
-        scopeVariables.clear();
-        scopeBlocks.clear();
-        initSettings.clear();
-        rawCircuitLines.clear();
-        globalLookupTables.clear();
-        scopedLookupTables.clear();
+        // Create context that owns all mutable parse state
+        SFCRParseContext ctx = new SFCRParseContext(sim, tableDumpBuilderService, rStyleParseService);
+        if (pendingResult != null) {
+            ctx.setPendingResult(pendingResult);
+        }
+        
+        // Clear registries
         LookupTableRegistry.clear();
-        lookupClampDefault = (sim == null) ? true : sim.isSfcrLookupClampDefault();
-        actionElementFromActionBlock = false;
-        parseWarnings.clear();
         if (sim != null) sim.getSFCRDocumentState().clearBlockComments();
-        currentY = 24;
         
         try {
             String[] lines = normalizedText.split("\n");
-            preScanInitLookupSettings(lines);
-            preScanLookupTables(lines);
+            preScanInitLookupSettings(lines, ctx);
+            preScanLookupTables(lines, ctx);
             int i = 0;
             Vector<String> pendingBlockComments = new Vector<String>();
             boolean inFence = false;
             boolean pendingCommentsConsumedInFence = false;
-            SFCRParseContext parseContext = new SFCRParseContext(this);
             
             while (i < lines.length) {
                 String line = lines[i].trim();
@@ -546,19 +540,19 @@ public class SFCRParser {
                     boolean consumedPendingComments = false;
                     if ("@matrix".equals(directive)) {
                         if (inFence) pendingCommentsConsumedInFence = true;
-                        storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_MATRIX,
-                            extractBlockName(line, "@matrix"), pendingBlockComments);
+                        ctx.storePendingMatrixBlockComments(
+                            ctx.parseBlockHeader(line, "@matrix").name, pendingBlockComments);
                         consumedPendingComments = true;
                     } else if ("@equations".equals(directive) || "@parameters".equals(directive)) {
                         if (inFence) pendingCommentsConsumedInFence = true;
-                        storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_EQUATIONS,
-                            extractBlockName(line, directive), pendingBlockComments);
+                        ctx.storePendingEquationsBlockComments(
+                            ctx.parseBlockHeader(line, directive).name, pendingBlockComments);
                         consumedPendingComments = true;
                     } else if ("@sankey".equals(directive)) {
                         if (inFence) pendingCommentsConsumedInFence = true;
                         storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_SANKEY, "", pendingBlockComments);
                         consumedPendingComments = true;
-                    } else if ("@scope".equals(directive) && looksLikeScopeBlock(lines, i)) {
+                    } else if ("@scope".equals(directive) && ctx.looksLikeScopeBlock(lines, i)) {
                         if (inFence) pendingCommentsConsumedInFence = true;
                         storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_SCOPE,
                             extractScopeBlockName(line), pendingBlockComments);
@@ -572,9 +566,9 @@ public class SFCRParser {
                     SFCRBlockParseHandler handler = SFCRBlockParseHandlerRegistry.getHandler(directive);
                     ParseResult result;
                     if (handler != null) {
-                        result = handler.parse(lines, i, parseContext);
+                        result = handler.parse(lines, i, ctx);
                     } else {
-                        result = unknownBlockParseHandler.parse(lines, i, parseContext);
+                        result = unknownBlockParseHandler.parse(lines, i, ctx);
                     }
                     i = result.getNextIndex();
                 } else {
@@ -586,7 +580,30 @@ public class SFCRParser {
                     i++;
                 }
             }
-            parseWarnings.addAll(parseContext.getWarnings());
+            
+            // Copy state from context back to parser fields for external access
+            parseWarnings.clear();
+            parseWarnings.addAll(ctx.getWarnings());
+            createdElements.clear();
+            createdElements.addAll(ctx.getCreatedElements());
+            hints.clear();
+            hints.putAll(ctx.getHints());
+            scopeVariables.clear();
+            scopeVariables.addAll(ctx.getScopeVariables());
+            scopeBlocks.clear();
+            scopeBlocks.addAll(ctx.getScopeBlocks());
+            initSettings.clear();
+            initSettings.putAll(ctx.getInitSettings());
+            rawCircuitLines.clear();
+            rawCircuitLines.addAll(ctx.getRawCircuitLines());
+            globalLookupTables.clear();
+            globalLookupTables.putAll(ctx.getGlobalLookupTables());
+            scopedLookupTables.clear();
+            scopedLookupTables.putAll(ctx.getScopedLookupTables());
+            infoContent = ctx.getInfoContent();
+            actionElementFromActionBlock = ctx.isActionElementFromActionBlock();
+            currentX = ctx.getCurrentX();
+            currentY = ctx.getCurrentY();
 
             // Apply init settings first (timestep, units, etc.)
             applyInitSettings();
@@ -654,7 +671,7 @@ public class SFCRParser {
         actionElementFromActionBlock = value;
     }
 
-    private void preScanLookupTables(String[] lines) {
+    private void preScanLookupTables(String[] lines, SFCRParseContext ctx) {
         if (lines == null || lines.length == 0) {
             return;
         }
@@ -667,7 +684,7 @@ public class SFCRParser {
                 continue;
             }
 
-            LookupDefinition table = parseLookupHeaderForHandler(headerLine);
+            LookupDefinition table = ctx.parseLookupHeader(headerLine);
             if (table == null) {
                 i++;
                 continue;
@@ -682,7 +699,7 @@ public class SFCRParser {
                 if (row.startsWith("#")) {
                     table.comments.add(row);
                 } else if (!row.isEmpty() && !row.startsWith("%")) {
-                    LookupPoint point = parseLookupPointForHandler(row);
+                    SFCRParser.LookupPoint point = ctx.parseLookupPoint(row);
                     if (point != null) {
                         table.xs.add(Double.valueOf(point.x));
                         table.ys.add(Double.valueOf(point.y));
@@ -691,19 +708,8 @@ public class SFCRParser {
                 j++;
             }
 
-            if (table.xs.size() >= 2 && isStrictlyIncreasingForHandler(table.xs)) {
-                String scopeName = table.scope;
-                if (scopeName == null || scopeName.isEmpty()) {
-                    globalLookupTables.put(table.name, table);
-                } else {
-                    HashMap<String, LookupDefinition> byScope = scopedLookupTables.get(scopeName);
-                    if (byScope == null) {
-                        byScope = new HashMap<String, LookupDefinition>();
-                        scopedLookupTables.put(scopeName, byScope);
-                    }
-                    byScope.put(table.name, table);
-                }
-                LookupTableRegistry.register(table);
+            if (table.xs.size() >= 2 && ctx.isStrictlyIncreasing(table.xs)) {
+                ctx.registerLookupTable(table);
             }
 
             i = (j < lines.length) ? (j + 1) : j;
@@ -742,7 +748,7 @@ public class SFCRParser {
         applyLookupInitAlias(key, value, true);
     }
 
-    private void preScanInitLookupSettings(String[] lines) {
+    private void preScanInitLookupSettings(String[] lines, SFCRParseContext ctx) {
         if (lines == null || lines.length == 0) {
             return;
         }
@@ -757,16 +763,7 @@ public class SFCRParser {
 
             String inlineParams = line.substring(5).trim();
             if (!inlineParams.isEmpty()) {
-                String[] parts = inlineParams.split("\\s+");
-                for (String part : parts) {
-                    int idx = part.indexOf('=');
-                    if (idx < 0) idx = part.indexOf(':');
-                    if (idx > 0) {
-                        String key = part.substring(0, idx).trim();
-                        String value = part.substring(idx + 1).trim();
-                        applyLookupInitAlias(key, value, false);
-                    }
-                }
+                ctx.parseInitInline(inlineParams);
                 i++;
                 continue;
             }
@@ -792,7 +789,7 @@ public class SFCRParser {
                     if (commentIdx >= 0) {
                         value = value.substring(0, commentIdx).trim();
                     }
-                    applyLookupInitAlias(key, value, false);
+                    ctx.registerInitSetting(key, value);
                 }
                 i++;
             }
@@ -1123,7 +1120,7 @@ public class SFCRParser {
         public double x;
         public double y;
 
-        LookupPoint(double x, double y) {
+        public LookupPoint(double x, double y) {
             this.x = x;
             this.y = y;
         }

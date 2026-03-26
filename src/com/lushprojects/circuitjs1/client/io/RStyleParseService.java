@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Vector;
 
-class RStyleParseService {
+public class RStyleParseService {
 
     public SFCRParser.RStyleBlockMetadata consumeMetadataFromComments(Vector<String> pendingComments) {
         SFCRParser.RStyleBlockMetadata metadata = new SFCRParser.RStyleBlockMetadata();

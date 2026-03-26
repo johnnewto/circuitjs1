@@ -2,10 +2,10 @@ package com.lushprojects.circuitjs1.client.io;
 
 import java.util.ArrayList;
 
-class SFCRTableDumpBuilderService {
-    static class DumpBuildResult {
-        final String dump;
-        final int y2;
+public class SFCRTableDumpBuilderService {
+    public static class DumpBuildResult {
+        public final String dump;
+        public final int y2;
 
         DumpBuildResult(String dump, int y2) {
             this.dump = dump;
@@ -13,7 +13,7 @@ class SFCRTableDumpBuilderService {
         }
     }
 
-    DumpBuildResult buildMatrixDump(String name, int currentX, int currentY,
+    public DumpBuildResult buildMatrixDump(String name, int currentX, int currentY,
                                     ArrayList<String> columnNames, ArrayList<String> rowNames,
                                     ArrayList<String[]> tableRows, Boolean showInitialValuesOverride) {
         int rows = rowNames.size();
@@ -90,7 +90,7 @@ class SFCRTableDumpBuilderService {
         return new DumpBuildResult(dump.toString(), y2);
     }
 
-    DumpBuildResult buildEquationDump(String name, int currentX, int currentY,
+    public DumpBuildResult buildEquationDump(String name, int currentX, int currentY,
                                       ArrayList<String> outputNames, ArrayList<String> equations,
                                       ArrayList<Integer> outputModes, ArrayList<String> targetNodeNames,
                                       ArrayList<String> sliderVarNames, ArrayList<Double> sliderValues,

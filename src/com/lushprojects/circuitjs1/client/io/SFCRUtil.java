@@ -14,7 +14,7 @@ import com.lushprojects.circuitjs1.client.elements.economics.EquationTableElm;
  * <p>These are pure static helpers used by both {@link SFCRParser} and
  * {@link SFCRExporter} to keep the two classes in sync on format details.
  */
-class SFCRUtil {
+public class SFCRUtil {
 
     private SFCRUtil() { /* non-instantiable */ }
 
