@@ -99,4 +99,81 @@ final class ScopeInteractionController {
         }
         return -1;
     }
+
+    static int mapHistoryIndexForSelection(ScopeFrameContext frame, int localX, int historySize,
+                                           double historySampleInterval, double startTime, double currentTime,
+                                           double maxTimeStep, int speed) {
+        if (historySize <= 0 || localX < 0 || localX >= frame.plotWidth) {
+            return -1;
+        }
+        ScopeDisplayConfig config = frame.displayConfig;
+        if (config.autoScaleTime) {
+            int idx = (int) (((long) localX * historySize) / frame.plotWidth);
+            return Math.min(Math.max(idx, 0), historySize - 1);
+        }
+        double elapsedTime = currentTime - startTime;
+        double timePerPixel = maxTimeStep * speed;
+        if (!(timePerPixel > 0)) {
+            return -1;
+        }
+        int pixelsNeeded = (int) (elapsedTime / timePerPixel);
+        int pixelsUsed = Math.min(pixelsNeeded, frame.plotWidth);
+        if (pixelsUsed < frame.plotWidth) {
+            if (localX >= pixelsUsed) {
+                return -1;
+            }
+            double time = localX * timePerPixel;
+            int idx = (int) (time / historySampleInterval);
+            return Math.min(Math.max(idx, 0), historySize - 1);
+        }
+        double windowTimeSpan = frame.plotWidth * timePerPixel;
+        double windowStart = elapsedTime - windowTimeSpan;
+        double time = windowStart + localX * timePerPixel;
+        int idx = (int) (time / historySampleInterval);
+        return Math.min(Math.max(idx, 0), historySize - 1);
+    }
+
+    static int findNearestMultiLhsAxisIndex(int localScopeX, int axisCount, int maxDistancePx) {
+        int bestAxis = -1;
+        int bestDist = Integer.MAX_VALUE;
+        for (int i = 0; i < axisCount; i++) {
+            int axisX = ScopeLayout.getMultiLhsAxisX(i);
+            int dist = Math.abs(localScopeX - axisX);
+            if (dist < bestDist) {
+                bestDist = dist;
+                bestAxis = i;
+            }
+        }
+        return bestDist <= maxDistancePx ? bestAxis : -1;
+    }
+
+    static double[] getDisplayedTimeRange(ScopeFrameContext frame, Vector<ScopePlot> visiblePlots,
+                                          double startTime, double currentTime) {
+        if (frame.plotWidth <= 0) {
+            return null;
+        }
+        if (frame.displayConfig.isDrawFromZeroActive()) {
+            double elapsedTime = currentTime - startTime;
+            double span = (frame.displayConfig.autoScaleTime && elapsedTime > 0)
+                    ? elapsedTime
+                    : frame.defaultDisplayTimeSpan;
+            if (span <= 0) {
+                span = frame.defaultDisplayTimeSpan;
+            }
+            return new double[]{startTime, startTime + span};
+        }
+        ScopePlot primary = (visiblePlots != null && !visiblePlots.isEmpty()) ? visiblePlots.firstElement() : null;
+        int requiredSamples = (frame.plotWidth + frame.horizontalPixelStride - 1) / frame.horizontalPixelStride;
+        int displayWidth = primary != null ? primary.getDisplayWidth(requiredSamples) : frame.plotWidth;
+        int displayPixelWidth = displayWidth * frame.horizontalPixelStride;
+        if (displayPixelWidth < frame.plotWidth) {
+            return new double[]{0, frame.defaultDisplayTimeSpan};
+        }
+        double end = currentTime;
+        double start = end - frame.defaultDisplayTimeSpan;
+        if (start < 0) {
+            start = 0;
+        }
+        return new double[]{start, end};
+    }
 }

@@ -1558,6 +1558,10 @@ public class Scope {
 	draw(g);
     }
 
+    private void drawCursorInfo(Graphics g, String[] info, int ct, int x, boolean drawY) {
+        ScopeOverlayRenderer.drawCursorInfo(this, g, info, ct, x, drawY);
+    }
+
     void renderGridLayer(Graphics g, ScopeFrameContext frame) {
         if (frame.displayConfig.isFFTMode()) {
             drawFFTVerticalGridLines(g);
@@ -1604,10 +1608,7 @@ public class Scope {
     }
 
     void renderAxisLayer(Graphics g, ScopeFrameContext frame) {
-        drawMultiLhsGutter(g, frame);
-        drawTopGutterLegend(g, frame);
-        drawMultiLhsAxes(g, frame);
-        drawBottomTimeAxis(g, frame);
+        ScopeAxisRenderer.render(this, g, frame);
     }
 
     void renderOverlayLayer(Graphics g, ScopeFrameContext frame) {
@@ -1616,7 +1617,7 @@ public class Scope {
     }
 
     void renderCursorLayer(Graphics g, ScopeFrameContext frame) {
-        drawCursor(g, frame);
+        ScopeOverlayRenderer.renderCursor(this, g, frame);
     }
 
     
@@ -2201,36 +2202,15 @@ public class Scope {
     }
 
     private int getHistoryIndexForSelection(ScopeFrameContext frame, int localX) {
-        int historySize = model.getHistorySize();
-        if (historySize <= 0 || localX < 0 || localX >= frame.plotWidth) {
-            return -1;
-        }
-        ScopeDisplayConfig config = frame.displayConfig;
-        if (config.autoScaleTime) {
-            int idx = (int) (((long) localX * historySize) / frame.plotWidth);
-            return Math.min(Math.max(idx, 0), historySize - 1);
-        }
-
-        double elapsedTime = sim.getTime() - startTime;
-        double timePerPixel = sim.getMaxTimeStep() * speed;
-        if (!(timePerPixel > 0)) {
-            return -1;
-        }
-        int pixelsNeeded = (int) (elapsedTime / timePerPixel);
-        int pixelsUsed = Math.min(pixelsNeeded, frame.plotWidth);
-        if (pixelsUsed < frame.plotWidth) {
-            if (localX >= pixelsUsed) {
-                return -1;
-            }
-            double time = localX * timePerPixel;
-            int idx = (int) (time / model.getHistorySampleInterval());
-            return Math.min(Math.max(idx, 0), historySize - 1);
-        }
-        double windowTimeSpan = frame.plotWidth * timePerPixel;
-        double windowStart = elapsedTime - windowTimeSpan;
-        double time = windowStart + localX * timePerPixel;
-        int idx = (int) (time / model.getHistorySampleInterval());
-        return Math.min(Math.max(idx, 0), historySize - 1);
+        return ScopeInteractionController.mapHistoryIndexForSelection(
+                frame,
+                localX,
+                model.getHistorySize(),
+                model.getHistorySampleInterval(),
+                startTime,
+                sim.getTime(),
+                sim.getMaxTimeStep(),
+                speed);
     }
 
     private int findNearestMultiLhsAxisSelection(int mouseX, ScopeFrameContext frame) {
@@ -2242,158 +2222,10 @@ public class Scope {
             return -1;
         }
         int localScopeX = mouseX - rect.x;
-        int bestAxis = -1;
-        int bestDist = Integer.MAX_VALUE;
-        for (int i = 0; i < axisCount; i++) {
-            int axisX = ScopeLayout.getMultiLhsAxisX(i);
-            int dist = Math.abs(localScopeX - axisX);
-            if (dist < bestDist) {
-                bestDist = dist;
-                bestAxis = i;
-            }
-        }
         // Axis spacing is 24 px; allow a generous hover band for labels/ticks.
-        return bestDist <= 20 ? bestAxis : -1;
+        return ScopeInteractionController.findNearestMultiLhsAxisIndex(localScopeX, axisCount, 20);
     }
     
-    private void drawCursor(Graphics g, ScopeFrameContext frame) {
-    if (sim.isDialogShowingForScope())
-        return;
-    if (cursorScope == null)
-        return;
-    ScopeDisplayConfig config = frame.displayConfig;
-    String info[] = new String[5];  // Increased from 4 to 5
-    int cursorX = -1;
-    int ct = 0;
-    
-    // Add plot name as first element
-    String plotName = getScopeLabelOrText();
-    if (plotName != null && !plotName.isEmpty()) {
-        info[ct++] = plotName;
-    }
-    
-    if (cursorTime >= 0) {
-        int plotLeft = frame.plotLeft;
-        int plotWidth = frame.plotWidth;
-        // Calculate cursor X position from cursorTime
-        if (config.isDrawFromZeroActive()) {
-            // Draw from zero mode: calculate position based on time from start
-            double elapsedTime = sim.getTime() - startTime;
-            double displayTimeSpan;
-            
-            if (config.autoScaleTime && elapsedTime > 0) {
-                displayTimeSpan = elapsedTime;
-            } else {
-			displayTimeSpan = frame.defaultDisplayTimeSpan;
-            }
-            
-            double timeFromStart = cursorTime - startTime;
-            cursorX = rect.x + plotLeft + (int)(plotWidth * timeFromStart / displayTimeSpan);
-	    } else {
-		int stride = frame.horizontalPixelStride;
-			int displayWidth = getDisplaySampleWidth(plots.get(0), frame);
-		if (displayWidth <= 0) {
-		    cursorX = -1;
-		} else {
-		    int ageSamples = (int) ((sim.getTime()-cursorTime)/(sim.getMaxTimeStep()*speed));
-		    cursorX = rect.x + plotLeft + (displayWidth - 1 - ageSamples) * stride;
-		}
-        }
-        
-	    int cursorMinX = rect.x + plotLeft;
-	    int cursorMaxX = cursorMinX + getDisplaySampleWidth(plots.get(0), frame) * frame.horizontalPixelStride;
-	    if (cursorX >= cursorMinX && cursorX < cursorMaxX) {
-        int maxy = (rect.height-1)/2;
-        int y = maxy;
-        if (visiblePlots.size() > 0) {
-            ScopePlot plot = visiblePlots.get(selectedPlot >= 0 ? selectedPlot : 0);
-            double value;
-            
-            if (config.isDrawFromZeroActive() && plot.historyMaxValues != null) {
-                // Get value from history buffer
-                double timeFromStart = cursorTime - startTime;
-                int historyIndex = (int)(timeFromStart / model.getHistorySampleInterval());
-                if (historyIndex >= 0 && historyIndex < model.getHistorySize()) {
-                    value = plot.historyMaxValues[historyIndex];
-                } else {
-                    value = 0;
-                }
-            } else {
-                // Get value from circular buffer
-			    int stride = frame.horizontalPixelStride;
-				    int displayWidth = getDisplaySampleWidth(plots.get(0), frame);
-			    if (displayWidth > 0) {
-				int ipa = plots.get(0).startIndex(displayWidth);
-				int sampleX = (cursorX-rect.x-plotLeft) / stride;
-				int ip = (sampleX+ipa) & (scopePointCount-1);
-				value = plot.maxValues[ip];
-			    } else {
-				value = 0;
-			    }
-            }
-            
-            info[ct++] = plot.getUnitText(value);
-            int maxvy = (int) (plot.gridMult*(value+plot.plotOffset));
-            g.setColor(plot.color);
-            g.fillOval(cursorX-2, rect.y+y-maxvy-2, 5, 5);
-        }
-        }
-    }
-    
-    // show FFT even if there's no plots (in which case cursorTime/cursorX will be invalid)
-        if (config.isFFTMode() && cursorScope == this) {
-            double maxFrequency = 1 / (sim.getMaxTimeStep() * speed * 2);
-            if (cursorX < 0)
-            cursorX = sim.getMouseCursorX();
-            int mousePlotX = sim.getMouseCursorX() - rect.x - frame.plotLeft;
-            if (mousePlotX < 0)
-                mousePlotX = 0;
-            if (mousePlotX > frame.plotWidth)
-                mousePlotX = frame.plotWidth;
-            info[ct++] = CircuitElm.getUnitText(maxFrequency * mousePlotX / frame.plotWidth, "Hz");
-		} else if (plots.size() == 0 || cursorX < rect.x + frame.plotLeft || cursorX >= rect.x + frame.plotLeft + getDisplaySampleWidth(plots.get(0), frame) * frame.horizontalPixelStride)
-            return;
-        
-	if (visiblePlots.size() > 0)
-		info[ct++] = sim.formatTimeFixedForScope(cursorTime);
-    
-    if (cursorScope != this) {
-        // don't show cursor info if not enough room, or stacked with selected one
-        // (position == -1 for embedded scopes)
-        if (rect.height < 40 || (position >= 0 && cursorScope.position == position)) {
-        drawCursorInfo(g, null, 0, cursorX, false);
-        return;
-        }
-    }
-    drawCursorInfo(g, info, ct, cursorX, false);
-    }
-    
-    private void drawCursorInfo(Graphics g, String[] info, int ct, int x, Boolean drawY) {
-	int szw = 0, szh = 15*ct;
-	int i;
-	for (i = 0; i != ct; i++) {
-	    int w=(int)g.context.measureText(info[i]).getWidth();
-	    if (w > szw)
-		szw = w;
-	}
-
-	g.setColor(CircuitElm.whiteColor);
-	g.drawLine(x, rect.y, x, rect.y+rect.height);
-	if (drawY)
-	    g.drawLine(rect.x, sim.getMouseCursorY(), rect.x+rect.width, sim.getMouseCursorY());
-	g.setColor(sim.printableCheckItem.getState() ? Color.white : Color.black);
-	int bx = x;
-	if (bx < szw/2)
-	    bx = szw/2;
-	g.fillRect(bx-szw/2, rect.y-szh, szw, szh);
-	g.setColor(CircuitElm.whiteColor);
-	for (i = 0; i != ct; i++) {
-	    int w=(int)g.context.measureText(info[i]).getWidth();
-	    g.drawString(info[i], bx-w/2, rect.y-2-(ct-1-i)*15);
-	}
-	
-    }
-
     public boolean canShowRMS() {
 	if (visiblePlots.size() == 0)
 	    return false;
@@ -2489,97 +2321,6 @@ public class Scope {
         return ScopeLayout.getInfoTextAnchorX(getPlotAreaLeft());
     }
 
-    private void drawMultiLhsGutter(Graphics g, ScopeFrameContext frame) {
-        int plotLeft = frame.plotLeft;
-        if (plotLeft <= 0) {
-            return;
-        }
-        g.setColor(sim.printableCheckItem.getState() ? "#eeeeee" : "#202020");
-        g.fillRect(0, 0, plotLeft, rect.height);
-        g.setColor(sim.printableCheckItem.getState() ? "#808080" : "#606060");
-        g.drawLine(plotLeft, 0, plotLeft, rect.height - 1);
-    }
-
-    private void drawTopGutterLegend(Graphics g, ScopeFrameContext frame) {
-        if (!isMultiLhsAxesDrawEnabled() || frame.plotTop <= 0 || visiblePlots == null || visiblePlots.isEmpty()) {
-            return;
-        }
-        String bgColor = sim.printableCheckItem.getState() ? "#f3f3f3" : "#181818";
-        String textColor = sim.printableCheckItem.getState() ? "#202020" : "#d0d0d0";
-        g.setColor(bgColor);
-        g.fillRect(frame.plotLeft, 0, frame.plotWidth, frame.plotTop);
-        g.setColor(sim.printableCheckItem.getState() ? "#808080" : "#606060");
-        g.drawLine(frame.plotLeft, frame.plotTop - 1, frame.plotLeft + frame.plotWidth - 1, frame.plotTop - 1);
-
-        int axisCount = getMultiLhsAxisCount();
-        int x = frame.plotLeft + 8;
-        int y = Math.max(12, frame.plotTop - 6);
-        g.context.save();
-        g.context.setFont(getScaledFont(11, false));
-        for (int i = 0; i < axisCount; i++) {
-            ScopePlot plot = visiblePlots.get(i);
-            if (plot == null) {
-                continue;
-            }
-            boolean mouseHoverSelected = sim.getScopeSelectedIndexForScope() == -1
-                    && plot.elm != null
-                    && plot.elm.isMouseElmForUi();
-            boolean plotSelected = selectedPlot == i;
-            String legendColor = somethingSelected ? "#A0A0A0" : plot.color;
-            if (sim.isScopeMenuSelectedForScope(this) || mouseHoverSelected) {
-                legendColor = CircuitElm.selectColor.getHexValue();
-            } else if (plotSelected) {
-                legendColor = plot.color;
-            }
-
-            String label = getMultiLhsAxisName(plot, i);
-            int bulletSize = 8;
-            int bulletY = y - bulletSize + 1;
-            int textPad = 6;
-            int labelWidth = (int) Math.ceil(g.context.measureText(label).getWidth());
-            int needed = bulletSize + textPad + labelWidth + 14;
-            if (x + needed > frame.plotLeft + frame.plotWidth - 6) {
-                break;
-            }
-            g.setColor(legendColor);
-            g.fillOval(x, bulletY, bulletSize, bulletSize);
-            g.context.setFillStyle(textColor);
-            g.context.setTextAlign("left");
-            g.context.setTextBaseline("alphabetic");
-            g.context.fillText(label, x + bulletSize + textPad, y);
-            x += needed;
-        }
-        g.context.restore();
-    }
-
-    private String getMultiLhsAxisName(ScopePlot plot, int axisIndex) {
-        if (plot != null && plot.elm != null) {
-            String name = plot.elm.getScopeTextForScope(plot.value);
-            if (name != null && !name.isEmpty()) {
-                return name.length() > 10 ? name.substring(0, 10) : name;
-            }
-        }
-        return "CH" + (axisIndex + 1);
-    }
-
-    private String getMultiLhsAxisValueText(ScopePlot plot, double value) {
-        if (plot == null) {
-            return "";
-        }
-        switch (plot.units) {
-        case UNITS_V:
-            return CircuitElm.getShortUnitText(value, "V");
-        case UNITS_A:
-            return CircuitElm.getShortUnitText(value, "A");
-        case UNITS_OHMS:
-            return CircuitElm.getShortUnitText(value, Locale.ohmString);
-        case UNITS_W:
-            return CircuitElm.getShortUnitText(value, "W");
-        default:
-            return plot.getUnitText(value);
-        }
-    }
-
     private double[] calcMultiLhsAxisRange(ScopePlot plot, double[] minV, double[] maxV) {
         int displayWidth = getDisplaySampleWidth(plot);
         if (displayWidth <= 0) {
@@ -2590,165 +2331,6 @@ public class Scope {
                 showNegative, scale[plot.units], MULTI_LHS_TICK_COUNT, MULTI_LHS_NICE_STEP_MULTIPLIERS);
     }
 
-    private void drawMultiLhsAxes(Graphics g, ScopeFrameContext frame) {
-        if (!isMultiLhsAxesDrawEnabled()) {
-            return;
-        }
-        int axisCount = getMultiLhsAxisCount();
-        int plotLeft = frame.plotLeft;
-        int plotHeight = frame.plotHeight;
-        int maxy = (plotHeight - 1) / 2;
-        boolean scopeSelected = sim.isScopeMenuSelectedForScope(this);
-
-        g.context.save();
-        g.context.setFont(getScaledFont(9, false));
-
-        for (int i = 0; i < axisCount; i++) {
-            ScopePlot plot = visiblePlots.get(i);
-            if (plot == null || plot.gridMult == 0) {
-                continue;
-            }
-
-            int axisX = ScopeLayout.getMultiLhsAxisX(i);
-            if (axisX >= plotLeft - 2) {
-                break;
-            }
-
-            boolean mouseHoverSelected = sim.getScopeSelectedIndexForScope() == -1
-                    && plot.elm != null
-                    && plot.elm.isMouseElmForUi();
-            boolean plotSelected = selectedPlot == i;
-            String axisColor = somethingSelected ? "#A0A0A0" : plot.color;
-            if (scopeSelected || mouseHoverSelected) {
-                axisColor = CircuitElm.selectColor.getHexValue();
-            } else if (plotSelected) {
-                axisColor = plot.color;
-            }
-            double axisStrokeWidth = plotSelected ? 2.5 : ((scopeSelected || mouseHoverSelected) ? 2.0 : 1.0);
-
-            g.setColor(axisColor);
-            g.context.setLineWidth(axisStrokeWidth);
-            g.drawLine(axisX, frame.plotTop, axisX, frame.plotTop + plotHeight - 1);
-            for (int tick = 0; tick < MULTI_LHS_TICK_COUNT; tick++) {
-                int localY = (plotHeight - 1) * tick / (MULTI_LHS_TICK_COUNT - 1);
-                int drawY = frame.plotTop + localY;
-                g.drawLine(axisX, drawY, ScopeLayout.getMultiLhsTickEndX(axisX), drawY);
-                int textX = ScopeLayout.getMultiLhsTickLabelX(axisX);
-                if (textX >= plotLeft - 2) {
-                    continue;
-                }
-                double tickValue;
-                if (plot.lhsAxisStep > 0) {
-                    tickValue = plot.lhsAxisMax - tick * plot.lhsAxisStep;
-                    if (Math.abs(tickValue) < plot.lhsAxisStep * 1e-9) {
-                        tickValue = 0;
-                    }
-                } else {
-                    tickValue = ((double) (maxy - localY) / plot.gridMult) - plot.plotOffset;
-                }
-                String tickText = getMultiLhsAxisValueText(plot, tickValue);
-                g.context.save();
-                g.context.translate(textX, drawY);
-                g.context.rotate(-Math.PI / 2.0);
-                g.context.setTextAlign("center");
-                g.context.setTextBaseline("middle");
-                g.context.fillText(tickText, 0, 0);
-                g.context.restore();
-            }
-            g.context.setLineWidth(1.0);
-        }
-        g.context.restore();
-    }
-
-    private double[] getDisplayedTimeRange(ScopeFrameContext frame) {
-        if (frame.plotWidth <= 0) {
-            return null;
-        }
-        if (frame.displayConfig.isDrawFromZeroActive()) {
-            double elapsedTime = sim.getTime() - startTime;
-            double span = (frame.displayConfig.autoScaleTime && elapsedTime > 0)
-                    ? elapsedTime
-                    : frame.defaultDisplayTimeSpan;
-            if (span <= 0) {
-                span = frame.defaultDisplayTimeSpan;
-            }
-            return new double[]{startTime, startTime + span};
-        }
-        ScopePlot primary = (visiblePlots != null && !visiblePlots.isEmpty()) ? visiblePlots.firstElement() : null;
-        int displayWidth = primary != null ? getDisplaySampleWidth(primary, frame) : frame.plotWidth;
-        int displayPixelWidth = displayWidth * frame.horizontalPixelStride;
-        if (displayPixelWidth < frame.plotWidth) {
-            return new double[]{0, frame.defaultDisplayTimeSpan};
-        }
-        double end = sim.getTime();
-        double start = end - frame.defaultDisplayTimeSpan;
-        if (start < 0) {
-            start = 0;
-        }
-        return new double[]{start, end};
-    }
-
-    private void drawBottomTimeAxis(Graphics g, ScopeFrameContext frame) {
-        if (frame.timeAxisHeight <= 0 || frame.plotWidth <= 0) {
-            return;
-        }
-        double[] timeRange = getDisplayedTimeRange(frame);
-        if (timeRange == null) {
-            return;
-        }
-        double axisGridStep = displayGridStepX > 0 ? displayGridStepX : ScopeScaler.calcGridStepX(frame.timePerPixel, MIN_PIXEL_SPACING, multa);
-        if (axisGridStep <= 0) {
-            return;
-        }
-        double span = timeRange[1] - timeRange[0];
-        if (span <= 0) {
-            return;
-        }
-        double baseGridPixelSpacing = frame.plotWidth * axisGridStep / span;
-        int tickGridMultiple = 10;
-        if (baseGridPixelSpacing * 2 >= 64) {
-            tickGridMultiple = 2;
-        } else if (baseGridPixelSpacing * 5 >= 64) {
-            tickGridMultiple = 5;
-        }
-        double tickStep = axisGridStep * tickGridMultiple;
-        int axisTop = frame.plotTop + frame.plotHeight;
-        int axisBottom = rect.height - 1;
-        String bgColor = sim.printableCheckItem.getState() ? "#f3f3f3" : "#181818";
-        String lineColor = sim.printableCheckItem.getState() ? "#707070" : "#8a8a8a";
-        String textColor = sim.printableCheckItem.getState() ? "#202020" : "#d0d0d0";
-
-        g.setColor(bgColor);
-        g.fillRect(frame.plotLeft, axisTop, frame.plotWidth, frame.timeAxisHeight);
-        g.setColor(lineColor);
-        g.drawLine(frame.plotLeft, axisTop, frame.plotLeft + frame.plotWidth - 1, axisTop);
-
-        int labelY = axisBottom - 3;
-        int tickTop = axisTop + 1;
-        int tickBottom = tickTop + 4;
-        g.context.save();
-        g.context.setFont(getScaledFont(10, false));
-        g.context.setFillStyle(textColor);
-
-        double firstTickTime = Math.ceil(timeRange[0] / tickStep) * tickStep;
-        for (double t = firstTickTime; t <= timeRange[1] + tickStep * 1e-9; t += tickStep) {
-            int x = frame.plotLeft + (int) Math.round((t - timeRange[0]) * frame.plotWidth / span);
-            if (x < frame.plotLeft || x > frame.plotLeft + frame.plotWidth - 1) {
-                continue;
-            }
-            g.drawLine(x, tickTop, x, tickBottom);
-            if (x - frame.plotLeft < 18) {
-                g.context.setTextAlign("left");
-            } else if ((frame.plotLeft + frame.plotWidth - 1) - x < 18) {
-                g.context.setTextAlign("right");
-            } else {
-                g.context.setTextAlign("center");
-            }
-            g.context.fillText(sim.formatTimeFixedForScope(t), x, labelY);
-        }
-        g.context.restore();
-    }
-    
     private void drawAverage(Graphics g) {
 	ScopePlot plot = visiblePlots.firstElement();
         int displayWidth = getDisplaySampleWidth(plot);
@@ -3535,6 +3117,54 @@ public class Scope {
 
     public boolean isMultiLhsAxesEnabledForUi() {
         return multiLhsAxes;
+    }
+
+    static Scope getCursorScopeForRender() {
+        return cursorScope;
+    }
+
+    static double getCursorTimeForRender() {
+        return cursorTime;
+    }
+
+    String getScopeLabelOrTextForRender() {
+        return getScopeLabelOrText();
+    }
+
+    int getDisplaySampleWidthForRender(ScopePlot plot, ScopeFrameContext frame) {
+        return getDisplaySampleWidth(plot, frame);
+    }
+
+    int getHistorySizeForRender() {
+        return model.getHistorySize();
+    }
+
+    double getHistorySampleIntervalForRender() {
+        return model.getHistorySampleInterval();
+    }
+
+    String getScaledFontForRender(int baseSize, boolean bold) {
+        return getScaledFont(baseSize, bold);
+    }
+
+    boolean isSomethingSelectedForRender() {
+        return somethingSelected;
+    }
+
+    int getMultiLhsTickCountForRender() {
+        return MULTI_LHS_TICK_COUNT;
+    }
+
+    double getDisplayGridStepXForRender() {
+        return displayGridStepX;
+    }
+
+    double getStartTimeForRender() {
+        return startTime;
+    }
+
+    int getMinPixelSpacingForRender() {
+        return MIN_PIXEL_SPACING;
     }
     
 }
