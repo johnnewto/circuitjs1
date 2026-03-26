@@ -1047,62 +1047,16 @@ public class Scope {
     }
 
     private void drawFFT(Graphics g) {
-    	if (fft == null || fft.getSize() != scopePointCount)
-    		fft = new FFT(scopePointCount);
-      double[] real = new double[scopePointCount];
-      double[] imag = new double[scopePointCount];
-      ScopePlot plot = (visiblePlots.size() == 0) ? plots.firstElement() : visiblePlots.firstElement();
-      double maxV[] = plot.maxValues;
-      double minV[] = plot.minValues;
-      int ptr = plot.ptr;
-      for (int i = 0; i < scopePointCount; i++) {
-	  int ii = (ptr - i + scopePointCount) & (scopePointCount - 1);
-	  // need to average max and min or else it could cause average of function to be > 0, which
-	  // produces spike at 0 Hz that hides rest of spectrum
-	  real[i] = .5*(maxV[ii]+minV[ii]);
-	  imag[i] = 0;
-      }
-      fft.fft(real, imag, true);
-      double maxM = 1e-8;
-      for (int i = 0; i < scopePointCount / 2; i++) {
-    	  double m = fft.magnitude(real[i], imag[i]);
-    	  if (m > maxM)
-    		  maxM = m;
-      }
-      int prevX = 0;
-      int plotWidth = getPlotAreaWidth();
-      g.setColor("#FF0000");
-      if (!logSpectrum) {
-	  int prevHeight = 0;
-	  int y = (rect.height - 1) - 12;
-	  for (int i = 0; i < scopePointCount / 2; i++) {
-	      int x = 2 * i * plotWidth / scopePointCount;
-	      // plotWidth may be greater than or less than scopePointCount/2,
-	      // so x may be greater than or equal to prevX.
-	      double magnitude = fft.magnitude(real[i], imag[i]);
-	      int height = (int) ((magnitude * y) / maxM);
-	      if (x != prevX)
-		  g.drawLine(prevX, y - prevHeight, x, y - height);
-	      prevHeight = height;
-	      prevX = x;
-	  }
-      } else {
-	  int y0 = 5;
-	  int prevY = 0;
-	  double ymult = rect.height/10;
-	  double val0 = Math.log(scale[plot.units])*ymult;
-	  for (int i = 0; i < scopePointCount / 2; i++) {
-	      int x = 2 * i * plotWidth / scopePointCount;
-	      // plotWidth may be greater than or less than scopePointCount/2,
-	      // so x may be greater than or equal to prevX.
-	      double val = Math.log(fft.magnitude(real[i], imag[i]));
-	      int y = y0-(int) (val*ymult-val0);
-	      if (x != prevX)
-		  g.drawLine(prevX, prevY, x, y);
-	      prevY = y;
-	      prevX = x;
-	  }
-      }
+	ScopePlot plot = (visiblePlots.size() == 0) ? plots.firstElement() : visiblePlots.firstElement();
+	fft = ScopeFFTHelper.drawSpectrum(
+	        g,
+	        fft,
+	        scopePointCount,
+	        plot,
+	        getPlotAreaWidth(),
+	        rect.height,
+	        logSpectrum,
+	        scale[plot.units]);
     }
     
     /**
@@ -2387,8 +2341,7 @@ public class Scope {
     boolean canShowRMS() {
 	if (visiblePlots.size() == 0)
 	    return false;
-	ScopePlot plot = visiblePlots.firstElement();
-	return (plot.units == Scope.UNITS_V || plot.units == Scope.UNITS_A);
+	return ScopeStatsService.canShowRms(visiblePlots.firstElement());
     }
     
     // calc RMS and display it
@@ -2401,65 +2354,11 @@ public class Scope {
 	    return;
 	}
 	ScopePlot plot = visiblePlots.firstElement();
-	int i;
-	double avg = 0;
         int displayWidth = getDisplaySampleWidth(plot);
         if (displayWidth <= 0)
             return;
-    	int ipa = plot.startIndex(displayWidth);
-    	double maxV[] = plot.maxValues;
-    	double minV[] = plot.minValues;
-    	double mid = (maxValue+minValue)/2;
-	int state = -1;
-	
-	// skip zeroes
-	for (i = 0; i != displayWidth; i++) {
-	    int ip = (i+ipa) & (scopePointCount-1);
-	    if (maxV[ip] != 0) {
-		if (maxV[ip] > mid)
-		    state = 1;
-		break;
-	    }
-	}
-	int firstState = -state;
-	int start = i;
-	int end = 0;
-	int waveCount = 0;
-	double endAvg = 0;
-	for (; i != displayWidth; i++) {
-	    int ip = (i+ipa) & (scopePointCount-1);
-	    boolean sw = false;
-	    
-	    // switching polarity?
-	    if (state == 1) {
-		if (maxV[ip] < mid)
-		    sw = true;
-	    } else if (minV[ip] > mid)
-		sw = true;
-	    
-	    if (sw) {
-		state = -state;
-		
-		// completed a full cycle?
-		if (firstState == state) {
-		    if (waveCount == 0) {
-			start = i;
-			firstState = state;
-			avg = 0;
-		    }
-		    waveCount++;
-		    end = i;
-		    endAvg = avg;
-		}
-	    }
-	    if (waveCount > 0) {
-		double m = (maxV[ip]+minV[ip])*.5;
-		avg += m*m;
-	    }
-	}
-	double rms;
-	if (waveCount > 1) {
-	    rms = Math.sqrt(endAvg/(end-start));
+	Double rms = ScopeStatsService.computeRms(plot, displayWidth, scopePointCount, (maxValue + minValue) / 2);
+	if (rms != null) {
 	    drawInfoText(g, plot.getUnitText(rms) + "rms");
 	}
     }
@@ -2638,185 +2537,35 @@ public class Scope {
     
     private void drawAverage(Graphics g) {
 	ScopePlot plot = visiblePlots.firstElement();
-	int i;
-	double avg = 0;
         int displayWidth = getDisplaySampleWidth(plot);
         if (displayWidth <= 0)
             return;
-    	int ipa = plot.startIndex(displayWidth);
-    	double maxV[] = plot.maxValues;
-    	double minV[] = plot.minValues;
-    	double mid = (maxValue+minValue)/2;
-	int state = -1;
-	
-	// skip zeroes
-	for (i = 0; i != displayWidth; i++) {
-	    int ip = (i+ipa) & (scopePointCount-1);
-	    if (maxV[ip] != 0) {
-		if (maxV[ip] > mid)
-		    state = 1;
-		break;
-	    }
-	}
-	int firstState = -state;
-	int start = i;
-	int end = 0;
-	int waveCount = 0;
-	double endAvg = 0;
-	for (; i != displayWidth; i++) {
-	    int ip = (i+ipa) & (scopePointCount-1);
-	    boolean sw = false;
-	    
-	    // switching polarity?
-	    if (state == 1) {
-		if (maxV[ip] < mid)
-		    sw = true;
-	    } else if (minV[ip] > mid)
-		sw = true;
-	    
-	    if (sw) {
-		state = -state;
-		
-		// completed a full cycle?
-		if (firstState == state) {
-		    if (waveCount == 0) {
-			start = i;
-			firstState = state;
-			avg = 0;
-		    }
-		    waveCount++;
-		    end = i;
-		    endAvg = avg;
-		}
-	    }
-	    if (waveCount > 0) {
-		double m = (maxV[ip]+minV[ip])*.5;
-		avg += m;
-	    }
-	}
-	if (waveCount > 1) {
-	    avg = (endAvg/(end-start));
+	Double avg = ScopeStatsService.computeAverage(plot, displayWidth, scopePointCount, (maxValue + minValue) / 2);
+	if (avg != null) {
 	    drawInfoText(g, plot.getUnitText(avg) + Locale.LS(" average"));
 	}
     }
 
     private void drawDutyCycle(Graphics g) {
 	ScopePlot plot = visiblePlots.firstElement();
-	int i;
         int displayWidth = getDisplaySampleWidth(plot);
         if (displayWidth <= 0)
             return;
-    	int ipa = plot.startIndex(displayWidth);
-    	double maxV[] = plot.maxValues;
-    	double minV[] = plot.minValues;
-    	double mid = (maxValue+minValue)/2;
-	int state = -1;
-	
-	// skip zeroes
-	for (i = 0; i != displayWidth; i++) {
-	    int ip = (i+ipa) & (scopePointCount-1);
-	    if (maxV[ip] != 0) {
-		if (maxV[ip] > mid)
-		    state = 1;
-		break;
-	    }
-	}
-	int firstState = 1;
-	int start = i;
-	int end = 0;
-	int waveCount = 0;
-	int dutyLen = 0;
-	int middle = 0;
-	for (; i != displayWidth; i++) {
-	    int ip = (i+ipa) & (scopePointCount-1);
-	    boolean sw = false;
-	    
-	    // switching polarity?
-	    if (state == 1) {
-		if (maxV[ip] < mid)
-		    sw = true;
-	    } else if (minV[ip] > mid)
-		sw = true;
-	    
-	    if (sw) {
-		state = -state;
-		
-		// completed a full cycle?
-		if (firstState == state) {
-		    if (waveCount == 0) {
-			start = end = i;
-		    } else {
-			end = start;
-			start = i;
-			dutyLen = end-middle;
-		    }
-		    waveCount++;
-		} else
-		    middle = i;
-	    }
-	}
-	if (waveCount > 1) {
-	    int duty = 100*dutyLen/(end-start);
+	Integer duty = ScopeStatsService.computeDutyCyclePercent(plot, displayWidth, scopePointCount, (maxValue + minValue) / 2);
+	if (duty != null) {
 	    drawInfoText(g, Locale.LS("Duty cycle ") + duty + "%");
 	}
     }
 
     // calc frequency if possible and display it
     private void drawFrequency(Graphics g) {
-	// try to get frequency
-	// get average
-	double avg = 0;
-	int i;
 	ScopePlot plot = visiblePlots.firstElement();
         int displayWidth = getDisplaySampleWidth(plot);
         if (displayWidth <= 0)
             return;
-    	int ipa = plot.startIndex(displayWidth);
-    	double minV[] = plot.minValues;
-    	double maxV[] = plot.maxValues;
-	for (i = 0; i != displayWidth; i++) {
-	    int ip = (i+ipa) & (scopePointCount-1);
-	    avg += minV[ip]+maxV[ip];
-	}
-	avg /= i*2;
-	int state = 0;
-	double thresh = avg*.05;
-	int oi = 0;
-	double avperiod = 0;
-	int periodct = -1;
-	double avperiod2 = 0;
-	// count period lengths
-	for (i = 0; i != displayWidth; i++) {
-	    int ip = (i+ipa) & (scopePointCount-1);
-	    double q = maxV[ip]-avg;
-	    int os = state;
-	    if (q < thresh)
-		state = 1;
-	    else if (q > -thresh)
-		state = 2;
-	    if (state == 2 && os == 1) {
-		int pd = i-oi;
-		oi = i;
-		// short periods can't be counted properly
-		if (pd < 12)
-		    continue;
-		// skip first period, it might be too short
-		if (periodct >= 0) {
-		    avperiod += pd;
-		    avperiod2 += pd*pd;
-		}
-		periodct++;
-	    }
-	}
-	avperiod /= periodct;
-	avperiod2 /= periodct;
-	double periodstd = Math.sqrt(avperiod2-avperiod*avperiod);
-	double freq = 1/(avperiod*sim.getMaxTimeStep()*speed);
-	// don't show freq if standard deviation is too great
-	if (periodct < 1 || periodstd > 2)
-	    freq = 0;
-	// System.out.println(freq + " " + periodstd + " " + periodct);
-	if (freq != 0)
+	Double freq = ScopeStatsService.computeFrequency(
+		plot, displayWidth, scopePointCount, sim.getMaxTimeStep(), speed);
+	if (freq != null)
 	    drawInfoText(g, CircuitElm.getUnitText(freq, "Hz"));
     }
 
