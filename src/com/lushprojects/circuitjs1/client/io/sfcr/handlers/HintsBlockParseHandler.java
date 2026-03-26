@@ -24,9 +24,9 @@ public class HintsBlockParseHandler implements SFCRBlockParseHandler {
             }
             int colonIdx = line.indexOf(':');
             if (colonIdx > 0) {
-                String varName = ctx.getParser().normalizeVariableNameForHandler(line.substring(0, colonIdx).trim());
+                String varName = ctx.normalizeVariableName(line.substring(0, colonIdx).trim());
                 String description = line.substring(colonIdx + 1).trim();
-                ctx.getParser().registerHintForHandler(varName, description);
+                ctx.registerHint(varName, description);
             }
             i++;
         }

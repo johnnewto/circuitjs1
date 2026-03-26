@@ -27,7 +27,7 @@ class RStyleParseService {
         return metadata;
     }
 
-    public void parseMatrix(SFCRParser parser, String block, SFCRParser.RStyleBlockMetadata metadata) {
+    public String[] normalizeMatrixBlock(SFCRParser parser, String block, SFCRParser.RStyleBlockMetadata metadata) {
         String matrixName = parser.extractRStyleAssignmentNameForHandler(block, "Matrix");
         ArrayList<String> columnNames = extractRVector(block, "columns");
         ArrayList<String> columnCodes = extractRVector(block, "codes");
@@ -77,44 +77,56 @@ class RStyleParseService {
             }
         }
 
-        int savedX = parser.getCurrentXForHandler();
-        int savedY = parser.getCurrentYForHandler();
-        if (effectiveMetadata.hasPosition()) {
-            parser.setCurrentPositionForHandler(effectiveMetadata.x, effectiveMetadata.y);
+        if (columnNames.isEmpty() || tableRows.isEmpty()) {
+            return null;
         }
 
-        if (!columnNames.isEmpty() && !tableRows.isEmpty()) {
-            String matrixType = (effectiveMetadata.type != null && !effectiveMetadata.type.trim().isEmpty())
-                ? effectiveMetadata.type.trim() : "transaction_flow";
-            parser.createMatrixTableForHandler(matrixName, columnNames, rowNames, tableRows, matrixType,
-                null, null, null);
-        }
-
+        String matrixType = (effectiveMetadata.type != null && !effectiveMetadata.type.trim().isEmpty())
+            ? effectiveMetadata.type.trim() : "transaction_flow";
+        StringBuilder normalized = new StringBuilder();
+        normalized.append("@matrix ").append(matrixName);
         if (effectiveMetadata.hasPosition()) {
-            parser.setCurrentPositionForHandler(savedX, savedY);
+            normalized.append(" x=").append(effectiveMetadata.x).append(" y=").append(effectiveMetadata.y);
         }
+        normalized.append("\n");
+        normalized.append("  type: ").append(matrixType).append("\n");
+        normalized.append("\n");
+        normalized.append("| Transaction |");
+        for (int i = 0; i < columnNames.size(); i++) {
+            normalized.append(" ").append(columnNames.get(i)).append(" |");
+        }
+        normalized.append("\n");
+        normalized.append("|-------------|");
+        for (int i = 0; i < columnNames.size(); i++) {
+            normalized.append("------|");
+        }
+        normalized.append("\n");
+
+        for (int r = 0; r < rowNames.size() && r < tableRows.size(); r++) {
+            normalized.append("| ").append(rowNames.get(r)).append(" |");
+            String[] rowData = tableRows.get(r);
+            for (int c = 0; c < columnNames.size(); c++) {
+                String expr = (c < rowData.length) ? rowData[c] : "";
+                normalized.append(" ").append(expr).append(" |");
+            }
+            normalized.append("\n");
+        }
+        normalized.append("@end\n");
+        return normalized.toString().split("\\n");
     }
 
-    public void parseEquations(SFCRParser parser, String block, SFCRParser.RStyleBlockMetadata metadata) {
+    public String[] normalizeEquationsBlock(SFCRParser parser, String block, SFCRParser.RStyleBlockMetadata metadata) {
         String blockName = parser.extractRStyleAssignmentNameForHandler(block, "Equations");
-
-        ArrayList<String> outputNames = new ArrayList<String>();
-        ArrayList<String> equations = new ArrayList<String>();
-        ArrayList<Integer> outputModes = new ArrayList<Integer>();
-        ArrayList<String> targetNodeNames = new ArrayList<String>();
-        ArrayList<String> sliderVarNames = new ArrayList<String>();
-        ArrayList<Double> sliderValues = new ArrayList<Double>();
-        ArrayList<String> initialEquations = new ArrayList<String>();
 
         int start = block.indexOf("sfcr_set(");
         if (start < 0) {
-            return;
+            return null;
         }
         start += 9;
 
         int end = findMatchingParen(block, start - 1);
         if (end < 0) {
-            return;
+            return null;
         }
 
         String content = block.substring(start, end);
@@ -126,6 +138,13 @@ class RStyleParseService {
             effectiveMetadata.type = metadata.type;
         }
         int currentSectionMode = 0;
+        StringBuilder normalized = new StringBuilder();
+        normalized.append("@equations ").append(blockName);
+        if (effectiveMetadata.hasPosition()) {
+            normalized.append(" x=").append(effectiveMetadata.x).append(" y=").append(effectiveMetadata.y);
+        }
+        normalized.append("\n");
+        int rowCount = 0;
 
         ArrayList<String> parts = splitByTopLevelCommaIgnoringHashComments(content);
         for (String part : parts) {
@@ -151,8 +170,10 @@ class RStyleParseService {
                         currentSectionMode = 3;
                     }
 
-                    appendCommentRow(line, outputNames, equations, outputModes, targetNodeNames,
-                        sliderVarNames, sliderValues, initialEquations);
+                    String commentText = line.substring(1).trim();
+                    if (!commentText.isEmpty()) {
+                        normalized.append("  # ").append(commentText).append("\n");
+                    }
                     continue;
                 }
                 if (cleanedPart.length() > 0) {
@@ -207,58 +228,50 @@ class RStyleParseService {
             String name = parser.normalizeVariableNameForHandler(part.substring(0, tildeIdx).trim());
             String expr = parser.normalizeExpressionForHandler(part.substring(tildeIdx + 1).trim());
             expr = parser.rewriteLookupCallsForHandler(expr, blockName);
-
-            outputNames.add(name);
-            equations.add(expr);
             int mode = currentSectionMode;
             String inlineMode = inlineMeta.get("mode");
             if (inlineMode != null && !inlineMode.isEmpty()) {
                 mode = SFCRParser.parseModeOrdinal(inlineMode);
             }
-            outputModes.add(Integer.valueOf(mode));
-            targetNodeNames.add("");
-
-            String sliderVar = inlineMeta.get("slider");
-            sliderVarNames.add((sliderVar != null) ? sliderVar : "");
-
-            double sliderValue = 0.0;
-            String sliderValueStr = inlineMeta.get("slidervalue");
-            if (sliderValueStr != null) {
-                try {
-                    sliderValue = Double.parseDouble(sliderValueStr.trim());
-                } catch (Exception e) {
-                }
-            }
-            sliderValues.add(Double.valueOf(sliderValue));
 
             String initialEq = inlineMeta.get("initial");
             if (initialEq != null && !initialEq.trim().isEmpty()) {
                 initialEq = parser.rewriteLookupCallsForHandler(initialEq, blockName);
             }
-            initialEquations.add((initialEq != null) ? initialEq : "");
+
+            normalized.append("  ").append(name).append(" ~ ").append(expr)
+                .append(" ; mode=").append(toModeKeyword(mode));
+            String target = inlineMeta.get("target");
+            if (target != null && !target.trim().isEmpty()) {
+                normalized.append(" ; target=")
+                    .append(parser.normalizeVariableNameForHandler(target.trim()));
+            }
+            String sliderVar = inlineMeta.get("slider");
+            if (sliderVar != null && !sliderVar.trim().isEmpty()) {
+                normalized.append(" ; slider=").append(sliderVar.trim());
+            }
+            String sliderValueStr = inlineMeta.get("slidervalue");
+            if (sliderValueStr != null && !sliderValueStr.trim().isEmpty()) {
+                normalized.append(" ; sliderValue=").append(sliderValueStr.trim());
+            }
+            if (initialEq != null && !initialEq.trim().isEmpty()) {
+                normalized.append(" ; initial=").append(initialEq.trim());
+            }
 
             if (inlineComment != null) {
                 inlineComment = inlineComment.trim();
             }
-            if (inlineComment != null && !inlineComment.isEmpty() && !parser.hasHintForHandler(name)) {
-                parser.registerHintForHandler(name, inlineComment);
+            if (inlineComment != null && !inlineComment.isEmpty()) {
+                normalized.append("  # ").append(inlineComment);
             }
+            normalized.append("\n");
+            rowCount++;
         }
-
-        int savedX = parser.getCurrentXForHandler();
-        int savedY = parser.getCurrentYForHandler();
-        if (effectiveMetadata.hasPosition()) {
-            parser.setCurrentPositionForHandler(effectiveMetadata.x, effectiveMetadata.y);
+        if (rowCount == 0) {
+            return null;
         }
-
-        if (!outputNames.isEmpty()) {
-            parser.createEquationTableForHandler(blockName, outputNames, equations, outputModes,
-                targetNodeNames, sliderVarNames, sliderValues, initialEquations);
-        }
-
-        if (effectiveMetadata.hasPosition()) {
-            parser.setCurrentPositionForHandler(savedX, savedY);
-        }
+        normalized.append("@end\n");
+        return normalized.toString().split("\\n");
     }
 
     private boolean parseMetadataLine(String rawLine, SFCRParser.RStyleBlockMetadata metadata) {
@@ -703,30 +716,13 @@ class RStyleParseService {
         return parsed;
     }
 
-    private void appendCommentRow(String comment,
-                                  ArrayList<String> outputNames,
-                                  ArrayList<String> equations,
-                                  ArrayList<Integer> outputModes,
-                                  ArrayList<String> targetNodeNames,
-                                  ArrayList<String> sliderVarNames,
-                                  ArrayList<Double> sliderValues,
-                                  ArrayList<String> initialEquations) {
-        if (comment == null) {
-            return;
+    private String toModeKeyword(int mode) {
+        if (mode == 1) {
+            return "flow";
         }
-        String text = comment.trim();
-        if (text.startsWith("#")) {
-            text = text.substring(1).trim();
+        if (mode == 3) {
+            return "param";
         }
-        if (text.isEmpty()) {
-            return;
-        }
-        outputNames.add("# " + text);
-        equations.add("");
-        outputModes.add(Integer.valueOf(3));
-        targetNodeNames.add("");
-        sliderVarNames.add("");
-        sliderValues.add(Double.valueOf(0));
-        initialEquations.add("");
+        return "voltage";
     }
 }

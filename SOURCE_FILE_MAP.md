@@ -381,16 +381,59 @@ Inventory for files under src/com/lushprojects/circuitjs1/client.
 | `LookupBlocksTextUtil.java` | Parses and merges @lookup blocks in SFCR documents | SFCRParser, LookupTableRegistry, lookup editing |
 | `LookupDefinition.java` | Data class holding lookup table name, scope, x/y values | LookupTableRegistry, Expr.lookup(), SFCR format |
 | `LookupTableRegistry.java` | Global runtime registry for lookup tables used by Expr.lookup() | LookupDefinition, SFCRParser, expression evaluation |
+| `RStyleParseService.java` | Normalizes R-style sfcr_set/sfcr_matrix syntax into canonical SFCR block lines | SFCRParser, RStyleBlockParseHandler, handler dispatch |
 | `SFCRBlockCommentRegistry.java` | Creates composite keys for block comments by type and name | SFCRParser, SFCRDocumentState, block comment storage |
 | `SFCRDocumentManager.java` | Manages SFCR document state and model info menu items | SFCRDocumentState, MenuItem, model info UI |
 | `SFCRDocumentState.java` | Holds document metadata: block comments, model info, current file | SFCRDocumentManager, circuit file state |
-| `SFCRExporter.java` | Exports circuit to human-readable SFCR text format | SFCRParser, EquationTableElm, GodlyTableElm, SFCTableElm |
+| `SFCRExporter.java` | Orchestrates SFCR export through block handler registry and template merge flow | SFCRExportContext, SFCRBlockExportHandlerRegistry, SFCRParser |
 | `SFCRParseResult.java` | Plain-Java result object with parsed init settings and block dumps | SFCRParser, unit testing without GWT dependencies |
 | `SFCRParseResultExporter.java` | Exports SFCRParseResult back to SFCR text format | SFCRParseResult, round-trip testing |
-| `SFCRParser.java` | Parses SFCR text format into circuit elements (@equations, @matrix) | SFCRExporter, EquationTableElm, SFCTableElm, HintRegistry |
+| `SFCRParser.java` | Orchestrates SFCR parse scanning and dispatch to directive handlers | SFCRParseContext, SFCRBlockParseHandlerRegistry, SFCRExporter |
+| `SFCRTableDumpBuilderService.java` | Builds GWT-free dump strings for equation and matrix table element creation | SFCRParser, SFCRParseResult, ElementFactoryFacade |
 | `SFCRUtil.java` | Shared utilities for SFCR parsing/exporting (sanitization, escaping) | SFCRParser, SFCRExporter, RowOutputMode |
 | `SRAMLoadFile.java` | Loads binary data files into SRAM chip elements | SRAMElm, FileReader ArrayBuffer API |
 | `SetupListLoader.java` | Extends SetupListLoaderCore for loading circuit menus | SetupListLoaderCore, circuit example menu population |
+
+## io/sfcr
+
+| File | What It Is For | Close Relationships |
+|---|---|---|
+| `io/sfcr/ParseResult.java` | Simple parse handler result containing next-line index progression | SFCRBlockParseHandler, SFCRParser orchestrator |
+| `io/sfcr/ParseWarning.java` | Structured warning payload for non-fatal SFCR parse diagnostics | SFCRParseContext, UnknownBlockParseHandler |
+| `io/sfcr/SFCRBlockExportHandlerRegistry.java` | Ordered registry of export handlers by explicit exportOrder priority | SFCRExporter, SFCRBlockExportHandler |
+| `io/sfcr/SFCRBlockParseHandlerRegistry.java` | Directive-to-handler registry for parser dispatch | SFCRParser, SFCRBlockParseHandler |
+| `io/sfcr/SFCRBlockType.java` | Enum of logical SFCR block categories used by handlers/contexts | SFCRBlockExportHandler, registries |
+| `io/sfcr/SFCRExportContext.java` | Export-time context API exposing categorized data and helper operations | SFCRExporter, export handlers |
+| `io/sfcr/SFCRParseContext.java` | Parse-time context API exposing parser state mutations and helper operations | SFCRParser, parse handlers |
+
+## io/sfcr/handlers
+
+| File | What It Is For | Close Relationships |
+|---|---|---|
+| `io/sfcr/handlers/ActionBlockExportHandler.java` | Exports `@action` block from ActionScheduler and ActionTimeElm state | SFCRExportContext, ActionScheduler |
+| `io/sfcr/handlers/ActionBlockParseHandler.java` | Parses `@action` block and creates/updates ActionTimeElm plus schedule rows | SFCRParseContext, ActionScheduler |
+| `io/sfcr/handlers/CircuitBlockExportHandler.java` | Exports fallback raw element dumps in `@circuit` block | SFCRExportContext, SFCRExporter |
+| `io/sfcr/handlers/CircuitBlockParseHandler.java` | Parses `@circuit` block raw dumps and result-mode inferred block dumps | SFCRParseContext, SFCRParseResult |
+| `io/sfcr/handlers/EquationBlocksCollectExportHandler.java` | Collects equation-style blocks before final emission pass | SFCRExportContext, EquationBlocksEmitExportHandler |
+| `io/sfcr/handlers/EquationBlocksEmitExportHandler.java` | Emits pre-collected equation/godly blocks in deterministic order | SFCRExportContext |
+| `io/sfcr/handlers/EquationsBlockParseHandler.java` | Parses `@equations` and `@parameters` blocks into EquationTable rows | SFCRParseContext, EquationTableElm |
+| `io/sfcr/handlers/HintsBlockExportHandler.java` | Exports standalone `@hints` for names not already covered by equation rows | SFCRExportContext, HintRegistry |
+| `io/sfcr/handlers/HintsBlockParseHandler.java` | Parses `@hints` key/value lines into HintRegistry-backed parser state | SFCRParseContext, HintRegistry |
+| `io/sfcr/handlers/InfoBlockParseHandler.java` | Parses `@info` markdown content block into parser document info field | SFCRParseContext, SFCRDocumentManager |
+| `io/sfcr/handlers/InitBlockExportHandler.java` | Exports simulation init/runtime settings in `@init` block | SFCRExportContext, CirSim settings |
+| `io/sfcr/handlers/InitBlockParseHandler.java` | Parses `@init` block and inline init parameters into parser init settings | SFCRParseContext |
+| `io/sfcr/handlers/LookupBlockExportHandler.java` | Exports resolved lookup definitions in `@lookup` blocks | SFCRExportContext, LookupDefinition |
+| `io/sfcr/handlers/LookupBlockParseHandler.java` | Parses `@lookup` blocks and registers scoped/global lookup tables | SFCRParseContext, LookupTableRegistry |
+| `io/sfcr/handlers/MatrixBlockExportHandler.java` | Exports matrix tables from SFCTable elements | SFCRExportContext, SFCTableElm |
+| `io/sfcr/handlers/MatrixBlockParseHandler.java` | Parses `@matrix` markdown tables and creates matrix table elements | SFCRParseContext, SFCTableElm |
+| `io/sfcr/handlers/RStyleBlockParseHandler.java` | Parses R-style assignment blocks and dispatches normalized lines to block handlers | SFCRParseContext, RStyleParseService |
+| `io/sfcr/handlers/SFCRBlockExportHandler.java` | Export handler interface: block type, ordering, and export method contract | SFCRBlockExportHandlerRegistry |
+| `io/sfcr/handlers/SFCRBlockParseHandler.java` | Parse handler interface for directive coverage and parse progression | SFCRBlockParseHandlerRegistry |
+| `io/sfcr/handlers/SankeyBlockExportHandler.java` | Exports `@sankey` visualization blocks from SFCSankey elements | SFCRExportContext, SFCSankeyElm |
+| `io/sfcr/handlers/SankeyBlockParseHandler.java` | Parses `@sankey` blocks into Sankey element dumps/elements | SFCRParseContext, SFCSankeyElm |
+| `io/sfcr/handlers/ScopeBlockExportHandler.java` | Exports docked/embedded scope configurations as `@scope` blocks | SFCRExportContext, Scope/ScopeElm |
+| `io/sfcr/handlers/ScopeBlockParseHandler.java` | Parses `@scope` blocks and legacy scope lines into scope specs | SFCRParseContext, Scope |
+| `io/sfcr/handlers/UnknownBlockParseHandler.java` | Fallback handler for unknown directives with warning + skip behavior | SFCRParseContext, ParseWarning |
 
 ## registry
 

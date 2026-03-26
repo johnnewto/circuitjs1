@@ -1,6 +1,5 @@
 package com.lushprojects.circuitjs1.client.io.sfcr.handlers;
 
-import com.lushprojects.circuitjs1.client.io.SFCRParser;
 import com.lushprojects.circuitjs1.client.io.sfcr.ParseResult;
 import com.lushprojects.circuitjs1.client.io.sfcr.SFCRParseContext;
 
@@ -8,8 +7,8 @@ import java.util.Vector;
 
 public class RStyleBlockParseHandler {
     public ParseResult parse(String[] lines, int startIndex, SFCRParseContext ctx, Vector<String> pendingBlockComments) {
-        SFCRParser parser = ctx.getParser();
-        SFCRParser.RStyleBlockMetadata metadata = parser.consumeRStyleMetadataFromCommentsForHandler(pendingBlockComments);
+        com.lushprojects.circuitjs1.client.io.SFCRParser.RStyleBlockMetadata metadata =
+            ctx.consumeRStyleMetadataFromComments(pendingBlockComments);
         StringBuilder blockText = new StringBuilder();
         int i = startIndex;
         int parenDepth = 0;
@@ -36,15 +35,15 @@ public class RStyleBlockParseHandler {
         }
 
         String block = blockText.toString();
-        String blockName = parser.extractRStyleAssignmentNameForHandler(block, "Equations");
+        String blockName = ctx.extractRStyleAssignmentName(block, "Equations");
 
         if (block.contains("sfcr_matrix")) {
-            blockName = parser.extractRStyleAssignmentNameForHandler(block, "Matrix");
-            parser.storePendingMatrixBlockCommentsForHandler(blockName, pendingBlockComments);
-            parser.parseRStyleMatrixForHandler(block, metadata);
+            blockName = ctx.extractRStyleAssignmentName(block, "Matrix");
+            ctx.storePendingMatrixBlockComments(blockName, pendingBlockComments);
+            ctx.parseRStyleMatrix(block, metadata);
         } else if (block.contains("sfcr_set")) {
-            parser.storePendingEquationsBlockCommentsForHandler(blockName, pendingBlockComments);
-            parser.parseRStyleEquationsForHandler(block, metadata);
+            ctx.storePendingEquationsBlockComments(blockName, pendingBlockComments);
+            ctx.parseRStyleEquations(block, metadata);
         } else if (pendingBlockComments != null) {
             pendingBlockComments.clear();
         }

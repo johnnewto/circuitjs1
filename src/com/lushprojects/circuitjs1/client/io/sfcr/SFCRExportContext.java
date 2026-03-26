@@ -23,10 +23,6 @@ public class SFCRExportContext {
         this.exporter = exporter;
     }
 
-    public SFCRExporter getExporter() {
-        return exporter;
-    }
-
     public CirSim getSim() {
         return exporter.getSimForHandler();
     }

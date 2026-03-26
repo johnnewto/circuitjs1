@@ -21,15 +21,14 @@ public class EquationsBlockParseHandler implements SFCRBlockParseHandler {
 
     @Override
     public ParseResult parse(String[] lines, int startIndex, SFCRParseContext ctx) {
-        SFCRParser parser = ctx.getParser();
         String headerLine = lines[startIndex].trim();
-        SFCRParser.BlockHeaderInfo blockPos = parser.parseBlockHeaderForHandler(headerLine, directive);
+        SFCRParser.BlockHeaderInfo blockPos = ctx.parseBlockHeader(headerLine, directive);
         String blockName = blockPos.name;
 
-        int savedX = parser.getCurrentXForHandler();
-        int savedY = parser.getCurrentYForHandler();
+        int savedX = ctx.getCurrentX();
+        int savedY = ctx.getCurrentY();
         if (blockPos.hasPosition()) {
-            parser.setCurrentPositionForHandler(blockPos.x, blockPos.y);
+            ctx.setCurrentPosition(blockPos.x, blockPos.y);
         }
 
         ArrayList<String> outputNames = new ArrayList<String>();
@@ -94,19 +93,19 @@ public class EquationsBlockParseHandler implements SFCRBlockParseHandler {
                     }
                 }
 
-                String[] lhsAliasParts = parser.splitDifferenceLeftAliasForHandler(leftPart);
+                String[] lhsAliasParts = ctx.splitDifferenceLeftAlias(leftPart);
                 boolean hasDifferenceAlias = lhsAliasParts[1] != null && !lhsAliasParts[1].isEmpty();
 
                 String[] nameParts = SFCRParser.parseCombinedNameLocal(lhsAliasParts[0]);
-                String name = parser.normalizeVariableNameForHandler(nameParts[0]);
+                String name = ctx.normalizeVariableName(nameParts[0]);
 
                 String targetName = "";
                 if (nameParts[1] != null && !nameParts[1].trim().isEmpty()) {
-                    targetName = parser.normalizeVariableNameForHandler(nameParts[1].trim());
+                    targetName = ctx.normalizeVariableName(nameParts[1].trim());
                 }
 
-                String expr = parser.normalizeExpressionForHandler(exprText);
-                expr = parser.rewriteLookupCallsForHandler(expr, blockName);
+                String expr = ctx.normalizeExpression(exprText);
+                expr = ctx.rewriteLookupCalls(expr, blockName);
 
                 outputNames.add(name);
                 if (hasDifferenceAlias) {
@@ -125,7 +124,7 @@ public class EquationsBlockParseHandler implements SFCRBlockParseHandler {
                 if (targetName.isEmpty()) {
                     String metaTarget = rowMeta.get("target");
                     if (metaTarget != null && !metaTarget.trim().isEmpty()) {
-                        targetName = parser.normalizeVariableNameForHandler(metaTarget.trim());
+                        targetName = ctx.normalizeVariableName(metaTarget.trim());
                     }
                 }
                 targetNodeNames.add(targetName);
@@ -145,12 +144,12 @@ public class EquationsBlockParseHandler implements SFCRBlockParseHandler {
 
                 String initEq = rowMeta.get("initial");
                 if (initEq != null && !initEq.trim().isEmpty()) {
-                    initEq = parser.rewriteLookupCallsForHandler(initEq, blockName);
+                    initEq = ctx.rewriteLookupCalls(initEq, blockName);
                 }
                 initialEquations.add((initEq != null) ? initEq : "");
 
-                if (inlineComment != null && !inlineComment.isEmpty() && !parser.hasHintForHandler(name)) {
-                    parser.registerHintForHandler(name, inlineComment);
+                if (inlineComment != null && !inlineComment.isEmpty() && !ctx.hasHint(name)) {
+                    ctx.registerHint(name, inlineComment);
                 }
             }
 
@@ -158,12 +157,12 @@ public class EquationsBlockParseHandler implements SFCRBlockParseHandler {
         }
 
         if (!outputNames.isEmpty()) {
-            parser.createEquationTableForHandler(blockName, outputNames, equations, outputModes,
+            ctx.createEquationTable(blockName, outputNames, equations, outputModes,
                 targetNodeNames, sliderVarNames, sliderValues, initialEquations);
         }
 
         if (blockPos.hasPosition()) {
-            parser.setCurrentPositionForHandler(savedX, savedY);
+            ctx.setCurrentPosition(savedX, savedY);
         }
 
         return ParseResult.next(i);

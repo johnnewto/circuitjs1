@@ -1,6 +1,5 @@
 package com.lushprojects.circuitjs1.client.io.sfcr.handlers;
 
-import com.lushprojects.circuitjs1.client.io.SFCRParser;
 import com.lushprojects.circuitjs1.client.io.sfcr.ParseResult;
 import com.lushprojects.circuitjs1.client.io.sfcr.SFCRParseContext;
 
@@ -12,12 +11,11 @@ public class InitBlockParseHandler implements SFCRBlockParseHandler {
 
     @Override
     public ParseResult parse(String[] lines, int startIndex, SFCRParseContext ctx) {
-        SFCRParser parser = ctx.getParser();
         String headerLine = lines[startIndex].trim();
 
         String inlineParams = headerLine.substring(5).trim();
         if (!inlineParams.isEmpty()) {
-            parser.parseInitInlineForHandler(inlineParams);
+            ctx.parseInitInline(inlineParams);
             return ParseResult.next(startIndex + 1);
         }
 
@@ -41,7 +39,7 @@ public class InitBlockParseHandler implements SFCRBlockParseHandler {
                 if (commentIdx >= 0) {
                     value = value.substring(0, commentIdx).trim();
                 }
-                parser.registerInitSettingForHandler(key, value);
+                ctx.registerInitSetting(key, value);
             }
             i++;
         }

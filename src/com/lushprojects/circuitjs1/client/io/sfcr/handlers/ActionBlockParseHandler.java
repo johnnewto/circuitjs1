@@ -16,9 +16,8 @@ public class ActionBlockParseHandler implements SFCRBlockParseHandler {
 
     @Override
     public ParseResult parse(String[] lines, int startIndex, SFCRParseContext ctx) {
-        SFCRParser parser = ctx.getParser();
-        SFCRParser.BlockHeaderInfo actionBlockPos = parser.parseBlockHeaderForHandler(lines[startIndex].trim(), "@action");
-        ActionScheduler scheduler = parser.getActionSchedulerForHandler();
+        SFCRParser.BlockHeaderInfo actionBlockPos = ctx.parseBlockHeader(lines[startIndex].trim(), "@action");
+        ActionScheduler scheduler = ctx.getActionScheduler();
         if (scheduler == null) {
             return ParseResult.next(startIndex + 1);
         }
@@ -68,7 +67,7 @@ public class ActionBlockParseHandler implements SFCRBlockParseHandler {
                     if (key.equals("pausetime") || key.equals("pause_time")) {
                         scheduler.setPauseTime(Double.parseDouble(value));
                     } else if (key.equals("enabled") || key.equals("actionelementenabled") || key.equals("action_element_enabled")) {
-                        actionElmEnabled = parser.parseBooleanForHandler(value, true);
+                        actionElmEnabled = ctx.parseBoolean(value, true);
                         actionElmEnabledSpecified = true;
                     } else if (key.equals("name") || key.equals("title")) {
                         if (value != null && value.trim().length() > 0) {
@@ -99,15 +98,15 @@ public class ActionBlockParseHandler implements SFCRBlockParseHandler {
                     i++;
                     continue;
                 }
-                String[] cells = parser.parseTableRowForHandler(line);
+                String[] cells = ctx.parseTableRow(line);
                 if (cells.length >= 6) {
                     try {
                         double actionTime = Double.parseDouble(cells[0].trim());
-                        String target = parser.unescapeTableCellForHandler(cells[1]);
-                        String valueSpec = parser.unescapeTableCellForHandler(cells[2]);
-                        String postText = parser.unescapeTableCellForHandler(cells[3]);
-                        boolean enabled = parser.parseBooleanForHandler(cells[4], true);
-                        boolean stop = parser.parseBooleanForHandler(cells[5], false);
+                        String target = ctx.unescapeTableCell(cells[1]);
+                        String valueSpec = ctx.unescapeTableCell(cells[2]);
+                        String postText = ctx.unescapeTableCell(cells[3]);
+                        boolean enabled = ctx.parseBoolean(cells[4], true);
+                        boolean stop = ctx.parseBoolean(cells[5], false);
 
                         double numericValue = 0.0;
                         String expression = "";
@@ -136,14 +135,14 @@ public class ActionBlockParseHandler implements SFCRBlockParseHandler {
         }
 
         if (hasAnyActionRows || actionElmEnabledSpecified || actionElmSpecified) {
-            ActionTimeElm actionElm = parser.findActionTimeElmForHandler();
-            CirSim sim = parser.getSimForHandler();
+            ActionTimeElm actionElm = ctx.findActionTimeElm();
+            CirSim sim = ctx.getSim();
             if (actionElm == null) {
                 actionElm = new ActionTimeElm(actionElmX1, actionElmY1, actionElmX2, actionElmY2, actionElmFlags, null);
                 actionElm.setPointsForImportExport();
                 sim.getImportExportHelper().assignPersistentUid(actionElm, null);
                 sim.elmList.addElement(actionElm);
-                parser.addCreatedElementForHandler(actionElm);
+                ctx.addCreatedElement(actionElm);
             } else if (actionElmSpecified) {
                 actionElm.x = actionElmX1;
                 actionElm.y = actionElmY1;
@@ -157,7 +156,7 @@ public class ActionBlockParseHandler implements SFCRBlockParseHandler {
             if (actionElmEnabledSpecified || actionElmSpecified || hasAnyActionRows) {
                 actionElm.enabled = actionElmEnabled;
             }
-            parser.setActionElementFromActionBlockForHandler(true);
+            ctx.setActionElementFromActionBlock(true);
         }
         return ParseResult.next(i);
     }

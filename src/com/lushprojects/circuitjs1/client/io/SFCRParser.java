@@ -24,11 +24,6 @@ import com.lushprojects.circuitjs1.client.io.sfcr.ParseResult;
 import com.lushprojects.circuitjs1.client.io.sfcr.ParseWarning;
 import com.lushprojects.circuitjs1.client.io.sfcr.SFCRBlockParseHandlerRegistry;
 import com.lushprojects.circuitjs1.client.io.sfcr.SFCRParseContext;
-import com.lushprojects.circuitjs1.client.io.sfcr.handlers.ActionBlockParseHandler;
-import com.lushprojects.circuitjs1.client.io.sfcr.handlers.EquationsBlockParseHandler;
-import com.lushprojects.circuitjs1.client.io.sfcr.handlers.HintsBlockParseHandler;
-import com.lushprojects.circuitjs1.client.io.sfcr.handlers.InitBlockParseHandler;
-import com.lushprojects.circuitjs1.client.io.sfcr.handlers.LookupBlockParseHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.RStyleBlockParseHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.SFCRBlockParseHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.UnknownBlockParseHandler;
@@ -89,28 +84,28 @@ public class SFCRParser {
     }
 
     /** Parsed scope trace reference. */
-    private static class ScopeTraceSpec {
-        String uid;
-        int value = Scope.VAL_VOLTAGE;
+    public static class ScopeTraceSpec {
+        public String uid;
+        public int value = Scope.VAL_VOLTAGE;
     }
 
     /** Parsed @scope block configuration. */
-    private static class ScopeBlockSpec {
-        String name = "scope";
-        int position = 0;
-        int speed = -1;
-        int flags = Integer.MIN_VALUE;
-        String title;
-        String label;
-        ArrayList<ScopeTraceSpec> traces = new ArrayList<ScopeTraceSpec>();
+    public static class ScopeBlockSpec {
+        public String name = "scope";
+        public int position = 0;
+        public int speed = -1;
+        public int flags = Integer.MIN_VALUE;
+        public String title;
+        public String label;
+        public ArrayList<ScopeTraceSpec> traces = new ArrayList<ScopeTraceSpec>();
         // Embedded scope geometry (from ScopeElm export)
-        int x1 = Integer.MIN_VALUE;
-        int y1 = Integer.MIN_VALUE;
-        int x2 = Integer.MIN_VALUE;
-        int y2 = Integer.MIN_VALUE;
-        String elmUid;
+        public int x1 = Integer.MIN_VALUE;
+        public int y1 = Integer.MIN_VALUE;
+        public int x2 = Integer.MIN_VALUE;
+        public int y2 = Integer.MIN_VALUE;
+        public String elmUid;
 
-        boolean hasGeometry() {
+        public boolean hasGeometry() {
             return x1 != Integer.MIN_VALUE && y1 != Integer.MIN_VALUE
                 && x2 != Integer.MIN_VALUE && y2 != Integer.MIN_VALUE;
         }
@@ -536,21 +531,7 @@ public class SFCRParser {
                 }
                 
                 // Parse block markers
-                if (line.startsWith("@scope")) {
-                    if (looksLikeScopeBlock(lines, i)) {
-                        if (inFence) pendingCommentsConsumedInFence = true;
-                        storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_SCOPE,
-                            extractScopeBlockName(line), pendingBlockComments);
-                        SFCRBlockParseHandler scopeHandler = SFCRBlockParseHandlerRegistry.getHandler("@scope");
-                        i = (scopeHandler == null)
-                            ? parseScopeBlock(lines, i)
-                            : scopeHandler.parse(lines, i, parseContext).getNextIndex();
-                    } else {
-                        pendingBlockComments.clear();
-                        parseScopeLine(line);
-                        i++;
-                    }
-                } else if (line.contains("sfcr_matrix") || line.contains("<-")) {
+                if (line.contains("sfcr_matrix") || line.contains("<-")) {
                     // Try to parse R-style sfcr syntax
                     if (inFence) pendingCommentsConsumedInFence = true;
                     i = new RStyleBlockParseHandler()
@@ -563,18 +544,29 @@ public class SFCRParser {
                         continue;
                     }
 
+                    boolean consumedPendingComments = false;
                     if ("@matrix".equals(directive)) {
                         if (inFence) pendingCommentsConsumedInFence = true;
                         storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_MATRIX,
                             extractBlockName(line, "@matrix"), pendingBlockComments);
+                        consumedPendingComments = true;
                     } else if ("@equations".equals(directive) || "@parameters".equals(directive)) {
                         if (inFence) pendingCommentsConsumedInFence = true;
                         storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_EQUATIONS,
                             extractBlockName(line, directive), pendingBlockComments);
+                        consumedPendingComments = true;
                     } else if ("@sankey".equals(directive)) {
                         if (inFence) pendingCommentsConsumedInFence = true;
                         storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_SANKEY, "", pendingBlockComments);
-                    } else {
+                        consumedPendingComments = true;
+                    } else if ("@scope".equals(directive) && looksLikeScopeBlock(lines, i)) {
+                        if (inFence) pendingCommentsConsumedInFence = true;
+                        storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_SCOPE,
+                            extractScopeBlockName(line), pendingBlockComments);
+                        consumedPendingComments = true;
+                    }
+
+                    if (!consumedPendingComments) {
                         pendingBlockComments.clear();
                     }
 
@@ -615,52 +607,6 @@ public class SFCRParser {
 
     public ArrayList<ParseWarning> getParseWarnings() {
         return parseWarnings;
-    }
-
-    public int parseInitBlockForHandler(String[] lines, int startIndex) {
-        return new InitBlockParseHandler().parse(lines, startIndex, new SFCRParseContext(this)).getNextIndex();
-    }
-
-    public int parseActionBlockForHandler(String[] lines, int startIndex) {
-        return new ActionBlockParseHandler().parse(lines, startIndex, new SFCRParseContext(this)).getNextIndex();
-    }
-
-    public int parseMatrixBlockForHandler(String[] lines, int startIndex) {
-        return parseMatrixBlock(lines, startIndex);
-    }
-
-    public int parseEquationsBlockForHandler(String[] lines, int startIndex) {
-        return new EquationsBlockParseHandler("@equations")
-            .parse(lines, startIndex, new SFCRParseContext(this)).getNextIndex();
-    }
-
-    public int parseParametersBlockForHandler(String[] lines, int startIndex) {
-        return new EquationsBlockParseHandler("@parameters")
-            .parse(lines, startIndex, new SFCRParseContext(this)).getNextIndex();
-    }
-
-    public int parseLookupBlockForHandler(String[] lines, int startIndex) {
-        return new LookupBlockParseHandler().parse(lines, startIndex, new SFCRParseContext(this)).getNextIndex();
-    }
-
-    public int parseHintsBlockForHandler(String[] lines, int startIndex) {
-        return new HintsBlockParseHandler().parse(lines, startIndex, new SFCRParseContext(this)).getNextIndex();
-    }
-
-    public int parseCircuitBlockForHandler(String[] lines, int startIndex) {
-        return parseCircuitBlock(lines, startIndex);
-    }
-
-    public int parseScopeBlockForHandler(String[] lines, int startIndex) {
-        return parseScopeBlock(lines, startIndex);
-    }
-
-    public int parseSankeyBlockForHandler(String[] lines, int startIndex) {
-        return parseSankeyBlock(lines, startIndex);
-    }
-
-    public int parseInfoBlockForHandler(String[] lines, int startIndex) {
-        return parseInfoBlock(lines, startIndex);
     }
 
     public BlockHeaderInfo parseBlockHeaderForHandler(String line, String keyword) {
@@ -928,8 +874,65 @@ public class SFCRParser {
         currentY = y;
     }
 
+    public int getElementSpacingForHandler() {
+        return elementSpacing;
+    }
+
     public boolean hasHintForHandler(String varName) {
         return hints.containsKey(varName);
+    }
+
+    public boolean isActionElementFromActionBlockForHandler() {
+        return actionElementFromActionBlock;
+    }
+
+    public void addRawCircuitLineForHandler(String line) {
+        if (line != null) {
+            rawCircuitLines.add(line);
+        }
+    }
+
+    public boolean hasPendingResultForHandler() {
+        return pendingResult != null;
+    }
+
+    public void addBlockDumpForHandler(String blockType, String blockName, String dumpString) {
+        if (pendingResult == null || blockType == null || dumpString == null) {
+            return;
+        }
+        pendingResult.blockDumps.add(new SFCRParseResult.BlockDump(blockType, blockName, dumpString));
+    }
+
+    public String parseLookupDumpLineFromCircuitForHandler(String line) {
+        return parseLookupDumpLineFromCircuit(line);
+    }
+
+    public String inferBlockTypeFromCircuitDumpLineForHandler(String line) {
+        return inferBlockTypeFromCircuitDumpLine(line);
+    }
+
+    public boolean looksLikeScopeBlockForHandler(String[] lines, int startIndex) {
+        return looksLikeScopeBlock(lines, startIndex);
+    }
+
+    public void addScopeVariableForHandler(String varName) {
+        if (varName == null) {
+            return;
+        }
+        String normalized = SFCRUtil.normalizeVariableName(varName);
+        if (!normalized.isEmpty()) {
+            scopeVariables.add(normalized);
+        }
+    }
+
+    public void addScopeBlockForHandler(ScopeBlockSpec spec) {
+        if (spec != null && spec.traces != null && !spec.traces.isEmpty()) {
+            scopeBlocks.add(spec);
+        }
+    }
+
+    public void setInfoContentForHandler(String content) {
+        infoContent = content;
     }
 
     public void createEquationTableForHandler(String name, ArrayList<String> outputNames,
@@ -1077,150 +1080,6 @@ public class SFCRParser {
             }
         }
         return null;
-    }
-    
-    /** Parse @matrix block - creates SFCTableElm. */
-    private int parseMatrixBlock(String[] lines, int startIndex) {
-        String headerLine = lines[startIndex].trim();
-        BlockPosition blockPos = parseBlockHeader(headerLine, "@matrix");
-        String matrixName = blockPos.name;
-        
-        // Store position for element creation
-        int savedX = currentX;
-        int savedY = currentY;
-        if (blockPos.hasPosition()) {
-            currentX = blockPos.x;
-            currentY = blockPos.y;
-        }
-        
-        // Parse matrix properties
-        ArrayList<String> columnNames = new ArrayList<String>();
-        ArrayList<String> columnCodes = new ArrayList<String>();
-        String matrixType = "transaction_flow"; // default
-        Boolean showInitialValues = null;
-        Boolean showFlowValues = null;
-        Boolean useBackwardEuler = null;
-        
-        int i = startIndex + 1;
-        ArrayList<String[]> tableRows = new ArrayList<String[]>();
-        ArrayList<String> rowNames = new ArrayList<String>();
-        
-        while (i < lines.length) {
-            String line = lines[i].trim();
-            
-            // End of block
-            if (line.startsWith("@end")) {
-                i++;
-                break;
-            }
-            
-            // Skip comments and empty lines
-            if (line.isEmpty() || line.startsWith("#")) {
-                i++;
-                continue;
-            }
-            
-            // Parse key/value properties
-            int colonIdx = line.indexOf(':');
-            if (colonIdx > 0 && !line.startsWith("|")) {
-                String key = line.substring(0, colonIdx).trim().toLowerCase();
-                String value = line.substring(colonIdx + 1).trim();
-
-                if (key.equals("columns")) {
-                    columnNames = parseCommaSeparatedList(value);
-                    i++;
-                    continue;
-                }
-
-                if (key.equals("codes")) {
-                    columnCodes = parseCommaSeparatedList(value);
-                    i++;
-                    continue;
-                }
-
-                if (key.equals("type")) {
-                    matrixType = value;
-                    i++;
-                    continue;
-                }
-
-                if (key.equals("showflowvalues") || key.equals("show_flow_values")) {
-                    showFlowValues = Boolean.valueOf(value.equalsIgnoreCase("true") || value.equals("1") || value.equalsIgnoreCase("yes"));
-                    i++;
-                    continue;
-                }
-
-                if (key.equals("showinitialvalues") || key.equals("show_initial_values")) {
-                    showInitialValues = Boolean.valueOf(value.equalsIgnoreCase("true") || value.equals("1") || value.equalsIgnoreCase("yes"));
-                    i++;
-                    continue;
-                }
-
-                if (key.equals("integration")) {
-                    String mode = value.toLowerCase();
-                    useBackwardEuler = Boolean.valueOf(mode.equals("backward_euler") || mode.equals("backward euler") || mode.equals("backwardeuler"));
-                    i++;
-                    continue;
-                }
-
-                if (key.equals("usebackwardeuler") || key.equals("use_backward_euler")) {
-                    useBackwardEuler = Boolean.valueOf(value.equalsIgnoreCase("true") || value.equals("1") || value.equalsIgnoreCase("yes"));
-                    i++;
-                    continue;
-                }
-            }
-            
-            // Parse markdown table row
-            if (line.startsWith("|")) {
-                // Skip separator rows (|---|---|)
-                if (line.contains("---")) {
-                    i++;
-                    continue;
-                }
-                
-                String[] cells = parseTableRow(line);
-                if (cells.length > 1) {
-                    // If no columns defined yet, this is the header row
-                    if (columnNames.isEmpty()) {
-                        // Use cells 1..n as column names (skip cell 0 which is row header label)
-                        for (int j = 1; j < cells.length; j++) {
-                            columnNames.add(cells[j]);
-                        }
-                    } else {
-                        // This is a data row
-                        // First cell is row name
-                        rowNames.add(cells[0]);
-                        
-                        // Rest are cell values (match number of columns)
-                        String[] rowData = new String[columnNames.size()];
-                        for (int j = 0; j < columnNames.size(); j++) {
-                            if (j + 1 < cells.length) {
-                                rowData[j] = cells[j + 1];
-                            } else {
-                                rowData[j] = "";
-                            }
-                        }
-                        tableRows.add(rowData);
-                    }
-                }
-            }
-            
-            i++;
-        }
-        
-        // Create matrix table from parsed data
-        if (!columnNames.isEmpty() && !tableRows.isEmpty()) {
-            createMatrixTable(matrixName, columnNames, rowNames, tableRows, matrixType,
-                              showInitialValues, showFlowValues, useBackwardEuler);
-        }
-        
-        // Restore position if we used explicit positioning
-        if (blockPos.hasPosition()) {
-            currentX = savedX;
-            // Keep currentY updated from element creation
-        }
-        
-        return i;
     }
     
     /**
@@ -1557,15 +1416,6 @@ public class SFCRParser {
         return true;
     }
     
-    /** Parse @scope line. */
-    private void parseScopeLine(String line) {
-        String varName = line.substring(6).trim(); // Remove "@scope"
-        varName = SFCRUtil.normalizeVariableName(varName);
-        if (!varName.isEmpty()) {
-            scopeVariables.add(varName);
-        }
-    }
-
     /** Check whether @scope at startIndex is block-form (@scope ... @end). */
     private boolean looksLikeScopeBlock(String[] lines, int startIndex) {
         int i = startIndex + 1;
@@ -1584,225 +1434,6 @@ public class SFCRParser {
             return true;
         }
         return false;
-    }
-
-    /** Parse @scope block with UID-based source/trace references. */
-    private int parseScopeBlock(String[] lines, int startIndex) {
-        String header = lines[startIndex].trim();
-        ScopeBlockSpec spec = new ScopeBlockSpec();
-
-        String rest = header.substring(6).trim(); // Remove "@scope"
-        if (!rest.isEmpty()) {
-            String[] parts = rest.split("\\s+");
-            StringBuilder nameBuilder = new StringBuilder();
-            for (String part : parts) {
-                if (part.toLowerCase().startsWith("position=")) {
-                    try {
-                        spec.position = Integer.parseInt(part.substring(9));
-                    } catch (Exception e) {
-                        // Ignore malformed position
-                    }
-                } else {
-                    if (nameBuilder.length() > 0) {
-                        nameBuilder.append(" ");
-                    }
-                    nameBuilder.append(part);
-                }
-            }
-            if (nameBuilder.length() > 0) {
-                spec.name = nameBuilder.toString();
-            }
-        }
-
-        int i = startIndex + 1;
-        while (i < lines.length) {
-            String line = lines[i].trim();
-
-            if (line.equals("@end")) {
-                i++;
-                break;
-            }
-            if (line.startsWith("@")) {
-                break;
-            }
-            if (line.isEmpty() || line.startsWith("#")) {
-                i++;
-                continue;
-            }
-
-            int sep = line.indexOf(':');
-            int eq = line.indexOf('=');
-            int split = sep >= 0 ? sep : eq;
-            if (split > 0) {
-                String key = line.substring(0, split).trim().toLowerCase();
-                String value = line.substring(split + 1).trim();
-
-                if (key.equals("speed")) {
-                    try {
-                        spec.speed = Integer.parseInt(value);
-                    } catch (Exception e) {
-                        // Ignore malformed speed
-                    }
-                } else if (key.equals("flags")) {
-                    try {
-                        spec.flags = Scope.importDecOrHex(value);
-                    } catch (Exception e) {
-                        // Ignore malformed flags
-                    }
-                } else if (key.equals("title")) {
-                    spec.title = CustomLogicModel.unescape(value);
-                } else if (key.equals("label")) {
-                    spec.label = CustomLogicModel.unescape(value);
-                } else if (key.equals("source") || key.equals("trace")) {
-                    ScopeTraceSpec trace = parseScopeTraceSpec(value);
-                    if (trace != null && trace.uid != null && trace.uid.length() > 0) {
-                        if (key.equals("source")) {
-                            spec.traces.add(0, trace);
-                        } else {
-                            spec.traces.add(trace);
-                        }
-                    }
-                } else if (key.equals("x1")) {
-                    try { spec.x1 = Integer.parseInt(value); } catch (Exception e) {}
-                } else if (key.equals("y1")) {
-                    try { spec.y1 = Integer.parseInt(value); } catch (Exception e) {}
-                } else if (key.equals("x2")) {
-                    try { spec.x2 = Integer.parseInt(value); } catch (Exception e) {}
-                } else if (key.equals("y2")) {
-                    try { spec.y2 = Integer.parseInt(value); } catch (Exception e) {}
-                } else if (key.equals("elmuid")) {
-                    spec.elmUid = value;
-                }
-            }
-
-            i++;
-        }
-
-        if (!spec.traces.isEmpty()) {
-            scopeBlocks.add(spec);
-        }
-
-        return i;
-    }
-
-    /** Parse "uid:ABC123 value:0" or "uid=ABC123 value=0" trace payload. */
-    private ScopeTraceSpec parseScopeTraceSpec(String payload) {
-        if (payload == null || payload.isEmpty()) {
-            return null;
-        }
-
-        ScopeTraceSpec trace = new ScopeTraceSpec();
-        String[] parts = payload.split("\\s+");
-        for (String part : parts) {
-            if (part.toLowerCase().startsWith("uid:")) {
-                trace.uid = part.substring(4);
-            } else if (part.toLowerCase().startsWith("uid=")) {
-                trace.uid = part.substring(4);
-            } else if (part.toLowerCase().startsWith("value:")) {
-                try {
-                    trace.value = Integer.parseInt(part.substring(6));
-                } catch (Exception e) {
-                    // Keep default
-                }
-            } else if (part.toLowerCase().startsWith("value=")) {
-                try {
-                    trace.value = Integer.parseInt(part.substring(6));
-                } catch (Exception e) {
-                    // Keep default
-                }
-            }
-        }
-
-        if (trace.uid != null && trace.uid.length() > 0) {
-            return trace;
-        }
-        return null;
-    }
-    
-    /** Parse @circuit block - raw CircuitJS element definitions (passthrough). */
-    private int parseCircuitBlock(String[] lines, int startIndex) {
-        int i = startIndex + 1;
-        String hintedBlockType = "";
-        String hintedBlockName = "";
-        
-        while (i < lines.length) {
-            String line = lines[i].trim();
-            
-            // Check for end of block
-            if (line.equals("@end") || line.startsWith("@")) {
-                if (line.equals("@end")) {
-                    return i + 1;
-                }
-                return i;  // Start of another block
-            }
-            
-            // Skip empty lines and comments
-            if (line.isEmpty()) {
-                i++;
-                continue;
-            }
-
-            // Optional metadata hint for result-mode export/import round-trips:
-            // #@sfcrblock equations equations_1A
-            if (line.startsWith("#")) {
-                if (pendingResult != null && line.startsWith("#@sfcrblock")) {
-                    String[] parts = line.split("\\s+", 3);
-                    hintedBlockType = (parts.length >= 2) ? parts[1].trim() : "";
-                    hintedBlockName = (parts.length >= 3) ? parts[2].trim() : "";
-                }
-                i++;
-                continue;
-            }
-
-            // If @action already carried ActionTimeElm state, skip duplicate raw 432 line.
-            if (actionElementFromActionBlock && line.startsWith("432 ")) {
-                i++;
-                continue;
-            }
-
-            // Legacy/result-mode round-trip support: accept lookup dump lines
-            // embedded in @circuit blocks and register them as lookup tables.
-            if (line.startsWith("lookup ")) {
-                String parsedLookupBlockName = parseLookupDumpLineFromCircuit(line);
-                if (parsedLookupBlockName != null) {
-                    if (pendingResult != null) {
-                        String blockName = hintedBlockName;
-                        if (blockName == null || blockName.isEmpty()) {
-                            blockName = parsedLookupBlockName;
-                        }
-                        pendingResult.blockDumps.add(new SFCRParseResult.BlockDump("lookup", blockName, line));
-                    }
-                    hintedBlockType = "";
-                    hintedBlockName = "";
-                    i++;
-                    continue;
-                }
-            }
-            
-            // Store raw circuit line for later processing
-            rawCircuitLines.add(line);
-
-            // In result-mode, also recover structured block dumps from known dump types.
-            if (pendingResult != null) {
-                String blockType = hintedBlockType;
-                String blockName = hintedBlockName;
-
-                if (blockType.isEmpty()) {
-                    blockType = inferBlockTypeFromCircuitDumpLine(line);
-                    blockName = "";
-                }
-
-                if (blockType != null && !blockType.isEmpty()) {
-                    pendingResult.blockDumps.add(new SFCRParseResult.BlockDump(blockType, blockName, line));
-                }
-
-                hintedBlockType = "";
-                hintedBlockName = "";
-            }
-            i++;
-        }
-        
-        return i;
     }
 
     /** Parse legacy lookup dump line from @circuit and register the table. */
@@ -1912,200 +1543,11 @@ public class SFCRParser {
         addScopes();
     }
     
-    /** 
-     * Parse @sankey block - creates SFCSankeyElm.
-     * Format:
-     *   @sankey [Title] x=X y=Y
-     *     source: TableName   (optional - blank for auto)
-     *     layout: linear|circular
-     *     width: 300
-     *     height: 250
-     *   @end
-     */
-    private int parseSankeyBlock(String[] lines, int startIndex) {
-        String headerLine = lines[startIndex].trim();
-        BlockPosition blockPos = parseBlockHeader(headerLine, "@sankey");
-        String sourceName = "";
-        String layout = "LINEAR";
-        int width = 300;
-        int height = 250;
-        // Scale visualization options
-        boolean showScaleBar = true;
-        double fixedMaxScale = 0;
-        boolean useHighWaterMark = false;
-        boolean showFlowValues = false;
-        
-        int i = startIndex + 1;
-        
-        // Parse options
-        while (i < lines.length) {
-            String line = lines[i].trim();
-            
-            // Check for end of block
-            if (line.equals("@end") || line.startsWith("@")) {
-                if (line.equals("@end")) {
-                    i++;
-                }
-                break;
-            }
-            
-            // Skip empty lines and comments
-            if (line.isEmpty() || line.startsWith("#")) {
-                i++;
-                continue;
-            }
-            
-            // Parse key: value
-            int colonIdx = line.indexOf(':');
-            if (colonIdx > 0) {
-                String key = line.substring(0, colonIdx).trim().toLowerCase();
-                String value = line.substring(colonIdx + 1).trim();
-                
-                // Remove trailing comment
-                int commentIdx = value.indexOf('#');
-                if (commentIdx >= 0) {
-                    value = value.substring(0, commentIdx).trim();
-                }
-                
-                switch (key) {
-                    case "source":
-                        sourceName = value;
-                        break;
-                    case "layout":
-                        layout = value.toUpperCase();
-                        if (!layout.equals("CIRCULAR")) {
-                            layout = "LINEAR";
-                        }
-                        break;
-                    case "width":
-                        try {
-                            width = Integer.parseInt(value);
-                        } catch (Exception e) {}
-                        break;
-                    case "height":
-                        try {
-                            height = Integer.parseInt(value);
-                        } catch (Exception e) {}
-                        break;
-                    case "showscalebar":
-                        showScaleBar = value.equalsIgnoreCase("true") || value.equals("1");
-                        break;
-                    case "fixedmaxscale":
-                        try {
-                            fixedMaxScale = Double.parseDouble(value);
-                        } catch (Exception e) {}
-                        break;
-                    case "usehighwatermark":
-                        useHighWaterMark = value.equalsIgnoreCase("true") || value.equals("1");
-                        break;
-                    case "showflowlabels":  // backward compatibility
-                    case "showflowvalues":
-                        showFlowValues = value.equalsIgnoreCase("true") || value.equals("1");
-                        break;
-                }
-            }
-            
-            i++;
-        }
-        
-        // Create the Sankey element
-        int posX = blockPos.hasPosition() ? blockPos.x : currentX;
-        int posY = blockPos.hasPosition() ? blockPos.y : currentY;
-
-        // Build dump string first so result-mode can capture it without loading GWT classes.
-        String dumpStr = "466 " + posX + " " + posY + " " + (posX + 16) + " " + (posY + 16) + " 0 " +
-                         escapeToken(sourceName) + " " + layout + " " + width + " " + height + " " +
-                         (showScaleBar ? "1" : "0") + " " + fixedMaxScale + " " +
-                         (useHighWaterMark ? "1" : "0") + " " + (showFlowValues ? "1" : "0");
-
-        // Result-mode: keep dump only, do not instantiate SFCSankeyElm/CircuitElm.
-        if (pendingResult != null) {
-            pendingResult.blockDumps.add(new SFCRParseResult.BlockDump("sankey", "", dumpStr));
-            if (!blockPos.hasPosition()) {
-                currentY += height + elementSpacing;
-            }
-            return i;
-        }
-
-        SFCSankeyElm sankeyElm = new SFCSankeyElm(posX, posY);
-        
-        try {
-            StringTokenizer st = new StringTokenizer(dumpStr);
-            st.nextToken(); // skip dump type
-            int x1 = Integer.parseInt(st.nextToken());
-            int y1 = Integer.parseInt(st.nextToken());
-            int x2 = Integer.parseInt(st.nextToken());
-            int y2 = Integer.parseInt(st.nextToken());
-            int f = Integer.parseInt(st.nextToken());
-            
-            sankeyElm = new SFCSankeyElm(x1, y1, x2, y2, f, st);
-        } catch (Exception e) {
-            CirSim.console("SFCRParser: Error creating Sankey element: " + e.getMessage());
-        }
-        
-        sim.getImportExportHelper().assignPersistentUid(sankeyElm, null);
-        sim.elmList.addElement(sankeyElm);
-        createdElements.add(sankeyElm);
-        
-        // Update position for next element
-        if (!blockPos.hasPosition()) {
-            currentY += height + elementSpacing;
-        }
-        
-        return i;
-    }
-    
     /** Get the @info block content (markdown), or null if not present. */
     public String getInfoContent() {
         return infoContent;
     }
     
-    /** Parse @info block - markdown documentation for InfoViewerDialog. */
-    private int parseInfoBlock(String[] lines, int startIndex) {
-        String headerLine = lines[startIndex].trim();
-        
-        // Extract optional title from header line (e.g., "@info Model Documentation")
-        String title = headerLine.length() > 5 ? headerLine.substring(5).trim() : "";
-        
-        StringBuilder content = new StringBuilder();
-        
-        int i = startIndex + 1;  // Skip @info line
-        
-        // Check if first content line already starts with a markdown header
-        boolean hasMarkdownHeader = false;
-        if (i < lines.length) {
-            String firstLine = lines[i].trim();
-            if (firstLine.startsWith("#") && !firstLine.equals("@end") && !firstLine.startsWith("@")) {
-                hasMarkdownHeader = true;
-            }
-        }
-        
-        // Only add a title header if there isn't one already and we have a title
-        if (!hasMarkdownHeader && !title.isEmpty()) {
-            content.append("# ").append(title).append("\n\n");
-        }
-        
-        while (i < lines.length) {
-            String line = lines[i];
-            String trimmed = line.trim();
-            
-            // Check for end of block
-            if (trimmed.equals("@end") || (trimmed.startsWith("@") && !trimmed.equals("@end"))) {
-                if (trimmed.equals("@end")) {
-                    i++;
-                }
-                break;
-            }
-            
-            // Preserve the line as-is (including indentation for code blocks)
-            content.append(line).append("\n");
-            i++;
-        }
-        
-        infoContent = content.toString();
-        return i;
-    }
-
     // =========================================================================
     // R-Style sfcr Syntax Support
     // =========================================================================
@@ -2140,7 +1582,14 @@ public class SFCRParser {
 
     /** Parse R-style sfcr_matrix definition. */
     private void parseRStyleMatrix(String block, RStyleBlockMetadata metadata) {
-        rStyleParseService.parseMatrix(this, block, metadata);
+        String[] normalized = rStyleParseService.normalizeMatrixBlock(this, block, metadata);
+        if (normalized == null || normalized.length == 0) {
+            return;
+        }
+        SFCRBlockParseHandler matrixHandler = SFCRBlockParseHandlerRegistry.getHandler("@matrix");
+        if (matrixHandler != null) {
+            matrixHandler.parse(normalized, 0, new SFCRParseContext(this));
+        }
     }
 
     public void parseRStyleMatrixForHandler(String block, RStyleBlockMetadata metadata) {
@@ -2149,7 +1598,14 @@ public class SFCRParser {
     
     /** Parse R-style sfcr_set for equations. */
     private void parseRStyleEquations(String block, RStyleBlockMetadata metadata) {
-        rStyleParseService.parseEquations(this, block, metadata);
+        String[] normalized = rStyleParseService.normalizeEquationsBlock(this, block, metadata);
+        if (normalized == null || normalized.length == 0) {
+            return;
+        }
+        SFCRBlockParseHandler equationsHandler = SFCRBlockParseHandlerRegistry.getHandler("@equations");
+        if (equationsHandler != null) {
+            equationsHandler.parse(normalized, 0, new SFCRParseContext(this));
+        }
     }
 
     public void parseRStyleEquationsForHandler(String block, RStyleBlockMetadata metadata) {
@@ -2210,18 +1666,6 @@ public class SFCRParser {
         }
         
         return pos;
-    }
-    
-    /** Parse comma-separated list: "a, b, c" -> ["a", "b", "c"]. */
-    private ArrayList<String> parseCommaSeparatedList(String text) {
-        ArrayList<String> result = new ArrayList<String>();
-        for (String part : text.split(",")) {
-            String trimmed = part.trim();
-            if (!trimmed.isEmpty()) {
-                result.add(trimmed);
-            }
-        }
-        return result;
     }
     
     /** Parse markdown table row: "| a | b | c |" -> ["a", "b", "c"]. */

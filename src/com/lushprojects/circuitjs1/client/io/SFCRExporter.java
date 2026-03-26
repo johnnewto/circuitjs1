@@ -22,11 +22,9 @@ import com.lushprojects.circuitjs1.client.registry.HintRegistry;
 import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.elements.misc.*;
 import com.lushprojects.circuitjs1.client.io.sfcr.SFCRBlockExportHandlerRegistry;
+import com.lushprojects.circuitjs1.client.io.sfcr.SFCRBlockType;
 import com.lushprojects.circuitjs1.client.io.sfcr.SFCRExportContext;
-import com.lushprojects.circuitjs1.client.io.sfcr.handlers.LookupBlockExportHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.SFCRBlockExportHandler;
-import com.lushprojects.circuitjs1.client.io.sfcr.handlers.SankeyBlockExportHandler;
-import com.lushprojects.circuitjs1.client.io.sfcr.handlers.ScopeBlockExportHandler;
 
 /**
  * Exports circuit in SFCR-compatible text format.
@@ -540,70 +538,56 @@ public class SFCRExporter {
     }
 
     private ArrayList<String> buildCanonicalLookupBlocks() {
-        ArrayList<String> blocks = new ArrayList<String>();
-        String lookup = new LookupBlockExportHandler().export(new SFCRExportContext(this));
-        if (lookup == null || lookup.trim().isEmpty()) {
-            return blocks;
-        }
-
-        String[] lines = lookup.split("\n");
-        for (int i = 0; i < lines.length; i++) {
-            String t = lines[i].trim();
-            if (!t.startsWith("@lookup")) {
-                continue;
-            }
-            StringBuilder one = new StringBuilder();
-            for (int j = i; j < lines.length; j++) {
-                one.append(lines[j]).append("\n");
-                if (lines[j].trim().equals("@end")) {
-                    i = j;
-                    break;
-                }
-            }
-            String payload = extractStructuralPayload(one.toString());
-            if (!payload.isEmpty()) {
-                blocks.add(payload);
-            }
-        }
-
-        return blocks;
+        String lookupText = renderBlocksForType(SFCRBlockType.LOOKUP);
+        return collectAtDirectiveBlocks(lookupText, "@lookup");
     }
 
     private ArrayList<String> buildCanonicalMatrixBlocks() {
-        ArrayList<String> blocks = new ArrayList<String>();
-        for (SFCTableElm sfcTable : sfcTables) {
-            String block = exportMatrixBlockForHandler(sfcTable);
-            String payload = extractStructuralPayload(block);
-            if (!payload.isEmpty()) {
-                blocks.add(payload);
-            }
-        }
+        String matrixText = renderBlocksForType(SFCRBlockType.MATRIX);
+        ArrayList<String> blocks = collectAtDirectiveBlocks(matrixText, "@matrix");
+        blocks.addAll(collectRStyleBlocks(matrixText, "sfcr_matrix"));
         return blocks;
     }
 
     private ArrayList<String> buildCanonicalSankeyBlocks() {
-        ArrayList<String> blocks = new ArrayList<String>();
-        SankeyBlockExportHandler handler = new SankeyBlockExportHandler();
-        SFCRExportContext context = new SFCRExportContext(this);
-        for (SFCSankeyElm sankey : sankeyDiagrams) {
-            String payload = extractStructuralPayload(handler.exportOne(context, sankey));
-            if (!payload.isEmpty()) {
-                blocks.add(payload);
-            }
-        }
-        return blocks;
+        return collectAtDirectiveBlocks(renderBlocksForType(SFCRBlockType.SANKEY), "@sankey");
     }
 
     private ArrayList<String> buildCanonicalScopeBlocks() {
+        return collectAtDirectiveBlocks(renderBlocksForType(SFCRBlockType.SCOPE), "@scope");
+    }
+
+    private String renderBlocksForType(SFCRBlockType blockType) {
+        if (blockType == null) {
+            return "";
+        }
+        StringBuilder out = new StringBuilder();
+        SFCRExportContext context = new SFCRExportContext(this);
+        for (SFCRBlockExportHandler handler : SFCRBlockExportHandlerRegistry.getOrderedHandlers()) {
+            if (handler.blockType() != blockType) {
+                continue;
+            }
+            String block = handler.export(context);
+            if (block == null || block.trim().isEmpty()) {
+                continue;
+            }
+            if (out.length() > 0) {
+                out.append("\n");
+            }
+            out.append(block.trim()).append("\n");
+        }
+        return out.toString();
+    }
+
+    private ArrayList<String> collectAtDirectiveBlocks(String text, String directive) {
         ArrayList<String> blocks = new ArrayList<String>();
-        String scopes = new ScopeBlockExportHandler().export(new SFCRExportContext(this));
-        if (scopes == null || scopes.trim().isEmpty()) {
+        if (text == null || text.trim().isEmpty() || directive == null || directive.isEmpty()) {
             return blocks;
         }
-        String[] lines = scopes.split("\n");
+        String[] lines = text.split("\n");
         for (int i = 0; i < lines.length; i++) {
-            String t = lines[i].trim();
-            if (!t.startsWith("@scope")) {
+            String trimmed = lines[i].trim();
+            if (!trimmed.startsWith(directive)) {
                 continue;
             }
             StringBuilder one = new StringBuilder();
@@ -618,6 +602,43 @@ public class SFCRExporter {
             if (!payload.isEmpty()) {
                 blocks.add(payload);
             }
+        }
+        return blocks;
+    }
+
+    private ArrayList<String> collectRStyleBlocks(String text, String fnName) {
+        ArrayList<String> blocks = new ArrayList<String>();
+        if (text == null || text.trim().isEmpty() || fnName == null || fnName.isEmpty()) {
+            return blocks;
+        }
+        String[] lines = text.split("\n");
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].trim();
+            if (!line.contains("<-") || !line.contains(fnName)) {
+                continue;
+            }
+            StringBuilder one = new StringBuilder();
+            int parenDepth = 0;
+            boolean inExpr = false;
+            int end = i;
+            for (int j = i; j < lines.length; j++) {
+                String row = lines[j];
+                one.append(row).append("\n");
+                end = j;
+                int delta = SFCRUtil.parenthesesDelta(row);
+                if (delta != 0 || row.indexOf('(') >= 0) {
+                    inExpr = true;
+                }
+                parenDepth += delta;
+                if (inExpr && parenDepth <= 0) {
+                    break;
+                }
+            }
+            String payload = extractStructuralPayload(one.toString());
+            if (!payload.isEmpty()) {
+                blocks.add(payload);
+            }
+            i = end;
         }
         return blocks;
     }
@@ -769,7 +790,7 @@ public class SFCRExporter {
 
     // Kept for test/reflection compatibility during handler migration.
     private String exportLookupBlocks() {
-        return new LookupBlockExportHandler().export(new SFCRExportContext(this));
+        return renderBlocksForType(SFCRBlockType.LOOKUP);
     }
 
     private String rewriteExpressionForLookupExport(String expr, String scopeName) {
@@ -1254,6 +1275,151 @@ public class SFCRExporter {
 
         return true;
     }
+
+    private static class EquationExportRow {
+        boolean commentRow;
+        String commentText;
+        String sourceName;
+        String name;
+        String expr;
+        EquationTableElm.RowOutputMode mode;
+        String sliderVar;
+        double sliderValue;
+        String initialEq;
+        String hint;
+    }
+
+    private ArrayList<EquationExportRow> collectEquationExportRows(EquationTableElm eqTable, String tableName) {
+        ArrayList<EquationExportRow> rows = new ArrayList<EquationExportRow>();
+        int rowCount = eqTable.getRowCount();
+        for (int row = 0; row < rowCount; row++) {
+            String sourceName = eqTable.getOutputName(row);
+            if (EquationTableElm.isCommentRowName(sourceName)) {
+                String comment = sourceName == null ? "" : sourceName.trim();
+                if (comment.startsWith("#")) {
+                    comment = comment.substring(1).trim();
+                }
+                if (!comment.isEmpty()) {
+                    EquationExportRow data = new EquationExportRow();
+                    data.commentRow = true;
+                    data.commentText = comment;
+                    rows.add(data);
+                }
+                continue;
+            }
+
+            String name = eqTable.getDisplayOutputName(row);
+            if (name == null || name.isEmpty()) {
+                continue;
+            }
+
+            String expr = eqTable.getEquation(row);
+            if (expr == null) {
+                expr = "0";
+            }
+            expr = rewriteExpressionForLookupExport(expr, tableName);
+
+            String initialEq = eqTable.getInitialEquation(row);
+            if (initialEq != null && !initialEq.trim().isEmpty()) {
+                initialEq = rewriteExpressionForLookupExport(initialEq, tableName);
+            }
+
+            EquationExportRow data = new EquationExportRow();
+            data.commentRow = false;
+            data.sourceName = sourceName;
+            data.name = name;
+            data.expr = expr;
+            data.mode = eqTable.getOutputMode(row);
+            data.sliderVar = eqTable.getSliderVarName(row);
+            data.sliderValue = eqTable.getSliderValue(row);
+            data.initialEq = initialEq;
+            data.hint = sanitizeHintForRStyleExport(HintRegistry.getHint(sourceName));
+            rows.add(data);
+        }
+        return rows;
+    }
+
+    private static class GodlyExportRow {
+        String stockName;
+        String flowExpr;
+        double initialValue;
+        String hint;
+    }
+
+    private ArrayList<GodlyExportRow> collectGodlyExportRows(GodlyTableElm godlyTable, String tableName) {
+        ArrayList<GodlyExportRow> rows = new ArrayList<GodlyExportRow>();
+        int cols = godlyTable.getCols();
+        for (int col = 0; col < cols; col++) {
+            TableColumn column = godlyTable.getColumn(col);
+            if (column == null || column.isALE()) {
+                continue;
+            }
+            String stockName = column.getStockName();
+            if (stockName == null || stockName.isEmpty()) {
+                continue;
+            }
+            GodlyExportRow row = new GodlyExportRow();
+            row.stockName = stockName;
+            row.flowExpr = rewriteExpressionForLookupExport(buildColumnFlowExpression(godlyTable, col), tableName);
+            row.initialValue = godlyTable.getInitialValue(col);
+            row.hint = HintRegistry.getHint(stockName);
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    private static class MatrixExportData {
+        ArrayList<String> stockNames = new ArrayList<String>();
+        ArrayList<String> stockCodes = new ArrayList<String>();
+        ArrayList<String> rowNames = new ArrayList<String>();
+        ArrayList<String[]> rowValues = new ArrayList<String[]>();
+    }
+
+    private MatrixExportData collectMatrixExportData(SFCTableElm sfcTable, String tableName, boolean includeCodes) {
+        MatrixExportData data = new MatrixExportData();
+        int totalCols = sfcTable.getCols();
+        Set<String> usedCodes = includeCodes ? new HashSet<String>() : null;
+
+        for (int col = 0; col < totalCols; col++) {
+            TableColumn column = sfcTable.getColumn(col);
+            if (column == null || column.isALE()) {
+                continue;
+            }
+            String stockName = column.getStockName();
+            if (stockName == null || stockName.trim().isEmpty()) {
+                stockName = "Column" + (data.stockNames.size() + 1);
+            }
+            data.stockNames.add(stockName);
+            if (includeCodes) {
+                data.stockCodes.add(makeUniqueRCode(toRCodeIdentifier(stockName), usedCodes));
+            }
+        }
+
+        int rows = sfcTable.getRows();
+        for (int row = 0; row < rows; row++) {
+            String rowDesc = sfcTable.getRowDescription(row);
+            if (rowDesc == null || rowDesc.trim().isEmpty()) {
+                rowDesc = "Row" + row;
+            }
+            data.rowNames.add(rowDesc);
+
+            String[] rowData = new String[data.stockNames.size()];
+            int dataColIndex = 0;
+            for (int col = 0; col < totalCols; col++) {
+                TableColumn column = sfcTable.getColumn(col);
+                if (column == null || column.isALE()) {
+                    continue;
+                }
+                String cellExpr = column.getCellEquation(row);
+                if (cellExpr == null) {
+                    cellExpr = "";
+                }
+                rowData[dataColIndex++] = rewriteExpressionForLookupExport(cellExpr, tableName);
+            }
+            data.rowValues.add(rowData);
+        }
+        return data;
+    }
     
     /** Export EquationTableElm as @equations block. */
     private String exportEquationTable(EquationTableElm eqTable) {
@@ -1264,55 +1430,32 @@ public class SFCRExporter {
             tableName = "Equations";
         }
         
-        int rowCount = eqTable.getRowCount();
-        if (rowCount == 0) return "";
+        ArrayList<EquationExportRow> rows = collectEquationExportRows(eqTable, tableName);
+        if (rows.isEmpty()) return "";
 
         appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_EQUATIONS, SFCRUtil.sanitizeName(tableName));
         
         sb.append("@equations ").append(SFCRUtil.sanitizeName(tableName));
         sb.append(formatPosition(eqTable)).append("\n");
         
-        for (int row = 0; row < rowCount; row++) {
-            String sourceName = eqTable.getOutputName(row);
-            if (EquationTableElm.isCommentRowName(sourceName)) {
-                String comment = sourceName == null ? "" : sourceName.trim();
-                if (comment.startsWith("#")) {
-                    comment = comment.substring(1).trim();
-                }
-                if (!comment.isEmpty()) {
-                    sb.append("  # ").append(comment).append("\n");
-                }
+        for (int i = 0; i < rows.size(); i++) {
+            EquationExportRow row = rows.get(i);
+            if (row.commentRow) {
+                sb.append("  # ").append(row.commentText).append("\n");
                 continue;
             }
 
-            String name = eqTable.getDisplayOutputName(row);
-            String expr = eqTable.getEquation(row);
-            
-            if (name == null || name.isEmpty()) continue;
-            if (expr == null) expr = "0";
-            expr = rewriteExpressionForLookupExport(expr, tableName);
-
-            EquationTableElm.RowOutputMode mode = eqTable.getOutputMode(row);
-            String sliderVar = eqTable.getSliderVarName(row);
-            double sliderValue = eqTable.getSliderValue(row);
-            String initialEq = eqTable.getInitialEquation(row);
-            if (initialEq != null && !initialEq.trim().isEmpty()) {
-                initialEq = rewriteExpressionForLookupExport(initialEq, tableName);
+            sb.append("  ").append(row.name).append(" ~ ").append(row.expr);
+            sb.append(" ; mode=").append(SFCRUtil.formatEquationRowMode(row.mode));
+            if (row.sliderVar != null && !row.sliderVar.trim().isEmpty()) {
+                sb.append(" ; slider=").append(row.sliderVar.trim());
             }
-
-            String hint = sanitizeHintForRStyleExport(HintRegistry.getHint(sourceName));
-
-            sb.append("  ").append(name).append(" ~ ").append(expr);
-            sb.append(" ; mode=").append(SFCRUtil.formatEquationRowMode(mode));
-            if (sliderVar != null && !sliderVar.trim().isEmpty()) {
-                sb.append(" ; slider=").append(sliderVar.trim());
+            sb.append(" ; sliderValue=").append(row.sliderValue);
+            if (row.initialEq != null && !row.initialEq.trim().isEmpty()) {
+                sb.append(" ; initial=").append(row.initialEq.trim());
             }
-            sb.append(" ; sliderValue=").append(sliderValue);
-            if (initialEq != null && !initialEq.trim().isEmpty()) {
-                sb.append(" ; initial=").append(initialEq.trim());
-            }
-            if (hint != null && !hint.trim().isEmpty()) {
-                sb.append("  # ").append(hint);
+            if (row.hint != null && !row.hint.trim().isEmpty()) {
+                sb.append("  # ").append(row.hint);
             }
             sb.append("\n");
         }
@@ -1330,21 +1473,16 @@ public class SFCRExporter {
             tableName = "Equations";
         }
 
-        int rowCount = eqTable.getRowCount();
-        if (rowCount == 0) {
+        ArrayList<EquationExportRow> rows = collectEquationExportRows(eqTable, tableName);
+        if (rows.isEmpty()) {
             return "";
         }
 
         appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_EQUATIONS, SFCRUtil.sanitizeName(tableName));
 
         int equationCount = 0;
-        for (int row = 0; row < rowCount; row++) {
-            String sourceName = eqTable.getOutputName(row);
-            if (EquationTableElm.isCommentRowName(sourceName)) {
-                continue;
-            }
-            String name = eqTable.getDisplayOutputName(row);
-            if (name != null && !name.isEmpty()) {
+        for (int i = 0; i < rows.size(); i++) {
+            if (!rows.get(i).commentRow) {
                 equationCount++;
             }
         }
@@ -1362,48 +1500,23 @@ public class SFCRExporter {
         }
 
         int emitted = 0;
-        for (int row = 0; row < rowCount; row++) {
-            String sourceName = eqTable.getOutputName(row);
-            if (EquationTableElm.isCommentRowName(sourceName)) {
-                String comment = sourceName == null ? "" : sourceName.trim();
-                if (comment.startsWith("#")) {
-                    comment = comment.substring(1).trim();
-                }
-                if (!comment.isEmpty()) {
-                    sb.append("  # ").append(comment).append("\n");
-                }
+        for (int i = 0; i < rows.size(); i++) {
+            EquationExportRow row = rows.get(i);
+            if (row.commentRow) {
+                sb.append("  # ").append(row.commentText).append("\n");
                 continue;
-            }
-
-            String name = eqTable.getDisplayOutputName(row);
-            String expr = eqTable.getEquation(row);
-            if (name == null || name.isEmpty()) {
-                continue;
-            }
-            if (expr == null) {
-                expr = "0";
-            }
-            expr = rewriteExpressionForLookupExport(expr, tableName);
-
-            EquationTableElm.RowOutputMode mode = eqTable.getOutputMode(row);
-            String sliderVar = eqTable.getSliderVarName(row);
-            double sliderValue = eqTable.getSliderValue(row);
-            String initialEq = eqTable.getInitialEquation(row);
-            if (initialEq != null && !initialEq.trim().isEmpty()) {
-                initialEq = rewriteExpressionForLookupExport(initialEq, tableName);
             }
 
             emitted++;
-            sb.append("  e").append(emitted).append(" = ").append(name).append(" ~ ").append(expr);
+            sb.append("  e").append(emitted).append(" = ").append(row.name).append(" ~ ").append(row.expr);
             if (emitted < equationCount) {
                 sb.append(",");
             }
 
-            String hint = sanitizeHintForRStyleExport(HintRegistry.getHint(sourceName));
             // Persist row-editable properties inside bracket metadata so R-style
             // export/import keeps mode/slider settings without changing core syntax.
-            String rowMeta = formatRStyleEquationInlineMetadata(mode, sliderVar, sliderValue, initialEq);
-            appendRStyleInlineComment(sb, hint, rowMeta);
+            String rowMeta = formatRStyleEquationInlineMetadata(row.mode, row.sliderVar, row.sliderValue, row.initialEq);
+            appendRStyleInlineComment(sb, row.hint, rowMeta);
             sb.append("\n");
         }
         sb.append(")\n");
@@ -1422,34 +1535,19 @@ public class SFCRExporter {
         appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_EQUATIONS, SFCRUtil.sanitizeName(tableName));
         sb.append(formatRBlockMetadataComment(godlyTable, null));
 
-        ArrayList<String> equationLines = new ArrayList<String>();
-        int cols = godlyTable.getCols();
-        for (int col = 0; col < cols; col++) {
-            TableColumn column = godlyTable.getColumn(col);
-            if (column == null || column.isALE()) {
-                continue;
-            }
-
-            String stockName = column.getStockName();
-            if (stockName == null || stockName.isEmpty()) {
-                continue;
-            }
-
-            String flowExpr = buildColumnFlowExpression(godlyTable, col);
-            flowExpr = rewriteExpressionForLookupExport(flowExpr, tableName);
-            equationLines.add("  e" + (equationLines.size() + 1) + " = "
-                + stockName + " ~ " + stockName + "_init + integrate(" + flowExpr + ")");
-        }
-
-        if (equationLines.isEmpty()) {
+        ArrayList<GodlyExportRow> rows = collectGodlyExportRows(godlyTable, tableName);
+        if (rows.isEmpty()) {
             return "";
         }
 
         String assignmentName = toRAssignmentName(tableName);
         sb.append(assignmentName).append(" <- sfcr_set(\n");
-        for (int i = 0; i < equationLines.size(); i++) {
-            sb.append(equationLines.get(i));
-            if (i < equationLines.size() - 1) {
+        for (int i = 0; i < rows.size(); i++) {
+            GodlyExportRow row = rows.get(i);
+            sb.append("  e").append(i + 1).append(" = ")
+                .append(row.stockName).append(" ~ ")
+                .append(row.stockName).append("_init + integrate(").append(row.flowExpr).append(")");
+            if (i < rows.size() - 1) {
                 sb.append(",");
             }
             sb.append("\n");
@@ -1469,25 +1567,8 @@ public class SFCRExporter {
 
         appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_MATRIX, SFCRUtil.sanitizeName(tableName));
 
-        ArrayList<String> stockNames = new ArrayList<String>();
-        ArrayList<String> stockCodes = new ArrayList<String>();
-        Set<String> usedCodes = new HashSet<String>();
-
-        int totalCols = sfcTable.getCols();
-        for (int col = 0; col < totalCols; col++) {
-            TableColumn column = sfcTable.getColumn(col);
-            if (column == null || column.isALE()) {
-                continue;
-            }
-            String stockName = column.getStockName();
-            if (stockName == null || stockName.trim().isEmpty()) {
-                stockName = "Column" + (stockNames.size() + 1);
-            }
-            stockNames.add(stockName);
-            stockCodes.add(makeUniqueRCode(toRCodeIdentifier(stockName), usedCodes));
-        }
-
-        if (stockNames.isEmpty()) {
+        MatrixExportData data = collectMatrixExportData(sfcTable, tableName, true);
+        if (data.stockNames.isEmpty()) {
             return "";
         }
 
@@ -1497,37 +1578,22 @@ public class SFCRExporter {
         if (!metadataComment.isEmpty()) {
             sb.append("  ").append(metadataComment).append("\n");
         }
-        sb.append("  columns = c(").append(joinRQuoted(stockNames)).append("),\n");
-        sb.append("  codes = c(").append(joinRQuoted(stockCodes)).append("),\n");
+        sb.append("  columns = c(").append(joinRQuoted(data.stockNames)).append("),\n");
+        sb.append("  codes = c(").append(joinRQuoted(data.stockCodes)).append("),\n");
 
-        int rows = sfcTable.getRows();
-        for (int row = 0; row < rows; row++) {
-            String rowDesc = sfcTable.getRowDescription(row);
-            if (rowDesc == null || rowDesc.trim().isEmpty()) {
-                rowDesc = "Row" + row;
-            }
-
-            sb.append("  c(\"").append(escapeRString(rowDesc)).append("\"");
-            int dataColIndex = 0;
-            for (int col = 0; col < totalCols; col++) {
-                TableColumn column = sfcTable.getColumn(col);
-                if (column == null || column.isALE()) {
-                    continue;
-                }
-                                String cellExpr = column.getCellEquation(row);
-                if (cellExpr == null) {
-                    cellExpr = "";
-                }
-                                cellExpr = rewriteExpressionForLookupExport(cellExpr, tableName);
+        for (int row = 0; row < data.rowNames.size(); row++) {
+            sb.append("  c(\"").append(escapeRString(data.rowNames.get(row))).append("\"");
+            String[] rowData = data.rowValues.get(row);
+            for (int col = 0; col < data.stockCodes.size(); col++) {
+                String cellExpr = (col < rowData.length) ? rowData[col] : "";
                 sb.append(", ")
-                  .append(stockCodes.get(dataColIndex))
+                  .append(data.stockCodes.get(col))
                   .append(" = \"")
                   .append(escapeRString(cellExpr))
                   .append("\"");
-                dataColIndex++;
             }
             sb.append(")");
-            if (row < rows - 1) {
+            if (row < data.rowNames.size() - 1) {
                 sb.append(",");
             }
             sb.append("\n");
@@ -1551,28 +1617,14 @@ public class SFCRExporter {
         sb.append("@equations ").append(SFCRUtil.sanitizeName(tableName));
         sb.append(formatPosition(godlyTable)).append("\n");
         
-        // Export column stock names with their integration expressions
-        int cols = godlyTable.getCols();
-        for (int col = 0; col < cols; col++) {
-            TableColumn column = godlyTable.getColumn(col);
-            if (column == null || column.isALE()) continue;
-            
-            String stockName = column.getStockName();
-            if (stockName == null || stockName.isEmpty()) continue;
-            
-            // Build the flow sum expression
-            String flowExpr = buildColumnFlowExpression(godlyTable, col);
-            flowExpr = rewriteExpressionForLookupExport(flowExpr, tableName);
-            String hint = HintRegistry.getHint(stockName);
-            
-            // GodlyTable uses integration: stock = integrate(sum of flows)
-            double initialValue = godlyTable.getInitialValue(col);
-            
-            sb.append("  # Initial value: ").append(initialValue).append("\n");
-            sb.append("  ").append(stockName).append(" ~ ");
-            sb.append(stockName).append("_init + integrate(").append(flowExpr).append(")");
-            if (hint != null && !hint.trim().isEmpty()) {
-                sb.append("  # ").append(hint);
+        ArrayList<GodlyExportRow> rows = collectGodlyExportRows(godlyTable, tableName);
+        for (int i = 0; i < rows.size(); i++) {
+            GodlyExportRow row = rows.get(i);
+            sb.append("  # Initial value: ").append(row.initialValue).append("\n");
+            sb.append("  ").append(row.stockName).append(" ~ ");
+            sb.append(row.stockName).append("_init + integrate(").append(row.flowExpr).append(")");
+            if (row.hint != null && !row.hint.trim().isEmpty()) {
+                sb.append("  # ").append(row.hint);
             }
             sb.append("\n");
         }
@@ -1632,26 +1684,16 @@ public class SFCRExporter {
         sb.append(formatPosition(sfcTable)).append("\n");
         sb.append("  type: transaction_flow\n");
         
-        // Count data columns (exclude computed Σ column)
-        int totalCols = sfcTable.getCols();
-        int dataCols = 0;
-        for (int col = 0; col < totalCols; col++) {
-            TableColumn column = sfcTable.getColumn(col);
-            if (column != null && !column.isALE()) {
-                dataCols++;
-            }
-        }
+        MatrixExportData data = collectMatrixExportData(sfcTable, tableName, false);
+        int dataCols = data.stockNames.size();
         
         // Export as markdown table only (no separate columns: line to avoid duplication)
         sb.append("\n");
         
         // Header row (exclude computed Σ column - it will be auto-added on import)
         sb.append("| Transaction |");
-        for (int col = 0; col < totalCols; col++) {
-            TableColumn column = sfcTable.getColumn(col);
-            if (column != null && !column.isALE()) {
-                sb.append(" ").append(column.getStockName()).append(" |");
-            }
+        for (int col = 0; col < data.stockNames.size(); col++) {
+            sb.append(" ").append(data.stockNames.get(col)).append(" |");
         }
         sb.append("\n");
         
@@ -1663,21 +1705,12 @@ public class SFCRExporter {
         sb.append("\n");
         
         // Data rows (exclude computed Σ column)
-        int rows = sfcTable.getRows();
-        for (int row = 0; row < rows; row++) {
-            String rowDesc = sfcTable.getRowDescription(row);
-            if (rowDesc == null) rowDesc = "Row" + row;
-            
-            sb.append("| ").append(rowDesc).append(" |");
-            
-            for (int col = 0; col < totalCols; col++) {
-                TableColumn column = sfcTable.getColumn(col);
-                if (column != null && !column.isALE()) {
-                    String cellExpr = column.getCellEquation(row);
-                    if (cellExpr == null) cellExpr = "";
-                    cellExpr = rewriteExpressionForLookupExport(cellExpr, tableName);
-                    sb.append(" ").append(cellExpr).append(" |");
-                }
+        for (int row = 0; row < data.rowNames.size(); row++) {
+            sb.append("| ").append(data.rowNames.get(row)).append(" |");
+            String[] rowData = data.rowValues.get(row);
+            for (int col = 0; col < dataCols; col++) {
+                String cellExpr = (col < rowData.length) ? rowData[col] : "";
+                sb.append(" ").append(cellExpr).append(" |");
             }
             sb.append("\n");
         }

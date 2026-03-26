@@ -13,8 +13,7 @@ public class LookupBlockParseHandler implements SFCRBlockParseHandler {
 
     @Override
     public ParseResult parse(String[] lines, int startIndex, SFCRParseContext ctx) {
-        SFCRParser parser = ctx.getParser();
-        LookupDefinition table = parser.parseLookupHeaderForHandler(lines[startIndex].trim());
+        LookupDefinition table = ctx.parseLookupHeader(lines[startIndex].trim());
         if (table == null) {
             return ParseResult.next(startIndex + 1);
         }
@@ -29,7 +28,7 @@ public class LookupBlockParseHandler implements SFCRBlockParseHandler {
             if (line.startsWith("#")) {
                 table.comments.add(line);
             } else if (!line.isEmpty() && !line.startsWith("%")) {
-                SFCRParser.LookupPoint point = parser.parseLookupPointForHandler(line);
+                SFCRParser.LookupPoint point = ctx.parseLookupPoint(line);
                 if (point != null) {
                     table.xs.add(Double.valueOf(point.x));
                     table.ys.add(Double.valueOf(point.y));
@@ -41,11 +40,11 @@ public class LookupBlockParseHandler implements SFCRBlockParseHandler {
         if (table.xs.size() < 2) {
             return ParseResult.next(i);
         }
-        if (!parser.isStrictlyIncreasingForHandler(table.xs)) {
+        if (!ctx.isStrictlyIncreasing(table.xs)) {
             return ParseResult.next(i);
         }
 
-        parser.registerLookupTableForHandler(table);
+        ctx.registerLookupTable(table);
         return ParseResult.next(i);
     }
 }
