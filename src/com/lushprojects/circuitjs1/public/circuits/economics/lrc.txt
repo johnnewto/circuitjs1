@@ -1,15 +1,24 @@
 $ 1 0.000005 10.20027730826997 50 5 43 5e-11
-r 176 80 384 80 0 10
-s 384 80 448 80 0 1 false
-w 176 80 176 352 0
-c 384 352 176 352 0 0.000015 -9.86 -10
-l 384 80 384 352 0 1 0.03 0
-v 448 352 448 80 0 0 40 5 0 0 0.5
-r 384 352 448 352 0 100
-o 4 64 0 4099 20 0.05 0 2 4 3
-o 3 64 0 4099 20 0.05 1 2 3 3
-o 0 64 0 4099 0.625 0.05 2 2 0 3
-38 3 0 0.000001 0.000101 Capacitance
-38 4 0 0.01 1.01 Inductance
-38 0 0 1 101 Resistance
+% voltageUnit $
+% showToolbar true
+% equationTableMnaMode true
+% equationTableNewtonJacobianEnabled false
+% equationTableConvergenceTolerance 0.001
+% sfcrLookupClampDefault true
+% convergenceCheckThreshold 199
+r 176 80 384 80 0 10 U:8Ruj5q
+s 384 80 448 80 0 1 false U:M1468O
+w 176 80 176 352 0 U:VYpC_j
+c 384 352 176 352 4 0.000015 2.9589628950720486 -10 0 U:hAyBDi
+l 384 80 384 352 0 1 -0.010398134082388915 0 U:nZ7VuU
+r 384 352 448 352 0 100 U:dj9Dsn
+403 528 96 752 240 0 4_8_0_x20012c4_U:nZ7VuU_10_0.1_-1_2_U:hAyBDi_3_0 U:a0za8U
+403 528 256 752 416 0 4_64_0_x2001246_U:nZ7VuU_5_0.1_-1_2_U:nZ7VuU_4_3 U:nUBor_
+o 4 64 0 x2001003 U:nZ7VuU 10 0.05 0 2 U:nZ7VuU 4 3
+o 3 64 0 x2001003 U:hAyBDi 10 0.05 1 2 U:hAyBDi 3 3
+o 0 64 0 x2001003 U:8Ruj5q 0.625 0.05 2 2 U:8Ruj5q 0 3
+38 3 F1 0 0.000001 0.000101 -1 Capacitance 0
+38 4 F1 0 0.01 1.01 -1 Inductance 0
+38 0 F1 0 1 101 -1 Resistance 0
+% AST 0
 h 1 4 3
