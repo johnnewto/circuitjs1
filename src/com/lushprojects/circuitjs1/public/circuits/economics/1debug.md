@@ -341,7 +341,15 @@ World2 <- sfcr_set(
 ```
 
 ```{r}
-@scope Embedded_Scope_1 position=-1
+@scope QL position=0
+  speed: 2
+  flags: x2001206
+  source: uid:xJHWxB value:0
+@end
+```
+
+```{r}
+@scope world1 position=-1
   x1: -864
   y1: 160
   x2: -208
@@ -349,6 +357,7 @@ World2 <- sfcr_set(
   elmUid: 61uaxG
   speed: 2
   flags: x6c03206
+  title: world1
   source: uid:xJHWxB value:0
   trace: uid:BaMGZo value:0
   trace: uid:PwVDmt value:0

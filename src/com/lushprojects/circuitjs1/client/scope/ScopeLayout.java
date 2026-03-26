@@ -4,6 +4,8 @@ import com.lushprojects.circuitjs1.client.*;
 
 final class ScopeLayout {
     static final int MULTI_LHS_MAX_AXES = 5;
+    private static final int MULTI_LHS_TOP_INFO_GUTTER = 20;
+    private static final int MULTI_LHS_TIME_AXIS_HEIGHT = 20;
     private static final int MULTI_LHS_AXIS_SPACING = 24;
     private static final int MULTI_LHS_AXIS_START_X = 8;
     private static final int MULTI_LHS_TICK_LEN = 4;
@@ -43,6 +45,24 @@ final class ScopeLayout {
 
     static int getPlotAreaWidth(int rectWidth, int plotLeft) {
         return Math.max(1, rectWidth - plotLeft);
+    }
+
+    static int getMultiLhsTimeAxisHeight(boolean multiLhsDrawEnabled, int rectHeight) {
+        if (!multiLhsDrawEnabled || rectHeight < 60) {
+            return 0;
+        }
+        return Math.min(MULTI_LHS_TIME_AXIS_HEIGHT, rectHeight / 3);
+    }
+
+    static int getMultiLhsTopInfoGutterHeight(boolean multiLhsDrawEnabled, int rectHeight) {
+        if (!multiLhsDrawEnabled || rectHeight < 60) {
+            return 0;
+        }
+        return Math.min(MULTI_LHS_TOP_INFO_GUTTER, rectHeight / 3);
+    }
+
+    static int getMainPlotHeight(int rectHeight, int topInfoGutterHeight, int timeAxisHeight) {
+        return Math.max(1, rectHeight - Math.max(0, topInfoGutterHeight) - Math.max(0, timeAxisHeight));
     }
 
     static int getInfoTextAnchorX(int plotLeft) {

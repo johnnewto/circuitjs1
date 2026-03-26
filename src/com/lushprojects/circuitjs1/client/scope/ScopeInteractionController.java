@@ -31,14 +31,48 @@ final class ScopeInteractionController {
         return currentTime - maxTimeStep * speed * ageSamples;
     }
 
-    static int findNearestPlotIndex(Vector<ScopePlot> visiblePlots, int sampleIndex, int scopePointCount,
-                                    int mouseY, int rectY, int centerY) {
+    static int findNearestPlotIndexAtSampleX(Vector<ScopePlot> visiblePlots, int sampleX, int requiredSamples,
+                                             int scopePointCount, int mouseY, int rectY, int plotTop, int centerY) {
         int bestDist = Integer.MAX_VALUE;
         int best = -1;
         for (int i = 0; i < visiblePlots.size(); i++) {
             ScopePlot plot = visiblePlots.get(i);
-            int maxvy = (int) (plot.gridMult * (plot.maxValues[sampleIndex & (scopePointCount - 1)] + plot.plotOffset));
-            int dist = Math.abs(mouseY - (rectY + centerY - maxvy));
+            int plotDisplayWidth = plot.getDisplayWidth(requiredSamples);
+            if (plotDisplayWidth <= 0) {
+                continue;
+            }
+            int clampedSampleX = Math.min(sampleX, plotDisplayWidth - 1);
+            int plotStartIndex = plot.startIndex(plotDisplayWidth);
+            int idx = (clampedSampleX + plotStartIndex) & (scopePointCount - 1);
+            // Match hover distance to the actual rendered trace (midpoint between min/max).
+            double midVal = (plot.minValues[idx] + plot.maxValues[idx]) * 0.5;
+            int midvy = (int) (plot.gridMult * (midVal + plot.plotOffset));
+            int dist = Math.abs(mouseY - (rectY + plotTop + centerY - midvy));
+            if (dist < bestDist) {
+                bestDist = dist;
+                best = i;
+            }
+        }
+        return best;
+    }
+
+    static int findNearestPlotIndexInHistory(Vector<ScopePlot> visiblePlots, int historyIndex,
+                                             int mouseY, int rectY, int plotTop, int centerY) {
+        int bestDist = Integer.MAX_VALUE;
+        int best = -1;
+        for (int i = 0; i < visiblePlots.size(); i++) {
+            ScopePlot plot = visiblePlots.get(i);
+            if (plot.historyMinValues == null || plot.historyMaxValues == null) {
+                continue;
+            }
+            if (historyIndex < 0
+                    || historyIndex >= plot.historyMinValues.length
+                    || historyIndex >= plot.historyMaxValues.length) {
+                continue;
+            }
+            double midVal = (plot.historyMinValues[historyIndex] + plot.historyMaxValues[historyIndex]) * 0.5;
+            int midvy = (int) (plot.gridMult * (midVal + plot.plotOffset));
+            int dist = Math.abs(mouseY - (rectY + plotTop + centerY - midvy));
             if (dist < bestDist) {
                 bestDist = dist;
                 best = i;

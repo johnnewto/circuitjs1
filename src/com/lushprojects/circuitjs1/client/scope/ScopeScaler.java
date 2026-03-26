@@ -3,13 +3,17 @@ package com.lushprojects.circuitjs1.client.scope;
 import com.lushprojects.circuitjs1.client.*;
 
 final class ScopeScaler {
+    private static final double AUTO_SCALE_HEADROOM_FACTOR = 1.05;
+    private static final double MULTI_LHS_RANGE_PADDING_FACTOR = 0.03;
+
     private ScopeScaler() {
     }
 
     static double computeAutoScale(double currentScale, double maxAbsValue, boolean maxScaleEnabled, Double maxScaleLimit) {
         double gridMax = currentScale;
         if (maxScaleEnabled) {
-            gridMax = Math.max(maxAbsValue, gridMax);
+            double target = maxAbsValue > 0 ? maxAbsValue * AUTO_SCALE_HEADROOM_FACTOR : maxAbsValue;
+            gridMax = Math.max(target, gridMax);
         } else {
             while (maxAbsValue > gridMax) {
                 gridMax *= 2;
@@ -83,6 +87,17 @@ final class ScopeScaler {
             } else {
                 dataMin = -magnitude;
                 dataMax = magnitude;
+            }
+            range = dataMax - dataMin;
+        }
+        // Leave a small guard band to avoid traces touching/clipping the exact bounds.
+        if (range > 0) {
+            double padding = range * MULTI_LHS_RANGE_PADDING_FACTOR;
+            if (!showNegative && dataMin >= 0) {
+                dataMax += padding;
+            } else {
+                dataMin -= padding;
+                dataMax += padding;
             }
             range = dataMax - dataMin;
         }
