@@ -85,6 +85,16 @@ public class SFCRExporter {
         this.exportSyntax = (syntax == null) ? ExportSyntax.R_STYLE : syntax;
     }
     
+    /** Get the simulator instance. */
+    public CirSim getSim() {
+        return sim;
+    }
+    
+    /** Get the export syntax style. */
+    public ExportSyntax getExportSyntax() {
+        return exportSyntax;
+    }
+    
     /** Export the current circuit in SFCR format. */
     public String export() {
         if (sim != null && sim.getSFCRDocumentManager().getModelInfoSourceText() != null
@@ -96,21 +106,24 @@ public class SFCRExporter {
         }
 
         StringBuilder sb = new StringBuilder();
-        scopeElmsExportedAsBlocks.clear();
         
-        // Categorize elements
-        categorizeElements();
+        // Create export context
+        SFCRExportContext exportContext = new SFCRExportContext(this, sim, exportSyntax);
+        exportContext.clearScopeElmsExportedAsBlocks();
+        
+        // Categorize elements into the context
+        categorizeElements(exportContext);
+        
+        // Reset lookup extraction state
+        exportContext.resetLookupExportState();
         
         // Build header comment
         sb.append("# CircuitJS1 SFCR Export\n");
         sb.append("# Generated from circuit simulation\n");
         sb.append("\n");
 
-        // Reset lookup extraction state for this export pass.
-        resetLookupExportState();
-        SFCRExportContext exportContext = new SFCRExportContext(this);
         for (SFCRBlockExportHandler handler : SFCRBlockExportHandlerRegistry.getOrderedHandlers()) {
-            appendExportBlock(sb, handler.export(exportContext));
+            exportContext.appendExportBlock(sb, handler.export(exportContext));
         }
 
         // Export model documentation last as inline markdown (no @info wrapper)
@@ -174,6 +187,21 @@ public class SFCRExporter {
     public ArrayList<LookupDefinition> getLookupExportSpecsForHandler() {
         return lookupExportSpecs;
     }
+    
+    /** Internal accessor for lookup export specs (used by context transition). */
+    public ArrayList<LookupDefinition> getLookupExportSpecsInternal() {
+        return lookupExportSpecs;
+    }
+    
+    /** Internal accessor for lookup export by signature (used by context transition). */
+    public HashMap<String, LookupDefinition> getLookupExportBySignatureInternal() {
+        return lookupExportBySignature;
+    }
+    
+    /** Internal accessor for lookup comments by name/scope (used by context transition). */
+    public HashMap<String, ArrayList<String>> getLookupCommentsByNameScopeInternal() {
+        return lookupCommentsByNameScope;
+    }
 
     public ArrayList<SFCSankeyElm> getSankeyDiagramsForHandler() {
         return sankeyDiagrams;
@@ -225,6 +253,79 @@ public class SFCRExporter {
         appendExportBlock(sb, block);
     }
 
+    // =========================================================================
+    // Public Export Methods (for context delegation)
+    // =========================================================================
+    
+    /**
+     * Export an equation table with the specified syntax.
+     * @param eqTable the equation table element
+     * @param syntax the export syntax style
+     * @return the exported block string
+     */
+    public String exportEquationTable(EquationTableElm eqTable, ExportSyntax syntax) {
+        return (syntax == ExportSyntax.R_STYLE)
+            ? exportEquationTableRStyle(eqTable)
+            : exportEquationTable(eqTable);
+    }
+    
+    /**
+     * Export a godly table with the specified syntax.
+     * @param godlyTable the godly table element
+     * @param syntax the export syntax style
+     * @return the exported block string
+     */
+    public String exportGodlyTable(GodlyTableElm godlyTable, ExportSyntax syntax) {
+        return (syntax == ExportSyntax.R_STYLE)
+            ? exportGodlyTableRStyle(godlyTable)
+            : exportGodlyTable(godlyTable);
+    }
+    
+    /**
+     * Export a matrix table with the specified syntax.
+     * @param sfcTable the SFC table element
+     * @param syntax the export syntax style
+     * @return the exported block string
+     */
+    public String exportMatrixTable(SFCTableElm sfcTable, ExportSyntax syntax) {
+        return (syntax == ExportSyntax.R_STYLE)
+            ? exportSFCTableRStyle(sfcTable)
+            : exportSFCTable(sfcTable);
+    }
+    
+    /**
+     * Export circuit elements that don't have dedicated block handlers.
+     * @param elements list of elements to export
+     * @param scopeElmsExported set of scope elements already exported as blocks
+     * @return the @circuit block string
+     */
+    public String exportCircuitElements(ArrayList<CircuitElm> elements, HashSet<CircuitElm> scopeElmsExported) {
+        if (elements == null || elements.isEmpty()) {
+            return "";
+        }
+        
+        StringBuilder sb = new StringBuilder();
+        sb.append("@circuit\n");
+        
+        for (CircuitElm elm : elements) {
+            if (elm instanceof ScopeElm) {
+                ScopeElm se = (ScopeElm) elm;
+                // Skip raw 403 dump when we can represent this scope in @scope block.
+                if ((scopeElmsExported != null && scopeElmsExported.contains(elm)) 
+                    || canExportScopeAsBlock(se.elmScope)) {
+                    continue;
+                }
+            }
+            String dump = sim.getImportExportHelper().getElementDumpWithUid(elm);
+            if (dump != null && !dump.isEmpty()) {
+                sb.append(dump).append("\n");
+            }
+        }
+        
+        sb.append("@end\n");
+        return sb.toString();
+    }
+
     private enum TemplateBlockType {
         LOOKUP,
         EQUATIONS,
@@ -237,7 +338,8 @@ public class SFCRExporter {
 
     private String exportWithTemplateMerge(String sourceText) {
         scopeElmsExportedAsBlocks.clear();
-        categorizeElements();
+        SFCRExportContext ctx = new SFCRExportContext(this, sim, exportSyntax);
+        categorizeElements(ctx);
         resetLookupExportState();
         seedLookupNamesFromTemplate(sourceText);
 
@@ -1123,33 +1225,48 @@ public class SFCRExporter {
     // =========================================================================
     
     /** Categorize elements for export. */
-    private void categorizeElements() {
-        equationTables.clear();
-        sfcTables.clear();
-        godlyTables.clear();
-        sankeyDiagrams.clear();
-        otherElements.clear();
-        actionTimeElmForExport = null;
+    private void categorizeElements(SFCRExportContext ctx) {
+        ArrayList<EquationTableElm> eqTables = new ArrayList<EquationTableElm>();
+        ArrayList<SFCTableElm> matrixTables = new ArrayList<SFCTableElm>();
+        ArrayList<GodlyTableElm> godlyTableList = new ArrayList<GodlyTableElm>();
+        ArrayList<SFCSankeyElm> sankeyList = new ArrayList<SFCSankeyElm>();
+        ArrayList<CircuitElm> otherElms = new ArrayList<CircuitElm>();
+        ActionTimeElm actionElm = null;
         
         for (int i = 0; i < sim.elmList.size(); i++) {
             CircuitElm elm = sim.elmList.get(i);
             
             if (elm instanceof EquationTableElm) {
-                equationTables.add((EquationTableElm) elm);
+                eqTables.add((EquationTableElm) elm);
             } else if (elm instanceof SFCTableElm) {
-                sfcTables.add((SFCTableElm) elm);
+                matrixTables.add((SFCTableElm) elm);
             } else if (elm instanceof GodlyTableElm) {
-                godlyTables.add((GodlyTableElm) elm);
+                godlyTableList.add((GodlyTableElm) elm);
             } else if (elm instanceof SFCSankeyElm) {
-                sankeyDiagrams.add((SFCSankeyElm) elm);
+                sankeyList.add((SFCSankeyElm) elm);
             } else if (elm instanceof ActionTimeElm) {
-                if (actionTimeElmForExport == null) {
-                    actionTimeElmForExport = (ActionTimeElm) elm;
+                if (actionElm == null) {
+                    actionElm = (ActionTimeElm) elm;
                 }
             } else {
-                otherElements.add(elm);
+                otherElms.add(elm);
             }
         }
+        
+        ctx.setEquationTables(eqTables);
+        ctx.setSfcTables(matrixTables);
+        ctx.setGodlyTables(godlyTableList);
+        ctx.setSankeyDiagrams(sankeyList);
+        ctx.setOtherElements(otherElms);
+        ctx.setActionTimeElm(actionElm);
+        
+        // Also update legacy fields for backward compatibility during transition
+        equationTables = eqTables;
+        sfcTables = matrixTables;
+        godlyTables = godlyTableList;
+        sankeyDiagrams = sankeyList;
+        otherElements = otherElms;
+        actionTimeElmForExport = actionElm;
     }
     
     /** Export model documentation as inline markdown (no @info wrapper). */
@@ -1760,6 +1877,11 @@ public class SFCRExporter {
             }
         }
         return false;
+    }
+
+    /** Public accessor for scope block export (used by SFCRExportContext). */
+    public boolean appendScopeBlockPublic(StringBuilder sb, Scope s, int defaultIndex, String defaultPrefix, ScopeElm scopeElm) {
+        return appendScopeBlock(sb, s, defaultIndex, defaultPrefix, scopeElm);
     }
 
     private boolean appendScopeBlock(StringBuilder sb, Scope s, int defaultIndex, String defaultPrefix, ScopeElm scopeElm) {
