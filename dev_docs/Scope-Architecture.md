@@ -2,9 +2,11 @@
 
 ## Ownership
 - `Scope` is the orchestrator: lifecycle, wiring, and mode/state transitions.
+- `ScopePlot` is now a dedicated top-level type for per-trace buffers/config.
 - `ScopeModel` owns mutable scope data:
   - plot collections (`plots`, `visiblePlots`)
   - draw-from-zero history buffers and downsampling state.
+- `ScopeRuntimeState` owns transient runtime draw state (2D cursor/trace progression and fade state).
 
 ## Pure/Low-Coupling Components
 - `ScopeLayout`: plot viewport and gutter geometry.

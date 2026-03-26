@@ -39,6 +39,8 @@ Inventory for files under src/com/lushprojects/circuitjs1/client.
 | `MyCommand.java` | GWT Command wrapper routing menu actions to CirSimCommandRouter | Menu item execution, command routing |
 | `RunnerController.java` | Controls non-interactive batch simulation execution from query parameters | Runner mode, async simulation, output generation |
 | `Scope.java` | Oscilloscope display for plotting voltage/current/power over time | ScopePlot data, waveform rendering, measurements |
+| `ScopePlot.java` | Top-level per-trace scope series type (buffers, units, AC coupling, manual scale) | Owned by Scope/ScopeModel; used by render/export/stats helpers |
+| `ScopeRuntimeState.java` | Transient draw/runtime state container used by Scope for frame-local mutable state | Owned by Scope; keeps 2D draw progression and fade counters |
 | `ScopeManager.java` | Manages multiple scopes: stacking, combining, selection, sizing | Scope array management, height fraction |
 | `ScopePropertiesDialog.java` | Thin wrapper around ScopePropertiesDialogCore for public access | ScopePropertiesDialogCore inheritance |
 | `ScopePropertiesDialogCore.java` | Dialog for configuring scope display options and scale settings | Scope settings UI, manual scale, AC/DC coupling |
