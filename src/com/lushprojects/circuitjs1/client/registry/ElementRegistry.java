@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client.registry;
 
+import com.lushprojects.circuitjs1.client.scope.Scope;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;

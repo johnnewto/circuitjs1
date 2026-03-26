@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.scope.Scope;
+
 import com.lushprojects.circuitjs1.client.ui.EditInfo;
 
 
@@ -1198,6 +1200,10 @@ public abstract class CircuitElm implements Editable {
 
     public final String getScopeTextForScope(int v) {
 	return getScopeText(v);
+    }
+
+    public final String dumpForScope() {
+	return dump();
     }
     
     protected Color getVoltageColor(Graphics g, double volts) {

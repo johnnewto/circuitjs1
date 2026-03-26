@@ -38,9 +38,6 @@ Inventory for files under src/com/lushprojects/circuitjs1/client.
 | `MouseInputHandler.java` | Processes all mouse and keyboard events for canvas interaction | Click/drag handling, mode management, shortcuts |
 | `MyCommand.java` | GWT Command wrapper routing menu actions to CirSimCommandRouter | Menu item execution, command routing |
 | `RunnerController.java` | Controls non-interactive batch simulation execution from query parameters | Runner mode, async simulation, output generation |
-| `Scope.java` | Oscilloscope display for plotting voltage/current/power over time | ScopePlot data, waveform rendering, measurements |
-| `ScopePlot.java` | Top-level per-trace scope series type (buffers, units, AC coupling, manual scale) | Owned by Scope/ScopeModel; used by render/export/stats helpers |
-| `ScopeRuntimeState.java` | Transient draw/runtime state container used by Scope for frame-local mutable state | Owned by Scope; keeps 2D draw progression and fade counters |
 | `ScopeManager.java` | Manages multiple scopes: stacking, combining, selection, sizing | Scope array management, height fraction |
 | `ScopePropertiesDialog.java` | Thin wrapper around ScopePropertiesDialogCore for public access | ScopePropertiesDialogCore inheritance |
 | `ScopePropertiesDialogCore.java` | Dialog for configuring scope display options and scale settings | Scope settings UI, manual scale, AC/DC coupling |
@@ -53,6 +50,21 @@ Inventory for files under src/com/lushprojects/circuitjs1/client.
 | `UndoRedoManager.java` | Manages undo/redo stacks with circuit state and transform snapshots | Undo/redo operations, circuit state history |
 | `ViewportController.java` | Controls canvas viewport: zoom, pan, coordinate transforms, sizing | Transform matrix, canvas sizing, centering |
 | `circuitjs1.java` | GWT EntryPoint that loads locale and launches CirSim application | Program entry point, locale loading, version |
+
+## scope
+
+| File | What It Is For | Close Relationships |
+|---|---|---|
+| `scope/Scope.java` | Oscilloscope coordinator: lifecycle, rendering orchestration, state transitions, and persistence delegation | ScopeModel, ScopeRuntimeState, renderers/controllers/scaler, ScopeManager |
+| `scope/ScopePlot.java` | Per-trace plot state and circular/history buffers (units, AC coupling, manual scale) | Scope, ScopeModel, ScopeDataExporter, ScopeStatsService |
+| `scope/ScopeRuntimeState.java` | Mutable per-frame/per-draw runtime state holder for 2D rendering and transient flags | Scope draw loop and interaction flow |
+| `scope/ScopeModel.java` | Scope data model for plot lists and draw-from-zero history buffers/downsampling state | Scope, ScopePersistence |
+| `scope/ScopePersistence.java` | Scope dump/undump serialization and compatibility parsing | Scope, CircuitIOService, SFCR importer/exporter |
+| `scope/ScopeDataExporter.java` | Scope CSV/JSON export formatting for circular buffer and draw-from-zero history | Scope, ExportScopeDataDialog, ScopeViewerDialog |
+| `scope/ScopeGridRenderer.java` | Grid and background draw layer | Scope draw pipeline |
+| `scope/ScopeWaveformRenderer.java` | Waveform trace draw layer | ScopeFrameContext, ScopePlot |
+| `scope/ScopeAxisRenderer.java` | Axis labels/ticks/scales and multi-LHS axis rendering | ScopeScaler, PlotScaleResult |
+| `scope/ScopeOverlayRenderer.java` | Overlay layer (cursor, markers, annotations, active readouts) | Scope interaction/runtime state |
 
 ## core
 

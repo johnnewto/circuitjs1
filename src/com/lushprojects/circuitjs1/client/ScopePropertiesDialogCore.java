@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import com.lushprojects.circuitjs1.client.scope.Scope;
+
 import com.lushprojects.circuitjs1.client.*;
 
 import com.lushprojects.circuitjs1.client.util.*;
@@ -710,8 +712,8 @@ private boolean maxScaleTextBoxHasFocus = false;
 	    }
 	    else {
 		manualButton.setValue(false);
-		autoButton.setValue(! scope.maxScale);
-		maxButton.setValue(scope.maxScale);
+		autoButton.setValue(!scope.isMaxScaleEnabledForUi());
+		maxButton.setValue(scope.isMaxScaleEnabledForUi());
 		applyButton.setVisible(false);
 	    }
 	    updateManualScaleUi();

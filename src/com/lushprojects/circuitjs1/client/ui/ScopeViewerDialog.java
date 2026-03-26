@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client.ui;
 
+import com.lushprojects.circuitjs1.client.scope.Scope;
+
 import com.lushprojects.circuitjs1.client.elements.ActionScheduler;
 import com.lushprojects.circuitjs1.client.elements.misc.ScopeElm;
 

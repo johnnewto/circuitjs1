@@ -5,12 +5,12 @@
 - Add coverage for manual scale, FFT flag, multi-LHS, draw-from-zero, and mixed-unit plots.
 - Gate: all scope tests pass before any refactor.
 
-2. `scope: extract ScopePlot to top-level class` ⏳ Remaining
+2. `scope: extract ScopePlot to top-level class` ✅ Done
 - Files: new `ScopePlot.java`, edit `Scope.java`
 - Move inner class out with no behavior changes.
 - Gate: compile + tests unchanged.
 
-3. `scope: introduce ScopeRuntimeState facade for mutable draw state` ⏳ Remaining
+3. `scope: introduce ScopeRuntimeState facade for mutable draw state` ✅ Done
 - Files: new `ScopeRuntimeState.java`, edit `Scope.java`
 - Move transient per-frame/per-draw mutable fields out of `Scope`.
 - Gate: `Scope.draw()` logic still identical, tests pass.
@@ -40,25 +40,21 @@
 - Minimize `handleMenu` branches in `Scope`.
 - Gate: menu actions behave the same in manual test circuits.
 
-9. `scope: prepare package move by removing package-private coupling` ⏳ Next
+9. `scope: prepare package move by removing package-private coupling` ✅ Done
 - Files: all `Scope*` classes touched as needed
 - Replace package-private field reach-through with explicit methods/facades needed for cross-package move.
 - Gate: no direct package-private dependence from non-scope classes.
 - Additional pre-move gate: all extracted services/controllers operate via explicit API/DTO boundaries; avoid direct mutable field reach-through.
 
-10. `scope: move scope subsystem to client/scope package` ⏳ Remaining
+10. `scope: move scope subsystem to client/scope package` ✅ Done
 - Move `Scope.java`, `ScopePlot.java`, `ScopeModel.java`, renderers/controllers/scaler/layout/context/config/persistence/export classes to `src/com/lushprojects/circuitjs1/client/scope`.
 - Update imports in `CirSim` and dependent dialogs/controllers.
 - Gate: full compile and scope test suite pass.
 
-11. `scope: cleanup + docs after move` ⏳ Remaining
+11. `scope: cleanup + docs after move` ✅ Done
 - Files: `Scope-Architecture.md`, `SOURCE_FILE_MAP.md`, plus dead code removals
 - Remove temporary adapters and compatibility shims introduced during migration.
 - Gate: `Scope.java` is coordinator-focused and materially smaller.
 
 ## Remaining Execution Order
-1. Step 9: remove package-private coupling and introduce explicit interfaces/DTO boundaries.
-2. Step 2: extract `ScopePlot` to top-level `ScopePlot.java`.
-3. Step 3: introduce `ScopeRuntimeState` for mutable draw/runtime state.
-4. Step 10: move scope subsystem into `client/scope` package.
-5. Step 11: post-move cleanup and documentation pass.
+All planned steps in this checklist are complete.

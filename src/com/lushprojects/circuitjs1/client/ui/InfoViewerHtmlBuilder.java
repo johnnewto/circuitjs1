@@ -1,4 +1,6 @@
 package com.lushprojects.circuitjs1.client.ui;
+
+import com.lushprojects.circuitjs1.client.scope.Scope;
 import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 

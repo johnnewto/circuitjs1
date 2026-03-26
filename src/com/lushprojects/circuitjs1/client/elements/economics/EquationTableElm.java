@@ -6,6 +6,8 @@
 
 package com.lushprojects.circuitjs1.client.elements.economics;
 
+import com.lushprojects.circuitjs1.client.scope.Scope;
+
 import com.lushprojects.circuitjs1.client.ui.EditInfo;
 
 import com.lushprojects.circuitjs1.client.elements.Expr;

@@ -1,5 +1,7 @@
 # Scope Architecture (Post Phase 8)
 
+Implementation location: `src/com/lushprojects/circuitjs1/client/scope/`
+
 ## Ownership
 - `Scope` is the orchestrator: lifecycle, wiring, and mode/state transitions.
 - `ScopePlot` is now a dedicated top-level type for per-trace buffers/config.
@@ -29,6 +31,11 @@
   - draw-from-zero history exports
 - `Scope` delegates export entry points to `ScopeDataExporter`.
 - Scope persistence remains in `Scope.dump()`/`Scope.undump()` for compatibility with existing load/save wiring.
+
+## Package Boundary Notes
+- `Scope` and related implementation classes now live in `client.scope`.
+- Non-scope callers (`CirSim`, `ScopeManager`, dialogs, import/export code) depend on explicit public APIs on `Scope`.
+- Cross-package element operations used by scope code go through explicit `CircuitElm`/`CirSim` bridge methods (`*ForScope`) instead of package-private reach-through.
 
 ## Test Coverage (Scope Refactor)
 - Math and layout invariants:
