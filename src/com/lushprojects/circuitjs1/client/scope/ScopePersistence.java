@@ -1,4 +1,6 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.scope;
+
+import com.lushprojects.circuitjs1.client.*;
 
 import com.google.gwt.storage.client.Storage;
 import com.lushprojects.circuitjs1.client.elements.electronics.semiconductors.TransistorElm;
@@ -140,7 +142,7 @@ final class ScopePersistence {
                 if (ce == null) {
                     return;
                 }
-                int u = ce.getScopeUnits(value);
+                int u = ce.getScopeUnitsForScope(value);
                 if (u > Scope.UNITS_A) {
                     scope.setScaleForUnit(u, Double.parseDouble(st.nextToken()));
                 }
@@ -166,7 +168,7 @@ final class ScopePersistence {
                         if (resolvedElm == null) {
                             resolvedElm = ce;
                         }
-                        u = resolvedElm.getScopeUnits(val);
+                        u = resolvedElm.getScopeUnitsForScope(val);
                         if (u > Scope.UNITS_A) {
                             scope.setScaleForUnit(u, Double.parseDouble(st.nextToken()));
                         }
@@ -297,7 +299,7 @@ final class ScopePersistence {
                     if (candidate == null) {
                         continue;
                     }
-                    String d = candidate.dump();
+                    String d = candidate.dumpForScope();
                     if (d != null && CustomLogicModel.escape(d).equals(target)) {
                         return candidate;
                     }

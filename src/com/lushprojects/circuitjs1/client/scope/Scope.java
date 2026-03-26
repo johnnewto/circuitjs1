@@ -17,7 +17,9 @@
     along with CircuitJS1.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.scope;
+
+import com.lushprojects.circuitjs1.client.*;
 
 
 import com.lushprojects.circuitjs1.client.util.*;
@@ -87,9 +89,9 @@ public class Scope {
     // ====================
     // DISPLAY CONSTANTS
     // ====================
-    static final double multa[] = {2.0, 2.5, 2.0}; // Grid scaling multipliers
-    static final int V_POSITION_STEPS = 200; // Vertical position adjustment range
-    static final double MIN_MAN_SCALE = 1e-9; // Minimum manual scale value
+    public static final double multa[] = {2.0, 2.5, 2.0}; // Grid scaling multipliers
+    public static final int V_POSITION_STEPS = 200; // Vertical position adjustment range
+    public static final double MIN_MAN_SCALE = 1e-9; // Minimum manual scale value
     private static final int SETTINGS_WHEEL_SIZE = 36; // Size of settings wheel in pixels
     private static final int SETTINGS_WHEEL_MARGIN = 100; // Minimum size needed to show settings wheel
     static final int SHADOW_OFFSET = 4; // Shadow offset in pixels
@@ -319,7 +321,7 @@ public class Scope {
      * @param value true to enable manual scale
      * @param roundup true to round up the scale to a sensible value
      */
-    void setManualScale(boolean value, boolean roundup) { 
+    public void setManualScale(boolean value, boolean roundup) { 
 	if (value != manualScale)
 	    clear2dView();
 	manualScale = value; 
@@ -335,7 +337,7 @@ public class Scope {
     /**
      * Resets the scope graph, using default settings.
      */
-    void resetGraph() { 
+    public void resetGraph() { 
 	resetGraph(false); 
     }
 
@@ -347,7 +349,7 @@ public class Scope {
      * Resets the scope graph.
      * @param full true to discard all old data
      */
-    void resetGraph(boolean full) {
+    public void resetGraph(boolean full) {
     	resetGraph(full, true);  // Default: clear history
     }
 
@@ -364,7 +366,7 @@ public class Scope {
 	ScopeLifecycleController.resetGraph(this, full, clearHistory);
     }
     
-    void setManualScaleValue(int plotId, double d) {
+    public void setManualScaleValue(int plotId, double d) {
 	if (plotId >= visiblePlots.size() )
 	    return; // Shouldn't happen, but just in case...
 	clear2dView();
@@ -372,21 +374,21 @@ public class Scope {
 	visiblePlots.get(plotId).manScaleSet=true;
     }
     
-    double getScaleValue() {
+    public double getScaleValue() {
 	if (visiblePlots.size() == 0)
 	    return 0;
 	ScopePlot p = visiblePlots.get(0);
 	return scale[p.units];
     }
     
-    String getScaleUnitsText() {
+    public String getScaleUnitsText() {
 	if (visiblePlots.size() == 0)
 	    return "V";
 	ScopePlot p = visiblePlots.get(0);
 	return getScaleUnitsText(p.units);
     }
     
-    static String getScaleUnitsText(int units) {
+    public static String getScaleUnitsText(int units) {
 	switch (units) {
 	case UNITS_A: return "A";
 	case UNITS_OHMS: return Locale.ohmString;
@@ -395,7 +397,7 @@ public class Scope {
 	}
     }
     
-    void setManDivisions(int d) {
+    public void setManDivisions(int d) {
 	manDivisions = lastManDivisions = d;
     }
 
@@ -439,7 +441,7 @@ public class Scope {
      * Sets the maximum scale limit for current unit type (prevents auto-scale from exceeding this value).
      * @param limit The maximum limit, or null to disable
      */
-    void setMaxScaleLimit(Double limit) {
+    public void setMaxScaleLimit(Double limit) {
 	if (visiblePlots.size() == 0)
 	    return;
 	int units = visiblePlots.get(0).units;
@@ -452,7 +454,7 @@ public class Scope {
      * Gets the maximum scale limit for current unit type.
      * @return The maximum limit, or null if not set
      */
-    Double getMaxScaleLimit() {
+    public Double getMaxScaleLimit() {
 	if (visiblePlots.size() == 0)
 	    return null;
 	int units = visiblePlots.get(0).units;
@@ -498,13 +500,13 @@ public class Scope {
 	return plot != null ? plot.lastValue : 0.0;
     }
 
-    static final class VisiblePlotView {
-	final String color;
-	final int units;
-	final double manualScale;
-	final int manualPosition;
-	final boolean acCoupled;
-	final boolean canAcCouple;
+    public static final class VisiblePlotView {
+	public final String color;
+	public final int units;
+	public final double manualScale;
+	public final int manualPosition;
+	public final boolean acCoupled;
+	public final boolean canAcCouple;
 
 	VisiblePlotView(ScopePlot plot) {
 	    color = plot.color;
@@ -516,14 +518,14 @@ public class Scope {
 	}
     }
 
-    VisiblePlotView getVisiblePlotView(int index) {
+    public VisiblePlotView getVisiblePlotView(int index) {
 	if (visiblePlots == null || index < 0 || index >= visiblePlots.size()) {
 	    return null;
 	}
 	return new VisiblePlotView(visiblePlots.get(index));
     }
 
-    void setVisiblePlotAcCoupled(int index, boolean acCoupled) {
+    public void setVisiblePlotAcCoupled(int index, boolean acCoupled) {
 	if (visiblePlots == null || index < 0 || index >= visiblePlots.size()) {
 	    return;
 	}
@@ -668,7 +670,7 @@ public class Scope {
 	}
     }
     
-    void setRect(Rectangle r) {
+    public void setRect(Rectangle r) {
 	ScopeLifecycleController.setRect(this, r);
     }
 
@@ -680,28 +682,28 @@ public class Scope {
 	return rect;
     }
 
-    Rectangle getRect() {
+    public Rectangle getRect() {
 	return rect;
     }
 
-    boolean containsScreenPoint(int x, int y) {
+    public boolean containsScreenPoint(int x, int y) {
 	return rect != null && rect.contains(x, y);
     }
     
     int getWidth() { return rect.width; }
     
-    int rightEdge() { return rect.x+rect.width; }
+    public int rightEdge() { return rect.x+rect.width; }
 
     void setPlotModes(boolean enablePlot2d, boolean enablePlotXy) {
 	plot2d = enablePlot2d;
 	plotXY = enablePlotXy;
     }
 
-    boolean isPlot2dEnabled() {
+    public boolean isPlot2dEnabled() {
 	return plot2d;
     }
 
-    boolean isPlotXyEnabled() {
+    public boolean isPlotXyEnabled() {
 	return plotXY;
     }
 
@@ -709,7 +711,7 @@ public class Scope {
 	setPlots(new Vector<ScopePlot>(visiblePlots));
     }
 	
-    void setElm(CircuitElm ce) {
+    public void setElm(CircuitElm ce) {
 	ScopeSelectionService.setElm(this, ce);
     }
 
@@ -717,7 +719,7 @@ public class Scope {
 	setElm(ce);
     }
     
-    void addElm(CircuitElm ce) {
+    public void addElm(CircuitElm ce) {
 	ScopeSelectionService.addElm(this, ce);
     }
 
@@ -795,7 +797,7 @@ public class Scope {
 	return title;
     }
     
-    boolean showingValue(int v) {
+    public boolean showingValue(int v) {
 	int i;
 	for (i = 0; i != plots.size(); i++) {
 	    ScopePlot sp = plots.get(i);
@@ -821,21 +823,21 @@ public class Scope {
     }
     
 
-    void combine(Scope s) {
+    public void combine(Scope s) {
 	ScopeSelectionService.combine(this, s);
     }
 
     // separate this scope's plots into separate scopes and return them in arr[pos], arr[pos+1], etc.  return new length of array.
-    int separate(Scope arr[], int pos) {
+    public int separate(Scope arr[], int pos) {
 	return ScopeSelectionService.separate(this, arr, pos);
     }
 
-    void removePlot(int plot) {
+    public void removePlot(int plot) {
 	ScopeSelectionService.removePlot(this, plot);
     }
     
     // called for each timestep
-    void timeStep() {
+    public void timeStep() {
 	int i;
 	for (i = 0; i != plots.size(); i++)
 	    plots.get(i).timeStep();
@@ -944,14 +946,14 @@ public class Scope {
     }
     */
     
-    void setMaxScale(boolean s) {
+    public void setMaxScale(boolean s) {
 	// This procedure is added to set maxscale to an explicit value instead of just having a toggle
 	// We call the toggle procedure first because it has useful side-effects and then set the value explicitly.
 	maxScale();
 	maxScale = s;
     }
     
-    void maxScale() {
+    public void maxScale() {
 	if (plot2d) {
 	    double x = 1e-8;
 	    scale[UNITS_V] *= x;
@@ -971,7 +973,7 @@ public class Scope {
 	showNegative = false;
     }
     
-    void toggleDrawFromZero() {
+    public void toggleDrawFromZero() {
 	drawFromZero = !drawFromZero;
 	if (drawFromZero) {
 	    // Always start from t=0 by resetting simulation
@@ -1156,7 +1158,7 @@ public class Scope {
      * Checks if cursor is over the settings wheel icon.
      * @return true if cursor is within settings wheel bounds
      */
-    boolean cursorInSettingsWheel() {
+    public boolean cursorInSettingsWheel() {
 	return showSettingsWheel() &&
 		sim.getMouseCursorX() >= rect.x &&
 		sim.getMouseCursorX() <= rect.x + SETTINGS_WHEEL_SIZE &&
@@ -1455,7 +1457,7 @@ public class Scope {
 	g.context.restore();
     }
     
-    void draw(Graphics g) {
+    public void draw(Graphics g) {
 	if (plots.size() == 0)
 	    return;
 	ScopeFrameContext frame = buildFrameContext();
@@ -1665,7 +1667,7 @@ public class Scope {
      * Calculates the grid step for the X (time) axis.
      * @return Grid step in simulation time units
      */
-    double calcGridStepX() {
+    public double calcGridStepX() {
 	return ScopeScaler.calcGridStepX(getTimePerPixel(), MIN_PIXEL_SPACING, multa);
     }
 
@@ -2086,12 +2088,12 @@ public class Scope {
         
     }
 
-    static void clearCursorInfo() {
+    public static void clearCursorInfo() {
 	cursorScope = null;
 	cursorTime = -1;
     }
     
-    void selectScope(int mouseX, int mouseY, boolean mouseButtonDown) {
+    public void selectScope(int mouseX, int mouseY, boolean mouseButtonDown) {
 	if (!rect.contains(mouseX, mouseY)) {
 	    // Clear mouse position when outside scope
 	    this.mouseX = -1;
@@ -2304,7 +2306,7 @@ public class Scope {
 	
     }
 
-    boolean canShowRMS() {
+    public boolean canShowRMS() {
 	if (visiblePlots.size() == 0)
 	    return false;
 	return ScopeStatsService.canShowRms(visiblePlots.firstElement());
@@ -2693,29 +2695,29 @@ public class Scope {
 	ScopeLifecycleController.setSpeed(this, sp);
     }
 
-    int getCurrentSpeed() {
+    public int getCurrentSpeed() {
 	return speed;
     }
     
-    void properties() {
+    public void properties() {
 	properties = new ScopePropertiesDialog(sim, this);
 	// CirSim.dialogShowing = properties;
     }
     
-    void speedUp() {
+    public void speedUp() {
 	ScopeLifecycleController.speedUp(this);
     }
 
-    void slowDown() {
+    public void slowDown() {
 	ScopeLifecycleController.slowDown(this);
     }
     
-    void setPlotPosition(int plot, int v) {
+    public void setPlotPosition(int plot, int v) {
 	visiblePlots.get(plot).manVPosition = v;
     }
 	
     // get scope element, returning null if there's more than one
-    CircuitElm getSingleElm() {
+    public CircuitElm getSingleElm() {
 	CircuitElm elm = plots.get(0).elm;
 	int i;
 	for (i = 1; i < plots.size(); i++) {
@@ -2725,16 +2727,16 @@ public class Scope {
 	return elm;
     }
     
-    boolean canMenu() {
+    public boolean canMenu() {
     	return (plots.get(0).elm != null);
     }
     
-    boolean canShowResistance() {
+    public boolean canShowResistance() {
     	CircuitElm elm = getSingleElm();
     	return elm != null && elm.canShowValueInScopeForScope(VAL_R);
     }
     
-    boolean isShowingVceAndIc() {
+    public boolean isShowingVceAndIc() {
 	return plot2d && plots.size() == 2 && plots.get(0).value == VAL_VCE && plots.get(1).value == VAL_IC;
     }
 
@@ -2871,55 +2873,55 @@ public class Scope {
 	showV = state;
     }
 
-    boolean isShowVoltageEnabled() {
+    public boolean isShowVoltageEnabled() {
 	return showV;
     }
 
-    boolean isShowCurrentEnabled() {
+    public boolean isShowCurrentEnabled() {
 	return showI;
     }
 
-    boolean isShowScaleEnabled() {
+    public boolean isShowScaleEnabled() {
 	return showScale;
     }
 
-    boolean isShowMaxEnabled() {
+    public boolean isShowMaxEnabled() {
 	return showMax;
     }
 
-    boolean isShowMinEnabled() {
+    public boolean isShowMinEnabled() {
 	return showMin;
     }
 
-    boolean isShowFreqEnabled() {
+    public boolean isShowFreqEnabled() {
 	return showFreq;
     }
 
-    boolean isShowFftEnabled() {
+    public boolean isShowFftEnabled() {
 	return showFFT;
     }
 
-    boolean isLogSpectrumEnabled() {
+    public boolean isLogSpectrumEnabled() {
 	return logSpectrum;
     }
 
-    boolean isShowRmsEnabled() {
+    public boolean isShowRmsEnabled() {
 	return showRMS;
     }
 
-    boolean isShowAverageEnabled() {
+    public boolean isShowAverageEnabled() {
 	return showAverage;
     }
 
-    boolean isShowDutyCycleEnabled() {
+    public boolean isShowDutyCycleEnabled() {
 	return showDutyCycle;
     }
 
-    boolean isShowElmInfoEnabled() {
+    public boolean isShowElmInfoEnabled() {
 	return showElmInfo;
     }
 
-    int getManDivisions() {
+    public int getManDivisions() {
 	return manDivisions;
     }
 
@@ -3013,32 +3015,32 @@ public class Scope {
 	position = pos;
     }
 
-    int getStackPosition() {
+    public int getStackPosition() {
 	return position;
     }
 
-    void setStackPosition(int pos) {
+    public void setStackPosition(int pos) {
 	position = pos;
     }
 
-    void setStackCount(int count) {
+    public void setStackCount(int count) {
 	stackCount = count;
     }
 
-    int getSelectedPlotIndex() {
+    public int getSelectedPlotIndex() {
 	return selectedPlot;
     }
 
-    void setShowPeaks(boolean max, boolean min) {
+    public void setShowPeaks(boolean max, boolean min) {
 	showMax = max;
 	showMin = min;
     }
 
-    void setShowMaxEnabled(boolean state) {
+    public void setShowMaxEnabled(boolean state) {
 	showMax = state;
     }
 
-    void setSpeedAndResetIfChanged(int speedValue) {
+    public void setSpeedAndResetIfChanged(int speedValue) {
 	if (speed != speedValue) {
 	    speed = speedValue;
 	    resetGraph();
@@ -3056,7 +3058,7 @@ public class Scope {
 	plot.manVPosition = manVPos;
     }
 
-    String dump() {
+    public String dump() {
 	return ScopePersistence.dump(this);
     }
 
@@ -3064,7 +3066,7 @@ public class Scope {
 	return dump();
     }
     
-    void undump(StringTokenizer st) {
+    public void undump(StringTokenizer st) {
 	ScopePersistence.undump(this, st);
     }
 
@@ -3107,7 +3109,7 @@ public class Scope {
     	autoScaleTime = (flags & FLAG_AUTO_SCALE_TIME) != 0;
     }
     
-    void saveAsDefault() {
+    public void saveAsDefault() {
 	ScopePersistence.saveAsDefault(this);
     }
 
@@ -3119,7 +3121,7 @@ public class Scope {
 	ScopeLifecycleController.allocImage(this);
     }
     
-    void handleMenu(String mi, boolean state) {
+    public void handleMenu(String mi, boolean state) {
 	ScopeMenuController.handleMenu(this, mi, state);
     }
 
@@ -3139,11 +3141,11 @@ public class Scope {
 	multiLhsAxes = state;
     }
 
-    void selectY() {
+    public void selectY() {
 	Scope2DController.selectY(sim, plots);
     }
     
-    void onMouseWheel(MouseWheelEvent e) {
+    public void onMouseWheel(MouseWheelEvent e) {
         wheelDeltaY += e.getDeltaY()*sim.getWheelSensitivity();
         if (wheelDeltaY > 5) {
             slowDown();
@@ -3155,13 +3157,13 @@ public class Scope {
     	}
     }
     
-    CircuitElm getElm() {
+    public CircuitElm getElm() {
 	if (selectedPlot >= 0 && visiblePlots.size() > selectedPlot)
 	    return visiblePlots.get(selectedPlot).elm;
 	return visiblePlots.size() > 0 ? visiblePlots.get(0).elm : plots.get(0).elm;
     }
 
-    boolean viewingWire() {
+    public boolean viewingWire() {
 	int i;
 	for (i = 0; i != plots.size(); i++)
 	    if (plots.get(i).elm instanceof WireElm)
@@ -3169,16 +3171,16 @@ public class Scope {
 	return false;
     }
     
-    CircuitElm getXElm() {
+    public CircuitElm getXElm() {
 	return getElm();
     }
-    CircuitElm getYElm() {
+    public CircuitElm getYElm() {
 	if (plots.size() == 2)
 	    return plots.get(1).elm;
 	return null;
     }
     
-    boolean needToRemove() {
+    public boolean needToRemove() {
 	boolean ret = true;
 	boolean removed = false;
 	int i;

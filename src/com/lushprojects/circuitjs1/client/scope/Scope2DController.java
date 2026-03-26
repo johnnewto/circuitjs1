@@ -1,4 +1,6 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.scope;
+
+import com.lushprojects.circuitjs1.client.*;
 
 import com.google.gwt.canvas.dom.client.Context2d;
 import com.lushprojects.circuitjs1.client.elements.electronics.measurement.OutputElm;
@@ -97,7 +99,7 @@ final class Scope2DController {
 
     static void selectY(CirSim sim, Vector<ScopePlot> plots) {
         CircuitElm yElm = (plots.size() == 2) ? plots.get(1).elm : null;
-        int e = (yElm == null) ? -1 : sim.locateElm(yElm);
+        int e = (yElm == null) ? -1 : sim.locateElmForScope(yElm);
         int firstE = e;
         while (true) {
             for (e++; e < sim.elmList.size(); e++) {

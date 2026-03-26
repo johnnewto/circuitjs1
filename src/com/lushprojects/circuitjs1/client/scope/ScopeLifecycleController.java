@@ -1,4 +1,6 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.scope;
+
+import com.lushprojects.circuitjs1.client.*;
 
 import com.lushprojects.circuitjs1.client.util.Rectangle;
 

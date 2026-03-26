@@ -1,4 +1,6 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.scope;
+
+import com.lushprojects.circuitjs1.client.*;
 
 import com.lushprojects.circuitjs1.client.util.Rectangle;
 import java.util.Vector;
@@ -261,7 +263,7 @@ final class ScopeDataExporter {
     }
 
     private static String getPlotLabel(ScopePlot p, int index) {
-        String label = p.elm.getScopeText(p.value);
+        String label = p.elm.getScopeTextForScope(p.value);
         if (label == null || label.isEmpty()) {
             label = "Plot " + (index + 1);
         }
