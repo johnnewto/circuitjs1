@@ -155,7 +155,7 @@ private boolean maxScaleTextBoxHasFocus = false;
 	
 	public void onClick(ClickEvent event) {
 	    double lasts, s;
-	if (!scope.isManualScale() || plotSelection>scope.visiblePlots.size())
+	if (!scope.isManualScale() || plotSelection > scope.getVisiblePlotCount())
 		return;
 	    double d = getManualScaleValue();
 	    if (d==0)
@@ -180,7 +180,7 @@ private boolean maxScaleTextBoxHasFocus = false;
 	
 	public void onClick(ClickEvent event) {
 	    double  s;
-	if (!scope.isManualScale() || plotSelection>scope.visiblePlots.size())
+	if (!scope.isManualScale() || plotSelection > scope.getVisiblePlotCount())
 		return;
 	    double d = getManualScaleValue();
 	    if (d==0)
@@ -203,15 +203,15 @@ private boolean maxScaleTextBoxHasFocus = false;
     }
     
     private void positionBarChanged() {
-	if (!scope.isManualScale() || plotSelection>scope.visiblePlots.size())
+	if (!scope.isManualScale() || plotSelection > scope.getVisiblePlotCount())
 	    return;
 	int p = positionBar.getValue();
 	scope.setPlotPosition(plotSelection, p);
     }
     
     private String getChannelButtonLabel(int i) {
-	    ScopePlot p = scope.visiblePlots.get(i);
-	    String l = "<span style=\"color: "+p.color+";\">&#x25CF;</span>&nbsp;CH "+String.valueOf(i+1);
+	    Scope.VisiblePlotView p = scope.getVisiblePlotView(i);
+	    String l = "<span style=\"color: " + p.color + ";\">&#x25CF;</span>&nbsp;CH " + String.valueOf(i + 1);
 	    switch (p.units) {
 	    	case Scope.UNITS_V: 
 	    	    l += " (V)";
@@ -231,15 +231,15 @@ private boolean maxScaleTextBoxHasFocus = false;
     }
     
     private void updateChannelButtons() {
-	if (plotSelection >= scope.visiblePlots.size())
+	if (plotSelection >= scope.getVisiblePlotCount())
 	    plotSelection = 0;
 	// More buttons than plots - remove extra buttons
-	for (int i = chanButtons.size()-1; i >= scope.visiblePlots.size(); i--) {
+	for (int i = chanButtons.size()-1; i >= scope.getVisiblePlotCount(); i--) {
 	    channelButtonsp.remove(chanButtons.get(i));
 	    chanButtons.remove(i);
 	}
 	// Now go though all the channels, adding new buttons if necessary
-	for (int i=0; i<scope.visiblePlots.size(); i++) {
+	for (int i = 0; i < scope.getVisiblePlotCount(); i++) {
 	    if (i>=chanButtons.size()) {
 		Button b = new Button();
 		chanButtons.add(b);
@@ -366,8 +366,8 @@ private boolean maxScaleTextBoxHasFocus = false;
 		dcButton= new RadioButton("acdc", Locale.LS("DC Coupled"));
 		dcButton.addValueChangeHandler(new ValueChangeHandler<Boolean>() {
 		    public void onValueChange(ValueChangeEvent<Boolean> e) {
-		    if (plotSelection<scope.visiblePlots.size())
-			scope.visiblePlots.get(plotSelection).setAcCoupled(false);
+		    if (plotSelection < scope.getVisiblePlotCount())
+			scope.setVisiblePlotAcCoupled(plotSelection, false);
 		    updateUi();
 		    }
 		});
@@ -375,8 +375,8 @@ private boolean maxScaleTextBoxHasFocus = false;
 		acButton= new RadioButton("acdc", Locale.LS("AC Coupled"));
 		acButton.addValueChangeHandler(new ValueChangeHandler<Boolean>() {
 		    public void onValueChange(ValueChangeEvent<Boolean> e) {
-		    if (plotSelection<scope.visiblePlots.size())
-			scope.visiblePlots.get(plotSelection).setAcCoupled(true);
+		    if (plotSelection < scope.getVisiblePlotCount())
+			scope.setVisiblePlotAcCoupled(plotSelection, true);
 		    updateUi();
 		    }
 		});
@@ -660,8 +660,8 @@ private boolean maxScaleTextBoxHasFocus = false;
 	
 	private void scrollbarChanged() {
 	    int newsp = (int)Math.pow(2,  10-speedBar.getValue());
-	    CirSim.console("changed " + scope.speed + " " + newsp + " " + speedBar.getValue());
-	    if (scope.speed != newsp)
+	    CirSim.console("changed " + scope.getCurrentSpeed() + " " + newsp + " " + speedBar.getValue());
+	    if (scope.getCurrentSpeed() != newsp)
 		scope.setSpeed(newsp);
 	    setScopeSpeedLabel();
 	}
@@ -670,27 +670,27 @@ private boolean maxScaleTextBoxHasFocus = false;
 	    vModep.setVisible(vScaleLabel.expanded);
 	    gridLabels.updateRowVisibility();
 	    hScaleGrid.getRowFormatter().setVisible(1, hScaleLabel.expanded);
-	    speedBar.setValue(10-(int)Math.round(Math.log(scope.speed)/Math.log(2)));
+	    speedBar.setValue(10-(int)Math.round(Math.log(scope.getCurrentSpeed())/Math.log(2)));
 	    if (voltageBox != null) {
-		voltageBox.setValue(scope.showV && !scope.showingValue(Scope.VAL_POWER));
-		currentBox.setValue(scope.showI && !scope.showingValue(Scope.VAL_POWER));
+		voltageBox.setValue(scope.isShowVoltageEnabled() && !scope.showingValue(Scope.VAL_POWER));
+		currentBox.setValue(scope.isShowCurrentEnabled() && !scope.showingValue(Scope.VAL_POWER));
 		powerBox.setValue(scope.showingValue(Scope.VAL_POWER));
 	    }
-	    scaleBox.setValue(scope.showScale);
+	    scaleBox.setValue(scope.isShowScaleEnabled());
         multiLhsAxesBox.setValue(scope.isMultiLhsAxesEnabledForUi());
-        multiLhsAxesBox.setEnabled(scope.getVisiblePlotCount() > 1 && !scope.showFFT && !scope.plot2d);
-	    peakBox.setValue(scope.showMax);
-	    negPeakBox.setValue(scope.showMin);
-	    freqBox.setValue(scope.showFreq);
-	    spectrumBox.setValue(scope.showFFT);
-	    logSpectrumBox.setValue(scope.logSpectrum);
-	    rmsBox.setValue(scope.showRMS);
-	    averageBox.setValue(scope.showAverage);
-	    dutyBox.setValue(scope.showDutyCycle);
-	    elmInfoBox.setValue(scope.showElmInfo);
+        multiLhsAxesBox.setEnabled(scope.getVisiblePlotCount() > 1 && !scope.isShowFftEnabled() && !scope.isPlot2dEnabled());
+	    peakBox.setValue(scope.isShowMaxEnabled());
+	    negPeakBox.setValue(scope.isShowMinEnabled());
+	    freqBox.setValue(scope.isShowFreqEnabled());
+	    spectrumBox.setValue(scope.isShowFftEnabled());
+	    logSpectrumBox.setValue(scope.isLogSpectrumEnabled());
+	    rmsBox.setValue(scope.isShowRmsEnabled());
+	    averageBox.setValue(scope.isShowAverageEnabled());
+	    dutyBox.setValue(scope.isShowDutyCycleEnabled());
+	    elmInfoBox.setValue(scope.isShowElmInfoEnabled());
 	    rmsBox.setEnabled(scope.canShowRMS());
-	    viBox.setValue(scope.plot2d && !scope.plotXY);
-	    xyBox.setValue(scope.plotXY);
+	    viBox.setValue(scope.isPlot2dEnabled() && !scope.isPlotXyEnabled());
+	    xyBox.setValue(scope.isPlotXyEnabled());
 	    resistanceBox.setValue(scope.showingValue(Scope.VAL_R));
 	    resistanceBox.setEnabled(scope.canShowResistance());
 	    if (vbeBox != null) {
@@ -726,30 +726,30 @@ private boolean maxScaleTextBoxHasFocus = false;
 	    channelSettingsp.setVisible(scope.isManualScale() && vScaleLabel.expanded);
 	    vScaleGrid.setVisible(vScaleLabel.expanded);
 	    if (vScaleLabel.expanded) { 
-        	    vScaleGrid.getRowFormatter().setVisible(0, scope.isManualScale() && plotSelection<scope.visiblePlots.size() );
-        	    vScaleGrid.getRowFormatter().setVisible(1, scope.isManualScale() && plotSelection<scope.visiblePlots.size() );
-        	    vScaleGrid.getRowFormatter().setVisible(2, (!scope.isManualScale()) || plotSelection<scope.visiblePlots.size());
+        	    vScaleGrid.getRowFormatter().setVisible(0, scope.isManualScale() && plotSelection < scope.getVisiblePlotCount());
+        	    vScaleGrid.getRowFormatter().setVisible(1, scope.isManualScale() && plotSelection < scope.getVisiblePlotCount());
+        	    vScaleGrid.getRowFormatter().setVisible(2, (!scope.isManualScale()) || plotSelection < scope.getVisiblePlotCount());
         	    vScaleGrid.getRowFormatter().setVisible(3, scope.isManualScale());
         	    vScaleGrid.getRowFormatter().setVisible(4, !scope.isManualScale()); // Max scale limit row (auto mode only)
 	    }
 	    scaleUpButton.setVisible(scope.isManualScale());
 	    scaleDownButton.setVisible(scope.isManualScale());
 	    if (scope.isManualScale()) {
-		if (plotSelection<scope.visiblePlots.size()) {
-		    ScopePlot p = scope.visiblePlots.get(plotSelection);
+		if (plotSelection < scope.getVisiblePlotCount()) {
+		    Scope.VisiblePlotView p = scope.getVisiblePlotView(plotSelection);
 		    manualScaleId.setText("CH "+String.valueOf(plotSelection+1)+" "+Locale.LS("Scale"));
 		    manualScaleLabel.setText(Scope.getScaleUnitsText(p.units)+Locale.LS("/div"));
-		    manualScaleTextBox.setText(EditDialog.unitString(null, p.manScale));
+		    manualScaleTextBox.setText(EditDialog.unitString(null, p.manualScale));
 		    manualScaleTextBox.setEnabled(true);
-		    divisionsTextBox.setText(String.valueOf(scope.manDivisions));
+		    divisionsTextBox.setText(String.valueOf(scope.getManDivisions()));
 		    divisionsTextBox.setEnabled(true);
 		    positionLabel.setText("CH "+String.valueOf(plotSelection+1)+" "+Locale.LS("Position"));
-		    positionBar.setValue(p.manVPosition);
+		    positionBar.setValue(p.manualPosition);
 		    dcButton.setEnabled(true);
 		    positionBar.enable();
-		    dcButton.setValue(! p.isAcCoupled());
-		    acButton.setEnabled(p.canAcCouple());
-		    acButton.setValue(p.isAcCoupled());
+		    dcButton.setValue(!p.acCoupled);
+		    acButton.setEnabled(p.canAcCouple);
+		    acButton.setValue(p.acCoupled);
 		    
 		} else {
 		    manualScaleId.setText("");

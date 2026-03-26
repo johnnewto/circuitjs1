@@ -1,7 +1,5 @@
 package com.lushprojects.circuitjs1.client;
 
-import java.util.Vector;
-
 final class ScopeMenuController {
     private ScopeMenuController() {
     }
@@ -32,19 +30,19 @@ final class ScopeMenuController {
             scope.showFFT(state);
         }
         if (mi == "logspectrum") {
-            scope.logSpectrum = state;
+            scope.setLogSpectrum(state);
         }
         if (mi == "showrms") {
-            scope.showRMS = state;
+            scope.setShowRms(state);
         }
         if (mi == "showaverage") {
-            scope.showAverage = state;
+            scope.setShowAverage(state);
         }
         if (mi == "showduty") {
-            scope.showDutyCycle = state;
+            scope.setShowDutyCycle(state);
         }
         if (mi == "showelminfo") {
-            scope.showElmInfo = state;
+            scope.setShowElmInfo(state);
         }
         if (mi == "multilhsaxes") {
             scope.setMultiLhsAxes(state);
@@ -71,29 +69,17 @@ final class ScopeMenuController {
             scope.setValue(Scope.VAL_VCE);
         }
         if (mi == "showvcevsic") {
-            scope.plot2d = true;
-            scope.plotXY = false;
-            scope.setValues(Scope.VAL_VCE, Scope.VAL_IC, scope.getElm(), null);
-            scope.resetGraph();
+            scope.showVceVsIc();
         }
 
         if (mi == "showvvsi") {
-            scope.plot2d = state;
-            scope.plotXY = false;
-            scope.resetGraph();
+            scope.showVVsI(state);
         }
         if (mi == "manualscale") {
             scope.setManualScale(state, true);
         }
         if (mi == "plotxy") {
-            scope.plotXY = scope.plot2d = state;
-            if (scope.plot2d) {
-                scope.setPlots(new Vector<ScopePlot>(scope.visiblePlots));
-            }
-            if (scope.plot2d && scope.plots.size() == 1) {
-                scope.selectY();
-            }
-            scope.resetGraph();
+            scope.setPlotXy(state);
         }
         if (mi == "showresistance") {
             scope.setValue(Scope.VAL_R);
@@ -102,8 +88,7 @@ final class ScopeMenuController {
             scope.applyDrawFromZeroMenu(state);
         }
         if (mi == "autoscaletime") {
-            scope.autoScaleTime = state;
-            scope.sim.needAnalyze();
+            scope.setAutoScaleTime(state);
         }
     }
 }

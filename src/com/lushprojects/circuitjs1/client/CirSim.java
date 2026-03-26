@@ -721,6 +721,10 @@ public CirSim() {
 	    return scopeManager;
 	}
 
+    public int getScopeSelectedIndexForScope() {
+	return scopeManager.getScopeSelected();
+    }
+
 	ViewportController getViewportController() {
 	    return viewportController;
 	}
@@ -1334,6 +1338,10 @@ public CirSim() {
 	    return scopes[getScopeManager().getScopeMenuSelected()] == s;
 	return scopeManager.getNthScopeElm(getScopeManager().getScopeMenuSelected()-scopeCount).elmScope == s; 
     }
+
+    public boolean isScopeMenuSelectedForScope(Scope s) {
+	return scopeMenuIsSelected(s);
+    }
     
 //    public void toggleSwitch(int n) {
 //	int i;
@@ -1941,6 +1949,10 @@ public CirSim() {
 	return -1;
     }
 
+    public int locateElmForScope(CircuitElm elm) {
+	return locateElm(elm);
+    }
+
     void doSplit(CircuitElm ce) {
 	int x = snapGrid(inverseTransformX(getMenuX()));
 	int y = snapGrid(inverseTransformY(getMenuY()));
@@ -2206,6 +2218,14 @@ public CirSim() {
     
 	boolean dialogIsShowing() {
 	return CirSimDialogCoordinator.isAnyDialogShowing(menuUiState.contextPanel);
+    }
+
+    public boolean isDialogShowingForScope() {
+	return dialogIsShowing();
+    }
+
+    public String formatTimeFixedForScope(double time) {
+	return preferencesManager.formatTimeFixed(time);
     }
     
     void updateToolbar() {

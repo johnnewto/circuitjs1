@@ -1019,6 +1019,10 @@ public abstract class CircuitElm implements Editable {
     	g.context.stroke();
     	g.setLineWidth(1.0);
     }
+
+    public static void drawThickCircleForScope(Graphics g, int cx, int cy, int ri) {
+	drawThickCircle(g, cx, cy, ri);
+    }
     
     protected Polygon getSchmittPolygon(float gsize, float ctr) {
 	Point pts[] = newPointArray(6);
@@ -1176,6 +1180,10 @@ public abstract class CircuitElm implements Editable {
     // get component info for display in lower right
     protected void getInfo(String arr[]) {
     }
+
+    public final void getInfoForScope(String[] arr) {
+	getInfo(arr);
+    }
     
     protected int getBasicInfo(String arr[]) {
 	arr[1] = "I = " + getCurrentDText(getCurrent());
@@ -1186,6 +1194,10 @@ public abstract class CircuitElm implements Editable {
         String info[] = new String[10];
         getInfo(info);
         return info[0];
+    }
+
+    public final String getScopeTextForScope(int v) {
+	return getScopeText(v);
     }
     
     protected Color getVoltageColor(Graphics g, double volts) {
@@ -1261,9 +1273,18 @@ public abstract class CircuitElm implements Editable {
 	return (x == Scope.VAL_CURRENT) ? getCurrent() :
 	    (x == Scope.VAL_POWER) ? getPower() : getVoltageDiff();
     }
+
+    public final double getScopeValueForScope(int x) {
+	return getScopeValue(x);
+    }
+
     protected int getScopeUnits(int x) {
 	return (x == Scope.VAL_CURRENT) ? Scope.UNITS_A :
 	    (x == Scope.VAL_POWER) ? Scope.UNITS_W : Scope.UNITS_V;
+    }
+
+    public final int getScopeUnitsForScope(int x) {
+	return getScopeUnits(x);
     }
 
     public void setPointsForImportExport() {
@@ -1375,6 +1396,7 @@ public abstract class CircuitElm implements Editable {
     
     boolean isSelected() { return selected; }
     protected boolean canShowValueInScope(int v) { return false; }
+    public final boolean canShowValueInScopeForScope(int v) { return canShowValueInScope(v); }
     public void setSelected(boolean x) { selected = x; }
     void selectRect(Rectangle r, boolean add) {
 	if (r.intersects(boundingBox))

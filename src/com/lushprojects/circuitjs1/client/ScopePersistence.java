@@ -10,57 +10,58 @@ final class ScopePersistence {
     }
 
     static String dump(Scope scope) {
-        ScopePlot vPlot = scope.plots.get(0);
+        ScopePlot vPlot = scope.getPlotAt(0);
         CircuitElm elm = vPlot.elm;
         if (elm == null) {
             return null;
         }
         int flags = scope.getFlags();
-        int eno = scope.sim.locateElm(elm);
+        int eno = scope.locateElement(elm);
         if (eno < 0) {
             return null;
         }
         String x = "o " + eno + " " +
                 vPlot.scopePlotSpeed + " " + vPlot.value + " "
-                + exportAsDecOrHex(flags, scope.FLAG_PERPLOTFLAGS) + " " +
-                ((flags & scope.FLAG_PLOT_REFS) != 0 ? getElementRefToken(vPlot.elm) + " " : "") +
-                scope.scale[Scope.UNITS_V] + " " + scope.scale[Scope.UNITS_A] + " " + scope.position + " " +
-                scope.plots.size();
-        if ((flags & scope.FLAG_DIVISIONS) != 0) {
-            x += " " + scope.manDivisions;
+                + exportAsDecOrHex(flags, scope.getPerPlotFlagsMaskForPersistence()) + " " +
+                ((flags & scope.getPlotRefsMaskForPersistence()) != 0 ? getElementRefToken(vPlot.elm) + " " : "") +
+                scope.getScaleForUnit(Scope.UNITS_V) + " " + scope.getScaleForUnit(Scope.UNITS_A) + " " + scope.getPositionForPersistence() + " " +
+                scope.getPlotCount();
+        if ((flags & scope.getDivisionsMaskForPersistence()) != 0) {
+            x += " " + scope.getManDivisionsForPersistence();
         }
 
-        if ((flags & scope.FLAG_MAX_SCALE_LIMITS) != 0) {
-            for (int i = 0; i < scope.maxScaleLimit.length; i++) {
-                if (scope.maxScaleLimit[i] != null) {
-                    x += " L" + i + ":" + scope.maxScaleLimit[i];
+        if ((flags & scope.getMaxScaleLimitsMaskForPersistence()) != 0) {
+            for (int i = 0; i <= Scope.UNITS_OHMS; i++) {
+                Double limit = scope.getMaxScaleLimitForUnit(i);
+                if (limit != null) {
+                    x += " L" + i + ":" + limit;
                 }
             }
         }
 
-        for (int i = 0; i < scope.plots.size(); i++) {
-            ScopePlot p = scope.plots.get(i);
-            if ((flags & scope.FLAG_PERPLOTFLAGS) != 0) {
+        for (int i = 0; i < scope.getPlotCount(); i++) {
+            ScopePlot p = scope.getPlotAt(i);
+            if ((flags & scope.getPerPlotFlagsMaskForPersistence()) != 0) {
                 x += " " + Integer.toHexString(p.getPlotFlags());
             }
-            if ((flags & scope.FLAG_PLOT_REFS) != 0 && i > 0) {
+            if ((flags & scope.getPlotRefsMaskForPersistence()) != 0 && i > 0) {
                 x += " " + getElementRefToken(p.elm);
             }
             if (i > 0) {
-                x += " " + scope.sim.locateElm(p.elm) + " " + p.value;
+                x += " " + scope.locateElement(p.elm) + " " + p.value;
             }
             if (p.units > Scope.UNITS_A) {
-                x += " " + scope.scale[p.units];
+                x += " " + scope.getScaleForUnit(p.units);
             }
             if (scope.isManualScale()) {
                 x += " " + p.manScale + " " + p.manVPosition;
             }
         }
-        if (scope.text != null) {
-            x += " " + CustomLogicModel.escape(scope.text);
+        if (scope.getRawLabelText() != null) {
+            x += " " + CustomLogicModel.escape(scope.getRawLabelText());
         }
-        if (scope.title != null) {
-            x += " T:" + CustomLogicModel.escape(scope.title);
+        if (scope.getRawTitleText() != null) {
+            x += " T:" + CustomLogicModel.escape(scope.getRawTitleText());
         }
         return x;
     }
@@ -71,12 +72,12 @@ final class ScopePersistence {
         if (e == -1) {
             return;
         }
-        CircuitElm ce = scope.sim.getElm(e);
-        scope.speed = Integer.parseInt(st.nextToken());
+        CircuitElm ce = scope.getElementAt(e);
+        scope.setSpeedForPersistence(Integer.parseInt(st.nextToken()));
         int value = Integer.parseInt(st.nextToken());
 
         int flags = importDecOrHex(st.nextToken());
-        boolean hasPlotRefs = (flags & scope.FLAG_PLOT_REFS) != 0;
+        boolean hasPlotRefs = (flags & scope.getPlotRefsMaskForPersistence()) != 0;
         String plot0RefToken = null;
         if (hasPlotRefs && st.hasMoreTokens()) {
             plot0RefToken = st.nextToken();
@@ -87,29 +88,27 @@ final class ScopePersistence {
             value = Scope.VAL_POWER;
         }
 
-        scope.scale[Scope.UNITS_V] = Double.parseDouble(st.nextToken());
-        scope.scale[Scope.UNITS_A] = Double.parseDouble(st.nextToken());
-        if (scope.scale[Scope.UNITS_V] == 0) {
-            scope.scale[Scope.UNITS_V] = .5;
+        scope.setScaleForUnit(Scope.UNITS_V, Double.parseDouble(st.nextToken()));
+        scope.setScaleForUnit(Scope.UNITS_A, Double.parseDouble(st.nextToken()));
+        if (scope.getScaleForUnit(Scope.UNITS_V) == 0) {
+            scope.setScaleForUnit(Scope.UNITS_V, .5);
         }
-        if (scope.scale[Scope.UNITS_A] == 0) {
-            scope.scale[Scope.UNITS_A] = 1;
+        if (scope.getScaleForUnit(Scope.UNITS_A) == 0) {
+            scope.setScaleForUnit(Scope.UNITS_A, 1);
         }
-        scope.scaleX = scope.scale[Scope.UNITS_V];
-        scope.scaleY = scope.scale[Scope.UNITS_A];
-        scope.scale[Scope.UNITS_OHMS] = scope.scale[Scope.UNITS_W] = scope.scale[Scope.UNITS_V];
-        scope.text = null;
+        scope.initializeScaleFromVoltageAndCurrent();
+        scope.clearLabelText();
         boolean plot2dFlag = (flags & 64) != 0;
-        boolean hasPlotFlags = (flags & scope.FLAG_PERPLOTFLAGS) != 0;
-        boolean hasMaxLimits = (flags & scope.FLAG_MAX_SCALE_LIMITS) != 0;
+        boolean hasPlotFlags = (flags & scope.getPerPlotFlagsMaskForPersistence()) != 0;
+        boolean hasMaxLimits = (flags & scope.getMaxScaleLimitsMaskForPersistence()) != 0;
 
-        if ((flags & scope.FLAG_PLOTS) != 0) {
+        if ((flags & scope.getPlotsMaskForPersistence()) != 0) {
             try {
-                scope.position = Integer.parseInt(st.nextToken());
+                scope.setPositionForPersistence(Integer.parseInt(st.nextToken()));
                 int sz = Integer.parseInt(st.nextToken());
-                scope.manDivisions = 8;
-                if ((flags & scope.FLAG_DIVISIONS) != 0) {
-                    scope.manDivisions = Scope.lastManDivisions = Integer.parseInt(st.nextToken());
+                scope.setManDivisions(8);
+                if ((flags & scope.getDivisionsMaskForPersistence()) != 0) {
+                    scope.setManDivisions(Integer.parseInt(st.nextToken()));
                 }
 
                 if (hasMaxLimits) {
@@ -120,7 +119,7 @@ final class ScopePersistence {
                                 int colonPos = token.indexOf(':');
                                 int unit = Integer.parseInt(token.substring(1, colonPos));
                                 double limit = Double.parseDouble(token.substring(colonPos + 1));
-                                scope.maxScaleLimit[unit] = limit;
+                                scope.setMaxScaleLimitForUnit(unit, limit);
                             } catch (Exception ex) {
                                 // Ignore malformed limit tokens
                             }
@@ -136,19 +135,17 @@ final class ScopePersistence {
                 }
 
                 if (ce == null) {
-                    ce = scope.sim.getElm(e);
+                    ce = scope.getElementAt(e);
                 }
                 if (ce == null) {
                     return;
                 }
                 int u = ce.getScopeUnits(value);
                 if (u > Scope.UNITS_A) {
-                    scope.scale[u] = Double.parseDouble(st.nextToken());
+                    scope.setScaleForUnit(u, Double.parseDouble(st.nextToken()));
                 }
                 scope.setValue(value, ce);
-                while (scope.plots.size() > 1) {
-                    scope.plots.removeElementAt(1);
-                }
+                scope.trimPlotsToSize(1);
 
                 int plotFlags = 0;
                 for (int i = 0; i != sz; i++) {
@@ -164,23 +161,27 @@ final class ScopePersistence {
                         int val = Integer.parseInt(st.nextToken());
                         CircuitElm resolvedElm = resolveElementRef(scope, refToken, ne);
                         if (resolvedElm == null) {
-                            resolvedElm = scope.sim.getElm(ne);
+                            resolvedElm = scope.getElementAt(ne);
                         }
                         if (resolvedElm == null) {
                             resolvedElm = ce;
                         }
                         u = resolvedElm.getScopeUnits(val);
                         if (u > Scope.UNITS_A) {
-                            scope.scale[u] = Double.parseDouble(st.nextToken());
+                            scope.setScaleForUnit(u, Double.parseDouble(st.nextToken()));
                         }
-                        scope.plots.add(new ScopePlot(resolvedElm, u, val, scope.getManScaleFromMaxScale(u, false)));
+                        scope.addPlotInternal(resolvedElm, u, val, scope.getManScaleFromMaxScale(u, false));
                     }
-                    ScopePlot p = scope.plots.get(i);
-                    p.acCoupled = (plotFlags & ScopePlot.FLAG_AC) != 0;
-                    if ((flags & scope.FLAG_PERPLOT_MAN_SCALE) != 0) {
-                        p.manScaleSet = true;
-                        p.manScale = Double.parseDouble(st.nextToken());
-                        p.manVPosition = Integer.parseInt(st.nextToken());
+                    boolean acCoupled = (plotFlags & ScopePlot.FLAG_AC) != 0;
+                    if ((flags & scope.getPerPlotManualScaleMaskForPersistence()) != 0) {
+                        double manScale = Double.parseDouble(st.nextToken());
+                        int manPos = Integer.parseInt(st.nextToken());
+                        scope.setPlotStateFromPersistence(i, acCoupled, true, manScale, manPos);
+                    } else {
+                        ScopePlot p = scope.getPlotAt(i);
+                        if (p != null) {
+                            scope.setPlotStateFromPersistence(i, acCoupled, p.manScaleSet, p.manScale, p.manVPosition);
+                        }
                     }
                 }
                 parseTextAndTitle(scope, st);
@@ -190,35 +191,35 @@ final class ScopePersistence {
         } else {
             CircuitElm yElm = null;
             int ivalue = 0;
-            scope.manDivisions = 8;
+            scope.setManDivisions(8);
             try {
-                scope.position = Integer.parseInt(st.nextToken());
+                scope.setPositionForPersistence(Integer.parseInt(st.nextToken()));
                 int ye = -1;
-                if ((flags & scope.FLAG_YELM) != 0) {
+                if ((flags & scope.getYElmMaskForPersistence()) != 0) {
                     ye = Integer.parseInt(st.nextToken());
                     if (ye != -1) {
-                        yElm = scope.sim.getElm(ye);
+                        yElm = scope.getElementAt(ye);
                     }
                     if (!plot2dFlag) {
                         yElm = null;
                     }
                 }
-                if ((flags & scope.FLAG_IVALUE) != 0) {
+                if ((flags & scope.getIValueMaskForPersistence()) != 0) {
                     ivalue = Integer.parseInt(st.nextToken());
                 }
                 parseTextAndTitle(scope, st);
             } catch (Exception ee) {
                 // Keep legacy behavior: tolerate malformed scope dump lines.
             }
-            scope.setValues(value, ivalue, scope.sim.getElm(e), yElm);
+            scope.setValues(value, ivalue, scope.getElementAt(e), yElm);
         }
-        if (scope.text != null) {
-            scope.text = CustomLogicModel.unescape(scope.text);
+        if (scope.getRawLabelText() != null) {
+            scope.setRawLabelText(CustomLogicModel.unescape(scope.getRawLabelText()));
         }
-        if (scope.title != null) {
-            scope.title = CustomLogicModel.unescape(scope.title);
+        if (scope.getRawTitleText() != null) {
+            scope.setRawTitleText(CustomLogicModel.unescape(scope.getRawTitleText()));
         }
-        scope.plot2d = plot2dFlag;
+        scope.setPlot2dForPersistence(plot2dFlag);
         scope.setFlags(flags);
     }
 
@@ -230,7 +231,7 @@ final class ScopePersistence {
         if (stor == null) {
             return;
         }
-        ScopePlot vPlot = scope.plots.get(0);
+        ScopePlot vPlot = scope.getPlotAt(0);
         int flags = scope.getFlags();
         stor.setItem("scopeDefaults", "1 " + flags + " " + vPlot.scopePlotSpeed);
         CirSim.console("saved defaults " + flags);
@@ -251,7 +252,7 @@ final class ScopePersistence {
         String arr[] = str.split(" ");
         int flags = Integer.parseInt(arr[1]);
         scope.setFlags(flags);
-        scope.speed = Integer.parseInt(arr[2]);
+        scope.setSpeedForPersistence(Integer.parseInt(arr[2]));
         return true;
     }
 
@@ -280,8 +281,8 @@ final class ScopePersistence {
         if (token != null && token.startsWith("U:")) {
             String target = CustomLogicModel.unescape(token.substring(2));
             if (!target.isEmpty()) {
-                for (int i = 0; i < scope.sim.elmList.size(); i++) {
-                    CircuitElm candidate = scope.sim.getElm(i);
+                for (int i = 0; i < scope.getElementCount(); i++) {
+                    CircuitElm candidate = scope.getElementAt(i);
                     if (candidate != null && target.equals(candidate.getPersistentUid())) {
                         return candidate;
                     }
@@ -291,8 +292,8 @@ final class ScopePersistence {
         if (token != null && token.startsWith("R:")) {
             String target = token.substring(2);
             if (!target.isEmpty()) {
-                for (int i = 0; i < scope.sim.elmList.size(); i++) {
-                    CircuitElm candidate = scope.sim.getElm(i);
+                for (int i = 0; i < scope.getElementCount(); i++) {
+                    CircuitElm candidate = scope.getElementAt(i);
                     if (candidate == null) {
                         continue;
                     }
@@ -304,7 +305,7 @@ final class ScopePersistence {
             }
         }
         if (fallbackIndex >= 0) {
-            return scope.sim.getElm(fallbackIndex);
+            return scope.getElementAt(fallbackIndex);
         }
         return null;
     }
@@ -313,17 +314,9 @@ final class ScopePersistence {
         while (st.hasMoreTokens()) {
             String token = st.nextToken();
             if (token.startsWith("T:")) {
-                if (scope.title == null) {
-                    scope.title = token.substring(2);
-                } else {
-                    scope.title += " " + token;
-                }
+                scope.appendTitleToken(token.substring(2));
             } else {
-                if (scope.text == null) {
-                    scope.text = token;
-                } else {
-                    scope.text += " " + token;
-                }
+                scope.appendLabelToken(token);
             }
         }
     }

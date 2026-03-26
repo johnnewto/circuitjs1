@@ -266,11 +266,11 @@ final class CirSimCommandRouter {
                     return;
                 sim.scopeCount++;
                 sim.scopes[i] = new Scope(sim);
-                sim.scopes[i].position = i;
+                sim.scopes[i].setStackPosition(i);
             }
             sim.scopes[i].setElm(sim.getMenuUiState().menuElm);
             if (i > 0)
-                sim.scopes[i].speed = sim.scopes[i-1].speed;
+                sim.scopes[i].setSpeed(sim.scopes[i-1].getCurrentSpeed());
         }
 
         if (item=="viewInFloatScope" && sim.getMenuUiState().menuElm != null) {
@@ -305,7 +305,7 @@ final class CirSimCommandRouter {
                     return;
                 sim.scopes[sim.scopeCount] = ((ScopeElm)sim.getMouseElmForRouting()).elmScope;
                 ((ScopeElm)sim.getMouseElmForRouting()).clearElmScope();
-                sim.scopes[sim.scopeCount].position = sim.scopeCount;
+                sim.scopes[sim.scopeCount].setStackPosition(sim.scopeCount);
                 sim.scopeCount++;
                 sim.getClipboardManager().doDelete(false);
             }

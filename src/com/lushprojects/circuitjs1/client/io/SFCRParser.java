@@ -3701,7 +3701,7 @@ public class SFCRParser {
                 continue;
             }
 
-            scope.position = block.position;
+            scope.setPositionForEmbedded(block.position);
             scope.initialize();
 
             // Apply parsed properties AFTER initialize() which resets speed to 64

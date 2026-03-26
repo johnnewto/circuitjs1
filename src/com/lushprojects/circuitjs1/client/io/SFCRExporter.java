@@ -1986,7 +1986,7 @@ public class SFCRExporter {
                 appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_SCOPE, SFCRUtil.sanitizeName(scopeName));
 
         sb.append("@scope ").append(SFCRUtil.sanitizeName(scopeName))
-          .append(" position=").append(s.position).append("\n");
+          .append(" position=").append(s.getPositionForEmbedded()).append("\n");
 
         // For embedded scopes, include the ScopeElm geometry and UID
         if (scopeElm != null) {
@@ -2000,7 +2000,7 @@ public class SFCRExporter {
             }
         }
 
-        sb.append("  speed: ").append(s.speed).append("\n");
+        sb.append("  speed: ").append(s.getSpeedForEmbedded()).append("\n");
         sb.append("  flags: ").append(Scope.exportAsDecOrHex(s.getFlags(), s.FLAG_PERPLOTFLAGS)).append("\n");
 
         if (s.getTitle() != null && !s.getTitle().isEmpty()) {

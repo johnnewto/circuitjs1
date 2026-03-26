@@ -170,7 +170,7 @@ public class ScopeViewerDialog extends DialogBox {
             // Export all docked scopes
             for (int i = 0; i < sim.scopeCount; i++) {
                 Scope scope = sim.scopes[i];
-                if (scope == null || scope.visiblePlots.size() == 0)
+                if (scope == null || scope.getVisiblePlotCount() == 0)
                     continue;
 
                 if (!first)
@@ -187,7 +187,7 @@ public class ScopeViewerDialog extends DialogBox {
                     continue;
                 ScopeElm scopeElm = (ScopeElm) sim.elmList.get(i);
                 Scope scope = scopeElm.elmScope;
-                if (scope == null || scope.visiblePlots.size() == 0)
+                if (scope == null || scope.getVisiblePlotCount() == 0)
                     continue;
 
                 if (!first)

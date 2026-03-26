@@ -361,7 +361,7 @@ final class CirSimInitializer {
                     public void execute() {
                         int i;
                         for (i = 0; i < sim.scopeCount; i++)
-                            sim.scopes[i].setRect(sim.scopes[i].rect);
+                            sim.scopes[i].setRect(sim.scopes[i].getRectForEmbedded());
                         sim.getPreferencesManager().setOptionInStorage("whiteBackground", sim.printableCheckItem.getState());
                     }
                 }));

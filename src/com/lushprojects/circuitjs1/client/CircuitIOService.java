@@ -476,7 +476,7 @@ final class CircuitIOService {
 	                            break;
 	                        }
 	                        Scope sc = new Scope(sim);
-	                        sc.position = sim.scopeCount;
+	                        sc.setPositionForEmbedded(sim.scopeCount);
 	                        sc.undump(st);
 	                        sim.scopes[sim.scopeCount++] = sc;
                         break;

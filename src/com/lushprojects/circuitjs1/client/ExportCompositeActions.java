@@ -228,12 +228,13 @@ final class ExportCompositeActions {
 
         for (int i = 0; i < sim.scopeCount; i++) {
             Scope s = sim.scopes[i];
-            if (s.rect.x < minX)
-                minX = s.rect.x;
-            if (s.rect.y < minY)
-                minY = s.rect.y;
-            int right = s.rect.x + s.rect.width;
-            int bottom = s.rect.y + s.rect.height;
+            Rectangle sr = s.getRectForEmbedded();
+            if (sr.x < minX)
+                minX = sr.x;
+            if (sr.y < minY)
+                minY = sr.y;
+            int right = sr.x + sr.width;
+            int bottom = sr.y + sr.height;
             if (right > maxX)
                 maxX = right;
             if (bottom > maxY)

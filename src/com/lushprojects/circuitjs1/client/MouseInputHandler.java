@@ -473,9 +473,9 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         if (newMouseElm == null) {
             for (i = 0; i != sim.scopeCount; i++) {
                 Scope s = sim.scopes[i];
-                if (s.rect.contains(sx, sy)) {
+                if (s.containsScreenPoint(sx, sy)) {
                     newMouseElm = s.getElm();
-                    if (s.plotXY) {
+                    if (s.isPlotXyEnabled()) {
                         sim.plotXElm = s.getXElm();
                         sim.plotYElm = s.getYElm();
                     }
@@ -535,7 +535,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         if (sim.getScopeManager().getScopeSelected() != -1) {
             if (sim.scopes[sim.getScopeManager().getScopeSelected()].canMenu()) {
                 sim.getScopeManager().setMenuScope(sim.getScopeManager().getScopeSelected());
-                sim.getScopeManager().setMenuPlot(sim.scopes[sim.getScopeManager().getScopeSelected()].selectedPlot);
+                sim.getScopeManager().setMenuPlot(sim.scopes[sim.getScopeManager().getScopeSelected()].getSelectedPlotIndex());
                 sim.getMenuUiState().scopePopupMenu.doScopePopupChecks(false, sim.getScopeManager().canStackScope(sim.getScopeManager().getScopeSelected()), sim.getScopeManager().canCombineScope(sim.getScopeManager().getScopeSelected()),
                                                       sim.getScopeManager().canUnstackScope(sim.getScopeManager().getScopeSelected()), sim.scopes[sim.getScopeManager().getScopeSelected()]);
                 sim.getMenuUiState().contextPanel = new PopupPanel(true);
@@ -589,7 +589,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             } else {
                 ScopeElm s = (ScopeElm) mouseElm;
                 if (s.elmScope.canMenu()) {
-                    sim.getScopeManager().setMenuPlot(s.elmScope.selectedPlot);
+                    sim.getScopeManager().setMenuPlot(s.elmScope.getSelectedPlotIndex());
                     sim.getMenuUiState().scopePopupMenu.doScopePopupChecks(true, false, false, false, s.elmScope);
                     sim.getMenuUiState().contextPanel = new PopupPanel(true);
                     sim.getMenuUiState().contextPanel.add(sim.getMenuUiState().scopePopupMenu.getMenuBar());
@@ -826,8 +826,8 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             String s = sim.getMenuUiState().mainMenuItemNames.get(i);
             sim.getMenuUiState().mainMenuItems.get(i).setState(s == mouseModeStr);
         }
-        sim.stackAllItem.setEnabled(sim.scopeCount > 1 && sim.scopes[sim.scopeCount - 1].position > 0);
-        sim.unstackAllItem.setEnabled(sim.scopeCount > 1 && sim.scopes[sim.scopeCount - 1].position != sim.scopeCount - 1);
+        sim.stackAllItem.setEnabled(sim.scopeCount > 1 && sim.scopes[sim.scopeCount - 1].getStackPosition() > 0);
+        sim.unstackAllItem.setEnabled(sim.scopeCount > 1 && sim.scopes[sim.scopeCount - 1].getStackPosition() != sim.scopeCount - 1);
         sim.combineAllItem.setEnabled(sim.scopeCount > 1);
         sim.separateAllItem.setEnabled(sim.scopeCount > 0);
 

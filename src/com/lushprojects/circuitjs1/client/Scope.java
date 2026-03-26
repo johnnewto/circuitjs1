@@ -26,6 +26,7 @@ import com.lushprojects.circuitjs1.client.elements.ActionScheduler;
 import com.lushprojects.circuitjs1.client.runner.RuntimeMode;
 
 import com.google.gwt.event.dom.client.MouseWheelEvent;
+import com.lushprojects.circuitjs1.client.elements.electronics.digital.LogicOutputElm;
 import com.lushprojects.circuitjs1.client.elements.electronics.measurement.*;
 import com.lushprojects.circuitjs1.client.elements.electronics.wiring.WireElm;
 import com.lushprojects.circuitjs1.client.elements.misc.ActionTimeElm;
@@ -292,6 +293,26 @@ public class Scope {
       if (!showFFT)
     	  fft = null;
     }
+
+    void setLogSpectrum(boolean state) {
+	logSpectrum = state;
+    }
+
+    void setShowRms(boolean state) {
+	showRMS = state;
+    }
+
+    void setShowAverage(boolean state) {
+	showAverage = state;
+    }
+
+    void setShowDutyCycle(boolean state) {
+	showDutyCycle = state;
+    }
+
+    void setShowElmInfo(boolean state) {
+	showElmInfo = state;
+    }
     
     /**
      * Sets manual scale mode.
@@ -377,6 +398,42 @@ public class Scope {
     void setManDivisions(int d) {
 	manDivisions = lastManDivisions = d;
     }
+
+    int getManDivisionsForPersistence() {
+	return manDivisions;
+    }
+
+    int getPerPlotFlagsMaskForPersistence() {
+	return FLAG_PERPLOTFLAGS;
+    }
+
+    int getPlotRefsMaskForPersistence() {
+	return FLAG_PLOT_REFS;
+    }
+
+    int getDivisionsMaskForPersistence() {
+	return FLAG_DIVISIONS;
+    }
+
+    int getMaxScaleLimitsMaskForPersistence() {
+	return FLAG_MAX_SCALE_LIMITS;
+    }
+
+    int getPlotsMaskForPersistence() {
+	return FLAG_PLOTS;
+    }
+
+    int getPerPlotManualScaleMaskForPersistence() {
+	return FLAG_PERPLOT_MAN_SCALE;
+    }
+
+    int getYElmMaskForPersistence() {
+	return FLAG_YELM;
+    }
+
+    int getIValueMaskForPersistence() {
+	return FLAG_IVALUE;
+    }
     
     /**
      * Sets the maximum scale limit for current unit type (prevents auto-scale from exceeding this value).
@@ -430,7 +487,7 @@ public class Scope {
 	if (plot == null || plot.elm == null) {
 	    return null;
 	}
-	return plot.elm.getScopeText(plot.value);
+	return plot.elm.getScopeTextForScope(plot.value);
     }
 
     public double getVisiblePlotLastValue(int index) {
@@ -439,6 +496,38 @@ public class Scope {
 	}
 	ScopePlot plot = visiblePlots.get(index);
 	return plot != null ? plot.lastValue : 0.0;
+    }
+
+    static final class VisiblePlotView {
+	final String color;
+	final int units;
+	final double manualScale;
+	final int manualPosition;
+	final boolean acCoupled;
+	final boolean canAcCouple;
+
+	VisiblePlotView(ScopePlot plot) {
+	    color = plot.color;
+	    units = plot.units;
+	    manualScale = plot.manScale;
+	    manualPosition = plot.manVPosition;
+	    acCoupled = plot.isAcCoupled();
+	    canAcCouple = plot.canAcCouple();
+	}
+    }
+
+    VisiblePlotView getVisiblePlotView(int index) {
+	if (visiblePlots == null || index < 0 || index >= visiblePlots.size()) {
+	    return null;
+	}
+	return new VisiblePlotView(visiblePlots.get(index));
+    }
+
+    void setVisiblePlotAcCoupled(int index, boolean acCoupled) {
+	if (visiblePlots == null || index < 0 || index >= visiblePlots.size()) {
+	    return;
+	}
+	visiblePlots.get(index).setAcCoupled(acCoupled);
     }
     
     /**
@@ -487,6 +576,97 @@ public class Scope {
         model.rebuildVisiblePlots(plot2d, showV, showI);
         syncVisiblePlotsFromModel();
     }
+
+    void applyRectFromLifecycle(Rectangle r) {
+	int widthBefore = rect.width;
+	rect = r;
+	if (rect.width != widthBefore) {
+	    resetGraph(false, !drawFromZero);
+	}
+    }
+
+    void applySetSpeedFromLifecycle(int sp) {
+	speed = sp;
+	resetGraph(false, true);
+    }
+
+    void applySpeedUpFromLifecycle() {
+	if (drawFromZero) {
+	    return;
+	}
+	if (speed > 1) {
+	    speed /= 2;
+	    resetGraph(false, !drawFromZero);
+	}
+    }
+
+    void applySlowDownFromLifecycle() {
+	if (drawFromZero) {
+	    return;
+	}
+	if (speed < 1024) {
+	    speed *= 2;
+	}
+	resetGraph(false, !drawFromZero);
+    }
+
+    void applyResetGraphFromLifecycle(boolean full, boolean clearHistory) {
+	scopePointCount = 1;
+	while (scopePointCount <= rect.width) {
+	    scopePointCount *= 2;
+	}
+	if (plots == null) {
+	    setPlots(new Vector<ScopePlot>());
+	}
+	showNegative = false;
+	for (int i = 0; i != plots.size(); i++) {
+	    plots.get(i).reset(scopePointCount, speed, full);
+	}
+	calcVisiblePlots();
+	scopeTimeStep = sim.getMaxTimeStep();
+
+	if (clearHistory) {
+	    lastDisplayedActionIndex = -1;
+	    lastDisplayedActionText = null;
+	    lastDisplayedWasHover = false;
+	    lastLoggedActionIndex = -1;
+	    actionVerticalPositions.clear();
+	}
+
+	if (drawFromZero) {
+	    double sampleInterval = sim.getMaxTimeStep() * speed;
+	    if (clearHistory) {
+		startTime = sim.getTime();
+		model.initializeHistoryBuffers(scopePointCount, sampleInterval);
+	    } else {
+		model.setHistorySampleInterval(sampleInterval);
+		boolean needsAllocation = !model.areHistoryBuffersAllocated();
+		if (needsAllocation) {
+		    startTime = sim.getTime();
+		    model.initializeHistoryBuffers(scopePointCount, sampleInterval);
+		} else {
+		    int newCapacity = scopePointCount * 4;
+		    if (newCapacity != model.getHistoryCapacity()) {
+			model.resizeHistoryBuffers(newCapacity);
+		    }
+		}
+	    }
+	} else {
+	    model.clearHistoryBuffers();
+	}
+
+	allocImage();
+    }
+
+    void allocImageFromLifecycle() {
+	if (imageCanvas != null) {
+	    imageCanvas.setWidth(rect.width + "PX");
+	    imageCanvas.setHeight(rect.height + "PX");
+	    imageCanvas.setCoordinateSpaceWidth(rect.width);
+	    imageCanvas.setCoordinateSpaceHeight(rect.height);
+	    clear2dView();
+	}
+    }
     
     void setRect(Rectangle r) {
 	ScopeLifecycleController.setRect(this, r);
@@ -499,10 +679,35 @@ public class Scope {
     public Rectangle getRectForEmbedded() {
 	return rect;
     }
+
+    Rectangle getRect() {
+	return rect;
+    }
+
+    boolean containsScreenPoint(int x, int y) {
+	return rect != null && rect.contains(x, y);
+    }
     
     int getWidth() { return rect.width; }
     
     int rightEdge() { return rect.x+rect.width; }
+
+    void setPlotModes(boolean enablePlot2d, boolean enablePlotXy) {
+	plot2d = enablePlot2d;
+	plotXY = enablePlotXy;
+    }
+
+    boolean isPlot2dEnabled() {
+	return plot2d;
+    }
+
+    boolean isPlotXyEnabled() {
+	return plotXY;
+    }
+
+    void replacePlotsWithVisiblePlotsSnapshot() {
+	setPlots(new Vector<ScopePlot>(visiblePlots));
+    }
 	
     void setElm(CircuitElm ce) {
 	ScopeSelectionService.setElm(this, ce);
@@ -539,17 +744,39 @@ public class Scope {
     void setValues(int val, int ival, CircuitElm ce, CircuitElm yelm) {
 	if (ival > 0) {
 	    setPlots(new Vector<ScopePlot>());
-	    plots.add(new ScopePlot(ce, ce.getScopeUnits( val),  val, getManScaleFromMaxScale(ce.getScopeUnits( val), false)));
-	    plots.add(new ScopePlot(ce, ce.getScopeUnits(ival), ival, getManScaleFromMaxScale(ce.getScopeUnits(ival), false)));
+	    plots.add(new ScopePlot(ce, ce.getScopeUnitsForScope( val),  val, getManScaleFromMaxScale(ce.getScopeUnitsForScope( val), false)));
+	    plots.add(new ScopePlot(ce, ce.getScopeUnitsForScope(ival), ival, getManScaleFromMaxScale(ce.getScopeUnitsForScope(ival), false)));
 	    return;
 	}
 	if (yelm != null) {
 	    setPlots(new Vector<ScopePlot>());
-	    plots.add(new ScopePlot(ce,   ce.getScopeUnits( val), 0, getManScaleFromMaxScale(ce.getScopeUnits( val), false)));
-	    plots.add(new ScopePlot(yelm, ce.getScopeUnits(ival), 0, getManScaleFromMaxScale(ce.getScopeUnits( val), false)));
+	    plots.add(new ScopePlot(ce,   ce.getScopeUnitsForScope( val), 0, getManScaleFromMaxScale(ce.getScopeUnitsForScope( val), false)));
+	    plots.add(new ScopePlot(yelm, ce.getScopeUnitsForScope(ival), 0, getManScaleFromMaxScale(ce.getScopeUnitsForScope( val), false)));
 	    return;
 	}
 	setValue(val);
+    }
+
+    void showVceVsIc() {
+	setPlotModes(true, false);
+	setValues(VAL_VCE, VAL_IC, getElm(), null);
+	resetGraph();
+    }
+
+    void showVVsI(boolean state) {
+	setPlotModes(state, false);
+	resetGraph();
+    }
+
+    void setPlotXy(boolean state) {
+	setPlotModes(state, state);
+	if (plot2d) {
+	    replacePlotsWithVisiblePlotsSnapshot();
+	}
+	if (plot2d && plots.size() == 1) {
+	    selectY();
+	}
+	resetGraph();
     }
     
     public void setText(String s) {
@@ -821,7 +1048,7 @@ public class Scope {
 	g.context.translate(rect.x + 18, rect.y + rect.height - 18);
 	
 	// Draw center circle
-	CircuitElm.drawThickCircle(g, 0, 0, INNER_RADIUS);
+	CircuitElm.drawThickCircleForScope(g, 0, 0, INNER_RADIUS);
 	
 	// Draw horizontal spokes
 	CircuitElm.drawThickLine(g, -OUTER_RADIUS, 0, -INNER_RADIUS, 0);
@@ -888,7 +1115,7 @@ public class Scope {
     	drawTitle(g);
     	g.context.restore();
     	drawSettingsWheel(g);
-		if ( !sim.dialogIsShowing() && rect.contains(sim.getMouseCursorX(), sim.getMouseCursorY()) && plots.size()>=2) {
+		if ( !sim.isDialogShowingForScope() && rect.contains(sim.getMouseCursorX(), sim.getMouseCursorY()) && plots.size()>=2) {
 			double gridPx=calc2dGridPx(rect.width, rect.height);
 			String info[] = new String [3];  // Increased from 2 to 3
 			ScopePlot px = plots.get(0);
@@ -1278,12 +1505,12 @@ public class Scope {
     	for (si = 0; si != visiblePlots.size(); si++) {
     	    ScopePlot plot = visiblePlots.get(si);
     	    calcPlotScale(plot);
-    	    if (sim.getScopeManager().getScopeSelected() == -1 && plot.elm !=null && plot.elm.isMouseElm())
+    	    if (sim.getScopeSelectedIndexForScope() == -1 && plot.elm !=null && plot.elm.isMouseElmForUi())
     		somethingSelected = true;
     	    reduceRange[plot.units] = true;
     	}
     	
-    	boolean sel = sim.scopeMenuIsSelected(this);
+    	boolean sel = sim.isScopeMenuSelectedForScope(this);
     	
     	checkForSelectionElsewhere();
     	if (selectedPlot >= 0)
@@ -1502,7 +1729,7 @@ public class Scope {
         int plotWidth = frame.plotWidth;
 
     	String color = (somethingSelected) ? "#A0A0A0" : plot.color;
-	if (allSelected || (sim.getScopeManager().getScopeSelected() == -1  && plot.elm.isMouseElm()))
+	if (allSelected || (sim.getScopeSelectedIndexForScope() == -1  && plot.elm.isMouseElmForUi()))
     	    color = CircuitElm.selectColor.getHexValue();
 	else if (selected)
 	    color = plot.color;
@@ -1910,7 +2137,7 @@ public class Scope {
     
     // find selected plot
     private void checkForSelection(int mouseX, int mouseY) {
-	if (sim.dialogIsShowing())
+	if (sim.isDialogShowingForScope())
 	    return;
 	if (!rect.contains(mouseX, mouseY)) {
 	    selectedPlot = -1;
@@ -1940,7 +2167,7 @@ public class Scope {
     }
     
     private void drawCursor(Graphics g, ScopeFrameContext frame) {
-    if (sim.dialogIsShowing())
+    if (sim.isDialogShowingForScope())
         return;
     if (cursorScope == null)
         return;
@@ -2038,7 +2265,7 @@ public class Scope {
             return;
         
 	if (visiblePlots.size() > 0)
-		info[ct++] = sim.getPreferencesManager().formatTimeFixed(cursorTime);
+		info[ct++] = sim.formatTimeFixedForScope(cursorTime);
     
     if (cursorScope != this) {
         // don't show cursor info if not enough room, or stacked with selected one
@@ -2185,7 +2412,7 @@ public class Scope {
 
     private String getMultiLhsAxisName(ScopePlot plot, int axisIndex) {
         if (plot != null && plot.elm != null) {
-            String name = plot.elm.getScopeText(plot.value);
+            String name = plot.elm.getScopeTextForScope(plot.value);
             if (name != null && !name.isEmpty()) {
                 return name.length() > 10 ? name.substring(0, 10) : name;
             }
@@ -2310,7 +2537,7 @@ public class Scope {
 
     private void drawElmInfo(Graphics g) {
 	String info[] = new String[1];
-	getElm().getInfo(info);
+	getElm().getInfoForScope(info);
 	int i;
 	for (i = 0; info[i] != null; i++)
 	    drawInfoText(g, info[i]);
@@ -2383,7 +2610,7 @@ public class Scope {
     	    for (int i = 0; i < visiblePlots.size(); i++) {
     		ScopePlot p = visiblePlots.get(i);
     		if (p.elm != null) {
-    		    String plotText = p.elm.getScopeText(p.value);
+    		    String plotText = p.elm.getScopeTextForScope(p.value);
     		    if (plotText != null && !plotText.isEmpty()) {
     			if (rect.y + rect.height <= textY+5)
     			    break;
@@ -2428,7 +2655,7 @@ public class Scope {
 	if (plot.elm == null)
 		return "";
 	else
-	    	return plot.elm.getScopeText(plot.value);
+	    	return plot.elm.getScopeTextForScope(plot.value);
     }
 
     private String getScopeLabelOrText() {
@@ -2465,6 +2692,10 @@ public class Scope {
     public void setSpeed(int sp) {
 	ScopeLifecycleController.setSpeed(this, sp);
     }
+
+    int getCurrentSpeed() {
+	return speed;
+    }
     
     void properties() {
 	properties = new ScopePropertiesDialog(sim, this);
@@ -2500,7 +2731,7 @@ public class Scope {
     
     boolean canShowResistance() {
     	CircuitElm elm = getSingleElm();
-    	return elm != null && elm.canShowValueInScope(VAL_R);
+    	return elm != null && elm.canShowValueInScopeForScope(VAL_R);
     }
     
     boolean isShowingVceAndIc() {
@@ -2557,6 +2788,42 @@ public class Scope {
 	return (plots == null) ? 0 : plots.size();
     }
 
+    ScopePlot getPlotAt(int index) {
+	if (plots == null || index < 0 || index >= plots.size()) {
+	    return null;
+	}
+	return plots.get(index);
+    }
+
+    void removePlotAt(int index) {
+	if (plots != null && index >= 0 && index < plots.size()) {
+	    plots.removeElementAt(index);
+	}
+    }
+
+    void trimPlotsToSize(int size) {
+	while (plots != null && plots.size() > size) {
+	    plots.removeElementAt(plots.size() - 1);
+	}
+    }
+
+    Vector<ScopePlot> getVisiblePlotsSnapshot() {
+	return new Vector<ScopePlot>(visiblePlots);
+    }
+
+    ScopePlot getVisiblePlotAt(int index) {
+	if (visiblePlots == null || index < 0 || index >= visiblePlots.size()) {
+	    return null;
+	}
+	return visiblePlots.get(index);
+    }
+
+    void removePlotRef(ScopePlot plot) {
+	if (plot != null) {
+	    plots.remove(plot);
+	}
+    }
+
     public CircuitElm getPlotElement(int index) {
 	if (plots == null || index < 0 || index >= plots.size())
 	    return null;
@@ -2579,6 +2846,216 @@ public class Scope {
 	ScopeSelectionService.addPlot(this, elm, units, value, manualScale);
     }
 
+    void addPlotInternal(CircuitElm elm, int units, int value, double manualScale) {
+	if (plots == null) {
+	    setPlots(new Vector<ScopePlot>());
+	}
+	plots.add(new ScopePlot(elm, units, value, manualScale));
+    }
+
+    void clearPlotsInternal() {
+	setPlots(new Vector<ScopePlot>());
+	calcVisiblePlots();
+    }
+
+    boolean shouldAutoAddCurrentPlot(CircuitElm ce) {
+	return ce != null &&
+		sim.dotsCheckItem.getState() &&
+		!(ce instanceof OutputElm ||
+		  ce instanceof LogicOutputElm ||
+		  ce instanceof AudioOutputElm ||
+		  ce instanceof ProbeElm);
+    }
+
+    void setShowVoltageVisible(boolean state) {
+	showV = state;
+    }
+
+    boolean isShowVoltageEnabled() {
+	return showV;
+    }
+
+    boolean isShowCurrentEnabled() {
+	return showI;
+    }
+
+    boolean isShowScaleEnabled() {
+	return showScale;
+    }
+
+    boolean isShowMaxEnabled() {
+	return showMax;
+    }
+
+    boolean isShowMinEnabled() {
+	return showMin;
+    }
+
+    boolean isShowFreqEnabled() {
+	return showFreq;
+    }
+
+    boolean isShowFftEnabled() {
+	return showFFT;
+    }
+
+    boolean isLogSpectrumEnabled() {
+	return logSpectrum;
+    }
+
+    boolean isShowRmsEnabled() {
+	return showRMS;
+    }
+
+    boolean isShowAverageEnabled() {
+	return showAverage;
+    }
+
+    boolean isShowDutyCycleEnabled() {
+	return showDutyCycle;
+    }
+
+    boolean isShowElmInfoEnabled() {
+	return showElmInfo;
+    }
+
+    int getManDivisions() {
+	return manDivisions;
+    }
+
+    int locateElement(CircuitElm elm) {
+	return sim.locateElmForScope(elm);
+    }
+
+    CircuitElm getElementAt(int index) {
+	return sim.getElm(index);
+    }
+
+    int getElementCount() {
+	return sim.elmList.size();
+    }
+
+    double getScaleForUnit(int unit) {
+	return scale[unit];
+    }
+
+    void setScaleForUnit(int unit, double value) {
+	scale[unit] = value;
+    }
+
+    Double getMaxScaleLimitForUnit(int unit) {
+	return maxScaleLimit[unit];
+    }
+
+    void setMaxScaleLimitForUnit(int unit, Double value) {
+	maxScaleLimit[unit] = value;
+    }
+
+    void initializeScaleFromVoltageAndCurrent() {
+	scaleX = scale[UNITS_V];
+	scaleY = scale[UNITS_A];
+	scale[UNITS_OHMS] = scale[UNITS_W] = scale[UNITS_V];
+    }
+
+    void clearLabelText() {
+	text = null;
+    }
+
+    void appendLabelToken(String token) {
+	if (text == null) {
+	    text = token;
+	} else {
+	    text += " " + token;
+	}
+    }
+
+    void appendTitleToken(String token) {
+	if (title == null) {
+	    title = token;
+	} else {
+	    title += " " + token;
+	}
+    }
+
+    String getRawLabelText() {
+	return text;
+    }
+
+    void setRawLabelText(String value) {
+	text = value;
+    }
+
+    String getRawTitleText() {
+	return title;
+    }
+
+    void setRawTitleText(String value) {
+	title = value;
+    }
+
+    void setPlot2dForPersistence(boolean state) {
+	plot2d = state;
+    }
+
+    void setSpeedForPersistence(int speedValue) {
+	speed = speedValue;
+    }
+
+    int getSpeedForPersistence() {
+	return speed;
+    }
+
+    int getPositionForPersistence() {
+	return position;
+    }
+
+    void setPositionForPersistence(int pos) {
+	position = pos;
+    }
+
+    int getStackPosition() {
+	return position;
+    }
+
+    void setStackPosition(int pos) {
+	position = pos;
+    }
+
+    void setStackCount(int count) {
+	stackCount = count;
+    }
+
+    int getSelectedPlotIndex() {
+	return selectedPlot;
+    }
+
+    void setShowPeaks(boolean max, boolean min) {
+	showMax = max;
+	showMin = min;
+    }
+
+    void setShowMaxEnabled(boolean state) {
+	showMax = state;
+    }
+
+    void setSpeedAndResetIfChanged(int speedValue) {
+	if (speed != speedValue) {
+	    speed = speedValue;
+	    resetGraph();
+	}
+    }
+
+    void setPlotStateFromPersistence(int index, boolean acCoupled, boolean manScaleSetValue, double manScaleValue, int manVPos) {
+	ScopePlot plot = getPlotAt(index);
+	if (plot == null) {
+	    return;
+	}
+	plot.acCoupled = acCoupled;
+	plot.manScaleSet = manScaleSetValue;
+	plot.manScale = manScaleValue;
+	plot.manVPosition = manVPos;
+    }
+
     String dump() {
 	return ScopePersistence.dump(this);
     }
@@ -2597,6 +3074,14 @@ public class Scope {
 
     public void setPositionForEmbedded(int pos) {
 	position = pos;
+    }
+
+    public int getPositionForEmbedded() {
+	return position;
+    }
+
+    public int getSpeedForEmbedded() {
+	return speed;
     }
     
     public void setFlags(int flags) {
@@ -2645,6 +3130,11 @@ public class Scope {
 	resetGraph();
     }
 
+    void setAutoScaleTime(boolean state) {
+	autoScaleTime = state;
+	sim.needAnalyze();
+    }
+
     void setMultiLhsAxes(boolean state) {
 	multiLhsAxes = state;
     }
@@ -2654,7 +3144,7 @@ public class Scope {
     }
     
     void onMouseWheel(MouseWheelEvent e) {
-        wheelDeltaY += e.getDeltaY()*sim.wheelSensitivity;
+        wheelDeltaY += e.getDeltaY()*sim.getWheelSensitivity();
         if (wheelDeltaY > 5) {
             slowDown();
             wheelDeltaY = 0;
@@ -2694,7 +3184,7 @@ public class Scope {
 	int i;
 	for (i = 0; i != plots.size(); i++) {
 	   ScopePlot plot = plots.get(i);
-	   if (sim.locateElm(plot.elm) < 0) {
+	   if (sim.locateElmForScope(plot.elm) < 0) {
 	       plots.remove(i--);
 	       removed = true;
 	   } else

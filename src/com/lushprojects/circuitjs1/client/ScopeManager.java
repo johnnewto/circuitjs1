@@ -100,7 +100,7 @@ final class ScopeManager {
 	    return false;
 	if (s == 0)
 	    s = 1;
-	if (sim.scopes[s].position == sim.scopes[s-1].position)
+	if (sim.scopes[s].getStackPosition() == sim.scopes[s-1].getStackPosition())
 	    return false;
 	return true;
     }
@@ -114,8 +114,8 @@ final class ScopeManager {
 	    return false;
 	if (s == 0)
 	    s = 1;
-	if (sim.scopes[s].position != sim.scopes[s-1].position) {
-	    if (s + 1 < sim.scopeCount && sim.scopes[s+1].position == sim.scopes[s].position)
+	if (sim.scopes[s].getStackPosition() != sim.scopes[s-1].getStackPosition()) {
+	    if (s + 1 < sim.scopeCount && sim.scopes[s+1].getStackPosition() == sim.scopes[s].getStackPosition())
 		return true;
 	    else
 		return false;
@@ -129,9 +129,9 @@ final class ScopeManager {
 	if (s == 0) {
 	    s = 1;
 	}
-	sim.scopes[s].position = sim.scopes[s-1].position;
+	sim.scopes[s].setStackPosition(sim.scopes[s-1].getStackPosition());
 	for (s++; s < sim.scopeCount; s++)
-	    sim.scopes[s].position--;
+	    sim.scopes[s].setStackPosition(sim.scopes[s].getStackPosition()-1);
     }
 
     void unstackScope(int s) {
@@ -140,10 +140,10 @@ final class ScopeManager {
 	if (s == 0) {
 	    s = 1;
 	}
-	if (sim.scopes[s].position != sim.scopes[s-1].position)
+	if (sim.scopes[s].getStackPosition() != sim.scopes[s-1].getStackPosition())
 	    s++;
 	for (; s < sim.scopeCount; s++)
-	    sim.scopes[s].position++;
+	    sim.scopes[s].setStackPosition(sim.scopes[s].getStackPosition()+1);
     }
 
     void combineScope(int s) {
@@ -158,15 +158,15 @@ final class ScopeManager {
 
     void stackAll() {
 	for (int i = 0; i != sim.scopeCount; i++) {
-	    sim.scopes[i].position = 0;
-	    sim.scopes[i].showMax = sim.scopes[i].showMin = false;
+	    sim.scopes[i].setStackPosition(0);
+	    sim.scopes[i].setShowPeaks(false, false);
 	}
     }
 
     void unstackAll() {
 	for (int i = 0; i != sim.scopeCount; i++) {
-	    sim.scopes[i].position = i;
-	    sim.scopes[i].showMax = true;
+	    sim.scopes[i].setStackPosition(i);
+	    sim.scopes[i].setShowMaxEnabled(true);
 	}
     }
 
@@ -210,9 +210,9 @@ final class ScopeManager {
 		i--;
 		continue;
 	    }
-	    if (sim.scopes[i].position > pos+1)
-		sim.scopes[i].position = pos+1;
-	    pos = sim.scopes[i].position;
+	    if (sim.scopes[i].getStackPosition() > pos+1)
+		sim.scopes[i].setStackPosition(pos+1);
+	    pos = sim.scopes[i].getStackPosition();
 	}
 	while (sim.scopeCount > 0 && sim.scopes[sim.scopeCount-1].getElm() == null)
 	    sim.scopeCount--;
@@ -221,8 +221,8 @@ final class ScopeManager {
 	for (i = 0; i != sim.scopeCount; i++)
 	    sim.scopeColCount[i] = 0;
 	for (i = 0; i != sim.scopeCount; i++) {
-	    pos = sim.max(sim.scopes[i].position, pos);
-	    sim.scopeColCount[sim.scopes[i].position]++;
+	    pos = sim.max(sim.scopes[i].getStackPosition(), pos);
+	    sim.scopeColCount[sim.scopes[i].getStackPosition()]++;
 	}
 	int colct = pos+1;
 	int iw = CirSim.infoWidth;
@@ -236,20 +236,17 @@ final class ScopeManager {
 	int speed = 0;
 	for (i = 0; i != sim.scopeCount; i++) {
 	    Scope s = sim.scopes[i];
-	    if (s.position > pos) {
-		pos = s.position;
+	    if (s.getStackPosition() > pos) {
+		pos = s.getStackPosition();
 		colh = h / sim.scopeColCount[pos];
 		row = 0;
-		speed = s.speed;
+		speed = s.getCurrentSpeed();
 	    }
-	    s.stackCount = sim.scopeColCount[pos];
-	    if (s.speed != speed) {
-		s.speed = speed;
-		s.resetGraph();
-	    }
+	    s.setStackCount(sim.scopeColCount[pos]);
+	    s.setSpeedAndResetIfChanged(speed);
 	    Rectangle r = new Rectangle(pos*w, sim.canvasHeight-h+colh*row, w-marg, colh);
 	    row++;
-	    if (!r.equals(s.rect))
+	    if (!r.equals(s.getRect()))
 		s.setRect(r);
 	}
 	if (oldScopeCount != sim.scopeCount) {

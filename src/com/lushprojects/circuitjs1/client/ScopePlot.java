@@ -170,7 +170,7 @@ public class ScopePlot {
         if (elm == null)
             return;
 
-        double v = elm.getScopeValue(value);
+        double v = elm.getScopeValueForScope(value);
 
         // AC coupling filter: 1st order IIR high pass filter
         // Formula: y[i] = alpha × (y[i-1] + x[i] - x[i-1])
