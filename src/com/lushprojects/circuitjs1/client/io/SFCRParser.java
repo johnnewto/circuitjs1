@@ -8,8 +8,6 @@ package com.lushprojects.circuitjs1.client.io;
 
 import com.lushprojects.circuitjs1.client.scope.Scope;
 
-import com.lushprojects.circuitjs1.client.elements.ActionScheduler;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Vector;
@@ -19,7 +17,6 @@ import com.lushprojects.circuitjs1.client.registry.HintRegistry;
 import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.elements.misc.*;
-import com.lushprojects.circuitjs1.client.registry.ElementFactoryFacade;
 import com.lushprojects.circuitjs1.client.io.sfcr.ParseResult;
 import com.lushprojects.circuitjs1.client.io.sfcr.ParseWarning;
 import com.lushprojects.circuitjs1.client.io.sfcr.SFCRBlockParseHandlerRegistry;
@@ -53,25 +50,6 @@ import com.lushprojects.circuitjs1.client.io.sfcr.handlers.UnknownBlockParseHand
  */
 public class SFCRParser {
     
-    // =========================================================================
-    // Helper class for block position parsing
-    // =========================================================================
-    
-    /** Parsed block header with optional position. */
-    private static class BlockPosition {
-        String name;
-        int x = Integer.MIN_VALUE;  // MIN_VALUE means auto-position (not set)
-        int y = Integer.MIN_VALUE;
-        
-        BlockPosition(String name) {
-            this.name = name;
-        }
-        
-        boolean hasPosition() {
-            return x != Integer.MIN_VALUE && y != Integer.MIN_VALUE;
-        }
-    }
-
     public static class BlockHeaderInfo {
         public String name;
         public int x = Integer.MIN_VALUE;
@@ -136,12 +114,8 @@ public class SFCRParser {
     private ArrayList<ScopeBlockSpec> scopeBlocks = new ArrayList<ScopeBlockSpec>();
     private HashMap<String, String> initSettings = new HashMap<String, String>();
     private ArrayList<String> rawCircuitLines = new ArrayList<String>();
-    private HashMap<String, LookupDefinition> globalLookupTables = new HashMap<String, LookupDefinition>();
-    private HashMap<String, HashMap<String, LookupDefinition>> scopedLookupTables =
-        new HashMap<String, HashMap<String, LookupDefinition>>();
     private boolean lookupClampDefault = true;
     private String infoContent = null;
-    private boolean actionElementFromActionBlock = false;
     private ArrayList<ParseWarning> parseWarnings = new ArrayList<ParseWarning>();
     private final UnknownBlockParseHandler unknownBlockParseHandler = new UnknownBlockParseHandler();
     private final RStyleParseService rStyleParseService = new RStyleParseService();
@@ -390,17 +364,7 @@ public class SFCRParser {
     }
 
     private static String[] parseTableRowStatic(String line) {
-        String trimmed = line.trim();
-        if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) {
-            return new String[0];
-        }
-        trimmed = trimmed.substring(1, trimmed.length() - 1);
-        String[] rawCells = trimmed.split("\\|");
-        String[] cells = new String[rawCells.length];
-        for (int i = 0; i < rawCells.length; i++) {
-            cells[i] = rawCells[i].trim();
-        }
-        return cells;
+        return parseTableRowCommon(line, true);
     }
 
     /** Check if text appears to be in SFCR format. */
@@ -502,9 +466,8 @@ public class SFCRParser {
                     continue;
                 }
                 
-                // Preserve metadata comments
+                // Preserve metadata comments (% prefix – no-op for now)
                 if (line.startsWith("%")) {
-                    parseMetadataComment(line);
                     i++;
                     continue;
                 }
@@ -576,12 +539,7 @@ public class SFCRParser {
             initSettings.putAll(ctx.getInitSettings());
             rawCircuitLines.clear();
             rawCircuitLines.addAll(ctx.getRawCircuitLines());
-            globalLookupTables.clear();
-            globalLookupTables.putAll(ctx.getGlobalLookupTables());
-            scopedLookupTables.clear();
-            scopedLookupTables.putAll(ctx.getScopedLookupTables());
             infoContent = ctx.getInfoContent();
-            actionElementFromActionBlock = ctx.isActionElementFromActionBlock();
             currentX = ctx.getCurrentX();
             currentY = ctx.getCurrentY();
 
@@ -650,15 +608,6 @@ public class SFCRParser {
         }
     }
     
-    // =========================================================================
-    // Block Parsers
-    // =========================================================================
-    
-    /** Parse metadata comment (% prefix - preserved on export). */
-    private void parseMetadataComment(String line) {
-        // Could store these for export, for now just skip
-    }
-
     private void preScanInitLookupSettings(String[] lines, SFCRParseContext ctx) {
         if (lines == null || lines.length == 0) {
             return;
@@ -707,29 +656,6 @@ public class SFCRParser {
 
             if (i < lines.length && lines[i].trim().startsWith("@end")) {
                 i++;
-            }
-        }
-    }
-
-    private void applyLookupInitAlias(String key, String value, boolean storeCanonicalMode) {
-        if (key == null || value == null) {
-            return;
-        }
-
-        if (key.equals("lookupClamp")) {
-            boolean clamp = parseBoolean(value, lookupClampDefault);
-            lookupClampDefault = clamp;
-            if (storeCanonicalMode) {
-                initSettings.put("lookupMode", clamp ? "pwl" : "pwlx");
-            }
-            return;
-        }
-
-        if (key.equals("lookupMode")) {
-            String mode = normalizeLookupMode(value);
-            lookupClampDefault = mode.equals("pwl");
-            if (storeCanonicalMode) {
-                initSettings.put("lookupMode", mode);
             }
         }
     }
@@ -862,16 +788,6 @@ public class SFCRParser {
         }
     }
 
-    private ActionTimeElm findActionTimeElm() {
-        for (int idx = 0; idx < sim.elmList.size(); idx++) {
-            CircuitElm ce = sim.getElm(idx);
-            if (ce instanceof ActionTimeElm) {
-                return (ActionTimeElm) ce;
-            }
-        }
-        return null;
-    }
-
     public static class LookupPoint {
         public double x;
         public double y;
@@ -882,361 +798,6 @@ public class SFCRParser {
         }
     }
 
-    /** Parse a lookup data point from a line. */
-    private LookupPoint parseLookupPoint(String line) {
-        if (line == null) return null;
-        String trimmed = line.trim();
-        if (trimmed.isEmpty()) return null;
-
-        String[] parts;
-        if (trimmed.startsWith("|")) {
-            String[] cells = parseTableRow(trimmed);
-            if (cells.length < 2) return null;
-            String c0 = cells[0].trim().toLowerCase();
-            String c1 = cells[1].trim().toLowerCase();
-            // Skip header row
-            if (("x".equals(c0) || "ratio".equals(c0)) &&
-                ("y".equals(c1) || "value".equals(c1) || "multiplier".equals(c1))) {
-                return null;
-            }
-            parts = new String[] { cells[0], cells[1] };
-        } else if (trimmed.contains(",")) {
-            parts = trimmed.split(",", 2);
-        } else {
-            parts = trimmed.split("\\s+");
-            if (parts.length < 2) return null;
-        }
-
-        if (parts.length < 2) return null;
-        try {
-            double x = Double.parseDouble(parts[0].trim());
-            double y = Double.parseDouble(parts[1].trim());
-            return new LookupPoint(x, y);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /** Check if x values are strictly increasing. */
-    private boolean isStrictlyIncreasing(ArrayList<Double> xs) {
-        if (xs == null || xs.size() < 2) return false;
-        for (int i = 1; i < xs.size(); i++) {
-            if (xs.get(i).doubleValue() <= xs.get(i - 1).doubleValue()) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private LookupDefinition findLookupTable(String equationScope, String lookupName) {
-        if (lookupName == null || lookupName.isEmpty()) {
-            return null;
-        }
-        String normalizedName = SFCRUtil.normalizeVariableName(lookupName);
-        if (equationScope != null && !equationScope.isEmpty()) {
-            HashMap<String, LookupDefinition> local = scopedLookupTables.get(equationScope);
-            if (local != null) {
-                LookupDefinition t = local.get(normalizedName);
-                if (t != null) {
-                    return t;
-                }
-            }
-        }
-        return globalLookupTables.get(normalizedName);
-    }
-
-    private String rewriteLookupCalls(String expr, String equationScope) {
-        if (expr == null || expr.trim().isEmpty()) {
-            return expr;
-        }
-        String rewritten = rewriteLookupFunctionCalls(expr, equationScope);
-        rewritten = rewriteNamedLookupCalls(rewritten, equationScope);
-        return rewritten;
-    }
-
-    private String rewriteLookupFunctionCalls(String expr, String equationScope) {
-        return expr;
-    }
-
-    private String rewriteNamedLookupCalls(String expr, String equationScope) {
-        String out = expr;
-        int i = 0;
-        while (i < out.length()) {
-            char c = out.charAt(i);
-            if (!isLookupNameStart(c)) {
-                i++;
-                continue;
-            }
-
-            int start = i;
-            i++;
-            while (i < out.length() && isLookupNamePart(out.charAt(i))) {
-                i++;
-            }
-            String identifier = out.substring(start, i);
-            LookupDefinition table = findLookupTable(equationScope, identifier);
-            if (table == null || "lookup".equalsIgnoreCase(identifier)) {
-                continue;
-            }
-
-            int j = i;
-            while (j < out.length() && Character.isWhitespace(out.charAt(j))) {
-                j++;
-            }
-            if (j >= out.length() || out.charAt(j) != '(') {
-                continue;
-            }
-
-            int close = findMatchingParenForLookup(out, j);
-            if (close < 0) {
-                break;
-            }
-            String argExpr = out.substring(j + 1, close).trim();
-            String replacement = "lookup(" + identifier + ", " + argExpr + ")";
-            out = out.substring(0, start) + replacement + out.substring(close + 1);
-            i = start + replacement.length();
-        }
-        return out;
-    }
-
-    private int findFunctionCall(String expr, String name, int fromIndex) {
-        String lower = expr.toLowerCase();
-        String needle = name.toLowerCase();
-        int idx = fromIndex;
-        while (true) {
-            idx = lower.indexOf(needle, idx);
-            if (idx < 0) {
-                return -1;
-            }
-            int end = idx + needle.length();
-            if (idx > 0 && isLookupNamePart(expr.charAt(idx - 1))) {
-                idx = end;
-                continue;
-            }
-            int j = end;
-            while (j < expr.length() && Character.isWhitespace(expr.charAt(j))) {
-                j++;
-            }
-            if (j < expr.length() && expr.charAt(j) == '(') {
-                return idx;
-            }
-            idx = end;
-        }
-    }
-
-    private int findMatchingParenForLookup(String text, int openIndex) {
-        int depth = 0;
-        for (int i = openIndex; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (c == '(') {
-                depth++;
-            } else if (c == ')') {
-                depth--;
-                if (depth == 0) {
-                    return i;
-                }
-            }
-        }
-        return -1;
-    }
-
-    private int findTopLevelComma(String text) {
-        int depth = 0;
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (c == '(') {
-                depth++;
-            } else if (c == ')') {
-                depth--;
-            } else if (c == ',' && depth == 0) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private boolean isLookupNameStart(char c) {
-        return Character.isLetter(c) || c == '_' || c == '\\';
-    }
-
-    private boolean isLookupNamePart(char c) {
-        return Character.isLetterOrDigit(c) || c == '_' || c == '\\' || c == '^' || c == '{' || c == '}' || c == '.';
-    }
-
-    /**
-     * Split an alias-form left side "X - term" into ["X", "term"].
-     * Returns [left, null] when alias pattern is not detected.
-     */
-    private String[] splitDifferenceLeftAlias(String left) {
-        if (left == null) {
-            return new String[] { "", null };
-        }
-
-        String trimmed = left.trim();
-        if (trimmed.isEmpty()) {
-            return new String[] { "", null };
-        }
-
-        int minusIdx = trimmed.indexOf('-');
-        if (minusIdx <= 0) {
-            return new String[] { trimmed, null };
-        }
-
-        // Do not treat flow target separators as alias subtraction.
-        if (minusIdx + 1 < trimmed.length() && trimmed.charAt(minusIdx + 1) == '>') {
-            return new String[] { trimmed, null };
-        }
-        if (trimmed.indexOf("-||-") >= 0) {
-            return new String[] { trimmed, null };
-        }
-
-        String candidateName = trimmed.substring(0, minusIdx).trim();
-        String candidateOffset = trimmed.substring(minusIdx + 1).trim();
-        if (candidateOffset.isEmpty() || !looksLikeSimpleVariableName(candidateName)) {
-            return new String[] { trimmed, null };
-        }
-
-        return new String[] { candidateName, candidateOffset };
-    }
-
-    /** Conservative variable-name check for left-side alias detection. */
-    private boolean looksLikeSimpleVariableName(String name) {
-        if (name == null || name.isEmpty()) {
-            return false;
-        }
-
-        char first = name.charAt(0);
-        if (!(Character.isLetter(first) || first == '_' || first == '\\')) {
-            return false;
-        }
-
-        for (int i = 1; i < name.length(); i++) {
-            char c = name.charAt(i);
-            if (!(Character.isLetterOrDigit(c) || c == '_' || c == '\\' || c == '^' || c == '{' || c == '}' || c == '.')) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-    
-    /** Check whether @scope at startIndex is block-form (@scope ... @end). */
-    private boolean looksLikeScopeBlock(String[] lines, int startIndex) {
-        int i = startIndex + 1;
-        while (i < lines.length) {
-            String line = lines[i].trim();
-            if (line.isEmpty() || line.startsWith("#")) {
-                i++;
-                continue;
-            }
-            if (line.equals("@end")) {
-                return true;
-            }
-            if (line.startsWith("@")) {
-                return false;
-            }
-            return true;
-        }
-        return false;
-    }
-
-    /** Parse legacy lookup dump line from @circuit and register the table. */
-    private String parseLookupDumpLineFromCircuit(String line) {
-        if (line == null) {
-            return null;
-        }
-
-        String trimmed = line.trim();
-        if (!trimmed.startsWith("lookup ")) {
-            return null;
-        }
-
-        String[] tokens = trimmed.split("\\s+");
-        if (tokens.length < 4) {
-            return null;
-        }
-
-        String lookupName = SFCRUtil.normalizeVariableName(tokens[1]);
-        if (lookupName == null || lookupName.isEmpty()) {
-            return null;
-        }
-
-        String scopeName = null;
-        LookupDefinition table = new LookupDefinition();
-        table.name = lookupName;
-
-        for (int j = 2; j < tokens.length; j++) {
-            String token = tokens[j];
-            if (token == null) {
-                continue;
-            }
-
-            String part = token.trim();
-            if (part.isEmpty()) {
-                continue;
-            }
-
-            if (part.startsWith("scope=")) {
-                String scopeToken = part.substring(6).trim();
-                if (!scopeToken.isEmpty()) {
-                    scopeName = SFCRUtil.normalizeVariableName(scopeToken);
-                }
-                continue;
-            }
-
-            LookupPoint point = parseLookupPoint(part);
-            if (point != null) {
-                table.xs.add(Double.valueOf(point.x));
-                table.ys.add(Double.valueOf(point.y));
-            }
-        }
-
-        if (table.xs.size() < 2) {
-            return null;
-        }
-        if (!isStrictlyIncreasing(table.xs)) {
-            return null;
-        }
-
-        if (scopeName == null || scopeName.isEmpty()) {
-            globalLookupTables.put(table.name, table);
-            LookupTableRegistry.register(table);
-            return table.name;
-        }
-
-        table.scope = scopeName;
-        HashMap<String, LookupDefinition> byScope = scopedLookupTables.get(scopeName);
-        if (byScope == null) {
-            byScope = new HashMap<String, LookupDefinition>();
-            scopedLookupTables.put(scopeName, byScope);
-        }
-        byScope.put(table.name, table);
-        LookupTableRegistry.register(table);
-        return scopeName + ":" + table.name;
-    }
-
-    private String inferBlockTypeFromCircuitDumpLine(String line) {
-        if (line == null || line.isEmpty()) {
-            return null;
-        }
-
-        int space = line.indexOf(' ');
-        String token = (space > 0) ? line.substring(0, space) : line;
-
-        int dumpType;
-        try {
-            dumpType = Integer.parseInt(token);
-        } catch (Exception e) {
-            return null;
-        }
-
-        if (dumpType == 266) return "equations";
-        if (dumpType == 265) return "matrix";
-        if (dumpType == 466) return "sankey";
-        if (dumpType == 432) return "action";
-        return null;
-    }
-    
     /** Get raw circuit lines for standard element loader. */
     public ArrayList<String> getRawCircuitLines() {
         return rawCircuitLines;
@@ -1252,111 +813,32 @@ public class SFCRParser {
         return infoContent;
     }
     
-    // =========================================================================
-    // R-Style sfcr Syntax Support
-    // =========================================================================
-    
-    /** Extract assignment name from R-style block: name <- sfcr_... */
-    private String extractRStyleAssignmentName(String block, String defaultName) {
-        if (block == null) {
-            return defaultName;
+    private static String[] parseTableRowCommon(String line, boolean requireWrappedPipes) {
+        if (line == null) {
+            return new String[0];
         }
-        int assignIdx = block.indexOf("<-");
-        if (assignIdx > 0) {
-            String name = block.substring(0, assignIdx).trim();
-            if (!name.isEmpty()) {
-                return name;
-            }
+        String trimmed = line.trim();
+        if (trimmed.isEmpty()) {
+            return new String[0];
         }
-        return defaultName;
-    }
+        if (requireWrappedPipes && (!trimmed.startsWith("|") || !trimmed.endsWith("|"))) {
+            return new String[0];
+        }
+        if (trimmed.startsWith("|")) {
+            trimmed = trimmed.substring(1);
+        }
+        if (trimmed.endsWith("|")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1);
+        }
 
-    /** Consume and parse one or more metadata comments (# [ ... ]) from pending comments. */
-    private RStyleBlockMetadata consumeRStyleMetadataFromComments(Vector<String> pendingComments) {
-        return rStyleParseService.consumeMetadataFromComments(pendingComments);
-    }
-
-    // R-style parsing methods removed - normalization now happens via SFCRSyntaxNormalizer
-    // before the main parse() method runs, consolidating both code paths.
-    
-    // =========================================================================
-    // Helper Methods
-    // =========================================================================
-    
-    /** Extract block name: "@matrix Foo" -> "Foo". */
-    private String extractBlockName(String line, String keyword) {
-        BlockPosition pos = parseBlockHeader(line, keyword);
-        return pos.name;
-    }
-    
-    /**
-     * Parse block header with optional position.
-     * Format: "@keyword Name x=100 y=200" or "@keyword Name"
-     * Position can be in any order: "@keyword x=100 y=200 Name" also works.
-     */
-    private BlockPosition parseBlockHeader(String line, String keyword) {
-        String rest = line.substring(keyword.length()).trim();
-        BlockPosition pos = new BlockPosition(keyword.substring(1)); // Default name is keyword without @
-        
-        if (rest.isEmpty()) {
-            return pos;
-        }
-        
-        // Parse x=N and y=N if present
-        StringBuilder nameBuilder = new StringBuilder();
-        String[] parts = rest.split("\\s+");
-        
-        for (String part : parts) {
-            if (part.toLowerCase().startsWith("x=")) {
-                try {
-                    pos.x = Integer.parseInt(part.substring(2));
-                } catch (NumberFormatException e) {
-                    // Ignore invalid x value
-                }
-            } else if (part.toLowerCase().startsWith("y=")) {
-                try {
-                    pos.y = Integer.parseInt(part.substring(2));
-                } catch (NumberFormatException e) {
-                    // Ignore invalid y value
-                }
-            } else {
-                // Part of the name
-                if (nameBuilder.length() > 0) {
-                    nameBuilder.append(" ");
-                }
-                nameBuilder.append(part);
-            }
-        }
-        
-        if (nameBuilder.length() > 0) {
-            pos.name = nameBuilder.toString();
-        }
-        
-        return pos;
-    }
-    
-    /** Parse markdown table row: "| a | b | c |" -> ["a", "b", "c"]. */
-    private String[] parseTableRow(String line) {
-        // Remove leading/trailing pipes
-        if (line.startsWith("|")) line = line.substring(1);
-        if (line.endsWith("|")) line = line.substring(0, line.length() - 1);
-        
-        String[] parts = line.split("\\|", -1);  // -1 to keep trailing empty strings
-        
-        // Filter out completely empty trailing parts (from trailing whitespace before |)
-        // and trim each cell
-        ArrayList<String> cells = new ArrayList<String>();
+        String[] parts = trimmed.split("\\|", -1);
+        ArrayList<String> cells = new ArrayList<String>(parts.length);
         for (int i = 0; i < parts.length; i++) {
-            String cell = parts[i].trim();
-            // Always add cells (even empty ones) except trailing empty after last real content
-            cells.add(cell);
+            cells.add(parts[i].trim());
         }
-        
-        // Remove trailing empty cells
         while (!cells.isEmpty() && cells.get(cells.size() - 1).isEmpty()) {
             cells.remove(cells.size() - 1);
         }
-        
         return cells.toArray(new String[0]);
     }
 
@@ -1410,108 +892,6 @@ public class SFCRParser {
         return defaultValue;
     }
 
-    // =========================================================================
-    // Element Creation
-    // =========================================================================
-    
-    /** Create matrix table element from parsed matrix data. */
-    private void createMatrixTable(String name, ArrayList<String> columnNames,
-                                   ArrayList<String> rowNames, ArrayList<String[]> tableRows,
-                                   String matrixType, Boolean showInitialValuesOverride,
-                                   Boolean showFlowValuesOverride,
-                                   Boolean useBackwardEulerOverride) {
-        SFCRTableDumpBuilderService.DumpBuildResult build = tableDumpBuilderService.buildMatrixDump(
-            name, currentX, currentY, columnNames, rowNames, tableRows, showInitialValuesOverride);
-        if (build == null) {
-            CirSim.console("SFCRParser: Skipping matrix table '" + name + "' because table shape is invalid");
-            return;
-        }
-        String dumpString = build.dump;
-        int y2 = build.y2;
-        
-        // --- Result-mode: collect dump without instantiating elements ---
-        if (pendingResult != null) {
-            pendingResult.blockDumps.add(new SFCRParseResult.BlockDump("matrix", name, dumpString));
-            currentY = y2 + elementSpacing;
-            return;
-        }
-        
-        // Create element by parsing the dump string
-        CirSim.console("Creating SFCTable: " + name);
-        
-        try {
-            StringTokenizer st = new StringTokenizer(dumpString);
-            int type = Integer.parseInt(st.nextToken());
-            int xa = Integer.parseInt(st.nextToken());
-            int ya = Integer.parseInt(st.nextToken());
-            int xb = Integer.parseInt(st.nextToken());
-            int yb = Integer.parseInt(st.nextToken());
-            int flags = Integer.parseInt(st.nextToken());
-            
-            CircuitElm ce = ElementFactoryFacade.createFromDumpType(type, xa, ya, xb, yb, flags, st);
-            if (ce != null) {
-                ce.setPointsForImportExport();  // Initialize geometry (required after construction)
-                sim.getImportExportHelper().assignPersistentUid(ce, null);
-                sim.elmList.addElement(ce);
-                createdElements.add(ce);
-                currentY = yb + elementSpacing;
-            } else {
-                CirSim.console("SFCRParser: Failed to instantiate matrix table '" + name + "' (createCe returned null)");
-            }
-        } catch (Exception e) {
-            CirSim.console("Error creating matrix table '" + name + "': " + e.toString());
-            e.printStackTrace();
-        }
-    }
-
-    /** Create EquationTableElm from parsed equation data. */
-    private void createEquationTable(String name, ArrayList<String> outputNames,
-                                     ArrayList<String> equations,
-                                     ArrayList<Integer> outputModes,
-                                     ArrayList<String> targetNodeNames,
-                                     ArrayList<String> sliderVarNames,
-                                     ArrayList<Double> sliderValues,
-                                     ArrayList<String> initialEquations) {
-        SFCRTableDumpBuilderService.DumpBuildResult build = tableDumpBuilderService.buildEquationDump(
-            name, currentX, currentY, outputNames, equations, outputModes, targetNodeNames,
-            sliderVarNames, sliderValues, initialEquations);
-        if (build == null) {
-            return;
-        }
-        String dumpString = build.dump;
-        int y2 = build.y2;
-        
-        // --- Result-mode: collect dump without instantiating elements ---
-        if (pendingResult != null) {
-            pendingResult.blockDumps.add(new SFCRParseResult.BlockDump("equations", name, dumpString));
-            currentY = y2 + elementSpacing;
-            return;
-        }
-        
-        // CirSim.console("Creating EquationTable: " + name + " with " + rows + " equations");
-        
-        try {
-            StringTokenizer st = new StringTokenizer(dumpString);
-            int type = Integer.parseInt(st.nextToken());
-            int xa = Integer.parseInt(st.nextToken());
-            int ya = Integer.parseInt(st.nextToken());
-            int xb = Integer.parseInt(st.nextToken());
-            int yb = Integer.parseInt(st.nextToken());
-            int flags = Integer.parseInt(st.nextToken());
-            
-            CircuitElm ce = ElementFactoryFacade.createFromDumpType(type, xa, ya, xb, yb, flags, st);
-            if (ce != null) {
-                ce.setPointsForImportExport();  // Initialize geometry (required after construction)
-                sim.getImportExportHelper().assignPersistentUid(ce, null);
-                sim.elmList.addElement(ce);
-                createdElements.add(ce);
-                currentY = yb + elementSpacing;
-            }
-        } catch (Exception e) {
-            CirSim.console("Error creating EquationTable: " + e.getMessage());
-        }
-    }
-    
     /** Add scopes from parsed @scope blocks and legacy @scope var lines. */
     private void addScopes() {
         boolean addedAny = false;
