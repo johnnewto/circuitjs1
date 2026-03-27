@@ -473,19 +473,31 @@ public class Scope {
 	return visiblePlots != null ? visiblePlots.size() : 0;
     }
 
-    public CircuitElm getVisiblePlotElement(int index) {
-	if (visiblePlots == null || index < 0 || index >= visiblePlots.size()) {
+    private boolean isValidIndex(Vector<ScopePlot> targetPlots, int index) {
+	return targetPlots != null && index >= 0 && index < targetPlots.size();
+    }
+
+    private ScopePlot getVisiblePlotOrNull(int index) {
+	if (!isValidIndex(visiblePlots, index)) {
 	    return null;
 	}
-	ScopePlot plot = visiblePlots.get(index);
+	return visiblePlots.get(index);
+    }
+
+    private ScopePlot getPlotOrNull(int index) {
+	if (!isValidIndex(plots, index)) {
+	    return null;
+	}
+	return plots.get(index);
+    }
+
+    public CircuitElm getVisiblePlotElement(int index) {
+	ScopePlot plot = getVisiblePlotOrNull(index);
 	return plot != null ? plot.elm : null;
     }
 
     public String getVisiblePlotText(int index) {
-	if (visiblePlots == null || index < 0 || index >= visiblePlots.size()) {
-	    return null;
-	}
-	ScopePlot plot = visiblePlots.get(index);
+	ScopePlot plot = getVisiblePlotOrNull(index);
 	if (plot == null || plot.elm == null) {
 	    return null;
 	}
@@ -493,10 +505,7 @@ public class Scope {
     }
 
     public double getVisiblePlotLastValue(int index) {
-	if (visiblePlots == null || index < 0 || index >= visiblePlots.size()) {
-	    return 0.0;
-	}
-	ScopePlot plot = visiblePlots.get(index);
+	ScopePlot plot = getVisiblePlotOrNull(index);
 	return plot != null ? plot.lastValue : 0.0;
     }
 
@@ -519,17 +528,16 @@ public class Scope {
     }
 
     public VisiblePlotView getVisiblePlotView(int index) {
-	if (visiblePlots == null || index < 0 || index >= visiblePlots.size()) {
-	    return null;
-	}
-	return new VisiblePlotView(visiblePlots.get(index));
+	ScopePlot plot = getVisiblePlotOrNull(index);
+	return plot == null ? null : new VisiblePlotView(plot);
     }
 
     public void setVisiblePlotAcCoupled(int index, boolean acCoupled) {
-	if (visiblePlots == null || index < 0 || index >= visiblePlots.size()) {
+	ScopePlot plot = getVisiblePlotOrNull(index);
+	if (plot == null) {
 	    return;
 	}
-	visiblePlots.get(index).setAcCoupled(acCoupled);
+	plot.setAcCoupled(acCoupled);
     }
     
     /**
@@ -1505,12 +1513,13 @@ public class Scope {
     		scale[i] = 1e-4;
     	}
     	
-    	int si;
+    	int[] historyIndexRange = getHistoryVisibleIndexRange(frame);
+	int si;
     	somethingSelected = false;  // is one of our plots selected?
     	
     	for (si = 0; si != visiblePlots.size(); si++) {
     	    ScopePlot plot = visiblePlots.get(si);
-    	    calcPlotScale(plot);
+    	    calcPlotScale(plot, frame, historyIndexRange);
     	    if (sim.getScopeSelectedIndexForScope() == -1 && plot.elm !=null && plot.elm.isMouseElmForUi())
     		somethingSelected = true;
     	    reduceRange[plot.units] = true;
@@ -1530,7 +1539,7 @@ public class Scope {
     	}
     	
     	if ((allPlotsSameUnits || showMax || showMin) && visiblePlots.size() > 0)
-    	    calcMaxAndMin(visiblePlots.firstElement().units);
+    	    calcMaxAndMin(visiblePlots.firstElement().units, frame, historyIndexRange);
     	
         ScopeWaveformRenderer.render(this, g, frame, allPlotsSameUnits, sel);
 
@@ -1622,7 +1631,7 @@ public class Scope {
 
     
     // calculate maximum and minimum values for all plots of given units
-    private void calcMaxAndMin(int units) {
+    private void calcMaxAndMin(int units, ScopeFrameContext frame, int[] historyIndexRange) {
 	maxValue = -1e8;
 	minValue = 1e8;
     	int i;
@@ -1631,42 +1640,61 @@ public class Scope {
     	    ScopePlot plot = visiblePlots.get(si);
     	    if (plot.units != units)
     		continue;
-			    int displayWidth = getDisplaySampleWidth(plot);
-		    if (displayWidth <= 0)
-			continue;
-		    int ipa = plot.startIndex(displayWidth);
-    	    double maxV[] = plot.maxValues;
-    	    double minV[] = plot.minValues;
-		    for (i = 0; i != displayWidth; i++) {
-    		int ip = (i+ipa) & (scopePointCount-1);
-    		if (maxV[ip] > maxValue)
-    		    maxValue = maxV[ip];
-    		if (minV[ip] < minValue)
-    		    minValue = minV[ip];
-    	    }
+            if (historyIndexRange != null && plot.historyMinValues != null && plot.historyMaxValues != null) {
+                double[] historyMinMax = ScopeScaler.calcMinMaxInRange(plot.historyMinValues, plot.historyMaxValues,
+                        historyIndexRange[0], historyIndexRange[1]);
+                if (historyMinMax == null) {
+                    continue;
+                }
+                if (historyMinMax[1] > maxValue) {
+                    maxValue = historyMinMax[1];
+                }
+                if (historyMinMax[0] < minValue) {
+                    minValue = historyMinMax[0];
+                }
+                continue;
+            }
+            int displayWidth = getDisplaySampleWidth(plot, frame);
+            if (displayWidth <= 0)
+                continue;
+            int ipa = plot.startIndex(displayWidth);
+            double maxV[] = plot.maxValues;
+            double minV[] = plot.minValues;
+            for (i = 0; i != displayWidth; i++) {
+                int ip = (i+ipa) & (scopePointCount-1);
+                if (maxV[ip] > maxValue)
+                    maxValue = maxV[ip];
+                if (minV[ip] < minValue)
+                    minValue = minV[ip];
+            }
         }
     }
     
     // adjust scale of a plot
-    private void calcPlotScale(ScopePlot plot) {
+    private void calcPlotScale(ScopePlot plot, ScopeFrameContext frame, int[] historyIndexRange) {
 		if (manualScale)
 			return;
     	int i;
-		int displayWidth = getDisplaySampleWidth(plot);
-		if (displayWidth <= 0)
-		    return;
-		int ipa = plot.startIndex(displayWidth);
-    	double maxV[] = plot.maxValues;
-    	double minV[] = plot.minValues;
     	double max = 0;
+        if (historyIndexRange != null && plot.historyMinValues != null && plot.historyMaxValues != null) {
+            max = ScopeScaler.calcMaxAbsInRange(plot.historyMinValues, plot.historyMaxValues,
+                    historyIndexRange[0], historyIndexRange[1]);
+        } else {
+            int displayWidth = getDisplaySampleWidth(plot, frame);
+            if (displayWidth <= 0)
+                return;
+            int ipa = plot.startIndex(displayWidth);
+            double maxV[] = plot.maxValues;
+            double minV[] = plot.minValues;
+            for (i = 0; i != displayWidth; i++) {
+                int ip = (i+ipa) & (scopePointCount-1);
+                if (maxV[ip] > max)
+                    max = maxV[ip];
+                if (minV[ip] < -max)
+                    max = -minV[ip];
+            }
+        }
     	double gridMax = scale[plot.units];
-		for (i = 0; i != displayWidth; i++) {
-    	    int ip = (i+ipa) & (scopePointCount-1);
-    	    if (maxV[ip] > max)
-    			max = maxV[ip];
-    	    if (minV[ip] < -max)
-    			max = -minV[ip];
-    	}
     	scale[plot.units] = ScopeScaler.computeAutoScale(gridMax, max, maxScale, maxScaleLimit[plot.units]);
     }
     
@@ -1751,7 +1779,9 @@ public class Scope {
 	    double minV[] = plot.minValues;
 	    boolean multiLhsEnabled = frame.displayConfig.isMultiLhsActive(visiblePlots != null ? visiblePlots.size() : 0);
             ScopeDisplayConfig config = frame.displayConfig;
-	    double[] axisRange = (!isManualScale() && multiLhsEnabled) ? calcMultiLhsAxisRange(plot, minV, maxV) : null;
+	    int[] historyIndexRange = getHistoryVisibleIndexRange(frame);
+	    double[] axisRange = (!isManualScale() && multiLhsEnabled)
+	            ? calcMultiLhsAxisRange(plot, minV, maxV, historyIndexRange) : null;
 	    PlotScaleResult scaleResult = frame.plotScaleResults.get(plot);
 	    if (scaleResult == null) {
 	        scaleResult = ScopeScaler.buildPlotScaleResult(
@@ -2321,7 +2351,12 @@ public class Scope {
         return ScopeLayout.getInfoTextAnchorX(getPlotAreaLeft());
     }
 
-    private double[] calcMultiLhsAxisRange(ScopePlot plot, double[] minV, double[] maxV) {
+    private double[] calcMultiLhsAxisRange(ScopePlot plot, double[] minV, double[] maxV, int[] historyIndexRange) {
+        if (historyIndexRange != null && plot.historyMinValues != null && plot.historyMaxValues != null) {
+            return ScopeScaler.calcMultiLhsAxisRangeLinear(plot.historyMinValues, plot.historyMaxValues,
+                    historyIndexRange[0], historyIndexRange[1], showNegative, scale[plot.units],
+                    MULTI_LHS_TICK_COUNT, MULTI_LHS_NICE_STEP_MULTIPLIERS);
+        }
         int displayWidth = getDisplaySampleWidth(plot);
         if (displayWidth <= 0) {
             return null;
@@ -2329,6 +2364,18 @@ public class Scope {
         int ipa = plot.startIndex(displayWidth);
         return ScopeScaler.calcMultiLhsAxisRange(minV, maxV, scopePointCount, ipa, displayWidth,
                 showNegative, scale[plot.units], MULTI_LHS_TICK_COUNT, MULTI_LHS_NICE_STEP_MULTIPLIERS);
+    }
+
+    private int[] getHistoryVisibleIndexRange(ScopeFrameContext frame) {
+        if (!frame.displayConfig.isDrawFromZeroActive()) {
+            return null;
+        }
+        return ScopeScaler.calcHistoryVisibleIndexRange(frame.displayConfig.autoScaleTime,
+                model.getHistorySize(),
+                frame.plotWidth,
+                sim.getTime() - startTime,
+                sim.getMaxTimeStep() * speed,
+                model.getHistorySampleInterval());
     }
 
     private void drawAverage(Graphics g) {
@@ -2619,10 +2666,7 @@ public class Scope {
     }
 
     ScopePlot getPlotAt(int index) {
-	if (plots == null || index < 0 || index >= plots.size()) {
-	    return null;
-	}
-	return plots.get(index);
+	return getPlotOrNull(index);
     }
 
     void removePlotAt(int index) {
@@ -2642,10 +2686,7 @@ public class Scope {
     }
 
     ScopePlot getVisiblePlotAt(int index) {
-	if (visiblePlots == null || index < 0 || index >= visiblePlots.size()) {
-	    return null;
-	}
-	return visiblePlots.get(index);
+	return getVisiblePlotOrNull(index);
     }
 
     void removePlotRef(ScopePlot plot) {
@@ -2655,16 +2696,12 @@ public class Scope {
     }
 
     public CircuitElm getPlotElement(int index) {
-	if (plots == null || index < 0 || index >= plots.size())
-	    return null;
-	ScopePlot sp = plots.get(index);
+	ScopePlot sp = getPlotOrNull(index);
 	return (sp == null) ? null : sp.elm;
     }
 
     public int getPlotValue(int index) {
-	if (plots == null || index < 0 || index >= plots.size())
-	    return VAL_VOLTAGE;
-	ScopePlot sp = plots.get(index);
+	ScopePlot sp = getPlotOrNull(index);
 	return (sp == null) ? VAL_VOLTAGE : sp.value;
     }
 

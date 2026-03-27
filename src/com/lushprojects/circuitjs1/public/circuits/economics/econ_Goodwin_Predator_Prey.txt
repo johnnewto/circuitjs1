@@ -1,0 +1,92 @@
+# Goodwin Predator-Prey Economy
+
+```{r}
+@init
+  timestep: 0.05
+  voltageUnit: p
+  timeUnit: yr
+  showDots: false
+  showVolts: true
+  showValues: true
+  showPower: false
+  autoAdjustTimestep: false
+  equationTableTolerance: 0.0001
+  convergenceCheckThreshold: 1000
+  infoViewerUpdateIntervalMs: 200
+@end
+```
+
+# Goodwin Predator-Prey Economy
+ A simple Goodwin-style macro cycle where employment behaves like the prey
+ and wage share behaves like the predator.
+
+ When profits are high, firms expand and employment rises.
+ High employment strengthens wage pressure, which raises the wage share and
+ compresses profits. Lower profits then slow hiring, employment falls, wage
+ pressure eases, and profitability recovers.
+
+ This gives a compact predator-prey interpretation of the economy:
+ - prey: employment.rate
+ - predator: wage.share
+
+```{r}
+Parameters <- sfcr_set(
+  # [ x=176 y=24 ]
+  e1 = productivity.growth ~ 0.02,  # Productivity growth rate  [mode=param, slider=a, sliderValue=0.5 ]
+  e2 = labor.force.growth ~ 0.01,  # Labor force growth rate  [mode=param, slider=b, sliderValue=0.5 ]
+  e3 = capital.output.ratio ~ 3,  # Capital-output ratio  [mode=param, slider=c, sliderValue=0.5 ]
+  e4 = depreciation ~ 0.01,  # Capital depreciation rate  [mode=param, slider=d, sliderValue=0.5 ]
+  e5 = phillips.intercept ~ 0.01,  # Baseline wage bargaining pressure  [mode=param, slider=e, sliderValue=0.5 ]
+  e6 = phillips.slope ~ 0.035  # Extra wage pressure from high employment  [mode=param, slider=f, sliderValue=0.5 ]
+)
+```
+
+```{r}
+Goodwin_Cycle <- sfcr_set(
+  # [ x=176 y=168 ]
+  e1 = profit.share ~ 1 - wage.share,  # Profit share of output  [mode=voltage, slider=a, sliderValue=0.5 ]
+  e2 = output.growth ~ profit.share / capital.output.ratio - depreciation,  # Output growth implied by the current profit share  [mode=voltage, slider=b, sliderValue=0.5 ]
+  e3 = wage.pressure ~ phillips.intercept + phillips.slope * employment.rate,  # Phillips curve wage pressure  [mode=voltage, slider=c, sliderValue=0.5 ]
+  e4 = wage.share ~ integrate(wage.share * (wage.pressure - productivity.growth)),  # Predator variable, the wage share of output  [mode=voltage, slider=d, sliderValue=0.5, initial=0.72 ]
+  e5 = employment.rate ~ integrate(employment.rate * (output.growth - productivity.growth - labor.force.growth)),  # Prey variable, the employment rate  [mode=voltage, slider=e, sliderValue=0.5, initial=0.94 ]
+  e6 = unemployment.rate ~ 1 - employment.rate  # One minus employment.rate  [mode=voltage, slider=f, sliderValue=0.5 ]
+)
+```
+
+@hints
+  productivity.growth: Productivity growth rate
+  labor.force.growth: Labor force growth rate
+  capital.output.ratio: Capital-output ratio
+  depreciation: Capital depreciation rate
+  phillips.intercept: Baseline wage bargaining pressure
+  phillips.slope: Extra wage pressure from high employment
+  profit.share: Profit share of output
+  output.growth: Output growth implied by the current profit share
+  wage.pressure: Phillips curve wage pressure
+  wage.share: Predator variable, the wage share of output
+  employment.rate: Prey variable, the employment rate
+  unemployment.rate: One minus employment.rate
+@end
+
+```{r}
+@scope Embedded_Scope_1 position=-1
+  x1: 400
+  y1: -144
+  x2: 784
+  y2: 16
+  elmUid: gkxkFe
+  speed: 16
+  flags: x6001206
+  source: uid:PEpx9m value:0
+  trace: uid:6Qc4rp value:0
+@end
+```
+
+```{r}
+@circuit
+207 832 -96 896 -96 164 wage.share U:6Qc4rp
+207 832 -48 896 -48 164 unemployment.rate U:PEpx9m
+431 224 -96 256 -64 0 300 true false U:mtuX_E
+@end
+```
+

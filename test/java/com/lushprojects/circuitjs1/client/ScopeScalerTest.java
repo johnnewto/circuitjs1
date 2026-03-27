@@ -2,6 +2,7 @@ package com.lushprojects.circuitjs1.client.scope;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.jupiter.api.Test;
 
@@ -42,5 +43,30 @@ class ScopeScalerTest {
         assertEquals(0.0, result.gridMid, 1e-12);
         assertEquals(ScopeScaler.getGridMaxFromManualScale(10, 0.25), result.gridMax, 1e-12);
         assertEquals(0.25, result.gridStepY, 1e-12);
+    }
+
+    @Test
+    void historyVisibleRangeUsesFullHistoryInAutoScaleTimeMode() {
+        int[] range = ScopeScaler.calcHistoryVisibleIndexRange(true, 12, 200, 9.0, 0.1, 0.05);
+        assertArrayEquals(new int[] {0, 12}, range);
+    }
+
+    @Test
+    void historyVisibleRangeTracksFixedWindowInDrawFromZeroMode() {
+        int[] range = ScopeScaler.calcHistoryVisibleIndexRange(false, 100, 40, 15.0, 0.5, 0.25);
+        assertArrayEquals(new int[] {0, 80}, range);
+
+        int[] slidingRange = ScopeScaler.calcHistoryVisibleIndexRange(false, 200, 20, 30.0, 1.0, 0.5);
+        assertArrayEquals(new int[] {20, 60}, slidingRange);
+    }
+
+    @Test
+    void minMaxAndMaxAbsRangeHelpersUseRequestedSlice() {
+        double[] min = {-1.0, -2.0, 0.5, -0.25};
+        double[] max = {1.2, 2.5, 3.0, 0.75};
+
+        assertEquals(3.0, ScopeScaler.calcMaxAbsInRange(min, max, 1, 3), 1e-12);
+        assertArrayEquals(new double[] {-2.0, 3.0}, ScopeScaler.calcMinMaxInRange(min, max, 1, 3), 1e-12);
+        assertNull(ScopeScaler.calcMinMaxInRange(min, max, 2, 2));
     }
 }

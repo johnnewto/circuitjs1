@@ -61,6 +61,18 @@ Inventory for files under src/com/lushprojects/circuitjs1/client.
 | `scope/ScopeModel.java` | Scope data model for plot lists and draw-from-zero history buffers/downsampling state | Scope, ScopePersistence |
 | `scope/ScopePersistence.java` | Scope dump/undump serialization and compatibility parsing | Scope, CircuitIOService, SFCR importer/exporter |
 | `scope/ScopeDataExporter.java` | Scope CSV/JSON export formatting for circular buffer and draw-from-zero history | Scope, ExportScopeDataDialog, ScopeViewerDialog |
+| `scope/Scope2DController.java` | 2D (XY) scope plotting helpers: point scaling, trace drawing, and fade behavior | Scope, ScopePlot, OutputElm, ProbeElm |
+| `scope/ScopeDisplayConfig.java` | Immutable display-mode flags for manual scale, FFT, XY, and multi-axis rendering | Scope, ScopeFrameContext, ScopeLayout |
+| `scope/ScopeFFTHelper.java` | FFT spectrum rendering helper for linear/log frequency plots | Scope, ScopePlot, FFT, Graphics |
+| `scope/ScopeFrameContext.java` | Per-frame scope layout/timing context shared across render and interaction passes | ScopeDisplayConfig, PlotScaleResult, ScopePlot |
+| `scope/ScopeInteractionController.java` | Cursor/time mapping and nearest-trace selection helpers for scope interactions | ScopeFrameContext, ScopeLayout, ScopePlot |
+| `scope/ScopeLayout.java` | Layout math for scope gutters, multi-LHS axes, and cursor-to-time coordinate mapping | ScopeFrameContext, ScopeAxisRenderer |
+| `scope/ScopeLifecycleController.java` | Lifecycle wrapper for rect/speed/reset/image operations delegated to Scope internals | Scope, ScopeModel lifecycle operations |
+| `scope/ScopeMenuController.java` | Handles scope context-menu command dispatch to Scope toggles and modes | Scope, ScopePopupMenu |
+| `scope/ScopeScaler.java` | Auto/manual scale calculations, nice-step generation, and axis range derivation | PlotScaleResult, ScopeAxisRenderer, ScopePlot |
+| `scope/ScopeSelectionService.java` | Selection/combine/separate helpers for scope plot composition and element assignment | Scope, ScopePlot, ScopeManager |
+| `scope/ScopeStatsService.java` | Statistical computations for scope traces: RMS, average, duty cycle, frequency | ScopePlot, Scope info overlays |
+| `scope/PlotScaleResult.java` | Value object capturing computed scale/axis results for a plotted trace | ScopeScaler, ScopeAxisRenderer, ScopeFrameContext |
 | `scope/ScopeGridRenderer.java` | Grid and background draw layer | Scope draw pipeline |
 | `scope/ScopeWaveformRenderer.java` | Waveform trace draw layer | ScopeFrameContext, ScopePlot |
 | `scope/ScopeAxisRenderer.java` | Axis labels/ticks/scales, multi-LHS gutter+legend, and bottom time-axis rendering | ScopeScaler, ScopeInteractionController, PlotScaleResult |
@@ -131,6 +143,7 @@ Inventory for files under src/com/lushprojects/circuitjs1/client.
 | `InfoViewerTableMarkdown.java` | Generates markdown documentation showing all circuit tables | TableElm, EquationTableElm, SFCTableElm, GodlyTableElm |
 | `SFCFlowElm.java` | Current source between two stocks representing economic flow | SFCStockElm, Expr, equation-based flow rate |
 | `SFCRDagBlocksViewer.java` | External popup showing equation dependency graph with Cytoscape | EquationTableElm, dependency analysis, Cytoscape |
+| `SFCRDagBlocksViewerTemplate.html` | Embedded Cytoscape/Dagre HTML template used by SFCR DAG dependency viewer | SFCRDagBlocksViewer, dependency graph rendering |
 | `SFCSankeyElm.java` | Standalone Sankey diagram visualizing flows from a linked SFC table | SFCSankeyRenderer, TableElm, layout modes |
 | `SFCStockElm.java` | Capacitor-based element representing economic sector stock (balance) | SFCFlowElm, LabeledNodeElm, companion model |
 | `SFCTableElm.java` | Stock-flow consistent table with sector columns and quad-entry accounting | TableElm, SFCTableRenderer, SFCSankeyRenderer |
@@ -382,6 +395,7 @@ Inventory for files under src/com/lushprojects/circuitjs1/client.
 | `LookupDefinition.java` | Data class holding lookup table name, scope, x/y values | LookupTableRegistry, Expr.lookup(), SFCR format |
 | `LookupTableRegistry.java` | Global runtime registry for lookup tables used by Expr.lookup() | LookupDefinition, SFCRParser, expression evaluation |
 | `RStyleParseService.java` | Normalizes R-style sfcr_set/sfcr_matrix syntax into canonical SFCR block lines | SFCRParser, RStyleBlockParseHandler, handler dispatch |
+| `SFCRSyntaxNormalizer.java` | Pre-normalizes mixed SFCR/R-style documents into block format before parser dispatch | SFCRParser, RStyleParseService, SFCR parsing flow |
 | `SFCRBlockCommentRegistry.java` | Creates composite keys for block comments by type and name | SFCRParser, SFCRDocumentState, block comment storage |
 | `SFCRDocumentManager.java` | Manages SFCR document state and model info menu items | SFCRDocumentState, MenuItem, model info UI |
 | `SFCRDocumentState.java` | Holds document metadata: block comments, model info, current file | SFCRDocumentManager, circuit file state |
@@ -405,6 +419,7 @@ Inventory for files under src/com/lushprojects/circuitjs1/client.
 | `io/sfcr/SFCRBlockType.java` | Enum of logical SFCR block categories used by handlers/contexts | SFCRBlockExportHandler, registries |
 | `io/sfcr/SFCRExportContext.java` | Export-time context API exposing categorized data and helper operations | SFCRExporter, export handlers |
 | `io/sfcr/SFCRParseContext.java` | Parse-time context API exposing parser state mutations and helper operations | SFCRParser, parse handlers |
+| `io/sfcr/SFCRTemplateMerger.java` | Merges freshly exported structural SFCR blocks into an existing template while preserving prose | SFCRExporter, SFCRExportContext, template-based export |
 
 ## io/sfcr/handlers
 
@@ -426,7 +441,6 @@ Inventory for files under src/com/lushprojects/circuitjs1/client.
 | `io/sfcr/handlers/LookupBlockParseHandler.java` | Parses `@lookup` blocks and registers scoped/global lookup tables | SFCRParseContext, LookupTableRegistry |
 | `io/sfcr/handlers/MatrixBlockExportHandler.java` | Exports matrix tables from SFCTable elements | SFCRExportContext, SFCTableElm |
 | `io/sfcr/handlers/MatrixBlockParseHandler.java` | Parses `@matrix` markdown tables and creates matrix table elements | SFCRParseContext, SFCTableElm |
-| `io/sfcr/handlers/RStyleBlockParseHandler.java` | Parses R-style assignment blocks and dispatches normalized lines to block handlers | SFCRParseContext, RStyleParseService |
 | `io/sfcr/handlers/SFCRBlockExportHandler.java` | Export handler interface: block type, ordering, and export method contract | SFCRBlockExportHandlerRegistry |
 | `io/sfcr/handlers/SFCRBlockParseHandler.java` | Parse handler interface for directive coverage and parse progression | SFCRBlockParseHandlerRegistry |
 | `io/sfcr/handlers/SankeyBlockExportHandler.java` | Exports `@sankey` visualization blocks from SFCSankey elements | SFCRExportContext, SFCSankeyElm |
@@ -503,6 +517,7 @@ Inventory for files under src/com/lushprojects/circuitjs1/client.
 | `ReferenceDocs.java` | Opens markdown reference documents in iframe viewer | IframeViewerDialog, RequestBuilder |
 | `ScopePopupMenu.java` | Right-click context menu for scope operations (dock, stack, export) | MenuBar, CheckboxMenuItem, Scope |
 | `ScopeViewerDialog.java` | Opens scope data in interactive Plotly.js chart window | Scope, Plotly template, new window |
+| `ScopeViewerTemplate.html` | HTML/JavaScript template for interactive Plotly-based scope viewer pages | ScopeViewerDialog, scope data export UI |
 | `ScrollValuePopup.java` | Mouse scroll popup to adjust element values (E12 series) | PopupPanel, CircuitElm, wheel events |
 | `Scrollbar.java` | Custom scrollbar widget with canvas rendering and touch support | Canvas, mouse/touch handlers, Composite |
 | `SearchDialog.java` | Search/filter component list by name to add elements | ListBox, TextBox, mainMenuItems |

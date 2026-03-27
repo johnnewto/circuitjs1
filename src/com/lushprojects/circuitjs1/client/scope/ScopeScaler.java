@@ -69,6 +69,33 @@ final class ScopeScaler {
                 dataMax = maxValues[ip];
             }
         }
+        return buildAxisRange(dataMin, dataMax, showNegative, fallbackScale, tickCount, niceStepMultipliers);
+    }
+
+    static double[] calcMultiLhsAxisRangeLinear(double[] minValues, double[] maxValues,
+                                                int fromInclusive, int toExclusive, boolean showNegative,
+                                                double fallbackScale, int tickCount, double[] niceStepMultipliers) {
+        if (fromInclusive < 0 || toExclusive <= fromInclusive || maxValues == null || minValues == null) {
+            return null;
+        }
+        if (toExclusive > minValues.length || toExclusive > maxValues.length) {
+            return null;
+        }
+        double dataMin = Double.POSITIVE_INFINITY;
+        double dataMax = Double.NEGATIVE_INFINITY;
+        for (int i = fromInclusive; i < toExclusive; i++) {
+            if (minValues[i] < dataMin) {
+                dataMin = minValues[i];
+            }
+            if (maxValues[i] > dataMax) {
+                dataMax = maxValues[i];
+            }
+        }
+        return buildAxisRange(dataMin, dataMax, showNegative, fallbackScale, tickCount, niceStepMultipliers);
+    }
+
+    private static double[] buildAxisRange(double dataMin, double dataMax, boolean showNegative,
+                                           double fallbackScale, int tickCount, double[] niceStepMultipliers) {
         if (!(dataMax >= dataMin)) {
             return null;
         }
@@ -122,6 +149,76 @@ final class ScopeScaler {
             axisMax = 0;
         }
         return new double[] {axisMin, axisMax, step};
+    }
+
+    static int[] calcHistoryVisibleIndexRange(boolean autoScaleTime, int historySize, int plotWidth,
+                                              double elapsedTime, double timePerPixel, double historySampleInterval) {
+        if (historySize <= 0 || plotWidth <= 0 || !(historySampleInterval > 0)) {
+            return null;
+        }
+        if (autoScaleTime) {
+            return new int[] {0, historySize};
+        }
+        if (!(elapsedTime > 0) || !(timePerPixel > 0)) {
+            return null;
+        }
+        int pixelsNeeded = (int) (elapsedTime / timePerPixel);
+        int pixelsUsed = Math.min(pixelsNeeded, plotWidth);
+        if (pixelsUsed <= 0) {
+            return null;
+        }
+        double windowStartTime = 0;
+        if (pixelsUsed >= plotWidth) {
+            windowStartTime = Math.max(0, elapsedTime - plotWidth * timePerPixel);
+        }
+        double windowEndTime = windowStartTime + pixelsUsed * timePerPixel;
+        int startIndex = (int) (windowStartTime / historySampleInterval);
+        int endIndex = (int) Math.ceil(windowEndTime / historySampleInterval);
+        if (endIndex <= startIndex) {
+            endIndex = startIndex + 1;
+        }
+        startIndex = Math.max(0, Math.min(startIndex, historySize - 1));
+        endIndex = Math.max(startIndex + 1, Math.min(endIndex, historySize));
+        return new int[] {startIndex, endIndex};
+    }
+
+    static double calcMaxAbsInRange(double[] minValues, double[] maxValues, int fromInclusive, int toExclusive) {
+        double maxAbsValue = 0;
+        if (minValues == null || maxValues == null || fromInclusive < 0 || toExclusive <= fromInclusive) {
+            return maxAbsValue;
+        }
+        int end = Math.min(Math.min(minValues.length, maxValues.length), toExclusive);
+        for (int i = fromInclusive; i < end; i++) {
+            double localMaxAbs = Math.max(Math.abs(maxValues[i]), Math.abs(minValues[i]));
+            if (localMaxAbs > maxAbsValue) {
+                maxAbsValue = localMaxAbs;
+            }
+        }
+        return maxAbsValue;
+    }
+
+    static double[] calcMinMaxInRange(double[] minValues, double[] maxValues, int fromInclusive, int toExclusive) {
+        if (minValues == null || maxValues == null || fromInclusive < 0 || toExclusive <= fromInclusive) {
+            return null;
+        }
+        int end = Math.min(Math.min(minValues.length, maxValues.length), toExclusive);
+        if (fromInclusive >= end) {
+            return null;
+        }
+        double minValue = Double.POSITIVE_INFINITY;
+        double maxValue = Double.NEGATIVE_INFINITY;
+        for (int i = fromInclusive; i < end; i++) {
+            if (minValues[i] < minValue) {
+                minValue = minValues[i];
+            }
+            if (maxValues[i] > maxValue) {
+                maxValue = maxValues[i];
+            }
+        }
+        if (!(maxValue >= minValue)) {
+            return null;
+        }
+        return new double[] {minValue, maxValue};
     }
 
     static PlotScaleResult buildPlotScaleResult(boolean manualScale, boolean multiLhsAxesDrawEnabled,

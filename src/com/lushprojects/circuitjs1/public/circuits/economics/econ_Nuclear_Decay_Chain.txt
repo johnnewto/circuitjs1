@@ -1,0 +1,81 @@
+# Nuclear Decay Chain
+
+```{r}
+@init
+  timestep: 0.1
+  voltageUnit: 1/1
+  timeUnit: yr
+  showDots: false
+  showVolts: true
+  showValues: true
+  showPower: false
+  autoAdjustTimestep: false
+  equationTableTolerance: 0.0001
+  convergenceCheckThreshold: 1000
+  infoViewerUpdateIntervalMs: 200
+@end
+```
+
+# Nuclear Decay Chain
+ A simple 3-stage decay chain:
+ A -> B -> C
+
+ A and B decay exponentially. C is the accumulated stable daughter product.
+ This demonstrates coupled first-order ODEs with mass conservation.
+
+```{r}
+Parameters <- sfcr_set(
+  # [ x=176 y=24 ]
+  e1 = decay.A ~ 0.30,  # Decay rate (hazard) for isotope A  [mode=param, slider=a, sliderValue=0.5 ]
+  e2 = decay.B ~ 0.12,  # Decay rate (hazard) for isotope B  [mode=param, slider=b, sliderValue=0.5 ]
+  e3 = A0 ~ 1.0,  # Initial amount of isotope A  [mode=param, slider=c, sliderValue=0.5 ]
+  e4 = B0 ~ 0.0,  # Initial amount of isotope B  [mode=param, slider=d, sliderValue=0.5 ]
+  e5 = C0 ~ 0.0  # Initial amount of isotope C  [mode=param, slider=e, sliderValue=0.5 ]
+)
+```
+
+```{r}
+Nuclear_Chain <- sfcr_set(
+  # [ x=176 y=152 ]
+  e1 = A ~ integrate(-decay.A * A),  # Parent isotope stock  [mode=voltage, slider=a, sliderValue=0.5, initial=1.0 ]
+  e2 = B ~ integrate(decay.A * A - decay.B * B),  # Intermediate isotope stock  [mode=voltage, slider=b, sliderValue=0.5, initial=0.0 ]
+  e3 = C ~ integrate(decay.B * B),  # Stable daughter isotope stock  [mode=voltage, slider=c, sliderValue=0.5, initial=0.0 ]
+  e4 = total.mass ~ A + B + C  # A + B + C (should remain approximately constant)  [mode=voltage, slider=f, sliderValue=0.5 ]
+)
+```
+
+@hints
+  decay.A: Decay rate (hazard) for isotope A
+  decay.B: Decay rate (hazard) for isotope B
+  A: Parent isotope stock
+  B: Intermediate isotope stock
+  C: Stable daughter isotope stock
+  flow.AtoB: Decay flow from A into B
+  flow.BtoC: Decay flow from B into C
+  total.mass: A + B + C (should remain approximately constant)
+@end
+
+```{r}
+@scope Embedded_Scope_1 position=-1
+  x1: 464
+  y1: -112
+  x2: 768
+  y2: 96
+  elmUid: CfknEQ
+  speed: 4
+  flags: x6c03206
+  source: uid:TTR3H_ value:0
+  trace: uid:W-cQO0 value:0
+  trace: uid:OyWOM2 value:0
+@end
+```
+
+```{r}
+@circuit
+207 848 160 912 160 164 A U:W-cQO0
+207 848 64 912 64 164 B U:TTR3H_
+207 848 256 912 256 164 C U:OyWOM2
+431 256 -80 288 -64 0 50 true false U:jPJ1ND
+@end
+```
+
