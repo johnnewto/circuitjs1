@@ -72,22 +72,6 @@ public class SFCRExportContext {
         this.exportSyntax = syntax;
     }
     
-    /**
-     * Legacy constructor for backward compatibility.
-     * Copies current exporter state into the context.
-     * @deprecated Use the full constructor with sim and syntax parameters.
-     */
-    public SFCRExportContext(SFCRExporter exporter) {
-        this.exporter = exporter;
-        this.sim = exporter.getSim();
-        this.exportSyntax = exporter.getExportSyntax();
-        
-        // Copy mutable state from exporter for backward compatibility
-        // during transition period
-        this.lookupExportSpecs = exporter.getLookupExportSpecsInternal();
-        this.lookupExportBySignature = exporter.getLookupExportBySignatureInternal();
-        this.lookupCommentsByNameScope = exporter.getLookupCommentsByNameScopeInternal();
-    }
     
     // =========================================================================
     // Core Access
@@ -252,22 +236,7 @@ public class SFCRExportContext {
     }
 
     public void appendLeadingBlockComments(StringBuilder sb, String blockType, String blockName) {
-        if (sim == null || sb == null) {
-            return;
-        }
-        String key = SFCRBlockCommentRegistry.makeKey(blockType, blockName);
-        java.util.Vector<String> comments = sim.getSFCRDocumentState().getBlockComments(key);
-        if (comments == null || comments.size() == 0) {
-            return;
-        }
-        for (int i = 0; i < comments.size(); i++) {
-            String line = comments.get(i);
-            if (line == null) {
-                continue;
-            }
-            sb.append(line).append("\n");
-        }
-        sb.append("\n");
+        SFCRUtil.appendLeadingBlockComments(sim, sb, blockType, blockName);
     }
 
     public void appendExportBlock(StringBuilder sb, String block) {

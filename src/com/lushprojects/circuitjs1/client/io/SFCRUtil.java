@@ -6,6 +6,7 @@
 
 package com.lushprojects.circuitjs1.client.io;
 
+import com.lushprojects.circuitjs1.client.CirSim;
 import com.lushprojects.circuitjs1.client.CircuitElm;
 import com.lushprojects.circuitjs1.client.elements.economics.EquationTableElm;
 
@@ -46,6 +47,28 @@ public class SFCRUtil {
         int y = elm.y;
         if (x == 0 && y == 0) return "";
         return " x=" + x + " y=" + y;
+    }
+
+    /**
+     * Append preserved leading comments for a given block key.
+     */
+    public static void appendLeadingBlockComments(CirSim sim, StringBuilder sb, String blockType, String blockName) {
+        if (sim == null || sb == null) {
+            return;
+        }
+        String key = SFCRBlockCommentRegistry.makeKey(blockType, blockName);
+        java.util.Vector<String> comments = sim.getSFCRDocumentState().getBlockComments(key);
+        if (comments == null || comments.size() == 0) {
+            return;
+        }
+        for (int i = 0; i < comments.size(); i++) {
+            String line = comments.get(i);
+            if (line == null) {
+                continue;
+            }
+            sb.append(line).append("\n");
+        }
+        sb.append("\n");
     }
 
     // =========================================================================

@@ -15,7 +15,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.Vector;
 
 import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.registry.HintRegistry;
@@ -60,12 +59,7 @@ public class SFCRExporter {
     private CirSim sim;
     private ExportSyntax exportSyntax;
     private ArrayList<EquationTableElm> equationTables = new ArrayList<EquationTableElm>();
-    private ArrayList<SFCTableElm> sfcTables = new ArrayList<SFCTableElm>();
     private ArrayList<GodlyTableElm> godlyTables = new ArrayList<GodlyTableElm>();
-    private ArrayList<SFCSankeyElm> sankeyDiagrams = new ArrayList<SFCSankeyElm>();
-    private ArrayList<CircuitElm> otherElements = new ArrayList<CircuitElm>();
-    private ActionTimeElm actionTimeElmForExport = null;
-    private HashSet<CircuitElm> scopeElmsExportedAsBlocks = new HashSet<CircuitElm>();
     private ArrayList<LookupDefinition> lookupExportSpecs = new ArrayList<LookupDefinition>();
     private HashMap<String, LookupDefinition> lookupExportBySignature = new HashMap<String, LookupDefinition>();
     private HashMap<String, ArrayList<String>> lookupCommentsByNameScope = new HashMap<String, ArrayList<String>>();
@@ -114,8 +108,9 @@ public class SFCRExporter {
         // Categorize elements into the context
         categorizeElements(exportContext);
         
-        // Reset lookup extraction state
-        exportContext.resetLookupExportState();
+        // Reset and sync lookup state so handlers populate and read the same collections
+        resetLookupExportState();
+        syncLookupStateToContext(exportContext);
         
         // Build header comment
         sb.append("# CircuitJS1 SFCR Export\n");
@@ -137,21 +132,6 @@ public class SFCRExporter {
         }
         
         return normalizeBlankLinesOutsideFences(sb.toString());
-    }
-
-    /** Internal accessor for lookup export specs (used by context transition). */
-    public ArrayList<LookupDefinition> getLookupExportSpecsInternal() {
-        return lookupExportSpecs;
-    }
-    
-    /** Internal accessor for lookup export by signature (used by context transition). */
-    public HashMap<String, LookupDefinition> getLookupExportBySignatureInternal() {
-        return lookupExportBySignature;
-    }
-    
-    /** Internal accessor for lookup comments by name/scope (used by context transition). */
-    public HashMap<String, ArrayList<String>> getLookupCommentsByNameScopeInternal() {
-        return lookupCommentsByNameScope;
     }
 
     // =========================================================================
@@ -238,18 +218,19 @@ public class SFCRExporter {
     }
 
     private String exportWithTemplateMerge(String sourceText) {
-        scopeElmsExportedAsBlocks.clear();
         SFCRExportContext ctx = new SFCRExportContext(this, sim, exportSyntax);
+        ctx.clearScopeElmsExportedAsBlocks();
         categorizeElements(ctx);
         resetLookupExportState();
         seedLookupNamesFromTemplate(sourceText);
+        syncLookupStateToContext(ctx);
 
         ArrayList<String> equationBlocks = buildCanonicalEquationBlocks();
-        ArrayList<String> lookupBlocks = buildCanonicalLookupBlocks();
-        ArrayList<String> matrixBlocks = buildCanonicalMatrixBlocks();
-        ArrayList<String> sankeyBlocks = buildCanonicalSankeyBlocks();
-        ArrayList<String> scopeBlocks = buildCanonicalScopeBlocks();
-        String circuitBlock = extractStructuralPayload(exportCircuitElements());
+        ArrayList<String> lookupBlocks = buildCanonicalLookupBlocks(ctx);
+        ArrayList<String> matrixBlocks = buildCanonicalMatrixBlocks(ctx);
+        ArrayList<String> sankeyBlocks = buildCanonicalSankeyBlocks(ctx);
+        ArrayList<String> scopeBlocks = buildCanonicalScopeBlocks(ctx);
+        String circuitBlock = extractStructuralPayload(ctx.exportCircuitElements());
 
         int lookupIndex = 0;
         int eqIndex = 0;
@@ -540,32 +521,31 @@ public class SFCRExporter {
         return blocks;
     }
 
-    private ArrayList<String> buildCanonicalLookupBlocks() {
-        String lookupText = renderBlocksForType(SFCRBlockType.LOOKUP);
+    private ArrayList<String> buildCanonicalLookupBlocks(SFCRExportContext ctx) {
+        String lookupText = renderBlocksForType(SFCRBlockType.LOOKUP, ctx);
         return collectAtDirectiveBlocks(lookupText, "@lookup");
     }
 
-    private ArrayList<String> buildCanonicalMatrixBlocks() {
-        String matrixText = renderBlocksForType(SFCRBlockType.MATRIX);
+    private ArrayList<String> buildCanonicalMatrixBlocks(SFCRExportContext ctx) {
+        String matrixText = renderBlocksForType(SFCRBlockType.MATRIX, ctx);
         ArrayList<String> blocks = collectAtDirectiveBlocks(matrixText, "@matrix");
         blocks.addAll(collectRStyleBlocks(matrixText, "sfcr_matrix"));
         return blocks;
     }
 
-    private ArrayList<String> buildCanonicalSankeyBlocks() {
-        return collectAtDirectiveBlocks(renderBlocksForType(SFCRBlockType.SANKEY), "@sankey");
+    private ArrayList<String> buildCanonicalSankeyBlocks(SFCRExportContext ctx) {
+        return collectAtDirectiveBlocks(renderBlocksForType(SFCRBlockType.SANKEY, ctx), "@sankey");
     }
 
-    private ArrayList<String> buildCanonicalScopeBlocks() {
-        return collectAtDirectiveBlocks(renderBlocksForType(SFCRBlockType.SCOPE), "@scope");
+    private ArrayList<String> buildCanonicalScopeBlocks(SFCRExportContext ctx) {
+        return collectAtDirectiveBlocks(renderBlocksForType(SFCRBlockType.SCOPE, ctx), "@scope");
     }
 
-    private String renderBlocksForType(SFCRBlockType blockType) {
+    private String renderBlocksForType(SFCRBlockType blockType, SFCRExportContext context) {
         if (blockType == null) {
             return "";
         }
         StringBuilder out = new StringBuilder();
-        SFCRExportContext context = new SFCRExportContext(this);
         for (SFCRBlockExportHandler handler : SFCRBlockExportHandlerRegistry.getOrderedHandlers()) {
             if (handler.blockType() != blockType) {
                 continue;
@@ -582,7 +562,7 @@ public class SFCRExporter {
         return out.toString();
     }
 
-    private ArrayList<String> collectAtDirectiveBlocks(String text, String directive) {
+    private static ArrayList<String> collectAtDirectiveBlocks(String text, String directive) {
         ArrayList<String> blocks = new ArrayList<String>();
         if (text == null || text.trim().isEmpty() || directive == null || directive.isEmpty()) {
             return blocks;
@@ -609,7 +589,7 @@ public class SFCRExporter {
         return blocks;
     }
 
-    private ArrayList<String> collectRStyleBlocks(String text, String fnName) {
+    private static ArrayList<String> collectRStyleBlocks(String text, String fnName) {
         ArrayList<String> blocks = new ArrayList<String>();
         if (text == null || text.trim().isEmpty() || fnName == null || fnName.isEmpty()) {
             return blocks;
@@ -646,7 +626,7 @@ public class SFCRExporter {
         return blocks;
     }
 
-    private String extractStructuralPayload(String block) {
+    private static String extractStructuralPayload(String block) {
         if (block == null) {
             return "";
         }
@@ -663,7 +643,7 @@ public class SFCRExporter {
         return payload.toString().trim();
     }
 
-    private boolean looksLikeRStyleAssignmentStart(String trimmed) {
+    private static boolean looksLikeRStyleAssignmentStart(String trimmed) {
         if (trimmed == null || trimmed.isEmpty()) {
             return false;
         }
@@ -673,7 +653,7 @@ public class SFCRExporter {
         return trimmed.contains("sfcr_set") || trimmed.contains("sfcr_matrix");
     }
 
-    private TemplateBlockType detectTemplateBlockType(String text) {
+    private static TemplateBlockType detectTemplateBlockType(String text) {
         if (text == null || text.isEmpty()) {
             return TemplateBlockType.OTHER;
         }
@@ -699,7 +679,7 @@ public class SFCRExporter {
         return TemplateBlockType.OTHER;
     }
 
-    private String wrapReplacementWithFenceLike(String fenceHeader, String replacement) {
+    private static String wrapReplacementWithFenceLike(String fenceHeader, String replacement) {
         String header = (fenceHeader == null || fenceHeader.trim().isEmpty()) ? "```{r}" : fenceHeader.trim();
         if (!header.startsWith("```")) {
             header = "```{r}";
@@ -712,7 +692,7 @@ public class SFCRExporter {
     }
 
     /** Collapse excessive blank lines outside fenced code blocks. */
-    private String normalizeBlankLinesOutsideFences(String text) {
+    private static String normalizeBlankLinesOutsideFences(String text) {
         if (text == null || text.isEmpty()) {
             return "";
         }
@@ -753,47 +733,24 @@ public class SFCRExporter {
         return normalized;
     }
 
-    private void appendExportBlock(StringBuilder sb, String block) {
-        if (sb == null || block == null) {
-            return;
-        }
-        String trimmed = block.trim();
-        if (trimmed.isEmpty()) {
-            return;
-        }
-        if (trimmed.startsWith("```")) {
-            sb.append(trimmed).append("\n\n");
-            return;
-        }
-        String[] lines = trimmed.split("\n");
-        int structuralStart = findStructuralStartLine(lines);
-
-        // Keep associated markdown/comments ABOVE the fenced structural block.
-        if (structuralStart > 0) {
-            for (int i = 0; i < structuralStart; i++) {
-                sb.append(lines[i]).append("\n");
-            }
-            sb.append("\n");
-        }
-
-        sb.append("```{r}\n");
-        if (structuralStart < lines.length) {
-            for (int i = structuralStart; i < lines.length; i++) {
-                sb.append(lines[i]).append("\n");
-            }
-        }
-        sb.append("```\n\n");
-    }
-
     private void resetLookupExportState() {
         lookupExportSpecs.clear();
         lookupExportBySignature.clear();
         lookupCommentsByNameScope.clear();
     }
 
-    // Kept for test/reflection compatibility during handler migration.
+    /** Alias the context's lookup collections to this exporter's lookup state so handlers can read them. */
+    private void syncLookupStateToContext(SFCRExportContext ctx) {
+        ctx.setLookupExportSpecs(lookupExportSpecs);
+        ctx.setLookupExportBySignature(lookupExportBySignature);
+        ctx.setLookupCommentsByNameScope(lookupCommentsByNameScope);
+    }
+
+    // Used by tests via reflection.
     private String exportLookupBlocks() {
-        return renderBlocksForType(SFCRBlockType.LOOKUP);
+        SFCRExportContext ctx = new SFCRExportContext(this, sim, exportSyntax);
+        syncLookupStateToContext(ctx);
+        return renderBlocksForType(SFCRBlockType.LOOKUP, ctx);
     }
 
     private String rewriteExpressionForLookupExport(String expr, String scopeName) {
@@ -903,7 +860,7 @@ public class SFCRExporter {
         lookupExportBySignature.put(signature, spec);
     }
 
-    private String buildLookupNameScopeKey(String name, String scopeName) {
+    private static String buildLookupNameScopeKey(String name, String scopeName) {
         String normName = SFCRUtil.sanitizeName(SFCRUtil.normalizeVariableName(name));
         String normScope = (scopeName == null || scopeName.isEmpty()) ? "" : SFCRUtil.sanitizeName(scopeName);
         return normScope + "|" + normName;
@@ -1021,7 +978,7 @@ public class SFCRExporter {
         return false;
     }
 
-    private String buildLookupSignatureFromPoints(String scopeName, ArrayList<Double> xs, ArrayList<Double> ys) {
+    private static String buildLookupSignatureFromPoints(String scopeName, ArrayList<Double> xs, ArrayList<Double> ys) {
         StringBuilder sb = new StringBuilder();
         if (scopeName != null && !scopeName.isEmpty()) {
             sb.append(SFCRUtil.sanitizeName(scopeName));
@@ -1038,7 +995,7 @@ public class SFCRExporter {
         return sb.toString();
     }
 
-    private int findFunctionCall(String expr, String name, int fromIndex) {
+    private static int findFunctionCall(String expr, String name, int fromIndex) {
         String lower = expr.toLowerCase();
         String needle = name.toLowerCase();
         int idx = fromIndex;
@@ -1063,7 +1020,7 @@ public class SFCRExporter {
         }
     }
 
-    private int findMatchingParenForExport(String text, int openIndex) {
+    private static int findMatchingParenForExport(String text, int openIndex) {
         int depth = 0;
         for (int i = openIndex; i < text.length(); i++) {
             char c = text.charAt(i);
@@ -1079,7 +1036,7 @@ public class SFCRExporter {
         return -1;
     }
 
-    private ArrayList<String> splitTopLevelArgs(String text) {
+    private static ArrayList<String> splitTopLevelArgs(String text) {
         ArrayList<String> out = new ArrayList<String>();
         int depth = 0;
         int start = 0;
@@ -1098,11 +1055,11 @@ public class SFCRExporter {
         return out;
     }
 
-    private boolean isIdentifierPart(char c) {
+    private static boolean isIdentifierPart(char c) {
         return Character.isLetterOrDigit(c) || c == '_' || c == '\\' || c == '^' || c == '{' || c == '}' || c == '.';
     }
 
-    private int findStructuralStartLine(String[] lines) {
+    private static int findStructuralStartLine(String[] lines) {
         if (lines == null || lines.length == 0) {
             return 0;
         }
@@ -1161,13 +1118,9 @@ public class SFCRExporter {
         ctx.setOtherElements(otherElms);
         ctx.setActionTimeElm(actionElm);
         
-        // Also update legacy fields for backward compatibility during transition
+        // Keep copies of these two for lookup naming logic (isEquationNameTakenInScope)
         equationTables = eqTables;
-        sfcTables = matrixTables;
         godlyTables = godlyTableList;
-        sankeyDiagrams = sankeyList;
-        otherElements = otherElms;
-        actionTimeElmForExport = actionElm;
     }
     
     /** Export model documentation as inline markdown (no @info wrapper). */
@@ -1252,7 +1205,7 @@ public class SFCRExporter {
         return out.toString().trim();
     }
 
-    private boolean startsStructuralSfcrBlock(String trimmed) {
+    private static boolean startsStructuralSfcrBlock(String trimmed) {
         if (trimmed == null || trimmed.isEmpty()) {
             return false;
         }
@@ -1269,7 +1222,7 @@ public class SFCRExporter {
             || trimmed.startsWith("@info");
     }
 
-    private boolean shouldKeepFencedInlineBlock(String block) {
+    private static boolean shouldKeepFencedInlineBlock(String block) {
         if (block == null || block.isEmpty()) {
             return false;
         }
@@ -1737,34 +1690,7 @@ public class SFCRExporter {
         return sb.toString();
     }
 
-    /** Export non-SFCR elements in @circuit block. */
-    private String exportCircuitElements() {
-        if (otherElements.isEmpty()) {
-            return "";
-        }
-        
-        StringBuilder sb = new StringBuilder();
-        sb.append("@circuit\n");
-        
-        for (CircuitElm elm : otherElements) {
-            if (elm instanceof ScopeElm) {
-                ScopeElm se = (ScopeElm) elm;
-                // Skip raw 403 dump when we can represent this scope in @scope block.
-                if (scopeElmsExportedAsBlocks.contains(elm) || canExportScopeAsBlock(se.elmScope)) {
-                    continue;
-                }
-            }
-            String dump = sim.getImportExportHelper().getElementDumpWithUid(elm);
-            if (dump != null && !dump.isEmpty()) {
-                sb.append(dump).append("\n");
-            }
-        }
-        
-        sb.append("@end\n");
-        return sb.toString();
-    }
-
-    private boolean canExportScopeAsBlock(Scope s) {
+    private static boolean canExportScopeAsBlock(Scope s) {
         if (s == null || s.getPlotCount() == 0) {
             return false;
         }
@@ -1862,12 +1788,12 @@ public class SFCRExporter {
     // Helpers
     // =========================================================================
 
-    private String toRAssignmentName(String name) {
+    private static String toRAssignmentName(String name) {
         String base = SFCRUtil.sanitizeName(name);
         return toRCodeIdentifier(base);
     }
 
-    private String toRCodeIdentifier(String text) {
+    private static String toRCodeIdentifier(String text) {
         if (text == null || text.length() == 0) {
             return "x";
         }
@@ -1882,7 +1808,7 @@ public class SFCRExporter {
         return cleaned;
     }
 
-    private String makeUniqueRCode(String base, Set<String> usedCodes) {
+    private static String makeUniqueRCode(String base, Set<String> usedCodes) {
         String safeBase = (base == null || base.length() == 0) ? "x" : base;
         String candidate = safeBase;
         int suffix = 1;
@@ -1894,7 +1820,7 @@ public class SFCRExporter {
         return candidate;
     }
 
-    private String joinRQuoted(ArrayList<String> values) {
+    private static String joinRQuoted(ArrayList<String> values) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < values.size(); i++) {
             if (i > 0) {
@@ -1905,14 +1831,14 @@ public class SFCRExporter {
         return sb.toString();
     }
 
-    private String escapeRString(String text) {
+    private static String escapeRString(String text) {
         if (text == null) {
             return "";
         }
         return text.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
-    private String formatRBlockMetadataComment(CircuitElm elm, String type) {
+    private static String formatRBlockMetadataComment(CircuitElm elm, String type) {
         if (elm == null) {
             return "";
         }
@@ -1925,7 +1851,7 @@ public class SFCRExporter {
         return sb.toString();
     }
 
-    private String formatRStyleEquationInlineMetadata(EquationTableElm.RowOutputMode mode,
+    private static String formatRStyleEquationInlineMetadata(EquationTableElm.RowOutputMode mode,
             String sliderVar, double sliderValue, String initialEq) {
         // Format: [mode=param, slider=foo, sliderValue=0, initial=... ]
         StringBuilder sb = new StringBuilder();
@@ -1942,7 +1868,7 @@ public class SFCRExporter {
     }
 
     /** Append an inline R-style comment from optional hint + metadata payload. */
-    private void appendRStyleInlineComment(StringBuilder sb, String hint, String rowMeta) {
+    private static void appendRStyleInlineComment(StringBuilder sb, String hint, String rowMeta) {
         String cleanHint = (hint == null) ? "" : hint.trim();
         String cleanMeta = (rowMeta == null) ? "" : rowMeta.trim();
         if (cleanHint.isEmpty() && cleanMeta.isEmpty()) {
@@ -1967,7 +1893,7 @@ public class SFCRExporter {
      * Remove trailing metadata chunks that may have leaked into hints from older
      * malformed imports (e.g. repeated "[mode=voltage ..." fragments).
      */
-    private String sanitizeHintForRStyleExport(String hint) {
+    private static String sanitizeHintForRStyleExport(String hint) {
         if (hint == null) {
             return null;
         }
@@ -2009,7 +1935,7 @@ public class SFCRExporter {
     }
 
     /** Heuristic check for comma-separated key=value metadata chunk. */
-    private boolean looksLikeRStyleMetadataChunk(String chunk) {
+    private static boolean looksLikeRStyleMetadataChunk(String chunk) {
         if (chunk == null) {
             return false;
         }
@@ -2038,26 +1964,11 @@ public class SFCRExporter {
     }
 
     /** Format position string for block header. */
-    private String formatPosition(CircuitElm elm) {
+    private static String formatPosition(CircuitElm elm) {
         return SFCRUtil.formatPosition(elm);
     }
 
     private void appendLeadingBlockComments(StringBuilder sb, String blockType, String blockName) {
-        if (sim == null || sb == null) {
-            return;
-        }
-        String key = SFCRBlockCommentRegistry.makeKey(blockType, blockName);
-        Vector<String> comments = sim.getSFCRDocumentState().getBlockComments(key);
-        if (comments == null || comments.size() == 0) {
-            return;
-        }
-        for (int i = 0; i < comments.size(); i++) {
-            String line = comments.get(i);
-            if (line == null) {
-                continue;
-            }
-            sb.append(line).append("\n");
-        }
-        sb.append("\n");
+        SFCRUtil.appendLeadingBlockComments(sim, sb, blockType, blockName);
     }
 }
