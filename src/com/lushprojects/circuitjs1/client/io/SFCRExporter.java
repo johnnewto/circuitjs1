@@ -2039,7 +2039,7 @@ public class SFCRExporter {
 
     /** Format position string for block header. */
     private String formatPosition(CircuitElm elm) {
-        return " x=" + elm.x + " y=" + elm.y;
+        return SFCRUtil.formatPosition(elm);
     }
 
     private void appendLeadingBlockComments(StringBuilder sb, String blockType, String blockName) {

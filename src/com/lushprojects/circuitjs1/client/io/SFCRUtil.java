@@ -6,6 +6,7 @@
 
 package com.lushprojects.circuitjs1.client.io;
 
+import com.lushprojects.circuitjs1.client.CircuitElm;
 import com.lushprojects.circuitjs1.client.elements.economics.EquationTableElm;
 
 /**
@@ -29,6 +30,79 @@ public class SFCRUtil {
     public static String sanitizeName(String name) {
         if (name == null) return "Unnamed";
         return name.replaceAll("\\s+", "_");
+    }
+
+    // =========================================================================
+    // Position formatting
+    // =========================================================================
+
+    /**
+     * Format position string for SFCR block header.
+     * Returns empty string if element is null or at origin.
+     */
+    public static String formatPosition(CircuitElm elm) {
+        if (elm == null) return "";
+        int x = elm.x;
+        int y = elm.y;
+        if (x == 0 && y == 0) return "";
+        return " x=" + x + " y=" + y;
+    }
+
+    // =========================================================================
+    // Token escaping (for CircuitJS dump format)
+    // =========================================================================
+
+    /**
+     * Escape a token for the CircuitJS dump format.
+     * Mirrors CustomLogicModel.escape() without loading that class.
+     */
+    public static String escapeToken(String s) {
+        if (s.length() == 0) return "\\0";
+        return s.replace("\\", "\\\\").replace("\n", "\\n").replace(" ", "\\s")
+                .replace("+", "\\p").replace("=", "\\q").replace("#", "\\h")
+                .replace("&", "\\a").replace("\r", "\\r");
+    }
+
+    // =========================================================================
+    // Combined name parsing (name->target notation)
+    // =========================================================================
+
+    /**
+     * Parse a combined "name-&gt;target" notation.
+     * Mirrors EquationTableElm.parseCombinedName() without loading that class.
+     * Returns [name, target] or [name, ""] if no separator found.
+     */
+    public static String[] parseCombinedName(String combined) {
+        if (combined == null) return new String[]{"", ""};
+        int arrowIdx = combined.indexOf("->");
+        int sepLen = 2;
+        if (arrowIdx < 0) { arrowIdx = combined.indexOf("-||-"); sepLen = 4; }
+        if (arrowIdx < 0) { arrowIdx = combined.indexOf("\u2192"); sepLen = 1; }   // \u2192 = →
+        if (arrowIdx < 0) { arrowIdx = combined.indexOf("\u22A3\u22A2"); sepLen = 2; }  // \u22A3\u22A2 = ⊣⊢
+        if (arrowIdx < 0) { arrowIdx = combined.indexOf(","); sepLen = 1; }
+        if (arrowIdx >= 0) {
+            return new String[]{
+                combined.substring(0, arrowIdx).trim(),
+                combined.substring(arrowIdx + sepLen).trim()
+            };
+        }
+        return new String[]{combined.trim(), ""};
+    }
+
+    // =========================================================================
+    // Mode ordinal parsing
+    // =========================================================================
+
+    /**
+     * Parse a row mode string to its ordinal value.
+     * Returns 0 for voltage mode, 1 for flow/stock mode, 3 for param mode.
+     */
+    public static int parseModeOrdinal(String mode) {
+        if (mode == null) return 0;
+        String m = mode.toLowerCase().trim();
+        if (m.equals("flow") || m.equals("flow_mode") || m.equals("stock") || m.equals("stock_mode")) return 1;
+        if (m.equals("param") || m.equals("parameter") || m.equals("param_mode")) return 3;
+        return 0;
     }
 
     // =========================================================================

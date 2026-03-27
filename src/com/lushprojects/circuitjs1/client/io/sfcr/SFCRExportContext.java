@@ -240,11 +240,7 @@ public class SFCRExportContext {
     // =========================================================================
     
     public String formatPosition(CircuitElm elm) {
-        if (elm == null) return "";
-        int x = elm.x;
-        int y = elm.y;
-        if (x == 0 && y == 0) return "";
-        return " x=" + x + " y=" + y;
+        return SFCRUtil.formatPosition(elm);
     }
 
     public String sanitizeName(String text) {
