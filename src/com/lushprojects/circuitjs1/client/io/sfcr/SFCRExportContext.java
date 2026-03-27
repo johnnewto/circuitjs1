@@ -976,10 +976,104 @@ public class SFCRExportContext {
     }
 
     // =========================================================================
-    // Lookup registration (private, operates on this context's lookup state;
-    // after syncLookupStateToContext these are aliased to SFCRExporter's lists,
-    // so modifications are visible in both places)
+    // Lookup registration (operates on this context's lookup state)
     // =========================================================================
+
+    /**
+     * Pre-seed lookup names from an SFCR template so that round-trip export
+     * preserves user-assigned lookup names.  Must be called before equation
+     * blocks are collected (i.e. before handlers run).
+     */
+    public void seedLookupNamesFromTemplate(String sourceText) {
+        if (sourceText == null || sourceText.trim().isEmpty()) {
+            return;
+        }
+        String[] lines = sourceText.split("\\n", -1);
+        for (int i = 0; i < lines.length; i++) {
+            String header = lines[i] == null ? "" : lines[i].trim();
+            if (!header.startsWith("@lookup")) {
+                continue;
+            }
+            String body = header.substring("@lookup".length()).trim();
+            if (body.isEmpty()) {
+                continue;
+            }
+            String lookupName = body;
+            String scopeName = null;
+            int scopePos = body.indexOf(" scope=");
+            if (scopePos >= 0) {
+                lookupName = body.substring(0, scopePos).trim();
+                scopeName = body.substring(scopePos + " scope=".length()).trim();
+            }
+            lookupName = SFCRUtil.sanitizeName(SFCRUtil.normalizeVariableName(lookupName));
+            if (scopeName != null && !scopeName.isEmpty()) {
+                scopeName = SFCRUtil.sanitizeName(scopeName);
+            } else {
+                scopeName = null;
+            }
+            if (lookupName.isEmpty()) {
+                continue;
+            }
+            ArrayList<Double> xs = new ArrayList<Double>();
+            ArrayList<Double> ys = new ArrayList<Double>();
+            ArrayList<String> comments = new ArrayList<String>();
+            int end = i;
+            for (int j = i + 1; j < lines.length; j++) {
+                String row = lines[j] == null ? "" : lines[j].trim();
+                end = j;
+                if (row.equals("@end")) {
+                    break;
+                }
+                if (row.startsWith("#")) {
+                    comments.add(row);
+                    continue;
+                }
+                if (row.isEmpty()) {
+                    continue;
+                }
+                String[] pair;
+                if (row.indexOf(',') >= 0) {
+                    pair = row.split(",", 2);
+                } else {
+                    pair = row.split("\\s+", 2);
+                }
+                if (pair.length < 2) {
+                    continue;
+                }
+                try {
+                    xs.add(Double.valueOf(Double.parseDouble(pair[0].trim())));
+                    ys.add(Double.valueOf(Double.parseDouble(pair[1].trim())));
+                } catch (Exception ignored) {
+                }
+            }
+            i = end;
+            if (xs.size() < 2 || ys.size() != xs.size()) {
+                continue;
+            }
+            if (!comments.isEmpty()) {
+                lookupCommentsByNameScope.put(buildLookupNameScopeKey(lookupName, scopeName), new ArrayList<String>(comments));
+            }
+            String signature = buildLookupSignatureFromPoints(scopeName, xs, ys);
+            LookupDefinition existing = lookupExportBySignature.get(signature);
+            if (existing != null) {
+                if (existing.name != null && existing.name.startsWith("Lookup_") && !lookupName.startsWith("Lookup_")) {
+                    existing.name = makeLookupName(lookupName, scopeName);
+                }
+                if (existing.comments.isEmpty() && !comments.isEmpty()) {
+                    existing.comments.addAll(comments);
+                }
+                continue;
+            }
+            LookupDefinition spec = new LookupDefinition();
+            spec.scope = scopeName;
+            spec.name = makeLookupName(lookupName, scopeName);
+            spec.xs.addAll(xs);
+            spec.ys.addAll(ys);
+            spec.comments.addAll(comments);
+            lookupExportSpecs.add(spec);
+            lookupExportBySignature.put(signature, spec);
+        }
+    }
 
     private String rewriteExpressionForLookupExport(String expr, String scopeName) {
         if (expr == null || expr.trim().isEmpty()) {
