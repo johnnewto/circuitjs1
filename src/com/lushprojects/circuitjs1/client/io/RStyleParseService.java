@@ -180,6 +180,7 @@ public class RStyleParseService {
             effectiveMetadata.y = metadata.y;
             effectiveMetadata.type = metadata.type;
         }
+        applyInlineMetadataComments(content, effectiveMetadata);
         int currentSectionMode = 0;
         StringBuilder normalized = new StringBuilder();
         normalized.append("@equations ").append(blockName);
@@ -319,6 +320,19 @@ public class RStyleParseService {
         }
         normalized.append("@end\n");
         return normalized.toString().split("\\n");
+    }
+
+    private void applyInlineMetadataComments(String content, SFCRParser.RStyleBlockMetadata metadata) {
+        if (content == null || metadata == null) {
+            return;
+        }
+        String[] contentLines = content.split("\\r?\\n");
+        for (int li = 0; li < contentLines.length; li++) {
+            String trimmed = contentLines[li].trim();
+            if (trimmed.startsWith("#")) {
+                parseMetadataLine(trimmed, metadata);
+            }
+        }
     }
 
     /**

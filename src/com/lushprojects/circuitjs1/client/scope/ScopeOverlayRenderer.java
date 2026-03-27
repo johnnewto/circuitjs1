@@ -2,14 +2,79 @@ package com.lushprojects.circuitjs1.client.scope;
 
 import com.lushprojects.circuitjs1.client.*;
 
+import com.lushprojects.circuitjs1.client.util.Color;
 import com.lushprojects.circuitjs1.client.util.Graphics;
 
+/**
+ * Renderer responsible for drawing overlay elements (settings wheel, cursor info, etc.)
+ */
 final class ScopeOverlayRenderer {
+    // Settings wheel dimensions
+    private static final int SETTINGS_WHEEL_SIZE = 36;
+    private static final int SETTINGS_WHEEL_MARGIN = 100;
+    private static final int OUTER_RADIUS = 8;
+    private static final int INNER_RADIUS = 5;
+    private static final int INNER_RADIUS_45 = 4;
+    private static final int OUTER_RADIUS_45 = 6;
+
     private ScopeOverlayRenderer() {
     }
 
     static void renderInScope(Scope scope, Graphics g, ScopeFrameContext frame) {
         scope.renderOverlayLayer(g, frame);
+    }
+
+    /**
+     * Draws the settings wheel icon in the bottom-left corner of the scope.
+     */
+    static void drawSettingsWheel(Scope scope, Graphics g) {
+        if (!showSettingsWheel(scope))
+            return;
+
+        g.context.save();
+
+        // Set color based on cursor position
+        g.setColor(cursorInSettingsWheel(scope) ? CircuitElm.selectColor : Color.dark_gray);
+
+        // Position at bottom-left corner
+        g.context.translate(scope.rect.x + 18, scope.rect.y + scope.rect.height - 18);
+
+        // Draw center circle
+        CircuitElm.drawThickCircleForScope(g, 0, 0, INNER_RADIUS);
+
+        // Draw horizontal spokes
+        CircuitElm.drawThickLine(g, -OUTER_RADIUS, 0, -INNER_RADIUS, 0);
+        CircuitElm.drawThickLine(g, OUTER_RADIUS, 0, INNER_RADIUS, 0);
+
+        // Draw vertical spokes
+        CircuitElm.drawThickLine(g, 0, -OUTER_RADIUS, 0, -INNER_RADIUS);
+        CircuitElm.drawThickLine(g, 0, OUTER_RADIUS, 0, INNER_RADIUS);
+
+        // Draw diagonal spokes
+        CircuitElm.drawThickLine(g, -OUTER_RADIUS_45, -OUTER_RADIUS_45, -INNER_RADIUS_45, -INNER_RADIUS_45);
+        CircuitElm.drawThickLine(g, OUTER_RADIUS_45, -OUTER_RADIUS_45, INNER_RADIUS_45, -INNER_RADIUS_45);
+        CircuitElm.drawThickLine(g, -OUTER_RADIUS_45, OUTER_RADIUS_45, -INNER_RADIUS_45, INNER_RADIUS_45);
+        CircuitElm.drawThickLine(g, OUTER_RADIUS_45, OUTER_RADIUS_45, INNER_RADIUS_45, INNER_RADIUS_45);
+
+        g.context.restore();
+    }
+
+    /**
+     * Determines if settings wheel should be shown based on scope size.
+     */
+    private static boolean showSettingsWheel(Scope scope) {
+        return scope.rect.height > SETTINGS_WHEEL_MARGIN && scope.rect.width > SETTINGS_WHEEL_MARGIN;
+    }
+
+    /**
+     * Checks if cursor is over the settings wheel icon.
+     */
+    static boolean cursorInSettingsWheel(Scope scope) {
+        return showSettingsWheel(scope) &&
+                scope.sim.getMouseCursorX() >= scope.rect.x &&
+                scope.sim.getMouseCursorX() <= scope.rect.x + SETTINGS_WHEEL_SIZE &&
+                scope.sim.getMouseCursorY() >= scope.rect.y + scope.rect.height - SETTINGS_WHEEL_SIZE &&
+                scope.sim.getMouseCursorY() <= scope.rect.y + scope.rect.height;
     }
 
     static void renderCursor(Scope scope, Graphics g, ScopeFrameContext frame) {

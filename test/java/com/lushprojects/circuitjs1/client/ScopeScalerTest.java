@@ -53,9 +53,20 @@ class ScopeScalerTest {
 
     @Test
     void historyVisibleRangeTracksFixedWindowInDrawFromZeroMode() {
+        // Case 1: Not enough data to fill the screen yet
+        // historySize=100, plotWidth=40, elapsedTime=15.0, timePerPixel=0.5, historySampleInterval=0.25
+        // pixelsNeeded = 15.0/0.5 = 30, pixelsUsed = min(30, 40) = 30
+        // windowStartTime = 0, windowEndTime = 30*0.5 = 15.0
+        // startIndex = 0, endIndex = ceil(15.0/0.25) = 60
         int[] range = ScopeScaler.calcHistoryVisibleIndexRange(false, 100, 40, 15.0, 0.5, 0.25);
-        assertArrayEquals(new int[] {0, 80}, range);
+        assertArrayEquals(new int[] {0, 60}, range);
 
+        // Case 2: Window slides when screen is full
+        // historySize=200, plotWidth=20, elapsedTime=30.0, timePerPixel=1.0, historySampleInterval=0.5
+        // pixelsNeeded = 30.0/1.0 = 30, pixelsUsed = min(30, 20) = 20
+        // pixelsUsed >= plotWidth, so windowStartTime = max(0, 30.0 - 20*1.0) = 10.0
+        // windowEndTime = 10.0 + 20*1.0 = 30.0
+        // startIndex = 10.0/0.5 = 20, endIndex = ceil(30.0/0.5) = 60
         int[] slidingRange = ScopeScaler.calcHistoryVisibleIndexRange(false, 200, 20, 30.0, 1.0, 0.5);
         assertArrayEquals(new int[] {20, 60}, slidingRange);
     }

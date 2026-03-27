@@ -92,8 +92,7 @@ public class Scope {
     public static final double multa[] = {2.0, 2.5, 2.0}; // Grid scaling multipliers
     public static final int V_POSITION_STEPS = 200; // Vertical position adjustment range
     public static final double MIN_MAN_SCALE = 1e-9; // Minimum manual scale value
-    private static final int SETTINGS_WHEEL_SIZE = 36; // Size of settings wheel in pixels
-    private static final int SETTINGS_WHEEL_MARGIN = 100; // Minimum size needed to show settings wheel
+    // Settings wheel constants moved to ScopeOverlayRenderer
     static final int SHADOW_OFFSET = 4; // Shadow offset in pixels
     static final int SHADOW_BLUR = 8; // Shadow blur radius
     private static final int MIN_PIXEL_SPACING = 20; // Minimum spacing between gridlines in pixels
@@ -1005,80 +1004,11 @@ public class Scope {
 	sim.needAnalyze();
     }
 
-    private void drawFFTVerticalGridLines(Graphics g) {
-      // Draw x-grid lines and label the frequencies in the FFT that they point to.
-      int prevEnd = 0;
-      int divs = 20;
-      int plotWidth = getPlotAreaWidth();
-      double maxFrequency = 1 / (sim.getMaxTimeStep() * speed * divs * 2);
-      for (int i = 0; i < divs; i++) {
-        int x = plotWidth * i / divs;
-        if (x < prevEnd) continue;
-        String s = ((int) Math.round(i * maxFrequency)) + "Hz";
-        int sWidth = (int) Math.ceil(g.context.measureText(s).getWidth());
-        prevEnd = x + sWidth + 4;
-        if (i > 0) {
-          g.setColor("#880000");
-          g.drawLine(x, 0, x, rect.height);
-        }
-        g.setColor("#FF0000");
-        g.drawString(s, x + 2, rect.height);
-      }
-    }
+    // FFT methods moved to ScopeGridRenderer
 
-    private void drawFFT(Graphics g) {
-	ScopePlot plot = (visiblePlots.size() == 0) ? plots.firstElement() : visiblePlots.firstElement();
-	fft = ScopeFFTHelper.drawSpectrum(
-	        g,
-	        fft,
-	        scopePointCount,
-	        plot,
-	        getPlotAreaWidth(),
-	        rect.height,
-	        logSpectrum,
-	        scale[plot.units]);
-    }
-    
-    /**
-     * Draws the settings wheel icon in the bottom-left corner of the scope.
-     * @param g Graphics context
-     */
+    // Settings wheel methods moved to ScopeOverlayRenderer
     private void drawSettingsWheel(Graphics g) {
-	if (!showSettingsWheel())
-	    return;
-	
-	// Settings wheel dimensions
-	final int OUTER_RADIUS = 8;
-	final int INNER_RADIUS = 5;
-	final int INNER_RADIUS_45 = 4;
-	final int OUTER_RADIUS_45 = 6;
-	
-	g.context.save();
-	
-	// Set color based on cursor position
-	g.setColor(cursorInSettingsWheel() ? CircuitElm.selectColor : Color.dark_gray);
-	
-	// Position at bottom-left corner
-	g.context.translate(rect.x + 18, rect.y + rect.height - 18);
-	
-	// Draw center circle
-	CircuitElm.drawThickCircleForScope(g, 0, 0, INNER_RADIUS);
-	
-	// Draw horizontal spokes
-	CircuitElm.drawThickLine(g, -OUTER_RADIUS, 0, -INNER_RADIUS, 0);
-	CircuitElm.drawThickLine(g, OUTER_RADIUS, 0, INNER_RADIUS, 0);
-	
-	// Draw vertical spokes
-	CircuitElm.drawThickLine(g, 0, -OUTER_RADIUS, 0, -INNER_RADIUS);
-	CircuitElm.drawThickLine(g, 0, OUTER_RADIUS, 0, INNER_RADIUS);
-	
-	// Draw diagonal spokes
-	CircuitElm.drawThickLine(g, -OUTER_RADIUS_45, -OUTER_RADIUS_45, -INNER_RADIUS_45, -INNER_RADIUS_45);
-	CircuitElm.drawThickLine(g, OUTER_RADIUS_45, -OUTER_RADIUS_45, INNER_RADIUS_45, -INNER_RADIUS_45);
-	CircuitElm.drawThickLine(g, -OUTER_RADIUS_45, OUTER_RADIUS_45, -INNER_RADIUS_45, INNER_RADIUS_45);
-	CircuitElm.drawThickLine(g, OUTER_RADIUS_45, OUTER_RADIUS_45, INNER_RADIUS_45, INNER_RADIUS_45);
-	
-	g.context.restore();
+        ScopeOverlayRenderer.drawSettingsWheel(this, g);
     }
 
     private void draw2d(Graphics g) {
@@ -1156,26 +1086,12 @@ public class Scope {
 		}
     }
 	
-  
-    
-    /**
-     * Determines if settings wheel should be shown based on scope size.
-     * @return true if scope is large enough to display settings wheel
-     */
-    private boolean showSettingsWheel() {
-	return rect.height > SETTINGS_WHEEL_MARGIN && rect.width > SETTINGS_WHEEL_MARGIN;
-    }
-    
     /**
      * Checks if cursor is over the settings wheel icon.
      * @return true if cursor is within settings wheel bounds
      */
     public boolean cursorInSettingsWheel() {
-	return showSettingsWheel() &&
-		sim.getMouseCursorX() >= rect.x &&
-		sim.getMouseCursorX() <= rect.x + SETTINGS_WHEEL_SIZE &&
-		sim.getMouseCursorY() >= rect.y + rect.height - SETTINGS_WHEEL_SIZE && 
-		sim.getMouseCursorY() <= rect.y + rect.height;
+        return ScopeOverlayRenderer.cursorInSettingsWheel(this);
     }
     
     // does another scope have something selected?
@@ -1572,48 +1488,13 @@ public class Scope {
     }
 
     void renderGridLayer(Graphics g, ScopeFrameContext frame) {
-        if (frame.displayConfig.isFFTMode()) {
-            drawFFTVerticalGridLines(g);
-            drawFFT(g);
-        }
+        // Delegated to ScopeGridRenderer
+        ScopeGridRenderer.render(this, g, frame);
     }
 
     void renderWaveformLayers(Graphics g, ScopeFrameContext frame, boolean allPlotsSameUnits, boolean selected) {
-        boolean firstPlotDrawn = false;
-
-        for (int i = 0; i != visiblePlots.size(); i++) {
-            if (visiblePlots.get(i).units > UNITS_A && i != selectedPlot) {
-                drawPlot(g, frame, visiblePlots.get(i), allPlotsSameUnits, false, selected);
-                if (!firstPlotDrawn) {
-                    displayGridStepX = gridStepX;
-                    firstPlotDrawn = true;
-                }
-            }
-        }
-        for (int i = 0; i != visiblePlots.size(); i++) {
-            if (visiblePlots.get(i).units == UNITS_A && i != selectedPlot) {
-                drawPlot(g, frame, visiblePlots.get(i), allPlotsSameUnits, false, selected);
-                if (!firstPlotDrawn) {
-                    displayGridStepX = gridStepX;
-                    firstPlotDrawn = true;
-                }
-            }
-        }
-        for (int i = 0; i != visiblePlots.size(); i++) {
-            if (visiblePlots.get(i).units == UNITS_V && i != selectedPlot) {
-                drawPlot(g, frame, visiblePlots.get(i), allPlotsSameUnits, false, selected);
-                if (!firstPlotDrawn) {
-                    displayGridStepX = gridStepX;
-                    firstPlotDrawn = true;
-                }
-            }
-        }
-        if (selectedPlot >= 0 && selectedPlot < visiblePlots.size()) {
-            drawPlot(g, frame, visiblePlots.get(selectedPlot), allPlotsSameUnits, true, selected);
-            if (!firstPlotDrawn) {
-                displayGridStepX = gridStepX;
-            }
-        }
+        // Delegated to ScopeWaveformRenderer - this method kept for compatibility
+        ScopeWaveformRenderer.render(this, g, frame, allPlotsSameUnits, selected);
     }
 
     void renderAxisLayer(Graphics g, ScopeFrameContext frame) {
@@ -1754,383 +1635,7 @@ public class Scope {
 	return plot.getDisplayWidth(requiredSamples);
     }
     
-    private void drawPlot(Graphics g, ScopeFrameContext frame, ScopePlot plot, boolean allPlotsSameUnits, boolean selected, boolean allSelected) {
-	if (plot.elm == null)
-	    return;
-    	int i;
-    	String col;
-    	
-	    double gridMid = 0;
-    	int x = 0;
-        final int plotHeight = frame.plotHeight;
-    	final int maxy = (plotHeight-1)/2;
-        int plotWidth = frame.plotWidth;
-
-    	String color = (somethingSelected) ? "#A0A0A0" : plot.color;
-	boolean mouseHoverSelected = sim.getScopeSelectedIndexForScope() == -1
-	        && plot.elm != null
-	        && plot.elm.isMouseElmForUi();
-	if (allSelected || mouseHoverSelected)
-    	    color = CircuitElm.selectColor.getHexValue();
-	else if (selected)
-	    color = plot.color;
-        double traceStrokeWidth = selected ? 2.5 : ((allSelected || mouseHoverSelected) ? 2.0 : 1.0);
-	    double maxV[] = plot.maxValues;
-	    double minV[] = plot.minValues;
-	    boolean multiLhsEnabled = frame.displayConfig.isMultiLhsActive(visiblePlots != null ? visiblePlots.size() : 0);
-            ScopeDisplayConfig config = frame.displayConfig;
-	    int[] historyIndexRange = getHistoryVisibleIndexRange(frame);
-	    double[] axisRange = (!isManualScale() && multiLhsEnabled)
-	            ? calcMultiLhsAxisRange(plot, minV, maxV, historyIndexRange) : null;
-	    PlotScaleResult scaleResult = frame.plotScaleResults.get(plot);
-	    if (scaleResult == null) {
-	        scaleResult = ScopeScaler.buildPlotScaleResult(
-	                isManualScale(),
-	                multiLhsEnabled,
-	                allPlotsSameUnits,
-	                maxScale,
-	                showNegative,
-	                minValue,
-	                maxValue,
-	                scale[plot.units],
-	                maxy,
-	                manDivisions,
-	                plot.manScale,
-	                plot.manVPosition,
-	                V_POSITION_STEPS,
-	                MULTI_LHS_TICK_COUNT,
-	                multa,
-	                axisRange
-	        );
-	        frame.plotScaleResults.put(plot, scaleResult);
-	    }
-	    showNegative = scaleResult.showNegative;
-	    gridMid = scaleResult.gridMid;
-	    plot.plotOffset = scaleResult.plotOffset;
-	    plot.gridMult = scaleResult.gridMult;
-	    plot.lhsAxisMin = scaleResult.lhsAxisMin;
-	    plot.lhsAxisMax = scaleResult.lhsAxisMax;
-	    plot.lhsAxisStep = scaleResult.lhsAxisStep;
-	    gridStepY = scaleResult.gridStepY;
-	    double gridMax = scaleResult.gridMax;
-	    int minRangeLo = -10-(int) (gridMid*plot.gridMult);
-	    int minRangeHi =  10-(int) (gridMid*plot.gridMult);
-
-    	String minorDiv = "#404040";
-    	String majorDiv = "#A0A0A0";
-    	if (sim.printableCheckItem.getState()) {
-    	    minorDiv = "#D0D0D0";
-    	    majorDiv = "#808080";
-    	    curColor = "#A0A000";
-    	}
-    	if (allSelected)
-    	    majorDiv = CircuitElm.selectColor.getHexValue();
-    	
-    	// Vertical (T) gridlines
-	    double ts = frame.timePerPixel;
-    	gridStepX = ScopeScaler.calcGridStepX(frame.timePerPixel, MIN_PIXEL_SPACING, multa);
-
-    	boolean highlightCenter = !isManualScale();
-    	
-    	if (drawGridLines) {
-    	    // horizontal gridlines
-    	    
-    	    // don't show hgridlines if lines are too close together (except for center line)
-    	    boolean showHGridLines = (gridStepY != 0) && (isManualScale() || allPlotsSameUnits); // Will only show center line if we have mixed units
-    	    for (int ll = -100; ll <= 100; ll++) {
-    		if (ll != 0 && !showHGridLines)
-    		    continue;
-    		int yl = maxy-(int) ((ll*gridStepY-gridMid)*plot.gridMult);
-    		if (yl < 0 || yl >= plotHeight-1)
-    		    continue;
-    		col = ll == 0 && highlightCenter ? majorDiv : minorDiv;
-    		g.setColor(col);
-    		g.drawLine(0,yl,plotWidth-1,yl);
-    	    }
-    	    
-    	    // vertical gridlines (time axis)
-    	    if (config.isDrawFromZeroActive()) {
-    		// Draw from zero mode: gridlines start at t=0 on left
-    		double elapsedTime = sim.getTime() - startTime;
-    		double displayTimeSpan;
-    		
-    		if (config.autoScaleTime && elapsedTime > 0) {
-    		    // Auto-scale: time span covers entire simulation from start
-    		    displayTimeSpan = elapsedTime;
-    		} else {
-    		    // Fixed scale: time span is fixed based on speed
-    		    displayTimeSpan = ts * plotWidth;
-    		}
-    		
-    		// Adjust gridStepX if gridlines are too close together
-    		// Calculate pixel spacing with current gridStepX
-    		double pixelSpacing = plotWidth * gridStepX / displayTimeSpan;
-    		int scalePtr = 0;
-    		while (pixelSpacing < 20 && displayTimeSpan > 0) {
-    		    // Gridlines too close - increase spacing using standard scale pattern
-    		    gridStepX *= multa[scalePtr % 3];
-    		    pixelSpacing = plotWidth * gridStepX / displayTimeSpan;
-    		    scalePtr++;
-    		}
-    		
-    		// Align gridlines to nice intervals starting from t=0
-    		double gridStart = startTime - (startTime % gridStepX);
-    		
-    		for (int ll = 0; ; ll++) {
-    		    double tl = gridStart + gridStepX * ll;
-    		    if (tl < startTime)
-    			continue;
-    		    
-    		    // Calculate pixel position based on time since start
-    		    double timeFromStart = tl - startTime;
-    		    int gx = (int) (plotWidth * timeFromStart / displayTimeSpan);
-    		    
-    		    if (gx < 0)
-    			continue;
-    		    if (gx >= plotWidth)
-    			break;
-    		    
-    		    col = minorDiv;
-    		    if (((tl + gridStepX/4) % (gridStepX*10)) < gridStepX) {
-    			col = majorDiv;
-    		    }
-    		    g.setColor(col);
-    		    g.drawLine(gx, 0, gx, plotHeight-1);
-    		}
-    		
-    		// Draw t=0 line in highlighted color
-    		g.setColor(majorDiv);
-    		g.drawLine(0, 0, 0, plotHeight-1);
-    		
-    		// Draw action time markers
-    		drawActionTimeMarkers(g, startTime, displayTimeSpan);
-		    } else {
-				int displayWidth = getDisplaySampleWidth(plot, frame);
-				int displayPixelWidth = displayWidth * frame.horizontalPixelStride;
-				if (displayPixelWidth < plotWidth) {
-				    double actionStartTime = 0;
-				    double actionDisplayTimeSpan = ts * plotWidth;
-			    // Initial fill mode: draw static grid and start scrolling only when plot scrolls
-			    for (int ll = 0; ; ll++) {
-				double tl = ll * gridStepX;
-				int gx = (int) (tl / ts);
-				if (gx >= plotWidth)
-				    break;
-				col = (ll % 10 == 0) ? majorDiv : minorDiv;
-				g.setColor(col);
-				g.drawLine(gx, 0, gx, plotHeight - 1);
-			    }
-			    drawActionTimeMarkers(g, actionStartTime, actionDisplayTimeSpan);
-			} else {
-			    // Normal scrolling mode: gridlines scroll with time
-			    double tstart = sim.getTime()-ts*plotWidth;
-			    double tx = sim.getTime()-(sim.getTime() % gridStepX);
-
-			    for (int ll = 0; ; ll++) {
-				double tl = tx-gridStepX*ll;
-				int gx = (int) ((tl-tstart)/ts);
-				if (gx < 0)
-				    break;
-				if (gx >= plotWidth)
-				    continue;
-				if (tl < 0)
-				    continue;
-				col = minorDiv;
-				if (((tl+gridStepX/4) % (gridStepX*10)) < gridStepX) {
-				    col = majorDiv;
-				}
-				g.setColor(col);
-				g.drawLine(gx,0,gx,plotHeight-1);
-			    }
-			    drawActionTimeMarkers(g, tstart, ts * plotWidth);
-			}
-    	    }
-    	}
-    	
-    	// only need gridlines drawn once
-    	drawGridLines = false;
-
-        g.setColor(color);
-        g.context.setLineWidth(traceStrokeWidth);
-        
-        if (isManualScale()) {
-            // draw zero point
-            int y0= maxy-(int) (plot.gridMult*plot.plotOffset);
-            g.drawLine(0, y0, 8, y0);
-            g.drawString("0", 0, y0-2);
-        }
-        
-        // Optimize: Use batched drawing for scope waveform
-        // This reduces thousands of context.beginPath()/stroke() calls to just 2
-        g.startBatch();
-        
-        int ox = -1, oy = -1;
-        int prevY = -1;  // Track previous Y point for connecting lines
-        
-        if (config.isDrawFromZeroActive()) {
-            // Draw from zero mode: use history buffers instead of circular buffer
-            if (plot.historyMinValues == null || model.getHistorySize() == 0) {
-        	// No history data yet
-        	g.endBatch();
-        	return;
-            }
-            
-            double[] histMinV = plot.historyMinValues;
-            double[] histMaxV = plot.historyMaxValues;
-            
-            if (config.autoScaleTime) {
-                // Auto-scale: map entire history to window width
-                for (i = 0; i < plotWidth; i++) {
-                    // Map pixel to history index
-                    int histIdx = (i * model.getHistorySize()) / plotWidth;
-                    if (histIdx >= model.getHistorySize())
-                        histIdx = model.getHistorySize() - 1;
-                    
-                    // Use midpoint (average) of min and max for smoother interpolation
-                    double midVal = (histMinV[histIdx] + histMaxV[histIdx]) / 2.0;
-                    int midvy = (int) (plot.gridMult * (midVal + plot.plotOffset));
-                    
-                    int minvy = (int) (plot.gridMult*(histMinV[histIdx]+plot.plotOffset));
-                    int maxvy = (int) (plot.gridMult*(histMaxV[histIdx]+plot.plotOffset));
-                    
-                    if (minvy < minRangeLo || maxvy > minRangeHi) {
-                        reduceRange[plot.units] = false;
-                        minRangeLo = -1000;
-                        minRangeHi = 1000;
-                    }
-                    
-                    // Clamp Y coordinate to valid drawing range
-                    int y = maxy - midvy;
-                    y = Math.max(0, Math.min(plotHeight - 1, y));
-                    
-                    // Draw line from previous point to current point
-                    if (prevY != -1) {
-                        g.drawLine(x+i-1, prevY, x+i, y);
-                    }
-                    
-                    prevY = y;
-                }
-            } else {
-                // Fixed scale: show most recent data that fits
-                double elapsedTime = sim.getTime() - startTime;
-                double timePerPixel = sim.getMaxTimeStep() * speed;
-                int pixelsNeeded = (int)(elapsedTime / timePerPixel);
-                int pixelsUsed = Math.min(pixelsNeeded, plotWidth);
-                
-                if (pixelsUsed < plotWidth) {
-                    // Not enough data to fill screen yet, start from beginning
-                    for (i = 0; i < pixelsUsed; i++) {
-                        double time = i * timePerPixel;
-                        int histIdx = (int)(time / model.getHistorySampleInterval());
-                        if (histIdx >= model.getHistorySize())
-                            histIdx = model.getHistorySize() - 1;
-                        
-                        // Use midpoint (average) of min and max for smoother interpolation
-                        double midVal = (histMinV[histIdx] + histMaxV[histIdx]) / 2.0;
-                        int midvy = (int) (plot.gridMult * (midVal + plot.plotOffset));
-                        
-                        int minvy = (int) (plot.gridMult*(histMinV[histIdx]+plot.plotOffset));
-                        int maxvy = (int) (plot.gridMult*(histMaxV[histIdx]+plot.plotOffset));
-                        
-                        if (minvy < minRangeLo || maxvy > minRangeHi) {
-                            reduceRange[plot.units] = false;
-                            minRangeLo = -1000;
-                            minRangeHi = 1000;
-                        }
-                        
-                        // Clamp Y coordinate to valid drawing range
-                        int y = maxy - midvy;
-                        y = Math.max(0, Math.min(plotHeight - 1, y));
-                        
-                        // Draw line from previous point to current point
-                        if (prevY != -1) {
-                            g.drawLine(x+i-1, prevY, x+i, y);
-                        }
-                        
-                        prevY = y;
-                    }
-                } else {
-                    // Screen is full, show most recent window
-                    double windowTimeSpan = plotWidth * timePerPixel;
-                    double startTime = elapsedTime - windowTimeSpan;
-                    int startPixel = 0;
-                    
-                    for (i = startPixel; i < plotWidth; i++) {
-                        double time = startTime + i * timePerPixel;
-                        int histIdx = (int)(time / model.getHistorySampleInterval());
-                        if (histIdx < 0) histIdx = 0;
-                        if (histIdx >= model.getHistorySize()) histIdx = model.getHistorySize() - 1;
-                        
-                        // Use midpoint (average) of min and max for smoother interpolation
-                        double midVal = (histMinV[histIdx] + histMaxV[histIdx]) / 2.0;
-                        int midvy = (int) (plot.gridMult * (midVal + plot.plotOffset));
-                        
-                        int minvy = (int) (plot.gridMult*(histMinV[histIdx]+plot.plotOffset));
-                        int maxvy = (int) (plot.gridMult*(histMaxV[histIdx]+plot.plotOffset));
-                        
-                        if (minvy < minRangeLo || maxvy > minRangeHi) {
-                            reduceRange[plot.units] = false;
-                            minRangeLo = -1000;
-                            minRangeHi = 1000;
-                        }
-                        
-                        // Clamp Y coordinate to valid drawing range
-                        int y = maxy - midvy;
-                        y = Math.max(0, Math.min(plotHeight - 1, y));
-                        
-                        // Draw line from previous point to current point
-                        if (prevY != -1) {
-                            g.drawLine(x+i-1, prevY, x+i, y);
-                        }
-                        
-                        prevY = y;
-                    }
-                }
-            }
-		} else {
-		    // Normal mode: fill from left first, then scroll once full width is reached
-		    int stride = frame.horizontalPixelStride;
-		    int displayWidth = getDisplaySampleWidth(plot, frame);
-		    if (displayWidth <= 0) {
-			g.endBatch();
-			return;
-		    }
-		    int ipa = plot.startIndex(displayWidth);
-		    for (i = 0; i != displayWidth; i++) {
-			int ip = (i + ipa) & (scopePointCount-1);
-                int curX = x + i*stride;
-                
-                // Use midpoint (average) of min and max for smoother interpolation
-                double midVal = (minV[ip] + maxV[ip]) / 2.0;
-                int midvy = (int) (plot.gridMult * (midVal + plot.plotOffset));
-                
-                int minvy = (int) (plot.gridMult*(minV[ip]+plot.plotOffset));
-                int maxvy = (int) (plot.gridMult*(maxV[ip]+plot.plotOffset));
-                
-                if (minvy < minRangeLo || maxvy > minRangeHi) {
-                    // we got a value outside min range, so we don't need to rescale later
-                    reduceRange[plot.units] = false;
-                    minRangeLo = -1000;
-                    minRangeHi = 1000; // avoid triggering this test again
-                }
-                
-                // Clamp Y coordinate to valid drawing range
-                int y = maxy - midvy;
-                y = Math.max(0, Math.min(plotHeight - 1, y));
-                
-                // Draw line from previous point to current point
-                if (prevY != -1) {
-					g.drawLine(curX-stride, prevY, curX, y);
-                }
-                
-                prevY = y;
-            } // for (i=0...)
-        }
-        
-        g.endBatch();
-        g.context.setLineWidth(1.0);
-        
-    }
+    // drawPlot method moved to ScopeWaveformRenderer.drawPlot()
 
     public static void clearCursorInfo() {
 	cursorScope = null;
@@ -3202,6 +2707,94 @@ public class Scope {
 
     int getMinPixelSpacingForRender() {
         return MIN_PIXEL_SPACING;
+    }
+
+    // ====================
+    // RENDERER ACCESSOR METHODS
+    // ====================
+    
+    void setDisplayGridStepX(double value) {
+        displayGridStepX = value;
+    }
+
+    double getGridStepX() {
+        return gridStepX;
+    }
+
+    void setGridStepX(double value) {
+        gridStepX = value;
+    }
+
+    double getGridStepYForRender() {
+        return gridStepY;
+    }
+
+    void setGridStepY(double value) {
+        gridStepY = value;
+    }
+
+    boolean shouldDrawGridLines() {
+        return drawGridLines;
+    }
+
+    void clearDrawGridLines() {
+        drawGridLines = false;
+    }
+
+    boolean getShowNegativeForRender() {
+        return showNegative;
+    }
+
+    void setShowNegative(boolean value) {
+        showNegative = value;
+    }
+
+    double getMinValueForRender() {
+        return minValue;
+    }
+
+    double getMaxValueForRender() {
+        return maxValue;
+    }
+
+    boolean getMaxScaleForRender() {
+        return maxScale;
+    }
+
+    double getScaleForUnits(int units) {
+        return scale[units];
+    }
+
+    int getManDivisionsForRender() {
+        return manDivisions;
+    }
+
+    boolean[] getReduceRangeForRender() {
+        return reduceRange;
+    }
+
+    int[] getHistoryVisibleIndexRangeForRender(ScopeFrameContext frame) {
+        return getHistoryVisibleIndexRange(frame);
+    }
+
+    double[] calcMultiLhsAxisRangeForRender(ScopePlot plot, double[] minV, double[] maxV, int[] historyIndexRange) {
+        return calcMultiLhsAxisRange(plot, minV, maxV, historyIndexRange);
+    }
+
+    void drawActionTimeMarkersForRender(Graphics g, double startTime, double displayTimeSpan) {
+        drawActionTimeMarkers(g, startTime, displayTimeSpan);
+    }
+
+    FFT getFFTForRender() {
+        return fft;
+    }
+
+    void setFFTForRender(FFT newFft) {
+        fft = newFft;
+    }
+
+    boolean isLogSpectrumForRender() {
+        return logSpectrum;
     }
     
 }

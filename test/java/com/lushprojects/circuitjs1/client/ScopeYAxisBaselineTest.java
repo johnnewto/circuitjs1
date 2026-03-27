@@ -22,9 +22,12 @@ class ScopeYAxisBaselineTest extends CircuitJavaSimTestBase {
         fillRange(plot, -2.1, 3.2);
         setScale(scope, Scope.UNITS_V, 1.0);
 
-        Method calcPlotScale = Scope.class.getDeclaredMethod("calcPlotScale", ScopePlot.class);
+        // Build a frame context for the method call
+        ScopeFrameContext frame = buildFrameContext(scope);
+        
+        Method calcPlotScale = Scope.class.getDeclaredMethod("calcPlotScale", ScopePlot.class, ScopeFrameContext.class, int[].class);
         calcPlotScale.setAccessible(true);
-        calcPlotScale.invoke(scope, plot);
+        calcPlotScale.invoke(scope, plot, frame, null);
 
         assertEquals(4.0, getScale(scope, Scope.UNITS_V), 1e-12);
     }
@@ -39,11 +42,17 @@ class ScopeYAxisBaselineTest extends CircuitJavaSimTestBase {
         fillRange(plot, 0.12, 1.93);
 
         Method calcMulti = Scope.class.getDeclaredMethod("calcMultiLhsAxisRange",
-                ScopePlot.class, double[].class, double[].class);
+                ScopePlot.class, double[].class, double[].class, int[].class);
         calcMulti.setAccessible(true);
-        double[] axis = (double[]) calcMulti.invoke(scope, plot, plot.minValues, plot.maxValues);
+        double[] axis = (double[]) calcMulti.invoke(scope, plot, plot.minValues, plot.maxValues, null);
 
         assertArrayEquals(new double[] {0.0, 2.0, 0.5}, axis, 1e-12);
+    }
+
+    private ScopeFrameContext buildFrameContext(Scope scope) throws Exception {
+        Method buildFrameContextMethod = Scope.class.getDeclaredMethod("buildFrameContext");
+        buildFrameContextMethod.setAccessible(true);
+        return (ScopeFrameContext) buildFrameContextMethod.invoke(scope);
     }
 
     private ScopePlot createSyntheticPlot(Scope scope, int units, int pointCount, int samplesCaptured) throws Exception {

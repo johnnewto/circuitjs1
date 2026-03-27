@@ -31,12 +31,12 @@ class GoodwinPredatorPreyModelTest extends CircuitJavaSimTestBase {
         assertNotNull(result, "Goodwin circuit should parse successfully");
         assertNotNull(result.findBlock("equations", "Parameters"),
                 "Expected Parameters equations block");
-        assertNotNull(result.findBlock("equations", "Goodwin.Cycle"),
-                "Expected Goodwin.Cycle equations block");
-        assertTrue(result.hints.containsKey("employment_rate"),
-                "Hints should describe employment_rate");
-        assertTrue(result.hints.containsKey("wage_share"),
-                "Hints should describe wage_share");
+        assertNotNull(result.findBlock("equations", "Goodwin_Cycle"),
+                "Expected Goodwin_Cycle equations block");
+        assertTrue(result.hints.containsKey("employment.rate"),
+                "Hints should describe employment.rate");
+        assertTrue(result.hints.containsKey("wage.share"),
+                "Hints should describe wage.share");
     }
 
     @Test
