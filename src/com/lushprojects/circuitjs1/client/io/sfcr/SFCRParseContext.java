@@ -814,10 +814,11 @@ public class SFCRParseContext {
     public void createEquationTable(String name, ArrayList<String> outputNames,
                                     ArrayList<String> equations, ArrayList<Integer> outputModes,
                                     ArrayList<String> targetNodeNames, ArrayList<String> sliderVarNames,
-                                    ArrayList<Double> sliderValues, ArrayList<String> initialEquations) {
+                                    ArrayList<Double> sliderValues, ArrayList<String> initialEquations,
+                                    Boolean invisibleOverride) {
         SFCRTableDumpBuilderService.DumpBuildResult build = tableDumpBuilderService.buildEquationDump(
             name, currentX, currentY, outputNames, equations, outputModes, targetNodeNames,
-            sliderVarNames, sliderValues, initialEquations);
+            sliderVarNames, sliderValues, initialEquations, invisibleOverride);
         
         if (build == null) return;
         
@@ -859,9 +860,11 @@ public class SFCRParseContext {
     public void createMatrixTable(String name, ArrayList<String> columnNames,
                                   ArrayList<String> rowNames, ArrayList<String[]> tableRows,
                                   String matrixType, Boolean showInitialValuesOverride,
-                                  Boolean showFlowValuesOverride, Boolean useBackwardEulerOverride) {
+                                  Boolean showFlowValuesOverride, Boolean useBackwardEulerOverride,
+                                  Boolean invisibleOverride) {
         SFCRTableDumpBuilderService.DumpBuildResult build = tableDumpBuilderService.buildMatrixDump(
-            name, currentX, currentY, columnNames, rowNames, tableRows, showInitialValuesOverride);
+            name, currentX, currentY, columnNames, rowNames, tableRows, showInitialValuesOverride,
+            invisibleOverride);
         
         if (build == null) {
             CirSim.console("SFCRParser: Skipping matrix table '" + name + "' - invalid table shape");

@@ -63,6 +63,7 @@ public class RStyleParseService {
             effectiveMetadata.x = metadata.x;
             effectiveMetadata.y = metadata.y;
             effectiveMetadata.type = metadata.type;
+            effectiveMetadata.invisible = metadata.invisible;
         }
 
         int matrixStart = block.indexOf("sfcr_matrix(");
@@ -116,6 +117,9 @@ public class RStyleParseService {
         }
         normalized.append("\n");
         normalized.append("  type: ").append(matrixType).append("\n");
+        if (effectiveMetadata.invisible != null) {
+            normalized.append("  invisible: ").append(effectiveMetadata.invisible.booleanValue()).append("\n");
+        }
         normalized.append("\n");
         normalized.append("| Transaction |");
         for (int i = 0; i < columnNames.size(); i++) {
@@ -179,6 +183,7 @@ public class RStyleParseService {
             effectiveMetadata.x = metadata.x;
             effectiveMetadata.y = metadata.y;
             effectiveMetadata.type = metadata.type;
+            effectiveMetadata.invisible = metadata.invisible;
         }
         applyInlineMetadataComments(content, effectiveMetadata);
         int currentSectionMode = 0;
@@ -188,6 +193,9 @@ public class RStyleParseService {
             normalized.append(" x=").append(effectiveMetadata.x).append(" y=").append(effectiveMetadata.y);
         }
         normalized.append("\n");
+        if (effectiveMetadata.invisible != null) {
+            normalized.append("  invisible: ").append(effectiveMetadata.invisible.booleanValue()).append("\n");
+        }
         int rowCount = 0;
 
         ArrayList<String> parts = splitByTopLevelCommaIgnoringHashComments(content);
@@ -408,6 +416,30 @@ public class RStyleParseService {
                 if (!value.isEmpty()) {
                     metadata.type = value;
                 }
+                continue;
+            }
+            if (token.startsWith("invisible=")) {
+                metadata.invisible = parseBooleanSafe(token.substring(10));
+                continue;
+            }
+            if (token.equals("invisible:") && i + 1 < tokens.length) {
+                metadata.invisible = parseBooleanSafe(tokens[++i]);
+                continue;
+            }
+            if (token.startsWith("invisible:")) {
+                metadata.invisible = parseBooleanSafe(token.substring(10));
+                continue;
+            }
+            if (token.startsWith("hidden=")) {
+                metadata.invisible = parseBooleanSafe(token.substring(7));
+                continue;
+            }
+            if (token.equals("hidden:") && i + 1 < tokens.length) {
+                metadata.invisible = parseBooleanSafe(tokens[++i]);
+                continue;
+            }
+            if (token.startsWith("hidden:")) {
+                metadata.invisible = parseBooleanSafe(token.substring(7));
             }
         }
         return true;
@@ -419,6 +451,20 @@ public class RStyleParseService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private Boolean parseBooleanSafe(String value) {
+        if (value == null) {
+            return null;
+        }
+        String t = value.trim().toLowerCase();
+        if (t.equals("true") || t.equals("1") || t.equals("yes")) {
+            return Boolean.TRUE;
+        }
+        if (t.equals("false") || t.equals("0") || t.equals("no")) {
+            return Boolean.FALSE;
+        }
+        return null;
     }
 
     private void parseRow(String rowDef, ArrayList<String> rowNames,

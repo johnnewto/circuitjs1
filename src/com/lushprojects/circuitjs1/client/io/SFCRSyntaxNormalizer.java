@@ -268,6 +268,18 @@ public class SFCRSyntaxNormalizer {
                 if (!value.isEmpty()) {
                     metadata.type = value;
                 }
+            } else if (token.startsWith("invisible=")) {
+                metadata.invisible = parseBooleanSafe(token.substring(10));
+            } else if (token.equals("invisible:") && i + 1 < tokens.length) {
+                metadata.invisible = parseBooleanSafe(tokens[++i]);
+            } else if (token.startsWith("invisible:")) {
+                metadata.invisible = parseBooleanSafe(token.substring(10));
+            } else if (token.startsWith("hidden=")) {
+                metadata.invisible = parseBooleanSafe(token.substring(7));
+            } else if (token.equals("hidden:") && i + 1 < tokens.length) {
+                metadata.invisible = parseBooleanSafe(tokens[++i]);
+            } else if (token.startsWith("hidden:")) {
+                metadata.invisible = parseBooleanSafe(token.substring(7));
             }
         }
         return true;
@@ -279,5 +291,19 @@ public class SFCRSyntaxNormalizer {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private Boolean parseBooleanSafe(String value) {
+        if (value == null) {
+            return null;
+        }
+        String t = value.trim().toLowerCase();
+        if (t.equals("true") || t.equals("1") || t.equals("yes")) {
+            return Boolean.TRUE;
+        }
+        if (t.equals("false") || t.equals("0") || t.equals("no")) {
+            return Boolean.FALSE;
+        }
+        return null;
     }
 }

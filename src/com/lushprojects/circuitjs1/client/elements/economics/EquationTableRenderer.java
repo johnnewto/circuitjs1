@@ -53,8 +53,6 @@ class EquationTableRenderer {
 
     private String[] cachedDisplayEquationByRow;
     private String[] cachedEquationSourceByRow;
-    private String[] cachedSliderVarByRow;
-    private double[] cachedSliderValueByRow;
     private String[] cachedOutputNameByRow;
     private String[] cachedRawOutputNameByRow;
     
@@ -156,8 +154,6 @@ class EquationTableRenderer {
     private void clearRowTextCaches() {
         cachedDisplayEquationByRow = null;
         cachedEquationSourceByRow = null;
-        cachedSliderVarByRow = null;
-        cachedSliderValueByRow = null;
         cachedOutputNameByRow = null;
         cachedRawOutputNameByRow = null;
     }
@@ -166,13 +162,8 @@ class EquationTableRenderer {
         if (cachedDisplayEquationByRow == null || cachedDisplayEquationByRow.length != rowCount) {
             cachedDisplayEquationByRow = new String[rowCount];
             cachedEquationSourceByRow = new String[rowCount];
-            cachedSliderVarByRow = new String[rowCount];
-            cachedSliderValueByRow = new double[rowCount];
             cachedOutputNameByRow = new String[rowCount];
             cachedRawOutputNameByRow = new String[rowCount];
-            for (int i = 0; i < rowCount; i++) {
-                cachedSliderValueByRow[i] = Double.NaN;
-            }
         }
     }
     
@@ -675,7 +666,7 @@ class EquationTableRenderer {
             return;
         }
         
-        // Build display equation with slider value substituted
+        // Build display equation
         String displayEquation = buildDisplayEquation(row);
         String outputName = getCachedOutputName(row);
         String rowText;
@@ -827,7 +818,7 @@ class EquationTableRenderer {
     }
     
     /**
-     * Build the display equation string with slider variable substituted.
+     * Build the display equation string.
      */
     private String buildDisplayEquation(int row) {
         int rowCount = table.getRowCount();
@@ -837,15 +828,7 @@ class EquationTableRenderer {
         if (equation == null) {
             equation = "";
         }
-        String sliderVar = table.getSliderVarName(row);
-        if (sliderVar == null) {
-            sliderVar = "";
-        }
-        double sliderValue = sliderVar.isEmpty() ? Double.NaN : table.getSliderValue(row);
-
         boolean cacheValidForRow = equation.equals(cachedEquationSourceByRow[row])
-            && sliderVar.equals(cachedSliderVarByRow[row])
-            && (Double.isNaN(sliderValue) ? Double.isNaN(cachedSliderValueByRow[row]) : sliderValue == cachedSliderValueByRow[row])
             && cachedDisplayEquationByRow[row] != null;
 
         if (cacheValidForRow) {
@@ -853,14 +836,8 @@ class EquationTableRenderer {
         }
 
         String displayEquation = Locale.convertGreekSymbols(equation);
-        if (!sliderVar.isEmpty()) {
-            String valueStr = CircuitElm.getShortUnitText(sliderValue, "");
-            displayEquation = displayEquation.replaceAll("\\b" + sliderVar + "\\b", valueStr);
-        }
 
         cachedEquationSourceByRow[row] = equation;
-        cachedSliderVarByRow[row] = sliderVar;
-        cachedSliderValueByRow[row] = sliderValue;
         cachedDisplayEquationByRow[row] = displayEquation;
         return displayEquation;
     }

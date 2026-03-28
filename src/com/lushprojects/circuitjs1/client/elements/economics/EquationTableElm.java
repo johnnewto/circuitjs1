@@ -23,7 +23,7 @@ import com.google.gwt.event.dom.client.MouseWheelEvent;
 import com.google.gwt.event.dom.client.MouseWheelHandler;
 
 /**
- * EquationTableElm - Table of Equations with Adjustable Sliders
+ * EquationTableElm - Table of Equations
  * 
  * This element displays a visual table where each row defines a named equation output.
  * It provides a spreadsheet-like interface for defining mathematical relationships
@@ -41,7 +41,6 @@ import com.google.gwt.event.dom.client.MouseWheelHandler;
  * <ul>
  *   <li>Multiple rows (1-128), each defining an independent equation</li>
  *   <li>Each row has a named output that becomes accessible as a labeled node</li>
- *   <li>Custom slider variable per row for interactive parameter adjustment</li>
  *   <li>Support for initial value equations (evaluated only at t=0)</li>
  *   <li>Row output modes: VOLTAGE (default), FLOW (current source), PARAM (computed-only)</li>
  *   <li>FLOW rows publish endpoint flow keys with direction sign:
@@ -69,6 +68,9 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /** Flag indicating MNA (electrical) mode vs pure computational mode */
     private static final int FLAG_MNA_MODE = 2;
+
+    /** Flag indicating the table should not be rendered */
+    private static final int FLAG_INVISIBLE = 4;
     
     /** Maximum number of equation rows supported */
     public static final int MAX_ROWS = 128;
@@ -478,13 +480,9 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         // Set default values for the initial rows
         rows[0].outputName = "Y1";
         rows[0].equation = "0";
-        rows[0].sliderVarName = "";
-        rows[0].sliderValue = 0;
         
         rows[1].outputName = "Y2";
         rows[1].equation = "0";
-        rows[1].sliderVarName = "";
-        rows[1].sliderValue = 0;
         
         setSize(sim.smallGridCheckItem.getState() ? 1 : 2);
         parseAllEquations();
@@ -527,27 +525,36 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         
         initArrays();
         
-        // Count remaining tokens to determine format version
-        // Old format: 5 tokens per row (name, equation, initEq, sliderVar, sliderValue)
-        // Newer format: includes outputMode/target and legacy compatibility fields
+        // Count remaining tokens to determine format version.
         int tokenCount = 0;
         java.util.ArrayList<String> tokens = new java.util.ArrayList<String>();
         while (st.hasMoreTokens()) {
             tokens.add(st.nextToken());
             tokenCount++;
         }
-        
-        // Determine format:
-        // 10 tokens/row = newest format (+ shuntResistance)
-        // 9 tokens/row  = previous newest format (no shuntResistance)
-        // 8 tokens/row  = new format (no backward Euler flag)
-        // 5 tokens/row  = old format
+
         int tokenStartIndex = 0;
         int remainingTokenCount = tokenCount;
+        int tokensPerRow = (rowCount > 0) ? (remainingTokenCount / rowCount) : 0;
+        boolean exactRows = rowCount > 0 && (remainingTokenCount == rowCount * tokensPerRow);
 
-        boolean newestFormatWithShunt = (remainingTokenCount == rowCount * 10);
-        boolean newestFormat = newestFormatWithShunt || (remainingTokenCount == rowCount * 9);
-        boolean newFormat = newestFormat || (remainingTokenCount == rowCount * 8);
+        final int FORMAT_UNKNOWN = 0;
+        final int FORMAT_OLD_5 = 1;          // name eq init sliderVar sliderVal
+        final int FORMAT_OLD_8 = 2;          // old + mode target legacyCap
+        final int FORMAT_OLD_9 = 3;          // old + mode target legacyCap backwardEuler
+        final int FORMAT_OLD_10 = 4;         // old + mode target legacyCap shunt backwardEuler
+        final int FORMAT_NO_SLIDER_7 = 5;    // name eq init mode target shunt backwardEuler
+        final int FORMAT_NO_SLIDER_6 = 6;    // name eq init mode target shunt
+
+        int format = FORMAT_UNKNOWN;
+        if (exactRows) {
+            if (tokensPerRow == 10) format = FORMAT_OLD_10;
+            else if (tokensPerRow == 9) format = FORMAT_OLD_9;
+            else if (tokensPerRow == 8) format = FORMAT_OLD_8;
+            else if (tokensPerRow == 7) format = FORMAT_NO_SLIDER_7;
+            else if (tokensPerRow == 6) format = FORMAT_NO_SLIDER_6;
+            else if (tokensPerRow == 5) format = FORMAT_OLD_5;
+        }
         
         // Parse per-row data
         int tokenIndex = tokenStartIndex;
@@ -561,73 +568,64 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             if (tokenIndex < tokens.size()) {
                 rows[row].initialEquation = CustomLogicModel.unescape(tokens.get(tokenIndex++));
             }
-            if (tokenIndex < tokens.size()) {
-                rows[row].sliderVarName = CustomLogicModel.unescape(tokens.get(tokenIndex++));
+
+            // Ignore slider payload on import (legacy formats).
+            rows[row].sliderVarName = "";
+            rows[row].sliderValue = 0;
+            if ((format == FORMAT_OLD_5 || format == FORMAT_OLD_8 || format == FORMAT_OLD_9 || format == FORMAT_OLD_10)
+                    && tokenIndex + 1 < tokens.size()) {
+                tokenIndex += 2;
             }
-            if (tokenIndex < tokens.size()) {
-                try {
-                    rows[row].sliderValue = Double.parseDouble(tokens.get(tokenIndex++));
-                } catch (Exception e) {
-                    rows[row].sliderValue = 0;
-                }
-            }
-            
-            // New format fields (only if new format detected)
-            if (newFormat) {
-                // Output mode
+
+            // Parse mode metadata when present.
+            if (format == FORMAT_OLD_8 || format == FORMAT_OLD_9 || format == FORMAT_OLD_10
+                    || format == FORMAT_NO_SLIDER_6 || format == FORMAT_NO_SLIDER_7) {
                 if (tokenIndex < tokens.size()) {
                     try {
                         int modeOrdinal = Integer.parseInt(tokens.get(tokenIndex++));
                         if (modeOrdinal == 0) {
                             rows[row].outputMode = RowOutputMode.VOLTAGE_MODE;
-                        } else if (modeOrdinal == 1) {
-                            rows[row].outputMode = RowOutputMode.FLOW_MODE;
-                        } else if (modeOrdinal == 2) {
+                        } else if (modeOrdinal == 1 || modeOrdinal == 2) {
                             // Backward compatibility: old dumps used 2=STOCK_MODE.
                             rows[row].outputMode = RowOutputMode.FLOW_MODE;
                         } else if (modeOrdinal == 3) {
-                            // Backward compatibility: old dumps used 3=PARAM_MODE.
                             rows[row].outputMode = RowOutputMode.PARAM_MODE;
                         }
                     } catch (Exception e) {
-                        tokenIndex++; // Skip invalid token
+                        // Keep default VOLTAGE mode.
                     }
                 }
-                // Target node name (may be empty if combined name format used)
                 if (tokenIndex < tokens.size()) {
                     rows[row].targetNodeName = CustomLogicModel.unescape(tokens.get(tokenIndex++));
                     if (rows[row].targetNodeName.isEmpty()) {
                         rows[row].targetNodeName = null;
                     }
                 }
-                // Legacy capacitance token (obsolete): consume and ignore
-                if (tokenIndex < tokens.size()) {
-                    try {
-                        Double.parseDouble(tokens.get(tokenIndex++));
-                    } catch (Exception e) {
-                        tokenIndex++; // Skip invalid token
-                    }
-                }
-                // Shunt resistance (newest format only)
-                if (newestFormatWithShunt && tokenIndex < tokens.size()) {
-                    try {
-                        rows[row].shuntResistance = Double.parseDouble(tokens.get(tokenIndex++));
-                        if (rows[row].shuntResistance <= 0) rows[row].shuntResistance = DEFAULT_FLOW_SHUNT_RESISTANCE;
-                    } catch (Exception e) {
-                        tokenIndex++;
-                        rows[row].shuntResistance = DEFAULT_FLOW_SHUNT_RESISTANCE;
-                    }
-                } else {
+            }
+
+            // Legacy capacitance token (obsolete): consume and ignore.
+            if ((format == FORMAT_OLD_8 || format == FORMAT_OLD_9 || format == FORMAT_OLD_10) && tokenIndex < tokens.size()) {
+                tokenIndex++;
+            }
+
+            // Shunt resistance where present.
+            if ((format == FORMAT_OLD_10 || format == FORMAT_NO_SLIDER_6 || format == FORMAT_NO_SLIDER_7) && tokenIndex < tokens.size()) {
+                try {
+                    rows[row].shuntResistance = Double.parseDouble(tokens.get(tokenIndex++));
+                    if (rows[row].shuntResistance <= 0) rows[row].shuntResistance = DEFAULT_FLOW_SHUNT_RESISTANCE;
+                } catch (Exception e) {
                     rows[row].shuntResistance = DEFAULT_FLOW_SHUNT_RESISTANCE;
                 }
-                // Backward Euler flag (newest format only)
-                if (newestFormat && tokenIndex < tokens.size()) {
-                    try {
-                        rows[row].useBackwardEuler = Integer.parseInt(tokens.get(tokenIndex++)) != 0;
-                    } catch (Exception e) {
-                        tokenIndex++;
-                        rows[row].useBackwardEuler = false;
-                    }
+            } else {
+                rows[row].shuntResistance = DEFAULT_FLOW_SHUNT_RESISTANCE;
+            }
+
+            // Backward Euler flag where present.
+            if ((format == FORMAT_OLD_9 || format == FORMAT_OLD_10 || format == FORMAT_NO_SLIDER_7) && tokenIndex < tokens.size()) {
+                try {
+                    rows[row].useBackwardEuler = Integer.parseInt(tokens.get(tokenIndex++)) != 0;
+                } catch (Exception e) {
+                    rows[row].useBackwardEuler = false;
                 }
             }
             
@@ -722,7 +720,6 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * Keys tracked:
      * - row output names
      * - FLOW namespace keys (<name>.flow) for source/target
-     * - per-row slider variable names
      */
     private void refreshComputedNameRegistry() {
         if (registeredComputedNames == null) {
@@ -755,13 +752,6 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 }
             }
 
-            String sliderVar = rows[row].sliderVarName;
-            if (sliderVar != null) {
-                String trimmedSlider = sliderVar.trim();
-                if (!trimmedSlider.isEmpty()) {
-                    currentComputedNames.add(trimmedSlider);
-                }
-            }
         }
 
         for (String name : registeredComputedNames) {
@@ -1192,19 +1182,14 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /**
      * Prepare the evaluation state for a row before evaluating its expression.
-     * Sets slider value, time, and registers the slider variable in ComputedValues.
+     * Sets time and clears legacy slider state.
      * @param row Row index
      * @return The prepared ExprState, ready for eval()
      */
     private ExprState prepareEvalState(int row) {
         ExprState state = getOrCreateExprState(row);
-        state.values[0] = rows[row].sliderValue;
+        state.values[0] = 0;
         state.t = sim.getTime();
-        
-        String sliderVar = rows[row].sliderVarName;
-        if (sliderVar != null && !sliderVar.isEmpty()) {
-            ComputedValues.setComputedValue(sliderVar, rows[row].sliderValue);
-        }
         return state;
     }
     
@@ -1907,14 +1892,8 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      */
     private void evaluateInitialValue(int row) {
         ExprState state = getOrCreateExprState(row);
-        state.values[0] = rows[row].sliderValue;
+        state.values[0] = 0;
         state.t = 0;
-        
-        // Register slider variable for expression evaluation
-        String sliderVar = rows[row].sliderVarName;
-        if (sliderVar != null && !sliderVar.isEmpty()) {
-            ComputedValues.setComputedValue(sliderVar, rows[row].sliderValue);
-        }
         
         // Evaluate the initial expression
         double initialValue = rows[row].compiledInitialExpr.eval(state);
@@ -2170,8 +2149,6 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             sb.append(" ").append(CustomLogicModel.escape(getDisplayOutputName(row)));
             sb.append(" ").append(CustomLogicModel.escape(rows[row].equation));
             sb.append(" ").append(CustomLogicModel.escape(rows[row].initialEquation != null ? rows[row].initialEquation : ""));
-            sb.append(" ").append(CustomLogicModel.escape(rows[row].sliderVarName));
-            sb.append(" ").append(rows[row].sliderValue);
             // New: output mode and target node (target token kept empty for format compat)
             int modeOrdinal = 0;
             if (rows[row].outputMode == RowOutputMode.FLOW_MODE) {
@@ -2182,7 +2159,6 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             }
             sb.append(" ").append(modeOrdinal);  // 0=VOLTAGE, 1=FLOW, 2=legacy STOCK, 3=PARAM
             sb.append(" ").append(CustomLogicModel.escape(""));  // target now in combined name
-            sb.append(" ").append(1.0); // legacy capacitance token retained for compatibility
             sb.append(" ").append(rows[row].shuntResistance);
             sb.append(" ").append(rows[row].useBackwardEuler ? 1 : 0);  // 0=trapezoidal, 1=backward Euler
         }
@@ -2200,6 +2176,9 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      */
     @Override
     protected void drawPosts(Graphics g) {
+        if ((flags & FLAG_INVISIBLE) != 0) {
+            return;
+        }
         if (isMnaMode()) {
             // MNA mode: draw posts for electrical connections
             for (int i = 0; i < getPostCount(); i++) {
@@ -2215,6 +2194,9 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * Delegates to EquationTableRenderer for actual drawing.
      */
     protected void draw(Graphics g) {
+        if ((flags & FLAG_INVISIBLE) != 0) {
+            return;
+        }
         renderer.draw(g);
     }
     
@@ -2228,6 +2210,9 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     public EditInfo getEditInfo(int n) {
         if (n == 0) {
             return EditInfo.createCheckbox("Small", (flags & FLAG_SMALL) != 0);
+        }
+        if (n == 1) {
+            return EditInfo.createCheckbox("Invisible", (flags & FLAG_INVISIBLE) != 0);
         }
         return null;
     }
@@ -2245,6 +2230,8 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 sim.getPreferencesManager().setGrid();
             }
             setPoints();
+        } else if (n == 1) {
+            flags = ei.changeFlag(flags, FLAG_INVISIBLE);
         }
     }
     
@@ -2322,26 +2309,24 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 arr[4] = "Flow: " + sourceName + " \u2192 " + targetName + " (positive = " + sourceName + " to " + targetName + ")";
             }
             arr[5] = "Initial (t=0): " + (initEq != null && !initEq.trim().isEmpty() ? initEq : "(none)");
-            arr[6] = "Slider: " + rows[hoveredRow].sliderVarName + " = " + getShortUnitText(rows[hoveredRow].sliderValue, "");
-            arr[7] = "Output: " + getUnitText(rows[hoveredRow].outputValue, "");
-            arr[8] = "Convergence Tol: " + Double.toString(getConvergenceTolerance());
-            
-            if (rows[hoveredRow].compiledExpr == null) {
-                arr[9] = "\u26A0 Equation parse error";
-            } else if (isAdjustableRow(hoveredRow)) {
-                arr[9] = "scroll to adjust value";
-            }
-        } else {
-            arr[4] = "Initial (t=0): " + (initEq != null && !initEq.trim().isEmpty() ? initEq : "(none)");
-        
-            arr[5] = "Slider: " + rows[hoveredRow].sliderVarName + " = " + getShortUnitText(rows[hoveredRow].sliderValue, "");
             arr[6] = "Output: " + getUnitText(rows[hoveredRow].outputValue, "");
             arr[7] = "Convergence Tol: " + Double.toString(getConvergenceTolerance());
-        
+            
             if (rows[hoveredRow].compiledExpr == null) {
                 arr[8] = "\u26A0 Equation parse error";
             } else if (isAdjustableRow(hoveredRow)) {
                 arr[8] = "scroll to adjust value";
+            }
+        } else {
+            arr[4] = "Initial (t=0): " + (initEq != null && !initEq.trim().isEmpty() ? initEq : "(none)");
+        
+            arr[5] = "Output: " + getUnitText(rows[hoveredRow].outputValue, "");
+            arr[6] = "Convergence Tol: " + Double.toString(getConvergenceTolerance());
+        
+            if (rows[hoveredRow].compiledExpr == null) {
+                arr[7] = "\u26A0 Equation parse error";
+            } else if (isAdjustableRow(hoveredRow)) {
+                arr[7] = "scroll to adjust value";
             }
         }
     }
@@ -2490,17 +2475,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
     }
     
-    /**
-     * Custom formatting for slider fields in edit dialog.
-     */
     public String getSliderUnitText(int n, EditInfo ei, double value) {
-        int fieldOffset = n - 2;
-        int fieldInRow = fieldOffset % 5;
-        
-        // Only format slider value fields (fieldInRow == 3 in old 5-field layout)
-        if (fieldInRow == 3) {
-            return getShortUnitText(value, "");
-        }
         return null;
     }
     
@@ -2784,27 +2759,30 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /** Get slider variable name for a row */
     public String getSliderVarName(int row) {
-        return (row >= 0 && row < MAX_ROWS) ? rows[row].sliderVarName : "";
+        return "";
     }
     
     /** Set slider variable name for a row */
     public void setSliderVarName(int row, String name) {
         if (row >= 0 && row < MAX_ROWS) {
-            rows[row].sliderVarName = name;
-            markNameRegistriesDirty();
+            rows[row].sliderVarName = "";
         }
     }
     
     /** Get slider value for a row */
     public double getSliderValue(int row) {
-        return (row >= 0 && row < MAX_ROWS) ? rows[row].sliderValue : 0.0;
+        return 0.0;
     }
     
     /** Set slider value for a row */
     public void setSliderValue(int row, double val) {
         if (row >= 0 && row < MAX_ROWS) {
-            rows[row].sliderValue = val;
+            rows[row].sliderValue = 0.0;
         }
+    }
+
+    public boolean isInvisible() {
+        return (flags & FLAG_INVISIBLE) != 0;
     }
     
     /** Get output mode for a row */

@@ -469,6 +469,9 @@ public class SFCTableElm extends TableElm {
     
     @Override
     protected void draw(Graphics g) {
+        if ((flags & FLAG_INVISIBLE) != 0) {
+            return;
+        }
         if (showSankeyView && sankeyRenderer != null) {
             lastDrawWasSankeyView = true;
 
@@ -585,6 +588,11 @@ public class SFCTableElm extends TableElm {
         if (n == 9) {
             return new EditInfo("Sankey Height (pixels)", sankeyHeight, 100, 600);
         }
+        if (n == 10) {
+            EditInfo ei = new EditInfo("Invisible", 0, -1, -1);
+            ei.checkbox = new Checkbox("", (flags & FLAG_INVISIBLE) != 0);
+            return ei;
+        }
         return null;
     }
     
@@ -613,6 +621,8 @@ public class SFCTableElm extends TableElm {
             sankeyWidth = Math.max(150, (int)ei.value);
         } else if (n == 9) {
             sankeyHeight = Math.max(100, (int)ei.value);
+        } else if (n == 10) {
+            flags = ei.changeFlag(flags, FLAG_INVISIBLE);
         }
 
         invalidateTableRenderCache();

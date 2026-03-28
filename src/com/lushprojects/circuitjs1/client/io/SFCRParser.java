@@ -93,6 +93,7 @@ public class SFCRParser {
         int x = Integer.MIN_VALUE;
         int y = Integer.MIN_VALUE;
         String type;
+        Boolean invisible;
 
         boolean hasPosition() {
             return x != Integer.MIN_VALUE && y != Integer.MIN_VALUE;

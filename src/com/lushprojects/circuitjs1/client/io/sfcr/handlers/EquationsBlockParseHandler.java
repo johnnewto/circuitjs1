@@ -38,6 +38,7 @@ public class EquationsBlockParseHandler implements SFCRBlockParseHandler {
         ArrayList<String> sliderVarNames = new ArrayList<String>();
         ArrayList<Double> sliderValues = new ArrayList<Double>();
         ArrayList<String> initialEquations = new ArrayList<String>();
+        Boolean invisible = null;
 
         int i = startIndex + 1;
         while (i < lines.length) {
@@ -55,6 +56,17 @@ public class EquationsBlockParseHandler implements SFCRBlockParseHandler {
             if (line.isEmpty()) {
                 i++;
                 continue;
+            }
+
+            int blockMetaSep = line.indexOf(':');
+            if (blockMetaSep > 0) {
+                String key = line.substring(0, blockMetaSep).trim().toLowerCase();
+                String value = line.substring(blockMetaSep + 1).trim();
+                if (key.equals("invisible") || key.equals("hidden")) {
+                    invisible = parseBoolean(value);
+                    i++;
+                    continue;
+                }
             }
 
             String inlineComment = null;
@@ -158,7 +170,7 @@ public class EquationsBlockParseHandler implements SFCRBlockParseHandler {
 
         if (!outputNames.isEmpty()) {
             ctx.createEquationTable(blockName, outputNames, equations, outputModes,
-                targetNodeNames, sliderVarNames, sliderValues, initialEquations);
+                targetNodeNames, sliderVarNames, sliderValues, initialEquations, invisible);
         }
 
         if (blockPos.hasPosition()) {
@@ -190,5 +202,10 @@ public class EquationsBlockParseHandler implements SFCRBlockParseHandler {
         sliderVarNames.add("");
         sliderValues.add(Double.valueOf(0));
         initialEquations.add("");
+    }
+
+    private Boolean parseBoolean(String value) {
+        return Boolean.valueOf("true".equalsIgnoreCase(value) || "1".equals(value)
+            || "yes".equalsIgnoreCase(value));
     }
 }

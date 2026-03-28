@@ -44,7 +44,7 @@ import com.lushprojects.circuitjs1.client.util.Locale;
 /**
  * EquationTableEditDialog - Grid-based editor for EquationTableElm
  * 
- * Displays a grid with columns: Buttons | Output Name | Equation | Slider Var | Slider Value
+ * Displays a grid with columns: Buttons | Output Name | Equation
  * Each row represents one equation with move up/down, add, delete buttons.
  * 
  * Pattern follows TableEditDialog for row manipulation.
@@ -58,7 +58,7 @@ import com.lushprojects.circuitjs1.client.util.Locale;
  *   <li><b>Title bar</b> — table name textbox + live row count badge.</li>
  *   <li><b>Scrollable grid</b> — one row per equation, columns:
  *       Buttons | Node(s) | Equation | Initial (t=0) | Mode | Shunt R |
- *       Integ. | Slider Var | Slider Value | Hint</li>
+ *       Integ. | Hint</li>
  *   <li><b>Button bar</b> — Apply, OK, Properties, Debug, Reference, Toggle Modes, Close.</li>
  *   <li><b>Status label</b> — feedback after row operations and Apply.</li>
  * </ol>
@@ -89,10 +89,8 @@ public class EquationTableEditDialog extends Dialog {
     private static final int COL_MODE = 4;
     private static final int COL_SHUNT_RESISTANCE = 5;
     private static final int COL_INTEGRATION = 6;
-    private static final int COL_SLIDER_VAR = 7;
-    private static final int COL_SLIDER_VALUE = 8;
-    private static final int COL_HINT = 9;
-    private static final int NUM_COLS = 10;
+    private static final int COL_HINT = 7;
+    private static final int NUM_COLS = 8;
     
     // Grid row indices
     private static final int HEADER_ROW = 0;
@@ -120,8 +118,6 @@ public class EquationTableEditDialog extends Dialog {
     private RowOutputMode[] outputModes;
     private double[] shuntResistances;
     private boolean[] useBackwardEuler;
-    private String[] sliderVarNames;
-    private double[] sliderValues;
     private String[] hints;
     
     // Track changes
@@ -163,8 +159,6 @@ public class EquationTableEditDialog extends Dialog {
         outputModes = new RowOutputMode[MAX_ROWS];
         shuntResistances = new double[MAX_ROWS];
         useBackwardEuler = new boolean[MAX_ROWS];
-        sliderVarNames = new String[MAX_ROWS];
-        sliderValues = new double[MAX_ROWS];
         hints = new String[MAX_ROWS];
         
         for (int i = 0; i < MAX_ROWS; i++) {
@@ -174,8 +168,6 @@ public class EquationTableEditDialog extends Dialog {
             outputModes[i] = tableElement.getOutputMode(i);
             shuntResistances[i] = tableElement.getFlowShuntResistance(i);
             useBackwardEuler[i] = tableElement.getUseBackwardEuler(i);
-            sliderVarNames[i] = tableElement.getSliderVarName(i);
-            sliderValues[i] = tableElement.getSliderValue(i);
             // Get hint from central HintRegistry using source name only
             String sourceName = EquationTableElm.parseCombinedName(outputNames[i])[0];
             String hint = HintRegistry.getHint(sourceName);
@@ -396,14 +388,6 @@ public class EquationTableEditDialog extends Dialog {
         headerInteg.setTitle("Integration method (Trapezoidal or Backward Euler)");
         editGrid.setWidget(HEADER_ROW, COL_INTEGRATION, headerInteg);
         
-        Label headerSliderVar = new Label("Slider Var");
-        headerSliderVar.getElement().getStyle().setProperty("fontWeight", "bold");
-        editGrid.setWidget(HEADER_ROW, COL_SLIDER_VAR, headerSliderVar);
-        
-        Label headerSliderVal = new Label("Slider Value");
-        headerSliderVal.getElement().getStyle().setProperty("fontWeight", "bold");
-        editGrid.setWidget(HEADER_ROW, COL_SLIDER_VALUE, headerSliderVal);
-        
         Label headerHint = new Label("Hint");
         headerHint.getElement().getStyle().setProperty("fontWeight", "bold");
         editGrid.setWidget(HEADER_ROW, COL_HINT, headerHint);
@@ -610,43 +594,6 @@ public class EquationTableEditDialog extends Dialog {
         integBox.setEnabled(false);
         editGrid.setWidget(gridRow, COL_INTEGRATION, integBox);
         
-        // Slider variable name textbox
-        final TextBox sliderVarBox = new TextBox();
-        sliderVarBox.setText(sliderVarNames[row]);
-        sliderVarBox.setWidth("60px");
-        sliderVarBox.addKeyUpHandler(new KeyUpHandler() {
-            public void onKeyUp(KeyUpEvent event) {
-                sliderVarNames[row] = sliderVarBox.getText();
-                markChanged();
-            }
-        });
-        addSelectAllOnFocus(sliderVarBox);
-        editGrid.setWidget(gridRow, COL_SLIDER_VAR, sliderVarBox);
-        
-        // Slider value textbox
-        final TextBox sliderValBox = new TextBox();
-        sliderValBox.setText(CircuitElm.getShortUnitText(sliderValues[row], ""));
-        sliderValBox.setWidth("80px");
-        sliderValBox.addKeyUpHandler(new KeyUpHandler() {
-            public void onKeyUp(KeyUpEvent event) {
-                try {
-                    sliderValues[row] = EditDialog.parseUnits(sliderValBox.getText());
-                    sliderValBox.getElement().getStyle().clearBackgroundColor();
-                    markChanged();
-                } catch (Exception e) {
-                    sliderValBox.getElement().getStyle().setProperty("backgroundColor", "#ffcccc");
-                }
-            }
-        });
-        sliderValBox.addBlurHandler(new BlurHandler() {
-            public void onBlur(BlurEvent event) {
-                // Reformat on blur
-                sliderValBox.setText(CircuitElm.getShortUnitText(sliderValues[row], ""));
-            }
-        });
-        addSelectAllOnFocus(sliderValBox);
-        editGrid.setWidget(gridRow, COL_SLIDER_VALUE, sliderValBox);
-        
         // Hint textbox
         final TextBox hintBox = new TextBox();
         hintBox.setText(hints[row]);
@@ -738,12 +685,11 @@ public class EquationTableEditDialog extends Dialog {
      *   <li>All labeled node names from {@link LabeledNodeElm}.</li>
      *   <li>Output names defined in this table's current row data.</li>
      *   <li>FLOW computed-value keys ({@code <name>.flow}) for FLOW rows.</li>
-     *   <li>The slider variable name for the row being edited.</li>
      *   <li>Built-in math functions: sin, cos, tan, exp, log, sqrt, abs, etc.</li>
      *   <li>Constants: {@code pi}, {@code t}.</li>
      * </ol>
      *
-     * @param row Zero-based row index (used to include this row's slider variable).
+     * @param row Zero-based row index.
      * @return Mutable list of candidate completion strings.
      */
     /**
@@ -781,11 +727,6 @@ public class EquationTableEditDialog extends Dialog {
             if (flowKey != null && !completions.contains(flowKey)) {
                 completions.add(flowKey);
             }
-        }
-        
-        // Add this row's slider variable
-        if (!completions.contains(sliderVarNames[row])) {
-            completions.add(sliderVarNames[row]);
         }
         
         // Add math functions
@@ -1028,8 +969,6 @@ public class EquationTableEditDialog extends Dialog {
             outputModes[i + 1] = outputModes[i];
             shuntResistances[i + 1] = shuntResistances[i];
             useBackwardEuler[i + 1] = useBackwardEuler[i];
-            sliderVarNames[i + 1] = sliderVarNames[i];
-            sliderValues[i + 1] = sliderValues[i];
             hints[i + 1] = hints[i];
         }
         
@@ -1040,8 +979,6 @@ public class EquationTableEditDialog extends Dialog {
         outputModes[insertAt] = RowOutputMode.VOLTAGE_MODE;
         shuntResistances[insertAt] = EquationTableElm.getDefaultFlowShuntResistance();
         useBackwardEuler[insertAt] = false;
-        sliderVarNames[insertAt] = "";
-        sliderValues[insertAt] = 0;
         hints[insertAt] = "hint" + (insertAt + 1);
         
         rowCount++;
@@ -1068,8 +1005,6 @@ public class EquationTableEditDialog extends Dialog {
             outputModes[i] = outputModes[i + 1];
             shuntResistances[i] = shuntResistances[i + 1];
             useBackwardEuler[i] = useBackwardEuler[i + 1];
-            sliderVarNames[i] = sliderVarNames[i + 1];
-            sliderValues[i] = sliderValues[i + 1];
             hints[i] = hints[i + 1];
         }
         
@@ -1110,14 +1045,6 @@ public class EquationTableEditDialog extends Dialog {
         boolean tempEuler = useBackwardEuler[fromIndex];
         useBackwardEuler[fromIndex] = useBackwardEuler[toIndex];
         useBackwardEuler[toIndex] = tempEuler;
-        
-        String tempVar = sliderVarNames[fromIndex];
-        sliderVarNames[fromIndex] = sliderVarNames[toIndex];
-        sliderVarNames[toIndex] = tempVar;
-        
-        double tempVal = sliderValues[fromIndex];
-        sliderValues[fromIndex] = sliderValues[toIndex];
-        sliderValues[toIndex] = tempVal;
         
         String tempHint = hints[fromIndex];
         hints[fromIndex] = hints[toIndex];
@@ -1552,8 +1479,6 @@ public class EquationTableEditDialog extends Dialog {
                 tableElement.setOutputMode(row, RowOutputMode.PARAM_MODE);
                 tableElement.setFlowShuntResistance(row, EquationTableElm.getDefaultFlowShuntResistance());
                 tableElement.setUseBackwardEuler(row, false);
-                tableElement.setSliderVarName(row, "");
-                tableElement.setSliderValue(row, 0);
                 continue;
             }
 
@@ -1562,8 +1487,6 @@ public class EquationTableEditDialog extends Dialog {
             tableElement.setOutputMode(row, outputModes[row]);
             tableElement.setFlowShuntResistance(row, shuntResistances[row]);
             tableElement.setUseBackwardEuler(row, useBackwardEuler[row]);
-            tableElement.setSliderVarName(row, sliderVarNames[row]);
-            tableElement.setSliderValue(row, sliderValues[row]);
             // Save hint to central HintRegistry using source name only
             String sourceName = EquationTableElm.parseCombinedName(outputName)[0];
             if (hints[row] != null && !hints[row].trim().isEmpty()) {

@@ -7,6 +7,7 @@ import com.lushprojects.circuitjs1.client.elements.economics.EquationTableElm;
 import com.lushprojects.circuitjs1.client.elements.economics.GodlyTableElm;
 import com.lushprojects.circuitjs1.client.elements.economics.SFCSankeyElm;
 import com.lushprojects.circuitjs1.client.elements.economics.SFCTableElm;
+import com.lushprojects.circuitjs1.client.elements.economics.TableElm;
 import com.lushprojects.circuitjs1.client.elements.economics.TableColumn;
 import com.lushprojects.circuitjs1.client.elements.misc.ActionTimeElm;
 import com.lushprojects.circuitjs1.client.elements.misc.ScopeElm;
@@ -409,8 +410,6 @@ public class SFCRExportContext {
         String name;
         String expr;
         EquationTableElm.RowOutputMode mode;
-        String sliderVar;
-        double sliderValue;
         String initialEq;
         String hint;
     }
@@ -474,8 +473,6 @@ public class SFCRExportContext {
             data.name = name;
             data.expr = expr;
             data.mode = eqTable.getOutputMode(row);
-            data.sliderVar = eqTable.getSliderVarName(row);
-            data.sliderValue = eqTable.getSliderValue(row);
             data.initialEq = initialEq;
             data.hint = sanitizeHintForRStyleExport(HintRegistry.getHint(sourceName));
             rows.add(data);
@@ -594,6 +591,7 @@ public class SFCRExportContext {
         appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_EQUATIONS, SFCRUtil.sanitizeName(tableName));
         sb.append("@equations ").append(SFCRUtil.sanitizeName(tableName));
         sb.append(SFCRUtil.formatPosition(eqTable)).append("\n");
+        sb.append("  invisible: ").append(eqTable.isInvisible()).append("\n");
 
         for (int i = 0; i < rows.size(); i++) {
             EquationExportRow row = rows.get(i);
@@ -603,10 +601,6 @@ public class SFCRExportContext {
             }
             sb.append("  ").append(row.name).append(" ~ ").append(row.expr);
             sb.append(" ; mode=").append(SFCRUtil.formatEquationRowMode(row.mode));
-            if (row.sliderVar != null && !row.sliderVar.trim().isEmpty()) {
-                sb.append(" ; slider=").append(row.sliderVar.trim());
-            }
-            sb.append(" ; sliderValue=").append(row.sliderValue);
             if (row.initialEq != null && !row.initialEq.trim().isEmpty()) {
                 sb.append(" ; initial=").append(row.initialEq.trim());
             }
@@ -655,6 +649,7 @@ public class SFCRExportContext {
         sb.append("@matrix ").append(SFCRUtil.sanitizeName(tableName));
         sb.append(SFCRUtil.formatPosition(sfcTable)).append("\n");
         sb.append("  type: transaction_flow\n");
+        sb.append("  invisible: ").append(sfcTable.isInvisible()).append("\n");
 
         MatrixExportData data = collectMatrixExportData(sfcTable, tableName, false);
         int dataCols = data.stockNames.size();
@@ -728,7 +723,7 @@ public class SFCRExportContext {
             if (emitted < equationCount) {
                 sb.append(",");
             }
-            String rowMeta = formatRStyleEquationInlineMetadata(row.mode, row.sliderVar, row.sliderValue, row.initialEq);
+            String rowMeta = formatRStyleEquationInlineMetadata(row.mode, row.initialEq);
             appendRStyleInlineComment(sb, row.hint, rowMeta);
             sb.append("\n");
         }
@@ -872,18 +867,18 @@ public class SFCRExportContext {
         if (type != null && type.trim().length() > 0) {
             sb.append(" type: ").append(type.trim());
         }
+        if (elm instanceof EquationTableElm) {
+            sb.append(" invisible=").append(((EquationTableElm) elm).isInvisible());
+        } else if (elm instanceof TableElm) {
+            sb.append(" invisible=").append(((TableElm) elm).isInvisible());
+        }
         sb.append(" ]\n");
         return sb.toString();
     }
 
-    private static String formatRStyleEquationInlineMetadata(EquationTableElm.RowOutputMode mode,
-            String sliderVar, double sliderValue, String initialEq) {
+    private static String formatRStyleEquationInlineMetadata(EquationTableElm.RowOutputMode mode, String initialEq) {
         StringBuilder sb = new StringBuilder();
         sb.append("[mode=").append(SFCRUtil.formatEquationRowMode(mode));
-        if (sliderVar != null && !sliderVar.trim().isEmpty()) {
-            sb.append(", slider=").append(sliderVar.trim());
-        }
-        sb.append(", sliderValue=").append(sliderValue);
         if (initialEq != null && !initialEq.trim().isEmpty()) {
             sb.append(", initial=").append(initialEq.trim());
         }
@@ -1366,4 +1361,3 @@ public class SFCRExportContext {
         return Character.isLetterOrDigit(c) || c == '_' || c == '\\' || c == '^' || c == '{' || c == '}' || c == '.';
     }
 }
-

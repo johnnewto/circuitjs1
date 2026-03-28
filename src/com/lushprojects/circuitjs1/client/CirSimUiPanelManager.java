@@ -2,6 +2,7 @@ package com.lushprojects.circuitjs1.client;
 
 
 import com.google.gwt.dom.client.Document;
+import com.google.gwt.dom.client.Element;
 import com.google.gwt.dom.client.InputElement;
 import com.google.gwt.user.client.ui.RootLayoutPanel;
 import com.google.gwt.user.client.ui.Widget;
@@ -10,9 +11,32 @@ import com.lushprojects.circuitjs1.client.io.LoadFile;
 import com.lushprojects.circuitjs1.client.io.SFCRExporter;
 import com.lushprojects.circuitjs1.client.runner.RuntimeMode;
 import com.lushprojects.circuitjs1.client.ui.InfoViewerDialog;
+import jsinterop.annotations.JsPackage;
+import jsinterop.annotations.JsProperty;
+import jsinterop.annotations.JsType;
 
 public class CirSimUiPanelManager {
     private final CirSim sim;
+    
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Window")
+    private interface WindowLike {
+        void postMessage(Object message, String targetOrigin);
+    }
+    
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "HTMLIFrameElement")
+    private interface IFrameElementLike {
+        @JsProperty(name = "contentWindow")
+        WindowLike getContentWindow();
+    }
+    
+    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
+    private static class ModelInfoSyncMessage {
+        @JsProperty
+        String type;
+        
+        @JsProperty
+        String markdown;
+    }
 
     CirSimUiPanelManager(CirSim sim) {
         this.sim = sim;
@@ -122,17 +146,21 @@ public class CirSimUiPanelManager {
         postModelInfoSyncMessage(sim.leftModelInfoFrame.getElement(), refreshedMarkdown);
     }
 
-    private static native void postModelInfoSyncMessage(com.google.gwt.dom.client.Element frameElement, String markdown) /*-{
+    private static void postModelInfoSyncMessage(Element frameElement, String markdown) {
         try {
-            if (!frameElement || !frameElement.contentWindow)
+            if (frameElement == null)
                 return;
-            frameElement.contentWindow.postMessage({
-                type: 'info-viewer-sync-markdown',
-                markdown: markdown || ''
-            }, '*');
-        } catch (e) {
+            IFrameElementLike iframe = (IFrameElementLike) frameElement.cast();
+            WindowLike contentWindow = iframe.getContentWindow();
+            if (contentWindow == null)
+                return;
+            ModelInfoSyncMessage message = new ModelInfoSyncMessage();
+            message.type = "info-viewer-sync-markdown";
+            message.markdown = markdown != null ? markdown : "";
+            contentWindow.postMessage(message, "*");
+        } catch (Throwable t) {
         }
-    }-*/;
+    }
 
     void allowSave(boolean enabled) {
         if (sim.saveFileItem != null)

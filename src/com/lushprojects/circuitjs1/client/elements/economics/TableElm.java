@@ -30,6 +30,8 @@ import java.util.ArrayList;
  * Extends ChipElm to provide output pins at each column
  */
 public class TableElm extends ChipElm implements TableContentView {
+    protected static final int FLAG_INVISIBLE = 1 << 1;
+
     public int rows = 0;  // Start with zero rows for new tables
     int cellWidthInGrids = 6;  // Width of each cell in grid units (cspc)
     public int cellHeight = 16; // Height of each cell in pixels (for drawing)
@@ -573,6 +575,9 @@ public class TableElm extends ChipElm implements TableContentView {
 
     @Override
     protected void draw(Graphics g) {
+        if ((flags & FLAG_INVISIBLE) != 0) {
+            return;
+        }
         if (renderer != null) {
             renderer.draw(g);
         }
@@ -857,6 +862,11 @@ public class TableElm extends ChipElm implements TableContentView {
             ei.checkbox = new Checkbox("", collapsedMode);
             return ei;
         }
+        if (n == 8) {
+            EditInfo ei = new EditInfo("Invisible", 0, -1, -1);
+            ei.checkbox = new Checkbox("", (flags & FLAG_INVISIBLE) != 0);
+            return ei;
+        }
         return null;
     }
 
@@ -890,6 +900,8 @@ public class TableElm extends ChipElm implements TableContentView {
             showCellValues = ei.choice.getSelectedIndex(); // 0, 1, or 2
         } else if (n == 7) {
             collapsedMode = ei.checkbox.getValue();
+        } else if (n == 8) {
+            flags = ei.changeFlag(flags, FLAG_INVISIBLE);
         }
         
         setupPins();
@@ -1098,6 +1110,10 @@ public class TableElm extends ChipElm implements TableContentView {
     
     public void setPriority(int priority) {
         this.priority = priority;
+    }
+
+    public boolean isInvisible() {
+        return (flags & FLAG_INVISIBLE) != 0;
     }
     
     // A-L-E column visibility accessor

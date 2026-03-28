@@ -15,7 +15,8 @@ public class SFCRTableDumpBuilderService {
 
     public DumpBuildResult buildMatrixDump(String name, int currentX, int currentY,
                                     ArrayList<String> columnNames, ArrayList<String> rowNames,
-                                    ArrayList<String[]> tableRows, Boolean showInitialValuesOverride) {
+                                    ArrayList<String[]> tableRows, Boolean showInitialValuesOverride,
+                                    Boolean invisibleOverride) {
         int rows = rowNames.size();
         if (rows <= 0 || columnNames == null || columnNames.isEmpty()) {
             return null;
@@ -40,8 +41,9 @@ public class SFCRTableDumpBuilderService {
         int y2 = currentY + (rows + 3) * 16;
 
         StringBuilder dump = new StringBuilder();
+        int flags = (invisibleOverride != null && invisibleOverride.booleanValue()) ? 2 : 0;
         dump.append("265 ").append(x1).append(" ").append(y1).append(" ");
-        dump.append(x2).append(" ").append(y2).append(" 0 ");
+        dump.append(x2).append(" ").append(y2).append(" ").append(flags).append(" ");
         dump.append(rows).append(" ");
         dump.append(cols).append(" ");
         dump.append("6 16 0 ");
@@ -94,7 +96,7 @@ public class SFCRTableDumpBuilderService {
                                       ArrayList<String> outputNames, ArrayList<String> equations,
                                       ArrayList<Integer> outputModes, ArrayList<String> targetNodeNames,
                                       ArrayList<String> sliderVarNames, ArrayList<Double> sliderValues,
-                                      ArrayList<String> initialEquations) {
+                                      ArrayList<String> initialEquations, Boolean invisibleOverride) {
         int rows = outputNames.size();
         if (rows == 0) {
             return null;
@@ -109,8 +111,12 @@ public class SFCRTableDumpBuilderService {
         int y2 = currentY + (rows + 2) * 16;
 
         StringBuilder dump = new StringBuilder();
+        int flags = 2;
+        if (invisibleOverride != null && invisibleOverride.booleanValue()) {
+            flags |= 4;
+        }
         dump.append("266 ").append(x1).append(" ").append(y1).append(" ");
-        dump.append(x2).append(" ").append(y2).append(" 2 ");
+        dump.append(x2).append(" ").append(y2).append(" ").append(flags).append(" ");
         dump.append(SFCRParser.escapeToken(name.replace("_", " "))).append(" ");
         dump.append(rows).append(" ");
 

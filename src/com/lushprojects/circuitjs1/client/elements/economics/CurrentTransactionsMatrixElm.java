@@ -722,6 +722,11 @@ public class CurrentTransactionsMatrixElm extends TableElm {
             ei.choice.select(initMode); // Use saved mode
             return ei;
         }
+        if (n == 11) {
+            EditInfo ei = new EditInfo("Invisible", 0, -1, -1);
+            ei.checkbox = new Checkbox("", (flags & FLAG_INVISIBLE) != 0);
+            return ei;
+        }
         return null;
     }
     
@@ -810,6 +815,8 @@ public class CurrentTransactionsMatrixElm extends TableElm {
                     applyCustomStockNames();
                 }
             }
+        } else if (n == 11) {
+            flags = ei.changeFlag(flags, FLAG_INVISIBLE);
         }
         setupPins();
         setPoints();
@@ -1050,6 +1057,9 @@ public class CurrentTransactionsMatrixElm extends TableElm {
     
     @Override
     protected void draw(Graphics g) {
+        if ((flags & FLAG_INVISIBLE) != 0) {
+            return;
+        }
         if (matrixRenderer != null) {
             matrixRenderer.draw(g);
         } else {
@@ -1189,4 +1199,3 @@ public class CurrentTransactionsMatrixElm extends TableElm {
         }
     }
 }
-
