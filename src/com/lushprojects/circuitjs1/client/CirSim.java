@@ -436,6 +436,7 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
     MenuItem separateAllItem;
     boolean hideMenu = false;
     Element sidePanelCheckboxLabel;
+    Element leftPanelCheckboxLabel;
    
     // Class addingClass;
     // Mathematical constants
@@ -569,6 +570,7 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
 
     DockLayoutPanel layoutPanel;
     VerticalPanel verticalPanel;
+    VerticalPanel leftPanel;
     CellPanel buttonPanel;
     static final int SCOPE_MIN_MAX_BUTTON_SIZE = 24;
 
@@ -579,6 +581,7 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
 
     LoadFile loadFileInput;
     Frame iFrame;
+	Frame leftModelInfoFrame;
 
     Canvas cv;
     public Context2d cvcontext;
@@ -588,7 +591,8 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
 
     static final int MENUBARHEIGHT = 30;
     static final int TOOLBARHEIGHT = 40;
-    static int VERTICALPANELWIDTH = 166; // default
+    static int VERTICALPANELWIDTH = 166; // default (right panel)
+    static int LEFTPANELWIDTH = 166; // default (left panel)
     static final int POSTGRABSQ = 25;
     static final int MINPOSTGRABSIZE = 256;
     private final Timer timer = new Timer() {

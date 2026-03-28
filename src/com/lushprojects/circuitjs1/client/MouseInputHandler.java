@@ -887,6 +887,9 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             sim.needAnalyze();
             sim.getUndoRedoManager().pushUndo();
         }
+        if (circuitChanged || sim.needsRecoverySave) {
+            sim.getUiPanelManager().refreshModelInfoEditorAfterCircuitMutation();
+        }
         if (sim.needsRecoverySave) {
             sim.getCircuitIOService().writeRecoveryToStorage();
             sim.needsRecoverySave = false;
@@ -913,16 +916,23 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             sim.scrollValues(e.getNativeEvent().getClientX(), e.getNativeEvent().getClientY(), wheelDelta);
 
         CircuitElm mouseElm = sim.getMouseElmForRouting();
-        if (mouseElm instanceof com.google.gwt.event.dom.client.MouseWheelHandler && !zoomOnly)
+        boolean wheelEditedCircuit = false;
+        if (mouseElm instanceof com.google.gwt.event.dom.client.MouseWheelHandler && !zoomOnly) {
             ((com.google.gwt.event.dom.client.MouseWheelHandler) mouseElm).onMouseWheel(e);
-        else if (sim.getScopeManager().getScopeSelected() != -1 && !zoomOnly)
+            wheelEditedCircuit = true;
+        }
+        else if (sim.getScopeManager().getScopeSelected() != -1 && !zoomOnly) {
             sim.scopes[sim.getScopeManager().getScopeSelected()].onMouseWheel(e);
+            wheelEditedCircuit = true;
+        }
         else if (!sim.dialogIsShowing()) {
             mouseCursorX = e.getX();
             mouseCursorY = e.getY();
             sim.getViewportController().zoomCircuit(-wheelDelta * sim.wheelSensitivity, false);
             zoomTime = System.currentTimeMillis();
         }
+        if (wheelEditedCircuit)
+            sim.getUiPanelManager().refreshModelInfoEditorAfterCircuitMutation();
         sim.repaint();
     }
 

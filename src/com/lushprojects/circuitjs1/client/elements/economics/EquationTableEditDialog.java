@@ -1583,6 +1583,7 @@ public class EquationTableEditDialog extends Dialog {
         if (sim != null) {
             sim.needAnalyze();
             sim.repaint();
+            sim.getUiPanelManager().refreshModelInfoEditorAfterCircuitMutation();
         }
     }
     

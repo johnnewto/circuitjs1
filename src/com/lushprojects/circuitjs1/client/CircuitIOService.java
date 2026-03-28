@@ -172,8 +172,10 @@ final class CircuitIOService {
                 String editorContent = sim.getModelInfoEditorContent();
                 sim.getSFCRDocumentManager().refreshModelInfoMenuItems();
 
-                if (RuntimeMode.isGwt() && sim.autoOpenModelInfoOnLoad && editorContent != null && !editorContent.isEmpty())
+                if (RuntimeMode.isGwt() && sim.autoOpenModelInfoOnLoad && editorContent != null && !editorContent.isEmpty()) {
+                    sim.getInfoDialogActions().openModelInfoEditorInLeftPanel();
                     sim.getInfoDialogActions().doViewModelInfo();
+                }
 
                 java.util.ArrayList<String> rawLines = parser.getRawCircuitLines();
                 if (!rawLines.isEmpty()) {

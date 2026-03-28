@@ -351,6 +351,7 @@ public class EditDialog extends Dialog {
 			}
 		}
 		cframe.needAnalyze();
+		cframe.getUiPanelManager().refreshModelInfoEditorAfterCircuitMutation();
 	}
 
 	private void itemStateChanged(GwtEvent e) {
@@ -372,6 +373,7 @@ public class EditDialog extends Dialog {
 		    if (ei.newDialog)
 			changed = true;
 		    cframe.needAnalyze();
+		    cframe.getUiPanelManager().refreshModelInfoEditorAfterCircuitMutation();
 		}
 	    }
 	    if (changed) {

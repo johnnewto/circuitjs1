@@ -170,6 +170,7 @@ private boolean maxScaleTextBoxHasFocus = false;
 		s*=Scope.multa[a%3];
 	    }
 	    scope.setManualScaleValue(plotSelection, lasts);
+	    syncModelInfoEditor();
 	    updateUi();
 	}
 	
@@ -189,6 +190,7 @@ private boolean maxScaleTextBoxHasFocus = false;
 		return;
 	    s=nextHighestScale(d);
 	    scope.setManualScaleValue(plotSelection, s);
+	    syncModelInfoEditor();
 	    updateUi();
 	}
 	
@@ -209,6 +211,12 @@ private boolean maxScaleTextBoxHasFocus = false;
 	    return;
 	int p = positionBar.getValue();
 	scope.setPlotPosition(plotSelection, p);
+	syncModelInfoEditor();
+    }
+
+    private void syncModelInfoEditor() {
+	if (sim != null)
+	    sim.getUiPanelManager().refreshModelInfoEditorAfterCircuitMutation();
     }
     
     private String getChannelButtonLabel(int i) {
@@ -336,6 +344,7 @@ private boolean maxScaleTextBoxHasFocus = false;
 	            public void onValueChange(ValueChangeEvent<Boolean> e) {
 	        	scope.setManualScale(false, false);
 	        	scope.setMaxScale(false);
+	        	syncModelInfoEditor();
 	        	updateUi();
 	            }
 	        });
@@ -344,6 +353,7 @@ private boolean maxScaleTextBoxHasFocus = false;
 	            public void onValueChange(ValueChangeEvent<Boolean> e) {
 	        	scope.setManualScale(false, false);
 	        	scope.setMaxScale(true);
+	        	syncModelInfoEditor();
 	        	updateUi();
 	            }
 	        });
@@ -351,6 +361,7 @@ private boolean maxScaleTextBoxHasFocus = false;
 		manualButton.addValueChangeHandler(new ValueChangeHandler<Boolean>() {
 	            public void onValueChange(ValueChangeEvent<Boolean> e) {
 	        	scope.setManualScale(true, true);
+	        	syncModelInfoEditor();
 	        	updateUi();
 	            }
 	        });
@@ -370,6 +381,7 @@ private boolean maxScaleTextBoxHasFocus = false;
 		    public void onValueChange(ValueChangeEvent<Boolean> e) {
 		    if (plotSelection < scope.getVisiblePlotCount())
 			scope.setVisiblePlotAcCoupled(plotSelection, false);
+		    syncModelInfoEditor();
 		    updateUi();
 		    }
 		});
@@ -379,6 +391,7 @@ private boolean maxScaleTextBoxHasFocus = false;
 		    public void onValueChange(ValueChangeEvent<Boolean> e) {
 		    if (plotSelection < scope.getVisiblePlotCount())
 			scope.setVisiblePlotAcCoupled(plotSelection, true);
+		    syncModelInfoEditor();
 		    updateUi();
 		    }
 		});
@@ -663,8 +676,10 @@ private boolean maxScaleTextBoxHasFocus = false;
 	private void scrollbarChanged() {
 	    int newsp = (int)Math.pow(2,  10-speedBar.getValue());
 	    CirSim.console("changed " + scope.getCurrentSpeed() + " " + newsp + " " + speedBar.getValue());
-	    if (scope.getCurrentSpeed() != newsp)
+	    if (scope.getCurrentSpeed() != newsp) {
 		scope.setSpeed(newsp);
+		syncModelInfoEditor();
+	    }
 	    setScopeSpeedLabel();
 	}
 	
@@ -856,11 +871,13 @@ private boolean maxScaleTextBoxHasFocus = false;
 		    }
 		}
 	    }
+	    syncModelInfoEditor();
 	}
 
 	public void onValueChange(ValueChangeEvent<Boolean> event) {
 	    ScopeCheckBox cb = (ScopeCheckBox) event.getSource();
 	    scope.handleMenu(cb.menuCmd, cb.getValue());
+	    syncModelInfoEditor();
 	    updateUi();
 	}
 

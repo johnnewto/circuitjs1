@@ -17,7 +17,6 @@ import com.google.gwt.dom.client.LabelElement;
 import com.google.gwt.dom.client.MetaElement;
 import com.google.gwt.dom.client.NodeList;
 import com.google.gwt.dom.client.CanvasElement;
-import com.google.gwt.dom.client.Style.Unit;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ContextMenuEvent;
@@ -28,11 +27,13 @@ import com.google.gwt.http.client.RequestBuilder;
 import com.google.gwt.http.client.RequestCallback;
 import com.google.gwt.http.client.RequestException;
 import com.google.gwt.http.client.Response;
+import com.google.gwt.storage.client.Storage;
 import com.google.gwt.user.client.Command;
+import com.google.gwt.user.client.DOM;
 import com.google.gwt.user.client.Event;
+import com.google.gwt.user.client.EventListener;
 import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.Window.ClosingEvent;
-import com.google.gwt.user.client.ui.DockLayoutPanel;
 import com.google.gwt.user.client.ui.Frame;
 import com.google.gwt.user.client.ui.HorizontalPanel;
 import com.google.gwt.user.client.ui.Label;
@@ -40,6 +41,7 @@ import com.google.gwt.user.client.ui.MenuBar;
 import com.google.gwt.user.client.ui.MenuItem;
 import com.google.gwt.user.client.ui.RootLayoutPanel;
 import com.google.gwt.user.client.ui.RootPanel;
+import com.google.gwt.user.client.ui.SplitLayoutPanel;
 import com.google.gwt.user.client.ui.VerticalPanel;
 import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
 import com.lushprojects.circuitjs1.client.io.LoadFile;
@@ -145,7 +147,7 @@ final class CirSimInitializer {
 
         sim.shortcuts = new String[127];
 
-        sim.layoutPanel = new DockLayoutPanel(Unit.PX);
+        sim.layoutPanel = new SplitLayoutPanel(6);
 
         sim.getMenuUiState().fileMenuBar = new MenuBar(true);
         if (sim.getPlatformInterop().isElectron())
@@ -182,6 +184,7 @@ final class CirSimInitializer {
         MenuItem viewModelInfoItem = sim.iconMenuItem("doc-text", "View Model Info...", new MyCommand("file", "viewmodelinfo"));
         viewModelInfoItem.setEnabled(false);
         sim.getMenuUiState().fileMenuBar.addItem(viewModelInfoItem);
+        sim.getMenuUiState().fileMenuBar.addItem(sim.iconMenuItem("edit", "Open Model Info Editor (LHS)", new MyCommand("file", "viewmodelinfoeditor")));
         sim.getMenuUiState().fileMenuBar.addItem(sim.iconMenuItem("image", "Export As Image...", new MyCommand("file", "exportasimage")));
         sim.getMenuUiState().fileMenuBar.addItem(sim.iconMenuItem("image", "Copy Circuit Image to Clipboard", new MyCommand("file", "copypng")));
         sim.getMenuUiState().fileMenuBar.addItem(sim.iconMenuItem("image", "Export As SVG...", new MyCommand("file", "exportassvg")));
@@ -200,11 +203,17 @@ final class CirSimInitializer {
         sim.aboutItem.setScheduledCommand(new MyCommand("file", "about"));
 
         int width = (int) RootLayoutPanel.get().getOffsetWidth();
-        CirSim.VERTICALPANELWIDTH = width / 5;
-        if (CirSim.VERTICALPANELWIDTH > 166)
-            CirSim.VERTICALPANELWIDTH = 166;
-        if (CirSim.VERTICALPANELWIDTH < 128)
-            CirSim.VERTICALPANELWIDTH = 128;
+        int defaultPanelWidth = width / 5;
+        if (defaultPanelWidth > 166)
+            defaultPanelWidth = 166;
+        if (defaultPanelWidth < 128)
+            defaultPanelWidth = 128;
+        final int panelMinWidth = 128;
+        final int panelMaxWidth = Math.max(166, width / 2);
+        final String rightPanelWidthKey = "rightPanelWidth";
+        final String leftPanelWidthKey = "leftPanelWidth";
+        CirSim.VERTICALPANELWIDTH = loadPanelWidthFromStorage(rightPanelWidthKey, defaultPanelWidth, panelMinWidth, panelMaxWidth);
+        CirSim.LEFTPANELWIDTH = loadPanelWidthFromStorage(leftPanelWidthKey, defaultPanelWidth, panelMinWidth, panelMaxWidth);
 
         sim.getMenuUiState().menuBar = new MenuBar();
         sim.getMenuUiState().menuBar.addItem(Locale.LS("File"), sim.getMenuUiState().fileMenuBar);
@@ -218,6 +227,20 @@ final class CirSimInitializer {
         sidePanelCheckbox.setId("trigger");
         sim.sidePanelCheckboxLabel.setAttribute("for", "trigger");
         sidePanelCheckbox.addClassName("trigger");
+        sidePanelCheckbox.setChecked(false);
+        
+        // Left panel setup
+        sim.leftPanel = new VerticalPanel();
+        sim.leftPanel.getElement().addClassName("leftPanel");
+        sim.leftPanel.getElement().setId("leftPainel");
+        InputElement leftPanelCheckbox = Document.get().createCheckInputElement();
+        sim.leftPanelCheckboxLabel = Document.get().createLabelElement();
+        sim.leftPanelCheckboxLabel.addClassName("leftTriggerLabel");
+        leftPanelCheckbox.setId("leftTrigger");
+        sim.leftPanelCheckboxLabel.setAttribute("for", "leftTrigger");
+        leftPanelCheckbox.addClassName("leftTrigger");
+        leftPanelCheckbox.setChecked(false);
+        
         InputElement topPanelCheckbox = Document.get().createCheckInputElement();
         LabelElement topPanelCheckboxLabel = Document.get().createLabelElement();
         topPanelCheckbox.setId("toptrigger");
@@ -293,6 +316,7 @@ final class CirSimInitializer {
         MenuItem helpViewModelInfoItem = sim.menuItemWithShortcut("doc-text", "View Model Info...", "", new MyCommand("help", "viewmodelinfo"));
         helpViewModelInfoItem.setEnabled(false);
         sim.getMenuUiState().helpMenuBar.addItem(helpViewModelInfoItem);
+        sim.getMenuUiState().helpMenuBar.addItem(sim.menuItemWithShortcut("edit", "Open Model Info Editor (LHS)", "", new MyCommand("help", "viewmodelinfoeditor")));
         sim.getSFCRDocumentManager().bindModelInfoMenuItems(viewModelInfoItem, helpViewModelInfoItem);
         sim.getMenuUiState().helpMenuBar.addItem(sim.menuItemWithShortcut("folder", "Reference Docs...", "", new MyCommand("help", "referencedocs")));
 
@@ -430,7 +454,101 @@ final class CirSimInitializer {
             sim.layoutPanel.getElement().appendChild(sidePanelCheckbox);
             sim.layoutPanel.getElement().appendChild(sim.sidePanelCheckboxLabel);
             sim.layoutPanel.addEast(sim.verticalPanel, CirSim.VERTICALPANELWIDTH);
+
+            final com.google.gwt.user.client.Element rightCheckboxElement = sidePanelCheckbox.cast();
+            DOM.sinkEvents(rightCheckboxElement, Event.ONCHANGE);
+            DOM.setEventListener(rightCheckboxElement, new EventListener() {
+                public void onBrowserEvent(Event event) {
+                    if (event.getTypeInt() == Event.ONCHANGE) {
+                        if (sidePanelCheckbox.isChecked()) {
+                            sim.layoutPanel.setWidgetSize(sim.verticalPanel, CirSim.VERTICALPANELWIDTH);
+                        } else {
+                            int currentWidth = clampPanelWidth(sim.verticalPanel.getOffsetWidth(), panelMinWidth, panelMaxWidth);
+                            if (currentWidth > 0) {
+                                CirSim.VERTICALPANELWIDTH = currentWidth;
+                                savePanelWidthToStorage(rightPanelWidthKey, CirSim.VERTICALPANELWIDTH);
+                            }
+                            sim.layoutPanel.setWidgetSize(sim.verticalPanel, 0);
+                        }
+                        updateRightPanelTogglePosition(sidePanelCheckbox.isChecked());
+                        sim.layoutPanel.forceLayout();
+                        if (sim.iFrame != null) {
+                            sim.iFrame.setWidth(CirSim.VERTICALPANELWIDTH + "px");
+                            sim.getUiPanelManager().setiFrameHeight();
+                        }
+                        sim.repaint();
+                    }
+                }
+            });
+
+            sim.layoutPanel.setWidgetSize(sim.verticalPanel, 0);
+            updateRightPanelTogglePosition(false);
         }
+        // Add left panel
+        sim.layoutPanel.getElement().appendChild(leftPanelCheckbox);
+        sim.layoutPanel.getElement().appendChild(sim.leftPanelCheckboxLabel);
+        sim.layoutPanel.addWest(sim.leftPanel, CirSim.LEFTPANELWIDTH);
+
+        final com.google.gwt.user.client.Element leftCheckboxElement = leftPanelCheckbox.cast();
+        DOM.sinkEvents(leftCheckboxElement, Event.ONCHANGE);
+        DOM.setEventListener(leftCheckboxElement, new EventListener() {
+            public void onBrowserEvent(Event event) {
+                if (event.getTypeInt() == Event.ONCHANGE) {
+                    if (leftPanelCheckbox.isChecked()) {
+                        sim.layoutPanel.setWidgetSize(sim.leftPanel, CirSim.LEFTPANELWIDTH);
+                    } else {
+                        int currentWidth = clampPanelWidth(sim.leftPanel.getOffsetWidth(), panelMinWidth, panelMaxWidth);
+                        if (currentWidth > 0) {
+                            CirSim.LEFTPANELWIDTH = currentWidth;
+                            savePanelWidthToStorage(leftPanelWidthKey, CirSim.LEFTPANELWIDTH);
+                        }
+                        sim.layoutPanel.setWidgetSize(sim.leftPanel, 0);
+                    }
+                    updateLeftPanelTogglePosition(leftPanelCheckbox.isChecked());
+                    sim.layoutPanel.forceLayout();
+                    sim.repaint();
+                }
+            }
+        });
+
+        sim.layoutPanel.setWidgetSize(sim.leftPanel, 0);
+        updateLeftPanelTogglePosition(false);
+
+        final boolean hideSidebarFinal = hideSidebar;
+
+        Event.addNativePreviewHandler(new Event.NativePreviewHandler() {
+            public void onPreviewNativeEvent(Event.NativePreviewEvent event) {
+                if (event.getTypeInt() != Event.ONMOUSEUP)
+                    return;
+                boolean anyChange = false;
+
+                if (!hideSidebarFinal && sidePanelCheckbox.isChecked()) {
+                    int currentRightWidth = clampPanelWidth(sim.verticalPanel.getOffsetWidth(), panelMinWidth, panelMaxWidth);
+                    if (currentRightWidth > 0 && currentRightWidth != CirSim.VERTICALPANELWIDTH) {
+                        CirSim.VERTICALPANELWIDTH = currentRightWidth;
+                        savePanelWidthToStorage(rightPanelWidthKey, CirSim.VERTICALPANELWIDTH);
+                        if (sim.iFrame != null)
+                            sim.iFrame.setWidth(CirSim.VERTICALPANELWIDTH + "px");
+                        anyChange = true;
+                    }
+                    updateRightPanelTogglePosition(true);
+                }
+
+                if (leftPanelCheckbox.isChecked()) {
+                    int currentLeftWidth = clampPanelWidth(sim.leftPanel.getOffsetWidth(), panelMinWidth, panelMaxWidth);
+                    if (currentLeftWidth > 0 && currentLeftWidth != CirSim.LEFTPANELWIDTH) {
+                        CirSim.LEFTPANELWIDTH = currentLeftWidth;
+                        savePanelWidthToStorage(leftPanelWidthKey, CirSim.LEFTPANELWIDTH);
+                        anyChange = true;
+                    }
+                    updateLeftPanelTogglePosition(true);
+                }
+
+                if (anyChange && sim.iFrame != null)
+                    sim.getUiPanelManager().setiFrameHeight();
+            }
+        });
+        
         sim.layoutPanel.addNorth(sim.toolbar, CirSim.TOOLBARHEIGHT);
         sim.getMenuUiState().menuBar.getElement().insertFirst(sim.getMenuUiState().menuBar.getElement().getChild(1));
         sim.getMenuUiState().menuBar.getElement().getFirstChildElement().setAttribute("onclick", "document.getElementsByClassName('toptrigger')[0].checked = false");
@@ -609,6 +727,49 @@ final class CirSimInitializer {
         sim.setSimRunning(running);
 
         loadMenuDefinition();
+    }
+
+    private int clampPanelWidth(int value, int min, int max) {
+        if (value < min)
+            return min;
+        if (value > max)
+            return max;
+        return value;
+    }
+
+    private int loadPanelWidthFromStorage(String key, int defaultWidth, int min, int max) {
+        int fallback = clampPanelWidth(defaultWidth, min, max);
+        Storage storage = Storage.getLocalStorageIfSupported();
+        if (storage == null)
+            return fallback;
+        try {
+            String value = storage.getItem(key);
+            if (value == null || value.isEmpty())
+                return fallback;
+            int parsed = Integer.parseInt(value);
+            return clampPanelWidth(parsed, min, max);
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
+    private void savePanelWidthToStorage(String key, int width) {
+        Storage storage = Storage.getLocalStorageIfSupported();
+        if (storage == null)
+            return;
+        storage.setItem(key, Integer.toString(width));
+    }
+
+    private void updateRightPanelTogglePosition(boolean open) {
+        if (sim.sidePanelCheckboxLabel == null)
+            return;
+        sim.sidePanelCheckboxLabel.getStyle().setProperty("right", open ? (CirSim.VERTICALPANELWIDTH + "px") : "0px");
+    }
+
+    private void updateLeftPanelTogglePosition(boolean open) {
+        if (sim.leftPanelCheckboxLabel == null)
+            return;
+        sim.leftPanelCheckboxLabel.getStyle().setProperty("left", open ? (CirSim.LEFTPANELWIDTH + "px") : "0px");
     }
 
     private void loadMenuDefinition() {

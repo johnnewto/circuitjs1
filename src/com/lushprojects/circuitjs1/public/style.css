@@ -21,30 +21,30 @@
 	padding-top: 5px;
 }
 
-.trigger:checked+.triggerLabel {
-	right: 166px;
-}
+/* position is updated dynamically from Java to match current panel width */
 
-/* selects the side panel - same pattern for all screen sizes */
-.trigger+.triggerLabel+div {
-	width: 0 !important;
+/* Left panel toggle */
+.leftTriggerLabel {
+	display: initial;
+	border-radius: 0px 10px 10px 0px;
 	background: white;
-	z-index: 1;
-	transition: width 0.3s;
-	overflow: hidden;
+	width: 20px;
+	height: 50px;
+	position: absolute;
+	top: 50px;
+	left: 0;
+	z-index: 2;
+	transition: left 0.3s;
 }
-.trigger:checked+.triggerLabel+div {
-	width: 166px !important;
+.leftTriggerLabel:before {
+	content: "‖";
+	font-size: 32px;
+	padding-left: 3px;
+	position: absolute;
+	padding-top: 5px;
 }
 
-/* Make canvas full width when panel is hidden - for all screen sizes */
-.trigger+.triggerLabel+div+div {
-	width: 100% !important;
-}
-/* added extra div for toolbar */
-.trigger+.triggerLabel+div+div+div {
-	width: 100% !important;
-}
+/* position is updated dynamically from Java to match current panel width */
 
 /* Top menu trigger for mobile */
 .toptrigger, .toptriggerlabel {

@@ -370,6 +370,7 @@ World2 <- sfcr_set(
 207 -208 224 -144 224 164 POLR U:PwVDmt
 207 -208 144 -144 144 164 QL U:xJHWxB
 431 -144 352 -112 448 0 200 true false U:huagx4
+r -176 272 -48 272 0 4500 U:TEx4j0
 @end
 ```
 

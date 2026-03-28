@@ -84,6 +84,9 @@ final class CirSimCommandRouter {
         if (item=="viewmodelinfo") {
             sim.getInfoDialogActions().doViewModelInfo();
         }
+        if (item=="viewmodelinfoeditor") {
+            sim.getInfoDialogActions().openModelInfoEditorInLeftPanel();
+        }
         if (item=="editlookuptables") {
             sim.getEditDialogActions().doEditLookupTables();
         }

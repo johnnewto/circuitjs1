@@ -1,10 +1,15 @@
 package com.lushprojects.circuitjs1.client;
 
 
+import com.google.gwt.dom.client.Document;
+import com.google.gwt.dom.client.InputElement;
 import com.google.gwt.user.client.ui.RootLayoutPanel;
 import com.google.gwt.user.client.ui.Widget;
+import com.google.gwt.user.client.ui.Frame;
 import com.lushprojects.circuitjs1.client.io.LoadFile;
+import com.lushprojects.circuitjs1.client.io.SFCRExporter;
 import com.lushprojects.circuitjs1.client.runner.RuntimeMode;
+import com.lushprojects.circuitjs1.client.ui.InfoViewerDialog;
 
 public class CirSimUiPanelManager {
     private final CirSim sim;
@@ -56,6 +61,78 @@ public class CirSimUiPanelManager {
         if (sim.iFrame != null)
             setiFrameHeight();
     }
+
+    public void addWidgetToLeftPanel(Widget w) {
+        if (RuntimeMode.isNonInteractiveRuntime() || w == null || sim.leftPanel == null)
+            return;
+        sim.leftPanel.add(w);
+    }
+
+    public void removeWidgetFromLeftPanel(Widget w) {
+        if (RuntimeMode.isNonInteractiveRuntime() || w == null || sim.leftPanel == null)
+            return;
+        sim.leftPanel.remove(w);
+    }
+
+    public void showModelInfoEditorInLeftPanel(String markdown) {
+        if (RuntimeMode.isNonInteractiveRuntime() || sim.leftPanel == null)
+            return;
+
+        if (sim.leftModelInfoFrame == null) {
+            Frame frame = new Frame();
+            frame.getElement().setId("leftModelInfoEditorFrame");
+            frame.getElement().getStyle().setProperty("border", "0");
+            frame.setWidth("100%");
+            int leftHeight = Math.max(300, RootLayoutPanel.get().getOffsetHeight() - CirSim.TOOLBARHEIGHT - 20);
+            frame.setHeight(leftHeight + "px");
+            sim.leftModelInfoFrame = frame;
+            sim.leftPanel.setWidth("100%");
+            sim.leftPanel.add(frame);
+        }
+
+        InputElement leftTrigger = null;
+        try {
+            leftTrigger = (InputElement) Document.get().getElementById("leftTrigger").cast();
+        } catch (Throwable t) {
+            leftTrigger = null;
+        }
+        if (leftTrigger != null)
+            leftTrigger.setChecked(true);
+
+        sim.layoutPanel.setWidgetSize(sim.leftPanel, CirSim.LEFTPANELWIDTH);
+        if (sim.leftPanelCheckboxLabel != null)
+            sim.leftPanelCheckboxLabel.getStyle().setProperty("left", CirSim.LEFTPANELWIDTH + "px");
+        sim.layoutPanel.forceLayout();
+
+        sim.leftModelInfoFrame.setUrl(InfoViewerDialog.createModelInfoEditorPanelDataUrl(markdown));
+        sim.repaint();
+    }
+
+    public void refreshModelInfoEditorAfterCircuitMutation() {
+        if (RuntimeMode.isNonInteractiveRuntime() || sim.leftModelInfoFrame == null)
+            return;
+        String refreshedMarkdown;
+        try {
+            refreshedMarkdown = new SFCRExporter(sim).export();
+        } catch (Throwable t) {
+            return;
+        }
+        if (refreshedMarkdown == null || refreshedMarkdown.isEmpty())
+            return;
+        postModelInfoSyncMessage(sim.leftModelInfoFrame.getElement(), refreshedMarkdown);
+    }
+
+    private static native void postModelInfoSyncMessage(com.google.gwt.dom.client.Element frameElement, String markdown) /*-{
+        try {
+            if (!frameElement || !frameElement.contentWindow)
+                return;
+            frameElement.contentWindow.postMessage({
+                type: 'info-viewer-sync-markdown',
+                markdown: markdown || ''
+            }, '*');
+        } catch (e) {
+        }
+    }-*/;
 
     void allowSave(boolean enabled) {
         if (sim.saveFileItem != null)

@@ -156,6 +156,7 @@ public class Adjustable implements Command {
 	    if (adj == this || adj.sharedSlider == this)
 		adj.executeSlider();
 	}
+	sim.getUiPanelManager().refreshModelInfoEditorAfterCircuitMutation();
     }
     
     private void executeSlider() {

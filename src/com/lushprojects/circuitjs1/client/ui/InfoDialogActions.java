@@ -14,17 +14,14 @@ public class InfoDialogActions {
     public void doViewModelInfo() {
         String editorContent = sim.getModelInfoEditorContent();
         if (editorContent != null && !editorContent.isEmpty()) {
-            try {
-                InfoViewerDialog.showInfoInWindow("Model Information", editorContent);
-            } catch (Throwable t1) {
-                CirSim.console("View Model Info window mode failed: " + t1);
-                try {
-                    InfoViewerDialog.showInfoInIframe("Model Information", editorContent, false);
-                } catch (Throwable t2) {
-                    CirSim.console("View Model Info iframe mode failed: " + t2);
-                    InfoViewerDialog.showInfo("Model Information", editorContent);
-                }
-            }
+            InfoViewerDialog.showInfoInWindow("Model Information", editorContent);
+        }
+    }
+
+    public void openModelInfoEditorInLeftPanel() {
+        String editorContent = sim.getModelInfoEditorContent();
+        if (editorContent != null && !editorContent.isEmpty()) {
+            sim.getUiPanelManager().showModelInfoEditorInLeftPanel(editorContent);
         }
     }
 

@@ -16,7 +16,7 @@
 @end
 ```
 
-# Goodwin Predator-Prey Economy
+# Goodwin Predator-Prey Economy  (Claude Generated)
  A simple Goodwin-style macro cycle where employment behaves like the prey
  and wage share behaves like the predator.
 
@@ -43,13 +43,28 @@ Parameters <- sfcr_set(
 
 ```{r}
 Goodwin_Cycle <- sfcr_set(
-  # [ x=176 y=168 ]
+  # [ x=48 y=168 ]
   e1 = profit.share ~ 1 - wage.share,  # Profit share of output  [mode=voltage, slider=a, sliderValue=0.5 ]
   e2 = output.growth ~ profit.share / capital.output.ratio - depreciation,  # Output growth implied by the current profit share  [mode=voltage, slider=b, sliderValue=0.5 ]
   e3 = wage.pressure ~ phillips.intercept + phillips.slope * employment.rate,  # Phillips curve wage pressure  [mode=voltage, slider=c, sliderValue=0.5 ]
   e4 = wage.share ~ integrate(wage.share * (wage.pressure - productivity.growth)),  # Predator variable, the wage share of output  [mode=voltage, slider=d, sliderValue=0.5, initial=0.72 ]
   e5 = employment.rate ~ integrate(employment.rate * (output.growth - productivity.growth - labor.force.growth)),  # Prey variable, the employment rate  [mode=voltage, slider=e, sliderValue=0.5, initial=0.94 ]
   e6 = unemployment.rate ~ 1 - employment.rate  # One minus employment.rate  [mode=voltage, slider=f, sliderValue=0.5 ]
+)
+```
+
+## Transaction Flow Matrix
+
+This SFC table shows how output is distributed between workers (wages) and firms (profits).
+Each row sums to zero, demonstrating stock-flow consistency.
+
+```{r}
+Output_Distribution <- sfcr_matrix(
+  # [ x=96 y=320 type: transaction_flow ]
+  columns = c("Workers", "Firms", "Production"),
+  codes = c("Workers", "Firms", "Production"),
+  c("Wages", Workers = "wage.share", Firms = "0", Production = "-wage.share"),
+  c("Profits", Workers = "0", Firms = "profit.share", Production = "-profit.share")
 )
 ```
 
@@ -79,6 +94,17 @@ Goodwin_Cycle <- sfcr_set(
   flags: x6001206
   source: uid:PEpx9m value:0
   trace: uid:6Qc4rp value:0
+@end
+```
+
+```{r}
+@sankey x=704 y=48
+  layout: linear
+  width: 600
+  height: 400
+  showScaleBar: false
+  useHighWaterMark: false
+  showFlowValues: false
 @end
 ```
 

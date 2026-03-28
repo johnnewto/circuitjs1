@@ -7,6 +7,9 @@ import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.elements.economics.InfoViewerTableMarkdown;
 
 final class InfoViewerHtmlBuilder {
+    private static final String TITLE_TOKEN = "__TITLE__";
+    private static final String EDITOR_BUTTON_TOKEN = "__EDITOR_BUTTON__";
+
     private InfoViewerHtmlBuilder() {
     }
 
@@ -21,15 +24,25 @@ final class InfoViewerHtmlBuilder {
     }
 
     private static String generateMarkdownViewerHTML(String title, String markdown) {
-        return generateMarkdownViewerHTML(title, markdown, markdown, false, true, true);
+        return generateMarkdownViewerHTML(title, markdown, markdown, false, true, true, false);
     }
 
     public static String generateMarkdownViewerHTML(String title, String markdown, String sourceMarkdown, boolean editable) {
-        return generateMarkdownViewerHTML(title, markdown, sourceMarkdown, editable, true, true);
+        return generateMarkdownViewerHTML(title, markdown, sourceMarkdown, editable, true, true, false);
+    }
+
+    public static String generateMarkdownEditorPanelHTML(String title, String markdown) {
+        return generateMarkdownViewerHTML(title, markdown, markdown, true, true, true, true);
     }
 
     public static String generateMarkdownViewerHTML(String title, String markdown, String sourceMarkdown,
             boolean editable, boolean parseCodeFenceConstructs, boolean renderSfcrConstructTables) {
+        return generateMarkdownViewerHTML(title, markdown, sourceMarkdown, editable,
+            parseCodeFenceConstructs, renderSfcrConstructTables, false);
+    }
+
+    private static String generateMarkdownViewerHTML(String title, String markdown, String sourceMarkdown,
+            boolean editable, boolean parseCodeFenceConstructs, boolean renderSfcrConstructTables, boolean editorPanelOnly) {
 
         StringBuilder html = new StringBuilder();
         
@@ -38,93 +51,9 @@ final class InfoViewerHtmlBuilder {
         String escapedSourceMarkdown = escapeForJS(sourceMarkdown);
         String escapedAutoTemplateMarkdown = editable ? escapeForJS(InfoViewerTableMarkdown.generateAutoInfoTemplateMarkdown()) : "";
         
-        appendHtmlHead(html, title);
-        appendLines(html,
-            "  <style>",
-            "    body { ",
-            "      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;",
-            "      margin: 0; padding: 16px; background: #fafbfc; color: #24292f; font-size: 13px;",
-            "      line-height: 1.4; height: 100vh; overflow: hidden; box-sizing: border-box;",
-            "    }",
-            "    .container { max-width: 1100px; margin: 0 auto; background: white; padding: 20px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); height: 100%; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; }",
-            "    h1 { color: #24292f; border-bottom: 1px solid #d0d7de; padding-bottom: 8px; margin: 0 0 16px 0; font-size: 24px; font-weight: 600; }",
-            "    h2 { color: #24292f; margin: 24px 0 12px 0; font-size: 18px; font-weight: 600; border-bottom: 1px solid #e5e9ec; padding-bottom: 6px; }",
-            "    h3 { color: #57606a; margin: 16px 0 8px 0; font-size: 15px; font-weight: 600; }",
-            "    code { background: transparent; padding: 0; font-family: 'SF Mono', 'Consolas', 'Monaco', monospace; font-size: 12px; color: #24292f; }",
-            "    pre { background: #f6f8fa; color: #24292f; padding: 12px; border-radius: 4px; overflow-x: auto; border: 1px solid #d0d7de; }",
-            "    pre code { background: none; padding: 0; color: inherit; border: none; }",
-            "    table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 12px; }",
-            "    th, td { border: 1px solid #d0d7de; padding: 4px 8px; text-align: left; }",
-            "    th { background: #f6f8fa; color: #24292f; font-weight: 600; }",
-            "    tr:nth-child(even) { background: #f9fafb; }",
-            "    tr:hover { background: #f3f4f6; }",
-            "    td code:not(:empty):first-child { display: block; }",
-            "    td code:not(:empty) { color: #24292f; }",
-            "    td code:not(:empty)[style*='color'] { font-weight: 500; }",
-            "    blockquote { border-left: 3px solid #58a6ff; margin: 12px 0; padding: 8px 16px; background: #f6f8fa; color: #57606a; }",
-            "    a { color: #0969da; text-decoration: none; }",
-            "    a:hover { text-decoration: underline; }",
-            "    ul, ol { padding-left: 24px; margin: 8px 0; }",
-            "    li { margin: 4px 0; }",
-            "    p { margin: 8px 0; }",
-            "    hr { border: none; border-top: 1px solid #d0d7de; margin: 24px 0; }",
-            "    .export-buttons { margin-bottom: 16px; display: flex; gap: 8px; }",
-            "    .export-btn { padding: 6px 12px; background: #2da44e; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background 0.2s; }",
-            "    .export-btn:hover { background: #2c974b; }",
-            "    .export-btn:active { background: #298a41; }",
-            "    .export-btn.secondary { background: #6c757d; }",
-            "    .export-btn.secondary:hover { background: #5c636a; }",
-            "    .export-btn.secondary:active { background: #565e64; }",
-            "    .export-btn.tertiary { background: #1f6feb; }",
-            "    .export-btn.tertiary:hover { background: #1a5fc8; }",
-            "    .export-btn.tertiary:active { background: #174ea6; }",
-            "    .viewer-option { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #57606a; margin-left: 6px; white-space: nowrap; }",
-            "    .viewer-option input { margin: 0; }",
-            "    .sim-toolbar-btn { padding: 4px 12px; font-size: 13px; font-weight: 500; border: 1px solid rgba(150, 150, 150, 0.5); border-radius: 4px; background: linear-gradient(to bottom, rgba(255,255,255,0.9) 0%, rgba(232,232,232,0.9) 100%); cursor: pointer; color: #333; transition: all 0.2s ease; white-space: nowrap; vertical-align: middle; display: inline-block; line-height: 1.2; }",
-            "    .sim-toolbar-btn:hover { background: linear-gradient(to bottom, #fff 0%, #d0d0d0 100%); border-color: #666; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transform: translateY(-1px); }",
-            "    .sim-toolbar-btn:active { background: linear-gradient(to bottom, #d0d0d0 0%, #e8e8e8 100%); box-shadow: inset 0 1px 2px rgba(0,0,0,0.2); transform: translateY(0); }",
-            "    .sim-toolbar-btn-stopped { background: linear-gradient(to bottom, #ff6b6b 0%, #ee5a5a 100%); border-color: #d32f2f; color: #fff; }",
-            "    .sim-toolbar-btn-stopped:hover { background: linear-gradient(to bottom, #ff8a8a 0%, #ff6b6b 100%); border-color: #d32f2f; }",
-            "    .sim-toolbar-btn-running { background: linear-gradient(to bottom, #66bb6a 0%, #4caf50 100%); border-color: #388e3c; color: #fff; }",
-            "    .sim-toolbar-btn-running:hover { background: linear-gradient(to bottom, #81c784 0%, #66bb6a 100%); border-color: #388e3c; }",
-            "    .viewer-content { display: flex; gap: 12px; align-items: stretch; flex: 1; min-height: 0; overflow: hidden; }",
-            "    .editor-pane { flex: 1 1 50%; min-width: 0; display: none; flex-direction: column; min-height: 0; }",
-            "    .editor-pane.visible { display: flex; }",
-            "    .editor-toolbar { margin-bottom: 8px; display: flex; gap: 8px; }",
-            "    .editor-textarea { width: 100%; flex: 1; min-height: 0; box-sizing: border-box; padding: 10px; font-family: 'SF Mono', 'Consolas', 'Monaco', monospace; font-size: 12px; border: 1px solid #d0d7de; border-radius: 4px; resize: none; }",
-            "    .preview-pane { flex: 1 1 50%; min-width: 0; min-height: 0; overflow: auto; }",
-            "    /* Page break handling for PDF and PNG */",
-            "    h2, h3 { page-break-after: avoid; break-after: avoid; }",
-            "    table { page-break-inside: avoid; break-inside: avoid; }",
-            "    .table-section { page-break-inside: avoid; break-inside: avoid; margin-bottom: 20px; }",
-            "    .circuit-table-wrap { margin: 12px 0; }",
-            "    .circuit-table-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #24292f; }",
-            "    .circuit-table-live { width: 100%; border-collapse: collapse; font-size: 13px; }",
-            "    .circuit-table-live th, .circuit-table-live td { border: 1px solid #d0d7de; padding: 6px 8px; text-align: right; }",
-            "    .circuit-table-live th:first-child, .circuit-table-live td:first-child { text-align: left; }",
-            "    .circuit-table-live thead th { background: #f6f8fa; font-weight: 600; }",
-            "    .circuit-table-status { color: #57606a; font-size: 12px; font-style: italic; }",
-            "    .circuit-plot-wrap { margin: 12px 0; }",
-            "    .circuit-plot-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #24292f; }",
-            "    .circuit-plot-mount { width: 100%; height: 320px; border: 1px solid #d0d7de; border-radius: 6px; background: #fff; }",
-            "    .circuit-plot-status { color: #57606a; font-size: 12px; font-style: italic; margin-top: 6px; }",
-            "    .circuit-sankey-wrap { margin: 12px 0; overflow: visible; position: relative; }",
-            "    .circuit-sankey-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; color: #24292f; }",
-            "    .circuit-sankey-status { color: #57606a; font-size: 12px; font-style: italic; padding: 12px 0; }",
-            "    .circuit-sankey-tooltip { position: absolute; pointer-events: none; z-index: 10; background: rgba(0,0,0,0.82); color: #fff; font-size: 11px; line-height: 1.25; padding: 6px 8px; border-radius: 4px; max-width: 260px; white-space: normal; display: none; }",
-            "    @media print { ",
-            "      .export-buttons { display: none; }",
-            "      body { background: white; }",
-            "      .container { box-shadow: none; max-width: 100%; padding: 10px; height: auto; display: block; }",
-            "      h2, h3 { page-break-after: avoid; break-after: avoid; }",
-            "      table { page-break-inside: avoid; break-inside: avoid; }",
-            "      tr { page-break-inside: avoid; break-inside: avoid; }",
-            "    }",
-            "  </style>"
-        );
-        appendBodyStructure(html, editable);
+        appendHtmlDocumentShell(html, title, editable);
         appendScriptVariables(html, escapedMarkdown, escapedSourceMarkdown, escapedAutoTemplateMarkdown,
-                      editable, parseCodeFenceConstructs, renderSfcrConstructTables);
+                      editable, parseCodeFenceConstructs, renderSfcrConstructTables, editorPanelOnly);
         appendLines(html,
             "    var liveValues = {};",
             "    var liveTables = [];",
@@ -940,7 +869,21 @@ final class InfoViewerHtmlBuilder {
             "    }",
             "    window.addEventListener('message', function(event) {",
             "      const data = event.data;",
-            "      if (!data || data.type !== 'circuit-live') return;",
+            "      if (!data || !data.type) return;",
+            "      if (data.type === 'info-viewer-sync-markdown') {",
+            "        if (!editorEnabled) return;",
+            "        const nextMarkdown = (data.markdown || '');",
+            "        sourceMarkdown = nextMarkdown;",
+            "        markdown = nextMarkdown;",
+            "        const editorFocused = markdownEditorCm ? markdownEditorCm.hasFocus() : false;",
+            "        if (!editorFocused) {",
+            "          setEditorText(nextMarkdown, true);",
+            "          ensureEditorPaintedSoon();",
+            "        }",
+            "        if (!editorPanelOnly) renderMarkdown(markdown);",
+            "        return;",
+            "      }",
+            "      if (data.type !== 'circuit-live') return;",
             "      const prevT = (typeof liveValues.t === 'number') ? liveValues.t : null;",
             "      if (typeof data.running === 'boolean') { simRunning = data.running; updateRunStopButton(); }",
             "      liveValues = data.vars || {};",
@@ -966,6 +909,16 @@ final class InfoViewerHtmlBuilder {
             "      updateCircuitScopeMounts(data.t);",
             "      updateCircuitSankeyMounts();",
             "    });",
+            "    function ensureEditorPaintedSoon() {",
+            "      if (!markdownEditorCm) return;",
+            "      try { markdownEditorCm.refresh(); } catch (e) {}",
+            "      setTimeout(function(){ try { markdownEditorCm.refresh(); } catch (e) {} }, 0);",
+            "      setTimeout(function(){ try { markdownEditorCm.refresh(); } catch (e) {} }, 60);",
+            "      setTimeout(function(){ try { markdownEditorCm.refresh(); } catch (e) {} }, 180);",
+            "      if (typeof requestAnimationFrame === 'function') {",
+            "        requestAnimationFrame(function(){ try { markdownEditorCm.refresh(); } catch (e) {} });",
+            "      }",
+            "    }",
             "    function toggleEditor() {",
             "      if (!editorEnabled) return;",
             "      const pane = document.getElementById('editorPane');",
@@ -975,38 +928,35 @@ final class InfoViewerHtmlBuilder {
             "      pane.classList.toggle('visible', nowVisible);",
             "      if (btn) btn.textContent = nowVisible ? '👁️ Hide Editor' : '✏️ Edit Markdown';",
             "      if (nowVisible) {",
-            "        const editor = document.getElementById('markdownEditor');",
-            "        if (editor) editor.value = sourceMarkdown;",
+            "        initMarkdownEditor();",
+            "        setEditorText(sourceMarkdown);",
+            "        ensureEditorPaintedSoon();",
             "      }",
             "    }",
             "    function applyEditorPreview() {",
-            "      const editor = document.getElementById('markdownEditor');",
-            "      if (!editor) return;",
-            "      sourceMarkdown = editor.value || '';",
+            "      sourceMarkdown = getEditorText();",
             "      markdown = sourceMarkdown;",
             "      renderMarkdown(markdown);",
             "    }",
             "    function generateTemplateFromCircuit() {",
             "      if (!editorEnabled) return;",
-            "      const editor = document.getElementById('markdownEditor');",
-            "      if (!editor) return;",
+            "      if (!ensureEditorAvailable()) return;",
             "      const nextTemplate = autoTemplateMarkdown || '';",
             "      if (!nextTemplate.trim()) return;",
-            "      const current = editor.value || '';",
+            "      const current = getEditorText();",
             "      const hasExisting = current.trim().length > 0;",
             "      if (hasExisting && !confirm('Append generated template to the current markdown?')) return;",
             "      const merged = hasExisting",
             "        ? current.replace(/\\s*$/, '') + '\\n\\n---\\n\\n' + nextTemplate.replace(/^\\s*/, '')",
             "        : nextTemplate;",
-            "      editor.value = merged;",
+            "      setEditorText(merged);",
             "      sourceMarkdown = merged;",
             "      markdown = merged;",
             "      renderMarkdown(markdown);",
             "    }",
             "    function saveMarkdownToCircuit() {",
-            "      const editor = document.getElementById('markdownEditor');",
-            "      if (!editor) return;",
-            "      sourceMarkdown = editor.value || '';",
+            "      if (!ensureEditorAvailable()) return;",
+            "      sourceMarkdown = getEditorText();",
             "      markdown = sourceMarkdown;",
             "      renderMarkdown(markdown);",
             "      const msg = { type: 'info-viewer-save-markdown', markdown: sourceMarkdown };",
@@ -1051,40 +1001,10 @@ final class InfoViewerHtmlBuilder {
             "      if (api && api.step) { api.step(); return; }",
             "      sendSimCommand('stop');",
             "      sendSimCommand('step');",
-            "    }",
-            "    function resolveMarkdownHref(href) {",
-            "      if (!href) return null;",
-            "      if (href.startsWith('#') || href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:') || href.startsWith('data:')) return null;",
-            "      var clean = href.split('#')[0].split('?')[0];",
-            "      if (!clean || !clean.toLowerCase().endsWith('.md')) return null;",
-            "      if (clean.startsWith('/')) return clean.substring(1);",
-            "      if (clean.startsWith('doc/')) return clean;",
-            "      if (clean.startsWith('./')) clean = clean.substring(2);",
-            "      return 'doc/reference/' + clean;",
-            "    }",
-            "    ",
-            "    function attachMarkdownLinkHandlers() {",
-            "      const content = document.getElementById('content');",
-            "      const links = content.querySelectorAll('a[href]');",
-            "      links.forEach(function(link) {",
-            "        const href = link.getAttribute('href');",
-            "        const mdUrl = resolveMarkdownHref(href);",
-            "        if (!mdUrl) return;",
-            "        link.addEventListener('click', function(e) {",
-            "          e.preventDefault();",
-            "          fetch(mdUrl).then(function(resp) {",
-            "            if (!resp.ok) throw new Error('HTTP ' + resp.status);",
-            "            return resp.text();",
-            "          }).then(function(text) {",
-            "            renderMarkdown(text);",
-            "          }).catch(function(err) {",
-            "            const c = document.getElementById('content');",
-            "            c.innerHTML = '<p>Failed to load markdown: ' + mdUrl + '</p>';",
-            "          });",
-            "        });",
-            "      });",
-            "    }",
-            "    ",
+            "    }"
+        );
+        appendMarkdownHelpersScript(html);
+        appendLines(html,
             "    function renderMarkdown(md) {",
             "      markdown = md;",
             "      const content = document.getElementById('content');",
@@ -1183,9 +1103,32 @@ final class InfoViewerHtmlBuilder {
             "      }",
             "    })();",
             "    if (editorEnabled) {",
-            "      const editor = document.getElementById('markdownEditor');",
-            "      if (editor) editor.value = sourceMarkdown;",
+            "      initMarkdownEditor();",
+            "      setEditorText(sourceMarkdown);",
+            "      ensureEditorPaintedSoon();",
             "    }",
+            "    if (editorPanelOnly) {",
+            "      const exportRow = document.querySelector('.export-buttons');",
+            "      if (exportRow) exportRow.style.display = 'none';",
+            "      const pane = document.getElementById('editorPane');",
+            "      if (pane) pane.classList.add('visible');",
+            "      const preview = document.querySelector('.preview-pane');",
+            "      if (preview) preview.style.display = 'none';",
+            "      if (pane) {",
+            "        const toolbar = pane.querySelector('.editor-toolbar');",
+            "        if (toolbar) {",
+            "          const buttons = toolbar.querySelectorAll('button');",
+            "          buttons.forEach(function(btn) {",
+            "            const onclick = btn.getAttribute('onclick') || '';",
+            "            const keep = onclick.indexOf('saveMarkdownToCircuit') >= 0;",
+            "            btn.style.display = keep ? '' : 'none';",
+            "            if (keep) btn.textContent = 'Save to Model';",
+            "          });",
+            "        }",
+            "      }",
+            "      ensureEditorPaintedSoon();",
+            "    }",
+            "    window.addEventListener('resize', function(){ ensureEditorPaintedSoon(); });",
             "    ",
             "    ",
             "    function saveToPDF() {",
@@ -1379,83 +1322,35 @@ final class InfoViewerHtmlBuilder {
     // Private HTML structure helpers
     // -----------------------------------------------------------------------
 
-    /** Emits the HTML <head> block: DOCTYPE, meta tags, CDN scripts, and KaTeX. */
-    private static void appendHtmlHead(StringBuilder html, String title) {
-        appendLines(html,
-            "<!DOCTYPE html>",
-            "<html lang=\"en\">",
-            "<head>",
-            "  <meta charset=\"UTF-8\">",
-            "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
-        );
-        appendLines(html, "  <title>" + escapeHtml(title) + "</title>");
-        appendLines(html,
-            "  <script src=\"https://cdn.jsdelivr.net/npm/marked/marked.min.js\"></script>",
-            "  <script src=\"https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js\"></script>",
-            "  <script src=\"https://cdn.plot.ly/plotly-2.27.0.min.js\"></script>",
-            "  <script src=\"https://d3js.org/d3.v7.min.js\"></script>",
-            "  <script src=\"https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js\"></script>"
-        );
-        // KaTeX for math rendering
-        appendLines(html,
-            "  <link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css\">",
-            "  <script src=\"https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js\"></script>",
-            "  <script src=\"https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js\"></script>"
-        );
+    /** Emits combined head/style/body shell and opens the script tag. */
+    private static void appendHtmlDocumentShell(StringBuilder html, String title, boolean editable) {
+        String template = InfoViewerTemplateResources.INSTANCE.infoViewerDocumentShell().getText();
+        String editorButton = editable
+            ? "      <button id=\"toggleEditorBtn\" class=\"export-btn secondary\" onclick=\"toggleEditor()\">✏️ Edit Markdown</button>\n"
+            : "";
+        html.append(template
+            .replace(TITLE_TOKEN, escapeHtml(title))
+            .replace(EDITOR_BUTTON_TOKEN, editorButton));
     }
 
-    /** Emits the </head><body> transition, toolbar buttons, editor pane, preview pane, and opens the <script> tag. */
-    private static void appendBodyStructure(StringBuilder html, boolean editable) {
-        appendLines(html,
-            "</head>",
-            "<body>",
-            "  <div class=\"container\">",
-            "    <div class=\"export-buttons\">",
-            "      <button class=\"export-btn tertiary\" onclick=\"loadReferenceIndex()\">📚 Back to Index</button>"
-        );
-        if (editable) {
-            appendLines(html,
-                "      <button id=\"toggleEditorBtn\" class=\"export-btn secondary\" onclick=\"toggleEditor()\">✏️ Edit Markdown</button>");
-        }
-        appendLines(html,
-            "      <button class=\"export-btn\" onclick=\"saveToPDF()\">📄 Save as PDF</button>",
-            "      <button class=\"export-btn secondary\" onclick=\"saveToPNG()\">🖼️ Save as PNG</button>",
-            "      <button id=\"simRunStopBtn\" class=\"sim-toolbar-btn sim-toolbar-btn-stopped\" onclick=\"simRunStop()\">Run</button>",
-            "      <button class=\"sim-toolbar-btn\" onclick=\"simReset()\">Reset</button>",
-            "      <button class=\"sim-toolbar-btn\" onclick=\"simStep()\">Step</button>",
-            "      <label class=\"viewer-option\"><input id=\"viewerParseCodeFenceConstructs\" type=\"checkbox\">Load sfcr/@ constructs in code blocks</label>",
-            "      <label class=\"viewer-option\"><input id=\"viewerRenderSfcrConstructTables\" type=\"checkbox\">Show raw blocks</label>",
-            "    </div>",
-            "    <div class=\"viewer-content\">",
-            "      <div id=\"editorPane\" class=\"editor-pane\">",
-            "        <div class=\"editor-toolbar\">",
-            "          <button class=\"export-btn tertiary\" onclick=\"generateTemplateFromCircuit()\">🧩 Append Template</button>",
-            "          <button class=\"export-btn secondary\" onclick=\"applyEditorPreview()\">Apply Preview</button>",
-            "          <button class=\"export-btn\" onclick=\"saveMarkdownToCircuit()\">Save to Model</button>",
-            "        </div>",
-            "        <textarea id=\"markdownEditor\" class=\"editor-textarea\"></textarea>",
-            "      </div>",
-            "      <div class=\"preview-pane\">",
-            "        <div id=\"content\">Loading...</div>",
-            "      </div>",
-            "    </div>",
-            "  </div>",
-            "  <script>"
-        );
+    /** Emits markdown helper functions (editor + in-viewer markdown links). */
+    private static void appendMarkdownHelpersScript(StringBuilder html) {
+        html.append(InfoViewerTemplateResources.INSTANCE.infoViewerMarkdownHelpersScript().getText());
     }
 
     /** Emits the initial JS variable declarations that seed markdown content and editor state. */
     private static void appendScriptVariables(StringBuilder html,
             String escapedMarkdown, String escapedSourceMarkdown,
             String escapedAutoTemplateMarkdown, boolean editable,
-            boolean parseCodeFenceConstructs, boolean renderSfcrConstructTables) {
+            boolean parseCodeFenceConstructs, boolean renderSfcrConstructTables, boolean editorPanelOnly) {
         appendLines(html,
             "    var markdown = \"" + escapedMarkdown + "\";",
             "    var sourceMarkdown = \"" + escapedSourceMarkdown + "\";",
             "    var autoTemplateMarkdown = \"" + escapedAutoTemplateMarkdown + "\";",
             "    var editorEnabled = " + (editable ? "true" : "false") + ";",
             "    var parseCodeFenceConstructs = " + (parseCodeFenceConstructs ? "true" : "false") + ";",
-            "    var renderSfcrConstructTables = " + (renderSfcrConstructTables ? "true" : "false") + ";");
+            "    var renderSfcrConstructTables = " + (renderSfcrConstructTables ? "true" : "false") + ";",
+            "    var editorPanelOnly = " + (editorPanelOnly ? "true" : "false") + ";");
     }
 
     private static String escapeForJS(String text) {

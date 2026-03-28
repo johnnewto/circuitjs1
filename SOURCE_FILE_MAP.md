@@ -17,11 +17,11 @@ Inventory for files under src/com/lushprojects/circuitjs1/client.
 | `CirSimCommandRouter.java` | Routes menu commands to appropriate handler methods and dialogs | MyCommand, menu handlers, dialog launchers |
 | `CirSimDiagnostics.java` | Logs element registry inference reports for debugging | ElementRegistry diagnostic output |
 | `CirSimDialogCoordinator.java` | Static coordinator managing active dialog state and conflicts | EditDialog, AboutBox, ScrollValuePopup tracking |
-| `CirSimInitializer.java` | Full application initialization including UI, menus, and query parameters | CirSim setup, preferences, layout construction |
+| `CirSimInitializer.java` | Full application initialization including UI, menus, and query parameters; sets up resizable left + right panels via SplitLayoutPanel with localStorage persistence | CirSim setup, preferences, SplitLayoutPanel, left/right panel toggles |
 | `CirSimMenuBuilder.java` | Builds component menus from menulist.txt or hardcoded definitions | MenuBar construction, checkbox menu items, shortcuts |
 | `CirSimPlatformInterop.java` | Handles Electron desktop app integration and touch events | Electron save/open, touch gesture handlers |
 | `CirSimPreferencesManager.java` | Manages user preferences in localStorage including colors and shortcuts | Storage persistence, color settings, voltage units |
-| `CirSimUiPanelManager.java` | Manages vertical panel widget additions and iFrame sizing | VerticalPanel layout, widget insertion |
+| `CirSimUiPanelManager.java` | Manages right vertical panel widget additions, iFrame sizing, left panel widgets, and model info markdown editor frame with live postMessage sync | VerticalPanel, leftPanel, leftModelInfoFrame, SFCRExporter |
 | `CircuitAnalyzer.java` | Analyzes circuit topology: wire closure, node mapping, ground detection | CircuitNode building, wire processing, validation |
 | `CircuitElm.java` | Abstract base class for all circuit elements with drawing and simulation | Parent of all *Elm classes, MNA stamping |
 | `CircuitIOService.java` | Handles circuit file import/export, URLs, text, SFCR formats | Circuit dump, recovery storage, export dialogs |
@@ -507,10 +507,11 @@ Inventory for files under src/com/lushprojects/circuitjs1/client.
 | `IframeViewerDialog.java` | Non-modal resizable dialog embedding iframe for documentation | DialogBox, iframe, ResizeObserver |
 | `ImportFromDropboxDialog.java` | Import circuits from Dropbox via chooser or shared link | ImportFromDropbox, XMLHttpRequest |
 | `ImportFromTextDialog.java` | Paste circuit text dump to import into simulator | TextArea, importCircuitFromText |
-| `InfoDialogActions.java` | Coordinates opening model info, test dialogs, and reference docs | InfoViewerDialog, IframeViewerDialog |
-| `InfoViewerDialog.java` | Display markdown documentation with marked.js rendering | DialogBox, markdown, InfoViewerHtmlBuilder |
-| `InfoViewerHtmlBuilder.java` | Generates HTML/CSS for markdown viewer with live data support | InfoViewerDialog, CSS styling, exports |
+| `InfoDialogActions.java` | Coordinates opening model info viewer window, opening model info editor in left panel, test dialogs, and reference docs | InfoViewerDialog, IframeViewerDialog, CirSimUiPanelManager |
+| `InfoViewerDialog.java` | Display markdown documentation with marked.js rendering; generates data URLs for popup windows and left-panel editor iframes | DialogBox, markdown, InfoViewerHtmlBuilder, createModelInfoEditorPanelDataUrl |
+| `InfoViewerHtmlBuilder.java` | Generates HTML/CSS for markdown viewer with live data support; delegates shell and helper JS to ClientBundle templates; supports editorPanelOnly mode for left-panel embedding | InfoViewerDialog, InfoViewerTemplateResources, editorPanelOnly mode |
 | `InfoViewerSimpleMarkdown.java` | Fallback simple markdown-to-HTML converter (no external libs) | InfoViewerDialog, string processing |
+| `InfoViewerTemplateResources.java` | GWT ClientBundle exposing HTML shell and JS helper templates as text resources | InfoViewerHtmlBuilder, info_viewer_document_shell.html, info_viewer_markdown_helpers.js |
 | `LookupTablesEditorDialog.java` | Dialog for editing @lookup table blocks in SFCR format | SFCRParser, LookupBlocksTextUtil |
 | `MathElementsTestDialog.java` | Non-modal test runner dialog for math element tests | MathElementsTest, DialogBox, console capture |
 | `MenuUiState.java` | Container for menu bar references and checkbox menu item state | MenuBar, ScopePopupMenu, MenuItem vectors |
@@ -527,6 +528,13 @@ Inventory for files under src/com/lushprojects/circuitjs1/client.
 | `TableElementsTestDialog.java` | Non-modal test runner for table element tests | TableElementsTest, DialogBox |
 | `Toolbar.java` | Abstract base class for economics/electronics toolbars | HorizontalPanel, setModeLabel |
 | `VariableBrowserDialog.java` | Non-modal browser showing all circuit variables for placement | FlexTable, LabeledNodeElm, stocks/parameters |
+
+## ui/templates
+
+| File | What It Is For | Close Relationships |
+|---|---|---|
+| `info_viewer_document_shell.html` | Full HTML document shell (DOCTYPE, head, CDN scripts, styles, body structure) for the markdown viewer/editor iframe; uses `__TITLE__` and `__EDITOR_BUTTON__` tokens | InfoViewerTemplateResources, InfoViewerHtmlBuilder |
+| `info_viewer_markdown_helpers.js` | Shared JavaScript helper functions injected into the viewer script: CodeMirror editor init/lifecycle, `getEditorText`, `setEditorText`, view-state capture/restore, and in-viewer markdown link handlers | InfoViewerTemplateResources, InfoViewerHtmlBuilder |
 
 ## util
 

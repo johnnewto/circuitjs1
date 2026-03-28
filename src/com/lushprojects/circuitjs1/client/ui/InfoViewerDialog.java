@@ -212,7 +212,7 @@ public class InfoViewerDialog extends DialogBox {
             title,
             displayMarkdown,
             rawMarkdown,
-            isModelInfoTitle(title),
+            false,
             currentLoadConstructsInCodeBlocks,
             currentRenderSfcrConstructTables
         );
@@ -252,7 +252,7 @@ public class InfoViewerDialog extends DialogBox {
             title,
             displayMarkdown,
             rawMarkdown,
-            isModelInfoTitle(title),
+            false,
             currentLoadConstructsInCodeBlocks,
             currentRenderSfcrConstructTables
         );
@@ -312,6 +312,19 @@ public class InfoViewerDialog extends DialogBox {
             return tablesMarkdown;
         }
         return displayMarkdown + "\n\n---\n\n" + tablesMarkdown;
+    }
+
+    public static String createModelInfoEditorPanelDataUrl(String markdown) {
+        String rawMarkdown = normalizeMarkdown(markdown);
+        currentTitle = "Model Information";
+        currentRawMarkdown = rawMarkdown;
+        currentMarkdown = rawMarkdown;
+        currentAppendCircuitTables = false;
+        lastLiveUpdateMs = 0;
+        installViewerMessageBridge();
+
+        String html = InfoViewerHtmlBuilder.generateMarkdownEditorPanelHTML("Model Information", rawMarkdown);
+        return createDataUrl(html);
     }
 
     /**

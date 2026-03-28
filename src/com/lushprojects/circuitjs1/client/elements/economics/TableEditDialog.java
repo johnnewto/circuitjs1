@@ -2676,6 +2676,7 @@ import jsinterop.annotations.JsType;
         // Refresh the simulation display
         if (sim != null) {
             sim.repaint();
+            sim.getUiPanelManager().refreshModelInfoEditorAfterCircuitMutation();
         }
     }
     

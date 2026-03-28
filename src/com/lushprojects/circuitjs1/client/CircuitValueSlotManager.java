@@ -154,6 +154,7 @@ final class CircuitValueSlotManager {
                 ei.value = value;
                 adj.elm.setEditValue(adj.editItem, ei);
                 sim.analyzeFlag = true;
+            sim.getUiPanelManager().refreshModelInfoEditorAfterCircuitMutation();
 
                 if (adj.label != null) {
                     String valueStr = adj.getFormattedValue(ei, value);
