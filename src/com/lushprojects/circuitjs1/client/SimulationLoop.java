@@ -16,6 +16,7 @@ import com.lushprojects.circuitjs1.client.core.CircuitNodeLink;
 import com.lushprojects.circuitjs1.client.core.RowInfo;
 import com.lushprojects.circuitjs1.client.core.SimulationTimingState;
 import com.lushprojects.circuitjs1.client.elements.economics.*;
+import com.lushprojects.circuitjs1.client.elements.annotation.SequenceDiagramElm;
 import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNodeElm;
 import com.lushprojects.circuitjs1.client.elements.misc.ScopeElm;
 import com.lushprojects.circuitjs1.client.runner.RuntimeMode;
@@ -141,6 +142,13 @@ class SimulationLoop {
             sim.getSolverMatrixState().circuitMatrix = null;
             return;
         }
+        
+        // Check if sequence diagram animation is requesting simulation hold
+        // This allows the animation to complete before advancing to next timestep
+        if (SequenceDiagramElm.isSimulationHoldRequested()) {
+            return;
+        }
+        
         boolean nonInteractive = RuntimeMode.isNonInteractiveRuntime();
 
         boolean debugprint = sim.dumpMatrix;

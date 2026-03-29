@@ -26,6 +26,7 @@ import com.lushprojects.circuitjs1.client.elements.economics.TableColumn.ColumnT
 import com.lushprojects.circuitjs1.client.elements.economics.TableElm;
 import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.ui.EditInfo;
+import com.lushprojects.circuitjs1.client.ui.Checkbox;
 
 import java.util.ArrayList;
 import java.util.Vector;
@@ -98,6 +99,19 @@ public class SequenceDiagramElm extends GraphicElm {
     
     /** Corner radius for rounded rectangles */
     private static final int CORNER_RADIUS = 3;
+    
+    // ══════════════════════════════════════════════════════════════════════════
+    // CONSTANTS - Animation
+    // ══════════════════════════════════════════════════════════════════════════
+    
+    /** Default cycle duration in milliseconds (time to animate through all transactions) */
+    private static final int DEFAULT_ANIMATION_CYCLE_MS = 500;
+    
+    /** Color for active/highlighted transaction arrow */
+    private static final String HIGHLIGHT_COLOR = "#FF8C00";  // Dark orange
+    
+    /** Color for completed transactions (cumulative mode) */
+    private static final String COMPLETED_COLOR = "#FFA500";  // Orange
     
     // ══════════════════════════════════════════════════════════════════════════
     // CONSTANTS - Auto-Source & Parsing
@@ -178,6 +192,43 @@ public class SequenceDiagramElm extends GraphicElm {
     private int currentY;
     
     // ══════════════════════════════════════════════════════════════════════════
+    // STATE - Animation
+    // ══════════════════════════════════════════════════════════════════════════
+    
+    /** Whether sequential animation is enabled */
+    private boolean animationEnabled = false;
+    
+    /** Duration of one full animation cycle in milliseconds */
+    private int animationCycleMs = DEFAULT_ANIMATION_CYCLE_MS;
+    
+    /** Pause simulation while animation is in progress */
+    private boolean pauseDuringAnimation = false;
+    
+    /** Only animate every N timesteps (1 = every step) */
+    private int animateEveryNSteps = 1;
+    
+    /** Counter for timesteps since last animation */
+    private int timestepsSinceLastAnimation = 0;
+    
+    /** Last observed simulation time (to detect timestep completion) */
+    private double lastObservedSimTime = -1;
+    
+    /** Wall-clock time when current animation cycle started */
+    private long animationCycleStartMs = 0;
+    
+    /** Number of Message elements (cached for animation calculations) */
+    private int messageCount = 0;
+    
+    /** Current active transaction index during animation (-1 = none) */
+    private int activeTransactionIndex = -1;
+    
+    /** Whether animation cycle is currently in progress (for pause feature) */
+    private boolean animationInProgress = false;
+    
+    /** Static reference to element currently requesting simulation hold */
+    private static SequenceDiagramElm holdingElement = null;
+    
+    // ══════════════════════════════════════════════════════════════════════════
     // INNER CLASSES - Data Structures
     // ══════════════════════════════════════════════════════════════════════════
     
@@ -233,20 +284,30 @@ public class SequenceDiagramElm extends GraphicElm {
         // Parse diagram scale (optional)
         diagramScale = clampScale(parseDoubleToken(st, 1.0));
         
+        // Parse animation settings (optional, added in later version)
+        animationEnabled = parseIntToken(st, 0) != 0;
+        animationCycleMs = parseIntToken(st, DEFAULT_ANIMATION_CYCLE_MS);
+        pauseDuringAnimation = parseIntToken(st, 0) != 0;
+        animateEveryNSteps = Math.max(1, parseIntToken(st, 1));
+        
         parseDiagram();
         initializeFrameFromBounds();
     }
     
     /**
      * Serializes element state for circuit file storage.
-     * Format: [baseData] [escapedSource] [width] [scale]
+     * Format: [baseData] [escapedSource] [width] [scale] [animEnabled] [animCycleMs] [pauseDuring] [everyN]
      */
     @Override
     protected String dump() {
         return super.dump() + " " 
             + CustomLogicModel.escape(plantUmlSource) + " " 
             + diagramWidth + " " 
-            + diagramScale;
+            + diagramScale + " "
+            + (animationEnabled ? 1 : 0) + " "
+            + animationCycleMs + " "
+            + (pauseDuringAnimation ? 1 : 0) + " "
+            + animateEveryNSteps;
     }
     
     /** Returns unique dump type identifier for this element class */
@@ -852,12 +913,14 @@ public class SequenceDiagramElm extends GraphicElm {
         final String to;       // Target participant name
         final String label;    // Message text (may contain \\n for line breaks)
         final boolean dashed;  // True for --> dashed arrows
+        int messageIndex;      // Index among Message elements (for animation)
         
         Message(String from, String to, String label, boolean dashed) {
             this.from = from;
             this.to = to;
             this.label = label;
             this.dashed = dashed;
+            this.messageIndex = -1;
         }
         
         @Override
@@ -873,18 +936,22 @@ public class SequenceDiagramElm extends GraphicElm {
             // Draw label above arrow line
             drawLabel(g, elm, x1, x2, y);
             
+            // Determine arrow color based on animation state
+            String arrowColor = elm.getArrowColor(messageIndex);
+            double strokeWidth = elm.getArrowStrokeWidth(messageIndex);
+            
             // Draw arrow line
-            g.setColor(elm.lineColor);
+            g.setColor(arrowColor);
             if (dashed) {
-                elm.drawDashedLine(g, x1, arrowY, x2, arrowY, TRANSACTION_STROKE_WIDTH);
+                elm.drawDashedLine(g, x1, arrowY, x2, arrowY, strokeWidth);
             } else {
-                g.context.setLineWidth(TRANSACTION_STROKE_WIDTH);
+                g.context.setLineWidth(strokeWidth);
                 g.drawLine(x1, arrowY, x2, arrowY);
                 g.context.setLineWidth(1);
             }
             
             // Draw arrowhead pointing to target
-            drawArrowhead(g, x2, arrowY, x2 > x1);
+            drawArrowhead(g, x2, arrowY, x2 > x1, arrowColor);
         }
         
         /** Draws multi-line label centered above the arrow */
@@ -902,10 +969,11 @@ public class SequenceDiagramElm extends GraphicElm {
         }
         
         /** Draws filled triangular arrowhead */
-        private void drawArrowhead(Graphics g, int tipX, int tipY, boolean pointRight) {
+        private void drawArrowhead(Graphics g, int tipX, int tipY, boolean pointRight, String color) {
             int direction = pointRight ? 1 : -1;
             int baseX = tipX - (10 * direction);
             
+            g.context.setFillStyle(color);
             g.context.beginPath();
             g.context.moveTo(tipX, tipY);
             g.context.lineTo(baseX, tipY - 4);
@@ -1287,10 +1355,17 @@ public class SequenceDiagramElm extends GraphicElm {
         lifelineStartY = getTopParticipantBottomY(46);
         
         // Sum element heights for total diagram height
+        // Also count messages and assign indices for animation
         int contentHeight = lifelineStartY;
+        int msgIdx = 0;
         for (int i = 0; i < elements.size(); i++) {
-            contentHeight += elements.get(i).getHeight();
+            DiagramElement elem = elements.get(i);
+            contentHeight += elem.getHeight();
+            if (elem instanceof Message) {
+                ((Message) elem).messageIndex = msgIdx++;
+            }
         }
+        messageCount = msgIdx;
         diagramHeight = contentHeight + 78;  // Footer space for bottom participants
     }
     
@@ -1300,12 +1375,13 @@ public class SequenceDiagramElm extends GraphicElm {
     
     /**
      * Main drawing entry point. Renders the complete sequence diagram.
-     * Pipeline: refresh source → calculate layout → transform → draw components.
+     * Pipeline: refresh source → calculate layout → update animation → transform → draw components.
      */
     @Override
     protected void draw(Graphics g) {
         refreshRenderedSourceIfNeeded();
         calculateLayout();
+        updateAnimationState();
         
         g.save();
         
@@ -1332,6 +1408,11 @@ public class SequenceDiagramElm extends GraphicElm {
         updateScaleFromFrame();
         setBbox(getFrameLeft(), getFrameTop(), getFrameRight(), getFrameBottom());
         drawSelectionHighlight(g);
+        
+        // Request repaint if animation is in progress to ensure smooth updates
+        if (animationInProgress && sim != null) {
+            sim.repaint();
+        }
     }
     
     /**
@@ -1434,6 +1515,130 @@ public class SequenceDiagramElm extends GraphicElm {
             g.drawRect(boundingBox.x, boundingBox.y,
                       boundingBox.width, boundingBox.height);
         }
+    }
+    
+    // ══════════════════════════════════════════════════════════════════════════
+    // ANIMATION LOGIC
+    // ══════════════════════════════════════════════════════════════════════════
+    
+    /**
+     * Updates animation state based on simulation time changes.
+     * Detects timestep completion and progresses through transaction animation.
+     * Handles "every N steps" and "pause during animation" features.
+     */
+    private void updateAnimationState() {
+        if (!animationEnabled || sim == null || messageCount == 0) {
+            activeTransactionIndex = -1;
+            animationInProgress = false;
+            releaseSimulationHold();
+            return;
+        }
+        
+        // Detect simulation time change (timestep completed)
+        double currentSimTime = sim.getTime();
+        boolean timestepChanged = (currentSimTime != lastObservedSimTime);
+        
+        if (timestepChanged) {
+            // New timestep detected
+            lastObservedSimTime = currentSimTime;
+            timestepsSinceLastAnimation++;
+        }
+        
+        // Check if we should start a new animation cycle
+        // Start immediately if counter reached AND (timestep changed OR no animation in progress)
+        if (timestepsSinceLastAnimation >= animateEveryNSteps && !animationInProgress) {
+            timestepsSinceLastAnimation = 0;
+            animationCycleStartMs = System.currentTimeMillis();
+            animationInProgress = true;
+            
+            // Request simulation hold if pause is enabled
+            if (pauseDuringAnimation) {
+                requestSimulationHold();
+            }
+        }
+        
+        // If no animation in progress, show all transactions in normal color
+        if (!animationInProgress) {
+            activeTransactionIndex = -1;
+            return;
+        }
+        
+        // Calculate which transaction should be active based on wall-clock time
+        long elapsed = System.currentTimeMillis() - animationCycleStartMs;
+        double progress = (double) elapsed / animationCycleMs;
+        
+        // Cumulative reveal: activeTransactionIndex indicates how many are "done"
+        // All transactions up to and including this index are highlighted
+        activeTransactionIndex = (int) (progress * messageCount);
+        
+        // Check if animation cycle is complete
+        if (activeTransactionIndex >= messageCount) {
+            activeTransactionIndex = messageCount - 1;
+            
+            // Add a short hold time at the end (25% of cycle time)
+            double holdProgress = (double) elapsed / (animationCycleMs * 1.25);
+            if (holdProgress >= 1.0) {
+                // Animation complete - release hold
+                animationInProgress = false;
+                releaseSimulationHold();
+            }
+        }
+    }
+    
+    /**
+     * Requests that simulation be held (paused) for animation.
+     */
+    private void requestSimulationHold() {
+        holdingElement = this;
+    }
+    
+    /**
+     * Releases simulation hold request.
+     */
+    private void releaseSimulationHold() {
+        if (holdingElement == this) {
+            holdingElement = null;
+        }
+    }
+    
+    /**
+     * Static method for CirSim to check if any sequence diagram is requesting
+     * to hold the simulation for animation display.
+     * 
+     * @return true if simulation should be held
+     */
+    public static boolean isSimulationHoldRequested() {
+        return holdingElement != null && holdingElement.animationInProgress;
+    }
+    
+    /**
+     * Returns the color to use for an arrow based on animation state.
+     * Flash mode: only the currently active transaction is highlighted,
+     * all others are normal color.
+     */
+    private String getArrowColor(int msgIndex) {
+        if (!animationEnabled || activeTransactionIndex < 0) {
+            return lineColor;
+        }
+        
+        // Only highlight the exact current transaction (flash effect)
+        if (msgIndex == activeTransactionIndex) {
+            return HIGHLIGHT_COLOR;
+        } else {
+            // All other transactions show in normal color
+            return lineColor;
+        }
+    }
+    
+    /**
+     * Returns the stroke width for an arrow based on animation state.
+     * Active transaction gets a thicker line for emphasis.
+     */
+    private double getArrowStrokeWidth(int msgIndex) {
+        if (animationEnabled && msgIndex == activeTransactionIndex) {
+            return TRANSACTION_STROKE_WIDTH * 1.5;  // Thicker when active
+        }
+        return TRANSACTION_STROKE_WIDTH;
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -1625,7 +1830,7 @@ public class SequenceDiagramElm extends GraphicElm {
     /**
      * Returns edit dialog configuration for the given parameter index.
      * 
-     * @param n Parameter index (0=source, 1=width, 2=scale)
+     * @param n Parameter index (0=source, 1=width, 2=scale, 3=animation, 4=cycle, 5=pause, 6=everyN)
      * @return EditInfo for the parameter, or null if index out of range
      */
     @Override
@@ -1644,6 +1849,22 @@ public class SequenceDiagramElm extends GraphicElm {
                 
             case 2:  // Diagram scale factor
                 return new EditInfo("Diagram Scale", diagramScale, 0.25, 4);
+                
+            case 3:  // Animation enabled checkbox
+                EditInfo animEi = new EditInfo("", 0, -1, -1);
+                animEi.checkbox = new Checkbox("Animate Transactions", animationEnabled);
+                return animEi;
+                
+            case 4:  // Animation cycle duration
+                return new EditInfo("Animation Cycle (ms)", animationCycleMs, 500, 10000);
+                
+            case 5:  // Pause during animation checkbox
+                EditInfo pauseEi = new EditInfo("", 0, -1, -1);
+                pauseEi.checkbox = new Checkbox("Pause Simulation During Animation", pauseDuringAnimation);
+                return pauseEi;
+                
+            case 6:  // Animate every N steps
+                return new EditInfo("Animate Every N Timesteps", animateEveryNSteps, 1, 100);
                 
             default:
                 return null;
@@ -1674,6 +1895,33 @@ public class SequenceDiagramElm extends GraphicElm {
                 diagramScale = Math.max(0.25, ei.value);
                 syncFrameToScale();
                 break;
+                
+            case 3:  // Toggle animation
+                animationEnabled = ei.checkbox.getState();
+                // Reset animation state when toggling
+                lastObservedSimTime = -1;
+                activeTransactionIndex = -1;
+                animationInProgress = false;
+                // Set counter so animation starts immediately on next draw
+                timestepsSinceLastAnimation = animateEveryNSteps;
+                releaseSimulationHold();
+                break;
+                
+            case 4:  // Update animation cycle duration
+                animationCycleMs = Math.max(500, (int) ei.value);
+                break;
+                
+            case 5:  // Toggle pause during animation
+                pauseDuringAnimation = ei.checkbox.getState();
+                if (!pauseDuringAnimation) {
+                    releaseSimulationHold();
+                }
+                break;
+                
+            case 6:  // Update animate every N steps
+                animateEveryNSteps = Math.max(1, (int) ei.value);
+                timestepsSinceLastAnimation = 0;
+                break;
         }
     }
     
@@ -1689,8 +1937,20 @@ public class SequenceDiagramElm extends GraphicElm {
         refreshRenderedSourceIfNeeded();
         
         arr[0] = "Sequence Diagram";
-        arr[1] = participants.size() + " participants";
-        arr[2] = elements.size() + " elements";
+        arr[1] = participants.size() + " participants, " + messageCount + " transactions";
+        
+        if (animationEnabled) {
+            String animInfo = "Animation: ON";
+            if (animateEveryNSteps > 1) {
+                animInfo += " (every " + animateEveryNSteps + " steps)";
+            }
+            if (pauseDuringAnimation) {
+                animInfo += " [PAUSE]";
+            }
+            arr[2] = animInfo;
+        } else {
+            arr[2] = "Animation: OFF";
+        }
         
         // Show source table info if applicable
         if (sourceTable != null) {

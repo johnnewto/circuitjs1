@@ -84,9 +84,9 @@ Transaction_Flow_Matrix <- sfcr_matrix(
   # [ x=176 y=88 type: transaction_flow invisible=false ]
   columns = c("Households", "Production", "Govt"),
   codes = c("Households", "Production", "Govt"),
-  c("Consumption", Households = "-C_d", Production = "C_s", Govt = ""),
   c("Govt Expenditures", Households = "", Production = "G_s", Govt = "-G_d"),
   c("Wages", Households = "W * N_s", Production = "-W * N_s", Govt = ""),
+  c("Consumption", Households = "-C_d", Production = "C_s", Govt = ""),
   c("Taxes", Households = "-T_s", Production = "", Govt = "T_d"),
   c("Money stock", Households = "-\\DeltaH_h", Production = "", Govt = "\\DeltaH_s")
 )
@@ -110,10 +110,12 @@ sankey !!
 ## Sequence Diagram
 
 ```{r}
-@startuml x=-304 y=-40 w=360 h=288 scale=0.6202247191011236
+@startuml x=-304 y=-40 w=360 h=288 scale=0.6357142857142857
    source: Transaction Flow Matrix
 @enduml
 ```
+```
+
 
 ```{r}
 @scope Embedded_Scope_1 position=-1
