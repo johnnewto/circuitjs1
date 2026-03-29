@@ -657,7 +657,7 @@ public abstract class CircuitElm implements Editable {
 	return true;
     }
     
-    void movePoint(int n, int dx, int dy) {
+    protected void movePoint(int n, int dx, int dy) {
     	// modified by IES to prevent the user dragging points to create zero sized nodes
     	// that then render improperly
     	int oldx=x;
@@ -724,7 +724,7 @@ public abstract class CircuitElm implements Editable {
 	}
     }
     
-    private int getNumHandles() {
+	protected int getNumHandles() {
 	return getPostCount();
     }
     

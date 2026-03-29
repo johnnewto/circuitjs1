@@ -213,6 +213,7 @@ public final class InfoViewerContentBuilder {
             || trimmedLine.startsWith("@scope")
             || trimmedLine.startsWith("@circuit")
             || trimmedLine.startsWith("@sankey")
+            || trimmedLine.startsWith("@plantuml")
             || trimmedLine.startsWith("@info");
     }
 

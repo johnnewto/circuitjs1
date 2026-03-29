@@ -9,6 +9,7 @@ import com.lushprojects.circuitjs1.client.elements.economics.SFCSankeyElm;
 import com.lushprojects.circuitjs1.client.elements.economics.SFCTableElm;
 import com.lushprojects.circuitjs1.client.elements.economics.TableElm;
 import com.lushprojects.circuitjs1.client.elements.economics.TableColumn;
+import com.lushprojects.circuitjs1.client.elements.annotation.SequenceDiagramElm;
 import com.lushprojects.circuitjs1.client.elements.misc.ActionTimeElm;
 import com.lushprojects.circuitjs1.client.elements.misc.ScopeElm;
 import com.lushprojects.circuitjs1.client.io.LookupDefinition;
@@ -49,6 +50,7 @@ public class SFCRExportContext {
     private ArrayList<SFCTableElm> sfcTables = new ArrayList<SFCTableElm>();
     private ArrayList<GodlyTableElm> godlyTables = new ArrayList<GodlyTableElm>();
     private ArrayList<SFCSankeyElm> sankeyDiagrams = new ArrayList<SFCSankeyElm>();
+    private ArrayList<SequenceDiagramElm> sequenceDiagrams = new ArrayList<SequenceDiagramElm>();
     private ArrayList<CircuitElm> otherElements = new ArrayList<CircuitElm>();
     private ActionTimeElm actionTimeElm = null;
 
@@ -122,6 +124,14 @@ public class SFCRExportContext {
 
     public ArrayList<CircuitElm> getOtherElements() {
         return otherElements;
+    }
+
+    public ArrayList<SequenceDiagramElm> getSequenceDiagrams() {
+        return sequenceDiagrams;
+    }
+
+    public void setSequenceDiagrams(ArrayList<SequenceDiagramElm> diagrams) {
+        this.sequenceDiagrams = (diagrams != null) ? diagrams : new ArrayList<SequenceDiagramElm>();
     }
 
     public void setOtherElements(ArrayList<CircuitElm> elements) {

@@ -7,6 +7,7 @@ public enum SFCRBlockType {
     EQUATIONS,
     MATRIX,
     SANKEY,
+    PLANTUML,
     HINTS,
     CIRCUIT,
     SCOPE,

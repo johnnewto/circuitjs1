@@ -35,6 +35,7 @@ import java.util.Vector;
  * - note left/right of, note across
  */
 public class SequenceDiagramElm extends GraphicElm {
+    private static final int FRAME_PADDING = 12;
     
     private String plantUmlSource;
     private Vector<String> lines;
@@ -57,6 +58,7 @@ public class SequenceDiagramElm extends GraphicElm {
     // Calculated layout
     private int diagramWidth = 560;
     private int diagramHeight = 1000;
+    private double diagramScale = 1.0;
     private int currentY;
     
     // Colors
@@ -71,6 +73,7 @@ public class SequenceDiagramElm extends GraphicElm {
         super(xx, yy);
         plantUmlSource = getDefaultDiagram();
         parseDiagram();
+        syncFrameToScale();
     }
     
     public SequenceDiagramElm(int xa, int ya, int xb, int yb, int f, StringTokenizer st) {
@@ -80,7 +83,22 @@ public class SequenceDiagramElm extends GraphicElm {
         } else {
             plantUmlSource = getDefaultDiagram();
         }
+        if (st.hasMoreTokens()) {
+            try {
+                diagramWidth = Integer.parseInt(st.nextToken());
+            } catch (Exception e) {
+                diagramWidth = 560;
+            }
+        }
+        if (st.hasMoreTokens()) {
+            try {
+                diagramScale = Math.max(.1, Double.parseDouble(st.nextToken()));
+            } catch (Exception e) {
+                diagramScale = 1.0;
+            }
+        }
         parseDiagram();
+        initializeFrameFromBounds();
     }
     
     private String getDefaultDiagram() {
@@ -123,16 +141,119 @@ public class SequenceDiagramElm extends GraphicElm {
     }
     
     protected String dump() {
-        return super.dump() + " " + CustomLogicModel.escape(plantUmlSource);
+        return super.dump() + " " + CustomLogicModel.escape(plantUmlSource) + " " + diagramWidth + " " + diagramScale;
     }
     
     protected int getDumpType() { return 467; }  // Unique dump type
+
+    protected void setPoints() {
+        super.setPoints();
+        setBbox(getFrameLeft(), getFrameTop(), getFrameRight(), getFrameBottom());
+    }
+
+    protected int getNumHandles() {
+        return 2;
+    }
+
+    protected void movePoint(int n, int dx, int dy) {
+        if (n == 0) {
+            x += dx;
+            y += dy;
+        } else {
+            x2 += dx;
+            y2 += dy;
+        }
+        enforceMinimumFrameSize(n);
+        updateScaleFromFrame();
+        setPoints();
+    }
     
     protected void drag(int xx, int yy) {
-        x = xx;
-        y = yy;
-        x2 = xx + 16;
+        x2 = xx;
         y2 = yy;
+        enforceMinimumFrameSize(1);
+        updateScaleFromFrame();
+        setBbox(x, y, x2, y2);
+    }
+
+    private void initializeFrameFromBounds() {
+        if (getFrameWidth() < 32 || getFrameHeight() < 32) {
+            syncFrameToScale();
+            return;
+        }
+        updateScaleFromFrame();
+        setPoints();
+    }
+
+    private void syncFrameToScale() {
+        int contentWidth = Math.max(1, (int) Math.round(diagramWidth * diagramScale));
+        int contentHeight = Math.max(1, (int) Math.round(diagramHeight * diagramScale));
+        x2 = x + contentWidth + FRAME_PADDING * 2;
+        y2 = y + contentHeight + FRAME_PADDING * 2;
+        setPoints();
+    }
+
+    private void enforceMinimumFrameSize(int handleIndex) {
+        int minWidth = FRAME_PADDING * 2 + 16;
+        int minHeight = FRAME_PADDING * 2 + 16;
+        if (getFrameWidth() < minWidth) {
+            if (handleIndex == 0)
+                x = x2 - signPreservingLength(x, x2, minWidth);
+            else
+                x2 = x + signPreservingLength(x, x2, minWidth);
+        }
+        if (getFrameHeight() < minHeight) {
+            if (handleIndex == 0)
+                y = y2 - signPreservingLength(y, y2, minHeight);
+            else
+                y2 = y + signPreservingLength(y, y2, minHeight);
+        }
+    }
+
+    private int signPreservingLength(int start, int end, int length) {
+        return (end >= start) ? length : -length;
+    }
+
+    private void updateScaleFromFrame() {
+        diagramScale = getFitScaleForFrame();
+    }
+
+    private double getFitScaleForFrame() {
+        double availableWidth = getFrameWidth() - FRAME_PADDING * 2;
+        double availableHeight = getFrameHeight() - FRAME_PADDING * 2;
+        if (availableWidth <= 0 || availableHeight <= 0 || diagramWidth <= 0 || diagramHeight <= 0)
+            return .1;
+        double widthScale = availableWidth / (double) diagramWidth;
+        double heightScale = availableHeight / (double) diagramHeight;
+        return clampDiagramScale(Math.min(widthScale, heightScale));
+    }
+
+    private int getFrameLeft() {
+        return min(x, x2);
+    }
+
+    private int getFrameTop() {
+        return min(y, y2);
+    }
+
+    private int getFrameRight() {
+        return max(x, x2);
+    }
+
+    private int getFrameBottom() {
+        return max(y, y2);
+    }
+
+    private int getFrameWidth() {
+        return Math.abs(x2 - x);
+    }
+
+    private int getFrameHeight() {
+        return Math.abs(y2 - y);
+    }
+
+    private double clampDiagramScale(double scale) {
+        return Math.max(.1, Math.min(10, scale));
     }
     
     // ========== PlantUML Parsing ==========
@@ -175,11 +296,12 @@ public class SequenceDiagramElm extends GraphicElm {
             
             int x1 = fromP.x;
             int x2 = toP.x;
+            int arrowY = y + getLabelBlockHeight();
             
-            // Draw label above arrow
+            // Draw label in the reserved space above the arrow
             if (label != null && !label.isEmpty()) {
                 String[] labelLines = label.split("\\\\n");
-                int labelY = y - 5 - (labelLines.length - 1) * 15;
+                int labelY = y - 3;
                 int labelX = Math.min(x1, x2) + Math.abs(x2 - x1) / 2;
                 
                 g.setColor("#000000");
@@ -193,26 +315,32 @@ public class SequenceDiagramElm extends GraphicElm {
             // Draw arrow line
             g.setColor(elm.lineColor);
             if (dashed) {
-                elm.drawDashedLine(g, x1, y, x2, y);
+                elm.drawDashedLine(g, x1, arrowY, x2, arrowY);
             } else {
-                g.drawLine(x1, y, x2, y);
+                g.drawLine(x1, arrowY, x2, arrowY);
             }
             
             // Draw arrowhead
             int arrowDir = (x2 > x1) ? 1 : -1;
             int arrowX = x2 - (10 * arrowDir);
             g.context.beginPath();
-            g.context.moveTo(x2, y);
-            g.context.lineTo(arrowX, y - 4);
-            g.context.lineTo(arrowX, y + 4);
+            g.context.moveTo(x2, arrowY);
+            g.context.lineTo(arrowX, arrowY - 4);
+            g.context.lineTo(arrowX, arrowY + 4);
             g.context.closePath();
             g.context.fill();
         }
+
+        private int getLabelBlockHeight() {
+            if (label == null || label.isEmpty()) {
+                return 10;
+            }
+            String[] lines = label.split("\\\\n");
+            return Math.max(10, lines.length * 15 - 6);
+        }
         
         int getHeight() {
-            if (label == null) return 40;
-            String[] lines = label.split("\\\\n");
-            return 25 + lines.length * 15;
+            return getLabelBlockHeight() + 18;
         }
     }
     
@@ -224,8 +352,8 @@ public class SequenceDiagramElm extends GraphicElm {
         }
         
         void draw(Graphics g, SequenceDiagramElm elm, int y) {
-            int left = elm.x + 5;
-            int right = elm.x + elm.diagramWidth - 5;
+            int left = 5;
+            int right = elm.diagramWidth - 5;
             int height = 23;
             
             // Draw background bar
@@ -267,7 +395,7 @@ public class SequenceDiagramElm extends GraphicElm {
             int noteHeight = lines.size() * 15 + 20;
             
             if ("across".equals(position)) {
-                noteX = elm.x + 50;
+                noteX = 50;
                 noteWidth = elm.diagramWidth - 100;
             } else {
                 Participant p = elm.findParticipant(target);
@@ -446,7 +574,7 @@ public class SequenceDiagramElm extends GraphicElm {
         
         for (int i = 0; i < numParticipants; i++) {
             Participant p = participants.get(i);
-            p.x = x + participantSpacing * (i + 1);
+            p.x = participantSpacing * (i + 1);
         }
         
         // Calculate diagram height based on content
@@ -462,8 +590,14 @@ public class SequenceDiagramElm extends GraphicElm {
     protected void draw(Graphics g) {
         g.save();
         
-        // Recalculate positions relative to element position
         calculateLayout();
+    double fitScale = getFitScaleForFrame();
+    int renderedWidth = Math.max(1, (int) Math.round(diagramWidth * fitScale));
+    int renderedHeight = Math.max(1, (int) Math.round(diagramHeight * fitScale));
+    int drawX = getFrameLeft() + (getFrameWidth() - renderedWidth) / 2;
+    int drawY = getFrameTop() + (getFrameHeight() - renderedHeight) / 2;
+    g.context.translate(drawX, drawY);
+    g.context.scale(fitScale, fitScale);
         
         // Set font
         Font f = new Font("SansSerif", 0, fontSize);
@@ -474,16 +608,16 @@ public class SequenceDiagramElm extends GraphicElm {
             bgColor = "#FFFFFF";
         }
         g.context.setFillStyle(bgColor);
-        g.context.fillRect(x, y, diagramWidth, diagramHeight);
+        g.context.fillRect(0, 0, diagramWidth, diagramHeight);
         
         // Draw title
-        int titleY = y + 30;
+        int titleY = 30;
         if (titleLine1 != null) {
             g.setColor("#000000");
             Font titleFont = new Font("SansSerif", Font.BOLD, 14);
             g.setFont(titleFont);
             int textWidth = (int) g.context.measureText(titleLine1).getWidth();
-            g.drawString(titleLine1, x + (diagramWidth - textWidth) / 2, titleY);
+            g.drawString(titleLine1, (diagramWidth - textWidth) / 2, titleY);
             titleY += 17;
         }
         if (titleLine2 != null) {
@@ -491,22 +625,22 @@ public class SequenceDiagramElm extends GraphicElm {
             Font titleFont = new Font("SansSerif", Font.BOLD, 14);
             g.setFont(titleFont);
             int textWidth = (int) g.context.measureText(titleLine2).getWidth();
-            g.drawString(titleLine2, x + (diagramWidth - textWidth) / 2, titleY);
+            g.drawString(titleLine2, (diagramWidth - textWidth) / 2, titleY);
         }
         
         // Reset font for rest of diagram
         g.setFont(f);
         
         // Draw participants at top
-        int headerY = y + 60;
+        int headerY = 60;
         for (int i = 0; i < participants.size(); i++) {
             Participant p = participants.get(i);
             drawParticipant(g, p, headerY);
         }
         
         // Draw lifelines
-        currentY = y + lifelineStartY;
-        int lifelineEndY = y + diagramHeight - 80;
+        currentY = lifelineStartY;
+        int lifelineEndY = diagramHeight - 80;
         g.setColor(lineColor);
         for (int i = 0; i < participants.size(); i++) {
             Participant p = participants.get(i);
@@ -514,7 +648,7 @@ public class SequenceDiagramElm extends GraphicElm {
         }
         
         // Draw diagram elements (messages, dividers, notes)
-        currentY = y + lifelineStartY + 30;
+        currentY = lifelineStartY + 30;
         for (int i = 0; i < elements.size(); i++) {
             DiagramElement elem = elements.get(i);
             elem.draw(g, this, currentY);
@@ -528,20 +662,15 @@ public class SequenceDiagramElm extends GraphicElm {
             drawParticipant(g, p, footerY);
         }
         
-        // Set bounding box
-        setBbox(x, y, x + diagramWidth, y + diagramHeight);
-        
-        // Highlight if selected
+        g.restore();
+        updateScaleFromFrame();
+        setBbox(getFrameLeft(), getFrameTop(), getFrameRight(), getFrameBottom());
+
         if (needsHighlight()) {
             g.setColor(selectColor);
-            g.drawRect(boundingBox.x, boundingBox.y, 
+            g.drawRect(boundingBox.x, boundingBox.y,
                       boundingBox.width, boundingBox.height);
         }
-        
-        x2 = x + diagramWidth;
-        y2 = y + diagramHeight;
-        
-        g.restore();
     }
     
     private void drawParticipant(Graphics g, Participant p, int topY) {
@@ -656,6 +785,9 @@ public class SequenceDiagramElm extends GraphicElm {
         if (n == 1) {
             return new EditInfo("Diagram Width", diagramWidth, 300, 800);
         }
+        if (n == 2) {
+            return new EditInfo("Diagram Scale", diagramScale, .25, 4);
+        }
         return null;
     }
     
@@ -667,6 +799,11 @@ public class SequenceDiagramElm extends GraphicElm {
         if (n == 1) {
             diagramWidth = (int) ei.value;
             parseDiagram();
+            updateScaleFromFrame();
+        }
+        if (n == 2) {
+            diagramScale = Math.max(.25, ei.value);
+            syncFrameToScale();
         }
     }
     
@@ -674,5 +811,29 @@ public class SequenceDiagramElm extends GraphicElm {
         arr[0] = "Sequence Diagram";
         arr[1] = participants.size() + " participants";
         arr[2] = elements.size() + " elements";
+    }
+
+    public String getPlantUmlSource() {
+        return plantUmlSource;
+    }
+
+    public int getDiagramWidth() {
+        return diagramWidth;
+    }
+
+    public int getDiagramHeight() {
+        return diagramHeight;
+    }
+
+    public double getDiagramScale() {
+        return getFitScaleForFrame();
+    }
+
+    public int getRenderedDiagramWidth() {
+        return getFrameWidth();
+    }
+
+    public int getRenderedDiagramHeight() {
+        return getFrameHeight();
     }
 }

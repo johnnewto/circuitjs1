@@ -5,6 +5,7 @@ public final class SFCRBlockCommentRegistry {
     public static final String TYPE_MATRIX = "matrix";
     public static final String TYPE_SCOPE = "scope";
     public static final String TYPE_SANKEY = "sankey";
+    public static final String TYPE_PLANTUML = "plantuml";
 
     private SFCRBlockCommentRegistry() {
     }

@@ -6,6 +6,7 @@
 
 package com.lushprojects.circuitjs1.client.io;
 
+import com.lushprojects.circuitjs1.client.elements.annotation.SequenceDiagramElm;
 import com.lushprojects.circuitjs1.client.elements.economics.EquationTableElm;
 import com.lushprojects.circuitjs1.client.elements.economics.GodlyTableElm;
 import com.lushprojects.circuitjs1.client.elements.economics.SFCSankeyElm;
@@ -34,6 +35,7 @@ import com.lushprojects.circuitjs1.client.io.sfcr.handlers.SFCRBlockExportHandle
  *   @equations  - All equations (from EquationTableElm, GodlyTableElm)
  *   @lookup     - Named lookup tables referenced by lookup(name, x[, clamp]) equations
  *   @matrix     - Transaction matrices (from SFCTableElm)
+ *   @plantuml   - PlantUML sequence diagrams (from SequenceDiagramElm)
  *   @hints      - Variable documentation
  *   @circuit    - Non-SFCR elements (passthrough)
  *   @scope      - Docked and undocked scopes with trace references (UID-based)
@@ -127,6 +129,7 @@ public class SFCRExporter {
         ArrayList<SFCTableElm> matrixTables = new ArrayList<SFCTableElm>();
         ArrayList<GodlyTableElm> godlyTableList = new ArrayList<GodlyTableElm>();
         ArrayList<SFCSankeyElm> sankeyList = new ArrayList<SFCSankeyElm>();
+        ArrayList<SequenceDiagramElm> plantUmlList = new ArrayList<SequenceDiagramElm>();
         ArrayList<CircuitElm> otherElms = new ArrayList<CircuitElm>();
         ActionTimeElm actionElm = null;
 
@@ -140,6 +143,8 @@ public class SFCRExporter {
                 godlyTableList.add((GodlyTableElm) elm);
             } else if (elm instanceof SFCSankeyElm) {
                 sankeyList.add((SFCSankeyElm) elm);
+            } else if (elm instanceof SequenceDiagramElm) {
+                plantUmlList.add((SequenceDiagramElm) elm);
             } else if (elm instanceof ActionTimeElm) {
                 if (actionElm == null) {
                     actionElm = (ActionTimeElm) elm;
@@ -153,6 +158,7 @@ public class SFCRExporter {
         ctx.setSfcTables(matrixTables);
         ctx.setGodlyTables(godlyTableList);
         ctx.setSankeyDiagrams(sankeyList);
+        ctx.setSequenceDiagrams(plantUmlList);
         ctx.setOtherElements(otherElms);
         ctx.setActionTimeElm(actionElm);
     }

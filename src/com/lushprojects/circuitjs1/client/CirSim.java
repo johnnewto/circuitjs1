@@ -704,6 +704,9 @@ public CirSim() {
 	void setTempMouseMode(int value) { mouseInputHandler.setTempMouseMode(value); }
 	String getMouseModeStr() { return mouseInputHandler.getMouseModeStr(); }
 	void setMouseModeStr(String value) { mouseInputHandler.setMouseModeStr(value); }
+    public boolean isHandleDragInProgress(CircuitElm elm) {
+	return elm != null && mouseElm == elm && mouseInputHandler.getTempMouseMode() == MODE_DRAG_POST && elm.lastHandleGrabbed >= 0;
+    }
     public int getMouseCursorX() { return mouseInputHandler.getMouseCursorX(); }
     public int getMouseCursorY() { return mouseInputHandler.getMouseCursorY(); }
     public boolean isAddElementModeForUi() { return mouseInputHandler.getMouseMode() == MODE_ADD_ELM; }

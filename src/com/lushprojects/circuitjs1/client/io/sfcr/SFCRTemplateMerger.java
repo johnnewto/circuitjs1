@@ -31,6 +31,7 @@ public final class SFCRTemplateMerger {
         EQUATIONS,
         MATRIX,
         SANKEY,
+        PLANTUML,
         SCOPE,
         CIRCUIT,
         OTHER
@@ -53,6 +54,7 @@ public final class SFCRTemplateMerger {
         ArrayList<String> lookupBlocks = buildCanonicalLookupBlocks(ctx);
         ArrayList<String> matrixBlocks = buildCanonicalMatrixBlocks(ctx);
         ArrayList<String> sankeyBlocks = buildCanonicalSankeyBlocks(ctx);
+        ArrayList<String> plantUmlBlocks = buildCanonicalPlantUmlBlocks(ctx);
         ArrayList<String> scopeBlocks = buildCanonicalScopeBlocks(ctx);
         String circuitBlock = extractStructuralPayload(ctx.exportCircuitElements());
 
@@ -60,6 +62,7 @@ public final class SFCRTemplateMerger {
         int eqIndex = 0;
         int matrixIndex = 0;
         int sankeyIndex = 0;
+        int plantUmlIndex = 0;
         int scopeIndex = 0;
 
         StringBuilder out = new StringBuilder();
@@ -92,6 +95,8 @@ public final class SFCRTemplateMerger {
                     replacement = matrixBlocks.get(matrixIndex++);
                 } else if (type == TemplateBlockType.SANKEY && sankeyIndex < sankeyBlocks.size()) {
                     replacement = sankeyBlocks.get(sankeyIndex++);
+                } else if (type == TemplateBlockType.PLANTUML && plantUmlIndex < plantUmlBlocks.size()) {
+                    replacement = plantUmlBlocks.get(plantUmlIndex++);
                 } else if (type == TemplateBlockType.SCOPE && scopeIndex < scopeBlocks.size()) {
                     replacement = scopeBlocks.get(scopeIndex++);
                 } else if (type == TemplateBlockType.CIRCUIT) {
@@ -109,7 +114,7 @@ public final class SFCRTemplateMerger {
             }
 
             if (trimmed.startsWith("@lookup") || trimmed.startsWith("@equations") || trimmed.startsWith("@parameters") ||
-                trimmed.startsWith("@matrix") || trimmed.startsWith("@sankey") ||
+                trimmed.startsWith("@matrix") || trimmed.startsWith("@sankey") || trimmed.startsWith("@plantuml") ||
                 trimmed.startsWith("@scope") || trimmed.startsWith("@circuit")) {
 
                 StringBuilder rawBlock = new StringBuilder();
@@ -132,6 +137,8 @@ public final class SFCRTemplateMerger {
                     replacement = matrixBlocks.get(matrixIndex++);
                 } else if (type == TemplateBlockType.SANKEY && sankeyIndex < sankeyBlocks.size()) {
                     replacement = sankeyBlocks.get(sankeyIndex++);
+                } else if (type == TemplateBlockType.PLANTUML && plantUmlIndex < plantUmlBlocks.size()) {
+                    replacement = plantUmlBlocks.get(plantUmlIndex++);
                 } else if (type == TemplateBlockType.SCOPE && scopeIndex < scopeBlocks.size()) {
                     replacement = scopeBlocks.get(scopeIndex++);
                 } else if (type == TemplateBlockType.CIRCUIT) {
@@ -324,6 +331,10 @@ public final class SFCRTemplateMerger {
         return collectAtDirectiveBlocks(renderBlocksForType(SFCRBlockType.SANKEY, ctx), "@sankey");
     }
 
+    static ArrayList<String> buildCanonicalPlantUmlBlocks(SFCRExportContext ctx) {
+        return collectAtDirectiveBlocks(renderBlocksForType(SFCRBlockType.PLANTUML, ctx), "@plantuml");
+    }
+
     static ArrayList<String> buildCanonicalScopeBlocks(SFCRExportContext ctx) {
         return collectAtDirectiveBlocks(renderBlocksForType(SFCRBlockType.SCOPE, ctx), "@scope");
     }
@@ -469,6 +480,9 @@ public final class SFCRTemplateMerger {
         if (lower.contains("@sankey")) {
             return TemplateBlockType.SANKEY;
         }
+        if (lower.contains("@plantuml") || lower.contains("@startuml") || lower.contains("```{plantuml") || lower.startsWith("```plantuml")) {
+            return TemplateBlockType.PLANTUML;
+        }
         if (lower.contains("@scope")) {
             return TemplateBlockType.SCOPE;
         }
@@ -480,9 +494,97 @@ public final class SFCRTemplateMerger {
         if (!header.startsWith("```")) {
             header = "```{r}";
         }
+        if (isPlantUmlFenceHeader(header)) {
+            return wrapPlantUmlReplacementWithFenceLike(header, replacement);
+        }
         StringBuilder sb = new StringBuilder();
         sb.append(header).append("\n");
         sb.append(replacement).append("\n");
+        sb.append("```");
+        return sb.toString();
+    }
+
+    private static boolean isPlantUmlFenceHeader(String fenceHeader) {
+        if (fenceHeader == null) {
+            return false;
+        }
+        String lower = fenceHeader.trim().toLowerCase();
+        return lower.startsWith("```{plantuml") || lower.equals("```plantuml") || lower.startsWith("```plantuml ");
+    }
+
+    private static String wrapPlantUmlReplacementWithFenceLike(String fenceHeader, String replacement) {
+        String rawSource = replacement == null ? "" : replacement.trim();
+        String[] lines = rawSource.isEmpty() ? new String[0] : rawSource.split("\n");
+        String headerLine = (lines.length > 0) ? lines[0].trim() : "";
+        String xAttr = "";
+        String yAttr = "";
+        String widthAttr = "";
+        String scaleAttr = "";
+
+        if (headerLine.startsWith("@plantuml")) {
+            String[] parts = headerLine.split("\\s+");
+            for (int i = 1; i < parts.length; i++) {
+                if (parts[i].startsWith("x=")) {
+                    xAttr = " " + parts[i];
+                } else if (parts[i].startsWith("y=")) {
+                    yAttr = " " + parts[i];
+                } else if (parts[i].startsWith("scale=")) {
+                    scaleAttr = " " + parts[i];
+                }
+            }
+        }
+
+        int startBody = 0;
+        int endBody = lines.length;
+        if (lines.length > 0 && lines[0].trim().startsWith("@plantuml")) {
+            startBody = 1;
+        }
+        if (endBody > startBody && lines[endBody - 1].trim().equals("@end")) {
+            endBody--;
+        }
+        while (endBody > startBody) {
+            String trimmed = lines[startBody].trim();
+            if (trimmed.startsWith("width:")) {
+                String widthValue = trimmed.substring("width:".length()).trim();
+                if (!widthValue.isEmpty()) {
+                    widthAttr = " width=" + widthValue;
+                }
+                startBody++;
+                continue;
+            }
+            if (trimmed.startsWith("scale:")) {
+                String scaleValue = trimmed.substring("scale:".length()).trim();
+                if (!scaleValue.isEmpty()) {
+                    scaleAttr = " scale=" + scaleValue;
+                }
+                startBody++;
+                continue;
+            }
+            break;
+        }
+
+        if (startBody < endBody && lines[startBody].trim().startsWith("@startuml")) {
+            StringBuilder startLine = new StringBuilder("@startuml");
+            if (!xAttr.isEmpty()) {
+                startLine.append(xAttr);
+            }
+            if (!yAttr.isEmpty()) {
+                startLine.append(yAttr);
+            }
+            if (!widthAttr.isEmpty()) {
+                startLine.append(widthAttr);
+            }
+            if (!scaleAttr.isEmpty()) {
+                startLine.append(scaleAttr);
+            }
+            lines[startBody] = startLine.toString();
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("```{PlantUML}\n");
+        for (int i = startBody; i < endBody; i++) {
+            sb.append(lines[i]).append("\n");
+        }
         sb.append("```");
         return sb.toString();
     }
@@ -580,6 +682,7 @@ public final class SFCRTemplateMerger {
             || trimmed.startsWith("@parameters")
             || trimmed.startsWith("@matrix")
             || trimmed.startsWith("@sankey")
+            || trimmed.startsWith("@plantuml")
             || trimmed.startsWith("@scope")
             || trimmed.startsWith("@circuit")
             || trimmed.startsWith("@info");
@@ -600,7 +703,7 @@ public final class SFCRTemplateMerger {
         }
         if (lower.contains("@equations") || lower.contains("@parameters") ||
             lower.contains("@matrix") || lower.contains("@circuit") ||
-            lower.contains("@sankey") || lower.contains("@scope") ||
+            lower.contains("@sankey") || lower.contains("@plantuml") || lower.contains("@scope") ||
             lower.contains("@info")) {
             return false;
         }

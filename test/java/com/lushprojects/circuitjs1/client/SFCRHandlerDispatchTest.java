@@ -35,6 +35,7 @@ class SFCRHandlerDispatchTest {
         assertNotNull(SFCRBlockParseHandlerRegistry.getHandler("@scope"));
         assertNotNull(SFCRBlockParseHandlerRegistry.getHandler("@circuit"));
         assertNotNull(SFCRBlockParseHandlerRegistry.getHandler("@sankey"));
+                assertNotNull(SFCRBlockParseHandlerRegistry.getHandler("@plantuml"));
         assertNotNull(SFCRBlockParseHandlerRegistry.getHandler("@info"));
     }
 

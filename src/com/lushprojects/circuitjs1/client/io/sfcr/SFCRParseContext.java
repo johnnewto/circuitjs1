@@ -788,6 +788,7 @@ public class SFCRParseContext {
         if (dumpType == 266) return "equations";
         if (dumpType == 265) return "matrix";
         if (dumpType == 466) return "sankey";
+        if (dumpType == 467) return "plantuml";
         if (dumpType == 432) return "action";
         return null;
     }

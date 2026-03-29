@@ -290,7 +290,7 @@ public class ScopeElm extends CircuitElm {
 	return 0; 
     }
     
-    int getNumHandles() { 
+	protected int getNumHandles() { 
 	return 2; 
     }
     

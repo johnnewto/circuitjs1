@@ -8,6 +8,7 @@ import com.lushprojects.circuitjs1.client.io.sfcr.handlers.InfoBlockParseHandler
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.InitBlockParseHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.LookupBlockParseHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.MatrixBlockParseHandler;
+import com.lushprojects.circuitjs1.client.io.sfcr.handlers.PlantUmlBlockParseHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.SFCRBlockParseHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.ScopeBlockParseHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.SankeyBlockParseHandler;
@@ -29,6 +30,7 @@ public final class SFCRBlockParseHandlerRegistry {
         register(new ScopeBlockParseHandler());
         register(new CircuitBlockParseHandler());
         register(new SankeyBlockParseHandler());
+        register(new PlantUmlBlockParseHandler());
         register(new InfoBlockParseHandler());
     }
 

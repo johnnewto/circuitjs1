@@ -60,7 +60,7 @@ public class LineElm extends GraphicElm {
 	}
     }
     
-    int getNumHandles() {
+    protected int getNumHandles() {
 	return 2;
     }
 

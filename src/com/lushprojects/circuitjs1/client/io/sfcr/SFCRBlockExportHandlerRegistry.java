@@ -8,6 +8,7 @@ import com.lushprojects.circuitjs1.client.io.sfcr.handlers.HintsBlockExportHandl
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.InitBlockExportHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.LookupBlockExportHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.MatrixBlockExportHandler;
+import com.lushprojects.circuitjs1.client.io.sfcr.handlers.PlantUmlBlockExportHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.SFCRBlockExportHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.SankeyBlockExportHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.ScopeBlockExportHandler;
@@ -29,6 +30,7 @@ public final class SFCRBlockExportHandlerRegistry {
         handlers.add(new EquationBlocksEmitExportHandler());
         handlers.add(new MatrixBlockExportHandler());
         handlers.add(new SankeyBlockExportHandler());
+        handlers.add(new PlantUmlBlockExportHandler());
         handlers.add(new HintsBlockExportHandler());
         handlers.add(new CircuitBlockExportHandler());
         handlers.add(new ScopeBlockExportHandler());

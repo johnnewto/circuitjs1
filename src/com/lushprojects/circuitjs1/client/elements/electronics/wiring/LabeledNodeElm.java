@@ -276,7 +276,7 @@ public class LabeledNodeElm extends CircuitElm {
 	setPoints();
     }
     
-    int getNumHandles() {
+	protected int getNumHandles() {
 	return 2;
     }
     

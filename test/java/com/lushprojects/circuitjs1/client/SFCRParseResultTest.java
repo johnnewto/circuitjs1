@@ -180,6 +180,56 @@ class SFCRParseResultTest {
                 "Sankey dump must start with '466 ' (SFCSankeyElm type)");
     }
 
+        @Test
+        @DisplayName("@plantuml block parses to SequenceDiagramElm dump type 467")
+        void testPlantUmlBlockCaptured() {
+        String text =
+            "@plantuml x=200 y=120\n" +
+            "width: 640\n" +
+            "scale: 1.5\n" +
+            "@startuml\n" +
+            "actor Households\n" +
+            "participant Firms\n" +
+            "Households -> Firms : Demand\n" +
+            "@enduml\n" +
+            "@end\n";
+
+        SFCRParseResult parsed = SFCRParser.parseToResult(text);
+        assertNotNull(parsed);
+
+        List<SFCRParseResult.BlockDump> plantUmlBlocks = parsed.getBlocksByType("plantuml");
+        assertEquals(1, plantUmlBlocks.size(), "Expected one parsed PlantUML block");
+        assertTrue(plantUmlBlocks.get(0).dumpString.startsWith("467 "),
+            "PlantUML dump must start with '467 ' (SequenceDiagramElm type)");
+        assertTrue(plantUmlBlocks.get(0).dumpString.endsWith(" 640 1.5"),
+            "PlantUML dump should preserve parsed width and scale metadata");
+        }
+
+        @Test
+        @DisplayName("fenced PlantUML block loads as SequenceDiagramElm without explicit @plantuml wrapper")
+        void testFencedPlantUmlBlockCaptured() {
+        String text =
+                "```{PlantUML}\n" +
+            "@startuml x=672 y=-8 width=640 scale=1.25\n" +
+            "actor Households\n" +
+            "participant Firms\n" +
+            "Households -> Firms : Demand\n" +
+            "@enduml\n" +
+            "```\n";
+
+        SFCRParseResult parsed = SFCRParser.parseToResult(text);
+        assertNotNull(parsed);
+
+        List<SFCRParseResult.BlockDump> plantUmlBlocks = parsed.getBlocksByType("plantuml");
+        assertEquals(1, plantUmlBlocks.size(), "Expected one parsed fenced PlantUML block");
+        assertTrue(plantUmlBlocks.get(0).dumpString.startsWith("467 "),
+            "Fenced PlantUML must instantiate dump type 467");
+        assertTrue(plantUmlBlocks.get(0).dumpString.startsWith("467 672 -8 "),
+            "Fenced PlantUML x/y should be parsed from the @startuml line");
+        assertTrue(plantUmlBlocks.get(0).dumpString.endsWith(" 560 1.25"),
+            "Fenced PlantUML render width should ignore @startuml width while scale is preserved");
+        }
+
     // -------------------------------------------------------------------------
     // Hints
     // -------------------------------------------------------------------------

@@ -219,7 +219,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             dragScreenY = e.getY();
             dragGridX = sim.inverseTransformX(dragScreenX);
             dragGridY = sim.inverseTransformY(dragScreenY);
-            if (!(tempMouseMode == CirSim.MODE_DRAG_SELECTED && onlyGraphicsElmsSelected())) {
+            if (!(tempMouseMode == CirSim.MODE_DRAG_SELECTED && onlyGraphicsElmsSelected() && !shouldSnapSelectedGraphicsDrag())) {
                 dragGridX = sim.snapGrid(dragGridX);
                 dragGridY = sim.snapGrid(dragGridY);
             }
@@ -303,7 +303,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         if (mouseElm != null && !mouseElm.isSelected())
             mouseElm.setSelected(me = true);
 
-        if (!onlyGraphicsElmsSelected()) {
+        if (!onlyGraphicsElmsSelected() || shouldSnapSelectedGraphicsDrag()) {
             x = sim.snapGrid(x);
             y = sim.snapGrid(y);
         }
@@ -338,6 +338,18 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         return allowed;
     }
 
+    private boolean shouldSnapSelectedGraphicsDrag() {
+        CircuitElm mouseElm = sim.getMouseElmForRouting();
+        if (mouseElm instanceof SequenceDiagramElm)
+            return true;
+        for (int i = 0; i != sim.elmList.size(); i++) {
+            CircuitElm ce = sim.getElm(i);
+            if (ce.isSelected() && ce instanceof SequenceDiagramElm)
+                return true;
+        }
+        return false;
+    }
+
     private void dragPost(int x, int y, boolean all) {
         CircuitElm mouseElm = sim.getMouseElmForRouting();
         if (mouseElm == null)
@@ -370,6 +382,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             mouseElm.movePoint(draggingPost, dx, dy);
         sim.needAnalyze();
     }
+
 
     void doFlip() {
         sim.getMenuUiState().menuElm.flipPosts();

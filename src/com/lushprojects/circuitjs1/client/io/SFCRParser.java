@@ -38,6 +38,7 @@ import com.lushprojects.circuitjs1.client.io.sfcr.handlers.UnknownBlockParseHand
  *   @parameters - Alias for @equations (sfcr compatibility)
  *   @lookup     - Named lookup tables for equation interpolation
  *   @matrix     - Transaction flow matrices (creates SFCTableElm)
+ *   @plantuml   - PlantUML sequence diagrams (creates SequenceDiagramElm)
  *   @hints      - Variable tooltips (overrides inline comments)
  *   @scope      - Oscilloscope displays
  *   @circuit    - Raw CircuitJS element passthrough
@@ -286,6 +287,7 @@ public class SFCRParser {
                 "@parameters".equals(directive) || "@hints".equals(directive) ||
                 "@scope".equals(directive) || "@circuit".equals(directive) ||
                 "@info".equals(directive) || "@sankey".equals(directive) ||
+                "@plantuml".equals(directive) ||
                 "@lookup".equals(directive);
     }
 
@@ -382,7 +384,8 @@ public class SFCRParser {
                 l.startsWith("@parameters") ||
                 l.startsWith("@init") || l.startsWith("@action") || l.startsWith("@hints") ||
                 l.startsWith("@scope") || l.startsWith("@circuit") ||
-                l.startsWith("@info") || l.startsWith("@sankey") ||
+                l.startsWith("@info") || l.startsWith("@sankey") || l.startsWith("@plantuml") ||
+                isPlantUmlFenceHeaderStatic(l) ||
                 l.startsWith("@lookup")) {
                 return true;
             }
@@ -404,6 +407,14 @@ public class SFCRParser {
         }
         
         return false;
+    }
+
+    private static boolean isPlantUmlFenceHeaderStatic(String trimmedLine) {
+        if (trimmedLine == null) {
+            return false;
+        }
+        String lower = trimmedLine.trim().toLowerCase();
+        return lower.startsWith("```{plantuml") || lower.equals("```plantuml") || lower.startsWith("```plantuml ");
     }
     
     /** Parse SFCR-format text and create circuit elements. */
@@ -441,6 +452,13 @@ public class SFCRParser {
                 // Skip empty lines (preserve pending comments across blank separators)
                 if (line.isEmpty()) {
                     i++;
+                    continue;
+                }
+
+                if (!inFence && isPlantUmlFenceHeader(line)) {
+                    if (inFence) pendingCommentsConsumedInFence = true;
+                    storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_PLANTUML, "", pendingBlockComments);
+                    i = parsePlantUmlFence(lines, i, ctx);
                     continue;
                 }
 
@@ -495,6 +513,10 @@ public class SFCRParser {
                     } else if ("@sankey".equals(directive)) {
                         if (inFence) pendingCommentsConsumedInFence = true;
                         storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_SANKEY, "", pendingBlockComments);
+                        consumedPendingComments = true;
+                    } else if ("@plantuml".equals(directive)) {
+                        if (inFence) pendingCommentsConsumedInFence = true;
+                        storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_PLANTUML, "", pendingBlockComments);
                         consumedPendingComments = true;
                     } else if ("@scope".equals(directive) && ctx.looksLikeScopeBlock(lines, i)) {
                         if (inFence) pendingCommentsConsumedInFence = true;
@@ -855,6 +877,79 @@ public class SFCRParser {
             sim.getSFCRDocumentState().setBlockComments(key, pendingComments);
         }
         pendingComments.clear();
+    }
+
+    private boolean isPlantUmlFenceHeader(String trimmedLine) {
+        if (trimmedLine == null) {
+            return false;
+        }
+        String lower = trimmedLine.trim().toLowerCase();
+        return lower.startsWith("```{plantuml") || lower.equals("```plantuml") || lower.startsWith("```plantuml ");
+    }
+
+    private int parsePlantUmlFence(String[] lines, int startIndex, SFCRParseContext ctx) {
+        ArrayList<String> synthetic = new ArrayList<String>();
+        appendPlantUmlSyntheticHeader(lines[startIndex].trim(), synthetic);
+
+        int i = startIndex + 1;
+        while (i < lines.length) {
+            String rawLine = lines[i];
+            if (rawLine.trim().startsWith("```")) {
+                break;
+            }
+            synthetic.add(rawLine);
+            i++;
+        }
+        synthetic.add("@end");
+
+        SFCRBlockParseHandler handler = SFCRBlockParseHandlerRegistry.getHandler("@plantuml");
+        if (handler != null) {
+            handler.parse(synthetic.toArray(new String[0]), 0, ctx);
+        }
+        if (i < lines.length && lines[i].trim().startsWith("```")) {
+            i++;
+        }
+        return i;
+    }
+
+    private void appendPlantUmlSyntheticHeader(String fenceHeader, ArrayList<String> synthetic) {
+        if (synthetic == null) {
+            return;
+        }
+        String trimmed = (fenceHeader == null) ? "" : fenceHeader.trim();
+        String rest = "";
+
+        if (trimmed.startsWith("```{")) {
+            int close = trimmed.lastIndexOf('}');
+            if (close > 4) {
+                rest = trimmed.substring(4, close).trim();
+            }
+        } else if (trimmed.startsWith("```")) {
+            rest = trimmed.substring(3).trim();
+        }
+
+        StringBuilder header = new StringBuilder("@plantuml");
+        if (rest.isEmpty()) {
+            synthetic.add(header.toString());
+            return;
+        }
+
+        String[] parts = rest.split("\\s+");
+        for (int i = 1; i < parts.length; i++) {
+            String part = parts[i].trim();
+            if (part.isEmpty()) {
+                continue;
+            }
+            String lowerPart = part.toLowerCase();
+            if (lowerPart.startsWith("x=") || lowerPart.startsWith("y=")) {
+                header.append(" ").append(part);
+            } else if (lowerPart.startsWith("width=")) {
+                synthetic.add("width: " + part.substring(part.indexOf('=') + 1));
+            } else if (lowerPart.startsWith("scale=")) {
+                synthetic.add("scale: " + part.substring(part.indexOf('=') + 1));
+            }
+        }
+        synthetic.add(0, header.toString());
     }
 
     /** Extract scope block name from header, ignoring known key=value attributes. */

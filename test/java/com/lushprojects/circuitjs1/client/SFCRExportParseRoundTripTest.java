@@ -70,6 +70,42 @@ class SFCRExportParseRoundTripTest {
         assertNotNull(second.findBlock("equations", "World2"));
     }
 
+    @Test
+    @DisplayName("PlantUML blocks survive parse-result round-trip with explicit @plantuml export")
+    void testPlantUmlBlocksRoundTrip() {
+        String text =
+                "@equations Demo\n" +
+                "  Y ~ 1\n" +
+                "@end\n\n" +
+                "@plantuml x=200 y=120\n" +
+                "width: 620\n" +
+            "scale: 1.5\n" +
+                "@startuml\n" +
+                "actor Households\n" +
+                "participant Firms\n" +
+                "Households -> Firms : Demand\n" +
+                "@enduml\n" +
+                "@end\n";
+
+        SFCRParseResult first = SFCRParser.parseToResult(text);
+        assertNotNull(first);
+        assertNotNull(first.findBlock("plantuml", ""));
+
+        String exported = SFCRParseResultExporter.export(first);
+        assertTrue(exported.contains("@plantuml x=200 y=120"),
+                "Parse-result export should emit explicit @plantuml blocks");
+        assertTrue(exported.contains("scale: 1.5"),
+            "Parse-result export should preserve PlantUML scale metadata");
+
+        SFCRParseResult second = SFCRParser.parseToResult(exported);
+        assertNotNull(second);
+
+        List<String> firstSignature = toBlockSignature(first.blockDumps);
+        List<String> secondSignature = toBlockSignature(second.blockDumps);
+        assertEquals(firstSignature, secondSignature,
+                "PlantUML block dump signature must round-trip unchanged");
+    }
+
     private List<String> toBlockSignature(List<SFCRParseResult.BlockDump> blocks) {
         ArrayList<String> signature = new ArrayList<String>();
         if (blocks == null) {
