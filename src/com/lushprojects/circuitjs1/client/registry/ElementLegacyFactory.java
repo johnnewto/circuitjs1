@@ -133,6 +133,7 @@ final class ElementLegacyFactory {
             case 264: return new DivideConstElm(x1, y1, x2, y2, f, st);
             case 265: return new SFCTableElm(x1, y1, x2, y2, f, st);
             case 466: return new SFCSankeyElm(x1, y1, x2, y2, f, st);
+            case 467: return new SequenceDiagramElm(x1, y1, x2, y2, f, st);
             case 267: return new ComputedValueSourceElm(x1, y1, x2, y2, f, st);
             case 268: return new SFCStockElm(x1, y1, x2, y2, f, st);
             case 269: return new SFCFlowElm(x1, y1, x2, y2, f, st);
@@ -494,6 +495,8 @@ final class ElementLegacyFactory {
             return (CircuitElm) new SFCTableElm(x1, y1);
         if (n=="SFCSankeyElm")
             return (CircuitElm) new SFCSankeyElm(x1, y1);
+        if (n=="SequenceDiagramElm")
+            return (CircuitElm) new SequenceDiagramElm(x1, y1);
         if (n=="SFCStockElm")
             return (CircuitElm) new SFCStockElm(x1, y1);
         if (n=="SFCFlowElm")

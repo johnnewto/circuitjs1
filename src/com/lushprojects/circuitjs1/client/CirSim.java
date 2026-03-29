@@ -425,6 +425,7 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
     MenuItem elmSplitMenuItem;
     MenuItem elmSliderMenuItem;
     MenuItem elmSankeyMenuItem;
+    MenuItem elmSequenceDiagramMenuItem;
 	MenuItem elmDagBlocksMenuItem;
 	MenuItem elmEquationTableDebugMenuItem;
 	MenuItem elmEquationTableReferenceMenuItem;

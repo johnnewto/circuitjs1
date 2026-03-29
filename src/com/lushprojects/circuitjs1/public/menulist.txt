@@ -94,6 +94,7 @@ LampElm|Lamp
 TextElm|Text||t
 BoxElm|Box
 LineElm|Line
+SequenceDiagramElm|Sequence Diagram
 LabeledNodeElm|Labeled Node
 ProbeElm|Voltmeter/Scope Probe
 OhmMeterElm|Ohmmeter

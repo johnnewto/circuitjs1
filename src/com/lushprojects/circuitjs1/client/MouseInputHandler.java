@@ -566,6 +566,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
                 sim.elmSplitMenuItem.setEnabled(canSplit(mouseElm));
                 sim.elmSliderMenuItem.setEnabled(sliderItemEnabled(mouseElm));
                 sim.elmSankeyMenuItem.setEnabled(mouseElm instanceof SFCTableElm);
+                sim.elmSequenceDiagramMenuItem.setEnabled(mouseElm instanceof SFCTableElm);
                 sim.elmDagBlocksMenuItem.setEnabled(mouseElm instanceof EquationTableElm);
                 sim.elmEquationTableDebugMenuItem.setEnabled(mouseElm instanceof EquationTableElm);
                 sim.elmEquationTableReferenceMenuItem.setEnabled(mouseElm instanceof EquationTableElm);

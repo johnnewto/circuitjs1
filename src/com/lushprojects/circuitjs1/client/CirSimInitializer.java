@@ -662,6 +662,7 @@ final class CirSimInitializer {
         sim.getMenuUiState().elmMenuBar.addItem(sim.elmSplitMenuItem = sim.menuItemWithShortcut("", "Split Wire", Locale.LS(sim.ctrlMetaKey + "click"), new MyCommand("elm", "split")));
         sim.getMenuUiState().elmMenuBar.addItem(sim.elmSliderMenuItem = new MenuItem(Locale.LS("Sliders..."), new MyCommand("elm", "sliders")));
         sim.getMenuUiState().elmMenuBar.addItem(sim.elmSankeyMenuItem = new MenuItem(Locale.LS("View Sankey Diagram..."), new MyCommand("elm", "viewSankey")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmSequenceDiagramMenuItem = new MenuItem(Locale.LS("View Sequence Diagram..."), new MyCommand("elm", "viewSequenceDiagram")));
         sim.getMenuUiState().elmMenuBar.addItem(sim.elmDagBlocksMenuItem = new MenuItem(Locale.LS("View DAG Blocks Plot..."), new MyCommand("elm", "viewDagBlocks")));
         sim.getMenuUiState().elmMenuBar.addItem(sim.elmEquationTableDebugMenuItem = new MenuItem(Locale.LS("View EquationTable Debug Info..."), new MyCommand("elm", "viewEquationTableDebug")));
         sim.getMenuUiState().elmMenuBar.addItem(sim.elmEquationTableReferenceMenuItem = new MenuItem(Locale.LS("View EquationTable Reference..."), new MyCommand("elm", "viewEquationTableReference")));

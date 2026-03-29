@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sequence Diagram - __TITLE__</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { 
+      font-family: Arial, sans-serif; 
+      margin: 0; 
+      padding: 0; 
+      background: #f5f5f5; 
+    }
+    .header {
+      background: #333;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: normal;
+    }
+    .header-buttons {
+      display: flex;
+      gap: 10px;
+    }
+    .header button {
+      background: #555;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    .header button:hover {
+      background: #666;
+    }
+    .content {
+      display: flex;
+      height: calc(100vh - 60px);
+    }
+    #diagram-container { 
+      flex: 1;
+      padding: 20px;
+      overflow: auto;
+      background: white;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .mermaid {
+      max-width: 100%;
+    }
+    #code-panel {
+      width: 400px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 15px;
+      overflow: auto;
+      display: none;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    #code-panel.visible {
+      display: block;
+    }
+    .error-message {
+      color: #d62728;
+      padding: 20px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Sequence Diagram: __TITLE__</h1>
+    <div class="header-buttons">
+      <button onclick="toggleCode()" id="toggle-code-btn">Show Code</button>
+      <button onclick="copyCode()">Copy Code</button>
+      <button onclick="downloadSVG()">Download SVG</button>
+    </div>
+  </div>
+  <div class="content">
+    <div id="diagram-container">
+      <pre class="mermaid" id="mermaid-diagram">
+__MERMAID_CODE__
+      </pre>
+    </div>
+    <div id="code-panel"></div>
+  </div>
+  <script>
+    // Initialize Mermaid
+    mermaid.initialize({ 
+      startOnLoad: true,
+      theme: 'default',
+      sequence: {
+        diagramMarginX: 30,
+        diagramMarginY: 20,
+        actorMargin: 100,
+        boxMargin: 10,
+        boxTextMargin: 5,
+        noteMargin: 10,
+        messageMargin: 50,
+        mirrorActors: true,
+        useMaxWidth: false,
+        width: 180
+      }
+    });
+
+    const mermaidCode = `__MERMAID_CODE__`;
+    document.getElementById('code-panel').textContent = mermaidCode;
+
+    function toggleCode() {
+      const panel = document.getElementById('code-panel');
+      const btn = document.getElementById('toggle-code-btn');
+      panel.classList.toggle('visible');
+      btn.textContent = panel.classList.contains('visible') ? 'Hide Code' : 'Show Code';
+    }
+
+    function copyCode() {
+      navigator.clipboard.writeText(mermaidCode).then(() => {
+        // Brief visual feedback
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = originalText, 1500);
+      });
+    }
+
+    function downloadSVG() {
+      const svg = document.querySelector('#diagram-container svg');
+      if (!svg) {
+        alert('No diagram to download');
+        return;
+      }
+      
+      // Clone SVG and add styles inline
+      const svgClone = svg.cloneNode(true);
+      svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      
+      // Add white background
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('width', '100%');
+      rect.setAttribute('height', '100%');
+      rect.setAttribute('fill', 'white');
+      svgClone.insertBefore(rect, svgClone.firstChild);
+      
+      const svgData = new XMLSerializer().serializeToString(svgClone);
+      const blob = new Blob([svgData], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'sequence-diagram.svg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>

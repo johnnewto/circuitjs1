@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sequence Diagram - __TITLE__</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      margin: 0; 
+      padding: 10px; 
+      background: white; 
+    }
+    #diagram-container { 
+      width: 100%; 
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 400px;
+    }
+    .mermaid {
+      width: 100%;
+    }
+    .error-message {
+      color: #d62728;
+      padding: 20px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="diagram-container">
+    <pre class="mermaid" id="mermaid-diagram">
+__MERMAID_CODE__
+    </pre>
+  </div>
+  <script>
+    // Initialize Mermaid
+    mermaid.initialize({ 
+      startOnLoad: true,
+      theme: 'default',
+      sequence: {
+        diagramMarginX: 20,
+        diagramMarginY: 10,
+        actorMargin: 80,
+        boxMargin: 10,
+        boxTextMargin: 5,
+        noteMargin: 10,
+        messageMargin: 40,
+        mirrorActors: true,
+        useMaxWidth: true
+      }
+    });
+
+    // Store current code for comparison
+    let currentCode = `__MERMAID_CODE__`;
+
+    // Function to update the diagram with new mermaid code
+    window.updateMermaidSequence = async function(newCode) {
+      if (newCode === currentCode) return;  // Skip if unchanged
+      currentCode = newCode;
+      
+      const container = document.getElementById('diagram-container');
+      
+      try {
+        // Create a new element for rendering
+        const newElement = document.createElement('div');
+        newElement.className = 'mermaid';
+        newElement.textContent = newCode;
+        
+        // Clear existing content and add new element
+        container.innerHTML = '';
+        container.appendChild(newElement);
+        
+        // Re-initialize mermaid on the new element
+        await mermaid.run({
+          nodes: [newElement]
+        });
+      } catch (err) {
+        console.error('Mermaid render error:', err);
+        container.innerHTML = '<div class="error-message">Error rendering diagram: ' + err.message + '</div>';
+      }
+    };
+  </script>
+</body>
+</html>
