@@ -385,6 +385,7 @@ public class SFCRParser {
                 l.startsWith("@init") || l.startsWith("@action") || l.startsWith("@hints") ||
                 l.startsWith("@scope") || l.startsWith("@circuit") ||
                 l.startsWith("@info") || l.startsWith("@sankey") || l.startsWith("@plantuml") ||
+                l.startsWith("@startuml") ||
                 isPlantUmlFenceHeaderStatic(l) ||
                 l.startsWith("@lookup")) {
                 return true;
@@ -452,6 +453,13 @@ public class SFCRParser {
                 // Skip empty lines (preserve pending comments across blank separators)
                 if (line.isEmpty()) {
                     i++;
+                    continue;
+                }
+
+                if (line.startsWith("@startuml")) {
+                    if (inFence) pendingCommentsConsumedInFence = true;
+                    storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_PLANTUML, "", pendingBlockComments);
+                    i = parseInlinePlantUmlBlock(lines, i, ctx);
                     continue;
                 }
 
@@ -908,6 +916,38 @@ public class SFCRParser {
         }
         if (i < lines.length && lines[i].trim().startsWith("```")) {
             i++;
+        }
+        return i;
+    }
+
+    private int parseInlinePlantUmlBlock(String[] lines, int startIndex, SFCRParseContext ctx) {
+        ArrayList<String> synthetic = new ArrayList<String>();
+        synthetic.add("@plantuml");
+
+        int i = startIndex;
+        boolean foundEnd = false;
+        while (i < lines.length) {
+            String rawLine = lines[i];
+            String trimmed = rawLine == null ? "" : rawLine.trim();
+            if (i > startIndex && trimmed.startsWith("```")) {
+                break;
+            }
+            synthetic.add(rawLine);
+            i++;
+            if ("@enduml".equals(trimmed)) {
+                foundEnd = true;
+                break;
+            }
+        }
+
+        if (!foundEnd) {
+            synthetic.add("@enduml");
+        }
+        synthetic.add("@end");
+
+        SFCRBlockParseHandler handler = SFCRBlockParseHandlerRegistry.getHandler("@plantuml");
+        if (handler != null) {
+            handler.parse(synthetic.toArray(new String[0]), 0, ctx);
         }
         return i;
     }

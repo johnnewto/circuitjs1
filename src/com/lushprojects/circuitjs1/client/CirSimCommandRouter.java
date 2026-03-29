@@ -9,7 +9,6 @@ import com.lushprojects.circuitjs1.client.elements.ActionTimeDialog;
 
 import com.lushprojects.circuitjs1.client.elements.EquationTableMarkdownDebugDialog;
 import com.lushprojects.circuitjs1.client.elements.SFCSankeyViewer;
-import com.lushprojects.circuitjs1.client.elements.SequenceDiagramViewer;
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.elements.misc.*;
 
@@ -244,11 +243,6 @@ final class CirSimCommandRouter {
 
         if (item=="viewSankey" && (sim.getMenuUiState().menuElm instanceof SFCTableElm)) {
             SFCSankeyViewer viewer = new SFCSankeyViewer((TableElm) sim.getMenuUiState().menuElm);
-            viewer.openDialog();
-        }
-
-        if (item=="viewSequenceDiagram" && (sim.getMenuUiState().menuElm instanceof SFCTableElm)) {
-            SequenceDiagramViewer viewer = new SequenceDiagramViewer((TableElm) sim.getMenuUiState().menuElm);
             viewer.openDialog();
         }
 

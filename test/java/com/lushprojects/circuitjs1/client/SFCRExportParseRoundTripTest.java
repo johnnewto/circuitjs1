@@ -71,7 +71,7 @@ class SFCRExportParseRoundTripTest {
     }
 
     @Test
-    @DisplayName("PlantUML blocks survive parse-result round-trip with explicit @plantuml export")
+    @DisplayName("PlantUML blocks survive parse-result round-trip with explicit @startuml export")
     void testPlantUmlBlocksRoundTrip() {
         String text =
                 "@equations Demo\n" +
@@ -81,6 +81,7 @@ class SFCRExportParseRoundTripTest {
                 "width: 620\n" +
             "scale: 1.5\n" +
                 "@startuml\n" +
+                "source: Transaction Flow Matrix\n" +
                 "actor Households\n" +
                 "participant Firms\n" +
                 "Households -> Firms : Demand\n" +
@@ -92,10 +93,14 @@ class SFCRExportParseRoundTripTest {
         assertNotNull(first.findBlock("plantuml", ""));
 
         String exported = SFCRParseResultExporter.export(first);
-        assertTrue(exported.contains("@plantuml x=200 y=120"),
-                "Parse-result export should emit explicit @plantuml blocks");
-        assertTrue(exported.contains("scale: 1.5"),
+        assertTrue(exported.contains("```{PlantUML}\n@startuml x=200 y=120 w=16 h=16 width=620"),
+                "Parse-result export should emit explicit @startuml blocks");
+        assertTrue(exported.contains("scale=1.5"),
             "Parse-result export should preserve PlantUML scale metadata");
+        assertTrue(exported.contains("source: Transaction Flow Matrix"),
+            "Parse-result export should preserve PlantUML source bindings");
+        assertTrue(!exported.contains("@plantuml"),
+            "Parse-result export should not emit legacy @plantuml wrappers");
 
         SFCRParseResult second = SFCRParser.parseToResult(exported);
         assertNotNull(second);

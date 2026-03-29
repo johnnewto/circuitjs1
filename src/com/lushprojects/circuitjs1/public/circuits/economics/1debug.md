@@ -109,54 +109,9 @@ sankey !!
 
 ## Sequence Diagram
 
-```{PlantUML}
-@startuml x=-138 y=-72 width=560 scale=0.5
-title Godley & Lavoie (2007) - Model SIM\nSimplest Stock-Flow Consistent Model with Government Money
-
-actor Households
-participant Firms
-participant Government
-
-== 1. Government Expenditure (exogenous) ==
-Government -> Firms : Pays G\n(new government money created)
-
-== 2. Production & Wage Payment ==
-Firms -> Households : Pays wages WB\n(WB = W * N)
-
-== 3. Tax Payment ==
-Households -> Government : Pays taxes T\n(T = θ * WB)
-
-note right of Households
-Disposable income:
-YD = WB - T
-end note
-
-== 4. Consumption ==
-Households -> Firms : Buys consumption goods C\n(C = α₁·YD + α₂·H₋₁)
-
-note right of Firms
-Accounting identity:
-Y = C + G
-(output / GDP)
-end note
-
-== 5. Money Stock Changes (SFC consistency) ==
-Households -> Government : ΔHʰ = YD - C\n(change in household money holdings)
-
-Government -> Households : ΔHˢ = G - T\n(change in money supply)
-
-note across
-Stock-flow consistency condition:
-ΔHʰ ≡ ΔHˢ
-(hidden equation)
-end note
-
-== End of Period ==
-note right of Households
-Wealth updated:
-H = H₋₁ + (YD - C)
-end note
-
+```{r}
+@startuml x=-304 y=-40 w=360 h=288 scale=0.6202247191011236
+   source: Transaction Flow Matrix
 @enduml
 ```
 
@@ -173,6 +128,7 @@ end note
   trace: uid:-6Q_F4 value:3
 @end
 ```
+
 
 ```{r}
 @circuit

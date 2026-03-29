@@ -226,8 +226,29 @@ class SFCRParseResultTest {
             "Fenced PlantUML must instantiate dump type 467");
         assertTrue(plantUmlBlocks.get(0).dumpString.startsWith("467 672 -8 "),
             "Fenced PlantUML x/y should be parsed from the @startuml line");
-        assertTrue(plantUmlBlocks.get(0).dumpString.endsWith(" 560 1.25"),
-            "Fenced PlantUML render width should ignore @startuml width while scale is preserved");
+        assertTrue(plantUmlBlocks.get(0).dumpString.endsWith(" 640 1.25"),
+            "Fenced PlantUML should preserve @startuml width and scale metadata");
+        }
+
+        @Test
+        @DisplayName("inline @startuml block inside r fence loads as SequenceDiagramElm")
+        void testInlineStartUmlBlockInsideRFenceCaptured() {
+        String text =
+                "```{r}\n" +
+            "@startuml x=-384 y=56 width=560\n" +
+            "source: Transaction Flow Matrix\n" +
+            "@enduml\n" +
+            "```\n";
+
+        SFCRParseResult parsed = SFCRParser.parseToResult(text);
+        assertNotNull(parsed);
+
+        List<SFCRParseResult.BlockDump> plantUmlBlocks = parsed.getBlocksByType("plantuml");
+        assertEquals(1, plantUmlBlocks.size(), "Expected one parsed inline PlantUML block");
+        assertTrue(plantUmlBlocks.get(0).dumpString.startsWith("467 -384 56 "),
+            "Inline @startuml block should parse x/y from the @startuml line");
+        assertTrue(plantUmlBlocks.get(0).dumpString.contains("Transaction\\sFlow\\sMatrix"),
+            "Inline @startuml source should be preserved in the dump");
         }
 
     // -------------------------------------------------------------------------

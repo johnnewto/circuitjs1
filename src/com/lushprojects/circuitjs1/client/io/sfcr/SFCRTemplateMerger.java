@@ -332,7 +332,7 @@ public final class SFCRTemplateMerger {
     }
 
     static ArrayList<String> buildCanonicalPlantUmlBlocks(SFCRExportContext ctx) {
-        return collectAtDirectiveBlocks(renderBlocksForType(SFCRBlockType.PLANTUML, ctx), "@plantuml");
+        return collectPlantUmlBlocks(renderBlocksForType(SFCRBlockType.PLANTUML, ctx));
     }
 
     static ArrayList<String> buildCanonicalScopeBlocks(SFCRExportContext ctx) {
@@ -429,6 +429,51 @@ public final class SFCRTemplateMerger {
         return blocks;
     }
 
+    static ArrayList<String> collectPlantUmlBlocks(String text) {
+        ArrayList<String> blocks = new ArrayList<String>();
+        if (text == null || text.trim().isEmpty()) {
+            return blocks;
+        }
+        String[] lines = text.split("\n");
+        for (int i = 0; i < lines.length; i++) {
+            String trimmed = lines[i].trim();
+            if (isPlantUmlFenceHeader(trimmed)) {
+                StringBuilder one = new StringBuilder();
+                one.append(lines[i]).append("\n");
+                int j = i + 1;
+                for (; j < lines.length; j++) {
+                    one.append(lines[j]).append("\n");
+                    if (lines[j].trim().startsWith("```")) {
+                        break;
+                    }
+                }
+                String payload = extractStructuralPayload(one.toString());
+                if (!payload.isEmpty()) {
+                    blocks.add(payload);
+                }
+                i = j;
+                continue;
+            }
+            if (!trimmed.startsWith("@plantuml") && !trimmed.startsWith("@startuml")) {
+                continue;
+            }
+            StringBuilder one = new StringBuilder();
+            for (int j = i; j < lines.length; j++) {
+                one.append(lines[j]).append("\n");
+                String endTrimmed = lines[j].trim();
+                if ("@end".equals(endTrimmed) || "@enduml".equals(endTrimmed)) {
+                    i = j;
+                    break;
+                }
+            }
+            String payload = extractStructuralPayload(one.toString());
+            if (!payload.isEmpty()) {
+                blocks.add(payload);
+            }
+        }
+        return blocks;
+    }
+
     static String extractStructuralPayload(String block) {
         if (block == null) {
             return "";
@@ -514,20 +559,42 @@ public final class SFCRTemplateMerger {
 
     private static String wrapPlantUmlReplacementWithFenceLike(String fenceHeader, String replacement) {
         String rawSource = replacement == null ? "" : replacement.trim();
+        if (rawSource.startsWith("@startuml")) {
+            StringBuilder direct = new StringBuilder();
+            direct.append("```{PlantUML}\n");
+            direct.append(rawSource);
+            if (!rawSource.endsWith("\n")) {
+                direct.append("\n");
+            }
+            direct.append("```");
+            return direct.toString();
+        }
         String[] lines = rawSource.isEmpty() ? new String[0] : rawSource.split("\n");
         String headerLine = (lines.length > 0) ? lines[0].trim() : "";
         String xAttr = "";
         String yAttr = "";
         String widthAttr = "";
+        String frameWidthAttr = "";
+        String frameHeightAttr = "";
         String scaleAttr = "";
 
-        if (headerLine.startsWith("@plantuml")) {
+        if (headerLine.startsWith("@plantuml") || headerLine.startsWith("@startuml")) {
             String[] parts = headerLine.split("\\s+");
             for (int i = 1; i < parts.length; i++) {
                 if (parts[i].startsWith("x=")) {
                     xAttr = " " + parts[i];
                 } else if (parts[i].startsWith("y=")) {
                     yAttr = " " + parts[i];
+                } else if (parts[i].startsWith("w=")) {
+                    frameWidthAttr = " " + parts[i];
+                } else if (parts[i].startsWith("h=")) {
+                    frameHeightAttr = " " + parts[i];
+                } else if (parts[i].startsWith("width=")) {
+                    widthAttr = " " + parts[i];
+                } else if (parts[i].startsWith("frameWidth=")) {
+                    frameWidthAttr = " " + parts[i];
+                } else if (parts[i].startsWith("frameHeight=")) {
+                    frameHeightAttr = " " + parts[i];
                 } else if (parts[i].startsWith("scale=")) {
                     scaleAttr = " " + parts[i];
                 }
@@ -536,10 +603,10 @@ public final class SFCRTemplateMerger {
 
         int startBody = 0;
         int endBody = lines.length;
-        if (lines.length > 0 && lines[0].trim().startsWith("@plantuml")) {
+        if (lines.length > 0 && (lines[0].trim().startsWith("@plantuml") || lines[0].trim().startsWith("@startuml"))) {
             startBody = 1;
         }
-        if (endBody > startBody && lines[endBody - 1].trim().equals("@end")) {
+        if (endBody > startBody && (lines[endBody - 1].trim().equals("@end") || lines[endBody - 1].trim().equals("@enduml"))) {
             endBody--;
         }
         while (endBody > startBody) {
@@ -548,6 +615,22 @@ public final class SFCRTemplateMerger {
                 String widthValue = trimmed.substring("width:".length()).trim();
                 if (!widthValue.isEmpty()) {
                     widthAttr = " width=" + widthValue;
+                }
+                startBody++;
+                continue;
+            }
+            if (trimmed.startsWith("frameWidth:")) {
+                String frameWidthValue = trimmed.substring("frameWidth:".length()).trim();
+                if (!frameWidthValue.isEmpty()) {
+                    frameWidthAttr = " frameWidth=" + frameWidthValue;
+                }
+                startBody++;
+                continue;
+            }
+            if (trimmed.startsWith("frameHeight:")) {
+                String frameHeightValue = trimmed.substring("frameHeight:".length()).trim();
+                if (!frameHeightValue.isEmpty()) {
+                    frameHeightAttr = " frameHeight=" + frameHeightValue;
                 }
                 startBody++;
                 continue;
@@ -573,6 +656,12 @@ public final class SFCRTemplateMerger {
             }
             if (!widthAttr.isEmpty()) {
                 startLine.append(widthAttr);
+            }
+            if (!frameWidthAttr.isEmpty()) {
+                startLine.append(frameWidthAttr);
+            }
+            if (!frameHeightAttr.isEmpty()) {
+                startLine.append(frameHeightAttr);
             }
             if (!scaleAttr.isEmpty()) {
                 startLine.append(scaleAttr);
@@ -683,6 +772,7 @@ public final class SFCRTemplateMerger {
             || trimmed.startsWith("@matrix")
             || trimmed.startsWith("@sankey")
             || trimmed.startsWith("@plantuml")
+            || trimmed.startsWith("@startuml")
             || trimmed.startsWith("@scope")
             || trimmed.startsWith("@circuit")
             || trimmed.startsWith("@info");
@@ -703,7 +793,7 @@ public final class SFCRTemplateMerger {
         }
         if (lower.contains("@equations") || lower.contains("@parameters") ||
             lower.contains("@matrix") || lower.contains("@circuit") ||
-            lower.contains("@sankey") || lower.contains("@plantuml") || lower.contains("@scope") ||
+            lower.contains("@sankey") || lower.contains("@plantuml") || lower.contains("@startuml") || lower.contains("@scope") ||
             lower.contains("@info")) {
             return false;
         }

@@ -21,6 +21,8 @@ import java.util.Map;
  * {@link SFCRParser#parseToResult(String)} without requiring CirSim/GWT.
  */
 public class SFCRParseResultExporter {
+    private static final int DEFAULT_PLANTUML_WIDTH = 560;
+
 
     /** Export parse result to SFCR text using a compact @circuit dump representation. */
     public static String export(SFCRParseResult result) {
@@ -141,23 +143,44 @@ public class SFCRParseResultExporter {
             return;
         }
 
-        sb.append("@plantuml");
-        if (block.blockName != null && block.blockName.trim().length() > 0) {
-            sb.append(" ").append(block.blockName.trim());
+        sb.append("```{PlantUML}\n");
+        sb.append(rewriteStartUml(decoded));
+        if (sb.length() > 0 && sb.charAt(sb.length() - 1) != '\n') {
+            sb.append("\n");
         }
-        sb.append(" x=").append(decoded.x);
-        sb.append(" y=").append(decoded.y).append("\n");
-        sb.append("width: ").append(decoded.width).append("\n");
-        if (Math.abs(decoded.scale - 1.0) > 1e-9) {
-            sb.append("scale: ").append(decoded.scale).append("\n");
-        }
-        if (decoded.source != null && decoded.source.length() > 0) {
-            sb.append(decoded.source);
-            if (!decoded.source.endsWith("\n")) {
-                sb.append("\n");
+        sb.append("```\n");
+        sb.append("\n");
+    }
+
+    private static String rewriteStartUml(DecodedPlantUmlDump decoded) {
+        String source = (decoded.source == null || decoded.source.isEmpty()) ? "@startuml\n@enduml" : decoded.source;
+        String[] lines = source.split("\n", -1);
+        StringBuilder out = new StringBuilder();
+        boolean replaced = false;
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            String trimmed = line.trim();
+            if (!replaced && trimmed.startsWith("@startuml")) {
+                out.append("@startuml x=").append(decoded.x)
+                    .append(" y=").append(decoded.y)
+                    .append(" w=").append(decoded.frameWidth)
+                    .append(" h=").append(decoded.frameHeight);
+                if (decoded.width != DEFAULT_PLANTUML_WIDTH) {
+                    out.append(" width=").append(decoded.width);
+                }
+                if (Math.abs(decoded.scale - 1.0) > 1e-9) {
+                    out.append(" scale=").append(decoded.scale);
+                }
+                replaced = true;
+            } else {
+                out.append(line);
+            }
+            if (i < lines.length - 1) {
+                out.append("\n");
             }
         }
-        sb.append("@end\n\n");
+        return out.toString();
     }
 
     private static DecodedPlantUmlDump decodePlantUmlDump(SFCRParseResult.BlockDump block) {
@@ -170,8 +193,10 @@ public class SFCRParseResultExporter {
             DecodedPlantUmlDump decoded = new DecodedPlantUmlDump();
             decoded.x = Integer.parseInt(st.nextToken());
             decoded.y = Integer.parseInt(st.nextToken());
-            st.nextToken();
-            st.nextToken();
+            int x2 = Integer.parseInt(st.nextToken());
+            int y2 = Integer.parseInt(st.nextToken());
+            decoded.frameWidth = Math.abs(x2 - decoded.x);
+            decoded.frameHeight = Math.abs(y2 - decoded.y);
             st.nextToken();
             decoded.source = st.hasMoreTokens() ? CustomLogicModel.unescape(st.nextToken()) : "";
             decoded.width = st.hasMoreTokens() ? Integer.parseInt(st.nextToken()) : 560;
@@ -186,6 +211,8 @@ public class SFCRParseResultExporter {
         int x;
         int y;
         int width;
+        int frameWidth;
+        int frameHeight;
         double scale = 1.0;
         String source;
     }

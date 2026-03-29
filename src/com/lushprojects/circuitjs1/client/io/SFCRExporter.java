@@ -35,7 +35,7 @@ import com.lushprojects.circuitjs1.client.io.sfcr.handlers.SFCRBlockExportHandle
  *   @equations  - All equations (from EquationTableElm, GodlyTableElm)
  *   @lookup     - Named lookup tables referenced by lookup(name, x[, clamp]) equations
  *   @matrix     - Transaction matrices (from SFCTableElm)
- *   @plantuml   - PlantUML sequence diagrams (from SequenceDiagramElm)
+ *   @startuml   - PlantUML sequence diagrams (from SequenceDiagramElm)
  *   @hints      - Variable documentation
  *   @circuit    - Non-SFCR elements (passthrough)
  *   @scope      - Docked and undocked scopes with trace references (UID-based)

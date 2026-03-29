@@ -28,7 +28,6 @@ import com.lushprojects.circuitjs1.client.util.*;
 
 import com.lushprojects.circuitjs1.client.elements.ActionScheduler;
 
-import com.lushprojects.circuitjs1.client.elements.annotation.*;
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.elements.electronics.electromechanical.SwitchElm;
 import com.lushprojects.circuitjs1.client.elements.electronics.passives.*;
@@ -64,7 +63,6 @@ import com.google.gwt.dom.client.CanvasElement;
 import com.google.gwt.dom.client.Element;
 import com.google.gwt.user.client.ui.MenuItem;
 import com.google.gwt.safehtml.shared.SafeHtmlUtils;
-import com.google.gwt.user.client.ui.PopupPanel;
 import com.google.gwt.user.client.ui.Frame;
 import com.lushprojects.circuitjs1.client.core.ConfigProvider;
 import com.lushprojects.circuitjs1.client.core.ConsoleLogger;
@@ -425,7 +423,6 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
     MenuItem elmSplitMenuItem;
     MenuItem elmSliderMenuItem;
     MenuItem elmSankeyMenuItem;
-    MenuItem elmSequenceDiagramMenuItem;
 	MenuItem elmDagBlocksMenuItem;
 	MenuItem elmEquationTableDebugMenuItem;
 	MenuItem elmEquationTableReferenceMenuItem;

@@ -55,7 +55,6 @@ import com.google.gwt.event.dom.client.MouseWheelHandler;
 import com.google.gwt.user.client.Event;
 import com.google.gwt.user.client.Event.NativePreviewEvent;
 import com.google.gwt.user.client.Event.NativePreviewHandler;
-import com.google.gwt.user.client.ui.MenuItem;
 import com.lushprojects.circuitjs1.client.registry.ElementFactoryFacade;
 import com.google.gwt.user.client.ui.PopupPanel;
 import com.lushprojects.circuitjs1.client.ui.Dialog;
@@ -579,7 +578,6 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
                 sim.elmSplitMenuItem.setEnabled(canSplit(mouseElm));
                 sim.elmSliderMenuItem.setEnabled(sliderItemEnabled(mouseElm));
                 sim.elmSankeyMenuItem.setEnabled(mouseElm instanceof SFCTableElm);
-                sim.elmSequenceDiagramMenuItem.setEnabled(mouseElm instanceof SFCTableElm);
                 sim.elmDagBlocksMenuItem.setEnabled(mouseElm instanceof EquationTableElm);
                 sim.elmEquationTableDebugMenuItem.setEnabled(mouseElm instanceof EquationTableElm);
                 sim.elmEquationTableReferenceMenuItem.setEnabled(mouseElm instanceof EquationTableElm);

@@ -20,9 +20,14 @@
 package com.lushprojects.circuitjs1.client.elements.annotation;
 
 import com.lushprojects.circuitjs1.client.*;
+import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
+import com.lushprojects.circuitjs1.client.elements.economics.TableColumn;
+import com.lushprojects.circuitjs1.client.elements.economics.TableColumn.ColumnType;
+import com.lushprojects.circuitjs1.client.elements.economics.TableElm;
 import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.ui.EditInfo;
 
+import java.util.ArrayList;
 import java.util.Vector;
 
 /**
@@ -35,10 +40,16 @@ import java.util.Vector;
  * - note left/right of, note across
  */
 public class SequenceDiagramElm extends GraphicElm {
-    private static final int FRAME_PADDING = 12;
+    private static final int FRAME_PADDING = 2;
+    private static final String AUTO_SOURCE_PREFIX = "source:";
+    private static final int PARTICIPANT_SIDE_MARGIN = 48;
+    private static final double LIFELINE_STROKE_WIDTH = 1.8;
+    private static final double TRANSACTION_STROKE_WIDTH = 2.0;
     
     private String plantUmlSource;
-    private Vector<String> lines;
+    private String renderedPlantUmlSource;
+    private String sourceTableName;
+    private TableElm sourceTable;
     
     // Parsed diagram elements
     private Vector<Participant> participants;
@@ -47,16 +58,12 @@ public class SequenceDiagramElm extends GraphicElm {
     private String titleLine2;
     
     // Layout constants
-    private int fontSize = 13;
-    private int participantWidth = 100;
+    private int fontSize = 14;
     private int participantSpacing = 200;
-    private int lifelineStartY = 135;
-    private int messageSpacing = 30;
-    private int noteWidth = 150;
-    private int dividerHeight = 30;
+    private int lifelineStartY = 112;
     
     // Calculated layout
-    private int diagramWidth = 560;
+    private int diagramWidth = 400;
     private int diagramHeight = 1000;
     private double diagramScale = 1.0;
     private int currentY;
@@ -68,6 +75,12 @@ public class SequenceDiagramElm extends GraphicElm {
     private String lineColor = "#181818";
     private String dividerColor = "#000000";
     private String dividerBgColor = "#EEEEEE";
+
+    private static class FlowEndpoints {
+        String sourceSector;
+        String targetSector;
+        double flowValue;
+    }
     
     public SequenceDiagramElm(int xx, int yy) {
         super(xx, yy);
@@ -257,6 +270,242 @@ public class SequenceDiagramElm extends GraphicElm {
     }
     
     // ========== PlantUML Parsing ==========
+
+    private void refreshRenderedSourceIfNeeded() {
+        String nextRenderedSource = buildRenderedSource();
+        if (nextRenderedSource == null || nextRenderedSource.isEmpty()) {
+            nextRenderedSource = getDefaultDiagram();
+        }
+        if (renderedPlantUmlSource == null || !renderedPlantUmlSource.equals(nextRenderedSource)) {
+            renderedPlantUmlSource = nextRenderedSource;
+            parseDiagramText(renderedPlantUmlSource);
+        }
+    }
+
+    private String buildRenderedSource() {
+        sourceTableName = extractSourceTableName(plantUmlSource);
+        if (sourceTableName == null) {
+            sourceTable = null;
+            return plantUmlSource;
+        }
+
+        sourceTable = findSourceTable(sourceTableName);
+        if (sourceTable == null) {
+            return buildMissingSourceDiagram(sourceTableName);
+        }
+        return buildDiagramFromSourceTable(sourceTable);
+    }
+
+    private String extractSourceTableName(String sourceText) {
+        if (sourceText == null || sourceText.isEmpty()) {
+            return null;
+        }
+        String[] sourceLines = sourceText.split("\n");
+        for (String rawLine : sourceLines) {
+            String line = rawLine == null ? "" : rawLine.trim();
+            if (!line.regionMatches(true, 0, AUTO_SOURCE_PREFIX, 0, AUTO_SOURCE_PREFIX.length())) {
+                continue;
+            }
+            String value = line.substring(AUTO_SOURCE_PREFIX.length()).trim();
+            int commentIdx = value.indexOf('#');
+            if (commentIdx >= 0) {
+                value = value.substring(0, commentIdx).trim();
+            }
+            return value;
+        }
+        return null;
+    }
+
+    private TableElm findSourceTable(String requestedName) {
+        if (sim == null || sim.elmList == null) {
+            return null;
+        }
+
+        boolean autoSelect = requestedName == null || requestedName.isEmpty();
+        for (int i = 0; i < sim.elmList.size(); i++) {
+            CircuitElm elm = sim.elmList.get(i);
+            if (!(elm instanceof TableElm)) {
+                continue;
+            }
+            TableElm table = (TableElm) elm;
+            if (autoSelect) {
+                if (isSequenceSourceCompatible(table)) {
+                    return table;
+                }
+                continue;
+            }
+            if (table.tableTitle != null && table.tableTitle.equals(requestedName)) {
+                return table;
+            }
+        }
+        return null;
+    }
+
+    private boolean isSequenceSourceCompatible(TableElm table) {
+        if (table == null || table.columns == null) {
+            return false;
+        }
+        for (int i = 0; i < table.columns.size(); i++) {
+            TableColumn column = table.columns.get(i);
+            if (column != null && column.getType() == ColumnType.SECTOR) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String buildMissingSourceDiagram(String requestedName) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("@startuml\n");
+        sb.append("title Sequence Diagram\n");
+        sb.append("note across\n");
+        if (requestedName == null || requestedName.isEmpty()) {
+            sb.append("No compatible source table found\n");
+        } else {
+            sb.append("Source table not found:\\n");
+            sb.append(sanitizeDiagramText(requestedName)).append("\n");
+        }
+        sb.append("end note\n");
+        sb.append("@enduml");
+        return sb.toString();
+    }
+
+    private String buildDiagramFromSourceTable(TableElm table) {
+        String title = (table.tableTitle != null && !table.tableTitle.isEmpty())
+            ? table.tableTitle : "Sequence Diagram";
+        ArrayList<String> sectorNames = collectSectorNames(table);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("@startuml\n");
+        sb.append("title ").append(sanitizeDiagramText(title)).append("\n");
+
+        if (sectorNames.isEmpty()) {
+            sb.append("note across\n");
+            sb.append("No sectors defined\n");
+            sb.append("end note\n");
+            sb.append("@enduml");
+            return sb.toString();
+        }
+
+        for (int i = 0; i < sectorNames.size(); i++) {
+            sb.append("participant ").append(sanitizeDiagramText(sectorNames.get(i))).append("\n");
+        }
+
+        int messageCount = 0;
+        for (int row = 0; row < table.rows; row++) {
+            FlowEndpoints endpoints = getFlowEndpoints(table, row);
+            if (endpoints == null || endpoints.sourceSector == null || endpoints.targetSector == null) {
+                continue;
+            }
+
+            String rowName = getRowLabel(table, row);
+            sb.append(sanitizeDiagramText(endpoints.sourceSector))
+              .append(" -> ")
+              .append(sanitizeDiagramText(endpoints.targetSector))
+              .append(" : ")
+              .append(sanitizeDiagramText(rowName));
+            if (endpoints.flowValue > 0) {
+                sb.append("\\n(")
+                  .append(formatFlowValue(endpoints.flowValue))
+                  .append(")");
+            }
+            sb.append("\n");
+            messageCount++;
+        }
+
+        if (messageCount == 0) {
+            sb.append("note across\n");
+            sb.append("No paired source/target flows found\n");
+            sb.append("end note\n");
+        }
+
+        sb.append("@enduml");
+        return sb.toString();
+    }
+
+    private ArrayList<String> collectSectorNames(TableElm table) {
+        ArrayList<String> sectorNames = new ArrayList<String>();
+        if (table == null || table.columns == null) {
+            return sectorNames;
+        }
+        for (int col = 0; col < table.columns.size(); col++) {
+            TableColumn column = table.columns.get(col);
+            if (column == null || column.getType() != ColumnType.SECTOR) {
+                continue;
+            }
+            String name = column.getStockName();
+            if (name == null || name.isEmpty() || sectorNames.contains(name)) {
+                continue;
+            }
+            sectorNames.add(name);
+        }
+        return sectorNames;
+    }
+
+    private FlowEndpoints getFlowEndpoints(TableElm table, int row) {
+        if (table == null || table.columns == null) {
+            return null;
+        }
+        FlowEndpoints endpoints = new FlowEndpoints();
+        for (int col = 0; col < table.columns.size(); col++) {
+            TableColumn column = table.columns.get(col);
+            if (column == null || column.getType() != ColumnType.SECTOR) {
+                continue;
+            }
+            double value = getTransactionValue(table, row, col);
+            if (Math.abs(value) < 1e-10) {
+                continue;
+            }
+            if (value < 0 && endpoints.sourceSector == null) {
+                endpoints.sourceSector = column.getStockName();
+                endpoints.flowValue = Math.abs(value);
+            } else if (value > 0 && endpoints.targetSector == null) {
+                endpoints.targetSector = column.getStockName();
+                if (endpoints.flowValue == 0) {
+                    endpoints.flowValue = value;
+                }
+            }
+        }
+        return endpoints;
+    }
+
+    private double getTransactionValue(TableElm table, int row, int col) {
+        String label = table.getCellEquation(row, col);
+        if (label != null) {
+            String trimmed = label.trim();
+            if (!trimmed.isEmpty() && !"0".equals(trimmed)) {
+                Double publishedFlow = ComputedValues.getComputedFlowValue(trimmed);
+                if (publishedFlow != null) {
+                    return publishedFlow.doubleValue();
+                }
+            }
+        }
+        return table.getVoltageForCell(row, col);
+    }
+
+    private String getRowLabel(TableElm table, int row) {
+        if (table != null && table.rowDescriptions != null && row >= 0 && row < table.rowDescriptions.length) {
+            String label = table.rowDescriptions[row];
+            if (label != null && !label.isEmpty()) {
+                return label;
+            }
+        }
+        return "Transaction " + (row + 1);
+    }
+
+    private String formatFlowValue(double value) {
+        return CircuitElm.showFormat.format(value);
+    }
+
+    private String sanitizeDiagramText(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\r", " ")
+            .replace("\n", " ")
+            .replace("\\", "\\\\")
+            .replace(":", "-");
+    }
     
     private static class Participant {
         String name;
@@ -303,11 +552,9 @@ public class SequenceDiagramElm extends GraphicElm {
                 String[] labelLines = label.split("\\\\n");
                 int labelY = y - 3;
                 int labelX = Math.min(x1, x2) + Math.abs(x2 - x1) / 2;
-                
-                g.setColor("#000000");
+
                 for (String line : labelLines) {
-                    int textWidth = (int) g.context.measureText(line).getWidth();
-                    g.drawString(line, labelX - textWidth / 2, labelY);
+                    elm.drawCenteredMaskedString(g, line, labelX, labelY);
                     labelY += 15;
                 }
             }
@@ -315,9 +562,11 @@ public class SequenceDiagramElm extends GraphicElm {
             // Draw arrow line
             g.setColor(elm.lineColor);
             if (dashed) {
-                elm.drawDashedLine(g, x1, arrowY, x2, arrowY);
+                elm.drawDashedLine(g, x1, arrowY, x2, arrowY, TRANSACTION_STROKE_WIDTH);
             } else {
+                g.context.setLineWidth(TRANSACTION_STROKE_WIDTH);
                 g.drawLine(x1, arrowY, x2, arrowY);
+                g.context.setLineWidth(1);
             }
             
             // Draw arrowhead
@@ -395,8 +644,8 @@ public class SequenceDiagramElm extends GraphicElm {
             int noteHeight = lines.size() * 15 + 20;
             
             if ("across".equals(position)) {
-                noteX = 50;
-                noteWidth = elm.diagramWidth - 100;
+                noteX = 10;
+                noteWidth = elm.diagramWidth - 20;
             } else {
                 Participant p = elm.findParticipant(target);
                 if (p == null) return;
@@ -445,12 +694,16 @@ public class SequenceDiagramElm extends GraphicElm {
     }
     
     private void parseDiagram() {
+        refreshRenderedSourceIfNeeded();
+    }
+
+    private void parseDiagramText(String sourceText) {
         participants = new Vector<Participant>();
         elements = new Vector<DiagramElement>();
         titleLine1 = null;
         titleLine2 = null;
         
-        String[] sourceLines = plantUmlSource.split("\n");
+        String[] sourceLines = (sourceText == null ? "" : sourceText).split("\n");
         Vector<String> noteLines = null;
         String noteTarget = null;
         String notePosition = null;
@@ -468,6 +721,9 @@ public class SequenceDiagramElm extends GraphicElm {
                     elements.add(new Note(noteTarget, notePosition, noteLines));
                     inNote = false;
                 } else {
+                    if (noteLines == null) {
+                        noteLines = new Vector<String>();
+                    }
                     noteLines.add(line);
                 }
                 continue;
@@ -569,25 +825,34 @@ public class SequenceDiagramElm extends GraphicElm {
         int numParticipants = participants.size();
         if (numParticipants == 0) return;
         
-        // Calculate spacing based on number of participants
-        participantSpacing = Math.max(150, diagramWidth / (numParticipants + 1));
-        
-        for (int i = 0; i < numParticipants; i++) {
-            Participant p = participants.get(i);
-            p.x = participantSpacing * (i + 1);
+        // Calculate spacing with a small fixed side margin so the diagram fills more of the width.
+        int usableWidth = Math.max(1, diagramWidth - PARTICIPANT_SIDE_MARGIN * 2);
+        if (numParticipants == 1) {
+            participantSpacing = 0;
+            participants.get(0).x = diagramWidth / 2;
+        } else {
+            participantSpacing = Math.max(110, usableWidth / (numParticipants - 1));
+            int startX = Math.max(PARTICIPANT_SIDE_MARGIN, (diagramWidth - participantSpacing * (numParticipants - 1)) / 2);
+            for (int i = 0; i < numParticipants; i++) {
+                Participant p = participants.get(i);
+                p.x = startX + participantSpacing * i;
+            }
         }
+
+        lifelineStartY = getTopParticipantBottomY(46);
         
         // Calculate diagram height based on content
         int contentHeight = lifelineStartY;
         for (int i = 0; i < elements.size(); i++) {
             contentHeight += elements.get(i).getHeight();
         }
-        diagramHeight = contentHeight + 100;  // Extra space for participant footers
+        diagramHeight = contentHeight + 78;  // Extra space for participant footers
     }
     
     // ========== Drawing ==========
     
     protected void draw(Graphics g) {
+        refreshRenderedSourceIfNeeded();
         g.save();
         
         calculateLayout();
@@ -611,14 +876,14 @@ public class SequenceDiagramElm extends GraphicElm {
         g.context.fillRect(0, 0, diagramWidth, diagramHeight);
         
         // Draw title
-        int titleY = 30;
+        int titleY = 24;
         if (titleLine1 != null) {
             g.setColor("#000000");
             Font titleFont = new Font("SansSerif", Font.BOLD, 14);
             g.setFont(titleFont);
             int textWidth = (int) g.context.measureText(titleLine1).getWidth();
             g.drawString(titleLine1, (diagramWidth - textWidth) / 2, titleY);
-            titleY += 17;
+            titleY += 15;
         }
         if (titleLine2 != null) {
             g.setColor("#000000");
@@ -632,23 +897,24 @@ public class SequenceDiagramElm extends GraphicElm {
         g.setFont(f);
         
         // Draw participants at top
-        int headerY = 60;
+        int headerY = 46;
         for (int i = 0; i < participants.size(); i++) {
             Participant p = participants.get(i);
             drawParticipant(g, p, headerY);
         }
         
         // Draw lifelines
-        currentY = lifelineStartY;
-        int lifelineEndY = diagramHeight - 80;
+        int topLifelineY = getTopParticipantBottomY(headerY);
+        currentY = topLifelineY;
+        int lifelineEndY = diagramHeight - 49;
         g.setColor(lineColor);
         for (int i = 0; i < participants.size(); i++) {
             Participant p = participants.get(i);
-            drawDashedLine(g, p.x, currentY, p.x, lifelineEndY);
+            drawDashedLine(g, p.x, currentY, p.x, lifelineEndY, LIFELINE_STROKE_WIDTH);
         }
         
         // Draw diagram elements (messages, dividers, notes)
-        currentY = lifelineStartY + 30;
+        currentY = topLifelineY + 24;
         for (int i = 0; i < elements.size(); i++) {
             DiagramElement elem = elements.get(i);
             elem.draw(g, this, currentY);
@@ -656,7 +922,7 @@ public class SequenceDiagramElm extends GraphicElm {
         }
         
         // Draw participants at bottom
-        int footerY = lifelineEndY + 10;
+        int footerY = lifelineEndY;
         for (int i = 0; i < participants.size(); i++) {
             Participant p = participants.get(i);
             drawParticipant(g, p, footerY);
@@ -679,6 +945,34 @@ public class SequenceDiagramElm extends GraphicElm {
         } else {
             drawParticipantBox(g, p, topY);
         }
+    }
+
+    private void drawCenteredMaskedString(Graphics g, String text, int centerX, int baselineY) {
+        int textWidth = (int) g.context.measureText(text).getWidth();
+        drawMaskedString(g, text, centerX - textWidth / 2, baselineY);
+    }
+
+    private void drawMaskedString(Graphics g, String text, int textX, int baselineY) {
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        int textWidth = (int) g.context.measureText(text).getWidth();
+        g.context.setFillStyle(bgColor);
+        g.context.fillRect(textX - 3, baselineY - 12, textWidth + 6, 16);
+        g.setColor("#000000");
+        g.drawString(text, textX, baselineY);
+    }
+
+    private int getTopParticipantBottomY(int topY) {
+        int bottomY = topY;
+        for (int i = 0; i < participants.size(); i++) {
+            bottomY = Math.max(bottomY, getParticipantConnectorBottom(participants.get(i), topY));
+        }
+        return bottomY;
+    }
+
+    private int getParticipantConnectorBottom(Participant p, int topY) {
+        return p.isActor ? topY + 58 : topY + 30;
     }
     
     private void drawActor(Graphics g, Participant p, int topY) {
@@ -709,9 +1003,7 @@ public class SequenceDiagramElm extends GraphicElm {
         g.drawLine(cx, bodyBot, cx + 13, bodyBot + 15);
         
         // Draw name
-        g.setColor("#000000");
-        int textWidth = (int) g.context.measureText(p.name).getWidth();
-        g.drawString(p.name, cx - textWidth / 2, bodyBot + 35);
+        drawCenteredMaskedString(g, p.name, cx, bodyBot + 35);
     }
     
     private void drawParticipantBox(Graphics g, Participant p, int topY) {
@@ -745,7 +1037,7 @@ public class SequenceDiagramElm extends GraphicElm {
         g.drawString(p.name, p.x - textWidth / 2, topY + 20);
     }
     
-    private void drawDashedLine(Graphics g, int x1, int y1, int x2, int y2) {
+    private void drawDashedLine(Graphics g, int x1, int y1, int x2, int y2, double strokeWidth) {
         int dashLength = 5;
         int gapLength = 5;
         
@@ -762,6 +1054,7 @@ public class SequenceDiagramElm extends GraphicElm {
         
         double curX = x1;
         double curY = y1;
+        g.context.setLineWidth(strokeWidth);
         
         for (int i = 0; i < numDashes; i++) {
             g.drawLine((int) curX, (int) curY, 
@@ -769,6 +1062,7 @@ public class SequenceDiagramElm extends GraphicElm {
             curX += xInc + xGap;
             curY += yInc + yGap;
         }
+        g.context.setLineWidth(1);
     }
     
     // ========== Edit Dialog ==========
@@ -808,13 +1102,29 @@ public class SequenceDiagramElm extends GraphicElm {
     }
     
     protected void getInfo(String arr[]) {
+        refreshRenderedSourceIfNeeded();
         arr[0] = "Sequence Diagram";
         arr[1] = participants.size() + " participants";
         arr[2] = elements.size() + " elements";
+        if (sourceTable != null) {
+            arr[3] = "Source: " + sourceTable.getTableTitle();
+        } else if (sourceTableName != null) {
+            arr[3] = sourceTableName.isEmpty() ? "Source: (auto)" : "Source: " + sourceTableName + " (not found)";
+        }
     }
 
     public String getPlantUmlSource() {
         return plantUmlSource;
+    }
+
+    public String getRenderedPlantUmlSource() {
+        refreshRenderedSourceIfNeeded();
+        return renderedPlantUmlSource;
+    }
+
+    public String getSourceTableName() {
+        refreshRenderedSourceIfNeeded();
+        return sourceTableName;
     }
 
     public int getDiagramWidth() {

@@ -5,6 +5,8 @@ import com.lushprojects.circuitjs1.client.io.sfcr.SFCRBlockType;
 import com.lushprojects.circuitjs1.client.io.sfcr.SFCRExportContext;
 
 public class PlantUmlBlockExportHandler implements SFCRBlockExportHandler {
+    private static final int DEFAULT_DIAGRAM_WIDTH = 560;
+
     @Override
     public SFCRBlockType blockType() {
         return SFCRBlockType.PLANTUML;
@@ -27,22 +29,48 @@ public class PlantUmlBlockExportHandler implements SFCRBlockExportHandler {
     public String exportOne(SFCRExportContext ctx, SequenceDiagramElm diagram) {
         StringBuilder sb = new StringBuilder();
         ctx.appendLeadingBlockComments(sb, "plantuml", "");
-        sb.append("@plantuml");
-        sb.append(ctx.formatPosition(diagram)).append("\n");
-        sb.append("width: ").append(diagram.getDiagramWidth()).append("\n");
-        if (Math.abs(diagram.getDiagramScale() - 1.0) > 1e-9) {
-            sb.append("scale: ").append(diagram.getDiagramScale()).append("\n");
+        sb.append("```{PlantUML}\n");
+        sb.append(rewriteStartUml(diagram.getPlantUmlSource(), diagram));
+        if (sb.length() > 0 && sb.charAt(sb.length() - 1) != '\n') {
+            sb.append("\n");
         }
+        sb.append("```\n");
+        return sb.toString();
+    }
 
-        String source = diagram.getPlantUmlSource();
-        if (source != null && !source.isEmpty()) {
-            sb.append(source);
-            if (!source.endsWith("\n")) {
-                sb.append("\n");
+    private String rewriteStartUml(String source, SequenceDiagramElm diagram) {
+        String safeSource = (source == null || source.isEmpty()) ? "@startuml\n@enduml" : source;
+        String[] lines = safeSource.split("\n", -1);
+        StringBuilder out = new StringBuilder();
+        boolean replaced = false;
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            String trimmed = line.trim();
+            if (!replaced && trimmed.startsWith("@startuml")) {
+                out.append("@startuml")
+                    .append(ctxPosition(diagram))
+                    .append(" w=").append(diagram.getRenderedDiagramWidth())
+                    .append(" h=").append(diagram.getRenderedDiagramHeight());
+                if (diagram.getDiagramWidth() != DEFAULT_DIAGRAM_WIDTH) {
+                    out.append(" width=").append(diagram.getDiagramWidth());
+                }
+                if (Math.abs(diagram.getDiagramScale() - 1.0) > 1e-9) {
+                    out.append(" scale=").append(diagram.getDiagramScale());
+                }
+                replaced = true;
+            } else {
+                out.append(line);
+            }
+            if (i < lines.length - 1) {
+                out.append("\n");
             }
         }
 
-        sb.append("@end\n");
-        return sb.toString();
+        return out.toString();
+    }
+
+    private String ctxPosition(SequenceDiagramElm diagram) {
+        return " x=" + diagram.x + " y=" + diagram.y;
     }
 }

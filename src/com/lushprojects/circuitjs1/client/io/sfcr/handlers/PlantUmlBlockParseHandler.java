@@ -2,9 +2,9 @@ package com.lushprojects.circuitjs1.client.io.sfcr.handlers;
 
 import com.lushprojects.circuitjs1.client.CirSim;
 import com.lushprojects.circuitjs1.client.CircuitElm;
-import com.lushprojects.circuitjs1.client.CustomLogicModel;
 import com.lushprojects.circuitjs1.client.elements.annotation.SequenceDiagramElm;
 import com.lushprojects.circuitjs1.client.io.SFCRParser;
+import com.lushprojects.circuitjs1.client.io.SFCRUtil;
 import com.lushprojects.circuitjs1.client.io.sfcr.ParseResult;
 import com.lushprojects.circuitjs1.client.io.sfcr.SFCRParseContext;
 import com.lushprojects.circuitjs1.client.registry.ElementFactoryFacade;
@@ -24,6 +24,8 @@ public class PlantUmlBlockParseHandler implements SFCRBlockParseHandler {
         int posX = blockPos.hasPosition() ? blockPos.x : ctx.getCurrentX();
         int posY = blockPos.hasPosition() ? blockPos.y : ctx.getCurrentY();
         int width = 560;
+        int frameWidth = -1;
+        int frameHeight = -1;
         double scale = 1.0;
         boolean sourceStarted = false;
         StringBuilder source = new StringBuilder();
@@ -55,6 +57,24 @@ public class PlantUmlBlockParseHandler implements SFCRBlockParseHandler {
                         i++;
                         continue;
                     }
+                    if ("framewidth".equals(key)) {
+                        try {
+                            frameWidth = Integer.parseInt(value);
+                        } catch (Exception e) {
+                            frameWidth = -1;
+                        }
+                        i++;
+                        continue;
+                    }
+                    if ("frameheight".equals(key)) {
+                        try {
+                            frameHeight = Integer.parseInt(value);
+                        } catch (Exception e) {
+                            frameHeight = -1;
+                        }
+                        i++;
+                        continue;
+                    }
                     if ("scale".equals(key)) {
                         try {
                             scale = Math.max(.1, Double.parseDouble(value));
@@ -80,8 +100,17 @@ public class PlantUmlBlockParseHandler implements SFCRBlockParseHandler {
             posX = startUmlMetadata.x;
             posY = startUmlMetadata.y;
         }
+        if (startUmlMetadata.hasWidth) {
+            width = startUmlMetadata.width;
+        }
         if (startUmlMetadata.hasScale) {
             scale = startUmlMetadata.scale;
+        }
+        if (startUmlMetadata.hasFrameWidth) {
+            frameWidth = startUmlMetadata.frameWidth;
+        }
+        if (startUmlMetadata.hasFrameHeight) {
+            frameHeight = startUmlMetadata.frameHeight;
         }
         source = new StringBuilder(startUmlMetadata.sanitizedSource);
 
@@ -90,8 +119,11 @@ public class PlantUmlBlockParseHandler implements SFCRBlockParseHandler {
             blockName = "";
         }
 
-        String dumpStr = "467 " + posX + " " + posY + " " + (posX + 16) + " " + (posY + 16)
-            + " 0 " + SFCRParser.escapeToken(source.toString()) + " " + width + " " + scale;
+        int x2 = posX + ((frameWidth > 0) ? frameWidth : 16);
+        int y2 = posY + ((frameHeight > 0) ? frameHeight : 16);
+
+        String dumpStr = "467 " + posX + " " + posY + " " + x2 + " " + y2
+            + " 0 " + SFCRUtil.escapeToken(source.toString()) + " " + width + " " + scale;
 
         SequenceDiagramElm sequenceElm = createElementFromDump(dumpStr);
         int nextY = posY + ((sequenceElm != null) ? sequenceElm.getRenderedDiagramHeight() : 1000) + ctx.getElementSpacing();
@@ -169,6 +201,43 @@ public class PlantUmlBlockParseHandler implements SFCRBlockParseHandler {
                     continue;
                 }
                 if (lower.startsWith("width=")) {
+                    try {
+                        metadata.width = Integer.parseInt(part.substring(part.indexOf('=') + 1));
+                        metadata.hasWidth = true;
+                    } catch (Exception ignored) {
+                    }
+                    continue;
+                }
+                if (lower.startsWith("w=")) {
+                    try {
+                        metadata.frameWidth = Integer.parseInt(part.substring(part.indexOf('=') + 1));
+                        metadata.hasFrameWidth = true;
+                    } catch (Exception ignored) {
+                    }
+                    continue;
+                }
+                if (lower.startsWith("h=")) {
+                    try {
+                        metadata.frameHeight = Integer.parseInt(part.substring(part.indexOf('=') + 1));
+                        metadata.hasFrameHeight = true;
+                    } catch (Exception ignored) {
+                    }
+                    continue;
+                }
+                if (lower.startsWith("framewidth=")) {
+                    try {
+                        metadata.frameWidth = Integer.parseInt(part.substring(part.indexOf('=') + 1));
+                        metadata.hasFrameWidth = true;
+                    } catch (Exception ignored) {
+                    }
+                    continue;
+                }
+                if (lower.startsWith("frameheight=")) {
+                    try {
+                        metadata.frameHeight = Integer.parseInt(part.substring(part.indexOf('=') + 1));
+                        metadata.hasFrameHeight = true;
+                    } catch (Exception ignored) {
+                    }
                     continue;
                 }
                 rebuilt.append(" ").append(part);
@@ -191,9 +260,15 @@ public class PlantUmlBlockParseHandler implements SFCRBlockParseHandler {
 
     private static class StartUmlMetadata {
         boolean hasPosition;
+        boolean hasWidth;
         boolean hasScale;
+        boolean hasFrameWidth;
+        boolean hasFrameHeight;
         int x;
         int y;
+        int width;
+        int frameWidth;
+        int frameHeight;
         double scale = 1.0;
         String sanitizedSource;
     }
