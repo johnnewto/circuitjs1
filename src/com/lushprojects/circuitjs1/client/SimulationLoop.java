@@ -143,12 +143,6 @@ class SimulationLoop {
             return;
         }
         
-        // Check if sequence diagram animation is requesting simulation hold
-        // This allows the animation to complete before advancing to next timestep
-        if (SequenceDiagramElm.isSimulationHoldRequested()) {
-            return;
-        }
-        
         boolean nonInteractive = RuntimeMode.isNonInteractiveRuntime();
 
         boolean debugprint = sim.dumpMatrix;

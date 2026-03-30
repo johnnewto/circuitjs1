@@ -100,6 +100,9 @@ final class ViewportController {
 	height = (int) RootLayoutPanel.get().getOffsetHeight();
 	height = height - (sim.hideMenu ? 0 : CirSim.MENUBARHEIGHT);
 
+	if (sim.leftPanel != null && sim.leftPanel.getOffsetWidth() > 0)
+	    width -= sim.leftPanel.getOffsetWidth();
+
 	if (!sim.isMobile(sim.sidePanelCheckboxLabel))
 	    width = width - CirSim.VERTICALPANELWIDTH;
 	if (sim.toolbarCheckItem.getState())

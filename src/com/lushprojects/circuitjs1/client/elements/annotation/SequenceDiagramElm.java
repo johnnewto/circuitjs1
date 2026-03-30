@@ -20,16 +20,12 @@
 package com.lushprojects.circuitjs1.client.elements.annotation;
 
 import com.lushprojects.circuitjs1.client.*;
-import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
-import com.lushprojects.circuitjs1.client.elements.economics.TableColumn;
-import com.lushprojects.circuitjs1.client.elements.economics.TableColumn.ColumnType;
 import com.lushprojects.circuitjs1.client.elements.economics.TableElm;
 import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.ui.EditInfo;
 import com.lushprojects.circuitjs1.client.ui.Checkbox;
-
-import java.util.ArrayList;
-import java.util.Vector;
+import com.lushprojects.circuitjs1.client.elements.annotation.SequenceDiagramModel.*;
+import com.lushprojects.circuitjs1.client.elements.annotation.SequenceDiagramParser.SourceResolution;
 
 /**
  * SequenceDiagramElm - Renders UML sequence diagrams on the circuit canvas.
@@ -56,8 +52,10 @@ import java.util.Vector;
  * 
  * @see TableElm
  * @see GraphicElm
+ * @see SequenceDiagramModel
+ * @see SequenceDiagramParser
  */
-public class SequenceDiagramElm extends GraphicElm {
+public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
     
     // ══════════════════════════════════════════════════════════════════════════
     // CONSTANTS - Layout & Sizing
@@ -114,16 +112,6 @@ public class SequenceDiagramElm extends GraphicElm {
     private static final String COMPLETED_COLOR = "#FFA500";  // Orange
     
     // ══════════════════════════════════════════════════════════════════════════
-    // CONSTANTS - Auto-Source & Parsing
-    // ══════════════════════════════════════════════════════════════════════════
-    
-    /** Prefix indicating auto-generation from a table source */
-    private static final String AUTO_SOURCE_PREFIX = "source:";
-    
-    /** Threshold for considering transaction values as zero */
-    private static final double ZERO_THRESHOLD = 1e-10;
-    
-    // ══════════════════════════════════════════════════════════════════════════
     // COLORS - Theme Configuration
     // ══════════════════════════════════════════════════════════════════════════
     
@@ -150,21 +138,8 @@ public class SequenceDiagramElm extends GraphicElm {
     /** Reference to source table for auto-generation, null if manual */
     private TableElm sourceTable;
     
-    // ══════════════════════════════════════════════════════════════════════════
-    // STATE - Parsed Diagram Structure
-    // ══════════════════════════════════════════════════════════════════════════
-    
-    /** List of participants (actors/boxes) in declaration order */
-    private Vector<Participant> participants;
-    
-    /** List of diagram elements (messages, dividers, notes) in order */
-    private Vector<DiagramElement> elements;
-    
-    /** First line of diagram title, null if no title */
-    private String titleLine1;
-    
-    /** Second line of diagram title (from \n split), null if single line */
-    private String titleLine2;
+    /** Parsed diagram structure */
+    private ParsedDiagram diagram;
     
     // ══════════════════════════════════════════════════════════════════════════
     // STATE - Layout Configuration
@@ -195,52 +170,8 @@ public class SequenceDiagramElm extends GraphicElm {
     // STATE - Animation
     // ══════════════════════════════════════════════════════════════════════════
     
-    /** Whether sequential animation is enabled */
-    private boolean animationEnabled = false;
-    
-    /** Duration of one full animation cycle in milliseconds */
-    private int animationCycleMs = DEFAULT_ANIMATION_CYCLE_MS;
-    
-    /** Pause simulation while animation is in progress */
-    private boolean pauseDuringAnimation = false;
-    
-    /** Only animate every N timesteps (1 = every step) */
-    private int animateEveryNSteps = 1;
-    
-    /** Counter for timesteps since last animation */
-    private int timestepsSinceLastAnimation = 0;
-    
-    /** Last observed simulation time (to detect timestep completion) */
-    private double lastObservedSimTime = -1;
-    
-    /** Wall-clock time when current animation cycle started */
-    private long animationCycleStartMs = 0;
-    
-    /** Number of Message elements (cached for animation calculations) */
-    private int messageCount = 0;
-    
-    /** Current active transaction index during animation (-1 = none) */
-    private int activeTransactionIndex = -1;
-    
-    /** Whether animation cycle is currently in progress (for pause feature) */
-    private boolean animationInProgress = false;
-    
-    /** Static reference to element currently requesting simulation hold */
-    private static SequenceDiagramElm holdingElement = null;
-    
-    // ══════════════════════════════════════════════════════════════════════════
-    // INNER CLASSES - Data Structures
-    // ══════════════════════════════════════════════════════════════════════════
-    
-    /**
-     * Represents the source and target sectors for a flow transaction,
-     * extracted from TableElm column analysis.
-     */
-    private static class FlowEndpoints {
-        String sourceSector;   // Sector with negative value (outflow)
-        String targetSector;   // Sector with positive value (inflow)
-        double flowValue;      // Absolute magnitude of the flow
-    }
+    /** Animation state machine controller */
+    private final SequenceDiagramAnimationController animController = new SequenceDiagramAnimationController();
     
     // ══════════════════════════════════════════════════════════════════════════
     // CONSTRUCTORS & SERIALIZATION
@@ -255,7 +186,7 @@ public class SequenceDiagramElm extends GraphicElm {
      */
     public SequenceDiagramElm(int xx, int yy) {
         super(xx, yy);
-        plantUmlSource = getDefaultDiagram();
+        plantUmlSource = SequenceDiagramParser.getDefaultDiagram();
         parseDiagram();
         syncFrameToScale();
     }
@@ -276,7 +207,7 @@ public class SequenceDiagramElm extends GraphicElm {
         // Parse PlantUML source (required)
         plantUmlSource = st.hasMoreTokens() 
             ? CustomLogicModel.unescape(st.nextToken()) 
-            : getDefaultDiagram();
+            : SequenceDiagramParser.getDefaultDiagram();
         
         // Parse diagram width (optional)
         diagramWidth = parseIntToken(st, DEFAULT_WIDTH);
@@ -285,10 +216,12 @@ public class SequenceDiagramElm extends GraphicElm {
         diagramScale = clampScale(parseDoubleToken(st, 1.0));
         
         // Parse animation settings (optional, added in later version)
-        animationEnabled = parseIntToken(st, 0) != 0;
-        animationCycleMs = parseIntToken(st, DEFAULT_ANIMATION_CYCLE_MS);
-        pauseDuringAnimation = parseIntToken(st, 0) != 0;
-        animateEveryNSteps = Math.max(1, parseIntToken(st, 1));
+        // Note: pauseDuring and everyN are parsed for backward compatibility but ignored
+        boolean animEnabled = parseIntToken(st, 0) != 0;
+        int animStepMs = parseIntToken(st, SequenceDiagramAnimationController.DEFAULT_STEP_MS);
+        parseIntToken(st, 0);  // Skip legacy pauseDuring
+        parseIntToken(st, 1);  // Skip legacy everyN
+        animController.loadConfig(animEnabled, animStepMs);
         
         parseDiagram();
         initializeFrameFromBounds();
@@ -296,18 +229,17 @@ public class SequenceDiagramElm extends GraphicElm {
     
     /**
      * Serializes element state for circuit file storage.
-     * Format: [baseData] [escapedSource] [width] [scale] [animEnabled] [animCycleMs] [pauseDuring] [everyN]
+     * Format: [baseData] [escapedSource] [width] [scale] [animEnabled] [animStepMs]
      */
     @Override
     protected String dump() {
+        int[] animConfig = animController.getConfigForDump();
         return super.dump() + " " 
             + CustomLogicModel.escape(plantUmlSource) + " " 
             + diagramWidth + " " 
             + diagramScale + " "
-            + (animationEnabled ? 1 : 0) + " "
-            + animationCycleMs + " "
-            + (pauseDuringAnimation ? 1 : 0) + " "
-            + animateEveryNSteps;
+            + animConfig[0] + " "
+            + animConfig[1];
     }
     
     /** Returns unique dump type identifier for this element class */
@@ -342,49 +274,6 @@ public class SequenceDiagramElm extends GraphicElm {
         } catch (NumberFormatException e) {
             return defaultValue;
         }
-    }
-    
-    /**
-     * Returns a default example diagram demonstrating SFC model transactions.
-     * Uses Godley & Lavoie's Model SIM as the canonical example.
-     */
-    private String getDefaultDiagram() {
-        return "@startuml\n" +
-               "title Godley & Lavoie (2007) - Model SIM\\nSimplest Stock-Flow Consistent Model with Government Money\n" +
-               "actor Households\n" +
-               "participant Firms\n" +
-               "participant Government\n" +
-               "== 1. Government Expenditure (exogenous) ==\n" +
-               "Government -> Firms : Pays G\\n(new government money created)\n" +
-               "== 2. Production & Wage Payment ==\n" +
-               "Firms -> Households : Pays wages WB\\n(WB = W * N)\n" +
-               "== 3. Tax Payment ==\n" +
-               "Households -> Government : Pays taxes T\\n(T = θ * WB)\n" +
-               "note right of Households\n" +
-               "  Disposable income:\n" +
-               "  YD = WB - T\n" +
-               "end note\n" +
-               "== 4. Consumption ==\n" +
-               "Households -> Firms : Buys consumption goods C\\n(C = α₁·YD + α₂·H₋₁)\n" +
-               "note right of Firms\n" +
-               "  Accounting identity:\n" +
-               "  Y = C + G\n" +
-               "  (output / GDP)\n" +
-               "end note\n" +
-               "== 5. Money Stock Changes (SFC consistency) ==\n" +
-               "Households -> Government : ΔHʰ = YD - C\\n(change in household money holdings)\n" +
-               "Government -> Households : ΔHˢ = G - T\\n(change in money supply)\n" +
-               "note across\n" +
-               "  Stock-flow consistency condition:\n" +
-               "  ΔHʰ ≡ ΔHˢ\n" +
-               "  (hidden equation)\n" +
-               "end note\n" +
-               "== End of Period ==\n" +
-               "note right of Households\n" +
-               "  Wealth updated:\n" +
-               "  H = H₋₁ + (YD - C)\n" +
-               "end note\n" +
-               "@enduml";
     }
     
     // ══════════════════════════════════════════════════════════════════════════
@@ -548,777 +437,25 @@ public class SequenceDiagramElm extends GraphicElm {
      * Uses dirty-checking to avoid unnecessary re-parsing.
      */
     private void refreshRenderedSourceIfNeeded() {
-        String nextSource = buildRenderedSource();
+        SourceResolution resolution = SequenceDiagramParser.resolveSource(
+            plantUmlSource, sim, SequenceDiagramParser.getDefaultDiagram());
         
-        // Fallback to default if source is empty
-        if (nextSource == null || nextSource.isEmpty()) {
-            nextSource = getDefaultDiagram();
-        }
+        String nextSource = resolution.renderedSource;
+        sourceTableName = resolution.sourceTableName;
+        sourceTable = resolution.sourceTable;
         
         // Only re-parse if source has changed
         if (!nextSource.equals(renderedPlantUmlSource)) {
             renderedPlantUmlSource = nextSource;
-            parseDiagramText(renderedPlantUmlSource);
+            diagram = SequenceDiagramParser.parseDiagramText(renderedPlantUmlSource);
         }
     }
 
-    /**
-     * Builds the rendered PlantUML source.
-     * If source contains "source:TableName", generates diagram from that table.
-     * Otherwise returns the raw plantUmlSource.
-     * 
-     * @return PlantUML source text ready for parsing
-     */
-    private String buildRenderedSource() {
-        sourceTableName = extractSourceTableName(plantUmlSource);
-        
-        // No source directive - use raw source
-        if (sourceTableName == null) {
-            sourceTable = null;
-            return plantUmlSource;
-        }
-
-        // Look up the referenced table
-        sourceTable = findSourceTable(sourceTableName);
-        
-        return (sourceTable != null) 
-            ? buildDiagramFromSourceTable(sourceTable)
-            : buildMissingSourceDiagram(sourceTableName);
-    }
-
-    /**
-     * Extracts table name from "source:TableName" directive in source text.
-     * 
-     * @param sourceText PlantUML source text to scan
-     * @return Table name if directive found, null otherwise
-     */
-    private String extractSourceTableName(String sourceText) {
-        if (sourceText == null || sourceText.isEmpty()) {
-            return null;
-        }
-        
-        for (String rawLine : sourceText.split("\n")) {
-            String line = (rawLine != null) ? rawLine.trim() : "";
-            
-            // Case-insensitive prefix match
-            if (!line.regionMatches(true, 0, AUTO_SOURCE_PREFIX, 0, AUTO_SOURCE_PREFIX.length())) {
-                continue;
-            }
-            
-            // Extract value after prefix, strip comments
-            String value = line.substring(AUTO_SOURCE_PREFIX.length()).trim();
-            int commentIdx = value.indexOf('#');
-            if (commentIdx >= 0) {
-                value = value.substring(0, commentIdx).trim();
-            }
-            return value;
-        }
-        return null;
-    }
-
-    /**
-     * Finds a TableElm by name, or auto-selects the first compatible table.
-     * 
-     * @param requestedName Table name to find, or empty/null for auto-select
-     * @return Matching TableElm or null if not found
-     */
-    private TableElm findSourceTable(String requestedName) {
-        if (sim == null || sim.elmList == null) {
-            return null;
-        }
-
-        boolean autoSelect = (requestedName == null || requestedName.isEmpty());
-        
-        for (int i = 0; i < sim.elmList.size(); i++) {
-            CircuitElm elm = sim.elmList.get(i);
-            if (!(elm instanceof TableElm)) continue;
-            
-            TableElm table = (TableElm) elm;
-            
-            if (autoSelect) {
-                // Auto-select: return first table with SECTOR columns
-                if (hasAnySectorColumn(table)) {
-                    return table;
-                }
-            } else {
-                // Name match: return table with matching title
-                if (requestedName.equals(table.tableTitle)) {
-                    return table;
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Checks if table has at least one SECTOR column type.
-     * Required for auto-selection compatibility.
-     */
-    private boolean hasAnySectorColumn(TableElm table) {
-        if (table == null || table.columns == null) {
-            return false;
-        }
-        for (int i = 0; i < table.columns.size(); i++) {
-            TableColumn col = table.columns.get(i);
-            if (col != null && col.getType() == ColumnType.SECTOR) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Generates error diagram when source table is not found.
-     */
-    private String buildMissingSourceDiagram(String requestedName) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("@startuml\n");
-        sb.append("title Sequence Diagram\n");
-        sb.append("note across\n");
-        
-        if (requestedName == null || requestedName.isEmpty()) {
-            sb.append("No compatible source table found\n");
-        } else {
-            sb.append("Source table not found:\\n");
-            sb.append(sanitizeText(requestedName)).append("\n");
-        }
-        
-        sb.append("end note\n");
-        sb.append("@enduml");
-        return sb.toString();
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // PLANTUML PARSING - Table-to-Diagram Generation
-    // ══════════════════════════════════════════════════════════════════════════
-
-    /**
-     * Generates PlantUML diagram source from a TableElm.
-     * Creates participants from SECTOR columns and messages from row transactions.
-     * 
-     * @param table Source table to extract diagram from
-     * @return Generated PlantUML source
-     */
-    private String buildDiagramFromSourceTable(TableElm table) {
-        String title = (table.tableTitle != null && !table.tableTitle.isEmpty())
-            ? table.tableTitle 
-            : "Sequence Diagram";
-        
-        ArrayList<String> sectorNames = collectSectorNames(table);
-        StringBuilder sb = new StringBuilder();
-        
-        // Header
-        sb.append("@startuml\n");
-        sb.append("title ").append(sanitizeText(title)).append("\n");
-
-        // Handle empty sectors case
-        if (sectorNames.isEmpty()) {
-            sb.append("note across\nNo sectors defined\nend note\n");
-            sb.append("@enduml");
-            return sb.toString();
-        }
-
-        // Declare participants
-        for (String name : sectorNames) {
-            sb.append("participant ").append(sanitizeText(name)).append("\n");
-        }
-
-        // Generate messages from table rows
-        int messageCount = 0;
-        for (int row = 0; row < table.rows; row++) {
-            FlowEndpoints endpoints = extractFlowEndpoints(table, row);
-            
-            // Skip rows without valid source/target pair
-            if (endpoints == null || endpoints.sourceSector == null || endpoints.targetSector == null) {
-                continue;
-            }
-
-            // Build message line: Source -> Target : Label (value)
-            String rowLabel = getRowLabel(table, row);
-            sb.append(sanitizeText(endpoints.sourceSector))
-              .append(" -> ")
-              .append(sanitizeText(endpoints.targetSector))
-              .append(" : ")
-              .append(sanitizeText(rowLabel));
-            
-            if (endpoints.flowValue > 0) {
-                sb.append("\\n(").append(formatFlowValue(endpoints.flowValue)).append(")");
-            }
-            sb.append("\n");
-            messageCount++;
-        }
-
-        // Note if no transactions found
-        if (messageCount == 0) {
-            sb.append("note across\nNo paired source/target flows found\nend note\n");
-        }
-
-        sb.append("@enduml");
-        return sb.toString();
-    }
-
-    /**
-     * Collects unique SECTOR column names from table.
-     */
-    private ArrayList<String> collectSectorNames(TableElm table) {
-        ArrayList<String> names = new ArrayList<String>();
-        if (table == null || table.columns == null) {
-            return names;
-        }
-        
-        for (int col = 0; col < table.columns.size(); col++) {
-            TableColumn column = table.columns.get(col);
-            if (column == null || column.getType() != ColumnType.SECTOR) {
-                continue;
-            }
-            
-            String name = column.getStockName();
-            if (name != null && !name.isEmpty() && !names.contains(name)) {
-                names.add(name);
-            }
-        }
-        return names;
-    }
-
-    /**
-     * Extracts source/target sectors from a table row.
-     * Source = column with negative value (outflow)
-     * Target = column with positive value (inflow)
-     * 
-     * @param table Table to analyze
-     * @param row   Row index
-     * @return FlowEndpoints with source, target, and magnitude
-     */
-    private FlowEndpoints extractFlowEndpoints(TableElm table, int row) {
-        if (table == null || table.columns == null) {
-            return null;
-        }
-        
-        FlowEndpoints endpoints = new FlowEndpoints();
-        
-        for (int col = 0; col < table.columns.size(); col++) {
-            TableColumn column = table.columns.get(col);
-            if (column == null || column.getType() != ColumnType.SECTOR) {
-                continue;
-            }
-            
-            double value = getTransactionValue(table, row, col);
-            if (Math.abs(value) < ZERO_THRESHOLD) {
-                continue;
-            }
-            
-            // Negative = source (outflow), Positive = target (inflow)
-            if (value < 0 && endpoints.sourceSector == null) {
-                endpoints.sourceSector = column.getStockName();
-                endpoints.flowValue = Math.abs(value);
-            } else if (value > 0 && endpoints.targetSector == null) {
-                endpoints.targetSector = column.getStockName();
-                if (endpoints.flowValue == 0) {
-                    endpoints.flowValue = value;
-                }
-            }
-        }
-        return endpoints;
-    }
-
-    /**
-     * Gets transaction value from cell, preferring ComputedValues if available.
-     */
-    private double getTransactionValue(TableElm table, int row, int col) {
-        // First try to get published flow value from equation label
-        String equation = table.getCellEquation(row, col);
-        if (equation != null) {
-            String trimmed = equation.trim();
-            if (!trimmed.isEmpty() && !"0".equals(trimmed)) {
-                Double publishedFlow = ComputedValues.getComputedFlowValue(trimmed);
-                if (publishedFlow != null) {
-                    return publishedFlow;
-                }
-            }
-        }
-        // Fallback to cell voltage
-        return table.getVoltageForCell(row, col);
-    }
-
-    /**
-     * Gets display label for table row, falling back to generic label.
-     */
-    private String getRowLabel(TableElm table, int row) {
-        if (table != null && table.rowDescriptions != null 
-            && row >= 0 && row < table.rowDescriptions.length) {
-            String label = table.rowDescriptions[row];
-            if (label != null && !label.isEmpty()) {
-                return label;
-            }
-        }
-        return "Transaction " + (row + 1);
-    }
-
-    /**
-     * Formats flow value for display using standard number formatting.
-     */
-    private String formatFlowValue(double value) {
-        return CircuitElm.showFormat.format(value);
-    }
-
-    /**
-     * Sanitizes text for safe PlantUML inclusion.
-     * Escapes special characters that could break parsing.
-     */
-    private String sanitizeText(String value) {
-        if (value == null) return "";
-        return value.replace("\r", " ")
-                    .replace("\n", " ")
-                    .replace("\\", "\\\\")
-                    .replace(":", "-");
-    }
-    
-    // ══════════════════════════════════════════════════════════════════════════
-    // INNER CLASSES - Diagram Elements
-    // ══════════════════════════════════════════════════════════════════════════
-    
-    /**
-     * Represents a participant (actor or box) in the sequence diagram.
-     */
-    private static class Participant {
-        final String name;     // Display name
-        final String alias;    // Alias for referencing (defaults to name)
-        final boolean isActor; // True = stick figure, False = box
-        int x;                 // Calculated X position (set during layout)
-        
-        Participant(String name, boolean isActor) {
-            this.name = name;
-            this.alias = name;
-            this.isActor = isActor;
-        }
-    }
-    
-    /**
-     * Abstract base class for drawable diagram elements.
-     * Subclasses: Message, Divider, Note
-     */
-    private static abstract class DiagramElement {
-        /** Draw the element at the given Y position */
-        abstract void draw(Graphics g, SequenceDiagramElm elm, int y);
-        
-        /** Return the vertical space this element consumes */
-        abstract int getHeight();
-    }
-    
-    /**
-     * Represents an arrow message between two participants.
-     */
-    private static class Message extends DiagramElement {
-        final String from;     // Source participant name
-        final String to;       // Target participant name
-        final String label;    // Message text (may contain \\n for line breaks)
-        final boolean dashed;  // True for --> dashed arrows
-        int messageIndex;      // Index among Message elements (for animation)
-        
-        Message(String from, String to, String label, boolean dashed) {
-            this.from = from;
-            this.to = to;
-            this.label = label;
-            this.dashed = dashed;
-            this.messageIndex = -1;
-        }
-        
-        @Override
-        void draw(Graphics g, SequenceDiagramElm elm, int y) {
-            Participant fromP = elm.findParticipant(from);
-            Participant toP = elm.findParticipant(to);
-            if (fromP == null || toP == null) return;
-            
-            int x1 = fromP.x;
-            int x2 = toP.x;
-            int arrowY = y + getLabelBlockHeight();
-            
-            // Draw label above arrow line
-            drawLabel(g, elm, x1, x2, y);
-            
-            // Determine arrow color based on animation state
-            String arrowColor = elm.getArrowColor(messageIndex);
-            double strokeWidth = elm.getArrowStrokeWidth(messageIndex);
-            
-            // Draw arrow line
-            g.setColor(arrowColor);
-            if (dashed) {
-                elm.drawDashedLine(g, x1, arrowY, x2, arrowY, strokeWidth);
-            } else {
-                g.context.setLineWidth(strokeWidth);
-                g.drawLine(x1, arrowY, x2, arrowY);
-                g.context.setLineWidth(1);
-            }
-            
-            // Draw arrowhead pointing to target
-            drawArrowhead(g, x2, arrowY, x2 > x1, arrowColor);
-        }
-        
-        /** Draws multi-line label centered above the arrow */
-        private void drawLabel(Graphics g, SequenceDiagramElm elm, int x1, int x2, int y) {
-            if (label == null || label.isEmpty()) return;
-            
-            String[] lines = label.split("\\\\n");
-            int centerX = Math.min(x1, x2) + Math.abs(x2 - x1) / 2;
-            int labelY = y - 3;
-            
-            for (String line : lines) {
-                elm.drawCenteredMaskedString(g, line, centerX, labelY);
-                labelY += 15;
-            }
-        }
-        
-        /** Draws filled triangular arrowhead */
-        private void drawArrowhead(Graphics g, int tipX, int tipY, boolean pointRight, String color) {
-            int direction = pointRight ? 1 : -1;
-            int baseX = tipX - (10 * direction);
-            
-            g.context.setFillStyle(color);
-            g.context.beginPath();
-            g.context.moveTo(tipX, tipY);
-            g.context.lineTo(baseX, tipY - 4);
-            g.context.lineTo(baseX, tipY + 4);
-            g.context.closePath();
-            g.context.fill();
-        }
-        
-        /** Calculates vertical space needed for label lines */
-        private int getLabelBlockHeight() {
-            if (label == null || label.isEmpty()) return 10;
-            int lineCount = label.split("\\\\n").length;
-            return Math.max(10, lineCount * 15 - 6);
-        }
-        
-        @Override
-        int getHeight() {
-            return getLabelBlockHeight() + 18;
-        }
-    }
-    
-    /**
-     * Represents a horizontal divider with centered label.
-     */
-    private static class Divider extends DiagramElement {
-        final String label;
-        
-        Divider(String label) {
-            this.label = label;
-        }
-        
-        @Override
-        void draw(Graphics g, SequenceDiagramElm elm, int y) {
-            int left = 5;
-            int right = elm.diagramWidth - 5;
-            int height = 23;
-            int halfHeight = height / 2;
-            
-            // Draw background bar
-            g.context.setFillStyle(elm.dividerBgColor);
-            g.context.fillRect(left, y - halfHeight, right - left, height);
-            
-            // Draw border lines (top and bottom)
-            g.setColor(elm.dividerColor);
-            g.drawLine(left, y - halfHeight, right, y - halfHeight);
-            g.drawLine(left, y + halfHeight, right, y + halfHeight);
-            
-            // Draw centered label
-            if (label != null) {
-                g.setColor("#000000");
-                int textWidth = (int) g.context.measureText(label).getWidth();
-                int textX = (left + right - textWidth) / 2;
-                g.drawString(label, textX, y + 5);
-            }
-        }
-        
-        @Override
-        int getHeight() {
-            return 35;
-        }
-    }
-    
-    /**
-     * Represents a note box attached to a participant or spanning full width.
-     */
-    private static class Note extends DiagramElement {
-        final String target;       // Participant name or "across"
-        final String position;     // "left", "right", or "across"
-        final Vector<String> lines;
-        
-        Note(String target, String position, Vector<String> lines) {
-            this.target = target;
-            this.position = position;
-            this.lines = lines;
-        }
-        
-        @Override
-        void draw(Graphics g, SequenceDiagramElm elm, int y) {
-            int noteHeight = lines.size() * 15 + 20;
-            int noteX, noteWidth;
-            
-            // Calculate position based on type
-            if ("across".equals(position)) {
-                noteX = 10;
-                noteWidth = elm.diagramWidth - 20;
-            } else {
-                Participant p = elm.findParticipant(target);
-                if (p == null) return;
-                
-                noteWidth = 150;
-                noteX = "right".equals(position) 
-                    ? p.x + 10 
-                    : p.x - noteWidth - 10;
-            }
-            
-            // Draw note background with folded corner effect
-            drawNoteBackground(g, elm, noteX, y, noteWidth, noteHeight);
-            
-            // Draw text lines centered
-            g.setColor("#000000");
-            int textY = y + 17;
-            for (String line : lines) {
-                int textWidth = (int) g.context.measureText(line).getWidth();
-                g.drawString(line, noteX + (noteWidth - textWidth) / 2, textY);
-                textY += 15;
-            }
-        }
-        
-        /** Draws note shape with folded corner (top-right) */
-        private void drawNoteBackground(Graphics g, SequenceDiagramElm elm, 
-                                        int x, int y, int width, int height) {
-            int foldSize = 10;
-            
-            // Fill background
-            g.context.setFillStyle(elm.noteBgColor);
-            g.context.beginPath();
-            g.context.moveTo(x, y);
-            g.context.lineTo(x + width - foldSize, y);
-            g.context.lineTo(x + width, y + foldSize);
-            g.context.lineTo(x + width, y + height);
-            g.context.lineTo(x, y + height);
-            g.context.closePath();
-            g.context.fill();
-            
-            // Draw border
-            g.setColor(elm.lineColor);
-            g.drawLine(x, y, x + width - foldSize, y);                          // Top
-            g.drawLine(x + width - foldSize, y, x + width - foldSize, y + foldSize); // Fold vertical
-            g.drawLine(x + width - foldSize, y + foldSize, x + width, y + foldSize); // Fold horizontal
-            g.drawLine(x + width, y + foldSize, x + width, y + height);          // Right
-            g.drawLine(x + width, y + height, x, y + height);                    // Bottom
-            g.drawLine(x, y + height, x, y);                                     // Left
-        }
-        
-        @Override
-        int getHeight() {
-            return lines.size() * 15 + 30;
-        }
-    }
-    
-    // ══════════════════════════════════════════════════════════════════════════
-    // PLANTUML PARSING - Text Parser
-    // ══════════════════════════════════════════════════════════════════════════
-    
     /**
      * Entry point for diagram parsing. Refreshes source and parses if needed.
      */
     private void parseDiagram() {
         refreshRenderedSourceIfNeeded();
-    }
-
-    /**
-     * Parses PlantUML text into participants and diagram elements.
-     * Handles: title, actor, participant, messages, dividers, notes.
-     * 
-     * @param sourceText PlantUML source to parse
-     */
-    private void parseDiagramText(String sourceText) {
-        // Initialize collections
-        participants = new Vector<Participant>();
-        elements = new Vector<DiagramElement>();
-        titleLine1 = null;
-        titleLine2 = null;
-        
-        // Note parsing state
-        boolean inNote = false;
-        Vector<String> noteLines = null;
-        String noteTarget = null;
-        String notePosition = null;
-        
-        String[] sourceLines = (sourceText != null ? sourceText : "").split("\n");
-        
-        for (String rawLine : sourceLines) {
-            String line = rawLine.trim();
-            
-            // Skip control directives and empty lines
-            if (line.isEmpty() || line.startsWith("@")) continue;
-            
-            // Handle multi-line note content
-            if (inNote) {
-                if ("end note".equals(line)) {
-                    elements.add(new Note(noteTarget, notePosition, noteLines));
-                    inNote = false;
-                } else {
-                    noteLines.add(line);
-                }
-                continue;
-            }
-            
-            // Parse line by type
-            if (parseTitle(line)) continue;
-            if (parseActor(line)) continue;
-            if (parseParticipant(line)) continue;
-            if (parseDivider(line)) continue;
-            
-            // Check for note start
-            NoteStart noteStart = parseNoteStart(line);
-            if (noteStart != null) {
-                inNote = true;
-                noteTarget = noteStart.target;
-                notePosition = noteStart.position;
-                noteLines = new Vector<String>();
-                continue;
-            }
-            
-            // Parse message arrows
-            parseMessage(line);
-        }
-        
-        // Calculate positions after parsing
-        calculateLayout();
-    }
-    
-    /**
-     * Parses "title ..." line, supporting \\n for multi-line titles.
-     * @return true if line was a title directive
-     */
-    private boolean parseTitle(String line) {
-        if (!line.startsWith("title ")) return false;
-        
-        String title = line.substring(6);
-        String[] parts = title.split("\\\\n");
-        if (parts.length > 0) titleLine1 = parts[0];
-        if (parts.length > 1) titleLine2 = parts[1];
-        return true;
-    }
-    
-    /**
-     * Parses "actor <name>" declaration.
-     * @return true if line was an actor declaration
-     */
-    private boolean parseActor(String line) {
-        if (!line.startsWith("actor ")) return false;
-        
-        String name = line.substring(6).trim();
-        participants.add(new Participant(name, true));
-        return true;
-    }
-    
-    /**
-     * Parses "participant <name>" declaration.
-     * @return true if line was a participant declaration
-     */
-    private boolean parseParticipant(String line) {
-        if (!line.startsWith("participant ")) return false;
-        
-        String name = line.substring(12).trim();
-        participants.add(new Participant(name, false));
-        return true;
-    }
-    
-    /**
-     * Parses "== label ==" divider line.
-     * @return true if line was a divider
-     */
-    private boolean parseDivider(String line) {
-        if (!line.startsWith("== ") || !line.endsWith(" ==")) return false;
-        
-        String label = line.substring(3, line.length() - 3);
-        elements.add(new Divider(label));
-        return true;
-    }
-    
-    /** Helper class for note parsing result */
-    private static class NoteStart {
-        String target;
-        String position;
-    }
-    
-    /**
-     * Parses "note ..." start directive.
-     * @return NoteStart if successful, null otherwise
-     */
-    private NoteStart parseNoteStart(String line) {
-        if (!line.startsWith("note ")) return null;
-        
-        String noteDef = line.substring(5);
-        NoteStart result = new NoteStart();
-        
-        if (noteDef.startsWith("across")) {
-            result.position = "across";
-            result.target = "across";
-        } else if (noteDef.startsWith("right of ")) {
-            result.position = "right";
-            result.target = noteDef.substring(9).trim();
-        } else if (noteDef.startsWith("left of ")) {
-            result.position = "left";
-            result.target = noteDef.substring(8).trim();
-        } else {
-            return null; // Unknown note type
-        }
-        return result;
-    }
-    
-    /**
-     * Parses message arrows: "A -> B : label" or "A --> B : label"
-     */
-    private void parseMessage(String line) {
-        // Determine arrow type
-        boolean dashed = line.contains(" --> ");
-        String separator = dashed ? " --> " : " -> ";
-        
-        int sepIdx = line.indexOf(separator);
-        if (sepIdx < 0) return; // Not a message line
-        
-        String from = line.substring(0, sepIdx).trim();
-        String rest = line.substring(sepIdx + separator.length()).trim();
-        
-        // Split target and label
-        String to, label = "";
-        int colonIdx = rest.indexOf(" : ");
-        if (colonIdx >= 0) {
-            to = rest.substring(0, colonIdx).trim();
-            label = rest.substring(colonIdx + 3).trim();
-        } else {
-            to = rest;
-        }
-        
-        // Auto-declare participants if not yet declared
-        ensureParticipant(from);
-        ensureParticipant(to);
-        
-        elements.add(new Message(from, to, label, dashed));
-    }
-    
-    /**
-     * Ensures a participant exists, creating it if necessary.
-     */
-    private void ensureParticipant(String name) {
-        if (findParticipant(name) == null) {
-            participants.add(new Participant(name, false));
-        }
-    }
-    
-    /**
-     * Finds a participant by name or alias.
-     */
-    private Participant findParticipant(String name) {
-        for (int i = 0; i < participants.size(); i++) {
-            Participant p = participants.get(i);
-            if (p.name.equals(name) || p.alias.equals(name)) {
-                return p;
-            }
-        }
-        return null;
     }
     
     // ══════════════════════════════════════════════════════════════════════════
@@ -1330,8 +467,9 @@ public class SequenceDiagramElm extends GraphicElm {
      * Called after parsing to prepare for rendering.
      */
     private void calculateLayout() {
-        int count = participants.size();
-        if (count == 0) return;
+        if (diagram == null || diagram.participants.size() == 0) return;
+        
+        int count = diagram.participants.size();
         
         // Calculate horizontal spacing
         int usableWidth = Math.max(1, diagramWidth - PARTICIPANT_SIDE_MARGIN * 2);
@@ -1339,7 +477,7 @@ public class SequenceDiagramElm extends GraphicElm {
         if (count == 1) {
             // Single participant: center it
             participantSpacing = 0;
-            participants.get(0).x = diagramWidth / 2;
+            diagram.participants.get(0).x = diagramWidth / 2;
         } else {
             // Multiple participants: distribute evenly
             participantSpacing = Math.max(110, usableWidth / (count - 1));
@@ -1347,7 +485,7 @@ public class SequenceDiagramElm extends GraphicElm {
                                   (diagramWidth - participantSpacing * (count - 1)) / 2);
             
             for (int i = 0; i < count; i++) {
-                participants.get(i).x = startX + participantSpacing * i;
+                diagram.participants.get(i).x = startX + participantSpacing * i;
             }
         }
 
@@ -1355,17 +493,11 @@ public class SequenceDiagramElm extends GraphicElm {
         lifelineStartY = getTopParticipantBottomY(46);
         
         // Sum element heights for total diagram height
-        // Also count messages and assign indices for animation
         int contentHeight = lifelineStartY;
-        int msgIdx = 0;
-        for (int i = 0; i < elements.size(); i++) {
-            DiagramElement elem = elements.get(i);
+        for (int i = 0; i < diagram.elements.size(); i++) {
+            DiagramElement elem = diagram.elements.get(i);
             contentHeight += elem.getHeight();
-            if (elem instanceof Message) {
-                ((Message) elem).messageIndex = msgIdx++;
-            }
         }
-        messageCount = msgIdx;
         diagramHeight = contentHeight + 78;  // Footer space for bottom participants
     }
     
@@ -1409,8 +541,9 @@ public class SequenceDiagramElm extends GraphicElm {
         setBbox(getFrameLeft(), getFrameTop(), getFrameRight(), getFrameBottom());
         drawSelectionHighlight(g);
         
-        // Request repaint if animation is in progress to ensure smooth updates
-        if (animationInProgress && sim != null) {
+        // Auto-repaint only for running animations. In paused/manual step mode,
+        // each Step command advances the animation one frame.
+        if (animController.isAnimating() && sim != null && sim.simIsRunning()) {
             sim.repaint();
         }
     }
@@ -1444,19 +577,20 @@ public class SequenceDiagramElm extends GraphicElm {
      * Draws diagram title (1-2 lines, centered, bold).
      */
     private void drawTitle(Graphics g) {
-        if (titleLine1 == null && titleLine2 == null) return;
+        if (diagram == null) return;
+        if (diagram.titleLine1 == null && diagram.titleLine2 == null) return;
         
         Font titleFont = new Font("SansSerif", Font.BOLD, 14);
         g.setFont(titleFont);
         g.setColor("#000000");
         
         int titleY = 24;
-        if (titleLine1 != null) {
-            drawCenteredString(g, titleLine1, diagramWidth / 2, titleY);
+        if (diagram.titleLine1 != null) {
+            drawCenteredString(g, diagram.titleLine1, diagramWidth / 2, titleY);
             titleY += 15;
         }
-        if (titleLine2 != null) {
-            drawCenteredString(g, titleLine2, diagramWidth / 2, titleY);
+        if (diagram.titleLine2 != null) {
+            drawCenteredString(g, diagram.titleLine2, diagramWidth / 2, titleY);
         }
     }
     
@@ -1464,8 +598,9 @@ public class SequenceDiagramElm extends GraphicElm {
      * Draws participant boxes/actors at top of diagram.
      */
     private void drawParticipantHeaders(Graphics g, int headerY) {
-        for (int i = 0; i < participants.size(); i++) {
-            drawParticipant(g, participants.get(i), headerY);
+        if (diagram == null) return;
+        for (int i = 0; i < diagram.participants.size(); i++) {
+            drawParticipant(g, diagram.participants.get(i), headerY);
         }
     }
     
@@ -1473,13 +608,14 @@ public class SequenceDiagramElm extends GraphicElm {
      * Draws vertical dashed lifelines for all participants.
      */
     private void drawLifelines(Graphics g, int headerY) {
+        if (diagram == null) return;
         int topLifelineY = getTopParticipantBottomY(headerY);
         currentY = topLifelineY;
         int lifelineEndY = diagramHeight - 49;
         
         g.setColor(lineColor);
-        for (int i = 0; i < participants.size(); i++) {
-            Participant p = participants.get(i);
+        for (int i = 0; i < diagram.participants.size(); i++) {
+            Participant p = diagram.participants.get(i);
             drawDashedLine(g, p.x, currentY, p.x, lifelineEndY, LIFELINE_STROKE_WIDTH);
         }
     }
@@ -1488,9 +624,10 @@ public class SequenceDiagramElm extends GraphicElm {
      * Draws all diagram elements (messages, dividers, notes) in sequence.
      */
     private void drawDiagramElements(Graphics g) {
+        if (diagram == null) return;
         currentY = lifelineStartY + 24;
-        for (int i = 0; i < elements.size(); i++) {
-            DiagramElement elem = elements.get(i);
+        for (int i = 0; i < diagram.elements.size(); i++) {
+            DiagramElement elem = diagram.elements.get(i);
             elem.draw(g, this, currentY);
             currentY += elem.getHeight();
         }
@@ -1500,9 +637,10 @@ public class SequenceDiagramElm extends GraphicElm {
      * Draws participant boxes/actors at bottom of diagram (mirror of header).
      */
     private void drawParticipantFooters(Graphics g) {
+        if (diagram == null) return;
         int footerY = diagramHeight - 49;
-        for (int i = 0; i < participants.size(); i++) {
-            drawParticipant(g, participants.get(i), footerY);
+        for (int i = 0; i < diagram.participants.size(); i++) {
+            drawParticipant(g, diagram.participants.get(i), footerY);
         }
     }
     
@@ -1522,112 +660,66 @@ public class SequenceDiagramElm extends GraphicElm {
     // ══════════════════════════════════════════════════════════════════════════
     
     /**
-     * Updates animation state based on simulation time changes.
-     * Detects timestep completion and progresses through transaction animation.
-     * Handles "every N steps" and "pause during animation" features.
+     * Updates animation state by delegating to the animation controller.
      */
     private void updateAnimationState() {
-        if (!animationEnabled || sim == null || messageCount == 0) {
-            activeTransactionIndex = -1;
-            animationInProgress = false;
-            releaseSimulationHold();
-            return;
+        int messageCount = (diagram != null) ? diagram.messageCount : 0;
+        boolean simRunning = (sim != null) && sim.simIsRunning();
+        double simTime = (sim != null) ? sim.getTime() : 0;
+        
+        animController.update(simTime, simRunning, messageCount, System.currentTimeMillis());
+    }
+
+    /**
+     * Returns true if the message should be visible at the current animation step.
+     */
+    private boolean shouldShowMessageElement(int msgIndex) {
+        return animController.isVisible(msgIndex);
+    }
+    
+    /**
+     * Advances one paused/manual animation frame. Returns true if the user's
+     * step request should be consumed by animation instead of simulation.
+     */
+    private boolean advanceManualAnimationStep() {
+        if (sim == null || sim.simIsRunning()) {
+            return false;
         }
-        
-        // Detect simulation time change (timestep completed)
-        double currentSimTime = sim.getTime();
-        boolean timestepChanged = (currentSimTime != lastObservedSimTime);
-        
-        if (timestepChanged) {
-            // New timestep detected
-            lastObservedSimTime = currentSimTime;
-            timestepsSinceLastAnimation++;
+        refreshRenderedSourceIfNeeded();
+        calculateLayout();
+        return animController.advanceManualStep();
+    }
+    
+    /**
+     * Called by the simulator's manual Step command. If any sequence diagram is
+     * paused mid-animation, advance that animation frame instead of simulation.
+     */
+    public static boolean advanceManualAnimationStep(CirSim sim) {
+        if (sim == null || sim.simIsRunning()) {
+            return false;
         }
-        
-        // Check if we should start a new animation cycle
-        // Start immediately if counter reached AND (timestep changed OR no animation in progress)
-        if (timestepsSinceLastAnimation >= animateEveryNSteps && !animationInProgress) {
-            timestepsSinceLastAnimation = 0;
-            animationCycleStartMs = System.currentTimeMillis();
-            animationInProgress = true;
-            
-            // Request simulation hold if pause is enabled
-            if (pauseDuringAnimation) {
-                requestSimulationHold();
+        boolean consumed = false;
+        for (int i = 0; i < sim.getElementCount(); i++) {
+            CircuitElm elm = sim.getElm(i);
+            if (!(elm instanceof SequenceDiagramElm)) {
+                continue;
+            }
+            if (((SequenceDiagramElm) elm).advanceManualAnimationStep()) {
+                consumed = true;
             }
         }
-        
-        // If no animation in progress, show all transactions in normal color
-        if (!animationInProgress) {
-            activeTransactionIndex = -1;
-            return;
-        }
-        
-        // Calculate which transaction should be active based on wall-clock time
-        long elapsed = System.currentTimeMillis() - animationCycleStartMs;
-        double progress = (double) elapsed / animationCycleMs;
-        
-        // Cumulative reveal: activeTransactionIndex indicates how many are "done"
-        // All transactions up to and including this index are highlighted
-        activeTransactionIndex = (int) (progress * messageCount);
-        
-        // Check if animation cycle is complete
-        if (activeTransactionIndex >= messageCount) {
-            activeTransactionIndex = messageCount - 1;
-            
-            // Add a short hold time at the end (25% of cycle time)
-            double holdProgress = (double) elapsed / (animationCycleMs * 1.25);
-            if (holdProgress >= 1.0) {
-                // Animation complete - release hold
-                animationInProgress = false;
-                releaseSimulationHold();
-            }
-        }
-    }
-    
-    /**
-     * Requests that simulation be held (paused) for animation.
-     */
-    private void requestSimulationHold() {
-        holdingElement = this;
-    }
-    
-    /**
-     * Releases simulation hold request.
-     */
-    private void releaseSimulationHold() {
-        if (holdingElement == this) {
-            holdingElement = null;
-        }
-    }
-    
-    /**
-     * Static method for CirSim to check if any sequence diagram is requesting
-     * to hold the simulation for animation display.
-     * 
-     * @return true if simulation should be held
-     */
-    public static boolean isSimulationHoldRequested() {
-        return holdingElement != null && holdingElement.animationInProgress;
+        return consumed;
     }
     
     /**
      * Returns the color to use for an arrow based on animation state.
-     * Flash mode: only the currently active transaction is highlighted,
-     * all others are normal color.
+     * Flash mode: only the currently active transaction is highlighted.
      */
     private String getArrowColor(int msgIndex) {
-        if (!animationEnabled || activeTransactionIndex < 0) {
-            return lineColor;
-        }
-        
-        // Only highlight the exact current transaction (flash effect)
-        if (msgIndex == activeTransactionIndex) {
+        if (animController.isHighlighted(msgIndex)) {
             return HIGHLIGHT_COLOR;
-        } else {
-            // All other transactions show in normal color
-            return lineColor;
         }
+        return lineColor;
     }
     
     /**
@@ -1635,10 +727,186 @@ public class SequenceDiagramElm extends GraphicElm {
      * Active transaction gets a thicker line for emphasis.
      */
     private double getArrowStrokeWidth(int msgIndex) {
-        if (animationEnabled && msgIndex == activeTransactionIndex) {
-            return TRANSACTION_STROKE_WIDTH * 1.5;  // Thicker when active
+        if (animController.isHighlighted(msgIndex)) {
+            return TRANSACTION_STROKE_WIDTH * SequenceDiagramAnimationController.HIGHLIGHT_STROKE_MULTIPLIER;
         }
         return TRANSACTION_STROKE_WIDTH;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // DIAGRAM RENDERER INTERFACE IMPLEMENTATION
+    // ══════════════════════════════════════════════════════════════════════════
+    
+    @Override
+    public void drawMessage(Graphics g, Message msg, int y) {
+        Participant fromP = (diagram != null) ? diagram.findParticipant(msg.from) : null;
+        Participant toP = (diagram != null) ? diagram.findParticipant(msg.to) : null;
+        if (fromP == null || toP == null) return;
+        if (!shouldShowMessageElement(msg.messageIndex)) return;
+        
+        int x1 = fromP.x;
+        int x2 = toP.x;
+        int arrowY = y + msg.getLabelBlockHeight();
+        
+        // Draw label above arrow line (already passed visibility check above)
+        drawMessageLabel(g, msg, x1, x2, y);
+        
+        // Determine arrow color based on animation state
+        String arrowColor = getArrowColor(msg.messageIndex);
+        double strokeWidth = getArrowStrokeWidth(msg.messageIndex);
+        
+        // Draw arrow line
+        g.setColor(arrowColor);
+        if (msg.dashed) {
+            drawDashedLine(g, x1, arrowY, x2, arrowY, strokeWidth);
+        } else {
+            g.context.setLineWidth(strokeWidth);
+            g.drawLine(x1, arrowY, x2, arrowY);
+            g.context.setLineWidth(1);
+        }
+        
+        // Draw arrowhead pointing to target
+        drawArrowhead(g, x2, arrowY, x2 > x1, arrowColor);
+    }
+    
+    /** Draws multi-line label centered above the arrow */
+    private void drawMessageLabel(Graphics g, Message msg, int x1, int x2, int y) {
+        if (msg.label == null || msg.label.isEmpty()) return;
+        
+        String[] lines = msg.label.split("\\\\n");
+        int centerX = Math.min(x1, x2) + Math.abs(x2 - x1) / 2;
+        int labelY = y - 3;
+        
+        for (String line : lines) {
+            drawCenteredMaskedString(g, line, centerX, labelY);
+            labelY += 15;
+        }
+    }
+    
+    /** Draws filled triangular arrowhead */
+    private void drawArrowhead(Graphics g, int tipX, int tipY, boolean pointRight, String color) {
+        int direction = pointRight ? 1 : -1;
+        int baseX = tipX - (10 * direction);
+        
+        g.context.setFillStyle(color);
+        g.context.beginPath();
+        g.context.moveTo(tipX, tipY);
+        g.context.lineTo(baseX, tipY - 4);
+        g.context.lineTo(baseX, tipY + 4);
+        g.context.closePath();
+        g.context.fill();
+    }
+    
+    @Override
+    public void drawDivider(Graphics g, Divider divider, int y) {
+        int left = 5;
+        int right = diagramWidth - 5;
+        int height = 23;
+        int halfHeight = height / 2;
+        
+        // Draw background bar
+        g.context.setFillStyle(dividerBgColor);
+        g.context.fillRect(left, y - halfHeight, right - left, height);
+        
+        // Draw border lines (top and bottom)
+        g.setColor(dividerColor);
+        g.drawLine(left, y - halfHeight, right, y - halfHeight);
+        g.drawLine(left, y + halfHeight, right, y + halfHeight);
+        
+        // Draw centered label
+        if (divider.label != null) {
+            g.setColor("#000000");
+            int textWidth = (int) g.context.measureText(divider.label).getWidth();
+            int textX = (left + right - textWidth) / 2;
+            g.drawString(divider.label, textX, y + 5);
+        }
+    }
+    
+    @Override
+    public void drawNote(Graphics g, Note note, int y) {
+        int noteHeight = note.lines.size() * 15 + 20;
+        int noteX, noteWidth;
+        
+        // Calculate position based on type
+        if ("across".equals(note.position)) {
+            noteX = 10;
+            noteWidth = diagramWidth - 20;
+        } else {
+            Participant p = (diagram != null) ? diagram.findParticipant(note.target) : null;
+            if (p == null) return;
+            
+            noteWidth = 150;
+            noteX = "right".equals(note.position) 
+                ? p.x + 10 
+                : p.x - noteWidth - 10;
+        }
+        
+        // Draw note background with folded corner effect
+        drawNoteBackground(g, noteX, y, noteWidth, noteHeight);
+        
+        // Draw text lines centered
+        g.setColor("#000000");
+        int textY = y + 17;
+        for (String line : note.lines) {
+            int textWidth = (int) g.context.measureText(line).getWidth();
+            g.drawString(line, noteX + (noteWidth - textWidth) / 2, textY);
+            textY += 15;
+        }
+    }
+    
+    /** Draws note shape with folded corner (top-right) */
+    private void drawNoteBackground(Graphics g, int x, int y, int width, int height) {
+        int foldSize = 10;
+        
+        // Fill background
+        g.context.setFillStyle(noteBgColor);
+        g.context.beginPath();
+        g.context.moveTo(x, y);
+        g.context.lineTo(x + width - foldSize, y);
+        g.context.lineTo(x + width, y + foldSize);
+        g.context.lineTo(x + width, y + height);
+        g.context.lineTo(x, y + height);
+        g.context.closePath();
+        g.context.fill();
+        
+        // Draw border
+        g.setColor(lineColor);
+        g.drawLine(x, y, x + width - foldSize, y);                          // Top
+        g.drawLine(x + width - foldSize, y, x + width - foldSize, y + foldSize); // Fold vertical
+        g.drawLine(x + width - foldSize, y + foldSize, x + width, y + foldSize); // Fold horizontal
+        g.drawLine(x + width, y + foldSize, x + width, y + height);          // Right
+        g.drawLine(x + width, y + height, x, y + height);                    // Bottom
+        g.drawLine(x, y + height, x, y);                                     // Left
+    }
+    
+    @Override
+    public int getDiagramWidth() {
+        return diagramWidth;
+    }
+    
+    @Override
+    public String getBgColor() {
+        return bgColor;
+    }
+    
+    @Override
+    public String getDividerBgColor() {
+        return dividerBgColor;
+    }
+    
+    @Override
+    public String getDividerColor() {
+        return dividerColor;
+    }
+    
+    @Override
+    public String getLineColor() {
+        return lineColor;
+    }
+    
+    @Override
+    public String getNoteBgColor() {
+        return noteBgColor;
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -1737,9 +1005,10 @@ public class SequenceDiagramElm extends GraphicElm {
      * Returns the Y coordinate of the bottom of the tallest participant header.
      */
     private int getTopParticipantBottomY(int topY) {
+        if (diagram == null) return topY;
         int bottomY = topY;
-        for (int i = 0; i < participants.size(); i++) {
-            int connectorY = getParticipantConnectorBottom(participants.get(i), topY);
+        for (int i = 0; i < diagram.participants.size(); i++) {
+            int connectorY = getParticipantConnectorBottom(diagram.participants.get(i), topY);
             bottomY = Math.max(bottomY, connectorY);
         }
         return bottomY;
@@ -1852,19 +1121,11 @@ public class SequenceDiagramElm extends GraphicElm {
                 
             case 3:  // Animation enabled checkbox
                 EditInfo animEi = new EditInfo("", 0, -1, -1);
-                animEi.checkbox = new Checkbox("Animate Transactions", animationEnabled);
+                animEi.checkbox = new Checkbox("Animate Transactions", animController.isEnabled());
                 return animEi;
                 
-            case 4:  // Animation cycle duration
-                return new EditInfo("Animation Cycle (ms)", animationCycleMs, 500, 10000);
-                
-            case 5:  // Pause during animation checkbox
-                EditInfo pauseEi = new EditInfo("", 0, -1, -1);
-                pauseEi.checkbox = new Checkbox("Pause Simulation During Animation", pauseDuringAnimation);
-                return pauseEi;
-                
-            case 6:  // Animate every N steps
-                return new EditInfo("Animate Every N Timesteps", animateEveryNSteps, 1, 100);
+            case 4:  // Animation step duration
+                return new EditInfo("Time Per Step (ms)", animController.getStepMs(), 50, 5000);
                 
             default:
                 return null;
@@ -1897,30 +1158,12 @@ public class SequenceDiagramElm extends GraphicElm {
                 break;
                 
             case 3:  // Toggle animation
-                animationEnabled = ei.checkbox.getState();
-                // Reset animation state when toggling
-                lastObservedSimTime = -1;
-                activeTransactionIndex = -1;
-                animationInProgress = false;
-                // Set counter so animation starts immediately on next draw
-                timestepsSinceLastAnimation = animateEveryNSteps;
-                releaseSimulationHold();
+                animController.setEnabled(ei.checkbox.getState());
+                animController.reset();
                 break;
                 
-            case 4:  // Update animation cycle duration
-                animationCycleMs = Math.max(500, (int) ei.value);
-                break;
-                
-            case 5:  // Toggle pause during animation
-                pauseDuringAnimation = ei.checkbox.getState();
-                if (!pauseDuringAnimation) {
-                    releaseSimulationHold();
-                }
-                break;
-                
-            case 6:  // Update animate every N steps
-                animateEveryNSteps = Math.max(1, (int) ei.value);
-                timestepsSinceLastAnimation = 0;
+            case 4:  // Update animation step duration
+                animController.setStepMs(Math.max(50, (int) ei.value));
                 break;
         }
     }
@@ -1936,27 +1179,28 @@ public class SequenceDiagramElm extends GraphicElm {
     protected void getInfo(String[] arr) {
         refreshRenderedSourceIfNeeded();
         
-        arr[0] = "Sequence Diagram";
-        arr[1] = participants.size() + " participants, " + messageCount + " transactions";
+        int participantCount = (diagram != null) ? diagram.participants.size() : 0;
+        int messageCount = (diagram != null) ? diagram.messageCount : 0;
         
-        if (animationEnabled) {
-            String animInfo = "Animation: ON";
-            if (animateEveryNSteps > 1) {
-                animInfo += " (every " + animateEveryNSteps + " steps)";
+        arr[0] = "Sequence Diagram";
+        arr[1] = participantCount + " participants, " + messageCount + " transactions";
+        
+        arr[2] = animController.isEnabled() ? "Animation: ON" : "Animation: OFF";
+        
+        if (animController.isEnabled()) {
+            int activeIdx = animController.getActiveIndex();
+            if (animController.isAnimating() && activeIdx >= 0 && messageCount > 0) {
+                arr[3] = "Animate step: " + (activeIdx + 1) + "/" + messageCount;
+            } else {
+                arr[3] = "Animate step: idle";
             }
-            if (pauseDuringAnimation) {
-                animInfo += " [PAUSE]";
-            }
-            arr[2] = animInfo;
-        } else {
-            arr[2] = "Animation: OFF";
         }
         
         // Show source table info if applicable
         if (sourceTable != null) {
-            arr[3] = "Source: " + sourceTable.getTableTitle();
+            arr[4] = "Source: " + sourceTable.getTableTitle();
         } else if (sourceTableName != null) {
-            arr[3] = sourceTableName.isEmpty() 
+            arr[4] = sourceTableName.isEmpty() 
                 ? "Source: (auto)" 
                 : "Source: " + sourceTableName + " (not found)";
         }
@@ -1980,7 +1224,7 @@ public class SequenceDiagramElm extends GraphicElm {
     }
 
     /** Returns the logical diagram width (before scaling) */
-    public int getDiagramWidth() {
+    public int getLogicalDiagramWidth() {
         return diagramWidth;
     }
 

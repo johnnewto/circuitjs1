@@ -127,6 +127,7 @@ public class CirSimUiPanelManager {
         if (sim.leftPanelCheckboxLabel != null)
             sim.leftPanelCheckboxLabel.getStyle().setProperty("left", CirSim.LEFTPANELWIDTH + "px");
         sim.layoutPanel.forceLayout();
+        sim.getViewportController().setCanvasSize();
 
         sim.leftModelInfoFrame.setUrl(InfoViewerDialog.createModelInfoEditorPanelDataUrl(markdown));
         sim.repaint();

@@ -110,12 +110,10 @@ sankey !!
 ## Sequence Diagram
 
 ```{r}
-@startuml x=-304 y=-40 w=360 h=288 scale=0.6357142857142857
+@startuml x=-320 y=-136 w=440 h=443 scale=0.7785714285714286
    source: Transaction Flow Matrix
 @enduml
 ```
-```
-
 
 ```{r}
 @scope Embedded_Scope_1 position=-1
@@ -130,7 +128,6 @@ sankey !!
   trace: uid:-6Q_F4 value:3
 @end
 ```
-
 
 ```{r}
 @circuit

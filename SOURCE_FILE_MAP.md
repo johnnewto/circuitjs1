@@ -119,6 +119,10 @@ Inventory for files under src/com/lushprojects/circuitjs1/client.
 | `BoxElm.java` | Visual dashed rectangle annotation element for grouping regions | GraphicElm (parent), LineElm, TextElm |
 | `GraphicElm.java` | Abstract base class for non-electrical visual annotation elements | BoxElm, LineElm, TextElm (children), CircuitElm (parent) |
 | `LineElm.java` | Simple visual line annotation element for diagram markup | GraphicElm (parent), BoxElm, TextElm |
+| `SequenceDiagramElm.java` | UML sequence diagram element with PlantUML parsing and table auto-generation | SequenceDiagramModel, SequenceDiagramParser, SequenceDiagramAnimationController, TableElm, GraphicElm |
+| `SequenceDiagramModel.java` | Data model classes: Participant, Message, Divider, Note, ParsedDiagram | SequenceDiagramElm, SequenceDiagramParser, DiagramRenderer interface |
+| `SequenceDiagramParser.java` | PlantUML parser and table-to-diagram generator with source resolution | SequenceDiagramModel, TableElm, ComputedValues |
+| `SequenceDiagramAnimationController.java` | Animation state machine for progressive message reveal with manual/auto modes | SequenceDiagramElm |
 | `TextElm.java` | Text annotation with configurable color, size, multiline, and hyperlinks | GraphicElm (parent), InfoViewerDialog, Locale |
 
 ## elements/economics

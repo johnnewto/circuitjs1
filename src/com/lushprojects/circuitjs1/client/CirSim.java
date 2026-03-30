@@ -28,6 +28,7 @@ import com.lushprojects.circuitjs1.client.util.*;
 
 import com.lushprojects.circuitjs1.client.elements.ActionScheduler;
 
+import com.lushprojects.circuitjs1.client.elements.annotation.SequenceDiagramElm;
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.elements.electronics.electromechanical.SwitchElm;
 import com.lushprojects.circuitjs1.client.elements.electronics.passives.*;
@@ -1268,6 +1269,10 @@ public CirSim() {
         
         // If stopped, run one update cycle
         if (!wasRunning) {
+			if (SequenceDiagramElm.advanceManualAnimationStep(this)) {
+				repaint();
+				return;
+			}
             simRunning = true;
             updateCircuit();
             simRunning = false;

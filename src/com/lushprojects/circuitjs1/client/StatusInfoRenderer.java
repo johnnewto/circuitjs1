@@ -205,31 +205,32 @@ final class StatusInfoRenderer {
         if (sim.stopMessage != null) {
             g.drawString(sim.stopMessage, 10, sim.canvasHeight - 10);
         } else if (!sim.hideInfoBox) {
-            String info[] = new String[10];
+            String info[] = new String[20];
             int infoIdx = 0;
 
             if (mouseElm != null) {
                 if (sim.getMousePost() == -1) {
-                    String[] elmInfo = new String[10];
+                    String[] elmInfo = new String[20];
                     mouseElm.getInfo(elmInfo);
-                    for (int idx = 0; idx < elmInfo.length && elmInfo[idx] != null; idx++)
+                    for (int idx = 0; idx < elmInfo.length && elmInfo[idx] != null && infoIdx < info.length; idx++)
                         info[infoIdx++] = Locale.LS(elmInfo[idx]);
                 } else {
-                    info[infoIdx++] = "V = " + CircuitElm.getUnitText(mouseElm.getPostVoltage(sim.getMousePost()), "V");
+                    if (infoIdx < info.length)
+                        info[infoIdx++] = "V = " + CircuitElm.getUnitText(mouseElm.getPostVoltage(sim.getMousePost()), "V");
                     String nodeName = LabeledNodeElm.getNameByNode(mouseElm.nodes[sim.getMousePost()]);
-                    if (nodeName != null)
+                    if (nodeName != null && infoIdx < info.length)
                         info[infoIdx++] = "Node: " + nodeName;
                 }
             } else {
                 info[0] = Locale.LS("time step = ") + CircuitElm.getUnitText(sim.getTimeStep(), "s");
             }
             if (sim.hintType != -1) {
-                for (i = 0; info[i] != null; i++)
+                for (i = 0; i < info.length && info[i] != null; i++)
                     ;
                 String s = getHint();
                 if (s == null)
                     sim.hintType = -1;
-                else
+                else if (i < info.length)
                     info[i] = s;
             }
             int x = leftX + 5;
@@ -237,20 +238,22 @@ final class StatusInfoRenderer {
                 x = sim.scopes[ct - 1].rightEdge();
 
             int lineCount = 0;
-            for (lineCount = 0; info[lineCount] != null; lineCount++)
+            for (lineCount = 0; lineCount < info.length && info[lineCount] != null; lineCount++)
                 ;
             int badnodes = sim.badConnectionList.size();
-            if (badnodes > 0)
+            if (badnodes > 0 && lineCount < info.length)
                 info[lineCount++] = badnodes
                         + ((badnodes == 1) ? Locale.LS(" bad connection") : Locale.LS(" bad connections"));
-            if (sim.savedFlag)
+            if (sim.savedFlag && lineCount < info.length)
                 info[lineCount++] = "(saved)";
 
             int snapX = sim.snapGrid(sim.inverseTransformX(sim.getMouseCursorX()));
             int snapY = sim.snapGrid(sim.inverseTransformY(sim.getMouseCursorY()));
-            info[lineCount++] = "cursor: (" + snapX + ", " + snapY + ")";
+            if (lineCount < info.length)
+                info[lineCount++] = "cursor: (" + snapX + ", " + snapY + ")";
 
-            info[lineCount++] = "EqnTable: " + (sim.isEquationTableMnaMode() ? "MNA" : "Computed");
+            if (lineCount < info.length)
+                info[lineCount++] = "EqnTable: " + (sim.isEquationTableMnaMode() ? "MNA" : "Computed");
 
             int requiredHeight = 15 * (lineCount + 1);
             int availableHeight = sim.canvasHeight - (sim.circuitArea.height - h);
@@ -259,7 +262,7 @@ final class StatusInfoRenderer {
             if (requiredHeight > availableHeight)
                 ybase = sim.canvasHeight - requiredHeight;
 
-            for (i = 0; info[i] != null; i++)
+            for (i = 0; i < info.length && info[i] != null; i++)
                 g.drawString(info[i], x, ybase + 15 * (i + 1));
         }
         if (sim.stopMessage == null && sim.warningMessage != null && !sim.warningMessage.isEmpty()) {

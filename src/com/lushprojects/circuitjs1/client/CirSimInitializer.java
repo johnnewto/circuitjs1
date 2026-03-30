@@ -506,6 +506,7 @@ final class CirSimInitializer {
                     }
                     updateLeftPanelTogglePosition(leftPanelCheckbox.isChecked());
                     sim.layoutPanel.forceLayout();
+                    sim.getViewportController().setCanvasSize();
                     sim.repaint();
                 }
             }
