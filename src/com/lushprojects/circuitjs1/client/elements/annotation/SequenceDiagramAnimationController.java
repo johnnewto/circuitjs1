@@ -52,20 +52,96 @@ package com.lushprojects.circuitjs1.client.elements.annotation;
 public class SequenceDiagramAnimationController {
     
     // ══════════════════════════════════════════════════════════════════════════
-    // CONSTANTS
+    // INNER CLASSES
     // ══════════════════════════════════════════════════════════════════════════
     
-    /** Default time per animation step in milliseconds */
-    public static final int DEFAULT_STEP_MS = 500;
+    /**
+     * Configuration settings for sequence diagram animation.
+     * Encapsulates user-editable settings and timing constants.
+     */
+    public static class Config {
+        
+        /** Default time per animation step in milliseconds */
+        public static final int DEFAULT_STEP_MS = 500;
+        
+        /** Minimum allowed step duration */
+        public static final int MIN_STEP_MS = 50;
+        
+        /** Duration to show blank diagram before revealing starts (ms) */
+        public static final int CLEARING_DELAY_MS = 200;
+        
+        /** Duration to hold at end after all messages shown (ms) */
+        public static final int END_HOLD_MS = 300;
+        
+        /** Stroke width multiplier for highlighted arrows */
+        public static final double HIGHLIGHT_STROKE_MULTIPLIER = 1.5;
+        
+        private boolean enabled = true;
+        private int stepMs = DEFAULT_STEP_MS;
+        
+        public Config() {}
+        
+        public Config(boolean enabled, int stepMs) {
+            this.enabled = enabled;
+            setStepMs(stepMs);
+        }
+        
+        public boolean isEnabled() { return enabled; }
+        public void setEnabled(boolean enabled) { this.enabled = enabled; }
+        
+        public int getStepMs() { return stepMs; }
+        public void setStepMs(int stepMs) { this.stepMs = Math.max(MIN_STEP_MS, stepMs); }
+        
+        public void load(boolean enabled, int stepMs) {
+            this.enabled = enabled;
+            setStepMs(stepMs);
+        }
+        
+        public int[] toArray() {
+            return new int[] { enabled ? 1 : 0, stepMs };
+        }
+        
+        public Config copy() { return new Config(enabled, stepMs); }
+    }
     
-    /** Duration to show blank diagram before revealing starts (ms) */
-    public static final int CLEARING_DELAY_MS = 200;
+    /**
+     * Manages wall-clock timing for animation cycles.
+     */
+    public static class Clock {
+        
+        private long cycleStartMs = 0;
+        
+        public void startCycle(long currentTimeMs) { cycleStartMs = currentTimeMs; }
+        
+        public long elapsed(long currentTimeMs) { return currentTimeMs - cycleStartMs; }
+        
+        public void reset() { cycleStartMs = 0; }
+        
+        public int calculateRevealIndex(long currentTimeMs, int stepMs) {
+            return (int) (elapsed(currentTimeMs) / stepMs);
+        }
+        
+        public void adjustForIndex(long currentTimeMs, int currentIndex, int stepMs) {
+            cycleStartMs = currentTimeMs - (long)(currentIndex * stepMs);
+        }
+        
+        public boolean isClearingComplete(long currentTimeMs) {
+            return elapsed(currentTimeMs) >= Config.CLEARING_DELAY_MS;
+        }
+        
+        public boolean isEndHoldComplete(long currentTimeMs) {
+            return elapsed(currentTimeMs) >= Config.END_HOLD_MS;
+        }
+    }
     
-    /** Duration to hold at end after all messages shown (ms) */
-    public static final int END_HOLD_MS = 300;
+    // ══════════════════════════════════════════════════════════════════════════
+    // CONSTANTS (for backward compatibility)
+    // ══════════════════════════════════════════════════════════════════════════
     
-    /** Stroke width multiplier for highlighted arrows */
-    public static final double HIGHLIGHT_STROKE_MULTIPLIER = 1.5;
+    public static final int DEFAULT_STEP_MS = Config.DEFAULT_STEP_MS;
+    public static final int CLEARING_DELAY_MS = Config.CLEARING_DELAY_MS;
+    public static final int END_HOLD_MS = Config.END_HOLD_MS;
+    public static final double HIGHLIGHT_STROKE_MULTIPLIER = Config.HIGHLIGHT_STROKE_MULTIPLIER;
     
     // ══════════════════════════════════════════════════════════════════════════
     // PHASE ENUM
@@ -95,11 +171,11 @@ public class SequenceDiagramAnimationController {
     }
     
     // ══════════════════════════════════════════════════════════════════════════
-    // CONFIGURATION (user-editable settings)
+    // CONFIGURATION & TIMING
     // ══════════════════════════════════════════════════════════════════════════
     
-    private boolean enabled = false;
-    private int stepMs = DEFAULT_STEP_MS;
+    private final Config config = new Config();
+    private final Clock clock = new Clock();
     
     // ══════════════════════════════════════════════════════════════════════════
     // RUNTIME STATE
@@ -107,30 +183,33 @@ public class SequenceDiagramAnimationController {
     
     private Phase phase = Phase.DISABLED;
     private int activeIndex = -1;
-    private long cycleStartMs = 0;
     private int messageCount = 0;
     
     // ══════════════════════════════════════════════════════════════════════════
     // CONFIGURATION ACCESSORS
     // ══════════════════════════════════════════════════════════════════════════
     
+    public Config getConfig() {
+        return config;
+    }
+    
     public boolean isEnabled() {
-        return enabled;
+        return config.isEnabled();
     }
     
     public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
+        config.setEnabled(enabled);
         if (!enabled) {
             reset();
         }
     }
     
     public int getStepMs() {
-        return stepMs;
+        return config.getStepMs();
     }
     
     public void setStepMs(int stepMs) {
-        this.stepMs = Math.max(50, stepMs);
+        config.setStepMs(stepMs);
     }
     
     // ══════════════════════════════════════════════════════════════════════════
@@ -175,7 +254,7 @@ public class SequenceDiagramAnimationController {
      * @return true if message should be drawn
      */
     public boolean isVisible(int msgIndex) {
-        if (!enabled) {
+        if (!config.isEnabled()) {
             return true;
         }
         if (phase == Phase.DISABLED || phase == Phase.WAITING) {
@@ -198,7 +277,7 @@ public class SequenceDiagramAnimationController {
      * @return true if message should use highlight color/stroke
      */
     public boolean isHighlighted(int msgIndex) {
-        if (!enabled || activeIndex < 0) {
+        if (!config.isEnabled() || activeIndex < 0) {
             return false;
         }
         return msgIndex == activeIndex;
@@ -212,9 +291,9 @@ public class SequenceDiagramAnimationController {
      * Resets animation state to initial conditions.
      */
     public void reset() {
-        phase = enabled ? Phase.WAITING : Phase.DISABLED;
+        phase = config.isEnabled() ? Phase.WAITING : Phase.DISABLED;
         activeIndex = -1;
-        cycleStartMs = 0;
+        clock.reset();
     }
     
     /**
@@ -229,7 +308,7 @@ public class SequenceDiagramAnimationController {
         this.messageCount = msgCount;
         
         // Handle disabled state
-        if (!enabled || msgCount == 0) {
+        if (!config.isEnabled() || msgCount == 0) {
             phase = Phase.DISABLED;
             activeIndex = -1;
             return;
@@ -281,7 +360,7 @@ public class SequenceDiagramAnimationController {
                 if (simRunning) {
                     // Resumed simulation - continue from current position
                     phase = Phase.REVEALING;
-                    cycleStartMs = currentTimeMs - (long)(activeIndex * stepMs);
+                    clock.adjustForIndex(currentTimeMs, activeIndex, config.getStepMs());
                 }
                 break;
         }
@@ -291,7 +370,7 @@ public class SequenceDiagramAnimationController {
      * Starts a new animation cycle.
      */
     private void startCycle(long currentTimeMs, boolean simRunning) {
-        cycleStartMs = currentTimeMs;
+        clock.startCycle(currentTimeMs);
         activeIndex = -1;  // No messages visible yet
         
         if (simRunning) {
@@ -306,14 +385,12 @@ public class SequenceDiagramAnimationController {
      * Updates state during the CLEARING phase (blank period before reveal).
      */
     private void updateClearingPhase(long currentTimeMs) {
-        long elapsed = currentTimeMs - cycleStartMs;
-        
-        if (elapsed >= CLEARING_DELAY_MS) {
+        if (clock.isClearingComplete(currentTimeMs)) {
             // Clearing period complete - start revealing
             phase = Phase.REVEALING;
             activeIndex = 0;
             // Adjust cycle start so reveal timing is correct
-            cycleStartMs = currentTimeMs;
+            clock.startCycle(currentTimeMs);
         }
     }
     
@@ -321,16 +398,14 @@ public class SequenceDiagramAnimationController {
      * Updates state during the REVEALING phase.
      */
     private void updateRevealingPhase(long currentTimeMs) {
-        long elapsed = currentTimeMs - cycleStartMs;
-        
         // Each step takes stepMs milliseconds
-        activeIndex = (int) (elapsed / stepMs);
+        activeIndex = clock.calculateRevealIndex(currentTimeMs, config.getStepMs());
         
         if (activeIndex >= messageCount) {
             activeIndex = messageCount - 1;
             phase = Phase.HOLDING_END;
             // Reset cycle start for hold timing
-            cycleStartMs = currentTimeMs;
+            clock.startCycle(currentTimeMs);
         }
     }
     
@@ -338,9 +413,7 @@ public class SequenceDiagramAnimationController {
      * Updates state during the HOLDING_END phase.
      */
     private void updateHoldingPhase(long currentTimeMs) {
-        long elapsed = currentTimeMs - cycleStartMs;
-        
-        if (elapsed >= END_HOLD_MS) {
+        if (clock.isEndHoldComplete(currentTimeMs)) {
             // Hold complete
             phase = Phase.WAITING;
             activeIndex = -1;
@@ -359,7 +432,7 @@ public class SequenceDiagramAnimationController {
      *         false if animation is complete and simulation should advance
      */
     public boolean advanceManualStep() {
-        if (!enabled || phase != Phase.MANUAL_STEP) {
+        if (!config.isEnabled() || phase != Phase.MANUAL_STEP) {
             return false;
         }
         
@@ -400,8 +473,7 @@ public class SequenceDiagramAnimationController {
      * Loads configuration from serialized values.
      */
     public void loadConfig(boolean enabled, int stepMs) {
-        this.enabled = enabled;
-        this.stepMs = Math.max(50, stepMs);
+        config.load(enabled, stepMs);
         reset();
     }
     
@@ -409,9 +481,6 @@ public class SequenceDiagramAnimationController {
      * Returns configuration as array for serialization: [enabled, stepMs]
      */
     public int[] getConfigForDump() {
-        return new int[] {
-            enabled ? 1 : 0,
-            stepMs
-        };
+        return config.toArray();
     }
 }

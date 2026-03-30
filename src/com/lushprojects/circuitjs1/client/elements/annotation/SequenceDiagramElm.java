@@ -217,7 +217,7 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
         
         // Parse animation settings (optional, added in later version)
         // Note: pauseDuring and everyN are parsed for backward compatibility but ignored
-        boolean animEnabled = parseIntToken(st, 0) != 0;
+        boolean animEnabled = parseIntToken(st, 1) != 0;
         int animStepMs = parseIntToken(st, SequenceDiagramAnimationController.DEFAULT_STEP_MS);
         parseIntToken(st, 0);  // Skip legacy pauseDuring
         parseIntToken(st, 1);  // Skip legacy everyN
