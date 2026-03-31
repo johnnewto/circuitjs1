@@ -1096,98 +1096,13 @@ public class TableRenderer {
     private void updateRegularCellValues() {
         int regularColCount = getRegularColumnCount();
         
-        // Update cell values for regular (non-ALE) columns only
-        // For master columns: use cached values from our doStep()
-        // For non-master columns: fetch cached values from the master table BY FLOW NAME
+        // Use the same effective value path as other views so renderer output,
+        // linked sequence diagrams, and other consumers stay in sync.
         for (int row = 0; row < table.rows; row++) {
-            String flowName = table.getRowDescription(row);
-            
             for (int col = 0; col < regularColCount; col++) {
-                if (table.columns != null && col < table.columns.size()) {
-                    TableColumn column = table.columns.get(col);
-                    
-                    // Check if we're the master for this column
-                    if (table.isMasterForColumn(col)) {
-                        // Master: use our own cached value from doStep()
-                        cachedCellValues[row][col] = column.getCachedCellValue(row);
-                        
-        
-                    } else {
-                        // Non-master: fetch cached value from the master table
-                        // Map by flow name, not by row index
-                        cachedCellValues[row][col] = fetchCellValueFromMaster(row, col, flowName);
-                    }
-                } else {
-                    cachedCellValues[row][col] = 0.0;
-                }
+                cachedCellValues[row][col] = table.getDisplayedTransactionValue(row, col);
             }
         }
-    }
-    
-    /**
-     * Fetch a single cell value from the master table by mapping flow names.
-     * This ensures that when multiple tables reference the same stock, 
-     * the correct row is retrieved even if flow names appear at different indices.
-     * 
-     * @param row Current row index in this table
-     * @param col Current column index in this table
-     * @param flowName Flow name for this row
-     * @return Cell value from master table or 0.0 if not found
-     */
-    private double fetchCellValueFromMaster(int row, int col, String flowName) {
-        if (table.columns == null || col >= table.columns.size()) {
-            return 0.0;
-        }
-        
-        TableColumn column = table.columns.get(col);
-        String stockName = column.getStockName();
-        
-        TableElm masterTable = ComputedValues.getMasterTable(stockName);
-        
-        if (masterTable == null || masterTable.columns == null) {
-            return 0.0;
-        }
-        
-        // Find the row in the master table that matches this flow name
-        int masterRow = findRowByFlowName(masterTable, flowName);
-        int masterCol = masterTable.findColumnByStockName(stockName);
-        
-        if (masterRow >= 0 && masterCol >= 0 && masterCol < masterTable.columns.size()) {
-            TableColumn masterColumn = masterTable.columns.get(masterCol);
-            return masterColumn.getCachedCellValue(masterRow);
-        }
-        
-        return 0.0;
-    }
-    
-    /**
-     * Find the row index in a master table that matches a flow name.
-     * This is critical for proper value synchronization when multiple tables
-     * share stock names but have flows in different orders.
-     * 
-     * Uses trimmed comparison to handle cases where flow names may have
-     * trailing/leading whitespace differences between tables.
-     * 
-     * @param masterTable The master table to search
-     * @param flowName The flow name to find
-     * @return Row index in master table, or -1 if not found
-     */
-    private int findRowByFlowName(TableElm masterTable, String flowName) {
-        if (flowName == null || flowName.trim().isEmpty()) {
-            return -1;
-        }
-        
-        String trimmedFlowName = flowName.trim();
-        int masterRows = masterTable.getRows();
-        for (int r = 0; r < masterRows; r++) {
-            String masterFlowName = masterTable.getRowDescription(r);
-            // Compare trimmed names to handle whitespace differences
-            if (masterFlowName != null && trimmedFlowName.equals(masterFlowName.trim())) {
-                return r;
-            }
-        }
-        
-        return -1; // Not found
     }
     
     /**

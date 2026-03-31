@@ -1133,6 +1133,90 @@ public class TableElm extends ChipElm implements TableContentView {
         return "Row" + (row + 1);
     }
 
+    /**
+     * Returns the effective transaction value displayed for a regular cell.
+     * Non-master columns mirror the matching flow row from the current master
+     * table so other views can stay consistent with the table renderer.
+     */
+    public double getDisplayedTransactionValue(int row, int col) {
+        if (!isValidCell(row, col) || columns == null || col >= columns.size()) {
+            return 0.0;
+        }
+
+        TableColumn column = columns.get(col);
+        if (column == null || column.isALE()) {
+            return 0.0;
+        }
+        if (isMasterForColumn(col)) {
+            return getLocalTransactionValue(row, col, column);
+        }
+
+        String stockName = column.getStockName();
+        double effectiveValue = getMasterDisplayTransactionValue(stockName, row);
+        if (effectiveValue != 0.0) {
+            return effectiveValue;
+        }
+        return getLocalTransactionValue(row, col, column);
+    }
+
+    private int findRowByFlowName(TableElm otherTable, String flowName) {
+        if (otherTable == null || flowName == null || flowName.trim().isEmpty()) {
+            return -1;
+        }
+
+        String trimmedFlowName = flowName.trim();
+        int rowCount = otherTable.getRows();
+        for (int r = 0; r < rowCount; r++) {
+            String otherFlowName = otherTable.getRowDescription(r);
+            if (otherFlowName != null && trimmedFlowName.equals(otherFlowName.trim())) {
+                return r;
+            }
+        }
+        return -1;
+    }
+
+    private double getMasterDisplayTransactionValue(String stockName, int row) {
+        if (stockName == null || stockName.trim().isEmpty()) {
+            return 0.0;
+        }
+        TableElm masterTable = ComputedValues.getMasterTable(stockName);
+        if (masterTable == null || masterTable.columns == null) {
+            return 0.0;
+        }
+
+        int masterRow = findRowByFlowName(masterTable, getRowDescription(row));
+        int masterCol = masterTable.findColumnByStockName(stockName);
+        if (masterRow < 0 || masterCol < 0 || masterCol >= masterTable.columns.size()) {
+            return 0.0;
+        }
+
+        TableColumn masterColumn = masterTable.columns.get(masterCol);
+        return masterColumn != null ? masterColumn.getCachedCellValue(masterRow) : 0.0;
+    }
+
+    private double getLocalTransactionValue(int row, int col, TableColumn column) {
+        double cachedValue = (column != null) ? column.getCachedCellValue(row) : 0.0;
+        if (cachedValue != 0.0) {
+            return cachedValue;
+        }
+
+        String equation = getCellEquation(row, col);
+        if (equation != null) {
+            String trimmed = equation.trim();
+            if (!trimmed.isEmpty() && !"0".equals(trimmed)) {
+                Double publishedFlow = ComputedValues.getComputedFlowValue(trimmed);
+                if (publishedFlow != null) {
+                    return publishedFlow.doubleValue();
+                }
+            }
+        }
+
+        if (getSimulationTime() == 0.0) {
+            return 0.0;
+        }
+        return getVoltageForCell(row, col);
+    }
+
     @Override
     public String[] getRowDescriptions() {
         String[] descriptions = new String[getRows()];

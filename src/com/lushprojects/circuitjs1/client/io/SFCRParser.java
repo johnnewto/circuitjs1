@@ -736,6 +736,7 @@ public class SFCRParser {
                     case "equationTableNewtonJacobianEnabled":
                     case "eqnTableNewtonJacobian":
                     case "equationTableNewtonJacobian":
+                    case "EqnTable Newton Jacobian":
                         sim.equationTableNewtonJacobianEnabled = parseBoolean(value, sim.equationTableNewtonJacobianEnabled);
                         break;
                     case "equationTableTolerance":
@@ -767,6 +768,7 @@ public class SFCRParser {
                     case "autoOpenModelInfoOnLoad":
                     case "autoOpenModelInfo":
                     case "openModelInfoOnLoad":
+                    case "Auto-Open Model Info on Load":
                         sim.autoOpenModelInfoOnLoad = parseBoolean(value, sim.autoOpenModelInfoOnLoad);
                         break;
                     default:

@@ -691,6 +691,10 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
             return;
         }
         if (!animController.isEnabled()) {
+            if (sourceTable != null) {
+                rebuildIntegratedFooterTotalsFromSourceTable();
+                return;
+            }
             rebuildIntegratedFooterTotalsFromAllMessages();
             return;
         }
@@ -752,6 +756,26 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
             if (element instanceof Message) {
                 accumulateMessageIntoFooterTotals((Message) element);
             }
+        }
+        lastAccumulatedMessageIndex = diagram.messageCount - 1;
+    }
+
+    private void rebuildIntegratedFooterTotalsFromSourceTable() {
+        resetIntegratedFooterTotals();
+        if (diagram == null || sourceTable == null) {
+            return;
+        }
+        for (int i = 0; i < diagram.participants.size(); i++) {
+            Participant participant = diagram.participants.get(i);
+            if (participant == null || participant.isActor) {
+                continue;
+            }
+            int col = sourceTable.findColumnByStockName(participant.name);
+            if (col < 0) {
+                continue;
+            }
+            integratedFooterTotals.put(participant.name,
+                Double.valueOf(sourceTable.getComputedValueForDisplay(col)));
         }
         lastAccumulatedMessageIndex = diagram.messageCount - 1;
     }

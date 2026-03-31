@@ -21,7 +21,6 @@ package com.lushprojects.circuitjs1.client.elements.annotation;
 
 import com.lushprojects.circuitjs1.client.CircuitElm;
 import com.lushprojects.circuitjs1.client.CirSim;
-import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
 import com.lushprojects.circuitjs1.client.elements.economics.TableColumn;
 import com.lushprojects.circuitjs1.client.elements.economics.TableColumn.ColumnType;
 import com.lushprojects.circuitjs1.client.elements.economics.TableElm;
@@ -396,35 +395,7 @@ public class SequenceDiagramParser {
      * display value the table renderer uses so the sequence diagram matches it.
      */
     public static double getTransactionValue(TableElm table, int row, int col) {
-        // First prefer the table's cached display value so the sequence diagram
-        // matches what the source table is currently showing.
-        if (table.columns != null && col >= 0 && col < table.columns.size()) {
-            TableColumn column = table.columns.get(col);
-            if (column != null && row >= 0 && row < column.getRowCount()) {
-                double cachedValue = column.getCachedCellValue(row);
-                if (Math.abs(cachedValue) >= ZERO_THRESHOLD) {
-                    return cachedValue;
-                }
-            }
-        }
-        String equation = table.getCellEquation(row, col);
-        if (equation != null) {
-            String trimmed = equation.trim();
-            if (!trimmed.isEmpty() && !"0".equals(trimmed)) {
-                Double publishedFlow = ComputedValues.getComputedFlowValue(trimmed);
-                if (publishedFlow != null) {
-                    return publishedFlow.doubleValue();
-                }
-            }
-        }
-        // On reset the table cache is intentionally cleared; don't immediately
-        // re-evaluate expressions at t=0 or the sequence diagram will show
-        // non-zero transaction labels even though the reset state is empty.
-        if (table.getSimulationTime() == 0.0) {
-            return 0.0;
-        }
-        // Fallback to cell voltage
-        return table.getVoltageForCell(row, col);
+        return table != null ? table.getDisplayedTransactionValue(row, col) : 0.0;
     }
     
     /**

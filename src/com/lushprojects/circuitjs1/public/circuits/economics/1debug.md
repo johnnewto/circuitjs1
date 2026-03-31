@@ -1,18 +1,26 @@
 # CircuitJS1 SFCR Export
 # Generated from circuit simulation
 
+```{r}
 @init
-timestep: 1
-voltageUnit: $
-timeUnit: yr
-showDots: false
-showVolts: true
-showValues: true
-showPower: false
-autoAdjustTimestep: false
-equationTableTolerance: 0.0001
-infoViewerUpdateIntervalMs: 200
+  timestep: 1
+  voltageUnit: $
+  timeUnit: yr
+  showDots: false
+  showVolts: true
+  showValues: true
+  showPower: false
+  autoAdjustTimestep: false
+  equationTableMnaMode: true
+  EqnTable Newton Jacobian: true
+  equationTableTolerance: 0.000001
+  lookupMode: pwl
+  lookupClamp: true
+  convergenceCheckThreshold: 100
+  infoViewerUpdateIntervalMs: 200
+  Auto-Open Model Info on Load: true
 @end
+```
 
 @action Action_Schedule x=1072 y=896
 pauseTime: 0

@@ -34,7 +34,7 @@ public final class SFCRTemplateMerger {
     // =========================================================================
 
     enum TemplateBlockType {
-        LOOKUP, EQUATIONS, MATRIX, SANKEY, PLANTUML, SCOPE, CIRCUIT, OTHER
+        INIT, LOOKUP, EQUATIONS, MATRIX, SANKEY, PLANTUML, SCOPE, CIRCUIT, OTHER
     }
 
     // =========================================================================
@@ -84,7 +84,7 @@ public final class SFCRTemplateMerger {
                 continue;
             }
 
-            if (trimmed.startsWith("@lookup") || trimmed.startsWith("@equations") || trimmed.startsWith("@parameters") ||
+            if (trimmed.startsWith("@init") || trimmed.startsWith("@lookup") || trimmed.startsWith("@equations") || trimmed.startsWith("@parameters") ||
                 trimmed.startsWith("@matrix") || trimmed.startsWith("@sankey") || trimmed.startsWith("@startuml") ||
                 trimmed.startsWith("@scope") || trimmed.startsWith("@circuit")) {
 
@@ -162,8 +162,10 @@ public final class SFCRTemplateMerger {
         private final ArrayList<String> sankeyBlocks;
         private final ArrayList<String> plantUmlBlocks;
         private final ArrayList<String> scopeBlocks;
+        private final String initBlock;
         private final String circuitBlock;
 
+        private boolean initConsumed = false;
         private int eqIndex = 0;
         private int lookupIndex = 0;
         private int matrixIndex = 0;
@@ -172,6 +174,7 @@ public final class SFCRTemplateMerger {
         private int scopeIndex = 0;
 
         BlockReplacer(SFCRExportContext ctx) {
+            initBlock = extractStructuralPayload(renderBlocksForType(SFCRBlockType.INIT, ctx));
             equationBlocks = buildCanonicalEquationBlocks(ctx);
             lookupBlocks = buildCanonicalLookupBlocks(ctx);
             matrixBlocks = buildCanonicalMatrixBlocks(ctx);
@@ -184,6 +187,12 @@ public final class SFCRTemplateMerger {
         /** Returns next replacement for the given type, or null if none available. */
         String nextReplacement(TemplateBlockType type) {
             switch (type) {
+                case INIT:
+                    if (initConsumed) {
+                        return "";
+                    }
+                    initConsumed = true;
+                    return initBlock;
                 case LOOKUP:
                     return lookupIndex < lookupBlocks.size() ? lookupBlocks.get(lookupIndex++) : null;
                 case EQUATIONS:
@@ -205,6 +214,10 @@ public final class SFCRTemplateMerger {
 
         /** Append any remaining unused blocks to the output. */
         void appendRemaining(StringBuilder out) {
+            if (!initConsumed && initBlock != null && !initBlock.trim().isEmpty()) {
+                out.append("\n").append(R_FENCE).append("\n").append(initBlock).append("\n```\n");
+                initConsumed = true;
+            }
             appendRemainingFromList(out, lookupBlocks, lookupIndex);
             appendRemainingFromList(out, equationBlocks, eqIndex);
             appendRemainingFromList(out, matrixBlocks, matrixIndex);
@@ -471,6 +484,9 @@ public final class SFCRTemplateMerger {
         String lower = text.toLowerCase();
         if (lower.contains("@circuit")) {
             return TemplateBlockType.CIRCUIT;
+        }
+        if (lower.contains("@init")) {
+            return TemplateBlockType.INIT;
         }
         if (lower.contains("@lookup")) {
             return TemplateBlockType.LOOKUP;
