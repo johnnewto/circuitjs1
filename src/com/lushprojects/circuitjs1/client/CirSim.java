@@ -1756,8 +1756,6 @@ public CirSim() {
     public void resetAction(){
     	int i;
     	analyzeFlag = true;
-    	if (timingState.t == 0)
-    	    setSimRunning(true);
     	timingState.t = timingState.timeStepAccum = 0;
     	timingState.timeStepCount = 0;
     	timingState.realTimeStart = System.currentTimeMillis();

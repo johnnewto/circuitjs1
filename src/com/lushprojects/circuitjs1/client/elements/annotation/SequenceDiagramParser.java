@@ -21,6 +21,7 @@ package com.lushprojects.circuitjs1.client.elements.annotation;
 
 import com.lushprojects.circuitjs1.client.CircuitElm;
 import com.lushprojects.circuitjs1.client.CirSim;
+import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
 import com.lushprojects.circuitjs1.client.elements.economics.TableColumn;
 import com.lushprojects.circuitjs1.client.elements.economics.TableColumn.ColumnType;
 import com.lushprojects.circuitjs1.client.elements.economics.TableElm;
@@ -405,6 +406,22 @@ public class SequenceDiagramParser {
                     return cachedValue;
                 }
             }
+        }
+        String equation = table.getCellEquation(row, col);
+        if (equation != null) {
+            String trimmed = equation.trim();
+            if (!trimmed.isEmpty() && !"0".equals(trimmed)) {
+                Double publishedFlow = ComputedValues.getComputedFlowValue(trimmed);
+                if (publishedFlow != null) {
+                    return publishedFlow.doubleValue();
+                }
+            }
+        }
+        // On reset the table cache is intentionally cleared; don't immediately
+        // re-evaluate expressions at t=0 or the sequence diagram will show
+        // non-zero transaction labels even though the reset state is empty.
+        if (table.getSimulationTime() == 0.0) {
+            return 0.0;
         }
         // Fallback to cell voltage
         return table.getVoltageForCell(row, col);

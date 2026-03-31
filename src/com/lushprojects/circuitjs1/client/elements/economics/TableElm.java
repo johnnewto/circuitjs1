@@ -246,6 +246,10 @@ public class TableElm extends ChipElm implements TableContentView {
         // and never calls this method. This method only handles regular columns.
         return equationManager.getVoltageForCell(row, col);
     }
+
+    public double getSimulationTime() {
+        return sim != null ? sim.getTime() : 0.0;
+    }
     
     private void compileEquation(int row, int col, String equation) {
         equationManager.compileEquation(row, col, equation);
@@ -1186,6 +1190,12 @@ public class TableElm extends ChipElm implements TableContentView {
         // Pin/internal-node counts are data-driven; keep nodes/volts arrays in sync.
         allocNodes();
         // Note: No cache to update - isMasterForColumn() does direct lookup
+
+        if (columns != null) {
+            for (int col = 0; col < columns.size(); col++) {
+                columns.get(col).resetRuntimeState();
+            }
+        }
         
         // Reset renderer cache so values are recomputed from scratch
         if (renderer != null) {

@@ -183,6 +183,22 @@ public class TableColumn {
             cachedCellValues.set(row, value);
         }
     }
+
+    /**
+     * Clear per-run expression and cache state for simulation reset.
+     */
+    public void resetRuntimeState() {
+        lastSum = 0.0;
+        for (int i = 0; i < expressionStates.size(); i++) {
+            ExprState state = expressionStates.get(i);
+            if (state != null) {
+                state.reset();
+            }
+        }
+        for (int i = 0; i < cachedCellValues.size(); i++) {
+            cachedCellValues.set(i, 0.0);
+        }
+    }
     
     /**
      * Insert a new row at the specified index

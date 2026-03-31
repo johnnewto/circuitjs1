@@ -144,15 +144,15 @@ Transaction_Flow_Matrix <- sfcr_matrix(
   # [ x=320 y=216 type: transaction_flow invisible=false ]
   columns = c("Households_C", "Firms_{Current}", "Firms_{Capital}", "Banks_{Current}", "Banks_{Capital}"),
   codes = c("Households_C", "Firms__Current_", "Firms__Capital_", "Banks__Current_", "Banks__Capital_"),
-  c("Consumption", Households_C = "-Cd", Firms__Current_ = "Cs", Firms__Capital_ = "", Banks__Current_ = "", Banks__Capital_ = ""),
+  c("Change in Loans", Households_C = "", Firms__Current_ = "", Firms__Capital_ = "Ld-last(Ld)", Banks__Current_ = "", Banks__Capital_ = "-(Ls-last(Ls))"),
   c("Investment", Households_C = "", Firms__Current_ = "Is", Firms__Capital_ = "-Id", Banks__Current_ = "", Banks__Capital_ = ""),
-  c("[Production]", Households_C = "", Firms__Current_ = "Y", Firms__Capital_ = "", Banks__Current_ = "", Banks__Capital_ = ""),
   c("Wages", Households_C = "WBs", Firms__Current_ = "-WBd", Firms__Capital_ = "", Banks__Current_ = "", Banks__Capital_ = ""),
+  c("Consumption", Households_C = "-Cd", Firms__Current_ = "Cs", Firms__Capital_ = "", Banks__Current_ = "", Banks__Capital_ = ""),
+  c("[Production]", Households_C = "", Firms__Current_ = "Y", Firms__Capital_ = "", Banks__Current_ = "", Banks__Capital_ = ""),
   c("Depreciation", Households_C = "", Firms__Current_ = "-AF", Firms__Capital_ = "AF", Banks__Current_ = "", Banks__Capital_ = ""),
   c("Interest on Loans", Households_C = "", Firms__Current_ = "-last(rl)*last(Ld)", Firms__Capital_ = "", Banks__Current_ = "last(rl)*last(Ls)", Banks__Capital_ = ""),
-  c("Interest on Deposits", Households_C = "last(rm)*last(Mh)", Firms__Current_ = "", Firms__Capital_ = "", Banks__Current_ = "-last(rm)*last(Ms)", Banks__Capital_ = ""),
-  c("Change in Loans", Households_C = "", Firms__Current_ = "", Firms__Capital_ = "Ld-last(Ld)", Banks__Current_ = "", Banks__Capital_ = "-(Ls-last(Ls))"),
-  c("Change in Deposits", Households_C = "-(Mh-last(Mh))", Firms__Current_ = "", Firms__Capital_ = "", Banks__Current_ = "", Banks__Capital_ = "Ms-last(Ms)")
+  c("Change in Deposits", Households_C = "-(Mh-last(Mh))", Firms__Current_ = "", Firms__Capital_ = "", Banks__Current_ = "", Banks__Capital_ = "Ms-last(Ms)"),
+  c("Interest on Deposits", Households_C = "last(rm)*last(Mh)", Firms__Current_ = "", Firms__Capital_ = "", Banks__Current_ = "-last(rm)*last(Ms)", Banks__Capital_ = "")
 )
 ```
 
@@ -169,7 +169,7 @@ Balance_Sheet <- sfcr_matrix(
 ```
 
 ```{r}
-@startuml x=-640 y=200 w=933 h=575 width=660 scale=1.2359307359307359
+@startuml x=-640 y=200 w=933 h=575 width=660 scale=1.1653061224489796
    source: Transaction Flow Matrix
 @end
 ```

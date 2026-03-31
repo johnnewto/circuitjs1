@@ -28,6 +28,9 @@ import com.lushprojects.circuitjs1.client.ui.Checkbox;
 import com.lushprojects.circuitjs1.client.elements.annotation.SequenceDiagramModel.*;
 import com.lushprojects.circuitjs1.client.elements.annotation.SequenceDiagramParser.SourceResolution;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * SequenceDiagramElm - Renders UML sequence diagrams on the circuit canvas.
  * 
@@ -98,6 +101,9 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
     
     /** Corner radius for rounded rectangles */
     private static final int CORNER_RADIUS = 3;
+
+    /** Footer box height when showing the latest transaction value */
+    private static final int FOOTER_VALUE_BOX_HEIGHT = 44;
     
     // ══════════════════════════════════════════════════════════════════════════
     // CONSTANTS - Animation
@@ -176,6 +182,12 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
     
     /** Timer for auto-advancing animation when simulation is stopped */
     private Timer timedRevealTimer;
+
+    /** Running signed totals shown in footer boxes, keyed by participant name */
+    private final Map<String, Double> integratedFooterTotals = new HashMap<String, Double>();
+
+    /** Highest message index already accumulated into footer totals */
+    private int lastAccumulatedMessageIndex = -1;
     
     // ══════════════════════════════════════════════════════════════════════════
     // CONSTRUCTORS & SERIALIZATION
@@ -250,6 +262,18 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
     @Override
     protected int getDumpType() { 
         return 467; 
+    }
+
+    @Override
+    protected void reset() {
+        super.reset();
+        animController.reset();
+        stopTimedRevealTimer();
+        resetIntegratedFooterTotals();
+        renderedPlantUmlSource = null;
+        sourceTableName = null;
+        sourceTable = null;
+        diagram = null;
     }
     
     // ══════════════════════════════════════════════════════════════════════════
@@ -450,8 +474,12 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
         
         // Only re-parse if source has changed
         if (!nextSource.equals(renderedPlantUmlSource)) {
+            ParsedDiagram previousDiagram = diagram;
             renderedPlantUmlSource = nextSource;
             diagram = SequenceDiagramParser.parseDiagramText(renderedPlantUmlSource);
+            if (!hasSameDiagramStructure(previousDiagram, diagram)) {
+                resetIntegratedFooterTotals();
+            }
         }
     }
 
@@ -518,6 +546,7 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
         refreshRenderedSourceIfNeeded();
         calculateLayout();
         updateAnimationState();
+        updateIntegratedFooterTotals();
         
         g.save();
         
@@ -644,7 +673,203 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
         if (diagram == null) return;
         int footerY = diagramHeight - 49;
         for (int i = 0; i < diagram.participants.size(); i++) {
-            drawParticipant(g, diagram.participants.get(i), footerY);
+            Participant participant = diagram.participants.get(i);
+            if (participant.isActor) {
+                drawActor(g, participant, footerY);
+            } else {
+                drawParticipantBox(g, participant, footerY, getIntegratedTransactionValue(participant), true);
+            }
+        }
+    }
+
+    /**
+     * Advances persistent footer totals as new messages become visible.
+     */
+    private void updateIntegratedFooterTotals() {
+        if (diagram == null) {
+            resetIntegratedFooterTotals();
+            return;
+        }
+        if (!animController.isEnabled()) {
+            rebuildIntegratedFooterTotalsFromAllMessages();
+            return;
+        }
+        int activeIndex = animController.getActiveIndex();
+        if (activeIndex < lastAccumulatedMessageIndex) {
+            lastAccumulatedMessageIndex = -1;
+        }
+        for (int i = 0; i < diagram.elements.size(); i++) {
+            DiagramElement element = diagram.elements.get(i);
+            if (!(element instanceof Message)) {
+                continue;
+            }
+            Message msg = (Message) element;
+            if (msg.messageIndex <= lastAccumulatedMessageIndex || msg.messageIndex > activeIndex) {
+                continue;
+            }
+            accumulateMessageIntoFooterTotals(msg);
+        }
+        if (activeIndex > lastAccumulatedMessageIndex) {
+            lastAccumulatedMessageIndex = activeIndex;
+        }
+    }
+
+    /**
+     * Returns the current integrated footer value for the participant.
+     */
+    private String getIntegratedTransactionValue(Participant participant) {
+        if (participant == null) {
+            return null;
+        }
+        Double total = integratedFooterTotals.get(participant.name);
+        return total != null ? SequenceDiagramParser.formatFlowValue(total.doubleValue()) : null;
+    }
+
+    private void accumulateMessageIntoFooterTotals(Message msg) {
+        Double value = extractNumericTransactionValue(msg.label);
+        if (value == null) {
+            return;
+        }
+        addFooterTotal(msg.from, -Math.abs(value.doubleValue()));
+        addFooterTotal(msg.to, Math.abs(value.doubleValue()));
+    }
+
+    private void addFooterTotal(String participantName, double delta) {
+        if (participantName == null) {
+            return;
+        }
+        Double current = integratedFooterTotals.get(participantName);
+        integratedFooterTotals.put(participantName, (current != null ? current.doubleValue() : 0.0) + delta);
+    }
+
+    private void rebuildIntegratedFooterTotalsFromAllMessages() {
+        resetIntegratedFooterTotals();
+        if (diagram == null) {
+            return;
+        }
+        for (int i = 0; i < diagram.elements.size(); i++) {
+            DiagramElement element = diagram.elements.get(i);
+            if (element instanceof Message) {
+                accumulateMessageIntoFooterTotals((Message) element);
+            }
+        }
+        lastAccumulatedMessageIndex = diagram.messageCount - 1;
+    }
+
+    private void resetIntegratedFooterTotals() {
+        integratedFooterTotals.clear();
+        lastAccumulatedMessageIndex = -1;
+    }
+
+    private boolean hasSameDiagramStructure(ParsedDiagram previousDiagram, ParsedDiagram nextDiagram) {
+        if (previousDiagram == nextDiagram) {
+            return true;
+        }
+        if (previousDiagram == null || nextDiagram == null) {
+            return false;
+        }
+        if (previousDiagram.participants.size() != nextDiagram.participants.size()) {
+            return false;
+        }
+        for (int i = 0; i < previousDiagram.participants.size(); i++) {
+            Participant prev = previousDiagram.participants.get(i);
+            Participant next = nextDiagram.participants.get(i);
+            if (prev.isActor != next.isActor || !prev.name.equals(next.name)) {
+                return false;
+            }
+        }
+        if (previousDiagram.elements.size() != nextDiagram.elements.size()) {
+            return false;
+        }
+        for (int i = 0; i < previousDiagram.elements.size(); i++) {
+            DiagramElement prevElement = previousDiagram.elements.get(i);
+            DiagramElement nextElement = nextDiagram.elements.get(i);
+            if (!hasSameDiagramElementStructure(prevElement, nextElement)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean hasSameDiagramElementStructure(DiagramElement previous, DiagramElement next) {
+        if (previous == null || next == null) {
+            return previous == next;
+        }
+        if (previous.getClass() != next.getClass()) {
+            return false;
+        }
+        if (previous instanceof Message) {
+            Message prev = (Message) previous;
+            Message curr = (Message) next;
+            return prev.dashed == curr.dashed
+                && prev.from.equals(curr.from)
+                && prev.to.equals(curr.to)
+                && prev.messageIndex == curr.messageIndex;
+        }
+        if (previous instanceof Divider) {
+            Divider prev = (Divider) previous;
+            Divider curr = (Divider) next;
+            return prev.label.equals(curr.label);
+        }
+        if (previous instanceof Note) {
+            Note prev = (Note) previous;
+            Note curr = (Note) next;
+            return prev.target.equals(curr.target)
+                && prev.position.equals(curr.position)
+                && prev.lines.size() == curr.lines.size();
+        }
+        return true;
+    }
+
+    /**
+     * Extracts a numeric value from a label line formatted as "(123)".
+     */
+    private Double extractNumericTransactionValue(String label) {
+        if (label == null || label.isEmpty()) {
+            return null;
+        }
+        String[] lines = label.split("\\\\n");
+        for (int i = lines.length - 1; i >= 0; i--) {
+            String line = lines[i] != null ? lines[i].trim() : "";
+            if (!line.startsWith("(") || !line.endsWith(")") || line.length() < 3) {
+                continue;
+            }
+            String inner = line.substring(1, line.length() - 1).trim();
+            if (!containsDigit(inner)) {
+                continue;
+            }
+            Double parsed = parseNumericValue(inner);
+            if (parsed != null) {
+                return parsed;
+            }
+        }
+        return null;
+    }
+
+    private boolean containsDigit(String value) {
+        if (value == null || value.isEmpty()) {
+            return false;
+        }
+        for (int i = 0; i < value.length(); i++) {
+            if (Character.isDigit(value.charAt(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Double parseNumericValue(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.startsWith("+")) {
+            trimmed = trimmed.substring(1).trim();
+        }
+        try {
+            return Double.valueOf(trimmed);
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
     
@@ -981,7 +1206,7 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
         if (p.isActor) {
             drawActor(g, p, topY);
         } else {
-            drawParticipantBox(g, p, topY);
+            drawParticipantBox(g, p, topY, null, false);
         }
     }
     
@@ -1023,9 +1248,17 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
      * Draws a rounded rectangle participant box with centered name.
      */
     private void drawParticipantBox(Graphics g, Participant p, int topY) {
+        drawParticipantBox(g, p, topY, null, false);
+    }
+
+    /**
+     * Draws a rounded rectangle participant box with an optional footer value.
+     */
+    private void drawParticipantBox(Graphics g, Participant p, int topY, String footerValue, boolean isFooter) {
         int textWidth = (int) g.context.measureText(p.name).getWidth();
-        int boxWidth = textWidth + 14;
-        int boxHeight = 30;
+        int valueWidth = (footerValue != null) ? (int) g.context.measureText(footerValue).getWidth() : 0;
+        int boxWidth = Math.max(textWidth, valueWidth) + 14;
+        int boxHeight = (isFooter && footerValue != null) ? FOOTER_VALUE_BOX_HEIGHT : 30;
         int boxX = p.x - boxWidth / 2;
         
         // Draw rounded rectangle
@@ -1034,6 +1267,9 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
         // Draw centered name
         g.setColor("#000000");
         g.drawString(p.name, p.x - textWidth / 2, topY + 20);
+        if (isFooter && footerValue != null) {
+            g.drawString(footerValue, p.x - valueWidth / 2, topY + 36);
+        }
     }
     
     /**
