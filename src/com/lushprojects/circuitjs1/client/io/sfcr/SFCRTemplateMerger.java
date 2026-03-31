@@ -447,7 +447,7 @@ public final class SFCRTemplateMerger {
                         break;
                     }
                 }
-                String payload = extractStructuralPayload(one.toString());
+                String payload = stripTrailingFenceLines(extractStructuralPayload(one.toString()));
                 if (!payload.isEmpty()) {
                     blocks.add(payload);
                 }
@@ -489,6 +489,24 @@ public final class SFCRTemplateMerger {
             payload.append(lines[i]).append("\n");
         }
         return payload.toString().trim();
+    }
+
+    /**
+     * Strip trailing markdown fence closing lines from PlantUML payload.
+     * This fixes a bug where fenced PlantUML blocks would have extra ``` lines.
+     */
+    private static String stripTrailingFenceLines(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        String result = text;
+        while (result.endsWith("\n```") || result.endsWith("\n```\n")) {
+            int idx = result.lastIndexOf("\n```");
+            if (idx >= 0) {
+                result = result.substring(0, idx);
+            }
+        }
+        return result.trim();
     }
 
     // =========================================================================
