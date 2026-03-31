@@ -471,10 +471,11 @@ public class SequenceDiagramAnimationController {
      * Advances one frame in manual step mode.
      * Call this when the user presses Step while simulation is paused.
      * Works from any phase - switches to MANUAL_STEP mode.
-     * Rolls over to first message after the last one is shown.
-     * 
+     * Once the last message is already visible, the step is not consumed so the
+     * simulator can advance its timestep.
+     *
      * @return true if the step was consumed by animation (don't advance simulation),
-     *         false if animation is disabled
+     *         false if animation is disabled or all messages are already visible
      */
     public boolean advanceManualStep() {
         if (!config.isEnabled()) {
@@ -498,11 +499,17 @@ public class SequenceDiagramAnimationController {
             if (DEBUG) CirSim.console("SeqDiagram: manual step -> activeIndex=" + activeIndex);
             return true;
         }
-        
-        // Last frame shown - rollover to first message
-        activeIndex = 0;
-        if (DEBUG) CirSim.console("SeqDiagram: manual step rollover -> activeIndex=0");
-        return true;
+
+        // Last message is already visible. Reset the manual reveal cycle so the
+        // next paused Step starts from the beginning again, then allow one
+        // simulation timestep to proceed.
+        activeIndex = -1;
+        logPhaseChange(phase, Phase.WAITING, "manual cycle complete");
+        phase = Phase.WAITING;
+        clock.reset();
+
+        if (DEBUG) CirSim.console("SeqDiagram: manual step complete -> allow simulation step");
+        return false;
     }
     
     /**

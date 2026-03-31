@@ -70,6 +70,41 @@ class SequenceDiagramSourceTableBindingTest extends CircuitJavaSimTestBase {
             "Refreshed source should continue to include bound transaction labels with updated values");
     }
 
+    @Test
+    @DisplayName("source-bound diagram preserves delta transactions when values are currently zero")
+    void sourceBoundDiagramKeepsDeltaTransactions() throws Exception {
+        Path fixturePath = Paths.get(System.getProperty("projectDir"), "test/resources/sfcr_debug_reference.md");
+        String fixture = Files.readString(fixturePath, StandardCharsets.UTF_8);
+        String circuitText = fixture + "\n```{r}\n"
+            + "@startuml x=96 y=32 scale=0.6\n"
+            + "source: Transaction Flow Matrix\n"
+            + "@end\n"
+            + "```\n";
+        loadCircuitText(circuitText);
+
+        SequenceDiagramElm diagram = findFirstSequenceDiagram();
+        assertNotNull(diagram, "Expected a source-bound PlantUML sequence diagram");
+
+        TableElm transactionFlowMatrix = findTable("Transaction Flow Matrix");
+        assertNotNull(transactionFlowMatrix, "Expected Transaction Flow Matrix source table");
+        int moneyStockRow = findRow(transactionFlowMatrix, "Money stock");
+        int householdsCol = findColumn(transactionFlowMatrix, "Households");
+        int govtCol = findColumn(transactionFlowMatrix, "Govt");
+        assertTrue(moneyStockRow >= 0 && householdsCol >= 0 && govtCol >= 0,
+            "Expected Money stock row with Households and Govt sector columns");
+
+        transactionFlowMatrix.setCellEquation(moneyStockRow, householdsCol, "-(H-last(H))");
+        transactionFlowMatrix.setCellEquation(moneyStockRow, govtCol, "H-last(H)");
+        transactionFlowMatrix.columns.get(householdsCol).setCachedCellValue(moneyStockRow, -7);
+        transactionFlowMatrix.columns.get(govtCol).setCachedCellValue(moneyStockRow, 7);
+
+        String rendered = diagram.getRenderedPlantUmlSource();
+        assertTrue(rendered.contains("Households -> Govt : Money stock"),
+            "Delta-style zero row should still generate a sequence arrow");
+        assertTrue(rendered.contains("Households -> Govt : Money stock\\n(" + CircuitElm.showFormat.format(7) + ")"),
+            "Sequence diagram should use the source table's cached display value");
+    }
+
     private SequenceDiagramElm findFirstSequenceDiagram() {
         for (int i = 0; i < sim.elmList.size(); i++) {
             CircuitElm elm = sim.elmList.get(i);

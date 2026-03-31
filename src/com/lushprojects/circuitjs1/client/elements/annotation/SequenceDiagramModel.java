@@ -169,6 +169,7 @@ public class SequenceDiagramModel {
         public String sourceSector;   // Sector with negative value (outflow)
         public String targetSector;   // Sector with positive value (inflow)
         public double flowValue;      // Absolute magnitude of the flow
+        public boolean hasFlowValue;  // True when the row has a resolved numeric magnitude, including zero
     }
     
     // ══════════════════════════════════════════════════════════════════════════

@@ -21,7 +21,6 @@ package com.lushprojects.circuitjs1.client.elements.annotation;
 
 import com.lushprojects.circuitjs1.client.CircuitElm;
 import com.lushprojects.circuitjs1.client.CirSim;
-import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
 import com.lushprojects.circuitjs1.client.elements.economics.TableColumn;
 import com.lushprojects.circuitjs1.client.elements.economics.TableColumn.ColumnType;
 import com.lushprojects.circuitjs1.client.elements.economics.TableElm;
@@ -228,7 +227,7 @@ public class SequenceDiagramParser {
               .append(" : ")
               .append(sanitizeText(rowLabel));
             
-            if (endpoints.flowValue > 0) {
+            if (endpoints.hasFlowValue) {
                 sb.append("\\n(").append(formatFlowValue(endpoints.flowValue)).append(")");
             }
             sb.append("\n");
@@ -303,44 +302,107 @@ public class SequenceDiagramParser {
         }
         
         FlowEndpoints endpoints = new FlowEndpoints();
+        String equationSource = null;
+        String equationTarget = null;
+        String numericSource = null;
+        String numericTarget = null;
+        double numericMagnitude = 0;
         
         for (int col = 0; col < table.columns.size(); col++) {
             TableColumn column = table.columns.get(col);
             if (column == null || column.getType() != ColumnType.SECTOR) {
                 continue;
             }
-            
-            double value = getTransactionValue(table, row, col);
-            if (Math.abs(value) < ZERO_THRESHOLD) {
-                continue;
+
+            int signHint = getEquationSignHint(table.getCellEquation(row, col));
+            if (signHint < 0 && equationSource == null) {
+                equationSource = column.getStockName();
+                endpoints.hasFlowValue = true;
+            } else if (signHint > 0 && equationTarget == null) {
+                equationTarget = column.getStockName();
+                endpoints.hasFlowValue = true;
             }
-            
-            // Negative = source (outflow), Positive = target (inflow)
-            if (value < 0 && endpoints.sourceSector == null) {
-                endpoints.sourceSector = column.getStockName();
-                endpoints.flowValue = Math.abs(value);
-            } else if (value > 0 && endpoints.targetSector == null) {
-                endpoints.targetSector = column.getStockName();
-                if (endpoints.flowValue == 0) {
-                    endpoints.flowValue = value;
+
+            double value = getTransactionValue(table, row, col);
+            if (Math.abs(value) >= ZERO_THRESHOLD) {
+                endpoints.hasFlowValue = true;
+                if (value < 0 && numericSource == null) {
+                    numericSource = column.getStockName();
+                    numericMagnitude = Math.abs(value);
+                } else if (value > 0 && numericTarget == null) {
+                    numericTarget = column.getStockName();
+                    if (numericMagnitude == 0) {
+                        numericMagnitude = value;
+                    }
                 }
             }
         }
+
+        if (equationSource != null && equationTarget != null) {
+            endpoints.sourceSector = equationSource;
+            endpoints.targetSector = equationTarget;
+            endpoints.flowValue = numericMagnitude;
+            return endpoints;
+        }
+
+        endpoints.sourceSector = numericSource != null ? numericSource : equationSource;
+        endpoints.targetSector = numericTarget != null ? numericTarget : equationTarget;
+        endpoints.flowValue = numericMagnitude;
+        if (endpoints.sourceSector == null && equationSource != null) {
+            endpoints.sourceSector = equationSource;
+        }
+        if (endpoints.targetSector == null && equationTarget != null) {
+            endpoints.targetSector = equationTarget;
+        }
         return endpoints;
+    }
+
+    /**
+     * Infer source/target direction from the original equation string when the
+     * evaluated value is currently zero or unavailable.
+     */
+    static int getEquationSignHint(String equation) {
+        if (equation == null) {
+            return 0;
+        }
+        String trimmed = equation.trim();
+        if (trimmed.isEmpty() || "0".equals(trimmed)) {
+            return 0;
+        }
+
+        try {
+            double literal = Double.parseDouble(trimmed);
+            if (Math.abs(literal) < ZERO_THRESHOLD) {
+                return 0;
+            }
+            return literal < 0 ? -1 : 1;
+        } catch (NumberFormatException ignored) {
+            // Non-literal expressions fall through to prefix-based sign inference.
+        }
+
+        char firstChar = trimmed.charAt(0);
+        if (firstChar == '-') {
+            return -1;
+        }
+        if (firstChar == '+') {
+            return 1;
+        }
+        return 1;
     }
     
     /**
-     * Gets transaction value from cell, preferring ComputedValues if available.
+     * Gets transaction value from the source table, preferring the same cached
+     * display value the table renderer uses so the sequence diagram matches it.
      */
     public static double getTransactionValue(TableElm table, int row, int col) {
-        // First try to get published flow value from equation label
-        String equation = table.getCellEquation(row, col);
-        if (equation != null) {
-            String trimmed = equation.trim();
-            if (!trimmed.isEmpty() && !"0".equals(trimmed)) {
-                Double publishedFlow = ComputedValues.getComputedFlowValue(trimmed);
-                if (publishedFlow != null) {
-                    return publishedFlow;
+        // First prefer the table's cached display value so the sequence diagram
+        // matches what the source table is currently showing.
+        if (table.columns != null && col >= 0 && col < table.columns.size()) {
+            TableColumn column = table.columns.get(col);
+            if (column != null && row >= 0 && row < column.getRowCount()) {
+                double cachedValue = column.getCachedCellValue(row);
+                if (Math.abs(cachedValue) >= ZERO_THRESHOLD) {
+                    return cachedValue;
                 }
             }
         }

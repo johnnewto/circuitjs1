@@ -734,8 +734,11 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
     }
     
     /**
-     * Advances one paused/manual animation frame. Also allows simulation to step.
-     * Returns false so that simulation timestep also advances.
+     * Advances one paused/manual animation frame.
+     *
+     * @return true if the step was consumed by animation and the simulator
+     *         should stay paused; false when the last transaction is already
+     *         visible and the simulation timestep may advance
      */
     private boolean advanceManualAnimationStep() {
         if (sim == null || sim.simIsRunning()) {
@@ -746,27 +749,27 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
         
         // Stop timed reveal timer - user is manually stepping
         stopTimedRevealTimer();
-        
-        animController.advanceManualStep();
-        return false;  // Allow simulation to also step
+
+        return animController.advanceManualStep();
     }
     
     /**
-     * Called by the simulator's manual Step command. Advances sequence diagram
-     * animation AND allows simulation timestep to also advance.
+     * Called by the simulator's manual Step command. Sequence diagrams consume
+     * Step presses until their last transaction is visible.
      */
     public static boolean advanceManualAnimationStep(CirSim sim) {
         if (sim == null || sim.simIsRunning()) {
             return false;
         }
+        boolean consumed = false;
         for (int i = 0; i < sim.getElementCount(); i++) {
             CircuitElm elm = sim.getElm(i);
             if (!(elm instanceof SequenceDiagramElm)) {
                 continue;
             }
-            ((SequenceDiagramElm) elm).advanceManualAnimationStep();
+            consumed |= ((SequenceDiagramElm) elm).advanceManualAnimationStep();
         }
-        return false;  // Allow simulation to also step
+        return consumed;
     }
     
     /**
