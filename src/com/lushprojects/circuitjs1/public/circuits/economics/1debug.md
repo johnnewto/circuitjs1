@@ -118,9 +118,9 @@ sankey !!
 ```{r}
 @scope Embedded_Scope_1 position=-1
   x1: 672
-  y1: 320
+  y1: 464
   x2: 928
-  y2: 496
+  y2: 640
   elmUid: 85xm31
   speed: 2
   flags: x2001206
@@ -138,7 +138,7 @@ x 180 -9 536 -6 4 12 \sby\sWynne\sGodley\sand\sMarc\sLavoie,\schapter\s3,\sfigur
 x 183 -31 577 -28 4 12 \sAn\sIntegrated\sApproach\sto\sCredit,\sMoney,\sIncome,\sProduction\sand\sWealth 808080FF U:cdBS8b
 207 832 288 864 288 36 \\DeltaH_h U:MeqIB3
 207 832 272 864 272 4 \\DeltaH_s U:5DBes4
-431 672 -80 688 -64 0 50 true false U:0AZ1rw
+431 672 -80 688 -64 0 100 true false U:0AZ1rw
 r 824 -88 936 -88 0 1000 U:kSRwWr
 207 936 -88 967 -88 36 Y2 U:g5KXPD
 207 824 -88 783 -88 36 Y U:kU1zw1
