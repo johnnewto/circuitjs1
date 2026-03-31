@@ -293,8 +293,8 @@ class SequenceDiagramAnimationControllerTest {
     }
     
     @Nested
-    @DisplayName("Manual Step Mode")
-    class ManualStepMode {
+    @DisplayName("Timed Reveal Mode")
+    class TimedRevealMode {
         
         @BeforeEach
         void enableAnimation() {
@@ -303,18 +303,18 @@ class SequenceDiagramAnimationControllerTest {
         }
         
         @Test
-        @DisplayName("enterManualMode transitions to MANUAL_STEP phase")
-        void enterManualMode() {
-            // First enter CLEARING phase (must be animating to enter manual mode)
+        @DisplayName("enterTimedMode transitions to TIMED_REVEAL phase")
+        void enterTimedMode() {
+            // First enter CLEARING phase (must be animating to enter timed mode)
             controller.update(1.0, true, MSG_COUNT, 100);
             assertTrue(controller.isAnimating());
             
-            controller.enterManualMode();
-            assertEquals(Phase.MANUAL_STEP, controller.getPhase());
+            controller.enterTimedMode();
+            assertEquals(Phase.TIMED_REVEAL, controller.getPhase());
         }
         
         @Test
-        @DisplayName("advanceManualStep increments active index")
+        @DisplayName("advanceTimedStep increments active index")
         void advanceIncrementsIndex() {
             // Start animation - goes directly to CLEARING
             controller.update(1.0, true, MSG_COUNT, 100);
@@ -323,18 +323,18 @@ class SequenceDiagramAnimationControllerTest {
             controller.update(1.0, true, MSG_COUNT, clearingEnd);
             assertEquals(Phase.REVEALING, controller.getPhase());
             
-            // Transition to manual mode by pausing simulation
+            // Transition to timed reveal mode by pausing simulation
             controller.update(1.0, false, MSG_COUNT, clearingEnd + 10);
-            assertEquals(Phase.MANUAL_STEP, controller.getPhase());
+            assertEquals(Phase.TIMED_REVEAL, controller.getPhase());
             
             int startIdx = controller.getActiveIndex();
             
-            assertTrue(controller.advanceManualStep(), "Should advance");
+            assertTrue(controller.advanceTimedStep(), "Should advance");
             assertEquals(startIdx + 1, controller.getActiveIndex());
         }
         
         @Test
-        @DisplayName("advanceManualStep returns false after last message")
+        @DisplayName("advanceTimedStep returns false after last message")
         void returnsFalseAtEnd() {
             // Start animation - goes directly to CLEARING
             controller.update(1.0, true, MSG_COUNT, 100);
@@ -343,22 +343,22 @@ class SequenceDiagramAnimationControllerTest {
             long nearEnd = clearingEnd + STEP_MS * MSG_COUNT - 100;
             controller.update(1.0, true, MSG_COUNT, nearEnd);
             
-            // Pause to enter manual mode
+            // Pause to enter timed reveal mode
             controller.update(1.0, false, MSG_COUNT, nearEnd + 10);
-            assertEquals(Phase.MANUAL_STEP, controller.getPhase());
+            assertEquals(Phase.TIMED_REVEAL, controller.getPhase());
             
             // Advance to last message
             while (controller.getActiveIndex() < MSG_COUNT - 1) {
-                assertTrue(controller.advanceManualStep(), "Should advance");
+                assertTrue(controller.advanceTimedStep(), "Should advance");
             }
             
             // Should return false after last message
-            assertFalse(controller.advanceManualStep(), "Should return false after all messages shown");
+            assertFalse(controller.advanceTimedStep(), "Should return false after all messages shown");
         }
         
         @Test
-        @DisplayName("messages visible progressively in manual mode")
-        void progressiveVisibilityInManual() {
+        @DisplayName("messages visible progressively in timed reveal mode")
+        void progressiveVisibilityInTimed() {
             // Start animation - goes directly to CLEARING
             controller.update(1.0, true, MSG_COUNT, 100);
             
@@ -367,18 +367,45 @@ class SequenceDiagramAnimationControllerTest {
             assertEquals(Phase.REVEALING, controller.getPhase());
             assertEquals(0, controller.getActiveIndex());
             
-            // Pause to enter manual mode
+            // Pause to enter timed reveal mode
             controller.update(1.0, false, MSG_COUNT, clearingEnd + 10);
-            assertEquals(Phase.MANUAL_STEP, controller.getPhase());
+            assertEquals(Phase.TIMED_REVEAL, controller.getPhase());
             
             // Only first message visible (activeIndex = 0)
             assertTrue(controller.isVisible(0), "First message visible");
             assertFalse(controller.isVisible(1), "Second message not yet visible");
             
-            controller.advanceManualStep();
+            controller.advanceTimedStep();
             assertTrue(controller.isVisible(0), "First message still visible");
             assertTrue(controller.isVisible(1), "Second message now visible");
             assertFalse(controller.isVisible(2), "Third message not yet visible");
+        }
+        
+        @Test
+        @DisplayName("needsTimerReveal returns true in TIMED_REVEAL phase")
+        void needsTimerRevealInTimedPhase() {
+            controller.update(1.0, true, MSG_COUNT, 100);
+            long clearingEnd = 100 + 250;
+            controller.update(1.0, true, MSG_COUNT, clearingEnd);
+            
+            // Pause to enter timed reveal mode
+            controller.update(1.0, false, MSG_COUNT, clearingEnd + 10);
+            assertEquals(Phase.TIMED_REVEAL, controller.getPhase());
+            
+            assertTrue(controller.needsTimerReveal(), "Should need timer in TIMED_REVEAL phase");
+        }
+        
+        @Test
+        @DisplayName("needsTimerReveal returns false in other phases")
+        void needsTimerRevealFalseInOtherPhases() {
+            controller.update(1.0, true, MSG_COUNT, 100);
+            assertEquals(Phase.CLEARING, controller.getPhase());
+            assertFalse(controller.needsTimerReveal(), "Should not need timer in CLEARING phase");
+            
+            long clearingEnd = 100 + 250;
+            controller.update(1.0, true, MSG_COUNT, clearingEnd);
+            assertEquals(Phase.REVEALING, controller.getPhase());
+            assertFalse(controller.needsTimerReveal(), "Should not need timer in REVEALING phase");
         }
     }
     

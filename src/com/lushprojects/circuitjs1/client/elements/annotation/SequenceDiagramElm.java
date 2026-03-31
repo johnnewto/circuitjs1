@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client.elements.annotation;
 
+import com.google.gwt.user.client.Timer;
 import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.elements.economics.TableElm;
 import com.lushprojects.circuitjs1.client.util.*;
@@ -172,6 +173,9 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
     
     /** Animation state machine controller */
     private final SequenceDiagramAnimationController animController = new SequenceDiagramAnimationController();
+    
+    /** Timer for auto-advancing animation when simulation is stopped */
+    private Timer timedRevealTimer;
     
     // ══════════════════════════════════════════════════════════════════════════
     // CONSTRUCTORS & SERIALIZATION
@@ -661,6 +665,7 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
     
     /**
      * Updates animation state by delegating to the animation controller.
+     * Manages the timed reveal timer when simulation is stopped.
      */
     private void updateAnimationState() {
         int messageCount = (diagram != null) ? diagram.messageCount : 0;
@@ -668,6 +673,57 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
         double simTime = (sim != null) ? sim.getTime() : 0;
         
         animController.update(simTime, simRunning, messageCount, System.currentTimeMillis());
+        
+        // Manage timed reveal timer
+        if (animController.needsTimerReveal()) {
+            startTimedRevealTimer();
+        } else {
+            stopTimedRevealTimer();
+        }
+    }
+    
+    /**
+     * Starts the timed reveal timer if not already running.
+     * The timer advances animation one step at a time using the configured stepMs.
+     */
+    private void startTimedRevealTimer() {
+        if (timedRevealTimer != null) {
+            return;  // Already running
+        }
+        
+        timedRevealTimer = new Timer() {
+            @Override
+            public void run() {
+                if (!animController.needsTimerReveal()) {
+                    stopTimedRevealTimer();
+                    return;
+                }
+                
+                boolean hasMore = animController.advanceTimedStep();
+                
+                // Trigger repaint
+                if (sim != null) {
+                    sim.repaint();
+                }
+                
+                if (!hasMore) {
+                    stopTimedRevealTimer();
+                }
+            }
+        };
+        
+        // Schedule first step immediately, then repeat
+        timedRevealTimer.scheduleRepeating(animController.getStepMs());
+    }
+    
+    /**
+     * Stops the timed reveal timer if running.
+     */
+    private void stopTimedRevealTimer() {
+        if (timedRevealTimer != null) {
+            timedRevealTimer.cancel();
+            timedRevealTimer = null;
+        }
     }
 
     /**
@@ -678,8 +734,8 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
     }
     
     /**
-     * Advances one paused/manual animation frame. Returns true if the user's
-     * step request should be consumed by animation instead of simulation.
+     * Advances one paused/manual animation frame. Also allows simulation to step.
+     * Returns false so that simulation timestep also advances.
      */
     private boolean advanceManualAnimationStep() {
         if (sim == null || sim.simIsRunning()) {
@@ -687,28 +743,30 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
         }
         refreshRenderedSourceIfNeeded();
         calculateLayout();
-        return animController.advanceManualStep();
+        
+        // Stop timed reveal timer - user is manually stepping
+        stopTimedRevealTimer();
+        
+        animController.advanceManualStep();
+        return false;  // Allow simulation to also step
     }
     
     /**
-     * Called by the simulator's manual Step command. If any sequence diagram is
-     * paused mid-animation, advance that animation frame instead of simulation.
+     * Called by the simulator's manual Step command. Advances sequence diagram
+     * animation AND allows simulation timestep to also advance.
      */
     public static boolean advanceManualAnimationStep(CirSim sim) {
         if (sim == null || sim.simIsRunning()) {
             return false;
         }
-        boolean consumed = false;
         for (int i = 0; i < sim.getElementCount(); i++) {
             CircuitElm elm = sim.getElm(i);
             if (!(elm instanceof SequenceDiagramElm)) {
                 continue;
             }
-            if (((SequenceDiagramElm) elm).advanceManualAnimationStep()) {
-                consumed = true;
-            }
+            ((SequenceDiagramElm) elm).advanceManualAnimationStep();
         }
-        return consumed;
+        return false;  // Allow simulation to also step
     }
     
     /**
@@ -1160,6 +1218,7 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
             case 3:  // Toggle animation
                 animController.setEnabled(ei.checkbox.getState());
                 animController.reset();
+                stopTimedRevealTimer();  // Stop timer when animation settings change
                 break;
                 
             case 4:  // Update animation step duration
@@ -1246,5 +1305,18 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
     /** Returns the actual rendered height in canvas pixels */
     public int getRenderedDiagramHeight() {
         return getFrameHeight();
+    }
+    
+    // ══════════════════════════════════════════════════════════════════════════
+    // LIFECYCLE
+    // ══════════════════════════════════════════════════════════════════════════
+    
+    /**
+     * Cleans up resources when element is deleted.
+     */
+    @Override
+    protected void delete() {
+        stopTimedRevealTimer();
+        super.delete();
     }
 }

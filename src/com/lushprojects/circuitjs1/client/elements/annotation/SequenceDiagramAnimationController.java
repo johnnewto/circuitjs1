@@ -19,6 +19,8 @@
 
 package com.lushprojects.circuitjs1.client.elements.annotation;
 
+import com.lushprojects.circuitjs1.client.CirSim;
+
 /**
  * Controls animation state for sequence diagram transaction visualization.
  * 
@@ -76,7 +78,7 @@ public class SequenceDiagramAnimationController {
         /** Stroke width multiplier for highlighted arrows */
         public static final double HIGHLIGHT_STROKE_MULTIPLIER = 1.5;
         
-        private boolean enabled = true;
+        private boolean enabled = false;
         private int stepMs = DEFAULT_STEP_MS;
         
         public Config() {}
@@ -167,12 +169,18 @@ public class SequenceDiagramAnimationController {
         HOLDING_END,
         
         /** Manual stepping mode - waiting for user Step command */
-        MANUAL_STEP
+        MANUAL_STEP,
+        
+        /** Timer-based reveal when simulation stops - auto-advances using stepMs */
+        TIMED_REVEAL
     }
     
     // ══════════════════════════════════════════════════════════════════════════
     // CONFIGURATION & TIMING
     // ══════════════════════════════════════════════════════════════════════════
+    
+    /** Enable debug logging to browser console */
+    private static boolean DEBUG = false;
     
     private final Config config = new Config();
     private final Clock clock = new Clock();
@@ -229,10 +237,11 @@ public class SequenceDiagramAnimationController {
     }
     
     /**
-     * Returns true if animation is currently in progress (CLEARING, REVEALING, HOLDING_END, or MANUAL_STEP).
+     * Returns true if animation is currently in progress (CLEARING, REVEALING, HOLDING_END, MANUAL_STEP, or TIMED_REVEAL).
      */
     public boolean isAnimating() {
-        return phase == Phase.CLEARING || phase == Phase.REVEALING || phase == Phase.HOLDING_END || phase == Phase.MANUAL_STEP;
+        return phase == Phase.CLEARING || phase == Phase.REVEALING || phase == Phase.HOLDING_END 
+            || phase == Phase.MANUAL_STEP || phase == Phase.TIMED_REVEAL;
     }
     
     /**
@@ -240,6 +249,13 @@ public class SequenceDiagramAnimationController {
      */
     public boolean wantsRepaint() {
         return phase == Phase.CLEARING || phase == Phase.REVEALING || phase == Phase.HOLDING_END;
+    }
+    
+    /**
+     * Returns true if timed reveal mode is active and a timer should be running.
+     */
+    public boolean needsTimerReveal() {
+        return phase == Phase.TIMED_REVEAL;
     }
     
     // ══════════════════════════════════════════════════════════════════════════
@@ -291,9 +307,11 @@ public class SequenceDiagramAnimationController {
      * Resets animation state to initial conditions.
      */
     public void reset() {
+        Phase oldPhase = phase;
         phase = config.isEnabled() ? Phase.WAITING : Phase.DISABLED;
         activeIndex = -1;
         clock.reset();
+        logPhaseChange(oldPhase, phase, "reset");
     }
     
     /**
@@ -309,6 +327,9 @@ public class SequenceDiagramAnimationController {
         
         // Handle disabled state
         if (!config.isEnabled() || msgCount == 0) {
+            if (phase != Phase.DISABLED) {
+                logPhaseChange(phase, Phase.DISABLED, "disabled/no messages");
+            }
             phase = Phase.DISABLED;
             activeIndex = -1;
             return;
@@ -322,16 +343,20 @@ public class SequenceDiagramAnimationController {
                 break;
                 
             case WAITING:
-                // Start new cycle immediately
-                startCycle(currentTimeMs, simRunning);
+                // Only start new cycle if simulation is running
+                // When stopped, stay in WAITING (all messages visible)
+                if (simRunning) {
+                    startCycle(currentTimeMs, simRunning);
+                }
                 break;
                 
             case CLEARING:
                 if (simRunning) {
                     updateClearingPhase(currentTimeMs);
                 } else {
-                    // Paused during clearing - go to manual mode
-                    phase = Phase.MANUAL_STEP;
+                    // Paused during clearing - go to timed reveal mode
+                    logPhaseChange(phase, Phase.TIMED_REVEAL, "paused during clearing");
+                    phase = Phase.TIMED_REVEAL;
                     activeIndex = -1;
                 }
                 break;
@@ -340,8 +365,9 @@ public class SequenceDiagramAnimationController {
                 if (simRunning) {
                     updateRevealingPhase(currentTimeMs);
                 } else {
-                    // Switched to manual mode
-                    phase = Phase.MANUAL_STEP;
+                    // Switched to timed reveal mode
+                    logPhaseChange(phase, Phase.TIMED_REVEAL, "paused during revealing");
+                    phase = Phase.TIMED_REVEAL;
                     if (activeIndex < 0) {
                         activeIndex = 0;
                     }
@@ -352,16 +378,28 @@ public class SequenceDiagramAnimationController {
                 if (simRunning) {
                     updateHoldingPhase(currentTimeMs);
                 } else {
-                    phase = Phase.MANUAL_STEP;
+                    logPhaseChange(phase, Phase.TIMED_REVEAL, "paused during holding");
+                    phase = Phase.TIMED_REVEAL;
                 }
                 break;
                 
             case MANUAL_STEP:
                 if (simRunning) {
                     // Resumed simulation - continue from current position
+                    logPhaseChange(phase, Phase.REVEALING, "resumed simulation");
                     phase = Phase.REVEALING;
                     clock.adjustForIndex(currentTimeMs, activeIndex, config.getStepMs());
                 }
+                break;
+                
+            case TIMED_REVEAL:
+                if (simRunning) {
+                    // Resumed simulation - continue from current position
+                    logPhaseChange(phase, Phase.REVEALING, "resumed simulation");
+                    phase = Phase.REVEALING;
+                    clock.adjustForIndex(currentTimeMs, activeIndex, config.getStepMs());
+                }
+                // Timer-driven advancement happens via advanceTimedStep()
                 break;
         }
     }
@@ -373,12 +411,14 @@ public class SequenceDiagramAnimationController {
         clock.startCycle(currentTimeMs);
         activeIndex = -1;  // No messages visible yet
         
+        Phase oldPhase = phase;
         if (simRunning) {
             phase = Phase.CLEARING;  // Start with blank period
         } else {
-            phase = Phase.MANUAL_STEP;
-            activeIndex = -1;  // Manual mode starts with nothing visible
+            phase = Phase.TIMED_REVEAL;  // Timer will advance animation
+            activeIndex = -1;  // Timed mode starts with nothing visible
         }
+        logPhaseChange(oldPhase, phase, "startCycle simRunning=" + simRunning);
     }
     
     /**
@@ -387,6 +427,7 @@ public class SequenceDiagramAnimationController {
     private void updateClearingPhase(long currentTimeMs) {
         if (clock.isClearingComplete(currentTimeMs)) {
             // Clearing period complete - start revealing
+            logPhaseChange(phase, Phase.REVEALING, "clearing complete");
             phase = Phase.REVEALING;
             activeIndex = 0;
             // Adjust cycle start so reveal timing is correct
@@ -403,6 +444,7 @@ public class SequenceDiagramAnimationController {
         
         if (activeIndex >= messageCount) {
             activeIndex = messageCount - 1;
+            logPhaseChange(phase, Phase.HOLDING_END, "all messages revealed");
             phase = Phase.HOLDING_END;
             // Reset cycle start for hold timing
             clock.startCycle(currentTimeMs);
@@ -415,6 +457,7 @@ public class SequenceDiagramAnimationController {
     private void updateHoldingPhase(long currentTimeMs) {
         if (clock.isEndHoldComplete(currentTimeMs)) {
             // Hold complete
+            logPhaseChange(phase, Phase.WAITING, "hold complete");
             phase = Phase.WAITING;
             activeIndex = -1;
         }
@@ -427,42 +470,92 @@ public class SequenceDiagramAnimationController {
     /**
      * Advances one frame in manual step mode.
      * Call this when the user presses Step while simulation is paused.
+     * Works from any phase - switches to MANUAL_STEP mode.
+     * Rolls over to first message after the last one is shown.
      * 
      * @return true if the step was consumed by animation (don't advance simulation),
-     *         false if animation is complete and simulation should advance
+     *         false if animation is disabled
      */
     public boolean advanceManualStep() {
-        if (!config.isEnabled() || phase != Phase.MANUAL_STEP) {
+        if (!config.isEnabled()) {
             return false;
+        }
+        
+        // Switch to manual mode from any phase
+        if (phase != Phase.MANUAL_STEP) {
+            logPhaseChange(phase, Phase.MANUAL_STEP, "user pressed step");
+            phase = Phase.MANUAL_STEP;
         }
         
         if (activeIndex < 0) {
             activeIndex = 0;
+            if (DEBUG) CirSim.console("SeqDiagram: manual step -> activeIndex=0");
             return true;
         }
         
         if (activeIndex < messageCount - 1) {
             activeIndex++;
+            if (DEBUG) CirSim.console("SeqDiagram: manual step -> activeIndex=" + activeIndex);
             return true;
         }
         
-        // Last frame shown - end cycle and let simulation advance
+        // Last frame shown - rollover to first message
+        activeIndex = 0;
+        if (DEBUG) CirSim.console("SeqDiagram: manual step rollover -> activeIndex=0");
+        return true;
+    }
+    
+    /**
+     * Advances one frame in timed reveal mode.
+     * Call this from a timer when simulation is stopped.
+     * 
+     * @return true if there are more steps to reveal,
+     *         false if animation is complete (all messages shown)
+     */
+    public boolean advanceTimedStep() {
+        if (!config.isEnabled() || phase != Phase.TIMED_REVEAL) {
+            return false;
+        }
+        
+        if (activeIndex < 0) {
+            activeIndex = 0;
+            if (DEBUG) CirSim.console("SeqDiagram: timed step -> activeIndex=0");
+            return true;
+        }
+        
+        if (activeIndex < messageCount - 1) {
+            activeIndex++;
+            if (DEBUG) CirSim.console("SeqDiagram: timed step -> activeIndex=" + activeIndex);
+            return true;
+        }
+        
+        // All messages shown - end timed reveal cycle
+        logPhaseChange(phase, Phase.WAITING, "timed reveal complete");
         phase = Phase.WAITING;
         activeIndex = -1;
         return false;
     }
     
     /**
-     * Forces transition to manual step mode.
+     * Forces transition to timed reveal mode.
      * Call this when simulation is paused externally.
      */
-    public void enterManualMode() {
+    public void enterTimedMode() {
         if (isAnimating()) {
-            phase = Phase.MANUAL_STEP;
+            logPhaseChange(phase, Phase.TIMED_REVEAL, "enterTimedMode");
+            phase = Phase.TIMED_REVEAL;
             if (activeIndex < 0) {
                 activeIndex = 0;
             }
         }
+    }
+    
+    /**
+     * @deprecated Use {@link #enterTimedMode()} instead
+     */
+    @Deprecated
+    public void enterManualMode() {
+        enterTimedMode();
     }
     
     // ══════════════════════════════════════════════════════════════════════════
@@ -482,5 +575,32 @@ public class SequenceDiagramAnimationController {
      */
     public int[] getConfigForDump() {
         return config.toArray();
+    }
+    
+    // ══════════════════════════════════════════════════════════════════════════
+    // LOGGING
+    // ══════════════════════════════════════════════════════════════════════════
+    
+    /**
+     * Logs a phase transition to the browser console.
+     */
+    private void logPhaseChange(Phase from, Phase to, String reason) {
+        if (DEBUG && from != to) {
+            CirSim.console("SeqDiagram: " + from + " -> " + to + " (" + reason + ")");
+        }
+    }
+    
+    /**
+     * Enables or disables debug logging.
+     */
+    public static void setDebug(boolean enabled) {
+        DEBUG = enabled;
+    }
+    
+    /**
+     * Returns true if debug logging is enabled.
+     */
+    public static boolean isDebug() {
+        return DEBUG;
     }
 }
