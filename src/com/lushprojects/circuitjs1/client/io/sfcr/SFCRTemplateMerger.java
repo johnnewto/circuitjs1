@@ -20,21 +20,21 @@ import java.util.ArrayList;
  */
 public final class SFCRTemplateMerger {
 
+    // =========================================================================
+    // Constants
+    // =========================================================================
+
+    private static final String FENCE_START = "```";
+    private static final String R_FENCE = "```{r}";
+
     private SFCRTemplateMerger() {}
 
     // =========================================================================
-    // Template block type (private to this class)
+    // Template block type
     // =========================================================================
 
     enum TemplateBlockType {
-        LOOKUP,
-        EQUATIONS,
-        MATRIX,
-        SANKEY,
-        PLANTUML,
-        SCOPE,
-        CIRCUIT,
-        OTHER
+        LOOKUP, EQUATIONS, MATRIX, SANKEY, PLANTUML, SCOPE, CIRCUIT, OTHER
     }
 
     // =========================================================================
@@ -50,21 +50,7 @@ public final class SFCRTemplateMerger {
      * before this method is called.
      */
     public static String export(String sourceText, SFCRExportContext ctx) {
-        ArrayList<String> equationBlocks = buildCanonicalEquationBlocks(ctx);
-        ArrayList<String> lookupBlocks = buildCanonicalLookupBlocks(ctx);
-        ArrayList<String> matrixBlocks = buildCanonicalMatrixBlocks(ctx);
-        ArrayList<String> sankeyBlocks = buildCanonicalSankeyBlocks(ctx);
-        ArrayList<String> plantUmlBlocks = buildCanonicalPlantUmlBlocks(ctx);
-        ArrayList<String> scopeBlocks = buildCanonicalScopeBlocks(ctx);
-        String circuitBlock = extractStructuralPayload(ctx.exportCircuitElements());
-
-        int lookupIndex = 0;
-        int eqIndex = 0;
-        int matrixIndex = 0;
-        int sankeyIndex = 0;
-        int plantUmlIndex = 0;
-        int scopeIndex = 0;
-
+        BlockReplacer replacer = new BlockReplacer(ctx);
         StringBuilder out = new StringBuilder();
         String[] lines = sourceText.split("\n", -1);
 
@@ -72,7 +58,7 @@ public final class SFCRTemplateMerger {
             String line = lines[i];
             String trimmed = line.trim();
 
-            if (trimmed.startsWith("```")) {
+            if (trimmed.startsWith(FENCE_START)) {
                 String fenceHeader = line;
                 StringBuilder fenced = new StringBuilder();
                 fenced.append(line).append("\n");
@@ -80,28 +66,13 @@ public final class SFCRTemplateMerger {
                 for (int j = i + 1; j < lines.length; j++) {
                     fenced.append(lines[j]).append("\n");
                     end = j;
-                    if (lines[j].trim().startsWith("```")) {
+                    if (lines[j].trim().startsWith(FENCE_START)) {
                         break;
                     }
                 }
 
                 TemplateBlockType type = detectTemplateBlockType(fenced.toString());
-                String replacement = null;
-                if (type == TemplateBlockType.LOOKUP && lookupIndex < lookupBlocks.size()) {
-                    replacement = lookupBlocks.get(lookupIndex++);
-                } else if (type == TemplateBlockType.EQUATIONS && eqIndex < equationBlocks.size()) {
-                    replacement = equationBlocks.get(eqIndex++);
-                } else if (type == TemplateBlockType.MATRIX && matrixIndex < matrixBlocks.size()) {
-                    replacement = matrixBlocks.get(matrixIndex++);
-                } else if (type == TemplateBlockType.SANKEY && sankeyIndex < sankeyBlocks.size()) {
-                    replacement = sankeyBlocks.get(sankeyIndex++);
-                } else if (type == TemplateBlockType.PLANTUML && plantUmlIndex < plantUmlBlocks.size()) {
-                    replacement = plantUmlBlocks.get(plantUmlIndex++);
-                } else if (type == TemplateBlockType.SCOPE && scopeIndex < scopeBlocks.size()) {
-                    replacement = scopeBlocks.get(scopeIndex++);
-                } else if (type == TemplateBlockType.CIRCUIT) {
-                    replacement = "";
-                }
+                String replacement = replacer.nextReplacement(type);
 
                 if (replacement == null) {
                     out.append(fenced.toString());
@@ -114,7 +85,7 @@ public final class SFCRTemplateMerger {
             }
 
             if (trimmed.startsWith("@lookup") || trimmed.startsWith("@equations") || trimmed.startsWith("@parameters") ||
-                trimmed.startsWith("@matrix") || trimmed.startsWith("@sankey") || trimmed.startsWith("@plantuml") ||
+                trimmed.startsWith("@matrix") || trimmed.startsWith("@sankey") || trimmed.startsWith("@startuml") ||
                 trimmed.startsWith("@scope") || trimmed.startsWith("@circuit")) {
 
                 StringBuilder rawBlock = new StringBuilder();
@@ -128,27 +99,12 @@ public final class SFCRTemplateMerger {
                 }
 
                 TemplateBlockType type = detectTemplateBlockType(rawBlock.toString());
-                String replacement = null;
-                if (type == TemplateBlockType.LOOKUP && lookupIndex < lookupBlocks.size()) {
-                    replacement = lookupBlocks.get(lookupIndex++);
-                } else if (type == TemplateBlockType.EQUATIONS && eqIndex < equationBlocks.size()) {
-                    replacement = equationBlocks.get(eqIndex++);
-                } else if (type == TemplateBlockType.MATRIX && matrixIndex < matrixBlocks.size()) {
-                    replacement = matrixBlocks.get(matrixIndex++);
-                } else if (type == TemplateBlockType.SANKEY && sankeyIndex < sankeyBlocks.size()) {
-                    replacement = sankeyBlocks.get(sankeyIndex++);
-                } else if (type == TemplateBlockType.PLANTUML && plantUmlIndex < plantUmlBlocks.size()) {
-                    replacement = plantUmlBlocks.get(plantUmlIndex++);
-                } else if (type == TemplateBlockType.SCOPE && scopeIndex < scopeBlocks.size()) {
-                    replacement = scopeBlocks.get(scopeIndex++);
-                } else if (type == TemplateBlockType.CIRCUIT) {
-                    replacement = "";
-                }
+                String replacement = replacer.nextReplacement(type);
 
                 if (replacement == null) {
                     out.append(rawBlock.toString());
                 } else if (!replacement.isEmpty()) {
-                    out.append("```{r}\n");
+                    out.append(R_FENCE).append("\n");
                     out.append(replacement).append("\n");
                     out.append("```\n\n");
                 }
@@ -177,19 +133,12 @@ public final class SFCRTemplateMerger {
                 }
 
                 TemplateBlockType type = detectTemplateBlockType(rStyle.toString());
-                String replacement = null;
-                if (type == TemplateBlockType.LOOKUP && lookupIndex < lookupBlocks.size()) {
-                    replacement = lookupBlocks.get(lookupIndex++);
-                } else if (type == TemplateBlockType.EQUATIONS && eqIndex < equationBlocks.size()) {
-                    replacement = equationBlocks.get(eqIndex++);
-                } else if (type == TemplateBlockType.MATRIX && matrixIndex < matrixBlocks.size()) {
-                    replacement = matrixBlocks.get(matrixIndex++);
-                }
+                String replacement = replacer.nextReplacement(type);
 
                 if (replacement == null) {
                     out.append(rStyle.toString());
                 } else if (!replacement.isEmpty()) {
-                    out.append("```{r}\n");
+                    out.append(R_FENCE).append("\n");
                     out.append(replacement).append("\n");
                     out.append("```\n\n");
                 }
@@ -201,27 +150,77 @@ public final class SFCRTemplateMerger {
             out.append(line).append("\n");
         }
 
-        while (lookupIndex < lookupBlocks.size()) {
-            out.append("\n```{r}\n").append(lookupBlocks.get(lookupIndex++)).append("\n```\n");
-        }
-        while (eqIndex < equationBlocks.size()) {
-            out.append("\n```{r}\n").append(equationBlocks.get(eqIndex++)).append("\n```\n");
-        }
-        while (matrixIndex < matrixBlocks.size()) {
-            out.append("\n```{r}\n").append(matrixBlocks.get(matrixIndex++)).append("\n```\n");
-        }
-        while (sankeyIndex < sankeyBlocks.size()) {
-            out.append("\n```{r}\n").append(sankeyBlocks.get(sankeyIndex++)).append("\n```\n");
-        }
-        while (scopeIndex < scopeBlocks.size()) {
-            out.append("\n```{r}\n").append(scopeBlocks.get(scopeIndex++)).append("\n```\n");
-        }
-
-        if (circuitBlock != null && !circuitBlock.trim().isEmpty()) {
-            out.append("\n```{r}\n").append(circuitBlock).append("\n```\n");
-        }
-
+        replacer.appendRemaining(out);
         return out.toString();
+    }
+
+    /** Helper class to manage block replacement state during export. */
+    private static class BlockReplacer {
+        private final ArrayList<String> equationBlocks;
+        private final ArrayList<String> lookupBlocks;
+        private final ArrayList<String> matrixBlocks;
+        private final ArrayList<String> sankeyBlocks;
+        private final ArrayList<String> plantUmlBlocks;
+        private final ArrayList<String> scopeBlocks;
+        private final String circuitBlock;
+
+        private int eqIndex = 0;
+        private int lookupIndex = 0;
+        private int matrixIndex = 0;
+        private int sankeyIndex = 0;
+        private int plantUmlIndex = 0;
+        private int scopeIndex = 0;
+
+        BlockReplacer(SFCRExportContext ctx) {
+            equationBlocks = buildCanonicalEquationBlocks(ctx);
+            lookupBlocks = buildCanonicalLookupBlocks(ctx);
+            matrixBlocks = buildCanonicalMatrixBlocks(ctx);
+            sankeyBlocks = buildCanonicalSankeyBlocks(ctx);
+            plantUmlBlocks = buildCanonicalPlantUmlBlocks(ctx);
+            scopeBlocks = buildCanonicalScopeBlocks(ctx);
+            circuitBlock = extractStructuralPayload(ctx.exportCircuitElements());
+        }
+
+        /** Returns next replacement for the given type, or null if none available. */
+        String nextReplacement(TemplateBlockType type) {
+            switch (type) {
+                case LOOKUP:
+                    return lookupIndex < lookupBlocks.size() ? lookupBlocks.get(lookupIndex++) : null;
+                case EQUATIONS:
+                    return eqIndex < equationBlocks.size() ? equationBlocks.get(eqIndex++) : null;
+                case MATRIX:
+                    return matrixIndex < matrixBlocks.size() ? matrixBlocks.get(matrixIndex++) : null;
+                case SANKEY:
+                    return sankeyIndex < sankeyBlocks.size() ? sankeyBlocks.get(sankeyIndex++) : null;
+                case PLANTUML:
+                    return plantUmlIndex < plantUmlBlocks.size() ? plantUmlBlocks.get(plantUmlIndex++) : null;
+                case SCOPE:
+                    return scopeIndex < scopeBlocks.size() ? scopeBlocks.get(scopeIndex++) : null;
+                case CIRCUIT:
+                    return "";
+                default:
+                    return null;
+            }
+        }
+
+        /** Append any remaining unused blocks to the output. */
+        void appendRemaining(StringBuilder out) {
+            appendRemainingFromList(out, lookupBlocks, lookupIndex);
+            appendRemainingFromList(out, equationBlocks, eqIndex);
+            appendRemainingFromList(out, matrixBlocks, matrixIndex);
+            appendRemainingFromList(out, sankeyBlocks, sankeyIndex);
+            appendRemainingFromList(out, scopeBlocks, scopeIndex);
+
+            if (circuitBlock != null && !circuitBlock.trim().isEmpty()) {
+                out.append("\n").append(R_FENCE).append("\n").append(circuitBlock).append("\n```\n");
+            }
+        }
+
+        private void appendRemainingFromList(StringBuilder out, ArrayList<String> blocks, int index) {
+            while (index < blocks.size()) {
+                out.append("\n").append(R_FENCE).append("\n").append(blocks.get(index++)).append("\n```\n");
+            }
+        }
     }
 
     /** Collapse excessive blank lines outside fenced code blocks. */
@@ -239,7 +238,7 @@ public final class SFCRTemplateMerger {
             String line = lines[i];
             String trimmed = line.trim();
 
-            if (trimmed.startsWith("```")) {
+            if (trimmed.startsWith(FENCE_START)) {
                 inFence = !inFence;
                 blankRun = 0;
                 out.append(line).append("\n");
@@ -315,9 +314,13 @@ public final class SFCRTemplateMerger {
         return blocks;
     }
 
+    /** Helper to collect directive blocks for a given block type. */
+    private static ArrayList<String> collectBlocksForType(SFCRBlockType blockType, String directive, SFCRExportContext ctx) {
+        return collectAtDirectiveBlocks(renderBlocksForType(blockType, ctx), directive);
+    }
+
     static ArrayList<String> buildCanonicalLookupBlocks(SFCRExportContext ctx) {
-        String lookupText = renderBlocksForType(SFCRBlockType.LOOKUP, ctx);
-        return collectAtDirectiveBlocks(lookupText, "@lookup");
+        return collectBlocksForType(SFCRBlockType.LOOKUP, "@lookup", ctx);
     }
 
     static ArrayList<String> buildCanonicalMatrixBlocks(SFCRExportContext ctx) {
@@ -328,15 +331,15 @@ public final class SFCRTemplateMerger {
     }
 
     static ArrayList<String> buildCanonicalSankeyBlocks(SFCRExportContext ctx) {
-        return collectAtDirectiveBlocks(renderBlocksForType(SFCRBlockType.SANKEY, ctx), "@sankey");
+        return collectBlocksForType(SFCRBlockType.SANKEY, "@sankey", ctx);
     }
 
     static ArrayList<String> buildCanonicalPlantUmlBlocks(SFCRExportContext ctx) {
-        return collectPlantUmlBlocks(renderBlocksForType(SFCRBlockType.PLANTUML, ctx));
+        return collectBlocksForType(SFCRBlockType.PLANTUML, "@startuml", ctx);
     }
 
     static ArrayList<String> buildCanonicalScopeBlocks(SFCRExportContext ctx) {
-        return collectAtDirectiveBlocks(renderBlocksForType(SFCRBlockType.SCOPE, ctx), "@scope");
+        return collectBlocksForType(SFCRBlockType.SCOPE, "@scope", ctx);
     }
 
     /** Render all handler output for a given block type. */
@@ -379,7 +382,8 @@ public final class SFCRTemplateMerger {
             StringBuilder one = new StringBuilder();
             for (int j = i; j < lines.length; j++) {
                 one.append(lines[j]).append("\n");
-                if (lines[j].trim().equals("@end")) {
+                String endTrimmed = lines[j].trim();
+                if (endTrimmed.equals("@end") || endTrimmed.equals("@enduml")) {
                     i = j;
                     break;
                 }
@@ -429,51 +433,6 @@ public final class SFCRTemplateMerger {
         return blocks;
     }
 
-    static ArrayList<String> collectPlantUmlBlocks(String text) {
-        ArrayList<String> blocks = new ArrayList<String>();
-        if (text == null || text.trim().isEmpty()) {
-            return blocks;
-        }
-        String[] lines = text.split("\n");
-        for (int i = 0; i < lines.length; i++) {
-            String trimmed = lines[i].trim();
-            if (isPlantUmlFenceHeader(trimmed)) {
-                StringBuilder one = new StringBuilder();
-                one.append(lines[i]).append("\n");
-                int j = i + 1;
-                for (; j < lines.length; j++) {
-                    one.append(lines[j]).append("\n");
-                    if (lines[j].trim().startsWith("```")) {
-                        break;
-                    }
-                }
-                String payload = stripTrailingFenceLines(extractStructuralPayload(one.toString()));
-                if (!payload.isEmpty()) {
-                    blocks.add(payload);
-                }
-                i = j;
-                continue;
-            }
-            if (!trimmed.startsWith("@plantuml") && !trimmed.startsWith("@startuml")) {
-                continue;
-            }
-            StringBuilder one = new StringBuilder();
-            for (int j = i; j < lines.length; j++) {
-                one.append(lines[j]).append("\n");
-                String endTrimmed = lines[j].trim();
-                if ("@end".equals(endTrimmed) || "@enduml".equals(endTrimmed)) {
-                    i = j;
-                    break;
-                }
-            }
-            String payload = extractStructuralPayload(one.toString());
-            if (!payload.isEmpty()) {
-                blocks.add(payload);
-            }
-        }
-        return blocks;
-    }
-
     static String extractStructuralPayload(String block) {
         if (block == null) {
             return "";
@@ -489,24 +448,6 @@ public final class SFCRTemplateMerger {
             payload.append(lines[i]).append("\n");
         }
         return payload.toString().trim();
-    }
-
-    /**
-     * Strip trailing markdown fence closing lines from PlantUML payload.
-     * This fixes a bug where fenced PlantUML blocks would have extra ``` lines.
-     */
-    private static String stripTrailingFenceLines(String text) {
-        if (text == null || text.isEmpty()) {
-            return "";
-        }
-        String result = text;
-        while (result.endsWith("\n```") || result.endsWith("\n```\n")) {
-            int idx = result.lastIndexOf("\n```");
-            if (idx >= 0) {
-                result = result.substring(0, idx);
-            }
-        }
-        return result.trim();
     }
 
     // =========================================================================
@@ -543,7 +484,7 @@ public final class SFCRTemplateMerger {
         if (lower.contains("@sankey")) {
             return TemplateBlockType.SANKEY;
         }
-        if (lower.contains("@plantuml") || lower.contains("@startuml") || lower.contains("```{plantuml") || lower.startsWith("```plantuml")) {
+        if (lower.contains("@startuml")) {
             return TemplateBlockType.PLANTUML;
         }
         if (lower.contains("@scope")) {
@@ -553,145 +494,16 @@ public final class SFCRTemplateMerger {
     }
 
     private static String wrapReplacementWithFenceLike(String fenceHeader, String replacement) {
-        String header = (fenceHeader == null || fenceHeader.trim().isEmpty()) ? "```{r}" : fenceHeader.trim();
-        if (!header.startsWith("```")) {
-            header = "```{r}";
+        String header = (fenceHeader == null || fenceHeader.trim().isEmpty()) ? R_FENCE : fenceHeader.trim();
+        if (!header.startsWith(FENCE_START)) {
+            header = R_FENCE;
         }
-        if (isPlantUmlFenceHeader(header)) {
-            return wrapPlantUmlReplacementWithFenceLike(header, replacement);
+        if (replacement != null && replacement.contains("@startuml")) {
+            header = R_FENCE;
         }
         StringBuilder sb = new StringBuilder();
         sb.append(header).append("\n");
         sb.append(replacement).append("\n");
-        sb.append("```");
-        return sb.toString();
-    }
-
-    private static boolean isPlantUmlFenceHeader(String fenceHeader) {
-        if (fenceHeader == null) {
-            return false;
-        }
-        String lower = fenceHeader.trim().toLowerCase();
-        return lower.startsWith("```{plantuml") || lower.equals("```plantuml") || lower.startsWith("```plantuml ");
-    }
-
-    private static String wrapPlantUmlReplacementWithFenceLike(String fenceHeader, String replacement) {
-        String rawSource = replacement == null ? "" : replacement.trim();
-        if (rawSource.startsWith("@startuml")) {
-            StringBuilder direct = new StringBuilder();
-            direct.append("```{PlantUML}\n");
-            direct.append(rawSource);
-            if (!rawSource.endsWith("\n")) {
-                direct.append("\n");
-            }
-            direct.append("```");
-            return direct.toString();
-        }
-        String[] lines = rawSource.isEmpty() ? new String[0] : rawSource.split("\n");
-        String headerLine = (lines.length > 0) ? lines[0].trim() : "";
-        String xAttr = "";
-        String yAttr = "";
-        String widthAttr = "";
-        String frameWidthAttr = "";
-        String frameHeightAttr = "";
-        String scaleAttr = "";
-
-        if (headerLine.startsWith("@plantuml") || headerLine.startsWith("@startuml")) {
-            String[] parts = headerLine.split("\\s+");
-            for (int i = 1; i < parts.length; i++) {
-                if (parts[i].startsWith("x=")) {
-                    xAttr = " " + parts[i];
-                } else if (parts[i].startsWith("y=")) {
-                    yAttr = " " + parts[i];
-                } else if (parts[i].startsWith("w=")) {
-                    frameWidthAttr = " " + parts[i];
-                } else if (parts[i].startsWith("h=")) {
-                    frameHeightAttr = " " + parts[i];
-                } else if (parts[i].startsWith("width=")) {
-                    widthAttr = " " + parts[i];
-                } else if (parts[i].startsWith("frameWidth=")) {
-                    frameWidthAttr = " " + parts[i];
-                } else if (parts[i].startsWith("frameHeight=")) {
-                    frameHeightAttr = " " + parts[i];
-                } else if (parts[i].startsWith("scale=")) {
-                    scaleAttr = " " + parts[i];
-                }
-            }
-        }
-
-        int startBody = 0;
-        int endBody = lines.length;
-        if (lines.length > 0 && (lines[0].trim().startsWith("@plantuml") || lines[0].trim().startsWith("@startuml"))) {
-            startBody = 1;
-        }
-        if (endBody > startBody && (lines[endBody - 1].trim().equals("@end") || lines[endBody - 1].trim().equals("@enduml"))) {
-            endBody--;
-        }
-        while (endBody > startBody) {
-            String trimmed = lines[startBody].trim();
-            if (trimmed.startsWith("width:")) {
-                String widthValue = trimmed.substring("width:".length()).trim();
-                if (!widthValue.isEmpty()) {
-                    widthAttr = " width=" + widthValue;
-                }
-                startBody++;
-                continue;
-            }
-            if (trimmed.startsWith("frameWidth:")) {
-                String frameWidthValue = trimmed.substring("frameWidth:".length()).trim();
-                if (!frameWidthValue.isEmpty()) {
-                    frameWidthAttr = " frameWidth=" + frameWidthValue;
-                }
-                startBody++;
-                continue;
-            }
-            if (trimmed.startsWith("frameHeight:")) {
-                String frameHeightValue = trimmed.substring("frameHeight:".length()).trim();
-                if (!frameHeightValue.isEmpty()) {
-                    frameHeightAttr = " frameHeight=" + frameHeightValue;
-                }
-                startBody++;
-                continue;
-            }
-            if (trimmed.startsWith("scale:")) {
-                String scaleValue = trimmed.substring("scale:".length()).trim();
-                if (!scaleValue.isEmpty()) {
-                    scaleAttr = " scale=" + scaleValue;
-                }
-                startBody++;
-                continue;
-            }
-            break;
-        }
-
-        if (startBody < endBody && lines[startBody].trim().startsWith("@startuml")) {
-            StringBuilder startLine = new StringBuilder("@startuml");
-            if (!xAttr.isEmpty()) {
-                startLine.append(xAttr);
-            }
-            if (!yAttr.isEmpty()) {
-                startLine.append(yAttr);
-            }
-            if (!widthAttr.isEmpty()) {
-                startLine.append(widthAttr);
-            }
-            if (!frameWidthAttr.isEmpty()) {
-                startLine.append(frameWidthAttr);
-            }
-            if (!frameHeightAttr.isEmpty()) {
-                startLine.append(frameHeightAttr);
-            }
-            if (!scaleAttr.isEmpty()) {
-                startLine.append(scaleAttr);
-            }
-            lines[startBody] = startLine.toString();
-        }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("```{PlantUML}\n");
-        for (int i = startBody; i < endBody; i++) {
-            sb.append(lines[i]).append("\n");
-        }
         sb.append("```");
         return sb.toString();
     }
@@ -789,7 +601,6 @@ public final class SFCRTemplateMerger {
             || trimmed.startsWith("@parameters")
             || trimmed.startsWith("@matrix")
             || trimmed.startsWith("@sankey")
-            || trimmed.startsWith("@plantuml")
             || trimmed.startsWith("@startuml")
             || trimmed.startsWith("@scope")
             || trimmed.startsWith("@circuit")
@@ -811,7 +622,7 @@ public final class SFCRTemplateMerger {
         }
         if (lower.contains("@equations") || lower.contains("@parameters") ||
             lower.contains("@matrix") || lower.contains("@circuit") ||
-            lower.contains("@sankey") || lower.contains("@plantuml") || lower.contains("@startuml") || lower.contains("@scope") ||
+            lower.contains("@sankey") || lower.contains("@startuml") || lower.contains("@scope") ||
             lower.contains("@info")) {
             return false;
         }

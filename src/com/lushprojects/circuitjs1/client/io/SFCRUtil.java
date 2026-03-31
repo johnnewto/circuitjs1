@@ -169,6 +169,99 @@ public class SFCRUtil {
     }
 
     // =========================================================================
+    // Boolean parsing
+    // =========================================================================
+
+    /**
+     * Parse flexible boolean strings (true/false, 1/0, yes/no).
+     */
+    public static boolean parseBoolean(String text, boolean defaultValue) {
+        if (text == null) return defaultValue;
+        String t = text.trim().toLowerCase();
+        if (t.equals("true") || t.equals("1") || t.equals("yes")) return true;
+        if (t.equals("false") || t.equals("0") || t.equals("no")) return false;
+        return defaultValue;
+    }
+
+    // =========================================================================
+    // Identifier character helpers
+    // =========================================================================
+
+    /**
+     * Check if a character can start a SFCR identifier (variable/lookup name).
+     */
+    public static boolean isIdentifierStart(char c) {
+        return Character.isLetter(c) || c == '_' || c == '\\';
+    }
+
+    /**
+     * Check if a character can be part of a SFCR identifier (after the first char).
+     */
+    public static boolean isIdentifierPart(char c) {
+        return Character.isLetterOrDigit(c) || c == '_' || c == '\\' || c == '^' || c == '{' || c == '}' || c == '.';
+    }
+
+    /**
+     * Check if a string looks like a valid SFCR identifier.
+     */
+    public static boolean isValidIdentifier(String name) {
+        if (name == null || name.isEmpty()) return false;
+        if (!isIdentifierStart(name.charAt(0))) return false;
+        for (int i = 1; i < name.length(); i++) {
+            if (!isIdentifierPart(name.charAt(i))) return false;
+        }
+        return true;
+    }
+
+    // =========================================================================
+    // Parenthesis matching
+    // =========================================================================
+
+    /**
+     * Find the index of the closing parenthesis matching the one at openIndex.
+     * Returns -1 if not found.
+     */
+    public static int findMatchingParen(String text, int openIndex) {
+        int depth = 0;
+        for (int i = openIndex; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '(') depth++;
+            else if (c == ')') {
+                depth--;
+                if (depth == 0) return i;
+            }
+        }
+        return -1;
+    }
+
+    // =========================================================================
+    // Table row parsing
+    // =========================================================================
+
+    /**
+     * Parse a markdown table row into cells, trimming leading/trailing pipes and whitespace.
+     */
+    public static String[] parseTableRow(String line) {
+        if (line == null) return new String[0];
+        String l = line;
+        if (l.startsWith("|")) l = l.substring(1);
+        if (l.endsWith("|")) l = l.substring(0, l.length() - 1);
+        
+        String[] parts = l.split("\\|", -1);
+        java.util.ArrayList<String> cells = new java.util.ArrayList<String>();
+        for (String part : parts) {
+            cells.add(part.trim());
+        }
+        
+        // Remove trailing empty cells
+        while (!cells.isEmpty() && cells.get(cells.size() - 1).isEmpty()) {
+            cells.remove(cells.size() - 1);
+        }
+        
+        return cells.toArray(new String[0]);
+    }
+
+    // =========================================================================
     // Parenthesis counting
     // =========================================================================
 

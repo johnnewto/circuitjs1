@@ -38,7 +38,7 @@ import com.lushprojects.circuitjs1.client.io.sfcr.handlers.UnknownBlockParseHand
  *   @parameters - Alias for @equations (sfcr compatibility)
  *   @lookup     - Named lookup tables for equation interpolation
  *   @matrix     - Transaction flow matrices (creates SFCTableElm)
- *   @plantuml   - PlantUML sequence diagrams (creates SequenceDiagramElm)
+ *   @startuml   - PlantUML sequence diagrams (creates SequenceDiagramElm)
  *   @hints      - Variable tooltips (overrides inline comments)
  *   @scope      - Oscilloscope displays
  *   @circuit    - Raw CircuitJS element passthrough
@@ -105,26 +105,16 @@ public class SFCRParser {
     // Fields
     // =========================================================================
     
-    private CirSim sim;
-    private int currentX = 176;
-    private int currentY = 24;
-    private int elementSpacing = 16;
-    
-    private ArrayList<CircuitElm> createdElements = new ArrayList<CircuitElm>();
-    private HashMap<String, String> hints = new HashMap<String, String>();
-    private ArrayList<String> scopeVariables = new ArrayList<String>();
-    private ArrayList<ScopeBlockSpec> scopeBlocks = new ArrayList<ScopeBlockSpec>();
-    private HashMap<String, String> initSettings = new HashMap<String, String>();
-    private ArrayList<String> rawCircuitLines = new ArrayList<String>();
-    private boolean lookupClampDefault = true;
-    private String infoContent = null;
-    private ArrayList<ParseWarning> parseWarnings = new ArrayList<ParseWarning>();
+    private final CirSim sim;
     private final UnknownBlockParseHandler unknownBlockParseHandler = new UnknownBlockParseHandler();
     private final RStyleParseService rStyleParseService = new RStyleParseService();
     private final SFCRTableDumpBuilderService tableDumpBuilderService = new SFCRTableDumpBuilderService();
 
     /** Non-null when in result-mode ({@link #parseToResult}). */
     private SFCRParseResult pendingResult = null;
+    
+    /** Context holding all mutable parse state. Populated after {@link #parse(String)}. */
+    private SFCRParseContext ctx;
 
     // =========================================================================
     // GWT-independent helpers (usable from plain-Java unit tests)
@@ -161,7 +151,6 @@ public class SFCRParser {
     /** Create a new SFCR parser. */
     public SFCRParser(CirSim sim) {
         this.sim = sim;
-        lookupClampDefault = (sim == null) ? true : sim.isSfcrLookupClampDefault();
     }
 
     public static class ParseException extends RuntimeException {
@@ -199,7 +188,9 @@ public class SFCRParser {
         parser.pendingResult = new SFCRParseResult();
         parser.parse(text);  // parse() normalizes internally
         // Copy hints collected during block parsing into the result.
-        parser.pendingResult.hints.putAll(parser.hints);
+        if (parser.ctx != null) {
+            parser.pendingResult.hints.putAll(parser.ctx.getHints());
+        }
         return parser.pendingResult;
     }
 
@@ -287,7 +278,7 @@ public class SFCRParser {
                 "@parameters".equals(directive) || "@hints".equals(directive) ||
                 "@scope".equals(directive) || "@circuit".equals(directive) ||
                 "@info".equals(directive) || "@sankey".equals(directive) ||
-                "@plantuml".equals(directive) ||
+                "@startuml".equals(directive) ||
                 "@lookup".equals(directive);
     }
 
@@ -384,9 +375,8 @@ public class SFCRParser {
                 l.startsWith("@parameters") ||
                 l.startsWith("@init") || l.startsWith("@action") || l.startsWith("@hints") ||
                 l.startsWith("@scope") || l.startsWith("@circuit") ||
-                l.startsWith("@info") || l.startsWith("@sankey") || l.startsWith("@plantuml") ||
+                l.startsWith("@info") || l.startsWith("@sankey") ||
                 l.startsWith("@startuml") ||
-                isPlantUmlFenceHeaderStatic(l) ||
                 l.startsWith("@lookup")) {
                 return true;
             }
@@ -410,14 +400,6 @@ public class SFCRParser {
         return false;
     }
 
-    private static boolean isPlantUmlFenceHeaderStatic(String trimmedLine) {
-        if (trimmedLine == null) {
-            return false;
-        }
-        String lower = trimmedLine.trim().toLowerCase();
-        return lower.startsWith("```{plantuml") || lower.equals("```plantuml") || lower.startsWith("```plantuml ");
-    }
-    
     /** Parse SFCR-format text and create circuit elements. */
     public boolean parse(String text) {
         if (text == null || text.trim().isEmpty()) {
@@ -429,7 +411,7 @@ public class SFCRParser {
         String normalizedText = new SFCRSyntaxNormalizer().normalize(text);
         
         // Create context that owns all mutable parse state
-        SFCRParseContext ctx = new SFCRParseContext(sim, tableDumpBuilderService, rStyleParseService);
+        ctx = new SFCRParseContext(sim, tableDumpBuilderService, rStyleParseService);
         if (pendingResult != null) {
             ctx.setPendingResult(pendingResult);
         }
@@ -460,13 +442,6 @@ public class SFCRParser {
                     if (inFence) pendingCommentsConsumedInFence = true;
                     storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_PLANTUML, "", pendingBlockComments);
                     i = parseInlinePlantUmlBlock(lines, i, ctx);
-                    continue;
-                }
-
-                if (!inFence && isPlantUmlFenceHeader(line)) {
-                    if (inFence) pendingCommentsConsumedInFence = true;
-                    storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_PLANTUML, "", pendingBlockComments);
-                    i = parsePlantUmlFence(lines, i, ctx);
                     continue;
                 }
 
@@ -522,7 +497,7 @@ public class SFCRParser {
                         if (inFence) pendingCommentsConsumedInFence = true;
                         storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_SANKEY, "", pendingBlockComments);
                         consumedPendingComments = true;
-                    } else if ("@plantuml".equals(directive)) {
+                    } else if ("@startuml".equals(directive)) {
                         if (inFence) pendingCommentsConsumedInFence = true;
                         storePendingBlockComments(SFCRBlockCommentRegistry.TYPE_PLANTUML, "", pendingBlockComments);
                         consumedPendingComments = true;
@@ -555,31 +530,12 @@ public class SFCRParser {
                 }
             }
             
-            // Copy state from context back to parser fields for external access
-            parseWarnings.clear();
-            parseWarnings.addAll(ctx.getWarnings());
-            createdElements.clear();
-            createdElements.addAll(ctx.getCreatedElements());
-            hints.clear();
-            hints.putAll(ctx.getHints());
-            scopeVariables.clear();
-            scopeVariables.addAll(ctx.getScopeVariables());
-            scopeBlocks.clear();
-            scopeBlocks.addAll(ctx.getScopeBlocks());
-            initSettings.clear();
-            initSettings.putAll(ctx.getInitSettings());
-            rawCircuitLines.clear();
-            rawCircuitLines.addAll(ctx.getRawCircuitLines());
-            infoContent = ctx.getInfoContent();
-            currentX = ctx.getCurrentX();
-            currentY = ctx.getCurrentY();
-
             // Apply init settings first (timestep, units, etc.)
             applyInitSettings();
             
             // Register all hints
-            for (String varName : hints.keySet()) {
-                HintRegistry.setHint(varName, hints.get(varName));
+            for (String varName : ctx.getHints().keySet()) {
+                HintRegistry.setHint(varName, ctx.getHints().get(varName));
             }
             
             return true;
@@ -591,7 +547,7 @@ public class SFCRParser {
     }
 
     public ArrayList<ParseWarning> getParseWarnings() {
-        return parseWarnings;
+        return ctx != null ? new ArrayList<ParseWarning>(ctx.getWarnings()) : new ArrayList<ParseWarning>();
     }
 
     private void preScanLookupTables(String[] lines, SFCRParseContext ctx) {
@@ -699,11 +655,14 @@ public class SFCRParser {
         if (mode.equals("pwlx") || mode.equals("extrapolate") || mode.equals("extrapolating") || mode.equals("linear")) {
             return "pwlx";
         }
+        boolean lookupClampDefault = ctx != null ? ctx.isLookupClampDefault() : true;
         return lookupClampDefault ? "pwl" : "pwlx";
     }
     
     /** Apply parsed init settings to the simulator. */
     private void applyInitSettings() {
+        HashMap<String, String> initSettings = ctx != null ? ctx.getInitSettings() : new HashMap<String, String>();
+        
         // In result-mode (no sim), just copy raw settings to the result.
         if (pendingResult != null) {
             pendingResult.initSettings.putAll(initSettings);
@@ -831,7 +790,7 @@ public class SFCRParser {
 
     /** Get raw circuit lines for standard element loader. */
     public ArrayList<String> getRawCircuitLines() {
-        return rawCircuitLines;
+        return ctx != null ? ctx.getRawCircuitLines() : new ArrayList<String>();
     }
 
     /** Finalize scope creation after all elements (including @circuit raw lines) are loaded. */
@@ -841,7 +800,7 @@ public class SFCRParser {
     
     /** Get the @info block content (markdown), or null if not present. */
     public String getInfoContent() {
-        return infoContent;
+        return ctx != null ? ctx.getInfoContent() : null;
     }
     
     private static String[] parseTableRowCommon(String line, boolean requireWrappedPipes) {
@@ -887,42 +846,9 @@ public class SFCRParser {
         pendingComments.clear();
     }
 
-    private boolean isPlantUmlFenceHeader(String trimmedLine) {
-        if (trimmedLine == null) {
-            return false;
-        }
-        String lower = trimmedLine.trim().toLowerCase();
-        return lower.startsWith("```{plantuml") || lower.equals("```plantuml") || lower.startsWith("```plantuml ");
-    }
-
-    private int parsePlantUmlFence(String[] lines, int startIndex, SFCRParseContext ctx) {
-        ArrayList<String> synthetic = new ArrayList<String>();
-        appendPlantUmlSyntheticHeader(lines[startIndex].trim(), synthetic);
-
-        int i = startIndex + 1;
-        while (i < lines.length) {
-            String rawLine = lines[i];
-            if (rawLine.trim().startsWith("```")) {
-                break;
-            }
-            synthetic.add(rawLine);
-            i++;
-        }
-        synthetic.add("@end");
-
-        SFCRBlockParseHandler handler = SFCRBlockParseHandlerRegistry.getHandler("@plantuml");
-        if (handler != null) {
-            handler.parse(synthetic.toArray(new String[0]), 0, ctx);
-        }
-        if (i < lines.length && lines[i].trim().startsWith("```")) {
-            i++;
-        }
-        return i;
-    }
-
     private int parseInlinePlantUmlBlock(String[] lines, int startIndex, SFCRParseContext ctx) {
         ArrayList<String> synthetic = new ArrayList<String>();
-        synthetic.add("@plantuml");
+        synthetic.add("@startuml");
 
         int i = startIndex;
         boolean foundEnd = false;
@@ -934,62 +860,22 @@ public class SFCRParser {
             }
             synthetic.add(rawLine);
             i++;
-            if ("@enduml".equals(trimmed)) {
+            if ("@end".equals(trimmed) || "@enduml".equals(trimmed)) {
                 foundEnd = true;
                 break;
             }
         }
 
         if (!foundEnd) {
-            synthetic.add("@enduml");
+            synthetic.add("@end");
         }
         synthetic.add("@end");
 
-        SFCRBlockParseHandler handler = SFCRBlockParseHandlerRegistry.getHandler("@plantuml");
+        SFCRBlockParseHandler handler = SFCRBlockParseHandlerRegistry.getHandler("@startuml");
         if (handler != null) {
             handler.parse(synthetic.toArray(new String[0]), 0, ctx);
         }
         return i;
-    }
-
-    private void appendPlantUmlSyntheticHeader(String fenceHeader, ArrayList<String> synthetic) {
-        if (synthetic == null) {
-            return;
-        }
-        String trimmed = (fenceHeader == null) ? "" : fenceHeader.trim();
-        String rest = "";
-
-        if (trimmed.startsWith("```{")) {
-            int close = trimmed.lastIndexOf('}');
-            if (close > 4) {
-                rest = trimmed.substring(4, close).trim();
-            }
-        } else if (trimmed.startsWith("```")) {
-            rest = trimmed.substring(3).trim();
-        }
-
-        StringBuilder header = new StringBuilder("@plantuml");
-        if (rest.isEmpty()) {
-            synthetic.add(header.toString());
-            return;
-        }
-
-        String[] parts = rest.split("\\s+");
-        for (int i = 1; i < parts.length; i++) {
-            String part = parts[i].trim();
-            if (part.isEmpty()) {
-                continue;
-            }
-            String lowerPart = part.toLowerCase();
-            if (lowerPart.startsWith("x=") || lowerPart.startsWith("y=")) {
-                header.append(" ").append(part);
-            } else if (lowerPart.startsWith("width=")) {
-                synthetic.add("width: " + part.substring(part.indexOf('=') + 1));
-            } else if (lowerPart.startsWith("scale=")) {
-                synthetic.add("scale: " + part.substring(part.indexOf('=') + 1));
-            }
-        }
-        synthetic.add(0, header.toString());
     }
 
     /** Extract scope block name from header, ignoring known key=value attributes. */
@@ -1030,6 +916,10 @@ public class SFCRParser {
 
     /** Add scopes from parsed @scope blocks and legacy @scope var lines. */
     private void addScopes() {
+        if (ctx == null) return;
+        
+        ArrayList<ScopeBlockSpec> scopeBlocks = ctx.getScopeBlocks();
+        ArrayList<String> scopeVariables = ctx.getScopeVariables();
         boolean addedAny = false;
 
         // New block form: @scope ... @end with uid-based traces
@@ -1048,7 +938,7 @@ public class SFCRParser {
                 matchingScopeElm.y2 = block.y2;
                 sim.getImportExportHelper().assignPersistentUid(matchingScopeElm, block.elmUid);
                 sim.elmList.addElement(matchingScopeElm);
-                createdElements.add(matchingScopeElm);
+                ctx.addCreatedElement(matchingScopeElm);
             }
 
             if (matchingScopeElm != null && matchingScopeElm.elmScope != null) {
@@ -1175,6 +1065,6 @@ public class SFCRParser {
     
     /** Get list of created elements (for testing/debugging). */
     public ArrayList<CircuitElm> getCreatedElements() {
-        return createdElements;
+        return ctx != null ? ctx.getCreatedElements() : new ArrayList<CircuitElm>();
     }
 }

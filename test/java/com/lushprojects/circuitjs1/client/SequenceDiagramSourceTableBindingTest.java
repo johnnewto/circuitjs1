@@ -26,10 +26,10 @@ class SequenceDiagramSourceTableBindingTest extends CircuitJavaSimTestBase {
     void sourceBoundDiagramRendersAndRefreshes() throws Exception {
         Path fixturePath = Paths.get(System.getProperty("projectDir"), "test/resources/sfcr_debug_reference.md");
         String fixture = Files.readString(fixturePath, StandardCharsets.UTF_8);
-        String circuitText = fixture + "\n```{PlantUML}\n"
+        String circuitText = fixture + "\n```{r}\n"
             + "@startuml x=96 y=32 scale=0.6\n"
             + "source: Transaction Flow Matrix\n"
-            + "@enduml\n"
+            + "@end\n"
             + "```\n";
 
         loadCircuitText(circuitText);

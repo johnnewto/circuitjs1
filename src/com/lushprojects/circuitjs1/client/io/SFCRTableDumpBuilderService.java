@@ -50,23 +50,23 @@ public class SFCRTableDumpBuilderService {
 
         boolean showInitial = (showInitialValuesOverride != null) ? showInitialValuesOverride.booleanValue() : false;
         dump.append(showInitial ? "true 2 1 false 5 0 false " : "false 2 1 false 5 0 false ");
-        dump.append(SFCRParser.escapeToken(name.replace("_", " "))).append(" ");
+        dump.append(SFCRUtil.escapeToken(name.replace("_", " "))).append(" ");
         dump.append("\\0 ");
 
         if (hasSumColumn) {
             for (int i = 0; i < columnNames.size() - 1; i++) {
-                dump.append(SFCRParser.escapeToken(columnNames.get(i))).append(" ");
+                dump.append(SFCRUtil.escapeToken(columnNames.get(i))).append(" ");
             }
             dump.append("Σ ");
         } else {
             for (String col : columnNames) {
-                dump.append(SFCRParser.escapeToken(col)).append(" ");
+                dump.append(SFCRUtil.escapeToken(col)).append(" ");
             }
             dump.append("Σ ");
         }
 
         for (String row : rowNames) {
-            dump.append(SFCRParser.escapeToken(row)).append(" ");
+            dump.append(SFCRUtil.escapeToken(row)).append(" ");
         }
         for (int i = 0; i < cols; i++) {
             dump.append("0 ");
@@ -84,7 +84,7 @@ public class SFCRTableDumpBuilderService {
                 if (eq.equals("-") || eq.trim().isEmpty()) {
                     eq = "";
                 }
-                dump.append(SFCRParser.escapeToken(eq)).append(" ");
+                dump.append(SFCRUtil.escapeToken(eq)).append(" ");
             }
             dump.append("\\0 ");
         }
@@ -117,18 +117,18 @@ public class SFCRTableDumpBuilderService {
         }
         dump.append("266 ").append(x1).append(" ").append(y1).append(" ");
         dump.append(x2).append(" ").append(y2).append(" ").append(flags).append(" ");
-        dump.append(SFCRParser.escapeToken(name.replace("_", " "))).append(" ");
+        dump.append(SFCRUtil.escapeToken(name.replace("_", " "))).append(" ");
         dump.append(rows).append(" ");
 
         for (int i = 0; i < rows; i++) {
-            dump.append(SFCRParser.escapeToken(outputNames.get(i))).append(" ");
-            dump.append(SFCRParser.escapeToken(equations.get(i))).append(" ");
+            dump.append(SFCRUtil.escapeToken(outputNames.get(i))).append(" ");
+            dump.append(SFCRUtil.escapeToken(equations.get(i))).append(" ");
             String initEq = (i < initialEquations.size() && initialEquations.get(i) != null)
                 ? initialEquations.get(i) : "";
-            dump.append(SFCRParser.escapeToken(initEq)).append(" ");
+            dump.append(SFCRUtil.escapeToken(initEq)).append(" ");
             String sliderVar = (i < sliderVarNames.size() && sliderVarNames.get(i) != null)
                 ? sliderVarNames.get(i) : "";
-            dump.append(SFCRParser.escapeToken(sliderVar)).append(" ");
+            dump.append(SFCRUtil.escapeToken(sliderVar)).append(" ");
             double sliderValue = (i < sliderValues.size() && sliderValues.get(i) != null)
                 ? sliderValues.get(i).doubleValue() : 0.5;
             dump.append(sliderValue).append(" ");
@@ -136,7 +136,7 @@ public class SFCRTableDumpBuilderService {
             dump.append(modeOrdinal).append(" ");
             String target = (i < targetNodeNames.size() && targetNodeNames.get(i) != null)
                 ? targetNodeNames.get(i) : "";
-            dump.append(SFCRParser.escapeToken(target)).append(" ");
+            dump.append(SFCRUtil.escapeToken(target)).append(" ");
             dump.append("1.0 ");
             dump.append("1.0 ");
             dump.append("0 ");

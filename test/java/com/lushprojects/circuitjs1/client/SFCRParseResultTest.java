@@ -181,17 +181,13 @@ class SFCRParseResultTest {
     }
 
         @Test
-        @DisplayName("@plantuml block parses to SequenceDiagramElm dump type 467")
+        @DisplayName("@startuml block parses to SequenceDiagramElm dump type 467")
         void testPlantUmlBlockCaptured() {
         String text =
-            "@plantuml x=200 y=120\n" +
-            "width: 640\n" +
-            "scale: 1.5\n" +
-            "@startuml\n" +
+            "@startuml x=200 y=120 width=640 scale=1.5\n" +
             "actor Households\n" +
             "participant Firms\n" +
             "Households -> Firms : Demand\n" +
-            "@enduml\n" +
             "@end\n";
 
         SFCRParseResult parsed = SFCRParser.parseToResult(text);
@@ -206,15 +202,15 @@ class SFCRParseResultTest {
         }
 
         @Test
-        @DisplayName("fenced PlantUML block loads as SequenceDiagramElm without explicit @plantuml wrapper")
+        @DisplayName("fenced r block with @startuml loads as SequenceDiagramElm")
         void testFencedPlantUmlBlockCaptured() {
         String text =
-                "```{PlantUML}\n" +
+                "```{r}\n" +
             "@startuml x=672 y=-8 width=640 scale=1.25\n" +
             "actor Households\n" +
             "participant Firms\n" +
             "Households -> Firms : Demand\n" +
-            "@enduml\n" +
+            "@end\n" +
             "```\n";
 
         SFCRParseResult parsed = SFCRParser.parseToResult(text);
@@ -237,7 +233,7 @@ class SFCRParseResultTest {
                 "```{r}\n" +
             "@startuml x=-384 y=56 width=560\n" +
             "source: Transaction Flow Matrix\n" +
-            "@enduml\n" +
+            "@end\n" +
             "```\n";
 
         SFCRParseResult parsed = SFCRParser.parseToResult(text);

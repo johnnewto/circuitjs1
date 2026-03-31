@@ -77,30 +77,33 @@ class SFCRExportParseRoundTripTest {
                 "@equations Demo\n" +
                 "  Y ~ 1\n" +
                 "@end\n\n" +
-                "@plantuml x=200 y=120\n" +
-                "width: 620\n" +
-            "scale: 1.5\n" +
-                "@startuml\n" +
+                "```{r}\n" +
+                "@startuml x=200 y=120 width=620 scale=1.5\n" +
                 "source: Transaction Flow Matrix\n" +
                 "actor Households\n" +
                 "participant Firms\n" +
                 "Households -> Firms : Demand\n" +
-                "@enduml\n" +
-                "@end\n";
+                "@end\n" +
+                "```\n";
 
         SFCRParseResult first = SFCRParser.parseToResult(text);
         assertNotNull(first);
-        assertNotNull(first.findBlock("plantuml", ""));
+        assertEquals(1, first.getBlocksByType("plantuml").size(),
+                "Expected one PlantUML block in canonical @startuml form");
 
         String exported = SFCRParseResultExporter.export(first);
-        assertTrue(exported.contains("```{PlantUML}\n@startuml x=200 y=120 w=16 h=16 width=620"),
+        assertTrue(exported.contains("```{r}\n@startuml x=200 y=120 w=16 h=16 width=620"),
                 "Parse-result export should emit explicit @startuml blocks");
         assertTrue(exported.contains("scale=1.5"),
             "Parse-result export should preserve PlantUML scale metadata");
         assertTrue(exported.contains("source: Transaction Flow Matrix"),
             "Parse-result export should preserve PlantUML source bindings");
+        assertTrue(exported.contains("@end"),
+            "Parse-result export should use @end to terminate PlantUML blocks");
         assertTrue(!exported.contains("@plantuml"),
             "Parse-result export should not emit legacy @plantuml wrappers");
+        assertTrue(!exported.contains("@enduml"),
+            "Parse-result export should not emit @enduml in canonical output");
 
         SFCRParseResult second = SFCRParser.parseToResult(exported);
         assertNotNull(second);

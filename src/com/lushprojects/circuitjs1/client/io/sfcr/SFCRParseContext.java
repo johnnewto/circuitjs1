@@ -413,14 +413,14 @@ public class SFCRParseContext {
         int i = 0;
         while (i < out.length()) {
             char c = out.charAt(i);
-            if (!isLookupNameStart(c)) {
+            if (!SFCRUtil.isIdentifierStart(c)) {
                 i++;
                 continue;
             }
             
             int start = i;
             i++;
-            while (i < out.length() && isLookupNamePart(out.charAt(i))) {
+            while (i < out.length() && SFCRUtil.isIdentifierPart(out.charAt(i))) {
                 i++;
             }
             String identifier = out.substring(start, i);
@@ -437,7 +437,7 @@ public class SFCRParseContext {
                 continue;
             }
             
-            int close = findMatchingParen(out, j);
+            int close = SFCRUtil.findMatchingParen(out, j);
             if (close < 0) break;
             
             String argExpr = out.substring(j + 1, close).trim();
@@ -446,27 +446,6 @@ public class SFCRParseContext {
             i = start + replacement.length();
         }
         return out;
-    }
-    
-    private boolean isLookupNameStart(char c) {
-        return Character.isLetter(c) || c == '_' || c == '\\';
-    }
-    
-    private boolean isLookupNamePart(char c) {
-        return Character.isLetterOrDigit(c) || c == '_' || c == '\\' || c == '^' || c == '{' || c == '}' || c == '.';
-    }
-    
-    private int findMatchingParen(String text, int openIndex) {
-        int depth = 0;
-        for (int i = openIndex; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (c == '(') depth++;
-            else if (c == ')') {
-                depth--;
-                if (depth == 0) return i;
-            }
-        }
-        return -1;
     }
 
     // =========================================================================
@@ -568,11 +547,7 @@ public class SFCRParseContext {
     }
     
     public boolean parseBoolean(String text, boolean defaultValue) {
-        if (text == null) return defaultValue;
-        String t = text.trim().toLowerCase();
-        if (t.equals("true") || t.equals("1") || t.equals("yes")) return true;
-        if (t.equals("false") || t.equals("0") || t.equals("no")) return false;
-        return defaultValue;
+        return SFCRUtil.parseBoolean(text, defaultValue);
     }
     
     public SFCRParser.BlockHeaderInfo parseBlockHeader(String line, String keyword) {
@@ -608,22 +583,7 @@ public class SFCRParseContext {
     }
     
     public String[] parseTableRow(String line) {
-        String l = line;
-        if (l.startsWith("|")) l = l.substring(1);
-        if (l.endsWith("|")) l = l.substring(0, l.length() - 1);
-        
-        String[] parts = l.split("\\|", -1);
-        ArrayList<String> cells = new ArrayList<String>();
-        for (String part : parts) {
-            cells.add(part.trim());
-        }
-        
-        // Remove trailing empty cells
-        while (!cells.isEmpty() && cells.get(cells.size() - 1).isEmpty()) {
-            cells.remove(cells.size() - 1);
-        }
-        
-        return cells.toArray(new String[0]);
+        return SFCRUtil.parseTableRow(line);
     }
     
     public String[] splitDifferenceLeftAlias(String left) {
@@ -646,26 +606,11 @@ public class SFCRParseContext {
         String candidateName = trimmed.substring(0, minusIdx).trim();
         String candidateOffset = trimmed.substring(minusIdx + 1).trim();
         
-        if (candidateOffset.isEmpty() || !looksLikeSimpleVariableName(candidateName)) {
+        if (candidateOffset.isEmpty() || !SFCRUtil.isValidIdentifier(candidateName)) {
             return new String[] { trimmed, null };
         }
         
         return new String[] { candidateName, candidateOffset };
-    }
-    
-    private boolean looksLikeSimpleVariableName(String name) {
-        if (name == null || name.isEmpty()) return false;
-        
-        char first = name.charAt(0);
-        if (!(Character.isLetter(first) || first == '_' || first == '\\')) return false;
-        
-        for (int i = 1; i < name.length(); i++) {
-            char c = name.charAt(i);
-            if (!(Character.isLetterOrDigit(c) || c == '_' || c == '\\' || c == '^' || c == '{' || c == '}' || c == '.')) {
-                return false;
-            }
-        }
-        return true;
     }
 
     // =========================================================================
@@ -823,12 +768,33 @@ public class SFCRParseContext {
         
         if (build == null) return;
         
-        String dumpString = build.dump;
-        int y2 = build.y2;
+        createElementFromDump("equations", name, build.dump, build.y2);
+    }
+    
+    public void createMatrixTable(String name, ArrayList<String> columnNames,
+                                  ArrayList<String> rowNames, ArrayList<String[]> tableRows,
+                                  String matrixType, Boolean showInitialValuesOverride,
+                                  Boolean showFlowValuesOverride, Boolean useBackwardEulerOverride,
+                                  Boolean invisibleOverride) {
+        SFCRTableDumpBuilderService.DumpBuildResult build = tableDumpBuilderService.buildMatrixDump(
+            name, currentX, currentY, columnNames, rowNames, tableRows, showInitialValuesOverride,
+            invisibleOverride);
         
+        if (build == null) {
+            CirSim.console("SFCRParser: Skipping matrix table '" + name + "' - invalid table shape");
+            return;
+        }
+        
+        createElementFromDump("matrix", name, build.dump, build.y2);
+    }
+    
+    /**
+     * Create an element from a dump string, or record it in result-mode.
+     */
+    private void createElementFromDump(String blockType, String name, String dumpString, int y2) {
         // Result-mode: collect dump without instantiating elements
         if (pendingResult != null) {
-            pendingResult.blockDumps.add(new SFCRParseResult.BlockDump("equations", name, dumpString));
+            pendingResult.blockDumps.add(new SFCRParseResult.BlockDump(blockType, name, dumpString));
             currentY = y2 + elementSpacing;
             return;
         }
@@ -851,61 +817,10 @@ public class SFCRParseContext {
                 createdElements.add(ce);
                 currentY = yb + elementSpacing;
             } else {
-                CirSim.console("SFCRParser: Failed to instantiate equation table '" + name + "'");
+                CirSim.console("SFCRParser: Failed to instantiate " + blockType + " table '" + name + "'");
             }
         } catch (Exception e) {
-            CirSim.console("Error creating equation table '" + name + "': " + e.toString());
-        }
-    }
-    
-    public void createMatrixTable(String name, ArrayList<String> columnNames,
-                                  ArrayList<String> rowNames, ArrayList<String[]> tableRows,
-                                  String matrixType, Boolean showInitialValuesOverride,
-                                  Boolean showFlowValuesOverride, Boolean useBackwardEulerOverride,
-                                  Boolean invisibleOverride) {
-        SFCRTableDumpBuilderService.DumpBuildResult build = tableDumpBuilderService.buildMatrixDump(
-            name, currentX, currentY, columnNames, rowNames, tableRows, showInitialValuesOverride,
-            invisibleOverride);
-        
-        if (build == null) {
-            CirSim.console("SFCRParser: Skipping matrix table '" + name + "' - invalid table shape");
-            return;
-        }
-        
-        String dumpString = build.dump;
-        int y2 = build.y2;
-        
-        // Result-mode: collect dump without instantiating elements
-        if (pendingResult != null) {
-            pendingResult.blockDumps.add(new SFCRParseResult.BlockDump("matrix", name, dumpString));
-            currentY = y2 + elementSpacing;
-            return;
-        }
-        
-        CirSim.console("Creating SFCTable: " + name);
-        
-        try {
-            StringTokenizer st = new StringTokenizer(dumpString);
-            int type = Integer.parseInt(st.nextToken());
-            int xa = Integer.parseInt(st.nextToken());
-            int ya = Integer.parseInt(st.nextToken());
-            int xb = Integer.parseInt(st.nextToken());
-            int yb = Integer.parseInt(st.nextToken());
-            int flags = Integer.parseInt(st.nextToken());
-            
-            CircuitElm ce = ElementFactoryFacade.createFromDumpType(type, xa, ya, xb, yb, flags, st);
-            if (ce != null) {
-                ce.setPointsForImportExport();
-                sim.getImportExportHelper().assignPersistentUid(ce, null);
-                sim.elmList.addElement(ce);
-                createdElements.add(ce);
-                currentY = yb + elementSpacing;
-            } else {
-                CirSim.console("SFCRParser: Failed to instantiate matrix table '" + name + "'");
-            }
-        } catch (Exception e) {
-            CirSim.console("Error creating matrix table '" + name + "': " + e.toString());
-            e.printStackTrace();
+            CirSim.console("Error creating " + blockType + " table '" + name + "': " + e.toString());
         }
     }
 }

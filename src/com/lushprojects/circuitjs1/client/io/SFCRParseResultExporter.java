@@ -143,7 +143,7 @@ public class SFCRParseResultExporter {
             return;
         }
 
-        sb.append("```{PlantUML}\n");
+        sb.append("```{r}\n");
         sb.append(rewriteStartUml(decoded));
         if (sb.length() > 0 && sb.charAt(sb.length() - 1) != '\n') {
             sb.append("\n");
@@ -153,14 +153,22 @@ public class SFCRParseResultExporter {
     }
 
     private static String rewriteStartUml(DecodedPlantUmlDump decoded) {
-        String source = (decoded.source == null || decoded.source.isEmpty()) ? "@startuml\n@enduml" : decoded.source;
+        String source = (decoded.source == null || decoded.source.isEmpty()) ? "@startuml\n@end" : decoded.source;
         String[] lines = source.split("\n", -1);
         StringBuilder out = new StringBuilder();
         boolean replaced = false;
+        boolean hasEndDirective = false;
 
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i];
             String trimmed = line.trim();
+            // Skip any closing ``` backticks that may have been included in the source
+            if (trimmed.startsWith("```")) {
+                continue;
+            }
+            if ("@end".equals(trimmed) || "@enduml".equals(trimmed)) {
+                hasEndDirective = true;
+            }
             if (!replaced && trimmed.startsWith("@startuml")) {
                 out.append("@startuml x=").append(decoded.x)
                     .append(" y=").append(decoded.y)
@@ -179,6 +187,12 @@ public class SFCRParseResultExporter {
             if (i < lines.length - 1) {
                 out.append("\n");
             }
+        }
+        if (!hasEndDirective) {
+            if (out.length() > 0 && out.charAt(out.length() - 1) != '\n') {
+                out.append("\n");
+            }
+            out.append("@end");
         }
         return out.toString();
     }

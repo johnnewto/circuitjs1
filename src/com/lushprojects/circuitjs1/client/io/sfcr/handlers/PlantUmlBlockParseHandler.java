@@ -13,13 +13,13 @@ import com.lushprojects.circuitjs1.client.util.StringTokenizer;
 public class PlantUmlBlockParseHandler implements SFCRBlockParseHandler {
     @Override
     public String[] supportedDirectives() {
-        return new String[]{"@plantuml"};
+        return new String[]{"@startuml"};
     }
 
     @Override
     public ParseResult parse(String[] lines, int startIndex, SFCRParseContext ctx) {
         String headerLine = lines[startIndex].trim();
-        SFCRParser.BlockHeaderInfo blockPos = ctx.parseBlockHeader(headerLine, "@plantuml");
+        SFCRParser.BlockHeaderInfo blockPos = ctx.parseBlockHeader(headerLine, "@startuml");
 
         int posX = blockPos.hasPosition() ? blockPos.x : ctx.getCurrentX();
         int posY = blockPos.hasPosition() ? blockPos.y : ctx.getCurrentY();

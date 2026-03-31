@@ -201,7 +201,7 @@ public class SequenceDiagramParser {
         // Handle empty sectors case
         if (sectorNames.isEmpty()) {
             sb.append("note across\nNo sectors defined\nend note\n");
-            sb.append("@enduml");
+            sb.append("@end");
             return sb.toString();
         }
 
@@ -240,7 +240,7 @@ public class SequenceDiagramParser {
             sb.append("note across\nNo paired source/target flows found\nend note\n");
         }
 
-        sb.append("@enduml");
+        sb.append("@end");
         return sb.toString();
     }
     
@@ -261,7 +261,7 @@ public class SequenceDiagramParser {
         }
         
         sb.append("end note\n");
-        sb.append("@enduml");
+        sb.append("@end");
         return sb.toString();
     }
     
@@ -603,6 +603,6 @@ public class SequenceDiagramParser {
                "  Wealth updated:\n" +
                "  H = H₋₁ + (YD - C)\n" +
                "end note\n" +
-               "@enduml";
+               "@end";
     }
 }
