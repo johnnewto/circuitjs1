@@ -69,6 +69,7 @@ public class TableElm extends ChipElm implements TableContentView {
         // Initialize helper classes
         dataManager = new TableDataManager(this);
         equationManager = new TableEquationManager(this, sim);
+        equationManager.setUseConvergedValues(true);
         geometryManager = new TableGeometryManager(this);
         renderer = new TableRenderer(this);
         
@@ -93,6 +94,7 @@ public class TableElm extends ChipElm implements TableContentView {
         // Initialize helper classes
         dataManager = new TableDataManager(this);
         equationManager = new TableEquationManager(this, sim);
+        equationManager.setUseConvergedValues(true);
         geometryManager = new TableGeometryManager(this);
         renderer = new TableRenderer(this);
         
@@ -626,13 +628,12 @@ public class TableElm extends ChipElm implements TableContentView {
             TableColumn column = columns.get(col);
             if (column.isALE()) continue;
             
-            // Evaluate equations for this column and cache individual cell values
+            // Evaluate equations for this column
             double columnSum = 0.0;
             for (int row = 0; row < rows; row++) {
                 String equation = column.getCellEquation(row);
                 Expr compiledExpr = column.getCompiledExpression(row);
                 double cellValue = equationManager.getVoltageForCell(row, col);
-                column.setCachedCellValue(row, cellValue); // Cache the value
                 
                 // Log first cell to diagnose why values are zero
                 if (!loggedOnce && row == 0 && col == 0) {
@@ -1134,9 +1135,11 @@ public class TableElm extends ChipElm implements TableContentView {
     }
 
     /**
-     * Returns the effective transaction value displayed for a regular cell.
-     * Non-master columns mirror the matching flow row from the current master
-     * table so other views can stay consistent with the table renderer.
+     * Returns the local display value for a regular cell.
+     *
+     * This is intentionally local to the table/column equation so the renderer
+     * and any source-bound views read the same value the table itself is showing,
+     * instead of mixing in cross-table row mirroring.
      */
     public double getDisplayedTransactionValue(int row, int col) {
         if (!isValidCell(row, col) || columns == null || col >= columns.size()) {
@@ -1147,59 +1150,10 @@ public class TableElm extends ChipElm implements TableContentView {
         if (column == null || column.isALE()) {
             return 0.0;
         }
-        if (isMasterForColumn(col)) {
-            return getLocalTransactionValue(row, col, column);
-        }
-
-        String stockName = column.getStockName();
-        double effectiveValue = getMasterDisplayTransactionValue(stockName, row);
-        if (effectiveValue != 0.0) {
-            return effectiveValue;
-        }
         return getLocalTransactionValue(row, col, column);
     }
 
-    private int findRowByFlowName(TableElm otherTable, String flowName) {
-        if (otherTable == null || flowName == null || flowName.trim().isEmpty()) {
-            return -1;
-        }
-
-        String trimmedFlowName = flowName.trim();
-        int rowCount = otherTable.getRows();
-        for (int r = 0; r < rowCount; r++) {
-            String otherFlowName = otherTable.getRowDescription(r);
-            if (otherFlowName != null && trimmedFlowName.equals(otherFlowName.trim())) {
-                return r;
-            }
-        }
-        return -1;
-    }
-
-    private double getMasterDisplayTransactionValue(String stockName, int row) {
-        if (stockName == null || stockName.trim().isEmpty()) {
-            return 0.0;
-        }
-        TableElm masterTable = ComputedValues.getMasterTable(stockName);
-        if (masterTable == null || masterTable.columns == null) {
-            return 0.0;
-        }
-
-        int masterRow = findRowByFlowName(masterTable, getRowDescription(row));
-        int masterCol = masterTable.findColumnByStockName(stockName);
-        if (masterRow < 0 || masterCol < 0 || masterCol >= masterTable.columns.size()) {
-            return 0.0;
-        }
-
-        TableColumn masterColumn = masterTable.columns.get(masterCol);
-        return masterColumn != null ? masterColumn.getCachedCellValue(masterRow) : 0.0;
-    }
-
     private double getLocalTransactionValue(int row, int col, TableColumn column) {
-        double cachedValue = (column != null) ? column.getCachedCellValue(row) : 0.0;
-        if (cachedValue != 0.0) {
-            return cachedValue;
-        }
-
         String equation = getCellEquation(row, col);
         if (equation != null) {
             String trimmed = equation.trim();

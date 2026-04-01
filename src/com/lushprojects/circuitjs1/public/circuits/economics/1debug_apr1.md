@@ -165,8 +165,8 @@ Transaction_Flow_Matrix <- sfcr_matrix(
   c("[Production]", Households_C = "", Firms__Current_ = "Y", Firms__Capital_ = "", Banks__Current_ = "", Banks__Capital_ = ""),
   c("Depreciation", Households_C = "", Firms__Current_ = "-AF", Firms__Capital_ = "AF", Banks__Current_ = "", Banks__Capital_ = ""),
   c("Interest on Loans", Households_C = "", Firms__Current_ = "-last(rl)*last(Ld)", Firms__Capital_ = "", Banks__Current_ = "last(rl)*last(Ls)", Banks__Capital_ = ""),
-  c("Change in Deposits", Households_C = "-(Mh-last(Mh))", Firms__Current_ = "", Firms__Capital_ = "", Banks__Current_ = "", Banks__Capital_ = "Ms-last(Ms)"),
-  c("Interest on Deposits", Households_C = "last(rm)*last(Mh)", Firms__Current_ = "", Firms__Capital_ = "", Banks__Current_ = "-last(rm)*last(Ms)", Banks__Capital_ = "")
+  c("Change in Deposits", Households_C = "-(Mh-last(Mh))", Firms__Current_ = "last(Ld)", Firms__Capital_ = "", Banks__Current_ = "", Banks__Capital_ = "Ms-last(Ms)"),
+  c("Interest on Deposits", Households_C = "last(rm)*last(Mh)", Firms__Current_ = "Ld", Firms__Capital_ = "", Banks__Current_ = "last(rm)*last(Ms)", Banks__Capital_ = "")
 )
 ```
 
@@ -183,7 +183,7 @@ Balance_Sheet <- sfcr_matrix(
 ```
 
 ```{r}
-@startuml x=-640 y=200 w=773 h=526 width=660 scale=1.0653061224489795
+@startuml x=-640 y=200 w=773 h=526 width=660 scale=1.165151515151515
    source: Transaction Flow Matrix
 @end
 ```
@@ -230,6 +230,7 @@ x 491 207 801 210 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q1
 207 64 864 128 864 164 \\alpha0 U:9LTbPZ
 207 64 912 128 912 164 Ls U:jyeEI-
 207 64 928 128 928 164 Ld U:H3CeRk
+253 -112 80 368 196 0 3 4 6 16 0 false 2 1 false 5 0 true Table\s15 \0 Stock0 Stock1 Stock2 A-L-E Row1 row2 Flow_3 0 0 0 0 ASSET LIABILITY EQUITY ASSET Ld \0 \0 \0 last(Ld) \0 \0 \0 \0 \0 \0 \0 U:bKN80a
 @end
 ```
 

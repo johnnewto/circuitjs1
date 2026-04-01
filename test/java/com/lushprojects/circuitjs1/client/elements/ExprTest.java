@@ -1,13 +1,22 @@
 package com.lushprojects.circuitjs1.client.elements;
 
+import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
 import com.lushprojects.circuitjs1.client.io.LookupTableRegistry;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@ResourceLock("ComputedValues")
 @DisplayName("Expr — parser and evaluator")
 class ExprTest {
+
+    @BeforeEach
+    void setUp() {
+        ComputedValues.resetForTesting();
+    }
 
     @Test
     @DisplayName("arithmetic operators and built-in functions produce correct values")
@@ -190,6 +199,39 @@ class ExprTest {
         assertEquals(30.0, expr.evalFresh(state, 0.1), 1e-12);
         state.commitIntegration(0.1);
         assertEquals(8.0, state.lastDiffInput, 1e-12);
+    }
+
+    @Test
+    @DisplayName("last(name) prefers lagged flow value over lagged base value when both exist")
+    void testLastPrefersLaggedFlowOverLaggedBaseValue() {
+        String flowKey = ComputedValues.getFlowComputedKeyForName("Ld");
+        assertNotNull(flowKey);
+
+        ComputedValues.setComputedValueDirect("Ld", 200.0);
+        ComputedValues.setComputedValueDirect(flowKey, 5.0);
+        ComputedValues.commitConvergedValues();
+
+        Expr expr = parse("last(Ld)");
+        ExprState state = new ExprState(0);
+
+        assertEquals(5.0, expr.evalFresh(state), 1e-12);
+    }
+
+    @Test
+    @DisplayName("last(name) in converged display context uses the previous converged timestep")
+    void testLastUsesPreviousConvergedValueInDisplayContext() {
+        ComputedValues.setComputedValueDirect("Ld", 5.0);
+        ComputedValues.commitConvergedValues();
+
+        ComputedValues.setComputedValueDirect("Ld", 10.0);
+        ComputedValues.commitConvergedValues();
+
+        Expr expr = parse("last(Ld)");
+        ExprState state = new ExprState(0);
+
+        assertEquals(5.0, expr.eval(state, Expr.getEvaluationContext(true)), 1e-12);
+        assertEquals(10.0, expr.evalFresh(state), 1e-12,
+                "Non-display evaluation should still see the latest converged value as the previous simulation timestep");
     }
 
     @Test

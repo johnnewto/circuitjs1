@@ -189,6 +189,12 @@ public class Expr {
 	    : ComputedValues.getComputedFlowOrValue(name);
     }
 
+    private static Double getLaggedByMode(String name, EvaluationContext context) {
+	return context.useConvergedValues
+	    ? ComputedValues.getDisplayLaggedValue(name)
+	    : ComputedValues.getLaggedValue(name);
+	}
+
     /** Clear the unresolved references list (call at start of each timestep) */
     public static void clearUnresolvedReferences() {
 	unresolvedReferences.clear();
@@ -719,19 +725,29 @@ public class Expr {
 	    // otherwise Hs = last(Hs) + 1 would increment on every subiteration!
 	    if (left != null && (left.type == E_NODE_REF || left.type == E_GSLOT) && left.nodeName != null) {
 		String varName = left.nodeName;
-		// Get ONLY the converged value from previous timestep (no fallback!)
-		Double laggedValue = ComputedValues.getLaggedValue(varName);
-		if (laggedValue != null) {
-		    return laggedValue.doubleValue();
+		// Mirror same-period node-reference precedence as closely as possible:
+		// parameter-style names first, then FLOW values, then base labeled-node/
+		// computed values. This avoids last(X) accidentally reading a labeled node
+		// voltage when X currently resolves to X.flow in FLOW mode.
+		if (ComputedValues.isParameterName(varName)) {
+		    Double laggedParameterValue = getLaggedByMode(varName, context);
+		    if (laggedParameterValue != null) {
+			return laggedParameterValue.doubleValue();
+		    }
 		}
-		// FLOW rows publish under a dedicated *.flow namespace. If the
-		// base name has no lagged value, fall back to its lagged flow key.
+		// FLOW rows publish under a dedicated *.flow namespace. Prefer the
+		// lagged flow key before the base name so last(X) matches X in flow mode.
 		String flowKey = ComputedValues.getFlowComputedKeyForName(varName);
 		if (flowKey != null) {
-		    Double laggedFlowValue = ComputedValues.getLaggedValue(flowKey);
+		    Double laggedFlowValue = getLaggedByMode(flowKey, context);
 		    if (laggedFlowValue != null) {
 			return laggedFlowValue.doubleValue();
 		    }
+		}
+		// Get ONLY the converged base value from previous timestep (no fallback!)
+		Double laggedValue = getLaggedByMode(varName, context);
+		if (laggedValue != null) {
+		    return laggedValue.doubleValue();
 		}
 		// No converged value yet (first timestep) - try X_init as fallback
 		// This matches sfcr behavior where initial values are used for V[-1] in period 1

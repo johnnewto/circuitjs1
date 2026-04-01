@@ -555,7 +555,6 @@ public class GodlyTableElm extends TableElm {
             TableColumn column = columns.get(col);
             for (int row = 0; row < rows; row++) {
                 double cellValue = getVoltageForCell(row, col);
-                column.setCachedCellValue(row, cellValue); // Cache the value for rendering
                 columnSum += cellValue;
                 maxCellMagnitude = Math.max(maxCellMagnitude, Math.abs(cellValue));
             }

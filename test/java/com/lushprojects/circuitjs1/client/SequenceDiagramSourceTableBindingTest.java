@@ -93,10 +93,10 @@ class SequenceDiagramSourceTableBindingTest extends CircuitJavaSimTestBase {
         assertTrue(moneyStockRow >= 0 && householdsCol >= 0 && govtCol >= 0,
             "Expected Money stock row with Households and Govt sector columns");
 
-        transactionFlowMatrix.setCellEquation(moneyStockRow, householdsCol, "-(H-last(H))");
-        transactionFlowMatrix.setCellEquation(moneyStockRow, govtCol, "H-last(H)");
-        transactionFlowMatrix.columns.get(householdsCol).setCachedCellValue(moneyStockRow, -7);
-        transactionFlowMatrix.columns.get(govtCol).setCachedCellValue(moneyStockRow, 7);
+        transactionFlowMatrix.setCellEquation(moneyStockRow, householdsCol, "SeqDeltaHouseholds");
+        transactionFlowMatrix.setCellEquation(moneyStockRow, govtCol, "SeqDeltaGovt");
+        ComputedValues.setComputedValueDirect(ComputedValues.getFlowComputedKeyForName("SeqDeltaHouseholds"), -7);
+        ComputedValues.setComputedValueDirect(ComputedValues.getFlowComputedKeyForName("SeqDeltaGovt"), 7);
 
         String rendered = diagram.getRenderedPlantUmlSource();
         assertTrue(rendered.contains("Households -> Govt : Money stock"),

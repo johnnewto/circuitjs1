@@ -313,6 +313,42 @@ public class LabeledNodeElm extends CircuitElm {
 		}
 		return null;
     }
+
+    /**
+     * Publish current labeled-node voltages into ComputedValues so historical
+     * operators like last(X) can read prior-step physical node values.
+     */
+    public static void publishAllNodeVoltagesToComputedValues(CirSim sim) {
+        if (sim == null || labelList == null || labelList.isEmpty()) {
+            return;
+        }
+        double[] nodeVoltages = sim.getSolverMatrixState().nodeVoltages;
+        if (nodeVoltages == null || nodeVoltages.length == 0) {
+            return;
+        }
+        for (String labelName : labelList.keySet()) {
+            if (labelName == null || labelName.isEmpty()) {
+                continue;
+            }
+			// Preserve values already computed explicitly this timestep
+			// (for example EquationTable PARAM_MODE outputs that happen to share
+			// a name with a passive labeled node placed on the canvas). Those
+			// computed values are authoritative and should not be clobbered by a
+			// floating node's physical voltage, which is often 0.
+			if (ComputedValues.isComputedThisStep(labelName)) {
+				continue;
+			}
+            LabelEntry entry = labelList.get(labelName);
+            if (entry == null || entry.node <= 0) {
+                continue;
+            }
+            int nodeIndex = entry.node - 1;
+            if (nodeIndex < 0 || nodeIndex >= nodeVoltages.length) {
+                continue;
+            }
+            ComputedValues.setComputedValue(labelName, nodeVoltages[nodeIndex]);
+        }
+    }
     
     protected void draw(Graphics g) {
 		setVoltageColor(g, volts[0]);

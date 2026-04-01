@@ -29,37 +29,7 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
      */
     @Override
     protected void updateCachedValues() {
-        // Call base class to handle standard cell value updates with flow name mapping
         super.updateCachedValues();
-        
-        // Calculate ALE column values (specific to CTM)
-        calculateALEColumn();
-    }
-    
-    /**
-     * Calculate ALE column values (each row's ALE is sum of all values in that row)
-     * For CTM, ALE represents the total transaction amount across all stocks for each flow
-     */
-    private void calculateALEColumn() {
-        if (!hasALEColumn()) {
-            return;
-        }
-        
-        int aleCol = table.getCols() - 1;
-        int regularColCount = getRegularColumnCount();
-        
-        // Calculate ALE for each row (sum of all regular columns)
-        double aleColumnSum = 0.0;
-        for (int row = 0; row < table.rows; row++) {
-            double rowSum = 0.0;
-            for (int col = 0; col < regularColCount; col++) {
-                rowSum += cachedCellValues[row][col];
-            }
-            cachedCellValues[row][aleCol] = rowSum;
-            aleColumnSum += rowSum;
-        }
-        
-        cachedSumValues[aleCol] = aleColumnSum;
     }
     
     /**
@@ -91,15 +61,15 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
      */
     @Override
     protected double getALESumValue() {
-        if (!hasALEColumn() || cachedSumValues == null) {
+        if (!hasALEColumn()) {
             return 0.0;
         }
         
         double total = 0.0;
         int regularColCount = getRegularColumnCount();
         
-        for (int col = 0; col < regularColCount && col < cachedSumValues.length; col++) {
-            total += cachedSumValues[col];
+        for (int col = 0; col < regularColCount; col++) {
+            total += getRegularColumnSum(col);
         }
         
         return total;
@@ -117,7 +87,12 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
         if (!hasALEColumn()) {
             return 0.0;
         }
-        return getCachedCellValue(row, table.getCols() - 1);
+        double rowSum = 0.0;
+        int regularColCount = getRegularColumnCount();
+        for (int col = 0; col < regularColCount; col++) {
+            rowSum += table.getDisplayedTransactionValue(row, col);
+        }
+        return rowSum;
     }
     
     /**
@@ -281,4 +256,3 @@ public class CurrentTransactionsMatrixRenderer extends TableRenderer {
     }
 
 }
-

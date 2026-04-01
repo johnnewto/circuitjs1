@@ -202,7 +202,7 @@ public final class InfoViewerLiveDataSerializer {
                 double value = 0.0;
                 TableColumn column = table.getColumn(col);
                 if (column != null) {
-                    value = column.getCachedCellValue(row);
+                    value = table.getDisplayedTransactionValue(row, col);
                     if (Double.isNaN(value) || Double.isInfinite(value)) {
                         value = 0.0;
                     }

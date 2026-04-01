@@ -23,14 +23,6 @@ import com.lushprojects.circuitjs1.client.elements.economics.TableColumn.ColumnT
  */
 public class TableRenderer {
     final TableElm table;  // Protected to allow subclass access
-    private java.util.HashMap<String, String> truncatedTextCache = new java.util.HashMap<String, String>();
-    private static final int TRUNCATED_TEXT_CACHE_LIMIT = 4000;
-    
-    // Cache for cell values to avoid recalculating every frame
-    double[][] cachedCellValues;
-    double[] cachedSumValues;
-    private long lastUpdateTime = 0;  // Timestamp of last cache update
-    private static final long UPDATE_INTERVAL_MS = 200; // Update 5 times per second
     
     // Fonts for different parts of the table
     // Protected to allow subclasses (CurrentTransactionsMatrixRenderer) to use these constants
@@ -67,27 +59,14 @@ public class TableRenderer {
     // Only text is redrawn each frame - major performance win for tables
     private Canvas backgroundLayerCanvas;
     private Context2d backgroundLayerCtx;
-    private Canvas contentLayerCanvas;
-    private Context2d contentLayerCtx;
     private boolean cacheValid = false;
-    private boolean contentCacheValid = false;
     private int cachedWidth = 0;
     private int cachedHeight = 0;
-    private int contentCachedWidth = 0;
-    private int contentCachedHeight = 0;
     private int cachedRows = 0;
     private int cachedCols = 0;
     private float cachedScale = -1;
-    private int contentCachedRows = 0;
-    private int contentCachedCols = 0;
-    private float contentCachedScale = -1;
     private boolean cachedPrintable = false;
     private boolean cachedCollapsedMode = false;
-    private boolean contentCachedPrintable = false;
-    private boolean contentCachedCollapsedMode = false;
-    private boolean contentCachedVoltsVisible = false;
-    private int contentCachedShowCellValues = -1;
-    private long contentCachedDataTime = -1;
     private int cacheRebuildCount = 0;
     private long lastCacheHitLogTime = 0;
     private static final long CACHE_HIT_LOG_INTERVAL_MS = 2000;
@@ -112,10 +91,6 @@ public class TableRenderer {
         if (backgroundLayerCanvas != null) {
             backgroundLayerCtx = backgroundLayerCanvas.getContext2d();
         }
-        contentLayerCanvas = Canvas.createIfSupported();
-        if (contentLayerCanvas != null) {
-            contentLayerCtx = contentLayerCanvas.getContext2d();
-        }
     }
     
     /**
@@ -124,7 +99,6 @@ public class TableRenderer {
      */
     public void invalidateCache() {
         cacheValid = false;
-        contentCacheValid = false;
     }
 
     private boolean isVoltsVisible() {
@@ -188,60 +162,6 @@ public class TableRenderer {
         return true;
     }
 
-    private boolean ensureContentCacheValid(TableDimensions dims) {
-        if (contentLayerCanvas == null || contentLayerCtx == null) {
-            return false;
-        }
-        if (CirSim.getInstance() != null && !CirSim.getInstance().tableRenderCacheEnabled) {
-            return false;
-        }
-
-        boolean printable = isPrintable();
-        int cols = table.getCols();
-        boolean voltsVisible = isVoltsVisible();
-        float renderScale = getRenderScale();
-
-        if (!contentCacheValid ||
-            dims.tableWidth != contentCachedWidth || dims.tableHeight != contentCachedHeight ||
-            table.rows != contentCachedRows || cols != contentCachedCols ||
-            printable != contentCachedPrintable ||
-            table.collapsedMode != contentCachedCollapsedMode ||
-            voltsVisible != contentCachedVoltsVisible ||
-            table.showCellValues != contentCachedShowCellValues ||
-            lastUpdateTime != contentCachedDataTime ||
-            renderScale != contentCachedScale) {
-
-            if (dims.tableWidth != contentCachedWidth || dims.tableHeight != contentCachedHeight || renderScale != contentCachedScale) {
-                contentLayerCanvas.setCoordinateSpaceWidth((int) Math.ceil(dims.tableWidth * renderScale));
-                contentLayerCanvas.setCoordinateSpaceHeight((int) Math.ceil(dims.tableHeight * renderScale));
-            }
-
-            contentLayerCtx.setTransform(1, 0, 0, 1, 0, 0);
-            contentLayerCtx.clearRect(0, 0, contentLayerCanvas.getCoordinateSpaceWidth(), contentLayerCanvas.getCoordinateSpaceHeight());
-            contentLayerCtx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
-
-            Graphics cacheGraphics = new Graphics(contentLayerCtx);
-            contentLayerCtx.save();
-            contentLayerCtx.translate(-dims.tableX, -dims.tableY);
-            drawComponentsInOrder(cacheGraphics, dims, true);
-            contentLayerCtx.restore();
-
-            contentCachedWidth = dims.tableWidth;
-            contentCachedHeight = dims.tableHeight;
-            contentCachedRows = table.rows;
-            contentCachedCols = cols;
-            contentCachedPrintable = printable;
-            contentCachedCollapsedMode = table.collapsedMode;
-            contentCachedVoltsVisible = voltsVisible;
-            contentCachedShowCellValues = table.showCellValues;
-            contentCachedDataTime = lastUpdateTime;
-            contentCachedScale = renderScale;
-            contentCacheValid = true;
-        }
-
-        return true;
-    }
-    
     /**
      * Draw static parts (backgrounds, grid lines, borders) to cached canvas.
      * This is only called when cache is invalid.
@@ -677,10 +597,10 @@ public class TableRenderer {
      * Package-private for TableElm access
      */
     public double getCachedSumValue(int col) {
-        if (cachedSumValues != null && col >= 0 && col < cachedSumValues.length) {
-            return cachedSumValues[col];
+        if (hasALEColumn() && col == table.getCols() - 1) {
+            return getALESumValue();
         }
-        return 0.0;
+        return table.getComputedValueForDisplay(col);
     }
     
     /**
@@ -763,12 +683,12 @@ public class TableRenderer {
         double renderStartMs = Duration.currentTimeMillis();
         TableDimensions dims = calculateTableDimensions();
         
-        // Update cached values if needed
-        updateCachedValuesIfNeeded();
+        // Refresh the renderer's numeric cache every draw so displayed values
+        // stay aligned with the latest converged/local table state.
+        updateCachedValues();
 
         // Try to use cached static rendering
         boolean usingCache = ensureCacheValid(dims);
-        boolean usingContentCache = false;
         skipDataRowGridLinesInDynamicPass = usingCache;
         skipNonDataRowGridLinesInDynamicPass = usingCache;
         
@@ -782,20 +702,13 @@ public class TableRenderer {
             if (selected) {
                 drawTableBorder(g, dims);
             }
-
-            usingContentCache = ensureContentCacheValid(dims);
-            if (usingContentCache) {
-                g.context.drawImage(contentLayerCtx.getCanvas(), dims.tableX, dims.tableY, dims.tableWidth, dims.tableHeight);
-            }
         } else {
             // Fallback: draw backgrounds directly (no cache available)
             drawTableBackground(g, dims);
         }
 
         // Draw components in order (text, values - skips row backgrounds when using cache)
-        if (!usingContentCache) {
-            drawComponentsInOrder(g, dims, usingCache);
-        }
+        drawComponentsInOrder(g, dims, usingCache);
         
         // Draw border if not using cache (cache already has non-selected border)
         if (!usingCache) {
@@ -897,17 +810,6 @@ public class TableRenderer {
      */
     int getExtraRowsBeforeTypeRowHeight() {
         return 0;
-    }
-    
-    /**
-     * Update cached values if enough time has passed
-     */
-    private void updateCachedValuesIfNeeded() {
-        long currentTime = System.currentTimeMillis();
-        if (currentTime - lastUpdateTime >= UPDATE_INTERVAL_MS || cachedCellValues == null) {
-            updateCachedValues();
-            lastUpdateTime = currentTime;
-        }
     }
     
     /**
@@ -1060,8 +962,7 @@ public class TableRenderer {
     }
     
     /**
-     * Update cached cell and sum values from the table
-     * Called automatically when UPDATE_INTERVAL_MS has elapsed (200ms = 5 times per second)
+     * Update cached cell and sum values from the table.
      * 
      * SYNCHRONIZED DISPLAY ARCHITECTURE:
      * - Cell values: Each table evaluates its own equations (allows different formulas)
@@ -1072,66 +973,7 @@ public class TableRenderer {
      * showing synchronized stock totals in the "Computed" row.
      */
     void updateCachedValues() {
-        initializeCacheArrays();
-        updateRegularCellValues();
-        updateColumnSums();
-    }
-    
-    /**
-     * Initialize cache arrays if needed or if dimensions changed
-     */
-    private void initializeCacheArrays() {
-        if (cachedCellValues == null || cachedCellValues.length != table.rows || 
-            (cachedCellValues.length > 0 && cachedCellValues[0].length != table.getCols())) {
-            cachedCellValues = new double[table.rows][table.getCols()];
-        }
-        if (cachedSumValues == null || cachedSumValues.length != table.getCols()) {
-            cachedSumValues = new double[table.getCols()];
-        }
-    }
-    
-    /**
-     * Update cell values for regular (non-ALE) columns
-     */
-    private void updateRegularCellValues() {
-        int regularColCount = getRegularColumnCount();
-        
-        // Use the same effective value path as other views so renderer output,
-        // linked sequence diagrams, and other consumers stay in sync.
-        for (int row = 0; row < table.rows; row++) {
-            for (int col = 0; col < regularColCount; col++) {
-                cachedCellValues[row][col] = table.getDisplayedTransactionValue(row, col);
-            }
-        }
-    }
-    
-    /**
-     * Update column sums (computed row) - regular columns first, then ALE
-     * ALE calculation depends on regular column sums being calculated first
-     */
-    private void updateColumnSums() {
-        int regularColCount = getRegularColumnCount();
-        
-        // Step 1: Calculate all regular (non-ALE) column sums
-        for (int col = 0; col < regularColCount; col++) {
-            cachedSumValues[col] = getRegularColumnSum(col);
-        }
-        
-        // Step 2: Calculate ALE column sum using the already-calculated regular column sums
-        if (hasALEColumn()) {
-            int aleCol = table.getCols() - 1;
-            double totalAssets = 0.0, totalLiabilities = 0.0, totalEquity = 0.0;
-            
-            // Use the CACHED sum values that were just calculated
-            for (int c = 0; c < regularColCount; c++) {
-                double columnTotal = cachedSumValues[c]; // Use cached value, not getComputedValueForDisplay
-                ColumnType type = getColumnType(c);
-                if (type == ColumnType.ASSET) totalAssets += columnTotal;
-                else if (type == ColumnType.LIABILITY) totalLiabilities += columnTotal;
-                else if (type == ColumnType.EQUITY) totalEquity += columnTotal;
-            }
-            cachedSumValues[aleCol] = totalAssets - totalLiabilities - totalEquity;
-        }
+        // Numeric values are read directly from the table to avoid stale renderer state.
     }
     
     /**
@@ -1142,11 +984,7 @@ public class TableRenderer {
      * Protected to allow subclasses (CurrentTransactionsMatrixRenderer) to reuse this logic
      */
     double getCachedCellValue(int row, int col) {
-        if (cachedCellValues != null && row >= 0 && row < cachedCellValues.length &&
-            col >= 0 && col < cachedCellValues[row].length) {
-            return cachedCellValues[row][col];
-        }
-        return 0.0;
+        return table.getDisplayedTransactionValue(row, col);
     }
     
     /**
@@ -1154,10 +992,10 @@ public class TableRenderer {
      * Master tables use their own computed values, non-master tables fetch from ComputedValues
      * Protected to allow subclasses to reuse this logic
      */
-    private double getRegularColumnSum(int col) {
+    protected double getRegularColumnSum(int col) {
         if (table.isMasterForColumn(col)) {
-            // Master column: use our own computed value
-            return table.getComputedValueForDisplay(col);
+            TableColumn column = table.columns.get(col);
+            return (column != null) ? column.getLastSum() : 0.0;
         } else {
             // Non-master column: fetch master's computed sum
             String stockName = getColumnStockName(col);
@@ -1209,8 +1047,7 @@ public class TableRenderer {
         double totalAssets = 0.0, totalLiabilities = 0.0, totalEquity = 0.0;
         int regularColCount = getRegularColumnCount();
         for (int c = 0; c < regularColCount; c++) {
-            double sumValue = (cachedSumValues != null && c < cachedSumValues.length) 
-                ? cachedSumValues[c] : 0.0;
+            double sumValue = getRegularColumnSum(c);
             ColumnType type = getColumnType(c);
             if (type == ColumnType.ASSET) totalAssets += sumValue;
             else if (type == ColumnType.LIABILITY) totalLiabilities += sumValue;
@@ -1352,12 +1189,7 @@ public class TableRenderer {
      * Called when the circuit is reset (Reset button pressed)
      */
     public void resetCache() {
-        cachedCellValues = null;
-        cachedSumValues = null;
-        lastUpdateTime = 0;
-        truncatedTextCache.clear();
-        contentCacheValid = false;
-        contentCachedDataTime = -1;
+        cacheValid = false;
     }
     
     private void drawTitle(Graphics g, int offsetY) {
@@ -1678,12 +1510,12 @@ public class TableRenderer {
             // Use cell font for cell values
             g.setFont(CELL_FONT);
             
-            // Pre-calculate A-L-E value for this row using cached cell values
+            // Pre-calculate A-L-E value for this row using the table's live values
             double totalAssets = 0.0, totalLiabilities = 0.0, totalEquity = 0.0;
             if (hasALEColumn()) {
                 int regularColCount = getRegularColumnCount();
                 for (int c = 0; c < regularColCount; c++) {
-                    double cellValue = getCachedCellValue(row, c);
+                    double cellValue = table.getDisplayedTransactionValue(row, c);
                     ColumnType type = getColumnType(c);
                     if (type == ColumnType.ASSET) totalAssets += cellValue;
                     else if (type == ColumnType.LIABILITY) totalLiabilities += cellValue;
@@ -1698,7 +1530,7 @@ public class TableRenderer {
                 int colWidth = getColumnWidth(col, cellWidthPixels);
                 
                 // Get voltage
-                double voltage = getCachedCellValue(row, col);
+                double voltage = table.getDisplayedTransactionValue(row, col);
 
                 // No background fill needed - canvas is already filled with background color by CirSim
                 
@@ -1761,22 +1593,12 @@ public class TableRenderer {
         if (text == null || text.isEmpty()) {
             return text;
         }
-
-        String cacheKey = g.currentFontSize + "|" + maxWidth + "|" + text;
-        String cached = truncatedTextCache.get(cacheKey);
-        if (cached != null) {
-            return cached;
-        }
         
         // Measure actual width of the full text
         double fullWidth = g.measureWidth(text);
         
         // If it fits, return as-is
         if (fullWidth <= maxWidth) {
-            if (truncatedTextCache.size() >= TRUNCATED_TEXT_CACHE_LIMIT) {
-                truncatedTextCache.clear();
-            }
-            truncatedTextCache.put(cacheKey, text);
             return text;
         }
         
@@ -1798,11 +1620,6 @@ public class TableRenderer {
             }
         }
 
-        if (truncatedTextCache.size() >= TRUNCATED_TEXT_CACHE_LIMIT) {
-            truncatedTextCache.clear();
-        }
-        truncatedTextCache.put(cacheKey, bestFit);
-        
         return bestFit;
     }
     
@@ -1854,8 +1671,7 @@ public class TableRenderer {
                 // ALE column: use pre-calculated value
                 computedValue = aleSumValue;
             } else {
-                computedValue = (cachedSumValues != null && col < cachedSumValues.length) 
-                    ? cachedSumValues[col] : 0.0;
+                computedValue = table.getComputedValueForDisplay(col);
             }
             
             // No background fill needed - canvas is already filled with background color by CirSim

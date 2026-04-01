@@ -305,6 +305,7 @@ class SimulationLoop {
             if (!delayWireProcessing)
                 calcWireCurrents();
 
+            LabeledNodeElm.publishAllNodeVoltagesToComputedValues(sim);
             ComputedValues.commitPendingToCurrentValues();
             sim.getCircuitValueSlotManager().syncAllSlots();
 

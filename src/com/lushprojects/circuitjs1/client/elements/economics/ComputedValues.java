@@ -67,6 +67,12 @@ public class ComputedValues {
     // Storage for converged values: name -> value (committed at end of timestep)
     // Display elements (scopes, SFC tables) should read from this for stable display
     private static HashMap<String, Double> convergedValues;
+
+    // Storage for the PREVIOUS converged timestep: name -> value
+    // Display-time historical operators like last(x) must read from this map,
+    // because convergedValues is updated to the current timestep immediately
+    // after convergence.
+    private static HashMap<String, Double> laggedConvergedValues;
     
     // Flag to enable/disable double-buffering (allows gradual migration)
     private static boolean doubleBufferingEnabled = true;
@@ -107,6 +113,9 @@ public class ComputedValues {
         }
         if (convergedValues == null) {
             convergedValues = new HashMap<String, Double>();
+        }
+        if (laggedConvergedValues == null) {
+            laggedConvergedValues = new HashMap<String, Double>();
         }
         if (computedThisStep == null) {
             computedThisStep = new HashSet<String>();
@@ -589,6 +598,20 @@ public class ComputedValues {
         // ONLY return converged values - never fall back to current
         return convergedValues.get(name);
     }
+
+    /**
+     * Get a lagged value for display-time historical evaluation.
+     *
+     * Unlike {@link #getLaggedValue(String)}, this returns the timestep BEFORE the
+     * current converged display snapshot. This is what display-only evaluators
+     * like SFC tables need so {@code last(X)} differs from {@code X} after the
+     * current timestep has already been committed.
+     */
+    public static Double getDisplayLaggedValue(String name) {
+        if (name == null) return null;
+        ensureInitialized();
+        return laggedConvergedValues.get(name);
+    }
     
     /**
      * Commit all current computed values as converged values.
@@ -597,6 +620,10 @@ public class ComputedValues {
      */
     public static void commitConvergedValues() {
         ensureInitialized();
+
+        // Preserve the previous converged snapshot for display-time last().
+        laggedConvergedValues.clear();
+        laggedConvergedValues.putAll(convergedValues);
         
         // Copy all current values to converged values
         for (String name : computedValues.keySet()) {
@@ -671,6 +698,9 @@ public class ComputedValues {
         if (convergedValues != null) {
             convergedValues.clear();
         }
+        if (laggedConvergedValues != null) {
+            laggedConvergedValues.clear();
+        }
         if (computedByTable != null) {
             computedByTable.clear();
         }
@@ -694,6 +724,9 @@ public class ComputedValues {
         }
         if (convergedValues != null) {
             convergedValues.clear();
+        }
+        if (laggedConvergedValues != null) {
+            laggedConvergedValues.clear();
         }
         if (computedThisStep != null) {
             computedThisStep.clear();

@@ -68,88 +68,7 @@ public class SFCTableRenderer extends TableRenderer {
      */
     @Override
     protected void updateCachedValues() {
-        // Call base class to handle standard cell value updates
         super.updateCachedValues();
-
-        // SFC tables are display-only and do not publish master column totals.
-        // Recompute sector sums directly from the rendered cell cache so the Σ
-        // row always reflects what is visible in each sector column.
-        updateSectorColumnSums();
-        
-        // Update Σ column values (row sums)
-        updateSigmaColumn();
-    }
-
-    /**
-     * Recalculate sector column sums from cached cell values.
-     */
-    private void updateSectorColumnSums() {
-        if (cachedSumValues == null || cachedCellValues == null) {
-            return;
-        }
-
-        int sectorColCount = getSectorColumnCount();
-        for (int col = 0; col < sectorColCount; col++) {
-            double columnSum = 0.0;
-            for (int row = 0; row < table.rows; row++) {
-                if (row < cachedCellValues.length && col < cachedCellValues[row].length) {
-                    columnSum += cachedCellValues[row][col];
-                }
-            }
-            cachedSumValues[col] = columnSum;
-        }
-    }
-    
-    /**
-     * Update Σ column values (each cell is the sum of all sector columns in that row)
-     */
-    private void updateSigmaColumn() {
-        if (!hasALEColumn()) {
-            // CirSim.console("[SFCTableRenderer.updateSigmaColumn] hasALEColumn=false, skipping");
-            return;
-        }
-        
-        int sigmaCol = table.getCols() - 1;
-        int sectorColCount = getSectorColumnCount();
-        
-        // CirSim.console("[SFCTableRenderer.updateSigmaColumn] sigmaCol=" + sigmaCol + 
-        //               ", sectorColCount=" + sectorColCount + ", rows=" + table.rows);
-        
-        // Calculate row sums for Σ column
-        double sigmaColumnSum = 0.0;
-        for (int row = 0; row < table.rows; row++) {
-            double rowSum = 0.0;
-            StringBuilder rowDebug = new StringBuilder();
-            
-            for (int col = 0; col < sectorColCount; col++) {
-                if (cachedCellValues != null && row < cachedCellValues.length && col < cachedCellValues[row].length) {
-                    double cellVal = cachedCellValues[row][col];
-                    rowSum += cellVal;
-                    rowDebug.append("c").append(col).append("=").append(cellVal).append(" ");
-                }
-            }
-            
-            if (cachedCellValues != null && row < cachedCellValues.length && sigmaCol < cachedCellValues[row].length) {
-                cachedCellValues[row][sigmaCol] = rowSum;
-            }
-            
-            if (row == 0) {
-                // CirSim.console("[SFCTableRenderer.updateSigmaColumn] row0: " + rowDebug + " => rowSum=" + rowSum);
-            }
-            
-            sigmaColumnSum += rowSum;
-        }
-        
-        if (cachedSumValues != null && sigmaCol < cachedSumValues.length) {
-            cachedSumValues[sigmaCol] = sigmaColumnSum;
-        }
-        
-        // // Also log all cachedSumValues
-        // StringBuilder sb = new StringBuilder("[SFCTableRenderer] cachedSumValues: ");
-        // for (int i = 0; i < cachedSumValues.length; i++) {
-        //     sb.append("col").append(i).append("=").append(cachedSumValues[i]).append(" ");
-        // }
-        // CirSim.console(sb.toString());
     }
     
     /**
@@ -246,9 +165,9 @@ public class SFCTableRenderer extends TableRenderer {
         
         // Draw column sums for each column
         for (int col = 0; col < table.getCols(); col++) {
-            // Get the column sum from cached values (base class already calculates this)
-            double value = (cachedSumValues != null && col < cachedSumValues.length) 
-                ? cachedSumValues[col] : 0.0;
+            double value = (hasALEColumn() && col == table.getCols() - 1)
+                ? getALESumValue()
+                : getRegularColumnSum(col);
             
             // Determine text color - red only for negative sums
             if (value < -sfcTable.getBalanceTolerance() && sfcTable.shouldHighlightImbalances()) {
@@ -274,15 +193,11 @@ public class SFCTableRenderer extends TableRenderer {
      */
     @Override
     protected double getALESumValue() {
-        if (cachedSumValues == null) {
-            return 0.0;
-        }
-        
         double total = 0.0;
         int sectorColCount = getSectorColumnCount();
         
-        for (int col = 0; col < sectorColCount && col < cachedSumValues.length; col++) {
-            total += cachedSumValues[col];
+        for (int col = 0; col < sectorColCount; col++) {
+            total += getRegularColumnSum(col);
         }
         
         return total;
@@ -294,10 +209,10 @@ public class SFCTableRenderer extends TableRenderer {
      */
     @Override
     protected double getALERowValue(int row, double totalAssets, double totalLiabilities, double totalEquity) {
-        if (!hasALEColumn() || cachedCellValues == null || row >= cachedCellValues.length) {
+        if (!hasALEColumn()) {
             return 0.0;
         }
-        return cachedCellValues[row][table.getCols() - 1];
+        return sfcTable.getSigmaColumnValue(row);
     }
     
     /**
@@ -315,29 +230,24 @@ public class SFCTableRenderer extends TableRenderer {
      * @return The grand total
      */
     public double getGrandTotal() {
-        if (cachedSumValues == null) {
-            return 0.0;
-        }
-        
         double total = 0.0;
         int sectorColCount = getSectorColumnCount();
-        for (int col = 0; col < sectorColCount && col < cachedSumValues.length; col++) {
-            total += cachedSumValues[col];
+        for (int col = 0; col < sectorColCount; col++) {
+            total += getRegularColumnSum(col);
         }
         return total;
     }
     
     /**
-     * Get cached cell value - exposed for testing
+     * Get displayed cell value - exposed for testing
      * @param row Row index
      * @param col Column index
      * @return The cached cell value
      */
     public double getCachedCellValue(int row, int col) {
-        if (cachedCellValues != null && row >= 0 && row < cachedCellValues.length &&
-            col >= 0 && col < cachedCellValues[row].length) {
-            return cachedCellValues[row][col];
+        if (hasALEColumn() && col == table.getCols() - 1) {
+            return sfcTable.getRowSum(row);
         }
-        return 0.0;
+        return table.getDisplayedTransactionValue(row, col);
     }
 }

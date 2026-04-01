@@ -51,7 +51,6 @@ public class TableColumn {
     private ArrayList<String> cellEquations;         // Equation strings
     private ArrayList<Expr> compiledExpressions;     // Compiled equation objects
     private ArrayList<ExprState> expressionStates;   // Expression evaluation states
-    private ArrayList<Double> cachedCellValues;      // Cached cell values (computed in doStep)
     
     // Computed values
     private double lastSum;             // Last computed column sum (for voltage source)
@@ -69,14 +68,12 @@ public class TableColumn {
         this.cellEquations = new ArrayList<String>();
         this.compiledExpressions = new ArrayList<Expr>();
         this.expressionStates = new ArrayList<ExprState>();
-        this.cachedCellValues = new ArrayList<Double>();
         
         // Populate with empty/default values for each row
         for (int i = 0; i < rowCount; i++) {
             cellEquations.add("");
             compiledExpressions.add(null);
             expressionStates.add(new ExprState(1)); // Only need time variable
-            cachedCellValues.add(0.0);
         }
     }
     
@@ -115,7 +112,6 @@ public class TableColumn {
                 cellEquations.add("");
                 compiledExpressions.add(null);
                 expressionStates.add(new ExprState(1));
-                cachedCellValues.add(0.0);
             }
         } else if (newRowCount < currentRows) {
             // Remove rows from the end
@@ -123,7 +119,6 @@ public class TableColumn {
                 cellEquations.remove(cellEquations.size() - 1);
                 compiledExpressions.remove(compiledExpressions.size() - 1);
                 expressionStates.remove(expressionStates.size() - 1);
-                cachedCellValues.remove(cachedCellValues.size() - 1);
             }
         }
     }
@@ -170,20 +165,6 @@ public class TableColumn {
         }
     }
     
-    // Cached cell value access
-    public double getCachedCellValue(int row) {
-        if (row >= 0 && row < cachedCellValues.size()) {
-            return cachedCellValues.get(row);
-        }
-        return 0.0;
-    }
-    
-    public void setCachedCellValue(int row, double value) {
-        if (row >= 0 && row < cachedCellValues.size()) {
-            cachedCellValues.set(row, value);
-        }
-    }
-
     /**
      * Clear per-run expression and cache state for simulation reset.
      */
@@ -195,9 +176,6 @@ public class TableColumn {
                 state.reset();
             }
         }
-        for (int i = 0; i < cachedCellValues.size(); i++) {
-            cachedCellValues.set(i, 0.0);
-        }
     }
     
     /**
@@ -208,7 +186,6 @@ public class TableColumn {
             cellEquations.add(index, "");
             compiledExpressions.add(index, null);
             expressionStates.add(index, new ExprState(1));
-            cachedCellValues.add(index, 0.0);
         }
     }
     
@@ -220,7 +197,6 @@ public class TableColumn {
             cellEquations.remove(index);
             compiledExpressions.remove(index);
             expressionStates.remove(index);
-            cachedCellValues.remove(index);
         }
     }
     
@@ -235,9 +211,7 @@ public class TableColumn {
         for (int i = 0; i < rows; i++) {
             copy.cellEquations.add(this.cellEquations.get(i));
             copy.compiledExpressions.add(this.compiledExpressions.get(i)); // Shallow copy of Expr
-            ExprState originalState = this.expressionStates.get(i);
             copy.expressionStates.add(new ExprState(1)); // Create new state
-            copy.cachedCellValues.add(this.cachedCellValues.get(i));
         }
         
         copy.lastSum = this.lastSum;

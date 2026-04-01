@@ -285,11 +285,10 @@ public class SFCTableElm extends TableElm {
                 continue;
             }
             
-            // Evaluate equations for this column and cache individual cell values
+            // Evaluate equations for this column
             double columnSum = 0.0;
             for (int row = 0; row < rows; row++) {
                 double cellValue = equationManager.getVoltageForCell(row, col);
-                column.setCachedCellValue(row, cellValue);
                 columnSum += cellValue;
             }
             
@@ -373,7 +372,7 @@ public class SFCTableElm extends TableElm {
      * @param row Row index
      * @return Sum of all sector columns in this row
      */
-    private double getRowSum(int row) {
+    double getRowSum(int row) {
         if (row < 0 || row >= rows || columns == null) {
             return 0.0;
         }
@@ -395,7 +394,7 @@ public class SFCTableElm extends TableElm {
      * @param col Column index
      * @return Sum of all rows in this column
      */
-    private double getColumnSum(int col) {
+    double getColumnSum(int col) {
         if (col < 0 || col >= getCols() || columns == null) {
             return 0.0;
         }
@@ -667,9 +666,6 @@ public class SFCTableElm extends TableElm {
      * @return The column sum from the Σ row
      */
     public double getSumRowValue(int col) {
-        if (sfcRenderer != null) {
-            return sfcRenderer.getCachedSumValue(col);
-        }
         return getColumnSum(col);
     }
     
@@ -679,9 +675,6 @@ public class SFCTableElm extends TableElm {
      * @return The row sum from the Σ column
      */
     public double getSigmaColumnValue(int row) {
-        if (sfcRenderer != null) {
-            return sfcRenderer.getCachedCellValue(row, getCols() - 1);
-        }
         return getRowSum(row);
     }
     

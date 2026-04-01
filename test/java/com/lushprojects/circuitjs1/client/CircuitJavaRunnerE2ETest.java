@@ -95,6 +95,93 @@ class CircuitJavaRunnerE2ETest {
         }
     }
 
+        @Test
+        @DisplayName("runner preserves param-mode outputs when same-named labeled nodes are present")
+        void runnerPreservesParamModeOutputsWithPassiveLabeledNodes() throws Exception {
+        Path circuitFile = Files.createTempFile("runner-param-labeled-", ".md");
+        Path outputCsv = Files.createTempFile("runner-param-labeled-", ".csv");
+        try {
+            String circuit = "# CircuitJS1 SFCR Export\n"
+                + "# Generated from circuit simulation\n\n"
+                + "```{r}\n"
+                + "@init\n"
+                + "  timestep: 1\n"
+                + "  voltageUnit: $\n"
+                + "  timeUnit: yr\n"
+                + "  showDots: true\n"
+                + "  showVolts: true\n"
+                + "  showValues: true\n"
+                + "  showPower: false\n"
+                + "  autoAdjustTimestep: false\n"
+                + "  equationTableMnaMode: true\n"
+                + "  EqnTable Newton Jacobian: true\n"
+                + "  equationTableTolerance: 0.000001\n"
+                + "  lookupMode: pwl\n"
+                + "  lookupClamp: true\n"
+                + "  convergenceCheckThreshold: 100\n"
+                + "  infoViewerUpdateIntervalMs: 200\n"
+                + "  Auto-Open Model Info on Load: true\n"
+                + "@end\n"
+                + "```\n\n"
+                + "```{r}\n"
+                + "EqnTable <- sfcr_set(\n"
+                + "  # [ x=336 y=96 invisible=false ]\n"
+                + "  # #---------------------------------------------------------------------\n"
+                + "  e1 = Yin ~ Ld,  # [mode=param ]\n"
+                + "  e2 = Ylast ~ last(Ld),  # [mode=param ]\n"
+                + "  e3 = Mh ~ last(Mh) + Yin - Cd  # [mode=voltage ]\n"
+                + ")\n"
+                + "```\n\n"
+                + "```{r}\n"
+                + "@circuit\n"
+                + "R -32 128 -112 128 0 0 40 5 0 0 0.5 V U:_sFwM6\n"
+                + "207 -32 128 32 128 172 Ld U:kot4se\n"
+                + "207 -48 208 16 208 164 Yin U:zZQiBY\n"
+                + "207 -48 176 16 176 164 Ylast U:KVNsmb\n"
+                + "207 64 128 128 128 172 Mh U:testMh\n"
+                + "@end\n"
+                + "```\n";
+
+            Files.write(circuitFile, circuit.getBytes(StandardCharsets.UTF_8));
+
+            CircuitJavaRunner.main(new String[] {
+                circuitFile.toString(),
+                outputCsv.toString(),
+                "6"
+            });
+
+            List<String> lines = Files.readAllLines(outputCsv, StandardCharsets.UTF_8);
+            assertEquals(7, lines.size(), "Expected header plus six data rows");
+
+            String[] headers = lines.get(0).split(",");
+            int mhIdx = indexOf(headers, "Mh");
+            int yinIdx = indexOf(headers, "Yin");
+            int ylastIdx = indexOf(headers, "Ylast");
+            assertTrue(mhIdx >= 0, "Expected Mh column");
+            assertTrue(yinIdx >= 0, "Expected Yin column");
+            assertTrue(ylastIdx >= 0, "Expected Ylast column");
+
+            double[] expectedMh = {5, 10, 15, 20, 25, 30};
+            double[] expectedYin = {5, 5, 5, 5, 5, 5};
+            double[] expectedYlast = {0, 5, 5, 5, 5, 5};
+
+            for (int i = 1; i < lines.size(); i++) {
+            String[] cols = lines.get(i).split(",", -1);
+            assertEquals((double) i, Double.parseDouble(cols[0]), 1e-9,
+                "Expected time column at row " + i);
+            assertEquals(expectedMh[i - 1], Double.parseDouble(cols[mhIdx]), 1e-9,
+                "Unexpected Mh at row " + i);
+            assertEquals(expectedYin[i - 1], Double.parseDouble(cols[yinIdx]), 1e-9,
+                "Unexpected Yin at row " + i);
+            assertEquals(expectedYlast[i - 1], Double.parseDouble(cols[ylastIdx]), 1e-9,
+                "Unexpected Ylast at row " + i);
+            }
+        } finally {
+            Files.deleteIfExists(circuitFile);
+            Files.deleteIfExists(outputCsv);
+        }
+        }
+
     @Test
     @DisplayName("emits world2 formatted six-column table when format is world2")
     void emitsWorld2FormattedSixColumnTableWhenFormatIsWorld2() throws Exception {
@@ -167,6 +254,15 @@ class CircuitJavaRunnerE2ETest {
         Path mixedModes = Paths.get(projectDir, "test/resources/sfcr/mixed_modes_fixture.md");
         assertTrue(Files.exists(mixedModes), "Expected mixed-modes fixture to exist: " + mixedModes);
         return mixedModes;
+    }
+
+    private int indexOf(String[] headers, String key) {
+        for (int i = 0; i < headers.length; i++) {
+            if (key.equals(headers[i].trim())) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private Path getWorld2CircuitPath() {
