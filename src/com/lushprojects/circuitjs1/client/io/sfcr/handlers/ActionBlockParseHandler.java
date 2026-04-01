@@ -17,9 +17,18 @@ public class ActionBlockParseHandler implements SFCRBlockParseHandler {
     @Override
     public ParseResult parse(String[] lines, int startIndex, SFCRParseContext ctx) {
         SFCRParser.BlockHeaderInfo actionBlockPos = ctx.parseBlockHeader(lines[startIndex].trim(), "@action");
+        int endIndex = findBlockEnd(lines, startIndex);
+        if (ctx.hasPendingResult()) {
+            String blockName = (actionBlockPos == null || actionBlockPos.name == null || actionBlockPos.name.isEmpty())
+                    ? "action"
+                    : actionBlockPos.name;
+            ctx.addBlockDump("action", blockName, collectSourceBlock(lines, startIndex, endIndex));
+            return ParseResult.next(endIndex);
+        }
+
         ActionScheduler scheduler = ctx.getActionScheduler();
         if (scheduler == null) {
-            return ParseResult.next(startIndex + 1);
+            return ParseResult.next(endIndex);
         }
 
         scheduler.clearAll();
@@ -159,5 +168,27 @@ public class ActionBlockParseHandler implements SFCRBlockParseHandler {
             ctx.setActionElementFromActionBlock(true);
         }
         return ParseResult.next(i);
+    }
+
+    private int findBlockEnd(String[] lines, int startIndex) {
+        int i = startIndex + 1;
+        while (i < lines.length) {
+            if (lines[i].trim().startsWith("@end")) {
+                return i + 1;
+            }
+            i++;
+        }
+        return lines.length;
+    }
+
+    private String collectSourceBlock(String[] lines, int startIndex, int endIndex) {
+        StringBuilder block = new StringBuilder();
+        for (int i = startIndex; i < endIndex && i < lines.length; i++) {
+            if (block.length() > 0) {
+                block.append("\n");
+            }
+            block.append(lines[i]);
+        }
+        return block.toString();
     }
 }

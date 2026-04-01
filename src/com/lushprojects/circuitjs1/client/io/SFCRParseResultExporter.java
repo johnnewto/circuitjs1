@@ -104,7 +104,10 @@ public class SFCRParseResultExporter {
 
         ArrayList<SFCRParseResult.BlockDump> pendingCircuitBlocks = new ArrayList<SFCRParseResult.BlockDump>();
         for (SFCRParseResult.BlockDump block : blocks) {
-            if (isPlantUmlBlock(block)) {
+            if (isActionBlock(block)) {
+                flushCircuitBlocks(sb, pendingCircuitBlocks);
+                appendActionBlock(sb, block);
+            } else if (isPlantUmlBlock(block)) {
                 flushCircuitBlocks(sb, pendingCircuitBlocks);
                 appendPlantUmlBlock(sb, block);
             } else {
@@ -131,6 +134,23 @@ public class SFCRParseResultExporter {
             return true;
         }
         return block.dumpString != null && block.dumpString.trim().startsWith("467 ");
+    }
+
+    private static boolean isActionBlock(SFCRParseResult.BlockDump block) {
+        if (block == null) {
+            return false;
+        }
+        if ("action".equals(block.blockType)) {
+            return true;
+        }
+        return block.dumpString != null && block.dumpString.trim().startsWith("@action");
+    }
+
+    private static void appendActionBlock(StringBuilder sb, SFCRParseResult.BlockDump block) {
+        if (block == null || block.dumpString == null || block.dumpString.trim().isEmpty()) {
+            return;
+        }
+        sb.append(block.dumpString.trim()).append("\n\n");
     }
 
     private static void appendPlantUmlBlock(StringBuilder sb, SFCRParseResult.BlockDump block) {

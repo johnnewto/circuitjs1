@@ -1,6 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.lushprojects.circuitjs1.client.io.SFCRParseResult;
+import com.lushprojects.circuitjs1.client.io.SFCRParseResultExporter;
 import com.lushprojects.circuitjs1.client.io.SFCRParser;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -201,8 +202,8 @@ class SFCRParseResultTest {
             "PlantUML dump should preserve parsed width and scale metadata");
         }
 
-        @Test
-        @DisplayName("fenced r block with @startuml loads as SequenceDiagramElm")
+    @Test
+    @DisplayName("fenced r block with @startuml loads as SequenceDiagramElm")
         void testFencedPlantUmlBlockCaptured() {
         String text =
                 "```{r}\n" +
@@ -224,6 +225,39 @@ class SFCRParseResultTest {
             "Fenced PlantUML x/y should be parsed from the @startuml line");
         assertTrue(plantUmlBlocks.get(0).dumpString.endsWith(" 640 1.25"),
             "Fenced PlantUML should preserve @startuml width and scale metadata");
+        }
+
+        @Test
+        @DisplayName("@action block is preserved in result-mode round-trip")
+        void testActionBlockPreservedInResultModeRoundTrip() {
+        String text =
+            "@action Action_Schedule x=1072 y=896\n" +
+            "pauseTime: 0\n" +
+            "enabled: true\n" +
+            "element: 1072 896 1088 912 0\n" +
+            "\n" +
+            "| time | target | value | text | enabled | stop |\n" +
+            "|------|--------|-------|------|---------|------|\n" +
+            "| 30 | \\\\alpha0 | =10 | propensity to spend | true | false |\n" +
+            "| 40 | \\\\alpha0 | +10 | After | true | false |\n" +
+            "@end\n";
+
+        SFCRParseResult parsed = SFCRParser.parseToResult(text);
+        assertNotNull(parsed);
+
+        List<SFCRParseResult.BlockDump> actionBlocks = parsed.getBlocksByType("action");
+        assertEquals(1, actionBlocks.size(), "Expected one preserved action block");
+        assertTrue(actionBlocks.get(0).dumpString.startsWith("@action Action_Schedule x=1072 y=896"));
+        assertTrue(actionBlocks.get(0).dumpString.contains("| 30 | \\\\alpha0 | =10 | propensity to spend | true | false |"));
+
+        String exported = SFCRParseResultExporter.export(parsed);
+        assertTrue(exported.contains("@action Action_Schedule x=1072 y=896"));
+        assertFalse(exported.contains("@circuit\n#@sfcrblock action"),
+            "Action blocks should export as structural SFCR blocks, not @circuit fallback dumps");
+
+        SFCRParseResult reparsed = SFCRParser.parseToResult(exported);
+        assertNotNull(reparsed);
+        assertEquals(1, reparsed.getBlocksByType("action").size(), "Round-trip should preserve action blocks");
         }
 
         @Test

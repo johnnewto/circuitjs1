@@ -186,6 +186,9 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
     /** Running signed totals shown in footer boxes, keyed by participant name */
     private final Map<String, Double> integratedFooterTotals = new HashMap<String, Double>();
 
+    /** Exact per-message magnitudes derived from the linked source table. */
+    private final Map<Integer, Double> sourceTableMessageValues = new HashMap<Integer, Double>();
+
     /** Highest message index already accumulated into footer totals */
     private int lastAccumulatedMessageIndex = -1;
     
@@ -471,6 +474,7 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
         String nextSource = resolution.renderedSource;
         sourceTableName = resolution.sourceTableName;
         sourceTable = resolution.sourceTable;
+        rebuildSourceTableMessageValues();
         
         // Only re-parse if source has changed
         if (!nextSource.equals(renderedPlantUmlSource)) {
@@ -730,7 +734,7 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
     }
 
     private void accumulateMessageIntoFooterTotals(Message msg) {
-        Double value = extractNumericTransactionValue(msg.label);
+        Double value = getFooterTransactionValue(msg);
         if (value == null) {
             return;
         }
@@ -783,6 +787,32 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
     private void resetIntegratedFooterTotals() {
         integratedFooterTotals.clear();
         lastAccumulatedMessageIndex = -1;
+    }
+
+    private void rebuildSourceTableMessageValues() {
+        sourceTableMessageValues.clear();
+        if (sourceTable == null) {
+            return;
+        }
+        int messageIndex = 0;
+        for (int row = 0; row < sourceTable.rows; row++) {
+            FlowEndpoints endpoints = SequenceDiagramParser.extractFlowEndpoints(sourceTable, row);
+            if (endpoints == null || endpoints.sourceSector == null || endpoints.targetSector == null) {
+                continue;
+            }
+            sourceTableMessageValues.put(Integer.valueOf(messageIndex++), Double.valueOf(endpoints.flowValue));
+        }
+    }
+
+    private Double getFooterTransactionValue(Message msg) {
+        if (msg == null) {
+            return null;
+        }
+        Double sourceValue = sourceTableMessageValues.get(Integer.valueOf(msg.messageIndex));
+        if (sourceValue != null) {
+            return sourceValue;
+        }
+        return extractNumericTransactionValue(msg.label);
     }
 
     private boolean hasSameDiagramStructure(ParsedDiagram previousDiagram, ParsedDiagram nextDiagram) {

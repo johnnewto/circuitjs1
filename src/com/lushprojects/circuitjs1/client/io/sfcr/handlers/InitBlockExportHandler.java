@@ -35,10 +35,10 @@ public class InitBlockExportHandler implements SFCRBlockExportHandler {
             sb.append("  timeUnit: ").append(sim.timeUnitSymbol).append("\n");
         }
 
-        sb.append("  showDots: ").append(sim.dotsCheckItem.getState()).append("\n");
-        sb.append("  showVolts: ").append(sim.voltsCheckItem.getState()).append("\n");
-        sb.append("  showValues: ").append(sim.showValuesCheckItem.getState()).append("\n");
-        sb.append("  showPower: ").append(sim.powerCheckItem.getState()).append("\n");
+        sb.append("  showDots: ").append(sim.isDotsEnabledForExport()).append("\n");
+        sb.append("  showVolts: ").append(sim.isVoltsEnabledForExport()).append("\n");
+        sb.append("  showValues: ").append(sim.isShowValuesEnabledForExport()).append("\n");
+        sb.append("  showPower: ").append(sim.isPowerEnabledForExport()).append("\n");
         sb.append("  autoAdjustTimestep: ").append(sim.adjustTimeStep).append("\n");
         sb.append("  equationTableMnaMode: ").append(sim.isEquationTableMnaMode()).append("\n");
         sb.append("  EqnTable Newton Jacobian: ").append(sim.equationTableNewtonJacobianEnabled).append("\n");

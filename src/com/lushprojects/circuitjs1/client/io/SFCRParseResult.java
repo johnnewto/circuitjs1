@@ -35,7 +35,7 @@ public class SFCRParseResult {
         public final String blockType;
         /** Block name as it appeared in the SFCR source (spaces replaced by underscores). */
         public final String blockName;
-        /** CircuitJS element serialization string, ready for {@code ElementFactoryFacade.createFromDumpType(...)}. */
+        /** CircuitJS element serialization string, or preserved source text for blocks such as {@code @action}. */
         public final String dumpString;
 
         public BlockDump(String blockType, String blockName, String dumpString) {

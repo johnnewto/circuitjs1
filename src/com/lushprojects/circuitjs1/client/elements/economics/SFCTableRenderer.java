@@ -70,9 +70,34 @@ public class SFCTableRenderer extends TableRenderer {
     protected void updateCachedValues() {
         // Call base class to handle standard cell value updates
         super.updateCachedValues();
+
+        // SFC tables are display-only and do not publish master column totals.
+        // Recompute sector sums directly from the rendered cell cache so the Σ
+        // row always reflects what is visible in each sector column.
+        updateSectorColumnSums();
         
         // Update Σ column values (row sums)
         updateSigmaColumn();
+    }
+
+    /**
+     * Recalculate sector column sums from cached cell values.
+     */
+    private void updateSectorColumnSums() {
+        if (cachedSumValues == null || cachedCellValues == null) {
+            return;
+        }
+
+        int sectorColCount = getSectorColumnCount();
+        for (int col = 0; col < sectorColCount; col++) {
+            double columnSum = 0.0;
+            for (int row = 0; row < table.rows; row++) {
+                if (row < cachedCellValues.length && col < cachedCellValues[row].length) {
+                    columnSum += cachedCellValues[row][col];
+                }
+            }
+            cachedSumValues[col] = columnSum;
+        }
     }
     
     /**

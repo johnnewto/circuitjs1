@@ -34,7 +34,7 @@ public final class SFCRTemplateMerger {
     // =========================================================================
 
     enum TemplateBlockType {
-        INIT, LOOKUP, EQUATIONS, MATRIX, SANKEY, PLANTUML, SCOPE, CIRCUIT, OTHER
+        INIT, ACTION, LOOKUP, EQUATIONS, MATRIX, SANKEY, PLANTUML, SCOPE, CIRCUIT, OTHER
     }
 
     // =========================================================================
@@ -84,7 +84,7 @@ public final class SFCRTemplateMerger {
                 continue;
             }
 
-            if (trimmed.startsWith("@init") || trimmed.startsWith("@lookup") || trimmed.startsWith("@equations") || trimmed.startsWith("@parameters") ||
+            if (trimmed.startsWith("@init") || trimmed.startsWith("@action") || trimmed.startsWith("@lookup") || trimmed.startsWith("@equations") || trimmed.startsWith("@parameters") ||
                 trimmed.startsWith("@matrix") || trimmed.startsWith("@sankey") || trimmed.startsWith("@startuml") ||
                 trimmed.startsWith("@scope") || trimmed.startsWith("@circuit")) {
 
@@ -157,6 +157,7 @@ public final class SFCRTemplateMerger {
     /** Helper class to manage block replacement state during export. */
     private static class BlockReplacer {
         private final ArrayList<String> equationBlocks;
+        private final ArrayList<String> actionBlocks;
         private final ArrayList<String> lookupBlocks;
         private final ArrayList<String> matrixBlocks;
         private final ArrayList<String> sankeyBlocks;
@@ -166,6 +167,7 @@ public final class SFCRTemplateMerger {
         private final String circuitBlock;
 
         private boolean initConsumed = false;
+        private int actionIndex = 0;
         private int eqIndex = 0;
         private int lookupIndex = 0;
         private int matrixIndex = 0;
@@ -175,6 +177,7 @@ public final class SFCRTemplateMerger {
 
         BlockReplacer(SFCRExportContext ctx) {
             initBlock = extractStructuralPayload(renderBlocksForType(SFCRBlockType.INIT, ctx));
+            actionBlocks = buildCanonicalActionBlocks(ctx);
             equationBlocks = buildCanonicalEquationBlocks(ctx);
             lookupBlocks = buildCanonicalLookupBlocks(ctx);
             matrixBlocks = buildCanonicalMatrixBlocks(ctx);
@@ -193,6 +196,8 @@ public final class SFCRTemplateMerger {
                     }
                     initConsumed = true;
                     return initBlock;
+                case ACTION:
+                    return actionIndex < actionBlocks.size() ? actionBlocks.get(actionIndex++) : null;
                 case LOOKUP:
                     return lookupIndex < lookupBlocks.size() ? lookupBlocks.get(lookupIndex++) : null;
                 case EQUATIONS:
@@ -215,9 +220,10 @@ public final class SFCRTemplateMerger {
         /** Append any remaining unused blocks to the output. */
         void appendRemaining(StringBuilder out) {
             if (!initConsumed && initBlock != null && !initBlock.trim().isEmpty()) {
-                out.append("\n").append(R_FENCE).append("\n").append(initBlock).append("\n```\n");
+                out.append("\n").append(initBlock).append("\n");
                 initConsumed = true;
             }
+            appendRemainingFromList(out, actionBlocks, actionIndex);
             appendRemainingFromList(out, lookupBlocks, lookupIndex);
             appendRemainingFromList(out, equationBlocks, eqIndex);
             appendRemainingFromList(out, matrixBlocks, matrixIndex);
@@ -334,6 +340,10 @@ public final class SFCRTemplateMerger {
 
     static ArrayList<String> buildCanonicalLookupBlocks(SFCRExportContext ctx) {
         return collectBlocksForType(SFCRBlockType.LOOKUP, "@lookup", ctx);
+    }
+
+    static ArrayList<String> buildCanonicalActionBlocks(SFCRExportContext ctx) {
+        return collectBlocksForType(SFCRBlockType.ACTION, "@action", ctx);
     }
 
     static ArrayList<String> buildCanonicalMatrixBlocks(SFCRExportContext ctx) {
@@ -477,7 +487,7 @@ public final class SFCRTemplateMerger {
         return trimmed.contains("sfcr_set") || trimmed.contains("sfcr_matrix");
     }
 
-    private static TemplateBlockType detectTemplateBlockType(String text) {
+    static TemplateBlockType detectTemplateBlockType(String text) {
         if (text == null || text.isEmpty()) {
             return TemplateBlockType.OTHER;
         }
@@ -487,6 +497,9 @@ public final class SFCRTemplateMerger {
         }
         if (lower.contains("@init")) {
             return TemplateBlockType.INIT;
+        }
+        if (lower.contains("@action")) {
+            return TemplateBlockType.ACTION;
         }
         if (lower.contains("@lookup")) {
             return TemplateBlockType.LOOKUP;

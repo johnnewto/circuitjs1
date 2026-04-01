@@ -37,6 +37,7 @@ import com.lushprojects.circuitjs1.client.ui.ExportAsUrlDialog;
 import com.lushprojects.circuitjs1.client.util.Locale;
 
 final class CircuitIOService {
+    private static final String LEFT_PANEL_OPEN_KEY = "leftPanelOpen";
     private final CirSim sim;
     private String recovery;
 
@@ -46,6 +47,16 @@ final class CircuitIOService {
 
     String getRecovery() {
         return recovery;
+    }
+
+    private boolean shouldAutoOpenModelInfo(String editorContent) {
+        if (!sim.autoOpenModelInfoOnLoad || editorContent == null || editorContent.isEmpty())
+            return false;
+        Storage storage = Storage.getLocalStorageIfSupported();
+        if (storage == null)
+            return true;
+        String savedLeftPanelOpen = storage.getItem(LEFT_PANEL_OPEN_KEY);
+        return savedLeftPanelOpen == null || "true".equals(savedLeftPanelOpen);
     }
 
     void writeRecoveryToStorage() {
@@ -172,7 +183,7 @@ final class CircuitIOService {
                 String editorContent = sim.getModelInfoEditorContent();
                 sim.getSFCRDocumentManager().refreshModelInfoMenuItems();
 
-                if (RuntimeMode.isGwt() && sim.autoOpenModelInfoOnLoad && editorContent != null && !editorContent.isEmpty()) {
+                if (RuntimeMode.isGwt() && shouldAutoOpenModelInfo(editorContent)) {
                     sim.getInfoDialogActions().openModelInfoEditorInLeftPanel();
                     sim.getInfoDialogActions().doViewModelInfo();
                 }

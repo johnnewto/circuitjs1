@@ -22,17 +22,6 @@
 @end
 ```
 
-@action Action_Schedule x=1072 y=896
-pauseTime: 0
-enabled: true
-element: 1072 896 1088 912 0
-
-| time | target | value | text | enabled | stop |
-|------|--------|-------|------|---------|------|
-| 30 | \alpha0 | =10 | propensity to spend | true | false |
-| 40 | \alpha0 | +10 | After | true | false |
-@end
-
 The **SFC model BMW** refers to one of the foundational models in the book *Monetary Economics: An Integrated Approach to Credit, Money, Income, Production and Wealth* (2007) by **Wynne Godley** and **Marc Lavoie**. This is a key text in **Post-Keynesian economics** that develops **Stock-Flow Consistent (SFC)** macroeconomic modeling.
 
 **SFC models** ensure every financial flow (e.g., income, spending, borrowing) corresponds to changes in stocks (e.g., wealth, debt, capital), with all sectoral balance sheets and transactions matrices adding up correctly — nothing is created or destroyed without accounting for it. This enforces strict accounting coherence between real (production, investment) and financial (money, credit, debt) sides of the economy.
@@ -103,6 +92,19 @@ Key: **Money is endogenous** — created when banks grant loans to firms, destro
 - Demonstrates **endogenous money** (loans create deposits, not vice versa).
 - Shows limits of pure private economies: without government deficits, achieving stable full-employment growth is difficult (related to Godley's later work on unsustainable processes).
 - Serves as a stepping stone to more complex models (e.g., BMWK adds capital, others add government, open economy, inflation).
+
+```{r}
+@action Action_Schedule x=-384 y=864
+  pauseTime: 0
+  enabled: true
+  element: -384 864 -368 880 0
+
+| time | target | value | text | enabled | stop |
+|------|--------|-------|------|---------|------|
+| 30 | \alpha0 | =10 | propensity to spend | true | false |
+| 40 | \alpha0 | +10 | After | true | false |
+@end
+```
 
 ```{r}
 BMW <- sfcr_set(
@@ -183,10 +185,17 @@ Balance_Sheet <- sfcr_matrix(
 ```
 
 ```{r}
-@scope Y position=0
+@scope Embedded_Scope_1 position=-1
+  x1: 320
+  y1: 560
+  x2: 928
+  y2: 976
+  elmUid: KaRSfa
   speed: 1
-  flags: x2001206
+  flags: x6001206
   source: uid:K79ipy value:0
+  trace: uid:USgC2r value:0
+  trace: uid:1ZqYCM value:0
 @end
 ```
 
@@ -211,10 +220,12 @@ x 491 159 1045 162 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW\s(f
 x 491 183 796 186 4 12 Bank-Money\sWorld\smodel\s(flow-only\svariant,\slast()\sfor\slag) 808080FF U:BRUOXo
 x 491 207 776 210 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF U:C67zij
 207 64 848 128 848 180 Y U:K79ipy
-431 -256 816 -208 848 0 70 true false U:Ozs0Ey
+431 -80 816 -32 848 0 70 true false U:Ozs0Ey
 207 64 880 128 880 164 Ms U:1ZqYCM
 207 64 896 128 896 164 Mh U:USgC2r
 207 64 864 128 864 164 \\alpha0 U:9LTbPZ
+207 64 912 128 912 164 Ls U:jyeEI-
+207 64 928 128 928 164 Ld U:H3CeRk
 @end
 ```
 

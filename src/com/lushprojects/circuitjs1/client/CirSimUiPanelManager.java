@@ -16,6 +16,7 @@ import jsinterop.annotations.JsProperty;
 import jsinterop.annotations.JsType;
 
 public class CirSimUiPanelManager {
+    private static final String LEFT_PANEL_OPEN_KEY = "leftPanelOpen";
     private final CirSim sim;
     
     @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Window")
@@ -124,6 +125,7 @@ public class CirSimUiPanelManager {
             leftTrigger.setChecked(true);
 
         sim.layoutPanel.setWidgetSize(sim.leftPanel, CirSim.LEFTPANELWIDTH);
+        sim.getPreferencesManager().setOptionInStorage(LEFT_PANEL_OPEN_KEY, true);
         if (sim.leftPanelCheckboxLabel != null)
             sim.leftPanelCheckboxLabel.getStyle().setProperty("left", CirSim.LEFTPANELWIDTH + "px");
         sim.layoutPanel.forceLayout();

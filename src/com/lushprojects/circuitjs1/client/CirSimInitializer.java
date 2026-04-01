@@ -212,8 +212,10 @@ final class CirSimInitializer {
         final int panelMaxWidth = Math.max(166, width / 2);
         final String rightPanelWidthKey = "rightPanelWidth";
         final String leftPanelWidthKey = "leftPanelWidth";
+        final String leftPanelOpenKey = "leftPanelOpen";
         CirSim.VERTICALPANELWIDTH = loadPanelWidthFromStorage(rightPanelWidthKey, defaultPanelWidth, panelMinWidth, panelMaxWidth);
         CirSim.LEFTPANELWIDTH = loadPanelWidthFromStorage(leftPanelWidthKey, defaultPanelWidth, panelMinWidth, panelMaxWidth);
+        final boolean leftPanelOpen = sim.getPreferencesManager().getOptionFromStorage(leftPanelOpenKey, false);
 
         sim.getMenuUiState().menuBar = new MenuBar();
         sim.getMenuUiState().menuBar.addItem(Locale.LS("File"), sim.getMenuUiState().fileMenuBar);
@@ -239,7 +241,7 @@ final class CirSimInitializer {
         leftPanelCheckbox.setId("leftTrigger");
         sim.leftPanelCheckboxLabel.setAttribute("for", "leftTrigger");
         leftPanelCheckbox.addClassName("leftTrigger");
-        leftPanelCheckbox.setChecked(false);
+        leftPanelCheckbox.setChecked(leftPanelOpen);
         
         InputElement topPanelCheckbox = Document.get().createCheckInputElement();
         LabelElement topPanelCheckboxLabel = Document.get().createLabelElement();
@@ -504,6 +506,7 @@ final class CirSimInitializer {
                         }
                         sim.layoutPanel.setWidgetSize(sim.leftPanel, 0);
                     }
+                    sim.getPreferencesManager().setOptionInStorage(leftPanelOpenKey, leftPanelCheckbox.isChecked());
                     updateLeftPanelTogglePosition(leftPanelCheckbox.isChecked());
                     sim.layoutPanel.forceLayout();
                     sim.getViewportController().setCanvasSize();
@@ -512,8 +515,8 @@ final class CirSimInitializer {
             }
         });
 
-        sim.layoutPanel.setWidgetSize(sim.leftPanel, 0);
-        updateLeftPanelTogglePosition(false);
+        sim.layoutPanel.setWidgetSize(sim.leftPanel, leftPanelOpen ? CirSim.LEFTPANELWIDTH : 0);
+        updateLeftPanelTogglePosition(leftPanelOpen);
 
         final boolean hideSidebarFinal = hideSidebar;
 
