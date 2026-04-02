@@ -19,6 +19,7 @@
 
 package com.lushprojects.circuitjs1.client.elements.annotation;
 
+import com.google.gwt.canvas.dom.client.Context2d;
 import com.google.gwt.user.client.Timer;
 import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.elements.economics.TableElm;
@@ -117,6 +118,56 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
     
     /** Color for completed transactions (cumulative mode) */
     private static final String COMPLETED_COLOR = "#FFA500";  // Orange
+
+    /** Minimum stroke width for Sankey-style proportional flows */
+    static final double WIDE_FLOW_MIN_STROKE_WIDTH = 4.0;
+
+    /** Maximum stroke width for Sankey-style proportional flows */
+    static final double WIDE_FLOW_MAX_STROKE_WIDTH = 20.0;
+
+    /** Arrowhead length multiplier relative to stroke width */
+    static final double ARROW_LENGTH_MULTIPLIER = 1.5625;
+
+    /** Arrowhead half-height multiplier relative to stroke width */
+    static final double ARROW_HALF_HEIGHT_MULTIPLIER = 0.6875;
+
+    /** Alpha used for wide-flow participant colors */
+    private static final double WIDE_FLOW_ALPHA = 0.72;
+
+    /** Default color for participants not found in the Sankey palette */
+    private static final String DEFAULT_WIDE_FLOW_COLOR = "#8B5CF6";
+
+    /** Sankey-like palette for common sector names */
+    private static final Map<String, String> WIDE_FLOW_COLOR_MAP = new HashMap<String, String>();
+
+    /** Fallback palette for arbitrary participant names */
+    private static final String[] WIDE_FLOW_FALLBACK_COLORS = {
+        "#6366F1",
+        "#10B981",
+        "#F59E0B",
+        "#EF4444",
+        "#8B5CF6",
+        "#06B6D4",
+        "#EC4899",
+        "#84CC16"
+    };
+
+    static {
+        WIDE_FLOW_COLOR_MAP.put("Households", "#6366F1");
+        WIDE_FLOW_COLOR_MAP.put("Households_C", "#818CF8");
+        WIDE_FLOW_COLOR_MAP.put("Firms", "#10B981");
+        WIDE_FLOW_COLOR_MAP.put("Firms_{Current}", "#34D399");
+        WIDE_FLOW_COLOR_MAP.put("Firms_{Capital}", "#059669");
+        WIDE_FLOW_COLOR_MAP.put("Banks", "#F59E0B");
+        WIDE_FLOW_COLOR_MAP.put("Banks_{Current}", "#FBBF24");
+        WIDE_FLOW_COLOR_MAP.put("Banks_{Capital}", "#D97706");
+        WIDE_FLOW_COLOR_MAP.put("Govt", "#EF4444");
+        WIDE_FLOW_COLOR_MAP.put("Government", "#EF4444");
+        WIDE_FLOW_COLOR_MAP.put("Central Bank", "#8B5CF6");
+        WIDE_FLOW_COLOR_MAP.put("Foreign", "#06B6D4");
+        WIDE_FLOW_COLOR_MAP.put("External", "#14B8A6");
+        WIDE_FLOW_COLOR_MAP.put("Rest of World", "#0EA5E9");
+    }
     
     // ══════════════════════════════════════════════════════════════════════════
     // COLORS - Theme Configuration
@@ -183,6 +234,9 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
     /** Timer for auto-advancing animation when simulation is stopped */
     private Timer timedRevealTimer;
 
+    /** When enabled, transactions render as Sankey-style colored proportional flows */
+    private boolean wideFlowModeEnabled;
+
     /** Running signed totals shown in footer boxes, keyed by participant name */
     private final Map<String, Double> integratedFooterTotals = new HashMap<String, Double>();
 
@@ -206,6 +260,7 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
     public SequenceDiagramElm(int xx, int yy) {
         super(xx, yy);
         plantUmlSource = SequenceDiagramParser.getDefaultDiagram();
+        wideFlowModeEnabled = true;
         parseDiagram();
         syncFrameToScale();
     }
@@ -241,6 +296,9 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
         parseIntToken(st, 0);  // Skip legacy pauseDuring
         parseIntToken(st, 1);  // Skip legacy everyN
         animController.loadConfig(animEnabled, animStepMs);
+
+        // Parse wide-flow rendering flag (optional, added later)
+        wideFlowModeEnabled = parseIntToken(st, 1) != 0;
         
         parseDiagram();
         initializeFrameFromBounds();
@@ -258,7 +316,10 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
             + diagramWidth + " " 
             + diagramScale + " "
             + animConfig[0] + " "
-            + animConfig[1];
+            + animConfig[1] + " "
+            + 0 + " "
+            + 1 + " "
+            + (wideFlowModeEnabled ? 1 : 0);
     }
     
     /** Returns unique dump type identifier for this element class */
@@ -815,6 +876,74 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
         return extractNumericTransactionValue(msg.label);
     }
 
+    private double getMaxTransactionMagnitude() {
+        if (diagram == null) {
+            return 0;
+        }
+        double maxMagnitude = 0;
+        for (int i = 0; i < diagram.elements.size(); i++) {
+            DiagramElement element = diagram.elements.get(i);
+            if (!(element instanceof Message)) {
+                continue;
+            }
+            Double value = getFooterTransactionValue((Message) element);
+            if (value != null) {
+                maxMagnitude = Math.max(maxMagnitude, Math.abs(value.doubleValue()));
+            }
+        }
+        return maxMagnitude;
+    }
+
+    static double computeWideFlowStrokeWidth(double magnitude, double maxMagnitude) {
+        if (maxMagnitude <= 0) {
+            return WIDE_FLOW_MIN_STROKE_WIDTH;
+        }
+        double clampedMagnitude = Math.max(0, Math.min(magnitude, maxMagnitude));
+        double ratio = clampedMagnitude / maxMagnitude;
+        return WIDE_FLOW_MIN_STROKE_WIDTH
+            + ratio * (WIDE_FLOW_MAX_STROKE_WIDTH - WIDE_FLOW_MIN_STROKE_WIDTH);
+    }
+
+    static String getWideFlowPaletteColor(String participantName) {
+        if (participantName == null || participantName.isEmpty()) {
+            return DEFAULT_WIDE_FLOW_COLOR;
+        }
+        String mappedColor = WIDE_FLOW_COLOR_MAP.get(participantName);
+        if (mappedColor != null) {
+            return mappedColor;
+        }
+        int hashIndex = Math.abs(participantName.hashCode()) % WIDE_FLOW_FALLBACK_COLORS.length;
+        return WIDE_FLOW_FALLBACK_COLORS[hashIndex];
+    }
+
+    private String getWideFlowStrokeColor(Message msg) {
+        if (animController.isHighlighted(msg.messageIndex)) {
+            return HIGHLIGHT_COLOR;
+        }
+        if (!wideFlowModeEnabled) {
+            return lineColor;
+        }
+        Double value = getFooterTransactionValue(msg);
+        if (value == null) {
+            return lineColor;
+        }
+        return hexToRgba(getWideFlowPaletteColor(msg.from), WIDE_FLOW_ALPHA);
+    }
+
+    private String hexToRgba(String hex, double alpha) {
+        if (hex == null || hex.length() < 7) {
+            return "rgba(128,128,128," + alpha + ")";
+        }
+        try {
+            int r = Integer.parseInt(hex.substring(1, 3), 16);
+            int g = Integer.parseInt(hex.substring(3, 5), 16);
+            int b = Integer.parseInt(hex.substring(5, 7), 16);
+            return "rgba(" + r + "," + g + "," + b + "," + alpha + ")";
+        } catch (Exception e) {
+            return "rgba(128,128,128," + alpha + ")";
+        }
+    }
+
     private boolean hasSameDiagramStructure(ParsedDiagram previousDiagram, ParsedDiagram nextDiagram) {
         if (previousDiagram == nextDiagram) {
             return true;
@@ -1055,22 +1184,19 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
      * Returns the color to use for an arrow based on animation state.
      * Flash mode: only the currently active transaction is highlighted.
      */
-    private String getArrowColor(int msgIndex) {
-        if (animController.isHighlighted(msgIndex)) {
-            return HIGHLIGHT_COLOR;
+    private double getArrowStrokeWidth(Message msg) {
+        double strokeWidth = TRANSACTION_STROKE_WIDTH;
+        if (wideFlowModeEnabled) {
+            Double value = getFooterTransactionValue(msg);
+            if (value != null) {
+                strokeWidth = computeWideFlowStrokeWidth(
+                    Math.abs(value.doubleValue()), getMaxTransactionMagnitude());
+            }
         }
-        return lineColor;
-    }
-    
-    /**
-     * Returns the stroke width for an arrow based on animation state.
-     * Active transaction gets a thicker line for emphasis.
-     */
-    private double getArrowStrokeWidth(int msgIndex) {
-        if (animController.isHighlighted(msgIndex)) {
-            return TRANSACTION_STROKE_WIDTH * SequenceDiagramAnimationController.HIGHLIGHT_STROKE_MULTIPLIER;
+        if (animController.isHighlighted(msg.messageIndex)) {
+            strokeWidth *= SequenceDiagramAnimationController.HIGHLIGHT_STROKE_MULTIPLIER;
         }
-        return TRANSACTION_STROKE_WIDTH;
+        return strokeWidth;
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -1087,26 +1213,39 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
         int x1 = fromP.x;
         int x2 = toP.x;
         int arrowY = y + msg.getLabelBlockHeight();
-        
-        // Draw label above arrow line (already passed visibility check above)
-        drawMessageLabel(g, msg, x1, x2, y);
-        
+
         // Determine arrow color based on animation state
-        String arrowColor = getArrowColor(msg.messageIndex);
-        double strokeWidth = getArrowStrokeWidth(msg.messageIndex);
+        String arrowColor = getWideFlowStrokeColor(msg);
+        double strokeWidth = getArrowStrokeWidth(msg);
         
         // Draw arrow line
-        g.setColor(arrowColor);
-        if (msg.dashed) {
-            drawDashedLine(g, x1, arrowY, x2, arrowY, strokeWidth);
-        } else {
-            g.context.setLineWidth(strokeWidth);
-            g.drawLine(x1, arrowY, x2, arrowY);
-            g.context.setLineWidth(1);
-        }
+        drawTransactionArrowLine(g, msg, x1, x2, arrowY, arrowColor, strokeWidth);
         
         // Draw arrowhead pointing to target
-        drawArrowhead(g, x2, arrowY, x2 > x1, arrowColor);
+        drawArrowhead(g, x2, arrowY, x2 > x1, arrowColor, strokeWidth);
+
+        // Draw label above arrow line after the flow so text stays on top
+        drawMessageLabel(g, msg, x1, x2, y);
+    }
+
+    private void drawTransactionArrowLine(Graphics g, Message msg, int x1, int x2, int arrowY,
+                                          String arrowColor, double strokeWidth) {
+        boolean pointRight = x2 > x1;
+        int direction = pointRight ? 1 : -1;
+        int arrowLength = getArrowLength(strokeWidth);
+        int lineEndX = x2 - (arrowLength * direction);
+
+        g.save();
+        g.setColor(arrowColor);
+        g.context.setLineWidth(strokeWidth);
+        g.context.setLineCap(Context2d.LineCap.BUTT);
+        if (msg.dashed) {
+            drawDashedLine(g, x1, arrowY, lineEndX, arrowY, strokeWidth);
+        } else {
+            g.drawLine(x1, arrowY, lineEndX, arrowY);
+        }
+        g.context.setLineWidth(1);
+        g.restore();
     }
     
     /** Draws multi-line label centered above the arrow */
@@ -1124,17 +1263,35 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
     }
     
     /** Draws filled triangular arrowhead */
-    private void drawArrowhead(Graphics g, int tipX, int tipY, boolean pointRight, String color) {
+    private void drawArrowhead(Graphics g, int tipX, int tipY, boolean pointRight, String color, double strokeWidth) {
         int direction = pointRight ? 1 : -1;
-        int baseX = tipX - (10 * direction);
+        int arrowLength = getArrowLength(strokeWidth);
+        int arrowHalfHeight = getArrowHalfHeight(strokeWidth);
+        int baseX = tipX - (arrowLength * direction);
         
         g.context.setFillStyle(color);
         g.context.beginPath();
         g.context.moveTo(tipX, tipY);
-        g.context.lineTo(baseX, tipY - 4);
-        g.context.lineTo(baseX, tipY + 4);
+        g.context.lineTo(baseX, tipY - arrowHalfHeight);
+        g.context.lineTo(baseX, tipY + arrowHalfHeight);
         g.context.closePath();
         g.context.fill();
+    }
+
+    private int getArrowLength(double strokeWidth) {
+        return computeArrowLength(strokeWidth);
+    }
+
+    private int getArrowHalfHeight(double strokeWidth) {
+        return computeArrowHalfHeight(strokeWidth);
+    }
+
+    static int computeArrowLength(double strokeWidth) {
+        return Math.max(13, (int) Math.round(strokeWidth * ARROW_LENGTH_MULTIPLIER));
+    }
+
+    static int computeArrowHalfHeight(double strokeWidth) {
+        return Math.max(5, (int) Math.round(strokeWidth * ARROW_HALF_HEIGHT_MULTIPLIER));
     }
     
     @Override
@@ -1450,7 +1607,7 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
     /**
      * Returns edit dialog configuration for the given parameter index.
      * 
-     * @param n Parameter index (0=source, 1=width, 2=scale, 3=animation, 4=cycle, 5=pause, 6=everyN)
+    * @param n Parameter index (0=source, 1=width, 2=scale, 3=animation, 4=wide flows)
      * @return EditInfo for the parameter, or null if index out of range
      */
     @Override
@@ -1475,8 +1632,10 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
                 animEi.checkbox = new Checkbox("Animate Transactions", animController.isEnabled());
                 return animEi;
                 
-            case 4:  // Animation step duration
-                return new EditInfo("Time Per Step (ms)", animController.getStepMs(), 50, 5000);
+            case 4:  // Wide-flow rendering
+                EditInfo wideFlowEi = new EditInfo("", 0, -1, -1);
+                wideFlowEi.checkbox = new Checkbox("Wide proportional flows", wideFlowModeEnabled);
+                return wideFlowEi;
                 
             default:
                 return null;
@@ -1514,8 +1673,8 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
                 stopTimedRevealTimer();  // Stop timer when animation settings change
                 break;
                 
-            case 4:  // Update animation step duration
-                animController.setStepMs(Math.max(50, (int) ei.value));
+            case 4:  // Toggle wide flows
+                setWideFlowModeEnabled(ei.checkbox.getState());
                 break;
         }
     }
@@ -1573,6 +1732,14 @@ public class SequenceDiagramElm extends GraphicElm implements DiagramRenderer {
     public String getSourceTableName() {
         refreshRenderedSourceIfNeeded();
         return sourceTableName;
+    }
+
+    public boolean isWideFlowModeEnabled() {
+        return wideFlowModeEnabled;
+    }
+
+    void setWideFlowModeEnabled(boolean enabled) {
+        wideFlowModeEnabled = enabled;
     }
 
     /** Returns the logical diagram width (before scaling) */
