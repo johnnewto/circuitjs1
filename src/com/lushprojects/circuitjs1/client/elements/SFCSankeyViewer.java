@@ -294,10 +294,10 @@ public class SFCSankeyViewer {
             return "{ \"nodes\": [], \"links\": [] }";
         }
         
-        // Collect sector names (skip Σ column)
+        // Collect sector names (skip Σ/computed column)
         ArrayList<String> sectorNames = new ArrayList<>();
         for (TableColumn col : columns) {
-            if (col.getType() == ColumnType.SECTOR) {
+            if (col.getType() != ColumnType.COMPUTED) {
                 sectorNames.add(col.getStockName());
             }
         }
@@ -358,7 +358,7 @@ public class SFCSankeyViewer {
         for (int row = 0; row < rows; row++) {
             for (int col = 0; col < columns.size(); col++) {
                 TableColumn column = columns.get(col);
-                if (column.getType() != ColumnType.SECTOR) {
+                if (column.getType() == ColumnType.COMPUTED) {
                     continue;  // Skip Σ column
                 }
                 

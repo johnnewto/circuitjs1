@@ -772,12 +772,13 @@ public class SFCRParseContext {
     }
     
     public void createMatrixTable(String name, ArrayList<String> columnNames,
+                                  ArrayList<String> columnTypes,
                                   ArrayList<String> rowNames, ArrayList<String[]> tableRows,
                                   String matrixType, Boolean showInitialValuesOverride,
                                   Boolean showFlowValuesOverride, Boolean useBackwardEulerOverride,
                                   Boolean invisibleOverride) {
         SFCRTableDumpBuilderService.DumpBuildResult build = tableDumpBuilderService.buildMatrixDump(
-            name, currentX, currentY, columnNames, rowNames, tableRows, showInitialValuesOverride,
+            name, currentX, currentY, columnNames, columnTypes, rowNames, tableRows, showInitialValuesOverride,
             invisibleOverride);
         
         if (build == null) {

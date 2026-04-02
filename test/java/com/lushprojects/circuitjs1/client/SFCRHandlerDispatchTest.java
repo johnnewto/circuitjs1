@@ -150,6 +150,62 @@ class SFCRHandlerDispatchTest {
     }
 
     @Test
+    @DisplayName("R-style sfcr_matrix explicit column types are parsed into matrix dump")
+    void rStyleSfcrMatrixExplicitColumnTypesAreParsed() {
+        String text =
+                "BS <- sfcr_matrix(\n" +
+                "  columns = c(\"Households\", \"Firms\", \"Banks\"),\n" +
+                "  codes = c(\"h\", \"f\", \"b\"),\n" +
+                "  type = c(\"Asset\", \"Liability\", \"Equity\"),\n" +
+                "  c(\"Balance\", h = \"1\", f = \"-1\", b = \"0\")\n" +
+                ")\n";
+
+        SFCRParseResult result = SFCRParser.parseToResult(text);
+        assertNotNull(result);
+        SFCRParseResult.BlockDump block = result.findBlock("matrix", "BS");
+        assertNotNull(block, "Matrix block should parse");
+        assertTrue(block.dumpString.contains(" ASSET LIABILITY EQUITY COMPUTED "),
+                "Parsed matrix dump should preserve explicit column types before the computed Σ column");
+    }
+
+    @Test
+        @DisplayName("R-style sfcr_matrix defaults missing column types to none")
+        void rStyleSfcrMatrixDefaultsMissingColumnTypesToNone() {
+        String text =
+                "BS <- sfcr_matrix(\n" +
+                "  columns = c(\"Households\", \"Firms\"),\n" +
+                "  codes = c(\"h\", \"f\"),\n" +
+                "  c(\"Balance\", h = \"1\", f = \"-1\")\n" +
+                ")\n";
+
+        SFCRParseResult result = SFCRParser.parseToResult(text);
+        assertNotNull(result);
+        SFCRParseResult.BlockDump block = result.findBlock("matrix", "BS");
+        assertNotNull(block, "Matrix block should parse");
+        assertTrue(block.dumpString.contains(" NONE NONE COMPUTED "),
+                "Missing matrix type vector should default each non-computed column to None");
+    }
+
+    @Test
+    @DisplayName("R-style sfcr_matrix blank column types are parsed into none types")
+    void rStyleSfcrMatrixBlankColumnTypesParseToNone() {
+        String text =
+                "BS <- sfcr_matrix(\n" +
+                "  columns = c(\"Households\", \"Firms\"),\n" +
+                "  codes = c(\"h\", \"f\"),\n" +
+                "  type = c(\"\", \"\"),\n" +
+                "  c(\"Balance\", h = \"1\", f = \"-1\")\n" +
+                ")\n";
+
+        SFCRParseResult result = SFCRParser.parseToResult(text);
+        assertNotNull(result);
+        SFCRParseResult.BlockDump block = result.findBlock("matrix", "BS");
+        assertNotNull(block, "Matrix block should parse");
+        assertTrue(block.dumpString.contains(" NONE NONE COMPUTED "),
+                "Blank matrix type strings should parse as None types");
+    }
+
+    @Test
     @DisplayName("unknown R-style assignment is skipped without parse failure")
     void unknownRStyleAssignmentSkipsWithoutFailure() {
         String text =

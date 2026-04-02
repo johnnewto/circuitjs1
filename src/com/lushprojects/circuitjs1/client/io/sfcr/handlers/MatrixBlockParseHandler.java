@@ -25,6 +25,7 @@ public class MatrixBlockParseHandler implements SFCRBlockParseHandler {
         }
 
         ArrayList<String> columnNames = new ArrayList<String>();
+        ArrayList<String> columnTypes = new ArrayList<String>();
         String matrixType = "transaction_flow";
         Boolean showInitialValues = null;
         Boolean showFlowValues = null;
@@ -53,6 +54,11 @@ public class MatrixBlockParseHandler implements SFCRBlockParseHandler {
 
                 if (key.equals("columns")) {
                     columnNames = parseCommaSeparatedList(value);
+                    i++;
+                    continue;
+                }
+                if (key.equals("columntypes") || key.equals("column_types") || key.equals("types")) {
+                    columnTypes = parseCommaSeparatedList(value);
                     i++;
                     continue;
                 }
@@ -116,7 +122,7 @@ public class MatrixBlockParseHandler implements SFCRBlockParseHandler {
         }
 
         if (!columnNames.isEmpty() && !tableRows.isEmpty()) {
-            ctx.createMatrixTable(matrixName, columnNames, rowNames, tableRows, matrixType,
+            ctx.createMatrixTable(matrixName, columnNames, columnTypes, rowNames, tableRows, matrixType,
                 showInitialValues, showFlowValues, useBackwardEuler, invisible);
         }
 

@@ -187,6 +187,10 @@ public class TableElm extends ChipElm implements TableContentView {
     boolean shouldRegisterStocks() {
         return true;
     }
+
+    boolean allowsDuplicateColumnHeaders() {
+        return false;
+    }
     
     /**
      * Find column index by stock name

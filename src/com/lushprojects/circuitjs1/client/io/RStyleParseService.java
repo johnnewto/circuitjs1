@@ -57,6 +57,7 @@ public class RStyleParseService {
         String matrixName = extractAssignmentName(block, "Matrix");
         ArrayList<String> columnNames = extractRVector(block, "columns");
         ArrayList<String> columnCodes = extractRVector(block, "codes");
+        ArrayList<String> columnTypes = extractRVector(block, "type");
 
         SFCRParser.RStyleBlockMetadata effectiveMetadata = new SFCRParser.RStyleBlockMetadata();
         if (metadata != null) {
@@ -119,6 +120,16 @@ public class RStyleParseService {
         normalized.append("  type: ").append(matrixType).append("\n");
         if (effectiveMetadata.invisible != null) {
             normalized.append("  invisible: ").append(effectiveMetadata.invisible.booleanValue()).append("\n");
+        }
+        if (!columnTypes.isEmpty()) {
+            normalized.append("  columnTypes: ");
+            for (int i = 0; i < columnTypes.size(); i++) {
+                if (i > 0) {
+                    normalized.append(", ");
+                }
+                normalized.append(columnTypes.get(i));
+            }
+            normalized.append("\n");
         }
         normalized.append("\n");
         normalized.append("| Transaction |");

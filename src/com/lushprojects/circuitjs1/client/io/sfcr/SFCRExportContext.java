@@ -442,6 +442,7 @@ public class SFCRExportContext {
     private static class MatrixExportData {
         ArrayList<String> stockNames = new ArrayList<String>();
         ArrayList<String> stockCodes = new ArrayList<String>();
+        ArrayList<String> columnTypes = new ArrayList<String>();
         ArrayList<String> rowNames = new ArrayList<String>();
         ArrayList<String[]> rowValues = new ArrayList<String[]>();
     }
@@ -535,8 +536,9 @@ public class SFCRExportContext {
                 stockName = "Column" + (data.stockNames.size() + 1);
             }
             data.stockNames.add(stockName);
+            data.columnTypes.add(formatMatrixColumnType(column.getType()));
             if (includeCodes) {
-                data.stockCodes.add(RStyleFormatter.makeUniqueRCode(RStyleFormatter.toRCodeIdentifier(stockName), usedCodes));
+                data.stockCodes.add(buildSequentialMatrixCode(stockName, data.stockNames.size(), usedCodes));
             }
         }
 
@@ -564,6 +566,31 @@ public class SFCRExportContext {
             data.rowValues.add(rowData);
         }
         return data;
+    }
+
+    private String buildSequentialMatrixCode(String stockName, int index, Set<String> usedCodes) {
+        char prefix = 'X';
+        if (stockName != null) {
+            for (int i = 0; i < stockName.length(); i++) {
+                char c = stockName.charAt(i);
+                if (Character.isLetter(c)) {
+                    prefix = Character.toUpperCase(c);
+                    break;
+                }
+            }
+        }
+
+        String candidate = prefix + Integer.toString(Math.max(1, index));
+        if (usedCodes == null) {
+            return candidate;
+        }
+        int suffix = Math.max(1, index);
+        while (usedCodes.contains(candidate)) {
+            suffix++;
+            candidate = prefix + Integer.toString(suffix);
+        }
+        usedCodes.add(candidate);
+        return candidate;
     }
 
     private String buildColumnFlowExpression(GodlyTableElm table, int col) {
@@ -672,6 +699,14 @@ public class SFCRExportContext {
         MatrixExportData data = collectMatrixExportData(sfcTable, tableName, false);
         int dataCols = data.stockNames.size();
         sb.append("\n");
+        sb.append("  columnTypes: ");
+        for (int col = 0; col < data.columnTypes.size(); col++) {
+            if (col > 0) {
+                sb.append(", ");
+            }
+            sb.append(data.columnTypes.get(col));
+        }
+        sb.append("\n\n");
 
         sb.append("| Transaction |");
         for (int col = 0; col < data.stockNames.size(); col++) {
@@ -800,6 +835,7 @@ public class SFCRExportContext {
         }
         sb.append("  columns = c(").append(RStyleFormatter.joinRQuoted(data.stockNames)).append("),\n");
         sb.append("  codes = c(").append(RStyleFormatter.joinRQuoted(data.stockCodes)).append("),\n");
+        sb.append("  type = c(").append(RStyleFormatter.joinRQuoted(toRStyleMatrixColumnTypes(data.columnTypes))).append("),\n");
 
         for (int row = 0; row < data.rowNames.size(); row++) {
             sb.append("  c(\"").append(RStyleFormatter.escapeRString(data.rowNames.get(row))).append("\"");
@@ -820,6 +856,39 @@ public class SFCRExportContext {
         }
         sb.append(")\n");
         return sb.toString();
+    }
+
+    private String formatMatrixColumnType(TableColumn.ColumnType type) {
+        if (type == null) {
+            return "None";
+        }
+        switch (type) {
+            case NONE:
+                return "None";
+            case LIABILITY:
+                return "Liability";
+            case EQUITY:
+                return "Equity";
+            case COMPUTED:
+                return "Computed";
+            case SECTOR:
+                return "Sector";
+            case ASSET:
+            default:
+                return "Asset";
+        }
+    }
+
+    private ArrayList<String> toRStyleMatrixColumnTypes(ArrayList<String> columnTypes) {
+        ArrayList<String> values = new ArrayList<String>();
+        if (columnTypes == null) {
+            return values;
+        }
+        for (int i = 0; i < columnTypes.size(); i++) {
+            String type = columnTypes.get(i);
+            values.add("None".equals(type) ? "" : type);
+        }
+        return values;
     }
 
     // =========================================================================

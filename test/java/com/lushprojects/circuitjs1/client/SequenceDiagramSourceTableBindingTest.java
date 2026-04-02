@@ -1,6 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
 import com.lushprojects.circuitjs1.client.elements.annotation.SequenceDiagramElm;
+import com.lushprojects.circuitjs1.client.elements.annotation.SequenceDiagramParser;
 import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
 import com.lushprojects.circuitjs1.client.elements.economics.TableElm;
 import org.junit.jupiter.api.DisplayName;
@@ -13,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -103,6 +105,28 @@ class SequenceDiagramSourceTableBindingTest extends CircuitJavaSimTestBase {
             "Delta-style zero row should still generate a sequence arrow");
         assertTrue(rendered.contains("Households -> Govt : Money stock\\n(" + CircuitElm.showFormat.format(7) + ")"),
             "Sequence diagram should use the source table's cached display value");
+    }
+
+    @Test
+    @DisplayName("SFC tables with asset/liability/equity column types still generate participants")
+    void sfcTableWithNonSectorTypesStillGeneratesParticipants() throws Exception {
+        loadCircuitText(
+                "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
+                "% voltageUnit $\n" +
+                "% showToolbar true\n" +
+                "265 304 80 880 212 0 4 5 6 16 0 false 2 0 false 5 0 false SFC\\sTable\\s4 \\0 Households Firms Banks Govt Σ Consumption Wages Interest Taxes 0 0 0 0 0 ASSET LIABILITY EQUITY ASSET COMPUTED -100 \\p1000 0 0 \\0 wages -2*wages 0 0 \\0 \\p5 -10 wages 0 \\0 -200 -15 0 \\p35 \\0 true 0.000001\n"
+        );
+
+        TableElm table = findTable("SFC Table 4");
+        assertNotNull(table, "Expected SFC table fixture to load");
+
+        String rendered = SequenceDiagramParser.buildDiagramFromSourceTable(table);
+        assertTrue(rendered.contains("participant Households"),
+            "Sequence diagram should include participants for non-computed SFC columns");
+        assertTrue(rendered.contains("participant Firms"),
+            "Sequence diagram should include all non-computed SFC columns");
+        assertFalse(rendered.contains("No sectors defined"),
+            "Sequence diagram should not report missing sectors when SFC columns are Asset/Liability/Equity typed");
     }
 
     private SequenceDiagramElm findFirstSequenceDiagram() {

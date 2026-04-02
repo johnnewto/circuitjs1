@@ -31,7 +31,7 @@ import java.util.ArrayList;
  * 
  * Key features:
  * - Pre-populated with example sectors and transactions
- * - Uses SECTOR column type for economic sectors
+ * - Defaults economic sector columns to NONE type for optional classification
  * - Replaces A-L-E with Σ for sum columns
  * - Display-only element (no circuit connections)
  * - Red highlighting for non-zero sums (balance errors)
@@ -194,10 +194,10 @@ public class SFCTableElm extends TableElm {
             rowDescriptions[i] = transactionNames[i];
         }
         
-        // Set up columns with SECTOR type
+        // Set up columns defaulting to NONE type
         columns = new ArrayList<TableColumn>();
         for (int col = 0; col < sectorNames.length; col++) {
-            TableColumn column = new TableColumn(sectorNames[col], ColumnType.SECTOR, 0.0, rows);
+            TableColumn column = new TableColumn(sectorNames[col], ColumnType.NONE, 0.0, rows);
             
             // Set equations for each cell
             for (int row = 0; row < rows; row++) {
@@ -253,8 +253,11 @@ public class SFCTableElm extends TableElm {
         int cellWidthPixels = getCellWidthPixels();
         int rowDescColWidth = cellWidthPixels * 3 / 2;
         
-        // Standard rows: header + data rows + sum row
-        int totalRows = rows + 2; // +2 for header and sum (Σ) rows
+        // Standard rows: header + optional type + data rows + sum row
+        int totalRows = rows + 2; // header and sum (Σ) rows
+        if (shouldShowColumnTypeRow()) {
+            totalRows++;
+        }
         
         int tableWidthPixels = (rowDescColWidth + getCols() * cellWidthPixels) + 2 * cellSpacing;
         int tableHeightPixels = (totalRows + 2) * cellHeight + (totalRows + 3) * cellSpacing + 20;
@@ -264,6 +267,23 @@ public class SFCTableElm extends TableElm {
         
         // No pins needed for display-only table
         pins = new Pin[0];
+    }
+
+    boolean shouldShowColumnTypeRow() {
+        if (collapsedMode || columns == null) {
+            return false;
+        }
+        for (int col = 0; col < columns.size(); col++) {
+            TableColumn column = columns.get(col);
+            if (column == null) {
+                continue;
+            }
+            ColumnType type = column.getType();
+            if (type != ColumnType.COMPUTED && type != ColumnType.NONE) {
+                return true;
+            }
+        }
+        return false;
     }
     
     /**
@@ -366,6 +386,11 @@ public class SFCTableElm extends TableElm {
     protected boolean shouldRegisterStocks() {
         return false;  // Display-only, don't register stocks
     }
+
+    @Override
+    boolean allowsDuplicateColumnHeaders() {
+        return true;
+    }
     
     /**
      * Calculate row sum (for horizontal consistency check)
@@ -453,13 +478,13 @@ public class SFCTableElm extends TableElm {
     }
     
     /**
-     * Get the number of sector columns (excluding Σ column)
+     * Get the number of non-computed columns (excluding Σ column)
      */
     private int getSectorColumnCount() {
         if (columns == null) return 0;
         int count = 0;
         for (TableColumn col : columns) {
-            if (col.getType() == ColumnType.SECTOR) {
+            if (col.getType() != ColumnType.COMPUTED) {
                 count++;
             }
         }
@@ -514,12 +539,12 @@ public class SFCTableElm extends TableElm {
             arr[idx++] = "Grand Total (Σ): " + CircuitElm.showFormat.format(grandTotal);
         }
         
-        // Show sector names
+        // Show non-computed column names
         if (columns != null && idx < arr.length) {
             StringBuilder sectors = new StringBuilder("Sectors: ");
             boolean first = true;
             for (TableColumn col : columns) {
-                if (col.getType() == ColumnType.SECTOR) {
+                if (col.getType() != ColumnType.COMPUTED) {
                     if (!first) sectors.append(", ");
                     sectors.append(col.getStockName());
                     first = false;

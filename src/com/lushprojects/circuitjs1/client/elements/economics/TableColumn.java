@@ -33,6 +33,7 @@ public class TableColumn {
      * Column type enumeration for financial accounting
      */
     public enum ColumnType {
+        NONE,
         ASSET,
         LIABILITY,
         EQUITY,
@@ -251,6 +252,7 @@ public class TableColumn {
                 case EQUITY:
                     equity += value;
                     break;
+                case NONE:
                 case COMPUTED:
                 case SECTOR:
                     // Skip computed and sector columns

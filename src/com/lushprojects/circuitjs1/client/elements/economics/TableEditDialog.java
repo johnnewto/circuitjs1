@@ -427,6 +427,7 @@ import jsinterop.annotations.JsType;
      */
     private void copyTableData() {
         boolean isCtmLike = isCtmLikeTable(tableElement);
+        boolean isSfc = isSfcTable(tableElement);
 
         // Initialize data arrays
         cellData = new String[dataRows][dataCols];
@@ -442,6 +443,11 @@ import jsinterop.annotations.JsType;
             for (int col = 0; col < dataCols; col++) {
                 stockValues[col] = "Stock" + col;
                 columnTypes[col] = ColumnType.SECTOR;
+            }
+        } else if (isSfc) {
+            for (int col = 0; col < dataCols; col++) {
+                stockValues[col] = "Stock" + col;
+                columnTypes[col] = ColumnType.NONE;
             }
         } else {
             // Set default stock values and types according to specification
@@ -1072,6 +1078,7 @@ import jsinterop.annotations.JsType;
     private void populateColumnTypeRow() {
         editGrid.setText(TYPE_ROW, BUTTON_COL, "");
         editGrid.setText(TYPE_ROW, LABEL_COL, "Type:");
+        final boolean isSfc = isSfcTable(tableElement);
         
         for (int col = 0; col < dataCols; col++) {
             if (isALEColumn(col)) {
@@ -1097,18 +1104,36 @@ import jsinterop.annotations.JsType;
                 
                 final int finalCol = col;
                 final Choice typeChoice = new Choice();
+                final int noneIndex;
+                final int assetIndex;
+                final int liabilityIndex;
+                final int equityIndex;
+                if (isSfc) {
+                    noneIndex = 0;
+                    assetIndex = 1;
+                    liabilityIndex = 2;
+                    equityIndex = 3;
+                    typeChoice.add(prefix + "None");
+                } else {
+                    noneIndex = -1;
+                    assetIndex = 0;
+                    liabilityIndex = 1;
+                    equityIndex = 2;
+                }
                 typeChoice.add(prefix + "💹 Asset");
                 typeChoice.add(prefix + "📄 Liability");
                 typeChoice.add(prefix + "🏦 Equity");
                 
                 // Set current selection based on column type
                 ColumnType colType = columnTypes[col];
-                if (colType == ColumnType.ASSET) {
-                    typeChoice.select(0);
+                if (isSfc && colType == ColumnType.NONE) {
+                    typeChoice.select(noneIndex);
+                } else if (colType == ColumnType.ASSET) {
+                    typeChoice.select(assetIndex);
                 } else if (colType == ColumnType.LIABILITY) {
-                    typeChoice.select(1);
+                    typeChoice.select(liabilityIndex);
                 } else if (colType == ColumnType.EQUITY) {
-                    typeChoice.select(2);
+                    typeChoice.select(equityIndex);
                 }
                 
                 // Add tooltip for non-master columns
@@ -1120,11 +1145,13 @@ import jsinterop.annotations.JsType;
                     public void onChange(com.google.gwt.event.dom.client.ChangeEvent event) {
                         // Update column type based on selection
                         int selection = typeChoice.getSelectedIndex();
-                        if (selection == 0) {
+                        if (isSfc && selection == noneIndex) {
+                            columnTypes[finalCol] = ColumnType.NONE;
+                        } else if (selection == assetIndex) {
                             columnTypes[finalCol] = ColumnType.ASSET;
-                        } else if (selection == 1) {
+                        } else if (selection == liabilityIndex) {
                             columnTypes[finalCol] = ColumnType.LIABILITY;
-                        } else if (selection == 2) {
+                        } else if (selection == equityIndex) {
                             columnTypes[finalCol] = ColumnType.EQUITY;
                         }
                         markChanged();
@@ -1393,6 +1420,9 @@ import jsinterop.annotations.JsType;
     
     /** Check for duplicate stock name in another column (skips A-L-E column) */
     private int findDuplicateStockName(String name, int excludeCol) {
+        if (tableElement != null && tableElement.allowsDuplicateColumnHeaders()) {
+            return -1;
+        }
         return findDuplicate(name, excludeCol, dataCols,
             new NameProvider() { public String getName(int i) { return isALEColumn(i) ? null : stockValues[i]; } },
             -1);
@@ -1632,12 +1662,10 @@ import jsinterop.annotations.JsType;
                 String newName = textBox.getText();
                 int duplicateCol = findDuplicateStockName(newName, col);
                 applyDuplicateStyle(textBox, duplicateCol, newName, "column");
-                
-                if (duplicateCol < 0) {
-                    stockValues[col] = newName;
-                    textBox.addStyleName("modified");
-                    markChanged();
-                }
+
+                stockValues[col] = newName;
+                textBox.addStyleName("modified");
+                markChanged();
             }
         });
         
@@ -2055,6 +2083,10 @@ import jsinterop.annotations.JsType;
 
     private boolean isCtmLikeTable(TableElm element) {
         return element instanceof CurrentTransactionsMatrixElm;
+    }
+
+    private boolean isSfcTable(TableElm element) {
+        return element instanceof SFCTableElm;
     }
     
     // Delete a row at the specified index
@@ -2700,6 +2732,9 @@ import jsinterop.annotations.JsType;
     public ColumnType getColumnType(int col) {
         if (col >= 0 && col < dataCols && columnTypes != null) {
             return columnTypes[col];
+        }
+        if (isSfcTable(tableElement)) {
+            return ColumnType.NONE;
         }
         return ColumnType.ASSET; // Default
     }

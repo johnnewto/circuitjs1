@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client.io;
 
+import com.lushprojects.circuitjs1.client.elements.economics.TableColumn.ColumnType;
+
 import java.util.ArrayList;
 
 public class SFCRTableDumpBuilderService {
@@ -14,7 +16,8 @@ public class SFCRTableDumpBuilderService {
     }
 
     public DumpBuildResult buildMatrixDump(String name, int currentX, int currentY,
-                                    ArrayList<String> columnNames, ArrayList<String> rowNames,
+                                    ArrayList<String> columnNames, ArrayList<String> columnTypes,
+                                    ArrayList<String> rowNames,
                                     ArrayList<String[]> tableRows, Boolean showInitialValuesOverride,
                                     Boolean invisibleOverride) {
         int rows = rowNames.size();
@@ -72,7 +75,7 @@ public class SFCRTableDumpBuilderService {
             dump.append("0 ");
         }
         for (int i = 0; i < cols - 1; i++) {
-            dump.append("SECTOR ");
+            dump.append(resolveMatrixColumnType(columnTypes, i).name()).append(" ");
         }
         dump.append("COMPUTED ");
 
@@ -90,6 +93,40 @@ public class SFCRTableDumpBuilderService {
         }
         dump.append("true 0.000001");
         return new DumpBuildResult(dump.toString(), y2);
+    }
+
+    private ColumnType resolveMatrixColumnType(ArrayList<String> columnTypes, int index) {
+        if (columnTypes == null || index < 0 || index >= columnTypes.size()) {
+            return ColumnType.NONE;
+        }
+        String raw = columnTypes.get(index);
+        if (raw == null) {
+            return ColumnType.NONE;
+        }
+        String normalized = raw.trim();
+        if (normalized.isEmpty()) {
+            return ColumnType.NONE;
+        }
+        String upper = normalized.toUpperCase();
+        if (upper.equals("NONE")) {
+            return ColumnType.NONE;
+        }
+        if (upper.equals("ASSET")) {
+            return ColumnType.ASSET;
+        }
+        if (upper.equals("LIABILITY")) {
+            return ColumnType.LIABILITY;
+        }
+        if (upper.equals("EQUITY")) {
+            return ColumnType.EQUITY;
+        }
+        if (upper.equals("SECTOR")) {
+            return ColumnType.SECTOR;
+        }
+        if (upper.equals("COMPUTED")) {
+            return ColumnType.COMPUTED;
+        }
+        return ColumnType.NONE;
     }
 
     public DumpBuildResult buildEquationDump(String name, int currentX, int currentY,

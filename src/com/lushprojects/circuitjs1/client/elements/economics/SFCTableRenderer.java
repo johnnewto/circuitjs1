@@ -7,7 +7,6 @@
 package com.lushprojects.circuitjs1.client.elements.economics;
 
 import com.lushprojects.circuitjs1.client.elements.economics.TableColumn.ColumnType;
-import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 
 /**
@@ -17,7 +16,7 @@ import com.lushprojects.circuitjs1.client.util.*;
  * - Σ column header instead of A-L-E (row sums for horizontal consistency)
  * - Σ row at bottom (column sums for vertical consistency)
  * - Red highlighting for non-zero sums (balance errors)
- * - "Sector" type label for sector columns
+ * - Column type row below headers for editable account types
  *
  * Rendering cache note:
  * This renderer intentionally reuses TableRenderer's offscreen blit cache
@@ -72,13 +71,13 @@ public class SFCTableRenderer extends TableRenderer {
     }
     
     /**
-     * Get the number of sector columns (excsluding Σ column)
+     * Get the number of non-computed columns (excluding Σ column)
      */
     private int getSectorColumnCount() {
         if (table.columns == null) return 0;
         int count = 0;
         for (TableColumn col : table.columns) {
-            if (col.getType() == ColumnType.SECTOR) {
+            if (col.getType() != ColumnType.COMPUTED) {
                 count++;
             }
         }
@@ -106,40 +105,122 @@ public class SFCTableRenderer extends TableRenderer {
                 rowY + table.cellHeight/2, true);
         }
         
-        // Draw column headers
-        for (int col = 0; col < table.getCols(); col++) {
-            String headerText;
-            
-            // Check if this is the Σ column (computed type)
-            if (col < table.columns.size() && table.columns.get(col).getType() == ColumnType.COMPUTED) {
-                headerText = "Σ";  // Use sigma symbol instead of stock name
-            } else {
-                headerText = table.getColumnHeader(col);
-            }
-            
+        // Draw column headers, merging adjacent duplicate labels.
+        for (int col = 0; col < table.getCols(); ) {
+            String headerText = getHeaderText(col);
+            int endCol = getMergedHeaderEnd(col);
             int cellX = getColumnX(col, tableX, rowDescColWidth, cellWidthPixels);
-            int colWidth = getColumnWidth(col, cellWidthPixels);
-            
-            table.drawCenteredText(g, headerText, cellX + colWidth/2, rowY + table.cellHeight/2, true);
+            int mergedWidth = getMergedHeaderWidth(col, endCol, cellWidthPixels);
+
+            table.drawCenteredText(g, headerText, cellX + mergedWidth/2, rowY + table.cellHeight/2, true);
+            col = endCol + 1;
         }
-        
-        drawRowGridLine(g, offsetY, tableX, rowDescColWidth, cellWidthPixels, false);
+
+        drawHeaderGridLine(g, offsetY, tableX, rowDescColWidth, cellWidthPixels);
+    }
+
+    private String getHeaderText(int col) {
+        if (col < table.columns.size() && table.columns.get(col).getType() == ColumnType.COMPUTED) {
+            return "Σ";
+        }
+        String headerText = table.getColumnHeader(col);
+        return (headerText != null) ? headerText : "";
+    }
+
+    private int getMergedHeaderEnd(int startCol) {
+        String headerText = getHeaderText(startCol).trim();
+        if (!isMergeableHeaderText(headerText)) {
+            return startCol;
+        }
+
+        int endCol = startCol;
+        while (endCol + 1 < table.getCols()) {
+            String nextHeader = getHeaderText(endCol + 1).trim();
+            if (!isMergeableHeaderText(nextHeader) || !headerText.equalsIgnoreCase(nextHeader)) {
+                break;
+            }
+            endCol++;
+        }
+        return endCol;
+    }
+
+    private int getMergedHeaderWidth(int startCol, int endCol, int cellWidthPixels) {
+        int width = 0;
+        for (int col = startCol; col <= endCol; col++) {
+            if (col > startCol) {
+                width += table.cellSpacing;
+            }
+            width += getColumnWidth(col, cellWidthPixels);
+        }
+        return width;
+    }
+
+    private boolean isMergeableHeaderText(String text) {
+        return text != null && !text.isEmpty() && !"Σ".equals(text);
+    }
+
+    @Override
+    protected boolean shouldDrawHeaderBoundary(int leftCol, int rightCol) {
+        String leftHeader = getHeaderText(leftCol).trim();
+        String rightHeader = getHeaderText(rightCol).trim();
+        if (!isMergeableHeaderText(leftHeader) || !isMergeableHeaderText(rightHeader)) {
+            return true;
+        }
+        return !leftHeader.equalsIgnoreCase(rightHeader);
     }
     
     /**
-     * Override to hide type row for SFC tables (no space allocated)
+     * Keep the default type row hidden; SFC draws its type row below the column headers instead.
      */
     @Override
     protected boolean shouldShowTypeRow() {
         return false;
     }
-    
+
     /**
-     * Override column type row to hide it for SFC tables
+     * Add one extra row below the column headers for the editable column type labels.
      */
     @Override
-    protected void drawColumnTypeRow(Graphics g, int offsetY) {
-        // Don't draw type row for SFC tables
+    protected int getExtraRowsAfterHeaderHeight() {
+        return sfcTable.shouldShowColumnTypeRow() ? (table.cellHeight + table.cellSpacing) : 0;
+    }
+
+    @Override
+    protected int drawExtraRowsAfterHeader(Graphics g, int currentY) {
+        if (!sfcTable.shouldShowColumnTypeRow()) {
+            return currentY;
+        }
+        drawColumnTypeRowBelowHeaders(g, currentY);
+        return currentY + table.cellHeight + table.cellSpacing;
+    }
+
+    private void drawColumnTypeRowBelowHeaders(Graphics g, int offsetY) {
+        int tableX = table.getTableX();
+        int tableY = table.getTableY();
+        int cellWidthPixels = table.getCellWidthPixels();
+        int rowDescColWidth = cellWidthPixels * 3 / 2;
+        int rowY = tableY + offsetY;
+
+        g.setFont(HEADER_FONT);
+        g.setLetterSpacing(LETTER_SPACING);
+        g.setColor(getTextColor());
+
+        table.drawCenteredText(g, "Type:", tableX + table.cellSpacing + rowDescColWidth/2,
+            rowY + table.cellHeight/2, true);
+
+        for (int col = 0; col < table.getCols(); col++) {
+            String typeText = "";
+
+            if (col < table.columns.size() && table.columns.get(col).getType() != ColumnType.COMPUTED) {
+                typeText = getColumnTypeName(table.getColumnType(col));
+            }
+
+            int cellX = getColumnX(col, tableX, rowDescColWidth, cellWidthPixels);
+            int colWidth = getColumnWidth(col, cellWidthPixels);
+            table.drawCenteredText(g, typeText, cellX + colWidth/2, rowY + table.cellHeight/2, true);
+        }
+
+        drawRowGridLine(g, offsetY, tableX, rowDescColWidth, cellWidthPixels, false);
     }
     
     /**

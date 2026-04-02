@@ -215,6 +215,16 @@ public class TableRenderer {
         ctx.setFillStyle(getHeaderBgColor().getHexValue());
         ctx.fillRect(edgeInset, currentY, width - edgeInset * 2, rowHeight);
         currentY += rowHeight;
+
+        // Extra rows after column headers (for subclasses like SFCTable)
+        if (!table.collapsedMode) {
+            int extraRowsAfterHeaderHeight = getExtraRowsAfterHeaderHeight();
+            if (extraRowsAfterHeaderHeight > 0) {
+                ctx.setFillStyle(getHeaderBgColor().getHexValue());
+                ctx.fillRect(edgeInset, currentY, width - edgeInset * 2, extraRowsAfterHeaderHeight);
+                currentY += extraRowsAfterHeaderHeight;
+            }
+        }
         
         // Initial values row background (if shown)
         if (table.showInitialValues && !table.collapsedMode) {
@@ -281,6 +291,10 @@ public class TableRenderer {
         }
 
         dataStartY += rowHeight; // column header row
+
+        if (!table.collapsedMode) {
+            dataStartY += getExtraRowsAfterHeaderHeight();
+        }
 
         if (table.showInitialValues && !table.collapsedMode) {
             dataStartY += rowHeight;
@@ -362,6 +376,16 @@ public class TableRenderer {
 
         drawRowGridLineToCache(currentY, dims, false, true);
         currentY += rowHeight;
+
+        if (!table.collapsedMode) {
+            int extraRowsAfterHeaderHeight = getExtraRowsAfterHeaderHeight();
+            int extraRowHeight = table.cellHeight + table.cellSpacing;
+            while (extraRowsAfterHeaderHeight > 0) {
+                drawRowGridLineToCache(currentY, dims, false, true);
+                currentY += extraRowHeight;
+                extraRowsAfterHeaderHeight -= extraRowHeight;
+            }
+        }
 
         if (table.showInitialValues && !table.collapsedMode) {
             drawRowGridLineToCache(currentY, dims, false, false);
@@ -609,9 +633,10 @@ public class TableRenderer {
      */
     public static String getColumnTypeName(ColumnType type) {
         if (type == null) {
-            return "Unknown";
+            return "";
         }
         switch (type) {
+            case NONE: return "";
             case ASSET: return "Asset";
             case LIABILITY: return "Liability";
             case EQUITY: return "Equity";
@@ -778,7 +803,8 @@ public class TableRenderer {
         // Calculate heights
         dims.titleHeight = 20;
         dims.typeRowHeight = (table.collapsedMode || !shouldShowTypeRow()) ? 0 : (table.cellHeight + table.cellSpacing);
-        int extraRowsHeight = table.collapsedMode ? 0 : getExtraRowsBeforeTypeRowHeight();
+        int extraRowsBeforeTypeHeight = table.collapsedMode ? 0 : getExtraRowsBeforeTypeRowHeight();
+        int extraRowsAfterHeaderHeight = table.collapsedMode ? 0 : getExtraRowsAfterHeaderHeight();
         dims.headerRowHeight = table.cellHeight + table.cellSpacing;
         dims.initialRowHeight = (table.showInitialValues && !table.collapsedMode) ? 
                                (table.cellHeight + table.cellSpacing) : 0;
@@ -788,7 +814,8 @@ public class TableRenderer {
         
         dims.tableWidth = dims.rowDescColWidth + table.cellSpacing + 
                          getTotalDataColumnsWidth(dims.cellWidthPixels);
-        dims.tableHeight = dims.titleHeight + extraRowsHeight + dims.typeRowHeight + dims.headerRowHeight + 
+        dims.tableHeight = dims.titleHeight + extraRowsBeforeTypeHeight + dims.typeRowHeight + dims.headerRowHeight + 
+                  extraRowsAfterHeaderHeight +
                           dims.initialRowHeight + dims.dataRowsHeight + dims.computedRowHeight;
         
         return dims;
@@ -809,6 +836,15 @@ public class TableRenderer {
      * @return Height in pixels of extra rows (0 for base class)
      */
     int getExtraRowsBeforeTypeRowHeight() {
+        return 0;
+    }
+
+    /**
+     * Hook method for subclasses to specify height of extra rows after the header row.
+     * SFCTableRenderer uses this for a visible column-type row below the column labels.
+     * @return Height in pixels of extra rows (0 for base class)
+     */
+    int getExtraRowsAfterHeaderHeight() {
         return 0;
     }
     
@@ -875,6 +911,10 @@ public class TableRenderer {
         
         drawColumnHeaders(g, currentY);
         currentY += table.cellHeight + table.cellSpacing;
+
+        if (!table.collapsedMode) {
+            currentY = drawExtraRowsAfterHeader(g, currentY);
+        }
         
         if (table.showInitialValues && !table.collapsedMode) {
             drawInitialConditionsRow(g, currentY);
@@ -947,6 +987,17 @@ public class TableRenderer {
      * @return The updated Y offset after drawing (if any)
      */
     int drawExtraRowsBeforeTypeRow(Graphics g, int currentY) {
+        // Base class does nothing, subclasses can override
+        return currentY;
+    }
+
+    /**
+     * Hook method for subclasses to draw extra rows after the column header row.
+     * SFCTableRenderer uses this to draw a visible type row below the header labels.
+     * @param currentY The current Y offset
+     * @return The updated Y offset after drawing (if any)
+     */
+    int drawExtraRowsAfterHeader(Graphics g, int currentY) {
         // Base class does nothing, subclasses can override
         return currentY;
     }
@@ -1293,8 +1344,16 @@ public class TableRenderer {
         
         // Draw grid lines for header row - use header border style for stronger separation
         if (!skipNonDataRowGridLinesInDynamicPass) {
-            drawRowGridLineWithStyle(g, offsetY, tableX, rowDescColWidth, cellWidthPixels, false, true);
+            drawHeaderGridLine(g, offsetY, tableX, rowDescColWidth, cellWidthPixels);
         }
+    }
+
+    protected void drawHeaderGridLine(Graphics g, int offsetY, int tableX, int rowDescColWidth, int cellWidthPixels) {
+        drawRowGridLineWithStyle(g, offsetY, tableX, rowDescColWidth, cellWidthPixels, false, true);
+    }
+
+    protected boolean shouldDrawHeaderBoundary(int leftCol, int rightCol) {
+        return true;
     }
     
     /**
@@ -1345,6 +1404,10 @@ public class TableRenderer {
         // Between data columns (skip last column - right edge handled by outer border)
         for (int col = 0; col < table.getCols(); col++) {
             x = getColumnX(col, tableX, rowDescColWidth, cellWidthPixels);
+
+            if (isHeaderRow && col > 0 && !shouldDrawHeaderBoundary(col - 1, col)) {
+                continue;
+            }
             
             boolean drawDouble = false;
             if (col > 0 && col < table.getCols()) {

@@ -143,7 +143,7 @@ public class SequenceDiagramParser {
             TableElm table = (TableElm) elm;
             
             if (autoSelect) {
-                // Auto-select: return first table with SECTOR columns
+                // Auto-select: return first table with diagram-participant columns
                 if (hasAnySectorColumn(table)) {
                     return table;
                 }
@@ -158,8 +158,8 @@ public class SequenceDiagramParser {
     }
     
     /**
-     * Checks if table has at least one SECTOR column type.
-     * Required for auto-selection compatibility.
+     * Checks if table has at least one non-computed column type.
+     * Required for auto-selection compatibility with SFC tables.
      */
     public static boolean hasAnySectorColumn(TableElm table) {
         if (table == null || table.columns == null) {
@@ -167,7 +167,7 @@ public class SequenceDiagramParser {
         }
         for (int i = 0; i < table.columns.size(); i++) {
             TableColumn col = table.columns.get(i);
-            if (col != null && col.getType() == ColumnType.SECTOR) {
+            if (isDiagramColumn(col)) {
                 return true;
             }
         }
@@ -179,8 +179,8 @@ public class SequenceDiagramParser {
     // ══════════════════════════════════════════════════════════════════════════
     
     /**
-     * Generates PlantUML diagram source from a TableElm.
-     * Creates participants from SECTOR columns and messages from row transactions.
+    * Generates PlantUML diagram source from a TableElm.
+    * Creates participants from non-computed columns and messages from row transactions.
      * 
      * @param table Source table to extract diagram from
      * @return Generated PlantUML source
@@ -265,7 +265,7 @@ public class SequenceDiagramParser {
     }
     
     /**
-     * Collects unique SECTOR column names from table.
+     * Collects unique non-computed column names from table.
      */
     public static ArrayList<String> collectSectorNames(TableElm table) {
         ArrayList<String> names = new ArrayList<String>();
@@ -275,7 +275,7 @@ public class SequenceDiagramParser {
         
         for (int col = 0; col < table.columns.size(); col++) {
             TableColumn column = table.columns.get(col);
-            if (column == null || column.getType() != ColumnType.SECTOR) {
+            if (!isDiagramColumn(column)) {
                 continue;
             }
             
@@ -310,7 +310,7 @@ public class SequenceDiagramParser {
         
         for (int col = 0; col < table.columns.size(); col++) {
             TableColumn column = table.columns.get(col);
-            if (column == null || column.getType() != ColumnType.SECTOR) {
+            if (!isDiagramColumn(column)) {
                 continue;
             }
 
@@ -355,6 +355,10 @@ public class SequenceDiagramParser {
             endpoints.targetSector = equationTarget;
         }
         return endpoints;
+    }
+
+    private static boolean isDiagramColumn(TableColumn column) {
+        return column != null && column.getType() != ColumnType.COMPUTED;
     }
 
     /**

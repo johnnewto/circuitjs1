@@ -329,7 +329,7 @@ public class SFCSankeyRenderer {
         
         if (table.columns != null) {
             for (TableColumn col : table.columns) {
-                if (col.getType() == ColumnType.SECTOR) {
+                if (col.getType() != ColumnType.COMPUTED) {
                     numSectors++;
                 }
             }
@@ -391,7 +391,7 @@ public class SFCSankeyRenderer {
         // Collect sector names
         ArrayList<String> sectorNames = new ArrayList<>();
         for (TableColumn col : table.columns) {
-            if (col.getType() == ColumnType.SECTOR) {
+            if (col.getType() != ColumnType.COMPUTED) {
                 sectorNames.add(col.getStockName());
             }
         }
@@ -428,7 +428,7 @@ public class SFCSankeyRenderer {
             
             for (int col = 0; col < table.columns.size(); col++) {
                 TableColumn column = table.columns.get(col);
-                if (column.getType() != ColumnType.SECTOR) {
+                if (column.getType() == ColumnType.COMPUTED) {
                     continue;
                 }
                 
@@ -501,7 +501,7 @@ public class SFCSankeyRenderer {
         // Collect sector names and create sector nodes (left column)
         Map<String, SankeyNode> sectorNodeMap = new HashMap<>();
         for (TableColumn col : table.columns) {
-            if (col.getType() == ColumnType.SECTOR) {
+            if (col.getType() != ColumnType.COMPUTED) {
                 String name = col.getStockName();
                 SankeyNode node = new SankeyNode(name, getSectorColor(name));
                 leftNodes.add(node);
@@ -528,7 +528,7 @@ public class SFCSankeyRenderer {
             
             for (int col = 0; col < table.columns.size(); col++) {
                 TableColumn column = table.columns.get(col);
-                if (column.getType() != ColumnType.SECTOR) {
+                if (column.getType() == ColumnType.COMPUTED) {
                     continue;
                 }
                 

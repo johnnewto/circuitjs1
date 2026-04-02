@@ -94,10 +94,10 @@ Key: **Money is endogenous** — created when banks grant loans to firms, destro
 - Serves as a stepping stone to more complex models (e.g., BMWK adds capital, others add government, open economy, inflation).
 
 ```{r}
-@action Action_Schedule x=-384 y=864
+@action Action_Schedule x=-288 y=816
   pauseTime: 0
   enabled: true
-  element: -384 864 -368 880 0
+  element: -288 816 -272 832 0
 
 | time | target | value | text | enabled | stop |
 |------|--------|-------|------|---------|------|
@@ -108,7 +108,7 @@ Key: **Money is endogenous** — created when banks grant loans to firms, destro
 
 ```{r}
 BMW <- sfcr_set(
-  # [ x=1024 y=216 invisible=false ]
+  # [ x=1120 y=216 invisible=false ]
   # Parameters
   e1 = rl ~ 0.025,  # Interest rate on loans  [mode=param ]
   e2 = Y3 ~ Cs + Cd,  # [mode=param ]
@@ -156,44 +156,46 @@ BMW <- sfcr_set(
 ```{r}
 Transaction_Flow_Matrix <- sfcr_matrix(
   # [ x=320 y=216 type: transaction_flow invisible=false ]
-  columns = c("Households_C", "Firms_{Current}", "Firms_{Capital}", "Banks_{Current}", "Banks_{Capital}"),
-  codes = c("Households_C", "Firms__Current_", "Firms__Capital_", "Banks__Current_", "Banks__Capital_"),
-  c("Change in Loans", Households_C = "", Firms__Current_ = "", Firms__Capital_ = "Ld-last(Ld)", Banks__Current_ = "", Banks__Capital_ = "-(Ls-last(Ls))"),
-  c("Investment", Households_C = "", Firms__Current_ = "Is", Firms__Capital_ = "-Id", Banks__Current_ = "", Banks__Capital_ = ""),
-  c("Wages", Households_C = "WBs", Firms__Current_ = "-WBd", Firms__Capital_ = "", Banks__Current_ = "", Banks__Capital_ = ""),
-  c("Consumption", Households_C = "-Cd", Firms__Current_ = "Cs", Firms__Capital_ = "", Banks__Current_ = "", Banks__Capital_ = ""),
-  c("[Production]", Households_C = "", Firms__Current_ = "Y", Firms__Capital_ = "", Banks__Current_ = "", Banks__Capital_ = ""),
-  c("Depreciation", Households_C = "", Firms__Current_ = "-AF", Firms__Capital_ = "AF", Banks__Current_ = "", Banks__Capital_ = ""),
-  c("Interest on Loans", Households_C = "", Firms__Current_ = "-last(rl)*last(Ld)", Firms__Capital_ = "", Banks__Current_ = "last(rl)*last(Ls)", Banks__Capital_ = ""),
-  c("Change in Deposits", Households_C = "-(Mh-last(Mh))", Firms__Current_ = "", Firms__Capital_ = "", Banks__Current_ = "", Banks__Capital_ = "Ms-last(Ms)"),
-  c("Interest on Deposits", Households_C = "last(rm)*last(Mh)", Firms__Current_ = "", Firms__Capital_ = "", Banks__Current_ = "-last(rm)*last(Ms)", Banks__Capital_ = "")
+  columns = c("Households_C", "Households_C", "Firms_{Current}", "Firms_{Capital}", "Banks_{Current}", "Banks_{Capital}"),
+  codes = c("H1", "H2", "F3", "F4", "B5", "B6"),
+  type = c("", "", "", "", "", ""),
+  c("Change in Loans", H1 = "", H2 = "", F3 = "", F4 = "Ld-last(Ld)", B5 = "", B6 = "-(Ls-last(Ls))"),
+  c("Investment", H1 = "", H2 = "", F3 = "Is", F4 = "-Id", B5 = "", B6 = ""),
+  c("Wages", H1 = "WBs", H2 = "", F3 = "-WBd", F4 = "", B5 = "", B6 = ""),
+  c("Consumption", H1 = "-Cd", H2 = "", F3 = "Cs", F4 = "", B5 = "", B6 = ""),
+  c("[Production]", H1 = "", H2 = "", F3 = "Y", F4 = "", B5 = "", B6 = ""),
+  c("Depreciation", H1 = "", H2 = "", F3 = "-AF", F4 = "AF", B5 = "", B6 = ""),
+  c("Interest on Loans", H1 = "", H2 = "", F3 = "-last(rl)*last(Ld)", F4 = "", B5 = "last(rl)*last(Ls)", B6 = ""),
+  c("Change in Deposits", H1 = "-(Mh-last(Mh))", H2 = "", F3 = "", F4 = "", B5 = "", B6 = "Ms-last(Ms)"),
+  c("Interest on Deposits", H1 = "last(rm)*last(Mh)", H2 = "", F3 = "", F4 = "", B5 = "-last(rm)*last(Ms)", B6 = "")
 )
 ```
 
 ```{r}
 Balance_Sheet <- sfcr_matrix(
   # [ x=320 y=424 type: transaction_flow invisible=false ]
-  columns = c("Households", "Firms", "Banks"),
-  codes = c("Households", "Firms", "Banks"),
-  c("Deposits", Households = "Mh", Firms = "", Banks = "-Ms"),
-  c("Loans", Households = "", Firms = "-Ld", Banks = "Ls"),
-  c("Fixed Capital", Households = "", Firms = "K", Banks = ""),
-  c("Balance (net worth)", Households = "-Mh", Firms = "", Banks = "")
+  columns = c("Households", "Households", "Firms", "Firms", "Banks", "Banks"),
+  codes = c("H1", "H2", "F3", "F4", "B5", "B6"),
+  type = c("Asset", "Liability", "Asset", "Liability", "Asset", "Liability"),
+  c("Deposits", H1 = "Mh", H2 = "", F3 = "", F4 = "", B5 = "", B6 = "-Ms"),
+  c("Loans", H1 = "", H2 = "", F3 = "", F4 = "-Ld", B5 = "Ls", B6 = ""),
+  c("Fixed Capital", H1 = "", H2 = "", F3 = "K", F4 = "", B5 = "", B6 = ""),
+  c("Balance (net worth)", H1 = "-Mh", H2 = "", F3 = "", F4 = "", B5 = "", B6 = "")
 )
 ```
 
 ```{r}
-@startuml x=-640 y=200 w=773 h=526 width=660 scale=1.0653061224489795
+@startuml x=-512 y=184 w=773 h=526 width=660 scale=1.0653061224489795
    source: Transaction Flow Matrix
 @end
 ```
 
 ```{r}
 @scope Embedded_Scope_1 position=-1
-  x1: 320
-  y1: 560
-  x2: 928
-  y2: 976
+  x1: 336
+  y1: 640
+  x2: 944
+  y2: 1056
   elmUid: KaRSfa
   speed: 1
   flags: x6001206

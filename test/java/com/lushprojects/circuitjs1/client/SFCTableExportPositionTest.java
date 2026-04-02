@@ -97,6 +97,27 @@ class SFCTableExportPositionTest extends CircuitJavaSimTestBase {
         assertFalse(matrixHeaderAfter.equals(matrixHeaderBefore), "Expected @matrix header to change after moving table");
     }
 
+        @Test
+        @DisplayName("R-style SFC export uses first-letter sequential codes")
+        void rStyleSfcExportUsesFirstLetterSequentialCodes() throws Exception {
+        loadCircuitText(
+            "$ 1 0.000005 10.20027730826997 50 5 50 5e-11\n" +
+            "% voltageUnit $\n" +
+            "% showToolbar true\n" +
+            "265 304 80 880 212 0 4 5 6 16 0 false 2 0 false 5 0 false SFC\\sTable\\s4 \\0 Households Firms Banks Govt Σ Consumption Wages Interest Taxes 0 0 0 0 0 ASSET LIABILITY EQUITY ASSET COMPUTED -100 \\p1000 0 0 \\0 wages -2*wages 0 0 \\0 \\p5 -10 wages 0 \\0 -200 -15 0 \\p35 \\0 true 0.000001\n" +
+            "% AST 1 1\n"
+        );
+
+        SFCTableElm table = findFirstSfcTable();
+        assertNotNull(table, "Expected one SFC table in fixture");
+
+        String exported = new SFCRExportContext(sim, SFCRExporter.ExportSyntax.R_STYLE)
+            .exportMatrixTable(table);
+
+        assertTrue(exported.contains("codes = c(\"H1\", \"F2\", \"B3\", \"G4\")"),
+            "R-style matrix export should use first-letter sequential codes");
+        }
+
     private SFCTableElm findFirstSfcTable() {
         for (CircuitElm elm : sim.elmList) {
             if (elm instanceof SFCTableElm) {

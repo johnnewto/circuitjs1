@@ -52,6 +52,23 @@ class SFCRSyntaxNormalizerTest {
     }
 
     @Test
+    @DisplayName("normalizes sfcr_matrix type vector to block columnTypes")
+    void testNormalizeSfcrMatrixColumnTypes() {
+        String rStyle = "tfm <- sfcr_matrix(\n" +
+                "  columns = c(\"Households\", \"Firms\", \"Banks\"),\n" +
+                "  codes = c(\"h\", \"f\", \"b\"),\n" +
+                "  type = c(\"Asset\", \"Liability\", \"Equity\"),\n" +
+                "  c(\"Loans\", h = \"1\", f = \"-1\", b = \"0\")\n" +
+                ")";
+
+        SFCRSyntaxNormalizer normalizer = new SFCRSyntaxNormalizer();
+        String normalized = normalizer.normalize(rStyle);
+
+        assertTrue(normalized.contains("columnTypes: Asset, Liability, Equity"),
+                "R-style type vector should normalize to block columnTypes metadata");
+    }
+
+    @Test
     @DisplayName("preserves metadata comment position info")
     void testPreservesMetadataPosition() {
         String rStyle = "# [ x=400 y=100 ]\n" +

@@ -36,7 +36,17 @@ public class TableDataManager {
      * If showALE is true and this is the last column, it should be COMPUTED
      */
     private ColumnType getDefaultColumnType(int col) {
-        int totalCols = table.getCols();
+        return getDefaultColumnType(col, table.getCols());
+    }
+
+    private ColumnType getDefaultColumnType(int col, int totalCols) {
+
+        if (table instanceof SFCTableElm) {
+            if (col == totalCols - 1 && totalCols >= 1) {
+                return ColumnType.COMPUTED;
+            }
+            return ColumnType.NONE;
+        }
         
         // If showALE is true and this is the last column (and there are 4+ columns), it's COMPUTED
         if (table.showALE && col == totalCols - 1 && totalCols >= 4) {
@@ -311,15 +321,45 @@ public class TableDataManager {
                 initialValues[col] = readDouble(st, 0.0);
             }
             
-            // Parse column types (cols count)
-            for (int col = 0; col < cols; col++) {
-                columnTypes[col] = readColumnType(st, getDefaultColumnType(col));
+            // Parse column types (cols count). Older dumps may omit this section entirely,
+            // so only consume these tokens when they all decode as actual column types.
+            String[] typeLookahead = new String[cols];
+            int lookaheadCount = 0;
+            for (; lookaheadCount < cols && st.hasMoreTokens(); lookaheadCount++) {
+                typeLookahead[lookaheadCount] = st.nextToken();
+            }
+
+            boolean hasExplicitColumnTypes = lookaheadCount == cols;
+            if (hasExplicitColumnTypes) {
+                for (int col = 0; col < cols; col++) {
+                    if (!isColumnTypeToken(typeLookahead[col])) {
+                        hasExplicitColumnTypes = false;
+                        break;
+                    }
+                }
+            }
+
+            if (hasExplicitColumnTypes) {
+                for (int col = 0; col < cols; col++) {
+                    columnTypes[col] = parseColumnTypeToken(typeLookahead[col], getDefaultColumnType(col, cols));
+                }
+            } else {
+                for (int col = 0; col < cols; col++) {
+                    columnTypes[col] = getDefaultColumnType(col, cols);
+                }
             }
             
             // Parse cell equations (rows * cols count)
+            int bufferedEquationTokenIndex = 0;
             for (int row = 0; row < table.rows; row++) {
                 for (int col = 0; col < cols; col++) {
-                    cellEquations[row][col] = readString(st, "");
+                    String token = null;
+                    if (!hasExplicitColumnTypes && bufferedEquationTokenIndex < lookaheadCount) {
+                        token = typeLookahead[bufferedEquationTokenIndex++];
+                    } else if (st.hasMoreTokens()) {
+                        token = st.nextToken();
+                    }
+                    cellEquations[row][col] = (token != null) ? CustomLogicModel.unescape(token) : "";
                 }
             }
             
@@ -415,6 +455,29 @@ public class TableDataManager {
         if (!st.hasMoreTokens()) return defaultValue;
         try {
             return ColumnType.valueOf(st.nextToken());
+        } catch (IllegalArgumentException e) {
+            return defaultValue;
+        }
+    }
+
+    private boolean isColumnTypeToken(String token) {
+        if (token == null || token.isEmpty()) {
+            return false;
+        }
+        try {
+            ColumnType.valueOf(token);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    private ColumnType parseColumnTypeToken(String token, ColumnType defaultValue) {
+        if (token == null || token.isEmpty()) {
+            return defaultValue;
+        }
+        try {
+            return ColumnType.valueOf(token);
         } catch (IllegalArgumentException e) {
             return defaultValue;
         }
