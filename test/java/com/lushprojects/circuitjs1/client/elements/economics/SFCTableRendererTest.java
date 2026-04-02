@@ -1,9 +1,7 @@
-package com.lushprojects.circuitjs1.client;
+package com.lushprojects.circuitjs1.client.elements.economics;
 
-import com.lushprojects.circuitjs1.client.elements.economics.SFCTableElm;
-import com.lushprojects.circuitjs1.client.elements.economics.SFCTableRenderer;
-import com.lushprojects.circuitjs1.client.elements.economics.ComputedValues;
-import com.lushprojects.circuitjs1.client.elements.economics.TableElm;
+import com.lushprojects.circuitjs1.client.CircuitElm;
+import com.lushprojects.circuitjs1.client.CircuitJavaSimTestBase;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -39,6 +37,34 @@ class SFCTableRendererTest extends CircuitJavaSimTestBase {
                 "Expected Firms sum row to include -last(wages)");
         assertEquals(0.0, renderer.getCachedSumValue(table.getCols() - 1), 1e-9,
                 "Expected Σ column total to remain balanced");
+    }
+
+    @Test
+    @DisplayName("sum row uses current converged timestep instead of stale doStep cache")
+    void sumRowUsesCurrentConvergedTimestep() throws Exception {
+        loadCircuitText(FIXTURE);
+        SFCTableElm table = findFirstSfcTable();
+        assertNotNull(table, "Expected one SFC table in fixture");
+
+        zeroAllSectorCells(table);
+        table.setCellEquation(0, 0, "wages");
+        table.setCellEquation(0, 1, "-wages");
+
+        ComputedValues.setComputedValueDirect("wages.flow", 1.0);
+        ComputedValues.commitConvergedValues();
+
+        ComputedValues.setComputedValueDirect("wages.flow", 2.0);
+        table.doStep();
+        ComputedValues.commitConvergedValues();
+
+        SFCTableRenderer renderer = getRenderer(table);
+
+        assertEquals(2.0, renderer.getCachedSumValue(0), 1e-9,
+                "Expected HH sum row to use the current converged flow value");
+        assertEquals(-2.0, renderer.getCachedSumValue(1), 1e-9,
+                "Expected Firms sum row to use the current converged flow value");
+        assertEquals(0.0, renderer.getCachedSumValue(table.getCols() - 1), 1e-9,
+                "Expected Σ grand total to stay balanced with current values");
     }
 
     @Test

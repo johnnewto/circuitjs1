@@ -315,6 +315,24 @@ public class SFCTableElm extends TableElm {
             column.setLastSum(columnSum);
         }
     }
+
+    @Override
+    public double getComputedValueForDisplay(int col) {
+        if (col < 0 || col >= getCols() || columns == null) {
+            return 0.0;
+        }
+
+        TableColumn column = columns.get(col);
+        if (column == null) {
+            return 0.0;
+        }
+
+        if (column.getType() == ColumnType.COMPUTED) {
+            return getGrandTotal();
+        }
+
+        return getColumnSum(col);
+    }
     
     /**
      * SFC table doesn't need post-step processing
@@ -409,7 +427,7 @@ public class SFCTableElm extends TableElm {
             if (column.getType() == ColumnType.COMPUTED) {
                 continue;
             }
-            sum += getVoltageForCell(row, col);
+            sum += getSumDisplayCellValue(row, col, column);
         }
         return sum;
     }
@@ -432,9 +450,28 @@ public class SFCTableElm extends TableElm {
         
         double sum = 0.0;
         for (int row = 0; row < rows; row++) {
-            sum += getVoltageForCell(row, col);
+            sum += getSumDisplayCellValue(row, col, column);
         }
         return sum;
+    }
+
+    private double getSumDisplayCellValue(int row, int col, TableColumn column) {
+        if (column == null || column.getType() == ColumnType.COMPUTED) {
+            return 0.0;
+        }
+
+        String equation = column.getCellEquation(row);
+        if (equation != null) {
+            String trimmed = equation.trim();
+            if (!trimmed.isEmpty() && !"0".equals(trimmed)) {
+                Double publishedFlow = ComputedValues.getComputedFlowValue(trimmed);
+                if (publishedFlow != null) {
+                    return publishedFlow.doubleValue();
+                }
+            }
+        }
+
+        return getVoltageForCell(row, col);
     }
     
     /**

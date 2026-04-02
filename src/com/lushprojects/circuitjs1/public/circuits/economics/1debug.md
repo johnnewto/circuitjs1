@@ -94,10 +94,10 @@ Key: **Money is endogenous** — created when banks grant loans to firms, destro
 - Serves as a stepping stone to more complex models (e.g., BMWK adds capital, others add government, open economy, inflation).
 
 ```{r}
-@action Action_Schedule x=496 y=-144
+@action Action_Schedule x=-384 y=864
   pauseTime: 0
   enabled: true
-  element: 496 -144 512 -128 0
+  element: -384 864 -368 880 0
 
 | time | target | value | text | enabled | stop |
 |------|--------|-------|------|---------|------|
@@ -108,7 +108,7 @@ Key: **Money is endogenous** — created when banks grant loans to firms, destro
 
 ```{r}
 BMW <- sfcr_set(
-  # [ x=368 y=-152 invisible=false ]
+  # [ x=1024 y=216 invisible=false ]
   # Parameters
   e1 = rl ~ 0.025,  # Interest rate on loans  [mode=param ]
   e2 = Y3 ~ Cs + Cd,  # [mode=param ]
@@ -155,47 +155,45 @@ BMW <- sfcr_set(
 
 ```{r}
 Transaction_Flow_Matrix <- sfcr_matrix(
-  # [ x=-496 y=-136 type: transaction_flow invisible=false ]
-  columns = c("Households_C", "Households_C", "Firms_{Current}", "Firms_{Capital}", "Banks_{Current}", "Banks_{Capital}"),
-  codes = c("H1", "H2", "F3", "F4", "B5", "B6"),
-  type = c("", "", "", "", "", ""),
-  c("Change in Loans", H1 = "", H2 = "", F3 = "", F4 = "Ld-last(Ld)", B5 = "", B6 = "-(Ls-last(Ls))"),
-  c("Investment", H1 = "", H2 = "", F3 = "Is", F4 = "-Id", B5 = "", B6 = ""),
-  c("Wages", H1 = "WBs", H2 = "", F3 = "-WBd", F4 = "", B5 = "", B6 = ""),
-  c("Consumption", H1 = "-Cd", H2 = "", F3 = "Cs", F4 = "", B5 = "", B6 = ""),
-  c("[Production]", H1 = "", H2 = "", F3 = "Y", F4 = "", B5 = "", B6 = ""),
-  c("Depreciation", H1 = "", H2 = "", F3 = "-AF", F4 = "AF", B5 = "", B6 = ""),
-  c("Interest on Loans", H1 = "", H2 = "", F3 = "-last(rl)*last(Ld)", F4 = "", B5 = "last(rl)*last(Ls)", B6 = ""),
-  c("Change in Deposits", H1 = "-(Mh-last(Mh))", H2 = "", F3 = "", F4 = "", B5 = "", B6 = "Ms-last(Ms)"),
-  c("Interest on Deposits", H1 = "last(rm)*last(Mh)", H2 = "", F3 = "", F4 = "", B5 = "-last(rm)*last(Ms)", B6 = "")
+  # [ x=320 y=216 type: transaction_flow invisible=false ]
+  columns = c("Households_C", "Firms_{Current}", "Firms_{Capital}", "Banks_{Current}", "Banks_{Capital}"),
+  codes = c("Households_C", "Firms__Current_", "Firms__Capital_", "Banks__Current_", "Banks__Capital_"),
+  c("Change in Loans", Households_C = "", Firms__Current_ = "", Firms__Capital_ = "Ld-last(Ld)", Banks__Current_ = "", Banks__Capital_ = "-(Ls-last(Ls))"),
+  c("Investment", Households_C = "", Firms__Current_ = "Is", Firms__Capital_ = "-Id", Banks__Current_ = "", Banks__Capital_ = ""),
+  c("Wages", Households_C = "WBs", Firms__Current_ = "-WBd", Firms__Capital_ = "", Banks__Current_ = "", Banks__Capital_ = ""),
+  c("Consumption", Households_C = "-Cd", Firms__Current_ = "Cs", Firms__Capital_ = "", Banks__Current_ = "", Banks__Capital_ = ""),
+  c("[Production]", Households_C = "", Firms__Current_ = "Y", Firms__Capital_ = "", Banks__Current_ = "", Banks__Capital_ = ""),
+  c("Depreciation", Households_C = "", Firms__Current_ = "-AF", Firms__Capital_ = "AF", Banks__Current_ = "", Banks__Capital_ = ""),
+  c("Interest on Loans", Households_C = "", Firms__Current_ = "-last(rl)*last(Ld)", Firms__Capital_ = "", Banks__Current_ = "last(rl)*last(Ls)", Banks__Capital_ = ""),
+  c("Change in Deposits", Households_C = "-(Mh-last(Mh))", Firms__Current_ = "last(Ld)", Firms__Capital_ = "", Banks__Current_ = "", Banks__Capital_ = "Ms-last(Ms)"),
+  c("Interest on Deposits", Households_C = "last(rm)*last(Mh)", Firms__Current_ = "Ld", Firms__Capital_ = "", Banks__Current_ = "last(rm)*last(Ms)", Banks__Capital_ = "")
 )
 ```
 
 ```{r}
 Balance_Sheet <- sfcr_matrix(
-  # [ x=-496 y=56 type: transaction_flow invisible=false ]
-  columns = c("Households", "Households", "Firms", "Firms", "Banks", "Banks"),
-  codes = c("H1", "H2", "F3", "F4", "B5", "B6"),
-  type = c("Asset", "Liability", "Asset", "Liability", "Asset", "Liability"),
-  c("Deposits", H1 = "Mh", H2 = "", F3 = "", F4 = "", B5 = "", B6 = "-Ms"),
-  c("Loans", H1 = "", H2 = "", F3 = "", F4 = "-Ld", B5 = "Ls", B6 = ""),
-  c("Fixed Capital", H1 = "", H2 = "", F3 = "K", F4 = "", B5 = "", B6 = ""),
-  c("Balance (net worth)", H1 = "-Mh", H2 = "", F3 = "", F4 = "", B5 = "", B6 = "")
+  # [ x=320 y=424 type: transaction_flow invisible=false ]
+  columns = c("Households", "Firms", "Banks"),
+  codes = c("Households", "Firms", "Banks"),
+  c("Deposits", Households = "Mh", Firms = "", Banks = "-Ms"),
+  c("Loans", Households = "", Firms = "-Ld", Banks = "Ls"),
+  c("Fixed Capital", Households = "", Firms = "K", Banks = ""),
+  c("Balance (net worth)", Households = "-Mh", Firms = "", Banks = "")
 )
 ```
 
 ```{r}
-@startuml x=-512 y=184 w=773 h=526 width=660 scale=1.0653061224489795
+@startuml x=-640 y=200 w=773 h=526 width=660 scale=1.165151515151515
    source: Transaction Flow Matrix
 @end
 ```
 
 ```{r}
 @scope Embedded_Scope_1 position=-1
-  x1: 256
-  y1: 432
-  x2: 656
-  y2: 656
+  x1: 320
+  y1: 560
+  x2: 928
+  y2: 976
   elmUid: KaRSfa
   speed: 1
   flags: x6001206
@@ -222,16 +220,17 @@ Balance_Sheet <- sfcr_matrix(
 
 ```{r}
 @circuit
-x -460 -204 127 -201 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW\s(flow/param,\slast()) 808080FF U:Ck8M0l
-x -460 -180 -126 -177 4 12 Bank-Money\sWorld\smodel\s(flow-only\svariant,\slast()\sfor\slag) 808080FF U:BRUOXo
-x -460 -156 -150 -153 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF U:C67zij
-207 400 544 464 544 180 Y U:K79ipy
-431 288 272 336 304 0 70 true false U:Ozs0Ey
-207 400 576 464 576 164 Ms U:1ZqYCM
-207 400 592 464 592 164 Mh U:USgC2r
-207 400 560 464 560 164 \\alpha0 U:9LTbPZ
-207 400 608 464 608 164 Ls U:jyeEI-
-207 400 624 464 624 164 Ld U:H3CeRk
+x 491 159 1078 162 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s7:\sModel\sBMW\s(flow/param,\slast()) 808080FF U:Ck8M0l
+x 491 183 825 186 4 12 Bank-Money\sWorld\smodel\s(flow-only\svariant,\slast()\sfor\slag) 808080FF U:BRUOXo
+x 491 207 801 210 4 12 Steady-state:\sY\q160,\sCs\q144,\sIs\q16,\sK\q160,\sMh\q160 808080FF U:C67zij
+207 64 848 128 848 180 Y U:K79ipy
+431 -80 816 -32 848 0 70 true false U:Ozs0Ey
+207 64 880 128 880 164 Ms U:1ZqYCM
+207 64 896 128 896 164 Mh U:USgC2r
+207 64 864 128 864 164 \\alpha0 U:9LTbPZ
+207 64 912 128 912 164 Ls U:jyeEI-
+207 64 928 128 928 164 Ld U:H3CeRk
+253 -112 80 368 196 0 3 4 6 16 0 false 2 1 false 5 0 true Table\s15 \0 Stock0 Stock1 Stock2 A-L-E Row1 row2 Flow_3 0 0 0 0 ASSET LIABILITY EQUITY ASSET Ld \0 \0 \0 last(Ld) \0 \0 \0 \0 \0 \0 \0 U:bKN80a
 @end
 ```
 

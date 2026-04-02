@@ -283,6 +283,11 @@ public class SFCTableRenderer extends TableRenderer {
         
         return total;
     }
+
+    @Override
+    protected double getRegularColumnSum(int col) {
+        return sfcTable.getSumRowValue(col);
+    }
     
     /**
      * Override A-L-E row value calculation for SFC tables.
