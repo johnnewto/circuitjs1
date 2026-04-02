@@ -253,6 +253,21 @@ public class SFCRSyntaxNormalizer {
                 if (parsed != null) {
                     metadata.y = parsed.intValue();
                 }
+            } else if (token.startsWith("uid=")) {
+                String value = token.substring(4).trim();
+                if (!value.isEmpty()) {
+                    metadata.uid = value;
+                }
+            } else if (token.equals("uid:") && i + 1 < tokens.length) {
+                String value = tokens[++i].trim();
+                if (!value.isEmpty()) {
+                    metadata.uid = value;
+                }
+            } else if (token.startsWith("uid:")) {
+                String value = token.substring(4).trim();
+                if (!value.isEmpty()) {
+                    metadata.uid = value;
+                }
             } else if (token.startsWith("type=")) {
                 String value = token.substring(5).trim();
                 if (!value.isEmpty()) {

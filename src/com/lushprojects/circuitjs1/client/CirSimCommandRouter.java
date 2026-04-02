@@ -232,6 +232,14 @@ final class CirSimCommandRouter {
             sim.getViewportController().setCircuitScale(1, true);
         if (menu=="elm" && item=="edit")
             sim.getEditDialogActions().doEdit(sim.getMenuUiState().menuElm);
+        if (menu=="elm" && item=="bringToFront") {
+            sim.getUndoRedoManager().pushUndo();
+            sim.bringToFront(sim.getMenuUiState().menuElm);
+        }
+        if (menu=="elm" && item=="sendToBack") {
+            sim.getUndoRedoManager().pushUndo();
+            sim.sendToBack(sim.getMenuUiState().menuElm);
+        }
         if (item=="delete") {
             if (menu!="elm")
                 sim.getMenuUiState().menuElm = null;
@@ -280,7 +288,7 @@ final class CirSimCommandRouter {
 
         if (item=="viewInFloatScope" && sim.getMenuUiState().menuElm != null) {
             ScopeElm newScope = new ScopeElm(sim.snapGrid(sim.getMenuUiState().menuElm.x+50), sim.snapGrid(sim.getMenuUiState().menuElm.y+50));
-            sim.elmList.addElement(newScope);
+            sim.addElement(newScope);
             newScope.setScopeElm(sim.getMenuUiState().menuElm);
             sim.needAnalyze();
         }
@@ -305,6 +313,13 @@ final class CirSimCommandRouter {
             else
                 s= ((ScopeElm)sim.getMouseElmForRouting()).elmScope;
 
+            if (item=="bringToFront") {
+                sim.bringToFront((ScopeElm) sim.getMouseElmForRouting());
+            }
+            if (item=="sendToBack") {
+                sim.sendToBack((ScopeElm) sim.getMouseElmForRouting());
+            }
+
             if (item=="dock") {
                 if (sim.scopeCount == sim.scopes.length)
                     return;
@@ -317,7 +332,7 @@ final class CirSimCommandRouter {
             if (item=="undock") {
                 CircuitElm elm = s.getElm();
                 ScopeElm newScope = new ScopeElm(sim.snapGrid(elm.x+50), sim.snapGrid(elm.y+50));
-                sim.elmList.addElement(newScope);
+                sim.addElement(newScope);
                 newScope.setElmScope(sim.scopes[sim.getScopeManager().getMenuScope()]);
 
                 int i;

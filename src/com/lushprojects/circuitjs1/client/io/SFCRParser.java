@@ -41,6 +41,7 @@ import com.lushprojects.circuitjs1.client.io.sfcr.handlers.UnknownBlockParseHand
  *   @startuml   - PlantUML sequence diagrams (creates SequenceDiagramElm)
  *   @hints      - Variable tooltips (overrides inline comments)
  *   @scope      - Oscilloscope displays
+ *   @zorder     - Visual layer order metadata (UID -> z)
  *   @circuit    - Raw CircuitJS element passthrough
  * 
  * Inline comments become hints:
@@ -89,10 +90,11 @@ public class SFCRParser {
         }
     }
 
-    /** Parsed metadata from R-style comment: # [ x=.. y=.. type: .. ] */
+    /** Parsed metadata from R-style comment: # [ x=.. y=.. uid=.. type: .. ] */
     public static class RStyleBlockMetadata {
         int x = Integer.MIN_VALUE;
         int y = Integer.MIN_VALUE;
+        String uid;
         String type;
         Boolean invisible;
 
@@ -799,6 +801,11 @@ public class SFCRParser {
     public void applyParsedScopes() {
         addScopes();
     }
+
+    /** Apply parsed visual z-order metadata after all referenced elements exist. */
+    public void applyParsedZOrders() {
+        applyParsedZOrdersInternal();
+    }
     
     /** Get the @info block content (markdown), or null if not present. */
     public String getInfoContent() {
@@ -939,7 +946,7 @@ public class SFCRParser {
                 matchingScopeElm.x2 = block.x2;
                 matchingScopeElm.y2 = block.y2;
                 sim.getImportExportHelper().assignPersistentUid(matchingScopeElm, block.elmUid);
-                sim.elmList.addElement(matchingScopeElm);
+                sim.addElement(matchingScopeElm);
                 ctx.addCreatedElement(matchingScopeElm);
             }
 
@@ -1037,6 +1044,22 @@ public class SFCRParser {
 
         if (addedAny) {
             sim.setupScopesForImportExport();
+        }
+    }
+
+    private void applyParsedZOrdersInternal() {
+        if (ctx == null || sim == null) {
+            return;
+        }
+        HashMap<String, Integer> zOrdersByUid = ctx.getZOrdersByUid();
+        if (zOrdersByUid == null || zOrdersByUid.isEmpty()) {
+            return;
+        }
+        for (java.util.Map.Entry<String, Integer> entry : zOrdersByUid.entrySet()) {
+            CircuitElm elm = sim.getImportExportHelper().findElmByUid(entry.getKey());
+            if (elm != null && entry.getValue() != null) {
+                sim.setElementZOrderForImportExport(elm, entry.getValue().intValue());
+            }
         }
     }
 

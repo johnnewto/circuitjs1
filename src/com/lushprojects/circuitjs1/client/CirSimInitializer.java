@@ -659,6 +659,8 @@ final class CirSimInitializer {
         sim.getMenuUiState().elmMenuBar.addItem(sim.elmCopyMenuItem = new MenuItem(Locale.LS("Copy"), new MyCommand("elm", "copy")));
         sim.getMenuUiState().elmMenuBar.addItem(sim.elmDeleteMenuItem = new MenuItem(Locale.LS("Delete"), new MyCommand("elm", "delete")));
         sim.getMenuUiState().elmMenuBar.addItem(new MenuItem(Locale.LS("Duplicate"), new MyCommand("elm", "duplicate")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmBringToFrontMenuItem = new MenuItem(Locale.LS("Bring to Front"), new MyCommand("elm", "bringToFront")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmSendToBackMenuItem = new MenuItem(Locale.LS("Send to Back"), new MyCommand("elm", "sendToBack")));
         sim.getMenuUiState().elmMenuBar.addItem(sim.elmSwapMenuItem = new MenuItem(Locale.LS("Swap Terminals"), new MyCommand("elm", "flip")));
         sim.getMenuUiState().elmMenuBar.addItem(sim.elmFlipXMenuItem = new MenuItem(Locale.LS("Flip X"), new MyCommand("elm", "flipx")));
         sim.getMenuUiState().elmMenuBar.addItem(sim.elmFlipYMenuItem = new MenuItem(Locale.LS("Flip Y"), new MyCommand("elm", "flipy")));

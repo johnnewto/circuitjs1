@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import java.util.ArrayList;
+
 import com.lushprojects.circuitjs1.client.scope.Scope;
 
 import com.lushprojects.circuitjs1.client.ui.EditInfo;
@@ -471,8 +473,9 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
                 newMouseElm = currentMouseElm;
             } else {
                 int bestDist = 100000000;
-                for (i = 0; i != sim.elmList.size(); i++) {
-                    CircuitElm ce = sim.getElm(i);
+                ArrayList<CircuitElm> pickOrder = sim.getElementsInPickOrder();
+                for (i = 0; i != pickOrder.size(); i++) {
+                    CircuitElm ce = pickOrder.get(i);
                     if (ce.boundingBox.contains(gx, gy)) {
                         int dist = ce.getMouseDistance(gx, gy);
                         if (dist >= 0 && dist < bestDist) {
@@ -496,8 +499,9 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
                     sim.getScopeManager().setScopeSelected(i);
                 }
             }
-            for (i = 0; i != sim.elmList.size(); i++) {
-                CircuitElm ce = sim.getElm(i);
+            ArrayList<CircuitElm> pickOrder = sim.getElementsInPickOrder();
+            for (i = 0; i != pickOrder.size(); i++) {
+                CircuitElm ce = pickOrder.get(i);
                 if (mouseMode == CirSim.MODE_DRAG_POST) {
                     if (ce.getHandleGrabbedClose(gx, gy, CirSim.POSTGRABSQ, 0) > 0) {
                         newMouseElm = ce;
@@ -514,6 +518,8 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
                         break;
                     }
                 }
+                if (newMouseElm != null && mousePost != -1)
+		    break;
             }
         } else {
             mousePost = -1;
@@ -883,7 +889,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
                     sim.getClipboardManager().clearSelection();
             }
             else {
-                sim.elmList.addElement(sim.dragElm);
+                sim.addElement(sim.dragElm);
                 sim.dragElm.draggingDone();
                 circuitChanged = true;
                 sim.needsRecoverySave = true;

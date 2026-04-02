@@ -26,6 +26,7 @@ public class SankeyBlockParseHandler implements SFCRBlockParseHandler {
         double fixedMaxScale = 0;
         boolean useHighWaterMark = false;
         boolean showFlowValues = false;
+        String uidFromFile = null;
 
         int i = startIndex + 1;
         while (i < lines.length) {
@@ -52,6 +53,8 @@ public class SankeyBlockParseHandler implements SFCRBlockParseHandler {
 
                 if (key.equals("source")) {
                     sourceName = value;
+                } else if (key.equals("uid")) {
+                    uidFromFile = value;
                 } else if (key.equals("layout")) {
                     layout = value.toUpperCase();
                     if (!layout.equals("CIRCULAR")) {
@@ -114,8 +117,8 @@ public class SankeyBlockParseHandler implements SFCRBlockParseHandler {
         }
 
         CirSim sim = ctx.getSim();
-        sim.getImportExportHelper().assignPersistentUid(sankeyElm, null);
-        sim.elmList.addElement(sankeyElm);
+        sim.getImportExportHelper().assignPersistentUid(sankeyElm, uidFromFile);
+        sim.addElement(sankeyElm);
         ctx.addCreatedElement(sankeyElm);
 
         if (!blockPos.hasPosition()) {

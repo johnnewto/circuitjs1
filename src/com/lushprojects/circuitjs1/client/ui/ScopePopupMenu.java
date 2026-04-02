@@ -40,6 +40,8 @@ public class ScopePopupMenu {
     private MenuItem propertiesItem;
     private MenuItem dockItem;
     private MenuItem undockItem;
+    private MenuItem bringToFrontItem;
+    private MenuItem sendToBackItem;
     private CheckboxMenuItem drawFromZeroItem;
     private MenuItem exportDataItem;
     private MenuItem viewPlotlyItem;
@@ -49,6 +51,8 @@ public class ScopePopupMenu {
 	 m.addItem(removeScopeItem = new CheckboxAlignedMenuItem(Locale.LS("Remove Scope"),new MyCommand("scopepop", "remove")));
 	 m.addItem(dockItem = new CheckboxAlignedMenuItem(Locale.LS("Dock Scope"),new MyCommand("scopepop", "dock")));
 	 m.addItem(undockItem = new CheckboxAlignedMenuItem(Locale.LS("Undock Scope"),new MyCommand("scopepop", "undock")));
+     m.addItem(bringToFrontItem = new CheckboxAlignedMenuItem(Locale.LS("Bring to Front"), new MyCommand("scopepop", "bringToFront")));
+     m.addItem(sendToBackItem = new CheckboxAlignedMenuItem(Locale.LS("Send to Back"), new MyCommand("scopepop", "sendToBack")));
 	 m.addItem(maxScaleItem = new CheckboxMenuItem(Locale.LS("Max Scale"), new MyCommand("scopepop", "maxscale")));
 	 m.addItem(stackItem = new CheckboxAlignedMenuItem(Locale.LS("Stack"), new MyCommand("scopepop", "stack")));
 	 m.addItem(unstackItem = new CheckboxAlignedMenuItem(Locale.LS("Unstack"), new MyCommand("scopepop", "unstack")));
@@ -74,6 +78,10 @@ public class ScopePopupMenu {
 	combineItem.setEnabled(cancombine);
 	dockItem.setVisible(floating);
 	undockItem.setVisible(!floating);
+    bringToFrontItem.setVisible(floating);
+    bringToFrontItem.setEnabled(floating);
+    sendToBackItem.setVisible(floating);
+    sendToBackItem.setEnabled(floating);
     }
     
     

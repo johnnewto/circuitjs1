@@ -11,6 +11,7 @@ public enum SFCRBlockType {
     HINTS,
     CIRCUIT,
     SCOPE,
+    ZORDER,
     INFO,
     OTHER
 }

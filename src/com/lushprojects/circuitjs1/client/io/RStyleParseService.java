@@ -63,6 +63,7 @@ public class RStyleParseService {
         if (metadata != null) {
             effectiveMetadata.x = metadata.x;
             effectiveMetadata.y = metadata.y;
+            effectiveMetadata.uid = metadata.uid;
             effectiveMetadata.type = metadata.type;
             effectiveMetadata.invisible = metadata.invisible;
         }
@@ -117,6 +118,9 @@ public class RStyleParseService {
             normalized.append(" x=").append(effectiveMetadata.x).append(" y=").append(effectiveMetadata.y);
         }
         normalized.append("\n");
+        if (effectiveMetadata.uid != null && !effectiveMetadata.uid.trim().isEmpty()) {
+            normalized.append("  uid: ").append(effectiveMetadata.uid.trim()).append("\n");
+        }
         normalized.append("  type: ").append(matrixType).append("\n");
         if (effectiveMetadata.invisible != null) {
             normalized.append("  invisible: ").append(effectiveMetadata.invisible.booleanValue()).append("\n");
@@ -193,6 +197,7 @@ public class RStyleParseService {
         if (metadata != null) {
             effectiveMetadata.x = metadata.x;
             effectiveMetadata.y = metadata.y;
+            effectiveMetadata.uid = metadata.uid;
             effectiveMetadata.type = metadata.type;
             effectiveMetadata.invisible = metadata.invisible;
         }
@@ -204,6 +209,9 @@ public class RStyleParseService {
             normalized.append(" x=").append(effectiveMetadata.x).append(" y=").append(effectiveMetadata.y);
         }
         normalized.append("\n");
+        if (effectiveMetadata.uid != null && !effectiveMetadata.uid.trim().isEmpty()) {
+            normalized.append("  uid: ").append(effectiveMetadata.uid.trim()).append("\n");
+        }
         if (effectiveMetadata.invisible != null) {
             normalized.append("  invisible: ").append(effectiveMetadata.invisible.booleanValue()).append("\n");
         }
@@ -405,6 +413,27 @@ public class RStyleParseService {
                 Integer parsed = parseIntSafe(token.substring(2));
                 if (parsed != null) {
                     metadata.y = parsed.intValue();
+                }
+                continue;
+            }
+            if (token.startsWith("uid=")) {
+                String value = token.substring(4).trim();
+                if (!value.isEmpty()) {
+                    metadata.uid = value;
+                }
+                continue;
+            }
+            if (token.equals("uid:") && i + 1 < tokens.length) {
+                String value = tokens[++i].trim();
+                if (!value.isEmpty()) {
+                    metadata.uid = value;
+                }
+                continue;
+            }
+            if (token.startsWith("uid:")) {
+                String value = token.substring(4).trim();
+                if (!value.isEmpty()) {
+                    metadata.uid = value;
                 }
                 continue;
             }

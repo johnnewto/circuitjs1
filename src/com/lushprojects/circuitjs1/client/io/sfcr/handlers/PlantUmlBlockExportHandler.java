@@ -64,6 +64,7 @@ public class PlantUmlBlockExportHandler implements SFCRBlockExportHandler {
             if (!replaced && trimmed.startsWith("@startuml")) {
                 out.append("@startuml")
                     .append(ctxPosition(diagram))
+                    .append(" uid=").append(diagram.getPersistentUid())
                     .append(" w=").append(diagram.getRenderedDiagramWidth())
                     .append(" h=").append(diagram.getRenderedDiagramHeight());
                 if (diagram.getDiagramWidth() != DEFAULT_DIAGRAM_WIDTH) {

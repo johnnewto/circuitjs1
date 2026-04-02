@@ -31,6 +31,7 @@ public class MatrixBlockParseHandler implements SFCRBlockParseHandler {
         Boolean showFlowValues = null;
         Boolean useBackwardEuler = null;
         Boolean invisible = null;
+        String uidFromFile = null;
 
         int i = startIndex + 1;
         ArrayList<String[]> tableRows = new ArrayList<String[]>();
@@ -94,6 +95,11 @@ public class MatrixBlockParseHandler implements SFCRBlockParseHandler {
                     i++;
                     continue;
                 }
+                if (key.equals("uid")) {
+                    uidFromFile = value;
+                    i++;
+                    continue;
+                }
             }
 
             if (line.startsWith("|")) {
@@ -123,7 +129,7 @@ public class MatrixBlockParseHandler implements SFCRBlockParseHandler {
 
         if (!columnNames.isEmpty() && !tableRows.isEmpty()) {
             ctx.createMatrixTable(matrixName, columnNames, columnTypes, rowNames, tableRows, matrixType,
-                showInitialValues, showFlowValues, useBackwardEuler, invisible);
+                showInitialValues, showFlowValues, useBackwardEuler, invisible, uidFromFile);
         }
 
         if (blockPos.hasPosition()) {

@@ -51,6 +51,7 @@ public class ActionBlockExportHandler implements SFCRBlockExportHandler {
 
         if (actionTimeElmForExport != null) {
             sb.append("  enabled: ").append(actionTimeElmForExport.enabled).append("\n");
+                        sb.append("  uid: ").append(actionTimeElmForExport.getPersistentUid()).append("\n");
             sb.append("  element: ")
               .append(actionTimeElmForExport.x).append(" ")
               .append(actionTimeElmForExport.y).append(" ")

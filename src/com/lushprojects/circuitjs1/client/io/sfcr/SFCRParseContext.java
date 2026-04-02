@@ -55,6 +55,7 @@ public class SFCRParseContext {
     // Scope configuration
     private final ArrayList<String> scopeVariables = new ArrayList<String>();
     private final ArrayList<SFCRParser.ScopeBlockSpec> scopeBlocks = new ArrayList<SFCRParser.ScopeBlockSpec>();
+    private final HashMap<String, Integer> zOrdersByUid = new HashMap<String, Integer>();
     
     // Init settings
     private final HashMap<String, String> initSettings = new HashMap<String, String>();
@@ -181,6 +182,16 @@ public class SFCRParseContext {
     
     public ArrayList<SFCRParser.ScopeBlockSpec> getScopeBlocks() {
         return scopeBlocks;
+    }
+
+    public void registerZOrder(String uid, int zOrder) {
+        if (uid != null && uid.length() > 0) {
+            zOrdersByUid.put(uid, Integer.valueOf(zOrder));
+        }
+    }
+
+    public HashMap<String, Integer> getZOrdersByUid() {
+        return zOrdersByUid;
     }
 
     // =========================================================================
@@ -761,14 +772,14 @@ public class SFCRParseContext {
                                     ArrayList<String> equations, ArrayList<Integer> outputModes,
                                     ArrayList<String> targetNodeNames, ArrayList<String> sliderVarNames,
                                     ArrayList<Double> sliderValues, ArrayList<String> initialEquations,
-                                    Boolean invisibleOverride) {
+                                    Boolean invisibleOverride, String uidFromFile) {
         SFCRTableDumpBuilderService.DumpBuildResult build = tableDumpBuilderService.buildEquationDump(
             name, currentX, currentY, outputNames, equations, outputModes, targetNodeNames,
             sliderVarNames, sliderValues, initialEquations, invisibleOverride);
         
         if (build == null) return;
         
-        createElementFromDump("equations", name, build.dump, build.y2);
+        createElementFromDump("equations", name, build.dump, build.y2, uidFromFile);
     }
     
     public void createMatrixTable(String name, ArrayList<String> columnNames,
@@ -776,7 +787,7 @@ public class SFCRParseContext {
                                   ArrayList<String> rowNames, ArrayList<String[]> tableRows,
                                   String matrixType, Boolean showInitialValuesOverride,
                                   Boolean showFlowValuesOverride, Boolean useBackwardEulerOverride,
-                                  Boolean invisibleOverride) {
+                                  Boolean invisibleOverride, String uidFromFile) {
         SFCRTableDumpBuilderService.DumpBuildResult build = tableDumpBuilderService.buildMatrixDump(
             name, currentX, currentY, columnNames, columnTypes, rowNames, tableRows, showInitialValuesOverride,
             invisibleOverride);
@@ -786,13 +797,13 @@ public class SFCRParseContext {
             return;
         }
         
-        createElementFromDump("matrix", name, build.dump, build.y2);
+        createElementFromDump("matrix", name, build.dump, build.y2, uidFromFile);
     }
     
     /**
      * Create an element from a dump string, or record it in result-mode.
      */
-    private void createElementFromDump(String blockType, String name, String dumpString, int y2) {
+    private void createElementFromDump(String blockType, String name, String dumpString, int y2, String uidFromFile) {
         // Result-mode: collect dump without instantiating elements
         if (pendingResult != null) {
             pendingResult.blockDumps.add(new SFCRParseResult.BlockDump(blockType, name, dumpString));
@@ -813,8 +824,8 @@ public class SFCRParseContext {
             CircuitElm ce = ElementFactoryFacade.createFromDumpType(type, xa, ya, xb, yb, flags, st);
             if (ce != null) {
                 ce.setPointsForImportExport();
-                sim.getImportExportHelper().assignPersistentUid(ce, null);
-                sim.elmList.addElement(ce);
+                sim.getImportExportHelper().assignPersistentUid(ce, uidFromFile);
+                sim.addElement(ce);
                 createdElements.add(ce);
                 currentY = yb + elementSpacing;
             } else {

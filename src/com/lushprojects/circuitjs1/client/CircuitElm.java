@@ -122,6 +122,7 @@ public abstract class CircuitElm implements Editable {
     
     public int flags, nodes[], voltSource;
 	private String persistentUid;
+	private int zOrder = Integer.MIN_VALUE;
     
     // length along x and y axes, and sign of difference
     protected int dx, dy, dsign;
@@ -328,6 +329,18 @@ public abstract class CircuitElm implements Editable {
     public void setPersistentUid(String uid) {
 	persistentUid = uid;
     }
+
+	public boolean hasAssignedZOrder() {
+	return zOrder != Integer.MIN_VALUE;
+	}
+
+	public int getZOrder() {
+	return zOrder;
+	}
+
+	public void setZOrder(int z) {
+	zOrder = z;
+	}
     
     // handle reset button
     protected void reset() {

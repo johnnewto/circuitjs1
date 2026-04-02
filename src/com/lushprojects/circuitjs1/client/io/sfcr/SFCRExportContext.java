@@ -636,6 +636,7 @@ public class SFCRExportContext {
         appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_EQUATIONS, SFCRUtil.sanitizeName(tableName));
         sb.append("@equations ").append(SFCRUtil.sanitizeName(tableName));
         sb.append(SFCRUtil.formatPosition(eqTable)).append("\n");
+        sb.append("  uid: ").append(eqTable.getPersistentUid()).append("\n");
         sb.append("  invisible: ").append(eqTable.isInvisible()).append("\n");
 
         for (int i = 0; i < rows.size(); i++) {
@@ -693,6 +694,7 @@ public class SFCRExportContext {
         appendLeadingBlockComments(sb, SFCRBlockCommentRegistry.TYPE_MATRIX, SFCRUtil.sanitizeName(tableName));
         sb.append("@matrix ").append(SFCRUtil.sanitizeName(tableName));
         sb.append(SFCRUtil.formatPosition(sfcTable)).append("\n");
+        sb.append("  uid: ").append(sfcTable.getPersistentUid()).append("\n");
         sb.append("  type: transaction_flow\n");
         sb.append("  invisible: ").append(sfcTable.isInvisible()).append("\n");
 
@@ -1392,6 +1394,10 @@ public class SFCRExportContext {
             }
             StringBuilder sb = new StringBuilder();
             sb.append("# [ x=").append(elm.x).append(" y=").append(elm.y);
+            String uid = elm.getPersistentUid();
+            if (uid != null && uid.length() > 0) {
+                sb.append(" uid=").append(uid);
+            }
             if (type != null && type.trim().length() > 0) {
                 sb.append(" type: ").append(type.trim());
             }

@@ -1,5 +1,7 @@
 package com.lushprojects.circuitjs1.client;
 
+import java.util.ArrayList;
+
 import com.lushprojects.circuitjs1.client.util.*;
 
 import com.lushprojects.circuitjs1.client.elements.economics.*;
@@ -61,30 +63,17 @@ class CircuitRenderer {
 
             perfmon.startContext("elm.draw()");
 
-            int tableOriginalIndex = -1;
-            TableElm lastInteractedTable = sim.getLastInteractedTableForRouting();
-            if (lastInteractedTable != null && sim.elmList.contains(lastInteractedTable)) {
-                tableOriginalIndex = sim.elmList.indexOf(lastInteractedTable);
-                if (tableOriginalIndex != sim.elmList.size() - 1) {
-                    sim.elmList.remove(tableOriginalIndex);
-                    sim.elmList.add(lastInteractedTable);
-                }
-            }
+            ArrayList<CircuitElm> drawOrder = sim.getElementsInDrawOrder();
 
             if (sim.powerCheckItem.getState()) {
                 g.setColor(Color.gray);
-                for (int i = 0; i != sim.elmList.size(); i++) {
-                    sim.getElm(i).draw(g);
+                for (int i = 0; i != drawOrder.size(); i++) {
+                    drawOrder.get(i).draw(g);
                 }
             } else {
-                for (int i = 0; i != sim.elmList.size(); i++) {
-                    sim.getElm(i).draw(g);
+                for (int i = 0; i != drawOrder.size(); i++) {
+                    drawOrder.get(i).draw(g);
                 }
-            }
-
-            if (tableOriginalIndex >= 0 && tableOriginalIndex != sim.elmList.size() - 1) {
-                sim.elmList.remove(lastInteractedTable);
-                sim.elmList.insertElementAt(lastInteractedTable, tableOriginalIndex);
             }
 
             perfmon.stopContext();
@@ -98,8 +87,8 @@ class CircuitRenderer {
                 sim.getTempMouseMode() == CirSim.MODE_DRAG_COLUMN ||
                 sim.getTempMouseMode() == CirSim.MODE_DRAG_POST ||
                 sim.getTempMouseMode() == CirSim.MODE_DRAG_SELECTED) {
-                for (int i = 0; i != sim.elmList.size(); i++) {
-                    CircuitElm ce = sim.getElm(i);
+                for (int i = 0; i != drawOrder.size(); i++) {
+                    CircuitElm ce = drawOrder.get(i);
                     if (ce != mouseElm || sim.getTempMouseMode() != CirSim.MODE_DRAG_POST) {
                         g.setColor(Color.gray);
                         g.fillOval(ce.x - 3, ce.y - 3, 7, 7);

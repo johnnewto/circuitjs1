@@ -12,6 +12,7 @@ import com.lushprojects.circuitjs1.client.io.sfcr.handlers.PlantUmlBlockParseHan
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.SFCRBlockParseHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.ScopeBlockParseHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.SankeyBlockParseHandler;
+import com.lushprojects.circuitjs1.client.io.sfcr.handlers.ZOrderBlockParseHandler;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,6 +29,7 @@ public final class SFCRBlockParseHandlerRegistry {
         register(new LookupBlockParseHandler());
         register(new HintsBlockParseHandler());
         register(new ScopeBlockParseHandler());
+        register(new ZOrderBlockParseHandler());
         register(new CircuitBlockParseHandler());
         register(new SankeyBlockParseHandler());
         register(new PlantUmlBlockParseHandler());

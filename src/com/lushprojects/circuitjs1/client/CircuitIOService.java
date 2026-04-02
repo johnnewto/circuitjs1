@@ -203,6 +203,8 @@ final class CircuitIOService {
                 if (RuntimeMode.isGwt())
                     parser.applyParsedScopes();
 
+                parser.applyParsedZOrders();
+
                 if ((flags & CirSim.RC_NO_CENTER) == 0) {
                     ViewportElm viewportElm = sim.getViewportController().findViewportElm();
                     if (viewportElm != null) {
@@ -268,7 +270,9 @@ final class CircuitIOService {
 
             newce.setPoints();
             sim.getImportExportHelper().assignPersistentUid(newce, parsed.uid);
-            sim.elmList.addElement(newce);
+            if (parsed.zOrder != null)
+    		sim.setElementZOrderForImportExport(newce, parsed.zOrder.intValue());
+            sim.addElement(newce);
 
         } catch (Exception e) {
             CirSim.console("Error parsing circuit line: " + line + " - " + e.getMessage());
@@ -635,7 +639,9 @@ final class CircuitIOService {
                     }
                     newce.setPoints();
                     sim.getImportExportHelper().assignPersistentUid(newce, parsed.uid);
-                    sim.elmList.addElement(newce);
+                    if (parsed.zOrder != null)
+			sim.setElementZOrderForImportExport(newce, parsed.zOrder.intValue());
+                    sim.addElement(newce);
                 } catch (Exception ee) {
                     ee.printStackTrace();
                     CirSim.console("exception while undumping " + ee);

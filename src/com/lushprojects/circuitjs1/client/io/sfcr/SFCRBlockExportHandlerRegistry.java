@@ -12,6 +12,7 @@ import com.lushprojects.circuitjs1.client.io.sfcr.handlers.PlantUmlBlockExportHa
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.SFCRBlockExportHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.SankeyBlockExportHandler;
 import com.lushprojects.circuitjs1.client.io.sfcr.handlers.ScopeBlockExportHandler;
+import com.lushprojects.circuitjs1.client.io.sfcr.handlers.ZOrderBlockExportHandler;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,6 +35,7 @@ public final class SFCRBlockExportHandlerRegistry {
         handlers.add(new HintsBlockExportHandler());
         handlers.add(new CircuitBlockExportHandler());
         handlers.add(new ScopeBlockExportHandler());
+        handlers.add(new ZOrderBlockExportHandler());
         Collections.sort(handlers, new Comparator<SFCRBlockExportHandler>() {
             @Override
             public int compare(SFCRBlockExportHandler a, SFCRBlockExportHandler b) {

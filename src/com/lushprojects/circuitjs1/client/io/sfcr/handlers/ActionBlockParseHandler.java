@@ -1,7 +1,6 @@
 package com.lushprojects.circuitjs1.client.io.sfcr.handlers;
 
 import com.lushprojects.circuitjs1.client.CirSim;
-import com.lushprojects.circuitjs1.client.CircuitElm;
 import com.lushprojects.circuitjs1.client.elements.ActionScheduler;
 import com.lushprojects.circuitjs1.client.elements.misc.ActionTimeElm;
 import com.lushprojects.circuitjs1.client.io.SFCRParser;
@@ -43,6 +42,7 @@ public class ActionBlockParseHandler implements SFCRBlockParseHandler {
         int actionElmY2 = 432;
         int actionElmFlags = 0;
         String actionElmTitle = "Action Schedule";
+        String uidFromFile = null;
 
         if (actionBlockPos != null && actionBlockPos.name != null && !actionBlockPos.name.isEmpty()
                 && !actionBlockPos.name.equalsIgnoreCase("action")) {
@@ -75,6 +75,8 @@ public class ActionBlockParseHandler implements SFCRBlockParseHandler {
                 try {
                     if (key.equals("pausetime") || key.equals("pause_time")) {
                         scheduler.setPauseTime(Double.parseDouble(value));
+                    } else if (key.equals("uid")) {
+                        uidFromFile = value;
                     } else if (key.equals("enabled") || key.equals("actionelementenabled") || key.equals("action_element_enabled")) {
                         actionElmEnabled = ctx.parseBoolean(value, true);
                         actionElmEnabledSpecified = true;
@@ -149,8 +151,8 @@ public class ActionBlockParseHandler implements SFCRBlockParseHandler {
             if (actionElm == null) {
                 actionElm = new ActionTimeElm(actionElmX1, actionElmY1, actionElmX2, actionElmY2, actionElmFlags, null);
                 actionElm.setPointsForImportExport();
-                sim.getImportExportHelper().assignPersistentUid(actionElm, null);
-                sim.elmList.addElement(actionElm);
+                sim.getImportExportHelper().assignPersistentUid(actionElm, uidFromFile);
+                sim.addElement(actionElm);
                 ctx.addCreatedElement(actionElm);
             } else if (actionElmSpecified) {
                 actionElm.x = actionElmX1;

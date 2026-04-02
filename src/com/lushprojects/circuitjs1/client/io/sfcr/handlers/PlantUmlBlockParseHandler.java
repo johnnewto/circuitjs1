@@ -138,8 +138,8 @@ public class PlantUmlBlockParseHandler implements SFCRBlockParseHandler {
 
         if (sequenceElm != null) {
             CirSim sim = ctx.getSim();
-            sim.getImportExportHelper().assignPersistentUid(sequenceElm, null);
-            sim.elmList.addElement(sequenceElm);
+            sim.getImportExportHelper().assignPersistentUid(sequenceElm, startUmlMetadata.uid);
+            sim.addElement(sequenceElm);
             ctx.addCreatedElement(sequenceElm);
             if (!blockPos.hasPosition()) {
                 ctx.setCurrentPosition(posX, nextY);
@@ -198,6 +198,10 @@ public class PlantUmlBlockParseHandler implements SFCRBlockParseHandler {
                         metadata.hasScale = true;
                     } catch (Exception ignored) {
                     }
+                    continue;
+                }
+                if (lower.startsWith("uid=")) {
+                    metadata.uid = part.substring(part.indexOf('=') + 1);
                     continue;
                 }
                 if (lower.startsWith("width=")) {
@@ -270,6 +274,7 @@ public class PlantUmlBlockParseHandler implements SFCRBlockParseHandler {
         int frameWidth;
         int frameHeight;
         double scale = 1.0;
+        String uid;
         String sanitizedSource;
     }
 

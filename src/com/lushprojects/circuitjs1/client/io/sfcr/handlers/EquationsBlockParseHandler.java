@@ -39,6 +39,7 @@ public class EquationsBlockParseHandler implements SFCRBlockParseHandler {
         ArrayList<Double> sliderValues = new ArrayList<Double>();
         ArrayList<String> initialEquations = new ArrayList<String>();
         Boolean invisible = null;
+        String uidFromFile = null;
 
         int i = startIndex + 1;
         while (i < lines.length) {
@@ -64,6 +65,11 @@ public class EquationsBlockParseHandler implements SFCRBlockParseHandler {
                 String value = line.substring(blockMetaSep + 1).trim();
                 if (key.equals("invisible") || key.equals("hidden")) {
                     invisible = parseBoolean(value);
+                    i++;
+                    continue;
+                }
+                if (key.equals("uid")) {
+                    uidFromFile = value;
                     i++;
                     continue;
                 }
@@ -170,7 +176,7 @@ public class EquationsBlockParseHandler implements SFCRBlockParseHandler {
 
         if (!outputNames.isEmpty()) {
             ctx.createEquationTable(blockName, outputNames, equations, outputModes,
-                targetNodeNames, sliderVarNames, sliderValues, initialEquations, invisible);
+                targetNodeNames, sliderVarNames, sliderValues, initialEquations, invisible, uidFromFile);
         }
 
         if (blockPos.hasPosition()) {

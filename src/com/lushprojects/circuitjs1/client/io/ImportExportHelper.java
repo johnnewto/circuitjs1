@@ -10,10 +10,12 @@ public class ImportExportHelper {
     public static class ElementDumpParseResult {
         public final StringTokenizer tokenizer;
         public final String uid;
+        public final Integer zOrder;
 
-        ElementDumpParseResult(StringTokenizer tokenizer, String uid) {
+        ElementDumpParseResult(StringTokenizer tokenizer, String uid, Integer zOrder) {
             this.tokenizer = tokenizer;
             this.uid = uid;
+            this.zOrder = zOrder;
         }
     }
 
@@ -81,11 +83,20 @@ public class ImportExportHelper {
     public ElementDumpParseResult parseElementTokensWithUid(StringTokenizer st) {
         java.util.ArrayList<String> tokens = new java.util.ArrayList<String>();
         String uid = null;
+        Integer zOrder = null;
         while (st.hasMoreTokens()) {
             String tok = st.nextToken();
             if (uid == null && tok.startsWith("U:")) {
                 uid = sim.unescapeTokenForImportExport(tok.substring(2));
                 continue;
+            }
+            if (zOrder == null && tok.startsWith("Z:")) {
+		try {
+		    zOrder = Integer.valueOf(tok.substring(2));
+		    continue;
+		} catch (NumberFormatException ignored) {
+		    // Preserve malformed metadata as ordinary element data.
+		}
             }
             tokens.add(tok);
         }
@@ -95,7 +106,7 @@ public class ImportExportHelper {
                 remaining += " ";
             remaining += tokens.get(i);
         }
-        return new ElementDumpParseResult(new StringTokenizer(remaining, " "), uid);
+        return new ElementDumpParseResult(new StringTokenizer(remaining, " "), uid, zOrder);
     }
 
     public CircuitElm findElmByUid(String uid) {

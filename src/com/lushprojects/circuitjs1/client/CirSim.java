@@ -41,6 +41,9 @@ import com.lushprojects.circuitjs1.client.elements.misc.*;
 // or https://github.com/sharpie7/circuitjs1/blob/master/INTERNALS.md
 
 import java.util.Vector;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Random;
 import java.lang.Math;
@@ -427,6 +430,8 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
 	MenuItem elmDagBlocksMenuItem;
 	MenuItem elmEquationTableDebugMenuItem;
 	MenuItem elmEquationTableReferenceMenuItem;
+	MenuItem elmBringToFrontMenuItem;
+	MenuItem elmSendToBackMenuItem;
     MenuItem elmFlipXMenuItem, elmFlipYMenuItem, elmFlipXYMenuItem;
     MenuItem elmSwapMenuItem;
     MenuItem stackAllItem;
@@ -914,11 +919,12 @@ public CirSim() {
 	}
 
 	public String getElementDumpWithUidForImportExport(CircuitElm ce) {
+	    ensureElementHasZOrder(ce);
 	    String d = ce.dump();
 	    if (d == null) {
 	        return null;
 	    }
-	    return d + " U:" + CustomLogicModel.escape(ce.getPersistentUid());
+	    return d + " U:" + CustomLogicModel.escape(ce.getPersistentUid()) + " Z:" + ce.getZOrder();
 	}
 
 	public String getElementUidForImportExport(CircuitElm ce) {
@@ -927,6 +933,15 @@ public CirSim() {
 
 	public void setElementUidForImportExport(CircuitElm ce, String uid) {
 	    ce.setPersistentUid(uid);
+	}
+
+	public int getElementZOrderForImportExport(CircuitElm ce) {
+	    ensureElementHasZOrder(ce);
+	    return ce.getZOrder();
+	}
+
+	public void setElementZOrderForImportExport(CircuitElm ce, int zOrder) {
+	    ce.setZOrder(zOrder);
 	}
 
 	public void setupScopesForImportExport() {
@@ -1398,6 +1413,108 @@ public CirSim() {
 	    return null;
 	return elmList.elementAt(n);
     }
+
+	public void addElement(CircuitElm ce) {
+	    if (ce == null)
+		return;
+	    ensureElementHasZOrder(ce);
+	    elmList.addElement(ce);
+	}
+
+	void ensureElementHasZOrder(CircuitElm ce) {
+	    if (ce == null || ce.hasAssignedZOrder())
+		return;
+	    ce.setZOrder(getNextZOrderValue());
+	}
+
+	private int getNextZOrderValue() {
+	    int maxZOrder = -1;
+	    for (int i = 0; i != elmList.size(); i++) {
+		CircuitElm ce = elmList.elementAt(i);
+		if (ce.hasAssignedZOrder() && ce.getZOrder() > maxZOrder)
+		    maxZOrder = ce.getZOrder();
+	    }
+	    return maxZOrder + 1;
+	}
+
+	private ArrayList<CircuitElm> getElementsSortedByZOrder(final boolean descending, final boolean selectedOnTop) {
+	    ArrayList<CircuitElm> ordered = new ArrayList<CircuitElm>(elmList.size());
+	    for (int i = 0; i != elmList.size(); i++) {
+		CircuitElm ce = elmList.elementAt(i);
+		ensureElementHasZOrder(ce);
+		ordered.add(ce);
+	    }
+	    Collections.sort(ordered, new Comparator<CircuitElm>() {
+		public int compare(CircuitElm a, CircuitElm b) {
+		    if (selectedOnTop && a.isSelected() != b.isSelected())
+			return a.isSelected() ? 1 : -1;
+		    int cmp = a.getZOrder() < b.getZOrder() ? -1 : (a.getZOrder() > b.getZOrder() ? 1 : 0);
+		    return descending ? -cmp : cmp;
+		}
+	    });
+	    return ordered;
+	}
+
+	ArrayList<CircuitElm> getElementsInDrawOrder() {
+	    return getElementsSortedByZOrder(false, true);
+	}
+
+	ArrayList<CircuitElm> getElementsInPickOrder() {
+	    return getElementsSortedByZOrder(true, false);
+	}
+
+	private boolean hasSelectedElements() {
+	    for (int i = 0; i != elmList.size(); i++) {
+		if (elmList.elementAt(i).isSelected())
+		    return true;
+	    }
+	    return false;
+	}
+
+	private void rewriteZOrder(ArrayList<CircuitElm> ordered) {
+	    for (int i = 0; i != ordered.size(); i++)
+		ordered.get(i).setZOrder(i);
+	}
+
+	private void markVisualOrderChanged() {
+	    needsRecoverySave = true;
+	    unsavedChanges = true;
+	}
+
+	void bringToFront(CircuitElm fallbackElm) {
+	    reorderVisualSelection(fallbackElm, true);
+	}
+
+	void sendToBack(CircuitElm fallbackElm) {
+	    reorderVisualSelection(fallbackElm, false);
+	}
+
+	private void reorderVisualSelection(CircuitElm fallbackElm, boolean toFront) {
+	    ArrayList<CircuitElm> ordered = getElementsSortedByZOrder(false, false);
+	    boolean useSelection = hasSelectedElements();
+	    ArrayList<CircuitElm> targets = new ArrayList<CircuitElm>();
+	    ArrayList<CircuitElm> others = new ArrayList<CircuitElm>();
+	    for (int i = 0; i != ordered.size(); i++) {
+		CircuitElm ce = ordered.get(i);
+		boolean isTarget = useSelection ? ce.isSelected() : ce == fallbackElm;
+		if (isTarget)
+		    targets.add(ce);
+		else
+		    others.add(ce);
+	    }
+	    if (targets.isEmpty())
+		return;
+	    ArrayList<CircuitElm> reordered = new ArrayList<CircuitElm>(ordered.size());
+	    if (toFront) {
+		reordered.addAll(others);
+		reordered.addAll(targets);
+	    } else {
+		reordered.addAll(targets);
+		reordered.addAll(others);
+	    }
+	    rewriteZOrder(reordered);
+	    markVisualOrderChanged();
+	}
 
     public String[] getSortedLabeledNodeNames() {
 	return LabeledNodeElm.getSortedLabeledNodeNames();
@@ -1980,7 +2097,7 @@ public CirSim() {
 	WireElm newWire = new WireElm(x, y);
 	newWire.drag(ce.x2, ce.y2);
 	ce.drag(x, y);
-	elmList.addElement(newWire);
+	addElement(newWire);
 	needAnalyze();
     }
     

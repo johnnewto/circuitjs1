@@ -348,7 +348,7 @@ public class VariableBrowserDialog extends DialogBox {
         elm.refreshPoints();
         
         // Add to circuit
-        sim.elmList.addElement(elm);
+        sim.addElement(elm);
         sim.needAnalyze();
         
         // Select the new element so it's highlighted

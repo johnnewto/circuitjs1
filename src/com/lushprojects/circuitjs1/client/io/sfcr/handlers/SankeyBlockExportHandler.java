@@ -40,6 +40,7 @@ public class SankeyBlockExportHandler implements SFCRBlockExportHandler {
 
         sb.append("@sankey");
         sb.append(ctx.formatPosition(sankey)).append("\n");
+        sb.append("  uid: ").append(sankey.getPersistentUid()).append("\n");
 
         if (sourceName != null && !sourceName.isEmpty()) {
             sb.append("  source: ").append(sourceName).append("\n");

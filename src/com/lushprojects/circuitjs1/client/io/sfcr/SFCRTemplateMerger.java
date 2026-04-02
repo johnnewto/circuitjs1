@@ -34,7 +34,7 @@ public final class SFCRTemplateMerger {
     // =========================================================================
 
     enum TemplateBlockType {
-        INIT, ACTION, LOOKUP, EQUATIONS, MATRIX, SANKEY, PLANTUML, SCOPE, CIRCUIT, OTHER
+        INIT, ACTION, LOOKUP, EQUATIONS, MATRIX, SANKEY, PLANTUML, SCOPE, ZORDER, CIRCUIT, OTHER
     }
 
     // =========================================================================
@@ -174,6 +174,7 @@ public final class SFCRTemplateMerger {
         private int sankeyIndex = 0;
         private int plantUmlIndex = 0;
         private int scopeIndex = 0;
+        private int zOrderIndex = 0;
 
         BlockReplacer(SFCRExportContext ctx) {
             initBlock = extractStructuralPayload(renderBlocksForType(SFCRBlockType.INIT, ctx));
@@ -184,8 +185,11 @@ public final class SFCRTemplateMerger {
             sankeyBlocks = buildCanonicalSankeyBlocks(ctx);
             plantUmlBlocks = buildCanonicalPlantUmlBlocks(ctx);
             scopeBlocks = buildCanonicalScopeBlocks(ctx);
+            zOrderBlocks = buildCanonicalZOrderBlocks(ctx);
             circuitBlock = extractStructuralPayload(ctx.exportCircuitElements());
         }
+
+        private final ArrayList<String> zOrderBlocks;
 
         /** Returns next replacement for the given type, or null if none available. */
         String nextReplacement(TemplateBlockType type) {
@@ -210,6 +214,8 @@ public final class SFCRTemplateMerger {
                     return plantUmlIndex < plantUmlBlocks.size() ? plantUmlBlocks.get(plantUmlIndex++) : null;
                 case SCOPE:
                     return scopeIndex < scopeBlocks.size() ? scopeBlocks.get(scopeIndex++) : null;
+                case ZORDER:
+                    return zOrderIndex < zOrderBlocks.size() ? zOrderBlocks.get(zOrderIndex++) : null;
                 case CIRCUIT:
                     return "";
                 default:
@@ -229,6 +235,7 @@ public final class SFCRTemplateMerger {
             appendRemainingFromList(out, matrixBlocks, matrixIndex);
             appendRemainingFromList(out, sankeyBlocks, sankeyIndex);
             appendRemainingFromList(out, scopeBlocks, scopeIndex);
+            appendRemainingFromList(out, zOrderBlocks, zOrderIndex);
 
             if (circuitBlock != null && !circuitBlock.trim().isEmpty()) {
                 out.append("\n").append(R_FENCE).append("\n").append(circuitBlock).append("\n```\n");
@@ -363,6 +370,10 @@ public final class SFCRTemplateMerger {
 
     static ArrayList<String> buildCanonicalScopeBlocks(SFCRExportContext ctx) {
         return collectBlocksForType(SFCRBlockType.SCOPE, "@scope", ctx);
+    }
+
+    static ArrayList<String> buildCanonicalZOrderBlocks(SFCRExportContext ctx) {
+        return collectBlocksForType(SFCRBlockType.ZORDER, "@zorder", ctx);
     }
 
     /** Render all handler output for a given block type. */
@@ -519,6 +530,9 @@ public final class SFCRTemplateMerger {
         if (lower.contains("@scope")) {
             return TemplateBlockType.SCOPE;
         }
+        if (lower.contains("@zorder")) {
+            return TemplateBlockType.ZORDER;
+        }
         return TemplateBlockType.OTHER;
     }
 
@@ -632,6 +646,7 @@ public final class SFCRTemplateMerger {
             || trimmed.startsWith("@sankey")
             || trimmed.startsWith("@startuml")
             || trimmed.startsWith("@scope")
+            || trimmed.startsWith("@zorder")
             || trimmed.startsWith("@circuit")
             || trimmed.startsWith("@info");
     }
@@ -652,6 +667,7 @@ public final class SFCRTemplateMerger {
         if (lower.contains("@equations") || lower.contains("@parameters") ||
             lower.contains("@matrix") || lower.contains("@circuit") ||
             lower.contains("@sankey") || lower.contains("@startuml") || lower.contains("@scope") ||
+            lower.contains("@zorder") ||
             lower.contains("@info")) {
             return false;
         }
