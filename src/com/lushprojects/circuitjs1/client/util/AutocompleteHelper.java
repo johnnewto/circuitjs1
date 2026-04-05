@@ -508,7 +508,7 @@ public class AutocompleteHelper {
      * Check if a symbol is known (case-sensitive for user symbols, case-insensitive for built-ins)
      * Now recognizes Greek symbols like \beta, \omega
      */
-    private static boolean isKnownSymbol(String symbol, java.util.List<String> completionList) {
+    static boolean isKnownSymbol(String symbol, java.util.List<String> completionList) {
         // Check user-defined symbols (case-sensitive)
         for (String item : completionList) {
             if (item.equals(symbol)) {
@@ -523,9 +523,16 @@ public class AutocompleteHelper {
         
         // Check built-in functions (case-insensitive)
         String lowerSymbol = symbol.toLowerCase();
-        String[] builtIns = {"sin", "cos", "tan", "asin", "acos", "atan", "atan2",
-                            "exp", "log", "log10", "sqrt", "abs", "floor", "ceil",
-                            "min", "max", "smooth", "pi", "e", "t"};
+        String[] builtIns = {
+                "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
+                "sinh", "cosh", "tanh",
+                "exp", "log", "log10", "sqrt", "abs", "floor", "ceil",
+                "min", "max", "mod", "clamp", "step", "select",
+                "integrate", "diff", "last", "lag", "smooth", "delay",
+                "lookup", "pwl", "pwlx", "pwr", "pwrs",
+                "tri", "saw", "lastoutput", "timestep",
+                "pi", "e", "t"
+        };
         for (String fn : builtIns) {
             if (fn.equals(lowerSymbol)) {
                 return true;

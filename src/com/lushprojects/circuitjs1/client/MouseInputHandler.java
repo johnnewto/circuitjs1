@@ -860,8 +860,19 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         e.preventDefault();
         setMouseDragging(false);
 
+        CircuitElm clickedElm = sim.getMouseElmForRouting();
+        boolean simpleClickBringToFront =
+            tempMouseMode == CirSim.MODE_SELECT &&
+            selectedArea == null &&
+            clickedElm != null &&
+            !sim.noEditCheckItem.getState() &&
+            !sim.didSwitch;
+
         if (tempMouseMode == CirSim.MODE_SELECT && selectedArea == null)
             sim.getClipboardManager().clearSelection();
+
+        if (simpleClickBringToFront)
+            sim.bringToFront(clickedElm);
 
         if (tempMouseMode == CirSim.MODE_DRAG_POST && draggingPost == -1)
             sim.doSplit(sim.getMouseElmForRouting());
