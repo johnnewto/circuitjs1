@@ -133,6 +133,7 @@ $$G_N - TX_N = IM_N - X_N$$
 
 @end
 
+```{r}
 @init
   timestep: 1
   voltageUnit: $
@@ -142,13 +143,22 @@ $$G_N - TX_N = IM_N - X_N$$
   showValues: true
   showPower: false
   autoAdjustTimestep: false
+  equationTableMnaMode: true
+  EqnTable Newton Jacobian: true
   equationTableTolerance: 0.0001
+  lookupMode: pwl
+  lookupClamp: true
+  convergenceCheckThreshold: 5000
   infoViewerUpdateIntervalMs: 200
+  Auto-Open Model Info on Load: true
 @end
+```
 
+```{r}
 @action Scenarios:_propensity_to_import x=928 y=-32
   pauseTime: 0
   enabled: true
+  uid: I6Bfw8
   element: 928 -32 1072 80 0
 
 | time | target | value | text | enabled | stop |
@@ -157,122 +167,115 @@ $$G_N - TX_N = IM_N - X_N$$
 | 100 | \phi_N | 0.25 | Govts adjusts spending | true | false |
 | 100 | \phi_S | 0.25 | Govts adjusts spending | true | false |
 @end
+```
 
-@equations open_eqs x=240 y=-24
-  Y_N ~ C_N + G_N + X_N - IM_N ; mode=voltage ; sliderValue=0  # National income N
-  Y_S ~ C_S + G_S + X_S - IM_S ; mode=voltage ; sliderValue=0  # National income S
-  IM_N ~ \mu_N * Y_N ; mode=voltage ; sliderValue=0  # Imports N
-  IM_S ~ \mu_S * Y_S ; mode=voltage ; sliderValue=0  # Imports S
-  X_N ~ IM_S / xr ; mode=voltage ; sliderValue=0  # Exports N
-  X_S ~ IM_N * xr ; mode=voltage ; sliderValue=0  # Exports S
-  TB_N ~ X_N - IM_N ; mode=param ; sliderValue=0  # Trade balance N
-  TB_S ~ X_S - IM_S ; mode=param ; sliderValue=0  # Trade balance S
-  YD_N ~ Y_N - TX_N + r_N[-1] * Bh_N[-1] ; mode=voltage ; sliderValue=0  # National disposable income N
-  YD_S ~ Y_S - TX_S + r_S[-1] * Bh_S[-1] ; mode=voltage ; sliderValue=0  # National disposable income S
-  TX_N ~ \theta_N * (Y_N + r_N[-1] * Bh_N[-1]) ; mode=voltage ; sliderValue=0  # Tax payments N
-  TX_S ~ \theta_S * (Y_S + r_S[-1] * Bh_S[-1]) ; mode=voltage ; sliderValue=0  # Tax payments S
-  GB_N ~ TX_N - (G_N + r_N[-1] * Bh_N[-1]) ; mode=param ; sliderValue=0  # Government balance N
-  GB_S ~ TX_S - (G_S + r_S[-1] * Bh_S[-1]) ; mode=param ; sliderValue=0  # Government balance S
-  V_N ~ V_N[-1] + (YD_N - C_N) ; mode=voltage ; sliderValue=0  # Household wealth N
-  V_S ~ V_S[-1] + (YD_S - C_S) ; mode=voltage ; sliderValue=0  # Household wealth S
-  \deltaV_N ~ V_N - V_N[-1] ; mode=param ; sliderValue=0  # Change in household wealth N
-  \deltaV_S ~ V_S - V_S[-1] ; mode=param ; sliderValue=0  # Change in household wealth S
-  C_N ~ \alpha_1_N * YD_N + \alpha_2_N * V_N[-1] ; mode=voltage ; sliderValue=0  # Consumption N
-  C_S ~ \alpha_1_S * YD_S + \alpha_2_S * V_S[-1] ; mode=voltage ; sliderValue=0  # Consumption S
-  Hh_N ~ V_N - Bh_N ; mode=voltage ; sliderValue=0  # Cash held by households N
-  Hh_S ~ V_S - Bh_S ; mode=voltage ; sliderValue=0  # Cash held by households S
-  Bh_N ~ V_N * (\lambda0_N + \lambda1_N * r_N - \lambda2_N * (YD_N / V_N)) ; mode=voltage ; sliderValue=0  # Bills held by households N
-  Bh_S ~ V_S * (\lambda0_S + \lambda1_S * r_S - \lambda2_S * (YD_S / V_S)) ; mode=voltage ; sliderValue=0  # Bills held by households S
-  Bs_N ~ Bs_N[-1] + (G_N + r_N[-1] * Bs_N[-1]) - (TX_N + r_N[-1] * Bcb_N[-1]) ; mode=voltage ; sliderValue=0  # Supply of government bills N
-  Bs_S ~ Bs_S[-1] + (G_S + r_S[-1] * Bs_S[-1]) - (TX_S + r_S[-1] * Bcb_S[-1]) ; mode=voltage ; sliderValue=0  # Supply of government bills S
-  Bcb_N ~ Bs_N - Bh_N ; mode=voltage ; sliderValue=0  # Bills held by central bank N
-  Bcb_S ~ Bs_S - Bh_S ; mode=voltage ; sliderValue=0  # Bills held by central bank S
-  \deltaBcb_N ~ Bcb_N - Bcb_N[-1] ; mode=param ; sliderValue=0  # Change in central bank bill holdings N
-  \deltaBcb_S ~ Bcb_S - Bcb_S[-1] ; mode=param ; sliderValue=0  # Change in central bank bill holdings S
-  or_N ~ or_N[-1] + ((Hs_N - Hs_N[-1] - (Bcb_N - Bcb_N[-1])) / pg_N) ; mode=voltage ; sliderValue=0 ; initial=200  # Gold holdings by central bank N
-  or_S ~ or_S[-1] + ((Hs_S - Hs_S[-1] - (Bcb_S - Bcb_S[-1])) / pg_S) ; mode=voltage ; sliderValue=0 ; initial=200  # Gold holdings by central bank S
-  G_N ~ G_N[-1] + (\phi_N * ((or_N - or_N[-1]) * pg_N[-1])) ; mode=voltage ; sliderValue=0 ; initial=20  # Government expenditure N
-  G_S ~ G_S[-1] + (\phi_S * ((or_S - or_S[-1]) * pg_S[-1])) ; mode=voltage ; sliderValue=0 ; initial=20  # Government expenditure S
-  Hs_N ~ Hh_N ; mode=voltage ; sliderValue=0  # Supply of cash N
-  Hs_S ~ Hh_S ; mode=voltage ; sliderValue=0  # Supply of cash S
-  \deltaHs_N ~ Hs_N - Hs_N[-1] ; mode=param ; sliderValue=0  # Change in cash supply N
-  \deltaHs_S ~ Hs_S - Hs_S[-1] ; mode=param ; sliderValue=0  # Change in cash supply S
-  pg_S ~ pg_N * xr ; mode=param ; sliderValue=0  # Price of gold S
-  \deltaor_S ~ or_S - or_S[-1] ; mode=param ; sliderValue=0  # Change in gold holdings S
-  \deltaor_N ~ -(or_N - or_N[-1]) ; mode=param ; sliderValue=0  # Change in gold holdings N
-@end
+```{r}
+open_eqs <- sfcr_set(
+  # [ x=224 y=-24 uid=EPPY75 invisible=false ]
+  e1 = Y_N ~ C_N + G_N + X_N - IM_N,  # National income N  [mode=voltage ]
+  e2 = Y_S ~ C_S + G_S + X_S - IM_S,  # National income S  [mode=voltage ]
+  e3 = IM_N ~ \mu_N * Y_N,  # Imports N  [mode=voltage ]
+  e4 = IM_S ~ \mu_S * Y_S,  # Imports S  [mode=voltage ]
+  e5 = X_N ~ IM_S / xr,  # Exports N  [mode=voltage ]
+  e6 = X_S ~ IM_N * xr,  # Exports S  [mode=voltage ]
+  e7 = TB_N ~ X_N - IM_N,  # Trade balance N  [mode=param ]
+  e8 = TB_S ~ X_S - IM_S,  # Trade balance S  [mode=param ]
+  e9 = YD_N ~ Y_N - TX_N + r_N[-1] * Bh_N[-1],  # National disposable income N  [mode=voltage ]
+  e10 = YD_S ~ Y_S - TX_S + r_S[-1] * Bh_S[-1],  # National disposable income S  [mode=voltage ]
+  e11 = TX_N ~ \theta_N * (Y_N + r_N[-1] * Bh_N[-1]),  # Tax payments N  [mode=voltage ]
+  e12 = TX_S ~ \theta_S * (Y_S + r_S[-1] * Bh_S[-1]),  # Tax payments S  [mode=voltage ]
+  e13 = GB_N ~ TX_N - (G_N + r_N[-1] * Bh_N[-1]),  # Government balance N  [mode=param ]
+  e14 = GB_S ~ TX_S - (G_S + r_S[-1] * Bh_S[-1]),  # Government balance S  [mode=param ]
+  e15 = V_N ~ V_N[-1] + (YD_N - C_N),  # Household wealth N  [mode=voltage ]
+  e16 = V_S ~ V_S[-1] + (YD_S - C_S),  # Household wealth S  [mode=voltage ]
+  e17 = \deltaV_N ~ V_N - V_N[-1],  # Change in household wealth N  [mode=param ]
+  e18 = \deltaV_S ~ V_S - V_S[-1],  # Change in household wealth S  [mode=param ]
+  e19 = C_N ~ \alpha_1_N * YD_N + \alpha_2_N * V_N[-1],  # Consumption N  [mode=voltage ]
+  e20 = C_S ~ \alpha_1_S * YD_S + \alpha_2_S * V_S[-1],  # Consumption S  [mode=voltage ]
+  e21 = Hh_N ~ V_N - Bh_N,  # Cash held by households N  [mode=voltage ]
+  e22 = Hh_S ~ V_S - Bh_S,  # Cash held by households S  [mode=voltage ]
+  e23 = Bh_N ~ V_N * (\lambda0_N + \lambda1_N * r_N - \lambda2_N * (YD_N / V_N)),  # Bills held by households N  [mode=voltage ]
+  e24 = Bh_S ~ V_S * (\lambda0_S + \lambda1_S * r_S - \lambda2_S * (YD_S / V_S)),  # Bills held by households S  [mode=voltage ]
+  e25 = Bs_N ~ Bs_N[-1] + (G_N + r_N[-1] * Bs_N[-1]) - (TX_N + r_N[-1] * Bcb_N[-1]),  # Supply of government bills N  [mode=voltage ]
+  e26 = Bs_S ~ Bs_S[-1] + (G_S + r_S[-1] * Bs_S[-1]) - (TX_S + r_S[-1] * Bcb_S[-1]),  # Supply of government bills S  [mode=voltage ]
+  e27 = Bcb_N ~ Bs_N - Bh_N,  # Bills held by central bank N  [mode=voltage ]
+  e28 = Bcb_S ~ Bs_S - Bh_S,  # Bills held by central bank S  [mode=voltage ]
+  e29 = \deltaBcb_N ~ Bcb_N - Bcb_N[-1],  # Change in central bank bill holdings N  [mode=param ]
+  e30 = \deltaBcb_S ~ Bcb_S - Bcb_S[-1],  # Change in central bank bill holdings S  [mode=param ]
+  e31 = or_N ~ or_N[-1] + ((Hs_N - Hs_N[-1] - (Bcb_N - Bcb_N[-1])) / pg_N),  # Gold holdings by central bank N  [mode=voltage, initial=200 ]
+  e32 = or_S ~ or_S[-1] + ((Hs_S - Hs_S[-1] - (Bcb_S - Bcb_S[-1])) / pg_S),  # Gold holdings by central bank S  [mode=voltage, initial=200 ]
+  e33 = G_N ~ G_N[-1] + (\phi_N * ((or_N - or_N[-1]) * pg_N[-1])),  # Government expenditure N  [mode=voltage, initial=20 ]
+  e34 = G_S ~ G_S[-1] + (\phi_S * ((or_S - or_S[-1]) * pg_S[-1])),  # Government expenditure S  [mode=voltage, initial=20 ]
+  e35 = Hs_N ~ Hh_N,  # Supply of cash N  [mode=voltage ]
+  e36 = Hs_S ~ Hh_S,  # Supply of cash S  [mode=voltage ]
+  e37 = \deltaHs_N ~ Hs_N - Hs_N[-1],  # Change in cash supply N  [mode=param ]
+  e38 = \deltaHs_S ~ Hs_S - Hs_S[-1],  # Change in cash supply S  [mode=param ]
+  e39 = pg_S ~ pg_N * xr,  # Price of gold S  [mode=param ]
+  e40 = \deltaor_S ~ or_S - or_S[-1],  # Change in gold holdings S  [mode=param ]
+  e41 = \deltaor_N ~ -(or_N - or_N[-1])  # Change in gold holdings N  [mode=param ]
+)
+```
 
-@equations open_ext x=32 y=-24
-  xr ~ 1 ; mode=param ; sliderValue=0  # Exchange rate (units of currency S for one unit of currency N)
-  pg_N ~ 1 ; mode=param ; sliderValue=0  # Price of gold N
-  r_N ~ 0.025 ; mode=param ; sliderValue=0  # Interest rate on bills N
-  r_S ~ 0.025 ; mode=param ; sliderValue=0  # Interest rate on bills S
-  \phi_N ~ 0 ; mode=param ; sliderValue=0  # Government expenditure adjustment speed N
-  \phi_S ~ 0 ; mode=param ; sliderValue=0  # Government expenditure adjustment speed S
-  \mu_N ~ 0.15 ; mode=param ; sliderValue=0  # Import propensity N
-  \mu_S ~ 0.15 ; mode=param ; sliderValue=0  # Import propensity S
-  \alpha_1_N ~ 0.7 ; mode=param ; sliderValue=0  # Propensity to consume out of income N
-  \alpha_1_S ~ 0.8 ; mode=param ; sliderValue=0  # Propensity to consume out of income S
-  \alpha_2_N ~ 0.3 ; mode=param ; sliderValue=0  # Propensity to consume out of wealth N
-  \alpha_2_S ~ 0.2 ; mode=param ; sliderValue=0  # Propensity to consume out of wealth S
-  \lambda0_N ~ 0.67 ; mode=param ; sliderValue=0  # Asset demand parameter N
-  \lambda0_S ~ 0.67 ; mode=param ; sliderValue=0  # Asset demand parameter S
-  \lambda1_N ~ 0.05 ; mode=param ; sliderValue=0  # Asset demand parameter N
-  \lambda1_S ~ 0.05 ; mode=param ; sliderValue=0  # Asset demand parameter S
-  \lambda2_N ~ 0.01 ; mode=param ; sliderValue=0  # Asset demand parameter N
-  \lambda2_S ~ 0.01 ; mode=param ; sliderValue=0  # Asset demand parameter S
-  \theta_N ~ 0.2 ; mode=param ; sliderValue=0  # Tax rate N
-  \theta_S ~ 0.2 ; mode=param ; sliderValue=0  # Tax rate S
-@end
+```{r}
+open_ext <- sfcr_set(
+  # [ x=32 y=-24 uid=NzPUX_ invisible=false ]
+  e1 = xr ~ 1,  # Exchange rate (units of currency S for one unit of currency N)  [mode=param ]
+  e2 = pg_N ~ 1,  # Price of gold N  [mode=param ]
+  e3 = r_N ~ 0.025,  # Interest rate on bills N  [mode=param ]
+  e4 = r_S ~ 0.025,  # Interest rate on bills S  [mode=param ]
+  e5 = \phi_N ~ 0,  # Government expenditure adjustment speed N  [mode=param ]
+  e6 = \phi_S ~ 0,  # Government expenditure adjustment speed S  [mode=param ]
+  e7 = \mu_N ~ 0.15,  # Import propensity N  [mode=param ]
+  e8 = \mu_S ~ 0.15,  # Import propensity S  [mode=param ]
+  e9 = \alpha_1_N ~ 0.7,  # Propensity to consume out of income N  [mode=param ]
+  e10 = \alpha_1_S ~ 0.8,  # Propensity to consume out of income S  [mode=param ]
+  e11 = \alpha_2_N ~ 0.3,  # Propensity to consume out of wealth N  [mode=param ]
+  e12 = \alpha_2_S ~ 0.2,  # Propensity to consume out of wealth S  [mode=param ]
+  e13 = \lambda0_N ~ 0.67,  # Asset demand parameter N  [mode=param ]
+  e14 = \lambda0_S ~ 0.67,  # Asset demand parameter S  [mode=param ]
+  e15 = \lambda1_N ~ 0.05,  # Asset demand parameter N  [mode=param ]
+  e16 = \lambda1_S ~ 0.05,  # Asset demand parameter S  [mode=param ]
+  e17 = \lambda2_N ~ 0.01,  # Asset demand parameter N  [mode=param ]
+  e18 = \lambda2_S ~ 0.01,  # Asset demand parameter S  [mode=param ]
+  e19 = \theta_N ~ 0.2,  # Tax rate N  [mode=param ]
+  e20 = \theta_S ~ 0.2  # Tax rate S  [mode=param ]
+)
+```
 
-@matrix bs_open x=912 y=712
-  type: transaction_flow
+```{r}
+bs_open <- sfcr_matrix(
+  # [ x=912 y=712 uid=e2afsk type: transaction_flow invisible=false ]
+  columns = c("N.HH", "N.Govt", "N.CB", "S.HH", "S.Govt", "S.CB"),
+  codes = c("N1", "N2", "N3", "S4", "S5", "S6"),
+  type = c("", "", "", "", "", ""),
+  c("Money", N1 = "+Hh_N", N2 = "", N3 = "-Hs_N", S4 = "+Hh_S", S5 = "", S6 = "-Hs_S"),
+  c("Bills", N1 = "+Bh_N", N2 = "-Bs_N", N3 = "+Bcb_N", S4 = "+Bh_S", S5 = "-Bs_S", S6 = "+Bcb_S"),
+  c("Gold", N1 = "", N2 = "", N3 = "+or_N * pg_N * xr", S4 = "", S5 = "", S6 = "or_S * pg_S"),
+  c("Wealth", N1 = "-V_N", N2 = "Bs_N", N3 = "", S4 = "-V_S", S5 = "Bs_S", S6 = "")
+)
+```
 
-| Transaction | North_HH | North_Govt | North_CB | South_HH | South_Govt | South_CB |
-|-------------|------|------|------|------|------|------|
-| Money | +Hh_N |  | -Hs_N | +Hh_S |  | -Hs_S |
-| Bills | +Bh_N | -Bs_N | +Bcb_N | +Bh_S | -Bs_S | +Bcb_S |
-| Gold |  |  | +or_N * pg_N * xr |  |  | or_S * pg_S |
-| Wealth | -V_N | Bs_N |  | -V_S | Bs_S |  |
-@end
+```{r}
+tfm_open <- sfcr_matrix(
+  # [ x=832 y=360 uid=CC6fP1 type: transaction_flow invisible=false ]
+  columns = c("N.Households", "N.Firms", "N.Govt", "N.CentralBank", "S.Households", "S.Firms", "S.Govt", "S_CentralBank"),
+  codes = c("N1", "N2", "N3", "N4", "S5", "S6", "S7", "S8"),
+  type = c("", "", "", "", "", "", "", ""),
+  c("Consumption", N1 = "-C_N", N2 = "+C_N", N3 = "", N4 = "", S5 = "-C_S", S6 = "+C_S", S7 = "", S8 = ""),
+  c("Govt. Exp", N1 = "", N2 = "+G_N", N3 = "-G_N", N4 = "", S5 = "", S6 = "+G_S", S7 = "-G_S", S8 = ""),
+  c("North X to South", N1 = "", N2 = "+X_N * xr", N3 = "", N4 = "", S5 = "", S6 = "-IM_S", S7 = "", S8 = ""),
+  c("South X to North", N1 = "", N2 = "-IM_N * xr", N3 = "", N4 = "", S5 = "", S6 = "+X_S", S7 = "", S8 = ""),
+  c("GDP", N1 = "+Y_N", N2 = "-Y_N", N3 = "", N4 = "", S5 = "+Y_S", S6 = "-Y_S", S7 = "", S8 = ""),
+  c("Interest payments", N1 = "+r_N[-1] * Bh_N[-1]", N2 = "", N3 = "-r_N[-1] * Bs_N[-1]", N4 = "+r_N[-1] * Bcb_N[-1]", S5 = "+r_S[-1] * Bh_S[-1]", S6 = "", S7 = "-r_S[-1] * Bs_S[-1]", S8 = "+r_S[-1] * Bcb_S[-1]"),
+  c("CB Profits", N1 = "", N2 = "", N3 = "+r_N[-1] * Bcb_N[-1]", N4 = "-r_N[-1] * Bcb_N[-1]", S5 = "", S6 = "", S7 = "+r_S[-1] * Bcb_S[-1]", S8 = "-r_S[-1] * Bcb_S[-1]"),
+  c("Taxes", N1 = "-TX_N", N2 = "", N3 = "+TX_N", N4 = "", S5 = "-TX_S", S6 = "", S7 = "+TX_S", S8 = ""),
+  c("Ch. cash", N1 = "-diff(Hh_N)", N2 = "", N3 = "", N4 = "+diff(Hs_N)", S5 = "-diff(Hh_S)", S6 = "", S7 = "", S8 = "+diff(Hs_S)"),
+  c("Ch. bills", N1 = "-diff(Bh_N)", N2 = "", N3 = "+diff(Bs_N)", N4 = "-diff(Bcb_N)", S5 = "-diff(Bh_S)", S6 = "", S7 = "+diff(Bs_S)", S8 = "-diff(Bcb_S)"),
+  c("Ch. Gold", N1 = "", N2 = "", N3 = "", N4 = "-diff(or_N) * pg_N * xr", S5 = "", S6 = "", S7 = "", S8 = "-diff(or_S) * pg_S")
+)
+```
 
-@matrix tfm_open x=-96 y=696
-  type: transaction_flow
-
-| Transaction | N_Households | N_Firms | N_Govt | N_CentralBank | S_Households | S_Firms | S_Govt | S_CentralBank |
-|-------------|------|------|------|------|------|------|------|------|
-| Consumption | -C_N | +C_N |  |  | -C_S | +C_S |  |  |
-| Govt. Exp |  | +G_N | -G_N |  |  | +G_S | -G_S |  |
-| North X to South |  | +X_N * xr |  |  |  | -IM_S |  |  |
-| South X to North |  | -IM_N * xr |  |  |  | +X_S |  |  |
-| GDP | +Y_N | -Y_N |  |  | +Y_S | -Y_S |  |  |
-| Interest payments | +r_N[-1] * Bh_N[-1] |  | -r_N[-1] * Bs_N[-1] | +r_N[-1] * Bcb_N[-1] | +r_S[-1] * Bh_S[-1] |  | -r_S[-1] * Bs_S[-1] | +r_S[-1] * Bcb_S[-1] |
-| CB Profits |  |  | +r_N[-1] * Bcb_N[-1] | -r_N[-1] * Bcb_N[-1] |  |  | +r_S[-1] * Bcb_S[-1] | -r_S[-1] * Bcb_S[-1] |
-| Taxes | -TX_N |  | +TX_N |  | -TX_S |  | +TX_S |  |
-| Ch. cash | -diff(Hh_N) |  |  | +diff(Hs_N) | -diff(Hh_S) |  |  | +diff(Hs_S) |
-| Ch. bills | -diff(Bh_N) |  | +diff(Bs_N) | -diff(Bcb_N) | -diff(Bh_S) |  | +diff(Bs_S) | -diff(Bcb_S) |
-| Ch. Gold |  |  |  | -diff(or_N) * pg_N * xr |  |  |  | -diff(or_S) * pg_S |
-@end
-
-@circuit
-431 752 -16 816 64 0 200 true false U:Z9yNtc
-207 976 96 1040 96 164 Y_N U:Lm-XRW
-207 752 96 816 96 164 Y_S U:niClFq
-207 1408 400 1472 400 164 \\deltaV_N U:Ewr2Nu
-207 1408 368 1472 368 164 \\deltaV_S U:nfJfdC
-207 1408 544 1472 544 164 GB_N U:Yzzhvz
-207 1408 528 1472 528 164 GB_S U:tijoqZ
-207 1408 464 1472 464 164 TB_N U:-INLwv
-207 1408 432 1472 432 164 TB_S U:fuPVrp
-207 1488 288 1552 288 164 or_N U:8iXmmd
-207 1488 192 1552 192 164 or_S U:-QtRop
-207 1296 608 1360 608 164 \\phi_N U:K4yHp7
-207 1296 576 1360 576 164 \\phi_S U:yn_Pfd
-207 1456 96 1520 96 164 G_N U:qnoTQx
-207 1456 80 1520 80 164 GB_S U:qbbQAF
-207 1456 128 1520 128 164 G_S U:nz-PNA
-@end
-
+```{r}
 @scope Scope_1 position=0
   speed: 1
   flags: x2001206
@@ -282,15 +285,70 @@ $$G_N - TX_N = IM_N - X_N$$
   trace: uid:yn_Pfd value:0
   trace: uid:8iXmmd value:0
 @end
+```
+
+```{r}
 @scope Scope_2 position=1
   speed: 1
   flags: x2001206
   source: uid:qnoTQx value:0
   trace: uid:nz-PNA value:0
 @end
+```
+
+```{r}
 @scope Scope_3 position=2
   speed: 1
   flags: x2001206
   source: uid:niClFq value:0
   trace: uid:Lm-XRW value:0
 @end
+```
+
+```{r}
+@zorder
+  uid:I6Bfw8 z:0
+  uid:EPPY75 z:1
+  uid:NzPUX_ z:2
+  uid:Z9yNtc z:3
+  uid:Lm-XRW z:4
+  uid:niClFq z:5
+  uid:Ewr2Nu z:6
+  uid:nfJfdC z:7
+  uid:Yzzhvz z:8
+  uid:tijoqZ z:9
+  uid:-INLwv z:10
+  uid:fuPVrp z:11
+  uid:8iXmmd z:12
+  uid:-QtRop z:13
+  uid:K4yHp7 z:14
+  uid:yn_Pfd z:15
+  uid:qnoTQx z:16
+  uid:qbbQAF z:17
+  uid:nz-PNA z:18
+  uid:CC6fP1 z:19
+  uid:e2afsk z:20
+@end
+```
+
+```{r}
+@circuit
+431 752 -16 816 64 0 200 true false U:Z9yNtc Z:3
+207 976 96 1040 96 164 Y_N U:Lm-XRW Z:4
+207 752 96 816 96 164 Y_S U:niClFq Z:5
+207 1408 400 1472 400 164 \\deltaV_N U:Ewr2Nu Z:6
+207 1408 368 1472 368 164 \\deltaV_S U:nfJfdC Z:7
+207 1408 544 1472 544 164 GB_N U:Yzzhvz Z:8
+207 1408 528 1472 528 164 GB_S U:tijoqZ Z:9
+207 1408 464 1472 464 164 TB_N U:-INLwv Z:10
+207 1408 432 1472 432 164 TB_S U:fuPVrp Z:11
+207 1488 288 1552 288 164 or_N U:8iXmmd Z:12
+207 1488 192 1552 192 164 or_S U:-QtRop Z:13
+207 1296 608 1360 608 164 \\phi_N U:K4yHp7 Z:14
+207 1296 576 1360 576 164 \\phi_S U:yn_Pfd Z:15
+207 1456 96 1520 96 164 G_N U:qnoTQx Z:16
+207 1456 80 1520 80 164 GB_S U:qbbQAF Z:17
+207 1456 128 1520 128 164 G_S U:nz-PNA Z:18
+@end
+```
+

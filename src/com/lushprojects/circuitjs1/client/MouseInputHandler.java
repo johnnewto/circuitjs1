@@ -85,6 +85,7 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
     private int mousePost = -1;
     private int draggingPost;
     private boolean mouseDragging;
+    private EquationTableElm scrollbarDragTable;
 
     MouseInputHandler(CirSim sim) {
         this.sim = sim;
@@ -159,6 +160,20 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         return true;
     }
 
+    private boolean beginEquationTableScrollbarDrag(int x, int y) {
+        CircuitElm mouseElm = sim.getMouseElmForRouting();
+        if (!(mouseElm instanceof EquationTableElm)) {
+            return false;
+        }
+        EquationTableElm equationTable = (EquationTableElm) mouseElm;
+        if (!equationTable.handleScrollbarMouseDown(x, y)) {
+            return false;
+        }
+        scrollbarDragTable = equationTable;
+        sim.repaint();
+        return true;
+    }
+
     private void mouseDragged(MouseMoveEvent e) {
         if (e.getNativeButton() == com.google.gwt.dom.client.NativeEvent.BUTTON_RIGHT) {
             if (!(e.isMetaKeyDown() ||
@@ -176,6 +191,11 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         int gy = sim.inverseTransformY(e.getY());
         if (!sim.circuitArea.contains(e.getX(), e.getY()))
             return;
+        if (scrollbarDragTable != null) {
+            scrollbarDragTable.handleScrollbarDrag(gx, gy);
+            sim.repaint();
+            return;
+        }
         boolean changed = false;
         if (sim.dragElm != null)
             sim.dragElm.drag(gx, gy);
@@ -803,6 +823,12 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
             return;
         }
 
+        if (beginEquationTableScrollbarDrag(gx, gy)) {
+            sim.didSwitch = true;
+            setMouseDragging(false);
+            return;
+        }
+
         if (mouseElm instanceof TableElm) {
             sim.setLastInteractedTableForRouting((TableElm) mouseElm);
         }
@@ -859,6 +885,15 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
     public void onMouseUp(MouseUpEvent e) {
         e.preventDefault();
         setMouseDragging(false);
+
+        if (scrollbarDragTable != null) {
+            scrollbarDragTable.endScrollbarDrag();
+            scrollbarDragTable = null;
+            tempMouseMode = mouseMode;
+            dragging = false;
+            sim.repaint();
+            return;
+        }
 
         CircuitElm clickedElm = sim.getMouseElmForRouting();
         boolean simpleClickBringToFront =

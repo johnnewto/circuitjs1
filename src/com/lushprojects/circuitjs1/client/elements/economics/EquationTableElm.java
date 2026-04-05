@@ -80,6 +80,21 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
 
     /** Default base convergence tolerance for equation convergence checks. */
     private static final double DEFAULT_CONVERGENCE_TOLERANCE = 0.001;
+
+    /** Maximum rows shown on-canvas before vertical scrolling is enabled. */
+    private static final int MAX_VISIBLE_ROWS_NORMAL = 12;
+
+    /** Maximum rows shown on-canvas in small mode before vertical scrolling is enabled. */
+    private static final int MAX_VISIBLE_ROWS_SMALL = 14;
+
+    /** Width of the on-canvas vertical scrollbar in normal mode. */
+    private static final int SCROLLBAR_WIDTH_NORMAL = 12;
+
+    /** Width of the on-canvas vertical scrollbar in small mode. */
+    private static final int SCROLLBAR_WIDTH_SMALL = 10;
+
+    /** Minimum size of the scrollbar thumb for usability. */
+    private static final int MIN_SCROLLBAR_THUMB_SIZE = 18;
     
     //=============================================================================
     // ROW OUTPUT MODE - Determines how each row's equation result is used
@@ -426,6 +441,15 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /** Row that failed convergence (-1 = none) - for debugging */
     private int failedConvergenceRow = -1;
+
+    /** Index of the first row currently visible on canvas. */
+    private int firstVisibleRow = 0;
+
+    /** True while the canvas scrollbar thumb is being dragged. */
+    private boolean scrollbarDragging;
+
+    /** Mouse offset inside the scrollbar thumb while dragging. */
+    private int scrollbarDragAnchorY;
     
     /** Details about the convergence failure */
     private String convergenceFailureInfo = null;
@@ -813,6 +837,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         flags = (flags & ~FLAG_SMALL) | ((s == 1) ? FLAG_SMALL : 0);
         rowHeight = (s == 1) ? 14 : 18;
         cellPadding = (s == 1) ? 2 : 4;
+        clampFirstVisibleRow();
         if (renderer != null) {
             renderer.updateFonts(opsize);
         }
@@ -828,6 +853,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      */
     protected void setPoints() {
         super.setPoints();
+        clampFirstVisibleRow();
         
         // Use canvas context for accurate text measurement when available
         int maxTextWidth = 50;  // Minimum width in pixels
@@ -882,8 +908,8 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
         
         // Calculate final dimensions with padding
-        tableWidth = Math.max(80, maxTextWidth + cellPadding * 2);
-        tableHeight = (rowCount + 1) * rowHeight + cellPadding * 2;  // +1 for title row
+        tableWidth = Math.max(80, maxTextWidth + cellPadding * 2 + getScrollbarReservedWidth());
+        tableHeight = (getVisibleRowCount() + 1) * rowHeight + cellPadding * 2;  // +1 for title row
         
         // Set bounding box for hit testing
         setBbox(x, y, x + tableWidth, y + tableHeight);
@@ -2565,6 +2591,125 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /** Get the number of active rows */
     public int getRowCount() { return rowCount; }
+
+    /** Get the number of rows currently visible on canvas. */
+    public int getVisibleRowCount() {
+        return Math.min(rowCount, getMaxVisibleRows());
+    }
+
+    /** Get the first row currently visible on canvas. */
+    public int getFirstVisibleRow() {
+        clampFirstVisibleRow();
+        return firstVisibleRow;
+    }
+
+    /** Get the first row after the visible range. */
+    public int getVisibleRowEnd() {
+        return Math.min(rowCount, getFirstVisibleRow() + getVisibleRowCount());
+    }
+
+    /** True if the table is currently using a vertical scrollbar. */
+    public boolean hasVerticalScrollbar() {
+        return rowCount > getMaxVisibleRows();
+    }
+
+    /** Width reserved on the right side for scrollbar chrome. */
+    public int getScrollbarReservedWidth() {
+        return hasVerticalScrollbar() ? getScrollbarWidth() + cellPadding : 0;
+    }
+
+    /** Right-side inset reserved for value text and initial markers. */
+    public int getContentRightInset() {
+        return cellPadding + getScrollbarReservedWidth();
+    }
+
+    /** Get the vertical scrollbar track rect in circuit coordinates. */
+    public Rectangle getScrollbarTrackRect() {
+        if (!hasVerticalScrollbar()) {
+            return new Rectangle(0, 0, 0, 0);
+        }
+        int width = getScrollbarWidth();
+        int trackX = x + tableWidth - width - cellPadding;
+        int trackY = y + rowHeight + 2;
+        int trackHeight = Math.max(rowHeight, tableHeight - rowHeight - 4);
+        return new Rectangle(trackX, trackY, width, trackHeight);
+    }
+
+    /** Get the vertical scrollbar thumb rect in circuit coordinates. */
+    public Rectangle getScrollbarThumbRect() {
+        Rectangle track = getScrollbarTrackRect();
+        if (!hasVerticalScrollbar() || track.height <= 0) {
+            return new Rectangle(0, 0, 0, 0);
+        }
+        int visible = Math.max(1, getVisibleRowCount());
+        int maxOffset = Math.max(0, rowCount - visible);
+        int thumbHeight = Math.max(MIN_SCROLLBAR_THUMB_SIZE,
+            (int) Math.round((double) track.height * visible / Math.max(1, rowCount)));
+        thumbHeight = Math.min(track.height, thumbHeight);
+        int travel = Math.max(0, track.height - thumbHeight);
+        int thumbY = track.y;
+        if (travel > 0 && maxOffset > 0) {
+            thumbY += (int) Math.round((double) travel * getFirstVisibleRow() / maxOffset);
+        }
+        return new Rectangle(track.x, thumbY, track.width, thumbHeight);
+    }
+
+    /** True if a circuit-space point is inside the table scrollbar. */
+    public boolean isScrollbarHit(int circuitX, int circuitY) {
+        return hasVerticalScrollbar() && getScrollbarTrackRect().contains(circuitX, circuitY);
+    }
+
+    /** Begin or jump scrollbar interaction. Returns true if handled. */
+    public boolean handleScrollbarMouseDown(int circuitX, int circuitY) {
+        if (!isScrollbarHit(circuitX, circuitY)) {
+            return false;
+        }
+        Rectangle thumb = getScrollbarThumbRect();
+        if (thumb.contains(circuitX, circuitY)) {
+            scrollbarDragging = true;
+            scrollbarDragAnchorY = circuitY - thumb.y;
+            return true;
+        }
+
+        scrollbarDragging = true;
+        scrollbarDragAnchorY = thumb.height / 2;
+        handleScrollbarDrag(circuitX, circuitY);
+        return true;
+    }
+
+    /** Continue dragging the scrollbar thumb. */
+    public void handleScrollbarDrag(int circuitX, int circuitY) {
+        if (!scrollbarDragging || !hasVerticalScrollbar()) {
+            return;
+        }
+        Rectangle track = getScrollbarTrackRect();
+        Rectangle thumb = getScrollbarThumbRect();
+        int newThumbTop = circuitY - scrollbarDragAnchorY;
+        int relativeTop = newThumbTop - track.y;
+        int maxTravel = Math.max(0, track.height - thumb.height);
+        if (relativeTop < 0) {
+            relativeTop = 0;
+        }
+        if (relativeTop > maxTravel) {
+            relativeTop = maxTravel;
+        }
+        int maxOffset = Math.max(0, rowCount - getVisibleRowCount());
+        int newOffset = 0;
+        if (maxTravel > 0 && maxOffset > 0) {
+            newOffset = (int) Math.round((double) relativeTop * maxOffset / maxTravel);
+        }
+        setFirstVisibleRow(newOffset);
+    }
+
+    /** End scrollbar dragging if active. */
+    public void endScrollbarDrag() {
+        scrollbarDragging = false;
+    }
+
+    /** Scroll the visible viewport by the given number of rows. */
+    public boolean scrollByRows(int rowDelta) {
+        return setFirstVisibleRow(firstVisibleRow + rowDelta);
+    }
     
     /** Get row classification as string */
     public String getRowClassification(int row) {
@@ -2599,6 +2744,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     public void setRowCount(int count) { 
         if (count >= 1 && count <= MAX_ROWS) {
             rowCount = count;
+            clampFirstVisibleRow();
             markNameRegistriesDirty();
         }
     }
@@ -2896,13 +3042,28 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * Only works when hovering over a row whose equation is a simple number.
      */
     public void onMouseWheel(MouseWheelEvent e) {
+        int wheelDirection = e.getDeltaY() > 0 ? 1 : -1;
+
+        // Scroll viewport first when the mouse is over the scrollbar chrome.
+        if (isScrollbarHit(getMouseCircuitX(), getMouseCircuitY())) {
+            if (scrollByRows(wheelDirection)) {
+                return;
+            }
+        }
+
         // Must have a hovered row
-        if (hoveredRow < 0 || hoveredRow >= rowCount) return;
+        if (hoveredRow < 0 || hoveredRow >= rowCount) {
+            scrollByRows(wheelDirection);
+            return;
+        }
         
         // Check if equation is a simple number
         String eq = rows[hoveredRow].equation.trim();
         Double currentValue = parseNumericEquation(eq);
-        if (currentValue == null) return;  // Not a simple number
+        if (currentValue == null) {
+            scrollByRows(wheelDirection);
+            return;
+        }
         
         // Push undo state on first wheel movement
         sim.pushUndoForUi();
@@ -2929,6 +3090,40 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         rows[hoveredRow].equation = formatNumericValue(newValue);
         parseEquation(hoveredRow);
         sim.needAnalyze();
+    }
+
+    private int getMaxVisibleRows() {
+        return (opsize == 1) ? MAX_VISIBLE_ROWS_SMALL : MAX_VISIBLE_ROWS_NORMAL;
+    }
+
+    private int getScrollbarWidth() {
+        return (opsize == 1) ? SCROLLBAR_WIDTH_SMALL : SCROLLBAR_WIDTH_NORMAL;
+    }
+
+    private void clampFirstVisibleRow() {
+        int maxOffset = Math.max(0, rowCount - getVisibleRowCount());
+        if (firstVisibleRow < 0) {
+            firstVisibleRow = 0;
+        }
+        if (firstVisibleRow > maxOffset) {
+            firstVisibleRow = maxOffset;
+        }
+    }
+
+    private boolean setFirstVisibleRow(int offset) {
+        int oldOffset = firstVisibleRow;
+        firstVisibleRow = offset;
+        clampFirstVisibleRow();
+        if (oldOffset == firstVisibleRow) {
+            return false;
+        }
+        if (hoveredRow < firstVisibleRow || hoveredRow >= getVisibleRowEnd()) {
+            setHoveredRow(-1);
+        }
+        if (renderer != null) {
+            renderer.invalidateContentCache();
+        }
+        return true;
     }
     
     /**

@@ -83,6 +83,7 @@ class EquationTableRenderer {
     private int contentCachedWidth = 0;
     private int contentCachedHeight = 0;
     private int contentCachedRowCount = 0;
+    private int contentCachedFirstVisibleRow = -1;
     private boolean contentCachedPrintable = false;
     private boolean contentCachedVoltsVisible = false;
     private float contentCachedScale = -1;
@@ -145,6 +146,10 @@ class EquationTableRenderer {
         backgroundCacheValid = false;
         contentCacheValid = false;
         clearRowTextCaches();
+    }
+
+    public void invalidateContentCache() {
+        contentCacheValid = false;
     }
 
     private boolean isVoltsVisible() {
@@ -213,7 +218,8 @@ class EquationTableRenderer {
         return true;
     }
 
-    private boolean ensureContentCacheValid(int tableX, int tableY, int width, int height, int rowCount) {
+    private boolean ensureContentCacheValid(int tableX, int tableY, int width, int height,
+                                            int visibleRowCount, int firstVisibleRow) {
         if (contentLayerCanvas == null || contentLayerCtx == null) {
             return false;
         }
@@ -227,7 +233,8 @@ class EquationTableRenderer {
         long timeBucket = System.currentTimeMillis() / CONTENT_CACHE_UPDATE_INTERVAL_MS;
 
         if (!contentCacheValid || width != contentCachedWidth || height != contentCachedHeight ||
-            rowCount != contentCachedRowCount || printable != contentCachedPrintable ||
+            visibleRowCount != contentCachedRowCount || firstVisibleRow != contentCachedFirstVisibleRow ||
+            printable != contentCachedPrintable ||
             voltsVisible != contentCachedVoltsVisible || renderScale != contentCachedScale ||
             timeBucket != contentCachedTimeBucket) {
 
@@ -245,14 +252,15 @@ class EquationTableRenderer {
             contentLayerCtx.translate(-tableX, -tableY);
             drawTitleRow(cacheGraphics, tableX, tableY);
             cacheGraphics.setFont(valueFont);
-            for (int row = 0; row < rowCount; row++) {
+            for (int row = firstVisibleRow; row < firstVisibleRow + visibleRowCount && row < table.getRowCount(); row++) {
                 drawDataRow(cacheGraphics, tableX, tableY, row, true, false);
             }
             contentLayerCtx.restore();
 
             contentCachedWidth = width;
             contentCachedHeight = height;
-            contentCachedRowCount = rowCount;
+            contentCachedRowCount = visibleRowCount;
+            contentCachedFirstVisibleRow = firstVisibleRow;
             contentCachedPrintable = printable;
             contentCachedVoltsVisible = voltsVisible;
             contentCachedScale = renderScale;
@@ -436,10 +444,11 @@ class EquationTableRenderer {
         int tableWidth = table.getTableWidth();
         int tableHeight = table.getTableHeight();
         int rowHeight = table.getRowHeight();
-        int rowCount = table.getRowCount();
+        int visibleRowCount = table.getVisibleRowCount();
+        int firstVisibleRow = table.getFirstVisibleRow();
         
         // Try to use cached static rendering
-        boolean usingCache = ensureCacheValid(tableWidth, tableHeight, rowCount);
+        boolean usingCache = ensureCacheValid(tableWidth, tableHeight, visibleRowCount);
         boolean usingContentCache = false;
         
         if (usingCache) {
@@ -471,7 +480,8 @@ class EquationTableRenderer {
         updateHoveredRow(tableX, tableY);
 
         if (usingCache) {
-            usingContentCache = ensureContentCacheValid(tableX, tableY, tableWidth, tableHeight, rowCount);
+            usingContentCache = ensureContentCacheValid(tableX, tableY, tableWidth, tableHeight,
+                visibleRowCount, firstVisibleRow);
         }
         
         // Draw hover highlight (dynamic - not cached)
@@ -485,10 +495,12 @@ class EquationTableRenderer {
 
             // Draw data rows (text only when using cache, full when not)
             g.setFont(valueFont);
-            for (int row = 0; row < rowCount; row++) {
+            for (int row = firstVisibleRow; row < firstVisibleRow + visibleRowCount && row < table.getRowCount(); row++) {
                 drawDataRow(g, tableX, tableY, row, usingCache, true);
             }
         }
+
+        drawScrollbar(g, tableX, tableY);
         
         // Update bounding box
         table.setBbox(tableX, tableY, tableX + tableWidth, tableY + tableHeight);
@@ -553,8 +565,10 @@ class EquationTableRenderer {
      */
     private void drawHoverHighlight(Graphics g, int tableX, int tableY) {
         int hoveredRow = table.getHoveredRow();
-        if (hoveredRow >= 0 && hoveredRow < table.getRowCount()) {
-            int rowY = tableY + (hoveredRow + 1) * table.getRowHeight();
+        int firstVisibleRow = table.getFirstVisibleRow();
+        int visibleIndex = hoveredRow - firstVisibleRow;
+        if (visibleIndex >= 0 && visibleIndex < table.getVisibleRowCount()) {
+            int rowY = tableY + (visibleIndex + 1) * table.getRowHeight();
             Color hoverColor = isPrintable() ? new Color(220, 220, 240) : new Color(65, 65, 85);
             g.setColor(hoverColor);
             g.fillRect(tableX + 1, rowY + 1, table.getTableWidth() - 2, table.getRowHeight() - 1);
@@ -570,8 +584,10 @@ class EquationTableRenderer {
         g.fillRect(tableX + 2, tableY + 2, tableWidth - 4, rowHeight - 2);
         
         // Data rows with zebra striping
-        for (int row = 0; row < table.getRowCount(); row++) {
-            int rowY = tableY + (row + 1) * rowHeight;
+        int firstVisibleRow = table.getFirstVisibleRow();
+        for (int visibleRow = 0; visibleRow < table.getVisibleRowCount(); visibleRow++) {
+            int row = firstVisibleRow + visibleRow;
+            int rowY = tableY + (visibleRow + 1) * rowHeight;
             g.setColor(getRowBgColor(row));
             g.fillRect(tableX + 2, rowY, tableWidth - 4, rowHeight);
         }
@@ -605,6 +621,15 @@ class EquationTableRenderer {
         g.setColor(getTextColor());
         int titleY = tableY + table.getRowHeight() - table.getCellPadding();
         table.drawCenteredText(g, table.getTableName(), tableX + table.getTableWidth() / 2, titleY - 2, true);
+
+        if (table.hasVerticalScrollbar()) {
+            String rangeText = (table.getFirstVisibleRow() + 1) + "-" + table.getVisibleRowEnd() + "/" + table.getRowCount();
+            g.setFont(valueFont);
+            int inset = table.getContentRightInset();
+            int rangeWidth = (int) g.context.measureText(rangeText).getWidth();
+            g.drawString(rangeText, tableX + table.getTableWidth() - rangeWidth - inset, titleY - 2);
+            g.setFont(labelFont);
+        }
         
         // Separator line after title
         g.setColor(getGridLineColor());
@@ -621,12 +646,19 @@ class EquationTableRenderer {
         
         if (mouseCircuitX >= tableX && mouseCircuitX <= tableX + table.getTableWidth() &&
             mouseCircuitY >= tableY && mouseCircuitY <= tableY + table.getTableHeight()) {
+            if (table.isScrollbarHit(mouseCircuitX, mouseCircuitY)) {
+                if (newHoveredRow != table.getHoveredRow()) {
+                    table.setHoveredRow(-1);
+                }
+                return;
+            }
             // Calculate row index, accounting for title row
             int relativeY = mouseCircuitY - (tableY + table.getRowHeight());
             if (relativeY >= 0) {
                 int mouseRowIndex = relativeY / table.getRowHeight();
-                if (mouseRowIndex >= 0 && mouseRowIndex < table.getRowCount()) {
-                    newHoveredRow = mouseRowIndex;
+                int visibleRowCount = table.getVisibleRowCount();
+                if (mouseRowIndex >= 0 && mouseRowIndex < visibleRowCount) {
+                    newHoveredRow = table.getFirstVisibleRow() + mouseRowIndex;
                 }
             }
         }
@@ -642,7 +674,11 @@ class EquationTableRenderer {
      * @param usingCache If true, skip drawing backgrounds/separators (they're in cached canvas)
      */
     private void drawDataRow(Graphics g, int tableX, int tableY, int row, boolean usingCache, boolean allowHoverStyling) {
-        int rowY = tableY + (row + 1) * table.getRowHeight();
+        int visibleRow = row - table.getFirstVisibleRow();
+        if (visibleRow < 0 || visibleRow >= table.getVisibleRowCount()) {
+            return;
+        }
+        int rowY = tableY + (visibleRow + 1) * table.getRowHeight();
         int rowHeight = table.getRowHeight();
         int cellPadding = table.getCellPadding();
         int tableWidth = table.getTableWidth();
@@ -753,15 +789,15 @@ class EquationTableRenderer {
         }
         int valueWidth = (int) g.context.measureText(valueText).getWidth();
         g.setColor(getVoltageColor(outputValue));
-        g.drawString(valueText, tableX + tableWidth - valueWidth - cellPadding, rowY + rowHeight - cellPadding - 2);
+        g.drawString(valueText, tableX + tableWidth - valueWidth - table.getContentRightInset(), rowY + rowHeight - cellPadding - 2);
         
         // Draw initial value indicator if present
         drawInitialValueIndicator(g, tableX, rowY, row, valueWidth);
         
         // Draw row separator (only if not using cached canvas)
-        if (!usingCache && row < table.getRowCount() - 1) {
+        if (!usingCache && visibleRow < table.getVisibleRowCount() - 1) {
             g.setColor(getGridLineColor());
-            int sepY = tableY + (row + 2) * rowHeight;
+            int sepY = tableY + (visibleRow + 2) * rowHeight;
             g.drawLine(tableX, sepY, tableX + tableWidth, sepY);
         }
     }
@@ -877,8 +913,31 @@ class EquationTableRenderer {
         String initText = "[" + initEq + "]";
         int initWidth = (int) g.context.measureText(initText).getWidth();
         g.setColor(getTextColor());
-        g.drawString(initText, tableX + table.getTableWidth() - valueWidth - initWidth - table.getCellPadding() * 2, 
+        g.drawString(initText, tableX + table.getTableWidth() - valueWidth - initWidth - table.getContentRightInset() - table.getCellPadding(), 
                      rowY + table.getRowHeight() - table.getCellPadding() - 2);
         g.setFont(valueFont);
+    }
+
+    private void drawScrollbar(Graphics g, int tableX, int tableY) {
+        if (!table.hasVerticalScrollbar()) {
+            return;
+        }
+
+        Rectangle track = table.getScrollbarTrackRect();
+        Rectangle thumb = table.getScrollbarThumbRect();
+
+        Color trackColor = isPrintable() ? new Color(232, 232, 240) : new Color(48, 48, 60);
+        Color thumbColor = isPrintable() ? new Color(180, 180, 200) : new Color(120, 120, 150);
+        Color borderColor = isPrintable() ? new Color(180, 180, 195) : new Color(90, 90, 110);
+
+        g.setColor(trackColor);
+        g.fillRoundRect(track.x, track.y, track.width, track.height, 6);
+        g.setColor(borderColor);
+        g.drawRoundRect(track.x, track.y, track.width, track.height, 6);
+
+        g.setColor(thumbColor);
+        g.fillRoundRect(thumb.x, thumb.y, thumb.width, thumb.height, 6);
+        g.setColor(borderColor);
+        g.drawRoundRect(thumb.x, thumb.y, thumb.width, thumb.height, 6);
     }
 }
