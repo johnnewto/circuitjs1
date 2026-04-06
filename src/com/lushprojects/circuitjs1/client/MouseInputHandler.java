@@ -825,7 +825,6 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
 
         if (beginEquationTableScrollbarDrag(gx, gy)) {
             sim.didSwitch = true;
-            setMouseDragging(false);
             return;
         }
 

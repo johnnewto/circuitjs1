@@ -21,8 +21,6 @@ package com.lushprojects.circuitjs1.client.ui;
 
 import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNodeElm;
-import com.lushprojects.circuitjs1.client.*;
-import com.lushprojects.circuitjs1.client.util.*;
 
 import com.google.gwt.user.client.ui.DialogBox;
 import com.google.gwt.user.client.ui.VerticalPanel;
@@ -40,6 +38,7 @@ import com.lushprojects.circuitjs1.client.CirSim;
 import com.lushprojects.circuitjs1.client.CircuitElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
 import com.google.gwt.user.client.Event;
+import com.google.gwt.user.client.Timer;
 import com.google.gwt.user.client.Event.NativePreviewHandler;
 import com.google.gwt.user.client.Event.NativePreviewEvent;
 import java.util.List;
@@ -56,8 +55,12 @@ public class VariableBrowserDialog extends DialogBox {
     private CirSim sim;
     private FlexTable varTable;
     private ScrollPanel scrollPanel;
+    private List<VariableInfo> currentVariables = new ArrayList<VariableInfo>();
+    private Timer autoRefreshTimer;
     private static VariableBrowserDialog instance = null; // Singleton instance
-    private static final int DIALOG_WIDTH = 200;
+    private static final int DIALOG_WIDTH = 320;
+    private static final String DIALOG_WIDTH_PX = DIALOG_WIDTH + "px";
+    private static final int VALUE_REFRESH_INTERVAL_MS = 250;
     private static final int LEFT_MARGIN = 20;
     private static final int PLACEMENT_OFFSET = 80;  // How far left from dialog to start placement (in pixels)
     
@@ -118,9 +121,18 @@ public class VariableBrowserDialog extends DialogBox {
         });
         
         setText(Locale.LS("Variable Browser"));
+
+        autoRefreshTimer = new Timer() {
+            public void run() {
+                if (!isShowing()) {
+                    return;
+                }
+                refreshValueCells();
+            }
+        };
         
         VerticalPanel vp = new VerticalPanel();
-        vp.setWidth("200px");  // Half the original 400px width
+        vp.setWidth(DIALOG_WIDTH_PX);
         setWidget(vp);
         
         // Add description label
@@ -131,7 +143,7 @@ public class VariableBrowserDialog extends DialogBox {
         
         // Create scrollable table
         scrollPanel = new ScrollPanel();
-        scrollPanel.setSize("200px", "400px");  // Half the original 400px width
+        scrollPanel.setSize(DIALOG_WIDTH_PX, "400px");
         vp.add(scrollPanel);
         
         varTable = new FlexTable();
@@ -143,7 +155,8 @@ public class VariableBrowserDialog extends DialogBox {
         
         // Add table headers
         varTable.setText(0, 0, Locale.LS("Variable Name"));
-        varTable.setText(0, 1, Locale.LS("Type"));
+        varTable.setText(0, 1, Locale.LS("Value"));
+        varTable.setText(0, 2, Locale.LS("Type"));
         varTable.getRowFormatter().getElement(0).getStyle().setProperty("fontWeight", "bold");
         varTable.getRowFormatter().getElement(0).getStyle().setProperty("backgroundColor", "#e0e0e0");
         
@@ -174,6 +187,29 @@ public class VariableBrowserDialog extends DialogBox {
         
         // Populate initial data
         refresh();
+    }
+
+    public void show() {
+        super.show();
+        startAutoRefresh();
+    }
+
+    public void hide() {
+        stopAutoRefresh();
+        super.hide();
+    }
+
+    private void startAutoRefresh() {
+        if (autoRefreshTimer != null) {
+            autoRefreshTimer.cancel();
+            autoRefreshTimer.scheduleRepeating(VALUE_REFRESH_INTERVAL_MS);
+        }
+    }
+
+    private void stopAutoRefresh() {
+        if (autoRefreshTimer != null) {
+            autoRefreshTimer.cancel();
+        }
     }
     
     private void refresh() {
@@ -232,6 +268,7 @@ public class VariableBrowserDialog extends DialogBox {
         
         // Sort alphabetically by name
         Collections.sort(variables);
+        currentVariables = new ArrayList<VariableInfo>(variables);
         
         // Populate table
         int row = 1;
@@ -239,7 +276,8 @@ public class VariableBrowserDialog extends DialogBox {
             // Use HTML widget with Locale.convertToHTML for super/subscript rendering
             HTML nameHtml = new HTML(Locale.convertToHTML(var.name));
             varTable.setWidget(row, 0, nameHtml);
-            varTable.setText(row, 1, var.type);
+            varTable.setText(row, 1, formatVariableValue(var.name));
+            varTable.setText(row, 2, var.type);
             
             // Add click handler to place variable on canvas
             final int currentRow = row;
@@ -272,10 +310,32 @@ public class VariableBrowserDialog extends DialogBox {
         // Show message if no variables found
         if (variables.isEmpty()) {
             varTable.setText(1, 0, Locale.LS("No variables found"));
-            varTable.getFlexCellFormatter().setColSpan(1, 0, 2);
+            varTable.getFlexCellFormatter().setColSpan(1, 0, 3);
             varTable.getCellFormatter().getElement(1, 0).getStyle().setProperty("fontStyle", "italic");
             varTable.getCellFormatter().getElement(1, 0).getStyle().setProperty("color", "#999");
         }
+    }
+
+    private void refreshValueCells() {
+        if (currentVariables == null || currentVariables.isEmpty()) {
+            return;
+        }
+        if (varTable.getRowCount() != currentVariables.size() + 1) {
+            refresh();
+            return;
+        }
+        for (int i = 0; i < currentVariables.size(); i++) {
+            VariableInfo var = currentVariables.get(i);
+            varTable.setText(i + 1, 1, formatVariableValue(var.name));
+        }
+    }
+
+    private String formatVariableValue(String variableName) {
+        double value = sim.resolveSlotValueForUi(variableName);
+        if (Double.isNaN(value) || Double.isInfinite(value)) {
+            return "-";
+        }
+        return CircuitElm.getShortUnitText(value, "");
     }
     
     private void placeVariableOnCanvas(String varName) {
