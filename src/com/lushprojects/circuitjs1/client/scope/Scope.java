@@ -30,6 +30,7 @@ import com.lushprojects.circuitjs1.client.runner.RuntimeMode;
 import com.google.gwt.event.dom.client.MouseWheelEvent;
 import com.lushprojects.circuitjs1.client.elements.electronics.digital.LogicOutputElm;
 import com.lushprojects.circuitjs1.client.elements.electronics.measurement.*;
+import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNodeElm;
 import com.lushprojects.circuitjs1.client.elements.electronics.wiring.WireElm;
 import com.lushprojects.circuitjs1.client.elements.misc.ActionTimeElm;
 import com.lushprojects.circuitjs1.client.util.Locale;
@@ -191,6 +192,8 @@ public class Scope {
     private static double cursorTime;
     private static int cursorUnits;
     private static Scope cursorScope;
+	private final int sharedHistoryScopeId = System.identityHashCode(this);
+	private String[] sharedHistoryKeys = new String[0];
     
     /**
      * Creates a new Scope instance.
@@ -364,6 +367,10 @@ public class Scope {
     private void resetGraph(boolean full, boolean clearHistory) {
 	ScopeLifecycleController.resetGraph(this, full, clearHistory);
     }
+
+	void resetGraphPreservingHistory() {
+	resetGraph(false, false);
+	}
     
     public void setManualScaleValue(int plotId, double d) {
 	if (plotId >= visiblePlots.size() )
@@ -644,27 +651,44 @@ public class Scope {
 
 	if (drawFromZero) {
 	    double sampleInterval = sim.getMaxTimeStep() * speed;
-	    if (clearHistory) {
+	    ensureSharedHistoryKeys(clearHistory);
+	    boolean hasAvailableHistory = !clearHistory && (hasSharedHistoryData() || hasReusableVariableHistory());
+	    if (clearHistory || !hasAvailableHistory) {
 		startTime = sim.getTime();
-		model.initializeHistoryBuffers(scopePointCount, sampleInterval);
+		clearSharedHistorySeries();
+		model.clearHistoryBuffers();
+		model.setHistoryMetadata(0, sampleInterval);
 	    } else {
-		model.setHistorySampleInterval(sampleInterval);
-		boolean needsAllocation = !model.areHistoryBuffersAllocated();
-		if (needsAllocation) {
-		    startTime = sim.getTime();
-		    model.initializeHistoryBuffers(scopePointCount, sampleInterval);
-		} else {
-		    int newCapacity = scopePointCount * 4;
-		    if (newCapacity != model.getHistoryCapacity()) {
-			model.resizeHistoryBuffers(newCapacity);
-		    }
-		}
+		refreshSharedHistoryMetadata();
 	    }
 	} else {
+	    clearSharedHistorySeries();
 	    model.clearHistoryBuffers();
+	    if (!clearHistory) {
+		preloadCircularBuffersFromReusableHistory();
+	    }
 	}
 
 	allocImage();
+    }
+
+    private void preloadCircularBuffersFromReusableHistory() {
+	if (drawFromZero || plots == null || plots.isEmpty()) {
+	    return;
+	}
+	double bucketInterval = sim.getMaxTimeStep() * speed;
+	if (bucketInterval <= 0) {
+	    return;
+	}
+	double windowEndTime = sim.getTime();
+	for (int i = 0; i < plots.size(); i++) {
+	    ScopePlot plot = plots.get(i);
+	    VariableHistoryStore.SeriesSnapshot snapshot = getVariableHistorySnapshotForPlot(plot);
+	    if (snapshot == null || snapshot.size() == 0) {
+		continue;
+	    }
+	    plot.preloadFromHistory(snapshot, windowEndTime, bucketInterval);
+	}
     }
 
     void allocImageFromLifecycle() {
@@ -877,10 +901,7 @@ public class Scope {
     	
     	// Capture data to history for drawFromZero mode
     	if (config.isDrawFromZeroActive()) {
-    	    if (!model.captureToHistory(sim.getTime(), startTime, scopePointCount)) {
-    	        CirSim.console("captureToHistory: Not all history buffers allocated, skipping capture. " +
-    			"drawFromZero=" + drawFromZero + ", plots.size()=" + plots.size());
-    	    }
+	    captureToSharedHistory();
     	}
     }
 
@@ -987,21 +1008,173 @@ public class Scope {
     public void toggleDrawFromZero() {
 	drawFromZero = !drawFromZero;
 	if (drawFromZero) {
-	    // Always start from t=0 by resetting simulation
-	    sim.resetAction();
-	    startTime = 0.0;
+	    boolean reuseExistingHistory = hasReusableVariableHistory();
+	    if (!reuseExistingHistory) {
+		// Always start from t=0 by resetting simulation when no reusable history exists
+		sim.resetAction();
+		startTime = 0.0;
+	    }
 	    // Enable auto scale time when draw from zero is enabled
 	    autoScaleTime = true;
+	    resetGraph(false, !reuseExistingHistory);
 	} else {
 	    // Disable auto scale time when draw from zero is disabled
 	    autoScaleTime = false;
+	    resetGraph();
 	}
-	resetGraph();
     }
     
     void toggleAutoScaleTime() {
 	autoScaleTime = !autoScaleTime;
 	sim.needAnalyze();
+    }
+
+    private void ensureSharedHistoryKeys(boolean clearHistory) {
+	if (plots == null) {
+	    sharedHistoryKeys = new String[0];
+	    return;
+	}
+	boolean sameShape = sharedHistoryKeys != null && sharedHistoryKeys.length == plots.size();
+	if (!sameShape || clearHistory) {
+	    if (!clearHistory) {
+		clearSharedHistorySeries();
+	    }
+	    sharedHistoryKeys = new String[plots.size()];
+	    for (int i = 0; i < plots.size(); i++) {
+		sharedHistoryKeys[i] = buildSharedHistoryKey(i);
+	    }
+	}
+    }
+
+    private String buildSharedHistoryKey(int plotIndex) {
+	return "scope:" + sharedHistoryScopeId + ":plot:" + plotIndex;
+    }
+
+    private void clearSharedHistorySeries() {
+	if (sharedHistoryKeys != null) {
+	    for (int i = 0; i < sharedHistoryKeys.length; i++) {
+		if (sharedHistoryKeys[i] != null) {
+		    sim.getVariableHistoryStore().clearSeries(sharedHistoryKeys[i]);
+		}
+	    }
+	}
+    }
+
+    private boolean hasSharedHistoryData() {
+	if (sharedHistoryKeys == null || sharedHistoryKeys.length == 0) {
+	    return false;
+	}
+	for (int i = 0; i < sharedHistoryKeys.length; i++) {
+	    VariableHistoryStore.SeriesSnapshot snapshot = sim.getVariableHistoryStore().getSeriesSnapshotByKey(sharedHistoryKeys[i]);
+	    if (snapshot != null && snapshot.size() > 0) {
+		return true;
+	    }
+	}
+	return false;
+    }
+
+    private boolean hasReusableVariableHistory() {
+	if (plots == null || plots.isEmpty()) {
+	    return false;
+	}
+	for (int i = 0; i < plots.size(); i++) {
+	    VariableHistoryStore.SeriesSnapshot snapshot = getVariableHistorySnapshotForPlot(plots.get(i));
+	    if (snapshot != null && snapshot.size() > 0) {
+		return true;
+	    }
+	}
+	return false;
+    }
+
+    private void captureToSharedHistory() {
+	ensureSharedHistoryKeys(false);
+	double relativeTime = sim.getTime() - startTime;
+	for (int i = 0; i < plots.size(); i++) {
+	    ScopePlot plot = plots.get(i);
+	    int idx = plot.ptr & (scopePointCount - 1);
+	    sim.getVariableHistoryStore().captureSeriesSample(
+		sharedHistoryKeys[i],
+		getPlotHistoryLabel(plot, i),
+		relativeTime,
+		plot.minValues[idx],
+		plot.maxValues[idx]);
+	}
+	refreshSharedHistoryMetadata();
+    }
+
+    private String getPlotHistoryLabel(ScopePlot plot, int index) {
+	if (plot != null && plot.elm != null) {
+	    String label = plot.elm.getScopeTextForScope(plot.value);
+	    if (label != null && !label.isEmpty()) {
+		return label;
+	    }
+	}
+	return "Plot " + (index + 1);
+    }
+
+
+    private void refreshSharedHistoryMetadata() {
+	int historySize = 0;
+	double historyInterval = model.getHistorySampleInterval();
+	for (int i = 0; i < plots.size(); i++) {
+	    VariableHistoryStore.SeriesSnapshot snapshot = getHistorySnapshotForPlotIndex(i);
+	    if (snapshot == null || snapshot.size() == 0) {
+		continue;
+	    }
+	    historySize = snapshot.size();
+	    double snapshotInterval = snapshot.averageSampleInterval();
+	    if (snapshotInterval > 0) {
+		historyInterval = snapshotInterval;
+	    }
+	}
+	model.setHistoryMetadata(historySize, historyInterval);
+    }
+
+    VariableHistoryStore.SeriesSnapshot getHistorySnapshotForRender(ScopePlot plot) {
+	if (plot == null) {
+	    return null;
+	}
+	int plotIndex = plots.indexOf(plot);
+	return getHistorySnapshotForPlotIndex(plotIndex);
+    }
+
+    boolean isUsingHistoryInStandardModeForRender(ScopePlot plot) {
+	return plot != null && plot.isUsingPreloadedHistory();
+    }
+
+    private VariableHistoryStore.SeriesSnapshot getHistorySnapshotForPlotIndex(int plotIndex) {
+	if (plotIndex < 0) {
+	    return null;
+	}
+	ScopePlot plot = getPlotOrNull(plotIndex);
+	VariableHistoryStore.SeriesSnapshot variableSnapshot = getVariableHistorySnapshotForPlot(plot);
+	if (variableSnapshot != null && variableSnapshot.size() > 0) {
+	    return variableSnapshot;
+	}
+	if (sharedHistoryKeys == null || plotIndex >= sharedHistoryKeys.length) {
+	    return null;
+	}
+	return sim.getVariableHistoryStore().getSeriesSnapshotByKey(sharedHistoryKeys[plotIndex]);
+    }
+
+    private VariableHistoryStore.SeriesSnapshot getVariableHistorySnapshotForPlot(ScopePlot plot) {
+	String variableHistoryName = getVariableHistoryNameForPlot(plot);
+	if (variableHistoryName == null || variableHistoryName.isEmpty()) {
+	    return null;
+	}
+	return sim.getVariableHistoryStore().getVariableSeriesSnapshot(variableHistoryName);
+    }
+
+    private String getVariableHistoryNameForPlot(ScopePlot plot) {
+	if (plot == null || plot.elm == null || plot.value != VAL_VOLTAGE) {
+	    return null;
+	}
+	if (plot.elm instanceof LabeledNodeElm) {
+	    String labelName = ((LabeledNodeElm) plot.elm).getName();
+	    return (labelName == null || labelName.isEmpty()) ? null : labelName;
+	}
+	String scopeText = plot.elm.getScopeTextForScope(plot.value);
+	return (scopeText == null || scopeText.isEmpty()) ? null : scopeText;
     }
 
     // FFT methods moved to ScopeGridRenderer
@@ -1521,8 +1694,9 @@ public class Scope {
     	    ScopePlot plot = visiblePlots.get(si);
     	    if (plot.units != units)
     		continue;
-            if (historyIndexRange != null && plot.historyMinValues != null && plot.historyMaxValues != null) {
-                double[] historyMinMax = ScopeScaler.calcMinMaxInRange(plot.historyMinValues, plot.historyMaxValues,
+				VariableHistoryStore.SeriesSnapshot historySnapshot = getHistorySnapshotForRender(plot);
+				if (historyIndexRange != null && historySnapshot != null) {
+					double[] historyMinMax = ScopeScaler.calcMinMaxInRange(historySnapshot.minValues, historySnapshot.maxValues,
                         historyIndexRange[0], historyIndexRange[1]);
                 if (historyMinMax == null) {
                     continue;
@@ -1557,8 +1731,9 @@ public class Scope {
 			return;
     	int i;
     	double max = 0;
-        if (historyIndexRange != null && plot.historyMinValues != null && plot.historyMaxValues != null) {
-            max = ScopeScaler.calcMaxAbsInRange(plot.historyMinValues, plot.historyMaxValues,
+			VariableHistoryStore.SeriesSnapshot historySnapshot = getHistorySnapshotForRender(plot);
+			if (historyIndexRange != null && historySnapshot != null) {
+				max = ScopeScaler.calcMaxAbsInRange(historySnapshot.minValues, historySnapshot.maxValues,
                     historyIndexRange[0], historyIndexRange[1]);
         } else {
             int displayWidth = getDisplaySampleWidth(plot, frame);
@@ -1726,7 +1901,7 @@ public class Scope {
 		return;
 	    }
 	    selectedPlot = ScopeInteractionController.findNearestPlotIndexInHistory(
-	            visiblePlots, historyIndex, mouseY, rect.y, frame.plotTop, maxy);
+	            this, visiblePlots, historyIndex, mouseY, rect.y, frame.plotTop, maxy);
 	} else {
 	    int sampleX = Math.min(localX / stride, requiredSamples - 1);
 	    selectedPlot = ScopeInteractionController.findNearestPlotIndexAtSampleX(
@@ -1857,8 +2032,9 @@ public class Scope {
     }
 
     private double[] calcMultiLhsAxisRange(ScopePlot plot, double[] minV, double[] maxV, int[] historyIndexRange) {
-        if (historyIndexRange != null && plot.historyMinValues != null && plot.historyMaxValues != null) {
-            return ScopeScaler.calcMultiLhsAxisRangeLinear(plot.historyMinValues, plot.historyMaxValues,
+		VariableHistoryStore.SeriesSnapshot historySnapshot = getHistorySnapshotForRender(plot);
+		if (historyIndexRange != null && historySnapshot != null) {
+			return ScopeScaler.calcMultiLhsAxisRangeLinear(historySnapshot.minValues, historySnapshot.maxValues,
                     historyIndexRange[0], historyIndexRange[1], showNegative, scale[plot.units],
                     MULTI_LHS_TICK_COUNT, MULTI_LHS_NICE_STEP_MULTIPLIERS);
         }
@@ -2614,6 +2790,7 @@ public class Scope {
      */
     private String exportHistoryAsCSV() {
 	return ScopeDataExporter.exportHistoryAsCSV(
+		this,
 		visiblePlots,
 		drawFromZero,
 		model.getHistorySize(),
@@ -2626,6 +2803,7 @@ public class Scope {
      */
     private String exportHistoryAsJSON() {
 	return ScopeDataExporter.exportHistoryAsJSON(
+		this,
 		visiblePlots,
 		drawFromZero,
 		startTime,

@@ -19,7 +19,7 @@
 
 package com.lushprojects.circuitjs1.client.ui;
 
-import com.lushprojects.circuitjs1.client.elements.economics.*;
+import com.lushprojects.circuitjs1.client.VariableCatalog;
 import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNodeElm;
 
 import com.google.gwt.user.client.ui.DialogBox;
@@ -43,8 +43,6 @@ import com.google.gwt.user.client.Event.NativePreviewHandler;
 import com.google.gwt.user.client.Event.NativePreviewEvent;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Set;
 
 /**
  * Non-modal dialog that displays all available variables (stocks, labeled nodes, parameters)
@@ -136,7 +134,7 @@ public class VariableBrowserDialog extends DialogBox {
         setWidget(vp);
         
         // Add description label
-        Label descLabel = new Label(Locale.LS("Click variable to place"));
+        Label descLabel = new Label(Locale.LS("Click variable to place or trace"));
         descLabel.getElement().getStyle().setMarginBottom(10, Unit.PX);
         descLabel.getElement().getStyle().setFontSize(11, Unit.PX);
         vp.add(descLabel);
@@ -157,6 +155,7 @@ public class VariableBrowserDialog extends DialogBox {
         varTable.setText(0, 0, Locale.LS("Variable Name"));
         varTable.setText(0, 1, Locale.LS("Value"));
         varTable.setText(0, 2, Locale.LS("Type"));
+        varTable.setText(0, 3, Locale.LS("Trace"));
         varTable.getRowFormatter().getElement(0).getStyle().setProperty("fontWeight", "bold");
         varTable.getRowFormatter().getElement(0).getStyle().setProperty("backgroundColor", "#e0e0e0");
         
@@ -218,66 +217,28 @@ public class VariableBrowserDialog extends DialogBox {
             varTable.removeRow(1);
         }
         
-        // Collect all variables with deduplication
-        List<VariableInfo> variables = new ArrayList<VariableInfo>();
-        Set<String> addedNames = new java.util.HashSet<String>();  // Track already-added names
-        
-        // Add stock variables from TableElm (first priority)
-        Set<String> stockNames = StockFlowRegistry.getAllStockNames();
-        if (stockNames != null && !stockNames.isEmpty()) {
-            for (String stockName : stockNames) {
-                if (!addedNames.contains(stockName)) {
-                    variables.add(new VariableInfo(stockName, "Stock"));
-                    addedNames.add(stockName);
-                }
-            }
+        List<VariableCatalog.VariableEntry> variables = VariableCatalog.collectVariables(sim);
+        currentVariables = new ArrayList<VariableInfo>(variables.size());
+        for (int i = 0; i < variables.size(); i++) {
+            VariableCatalog.VariableEntry entry = variables.get(i);
+            currentVariables.add(new VariableInfo(entry.name, entry.type));
         }
-        
-        // Add equation table output names (second priority)
-        Set<String> eqnOutputs = StockFlowRegistry.getAllEquationOutputNames();
-        if (eqnOutputs != null && !eqnOutputs.isEmpty()) {
-            for (String name : eqnOutputs) {
-                if (!addedNames.contains(name)) {
-                    variables.add(new VariableInfo(name, "Equation"));
-                    addedNames.add(name);
-                }
-            }
-        }
-        
-        // Add labeled node names (third priority)
-        String[] labeledNodes = sim.getSortedLabeledNodeNames();
-        if (labeledNodes != null && labeledNodes.length > 0) {
-            for (String nodeName : labeledNodes) {
-                if (!addedNames.contains(nodeName)) {
-                    variables.add(new VariableInfo(nodeName, "node"));
-                    addedNames.add(nodeName);
-                }
-            }
-        }
-        
-        // Add variables from cell equations (fourth priority)
-        Set<String> cellVariables = StockFlowRegistry.getAllCellEquationVariables();
-        if (cellVariables != null && !cellVariables.isEmpty()) {
-            for (String varName : cellVariables) {
-                if (!addedNames.contains(varName)) {
-                    variables.add(new VariableInfo(varName, "Variable"));
-                    addedNames.add(varName);
-                }
-            }
-        }
-        
-        // Sort alphabetically by name
-        Collections.sort(variables);
-        currentVariables = new ArrayList<VariableInfo>(variables);
         
         // Populate table
         int row = 1;
-        for (final VariableInfo var : variables) {
+        for (final VariableInfo var : currentVariables) {
             // Use HTML widget with Locale.convertToHTML for super/subscript rendering
             HTML nameHtml = new HTML(Locale.convertToHTML(var.name));
             varTable.setWidget(row, 0, nameHtml);
             varTable.setText(row, 1, formatVariableValue(var.name));
             varTable.setText(row, 2, var.type);
+            Button traceButton = new Button(Locale.LS("Trace"));
+            traceButton.addClickHandler(new ClickHandler() {
+                public void onClick(ClickEvent event) {
+                    new VariableTraceViewerDialog(sim, var.name).openViewer();
+                }
+            });
+            varTable.setWidget(row, 3, traceButton);
             
             // Add click handler to place variable on canvas
             final int currentRow = row;
@@ -310,7 +271,7 @@ public class VariableBrowserDialog extends DialogBox {
         // Show message if no variables found
         if (variables.isEmpty()) {
             varTable.setText(1, 0, Locale.LS("No variables found"));
-            varTable.getFlexCellFormatter().setColSpan(1, 0, 3);
+            varTable.getFlexCellFormatter().setColSpan(1, 0, 4);
             varTable.getCellFormatter().getElement(1, 0).getStyle().setProperty("fontStyle", "italic");
             varTable.getCellFormatter().getElement(1, 0).getStyle().setProperty("color", "#999");
         }

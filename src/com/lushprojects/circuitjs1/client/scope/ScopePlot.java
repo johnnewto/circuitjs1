@@ -52,9 +52,7 @@ public class ScopePlot {
     double lastValue;
     String color;
     public CircuitElm elm;
-
-    // History buffers for drawFromZero mode (not circular, grows linearly)
-    double historyMinValues[], historyMaxValues[];
+    private boolean preloadedFromHistory;
 
     // Manual scale settings
     // Has a manual scale in "/div" format been set by the user?
@@ -162,6 +160,57 @@ public class ScopePlot {
             samplesCaptured = Math.max(1, Math.min(scopePointCount, Math.min(oldSpc, oldSamplesCaptured)));
         else
             samplesCaptured = 1;
+        preloadedFromHistory = false;
+    }
+
+    void preloadFromHistory(VariableHistoryStore.SeriesSnapshot snapshot, double windowEndTime, double bucketInterval) {
+        if (snapshot == null || snapshot.size() == 0 || minValues == null || maxValues == null
+                || scopePointCount <= 0 || bucketInterval <= 0) {
+            return;
+        }
+        int historySize = snapshot.size();
+        double newestTime = snapshot.time[historySize - 1];
+        double oldestTime = snapshot.time[0];
+        double effectiveEndTime = Math.min(windowEndTime, newestTime);
+        if (effectiveEndTime < oldestTime) {
+            effectiveEndTime = newestTime;
+        }
+        int bucketCount = Math.min(scopePointCount,
+                Math.max(1, 1 + (int) Math.floor((effectiveEndTime - oldestTime) / bucketInterval + 1e-9)));
+        double windowStartTime = (bucketCount < scopePointCount)
+                ? oldestTime
+                : effectiveEndTime - (scopePointCount - 1) * bucketInterval;
+        int historyIndex = 0;
+        for (int i = 0; i < bucketCount; i++) {
+            double bucketTime = windowStartTime + i * bucketInterval;
+            while (historyIndex + 1 < historySize && snapshot.time[historyIndex + 1] <= bucketTime) {
+                historyIndex++;
+            }
+            int chosenIndex;
+            if (bucketTime <= snapshot.time[0]) {
+                chosenIndex = 0;
+            } else if (bucketTime >= snapshot.time[historySize - 1]) {
+                chosenIndex = historySize - 1;
+            } else if (historyIndex + 1 < historySize) {
+                double lowerDistance = Math.abs(bucketTime - snapshot.time[historyIndex]);
+                double upperDistance = Math.abs(snapshot.time[historyIndex + 1] - bucketTime);
+                chosenIndex = (lowerDistance <= upperDistance) ? historyIndex : historyIndex + 1;
+            } else {
+                chosenIndex = historyIndex;
+            }
+            minValues[i] = snapshot.minValues[chosenIndex];
+            maxValues[i] = snapshot.maxValues[chosenIndex];
+        }
+        ptr = bucketCount - 1;
+        samplesCaptured = bucketCount;
+        lastValue = (minValues[ptr] + maxValues[ptr]) * 0.5;
+        acLastOut = 0;
+        lastUpdateTime = windowStartTime + (bucketCount - 1) * bucketInterval;
+        preloadedFromHistory = true;
+    }
+
+    boolean isUsingPreloadedHistory() {
+        return preloadedFromHistory;
     }
 
     /**

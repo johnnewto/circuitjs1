@@ -320,13 +320,13 @@ final class ScopeWaveformRenderer {
                                               int minRangeLo, int minRangeHi, boolean[] reduceRange) {
         ScopeDisplayConfig config = frame.displayConfig;
         int historySize = scope.getHistorySizeForRender();
+        VariableHistoryStore.SeriesSnapshot historySnapshot = scope.getHistorySnapshotForRender(plot);
 
-        if (plot.historyMinValues == null || historySize == 0) {
+        if (historySnapshot == null || historySize == 0) {
             return;
         }
-
-        double[] histMinV = plot.historyMinValues;
-        double[] histMaxV = plot.historyMaxValues;
+        double[] histMinV = historySnapshot.minValues;
+        double[] histMaxV = historySnapshot.maxValues;
         int prevY = -1;
 
         if (config.autoScaleTime) {

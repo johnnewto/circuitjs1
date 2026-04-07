@@ -123,12 +123,14 @@ final class ScopeOverlayRenderer {
                 if (scope.visiblePlots.size() > 0) {
                     ScopePlot plot = scope.visiblePlots.get(scope.selectedPlot >= 0 ? scope.selectedPlot : 0);
                     double value;
+                    VariableHistoryStore.SeriesSnapshot historySnapshot = scope.getHistorySnapshotForRender(plot);
 
-                    if (config.isDrawFromZeroActive() && plot.historyMaxValues != null) {
+                    if (config.isDrawFromZeroActive() && historySnapshot != null) {
                         double timeFromStart = Scope.getCursorTimeForRender() - scope.getStartTimeForRender();
-                        int historyIndex = (int) (timeFromStart / scope.getHistorySampleIntervalForRender());
-                        if (historyIndex >= 0 && historyIndex < scope.getHistorySizeForRender()) {
-                            value = plot.historyMaxValues[historyIndex];
+                        int historyIndex;
+                        historyIndex = (int) (timeFromStart / scope.getHistorySampleIntervalForRender());
+                        if (historyIndex >= 0 && historyIndex < historySnapshot.maxValues.length) {
+                            value = historySnapshot.maxValues[historyIndex];
                         } else {
                             value = 0;
                         }

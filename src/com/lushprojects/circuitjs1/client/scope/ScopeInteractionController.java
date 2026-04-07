@@ -56,21 +56,24 @@ final class ScopeInteractionController {
         return best;
     }
 
-    static int findNearestPlotIndexInHistory(Vector<ScopePlot> visiblePlots, int historyIndex,
+    static int findNearestPlotIndexInHistory(Scope scope, Vector<ScopePlot> visiblePlots, int historyIndex,
                                              int mouseY, int rectY, int plotTop, int centerY) {
         int bestDist = Integer.MAX_VALUE;
         int best = -1;
         for (int i = 0; i < visiblePlots.size(); i++) {
             ScopePlot plot = visiblePlots.get(i);
-            if (plot.historyMinValues == null || plot.historyMaxValues == null) {
+            VariableHistoryStore.SeriesSnapshot historySnapshot = scope.getHistorySnapshotForRender(plot);
+            if (historySnapshot == null) {
                 continue;
             }
+            double[] histMinValues = historySnapshot.minValues;
+            double[] histMaxValues = historySnapshot.maxValues;
             if (historyIndex < 0
-                    || historyIndex >= plot.historyMinValues.length
-                    || historyIndex >= plot.historyMaxValues.length) {
+                    || historyIndex >= histMinValues.length
+                    || historyIndex >= histMaxValues.length) {
                 continue;
             }
-            double midVal = (plot.historyMinValues[historyIndex] + plot.historyMaxValues[historyIndex]) * 0.5;
+            double midVal = (histMinValues[historyIndex] + histMaxValues[historyIndex]) * 0.5;
             int midvy = (int) (plot.gridMult * (midVal + plot.plotOffset));
             int dist = Math.abs(mouseY - (rectY + plotTop + centerY - midvy));
             if (dist < bestDist) {

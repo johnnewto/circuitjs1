@@ -5,8 +5,6 @@ import com.lushprojects.circuitjs1.client.ui.EditInfo;
 
 
 import com.lushprojects.circuitjs1.client.elements.Expr;
-import com.lushprojects.circuitjs1.client.elements.ExprParser;
-import com.lushprojects.circuitjs1.client.elements.ExprState;
 
 import java.util.Map;
 import java.util.Set;
@@ -26,6 +24,8 @@ final class CircuitValueSlotManager {
     }
 
     void buildCircuitVariableSlots() {
+        sim.getVariableHistoryStore().clearVariableSeries();
+        sim.getVariableHistoryStore().clearNonVariableSeries();
         sim.nameToSlot = new java.util.HashMap<String, Integer>();
         int slot = 0;
 
@@ -58,6 +58,8 @@ final class CircuitValueSlotManager {
         sim.slotNames = new String[slot];
         for (Map.Entry<String, Integer> e : sim.nameToSlot.entrySet())
             sim.slotNames[e.getValue()] = e.getKey();
+
+        sim.getVariableHistoryStore().refreshTrackedVariableNames(sim);
 
         syncAllSlots();
     }

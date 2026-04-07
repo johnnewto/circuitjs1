@@ -671,6 +671,7 @@ public CirSim() {
 	private final StatusInfoRenderer statusInfoRenderer = new StatusInfoRenderer(this);
 	private final ExportCompositeActions exportCompositeActions = new ExportCompositeActions(this);
 	private final CircuitValueSlotManager circuitValueSlotManager = new CircuitValueSlotManager(this);
+	private final VariableHistoryStore variableHistoryStore = new VariableHistoryStore();
 	private final JsApiBridge jsApiBridge = new JsApiBridge(this);
 	private final CirSimPreferencesManager preferencesManager = new CirSimPreferencesManager(this);
 	private final TableMasterRegistryManager tableMasterRegistryManager = new TableMasterRegistryManager(this);
@@ -961,6 +962,10 @@ public CirSim() {
 
 	CircuitValueSlotManager getCircuitValueSlotManager() {
 	    return circuitValueSlotManager;
+	}
+
+	public VariableHistoryStore getVariableHistoryStore() {
+	    return variableHistoryStore;
 	}
 
 	public double getLabeledNodeVoltageForUi(String name) {

@@ -37,14 +37,14 @@ It supports two draw paths:
 - Serializes/deserializes scope settings and data state (`dump()`/`undump()`).
 - Exports data as CSV/JSON (circular buffer or history).
 
-### `ScopePlot` (`Scope.java`, inner class)
+### `ScopePlot` (`ScopePlot.java`)
 
 `ScopePlot` stores per-trace state:
 - Circular min/max buffers (`minValues[]`, `maxValues[]`) with pointer `ptr`.
 - Value type (`value`) and display units (`units`) — see reference tables below.
 - Plot speed (`scopePlotSpeed`) and manual scale state (`manScale`, `manScaleSet`).
 - Optional AC coupling filter state (`acCoupled`, `acAlpha`, `acLastOut`).
-- Optional history arrays (`historyMinValues[]`, `historyMaxValues[]`) for draw-from-zero mode.
+- Draw-from-zero history identity is managed by `Scope`, with long-run data stored in the shared `VariableHistoryStore` rather than on each plot.
 
 #### Value-type constants (`VAL_*`)
 
@@ -115,7 +115,7 @@ Inside `Scope.timeStep()`:
 - Each plot calls `ScopePlot.timeStep()`.
 - Plot captures min/max of the current value into the current pixel bucket.
 - The bucket pointer advances when `sim.t - lastUpdateTime >= sim.maxTimeStep * scopePlotSpeed`.
-- If draw-from-zero mode is enabled, settled data is copied to history buffers (with ×2 downsampling when `historyCapacity` is reached).
+- If draw-from-zero mode is enabled, converged min/max samples are written to shared history series owned by `VariableHistoryStore`.
 
 #### Speed / `scopePlotSpeed` explained
 
@@ -164,14 +164,15 @@ The circular buffer length `scopePointCount` is the smallest power of 2 ≥ `rec
 - `scopePointCount` is the smallest power of 2 ≥ `rect.width`, recalculated on `resetGraph()`.
 - Buffer pointer is masked: `ptr = (ptr + 1) & (scopePointCount - 1)`.
 - Efficient for continuous scrolling display.
+- When reusable variable history already exists, standard mode preloads the circular buffer once from that history, filling from the left until the visible width is reached and only then entering normal scrolling. An explicit scope reset clears the live circular buffer instead of immediately re-preloading it.
 - Export methods: `exportCircularBufferAsCSV()` and `exportCircularBufferAsJSON()`.
 
 ### Draw-from-zero history mode
 
 - Activated via `toggleDrawFromZero()` or the scope popup menu.
 - Keeps long-run history from simulation start (`startTime`).
-- Uses per-plot `historyMinValues[]` / `historyMaxValues[]` and `historySize` at the `Scope` level.
-- `historySampleInterval` doubles each time capacity is reached; old entries are downsampled by keeping min-of-mins and max-of-maxs across each pair of adjacent samples.
+- Uses per-scope shared-history keys plus `historySize` / `historySampleInterval` metadata at the `Scope` level.
+- Long-run samples live in `VariableHistoryStore`, which doubles `historySampleInterval` when capacity is reached and downsamples by keeping min-of-mins and max-of-maxs across each adjacent pair.
 - Export methods: `exportHistoryAsCSV()` and `exportHistoryAsJSON()`.
 
 ### AC coupling filter

@@ -41,7 +41,7 @@ final class ScopeSelectionService {
             }
         }
         scope.calcVisiblePlots();
-        scope.resetGraph();
+        scope.resetGraphPreservingHistory();
     }
 
     static void combine(Scope scope, Scope other) {

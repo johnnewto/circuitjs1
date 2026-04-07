@@ -128,7 +128,8 @@ final class ScopeDataExporter {
         return sb.toString();
     }
 
-    static String exportHistoryAsCSV(
+        static String exportHistoryAsCSV(
+            Scope scope,
             Vector<ScopePlot> visiblePlots,
             boolean drawFromZero,
             int historySize,
@@ -152,9 +153,10 @@ final class ScopeDataExporter {
             sb.append(time);
             for (int i = 0; i < visiblePlots.size(); i++) {
                 ScopePlot p = visiblePlots.get(i);
-                if (p.historyMinValues != null && p.historyMaxValues != null) {
-                    sb.append(",").append(p.historyMinValues[x]);
-                    sb.append(",").append(p.historyMaxValues[x]);
+                VariableHistoryStore.SeriesSnapshot historySnapshot = scope.getHistorySnapshotForRender(p);
+                if (historySnapshot != null) {
+                    sb.append(",").append(historySnapshot.minValues[x]);
+                    sb.append(",").append(historySnapshot.maxValues[x]);
                 } else {
                     sb.append(",0,0");
                 }
@@ -164,7 +166,8 @@ final class ScopeDataExporter {
         return sb.toString();
     }
 
-    static String exportHistoryAsJSON(
+        static String exportHistoryAsJSON(
+            Scope scope,
             Vector<ScopePlot> visiblePlots,
             boolean drawFromZero,
             double absoluteStartTime,
@@ -202,13 +205,14 @@ final class ScopeDataExporter {
             }
             sb.append("],\n");
 
-            if (p.historyMinValues != null && p.historyMaxValues != null) {
+            VariableHistoryStore.SeriesSnapshot historySnapshot = scope.getHistorySnapshotForRender(p);
+            if (historySnapshot != null) {
                 sb.append("      \"values\": [");
                 for (int x = 0; x < historySize; x++) {
                     if (x > 0) {
                         sb.append(", ");
                     }
-                    double midpoint = (p.historyMinValues[x] + p.historyMaxValues[x]) / 2.0;
+                    double midpoint = (historySnapshot.minValues[x] + historySnapshot.maxValues[x]) / 2.0;
                     sb.append(midpoint);
                 }
                 sb.append("],\n");
@@ -218,7 +222,7 @@ final class ScopeDataExporter {
                     if (x > 0) {
                         sb.append(", ");
                     }
-                    sb.append(p.historyMinValues[x]);
+                    sb.append(historySnapshot.minValues[x]);
                 }
                 sb.append("],\n");
 
@@ -227,7 +231,7 @@ final class ScopeDataExporter {
                     if (x > 0) {
                         sb.append(", ");
                     }
-                    sb.append(p.historyMaxValues[x]);
+                    sb.append(historySnapshot.maxValues[x]);
                 }
                 sb.append("]\n");
             } else {

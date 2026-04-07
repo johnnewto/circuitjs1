@@ -25,10 +25,6 @@ import com.lushprojects.circuitjs1.client.elements.ActionScheduler;
 import com.lushprojects.circuitjs1.client.elements.misc.ScopeElm;
 
 import com.lushprojects.circuitjs1.client.*;
-import com.lushprojects.circuitjs1.client.util.*;
-import com.google.gwt.core.client.GWT;
-import com.google.gwt.resources.client.ClientBundle;
-import com.google.gwt.resources.client.TextResource;
 import com.google.gwt.user.client.ui.DialogBox;
 import com.google.gwt.user.client.ui.VerticalPanel;
 import com.google.gwt.user.client.ui.HorizontalPanel;
@@ -36,52 +32,12 @@ import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.dom.client.ClickEvent;
-import com.google.gwt.user.client.Window;
 import com.lushprojects.circuitjs1.client.util.Locale;
-import jsinterop.annotations.JsMethod;
-import jsinterop.annotations.JsPackage;
-import jsinterop.annotations.JsProperty;
-import jsinterop.annotations.JsType;
 
 /**
  * Dialog that opens all scope data in an interactive Plotly.js viewer in a new window.
  */
 public class ScopeViewerDialog extends DialogBox {
-
-    interface ScopeViewerResources extends ClientBundle {
-        ScopeViewerResources INSTANCE = GWT.create(ScopeViewerResources.class);
-
-        @Source("ScopeViewerTemplate.html")
-        TextResource scopeViewerTemplate();
-    }
-
-    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Document")
-    private static class DocumentLike {
-        @JsMethod native void write(String text);
-        @JsMethod native void close();
-    }
-
-    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Window")
-    private static class WindowLike {
-        @JsProperty(name = "document") native DocumentLike getDocument();
-        @JsProperty(name = "closed") native boolean isClosed();
-        @JsMethod native void close();
-    }
-
-    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Array")
-    private static class WindowArrayLike {
-        WindowArrayLike() {}
-        @JsProperty(name = "length") native int getLength();
-        @JsMethod(name = "push") native int push(WindowLike value);
-        @JsMethod(name = "shift") native WindowLike shift();
-    }
-
-    @JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "window")
-    private static class GlobalWindowLike {
-        @JsMethod(name = "open") static native WindowLike open(String url, String target, String features);
-        @JsProperty(name = "plotlyWindows") static native WindowArrayLike getPlotlyWindows();
-        @JsProperty(name = "plotlyWindows") static native void setPlotlyWindows(WindowArrayLike windows);
-    }
     
     private CirSim sim;
     private Scope singleScope;  // If viewing just one scope
@@ -220,7 +176,7 @@ public class ScopeViewerDialog extends DialogBox {
      */
     private void exportScope(StringBuilder allDataJson, Scope scope, int index, String scopeName) {
         allDataJson.append("{\n");
-        allDataJson.append("  \"scopeName\": \"").append(escapeJSON(scopeName)).append("\",\n");
+        allDataJson.append("  \"scopeName\": \"").append(PlotlyWindowHelper.escapeJSON(scopeName)).append("\",\n");
         allDataJson.append("  \"scopeIndex\": ").append(index).append(",\n");
         
         // Add action times if available
@@ -252,7 +208,7 @@ public class ScopeViewerDialog extends DialogBox {
                     ActionScheduler.ScheduledAction action = enabledActions.get(i);
                     String annotation = action.postText != null && !action.postText.isEmpty() ? 
                         action.postText : "Action " + action.id;
-                    allDataJson.append("\"").append(escapeJSON(annotation)).append("\"");
+                    allDataJson.append("\"").append(PlotlyWindowHelper.escapeJSON(annotation)).append("\"");
                 }
                 allDataJson.append("],\n");
             }
@@ -279,32 +235,11 @@ public class ScopeViewerDialog extends DialogBox {
         return name;
     }
     
-    private String escapeJSON(String s) {
-        if (s == null) return "";
-        return s.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
-    }
-    
     /**
      * Generates complete HTML document with Plotly.js and embedded scope data.
      */
     private String generatePlotlyHTML(String jsonData) {
-        String template = ScopeViewerResources.INSTANCE.scopeViewerTemplate().getText();
-        return template
-                .replace("__SCOPE_DATA_JSON__", jsonData)
-                .replace("__TIME_UNIT_SYMBOL__", escapeJavaScriptString(sim.timeUnitSymbol));
-    }
-
-    private String escapeJavaScriptString(String s) {
-        if (s == null) return "";
-        return s.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
+        return PlotlyWindowHelper.generatePlotlyHTML(jsonData, sim.timeUnitSymbol);
     }
     
     /**
@@ -314,29 +249,7 @@ public class ScopeViewerDialog extends DialogBox {
      * @return true if window opened successfully, false if blocked
      */
     private boolean openWindowWithHTML(String html) {
-        WindowArrayLike windows = GlobalWindowLike.getPlotlyWindows();
-        if (windows == null) {
-            windows = new WindowArrayLike();
-            GlobalWindowLike.setPlotlyWindows(windows);
-        }
-
-        WindowLike newWindow = GlobalWindowLike.open("", "_blank", "width=1400,height=900");
-        if (newWindow == null) {
-            Window.alert("Please allow pop-ups for this site to view the scope data.");
-            return false;
-        }
-
-        newWindow.getDocument().write(html);
-        newWindow.getDocument().close();
-
-        int len = windows.getLength();
-        for (int i = 0; i < len; i++) {
-            WindowLike existing = windows.shift();
-            if (existing != null && !existing.isClosed()) {
-                windows.push(existing);
-            }
-        }
-        windows.push(newWindow);
-        return true;
+        return PlotlyWindowHelper.openWindowWithHTML(html,
+                "Please allow pop-ups for this site to view the scope data.");
     }
 }

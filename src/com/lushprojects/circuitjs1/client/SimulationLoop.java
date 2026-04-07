@@ -3,12 +3,9 @@ package com.lushprojects.circuitjs1.client;
 import com.lushprojects.circuitjs1.client.util.*;
 
 import com.lushprojects.circuitjs1.client.elements.Expr;
-import com.lushprojects.circuitjs1.client.elements.ExprParser;
-import com.lushprojects.circuitjs1.client.elements.ExprState;
 
 import com.lushprojects.circuitjs1.client.elements.ActionScheduler;
 
-import com.google.gwt.canvas.dom.client.Context2d.LineCap;
 import com.google.gwt.core.client.GWT;
 import com.lushprojects.circuitjs1.client.core.CircuitMatrixOps;
 import com.lushprojects.circuitjs1.client.core.CircuitNode;
@@ -16,7 +13,6 @@ import com.lushprojects.circuitjs1.client.core.CircuitNodeLink;
 import com.lushprojects.circuitjs1.client.core.RowInfo;
 import com.lushprojects.circuitjs1.client.core.SimulationTimingState;
 import com.lushprojects.circuitjs1.client.elements.economics.*;
-import com.lushprojects.circuitjs1.client.elements.annotation.SequenceDiagramElm;
 import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNodeElm;
 import com.lushprojects.circuitjs1.client.elements.misc.ScopeElm;
 import com.lushprojects.circuitjs1.client.runner.RuntimeMode;
@@ -175,7 +171,7 @@ class SimulationLoop {
             sim.nextPeriodicTime = timingState.timeStepCount + sim.periodicInterval;
         }
 
-        for (int iter = 1; ; iter++) {
+        for (;;) {
 
             if (goodIterations >= 3 && timingState.timeStep < timingState.maxTimeStep) {
                 timingState.timeStep = Math.min(timingState.timeStep * 2, timingState.maxTimeStep);
@@ -310,6 +306,7 @@ class SimulationLoop {
             sim.getCircuitValueSlotManager().syncAllSlots();
 
             ComputedValues.commitConvergedValues();
+            sim.getVariableHistoryStore().capture(sim, timingState.t);
 
             ActionScheduler scheduler = ActionScheduler.getInstance(sim);
             if (scheduler != null) {
