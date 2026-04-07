@@ -63,6 +63,82 @@ final class ScopeAxisRenderer {
         }
     }
 
+    static String trimAxisTickLabel(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+
+        int index = 0;
+        if (text.charAt(index) == '+' || text.charAt(index) == '-') {
+            index++;
+        }
+
+        boolean sawDigit = false;
+        int decimalPoint = -1;
+        while (index < text.length()) {
+            char ch = text.charAt(index);
+            if (ch >= '0' && ch <= '9') {
+                sawDigit = true;
+                index++;
+                continue;
+            }
+            if (ch == '.' && decimalPoint < 0) {
+                decimalPoint = index;
+                index++;
+                continue;
+            }
+            break;
+        }
+
+        if (!sawDigit || decimalPoint < 0) {
+            return text;
+        }
+
+        int numberEnd = index;
+        if (index < text.length() && (text.charAt(index) == 'e' || text.charAt(index) == 'E')) {
+            int exponentStart = index;
+            index++;
+            if (index < text.length() && (text.charAt(index) == '+' || text.charAt(index) == '-')) {
+                index++;
+            }
+            int exponentDigitsStart = index;
+            while (index < text.length() && text.charAt(index) >= '0' && text.charAt(index) <= '9') {
+                index++;
+            }
+            if (index > exponentDigitsStart) {
+                numberEnd = index;
+            } else {
+                numberEnd = exponentStart;
+            }
+        }
+
+        String numberPart = text.substring(0, numberEnd);
+        String suffix = text.substring(numberEnd);
+
+        int mantissaEnd = numberPart.length();
+        int exponentPos = numberPart.indexOf('e');
+        if (exponentPos < 0) {
+            exponentPos = numberPart.indexOf('E');
+        }
+        if (exponentPos >= 0) {
+            mantissaEnd = exponentPos;
+        }
+
+        int trimEnd = mantissaEnd;
+        while (trimEnd > decimalPoint + 1 && numberPart.charAt(trimEnd - 1) == '0') {
+            trimEnd--;
+        }
+        if (trimEnd == decimalPoint + 1) {
+            trimEnd = decimalPoint;
+        }
+
+        String trimmedNumber = numberPart.substring(0, trimEnd) + numberPart.substring(mantissaEnd);
+        if ("-0".equals(trimmedNumber) || "+0".equals(trimmedNumber)) {
+            trimmedNumber = "0";
+        }
+        return trimmedNumber + suffix;
+    }
+
     private static void drawTopGutterLegend(Scope scope, Graphics g, ScopeFrameContext frame) {
         if (!isMultiLhsAxesDrawEnabled(scope, frame) || frame.plotTop <= 0 || scope.visiblePlots == null || scope.visiblePlots.isEmpty()) {
             return;
@@ -171,7 +247,7 @@ final class ScopeAxisRenderer {
                 } else {
                     tickValue = ((double) (maxy - localY) / plot.gridMult) - plot.plotOffset;
                 }
-                String tickText = getMultiLhsAxisValueText(plot, tickValue);
+                String tickText = trimAxisTickLabel(getMultiLhsAxisValueText(plot, tickValue));
                 g.context.save();
                 g.context.translate(textX, drawY);
                 g.context.rotate(-Math.PI / 2.0);
@@ -244,7 +320,7 @@ final class ScopeAxisRenderer {
             } else {
                 g.context.setTextAlign("center");
             }
-            g.context.fillText(scope.sim.formatTimeFixedForScope(t), x, labelY);
+            g.context.fillText(trimAxisTickLabel(scope.sim.formatTimeFixedForScope(t)), x, labelY);
         }
         g.context.restore();
     }
