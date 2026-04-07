@@ -45,6 +45,7 @@ public final class SimulationExportCore {
         String lookupMode;
         int convergenceCheckThreshold;
         boolean eqnTableNewtonJacobian;
+        boolean eqnTableBroydenJacobian;
         boolean autoAdjustTimestep;
         double minTimeStep;
         double maxTimeStep;
@@ -93,6 +94,7 @@ public final class SimulationExportCore {
         {"lookupMode", "lookupMode"},
         {"convergenceCheckThreshold", "convergenceCheckThreshold"},
         {"EqnTable Newton Jacobian", "eqnTableNewtonJacobian"},
+        {"EqnTable Broyden Jacobian", "eqnTableBroydenJacobian"},
         {"Auto-Adjust Timestep", "autoAdjustTimestep"},
         {"minTimeStep", "minTimeStep"},
         {"maxTimeStep", "maxTimeStep"},
@@ -323,6 +325,7 @@ public final class SimulationExportCore {
         parameters.lookupClamp = sim.isSfcrLookupClampDefault();
         parameters.convergenceCheckThreshold = sim.convergenceCheckThreshold;
         parameters.eqnTableNewtonJacobian = sim.equationTableNewtonJacobianEnabled;
+        parameters.eqnTableBroydenJacobian = sim.equationTableBroydenJacobianEnabled;
         parameters.autoAdjustTimestep = sim.adjustTimeStep;
         parameters.minTimeStep = sim.getTimingState().minTimeStep;
         parameters.maxTimeStep = sim.getMaxTimeStep();
@@ -352,6 +355,7 @@ public final class SimulationExportCore {
             case "lookupMode": return p.lookupMode != null ? p.lookupMode : "";
             case "convergenceCheckThreshold": return Integer.toString(p.convergenceCheckThreshold);
             case "eqnTableNewtonJacobian": return Boolean.toString(p.eqnTableNewtonJacobian);
+            case "eqnTableBroydenJacobian": return Boolean.toString(p.eqnTableBroydenJacobian);
             case "autoAdjustTimestep": return Boolean.toString(p.autoAdjustTimestep);
             case "minTimeStep": return fmtParamNumber(p.minTimeStep);
             case "maxTimeStep": return fmtParamNumber(p.maxTimeStep);

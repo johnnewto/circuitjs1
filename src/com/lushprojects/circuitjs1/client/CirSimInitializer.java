@@ -122,6 +122,7 @@ final class CirSimInitializer {
             sim.tableRenderCacheEnabled = sim.getPreferencesManager().getOptionFromStorage("tableRenderCacheEnabled", true);
             sim.autoOpenModelInfoOnLoad = sim.getPreferencesManager().getOptionFromStorage("autoOpenModelInfoOnLoad", true);
             sim.equationTableNewtonJacobianEnabled = sim.getPreferencesManager().getOptionFromStorage("equationTableNewtonJacobianEnabled", false);
+            sim.equationTableBroydenJacobianEnabled = sim.getPreferencesManager().getOptionFromStorage("equationTableBroydenJacobianEnabled", false);
             positiveColor = qp.getValue("positiveColor");
             negativeColor = qp.getValue("negativeColor");
             neutralColor = qp.getValue("neutralColor");

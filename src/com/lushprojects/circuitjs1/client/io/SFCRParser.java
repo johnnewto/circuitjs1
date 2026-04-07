@@ -741,6 +741,13 @@ public class SFCRParser {
                     case "EqnTable Newton Jacobian":
                         sim.equationTableNewtonJacobianEnabled = parseBoolean(value, sim.equationTableNewtonJacobianEnabled);
                         break;
+                    case "equationTableBroydenJacobianEnabled":
+                    case "eqnTableBroydenJacobian":
+                    case "equationTableBroydenJacobian":
+                    case "EqnTable Broyden Jacobian":
+                    case "EqnTable Broyden Update":
+                        sim.equationTableBroydenJacobianEnabled = parseBoolean(value, sim.equationTableBroydenJacobianEnabled);
+                        break;
                     case "equationTableTolerance":
                     case "equationTableConvergenceTolerance":
                         {

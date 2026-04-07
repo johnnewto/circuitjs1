@@ -7,6 +7,7 @@ import com.lushprojects.circuitjs1.client.elements.ExprState;
 import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNodeElm;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 
 /**
@@ -57,6 +58,55 @@ import java.util.LinkedHashSet;
  */
 final class EquationTableJacobianHelper {
     private EquationTableJacobianHelper() {}
+
+    static final class JacobianComputation {
+        final String[] refNames;
+        final int[] labeledNodes;
+        final double[] baseValues;
+        final double[] derivatives;
+        final double fVal;
+        final int sawMnaRefCount;
+        final int invalidDerivativeCount;
+        final String method;
+
+        JacobianComputation(String[] refNames,
+                int[] labeledNodes,
+                double[] baseValues,
+                double[] derivatives,
+                double fVal,
+                int sawMnaRefCount,
+                int invalidDerivativeCount,
+                String method) {
+            this.refNames = refNames;
+            this.labeledNodes = labeledNodes;
+            this.baseValues = baseValues;
+            this.derivatives = derivatives;
+            this.fVal = fVal;
+            this.sawMnaRefCount = sawMnaRefCount;
+            this.invalidDerivativeCount = invalidDerivativeCount;
+            this.method = method;
+        }
+    }
+
+    private static final class FiniteDifferenceResult {
+        final String[] refNames;
+        final int[] labeledNodes;
+        final double[] baseValues;
+        final double[] derivatives;
+        final int invalidDerivativeCount;
+
+        FiniteDifferenceResult(String[] refNames,
+                int[] labeledNodes,
+                double[] baseValues,
+                double[] derivatives,
+                int invalidDerivativeCount) {
+            this.refNames = refNames;
+            this.labeledNodes = labeledNodes;
+            this.baseValues = baseValues;
+            this.derivatives = derivatives;
+            this.invalidDerivativeCount = invalidDerivativeCount;
+        }
+    }
 
     /** Return same-period refs that are registered PARAM names (skipped from Jacobian). */
     static LinkedHashSet<String> collectSkippedParameterRefs(LinkedHashSet<String> refs) {
@@ -230,6 +280,116 @@ final class EquationTableJacobianHelper {
         return lower.contains("last(") || lower.contains("[-1]") || lower.contains("(-1)");
     }
 
+    static String formatAppliedJacobianPrefix(String method, boolean flowMode) {
+        String base = flowMode ? "applied flow jacobian" : "applied";
+        if (method == null || method.length() == 0 || "finite-difference".equals(method)) {
+            return base;
+        }
+        return base + " [" + method + "]";
+    }
+
+    static JacobianComputation prepareSingleNodeJacobian(EquationTableElm.EquationRow rowData,
+            Expr expr,
+            ExprState state,
+            LinkedHashSet<String> refs,
+            double fVal) {
+        CirSim sim = CirSim.getInstance();
+        if (sim == null) {
+            return new JacobianComputation(new String[0], new int[0], new double[0], new double[0], fVal, 0, 0, "sim unavailable");
+        }
+
+        ArrayList<String> refNames = new ArrayList<String>();
+        ArrayList<Integer> labeledNodes = new ArrayList<Integer>();
+        ArrayList<Double> baseValues = new ArrayList<Double>();
+        int sawMnaRefs = 0;
+
+        for (String refName : refs) {
+            if (refName == null || refName.isEmpty() || ComputedValues.isParameterName(refName)) {
+                continue;
+            }
+
+            Integer labeledNode = LabeledNodeElm.getByName(refName);
+            if (labeledNode == null || labeledNode.intValue() <= 0) {
+                continue;
+            }
+            sawMnaRefs++;
+            refNames.add(refName);
+            labeledNodes.add(Integer.valueOf(labeledNode.intValue()));
+            baseValues.add(Double.valueOf(sim.resolveSlotValueForUi(refName)));
+        }
+
+        if (refNames.isEmpty()) {
+            return new JacobianComputation(new String[0], new int[0], new double[0], new double[0], fVal, sawMnaRefs, 0, "no mna refs");
+        }
+
+        String[] refNameArray = toStringArray(refNames);
+        int[] nodeArray = toIntArray(labeledNodes);
+        double[] baseArray = toDoubleArray(baseValues);
+
+        boolean useBroyden = sim.equationTableBroydenJacobianEnabled
+                && sim.equationTableNewtonJacobianEnabled
+                && rowData != null;
+        boolean cacheCompatible = useBroyden
+                && EquationTableBroydenHelper.hasCompatibleCache(rowData.broydenRefNames,
+                        rowData.broydenApproxDerivatives,
+                        rowData.broydenLastRefValues,
+                        refNameArray);
+
+        double[] derivatives = null;
+        int invalidCount = 0;
+        String method = "finite-difference";
+
+        if (useBroyden && cacheCompatible
+                && rowData.broydenIterationsSinceRefresh < EquationTableBroydenHelper.DEFAULT_REFRESH_INTERVAL) {
+            derivatives = copyDoubleArray(rowData.broydenApproxDerivatives);
+            EquationTableBroydenHelper.UpdateResult updateResult = EquationTableBroydenHelper.applyGoodBroydenUpdate(
+                    derivatives,
+                    rowData.broydenLastRefValues,
+                    rowData.broydenLastFunctionValue,
+                    baseArray,
+                    fVal);
+            if (!updateResult.cacheCompatible || !allFinite(derivatives)) {
+                derivatives = null;
+            } else {
+                method = updateResult.updated ? "broyden-update" : "broyden-reuse";
+            }
+        }
+
+        if (derivatives == null) {
+            FiniteDifferenceResult fd = computeFiniteDifferenceDerivatives(sim, expr, state, refNameArray, nodeArray, baseArray, fVal);
+            refNameArray = fd.refNames;
+            nodeArray = fd.labeledNodes;
+            baseArray = fd.baseValues;
+            derivatives = fd.derivatives;
+            invalidCount = fd.invalidDerivativeCount;
+            if (useBroyden && derivatives.length > 0) {
+                method = cacheCompatible ? "broyden-refresh" : "broyden-seed";
+            }
+        }
+
+        if (useBroyden) {
+            cacheBroydenState(rowData, refNameArray, baseArray, fVal, derivatives, method);
+        }
+
+        return new JacobianComputation(refNameArray, nodeArray, baseArray, derivatives, fVal, sawMnaRefs, invalidCount, method);
+    }
+
+    static int stampPreparedSingleNodeJacobian(JacobianComputation jacobian, int nodeNumber, double matrixSign) {
+        CirSim sim = CirSim.getInstance();
+        if (sim == null || jacobian == null || nodeNumber <= 0 || jacobian.derivatives.length == 0) {
+            return 0;
+        }
+
+        double rhs = -matrixSign * jacobian.fVal;
+        for (int i = 0; i < jacobian.derivatives.length; i++) {
+            double dx = jacobian.derivatives[i];
+            sim.stampMatrix(nodeNumber, jacobian.labeledNodes[i], matrixSign * dx);
+            rhs += matrixSign * dx * jacobian.baseValues[i];
+        }
+        sim.stampRightSide(nodeNumber, rhs);
+        return jacobian.derivatives.length;
+    }
+
     /**
      * Compute and stamp Newton–Raphson Jacobian entries for a single MNA equation row.
      *
@@ -269,51 +429,137 @@ final class EquationTableJacobianHelper {
      */
     static int stampSingleNodeJacobian(EquationTableElm table, Expr expr, ExprState state,
             LinkedHashSet<String> refs, double fVal, int nodeNumber, double matrixSign, int[] stats) {
-        CirSim sim = CirSim.getInstance();
-        if (sim == null) return 0;
-        if (nodeNumber <= 0) return 0;
-        double rhs = -matrixSign * fVal;
-        int count = 0;
+        JacobianComputation jacobian = prepareSingleNodeJacobian(null, expr, state, refs, fVal);
+        stats[0] = jacobian.sawMnaRefCount;
+        stats[1] = jacobian.derivatives.length;
+        stats[2] = jacobian.invalidDerivativeCount;
+        return stampPreparedSingleNodeJacobian(jacobian, nodeNumber, matrixSign);
+    }
 
-        for (String refName : refs) {
-            if (refName == null || refName.isEmpty()) continue;
-            if (ComputedValues.isParameterName(refName)) continue;
+    private static FiniteDifferenceResult computeFiniteDifferenceDerivatives(CirSim sim,
+            Expr expr,
+            ExprState state,
+            String[] refNames,
+            int[] labeledNodes,
+            double[] baseValues,
+            double fVal) {
+        ArrayList<String> validRefNames = new ArrayList<String>();
+        ArrayList<Integer> validNodes = new ArrayList<Integer>();
+        ArrayList<Double> validBaseValues = new ArrayList<Double>();
+        ArrayList<Double> validDerivatives = new ArrayList<Double>();
+        int invalidCount = 0;
 
-            Integer labeledNode = LabeledNodeElm.getByName(refName);
-            if (labeledNode == null || labeledNode.intValue() <= 0) continue;
-            stats[0]++;
-
-            double baseValue = sim.resolveSlotValueForUi(refName);
+        for (int i = 0; i < refNames.length; i++) {
+            double baseValue = baseValues[i];
             double dv = Math.abs(baseValue) * 1e-6;
-            if (dv < 1e-6) dv = 1e-6;
+            if (dv < 1e-6) {
+                dv = 1e-6;
+            }
 
-            double[] restore = perturbReferenceValue(sim, refName, labeledNode.intValue(), baseValue + dv);
+            double[] restore = perturbReferenceValue(sim, refNames[i], labeledNodes[i], baseValue + dv);
             double perturbedValue;
             try {
                 perturbedValue = expr.eval(state);
             } finally {
-                restoreReferenceValue(sim, labeledNode.intValue(), restore);
+                restoreReferenceValue(sim, labeledNodes[i], restore);
             }
 
             if (Double.isNaN(perturbedValue) || Double.isInfinite(perturbedValue)) {
-                stats[2]++;
+                invalidCount++;
                 continue;
             }
 
             double dx = (perturbedValue - fVal) / dv;
             if (Double.isNaN(dx) || Double.isInfinite(dx)) {
-                stats[2]++;
+                invalidCount++;
                 continue;
             }
 
-            sim.stampMatrix(nodeNumber, labeledNode.intValue(), matrixSign * dx);
-            rhs += matrixSign * dx * baseValue;
-            stats[1]++;
-            count++;
+            validRefNames.add(refNames[i]);
+            validNodes.add(Integer.valueOf(labeledNodes[i]));
+            validBaseValues.add(Double.valueOf(baseValue));
+            validDerivatives.add(Double.valueOf(dx));
         }
 
-        if (count > 0) sim.stampRightSide(nodeNumber, rhs);
-        return count;
+        return new FiniteDifferenceResult(
+                toStringArray(validRefNames),
+                toIntArray(validNodes),
+                toDoubleArray(validBaseValues),
+                toDoubleArray(validDerivatives),
+                invalidCount);
+    }
+
+    private static void cacheBroydenState(EquationTableElm.EquationRow rowData,
+            String[] refNames,
+            double[] baseValues,
+            double fVal,
+            double[] derivatives,
+            String method) {
+        if (rowData == null) {
+            return;
+        }
+        if (derivatives == null || derivatives.length == 0 || !allFinite(derivatives)) {
+            rowData.invalidateBroydenState();
+            return;
+        }
+        rowData.broydenRefNames = copyStringArray(refNames);
+        rowData.broydenApproxDerivatives = copyDoubleArray(derivatives);
+        rowData.broydenLastRefValues = copyDoubleArray(baseValues);
+        rowData.broydenLastFunctionValue = fVal;
+        if ("broyden-seed".equals(method) || "broyden-refresh".equals(method)) {
+            rowData.broydenIterationsSinceRefresh = 0;
+        } else if (method != null && method.startsWith("broyden-")) {
+            rowData.broydenIterationsSinceRefresh++;
+        }
+    }
+
+    private static boolean allFinite(double[] values) {
+        for (int i = 0; i < values.length; i++) {
+            if (Double.isNaN(values[i]) || Double.isInfinite(values[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static String[] toStringArray(ArrayList<String> values) {
+        String[] out = new String[values.size()];
+        for (int i = 0; i < values.size(); i++) {
+            out[i] = values.get(i);
+        }
+        return out;
+    }
+
+    private static int[] toIntArray(ArrayList<Integer> values) {
+        int[] out = new int[values.size()];
+        for (int i = 0; i < values.size(); i++) {
+            out[i] = values.get(i).intValue();
+        }
+        return out;
+    }
+
+    private static double[] toDoubleArray(ArrayList<Double> values) {
+        double[] out = new double[values.size()];
+        for (int i = 0; i < values.size(); i++) {
+            out[i] = values.get(i).doubleValue();
+        }
+        return out;
+    }
+
+    private static String[] copyStringArray(String[] values) {
+        String[] out = new String[values.length];
+        for (int i = 0; i < values.length; i++) {
+            out[i] = values[i];
+        }
+        return out;
+    }
+
+    private static double[] copyDoubleArray(double[] values) {
+        double[] out = new double[values.length];
+        for (int i = 0; i < values.length; i++) {
+            out[i] = values[i];
+        }
+        return out;
     }
 
     /**

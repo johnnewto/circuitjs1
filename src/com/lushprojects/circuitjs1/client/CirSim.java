@@ -500,6 +500,9 @@ public class CirSim implements ConfigProvider, ConsoleLogger {
 	// Experimental: Newton Jacobian stamping for EquationTable VOLTAGE_MODE MNA rows.
 	public boolean equationTableNewtonJacobianEnabled = false;
 
+	// Experimental: Broyden quasi-Newton updates for EquationTable Jacobians.
+	public boolean equationTableBroydenJacobianEnabled = false;
+
 	// Global base convergence tolerance used by all EquationTableElm instances
     private double equationTableConvergenceTolerance = 0.001;
 
@@ -880,6 +883,10 @@ public CirSim() {
 
 	public boolean isEquationTableNewtonJacobianEnabledForExport() {
 	    return equationTableNewtonJacobianEnabled;
+	}
+
+	public boolean isEquationTableBroydenJacobianEnabledForExport() {
+	    return equationTableBroydenJacobianEnabled;
 	}
 
 	public double getEquationTableConvergenceToleranceForExport() {

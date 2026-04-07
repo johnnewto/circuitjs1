@@ -64,6 +64,7 @@ public class ImportExportHelper {
 
         dump += "% equationTableMnaMode " + (sim.isEquationTableMnaModeForExport() ? "true" : "false") + "\n";
         dump += "% equationTableNewtonJacobianEnabled " + (sim.isEquationTableNewtonJacobianEnabledForExport() ? "true" : "false") + "\n";
+        dump += "% equationTableBroydenJacobianEnabled " + (sim.isEquationTableBroydenJacobianEnabledForExport() ? "true" : "false") + "\n";
         dump += "% equationTableConvergenceTolerance " + sim.getEquationTableConvergenceToleranceForExport() + "\n";
         dump += "% sfcrLookupClampDefault " + (sim.isSfcrLookupClampDefaultForExport() ? "true" : "false") + "\n";
         dump += "% convergenceCheckThreshold " + sim.getConvergenceCheckThresholdForExport() + "\n";

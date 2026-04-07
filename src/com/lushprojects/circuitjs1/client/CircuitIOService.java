@@ -560,6 +560,8 @@ final class CircuitIOService {
                                 sim.setEquationTableMnaMode(st.nextToken().equals("true"));
                             } else if (settingType.equals("equationTableNewtonJacobianEnabled") && st.hasMoreTokens()) {
                                 sim.equationTableNewtonJacobianEnabled = st.nextToken().equals("true");
+                            } else if (settingType.equals("equationTableBroydenJacobianEnabled") && st.hasMoreTokens()) {
+                                sim.equationTableBroydenJacobianEnabled = st.nextToken().equals("true");
                             } else if (settingType.equals("equationTableConvergenceTolerance") && st.hasMoreTokens()) {
                                 try {
                                     sim.setEquationTableConvergenceTolerance(Double.parseDouble(st.nextToken()));

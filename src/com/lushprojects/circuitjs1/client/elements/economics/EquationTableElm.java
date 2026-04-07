@@ -149,6 +149,11 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         boolean isCyclic;
         boolean lastNewtonJacobianApplied;
         String lastNewtonJacobianStatus;
+        String[] broydenRefNames;
+        double[] broydenApproxDerivatives;
+        double[] broydenLastRefValues;
+        double broydenLastFunctionValue;
+        int broydenIterationsSinceRefresh;
         
         // MNA runtime state (FLOW_MODE)
         int targetNodeNumber;
@@ -176,6 +181,14 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             lastNewtonJacobianApplied = false;
             lastNewtonJacobianStatus = "not attempted";
         }
+
+        void invalidateBroydenState() {
+            broydenRefNames = null;
+            broydenApproxDerivatives = null;
+            broydenLastRefValues = null;
+            broydenLastFunctionValue = 0;
+            broydenIterationsSinceRefresh = 0;
+        }
         
         /** Reset runtime state for simulation restart */
         void reset() {
@@ -188,6 +201,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             isCyclic = false;
             lastNewtonJacobianApplied = false;
             lastNewtonJacobianStatus = "not attempted";
+            invalidateBroydenState();
         }
     }
     
@@ -1304,14 +1318,13 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             return false;
         }
 
-        // Value/voltage mode: single node, matrixSign = -1 → stamps -dx, rhs = +val - sum(dx·base)
-        int[] stats = new int[3]; // [sawMnaRef, stampedCount, invalidCount]
-        int stamped = EquationTableJacobianHelper.stampSingleNodeJacobian(this, rowData.compiledExpr,
-                state, refs, equationValue, vn, -1.0, stats);
+        EquationTableJacobianHelper.JacobianComputation jacobian = EquationTableJacobianHelper.prepareSingleNodeJacobian(
+                rowData, rowData.compiledExpr, state, refs, equationValue);
+        int stamped = EquationTableJacobianHelper.stampPreparedSingleNodeJacobian(jacobian, vn, -1.0);
         if (stamped == 0) {
-            if (stats[0] == 0) {
+            if (jacobian.sawMnaRefCount == 0) {
                 rowData.lastNewtonJacobianStatus = "no mna refs" + skippedParamsSuffix;
-            } else if (stats[2] > 0) {
+            } else if (jacobian.invalidDerivativeCount > 0) {
                 rowData.lastNewtonJacobianStatus = "mna refs but invalid derivatives" + skippedParamsSuffix;
             } else {
                 rowData.lastNewtonJacobianStatus = "mna refs but no usable derivatives" + skippedParamsSuffix;
@@ -1320,10 +1333,11 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
 
         rowData.lastNewtonJacobianApplied = true;
+        String appliedPrefix = EquationTableJacobianHelper.formatAppliedJacobianPrefix(jacobian.method, false);
         if (EquationTableJacobianHelper.hasHistoricalRefSyntax(rowData.equation)) {
-            rowData.lastNewtonJacobianStatus = "applied (refs=" + refs.size() + "; hist ok)" + skippedParamsSuffix;
+            rowData.lastNewtonJacobianStatus = appliedPrefix + " (refs=" + refs.size() + "; hist ok)" + skippedParamsSuffix;
         } else {
-            rowData.lastNewtonJacobianStatus = "applied (refs=" + refs.size() + ")" + skippedParamsSuffix;
+            rowData.lastNewtonJacobianStatus = appliedPrefix + " (refs=" + refs.size() + ")" + skippedParamsSuffix;
         }
         return true;
     }
@@ -1365,34 +1379,29 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             return false;
         }
 
-        // Stamp each endpoint using the shared single-node value Jacobian helper.
-        // sourceNode (current leaves):  matrixSign = +1 → stamps +dx, rhs = −flow + Σ dx·V₀
-        // targetNode (current enters):  matrixSign = −1 → stamps −dx, rhs = +flow − Σ dx·V₀
-        int[] statsSource = new int[3]; // [sawMnaRef, stampedCount, invalidCount]
-        int[] statsTarget = new int[3];
+        EquationTableJacobianHelper.JacobianComputation jacobian = EquationTableJacobianHelper.prepareSingleNodeJacobian(
+            rowData, rowData.compiledExpr, state, refs, flowValue);
         int stampedSource = (sourceNode > 0)
-                ? EquationTableJacobianHelper.stampSingleNodeJacobian(this, rowData.compiledExpr,
-                        state, refs, flowValue, sourceNode, +1.0, statsSource)
-                : 0;
+            ? EquationTableJacobianHelper.stampPreparedSingleNodeJacobian(jacobian, sourceNode, +1.0)
+            : 0;
         int stampedTarget = (targetNode > 0)
-                ? EquationTableJacobianHelper.stampSingleNodeJacobian(this, rowData.compiledExpr,
-                        state, refs, flowValue, targetNode, -1.0, statsTarget)
-                : 0;
+            ? EquationTableJacobianHelper.stampPreparedSingleNodeJacobian(jacobian, targetNode, -1.0)
+            : 0;
         int totalStamped = stampedSource + stampedTarget;
 
         if (totalStamped == 0) {
-            int totalInvalid = statsSource[2] + statsTarget[2];
-            rowData.lastNewtonJacobianStatus = (totalInvalid > 0)
+            rowData.lastNewtonJacobianStatus = (jacobian.invalidDerivativeCount > 0)
                     ? "mna refs but invalid derivatives" + skippedParamsSuffix
                     : "mna refs but no usable derivatives" + skippedParamsSuffix;
             return false;
         }
 
         rowData.lastNewtonJacobianApplied = true;
+        String appliedPrefix = EquationTableJacobianHelper.formatAppliedJacobianPrefix(jacobian.method, true);
         if (EquationTableJacobianHelper.hasHistoricalRefSyntax(rowData.equation)) {
-            rowData.lastNewtonJacobianStatus = "applied flow jacobian (refs=" + refs.size() + "; hist ok)" + skippedParamsSuffix;
+            rowData.lastNewtonJacobianStatus = appliedPrefix + " (refs=" + refs.size() + "; hist ok)" + skippedParamsSuffix;
         } else {
-            rowData.lastNewtonJacobianStatus = "applied flow jacobian (refs=" + refs.size() + ")" + skippedParamsSuffix;
+            rowData.lastNewtonJacobianStatus = appliedPrefix + " (refs=" + refs.size() + ")" + skippedParamsSuffix;
         }
         return true;
     }
@@ -1828,6 +1837,10 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     @Override
     public void startIteration() {
         ensureNameRegistriesUpToDate();
+
+        for (int row = 0; row < rowCount; row++) {
+            rows[row].invalidateBroydenState();
+        }
 
         // No per-timestep precomputation required.
     }

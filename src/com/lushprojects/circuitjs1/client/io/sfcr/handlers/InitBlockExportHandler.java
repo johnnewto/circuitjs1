@@ -42,6 +42,7 @@ public class InitBlockExportHandler implements SFCRBlockExportHandler {
         sb.append("  autoAdjustTimestep: ").append(sim.adjustTimeStep).append("\n");
         sb.append("  equationTableMnaMode: ").append(sim.isEquationTableMnaMode()).append("\n");
         sb.append("  EqnTable Newton Jacobian: ").append(sim.equationTableNewtonJacobianEnabled).append("\n");
+        sb.append("  EqnTable Broyden Jacobian: ").append(sim.equationTableBroydenJacobianEnabled).append("\n");
         sb.append("  equationTableTolerance: ").append(Double.toString(sim.getEquationTableConvergenceTolerance())).append("\n");
         sb.append("  lookupMode: ").append(sim.isSfcrLookupClampDefault() ? "pwl" : "pwlx").append("\n");
         sb.append("  lookupClamp: ").append(sim.isSfcrLookupClampDefault()).append("\n");

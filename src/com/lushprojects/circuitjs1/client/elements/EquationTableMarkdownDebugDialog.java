@@ -344,6 +344,7 @@ public class EquationTableMarkdownDebugDialog {
             md.append("| Sub-iterations | ").append(sim.getSubIterations()).append(" |\n");
             md.append("| EqnTable MNA Mode (global) | ").append(sim.isEquationTableMnaMode()).append(" |\n");
             md.append("| EqnTable Newton Jacobian (global) | ").append(sim.equationTableNewtonJacobianEnabled).append(" |\n");
+            md.append("| EqnTable Broyden Jacobian (global) | ").append(sim.equationTableBroydenJacobianEnabled).append(" |\n");
         } else {
             md.append("*(Simulator not available)*\n");
         }

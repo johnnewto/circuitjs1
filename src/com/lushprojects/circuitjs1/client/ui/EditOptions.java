@@ -102,20 +102,25 @@ public class EditOptions implements Editable {
 		}
 		if (n == 18) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
-		    ei.checkbox = new Checkbox("Show Electronics Circuits", sim.isShowElectronicsCircuitsEnabledForUi());
+		    ei.checkbox = new Checkbox("EqnTable Broyden Update", sim.equationTableBroydenJacobianEnabled);
 		    return ei;
 		}
 		if (n == 19) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
-		    ei.checkbox = new Checkbox("Enable Cache-Busted URLs", sim.isCacheBustedUrlsEnabled());
+		    ei.checkbox = new Checkbox("Show Electronics Circuits", sim.isShowElectronicsCircuitsEnabledForUi());
 		    return ei;
 		}
 		if (n == 20) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
-		    ei.checkbox = new Checkbox("Enable Table Render Cache", sim.tableRenderCacheEnabled);
+		    ei.checkbox = new Checkbox("Enable Cache-Busted URLs", sim.isCacheBustedUrlsEnabled());
 		    return ei;
 		}
 		if (n == 21) {
+		    EditInfo ei = new EditInfo("", 0, -1, -1);
+		    ei.checkbox = new Checkbox("Enable Table Render Cache", sim.tableRenderCacheEnabled);
+		    return ei;
+		}
+		if (n == 22) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
 		    ei.checkbox = new Checkbox("Auto-Open Model Info on Load", sim.autoOpenModelInfoOnLoad);
 		    return ei;
@@ -123,12 +128,12 @@ public class EditOptions implements Editable {
 		// Conditional items must be last. When the condition is false,
 		// getEditInfo() returns null which terminates the dialog loop,
 		// hiding any items that would follow.
-		if (n == 22) {
+		if (n == 23) {
 		    EditInfo ei = new EditInfo("", 0, -1, -1);
 		    ei.checkbox = new Checkbox("Auto-Adjust Timestep", sim.adjustTimeStep);
 		    return ei;
 		}
-		if (n == 23 && sim.adjustTimeStep)
+		if (n == 24 && sim.adjustTimeStep)
 		    return new EditInfo("Minimum time step size (s)", sim.getTimingState().minTimeStep, 0, 0);
 
 		return null;
@@ -231,6 +236,10 @@ public class EditOptions implements Editable {
 		    setOptionInStorage("equationTableNewtonJacobianEnabled", sim.equationTableNewtonJacobianEnabled);
 		}
 		if (n == 18) {
+		    sim.equationTableBroydenJacobianEnabled = ei.checkbox.getState();
+		    setOptionInStorage("equationTableBroydenJacobianEnabled", sim.equationTableBroydenJacobianEnabled);
+		}
+		if (n == 19) {
 		    boolean newValue = ei.checkbox.getState();
 		    if (sim.isShowElectronicsCircuitsEnabledForUi() != newValue) {
 			sim.setShowElectronicsCircuitsEnabledForUi(newValue);
@@ -239,23 +248,23 @@ public class EditOptions implements Editable {
 			    Window.Location.reload();
 		    }
 		}
-		if (n == 19) {
+		if (n == 20) {
 		    sim.setCacheBustedUrlsEnabledForUi(ei.checkbox.getState());
 		    setOptionInStorage("enableCacheBustedUrls", sim.isCacheBustedUrlsEnabled());
 		}
-		if (n == 20) {
+		if (n == 21) {
 		    sim.tableRenderCacheEnabled = ei.checkbox.getState();
 		    setOptionInStorage("tableRenderCacheEnabled", sim.tableRenderCacheEnabled);
 		}
-		if (n == 21) {
+		if (n == 22) {
 		    sim.autoOpenModelInfoOnLoad = ei.checkbox.getState();
 		    setOptionInStorage("autoOpenModelInfoOnLoad", sim.autoOpenModelInfoOnLoad);
 		}
-		if (n == 22) {
+		if (n == 23) {
 		    sim.adjustTimeStep = ei.checkbox.getState();
 		    ei.newDialog = true;
 		}
-		if (n == 23 && ei.value > 0)
+		if (n == 24 && ei.value > 0)
 		    sim.getTimingState().minTimeStep = ei.value;
 	}
 
@@ -270,7 +279,7 @@ public class EditOptions implements Editable {
 	    String keys[] = {
 		"crossHair", "euroResistors", "euroGates", "whiteBackground", "conventionalCurrent",
 		"mouseWheelEdit", "weightedPriority", "showElectronicsCircuits", "alternativeColor",
-		"enableCacheBustedUrls", "tableRenderCacheEnabled", "autoOpenModelInfoOnLoad", "equationTableConvergenceTolerance", "equationTableNewtonJacobianEnabled",
+		"enableCacheBustedUrls", "tableRenderCacheEnabled", "autoOpenModelInfoOnLoad", "equationTableConvergenceTolerance", "equationTableNewtonJacobianEnabled", "equationTableBroydenJacobianEnabled",
 		"positiveColor", "negativeColor", "neutralColor", "selectColor", "currentColor",
 		"language", "wheelSensitivity", "graphicsUpdateInterval", "voltageUnitSymbol",
 		"scopeDefaults", "shortcuts"
