@@ -1064,7 +1064,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             
             if (rows[row].compiledExpr == null) continue;
 
-            rows[row].isStock = isTopLevelStockExpression(rows[row].compiledExpr);
+            rows[row].isStock = isTopLevelStockExpression(outputName, rows[row].compiledExpr);
             
             // Precompute diff() presence for convergence checks
             rows[row].hasDiffExpr = rows[row].equation.contains("diff");
@@ -1597,9 +1597,13 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         return trimmed;
     }
 
-    /** Returns true when expression root is integrate(...), i.e. pure stock form. */
-    private static boolean isTopLevelStockExpression(Expr expr) {
-        return expr != null && expr.type == Expr.E_INTEGRATE;
+    /**
+     * Returns true when the expression is a stock-style definition for the given
+     * output name, either as {@code integrate(...)} or as a top-level
+     * {@code last(name) +/- ...} accumulation form.
+     */
+    private static boolean isTopLevelStockExpression(String outputName, Expr expr) {
+        return expr != null && expr.isTopLevelStockExpressionFor(outputName);
     }
 
     /**
@@ -1617,7 +1621,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             if (parser.gotError() != null || expr == null) {
                 return false;
             }
-            return isTopLevelStockExpression(expr);
+            return isTopLevelStockExpression(outputName, expr);
         } catch (Exception e) {
             return false;
         }

@@ -774,7 +774,7 @@ public class SFCRExportContext {
                 continue;
             }
             emitted++;
-            sb.append("  e").append(emitted).append(" = ").append(row.name).append(" ~ ").append(row.expr);
+            sb.append("  ").append(row.name).append(" ~ ").append(row.expr);
             if (emitted < equationCount) {
                 sb.append(",");
             }
@@ -804,7 +804,7 @@ public class SFCRExportContext {
         sb.append(assignmentName).append(" <- sfcr_set(\n");
         for (int i = 0; i < rows.size(); i++) {
             GodlyExportRow row = rows.get(i);
-            sb.append("  e").append(i + 1).append(" = ")
+            sb.append("  ")
                 .append(row.stockName).append(" ~ ")
                 .append(row.stockName).append("_init + integrate(").append(row.flowExpr).append(")");
             if (i < rows.size() - 1) {

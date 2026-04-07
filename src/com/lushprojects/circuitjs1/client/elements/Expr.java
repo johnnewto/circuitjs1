@@ -233,6 +233,72 @@ public class Expr {
 	type = v;
 	lagIndex = assignedLagIndex;
     }
+
+    /**
+     * Returns true when this expression represents a stock-style update for the
+     * given output name.
+     *
+     * Supported top-level forms:
+     * - integrate(...)
+     * - last(X) + ...
+     * - ... + last(X)
+     * - last(X) - ...
+     *
+     * where X matches {@code outputName}. Alternative parser syntaxes such as
+     * {@code X[-1]} and {@code X(-1)} are normalized by the parser to {@code last(X)}.
+     */
+    public boolean isTopLevelStockExpressionFor(String outputName) {
+	if (type == E_INTEGRATE)
+	    return true;
+	return isTopLevelLaggedSelfAccumulation(outputName);
+    }
+
+    private boolean isTopLevelLaggedSelfAccumulation(String outputName) {
+	String normalizedOutputName = (outputName == null) ? "" : outputName.trim();
+	if (normalizedOutputName.length() == 0)
+	    return false;
+	if (type != E_ADD && type != E_SUB)
+	    return false;
+	StockAccumulationScan scan = new StockAccumulationScan(normalizedOutputName);
+	scanAdditiveTerms(this, scan);
+	return scan.hasSelfLastTerm && scan.hasOtherTerm;
+    }
+
+    private void scanAdditiveTerms(Expr expr, StockAccumulationScan scan) {
+	if (expr == null)
+	    return;
+	if ((expr.type == E_ADD || expr.type == E_SUB) && expr.children != null && expr.children.size() > 0) {
+	    scanAdditiveTerms(expr.children.get(0), scan);
+	    if (expr.children.size() > 1)
+		scanAdditiveTerms(expr.children.get(1), scan);
+	    return;
+	}
+	if (expr.isDirectSelfLastReference(scan.outputName))
+	    scan.hasSelfLastTerm = true;
+	else
+	    scan.hasOtherTerm = true;
+    }
+
+    private boolean isDirectSelfLastReference(String outputName) {
+	if (type != E_LAST || children == null || children.size() != 1)
+	    return false;
+	Expr ref = children.get(0);
+	if (ref == null)
+	    return false;
+	if ((ref.type != E_NODE_REF && ref.type != E_GSLOT) || ref.nodeName == null)
+	    return false;
+	return outputName.equals(ref.nodeName);
+    }
+
+    private static class StockAccumulationScan {
+	final String outputName;
+	boolean hasSelfLastTerm;
+	boolean hasOtherTerm;
+
+	StockAccumulationScan(String outputName) {
+	    this.outputName = outputName;
+	}
+    }
     
     /**
      * Check if this expression is a compile-time constant.
